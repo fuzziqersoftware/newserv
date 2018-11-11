@@ -6,6 +6,7 @@
 #include <phosg/Strings.hh>
 
 #include "Compression.hh"
+#include "PSOEncryption.hh"
 #include "Text.hh"
 
 using namespace std;
@@ -56,8 +57,8 @@ struct PSOQuestHeaderDC { // same for dc v1 and v2, thankfully
   uint32_t unknown_offset1;
   uint32_t size;
   uint32_t unused;
+  uint8_t is_download;
   uint8_t unknown1;
-  uint8_t unknown2;
   uint16_t quest_number; // 0xFFFF for challenge quests
   char name[0x20];
   char short_description[0x80];
@@ -69,8 +70,8 @@ struct PSOQuestHeaderPC {
   uint32_t unknown_offset1;
   uint32_t size;
   uint32_t unused;
+  uint8_t is_download;
   uint8_t unknown1;
-  uint8_t unknown2;
   uint16_t quest_number; // 0xFFFF for challenge quests
   char16_t name[0x20];
   char16_t short_description[0x80];
@@ -82,7 +83,8 @@ struct PSOQuestHeaderGC {
   uint32_t unknown_offset1;
   uint32_t size;
   uint32_t unused;
-  uint16_t unknown1;
+  uint8_t is_download;
+  uint8_t unknown1;
   uint8_t quest_number;
   uint8_t episode; // 1 = ep2. apparently some quests have 0xFF here, which means ep1 (?)
   char name[0x20];
@@ -361,4 +363,77 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(GameVersion version,
   }
 
   return ret;
+}
+
+
+
+static string create_download_quest_file(const string& compressed_data,
+    size_t decompressed_size) {
+  struct PSODownloadQuestHeader {
+    uint32_t decompressed_size;
+    uint32_t encryption_seed; // note: use PC encryption, even for GC quests
+  };
+
+  string data(8, '\0');
+  auto* header = reinterpret_cast<PSODownloadQuestHeader*>(const_cast<char*>(
+      compressed_data.data()));
+  header->decompressed_size = decompressed_size + sizeof(PSODownloadQuestHeader);
+  header->encryption_seed = random_object<uint32_t>();
+  data += compressed_data;
+
+  // add extra bytes if necessary so encryption won't fail
+  data.resize((data.size() + 3) & (~3));
+
+  // TODO: for DC quests, do we use DC encryption?
+  PSOPCEncryption encr(header->encryption_seed);
+  encr.encrypt(const_cast<char*>(data.data() + sizeof(PSODownloadQuestHeader)),
+      data.size() - sizeof(PSODownloadQuestHeader));
+  return data;
+}
+
+shared_ptr<Quest> Quest::create_download_quest(const string& file_basename) const {
+  if (this->category == QuestCategory::Download) {
+    throw invalid_argument("quest is already a download quest");
+  }
+
+  string decompressed_bin = prs_decompress(*this->bin_contents());
+  void* data_ptr = const_cast<char*>(decompressed_bin.data());
+  switch (this->version) {
+    case GameVersion::DC:
+      reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
+      break;
+    case GameVersion::PC:
+      reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
+      break;
+    case GameVersion::GC:
+      reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
+      break;
+    case GameVersion::BB:
+      throw invalid_argument("PSOBB does not support download quests");
+    default:
+      throw invalid_argument("unknown game version");
+  }
+
+  shared_ptr<Quest> dlq(new Quest(file_basename));
+  dlq->quest_id = this->quest_id;
+  dlq->category = QuestCategory::Download;
+  dlq->episode = this->episode;
+  dlq->is_dcv1 = this->is_dcv1;
+  dlq->joinable = this->joinable;
+  dlq->version = this->version;
+  dlq->name = this->name;
+  dlq->short_description = this->short_description;
+  dlq->long_description = this->long_description;
+
+  dlq->bin_contents_ptr.reset(new string(create_download_quest_file(
+      prs_compress(decompressed_bin), decompressed_bin.size())));
+
+  auto dat_contents = this->dat_contents();
+  dlq->dat_contents_ptr.reset(new string(create_download_quest_file(
+      *dat_contents, prs_decompress_size(*dat_contents))));
+
+  save_file(dlq->bin_filename(), *dlq->bin_contents_ptr);
+  save_file(dlq->dat_filename(), *dlq->dat_contents_ptr);
+
+  return dlq;
 }

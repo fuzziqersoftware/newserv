@@ -184,7 +184,7 @@ string prs_decompress(const string& data, size_t max_size) {
       }
       output += static_cast<char>(ch);
       if (max_size && (output.size() > max_size)) {
-        throw runtime_error("maximumoutput size exceeded");
+        throw runtime_error("maximum output size exceeded");
       }
       continue;
     }
@@ -255,6 +255,112 @@ string prs_decompress(const string& data, size_t max_size) {
       if (max_size && (output.size() > max_size)) {
         throw runtime_error("maximum output size exceeded");
       }
+    }
+  }
+}
+
+size_t prs_decompress_size(const string& data, size_t max_size) {
+  size_t output_size = 0;
+  StringReader r(data.data(), data.size());
+
+  int32_t r3, r5;
+  int bitpos = 9;
+  int16_t currentbyte; // int16_t because it can be -1 when EOF occurs
+  int flag;
+  int offset;
+  unsigned long x;
+
+  currentbyte = get_u8_or_eof(r);
+  if (currentbyte == EOF) {
+    return output_size;
+  }
+
+  for (;;) {
+    bitpos--;
+    if (bitpos == 0) {
+      currentbyte = get_u8_or_eof(r);
+      if (currentbyte == EOF) {
+        return output_size;
+      }
+      bitpos = 8;
+    }
+    flag = currentbyte & 1;
+    currentbyte = currentbyte >> 1;
+    if (flag) {
+      int ch = get_u8_or_eof(r);
+      if (ch == EOF) {
+        return output_size;
+      }
+      output_size++;
+      if (max_size && (output_size > max_size)) {
+        throw runtime_error("maximum output size exceeded");
+      }
+      continue;
+    }
+    bitpos--;
+    if (bitpos == 0) {
+      currentbyte = get_u8_or_eof(r);
+      if (currentbyte == EOF) {
+        return output_size;
+      }
+      bitpos = 8;
+    }
+    flag = currentbyte & 1;
+    currentbyte = currentbyte >> 1;
+    if (flag) {
+      r3 = get_u8_or_eof(r);
+      if (r3 == EOF) {
+        return output_size;
+      }
+      int high_byte = get_u8_or_eof(r);
+      if (high_byte == EOF) {
+        return output_size;
+      }
+      offset = ((high_byte & 0xFF) << 8) | (r3 & 0xFF);
+      if (offset == 0) {
+        return output_size;
+      }
+      r3 = r3 & 0x00000007;
+      r5 = (offset >> 3) | 0xFFFFE000;
+      if (r3 == 0) {
+        flag = 0;
+        r3 = get_u8_or_eof(r);
+        if (r3 == EOF) {
+          return output_size;
+        }
+        r3 = (r3 & 0xFF) + 1;
+      } else {
+        r3 += 2;
+      }
+    } else {
+      r3 = 0;
+      for (x = 0; x < 2; x++) {
+        bitpos--;
+        if (bitpos == 0) {
+          currentbyte = get_u8_or_eof(r);
+          if (currentbyte == EOF) {
+            return output_size;
+          }
+          bitpos = 8;
+        }
+        flag = currentbyte & 1;
+        currentbyte = currentbyte >> 1;
+        offset = r3 << 1;
+        r3 = offset | flag;
+      }
+      offset = get_u8_or_eof(r);
+      if (offset == EOF) {
+        return output_size;
+      }
+      r3 += 2;
+      r5 = offset | 0xFFFFFF00;
+    }
+    if (r3 == 0) {
+      continue;
+    }
+    output_size += r3;
+    if (max_size && (output_size > max_size)) {
+      throw runtime_error("maximum output size exceeded");
     }
   }
 }

@@ -53,6 +53,9 @@ struct Quest {
 
   std::shared_ptr<const std::string> bin_contents() const;
   std::shared_ptr<const std::string> dat_contents() const;
+
+  std::shared_ptr<Quest> create_download_quest(
+      const std::string& file_basename) const;
 };
 
 struct QuestIndex {
