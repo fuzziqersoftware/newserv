@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <vector>
+#include <phosg/Filesystem.hh>
+#include <phosg/Strings.hh>
+
 using namespace std;
 
 
@@ -23,53 +27,117 @@ size_t char16len(const char16_t* s) {
 
 
 
+static vector<char16_t> unicode_to_sjis_table_data;
+static vector<char16_t> sjis_to_unicode_table_data;
+
+static void load_sjis_tables() {
+  unicode_to_sjis_table_data.resize(0x10000);
+  sjis_to_unicode_table_data.resize(0x10000);
+
+  // TODO: this is inefficient; it makes multiple copies of the string
+  auto file_contents = load_file("system/sjis-table.ini");
+  auto lines = split(file_contents, '\n');
+  for (auto line : lines) {
+    auto tokens = split(line, '\t');
+    if (tokens.size() < 2) {
+      continue;
+    }
+    char16_t sjis_char = stoul(tokens[0], NULL, 0);
+    char16_t unicode_char = stoul(tokens[1], NULL, 0);
+
+    unicode_to_sjis_table_data[unicode_char] = sjis_char;
+    sjis_to_unicode_table_data[sjis_char] = unicode_char;
+  }
+}
+
+static const vector<char16_t>& sjis_to_unicode_table() {
+  if (sjis_to_unicode_table_data.empty()) {
+    load_sjis_tables();
+  }
+  return sjis_to_unicode_table_data;
+}
+
+static const vector<char16_t>& unicode_to_sjis_table() {
+  if (unicode_to_sjis_table_data.empty()) {
+    load_sjis_tables();
+  }
+  return unicode_to_sjis_table_data;
+}
+
 // None of these functions truly convert between SJIS and Unicode. They will
 // convert English properly (and some other languages as well), but Japanese
 // text will screw up horribly
 // TODO: fix this shit. this is definitely the worst part of this entire project
 
 void encode_sjis(char* dest, const char16_t* source, size_t max) {
+  const auto& table = unicode_to_sjis_table();
   while (*source && (--max)) {
-    *(dest++) = *(source++);
+    *(dest++) = table[*(source++)];
   };
   *dest = 0;
 }
 
 void decode_sjis(char16_t* dest, const char* source, size_t max) {
+  const auto& table = sjis_to_unicode_table();
   while (*source && (--max)) {
-    *(dest++) = *(source++);
+    char16_t src_char = *(source++);
+    if (src_char & 0x80) {
+      src_char = (src_char << 8) | *(source++);
+      if ((src_char & 0xFF) == 0) {
+        return;
+      }
+    }
+    *(dest++) = table[src_char];
   };
   *dest = 0;
 }
 
 std::string encode_sjis(const char16_t* source) {
+  const auto& table = unicode_to_sjis_table();
   string ret;
   while (*source) {
-    ret.push_back(*(source++));
+    ret.push_back(table[*(source++)]);
   };
   return ret;
 }
 
 std::u16string decode_sjis(const char* source) {
+  const auto& table = sjis_to_unicode_table();
   u16string ret;
   while (*source) {
-    ret.push_back(*(source++));
+    char16_t src_char = *(source++);
+    if (src_char & 0x80) {
+      src_char = (src_char << 8) | *(source++);
+      if ((src_char & 0xFF) == 0) {
+        return ret;
+      }
+    }
+    ret.push_back(table[src_char]);
   };
   return ret;
 }
 
 std::string encode_sjis(const std::u16string& source) {
+  const auto& table = unicode_to_sjis_table();
   string ret;
   for (char16_t ch : source) {
-    ret.push_back(ch);
+    ret.push_back(table[ch]);
   };
   return ret;
 }
 
 std::u16string decode_sjis(const std::string& source) {
+  const auto& table = sjis_to_unicode_table();
   u16string ret;
-  for (char16_t ch : source) {
-    ret.push_back(ch);
+  for (size_t x = 0; x < source.size(); x++) {
+    char16_t src_char = source[x];
+    if (src_char & 0x80) {
+      src_char = (src_char << 8) | source[++x];
+      if ((src_char & 0xFF) == 0) {
+        return ret;
+      }
+    }
+    ret.push_back(table[src_char]);
   };
   return ret;
 }
