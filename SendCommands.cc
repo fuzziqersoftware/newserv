@@ -1,6 +1,7 @@
 #include "SendCommands.hh"
 
 #include <memory>
+#include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
@@ -109,8 +110,8 @@ static void send_server_init_dc_pc_gc(shared_ptr<Client> c, const char* copyrigh
     char after_message[200];
   } cmd;
 
-  uint32_t server_key = (rand() << 30) | (rand() << 15) | rand();
-  uint32_t client_key = (rand() << 30) | (rand() << 15) | rand();
+  uint32_t server_key = random_object<uint32_t>();
+  uint32_t client_key = random_object<uint32_t>();
 
   memset(&cmd, 0, sizeof(cmd));
   strcpy(cmd.copyright, copyright_text);
@@ -146,20 +147,14 @@ static void send_server_init_bb(shared_ptr<Client> c, bool initial_connection) {
 
   memset(&cmd, 0, sizeof(cmd));
   strcpy(cmd.copyright, bb_game_server_copyright);
-  uint8_t server_key[0x30];
-  uint8_t client_key[0x30];
-  for (size_t x = 0; x < 0x30; x++) {
-    server_key[x] = rand();
-    client_key[x] = rand();
-  }
-  memcpy(cmd.server_key, server_key, 0x30);
-  memcpy(cmd.client_key, client_key, 0x30);
+  random_data(cmd.server_key, 0x30);
+  random_data(cmd.client_key, 0x30);
   strcpy(cmd.after_message, anti_copyright);
   send_command(c, 0x03, 0x00, cmd);
 
   rw_guard(c->lock, true);
-  c->crypt_out.reset(new PSOBBEncryption(server_key));
-  c->crypt_in.reset(new PSOBBEncryption(client_key));
+  c->crypt_out.reset(new PSOBBEncryption(cmd.server_key));
+  c->crypt_in.reset(new PSOBBEncryption(cmd.client_key));
 }
 
 static void send_server_init_patch(shared_ptr<Client> c, bool initial_connection) {
@@ -171,8 +166,8 @@ static void send_server_init_patch(shared_ptr<Client> c, bool initial_connection
     // anti-copyright message... lawyers plz be kind kthx
   } cmd;
 
-  uint32_t server_key = (rand() << 30) | (rand() << 15) | rand();
-  uint32_t client_key = (rand() << 30) | (rand() << 15) | rand();
+  uint32_t server_key = random_object<uint32_t>();
+  uint32_t client_key = random_object<uint32_t>();
 
   memset(&cmd, 0, sizeof(cmd));
   strcpy(cmd.copyright, patch_server_copyright);
@@ -271,7 +266,7 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
     error,
     0x00000100,
     c->license->serial_number,
-    static_cast<uint32_t>((rand() << 30) | (rand() << 15) | rand()),
+    static_cast<uint32_t>(random_object<uint32_t>()),
     c->config,
     0x00000102,
   };
@@ -1891,7 +1886,7 @@ void send_bank(shared_ptr<Client> c) {
   vector<PlayerBankItem> items(c->player.bank.items,
       &c->player.bank.items[c->player.bank.num_items]);
 
-  uint32_t checksum = (rand() << 30) | (rand() << 15) | rand();
+  uint32_t checksum = random_object<uint32_t>();
   struct {
     uint8_t subcommand;
     uint8_t unused1;

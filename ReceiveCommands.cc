@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <phosg/Filesystem.hh>
+#include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
@@ -1369,7 +1370,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
 
     if (game->mode == 3) {
         for (size_t x = 0; x < 0x20; x++) {
-          game->variations[x] = rand() % variation_maxes_solo[(episode - 1)][x];
+          game->variations[x] = random_int(0, variation_maxes_solo[(episode - 1)][x] - 1);
         }
         for (size_t x = 0; x < 0x10; x++) {
           for (const char* type_char = "sm"; *type_char; type_char++) {
@@ -1389,7 +1390,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
         }
     } else {
       for (size_t x = 0; x < 0x20; x++) {
-        game->variations[x] = rand() % variation_maxes_online[(episode - 1)][x];
+        game->variations[x] = random_int(0, variation_maxes_online[(episode - 1)][x] - 1);
       }
       for (size_t x = 0; x < 0x10; x++) {
         auto filename = string_printf(

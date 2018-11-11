@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <phosg/Filesystem.hh>
+#include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 
 #include "Compression.hh"

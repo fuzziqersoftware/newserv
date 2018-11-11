@@ -1,6 +1,7 @@
 #include "RareItemSet.hh"
 
 #include <phosg/Filesystem.hh>
+#include <phosg/Random.hh>
 
 using namespace std;
 
@@ -19,7 +20,5 @@ bool sample_rare_item(uint8_t pc) {
     shift = 0;
   }
   uint32_t rate = ((2 << shift) * ((pc & 7) + 7));
-
-  uint32_t x = ((rand() << 30) | (rand() << 15) | rand());
-  return (x < rate);
+  return (random_object<uint32_t>() < rate);
 }
