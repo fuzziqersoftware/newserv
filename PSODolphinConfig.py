@@ -1,5 +1,6 @@
 #!/bin/env python3
 
+import argparse
 import os
 import sys
 import time
@@ -19,23 +20,47 @@ def change_user(username):
 
 
 def main(argv):
-  dolphin_path = './Dolphin.app/Contents/MacOS/Dolphin'
+  parser = argparse.ArgumentParser(description="Runs Dolphin as a non-privileged user with access to the privileged tap0 network interface. Run this script with sudo; it will run Dolphin as the user you sudo'ed from and provide it access to the tap interface. It will also automatically configure the tap interface when Dolphin first opens it.")
+  parser.add_argument(
+    "--dolphin-path", "-d",
+    action="store",
+    dest="dolphin_path",
+    default="./Dolphin.app/Contents/MacOS/Dolphin",
+    help="Path to Dolphin executable. Defaults to Dolphin.app/Contents/MacOS/Dolphin in current directory.",
+  )
+  parser.add_argument(
+    "--memwatch-path", "-m",
+    action="store",
+    dest="memwatch_path",
+    default="memwatch",
+    help="Path to memwatch executable. Defaults to memwatch (assumes it's installed somewhere on $PATH).",
+  )
+  parser.add_argument(
+    "--tap-ip", "-i",
+    action="store",
+    dest="tap_ip",
+    default="192.168.0.5/24",
+    help="IP address and subnet bits to assign to tap interface. Defaults to 192.168.0.5/24. This should match the gateway and DNS server addresses configured in PSO's network settings.",
+  )
+  args = parser.parse_args()
+
   try:
     username = os.environ['SUDO_USER']
     print(username)
   except KeyError:
-    print('$SUDO_USER not set; use sudo -E')
+    print('$SUDO_USER not set; use `sudo -E`')
+    return 1
 
   # 1. open tap0 and configure it
   print("starting and configuring tap0")
   tap0_fd = os.open('/dev/tap0', os.O_RDWR)
   os.set_inheritable(tap0_fd, True)
-  subprocess.check_call(['ifconfig', 'tap0', argv[1]], stderr=subprocess.DEVNULL)
+  subprocess.check_call(['ifconfig', 'tap0', args.tap_ip], stderr=subprocess.DEVNULL)
   subprocess.check_call(['ifconfig', 'tap0', 'up'], stderr=subprocess.DEVNULL)
 
   # 2. fork a Dolphin process, dropping privileges first
   print("starting dolphin")
-  dolphin_proc = subprocess.Popen([dolphin_path],
+  dolphin_proc = subprocess.Popen([args.dolphin_path],
       preexec_fn=lambda: change_user(username), pass_fds=(tap0_fd,))
   time.sleep(1)
 
@@ -47,15 +72,15 @@ def main(argv):
 
   # 4. modify dolphin's memory to make it upen the temp file
   print("redirecting /dev/tap0 for dolphin")
-  addresses_str = subprocess.check_output(['memwatch', str(dolphin_proc.pid), 'find', '\"/dev/tap0\"'], stderr=subprocess.DEVNULL)
+  addresses_str = subprocess.check_output([args.memwatch_path, str(dolphin_proc.pid), 'find', '\"/dev/tap0\"'], stderr=subprocess.DEVNULL)
   for line in addresses_str.splitlines():
     tokens = line.split()
     if len(tokens) != 3:
       continue
     print("redirecting /dev/tap0 to /tmp/dnet at %s in dolphin" % (tokens[1],))
-    subprocess.check_call(["memwatch", str(dolphin_proc.pid), "access", tokens[1], "rwx"], stderr=subprocess.DEVNULL)
-    subprocess.check_call(["memwatch", str(dolphin_proc.pid), "write", tokens[1], "\"/tmp/dnet\""], stderr=subprocess.DEVNULL)
-    subprocess.check_call(["memwatch", str(dolphin_proc.pid), "access", tokens[1], "r-x"], stderr=subprocess.DEVNULL)
+    subprocess.check_call([args.memwatch_path, str(dolphin_proc.pid), "access", tokens[1], "rwx"], stderr=subprocess.DEVNULL)
+    subprocess.check_call([args.memwatch_path, str(dolphin_proc.pid), "write", tokens[1], "\"/tmp/dnet\""], stderr=subprocess.DEVNULL)
+    subprocess.check_call([args.memwatch_path, str(dolphin_proc.pid), "access", tokens[1], "r-x"], stderr=subprocess.DEVNULL)
 
   # step 5: use lsof to find out when dolphin opens /tmp/dnet
   print("waiting for temp file to open")
@@ -80,15 +105,14 @@ def main(argv):
   mov rsi, %d
   syscall
 
-  # close the original fd. if dup2 failed, this will break the connection and
-  # dolnet will notice. note that rdi is preserved during the syscall so we
+  # close the original fd. note that rdi is preserved during the syscall so we
   # don't need to reload it
   mov rax, 0x0000000002000006  # close(fd)
   syscall
 
   ret
 """ % (tap0_fd, dolphin_tap0_fd)
-  subprocess.run(["memwatch", str(dolphin_proc.pid), "--", "run", "-"], input=assembly_contents, stderr=subprocess.DEVNULL)
+  subprocess.run([args.memwatch_path, str(dolphin_proc.pid), "--", "run", "-"], input=assembly_contents, stderr=subprocess.DEVNULL)
 
   # ok we're done - dolphin is running as a non-privileged user with tap0 open
 
