@@ -23,6 +23,7 @@
 #define QUEST_MENU_ID        0x7F02CA94
 #define QUEST_FILTER_MENU_ID 0xC38CA039
 
+#define INFORMATION_MENU_GO_BACK  0xFFFFFFFF
 #define MAIN_MENU_GO_TO_LOBBY  0x00000001
 #define MAIN_MENU_INFORMATION  0x00000002
 #define MAIN_MENU_DISCONNECT   0x00000003
@@ -39,6 +40,12 @@ template <typename TARGET, typename STRUCT>
 void send_command(std::shared_ptr<TARGET> c, uint16_t command, uint32_t flag,
     const STRUCT& data) {
   send_command(c, command, flag, &data, sizeof(data));
+}
+
+template <typename TARGET>
+void send_command(std::shared_ptr<TARGET> c, uint16_t command, uint32_t flag,
+    const std::string& data) {
+  send_command(c, command, flag, data.data(), data.size());
 }
 
 template <typename TARGET, typename STRUCT>
@@ -65,7 +72,7 @@ void send_update_client_config(std::shared_ptr<Client> c);
 
 void send_reconnect(std::shared_ptr<Client> c, uint32_t address, uint16_t port);
 void send_pc_gc_split_reconnect(std::shared_ptr<Client> c, uint32_t address,
-    uint16_t pc_port);
+    uint16_t pc_port, uint16_t gc_port);
 
 void send_client_init_bb(std::shared_ptr<Client> c, uint32_t error);
 void send_team_and_key_config_bb(std::shared_ptr<Client> c);

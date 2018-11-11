@@ -1,12 +1,15 @@
-#include <arpa/inet.h>
 #include <signal.h>
+#include <event2/event.h>
+#include <event2/thread.h>
 
 #include <unordered_map>
 #include <phosg/JSON.hh>
 #include <phosg/Strings.hh>
+#include <phosg/Filesystem.hh>
 #include <set>
 
 #include "NetworkAddresses.hh"
+#include "SendCommands.hh"
 #include "DNSServer.hh"
 #include "ServerState.hh"
 #include "Server.hh"
@@ -61,7 +64,7 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     shared_ptr<JSONObject> config_json) {
   const auto& d = config_json->as_dict();
 
-  s->name = d.at("ServerName")->as_string();
+  s->name = decode_sjis(d.at("ServerName")->as_string());
 
   // TODO: make this configurable
   s->port_configuration = default_port_to_behavior;
@@ -76,45 +79,50 @@ void populate_state_from_config(shared_ptr<ServerState> s,
       box_categories, unit_types));
 
   shared_ptr<vector<MenuItem>> information_menu(new vector<MenuItem>());
-  shared_ptr<unordered_map<uint32_t, u16string>> id_to_information_contents(
-      new unordered_map<uint32_t, u16string>());
+  shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
 
-  uint32_t item_id = 1;
+  information_menu->emplace_back(INFORMATION_MENU_GO_BACK, u"Go back",
+      u"Return to the\nmain menu", 0);
+
+  uint32_t item_id = 0;
   for (const auto& item : d.at("InformationMenuContents")->as_list()) {
     auto& v = item->as_list();
     information_menu->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
         decode_sjis(v.at(1)->as_string()), MenuItemFlag::RequiresMessageBoxes);
-    id_to_information_contents->emplace(item_id, decode_sjis(v.at(2)->as_string()));
+    information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
     item_id++;
   }
   s->information_menu = information_menu;
-  s->id_to_information_contents = id_to_information_contents;
+  s->information_contents = information_contents;
 
   s->num_threads = d.at("Threads")->as_int();
 
   auto local_address_str = d.at("LocalAddress")->as_string();
-  uint32_t local_address = inet_addr(local_address_str.c_str());
-  if (s->all_addresses.emplace(local_address).second) {
-    log(INFO, "added local address: %hhu.%hhu.%hhu.%hhu",
-        static_cast<uint8_t>(local_address >> 24), static_cast<uint8_t>(local_address >> 16),
-        static_cast<uint8_t>(local_address >> 8), static_cast<uint8_t>(local_address));
-  }
+  s->local_address = address_for_string(local_address_str.c_str());
+  s->all_addresses.emplace(s->local_address);
+  log(INFO, "added local address: %s", local_address_str.c_str());
 
-  auto external_address_str = d.at("LocalAddress")->as_string();
-  uint32_t external_address = inet_addr(external_address_str.c_str());
-  if (s->all_addresses.emplace(external_address).second) {
-    log(INFO, "added external address: %hhu.%hhu.%hhu.%hhu",
-        static_cast<uint8_t>(external_address >> 24), static_cast<uint8_t>(external_address >> 16),
-        static_cast<uint8_t>(external_address >> 8), static_cast<uint8_t>(external_address));
+  auto external_address_str = d.at("ExternalAddress")->as_string();
+  s->external_address = address_for_string(external_address_str.c_str());
+  s->all_addresses.emplace(s->external_address);
+  log(INFO, "added external address: %s", external_address_str.c_str());
+
+  try {
+    s->run_dns_server = d.at("RunDNSServer")->as_bool();
+  } catch (const JSONObject::key_error&) {
+    s->run_dns_server = true;
   }
 }
 
 
 
-int main(int argc,char* argv[]) {
+int main(int argc, char* argv[]) {
   log(INFO, "fuzziqer software newserv");
 
   signal(SIGPIPE, SIG_IGN);
+  if (evthread_use_pthreads()) {
+    log(ERROR, "cannot enable multithreading in libevent");
+  }
 
   log(INFO, "creating server state");
   shared_ptr<ServerState> state(new ServerState());
@@ -122,9 +130,8 @@ int main(int argc,char* argv[]) {
   log(INFO, "reading network addresses");
   state->all_addresses = get_local_address_list();
   for (uint32_t addr : state->all_addresses) {
-    log(INFO, "found address: %hhu.%hhu.%hhu.%hhu",
-        static_cast<uint8_t>(addr >> 24), static_cast<uint8_t>(addr >> 16),
-        static_cast<uint8_t>(addr >> 8), static_cast<uint8_t>(addr));
+    string addr_str = string_for_address(addr);
+    log(INFO, "found address: %s", addr_str.c_str());
   }
 
   log(INFO, "loading configuration");
@@ -143,15 +150,20 @@ int main(int argc,char* argv[]) {
   log(INFO, "collecting quest metadata");
   state->quest_index.reset(new QuestIndex("system/quests"));
 
-  log(INFO, "starting dns server");
-  DNSServer dns_server(state->local_address, state->external_address);
-  // TODO: call dns_server.listen appropriately
-  dns_server.start();
+  shared_ptr<DNSServer> dns_server;
+  if (state->run_dns_server) {
+    log(INFO, "starting dns server on port 53");
+    dns_server.reset(new DNSServer(state->local_address, state->external_address));
+    dns_server->listen("", 53);
+    dns_server->start();
+  }
 
   log(INFO, "starting game server");
-  Server game_server(state);
-  // TODO: call game_server.listen appropriately
-  game_server.start();
+  shared_ptr<Server> game_server(new Server(state));
+  for (const auto& it : state->port_configuration) {
+    game_server->listen("", it.second.port, it.second.version, it.second.behavior);
+  }
+  game_server->start();
 
   for (;;) {
     sigset_t s;
@@ -160,10 +172,10 @@ int main(int argc,char* argv[]) {
   }
 
   log(INFO, "waiting for servers to terminate");
-  dns_server.schedule_stop();
-  game_server.schedule_stop();
-  dns_server.wait_for_stop();
-  game_server.wait_for_stop();
+  dns_server->schedule_stop();
+  game_server->schedule_stop();
+  dns_server->wait_for_stop();
+  game_server->wait_for_stop();
 
   return 0;
 }

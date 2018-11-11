@@ -143,6 +143,12 @@ void Server::on_client_input(Server::WorkerThread& wt,
 
   c->last_recv_time = now();
   this->receive_and_process_commands(c, bev);
+
+  if (c->should_disconnect) {
+    wt.disconnect_client(bev);
+    this->process_client_disconnect(c);
+    return;
+  }
 }
 
 void Server::on_client_error(Server::WorkerThread& wt,
@@ -206,8 +212,14 @@ void Server::receive_and_process_commands(shared_ptr<Client> c, struct buffereve
     // to call string functions on the buffer in command handlers
     string data = c->recv_buffer.substr(offset + header_size, size - header_size);
     data.append(4, '\0');
-    process_command(this->state, c, header->command(c->version),
-        header->flag(c->version), size - header_size, data.data());
+    try {
+      process_command(this->state, c, header->command(c->version),
+          header->flag(c->version), size - header_size, data.data());
+    } catch (const exception& e) {
+      log(INFO, "[Server] error in client stream: %s", e.what());
+      c->should_disconnect = true;
+      return;
+    }
 
     // BB pads commands to 8-byte boundaries, so if we see a shorter command,
     // skip over the padding

@@ -43,9 +43,10 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
   switch (c->server_behavior) {
     case ServerBehavior::SplitReconnect: {
       uint16_t pc_port = s->port_configuration.at("pc-login").port;
-      send_pc_gc_split_reconnect(c, 0, pc_port);
-      c->server_behavior = ServerBehavior::LoginServer;
-      // intentional fallthrough
+      uint16_t gc_port = s->port_configuration.at("gc-jp10").port;
+      send_pc_gc_split_reconnect(c, s->connect_address_for_client(c), pc_port, gc_port);
+      c->should_disconnect = true;
+      break;
     }
 
     case ServerBehavior::LoginServer:
@@ -68,7 +69,7 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       send_ep3_rank_update(c);
     }
 
-    send_menu(c, u"Main menu", MAIN_MENU_ID, s->main_menu, false);
+    send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
 
   } else if (c->server_behavior == ServerBehavior::LobbyServer) {
 
@@ -146,6 +147,7 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint32_t sub_version;
     char unused3[0x60];
     char password[0x10];
+    char unused4[0x20];
   };
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
@@ -242,6 +244,7 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     char unused3[0x60];
     char name[0x10];
     ClientConfig cfg;
+    uint8_t unused4[0x64];
   };
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
@@ -315,7 +318,8 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   switch (c->config.cfg.bb_game_state) {
     case ClientStateBB::InitialLogin:
       // first login? send them to the other port
-      send_reconnect(c, 0, s->port_configuration.at("bb-data1").port);
+      send_reconnect(c, s->connect_address_for_client(c),
+          s->port_configuration.at("bb-data1").port);
       break;
 
     case ClientStateBB::DownloadData: {
@@ -340,13 +344,13 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
       break;
 
     default:
-      send_reconnect(c, 0, s->port_configuration.at("bb-login").port);
+      send_reconnect(c, s->connect_address_for_client(c),
+          s->port_configuration.at("bb-login").port);
   }
 }
 
 void process_client_checksum(shared_ptr<ServerState> s, shared_ptr<Client> c, 
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 96
-  check_size(size, 0);
   send_command(c, 0x97, 0x01);
 }
 
@@ -479,13 +483,61 @@ void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (c->in_information_menu) {
     // add a reference to ensure it's not destroyed by another thread
     auto info_menu = s->information_menu;
-    send_menu(c, u"Information", INFORMATION_MENU_ID, *info_menu, true);
+    send_menu(c, u"Information", INFORMATION_MENU_ID, *info_menu, false);
     return;
   }
 }
 
+void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 09
+  struct Cmd {
+    uint32_t menu_id;
+    uint32_t item_id;
+  };
+  check_size(size, sizeof(Cmd), sizeof(Cmd));
+  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+
+  switch (cmd->menu_id) {
+    case MAIN_MENU_ID:
+      switch (cmd->item_id) {
+        case MAIN_MENU_GO_TO_LOBBY:
+          send_ship_info(c, u"Go to the lobby.");
+          break;
+        case MAIN_MENU_INFORMATION:
+          send_ship_info(c, u"View server information.");
+          break;
+        case MAIN_MENU_DISCONNECT:
+          send_ship_info(c, u"End your session.");
+          break;
+        default:
+          send_ship_info(c, u"Incorrect menu item ID.");
+          break;
+      }
+      break;
+
+    case INFORMATION_MENU_ID:
+      if (cmd->item_id == INFORMATION_MENU_GO_BACK) {
+        send_ship_info(c, u"Return to the\nmain menu.");
+      } else {
+        try {
+          // add a reference to ensure it's not destroyed by another thread
+          // we use item_id + 1 here because "go back" is the first item
+          auto info_menu = s->information_menu;
+          send_ship_info(c, info_menu->at(cmd->item_id + 1).description.c_str());
+        } catch (const out_of_range&) {
+          send_ship_info(c, u"$C6No such information exists.");
+        }
+      }
+      break;
+
+    default:
+      send_ship_info(c, u"Incorrect menu ID.");
+      break;
+  }
+}
+
 void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c, 
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 09 10
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 10
   bool uses_unicode = ((c->version == GameVersion::PC) || (c->version == GameVersion::BB));
 
   struct Cmd {
@@ -504,16 +556,17 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       switch (cmd->item_id) {
         case MAIN_MENU_GO_TO_LOBBY: {
           static const vector<string> version_to_port_name({
-              "dc-lobby", "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "bb-lobby"});
+              "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "bb-lobby"});
           const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
 
-          send_reconnect(c, 0, s->port_configuration.at(port_name).port);
+          send_reconnect(c, s->connect_address_for_client(c),
+              s->port_configuration.at(port_name).port);
           break;
         }
 
         case MAIN_MENU_INFORMATION: {
           auto info_menu = s->information_menu;
-          send_menu(c, u"Information", INFORMATION_MENU_ID, *info_menu, true);
+          send_menu(c, u"Information", INFORMATION_MENU_ID, *info_menu, false);
           c->in_information_menu = true;
           break;
         }
@@ -526,17 +579,18 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_message_box(c, u"Incorrect menu item ID.");
           break;
       }
+      break;
     }
 
     case INFORMATION_MENU_ID: {
-      if (cmd->item_id == 0) {
+      if (cmd->item_id == INFORMATION_MENU_GO_BACK) {
         c->in_information_menu = false;
-        send_menu(c, u"Main menu", MAIN_MENU_ID, s->main_menu, false);
+        send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
 
       } else {
         try {
           // add a reference to ensure it's not destroyed by another thread
-          auto info_menu = s->id_to_information_contents;
+          auto info_menu = s->information_contents;
           send_message_box(c, info_menu->at(cmd->item_id).c_str());
         } catch (const out_of_range&) {
           send_message_box(c, u"$C6No such information exists.");
@@ -720,14 +774,14 @@ void process_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c, 
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // A0
-  check_size(size, 0);
   send_message_box(c, u""); // we do this to avoid the "log window in message box" bug
 
   static const vector<string> version_to_port_name({
-      "dc-login", "dc-login", "pc-login", "bb-patch", "gc-login", "bb-login"});
+      "dc-login", "pc-login", "bb-patch", "gc-us3", "bb-login"});
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
 
-  send_reconnect(c, 0, s->port_configuration.at(port_name).port);
+  send_reconnect(c, s->connect_address_for_client(c),
+      s->port_configuration.at(port_name).port);
 }
 
 void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c, 
@@ -850,18 +904,20 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 61 98
 
   {
+    // note: we add extra buffer on the end when checking sizes because the
+    // autoreply text is a variable length
     rw_guard g(c->lock, true);
     switch (c->version) {
       case GameVersion::PC:
-        check_size(size, sizeof(PSOPlayerDataPC));
+        check_size(size, sizeof(PSOPlayerDataPC), sizeof(PSOPlayerDataPC) + 2 * 0xAC);
         c->player.import(*reinterpret_cast<const PSOPlayerDataPC*>(data));
         break;
       case GameVersion::GC:
-        check_size(size, sizeof(PSOPlayerDataGC));
+        check_size(size, sizeof(PSOPlayerDataGC), sizeof(PSOPlayerDataGC) + 0xAC);
         c->player.import(*reinterpret_cast<const PSOPlayerDataGC*>(data));
         break;
       case GameVersion::BB:
-        check_size(size, sizeof(PSOPlayerDataBB));
+        check_size(size, sizeof(PSOPlayerDataBB), sizeof(PSOPlayerDataBB) + 2 * 0xAC);
         c->player.import(*reinterpret_cast<const PSOPlayerDataBB*>(data));
         break;
       default:
@@ -1609,7 +1665,7 @@ static process_command_t dc_handlers[0x100] = {
   // 00
   NULL, NULL, NULL, NULL, 
   NULL, process_ignored_command, process_chat_dc_gc, NULL, 
-  process_game_list_request, process_menu_selection, NULL, NULL, 
+  process_game_list_request, process_menu_item_info_request, NULL, NULL, 
   NULL, NULL, NULL, NULL, 
 
   // 10
@@ -1707,7 +1763,7 @@ static process_command_t pc_handlers[0x100] = {
   // 00
   NULL, NULL, NULL, NULL,
   NULL, process_ignored_command, process_chat_pc_bb, NULL,
-  process_game_list_request, process_menu_selection, NULL, NULL,
+  process_game_list_request, process_menu_item_info_request, NULL, NULL,
   NULL, NULL, NULL, NULL,
 
   // 10
@@ -1805,7 +1861,7 @@ static process_command_t gc_handlers[0x100] = {
   // 00
   NULL, NULL, NULL, NULL,
   NULL, process_ignored_command, process_chat_dc_gc, NULL,
-  process_game_list_request, process_menu_selection, NULL, NULL,
+  process_game_list_request, process_menu_item_info_request, NULL, NULL,
   NULL, NULL, NULL, NULL, 
 
   // 10
@@ -1882,7 +1938,7 @@ static process_command_t gc_handlers[0x100] = {
 
   // D0
   NULL, NULL, NULL, NULL,
-  NULL, NULL, process_ignored_command, NULL,
+  NULL, NULL, process_message_box_closed, NULL,
   process_info_board_request, process_write_info_board_dc_gc, NULL, process_verify_license_gc,
   process_ep3_menu_challenge, NULL, NULL, NULL, 
 
@@ -1903,7 +1959,7 @@ static process_command_t bb_handlers[0x100] = {
   // 00
   NULL, NULL, NULL, NULL,
   NULL, process_ignored_command, process_chat_pc_bb, NULL,
-  process_game_list_request, process_menu_selection, NULL, NULL,
+  process_game_list_request, process_menu_item_info_request, NULL, NULL,
   NULL, NULL, NULL, NULL, 
 
   // 10
@@ -2037,12 +2093,16 @@ static process_command_t patch_handlers[0x100] = {
 };
 
 static process_command_t* handlers[6] = {
-    dc_handlers, dc_handlers, pc_handlers, patch_handlers, gc_handlers, bb_handlers};
+    dc_handlers, pc_handlers, patch_handlers, gc_handlers, bb_handlers};
 
 void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+  log(INFO, "received version=%d size=%04hX command=%04hX flag=%08X",
+      static_cast<int>(c->version), size, command, flag);
+  print_data(stderr, data, size);
+
   auto fn = handlers[static_cast<size_t>(c->version)][command & 0xFF];
-  if (!fn) {
+  if (fn) {
     fn(s, c, command, flag, size, data);
   } else {
     process_unimplemented_command(s, c, command, flag, size, data);

@@ -130,25 +130,22 @@ PSOGCEncryption::PSOGCEncryption(uint32_t seed) : offset(0) {
         basekey = basekey & 0x7FFFFFFF;
       }
     }
-    this->stream[this->offset] = basekey;
+    this->stream[this->offset++] = basekey;
   }
 
-  this->stream[this->offset] = (((this->stream[0] >> 9) ^ (this->stream[this->offset] << 23)) ^ this->stream[15]);
+  this->stream[this->offset - 1] = (((this->stream[0] >> 9) ^ (this->stream[this->offset - 1] << 23)) ^ this->stream[15]);
 
   source1 = 0;
   source2 = 1;
   source3 = this->offset - 1;
   while (this->offset != GC_STREAM_LENGTH) {
-    this->stream[this->offset] = (this->stream[source3] ^ (((this->stream[source1] << 23) & 0xFF800000) ^ ((this->stream[source2] >> 9) & 0x007FFFFF)));
-    this->offset++;
-    source1++;
-    source2++;
-    source3++;
+    this->stream[this->offset++] = (this->stream[source3++] ^ (((this->stream[source1++] << 23) & 0xFF800000) ^ ((this->stream[source2++] >> 9) & 0x007FFFFF)));
   }
 
-  for (size_t x = 0; x < 4; x++) {
+  for (size_t x = 0; x < 3; x++) {
     this->update_stream();
   }
+  this->offset = GC_STREAM_LENGTH - 1;
 }
 
 void PSOGCEncryption::encrypt(void* vdata, size_t size) {

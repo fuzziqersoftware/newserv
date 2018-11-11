@@ -34,7 +34,7 @@ struct License {
   char gc_password[12]; // GC password
   uint32_t privileges; // privilege level
   uint64_t ban_end_time; // end time of ban (zero = not banned)
-};
+} __attribute__((packed));
 
 class LicenseManager {
 public:

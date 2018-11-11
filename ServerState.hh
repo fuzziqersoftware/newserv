@@ -26,7 +26,7 @@ struct PortConfiguration {
 };
 
 struct ServerState {
-  std::string name;
+  std::u16string name;
   std::unordered_map<std::string, PortConfiguration> port_configuration;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
@@ -37,7 +37,7 @@ struct ServerState {
 
   std::vector<MenuItem> main_menu;
   std::shared_ptr<std::vector<MenuItem>> information_menu;
-  std::shared_ptr<std::unordered_map<uint32_t, std::u16string>> id_to_information_contents;
+  std::shared_ptr<std::vector<std::u16string>> information_contents;
 
   size_t num_threads;
 
@@ -71,4 +71,6 @@ struct ServerState {
 
   std::shared_ptr<Client> find_client(const char16_t* identifier = NULL,
     uint64_t serial_number = 0, std::shared_ptr<Lobby> l = NULL);
+
+  uint32_t connect_address_for_client(std::shared_ptr<Client> c);
 };

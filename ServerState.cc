@@ -3,13 +3,15 @@
 #include <memory>
 
 #include "SendCommands.hh"
+#include "NetworkAddresses.hh"
 #include "Text.hh"
 
 using namespace std;
 
 
 
-ServerState::ServerState() : next_lobby_id(1), next_game_id(-1) {
+ServerState::ServerState() : run_dns_server(true), next_lobby_id(1),
+    next_game_id(-1) {
   this->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",
       u"Join the lobby.", 0);
   this->main_menu.emplace_back(MAIN_MENU_INFORMATION, u"Information",
@@ -85,7 +87,9 @@ void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
     shared_ptr<Client> joining_client) {
   rw_guard g2(l->lock, false);
   for (auto& other_client : l->clients) {
-    if (other_client == joining_client) {
+    if (!other_client) {
+      continue;
+    } else if (other_client == joining_client) {
       send_join_lobby(joining_client, l);
     } else {
       send_player_join_notification(other_client, l, joining_client);
@@ -172,4 +176,14 @@ shared_ptr<Client> ServerState::find_client(const char16_t* identifier,
   }
 
   throw out_of_range("client not found");
+}
+
+uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
+  // TODO: we can do something much smarter here, like use the sockname to find
+  // out which interface the client is connected to, and return that address
+  if (is_local_address(c->remote_addr)) {
+    return this->local_address;
+  } else {
+    return this->external_address;
+  }
 }

@@ -35,7 +35,7 @@ void Lobby::reassign_leader_on_client_departure_locked(size_t leaving_client_ind
       return;
     }
   }
-  throw out_of_range("no clients remain");
+  this->leader_id = 0;
 }
 
 bool Lobby::any_client_loading() const {
@@ -68,11 +68,11 @@ void Lobby::add_client(shared_ptr<Client> c) {
 }
 
 void Lobby::add_client_locked(shared_ptr<Client> c) {
-  rw_guard g(this->lock, true);
   size_t index;
   for (index = 0; index < this->max_clients; index++) {
     if (!this->clients[index].get()) {
       this->clients[index] = c;
+      break;
     }
   }
   if (index >= this->max_clients) {
@@ -101,8 +101,6 @@ void Lobby::remove_client(shared_ptr<Client> c) {
 }
 
 void Lobby::remove_client_locked(shared_ptr<Client> c) {
-  rw_guard g(this->lock, true);
-
   if (this->clients[c->lobby_client_id] != c) {
     throw logic_error("client\'s lobby client id does not match client list");
   }

@@ -40,8 +40,9 @@ void replace_char_inplace(T* a, T f, T r) {
 }
 
 template <typename T>
-void add_color_inplace(T* a) {
+size_t add_color_inplace(T* a) {
   T* d = a;
+  T* orig_d = d;
 
   while (*a) {
     if (*a == '$') {
@@ -59,7 +60,18 @@ void add_color_inplace(T* a) {
       } else {
         *(d++) = *a;
       }
+    } else {
+      *(d++) = *a;
     }
     a++;
   }
+  *d = 0;
+
+  return d - orig_d;
+}
+
+template <typename T>
+void add_color_inplace(std::basic_string<T>& a, size_t header_bytes) {
+  size_t count = add_color_inplace(const_cast<T*>(a.data() + header_bytes));
+  a.resize(count + header_bytes);
 }

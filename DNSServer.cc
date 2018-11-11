@@ -5,6 +5,7 @@
 #include <poll.h>
 #include <netinet/in.h>
 
+#include <phosg/Encoding.hh>
 #include <phosg/Network.hh>
 #include <phosg/Strings.hh>
 #include <vector>
@@ -93,8 +94,9 @@ void DNSServer::run_thread() {
       if (bytes > 0) {
         input.resize(bytes);
 
+        uint32_t remote_address = bswap32(remote.sin_addr.s_addr);
         uint32_t connect_address;
-        if (is_local_address(remote.sin_addr.s_addr)) {
+        if (is_local_address(remote_address)) {
           connect_address = this->local_connect_address;
         } else {
           connect_address = this->external_connect_address;
@@ -121,11 +123,12 @@ string DNSServer::build_response(const std::string& input,
   string ret;
   size_t name_len = strlen(input.data() + 0x0C) + 1;
 
+  uint32_t connect_address_be = bswap32(connect_address);
   ret.append(input.substr(0, 2));
   ret.append("\x81\x80\x00\x01\x00\x01\x00\x00\x00\x00", 10);
   ret.append(input.substr(12, name_len));
   ret.append("\x00\x01\x00\x01\xC0\x0C\x00\x01\x00\x01\x00\x00\x00\x3C\x00\x04", 16);
-  ret.append(reinterpret_cast<const char*>(&connect_address), 4);
+  ret.append(reinterpret_cast<const char*>(&connect_address_be), 4);
 
   return ret;
 }

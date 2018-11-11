@@ -41,7 +41,7 @@ uint32_t resolve_address(const char* address) {
   }
 
   struct sockaddr_in* res_sin = (struct sockaddr_in*)res4->ai_addr;
-  return res_sin->sin_addr.s_addr;
+  return bswap32(res_sin->sin_addr.s_addr);
 }
 
 set<uint32_t> get_local_address_list() {
@@ -71,9 +71,27 @@ set<uint32_t> get_local_address_list() {
 }
 
 bool is_local_address(uint32_t addr) {
-  uint8_t net = addr & 0xFF;
+  uint8_t net = (addr >> 24) & 0xFF;
   if ((net != 127) && (net != 172) && (net != 10) && (net != 192)) {
     return false;
   }
   return true;
+}
+
+bool is_local_address(const sockaddr_storage& daddr) {
+  if (daddr.ss_family != AF_INET) {
+    return false;
+  }
+  const sockaddr_in* sin = reinterpret_cast<const sockaddr_in*>(&daddr);
+  return is_local_address(bswap32(sin->sin_addr.s_addr));
+}
+
+string string_for_address(uint32_t address) {
+  return string_printf("%hhu.%hhu.%hhu.%hhu",
+      static_cast<uint8_t>(address >> 24), static_cast<uint8_t>(address >> 16),
+      static_cast<uint8_t>(address >> 8), static_cast<uint8_t>(address));
+}
+
+uint32_t address_for_string(const char* address) {
+  return bswap32(inet_addr(address));
 }

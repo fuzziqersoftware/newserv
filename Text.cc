@@ -153,7 +153,7 @@ void add_language_marker_inplace(char* a, char e, size_t dest_count) {
   if (existing_count > dest_count - 3) {
     existing_count = dest_count - 3;
   }
-  memmove(&a[2], a, existing_count + 1);
+  memmove(&a[2], a, (existing_count + 1) * sizeof(char));
   a[0] = '\t';
   a[1] = e;
   a[existing_count + 2] = 0;
@@ -168,7 +168,7 @@ void add_language_marker_inplace(char16_t* a, char16_t e, size_t dest_count) {
   if (existing_count > dest_count - 3) {
     existing_count = dest_count - 3;
   }
-  memmove(&a[2], a, existing_count + 1);
+  memmove(&a[2], a, (existing_count + 1) * sizeof(char16_t));
   a[0] = '\t';
   a[1] = e;
   a[existing_count + 2] = 0;

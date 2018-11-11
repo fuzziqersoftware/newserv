@@ -5,7 +5,7 @@ OBJECTS=FileContentsCache.o Menu.o PSOProtocol.o Client.o Lobby.o \
 	Text.o DNSServer.o Main.o
 CXX=g++
 CXXFLAGS=-I/opt/local/include -I/usr/local/include -std=c++14 -g -DHAVE_INTTYPES_H -DHAVE_NETINET_IN_H -Wall -Werror
-LDFLAGS=-L/opt/local/lib -L/usr/local/lib -std=c++14 -levent -lphosg -lpthread
+LDFLAGS=-L/opt/local/lib -L/usr/local/lib -std=c++14 -levent -levent_pthreads -lphosg -lpthread
 EXECUTABLE=newserv
 
 all: $(EXECUTABLE)

@@ -11,11 +11,13 @@
   // Server's name (max. 16 characters)
   "ServerName": "Alexandria",
   // Address to connect local clients to
-  "LocalAddress": "10.0.1.6",
+  "LocalAddress": "192.168.0.5",
   // Address to connect external clients to
   "ExternalAddress": "10.0.1.6",
   // Number of worker threads to run
   "Threads": 1,
+  // Set to false to disable the DNS server
+  "RunDNSServer": false,
 
   // ****************
   // INFORMATION MENU
@@ -23,7 +25,7 @@
 
   // Each entry is a 3-list of [title, short-description, full-contents].
   "InformationMenuContents": [
-    ["Text",            "$C7Some things you\nmay need to know\nabout text on\nthis server", "$C7Everything you type will be filtered.\n\nDollar signs will become tab chars, which can be\nused to color team names and info boards.\nTo color your text, type %sCx, where x is a\nvalue from the Text Colors list.\n\nPound signs (number signs) will become returns\n(newlines).\n\nA percent sign will create a special character.\nTyping a percent sign followed by one of these\nletters will make one of these special characters:\n%%d = %d      %%x = %x      %%p = %p      %%+ = %+\n%%1 = %1      %%2 = %2      %%3 = %3      %%c = %c\n%%l = %l      %%y = %y      %%X = %X      %%Y = %Y\n%%Z = %Z      %%? = %?      %%C = %C      %%R = %R\n%%s = %s      %%%% = %%      %%n = %n"],
+    ["Text",            "$C7Some things you\nmay need to know\nabout text on\nthis server", "$C7Everything you type will be filtered.\n\nDollar signs will become tab chars, which can be\nused to color team names and info boards.\nTo color your text, type %sCx, where x is a\nvalue from the Text Colors list.\n\nPound signs (number signs) will become returns\n(newlines), the sequence %%s will become %s,\nand the sequence %%%% will become %%."],
     ["Text colors",     "$C7Display color values", "These values can be used to color text.\n\n$C0Color 0$C7 - Black\n$C1Color 1$C7 - Blue\n$C2Color 2$C7 - Green\n$C3Color 3$C7 - Cyan\n$C4Color 4$C7 - Red\n$C5Color 5$C7 - Purple\n$C6Color 6$C7 - Yellow\n$C7Color 7$C7 - White\n$C8Color 8$C7 - Pink\n$C9Color 9$C7 - Violet\n$CGColor G$C7 - Orange Pulse"],
     ["Lobby commands",  "$C7Display commands\nfor use in the\nlobby", "Lobby commands: you must be a moderator to use\nthese commands.\n\n%sallevent <event> - change the server's event\n%sevent <event> - change this lobby's event\n%stype <type> - change this lobby's type\n%sann <message> - announce a message\n%sax <message> - send a message to the server"],
     ["Game commands",   "$C7Display commands\nfor use in games", "Game commands: you must be the game leader to\nuse these commands.\n\n%spassword <password> - set the game's password\n%smaxlevel <%n> - set the game's maximum level\n%sminlevel <%n> - set the game's minimum level\n%scheat - enable or disable cheat mode"],

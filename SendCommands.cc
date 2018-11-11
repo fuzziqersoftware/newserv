@@ -1,6 +1,7 @@
 #include "SendCommands.hh"
 
 #include <memory>
+#include <phosg/Encoding.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
@@ -66,6 +67,9 @@ void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
       throw logic_error("unimplemented game version in send_command");
   }
 
+  log(INFO, "sending command");
+  print_data(stderr, send_data.data(), send_data.size());
+
   c->send(move(send_data));
 }
 
@@ -121,8 +125,19 @@ static void send_server_init_dc_pc_gc(shared_ptr<Client> c, const char* copyrigh
   send_command(c, command, 0x00, cmd);
 
   rw_guard g(c->lock, true);
-  c->crypt_out.reset(new PSOPCEncryption(server_key));
-  c->crypt_in.reset(new PSOPCEncryption(client_key));
+  switch (c->version) {
+    case GameVersion::DC:
+    case GameVersion::PC:
+      c->crypt_out.reset(new PSOPCEncryption(server_key));
+      c->crypt_in.reset(new PSOPCEncryption(client_key));
+      break;
+    case GameVersion::GC:
+      c->crypt_out.reset(new PSOGCEncryption(server_key));
+      c->crypt_in.reset(new PSOGCEncryption(client_key));
+      break;
+    default:
+      throw invalid_argument("incorrect client version");
+  }
 }
 
 static void send_server_init_pc(shared_ptr<Client> c, bool initial_connection) {
@@ -211,28 +226,18 @@ void send_update_client_config(shared_ptr<Client> c) {
 
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
-  if (!address) {
-    const sockaddr_in* local_addr = reinterpret_cast<const sockaddr_in*>(&c->local_addr);
-    address = local_addr->sin_addr.s_addr;
-  }
-
   struct {
     uint32_t address;
     uint16_t port;
     uint16_t unused;
-  } cmd = {address, port, 0};
+  } cmd = {bswap32(address), port, 0};
   send_command(c, 0x19, 0x00, cmd);
 }
 
 // sends the command (first used by Schthack) that separates PC and GC users
 // that connect on the same port
 void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
-    uint16_t pc_port) {
-  if (!address) {
-    const sockaddr_in* local_addr = reinterpret_cast<const sockaddr_in*>(&c->local_addr);
-    address = local_addr->sin_addr.s_addr;
-  }
-
+    uint16_t pc_port, uint16_t gc_port) {
   struct {
     uint32_t pc_address;
     uint16_t pc_port;
@@ -240,13 +245,17 @@ void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
     uint8_t gc_command;
     uint8_t gc_flag;
     uint16_t gc_size;
-    uint8_t unused2[0xB0 - 0x1D];
+    uint32_t gc_address;
+    uint16_t gc_port;
+    uint8_t unused2[0xB0 - 0x23];
   } __attribute__((packed)) cmd;
   memset(&cmd, 0, sizeof(cmd));
-  cmd.pc_address = address;
+  cmd.pc_address = bswap32(address);
   cmd.pc_port = pc_port;
   cmd.gc_command = 0x19;
   cmd.gc_size = 0x97;
+  cmd.gc_address = bswap32(address);
+  cmd.gc_port = gc_port;
   send_command(c, 0x19, 0x00, cmd);
 }
 
@@ -445,8 +454,7 @@ static void send_large_message_pc_patch_bb(shared_ptr<Client> c, uint8_t command
         {0, from_serial_number};
   }
   data += text;
-  add_color_inplace(const_cast<char16_t*>(data.data()) +
-      (include_header ? sizeof(LargeMessageOptionalHeader) : 0));
+  add_color_inplace(data, (include_header ? sizeof(LargeMessageOptionalHeader) : 0));
   data.resize((data.size() + 4) & ~3);
   send_command(c, command, 0x00, data);
 }
@@ -460,8 +468,7 @@ static void send_large_message_dc_gc(shared_ptr<Client> c, uint8_t command,
         {0, from_serial_number};
   }
   data += encode_sjis(text);
-  add_color_inplace(const_cast<char*>(data.data()) +
-      (include_header ? sizeof(LargeMessageOptionalHeader) : 0));
+  add_color_inplace(data, (include_header ? sizeof(LargeMessageOptionalHeader) : 0));
   data.resize((data.size() + 4) & ~3);
   send_command(c, command, 0x00, data);
 }
@@ -517,7 +524,7 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_serial_number,
     data.append(u"\x09J");
   }
   data.append(from_name);
-  data.append(u"\x09J");
+  data.append(u"\x09\x09J");
   data.append(text);
   send_large_message(c, 0x06, data.c_str(), from_serial_number, true);
 }
@@ -637,18 +644,21 @@ static void send_card_search_result_dc_pc_gc(shared_ptr<ServerState> s,
     cmd.destination_command.dcgc_flag = 0x00;
     cmd.destination_command.dcgc_size = 0x000C;
   }
+  // TODO: make this actually make sense... currently we just take the sockname
+  // for the target client
   const sockaddr_in* local_addr = reinterpret_cast<const sockaddr_in*>(&result->local_addr);
   cmd.destination_command.address = local_addr->sin_addr.s_addr;
   cmd.destination_command.port = ntohs(local_addr->sin_port);
   cmd.destination_command.unused = 0;
 
+  auto encoded_server_name = encode_sjis(s->name);
   if (result_lobby->is_game()) {
     string encoded_lobby_name = encode_sjis(result_lobby->name);
     snprintf(cmd.location_string, sizeof(cmd.location_string),
-        "%s, Block 00, ,%s", encoded_lobby_name.c_str(), s->name.c_str());
+        "%s, Block 00, ,%s", encoded_lobby_name.c_str(), encoded_server_name.c_str());
   } else {
     snprintf(cmd.location_string, sizeof(cmd.location_string), "Block 00, ,%s",
-        s->name.c_str());
+        encoded_server_name.c_str());
   }
   cmd.menu_id = LOBBY_MENU_ID;
   cmd.lobby_id = result->lobby_id;
@@ -696,13 +706,14 @@ static void send_card_search_result_bb(shared_ptr<ServerState> s,
   cmd.destination_command.port = ntohs(local_addr->sin_port);
   cmd.destination_command.unused = 0;
 
+  auto encoded_server_name = encode_sjis(s->name);
   if (result_lobby->is_game()) {
     string encoded_lobby_name = encode_sjis(result_lobby->name);
     snprintf(cmd.location_string, sizeof(cmd.location_string),
-        "%s, Block 00, ,%s", encoded_lobby_name.c_str(), s->name.c_str());
+        "%s, Block 00, ,%s", encoded_lobby_name.c_str(), encoded_server_name.c_str());
   } else {
     snprintf(cmd.location_string, sizeof(cmd.location_string), "Block 00, ,%s",
-        s->name.c_str());
+        encoded_server_name.c_str());
   }
   cmd.menu_id = LOBBY_MENU_ID;
   cmd.lobby_id = result->lobby_id;
@@ -927,7 +938,7 @@ static void send_game_menu_pc(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     auto& e = entries.back();
     e.menu_id = GAME_MENU_ID;
     e.game_id = 0;
-    decode_sjis(e.name, s->name.c_str(), 0x10);
+    char16cpy(e.name, s->name.c_str(), 0x10);
   }
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
     if (!l->is_game()) {
@@ -970,7 +981,7 @@ static void send_game_menu_gc(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     auto& e = entries.back();
     e.menu_id = GAME_MENU_ID;
     e.game_id = 0;
-    strncpy(e.name, s->name.c_str(), 0x10);
+    encode_sjis(e.name, s->name.c_str(), 0x10);
     e.flags = 0x0004;
   }
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
@@ -1019,7 +1030,7 @@ static void send_game_menu_bb(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     e.menu_id = GAME_MENU_ID;
     e.game_id = 0;
     e.flags = 0x0004;
-    decode_sjis(e.name, s->name.c_str(), 0x10);
+    char16cpy(e.name, s->name.c_str(), 0x10);
   }
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
     if (!l->is_game()) {

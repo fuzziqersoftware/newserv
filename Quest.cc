@@ -308,7 +308,10 @@ shared_ptr<const string> Quest::dat_contents() const {
 
 
 QuestIndex::QuestIndex(const char* directory) : directory(directory) {
-  for (const auto& filename : list_directory(this->directory)) {
+  auto filename_set = list_directory(this->directory);
+  vector<string> filenames(filename_set.begin(), filename_set.end());
+  sort(filenames.begin(), filenames.end());
+  for (const auto& filename : filenames) {
     string full_path = this->directory + "/" + filename;
 
     if (ends_with(filename, ".gba")) {

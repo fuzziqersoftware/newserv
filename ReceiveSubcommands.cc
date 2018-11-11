@@ -31,13 +31,15 @@ struct ItemSubcommand {
 
 void check_size(uint16_t size, uint16_t min_size, uint16_t max_size) {
   if (size < min_size) {
-    throw runtime_error("command too small");
+    throw runtime_error(string_printf("command too small (expected at least %zX bytes, got %zX bytes)",
+        min_size, size));
   }
   if (max_size == 0) {
     max_size = min_size;
   }
   if (size > max_size) {
-    throw runtime_error("command too large");
+    throw runtime_error(string_printf("command too large (expected at most %zX bytes, got %zX bytes)",
+        max_size, size));
   }
 }
 
@@ -64,6 +66,7 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     }
     send_command(target, command, flag, p, count * 4);
   } else {
+    // TODO: don't send the command back to the client it originated from
     send_command(l, command, flag, p, count * 4);
   }
 }
