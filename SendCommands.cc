@@ -523,7 +523,7 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_serial_number,
   if (c->version == GameVersion::BB) {
     data.append(u"\x09J");
   }
-  data.append(from_name);
+  data.append(remove_language_marker(from_name));
   data.append(u"\x09\x09J");
   data.append(text);
   send_large_message(c, 0x06, data.c_str(), from_serial_number, true);
@@ -1090,6 +1090,7 @@ static void send_quest_menu_pc(shared_ptr<Client> c, uint32_t menu_id,
     e.quest_id = quest->quest_id;
     char16cpy(e.name, quest->name.c_str(), 0x20);
     char16cpy(e.short_desc, quest->short_description.c_str(), 0x70);
+    add_color_inplace(e.short_desc);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1112,6 +1113,7 @@ static void send_quest_menu_pc(std::shared_ptr<Client> c, uint32_t menu_id,
     e.item_id = item.item_id;
     char16cpy(e.name, item.name.c_str(), 0x20);
     char16cpy(e.short_desc, item.description.c_str(), 0x70);
+    add_color_inplace(e.short_desc);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1134,6 +1136,7 @@ static void send_quest_menu_gc(shared_ptr<Client> c, uint32_t menu_id,
     e.quest_id = quest->quest_id;
     encode_sjis(e.name, quest->name.c_str(), 0x20);
     encode_sjis(e.short_desc, quest->short_description.c_str(), 0x70);
+    add_color_inplace(e.short_desc);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1156,6 +1159,7 @@ static void send_quest_menu_gc(shared_ptr<Client> c, uint32_t menu_id,
     e.item_id = item.item_id;
     encode_sjis(e.name, item.name.c_str(), 0x20);
     encode_sjis(e.short_desc, item.description.c_str(), 0x70);
+    add_color_inplace(e.short_desc);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1180,6 +1184,7 @@ static void send_quest_menu_bb(shared_ptr<Client> c, uint32_t menu_id,
     e.quest_id = quest->quest_id;
     char16cpy(e.name, quest->name.c_str(), 0x20);
     char16cpy(e.short_desc, quest->short_description.c_str(), 0x7A);
+    add_color_inplace(e.short_desc);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1204,6 +1209,7 @@ static void send_quest_menu_bb(shared_ptr<Client> c, uint32_t menu_id,
     e.item_id = item.item_id;
     char16cpy(e.name, item.name.c_str(), 0x20);
     char16cpy(e.short_desc, item.description.c_str(), 0x7A);
+    add_color_inplace(e.short_desc);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1488,7 +1494,17 @@ static void send_join_lobby_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 static void send_join_lobby_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   rw_guard g(l->lock, false);
 
-  uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
+  uint8_t lobby_type = l->type;
+  if (c->flags & ClientFlag::Episode3Games) {
+    if ((l->type > 0x14) && (l->type < 0xE9)) {
+      lobby_type = l->block - 1;
+    }
+  } else {
+    if ((l->type > 0x11) && (l->type != 0x67) && (l->type != 0xD4) && (l->type < 0xFC)) {
+      lobby_type = l->block - 1;
+    }
+  }
+
   struct {
     uint8_t client_id;
     uint8_t leader_id;

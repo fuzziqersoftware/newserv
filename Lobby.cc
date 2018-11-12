@@ -22,7 +22,7 @@ Lobby::Lobby() : lobby_id(0), min_level(0), max_level(0xFFFFFFFF),
 }
 
 bool Lobby::is_game() const {
-  return (this->lobby_id < 0);
+  return this->flags & LobbyFlag::IsGame;
 }
 
 void Lobby::reassign_leader_on_client_departure_locked(size_t leaving_client_index) {
@@ -106,7 +106,13 @@ void Lobby::remove_client_locked(shared_ptr<Client> c) {
   }
 
   this->clients[c->lobby_client_id] = NULL;
-  c->lobby_id = 0;
+
+  // unassign the client's lobby if it matches the current lobby's id (it may
+  // not match if the client was already added to another lobby - this can
+  // happen during the lobby change procedure)
+  if (c->lobby_id == this->lobby_id) {
+    c->lobby_id = 0;
+  }
 
   this->reassign_leader_on_client_departure_locked(c->lobby_client_id);
 }

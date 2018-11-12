@@ -17,9 +17,9 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<u16string> section_id_to_name({
-  u"Viridia", u"Greennill", u"Skyly", u"Bluefull", u"Purplenum", u"Pinkal", 
-  u"Redria", u"Oran", u"Yellowboze", u"Whitill"});
+vector<string> section_id_to_name({
+  "Viridia", "Greennill", "Skyly", "Bluefull", "Purplenum", "Pinkal", "Redria",
+  "Oran", "Yellowboze", "Whitill"});
 
 unordered_map<u16string, uint8_t> name_to_section_id({
   {u"viridia", 0},
@@ -35,53 +35,53 @@ unordered_map<u16string, uint8_t> name_to_section_id({
 
 vector<u16string> lobby_event_to_name({
   u"none", u"xmas", u"none", u"val", u"easter", u"hallo", u"sonic", 
-  u"newyear", u"spring", u"white", u"wedding", u"fall", u"s-summer", 
-  u"s-spring", u"summer"});
+  u"newyear", u"summer", u"white", u"wedding", u"fall", u"s-spring", 
+  u"s-summer", u"spring"});
 
 unordered_map<u16string, uint8_t> name_to_lobby_event({
-  {u"none",     0}, 
-  {u"xmas",     1}, 
-  {u"val",      3}, 
-  {u"easter",   4}, 
-  {u"hallo",    5}, 
-  {u"sonic",    6}, 
-  {u"newyear",  7}, 
-  {u"spring",   8}, 
-  {u"white",    9}, 
-  {u"wedding",  10}, 
-  {u"fall",     11}, 
-  {u"s-summer", 12}, 
-  {u"s-spring", 13}, 
-  {u"summer",   14}, 
+  {u"none",     0},
+  {u"xmas",     1},
+  {u"val",      3},
+  {u"easter",   4},
+  {u"hallo",    5},
+  {u"sonic",    6},
+  {u"newyear",  7},
+  {u"summer",   8},
+  {u"white",    9},
+  {u"wedding",  10},
+  {u"fall",     11},
+  {u"s-spring", 12},
+  {u"s-summer", 13},
+  {u"spring",   14},
 });
 
 unordered_map<uint8_t, u16string> lobby_type_to_name({
-  {0x00, u"normal"}, 
-  {0x0F, u"inormal"}, 
-  {0x10, u"ipc"}, 
-  {0x11, u"iball"}, 
-  {0x67, u"cave2u"}, 
-  {0xD4, u"cave1"}, 
-  {0xE9, u"planet"}, 
-  {0xEA, u"clouds"}, 
-  {0xED, u"cave"}, 
-  {0xEE, u"jungle"}, 
-  {0xEF, u"forest2-2"}, 
-  {0xF0, u"forest2-1"}, 
-  {0xF1, u"windpower"}, 
-  {0xF2, u"overview"}, 
-  {0xF3, u"seaside"}, 
-  {0xF4, u"some?"}, 
-  {0xF5, u"dmorgue"}, 
-  {0xF6, u"caelum"}, 
-  {0xF8, u"digital"}, 
-  {0xF9, u"boss1"}, 
-  {0xFA, u"boss2"}, 
-  {0xFB, u"boss3"}, 
-  {0xFC, u"dragon"}, 
-  {0xFD, u"derolle"}, 
-  {0xFE, u"volopt"}, 
-  {0xFF, u"darkfalz"}, 
+  {0x00, u"normal"},
+  {0x0F, u"inormal"},
+  {0x10, u"ipc"},
+  {0x11, u"iball"},
+  {0x67, u"cave2u"},
+  {0xD4, u"cave1"},
+  {0xE9, u"planet"},
+  {0xEA, u"clouds"},
+  {0xED, u"cave"},
+  {0xEE, u"jungle"},
+  {0xEF, u"forest2-2"},
+  {0xF0, u"forest2-1"},
+  {0xF1, u"windpower"},
+  {0xF2, u"overview"},
+  {0xF3, u"seaside"},
+  {0xF4, u"some?"},
+  {0xF5, u"dmorgue"},
+  {0xF6, u"caelum"},
+  {0xF8, u"digital"},
+  {0xF9, u"boss1"},
+  {0xFA, u"boss2"},
+  {0xFB, u"boss3"},
+  {0xFC, u"dragon"},
+  {0xFD, u"derolle"},
+  {0xFE, u"volopt"},
+  {0xFF, u"darkfalz"},
 });
 
 unordered_map<u16string, uint8_t> name_to_lobby_type({
@@ -164,42 +164,57 @@ unordered_map<u16string, uint8_t> name_to_npc_id({
 
 
 
+class precondition_failed {
+public:
+  precondition_failed(const char16_t* user_msg) : user_msg(user_msg) { }
+  ~precondition_failed() = default;
+
+  const char16_t* what() const {
+    return this->user_msg;
+  }
+
+private:
+  const char16_t* user_msg;
+};
+
 static void check_privileges(shared_ptr<Client> c, uint64_t mask) {
   if (!c->license) {
-    throw runtime_error("not logged in");
+    throw precondition_failed(u"$C6You are not\nlogged in.");
   }
   if ((c->license->privileges & mask) != mask) {
-    throw runtime_error("insufficient permissions");
+    throw precondition_failed(u"$C6You do not have\npermission to\nrun this command.");
   }
 }
 
 static void check_version(shared_ptr<Client> c, GameVersion version) {
   if (c->version != version) {
-    throw runtime_error("incorrect version");
+    throw precondition_failed(u"$C6This command cannot\nbe used for your\nversion of PSO.");
   }
 }
 
 static void check_not_version(shared_ptr<Client> c, GameVersion version) {
   if (c->version == version) {
-    throw runtime_error("incorrect version");
+    throw precondition_failed(u"$C6This command cannot\nbe used for your\nversion of PSO.");
   }
 }
 
 static void check_is_game(shared_ptr<Lobby> l, bool is_game) {
   if (l->is_game() != is_game) {
-    throw runtime_error(is_game ? "can only be used in games" : "can only be used in lobbies");
+    throw precondition_failed(is_game ?
+        u"$C6This command cannot\nbe used in lobbies." :
+        u"$C6This command cannot\nbe used in games.");
   }
 }
 
 static void check_cheats_enabled(shared_ptr<Lobby> l) {
   if (!(l->flags & LobbyFlag::CheatsEnabled)) {
-    throw runtime_error("can only be used in cheat mode");
+    throw precondition_failed(u"$C6This command can\nonly be used in\ncheat mode.");
   }
 }
 
 static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
   if (l->leader_id != c->lobby_client_id) {
-    throw runtime_error("you are not the game leader");
+    throw precondition_failed(u"$C6This command can\nonly be used by\nthe game leader.");
   }
 }
 
@@ -212,8 +227,10 @@ static void command_lobby_info(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   // no preconditions - everyone can use this command
 
-  string buffer;
-  if (l->is_game()) {
+  if (!l) {
+    send_text_message(c, u"$C6No lobby information");
+
+  } else if (l->is_game()) {
     string level_string;
     if (l->max_level == 0xFFFFFFFF) {
       level_string = string_printf("Levels: %d+", l->min_level + 1);
@@ -221,15 +238,17 @@ static void command_lobby_info(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
       level_string = string_printf("Levels: %d-%d", l->min_level + 1, l->max_level + 1);
     }
 
-    send_text_message_printf(c, "$C6Lobby ID: %08X\n%s\nSection ID: %s\nCheat mode: %s",
+    send_text_message_printf(c, "$C6Game ID: %08X\n%s\nSection ID: %s\nCheat mode: %s",
         l->lobby_id, level_string.c_str(),
         section_id_to_name.at(l->section_id).c_str(),
-        (l->flags & LobbyFlag::CheatsEnabled) ? u"on" : u"off");
+        (l->flags & LobbyFlag::CheatsEnabled) ? "on" : "off");
 
   } else {
-    send_text_message_printf(c, "$C6Lobby ID: %08X", l->lobby_id);
+    size_t num_clients = l->count_clients();
+    size_t max_clients = l->max_clients;
+    send_text_message_printf(c, "$C6Lobby ID: %08X\nPlayers: %zu/%zu",
+        l->lobby_id, num_clients, max_clients);
   }
-
 }
 
 static void command_ax(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
@@ -264,7 +283,7 @@ static void command_cheat(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 
   l->flags ^= LobbyFlag::CheatsEnabled;
   send_text_message_printf(l, "Cheat mode %s",
-      (l->flags & LobbyFlag::CheatsEnabled) ? u"enabled" : u"disabled");
+      (l->flags & LobbyFlag::CheatsEnabled) ? "enabled" : "disabled");
 
   // if cheat mode was disabled, turn off all the cheat features that were on
   if (!(l->flags & LobbyFlag::CheatsEnabled)) {
@@ -286,9 +305,17 @@ static void command_lobby_event(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   check_is_game(l, false);
   check_privileges(c, Privilege::ChangeEvent);
 
+  uint8_t new_event;
+  try {
+    new_event = name_to_lobby_event.at(args);
+  } catch (const out_of_range& e) {
+    send_text_message(c, u"$C6No such lobby event.");
+    return;
+  }
+
   {
     rw_guard g(l->lock, true);
-    l->event = name_to_lobby_event.at(args);
+    l->event = new_event;
   }
   send_command(l, 0xDA, l->event, NULL, 0);
 }
@@ -297,7 +324,13 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::ChangeEvent);
 
-  uint8_t event = name_to_lobby_event.at(args);
+  uint8_t new_event;
+  try {
+    new_event = name_to_lobby_event.at(args);
+  } catch (const out_of_range& e) {
+    send_text_message(c, u"$C6No such lobby event.");
+    return;
+  }
 
   for (auto l : s->all_lobbies()) {
     if (l->is_game() || !(l->flags & LobbyFlag::Default)) {
@@ -306,9 +339,9 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
 
     {
       rw_guard g(l->lock, true);
-      l->event = event;
+      l->event = new_event;
     }
-    send_command(l, 0xDA, event, NULL, 0);
+    send_command(l, 0xDA, new_event, NULL, 0);
   }
 }
 
@@ -317,9 +350,17 @@ static void command_lobby_type(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   check_is_game(l, false);
   check_privileges(c, Privilege::ChangeEvent);
 
+  uint8_t new_type;
+  try {
+    new_type = name_to_lobby_type.at(args);
+  } catch (const out_of_range& e) {
+    send_text_message(c, u"$C6No such lobby type.");
+    return;
+  }
+
   {
     rw_guard g(l->lock, true);
-    l->type = name_to_lobby_type.at(args);
+    l->type = new_type;
     if (l->type < ((l->flags & LobbyFlag::Episode3) ? 20 : 15)) {
       l->type = l->block - 1;
     }
@@ -348,7 +389,7 @@ static void command_password(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   } else {
     char16cpy(l->password, args, 0x10);
     auto encoded = encode_sjis(l->password);
-    send_text_message_printf(l, "$C6Game locked with password:\n%s",
+    send_text_message_printf(l, "$C6Game password:\n%s",
         encoded.c_str());
   }
 }
@@ -426,7 +467,12 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   } else if (tokens[0] == "namecolor") {
     sscanf(tokens[1].c_str(), "%8X", &c->player.disp.name_color);
   } else if (tokens[0] == "secid") {
-    c->player.disp.section_id = name_to_section_id.at(decode_sjis(tokens[1]));
+    try {
+      c->player.disp.section_id = name_to_section_id.at(decode_sjis(tokens[1]));
+    } catch (const out_of_range&) {
+      send_text_message(c, u"$C6No such section ID.");
+      return;
+    }
   } else if (tokens[0] == "name") {
     decode_sjis(c->player.disp.name, tokens[1].c_str(), 0x10);
     add_language_marker_inplace(c->player.disp.name, u'J', 0x10);
@@ -435,7 +481,12 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
       c->player.disp.extra_model = 0;
       c->player.disp.v2_flags &= 0xFD;
     } else {
-      c->player.disp.extra_model = name_to_npc_id.at(decode_sjis(tokens[1]));
+      try {
+        c->player.disp.extra_model = name_to_npc_id.at(decode_sjis(tokens[1]));
+      } catch (const out_of_range&) {
+        send_text_message(c, u"$C6No such NPC.");
+        return;
+      }
       c->player.disp.v2_flags |= 0x02;
     }
   } else if ((tokens[0] == "tech") && (tokens.size() > 2)) {
@@ -445,11 +496,16 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
         c->player.disp.technique_levels[x] = level;
       }
     } else {
-      uint8_t tech_id = name_to_tech_id.at(decode_sjis(tokens[1]));
-      c->player.disp.technique_levels[tech_id] = level;
+      try {
+        uint8_t tech_id = name_to_tech_id.at(decode_sjis(tokens[1]));
+        c->player.disp.technique_levels[tech_id] = level;
+      } catch (const out_of_range&) {
+        send_text_message(c, u"$C6No such technique.");
+        return;
+      }
     }
   } else {
-    send_text_message(c, u"$C6Unknown field");
+    send_text_message(c, u"$C6Unknown field.");
     return;
   }
 
@@ -711,9 +767,14 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
 void process_chat_command(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l,
     std::shared_ptr<Client> c, const char16_t* text) {
 
+  // remove the chat command marker
+  if (text[0] == u'$') {
+    text++;
+  }
+
   u16string command_name;
   u16string text_str(text);
-  size_t space_pos = text_str.find(L' ');
+  size_t space_pos = text_str.find(u' ');
   if (space_pos != string::npos) {
     command_name = text_str.substr(0, space_pos);
     text_str = text_str.substr(space_pos + 1);
@@ -732,8 +793,9 @@ void process_chat_command(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby>
 
   try {
     def->handler(s, l, c, text_str.c_str());
+  } catch (const precondition_failed& e) {
+    send_text_message(c, e.what());
   } catch (const exception& e) {
     send_text_message_printf(c, "$C6Failed:\n%s", e.what());
-    return;
   }
 }

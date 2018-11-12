@@ -34,8 +34,12 @@ const char* name_for_category(QuestCategory category) {
       return "VR";
     case QuestCategory::Tower:
       return "Tower";
-    case QuestCategory::Government:
-      return "Government";
+    case QuestCategory::GovernmentEpisode1:
+      return "GovernmentEpisode1";
+    case QuestCategory::GovernmentEpisode2:
+      return "GovernmentEpisode2";
+    case QuestCategory::GovernmentEpisode4:
+      return "GovernmentEpisode4";
     case QuestCategory::Download:
       return "Download";
     case QuestCategory::Battle:
@@ -170,18 +174,29 @@ Quest::Quest(const string& bin_filename) : quest_id(-1),
 
   // get the category from the second token if needed
   if (this->category == QuestCategory::Unknown) {
-    static const unordered_map<std::string, QuestCategory> name_to_category({
-      {"ret", QuestCategory::Retrieval},
-      {"ext", QuestCategory::Extermination},
-      {"evt", QuestCategory::Event},
-      {"shp", QuestCategory::Shop},
-      {"vr",  QuestCategory::VR},
-      {"twr", QuestCategory::Tower},
-      {"gov", QuestCategory::Government},
-      {"dl",  QuestCategory::Download},
-      {"1p",  QuestCategory::Solo},
-    });
-    this->category = name_to_category.at(tokens[1]);
+    if (tokens[1] == "gov") {
+      if (this->episode == 0) {
+        this->category = QuestCategory::GovernmentEpisode1;
+      } else if (this->episode == 1) {
+        this->category = QuestCategory::GovernmentEpisode2;
+      } else if (this->episode == 2) {
+        this->category = QuestCategory::GovernmentEpisode4;
+      } else {
+        throw invalid_argument("government quest has incorrect episode");
+      }
+    } else {
+      static const unordered_map<std::string, QuestCategory> name_to_category({
+        {"ret", QuestCategory::Retrieval},
+        {"ext", QuestCategory::Extermination},
+        {"evt", QuestCategory::Event},
+        {"shp", QuestCategory::Shop},
+        {"vr",  QuestCategory::VR},
+        {"twr", QuestCategory::Tower},
+        {"dl",  QuestCategory::Download},
+        {"1p",  QuestCategory::Solo},
+      });
+      this->category = name_to_category.at(tokens[1]);
+    }
     tokens.erase(tokens.begin() + 1);
   }
 
@@ -299,10 +314,10 @@ shared_ptr<const string> Quest::bin_contents() const {
 }
 
 shared_ptr<const string> Quest::dat_contents() const {
-  if (!this->bin_contents_ptr) {
-    this->bin_contents_ptr.reset(new string(load_file(this->file_basename + ".dat")));
+  if (!this->dat_contents_ptr) {
+    this->dat_contents_ptr.reset(new string(load_file(this->file_basename + ".dat")));
   }
-  return this->bin_contents_ptr;
+  return this->dat_contents_ptr;
 }
 
 

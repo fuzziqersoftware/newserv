@@ -184,9 +184,9 @@ static void process_subcommand_use_technique(shared_ptr<ServerState> s,
 static void process_subcommand_drop_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 6);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 6);
+
     struct Cmd {
       uint8_t command;
       uint8_t size;
@@ -221,9 +221,9 @@ static void process_subcommand_drop_item(shared_ptr<ServerState> s,
 static void process_subcommand_drop_stacked_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 6);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 6);
+
     struct Cmd {
       uint8_t command;
       uint8_t size;
@@ -268,9 +268,9 @@ static void process_subcommand_drop_stacked_item(shared_ptr<ServerState> s,
 static void process_subcommand_pick_up_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 3);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 3);
+
     struct Cmd {
       uint8_t command;
       uint8_t size;
@@ -305,9 +305,9 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState> s,
 static void process_subcommand_equip_unequip_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 3);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 3);
+
     auto* cmd = reinterpret_cast<const ItemSubcommand*>(p);
     if ((cmd->size != 3) || (cmd->client_id != c->lobby_client_id)) {
       return;
@@ -326,13 +326,12 @@ static void process_subcommand_equip_unequip_item(shared_ptr<ServerState> s,
   }
 }
 
-// player uses an item (see ClientUseItem for specific item handlers)
 static void process_subcommand_use_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 2);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 2);
+
     auto* cmd = reinterpret_cast<const ItemSubcommand*>(p);
     if ((cmd->size != 2) || (cmd->client_id != c->lobby_client_id)) {
       return;
@@ -352,7 +351,6 @@ static void process_subcommand_use_item(shared_ptr<ServerState> s,
   forward_subcommand(l, c, command, flag, p, count);
 }
 
-// player opens the bank window
 static void process_subcommand_open_bank(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
@@ -365,9 +363,9 @@ static void process_subcommand_open_bank(shared_ptr<ServerState> s,
 static void process_subcommand_bank_action(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 4);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 4);
+
     struct Cmd {
       uint8_t subcommand;
       uint8_t size;
@@ -427,9 +425,9 @@ static void process_subcommand_bank_action(shared_ptr<ServerState> s,
 static void process_subcommand_sort_inventory(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 31);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 31);
+
     struct Cmd {
       uint8_t command;
       uint8_t size;
@@ -470,9 +468,9 @@ static void process_subcommand_sort_inventory(shared_ptr<ServerState> s,
 static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 6);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 6);
+
     struct Cmd {
       uint8_t command;
       uint8_t size;
@@ -532,9 +530,9 @@ static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
 static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 10);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 10);
+
     struct Cmd {
       uint8_t command;
       uint8_t size;
@@ -601,9 +599,9 @@ static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
 static void process_subcommand_monster_hit(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 10);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 10);
+
     struct Cmd {
       uint8_t command;
       uint8_t size;
@@ -637,7 +635,9 @@ static void process_subcommand_monster_hit(shared_ptr<ServerState> s,
 static void process_subcommand_monster_killed(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 3);
+  if (l->version == GameVersion::BB) {
+    check_size(count, 3);
+  }
 
   forward_subcommand(l, c, command, flag, p, count);
 
@@ -713,9 +713,9 @@ static void process_subcommand_monster_killed(shared_ptr<ServerState> s,
 static void process_subcommand_destroy_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 3);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 3);
+
     auto* cmd = reinterpret_cast<const ItemSubcommand*>(p);
     if ((cmd->size != 3) || !l->is_game()) {
       return;
@@ -730,9 +730,9 @@ static void process_subcommand_destroy_item(shared_ptr<ServerState> s,
 static void process_subcommand_identify_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  check_size(count, 3);
-
   if (l->version == GameVersion::BB) {
+    check_size(count, 3);
+
     auto* cmd = reinterpret_cast<const ItemSubcommand*>(p);
     if (!l->is_game() || (cmd->size != 3) || (cmd->client_id != c->lobby_client_id)) {
       return;
@@ -767,9 +767,10 @@ static void process_subcommand_identify_item(shared_ptr<ServerState> s,
 // static void process_subcommand_accept_identified_item(shared_ptr<ServerState> s,
 //     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
 //     const PSOSubcommand* p, size_t count) {
-//   check_size(count, 3);
 //
 //   if (l->version == GameVersion::BB) {
+//     check_size(count, 3);
+//
 //     auto* cmd = reinterpret_cast<const ItemSubcommand*>(p);
 //     if ((cmd->size != 3) || (cmd->client_id != c->lobby_client_id)) {
 //       return;

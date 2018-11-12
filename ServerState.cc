@@ -10,8 +10,7 @@ using namespace std;
 
 
 
-ServerState::ServerState() : run_dns_server(true), next_lobby_id(1),
-    next_game_id(-1) {
+ServerState::ServerState() : run_dns_server(true), next_lobby_id(1) {
   this->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",
       u"Join the lobby.", 0);
   this->main_menu.emplace_back(MAIN_MENU_INFORMATION, u"Information",
@@ -19,14 +18,14 @@ ServerState::ServerState() : run_dns_server(true), next_lobby_id(1),
   this->main_menu.emplace_back(MAIN_MENU_DISCONNECT, u"Disconnect",
       u"Disconnect.", 0);
 
-  for (size_t x = 0; x < 15; x++) {
+  for (size_t x = 0; x < 20; x++) {
+    auto lobby_name = decode_sjis(string_printf("LOBBY%zu", x + 1));
     shared_ptr<Lobby> l(new Lobby());
-    l->flags |= LobbyFlag::Public | LobbyFlag::Default;
-    this->add_lobby(l);
-  }
-  for (size_t x = 0; x < 5; x++) {
-    shared_ptr<Lobby> l(new Lobby());
-    l->flags |= LobbyFlag::Public | LobbyFlag::Default | LobbyFlag::Episode3;
+    l->flags |= LobbyFlag::Public | LobbyFlag::Default | ((x > 14) ? LobbyFlag::Episode3 : 0);
+    l->block = x + 1;
+    l->type = x;
+    char16cpy(l->name, lobby_name.c_str(), 0x24);
+    l->max_clients = 12;
     this->add_lobby(l);
   }
 }
@@ -97,14 +96,9 @@ void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
   }
 }
 
-shared_ptr<Lobby> ServerState::find_lobby(int64_t lobby_id) {
+shared_ptr<Lobby> ServerState::find_lobby(uint32_t lobby_id) {
   rw_guard g(this->lobbies_lock, false);
   return this->id_to_lobby.at(lobby_id);
-}
-
-shared_ptr<Lobby> ServerState::find_lobby(const u16string& name) {
-  rw_guard g(this->lobbies_lock, false);
-  return this->name_to_lobby.at(name);
 }
 
 vector<shared_ptr<Lobby>> ServerState::all_lobbies() {
@@ -117,33 +111,22 @@ vector<shared_ptr<Lobby>> ServerState::all_lobbies() {
 }
 
 void ServerState::add_lobby(shared_ptr<Lobby> l) {
-  if (l->is_game()) {
-    l->lobby_id = this->next_game_id--;
-  } else {
-    l->lobby_id = this->next_lobby_id++;
-  }
+  l->lobby_id = this->next_lobby_id++;
 
   rw_guard g(this->lobbies_lock, true);
   if (this->id_to_lobby.count(l->lobby_id)) {
     throw logic_error("lobby already exists with the given id");
   }
-  if (this->name_to_lobby.count(l->name)) {
-    throw invalid_argument("lobby already exists with the given name");
-  }
+
+  log(INFO, "creating lobby %" PRId64, l->lobby_id);
   this->id_to_lobby.emplace(l->lobby_id, l);
-  if (l->name[0]) {
-    this->name_to_lobby.emplace(l->name, l);
-  }
 }
 
-void ServerState::remove_lobby(int64_t lobby_id) {
+void ServerState::remove_lobby(uint32_t lobby_id) {
   rw_guard g(this->lobbies_lock, true);
   auto it = this->id_to_lobby.find(lobby_id);
   if (it == this->id_to_lobby.end()) {
     return;
-  }
-  if (it->second->name[0]) {
-    this->name_to_lobby.erase(it->second->name);
   }
   this->id_to_lobby.erase(it);
 }

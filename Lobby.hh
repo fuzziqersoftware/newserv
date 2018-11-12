@@ -25,7 +25,7 @@ enum LobbyFlag {
 struct Lobby {
   mutable rw_lock lock;
 
-  uint64_t lobby_id;
+  uint32_t lobby_id;
 
   uint32_t min_level;
   uint32_t max_level;

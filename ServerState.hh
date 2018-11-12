@@ -28,6 +28,7 @@ struct PortConfiguration {
 struct ServerState {
   std::u16string name;
   std::unordered_map<std::string, PortConfiguration> port_configuration;
+  bool run_dns_server;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamTable> battle_params;
@@ -43,10 +44,7 @@ struct ServerState {
 
   rw_lock lobbies_lock;
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
-  std::unordered_map<std::u16string, std::shared_ptr<Lobby>> name_to_lobby;
-
-  std::atomic<int64_t> next_lobby_id;
-  std::atomic<int64_t> next_game_id;
+  std::atomic<int32_t> next_lobby_id;
 
   std::set<uint32_t> all_addresses;
   uint32_t local_address;
@@ -62,12 +60,11 @@ struct ServerState {
   void send_lobby_join_notifications(std::shared_ptr<Lobby> l,
       std::shared_ptr<Client> joining_client);
 
-  std::shared_ptr<Lobby> find_lobby(int64_t lobby_id);
-  std::shared_ptr<Lobby> find_lobby(const std::u16string& name);
+  std::shared_ptr<Lobby> find_lobby(uint32_t lobby_id);
   std::vector<std::shared_ptr<Lobby>> all_lobbies();
 
   void add_lobby(std::shared_ptr<Lobby> l);
-  void remove_lobby(int64_t lobby_id);
+  void remove_lobby(uint32_t lobby_id);
 
   std::shared_ptr<Client> find_client(const char16_t* identifier = NULL,
     uint64_t serial_number = 0, std::shared_ptr<Lobby> l = NULL);

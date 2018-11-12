@@ -530,6 +530,20 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
       }
       break;
 
+    case QUEST_MENU_ID: {
+      if (!s->quest_index) {
+        send_quest_info(c, u"$C6Quests are not available.");
+        break;
+      }
+      auto q = s->quest_index->get(c->version, cmd->item_id);
+      if (!q) {
+        send_quest_info(c, u"$C6Quest does not exist.");
+        break;
+      }
+      send_quest_info(c, q->long_description.c_str());
+      break;
+    }
+
     default:
       send_ship_info(c, u"Incorrect menu ID.");
       break;
@@ -678,7 +692,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       auto l = s->find_lobby(c->lobby_id);
       auto quests = s->quest_index->filter(c->version,
           c->flags & ClientFlag::IsDCv1,
-          static_cast<QuestCategory>(cmd->item_id), l->episode);
+          static_cast<QuestCategory>(cmd->item_id & 0xFF), l->episode - 1);
       if (quests.empty()) {
         send_lobby_message_box(c, u"$C6There are no quests\navailable in that\ncategory.");
         break;
@@ -794,40 +808,40 @@ void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c,
 // Quest commands 
 
 vector<MenuItem> quest_categories_menu({
-  MenuItem(0x01000000, u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
-  MenuItem(0x01000001, u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
-  MenuItem(0x01000002, u"Events", u"$E$C6Quests that are part\nof an event", 0),
-  MenuItem(0x01000003, u"Shops", u"$E$C6Quests that contain\nshops", 0),
-  MenuItem(0x01000004, u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
-  MenuItem(0x01000005, u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Retrieval), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Extermination), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Event), u"Events", u"$E$C6Quests that are part\nof an event", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Shop), u"Shops", u"$E$C6Quests that contain\nshops", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Tower), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
 });
 
 vector<MenuItem> quest_battle_menu({
-  MenuItem(0x01000100, u"Battle", u"$E$C6Battle mode rule\nsets", 0), 
+  MenuItem(static_cast<uint32_t>(QuestCategory::Battle), u"Battle", u"$E$C6Battle mode rule\nsets", 0), 
 });
 
 vector<MenuItem> quest_challenge_menu({
-  MenuItem(0x01000200, u"Challenge", u"$E$C6Challenge mode\nquests", 0), 
+  MenuItem(static_cast<uint32_t>(QuestCategory::Challenge), u"Challenge", u"$E$C6Challenge mode\nquests", 0), 
 });
 
 vector<MenuItem> quest_solo_menu({
-  MenuItem(0x01000200, u"Solo Quests", u"$E$C6Quests that require\na single player", 0), 
+  MenuItem(static_cast<uint32_t>(QuestCategory::Solo), u"Solo Quests", u"$E$C6Quests that require\na single player", 0), 
 });
 
 vector<MenuItem> quest_government_menu({
-  MenuItem(0x01000300, u"Hero in Red",u"$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline", 0),
-  MenuItem(0x01000301, u"The Military's Hero",u"$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline", 0),
-  MenuItem(0x01000302, u"The Meteor Impact Incident", u"$E$C6Quests that follow\nthe Episode 4\nstoryline", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::GovernmentEpisode1), u"Hero in Red",u"$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::GovernmentEpisode2), u"The Military's Hero",u"$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::GovernmentEpisode4), u"The Meteor Impact Incident", u"$E$C6Quests that follow\nthe Episode 4\nstoryline", 0),
 });
 
 vector<MenuItem> quest_download_menu({
-  MenuItem(0x01000400, u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
-  MenuItem(0x01000401, u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
-  MenuItem(0x01000402, u"Events", u"$E$C6Quests that are part\nof an event", 0),
-  MenuItem(0x01000403, u"Shops", u"$E$C6Quests that contain\nshops", 0),
-  MenuItem(0x01000404, u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
-  MenuItem(0x01000405, u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
-  MenuItem(0x01000406, u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Retrieval), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Extermination), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Event), u"Events", u"$E$C6Quests that are part\nof an event", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Shop), u"Shops", u"$E$C6Quests that contain\nshops", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Tower), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Download), u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
 });
 
 void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c, 
@@ -872,6 +886,11 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !l->is_game()) {
     return;
+  }
+
+  {
+    rw_guard g(c->lock, true);
+    c->flags &= ~ClientFlag::Loading;
   }
 
   // check if any client is still loading
@@ -956,14 +975,9 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
     c->pending_bb_save_username.clear();
   }
 
-  // if it's 61 and the client isn't in a lobby, add them to an available lobby
-  if ((command == 0x61) && !c->lobby_id &&
-      (c->server_behavior == ServerBehavior::LobbyServer)) {
+  // if the client isn't in a lobby, add them to an available lobby
+  if (!c->lobby_id && (c->server_behavior == ServerBehavior::LobbyServer)) {
     s->add_client_to_available_lobby(c);
-  }
-
-  if (command == 0x98) {
-    s->change_client_lobby(c, NULL);
   }
 }
 
@@ -1002,7 +1016,7 @@ void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (processed_text[0] == L'$') {
     auto l = s->find_lobby(c->lobby_id);
     if (l) {
-      process_chat_command(s, l, c, &text[1]);
+      process_chat_command(s, l, c, &processed_text[1]);
     }
   } else {
     if (!c->can_chat) {
@@ -1533,16 +1547,8 @@ void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
-  uint8_t episode = cmd->episode;
-  if (c->version == GameVersion::DC) {
-    episode = 1;
-  }
-  if (c->flags & ClientFlag::Episode3Games) {
-    episode = 0xFF;
-  }
-
   auto game = create_game_generic(s, c, cmd->name, cmd->password,
-      episode, cmd->difficulty, cmd->battle_mode, cmd->challenge_mode,
+      cmd->episode, cmd->difficulty, cmd->battle_mode, cmd->challenge_mode,
       cmd->solo_mode);
 
   s->add_lobby(game);
