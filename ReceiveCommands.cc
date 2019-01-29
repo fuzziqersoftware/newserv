@@ -755,7 +755,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 84
   struct Cmd {
     uint32_t menu_id;

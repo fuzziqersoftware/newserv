@@ -22,7 +22,8 @@ ServerState::ServerState() : run_dns_server(true), run_interactive_shell(true),
   for (size_t x = 0; x < 20; x++) {
     auto lobby_name = decode_sjis(string_printf("LOBBY%zu", x + 1));
     shared_ptr<Lobby> l(new Lobby());
-    l->flags |= LobbyFlag::Public | LobbyFlag::Default | ((x > 14) ? LobbyFlag::Episode3 : 0);
+    l->flags |= LobbyFlag::Public | LobbyFlag::Default | LobbyFlag::Persistent |
+        ((x > 14) ? LobbyFlag::Episode3 : 0);
     l->block = x + 1;
     l->type = x;
     char16cpy(l->name, lobby_name.c_str(), 0x24);
