@@ -425,8 +425,6 @@ struct Player {
 
 
 
-#define ERROR_COMBINE_ITEM_SPLIT 0x5FFFFFFE // this error code is used to tell calling functions that a combine item needs to be split
-
 uint32_t compute_guild_card_checksum(const void* data, size_t size);
 
 std::string filename_for_player_bb(const std::string& username, uint8_t player_index);

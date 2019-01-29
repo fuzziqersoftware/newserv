@@ -64,11 +64,6 @@ static const vector<char16_t>& unicode_to_sjis_table() {
   return unicode_to_sjis_table_data;
 }
 
-// None of these functions truly convert between SJIS and Unicode. They will
-// convert English properly (and some other languages as well), but Japanese
-// text will screw up horribly
-// TODO: fix this shit. this is definitely the worst part of this entire project
-
 void encode_sjis(char* dest, const char16_t* source, size_t max) {
   const auto& table = unicode_to_sjis_table();
   while (*source && (--max)) {

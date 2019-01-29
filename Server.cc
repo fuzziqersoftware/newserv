@@ -212,14 +212,14 @@ void Server::receive_and_process_commands(shared_ptr<Client> c, struct buffereve
     // to call string functions on the buffer in command handlers
     string data = c->recv_buffer.substr(offset + header_size, size - header_size);
     data.append(4, '\0');
-    // try {
+    try {
       process_command(this->state, c, header->command(c->version),
           header->flag(c->version), size - header_size, data.data());
-    // } catch (const exception& e) {
-    //   log(INFO, "[Server] error in client stream: %s", e.what());
-    //   c->should_disconnect = true;
-    //   return;
-    // }
+    } catch (const exception& e) {
+      log(INFO, "[Server] error in client stream: %s", e.what());
+      c->should_disconnect = true;
+      return;
+    }
 
     // BB pads commands to 8-byte boundaries, so if we see a shorter command,
     // skip over the padding
