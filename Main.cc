@@ -15,6 +15,7 @@
 #include "Server.hh"
 #include "FileContentsCache.hh"
 #include "Text.hh"
+#include "Shell.hh"
 
 using namespace std;
 
@@ -112,6 +113,12 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   } catch (const JSONObject::key_error&) {
     s->run_dns_server = true;
   }
+
+  try {
+    s->run_interactive_shell = d.at("RunInteractiveShell")->as_bool();
+  } catch (const JSONObject::key_error&) {
+    s->run_interactive_shell = true;
+  }
 }
 
 
@@ -165,10 +172,16 @@ int main(int argc, char* argv[]) {
   }
   game_server->start();
 
-  for (;;) {
-    sigset_t s;
-    sigemptyset(&s);
-    sigsuspend(&s);
+  if (state->run_interactive_shell) {
+    log(INFO, "starting interactive shell");
+    run_shell(state);
+
+  } else {
+    for (;;) {
+      sigset_t s;
+      sigemptyset(&s);
+      sigsuspend(&s);
+    }
   }
 
   log(INFO, "waiting for servers to terminate");
@@ -179,4 +192,3 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
-

@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -10,13 +11,44 @@ using namespace std;
 
 
 
-LicenseManager::LicenseManager(const std::string& filename) : filename(filename) {
-  auto licenses = load_vector_file<License>(this->filename);
+string License::str() const {
+  string ret = string_printf("License(serial_number=%" PRIu32, this->serial_number);
+  if (this->username[0]) {
+    ret += ", username=";
+    ret += this->username;
+  }
+  if (this->bb_password[0]) {
+    ret += ", bb-password=";
+    ret += this->bb_password;
+  }
+  if (this->access_key[0]) {
+    ret += ", access-key=";
+    ret += this->access_key;
+  }
+  if (this->gc_password[0]) {
+    ret += ", gc-password=";
+    ret += this->gc_password;
+  }
+  ret += string_printf(", privileges=%" PRIu32, this->privileges);
+  if (this->ban_end_time) {
+    ret += string_printf(", banned-until=%" PRIu64, this->ban_end_time);
+  }
+  return ret + ")";
+}
 
-  for (const auto& read_license : licenses) {
-    shared_ptr<License> license(new License(read_license));
-    this->bb_username_to_license.emplace(license->username, license);
-    this->serial_number_to_license.emplace(license->serial_number, license);
+
+
+LicenseManager::LicenseManager(const std::string& filename) : filename(filename) {
+  try {
+    auto licenses = load_vector_file<License>(this->filename);
+    for (const auto& read_license : licenses) {
+      shared_ptr<License> license(new License(read_license));
+      this->bb_username_to_license.emplace(license->username, license);
+      this->serial_number_to_license.emplace(license->serial_number, license);
+    }
+
+  } catch (const cannot_open_file&) {
+    log(WARNING, "%s does not exist; no licenses are registered", this->filename.c_str());
   }
 }
 
@@ -78,6 +110,11 @@ shared_ptr<const License> LicenseManager::verify_bb(const char* username,
   return license;
 }
 
+size_t LicenseManager::count() const {
+  rw_guard g(this->lock, false);
+  return this->serial_number_to_license.size();
+}
+
 void LicenseManager::ban_until(uint32_t serial_number, uint64_t end_time) {
   rw_guard g(this->lock, false);
   this->serial_number_to_license.at(serial_number)->ban_end_time = end_time;
@@ -109,4 +146,14 @@ void LicenseManager::remove(uint32_t serial_number) {
 
   rw_guard g(this->lock, false);
   this->save_locked();
+}
+
+vector<License> LicenseManager::snapshot() const {
+  vector<License> ret;
+
+  rw_guard g(this->lock, false);
+  for (auto it : this->serial_number_to_license) {
+    ret.emplace_back(*it.second);
+  }
+  return ret;
 }

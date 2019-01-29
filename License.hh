@@ -34,6 +34,8 @@ struct License {
   char gc_password[12]; // GC password
   uint32_t privileges; // privilege level
   uint64_t ban_end_time; // end time of ban (zero = not banned)
+
+  std::string str() const;
 } __attribute__((packed));
 
 class LicenseManager {
@@ -49,8 +51,11 @@ public:
       const char* password) const;
   void ban_until(uint32_t serial_number, uint64_t seconds);
 
+  size_t count() const;
+
   void add(std::shared_ptr<License> l);
   void remove(uint32_t serial_number);
+  std::vector<License> snapshot() const;
 
 protected:
   void save_locked() const;

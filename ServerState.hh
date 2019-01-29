@@ -29,6 +29,7 @@ struct ServerState {
   std::u16string name;
   std::unordered_map<std::string, PortConfiguration> port_configuration;
   bool run_dns_server;
+  bool run_interactive_shell;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamTable> battle_params;

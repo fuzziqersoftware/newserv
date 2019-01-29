@@ -26,7 +26,8 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 - Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 - Run `make`.
 - Edit system/config.json to your liking.
-- Run `./newserv` in the newserv directory.
+- Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. (You can disable the interactive shell later by editing config.json.)
+- Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
 
 If you're running PSO on a real GameCube, you can make PSO connect to newserv by changing its default gateway and DNS server addresses to newserv's address.
 

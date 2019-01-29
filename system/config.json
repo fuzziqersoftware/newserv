@@ -18,6 +18,9 @@
   "Threads": 1,
   // Set to false to disable the DNS server
   "RunDNSServer": true,
+  // Set to false to disable the interactive shell (do this if stdin is
+  // /dev/null, for example)
+  "RunInteractiveShell": true,
 
   // ****************
   // INFORMATION MENU
