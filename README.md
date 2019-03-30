@@ -8,7 +8,9 @@ This project is a rewrite of a rewrite of a game server that I wrote many years 
 
 ## History
 
-In ages long past (probably 2005? I honestly can't remember), I began writing a PSO server. This project became known as khyller, evolving into a full-featured environment supporting all versions of the game that I had access to - PC, GC, and BB. But as this evolution occurred, the code became increasingly ugly and hard to work with, littered with debugging filth that I never cleaned up and odd coding patterns that I had picked up over the years.
+In ages long past (probably 2004? I honestly can't remember), I wrote a proxy for PSO, which I named khyps. This haphazardly-glued-together mess of Windows GUI code and socket programming provided an interface to insert commands into the connection between PSO and its server, enabling some fun new features. Importantly, it also automatically blocked malformed commands which would have crashed the client, providing a safe way to navigate the wasteland that the official Sega servers had turned into after the Action Replay enable code for the game was released.
+
+khyps soon reached "maturity" and became uninteresting, so in 2005 I began writing a PSO server. This project became known as khyller, evolving into a full-featured environment supporting all versions of the game that I had access to - PC, GC, and BB. But as this evolution occurred, the code became increasingly ugly and hard to work with, littered with debugging filth that I never cleaned up and odd coding patterns that I had picked up over the years.
 
 Sometime in 2006 or 2007, I abandoned khyller and rebuilt the entire thing from scratch, resulting in newserv. But this newserv was not the project you're looking at now; 2007's newserv was substantially cleaner in code than khyller but was still quite ugly, and it lacked a few of the more esoteric features I had originally written (for example, the ability to convert any quest into a download quest). I felt better about working with this code, but it still had some stability problems. It turns out that 2007's newserv's concurrency implementation was simply incorrect - I had derived the concept of a mutex myself (before taking any real computer engineering classes) but implemented it incorrectly. No wonder newserv would randomly crash after running seemingly fine for a few days.
 
@@ -18,7 +20,7 @@ Last weekend (October 2018), I had some random cause to reminisce. I looked back
 
 ## Future
 
-Really, this project is mostly for my own nostalgia. Feel free to peruse if you'd like. If I'm suitably inspired again, I may boot up my copies of PSO and play around with it, and I'm sure I'll find numerous bugs the first time I do so. But I offer no guarantees on when this will happen, or if it will happen at all.
+This project is primarily for my own nostalgia. Feel free to peruse if you'd like. I offer no guarantees on how or when this project will advance, or even if this will ever happen.
 
 ## Usage
 
