@@ -96,9 +96,9 @@ commands:\n\
 
       } else if (starts_with(token, "access-key=")) {
         if (token.size() > 23) {
-          throw invalid_argument("access-key is too long bytes");
+          throw invalid_argument("access-key is too long");
         }
-        strcpy(l->gc_password, token.c_str() + 11);
+        strcpy(l->access_key, token.c_str() + 11);
 
       } else if (starts_with(token, "serial=")) {
         l->serial_number = stoul(token.substr(7));
