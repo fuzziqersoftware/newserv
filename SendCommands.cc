@@ -1386,7 +1386,7 @@ static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   }
 
   // player is only sent in ep3 games
-  size_t data_size = (l->flags & LobbyFlag::Episode3) ? 0x1184 : 0x0114;
+  size_t data_size = (l->flags & LobbyFlag::Episode3) ? 0x1184 : 0x0110;
   send_command(c, 0x64, player_count, &cmd, data_size);
 }
 
