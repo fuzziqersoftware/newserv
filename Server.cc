@@ -36,14 +36,28 @@ Server::WorkerThread::WorkerThread(Server* server, int worker_num) :
 }
 
 void Server::WorkerThread::disconnect_client(struct bufferevent* bev) {
-  auto client = this->bev_to_client.at(bev);
-  this->bev_to_client.erase(bev);
   {
+    auto client = this->bev_to_client.at(bev);
+    this->bev_to_client.erase(bev);
+    this->server->client_count--;
+
     rw_guard g(client->lock, true);
-    bufferevent_free(client->bev);
     client->bev = NULL;
   }
-  this->server->client_count--;
+
+  // if the output buffer is not empty, move the client into the draining pool
+  // instead of disconnecting it, to make sure all the data gets sent
+  struct evbuffer* out_buffer = bufferevent_get_output(bev);
+  if (evbuffer_get_length(out_buffer) == 0) {
+    bufferevent_free(bev);
+  } else {
+    // the callbacks will free it when all the data is sent or the client
+    // disconnects
+    bufferevent_setcb(bev, NULL,
+        Server::WorkerThread::dispatch_on_disconnecting_client_output,
+        Server::WorkerThread::dispatch_on_disconnecting_client_error, this);
+    bufferevent_disable(bev, EV_READ);
+  }
 }
 
 void Server::WorkerThread::dispatch_on_listen_accept(
@@ -69,6 +83,18 @@ void Server::WorkerThread::dispatch_on_client_error(
     struct bufferevent *bev, short events, void *ctx) {
   WorkerThread* wt = (WorkerThread*)ctx;
   wt->server->on_client_error(*wt, bev, events);
+}
+
+void Server::WorkerThread::dispatch_on_disconnecting_client_output(
+    struct bufferevent *bev, void *ctx) {
+  WorkerThread* wt = (WorkerThread*)ctx;
+  wt->server->on_disconnecting_client_output(*wt, bev);
+}
+
+void Server::WorkerThread::dispatch_on_disconnecting_client_error(
+    struct bufferevent *bev, short events, void *ctx) {
+  WorkerThread* wt = (WorkerThread*)ctx;
+  wt->server->on_disconnecting_client_error(*wt, bev, events);
 }
 
 void Server::WorkerThread::dispatch_check_for_thread_exit(
@@ -151,6 +177,11 @@ void Server::on_client_input(Server::WorkerThread& wt,
   }
 }
 
+void Server::on_disconnecting_client_output(Server::WorkerThread& wt,
+    struct bufferevent *bev) {
+  bufferevent_free(bev);
+}
+
 void Server::on_client_error(Server::WorkerThread& wt,
     struct bufferevent *bev, short events) {
   shared_ptr<Client> c;
@@ -168,6 +199,18 @@ void Server::on_client_error(Server::WorkerThread& wt,
     if (c) {
       this->process_client_disconnect(c);
     }
+  }
+}
+
+void Server::on_disconnecting_client_error(Server::WorkerThread& wt,
+    struct bufferevent *bev, short events) {
+  if (events & BEV_EVENT_ERROR) {
+    int err = EVUTIL_SOCKET_ERROR();
+    log(WARNING, "[Server] disconnecting client caused %d (%s)\n", err,
+        evutil_socket_error_to_string(err));
+  }
+  if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
+    bufferevent_free(bev);
   }
 }
 

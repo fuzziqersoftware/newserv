@@ -34,6 +34,10 @@ private:
     static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
     static void dispatch_on_client_error(struct bufferevent* bev, short events,
         void* ctx);
+    static void dispatch_on_disconnecting_client_output(struct bufferevent* bev,
+        void* ctx);
+    static void dispatch_on_disconnecting_client_error(struct bufferevent* bev,
+        short events, void* ctx);
     static void dispatch_check_for_thread_exit(evutil_socket_t fd, short what, void* ctx);
   };
 
@@ -49,6 +53,8 @@ private:
   void on_listen_error(WorkerThread& wt, struct evconnlistener *listener);
   void on_client_input(WorkerThread& wt, struct bufferevent *bev);
   void on_client_error(WorkerThread& wt, struct bufferevent *bev, short events);
+  void on_disconnecting_client_output(WorkerThread& wt, struct bufferevent *bev);
+  void on_disconnecting_client_error(WorkerThread& wt, struct bufferevent *bev, short events);
   void check_for_thread_exit(WorkerThread& wt, evutil_socket_t fd, short what);
 
   void receive_and_process_commands(std::shared_ptr<Client> c, struct bufferevent* buf);
