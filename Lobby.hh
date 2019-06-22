@@ -67,6 +67,7 @@ struct Lobby {
 
   void reassign_leader_on_client_departure_locked(size_t leaving_client_id);
   size_t count_clients() const;
+  size_t count_clients_locked() const;
   bool any_client_loading() const;
 
   void add_client(std::shared_ptr<Client> c);

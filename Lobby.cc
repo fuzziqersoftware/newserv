@@ -51,8 +51,7 @@ bool Lobby::any_client_loading() const {
   return false;
 }
 
-size_t Lobby::count_clients() const {
-  rw_guard g(this->lock, false);
+size_t Lobby::count_clients_locked() const {
   size_t ret = 0;
   for (size_t x = 0; x < this->max_clients; x++) {
     if (this->clients[x].get()) {
@@ -62,35 +61,39 @@ size_t Lobby::count_clients() const {
   return ret;
 }
 
+size_t Lobby::count_clients() const {
+  rw_guard g(this->lock, false);
+  return this->count_clients_locked();
+}
+
 void Lobby::add_client(shared_ptr<Client> c) {
   rw_guard g(this->lock, true);
   this->add_client_locked(c);
 }
 
 void Lobby::add_client_locked(shared_ptr<Client> c) {
-  size_t index;
-  for (index = 0; index < this->max_clients; index++) {
+  ssize_t index;
+  for (index = this->max_clients - 1; index >= 0; index--) {
     if (!this->clients[index].get()) {
       this->clients[index] = c;
       break;
     }
   }
-  if (index >= this->max_clients) {
+  if (index < 0) {
     throw out_of_range("no space left in lobby");
   }
   c->lobby_client_id = index;
   c->lobby_id = this->lobby_id;
 
-  // if index == 0, then there might not be anyone else in the lobby; if this is
-  // the case, set the leader id as well
-  if (index == 0) {
-    for (index = 1; index < this->max_clients; index++) {
+  // if there's no one else in the lobby, set the leader id as well
+  if (index == this->max_clients - 1) {
+    for (index = this->max_clients - 2; index >= 0; index--) {
       if (this->clients[index].get()) {
         break;
       }
     }
-    if (index >= this->max_clients) {
-      this->leader_id = 0;
+    if (index < 0) {
+      this->leader_id = c->lobby_client_id;
     }
   }
 }
@@ -102,7 +105,10 @@ void Lobby::remove_client(shared_ptr<Client> c) {
 
 void Lobby::remove_client_locked(shared_ptr<Client> c) {
   if (this->clients[c->lobby_client_id] != c) {
-    throw logic_error("client\'s lobby client id does not match client list");
+    auto other_c = this->clients[c->lobby_client_id].get();
+    throw logic_error(string_printf(
+        "client\'s lobby client id (%hhu) does not match client list (%hhu)",
+        c->lobby_client_id, other_c ? other_c->lobby_client_id : 0xFF));
   }
 
   this->clients[c->lobby_client_id] = NULL;
@@ -135,8 +141,12 @@ void Lobby::move_client_to_lobby(shared_ptr<Lobby> dest_lobby,
     guards.emplace_back(this->lock, true);
   }
 
-  dest_lobby->add_client_locked(c);
+  if (dest_lobby->count_clients_locked() >= dest_lobby->max_clients) {
+    throw out_of_range("no space left in lobby");
+  }
+
   this->remove_client_locked(c);
+  dest_lobby->add_client_locked(c);
 }
 
 
