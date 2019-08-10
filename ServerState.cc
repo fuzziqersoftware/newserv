@@ -10,8 +10,8 @@ using namespace std;
 
 
 
-ServerState::ServerState() : run_dns_server(true), run_interactive_shell(true),
-    next_lobby_id(1) {
+ServerState::ServerState() : run_dns_server(true),
+    run_shell_behavior(RunShellBehavior::Default), next_lobby_id(1) {
   this->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",
       u"Join the lobby.", 0);
   this->main_menu.emplace_back(MAIN_MENU_INFORMATION, u"Information",

@@ -7,6 +7,7 @@
 #include <phosg/Strings.hh>
 #include <phosg/Filesystem.hh>
 #include <set>
+#include <thread>
 
 #include "NetworkAddresses.hh"
 #include "SendCommands.hh"
@@ -97,6 +98,9 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   s->information_contents = information_contents;
 
   s->num_threads = d.at("Threads")->as_int();
+  if (s->num_threads == 0) {
+    s->num_threads = thread::hardware_concurrency();
+  }
 
   auto local_address_str = d.at("LocalAddress")->as_string();
   s->local_address = address_for_string(local_address_str.c_str());
@@ -110,15 +114,16 @@ void populate_state_from_config(shared_ptr<ServerState> s,
 
   try {
     s->run_dns_server = d.at("RunDNSServer")->as_bool();
-  } catch (const JSONObject::key_error&) {
+  } catch (const out_of_range&) {
     s->run_dns_server = true;
   }
 
   try {
-    s->run_interactive_shell = d.at("RunInteractiveShell")->as_bool();
-  } catch (const JSONObject::key_error&) {
-    s->run_interactive_shell = true;
-  }
+    bool run_shell = d.at("RunInteractiveShell")->as_bool();
+    s->run_shell_behavior = run_shell ?
+        ServerState::RunShellBehavior::Always :
+        ServerState::RunShellBehavior::Never;
+  } catch (const out_of_range&) { }
 }
 
 
@@ -172,7 +177,12 @@ int main(int argc, char* argv[]) {
   }
   game_server->start();
 
-  if (state->run_interactive_shell) {
+  bool should_run_shell = (state->run_shell_behavior == ServerState::RunShellBehavior::Always);
+  if (state->run_shell_behavior == ServerState::RunShellBehavior::Default) {
+    should_run_shell = isatty(fileno(stdin));
+  }
+
+  if (should_run_shell) {
     log(INFO, "starting interactive shell");
     run_shell(state);
 

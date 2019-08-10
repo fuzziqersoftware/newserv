@@ -26,10 +26,16 @@ struct PortConfiguration {
 };
 
 struct ServerState {
+  enum class RunShellBehavior {
+    Default = 0,
+    Always,
+    Never,
+  };
+
   std::u16string name;
   std::unordered_map<std::string, PortConfiguration> port_configuration;
   bool run_dns_server;
-  bool run_interactive_shell;
+  RunShellBehavior run_shell_behavior;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamTable> battle_params;
