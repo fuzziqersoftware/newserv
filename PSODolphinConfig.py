@@ -2,11 +2,12 @@
 
 import argparse
 import os
+import pwd
+import re
+import stat
+import subprocess
 import sys
 import time
-import stat
-import pwd
-import subprocess
 
 
 def change_user(username):
@@ -36,6 +37,13 @@ def main(argv):
     help="Path to memwatch executable. Defaults to memwatch (assumes it's installed somewhere on $PATH).",
   )
   parser.add_argument(
+    "--tap-interface", "-I",
+    action="store",
+    dest="tap_interface",
+    default="/dev/tap0",
+    help="Tap interface to use. Defaults to /dev/tap0.",
+  )
+  parser.add_argument(
     "--tap-ip", "-i",
     action="store",
     dest="tap_ip",
@@ -51,20 +59,27 @@ def main(argv):
     print('$SUDO_USER not set; use `sudo -E`')
     return 1
 
-  # 1. open tap0 and configure it
-  print("starting and configuring tap0")
-  tap0_fd = os.open('/dev/tap0', os.O_RDWR)
-  os.set_inheritable(tap0_fd, True)
-  subprocess.check_call(['ifconfig', 'tap0', args.tap_ip], stderr=subprocess.DEVNULL)
-  subprocess.check_call(['ifconfig', 'tap0', 'up'], stderr=subprocess.DEVNULL)
+  tap_match = re.match(r'^/dev/tap([0-9]+)$', args.tap_interface)
+  if tap_match is None:
+    print('tap interface name must begin with /dev/tap')
+    return 1
+  tap_interface_number = int(tap_match.group(1))
+  tap_name = 'tap%d' % (tap_interface_number,)
+
+  # 1. open tap and configure it
+  print("starting and configuring " + tap_name)
+  tap_fd = os.open(args.tap_interface, os.O_RDWR)
+  os.set_inheritable(tap_fd, True)
+  subprocess.check_call(['ifconfig', tap_name, args.tap_ip], stderr=subprocess.DEVNULL)
+  subprocess.check_call(['ifconfig', tap_name, 'up'], stderr=subprocess.DEVNULL)
 
   # 2. fork a Dolphin process, dropping privileges first
   print("starting dolphin")
   dolphin_proc = subprocess.Popen([args.dolphin_path],
-      preexec_fn=lambda: change_user(username), pass_fds=(tap0_fd,))
+      preexec_fn=lambda: change_user(username), pass_fds=(tap_fd,))
   time.sleep(1)
 
-  # 3. create a temp file for dolphin to open instead of /dev/tap0
+  # 3. create a temp file for dolphin to open instead of /dev/tapN
   print("creating temp file")
   tmpfile_fd = os.open("/tmp/dnet", os.O_CREAT | os.O_RDWR, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
   os.close(tmpfile_fd)
@@ -96,9 +111,9 @@ def main(argv):
       dolphin_tap0_fd = int(fd_str[0:-len(fd_str.lstrip(b'0123456789'))])
       print("found open tap fd %d in dolphin" % (dolphin_tap0_fd,))
 
-  # step 6: use memwatch to move the tap0 fd into place
+  # step 6: use memwatch to move the tap fd into place
   print("replacing temp fd %d with tap fd %d in dolphin" % (dolphin_tap0_fd,
-      tap0_fd))
+      tap_fd))
   assembly_contents = b"""start:
   mov rax, 0x000000000200005A  # dup2(from_fd, to_fd)
   mov rdi, %d
@@ -111,11 +126,10 @@ def main(argv):
   syscall
 
   ret
-""" % (tap0_fd, dolphin_tap0_fd)
+""" % (tap_fd, dolphin_tap0_fd)
   subprocess.run([args.memwatch_path, str(dolphin_proc.pid), "--", "run", "-"], input=assembly_contents, stderr=subprocess.DEVNULL)
 
-  # ok we're done - dolphin is running as a non-privileged user with tap0 open
-
+  # ok we're done; dolphin is running as a non-privileged user with the tap open
   return 0
 
 
