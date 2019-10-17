@@ -1,5 +1,6 @@
 #include "Quest.hh"
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <phosg/Filesystem.hh>
@@ -330,7 +331,8 @@ QuestIndex::QuestIndex(const char* directory) : directory(directory) {
     string full_path = this->directory + "/" + filename;
 
     if (ends_with(filename, ".gba")) {
-      this->gba_file_contents.emplace(filename, new string(load_file(full_path)));
+      shared_ptr<string> contents(new string(load_file(full_path)));
+      this->gba_file_contents.emplace(make_pair(filename, contents));
       continue;
     }
 

@@ -1,5 +1,7 @@
 #include "SendCommands.hh"
 
+#include <string.h>
+
 #include <memory>
 #include <phosg/Encoding.hh>
 #include <phosg/Random.hh>

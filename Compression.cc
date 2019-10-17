@@ -102,7 +102,7 @@ string prs_compress(const string& data) {
   prs_compress_ctx pc;
 
   ssize_t read_offset = 0;
-  while (read_offset < data.size()) {
+  while (read_offset < static_cast<ssize_t>(data.size())) {
 
     // look for a chunk of data in history matching what's at the current offset
     ssize_t best_offset = 0;
@@ -263,7 +263,7 @@ size_t prs_decompress_size(const string& data, size_t max_size) {
   size_t output_size = 0;
   StringReader r(data.data(), data.size());
 
-  int32_t r3, r5;
+  int32_t r3;
   int bitpos = 9;
   int16_t currentbyte; // int16_t because it can be -1 when EOF occurs
   int flag;
@@ -321,7 +321,6 @@ size_t prs_decompress_size(const string& data, size_t max_size) {
         return output_size;
       }
       r3 = r3 & 0x00000007;
-      r5 = (offset >> 3) | 0xFFFFE000;
       if (r3 == 0) {
         flag = 0;
         r3 = get_u8_or_eof(r);
@@ -353,7 +352,6 @@ size_t prs_decompress_size(const string& data, size_t max_size) {
         return output_size;
       }
       r3 += 2;
-      r5 = offset | 0xFFFFFF00;
     }
     if (r3 == 0) {
       continue;

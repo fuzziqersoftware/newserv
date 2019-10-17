@@ -1,6 +1,7 @@
 #include "DNSServer.hh"
 
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <poll.h>
 #include <netinet/in.h>

@@ -299,11 +299,9 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size) {
   size >>= 3;
 
   uint32_t* data = reinterpret_cast<uint32_t*>(vdata);
-  uint32_t eax, ecx, edx, ebx, ebp, esi, edi;
+  uint32_t edx, ebx, ebp, esi, edi;
 
   edx = 0;
-  ecx = 0;
-  eax = 0;
   while (edx < size) {
     ebx = data[edx];
     ebx = ebx ^ this->stream[5];
@@ -337,11 +335,9 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size) {
   size >>= 3;
 
   uint8_t* data = reinterpret_cast<uint8_t*>(vdata);
-  uint32_t eax, ecx, edx, ebx, ebp, esi, edi;
+  uint32_t edx, ebx, ebp, esi, edi;
 
   edx = 0;
-  ecx = 0;
-  eax = 0;
   while (edx < size) {
     ebx = data[edx];
     ebx = ebx ^ this->stream[0];

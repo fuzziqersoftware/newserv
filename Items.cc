@@ -1,5 +1,7 @@
 #include "Items.hh"
 
+#include <string.h>
+
 #include <phosg/Random.hh>
 
 using namespace std;
@@ -143,22 +145,23 @@ void player_use_item_locked(shared_ptr<Lobby> l, shared_ptr<Client> c,
     size_t item_index) {
 
   ssize_t equipped_weapon = -1;
-  ssize_t equipped_armor = -1;
-  ssize_t equipped_shield = -1;
-  ssize_t equipped_mag = -1;
+  // ssize_t equipped_armor = -1;
+  // ssize_t equipped_shield = -1;
+  // ssize_t equipped_mag = -1;
   for (size_t y = 0; y < c->player.inventory.num_items; y++) {
     if (c->player.inventory.items[y].equip_flags & 0x0008) {
       if (c->player.inventory.items[y].data.item_data1[0] == 0) {
         equipped_weapon = y;
-      } else if ((c->player.inventory.items[y].data.item_data1[0] == 1) &&
-                 (c->player.inventory.items[y].data.item_data1[1] == 1)) {
-        equipped_armor = y;
-      } else if ((c->player.inventory.items[y].data.item_data1[0] == 1) &&
-                 (c->player.inventory.items[y].data.item_data1[1] == 2)) {
-        equipped_shield = y;
-      } else if (c->player.inventory.items[y].data.item_data1[0] == 2) {
-        equipped_mag = y;
       }
+      // else if ((c->player.inventory.items[y].data.item_data1[0] == 1) &&
+      //            (c->player.inventory.items[y].data.item_data1[1] == 1)) {
+      //   equipped_armor = y;
+      // } else if ((c->player.inventory.items[y].data.item_data1[0] == 1) &&
+      //            (c->player.inventory.items[y].data.item_data1[1] == 2)) {
+      //   equipped_shield = y;
+      // } else if (c->player.inventory.items[y].data.item_data1[0] == 2) {
+      //   equipped_mag = y;
+      // }
     }
   }
 

@@ -128,7 +128,8 @@ void Server::on_listen_accept(Server::WorkerThread& wt,
 
   struct bufferevent *bev = bufferevent_socket_new(wt.base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
-  auto emplace_ret = wt.bev_to_client.emplace(bev, new Client(bev, version, initial_state));
+  shared_ptr<Client> c(new Client(bev, version, initial_state));
+  auto emplace_ret = wt.bev_to_client.emplace(make_pair(bev, c));
   this->client_count++;
 
   bufferevent_setcb(bev, &WorkerThread::dispatch_on_client_input, NULL,
@@ -231,7 +232,7 @@ void Server::receive_and_process_commands(shared_ptr<Client> c, struct buffereve
   new_bytes &= ~(header_size - 1); // only read in multiples of header_size
   c->recv_buffer.resize(existing_bytes + new_bytes);
   void* recv_ptr = const_cast<char*>(c->recv_buffer.data() + existing_bytes);
-  if (evbuffer_remove(buf, recv_ptr, new_bytes) != new_bytes) {
+  if (evbuffer_remove(buf, recv_ptr, new_bytes) != static_cast<ssize_t>(new_bytes)) {
     throw runtime_error("some bytes could not be read from the receive buffer");
   }
 

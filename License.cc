@@ -43,8 +43,9 @@ LicenseManager::LicenseManager(const std::string& filename) : filename(filename)
     auto licenses = load_vector_file<License>(this->filename);
     for (const auto& read_license : licenses) {
       shared_ptr<License> license(new License(read_license));
+      uint32_t serial_number = license->serial_number;
       this->bb_username_to_license.emplace(license->username, license);
-      this->serial_number_to_license.emplace(license->serial_number, license);
+      this->serial_number_to_license.emplace(serial_number, license);
     }
 
   } catch (const cannot_open_file&) {
@@ -124,7 +125,8 @@ void LicenseManager::ban_until(uint32_t serial_number, uint64_t end_time) {
 void LicenseManager::add(shared_ptr<License> l) {
   {
     rw_guard g(this->lock, true);
-    this->serial_number_to_license.emplace(l->serial_number, l);
+    uint32_t serial_number = l->serial_number;
+    this->serial_number_to_license.emplace(serial_number, l);
     if (l->username[0]) {
       this->bb_username_to_license.emplace(l->username, l);
     }

@@ -1,6 +1,7 @@
 #include "SendCommands.hh"
 
 #include <inttypes.h>
+#include <string.h>
 
 #include <memory>
 #include <phosg/Filesystem.hh>

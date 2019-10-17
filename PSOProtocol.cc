@@ -1,5 +1,9 @@
 #include "PSOProtocol.hh"
 
+#include <stdexcept>
+
+using namespace std;
+
 
 
 uint16_t PSOCommandHeader::command(GameVersion version) const {
@@ -13,6 +17,7 @@ uint16_t PSOCommandHeader::command(GameVersion version) const {
     case GameVersion::BB:
       return reinterpret_cast<const PSOCommandHeaderBB*>(this)->command;
   }
+  throw logic_error("unknown game version");
 }
 
 uint16_t PSOCommandHeader::size(GameVersion version) const {
@@ -26,6 +31,7 @@ uint16_t PSOCommandHeader::size(GameVersion version) const {
     case GameVersion::BB:
       return reinterpret_cast<const PSOCommandHeaderBB*>(this)->size;
   }
+  throw logic_error("unknown game version");
 }
 
 uint32_t PSOCommandHeader::flag(GameVersion version) const {
@@ -39,5 +45,6 @@ uint32_t PSOCommandHeader::flag(GameVersion version) const {
     case GameVersion::BB:
       return reinterpret_cast<const PSOCommandHeaderBB*>(this)->flag;
   }
+  throw logic_error("unknown game version");
 }
 

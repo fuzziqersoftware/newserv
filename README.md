@@ -24,7 +24,10 @@ This project is primarily for my own nostalgia. Feel free to peruse if you'd lik
 
 ## Usage
 
+Currently this code should build on macOS and Ubuntu. It might build on other Linux flavors, but don't expect it to work on Windows at all.
+
 So, you've read all of the above and you want to try it out? Here's what you do:
+- Make sure you have libreadline installed (use Homebrew in macOS, or install libreadline-dev in Linux).
 - Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 - Run `make`.
 - Edit system/config.json to your liking.

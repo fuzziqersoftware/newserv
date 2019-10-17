@@ -1,5 +1,7 @@
 #include "Lobby.hh"
 
+#include <string.h>
+
 #include "SendCommands.hh"
 #include "Text.hh"
 

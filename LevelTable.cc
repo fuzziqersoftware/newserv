@@ -1,5 +1,7 @@
 #include "LevelTable.hh"
 
+#include <string.h>
+
 #include <phosg/Filesystem.hh>
 
 #include "Compression.hh"

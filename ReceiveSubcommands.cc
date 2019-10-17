@@ -1,5 +1,7 @@
 #include "ReceiveSubcommands.hh"
 
+#include <string.h>
+
 #include <memory>
 #include <phosg/Strings.hh>
 
