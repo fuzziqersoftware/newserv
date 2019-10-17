@@ -407,7 +407,7 @@ static const unordered_map<uint32_t, uint32_t> combine_item_to_max({
 const uint32_t meseta_identifier = 0x00000004;
 
 uint32_t ItemData::primary_identifier() const {
-  return (this->item_data1[0] << 16) || (this->item_data1[1] << 8) | this->item_data1[2];
+  return (this->item_data1[0] << 16) | (this->item_data1[1] << 8) | this->item_data1[2];
 }
 
 PlayerBankItem PlayerInventoryItem::to_bank_item() const {
