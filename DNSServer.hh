@@ -1,14 +1,17 @@
 #pragma once
 
-#include <atomic>
-#include <thread>
+#include <event2/event.h>
+
+#include <memory>
+#include <unordered_map>
 #include <string>
 #include <set>
 
 
 class DNSServer {
 public:
-  DNSServer(uint32_t local_connect_address, uint32_t external_connect_address);
+  DNSServer(std::shared_ptr<struct event_base> base,
+      uint32_t local_connect_address, uint32_t external_connect_address);
   DNSServer(const DNSServer&) = delete;
   DNSServer(DNSServer&&) = delete;
   virtual ~DNSServer();
@@ -18,20 +21,13 @@ public:
   void listen(int port);
   void add_socket(int fd);
 
-  virtual void start();
-  virtual void schedule_stop();
-  virtual void wait_for_stop();
-
 private:
-  std::atomic<bool> should_exit;
-  std::thread t;
-
-  std::set<int> fds;
-
+  std::shared_ptr<struct event_base> base;
+  std::unordered_map<int, std::unique_ptr<struct event, void(*)(struct event*)>> fd_to_receive_event;
   uint32_t local_connect_address;
   uint32_t external_connect_address;
 
-  void run_thread();
-  static std::string build_response(const std::string& input,
-      uint32_t connect_address);
+  static void dispatch_on_receive_message(evutil_socket_t fd, short events,
+      void* ctx);
+  void on_receive_message(int fd, short event);
 };

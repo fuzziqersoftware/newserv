@@ -141,7 +141,7 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void player_use_item_locked(shared_ptr<Lobby> l, shared_ptr<Client> c,
+void player_use_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     size_t item_index) {
 
   ssize_t equipped_weapon = -1;

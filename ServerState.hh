@@ -34,6 +34,7 @@ struct ServerState {
 
   std::u16string name;
   std::unordered_map<std::string, PortConfiguration> port_configuration;
+  std::string username;
   bool run_dns_server;
   RunShellBehavior run_shell_behavior;
   std::shared_ptr<const QuestIndex> quest_index;
@@ -46,10 +47,8 @@ struct ServerState {
   std::vector<MenuItem> main_menu;
   std::shared_ptr<std::vector<MenuItem>> information_menu;
   std::shared_ptr<std::vector<std::u16string>> information_contents;
+  std::u16string welcome_message;
 
-  size_t num_threads;
-
-  rw_lock lobbies_lock;
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
   std::atomic<int32_t> next_lobby_id;
 

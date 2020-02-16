@@ -1,22 +1,24 @@
 #include <signal.h>
+#include <pwd.h>
 #include <event2/event.h>
-#include <event2/thread.h>
 
 #include <unordered_map>
 #include <phosg/JSON.hh>
+#include <phosg/Network.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Filesystem.hh>
 #include <set>
-#include <thread>
 
 #include "NetworkAddresses.hh"
 #include "SendCommands.hh"
 #include "DNSServer.hh"
+#include "ProxyServer.hh"
 #include "ServerState.hh"
 #include "Server.hh"
 #include "FileContentsCache.hh"
 #include "Text.hh"
-#include "Shell.hh"
+#include "ServerShell.hh"
+#include "ProxyShell.hh"
 
 using namespace std;
 
@@ -68,6 +70,17 @@ void populate_state_from_config(shared_ptr<ServerState> s,
 
   s->name = decode_sjis(d.at("ServerName")->as_string());
 
+  try {
+    s->username = d.at("User")->as_string();
+    if (s->username == "$SUDO_USER") {
+      const char* user_from_env = getenv("SUDO_USER");
+      if (!user_from_env) {
+        throw runtime_error("configuration specifies $SUDO_USER, but variable is not defined");
+      }
+      s->username = user_from_env;
+    }
+  } catch (const out_of_range&) { }
+
   // TODO: make this configurable
   s->port_configuration = default_port_to_behavior;
 
@@ -97,10 +110,9 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   s->information_menu = information_menu;
   s->information_contents = information_contents;
 
-  s->num_threads = d.at("Threads")->as_int();
-  if (s->num_threads == 0) {
-    s->num_threads = thread::hardware_concurrency();
-  }
+  try {
+    s->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());
+  } catch (const out_of_range&) { }
 
   auto local_address_str = d.at("LocalAddress")->as_string();
   s->local_address = address_for_string(local_address_str.c_str());
@@ -128,16 +140,57 @@ void populate_state_from_config(shared_ptr<ServerState> s,
 
 
 
+void drop_privileges(const string& username) {
+  if ((getuid() != 0) || (getgid() != 0)) {
+    throw runtime_error(string_printf(
+        "newserv was not started as root; can\'t switch to user %s",
+        username.c_str()));
+  }
+
+  struct passwd* pw = getpwnam(username.c_str());
+  if (!pw) {
+    string error = string_for_error(errno);
+    throw runtime_error(string_printf("user %s not found (%s)",
+        username.c_str(), error.c_str()));
+  }
+
+  if (setgid(pw->pw_gid) != 0) {
+    string error = string_for_error(errno);
+    throw runtime_error(string_printf("can\'t switch to group %d (%s)",
+        pw->pw_gid, error.c_str()));
+  }
+  if (setuid(pw->pw_uid) != 0) {
+    string error = string_for_error(errno);
+    throw runtime_error(string_printf("can\'t switch to user %d (%s)",
+        pw->pw_uid, error.c_str()));
+  }
+  log(INFO, "switched to user %s (%d:%d)",  username.c_str(), pw->pw_uid,
+      pw->pw_gid);
+}
+
+
+
 int main(int argc, char* argv[]) {
   log(INFO, "fuzziqer software newserv");
 
-  signal(SIGPIPE, SIG_IGN);
-  if (evthread_use_pthreads()) {
-    log(ERROR, "cannot enable multithreading in libevent");
+  string proxy_hostname;
+  int proxy_port = 0;
+  for (size_t x = 1; x < argc; x++) {
+    if (!strncmp(argv[x], "--proxy-destination=", 20)) {
+      auto netloc = parse_netloc(&argv[x][20], 9100);
+      proxy_hostname = netloc.first;
+      proxy_port = netloc.second;
+    } else {
+      throw invalid_argument(string_printf("unknown option: %s", argv[x]));
+    }
   }
 
-  log(INFO, "creating server state");
+  signal(SIGPIPE, SIG_IGN);
+
   shared_ptr<ServerState> state(new ServerState());
+
+  log(INFO, "starting network subsystem");
+  shared_ptr<struct event_base> base(event_base_new(), event_base_free);
 
   log(INFO, "reading network addresses");
   state->all_addresses = get_local_address_list();
@@ -150,55 +203,65 @@ int main(int argc, char* argv[]) {
   auto config_json = JSONObject::load("system/config.json");
   populate_state_from_config(state, config_json);
 
-  log(INFO, "loading license list");
-  state->license_manager.reset(new LicenseManager("system/licenses.nsi"));
-
-  log(INFO, "loading battle parameters");
-  state->battle_params.reset(new BattleParamTable("system/blueburst/BattleParamEntry"));
-
-  log(INFO, "loading level table");
-  state->level_table.reset(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));
-
-  log(INFO, "collecting quest metadata");
-  state->quest_index.reset(new QuestIndex("system/quests"));
-
   shared_ptr<DNSServer> dns_server;
   if (state->run_dns_server) {
-    log(INFO, "starting dns server on port 53");
-    dns_server.reset(new DNSServer(state->local_address, state->external_address));
+    log(INFO, "starting dns server");
+    dns_server.reset(new DNSServer(base, state->local_address,
+        state->external_address));
     dns_server->listen("", 53);
-    dns_server->start();
   }
 
-  log(INFO, "starting game server");
-  shared_ptr<Server> game_server(new Server(state));
-  for (const auto& it : state->port_configuration) {
-    game_server->listen("", it.second.port, it.second.version, it.second.behavior);
+  shared_ptr<ProxyServer> proxy_server;
+  shared_ptr<Server> game_server;
+  if (proxy_port) {
+    log(INFO, "starting proxy");
+    sockaddr_storage proxy_destination_ss = make_sockaddr_storage(
+        proxy_hostname, proxy_port).first;
+    proxy_server.reset(new ProxyServer(base, proxy_destination_ss, proxy_port));
+
+  } else {
+    log(INFO, "starting game server");
+    game_server.reset(new Server(base, state));
+    for (const auto& it : state->port_configuration) {
+      game_server->listen("", it.second.port, it.second.version, it.second.behavior);
+    }
+
+    log(INFO, "loading license list");
+    state->license_manager.reset(new LicenseManager("system/licenses.nsi"));
+
+    log(INFO, "loading battle parameters");
+    state->battle_params.reset(new BattleParamTable("system/blueburst/BattleParamEntry"));
+
+    log(INFO, "loading level table");
+    state->level_table.reset(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));
+
+    log(INFO, "collecting quest metadata");
+    state->quest_index.reset(new QuestIndex("system/quests"));
   }
-  game_server->start();
+
+  if (!state->username.empty()) {
+    log(INFO, "switching to user %s", state->username.c_str());
+    drop_privileges(state->username);
+  }
 
   bool should_run_shell = (state->run_shell_behavior == ServerState::RunShellBehavior::Always);
   if (state->run_shell_behavior == ServerState::RunShellBehavior::Default) {
     should_run_shell = isatty(fileno(stdin));
   }
 
+  shared_ptr<Shell> shell;
   if (should_run_shell) {
     log(INFO, "starting interactive shell");
-    run_shell(state);
-
-  } else {
-    for (;;) {
-      sigset_t s;
-      sigemptyset(&s);
-      sigsuspend(&s);
+    if (proxy_port) {
+      shell.reset(new ProxyShell(base, state, proxy_server));
+    } else {
+      shell.reset(new ServerShell(base, state));
     }
   }
 
-  log(INFO, "waiting for servers to terminate");
-  dns_server->schedule_stop();
-  game_server->schedule_stop();
-  dns_server->wait_for_stop();
-  game_server->wait_for_stop();
+  log(INFO, "ready");
+  event_base_dispatch(base.get());
 
+  log(INFO, "normal shutdown");
   return 0;
 }

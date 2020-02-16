@@ -54,7 +54,6 @@ def main(argv):
 
   try:
     username = os.environ['SUDO_USER']
-    print(username)
   except KeyError:
     print('$SUDO_USER not set; use `sudo -E`')
     return 1
@@ -72,6 +71,7 @@ def main(argv):
   os.set_inheritable(tap_fd, True)
   subprocess.check_call(['ifconfig', tap_name, args.tap_ip], stderr=subprocess.DEVNULL)
   subprocess.check_call(['ifconfig', tap_name, 'up'], stderr=subprocess.DEVNULL)
+  subprocess.check_call(['ifconfig', tap_name, 'mtu', '9000'], stderr=subprocess.DEVNULL)
 
   # 2. fork a Dolphin process, dropping privileges first
   print("starting dolphin")

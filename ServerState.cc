@@ -33,9 +33,6 @@ ServerState::ServerState() : run_dns_server(true),
 }
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
-  rw_guard g(this->lobbies_lock, false);
-
-  // nonnegative lobby IDs are public, so start at 0
   auto it = this->id_to_lobby.lower_bound(0);
   for (; it != this->id_to_lobby.end(); it++) {
     if (!(it->second->flags & LobbyFlag::Public)) {
@@ -56,8 +53,6 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
 }
 
 void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
-  rw_guard g(this->lobbies_lock, false);
-
   auto l = this->id_to_lobby.at(c->lobby_id);
   l->remove_client(c);
   send_player_leave_notification(l, c->lobby_client_id);
@@ -86,7 +81,6 @@ void ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> ne
 
 void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
     shared_ptr<Client> joining_client) {
-  rw_guard g2(l->lock, false);
   for (auto& other_client : l->clients) {
     if (!other_client) {
       continue;
@@ -99,12 +93,10 @@ void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
 }
 
 shared_ptr<Lobby> ServerState::find_lobby(uint32_t lobby_id) {
-  rw_guard g(this->lobbies_lock, false);
   return this->id_to_lobby.at(lobby_id);
 }
 
 vector<shared_ptr<Lobby>> ServerState::all_lobbies() {
-  rw_guard g(this->lobbies_lock, false);
   vector<shared_ptr<Lobby>> ret;
   for (auto& it : this->id_to_lobby) {
     ret.emplace_back(it.second);
@@ -114,23 +106,14 @@ vector<shared_ptr<Lobby>> ServerState::all_lobbies() {
 
 void ServerState::add_lobby(shared_ptr<Lobby> l) {
   l->lobby_id = this->next_lobby_id++;
-
-  rw_guard g(this->lobbies_lock, true);
   if (this->id_to_lobby.count(l->lobby_id)) {
     throw logic_error("lobby already exists with the given id");
   }
-
-  log(INFO, "creating lobby %" PRId64, l->lobby_id);
   this->id_to_lobby.emplace(l->lobby_id, l);
 }
 
 void ServerState::remove_lobby(uint32_t lobby_id) {
-  rw_guard g(this->lobbies_lock, true);
-  auto it = this->id_to_lobby.find(lobby_id);
-  if (it == this->id_to_lobby.end()) {
-    return;
-  }
-  this->id_to_lobby.erase(it);
+  this->id_to_lobby.erase(lobby_id);
 }
 
 shared_ptr<Client> ServerState::find_client(const char16_t* identifier,

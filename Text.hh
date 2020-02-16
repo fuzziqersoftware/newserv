@@ -7,7 +7,7 @@
 
 
 int char16cmp(const char16_t* s1, const char16_t* s2, size_t count);
-char16_t* char16cpy(char16_t* dest, const char16_t* src, size_t count);
+void char16cpy(char16_t* dest, const char16_t* src, size_t count);
 size_t char16len(const char16_t* s);
 
 

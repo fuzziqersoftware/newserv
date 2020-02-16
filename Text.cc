@@ -14,15 +14,36 @@ using namespace std;
 
 
 int char16cmp(const char16_t* s1, const char16_t* s2, size_t count) {
-  return char_traits<char16_t>::compare(s1, s2, count);
+  size_t x;
+  for (x = 0; x < count && s1[x] != 0 && s2[x] != 0; x++) {
+    if (s1[x] < s2[x]) {
+      return -1;
+    } else if (s1[x] > s2[x]) {
+      return 1;
+    }
+  }
+  if (s1[x] < s2[x]) {
+    return -1;
+  } else if (s1[x] > s2[x]) {
+    return 1;
+  }
+  return 0;
 }
 
-char16_t* char16cpy(char16_t* dest, const char16_t* src, size_t count) {
-  return char_traits<char16_t>::copy(dest, src, count);
+void char16cpy(char16_t* dest, const char16_t* src, size_t count) {
+  size_t x;
+  for (x = 0; x < count && src[x] != 0; x++) {
+    dest[x] = src[x];
+  }
+  if (x < count) {
+    dest[x] = 0;
+  }
 }
 
 size_t char16len(const char16_t* s) {
-  return char_traits<char16_t>::length(s);
+  size_t x;
+  for (x = 0; s[x] != 0; x++);
+  return x;
 }
 
 

@@ -75,14 +75,25 @@ void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
   c->send(move(send_data));
 }
 
-void send_command(shared_ptr<Lobby> l, uint16_t command, uint32_t flag, 
-    const void* data, size_t size) {
-  rw_guard g(l->lock, false);
+void send_command_excluding_client(shared_ptr<Lobby> l, shared_ptr<Client> c,
+    uint16_t command, uint32_t flag, const void* data, size_t size) {
   for (auto& client : l->clients) {
-    if (!client) {
+    if (!client || (client == c)) {
       continue;
     }
     send_command(client, command, flag, data, size);
+  }
+}
+
+void send_command(shared_ptr<Lobby> l, uint16_t command, uint32_t flag, 
+    const void* data, size_t size) {
+  send_command_excluding_client(l, NULL, command, flag, data, size);
+}
+
+void send_command(shared_ptr<ServerState> s, uint16_t command, uint32_t flag,
+    const void* data, size_t size) {
+  for (auto& l : s->all_lobbies()) {
+    send_command(l, command, flag, data, size);
   }
 }
 
@@ -126,7 +137,6 @@ static void send_server_init_dc_pc_gc(shared_ptr<Client> c, const char* copyrigh
   strcpy(cmd.after_message, anti_copyright);
   send_command(c, command, 0x00, cmd);
 
-  rw_guard g(c->lock, true);
   switch (c->version) {
     case GameVersion::DC:
     case GameVersion::PC:
@@ -169,7 +179,6 @@ static void send_server_init_bb(shared_ptr<Client> c, bool initial_connection) {
   strcpy(cmd.after_message, anti_copyright);
   send_command(c, 0x03, 0x00, cmd);
 
-  rw_guard(c->lock, true);
   c->crypt_out.reset(new PSOBBEncryption(cmd.server_key));
   c->crypt_in.reset(new PSOBBEncryption(cmd.client_key));
 }
@@ -192,7 +201,6 @@ static void send_server_init_patch(shared_ptr<Client> c, bool initial_connection
   cmd.client_key = client_key;
   send_command(c, 0x02, 0x00, cmd);
 
-  rw_guard g(c->lock, true);
   c->crypt_out.reset(new PSOPCEncryption(server_key));
   c->crypt_in.reset(new PSOPCEncryption(client_key));
 }
@@ -218,7 +226,7 @@ void send_update_client_config(shared_ptr<Client> c) {
     uint32_t serial_number;
     ClientConfig config;
   } cmd = {
-    0x00000100,
+    0x00010000,
     c->license->serial_number,
     c->config.cfg,
   };
@@ -275,7 +283,7 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
     uint32_t caps; // should be 0x00000102
   } cmd = {
     error,
-    0x00000100,
+    0x00010000,
     c->license->serial_number,
     static_cast<uint32_t>(random_object<uint32_t>()),
     c->config,
@@ -511,11 +519,16 @@ void send_text_message(shared_ptr<Client> c, const char16_t* text) {
 }
 
 void send_text_message(shared_ptr<Lobby> l, const char16_t* text) {
-  rw_guard g(l->lock, false);
   for (size_t x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
       send_text_message(l->clients[x], text);
     }
+  }
+}
+
+void send_text_message(shared_ptr<ServerState> s, const char16_t* text) {
+  for (auto& l : s->all_lobbies()) {
+    send_text_message(l, text);
   }
 }
 
@@ -543,20 +556,17 @@ static void send_info_board_pc_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   };
   vector<Entry> entries;
 
-  {
-    rw_guard g(l->lock, false);
-    for (const auto& c : l->clients) {
-      if (!c.get()) {
-        continue;
-      }
-
-      entries.emplace_back();
-      auto& e = entries.back();
-      memset(&e, 0, sizeof(Entry));
-      char16cpy(e.name, c->player.disp.name, 0x10);
-      char16cpy(e.message, c->player.info_board, 0xAC);
-      add_color_inplace(e.message);
+  for (const auto& c : l->clients) {
+    if (!c.get()) {
+      continue;
     }
+
+    entries.emplace_back();
+    auto& e = entries.back();
+    memset(&e, 0, sizeof(Entry));
+    char16cpy(e.name, c->player.disp.name, 0x10);
+    char16cpy(e.message, c->player.info_board, 0xAC);
+    add_color_inplace(e.message);
   }
 
   send_command(c, 0xD8, 0x00, entries);
@@ -569,20 +579,17 @@ static void send_info_board_dc_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   };
   vector<Entry> entries;
 
-  {
-    rw_guard g(l->lock, false);
-    for (const auto& c : l->clients) {
-      if (!c.get()) {
-        continue;
-      }
-
-      entries.emplace_back();
-      auto& e = entries.back();
-      memset(&e, 0, sizeof(Entry));
-      encode_sjis(e.name, c->player.disp.name, 0x10);
-      encode_sjis(e.message, c->player.info_board, 0xAC);
-      add_color_inplace(e.message);
+  for (const auto& c : l->clients) {
+    if (!c.get()) {
+      continue;
     }
+
+    entries.emplace_back();
+    auto& e = entries.back();
+    memset(&e, 0, sizeof(Entry));
+    encode_sjis(e.name, c->player.disp.name, 0x10);
+    encode_sjis(e.message, c->player.info_board, 0xAC);
+    add_color_inplace(e.message);
   }
 
   send_command(c, 0xD8, 0x00, entries);
@@ -634,7 +641,7 @@ static void send_card_search_result_dc_pc_gc(shared_ptr<ServerState> s,
   } cmd;
 
   memset(&cmd, 0, sizeof(cmd));
-  cmd.player_tag = 0x00000100;
+  cmd.player_tag = 0x00010000;
   cmd.searcher_serial_number = c->license->serial_number;
   cmd.result_serial_number = result->license->serial_number;
   if (c->version == GameVersion::PC) {
@@ -697,7 +704,7 @@ static void send_card_search_result_bb(shared_ptr<ServerState> s,
   } cmd;
 
   memset(&cmd, 0, sizeof(cmd));
-  cmd.player_tag = 0x00000100;
+  cmd.player_tag = 0x00010000;
   cmd.searcher_serial_number = c->license->serial_number;
   cmd.result_serial_number = result->license->serial_number;
   cmd.destination_command.size = 0x0010;
@@ -755,19 +762,16 @@ static void send_guild_card_gc(shared_ptr<Client> c, shared_ptr<Client> source) 
   cmd.subcommand = 0x06;
   cmd.subsize = 0x25;
   cmd.unused = 0x0000;
-  cmd.player_tag = 0x00000100;
+  cmd.player_tag = 0x00010000;
   cmd.reserved1 = 1;
   cmd.reserved2 = 1;
 
-  {
-    rw_guard g(source->lock, false);
-    cmd.serial_number = source->license->serial_number;
-    encode_sjis(cmd.name, source->player.disp.name, 0x18);
-    remove_language_marker_inplace(cmd.name);
-    encode_sjis(cmd.desc, source->player.guild_card_desc, 0x6C);
-    cmd.section_id = source->player.disp.section_id;
-    cmd.char_class = source->player.disp.char_class;
-  }
+  cmd.serial_number = source->license->serial_number;
+  encode_sjis(cmd.name, source->player.disp.name, 0x18);
+  remove_language_marker_inplace(cmd.name);
+  encode_sjis(cmd.desc, source->player.guild_card_desc, 0x6C);
+  cmd.section_id = source->player.disp.section_id;
+  cmd.char_class = source->player.disp.char_class;
 
   send_command(c, 0x62, c->lobby_client_id, cmd);
 }
@@ -793,17 +797,14 @@ static void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) 
   cmd.reserved1 = 1;
   cmd.reserved2 = 1;
 
-  {
-    rw_guard g(source->lock, false);
-    cmd.serial_number = source->license->serial_number;
-    char16cpy(cmd.name, source->player.disp.name, 0x18);
-    remove_language_marker_inplace(cmd.name);
-    char16cpy(cmd.team_name, source->player.team_name, 0x10);
-    remove_language_marker_inplace(cmd.team_name);
-    char16cpy(cmd.desc, source->player.guild_card_desc, 0x58);
-    cmd.section_id = source->player.disp.section_id;
-    cmd.char_class = source->player.disp.char_class;
-  }
+  cmd.serial_number = source->license->serial_number;
+  char16cpy(cmd.name, source->player.disp.name, 0x18);
+  remove_language_marker_inplace(cmd.name);
+  char16cpy(cmd.team_name, source->player.team_name, 0x10);
+  remove_language_marker_inplace(cmd.team_name);
+  char16cpy(cmd.desc, source->player.guild_card_desc, 0x58);
+  cmd.section_id = source->player.disp.section_id;
+  cmd.char_class = source->player.disp.char_class;
 
   send_command(c, 0x62, c->lobby_client_id, cmd);
 }
@@ -954,7 +955,6 @@ static void send_game_menu_pc(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     auto& e = entries.back();
     e.menu_id = GAME_MENU_ID;
 
-    rw_guard g(l->lock, false);
     e.game_id = l->lobby_id;
     e.difficulty_tag = l->difficulty + 0x22;
     e.num_players = l->count_clients();
@@ -998,7 +998,6 @@ static void send_game_menu_gc(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     auto& e = entries.back();
     e.menu_id = GAME_MENU_ID;
 
-    rw_guard g(l->lock, false);
     e.game_id = l->lobby_id;
     e.difficulty_tag = ((l->flags & LobbyFlag::Episode3) ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
@@ -1046,7 +1045,6 @@ static void send_game_menu_bb(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     auto& e = entries.back();
     e.menu_id = GAME_MENU_ID;
 
-    rw_guard g(l->lock, false);
     e.game_id = l->lobby_id;
     e.difficulty_tag = l->difficulty + 0x22;
     e.num_players = l->count_clients();
@@ -1290,7 +1288,7 @@ static void send_join_game_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     uint8_t event;
     uint8_t section_id;
     uint8_t challenge_mode;
-    uint32_t game_id; // actually random number for rare monster selection; whatever 
+    uint32_t rare_seed;
     uint8_t episode;
     uint8_t unused2;
     uint8_t solo_mode;
@@ -1298,37 +1296,33 @@ static void send_join_game_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   } cmd;
 
   size_t player_count = 0;
-  {
-    rw_guard g(l->lock, false);
-    memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
-    for (size_t x = 0; x < 4; x++) {
-      if (!l->clients[x]) {
-        memset(&cmd.lobby_data[x], 0, sizeof(PlayerLobbyDataPC));
-      } else {
-        rw_guard g(l->clients[x]->lock, false);
-        cmd.lobby_data[x].player_tag = 0x00000100;
-        cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-        cmd.lobby_data[x].ip_address = 0xFFFFFFFF;
-        cmd.lobby_data[x].client_id = c->lobby_client_id;
-        char16cpy(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
-        player_count++;
-      }
+  memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
+  for (size_t x = 0; x < 4; x++) {
+    if (!l->clients[x]) {
+      memset(&cmd.lobby_data[x], 0, sizeof(PlayerLobbyDataPC));
+    } else {
+      cmd.lobby_data[x].player_tag = 0x00010000;
+      cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
+      cmd.lobby_data[x].ip_address = 0x00000000;
+      cmd.lobby_data[x].client_id = c->lobby_client_id;
+      char16cpy(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
+      player_count++;
     }
-
-    cmd.client_id = c->lobby_client_id;
-    cmd.leader_id = l->leader_id;
-    cmd.unused = 0x00;
-    cmd.difficulty = l->difficulty;
-    cmd.battle_mode = (l->mode == 1) ? 1 : 0;
-    cmd.event = l->event;
-    cmd.section_id = l->section_id;
-    cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
-    cmd.game_id = l->lobby_id;
-    cmd.episode = 0x00;
-    cmd.unused2 = 0x01;
-    cmd.solo_mode = 0x00;
-    cmd.unused3 = 0x00;
   }
+
+  cmd.client_id = c->lobby_client_id;
+  cmd.leader_id = l->leader_id;
+  cmd.unused = 0x00;
+  cmd.difficulty = l->difficulty;
+  cmd.battle_mode = (l->mode == 1) ? 1 : 0;
+  cmd.event = l->event;
+  cmd.section_id = l->section_id;
+  cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
+  cmd.rare_seed = l->rare_seed;
+  cmd.episode = 0x00;
+  cmd.unused2 = 0x01;
+  cmd.solo_mode = 0x00;
+  cmd.unused3 = 0x00;
 
   send_command(c, 0x64, player_count, cmd);
 }
@@ -1339,13 +1333,13 @@ static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     PlayerLobbyDataGC lobby_data[4];
     uint8_t client_id;
     uint8_t leader_id;
-    uint8_t unused;
+    uint8_t disable_udp; // guess; putting 0 here causes no movement messages to be sent
     uint8_t difficulty;
     uint8_t battle_mode;
     uint8_t event;
     uint8_t section_id;
     uint8_t challenge_mode;
-    uint32_t game_id; // actually random number for rare monster selection; whatever 
+    uint32_t rare_seed;
     uint32_t episode; // for PSOPC, this must be 0x00000100 
     struct {
       PlayerInventory inventory;
@@ -1354,38 +1348,34 @@ static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   } cmd;
 
   size_t player_count = 0;
-  {
-    rw_guard g(l->lock, false);
-    memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
-    for (size_t x = 0; x < 4; x++) {
-      if (!l->clients[x]) {
-        memset(&cmd.lobby_data[x], 0, sizeof(PlayerLobbyDataGC));
-      } else {
-        rw_guard g(l->clients[x]->lock, false);
-        cmd.lobby_data[x].player_tag = 0x00000100;
-        cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-        cmd.lobby_data[x].ip_address = 0xFFFFFFFF;
-        cmd.lobby_data[x].client_id = c->lobby_client_id;
-        encode_sjis(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
-        if (l->flags & LobbyFlag::Episode3) {
-          cmd.player[x].inventory = l->clients[x]->player.inventory;
-          cmd.player[x].disp = l->clients[x]->player.disp.to_pcgc();
-        }
-        player_count++;
+  memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
+  for (size_t x = 0; x < 4; x++) {
+    if (!l->clients[x]) {
+      memset(&cmd.lobby_data[x], 0, sizeof(PlayerLobbyDataGC));
+    } else {
+      cmd.lobby_data[x].player_tag = 0x00010000;
+      cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
+      cmd.lobby_data[x].ip_address = 0x00000000;
+      cmd.lobby_data[x].client_id = c->lobby_client_id;
+      encode_sjis(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
+      if (l->flags & LobbyFlag::Episode3) {
+        cmd.player[x].inventory = l->clients[x]->player.inventory;
+        cmd.player[x].disp = l->clients[x]->player.disp.to_pcgc();
       }
+      player_count++;
     }
-
-    cmd.client_id = c->lobby_client_id;
-    cmd.leader_id = l->leader_id;
-    cmd.unused = 0x00;
-    cmd.difficulty = l->difficulty;
-    cmd.battle_mode = (l->mode == 1) ? 1 : 0;
-    cmd.event = l->event;
-    cmd.section_id = l->section_id;
-    cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
-    cmd.game_id = l->lobby_id;
-    cmd.episode = l->episode;
   }
+
+  cmd.client_id = c->lobby_client_id;
+  cmd.leader_id = l->leader_id;
+  cmd.disable_udp = 0x01;
+  cmd.difficulty = l->difficulty;
+  cmd.battle_mode = (l->mode == 1) ? 1 : 0;
+  cmd.event = l->event;
+  cmd.section_id = l->section_id;
+  cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
+  cmd.rare_seed = l->rare_seed;
+  cmd.episode = l->episode;
 
   // player is only sent in ep3 games
   size_t data_size = (l->flags & LobbyFlag::Episode3) ? 0x1184 : 0x0110;
@@ -1404,7 +1394,7 @@ static void send_join_game_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     uint8_t event;
     uint8_t section_id;
     uint8_t challenge_mode;
-    uint32_t game_id; // actually random number for rare monster selection; whatever 
+    uint32_t rare_seed;
     uint8_t episode;
     uint8_t unused2;
     uint8_t solo_mode;
@@ -1412,42 +1402,36 @@ static void send_join_game_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   } cmd;
 
   size_t player_count = 0;
-  {
-    rw_guard g(l->lock, false);
-    memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
-    for (size_t x = 0; x < 4; x++) {
-      memset(&cmd.lobby_data[x], 0, sizeof(PlayerLobbyDataBB));
-      if (l->clients[x]) {
-        rw_guard g(l->clients[x]->lock, false);
-        cmd.lobby_data[x].player_tag = 0x00000100;
-        cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-        cmd.lobby_data[x].client_id = c->lobby_client_id;
-        char16cpy(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
-        player_count++;
-      }
+  memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
+  for (size_t x = 0; x < 4; x++) {
+    memset(&cmd.lobby_data[x], 0, sizeof(PlayerLobbyDataBB));
+    if (l->clients[x]) {
+      cmd.lobby_data[x].player_tag = 0x00010000;
+      cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
+      cmd.lobby_data[x].client_id = c->lobby_client_id;
+      char16cpy(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
+      player_count++;
     }
-
-    cmd.client_id = c->lobby_client_id;
-    cmd.leader_id = l->leader_id;
-    cmd.unused = 0x00;
-    cmd.difficulty = l->difficulty;
-    cmd.battle_mode = (l->mode == 1) ? 1 : 0;
-    cmd.event = l->event;
-    cmd.section_id = l->section_id;
-    cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
-    cmd.game_id = l->lobby_id;
-    cmd.episode = 0x00;
-    cmd.unused2 = 0x01;
-    cmd.solo_mode = 0x00;
-    cmd.unused3 = 0x00;
   }
+
+  cmd.client_id = c->lobby_client_id;
+  cmd.leader_id = l->leader_id;
+  cmd.unused = 0x00;
+  cmd.difficulty = l->difficulty;
+  cmd.battle_mode = (l->mode == 1) ? 1 : 0;
+  cmd.event = l->event;
+  cmd.section_id = l->section_id;
+  cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
+  cmd.rare_seed = l->rare_seed;
+  cmd.episode = 0x00;
+  cmd.unused2 = 0x01;
+  cmd.solo_mode = 0x00;
+  cmd.unused3 = 0x00;
 
   send_command(c, 0x64, player_count, cmd);
 }
 
 static void send_join_lobby_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  rw_guard g(l->lock, false);
-
   uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
   struct {
     uint8_t client_id;
@@ -1481,10 +1465,9 @@ static void send_join_lobby_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     entries.emplace_back();
     auto& e = entries.back();
 
-    rw_guard g(l->clients[x]->lock, false);
-    e.lobby_data.player_tag = 0x00000100;
+    e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = l->clients[x]->license->serial_number;
-    e.lobby_data.ip_address = 0xFFFFFFFF;
+    e.lobby_data.ip_address = 0x00000000;
     e.lobby_data.client_id = l->clients[x]->lobby_client_id;
     char16cpy(e.lobby_data.name, l->clients[x]->player.disp.name, 0x10);
     e.data = l->clients[x]->player.export_lobby_data_pc();
@@ -1494,8 +1477,6 @@ static void send_join_lobby_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 }
 
 static void send_join_lobby_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  rw_guard g(l->lock, false);
-
   uint8_t lobby_type = l->type;
   if (c->flags & ClientFlag::Episode3Games) {
     if ((l->type > 0x14) && (l->type < 0xE9)) {
@@ -1539,10 +1520,9 @@ static void send_join_lobby_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     entries.emplace_back();
     auto& e = entries.back();
 
-    rw_guard g(l->clients[x]->lock, false);
-    e.lobby_data.player_tag = 0x00000100;
+    e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = l->clients[x]->license->serial_number;
-    e.lobby_data.ip_address = 0xFFFFFFFF;
+    e.lobby_data.ip_address = 0x00000000;
     e.lobby_data.client_id = l->clients[x]->lobby_client_id;
     encode_sjis(e.lobby_data.name, l->clients[x]->player.disp.name, 0x10);
     e.data = l->clients[x]->player.export_lobby_data_gc();
@@ -1552,8 +1532,6 @@ static void send_join_lobby_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 }
 
 static void send_join_lobby_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  rw_guard g(l->lock, false);
-
   uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
   struct {
     uint8_t client_id;
@@ -1588,8 +1566,7 @@ static void send_join_lobby_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     auto& e = entries.back();
     memset(&e.lobby_data, 0, sizeof(e.lobby_data));
 
-    rw_guard g(l->clients[x]->lock, false);
-    e.lobby_data.player_tag = 0x00000100;
+    e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = l->clients[x]->license->serial_number;
     e.lobby_data.client_id = l->clients[x]->lobby_client_id;
     char16cpy(e.lobby_data.name, l->clients[x]->player.disp.name, 0x10);
@@ -1651,7 +1628,7 @@ static void send_player_join_notification_pc(shared_ptr<Client> c,
     l->block,
     l->event,
     0x00000000,
-    {0x00000100, joining_client->license->serial_number, 0xFFFFFFFF, joining_client->lobby_client_id, {0}},
+    {0x00000100, joining_client->license->serial_number, 0x00000000, joining_client->lobby_client_id, {0}},
     joining_client->player.export_lobby_data_pc(),
   };
   char16cpy(cmd.lobby_data.name, joining_client->player.disp.name, 0x10);
@@ -1680,7 +1657,7 @@ static void send_player_join_notification_gc(shared_ptr<Client> c,
     l->block,
     l->event,
     0x00000000,
-    {0x00000100, joining_client->license->serial_number, 0xFFFFFFFF, joining_client->lobby_client_id, {0}},
+    {0x00000100, joining_client->license->serial_number, 0x00000000, joining_client->lobby_client_id, {0}},
     joining_client->player.export_lobby_data_gc(),
   };
   encode_sjis(cmd.lobby_data.name, joining_client->player.disp.name, 0x10);
@@ -1713,7 +1690,7 @@ static void send_player_join_notification_bb(shared_ptr<Client> c,
     joining_client->player.export_lobby_data_bb(),
   };
   memset(&cmd.lobby_data, 0, sizeof(cmd.lobby_data));
-  cmd.lobby_data.player_tag = 0x00000100;
+  cmd.lobby_data.player_tag = 0x00010000;
   cmd.lobby_data.guild_card = joining_client->license->serial_number;
   cmd.lobby_data.client_id = joining_client->lobby_client_id;
   char16cpy(cmd.lobby_data.name, joining_client->player.disp.name, 0x10);
@@ -1760,7 +1737,6 @@ void send_arrow_update(shared_ptr<Lobby> l) {
   };
   vector<Entry> entries;
 
-  rw_guard g(l->lock, false);
   for (size_t x = 0; x < l->max_clients; x++) {
     if (!l->clients[x]) {
       continue;
@@ -1768,7 +1744,7 @@ void send_arrow_update(shared_ptr<Lobby> l) {
 
     entries.emplace_back();
     auto& e = entries.back();
-    e.player_tag = 0x00000100;
+    e.player_tag = 0x00010000;
     e.serial_number = l->clients[x]->license->serial_number;
     e.arrow_color = l->clients[x]->lobby_arrow_color;
   }
@@ -1777,9 +1753,9 @@ void send_arrow_update(shared_ptr<Lobby> l) {
 }
 
 // tells the player that the joining player is done joining, and the game can resume
-void send_resume_game(shared_ptr<Lobby> l) {
+void send_resume_game(shared_ptr<Lobby> l, shared_ptr<Client> ready_client) {
   uint32_t data = 0x081C0372;
-  send_command(l, 0x60, 0x00, &data, 4);
+  send_command_excluding_client(l, ready_client, 0x60, 0x00, &data, 4);
 }
 
 

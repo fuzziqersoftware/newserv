@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -38,5 +37,4 @@ public:
 
 private:
   std::unordered_map<std::string, File> name_to_file;
-  mutable std::mutex lock;
 };

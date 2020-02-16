@@ -37,6 +37,7 @@ PlayerDispDataBB PlayerDispDataPCGC::to_bb() const {
   bb.level = this->level;
   bb.experience = this->experience;
   bb.meseta = this->meseta;
+  memset(bb.guild_card, 0, sizeof(bb.guild_card));
   strcpy(bb.guild_card, "         0");
   bb.unknown3[0] = this->unknown3[0];
   bb.unknown3[1] = this->unknown3[1];
@@ -59,6 +60,7 @@ PlayerDispDataBB PlayerDispDataPCGC::to_bb() const {
   bb.hair_b = this->hair_b;
   bb.proportion_x = this->proportion_x;
   bb.proportion_y = this->proportion_y;
+  memset(bb.name, 0, sizeof(bb.name));
   decode_sjis(bb.name, this->name, 0x10);
   add_language_marker_inplace(bb.name, 'J', 0x10);
   memcpy(&bb.config, &this->config, 0x48);
@@ -103,6 +105,7 @@ PlayerDispDataPCGC PlayerDispDataBB::to_pcgc() const {
   pcgc.hair_b = this->hair_b;
   pcgc.proportion_x = this->proportion_x;
   pcgc.proportion_y = this->proportion_y;
+  memset(pcgc.name, 0, sizeof(pcgc.name));
   encode_sjis(pcgc.name, this->name, 0x10);
   remove_language_marker_inplace(pcgc.name);
   memcpy(&pcgc.config, &this->config, 0x48);
@@ -115,6 +118,7 @@ PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
   PlayerDispDataBBPreview pre;
   pre.level = this->level;
   pre.experience = this->experience;
+  memset(pre.guild_card, 0, sizeof(pre.guild_card));
   strcpy(pre.guild_card, this->guild_card);
   pre.unknown3[0] = this->unknown3[0];
   pre.unknown3[1] = this->unknown3[1];
@@ -137,6 +141,7 @@ PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
   pre.hair_b = this->hair_b;
   pre.proportion_x = this->proportion_x;
   pre.proportion_y = this->proportion_y;
+  memset(pre.name, 0, sizeof(pre.name));
   char16cpy(pre.name, this->name, 16);
   pre.play_time = this->play_time;
   return pre;
@@ -145,6 +150,7 @@ PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
 void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
   this->level = pre.level;
   this->experience = pre.experience;
+  memset(this->guild_card, 0, sizeof(this->guild_card));
   strcpy(this->guild_card, pre.guild_card);
   this->unknown3[0] = pre.unknown3[0];
   this->unknown3[1] = pre.unknown3[1];
@@ -167,6 +173,7 @@ void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
   this->hair_b = pre.hair_b;
   this->proportion_x = pre.proportion_x;
   this->proportion_y = pre.proportion_y;
+  memset(this->name, 0, sizeof(this->name));
   char16cpy(this->name, pre.name, 16);
   this->play_time = 0;
 }
@@ -190,8 +197,10 @@ void Player::import(const PSOPlayerDataPC& pc) {
   this->inventory = pc.inventory;
   this->disp = pc.disp.to_bb();
   /* TODO: fix and re-enable this functionality
+  memset(this->info_board, 0, sizeof(this->info_board));
   decode_sjis(this->info_board, pc->info_board);
   memcpy(&this->blocked, pc->blocked, sizeof(uint32_t) * 30);
+  memset(this->auto_reply, 0, sizeof(this->auto_reply));
   if (pc->auto_reply_enabled) {
     decode_sjis(this->auto_reply, pc->auto_reply);
   } else {*/
@@ -202,8 +211,10 @@ void Player::import(const PSOPlayerDataPC& pc) {
 void Player::import(const PSOPlayerDataGC& gc) {
   this->inventory = gc.inventory;
   this->disp = gc.disp.to_bb();
+  memset(this->info_board, 0, sizeof(this->info_board));
   decode_sjis(this->info_board, gc.info_board, 0xAC);
   memcpy(&this->blocked, gc.blocked, sizeof(uint32_t) * 30);
+  memset(this->auto_reply, 0, sizeof(this->auto_reply));
   if (gc.auto_reply_enabled) {
     decode_sjis(this->auto_reply, gc.auto_reply, 0xAC);
   } else {
@@ -214,8 +225,10 @@ void Player::import(const PSOPlayerDataGC& gc) {
 void Player::import(const PSOPlayerDataBB& bb) {
   // note: we don't copy the inventory and disp here because we already have
   // it (we sent the player data to the client in the first place)
+  memset(this->info_board, 0, sizeof(this->info_board));
   char16cpy(this->info_board, bb.info_board, 0xAC);
   memcpy(&this->blocked, bb.blocked, sizeof(uint32_t) * 30);
+  memset(this->auto_reply, 0, sizeof(this->auto_reply));
   if (bb.auto_reply_enabled) {
     char16cpy(this->auto_reply, bb.auto_reply, 0xAC);
   } else {
@@ -271,8 +284,11 @@ PlayerBB Player::export_bb_player_data() const {
   memcpy(bb.quest_data1, &this->quest_data1, 0x0208);
   bb.bank = this->bank;
   bb.serial_number = this->serial_number;
+  memset(bb.name, 0, sizeof(bb.name));
   char16cpy(bb.name, this->disp.name, 24);
+  memset(bb.team_name, 0, sizeof(bb.team_name));
   char16cpy(bb.team_name, this->team_name, 16);
+  memset(bb.guild_card_desc, 0, sizeof(bb.guild_card_desc));
   char16cpy(bb.guild_card_desc, this->guild_card_desc, 0x58);
   bb.reserved1 = 0;
   bb.reserved2 = 0;
@@ -281,7 +297,9 @@ PlayerBB Player::export_bb_player_data() const {
   bb.unknown3 = 0;
   memcpy(bb.symbol_chats, this->symbol_chats, 0x04E0);
   memcpy(bb.shortcuts, this->shortcuts, 0x0A40);
+  memset(bb.auto_reply, 0, sizeof(bb.auto_reply));
   char16cpy(bb.auto_reply, this->auto_reply, 0xAC);
+  memset(bb.info_board, 0, sizeof(bb.info_board));
   char16cpy(bb.info_board, this->info_board, 0xAC);
   memset(bb.unknown5, 0, 0x1C);
   memcpy(bb.challenge_data, this->challenge_data, 0x0140);
@@ -325,6 +343,7 @@ void Player::load_account_data(const string& filename) {
   this->option_flags = account.option_flags;
   memcpy(&this->shortcuts, &account.shortcuts, 0x0A40);
   memcpy(&this->symbol_chats, &account.symbol_chats, 0x04E0);
+  memset(this->team_name, 0, sizeof(this->team_name));
   char16cpy(this->team_name, account.team_name, 16);
 }
 
@@ -338,6 +357,7 @@ void Player::save_account_data(const string& filename) const {
   account.option_flags = this->option_flags;
   memcpy(&account.shortcuts, &this->shortcuts, 0x0A40);
   memcpy(&account.symbol_chats, &this->symbol_chats, 0x04E0);
+  memset(account.team_name, 0, sizeof(account.team_name));
   char16cpy(account.team_name, this->team_name, 16);
 
   save_file(filename, &account, sizeof(account));
@@ -350,16 +370,19 @@ void Player::load_player_data(const string& filename) {
     throw runtime_error("account data header is incorrect");
   }
 
+  memset(this->auto_reply, 0, sizeof(this->auto_reply));
   char16cpy(this->auto_reply, player.auto_reply, 0xAC);
   this->bank = player.bank;
   memcpy(&this->challenge_data, &player.challenge_data, 0x0140);
   this->disp = player.disp;
-  char16cpy(this->guild_card_desc,player.guild_card_desc, 0x58);
-  char16cpy(this->info_board,player.info_board, 0xAC);
+  memset(this->guild_card_desc, 0, sizeof(this->guild_card_desc));
+  char16cpy(this->guild_card_desc, player.guild_card_desc, 0x58);
+  memset(this->info_board, 0, sizeof(this->info_board));
+  char16cpy(this->info_board, player.info_board, 0xAC);
   this->inventory = player.inventory;
-  memcpy(&this->quest_data1,&player.quest_data1,0x0208);
-  memcpy(&this->quest_data2,&player.quest_data2,0x0058);
-  memcpy(&this->tech_menu_config,&player.tech_menu_config,0x0028);
+  memcpy(&this->quest_data1, &player.quest_data1, 0x0208);
+  memcpy(&this->quest_data2, &player.quest_data2, 0x0058);
+  memcpy(&this->tech_menu_config, &player.tech_menu_config, 0x0028);
 }
 
 void Player::save_player_data(const string& filename) const {
@@ -367,16 +390,19 @@ void Player::save_player_data(const string& filename) const {
 
   strcpy(player.signature, PLAYER_FILE_SIGNATURE);
   player.preview = this->disp.to_preview();
+  memset(player.auto_reply, 0, sizeof(player.auto_reply));
   char16cpy(player.auto_reply, this->auto_reply, 0xAC);
   player.bank = this->bank;
   memcpy(&player.challenge_data, &this->challenge_data, 0x0140);
   player.disp = this->disp;
+  memset(player.guild_card_desc, 0, sizeof(player.guild_card_desc));
   char16cpy(player.guild_card_desc,this->guild_card_desc, 0x58);
-  char16cpy(player.info_board,this->info_board, 0xAC);
+  memset(player.info_board, 0, sizeof(player.info_board));
+  char16cpy(player.info_board, this->info_board, 0xAC);
   player.inventory = this->inventory;
-  memcpy(&player.quest_data1,&this->quest_data1,0x0208);
-  memcpy(&player.quest_data2,&this->quest_data2,0x0058);
-  memcpy(&player.tech_menu_config,&this->tech_menu_config,0x0028);
+  memcpy(&player.quest_data1, &this->quest_data1, 0x0208);
+  memcpy(&player.quest_data2, &this->quest_data2, 0x0058);
+  memcpy(&player.tech_menu_config, &this->tech_menu_config, 0x0028);
 
   save_file(filename, &player, sizeof(player));
 }

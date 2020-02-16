@@ -16,7 +16,7 @@ Sometime in 2006 or 2007, I abandoned khyller and rebuilt the entire thing from 
 
 A little-known fact is that no version of khyller or newserv was ever tested with the DreamCast versions of PSO. Both projects claimed to support them, but the DC server implementations were based only on chat conversations (likely now lost to time) with other people in the community who had done research on the DC version.
 
-Last weekend (October 2018), I had some random cause to reminisce. I looked back in my old code archives and came across newserv. Somehow inspired, I spent a weekend and a couple more evenings rewriting the entire project again, cleaning up ancient patterns I had used eleven years ago, replacing entire modules with simple STL containers, and eliminating even more support files in favor of configuration autodetection. The code is now suitably modern and the concurrency primitives it uses are correct (thought I haven't audited where exactly they're used; there are likely some missing lock contexts still).
+Sometime in October 2018, I had some random cause to reminisce. I looked back in my old code archives and came across newserv. Somehow inspired, I spent a weekend and a couple more evenings rewriting the entire project again, cleaning up ancient patterns I had used eleven years ago, replacing entire modules with simple STL containers, and eliminating even more support files in favor of configuration autodetection. The code is now suitably modern and it no longer has insidious concurrency bugs because it's no longer concurrent - the server is now entirely event-driven.
 
 ## Future
 
@@ -27,7 +27,7 @@ This project is primarily for my own nostalgia. Feel free to peruse if you'd lik
 Currently this code should build on macOS and Ubuntu. It might build on other Linux flavors, but don't expect it to work on Windows at all.
 
 So, you've read all of the above and you want to try it out? Here's what you do:
-- Make sure you have libreadline and libevent installed (use Homebrew in macOS, or install libreadline-dev and libevent-dev in Linux).
+- Make sure you have libevent installed (use Homebrew in macOS, or install libevent-dev in Linux).
 - Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 - Run `make`.
 - Edit system/config.json to your liking.

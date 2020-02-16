@@ -262,7 +262,7 @@ static void command_ax(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 static void command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::Announce);
-  // TODO: implement this
+  send_text_message(s, args);
 }
 
 static void command_arrow(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
@@ -289,7 +289,6 @@ static void command_cheat(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 
   // if cheat mode was disabled, turn off all the cheat features that were on
   if (!(l->flags & LobbyFlag::CheatsEnabled)) {
-    rw_guard g(l->lock, true);
     for (size_t x = 0; x < l->max_clients; x++) {
       auto c = l->clients[x];
       if (!c) {
@@ -315,10 +314,7 @@ static void command_lobby_event(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     return;
   }
 
-  {
-    rw_guard g(l->lock, true);
-    l->event = new_event;
-  }
+  l->event = new_event;
   send_command(l, 0xDA, l->event, NULL, 0);
 }
 
@@ -339,10 +335,7 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
       continue;
     }
 
-    {
-      rw_guard g(l->lock, true);
-      l->event = new_event;
-    }
+    l->event = new_event;
     send_command(l, 0xDA, new_event, NULL, 0);
   }
 }
@@ -360,15 +353,11 @@ static void command_lobby_type(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     return;
   }
 
-  {
-    rw_guard g(l->lock, true);
-    l->type = new_type;
-    if (l->type < ((l->flags & LobbyFlag::Episode3) ? 20 : 15)) {
-      l->type = l->block - 1;
-    }
+  l->type = new_type;
+  if (l->type < ((l->flags & LobbyFlag::Episode3) ? 20 : 15)) {
+    l->type = l->block - 1;
   }
 
-  rw_guard g(l->lock, false);
   for (size_t x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
       send_join_lobby(l->clients[x], l);
@@ -402,10 +391,7 @@ static void command_min_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   check_is_leader(l, c);
 
   u16string buffer;
-  {
-    rw_guard g(l->lock, true);
-    l->min_level = stoull(encode_sjis(args)) - 1;
-  }
+  l->min_level = stoull(encode_sjis(args)) - 1;
   send_text_message_printf(l, "$C6Minimum level set to %" PRIu32,
       l->min_level + 1);
 }
@@ -415,12 +401,9 @@ static void command_max_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   check_is_game(l, true);
   check_is_leader(l, c);
 
-  {
-    rw_guard g(l->lock, true);
-    l->max_level = stoull(encode_sjis(args)) - 1;
-    if (l->max_level >= 200) {
-      l->max_level = 0xFFFFFFFF;
-    }
+  l->max_level = stoull(encode_sjis(args)) - 1;
+  if (l->max_level >= 200) {
+    l->max_level = 0xFFFFFFFF;
   }
 
   if (l->max_level == 0xFFFFFFFF) {
@@ -576,7 +559,6 @@ static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     return;
   }
 
-  rw_guard g(target->lock, true);
   target->can_chat = !target->can_chat;
   send_text_message_printf(l, "$C6%s %ssilenced", target->player.disp.name,
       target->can_chat ? "un" : "");
@@ -726,6 +708,8 @@ static void command_item(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     memcpy(&l->next_drop_item.data.item_data1, data.data(), 12);
     memcpy(&l->next_drop_item.data.item_data2, data.data() + 12, 12 - data.size());
   }
+
+  send_text_message(c, u"$C6Next drop chosen.");
 }
 
 

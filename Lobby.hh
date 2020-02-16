@@ -24,8 +24,6 @@ enum LobbyFlag {
 };
 
 struct Lobby {
-  mutable rw_lock lock;
-
   uint32_t lobby_id;
 
   uint32_t min_level;
@@ -46,8 +44,9 @@ struct Lobby {
   uint8_t episode;
   uint8_t difficulty;
   uint8_t mode;
-  char16_t password[36];
-  char16_t name[36];
+  char16_t password[0x24];
+  char16_t name[0x24];
+  uint32_t rare_seed;
 
   //EP3_GAME_CONFIG* ep3; // only present if this is an Episode 3 game 
 
@@ -65,15 +64,12 @@ struct Lobby {
 
   bool is_game() const;
 
-  void reassign_leader_on_client_departure_locked(size_t leaving_client_id);
+  void reassign_leader_on_client_departure(size_t leaving_client_id);
   size_t count_clients() const;
-  size_t count_clients_locked() const;
   bool any_client_loading() const;
 
   void add_client(std::shared_ptr<Client> c);
-  void add_client_locked(std::shared_ptr<Client> c);
   void remove_client(std::shared_ptr<Client> c);
-  void remove_client_locked(std::shared_ptr<Client> c);
 
   void move_client_to_lobby(std::shared_ptr<Lobby> dest_lobby,
       std::shared_ptr<Client> c);

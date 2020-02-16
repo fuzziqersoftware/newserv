@@ -53,7 +53,7 @@ LicenseManager::LicenseManager(const std::string& filename) : filename(filename)
   }
 }
 
-void LicenseManager::save_locked() const {
+void LicenseManager::save() const {
   auto f = fopen_unique(this->filename, "wb");
   for (const auto& it : this->serial_number_to_license) {
     fwritex(f.get(), it.second.get(), sizeof(License));
@@ -62,8 +62,6 @@ void LicenseManager::save_locked() const {
 
 shared_ptr<const License> LicenseManager::verify_pc(uint32_t serial_number,
     const char* access_key, const char* password) const {
-  rw_guard g(this->lock, false);
-
   auto& license = this->serial_number_to_license.at(serial_number);
   if (strncmp(license->access_key, access_key, 8)) {
     throw invalid_argument("incorrect access key");
@@ -80,8 +78,6 @@ shared_ptr<const License> LicenseManager::verify_pc(uint32_t serial_number,
 
 shared_ptr<const License> LicenseManager::verify_gc(uint32_t serial_number,
     const char* access_key, const char* password) const {
-  rw_guard g(this->lock, false);
-
   auto& license = this->serial_number_to_license.at(serial_number);
   if (strncmp(license->access_key, access_key, 12)) {
     throw invalid_argument("incorrect access key");
@@ -98,8 +94,6 @@ shared_ptr<const License> LicenseManager::verify_gc(uint32_t serial_number,
 
 shared_ptr<const License> LicenseManager::verify_bb(const char* username,
     const char* password) const {
-  rw_guard g(this->lock, false);
-
   auto& license = this->bb_username_to_license.at(username);
   if (password && strcmp(license->bb_password, password)) {
     throw invalid_argument("incorrect password");
@@ -112,48 +106,36 @@ shared_ptr<const License> LicenseManager::verify_bb(const char* username,
 }
 
 size_t LicenseManager::count() const {
-  rw_guard g(this->lock, false);
   return this->serial_number_to_license.size();
 }
 
 void LicenseManager::ban_until(uint32_t serial_number, uint64_t end_time) {
-  rw_guard g(this->lock, false);
   this->serial_number_to_license.at(serial_number)->ban_end_time = end_time;
-  this->save_locked();
+  this->save();
 }
 
 void LicenseManager::add(shared_ptr<License> l) {
-  {
-    rw_guard g(this->lock, true);
-    uint32_t serial_number = l->serial_number;
-    this->serial_number_to_license.emplace(serial_number, l);
-    if (l->username[0]) {
-      this->bb_username_to_license.emplace(l->username, l);
-    }
+  uint32_t serial_number = l->serial_number;
+  this->serial_number_to_license.emplace(serial_number, l);
+  if (l->username[0]) {
+    this->bb_username_to_license.emplace(l->username, l);
   }
 
-  rw_guard g(this->lock, false);
-  this->save_locked();
+  this->save();
 }
 
 void LicenseManager::remove(uint32_t serial_number) {
-  {
-    rw_guard g(this->lock, true);
-    auto l = this->serial_number_to_license.at(serial_number);
-    this->serial_number_to_license.erase(l->serial_number);
-    if (l->username[0]) {
-      this->bb_username_to_license.erase(l->username);
-    }
+  auto l = this->serial_number_to_license.at(serial_number);
+  this->serial_number_to_license.erase(l->serial_number);
+  if (l->username[0]) {
+    this->bb_username_to_license.erase(l->username);
   }
 
-  rw_guard g(this->lock, false);
-  this->save_locked();
+  this->save();
 }
 
 vector<License> LicenseManager::snapshot() const {
   vector<License> ret;
-
-  rw_guard g(this->lock, false);
   for (auto it : this->serial_number_to_license) {
     ret.emplace_back(*it.second);
   }

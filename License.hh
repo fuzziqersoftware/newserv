@@ -58,9 +58,7 @@ public:
   std::vector<License> snapshot() const;
 
 protected:
-  void save_locked() const;
-
-  mutable rw_lock lock;
+  void save() const;
 
   std::string filename;
   std::unordered_map<std::string, std::shared_ptr<License>> bb_username_to_license;

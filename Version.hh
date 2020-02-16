@@ -26,6 +26,11 @@ enum ClientFlag {
   // client is loading into a game
   Loading = 0x0080,
 
+  // client is in the information menu (login server only)
+  InInformationMenu = 0x0100,
+  // client is at the welcome message (login server only)
+  AtWelcomeMessage = 0x0200,
+
   DefaultV1 = IsDCv1,
   DefaultV2DC = 0x0000,
   DefaultV2PC = 0x0000,

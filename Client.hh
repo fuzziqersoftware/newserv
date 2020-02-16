@@ -34,9 +34,7 @@ struct ClientConfigBB {
 };
 
 struct Client {
-  rw_lock lock;
-
-  // license & account 
+  // license & account
   std::shared_ptr<const License> license;
   char16_t name[0x20];
   ClientConfigBB config;
@@ -60,7 +58,6 @@ struct Client {
   uint64_t play_time_begin; // time of connection (used for incrementing play time on BB)
   uint64_t last_recv_time; // time of last data received
   uint64_t last_send_time; // time of last data sent
-  bool in_information_menu;
 
   // lobby/positioning 
   uint32_t area; // which area is the client in? 

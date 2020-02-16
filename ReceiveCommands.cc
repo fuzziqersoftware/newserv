@@ -51,26 +51,39 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
     }
 
     case ServerBehavior::LoginServer:
-    case ServerBehavior::LobbyServer:
+      if (!s->welcome_message.empty() && !(c->flags & ClientFlag::NoMessageBoxCloseConfirmation)) {
+        c->flags |= ClientFlag::AtWelcomeMessage;
+      }
       send_server_init(c, true);
       break;
 
+    case ServerBehavior::LobbyServer:
     case ServerBehavior::DataServerBB:
     case ServerBehavior::PatchServer:
       send_server_init(c, false);
       break;
+
+    default:
+      log(ERROR, "unimplemented behavior: %" PRId64,
+          static_cast<int64_t>(c->server_behavior));
   }
 }
 
 void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   if (c->server_behavior == ServerBehavior::LoginServer) {
-    // on the login server, send the ep3 updates and the main menu
+    // on the login server, send the ep3 updates and the main menu or welcome
+    // message
     if (c->flags & ClientFlag::Episode3Games) {
       send_ep3_card_list_update(c);
       send_ep3_rank_update(c);
     }
 
-    send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
+    if (s->welcome_message.empty()) {
+      c->flags &= ~ClientFlag::AtWelcomeMessage;
+      send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
+    } else {
+      send_message_box(c, s->welcome_message.c_str());
+    }
 
   } else if (c->server_behavior == ServerBehavior::LobbyServer) {
 
@@ -166,7 +179,7 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   c->flags |= flags_for_version(c->version, cmd->sub_version);
-  send_command(c, 0x9A, 0x01);
+  send_command(c, 0x9A, 0x02);
 }
 
 void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c, 
@@ -247,7 +260,8 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     ClientConfig cfg;
     uint8_t unused4[0x64];
   };
-  check_size(size, sizeof(Cmd));
+  // sometimes the unused bytes aren't sent?
+  check_size(size, sizeof(Cmd) - 0x64, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
   c->flags |= flags_for_version(c->version, cmd->sub_version);
@@ -481,11 +495,11 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
 
 void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c, 
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D6
-  if (c->in_information_menu) {
-    // add a reference to ensure it's not destroyed by another thread
-    auto info_menu = s->information_menu;
-    send_menu(c, u"Information", INFORMATION_MENU_ID, *info_menu, false);
-    return;
+  if (c->flags & ClientFlag::InInformationMenu) {
+    send_menu(c, u"Information", INFORMATION_MENU_ID, *s->information_menu, false);
+  } else if (c->flags & ClientFlag::AtWelcomeMessage) {
+    send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
+    c->flags &= ~ClientFlag::AtWelcomeMessage;
   }
 }
 
@@ -521,10 +535,8 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
         send_ship_info(c, u"Return to the\nmain menu.");
       } else {
         try {
-          // add a reference to ensure it's not destroyed by another thread
           // we use item_id + 1 here because "go back" is the first item
-          auto info_menu = s->information_menu;
-          send_ship_info(c, info_menu->at(cmd->item_id + 1).description.c_str());
+          send_ship_info(c, s->information_menu->at(cmd->item_id + 1).description.c_str());
         } catch (const out_of_range&) {
           send_ship_info(c, u"$C6No such information exists.");
         }
@@ -579,12 +591,11 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           break;
         }
 
-        case MAIN_MENU_INFORMATION: {
-          auto info_menu = s->information_menu;
-          send_menu(c, u"Information", INFORMATION_MENU_ID, *info_menu, false);
-          c->in_information_menu = true;
+        case MAIN_MENU_INFORMATION:
+          send_menu(c, u"Information", INFORMATION_MENU_ID,
+              *s->information_menu, false);
+          c->flags |= ClientFlag::InInformationMenu;
           break;
-        }
 
         case MAIN_MENU_DISCONNECT:
           c->should_disconnect = true;
@@ -599,14 +610,12 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
     case INFORMATION_MENU_ID: {
       if (cmd->item_id == INFORMATION_MENU_GO_BACK) {
-        c->in_information_menu = false;
+        c->flags &= ~ClientFlag::InInformationMenu;
         send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
 
       } else {
         try {
-          // add a reference to ensure it's not destroyed by another thread
-          auto info_menu = s->information_contents;
-          send_message_box(c, info_menu->at(cmd->item_id).c_str());
+          send_message_box(c, s->information_contents->at(cmd->item_id).c_str());
         } catch (const out_of_range&) {
           send_message_box(c, u"$C6No such information exists.");
         }
@@ -725,7 +734,6 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       auto bin_contents = q->bin_contents();
       auto dat_contents = q->dat_contents();
 
-      rw_guard g(l->lock, true);
       if (q->joinable) {
         l->flags |= LobbyFlag::JoinableQuestInProgress;
       } else {
@@ -740,7 +748,6 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_quest_file(c, bin_basename, *bin_contents, false, false);
         send_quest_file(c, dat_basename, *dat_contents, false, false);
 
-        rw_guard g(l->clients[x]->lock, true);
         l->clients[x]->flags |= ClientFlag::Loading;
       }
       break;
@@ -889,25 +896,18 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  {
-    rw_guard g(c->lock, true);
-    c->flags &= ~ClientFlag::Loading;
-  }
+  c->flags &= ~ClientFlag::Loading;
 
   // check if any client is still loading
   // TODO: we need to handle clients disconnecting while loading. probably
   // process_client_disconnect needs to check for this case or something
   size_t x;
-  {
-    rw_guard g(l->lock, true);
-
-    for (x = 0; x < l->max_clients; x++) {
-      if (!l->clients[x]) {
-        continue;
-      }
-      if (l->clients[x]->flags & ClientFlag::Loading) {
-        break;
-      }
+  for (x = 0; x < l->max_clients; x++) {
+    if (!l->clients[x]) {
+      continue;
+    }
+    if (l->clients[x]->flags & ClientFlag::Loading) {
+      break;
     }
   }
 
@@ -923,26 +923,23 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
 void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c, 
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 61 98
 
-  {
-    // note: we add extra buffer on the end when checking sizes because the
-    // autoreply text is a variable length
-    rw_guard g(c->lock, true);
-    switch (c->version) {
-      case GameVersion::PC:
-        check_size(size, sizeof(PSOPlayerDataPC), sizeof(PSOPlayerDataPC) + 2 * 0xAC);
-        c->player.import(*reinterpret_cast<const PSOPlayerDataPC*>(data));
-        break;
-      case GameVersion::GC:
-        check_size(size, sizeof(PSOPlayerDataGC), sizeof(PSOPlayerDataGC) + 0xAC);
-        c->player.import(*reinterpret_cast<const PSOPlayerDataGC*>(data));
-        break;
-      case GameVersion::BB:
-        check_size(size, sizeof(PSOPlayerDataBB), sizeof(PSOPlayerDataBB) + 2 * 0xAC);
-        c->player.import(*reinterpret_cast<const PSOPlayerDataBB*>(data));
-        break;
-      default:
-        throw logic_error("player data command not implemented for version");
-    }
+  // note: we add extra buffer on the end when checking sizes because the
+  // autoreply text is a variable length
+  switch (c->version) {
+    case GameVersion::PC:
+      check_size(size, sizeof(PSOPlayerDataPC), sizeof(PSOPlayerDataPC) + 2 * 0xAC);
+      c->player.import(*reinterpret_cast<const PSOPlayerDataPC*>(data));
+      break;
+    case GameVersion::GC:
+      check_size(size, sizeof(PSOPlayerDataGC), sizeof(PSOPlayerDataGC) + 0xAC);
+      c->player.import(*reinterpret_cast<const PSOPlayerDataGC*>(data));
+      break;
+    case GameVersion::BB:
+      check_size(size, sizeof(PSOPlayerDataBB), sizeof(PSOPlayerDataBB) + 2 * 0xAC);
+      c->player.import(*reinterpret_cast<const PSOPlayerDataBB*>(data));
+      break;
+    default:
+      throw logic_error("player data command not implemented for version");
   }
 
   if (command == 0x61 && !c->pending_bb_save_username.empty()) {
@@ -1029,7 +1026,6 @@ void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
       return;
     }
 
-    rw_guard g(l->lock, false);
     for (size_t x = 0; x < l->max_clients; x++) {
       if (!l->clients[x]) {
         continue;
@@ -1581,11 +1577,11 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   c->flags &= (~ClientFlag::Loading);
 
   // tell the other players to stop waiting for the new player to load
-  send_resume_game(l);
+  send_resume_game(l, c);
   // tell the new player the time
-  send_server_time(c);
+  //send_server_time(c);
   // get character info 
-  send_get_player_info(c);
+  //send_get_player_info(c);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2104,9 +2100,39 @@ static process_command_t* handlers[6] = {
 
 void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
-  log(INFO, "received version=%d size=%04hX command=%04hX flag=%08X",
-      static_cast<int>(c->version), size, command, flag);
-  print_data(stderr, data, size);
+  // TODO: this is slow; make it better somehow
+  {
+    log(INFO, "received version=%d size=%04hX command=%04hX flag=%08X",
+        static_cast<int>(c->version), size, command, flag);
+
+    string data_to_print;
+    if (c->version == GameVersion::BB) {
+      data_to_print.resize(size + 8);
+      PSOCommandHeaderBB* header = reinterpret_cast<PSOCommandHeaderBB*>(
+          const_cast<char*>(data_to_print.data()));
+      header->command = command;
+      header->flag = flag;
+      header->size = size + 8;
+      memcpy(const_cast<char*>(data_to_print.data() + 8), data, size);
+    } else if (c->version == GameVersion::PC) {
+      data_to_print.resize(size + 4);
+      PSOCommandHeaderPC* header = reinterpret_cast<PSOCommandHeaderPC*>(
+          const_cast<char*>(data_to_print.data()));
+      header->command = command;
+      header->flag = flag;
+      header->size = size + 4;
+      memcpy(const_cast<char*>(data_to_print.data() + 4), data, size);
+    } else { // DC/GC
+      data_to_print.resize(size + 4);
+      PSOCommandHeaderDCGC* header = reinterpret_cast<PSOCommandHeaderDCGC*>(
+          const_cast<char*>(data_to_print.data()));
+      header->command = command;
+      header->flag = flag;
+      header->size = size + 4;
+      memcpy(const_cast<char*>(data_to_print.data() + 4), data, size);
+    }
+    print_data(stderr, data_to_print);
+  }
 
   auto fn = handlers[static_cast<size_t>(c->version)][command & 0xFF];
   if (fn) {

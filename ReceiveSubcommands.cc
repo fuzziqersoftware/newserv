@@ -60,16 +60,20 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
 
   if (command_is_private(command)) {
     if (flag >= l->max_clients) {
+      log(INFO, "[subcommand-debug] skipping forwarding command; flag=%hhX and max_clients=%zu",
+          flag, l->max_clients);
       return;
     }
     auto target = l->clients[flag];
     if (!target) {
+      log(INFO, "[subcommand-debug] skipping forwarding command; target is missing");
       return;
     }
+    log(INFO, "[subcommand-debug] forwarding command");
     send_command(target, command, flag, p, count * 4);
   } else {
-    // TODO: don't send the command back to the client it originated from
-    send_command(l, command, flag, p, count * 4);
+    log(INFO, "[subcommand-debug] not private (%02hhX)", command);
+    send_command_excluding_client(l, c, command, flag, p, count * 4);
   }
 }
 
@@ -208,12 +212,7 @@ static void process_subcommand_drop_item(shared_ptr<ServerState> s,
     }
 
     PlayerInventoryItem item;
-    {
-      rw_guard g(c->lock, true);
-      c->player.remove_item(cmd->item_id, 0, &item);
-    }
-
-    // note: this locks the lobby itself; we don't need to manually do it
+    c->player.remove_item(cmd->item_id, 0, &item);
     l->add_item(item);
   }
   forward_subcommand(l, c, command, flag, p, count);
@@ -245,10 +244,7 @@ static void process_subcommand_drop_stacked_item(shared_ptr<ServerState> s,
     }
 
     PlayerInventoryItem item;
-    {
-      rw_guard g(c->lock, true);
-      c->player.remove_item(cmd->item_id, cmd->amount, &item);
-    }
+    c->player.remove_item(cmd->item_id, cmd->amount, &item);
 
     // if a stack was split, the original item still exists, so the dropped item
     // needs a new ID. remove_item signals this by returning an item with id=-1
@@ -256,7 +252,6 @@ static void process_subcommand_drop_stacked_item(shared_ptr<ServerState> s,
       item.data.item_id = l->generate_item_id(c->lobby_client_id);
     }
 
-    // note: this locks the lobby itself; we don't need to manually do it
     l->add_item(item);
 
     send_drop_stacked_item(l, c, item.data, cmd->area, cmd->x, cmd->y);
@@ -290,11 +285,7 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState> s,
 
     PlayerInventoryItem item;
     l->remove_item(cmd->item_id, &item);
-
-    {
-      rw_guard g(c->lock, true);
-      c->player.add_item(item);
-    }
+    c->player.add_item(item);
 
     send_pick_up_item(l, c, item.data.item_id, cmd->area);
 
@@ -315,7 +306,6 @@ static void process_subcommand_equip_unequip_item(shared_ptr<ServerState> s,
       return;
     }
 
-    rw_guard g(c->lock, true);
     size_t index = c->player.inventory.find_item(cmd->item_id);
     if (cmd->command == 0x25) {
       c->player.inventory.items[index].game_flags |= 0x00000008; // equip
@@ -339,7 +329,6 @@ static void process_subcommand_use_item(shared_ptr<ServerState> s,
       return;
     }
 
-    rw_guard g(c->lock, true);
     size_t index = c->player.inventory.find_item(cmd->item_id);
     if (cmd->command == 0x25) {
       c->player.inventory.items[index].game_flags |= 0x00000008; // equip
@@ -347,7 +336,7 @@ static void process_subcommand_use_item(shared_ptr<ServerState> s,
       c->player.inventory.items[index].game_flags &= 0xFFFFFFF7; // unequip
     }
 
-    player_use_item_locked(l, c, index);
+    player_use_item(l, c, index);
   }
 
   forward_subcommand(l, c, command, flag, p, count);
@@ -384,7 +373,6 @@ static void process_subcommand_bank_action(shared_ptr<ServerState> s,
       return;
     }
 
-    rw_guard g(c->lock, true);
     if (cmd->action == 0) { // deposit
       if (cmd->item_id == 0xFFFFFFFF) { // meseta
         if (cmd->meseta_amount > c->player.disp.meseta) {
@@ -445,7 +433,6 @@ static void process_subcommand_sort_inventory(shared_ptr<ServerState> s,
     PlayerInventory sorted;
     memset(&sorted, 0, sizeof(PlayerInventory));
 
-    rw_guard g(c->lock, true);
     for (size_t x = 0; x < 30; x++) {
       if (cmd->item_ids[x] == 0xFFFFFFFF) {
         sorted.items[x].data.item_id = 0xFFFFFFFF;
@@ -525,6 +512,9 @@ static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
     l->add_item(item);
     send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->y,
         cmd->request_id);
+
+  } else {
+    forward_subcommand(l, c, command, flag, p, count);
   }
 }
 
@@ -594,6 +584,9 @@ static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
     l->add_item(item);
     send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->y,
         cmd->request_id);
+
+  } else {
+    forward_subcommand(l, c, command, flag, p, count);
   }
 }
 
@@ -622,7 +615,6 @@ static void process_subcommand_monster_hit(shared_ptr<ServerState> s,
       return;
     }
 
-    rw_guard g(l->lock, true);
     if (l->enemies[cmd->enemy_id].hit_flags & 0x80) {
       return;
     }
@@ -664,7 +656,6 @@ static void process_subcommand_monster_killed(shared_ptr<ServerState> s,
       return;
     }
 
-    rw_guard g(l->lock, true);
     auto& enemy = l->enemies[cmd->enemy_id];
     enemy.hit_flags |= 0x80;
     for (size_t x = 0; x < l->max_clients; x++) {
@@ -688,7 +679,6 @@ static void process_subcommand_monster_killed(shared_ptr<ServerState> s,
         exp = ((enemy.experience * 77) / 100);
       }
 
-      rw_guard g(other_c->lock, true);
       other_c->player.disp.experience += exp;
       send_give_experience(l, other_c, exp);
 
@@ -740,7 +730,6 @@ static void process_subcommand_identify_item(shared_ptr<ServerState> s,
       return;
     }
 
-    rw_guard g(c->lock, true);
     size_t x = c->player.inventory.find_item(cmd->item_id);
     if (c->player.inventory.items[x].data.item_data1[0] != 0) {
       return; // only weapons can be identified
