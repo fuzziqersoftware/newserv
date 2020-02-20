@@ -20,11 +20,11 @@ enum class ServerBehavior {
 };
 
 struct ClientConfig {
-  uint32_t magic; // must be set to 0x48615467 
-  uint8_t bb_game_state; // status of client connecting on BB 
-  uint8_t bb_player_index; // selected char 
-  uint16_t flags; // just in case we lose them somehow between connections 
-  uint16_t ports[4]; // used by shipgate clients 
+  uint32_t magic; // must be set to 0x48615467
+  uint8_t bb_game_state; // status of client connecting on BB
+  uint8_t bb_player_index; // selected char
+  uint16_t flags; // just in case we lose them somehow between connections
+  uint16_t ports[4]; // used by shipgate clients
   uint32_t unused[4];
 };
 
@@ -54,22 +54,22 @@ struct Client {
   bool should_disconnect;
   std::string recv_buffer;
 
-  // timing & menus 
+  // timing & menus
   uint64_t play_time_begin; // time of connection (used for incrementing play time on BB)
   uint64_t last_recv_time; // time of last data received
   uint64_t last_send_time; // time of last data sent
 
-  // lobby/positioning 
-  uint32_t area; // which area is the client in? 
-  uint32_t lobby_id; // which lobby is this person in? 
-  uint8_t lobby_client_id; // which client number is this person? 
-  uint8_t lobby_arrow_color; // lobby arrow color ID 
+  // lobby/positioning
+  uint32_t area; // which area is the client in?
+  uint32_t lobby_id; // which lobby is this person in?
+  uint8_t lobby_client_id; // which client number is this person?
+  uint8_t lobby_arrow_color; // lobby arrow color ID
   Player player;
 
-  // miscellaneous (used by chat commands) 
-  uint32_t next_exp_value; // next EXP value to give 
+  // miscellaneous (used by chat commands)
+  uint32_t next_exp_value; // next EXP value to give
   bool infinite_hp; // cheats enabled
-  bool infinite_tp; // cheats enabled 
+  bool infinite_tp; // cheats enabled
   bool can_chat;
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;

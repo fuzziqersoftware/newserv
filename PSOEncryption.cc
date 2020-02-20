@@ -68,7 +68,7 @@ PSOPCEncryption::PSOPCEncryption(uint32_t seed) : offset(1) {
   }
 }
 
-uint32_t PSOPCEncryption::next() { 
+uint32_t PSOPCEncryption::next() {
   if (this->offset == PC_STREAM_LENGTH) {
     this->update_stream();
     this->offset = 1;

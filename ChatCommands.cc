@@ -36,8 +36,8 @@ unordered_map<u16string, uint8_t> name_to_section_id({
   {u"whitill", 9}});
 
 vector<u16string> lobby_event_to_name({
-  u"none", u"xmas", u"none", u"val", u"easter", u"hallo", u"sonic", 
-  u"newyear", u"summer", u"white", u"wedding", u"fall", u"s-spring", 
+  u"none", u"xmas", u"none", u"val", u"easter", u"hallo", u"sonic",
+  u"newyear", u"summer", u"white", u"wedding", u"fall", u"s-spring",
   u"s-summer", u"spring"});
 
 unordered_map<u16string, uint8_t> name_to_lobby_event({
@@ -87,42 +87,42 @@ unordered_map<uint8_t, u16string> lobby_type_to_name({
 });
 
 unordered_map<u16string, uint8_t> name_to_lobby_type({
-  {u"normal",    0x00}, 
-  {u"inormal",   0x0F}, 
-  {u"ipc",       0x10}, 
-  {u"iball",     0x11}, 
-  {u"cave1",     0xD4}, 
-  {u"cave2u",    0x67}, 
-  {u"dragon",    0xFC}, 
-  {u"derolle",   0xFD}, 
-  {u"volopt",    0xFE}, 
-  {u"darkfalz",  0xFF}, 
-  {u"planet",    0xE9}, 
-  {u"clouds",    0xEA}, 
-  {u"cave",      0xED}, 
-  {u"jungle",    0xEE}, 
-  {u"forest2-2", 0xEF}, 
-  {u"forest2-1", 0xF0}, 
-  {u"windpower", 0xF1}, 
-  {u"overview",  0xF2}, 
-  {u"seaside",   0xF3}, 
-  {u"some?",     0xF4}, 
-  {u"dmorgue",   0xF5}, 
-  {u"caelum",    0xF6}, 
-  {u"digital",   0xF8}, 
-  {u"boss1",     0xF9}, 
-  {u"boss2",     0xFA}, 
-  {u"boss3",     0xFB}, 
-  {u"knight",    0xFC}, 
-  {u"sky",       0xFE}, 
-  {u"morgue",    0xFF}, 
+  {u"normal",    0x00},
+  {u"inormal",   0x0F},
+  {u"ipc",       0x10},
+  {u"iball",     0x11},
+  {u"cave1",     0xD4},
+  {u"cave2u",    0x67},
+  {u"dragon",    0xFC},
+  {u"derolle",   0xFD},
+  {u"volopt",    0xFE},
+  {u"darkfalz",  0xFF},
+  {u"planet",    0xE9},
+  {u"clouds",    0xEA},
+  {u"cave",      0xED},
+  {u"jungle",    0xEE},
+  {u"forest2-2", 0xEF},
+  {u"forest2-1", 0xF0},
+  {u"windpower", 0xF1},
+  {u"overview",  0xF2},
+  {u"seaside",   0xF3},
+  {u"some?",     0xF4},
+  {u"dmorgue",   0xF5},
+  {u"caelum",    0xF6},
+  {u"digital",   0xF8},
+  {u"boss1",     0xF9},
+  {u"boss2",     0xFA},
+  {u"boss3",     0xFB},
+  {u"knight",    0xFC},
+  {u"sky",       0xFE},
+  {u"morgue",    0xFF},
 });
 
 vector<u16string> tech_id_to_name({
-  u"foie", u"gifoie", u"rafoie", 
-  u"barta", u"gibarta", u"rabarta", 
-  u"zonde", u"gizonde", u"razonde", 
-  u"grants", u"deband", u"jellen", u"zalure", u"shifta", 
+  u"foie", u"gifoie", u"rafoie",
+  u"barta", u"gibarta", u"rabarta",
+  u"zonde", u"gizonde", u"razonde",
+  u"grants", u"deband", u"jellen", u"zalure", u"shifta",
   u"ryuker", u"resta", u"anti", u"reverser", u"megid"});
 
 unordered_map<u16string, uint8_t> name_to_tech_id({
@@ -225,7 +225,7 @@ static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 // Message commands
 
-static void command_lobby_info(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_lobby_info(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   // no preconditions - everyone can use this command
 
@@ -253,19 +253,19 @@ static void command_lobby_info(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   }
 }
 
-static void command_ax(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_ax(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::Announce);
   log(INFO, "[$ax from %010u] %S\n", c->license->serial_number, args);
 }
 
-static void command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::Announce);
   send_text_message(s, args);
 }
 
-static void command_arrow(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_arrow(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   // no preconditions
 
@@ -276,9 +276,9 @@ static void command_arrow(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Lobby commands 
+// Lobby commands
 
-static void command_cheat(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_cheat(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -301,7 +301,7 @@ static void command_cheat(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   }
 }
 
-static void command_lobby_event(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_lobby_event(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, false);
   check_privileges(c, Privilege::ChangeEvent);
@@ -318,7 +318,7 @@ static void command_lobby_event(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   send_command(l, 0xDA, l->event, NULL, 0);
 }
 
-static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::ChangeEvent);
 
@@ -340,7 +340,7 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
   }
 }
 
-static void command_lobby_type(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_lobby_type(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, false);
   check_privileges(c, Privilege::ChangeEvent);
@@ -366,9 +366,9 @@ static void command_lobby_type(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Game commands 
+// Game commands
 
-static void command_password(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_password(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -385,7 +385,7 @@ static void command_password(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   }
 }
 
-static void command_min_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_min_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -396,7 +396,7 @@ static void command_min_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
       l->min_level + 1);
 }
 
-static void command_max_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_max_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -414,9 +414,9 @@ static void command_max_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Character commands 
+// Character commands
 
-static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, false);
   check_version(c, GameVersion::BB);
@@ -500,7 +500,7 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   s->send_lobby_join_notifications(l, c);
 }
 
-static void command_change_bank(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_change_bank(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_version(c, GameVersion::BB);
 
@@ -508,7 +508,7 @@ static void command_change_bank(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   // TODO: make sure the bank name is filesystem-safe
 }
 
-static void command_convert_char_to_bb(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_convert_char_to_bb(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, false);
   check_not_version(c, GameVersion::BB);
@@ -541,9 +541,9 @@ static void command_convert_char_to_bb(shared_ptr<ServerState> s, shared_ptr<Lob
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Administration commands 
+// Administration commands
 
-static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::SilenceUser);
 
@@ -564,7 +564,7 @@ static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
       target->can_chat ? "un" : "");
 }
 
-static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::KickUser);
 
@@ -585,7 +585,7 @@ static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   send_text_message_printf(l, "$C6%s kicked off", target->player.disp.name);
 }
 
-static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::BanUser);
 
@@ -636,9 +636,9 @@ static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Cheat commands 
+// Cheat commands
 
-static void command_warp(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_warp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -667,7 +667,7 @@ static void command_warp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   send_warp(c, area);
 }
 
-static void command_infinite_hp(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_infinite_hp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -676,7 +676,7 @@ static void command_infinite_hp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   send_text_message_printf(c, "$C6Infinite HP %s", c->infinite_hp ? "enabled" : "disabled");
 }
 
-static void command_infinite_tp(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_infinite_tp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -685,7 +685,7 @@ static void command_infinite_tp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   send_text_message_printf(c, "$C6Infinite TP %s", c->infinite_tp ? "enabled" : "disabled");
 }
 
-static void command_item(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+static void command_item(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -716,7 +716,7 @@ static void command_item(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef void (*handler_t)(shared_ptr<ServerState> s, shared_ptr<Lobby> l, 
+typedef void (*handler_t)(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args);
 struct ChatCommandDefinition {
   handler_t handler;

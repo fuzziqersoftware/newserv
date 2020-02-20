@@ -75,7 +75,7 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Chat commands and the like 
+// Chat commands and the like
 
 // client requests to send a guild card
 static void process_subcommand_send_guild_card(shared_ptr<ServerState> s,
@@ -179,7 +179,7 @@ static void process_subcommand_use_technique(shared_ptr<ServerState> s,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// BB Item commands 
+// BB Item commands
 
 // player drops an item
 static void process_subcommand_drop_item(shared_ptr<ServerState> s,
@@ -193,7 +193,7 @@ static void process_subcommand_drop_item(shared_ptr<ServerState> s,
       uint8_t size;
       uint8_t client_id;
       uint8_t unused;
-      uint16_t unused2; // should be 1 
+      uint16_t unused2; // should be 1
       uint16_t area;
       uint32_t item_id;
       float x;
@@ -394,7 +394,7 @@ static void process_subcommand_bank_action(shared_ptr<ServerState> s,
         }
         c->player.bank.meseta -= cmd->meseta_amount;
         c->player.disp.meseta += cmd->meseta_amount;
-      } else { // item 
+      } else { // item
         PlayerBankItem bank_item;
         c->player.bank.remove_item(cmd->item_id, cmd->item_amount, &bank_item);
         PlayerInventoryItem item = bank_item.to_inventory_item();
@@ -446,7 +446,7 @@ static void process_subcommand_sort_inventory(shared_ptr<ServerState> s,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// BB EXP/Drop Item commands 
+// BB EXP/Drop Item commands
 
 // enemy killed; leader sends drop item request
 static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
@@ -655,15 +655,15 @@ static void process_subcommand_monster_killed(shared_ptr<ServerState> s,
     enemy.hit_flags |= 0x80;
     for (size_t x = 0; x < l->max_clients; x++) {
       if (!((enemy.hit_flags >> x) & 1)) {
-        continue; // player did not hit this enemy 
+        continue; // player did not hit this enemy
       }
 
       auto other_c = l->clients[x];
       if (!other_c) {
-        continue; // no player 
+        continue; // no player
       }
       if (other_c->player.disp.level >= 199) {
-        continue; // player is level 200 or higher 
+        continue; // player is level 200 or higher
       }
 
       // killer gets full experience, others get 77%

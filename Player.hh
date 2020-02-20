@@ -166,7 +166,7 @@ struct PlayerDispDataBB {
   uint32_t name_color;
   uint8_t extra_model;
   uint8_t unused[11];
-  uint32_t play_time; // not actually a game field; used only by my server 
+  uint32_t play_time; // not actually a game field; used only by my server
   uint32_t name_color_checksum;
   uint8_t section_id;
   uint8_t char_class;
@@ -199,8 +199,8 @@ struct GuildCardGC {
   uint32_t serial_number;
   char name[0x18];
   char desc[0x6C];
-  uint8_t reserved1; // should be 1 
-  uint8_t reserved2; // should be 1 
+  uint8_t reserved1; // should be 1
+  uint8_t reserved2; // should be 1
   uint8_t section_id;
   uint8_t char_class;
 };
@@ -211,8 +211,8 @@ struct GuildCardBB {
   char16_t name[0x18];
   char16_t teamname[0x10];
   char16_t desc[0x58];
-  uint8_t reserved1; // should be 1 
-  uint8_t reserved2; // should be 1 
+  uint8_t reserved1; // should be 1
+  uint8_t reserved2; // should be 1
   uint8_t section_id;
   uint8_t char_class;
 };
@@ -226,22 +226,22 @@ struct GuildCardEntryBB {
 // the format of the BB guild card file
 struct GuildCardFileBB {
   uint8_t unknown[0x1F84];
-  GuildCardEntryBB entry[0x0068]; // that's 104 of them in decimal 
+  GuildCardEntryBB entry[0x0068]; // that's 104 of them in decimal
   uint8_t unknown2[0x01AC];
 };
 
 // PSOBB key config and team info
 struct KeyAndTeamConfigBB {
-  uint8_t unknown[0x0114];         // 0000 
-  uint8_t key_config[0x016C];      // 0114 
-  uint8_t joystick_config[0x0038]; // 0280 
-  uint32_t serial_number;          // 02B8 
-  uint32_t team_id;                // 02BC 
-  uint32_t team_info[2];           // 02C0 
-  uint16_t team_privilege_level;   // 02C8 
-  uint16_t reserved;               // 02CA 
-  char16_t team_name[0x0010];       // 02CC 
-  uint8_t team_flag[0x0800];       // 02EC 
+  uint8_t unknown[0x0114];         // 0000
+  uint8_t key_config[0x016C];      // 0114
+  uint8_t joystick_config[0x0038]; // 0280
+  uint32_t serial_number;          // 02B8
+  uint32_t team_id;                // 02BC
+  uint32_t team_info[2];           // 02C0
+  uint16_t team_privilege_level;   // 02C8
+  uint16_t reserved;               // 02CA
+  char16_t team_name[0x0010];       // 02CC
+  uint8_t team_flag[0x0800];       // 02EC
   uint32_t team_rewards[2];        // 0AEC
 };
 
@@ -322,32 +322,32 @@ struct PlayerLobbyJoinDataBB {
 
 // complete BB player data format (used in E7 command)
 struct PlayerBB {
-  PlayerInventory inventory;        // 0000 // player 
-  PlayerDispDataBB disp;            // 034C // player 
-  uint8_t unknown[0x0010];          // 04DC // 
-  uint32_t option_flags;            // 04EC // account 
-  uint8_t quest_data1[0x0208];      // 04F0 // player 
-  PlayerBank bank;                  // 06F8 // player 
-  uint32_t serial_number;           // 19C0 // player 
-  char16_t name[0x18];               // 19C4 // player 
-  char16_t team_name[0x10];          // 19C4 // player 
-  char16_t guild_card_desc[0x58];    // 1A14 // player 
-  uint8_t reserved1;                // 1AC4 // player 
-  uint8_t reserved2;                // 1AC5 // player 
-  uint8_t section_id;               // 1AC6 // player 
-  uint8_t char_class;               // 1AC7 // player 
-  uint32_t unknown3;                // 1AC8 // 
-  uint8_t symbol_chats[0x04E0];     // 1ACC // account 
-  uint8_t shortcuts[0x0A40];        // 1FAC // account 
-  char16_t auto_reply[0x00AC];       // 29EC // player 
-  char16_t info_board[0x00AC];       // 2B44 // player 
-  uint8_t unknown5[0x001C];         // 2C9C // 
-  uint8_t challenge_data[0x0140];   // 2CB8 // player 
-  uint8_t tech_menu_config[0x0028]; // 2DF8 // player 
-  uint8_t unknown6[0x002C];         // 2E20 // 
-  uint8_t quest_data2[0x0058];      // 2E4C // player 
-  KeyAndTeamConfigBB key_config;    // 2EA4 // account 
-};                                  // total size: 39A0 
+  PlayerInventory inventory;        // 0000 // player
+  PlayerDispDataBB disp;            // 034C // player
+  uint8_t unknown[0x0010];          // 04DC //
+  uint32_t option_flags;            // 04EC // account
+  uint8_t quest_data1[0x0208];      // 04F0 // player
+  PlayerBank bank;                  // 06F8 // player
+  uint32_t serial_number;           // 19C0 // player
+  char16_t name[0x18];               // 19C4 // player
+  char16_t team_name[0x10];          // 19C4 // player
+  char16_t guild_card_desc[0x58];    // 1A14 // player
+  uint8_t reserved1;                // 1AC4 // player
+  uint8_t reserved2;                // 1AC5 // player
+  uint8_t section_id;               // 1AC6 // player
+  uint8_t char_class;               // 1AC7 // player
+  uint32_t unknown3;                // 1AC8 //
+  uint8_t symbol_chats[0x04E0];     // 1ACC // account
+  uint8_t shortcuts[0x0A40];        // 1FAC // account
+  char16_t auto_reply[0x00AC];       // 29EC // player
+  char16_t info_board[0x00AC];       // 2B44 // player
+  uint8_t unknown5[0x001C];         // 2C9C //
+  uint8_t challenge_data[0x0140];   // 2CB8 // player
+  uint8_t tech_menu_config[0x0028]; // 2DF8 // player
+  uint8_t unknown6[0x002C];         // 2E20 //
+  uint8_t quest_data2[0x0058];      // 2E4C // player
+  KeyAndTeamConfigBB key_config;    // 2EA4 // account
+};                                  // total size: 39A0
 
 
 
@@ -358,7 +358,7 @@ struct SavedPlayerBB { // .nsc file format
   char16_t           auto_reply[0x00AC];
   PlayerBank        bank;
   uint8_t           challenge_data[0x0140];
-  PlayerDispDataBB  disp; 
+  PlayerDispDataBB  disp;
   char16_t           guild_card_desc[0x58];
   char16_t           info_board[0x00AC];
   PlayerInventory   inventory;
@@ -390,18 +390,18 @@ struct Player {
   PlayerDispDataBB    disp;                     // player
   uint8_t             ep3_config[0x2408];
   char16_t             guild_card_desc[0x58];    // player
-  GuildCardFileBB     guild_cards;              // account 
+  GuildCardFileBB     guild_cards;              // account
   PlayerInventoryItem identify_result;
-  char16_t             info_board[0x00AC];       // player 
-  PlayerInventory     inventory;                // player 
-  KeyAndTeamConfigBB  key_config;               // account 
-  uint32_t            option_flags;             // account 
-  uint8_t             quest_data1[0x0208];      // player 
-  uint8_t             quest_data2[0x0058];      // player 
+  char16_t             info_board[0x00AC];       // player
+  PlayerInventory     inventory;                // player
+  KeyAndTeamConfigBB  key_config;               // account
+  uint32_t            option_flags;             // account
+  uint8_t             quest_data1[0x0208];      // player
+  uint8_t             quest_data2[0x0058];      // player
   uint32_t            serial_number;
-  uint8_t             shortcuts[0x0A40];        // account 
-  uint8_t             symbol_chats[0x04E0];     // account 
-  char16_t             team_name[0x0010];        // account 
+  uint8_t             shortcuts[0x0A40];        // account
+  uint8_t             symbol_chats[0x04E0];     // account
+  char16_t             team_name[0x0010];        // account
   uint8_t             tech_menu_config[0x0028]; // player
 
   void load_player_data(const std::string& filename);

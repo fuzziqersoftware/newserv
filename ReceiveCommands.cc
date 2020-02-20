@@ -158,7 +158,7 @@ void process_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // DB
   struct Cmd {
     char unused[0x20];
@@ -176,7 +176,7 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   try {
     uint32_t serial_number;
     sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
-    c->license = s->license_manager->verify_gc(serial_number, cmd->access_key, 
+    c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
         cmd->password);
   } catch (const exception& e) {
     u16string message = u"Login failed: " + decode_sjis(e.what());
@@ -189,7 +189,7 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_command(c, 0x9A, 0x02);
 }
 
-void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 9A
   struct Cmd {
     char unused[0x20];
@@ -203,10 +203,10 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint32_t serial_number;
     sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd->access_key, 
+      c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
           NULL);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd->access_key, 
+      c->license = s->license_manager->verify_pc(serial_number, cmd->access_key,
           NULL);
     }
   } catch (const exception& e) {
@@ -219,7 +219,7 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_command(c, 0x9C, 0x01);
 }
 
-void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 9C
   struct Cmd {
     char unused[8];
@@ -238,10 +238,10 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint32_t serial_number;
     sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd->access_key, 
+      c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
           cmd->password);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd->access_key, 
+      c->license = s->license_manager->verify_pc(serial_number, cmd->access_key,
           cmd->password);
     }
   } catch (const exception& e) {
@@ -254,7 +254,7 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_command(c, 0x9C, 0x01);
 }
 
-void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 9D 9E
   struct Cmd {
     char unused[0x10];
@@ -277,10 +277,10 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint32_t serial_number;
     sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd->access_key, 
+      c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
           NULL);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd->access_key, 
+      c->license = s->license_manager->verify_pc(serial_number, cmd->access_key,
           NULL);
     }
   } catch (const exception& e) {
@@ -302,7 +302,7 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   process_login_complete(s, c);
 }
 
-void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 93
   struct Cmd {
     char unused[0x14];
@@ -371,12 +371,12 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_client_checksum(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_client_checksum(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 96
   send_command(c, 0x97, 0x01);
 }
 
-void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // B1
   check_size(size, 0);
   send_server_time(c);
@@ -388,7 +388,7 @@ void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c
 // Ep3 commands. Note that these commands are not at all functional. The command
 // handlers that partially worked were lost in a dead hard drive, unfortunately.
 
-void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t unknown[3]; // should be FFFFFFFF 00000000
@@ -404,13 +404,13 @@ void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_command(l, command, 0x03, cmd);
 }
 
-void process_ep3_menu_challenge(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_ep3_menu_challenge(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // DC
   check_size(size, 0);
   send_command(c, 0xDC);
 }
 
-void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // CA
   check_size(size, 8, 0xFFFF);
   const PSOSubcommand* cmds = reinterpret_cast<const PSOSubcommand*>(data);
@@ -427,14 +427,14 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
   }
 
   switch (cmds[1].byte[0]) {
-    // phase 1: map select 
+    // phase 1: map select
     case 0x40:
       send_ep3_map_list(l);
       break;
     case 0x41:
       send_ep3_map_data(l, cmds[4].dword);
       break;
-    /*// phase 2: deck/name entry 
+    /*// phase 2: deck/name entry
     case 0x13:
       ti = FindTeam(s, c->teamID);
       memcpy(&ti->ep3game, ((DWORD)c->bufferin + 0x14), 0x2AC);
@@ -442,12 +442,12 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
       break;
     case 0x1B:
       ti = FindTeam(s, c->teamID);
-      memcpy(&ti->ep3names[*(BYTE*)((DWORD)c->bufferin + 0x24)], ((DWORD)c->bufferin + 0x14), 0x14); // NOTICE: may be 0x26 instead of 0x24 
+      memcpy(&ti->ep3names[*(BYTE*)((DWORD)c->bufferin + 0x24)], ((DWORD)c->bufferin + 0x14), 0x14); // NOTICE: may be 0x26 instead of 0x24
       CommandEp3InitSendNames(s, c);
       break;
     case 0x14:
       ti = FindTeam(s, c->teamID);
-      memcpy(&ti->ep3decks[*(BYTE*)((DWORD)c->bufferin + 0x14)], ((DWORD)c->bufferin + 0x18), 0x58); // NOTICE: may be 0x16 instead of 0x14 
+      memcpy(&ti->ep3decks[*(BYTE*)((DWORD)c->bufferin + 0x14)], ((DWORD)c->bufferin + 0x18), 0x58); // NOTICE: may be 0x16 instead of 0x14
       Ep3FillHand(&ti->ep3game, &ti->ep3decks[*(BYTE*)((DWORD)c->bufferin + 0x14)], &ti->ep3pcs[*(BYTE*)((DWORD)c->bufferin + 0x14)]);
       //Ep3RollDice(&ti->ep3game, &ti->ep3pcs[*(BYTE*)((DWORD)c->bufferin + 0x14)]);
       CommandEp3InitSendDecks(s, c);
@@ -455,7 +455,7 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
       for (x = 0, param = 0; x < 4; x++) if ((ti->ep3decks[x].clientID != 0xFFFFFFFF) && (ti->ep3names[x].clientID != 0xFF)) param++;
       if (param >= ti->ep3game.numPlayers) CommandEp3InitChangeState(s, c, 3);
       break;
-    // phase 3: hands & game states 
+    // phase 3: hands & game states
     case 0x1D:
       ti = FindTeam(s, c->teamID);
       Ep3ReprocessMap(&ti->ep3game);
@@ -463,7 +463,7 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
       for (y = 0, x = 0; x < 4; x++)
       {
           if ((ti->ep3decks[x].clientID == 0xFFFFFFFF) || (ti->ep3names[x].clientID == 0xFF)) continue;
-          Ep3EquipCard(&ti->ep3game, &ti->ep3decks[x], &ti->ep3pcs[x], 0); // equip SC card 
+          Ep3EquipCard(&ti->ep3game, &ti->ep3decks[x], &ti->ep3pcs[x], 0); // equip SC card
           CommandEp3InitHandUpdate(s, c, x);
           CommandEp3InitStatUpdate(s, c, x);
           y++;
@@ -500,7 +500,7 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
 ////////////////////////////////////////////////////////////////////////////////
 // menu commands
 
-void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D6
   if (c->flags & ClientFlag::InInformationMenu) {
     send_menu(c, u"Information", INFORMATION_MENU_ID, *s->information_menu, false);
@@ -510,7 +510,7 @@ void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 09
   struct Cmd {
     uint32_t menu_id;
@@ -570,7 +570,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
   }
 }
 
-void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 10
   bool uses_unicode = ((c->version == GameVersion::PC) || (c->version == GameVersion::BB));
 
@@ -795,13 +795,13 @@ void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
   s->change_client_lobby(c, new_lobby);
 }
 
-void process_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 08
   check_size(size, 0);
   send_game_menu(c, s);
 }
 
-void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // A0
   send_message_box(c, u""); // we do this to avoid the "log window in message box" bug
 
@@ -813,14 +813,14 @@ void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
       s->port_configuration.at(port_name).port);
 }
 
-void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // A1
   // this server doesn't have blocks; treat block change as ship change
   process_change_ship(s, c, command, flag, size, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Quest commands 
+// Quest commands
 
 vector<MenuItem> quest_categories_menu({
   MenuItem(static_cast<uint32_t>(QuestCategory::Retrieval), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
@@ -832,15 +832,15 @@ vector<MenuItem> quest_categories_menu({
 });
 
 vector<MenuItem> quest_battle_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::Battle), u"Battle", u"$E$C6Battle mode rule\nsets", 0), 
+  MenuItem(static_cast<uint32_t>(QuestCategory::Battle), u"Battle", u"$E$C6Battle mode rule\nsets", 0),
 });
 
 vector<MenuItem> quest_challenge_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::Challenge), u"Challenge", u"$E$C6Challenge mode\nquests", 0), 
+  MenuItem(static_cast<uint32_t>(QuestCategory::Challenge), u"Challenge", u"$E$C6Challenge mode\nquests", 0),
 });
 
 vector<MenuItem> quest_solo_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::Solo), u"Solo Quests", u"$E$C6Quests that require\na single player", 0), 
+  MenuItem(static_cast<uint32_t>(QuestCategory::Solo), u"Solo Quests", u"$E$C6Quests that require\na single player", 0),
 });
 
 vector<MenuItem> quest_government_menu({
@@ -859,7 +859,7 @@ vector<MenuItem> quest_download_menu({
   MenuItem(static_cast<uint32_t>(QuestCategory::Download), u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
 });
 
-void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // A2
   check_size(size, 0);
 
@@ -894,7 +894,7 @@ void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_quest_menu(c, QUEST_FILTER_MENU_ID, *menu, false);
 }
 
-void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // AC
   check_size(size, 0);
 
@@ -925,9 +925,9 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// player data commands 
+// player data commands
 
-void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 61 98
 
   // note: we add extra buffer on the end when checking sizes because the
@@ -987,9 +987,9 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// subcommands 
+// subcommands
 
-void process_game_command(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_game_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 60 62 6C 6D C9 CB (C9 CB are ep3 only)
   check_size(size, 4, 0xFFFF);
   const PSOSubcommand* sub = reinterpret_cast<const PSOSubcommand*>(data);
@@ -1004,9 +1004,9 @@ void process_game_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// chat commands 
+// chat commands
 
-void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
     const u16string& text) { // 06
 
   if (!c->can_chat) {
@@ -1043,7 +1043,7 @@ void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 06
   struct Cmd {
     uint32_t unused[2];
@@ -1055,7 +1055,7 @@ void process_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   process_chat_generic(s, c, cmd->text);
 }
 
-void process_chat_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_chat_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t unused[2];
@@ -1071,13 +1071,13 @@ void process_chat_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 ////////////////////////////////////////////////////////////////////////////////
 // BB commands
 
-void process_key_config_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_key_config_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   check_size(size, 0);
   send_team_and_key_config_bb(c);
 }
 
-void process_player_preview_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_player_preview_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t player_index;
@@ -1113,7 +1113,7 @@ void process_player_preview_request_bb(shared_ptr<ServerState> s, shared_ptr<Cli
   }
 }
 
-void process_client_checksum_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_client_checksum_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   check_size(size, 0);
 
@@ -1126,7 +1126,7 @@ void process_client_checksum_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_guild_card_data_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_guild_card_data_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t unknown;
@@ -1141,7 +1141,7 @@ void process_guild_card_data_request_bb(shared_ptr<ServerState> s, shared_ptr<Cl
   }
 }
 
-void process_stream_file_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_stream_file_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   check_size(size, 0);
 
@@ -1152,7 +1152,7 @@ void process_stream_file_request_bb(shared_ptr<ServerState> s, shared_ptr<Client
   }
 }
 
-void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t player_index;
@@ -1211,16 +1211,16 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
   send_approve_player_choice_bb(c);
 }
 
-void process_change_account_data_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_change_account_data_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   union Cmd {
-    uint32_t option; // 01ED 
-    uint8_t symbol_chats[0x4E0]; // 02ED 
-    uint8_t chat_shortcuts[0xA40]; // 03ED 
-    uint8_t key_config[0x16C]; // 04ED 
-    uint8_t pad_config[0x38]; // 05ED 
-    uint8_t tech_menu[0x28]; // 06ED 
-    uint8_t customize[0xE8]; // 07ED 
+    uint32_t option; // 01ED
+    uint8_t symbol_chats[0x4E0]; // 02ED
+    uint8_t chat_shortcuts[0xA40]; // 03ED
+    uint8_t key_config[0x16C]; // 04ED
+    uint8_t pad_config[0x38]; // 05ED
+    uint8_t tech_menu[0x28]; // 06ED
+    uint8_t customize[0xE8]; // 07ED
   };
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1258,7 +1258,7 @@ void process_change_account_data_bb(shared_ptr<ServerState> s, shared_ptr<Client
   }
 }
 
-void process_return_player_data_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_return_player_data_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   check_size(size, sizeof(PlayerBB));
   const PlayerBB* cmd = reinterpret_cast<const PlayerBB*>(data);
@@ -1270,9 +1270,9 @@ void process_return_player_data_bb(shared_ptr<ServerState> s, shared_ptr<Client>
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Lobby commands 
+// Lobby commands
 
-void process_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   check_size(size, 0);
 
@@ -1283,7 +1283,7 @@ void process_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 40
   struct Cmd {
     uint32_t player_tag;
@@ -1301,28 +1301,28 @@ void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Info board commands 
+// Info board commands
 
-void process_info_board_request(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_info_board_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D8
   check_size(size, 0);
   auto l = s->find_lobby(c->lobby_id);
   send_info_board(c, l);
 }
 
-void process_write_info_board_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_write_info_board_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D9
   check_size(size, 0, 2 * 0xAC);
   char16cpy(c->player.info_board, reinterpret_cast<const char16_t*>(data), 0xAC);
 }
 
-void process_write_info_board_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_write_info_board_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D9
   check_size(size, 0, 0xAC);
   decode_sjis(c->player.info_board, reinterpret_cast<const char*>(data), 0xAC);
 }
 
-void process_set_auto_reply_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_set_auto_reply_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   check_size(size, 0, 2 * 0xAC);
   if (size == 0) {
@@ -1332,7 +1332,7 @@ void process_set_auto_reply_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> 
   }
 }
 
-void process_set_auto_reply_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_set_auto_reply_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   check_size(size, 0, 0xAC);
   if (size == 0) {
@@ -1342,13 +1342,13 @@ void process_set_auto_reply_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> 
   }
 }
 
-void process_disable_auto_reply(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_disable_auto_reply(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   check_size(size, 0);
   c->player.auto_reply[0] = 0;
 }
 
-void process_set_blocked_list(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_set_blocked_list(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   check_size(size, 0x78);
   memcpy(c->player.blocked, data, 0x78);
@@ -1357,7 +1357,7 @@ void process_set_blocked_list(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Game commands 
+// Game commands
 
 shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     shared_ptr<Client> c, const char16_t* name, const char16_t* password,
@@ -1365,18 +1365,18 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     uint8_t solo) {
 
   static const uint32_t variation_maxes_online[3][0x20] = {
-      {1, 1, 1, 5, 1, 5, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 
-       3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 
+      {1, 1, 1, 5, 1, 5, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2,
+       3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 3, 1, 3, 1, 3,
-       2, 2, 1, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1}, 
+       2, 2, 1, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 1, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 1, 1, 3,
        3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
 
   static const uint32_t variation_maxes_solo[3][0x20] = {
       {1, 1, 1, 3, 1, 3, 3, 1, 3, 1, 3, 1, 3, 2, 3, 2,
-       3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 
+       3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 3, 1, 3, 1, 3,
-       2, 2, 1, 3, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 
+       2, 2, 1, 3, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 1, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 1, 1, 3,
        3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
 
@@ -1480,7 +1480,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   return game;
 }
 
-void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C1
   struct Cmd {
     uint32_t unused[2];
@@ -1502,7 +1502,7 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   c->flags |= ClientFlag::Loading;
 }
 
-void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C1
   struct Cmd {
     uint32_t unused[2];
@@ -1535,7 +1535,7 @@ void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   c->flags |= ClientFlag::Loading;
 }
 
-void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C1
   struct Cmd {
     uint32_t unused[2];
@@ -1562,7 +1562,7 @@ void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   game->assign_item_ids_for_player(c->lobby_client_id, c->player.inventory);
 }
 
-void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 8A
   check_size(size, 0);
   auto l = s->find_lobby(c->lobby_id);
@@ -1572,7 +1572,7 @@ void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_lobby_name(c, l->name);
 }
 
-void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 6F
   check_size(size, 0);
 
@@ -1587,14 +1587,14 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_resume_game(l, c);
   // tell the new player the time
   //send_server_time(c);
-  // get character info 
+  // get character info
   //send_get_player_info(c);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Team commands 
+// Team commands
 
-void process_team_command_bb(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_team_command_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) { // EA
 
   if (command == 0x01EA) {
@@ -1605,15 +1605,15 @@ void process_team_command_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Patch server commands 
+// Patch server commands
 
-void process_encryption_ok_patch(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_encryption_ok_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   check_size(size, 0);
   send_command(c, 0x04); // this requests the user's login information
 }
 
-void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t unused[3];
@@ -1665,7 +1665,7 @@ void process_unimplemented_command(shared_ptr<ServerState> s, shared_ptr<Client>
 
 
 
-typedef void (*process_command_t)(shared_ptr<ServerState> s, shared_ptr<Client> c, 
+typedef void (*process_command_t)(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data);
 
 // The entries in these arrays correspond to the ID of the command received. For
@@ -1673,10 +1673,10 @@ typedef void (*process_command_t)(shared_ptr<ServerState> s, shared_ptr<Client> 
 // array corresponding to the client's version is called.
 static process_command_t dc_handlers[0x100] = {
   // 00
-  NULL, NULL, NULL, NULL, 
-  NULL, process_ignored_command, process_chat_dc_gc, NULL, 
-  process_game_list_request, process_menu_item_info_request, NULL, NULL, 
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
+  NULL, process_ignored_command, process_chat_dc_gc, NULL,
+  process_game_list_request, process_menu_item_info_request, NULL, NULL,
+  NULL, NULL, NULL, NULL,
 
   // 10
   process_menu_selection, NULL, NULL, process_ignored_command,
@@ -1780,73 +1780,73 @@ static process_command_t pc_handlers[0x100] = {
   process_menu_selection, NULL, NULL, process_ignored_command,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, NULL, NULL, 
+  NULL, process_ignored_command, NULL, NULL,
 
   // 20
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 30
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 40
   process_card_search, NULL, NULL, NULL,
   process_ignored_command, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 50
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 60
   process_game_command, process_player_data, process_game_command, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  process_game_command, process_game_command, NULL, process_client_ready, 
+  process_game_command, process_game_command, NULL, process_client_ready,
 
   // 70
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 80
   NULL, NULL, NULL, NULL,
   process_change_lobby, NULL, NULL, NULL,
   NULL, process_change_arrow_color, process_lobby_name_request, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 90
   NULL, NULL, NULL, NULL,
   NULL, NULL, process_client_checksum, NULL,
   process_player_data, process_ignored_command, process_login_a_dc_pc_gc, NULL,
-  process_login_c_dc_pc_gc, process_login_d_e_pc_gc, process_login_d_e_pc_gc, NULL, 
+  process_login_c_dc_pc_gc, process_login_d_e_pc_gc, process_login_d_e_pc_gc, NULL,
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, NULL,
   NULL, NULL, NULL, NULL,
   NULL, process_ignored_command, NULL, NULL,
-  process_quest_ready, NULL, NULL, NULL, 
+  process_quest_ready, NULL, NULL, NULL,
 
   // B0
   NULL, process_server_time_request, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // C0
   NULL, process_create_game_pc, NULL, NULL,
   NULL, NULL, process_set_blocked_list, process_set_auto_reply_pc_bb,
   process_disable_auto_reply, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // D0
   NULL, NULL, NULL, NULL,
@@ -1970,91 +1970,91 @@ static process_command_t bb_handlers[0x100] = {
   NULL, NULL, NULL, NULL,
   NULL, process_ignored_command, process_chat_pc_bb, NULL,
   process_game_list_request, process_menu_item_info_request, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 10
   process_menu_selection, NULL, NULL, process_ignored_command,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, NULL, NULL, 
+  NULL, process_ignored_command, NULL, NULL,
 
   // 20
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 30
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 40
   process_card_search, NULL, NULL, NULL,
   process_ignored_command, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 50
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 60
   process_game_command, process_player_data, process_game_command, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  process_game_command, process_game_command, NULL, process_client_ready, 
+  process_game_command, process_game_command, NULL, process_client_ready,
 
   // 70
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 80
   NULL, NULL, NULL, NULL,
   process_change_lobby, NULL, NULL, NULL,
   NULL, process_change_arrow_color, process_lobby_name_request, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 90
   NULL, NULL, NULL, process_login_bb,
   NULL, NULL, NULL, NULL,
   process_player_data, process_ignored_command, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, NULL,
   NULL, NULL, NULL, NULL,
   NULL, process_ignored_command, NULL, NULL,
-  process_quest_ready, NULL, NULL, NULL, 
+  process_quest_ready, NULL, NULL, NULL,
 
   // B0
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // C0
   NULL, process_create_game_bb, NULL, NULL,
   NULL, NULL, process_set_blocked_list, process_set_auto_reply_pc_bb,
   process_disable_auto_reply, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // D0
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   process_info_board_request, process_write_info_board_pc_bb, NULL, NULL,
-  process_guild_card_data_request_bb, NULL, NULL, NULL, 
+  process_guild_card_data_request_bb, NULL, NULL, NULL,
 
   // E0
   process_key_config_request_bb, NULL, NULL, process_player_preview_request_bb,
   NULL, process_create_character_bb, NULL, process_return_player_data_bb,
   process_client_checksum_bb, NULL, process_team_command_bb, process_stream_file_request_bb,
-  process_ignored_command, process_change_account_data_bb, NULL, NULL, 
+  process_ignored_command, process_change_account_data_bb, NULL, NULL,
 
   // F0
   NULL, NULL, NULL, NULL,
@@ -2071,35 +2071,35 @@ static process_command_t patch_handlers[0x100] = {
   NULL, NULL, NULL, NULL,
 
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 10
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 20
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 30
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 40
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 50
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 60
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 70
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 80
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 90
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // A0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // B0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // C0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // D0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // E0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // F0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 };
 
 static process_command_t* handlers[6] = {

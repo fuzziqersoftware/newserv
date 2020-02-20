@@ -38,7 +38,7 @@ struct Lobby {
   std::unordered_map<uint32_t, PlayerInventoryItem> item_id_to_floor_item;
   uint32_t variations[0x20];
 
-  // game config 
+  // game config
   GameVersion version;
   uint8_t section_id;
   uint8_t episode;
@@ -48,16 +48,16 @@ struct Lobby {
   char16_t name[0x24];
   uint32_t rare_seed;
 
-  //EP3_GAME_CONFIG* ep3; // only present if this is an Episode 3 game 
+  //EP3_GAME_CONFIG* ep3; // only present if this is an Episode 3 game
 
-  // lobby stuff 
+  // lobby stuff
   uint8_t event;
   uint8_t block;
-  uint8_t type; // number to give to PSO for the lobby number 
+  uint8_t type; // number to give to PSO for the lobby number
   uint8_t leader_id;
   uint8_t max_clients;
   uint32_t flags;
-  uint32_t loading_quest_id; // for use with joinable quests 
+  uint32_t loading_quest_id; // for use with joinable quests
   std::shared_ptr<Client> clients[12];
 
   Lobby();

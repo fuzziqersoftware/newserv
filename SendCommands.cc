@@ -20,7 +20,7 @@ static FileContentsCache file_cache;
 
 
 
-void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag, 
+void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
     const void* data, size_t size) {
   string send_data;
 
@@ -85,7 +85,7 @@ void send_command_excluding_client(shared_ptr<Lobby> l, shared_ptr<Client> c,
   }
 }
 
-void send_command(shared_ptr<Lobby> l, uint16_t command, uint32_t flag, 
+void send_command(shared_ptr<Lobby> l, uint16_t command, uint32_t flag,
     const void* data, size_t size) {
   send_command_excluding_client(l, NULL, command, flag, data, size);
 }
@@ -102,7 +102,7 @@ void send_command(shared_ptr<ServerState> s, uint16_t command, uint32_t flag,
 // specific command sending functions follow. in general, they're written in
 // such a way that you don't need to think about anything, even the client's
 // version, before calling them. for this reason, some of them are quite
-// complex. many are split into several functions, one for each version of PSO, 
+// complex. many are split into several functions, one for each version of PSO,
 // named with suffixes _GC, _BB, and the like. in these cases, the function
 // without the suffix simply calls the appropriate function for the client's
 // version. thus, if you change something in one of the version-specific
@@ -275,10 +275,10 @@ void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
 // number and security data
 void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
   struct {
-    uint32_t error; // see below 
+    uint32_t error; // see below
     uint32_t player_tag;
     uint32_t serial_number;
-    uint32_t team_id; // just randomize it; teams aren't supported 
+    uint32_t team_id; // just randomize it; teams aren't supported
     ClientConfigBB cfg;
     uint32_t caps; // should be 0x00000102
   } cmd = {
@@ -332,8 +332,8 @@ void send_guild_card_header_bb(shared_ptr<Client> c) {
   uint32_t checksum = compute_guild_card_checksum(&c->player.guild_cards,
       sizeof(GuildCardFileBB));
   struct {
-    uint32_t unknown; // should be 1 
-    uint32_t filesize; // 0x0000490 
+    uint32_t unknown; // should be 1
+    uint32_t filesize; // 0x0000490
     uint32_t checksum;
   } cmd = {1, 0x490, checksum};
   send_command(c, 0x01DC, 0x00000000, cmd);
@@ -436,7 +436,7 @@ void send_complete_player_bb(shared_ptr<Client> c) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// patch functions 
+// patch functions
 
 void send_check_directory_patch(shared_ptr<Client> c, const char* dir) {
   char data[0x40];
@@ -829,7 +829,7 @@ static void send_menu_pc_bb(shared_ptr<Client> c, const char16_t* menu_name,
   struct Entry {
     uint32_t menu_id;
     uint32_t item_id;
-    uint16_t flags; // should be 0x0F04 
+    uint16_t flags; // should be 0x0F04
     char16_t text[17];
   };
 
@@ -871,7 +871,7 @@ static void send_menu_dc_gc(shared_ptr<Client> c, const char16_t* menu_name,
   struct Entry {
     uint32_t menu_id;
     uint32_t item_id;
-    uint16_t flags; // should be 0x0F04 
+    uint16_t flags; // should be 0x0F04
     char text[18];
   };
 
@@ -1249,7 +1249,7 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
   struct Entry {
     uint32_t menu_id;
     uint32_t item_id;
-    uint32_t unused; // should be 0x00000000 
+    uint32_t unused; // should be 0x00000000
   };
 
   vector<Entry> entries;
@@ -1340,7 +1340,7 @@ static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     uint8_t section_id;
     uint8_t challenge_mode;
     uint32_t rare_seed;
-    uint32_t episode; // for PSOPC, this must be 0x00000100 
+    uint32_t episode; // for PSOPC, this must be 0x00000100
     struct {
       PlayerInventory inventory;
       PlayerDispDataPCGC disp;
@@ -1761,7 +1761,7 @@ void send_resume_game(shared_ptr<Lobby> l, shared_ptr<Client> ready_client) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Game/cheat commands 
+// Game/cheat commands
 
 // sends an HP/TP/Meseta modifying command (see flag definitions in command-functions.h)
 void send_player_stats_change(shared_ptr<Lobby> l, shared_ptr<Client> c,
@@ -1809,7 +1809,7 @@ void send_warp(shared_ptr<Client> c, uint32_t area) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// BB game commands 
+// BB game commands
 
 // notifies other players of a dropped item from a box or enemy
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
@@ -1949,7 +1949,7 @@ void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// ep3 only commands 
+// ep3 only commands
 
 // sends the (PRS-compressed) card list to the client
 void send_ep3_card_list_update(shared_ptr<Client> c) {
