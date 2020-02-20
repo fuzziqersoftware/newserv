@@ -37,6 +37,12 @@ commands:\n\
     send a command to the server\n\
   chat <text>\n\
     send a chat message to the server\n\
+  dchat <data>\n\
+    send a chat message to the server with arbitrary data in it\n\
+  marker <color-id>\n\
+    send a lobby marker message to the server\n\
+  event <event-id>\n\
+    send a lobby event update to yourself\n\
 ");
 
   } else if ((command_name == "sc") || (command_name == "ss")) {
@@ -60,12 +66,16 @@ commands:\n\
       this->proxy_server->send_to_server(data);
     }
 
-  } else if (command_name == "chat") {
+  } else if ((command_name == "chat") || (command_name == "dchat")) {
     string data(12, '\0');
     data[0] = 0x06;
     data.push_back('\x09');
     data.push_back('E');
-    data += command_args;
+    if (command_name == "dchat") {
+      data += parse_data_string(command_args);
+    } else {
+      data += command_args;
+    }
     data.push_back('\0');
     data.resize((data.size() + 3) & (~3));
     uint16_t* size_field = reinterpret_cast<uint16_t*>(const_cast<char*>(data.data() + 2));
@@ -74,6 +84,22 @@ commands:\n\
     log(INFO, "client (from proxy):");
     print_data(stderr, data);
     this->proxy_server->send_to_server(data);
+
+  } else if (command_name == "marker") {
+    string data("\x89\x00\x04\x00", 4);
+    data[1] = stod(command_args);
+
+    log(INFO, "client (from proxy):");
+    print_data(stderr, data);
+    this->proxy_server->send_to_server(data);
+
+  } else if (command_name == "event") {
+    string data("\xDA\x00\x04\x00", 4);
+    data[1] = stod(command_args);
+
+    log(INFO, "server (from proxy):");
+    print_data(stderr, data);
+    this->proxy_server->send_to_client(data);
 
   } else {
     throw invalid_argument("unknown command; try \'help\'");
