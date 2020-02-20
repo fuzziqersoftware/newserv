@@ -60,19 +60,14 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
 
   if (command_is_private(command)) {
     if (flag >= l->max_clients) {
-      log(INFO, "[subcommand-debug] skipping forwarding command; flag=%hhX and max_clients=%zu",
-          flag, l->max_clients);
       return;
     }
     auto target = l->clients[flag];
     if (!target) {
-      log(INFO, "[subcommand-debug] skipping forwarding command; target is missing");
       return;
     }
-    log(INFO, "[subcommand-debug] forwarding command");
     send_command(target, command, flag, p, count * 4);
   } else {
-    log(INFO, "[subcommand-debug] not private (%02hhX)", command);
     send_command_excluding_client(l, c, command, flag, p, count * 4);
   }
 }
