@@ -1872,91 +1872,91 @@ static process_command_t gc_handlers[0x100] = {
   NULL, NULL, NULL, NULL,
   NULL, process_ignored_command, process_chat_dc_gc, NULL,
   process_game_list_request, process_menu_item_info_request, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 10
   process_menu_selection, NULL, NULL, process_ignored_command,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, NULL, NULL, 
+  NULL, process_ignored_command, NULL, NULL,
 
   // 20
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 30
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 40
   process_card_search, NULL, NULL, NULL,
   process_ignored_command, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 50
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 60
   process_game_command, process_player_data, process_game_command, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  process_game_command, process_game_command, NULL, process_client_ready, 
+  process_game_command, process_game_command, NULL, process_client_ready,
 
   // 70
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 80
   NULL, NULL, NULL, NULL,
   process_change_lobby, NULL, NULL, NULL,
   NULL, process_change_arrow_color, process_lobby_name_request, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // 90
   NULL, NULL, NULL, NULL,
   NULL, NULL, process_client_checksum, NULL,
   process_player_data, process_ignored_command, NULL, NULL,
-  process_login_c_dc_pc_gc, process_login_d_e_pc_gc, process_login_d_e_pc_gc, NULL, 
+  process_login_c_dc_pc_gc, process_login_d_e_pc_gc, process_login_d_e_pc_gc, NULL,
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, NULL,
   NULL, NULL, NULL, NULL,
   NULL, process_ignored_command, NULL, NULL,
-  process_quest_ready, NULL, NULL, NULL, 
+  process_quest_ready, NULL, NULL, NULL,
 
   // B0
   NULL, process_server_time_request, NULL, NULL,
   NULL, NULL, NULL, process_ignored_command,
   process_ignored_command, NULL, process_ep3_jukebox, NULL,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // C0
   NULL, process_create_game_dc_gc, NULL, NULL,
   NULL, NULL, process_set_blocked_list, process_set_auto_reply_dc_gc,
   process_disable_auto_reply, process_game_command, process_ep3_server_data_request, process_game_command,
-  NULL, NULL, NULL, NULL, 
+  NULL, NULL, NULL, NULL,
 
   // D0
   NULL, NULL, NULL, NULL,
   NULL, NULL, process_message_box_closed, NULL,
   process_info_board_request, process_write_info_board_dc_gc, NULL, process_verify_license_gc,
-  process_ep3_menu_challenge, NULL, NULL, NULL, 
+  process_ep3_menu_challenge, NULL, NULL, NULL,
 
   // E0
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
-  process_create_game_dc_gc, NULL, NULL, NULL, 
+  process_create_game_dc_gc, NULL, NULL, NULL,
 
   // F0
   NULL, NULL, NULL, NULL,
