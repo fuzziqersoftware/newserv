@@ -115,14 +115,28 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   } catch (const out_of_range&) { }
 
   auto local_address_str = d.at("LocalAddress")->as_string();
-  s->local_address = address_for_string(local_address_str.c_str());
-  s->all_addresses.emplace(s->local_address);
-  log(INFO, "added local address: %s", local_address_str.c_str());
+  try {
+    s->local_address = s->all_addresses.at(local_address_str);
+    string addr_str = string_for_address(s->local_address);
+    log(INFO, "added local address: %s (%s)", addr_str.c_str(),
+        local_address_str.c_str());
+  } catch (const out_of_range&) {
+    s->local_address = address_for_string(local_address_str.c_str());
+    log(INFO, "added local address: %s", local_address_str.c_str());
+  }
+  s->all_addresses.emplace("<local>", s->local_address);
 
   auto external_address_str = d.at("ExternalAddress")->as_string();
-  s->external_address = address_for_string(external_address_str.c_str());
-  s->all_addresses.emplace(s->external_address);
-  log(INFO, "added external address: %s", external_address_str.c_str());
+  try {
+    s->external_address = s->all_addresses.at(external_address_str);
+    string addr_str = string_for_address(s->external_address);
+    log(INFO, "added external address: %s (%s)", addr_str.c_str(),
+        external_address_str.c_str());
+  } catch (const out_of_range&) {
+    s->external_address = address_for_string(external_address_str.c_str());
+    log(INFO, "added external address: %s", external_address_str.c_str());
+  }
+  s->all_addresses.emplace("<external>", s->external_address);
 
   try {
     s->run_dns_server = d.at("RunDNSServer")->as_bool();
@@ -193,10 +207,10 @@ int main(int argc, char* argv[]) {
   shared_ptr<struct event_base> base(event_base_new(), event_base_free);
 
   log(INFO, "reading network addresses");
-  state->all_addresses = get_local_address_list();
-  for (uint32_t addr : state->all_addresses) {
-    string addr_str = string_for_address(addr);
-    log(INFO, "found address: %s", addr_str.c_str());
+  state->all_addresses = get_local_addresses();
+  for (const auto& it : state->all_addresses) {
+    string addr_str = string_for_address(it.second);
+    log(INFO, "found interface: %s = %s", it.first.c_str(), addr_str.c_str());
   }
 
   log(INFO, "loading configuration");

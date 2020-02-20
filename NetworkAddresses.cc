@@ -44,7 +44,7 @@ uint32_t resolve_address(const char* address) {
   return bswap32(res_sin->sin_addr.s_addr);
 }
 
-set<uint32_t> get_local_address_list() {
+map<string, uint32_t> get_local_addresses() {
   struct ifaddrs* ifa_raw;
   if (getifaddrs(&ifa_raw)) {
     auto s = string_for_error(errno);
@@ -53,7 +53,7 @@ set<uint32_t> get_local_address_list() {
 
   unique_ptr<struct ifaddrs, void(*)(struct ifaddrs*)> ifa(ifa_raw, freeifaddrs);
 
-  set<uint32_t> ret;
+  map<string, uint32_t> ret;
   for (struct ifaddrs* i = ifa.get(); i; i = i->ifa_next) {
     if (!i->ifa_addr) {
       continue;
@@ -64,7 +64,7 @@ set<uint32_t> get_local_address_list() {
       continue;
     }
 
-    ret.emplace(bswap32(sin->sin_addr.s_addr));
+    ret.emplace(i->ifa_name, bswap32(sin->sin_addr.s_addr));
   }
 
   return ret;

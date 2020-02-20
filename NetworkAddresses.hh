@@ -3,7 +3,7 @@
 #include <netinet/in.h>
 #include <stdint.h>
 
-#include <set>
+#include <map>
 #include <string>
 
 
@@ -12,7 +12,7 @@
 // it's easier
 
 uint32_t resolve_address(const char* address);
-std::set<uint32_t> get_local_address_list();
+std::map<std::string, uint32_t> get_local_addresses();
 uint32_t get_connected_address(int fd);
 bool is_local_address(uint32_t daddr);
 bool is_local_address(const sockaddr_storage& daddr);

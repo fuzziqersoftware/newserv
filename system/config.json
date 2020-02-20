@@ -3,10 +3,10 @@
 
   // Server's name (maximum 16 characters)
   "ServerName": "Alexandria",
-  // Address to connect local clients to
+  // Address to connect local clients to (IP address or interface name)
   "LocalAddress": "192.168.0.5",
-  // Address to connect external clients to
-  "ExternalAddress": "10.0.1.6",
+  // Address to connect external clients to (IP address or interface name)
+  "ExternalAddress": "en0",
   // Set to false to disable the DNS server
   "RunDNSServer": true,
   // By default, the interactive shell runs if stdin is a terminal, and doesn't
