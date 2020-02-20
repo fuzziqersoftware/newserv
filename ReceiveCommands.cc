@@ -179,10 +179,12 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
         cmd->password);
   } catch (const exception& e) {
-    u16string message = u"Login failed: " + decode_sjis(e.what());
-    send_message_box(c, message.c_str());
-    c->should_disconnect = true;
-    return;
+    if (!s->allow_unregistered_users) {
+      u16string message = u"Login failed: " + decode_sjis(e.what());
+      send_message_box(c, message.c_str());
+      c->should_disconnect = true;
+      return;
+    }
   }
 
   c->flags |= flags_for_version(c->version, cmd->sub_version);
@@ -210,10 +212,12 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
           NULL);
     }
   } catch (const exception& e) {
-    u16string message = u"Login failed: " + decode_sjis(e.what());
-    send_message_box(c, message.c_str());
-    c->should_disconnect = true;
-    return;
+    if (!s->allow_unregistered_users) {
+      u16string message = u"Login failed: " + decode_sjis(e.what());
+      send_message_box(c, message.c_str());
+      c->should_disconnect = true;
+      return;
+    }
   }
 
   send_command(c, 0x9C, 0x01);
@@ -245,10 +249,12 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
           cmd->password);
     }
   } catch (const exception& e) {
-    u16string message = u"Login failed: " + decode_sjis(e.what());
-    send_message_box(c, message.c_str());
-    c->should_disconnect = true;
-    return;
+    if (!s->allow_unregistered_users) {
+      u16string message = u"Login failed: " + decode_sjis(e.what());
+      send_message_box(c, message.c_str());
+      c->should_disconnect = true;
+      return;
+    }
   }
 
   send_command(c, 0x9C, 0x01);
@@ -284,10 +290,12 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
           NULL);
     }
   } catch (const exception& e) {
-    u16string message = u"Login failed: " + decode_sjis(e.what());
-    send_message_box(c, message.c_str());
-    c->should_disconnect = true;
-    return;
+    if (!s->allow_unregistered_users) {
+      u16string message = u"Login failed: " + decode_sjis(e.what());
+      send_message_box(c, message.c_str());
+      c->should_disconnect = true;
+      return;
+    }
   }
 
   memcpy(&c->config.cfg, &cmd->cfg, sizeof(ClientConfig));

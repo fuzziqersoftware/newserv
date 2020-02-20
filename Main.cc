@@ -145,6 +145,12 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   }
 
   try {
+    s->allow_unregistered_users = d.at("AllowUnregisteredUsers")->as_bool();
+  } catch (const out_of_range&) {
+    s->allow_unregistered_users = true;
+  }
+
+  try {
     bool run_shell = d.at("RunInteractiveShell")->as_bool();
     s->run_shell_behavior = run_shell ?
         ServerState::RunShellBehavior::Always :

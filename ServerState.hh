@@ -36,6 +36,7 @@ struct ServerState {
   std::unordered_map<std::string, PortConfiguration> port_configuration;
   std::string username;
   bool run_dns_server;
+  bool allow_unregistered_users;
   RunShellBehavior run_shell_behavior;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;

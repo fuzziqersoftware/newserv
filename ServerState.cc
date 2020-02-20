@@ -11,6 +11,7 @@ using namespace std;
 
 
 ServerState::ServerState() : run_dns_server(true),
+    allow_unregistered_users(false),
     run_shell_behavior(RunShellBehavior::Default), next_lobby_id(1) {
   this->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",
       u"Join the lobby.", 0);
