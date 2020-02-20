@@ -50,12 +50,19 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
       break;
     }
 
-    case ServerBehavior::LoginServer:
+    case ServerBehavior::LoginServer: {
       if (!s->welcome_message.empty() && !(c->flags & ClientFlag::NoMessageBoxCloseConfirmation)) {
         c->flags |= ClientFlag::AtWelcomeMessage;
       }
       send_server_init(c, true);
+
+      // change the lobby event if the first lobby has one
+      auto l = s->find_lobby(1);
+      if (l->event) {
+        send_command(c, 0xDA, l->event);
+      }
       break;
+    }
 
     case ServerBehavior::LobbyServer:
     case ServerBehavior::DataServerBB:
