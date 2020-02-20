@@ -76,6 +76,9 @@ void ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> ne
 
   if (current_lobby) {
     send_player_leave_notification(current_lobby, old_lobby_client_id);
+    if (!(current_lobby->flags & LobbyFlag::Persistent) && (current_lobby->count_clients() == 0)) {
+      this->remove_lobby(current_lobby->lobby_id);
+    }
   }
   this->send_lobby_join_notifications(new_lobby, c);
 }
