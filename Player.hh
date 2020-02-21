@@ -355,12 +355,12 @@ struct SavedPlayerBB { // .nsc file format
   char signature[0x40];
   PlayerDispDataBBPreview preview;
 
-  char16_t           auto_reply[0x00AC];
+  char16_t          auto_reply[0x00AC];
   PlayerBank        bank;
   uint8_t           challenge_data[0x0140];
   PlayerDispDataBB  disp;
-  char16_t           guild_card_desc[0x58];
-  char16_t           info_board[0x00AC];
+  char16_t          guild_card_desc[0x58];
+  char16_t          info_board[0x00AC];
   PlayerInventory   inventory;
   uint8_t           quest_data1[0x0208];
   uint8_t           quest_data2[0x0058];
@@ -375,24 +375,24 @@ struct SavedAccountBB { // .nsa file format
   uint32_t            option_flags;
   uint8_t             shortcuts[0x0A40];
   uint8_t             symbol_chats[0x04E0];
-  char16_t             team_name[0x0010];
+  char16_t            team_name[0x0010];
 };
 
 // complete player info stored by the server
 struct Player {
   uint32_t            loaded_from_shipgate_time;
 
-  char16_t             auto_reply[0x00AC];       // player
+  char16_t            auto_reply[0x00AC];       // player
   PlayerBank          bank;                     // player
   char                bank_name[0x20];
   uint32_t            blocked[0x001E];          // account
   uint8_t             challenge_data[0x0140];   // player
   PlayerDispDataBB    disp;                     // player
   uint8_t             ep3_config[0x2408];
-  char16_t             guild_card_desc[0x58];    // player
+  char16_t            guild_card_desc[0x58];    // player
   GuildCardFileBB     guild_cards;              // account
   PlayerInventoryItem identify_result;
-  char16_t             info_board[0x00AC];       // player
+  char16_t            info_board[0x00AC];       // player
   PlayerInventory     inventory;                // player
   KeyAndTeamConfigBB  key_config;               // account
   uint32_t            option_flags;             // account
@@ -401,7 +401,7 @@ struct Player {
   uint32_t            serial_number;
   uint8_t             shortcuts[0x0A40];        // account
   uint8_t             symbol_chats[0x04E0];     // account
-  char16_t             team_name[0x0010];        // account
+  char16_t            team_name[0x0010];        // account
   uint8_t             tech_menu_config[0x0028]; // player
 
   void load_player_data(const std::string& filename);
