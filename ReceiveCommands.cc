@@ -1672,9 +1672,9 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // tell the other players to stop waiting for the new player to load
   send_resume_game(l, c);
   // tell the new player the time
-  //send_server_time(c);
+  send_server_time(c);
   // get character info
-  //send_get_player_info(c);
+  send_get_player_info(c);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1815,7 +1815,7 @@ static process_command_t dc_handlers[0x100] = {
   // 90
   NULL, NULL, NULL, NULL,
   NULL, NULL, process_client_checksum, NULL,
-  NULL, process_ignored_command, NULL, NULL,
+  process_player_data, process_ignored_command, NULL, NULL,
   NULL, NULL, NULL, NULL,
 
   // A0
