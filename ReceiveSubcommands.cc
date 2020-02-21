@@ -58,6 +58,12 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint8_t command, uint8_t flag, const PSOSubcommand* p,
     size_t count) {
 
+  // if the command is an Ep3-only command, make sure an Ep3 client sent it
+  bool command_is_ep3 = (command & 0xF0) == 0xC0;
+  if (command_is_ep3 && !(c->flags & ClientFlag::Episode3Games)) {
+    return;
+  }
+
   if (command_is_private(command)) {
     if (flag >= l->max_clients) {
       return;
@@ -66,9 +72,23 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     if (!target) {
       return;
     }
+    if (command_is_ep3 && !(target->flags & ClientFlag::Episode3Games)) {
+      return;
+    }
     send_command(target, command, flag, p, count * 4);
+
   } else {
-    send_command_excluding_client(l, c, command, flag, p, count * 4);
+    if (command_is_ep3) {
+      for (auto& target : l->clients) {
+        if (!target || (target == c) || !(target->flags & ClientFlag::Episode3Games)) {
+          continue;
+        }
+        send_command(target, command, flag, p, count * 4);
+      }
+
+    } else {
+      send_command_excluding_client(l, c, command, flag, p, count * 4);
+    }
   }
 }
 

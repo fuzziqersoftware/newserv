@@ -1596,11 +1596,17 @@ void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
+  // only allow EC from Ep3 clients
+  bool client_is_ep3 = c->flags & ClientFlag::Episode3Games;
+  if ((command == 0xEC) && !client_is_ep3) {
+    return;
+  }
+
   uint8_t episode = cmd->episode;
   if (c->version == GameVersion::DC) {
     episode = 1;
   }
-  if (c->flags & ClientFlag::Episode3Games) {
+  if (client_is_ep3) {
     episode = 0xFF;
   }
 
