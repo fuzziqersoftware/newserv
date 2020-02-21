@@ -19,145 +19,299 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> section_id_to_name({
+const vector<string> section_id_to_name({
   "Viridia", "Greennill", "Skyly", "Bluefull", "Purplenum", "Pinkal", "Redria",
   "Oran", "Yellowboze", "Whitill"});
 
-unordered_map<u16string, uint8_t> name_to_section_id({
-  {u"viridia", 0},
-  {u"greennill", 1},
-  {u"skyly", 2},
-  {u"bluefull", 3},
-  {u"purplenum", 4},
-  {u"pinkal", 5},
-  {u"redria", 6},
-  {u"oran", 7},
-  {u"yellowboze", 8},
-  {u"whitill", 9}});
+const unordered_map<string, uint8_t> name_to_section_id({
+  {"viridia", 0},
+  {"greennill", 1},
+  {"skyly", 2},
+  {"bluefull", 3},
+  {"purplenum", 4},
+  {"pinkal", 5},
+  {"redria", 6},
+  {"oran", 7},
+  {"yellowboze", 8},
+  {"whitill", 9}});
 
-vector<u16string> lobby_event_to_name({
-  u"none", u"xmas", u"none", u"val", u"easter", u"hallo", u"sonic",
-  u"newyear", u"summer", u"white", u"wedding", u"fall", u"s-spring",
-  u"s-summer", u"spring"});
+const vector<string> lobby_event_to_name({
+  "none", "xmas", "none", "val", "easter", "hallo", "sonic", "newyear",
+  "summer", "white", "wedding", "fall", "s-spring", "s-summer", "spring"});
 
-unordered_map<u16string, uint8_t> name_to_lobby_event({
-  {u"none",     0},
-  {u"xmas",     1},
-  {u"val",      3},
-  {u"easter",   4},
-  {u"hallo",    5},
-  {u"sonic",    6},
-  {u"newyear",  7},
-  {u"summer",   8},
-  {u"white",    9},
-  {u"wedding",  10},
-  {u"fall",     11},
-  {u"s-spring", 12},
-  {u"s-summer", 13},
-  {u"spring",   14},
+const unordered_map<string, uint8_t> name_to_lobby_event({
+  {"none",     0},
+  {"xmas",     1},
+  {"val",      3},
+  {"easter",   4},
+  {"hallo",    5},
+  {"sonic",    6},
+  {"newyear",  7},
+  {"summer",   8},
+  {"white",    9},
+  {"wedding",  10},
+  {"fall",     11},
+  {"s-spring", 12},
+  {"s-summer", 13},
+  {"spring",   14},
 });
 
-unordered_map<uint8_t, u16string> lobby_type_to_name({
-  {0x00, u"normal"},
-  {0x0F, u"inormal"},
-  {0x10, u"ipc"},
-  {0x11, u"iball"},
-  {0x67, u"cave2u"},
-  {0xD4, u"cave1"},
-  {0xE9, u"planet"},
-  {0xEA, u"clouds"},
-  {0xED, u"cave"},
-  {0xEE, u"jungle"},
-  {0xEF, u"forest2-2"},
-  {0xF0, u"forest2-1"},
-  {0xF1, u"windpower"},
-  {0xF2, u"overview"},
-  {0xF3, u"seaside"},
-  {0xF4, u"some?"},
-  {0xF5, u"dmorgue"},
-  {0xF6, u"caelum"},
-  {0xF8, u"digital"},
-  {0xF9, u"boss1"},
-  {0xFA, u"boss2"},
-  {0xFB, u"boss3"},
-  {0xFC, u"dragon"},
-  {0xFD, u"derolle"},
-  {0xFE, u"volopt"},
-  {0xFF, u"darkfalz"},
+const unordered_map<uint8_t, string> lobby_type_to_name({
+  {0x00, "normal"},
+  {0x0F, "inormal"},
+  {0x10, "ipc"},
+  {0x11, "iball"},
+  {0x67, "cave2u"},
+  {0xD4, "cave1"},
+  {0xE9, "planet"},
+  {0xEA, "clouds"},
+  {0xED, "cave"},
+  {0xEE, "jungle"},
+  {0xEF, "forest2-2"},
+  {0xF0, "forest2-1"},
+  {0xF1, "windpower"},
+  {0xF2, "overview"},
+  {0xF3, "seaside"},
+  {0xF4, "some?"},
+  {0xF5, "dmorgue"},
+  {0xF6, "caelum"},
+  {0xF8, "digital"},
+  {0xF9, "boss1"},
+  {0xFA, "boss2"},
+  {0xFB, "boss3"},
+  {0xFC, "dragon"},
+  {0xFD, "derolle"},
+  {0xFE, "volopt"},
+  {0xFF, "darkfalz"},
 });
 
-unordered_map<u16string, uint8_t> name_to_lobby_type({
-  {u"normal",    0x00},
-  {u"inormal",   0x0F},
-  {u"ipc",       0x10},
-  {u"iball",     0x11},
-  {u"cave1",     0xD4},
-  {u"cave2u",    0x67},
-  {u"dragon",    0xFC},
-  {u"derolle",   0xFD},
-  {u"volopt",    0xFE},
-  {u"darkfalz",  0xFF},
-  {u"planet",    0xE9},
-  {u"clouds",    0xEA},
-  {u"cave",      0xED},
-  {u"jungle",    0xEE},
-  {u"forest2-2", 0xEF},
-  {u"forest2-1", 0xF0},
-  {u"windpower", 0xF1},
-  {u"overview",  0xF2},
-  {u"seaside",   0xF3},
-  {u"some?",     0xF4},
-  {u"dmorgue",   0xF5},
-  {u"caelum",    0xF6},
-  {u"digital",   0xF8},
-  {u"boss1",     0xF9},
-  {u"boss2",     0xFA},
-  {u"boss3",     0xFB},
-  {u"knight",    0xFC},
-  {u"sky",       0xFE},
-  {u"morgue",    0xFF},
+const unordered_map<string, uint8_t> name_to_lobby_type({
+  {"normal",    0x00},
+  {"inormal",   0x0F},
+  {"ipc",       0x10},
+  {"iball",     0x11},
+  {"cave1",     0xD4},
+  {"cave2u",    0x67},
+  {"dragon",    0xFC},
+  {"derolle",   0xFD},
+  {"volopt",    0xFE},
+  {"darkfalz",  0xFF},
+  {"planet",    0xE9},
+  {"clouds",    0xEA},
+  {"cave",      0xED},
+  {"jungle",    0xEE},
+  {"forest2-2", 0xEF},
+  {"forest2-1", 0xF0},
+  {"windpower", 0xF1},
+  {"overview",  0xF2},
+  {"seaside",   0xF3},
+  {"some?",     0xF4},
+  {"dmorgue",   0xF5},
+  {"caelum",    0xF6},
+  {"digital",   0xF8},
+  {"boss1",     0xF9},
+  {"boss2",     0xFA},
+  {"boss3",     0xFB},
+  {"knight",    0xFC},
+  {"sky",       0xFE},
+  {"morgue",    0xFF},
 });
 
-vector<u16string> tech_id_to_name({
-  u"foie", u"gifoie", u"rafoie",
-  u"barta", u"gibarta", u"rabarta",
-  u"zonde", u"gizonde", u"razonde",
-  u"grants", u"deband", u"jellen", u"zalure", u"shifta",
-  u"ryuker", u"resta", u"anti", u"reverser", u"megid"});
+const vector<string> tech_id_to_name({
+  "foie", "gifoie", "rafoie",
+  "barta", "gibarta", "rabarta",
+  "zonde", "gizonde", "razonde",
+  "grants", "deband", "jellen", "zalure", "shifta",
+  "ryuker", "resta", "anti", "reverser", "megid"});
 
-unordered_map<u16string, uint8_t> name_to_tech_id({
-  {u"foie",     0},
-  {u"gifoie",   1},
-  {u"rafoie",   2},
-  {u"barta",    3},
-  {u"gibarta",  4},
-  {u"rabarta",  5},
-  {u"zonde",    6},
-  {u"gizonde",  7},
-  {u"razonde",  8},
-  {u"grants",   9},
-  {u"deband",   10},
-  {u"jellen",   11},
-  {u"zalure",   12},
-  {u"shifta",   13},
-  {u"ryuker",   14},
-  {u"resta",    15},
-  {u"anti",     16},
-  {u"reverser", 17},
-  {u"megid",    18},
+const unordered_map<string, uint8_t> name_to_tech_id({
+  {"foie",     0},
+  {"gifoie",   1},
+  {"rafoie",   2},
+  {"barta",    3},
+  {"gibarta",  4},
+  {"rabarta",  5},
+  {"zonde",    6},
+  {"gizonde",  7},
+  {"razonde",  8},
+  {"grants",   9},
+  {"deband",   10},
+  {"jellen",   11},
+  {"zalure",   12},
+  {"shifta",   13},
+  {"ryuker",   14},
+  {"resta",    15},
+  {"anti",     16},
+  {"reverser", 17},
+  {"megid",    18},
 });
 
-vector<u16string> npc_id_to_name({
-  u"ninja", u"rico", u"sonic", u"knuckles", u"tails", u"flowen", u"elly"});
+const vector<string> npc_id_to_name({
+  "ninja", "rico", "sonic", "knuckles", "tails", "flowen", "elly"});
 
-unordered_map<u16string, uint8_t> name_to_npc_id({
-  {u"ninja", 0},
-  {u"rico", 1},
-  {u"sonic", 2},
-  {u"knuckles", 3},
-  {u"tails", 4},
-  {u"flowen", 5},
-  {u"elly", 6}});
+const unordered_map<string, uint8_t> name_to_npc_id({
+  {"ninja", 0},
+  {"rico", 1},
+  {"sonic", 2},
+  {"knuckles", 3},
+  {"tails", 4},
+  {"flowen", 5},
+  {"elly", 6}});
+
+const string& name_for_section_id(uint8_t section_id) {
+  if (section_id < section_id_to_name.size()) {
+    return section_id_to_name[section_id];
+  } else {
+    static const string ret = "<Unknown section id>";
+    return ret;
+  }
+}
+
+u16string u16name_for_section_id(uint8_t section_id) {
+  return decode_sjis(name_for_section_id(section_id));
+}
+
+uint8_t section_id_for_name(const string& name) {
+  try {
+    return name_to_section_id.at(name);
+  } catch (const out_of_range&) { }
+  try {
+    uint64_t x = stoul(name);
+    if (x < section_id_to_name.size()) {
+      return x;
+    }
+  } catch (const invalid_argument&) {
+  } catch (const out_of_range&) { }
+  return 0xFF;
+}
+
+uint8_t section_id_for_name(const u16string& name) {
+  return section_id_for_name(encode_sjis(name));
+}
+
+const string& name_for_event(uint8_t event) {
+  if (event < lobby_event_to_name.size()) {
+    return lobby_event_to_name[event];
+  } else {
+    static const string ret = "<Unknown lobby event>";
+    return ret;
+  }
+}
+
+u16string u16name_for_event(uint8_t event) {
+  return decode_sjis(name_for_event(event));
+}
+
+uint8_t event_for_name(const string& name) {
+  try {
+    return name_to_lobby_event.at(name);
+  } catch (const out_of_range&) { }
+  try {
+    uint64_t x = stoul(name);
+    if (x < lobby_event_to_name.size()) {
+      return x;
+    }
+  } catch (const invalid_argument&) {
+  } catch (const out_of_range&) { }
+  return 0xFF;
+}
+
+uint8_t event_for_name(const u16string& name) {
+  return event_for_name(encode_sjis(name));
+}
+
+const string& name_for_lobby_type(uint8_t type) {
+  try {
+    return lobby_type_to_name.at(type);
+  } catch (const out_of_range&) {
+    static const string ret = "<Unknown lobby type>";
+    return ret;
+  }
+}
+
+u16string u16name_for_lobby_type(uint8_t type) {
+  return decode_sjis(name_for_lobby_type(type));
+}
+
+uint8_t lobby_type_for_name(const string& name) {
+  try {
+    return name_to_lobby_type.at(name);
+  } catch (const out_of_range&) { }
+  try {
+    uint64_t x = stoul(name);
+    if (x < lobby_type_to_name.size()) {
+      return x;
+    }
+  } catch (const invalid_argument&) {
+  } catch (const out_of_range&) { }
+  return 0x80;
+}
+
+uint8_t lobby_type_for_name(const u16string& name) {
+  return lobby_type_for_name(encode_sjis(name));
+}
+
+const string& name_for_technique(uint8_t tech) {
+  try {
+    return tech_id_to_name.at(tech);
+  } catch (const out_of_range&) {
+    static const string ret = "<Unknown technique>";
+    return ret;
+  }
+}
+
+u16string u16name_for_technique(uint8_t tech) {
+  return decode_sjis(name_for_technique(tech));
+}
+
+uint8_t technique_for_name(const string& name) {
+  try {
+    return name_to_tech_id.at(name);
+  } catch (const out_of_range&) { }
+  try {
+    uint64_t x = stoul(name);
+    if (x < tech_id_to_name.size()) {
+      return x;
+    }
+  } catch (const invalid_argument&) {
+  } catch (const out_of_range&) { }
+  return 0xFF;
+}
+
+uint8_t technique_for_name(const u16string& name) {
+  return technique_for_name(encode_sjis(name));
+}
+
+const string& name_for_npc(uint8_t npc) {
+  try {
+    return npc_id_to_name.at(npc);
+  } catch (const out_of_range&) {
+    static const string ret = "<Unknown NPC>";
+    return ret;
+  }
+}
+
+u16string u16name_for_npc(uint8_t npc) {
+  return decode_sjis(name_for_npc(npc));
+}
+
+uint8_t npc_for_name(const string& name) {
+  try {
+    return name_to_npc_id.at(name);
+  } catch (const out_of_range&) { }
+  try {
+    uint64_t x = stoul(name);
+    if (x < npc_id_to_name.size()) {
+      return x;
+    }
+  } catch (const invalid_argument&) {
+  } catch (const out_of_range&) { }
+  return 0xFF;
+}
+
+uint8_t npc_for_name(const u16string& name) {
+  return npc_for_name(encode_sjis(name));
+}
 
 
 
@@ -242,7 +396,7 @@ static void command_lobby_info(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 
     send_text_message_printf(c, "$C6Game ID: %08X\n%s\nSection ID: %s\nCheat mode: %s",
         l->lobby_id, level_string.c_str(),
-        section_id_to_name.at(l->section_id).c_str(),
+        name_for_section_id(l->section_id).c_str(),
         (l->flags & LobbyFlag::CheatsEnabled) ? "on" : "off");
 
   } else {
@@ -306,26 +460,22 @@ static void command_lobby_event(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   check_is_game(l, false);
   check_privileges(c, Privilege::ChangeEvent);
 
-  uint8_t new_event;
-  try {
-    new_event = name_to_lobby_event.at(args);
-  } catch (const out_of_range& e) {
+  uint8_t new_event = event_for_name(args);
+  if (new_event == 0xFF) {
     send_text_message(c, u"$C6No such lobby event.");
     return;
   }
 
   l->event = new_event;
-  send_command(l, 0xDA, l->event, NULL, 0);
+  send_change_event(l, l->event);
 }
 
 static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::ChangeEvent);
 
-  uint8_t new_event;
-  try {
-    new_event = name_to_lobby_event.at(args);
-  } catch (const out_of_range& e) {
+  uint8_t new_event = event_for_name(args);
+  if (new_event == 0xFF) {
     send_text_message(c, u"$C6No such lobby event.");
     return;
   }
@@ -336,7 +486,7 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
     }
 
     l->event = new_event;
-    send_command(l, 0xDA, new_event, NULL, 0);
+    send_change_event(l, l->event);
   }
 }
 
@@ -345,10 +495,8 @@ static void command_lobby_type(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   check_is_game(l, false);
   check_privileges(c, Privilege::ChangeEvent);
 
-  uint8_t new_type;
-  try {
-    new_type = name_to_lobby_type.at(args);
-  } catch (const out_of_range& e) {
+  uint8_t new_type = lobby_type_for_name(args);
+  if (new_type == 0x80) {
     send_text_message(c, u"$C6No such lobby type.");
     return;
   }
@@ -452,11 +600,12 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   } else if (tokens[0] == "namecolor") {
     sscanf(tokens[1].c_str(), "%8X", &c->player.disp.name_color);
   } else if (tokens[0] == "secid") {
-    try {
-      c->player.disp.section_id = name_to_section_id.at(decode_sjis(tokens[1]));
-    } catch (const out_of_range&) {
+    uint8_t secid = section_id_for_name(decode_sjis(tokens[1]));
+    if (secid == 0xFF) {
       send_text_message(c, u"$C6No such section ID.");
       return;
+    } else {
+      c->player.disp.section_id = secid;
     }
   } else if (tokens[0] == "name") {
     decode_sjis(c->player.disp.name, tokens[1].c_str(), 0x10);
@@ -466,12 +615,12 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
       c->player.disp.extra_model = 0;
       c->player.disp.v2_flags &= 0xFD;
     } else {
-      try {
-        c->player.disp.extra_model = name_to_npc_id.at(decode_sjis(tokens[1]));
-      } catch (const out_of_range&) {
+      uint8_t npc = npc_for_name(decode_sjis(tokens[1]));
+      if (npc == 0xFF) {
         send_text_message(c, u"$C6No such NPC.");
         return;
       }
+      c->player.disp.extra_model = npc;
       c->player.disp.v2_flags |= 0x02;
     }
   } else if ((tokens[0] == "tech") && (tokens.size() > 2)) {
@@ -481,13 +630,12 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
         c->player.disp.technique_levels[x] = level;
       }
     } else {
-      try {
-        uint8_t tech_id = name_to_tech_id.at(decode_sjis(tokens[1]));
-        c->player.disp.technique_levels[tech_id] = level;
-      } catch (const out_of_range&) {
+      uint8_t tech_id = technique_for_name(decode_sjis(tokens[1]));
+      if (tech_id == 0xFF) {
         send_text_message(c, u"$C6No such technique.");
         return;
       }
+      c->player.disp.technique_levels[tech_id] = level;
     }
   } else {
     send_text_message(c, u"$C6Unknown field.");

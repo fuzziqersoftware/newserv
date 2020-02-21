@@ -5,6 +5,10 @@
 
 #include <phosg/Strings.hh>
 
+#include "ChatCommands.hh"
+#include "ServerState.hh"
+#include "SendCommands.hh"
+
 using namespace std;
 
 
@@ -48,6 +52,13 @@ commands:\n\
     delete a license from the server\n\
   list-licenses\n\
     list all licenses registered on the server\n\
+  set-allow-unregistered-users <true/false>\n\
+    enable or disable allowing unregistered users on the server. disabling this\n\
+    does not disconnect unregistered users who are already connected.\n\
+  set-event <event>\n\
+    set the event in all lobbies\n\
+  announce <message>\n\
+    send an announcement message to all players\n\
 ");
 
   } else if (command_name == "reload") {
@@ -58,16 +69,16 @@ commands:\n\
     for (const string& type : types) {
       if (type == "licenses") {
         shared_ptr<LicenseManager> lm(new LicenseManager("system/licenses.nsi"));
-        state->license_manager = lm;
+        this->state->license_manager = lm;
       } else if (type == "battle-params") {
         shared_ptr<BattleParamTable> bpt(new BattleParamTable("system/blueburst/BattleParamEntry"));
-        state->battle_params = bpt;
+        this->state->battle_params = bpt;
       } else if (type == "level-table") {
         shared_ptr<LevelTable> lt(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));
-        state->level_table = lt;
+        this->state->level_table = lt;
       } else if (type == "quests") {
         shared_ptr<QuestIndex> qi(new QuestIndex("system/quests"));
-        state->quest_index = qi;
+        this->state->quest_index = qi;
       } else {
         throw invalid_argument("incorrect data type");
       }
@@ -128,19 +139,46 @@ commands:\n\
       throw invalid_argument("license does not contain serial number");
     }
 
-    state->license_manager->add(l);
+    this->state->license_manager->add(l);
     fprintf(stderr, "license added\n");
 
   } else if (command_name == "delete-license") {
     uint32_t serial_number = stoul(command_args);
-    state->license_manager->remove(serial_number);
+    this->state->license_manager->remove(serial_number);
     fprintf(stderr, "license deleted\n");
 
   } else if (command_name == "list-licenses") {
-    for (const auto& l : state->license_manager->snapshot()) {
+    for (const auto& l : this->state->license_manager->snapshot()) {
       string s = l.str();
       fprintf(stderr, "%s\n", s.c_str());
     }
+
+  } else if (command_name == "set-allow-unregistered-users") {
+    if (command_args == "true") {
+      this->state->allow_unregistered_users = true;
+    } else if (command_args == "false") {
+      this->state->allow_unregistered_users = false;
+    } else {
+      throw invalid_argument("argument must be true or false");
+    }
+    fprintf(stderr, "unregistered users are now %s\n",
+        this->state->allow_unregistered_users ? "allowed" : "disallowed");
+
+  } else if (command_name == "set-event") {
+    uint8_t event_id = event_for_name(command_args);
+    if (event_id == 0xFF) {
+      throw invalid_argument("invalid event");
+    }
+
+    this->state->pre_lobby_event = event_id;
+    for (const auto& l : this->state->all_lobbies()) {
+      l->event = event_id;
+    }
+    send_change_event(this->state, event_id);
+
+  } else if (command_name == "announce") {
+    u16string message16 = decode_sjis(command_args);
+    send_text_message(this->state, message16.c_str());
 
   } else {
     throw invalid_argument("unknown command; try \'help\'");

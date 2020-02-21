@@ -55,11 +55,8 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
         c->flags |= ClientFlag::AtWelcomeMessage;
       }
       send_server_init(c, true);
-
-      // change the lobby event if the first lobby has one
-      auto l = s->find_lobby(1);
-      if (l->event) {
-        send_command(c, 0xDA, l->event);
+      if (s->pre_lobby_event) {
+        send_change_event(c, s->pre_lobby_event);
       }
       break;
     }

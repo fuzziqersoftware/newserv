@@ -2107,3 +2107,15 @@ void send_server_time(shared_ptr<Client> c) {
 
   send_command(c, 0xB1, 0x00, time_str);
 }
+
+void send_change_event(shared_ptr<Client> c, uint8_t new_event) {
+  send_command(c, 0xDA, new_event);
+}
+
+void send_change_event(shared_ptr<Lobby> l, uint8_t new_event) {
+  send_command(l, 0xDA, new_event);
+}
+
+void send_change_event(shared_ptr<ServerState> s, uint8_t new_event) {
+  send_command(s, 0xDA, new_event);
+}
