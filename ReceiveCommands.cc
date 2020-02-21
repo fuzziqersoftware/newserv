@@ -2011,7 +2011,7 @@ static process_command_t bb_handlers[0x100] = {
   NULL, process_ignored_command, NULL, NULL,
 
   // 20
-  NULL, NULL, NULL, NULL,
+  NULL, NULL, process_ignored_command, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL,
