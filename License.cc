@@ -38,7 +38,7 @@ string License::str() const {
 
 
 
-LicenseManager::LicenseManager(const std::string& filename) : filename(filename) {
+LicenseManager::LicenseManager(const string& filename) : filename(filename) {
   try {
     auto licenses = load_vector_file<License>(this->filename);
     for (const auto& read_license : licenses) {
@@ -140,4 +140,39 @@ vector<License> LicenseManager::snapshot() const {
     ret.emplace_back(*it.second);
   }
   return ret;
+}
+
+
+shared_ptr<const License> LicenseManager::create_license_pc(
+    uint32_t serial_number,const char* access_key, const char* password) {
+  shared_ptr<License> l(new License());
+  memset(l.get(), 0, sizeof(License));
+  l->serial_number = serial_number;
+  strncpy(l->access_key, access_key, 8);
+  if (password) {
+    strncpy(l->gc_password, password, 8);
+  }
+  return l;
+}
+
+shared_ptr<const License> LicenseManager::create_license_gc(
+    uint32_t serial_number, const char* access_key, const char* password) {
+  shared_ptr<License> l(new License());
+  memset(l.get(), 0, sizeof(License));
+  l->serial_number = serial_number;
+  strncpy(l->access_key, access_key, 12);
+  if (password) {
+    strncpy(l->gc_password, password, 8);
+  }
+  return l;
+}
+
+shared_ptr<const License> LicenseManager::create_license_bb(
+    uint32_t serial_number, const char* username, const char* password) {
+  shared_ptr<License> l(new License());
+  memset(l.get(), 0, sizeof(License));
+  l->serial_number = serial_number;
+  strncpy(l->username, username, 19);
+  strncpy(l->bb_password, password, 19);
+  return l;
 }

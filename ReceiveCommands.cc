@@ -170,9 +170,9 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
+  uint32_t serial_number = 0;
+  sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
   try {
-    uint32_t serial_number;
-    sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
     c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
         cmd->password);
   } catch (const exception& e) {
@@ -181,6 +181,9 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       send_message_box(c, message.c_str());
       c->should_disconnect = true;
       return;
+    } else {
+      c->license = LicenseManager::create_license_pc(serial_number,
+          cmd->access_key, cmd->password);
     }
   }
 
@@ -198,9 +201,9 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
+  uint32_t serial_number = 0;
+  sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
   try {
-    uint32_t serial_number;
-    sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
     if (c->version == GameVersion::GC) {
       c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
           NULL);
@@ -214,6 +217,14 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       send_message_box(c, message.c_str());
       c->should_disconnect = true;
       return;
+    } else {
+      if (c->version == GameVersion::GC) {
+        c->license = LicenseManager::create_license_gc(serial_number,
+            cmd->access_key, NULL);
+      } else {
+        c->license = LicenseManager::create_license_pc(serial_number,
+            cmd->access_key, NULL);
+      }
     }
   }
 
@@ -235,9 +246,9 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   c->flags |= flags_for_version(c->version, cmd->sub_version);
 
+  uint32_t serial_number = 0;
+  sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
   try {
-    uint32_t serial_number;
-    sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
     if (c->version == GameVersion::GC) {
       c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
           cmd->password);
@@ -251,6 +262,14 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       send_message_box(c, message.c_str());
       c->should_disconnect = true;
       return;
+    } else {
+      if (c->version == GameVersion::GC) {
+        c->license = LicenseManager::create_license_gc(serial_number,
+            cmd->access_key, cmd->password);
+      } else {
+        c->license = LicenseManager::create_license_pc(serial_number,
+            cmd->access_key, cmd->password);
+      }
     }
   }
 
@@ -276,9 +295,9 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   c->flags |= flags_for_version(c->version, cmd->sub_version);
 
+  uint32_t serial_number = 0;
+  sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
   try {
-    uint32_t serial_number;
-    sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
     if (c->version == GameVersion::GC) {
       c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
           NULL);
@@ -292,6 +311,14 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       send_message_box(c, message.c_str());
       c->should_disconnect = true;
       return;
+    } else {
+      if (c->version == GameVersion::GC) {
+        c->license = LicenseManager::create_license_gc(serial_number,
+            cmd->access_key, NULL);
+      } else {
+        c->license = LicenseManager::create_license_pc(serial_number,
+            cmd->access_key, NULL);
+      }
     }
   }
 

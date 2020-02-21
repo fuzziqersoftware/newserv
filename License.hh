@@ -57,6 +57,13 @@ public:
   void remove(uint32_t serial_number);
   std::vector<License> snapshot() const;
 
+  static std::shared_ptr<const License> create_license_pc(
+      uint32_t serial_number, const char* access_key, const char* password);
+  static std::shared_ptr<const License> create_license_gc(
+      uint32_t serial_number, const char* access_key, const char* password);
+  static std::shared_ptr<const License> create_license_bb(
+      uint32_t serial_number, const char* username, const char* password);
+
 protected:
   void save() const;
 
