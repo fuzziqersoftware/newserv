@@ -104,6 +104,8 @@ void send_text_message(std::shared_ptr<Lobby> l, const char16_t* text);
 void send_text_message(std::shared_ptr<ServerState> l, const char16_t* text);
 void send_chat_message(std::shared_ptr<Client> c, uint32_t from_serial_number,
     const char16_t* from_name, const char16_t* text);
+void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
+    const char16_t* from_name, const char16_t* text, size_t max_chars);
 
 template <typename TARGET>
 void send_text_message_printf(std::shared_ptr<TARGET> t, const char* format, ...) {

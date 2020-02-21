@@ -1305,7 +1305,7 @@ void process_return_player_data_bb(shared_ptr<ServerState> s, shared_ptr<Client>
 // Lobby commands
 
 void process_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 89
   check_size(size, 0);
 
   c->lobby_arrow_color = flag;
@@ -1332,6 +1332,54 @@ void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
   } catch (const out_of_range&) { }
 }
 
+void process_choice_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C0
+  send_text_message(c, u"$C6Choice Search is\nnot supported");
+}
+
+void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 81
+  if (c->version != GameVersion::GC) {
+    // TODO: implement this for DC, PC, BB
+    send_text_message(c, u"$C6Simple Mail is not\nsupported yet on\nthis platform.");
+    return;
+  }
+
+  struct Cmd {
+    uint32_t player_tag;
+    uint32_t source_serial_number;
+    char from_name[16];
+    uint32_t target_serial_number;
+    char data[0x200]; // on GC this appears to contain uninitialized memory!
+  };
+  check_size(size, sizeof(Cmd));
+  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+
+  auto target = s->find_client(NULL, cmd->target_serial_number);
+
+  // if the sender is blocked, don't forward the mail
+  for (size_t y = 0; y < 30; y++) {
+    if (target->player.blocked[y] == c->license->serial_number) {
+      return;
+    }
+  }
+
+  // if the target has auto-reply enabled, send the autoreply
+  if (target->player.auto_reply[0]) {
+    send_simple_mail(c, target->license->serial_number,
+        target->player.disp.name, target->player.auto_reply,
+        sizeof(target->player.auto_reply));
+  }
+
+  // forward the message
+  string message(cmd->data, strnlen(cmd->data, sizeof(cmd->data) / sizeof(cmd->data[0])));
+  u16string u16message = decode_sjis(message);
+  send_simple_mail(target, c->license->serial_number, c->player.disp.name,
+      u16message.data(), u16message.size());
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Info board commands
 
@@ -1355,7 +1403,7 @@ void process_write_info_board_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client
 }
 
 void process_set_auto_reply_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C7
   check_size(size, 0, 2 * 0xAC);
   if (size == 0) {
     c->player.auto_reply[0] = 0;
@@ -1365,7 +1413,7 @@ void process_set_auto_reply_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> 
 }
 
 void process_set_auto_reply_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C7
   check_size(size, 0, 0xAC);
   if (size == 0) {
     c->player.auto_reply[0] = 0;
@@ -1375,13 +1423,13 @@ void process_set_auto_reply_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> 
 }
 
 void process_disable_auto_reply(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C8
   check_size(size, 0);
   c->player.auto_reply[0] = 0;
 }
 
 void process_set_blocked_list(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C6
   check_size(size, 0x78);
   memcpy(c->player.blocked, data, 0x78);
 }
@@ -1535,7 +1583,7 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C1
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C1 EC (EC Ep3 only)
   struct Cmd {
     uint32_t unused[2];
     char name[0x10];
@@ -1753,7 +1801,7 @@ static process_command_t dc_handlers[0x100] = {
   NULL, NULL, NULL, NULL,
 
   // 80
-  NULL, NULL, NULL, NULL,
+  NULL, process_simple_mail, NULL, NULL,
   process_change_lobby, NULL, NULL, NULL,
   NULL, process_change_arrow_color, process_lobby_name_request, NULL,
   NULL, NULL, NULL, NULL,
@@ -1851,7 +1899,7 @@ static process_command_t pc_handlers[0x100] = {
   NULL, NULL, NULL, NULL,
 
   // 80
-  NULL, NULL, NULL, NULL,
+  NULL, process_simple_mail, NULL, NULL,
   process_change_lobby, NULL, NULL, NULL,
   NULL, process_change_arrow_color, process_lobby_name_request, NULL,
   NULL, NULL, NULL, NULL,
@@ -1949,7 +1997,7 @@ static process_command_t gc_handlers[0x100] = {
   NULL, NULL, NULL, NULL,
 
   // 80
-  NULL, NULL, NULL, NULL,
+  NULL, process_simple_mail, NULL, NULL,
   process_change_lobby, NULL, NULL, NULL,
   NULL, process_change_arrow_color, process_lobby_name_request, NULL,
   NULL, NULL, NULL, NULL,
@@ -2047,7 +2095,7 @@ static process_command_t bb_handlers[0x100] = {
   NULL, NULL, NULL, NULL,
 
   // 80
-  NULL, NULL, NULL, NULL,
+  NULL, process_simple_mail, NULL, NULL,
   process_change_lobby, NULL, NULL, NULL,
   NULL, process_change_arrow_color, process_lobby_name_request, NULL,
   NULL, NULL, NULL, NULL,

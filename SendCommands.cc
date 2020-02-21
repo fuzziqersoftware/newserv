@@ -544,6 +544,34 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_serial_number,
   send_large_message(c, 0x06, data.c_str(), from_serial_number, true);
 }
 
+void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_serial_number,
+    const char16_t* from_name, const char16_t* text, size_t max_chars) {
+  struct {
+    uint32_t player_tag;
+    uint32_t from_serial_number;
+    char from_name[0x10];
+    uint32_t to_serial_number;
+    char text[0x200];
+  } cmd;
+
+  cmd.player_tag = 0x00010000;
+  cmd.from_serial_number = from_serial_number;
+  encode_sjis(cmd.from_name, from_name, sizeof(cmd.from_name) / sizeof(cmd.from_name[0]));
+  cmd.to_serial_number = c->license->serial_number;
+  encode_sjis(cmd.text, c->player.disp.name, sizeof(cmd.text) / sizeof(cmd.text[0]));
+
+  send_command(c, 0x81, 0x00, cmd);
+}
+
+void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
+    const char16_t* from_name, const char16_t* text, size_t max_chars) {
+  if (c->version == GameVersion::GC) {
+    send_simple_mail_gc(c, from_serial_number, from_name, text, max_chars);
+  } else {
+    throw logic_error("unimplemented versioned command");
+  }
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
