@@ -166,6 +166,7 @@ void send_create_inventory_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client
 void send_destroy_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
     uint32_t item_id, uint32_t amount);
 void send_bank(std::shared_ptr<Client> c);
+void send_shop(std::shared_ptr<Client> c, uint8_t shop_type);
 void send_level_up(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c);
 void send_give_experience(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
     uint32_t amount);

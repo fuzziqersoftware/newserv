@@ -80,7 +80,7 @@ struct Lobby {
   void add_item(const PlayerInventoryItem& item);
   void remove_item(uint32_t item_id, PlayerInventoryItem* item);
   size_t find_item(uint32_t item_id);
-  uint32_t generate_item_id(uint32_t client_id);
+  uint32_t generate_item_id(uint8_t client_id);
 
   void assign_item_ids_for_player(uint32_t client_id, PlayerInventory& inv);
 

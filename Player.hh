@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #include <string>
+#include <vector>
 
 #include "Version.hh"
 
@@ -329,9 +330,9 @@ struct PlayerBB {
   uint8_t quest_data1[0x0208];      // 04F0 // player
   PlayerBank bank;                  // 06F8 // player
   uint32_t serial_number;           // 19C0 // player
-  char16_t name[0x18];               // 19C4 // player
-  char16_t team_name[0x10];          // 19C4 // player
-  char16_t guild_card_desc[0x58];    // 1A14 // player
+  char16_t name[0x18];              // 19C4 // player
+  char16_t team_name[0x10];         // 19C4 // player
+  char16_t guild_card_desc[0x58];   // 1A14 // player
   uint8_t reserved1;                // 1AC4 // player
   uint8_t reserved2;                // 1AC5 // player
   uint8_t section_id;               // 1AC6 // player
@@ -339,8 +340,8 @@ struct PlayerBB {
   uint32_t unknown3;                // 1AC8 //
   uint8_t symbol_chats[0x04E0];     // 1ACC // account
   uint8_t shortcuts[0x0A40];        // 1FAC // account
-  char16_t auto_reply[0x00AC];       // 29EC // player
-  char16_t info_board[0x00AC];       // 2B44 // player
+  char16_t auto_reply[0x00AC];      // 29EC // player
+  char16_t info_board[0x00AC];      // 2B44 // player
   uint8_t unknown5[0x001C];         // 2C9C //
   uint8_t challenge_data[0x0140];   // 2CB8 // player
   uint8_t tech_menu_config[0x0028]; // 2DF8 // player
@@ -399,6 +400,7 @@ struct Player {
   uint8_t             quest_data1[0x0208];      // player
   uint8_t             quest_data2[0x0058];      // player
   uint32_t            serial_number;
+  std::vector<ItemData> current_shop_contents;
   uint8_t             shortcuts[0x0A40];        // account
   uint8_t             symbol_chats[0x04E0];     // account
   char16_t            team_name[0x0010];        // account

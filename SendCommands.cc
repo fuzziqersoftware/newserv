@@ -1936,6 +1936,37 @@ void send_bank(shared_ptr<Client> c) {
   send_command(c, 0x6C, 0x00, cmd, items);
 }
 
+// sends the player a shop's contents
+void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
+  struct {
+    uint8_t subcommand; // B6
+    uint8_t size; // 2C regardless of the number of items??
+    uint16_t params; // 037F
+    uint8_t shop_type;
+    uint8_t num_items;
+    uint16_t unused;
+    ItemData entries[20];
+  } cmd = {
+    0xB6,
+    0x2C,
+    0x037F,
+    shop_type,
+    static_cast<uint8_t>(c->player.current_shop_contents.size()),
+    0,
+  };
+
+  size_t count = c->player.current_shop_contents.size();
+  if (count > sizeof(cmd.entries) / sizeof(cmd.entries[0])) {
+    throw logic_error("too many items in shop");
+  }
+
+  for (size_t x = 0; x < count; x++) {
+    cmd.entries[x] = c->player.current_shop_contents[x];
+  }
+
+  send_command(c, 0x6C, 0x00, &cmd, sizeof(cmd) - sizeof(cmd.entries[0]) * (20 - count));
+}
+
 // notifies players about a level up
 void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
   PlayerStats stats = c->player.disp.stats;

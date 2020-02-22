@@ -176,7 +176,7 @@ void Lobby::remove_item(uint32_t item_id, PlayerInventoryItem* item) {
   this->item_id_to_floor_item.erase(item_it);
 }
 
-uint32_t Lobby::generate_item_id(uint32_t client_id) {
+uint32_t Lobby::generate_item_id(uint8_t client_id) {
   if (client_id < this->max_clients) {
     return this->next_item_id[client_id]++;
   }

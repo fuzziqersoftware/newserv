@@ -357,6 +357,35 @@ static void process_subcommand_use_item(shared_ptr<ServerState> s,
   forward_subcommand(l, c, command, flag, p, count);
 }
 
+static void process_subcommand_open_shop(shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const PSOSubcommand* p, size_t count) {
+  check_size(count, 2);
+  uint32_t shop_type = p[1].dword;
+
+  if ((l->version == GameVersion::BB) && l->is_game()) {
+    size_t num_items = (rand() % 4) + 9;
+    c->player.current_shop_contents.clear();
+    while (c->player.current_shop_contents.size() < num_items) {
+      ItemData item_data;
+      if (shop_type == 0) { // tool shop
+        item_data = s->common_item_creator->create_shop_item(l->difficulty, 3);
+      } else if (shop_type == 1) { // weapon shop
+        item_data = s->common_item_creator->create_shop_item(l->difficulty, 0);
+      } else if (shop_type == 2) { // guards shop
+        item_data = s->common_item_creator->create_shop_item(l->difficulty, 1);
+      } else { // unknown shop... just leave it blank I guess
+        break;
+      }
+
+      item_data.item_id = l->generate_item_id(c->lobby_client_id);
+      c->player.current_shop_contents.emplace_back(item_data);
+    }
+
+    send_shop(c, shop_type);
+  }
+}
+
 static void process_subcommand_open_bank(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
@@ -418,7 +447,7 @@ static void process_subcommand_bank_action(shared_ptr<ServerState> s,
         PlayerBankItem bank_item;
         c->player.bank.remove_item(cmd->item_id, cmd->item_amount, &bank_item);
         PlayerInventoryItem item = bank_item.to_inventory_item();
-        item.data.item_id = l->generate_item_id(0xFFFFFFFF);
+        item.data.item_id = l->generate_item_id(0xFF);
         c->player.add_item(item);
         send_create_inventory_item(l, c, item.data);
       }
@@ -514,7 +543,7 @@ static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
         }
       } else {
         try {
-          item.data = s->common_item_creator->create_item(false, l->episode,
+          item.data = s->common_item_creator->create_drop_item(false, l->episode,
               l->difficulty, cmd->area, l->section_id);
         } catch (const out_of_range&) {
           // create_common_item throws this when it doesn't want to make an item
@@ -522,7 +551,7 @@ static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
         }
       }
     }
-    item.data.item_id = l->generate_item_id(0xFFFFFFFF);
+    item.data.item_id = l->generate_item_id(0xFF);
 
     l->add_item(item);
     send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->y,
@@ -586,7 +615,7 @@ static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
         }
       } else {
         try {
-          item.data = s->common_item_creator->create_item(true, l->episode,
+          item.data = s->common_item_creator->create_drop_item(true, l->episode,
               l->difficulty, cmd->area, l->section_id);
         } catch (const out_of_range&) {
           // create_common_item throws this when it doesn't want to make an item
@@ -594,7 +623,7 @@ static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
         }
       }
     }
-    item.data.item_id = l->generate_item_id(0xFFFFFFFF);
+    item.data.item_id = l->generate_item_id(0xFF);
 
     l->add_item(item);
     send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->y,
@@ -1067,7 +1096,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
+  process_subcommand_open_shop,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   process_subcommand_identify_item,

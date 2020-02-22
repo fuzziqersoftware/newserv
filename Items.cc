@@ -281,7 +281,7 @@ int32_t CommonItemCreator::decide_item_type(bool is_box) const {
   return -1;
 }
 
-ItemData CommonItemCreator::create_item(bool is_box, uint8_t episode,
+ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
     uint8_t difficulty, uint8_t area, uint8_t section_id) const {
   // change the area if it's invalid (data for the bosses are actually in other areas)
   if (area > 10) {
@@ -461,6 +461,127 @@ ItemData CommonItemCreator::create_item(bool is_box, uint8_t episode,
 
     default:
       throw out_of_range("no item created");
+  }
+
+  return item;
+}
+
+
+ItemData CommonItemCreator::create_shop_item(uint8_t difficulty,
+    uint8_t item_type) const {
+  static const uint8_t max_percentages[4] = {20, 35, 45, 50};
+  static const uint8_t max_quantity[4] =    { 1,  1,  2,  2};
+  static const uint8_t max_tech_level[4] =  { 8, 15, 23, 30};
+  static const uint8_t max_anti_level[4] =  { 2,  4,  6,  7};
+
+  ItemData item;
+  memset(&item, 0, sizeof(item));
+
+  item.item_data1[0] = item_type;
+  while (item.item_data1[0] == 2) {
+    item.item_data1[0] = rand() % 3;
+  }
+  switch (item.item_data1[0]) {
+    case 0: { // weapon
+      item.item_data1[1] = (rand() % 12) + 1;
+      if (item.item_data1[1] > 9) {
+        item.item_data1[2] = difficulty;
+      } else {
+        item.item_data1[2] = (rand() & 1) + difficulty;
+      }
+
+      item.item_data1[3] = rand() % 11;
+      item.item_data1[4] = rand() % 11;
+
+      size_t num_percentages = 0;
+      for (size_t x = 0; (x < 5) && (num_percentages < 3); x++) {
+        if ((rand() % 4) == 1) {
+          item.item_data1[(num_percentages * 2) + 6] = x;
+          item.item_data1[(num_percentages * 2) + 7] = rand() % (max_percentages[difficulty] + 1);
+          num_percentages++;
+        }
+      }
+      break;
+    }
+
+    case 1: // armor
+      item.item_data1[1] = 0;
+      while (item.item_data1[1] == 0) {
+        item.item_data1[1] = rand() & 3;
+      }
+      switch (item.item_data1[1]) {
+        case 1:
+          item.item_data1[2] = (rand() % 6) + (difficulty * 6);
+          item.item_data1[5] = rand() % 5;
+          break;
+        case 2:
+          item.item_data2[2] = (rand() % 6) + (difficulty * 5);
+          *reinterpret_cast<short*>(&item.item_data1[6]) = (rand() % 9) - 4;
+          *reinterpret_cast<short*>(&item.item_data1[9]) = (rand() % 9) - 4;
+          break;
+        case 3:
+          item.item_data2[2] = rand() % 0x3B;
+          *reinterpret_cast<short*>(&item.item_data1[7]) = (rand() % 5) - 4;
+          break;
+      }
+      break;
+
+    case 3: // tool
+      item.item_data1[1] = rand() % 12;
+      switch (item.item_data1[1]) {
+        case 0:
+        case 1:
+          if (difficulty == 0) {
+            item.item_data1[2] = 0;
+          } else if (difficulty == 1) {
+            item.item_data1[2] = rand() % 2;
+          } else if (difficulty == 2) {
+            item.item_data1[2] = (rand() % 2) + 1;
+          } else if (difficulty == 3) {
+            item.item_data1[2] = 2;
+          }
+          break;
+
+        case 6:
+          item.item_data1[2] = rand() % 2;
+          break;
+
+        case 10:
+          item.item_data1[2] = rand() % 3;
+          break;
+
+        case 11:
+          item.item_data1[2] = rand() % 7;
+          break;
+      }
+
+      switch (item.item_data1[1]) {
+        case 2:
+          item.item_data1[4] = rand() % 19;
+          switch (item.item_data1[4]) {
+            case 14:
+            case 17:
+              item.item_data1[2] = 0; // reverser & ryuker always level 1 
+              break;
+            case 16:
+              item.item_data1[2] = rand() % max_anti_level[difficulty];
+              break;
+            default:
+              item.item_data1[2] = rand() % max_tech_level[difficulty];
+          }
+          break;
+        case 0:
+        case 1:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 16:
+          item.item_data1[5] = rand() % (max_quantity[difficulty] + 1);
+          break;
+      }
   }
 
   return item;
