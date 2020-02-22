@@ -956,6 +956,25 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
+void process_gba_file_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D7
+  static FileContentsCache file_cache;
+
+  string filename(reinterpret_cast<const char*>(data), size);
+  filename.resize(strlen(filename.data()));
+  auto contents = file_cache.get(filename);
+
+  send_quest_file(c, filename, *contents, false, false);
+}
+
+void process_start_download_quest(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // A6
+  // TODO implement this
+  send_text_message(c, u"$C6Download quests\nare not supported");
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // player data commands
 
@@ -2016,7 +2035,7 @@ static process_command_t gc_handlers[0x100] = {
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, NULL,
-  NULL, NULL, NULL, NULL,
+  NULL, NULL, process_start_download_quest, process_ignored_command,
   NULL, process_ignored_command, NULL, NULL,
   process_quest_ready, NULL, NULL, NULL,
 
@@ -2027,14 +2046,14 @@ static process_command_t gc_handlers[0x100] = {
   NULL, NULL, NULL, NULL,
 
   // C0
-  NULL, process_create_game_dc_gc, NULL, NULL,
+  process_choice_search, process_create_game_dc_gc, NULL, NULL,
   NULL, NULL, process_set_blocked_list, process_set_auto_reply_dc_gc,
   process_disable_auto_reply, process_game_command, process_ep3_server_data_request, process_game_command,
   NULL, NULL, NULL, NULL,
 
   // D0
   NULL, NULL, NULL, NULL,
-  NULL, NULL, process_message_box_closed, NULL,
+  NULL, NULL, process_message_box_closed, process_gba_file_request,
   process_info_board_request, process_write_info_board_dc_gc, NULL, process_verify_license_gc,
   process_ep3_menu_challenge, NULL, NULL, NULL,
 
