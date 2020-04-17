@@ -1,6 +1,7 @@
 #include <signal.h>
 #include <pwd.h>
 #include <event2/event.h>
+#include <string.h>
 
 #include <unordered_map>
 #include <phosg/JSON.hh>
@@ -150,6 +151,19 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     s->allow_unregistered_users = true;
   }
 
+  {
+    string key_file_name = d.at("BlueBurstKeyFile")->as_string();
+    string key_file_contents = load_file("system/blueburst/keys/" + key_file_name + ".nsk");
+    if (key_file_contents.size() != sizeof(PSOBBEncryption::KeyFile)) {
+      log(WARNING, "key file is the wrong size (%zu bytes; should be %zu bytes)",
+          key_file_contents.size(), sizeof(PSOBBEncryption::KeyFile));
+      log(WARNING, "ignoring key file; Blue Burst clients will not be able to connect");
+    } else {
+      memcpy(&s->default_key_file, key_file_contents.data(), sizeof(PSOBBEncryption::KeyFile));
+      log(INFO, "loaded key file: %s", key_file_name.c_str());
+    }
+  }
+
   try {
     bool run_shell = d.at("RunInteractiveShell")->as_bool();
     s->run_shell_behavior = run_shell ?
@@ -195,11 +209,16 @@ int main(int argc, char* argv[]) {
 
   string proxy_hostname;
   int proxy_port = 0;
-  for (size_t x = 1; x < argc; x++) {
+  GameVersion proxy_version = GameVersion::GC;
+  for (int x = 1; x < argc; x++) {
     if (!strncmp(argv[x], "--proxy-destination=", 20)) {
       auto netloc = parse_netloc(&argv[x][20], 9100);
       proxy_hostname = netloc.first;
       proxy_port = netloc.second;
+
+    } else if (!strncmp(argv[x], "--proxy-version=", 16)) {
+      proxy_version = version_for_name(&argv[x][16]);
+
     } else {
       throw invalid_argument(string_printf("unknown option: %s", argv[x]));
     }
@@ -237,7 +256,12 @@ int main(int argc, char* argv[]) {
     log(INFO, "starting proxy");
     sockaddr_storage proxy_destination_ss = make_sockaddr_storage(
         proxy_hostname, proxy_port).first;
-    proxy_server.reset(new ProxyServer(base, proxy_destination_ss, proxy_port));
+    proxy_server.reset(new ProxyServer(base, proxy_destination_ss,
+        proxy_version));
+    proxy_server->listen(proxy_port);
+    if (proxy_version == GameVersion::BB) {
+      proxy_server->listen(proxy_port + 1);
+    }
 
   } else {
     log(INFO, "starting game server");

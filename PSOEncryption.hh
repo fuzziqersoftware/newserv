@@ -3,6 +3,8 @@
 #include <inttypes.h>
 #include <stddef.h>
 
+#include <string>
+
 
 
 #define PC_STREAM_LENGTH 57
@@ -26,7 +28,7 @@ public:
 
   virtual void encrypt(void* data, size_t size);
 
-private:
+protected:
   void update_stream();
   uint32_t next();
 
@@ -40,7 +42,7 @@ public:
 
   virtual void encrypt(void* data, size_t size);
 
-private:
+protected:
   void update_stream();
   uint32_t next();
 
@@ -50,12 +52,21 @@ private:
 
 class PSOBBEncryption : public PSOEncryption {
 public:
-  explicit PSOBBEncryption(const void* key);
+  struct KeyFile {
+    uint32_t initial_keys[18];
+    uint32_t private_keys[1024];
+  };
+
+  PSOBBEncryption(const KeyFile& key, const void* seed, size_t seed_size);
 
   virtual void encrypt(void* data, size_t size);
   virtual void decrypt(void* data, size_t size);
 
-private:
+protected:
+  PSOBBEncryption() = default;
+
+  void postprocess_initial_stream(const std::string& seed);
+
   void update_stream();
 
   uint32_t stream[BB_STREAM_LENGTH];

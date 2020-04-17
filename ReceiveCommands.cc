@@ -54,7 +54,7 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
       if (!s->welcome_message.empty() && !(c->flags & ClientFlag::NoMessageBoxCloseConfirmation)) {
         c->flags |= ClientFlag::AtWelcomeMessage;
       }
-      send_server_init(c, true);
+      send_server_init(s, c, true);
       if (s->pre_lobby_event) {
         send_change_event(c, s->pre_lobby_event);
       }
@@ -64,7 +64,7 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
     case ServerBehavior::LobbyServer:
     case ServerBehavior::DataServerBB:
     case ServerBehavior::PatchServer:
-      send_server_init(c, false);
+      send_server_init(s, c, false);
       break;
 
     default:

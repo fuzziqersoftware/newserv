@@ -164,7 +164,8 @@ static void send_server_init_gc(shared_ptr<Client> c, bool initial_connection) {
       initial_connection ? 0x17 : 0x02);
 }
 
-static void send_server_init_bb(shared_ptr<Client> c, bool initial_connection) {
+static void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    bool initial_connection) {
   struct {
     char copyright[0x60];
     uint8_t server_key[0x30];
@@ -179,8 +180,10 @@ static void send_server_init_bb(shared_ptr<Client> c, bool initial_connection) {
   strcpy(cmd.after_message, anti_copyright);
   send_command(c, 0x03, 0x00, cmd);
 
-  c->crypt_out.reset(new PSOBBEncryption(cmd.server_key));
-  c->crypt_in.reset(new PSOBBEncryption(cmd.client_key));
+  c->crypt_out.reset(new PSOBBEncryption(s->default_key_file, cmd.server_key,
+      sizeof(cmd.server_key)));
+  c->crypt_in.reset(new PSOBBEncryption(s->default_key_file, cmd.client_key,
+      sizeof(cmd.client_key)));
 }
 
 static void send_server_init_patch(shared_ptr<Client> c, bool initial_connection) {
@@ -205,7 +208,8 @@ static void send_server_init_patch(shared_ptr<Client> c, bool initial_connection
   c->crypt_in.reset(new PSOPCEncryption(client_key));
 }
 
-void send_server_init(shared_ptr<Client> c, bool initial_connection) {
+void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    bool initial_connection) {
   if (c->version == GameVersion::PC) {
     send_server_init_pc(c, initial_connection);
   } else if (c->version == GameVersion::Patch) {
@@ -213,7 +217,7 @@ void send_server_init(shared_ptr<Client> c, bool initial_connection) {
   } else if (c->version == GameVersion::GC) {
     send_server_init_gc(c, initial_connection);
   } else if (c->version == GameVersion::BB) {
-    send_server_init_bb(c, initial_connection);
+    send_server_init_bb(s, c, initial_connection);
   } else {
     throw logic_error("unimplemented versioned command");
   }

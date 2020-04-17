@@ -74,7 +74,8 @@ void send_command(std::shared_ptr<TARGET> c, uint16_t command, uint32_t flag,
 
 
 
-void send_server_init(std::shared_ptr<Client> c, bool initial_connection);
+void send_server_init(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
+    bool initial_connection);
 void send_update_client_config(std::shared_ptr<Client> c);
 
 void send_reconnect(std::shared_ptr<Client> c, uint32_t address, uint16_t port);

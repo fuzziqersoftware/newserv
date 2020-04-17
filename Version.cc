@@ -1,5 +1,11 @@
 #include "Version.hh"
 
+#include <stdexcept>
+
+#include <strings.h>
+
+using namespace std;
+
 
 
 uint16_t flags_for_version(GameVersion version, uint8_t sub_version) {
@@ -54,4 +60,21 @@ const char* name_for_version(GameVersion version) {
     default:
       return "Unknown";
   }
+}
+
+GameVersion version_for_name(const char* name) {
+  if (!strcasecmp(name, "DC") || !strcasecmp(name, "DreamCast")) {
+    return GameVersion::DC;
+  }
+  if (!strcasecmp(name, "PC")) {
+    return GameVersion::PC;
+  }
+  if (!strcasecmp(name, "GC") || !strcasecmp(name, "GameCube")) {
+    return GameVersion::GC;
+  }
+  if (!strcasecmp(name, "BB") || !strcasecmp(name, "BlueBurst") ||
+      !strcasecmp(name, "Blue Burst")) {
+    return GameVersion::BB;
+  }
+  throw invalid_argument("incorrect version name");
 }

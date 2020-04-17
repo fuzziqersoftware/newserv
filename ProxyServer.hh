@@ -2,6 +2,7 @@
 
 #include <event2/event.h>
 
+#include <map>
 #include <unordered_set>
 #include <vector>
 #include <string>
@@ -18,22 +19,26 @@ public:
   ProxyServer(const ProxyServer&) = delete;
   ProxyServer(ProxyServer&&) = delete;
   ProxyServer(std::shared_ptr<struct event_base> base,
-      const struct sockaddr_storage& initial_destination, int listen_port);
+      const struct sockaddr_storage& initial_destination, GameVersion version);
   virtual ~ProxyServer() = default;
+
+  void listen(int port);
 
   void send_to_client(const std::string& data);
   void send_to_server(const std::string& data);
 
 private:
   std::shared_ptr<struct event_base> base;
-  std::unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)> listener;
+  std::map<int, std::unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)>> listeners;
   std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> client_bev;
   std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> server_bev;
   struct sockaddr_storage next_destination;
   int listen_port;
+  GameVersion version;
 
-  PSOCommandHeaderDCGC client_input_header;
-  PSOCommandHeaderDCGC server_input_header;
+  size_t header_size;
+  PSOCommandHeader client_input_header;
+  PSOCommandHeader server_input_header;
   std::shared_ptr<PSOEncryption> client_input_crypt;
   std::shared_ptr<PSOEncryption> client_output_crypt;
   std::shared_ptr<PSOEncryption> server_input_crypt;
@@ -58,6 +63,9 @@ private:
   void on_client_error(struct bufferevent* bev, short events);
   void on_server_input(struct bufferevent* bev);
   void on_server_error(struct bufferevent* bev, short events);
+
+  size_t get_size_field(const PSOCommandHeader* header);
+  size_t get_command_field(const PSOCommandHeader* header);
 
   void receive_and_process_commands(bool from_server);
 };

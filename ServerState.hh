@@ -38,6 +38,7 @@ struct ServerState {
   bool run_dns_server;
   bool allow_unregistered_users;
   RunShellBehavior run_shell_behavior;
+  PSOBBEncryption::KeyFile default_key_file;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamTable> battle_params;

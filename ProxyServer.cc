@@ -28,15 +28,22 @@ using namespace std;
 
 
 ProxyServer::ProxyServer(shared_ptr<struct event_base> base,
-    const struct sockaddr_storage& initial_destination, int listen_port) :
-    base(base), listener(evconnlistener_new(this->base.get(),
-      ProxyServer::dispatch_on_listen_accept, this, LEV_OPT_REUSEABLE, 0,
-      ::listen("", listen_port, SOMAXCONN)), evconnlistener_free),
-    client_bev(nullptr, bufferevent_free),
+    const struct sockaddr_storage& initial_destination, GameVersion version) :
+    base(base), client_bev(nullptr, bufferevent_free),
     server_bev(nullptr, bufferevent_free),
-    next_destination(initial_destination), listen_port(listen_port) {
+    next_destination(initial_destination), version(version),
+    header_size((version == GameVersion::BB) ? 8 : 4) {
   memset(&this->client_input_header, 0, sizeof(this->client_input_header));
   memset(&this->server_input_header, 0, sizeof(this->server_input_header));
+}
+
+void ProxyServer::listen(int port) {
+  unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)> listener(
+      evconnlistener_new(this->base.get(),
+        &ProxyServer::dispatch_on_listen_accept, this,
+        LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 0,
+        ::listen("", port, SOMAXCONN)), evconnlistener_free);
+  this->listeners.emplace(port, move(listener));
 }
 
 
@@ -203,6 +210,34 @@ void ProxyServer::on_server_error(struct bufferevent* bev, short events) {
   }
 }
 
+size_t ProxyServer::get_size_field(const PSOCommandHeader* header) {
+  if (this->version == GameVersion::DC) {
+    return header->dc.size;
+  } else if (this->version == GameVersion::PC) {
+    return header->pc.size;
+  } else if (this->version == GameVersion::GC) {
+    return header->gc.size;
+  } else if (this->version == GameVersion::BB) {
+    return header->bb.size;
+  } else {
+    throw logic_error("version not supported in proxy mode");
+  }
+}
+
+size_t ProxyServer::get_command_field(const PSOCommandHeader* header) {
+  if (this->version == GameVersion::DC) {
+    return header->dc.command;
+  } else if (this->version == GameVersion::PC) {
+    return header->pc.command;
+  } else if (this->version == GameVersion::GC) {
+    return header->gc.command;
+  } else if (this->version == GameVersion::BB) {
+    return header->bb.command;
+  } else {
+    throw logic_error("version not supported in proxy mode");
+  }
+}
+
 void ProxyServer::receive_and_process_commands(bool from_server) {
   struct bufferevent* source_bev = from_server ? this->server_bev.get() : this->client_bev.get();
   struct bufferevent* dest_bev = from_server ? this->client_bev.get() : this->server_bev.get();
@@ -213,48 +248,48 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
   PSOEncryption* source_crypt = from_server ? this->server_input_crypt.get() : this->client_input_crypt.get();
   PSOEncryption* dest_crypt = from_server ? this->client_output_crypt.get() : this->server_output_crypt.get();
 
-  PSOCommandHeaderDCGC* input_header = from_server ? &this->server_input_header : &this->client_input_header;
+  PSOCommandHeader* input_header = from_server ? &this->server_input_header : &this->client_input_header;
 
   for (;;) {
-    if (input_header->size == 0) {
+    if (this->get_size_field(input_header) == 0) {
       ssize_t bytes = evbuffer_copyout(source_buf, input_header,
-          sizeof(*input_header));
+          this->header_size);
       //log(INFO, "[ProxyServer-debug] %zd bytes copied for header", bytes);
-      if (bytes < sizeof(*input_header)) {
+      if (bytes < static_cast<ssize_t>(this->header_size)) {
         break;
       }
 
       //log(INFO, "[ProxyServer-debug] received encrypted header");
-      //print_data(stderr, input_header, sizeof(*input_header));
+      //print_data(stderr, input_header, this->header_size);
 
       if (source_crypt) {
-        source_crypt->decrypt(input_header, sizeof(*input_header));
+        source_crypt->decrypt(input_header, this->header_size);
       }
     }
 
-    if (evbuffer_get_length(source_buf) < input_header->size) {
-      //log(INFO, "[ProxyServer-debug] insufficient data for command (%zX/%hX bytes)", evbuffer_get_length(source_buf), input_header->size);
+    size_t command_size = this->get_size_field(input_header);
+    if (evbuffer_get_length(source_buf) < command_size) {
+      //log(INFO, "[ProxyServer-debug] insufficient data for command (%zX/%hX bytes)", evbuffer_get_length(source_buf), this->get_size_field(input_header));
       break;
     }
 
-    string command(input_header->size, '\0');
+    string command(command_size, '\0');
     ssize_t bytes = evbuffer_remove(source_buf,
-        const_cast<char*>(command.data()), input_header->size);
-    if (bytes < input_header->size) {
+        const_cast<char*>(command.data()), command_size);
+    if (bytes < static_cast<ssize_t>(command_size)) {
       throw logic_error("enough bytes available, but could not remove them");
     }
     //log(INFO, "[ProxyServer-debug] read command (%zX bytes)", bytes);
     // overwrite the header with the already-decrypted header
-    memcpy(const_cast<char*>(command.data()), input_header,
-        sizeof(*input_header));
+    memcpy(const_cast<char*>(command.data()), input_header, this->header_size);
 
     //log(INFO, "[ProxyServer-debug] received encrypted command with pre-decrypted header");
     //print_data(stderr, command);
 
     if (source_crypt) {
       source_crypt->decrypt(
-          const_cast<char*>(command.data() + sizeof(*input_header)),
-          input_header->size - sizeof(*input_header));
+          const_cast<char*>(command.data() + this->header_size),
+          command_size - this->header_size);
     }
 
     log(INFO, "%s:", from_server ? "server" : "client");
@@ -262,9 +297,13 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
 
     // preprocess the command if needed
     if (from_server) {
-      switch (input_header->command) {
+      switch (this->get_command_field(input_header)) {
         case 0x02: // init encryption
         case 0x17: { // init encryption
+          if (this->version == GameVersion::BB) {
+            throw invalid_argument("console server init received on BB");
+          }
+
           struct InitEncryptionCommand {
             PSOCommandHeaderDCGC header;
             char copyright[0x40];
@@ -277,32 +316,43 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
 
           const InitEncryptionCommand* cmd = reinterpret_cast<const InitEncryptionCommand*>(
               command.data());
-          this->server_input_crypt.reset(new PSOGCEncryption(cmd->server_key));
-          this->server_output_crypt.reset(new PSOGCEncryption(cmd->client_key));
-          this->client_input_crypt.reset(new PSOGCEncryption(cmd->client_key));
-          this->client_output_crypt.reset(new PSOGCEncryption(cmd->server_key));
+          if (this->version == GameVersion::PC) {
+            this->server_input_crypt.reset(new PSOPCEncryption(cmd->server_key));
+            this->server_output_crypt.reset(new PSOPCEncryption(cmd->client_key));
+            this->client_input_crypt.reset(new PSOPCEncryption(cmd->client_key));
+            this->client_output_crypt.reset(new PSOPCEncryption(cmd->server_key));
+
+          } else if (this->version == GameVersion::GC) {
+            this->server_input_crypt.reset(new PSOGCEncryption(cmd->server_key));
+            this->server_output_crypt.reset(new PSOGCEncryption(cmd->client_key));
+            this->client_input_crypt.reset(new PSOGCEncryption(cmd->client_key));
+            this->client_output_crypt.reset(new PSOGCEncryption(cmd->server_key));
+
+          } else {
+            throw invalid_argument("unsupported version");
+          }
           break;
         }
 
         case 0x19: { // reconnect
-          struct ReconnectCommand {
-            PSOCommandHeaderDCGC header;
+          struct ReconnectCommandArgs {
             uint32_t address;
             uint16_t port;
             uint16_t unused;
           };
-          if (command.size() < sizeof(ReconnectCommand)) {
-            throw std::runtime_error("init encryption command is too small");
+
+          if (command.size() < sizeof(ReconnectCommandArgs) + this->header_size) {
+            throw std::runtime_error("reconnect command is too small");
           }
 
-          ReconnectCommand* cmd = reinterpret_cast<ReconnectCommand*>(
-              const_cast<char*>(command.data()));
+          ReconnectCommandArgs* args = reinterpret_cast<ReconnectCommandArgs*>(
+              const_cast<char*>(command.data() + this->header_size));
           memset(&this->next_destination, 0, sizeof(this->next_destination));
           struct sockaddr_in* sin = reinterpret_cast<struct sockaddr_in*>(
               &this->next_destination);
           sin->sin_family = AF_INET;
-          sin->sin_port = htons(cmd->port);
-          sin->sin_addr.s_addr = cmd->address; // already network byte order
+          sin->sin_port = htons(args->port);
+          sin->sin_addr.s_addr = args->address; // already network byte order
 
           if (!dest_bev) {
             log(WARNING, "received reconnect command with no destination present");
@@ -317,8 +367,8 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
 
             struct sockaddr_in* sockname_sin = reinterpret_cast<struct sockaddr_in*>(
                 &sockname_ss);
-            cmd->address = sockname_sin->sin_addr.s_addr; // already network byte order
-            cmd->port = this->listen_port;
+            args->address = sockname_sin->sin_addr.s_addr; // already network byte order
+            args->port = this->listeners.begin()->first;
           }
           break;
         }
@@ -339,6 +389,6 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
     }
 
     // clear the input header so we can read the next command
-    memset(input_header, 0, sizeof(*input_header));
+    memset(input_header, 0, this->header_size);
   }
 }
