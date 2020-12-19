@@ -31,16 +31,17 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 - Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 - Run `make`.
 - Edit system/config.json to your liking.
-- Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. (You can disable the interactive shell later by editing config.json.)
+- Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. (You can disable the interactive shell later by editing config.json.) You may need `sudo` if newserv's built-in DNS server is enabled.
 - Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
 
 If you're running PSO on a real GameCube, you can make PSO connect to newserv by changing its default gateway and DNS server addresses to newserv's address.
 
 If you're emulating PSO GC using Dolphin on Mac OS (like I am), you can make it connect to newserv by doing this:
-- Install tuntap (http://tuntaposx.sourceforge.net/).
-- Build and install memwatch (https://github.com/fuzziqersoftware/memwatch).
-- Put a copy of Dolphin.app in the newserv directory.
-- Run `sudo python3 PSODolphinConfig.py` in there. This will run Dolphin as well.
+- Use a build of Dolphin that has tapserver support (this may mean building it from master yourself).
+- Install tapserver (https://github.com/fuzziqersoftware/tapserver).
 - In PSO, manually configure your network settings as follows: IP address = `192.168.0.200`, subnet mask = `255.255.255.0`, default gateway = `192.168.0.5`, DNS server address 1 = `192.168.0.5`.
+- Start Dolphin and newserv.
+- Run tapserver according to its instructions.
 - Start an online game, and it will connect to your local instance of newserv!
-PSODolphinConfig.py opens and configures the tap0 network interface, runs Dolphin as your user (not as root), and gives it access to the tap0 interface. The script terminates after Dolphin opens the tap0 interface, so you don't need to leave anything running as root for a long time.
+
+If you want to play online on remote servers, newserv also includes a PSO proxy server. Run newserv like `./newserv --proxy-destination=1.1.1.1` (replace the IP address appropriately for the server you want to connect to).
