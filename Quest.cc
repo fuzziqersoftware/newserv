@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <phosg/Filesystem.hh>
+#include <phosg/Encoding.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 
@@ -12,6 +13,21 @@
 #include "Text.hh"
 
 using namespace std;
+
+
+
+struct PSODownloadQuestHeader {
+  // When sending a DLQ to the client, this is the DECOMPRESSED size. When
+  // reading it from a GCI file, this is the COMPRESSED size.
+  uint32_t size;
+  // Note: use PSO PC encryption, even for GC quests.
+  uint32_t encryption_seed;
+
+  void byteswap() {
+    this->size = bswap32(this->size);
+    this->encryption_seed = bswap32(this->encryption_seed);
+  }
+};
 
 
 
@@ -128,20 +144,33 @@ struct PSOQuestHeaderBB {
 
 
 
-Quest::Quest(const string& bin_filename) : quest_id(-1),
-    category(QuestCategory::Unknown), episode(0), is_dcv1(false),
+Quest::Quest(const string& bin_filename)
+  : quest_id(-1),
+    category(QuestCategory::Unknown),
+    episode(0),
+    is_dcv1(false),
     joinable(false),
-    file_basename(bin_filename.substr(0, bin_filename.size() - 4)) {
+    gci_format(false) {
 
-  string bin_basename;
+  if (ends_with(bin_filename, ".bin.gci")) {
+    this->gci_format = true;
+    this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
+  } else if (ends_with(bin_filename, ".bin")) {
+    this->file_basename = bin_filename.substr(0, bin_filename.size() - 4);
+  } else {
+    throw runtime_error("quest does not have a valid .bin file");
+  }
+
+  string basename;
   {
     size_t slash_pos = bin_filename.rfind('/');
     if (slash_pos != string::npos) {
-      bin_basename = bin_filename.substr(slash_pos + 1);
+      basename = bin_filename.substr(slash_pos + 1);
     } else {
-      bin_basename = bin_filename;
+      basename = bin_filename;
     }
   }
+  basename.resize(basename.size() - (this->gci_format ? 8 : 4));
 
   // quest filenames are like:
   // b###-VV.bin for battle mode
@@ -149,23 +178,23 @@ Quest::Quest(const string& bin_filename) : quest_id(-1),
   // e###-gc3.bin for episode 3
   // q###-CAT-VV.bin for normal quests
 
-  if (bin_basename.empty()) {
+  if (basename.empty()) {
     throw invalid_argument("empty filename");
   }
 
-  if (bin_basename[0] == 'b') {
+  if (basename[0] == 'b') {
     this->category = QuestCategory::Battle;
-  } else if (bin_basename[0] == 'c') {
+  } else if (basename[0] == 'c') {
     this->category = QuestCategory::Challenge;
-  } else if (bin_basename[0] == 'e') {
+  } else if (basename[0] == 'e') {
     this->category = QuestCategory::Episode3;
-  } else if (bin_basename[0] != 'q') {
+  } else if (basename[0] != 'q') {
     throw invalid_argument("filename does not indicate mode");
   }
 
   // if the quest category is still unknown, expect 3 tokens (one of them will
   // tell us the category)
-  vector<string> tokens = split(bin_basename, '-');
+  vector<string> tokens = split(basename, '-');
   if (tokens.size() != (2 + (this->category == QuestCategory::Unknown))) {
     throw invalid_argument("incorrect filename format");
   }
@@ -202,12 +231,12 @@ Quest::Quest(const string& bin_filename) : quest_id(-1),
   }
 
   static const unordered_map<std::string, GameVersion> name_to_version({
-    {"d1.bin",  GameVersion::DC},
-    {"dc.bin",  GameVersion::DC},
-    {"pc.bin",  GameVersion::PC},
-    {"gc.bin",  GameVersion::GC},
-    {"gc3.bin", GameVersion::GC},
-    {"bb.bin",  GameVersion::BB},
+    {"d1",  GameVersion::DC},
+    {"dc",  GameVersion::DC},
+    {"pc",  GameVersion::PC},
+    {"gc",  GameVersion::GC},
+    {"gc3", GameVersion::GC},
+    {"bb",  GameVersion::BB},
   });
   this->version = name_to_version.at(tokens[1]);
 
@@ -309,16 +338,71 @@ std::string Quest::dat_filename() const {
 
 shared_ptr<const string> Quest::bin_contents() const {
   if (!this->bin_contents_ptr) {
-    this->bin_contents_ptr.reset(new string(load_file(this->file_basename + ".bin")));
+    if (this->gci_format) {
+      this->bin_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".bin.gci")));
+    } else {
+      this->bin_contents_ptr.reset(new string(load_file(this->file_basename + ".bin")));
+    }
   }
   return this->bin_contents_ptr;
 }
 
 shared_ptr<const string> Quest::dat_contents() const {
   if (!this->dat_contents_ptr) {
-    this->dat_contents_ptr.reset(new string(load_file(this->file_basename + ".dat")));
+    if (this->gci_format) {
+      this->dat_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".dat.gci")));
+    } else {
+      this->dat_contents_ptr.reset(new string(load_file(this->file_basename + ".dat")));
+    }
   }
   return this->dat_contents_ptr;
+}
+
+string Quest::decode_gci(const string& filename) {
+
+  string data = load_file(filename);
+  if (data.size() < 0x2080 + sizeof(PSODownloadQuestHeader)) {
+    throw runtime_error(string_printf(
+        "GCI file is truncated before download quest header (have 0x%zX bytes)", data.size()));
+  }
+  PSODownloadQuestHeader* h = reinterpret_cast<PSODownloadQuestHeader*>(
+      const_cast<char*>(data.data() + 0x2080));
+  h->byteswap();
+
+  string compressed_data_with_header = data.substr(0x2088, h->size);
+
+  // For now, we can only load unencrypted quests, unfortunately
+  // TODO: Figure out how GCI encryption works and implement it here.
+
+  // Unlike the DLQ header, this one is stored little-endian. The compressed
+  // data immediately follows this header.
+  struct DecryptedHeader {
+    uint32_t unknown1;
+    uint32_t unknown2;
+    uint32_t decompressed_size;
+    uint32_t unknown4;
+  };
+  if (compressed_data_with_header.size() < sizeof(DecryptedHeader)) {
+    throw runtime_error("GCI file compressed data truncated during header");
+  }
+  DecryptedHeader* dh = reinterpret_cast<DecryptedHeader*>(const_cast<char*>(
+      compressed_data_with_header.data()));
+  if (dh->unknown1 || dh->unknown2 || dh->unknown4) {
+    throw runtime_error("GCI file appears to be encrypted");
+  }
+
+  string data_to_decompress = compressed_data_with_header.substr(sizeof(DecryptedHeader));
+  string decompressed_data = prs_decompress(data_to_decompress);
+
+  if (decompressed_data.size() < dh->decompressed_size - 8) {
+    throw runtime_error(string_printf(
+        "GCI decompressed data is smaller than expected size (have 0x%zX bytes, expected 0x%zX bytes)",
+        decompressed_data.size(), dh->decompressed_size - 8));
+  }
+
+  // The caller expects to get PRS-compressed data when calling bin_contents()
+  // and dat_contents(), so we shouldn't decompress it here.
+  return data_to_decompress;
 }
 
 
@@ -336,8 +420,8 @@ QuestIndex::QuestIndex(const char* directory) : directory(directory) {
       continue;
     }
 
-    if (ends_with(filename, ".bin")) {
-      try {
+    if (ends_with(filename, ".bin") || ends_with(filename, ".bin.gci")) {
+      // try {
         shared_ptr<Quest> q(new Quest(full_path));
         this->version_id_to_quest.emplace(make_pair(q->version, q->quest_id), q);
         this->version_name_to_quest.emplace(make_pair(q->version, q->name), q);
@@ -346,9 +430,9 @@ QuestIndex::QuestIndex(const char* directory) : directory(directory) {
             ascii_name.c_str(), name_for_version(q->version), q->quest_id,
             name_for_category(q->category), q->episode,
             q->joinable ? "true" : "false", q->is_dcv1 ? "true" : "false");
-      } catch (const exception& e) {
-        log(WARNING, "failed to parse quest file %s (%s)", filename.c_str(), e.what());
-      }
+      // } catch (const exception& e) {
+      //   log(WARNING, "failed to parse quest file %s (%s)", filename.c_str(), e.what());
+      // }
     }
   }
 }
@@ -390,15 +474,10 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(GameVersion version,
 
 static string create_download_quest_file(const string& compressed_data,
     size_t decompressed_size) {
-  struct PSODownloadQuestHeader {
-    uint32_t decompressed_size;
-    uint32_t encryption_seed; // note: use PC encryption, even for GC quests
-  };
-
   string data(8, '\0');
   auto* header = reinterpret_cast<PSODownloadQuestHeader*>(const_cast<char*>(
       compressed_data.data()));
-  header->decompressed_size = decompressed_size + sizeof(PSODownloadQuestHeader);
+  header->size = decompressed_size + sizeof(PSODownloadQuestHeader);
   header->encryption_seed = random_object<uint32_t>();
   data += compressed_data;
 
