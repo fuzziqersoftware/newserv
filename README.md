@@ -34,6 +34,8 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 - Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. (You can disable the interactive shell later by editing config.json.) You may need `sudo` if newserv's built-in DNS server is enabled.
 - Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
 
+### Connecting local clients
+
 If you're running PSO on a real GameCube, you can make PSO connect to newserv by changing its default gateway and DNS server addresses to newserv's address.
 
 If you're emulating PSO GC using Dolphin on Mac OS (like I am), you can make it connect to newserv by doing this:
@@ -45,3 +47,18 @@ If you're emulating PSO GC using Dolphin on Mac OS (like I am), you can make it 
 - Start an online game, and it will connect to your local instance of newserv!
 
 If you want to play online on remote servers, newserv also includes a PSO proxy server. Run newserv like `./newserv --proxy-destination=1.1.1.1` (replace the IP address appropriately for the server you want to connect to).
+
+### Connecting external clients
+
+If you want to accept connections from outside your local network, you'll likely need to open some ports in your router's NAT configuration. You'll need to open the following ports depending on which client versions you want to be able to connect:
+
+    PSO PC         9100, 9300, 9420, 10000
+    PSO GC 1.0 JP  9000, 9421
+    PSO GC 1.1 JP  9001, 9421
+    PSO GC Ep3 JP  9003, 9421
+    PSO GC 1.0 US  9100, 9421
+    PSO GC Ep3 US  9103, 9421
+    PSO GC 1.0 EU  9200, 9421
+    PSO GC 1.1 EU  9201, 9421
+    PSO GC Ep3 EU  9203, 9421
+    PSO BB         9422, 11000, 12000, 12004, 12005, 12008
