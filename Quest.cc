@@ -261,7 +261,7 @@ Quest::Quest(const string& bin_filename)
       this->name = decode_sjis(header->name);
       this->short_description = decode_sjis(header->short_description);
       this->long_description = decode_sjis(header->long_description);
-      this->is_dcv1 = (tokens[1] == "d1.bin");
+      this->is_dcv1 = (tokens[1] == "d1");
       break;
     }
 
