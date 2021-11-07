@@ -239,7 +239,7 @@ int main(int argc, char* argv[]) {
   }
 
   log(INFO, "loading configuration");
-  auto config_json = JSONObject::load("system/config.json");
+  auto config_json = JSONObject::parse(load_file("system/config.json"));
   populate_state_from_config(state, config_json);
 
   shared_ptr<DNSServer> dns_server;
