@@ -27,9 +27,9 @@ This project is primarily for my own nostalgia. Feel free to peruse if you'd lik
 Currently this code should build on macOS and Ubuntu. It might build on other Linux flavors, but don't expect it to work on Windows at all.
 
 So, you've read all of the above and you want to try it out? Here's what you do:
-- Make sure you have libevent installed (use Homebrew in macOS, or install libevent-dev in Linux).
+- Make sure you have CMake and libevent installed (use Homebrew in macOS, or install libevent-dev in Linux).
 - Build and install phosg (https://github.com/fuzziqersoftware/phosg).
-- Run `make`.
+- Run `cmake . && make`.
 - Edit system/config.json to your liking.
 - Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. (You can disable the interactive shell later by editing config.json.) You may need `sudo` if newserv's built-in DNS server is enabled.
 - Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
@@ -39,7 +39,7 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 If you're running PSO on a real GameCube, you can make PSO connect to newserv by changing its default gateway and DNS server addresses to newserv's address.
 
 If you're emulating PSO GC using Dolphin on Mac OS (like I am), you can make it connect to newserv by doing this:
-- Use a build of Dolphin that has tapserver support (this may mean building it from master yourself).
+- Use a build of Dolphin that has tapserver support.
 - Install tapserver (https://github.com/fuzziqersoftware/tapserver).
 - In PSO, manually configure your network settings as follows: IP address = `192.168.0.200`, subnet mask = `255.255.255.0`, default gateway = `192.168.0.5`, DNS server address 1 = `192.168.0.5`.
 - Start Dolphin and newserv.

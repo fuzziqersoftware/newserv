@@ -7,8 +7,7 @@
 #include "Lobby.hh"
 #include "Client.hh"
 
-void player_use_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
-    size_t item_index);
+void player_use_item(std::shared_ptr<Client> c, size_t item_index);
 
 struct CommonItemCreator {
   std::vector<uint32_t> enemy_item_categories;

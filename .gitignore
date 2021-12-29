@@ -1,3 +1,14 @@
+# Finder files (macOS)
 .DS_Store
-*.o
+
+# Build products
 newserv
+
+# CMake files
+CMakeCache.txt
+CMakeFiles
+Makefile
+CTestTestFile.cmake
+Testing
+cmake_install.cmake
+install_manifest.txt

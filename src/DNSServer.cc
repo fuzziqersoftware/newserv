@@ -54,7 +54,7 @@ void DNSServer::dispatch_on_receive_message(evutil_socket_t fd,
   reinterpret_cast<DNSServer*>(ctx)->on_receive_message(fd, events);
 }
 
-void DNSServer::on_receive_message(int fd, short event) {
+void DNSServer::on_receive_message(int fd, short) {
   for (;;) {
     sockaddr_in remote;
     socklen_t remote_size = sizeof(sockaddr_in);

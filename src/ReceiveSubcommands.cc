@@ -98,7 +98,7 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
 // Chat commands and the like
 
 // client requests to send a guild card
-static void process_subcommand_send_guild_card(shared_ptr<ServerState> s,
+static void process_subcommand_send_guild_card(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   check_size(count, 9, 0xFFFF);
@@ -120,7 +120,7 @@ static void process_subcommand_send_guild_card(shared_ptr<ServerState> s,
 }
 
 // client sends a symbol chat
-static void process_subcommand_symbol_chat(shared_ptr<ServerState> s,
+static void process_subcommand_symbol_chat(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   check_size(count, 2, 0xFFFF);
@@ -133,7 +133,7 @@ static void process_subcommand_symbol_chat(shared_ptr<ServerState> s,
 }
 
 // client sends a word select chat
-static void process_subcommand_word_select(shared_ptr<ServerState> s,
+static void process_subcommand_word_select(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   check_size(count, 8, 0xFFFF);
@@ -161,7 +161,7 @@ static void process_subcommand_word_select(shared_ptr<ServerState> s,
 // Game commands used by cheat mechanisms
 
 // need to process changing areas since we keep track of where players are
-static void process_subcommand_change_area(shared_ptr<ServerState> s,
+static void process_subcommand_change_area(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   check_size(count, 2, 0xFFFF);
@@ -173,7 +173,7 @@ static void process_subcommand_change_area(shared_ptr<ServerState> s,
 }
 
 // when a player is hit by a monster, heal them if infinite HP is enabled
-static void process_subcommand_hit_by_monster(shared_ptr<ServerState> s,
+static void process_subcommand_hit_by_monster(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (!l->is_game() || (p->byte[2] != c->lobby_client_id)) {
@@ -186,7 +186,7 @@ static void process_subcommand_hit_by_monster(shared_ptr<ServerState> s,
 }
 
 // when a player casts a tech, restore TP if infinite TP is enabled
-static void process_subcommand_use_technique(shared_ptr<ServerState> s,
+static void process_subcommand_use_technique(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (!l->is_game() || (p->byte[1] != count) || (p->byte[2] != c->lobby_client_id)) {
@@ -202,7 +202,7 @@ static void process_subcommand_use_technique(shared_ptr<ServerState> s,
 // BB Item commands
 
 // player drops an item
-static void process_subcommand_drop_item(shared_ptr<ServerState> s,
+static void process_subcommand_drop_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (l->version == GameVersion::BB) {
@@ -234,7 +234,7 @@ static void process_subcommand_drop_item(shared_ptr<ServerState> s,
 }
 
 // player splits a stack and drops part of it
-static void process_subcommand_drop_stacked_item(shared_ptr<ServerState> s,
+static void process_subcommand_drop_stacked_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (l->version == GameVersion::BB) {
@@ -269,7 +269,7 @@ static void process_subcommand_drop_stacked_item(shared_ptr<ServerState> s,
 
     l->add_item(item);
 
-    send_drop_stacked_item(l, c, item.data, cmd->area, cmd->x, cmd->y);
+    send_drop_stacked_item(l, item.data, cmd->area, cmd->x, cmd->y);
 
   } else {
     forward_subcommand(l, c, command, flag, p, count);
@@ -277,7 +277,7 @@ static void process_subcommand_drop_stacked_item(shared_ptr<ServerState> s,
 }
 
 // player requests to pick up an item
-static void process_subcommand_pick_up_item(shared_ptr<ServerState> s,
+static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (l->version == GameVersion::BB) {
@@ -310,7 +310,7 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState> s,
 }
 
 // player equips an item
-static void process_subcommand_equip_unequip_item(shared_ptr<ServerState> s,
+static void process_subcommand_equip_unequip_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (l->version == GameVersion::BB) {
@@ -333,7 +333,7 @@ static void process_subcommand_equip_unequip_item(shared_ptr<ServerState> s,
   }
 }
 
-static void process_subcommand_use_item(shared_ptr<ServerState> s,
+static void process_subcommand_use_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (l->version == GameVersion::BB) {
@@ -351,14 +351,14 @@ static void process_subcommand_use_item(shared_ptr<ServerState> s,
       c->player.inventory.items[index].game_flags &= 0xFFFFFFF7; // unequip
     }
 
-    player_use_item(l, c, index);
+    player_use_item(c, index);
   }
 
   forward_subcommand(l, c, command, flag, p, count);
 }
 
 static void process_subcommand_open_shop(shared_ptr<ServerState> s,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
     const PSOSubcommand* p, size_t count) {
   check_size(count, 2);
   uint32_t shop_type = p[1].dword;
@@ -386,17 +386,17 @@ static void process_subcommand_open_shop(shared_ptr<ServerState> s,
   }
 }
 
-static void process_subcommand_open_bank(shared_ptr<ServerState> s,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+static void process_subcommand_open_bank(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
+    const PSOSubcommand*, size_t) {
   if ((l->version == GameVersion::BB) && l->is_game()) {
     send_bank(c);
   }
 }
 
 // player performs some bank action
-static void process_subcommand_bank_action(shared_ptr<ServerState> s,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+static void process_subcommand_bank_action(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
     const PSOSubcommand* p, size_t count) {
   if (l->version == GameVersion::BB) {
     check_size(count, 4);
@@ -456,8 +456,8 @@ static void process_subcommand_bank_action(shared_ptr<ServerState> s,
 }
 
 // player sorts the items in their inventory
-static void process_subcommand_sort_inventory(shared_ptr<ServerState> s,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+static void process_subcommand_sort_inventory(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
     const PSOSubcommand* p, size_t count) {
   if (l->version == GameVersion::BB) {
     check_size(count, 31);
@@ -635,7 +635,7 @@ static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
 }
 
 // monster hit by player
-static void process_subcommand_monster_hit(shared_ptr<ServerState> s,
+static void process_subcommand_monster_hit(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (l->version == GameVersion::BB) {
@@ -746,7 +746,7 @@ static void process_subcommand_monster_killed(shared_ptr<ServerState> s,
 }
 
 // destroy item (sent when there are too many items on the ground)
-static void process_subcommand_destroy_item(shared_ptr<ServerState> s,
+static void process_subcommand_destroy_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (l->version == GameVersion::BB) {
@@ -763,7 +763,7 @@ static void process_subcommand_destroy_item(shared_ptr<ServerState> s,
 }
 
 // player requests to tekk an item
-static void process_subcommand_identify_item(shared_ptr<ServerState> s,
+static void process_subcommand_identify_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (l->version == GameVersion::BB) {
@@ -822,7 +822,7 @@ static void process_subcommand_identify_item(shared_ptr<ServerState> s,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void process_subcommand_forward_check_size(shared_ptr<ServerState> s,
+static void process_subcommand_forward_check_size(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (p->byte[1] != count) {
@@ -831,7 +831,7 @@ static void process_subcommand_forward_check_size(shared_ptr<ServerState> s,
   forward_subcommand(l, c, command, flag, p, count);
 }
 
-static void process_subcommand_forward_check_game(shared_ptr<ServerState> s,
+static void process_subcommand_forward_check_game(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (!l->is_game()) {
@@ -840,7 +840,7 @@ static void process_subcommand_forward_check_game(shared_ptr<ServerState> s,
   forward_subcommand(l, c, command, flag, p, count);
 }
 
-static void process_subcommand_forward_check_game_loading(shared_ptr<ServerState> s,
+static void process_subcommand_forward_check_game_loading(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (!l->is_game() || !l->any_client_loading()) {
@@ -849,7 +849,7 @@ static void process_subcommand_forward_check_game_loading(shared_ptr<ServerState
   forward_subcommand(l, c, command, flag, p, count);
 }
 
-static void process_subcommand_forward_check_size_client(shared_ptr<ServerState> s,
+static void process_subcommand_forward_check_size_client(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if ((p->byte[1] != count) || (p->byte[2] != c->lobby_client_id)) {
@@ -858,7 +858,7 @@ static void process_subcommand_forward_check_size_client(shared_ptr<ServerState>
   forward_subcommand(l, c, command, flag, p, count);
 }
 
-static void process_subcommand_forward_check_size_game(shared_ptr<ServerState> s,
+static void process_subcommand_forward_check_size_game(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (!l->is_game() || (p->byte[1] != count)) {
@@ -868,8 +868,8 @@ static void process_subcommand_forward_check_size_game(shared_ptr<ServerState> s
 }
 
 // used for invalid commands. normally, clients should be disconnected - to restore this behavior, change the return value back to SUBCOMMAND_ERROR_INVALID_COMMAND.
-static void process_subcommand_invalid(shared_ptr<ServerState> s,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+static void process_subcommand_invalid(shared_ptr<ServerState>,
+    shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (command_is_private(command)) {
     log(WARNING, "invalid subcommand: %02X (%d of them) (private to player %d)",
@@ -881,8 +881,8 @@ static void process_subcommand_invalid(shared_ptr<ServerState> s,
 }
 
 // used when an error occurs (unknown commands, etc). normally, clients should be disconnected - to restore this behavior, change the return value back to SUBCOMMAND_ERROR_INVALID_COMMAND.
-static void process_subcommand_unimplemented(shared_ptr<ServerState> s,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+static void process_subcommand_unimplemented(shared_ptr<ServerState>,
+    shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (command_is_private(command)) {
     log(WARNING, "unknown subcommand: %02X (%d of them) (private to player %d)",

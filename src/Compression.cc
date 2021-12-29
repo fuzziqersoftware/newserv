@@ -101,23 +101,24 @@ struct prs_compress_ctx {
 string prs_compress(const string& data) {
   prs_compress_ctx pc;
 
+  ssize_t data_ssize = static_cast<ssize_t>(data.size());
   ssize_t read_offset = 0;
-  while (read_offset < static_cast<ssize_t>(data.size())) {
+  while (read_offset < data_ssize) {
 
     // look for a chunk of data in history matching what's at the current offset
     ssize_t best_offset = 0;
-    size_t best_size = 0;
+    ssize_t best_size = 0;
     for (ssize_t this_offset = -3;
-         (this_offset + data.size() >= 0) &&
+         (this_offset + data_ssize >= 0) &&
          (this_offset > -0x1FF0) &&
          (best_size < 255);
          this_offset--) {
 
       // for this offset, expand the match as much as possible
-      size_t this_size = 1;
+      ssize_t this_size = 1;
       while ((this_size < 0x100) && // max copy size is 255 bytes
              ((this_offset + this_size) < 0) && // don't copy past the read offset
-             (this_size <= data.size() - read_offset) && // don't copy past the end
+             (this_size <= data_ssize - read_offset) && // don't copy past the end
              !memcmp(data.data() + read_offset + this_offset,
                      data.data() + read_offset, this_size)) {
         this_size++;

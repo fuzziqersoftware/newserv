@@ -156,7 +156,7 @@ void process_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // DB
+    uint16_t, uint32_t, uint16_t size, const void* data) { // DB
   struct Cmd {
     char unused[0x20];
     char serial_number[0x10];
@@ -192,7 +192,7 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 9A
+    uint16_t, uint32_t, uint16_t size, const void* data) { // 9A
   struct Cmd {
     char unused[0x20];
     char serial_number[0x10];
@@ -232,7 +232,7 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 9C
+    uint16_t, uint32_t, uint16_t size, const void* data) { // 9C
   struct Cmd {
     char unused[8];
     uint32_t sub_version;
@@ -277,7 +277,7 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 9D 9E
+    uint16_t, uint32_t, uint16_t size, const void* data) { // 9D 9E
   struct Cmd {
     char unused[0x10];
     uint8_t sub_version;
@@ -335,7 +335,7 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 93
+    uint16_t, uint32_t, uint16_t size, const void* data) { // 93
   struct Cmd {
     char unused[0x14];
     char username[0x10];
@@ -403,13 +403,13 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_client_checksum(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 96
+void process_client_checksum(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t, const void*) { // 96
   send_command(c, 0x97, 0x01);
 }
 
-void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // B1
+void process_server_time_request(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void*) { // B1
   check_size(size, 0);
   send_server_time(c);
 }
@@ -421,7 +421,7 @@ void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c
 // handlers that partially worked were lost in a dead hard drive, unfortunately.
 
 void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+    uint16_t command, uint32_t, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t unknown[3]; // should be FFFFFFFF 00000000
   };
@@ -436,14 +436,14 @@ void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_command(l, command, 0x03, cmd);
 }
 
-void process_ep3_menu_challenge(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // DC
+void process_ep3_menu_challenge(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void*) { // DC
   check_size(size, 0);
   send_command(c, 0xDC);
 }
 
 void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // CA
+    uint16_t, uint32_t, uint16_t size, const void* data) { // CA
   check_size(size, 8, 0xFFFF);
   const PSOSubcommand* cmds = reinterpret_cast<const PSOSubcommand*>(data);
 
@@ -533,7 +533,7 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
 // menu commands
 
 void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D6
+    uint16_t, uint32_t, uint16_t, const void*) { // D6
   if (c->flags & ClientFlag::InInformationMenu) {
     send_menu(c, u"Information", INFORMATION_MENU_ID, *s->information_menu, false);
   } else if (c->flags & ClientFlag::AtWelcomeMessage) {
@@ -543,7 +543,7 @@ void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 09
+    uint16_t, uint32_t, uint16_t size, const void* data) { // 09
   struct Cmd {
     uint32_t menu_id;
     uint32_t item_id;
@@ -603,7 +603,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
 }
 
 void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 10
+    uint16_t, uint32_t, uint16_t size, const void* data) { // 10
   bool uses_unicode = ((c->version == GameVersion::PC) || (c->version == GameVersion::BB));
 
   struct Cmd {
@@ -803,7 +803,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 84
+    uint16_t, uint32_t, uint16_t size, const void* data) { // 84
   struct Cmd {
     uint32_t menu_id;
     uint32_t item_id;
@@ -828,13 +828,13 @@ void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 08
+    uint16_t, uint32_t, uint16_t size, const void*) { // 08
   check_size(size, 0);
   send_game_menu(c, s);
 }
 
 void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // A0
+    uint16_t, uint32_t, uint16_t, const void*) { // A0
   send_message_box(c, u""); // we do this to avoid the "log window in message box" bug
 
   static const vector<string> version_to_port_name({
@@ -892,7 +892,7 @@ vector<MenuItem> quest_download_menu({
 });
 
 void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // A2
+    uint16_t, uint32_t flag, uint16_t size, const void*) { // A2
   check_size(size, 0);
 
   if (!s->quest_index) {
@@ -927,7 +927,7 @@ void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // AC
+    uint16_t, uint32_t, uint16_t size, const void*) { // AC
   check_size(size, 0);
 
   auto l = s->find_lobby(c->lobby_id);
@@ -956,8 +956,8 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_gba_file_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D7
+void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void* data) { // D7
   static FileContentsCache file_cache;
 
   string filename(reinterpret_cast<const char*>(data), size);
@@ -967,8 +967,8 @@ void process_gba_file_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_quest_file(c, filename, *contents, false, false);
 }
 
-void process_start_download_quest(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // A6
+void process_start_download_quest(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t, const void*) { // A6
   // TODO implement this
   send_text_message(c, u"$C6Download quests\nare not supported");
 }
@@ -979,7 +979,7 @@ void process_start_download_quest(shared_ptr<ServerState> s, shared_ptr<Client> 
 // player data commands
 
 void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 61 98
+    uint16_t command, uint32_t, uint16_t size, const void* data) { // 61 98
 
   // note: we add extra buffer on the end when checking sizes because the
   // autoreply text is a variable length
@@ -1095,7 +1095,7 @@ void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 06
+    uint16_t, uint32_t, uint16_t size, const void* data) { // 06
   struct Cmd {
     uint32_t unused[2];
     char16_t text[0];
@@ -1107,7 +1107,7 @@ void process_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_chat_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+    uint16_t, uint32_t, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t unused[2];
     char text[0];
@@ -1122,14 +1122,14 @@ void process_chat_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 ////////////////////////////////////////////////////////////////////////////////
 // BB commands
 
-void process_key_config_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+void process_key_config_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void*) {
   check_size(size, 0);
   send_team_and_key_config_bb(c);
 }
 
-void process_player_preview_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t player_index;
     uint32_t unused;
@@ -1164,8 +1164,8 @@ void process_player_preview_request_bb(shared_ptr<ServerState> s, shared_ptr<Cli
   }
 }
 
-void process_client_checksum_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t command, uint32_t, uint16_t size, const void*) {
   check_size(size, 0);
 
   if (command == 0x01E8) {
@@ -1177,8 +1177,8 @@ void process_client_checksum_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_guild_card_data_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+void process_guild_card_data_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t unknown;
     uint32_t chunk_index;
@@ -1192,8 +1192,8 @@ void process_guild_card_data_request_bb(shared_ptr<ServerState> s, shared_ptr<Cl
   }
 }
 
-void process_stream_file_request_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+void process_stream_file_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t command, uint32_t, uint16_t size, const void*) {
   check_size(size, 0);
 
   if (command == 0x04EB) {
@@ -1204,7 +1204,7 @@ void process_stream_file_request_bb(shared_ptr<ServerState> s, shared_ptr<Client
 }
 
 void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+    uint16_t, uint32_t, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t player_index;
     PlayerDispDataBBPreview preview;
@@ -1262,8 +1262,8 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
   send_approve_player_choice_bb(c);
 }
 
-void process_change_account_data_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+void process_change_account_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t command, uint32_t, uint16_t size, const void* data) {
   union Cmd {
     uint32_t option; // 01ED
     uint8_t symbol_chats[0x4E0]; // 02ED
@@ -1309,8 +1309,8 @@ void process_change_account_data_bb(shared_ptr<ServerState> s, shared_ptr<Client
   }
 }
 
-void process_return_player_data_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+void process_return_player_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void* data) {
   check_size(size, sizeof(PlayerBB));
   const PlayerBB* cmd = reinterpret_cast<const PlayerBB*>(data);
 
@@ -1324,7 +1324,7 @@ void process_return_player_data_bb(shared_ptr<ServerState> s, shared_ptr<Client>
 // Lobby commands
 
 void process_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 89
+    uint16_t, uint32_t flag, uint16_t size, const void*) { // 89
   check_size(size, 0);
 
   c->lobby_arrow_color = flag;
@@ -1335,7 +1335,7 @@ void process_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 40
+    uint16_t, uint32_t, uint16_t size, const void* data) { // 40
   struct Cmd {
     uint32_t player_tag;
     uint32_t searcher_serial_number;
@@ -1351,13 +1351,13 @@ void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
   } catch (const out_of_range&) { }
 }
 
-void process_choice_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C0
+void process_choice_search(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t, const void*) { // C0
   send_text_message(c, u"$C6Choice Search is\nnot supported");
 }
 
 void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 81
+    uint16_t, uint32_t, uint16_t size, const void* data) { // 81
   if (c->version != GameVersion::GC) {
     // TODO: implement this for DC, PC, BB
     send_text_message(c, u"$C6Simple Mail is not\nsupported yet on\nthis platform.");
@@ -1386,15 +1386,14 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // if the target has auto-reply enabled, send the autoreply
   if (target->player.auto_reply[0]) {
     send_simple_mail(c, target->license->serial_number,
-        target->player.disp.name, target->player.auto_reply,
-        sizeof(target->player.auto_reply));
+        target->player.disp.name, target->player.auto_reply);
   }
 
   // forward the message
   string message(cmd->data, strnlen(cmd->data, sizeof(cmd->data) / sizeof(cmd->data[0])));
   u16string u16message = decode_sjis(message);
   send_simple_mail(target, c->license->serial_number, c->player.disp.name,
-      u16message.data(), u16message.size());
+      u16message.data());
 }
 
 
@@ -1403,26 +1402,26 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
 // Info board commands
 
 void process_info_board_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D8
+    uint16_t, uint32_t, uint16_t size, const void*) { // D8
   check_size(size, 0);
   auto l = s->find_lobby(c->lobby_id);
   send_info_board(c, l);
 }
 
-void process_write_info_board_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D9
+void process_write_info_board_pc_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void* data) { // D9
   check_size(size, 0, 2 * 0xAC);
   char16cpy(c->player.info_board, reinterpret_cast<const char16_t*>(data), 0xAC);
 }
 
-void process_write_info_board_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // D9
+void process_write_info_board_dc_gc(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void* data) { // D9
   check_size(size, 0, 0xAC);
   decode_sjis(c->player.info_board, reinterpret_cast<const char*>(data), 0xAC);
 }
 
-void process_set_auto_reply_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C7
+void process_set_auto_reply_pc_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void* data) { // C7
   check_size(size, 0, 2 * 0xAC);
   if (size == 0) {
     c->player.auto_reply[0] = 0;
@@ -1431,8 +1430,8 @@ void process_set_auto_reply_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> 
   }
 }
 
-void process_set_auto_reply_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C7
+void process_set_auto_reply_dc_gc(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void* data) { // C7
   check_size(size, 0, 0xAC);
   if (size == 0) {
     c->player.auto_reply[0] = 0;
@@ -1441,14 +1440,14 @@ void process_set_auto_reply_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> 
   }
 }
 
-void process_disable_auto_reply(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C8
+void process_disable_auto_reply(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void*) { // C8
   check_size(size, 0);
   c->player.auto_reply[0] = 0;
 }
 
-void process_set_blocked_list(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C6
+void process_set_blocked_list(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void* data) { // C6
   check_size(size, 0x78);
   memcpy(c->player.blocked, data, 0x78);
 }
@@ -1580,7 +1579,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
 }
 
 void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C1
+    uint16_t, uint32_t, uint16_t size, const void* data) { // C1
   struct Cmd {
     uint32_t unused[2];
     char16_t name[0x10];
@@ -1602,7 +1601,7 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C1 EC (EC Ep3 only)
+    uint16_t command, uint32_t, uint16_t size, const void* data) { // C1 EC (EC Ep3 only)
   struct Cmd {
     uint32_t unused[2];
     char name[0x10];
@@ -1641,7 +1640,7 @@ void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // C1
+    uint16_t, uint32_t, uint16_t size, const void* data) { // C1
   struct Cmd {
     uint32_t unused[2];
     char16_t name[0x10];
@@ -1668,7 +1667,7 @@ void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 8A
+    uint16_t, uint32_t, uint16_t size, const void*) { // 8A
   check_size(size, 0);
   auto l = s->find_lobby(c->lobby_id);
   if (!l) {
@@ -1678,7 +1677,7 @@ void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 6F
+    uint16_t, uint32_t, uint16_t size, const void*) { // 6F
   check_size(size, 0);
 
   auto l = s->find_lobby(c->lobby_id);
@@ -1699,8 +1698,8 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
 ////////////////////////////////////////////////////////////////////////////////
 // Team commands
 
-void process_team_command_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // EA
+void process_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t command, uint32_t, uint16_t, const void*) { // EA
 
   if (command == 0x01EA) {
     send_lobby_message_box(c, u"$C6Teams are not supported.");
@@ -1712,14 +1711,14 @@ void process_team_command_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 ////////////////////////////////////////////////////////////////////////////////
 // Patch server commands
 
-void process_encryption_ok_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+void process_encryption_ok_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t size, const void*) {
   check_size(size, 0);
   send_command(c, 0x04); // this requests the user's login information
 }
 
 void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+    uint16_t, uint32_t, uint16_t size, const void* data) {
   struct Cmd {
     uint32_t unused[3];
     char username[0x10];
@@ -1758,11 +1757,11 @@ License check: ";
 ////////////////////////////////////////////////////////////////////////////////
 // Command pointer arrays
 
-void process_ignored_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { }
+void process_ignored_command(shared_ptr<ServerState>, shared_ptr<Client>,
+    uint16_t, uint32_t, uint16_t, const void*) { }
 
-void process_unimplemented_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+void process_unimplemented_command(shared_ptr<ServerState>, shared_ptr<Client>,
+    uint16_t command, uint32_t flag, uint16_t size, const void*) {
   log(WARNING, "unknown command: size=%04X command=%04X flag=%08X\n",
       size, command, flag);
   throw invalid_argument("unimplemented command");

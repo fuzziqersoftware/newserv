@@ -85,7 +85,7 @@ void Server::dispatch_on_disconnecting_client_error(struct bufferevent* bev,
 }
 
 void Server::on_listen_accept(struct evconnlistener* listener,
-    evutil_socket_t fd, struct sockaddr* address, int socklen) {
+    evutil_socket_t fd, struct sockaddr*, int) {
 
   int listen_fd = evconnlistener_get_fd(listener);
   ListeningSocket* listening_socket;

@@ -379,8 +379,8 @@ static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 // Message commands
 
-static void command_lobby_info(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+static void command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const char16_t*) {
   // no preconditions - everyone can use this command
 
   if (!l) {
@@ -407,22 +407,21 @@ static void command_lobby_info(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   }
 }
 
-static void command_ax(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_ax(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::Announce);
   log(INFO, "[$ax from %010u] %S\n", c->license->serial_number, args);
 }
 
-static void command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby>,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::Announce);
   send_text_message(s, args);
 }
 
-static void command_arrow(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_arrow(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   // no preconditions
-
   c->lobby_arrow_color = stoull(encode_sjis(args), NULL, 0);
   if (!l->is_game()) {
     send_arrow_update(l);
@@ -432,8 +431,8 @@ static void command_arrow(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 ////////////////////////////////////////////////////////////////////////////////
 // Lobby commands
 
-static void command_cheat(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+static void command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const char16_t*) {
   check_is_game(l, true);
   check_is_leader(l, c);
 
@@ -455,7 +454,7 @@ static void command_cheat(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   }
 }
 
-static void command_lobby_event(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_lobby_event(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, false);
   check_privileges(c, Privilege::ChangeEvent);
@@ -470,7 +469,7 @@ static void command_lobby_event(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   send_change_event(l, l->event);
 }
 
-static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::ChangeEvent);
 
@@ -490,7 +489,7 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
   }
 }
 
-static void command_lobby_type(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, false);
   check_privileges(c, Privilege::ChangeEvent);
@@ -516,7 +515,7 @@ static void command_lobby_type(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands
 
-static void command_password(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -533,7 +532,7 @@ static void command_password(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   }
 }
 
-static void command_min_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_min_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -544,7 +543,7 @@ static void command_min_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
       l->min_level + 1);
 }
 
-static void command_max_level(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_max_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -648,16 +647,16 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   s->send_lobby_join_notifications(l, c);
 }
 
-static void command_change_bank(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+static void command_change_bank(shared_ptr<ServerState>, shared_ptr<Lobby>,
+    shared_ptr<Client> c, const char16_t*) {
   check_version(c, GameVersion::BB);
 
   // TODO: implement this
   // TODO: make sure the bank name is filesystem-safe
 }
 
-static void command_convert_char_to_bb(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+static void command_convert_char_to_bb(shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, false);
   check_not_version(c, GameVersion::BB);
 
@@ -786,7 +785,7 @@ static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 ////////////////////////////////////////////////////////////////////////////////
 // Cheat commands
 
-static void command_warp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -815,8 +814,8 @@ static void command_warp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   send_warp(c, area);
 }
 
-static void command_infinite_hp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+static void command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const char16_t*) {
   check_is_game(l, true);
   check_cheats_enabled(l);
 
@@ -824,8 +823,8 @@ static void command_infinite_hp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   send_text_message_printf(c, "$C6Infinite HP %s", c->infinite_hp ? "enabled" : "disabled");
 }
 
-static void command_infinite_tp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+static void command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const char16_t*) {
   check_is_game(l, true);
   check_cheats_enabled(l);
 
@@ -833,7 +832,7 @@ static void command_infinite_tp(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   send_text_message_printf(c, "$C6Infinite TP %s", c->infinite_tp ? "enabled" : "disabled");
 }
 
-static void command_item(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
   check_cheats_enabled(l);

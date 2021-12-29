@@ -141,8 +141,7 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void player_use_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    size_t item_index) {
+void player_use_item(shared_ptr<Client> c, size_t item_index) {
 
   ssize_t equipped_weapon = -1;
   // ssize_t equipped_armor = -1;
@@ -282,7 +281,8 @@ int32_t CommonItemCreator::decide_item_type(bool is_box) const {
 }
 
 ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
-    uint8_t difficulty, uint8_t area, uint8_t section_id) const {
+    uint8_t difficulty, uint8_t area, uint8_t) const {
+  // TODO: use the section ID (last argument) to vary drop frequencies appropriately
   // change the area if it's invalid (data for the bosses are actually in other areas)
   if (area > 10) {
     if (episode == 1) {

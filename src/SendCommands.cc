@@ -63,6 +63,7 @@ void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
         send_data.append(reinterpret_cast<const char*>(data), size);
         send_data.resize((send_data.size() + 7) & ~7);
       }
+      break;
     }
 
     default:
@@ -165,7 +166,7 @@ static void send_server_init_gc(shared_ptr<Client> c, bool initial_connection) {
 }
 
 static void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    bool initial_connection) {
+    bool) {
   struct {
     char copyright[0x60];
     uint8_t server_key[0x30];
@@ -186,7 +187,7 @@ static void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
       sizeof(cmd.client_key)));
 }
 
-static void send_server_init_patch(shared_ptr<Client> c, bool initial_connection) {
+static void send_server_init_patch(shared_ptr<Client> c, bool) {
   struct {
     char copyright[0x40];
     uint32_t server_key;
@@ -549,7 +550,7 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_serial_number,
 }
 
 void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_serial_number,
-    const char16_t* from_name, const char16_t* text, size_t max_chars) {
+    const char16_t* from_name, const char16_t* text) {
   struct {
     uint32_t player_tag;
     uint32_t from_serial_number;
@@ -562,15 +563,15 @@ void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_serial_number,
   cmd.from_serial_number = from_serial_number;
   encode_sjis(cmd.from_name, from_name, sizeof(cmd.from_name) / sizeof(cmd.from_name[0]));
   cmd.to_serial_number = c->license->serial_number;
-  encode_sjis(cmd.text, c->player.disp.name, sizeof(cmd.text) / sizeof(cmd.text[0]));
+  encode_sjis(cmd.text, text, sizeof(cmd.text) / sizeof(cmd.text[0]));
 
   send_command(c, 0x81, 0x00, cmd);
 }
 
 void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
-    const char16_t* from_name, const char16_t* text, size_t max_chars) {
+    const char16_t* from_name, const char16_t* text) {
   if (c->version == GameVersion::GC) {
-    send_simple_mail_gc(c, from_serial_number, from_name, text, max_chars);
+    send_simple_mail_gc(c, from_serial_number, from_name, text);
   } else {
     throw logic_error("unimplemented versioned command");
   }
@@ -1862,8 +1863,8 @@ void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
 }
 
 // notifies other players that a stack was split and part of it dropped (a new item was created)
-void send_drop_stacked_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    const ItemData& item, uint8_t area, float x, float y) {
+void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
+    uint8_t area, float x, float y) {
   struct {
     uint8_t subcommand;
     uint8_t subsize;
@@ -1957,6 +1958,7 @@ void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
     shop_type,
     static_cast<uint8_t>(c->player.current_shop_contents.size()),
     0,
+    {},
   };
 
   size_t count = c->player.current_shop_contents.size();

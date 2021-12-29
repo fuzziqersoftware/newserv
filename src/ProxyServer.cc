@@ -108,8 +108,8 @@ void ProxyServer::dispatch_on_server_error(struct bufferevent* bev, short events
 
 
 
-void ProxyServer::on_listen_accept(struct evconnlistener* listener,
-    evutil_socket_t fd, struct sockaddr* address, int socklen) {
+void ProxyServer::on_listen_accept(struct evconnlistener*, evutil_socket_t fd,
+    struct sockaddr*, int) {
 
   if (this->client_bev.get()) {
     log(WARNING, "ignoring client connection because client already exists");
@@ -162,15 +162,15 @@ void ProxyServer::on_listen_error(struct evconnlistener* listener) {
   event_base_loopexit(this->base.get(), NULL);
 }
 
-void ProxyServer::on_client_input(struct bufferevent* bev) {
+void ProxyServer::on_client_input(struct bufferevent*) {
   this->receive_and_process_commands(false);
 }
 
-void ProxyServer::on_server_input(struct bufferevent* bev) {
+void ProxyServer::on_server_input(struct bufferevent*) {
   this->receive_and_process_commands(true);
 }
 
-void ProxyServer::on_client_error(struct bufferevent* bev, short events) {
+void ProxyServer::on_client_error(struct bufferevent*, short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
     log(WARNING, "error %d (%s) in client stream", err,
@@ -190,7 +190,7 @@ void ProxyServer::on_client_error(struct bufferevent* bev, short events) {
   }
 }
 
-void ProxyServer::on_server_error(struct bufferevent* bev, short events) {
+void ProxyServer::on_server_error(struct bufferevent*, short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
     log(WARNING, "error %d (%s) in server stream", err,

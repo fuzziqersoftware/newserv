@@ -31,7 +31,7 @@ Shell::Shell(std::shared_ptr<struct event_base> base,
   this->poll.add(0, POLLIN);
 }
 
-void Shell::dispatch_print_prompt(evutil_socket_t fd, short events, void* ctx) {
+void Shell::dispatch_print_prompt(evutil_socket_t, short, void* ctx) {
   reinterpret_cast<Shell*>(ctx)->print_prompt();
 }
 
@@ -39,7 +39,7 @@ void Shell::print_prompt() {
   // default behavior: no prompt
 }
 
-void Shell::dispatch_read_stdin(evutil_socket_t fd, short events, void* ctx) {
+void Shell::dispatch_read_stdin(evutil_socket_t, short, void* ctx) {
   reinterpret_cast<Shell*>(ctx)->read_stdin();
 }
 
