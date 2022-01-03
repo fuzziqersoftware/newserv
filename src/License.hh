@@ -35,6 +35,7 @@ struct License {
   uint32_t privileges; // privilege level
   uint64_t ban_end_time; // end time of ban (zero = not banned)
 
+  License();
   std::string str() const;
 } __attribute__((packed));
 

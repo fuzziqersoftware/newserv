@@ -11,6 +11,16 @@ using namespace std;
 
 
 
+License::License() {
+  memset(this->username, 0, 20);
+  memset(this->bb_password, 0, 20);
+  this->serial_number = 0;
+  memset(this->access_key, 0, 16);
+  memset(this->gc_password, 0, 12);
+  this->privileges = 0;
+  this->ban_end_time = 0;
+}
+
 string License::str() const {
   string ret = string_printf("License(serial_number=%" PRIu32, this->serial_number);
   if (this->username[0]) {
@@ -148,9 +158,9 @@ shared_ptr<const License> LicenseManager::create_license_pc(
   shared_ptr<License> l(new License());
   memset(l.get(), 0, sizeof(License));
   l->serial_number = serial_number;
-  strncpy(l->access_key, access_key, 8);
+  strlcpy(l->access_key, access_key, 8);
   if (password) {
-    strncpy(l->gc_password, password, 8);
+    strlcpy(l->gc_password, password, 8);
   }
   return l;
 }
@@ -160,9 +170,9 @@ shared_ptr<const License> LicenseManager::create_license_gc(
   shared_ptr<License> l(new License());
   memset(l.get(), 0, sizeof(License));
   l->serial_number = serial_number;
-  strncpy(l->access_key, access_key, 12);
+  strlcpy(l->access_key, access_key, 12);
   if (password) {
-    strncpy(l->gc_password, password, 8);
+    strlcpy(l->gc_password, password, 8);
   }
   return l;
 }
@@ -172,7 +182,7 @@ shared_ptr<const License> LicenseManager::create_license_bb(
   shared_ptr<License> l(new License());
   memset(l.get(), 0, sizeof(License));
   l->serial_number = serial_number;
-  strncpy(l->username, username, 19);
-  strncpy(l->bb_password, password, 19);
+  strlcpy(l->username, username, 19);
+  strlcpy(l->bb_password, password, 19);
   return l;
 }

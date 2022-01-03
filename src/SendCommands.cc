@@ -16,6 +16,9 @@ using namespace std;
 
 
 
+#pragma pack(push)
+#pragma pack(1)
+
 static FileContentsCache file_cache;
 
 
@@ -263,7 +266,7 @@ void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
     uint32_t gc_address;
     uint16_t gc_port;
     uint8_t unused2[0xB0 - 0x23];
-  } __attribute__((packed)) cmd;
+  } cmd;
   memset(&cmd, 0, sizeof(cmd));
   cmd.pc_address = bswap32(address);
   cmd.pc_port = pc_port;
@@ -2086,10 +2089,10 @@ static void send_quest_open_file_pc_gc(shared_ptr<Client> c,
     char filename[0x10];
     uint32_t file_size;
   } cmd;
-  strncpy(cmd.name, filename.c_str(), 0x20);
-  cmd.unused = 0;
+  memset(&cmd, 0, sizeof(cmd));
+  strlcpy(cmd.name, filename.c_str(), 0x20);
   cmd.flags = 2 + is_ep3_quest;
-  strncpy(cmd.filename, filename.c_str(), 0x10);
+  strlcpy(cmd.filename, filename.c_str(), 0x10);
   cmd.file_size = file_size;
   send_command(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
 }
@@ -2104,9 +2107,9 @@ static void send_quest_open_file_bb(shared_ptr<Client> c,
     uint32_t file_size;
     char name[0x18];
   } cmd;
-  memset(cmd.unused, 0, 0x22);
+  memset(&cmd, 0, sizeof(cmd));
   cmd.flags = 2 + is_ep3_quest;
-  strncpy(cmd.filename, filename.c_str(), 0x10);
+  strlcpy(cmd.filename, filename.c_str(), 0x10);
   cmd.file_size = file_size;
   send_command(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
 }
@@ -2122,7 +2125,8 @@ static void send_quest_file_chunk(shared_ptr<Client> c, const char* filename,
     uint8_t data[0x400];
     uint32_t data_size;
   } cmd;
-  strncpy(cmd.filename, filename, 0x10);
+  memset(cmd.filename, 0, 0x10);
+  strlcpy(cmd.filename, filename, 0x10);
   memcpy(cmd.data, data, size);
   if (size < 0x400) {
     memset(&cmd.data[size], 0, 0x400 - size);
@@ -2184,3 +2188,5 @@ void send_change_event(shared_ptr<Lobby> l, uint8_t new_event) {
 void send_change_event(shared_ptr<ServerState> s, uint8_t new_event) {
   send_command(s, 0xDA, new_event);
 }
+
+#pragma pack(pop)
