@@ -156,7 +156,6 @@ vector<License> LicenseManager::snapshot() const {
 shared_ptr<const License> LicenseManager::create_license_pc(
     uint32_t serial_number,const char* access_key, const char* password) {
   shared_ptr<License> l(new License());
-  memset(l.get(), 0, sizeof(License));
   l->serial_number = serial_number;
   strncpy(l->access_key, access_key, 8);
   if (password) {
@@ -168,7 +167,6 @@ shared_ptr<const License> LicenseManager::create_license_pc(
 shared_ptr<const License> LicenseManager::create_license_gc(
     uint32_t serial_number, const char* access_key, const char* password) {
   shared_ptr<License> l(new License());
-  memset(l.get(), 0, sizeof(License));
   l->serial_number = serial_number;
   strncpy(l->access_key, access_key, 12);
   if (password) {
@@ -180,7 +178,6 @@ shared_ptr<const License> LicenseManager::create_license_gc(
 shared_ptr<const License> LicenseManager::create_license_bb(
     uint32_t serial_number, const char* username, const char* password) {
   shared_ptr<License> l(new License());
-  memset(l.get(), 0, sizeof(License));
   l->serial_number = serial_number;
   strncpy(l->username, username, 19);
   strncpy(l->bb_password, password, 19);
