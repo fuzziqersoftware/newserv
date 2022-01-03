@@ -158,9 +158,9 @@ shared_ptr<const License> LicenseManager::create_license_pc(
   shared_ptr<License> l(new License());
   memset(l.get(), 0, sizeof(License));
   l->serial_number = serial_number;
-  strlcpy(l->access_key, access_key, 8);
+  strncpy(l->access_key, access_key, 8);
   if (password) {
-    strlcpy(l->gc_password, password, 8);
+    strncpy(l->gc_password, password, 8);
   }
   return l;
 }
@@ -170,9 +170,9 @@ shared_ptr<const License> LicenseManager::create_license_gc(
   shared_ptr<License> l(new License());
   memset(l.get(), 0, sizeof(License));
   l->serial_number = serial_number;
-  strlcpy(l->access_key, access_key, 12);
+  strncpy(l->access_key, access_key, 12);
   if (password) {
-    strlcpy(l->gc_password, password, 8);
+    strncpy(l->gc_password, password, 8);
   }
   return l;
 }
@@ -182,7 +182,7 @@ shared_ptr<const License> LicenseManager::create_license_bb(
   shared_ptr<License> l(new License());
   memset(l.get(), 0, sizeof(License));
   l->serial_number = serial_number;
-  strlcpy(l->username, username, 19);
-  strlcpy(l->bb_password, password, 19);
+  strncpy(l->username, username, 19);
+  strncpy(l->bb_password, password, 19);
   return l;
 }

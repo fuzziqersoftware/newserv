@@ -2090,9 +2090,9 @@ static void send_quest_open_file_pc_gc(shared_ptr<Client> c,
     uint32_t file_size;
   } cmd;
   memset(&cmd, 0, sizeof(cmd));
-  strlcpy(cmd.name, filename.c_str(), 0x20);
+  strncpy(cmd.name, filename.c_str(), 0x1F);
   cmd.flags = 2 + is_ep3_quest;
-  strlcpy(cmd.filename, filename.c_str(), 0x10);
+  strncpy(cmd.filename, filename.c_str(), 0x0F);
   cmd.file_size = file_size;
   send_command(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
 }
@@ -2109,7 +2109,7 @@ static void send_quest_open_file_bb(shared_ptr<Client> c,
   } cmd;
   memset(&cmd, 0, sizeof(cmd));
   cmd.flags = 2 + is_ep3_quest;
-  strlcpy(cmd.filename, filename.c_str(), 0x10);
+  strncpy(cmd.filename, filename.c_str(), 0x0F);
   cmd.file_size = file_size;
   send_command(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
 }
@@ -2126,7 +2126,7 @@ static void send_quest_file_chunk(shared_ptr<Client> c, const char* filename,
     uint32_t data_size;
   } cmd;
   memset(cmd.filename, 0, 0x10);
-  strlcpy(cmd.filename, filename, 0x10);
+  strncpy(cmd.filename, filename, 0x0F);
   memcpy(cmd.data, data, size);
   if (size < 0x400) {
     memset(&cmd.data[size], 0, 0x400 - size);
