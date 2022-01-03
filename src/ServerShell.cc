@@ -87,7 +87,6 @@ commands:\n\
 
   } else if (command_name == "add-license") {
     shared_ptr<License> l(new License());
-    memset(l.get(), 0, sizeof(License));
 
     for (const string& token : split(command_args, ' ')) {
       if (starts_with(token, "username=")) {
