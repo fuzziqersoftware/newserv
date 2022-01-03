@@ -16,6 +16,15 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Install libraries
+      run: |
+        git clone https://github.com/fuzziqersoftware/phosg.git
+        cd phosg
+        cmake .
+        make
+        sudo make install
+        sudo apt-get install -y libevent-dev
+
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
