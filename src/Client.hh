@@ -3,7 +3,6 @@
 #include <netinet/in.h>
 
 #include <memory>
-#include <phosg/Concurrency.hh>
 
 #include "License.hh"
 #include "Player.hh"

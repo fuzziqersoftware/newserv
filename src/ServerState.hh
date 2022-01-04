@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <string>
 #include <memory>
-#include <phosg/Concurrency.hh>
 #include <vector>
 #include <set>
 

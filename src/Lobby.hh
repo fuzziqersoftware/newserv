@@ -3,7 +3,6 @@
 #include <inttypes.h>
 
 #include <vector>
-#include <phosg/Concurrency.hh>
 
 #include "Client.hh"
 #include "Player.hh"

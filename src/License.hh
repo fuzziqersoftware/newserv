@@ -1,6 +1,5 @@
 #pragma once
 
-#include <phosg/Concurrency.hh>
 #include <unordered_map>
 #include <string>
 
