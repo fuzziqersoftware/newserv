@@ -2,6 +2,8 @@
 
 #include <unordered_map>
 #include <string>
+#include <vector>
+#include <memory>
 
 enum Privilege {
   KickUser        = 0x00000001,
