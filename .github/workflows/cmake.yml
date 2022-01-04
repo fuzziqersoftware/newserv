@@ -11,19 +11,30 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install libraries
+    - name: Install libraries (Linux)
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: sudo apt-get install -y libevent-dev
+
+    - name: Install libraries (macOS)
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: brew install libevent
+
+    - name: Install phosg
       run: |
         git clone https://github.com/fuzziqersoftware/phosg.git
         cd phosg
         cmake .
         make
         sudo make install
-        sudo apt-get install -y libevent-dev
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
