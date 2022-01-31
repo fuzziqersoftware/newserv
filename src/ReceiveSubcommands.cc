@@ -33,14 +33,16 @@ struct ItemSubcommand {
 
 void check_size(uint16_t size, uint16_t min_size, uint16_t max_size) {
   if (size < min_size) {
-    throw runtime_error(string_printf("command too small (expected at least %zX bytes, got %zX bytes)",
+    throw runtime_error(string_printf(
+        "command too small (expected at least 0x%hX bytes, got 0x%hX bytes)",
         min_size, size));
   }
   if (max_size == 0) {
     max_size = min_size;
   }
   if (size > max_size) {
-    throw runtime_error(string_printf("command too large (expected at most %zX bytes, got %zX bytes)",
+    throw runtime_error(string_printf(
+        "command too large (expected at most 0x%hX bytes, got 0x%hX bytes)",
         max_size, size));
   }
 }
@@ -872,10 +874,10 @@ static void process_subcommand_invalid(shared_ptr<ServerState>,
     shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (command_is_private(command)) {
-    log(WARNING, "invalid subcommand: %02X (%d of them) (private to player %d)",
+    log(WARNING, "invalid subcommand: %02hhX (%zu of them) (private to player %hhu)",
         p->byte[0], count, flag);
   } else {
-    log(WARNING, "invalid subcommand: %02X (%d of them) (public)",
+    log(WARNING, "invalid subcommand: %02hhX (%zu of them) (public)",
         p->byte[0], count);
   }
 }
@@ -885,10 +887,10 @@ static void process_subcommand_unimplemented(shared_ptr<ServerState>,
     shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (command_is_private(command)) {
-    log(WARNING, "unknown subcommand: %02X (%d of them) (private to player %d)",
+    log(WARNING, "unknown subcommand: %02hhX (%zu of them) (private to player %hhu)",
         p->byte[0], count, flag);
   } else {
-    log(WARNING, "unknown subcommand: %02X (%d of them) (public)",
+    log(WARNING, "unknown subcommand: %02hhX (%zu of them) (public)",
         p->byte[0], count);
   }
 }

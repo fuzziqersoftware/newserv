@@ -392,12 +392,13 @@ string Quest::decode_gci(const string& filename) {
   }
 
   string data_to_decompress = compressed_data_with_header.substr(sizeof(DecryptedHeader));
-  string decompressed_data = prs_decompress(data_to_decompress);
+  size_t decompressed_bytes = prs_decompress_size(data_to_decompress);
 
-  if (decompressed_data.size() < dh->decompressed_size - 8) {
+  size_t expected_decompressed_bytes = dh->decompressed_size - 8;
+  if (decompressed_bytes < expected_decompressed_bytes) {
     throw runtime_error(string_printf(
         "GCI decompressed data is smaller than expected size (have 0x%zX bytes, expected 0x%zX bytes)",
-        decompressed_data.size(), dh->decompressed_size - 8));
+        decompressed_bytes, expected_decompressed_bytes));
   }
 
   // The caller expects to get PRS-compressed data when calling bin_contents()

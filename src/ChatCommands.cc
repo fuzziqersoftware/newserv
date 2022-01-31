@@ -410,7 +410,8 @@ static void command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 static void command_ax(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const char16_t* args) {
   check_privileges(c, Privilege::Announce);
-  log(INFO, "[$ax from %010u] %S\n", c->license->serial_number, args);
+  string message = encode_sjis(args);
+  log(INFO, "[$ax from %010u] %s\n", c->license->serial_number, message.c_str());
 }
 
 static void command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby>,

@@ -656,8 +656,8 @@ size_t PlayerBank::find_item(uint32_t item_id) {
 }
 
 string filename_for_player_bb(const string& username, uint8_t player_index) {
-  return string_printf("system/players/player_%s_%ld.nsc", username.c_str(),
-      player_index + 1);
+  return string_printf("system/players/player_%s_%hhu.nsc", username.c_str(),
+      static_cast<uint8_t>(player_index + 1));
 }
 
 string filename_for_bank_bb(const string& username, const char* bank_name) {

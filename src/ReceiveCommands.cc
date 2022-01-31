@@ -1013,7 +1013,7 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
 
     try {
-      string filename = string_printf("system/players/player_%s_player%ld.nsb",
+      string filename = string_printf("system/players/player_%s_player%d.nsb",
           c->pending_bb_save_username.c_str(), c->pending_bb_save_player_index + 1);
       c->player.bank.save(filename);
     } catch (const exception& e) {

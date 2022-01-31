@@ -1,5 +1,6 @@
 #include "SendCommands.hh"
 
+#include <inttypes.h>
 #include <string.h>
 
 #include <memory>
@@ -2060,7 +2061,7 @@ void send_ep3_map_list(shared_ptr<Lobby> l) {
 
 // sends the map data for the chosen map to all players in the game
 void send_ep3_map_data(shared_ptr<Lobby> l, uint32_t map_id) {
-  string filename = string_printf("system/ep3/map%08lX.mnm", map_id);
+  string filename = string_printf("system/ep3/map%08" PRIX32 ".mnm", map_id);
   auto file_data = file_cache.get(filename);
 
   string data(12, '\0');

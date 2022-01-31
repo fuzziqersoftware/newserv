@@ -96,8 +96,9 @@ void Lobby::remove_client(shared_ptr<Client> c) {
   if (this->clients[c->lobby_client_id] != c) {
     auto other_c = this->clients[c->lobby_client_id].get();
     throw logic_error(string_printf(
-        "client\'s lobby client id (%hhu) does not match client list (%hhu)",
-        c->lobby_client_id, other_c ? other_c->lobby_client_id : 0xFF));
+        "client\'s lobby client id (%hhu) does not match client list (%u)",
+        c->lobby_client_id,
+        static_cast<uint8_t>(other_c ? other_c->lobby_client_id : 0xFF)));
   }
 
   this->clients[c->lobby_client_id] = NULL;
