@@ -36,7 +36,7 @@ bool Client::send(string&& data) {
   }
 
   if (this->crypt_out.get()) {
-    this->crypt_out->encrypt(const_cast<char*>(data.data()), data.size());
+    this->crypt_out->encrypt(data.data(), data.size());
   }
 
   struct evbuffer* buf = bufferevent_get_output(this->bev);

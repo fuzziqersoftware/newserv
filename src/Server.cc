@@ -184,7 +184,7 @@ void Server::receive_and_process_commands(shared_ptr<Client> c) {
   size_t new_bytes = evbuffer_get_length(buf);
   new_bytes &= ~(header_size - 1); // only read in multiples of header_size
   c->recv_buffer.resize(existing_bytes + new_bytes);
-  void* recv_ptr = const_cast<char*>(c->recv_buffer.data() + existing_bytes);
+  void* recv_ptr = c->recv_buffer.data() + existing_bytes;
   if (evbuffer_remove(buf, recv_ptr, new_bytes) != static_cast<ssize_t>(new_bytes)) {
     throw runtime_error("some bytes could not be read from the receive buffer");
   }

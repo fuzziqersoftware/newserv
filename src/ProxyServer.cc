@@ -67,7 +67,7 @@ void ProxyServer::send_to_end(const std::string& data, bool to_server) {
   PSOEncryption* crypt = to_server ? this->server_output_crypt.get() : this->client_output_crypt.get();
   if (crypt) {
     string crypted_data = data;
-    crypt->encrypt(const_cast<char*>(crypted_data.data()), crypted_data.size());
+    crypt->encrypt(crypted_data.data(), crypted_data.size());
     evbuffer_add(buf, crypted_data.data(), crypted_data.size());
   } else {
     evbuffer_add(buf, data.data(), data.size());
@@ -274,21 +274,19 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
     }
 
     string command(command_size, '\0');
-    ssize_t bytes = evbuffer_remove(source_buf,
-        const_cast<char*>(command.data()), command_size);
+    ssize_t bytes = evbuffer_remove(source_buf, command.data(), command_size);
     if (bytes < static_cast<ssize_t>(command_size)) {
       throw logic_error("enough bytes available, but could not remove them");
     }
     //log(INFO, "[ProxyServer-debug] read command (%zX bytes)", bytes);
     // overwrite the header with the already-decrypted header
-    memcpy(const_cast<char*>(command.data()), input_header, this->header_size);
+    memcpy(command.data(), input_header, this->header_size);
 
     //log(INFO, "[ProxyServer-debug] received encrypted command with pre-decrypted header");
     //print_data(stderr, command);
 
     if (source_crypt) {
-      source_crypt->decrypt(
-          const_cast<char*>(command.data() + this->header_size),
+      source_crypt->decrypt(command.data() + this->header_size,
           command_size - this->header_size);
     }
 
@@ -346,7 +344,7 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
           }
 
           ReconnectCommandArgs* args = reinterpret_cast<ReconnectCommandArgs*>(
-              const_cast<char*>(command.data() + this->header_size));
+              command.data() + this->header_size);
           memset(&this->next_destination, 0, sizeof(this->next_destination));
           struct sockaddr_in* sin = reinterpret_cast<struct sockaddr_in*>(
               &this->next_destination);
@@ -378,7 +376,7 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
     // reencrypt and forward the command
     if (dest_buf) {
       if (dest_crypt) {
-        dest_crypt->encrypt(const_cast<char*>(command.data()), command.size());
+        dest_crypt->encrypt(command.data(), command.size());
       }
       //log(INFO, "[ProxyServer-debug] sending encrypted command");
       //print_data(stderr, command);

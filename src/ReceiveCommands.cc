@@ -2220,27 +2220,27 @@ void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     if (c->version == GameVersion::BB) {
       data_to_print.resize(size + 8);
       PSOCommandHeaderBB* header = reinterpret_cast<PSOCommandHeaderBB*>(
-          const_cast<char*>(data_to_print.data()));
+          data_to_print.data());
       header->command = command;
       header->flag = flag;
       header->size = size + 8;
-      memcpy(const_cast<char*>(data_to_print.data() + 8), data, size);
+      memcpy(data_to_print.data() + 8, data, size);
     } else if (c->version == GameVersion::PC) {
       data_to_print.resize(size + 4);
       PSOCommandHeaderPC* header = reinterpret_cast<PSOCommandHeaderPC*>(
-          const_cast<char*>(data_to_print.data()));
+          data_to_print.data());
       header->command = command;
       header->flag = flag;
       header->size = size + 4;
-      memcpy(const_cast<char*>(data_to_print.data() + 4), data, size);
+      memcpy(data_to_print.data() + 4, data, size);
     } else { // DC/GC
       data_to_print.resize(size + 4);
       PSOCommandHeaderDCGC* header = reinterpret_cast<PSOCommandHeaderDCGC*>(
-          const_cast<char*>(data_to_print.data()));
+          data_to_print.data());
       header->command = command;
       header->flag = flag;
       header->size = size + 4;
-      memcpy(const_cast<char*>(data_to_print.data() + 4), data, size);
+      memcpy(data_to_print.data() + 4, data, size);
     }
     print_data(stderr, data_to_print);
   }

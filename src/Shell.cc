@@ -57,7 +57,7 @@ void Shell::read_stdin() {
     }
 
     string command(2048, '\0');
-    if (!fgets(const_cast<char*>(command.data()), command.size(), stdin)) {
+    if (!fgets(command.data(), command.size(), stdin)) {
       if (!any_command_read) {
         // ctrl+d probably; we should exit
         fputc('\n', stderr);

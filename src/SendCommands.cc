@@ -360,8 +360,8 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
   }
 
   string contents(8, '\0');
-  *reinterpret_cast<uint32_t*>(const_cast<char*>(contents.data())) = 0;
-  *reinterpret_cast<uint32_t*>(const_cast<char*>(contents.data() + 4)) = chunk_index;
+  *reinterpret_cast<uint32_t*>(contents.data()) = 0;
+  *reinterpret_cast<uint32_t*>(contents.data() + 4) = chunk_index;
   contents.append(reinterpret_cast<char*>(&c->player.guild_cards + chunk_offset),
       data_size);
 
@@ -469,7 +469,7 @@ static void send_large_message_pc_patch_bb(shared_ptr<Client> c, uint8_t command
   u16string data;
   if (include_header) {
     data.resize(sizeof(LargeMessageOptionalHeader) / sizeof(char16_t));
-    *reinterpret_cast<LargeMessageOptionalHeader*>(const_cast<char16_t*>(data.data())) =
+    *reinterpret_cast<LargeMessageOptionalHeader*>(data.data()) =
         {0, from_serial_number};
   }
   data += text;
@@ -483,7 +483,7 @@ static void send_large_message_dc_gc(shared_ptr<Client> c, uint8_t command,
   string data;
   if (include_header) {
     data.resize(sizeof(LargeMessageOptionalHeader) / sizeof(char));
-    *reinterpret_cast<LargeMessageOptionalHeader*>(const_cast<char*>(data.data())) =
+    *reinterpret_cast<LargeMessageOptionalHeader*>(data.data()) =
         {0, from_serial_number};
   }
   data += encode_sjis(text);
@@ -2025,7 +2025,7 @@ void send_ep3_card_list_update(shared_ptr<Client> c) {
   auto file_data = file_cache.get("system/ep3/cardupdate.mnr");
 
   string data("\0\0\0\0", 4);
-  *reinterpret_cast<uint32_t*>(const_cast<char*>(data.data())) = file_data->size();
+  *reinterpret_cast<uint32_t*>(data.data()) = file_data->size();
   data += *file_data;
   data.resize((data.size() + 3) & ~3);
 
@@ -2049,7 +2049,7 @@ void send_ep3_map_list(shared_ptr<Lobby> l) {
   auto file_data = file_cache.get("system/ep3/maplist.mnr");
 
   string data(16, '\0');
-  PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(const_cast<char*>(data.data()));
+  PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(data.data());
   subs[0].dword = 0x000000B6;
   subs[1].dword = (23 + file_data->size()) & 0xFFFFFFFC;
   subs[2].dword = 0x00000040;
@@ -2065,7 +2065,7 @@ void send_ep3_map_data(shared_ptr<Lobby> l, uint32_t map_id) {
   auto file_data = file_cache.get(filename);
 
   string data(12, '\0');
-  PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(const_cast<char*>(data.data()));
+  PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(data.data());
   subs[0].dword = 0x000000B6;
   subs[1].dword = (19 + file_data->size()) & 0xFFFFFFFC;
   subs[2].dword = 0x00000041;
@@ -2168,7 +2168,7 @@ void send_server_time(shared_ptr<Client> c) {
   gmtime_r(&t_secs, &t_parsed);
 
   string time_str(128, 0);
-  size_t len = strftime(const_cast<char*>(time_str.data()), time_str.size(),
+  size_t len = strftime(time_str.data(), time_str.size(),
       "%Y:%m:%d: %H:%M:%S.000", &t_parsed);
   if (len == 0) {
     throw runtime_error("format_time buffer too short");

@@ -366,7 +366,7 @@ string Quest::decode_gci(const string& filename) {
         "GCI file is truncated before download quest header (have 0x%zX bytes)", data.size()));
   }
   PSODownloadQuestHeader* h = reinterpret_cast<PSODownloadQuestHeader*>(
-      const_cast<char*>(data.data() + 0x2080));
+      data.data() + 0x2080);
   h->byteswap();
 
   string compressed_data_with_header = data.substr(0x2088, h->size);
@@ -385,8 +385,8 @@ string Quest::decode_gci(const string& filename) {
   if (compressed_data_with_header.size() < sizeof(DecryptedHeader)) {
     throw runtime_error("GCI file compressed data truncated during header");
   }
-  DecryptedHeader* dh = reinterpret_cast<DecryptedHeader*>(const_cast<char*>(
-      compressed_data_with_header.data()));
+  DecryptedHeader* dh = reinterpret_cast<DecryptedHeader*>(
+      compressed_data_with_header.data());
   if (dh->unknown1 || dh->unknown2 || dh->unknown4) {
     throw runtime_error("GCI file appears to be encrypted");
   }
@@ -476,8 +476,7 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(GameVersion version,
 static string create_download_quest_file(const string& compressed_data,
     size_t decompressed_size) {
   string data(8, '\0');
-  auto* header = reinterpret_cast<PSODownloadQuestHeader*>(const_cast<char*>(
-      compressed_data.data()));
+  auto* header = reinterpret_cast<PSODownloadQuestHeader*>(data.data());
   header->size = decompressed_size + sizeof(PSODownloadQuestHeader);
   header->encryption_seed = random_object<uint32_t>();
   data += compressed_data;
@@ -487,7 +486,7 @@ static string create_download_quest_file(const string& compressed_data,
 
   // TODO: for DC quests, do we use DC encryption?
   PSOPCEncryption encr(header->encryption_seed);
-  encr.encrypt(const_cast<char*>(data.data() + sizeof(PSODownloadQuestHeader)),
+  encr.encrypt(data.data() + sizeof(PSODownloadQuestHeader),
       data.size() - sizeof(PSODownloadQuestHeader));
   return data;
 }
@@ -498,7 +497,7 @@ shared_ptr<Quest> Quest::create_download_quest(const string& file_basename) cons
   }
 
   string decompressed_bin = prs_decompress(*this->bin_contents());
-  void* data_ptr = const_cast<char*>(decompressed_bin.data());
+  void* data_ptr = decompressed_bin.data();
   switch (this->version) {
     case GameVersion::DC:
       reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;

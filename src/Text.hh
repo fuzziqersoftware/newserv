@@ -72,6 +72,6 @@ size_t add_color_inplace(T* a) {
 
 template <typename T>
 void add_color_inplace(std::basic_string<T>& a, size_t header_bytes) {
-  size_t count = add_color_inplace(const_cast<T*>(a.data() + header_bytes));
+  size_t count = add_color_inplace(a.data() + header_bytes);
   a.resize(count + header_bytes);
 }

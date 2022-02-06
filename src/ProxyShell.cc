@@ -54,7 +54,7 @@ commands:\n\
     if (data.size() == 0) {
       throw invalid_argument("no data given");
     }
-    uint16_t* size_field = reinterpret_cast<uint16_t*>(const_cast<char*>(data.data() + 2));
+    uint16_t* size_field = reinterpret_cast<uint16_t*>(data.data() + 2);
     *size_field = data.size();
 
     log(INFO, "%s (from proxy):", to_client ? "server" : "client");
@@ -78,7 +78,7 @@ commands:\n\
     }
     data.push_back('\0');
     data.resize((data.size() + 3) & (~3));
-    uint16_t* size_field = reinterpret_cast<uint16_t*>(const_cast<char*>(data.data() + 2));
+    uint16_t* size_field = reinterpret_cast<uint16_t*>(data.data() + 2);
     *size_field = data.size();
 
     log(INFO, "client (from proxy):");
