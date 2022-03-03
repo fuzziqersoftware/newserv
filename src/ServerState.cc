@@ -12,7 +12,8 @@ using namespace std;
 
 
 
-ServerState::ServerState() : run_dns_server(true),
+ServerState::ServerState()
+  : dns_server_port(0),
     allow_unregistered_users(false),
     run_shell_behavior(RunShellBehavior::Default), next_lobby_id(1),
     pre_lobby_event(0) {

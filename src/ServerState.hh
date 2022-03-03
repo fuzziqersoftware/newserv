@@ -34,7 +34,7 @@ struct ServerState {
   std::u16string name;
   std::unordered_map<std::string, PortConfiguration> port_configuration;
   std::string username;
-  bool run_dns_server;
+  uint16_t dns_server_port;
   bool allow_unregistered_users;
   RunShellBehavior run_shell_behavior;
   PSOBBEncryption::KeyFile default_key_file;

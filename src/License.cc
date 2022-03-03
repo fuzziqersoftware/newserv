@@ -59,7 +59,8 @@ LicenseManager::LicenseManager(const string& filename) : filename(filename) {
     }
 
   } catch (const cannot_open_file&) {
-    log(WARNING, "%s does not exist; no licenses are registered", this->filename.c_str());
+    log(WARNING, "File %s does not exist; no licenses are registered",
+        this->filename.c_str());
   }
 }
 

@@ -119,11 +119,11 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   try {
     s->local_address = s->all_addresses.at(local_address_str);
     string addr_str = string_for_address(s->local_address);
-    log(INFO, "added local address: %s (%s)", addr_str.c_str(),
+    log(INFO, "Added local address: %s (%s)", addr_str.c_str(),
         local_address_str.c_str());
   } catch (const out_of_range&) {
     s->local_address = address_for_string(local_address_str.c_str());
-    log(INFO, "added local address: %s", local_address_str.c_str());
+    log(INFO, "Added local address: %s", local_address_str.c_str());
   }
   s->all_addresses.emplace("<local>", s->local_address);
 
@@ -131,11 +131,11 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   try {
     s->external_address = s->all_addresses.at(external_address_str);
     string addr_str = string_for_address(s->external_address);
-    log(INFO, "added external address: %s (%s)", addr_str.c_str(),
+    log(INFO, "Added external address: %s (%s)", addr_str.c_str(),
         external_address_str.c_str());
   } catch (const out_of_range&) {
     s->external_address = address_for_string(external_address_str.c_str());
-    log(INFO, "added external address: %s", external_address_str.c_str());
+    log(INFO, "Added external address: %s", external_address_str.c_str());
   }
   s->all_addresses.emplace("<external>", s->external_address);
 
@@ -155,12 +155,12 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     string key_file_name = d.at("BlueBurstKeyFile")->as_string();
     string key_file_contents = load_file("system/blueburst/keys/" + key_file_name + ".nsk");
     if (key_file_contents.size() != sizeof(PSOBBEncryption::KeyFile)) {
-      log(WARNING, "key file is the wrong size (%zu bytes; should be %zu bytes)",
+      log(WARNING, "Blue Burst key file is the wrong size (%zu bytes; should be %zu bytes)",
           key_file_contents.size(), sizeof(PSOBBEncryption::KeyFile));
-      log(WARNING, "ignoring key file; Blue Burst clients will not be able to connect");
+      log(WARNING, "Ignoring key file; Blue Burst clients will not be able to connect");
     } else {
       memcpy(&s->default_key_file, key_file_contents.data(), sizeof(PSOBBEncryption::KeyFile));
-      log(INFO, "loaded key file: %s", key_file_name.c_str());
+      log(INFO, "Loaded Blue Burst key file: %s", key_file_name.c_str());
     }
   }
 
@@ -198,15 +198,13 @@ void drop_privileges(const string& username) {
     throw runtime_error(string_printf("can\'t switch to user %d (%s)",
         pw->pw_uid, error.c_str()));
   }
-  log(INFO, "switched to user %s (%d:%d)",  username.c_str(), pw->pw_uid,
+  log(INFO, "Switched to user %s (%d:%d)",  username.c_str(), pw->pw_uid,
       pw->pw_gid);
 }
 
 
 
 int main(int argc, char* argv[]) {
-  log(INFO, "fuzziqer software newserv");
-
   string proxy_hostname;
   int proxy_port = 0;
   GameVersion proxy_version = GameVersion::GC;
@@ -243,11 +241,13 @@ int main(int argc, char* argv[]) {
   populate_state_from_config(state, config_json);
 
   shared_ptr<DNSServer> dns_server;
-  if (state->run_dns_server) {
-    log(INFO, "starting dns server");
+  if (state->dns_server_port) {
+    log(INFO, "Starting DNS server");
     dns_server.reset(new DNSServer(base, state->local_address,
         state->external_address));
-    dns_server->listen("", 53);
+    dns_server->listen("", state->dns_server_port);
+  } else {
+    log(INFO, "DNS server is disabled");
   }
 
   shared_ptr<ProxyServer> proxy_server;

@@ -7,8 +7,9 @@
   "LocalAddress": "192.168.0.5",
   // Address to connect external clients to (IP address or interface name)
   "ExternalAddress": "en0",
-  // Set to false to disable the DNS server
-  "RunDNSServer": true,
+  // Port to listen for DNS queries on. Set this to zero (or comment it out) to
+  // disable the DNS server.
+  "DNSServerPort": 53,
   // By default, the interactive shell runs if stdin is a terminal, and doesn't
   // run if it's not. This option, if present, overrides that behavior.
   // "RunInteractiveShell": false,
