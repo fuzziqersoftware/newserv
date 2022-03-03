@@ -68,7 +68,7 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
       break;
 
     default:
-      log(ERROR, "unimplemented behavior: %" PRId64,
+      log(ERROR, "Unimplemented behavior: %" PRId64,
           static_cast<int64_t>(c->server_behavior));
   }
 }
@@ -525,7 +525,7 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
       CommandEp3InitBegin(s, c);
       break; */
     default:
-      log(WARNING, "unknown Ep3 server data request: %02X", cmds[1].byte[0]);
+      log(WARNING, "Unknown Episode III server data request: %02X", cmds[1].byte[0]);
   }
 }
 
@@ -1762,7 +1762,7 @@ void process_ignored_command(shared_ptr<ServerState>, shared_ptr<Client>,
 
 void process_unimplemented_command(shared_ptr<ServerState>, shared_ptr<Client>,
     uint16_t command, uint32_t flag, uint16_t size, const void*) {
-  log(WARNING, "unknown command: size=%04X command=%04X flag=%08X\n",
+  log(WARNING, "Unknown command: size=%04X command=%04X flag=%08X\n",
       size, command, flag);
   throw invalid_argument("unimplemented command");
 }
@@ -2213,7 +2213,7 @@ void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   // TODO: this is slow; make it better somehow
   {
-    log(INFO, "received version=%d size=%04hX command=%04hX flag=%08X",
+    log(INFO, "Received version=%d size=%04hX command=%04hX flag=%08X",
         static_cast<int>(c->version), size, command, flag);
 
     string data_to_print;

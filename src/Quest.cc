@@ -422,18 +422,18 @@ QuestIndex::QuestIndex(const char* directory) : directory(directory) {
     }
 
     if (ends_with(filename, ".bin") || ends_with(filename, ".bin.gci")) {
-      // try {
+      try {
         shared_ptr<Quest> q(new Quest(full_path));
         this->version_id_to_quest.emplace(make_pair(q->version, q->quest_id), q);
         this->version_name_to_quest.emplace(make_pair(q->version, q->name), q);
         string ascii_name = encode_sjis(q->name);
-        log(INFO, "indexed quest %s (%s-%" PRId64 ", %s, episode=%hhu, joinable=%s, dcv1=%s)",
+        log(INFO, "Indexed quest %s (%s-%" PRId64 ", %s, episode=%hhu, joinable=%s, dcv1=%s)",
             ascii_name.c_str(), name_for_version(q->version), q->quest_id,
             name_for_category(q->category), q->episode,
             q->joinable ? "true" : "false", q->is_dcv1 ? "true" : "false");
-      // } catch (const exception& e) {
-      //   log(WARNING, "failed to parse quest file %s (%s)", filename.c_str(), e.what());
-      // }
+      } catch (const exception& e) {
+        log(WARNING, "Failed to parse quest file %s (%s)", filename.c_str(), e.what());
+      }
     }
   }
 }

@@ -869,28 +869,26 @@ static void process_subcommand_forward_check_size_game(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, p, count);
 }
 
-// used for invalid commands. normally, clients should be disconnected - to restore this behavior, change the return value back to SUBCOMMAND_ERROR_INVALID_COMMAND.
 static void process_subcommand_invalid(shared_ptr<ServerState>,
     shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (command_is_private(command)) {
-    log(WARNING, "invalid subcommand: %02hhX (%zu of them) (private to player %hhu)",
+    log(WARNING, "Invalid subcommand: %02hhX (%zu of them) (private to player %hhu)",
         p->byte[0], count, flag);
   } else {
-    log(WARNING, "invalid subcommand: %02hhX (%zu of them) (public)",
+    log(WARNING, "Invalid subcommand: %02hhX (%zu of them) (public)",
         p->byte[0], count);
   }
 }
 
-// used when an error occurs (unknown commands, etc). normally, clients should be disconnected - to restore this behavior, change the return value back to SUBCOMMAND_ERROR_INVALID_COMMAND.
 static void process_subcommand_unimplemented(shared_ptr<ServerState>,
     shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
   if (command_is_private(command)) {
-    log(WARNING, "unknown subcommand: %02hhX (%zu of them) (private to player %hhu)",
+    log(WARNING, "Unknown subcommand: %02hhX (%zu of them) (private to player %hhu)",
         p->byte[0], count, flag);
   } else {
-    log(WARNING, "unknown subcommand: %02hhX (%zu of them) (public)",
+    log(WARNING, "Unknown subcommand: %02hhX (%zu of them) (public)",
         p->byte[0], count);
   }
 }

@@ -92,13 +92,13 @@ void Server::on_listen_accept(struct evconnlistener* listener,
   try {
     listening_socket = &this->listening_sockets.at(listen_fd);
   } catch (const out_of_range& e) {
-    log(WARNING, "[Server] can\'t determine version for socket %d; disconnecting client",
+    log(WARNING, "[Server] Can\'t determine version for socket %d; disconnecting client",
         listen_fd);
     close(fd);
     return;
   }
 
-  log(INFO, "[Server] client connected via fd %d", listen_fd);
+  log(INFO, "[Server] Client connected via fd %d", listen_fd);
 
   struct bufferevent *bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
@@ -115,7 +115,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
 
 void Server::on_listen_error(struct evconnlistener* listener) {
   int err = EVUTIL_SOCKET_ERROR();
-  log(ERROR, "[Server] failure on listening socket %d: %d (%s)",
+  log(ERROR, "[Server] Failure on listening socket %d: %d (%s)",
       evconnlistener_get_fd(listener), err, evutil_socket_error_to_string(err));
   event_base_loopexit(this->base.get(), NULL);
 }
@@ -125,7 +125,7 @@ void Server::on_client_input(struct bufferevent* bev) {
   try {
     c = this->bev_to_client.at(bev);
   } catch (const out_of_range& e) {
-    log(WARNING, "[Server] received message from client with no configuration");
+    log(WARNING, "[Server] Received message from client with no configuration");
 
     // ignore all the data
     // TODO: we probably should disconnect them or something
@@ -155,7 +155,7 @@ void Server::on_disconnecting_client_output(struct bufferevent* bev) {
 void Server::on_client_error(struct bufferevent* bev, short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "[Server] client caused %d (%s)", err,
+    log(WARNING, "[Server] Client caused error %d (%s)", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
@@ -167,7 +167,7 @@ void Server::on_disconnecting_client_error(struct bufferevent* bev,
     short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "[Server] disconnecting client caused %d (%s)", err,
+    log(WARNING, "[Server] Disconnecting client caused error %d (%s)", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
@@ -213,7 +213,7 @@ void Server::receive_and_process_commands(shared_ptr<Client> c) {
       process_command(this->state, c, header->command(c->version),
           header->flag(c->version), size - header_size, data.data());
     } catch (const exception& e) {
-      log(INFO, "[Server] error in client stream: %s", e.what());
+      log(INFO, "[Server] Error in client stream: %s", e.what());
       c->should_disconnect = true;
       return;
     }
@@ -233,7 +233,7 @@ Server::Server(shared_ptr<struct event_base> base,
 void Server::listen(const string& socket_path, GameVersion version,
     ServerBehavior behavior) {
   int fd = ::listen(socket_path, 0, SOMAXCONN);
-  log(INFO, "[Server] listening on unix socket %s (version %s) on fd %d",
+  log(INFO, "[Server] Listening on unix socket %s (version %s) on fd %d",
       socket_path.c_str(), name_for_version(version), fd);
   this->add_socket(fd, version, behavior);
 }
@@ -242,7 +242,7 @@ void Server::listen(const string& addr, int port, GameVersion version,
     ServerBehavior behavior) {
   int fd = ::listen(addr, port, SOMAXCONN);
   string netloc_str = render_netloc(addr, port);
-  log(INFO, "[Server] listening on tcp interface %s (version %s) on fd %d",
+  log(INFO, "[Server] Listening on tcp interface %s (version %s) on fd %d",
       netloc_str.c_str(), name_for_version(version), fd);
   this->add_socket(fd, version, behavior);
 }

@@ -112,11 +112,11 @@ void ProxyServer::on_listen_accept(struct evconnlistener*, evutil_socket_t fd,
     struct sockaddr*, int) {
 
   if (this->client_bev.get()) {
-    log(WARNING, "ignoring client connection because client already exists");
+    log(WARNING, "Ignoring client connection because client already exists");
     close(fd);
     return;
   } else {
-    log(INFO, "client connected");
+    log(INFO, "Client connected");
   }
 
   this->client_bev.reset(bufferevent_socket_new(this->base.get(), fd,

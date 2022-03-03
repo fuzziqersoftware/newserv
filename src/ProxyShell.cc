@@ -26,23 +26,23 @@ void ProxyShell::execute_command(const string& command) {
 
   } else if (command_name == "help") {
     fprintf(stderr, "\
-commands:\n\
+Commands:\n\
   help\n\
-    you\'re reading it now\n\
+    You\'re reading it now.\n\
   exit (or ctrl+d)\n\
-    shut down the proxy\n\
+    Shut down the proxy.\n\
   sc <data>\n\
-    send a command to the client\n\
+    Send a command to the client.\n\
   ss <data>\n\
-    send a command to the server\n\
+    Send a command to the server.\n\
   chat <text>\n\
-    send a chat message to the server\n\
+    Send a chat message to the server.\n\
   dchat <data>\n\
-    send a chat message to the server with arbitrary data in it\n\
+    Send a chat message to the server with arbitrary data in it.\n\
   marker <color-id>\n\
-    send a lobby marker message to the server\n\
+    Send a lobby marker message to the server.\n\
   event <event-id>\n\
-    send a lobby event update to yourself\n\
+    Send a lobby event update to yourself.\n\
 ");
 
   } else if ((command_name == "sc") || (command_name == "ss")) {
@@ -81,7 +81,7 @@ commands:\n\
     uint16_t* size_field = reinterpret_cast<uint16_t*>(data.data() + 2);
     *size_field = data.size();
 
-    log(INFO, "client (from proxy):");
+    log(INFO, "Client (from proxy):");
     print_data(stderr, data);
     this->proxy_server->send_to_server(data);
 
@@ -89,7 +89,7 @@ commands:\n\
     string data("\x89\x00\x04\x00", 4);
     data[1] = stod(command_args);
 
-    log(INFO, "client (from proxy):");
+    log(INFO, "Client (from proxy):");
     print_data(stderr, data);
     this->proxy_server->send_to_server(data);
 

@@ -34,32 +34,32 @@ void ServerShell::execute_command(const string& command) {
 
   } else if (command_name == "help") {
     fprintf(stderr, "\
-commands:\n\
+Commands:\n\
   help\n\
-    you\'re reading it now\n\
+    You\'re reading it now.\n\
   exit (or ctrl+d)\n\
-    shut down the server\n\
+    Shut down the server.\n\
   reload <item> ...\n\
-    reload data. <item> can be licenses, battle-params, level-table, or quests.\n\
+    Reload data. <item> can be licenses, battle-params, level-table, or quests.\n\
   add-license <parameters>\n\
-    add a license to the server. <parameters> is some subset of the following:\n\
-      username=<username> (bb username)\n\
-      bb-password=<password> (bb password)\n\
-      gc-password=<password> (gc password)\n\
-      access-key=<access-key> (gc/pc access key)\n\
-      serial=<serial-number> (gc/pc serial number; required for all licenses)\n\
+    Add a license to the server. <parameters> is some subset of the following:\n\
+      username=<username> (BB username)\n\
+      bb-password=<password> (BB password)\n\
+      gc-password=<password> (GC password)\n\
+      access-key=<access-key> (GC/PC access key)\n\
+      serial=<serial-number> (GC/PC serial number; required for all licenses)\n\
       privileges=<privilege-mask> (can be normal, mod, admin, root, or numeric)\n\
   delete-license <serial-number>\n\
-    delete a license from the server\n\
+    Delete a license from the server.\n\
   list-licenses\n\
-    list all licenses registered on the server\n\
+    List all licenses registered on the server.\n\
   set-allow-unregistered-users <true/false>\n\
-    enable or disable allowing unregistered users on the server. disabling this\n\
+    Enable or disable allowing unregistered users on the server. Disabling this\n\
     does not disconnect unregistered users who are already connected.\n\
   set-event <event>\n\
-    set the event in all lobbies\n\
+    Set the event in all lobbies.\n\
   announce <message>\n\
-    send an announcement message to all players\n\
+    Send an announcement message to all players.\n\
 ");
 
   } else if (command_name == "reload") {

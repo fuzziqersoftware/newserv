@@ -74,7 +74,7 @@ void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
       throw logic_error("unimplemented game version in send_command");
   }
 
-  log(INFO, "sending command");
+  log(INFO, "Sending command");
   print_data(stderr, send_data.data(), send_data.size());
 
   c->send(move(send_data));

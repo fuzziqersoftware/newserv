@@ -140,9 +140,9 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   s->all_addresses.emplace("<external>", s->external_address);
 
   try {
-    s->run_dns_server = d.at("RunDNSServer")->as_bool();
+    s->dns_server_port = d.at("RunDNSServer")->as_bool();
   } catch (const out_of_range&) {
-    s->run_dns_server = true;
+    s->dns_server_port = 0;
   }
 
   try {
@@ -226,17 +226,16 @@ int main(int argc, char* argv[]) {
 
   shared_ptr<ServerState> state(new ServerState());
 
-  log(INFO, "starting network subsystem");
   shared_ptr<struct event_base> base(event_base_new(), event_base_free);
 
-  log(INFO, "reading network addresses");
+  log(INFO, "Reading network addresses");
   state->all_addresses = get_local_addresses();
   for (const auto& it : state->all_addresses) {
     string addr_str = string_for_address(it.second);
-    log(INFO, "found interface: %s = %s", it.first.c_str(), addr_str.c_str());
+    log(INFO, "Found interface: %s = %s", it.first.c_str(), addr_str.c_str());
   }
 
-  log(INFO, "loading configuration");
+  log(INFO, "Loading configuration");
   auto config_json = JSONObject::parse(load_file("system/config.json"));
   populate_state_from_config(state, config_json);
 
@@ -253,7 +252,7 @@ int main(int argc, char* argv[]) {
   shared_ptr<ProxyServer> proxy_server;
   shared_ptr<Server> game_server;
   if (proxy_port) {
-    log(INFO, "starting proxy");
+    log(INFO, "Starting proxy server");
     sockaddr_storage proxy_destination_ss = make_sockaddr_storage(
         proxy_hostname, proxy_port).first;
     proxy_server.reset(new ProxyServer(base, proxy_destination_ss,
@@ -264,27 +263,27 @@ int main(int argc, char* argv[]) {
     }
 
   } else {
-    log(INFO, "starting game server");
+    log(INFO, "Starting game server");
     game_server.reset(new Server(base, state));
     for (const auto& it : state->port_configuration) {
       game_server->listen("", it.second.port, it.second.version, it.second.behavior);
     }
 
-    log(INFO, "loading license list");
+    log(INFO, "Loading license list");
     state->license_manager.reset(new LicenseManager("system/licenses.nsi"));
 
-    log(INFO, "loading battle parameters");
+    log(INFO, "Loading battle parameters");
     state->battle_params.reset(new BattleParamTable("system/blueburst/BattleParamEntry"));
 
-    log(INFO, "loading level table");
+    log(INFO, "Loading level table");
     state->level_table.reset(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));
 
-    log(INFO, "collecting quest metadata");
+    log(INFO, "Collecting quest metadata");
     state->quest_index.reset(new QuestIndex("system/quests"));
   }
 
   if (!state->username.empty()) {
-    log(INFO, "switching to user %s", state->username.c_str());
+    log(INFO, "Switching to user %s", state->username.c_str());
     drop_privileges(state->username);
   }
 
@@ -295,7 +294,7 @@ int main(int argc, char* argv[]) {
 
   shared_ptr<Shell> shell;
   if (should_run_shell) {
-    log(INFO, "starting interactive shell");
+    log(INFO, "Starting interactive shell");
     if (proxy_port) {
       shell.reset(new ProxyShell(base, state, proxy_server));
     } else {
@@ -303,9 +302,9 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  log(INFO, "ready");
+  log(INFO, "Ready");
   event_base_dispatch(base.get());
 
-  log(INFO, "normal shutdown");
+  log(INFO, "Normal shutdown");
   return 0;
 }

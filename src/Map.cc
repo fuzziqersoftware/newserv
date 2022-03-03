@@ -420,7 +420,7 @@ static vector<PSOEnemy> parse_map(uint8_t episode, uint8_t difficulty,
         break;
       default:
         enemies[num_enemies].experience = 0xFFFFFFFF;
-        log(WARNING, "unknown enemy type %08" PRIX32 " %08" PRIX32, map[y].base,
+        log(WARNING, "Unknown enemy type %08" PRIX32 " %08" PRIX32, map[y].base,
             map[y].skin);
         break;
       }
