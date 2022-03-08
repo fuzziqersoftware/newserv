@@ -777,8 +777,12 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           continue;
         }
 
-        send_quest_file(c, bin_basename, *bin_contents, false, false);
-        send_quest_file(c, dat_basename, *dat_contents, false, false);
+        // TODO: It looks like blasting all the chunks to the client at once can
+        // cause GC clients to crash in rare cases. Find a way to slow this down
+        // (perhaps by only sending each new chunk when they acknowledge the
+        // previous chunk with a 44 [first chunk] or 13 [later chunks] command).
+        send_quest_file(l->clients[x], bin_basename, *bin_contents, false, false);
+        send_quest_file(l->clients[x], dat_basename, *dat_contents, false, false);
 
         l->clients[x]->flags |= ClientFlag::Loading;
       }
