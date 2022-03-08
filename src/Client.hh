@@ -19,24 +19,24 @@ enum class ServerBehavior {
 };
 
 struct ClientConfig {
-  uint32_t magic; // must be set to 0x48615467
-  uint8_t bb_game_state; // status of client connecting on BB
-  uint8_t bb_player_index; // selected char
-  uint16_t flags; // just in case we lose them somehow between connections
-  uint16_t ports[4]; // used by shipgate clients
-  uint32_t unused[4];
-};
-
-struct ClientConfigBB {
-  ClientConfig cfg;
-  uint32_t unused[2];
-};
+  uint64_t magic;
+  uint8_t bb_game_state;
+  uint8_t bb_player_index;
+  uint16_t flags;
+  uint32_t unused[5];
+  uint32_t unused_bb_only[2];
+} __attribute__((packed));
 
 struct Client {
   // License & account
   std::shared_ptr<const License> license;
-  ClientConfigBB config;
   GameVersion version;
+
+  // Note: these fields are included in the client config. On GC, the client
+  // config can be up to 0x20 bytes; on BB it can be 0x28 bytes. We don't use
+  // all of that space.
+  uint8_t bb_game_state;
+  uint8_t bb_player_index;
   uint16_t flags;
 
   // Encryption
@@ -78,4 +78,7 @@ struct Client {
 
   // adds data to the client's output buffer, encrypting it first
   bool send(std::string&& data);
+
+  ClientConfig export_config() const;
+  void import_config(const ClientConfig& cc);
 };

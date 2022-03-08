@@ -90,7 +90,7 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
     }
 
     case ServerBehavior::LoginServer: {
-      if (!s->welcome_message.empty() && !(c->flags & ClientFlag::NoMessageBoxCloseConfirmation)) {
+      if (!s->welcome_message.empty()) {
         c->flags |= ClientFlag::AtWelcomeMessage;
       }
       send_server_init(s, c, true);
@@ -121,7 +121,7 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       send_ep3_rank_update(c);
     }
 
-    if (s->welcome_message.empty()) {
+    if (s->welcome_message.empty() || (c->flags & ClientFlag::NoMessageBoxCloseConfirmation)) {
       c->flags &= ~ClientFlag::AtWelcomeMessage;
       send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
     } else {
@@ -139,10 +139,10 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
         c->player.load_account_data("system/blueburst/default.nsa");
       }
 
-      sprintf(c->player.bank_name, "player%d", c->config.cfg.bb_player_index + 1);
+      sprintf(c->player.bank_name, "player%d", c->bb_player_index + 1);
 
       string player_filename = filename_for_player_bb(c->license->username,
-          c->config.cfg.bb_player_index);
+          c->bb_player_index);
       try {
         c->player.load_player_data(player_filename);
       } catch (const exception&) {
@@ -181,7 +181,7 @@ void process_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
     c->player.disp.play_time += ((now() - c->play_time_begin) / 1000000);
     string account_filename = filename_for_account_bb(c->license->username);
     string player_filename = filename_for_player_bb(c->license->username,
-        c->config.cfg.bb_player_index);
+        c->bb_player_index);
     string bank_filename = filename_for_bank_bb(c->license->username,
         c->player.bank_name);
     c->player.save_account_data(account_filename);
@@ -325,8 +325,11 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     char access_key[0x10];
     char unused3[0x60];
     char name[0x10];
+    // Note: there are 8 bytes at the end of cfg that are technically not
+    // included in the client config on GC, but the field after it is
+    // sufficiently large and unused anyway
     ClientConfig cfg;
-    uint8_t unused4[0x64];
+    uint8_t unused4[0x5C];
   };
   // sometimes the unused bytes aren't sent?
   check_size(size, sizeof(Cmd) - 0x64, sizeof(Cmd));
@@ -361,11 +364,11 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
   }
 
-  memcpy(&c->config.cfg, &cmd->cfg, sizeof(ClientConfig));
-
-  if (c->config.cfg.magic != CONFIG_MAGIC) {
-    memset(&c->config, 0, sizeof(ClientConfigBB));
-    c->config.cfg.magic = CONFIG_MAGIC;
+  try {
+    c->import_config(cmd->cfg);
+  } catch (const invalid_argument&) {
+    c->bb_game_state = 0;
+    c->bb_player_index = 0;
   }
 
   send_update_client_config(c);
@@ -381,7 +384,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     char unused2[0x20];
     char password[0x10];
     char unused3[0x30];
-    ClientConfigBB cfg;
+    ClientConfig cfg;
   };
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
@@ -397,18 +400,17 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  memcpy(&c->config, &cmd->cfg, sizeof(ClientConfigBB));
-
-  if (c->config.cfg.magic != CONFIG_MAGIC) {
-    memset(&c->config, 0, sizeof(ClientConfigBB));
-    c->config.cfg.magic = CONFIG_MAGIC;
-  } else {
-    c->config.cfg.bb_game_state++;
+  try {
+    c->import_config(cmd->cfg);
+    c->bb_game_state++;
+  } catch (const invalid_argument&) {
+    c->bb_game_state = 0;
+    c->bb_player_index = 0;
   }
 
   send_client_init_bb(c, 0);
 
-  switch (c->config.cfg.bb_game_state) {
+  switch (c->bb_game_state) {
     case ClientStateBB::InitialLogin:
       // first login? send them to the other port
       send_reconnect(c, s->connect_address_for_client(c),
@@ -871,7 +873,7 @@ void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
   try {
     new_lobby = s->find_lobby(cmd->item_id);
   } catch (const out_of_range&) {
-    send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby does not exist.");
+    send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby does not\nexist.");
     return;
   }
 
@@ -992,9 +994,9 @@ void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
 // player data commands
 
 void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t, uint16_t size, const void* data) { // 61 98
+    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 61 98
 
-  // note: we add extra buffer on the end when checking sizes because the
+  // Note: we add extra buffer on the end when checking sizes because the
   // autoreply text is a variable length
   switch (c->version) {
     case GameVersion::PC:
@@ -1002,7 +1004,12 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
       c->player.import(*reinterpret_cast<const PSOPlayerDataPC*>(data));
       break;
     case GameVersion::GC:
-      check_size(size, sizeof(PSOPlayerDataGC), sizeof(PSOPlayerDataGC) + 0xAC);
+      if (flag == 4) { // Episode 3
+        check_size(size, sizeof(PSOPlayerDataGC) + 0x23FC);
+        // TODO: import Episode 3 data somewhere
+      } else {
+        check_size(size, sizeof(PSOPlayerDataGC), sizeof(PSOPlayerDataGC) + 0xAC);
+      }
       c->player.import(*reinterpret_cast<const PSOPlayerDataGC*>(data));
       break;
     case GameVersion::BB:
@@ -1151,9 +1158,9 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
-  if (c->config.cfg.bb_game_state == ClientStateBB::ChoosePlayer) {
-    c->config.cfg.bb_player_index = cmd->player_index;
-    c->config.cfg.bb_game_state++;
+  if (c->bb_game_state == ClientStateBB::ChoosePlayer) {
+    c->bb_player_index = cmd->player_index;
+    c->bb_game_state++;
     send_client_init_bb(c, 0);
     send_approve_player_choice_bb(c);
   } else {
@@ -1162,7 +1169,7 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
       return;
     }
     string filename = filename_for_player_bb(c->license->username,
-        c->config.cfg.bb_player_index);
+        c->bb_player_index);
 
     try {
       // generate a preview
@@ -1235,7 +1242,7 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
     return;
   }
 
-  c->config.cfg.bb_player_index = cmd->player_index;
+  c->bb_player_index = cmd->player_index;
   snprintf(c->player.bank_name, 0x20, "player%" PRIu32, cmd->player_index + 1);
   string player_filename = filename_for_player_bb(c->license->username, cmd->player_index);
   string bank_filename = filename_for_bank_bb(c->license->username, c->player.bank_name);
@@ -2033,7 +2040,8 @@ static process_command_t gc_handlers[0x100] = {
   process_ep3_menu_challenge, nullptr, nullptr, nullptr,
 
   // E0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  process_ignored_command, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
   process_create_game_dc_gc, nullptr, nullptr, nullptr,
 

@@ -13,24 +13,26 @@ enum class GameVersion {
 };
 
 enum ClientFlag {
-  // after joining a lobby, client will no longer send D6 commands when they close message boxes
+  // After joining a lobby, client will no longer send D6 commands when they close message boxes
   NoMessageBoxCloseConfirmationAfterLobbyJoin = 0x0004,
-  // client has the above flag and has already joined a lobby
+  // Client has the above flag and has already joined a lobby
   NoMessageBoxCloseConfirmation = 0x0008,
-  // client can see Ep3 lobbies
+  // Client can see Ep3 lobbies
   CanSeeExtraLobbies = 0x0010,
-  // client is episode 3 and should use its game mechanic
+  // Client is episode 3 and should use its game mechanic
   Episode3Games = 0x0020,
-  // client is DC v1 (disables some features)
+  // Client is DC v1 (disables some features)
   IsDCv1 = 0x0040,
-  // client is loading into a game
+  // Client is loading into a game
   Loading = 0x0080,
 
-  // client is in the information menu (login server only)
+  // Client is in the information menu (login server only)
   InInformationMenu = 0x0100,
-  // client is at the welcome message (login server only)
+  // Client is at the welcome message (login server only)
   AtWelcomeMessage = 0x0200,
 
+  // Note: There isn't a good way to detect Episode 3 until the player data is
+  // sent (via a 61 command), so the Episode3Games flag is set in that handler
   DefaultV1 = IsDCv1,
   DefaultV2DC = 0x0000,
   DefaultV2PC = 0x0000,

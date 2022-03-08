@@ -242,7 +242,7 @@ void send_update_client_config(shared_ptr<Client> c) {
   } cmd = {
     0x00010000,
     c->license->serial_number,
-    c->config.cfg,
+    c->export_config(),
   };
   send_command(c, 0x04, 0x00, cmd);
 }
@@ -295,14 +295,14 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
     uint32_t player_tag;
     uint32_t serial_number;
     uint32_t team_id; // just randomize it; teams aren't supported
-    ClientConfigBB cfg;
+    ClientConfig cfg;
     uint32_t caps; // should be 0x00000102
   } cmd = {
     error,
     0x00010000,
     c->license->serial_number,
     static_cast<uint32_t>(random_object<uint32_t>()),
-    c->config,
+    c->export_config(),
     0x00000102,
   };
   send_command(c, 0x00E6, 0x00000000, cmd);
@@ -440,7 +440,7 @@ void send_approve_player_choice_bb(shared_ptr<Client> c) {
   struct {
     uint32_t player_index;
     uint32_t unused;
-  } cmd = {c->config.cfg.bb_player_index, 1};
+  } cmd = {c->bb_player_index, 1};
   send_command(c, 0x00E4, 0x00000000, cmd);
 }
 
@@ -1286,9 +1286,9 @@ void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
 }
 
 void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
-  // this command appeast to be deprecated, as PSO expects it to be exactly how
+  // This command appears to be deprecated, as PSO expects it to be exactly how
   // this server sends it, and does not react if it's different, except by
-  // changing the lobby IDs
+  // changing the lobby IDs.
 
   struct Entry {
     uint32_t menu_id;
@@ -1301,7 +1301,7 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     if (!(l->flags & LobbyFlag::Default)) {
       continue;
     }
-    if (!(c->flags & ClientFlag::Episode3Games) != !(l->flags & LobbyFlag::Episode3)) {
+    if ((l->flags & LobbyFlag::Episode3) && !(c->flags & ClientFlag::Episode3Games)) {
       continue;
     }
 
@@ -1642,6 +1642,14 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     } else {
       throw logic_error("unimplemented versioned command");
     }
+  }
+
+  // If the client will stop sending message box close confirmations after
+  // joining any lobby, set the appropriate flag and update the client config
+  if ((c->flags & (ClientFlag::NoMessageBoxCloseConfirmationAfterLobbyJoin | ClientFlag::NoMessageBoxCloseConfirmation))
+      == ClientFlag::NoMessageBoxCloseConfirmationAfterLobbyJoin) {
+    c->flags |= ClientFlag::NoMessageBoxCloseConfirmation;
+    send_update_client_config(c);
   }
 }
 

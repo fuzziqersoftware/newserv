@@ -15,6 +15,10 @@ using namespace std;
 
 
 
+static const uint64_t CLIENT_CONFIG_MAGIC = 0x492A890E82AC9839;
+
+
+
 Client::Client(
     struct bufferevent* bev,
     GameVersion version,
@@ -60,4 +64,28 @@ bool Client::send(string&& data) {
   struct evbuffer* buf = bufferevent_get_output(this->bev);
   evbuffer_add(buf, data.data(), data.size());
   return true;
+}
+
+ClientConfig Client::export_config() const {
+  ClientConfig cc;
+  cc.magic = CLIENT_CONFIG_MAGIC;
+  cc.bb_game_state = this->bb_game_state;
+  cc.bb_player_index = this->bb_player_index;
+  cc.flags = this->flags;
+  for (size_t x = 0; x < 5; x++) {
+    cc.unused[x] = 0xFFFFFFFF;
+  }
+  for (size_t x = 0; x < 2; x++) {
+    cc.unused_bb_only[x] = 0xFFFFFFFF;
+  }
+  return cc;
+}
+
+void Client::import_config(const ClientConfig& cc) {
+  if (cc.magic != CLIENT_CONFIG_MAGIC) {
+    throw invalid_argument("invalid client config");
+  }
+  this->bb_game_state = cc.bb_game_state;
+  this->bb_player_index = cc.bb_player_index;
+  this->flags = cc.flags;
 }
