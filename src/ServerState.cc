@@ -64,7 +64,11 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
 void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
   auto l = this->id_to_lobby.at(c->lobby_id);
   l->remove_client(c);
-  send_player_leave_notification(l, c->lobby_client_id);
+  if (!(l->flags & LobbyFlag::Persistent) && (l->count_clients() == 0)) {
+    this->remove_lobby(l->lobby_id);
+  } else {
+    send_player_leave_notification(l, c->lobby_client_id);
+  }
 }
 
 void ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> new_lobby) {
@@ -83,9 +87,10 @@ void ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> ne
   }
 
   if (current_lobby) {
-    send_player_leave_notification(current_lobby, old_lobby_client_id);
     if (!(current_lobby->flags & LobbyFlag::Persistent) && (current_lobby->count_clients() == 0)) {
       this->remove_lobby(current_lobby->lobby_id);
+    } else {
+      send_player_leave_notification(current_lobby, old_lobby_client_id);
     }
   }
   this->send_lobby_join_notifications(new_lobby, c);
