@@ -36,7 +36,7 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 
 ### Connecting local clients
 
-If you're running PSO on a real GameCube, you can make it connect to newserv by setting its default gateway and DNS server addresses to newserv's address.
+If you're running PSO on a real GameCube, you can make it connect to newserv by setting its default gateway and DNS server addresses to newserv's address. Note that newserv's DNS server is disabled by default; you'll have to enable it in config.json.
 
 If you're emulating PSO GC using Dolphin on macOS (like I am), you can make it connect to a newserv instance running on the same machine by doing this:
 - Use a build of Dolphin that has tapserver support.

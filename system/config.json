@@ -9,20 +9,21 @@
   // Address to connect external clients to (IP address or interface name)
   "ExternalAddress": "en0",
 
-  // Port to listen for DNS queries on. Set this to zero (or comment it out) to
-  // disable the DNS server.
-  "DNSServerPort": 53,
+  // Port to listen for DNS queries on. The DNS server is disabled by default;
+  // to enable it, uncomment this line.
+  // "DNSServerPort": 53,
 
   // Where to listen for IP stack clients. This exists to interface with PSO GC
-  // clients running in a local Dolphin emulator. To enable local Dolphin
-  // clients to connect, set this to ["/tmp/dolphin-tap"] and configure Dolphin
-  // to use the tapserver type of broadband adapter. You do not need to install
-  // or run tapserver. See README.md for details on how to get PSO to connect
-  // via this interface.
+  // clients running in a local Dolphin emulatorl; the default value given here
+  // matches the path that Dolphin uses for BBA connections. (To disable this,
+  // comment out this line.) To enable local Dolphin clients to connect, set
+  // this to ["/tmp/dolphin-tap"] and configure Dolphin to use the tapserver
+  // type of broadband adapter. You do not need to install or run tapserver. See
+  // README.md for details on how to get PSO to connect via this interface.
   // If you're doing inadvisable things, you can also add numbers or
   // "address:port" strings to this list to listen for tapserver connections on
   // a TCP port.
-  // "IPStackListen": ["/tmp/dolphin-tap"],
+  "IPStackListen": ["/tmp/dolphin-tap"],
 
   // Set this to true to show a lot of debugging information from the IP stack
   // simulator.
