@@ -665,32 +665,32 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case GAME_MENU_ID: {
       auto game = s->find_lobby(cmd->item_id);
       if (!game) {
-        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it no longer\nexists.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it no\nlonger exists.");
         break;
       }
       if (!game->is_game()) {
-        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is not\na game.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nnot a game.");
         break;
       }
       if (game->count_clients() >= game->max_clients) {
-        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is full.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nfull.");
         break;
       }
       if ((game->version != c->version) ||
           (!(game->flags & LobbyFlag::Episode3) != !(c->flags & LobbyFlag::Episode3))) {
-        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is for\na different version\nof PSO.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
         break;
       }
       if (game->flags & LobbyFlag::QuestInProgress) {
-        send_lobby_message_box(c, u"$C6You cannot join this\ngame because a quest is\nalready in progress.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because a\nquest is already\nin progress.");
         break;
       }
       if (game->any_client_loading()) {
-        send_lobby_message_box(c, u"$C6You cannot join this\ngame because another\nplayer is currently\nloading. Try again soon.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because\nanother player is\ncurrently loading.\nTry again soon.");
         break;
       }
       if (game->mode == 3) {
-        send_lobby_message_box(c, u"$C6You cannot join this\n game because it is a\nSolo Mode game.");
+        send_lobby_message_box(c, u"$C6You cannot join this\n game because it is\na Solo Mode game.");
         break;
       }
 
