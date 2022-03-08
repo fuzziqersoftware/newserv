@@ -362,6 +362,14 @@ static void check_is_game(shared_ptr<Lobby> l, bool is_game) {
   }
 }
 
+static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
+  if (!!(c->flags & ClientFlag::Episode3Games) != is_ep3) {
+    throw precondition_failed(is_ep3 ?
+        u"$C6This command can only\nbe used in Episode 3." :
+        u"$C6This command cannot\nbe used in Episode 3.");
+  }
+}
+
 static void check_cheats_enabled(shared_ptr<Lobby> l) {
   if (!(l->flags & LobbyFlag::CheatsEnabled)) {
     throw precondition_failed(u"$C6This command can\nonly be used in\ncheat mode.");
@@ -817,6 +825,14 @@ static void command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_warp(c, area);
 }
 
+static void command_song(shared_ptr<ServerState>, shared_ptr<Lobby>,
+    shared_ptr<Client> c, const char16_t* args) {
+  check_is_ep3(c, true);
+
+  uint32_t song = stoul(encode_sjis(args), nullptr, 0);
+  send_ep3_change_music(c, song);
+}
+
 static void command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t*) {
   check_is_game(l, true);
@@ -890,10 +906,11 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"item"      , {command_item              , u"Usage:\nitem <item-code>"}},
     {u"kick"      , {command_kick              , u"Usage:\nkick <name-or-number>"}},
     {u"li"        , {command_lobby_info        , u"Usage:\nli"}},
-    {u"password"  , {command_password          , u"Usage:\nlock [password]\nomit password to\nunlock game"}},
     {u"maxlevel"  , {command_max_level         , u"Usage:\nmax_level <level>"}},
     {u"minlevel"  , {command_min_level         , u"Usage:\nmin_level <level>"}},
+    {u"password"  , {command_password          , u"Usage:\nlock [password]\nomit password to\nunlock game"}},
     {u"silence"   , {command_silence           , u"Usage:\nsilence <name-or-number>"}},
+    {u"song"      , {command_song              , u"Usage:\nsong <song-number>"}},
     {u"type"      , {command_lobby_type        , u"Usage:\ntype <name>"}},
     {u"warp"      , {command_warp              , u"Usage:\nwarp <area-number>"}},
 });

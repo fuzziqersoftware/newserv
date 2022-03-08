@@ -463,18 +463,27 @@ void process_server_time_request(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t, uint16_t size, const void* data) {
-  struct Cmd {
-    uint32_t unknown[3]; // should be FFFFFFFF 00000000
+  struct InputCmd {
+    uint32_t transaction_num;
+    uint32_t value;
+    uint32_t unknown_token;
   };
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+  struct OutputCmd {
+    uint32_t remaining_meseta;
+    uint32_t unknown;
+    uint32_t unknown_token;
+  };
+  check_size(size, sizeof(InputCmd));
+  const auto* in_cmd = reinterpret_cast<const InputCmd*>(data);
+
+  OutputCmd out_cmd = {1000000, 0x80E8, in_cmd->unknown_token};
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !(l->flags & LobbyFlag::Episode3)) {
     return;
   }
 
-  send_command(l, command, 0x03, cmd);
+  send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
 void process_ep3_menu_challenge(shared_ptr<ServerState>, shared_ptr<Client> c,

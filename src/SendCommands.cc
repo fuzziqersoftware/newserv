@@ -1847,7 +1847,6 @@ void send_player_stats_change(shared_ptr<Lobby> l, shared_ptr<Client> c,
   send_command(l, 0x60, 0x00, subs);
 }
 
-// sends a player to the given area.
 void send_warp(shared_ptr<Client> c, uint32_t area) {
   PSOSubcommand cmds[2];
   cmds[0].byte[0] = 0x94;
@@ -1856,6 +1855,35 @@ void send_warp(shared_ptr<Client> c, uint32_t area) {
   cmds[0].byte[3] = 0x00;
   cmds[1].dword = area;
   send_command(c, 0x62, c->lobby_client_id, cmds, 8);
+}
+
+void send_ep3_change_music(shared_ptr<Client> c, uint32_t song) {
+  PSOSubcommand cmds[2];
+  cmds[0].byte[0] = 0xBF;
+  cmds[0].byte[1] = 0x02;
+  cmds[0].byte[2] = c->lobby_client_id;
+  cmds[0].byte[3] = 0x00;
+  cmds[1].dword = song;
+  send_command(c, 0x60, 0x00, cmds, 8);
+}
+
+void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c,
+    bool visible) {
+  PSOSubcommand cmd;
+  cmd.byte[0] = visible ? 0x23 : 0x22;
+  cmd.byte[1] = 0x01;
+  cmd.byte[2] = c->lobby_client_id;
+  cmd.byte[3] = 0x00;
+  send_command(l, 0x60, 0x00, &cmd, 4);
+}
+
+void send_revive_player(shared_ptr<Lobby> l, shared_ptr<Client> c) {
+  PSOSubcommand cmd;
+  cmd.byte[0] = 0x31;
+  cmd.byte[1] = 0x01;
+  cmd.byte[2] = c->lobby_client_id;
+  cmd.byte[3] = 0x00;
+  send_command(l, 0x60, 0x00, &cmd, 4);
 }
 
 

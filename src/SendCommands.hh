@@ -158,6 +158,11 @@ void send_player_stats_change(std::shared_ptr<Lobby> l, std::shared_ptr<Client> 
     PlayerStatsChange which, uint32_t amount);
 void send_warp(std::shared_ptr<Client> c, uint32_t area);
 
+void send_ep3_change_music(std::shared_ptr<Client> c, uint32_t song);
+void send_set_player_visibility(std::shared_ptr<Lobby> l,
+    std::shared_ptr<Client> c, bool visible);
+void send_revive_player(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c);
+
 void send_drop_item(std::shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float y, uint16_t request_id);
 void send_drop_stacked_item(std::shared_ptr<Lobby> l, const ItemData& item,

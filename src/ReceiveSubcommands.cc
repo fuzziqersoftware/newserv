@@ -869,6 +869,15 @@ static void process_subcommand_forward_check_size_game(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, p, count);
 }
 
+static void process_subcommand_forward_check_size_ep3_lobby(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const PSOSubcommand* p, size_t count) {
+  if (!(l->flags & LobbyFlag::Episode3) || l->is_game() || (p->byte[1] != count)) {
+    return;
+  }
+  forward_subcommand(l, c, command, flag, p, count);
+}
+
 static void process_subcommand_invalid(shared_ptr<ServerState>,
     shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
@@ -951,7 +960,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_drop_item,
   process_subcommand_unimplemented,
   process_subcommand_forward_check_size,
-  process_subcommand_forward_check_size_game,
+  process_subcommand_forward_check_size,
   process_subcommand_unimplemented,
   process_subcommand_hit_by_monster,
   // 30
@@ -1106,7 +1115,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_unimplemented,
   process_subcommand_bank_action,
   process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_ep3_lobby,
   // C0
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
