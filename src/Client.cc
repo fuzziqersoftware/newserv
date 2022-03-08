@@ -45,7 +45,6 @@ Client::Client(
     this->is_virtual_connection = false;
     get_socket_addresses(fd, &this->local_addr, &this->remote_addr);
   }
-  memset(this->name, 0, sizeof(this->name));
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
 }
 

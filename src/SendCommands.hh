@@ -109,7 +109,8 @@ void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
     const char16_t* from_name, const char16_t* text);
 
 template <typename TARGET>
-void send_text_message_printf(std::shared_ptr<TARGET> t, const char* format, ...) {
+__attribute__((format(printf, 2, 3))) void send_text_message_printf(
+    std::shared_ptr<TARGET> t, const char* format, ...) {
   va_list va;
   va_start(va, format);
   std::string buf = string_vprintf(format, va);

@@ -708,7 +708,8 @@ static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   }
 
   target->can_chat = !target->can_chat;
-  send_text_message_printf(l, "$C6%s %ssilenced", target->player.disp.name,
+  string target_name_sjis = encode_sjis(target->player.disp.name);
+  send_text_message_printf(l, "$C6%s %ssilenced", target_name_sjis.c_str(),
       target->can_chat ? "un" : "");
 }
 
@@ -730,7 +731,8 @@ static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 
   send_message_box(target, u"$C6You were kicked off by a moderator.");
   target->should_disconnect = true;
-  send_text_message_printf(l, "$C6%s kicked off", target->player.disp.name);
+  string target_name_sjis = encode_sjis(target->player.disp.name);
+  send_text_message_printf(l, "$C6%s kicked off", target_name_sjis.c_str());
 }
 
 static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,

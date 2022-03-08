@@ -35,7 +35,6 @@ struct ClientConfigBB {
 struct Client {
   // License & account
   std::shared_ptr<const License> license;
-  char16_t name[0x20];
   ClientConfigBB config;
   GameVersion version;
   uint16_t flags;

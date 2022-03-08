@@ -1018,7 +1018,8 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
     if (!failure) {
       send_text_message_printf(c,
           "$C6PSOBB player data saved\nas player %hhu for user\n%s",
-          c->pending_bb_save_player_index + 1, c->pending_bb_save_username.c_str());
+          static_cast<uint8_t>(c->pending_bb_save_player_index + 1),
+          c->pending_bb_save_username.c_str());
     }
 
     c->pending_bb_save_username.clear();
@@ -2168,8 +2169,12 @@ void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
   // TODO: this is slow; make it better somehow
   {
-    log(INFO, "Received version=%d size=%04hX command=%04hX flag=%08X",
-        static_cast<int>(c->version), size, command, flag);
+    string name_token;
+    if (c->player.disp.name[0]) {
+      name_token = " from " + remove_language_marker(encode_sjis(c->player.disp.name));
+    }
+    log(INFO, "Received%s version=%d size=%04hX command=%04hX flag=%08X",
+        name_token.c_str(), static_cast<int>(c->version), size, command, flag);
 
     string data_to_print;
     if (c->version == GameVersion::BB) {

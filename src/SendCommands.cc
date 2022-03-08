@@ -74,7 +74,12 @@ void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
       throw logic_error("unimplemented game version in send_command");
   }
 
-  log(INFO, "Sending command");
+  string name_token;
+  if (c->player.disp.name[0]) {
+    name_token = " to " + remove_language_marker(encode_sjis(c->player.disp.name));
+  }
+  log(INFO, "Sending%s version=%d size=%04zX command=%04hX flag=%08X",
+      name_token.c_str(), static_cast<int>(c->version), size, command, flag);
   print_data(stderr, send_data.data(), send_data.size());
 
   c->send(move(send_data));
