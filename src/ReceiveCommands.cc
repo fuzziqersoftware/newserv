@@ -665,39 +665,32 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case GAME_MENU_ID: {
       auto game = s->find_lobby(cmd->item_id);
       if (!game) {
-        send_message_box(c, u"$C6This game is no\nlonger active.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it no longer\nexists.");
         break;
       }
-
       if (!game->is_game()) {
-        send_message_box(c, u"$C6This game is not\na game.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is not\na game.");
         break;
       }
-
       if (game->count_clients() >= game->max_clients) {
-        send_message_box(c, u"$C6This game is full.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is full.");
         break;
       }
-
       if ((game->version != c->version) ||
           (!(game->flags & LobbyFlag::Episode3) != !(c->flags & LobbyFlag::Episode3))) {
-        send_message_box(c, u"$C6This game is for\n a different version\nof PSO.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is for\na different version\nof PSO.");
         break;
       }
-
-      if ((game->version != c->version) ||
-          (!(game->flags & LobbyFlag::Episode3) != !(c->flags & LobbyFlag::Episode3))) {
-        send_message_box(c, u"$C6A quest is in progress\nin this game.");
+      if (game->flags & LobbyFlag::QuestInProgress) {
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because a quest is\nalready in progress.");
         break;
       }
-
       if (game->any_client_loading()) {
-        send_message_box(c, u"$C6A player is currently\nloading.");
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because another\nplayer is currently\nloading. Try again soon.");
         break;
       }
-
-      if (game->any_client_loading()) {
-        send_message_box(c, u"$C6You cannot join a\nSolo Mode game.");
+      if (game->mode == 3) {
+        send_lobby_message_box(c, u"$C6You cannot join this\n game because it is a\nSolo Mode game.");
         break;
       }
 

@@ -18,7 +18,7 @@ enum LobbyFlag {
   Episode3 = 0x08, // lobby only
   QuestInProgress = 0x10, // game only
   JoinableQuestInProgress = 0x20, // game only
-  Default = 0x40, // lobby only; false for private lobbies
+  Default = 0x40, // lobby only; not set for games and private lobbies
   Persistent = 0x80, // if not set, lobby is deleted when empty
 };
 
