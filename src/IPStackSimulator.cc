@@ -214,7 +214,7 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
   while (evbuffer_get_length(buf) >= 2) {
     uint16_t frame_size;
     evbuffer_copyout(buf, &frame_size, 2);
-    if (evbuffer_get_length(buf) < frame_size + 2) {
+    if (evbuffer_get_length(buf) < static_cast<size_t>(frame_size + 2)) {
       break; // No complete frame available; done for now
     }
 
