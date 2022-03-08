@@ -5,8 +5,6 @@
 #include <string>
 #include <phosg/Process.hh>
 #include <phosg/Filesystem.hh>
-#include <event-async/Task.hh>
-#include <event-async/Base.hh>
 
 #include "IPFrameInfo.hh"
 #include "Server.hh"

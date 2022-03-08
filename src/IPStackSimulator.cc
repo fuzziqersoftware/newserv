@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <netinet/in.h>
+#include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
 
@@ -16,8 +17,6 @@
 #include <phosg/Network.hh>
 #include <phosg/Random.hh>
 #include <phosg/Time.hh>
-#include <event-async/Base.hh>
-#include <event-async/Buffer.hh>
 
 #include "IPFrameInfo.hh"
 #include "DNSServer.hh"
