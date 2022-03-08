@@ -1,6 +1,7 @@
 #include "IPStackSimulator.hh"
 
 #include <stdint.h>
+#include <string.h>
 #include <netinet/in.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
