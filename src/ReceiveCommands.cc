@@ -38,6 +38,45 @@ enum ClientStateBB {
 
 
 
+vector<MenuItem> quest_categories_menu({
+  MenuItem(static_cast<uint32_t>(QuestCategory::Retrieval), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Extermination), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Event), u"Events", u"$E$C6Quests that are part\nof an event", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Shop), u"Shops", u"$E$C6Quests that contain\nshops", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Tower), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
+});
+
+vector<MenuItem> quest_battle_menu({
+  MenuItem(static_cast<uint32_t>(QuestCategory::Battle), u"Battle", u"$E$C6Battle mode rule\nsets", 0),
+});
+
+vector<MenuItem> quest_challenge_menu({
+  MenuItem(static_cast<uint32_t>(QuestCategory::Challenge), u"Challenge", u"$E$C6Challenge mode\nquests", 0),
+});
+
+vector<MenuItem> quest_solo_menu({
+  MenuItem(static_cast<uint32_t>(QuestCategory::Solo), u"Solo Quests", u"$E$C6Quests that require\na single player", 0),
+});
+
+vector<MenuItem> quest_government_menu({
+  MenuItem(static_cast<uint32_t>(QuestCategory::GovernmentEpisode1), u"Hero in Red",u"$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::GovernmentEpisode2), u"The Military's Hero",u"$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::GovernmentEpisode4), u"The Meteor Impact Incident", u"$E$C6Quests that follow\nthe Episode 4\nstoryline", 0),
+});
+
+vector<MenuItem> quest_download_menu({
+  MenuItem(static_cast<uint32_t>(QuestCategory::Retrieval), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Extermination), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Event), u"Events", u"$E$C6Quests that are part\nof an event", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Shop), u"Shops", u"$E$C6Quests that contain\nshops", 0),
+  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Tower), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::Download), u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
+});
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
@@ -636,6 +675,10 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           c->flags |= ClientFlag::InInformationMenu;
           break;
 
+        case MAIN_MENU_DOWNLOAD_QUESTS:
+          send_quest_menu(c, QUEST_FILTER_MENU_ID, quest_download_menu, true);
+          break;
+
         case MAIN_MENU_DISCONNECT:
           c->should_disconnect = true;
           break;
@@ -731,16 +774,19 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_lobby_message_box(c, u"$C6Quests are not available.");
         break;
       }
-      auto l = s->find_lobby(c->lobby_id);
+      shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
       auto quests = s->quest_index->filter(c->version,
           c->flags & ClientFlag::IsDCv1,
-          static_cast<QuestCategory>(cmd->item_id & 0xFF), l->episode - 1);
+          static_cast<QuestCategory>(cmd->item_id & 0xFF),
+          l.get() ? (l->episode - 1) : -1);
       if (quests.empty()) {
         send_lobby_message_box(c, u"$C6There are no quests\navailable in that\ncategory.");
         break;
       }
 
-      send_quest_menu(c, QUEST_MENU_ID, quests, false);
+      // Hack: assume the menu to be sent is the download quest menu if the
+      // client is not in any lobby
+      send_quest_menu(c, QUEST_MENU_ID, quests, !c->lobby_id);
       break;
     }
 
@@ -755,10 +801,15 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         break;
       }
 
-      auto l = s->find_lobby(c->lobby_id);
-      if (!l->is_game()) {
-        send_lobby_message_box(c, u"$C6Quests cannot be loaded\nin lobbies.");
-        break;
+      // If the client is not in a lobby, send the quest as a download quest.
+      // Otherwise, they must be in a game to load a quest.
+      shared_ptr<Lobby> l;
+      if (c->lobby_id) {
+        auto l = s->find_lobby(c->lobby_id);
+        if (!l->is_game()) {
+          send_lobby_message_box(c, u"$C6Quests cannot be loaded\nin lobbies.");
+          break;
+        }
       }
 
       auto bin_basename = q->bin_filename();
@@ -766,25 +817,33 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       auto bin_contents = q->bin_contents();
       auto dat_contents = q->dat_contents();
 
-      if (q->joinable) {
-        l->flags |= LobbyFlag::JoinableQuestInProgress;
-      } else {
-        l->flags |= LobbyFlag::QuestInProgress;
-      }
-      l->loading_quest_id = q->quest_id;
-      for (size_t x = 0; x < l->max_clients; x++) {
-        if (!l->clients[x]) {
-          continue;
+      if (l) {
+        if (q->joinable) {
+          l->flags |= LobbyFlag::JoinableQuestInProgress;
+        } else {
+          l->flags |= LobbyFlag::QuestInProgress;
+        }
+        l->loading_quest_id = q->quest_id;
+        for (size_t x = 0; x < l->max_clients; x++) {
+          if (!l->clients[x]) {
+            continue;
+          }
+
+          // TODO: It looks like blasting all the chunks to the client at once can
+          // cause GC clients to crash in rare cases. Find a way to slow this down
+          // (perhaps by only sending each new chunk when they acknowledge the
+          // previous chunk with a 44 [first chunk] or 13 [later chunks] command).
+          send_quest_file(l->clients[x], bin_basename, *bin_contents, false, false);
+          send_quest_file(l->clients[x], dat_basename, *dat_contents, false, false);
+
+          l->clients[x]->flags |= ClientFlag::Loading;
         }
 
-        // TODO: It looks like blasting all the chunks to the client at once can
-        // cause GC clients to crash in rare cases. Find a way to slow this down
-        // (perhaps by only sending each new chunk when they acknowledge the
-        // previous chunk with a 44 [first chunk] or 13 [later chunks] command).
-        send_quest_file(l->clients[x], bin_basename, *bin_contents, false, false);
-        send_quest_file(l->clients[x], dat_basename, *dat_contents, false, false);
-
-        l->clients[x]->flags |= ClientFlag::Loading;
+      } else {
+        // TODO: cache dlq somewhere maybe
+        auto dlq = q->create_download_quest();
+        send_quest_file(c, bin_basename, *bin_contents, true, false);
+        send_quest_file(c, dat_basename, *dat_contents, true, false);
       }
       break;
     }
@@ -850,43 +909,6 @@ void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 ////////////////////////////////////////////////////////////////////////////////
 // Quest commands
-
-vector<MenuItem> quest_categories_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::Retrieval), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::Extermination), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::Event), u"Events", u"$E$C6Quests that are part\nof an event", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::Shop), u"Shops", u"$E$C6Quests that contain\nshops", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
-  MenuItem(static_cast<uint32_t>(QuestCategory::Tower), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
-});
-
-vector<MenuItem> quest_battle_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::Battle), u"Battle", u"$E$C6Battle mode rule\nsets", 0),
-});
-
-vector<MenuItem> quest_challenge_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::Challenge), u"Challenge", u"$E$C6Challenge mode\nquests", 0),
-});
-
-vector<MenuItem> quest_solo_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::Solo), u"Solo Quests", u"$E$C6Quests that require\na single player", 0),
-});
-
-vector<MenuItem> quest_government_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::GovernmentEpisode1), u"Hero in Red",u"$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::GovernmentEpisode2), u"The Military's Hero",u"$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::GovernmentEpisode4), u"The Meteor Impact Incident", u"$E$C6Quests that follow\nthe Episode 4\nstoryline", 0),
-});
-
-vector<MenuItem> quest_download_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::Retrieval), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::Extermination), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::Event), u"Events", u"$E$C6Quests that are part\nof an event", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::Shop), u"Shops", u"$E$C6Quests that contain\nshops", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
-  MenuItem(static_cast<uint32_t>(QuestCategory::Tower), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItemFlag::InvisibleOnDC | MenuItemFlag::InvisibleOnPC),
-  MenuItem(static_cast<uint32_t>(QuestCategory::Download), u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
-});
 
 void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t flag, uint16_t size, const void*) { // A2
@@ -962,12 +984,6 @@ void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
   auto contents = file_cache.get(filename);
 
   send_quest_file(c, filename, *contents, false, false);
-}
-
-void process_start_download_quest(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t, const void*) { // A6
-  // TODO implement this
-  send_text_message(c, u"$C6Download quests\nare not supported");
 }
 
 
@@ -1994,7 +2010,7 @@ static process_command_t gc_handlers[0x100] = {
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
-  nullptr, nullptr, process_start_download_quest, process_ignored_command,
+  nullptr, nullptr, process_ignored_command, process_ignored_command,
   nullptr, process_ignored_command, nullptr, nullptr,
   process_quest_ready, nullptr, nullptr, nullptr,
 

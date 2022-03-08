@@ -25,6 +25,8 @@ ServerState::ServerState()
       u"Join the lobby.", 0);
   this->main_menu.emplace_back(MAIN_MENU_INFORMATION, u"Information",
       u"View server information.", MenuItemFlag::RequiresMessageBoxes);
+  this->main_menu.emplace_back(MAIN_MENU_DOWNLOAD_QUESTS, u"Download quests",
+      u"Download quests.", 0);
   this->main_menu.emplace_back(MAIN_MENU_DISCONNECT, u"Disconnect",
       u"Disconnect.", 0);
 

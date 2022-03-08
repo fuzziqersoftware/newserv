@@ -442,7 +442,7 @@ shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
 }
 
 vector<shared_ptr<const Quest>> QuestIndex::filter(GameVersion version,
-    bool is_dcv1, QuestCategory category, uint8_t episode) const {
+    bool is_dcv1, QuestCategory category, int16_t episode) const {
   auto it = this->version_id_to_quest.lower_bound(make_pair(version, 0));
   auto end_it = this->version_id_to_quest.upper_bound(make_pair(version, 0xFFFFFFFF));
 
@@ -453,9 +453,10 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(GameVersion version,
       continue;
     }
 
-    // only check episode and solo if the category isn't a mode (that is, ignore
-    // episode if querying for battle/challange/solo quests)
-    if (!category_is_mode(category) && ((q->episode != episode))) {
+    // Only check episode and solo if the category isn't a mode (that is, ignore
+    // episode if querying for battle/challenge/solo quests). Also, ignore
+    // ignore episode if it's < 0 (e.g. for the download quest menu).
+    if ((episode >= 0) && !category_is_mode(category) && ((q->episode != episode))) {
       continue;
     }
 
@@ -485,7 +486,7 @@ static string create_download_quest_file(const string& compressed_data,
   return data;
 }
 
-shared_ptr<Quest> Quest::create_download_quest(const string& file_basename) const {
+shared_ptr<Quest> Quest::create_download_quest() const {
   if (this->category == QuestCategory::Download) {
     throw invalid_argument("quest is already a download quest");
   }
@@ -497,10 +498,10 @@ shared_ptr<Quest> Quest::create_download_quest(const string& file_basename) cons
       reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
       break;
     case GameVersion::PC:
-      reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
+      reinterpret_cast<PSOQuestHeaderPC*>(data_ptr)->is_download = 0x01;
       break;
     case GameVersion::GC:
-      reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
+      reinterpret_cast<PSOQuestHeaderGC*>(data_ptr)->is_download = 0x01;
       break;
     case GameVersion::BB:
       throw invalid_argument("PSOBB does not support download quests");
@@ -508,16 +509,8 @@ shared_ptr<Quest> Quest::create_download_quest(const string& file_basename) cons
       throw invalid_argument("unknown game version");
   }
 
-  shared_ptr<Quest> dlq(new Quest(file_basename));
-  dlq->quest_id = this->quest_id;
+  shared_ptr<Quest> dlq(new Quest(*this));
   dlq->category = QuestCategory::Download;
-  dlq->episode = this->episode;
-  dlq->is_dcv1 = this->is_dcv1;
-  dlq->joinable = this->joinable;
-  dlq->version = this->version;
-  dlq->name = this->name;
-  dlq->short_description = this->short_description;
-  dlq->long_description = this->long_description;
 
   dlq->bin_contents_ptr.reset(new string(create_download_quest_file(
       prs_compress(decompressed_bin), decompressed_bin.size())));
@@ -525,9 +518,6 @@ shared_ptr<Quest> Quest::create_download_quest(const string& file_basename) cons
   auto dat_contents = this->dat_contents();
   dlq->dat_contents_ptr.reset(new string(create_download_quest_file(
       *dat_contents, prs_decompress_size(*dat_contents))));
-
-  save_file(dlq->bin_filename(), *dlq->bin_contents_ptr);
-  save_file(dlq->dat_filename(), *dlq->dat_contents_ptr);
 
   return dlq;
 }

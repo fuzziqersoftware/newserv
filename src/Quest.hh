@@ -56,6 +56,10 @@ public:
   mutable std::shared_ptr<std::string> dat_contents_ptr;
 
   Quest(const std::string& file_basename);
+  Quest(const Quest&) = default;
+  Quest(Quest&&) = default;
+  Quest& operator=(const Quest&) = default;
+  Quest& operator=(Quest&&) = default;
 
   std::string bin_filename() const;
   std::string dat_filename() const;
@@ -63,8 +67,7 @@ public:
   std::shared_ptr<const std::string> bin_contents() const;
   std::shared_ptr<const std::string> dat_contents() const;
 
-  std::shared_ptr<Quest> create_download_quest(
-      const std::string& file_basename) const;
+  std::shared_ptr<Quest> create_download_quest() const;
 };
 
 struct QuestIndex {
@@ -82,7 +85,5 @@ struct QuestIndex {
   std::shared_ptr<const Quest> get(GameVersion version, uint32_t id) const;
   std::shared_ptr<const std::string> get_gba(const std::string& name) const;
   std::vector<std::shared_ptr<const Quest>> filter(GameVersion version,
-    bool is_dcv1, QuestCategory category, uint8_t episode) const;
+    bool is_dcv1, QuestCategory category, int16_t episode) const;
 };
-
-Quest create_download_quest(const Quest& src, size_t version);

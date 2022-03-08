@@ -498,11 +498,6 @@ void IPStackSimulator::on_client_tcp_frame(
       throw runtime_error("TCP SYN contains extra flags");
     }
 
-    uint64_t key = this->tcp_conn_key_for_client_frame(fi);
-    if (c->tcp_connections.count(key)) {
-      throw runtime_error("TCP SYN received for already-open connection");
-    }
-
     StringReader options_r(fi.tcp + 1, fi.tcp_options_size);
     size_t max_frame_size = 1400;
     while (!options_r.eof()) {
@@ -545,24 +540,41 @@ void IPStackSimulator::on_client_tcp_frame(
       }
     }
 
-    // Set up the IPStackSimulator end of the virtual connection
-    auto& conn = c->tcp_connections.emplace(key, IPClient::TCPConnection()).first->second;
-    conn.client = c;
-    conn.resend_push_event.reset(event_new(this->base.get(), -1, EV_TIMEOUT,
-        &IPStackSimulator::dispatch_on_resend_push, &conn));
-    conn.server_addr = fi.ipv4->dest_addr;
-    conn.server_port = fi.tcp->dest_port;
-    conn.client_port = fi.tcp->src_port;
-    conn.next_client_seq = fi.tcp->seq_num + 1;
-    conn.acked_server_seq = random_object<uint32_t>();
-    conn.resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
-    conn.awaiting_first_ack = true;
-    conn.max_frame_size = max_frame_size;
 
+    uint64_t key = this->tcp_conn_key_for_client_frame(fi);
+    auto emplace_ret = c->tcp_connections.emplace(key, IPClient::TCPConnection());
+    auto& conn = emplace_ret.first->second;
     string conn_str = this->state->ip_stack_debug ? this->str_for_tcp_connection(c, conn) : "";
-    if (this->state->ip_stack_debug) {
-      log(INFO, "[IPStackSimulator] Client opened TCP connection %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
-          conn_str.c_str(), conn.acked_server_seq, conn.next_client_seq);
+
+    if (emplace_ret.second) {
+      // Connection is new; initialize it
+      conn.client = c;
+      conn.resend_push_event.reset(event_new(this->base.get(), -1, EV_TIMEOUT,
+          &IPStackSimulator::dispatch_on_resend_push, &conn));
+      conn.server_addr = fi.ipv4->dest_addr;
+      conn.server_port = fi.tcp->dest_port;
+      conn.client_port = fi.tcp->src_port;
+      conn.next_client_seq = fi.tcp->seq_num + 1;
+      conn.acked_server_seq = random_object<uint32_t>();
+      conn.resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
+      conn.awaiting_first_ack = true;
+      conn.max_frame_size = max_frame_size;
+      if (this->state->ip_stack_debug) {
+        log(INFO, "[IPStackSimulator] Client opened TCP connection %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
+            conn_str.c_str(), conn.acked_server_seq, conn.next_client_seq);
+      }
+
+    } else {
+      // Connection is NOT new; this is probably a resend of an earlier SYN
+      if (!conn.awaiting_first_ack) {
+        throw logic_error("SYN received on already-open connection after initial phase");
+      }
+      // TODO: We should check the syn/ack numbers here instead of just assuming
+      // they're correct
+      if (this->state->ip_stack_debug) {
+        log(INFO, "[IPStackSimulator] Client resent SYN for TCP connection %s",
+            conn_str.c_str());
+      }
     }
 
     // Send a SYN+ACK (send_tcp_frame always adds the ACK flag)
