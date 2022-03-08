@@ -54,6 +54,31 @@ void DNSServer::dispatch_on_receive_message(evutil_socket_t fd,
   reinterpret_cast<DNSServer*>(ctx)->on_receive_message(fd, events);
 }
 
+string DNSServer::response_for_query(
+    const void* vdata, size_t size, uint32_t resolved_address) {
+  if (size < 0x0C) {
+    throw invalid_argument("query too small");
+  }
+
+  const char* data = reinterpret_cast<const char*>(vdata);
+  size_t name_len = strlen(&data[12]) + 1;
+
+  be_uint32_t be_resolved_address = resolved_address;
+
+  string response;
+  response.append(data, 2);
+  response.append("\x81\x80\x00\x01\x00\x01\x00\x00\x00\x00", 10);
+  response.append(&data[12], name_len);
+  response.append("\x00\x01\x00\x01\xC0\x0C\x00\x01\x00\x01\x00\x00\x00\x3C\x00\x04", 16);
+  response.append(reinterpret_cast<const char*>(&be_resolved_address), 4);
+  return response;
+}
+
+string DNSServer::response_for_query(
+    const string& query, uint32_t resolved_address) {
+  return DNSServer::response_for_query(query.data(), query.size(), resolved_address);
+}
+
 void DNSServer::on_receive_message(int fd, short) {
   for (;;) {
     sockaddr_in remote;
@@ -74,34 +99,19 @@ void DNSServer::on_receive_message(int fd, short) {
     } else if (bytes == 0) {
       break;
 
-    } else { // bytes > 0
+    } else if (bytes < 0x0C) {
+      log(WARNING, "[DNSServer] input query too small");
+      print_data(stderr, input);
+
+    } else {
       input.resize(bytes);
-
       uint32_t remote_address = bswap32(remote.sin_addr.s_addr);
-      uint32_t connect_address;
-      if (is_local_address(remote_address)) {
-        connect_address = this->local_connect_address;
-      } else {
-        connect_address = this->external_connect_address;
-      }
-
-      if (input.size() >= 0x0C) {
-        string response;
-        size_t name_len = strlen(input.data() + 0x0C) + 1;
-
-        uint32_t connect_address_be = bswap32(connect_address);
-        response.append(input.substr(0, 2));
-        response.append("\x81\x80\x00\x01\x00\x01\x00\x00\x00\x00", 10);
-        response.append(input.substr(12, name_len));
-        response.append("\x00\x01\x00\x01\xC0\x0C\x00\x01\x00\x01\x00\x00\x00\x3C\x00\x04", 16);
-        response.append(reinterpret_cast<const char*>(&connect_address_be), 4);
-
-        sendto(fd, response.data(), response.size(), 0,
-            reinterpret_cast<const sockaddr*>(&remote), remote_size);
-      } else {
-        log(WARNING, "[DNSServer] input query too small");
-        print_data(stderr, input);
-      }
+      uint32_t connect_address = is_local_address(remote_address)
+          ? this->local_connect_address
+          : this->external_connect_address;
+      string response = this->response_for_query(input, connect_address);
+      sendto(fd, response.data(), response.size(), 0,
+          reinterpret_cast<const sockaddr*>(&remote), remote_size);
     }
   }
 }

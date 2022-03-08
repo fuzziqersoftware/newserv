@@ -26,6 +26,9 @@ public:
   void listen(int port, GameVersion version, ServerBehavior initial_state);
   void add_socket(int fd, GameVersion version, ServerBehavior initial_state);
 
+  void connect_client(struct bufferevent* bev, uint32_t address, uint16_t port,
+      GameVersion version, ServerBehavior initial_state);
+
 private:
   std::shared_ptr<struct event_base> base;
 

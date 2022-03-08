@@ -60,6 +60,8 @@ add_executable(newserv
   src/Shell.cc
   src/ServerShell.cc
   src/ProxyShell.cc
+  src/IPFrameInfo.cc
+  src/IPStackSimulator.cc
   src/Main.cc
 )
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR})

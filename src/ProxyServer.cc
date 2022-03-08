@@ -27,10 +27,17 @@ using namespace std;
 
 
 
+static void flush_and_free_bufferevent(struct bufferevent* bev) {
+  bufferevent_flush(bev, EV_READ | EV_WRITE, BEV_FINISHED);
+  bufferevent_free(bev);
+}
+
+
+
 ProxyServer::ProxyServer(shared_ptr<struct event_base> base,
     const struct sockaddr_storage& initial_destination, GameVersion version) :
-    base(base), client_bev(nullptr, bufferevent_free),
-    server_bev(nullptr, bufferevent_free),
+    base(base), client_bev(nullptr, flush_and_free_bufferevent),
+    server_bev(nullptr, flush_and_free_bufferevent),
     next_destination(initial_destination), version(version),
     header_size((version == GameVersion::BB) ? 8 : 4) {
   memset(&this->client_input_header, 0, sizeof(this->client_input_header));
@@ -110,24 +117,37 @@ void ProxyServer::dispatch_on_server_error(struct bufferevent* bev, short events
 
 void ProxyServer::on_listen_accept(struct evconnlistener*, evutil_socket_t fd,
     struct sockaddr*, int) {
-
   if (this->client_bev.get()) {
-    log(WARNING, "Ignoring client connection because client already exists");
+    log(WARNING, "[ProxyServer] Ignoring client connection because client already exists");
     close(fd);
     return;
-  } else {
-    log(INFO, "Client connected");
   }
 
-  this->client_bev.reset(bufferevent_socket_new(this->base.get(), fd,
+  log(INFO, "[ProxyServer] Client connected on fd %d", fd);
+  this->on_client_connect(bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS));
+}
+
+void ProxyServer::connect_client(struct bufferevent* bev) {
+  if (this->client_bev.get()) {
+    log(WARNING, "[ProxyServer] Ignoring client virtual connection because client already exists");
+    bufferevent_flush(bev, EV_WRITE, BEV_FINISHED);
+    return;
+  }
+
+  log(INFO, "[ProxyServer] Client connected on virtual connection %p", bev);
+  this->on_client_connect(bev);
+}
+
+void ProxyServer::on_client_connect(struct bufferevent* bev) {
+  this->client_bev.reset(bev);
 
   bufferevent_setcb(this->client_bev.get(),
       &ProxyServer::dispatch_on_client_input, NULL,
       &ProxyServer::dispatch_on_client_error, this);
   bufferevent_enable(this->client_bev.get(), EV_READ | EV_WRITE);
 
-  // connect to the server, disconnecting first if needed
+  // Connect to the server, disconnecting first if needed
   this->server_bev.reset(bufferevent_socket_new(this->base.get(), -1,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS));
 
@@ -144,7 +164,7 @@ void ProxyServer::on_listen_accept(struct evconnlistener*, evutil_socket_t fd,
   sin.sin_addr.s_addr = sin_ss->sin_addr.s_addr;
 
   string netloc_str = render_sockaddr_storage(this->next_destination);
-  log(INFO, "connecting to %s", netloc_str.c_str());
+  log(INFO, "[ProxyServer] Connecting to %s", netloc_str.c_str());
   if (bufferevent_socket_connect(this->server_bev.get(),
       reinterpret_cast<const sockaddr*>(&sin), sizeof(sin)) != 0) {
     throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
@@ -157,7 +177,7 @@ void ProxyServer::on_listen_accept(struct evconnlistener*, evutil_socket_t fd,
 
 void ProxyServer::on_listen_error(struct evconnlistener* listener) {
   int err = EVUTIL_SOCKET_ERROR();
-  log(ERROR, "failure on listening socket %d: %d (%s)",
+  log(ERROR, "[ProxyServer] Failure on listening socket %d: %d (%s)",
       evconnlistener_get_fd(listener), err, evutil_socket_error_to_string(err));
   event_base_loopexit(this->base.get(), NULL);
 }
@@ -173,11 +193,11 @@ void ProxyServer::on_server_input(struct bufferevent*) {
 void ProxyServer::on_client_error(struct bufferevent*, short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "error %d (%s) in client stream", err,
+    log(WARNING, "[ProxyServer] Error %d (%s) in client stream", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    log(INFO, "client has disconnected");
+    log(INFO, "[ProxyServer] Client has disconnected");
     this->client_bev.reset();
     // "forward" the disconnection to the server
     this->server_bev.reset();
@@ -193,11 +213,11 @@ void ProxyServer::on_client_error(struct bufferevent*, short events) {
 void ProxyServer::on_server_error(struct bufferevent*, short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "error %d (%s) in server stream", err,
+    log(WARNING, "[ProxyServer] Error %d (%s) in server stream", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    log(INFO, "server has disconnected");
+    log(INFO, "[ProxyServer] Server has disconnected");
     this->server_bev.reset();
     // "forward" the disconnection to the client
     this->client_bev.reset();
@@ -259,7 +279,7 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
         break;
       }
 
-      //log(INFO, "[ProxyServer-debug] received encrypted header");
+      //log(INFO, "[ProxyServer-debug] Received encrypted header");
       //print_data(stderr, input_header, this->header_size);
 
       if (source_crypt) {
@@ -269,7 +289,7 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
 
     size_t command_size = this->get_size_field(input_header);
     if (evbuffer_get_length(source_buf) < command_size) {
-      //log(INFO, "[ProxyServer-debug] insufficient data for command (%zX/%hX bytes)", evbuffer_get_length(source_buf), this->get_size_field(input_header));
+      //log(INFO, "[ProxyServer-debug] Insufficient data for command (%zX/%hX bytes)", evbuffer_get_length(source_buf), this->get_size_field(input_header));
       break;
     }
 
@@ -278,11 +298,11 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
     if (bytes < static_cast<ssize_t>(command_size)) {
       throw logic_error("enough bytes available, but could not remove them");
     }
-    //log(INFO, "[ProxyServer-debug] read command (%zX bytes)", bytes);
+    //log(INFO, "[ProxyServer-debug] Read command (%zX bytes)", bytes);
     // overwrite the header with the already-decrypted header
     memcpy(command.data(), input_header, this->header_size);
 
-    //log(INFO, "[ProxyServer-debug] received encrypted command with pre-decrypted header");
+    //log(INFO, "[ProxyServer-debug] Received encrypted command with pre-decrypted header");
     //print_data(stderr, command);
 
     if (source_crypt) {
@@ -290,7 +310,7 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
           command_size - this->header_size);
     }
 
-    log(INFO, "%s:", from_server ? "server" : "client");
+    log(INFO, "[ProxyServer] %s:", from_server ? "server" : "client");
     print_data(stderr, command);
 
     // preprocess the command if needed
@@ -353,20 +373,25 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
           sin->sin_addr.s_addr = args->address; // already network byte order
 
           if (!dest_bev) {
-            log(WARNING, "received reconnect command with no destination present");
+            log(WARNING, "[ProxyServer] Received reconnect command with no destination present");
           } else {
             struct sockaddr_storage sockname_ss;
             socklen_t len = sizeof(sockname_ss);
-            getsockname(bufferevent_getfd(dest_bev),
-                reinterpret_cast<struct sockaddr*>(&sockname_ss), &len);
-            if (sockname_ss.ss_family != AF_INET) {
-              throw logic_error("existing connection is not ipv4");
-            }
+            int fd = bufferevent_getfd(dest_bev);
+            if (fd < 0) { // virtual connection
+              args->address = 0x23232323; // TODO: apply the different-network logic here too
+              args->port = 9000;
+            } else {
+              getsockname(fd, reinterpret_cast<struct sockaddr*>(&sockname_ss), &len);
+              if (sockname_ss.ss_family != AF_INET) {
+                throw logic_error("existing connection is not ipv4");
+              }
 
-            struct sockaddr_in* sockname_sin = reinterpret_cast<struct sockaddr_in*>(
-                &sockname_ss);
-            args->address = sockname_sin->sin_addr.s_addr; // already network byte order
-            args->port = this->listeners.begin()->first;
+              struct sockaddr_in* sockname_sin = reinterpret_cast<struct sockaddr_in*>(
+                  &sockname_ss);
+              args->address = sockname_sin->sin_addr.s_addr; // Already network byte order
+              args->port = ntohs(sockname_sin->sin_port); // Client expects this little-endian for some reason
+            }
           }
           break;
         }
@@ -378,12 +403,12 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
       if (dest_crypt) {
         dest_crypt->encrypt(command.data(), command.size());
       }
-      //log(INFO, "[ProxyServer-debug] sending encrypted command");
+      //log(INFO, "[ProxyServer-debug] Sending encrypted command");
       //print_data(stderr, command);
 
       evbuffer_add(dest_buf, command.data(), command.size());
     } else {
-      log(WARNING, "no destination present; dropping command");
+      log(WARNING, "[ProxyServer] No destination present; dropping command");
     }
 
     // clear the input header so we can read the next command

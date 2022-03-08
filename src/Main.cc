@@ -20,6 +20,7 @@
 #include "Text.hh"
 #include "ServerShell.hh"
 #include "ProxyShell.hh"
+#include "IPStackSimulator.hh"
 
 using namespace std;
 
@@ -83,7 +84,7 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   } catch (const out_of_range&) { }
 
   // TODO: make this configurable
-  s->port_configuration = default_port_to_behavior;
+  s->set_port_configuration(default_port_to_behavior);
 
   auto enemy_categories = parse_int_vector<uint32_t>(d.at("CommonItemDropRates-Enemy"));
   auto box_categories = parse_int_vector<uint32_t>(d.at("CommonItemDropRates-Box"));
@@ -140,10 +141,19 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   s->all_addresses.emplace("<external>", s->external_address);
 
   try {
-    s->dns_server_port = d.at("RunDNSServer")->as_bool();
+    s->dns_server_port = d.at("DNSServerPort")->as_int();
   } catch (const out_of_range&) {
     s->dns_server_port = 0;
   }
+
+  try {
+    for (const auto& item : d.at("IPStackListen")->as_list()) {
+      s->ip_stack_addresses.emplace_back(item->as_string());
+    }
+  } catch (const out_of_range&) { }
+  try {
+    s->ip_stack_debug = d.at("IPStackDebug")->as_bool();
+  } catch (const out_of_range&) { }
 
   try {
     s->allow_unregistered_users = d.at("AllowUnregisteredUsers")->as_bool();
@@ -265,7 +275,7 @@ int main(int argc, char* argv[]) {
   } else {
     log(INFO, "Starting game server");
     game_server.reset(new Server(base, state));
-    for (const auto& it : state->port_configuration) {
+    for (const auto& it : state->named_port_configuration) {
       game_server->listen("", it.second.port, it.second.version, it.second.behavior);
     }
 
@@ -280,6 +290,17 @@ int main(int argc, char* argv[]) {
 
     log(INFO, "Collecting quest metadata");
     state->quest_index.reset(new QuestIndex("system/quests"));
+  }
+
+  shared_ptr<IPStackSimulator> ip_stack_simulator;
+  if (!state->ip_stack_addresses.empty()) {
+    log(INFO, "Starting IP stack simulator");
+    ip_stack_simulator.reset(new IPStackSimulator(
+        base, game_server, proxy_server, state));
+    for (const auto& it : state->ip_stack_addresses) {
+      auto netloc = parse_netloc(it);
+      ip_stack_simulator->listen(netloc.first, netloc.second);
+    }
   }
 
   if (!state->username.empty()) {

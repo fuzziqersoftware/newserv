@@ -15,17 +15,36 @@ using namespace std;
 
 
 
-Client::Client(struct bufferevent* bev, GameVersion version,
-    ServerBehavior server_behavior) : version(version),
-    flags(flags_for_version(version, 0)), bev(bev),
-    server_behavior(server_behavior), should_disconnect(false),
-    play_time_begin(now()), last_recv_time(this->play_time_begin),
-    last_send_time(0), area(0), lobby_id(0), lobby_client_id(0),
-    lobby_arrow_color(0), next_exp_value(0), infinite_hp(false),
-    infinite_tp(false), can_chat(true) {
+Client::Client(
+    struct bufferevent* bev,
+    GameVersion version,
+    ServerBehavior server_behavior)
+  : version(version),
+    flags(flags_for_version(this->version, 0)),
+    bev(bev),
+    server_behavior(server_behavior),
+    should_disconnect(false),
+    play_time_begin(now()),
+    last_recv_time(this->play_time_begin),
+    last_send_time(0),
+    area(0),
+    lobby_id(0),
+    lobby_client_id(0),
+    lobby_arrow_color(0),
+    next_exp_value(0),
+    infinite_hp(false),
+    infinite_tp(false),
+    can_chat(true) {
 
   int fd = bufferevent_getfd(this->bev);
-  get_socket_addresses(fd, &this->local_addr, &this->remote_addr);
+  if (fd < 0) {
+    this->is_virtual_connection = true;
+    memset(&this->local_addr, 0, sizeof(this->local_addr));
+    memset(&this->remote_addr, 0, sizeof(this->remote_addr));
+  } else {
+    this->is_virtual_connection = false;
+    get_socket_addresses(fd, &this->local_addr, &this->remote_addr);
+  }
   memset(this->name, 0, sizeof(this->name));
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
 }

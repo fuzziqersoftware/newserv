@@ -33,23 +33,24 @@ struct ClientConfigBB {
 };
 
 struct Client {
-  // license & account
+  // License & account
   std::shared_ptr<const License> license;
   char16_t name[0x20];
   ClientConfigBB config;
   GameVersion version;
   uint16_t flags;
 
-  // encryption
+  // Encryption
   std::unique_ptr<PSOEncryption> crypt_in;
   std::unique_ptr<PSOEncryption> crypt_out;
 
-  // network
+  // Network
   struct sockaddr_storage local_addr;
   struct sockaddr_storage remote_addr;
   struct bufferevent* bev;
   struct sockaddr_storage next_connection_addr;
   ServerBehavior server_behavior;
+  bool is_virtual_connection;
   bool should_disconnect;
   std::string recv_buffer;
 

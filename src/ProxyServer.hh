@@ -24,6 +24,8 @@ public:
 
   void listen(int port);
 
+  void connect_client(struct bufferevent* bev);
+
   void send_to_client(const std::string& data);
   void send_to_server(const std::string& data);
 
@@ -63,6 +65,8 @@ private:
   void on_client_error(struct bufferevent* bev, short events);
   void on_server_input(struct bufferevent* bev);
   void on_server_error(struct bufferevent* bev, short events);
+
+  void on_client_connect(struct bufferevent* bev);
 
   size_t get_size_field(const PSOCommandHeader* header);
   size_t get_command_field(const PSOCommandHeader* header);

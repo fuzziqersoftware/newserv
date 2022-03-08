@@ -32,9 +32,12 @@ struct ServerState {
   };
 
   std::u16string name;
-  std::unordered_map<std::string, PortConfiguration> port_configuration;
+  std::unordered_map<std::string, PortConfiguration> named_port_configuration;
+  std::unordered_map<uint16_t, PortConfiguration> numbered_port_configuration;
   std::string username;
   uint16_t dns_server_port;
+  std::vector<std::string> ip_stack_addresses;
+  bool ip_stack_debug;
   bool allow_unregistered_users;
   RunShellBehavior run_shell_behavior;
   PSOBBEncryption::KeyFile default_key_file;
@@ -78,4 +81,7 @@ struct ServerState {
     uint64_t serial_number = 0, std::shared_ptr<Lobby> l = NULL);
 
   uint32_t connect_address_for_client(std::shared_ptr<Client> c);
+
+  void set_port_configuration(
+      const std::unordered_map<std::string, PortConfiguration>& named_port_configuration);
 };

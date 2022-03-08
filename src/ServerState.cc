@@ -6,6 +6,7 @@
 
 #include "SendCommands.hh"
 #include "NetworkAddresses.hh"
+#include "IPStackSimulator.hh"
 #include "Text.hh"
 
 using namespace std;
@@ -14,6 +15,7 @@ using namespace std;
 
 ServerState::ServerState()
   : dns_server_port(0),
+    ip_stack_debug(false),
     allow_unregistered_users(false),
     run_shell_behavior(RunShellBehavior::Default), next_lobby_id(1),
     pre_lobby_event(0) {
@@ -157,11 +159,33 @@ shared_ptr<Client> ServerState::find_client(const char16_t* identifier,
 }
 
 uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
-  // TODO: we can do something much smarter here, like use the sockname to find
-  // out which interface the client is connected to, and return that address
-  if (is_local_address(c->remote_addr)) {
-    return this->local_address;
+  if (c->is_virtual_connection) {
+    if (c->remote_addr.ss_family != AF_INET) {
+      throw logic_error("virtual connection is missing remote IPv4 address");
+    }
+    const auto* sin = reinterpret_cast<const sockaddr_in*>(&c->remote_addr);
+    return IPStackSimulator::connect_address_for_remote_address(
+        ntohl(sin->sin_addr.s_addr));
   } else {
-    return this->external_address;
+    // TODO: we can do something smarter here, like use the sockname to find
+    // out which interface the client is connected to, and return that address
+    if (is_local_address(c->remote_addr)) {
+      return this->local_address;
+    } else {
+      return this->external_address;
+    }
+  }
+}
+
+
+
+void ServerState::set_port_configuration(
+    const std::unordered_map<std::string, PortConfiguration>& named_port_configuration) {
+  this->named_port_configuration = named_port_configuration;
+  this->numbered_port_configuration.clear();
+  for (const auto& it : this->named_port_configuration) {
+    if (!this->numbered_port_configuration.emplace(it.second.port, it.second).second) {
+      throw runtime_error("duplicate port in configuration");
+    }
   }
 }

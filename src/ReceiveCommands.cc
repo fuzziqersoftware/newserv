@@ -43,8 +43,8 @@ enum ClientStateBB {
 void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
   switch (c->server_behavior) {
     case ServerBehavior::SplitReconnect: {
-      uint16_t pc_port = s->port_configuration.at("pc-login").port;
-      uint16_t gc_port = s->port_configuration.at("gc-jp10").port;
+      uint16_t pc_port = s->named_port_configuration.at("pc-login").port;
+      uint16_t gc_port = s->named_port_configuration.at("gc-jp10").port;
       send_pc_gc_split_reconnect(c, s->connect_address_for_client(c), pc_port, gc_port);
       c->should_disconnect = true;
       break;
@@ -373,7 +373,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case ClientStateBB::InitialLogin:
       // first login? send them to the other port
       send_reconnect(c, s->connect_address_for_client(c),
-          s->port_configuration.at("bb-data1").port);
+          s->named_port_configuration.at("bb-data1").port);
       break;
 
     case ClientStateBB::DownloadData: {
@@ -399,7 +399,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
     default:
       send_reconnect(c, s->connect_address_for_client(c),
-          s->port_configuration.at("bb-login").port);
+          s->named_port_configuration.at("bb-login").port);
   }
 }
 
@@ -626,7 +626,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
 
           send_reconnect(c, s->connect_address_for_client(c),
-              s->port_configuration.at(port_name).port);
+              s->named_port_configuration.at(port_name).port);
           break;
         }
 
@@ -842,7 +842,7 @@ void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
 
   send_reconnect(c, s->connect_address_for_client(c),
-      s->port_configuration.at(port_name).port);
+      s->named_port_configuration.at(port_name).port);
 }
 
 void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c,

@@ -36,10 +36,18 @@ void Server::disconnect_client(shared_ptr<Client> c) {
   struct bufferevent* bev = c->bev;
   c->bev = NULL;
 
+  int fd = bufferevent_getfd(bev);
+  if (fd < 0) {
+    log(INFO, "[Server] Client on virtual connection %p disconnected", bev);
+  } else {
+    log(INFO, "[Server] Client on fd %d disconnected", fd);
+  }
+
   // if the output buffer is not empty, move the client into the draining pool
   // instead of disconnecting it, to make sure all the data gets sent
   struct evbuffer* out_buffer = bufferevent_get_output(bev);
   if (evbuffer_get_length(out_buffer) == 0) {
+    bufferevent_flush(bev, EV_WRITE, BEV_FINISHED);
     bufferevent_free(bev);
   } else {
     // the callbacks will free it when all the data is sent or the client
@@ -98,13 +106,35 @@ void Server::on_listen_accept(struct evconnlistener* listener,
     return;
   }
 
-  log(INFO, "[Server] Client connected via fd %d", listen_fd);
+  log(INFO, "[Server] Client fd %d connected via fd %d", fd, listen_fd);
 
   struct bufferevent *bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   shared_ptr<Client> c(new Client(bev, listening_socket->version,
       listening_socket->behavior));
   this->bev_to_client.emplace(make_pair(bev, c));
+
+  bufferevent_setcb(bev, &Server::dispatch_on_client_input, NULL,
+      &Server::dispatch_on_client_error, this);
+  bufferevent_enable(bev, EV_READ | EV_WRITE);
+
+  process_connect(this->state, c);
+}
+
+void Server::connect_client(
+    struct bufferevent* bev, uint32_t address, uint16_t port,
+    GameVersion version, ServerBehavior initial_state) {
+  log(INFO, "[Server] Client connected on virtual connection %p", bev);
+
+  shared_ptr<Client> c(new Client(bev, version, initial_state));
+  this->bev_to_client.emplace(make_pair(bev, c));
+
+  // Manually set the remote address, since the bufferevent has no fd and the
+  // Client constructor can't figure out the virtual remote address
+  auto* sin = reinterpret_cast<sockaddr_in*>(&c->remote_addr);
+  sin->sin_family = AF_INET;
+  sin->sin_addr.s_addr = htonl(address);
+  sin->sin_port = htons(port);
 
   bufferevent_setcb(bev, &Server::dispatch_on_client_input, NULL,
       &Server::dispatch_on_client_error, this);
@@ -149,6 +179,7 @@ void Server::on_client_input(struct bufferevent* bev) {
 }
 
 void Server::on_disconnecting_client_output(struct bufferevent* bev) {
+  bufferevent_flush(bev, EV_WRITE, BEV_FINISHED);
   bufferevent_free(bev);
 }
 
@@ -171,6 +202,7 @@ void Server::on_disconnecting_client_error(struct bufferevent* bev,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
+    bufferevent_flush(bev, EV_WRITE, BEV_FINISHED);
     bufferevent_free(bev);
   }
 }
@@ -233,7 +265,7 @@ Server::Server(shared_ptr<struct event_base> base,
 void Server::listen(const string& socket_path, GameVersion version,
     ServerBehavior behavior) {
   int fd = ::listen(socket_path, 0, SOMAXCONN);
-  log(INFO, "[Server] Listening on unix socket %s (version %s) on fd %d",
+  log(INFO, "[Server] Listening on Unix socket %s (%s) on fd %d",
       socket_path.c_str(), name_for_version(version), fd);
   this->add_socket(fd, version, behavior);
 }
@@ -242,7 +274,7 @@ void Server::listen(const string& addr, int port, GameVersion version,
     ServerBehavior behavior) {
   int fd = ::listen(addr, port, SOMAXCONN);
   string netloc_str = render_netloc(addr, port);
-  log(INFO, "[Server] Listening on tcp interface %s (version %s) on fd %d",
+  log(INFO, "[Server] Listening on TCP interface %s (%s) on fd %d",
       netloc_str.c_str(), name_for_version(version), fd);
   this->add_socket(fd, version, behavior);
 }

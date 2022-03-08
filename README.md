@@ -27,7 +27,7 @@ This project is primarily for my own nostalgia. Feel free to peruse if you'd lik
 Currently this code should build on macOS and Ubuntu. It might build on other Linux flavors, but don't expect it to work on Windows at all.
 
 So, you've read all of the above and you want to try it out? Here's what you do:
-- Make sure you have CMake and libevent installed (use Homebrew in macOS, or install libevent-dev in Linux).
+- Make sure you have CMake and libevent installed.
 - Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 - Run `cmake . && make`.
 - Edit system/config.json to your liking.
@@ -36,17 +36,21 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 
 ### Connecting local clients
 
-If you're running PSO on a real GameCube, you can make PSO connect to newserv by changing its default gateway and DNS server addresses to newserv's address.
+If you're running PSO on a real GameCube, you can make it connect to newserv by setting its default gateway and DNS server addresses to newserv's address.
 
-If you're emulating PSO GC using Dolphin on Mac OS (like I am), you can make it connect to newserv by doing this:
+If you're emulating PSO GC using Dolphin on macOS (like I am), you can make it connect to a newserv instance running on the same machine by doing this:
 - Use a build of Dolphin that has tapserver support.
-- Install tapserver (https://github.com/fuzziqersoftware/tapserver).
-- In PSO, manually configure your network settings as follows: IP address = `192.168.0.200`, subnet mask = `255.255.255.0`, default gateway = `192.168.0.5`, DNS server address 1 = `192.168.0.5`.
-- Start Dolphin and newserv.
-- Run tapserver according to its instructions.
-- Start an online game, and it will connect to your local instance of newserv!
+- Enable the IP stack simulator according to the comments in config.json, and start newserv.
+- In PSO, you have to configure the network settings manually, but the actual values don't matter as long as they're valid IP addresses. Example values:
+  - IP address: `10.0.1.5`
+  - Subnet mask: `255.255.255.0`
+  - Default gateway: `10.0.1.1`
+  - DNS server address 1: `10.0.1.1`
+- Start an online game.
 
-If you want to play online on remote servers, newserv also includes a PSO proxy server. Run newserv like `./newserv --proxy-destination=1.1.1.1` (replace the IP address appropriately for the server you want to connect to).
+This setup works for all PSO versions, including Plus and Episode III.
+
+If you want to play online on remote servers, newserv also includes a PSO proxy server. Run newserv like `./newserv --proxy-destination=1.1.1.1` (replace the IP address appropriately for the server you want to connect to). Currently this works with PSO PC and GC, but not with BB.
 
 ### Connecting external clients
 
