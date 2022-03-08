@@ -423,7 +423,7 @@ static void command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby>,
 static void command_arrow(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   // no preconditions
-  c->lobby_arrow_color = stoull(encode_sjis(args), NULL, 0);
+  c->lobby_arrow_color = stoull(encode_sjis(args), nullptr, 0);
   if (!l->is_game()) {
     send_arrow_update(l);
   }
@@ -756,7 +756,7 @@ static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     return;
   }
 
-  uint64_t usecs = stoull(encode_sjis(args), NULL, 0) * 1000000;
+  uint64_t usecs = stoull(encode_sjis(args), nullptr, 0) * 1000000;
 
   size_t unit_offset = 0;
   for (; isdigit(args[unit_offset]); unit_offset++);
@@ -791,7 +791,7 @@ static void command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   check_is_game(l, true);
   check_cheats_enabled(l);
 
-  uint32_t area = stoul(encode_sjis(args), NULL, 0);
+  uint32_t area = stoul(encode_sjis(args), nullptr, 0);
   if (!l->episode || (l->episode > 3)) {
     return;
   }
@@ -917,7 +917,7 @@ void process_chat_command(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby>
     text_str.clear();
   }
 
-  const ChatCommandDefinition* def = NULL;
+  const ChatCommandDefinition* def = nullptr;
   try {
     def = &chat_commands.at(command_name);
   } catch (const out_of_range&) {

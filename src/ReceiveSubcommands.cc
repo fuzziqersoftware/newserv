@@ -758,7 +758,7 @@ static void process_subcommand_destroy_item(shared_ptr<ServerState>,
     if ((cmd->size != 3) || !l->is_game()) {
       return;
     }
-    l->remove_item(cmd->item_id, NULL);
+    l->remove_item(cmd->item_id, nullptr);
   }
 
   forward_subcommand(l, c, command, flag, p, count);

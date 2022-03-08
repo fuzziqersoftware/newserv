@@ -21,7 +21,7 @@ using namespace std;
 
 uint32_t resolve_address(const char* address) {
   struct addrinfo *res0;
-  if (getaddrinfo(address, NULL, NULL, &res0)) {
+  if (getaddrinfo(address, nullptr, nullptr, &res0)) {
     auto e = string_for_error(errno);
     throw runtime_error(string_printf("can\'t resolve hostname %s: %s", address,
         e.c_str()));
@@ -29,7 +29,7 @@ uint32_t resolve_address(const char* address) {
 
   std::unique_ptr<struct addrinfo, void(*)(struct addrinfo*)> res0_unique(
       res0, freeaddrinfo);
-  struct addrinfo *res4 = NULL;
+  struct addrinfo *res4 = nullptr;
   for (struct addrinfo* res = res0; res; res = res->ai_next) {
     if (res->ai_family == AF_INET) {
       res4 = res;

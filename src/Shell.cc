@@ -20,7 +20,7 @@ Shell::Shell(std::shared_ptr<struct event_base> base,
       &Shell::dispatch_read_stdin, this), event_free),
     prompt_event(event_new(this->base.get(), 0, EV_TIMEOUT,
       &Shell::dispatch_print_prompt, this), event_free) {
-  event_add(this->read_event.get(), NULL);
+  event_add(this->read_event.get(), nullptr);
 
   // schedule an event to print the prompt as soon as the event loop starts
   // running. we do this so the prompt appears after any initialization
@@ -61,7 +61,7 @@ void Shell::read_stdin() {
       if (!any_command_read) {
         // ctrl+d probably; we should exit
         fputc('\n', stderr);
-        event_base_loopexit(this->base.get(), NULL);
+        event_base_loopexit(this->base.get(), nullptr);
         return;
       } else {
         break; // probably not EOF; just no more commands for now
@@ -82,7 +82,7 @@ void Shell::read_stdin() {
     try {
       execute_command(command);
     } catch (const exit_shell&) {
-      event_base_loopexit(this->base.get(), NULL);
+      event_base_loopexit(this->base.get(), nullptr);
       return;
     } catch (const exception& e) {
       fprintf(stderr, "FAILED: %s\n", e.what());

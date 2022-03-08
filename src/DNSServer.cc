@@ -45,7 +45,7 @@ void DNSServer::add_socket(int fd) {
   unique_ptr<struct event, void(*)(struct event*)> e(event_new(this->base.get(),
         fd, EV_READ | EV_PERSIST, &DNSServer::dispatch_on_receive_message,
         this), event_free);
-  event_add(e.get(), NULL);
+  event_add(e.get(), nullptr);
   this->fd_to_receive_event.emplace(fd, move(e));
 }
 

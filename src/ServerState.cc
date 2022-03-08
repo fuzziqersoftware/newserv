@@ -134,7 +134,7 @@ shared_ptr<Client> ServerState::find_client(const char16_t* identifier,
   if ((serial_number == 0) && identifier) {
     try {
       string encoded = encode_sjis(identifier);
-      serial_number = stoull(encoded, NULL, 0);
+      serial_number = stoull(encoded, nullptr, 0);
     } catch (const exception&) { }
   }
 

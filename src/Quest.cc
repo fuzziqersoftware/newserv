@@ -200,7 +200,7 @@ Quest::Quest(const string& bin_filename)
   }
 
   // parse the number out of the first token
-  this->quest_id = strtoull(tokens[0].c_str() + 1, NULL, 10);
+  this->quest_id = strtoull(tokens[0].c_str() + 1, nullptr, 10);
 
   // get the category from the second token if needed
   if (this->category == QuestCategory::Unknown) {

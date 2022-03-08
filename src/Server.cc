@@ -34,7 +34,7 @@ void Server::disconnect_client(struct bufferevent* bev) {
 void Server::disconnect_client(shared_ptr<Client> c) {
   this->bev_to_client.erase(c->bev);
   struct bufferevent* bev = c->bev;
-  c->bev = NULL;
+  c->bev = nullptr;
 
   int fd = bufferevent_getfd(bev);
   if (fd < 0) {
@@ -52,7 +52,7 @@ void Server::disconnect_client(shared_ptr<Client> c) {
   } else {
     // the callbacks will free it when all the data is sent or the client
     // disconnects
-    bufferevent_setcb(bev, NULL,
+    bufferevent_setcb(bev, nullptr,
         Server::dispatch_on_disconnecting_client_output,
         Server::dispatch_on_disconnecting_client_error, this);
     bufferevent_disable(bev, EV_READ);
@@ -114,7 +114,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
       listening_socket->behavior));
   this->bev_to_client.emplace(make_pair(bev, c));
 
-  bufferevent_setcb(bev, &Server::dispatch_on_client_input, NULL,
+  bufferevent_setcb(bev, &Server::dispatch_on_client_input, nullptr,
       &Server::dispatch_on_client_error, this);
   bufferevent_enable(bev, EV_READ | EV_WRITE);
 
@@ -136,7 +136,7 @@ void Server::connect_client(
   sin->sin_addr.s_addr = htonl(address);
   sin->sin_port = htons(port);
 
-  bufferevent_setcb(bev, &Server::dispatch_on_client_input, NULL,
+  bufferevent_setcb(bev, &Server::dispatch_on_client_input, nullptr,
       &Server::dispatch_on_client_error, this);
   bufferevent_enable(bev, EV_READ | EV_WRITE);
 
@@ -147,7 +147,7 @@ void Server::on_listen_error(struct evconnlistener* listener) {
   int err = EVUTIL_SOCKET_ERROR();
   log(ERROR, "[Server] Failure on listening socket %d: %d (%s)",
       evconnlistener_get_fd(listener), err, evutil_socket_error_to_string(err));
-  event_base_loopexit(this->base.get(), NULL);
+  event_base_loopexit(this->base.get(), nullptr);
 }
 
 void Server::on_client_input(struct bufferevent* bev) {

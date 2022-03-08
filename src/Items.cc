@@ -219,7 +219,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
   }
 
   if (should_delete_item) {
-    c->player.remove_item(item.data.item_id, 1, NULL);
+    c->player.remove_item(item.data.item_id, 1, nullptr);
   }
 }
 

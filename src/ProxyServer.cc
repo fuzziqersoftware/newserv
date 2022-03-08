@@ -143,7 +143,7 @@ void ProxyServer::on_client_connect(struct bufferevent* bev) {
   this->client_bev.reset(bev);
 
   bufferevent_setcb(this->client_bev.get(),
-      &ProxyServer::dispatch_on_client_input, NULL,
+      &ProxyServer::dispatch_on_client_input, nullptr,
       &ProxyServer::dispatch_on_client_error, this);
   bufferevent_enable(this->client_bev.get(), EV_READ | EV_WRITE);
 
@@ -170,7 +170,7 @@ void ProxyServer::on_client_connect(struct bufferevent* bev) {
     throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
   }
   bufferevent_setcb(this->server_bev.get(),
-      &ProxyServer::dispatch_on_server_input, NULL,
+      &ProxyServer::dispatch_on_server_input, nullptr,
       &ProxyServer::dispatch_on_server_error, this);
   bufferevent_enable(this->server_bev.get(), EV_READ | EV_WRITE);
 }
@@ -179,7 +179,7 @@ void ProxyServer::on_listen_error(struct evconnlistener* listener) {
   int err = EVUTIL_SOCKET_ERROR();
   log(ERROR, "[ProxyServer] Failure on listening socket %d: %d (%s)",
       evconnlistener_get_fd(listener), err, evutil_socket_error_to_string(err));
-  event_base_loopexit(this->base.get(), NULL);
+  event_base_loopexit(this->base.get(), nullptr);
 }
 
 void ProxyServer::on_client_input(struct bufferevent*) {
@@ -263,7 +263,7 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
   struct bufferevent* dest_bev = from_server ? this->client_bev.get() : this->server_bev.get();
 
   struct evbuffer* source_buf = bufferevent_get_input(source_bev);
-  struct evbuffer* dest_buf = dest_bev ? bufferevent_get_output(dest_bev) : NULL;
+  struct evbuffer* dest_buf = dest_bev ? bufferevent_get_output(dest_bev) : nullptr;
 
   PSOEncryption* source_crypt = from_server ? this->server_input_crypt.get() : this->client_input_crypt.get();
   PSOEncryption* dest_crypt = from_server ? this->client_output_crypt.get() : this->server_output_crypt.get();

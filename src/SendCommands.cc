@@ -92,7 +92,7 @@ void send_command_excluding_client(shared_ptr<Lobby> l, shared_ptr<Client> c,
 
 void send_command(shared_ptr<Lobby> l, uint16_t command, uint32_t flag,
     const void* data, size_t size) {
-  send_command_excluding_client(l, NULL, command, flag, data, size);
+  send_command_excluding_client(l, nullptr, command, flag, data, size);
 }
 
 void send_command(shared_ptr<ServerState> s, uint16_t command, uint32_t flag,

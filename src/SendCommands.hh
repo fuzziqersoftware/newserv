@@ -31,17 +31,17 @@
 
 
 void send_command(std::shared_ptr<Client> c, uint16_t command,
-    uint32_t flag = 0, const void* data = NULL, size_t size = 0);
+    uint32_t flag = 0, const void* data = nullptr, size_t size = 0);
 
 void send_command_excluding_client(std::shared_ptr<Lobby> l,
     std::shared_ptr<Client> c, uint16_t command, uint32_t flag = 0,
-    const void* data = NULL, size_t size = 0);
+    const void* data = nullptr, size_t size = 0);
 
 void send_command(std::shared_ptr<Lobby> l, uint16_t command, uint32_t flag = 0,
-    const void* data = NULL, size_t size = 0);
+    const void* data = nullptr, size_t size = 0);
 
 void send_command(std::shared_ptr<ServerState> s, uint16_t command,
-    uint32_t flag = 0, const void* data = NULL, size_t size = 0);
+    uint32_t flag = 0, const void* data = nullptr, size_t size = 0);
 
 template <typename TARGET, typename STRUCT>
 void send_command(std::shared_ptr<TARGET> c, uint16_t command, uint32_t flag,

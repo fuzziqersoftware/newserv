@@ -173,7 +173,7 @@ void IPStackSimulator::on_listen_accept(struct evconnlistener* listener,
   c->sim = this;
   this->bev_to_client.emplace(make_pair(bev, c));
 
-  bufferevent_setcb(bev, &IPStackSimulator::dispatch_on_client_input, NULL,
+  bufferevent_setcb(bev, &IPStackSimulator::dispatch_on_client_input, nullptr,
       &IPStackSimulator::dispatch_on_client_error, this);
   bufferevent_enable(bev, EV_READ | EV_WRITE);
 }
@@ -187,7 +187,7 @@ void IPStackSimulator::on_listen_error(struct evconnlistener* listener) {
   int err = EVUTIL_SOCKET_ERROR();
   log(ERROR, "[IPStackSimulator] Failure on listening socket %d: %d (%s)",
       evconnlistener_get_fd(listener), err, evutil_socket_error_to_string(err));
-  event_base_loopexit(this->base.get(), NULL);
+  event_base_loopexit(this->base.get(), nullptr);
 }
 
 
@@ -742,8 +742,8 @@ void IPStackSimulator::open_server_connection(
   bufferevent_pair_new(this->base.get(), 0, bevs);
 
   // Set up the IPStackSimulator end of the virtual connection
-  bufferevent_setcb(bevs[0], &IPStackSimulator::dispatch_on_server_input, NULL,
-      &IPStackSimulator::dispatch_on_server_error, &conn);
+  bufferevent_setcb(bevs[0], &IPStackSimulator::dispatch_on_server_input,
+      nullptr, &IPStackSimulator::dispatch_on_server_error, &conn);
   bufferevent_enable(bevs[0], EV_READ | EV_WRITE);
   conn.server_bev.reset(bevs[0]);
 

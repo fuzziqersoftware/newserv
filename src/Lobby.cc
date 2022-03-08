@@ -101,7 +101,7 @@ void Lobby::remove_client(shared_ptr<Client> c) {
         static_cast<uint8_t>(other_c ? other_c->lobby_client_id : 0xFF)));
   }
 
-  this->clients[c->lobby_client_id] = NULL;
+  this->clients[c->lobby_client_id] = nullptr;
 
   // unassign the client's lobby if it matches the current lobby's id (it may
   // not match if the client was already added to another lobby - this can

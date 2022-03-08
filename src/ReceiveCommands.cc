@@ -206,10 +206,10 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   try {
     if (c->version == GameVersion::GC) {
       c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
-          NULL);
+          nullptr);
     } else {
       c->license = s->license_manager->verify_pc(serial_number, cmd->access_key,
-          NULL);
+          nullptr);
     }
   } catch (const exception& e) {
     if (!s->allow_unregistered_users) {
@@ -220,10 +220,10 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     } else {
       if (c->version == GameVersion::GC) {
         c->license = LicenseManager::create_license_gc(serial_number,
-            cmd->access_key, NULL);
+            cmd->access_key, nullptr);
       } else {
         c->license = LicenseManager::create_license_pc(serial_number,
-            cmd->access_key, NULL);
+            cmd->access_key, nullptr);
       }
     }
   }
@@ -300,10 +300,10 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   try {
     if (c->version == GameVersion::GC) {
       c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
-          NULL);
+          nullptr);
     } else {
       c->license = s->license_manager->verify_pc(serial_number, cmd->access_key,
-          NULL);
+          nullptr);
     }
   } catch (const exception& e) {
     if (!s->allow_unregistered_users) {
@@ -314,10 +314,10 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     } else {
       if (c->version == GameVersion::GC) {
         c->license = LicenseManager::create_license_gc(serial_number,
-            cmd->access_key, NULL);
+            cmd->access_key, nullptr);
       } else {
         c->license = LicenseManager::create_license_pc(serial_number,
-            cmd->access_key, NULL);
+            cmd->access_key, nullptr);
       }
     }
   }
@@ -899,7 +899,7 @@ void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  vector<MenuItem>* menu = NULL;
+  vector<MenuItem>* menu = nullptr;
   if ((c->version == GameVersion::BB) && flag) {
     menu = &quest_government_menu;
   } else {
@@ -1152,7 +1152,7 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
 
     } catch (const exception&) {
       // player doesn't exist
-      send_player_preview_bb(c, cmd->player_index, NULL);
+      send_player_preview_bb(c, cmd->player_index, nullptr);
     }
   }
 }
@@ -1338,7 +1338,7 @@ void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
   try {
-    auto result = s->find_client(NULL, cmd->target_serial_number);
+    auto result = s->find_client(nullptr, cmd->target_serial_number);
     auto result_lobby = s->find_lobby(result->lobby_id);
     send_card_search_result(s, c, result, result_lobby);
   } catch (const out_of_range&) { }
@@ -1367,7 +1367,7 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
-  auto target = s->find_client(NULL, cmd->target_serial_number);
+  auto target = s->find_client(nullptr, cmd->target_serial_number);
 
   // if the sender is blocked, don't forward the mail
   for (size_t y = 0; y < 30; y++) {
@@ -1770,433 +1770,395 @@ typedef void (*process_command_t)(shared_ptr<ServerState> s, shared_ptr<Client> 
 // array corresponding to the client's version is called.
 static process_command_t dc_handlers[0x100] = {
   // 00
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, process_chat_dc_gc, NULL,
-  process_game_list_request, process_menu_item_info_request, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, process_chat_dc_gc, nullptr,
+  process_game_list_request, process_menu_item_info_request, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // 10
-  process_menu_selection, NULL, NULL, process_ignored_command,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, NULL, NULL,
+  process_menu_selection, nullptr, nullptr, process_ignored_command,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, nullptr, nullptr,
 
   // 20
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 30
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 40
-  process_card_search, NULL, NULL, NULL,
-  process_ignored_command, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  process_card_search, nullptr, nullptr, nullptr,
+  process_ignored_command, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 50
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 60
-  process_game_command, NULL, process_game_command, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  process_game_command, process_game_command, NULL, process_client_ready,
+  process_game_command, nullptr, process_game_command, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  process_game_command, process_game_command, nullptr, process_client_ready,
 
   // 70
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 80
-  NULL, process_simple_mail, NULL, NULL,
-  process_change_lobby, NULL, NULL, NULL,
-  NULL, process_change_arrow_color, process_lobby_name_request, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, process_simple_mail, nullptr, nullptr,
+  process_change_lobby, nullptr, nullptr, nullptr,
+  nullptr, process_change_arrow_color, process_lobby_name_request, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // 90
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, process_client_checksum, NULL,
-  process_player_data, process_ignored_command, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, process_client_checksum, nullptr,
+  process_player_data, process_ignored_command, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // A0
-  process_change_ship, process_change_block, process_quest_list_request, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, NULL, NULL,
-  process_quest_ready, NULL, NULL, NULL,
+  process_change_ship, process_change_block, process_quest_list_request, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, nullptr, nullptr,
+  process_quest_ready, nullptr, nullptr, nullptr,
 
   // B0
-  NULL, process_server_time_request, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, process_server_time_request, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // C0
-  NULL, process_create_game_dc_gc, NULL, NULL,
-  NULL, NULL, process_set_blocked_list, process_set_auto_reply_dc_gc,
-  process_disable_auto_reply, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, process_create_game_dc_gc, nullptr, nullptr,
+  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_dc_gc,
+  process_disable_auto_reply, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // D0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  process_info_board_request, process_write_info_board_dc_gc, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  process_info_board_request, process_write_info_board_dc_gc, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // E0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // F0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
 static process_command_t pc_handlers[0x100] = {
   // 00
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, process_chat_pc_bb, NULL,
-  process_game_list_request, process_menu_item_info_request, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, process_chat_pc_bb, nullptr,
+  process_game_list_request, process_menu_item_info_request, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // 10
-  process_menu_selection, NULL, NULL, process_ignored_command,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, NULL, NULL,
+  process_menu_selection, nullptr, nullptr, process_ignored_command,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, nullptr, nullptr,
 
   // 20
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 30
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 40
-  process_card_search, NULL, NULL, NULL,
-  process_ignored_command, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  process_card_search, nullptr, nullptr, nullptr,
+  process_ignored_command, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 50
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 60
-  process_game_command, process_player_data, process_game_command, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  process_game_command, process_game_command, NULL, process_client_ready,
+  process_game_command, process_player_data, process_game_command, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  process_game_command, process_game_command, nullptr, process_client_ready,
 
   // 70
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 80
-  NULL, process_simple_mail, NULL, NULL,
-  process_change_lobby, NULL, NULL, NULL,
-  NULL, process_change_arrow_color, process_lobby_name_request, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, process_simple_mail, nullptr, nullptr,
+  process_change_lobby, nullptr, nullptr, nullptr,
+  nullptr, process_change_arrow_color, process_lobby_name_request, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // 90
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, process_client_checksum, NULL,
-  process_player_data, process_ignored_command, process_login_a_dc_pc_gc, NULL,
-  process_login_c_dc_pc_gc, process_login_d_e_pc_gc, process_login_d_e_pc_gc, NULL,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, process_client_checksum, nullptr,
+  process_player_data, process_ignored_command, process_login_a_dc_pc_gc, nullptr,
+  process_login_c_dc_pc_gc, process_login_d_e_pc_gc, process_login_d_e_pc_gc, nullptr,
 
   // A0
-  process_change_ship, process_change_block, process_quest_list_request, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, NULL, NULL,
-  process_quest_ready, NULL, NULL, NULL,
+  process_change_ship, process_change_block, process_quest_list_request, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, nullptr, nullptr,
+  process_quest_ready, nullptr, nullptr, nullptr,
 
   // B0
-  NULL, process_server_time_request, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, process_server_time_request, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // C0
-  NULL, process_create_game_pc, NULL, NULL,
-  NULL, NULL, process_set_blocked_list, process_set_auto_reply_pc_bb,
-  process_disable_auto_reply, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, process_create_game_pc, nullptr, nullptr,
+  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_pc_bb,
+  process_disable_auto_reply, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // D0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  process_info_board_request, process_write_info_board_pc_bb, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  process_info_board_request, process_write_info_board_pc_bb, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // E0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // F0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
 static process_command_t gc_handlers[0x100] = {
   // 00
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, process_chat_dc_gc, NULL,
-  process_game_list_request, process_menu_item_info_request, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, process_chat_dc_gc, nullptr,
+  process_game_list_request, process_menu_item_info_request, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // 10
-  process_menu_selection, NULL, NULL, process_ignored_command,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, NULL, NULL,
+  process_menu_selection, nullptr, nullptr, process_ignored_command,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, nullptr, nullptr,
 
   // 20
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 30
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 40
-  process_card_search, NULL, NULL, NULL,
-  process_ignored_command, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  process_card_search, nullptr, nullptr, nullptr,
+  process_ignored_command, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // 50
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 60
-  process_game_command, process_player_data, process_game_command, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  process_game_command, process_game_command, NULL, process_client_ready,
+  process_game_command, process_player_data, process_game_command, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  process_game_command, process_game_command, nullptr, process_client_ready,
 
   // 70
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 80
-  NULL, process_simple_mail, NULL, NULL,
-  process_change_lobby, NULL, NULL, NULL,
-  NULL, process_change_arrow_color, process_lobby_name_request, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, process_simple_mail, nullptr, nullptr,
+  process_change_lobby, nullptr, nullptr, nullptr,
+  nullptr, process_change_arrow_color, process_lobby_name_request, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // 90
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, process_client_checksum, NULL,
-  process_player_data, process_ignored_command, NULL, NULL,
-  process_login_c_dc_pc_gc, process_login_d_e_pc_gc, process_login_d_e_pc_gc, NULL,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, process_client_checksum, nullptr,
+  process_player_data, process_ignored_command, nullptr, nullptr,
+  process_login_c_dc_pc_gc, process_login_d_e_pc_gc, process_login_d_e_pc_gc, nullptr,
 
   // A0
-  process_change_ship, process_change_block, process_quest_list_request, NULL,
-  NULL, NULL, process_start_download_quest, process_ignored_command,
-  NULL, process_ignored_command, NULL, NULL,
-  process_quest_ready, NULL, NULL, NULL,
+  process_change_ship, process_change_block, process_quest_list_request, nullptr,
+  nullptr, nullptr, process_start_download_quest, process_ignored_command,
+  nullptr, process_ignored_command, nullptr, nullptr,
+  process_quest_ready, nullptr, nullptr, nullptr,
 
   // B0
-  NULL, process_server_time_request, NULL, NULL,
-  NULL, NULL, NULL, process_ignored_command,
-  process_ignored_command, NULL, process_ep3_jukebox, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, process_server_time_request, nullptr, nullptr,
+  nullptr, nullptr, nullptr, process_ignored_command,
+  process_ignored_command, nullptr, process_ep3_jukebox, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // C0
-  process_choice_search, process_create_game_dc_gc, NULL, NULL,
-  NULL, NULL, process_set_blocked_list, process_set_auto_reply_dc_gc,
+  process_choice_search, process_create_game_dc_gc, nullptr, nullptr,
+  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_dc_gc,
   process_disable_auto_reply, process_game_command, process_ep3_server_data_request, process_game_command,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr,
 
   // D0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, process_message_box_closed, process_gba_file_request,
-  process_info_board_request, process_write_info_board_dc_gc, NULL, process_verify_license_gc,
-  process_ep3_menu_challenge, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, process_message_box_closed, process_gba_file_request,
+  process_info_board_request, process_write_info_board_dc_gc, nullptr, process_verify_license_gc,
+  process_ep3_menu_challenge, nullptr, nullptr, nullptr,
 
   // E0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  process_create_game_dc_gc, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  process_create_game_dc_gc, nullptr, nullptr, nullptr,
 
   // F0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
 static process_command_t bb_handlers[0x100] = {
   // 00
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, process_chat_pc_bb, NULL,
-  process_game_list_request, process_menu_item_info_request, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, process_chat_pc_bb, nullptr,
+  process_game_list_request, process_menu_item_info_request, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // 10
-  process_menu_selection, NULL, NULL, process_ignored_command,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, NULL, NULL,
+  process_menu_selection, nullptr, nullptr, process_ignored_command,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, nullptr, nullptr,
 
   // 20
-  NULL, NULL, process_ignored_command, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, process_ignored_command, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 30
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 40
-  process_card_search, NULL, NULL, NULL,
-  process_ignored_command, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  process_card_search, nullptr, nullptr, nullptr,
+  process_ignored_command, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // 50
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 60
-  process_game_command, process_player_data, process_game_command, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  process_game_command, process_game_command, NULL, process_client_ready,
+  process_game_command, process_player_data, process_game_command, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  process_game_command, process_game_command, nullptr, process_client_ready,
 
   // 70
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 80
-  NULL, process_simple_mail, NULL, NULL,
-  process_change_lobby, NULL, NULL, NULL,
-  NULL, process_change_arrow_color, process_lobby_name_request, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, process_simple_mail, nullptr, nullptr,
+  process_change_lobby, nullptr, nullptr, nullptr,
+  nullptr, process_change_arrow_color, process_lobby_name_request, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // 90
-  NULL, NULL, NULL, process_login_bb,
-  NULL, NULL, NULL, NULL,
-  process_player_data, process_ignored_command, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, process_login_bb,
+  nullptr, nullptr, nullptr, nullptr,
+  process_player_data, process_ignored_command, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // A0
-  process_change_ship, process_change_block, process_quest_list_request, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, process_ignored_command, NULL, NULL,
-  process_quest_ready, NULL, NULL, NULL,
+  process_change_ship, process_change_block, process_quest_list_request, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, process_ignored_command, nullptr, nullptr,
+  process_quest_ready, nullptr, nullptr, nullptr,
 
   // B0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // C0
-  NULL, process_create_game_bb, NULL, NULL,
-  NULL, NULL, process_set_blocked_list, process_set_auto_reply_pc_bb,
-  process_disable_auto_reply, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, process_create_game_bb, nullptr, nullptr,
+  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_pc_bb,
+  process_disable_auto_reply, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // D0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  process_info_board_request, process_write_info_board_pc_bb, NULL, NULL,
-  process_guild_card_data_request_bb, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  process_info_board_request, process_write_info_board_pc_bb, nullptr, nullptr,
+  process_guild_card_data_request_bb, nullptr, nullptr, nullptr,
 
   // E0
-  process_key_config_request_bb, NULL, NULL, process_player_preview_request_bb,
-  NULL, process_create_character_bb, NULL, process_return_player_data_bb,
-  process_client_checksum_bb, NULL, process_team_command_bb, process_stream_file_request_bb,
-  process_ignored_command, process_change_account_data_bb, NULL, NULL,
+  process_key_config_request_bb, nullptr, nullptr, process_player_preview_request_bb,
+  nullptr, process_create_character_bb, nullptr, process_return_player_data_bb,
+  process_client_checksum_bb, nullptr, process_team_command_bb, process_stream_file_request_bb,
+  process_ignored_command, process_change_account_data_bb, nullptr, nullptr,
 
   // F0
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
 static process_command_t patch_handlers[0x100] = {
   // 00
-  NULL, NULL, process_encryption_ok_patch, NULL,
-  process_login_patch, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL,
+  nullptr, nullptr, process_encryption_ok_patch, nullptr,
+  process_login_patch, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 10
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 20
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 30
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 40
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 50
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 60
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 70
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 80
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 90
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // A0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // B0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // C0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // D0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // E0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // F0
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  // 10
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // 20
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // 30
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // 40
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // 50
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // 60
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // 70
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // 80
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // 90
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // A0
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // B0
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // C0
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // D0
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // E0
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  // F0
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
 static process_command_t* handlers[6] = {

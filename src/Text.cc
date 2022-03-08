@@ -63,8 +63,8 @@ static void load_sjis_tables() {
     if (tokens.size() < 2) {
       continue;
     }
-    char16_t sjis_char = stoul(tokens[0], NULL, 0);
-    char16_t unicode_char = stoul(tokens[1], NULL, 0);
+    char16_t sjis_char = stoul(tokens[0], nullptr, 0);
+    char16_t unicode_char = stoul(tokens[1], nullptr, 0);
 
     unicode_to_sjis_table_data[unicode_char] = sjis_char;
     sjis_to_unicode_table_data[sjis_char] = unicode_char;
