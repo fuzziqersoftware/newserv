@@ -19,14 +19,9 @@ using namespace std;
 struct PSODownloadQuestHeader {
   // When sending a DLQ to the client, this is the DECOMPRESSED size. When
   // reading it from a GCI file, this is the COMPRESSED size.
-  uint32_t size;
+  be_uint32_t size;
   // Note: use PSO PC encryption, even for GC quests.
-  uint32_t encryption_seed;
-
-  void byteswap() {
-    this->size = bswap32(this->size);
-    this->encryption_seed = bswap32(this->encryption_seed);
-  }
+  be_uint32_t encryption_seed;
 };
 
 
@@ -367,7 +362,6 @@ string Quest::decode_gci(const string& filename) {
   }
   PSODownloadQuestHeader* h = reinterpret_cast<PSODownloadQuestHeader*>(
       data.data() + 0x2080);
-  h->byteswap();
 
   string compressed_data_with_header = data.substr(0x2088, h->size);
 

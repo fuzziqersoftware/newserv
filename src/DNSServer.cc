@@ -105,7 +105,7 @@ void DNSServer::on_receive_message(int fd, short) {
 
     } else {
       input.resize(bytes);
-      uint32_t remote_address = bswap32(remote.sin_addr.s_addr);
+      uint32_t remote_address = ntohl(remote.sin_addr.s_addr);
       uint32_t connect_address = is_local_address(remote_address)
           ? this->local_connect_address
           : this->external_connect_address;

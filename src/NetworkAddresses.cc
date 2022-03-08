@@ -41,7 +41,7 @@ uint32_t resolve_address(const char* address) {
   }
 
   struct sockaddr_in* res_sin = (struct sockaddr_in*)res4->ai_addr;
-  return bswap32(res_sin->sin_addr.s_addr);
+  return ntohl(res_sin->sin_addr.s_addr);
 }
 
 map<string, uint32_t> get_local_addresses() {
@@ -64,7 +64,7 @@ map<string, uint32_t> get_local_addresses() {
       continue;
     }
 
-    ret.emplace(i->ifa_name, bswap32(sin->sin_addr.s_addr));
+    ret.emplace(i->ifa_name, ntohl(sin->sin_addr.s_addr));
   }
 
   return ret;
@@ -83,7 +83,7 @@ bool is_local_address(const sockaddr_storage& daddr) {
     return false;
   }
   const sockaddr_in* sin = reinterpret_cast<const sockaddr_in*>(&daddr);
-  return is_local_address(bswap32(sin->sin_addr.s_addr));
+  return is_local_address(ntohl(sin->sin_addr.s_addr));
 }
 
 string string_for_address(uint32_t address) {
@@ -93,5 +93,5 @@ string string_for_address(uint32_t address) {
 }
 
 uint32_t address_for_string(const char* address) {
-  return bswap32(inet_addr(address));
+  return ntohl(inet_addr(address));
 }

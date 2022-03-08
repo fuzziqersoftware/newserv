@@ -251,10 +251,12 @@ void send_update_client_config(shared_ptr<Client> c) {
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
   struct {
-    uint32_t address;
+    // The address is big-endian, for some reason. Probably it was defined as a
+    // uint8_t[4] in the original PSO source rather than a uint32_t
+    be_uint32_t address;
     uint16_t port;
     uint16_t unused;
-  } cmd = {bswap32(address), port, 0};
+  } cmd = {address, port, 0};
   send_command(c, 0x19, 0x00, cmd);
 }
 
@@ -263,22 +265,22 @@ void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
 void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
     uint16_t pc_port, uint16_t gc_port) {
   struct {
-    uint32_t pc_address;
+    be_uint32_t pc_address;
     uint16_t pc_port;
     uint8_t unused1[0x0F];
     uint8_t gc_command;
     uint8_t gc_flag;
     uint16_t gc_size;
-    uint32_t gc_address;
+    be_uint32_t gc_address;
     uint16_t gc_port;
     uint8_t unused2[0xB0 - 0x23];
   } cmd;
   memset(&cmd, 0, sizeof(cmd));
-  cmd.pc_address = bswap32(address);
+  cmd.pc_address = address;
   cmd.pc_port = pc_port;
   cmd.gc_command = 0x19;
   cmd.gc_size = 0x97;
-  cmd.gc_address = bswap32(address);
+  cmd.gc_address = address;
   cmd.gc_port = gc_port;
   send_command(c, 0x19, 0x00, cmd);
 }
