@@ -953,19 +953,19 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_forward_check_size,
   // 20
   process_subcommand_forward_check_size,
-  process_subcommand_change_area,
+  process_subcommand_change_area, // Inter-level warp
   process_subcommand_forward_check_size_client,
   process_subcommand_forward_check_size_client,
   process_subcommand_forward_check_size_game,
-  process_subcommand_equip_unequip_item,
-  process_subcommand_equip_unequip_item,
+  process_subcommand_equip_unequip_item, // Equip item
+  process_subcommand_equip_unequip_item, // Unequip item
   process_subcommand_use_item,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game, // Feed MAG
   process_subcommand_forward_check_size_game,
   process_subcommand_drop_item,
-  process_subcommand_unimplemented,
-  process_subcommand_forward_check_size,
-  process_subcommand_forward_check_size,
+  process_subcommand_forward_check_size_game,
+  process_subcommand_forward_check_size, // Talk to NPC
+  process_subcommand_forward_check_size, // Done talking to NPC
   process_subcommand_unimplemented,
   process_subcommand_hit_by_monster,
   // 30
@@ -983,12 +983,12 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_forward_check_size,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
-  process_subcommand_forward_check_size,
+  process_subcommand_forward_check_size, // Stop moving
   process_subcommand_forward_check_size,
   // 40
-  process_subcommand_forward_check_size,
+  process_subcommand_forward_check_size, // Walk
   process_subcommand_unimplemented,
-  process_subcommand_forward_check_size,
+  process_subcommand_forward_check_size, // Run
   process_subcommand_forward_check_size_client,
   process_subcommand_forward_check_size_client,
   process_subcommand_forward_check_size_client,
@@ -1005,10 +1005,10 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   // 50
   process_subcommand_forward_check_size_client,
   process_subcommand_unimplemented,
-  process_subcommand_forward_check_size,
+  process_subcommand_forward_check_size, // Toggle shop/bank interaction
   process_subcommand_forward_check_size_game,
   process_subcommand_unimplemented,
-  process_subcommand_forward_check_size_client,
+  process_subcommand_forward_check_size_client, // Intra-map warp
   process_subcommand_forward_check_size_client,
   process_subcommand_forward_check_size_client,
   process_subcommand_unimplemented,
@@ -1017,7 +1017,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game,
   process_subcommand_forward_check_size_game,
   // 60
   process_subcommand_enemy_drop_item,
@@ -1083,7 +1083,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
