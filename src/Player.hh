@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <phosg/Encoding.hh>
 
 #include "Version.hh"
 
@@ -260,7 +261,7 @@ struct PlayerAccountDataBB {
 struct PlayerLobbyDataPC {
   uint32_t player_tag;
   uint32_t guild_card;
-  uint32_t ip_address;
+  be_uint32_t ip_address;
   uint32_t client_id;
   char16_t name[16];
 };
@@ -268,7 +269,7 @@ struct PlayerLobbyDataPC {
 struct PlayerLobbyDataGC {
   uint32_t player_tag;
   uint32_t guild_card;
-  uint32_t ip_address;
+  be_uint32_t ip_address;
   uint32_t client_id;
   char name[16];
 };

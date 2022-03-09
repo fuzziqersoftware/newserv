@@ -1347,7 +1347,9 @@ static void send_join_game_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     } else {
       cmd.lobby_data[x].player_tag = 0x00010000;
       cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-      cmd.lobby_data[x].ip_address = 0x00000000;
+      // See comment in send_join_lobby_gc about Episode III behavior here. Even
+      // though this doesn't apply to PSO PC, it's better to be consistent.
+      cmd.lobby_data[x].ip_address = 0x7F000001;
       cmd.lobby_data[x].client_id = c->lobby_client_id;
       char16cpy(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
       player_count++;
@@ -1399,7 +1401,8 @@ static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     } else {
       cmd.lobby_data[x].player_tag = 0x00010000;
       cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-      cmd.lobby_data[x].ip_address = 0x00000000;
+      // See comment in send_join_lobby_gc about Episode III behavior here.
+      cmd.lobby_data[x].ip_address = 0x7F000001;
       cmd.lobby_data[x].client_id = c->lobby_client_id;
       encode_sjis(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
       if (l->flags & LobbyFlag::Episode3) {
@@ -1511,7 +1514,9 @@ static void send_join_lobby_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = l->clients[x]->license->serial_number;
-    e.lobby_data.ip_address = 0x00000000;
+    // See comment in send_join_lobby_gc about Episode III behavior here. Even
+    // though this doesn't apply to PSO PC, it's better to be consistent.
+    e.lobby_data.ip_address = 0x7F000001;
     e.lobby_data.client_id = l->clients[x]->lobby_client_id;
     char16cpy(e.lobby_data.name, l->clients[x]->player.disp.name, 0x10);
     e.data = l->clients[x]->player.export_lobby_data_pc();
@@ -1566,7 +1571,11 @@ static void send_join_lobby_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = l->clients[x]->license->serial_number;
-    e.lobby_data.ip_address = 0x00000000;
+    // There's a strange behavior (bug? "feature"?) in Episode 3 where the start
+    // button does nothing in the lobby (hence you can't "quit game") if the
+    // client's IP address is zero. So, we fill it in with a fake nonzero value
+    // to avoid this behavior.
+    e.lobby_data.ip_address = 0x7F000001;
     e.lobby_data.client_id = l->clients[x]->lobby_client_id;
     encode_sjis(e.lobby_data.name, l->clients[x]->player.disp.name, 0x10);
     e.data = l->clients[x]->player.export_lobby_data_gc();
