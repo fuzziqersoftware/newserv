@@ -371,6 +371,10 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     c->bb_player_index = 0;
   }
 
+  if ((c->flags & ClientFlag::Episode3Games) && (s->ep3_menu_song >= 0)) {
+    send_ep3_change_music(c, s->ep3_menu_song);
+  }
+
   send_update_client_config(c);
 
   process_login_complete(s, c);

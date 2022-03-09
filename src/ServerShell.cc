@@ -57,7 +57,13 @@ Commands:\n\
     Enable or disable allowing unregistered users on the server. Disabling this\n\
     does not disconnect unregistered users who are already connected.\n\
   set-event <event>\n\
-    Set the event in all lobbies.\n\
+    Set the event in all lobbies, and in the main menu before joining a lobby.\n\
+    <event> can be none, xmas, val, easter, hallo, sonic, newyear, summer,\n\
+    white, wedding, fall, s-spring, s-summer, or spring.\n\
+  set-ep3-menu-song <song-num>\n\
+    Set the song that plays in the main menu for Episode III clients. If an\n\
+    event is also set, the event's visuals appear but this song still plays.\n\
+    Song IDs are 0 through 51; the default song is -1.\n\
   announce <message>\n\
     Send an announcement message to all players.\n\
 ");
@@ -175,6 +181,9 @@ Commands:\n\
       l->event = event_id;
     }
     send_change_event(this->state, event_id);
+
+  } else if (command_name == "set-ep3-menu-song") {
+    this->state->ep3_menu_song = stoul(command_args, nullptr, 0);
 
   } else if (command_name == "announce") {
     u16string message16 = decode_sjis(command_args);

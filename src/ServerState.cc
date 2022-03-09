@@ -18,7 +18,8 @@ ServerState::ServerState()
     ip_stack_debug(false),
     allow_unregistered_users(false),
     run_shell_behavior(RunShellBehavior::Default), next_lobby_id(1),
-    pre_lobby_event(0) {
+    pre_lobby_event(0),
+    ep3_menu_song(-1) {
   memset(&this->default_key_file, 0, sizeof(this->default_key_file));
 
   this->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",

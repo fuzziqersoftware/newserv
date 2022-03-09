@@ -56,6 +56,7 @@ struct ServerState {
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
   std::atomic<int32_t> next_lobby_id;
   uint8_t pre_lobby_event;
+  int32_t ep3_menu_song;
 
   std::map<std::string, uint32_t> all_addresses;
   uint32_t local_address;
