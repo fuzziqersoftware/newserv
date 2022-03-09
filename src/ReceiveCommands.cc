@@ -1523,6 +1523,8 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   if (((episode != 0xFF) && (episode > 3)) || (episode == 0)) {
     throw invalid_argument("incorrect episode number");
   }
+  bool is_ep3 = (episode == 0xFF);
+
   if (difficulty > 3) {
     throw invalid_argument("incorrect difficulty level");
   }
@@ -1556,15 +1558,17 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   game->event = Lobby::game_event_for_lobby_event(current_lobby->event);
   game->block = 0xFF;
   game->max_clients = 4;
-  game->flags = ((game->episode != 0xFF) ? 0 : LobbyFlag::Episode3) | LobbyFlag::IsGame;
+  game->flags = (is_ep3 ? LobbyFlag::Episode3 : 0) | LobbyFlag::IsGame;
   game->min_level = min_level;
   game->max_level = 0xFFFFFFFF;
 
-  // TODO: cache these somewhere so we don't read the file every time, lolz
-  game->rare_item_set.reset(new RareItemSet("system/blueburst/ItemRT.rel",
-      game->episode - 1, game->difficulty, game->section_id));
+  log(INFO, "[Debug] create game: %p->flags = %08" PRIX32, game.get(), game->flags);
 
   if (game->version == GameVersion::BB) {
+    // TODO: cache these somewhere so we don't read the file every time, lolz
+    game->rare_item_set.reset(new RareItemSet("system/blueburst/ItemRT.rel",
+        game->episode - 1, game->difficulty, game->section_id));
+
     for (size_t x = 0; x < 4; x++) {
       game->next_item_id[x] = (0x00200000 * x) + 0x00010000;
     }

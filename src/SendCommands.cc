@@ -1424,8 +1424,10 @@ static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   cmd.rare_seed = l->rare_seed;
   cmd.episode = l->episode;
 
-  // player is only sent in ep3 games
-  size_t data_size = (l->flags & LobbyFlag::Episode3) ? 0x1184 : 0x0110;
+  // player data is only sent in Episode III games; in other versions, the
+  // players send each other their data using 62/6D commands during loading
+  size_t data_size = (l->flags & LobbyFlag::Episode3)
+      ? sizeof(cmd) : (sizeof(cmd) - sizeof(cmd.player));
   send_command(c, 0x64, player_count, &cmd, data_size);
 }
 

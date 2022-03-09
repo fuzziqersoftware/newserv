@@ -10,12 +10,10 @@
 #include "RareItemSet.hh"
 
 enum LobbyFlag {
-  // games and lobbies are actually the same thing - games have negative IDs,
-  // lobbies have IDs >= 0
   IsGame = 0x01,
   CheatsEnabled = 0x02, // game only
   Public = 0x04, // lobby only
-  Episode3 = 0x08, // lobby only
+  Episode3 = 0x08, // lobby & game
   QuestInProgress = 0x10, // game only
   JoinableQuestInProgress = 0x20, // game only
   Default = 0x40, // lobby only; not set for games and private lobbies
