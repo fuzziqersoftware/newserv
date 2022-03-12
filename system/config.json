@@ -5,28 +5,29 @@
   "ServerName": "Alexandria",
 
   // Address to connect local clients to (IP address or interface name)
-  "LocalAddress": "192.168.0.5",
-  // Address to connect external clients to (IP address or interface name)
-  "ExternalAddress": "en0",
+  "LocalAddress": "en0",
+  // Address to connect external clients to (IP address or interface name). If
+  // you're running newserv behind a NAT, this should be your router's external
+  // address.
+  "ExternalAddress": "10.0.1.5",
 
   // Port to listen for DNS queries on. The DNS server is disabled by default;
   // to enable it, uncomment this line.
   // "DNSServerPort": 53,
 
   // Where to listen for IP stack clients. This exists to interface with PSO GC
-  // clients running in a local Dolphin emulatorl; the default value given here
-  // matches the path that Dolphin uses for BBA connections. (To disable this,
-  // comment out this line.) To enable local Dolphin clients to connect, set
-  // this to ["/tmp/dolphin-tap"] and configure Dolphin to use the tapserver
+  // clients running in a local Dolphin emulator; the default value given here
+  // matches the socket path that Dolphin uses for BBA connections. (To disable
+  // this, comment out this line.) To enable local Dolphin clients to connect,
+  // set this to ["/tmp/dolphin-tap"] and configure Dolphin to use the tapserver
   // type of broadband adapter. You do not need to install or run tapserver. See
   // README.md for details on how to get PSO to connect via this interface.
-  // If you're doing inadvisable things, you can also add numbers or
-  // "address:port" strings to this list to listen for tapserver connections on
-  // a TCP port.
+  // If you're doing unusual things, you can also add numbers or "address:port"
+  // strings to this list to listen for tapserver connections on a TCP port.
   "IPStackListen": ["/tmp/dolphin-tap"],
 
   // Set this to true to show a lot of debugging information from the IP stack
-  // simulator.
+  // simulator. This is generally only useful for finding bugs in the interface.
   // "IPStackDebug": true,
 
   // By default, the interactive shell runs if stdin is a terminal, and doesn't
@@ -34,8 +35,9 @@
   // "RunInteractiveShell": false,
 
   // By default, the server only allows users who are registered in the license
-  // file. By enabling this option, all users will be allowed to connect. This
-  // option has no effect for Blue Burst clients. Keep in mind that unregistered
+  // file to connect. By enabling this option, all users will be allowed to
+  // connect. This option has no effect for Blue Burst clients; they are always
+  // required to be registered before connecting. Keep in mind that unregistered
   // users cannot be banned!
   "AllowUnregisteredUsers": false,
 
@@ -75,9 +77,10 @@
   // upon first connecting.
   "WelcomeMessage": "Welcome to $C6Alexandria$C7, a private PSO server\npowered by newserv.",
 
-  // Item drop rates for non-rare items. For each type (boxes or enemies), all
-  // the categories must add up to a number less than 0x100000000. Each number
-  // is a probability (out of 0x100000000) that the given item type will appear.
+  // Item drop rates for non-rare items in BB games. For each type (boxes or
+  // enemies), all the categories must add up to a number less than 0x100000000.
+  // Each number is a probability (out of 0x100000000) that the given item type
+  // will appear.
   "CommonItemDropRates-Enemy": [
     0x03000000, // material
     0x20000000, // equipment
@@ -99,9 +102,9 @@
     0x80000000, // meseta
   ],
 
-  // Unit drop rates for non-rare items. Each entry is an array of unit types,
-  // one array per difficulty. Each entry in the array has an equal probability
-  // of dropping. If a unit type is 0xFF, then no item will drop.
+  // Unit drop rates for non-rare items in BB games. Each entry is an array of
+  // unit types, one array per difficulty. Each entry in the array has an equal
+  // probability of dropping. If a unit type is 0xFF, then no item will drop.
   "CommonUnitTypes": [
     // normal
     [0x00, 0x00, 0x00, 0x04, 0x04, 0x04, 0x08, 0x08, 0x08, 0x0C, 0x0C, 0x0C,

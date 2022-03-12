@@ -4,7 +4,9 @@ newserv is a game server for Phantasy Star Online (PSO).
 
 This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself; this data was originally created by Sega.
 
-This project is a rewrite of a rewrite of a game server that I wrote many years ago. In its current state, do not expect this server to work well - it's not very thoroughly tested and probably won't be anytime soon. But with that said, newserv does handle a single player on PSO GameCube pretty well - lobbies work, games work, quests work, chat commands (including cheat modes) work, things don't break. I haven't tested it with multiple players yet, but there are probably only minor bugs. newserv probably doesn't work at all for other versions of PSO, since I haven't tested them yet.
+This project is a rewrite of a rewrite of a game server that I wrote many years ago. So far, it works rather well with PSO GC Episodes 1 & 2, and lobbies (but not games) are implemented on Episode 3. newserv probably doesn't work at all for other versions of PSO (DC/PC/BB), since I haven't tested them yet.
+
+Feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
 
 ## History
 
@@ -22,14 +24,15 @@ Sometime in October 2018, I had some random cause to reminisce. I looked back in
 
 This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance.
 
-Current issues / missing features:
-- Download quests are mostly implemented, but the client doesn't always accept them. It's probably a format issue in file generation. Fix this.
+Current known issues / missing features:
+- Download quests are mostly implemented, but the client doesn't always accept them. It's probably a format issue in file generation.
+- Test all the communication features (info board, simple mail, card search, etc.)
 - PSO PC and PSOBB are essentially entirely untested. Only GC is fairly well-tested.
 - Add all the chat commands that khyller used to have. (Most, but not all, currently exist in newserv.)
 
 ## Usage
 
-Currently this code should build on macOS and Ubuntu. It might build on other Linux flavors, but don't expect it to work on Windows at all.
+Currently this code should build on macOS and Ubuntu. It will likely work on other Linux flavors too, but probably will not work on Windows.
 
 So, you've read all of the above and you want to try it out? Here's what you do:
 - Make sure you have CMake and libevent installed.
@@ -41,9 +44,9 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 
 ### Connecting local clients
 
-If you're running PSO on a real GameCube, you can make it connect to newserv by setting its default gateway and DNS server addresses to newserv's address. Note that newserv's DNS server is disabled by default; you'll have to enable it in config.json.
+If you're running PSO on a real GameCube, you can make it connect to newserv by setting its default gateway and DNS server addresses to newserv's address. Note that newserv's DNS server is disabled by default; you'll have to enable it in config.json. If you have PSO Plus or Episode III, you'll have to do some DNS trickery (not documented here) to get it to connect to a server on the same local network.
 
-If you're emulating PSO GC using Dolphin on macOS (like I am), you can make it connect to a newserv instance running on the same machine by doing this:
+If you're emulating PSO GC using Dolphin on macOS, you can make it connect to a newserv instance running on the same machine via the tapserver interface. This works for all PSO versions, including Plus and Episode III. To do this:
 - Use a build of Dolphin that has tapserver support.
 - Enable the IP stack simulator according to the comments in config.json, and start newserv.
 - In PSO, you have to configure the network settings manually, but the actual values don't matter as long as they're valid IP addresses. Example values:
@@ -51,11 +54,10 @@ If you're emulating PSO GC using Dolphin on macOS (like I am), you can make it c
   - Subnet mask: `255.255.255.0`
   - Default gateway: `10.0.1.1`
   - DNS server address 1: `10.0.1.1`
+  - Leave everything else blank
 - Start an online game.
 
-This setup works for all PSO versions, including Plus and Episode III.
-
-If you want to play online on remote servers, newserv also includes a PSO proxy server. Run newserv like `./newserv --proxy-destination=1.1.1.1` (replace the IP address appropriately for the server you want to connect to). Currently this works with PSO PC and GC, but not with BB.
+If you want to play online on remote servers, newserv also includes a PSO proxy server. Run newserv like `./newserv --proxy-destination=1.1.1.1` (replace the IP address appropriately for the server you want to connect to). Currently this works with PSO GC and may work with PC, but not with BB. It also works with the tapserver setup described above.
 
 ### Connecting external clients
 
@@ -71,3 +73,5 @@ If you want to accept connections from outside your local network, you'll likely
     PSO GC 1.1 EU  9201, 9421
     PSO GC Ep3 EU  9203, 9421
     PSO BB         9422, 11000, 12000, 12004, 12005, 12008
+
+For GC clients, you'll have to set up some kind of DNS server as well. Remote players can connect to your server by entering your DNS server's IP address in their client's network configuration. newserv includes a DNS server which will work for this; if you use newserv's built-in DNS server, you'll also need to forward UDP port 53 to your newserv instance.
