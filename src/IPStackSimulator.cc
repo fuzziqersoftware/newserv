@@ -513,7 +513,7 @@ void IPStackSimulator::on_client_tcp_frame(
           if (option_size != 4) {
             throw runtime_error("incorrect size for TCP max frame size option");
           }
-          max_frame_size = options_r.get_u16r();
+          max_frame_size = options_r.get_u16b();
           break;
         case 3: // Window scale (ignored)
           if (option_size != 3) {
