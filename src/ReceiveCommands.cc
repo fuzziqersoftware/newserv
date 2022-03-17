@@ -770,7 +770,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_message_box(c, u"$C6Your level is too\nlow to join this\ngame.");
           break;
         }
-        if (c->player.disp.level < game->max_level) {
+        if (c->player.disp.level > game->max_level) {
           send_message_box(c, u"$C6Your level is too\nhigh to join this\ngame.");
           break;
         }
