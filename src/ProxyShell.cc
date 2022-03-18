@@ -39,10 +39,16 @@ Commands:\n\
     Send a chat message to the server.\n\
   dchat <data>\n\
     Send a chat message to the server with arbitrary data in it.\n\
+  info-board <text>\n\
+    Set your info board contents.\n\
+  info-board-data <data>\n\
+    Set your info board contents with arbitrary data.\n\
   marker <color-id>\n\
     Send a lobby marker message to the server.\n\
   event <event-id>\n\
     Send a lobby event update to yourself.\n\
+  ship\n\
+    Request the ship select menu from the server.\n\
 ");
 
   } else if ((command_name == "sc") || (command_name == "ss")) {
@@ -97,9 +103,42 @@ Commands:\n\
     string data("\xDA\x00\x04\x00", 4);
     data[1] = stod(command_args);
 
-    log(INFO, "server (from proxy):");
+    log(INFO, "Server (from proxy):");
     print_data(stderr, data);
     this->proxy_server->send_to_client(data);
+
+  } else if (command_name == "ship") {
+    static const string data("\xA0\x00\x04\x00", 4);
+
+    log(INFO, "Server (from proxy):");
+    print_data(stderr, data);
+    this->proxy_server->send_to_server(data);
+
+  } else if ((command_name == "info-board") || (command_name == "info-board-data")) {
+    string data(4, '\0');
+    data[0] = 0xD9;
+    if (command_name == "info-board-data") {
+      data += parse_data_string(command_args);
+    } else {
+      data += command_args;
+    }
+    data.push_back('\0');
+    data.resize((data.size() + 3) & (~3));
+    uint16_t* size_field = reinterpret_cast<uint16_t*>(data.data() + 2);
+    *size_field = data.size();
+
+    log(INFO, "Client (from proxy):");
+    print_data(stderr, data);
+    this->proxy_server->send_to_server(data);
+
+  } else if (command_name == "set-save-quests") {
+    if (command_args == "on") {
+      this->proxy_server->set_save_quests(true);
+    } else if (command_args == "off") {
+      this->proxy_server->set_save_quests(false);
+    } else {
+      throw invalid_argument("argument must be \"on\" or \"off\"");
+    }
 
   } else {
     throw invalid_argument("unknown command; try \'help\'");

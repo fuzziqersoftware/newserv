@@ -3,6 +3,7 @@
 #include <event2/event.h>
 
 #include <map>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include <string>
@@ -29,6 +30,8 @@ public:
   void send_to_client(const std::string& data);
   void send_to_server(const std::string& data);
 
+  void set_save_quests(bool save_quests);
+
 private:
   std::shared_ptr<struct event_base> base;
   std::map<int, std::unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)>> listeners;
@@ -45,6 +48,20 @@ private:
   std::shared_ptr<PSOEncryption> client_output_crypt;
   std::shared_ptr<PSOEncryption> server_input_crypt;
   std::shared_ptr<PSOEncryption> server_output_crypt;
+
+  struct SavingQuestFile {
+    std::string basename;
+    std::string output_filename;
+    uint32_t remaining_bytes;
+    std::unique_ptr<FILE, std::function<void(FILE*)>> f;
+
+    SavingQuestFile(
+        const std::string& basename,
+        const std::string& output_filename,
+        uint32_t remaining_bytes);
+  };
+  bool save_quests;
+  std::unordered_map<std::string, SavingQuestFile> saving_quest_files;
 
   void send_to_end(const std::string& data, bool to_server);
 

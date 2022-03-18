@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <iostream>
 #include <phosg/Encoding.hh>
+#include <phosg/Filesystem.hh>
 #include <phosg/Network.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
@@ -34,12 +35,17 @@ static void flush_and_free_bufferevent(struct bufferevent* bev) {
 
 
 
-ProxyServer::ProxyServer(shared_ptr<struct event_base> base,
-    const struct sockaddr_storage& initial_destination, GameVersion version) :
-    base(base), client_bev(nullptr, flush_and_free_bufferevent),
+ProxyServer::ProxyServer(
+    shared_ptr<struct event_base> base,
+    const struct sockaddr_storage& initial_destination,
+    GameVersion version)
+  : base(base),
+    client_bev(nullptr, flush_and_free_bufferevent),
     server_bev(nullptr, flush_and_free_bufferevent),
-    next_destination(initial_destination), version(version),
-    header_size((version == GameVersion::BB) ? 8 : 4) {
+    next_destination(initial_destination),
+    version(version),
+    header_size((version == GameVersion::BB) ? 8 : 4),
+    save_quests(false) {
   memset(&this->client_input_header, 0, sizeof(this->client_input_header));
   memset(&this->server_input_header, 0, sizeof(this->server_input_header));
 }
@@ -52,6 +58,21 @@ void ProxyServer::listen(int port) {
         ::listen("", port, SOMAXCONN)), evconnlistener_free);
   this->listeners.emplace(port, move(listener));
 }
+
+void ProxyServer::set_save_quests(bool save_quests) {
+  this->save_quests = save_quests;
+}
+
+
+
+ProxyServer::SavingQuestFile::SavingQuestFile(
+    const std::string& basename,
+    const std::string& output_filename,
+    uint32_t remaining_bytes)
+  : basename(basename),
+    output_filename(output_filename),
+    remaining_bytes(remaining_bytes),
+    f(fopen_unique(this->output_filename, "wb")) { }
 
 
 
@@ -274,13 +295,9 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
     if (this->get_size_field(input_header) == 0) {
       ssize_t bytes = evbuffer_copyout(source_buf, input_header,
           this->header_size);
-      //log(INFO, "[ProxyServer-debug] %zd bytes copied for header", bytes);
       if (bytes < static_cast<ssize_t>(this->header_size)) {
         break;
       }
-
-      //log(INFO, "[ProxyServer-debug] Received encrypted header");
-      //print_data(stderr, input_header, this->header_size);
 
       if (source_crypt) {
         source_crypt->decrypt(input_header, this->header_size);
@@ -289,7 +306,6 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
 
     size_t command_size = this->get_size_field(input_header);
     if (evbuffer_get_length(source_buf) < command_size) {
-      //log(INFO, "[ProxyServer-debug] Insufficient data for command (%zX/%hX bytes)", evbuffer_get_length(source_buf), this->get_size_field(input_header));
       break;
     }
 
@@ -298,12 +314,7 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
     if (bytes < static_cast<ssize_t>(command_size)) {
       throw logic_error("enough bytes available, but could not remove them");
     }
-    //log(INFO, "[ProxyServer-debug] Read command (%zX bytes)", bytes);
-    // overwrite the header with the already-decrypted header
     memcpy(command.data(), input_header, this->header_size);
-
-    //log(INFO, "[ProxyServer-debug] Received encrypted command with pre-decrypted header");
-    //print_data(stderr, command);
 
     if (source_crypt) {
       source_crypt->decrypt(command.data() + this->header_size,
@@ -393,6 +404,93 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
               args->port = ntohs(sockname_sin->sin_port); // Client expects this little-endian for some reason
             }
           }
+          break;
+        }
+
+        case 0x44:
+        case 0xA6: { // open quest file
+          if (!this->save_quests) {
+            break;
+          }
+
+          bool is_download_quest = this->get_command_field(input_header) == 0xA6;
+
+          struct OpenFileCommand {
+            char name[0x20];
+            uint16_t unused;
+            uint16_t flags;
+            char filename[0x10];
+            uint32_t file_size;
+          };
+          if (command.size() < sizeof(OpenFileCommand)) {
+            log(WARNING, "[ProxyServer] Open file command is too small");
+            break;
+          }
+          const auto* cmd = reinterpret_cast<const OpenFileCommand*>(command.data() + this->header_size);
+
+          string output_filename = string_printf("%s.%s.%" PRIu64,
+              cmd->filename, is_download_quest ? "download" : "online", now());
+          for (size_t x = 0; x < output_filename.size(); x++) {
+            if (output_filename[x] < 0x20 || output_filename[x] > 0x7E || output_filename[x] == '/') {
+              output_filename[x] = '_';
+            }
+          }
+          if (output_filename[0] == '.') {
+            output_filename[0] = '_';
+          }
+
+          SavingQuestFile sqf(cmd->filename, output_filename, cmd->file_size);
+          this->saving_quest_files.emplace(cmd->filename, move(sqf));
+          log(INFO, "[ProxyServer] Opened quest file %s", output_filename.c_str());
+          break;
+        }
+        case 0x13:
+        case 0xA7: { // quest data segment
+          if (!this->save_quests) {
+            break;
+          }
+
+          struct WriteFileCommand {
+            char filename[0x10];
+            uint8_t data[0x400];
+            uint32_t data_size;
+          };
+          if (command.size() < sizeof(WriteFileCommand)) {
+            log(WARNING, "[ProxyServer] Write file command is too small");
+            break;
+          }
+          const auto* cmd = reinterpret_cast<const WriteFileCommand*>(command.data() + this->header_size);
+
+          SavingQuestFile* sqf = nullptr;
+          try {
+            sqf = &this->saving_quest_files.at(cmd->filename);
+          } catch (const out_of_range&) {
+            log(WARNING, "[ProxyServer] Can\'t find saving quest file %s",
+                cmd->filename);
+            break;
+          }
+
+          size_t bytes_to_write = cmd->data_size;
+          if (bytes_to_write > 0x400) {
+            log(WARNING, "[ProxyServer] Chunk data size is invalid; truncating to 0x400");
+            bytes_to_write = 0x400;
+          }
+
+          log(INFO, "[ProxyServer] Writing %zu bytes to %s", bytes_to_write,
+              sqf->output_filename.c_str());
+          fwritex(sqf->f.get(), cmd->data, bytes_to_write);
+          if (bytes_to_write > sqf->remaining_bytes) {
+            log(WARNING, "[ProxyServer] Chunk size extends beyond original file size; file may be truncated");
+            sqf->remaining_bytes = 0;
+          } else {
+            sqf->remaining_bytes -= bytes_to_write;
+          }
+
+          if (sqf->remaining_bytes == 0) {
+            log(INFO, "[ProxyServer] File %s is complete", sqf->output_filename.c_str());
+            this->saving_quest_files.erase(cmd->filename);
+          }
+
           break;
         }
       }
