@@ -44,12 +44,14 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 
 ### Connecting local clients
 
-If you're running PSO on a real GameCube, you can make it connect to newserv by setting its default gateway and DNS server addresses to newserv's address. Note that newserv's DNS server is disabled by default; you'll have to enable it in config.json. If you have PSO Plus or Episode III, you'll have to do some DNS trickery (not documented here) to get it to connect to a server on the same local network.
+If you're running PSO on a real GameCube, you can make it connect to newserv by setting its default gateway and DNS server addresses to newserv's address. Note that newserv's DNS server is disabled by default; you'll have to enable it in config.json.
 
-If you're emulating PSO GC using Dolphin on macOS, you can make it connect to a newserv instance running on the same machine via the tapserver interface. This works for all PSO versions, including Plus and Episode III. To do this:
+If you have PSO Plus or Episode III, it won't want to connect to a server on the same local network as the GameCube itself, as determined by the GC's IP address and subnet mask. In the old days, one way to get around this was to create a fake network adapter on the server with an IP address on a different subnet (or use an existing real one), tell the GameCube that the server is the default gateway, and have the server reply to the DNS request with its non-local IP address. To do this with newserv, just set LocalAddress in the config file to a different interface. For example, if the GameCube is on the 192.168.0.x network and your other adapter has address 10.0.1.6, set LocalAddress to 10.0.1.6. This may not work on modern systems or on non-Windows machines - I haven't tested it in many years.
+
+If you're emulating PSO using Dolphin on macOS, you can make it connect to a newserv instance running on the same machine via the tapserver interface. This works for all PSO versions, including Plus and Episode III, without the trickery described above. To do this:
 - Use a build of Dolphin that has tapserver support.
 - Enable the IP stack simulator according to the comments in config.json, and start newserv.
-- In PSO, you have to configure the network settings manually, but the actual values don't matter as long as they're valid IP addresses. Example values:
+- In PSO, you have to configure the network settings manually (DHCP doesn't work), but the actual values don't matter as long as they're valid IP addresses. Example values:
   - IP address: `10.0.1.5`
   - Subnet mask: `255.255.255.0`
   - Default gateway: `10.0.1.1`
@@ -61,17 +63,17 @@ If you want to play online on remote servers, newserv also includes a PSO proxy 
 
 ### Connecting external clients
 
-If you want to accept connections from outside your local network, you'll likely need to open some ports in your router's NAT configuration. You'll need to open the following ports depending on which client versions you want to be able to connect:
+If you want to accept connections from outside your local network, you'll need to set ExternalAddress to your public IP address in the configuration file, and you'll likely need to open some ports in your router's NAT configuration. You'll need to open the following ports depending on which client versions you want to be able to connect:
 
-    PSO PC         9100, 9300, 9420, 10000
-    PSO GC 1.0 JP  9000, 9421
-    PSO GC 1.1 JP  9001, 9421
-    PSO GC Ep3 JP  9003, 9421
-    PSO GC 1.0 US  9100, 9421
-    PSO GC Ep3 US  9103, 9421
-    PSO GC 1.0 EU  9200, 9421
-    PSO GC 1.1 EU  9201, 9421
-    PSO GC Ep3 EU  9203, 9421
-    PSO BB         9422, 11000, 12000, 12004, 12005, 12008
+    PSO PC           9100, 9300, 9420, 10000
+    PSO GC 1.0 JP    9000, 9421
+    PSO GC 1.1 JP    9001, 9421
+    PSO GC Ep3 JP    9003, 9421
+    PSO GC 1.0 US    9100, 9421
+    PSO GC Ep3 US    9103, 9421
+    PSO GC 1.0 EU    9200, 9421
+    PSO GC 1.1 EU    9201, 9421
+    PSO GC Ep3 EU    9203, 9421
+    PSO BB           9422, 11000, 12000, 12004, 12005, 12008
 
-For GC clients, you'll have to set up some kind of DNS server as well. Remote players can connect to your server by entering your DNS server's IP address in their client's network configuration. newserv includes a DNS server which will work for this; if you use newserv's built-in DNS server, you'll also need to forward UDP port 53 to your newserv instance.
+For GC clients, you'll have to use newserv's built-in DNS server or set up your own DNS server as well. Remote players can connect to your server by entering your DNS server's IP address in their client's network configuration. If you use newserv's built-in DNS server, you'll also need to forward UDP port 53 to your newserv instance.
