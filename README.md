@@ -49,8 +49,8 @@ If you're running PSO on a real GameCube, you can make it connect to newserv by 
 If you have PSO Plus or Episode III, it won't want to connect to a server on the same local network as the GameCube itself, as determined by the GC's IP address and subnet mask. In the old days, one way to get around this was to create a fake network adapter on the server with an IP address on a different subnet (or use an existing real one), tell the GameCube that the server is the default gateway, and have the server reply to the DNS request with its non-local IP address. To do this with newserv, just set LocalAddress in the config file to a different interface. For example, if the GameCube is on the 192.168.0.x network and your other adapter has address 10.0.1.6, set LocalAddress to 10.0.1.6. This may not work on modern systems or on non-Windows machines - I haven't tested it in many years.
 
 If you're emulating PSO using Dolphin on macOS, you can make it connect to a newserv instance running on the same machine via the tapserver interface. This works for all PSO versions, including Plus and Episode III, without the trickery described above. To do this:
-- Use a build of Dolphin that has tapserver support.
-- Enable the IP stack simulator according to the comments in config.json, and start newserv.
+- Use a build of Dolphin that has tapserver support, and set the BBA type to tapserver (Config -> GameCube -> SP1).
+- Enable the IP stack simulator according to the comments in config.json, and start newserv. You do not need to install or run tapserver.
 - In PSO, you have to configure the network settings manually (DHCP doesn't work), but the actual values don't matter as long as they're valid IP addresses. Example values:
   - IP address: `10.0.1.5`
   - Subnet mask: `255.255.255.0`
@@ -58,8 +58,6 @@ If you're emulating PSO using Dolphin on macOS, you can make it connect to a new
   - DNS server address 1: `10.0.1.1`
   - Leave everything else blank
 - Start an online game.
-
-If you want to play online on remote servers, newserv also includes a PSO proxy server. Run newserv like `./newserv --proxy-destination=1.1.1.1` (replace the IP address appropriately for the server you want to connect to). Currently this works with PSO GC and may work with PC, but not with BB. It also works with the tapserver setup described above.
 
 ### Connecting external clients
 
@@ -77,3 +75,9 @@ If you want to accept connections from outside your local network, you'll need t
     PSO BB           9422, 11000, 12000, 12004, 12005, 12008
 
 For GC clients, you'll have to use newserv's built-in DNS server or set up your own DNS server as well. Remote players can connect to your server by entering your DNS server's IP address in their client's network configuration. If you use newserv's built-in DNS server, you'll also need to forward UDP port 53 to your newserv instance.
+
+### Using newserv as a proxy
+
+If you want to play online on remote servers rather than running your own server, newserv also includes a PSO proxy. Currently this works with PSO GC and may work with PC, but not with BB.
+
+Run newserv like `./newserv --proxy-destination=1.1.1.1` (replace the IP address appropriately for the server you want to connect to). This works for normal clients (using the connection parameters in config.json), as well as tapserver clients.
