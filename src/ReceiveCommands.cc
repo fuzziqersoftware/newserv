@@ -820,7 +820,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       // Otherwise, they must be in a game to load a quest.
       shared_ptr<Lobby> l;
       if (c->lobby_id) {
-        auto l = s->find_lobby(c->lobby_id);
+        l = s->find_lobby(c->lobby_id);
         if (!l->is_game()) {
           send_lobby_message_box(c, u"$C6Quests cannot be loaded\nin lobbies.");
           break;
