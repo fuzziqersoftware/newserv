@@ -23,6 +23,7 @@
 
 #include "PSOProtocol.hh"
 #include "ReceiveCommands.hh"
+#include "ReceiveSubcommands.hh"
 
 using namespace std;
 
@@ -324,7 +325,30 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
     log(INFO, "[ProxyServer] %s:", from_server ? "server" : "client");
     print_data(stderr, command);
 
-    // preprocess the command if needed
+    // Preprocess the command if needed
+
+    // Preprocessing for bidirectional commands...
+    switch (this->get_command_field(input_header)) {
+      case 0x60:
+      case 0x62:
+      case 0x6C:
+      case 0x6D:
+      case 0xC9:
+      case 0xCB: { // broadcast/target commands
+        if (command.size() <= this->header_size) {
+          log(WARNING, "[ProxyServer] Received broadcast/target command with no contents");
+        } else {
+          uint8_t which = *reinterpret_cast<uint8_t*>(command.data() + this->header_size);
+          if (!subcommand_is_implemented(which)) {
+            log(WARNING, "[ProxyServer] Received broadcast/target subcommand %02hhX which is not implemented on the server",
+                which);
+          }
+        }
+        break;
+      }
+    }
+
+    // Preprocessing for server->client commands...
     if (from_server) {
       switch (this->get_command_field(input_header)) {
         case 0x02: // init encryption

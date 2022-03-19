@@ -1011,7 +1011,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_forward_check_size_client, // Intra-map warp
   process_subcommand_forward_check_size_client,
   process_subcommand_forward_check_size_client,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game,
   process_subcommand_forward_check_size_game,
   process_subcommand_pick_up_item,
   process_subcommand_unimplemented,
@@ -1195,4 +1195,8 @@ void process_subcommand(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* sub, size_t count) {
   subcommand_handlers[sub->byte[0]](s, l, c, command, flag, sub, count);
+}
+
+bool subcommand_is_implemented(uint8_t which) {
+  return subcommand_handlers[which] != process_subcommand_unimplemented;
 }
