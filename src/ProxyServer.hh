@@ -20,13 +20,16 @@ public:
   ProxyServer() = delete;
   ProxyServer(const ProxyServer&) = delete;
   ProxyServer(ProxyServer&&) = delete;
-  ProxyServer(std::shared_ptr<struct event_base> base,
-      const struct sockaddr_storage& initial_destination, GameVersion version);
+  ProxyServer(
+      std::shared_ptr<struct event_base> base,
+      const struct sockaddr_storage& initial_destination,
+      GameVersion version);
   virtual ~ProxyServer() = default;
 
   void listen(int port);
 
-  void connect_client(struct bufferevent* bev);
+  void connect_client(struct bufferevent* bev, uint32_t server_ipv4_addr,
+      uint16_t server_port);
 
   void send_to_client(const std::string& data);
   void send_to_server(const std::string& data);
@@ -39,6 +42,7 @@ private:
   std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> client_bev;
   std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> server_bev;
   struct sockaddr_storage next_destination;
+  struct sockaddr_storage default_destination;
   int listen_port;
   GameVersion version;
 
@@ -84,7 +88,8 @@ private:
   void on_server_input(struct bufferevent* bev);
   void on_server_error(struct bufferevent* bev, short events);
 
-  void on_client_connect(struct bufferevent* bev);
+  void on_client_connect(struct bufferevent* bev,
+      uint32_t server_ipv4_addr = 0, uint16_t server_port = 0);
 
   size_t get_size_field(const PSOCommandHeader* header);
   size_t get_command_field(const PSOCommandHeader* header);

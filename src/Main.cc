@@ -261,12 +261,17 @@ int main(int argc, char* argv[]) {
 
   shared_ptr<ProxyServer> proxy_server;
   shared_ptr<Server> game_server;
+  uint32_t proxy_destination_address = 0;
   if (proxy_port) {
     log(INFO, "Starting proxy server");
     sockaddr_storage proxy_destination_ss = make_sockaddr_storage(
         proxy_hostname, proxy_port).first;
-    proxy_server.reset(new ProxyServer(base, proxy_destination_ss,
-        proxy_version));
+    if (proxy_destination_ss.ss_family != AF_INET) {
+      throw runtime_error("proxy destination address is not IPv4");
+    }
+    proxy_destination_address = ntohl(
+        reinterpret_cast<struct sockaddr_in*>(&proxy_destination_ss)->sin_addr.s_addr);
+    proxy_server.reset(new ProxyServer(base, proxy_destination_ss, proxy_version));
     proxy_server->listen(proxy_port);
     if (proxy_version == GameVersion::BB) {
       proxy_server->listen(proxy_port + 1);
@@ -297,6 +302,7 @@ int main(int argc, char* argv[]) {
     log(INFO, "Starting IP stack simulator");
     ip_stack_simulator.reset(new IPStackSimulator(
         base, game_server, proxy_server, state));
+    ip_stack_simulator->set_proxy_destination_address(proxy_destination_address);
     for (const auto& it : state->ip_stack_addresses) {
       auto netloc = parse_netloc(it);
       ip_stack_simulator->listen(netloc.first, netloc.second);

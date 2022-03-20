@@ -44,6 +44,7 @@ ProxyServer::ProxyServer(
     client_bev(nullptr, flush_and_free_bufferevent),
     server_bev(nullptr, flush_and_free_bufferevent),
     next_destination(initial_destination),
+    default_destination(initial_destination),
     version(version),
     header_size((version == GameVersion::BB) ? 8 : 4),
     save_quests(false) {
@@ -150,7 +151,8 @@ void ProxyServer::on_listen_accept(struct evconnlistener*, evutil_socket_t fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS));
 }
 
-void ProxyServer::connect_client(struct bufferevent* bev) {
+void ProxyServer::connect_client(
+    struct bufferevent* bev, uint32_t server_ipv4_addr, uint16_t server_port) {
   if (this->client_bev.get()) {
     log(WARNING, "[ProxyServer] Ignoring client virtual connection because client already exists");
     bufferevent_flush(bev, EV_WRITE, BEV_FINISHED);
@@ -158,10 +160,12 @@ void ProxyServer::connect_client(struct bufferevent* bev) {
   }
 
   log(INFO, "[ProxyServer] Client connected on virtual connection %p", bev);
-  this->on_client_connect(bev);
+
+  this->on_client_connect(bev, server_ipv4_addr, server_port);
 }
 
-void ProxyServer::on_client_connect(struct bufferevent* bev) {
+void ProxyServer::on_client_connect(struct bufferevent* bev,
+    uint32_t server_ipv4_addr, uint16_t server_port) {
   this->client_bev.reset(bev);
 
   bufferevent_setcb(this->client_bev.get(),
@@ -173,22 +177,26 @@ void ProxyServer::on_client_connect(struct bufferevent* bev) {
   this->server_bev.reset(bufferevent_socket_new(this->base.get(), -1,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS));
 
-  // TODO: figure out why this copy is necessary... shouldn't we just be able to
-  // use the sockaddr_storage directly?
-  const struct sockaddr_in* sin_ss = reinterpret_cast<const sockaddr_in*>(&this->next_destination);
-  if (sin_ss->sin_family != AF_INET) {
-    throw logic_error("ss not AF_INET");
+  struct sockaddr_storage local_ss;
+  struct sockaddr_in* local_sin = reinterpret_cast<struct sockaddr_in*>(&local_ss);
+  memset(local_sin, 0, sizeof(*local_sin));
+  local_sin->sin_family = AF_INET;
+  if (server_ipv4_addr && server_port) {
+    local_sin->sin_port = htons(server_port);
+    local_sin->sin_addr.s_addr = htonl(server_ipv4_addr);
+  } else {
+    const struct sockaddr_in* dest_sin = reinterpret_cast<const sockaddr_in*>(&this->next_destination);
+    if (dest_sin->sin_family != AF_INET) {
+      throw logic_error("ss not AF_INET");
+    }
+    local_sin->sin_port = dest_sin->sin_port;
+    local_sin->sin_addr.s_addr = dest_sin->sin_addr.s_addr;
   }
-  struct sockaddr_in sin;
-  memset(&sin, 0, sizeof(sin));
-  sin.sin_family = AF_INET;
-  sin.sin_port = sin_ss->sin_port;
-  sin.sin_addr.s_addr = sin_ss->sin_addr.s_addr;
 
-  string netloc_str = render_sockaddr_storage(this->next_destination);
+  string netloc_str = render_sockaddr_storage(local_ss);
   log(INFO, "[ProxyServer] Connecting to %s", netloc_str.c_str());
   if (bufferevent_socket_connect(this->server_bev.get(),
-      reinterpret_cast<const sockaddr*>(&sin), sizeof(sin)) != 0) {
+      reinterpret_cast<const sockaddr*>(local_sin), sizeof(*local_sin)) != 0) {
     throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
   }
   bufferevent_setcb(this->server_bev.get(),
@@ -410,13 +418,14 @@ void ProxyServer::receive_and_process_commands(bool from_server) {
           if (!dest_bev) {
             log(WARNING, "[ProxyServer] Received reconnect command with no destination present");
           } else {
-            struct sockaddr_storage sockname_ss;
-            socklen_t len = sizeof(sockname_ss);
+            // If the client is on a virtual connection (fd < 0), we don't need
+            // to do anything - we assume the client will connect again via a
+            // virtual connection, and we can just use the destination
+            // address/port from their connection request.
             int fd = bufferevent_getfd(dest_bev);
-            if (fd < 0) { // virtual connection
-              args->address = 0x23232323; // TODO: apply the different-network logic here too
-              args->port = 9000;
-            } else {
+            if (fd >= 0) {
+              struct sockaddr_storage sockname_ss;
+              socklen_t len = sizeof(sockname_ss);
               getsockname(fd, reinterpret_cast<struct sockaddr*>(&sockname_ss), &len);
               if (sockname_ss.ss_family != AF_INET) {
                 throw logic_error("existing connection is not ipv4");

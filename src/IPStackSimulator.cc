@@ -83,6 +83,7 @@ IPStackSimulator::IPStackSimulator(
     game_server(game_server),
     proxy_server(proxy_server),
     state(state),
+    proxy_destination_address(0),
     pcap_text_log_file(state->ip_stack_debug ? fopen("IPStackSimulator-Log.txt", "wt") : nullptr) {
   memset(this->host_mac_address_bytes, 0x90, 6);
   memset(this->broadcast_mac_address_bytes, 0xFF, 6);
@@ -123,7 +124,7 @@ void IPStackSimulator::add_socket(int fd) {
 
 
 uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_addr) {
-  // Use and address not on the same subnet as the client, so that PSO Plus and
+  // Use an address not on the same subnet as the client, so that PSO Plus and
   // Episode III will think they're talking to a remote network and won't reject
   // the connection.
   if ((remote_addr & 0xFF000000) != 0x23000000) {
@@ -420,7 +421,9 @@ void IPStackSimulator::on_client_udp_frame(
   // r_udp.size filled in later
   // r_udp.checksum filled in later
 
-  uint32_t resolved_address = this->connect_address_for_remote_address(c->ipv4_addr);
+  uint32_t resolved_address = this->proxy_destination_address
+      ? this->proxy_destination_address
+      : this->connect_address_for_remote_address(c->ipv4_addr);
 
   string r_data = DNSServer::response_for_query(
       fi.payload, fi.payload_size, resolved_address);
@@ -743,13 +746,6 @@ void IPStackSimulator::open_server_connection(
     throw logic_error("server connection is already open");
   }
 
-  const PortConfiguration* port_config;
-  try {
-    port_config = &this->state->numbered_port_configuration.at(conn.server_port);
-  } catch (const out_of_range&) {
-    throw logic_error("client connected to port missing from configuration");
-  }
-
   struct bufferevent* bevs[2];
   bufferevent_pair_new(this->base.get(), 0, bevs);
 
@@ -762,16 +758,26 @@ void IPStackSimulator::open_server_connection(
   // Link the client to the server - the server sees this as a normal TCP
   // connection and treats it as if the client connected to one of its listening
   // sockets
+  string conn_str = this->str_for_tcp_connection(c, conn);
   if (this->game_server.get()) {
+    const PortConfiguration* port_config;
+    try {
+      port_config = &this->state->numbered_port_configuration.at(conn.server_port);
+    } catch (const out_of_range&) {
+      bufferevent_free(bevs[1]);
+      throw logic_error("client connected to port missing from configuration");
+    }
+
     this->game_server->connect_client(bevs[1], c->ipv4_addr, conn.client_port,
         port_config->version, port_config->behavior);
-  } else if (this->proxy_server.get()) {
-    this->proxy_server->connect_client(bevs[1]);
-  }
+    log(INFO, "[IPStackSimulator] Connected TCP connection %s to game server",
+        conn_str.c_str());
 
-  string conn_str = this->str_for_tcp_connection(c, conn);
-  log(INFO, "[IPStackSimulator] Connected TCP connection %s to game server",
-      conn_str.c_str());
+  } else if (this->proxy_server.get()) {
+    this->proxy_server->connect_client(bevs[1], conn.server_addr, conn.server_port);
+    log(INFO, "[IPStackSimulator] Connected TCP connection %s to proxy server",
+        conn_str.c_str());
+  }
 }
 
 void IPStackSimulator::send_pending_push_frame(
