@@ -1,10 +1,10 @@
 # newserv
 
-newserv is a game server for Phantasy Star Online (PSO).
+newserv is a game server and proxy for Phantasy Star Online (PSO).
 
 This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself; this data was originally created by Sega.
 
-This project is a rewrite of a rewrite of a game server that I wrote many years ago. So far, it works rather well with PSO GC Episodes 1 & 2, and lobbies (but not games) are implemented on Episode 3. newserv probably doesn't work at all for other versions of PSO (DC/PC/BB), since I haven't tested them yet.
+This project is a rewrite of a rewrite of a game server that I wrote many years ago. So far, it works well with PSO GC Episodes 1 & 2, and lobbies (but not games) are implemented on Episode 3. newserv is based on an older project of mine that supported other versions (PC and BB), but I no longer have a way to test those versions, so the implementation here probably doesn't work for them.
 
 Feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
 
@@ -46,10 +46,10 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 
 If you're running PSO on a real GameCube, you can make it connect to newserv by setting its default gateway and DNS server addresses to newserv's address. Note that newserv's DNS server is disabled by default; you'll have to enable it in config.json.
 
-If you have PSO Plus or Episode III, it won't want to connect to a server on the same local network as the GameCube itself, as determined by the GC's IP address and subnet mask. In the old days, one way to get around this was to create a fake network adapter on the server with an IP address on a different subnet (or use an existing real one), tell the GameCube that the server is the default gateway, and have the server reply to the DNS request with its non-local IP address. To do this with newserv, just set LocalAddress in the config file to a different interface. For example, if the GameCube is on the 192.168.0.x network and your other adapter has address 10.0.1.6, set LocalAddress to 10.0.1.6. This may not work on modern systems or on non-Windows machines - I haven't tested it in many years.
+If you have PSO Plus or Episode III, it won't want to connect to a server on the same local network as the GameCube itself, as determined by the GC's IP address and subnet mask. In the old days, one way to get around this was to create a fake network adapter on the server (or use an existing real one) that has an IP address on a different subnet, tell the GameCube that the server is the default gateway, and have the server reply to the DNS request with its non-local IP address. To do this with newserv, just set LocalAddress in the config file to a different interface. For example, if the GameCube is on the 192.168.0.x network and your other adapter has address 10.0.1.6, set newserv's LocalAddress to 10.0.1.6 and set PSO's DNS server and default gateway addresses to the server's 192.168.0.x address. This may not work on modern systems or on non-Windows machines - I haven't tested it in many years.
 
-If you're emulating PSO using Dolphin on macOS, you can make it connect to a newserv instance running on the same machine via the tapserver interface. This works for all PSO versions, including Plus and Episode III, without the trickery described above. To do this:
-- Use a build of Dolphin that has tapserver support, and set the BBA type to tapserver (Config -> GameCube -> SP1).
+If you're emulating PSO using a version of Dolphin with tapserver support (currently only the macOS version), you can make it connect to a newserv instance running on the same machine via the tapserver interface. This works for all PSO versions, including Plus and Episode III, without the trickery described above. To do this:
+- Set the BBA type to tapserver (Config -> GameCube -> SP1).
 - Enable the IP stack simulator according to the comments in config.json, and start newserv. You do not need to install or run tapserver.
 - In PSO, you have to configure the network settings manually (DHCP doesn't work), but the actual values don't matter as long as they're valid IP addresses. Example values:
   - IP address: `10.0.1.5`
