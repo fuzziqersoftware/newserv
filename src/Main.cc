@@ -321,7 +321,6 @@ int main(int argc, char* argv[]) {
 
   shared_ptr<Shell> shell;
   if (should_run_shell) {
-    log(INFO, "Starting interactive shell");
     if (proxy_port) {
       shell.reset(new ProxyShell(base, state, proxy_server));
     } else {

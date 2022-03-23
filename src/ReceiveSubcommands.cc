@@ -976,9 +976,9 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   process_subcommand_forward_check_game,
+  process_subcommand_forward_check_size_game, // photon blast
   process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game, // photon blast ready
   process_subcommand_forward_check_size_game,
   process_subcommand_forward_check_size,
   process_subcommand_unimplemented,
@@ -1021,7 +1021,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_forward_check_size_game,
   // 60
   process_subcommand_enemy_drop_item,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game, // feed mag
   process_subcommand_unimplemented,
   process_subcommand_destroy_item,
   process_subcommand_unimplemented,
@@ -1072,7 +1072,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_unimplemented,
   // 90
   process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
