@@ -1611,6 +1611,13 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
             game->difficulty, bp_subtable, false);
       }
     }
+
+  } else {
+    // In non-BB games, just set the variations (we don't track items/enemies/
+    // etc.)
+    for (size_t x = 0; x < 0x20; x++) {
+      game->variations[x] = random_int(0, variation_maxes_online[(episode - 1)][x] - 1);
+    }
   }
 
   return game;
