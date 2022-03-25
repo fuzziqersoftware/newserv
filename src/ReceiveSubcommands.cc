@@ -969,10 +969,10 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_unimplemented,
   process_subcommand_hit_by_monster,
   // 30
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game, // level-up
   process_subcommand_forward_check_size_game,
   process_subcommand_forward_check_size_game,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game, // revive player, only confirmed with moon atomizer
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   process_subcommand_forward_check_game,
