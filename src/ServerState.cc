@@ -17,7 +17,7 @@ ServerState::ServerState()
   : dns_server_port(0),
     ip_stack_debug(false),
     allow_unregistered_users(false),
-    run_shell_behavior(RunShellBehavior::Default), next_lobby_id(1),
+    run_shell_behavior(RunShellBehavior::DEFAULT), next_lobby_id(1),
     pre_lobby_event(0),
     ep3_menu_song(-1) {
   memset(&this->default_key_file, 0, sizeof(this->default_key_file));
@@ -25,7 +25,7 @@ ServerState::ServerState()
   this->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",
       u"Join the lobby.", 0);
   this->main_menu.emplace_back(MAIN_MENU_INFORMATION, u"Information",
-      u"View server information.", MenuItemFlag::RequiresMessageBoxes);
+      u"View server information.", MenuItemFlag::REQUIRES_MESSAGE_BOXES);
   this->main_menu.emplace_back(MAIN_MENU_DOWNLOAD_QUESTS, u"Download quests",
       u"Download quests.", 0);
   this->main_menu.emplace_back(MAIN_MENU_DISCONNECT, u"Disconnect",
@@ -34,8 +34,8 @@ ServerState::ServerState()
   for (size_t x = 0; x < 20; x++) {
     auto lobby_name = decode_sjis(string_printf("LOBBY%zu", x + 1));
     shared_ptr<Lobby> l(new Lobby());
-    l->flags |= LobbyFlag::Public | LobbyFlag::Default | LobbyFlag::Persistent |
-        ((x > 14) ? LobbyFlag::Episode3 : 0);
+    l->flags |= LobbyFlag::PUBLIC | LobbyFlag::DEFAULT | LobbyFlag::PERSISTENT |
+        ((x > 14) ? LobbyFlag::EPISODE_3 : 0);
     l->block = x + 1;
     l->type = x;
     char16cpy(l->name, lobby_name.c_str(), 0x24);
@@ -47,7 +47,7 @@ ServerState::ServerState()
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   auto it = this->id_to_lobby.lower_bound(0);
   for (; it != this->id_to_lobby.end(); it++) {
-    if (!(it->second->flags & LobbyFlag::Public)) {
+    if (!(it->second->flags & LobbyFlag::PUBLIC)) {
       continue;
     }
     try {
@@ -67,7 +67,7 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
 void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
   auto l = this->id_to_lobby.at(c->lobby_id);
   l->remove_client(c);
-  if (!(l->flags & LobbyFlag::Persistent) && (l->count_clients() == 0)) {
+  if (!(l->flags & LobbyFlag::PERSISTENT) && (l->count_clients() == 0)) {
     this->remove_lobby(l->lobby_id);
   } else {
     send_player_leave_notification(l, c->lobby_client_id);
@@ -90,7 +90,7 @@ void ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> ne
   }
 
   if (current_lobby) {
-    if (!(current_lobby->flags & LobbyFlag::Persistent) && (current_lobby->count_clients() == 0)) {
+    if (!(current_lobby->flags & LobbyFlag::PERSISTENT) && (current_lobby->count_clients() == 0)) {
       this->remove_lobby(current_lobby->lobby_id);
     } else {
       send_player_leave_notification(current_lobby, old_lobby_client_id);

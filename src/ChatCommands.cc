@@ -363,7 +363,7 @@ static void check_is_game(shared_ptr<Lobby> l, bool is_game) {
 }
 
 static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
-  if (!!(c->flags & ClientFlag::Episode3Games) != is_ep3) {
+  if (!!(c->flags & ClientFlag::EPISODE_3_GAMES) != is_ep3) {
     throw precondition_failed(is_ep3 ?
         u"$C6This command can only\nbe used in Episode 3." :
         u"$C6This command cannot\nbe used in Episode 3.");
@@ -371,7 +371,7 @@ static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
 }
 
 static void check_cheats_enabled(shared_ptr<Lobby> l) {
-  if (!(l->flags & LobbyFlag::CheatsEnabled)) {
+  if (!(l->flags & LobbyFlag::CHEATS_ENABLED)) {
     throw precondition_failed(u"$C6This command can\nonly be used in\ncheat mode.");
   }
 }
@@ -405,7 +405,7 @@ static void command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     send_text_message_printf(c, "$C6Game ID: %08X\n%s\nSection ID: %s\nCheat mode: %s",
         l->lobby_id, level_string.c_str(),
         name_for_section_id(l->section_id).c_str(),
-        (l->flags & LobbyFlag::CheatsEnabled) ? "on" : "off");
+        (l->flags & LobbyFlag::CHEATS_ENABLED) ? "on" : "off");
 
   } else {
     size_t num_clients = l->count_clients();
@@ -417,14 +417,14 @@ static void command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 
 static void command_ax(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const char16_t* args) {
-  check_privileges(c, Privilege::Announce);
+  check_privileges(c, Privilege::ANNOUNCE);
   string message = encode_sjis(args);
   log(INFO, "[Client message from %010u] %s\n", c->license->serial_number, message.c_str());
 }
 
 static void command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby>,
     shared_ptr<Client> c, const char16_t* args) {
-  check_privileges(c, Privilege::Announce);
+  check_privileges(c, Privilege::ANNOUNCE);
   send_text_message(s, args);
 }
 
@@ -445,12 +445,12 @@ static void command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   check_is_game(l, true);
   check_is_leader(l, c);
 
-  l->flags ^= LobbyFlag::CheatsEnabled;
+  l->flags ^= LobbyFlag::CHEATS_ENABLED;
   send_text_message_printf(l, "Cheat mode %s",
-      (l->flags & LobbyFlag::CheatsEnabled) ? "enabled" : "disabled");
+      (l->flags & LobbyFlag::CHEATS_ENABLED) ? "enabled" : "disabled");
 
   // if cheat mode was disabled, turn off all the cheat features that were on
-  if (!(l->flags & LobbyFlag::CheatsEnabled)) {
+  if (!(l->flags & LobbyFlag::CHEATS_ENABLED)) {
     for (size_t x = 0; x < l->max_clients; x++) {
       auto c = l->clients[x];
       if (!c) {
@@ -466,7 +466,7 @@ static void command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 static void command_lobby_event(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, false);
-  check_privileges(c, Privilege::ChangeEvent);
+  check_privileges(c, Privilege::CHANGE_EVENT);
 
   uint8_t new_event = event_for_name(args);
   if (new_event == 0xFF) {
@@ -480,7 +480,7 @@ static void command_lobby_event(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 
 static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>,
     shared_ptr<Client> c, const char16_t* args) {
-  check_privileges(c, Privilege::ChangeEvent);
+  check_privileges(c, Privilege::CHANGE_EVENT);
 
   uint8_t new_event = event_for_name(args);
   if (new_event == 0xFF) {
@@ -489,7 +489,7 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
   }
 
   for (auto l : s->all_lobbies()) {
-    if (l->is_game() || !(l->flags & LobbyFlag::Default)) {
+    if (l->is_game() || !(l->flags & LobbyFlag::DEFAULT)) {
       continue;
     }
 
@@ -501,7 +501,7 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
 static void command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, false);
-  check_privileges(c, Privilege::ChangeEvent);
+  check_privileges(c, Privilege::CHANGE_EVENT);
 
   uint8_t new_type = lobby_type_for_name(args);
   if (new_type == 0x80) {
@@ -510,7 +510,7 @@ static void command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 
   l->type = new_type;
-  if (l->type < ((l->flags & LobbyFlag::Episode3) ? 20 : 15)) {
+  if (l->type < ((l->flags & LobbyFlag::EPISODE_3) ? 20 : 15)) {
     l->type = l->block - 1;
   }
 
@@ -701,7 +701,7 @@ static void command_convert_char_to_bb(shared_ptr<ServerState> s,
 
 static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
-  check_privileges(c, Privilege::SilenceUser);
+  check_privileges(c, Privilege::SILENCE_USER);
 
   auto target = s->find_client(args);
   if (!target->license) {
@@ -710,7 +710,7 @@ static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     return;
   }
 
-  if (target->license->privileges & Privilege::Moderator) {
+  if (target->license->privileges & Privilege::MODERATOR) {
     send_text_message(c, u"$C6You do not have\nsufficient privileges.");
     return;
   }
@@ -723,7 +723,7 @@ static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 
 static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
-  check_privileges(c, Privilege::KickUser);
+  check_privileges(c, Privilege::KICK_USER);
 
   auto target = s->find_client(args);
   if (!target->license) {
@@ -732,7 +732,7 @@ static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     return;
   }
 
-  if (target->license->privileges & Privilege::Moderator) {
+  if (target->license->privileges & Privilege::MODERATOR) {
     send_text_message(c, u"$C6You do not have\nsufficient privileges.");
     return;
   }
@@ -745,7 +745,7 @@ static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 
 static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
-  check_privileges(c, Privilege::BanUser);
+  check_privileges(c, Privilege::BAN_USER);
 
   u16string args_str(args);
   size_t space_pos = args_str.find(L' ');
@@ -761,7 +761,7 @@ static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     return;
   }
 
-  if (target->license->privileges & Privilege::BanUser) {
+  if (target->license->privileges & Privilege::BAN_USER) {
     send_text_message(c, u"$C6You do not have\nsufficient privileges.");
     return;
   }

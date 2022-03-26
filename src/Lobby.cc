@@ -27,7 +27,7 @@ Lobby::Lobby() : lobby_id(0), min_level(0), max_level(0xFFFFFFFF),
 }
 
 bool Lobby::is_game() const {
-  return this->flags & LobbyFlag::IsGame;
+  return this->flags & LobbyFlag::IS_GAME;
 }
 
 void Lobby::reassign_leader_on_client_departure(size_t leaving_client_index) {
@@ -48,7 +48,7 @@ bool Lobby::any_client_loading() const {
     if (!this->clients[x].get()) {
       continue;
     }
-    if (this->clients[x]->flags & ClientFlag::Loading) {
+    if (this->clients[x]->flags & ClientFlag::LOADING) {
       return true;
     }
   }

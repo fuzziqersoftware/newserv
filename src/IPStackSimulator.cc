@@ -944,7 +944,7 @@ void IPStackSimulator::on_server_error(
 void IPStackSimulator::log_frame(const string& data) const {
   if (this->pcap_text_log_file) {
     print_data(this->pcap_text_log_file, data, 0, nullptr,
-        PrintDataFlags::SkipSeparator);
+        PrintDataFlags::SKIP_SEPARATOR);
     fputc('\n', this->pcap_text_log_file);
     fflush(this->pcap_text_log_file);
   }

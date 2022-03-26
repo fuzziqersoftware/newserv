@@ -26,9 +26,9 @@ struct PortConfiguration {
 
 struct ServerState {
   enum class RunShellBehavior {
-    Default = 0,
-    Always,
-    Never,
+    DEFAULT = 0,
+    ALWAYS,
+    NEVER,
   };
 
   std::u16string name;

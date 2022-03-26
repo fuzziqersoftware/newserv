@@ -11,11 +11,11 @@
 
 
 enum class ServerBehavior {
-  SplitReconnect = 0,
-  LoginServer,
-  LobbyServer,
-  DataServerBB,
-  PatchServer,
+  SPLIT_RECONNECT = 0,
+  LOGIN_SERVER,
+  LOBBY_SERVER,
+  DATA_SERVER_BB,
+  PATCH_SERVER,
 };
 
 struct ClientConfig {

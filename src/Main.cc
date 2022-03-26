@@ -31,26 +31,26 @@ FileContentsCache file_cache;
 
 
 static const unordered_map<string, PortConfiguration> default_port_to_behavior({
-  {"gc-jp10",  {9000,  GameVersion::GC,    ServerBehavior::LoginServer}},
-  {"gc-jp11",  {9001,  GameVersion::GC,    ServerBehavior::LoginServer}},
-  {"gc-jp3",   {9003,  GameVersion::GC,    ServerBehavior::LoginServer}},
-  {"gc-us10",  {9100,  GameVersion::PC,    ServerBehavior::SplitReconnect}},
-  {"gc-us3",   {9103,  GameVersion::GC,    ServerBehavior::LoginServer}},
-  {"gc-eu10",  {9200,  GameVersion::GC,    ServerBehavior::LoginServer}},
-  {"gc-eu11",  {9201,  GameVersion::GC,    ServerBehavior::LoginServer}},
-  {"gc-eu3",   {9203,  GameVersion::GC,    ServerBehavior::LoginServer}},
-  {"pc-login", {9300,  GameVersion::PC,    ServerBehavior::LoginServer}},
-  {"pc-patch", {10000, GameVersion::Patch, ServerBehavior::PatchServer}},
-  {"bb-patch", {11000, GameVersion::Patch, ServerBehavior::PatchServer}},
-  {"bb-data",  {12000, GameVersion::BB,    ServerBehavior::DataServerBB}},
+  {"gc-jp10",  {9000,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER}},
+  {"gc-jp11",  {9001,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER}},
+  {"gc-jp3",   {9003,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER}},
+  {"gc-us10",  {9100,  GameVersion::PC,    ServerBehavior::SPLIT_RECONNECT}},
+  {"gc-us3",   {9103,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER}},
+  {"gc-eu10",  {9200,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER}},
+  {"gc-eu11",  {9201,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER}},
+  {"gc-eu3",   {9203,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER}},
+  {"pc-login", {9300,  GameVersion::PC,    ServerBehavior::LOGIN_SERVER}},
+  {"pc-patch", {10000, GameVersion::PATCH, ServerBehavior::PATCH_SERVER}},
+  {"bb-patch", {11000, GameVersion::PATCH, ServerBehavior::PATCH_SERVER}},
+  {"bb-data",  {12000, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB}},
 
   // these aren't hardcoded in any games; user can override them
-  {"bb-data1", {12004, GameVersion::BB,    ServerBehavior::DataServerBB}},
-  {"bb-data2", {12005, GameVersion::BB,    ServerBehavior::DataServerBB}},
-  {"bb-login", {12008, GameVersion::BB,    ServerBehavior::LoginServer}},
-  {"pc-lobby", {9420,  GameVersion::PC,    ServerBehavior::LobbyServer}},
-  {"gc-lobby", {9421,  GameVersion::GC,    ServerBehavior::LobbyServer}},
-  {"bb-lobby", {9422,  GameVersion::BB,    ServerBehavior::LobbyServer}},
+  {"bb-data1", {12004, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB}},
+  {"bb-data2", {12005, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB}},
+  {"bb-login", {12008, GameVersion::BB,    ServerBehavior::LOGIN_SERVER}},
+  {"pc-lobby", {9420,  GameVersion::PC,    ServerBehavior::LOBBY_SERVER}},
+  {"gc-lobby", {9421,  GameVersion::GC,    ServerBehavior::LOBBY_SERVER}},
+  {"bb-lobby", {9422,  GameVersion::BB,    ServerBehavior::LOBBY_SERVER}},
 });
 
 
@@ -105,7 +105,7 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   for (const auto& item : d.at("InformationMenuContents")->as_list()) {
     auto& v = item->as_list();
     information_menu->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-        decode_sjis(v.at(1)->as_string()), MenuItemFlag::RequiresMessageBoxes);
+        decode_sjis(v.at(1)->as_string()), MenuItemFlag::REQUIRES_MESSAGE_BOXES);
     information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
     item_id++;
   }
@@ -177,8 +177,8 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   try {
     bool run_shell = d.at("RunInteractiveShell")->as_bool();
     s->run_shell_behavior = run_shell ?
-        ServerState::RunShellBehavior::Always :
-        ServerState::RunShellBehavior::Never;
+        ServerState::RunShellBehavior::ALWAYS :
+        ServerState::RunShellBehavior::NEVER;
   } catch (const out_of_range&) { }
 }
 
@@ -314,8 +314,8 @@ int main(int argc, char* argv[]) {
     drop_privileges(state->username);
   }
 
-  bool should_run_shell = (state->run_shell_behavior == ServerState::RunShellBehavior::Always);
-  if (state->run_shell_behavior == ServerState::RunShellBehavior::Default) {
+  bool should_run_shell = (state->run_shell_behavior == ServerState::RunShellBehavior::ALWAYS);
+  if (state->run_shell_behavior == ServerState::RunShellBehavior::DEFAULT) {
     should_run_shell = isatty(fileno(stdin));
   }
 

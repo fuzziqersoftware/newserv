@@ -127,11 +127,11 @@ Commands:\n\
         if (mask == "normal") {
           l->privileges = 0;
         } else if (mask == "mod") {
-          l->privileges = Privilege::Moderator;
+          l->privileges = Privilege::MODERATOR;
         } else if (mask == "admin") {
-          l->privileges = Privilege::Administrator;
+          l->privileges = Privilege::ADMINISTRATOR;
         } else if (mask == "root") {
-          l->privileges = Privilege::Root;
+          l->privileges = Privilege::ROOT;
         } else {
           l->privileges = stoul(mask);
         }

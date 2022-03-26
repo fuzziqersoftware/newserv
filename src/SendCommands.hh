@@ -147,11 +147,11 @@ void send_resume_game(std::shared_ptr<Lobby> l,
     std::shared_ptr<Client> ready_client);
 
 enum PlayerStatsChange {
-  SubtractHP = 0,
-  SubtractTP = 1,
-  SubtractMeseta = 2,
-  AddHP = 3,
-  AddTP = 4,
+  SUBTRACT_HP = 0,
+  SUBTRACT_TP = 1,
+  SUBTRACT_MESETA = 2,
+  ADD_HP = 3,
+  ADD_TP = 4,
 };
 
 void send_player_stats_change(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,

@@ -12,21 +12,21 @@
 
 
 enum class QuestCategory {
-  Unknown = -1,
-  Retrieval = 0,
-  Extermination,
-  Event,
-  Shop,
+  UNKNOWN = -1,
+  RETRIEVAL = 0,
+  EXTERMINATION,
+  EVENT,
+  SHOP,
   VR,
-  Tower,
-  GovernmentEpisode1,
-  GovernmentEpisode2,
-  GovernmentEpisode4,
-  Download,
-  Battle,
-  Challenge,
-  Solo,
-  Episode3,
+  TOWER,
+  GOVERNMENT_EPISODE_1,
+  GOVERNMENT_EPISODE_2,
+  GOVERNMENT_EPISODE_4,
+  DOWNLOAD,
+  BATTLE,
+  CHALLENGE,
+  SOLO,
+  EPISODE_3,
 };
 
 bool category_is_mode(QuestCategory category);

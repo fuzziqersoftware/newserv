@@ -44,7 +44,7 @@ void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
     }
 
     case GameVersion::PC:
-    case GameVersion::Patch: {
+    case GameVersion::PATCH: {
       PSOCommandHeaderPC header;
       header.size = sizeof(header) + size;
       header.command = command;
@@ -222,7 +222,7 @@ void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
     bool initial_connection) {
   if (c->version == GameVersion::PC) {
     send_server_init_pc(c, initial_connection);
-  } else if (c->version == GameVersion::Patch) {
+  } else if (c->version == GameVersion::PATCH) {
     send_server_init_patch(c, initial_connection);
   } else if (c->version == GameVersion::GC) {
     send_server_init_gc(c, initial_connection);
@@ -501,7 +501,7 @@ static void send_large_message_dc_gc(shared_ptr<Client> c, uint8_t command,
 
 static void send_large_message(shared_ptr<Client> c, uint8_t command,
     const char16_t* text, uint32_t from_serial_number, bool include_header) {
-  if (c->version == GameVersion::PC || c->version == GameVersion::Patch ||
+  if (c->version == GameVersion::PC || c->version == GameVersion::PATCH ||
       c->version == GameVersion::BB) {
     send_large_message_pc_patch_bb(c, command, text, from_serial_number, include_header);
   } else {
@@ -510,7 +510,7 @@ static void send_large_message(shared_ptr<Client> c, uint8_t command,
 }
 
 void send_message_box(shared_ptr<Client> c, const char16_t* text) {
-  return send_large_message(c, (c->version == GameVersion::Patch) ? 0x13 : 0x1A,
+  return send_large_message(c, (c->version == GameVersion::PATCH) ? 0x13 : 0x1A,
       text, 0, false);
 }
 
@@ -640,7 +640,7 @@ static void send_info_board_dc_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 }
 
 void send_info_board(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  if (c->version == GameVersion::PC || c->version == GameVersion::Patch ||
+  if (c->version == GameVersion::PC || c->version == GameVersion::PATCH ||
       c->version == GameVersion::BB) {
     send_info_board_pc_bb(c, l);
   } else {
@@ -888,14 +888,14 @@ static void send_menu_pc_bb(shared_ptr<Client> c, const char16_t* menu_name,
   }
 
   for (const auto& item : items) {
-    if ((c->version == GameVersion::BB) && (item.flags & MenuItemFlag::InvisibleOnBB)) {
+    if ((c->version == GameVersion::BB) && (item.flags & MenuItemFlag::INVISIBLE_ON_BB)) {
       continue;
     }
-    if ((c->version == GameVersion::PC) && (item.flags & MenuItemFlag::InvisibleOnPC)) {
+    if ((c->version == GameVersion::PC) && (item.flags & MenuItemFlag::INVISIBLE_ON_PC)) {
       continue;
     }
-    if ((item.flags & MenuItemFlag::RequiresMessageBoxes) &&
-        (c->flags & ClientFlag::NoMessageBoxCloseConfirmation)) {
+    if ((item.flags & MenuItemFlag::REQUIRES_MESSAGE_BOXES) &&
+        (c->flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) {
       continue;
     }
 
@@ -930,17 +930,17 @@ static void send_menu_dc_gc(shared_ptr<Client> c, const char16_t* menu_name,
   }
 
   for (const auto& item : items) {
-    if ((c->version == GameVersion::DC) && (item.flags & MenuItemFlag::InvisibleOnDC)) {
+    if ((c->version == GameVersion::DC) && (item.flags & MenuItemFlag::INVISIBLE_ON_DC)) {
       continue;
     }
-    if ((c->version == GameVersion::GC) && (item.flags & MenuItemFlag::InvisibleOnGC)) {
+    if ((c->version == GameVersion::GC) && (item.flags & MenuItemFlag::INVISIBLE_ON_GC)) {
       continue;
     }
-    if ((c->flags & ClientFlag::Episode3Games) && (item.flags & MenuItemFlag::InvisibleOnGCEpisode3)) {
+    if ((c->flags & ClientFlag::EPISODE_3_GAMES) && (item.flags & MenuItemFlag::INVISIBLE_ON_GC_EPISODE_3)) {
       continue;
     }
-    if ((item.flags & MenuItemFlag::RequiresMessageBoxes) &&
-        (c->flags & ClientFlag::NoMessageBoxCloseConfirmation)) {
+    if ((item.flags & MenuItemFlag::REQUIRES_MESSAGE_BOXES) &&
+        (c->flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) {
       continue;
     }
 
@@ -957,7 +957,7 @@ static void send_menu_dc_gc(shared_ptr<Client> c, const char16_t* menu_name,
 
 void send_menu(shared_ptr<Client> c, const char16_t* menu_name,
     uint32_t menu_id, const vector<MenuItem>& items, bool is_info_menu) {
-  if (c->version == GameVersion::PC || c->version == GameVersion::Patch ||
+  if (c->version == GameVersion::PC || c->version == GameVersion::PATCH ||
       c->version == GameVersion::BB) {
     send_menu_pc_bb(c, menu_name, menu_id, items, is_info_menu);
   } else {
@@ -1043,10 +1043,10 @@ static void send_game_menu_gc(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     e.menu_id = GAME_MENU_ID;
 
     e.game_id = l->lobby_id;
-    e.difficulty_tag = ((l->flags & LobbyFlag::Episode3) ? 0x0A : (l->difficulty + 0x22));
+    e.difficulty_tag = ((l->flags & LobbyFlag::EPISODE_3) ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
     e.episode = 0;
-    if (l->flags & LobbyFlag::Episode3) {
+    if (l->flags & LobbyFlag::EPISODE_3) {
       e.flags = (l->password[0] ? 2 : 0);
     } else {
       e.flags = ((l->episode << 6) | (l->mode << 4) | (l->password[0] ? 2 : 0));
@@ -1298,10 +1298,10 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
 
   vector<Entry> entries;
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
-    if (!(l->flags & LobbyFlag::Default)) {
+    if (!(l->flags & LobbyFlag::DEFAULT)) {
       continue;
     }
-    if ((l->flags & LobbyFlag::Episode3) && !(c->flags & ClientFlag::Episode3Games)) {
+    if ((l->flags & LobbyFlag::EPISODE_3) && !(c->flags & ClientFlag::EPISODE_3_GAMES)) {
       continue;
     }
 
@@ -1405,7 +1405,7 @@ static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       cmd.lobby_data[x].ip_address = 0x7F000001;
       cmd.lobby_data[x].client_id = c->lobby_client_id;
       encode_sjis(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
-      if (l->flags & LobbyFlag::Episode3) {
+      if (l->flags & LobbyFlag::EPISODE_3) {
         cmd.player[x].inventory = l->clients[x]->player.inventory;
         cmd.player[x].disp = l->clients[x]->player.disp.to_pcgc();
       }
@@ -1426,7 +1426,7 @@ static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   // player data is only sent in Episode III games; in other versions, the
   // players send each other their data using 62/6D commands during loading
-  size_t data_size = (l->flags & LobbyFlag::Episode3)
+  size_t data_size = (l->flags & LobbyFlag::EPISODE_3)
       ? sizeof(cmd) : (sizeof(cmd) - sizeof(cmd.player));
   send_command(c, 0x64, player_count, &cmd, data_size);
 }
@@ -1529,7 +1529,7 @@ static void send_join_lobby_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
 static void send_join_lobby_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   uint8_t lobby_type = l->type;
-  if (c->flags & ClientFlag::Episode3Games) {
+  if (c->flags & ClientFlag::EPISODE_3_GAMES) {
     if ((l->type > 0x14) && (l->type < 0xE9)) {
       lobby_type = l->block - 1;
     }
@@ -1657,9 +1657,9 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   // If the client will stop sending message box close confirmations after
   // joining any lobby, set the appropriate flag and update the client config
-  if ((c->flags & (ClientFlag::NoMessageBoxCloseConfirmationAfterLobbyJoin | ClientFlag::NoMessageBoxCloseConfirmation))
-      == ClientFlag::NoMessageBoxCloseConfirmationAfterLobbyJoin) {
-    c->flags |= ClientFlag::NoMessageBoxCloseConfirmation;
+  if ((c->flags & (ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION))
+      == ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
+    c->flags |= ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
     send_update_client_config(c);
   }
 }

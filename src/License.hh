@@ -6,25 +6,25 @@
 #include <memory>
 
 enum Privilege {
-  KickUser        = 0x00000001,
-  BanUser         = 0x00000002,
-  SilenceUser     = 0x00000004,
-  ChangeLobbyInfo = 0x00000008,
-  ChangeEvent     = 0x00000010,
-  Announce        = 0x00000020,
-  FreeJoinGames   = 0x00000040,
-  UnlockGames     = 0x00000080,
+  KICK_USER         = 0x00000001,
+  BAN_USER          = 0x00000002,
+  SILENCE_USER      = 0x00000004,
+  CHANGE_LOBBY_INFO = 0x00000008,
+  CHANGE_EVENT      = 0x00000010,
+  ANNOUNCE          = 0x00000020,
+  FREE_JOIN_GAMES   = 0x00000040,
+  UNLOCK_GAMES      = 0x00000080,
 
-  Moderator       = 0x00000007,
-  Administrator   = 0x0000003F,
-  Root            = 0xFFFFFFFF,
+  MODERATOR         = 0x00000007,
+  ADMINISTRATOR     = 0x0000003F,
+  ROOT              = 0xFFFFFFFF,
 };
 
 enum LicenseVerifyAction {
   BB = 0x00,
   GC = 0x01,
   PC = 0x02,
-  SerialNumber = 0x03,
+  SERIAL_NUMBER = 0x03,
 };
 
 struct License {

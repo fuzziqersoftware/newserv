@@ -10,14 +10,14 @@
 #include "RareItemSet.hh"
 
 enum LobbyFlag {
-  IsGame = 0x01,
-  CheatsEnabled = 0x02, // game only
-  Public = 0x04, // lobby only
-  Episode3 = 0x08, // lobby & game
-  QuestInProgress = 0x10, // game only
-  JoinableQuestInProgress = 0x20, // game only
-  Default = 0x40, // lobby only; not set for games and private lobbies
-  Persistent = 0x80, // if not set, lobby is deleted when empty
+  IS_GAME = 0x01,
+  CHEATS_ENABLED = 0x02, // game only
+  PUBLIC = 0x04, // lobby only
+  EPISODE_3 = 0x08, // lobby & game
+  QUEST_IN_PROGRESS = 0x10, // game only
+  JOINABLE_QUEST_IN_PROGRESS = 0x20, // game only
+  DEFAULT = 0x40, // lobby only; not set for games and private lobbies
+  PERSISTENT = 0x80, // if not set, lobby is deleted when empty
 };
 
 struct Lobby {

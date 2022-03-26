@@ -27,40 +27,40 @@ struct PSODownloadQuestHeader {
 
 
 bool category_is_mode(QuestCategory category) {
-  return (category == QuestCategory::Battle) ||
-         (category == QuestCategory::Challenge) ||
-         (category == QuestCategory::Episode3);
+  return (category == QuestCategory::BATTLE) ||
+         (category == QuestCategory::CHALLENGE) ||
+         (category == QuestCategory::EPISODE_3);
 }
 
 const char* name_for_category(QuestCategory category) {
   switch (category) {
-    case QuestCategory::Retrieval:
+    case QuestCategory::RETRIEVAL:
       return "Retrieval";
-    case QuestCategory::Extermination:
+    case QuestCategory::EXTERMINATION:
       return "Extermination";
-    case QuestCategory::Event:
+    case QuestCategory::EVENT:
       return "Event";
-    case QuestCategory::Shop:
+    case QuestCategory::SHOP:
       return "Shop";
     case QuestCategory::VR:
       return "VR";
-    case QuestCategory::Tower:
+    case QuestCategory::TOWER:
       return "Tower";
-    case QuestCategory::GovernmentEpisode1:
+    case QuestCategory::GOVERNMENT_EPISODE_1:
       return "GovernmentEpisode1";
-    case QuestCategory::GovernmentEpisode2:
+    case QuestCategory::GOVERNMENT_EPISODE_2:
       return "GovernmentEpisode2";
-    case QuestCategory::GovernmentEpisode4:
+    case QuestCategory::GOVERNMENT_EPISODE_4:
       return "GovernmentEpisode4";
-    case QuestCategory::Download:
+    case QuestCategory::DOWNLOAD:
       return "Download";
-    case QuestCategory::Battle:
+    case QuestCategory::BATTLE:
       return "Battle";
-    case QuestCategory::Challenge:
+    case QuestCategory::CHALLENGE:
       return "Challenge";
-    case QuestCategory::Solo:
+    case QuestCategory::SOLO:
       return "Solo";
-    case QuestCategory::Episode3:
+    case QuestCategory::EPISODE_3:
       return "Episode3";
     default:
       return "Unknown";
@@ -141,7 +141,7 @@ struct PSOQuestHeaderBB {
 
 Quest::Quest(const string& bin_filename)
   : quest_id(-1),
-    category(QuestCategory::Unknown),
+    category(QuestCategory::UNKNOWN),
     episode(0),
     is_dcv1(false),
     joinable(false),
@@ -178,11 +178,11 @@ Quest::Quest(const string& bin_filename)
   }
 
   if (basename[0] == 'b') {
-    this->category = QuestCategory::Battle;
+    this->category = QuestCategory::BATTLE;
   } else if (basename[0] == 'c') {
-    this->category = QuestCategory::Challenge;
+    this->category = QuestCategory::CHALLENGE;
   } else if (basename[0] == 'e') {
-    this->category = QuestCategory::Episode3;
+    this->category = QuestCategory::EPISODE_3;
   } else if (basename[0] != 'q') {
     throw invalid_argument("filename does not indicate mode");
   }
@@ -190,7 +190,7 @@ Quest::Quest(const string& bin_filename)
   // if the quest category is still unknown, expect 3 tokens (one of them will
   // tell us the category)
   vector<string> tokens = split(basename, '-');
-  if (tokens.size() != (2 + (this->category == QuestCategory::Unknown))) {
+  if (tokens.size() != (2 + (this->category == QuestCategory::UNKNOWN))) {
     throw invalid_argument("incorrect filename format");
   }
 
@@ -198,27 +198,27 @@ Quest::Quest(const string& bin_filename)
   this->quest_id = strtoull(tokens[0].c_str() + 1, nullptr, 10);
 
   // get the category from the second token if needed
-  if (this->category == QuestCategory::Unknown) {
+  if (this->category == QuestCategory::UNKNOWN) {
     if (tokens[1] == "gov") {
       if (this->episode == 0) {
-        this->category = QuestCategory::GovernmentEpisode1;
+        this->category = QuestCategory::GOVERNMENT_EPISODE_1;
       } else if (this->episode == 1) {
-        this->category = QuestCategory::GovernmentEpisode2;
+        this->category = QuestCategory::GOVERNMENT_EPISODE_2;
       } else if (this->episode == 2) {
-        this->category = QuestCategory::GovernmentEpisode4;
+        this->category = QuestCategory::GOVERNMENT_EPISODE_4;
       } else {
         throw invalid_argument("government quest has incorrect episode");
       }
     } else {
       static const unordered_map<std::string, QuestCategory> name_to_category({
-        {"ret", QuestCategory::Retrieval},
-        {"ext", QuestCategory::Extermination},
-        {"evt", QuestCategory::Event},
-        {"shp", QuestCategory::Shop},
+        {"ret", QuestCategory::RETRIEVAL},
+        {"ext", QuestCategory::EXTERMINATION},
+        {"evt", QuestCategory::EVENT},
+        {"shp", QuestCategory::SHOP},
         {"vr",  QuestCategory::VR},
-        {"twr", QuestCategory::Tower},
-        {"dl",  QuestCategory::Download},
-        {"1p",  QuestCategory::Solo},
+        {"twr", QuestCategory::TOWER},
+        {"dl",  QuestCategory::DOWNLOAD},
+        {"1p",  QuestCategory::SOLO},
       });
       this->category = name_to_category.at(tokens[1]);
     }
@@ -242,7 +242,7 @@ Quest::Quest(const string& bin_filename)
   auto bin_decompressed = prs_decompress(*bin_compressed);
 
   switch (this->version) {
-    case GameVersion::Patch:
+    case GameVersion::PATCH:
       throw invalid_argument("patch server quests are not valid");
       break;
 
@@ -274,7 +274,7 @@ Quest::Quest(const string& bin_filename)
     }
 
     case GameVersion::GC: {
-      if (this->category == QuestCategory::Episode3) {
+      if (this->category == QuestCategory::EPISODE_3) {
         // these all appear to be the same size
         if (bin_decompressed.size() != sizeof(PSOQuestHeaderGCEpisode3)) {
           throw invalid_argument("file is incorrect size");
@@ -487,7 +487,7 @@ static string create_download_quest_file(const string& compressed_data,
 }
 
 shared_ptr<Quest> Quest::create_download_quest() const {
-  if (this->category == QuestCategory::Download) {
+  if (this->category == QuestCategory::DOWNLOAD) {
     throw invalid_argument("quest is already a download quest");
   }
 
@@ -510,7 +510,7 @@ shared_ptr<Quest> Quest::create_download_quest() const {
   }
 
   shared_ptr<Quest> dlq(new Quest(*this));
-  dlq->category = QuestCategory::Download;
+  dlq->category = QuestCategory::DOWNLOAD;
 
   dlq->bin_contents_ptr.reset(new string(create_download_quest_file(
       prs_compress(decompressed_bin), decompressed_bin.size())));
