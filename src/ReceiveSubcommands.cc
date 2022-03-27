@@ -922,7 +922,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 02 */ process_subcommand_unimplemented,
   /* 03 */ process_subcommand_unimplemented,
   /* 04 */ process_subcommand_unimplemented,
-  /* 05 */ process_subcommand_forward_check_size_game, // Switch flipped (door lock / lights / poison gas)
+  /* 05 */ process_subcommand_forward_check_size_game, // Switch flipped (door lock / lights / poison gas), or room unlocked when all enemied defeated
   /* 06 */ process_subcommand_send_guild_card,
   /* 07 */ process_subcommand_symbol_chat,
   /* 08 */ process_subcommand_unimplemented,
@@ -1020,7 +1020,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 64 */ process_subcommand_unimplemented,
   /* 65 */ process_subcommand_unimplemented,
   /* 66 */ process_subcommand_unimplemented,
-  /* 67 */ process_subcommand_forward_check_size_game,
+  /* 67 */ process_subcommand_forward_check_size_game, // Create enemy set
   /* 68 */ process_subcommand_forward_check_size_game, // Telepipe/Ryuker
   /* 69 */ process_subcommand_unimplemented,
   /* 6A */ process_subcommand_forward_check_size_game,
