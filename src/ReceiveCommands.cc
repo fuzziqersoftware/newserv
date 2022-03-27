@@ -2058,7 +2058,7 @@ static process_command_t gc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
 
   // D0
-  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, // D0 is process trade
   nullptr, nullptr, process_message_box_closed, process_gba_file_request,
   process_info_board_request, process_write_info_board_dc_gc, nullptr, process_verify_license_gc,
   process_ep3_menu_challenge, nullptr, nullptr, nullptr,

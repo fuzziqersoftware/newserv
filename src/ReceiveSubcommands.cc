@@ -1016,7 +1016,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_pick_up_item,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game, // drop meseta
   process_subcommand_forward_check_size_game,
   process_subcommand_forward_check_size_game,
   // 60
@@ -1054,10 +1054,10 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   // 80
+  process_subcommand_forward_check_size_game, // trigger trap
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size_game, // place trap
   process_subcommand_forward_check_size_game,
   process_subcommand_forward_check_size_game,
   process_subcommand_unimplemented,
@@ -1094,7 +1094,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
-  process_subcommand_unimplemented,
+  process_subcommand_forward_check_size, // trade proposal
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
   process_subcommand_unimplemented,
