@@ -613,7 +613,7 @@ static void send_info_board_pc_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     add_color_inplace(e.message);
   }
 
-  send_command(c, 0xD8, 0x00, entries);
+  send_command(c, 0xD8, entries.size(), entries);
 }
 
 static void send_info_board_dc_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
@@ -636,7 +636,7 @@ static void send_info_board_dc_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     add_color_inplace(e.message);
   }
 
-  send_command(c, 0xD8, 0x00, entries);
+  send_command(c, 0xD8, entries.size(), entries);
 }
 
 void send_info_board(shared_ptr<Client> c, shared_ptr<Lobby> l) {
