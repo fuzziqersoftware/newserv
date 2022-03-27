@@ -27,6 +27,7 @@ This project is primarily for my own nostalgia; I offer no guarantees on how or 
 Current known issues / missing features:
 - Download quests are mostly implemented, but the client doesn't always accept them. It's probably a format issue in file generation.
 - Test all the communication features (info board, simple mail, card search, etc.)
+- The trade window isn't implemented yet.
 - PSO PC and PSOBB are essentially entirely untested. Only GC is fairly well-tested.
 - Add all the chat commands that khyller used to have. (Most, but not all, currently exist in newserv.)
 
