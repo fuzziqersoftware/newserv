@@ -195,7 +195,7 @@ static void process_subcommand_use_technique(shared_ptr<ServerState>,
     return;
   }
   forward_subcommand(l, c, command, flag, p, count);
-  if ((l->flags & LobbyFlag::CHEATS_ENABLED) && c->infinite_hp) {
+  if ((l->flags & LobbyFlag::CHEATS_ENABLED) && c->infinite_tp) {
     send_player_stats_change(l, c, PlayerStatsChange::ADD_TP, 255);
   }
 }
