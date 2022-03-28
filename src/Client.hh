@@ -51,7 +51,6 @@ struct Client {
   ServerBehavior server_behavior;
   bool is_virtual_connection;
   bool should_disconnect;
-  std::string recv_buffer;
 
   // timing & menus
   uint64_t play_time_begin; // time of connection (used for incrementing play time on BB)

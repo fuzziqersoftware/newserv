@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #include <string>
+#include <vector>
 
 
 
@@ -15,8 +16,9 @@ class PSOEncryption {
 public:
   virtual ~PSOEncryption() = default;
 
-  virtual void encrypt(void* data, size_t size) = 0;
-  virtual void decrypt(void* data, size_t size);
+  virtual void encrypt(void* data, size_t size, bool advance = true) = 0;
+  virtual void decrypt(void* data, size_t size, bool advance = true);
+  virtual void skip(size_t size) = 0;
 
 protected:
   PSOEncryption() = default;
@@ -26,11 +28,12 @@ class PSOPCEncryption : public PSOEncryption {
 public:
   explicit PSOPCEncryption(uint32_t seed);
 
-  virtual void encrypt(void* data, size_t size);
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+  virtual void skip(size_t size);
 
 protected:
   void update_stream();
-  uint32_t next();
+  uint32_t next(bool advance = true);
 
   uint32_t stream[PC_STREAM_LENGTH];
   uint16_t offset;
@@ -40,11 +43,12 @@ class PSOGCEncryption : public PSOEncryption {
 public:
   explicit PSOGCEncryption(uint32_t key);
 
-  virtual void encrypt(void* data, size_t size);
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+  virtual void skip(size_t size);
 
 protected:
   void update_stream();
-  uint32_t next();
+  uint32_t next(bool advance = true);
 
   uint32_t stream[GC_STREAM_LENGTH];
   uint16_t offset;
@@ -59,16 +63,13 @@ public:
 
   PSOBBEncryption(const KeyFile& key, const void* seed, size_t seed_size);
 
-  virtual void encrypt(void* data, size_t size);
-  virtual void decrypt(void* data, size_t size);
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+  virtual void decrypt(void* data, size_t size, bool advance = true);
+  virtual void skip(size_t size);
 
 protected:
-  PSOBBEncryption() = default;
+  static std::vector<uint32_t> generate_stream(
+      const KeyFile& key, const void* seed, size_t seed_size);
 
-  void postprocess_initial_stream(const std::string& seed);
-
-  void update_stream();
-
-  uint32_t stream[BB_STREAM_LENGTH];
-  uint16_t offset;
+  const std::vector<uint32_t> stream;
 };

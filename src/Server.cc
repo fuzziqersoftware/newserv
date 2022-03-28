@@ -208,55 +208,16 @@ void Server::on_disconnecting_client_error(struct bufferevent* bev,
 }
 
 void Server::receive_and_process_commands(shared_ptr<Client> c) {
-  struct evbuffer* buf = bufferevent_get_input(c->bev);
-  size_t header_size = (c->version == GameVersion::BB) ? 8 : 4;
-
-  // read as much data into recv_buffer as we can and decrypt it
-  size_t existing_bytes = c->recv_buffer.size();
-  size_t new_bytes = evbuffer_get_length(buf);
-  new_bytes &= ~(header_size - 1); // only read in multiples of header_size
-  c->recv_buffer.resize(existing_bytes + new_bytes);
-  void* recv_ptr = c->recv_buffer.data() + existing_bytes;
-  if (evbuffer_remove(buf, recv_ptr, new_bytes) != static_cast<ssize_t>(new_bytes)) {
-    throw runtime_error("some bytes could not be read from the receive buffer");
-  }
-
-  // decrypt the received data if encryption is enabled
-  if (c->crypt_in.get()) {
-    c->crypt_in->decrypt(recv_ptr, new_bytes);
-  }
-
-  // process as many commands as possible
-  size_t offset = 0;
-  while (offset < c->recv_buffer.size()) {
-    const PSOCommandHeader* header = reinterpret_cast<const PSOCommandHeader*>(
-        c->recv_buffer.data() + offset);
-    size_t size = header->size(c->version);
-    if (offset + size > c->recv_buffer.size()) {
-      break; // don't have a complete command; we're done for now
-    }
-
-    // if we get here, then we have a complete, decrypted command waiting to be
-    // processed. we copy it out and append zeroes on the end so that it's safe
-    // to call string functions on the buffer in command handlers
-    string data = c->recv_buffer.substr(offset + header_size, size - header_size);
-    data.append(4, '\0');
-    try {
-      process_command(this->state, c, header->command(c->version),
-          header->flag(c->version), size - header_size, data.data());
-    } catch (const exception& e) {
-      log(INFO, "[Server] Error in client stream: %s", e.what());
-      c->should_disconnect = true;
-      return;
-    }
-
-    // BB pads commands to 8-byte boundaries, so if we see a shorter command,
-    // skip over the padding
-    offset += (size + header_size - 1) & ~(header_size - 1);
-  }
-
-  // remove the processed commands from the receive buffer
-  c->recv_buffer = c->recv_buffer.substr(offset);
+  for_each_received_command(c->bev, c->version, c->crypt_in.get(),
+    [this, c](uint16_t command, uint16_t flag, const std::string& data) {
+      try {
+        process_command(this->state, c, command, flag, data.size(), data.data());
+      } catch (const exception& e) {
+        log(INFO, "[Server] Error in client stream: %s", e.what());
+        c->should_disconnect = true;
+        return;
+      }
+    });
 }
 
 Server::Server(shared_ptr<struct event_base> base,

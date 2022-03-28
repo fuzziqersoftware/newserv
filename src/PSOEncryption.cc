@@ -16,9 +16,9 @@ using namespace std;
 
 
 
-// most ciphers used by pso are symmetric; alias decrypt to encrypt by default
-void PSOEncryption::decrypt(void* data, size_t size) {
-  this->encrypt(data, size);
+// Most ciphers used by PSO are symmetric; alias decrypt to encrypt by default
+void PSOEncryption::decrypt(void* data, size_t size, bool advance) {
+  this->encrypt(data, size, advance);
 }
 
 
@@ -71,25 +71,49 @@ PSOPCEncryption::PSOPCEncryption(uint32_t seed) : offset(1) {
   }
 }
 
-uint32_t PSOPCEncryption::next() {
+uint32_t PSOPCEncryption::next(bool advance) {
   if (this->offset == PC_STREAM_LENGTH) {
     this->update_stream();
     this->offset = 1;
   }
-  return this->stream[this->offset++];
+  uint32_t ret = this->stream[this->offset];
+  if (advance) {
+    this->offset++;
+  }
+  return ret;
 }
 
-void PSOPCEncryption::encrypt(void* vdata, size_t size) {
+void PSOPCEncryption::encrypt(void* vdata, size_t size, bool advance) {
   if (size & 3) {
     throw invalid_argument("size must be a multiple of 4");
+  }
+  if (!advance && (size != 4)) {
+    throw logic_error("cannot peek-encrypt/decrypt with size > 4");
   }
   size >>= 2;
 
   uint32_t* data = reinterpret_cast<uint32_t*>(vdata);
   for (size_t x = 0; x < size; x++) {
-    data[x] ^= this->next();
+    data[x] ^= this->next(advance);
   }
 }
+
+void PSOPCEncryption::skip(size_t size) {
+  if (size & 3) {
+    throw invalid_argument("size must be a multiple of 4");
+  }
+  size >>= 2;
+
+  // TODO: Do something smarter than just calling next() in a loop here
+  size_t new_offset = this->offset + size;
+  while (new_offset > PC_STREAM_LENGTH) {
+    this->update_stream();
+    // The PC encryption apparently always skips the first key in the stream
+    new_offset -= (PC_STREAM_LENGTH - 1);
+  }
+  this->offset = new_offset;
+}
+
 
 
 
@@ -110,12 +134,15 @@ void PSOGCEncryption::update_stream() {
   this->offset = 0;
 }
 
-uint32_t PSOGCEncryption::next() {
-  this->offset++;
+uint32_t PSOGCEncryption::next(bool advance) {
   if (this->offset == GC_STREAM_LENGTH) {
     this->update_stream();
   }
-  return this->stream[this->offset];
+  uint32_t ret = this->stream[this->offset];
+  if (advance) {
+    this->offset++;
+  }
+  return ret;
 }
 
 PSOGCEncryption::PSOGCEncryption(uint32_t seed) : offset(0) {
@@ -145,27 +172,43 @@ PSOGCEncryption::PSOGCEncryption(uint32_t seed) : offset(0) {
     this->stream[this->offset++] = (this->stream[source3++] ^ (((this->stream[source1++] << 23) & 0xFF800000) ^ ((this->stream[source2++] >> 9) & 0x007FFFFF)));
   }
 
-  for (size_t x = 0; x < 3; x++) {
+  for (size_t x = 0; x < 4; x++) {
     this->update_stream();
   }
-  this->offset = GC_STREAM_LENGTH - 1;
 }
 
-void PSOGCEncryption::encrypt(void* vdata, size_t size) {
+void PSOGCEncryption::encrypt(void* vdata, size_t size, bool advance) {
   if (size & 3) {
     throw invalid_argument("size must be a multiple of 4");
+  }
+  if (!advance && (size != 4)) {
+    throw logic_error("cannot peek-encrypt/decrypt with size > 4");
   }
   size >>= 2;
 
   uint32_t* data = reinterpret_cast<uint32_t*>(vdata);
   for (size_t x = 0; x < size; x++) {
-    data[x] ^= this->next();
+    data[x] ^= this->next(advance);
   }
+}
+
+void PSOGCEncryption::skip(size_t size) {
+  if (size & 3) {
+    throw invalid_argument("size must be a multiple of 4");
+  }
+  size >>= 2;
+
+  size_t new_offset = this->offset + size;
+  while (new_offset > GC_STREAM_LENGTH) {
+    this->update_stream();
+    new_offset -= GC_STREAM_LENGTH;
+  }
+  this->offset = new_offset;
 }
 
 
 
-void PSOBBEncryption::decrypt(void* vdata, size_t size) {
+void PSOBBEncryption::decrypt(void* vdata, size_t size, bool) {
   if (size & 7) {
     throw invalid_argument("size must be a multiple of 8");
   }
@@ -178,19 +221,19 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size) {
   while (edx < size) {
     ebx = data[edx];
     ebx = ebx ^ this->stream[5];
-    ebp = ((this->stream[(ebx >> 0x18) + 0x12]+this->stream[((ebx >> 0x10)& 0xff) + 0x112])
-      ^ this->stream[((ebx >> 0x8)& 0xff) + 0x212]) + this->stream[(ebx & 0xff) + 0x312];
+    ebp = ((this->stream[(ebx >> 0x18) + 0x12] + this->stream[((ebx >> 0x10) & 0xFF) + 0x112])
+        ^ this->stream[((ebx >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebx & 0xFF) + 0x312];
     ebp = ebp ^ this->stream[4];
     ebp ^= data[edx + 1];
-    edi = ((this->stream[(ebp >> 0x18) + 0x12]+this->stream[((ebp >> 0x10)& 0xff) + 0x112])
-      ^ this->stream[((ebp >> 0x8)& 0xff) + 0x212]) + this->stream[(ebp & 0xff) + 0x312];
+    edi = ((this->stream[(ebp >> 0x18) + 0x12] + this->stream[((ebp >> 0x10) & 0xFF) + 0x112])
+        ^ this->stream[((ebp >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebp & 0xFF) + 0x312];
     edi = edi ^ this->stream[3];
     ebx = ebx ^ edi;
-    esi = ((this->stream[(ebx >> 0x18) + 0x12]+this->stream[((ebx >> 0x10)& 0xff) + 0x112])
-      ^ this->stream[((ebx >> 0x8)& 0xff) + 0x212]) + this->stream[(ebx & 0xff) + 0x312];
+    esi = ((this->stream[(ebx >> 0x18) + 0x12] + this->stream[((ebx >> 0x10) & 0xFF) + 0x112])
+        ^ this->stream[((ebx >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebx & 0xFF) + 0x312];
     ebp = ebp ^ esi ^ this->stream[2];
-    edi = ((this->stream[(ebp >> 0x18) + 0x12]+this->stream[((ebp >> 0x10)& 0xff) + 0x112])
-      ^ this->stream[((ebp >> 0x8)& 0xff) + 0x212]) + this->stream[(ebp & 0xff) + 0x312];
+    edi = ((this->stream[(ebp >> 0x18) + 0x12] + this->stream[((ebp >> 0x10) & 0xFF) + 0x112])
+        ^ this->stream[((ebp >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebp & 0xFF) + 0x312];
     edi = edi ^ this->stream[1];
     ebp = ebp ^ this->stream[0];
     ebx = ebx ^ edi;
@@ -200,7 +243,7 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size) {
   }
 }
 
-void PSOBBEncryption::encrypt(void* vdata, size_t size) {
+void PSOBBEncryption::encrypt(void* vdata, size_t size, bool) {
   if (size & 7) {
     throw invalid_argument("size must be a multiple of 8");
   }
@@ -213,19 +256,19 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size) {
   while (edx < size) {
     ebx = data[edx];
     ebx = ebx ^ this->stream[0];
-    ebp = ((this->stream[(ebx >> 0x18) + 0x12]+this->stream[((ebx >> 0x10)& 0xff) + 0x112])
-      ^ this->stream[((ebx >> 0x8)& 0xff) + 0x212]) + this->stream[(ebx & 0xff) + 0x312];
+    ebp = ((this->stream[(ebx >> 0x18) + 0x12] + this->stream[((ebx >> 0x10) & 0xFF) + 0x112])
+        ^ this->stream[((ebx >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebx & 0xFF) + 0x312];
     ebp = ebp ^ this->stream[1];
     ebp ^= data[edx + 1];
-    edi = ((this->stream[(ebp >> 0x18) + 0x12]+this->stream[((ebp >> 0x10)& 0xff) + 0x112])
-      ^ this->stream[((ebp >> 0x8)& 0xff) + 0x212]) + this->stream[(ebp & 0xff) + 0x312];
+    edi = ((this->stream[(ebp >> 0x18) + 0x12] + this->stream[((ebp >> 0x10) & 0xFF) + 0x112])
+        ^ this->stream[((ebp >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebp & 0xFF) + 0x312];
     edi = edi ^ this->stream[2];
     ebx = ebx ^ edi;
-    esi = ((this->stream[(ebx >> 0x18) + 0x12]+this->stream[((ebx >> 0x10)& 0xff) + 0x112])
-      ^ this->stream[((ebx >> 0x8)& 0xff) + 0x212]) + this->stream[(ebx & 0xff) + 0x312];
+    esi = ((this->stream[(ebx >> 0x18) + 0x12] + this->stream[((ebx >> 0x10) & 0xFF) + 0x112])
+        ^ this->stream[((ebx >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebx & 0xFF) + 0x312];
     ebp = ebp ^ esi ^ this->stream[3];
-    edi = ((this->stream[(ebp >> 0x18) + 0x12]+this->stream[((ebp >> 0x10)& 0xff) + 0x112])
-      ^ this->stream[((ebp >> 0x8)& 0xff) + 0x212]) + this->stream[(ebp & 0xff) + 0x312];
+    edi = ((this->stream[(ebp >> 0x18) + 0x12] + this->stream[((ebp >> 0x10) & 0xFF) + 0x112])
+        ^ this->stream[((ebp >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebp & 0xFF) + 0x312];
     edi = edi ^ this->stream[4];
     ebp = ebp ^ this->stream[5];
     ebx = ebx ^ edi;
@@ -235,8 +278,12 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size) {
   }
 }
 
-PSOBBEncryption::PSOBBEncryption(const KeyFile& key, const void* original_seed,
-    size_t seed_size) : offset(0) {
+PSOBBEncryption::PSOBBEncryption(
+    const KeyFile& key, const void* original_seed, size_t seed_size)
+  : stream(this->generate_stream(key, original_seed, seed_size)) { }
+
+vector<uint32_t> PSOBBEncryption::generate_stream(
+    const KeyFile& key, const void* original_seed, size_t seed_size) {
   if (seed_size % 3) {
     throw invalid_argument("seed size must be divisible by 3");
   }
@@ -250,194 +297,198 @@ PSOBBEncryption::PSOBBEncryption(const KeyFile& key, const void* original_seed,
     seed.push_back(original_seed_data[x + 2] ^ 0x18);
   }
 
-  memcpy(this->stream, &key, sizeof(key));
+  vector<uint32_t> stream(BB_STREAM_LENGTH, 0);
+  memcpy(stream.data(), &key, sizeof(key));
 
-  this->postprocess_initial_stream(seed);
-}
+  // This block was formerly postprocess_initial_stream
+  {
+    uint32_t eax, ecx, edx, ebx, ebp, esi, edi, ou, x;
 
-void PSOBBEncryption::postprocess_initial_stream(const string& seed) {
-  uint32_t eax, ecx, edx, ebx, ebp, esi, edi, ou, x;
+    ecx = 0;
+    ebx = 0;
 
-  ecx = 0;
-  ebx = 0;
-
-  while (ebx < (seed.size() / 4)) {
-    ebp = static_cast<uint32_t>(seed[ecx]) << 0x18;
-    eax = ecx + 1;
-    edx = eax % seed.size();
-    eax = (static_cast<uint32_t>(seed[edx]) << 0x10) & 0xFF0000;
-    ebp = (ebp | eax) & 0xffff00ff;
-    eax = ecx + 2;
-    edx = eax % seed.size();
-    eax = (static_cast<uint32_t>(seed[edx]) << 0x08) & 0xFF00;
-    ebp = (ebp | eax) & 0xffffff00;
-    eax = ecx + 3;
-    ecx = ecx + 4;
-    edx = eax % seed.size();
-    eax = static_cast<uint32_t>(seed[edx]);
-    ebp = ebp | eax;
-    eax = ecx;
-    edx = eax % seed.size();
-    this->stream[ebx] ^= ebp;
-    ecx = edx;
-    ebx++;
-  }
-
-  ebp = 0;
-  esi = 0;
-  ecx = 0;
-  edi = 0;
-  ebx = 0;
-  edx = 0x48;
-
-  while (edi < edx) {
-    esi = esi ^ this->stream[0];
-    eax = esi >> 0x18;
-    ebx = (esi >> 0x10) & 0xff;
-    eax = this->stream[eax + 0x12] + this->stream[ebx + 0x112];
-    ebx = (esi >> 8) & 0xFF;
-    eax = eax ^ this->stream[ebx + 0x212];
-    ebx = esi & 0xFF;
-    eax = eax + this->stream[ebx + 0x312];
-
-    eax = eax ^ this->stream[1];
-    ecx = ecx ^ eax;
-    ebx = ecx >> 0x18;
-    eax = (ecx >> 0x10) & 0xFF;
-    ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
-    eax = (ecx >> 8) & 0xFF;
-    ebx = ebx ^ this->stream[eax + 0x212];
-    eax = ecx & 0xFF;
-    ebx = ebx + this->stream[eax + 0x312];
-
-    for (x = 0; x <= 5; x++) {
-      ebx = ebx ^ this->stream[(x * 2) + 2];
-      esi = esi ^ ebx;
-      ebx = esi >> 0x18;
-      eax = (esi >> 0x10) & 0xFF;
-      ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
-      eax = (esi >> 8) & 0xFF;
-      ebx = ebx ^ this->stream[eax + 0x212];
-      eax = esi & 0xFF;
-      ebx = ebx + this->stream[eax + 0x312];
-
-      ebx = ebx ^ this->stream[(x * 2) + 3];
-      ecx = ecx ^ ebx;
-      ebx = ecx >> 0x18;
-      eax = (ecx >> 0x10) & 0xFF;
-      ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
-      eax = (ecx >> 8) & 0xFF;
-      ebx = ebx ^ this->stream[eax + 0x212];
-      eax = ecx & 0xff;
-      ebx = ebx + this->stream[eax + 0x312];
+    while (ebx < (seed.size() / 4)) {
+      ebp = static_cast<uint32_t>(seed[ecx]) << 0x18;
+      eax = ecx + 1;
+      edx = eax % seed.size();
+      eax = (static_cast<uint32_t>(seed[edx]) << 0x10) & 0xFF0000;
+      ebp = (ebp | eax) & 0xFFFF00FF;
+      eax = ecx + 2;
+      edx = eax % seed.size();
+      eax = (static_cast<uint32_t>(seed[edx]) << 0x08) & 0xFF00;
+      ebp = (ebp | eax) & 0xFFFFFF00;
+      eax = ecx + 3;
+      ecx = ecx + 4;
+      edx = eax % seed.size();
+      eax = static_cast<uint32_t>(seed[edx]);
+      ebp = ebp | eax;
+      eax = ecx;
+      edx = eax % seed.size();
+      stream[ebx] ^= ebp;
+      ecx = edx;
+      ebx++;
     }
 
-    ebx = ebx ^ this->stream[14];
-    esi = esi ^ ebx;
-    eax = esi >> 0x18;
-    ebx = (esi >> 0x10) & 0xFF;
-    eax = this->stream[eax + 0x12] + this->stream[ebx + 0x112];
-    ebx = (esi >> 8) & 0xff;
-    eax = eax ^ this->stream[ebx + 0x212];
-    ebx = esi & 0xff;
-    eax = eax + this->stream[ebx + 0x312];
-
-    eax = eax ^ this->stream[15];
-    eax = ecx ^ eax;
-    ecx = eax >> 0x18;
-    ebx = (eax >> 0x10) & 0xFF;
-    ecx = this->stream[ecx + 0x12] + this->stream[ebx + 0x112];
-    ebx = (eax >> 8) & 0xFF;
-    ecx = ecx ^ this->stream[ebx + 0x212];
-    ebx = eax & 0xFF;
-    ecx = ecx + this->stream[ebx + 0x312];
-
-    ecx = ecx ^ this->stream[16];
-    ecx = ecx ^ esi;
-    esi = this->stream[17];
-    esi = esi ^ eax;
-    this->stream[(edi / 4)] = esi;
-    this->stream[(edi / 4)+1] = ecx;
-    edi = edi + 8;
-  }
-
-  eax = 0;
-  edx = 0;
-  ou = 0;
-  while (ou < 0x1000) {
-    edi = 0x48;
-    edx = 0x448;
+    ebp = 0;
+    esi = 0;
+    ecx = 0;
+    edi = 0;
+    ebx = 0;
+    edx = 0x48;
 
     while (edi < edx) {
-      esi = esi ^ this->stream[0];
+      esi = esi ^ stream[0];
       eax = esi >> 0x18;
-      ebx = (esi >> 0x10) & 0xff;
-      eax = this->stream[eax + 0x12] + this->stream[ebx + 0x112];
+      ebx = (esi >> 0x10) & 0xFF;
+      eax = stream[eax + 0x12] + stream[ebx + 0x112];
       ebx = (esi >> 8) & 0xFF;
-      eax = eax ^ this->stream[ebx + 0x212];
+      eax = eax ^ stream[ebx + 0x212];
       ebx = esi & 0xFF;
-      eax = eax + this->stream[ebx + 0x312];
+      eax = eax + stream[ebx + 0x312];
 
-      eax = eax ^ this->stream[1];
+      eax = eax ^ stream[1];
       ecx = ecx ^ eax;
       ebx = ecx >> 0x18;
       eax = (ecx >> 0x10) & 0xFF;
-      ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
+      ebx = stream[ebx + 0x12] + stream[eax + 0x112];
       eax = (ecx >> 8) & 0xFF;
-      ebx = ebx ^ this->stream[eax + 0x212];
+      ebx = ebx ^ stream[eax + 0x212];
       eax = ecx & 0xFF;
-      ebx = ebx + this->stream[eax + 0x312];
+      ebx = ebx + stream[eax + 0x312];
 
       for (x = 0; x <= 5; x++) {
-        ebx = ebx ^ this->stream[(x * 2) + 2];
+        ebx = ebx ^ stream[(x * 2) + 2];
         esi = esi ^ ebx;
         ebx = esi >> 0x18;
         eax = (esi >> 0x10) & 0xFF;
-        ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
+        ebx = stream[ebx + 0x12] + stream[eax + 0x112];
         eax = (esi >> 8) & 0xFF;
-        ebx = ebx ^ this->stream[eax + 0x212];
+        ebx = ebx ^ stream[eax + 0x212];
         eax = esi & 0xFF;
-        ebx = ebx + this->stream[eax + 0x312];
+        ebx = ebx + stream[eax + 0x312];
 
-        ebx = ebx ^ this->stream[(x * 2) + 3];
+        ebx = ebx ^ stream[(x * 2) + 3];
         ecx = ecx ^ ebx;
         ebx = ecx >> 0x18;
         eax = (ecx >> 0x10) & 0xFF;
-        ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
+        ebx = stream[ebx + 0x12] + stream[eax + 0x112];
         eax = (ecx >> 8) & 0xFF;
-        ebx = ebx ^ this->stream[eax + 0x212];
+        ebx = ebx ^ stream[eax + 0x212];
         eax = ecx & 0xFF;
-        ebx = ebx + this->stream[eax + 0x312];
+        ebx = ebx + stream[eax + 0x312];
       }
 
-      ebx = ebx ^ this->stream[14];
+      ebx = ebx ^ stream[14];
       esi = esi ^ ebx;
       eax = esi >> 0x18;
       ebx = (esi >> 0x10) & 0xFF;
-      eax = this->stream[eax + 0x12] + this->stream[ebx + 0x112];
+      eax = stream[eax + 0x12] + stream[ebx + 0x112];
       ebx = (esi >> 8) & 0xFF;
-      eax = eax ^ this->stream[ebx + 0x212];
+      eax = eax ^ stream[ebx + 0x212];
       ebx = esi & 0xFF;
-      eax = eax + this->stream[ebx + 0x312];
+      eax = eax + stream[ebx + 0x312];
 
-      eax = eax ^ this->stream[15];
+      eax = eax ^ stream[15];
       eax = ecx ^ eax;
       ecx = eax >> 0x18;
       ebx = (eax >> 0x10) & 0xFF;
-      ecx = this->stream[ecx + 0x12] + this->stream[ebx + 0x112];
+      ecx = stream[ecx + 0x12] + stream[ebx + 0x112];
       ebx = (eax >> 8) & 0xFF;
-      ecx = ecx ^ this->stream[ebx + 0x212];
+      ecx = ecx ^ stream[ebx + 0x212];
       ebx = eax & 0xFF;
-      ecx = ecx + this->stream[ebx + 0x312];
+      ecx = ecx + stream[ebx + 0x312];
 
-      ecx = ecx ^ this->stream[16];
+      ecx = ecx ^ stream[16];
       ecx = ecx ^ esi;
-      esi = this->stream[17];
+      esi = stream[17];
       esi = esi ^ eax;
-      this->stream[(ou / 4) + (edi / 4)] = esi;
-      this->stream[(ou / 4) + (edi / 4) + 1] = ecx;
+      stream[(edi / 4)] = esi;
+      stream[(edi / 4)+1] = ecx;
       edi = edi + 8;
     }
-    ou = ou + 0x400;
+
+    eax = 0;
+    edx = 0;
+    ou = 0;
+    while (ou < 0x1000) {
+      edi = 0x48;
+      edx = 0x448;
+
+      while (edi < edx) {
+        esi = esi ^ stream[0];
+        eax = esi >> 0x18;
+        ebx = (esi >> 0x10) & 0xFF;
+        eax = stream[eax + 0x12] + stream[ebx + 0x112];
+        ebx = (esi >> 8) & 0xFF;
+        eax = eax ^ stream[ebx + 0x212];
+        ebx = esi & 0xFF;
+        eax = eax + stream[ebx + 0x312];
+
+        eax = eax ^ stream[1];
+        ecx = ecx ^ eax;
+        ebx = ecx >> 0x18;
+        eax = (ecx >> 0x10) & 0xFF;
+        ebx = stream[ebx + 0x12] + stream[eax + 0x112];
+        eax = (ecx >> 8) & 0xFF;
+        ebx = ebx ^ stream[eax + 0x212];
+        eax = ecx & 0xFF;
+        ebx = ebx + stream[eax + 0x312];
+
+        for (x = 0; x <= 5; x++) {
+          ebx = ebx ^ stream[(x * 2) + 2];
+          esi = esi ^ ebx;
+          ebx = esi >> 0x18;
+          eax = (esi >> 0x10) & 0xFF;
+          ebx = stream[ebx + 0x12] + stream[eax + 0x112];
+          eax = (esi >> 8) & 0xFF;
+          ebx = ebx ^ stream[eax + 0x212];
+          eax = esi & 0xFF;
+          ebx = ebx + stream[eax + 0x312];
+
+          ebx = ebx ^ stream[(x * 2) + 3];
+          ecx = ecx ^ ebx;
+          ebx = ecx >> 0x18;
+          eax = (ecx >> 0x10) & 0xFF;
+          ebx = stream[ebx + 0x12] + stream[eax + 0x112];
+          eax = (ecx >> 8) & 0xFF;
+          ebx = ebx ^ stream[eax + 0x212];
+          eax = ecx & 0xFF;
+          ebx = ebx + stream[eax + 0x312];
+        }
+
+        ebx = ebx ^ stream[14];
+        esi = esi ^ ebx;
+        eax = esi >> 0x18;
+        ebx = (esi >> 0x10) & 0xFF;
+        eax = stream[eax + 0x12] + stream[ebx + 0x112];
+        ebx = (esi >> 8) & 0xFF;
+        eax = eax ^ stream[ebx + 0x212];
+        ebx = esi & 0xFF;
+        eax = eax + stream[ebx + 0x312];
+
+        eax = eax ^ stream[15];
+        eax = ecx ^ eax;
+        ecx = eax >> 0x18;
+        ebx = (eax >> 0x10) & 0xFF;
+        ecx = stream[ecx + 0x12] + stream[ebx + 0x112];
+        ebx = (eax >> 8) & 0xFF;
+        ecx = ecx ^ stream[ebx + 0x212];
+        ebx = eax & 0xFF;
+        ecx = ecx + stream[ebx + 0x312];
+
+        ecx = ecx ^ stream[16];
+        ecx = ecx ^ esi;
+        esi = stream[17];
+        esi = esi ^ eax;
+        stream[(ou / 4) + (edi / 4)] = esi;
+        stream[(ou / 4) + (edi / 4) + 1] = ecx;
+        edi = edi + 8;
+      }
+      ou = ou + 0x400;
+    }
   }
+
+  return stream;
 }
+
+void PSOBBEncryption::skip(size_t) { }

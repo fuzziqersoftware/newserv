@@ -35,12 +35,12 @@ add_executable(newserv
   src/FileContentsCache.cc
   src/Menu.cc
   src/PSOProtocol.cc
+  src/PSOEncryption.cc
   src/Client.cc
   src/Lobby.cc
   src/ServerState.cc
   src/Server.cc
   src/License.cc
-  src/PSOEncryption.cc
   src/Player.cc
   src/SendCommands.cc
   src/ChatCommands.cc

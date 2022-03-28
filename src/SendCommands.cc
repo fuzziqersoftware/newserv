@@ -128,24 +128,34 @@ static const char* dc_lobby_server_copyright = "DreamCast Lobby Server. Copyrigh
 static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
-static void send_server_init_dc_pc_gc(shared_ptr<Client> c, const char* copyright_text,
-    uint8_t command) {
-  struct {
+string prepare_server_init_contents_dc_pc_gc(
+    bool initial_connection,
+    uint32_t server_key,
+    uint32_t client_key) {
+  struct Command {
     char copyright[0x40];
     uint32_t server_key;
     uint32_t client_key;
     char after_message[200];
-  } cmd;
+  };
+  string ret(sizeof(Command), '\0');
+  auto* cmd = reinterpret_cast<Command*>(ret.data());
 
+  strcpy(cmd->copyright, initial_connection ? dc_port_map_copyright : dc_lobby_server_copyright);
+  cmd->server_key = server_key;
+  cmd->client_key = client_key;
+  strcpy(cmd->after_message, anti_copyright);
+  return ret;
+}
+
+static void send_server_init_dc_pc_gc(shared_ptr<Client> c,
+    bool initial_connection, uint8_t command) {
   uint32_t server_key = random_object<uint32_t>();
   uint32_t client_key = random_object<uint32_t>();
 
-  memset(&cmd, 0, sizeof(cmd));
-  strcpy(cmd.copyright, copyright_text);
-  cmd.server_key = server_key;
-  cmd.client_key = client_key;
-  strcpy(cmd.after_message, anti_copyright);
-  send_command(c, command, 0x00, cmd);
+  string data = prepare_server_init_contents_dc_pc_gc(
+      initial_connection, server_key, client_key);
+  send_command(c, command, 0x00, data);
 
   switch (c->version) {
     case GameVersion::DC:
@@ -163,19 +173,14 @@ static void send_server_init_dc_pc_gc(shared_ptr<Client> c, const char* copyrigh
 }
 
 static void send_server_init_pc(shared_ptr<Client> c, bool initial_connection) {
-  send_server_init_dc_pc_gc(c,
-      initial_connection ? dc_port_map_copyright : dc_lobby_server_copyright,
-      0x17);
+  send_server_init_dc_pc_gc(c, initial_connection, 0x17);
 }
 
 static void send_server_init_gc(shared_ptr<Client> c, bool initial_connection) {
-  send_server_init_dc_pc_gc(c,
-      initial_connection ? dc_port_map_copyright : dc_lobby_server_copyright,
-      initial_connection ? 0x17 : 0x02);
+  send_server_init_dc_pc_gc(c, initial_connection, initial_connection ? 0x17 : 0x02);
 }
 
-static void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    bool) {
+static void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   struct {
     char copyright[0x60];
     uint8_t server_key[0x30];
@@ -196,7 +201,7 @@ static void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
       sizeof(cmd.client_key)));
 }
 
-static void send_server_init_patch(shared_ptr<Client> c, bool) {
+static void send_server_init_patch(shared_ptr<Client> c) {
   struct {
     char copyright[0x40];
     uint32_t server_key;
@@ -223,11 +228,11 @@ void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (c->version == GameVersion::PC) {
     send_server_init_pc(c, initial_connection);
   } else if (c->version == GameVersion::PATCH) {
-    send_server_init_patch(c, initial_connection);
+    send_server_init_patch(c);
   } else if (c->version == GameVersion::GC) {
     send_server_init_gc(c, initial_connection);
   } else if (c->version == GameVersion::BB) {
-    send_server_init_bb(s, c, initial_connection);
+    send_server_init_bb(s, c);
   } else {
     throw logic_error("unimplemented versioned command");
   }
