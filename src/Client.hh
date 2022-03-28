@@ -10,12 +10,17 @@
 
 
 
+extern const uint64_t CLIENT_CONFIG_MAGIC;
+
+
+
 enum class ServerBehavior {
   SPLIT_RECONNECT = 0,
   LOGIN_SERVER,
   LOBBY_SERVER,
   DATA_SERVER_BB,
   PATCH_SERVER,
+  PROXY_SERVER,
 };
 
 struct ClientConfig {
@@ -23,8 +28,10 @@ struct ClientConfig {
   uint8_t bb_game_state;
   uint8_t bb_player_index;
   uint16_t flags;
-  uint32_t unused[5];
-  uint32_t unused_bb_only[2];
+  uint32_t proxy_destination_address;
+  uint16_t proxy_destination_port;
+  uint8_t unused[0x0E];
+  uint8_t unused_bb_only[0x08];
 } __attribute__((packed));
 
 struct Client {
@@ -51,6 +58,8 @@ struct Client {
   ServerBehavior server_behavior;
   bool is_virtual_connection;
   bool should_disconnect;
+  uint32_t proxy_destination_address;
+  uint16_t proxy_destination_port;
 
   // timing & menus
   uint64_t play_time_begin; // time of connection (used for incrementing play time on BB)
@@ -74,9 +83,6 @@ struct Client {
 
   Client(struct bufferevent* bev, GameVersion version,
       ServerBehavior server_behavior);
-
-  // adds data to the client's output buffer, encrypting it first
-  bool send(std::string&& data);
 
   ClientConfig export_config() const;
   void import_config(const ClientConfig& cc);

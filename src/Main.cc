@@ -19,7 +19,6 @@
 #include "FileContentsCache.hh"
 #include "Text.hh"
 #include "ServerShell.hh"
-#include "ProxyShell.hh"
 #include "IPStackSimulator.hh"
 
 using namespace std;
@@ -51,6 +50,9 @@ static const unordered_map<string, PortConfiguration> default_port_to_behavior({
   {"pc-lobby", {9420,  GameVersion::PC,    ServerBehavior::LOBBY_SERVER}},
   {"gc-lobby", {9421,  GameVersion::GC,    ServerBehavior::LOBBY_SERVER}},
   {"bb-lobby", {9422,  GameVersion::BB,    ServerBehavior::LOBBY_SERVER}},
+  {"pc-proxy", {9520,  GameVersion::PC,    ServerBehavior::PROXY_SERVER}},
+  {"gc-proxy", {9521,  GameVersion::GC,    ServerBehavior::PROXY_SERVER}},
+  {"bb-proxy", {9522,  GameVersion::BB,    ServerBehavior::PROXY_SERVER}},
 });
 
 
@@ -100,17 +102,44 @@ void populate_state_from_config(shared_ptr<ServerState> s,
 
   information_menu->emplace_back(INFORMATION_MENU_GO_BACK, u"Go back",
       u"Return to the\nmain menu", 0);
-
-  uint32_t item_id = 0;
-  for (const auto& item : d.at("InformationMenuContents")->as_list()) {
-    auto& v = item->as_list();
-    information_menu->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-        decode_sjis(v.at(1)->as_string()), MenuItemFlag::REQUIRES_MESSAGE_BOXES);
-    information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
-    item_id++;
+  {
+    uint32_t item_id = 0;
+    for (const auto& item : d.at("InformationMenuContents")->as_list()) {
+      auto& v = item->as_list();
+      information_menu->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
+          decode_sjis(v.at(1)->as_string()), MenuItemFlag::REQUIRES_MESSAGE_BOXES);
+      information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
+      item_id++;
+    }
   }
   s->information_menu = information_menu;
   s->information_contents = information_contents;
+
+  s->proxy_destinations_menu.emplace_back(PROXY_DESTINATIONS_MENU_GO_BACK,
+      u"Go back", u"Return to the\nmain menu", 0);
+  {
+    uint32_t item_id = 0;
+    for (const auto& item : d.at("ProxyDestinations")->as_dict()) {
+      const string& netloc_str = item.second->as_string();
+      s->proxy_destinations_menu.emplace_back(item_id, decode_sjis(item.first),
+          decode_sjis(netloc_str), 0);
+      s->proxy_destinations.emplace_back(parse_netloc(netloc_str));
+      item_id++;
+    }
+  }
+
+  s->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",
+      u"Join the lobby", 0);
+  s->main_menu.emplace_back(MAIN_MENU_INFORMATION, u"Information",
+      u"View server information", MenuItemFlag::REQUIRES_MESSAGE_BOXES);
+  if (!s->proxy_destinations.empty()) {
+    s->main_menu.emplace_back(MAIN_MENU_PROXY_DESTINATIONS, u"Proxy server",
+        u"Connect to another\nserver", MenuItemFlag::REQUIRES_MESSAGE_BOXES);
+  }
+  s->main_menu.emplace_back(MAIN_MENU_DOWNLOAD_QUESTS, u"Download quests",
+      u"Download quests", 0);
+  s->main_menu.emplace_back(MAIN_MENU_DISCONNECT, u"Disconnect",
+      u"Disconnect", 0);
 
   try {
     s->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());
@@ -214,24 +243,7 @@ void drop_privileges(const string& username) {
 
 
 
-int main(int argc, char* argv[]) {
-  string proxy_hostname;
-  int proxy_port = 0;
-  GameVersion proxy_version = GameVersion::GC;
-  for (int x = 1; x < argc; x++) {
-    if (!strncmp(argv[x], "--proxy-destination=", 20)) {
-      auto netloc = parse_netloc(&argv[x][20], 9100);
-      proxy_hostname = netloc.first;
-      proxy_port = netloc.second;
-
-    } else if (!strncmp(argv[x], "--proxy-version=", 16)) {
-      proxy_version = version_for_name(&argv[x][16]);
-
-    } else {
-      throw invalid_argument(string_printf("unknown option: %s", argv[x]));
-    }
-  }
-
+int main(int, char**) {
   signal(SIGPIPE, SIG_IGN);
 
   shared_ptr<ServerState> state(new ServerState());
@@ -249,6 +261,18 @@ int main(int argc, char* argv[]) {
   auto config_json = JSONObject::parse(load_file("system/config.json"));
   populate_state_from_config(state, config_json);
 
+  log(INFO, "Loading license list");
+  state->license_manager.reset(new LicenseManager("system/licenses.nsi"));
+
+  log(INFO, "Loading battle parameters");
+  state->battle_params.reset(new BattleParamTable("system/blueburst/BattleParamEntry"));
+
+  log(INFO, "Loading level table");
+  state->level_table.reset(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));
+
+  log(INFO, "Collecting quest metadata");
+  state->quest_index.reset(new QuestIndex("system/quests"));
+
   shared_ptr<DNSServer> dns_server;
   if (state->dns_server_port) {
     log(INFO, "Starting DNS server");
@@ -259,50 +283,31 @@ int main(int argc, char* argv[]) {
     log(INFO, "DNS server is disabled");
   }
 
-  shared_ptr<ProxyServer> proxy_server;
   shared_ptr<Server> game_server;
-  uint32_t proxy_destination_address = 0;
-  if (proxy_port) {
+  if (!state->proxy_destinations.empty()) {
     log(INFO, "Starting proxy server");
-    sockaddr_storage proxy_destination_ss = make_sockaddr_storage(
-        proxy_hostname, proxy_port).first;
-    if (proxy_destination_ss.ss_family != AF_INET) {
-      throw runtime_error("proxy destination address is not IPv4");
-    }
-    proxy_destination_address = ntohl(
-        reinterpret_cast<struct sockaddr_in*>(&proxy_destination_ss)->sin_addr.s_addr);
-    proxy_server.reset(new ProxyServer(base, proxy_destination_ss, proxy_version));
-    proxy_server->listen(proxy_port);
-    if (proxy_version == GameVersion::BB) {
-      proxy_server->listen(proxy_port + 1);
-    }
+    state->proxy_server.reset(new ProxyServer(base, state));
+  }
 
-  } else {
-    log(INFO, "Starting game server");
-    game_server.reset(new Server(base, state));
-    for (const auto& it : state->named_port_configuration) {
+  log(INFO, "Starting game server");
+  game_server.reset(new Server(base, state));
+
+  log(INFO, "Opening sockets");
+  for (const auto& it : state->named_port_configuration) {
+    if (it.second.behavior == ServerBehavior::PROXY_SERVER) {
+      if (state->proxy_server.get()) {
+        state->proxy_server->listen(it.second.port, it.second.version);
+      }
+    } else {
       game_server->listen("", it.second.port, it.second.version, it.second.behavior);
     }
-
-    log(INFO, "Loading license list");
-    state->license_manager.reset(new LicenseManager("system/licenses.nsi"));
-
-    log(INFO, "Loading battle parameters");
-    state->battle_params.reset(new BattleParamTable("system/blueburst/BattleParamEntry"));
-
-    log(INFO, "Loading level table");
-    state->level_table.reset(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));
-
-    log(INFO, "Collecting quest metadata");
-    state->quest_index.reset(new QuestIndex("system/quests"));
   }
 
   shared_ptr<IPStackSimulator> ip_stack_simulator;
   if (!state->ip_stack_addresses.empty()) {
     log(INFO, "Starting IP stack simulator");
     ip_stack_simulator.reset(new IPStackSimulator(
-        base, game_server, proxy_server, state));
-    ip_stack_simulator->set_proxy_destination_address(proxy_destination_address);
+        base, game_server, state));
     for (const auto& it : state->ip_stack_addresses) {
       auto netloc = parse_netloc(it);
       ip_stack_simulator->listen(netloc.first, netloc.second);
@@ -321,16 +326,13 @@ int main(int argc, char* argv[]) {
 
   shared_ptr<Shell> shell;
   if (should_run_shell) {
-    if (proxy_port) {
-      shell.reset(new ProxyShell(base, state, proxy_server));
-    } else {
-      shell.reset(new ServerShell(base, state));
-    }
+    shell.reset(new ServerShell(base, state));
   }
 
   log(INFO, "Ready");
   event_base_dispatch(base.get());
 
   log(INFO, "Normal shutdown");
+  state->proxy_server.reset(); // Break reference cycle
   return 0;
 }

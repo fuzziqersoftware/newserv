@@ -1,10 +1,11 @@
-#include "SendCommands.hh"
+#include "ReceiveCommands.hh"
 
 #include <inttypes.h>
 #include <string.h>
 
 #include <memory>
 #include <phosg/Filesystem.hh>
+#include <phosg/Network.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
@@ -15,6 +16,7 @@
 #include "SendCommands.hh"
 #include "ReceiveSubcommands.hh"
 #include "ChatCommands.hh"
+#include "ProxyServer.hh"
 
 using namespace std;
 
@@ -196,21 +198,10 @@ void process_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 
 void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, uint16_t size, const void* data) { // DB
-  struct Cmd {
-    char unused[0x20];
-    char serial_number[0x10];
-    char access_key[0x10];
-    char unused2[0x08];
-    uint32_t sub_version;
-    char unused3[0x60];
-    char password[0x10];
-    char unused4[0x20];
-  };
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+  check_size(size, sizeof(VerifyLicenseCommand_GC_DB));
+  const auto* cmd = reinterpret_cast<const VerifyLicenseCommand_GC_DB*>(data);
 
-  uint32_t serial_number = 0;
-  sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
+  uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
   try {
     c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
         cmd->password);
@@ -221,8 +212,10 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       c->should_disconnect = true;
       return;
     } else {
-      c->license = LicenseManager::create_license_pc(serial_number,
-          cmd->access_key, cmd->password);
+      auto l = LicenseManager::create_license_gc(serial_number,
+          cmd->access_key, cmd->password, true);
+      s->license_manager->add(l);
+      c->license = l;
     }
   }
 
@@ -240,8 +233,7 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
-  uint32_t serial_number = 0;
-  sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
+  uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
       c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
@@ -251,20 +243,14 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
           nullptr);
     }
   } catch (const exception& e) {
-    if (!s->allow_unregistered_users) {
-      u16string message = u"Login failed: " + decode_sjis(e.what());
-      send_message_box(c, message.c_str());
-      c->should_disconnect = true;
-      return;
-    } else {
-      if (c->version == GameVersion::GC) {
-        c->license = LicenseManager::create_license_gc(serial_number,
-            cmd->access_key, nullptr);
-      } else {
-        c->license = LicenseManager::create_license_pc(serial_number,
-            cmd->access_key, nullptr);
-      }
-    }
+    // The client should have sent a different command containing the password
+    // already, which should have created and added a temporary license. If no
+    // license exists, disconnect the client even if unregistered clients are
+    // allowed.
+    u16string message = u"Login failed: " + decode_sjis(e.what());
+    send_message_box(c, message.c_str());
+    c->should_disconnect = true;
+    return;
   }
 
   send_command(c, 0x9C, 0x01);
@@ -285,8 +271,7 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   c->flags |= flags_for_version(c->version, cmd->sub_version);
 
-  uint32_t serial_number = 0;
-  sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
+  uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
       c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
@@ -302,13 +287,16 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       c->should_disconnect = true;
       return;
     } else {
+      shared_ptr<License> l;
       if (c->version == GameVersion::GC) {
-        c->license = LicenseManager::create_license_gc(serial_number,
-            cmd->access_key, cmd->password);
+        l = LicenseManager::create_license_gc(serial_number,
+            cmd->access_key, cmd->password, true);
       } else {
-        c->license = LicenseManager::create_license_pc(serial_number,
-            cmd->access_key, cmd->password);
+        l = LicenseManager::create_license_pc(serial_number,
+            cmd->access_key, cmd->password, true);
       }
+      s->license_manager->add(l);
+      c->license = l;
     }
   }
 
@@ -317,28 +305,13 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, uint16_t size, const void* data) { // 9D 9E
-  struct Cmd {
-    char unused[0x10];
-    uint8_t sub_version;
-    uint8_t unused2[0x27];
-    char serial_number[0x10];
-    char access_key[0x10];
-    char unused3[0x60];
-    char name[0x10];
-    // Note: there are 8 bytes at the end of cfg that are technically not
-    // included in the client config on GC, but the field after it is
-    // sufficiently large and unused anyway
-    ClientConfig cfg;
-    uint8_t unused4[0x5C];
-  };
   // sometimes the unused bytes aren't sent?
-  check_size(size, sizeof(Cmd) - 0x64, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+  check_size(size, sizeof(LoginCommand_GC_9E) - 0x64, sizeof(LoginCommand_GC_9E));
+  const auto* cmd = reinterpret_cast<const LoginCommand_GC_9E*>(data);
 
   c->flags |= flags_for_version(c->version, cmd->sub_version);
 
-  uint32_t serial_number = 0;
-  sscanf(cmd->serial_number, "%8" PRIX32, &serial_number);
+  uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
       c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
@@ -348,20 +321,12 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
           nullptr);
     }
   } catch (const exception& e) {
-    if (!s->allow_unregistered_users) {
-      u16string message = u"Login failed: " + decode_sjis(e.what());
-      send_message_box(c, message.c_str());
-      c->should_disconnect = true;
-      return;
-    } else {
-      if (c->version == GameVersion::GC) {
-        c->license = LicenseManager::create_license_gc(serial_number,
-            cmd->access_key, nullptr);
-      } else {
-        c->license = LicenseManager::create_license_pc(serial_number,
-            cmd->access_key, nullptr);
-      }
-    }
+    // See comment in 9A handler about why we do this even if unregistered users
+    // are allowed on the server
+    u16string message = u"Login failed: " + decode_sjis(e.what());
+    send_message_box(c, message.c_str());
+    c->should_disconnect = true;
+    return;
   }
 
   try {
@@ -612,7 +577,13 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
           send_ship_info(c, u"Go to the lobby.");
           break;
         case MAIN_MENU_INFORMATION:
-          send_ship_info(c, u"View server information.");
+          send_ship_info(c, u"View server\ninformation.");
+          break;
+        case MAIN_MENU_PROXY_DESTINATIONS:
+          send_ship_info(c, u"Connect to another\nserver.");
+          break;
+        case MAIN_MENU_DOWNLOAD_QUESTS:
+          send_ship_info(c, u"Download a quest.");
           break;
         case MAIN_MENU_DISCONNECT:
           send_ship_info(c, u"End your session.");
@@ -630,6 +601,19 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
         try {
           // we use item_id + 1 here because "go back" is the first item
           send_ship_info(c, s->information_menu->at(cmd->item_id + 1).description.c_str());
+        } catch (const out_of_range&) {
+          send_ship_info(c, u"$C6No such information exists.");
+        }
+      }
+      break;
+
+    case PROXY_DESTINATIONS_MENU_ID:
+      if (cmd->item_id == PROXY_DESTINATIONS_MENU_GO_BACK) {
+        send_ship_info(c, u"Return to the\nmain menu.");
+      } else {
+        try {
+          // we use item_id + 1 here because "go back" is the first item
+          send_ship_info(c, s->proxy_destinations_menu.at(cmd->item_id + 1).description.c_str());
         } catch (const out_of_range&) {
           send_ship_info(c, u"$C6No such information exists.");
         }
@@ -690,6 +674,11 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           c->flags |= ClientFlag::IN_INFORMATION_MENU;
           break;
 
+        case MAIN_MENU_PROXY_DESTINATIONS:
+          send_menu(c, u"Proxy server", PROXY_DESTINATIONS_MENU_ID,
+              s->proxy_destinations_menu, false);
+          break;
+
         case MAIN_MENU_DOWNLOAD_QUESTS:
           send_quest_menu(c, QUEST_FILTER_MENU_ID, quest_download_menu, true);
           break;
@@ -715,6 +704,41 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_message_box(c, s->information_contents->at(cmd->item_id).c_str());
         } catch (const out_of_range&) {
           send_message_box(c, u"$C6No such information exists.");
+        }
+      }
+      break;
+    }
+
+    case PROXY_DESTINATIONS_MENU_ID: {
+      if (cmd->item_id == PROXY_DESTINATIONS_MENU_GO_BACK) {
+        send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
+
+      } else {
+        pair<string, uint16_t>* dest = nullptr;
+        try {
+          dest = &s->proxy_destinations.at(cmd->item_id);
+        } catch (const out_of_range&) { }
+
+        if (!dest) {
+          send_message_box(c, u"$C6No such destination exists.");
+          c->should_disconnect = true;
+        } else {
+          // TODO: We can probably avoid using client config and reconnecting the
+          // client here; it's likely we could build a way to just directly link
+          // the client to the proxy server instead (would have to provide
+          // license/char name/etc. for remote auth)
+
+          c->proxy_destination_address = resolve_ipv4(dest->first);
+          c->proxy_destination_port = dest->second;
+          send_update_client_config(c);
+
+          s->proxy_server->delete_session(c->license->serial_number);
+
+          static const vector<string> version_to_port_name({
+              "dc-proxy", "pc-proxy", "", "gc-proxy", "bb-proxy"});
+          const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
+          send_reconnect(c, s->connect_address_for_client(c),
+              s->named_port_configuration.at(port_name).port);
         }
       }
       break;
@@ -2219,43 +2243,8 @@ static process_command_t* handlers[6] = {
 
 void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, uint16_t size, const void* data) {
-  // TODO: this is slow; make it better somehow
-  {
-    string name_token;
-    if (c->player.disp.name[0]) {
-      name_token = " from " + remove_language_marker(encode_sjis(c->player.disp.name));
-    }
-    log(INFO, "Received%s version=%d size=%04hX command=%04hX flag=%08X",
-        name_token.c_str(), static_cast<int>(c->version), size, command, flag);
-
-    string data_to_print;
-    if (c->version == GameVersion::BB) {
-      data_to_print.resize(size + 8);
-      PSOCommandHeaderBB* header = reinterpret_cast<PSOCommandHeaderBB*>(
-          data_to_print.data());
-      header->command = command;
-      header->flag = flag;
-      header->size = size + 8;
-      memcpy(data_to_print.data() + 8, data, size);
-    } else if (c->version == GameVersion::PC) {
-      data_to_print.resize(size + 4);
-      PSOCommandHeaderPC* header = reinterpret_cast<PSOCommandHeaderPC*>(
-          data_to_print.data());
-      header->command = command;
-      header->flag = flag;
-      header->size = size + 4;
-      memcpy(data_to_print.data() + 4, data, size);
-    } else { // DC/GC
-      data_to_print.resize(size + 4);
-      PSOCommandHeaderDCGC* header = reinterpret_cast<PSOCommandHeaderDCGC*>(
-          data_to_print.data());
-      header->command = command;
-      header->flag = flag;
-      header->size = size + 4;
-      memcpy(data_to_print.data() + 4, data, size);
-    }
-    print_data(stderr, data_to_print);
-  }
+  string encoded_name = remove_language_marker(encode_sjis(c->player.disp.name));
+  print_received_command(command, flag, data, size, c->version, encoded_name.c_str());
 
   auto fn = handlers[static_cast<size_t>(c->version)][command & 0xFF];
   if (fn) {

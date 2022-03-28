@@ -17,7 +17,9 @@ enum Privilege {
 
   MODERATOR         = 0x00000007,
   ADMINISTRATOR     = 0x0000003F,
-  ROOT              = 0xFFFFFFFF,
+  ROOT              = 0x7FFFFFFF,
+
+  TEMPORARY         = 0x80000000,
 };
 
 enum LicenseVerifyAction {
@@ -59,12 +61,12 @@ public:
   void remove(uint32_t serial_number);
   std::vector<License> snapshot() const;
 
-  static std::shared_ptr<const License> create_license_pc(
-      uint32_t serial_number, const char* access_key, const char* password);
-  static std::shared_ptr<const License> create_license_gc(
-      uint32_t serial_number, const char* access_key, const char* password);
-  static std::shared_ptr<const License> create_license_bb(
-      uint32_t serial_number, const char* username, const char* password);
+  static std::shared_ptr<License> create_license_pc(
+      uint32_t serial_number, const char* access_key, const char* password, bool temporary);
+  static std::shared_ptr<License> create_license_gc(
+      uint32_t serial_number, const char* access_key, const char* password, bool temporary);
+  static std::shared_ptr<License> create_license_bb(
+      uint32_t serial_number, const char* username, const char* password, bool temporary);
 
 protected:
   void save() const;

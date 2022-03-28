@@ -3,6 +3,9 @@
 #include <event2/buffer.h>
 
 #include <stdexcept>
+#include <phosg/Strings.hh>
+
+#include "Text.hh"
 
 using namespace std;
 
@@ -17,43 +20,109 @@ PSOCommandHeader::PSOCommandHeader() {
 uint16_t PSOCommandHeader::command(GameVersion version) const {
   switch (version) {
     case GameVersion::DC:
+      return this->dc.command;
     case GameVersion::GC:
-      return reinterpret_cast<const PSOCommandHeaderDCGC*>(this)->command;
+      return this->gc.command;
     case GameVersion::PC:
     case GameVersion::PATCH:
-      return reinterpret_cast<const PSOCommandHeaderPC*>(this)->command;
+      return this->pc.command;
     case GameVersion::BB:
-      return reinterpret_cast<const PSOCommandHeaderBB*>(this)->command;
+      return this->bb.command;
+    default:
+      throw logic_error("unknown game version");
   }
-  throw logic_error("unknown game version");
+}
+
+void PSOCommandHeader::set_command(GameVersion version, uint16_t command) {
+  switch (version) {
+    case GameVersion::DC:
+      this->dc.command = command;
+      break;
+    case GameVersion::GC:
+      this->gc.command = command;
+      break;
+    case GameVersion::PC:
+    case GameVersion::PATCH:
+      this->pc.command = command;
+      break;
+    case GameVersion::BB:
+      this->bb.command = command;
+      break;
+    default:
+      throw logic_error("unknown game version");
+  }
 }
 
 uint16_t PSOCommandHeader::size(GameVersion version) const {
   switch (version) {
     case GameVersion::DC:
+      return this->dc.size;
     case GameVersion::GC:
-      return reinterpret_cast<const PSOCommandHeaderDCGC*>(this)->size;
+      return this->gc.size;
     case GameVersion::PC:
     case GameVersion::PATCH:
-      return reinterpret_cast<const PSOCommandHeaderPC*>(this)->size;
+      return this->pc.size;
     case GameVersion::BB:
-      return reinterpret_cast<const PSOCommandHeaderBB*>(this)->size;
+      return this->bb.size;
+    default:
+      throw logic_error("unknown game version");
   }
-  throw logic_error("unknown game version");
+}
+
+void PSOCommandHeader::set_size(GameVersion version, uint32_t size) {
+  switch (version) {
+    case GameVersion::DC:
+      this->dc.size = size;
+      break;
+    case GameVersion::GC:
+      this->gc.size = size;
+      break;
+    case GameVersion::PC:
+    case GameVersion::PATCH:
+      this->pc.size = size;
+      break;
+    case GameVersion::BB:
+      this->bb.size = size;
+      break;
+    default:
+      throw logic_error("unknown game version");
+  }
 }
 
 uint32_t PSOCommandHeader::flag(GameVersion version) const {
   switch (version) {
     case GameVersion::DC:
+      return this->dc.flag;
     case GameVersion::GC:
-      return reinterpret_cast<const PSOCommandHeaderDCGC*>(this)->flag;
+      return this->gc.flag;
     case GameVersion::PC:
     case GameVersion::PATCH:
-      return reinterpret_cast<const PSOCommandHeaderPC*>(this)->flag;
+      return this->pc.flag;
     case GameVersion::BB:
-      return reinterpret_cast<const PSOCommandHeaderBB*>(this)->flag;
+      return this->bb.flag;
+    default:
+      throw logic_error("unknown game version");
   }
-  throw logic_error("unknown game version");
+}
+
+void PSOCommandHeader::set_flag(GameVersion version, uint32_t flag) {
+  switch (version) {
+    case GameVersion::DC:
+      this->dc.flag = flag;
+      break;
+    case GameVersion::GC:
+      this->gc.flag = flag;
+      break;
+    case GameVersion::PC:
+    case GameVersion::PATCH:
+      this->pc.flag = flag;
+      break;
+    case GameVersion::BB:
+      this->bb.flag = flag;
+      break;
+    default:
+      throw logic_error("unknown game version");
+  }
 }
 
 
@@ -62,7 +131,7 @@ void for_each_received_command(
     struct bufferevent* bev,
     GameVersion version,
     PSOEncryption* crypt,
-    function<void(uint16_t, uint16_t, const string&)> fn) {
+    function<void(uint16_t, uint16_t, string&)> fn) {
   struct evbuffer* buf = bufferevent_get_input(bev);
 
   size_t header_size = version == GameVersion::BB ? 8 : 4;
@@ -108,4 +177,33 @@ void for_each_received_command(
 
     fn(header.command(version), header.flag(version), command_data);
   }
+}
+
+void print_received_command(
+    uint16_t command,
+    uint32_t flag,
+    const void* data,
+    size_t size,
+    GameVersion version,
+    const char* name) {
+  string name_token;
+  if (name && name[0]) {
+    name_token = string(" from ") + name;
+  }
+  log(INFO, "Received%s (version=%d command=%04hX flag=%08X)",
+      name_token.c_str(), static_cast<int>(version), command, flag);
+
+  PSOCommandHeader header;
+  size_t header_size = header.header_size(version);
+  header.set_command(version, command);
+  header.set_flag(version, flag);
+  header.set_size(version, size + header_size);
+
+  // TODO: This is unnecessarily slow. It'd be nice to have a print_data_v() so
+  // we don't have to copy data around here.
+  StringWriter w;
+  w.write(&header, header_size);
+  w.write(data, size);
+
+  print_data(stderr, w.str());
 }

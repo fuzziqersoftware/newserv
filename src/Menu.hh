@@ -6,6 +6,24 @@
 
 
 
+#define MAIN_MENU_ID                     0x11000011
+#define INFORMATION_MENU_ID              0x22000022
+#define LOBBY_MENU_ID                    0x33000033
+#define GAME_MENU_ID                     0x44000044
+#define QUEST_MENU_ID                    0x55000055
+#define QUEST_FILTER_MENU_ID             0x66000066
+#define PROXY_DESTINATIONS_MENU_ID       0x77000077
+
+#define MAIN_MENU_GO_TO_LOBBY            0x11AAAA11
+#define MAIN_MENU_INFORMATION            0x11BBBB11
+#define MAIN_MENU_DOWNLOAD_QUESTS        0x11CCCC11
+#define MAIN_MENU_PROXY_DESTINATIONS     0x11DDDD11
+#define MAIN_MENU_DISCONNECT             0x11EEEE11
+#define INFORMATION_MENU_GO_BACK         0x22FFFF22
+#define PROXY_DESTINATIONS_MENU_GO_BACK  0x77FFFF77
+
+
+
 enum MenuItemFlag {
   INVISIBLE_ON_DC = 0x01,
   INVISIBLE_ON_PC = 0x02,

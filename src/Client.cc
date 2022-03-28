@@ -15,7 +15,7 @@ using namespace std;
 
 
 
-static const uint64_t CLIENT_CONFIG_MAGIC = 0x492A890E82AC9839;
+const uint64_t CLIENT_CONFIG_MAGIC = 0x492A890E82AC9839;
 
 
 
@@ -28,6 +28,8 @@ Client::Client(
     bev(bev),
     server_behavior(server_behavior),
     should_disconnect(false),
+    proxy_destination_address(0),
+    proxy_destination_port(0),
     play_time_begin(now()),
     last_recv_time(this->play_time_begin),
     last_send_time(0),
@@ -52,32 +54,16 @@ Client::Client(
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
 }
 
-bool Client::send(string&& data) {
-  if (!this->bev) {
-    return false;
-  }
-
-  if (this->crypt_out.get()) {
-    this->crypt_out->encrypt(data.data(), data.size());
-  }
-
-  struct evbuffer* buf = bufferevent_get_output(this->bev);
-  evbuffer_add(buf, data.data(), data.size());
-  return true;
-}
-
 ClientConfig Client::export_config() const {
   ClientConfig cc;
   cc.magic = CLIENT_CONFIG_MAGIC;
   cc.bb_game_state = this->bb_game_state;
   cc.bb_player_index = this->bb_player_index;
   cc.flags = this->flags;
-  for (size_t x = 0; x < 5; x++) {
-    cc.unused[x] = 0xFFFFFFFF;
-  }
-  for (size_t x = 0; x < 2; x++) {
-    cc.unused_bb_only[x] = 0xFFFFFFFF;
-  }
+  cc.proxy_destination_address = this->proxy_destination_address;
+  cc.proxy_destination_port = this->proxy_destination_port;
+  memset(cc.unused, 0xFF, sizeof(cc.unused));
+  memset(cc.unused_bb_only, 0xFF, sizeof(cc.unused_bb_only));
   return cc;
 }
 
@@ -88,4 +74,6 @@ void Client::import_config(const ClientConfig& cc) {
   this->bb_game_state = cc.bb_game_state;
   this->bb_player_index = cc.bb_player_index;
   this->flags = cc.flags;
+  this->proxy_destination_address = cc.proxy_destination_address;
+  this->proxy_destination_port = cc.proxy_destination_port;
 }

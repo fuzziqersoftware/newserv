@@ -18,10 +18,12 @@
 #include <phosg/Encoding.hh>
 #include <phosg/Filesystem.hh>
 #include <phosg/Network.hh>
+#include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
 #include "PSOProtocol.hh"
+#include "SendCommands.hh"
 #include "ReceiveCommands.hh"
 #include "ReceiveSubcommands.hh"
 
@@ -38,36 +40,320 @@ static void flush_and_free_bufferevent(struct bufferevent* bev) {
 
 ProxyServer::ProxyServer(
     shared_ptr<struct event_base> base,
-    const struct sockaddr_storage& initial_destination,
-    GameVersion version)
+    shared_ptr<ServerState> state)
   : base(base),
+    state(state) { }
+
+void ProxyServer::listen(uint16_t port, GameVersion version) {
+  int fd = ::listen("", port, SOMAXCONN);
+  if (fd < 0) {
+    throw runtime_error("cannot listen on port");
+  }
+  auto* listener = evconnlistener_new(this->base.get(),
+      &ProxyServer::ListeningSocket::dispatch_on_listen_accept, this,
+      LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 0, fd);
+  if (!listener) {
+    close(fd);
+    throw runtime_error("cannot create listener");
+  }
+  evconnlistener_set_error_cb(
+      listener, &ProxyServer::ListeningSocket::dispatch_on_listen_error);
+
+  unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)> evlistener(
+      listener, evconnlistener_free);
+  shared_ptr<ListeningSocket> socket_obj(new ListeningSocket({
+    .server = this,
+    .fd = fd,
+    .port = port,
+    .listener = move(evlistener),
+    .version = version,
+  }));
+  this->listeners.emplace(port, socket_obj);
+
+  log(INFO, "[ProxyServer] Listening on TCP port %hu (%s) on fd %d",
+      port, name_for_version(version), fd);
+}
+
+void ProxyServer::ListeningSocket::dispatch_on_listen_accept(
+    struct evconnlistener*, evutil_socket_t, struct sockaddr* address, int socklen, void* ctx) {
+  reinterpret_cast<ListeningSocket*>(ctx)->on_listen_accept(address, socklen);
+}
+
+void ProxyServer::ListeningSocket::dispatch_on_listen_error(
+    struct evconnlistener*, void* ctx) {
+  reinterpret_cast<ListeningSocket*>(ctx)->on_listen_error();
+}
+
+void ProxyServer::ListeningSocket::on_listen_accept(struct sockaddr*, int) {
+  log(INFO, "[ProxyServer] Client connected on fd %d", fd);
+  auto* bev = bufferevent_socket_new(this->server->base.get(), fd,
+      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+  this->server->on_client_connect(bev, this->port, this->version);
+}
+
+void ProxyServer::ListeningSocket::on_listen_error() {
+  int err = EVUTIL_SOCKET_ERROR();
+  log(ERROR, "[ProxyServer] Failure on listening socket %d: %d (%s)",
+      evconnlistener_get_fd(this->listener.get()),
+      err, evutil_socket_error_to_string(err));
+  event_base_loopexit(this->server->base.get(), nullptr);
+}
+
+
+
+void ProxyServer::connect_client(struct bufferevent* bev, uint16_t server_port) {
+  // Look up the listening socket for the given port, and use that game version
+  GameVersion version;
+  try {
+    version = this->listeners.at(server_port)->version;
+  } catch (const out_of_range&) {
+    log(INFO, "[ProxyServer] Virtual connection received on unregistered port %hu; closing it",
+        server_port);
+    flush_and_free_bufferevent(bev);
+    return;
+  }
+
+  log(INFO, "[ProxyServer] Client connected on virtual connection %p", bev);
+  this->on_client_connect(bev, server_port, version);
+}
+
+
+
+void ProxyServer::on_client_connect(
+    struct bufferevent* bev, uint16_t listen_port, GameVersion version) {
+  auto emplace_ret = this->bev_to_unlinked_session.emplace(bev, new UnlinkedSession(
+      this, bev, listen_port, version));
+  if (!emplace_ret.second) {
+    throw logic_error("stale unlinked session exists");
+  }
+  auto session = emplace_ret.first->second;
+
+  switch (version) {
+    case GameVersion::GC: {
+      uint32_t server_key = random_object<uint32_t>();
+      uint32_t client_key = random_object<uint32_t>();
+      string data = prepare_server_init_contents_dc_pc_gc(false, server_key, client_key);
+      send_command(session->bev.get(), session->version, session->crypt_out.get(), 0x02,
+          0, data.data(), data.size(), "unlinked proxy client");
+      session->crypt_out.reset(new PSOGCEncryption(server_key));
+      session->crypt_in.reset(new PSOGCEncryption(client_key));
+      break;
+    }
+    default:
+      throw logic_error("unsupported game version on proxy server");
+  }
+}
+
+
+
+ProxyServer::UnlinkedSession::UnlinkedSession(
+    ProxyServer* server, struct bufferevent* bev, uint16_t local_port, GameVersion version)
+  : server(server),
+    bev(bev, flush_and_free_bufferevent),
+    local_port(local_port),
+    version(version) {
+  bufferevent_setcb(this->bev.get(),
+      &UnlinkedSession::dispatch_on_client_input, nullptr,
+      &UnlinkedSession::dispatch_on_client_error, this);
+  bufferevent_enable(this->bev.get(), EV_READ | EV_WRITE);
+}
+
+void ProxyServer::UnlinkedSession::dispatch_on_client_input(
+    struct bufferevent*, void* ctx) {
+  reinterpret_cast<UnlinkedSession*>(ctx)->on_client_input();
+}
+
+void ProxyServer::UnlinkedSession::dispatch_on_client_error(
+    struct bufferevent*, short events, void* ctx) {
+  reinterpret_cast<UnlinkedSession*>(ctx)->on_client_error(events);
+}
+
+void ProxyServer::UnlinkedSession::on_client_input() {
+  bool should_close_unlinked_session = false;
+  shared_ptr<const License> license;
+  uint32_t sub_version = 0;
+  string character_name;
+  ClientConfig client_config;
+
+  for_each_received_command(this->bev.get(), this->version, this->crypt_in.get(),
+    [&](uint16_t command, uint32_t flag, const string& data) {
+      print_received_command(command, flag, data.data(), data.size(),
+          this->version, "unlinked proxy client");
+
+      if (this->version == GameVersion::GC) {
+        // We should really only get a 9E while the session is unlinked; if we
+        // get anything else, disconnect
+        if (command != 0x9E) {
+          log(ERROR, "[ProxyServer] Received unexpected command %02hX", command);
+          should_close_unlinked_session = true;
+        } else if (data.size() < sizeof(LoginCommand_GC_9E) - 0x64) {
+          log(ERROR, "[ProxyServer] Login command is too small");
+          should_close_unlinked_session = true;
+        } else {
+          const auto* cmd = reinterpret_cast<const LoginCommand_GC_9E*>(data.data());
+          uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
+          try {
+            license = this->server->state->license_manager->verify_gc(
+                serial_number, cmd->access_key, nullptr);
+            sub_version = cmd->sub_version;
+            character_name = cmd->name;
+            memcpy(&client_config, &cmd->cfg, 0x20);
+          } catch (const exception& e) {
+            log(ERROR, "[ProxyServer] Unlinked client has no valid license");
+            should_close_unlinked_session = true;
+          }
+        }
+      }
+    });
+
+  struct bufferevent* session_key = this->bev.get();
+
+  // If license is non-null, then the client has a password and can be connected
+  // to the remote lobby server.
+  if (license.get()) {
+    // At this point, we will always close the unlinked session, even if it
+    // doesn't get converted/merged to a linked session
+    should_close_unlinked_session = true;
+
+    // Look up the linked session for this license (if any)
+    shared_ptr<LinkedSession> session;
+    try {
+      session = this->server->serial_number_to_session.at(license->serial_number);
+
+    } catch (const out_of_range&) {
+      // If there's no open session for this license, then there must be a valid
+      // destination in the client config. If there is, open a new linked
+      // session and set its initial destination
+      if (client_config.magic != CLIENT_CONFIG_MAGIC) {
+        log(ERROR, "[ProxyServer/%08X] Client configuration is invalid",
+            license->serial_number);
+      } else {
+        session.reset(new LinkedSession(
+            this->server,
+            this->local_port,
+            this->version,
+            license,
+            client_config.proxy_destination_address,
+            client_config.proxy_destination_port));
+        this->server->serial_number_to_session.emplace(
+            license->serial_number, session);
+      }
+    }
+
+    if (session.get() && (session->version != this->version)) {
+      log(ERROR, "[ProxyServer/%08X] Linked session has different game version",
+          session->license->serial_number);
+    } else {
+      // Resume the linked session using the unlinked session
+      try {
+        session->resume(move(this->bev), this->crypt_in, this->crypt_out, sub_version, character_name);
+        this->crypt_in.reset();
+        this->crypt_out.reset();
+      } catch (const exception& e) {
+        log(ERROR, "[ProxyServer/%08X] Failed to resume linked session: %s",
+            session->license->serial_number, e.what());
+      }
+    }
+  }
+
+  if (should_close_unlinked_session) {
+    this->server->bev_to_unlinked_session.erase(session_key);
+    // At this point, (*this) is destroyed! We must be careful not to touch it.
+  }
+}
+
+void ProxyServer::UnlinkedSession::on_client_error(short events) {
+  if (events & BEV_EVENT_ERROR) {
+    int err = EVUTIL_SOCKET_ERROR();
+    log(WARNING, "[ProxyServer] Error %d (%s) in unlinked client stream", err,
+        evutil_socket_error_to_string(err));
+  }
+  if (events & (BEV_EVENT_ERROR | BEV_EVENT_EOF)) {
+    log(WARNING, "[ProxyServer] Unlinked client has disconnected");
+    this->server->bev_to_unlinked_session.erase(this->bev.get());
+  }
+}
+
+
+
+ProxyServer::LinkedSession::LinkedSession(
+    ProxyServer* server,
+    uint16_t local_port,
+    GameVersion version,
+    std::shared_ptr<const License> license,
+    uint32_t dest_addr,
+    uint16_t dest_port)
+  : server(server),
+    license(license),
     client_bev(nullptr, flush_and_free_bufferevent),
     server_bev(nullptr, flush_and_free_bufferevent),
-    next_destination(initial_destination),
-    default_destination(initial_destination),
+    local_port(local_port),
     version(version),
-    header_size((version == GameVersion::BB) ? 8 : 4),
+    sub_version(0), // This is set during resume()
     save_quests(false) {
-  memset(&this->client_input_header, 0, sizeof(this->client_input_header));
-  memset(&this->server_input_header, 0, sizeof(this->server_input_header));
+  memset(&this->next_destination, 0, sizeof(this->next_destination));
+  struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
+  dest_sin->sin_family = AF_INET;
+  dest_sin->sin_port = htons(dest_port);
+  dest_sin->sin_addr.s_addr = htonl(dest_addr);
 }
 
-void ProxyServer::listen(int port) {
-  unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)> listener(
-      evconnlistener_new(this->base.get(),
-        &ProxyServer::dispatch_on_listen_accept, this,
-        LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 0,
-        ::listen("", port, SOMAXCONN)), evconnlistener_free);
-  this->listeners.emplace(port, move(listener));
+void ProxyServer::LinkedSession::resume(
+    std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
+    std::shared_ptr<PSOEncryption> client_input_crypt,
+    std::shared_ptr<PSOEncryption> client_output_crypt,
+    uint32_t sub_version,
+    const string& character_name) {
+  if (this->client_bev.get()) {
+    throw runtime_error("client connection is already open for this session");
+  }
+
+  this->client_bev = move(client_bev);
+  bufferevent_setcb(this->client_bev.get(),
+      &ProxyServer::LinkedSession::dispatch_on_client_input, nullptr,
+      &ProxyServer::LinkedSession::dispatch_on_client_error, this);
+  bufferevent_enable(this->client_bev.get(), EV_READ | EV_WRITE);
+
+  this->client_input_crypt = client_input_crypt;
+  this->client_output_crypt = client_output_crypt;
+  this->sub_version = sub_version;
+  this->character_name = character_name;
+  this->server_input_crypt.reset();
+  this->server_output_crypt.reset();
+
+  this->saving_quest_files.clear();
+
+  // Connect to the remote server. The command handlers will do the login steps
+  // and set up forwarding
+  this->server_bev.reset(bufferevent_socket_new(this->server->base.get(), -1,
+      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS));
+
+  struct sockaddr_storage local_ss;
+  struct sockaddr_in* local_sin = reinterpret_cast<struct sockaddr_in*>(&local_ss);
+  memset(local_sin, 0, sizeof(*local_sin));
+  local_sin->sin_family = AF_INET;
+  const struct sockaddr_in* dest_sin = reinterpret_cast<const sockaddr_in*>(&this->next_destination);
+  if (dest_sin->sin_family != AF_INET) {
+    throw logic_error("ss not AF_INET");
+  }
+  local_sin->sin_port = dest_sin->sin_port;
+  local_sin->sin_addr.s_addr = dest_sin->sin_addr.s_addr;
+
+  string netloc_str = render_sockaddr_storage(local_ss);
+  log(INFO, "[ProxyServer/%08X] Connecting to %s", this->license->serial_number, netloc_str.c_str());
+  if (bufferevent_socket_connect(this->server_bev.get(),
+      reinterpret_cast<const sockaddr*>(local_sin), sizeof(*local_sin)) != 0) {
+    throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
+  }
+  bufferevent_setcb(this->server_bev.get(),
+      &ProxyServer::LinkedSession::dispatch_on_server_input, nullptr,
+      &ProxyServer::LinkedSession::dispatch_on_server_error, this);
+  bufferevent_enable(this->server_bev.get(), EV_READ | EV_WRITE);
 }
 
-void ProxyServer::set_save_quests(bool save_quests) {
-  this->save_quests = save_quests;
-}
 
 
-
-ProxyServer::SavingQuestFile::SavingQuestFile(
+ProxyServer::LinkedSession::SavingQuestFile::SavingQuestFile(
     const std::string& basename,
     const std::string& output_filename,
     uint32_t remaining_bytes)
@@ -78,471 +364,375 @@ ProxyServer::SavingQuestFile::SavingQuestFile(
 
 
 
-void ProxyServer::send_to_client(const std::string& data) {
-  this->send_to_end(data, false);
+void ProxyServer::LinkedSession::dispatch_on_client_input(
+    struct bufferevent*, void* ctx) {
+  reinterpret_cast<LinkedSession*>(ctx)->on_client_input();
 }
 
-void ProxyServer::send_to_server(const std::string& data) {
-  this->send_to_end(data, true);
+void ProxyServer::LinkedSession::dispatch_on_client_error(
+    struct bufferevent*, short events, void* ctx) {
+  reinterpret_cast<LinkedSession*>(ctx)->on_stream_error(events, false);
 }
 
-void ProxyServer::send_to_end(const std::string& data, bool to_server) {
-  struct bufferevent* bev = to_server ? this->server_bev.get() : this->client_bev.get();
-  if (!bev) {
-    throw runtime_error("connection not open");
-  }
+void ProxyServer::LinkedSession::dispatch_on_server_input(
+    struct bufferevent*, void* ctx) {
+  reinterpret_cast<LinkedSession*>(ctx)->on_server_input();
+}
 
-  struct evbuffer* buf = bufferevent_get_output(bev);
-
-  PSOEncryption* crypt = to_server ? this->server_output_crypt.get() : this->client_output_crypt.get();
-  if (crypt) {
-    string crypted_data = data;
-    crypt->encrypt(crypted_data.data(), crypted_data.size());
-    evbuffer_add(buf, crypted_data.data(), crypted_data.size());
-  } else {
-    evbuffer_add(buf, data.data(), data.size());
-  }
+void ProxyServer::LinkedSession::dispatch_on_server_error(
+    struct bufferevent*, short events, void* ctx) {
+  reinterpret_cast<LinkedSession*>(ctx)->on_stream_error(events, true);
 }
 
 
 
-void ProxyServer::dispatch_on_listen_accept(
-    struct evconnlistener* listener, evutil_socket_t fd,
-    struct sockaddr* address, int socklen, void* ctx) {
-  reinterpret_cast<ProxyServer*>(ctx)->on_listen_accept(listener, fd, address,
-      socklen);
-}
-
-void ProxyServer::dispatch_on_listen_error(struct evconnlistener* listener,
-    void* ctx) {
-  reinterpret_cast<ProxyServer*>(ctx)->on_listen_error(listener);
-}
-
-void ProxyServer::dispatch_on_client_input(struct bufferevent* bev, void* ctx) {
-  reinterpret_cast<ProxyServer*>(ctx)->on_client_input(bev);
-}
-
-void ProxyServer::dispatch_on_client_error(struct bufferevent* bev, short events,
-    void* ctx) {
-  reinterpret_cast<ProxyServer*>(ctx)->on_client_error(bev, events);
-}
-
-void ProxyServer::dispatch_on_server_input(struct bufferevent* bev, void* ctx) {
-  reinterpret_cast<ProxyServer*>(ctx)->on_server_input(bev);
-}
-
-void ProxyServer::dispatch_on_server_error(struct bufferevent* bev, short events,
-    void* ctx) {
-  reinterpret_cast<ProxyServer*>(ctx)->on_server_error(bev, events);
-}
-
-
-
-void ProxyServer::on_listen_accept(struct evconnlistener*, evutil_socket_t fd,
-    struct sockaddr*, int) {
-  if (this->client_bev.get()) {
-    log(WARNING, "[ProxyServer] Ignoring client connection because client already exists");
-    close(fd);
-    return;
-  }
-
-  log(INFO, "[ProxyServer] Client connected on fd %d", fd);
-  this->on_client_connect(bufferevent_socket_new(this->base.get(), fd,
-      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS));
-}
-
-void ProxyServer::connect_client(
-    struct bufferevent* bev, uint32_t server_ipv4_addr, uint16_t server_port) {
-  if (this->client_bev.get()) {
-    log(WARNING, "[ProxyServer] Ignoring client virtual connection because client already exists");
-    bufferevent_flush(bev, EV_WRITE, BEV_FINISHED);
-    return;
-  }
-
-  log(INFO, "[ProxyServer] Client connected on virtual connection %p", bev);
-
-  this->on_client_connect(bev, server_ipv4_addr, server_port);
-}
-
-void ProxyServer::on_client_connect(struct bufferevent* bev,
-    uint32_t server_ipv4_addr, uint16_t server_port) {
-  this->client_bev.reset(bev);
-
-  bufferevent_setcb(this->client_bev.get(),
-      &ProxyServer::dispatch_on_client_input, nullptr,
-      &ProxyServer::dispatch_on_client_error, this);
-  bufferevent_enable(this->client_bev.get(), EV_READ | EV_WRITE);
-
-  // Connect to the server, disconnecting first if needed
-  this->server_bev.reset(bufferevent_socket_new(this->base.get(), -1,
-      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS));
-
-  struct sockaddr_storage local_ss;
-  struct sockaddr_in* local_sin = reinterpret_cast<struct sockaddr_in*>(&local_ss);
-  memset(local_sin, 0, sizeof(*local_sin));
-  local_sin->sin_family = AF_INET;
-  if (server_ipv4_addr && server_port) {
-    local_sin->sin_port = htons(server_port);
-    local_sin->sin_addr.s_addr = htonl(server_ipv4_addr);
-  } else {
-    const struct sockaddr_in* dest_sin = reinterpret_cast<const sockaddr_in*>(&this->next_destination);
-    if (dest_sin->sin_family != AF_INET) {
-      throw logic_error("ss not AF_INET");
-    }
-    local_sin->sin_port = dest_sin->sin_port;
-    local_sin->sin_addr.s_addr = dest_sin->sin_addr.s_addr;
-  }
-
-  string netloc_str = render_sockaddr_storage(local_ss);
-  log(INFO, "[ProxyServer] Connecting to %s", netloc_str.c_str());
-  if (bufferevent_socket_connect(this->server_bev.get(),
-      reinterpret_cast<const sockaddr*>(local_sin), sizeof(*local_sin)) != 0) {
-    throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
-  }
-  bufferevent_setcb(this->server_bev.get(),
-      &ProxyServer::dispatch_on_server_input, nullptr,
-      &ProxyServer::dispatch_on_server_error, this);
-  bufferevent_enable(this->server_bev.get(), EV_READ | EV_WRITE);
-}
-
-void ProxyServer::on_listen_error(struct evconnlistener* listener) {
-  int err = EVUTIL_SOCKET_ERROR();
-  log(ERROR, "[ProxyServer] Failure on listening socket %d: %d (%s)",
-      evconnlistener_get_fd(listener), err, evutil_socket_error_to_string(err));
-  event_base_loopexit(this->base.get(), nullptr);
-}
-
-void ProxyServer::on_client_input(struct bufferevent*) {
-  this->receive_and_process_commands(false);
-}
-
-void ProxyServer::on_server_input(struct bufferevent*) {
-  this->receive_and_process_commands(true);
-}
-
-void ProxyServer::on_client_error(struct bufferevent*, short events) {
+void ProxyServer::LinkedSession::on_stream_error(
+    short events, bool is_server_stream) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "[ProxyServer] Error %d (%s) in client stream", err,
-        evutil_socket_error_to_string(err));
+    log(WARNING, "[ProxyServer/%08X] Error %d (%s) in %s stream",
+        this->license->serial_number, err, evutil_socket_error_to_string(err),
+        is_server_stream ? "server" : "client");
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    log(INFO, "[ProxyServer] Client has disconnected");
-    this->client_bev.reset();
-    // "forward" the disconnection to the server
-    this->server_bev.reset();
-
-    // disable encryption
-    this->server_input_crypt.reset();
-    this->server_output_crypt.reset();
-    this->client_input_crypt.reset();
-    this->client_output_crypt.reset();
+    log(INFO, "[ProxyServer/%08X] %s has disconnected",
+        this->license->serial_number, is_server_stream ? "Server" : "Client");
+    this->disconnect();
   }
 }
 
-void ProxyServer::on_server_error(struct bufferevent*, short events) {
-  if (events & BEV_EVENT_ERROR) {
-    int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "[ProxyServer] Error %d (%s) in server stream", err,
-        evutil_socket_error_to_string(err));
-  }
-  if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    log(INFO, "[ProxyServer] Server has disconnected");
-    this->server_bev.reset();
-    // "forward" the disconnection to the client
-    this->client_bev.reset();
+void ProxyServer::LinkedSession::disconnect() {
+  // Forward the disconnection to the other end
+  this->server_bev.reset();
+  this->client_bev.reset();
 
-    // disable encryption
-    this->server_input_crypt.reset();
-    this->server_output_crypt.reset();
-    this->client_input_crypt.reset();
-    this->client_output_crypt.reset();
-  }
+  // Disable encryption for the next connection
+  this->server_input_crypt.reset();
+  this->server_output_crypt.reset();
+  this->client_input_crypt.reset();
+  this->client_output_crypt.reset();
 }
 
-size_t ProxyServer::get_size_field(const PSOCommandHeader* header) {
-  if (this->version == GameVersion::DC) {
-    return header->dc.size;
-  } else if (this->version == GameVersion::PC) {
-    return header->pc.size;
-  } else if (this->version == GameVersion::GC) {
-    return header->gc.size;
-  } else if (this->version == GameVersion::BB) {
-    return header->bb.size;
-  } else {
-    throw logic_error("version not supported in proxy mode");
-  }
-}
 
-size_t ProxyServer::get_command_field(const PSOCommandHeader* header) {
-  if (this->version == GameVersion::DC) {
-    return header->dc.command;
-  } else if (this->version == GameVersion::PC) {
-    return header->pc.command;
-  } else if (this->version == GameVersion::GC) {
-    return header->gc.command;
-  } else if (this->version == GameVersion::BB) {
-    return header->bb.command;
-  } else {
-    throw logic_error("version not supported in proxy mode");
-  }
-}
 
-void ProxyServer::receive_and_process_commands(bool from_server) {
-  struct bufferevent* source_bev = from_server ? this->server_bev.get() : this->client_bev.get();
-  struct bufferevent* dest_bev = from_server ? this->client_bev.get() : this->server_bev.get();
-
-  struct evbuffer* source_buf = bufferevent_get_input(source_bev);
-  struct evbuffer* dest_buf = dest_bev ? bufferevent_get_output(dest_bev) : nullptr;
-
-  PSOEncryption* source_crypt = from_server ? this->server_input_crypt.get() : this->client_input_crypt.get();
-  PSOEncryption* dest_crypt = from_server ? this->client_output_crypt.get() : this->server_output_crypt.get();
-
-  PSOCommandHeader* input_header = from_server ? &this->server_input_header : &this->client_input_header;
-
-  for (;;) {
-    if (this->get_size_field(input_header) == 0) {
-      ssize_t bytes = evbuffer_copyout(source_buf, input_header,
-          this->header_size);
-      if (bytes < static_cast<ssize_t>(this->header_size)) {
-        break;
-      }
-
-      if (source_crypt) {
-        source_crypt->decrypt(input_header, this->header_size);
-      }
-    }
-
-    size_t command_size = this->get_size_field(input_header);
-    if (evbuffer_get_length(source_buf) < command_size) {
-      break;
-    }
-
-    string command(command_size, '\0');
-    ssize_t bytes = evbuffer_remove(source_buf, command.data(), command_size);
-    if (bytes < static_cast<ssize_t>(command_size)) {
-      throw logic_error("enough bytes available, but could not remove them");
-    }
-    memcpy(command.data(), input_header, this->header_size);
-
-    if (source_crypt) {
-      source_crypt->decrypt(command.data() + this->header_size,
-          command_size - this->header_size);
-    }
-
-    log(INFO, "[ProxyServer] %s:", from_server ? "server" : "client");
-    print_data(stderr, command);
-
-    // Preprocess the command if needed
-
-    // Preprocessing for bidirectional commands...
-    switch (this->get_command_field(input_header)) {
-      case 0x60:
-      case 0x62:
-      case 0x6C:
-      case 0x6D:
-      case 0xC9:
-      case 0xCB: { // broadcast/target commands
-        if (command.size() <= this->header_size) {
-          log(WARNING, "[ProxyServer] Received broadcast/target command with no contents");
-        } else {
-          uint8_t which = *reinterpret_cast<uint8_t*>(command.data() + this->header_size);
-          if (!subcommand_is_implemented(which)) {
-            log(WARNING, "[ProxyServer] Received broadcast/target subcommand %02hhX which is not implemented on the server",
-                which);
-          }
-        }
-        break;
-      }
-    }
-
-    // Preprocessing for server->client commands...
-    if (from_server) {
-      switch (this->get_command_field(input_header)) {
-        case 0x02: // init encryption
-        case 0x17: { // init encryption
-          if (this->version == GameVersion::BB) {
-            throw invalid_argument("console server init received on BB");
-          }
-
-          struct InitEncryptionCommand {
-            PSOCommandHeaderDCGC header;
-            char copyright[0x40];
-            uint32_t server_key;
-            uint32_t client_key;
-          };
-          if (command.size() < sizeof(InitEncryptionCommand)) {
-            throw std::runtime_error("init encryption command is too small");
-          }
-
-          const InitEncryptionCommand* cmd = reinterpret_cast<const InitEncryptionCommand*>(
-              command.data());
-          if (this->version == GameVersion::PC) {
-            this->server_input_crypt.reset(new PSOPCEncryption(cmd->server_key));
-            this->server_output_crypt.reset(new PSOPCEncryption(cmd->client_key));
-            this->client_input_crypt.reset(new PSOPCEncryption(cmd->client_key));
-            this->client_output_crypt.reset(new PSOPCEncryption(cmd->server_key));
-
-          } else if (this->version == GameVersion::GC) {
-            this->server_input_crypt.reset(new PSOGCEncryption(cmd->server_key));
-            this->server_output_crypt.reset(new PSOGCEncryption(cmd->client_key));
-            this->client_input_crypt.reset(new PSOGCEncryption(cmd->client_key));
-            this->client_output_crypt.reset(new PSOGCEncryption(cmd->server_key));
-
-          } else {
-            throw invalid_argument("unsupported version");
-          }
-          break;
-        }
-
-        case 0x19: { // reconnect
-          struct ReconnectCommandArgs {
-            uint32_t address;
-            uint16_t port;
-            uint16_t unused;
-          };
-
-          if (command.size() < sizeof(ReconnectCommandArgs) + this->header_size) {
-            throw std::runtime_error("reconnect command is too small");
-          }
-
-          ReconnectCommandArgs* args = reinterpret_cast<ReconnectCommandArgs*>(
-              command.data() + this->header_size);
-          memset(&this->next_destination, 0, sizeof(this->next_destination));
-          struct sockaddr_in* sin = reinterpret_cast<struct sockaddr_in*>(
-              &this->next_destination);
-          sin->sin_family = AF_INET;
-          sin->sin_port = htons(args->port);
-          sin->sin_addr.s_addr = args->address; // already network byte order
-
-          if (!dest_bev) {
-            log(WARNING, "[ProxyServer] Received reconnect command with no destination present");
-          } else {
-            // If the client is on a virtual connection (fd < 0), we don't need
-            // to do anything - we assume the client will connect again via a
-            // virtual connection, and we can just use the destination
-            // address/port from their connection request.
-            int fd = bufferevent_getfd(dest_bev);
-            if (fd >= 0) {
-              struct sockaddr_storage sockname_ss;
-              socklen_t len = sizeof(sockname_ss);
-              getsockname(fd, reinterpret_cast<struct sockaddr*>(&sockname_ss), &len);
-              if (sockname_ss.ss_family != AF_INET) {
-                throw logic_error("existing connection is not ipv4");
-              }
-
-              struct sockaddr_in* sockname_sin = reinterpret_cast<struct sockaddr_in*>(
-                  &sockname_ss);
-              args->address = sockname_sin->sin_addr.s_addr; // Already network byte order
-              args->port = ntohs(sockname_sin->sin_port); // Client expects this little-endian for some reason
-            }
-          }
-          break;
-        }
-
-        case 0x44:
-        case 0xA6: { // open quest file
-          if (!this->save_quests) {
-            break;
-          }
-
-          bool is_download_quest = this->get_command_field(input_header) == 0xA6;
-
-          struct OpenFileCommand {
-            char name[0x20];
-            uint16_t unused;
-            uint16_t flags;
-            char filename[0x10];
-            uint32_t file_size;
-          };
-          if (command.size() < sizeof(OpenFileCommand)) {
-            log(WARNING, "[ProxyServer] Open file command is too small");
-            break;
-          }
-          const auto* cmd = reinterpret_cast<const OpenFileCommand*>(command.data() + this->header_size);
-
-          string output_filename = string_printf("%s.%s.%" PRIu64,
-              cmd->filename, is_download_quest ? "download" : "online", now());
-          for (size_t x = 0; x < output_filename.size(); x++) {
-            if (output_filename[x] < 0x20 || output_filename[x] > 0x7E || output_filename[x] == '/') {
-              output_filename[x] = '_';
-            }
-          }
-          if (output_filename[0] == '.') {
-            output_filename[0] = '_';
-          }
-
-          SavingQuestFile sqf(cmd->filename, output_filename, cmd->file_size);
-          this->saving_quest_files.emplace(cmd->filename, move(sqf));
-          log(INFO, "[ProxyServer] Opened quest file %s", output_filename.c_str());
-          break;
-        }
-        case 0x13:
-        case 0xA7: { // quest data segment
-          if (!this->save_quests) {
-            break;
-          }
-
-          struct WriteFileCommand {
-            char filename[0x10];
-            uint8_t data[0x400];
-            uint32_t data_size;
-          };
-          if (command.size() < sizeof(WriteFileCommand)) {
-            log(WARNING, "[ProxyServer] Write file command is too small");
-            break;
-          }
-          const auto* cmd = reinterpret_cast<const WriteFileCommand*>(command.data() + this->header_size);
-
-          SavingQuestFile* sqf = nullptr;
-          try {
-            sqf = &this->saving_quest_files.at(cmd->filename);
-          } catch (const out_of_range&) {
-            log(WARNING, "[ProxyServer] Can\'t find saving quest file %s",
-                cmd->filename);
-            break;
-          }
-
-          size_t bytes_to_write = cmd->data_size;
-          if (bytes_to_write > 0x400) {
-            log(WARNING, "[ProxyServer] Chunk data size is invalid; truncating to 0x400");
-            bytes_to_write = 0x400;
-          }
-
-          log(INFO, "[ProxyServer] Writing %zu bytes to %s", bytes_to_write,
-              sqf->output_filename.c_str());
-          fwritex(sqf->f.get(), cmd->data, bytes_to_write);
-          if (bytes_to_write > sqf->remaining_bytes) {
-            log(WARNING, "[ProxyServer] Chunk size extends beyond original file size; file may be truncated");
-            sqf->remaining_bytes = 0;
-          } else {
-            sqf->remaining_bytes -= bytes_to_write;
-          }
-
-          if (sqf->remaining_bytes == 0) {
-            log(INFO, "[ProxyServer] File %s is complete", sqf->output_filename.c_str());
-            this->saving_quest_files.erase(cmd->filename);
-          }
-
-          break;
-        }
-      }
-    }
-
-    // reencrypt and forward the command
-    if (dest_buf) {
-      if (dest_crypt) {
-        dest_crypt->encrypt(command.data(), command.size());
-      }
-      //log(INFO, "[ProxyServer-debug] Sending encrypted command");
-      //print_data(stderr, command);
-
-      evbuffer_add(dest_buf, command.data(), command.size());
+static void check_implemented_subcommand(
+    uint32_t serial_number, uint16_t command, const string& data) {
+  if (command == 0x60 || command == 0x6C || command == 0xC9 ||
+      command == 0x62 || command == 0x6D || command == 0xCB) {
+    if (data.size() < 4) {
+      log(WARNING, "[ProxyServer/%08X] Received broadcast/target command with no contents", serial_number);
     } else {
-      log(WARNING, "[ProxyServer] No destination present; dropping command");
+      if (!subcommand_is_implemented(data[0])) {
+        log(WARNING, "[ProxyServer/%08X] Received subcommand %02hhX which is not implemented on the server",
+            serial_number, data[0]);
+      }
     }
-
-    // clear the input header so we can read the next command
-    memset(input_header, 0, this->header_size);
   }
+}
+
+void ProxyServer::LinkedSession::on_client_input() {
+  string name = string_printf("ProxySession:%08X:client", this->license->serial_number);
+  for_each_received_command(this->client_bev.get(), this->version, this->client_input_crypt.get(),
+    [&](uint16_t command, uint32_t flag, const string& data) {
+      print_received_command(command, flag, data.data(), data.size(),
+          this->version, name.c_str());
+      check_implemented_subcommand(this->license->serial_number, command, data);
+
+      if (!this->client_bev.get()) {
+        log(WARNING, "[ProxyServer/%08X] No server is present; dropping command",
+            this->license->serial_number);
+      } else {
+        // Note: we intentionally don't pass a name string here because we already
+        // printed the command above
+        send_command(this->server_bev.get(), this->version,
+            this->server_output_crypt.get(), command, flag,
+            data.data(), data.size());
+      }
+    });
+}
+
+void ProxyServer::LinkedSession::on_server_input() {
+  string name = string_printf("ProxySession:%08X:server", this->license->serial_number);
+
+  try {
+    for_each_received_command(this->server_bev.get(), this->version, this->server_input_crypt.get(),
+      [&](uint16_t command, uint32_t flag, string& data) {
+        print_received_command(command, flag, data.data(), data.size(),
+            this->version, name.c_str());
+        check_implemented_subcommand(this->license->serial_number, command, data);
+
+        bool should_forward = true;
+
+        switch (command) {
+          case 0x02:
+          case 0x17: {
+            if (this->version == GameVersion::BB) {
+              throw invalid_argument("console server init received on BB");
+            }
+            // Most servers don't include after_message or have a shorter
+            // after_message than newserv does, so don't require it
+            if (data.size() < offsetof(ServerInitCommand_GC_02_17, after_message)) {
+              throw std::runtime_error("init encryption command is too small");
+            }
+
+            const auto* cmd = reinterpret_cast<const ServerInitCommand_GC_02_17*>(
+                data.data());
+
+            // This doesn't get forwarded to the client, so don't recreate the
+            // client's crypts
+            if (this->version == GameVersion::PC) {
+              this->server_input_crypt.reset(new PSOPCEncryption(cmd->server_key));
+              this->server_output_crypt.reset(new PSOPCEncryption(cmd->client_key));
+            } else if (this->version == GameVersion::GC) {
+              this->server_input_crypt.reset(new PSOGCEncryption(cmd->server_key));
+              this->server_output_crypt.reset(new PSOGCEncryption(cmd->client_key));
+            } else {
+              throw invalid_argument("unsupported version");
+            }
+
+            should_forward = false;
+
+            // If this is a 17, respond with a DB; otherwise respond with a 9E.
+            // We don't let the client do this because it believes it already
+            // did (when it was in an unlinked session).
+            if (command == 0x17) {
+              VerifyLicenseCommand_GC_DB cmd;
+              memset(&cmd, 0, sizeof(cmd));
+              snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08X",
+                  this->license->serial_number);
+              strncpy(cmd.access_key, this->license->access_key, sizeof(cmd.access_key));
+              cmd.sub_version = this->sub_version;
+              snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08X",
+                  this->license->serial_number);
+              strncpy(cmd.access_key2, this->license->access_key, sizeof(cmd.access_key2));
+              strncpy(cmd.password, this->license->gc_password, sizeof(cmd.password));
+              send_command(this->server_bev.get(), this->version,
+                  this->server_output_crypt.get(), 0xDB, 0, &cmd, sizeof(cmd),
+                  name.c_str());
+              break;
+            }
+            // For command 02, intentional fallthrough to 9A case
+          }
+
+          case 0x9A: {
+            should_forward = false;
+            LoginCommand_GC_9E cmd;
+            memset(&cmd, 0, sizeof(cmd));
+            memset(&cmd.unused[2], 0xFF, 6);
+            cmd.sub_version = this->sub_version;
+            cmd.unused2[1] = 1;
+            snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08X",
+                this->license->serial_number);
+            strncpy(cmd.access_key, this->license->access_key, sizeof(cmd.access_key));
+            snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08X",
+                this->license->serial_number);
+            strncpy(cmd.access_key2, this->license->access_key, sizeof(cmd.access_key2));
+            strncpy(cmd.name, this->character_name.c_str(), sizeof(cmd.name));
+            send_command(this->server_bev.get(), this->version,
+                this->server_output_crypt.get(), 0x9E, 0, &cmd, sizeof(cmd),
+                name.c_str());
+            break;
+          }
+
+          case 0x19: {
+            struct ReconnectCommand {
+              be_uint32_t address;
+              uint16_t port;
+              uint16_t unused;
+            };
+
+            if (data.size() < sizeof(ReconnectCommand)) {
+              throw std::runtime_error("reconnect command is too small");
+            }
+
+            auto* args = reinterpret_cast<ReconnectCommand*>(data.data());
+            memset(&this->next_destination, 0, sizeof(this->next_destination));
+            struct sockaddr_in* sin = reinterpret_cast<struct sockaddr_in*>(
+                &this->next_destination);
+            sin->sin_family = AF_INET;
+            sin->sin_addr.s_addr = args->address.load_raw();
+            sin->sin_port = htons(args->port);
+
+            if (!this->client_bev.get()) {
+              log(WARNING, "[ProxyServer/%08X] Received reconnect command with no destination present",
+                  this->license->serial_number);
+
+            } else {
+              // If the client is on a virtual connection (fd < 0), only change
+              // the port (so we'll know which version to treat the next
+              // connection as). It's better to leave the address as-is so we
+              // can circumvent the Plus/Ep3 same-network-server check.
+              int fd = bufferevent_getfd(this->client_bev.get());
+              if (fd >= 0) {
+                struct sockaddr_storage sockname_ss;
+                socklen_t len = sizeof(sockname_ss);
+                getsockname(fd, reinterpret_cast<struct sockaddr*>(&sockname_ss), &len);
+                if (sockname_ss.ss_family != AF_INET) {
+                  throw logic_error("existing connection is not ipv4");
+                }
+
+                struct sockaddr_in* sockname_sin = reinterpret_cast<struct sockaddr_in*>(
+                    &sockname_ss);
+                args->address.store_raw(sockname_sin->sin_addr.s_addr);
+                args->port = ntohs(sockname_sin->sin_port);
+
+              } else {
+                args->port = this->local_port;
+              }
+            }
+            break;
+          }
+
+          case 0x44:
+          case 0xA6: {
+            if (!this->save_quests) {
+              break;
+            }
+
+            bool is_download_quest = (command == 0xA6);
+
+            struct OpenFileCommand {
+              char name[0x20];
+              uint16_t unused;
+              uint16_t flags;
+              char filename[0x10];
+              uint32_t file_size;
+            };
+            if (data.size() < sizeof(OpenFileCommand)) {
+              log(WARNING, "[ProxyServer/%08X] Open file command is too small; skipping file",
+                  this->license->serial_number);
+              break;
+            }
+            const auto* cmd = reinterpret_cast<const OpenFileCommand*>(data.data());
+
+            string output_filename = string_printf("%s.%s.%" PRIu64,
+                cmd->filename, is_download_quest ? "download" : "online", now());
+            for (size_t x = 0; x < output_filename.size(); x++) {
+              if (output_filename[x] < 0x20 || output_filename[x] > 0x7E || output_filename[x] == '/') {
+                output_filename[x] = '_';
+              }
+            }
+            if (output_filename[0] == '.') {
+              output_filename[0] = '_';
+            }
+
+            SavingQuestFile sqf(cmd->filename, output_filename, cmd->file_size);
+            this->saving_quest_files.emplace(cmd->filename, move(sqf));
+            log(INFO, "[ProxyServer/%08X] Opened quest file %s",
+                this->license->serial_number, output_filename.c_str());
+            break;
+          }
+
+          case 0x13:
+          case 0xA7: {
+            if (!this->save_quests) {
+              break;
+            }
+
+            struct WriteFileCommand {
+              char filename[0x10];
+              uint8_t data[0x400];
+              uint32_t data_size;
+            };
+            if (data.size() < sizeof(WriteFileCommand)) {
+              log(WARNING, "[ProxyServer/%08X] Write file command is too small",
+                  this->license->serial_number);
+              break;
+            }
+            const auto* cmd = reinterpret_cast<const WriteFileCommand*>(data.data());
+
+            SavingQuestFile* sqf = nullptr;
+            try {
+              sqf = &this->saving_quest_files.at(cmd->filename);
+            } catch (const out_of_range&) {
+              log(WARNING, "[ProxyServer/%08X] Can\'t find saving quest file %s",
+                  this->license->serial_number, cmd->filename);
+              break;
+            }
+
+            size_t bytes_to_write = cmd->data_size;
+            if (bytes_to_write > 0x400) {
+              log(WARNING, "[ProxyServer/%08X] Chunk data size is invalid; truncating to 0x400",
+                  this->license->serial_number);
+              bytes_to_write = 0x400;
+            }
+
+            log(INFO, "[ProxyServer/%08X] Writing %zu bytes to %s",
+                this->license->serial_number, bytes_to_write,
+                sqf->output_filename.c_str());
+            fwritex(sqf->f.get(), cmd->data, bytes_to_write);
+            if (bytes_to_write > sqf->remaining_bytes) {
+              log(WARNING, "[ProxyServer/%08X] Chunk size extends beyond original file size; file may be truncated",
+                  this->license->serial_number);
+              sqf->remaining_bytes = 0;
+            } else {
+              sqf->remaining_bytes -= bytes_to_write;
+            }
+
+            if (sqf->remaining_bytes == 0) {
+              log(INFO, "[ProxyServer/%08X] File %s is complete",
+                  this->license->serial_number, sqf->output_filename.c_str());
+              this->saving_quest_files.erase(cmd->filename);
+            }
+            break;
+          }
+        }
+
+        if (should_forward) {
+          if (!this->client_bev.get()) {
+            log(WARNING, "[ProxyServer/%08X] No client is present; dropping command",
+                this->license->serial_number);
+          } else {
+            // Note: we intentionally don't pass name_str here because we already
+            // printed the command above
+            send_command(this->client_bev.get(), this->version,
+                this->client_output_crypt.get(), command, flag,
+                data.data(), data.size());
+          }
+        }
+      });
+
+  } catch (const exception& e) {
+    log(ERROR, "[ProxyServer/%08X] Failed to process server command: %s",
+        this->license->serial_number, e.what());
+    this->disconnect();
+  }
+}
+
+void ProxyServer::LinkedSession::send_to_end(const string& data, bool to_server) {
+  string name = string_printf("ProxySession:%08X:shell:%s",
+      this->license->serial_number, to_server ? "server" : "client");
+
+  size_t header_size = PSOCommandHeader::header_size(this->version);
+  if (data.size() < header_size) {
+    throw runtime_error("command is too small for header");
+  }
+  if (data.size() & 3) {
+    throw runtime_error("command size is not a multiple of 4");
+  }
+  const auto* header = reinterpret_cast<const PSOCommandHeader*>(data.data());
+
+  send_command(
+      to_server ? this->server_bev.get() : this->client_bev.get(),
+      this->version,
+      to_server ? this->server_output_crypt.get() : this->client_output_crypt.get(),
+      header->command(this->version),
+      header->flag(this->version),
+      data.data() + header_size,
+      data.size() + header_size,
+      name.c_str());
+}
+
+shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() {
+  if (this->serial_number_to_session.empty()) {
+    throw runtime_error("no sessions exist");
+  }
+  if (this->serial_number_to_session.size() > 1) {
+    throw runtime_error("multiple sessions exist");
+  }
+  return this->serial_number_to_session.begin()->second;
+}
+
+void ProxyServer::delete_session(uint32_t serial_number) {
+  this->serial_number_to_session.erase(serial_number);
 }

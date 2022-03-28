@@ -77,13 +77,10 @@ string IPStackSimulator::str_for_tcp_connection(shared_ptr<const IPClient> c,
 IPStackSimulator::IPStackSimulator(
     std::shared_ptr<struct event_base> base,
     std::shared_ptr<Server> game_server,
-    std::shared_ptr<ProxyServer> proxy_server,
     std::shared_ptr<ServerState> state)
   : base(base),
     game_server(game_server),
-    proxy_server(proxy_server),
     state(state),
-    proxy_destination_address(0),
     pcap_text_log_file(state->ip_stack_debug ? fopen("IPStackSimulator-Log.txt", "wt") : nullptr) {
   memset(this->host_mac_address_bytes, 0x90, 6);
   memset(this->broadcast_mac_address_bytes, 0xFF, 6);
@@ -421,9 +418,7 @@ void IPStackSimulator::on_client_udp_frame(
   // r_udp.size filled in later
   // r_udp.checksum filled in later
 
-  uint32_t resolved_address = this->proxy_destination_address
-      ? this->proxy_destination_address
-      : this->connect_address_for_remote_address(c->ipv4_addr);
+  uint32_t resolved_address = this->connect_address_for_remote_address(c->ipv4_addr);
 
   string r_data = DNSServer::response_for_query(
       fi.payload, fi.payload_size, resolved_address);
@@ -758,25 +753,34 @@ void IPStackSimulator::open_server_connection(
   // Link the client to the server - the server sees this as a normal TCP
   // connection and treats it as if the client connected to one of its listening
   // sockets
-  string conn_str = this->str_for_tcp_connection(c, conn);
-  if (this->game_server.get()) {
-    const PortConfiguration* port_config;
-    try {
-      port_config = &this->state->numbered_port_configuration.at(conn.server_port);
-    } catch (const out_of_range&) {
-      bufferevent_free(bevs[1]);
-      throw logic_error("client connected to port missing from configuration");
-    }
+  const PortConfiguration* port_config;
+  try {
+    port_config = &this->state->numbered_port_configuration.at(conn.server_port);
+  } catch (const out_of_range&) {
+    bufferevent_free(bevs[1]);
+    throw logic_error("client connected to port missing from configuration");
+  }
 
+  string conn_str = this->str_for_tcp_connection(c, conn);
+  if (port_config->behavior == ServerBehavior::PROXY_SERVER) {
+    if (!this->state->proxy_server.get()) {
+      log(ERROR, "[IPStackSimulator] TCP connection %s is to non-running proxy server",
+          conn_str.c_str());
+      flush_and_free_bufferevent(bevs[1]);
+    } else {
+      this->state->proxy_server->connect_client(bevs[1], conn.server_port);
+      log(INFO, "[IPStackSimulator] Connected TCP connection %s to proxy server",
+          conn_str.c_str());
+    }
+  } else if (this->game_server.get()) {
     this->game_server->connect_client(bevs[1], c->ipv4_addr, conn.client_port,
         port_config->version, port_config->behavior);
     log(INFO, "[IPStackSimulator] Connected TCP connection %s to game server",
         conn_str.c_str());
-
-  } else if (this->proxy_server.get()) {
-    this->proxy_server->connect_client(bevs[1], conn.server_addr, conn.server_port);
-    log(INFO, "[IPStackSimulator] Connected TCP connection %s to proxy server",
+  } else {
+    log(ERROR, "[IPStackSimulator] No server available for TCP connection %s",
         conn_str.c_str());
+    flush_and_free_bufferevent(bevs[1]);
   }
 }
 

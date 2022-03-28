@@ -6,12 +6,14 @@
 #include <event2/event.h>
 
 #include "Shell.hh"
+#include "ProxyServer.hh"
 
 
 
 class ServerShell : public Shell {
 public:
-  ServerShell(std::shared_ptr<struct event_base> base,
+  ServerShell(
+      std::shared_ptr<struct event_base> base,
       std::shared_ptr<ServerState> state);
   virtual ~ServerShell() = default;
   ServerShell(const ServerShell&) = delete;
@@ -20,6 +22,8 @@ public:
   ServerShell& operator=(ServerShell&&) = delete;
 
 protected:
+  std::shared_ptr<ProxyServer::LinkedSession> get_proxy_session();
+
   virtual void print_prompt();
   virtual void execute_command(const std::string& command);
 };

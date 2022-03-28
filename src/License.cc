@@ -53,6 +53,12 @@ LicenseManager::LicenseManager(const string& filename) : filename(filename) {
     auto licenses = load_vector_file<License>(this->filename);
     for (const auto& read_license : licenses) {
       shared_ptr<License> license(new License(read_license));
+
+      // Before the temporary flag existed, licenses with root privileges would
+      // have the temporary flag set. To migrate these, explicitly unset the
+      // flag for all licenses loaded from the license file.
+      license->privileges &= ~Privilege::TEMPORARY;
+
       uint32_t serial_number = license->serial_number;
       this->bb_username_to_license.emplace(license->username, license);
       this->serial_number_to_license.emplace(serial_number, license);
@@ -67,6 +73,9 @@ LicenseManager::LicenseManager(const string& filename) : filename(filename) {
 void LicenseManager::save() const {
   auto f = fopen_unique(this->filename, "wb");
   for (const auto& it : this->serial_number_to_license) {
+    if (it.second->privileges & Privilege::TEMPORARY) {
+      continue;
+    }
     fwritex(f.get(), it.second.get(), sizeof(License));
   }
 }
@@ -154,33 +163,43 @@ vector<License> LicenseManager::snapshot() const {
 }
 
 
-shared_ptr<const License> LicenseManager::create_license_pc(
-    uint32_t serial_number,const char* access_key, const char* password) {
+
+shared_ptr<License> LicenseManager::create_license_pc(
+    uint32_t serial_number,const char* access_key, const char* password, bool temporary) {
   shared_ptr<License> l(new License());
   l->serial_number = serial_number;
   strncpy(l->access_key, access_key, 8);
   if (password) {
     strncpy(l->gc_password, password, 8);
   }
+  if (temporary) {
+    l->privileges |= Privilege::TEMPORARY;
+  }
   return l;
 }
 
-shared_ptr<const License> LicenseManager::create_license_gc(
-    uint32_t serial_number, const char* access_key, const char* password) {
+shared_ptr<License> LicenseManager::create_license_gc(
+    uint32_t serial_number, const char* access_key, const char* password, bool temporary) {
   shared_ptr<License> l(new License());
   l->serial_number = serial_number;
   strncpy(l->access_key, access_key, 12);
   if (password) {
     strncpy(l->gc_password, password, 8);
   }
+  if (temporary) {
+    l->privileges |= Privilege::TEMPORARY;
+  }
   return l;
 }
 
-shared_ptr<const License> LicenseManager::create_license_bb(
-    uint32_t serial_number, const char* username, const char* password) {
+shared_ptr<License> LicenseManager::create_license_bb(
+    uint32_t serial_number, const char* username, const char* password, bool temporary) {
   shared_ptr<License> l(new License());
   l->serial_number = serial_number;
   strncpy(l->username, username, 19);
   strncpy(l->bb_password, password, 19);
+  if (temporary) {
+    l->privileges |= Privilege::TEMPORARY;
+  }
   return l;
 }

@@ -30,6 +30,13 @@
   // simulator. This is generally only useful for finding bugs in the interface.
   // "IPStackDebug": true,
 
+  // Other servers to support proxying to. If this is empty, the proxy server is
+  // disabled.
+  "ProxyDestinations": {
+    // "name (appears in menu)": "netloc"
+    "Schtserv": "149.56.167.128:9103",
+  },
+
   // By default, the interactive shell runs if stdin is a terminal, and doesn't
   // run if it's not. This option, if present, overrides that behavior.
   // "RunInteractiveShell": false,

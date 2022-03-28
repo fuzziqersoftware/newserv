@@ -22,15 +22,6 @@ ServerState::ServerState()
     ep3_menu_song(-1) {
   memset(&this->default_key_file, 0, sizeof(this->default_key_file));
 
-  this->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",
-      u"Join the lobby.", 0);
-  this->main_menu.emplace_back(MAIN_MENU_INFORMATION, u"Information",
-      u"View server information.", MenuItemFlag::REQUIRES_MESSAGE_BOXES);
-  this->main_menu.emplace_back(MAIN_MENU_DOWNLOAD_QUESTS, u"Download quests",
-      u"Download quests.", 0);
-  this->main_menu.emplace_back(MAIN_MENU_DISCONNECT, u"Disconnect",
-      u"Disconnect.", 0);
-
   for (size_t x = 0; x < 20; x++) {
     auto lobby_name = decode_sjis(string_printf("LOBBY%zu", x + 1));
     shared_ptr<Lobby> l(new Lobby());

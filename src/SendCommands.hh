@@ -16,20 +16,9 @@
 
 
 
-#define MAIN_MENU_ID           0x60000000
-#define INFORMATION_MENU_ID    0x60000030
-#define LOBBY_MENU_ID          0x60000060
-#define GAME_MENU_ID           0x60000090
-#define QUEST_MENU_ID          0x600000C0
-#define QUEST_FILTER_MENU_ID   0x600000F0
-
-#define MAIN_MENU_GO_TO_LOBBY      0x00000001
-#define MAIN_MENU_INFORMATION      0x00000002
-#define MAIN_MENU_DOWNLOAD_QUESTS  0x00000003
-#define MAIN_MENU_DISCONNECT       0x00000004
-#define INFORMATION_MENU_GO_BACK   0xFFFFFFFF
-
-
+void send_command(struct bufferevent* bev, GameVersion version,
+    PSOEncryption* crypt, uint16_t command, uint32_t flag = 0,
+    const void* data = nullptr, size_t size = 0, const char* name_str = nullptr);
 
 void send_command(std::shared_ptr<Client> c, uint16_t command,
     uint32_t flag = 0, const void* data = nullptr, size_t size = 0);
@@ -73,6 +62,12 @@ void send_command(std::shared_ptr<TARGET> c, uint16_t command, uint32_t flag,
 
 
 
+struct ServerInitCommand_GC_02_17 {
+  char copyright[0x40];
+  uint32_t server_key;
+  uint32_t client_key;
+  char after_message[200];
+} __attribute__((packed));
 
 std::string prepare_server_init_contents_dc_pc_gc(
     bool initial_connection, uint32_t server_key, uint32_t client_key);

@@ -18,7 +18,6 @@ public:
   IPStackSimulator(
       std::shared_ptr<struct event_base> base,
       std::shared_ptr<Server> game_server,
-      std::shared_ptr<ProxyServer> proxy_server,
       std::shared_ptr<ServerState> state);
   ~IPStackSimulator();
 
@@ -27,18 +26,12 @@ public:
   void listen(int port);
   void add_socket(int fd);
 
-  inline void set_proxy_destination_address(uint32_t addr) {
-    this->proxy_destination_address = addr;
-  }
-
   static uint32_t connect_address_for_remote_address(uint32_t remote_addr);
 
 private:
   std::shared_ptr<struct event_base> base;
   std::shared_ptr<Server> game_server;
-  std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<ServerState> state;
-  uint32_t proxy_destination_address;
 
   using unique_listener = std::unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)>;
   using unique_bufferevent = std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>;

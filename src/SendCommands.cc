@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 #include <string.h>
+#include <event2/buffer.h>
 
 #include <memory>
 #include <phosg/Encoding.hh>
@@ -24,11 +25,18 @@ static FileContentsCache file_cache;
 
 
 
-void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
-    const void* data, size_t size) {
+void send_command(
+    struct bufferevent* bev,
+    GameVersion version,
+    PSOEncryption* crypt,
+    uint16_t command,
+    uint32_t flag,
+    const void* data,
+    size_t size,
+    const char* name_str) {
   string send_data;
 
-  switch (c->version) {
+  switch (version) {
     case GameVersion::GC:
     case GameVersion::DC: {
       PSOCommandHeaderDCGC header;
@@ -74,15 +82,32 @@ void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
       throw logic_error("unimplemented game version in send_command");
   }
 
-  string name_token;
-  if (c->player.disp.name[0]) {
-    name_token = " to " + remove_language_marker(encode_sjis(c->player.disp.name));
+  if (name_str) {
+    string name_token;
+    if (name_str[0]) {
+      name_token = string(" to ") + name_str;
+    }
+    log(INFO, "Sending%s (version=%d command=%04hX flag=%08X)",
+        name_token.c_str(), static_cast<int>(version), command, flag);
+    print_data(stderr, send_data.data(), send_data.size());
   }
-  log(INFO, "Sending%s version=%d size=%04zX command=%04hX flag=%08X",
-      name_token.c_str(), static_cast<int>(c->version), size, command, flag);
-  print_data(stderr, send_data.data(), send_data.size());
 
-  c->send(move(send_data));
+  if (crypt) {
+    crypt->encrypt(send_data.data(), send_data.size());
+  }
+
+  struct evbuffer* buf = bufferevent_get_output(bev);
+  evbuffer_add(buf, send_data.data(), send_data.size());
+}
+
+void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
+    const void* data, size_t size) {
+  if (!c->bev) {
+    return;
+  }
+  string encoded_name = remove_language_marker(encode_sjis(c->player.disp.name));
+  send_command(c->bev, c->version, c->crypt_out.get(), command, flag, data,
+      size, encoded_name.c_str());
 }
 
 void send_command_excluding_client(shared_ptr<Lobby> l, shared_ptr<Client> c,
@@ -132,14 +157,8 @@ string prepare_server_init_contents_dc_pc_gc(
     bool initial_connection,
     uint32_t server_key,
     uint32_t client_key) {
-  struct Command {
-    char copyright[0x40];
-    uint32_t server_key;
-    uint32_t client_key;
-    char after_message[200];
-  };
-  string ret(sizeof(Command), '\0');
-  auto* cmd = reinterpret_cast<Command*>(ret.data());
+  string ret(sizeof(ServerInitCommand_GC_02_17), '\0');
+  auto* cmd = reinterpret_cast<ServerInitCommand_GC_02_17*>(ret.data());
 
   strcpy(cmd->copyright, initial_connection ? dc_port_map_copyright : dc_lobby_server_copyright);
   cmd->server_key = server_key;
