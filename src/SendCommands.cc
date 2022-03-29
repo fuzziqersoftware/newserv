@@ -594,6 +594,7 @@ void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_serial_number,
     char text[0x200];
   } cmd;
 
+  memset(&cmd, 0, sizeof(cmd));
   cmd.player_tag = 0x00010000;
   cmd.from_serial_number = from_serial_number;
   encode_sjis(cmd.from_name, from_name, sizeof(cmd.from_name) / sizeof(cmd.from_name[0]));
