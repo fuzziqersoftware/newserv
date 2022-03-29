@@ -548,6 +548,22 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
   }
 }
 
+void process_ep3_tournament_control(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, uint16_t, const void*) { // E2
+  // The client will get stuck here unless we send something. An 01 (lobby
+  // message box) seems to get them unstuck.
+  send_lobby_message_box(c, u"$C6Tournaments are\nnot supported.");
+
+  // In case we ever implement this (doubtful), the flag values are:
+  // 00 - list tournaments
+  // 01 - check tournament entry status
+  // 02 - cancel tournament entry
+  // 03 - create tournament spectator team (presumably get battle list, like get team list)
+  // 04 - join tournament spectator team (presumably also get battle list)
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // menu commands
 
@@ -2088,7 +2104,7 @@ static process_command_t gc_handlers[0x100] = {
   process_ep3_menu_challenge, nullptr, nullptr, nullptr,
 
   // E0
-  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, process_ep3_tournament_control, nullptr,
   process_ignored_command, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
   process_create_game_dc_gc, nullptr, nullptr, nullptr,
