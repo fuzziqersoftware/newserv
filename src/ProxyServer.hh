@@ -43,6 +43,9 @@ public:
     uint32_t sub_version;
     std::string character_name;
 
+    uint32_t guild_card_number;
+    uint8_t client_config_data[0x20];
+
     std::shared_ptr<PSOEncryption> client_input_crypt;
     std::shared_ptr<PSOEncryption> client_output_crypt;
     std::shared_ptr<PSOEncryption> server_input_crypt;

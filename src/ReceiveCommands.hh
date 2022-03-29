@@ -21,7 +21,9 @@ struct VerifyLicenseCommand_GC_DB {
 } __attribute__((packed));
 
 struct LoginCommand_GC_9E {
-  char unused[0x10]; // 00 00 FF FF FF FF FF FF 00 00 00 00 00 00 00 00
+  uint32_t player_tag; // 00 00 01 00 if guild card is set (via 04)
+  uint32_t guild_card_number; // FF FF FF FF if not set
+  uint32_t unused1[2];
   uint32_t sub_version;
   uint8_t unused2[0x24]; // 00 01 00 00 ... (rest is 00)
   char serial_number[0x10];

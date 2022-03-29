@@ -225,7 +225,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
       // destination in the client config. If there is, open a new linked
       // session and set its initial destination
       if (client_config.magic != CLIENT_CONFIG_MAGIC) {
-        log(ERROR, "[ProxyServer/%08X] Client configuration is invalid",
+        log(ERROR, "[ProxyServer/%08" PRIX32 "] Client configuration is invalid",
             license->serial_number);
       } else {
         session.reset(new LinkedSession(
@@ -241,7 +241,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
     }
 
     if (session.get() && (session->version != this->version)) {
-      log(ERROR, "[ProxyServer/%08X] Linked session has different game version",
+      log(ERROR, "[ProxyServer/%08" PRIX32 "] Linked session has different game version",
           session->license->serial_number);
     } else {
       // Resume the linked session using the unlinked session
@@ -250,7 +250,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
         this->crypt_in.reset();
         this->crypt_out.reset();
       } catch (const exception& e) {
-        log(ERROR, "[ProxyServer/%08X] Failed to resume linked session: %s",
+        log(ERROR, "[ProxyServer/%08" PRIX32 "] Failed to resume linked session: %s",
             session->license->serial_number, e.what());
       }
     }
@@ -290,7 +290,9 @@ ProxyServer::LinkedSession::LinkedSession(
     local_port(local_port),
     version(version),
     sub_version(0), // This is set during resume()
+    guild_card_number(0),
     save_quests(false) {
+  memset(this->client_config_data, 0, 0x20);
   memset(&this->next_destination, 0, sizeof(this->next_destination));
   struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
   dest_sin->sin_family = AF_INET;
@@ -340,7 +342,7 @@ void ProxyServer::LinkedSession::resume(
   local_sin->sin_addr.s_addr = dest_sin->sin_addr.s_addr;
 
   string netloc_str = render_sockaddr_storage(local_ss);
-  log(INFO, "[ProxyServer/%08X] Connecting to %s", this->license->serial_number, netloc_str.c_str());
+  log(INFO, "[ProxyServer/%08" PRIX32 "] Connecting to %s", this->license->serial_number, netloc_str.c_str());
   if (bufferevent_socket_connect(this->server_bev.get(),
       reinterpret_cast<const sockaddr*>(local_sin), sizeof(*local_sin)) != 0) {
     throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
@@ -390,12 +392,12 @@ void ProxyServer::LinkedSession::on_stream_error(
     short events, bool is_server_stream) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "[ProxyServer/%08X] Error %d (%s) in %s stream",
+    log(WARNING, "[ProxyServer/%08" PRIX32 "] Error %d (%s) in %s stream",
         this->license->serial_number, err, evutil_socket_error_to_string(err),
         is_server_stream ? "server" : "client");
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    log(INFO, "[ProxyServer/%08X] %s has disconnected",
+    log(INFO, "[ProxyServer/%08" PRIX32 "] %s has disconnected",
         this->license->serial_number, is_server_stream ? "Server" : "Client");
     this->disconnect();
   }
@@ -420,10 +422,10 @@ static void check_implemented_subcommand(
   if (command == 0x60 || command == 0x6C || command == 0xC9 ||
       command == 0x62 || command == 0x6D || command == 0xCB) {
     if (data.size() < 4) {
-      log(WARNING, "[ProxyServer/%08X] Received broadcast/target command with no contents", serial_number);
+      log(WARNING, "[ProxyServer/%08" PRIX32 "] Received broadcast/target command with no contents", serial_number);
     } else {
       if (!subcommand_is_implemented(data[0])) {
-        log(WARNING, "[ProxyServer/%08X] Received subcommand %02hhX which is not implemented on the server",
+        log(WARNING, "[ProxyServer/%08" PRIX32 "] Received subcommand %02hhX which is not implemented on the server",
             serial_number, data[0]);
       }
     }
@@ -431,7 +433,7 @@ static void check_implemented_subcommand(
 }
 
 void ProxyServer::LinkedSession::on_client_input() {
-  string name = string_printf("ProxySession:%08X:client", this->license->serial_number);
+  string name = string_printf("ProxySession:%08" PRIX32 ":client", this->license->serial_number);
   for_each_received_command(this->client_bev.get(), this->version, this->client_input_crypt.get(),
     [&](uint16_t command, uint32_t flag, const string& data) {
       print_received_command(command, flag, data.data(), data.size(),
@@ -439,7 +441,7 @@ void ProxyServer::LinkedSession::on_client_input() {
       check_implemented_subcommand(this->license->serial_number, command, data);
 
       if (!this->client_bev.get()) {
-        log(WARNING, "[ProxyServer/%08X] No server is present; dropping command",
+        log(WARNING, "[ProxyServer/%08" PRIX32 "] No server is present; dropping command",
             this->license->serial_number);
       } else {
         // Note: we intentionally don't pass a name string here because we already
@@ -452,7 +454,7 @@ void ProxyServer::LinkedSession::on_client_input() {
 }
 
 void ProxyServer::LinkedSession::on_server_input() {
-  string name = string_printf("ProxySession:%08X:server", this->license->serial_number);
+  string name = string_printf("ProxySession:%08" PRIX32 ":server", this->license->serial_number);
 
   try {
     for_each_received_command(this->server_bev.get(), this->version, this->server_input_crypt.get(),
@@ -498,11 +500,11 @@ void ProxyServer::LinkedSession::on_server_input() {
             if (command == 0x17) {
               VerifyLicenseCommand_GC_DB cmd;
               memset(&cmd, 0, sizeof(cmd));
-              snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08X",
+              snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08" PRIX32 "",
                   this->license->serial_number);
               strncpy(cmd.access_key, this->license->access_key, sizeof(cmd.access_key));
               cmd.sub_version = this->sub_version;
-              snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08X",
+              snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08" PRIX32 "",
                   this->license->serial_number);
               strncpy(cmd.access_key2, this->license->access_key, sizeof(cmd.access_key2));
               strncpy(cmd.password, this->license->gc_password, sizeof(cmd.password));
@@ -518,19 +520,85 @@ void ProxyServer::LinkedSession::on_server_input() {
             should_forward = false;
             LoginCommand_GC_9E cmd;
             memset(&cmd, 0, sizeof(cmd));
-            memset(&cmd.unused[2], 0xFF, 6);
+
+            if (this->guild_card_number == 0) {
+              cmd.player_tag = 0xFFFF0000;
+              cmd.guild_card_number = 0xFFFFFFFF;
+            } else {
+              cmd.player_tag = 0x00010000;
+              cmd.guild_card_number = this->guild_card_number;
+            }
             cmd.sub_version = this->sub_version;
             cmd.unused2[1] = 1;
-            snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08X",
+            snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08" PRIX32 "",
                 this->license->serial_number);
             strncpy(cmd.access_key, this->license->access_key, sizeof(cmd.access_key));
-            snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08X",
+            snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08" PRIX32 "",
                 this->license->serial_number);
             strncpy(cmd.access_key2, this->license->access_key, sizeof(cmd.access_key2));
             strncpy(cmd.name, this->character_name.c_str(), sizeof(cmd.name));
-            send_command(this->server_bev.get(), this->version,
-                this->server_output_crypt.get(), 0x9E, 0, &cmd, sizeof(cmd),
+            memcpy(&cmd.cfg, this->client_config_data, 0x20);
+
+            // If there's a guild card number, a shorter 9E is sent that ends
+            // right after the client config data
+            send_command(
+                this->server_bev.get(),
+                this->version,
+                this->server_output_crypt.get(),
+                0x9E,
+                0x01,
+                &cmd,
+                this->guild_card_number ? (offsetof(LoginCommand_GC_9E, cfg) + 0x20) : sizeof(cmd),
                 name.c_str());
+            break;
+          }
+
+          case 0x04: {
+            struct Contents {
+              uint32_t player_tag;
+              uint32_t guild_card_number;
+              uint8_t client_config[0];
+            } __attribute__((packed));
+
+            if (data.size() < sizeof(Contents)) {
+              throw std::runtime_error("set security data command is too small");
+            }
+
+            bool had_guild_card_number = (this->guild_card_number != 0);
+
+            const auto* cmd = reinterpret_cast<const Contents*>(data.data());
+            this->guild_card_number = cmd->guild_card_number;
+            log(INFO, "[ProxyServer/%08" PRIX32 "] Guild card number set to %" PRIX32,
+                this->license->serial_number, this->guild_card_number);
+
+            // It seems the client ignores the length of the 04 command, and
+            // always copies 0x20 bytes to its config data. So if the server
+            // sends a short 04 command, part of the previous command ends up in
+            // the security data (usually part of the copyright string from the
+            // server init command). We simulate that bug here.
+            // If there was previously a guild card number, assume we got the
+            // lobby server init text instead of the port map init text.
+            memcpy(
+                this->client_config_data,
+                had_guild_card_number
+                  ? "t Lobby Server. Copyright SEGA E"
+                  : "t Port Map. Copyright SEGA Enter",
+                0x20);
+            memcpy(this->client_config_data, cmd->client_config, min<size_t>(data.size() - sizeof(Contents), 0x20));
+
+            // If the guild card number was not set, pretend (to the server)
+            // that this is the first 04 command the client has received. The
+            // client responds with a 96 (checksum) in that case.
+            if (!had_guild_card_number) {
+              // We don't actually have a client checksum, of course...
+              // hopefully just random data will do (probably no private servers
+              // check this at all)
+              le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
+              send_command(this->server_bev.get(), this->version,
+                  this->server_output_crypt.get(), 0x96, 0x00, &checksum,
+                  sizeof(checksum), name.c_str());
+            }
+
             break;
           }
 
@@ -554,7 +622,7 @@ void ProxyServer::LinkedSession::on_server_input() {
             sin->sin_port = htons(args->port);
 
             if (!this->client_bev.get()) {
-              log(WARNING, "[ProxyServer/%08X] Received reconnect command with no destination present",
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Received reconnect command with no destination present",
                   this->license->serial_number);
 
             } else {
@@ -599,7 +667,7 @@ void ProxyServer::LinkedSession::on_server_input() {
               uint32_t file_size;
             };
             if (data.size() < sizeof(OpenFileCommand)) {
-              log(WARNING, "[ProxyServer/%08X] Open file command is too small; skipping file",
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Open file command is too small; skipping file",
                   this->license->serial_number);
               break;
             }
@@ -618,7 +686,7 @@ void ProxyServer::LinkedSession::on_server_input() {
 
             SavingQuestFile sqf(cmd->filename, output_filename, cmd->file_size);
             this->saving_quest_files.emplace(cmd->filename, move(sqf));
-            log(INFO, "[ProxyServer/%08X] Opened quest file %s",
+            log(INFO, "[ProxyServer/%08" PRIX32 "] Opened quest file %s",
                 this->license->serial_number, output_filename.c_str());
             break;
           }
@@ -635,7 +703,7 @@ void ProxyServer::LinkedSession::on_server_input() {
               uint32_t data_size;
             };
             if (data.size() < sizeof(WriteFileCommand)) {
-              log(WARNING, "[ProxyServer/%08X] Write file command is too small",
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Write file command is too small",
                   this->license->serial_number);
               break;
             }
@@ -645,24 +713,24 @@ void ProxyServer::LinkedSession::on_server_input() {
             try {
               sqf = &this->saving_quest_files.at(cmd->filename);
             } catch (const out_of_range&) {
-              log(WARNING, "[ProxyServer/%08X] Can\'t find saving quest file %s",
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Can\'t find saving quest file %s",
                   this->license->serial_number, cmd->filename);
               break;
             }
 
             size_t bytes_to_write = cmd->data_size;
             if (bytes_to_write > 0x400) {
-              log(WARNING, "[ProxyServer/%08X] Chunk data size is invalid; truncating to 0x400",
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Chunk data size is invalid; truncating to 0x400",
                   this->license->serial_number);
               bytes_to_write = 0x400;
             }
 
-            log(INFO, "[ProxyServer/%08X] Writing %zu bytes to %s",
+            log(INFO, "[ProxyServer/%08" PRIX32 "] Writing %zu bytes to %s",
                 this->license->serial_number, bytes_to_write,
                 sqf->output_filename.c_str());
             fwritex(sqf->f.get(), cmd->data, bytes_to_write);
             if (bytes_to_write > sqf->remaining_bytes) {
-              log(WARNING, "[ProxyServer/%08X] Chunk size extends beyond original file size; file may be truncated",
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Chunk size extends beyond original file size; file may be truncated",
                   this->license->serial_number);
               sqf->remaining_bytes = 0;
             } else {
@@ -670,7 +738,7 @@ void ProxyServer::LinkedSession::on_server_input() {
             }
 
             if (sqf->remaining_bytes == 0) {
-              log(INFO, "[ProxyServer/%08X] File %s is complete",
+              log(INFO, "[ProxyServer/%08" PRIX32 "] File %s is complete",
                   this->license->serial_number, sqf->output_filename.c_str());
               this->saving_quest_files.erase(cmd->filename);
             }
@@ -680,7 +748,7 @@ void ProxyServer::LinkedSession::on_server_input() {
 
         if (should_forward) {
           if (!this->client_bev.get()) {
-            log(WARNING, "[ProxyServer/%08X] No client is present; dropping command",
+            log(WARNING, "[ProxyServer/%08" PRIX32 "] No client is present; dropping command",
                 this->license->serial_number);
           } else {
             // Note: we intentionally don't pass name_str here because we already
@@ -693,14 +761,14 @@ void ProxyServer::LinkedSession::on_server_input() {
       });
 
   } catch (const exception& e) {
-    log(ERROR, "[ProxyServer/%08X] Failed to process server command: %s",
+    log(ERROR, "[ProxyServer/%08" PRIX32 "] Failed to process server command: %s",
         this->license->serial_number, e.what());
     this->disconnect();
   }
 }
 
 void ProxyServer::LinkedSession::send_to_end(const string& data, bool to_server) {
-  string name = string_printf("ProxySession:%08X:shell:%s",
+  string name = string_printf("ProxySession:%08" PRIX32 ":shell:%s",
       this->license->serial_number, to_server ? "server" : "client");
 
   size_t header_size = PSOCommandHeader::header_size(this->version);
@@ -719,7 +787,7 @@ void ProxyServer::LinkedSession::send_to_end(const string& data, bool to_server)
       header->command(this->version),
       header->flag(this->version),
       data.data() + header_size,
-      data.size() + header_size,
+      data.size() - header_size,
       name.c_str());
 }
 
