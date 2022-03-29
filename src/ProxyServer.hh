@@ -97,6 +97,7 @@ public:
     void on_server_input();
     void on_stream_error(short events, bool is_server_stream);
 
+    void send_to_end(const void* data, size_t size, bool to_server);
     void send_to_end(const std::string& data, bool to_server);
 
     void disconnect();

@@ -95,6 +95,8 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     Send a lobby marker message to the server.\n\
   event <event-id>\n\
     Send a lobby event update to yourself.\n\
+  warp <area-id>\n\
+    Send yourself to a specific area.\n\
   ship\n\
     Request the ship select menu from the server.\n\
 ");
@@ -278,6 +280,18 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     data[1] = stod(command_args);
 
     session->send_to_end(data, false);
+
+  } else if (command_name == "warp") {
+    auto session = this->get_proxy_session();
+
+    PSOSubcommand cmds[3];
+    cmds[0].dword = 0x000C0060; // header (60 00 0C 00)
+    cmds[1].word[0] = 0x0294;
+    cmds[1].word[1] = session->lobby_client_id;
+    cmds[2].dword = stoul(command_args);
+
+    session->send_to_end(&cmds, sizeof(cmds), false);
+    session->send_to_end(&cmds, sizeof(cmds), true);
 
   } else if (command_name == "ship") {
     auto session = this->get_proxy_session();

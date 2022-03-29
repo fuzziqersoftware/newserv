@@ -927,18 +927,19 @@ void ProxyServer::LinkedSession::on_server_input() {
   }
 }
 
-void ProxyServer::LinkedSession::send_to_end(const string& data, bool to_server) {
-  string name = string_printf("ProxySession:%08" PRIX32 ":shell:%s",
-      this->license->serial_number, to_server ? "server" : "client");
-
+void ProxyServer::LinkedSession::send_to_end(
+    const void* data, size_t size, bool to_server) {
   size_t header_size = PSOCommandHeader::header_size(this->version);
-  if (data.size() < header_size) {
+  if (size < header_size) {
     throw runtime_error("command is too small for header");
   }
-  if (data.size() & 3) {
+  if (size & 3) {
     throw runtime_error("command size is not a multiple of 4");
   }
-  const auto* header = reinterpret_cast<const PSOCommandHeader*>(data.data());
+  const auto* header = reinterpret_cast<const PSOCommandHeader*>(data);
+
+  string name = string_printf("ProxySession:%08" PRIX32 ":shell:%s",
+      this->license->serial_number, to_server ? "server" : "client");
 
   send_command(
       to_server ? this->server_bev.get() : this->client_bev.get(),
@@ -946,9 +947,13 @@ void ProxyServer::LinkedSession::send_to_end(const string& data, bool to_server)
       to_server ? this->server_output_crypt.get() : this->client_output_crypt.get(),
       header->command(this->version),
       header->flag(this->version),
-      data.data() + header_size,
-      data.size() - header_size,
+      reinterpret_cast<const uint8_t*>(data) + header_size,
+      size - header_size,
       name.c_str());
+}
+
+void ProxyServer::LinkedSession::send_to_end(const string& data, bool to_server) {
+  this->send_to_end(data.data(), data.size(), to_server);
 }
 
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() {
