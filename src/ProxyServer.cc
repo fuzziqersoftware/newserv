@@ -502,18 +502,20 @@ void ProxyServer::LinkedSession::on_server_input() {
               memset(&cmd, 0, sizeof(cmd));
               snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08" PRIX32 "",
                   this->license->serial_number);
-              strncpy(cmd.access_key, this->license->access_key, sizeof(cmd.access_key));
+              strncpy(cmd.access_key, this->license->access_key, sizeof(cmd.access_key) - 1);
               cmd.sub_version = this->sub_version;
               snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08" PRIX32 "",
                   this->license->serial_number);
-              strncpy(cmd.access_key2, this->license->access_key, sizeof(cmd.access_key2));
-              strncpy(cmd.password, this->license->gc_password, sizeof(cmd.password));
+              strncpy(cmd.access_key2, this->license->access_key, sizeof(cmd.access_key2) - 1);
+              strncpy(cmd.password, this->license->gc_password, sizeof(cmd.password) - 1);
               send_command(this->server_bev.get(), this->version,
                   this->server_output_crypt.get(), 0xDB, 0, &cmd, sizeof(cmd),
                   name.c_str());
               break;
             }
-            // For command 02, intentional fallthrough to 9A case
+            // Command 02 should be handled like 9A at this point (we should
+            // send a 9E in response)
+            [[fallthrough]];
           }
 
           case 0x9A: {
@@ -532,11 +534,11 @@ void ProxyServer::LinkedSession::on_server_input() {
             cmd.unused2[1] = 1;
             snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08" PRIX32 "",
                 this->license->serial_number);
-            strncpy(cmd.access_key, this->license->access_key, sizeof(cmd.access_key));
+            strncpy(cmd.access_key, this->license->access_key, sizeof(cmd.access_key) - 1);
             snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08" PRIX32 "",
                 this->license->serial_number);
-            strncpy(cmd.access_key2, this->license->access_key, sizeof(cmd.access_key2));
-            strncpy(cmd.name, this->character_name.c_str(), sizeof(cmd.name));
+            strncpy(cmd.access_key2, this->license->access_key, sizeof(cmd.access_key2) - 1);
+            strncpy(cmd.name, this->character_name.c_str(), sizeof(cmd.name) - 1);
             memcpy(&cmd.cfg, this->client_config_data, 0x20);
 
             // If there's a guild card number, a shorter 9E is sent that ends
