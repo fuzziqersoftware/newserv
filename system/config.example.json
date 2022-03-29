@@ -2,7 +2,7 @@
   // Configuration file for newserv. This file is standard JSON with comments.
 
   // Server's name (maximum 16 characters)
-  "ServerName": "Alexandria",
+  "ServerName": "newserv",
 
   // Address to connect local clients to (IP address or interface name)
   "LocalAddress": "en0",
@@ -11,31 +11,24 @@
   // address.
   "ExternalAddress": "10.0.1.5",
 
-  // Port to listen for DNS queries on. The DNS server is disabled by default;
-  // to enable it, uncomment this line.
-  // "DNSServerPort": 53,
+  // Port to listen for DNS queries on. To disable the DNS server, comment this
+  // out or set it to zero.
+  "DNSServerPort": 53,
 
   // Where to listen for IP stack clients. This exists to interface with PSO GC
-  // clients running in a local Dolphin emulator; the default value given here
-  // matches the socket path that Dolphin uses for BBA connections. (To disable
-  // this, comment out this line.) To enable local Dolphin clients to connect,
-  // set this to ["/tmp/dolphin-tap"] and configure Dolphin to use the tapserver
-  // type of broadband adapter. You do not need to install or run tapserver. See
-  // README.md for details on how to get PSO to connect via this interface.
+  // clients running in a local Dolphin emulator. To enable local Dolphin
+  // clients to connect, set this to ["/tmp/dolphin-tap"] and configure Dolphin
+  // to use the tapserver type of broadband adapter. You do not need to install
+  // or run tapserver. See README.md for details on how to get PSO to connect
+  // via this interface.
   // If you're doing unusual things, you can also add numbers or "address:port"
   // strings to this list to listen for tapserver connections on a TCP port.
-  "IPStackListen": ["/tmp/dolphin-tap"],
-
-  // Set this to true to show a lot of debugging information from the IP stack
-  // simulator. This is generally only useful for finding bugs in the interface.
-  // "IPStackDebug": true,
+  "IPStackListen": [],
 
   // Other servers to support proxying to. If this is empty, the proxy server is
-  // disabled.
-  "ProxyDestinations": {
-    // "name (appears in menu)": "netloc"
-    "Schtserv": "149.56.167.128:9103",
-  },
+  // disabled. Entries are like "name": "address:port"; the names are visible to
+  // clients in the proxy server menu.
+  "ProxyDestinations": {},
 
   // By default, the interactive shell runs if stdin is a terminal, and doesn't
   // run if it's not. This option, if present, overrides that behavior.
@@ -56,7 +49,7 @@
   // this user's permissions after loading its configuration and opening
   // listening sockets. The special value $SUDO_USER causes newserv to look up
   // the desired username in the $SUDO_USER variable instead.
-  "User": "$SUDO_USER",
+  // "User": "$SUDO_USER",
 
   // Information menu contents. Each entry is a 3-list of
   // [title, short description, full contents]. In the short description and
@@ -81,8 +74,9 @@
     ["Area list",       "$C7Display stage code\nlist", "These values can be used with the $C6%swarp$C7 command.\n\n$C2Green$C7 areas will be empty unless you are in a quest.\n$C6Yellow$C7 areas will not allow you to move.\n\n   $C8Episode 1  / Episode 2        / Episode 4$C7\n0: Pioneer 2  / Pioneer 2        / Pioneer 2\n1: Forest 1   / Temple Alpha    / Crater East\n2: Forest 2   / Temple Beta     / Crater West\n3: Caves 1    / Spaceship Alpha / Crater South\n4: Caves 2    / Spaceship Beta  / Crater North\n5: Caves 3    / CCA              / Crater Interior\n6: Mines 1    / Jungle North     / Desert 1\n7: Mines 2    / Jungle South     / Desert 2\n8: Ruins 1     / Mountain         / Desert 3\n9: Ruins 2     / Seaside          / Saint Million\n10: Ruins 3   / Seabed Upper    / $C6Purgatory$C7\n11: Dragon    / Seabed Lower\n12: De Rol Le / Gal Gryphon\n13: Vol Opt   / Olga Flow\n14: Dark Falz / Barba Ray\n15: $C2Lobby$C7     / Gol Dragon\n16: $C6Battle 1$C7  / $C6Seaside Night$C7\n17: $C6Battle 2$C7  / $C2Tower$C7"],
   ],
   // Welcome message. If not blank, this message will be shown to console users
-  // upon first connecting.
-  "WelcomeMessage": "Welcome to $C6Alexandria$C7, a private PSO server\npowered by newserv.",
+  // upon first connecting. (If this is blank, they will be taken directly to
+  // the main menu instead.)
+  "WelcomeMessage": "",
 
   // Item drop rates for non-rare items in BB games. For each type (boxes or
   // enemies), all the categories must add up to a number less than 0x100000000.
