@@ -424,7 +424,7 @@ struct Player {
   void add_item(const PlayerInventoryItem& item);
   void remove_item(uint32_t item_id, uint32_t amount, PlayerInventoryItem* item);
   size_t find_item(uint32_t item_id);
-} __attribute__((packed));
+};
 
 
 
