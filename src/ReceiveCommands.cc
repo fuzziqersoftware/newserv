@@ -1427,6 +1427,57 @@ void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 void process_choice_search(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, uint16_t, const void*) { // C0
+  // TODO: Implement choice search.
+  // Choice search works like this:
+  //   Client: C0 00 04 00
+  //   Server: C0 ## SS SS [entries] (# = overall entry count, including top-level and non-top-level)
+  //     struct Entry {
+  //       // this first two are 0 for top-level category, nonzero for choice within category
+  //       uint8_t parent_category;
+  //       uint8_t parent_category_user_settable;
+  //       uint8_t category;
+  //       uint8_t user_settable; // 0 or 1
+  //       char text[0x1C];
+  //     }
+  //     Top-level categories are things like "Level", "Class", etc.
+  //     Choices for each top-level category immediately follow the category, so
+  //     a reasonable order of items is (for example):
+  //       00 00 11 01 "Preferred difficulty"
+  //       11 01 01 01 "Normal"
+  //       11 01 02 01 "Hard"
+  //       11 01 03 01 "Very Hard"
+  //       11 01 04 01 "Ultimate"
+  //       00 00 22 00 "Character class"
+  //       22 00 01 00 "HUmar"
+  //       22 00 02 00 "HUnewearl"
+  //       etc.
+  // To set your own params:
+  //   Client: C2 00 SS SS ZZ ZZ 00 00 [entries]
+  //     Entries are the same as struct Entry from above except without the name
+  //     field. The client even sends them for non-settable parameters (the
+  //     server should just ignore those presumably)
+  //     Z = disabled (00 00 = choice search ON, 00 01 = OFF)
+  // To execute a choice search:
+  //   Client: C3 00 SS SS ?? ?? ?? ?? [entries]
+  //     Entries are the same as struct Entry from above
+  //   Server: C4 ## SS SS [results]
+  //     struct Result {
+  //       uint32_t guild_card_number;
+  //       char name[0x10]; // No language marker, as usual on GC
+  //       char info_string[0x20]; // Usually something like "<class> Lvl <level>"
+  //       // Format is stricter here; this is "LOBBYNAME,BLOCKNUM,SHIPNAME"
+  //       // If target is in game, for example, "Game Name,BLOCK01,Alexandria"
+  //       // If target is in lobby, for example, "BLOCK01-1,BLOCK01,Alexandria"
+  //       char locator_string[0x34];
+  //       // Server IP and port for "meet user" option
+  //       uint32_t server_ip;
+  //       uint16_t server_port;
+  //       uint16_t unused;
+  //       uint32_t menu_id;
+  //       uint32_t lobby_id; // These two are guesses
+  //       uint32_t game_id; // Zero if target is in a lobby rather than a game
+  //       uint8_t unused[0x58];
+  //     };
   send_text_message(c, u"$C6Choice Search is\nnot supported");
 }
 
