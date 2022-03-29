@@ -223,8 +223,10 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
     try {
       this->on_client_frame(c, frame);
     } catch (const exception& e) {
-      log(WARNING, "[IPStackSimulator] Failed to process client frame: %s", e.what());
-      print_data(stderr, frame);
+      if (this->state->ip_stack_debug) {
+        log(WARNING, "[IPStackSimulator] Failed to process client frame: %s", e.what());
+        print_data(stderr, frame);
+      }
     }
   }
 }
@@ -542,7 +544,7 @@ void IPStackSimulator::on_client_tcp_frame(
     uint64_t key = this->tcp_conn_key_for_client_frame(fi);
     auto emplace_ret = c->tcp_connections.emplace(key, IPClient::TCPConnection());
     auto& conn = emplace_ret.first->second;
-    string conn_str = this->state->ip_stack_debug ? this->str_for_tcp_connection(c, conn) : "";
+    string conn_str;
 
     if (emplace_ret.second) {
       // Connection is new; initialize it
@@ -557,9 +559,14 @@ void IPStackSimulator::on_client_tcp_frame(
       conn.resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
       conn.awaiting_first_ack = true;
       conn.max_frame_size = max_frame_size;
+
+      conn_str = this->str_for_tcp_connection(c, conn);
       if (this->state->ip_stack_debug) {
         log(INFO, "[IPStackSimulator] Client opened TCP connection %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
             conn_str.c_str(), conn.acked_server_seq, conn.next_client_seq);
+      } else {
+        log(INFO, "[IPStackSimulator] Client opened TCP connection %s",
+            conn_str.c_str());
       }
 
     } else {
@@ -569,6 +576,7 @@ void IPStackSimulator::on_client_tcp_frame(
       }
       // TODO: We should check the syn/ack numbers here instead of just assuming
       // they're correct
+      conn_str = this->str_for_tcp_connection(c, conn);
       if (this->state->ip_stack_debug) {
         log(INFO, "[IPStackSimulator] Client resent SYN for TCP connection %s",
             conn_str.c_str());
@@ -640,10 +648,8 @@ void IPStackSimulator::on_client_tcp_frame(
         throw runtime_error("client sent TCP FIN+RST");
       }
 
-      if (this->state->ip_stack_debug) {
-        string conn_str = this->str_for_tcp_connection(c, *conn);
-        log(INFO, "[IPStackSimulator] Client closed TCP connection %s", conn_str.c_str());
-      }
+      string conn_str = this->str_for_tcp_connection(c, *conn);
+      log(INFO, "[IPStackSimulator] Client closed TCP connection %s", conn_str.c_str());
 
       // TODO: Are we supposed to send a response to an RST? Here we do, and the
       // client probably just ignores it anyway
@@ -939,6 +945,9 @@ void IPStackSimulator::on_server_error(
 
     // Delete the connection object (this also flushes and frees the server
     // virtual connection bufferevent)
+    string conn_str = this->str_for_tcp_connection(c, conn);
+    log(INFO, "[IPStackSimulator] Server closed TCP connection %s",
+        conn_str.c_str());
     c->tcp_connections.erase(this->tcp_conn_key_for_connection(conn));
   }
 }
