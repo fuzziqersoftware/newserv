@@ -502,12 +502,12 @@ void ProxyServer::LinkedSession::on_server_input() {
               memset(&cmd, 0, sizeof(cmd));
               snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08" PRIX32 "",
                   this->license->serial_number);
-              strncpy(cmd.access_key, this->license->access_key, sizeof(cmd.access_key) - 1);
+              memcpy(cmd.access_key, this->license->access_key, 0x10);
               cmd.sub_version = this->sub_version;
               snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08" PRIX32 "",
                   this->license->serial_number);
-              strncpy(cmd.access_key2, this->license->access_key, sizeof(cmd.access_key2) - 1);
-              strncpy(cmd.password, this->license->gc_password, sizeof(cmd.password) - 1);
+              memcpy(cmd.access_key2, this->license->access_key, 0x10);
+              memcpy(cmd.password, this->license->gc_password, 0x0C);
               send_command(this->server_bev.get(), this->version,
                   this->server_output_crypt.get(), 0xDB, 0, &cmd, sizeof(cmd),
                   name.c_str());
@@ -534,10 +534,10 @@ void ProxyServer::LinkedSession::on_server_input() {
             cmd.unused2[1] = 1;
             snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08" PRIX32 "",
                 this->license->serial_number);
-            strncpy(cmd.access_key, this->license->access_key, sizeof(cmd.access_key) - 1);
+            memcpy(cmd.access_key, this->license->access_key, 0x10);
             snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08" PRIX32 "",
                 this->license->serial_number);
-            strncpy(cmd.access_key2, this->license->access_key, sizeof(cmd.access_key2) - 1);
+            memcpy(cmd.access_key2, this->license->access_key, 0x10);
             strncpy(cmd.name, this->character_name.c_str(), sizeof(cmd.name) - 1);
             memcpy(&cmd.cfg, this->client_config_data, 0x20);
 
