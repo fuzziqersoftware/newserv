@@ -205,7 +205,7 @@ static void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c)
     uint8_t server_key[0x30];
     uint8_t client_key[0x30];
     char after_message[200];
-  } cmd;
+  } __attribute__((packed)) cmd;
 
   memset(&cmd, 0, sizeof(cmd));
   strcpy(cmd.copyright, bb_game_server_copyright);
@@ -227,7 +227,7 @@ static void send_server_init_patch(shared_ptr<Client> c) {
     uint32_t client_key;
     // BB rejects the command if it's not exactly this size, so we can't add the
     // anti-copyright message... lawyers plz be kind kthx
-  } cmd;
+  } __attribute__((packed)) cmd;
 
   uint32_t server_key = random_object<uint32_t>();
   uint32_t client_key = random_object<uint32_t>();
@@ -263,7 +263,7 @@ void send_update_client_config(shared_ptr<Client> c) {
     uint32_t player_tag;
     uint32_t serial_number;
     ClientConfig config;
-  } cmd = {
+  } __attribute__((packed)) cmd = {
     0x00010000,
     c->license->serial_number,
     c->export_config(),
@@ -280,7 +280,7 @@ void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
     be_uint32_t address;
     uint16_t port;
     uint16_t unused;
-  } cmd = {address, port, 0};
+  } __attribute__((packed)) cmd = {address, port, 0};
   send_command(c, 0x19, 0x00, cmd);
 }
 
@@ -298,7 +298,7 @@ void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
     be_uint32_t gc_address;
     uint16_t gc_port;
     uint8_t unused2[0xB0 - 0x23];
-  } cmd;
+  } __attribute__((packed)) cmd;
   memset(&cmd, 0, sizeof(cmd));
   cmd.pc_address = address;
   cmd.pc_port = pc_port;
@@ -321,7 +321,7 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
     uint32_t team_id; // just randomize it; teams aren't supported
     ClientConfig cfg;
     uint32_t caps; // should be 0x00000102
-  } cmd = {
+  } __attribute__((packed)) cmd = {
     error,
     0x00010000,
     c->license->serial_number,
@@ -346,14 +346,14 @@ void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
     struct {
       uint32_t player_index;
       uint32_t error;
-    } cmd = {player_index, 0x00000002};
+    } __attribute__((packed)) cmd = {player_index, 0x00000002};
     send_command(c, 0x00E4, 0x00000000, cmd);
 
   } else {
     struct {
       uint32_t player_index;
       PlayerDispDataBBPreview preview;
-    } cmd = {player_index, *preview};
+    } __attribute__((packed)) cmd = {player_index, *preview};
     send_command(c, 0x00E3, 0x00000000, cmd);
   }
 }
@@ -363,7 +363,7 @@ void send_accept_client_checksum_bb(shared_ptr<Client> c) {
   struct {
     uint32_t verify;
     uint32_t unused;
-  } cmd = {1, 0};
+  } __attribute__((packed)) cmd = {1, 0};
   send_command(c, 0x02E8, 0x00000000, cmd);
 }
 
@@ -375,7 +375,7 @@ void send_guild_card_header_bb(shared_ptr<Client> c) {
     uint32_t unknown; // should be 1
     uint32_t filesize; // 0x0000490
     uint32_t checksum;
-  } cmd = {1, 0x490, checksum};
+  } __attribute__((packed)) cmd = {1, 0x490, checksum};
   send_command(c, 0x01DC, 0x00000000, cmd);
 }
 
@@ -407,7 +407,7 @@ void send_stream_file_bb(shared_ptr<Client> c) {
     uint32_t checksum;
     uint32_t offset;
     char filename[0x40];
-  };
+  } __attribute__((packed));
 
   auto index_data = file_cache.get("system/blueburst/streamfile.ind");
   if (index_data->size() % sizeof(StreamFileEntry)) {
@@ -422,7 +422,7 @@ void send_stream_file_bb(shared_ptr<Client> c) {
   struct {
     uint32_t chunk_index;
     uint8_t data[0x6800];
-  } chunk_cmd;
+  } __attribute__((packed)) chunk_cmd;
   chunk_cmd.chunk_index = 0;
 
   uint32_t buffer_offset = 0;
@@ -464,7 +464,7 @@ void send_approve_player_choice_bb(shared_ptr<Client> c) {
   struct {
     uint32_t player_index;
     uint32_t unused;
-  } cmd = {c->bb_player_index, 1};
+  } __attribute__((packed)) cmd = {c->bb_player_index, 1};
   send_command(c, 0x00E4, 0x00000000, cmd);
 }
 
@@ -493,7 +493,7 @@ void send_check_directory_patch(shared_ptr<Client> c, const char* dir) {
 struct LargeMessageOptionalHeader {
   uint32_t unused;
   uint32_t serial_number;
-};
+} __attribute__((packed));
 
 static void send_large_message_pc_patch_bb(shared_ptr<Client> c, uint8_t command,
     const char16_t* text, uint32_t from_serial_number, bool include_header) {
@@ -594,7 +594,7 @@ void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_serial_number,
     char from_name[0x10];
     uint32_t to_serial_number;
     char text[0x200];
-  } cmd;
+  } __attribute__((packed)) cmd;
 
   memset(&cmd, 0, sizeof(cmd));
   cmd.player_tag = 0x00010000;
@@ -624,7 +624,7 @@ static void send_info_board_pc_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   struct Entry {
     char16_t name[0x10];
     char16_t message[0xAC];
-  };
+  } __attribute__((packed));
   vector<Entry> entries;
 
   for (const auto& c : l->clients) {
@@ -647,7 +647,7 @@ static void send_info_board_dc_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   struct Entry {
     char name[0x10];
     char message[0xAC];
-  };
+  } __attribute__((packed));
   vector<Entry> entries;
 
   for (const auto& c : l->clients) {
@@ -693,23 +693,23 @@ static void send_card_search_result_dc_pc_gc(shared_ptr<ServerState> s,
           uint8_t dcgc_command;
           uint8_t dcgc_flag;
           uint16_t dcgc_size;
-        };
+        } __attribute__((packed));
         struct {
           uint16_t pc_size;
           uint8_t pc_command;
           uint8_t pc_flag;
-        };
-      };
+        } __attribute__((packed));
+      } __attribute__((packed));
       uint32_t address;
       uint16_t port;
       uint16_t unused;
-    } destination_command;
+    } __attribute__((packed)) destination_command;
     char location_string[0x44];
     uint32_t menu_id;
     uint32_t lobby_id;
     char unused[0x3C];
     char16_t name[0x20];
-  } cmd;
+  } __attribute__((packed)) cmd;
 
   memset(&cmd, 0, sizeof(cmd));
   cmd.player_tag = 0x00010000;
@@ -766,13 +766,13 @@ static void send_card_search_result_bb(shared_ptr<ServerState> s,
       uint32_t address;
       uint16_t port;
       uint16_t unused;
-    } destination_command;
+    } __attribute__((packed)) destination_command;
     char location_string[0x44];
     uint32_t menu_id;
     uint32_t lobby_id;
     char unused[0x3C];
     char16_t name[0x20];
-  } cmd;
+  } __attribute__((packed)) cmd;
 
   memset(&cmd, 0, sizeof(cmd));
   cmd.player_tag = 0x00010000;
@@ -828,7 +828,7 @@ static void send_guild_card_gc(shared_ptr<Client> c, shared_ptr<Client> source) 
     uint8_t reserved2;
     uint8_t section_id;
     uint8_t char_class;
-  } cmd;
+  } __attribute__((packed)) cmd;
 
   cmd.subcommand = 0x06;
   cmd.subsize = 0x25;
@@ -860,7 +860,7 @@ static void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) 
     uint8_t reserved2;
     uint8_t section_id;
     uint8_t char_class;
-  } cmd;
+  } __attribute__((packed)) cmd;
 
   cmd.subcommand = 0x06;
   cmd.subsize = 0x43;
@@ -902,7 +902,7 @@ static void send_menu_pc_bb(shared_ptr<Client> c, const char16_t* menu_name,
     uint32_t item_id;
     uint16_t flags; // should be 0x0F04
     char16_t text[17];
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   entries.emplace_back();
@@ -944,7 +944,7 @@ static void send_menu_dc_gc(shared_ptr<Client> c, const char16_t* menu_name,
     uint32_t item_id;
     uint16_t flags; // should be 0x0F04
     char text[18];
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   entries.emplace_back();
@@ -1004,7 +1004,7 @@ static void send_game_menu_pc(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     char16_t name[0x10];
     uint8_t episode;
     uint8_t flags;
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   {
@@ -1046,7 +1046,7 @@ static void send_game_menu_gc(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     char name[0x10];
     uint8_t episode;
     uint8_t flags;
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   {
@@ -1093,7 +1093,7 @@ static void send_game_menu_bb(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     char16_t name[0x10];
     uint8_t episode;
     uint8_t flags;
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   {
@@ -1151,7 +1151,7 @@ static void send_quest_menu_pc(shared_ptr<Client> c, uint32_t menu_id,
     uint32_t quest_id;
     char16_t name[0x20];
     char16_t short_desc[0x70];
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   for (const auto& quest : quests) {
@@ -1174,7 +1174,7 @@ static void send_quest_menu_pc(std::shared_ptr<Client> c, uint32_t menu_id,
     uint32_t item_id;
     char16_t name[0x20];
     char16_t short_desc[0x70];
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   for (const auto& item : items) {
@@ -1197,7 +1197,7 @@ static void send_quest_menu_gc(shared_ptr<Client> c, uint32_t menu_id,
     uint32_t quest_id;
     char name[0x20];
     char short_desc[0x70];
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   for (const auto& quest : quests) {
@@ -1220,7 +1220,7 @@ static void send_quest_menu_gc(shared_ptr<Client> c, uint32_t menu_id,
     uint32_t item_id;
     char name[0x20];
     char short_desc[0x70];
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   for (const auto& item : items) {
@@ -1245,7 +1245,7 @@ static void send_quest_menu_bb(shared_ptr<Client> c, uint32_t menu_id,
     uint32_t quest_id;
     char16_t name[0x20];
     char16_t short_desc[0x7A];
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   for (const auto& quest : quests) {
@@ -1270,7 +1270,7 @@ static void send_quest_menu_bb(shared_ptr<Client> c, uint32_t menu_id,
     uint32_t item_id;
     char16_t name[0x20];
     char16_t short_desc[0x7A];
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   for (const auto& item : items) {
@@ -1321,7 +1321,7 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     uint32_t menu_id;
     uint32_t item_id;
     uint32_t unused; // should be 0x00000000
-  };
+  } __attribute__((packed));
 
   vector<Entry> entries;
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
@@ -1364,7 +1364,7 @@ static void send_join_game_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     uint8_t unused2;
     uint8_t solo_mode;
     uint8_t unused3;
-  } cmd;
+  } __attribute__((packed)) cmd;
 
   size_t player_count = 0;
   memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
@@ -1458,7 +1458,7 @@ static void send_join_game_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     uint8_t unused2;
     uint8_t solo_mode;
     uint8_t unused3;
-  } cmd;
+  } __attribute__((packed)) cmd;
 
   size_t player_count = 0;
   memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
@@ -1500,7 +1500,7 @@ static void send_join_lobby_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     uint16_t block_number;
     uint16_t event;
     uint32_t unused;
-  } cmd = {
+  } __attribute__((packed)) cmd = {
     c->lobby_client_id,
     l->leader_id,
     0x01,
@@ -1513,7 +1513,7 @@ static void send_join_lobby_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   struct Entry {
     PlayerLobbyDataPC lobby_data;
     PlayerLobbyJoinDataPCGC data;
-  };
+  } __attribute__((packed));
   vector<Entry> entries;
 
   for (size_t x = 0; x < l->max_clients; x++) {
@@ -1557,7 +1557,7 @@ static void send_join_lobby_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     uint16_t block_number;
     uint16_t event;
     uint32_t unused;
-  } cmd = {
+  } __attribute__((packed)) cmd = {
     c->lobby_client_id,
     l->leader_id,
     0x01,
@@ -1570,7 +1570,7 @@ static void send_join_lobby_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   struct Entry {
     PlayerLobbyDataGC lobby_data;
     PlayerLobbyJoinDataPCGC data;
-  };
+  } __attribute__((packed));
   vector<Entry> entries;
 
   for (size_t x = 0; x < l->max_clients; x++) {
@@ -1606,7 +1606,7 @@ static void send_join_lobby_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     uint16_t block_number;
     uint16_t event;
     uint32_t unused;
-  } cmd = {
+  } __attribute__((packed)) cmd = {
     c->lobby_client_id,
     l->leader_id,
     0x01,
@@ -1619,7 +1619,7 @@ static void send_join_lobby_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   struct Entry {
     PlayerLobbyDataBB lobby_data;
     PlayerLobbyJoinDataBB data;
-  };
+  } __attribute__((packed));
   vector<Entry> entries;
 
   for (size_t x = 0; x < l->max_clients; x++) {
@@ -1693,7 +1693,7 @@ static void send_player_join_notification_pc(shared_ptr<Client> c,
     uint32_t unused;
     PlayerLobbyDataPC lobby_data;
     PlayerLobbyJoinDataPCGC data;
-  } cmd = {
+  } __attribute__((packed)) cmd = {
     0xFF,
     l->leader_id,
     0x01,
@@ -1722,7 +1722,7 @@ static void send_player_join_notification_gc(shared_ptr<Client> c,
     uint32_t unused;
     PlayerLobbyDataGC lobby_data;
     PlayerLobbyJoinDataPCGC data;
-  } cmd = {
+  } __attribute__((packed)) cmd = {
     0xFF,
     l->leader_id,
     0x01,
@@ -1751,7 +1751,7 @@ static void send_player_join_notification_bb(shared_ptr<Client> c,
     uint32_t unused;
     PlayerLobbyDataBB lobby_data;
     PlayerLobbyJoinDataBB data;
-  } cmd = {
+  } __attribute__((packed)) cmd = {
     0xFF,
     l->leader_id,
     0x01,
@@ -1789,7 +1789,7 @@ void send_player_leave_notification(shared_ptr<Lobby> l, uint8_t leaving_client_
     uint8_t client_id;
     uint8_t leader_id;
     uint16_t unused;
-  } cmd = {leaving_client_id, l->leader_id, 0};
+  } __attribute__((packed)) cmd = {leaving_client_id, l->leader_id, 0};
   send_command(l, l->is_game() ? 0x66 : 0x69, leaving_client_id, cmd);
 }
 
@@ -1807,7 +1807,7 @@ void send_arrow_update(shared_ptr<Lobby> l) {
     uint32_t player_tag;
     uint32_t serial_number;
     uint32_t arrow_color;
-  };
+  } __attribute__((packed));
   vector<Entry> entries;
 
   for (size_t x = 0; x < l->max_clients; x++) {
@@ -1926,7 +1926,7 @@ void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
     float y;
     uint32_t unused2;
     ItemData data;
-  } cmd = {0x5F, 0x0A, 0x0000, area, from_enemy, request_id, x, y, 0, item};
+  } __attribute__((packed)) cmd = {0x5F, 0x0A, 0x0000, area, from_enemy, request_id, x, y, 0, item};
   send_command(l, 0x60, 0x00, cmd);
 }
 
@@ -1943,7 +1943,7 @@ void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
     float y;
     uint32_t unused3;
     ItemData data;
-  } cmd = {0x5D, 0x09, 0x0000, area, 0, x, y, 0, item};
+  } __attribute__((packed)) cmd = {0x5D, 0x09, 0x0000, area, 0, x, y, 0, item};
   send_command(l, 0x60, 0x00, cmd);
 }
 
@@ -1957,7 +1957,7 @@ void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint16_t client_id2;
     uint16_t area;
     uint32_t item_id;
-  } cmd = {0x59, 0x03, c->lobby_client_id, c->lobby_client_id, area, item_id};
+  } __attribute__((packed)) cmd = {0x59, 0x03, c->lobby_client_id, c->lobby_client_id, area, item_id};
   send_command(l, 0x60, 0x00, cmd);
 }
 
@@ -1970,7 +1970,7 @@ void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint16_t client_id;
     ItemData item;
     uint32_t unused;
-  } cmd = {0xBE, 0x07, c->lobby_client_id, item, 0};
+  } __attribute__((packed)) cmd = {0xBE, 0x07, c->lobby_client_id, item, 0};
   send_command(l, 0x60, 0x00, cmd);
 }
 
@@ -1983,7 +1983,7 @@ void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint16_t client_id;
     uint32_t item_id;
     uint32_t amount;
-  } cmd = {0x29, 0x03, c->lobby_client_id, item_id, amount};
+  } __attribute__((packed)) cmd = {0x29, 0x03, c->lobby_client_id, item_id, amount};
   send_command(l, 0x60, 0x00, cmd);
 }
 
@@ -2001,7 +2001,7 @@ void send_bank(shared_ptr<Client> c) {
     uint32_t checksum; // can be random; client won't notice
     uint32_t numItems;
     uint32_t meseta;
-  } cmd = {0xBC, 0, 0, 0, checksum, c->player.bank.num_items, c->player.bank.meseta};
+  } __attribute__((packed)) cmd = {0xBC, 0, 0, 0, checksum, c->player.bank.num_items, c->player.bank.meseta};
 
   size_t size = 8 + sizeof(cmd) + items.size() * sizeof(PlayerBankItem);
   cmd.size = size;
@@ -2019,7 +2019,7 @@ void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
     uint8_t num_items;
     uint16_t unused;
     ItemData entries[20];
-  } cmd = {
+  } __attribute__((packed)) cmd = {
     0xB6,
     0x2C,
     0x037F,
@@ -2104,7 +2104,7 @@ void send_ep3_rank_update(shared_ptr<Client> c) {
     uint32_t meseta;
     uint32_t max_meseta;
     uint32_t jukebox_songs_unlocked;
-  } cmd = {0, "\0\0\0\0\0\0\0\0\0\0\0", 0x00FFFFFF, 0x00FFFFFF, 0xFFFFFFFF};
+  } __attribute__((packed)) cmd = {0, "\0\0\0\0\0\0\0\0\0\0\0", 0x00FFFFFF, 0x00FFFFFF, 0xFFFFFFFF};
   send_command(c, 0xB7, 0x00, cmd);
 }
 
@@ -2140,10 +2140,6 @@ void send_ep3_map_data(shared_ptr<Lobby> l, uint32_t map_id) {
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// CommandLoadQuestFile: sends a quest file to the client.
-// the _OpenFile functions send the begin command (44/A6), and the _SendChunk functions send a chunk of data (13/A7).
-
 static void send_quest_open_file_pc_gc(shared_ptr<Client> c,
     const string& filename, uint32_t file_size, bool is_download_quest,
     bool is_ep3_quest) {
@@ -2153,7 +2149,7 @@ static void send_quest_open_file_pc_gc(shared_ptr<Client> c,
     uint16_t flags;
     char filename[0x10];
     uint32_t file_size;
-  } cmd;
+  } __attribute__((packed)) cmd;
   memset(&cmd, 0, sizeof(cmd));
   strncpy(cmd.name, filename.c_str(), 0x1F);
   cmd.flags = 2 + is_ep3_quest;
@@ -2171,7 +2167,7 @@ static void send_quest_open_file_bb(shared_ptr<Client> c,
     char filename[0x10];
     uint32_t file_size;
     char name[0x18];
-  } cmd;
+  } __attribute__((packed)) cmd;
   memset(&cmd, 0, sizeof(cmd));
   cmd.flags = 2 + is_ep3_quest;
   strncpy(cmd.filename, filename.c_str(), 0x0F);
@@ -2189,7 +2185,7 @@ static void send_quest_file_chunk(shared_ptr<Client> c, const char* filename,
     char filename[0x10];
     uint8_t data[0x400];
     uint32_t data_size;
-  } cmd;
+  } __attribute__((packed)) cmd;
   memset(cmd.filename, 0, 0x10);
   strncpy(cmd.filename, filename, 0x0F);
   memcpy(cmd.data, data, size);

@@ -17,16 +17,16 @@ struct ItemData {
     uint8_t item_data1[12];
     uint16_t item_data1w[6];
     uint32_t item_data1d[3];
-  };
+  } __attribute__((packed));
   uint32_t item_id;
   union {
     uint8_t item_data2[4];
     uint16_t item_data2w[2];
     uint32_t item_data2d;
-  };
+  } __attribute__((packed));
 
   uint32_t primary_identifier() const;
-};
+} __attribute__((packed));
 
 struct PlayerBankItem;
 
@@ -38,7 +38,7 @@ struct PlayerInventoryItem {
   ItemData data;
 
   PlayerBankItem to_bank_item() const;
-};
+} __attribute__((packed));
 
 // an item in a player's bank
 struct PlayerBankItem {
@@ -47,7 +47,7 @@ struct PlayerBankItem {
   uint16_t show_flags;
 
   PlayerInventoryItem to_inventory_item() const;
-};
+} __attribute__((packed));
 
 // a player's inventory (remarkably, the format is the same in all versions of PSO)
 struct PlayerInventory {
@@ -58,7 +58,7 @@ struct PlayerInventory {
   PlayerInventoryItem items[30];
 
   size_t find_item(uint32_t item_id);
-};
+} __attribute__((packed));
 
 // a player's bank
 struct PlayerBank {
@@ -74,7 +74,7 @@ struct PlayerBank {
   void add_item(const PlayerBankItem& item);
   void remove_item(uint32_t item_id, uint32_t amount, PlayerBankItem* item);
   size_t find_item(uint32_t item_id);
-};
+} __attribute__((packed));
 
 
 
@@ -87,7 +87,7 @@ struct PlayerStats {
   uint16_t dfp;
   uint16_t ata;
   uint16_t lck;
-};
+} __attribute__((packed));
 
 struct PlayerDispDataBB;
 
@@ -124,7 +124,7 @@ struct PlayerDispDataPCGC { // 0xD0 in size
   uint8_t technique_levels[0x14];
 
   PlayerDispDataBB to_bb() const;
-};
+} __attribute__((packed));
 
 // BB player preview format
 struct PlayerDispDataBBPreview {
@@ -153,7 +153,7 @@ struct PlayerDispDataBBPreview {
   float proportion_y;
   char16_t name[16];
   uint32_t play_time;
-};
+} __attribute__((packed));
 
 // BB player appearance and stats data
 struct PlayerDispDataBB {
@@ -192,7 +192,7 @@ struct PlayerDispDataBB {
   PlayerDispDataPCGC to_pcgc() const;
   PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);
-};
+} __attribute__((packed));
 
 
 
@@ -205,7 +205,7 @@ struct GuildCardGC {
   uint8_t reserved2; // should be 1
   uint8_t section_id;
   uint8_t char_class;
-};
+} __attribute__((packed));
 
 // BB guild card format
 struct GuildCardBB {
@@ -217,20 +217,20 @@ struct GuildCardBB {
   uint8_t reserved2; // should be 1
   uint8_t section_id;
   uint8_t char_class;
-};
+} __attribute__((packed));
 
 // an entry in the BB guild card file
 struct GuildCardEntryBB {
   GuildCardBB data;
   uint8_t unknown[0xB4];
-};
+} __attribute__((packed));
 
 // the format of the BB guild card file
 struct GuildCardFileBB {
   uint8_t unknown[0x1F84];
   GuildCardEntryBB entry[0x0068]; // that's 104 of them in decimal
   uint8_t unknown2[0x01AC];
-};
+} __attribute__((packed));
 
 // PSOBB key config and team info
 struct KeyAndTeamConfigBB {
@@ -242,10 +242,10 @@ struct KeyAndTeamConfigBB {
   uint32_t team_info[2];           // 02C0
   uint16_t team_privilege_level;   // 02C8
   uint16_t reserved;               // 02CA
-  char16_t team_name[0x0010];       // 02CC
+  char16_t team_name[0x0010];      // 02CC
   uint8_t team_flag[0x0800];       // 02EC
   uint32_t team_rewards[2];        // 0AEC
-};
+} __attribute__((packed));
 
 // BB account data
 struct PlayerAccountDataBB {
@@ -254,7 +254,7 @@ struct PlayerAccountDataBB {
   GuildCardFileBB guild_cards;
   uint32_t options;
   uint8_t shortcuts[0x0A40]; // chat shortcuts (@1FB4 in E7 command)
-};
+} __attribute__((packed));
 
 
 
@@ -264,7 +264,7 @@ struct PlayerLobbyDataPC {
   be_uint32_t ip_address;
   uint32_t client_id;
   char16_t name[16];
-};
+} __attribute__((packed));
 
 struct PlayerLobbyDataGC {
   uint32_t player_tag;
@@ -272,7 +272,7 @@ struct PlayerLobbyDataGC {
   be_uint32_t ip_address;
   uint32_t client_id;
   char name[16];
-};
+} __attribute__((packed));
 
 struct PlayerLobbyDataBB {
   uint32_t player_tag;
@@ -281,14 +281,14 @@ struct PlayerLobbyDataBB {
   uint32_t client_id;
   char16_t name[16];
   uint32_t unknown2;
-};
+} __attribute__((packed));
 
 
 
 struct PSOPlayerDataPC { // for command 0x61
   PlayerInventory inventory;
   PlayerDispDataPCGC disp;
-};
+} __attribute__((packed));
 
 struct PSOPlayerDataGC { // for command 0x61
   PlayerInventory inventory;
@@ -298,7 +298,7 @@ struct PSOPlayerDataGC { // for command 0x61
   uint32_t blocked[0x1E];
   uint32_t auto_reply_enabled;
   char auto_reply[0];
-};
+} __attribute__((packed));
 
 struct PSOPlayerDataBB { // for command 0x61
   PlayerInventory inventory;
@@ -308,19 +308,19 @@ struct PSOPlayerDataBB { // for command 0x61
   uint32_t blocked[0x1E];
   uint32_t auto_reply_enabled;
   char16_t auto_reply[0];
-};
+} __attribute__((packed));
 
 // PC/GC lobby player data (used in lobby/game join commands)
 struct PlayerLobbyJoinDataPCGC {
   PlayerInventory inventory;
   PlayerDispDataPCGC disp;
-};
+} __attribute__((packed));
 
 // BB lobby player data (used in lobby/game join commands)
 struct PlayerLobbyJoinDataBB {
   PlayerInventory inventory;
   PlayerDispDataBB disp;
-};
+} __attribute__((packed));
 
 // complete BB player data format (used in E7 command)
 struct PlayerBB {
@@ -349,7 +349,7 @@ struct PlayerBB {
   uint8_t unknown6[0x002C];         // 2E20 //
   uint8_t quest_data2[0x0058];      // 2E4C // player
   KeyAndTeamConfigBB key_config;    // 2EA4 // account
-};                                  // total size: 39A0
+} __attribute__((packed));          // total size: 39A0
 
 
 
@@ -367,7 +367,7 @@ struct SavedPlayerBB { // .nsc file format
   uint8_t           quest_data1[0x0208];
   uint8_t           quest_data2[0x0058];
   uint8_t           tech_menu_config[0x0028];
-};
+} __attribute__((packed));
 
 struct SavedAccountBB { // .nsa file format
   char signature[0x40];
@@ -378,7 +378,7 @@ struct SavedAccountBB { // .nsa file format
   uint8_t             shortcuts[0x0A40];
   uint8_t             symbol_chats[0x04E0];
   char16_t            team_name[0x0010];
-};
+} __attribute__((packed));
 
 // complete player info stored by the server
 struct Player {
@@ -424,7 +424,7 @@ struct Player {
   void add_item(const PlayerInventoryItem& item);
   void remove_item(uint32_t item_id, uint32_t amount, PlayerInventoryItem* item);
   size_t find_item(uint32_t item_id);
-};
+} __attribute__((packed));
 
 
 

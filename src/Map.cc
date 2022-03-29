@@ -74,7 +74,7 @@ struct EnemyEntry {
   uint32_t reserved14;
   uint32_t skin;
   uint32_t reserved15;
-};
+} __attribute__((packed));
 
 static vector<PSOEnemy> parse_map(uint8_t episode, uint8_t difficulty,
     const BattleParams* battle_params, const EnemyEntry* map,

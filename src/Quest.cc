@@ -22,7 +22,7 @@ struct PSODownloadQuestHeader {
   be_uint32_t size;
   // Note: use PSO PC encryption, even for GC quests.
   be_uint32_t encryption_seed;
-};
+} __attribute__((packed));
 
 
 
@@ -80,7 +80,7 @@ struct PSOQuestHeaderDC { // same for dc v1 and v2, thankfully
   char name[0x20];
   char short_description[0x80];
   char long_description[0x120];
-};
+} __attribute__((packed));
 
 struct PSOQuestHeaderPC {
   uint32_t start_offset;
@@ -93,7 +93,7 @@ struct PSOQuestHeaderPC {
   char16_t name[0x20];
   char16_t short_description[0x80];
   char16_t long_description[0x120];
-};
+} __attribute__((packed));
 
 struct PSOQuestHeaderGC {
   uint32_t start_offset;
@@ -107,7 +107,7 @@ struct PSOQuestHeaderGC {
   char name[0x20];
   char short_description[0x80];
   char long_description[0x120];
-};
+} __attribute__((packed));
 
 struct PSOQuestHeaderGCEpisode3 {
   // there's actually a lot of other important stuff in here but I'm lazy. it
@@ -119,7 +119,7 @@ struct PSOQuestHeaderGCEpisode3 {
   char location2[0x3C];
   char description[0x190];
   uint8_t unused2[0x3A34];
-};
+} __attribute__((packed));
 
 struct PSOQuestHeaderBB {
   uint32_t start_offset;
@@ -135,7 +135,7 @@ struct PSOQuestHeaderBB {
   char16_t name[0x20];
   char16_t short_description[0x80];
   char16_t long_description[0x120];
-};
+} __attribute__((packed));
 
 
 
@@ -375,7 +375,7 @@ string Quest::decode_gci(const string& filename) {
     uint32_t unknown2;
     uint32_t decompressed_size;
     uint32_t unknown4;
-  };
+  } __attribute__((packed));
   if (compressed_data_with_header.size() < sizeof(DecryptedHeader)) {
     throw runtime_error("GCI file compressed data truncated during header");
   }

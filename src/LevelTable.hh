@@ -16,7 +16,7 @@ struct LevelStats {
   uint32_t experience; // EXP value of this level
 
   void apply(PlayerStats& ps) const;
-};
+} __attribute__((packed));
 
 // level table format (PlyLevelTbl.prs)
 struct LevelTable {
@@ -28,4 +28,4 @@ struct LevelTable {
 
   const PlayerStats& base_stats_for_class(uint8_t char_class) const;
   const LevelStats& stats_for_level(uint8_t char_class, uint8_t level) const;
-};
+} __attribute__((packed));

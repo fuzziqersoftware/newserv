@@ -27,7 +27,7 @@ struct ItemSubcommand {
   uint8_t unused;
   uint32_t item_id;
   uint32_t amount;
-};
+} __attribute__((packed));
 
 
 
@@ -221,7 +221,7 @@ static void process_subcommand_drop_item(shared_ptr<ServerState>,
       float x;
       float y;
       float z;
-    };
+    } __attribute__((packed));
     auto* cmd = reinterpret_cast<const Cmd*>(p);
 
     if ((cmd->size != 6) || (cmd->client_id != c->lobby_client_id)) {
@@ -253,7 +253,7 @@ static void process_subcommand_drop_stacked_item(shared_ptr<ServerState>,
       float y;
       uint32_t item_id;
       uint32_t amount;
-    };
+    } __attribute__((packed));
     auto* cmd = reinterpret_cast<const Cmd*>(p);
 
     if (!l->is_game() || (cmd->size != 6) || (cmd->client_id != c->lobby_client_id)) {
@@ -293,7 +293,7 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
       uint32_t item_id;
       uint8_t area;
       uint8_t unused2[3];
-    };
+    } __attribute__((packed));
     auto* cmd = reinterpret_cast<const Cmd*>(p);
 
     if (!l->is_game() || (cmd->size != 3) || (cmd->client_id != c->lobby_client_id)) {
@@ -417,7 +417,7 @@ static void process_subcommand_bank_action(shared_ptr<ServerState>,
       uint8_t action;
       uint8_t item_amount;
       uint16_t unused2;
-    };
+    } __attribute__((packed));
     auto* cmd = reinterpret_cast<const Cmd*>(p);
 
     if (!l->is_game() || (cmd->size != 4)) {
@@ -474,7 +474,7 @@ static void process_subcommand_sort_inventory(shared_ptr<ServerState>,
       uint8_t size;
       uint16_t unused;
       uint32_t item_ids[30];
-    };
+    } __attribute__((packed));
     auto* cmd = reinterpret_cast<const Cmd*>(p);
 
     if (cmd->size != 31) {
@@ -521,7 +521,7 @@ static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
       float x;
       float y;
       uint32_t unknown[2];
-    };
+    } __attribute__((packed));
     auto* cmd = reinterpret_cast<const Cmd*>(p);
 
     if ((cmd->size != 6) || !l->is_game()) {
@@ -586,7 +586,7 @@ static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
       float x;
       float y;
       uint32_t unknown[6];
-    };
+    } __attribute__((packed));
     auto* cmd = reinterpret_cast<const Cmd*>(p);
 
     if ((cmd->size != 10) || !l->is_game()) {
@@ -655,7 +655,7 @@ static void process_subcommand_monster_hit(shared_ptr<ServerState>,
       uint16_t enemy_id;
       uint16_t damage;
       uint32_t flags;
-    };
+    } __attribute__((packed));
     auto* cmd = reinterpret_cast<const Cmd*>(p);
 
     if (cmd->size != 10) {
@@ -694,7 +694,7 @@ static void process_subcommand_monster_killed(shared_ptr<ServerState> s,
       uint16_t enemy_id;
       uint16_t killer_client_id;
       uint32_t unused;
-    };
+    } __attribute__((packed));
     auto* cmd = reinterpret_cast<const Cmd*>(p);
 
     if (!l->is_game() || (cmd->size != 3) || (cmd->enemy_id >= l->enemies.size() ||

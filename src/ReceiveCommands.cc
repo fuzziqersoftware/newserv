@@ -229,7 +229,7 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     char unused[0x20];
     char serial_number[0x10];
     char access_key[0x10];
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -265,7 +265,7 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     char serial_number[0x30];
     char access_key[0x30];
     char password[0x30];
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -354,7 +354,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     char password[0x10];
     char unused3[0x30];
     ClientConfig cfg;
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -436,12 +436,12 @@ void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint32_t transaction_num;
     uint32_t value;
     uint32_t unknown_token;
-  };
+  } __attribute__((packed));
   struct OutputCmd {
     uint32_t remaining_meseta;
     uint32_t unknown;
     uint32_t unknown_token;
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(InputCmd));
   const auto* in_cmd = reinterpret_cast<const InputCmd*>(data);
 
@@ -582,7 +582,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
   struct Cmd {
     uint32_t menu_id;
     uint32_t item_id;
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd), sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -664,10 +664,10 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint32_t menu_id;
     uint32_t item_id;
     union {
-      char16_t password_pc_bb[0];
-      char password_dc_gc[0];
-    };
-  };
+      char16_t pc_bb[0];
+      char dc_gc[0];
+    } __attribute__((packed)) password;
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd), sizeof(Cmd) + 0x10 * (1 + uses_unicode));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -796,9 +796,9 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         char16_t password[0x10];
         if (size > sizeof(Cmd)) {
           if (uses_unicode) {
-            char16cpy(password, cmd->password_pc_bb, 0x10);
+            char16cpy(password, cmd->password.pc_bb, 0x10);
           } else {
-            decode_sjis(password, cmd->password_dc_gc, 0x10);
+            decode_sjis(password, cmd->password.dc_gc, 0x10);
           }
         }
 
@@ -918,7 +918,7 @@ void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
   struct Cmd {
     uint32_t menu_id;
     uint32_t item_id;
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1173,7 +1173,7 @@ void process_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   struct Cmd {
     uint32_t unused[2];
     char16_t text[0];
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd), 0xFFFF);
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1185,7 +1185,7 @@ void process_chat_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   struct Cmd {
     uint32_t unused[2];
     char text[0];
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd), 0xFFFF);
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1207,7 +1207,7 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
   struct Cmd {
     uint32_t player_index;
     uint32_t unused;
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1257,7 +1257,7 @@ void process_guild_card_data_request_bb(shared_ptr<ServerState>, shared_ptr<Clie
     uint32_t unknown;
     uint32_t chunk_index;
     uint32_t cont;
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1282,7 +1282,7 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
   struct Cmd {
     uint32_t player_index;
     PlayerDispDataBBPreview preview;
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1346,7 +1346,7 @@ void process_change_account_data_bb(shared_ptr<ServerState>, shared_ptr<Client> 
     uint8_t pad_config[0x38]; // 05ED
     uint8_t tech_menu[0x28]; // 06ED
     uint8_t customize[0xE8]; // 07ED
-  };
+  } __attribute__((packed));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
   switch (command) {
@@ -1414,7 +1414,7 @@ void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint32_t player_tag;
     uint32_t searcher_serial_number;
     uint32_t target_serial_number;
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1495,7 +1495,7 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
     char from_name[16];
     uint32_t target_serial_number;
     char data[0x200]; // on GC this appears to contain uninitialized memory!
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1724,7 +1724,7 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint8_t battle_mode;
     uint8_t challenge_mode;
     uint8_t unused2;
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1746,7 +1746,7 @@ void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint8_t battle_mode;
     uint8_t challenge_mode;
     uint8_t episode;
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1787,7 +1787,7 @@ void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint8_t episode;
     uint8_t solo_mode;
     uint8_t unused2[3];
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 
@@ -1859,7 +1859,7 @@ void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint32_t unused[3];
     char username[0x10];
     char password[0x10];
-  };
+  } __attribute__((packed));
   check_size(size, sizeof(Cmd));
   const auto* cmd = reinterpret_cast<const Cmd*>(data);
 

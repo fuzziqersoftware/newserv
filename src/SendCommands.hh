@@ -147,7 +147,7 @@ struct JoinGameCommand_GC_64 {
   struct {
     PlayerInventory inventory;
     PlayerDispDataPCGC disp;
-  } player[4]; // only used on ep3
+  } __attribute__((packed)) player[4]; // only used on ep3
 } __attribute__((packed));
 
 void send_join_lobby(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);

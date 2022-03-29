@@ -59,7 +59,7 @@ public:
   struct KeyFile {
     uint32_t initial_keys[18];
     uint32_t private_keys[1024];
-  };
+  } __attribute__((packed));
 
   PSOBBEncryption(const KeyFile& key, const void* seed, size_t seed_size);
 
