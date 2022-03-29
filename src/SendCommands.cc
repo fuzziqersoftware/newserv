@@ -504,7 +504,8 @@ static void send_large_message_pc_patch_bb(shared_ptr<Client> c, uint8_t command
         {0, from_serial_number};
   }
   data += text;
-  add_color_inplace(data, (include_header ? sizeof(LargeMessageOptionalHeader) : 0));
+  add_color_inplace(data.data() + (include_header ? sizeof(LargeMessageOptionalHeader) / sizeof(char16_t) : 0),
+      data.size() - (include_header ? sizeof(LargeMessageOptionalHeader) / sizeof(char16_t) : 0));
   data.resize((data.size() + 4) & ~3);
   send_command(c, command, 0x00, data);
 }
@@ -513,12 +514,13 @@ static void send_large_message_dc_gc(shared_ptr<Client> c, uint8_t command,
     const char16_t* text, uint32_t from_serial_number, bool include_header) {
   string data;
   if (include_header) {
-    data.resize(sizeof(LargeMessageOptionalHeader) / sizeof(char));
+    data.resize(sizeof(LargeMessageOptionalHeader));
     *reinterpret_cast<LargeMessageOptionalHeader*>(data.data()) =
         {0, from_serial_number};
   }
   data += encode_sjis(text);
-  add_color_inplace(data, (include_header ? sizeof(LargeMessageOptionalHeader) : 0));
+  add_color_inplace(data.data() + (include_header ? sizeof(LargeMessageOptionalHeader) : 0),
+      data.size() - (include_header ? sizeof(LargeMessageOptionalHeader) : 0));
   data.resize((data.size() + 4) & ~3);
   send_command(c, command, 0x00, data);
 }
@@ -635,7 +637,7 @@ static void send_info_board_pc_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     memset(&e, 0, sizeof(Entry));
     char16cpy(e.name, c->player.disp.name, 0x10);
     char16cpy(e.message, c->player.info_board, 0xAC);
-    add_color_inplace(e.message);
+    add_color_inplace(e.message, 0xAC);
   }
 
   send_command(c, 0xD8, entries.size(), entries);
@@ -658,7 +660,7 @@ static void send_info_board_dc_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     memset(&e, 0, sizeof(Entry));
     encode_sjis(e.name, c->player.disp.name, 0x10);
     encode_sjis(e.message, c->player.info_board, 0xAC);
-    add_color_inplace(e.message);
+    add_color_inplace(e.message, 0xAC);
   }
 
   send_command(c, 0xD8, entries.size(), entries);
@@ -1159,7 +1161,7 @@ static void send_quest_menu_pc(shared_ptr<Client> c, uint32_t menu_id,
     e.quest_id = quest->quest_id;
     char16cpy(e.name, quest->name.c_str(), 0x20);
     char16cpy(e.short_desc, quest->short_description.c_str(), 0x70);
-    add_color_inplace(e.short_desc);
+    add_color_inplace(e.short_desc, 0x70);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1182,7 +1184,7 @@ static void send_quest_menu_pc(std::shared_ptr<Client> c, uint32_t menu_id,
     e.item_id = item.item_id;
     char16cpy(e.name, item.name.c_str(), 0x20);
     char16cpy(e.short_desc, item.description.c_str(), 0x70);
-    add_color_inplace(e.short_desc);
+    add_color_inplace(e.short_desc, 0x70);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1205,7 +1207,7 @@ static void send_quest_menu_gc(shared_ptr<Client> c, uint32_t menu_id,
     e.quest_id = quest->quest_id;
     encode_sjis(e.name, quest->name.c_str(), 0x20);
     encode_sjis(e.short_desc, quest->short_description.c_str(), 0x70);
-    add_color_inplace(e.short_desc);
+    add_color_inplace(e.short_desc, 0x70);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1228,7 +1230,7 @@ static void send_quest_menu_gc(shared_ptr<Client> c, uint32_t menu_id,
     e.item_id = item.item_id;
     encode_sjis(e.name, item.name.c_str(), 0x20);
     encode_sjis(e.short_desc, item.description.c_str(), 0x70);
-    add_color_inplace(e.short_desc);
+    add_color_inplace(e.short_desc, 0x70);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1253,7 +1255,7 @@ static void send_quest_menu_bb(shared_ptr<Client> c, uint32_t menu_id,
     e.quest_id = quest->quest_id;
     char16cpy(e.name, quest->name.c_str(), 0x20);
     char16cpy(e.short_desc, quest->short_description.c_str(), 0x7A);
-    add_color_inplace(e.short_desc);
+    add_color_inplace(e.short_desc, 0x7A);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1278,7 +1280,7 @@ static void send_quest_menu_bb(shared_ptr<Client> c, uint32_t menu_id,
     e.item_id = item.item_id;
     char16cpy(e.name, item.name.c_str(), 0x20);
     char16cpy(e.short_desc, item.description.c_str(), 0x7A);
-    add_color_inplace(e.short_desc);
+    add_color_inplace(e.short_desc, 0x7A);
   }
 
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
