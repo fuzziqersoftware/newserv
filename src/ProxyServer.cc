@@ -435,20 +435,40 @@ static void check_implemented_subcommand(
 void ProxyServer::LinkedSession::on_client_input() {
   string name = string_printf("ProxySession:%08" PRIX32 ":client", this->license->serial_number);
   for_each_received_command(this->client_bev.get(), this->version, this->client_input_crypt.get(),
-    [&](uint16_t command, uint32_t flag, const string& data) {
+    [&](uint16_t command, uint32_t flag, string& data) {
       print_received_command(command, flag, data.data(), data.size(),
           this->version, name.c_str());
       check_implemented_subcommand(this->license->serial_number, command, data);
 
-      if (!this->client_bev.get()) {
-        log(WARNING, "[ProxyServer/%08" PRIX32 "] No server is present; dropping command",
-            this->license->serial_number);
-      } else {
-        // Note: we intentionally don't pass a name string here because we already
-        // printed the command above
-        send_command(this->server_bev.get(), this->version,
-            this->server_output_crypt.get(), command, flag,
-            data.data(), data.size());
+      bool should_forward = true;
+      switch (command) {
+        case 0x06:
+          if (data.size() < 12) {
+            break;
+          }
+          // If this chat message looks like a chat command, suppress it
+          if (data[8] == '$' || (data[8] == '\t' && data[9] != 'C' && data[10] == '$')) {
+            log(WARNING, "[ProxyServer/%08" PRIX32 "] Chat message appears to be a server command; dropping it",
+                this->license->serial_number);
+            should_forward = false;
+          } else {
+            // Turn all $ into \t and all # into \n
+            add_color_inplace(data.data() + 8, data.size() - 8);
+          }
+          break;
+      }
+
+      if (should_forward) {
+        if (!this->client_bev.get()) {
+          log(WARNING, "[ProxyServer/%08" PRIX32 "] No server is present; dropping command",
+              this->license->serial_number);
+        } else {
+          // Note: we intentionally don't pass a name string here because we already
+          // printed the command above
+          send_command(this->server_bev.get(), this->version,
+              this->server_output_crypt.get(), command, flag,
+              data.data(), data.size());
+        }
       }
     });
 }
