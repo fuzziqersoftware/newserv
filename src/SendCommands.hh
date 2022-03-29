@@ -131,6 +131,25 @@ void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
     const std::vector<MenuItem>& items, bool is_download_menu);
 void send_lobby_list(std::shared_ptr<Client> c, std::shared_ptr<ServerState> s);
 
+struct JoinGameCommand_GC_64 {
+  uint32_t variations[0x20];
+  PlayerLobbyDataGC lobby_data[4];
+  uint8_t client_id;
+  uint8_t leader_id;
+  uint8_t disable_udp; // guess; putting 0 here causes no movement messages to be sent
+  uint8_t difficulty;
+  uint8_t battle_mode;
+  uint8_t event;
+  uint8_t section_id;
+  uint8_t challenge_mode;
+  uint32_t rare_seed;
+  uint32_t episode; // for PSOPC, this must be 0x00000100
+  struct {
+    PlayerInventory inventory;
+    PlayerDispDataPCGC disp;
+  } player[4]; // only used on ep3
+} __attribute__((packed));
+
 void send_join_lobby(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
 void send_player_join_notification(std::shared_ptr<Client> c,
     std::shared_ptr<Lobby> l, std::shared_ptr<Client> joining_client);

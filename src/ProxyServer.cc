@@ -291,7 +291,9 @@ ProxyServer::LinkedSession::LinkedSession(
     local_port(local_port),
     version(version),
     sub_version(0), // This is set during resume()
-    guild_card_number(0) {
+    guild_card_number(0),
+    lobby_players(12),
+    lobby_client_id(0) {
   memset(this->client_config_data, 0, 0x20);
   memset(&this->next_destination, 0, sizeof(this->next_destination));
   struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
@@ -790,6 +792,116 @@ void ProxyServer::LinkedSession::on_server_input() {
 
             log(INFO, "[ProxyServer/%08" PRIX32 "] Wrote %zu bytes to %s",
                 this->license->serial_number, size, output_filename.c_str());
+            break;
+          }
+
+          case 0x67: // join lobby
+            this->lobby_players.clear();
+            this->lobby_players.resize(12);
+            log(WARNING, "[ProxyServer/%08" PRIX32 "] Cleared lobby players",
+                this->license->serial_number);
+            [[fallthrough]];
+
+          case 0x65: // other player joined game
+          case 0x68: { // other player joined lobby
+            struct Command {
+              uint8_t client_id;
+              uint8_t leader_id;
+              uint8_t disable_udp;
+              uint8_t lobby_number;
+              uint16_t block_number;
+              uint16_t event;
+              uint32_t unused;
+              struct Entry {
+                PlayerLobbyDataGC lobby_data;
+                PlayerLobbyJoinDataPCGC data;
+              } __attribute__((packed));
+              Entry entries[0];
+            } __attribute__((packed));
+
+            size_t expected_size = sizeof(Command) + sizeof(Command::Entry) * flag;
+            if (data.size() < expected_size) {
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Lobby join command is incorrect size (expected 0x%zX bytes, received 0x%zX bytes)",
+                  this->license->serial_number, expected_size, data.size());
+            } else {
+              const auto* cmd = reinterpret_cast<const Command*>(data.data());
+
+              this->lobby_client_id = cmd->client_id;
+
+              for (size_t x = 0; x < flag; x++) {
+                size_t index = cmd->entries[x].lobby_data.client_id;
+                if (index >= this->lobby_players.size()) {
+                  log(WARNING, "[ProxyServer/%08" PRIX32 "] Ignoring invalid player index %zu at position %zu",
+                      this->license->serial_number, index, x);
+                } else {
+                  this->lobby_players[index].guild_card_number = cmd->entries[x].lobby_data.guild_card;
+                  this->lobby_players[index].name = cmd->entries[x].data.disp.name;
+                  log(INFO, "[ProxyServer/%08" PRIX32 "] Added lobby player: (%zu) %" PRIu32 " %s",
+                      this->license->serial_number, index,
+                      this->lobby_players[index].guild_card_number,
+                      this->lobby_players[index].name.c_str());
+                }
+              }
+            }
+            break;
+          }
+
+          case 0x64: { // join game
+            // We don't need to clear lobby_players here because we always
+            // overwrite all 4 entries in this case
+            this->lobby_players.resize(4);
+            log(WARNING, "[ProxyServer/%08" PRIX32 "] Cleared lobby players",
+                this->license->serial_number);
+
+            const size_t expected_size = offsetof(JoinGameCommand_GC_64, player);
+            const size_t ep3_expected_size = sizeof(JoinGameCommand_GC_64);
+            if (data.size() < expected_size) {
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Game join command is incorrect size (expected 0x%zX bytes, received 0x%zX bytes)",
+                  this->license->serial_number, expected_size, data.size());
+            } else {
+              const auto* cmd = reinterpret_cast<const JoinGameCommand_GC_64*>(data.data());
+
+              this->lobby_client_id = cmd->client_id;
+
+              for (size_t x = 0; x < flag; x++) {
+                this->lobby_players[x].guild_card_number = cmd->lobby_data[x].guild_card;
+                if (data.size() >= ep3_expected_size) {
+                  this->lobby_players[x].name = cmd->player[x].disp.name;
+                } else {
+                  this->lobby_players[x].name.clear();
+                }
+                log(INFO, "[ProxyServer/%08" PRIX32 "] Added lobby player: (%zu) %" PRIu32 " %s",
+                    this->license->serial_number, x,
+                    this->lobby_players[x].guild_card_number,
+                    this->lobby_players[x].name.c_str());
+              }
+            }
+            break;
+          }
+
+          case 0x66:
+          case 0x69: {
+            struct Command {
+              uint8_t client_id;
+              uint8_t leader_id;
+              uint16_t unused;
+            } __attribute__((packed));
+            if (data.size() < sizeof(Command)) {
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Lobby leave command is incorrect size",
+                  this->license->serial_number);
+            } else {
+              const auto* cmd = reinterpret_cast<const Command*>(data.data());
+              size_t index = cmd->client_id;
+              if (index >= this->lobby_players.size()) {
+                log(WARNING, "[ProxyServer/%08" PRIX32 "] Lobby leave command references missing position",
+                  this->license->serial_number);
+              } else {
+                this->lobby_players[index].guild_card_number = 0;
+                this->lobby_players[index].name.clear();
+                log(INFO, "[ProxyServer/%08" PRIX32 "] Removed lobby player (%zu)",
+                    this->license->serial_number, index);
+              }
+            }
             break;
           }
         }

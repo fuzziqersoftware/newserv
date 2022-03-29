@@ -46,6 +46,14 @@ public:
     uint32_t guild_card_number;
     uint8_t client_config_data[0x20];
 
+    struct LobbyPlayer {
+      uint32_t guild_card_number;
+      std::string name;
+      LobbyPlayer() : guild_card_number(0) { }
+    };
+    std::vector<LobbyPlayer> lobby_players;
+    size_t lobby_client_id;
+
     std::shared_ptr<PSOEncryption> client_input_crypt;
     std::shared_ptr<PSOEncryption> client_output_crypt;
     std::shared_ptr<PSOEncryption> server_input_crypt;

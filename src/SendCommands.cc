@@ -1399,24 +1399,7 @@ static void send_join_game_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 }
 
 static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  struct {
-    uint32_t variations[0x20];
-    PlayerLobbyDataGC lobby_data[4];
-    uint8_t client_id;
-    uint8_t leader_id;
-    uint8_t disable_udp; // guess; putting 0 here causes no movement messages to be sent
-    uint8_t difficulty;
-    uint8_t battle_mode;
-    uint8_t event;
-    uint8_t section_id;
-    uint8_t challenge_mode;
-    uint32_t rare_seed;
-    uint32_t episode; // for PSOPC, this must be 0x00000100
-    struct {
-      PlayerInventory inventory;
-      PlayerDispDataPCGC disp;
-    } player[4]; // only used on ep3
-  } cmd;
+  JoinGameCommand_GC_64 cmd;
 
   size_t player_count = 0;
   memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
