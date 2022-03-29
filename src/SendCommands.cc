@@ -2102,12 +2102,12 @@ void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
 void send_ep3_card_list_update(shared_ptr<Client> c) {
   auto file_data = file_cache.get("system/ep3/cardupdate.mnr");
 
-  string data("\0\0\0\0", 4);
-  *reinterpret_cast<uint32_t*>(data.data()) = file_data->size();
-  data += *file_data;
-  data.resize((data.size() + 3) & ~3);
+  StringWriter w;
+  w.put_u32l(file_data->size());
+  w.write(*file_data);
+  w.str().resize((w.str().size() + 3) & (~3));
 
-  send_command(c, 0xB8, 0x00, data);
+  send_command(c, 0xB8, 0x00, w.str());
 }
 
 // sends the client a generic rank

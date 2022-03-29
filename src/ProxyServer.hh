@@ -62,7 +62,6 @@ public:
           const std::string& output_filename,
           uint32_t remaining_bytes);
     };
-    bool save_quests;
     std::unordered_map<std::string, SavingQuestFile> saving_quest_files;
 
     LinkedSession(
@@ -99,6 +98,8 @@ public:
 
   std::shared_ptr<LinkedSession> get_session();
   void delete_session(uint32_t serial_number);
+
+  bool save_quests;
 
 private:
   struct ListeningSocket {

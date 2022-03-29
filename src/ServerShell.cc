@@ -303,14 +303,16 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     session->send_to_end(data, true);
 
   } else if (command_name == "set-save-quests") {
-    auto session = this->get_proxy_session();
-
-    if (command_args == "on") {
-      session->save_quests = true;
-    } else if (command_args == "off") {
-      session->save_quests = false;
+    if (this->state->proxy_server.get()) {
+      if (command_args == "on") {
+        this->state->proxy_server->save_quests = true;
+      } else if (command_args == "off") {
+        this->state->proxy_server->save_quests = false;
+      } else {
+        throw invalid_argument("argument must be \"on\" or \"off\"");
+      }
     } else {
-      throw invalid_argument("argument must be \"on\" or \"off\"");
+      throw invalid_argument("proxy server is not available");
     }
 
 

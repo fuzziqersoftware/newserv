@@ -41,7 +41,8 @@ static void flush_and_free_bufferevent(struct bufferevent* bev) {
 ProxyServer::ProxyServer(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
-  : base(base),
+  : save_quests(false),
+    base(base),
     state(state) { }
 
 void ProxyServer::listen(uint16_t port, GameVersion version) {
@@ -290,8 +291,7 @@ ProxyServer::LinkedSession::LinkedSession(
     local_port(local_port),
     version(version),
     sub_version(0), // This is set during resume()
-    guild_card_number(0),
-    save_quests(false) {
+    guild_card_number(0) {
   memset(this->client_config_data, 0, 0x20);
   memset(&this->next_destination, 0, sizeof(this->next_destination));
   struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
@@ -653,7 +653,7 @@ void ProxyServer::LinkedSession::on_server_input() {
 
           case 0x44:
           case 0xA6: {
-            if (!this->save_quests) {
+            if (!this->server->save_quests) {
               break;
             }
 
@@ -693,7 +693,7 @@ void ProxyServer::LinkedSession::on_server_input() {
 
           case 0x13:
           case 0xA7: {
-            if (!this->save_quests) {
+            if (!this->server->save_quests) {
               break;
             }
 
@@ -742,6 +742,32 @@ void ProxyServer::LinkedSession::on_server_input() {
                   this->license->serial_number, sqf->output_filename.c_str());
               this->saving_quest_files.erase(cmd->filename);
             }
+            break;
+          }
+
+          case 0xB8: {
+            if (!this->server->save_quests) {
+              break;
+            }
+            if (data.size() < 4) {
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Card list data size is too small; skipping file",
+                  this->license->serial_number);
+              break;
+            }
+
+            StringReader r(data);
+            size_t size = r.get_u32l();
+            if (r.remaining() < size) {
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Card list data size extends beyond end of command; skipping file",
+                  this->license->serial_number);
+              break;
+            }
+
+            string output_filename = string_printf("cardupdate.mnr.%" PRIu64, now());
+            save_file(output_filename, r.read(size));
+
+            log(INFO, "[ProxyServer/%08" PRIX32 "] Wrote %zu bytes to %s",
+                this->license->serial_number, size, output_filename.c_str());
             break;
           }
         }
