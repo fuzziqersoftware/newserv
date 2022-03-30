@@ -301,6 +301,7 @@ ProxyServer::LinkedSession::LinkedSession(
     guild_card_number(0),
     newserv_client_config(newserv_client_config),
     suppress_newserv_commands(true),
+    enable_chat_filter(true),
     lobby_players(12),
     lobby_client_id(0) {
   memset(this->remote_client_config_data, 0, 0x20);
@@ -484,7 +485,7 @@ void ProxyServer::LinkedSession::on_client_input() {
             log(WARNING, "[ProxyServer/%08" PRIX32 "] Chat message appears to be a server command; dropping it",
                 this->license->serial_number);
             should_forward = false;
-          } else {
+          } else if (this->enable_chat_filter) {
             // Turn all $ into \t and all # into \n
             add_color_inplace(data.data() + 8, data.size() - 8);
           }

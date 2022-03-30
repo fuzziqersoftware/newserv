@@ -97,15 +97,21 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     Send a lobby event update to yourself.\n\
   warp <area-id>\n\
     Send yourself to a specific area.\n\
+  set-chat-filter <on|off>\n\
+    Enable or disable chat filtering (enabled by default). Chat filtering\n\
+    applies newserv\'s standard character replacements to chat messages (for\n\
+    example, $ becomes a tab character and # becomes a newline).\n\
   set-chat-safety <on|off>\n\
     Enable or disable chat safety (enabled by default). When chat safety is on,\n\
     all chat messages that begin with a $ are not sent to the remote server.\n\
     This can prevent embarrassing situations if the remote server isn\'t a\n\
     newserv instance and you have newserv commands in your chat shortcuts.\n\
   set-save-files <on|off>\n\
-    Enable or disable saving of game files. When this is on, any file that the\n\
-    remote server sends to the client will be saved to the current directory.\n\
-    This includes data like quests, Episode 3 card definitions, and GBA games.\n\
+    Enable or disable saving of game files (disabled by default). When this is\n\
+    on, any file that the remote server sends to the client will be saved to\n\
+    the current directory. This includes data like quests, Episode 3 card\n\
+    definitions, and GBA games. Unlike other proxy commands, this command\n\
+    affects all proxy sessions.\n\
 ");
 
 
@@ -316,6 +322,17 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     *size_field = data.size();
 
     session->send_to_end(data, true);
+
+  } else if (command_name == "set-chat-filter") {
+    auto session = this->get_proxy_session();
+
+    if (command_args == "on") {
+      session->enable_chat_filter = true;
+    } else if (command_args == "off") {
+      session->enable_chat_filter = false;
+    } else {
+      throw invalid_argument("argument must be \"on\" or \"off\"");
+    }
 
   } else if (command_name == "set-chat-safety") {
     auto session = this->get_proxy_session();
