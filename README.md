@@ -82,4 +82,9 @@ For GC clients, you'll have to use newserv's built-in DNS server or set up your 
 
 If you want to play online on remote servers rather than running your own server, newserv also includes a PSO proxy. Currently this works with PSO GC and may work with PC, but not with BB.
 
-Run newserv like `./newserv --proxy-destination=1.1.1.1` (replace the IP address appropriately for the server you want to connect to). This works for normal clients (using the connection parameters in config.json), as well as tapserver clients.
+To use the proxy, add an entry to the ProxyDestinations dictionary in config.json. Then run newserv and connect to it as normal - you'll see a "Proxy server" option in the main menu, and you can pick which remote server to connect to.
+
+A few things to be aware of when using the proxy server:
+- There are shell commands that affect clients on the proxy (run 'help' in the shell to see what they are). All proxy commands only work when there's exactly one client connected through the proxy, since there isn't (yet) a way to say via the shell which session you want to affect.
+- Using the "change ship" or "change block" actions from the lobby counter will bring you back to newserv's main menu, not the remote server's ship select. You can, of course, go back to the server you were just on by choosing it from newserv's proxy server menu again.
+- The proxy server blocks chat commands that look like newserv commands by default, but you can turn this off with a shell command if needed.
