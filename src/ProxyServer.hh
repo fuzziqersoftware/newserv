@@ -33,6 +33,8 @@ public:
   struct LinkedSession {
     ProxyServer* server;
 
+    std::unique_ptr<struct event, void(*)(struct event*)> timeout_event;
+
     std::shared_ptr<const License> license;
 
     std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> client_bev;
@@ -93,9 +95,11 @@ public:
     static void dispatch_on_server_input(struct bufferevent* bev, void* ctx);
     static void dispatch_on_server_error(struct bufferevent* bev, short events,
         void* ctx);
+    static void dispatch_on_timeout(evutil_socket_t fd, short what, void* ctx);
     void on_client_input();
     void on_server_input();
     void on_stream_error(short events, bool is_server_stream);
+    void on_timeout();
 
     void send_to_end(const void* data, size_t size, bool to_server);
     void send_to_end(const std::string& data, bool to_server);

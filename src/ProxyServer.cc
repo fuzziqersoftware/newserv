@@ -31,6 +31,10 @@ using namespace std;
 
 
 
+static const uint32_t SESSION_TIMEOUT_USECS = 30000000; // 30 seconds
+
+
+
 static void flush_and_free_bufferevent(struct bufferevent* bev) {
   bufferevent_flush(bev, EV_READ | EV_WRITE, BEV_FINISHED);
   bufferevent_free(bev);
@@ -226,7 +230,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
       // destination in the client config. If there is, open a new linked
       // session and set its initial destination
       if (client_config.magic != CLIENT_CONFIG_MAGIC) {
-        log(ERROR, "[ProxyServer/%08" PRIX32 "] Client configuration is invalid",
+        log(ERROR, "[ProxyServer/%08" PRIX32 "] Client configuration is invalid; cannot open session",
             license->serial_number);
       } else {
         session.reset(new LinkedSession(
@@ -238,6 +242,8 @@ void ProxyServer::UnlinkedSession::on_client_input() {
             client_config.proxy_destination_port));
         this->server->serial_number_to_session.emplace(
             license->serial_number, session);
+        log(INFO, "[ProxyServer/%08" PRIX32 "] Opened session",
+            license->serial_number);
       }
     }
 
@@ -285,6 +291,8 @@ ProxyServer::LinkedSession::LinkedSession(
     uint32_t dest_addr,
     uint16_t dest_port)
   : server(server),
+    timeout_event(event_new(this->server->base.get(), -1, EV_TIMEOUT,
+        &LinkedSession::dispatch_on_timeout, this), event_free),
     license(license),
     client_bev(nullptr, flush_and_free_bufferevent),
     server_bev(nullptr, flush_and_free_bufferevent),
@@ -353,6 +361,9 @@ void ProxyServer::LinkedSession::resume(
       &ProxyServer::LinkedSession::dispatch_on_server_input, nullptr,
       &ProxyServer::LinkedSession::dispatch_on_server_error, this);
   bufferevent_enable(this->server_bev.get(), EV_READ | EV_WRITE);
+
+  // Cancel the session delete timeout
+  event_del(this->timeout_event.get());
 }
 
 
@@ -388,6 +399,19 @@ void ProxyServer::LinkedSession::dispatch_on_server_error(
   reinterpret_cast<LinkedSession*>(ctx)->on_stream_error(events, true);
 }
 
+void ProxyServer::LinkedSession::dispatch_on_timeout(
+    evutil_socket_t, short, void* ctx) {
+  reinterpret_cast<LinkedSession*>(ctx)->on_timeout();
+}
+
+
+
+void ProxyServer::LinkedSession::on_timeout() {
+  log(INFO, "[ProxyServer/%08" PRIX32 "] Session timed out",
+      this->license->serial_number);
+  this->server->delete_session(this->license->serial_number);
+}
+
 
 
 void ProxyServer::LinkedSession::on_stream_error(
@@ -415,6 +439,11 @@ void ProxyServer::LinkedSession::disconnect() {
   this->server_output_crypt.reset();
   this->client_input_crypt.reset();
   this->client_output_crypt.reset();
+
+  // Set a timeout to delete the session entirely (in case the client doesn't
+  // reconnect)
+  struct timeval tv = usecs_to_timeval(SESSION_TIMEOUT_USECS);
+  event_add(this->timeout_event.get(), &tv);
 }
 
 
@@ -967,5 +996,7 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() {
 }
 
 void ProxyServer::delete_session(uint32_t serial_number) {
-  this->serial_number_to_session.erase(serial_number);
+  if (this->serial_number_to_session.erase(serial_number)) {
+    log(WARNING, "[ProxyServer/%08" PRIX32 "] Closed session", serial_number);
+  }
 }
