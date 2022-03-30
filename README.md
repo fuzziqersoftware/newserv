@@ -44,6 +44,17 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 - Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
 - Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
 
+### Using newserv as a proxy
+
+If you want to play online on remote servers rather than running your own server, newserv also includes a PSO proxy. Currently this works with PSO GC and may work with PC, but not with BB.
+
+To use the proxy, add an entry to the ProxyDestinations dictionary in config.json, then run newserv and connect to it as normal (see below). You'll see a "Proxy server" option in the main menu, and you can pick which remote server to connect to.
+
+A few things to be aware of when using the proxy server:
+- There are shell commands that affect clients on the proxy (run 'help' in the shell to see what they are). All proxy commands only work when there's exactly one client connected through the proxy, since there isn't (yet) a way to say via the shell which session you want to affect.
+- Using the "change ship" or "change block" actions from the lobby counter will bring you back to newserv's main menu, not the remote server's ship select. You can go back to the server you were just on by choosing it from newserv's proxy server menu again.
+- The proxy server blocks chat commands that look like newserv commands by default, but you can change this with the `set-chat-safety off` shell command if needed.
+
 ### Connecting local clients
 
 If you're running PSO on a real GameCube, you can make it connect to newserv by setting its default gateway and DNS server addresses to newserv's address. Note that newserv's DNS server is disabled by default; you'll have to enable it in config.json.
@@ -76,15 +87,10 @@ If you want to accept connections from outside your local network, you'll need t
     PSO GC Ep3 EU    9203, 9421
     PSO BB           9422, 11000, 12000, 12004, 12005, 12008
 
+If you want to allow external clients to use the proxy server, you'll need to open more ports:
+
+    PSO PC                  9520
+    PSO GC (all versions)   9521
+    PSO BB                  9522
+
 For GC clients, you'll have to use newserv's built-in DNS server or set up your own DNS server as well. Remote players can connect to your server by entering your DNS server's IP address in their client's network configuration. If you use newserv's built-in DNS server, you'll also need to forward UDP port 53 to your newserv instance.
-
-### Using newserv as a proxy
-
-If you want to play online on remote servers rather than running your own server, newserv also includes a PSO proxy. Currently this works with PSO GC and may work with PC, but not with BB.
-
-To use the proxy, add an entry to the ProxyDestinations dictionary in config.json. Then run newserv and connect to it as normal - you'll see a "Proxy server" option in the main menu, and you can pick which remote server to connect to.
-
-A few things to be aware of when using the proxy server:
-- There are shell commands that affect clients on the proxy (run 'help' in the shell to see what they are). All proxy commands only work when there's exactly one client connected through the proxy, since there isn't (yet) a way to say via the shell which session you want to affect.
-- Using the "change ship" or "change block" actions from the lobby counter will bring you back to newserv's main menu, not the remote server's ship select. You can, of course, go back to the server you were just on by choosing it from newserv's proxy server menu again.
-- The proxy server blocks chat commands that look like newserv commands by default, but you can turn this off with a shell command if needed.
