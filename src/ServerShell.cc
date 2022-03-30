@@ -97,8 +97,10 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     Send a lobby event update to yourself.\n\
   warp <area-id>\n\
     Send yourself to a specific area.\n\
-  ship\n\
-    Request the ship select menu from the server.\n\
+  set-save-files <on|off>\n\
+    Enable or disable saving of game files. When this is on, any file that the\n\
+    remote server sends to the client will be saved to the current directory.\n\
+    This includes data like quests, Episode 3 card definitions, and GBA games.\n\
 ");
 
 
@@ -293,12 +295,6 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     session->send_to_end(&cmds, sizeof(cmds), false);
     session->send_to_end(&cmds, sizeof(cmds), true);
 
-  } else if (command_name == "ship") {
-    auto session = this->get_proxy_session();
-
-    static const string data("\xA0\x00\x04\x00", 4);
-    session->send_to_end(data, true);
-
   } else if ((command_name == "info-board") || (command_name == "info-board-data")) {
     auto session = this->get_proxy_session();
 
@@ -316,12 +312,12 @@ Proxy commands (these will only work when exactly one client is connected):\n\
 
     session->send_to_end(data, true);
 
-  } else if (command_name == "set-save-quests") {
+  } else if (command_name == "set-save-files") {
     if (this->state->proxy_server.get()) {
       if (command_args == "on") {
-        this->state->proxy_server->save_quests = true;
+        this->state->proxy_server->save_files = true;
       } else if (command_args == "off") {
-        this->state->proxy_server->save_quests = false;
+        this->state->proxy_server->save_files = false;
       } else {
         throw invalid_argument("argument must be \"on\" or \"off\"");
       }

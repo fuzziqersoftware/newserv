@@ -62,18 +62,18 @@ public:
     std::shared_ptr<PSOEncryption> server_input_crypt;
     std::shared_ptr<PSOEncryption> server_output_crypt;
 
-    struct SavingQuestFile {
+    struct SavingFile {
       std::string basename;
       std::string output_filename;
       uint32_t remaining_bytes;
       std::unique_ptr<FILE, std::function<void(FILE*)>> f;
 
-      SavingQuestFile(
+      SavingFile(
           const std::string& basename,
           const std::string& output_filename,
           uint32_t remaining_bytes);
     };
-    std::unordered_map<std::string, SavingQuestFile> saving_quest_files;
+    std::unordered_map<std::string, SavingFile> saving_files;
 
     LinkedSession(
         ProxyServer* server,
@@ -112,7 +112,7 @@ public:
   std::shared_ptr<LinkedSession> get_session();
   void delete_session(uint32_t serial_number);
 
-  bool save_quests;
+  bool save_files;
 
 private:
   struct ListeningSocket {

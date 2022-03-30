@@ -45,7 +45,7 @@ static void flush_and_free_bufferevent(struct bufferevent* bev) {
 ProxyServer::ProxyServer(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
-  : save_quests(false),
+  : save_files(false),
     base(base),
     state(state) { }
 
@@ -333,7 +333,7 @@ void ProxyServer::LinkedSession::resume(
   this->server_input_crypt.reset();
   this->server_output_crypt.reset();
 
-  this->saving_quest_files.clear();
+  this->saving_files.clear();
 
   // Connect to the remote server. The command handlers will do the login steps
   // and set up forwarding
@@ -368,7 +368,7 @@ void ProxyServer::LinkedSession::resume(
 
 
 
-ProxyServer::LinkedSession::SavingQuestFile::SavingQuestFile(
+ProxyServer::LinkedSession::SavingFile::SavingFile(
     const std::string& basename,
     const std::string& output_filename,
     uint32_t remaining_bytes)
@@ -773,7 +773,7 @@ void ProxyServer::LinkedSession::on_server_input() {
 
           case 0x44:
           case 0xA6: {
-            if (!this->server->save_quests) {
+            if (!this->server->save_files) {
               break;
             }
 
@@ -804,16 +804,16 @@ void ProxyServer::LinkedSession::on_server_input() {
               output_filename[0] = '_';
             }
 
-            SavingQuestFile sqf(cmd->filename, output_filename, cmd->file_size);
-            this->saving_quest_files.emplace(cmd->filename, move(sqf));
-            log(INFO, "[ProxyServer/%08" PRIX32 "] Opened quest file %s",
+            SavingFile sf(cmd->filename, output_filename, cmd->file_size);
+            this->saving_files.emplace(cmd->filename, move(sf));
+            log(INFO, "[ProxyServer/%08" PRIX32 "] Opened file %s",
                 this->license->serial_number, output_filename.c_str());
             break;
           }
 
           case 0x13:
           case 0xA7: {
-            if (!this->server->save_quests) {
+            if (!this->server->save_files) {
               break;
             }
 
@@ -829,11 +829,11 @@ void ProxyServer::LinkedSession::on_server_input() {
             }
             const auto* cmd = reinterpret_cast<const WriteFileCommand*>(data.data());
 
-            SavingQuestFile* sqf = nullptr;
+            SavingFile* sf = nullptr;
             try {
-              sqf = &this->saving_quest_files.at(cmd->filename);
+              sf = &this->saving_files.at(cmd->filename);
             } catch (const out_of_range&) {
-              log(WARNING, "[ProxyServer/%08" PRIX32 "] Can\'t find saving quest file %s",
+              log(WARNING, "[ProxyServer/%08" PRIX32 "] Received data for non-open file %s",
                   this->license->serial_number, cmd->filename);
               break;
             }
@@ -847,26 +847,26 @@ void ProxyServer::LinkedSession::on_server_input() {
 
             log(INFO, "[ProxyServer/%08" PRIX32 "] Writing %zu bytes to %s",
                 this->license->serial_number, bytes_to_write,
-                sqf->output_filename.c_str());
-            fwritex(sqf->f.get(), cmd->data, bytes_to_write);
-            if (bytes_to_write > sqf->remaining_bytes) {
+                sf->output_filename.c_str());
+            fwritex(sf->f.get(), cmd->data, bytes_to_write);
+            if (bytes_to_write > sf->remaining_bytes) {
               log(WARNING, "[ProxyServer/%08" PRIX32 "] Chunk size extends beyond original file size; file may be truncated",
                   this->license->serial_number);
-              sqf->remaining_bytes = 0;
+              sf->remaining_bytes = 0;
             } else {
-              sqf->remaining_bytes -= bytes_to_write;
+              sf->remaining_bytes -= bytes_to_write;
             }
 
-            if (sqf->remaining_bytes == 0) {
+            if (sf->remaining_bytes == 0) {
               log(INFO, "[ProxyServer/%08" PRIX32 "] File %s is complete",
-                  this->license->serial_number, sqf->output_filename.c_str());
-              this->saving_quest_files.erase(cmd->filename);
+                  this->license->serial_number, sf->output_filename.c_str());
+              this->saving_files.erase(cmd->filename);
             }
             break;
           }
 
           case 0xB8: {
-            if (!this->server->save_quests) {
+            if (!this->server->save_files) {
               break;
             }
             if (data.size() < 4) {
