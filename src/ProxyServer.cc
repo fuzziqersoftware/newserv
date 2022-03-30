@@ -234,6 +234,9 @@ void ProxyServer::UnlinkedSession::on_client_input() {
         log(ERROR, "[ProxyServer/%08" PRIX32 "] Client configuration is invalid; cannot open session",
             license->serial_number);
       } else {
+        // If the client goes back to newserv, we need to set the welcome
+        // message flag so the server will know what to do
+        client_config.flags |= ClientFlag::AT_WELCOME_MESSAGE;
         session.reset(new LinkedSession(
             this->server,
             this->local_port,
@@ -495,6 +498,23 @@ void ProxyServer::LinkedSession::on_client_input() {
         case 0xA1: { // Change block
           // These will take you back to the newserv main menu instead of the
           // proxied service's menu
+
+          // Delete all the other players
+          for (size_t x = 0; x < this->lobby_players.size(); x++) {
+            if (this->lobby_players[x].guild_card_number == 0) {
+              continue;
+            }
+            uint8_t leaving_id = x;
+            uint8_t leader_id = this->lobby_client_id;
+            struct {
+              uint8_t client_id;
+              uint8_t leader_id;
+              uint16_t unused;
+            } __attribute__((packed)) cmd = {leaving_id, leader_id, 0};
+            send_command(this->client_bev.get(), this->version,
+                this->client_output_crypt.get(), 0x69, leaving_id, &cmd,
+                sizeof(cmd), name.c_str());
+          }
 
           // Restore the newserv client config, so the client gets its newserv
           // guild card number back and the login server knows e.g. not to show

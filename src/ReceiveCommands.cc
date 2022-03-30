@@ -91,7 +91,7 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
       break;
     }
 
-    case ServerBehavior::LOGIN_SERVER: {
+    case ServerBehavior::LOGIN_SERVER:
       if (!s->welcome_message.empty()) {
         c->flags |= ClientFlag::AT_WELCOME_MESSAGE;
       }
@@ -100,7 +100,6 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
         send_change_event(c, s->pre_lobby_event);
       }
       break;
-    }
 
     case ServerBehavior::LOBBY_SERVER:
     case ServerBehavior::DATA_SERVER_BB:
