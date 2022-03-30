@@ -274,13 +274,7 @@ void send_update_client_config(shared_ptr<Client> c) {
 
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
-  struct {
-    // The address is big-endian, for some reason. Probably it was defined as a
-    // uint8_t[4] in the original PSO source rather than a uint32_t
-    be_uint32_t address;
-    uint16_t port;
-    uint16_t unused;
-  } __attribute__((packed)) cmd = {address, port, 0};
+  ReconnectCommand_19 cmd = {address, port, 0};
   send_command(c, 0x19, 0x00, cmd);
 }
 

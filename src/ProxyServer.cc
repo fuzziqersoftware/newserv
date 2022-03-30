@@ -202,7 +202,8 @@ void ProxyServer::UnlinkedSession::on_client_input() {
                 serial_number, cmd->access_key, nullptr);
             sub_version = cmd->sub_version;
             character_name = cmd->name;
-            memcpy(&client_config, &cmd->cfg, 0x20);
+            memcpy(&client_config, &cmd->cfg, offsetof(ClientConfig, unused_bb_only));
+            memset(client_config.unused_bb_only, 0xFF, sizeof(client_config.unused_bb_only));
           } catch (const exception& e) {
             log(ERROR, "[ProxyServer] Unlinked client has no valid license");
             should_close_unlinked_session = true;
@@ -238,8 +239,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
             this->local_port,
             this->version,
             license,
-            client_config.proxy_destination_address,
-            client_config.proxy_destination_port));
+            client_config));
         this->server->serial_number_to_session.emplace(
             license->serial_number, session);
         log(INFO, "[ProxyServer/%08" PRIX32 "] Opened session",
@@ -288,8 +288,7 @@ ProxyServer::LinkedSession::LinkedSession(
     uint16_t local_port,
     GameVersion version,
     std::shared_ptr<const License> license,
-    uint32_t dest_addr,
-    uint16_t dest_port)
+    const ClientConfig& newserv_client_config)
   : server(server),
     timeout_event(event_new(this->server->base.get(), -1, EV_TIMEOUT,
         &LinkedSession::dispatch_on_timeout, this), event_free),
@@ -300,14 +299,15 @@ ProxyServer::LinkedSession::LinkedSession(
     version(version),
     sub_version(0), // This is set during resume()
     guild_card_number(0),
+    newserv_client_config(newserv_client_config),
     lobby_players(12),
     lobby_client_id(0) {
-  memset(this->client_config_data, 0, 0x20);
+  memset(this->remote_client_config_data, 0, 0x20);
   memset(&this->next_destination, 0, sizeof(this->next_destination));
   struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
   dest_sin->sin_family = AF_INET;
-  dest_sin->sin_port = htons(dest_port);
-  dest_sin->sin_addr.s_addr = htonl(dest_addr);
+  dest_sin->sin_port = htons(this->newserv_client_config.proxy_destination_port);
+  dest_sin->sin_addr.s_addr = htonl(this->newserv_client_config.proxy_destination_address);
 }
 
 void ProxyServer::LinkedSession::resume(
@@ -487,6 +487,66 @@ void ProxyServer::LinkedSession::on_client_input() {
             add_color_inplace(data.data() + 8, data.size() - 8);
           }
           break;
+
+        case 0xA0: // Change ship
+        case 0xA1: { // Change block
+          // These will take you back to the newserv main menu instead of the
+          // proxied service's menu
+
+          // Restore the newserv client config, so the client gets its newserv
+          // guild card number back and the login server knows e.g. not to show
+          // the welcome message (if the appropriate flag is set)
+          struct {
+            uint32_t player_tag;
+            uint32_t serial_number;
+            ClientConfig config;
+          } __attribute__((packed)) update_client_config_cmd = {
+            0x00010000,
+            this->license->serial_number,
+            this->newserv_client_config,
+          };
+          send_command(this->client_bev.get(), this->version,
+              this->client_output_crypt.get(), 0x04, 0x00,
+              &update_client_config_cmd, sizeof(update_client_config_cmd),
+              name.c_str());
+
+          static const vector<string> version_to_port_name({
+              "dc-login", "pc-login", "bb-patch", "gc-us3", "bb-login"});
+          const auto& port_name = version_to_port_name.at(static_cast<size_t>(
+              this->version));
+
+          ReconnectCommand_19 reconnect_cmd = {
+              0, this->server->state->named_port_configuration.at(port_name).port, 0};
+
+          // If the client is on a virtual connection, we can use any address
+          // here and they should be able to connect back to the game server. If
+          // the client is on a real connection, we'll use the sockname of the
+          // existing connection (like we do in the server 19 command handler).
+          int fd = bufferevent_getfd(this->client_bev.get());
+          if (fd < 0) {
+            struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
+            if (dest_sin->sin_family != AF_INET) {
+              throw logic_error("ss not AF_INET");
+            }
+            reconnect_cmd.address.store_raw(dest_sin->sin_addr.s_addr);
+          } else {
+            struct sockaddr_storage sockname_ss;
+            socklen_t len = sizeof(sockname_ss);
+            getsockname(fd, reinterpret_cast<struct sockaddr*>(&sockname_ss), &len);
+            if (sockname_ss.ss_family != AF_INET) {
+              throw logic_error("existing connection is not ipv4");
+            }
+
+            struct sockaddr_in* sockname_sin = reinterpret_cast<struct sockaddr_in*>(
+                &sockname_ss);
+            reconnect_cmd.address.store_raw(sockname_sin->sin_addr.s_addr);
+          }
+
+          send_command(this->client_bev.get(), this->version,
+              this->client_output_crypt.get(), 0x19, 0x00, &reconnect_cmd,
+              sizeof(reconnect_cmd), name.c_str());
+          break;
+        }
       }
 
       if (should_forward) {
@@ -590,7 +650,7 @@ void ProxyServer::LinkedSession::on_server_input() {
                 this->license->serial_number);
             memcpy(cmd.access_key2, this->license->access_key, 0x10);
             strncpy(cmd.name, this->character_name.c_str(), sizeof(cmd.name) - 1);
-            memcpy(&cmd.cfg, this->client_config_data, 0x20);
+            memcpy(&cmd.cfg, this->remote_client_config_data, 0x20);
 
             // If there's a guild card number, a shorter 9E is sent that ends
             // right after the client config data
@@ -632,12 +692,12 @@ void ProxyServer::LinkedSession::on_server_input() {
             // If there was previously a guild card number, assume we got the
             // lobby server init text instead of the port map init text.
             memcpy(
-                this->client_config_data,
+                this->remote_client_config_data,
                 had_guild_card_number
                   ? "t Lobby Server. Copyright SEGA E"
                   : "t Port Map. Copyright SEGA Enter",
                 0x20);
-            memcpy(this->client_config_data, cmd->client_config, min<size_t>(data.size() - sizeof(Contents), 0x20));
+            memcpy(this->remote_client_config_data, cmd->client_config, min<size_t>(data.size() - sizeof(Contents), 0x20));
 
             // If the guild card number was not set, pretend (to the server)
             // that this is the first 04 command the client has received. The
@@ -656,17 +716,11 @@ void ProxyServer::LinkedSession::on_server_input() {
           }
 
           case 0x19: {
-            struct ReconnectCommand {
-              be_uint32_t address;
-              uint16_t port;
-              uint16_t unused;
-            };
-
-            if (data.size() < sizeof(ReconnectCommand)) {
+            if (data.size() < sizeof(ReconnectCommand_19)) {
               throw std::runtime_error("reconnect command is too small");
             }
 
-            auto* args = reinterpret_cast<ReconnectCommand*>(data.data());
+            auto* args = reinterpret_cast<ReconnectCommand_19*>(data.data());
             memset(&this->next_destination, 0, sizeof(this->next_destination));
             struct sockaddr_in* sin = reinterpret_cast<struct sockaddr_in*>(
                 &this->next_destination);
@@ -700,6 +754,19 @@ void ProxyServer::LinkedSession::on_server_input() {
               } else {
                 args->port = this->local_port;
               }
+            }
+            break;
+          }
+
+          case 0x1A:
+          case 0xD5: {
+            // If the client has the no-close-confirmation flag set in its
+            // newserv client config, send a fake confirmation to the remote
+            // server immediately.
+            if (this->newserv_client_config.flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) {
+              send_command(this->server_bev.get(), this->version,
+                  this->server_output_crypt.get(), 0xD6, 0x00, "", 0,
+                  name.c_str());
             }
             break;
           }
@@ -829,6 +896,16 @@ void ProxyServer::LinkedSession::on_server_input() {
             this->lobby_players.resize(12);
             log(WARNING, "[ProxyServer/%08" PRIX32 "] Cleared lobby players",
                 this->license->serial_number);
+
+            // This command can cause the client to no longer send D6 responses
+            // when 1A/D5 large message boxes are closed. newserv keeps track of
+            // this behavior in the client config, so if it happens during a
+            // proxy session, update the client config that we'll restore if the
+            // client uses the change ship or change block command.
+            if (this->newserv_client_config.flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
+              this->newserv_client_config.flags |= ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
+            }
+
             [[fallthrough]];
 
           case 0x65: // other player joined game

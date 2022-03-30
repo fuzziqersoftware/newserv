@@ -75,6 +75,12 @@ void send_server_init(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
     bool initial_connection);
 void send_update_client_config(std::shared_ptr<Client> c);
 
+struct ReconnectCommand_19 {
+  be_uint32_t address;
+  uint16_t port;
+  uint16_t unused;
+} __attribute__((packed));
+
 void send_reconnect(std::shared_ptr<Client> c, uint32_t address, uint16_t port);
 void send_pc_gc_split_reconnect(std::shared_ptr<Client> c, uint32_t address,
     uint16_t pc_port, uint16_t gc_port);

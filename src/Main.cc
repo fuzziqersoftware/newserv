@@ -134,7 +134,7 @@ void populate_state_from_config(shared_ptr<ServerState> s,
       u"View server information", MenuItemFlag::REQUIRES_MESSAGE_BOXES);
   if (!s->proxy_destinations.empty()) {
     s->main_menu.emplace_back(MAIN_MENU_PROXY_DESTINATIONS, u"Proxy server",
-        u"Connect to another\nserver", MenuItemFlag::REQUIRES_MESSAGE_BOXES);
+        u"Connect to another\nserver", 0);
   }
   s->main_menu.emplace_back(MAIN_MENU_DOWNLOAD_QUESTS, u"Download quests",
       u"Download quests", 0);
