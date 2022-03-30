@@ -1051,7 +1051,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 83 */ process_subcommand_forward_check_size_game, // place trap
   /* 84 */ process_subcommand_forward_check_size_game,
   /* 85 */ process_subcommand_forward_check_size_game,
-  /* 86 */ process_subcommand_unimplemented,
+  /* 86 */ process_subcommand_forward_check_size_game, // Hit destructible wall
   /* 87 */ process_subcommand_unimplemented,
   /* 88 */ process_subcommand_forward_check_size_game,
   /* 89 */ process_subcommand_forward_check_size_game,
@@ -1064,7 +1064,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 90 */ process_subcommand_unimplemented,
   /* 91 */ process_subcommand_forward_check_size_game,
   /* 92 */ process_subcommand_unimplemented,
-  /* 93 */ process_subcommand_unimplemented,
+  /* 93 */ process_subcommand_forward_check_size_game, // Timed switch activated
   /* 94 */ process_subcommand_forward_check_size_game, // Warp (the $warp chat command is implemented using this)
   /* 95 */ process_subcommand_unimplemented,
   /* 96 */ process_subcommand_unimplemented,
@@ -1076,18 +1076,18 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 9C */ process_subcommand_forward_check_size_game,
   /* 9D */ process_subcommand_unimplemented,
   /* 9E */ process_subcommand_unimplemented,
-  /* 9F */ process_subcommand_unimplemented,
-  /* A0 */ process_subcommand_unimplemented,
+  /* 9F */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
+  /* A0 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
   /* A1 */ process_subcommand_unimplemented,
   /* A2 */ process_subcommand_box_drop_item, // Request for item drop from box (handled by server on BB)
-  /* A3 */ process_subcommand_unimplemented,
+  /* A3 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
   /* A4 */ process_subcommand_unimplemented,
-  /* A5 */ process_subcommand_unimplemented,
+  /* A5 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
   /* A6 */ process_subcommand_forward_check_size, // trade proposal
   /* A7 */ process_subcommand_unimplemented,
-  /* A8 */ process_subcommand_unimplemented,
-  /* A9 */ process_subcommand_unimplemented,
-  /* AA */ process_subcommand_unimplemented,
+  /* A8 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
+  /* A9 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
+  /* AA */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
   /* AB */ process_subcommand_forward_check_size_client, // Create lobby chair
   /* AC */ process_subcommand_unimplemented,
   /* AD */ process_subcommand_unimplemented,
