@@ -48,6 +48,7 @@ public:
     uint32_t guild_card_number;
     uint8_t remote_client_config_data[0x20];
     ClientConfig newserv_client_config;
+    bool suppress_newserv_commands;
 
     struct LobbyPlayer {
       uint32_t guild_card_number;

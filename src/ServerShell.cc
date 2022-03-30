@@ -97,6 +97,11 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     Send a lobby event update to yourself.\n\
   warp <area-id>\n\
     Send yourself to a specific area.\n\
+  set-chat-safety <on|off>\n\
+    Enable or disable chat safety (enabled by default). When chat safety is on,\n\
+    all chat messages that begin with a $ are not sent to the remote server.\n\
+    This can prevent embarrassing situations if the remote server isn\'t a\n\
+    newserv instance and you have newserv commands in your chat shortcuts.\n\
   set-save-files <on|off>\n\
     Enable or disable saving of game files. When this is on, any file that the\n\
     remote server sends to the client will be saved to the current directory.\n\
@@ -312,6 +317,17 @@ Proxy commands (these will only work when exactly one client is connected):\n\
 
     session->send_to_end(data, true);
 
+  } else if (command_name == "set-chat-safety") {
+    auto session = this->get_proxy_session();
+
+    if (command_args == "on") {
+      session->suppress_newserv_commands = true;
+    } else if (command_args == "off") {
+      session->suppress_newserv_commands = false;
+    } else {
+      throw invalid_argument("argument must be \"on\" or \"off\"");
+    }
+
   } else if (command_name == "set-save-files") {
     if (this->state->proxy_server.get()) {
       if (command_args == "on") {
@@ -321,6 +337,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
       } else {
         throw invalid_argument("argument must be \"on\" or \"off\"");
       }
+
     } else {
       throw invalid_argument("proxy server is not available");
     }

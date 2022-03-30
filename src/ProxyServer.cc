@@ -300,6 +300,7 @@ ProxyServer::LinkedSession::LinkedSession(
     sub_version(0), // This is set during resume()
     guild_card_number(0),
     newserv_client_config(newserv_client_config),
+    suppress_newserv_commands(true),
     lobby_players(12),
     lobby_client_id(0) {
   memset(this->remote_client_config_data, 0, 0x20);
@@ -477,8 +478,9 @@ void ProxyServer::LinkedSession::on_client_input() {
           if (data.size() < 12) {
             break;
           }
-          // If this chat message looks like a chat command, suppress it
-          if (data[8] == '$' || (data[8] == '\t' && data[9] != 'C' && data[10] == '$')) {
+          // If this chat message looks like a newserv chat command, suppress it
+          if (this->suppress_newserv_commands &&
+              (data[8] == '$' || (data[8] == '\t' && data[9] != 'C' && data[10] == '$'))) {
             log(WARNING, "[ProxyServer/%08" PRIX32 "] Chat message appears to be a server command; dropping it",
                 this->license->serial_number);
             should_forward = false;
