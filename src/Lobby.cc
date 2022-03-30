@@ -65,24 +65,37 @@ size_t Lobby::count_clients() const {
   return ret;
 }
 
-void Lobby::add_client(shared_ptr<Client> c) {
+void Lobby::add_client(shared_ptr<Client> c, bool reverse_indexes) {
   ssize_t index;
-  for (index = 0; index < max_clients; index++) {
-    if (!this->clients[index].get()) {
-      this->clients[index] = c;
-      break;
+  if (reverse_indexes) {
+    for (index = max_clients - 1; index >= 0; index--) {
+      if (!this->clients[index].get()) {
+        this->clients[index] = c;
+        break;
+      }
+    }
+    if (index < 0) {
+      throw out_of_range("no space left in lobby");
+    }
+  } else {
+    for (index = 0; index < max_clients; index++) {
+      if (!this->clients[index].get()) {
+        this->clients[index] = c;
+        break;
+      }
+    }
+    if (index >= max_clients) {
+      throw out_of_range("no space left in lobby");
     }
   }
-  if (index >= max_clients) {
-    throw out_of_range("no space left in lobby");
-  }
+
   c->lobby_client_id = index;
   c->lobby_id = this->lobby_id;
 
   // if there's no one else in the lobby, set the leader id as well
-  if (index == 0) {
-    for (index = 1; index < max_clients; index++) {
-      if (this->clients[index].get()) {
+  if (index == (max_clients - 1) * reverse_indexes) {
+    for (index = 0; index < max_clients; index++) {
+      if (this->clients[index].get() && this->clients[index] != c) {
         break;
       }
     }

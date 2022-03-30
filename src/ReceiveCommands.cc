@@ -1653,8 +1653,6 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   game->min_level = min_level;
   game->max_level = 0xFFFFFFFF;
 
-  log(INFO, "[Debug] create game: %p->flags = %08" PRIX32, game.get(), game->flags);
-
   if (game->version == GameVersion::BB) {
     // TODO: cache these somewhere so we don't read the file every time, lolz
     game->rare_item_set.reset(new RareItemSet("system/blueburst/ItemRT.rel",
