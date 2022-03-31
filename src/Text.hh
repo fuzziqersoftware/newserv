@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 #include <stddef.h>
+#include <string.h>
 
 #include <string>
 #include <phosg/Encoding.hh>
@@ -110,7 +111,7 @@ size_t add_color_inplace(T* a, size_t max_chars) {
 }
 
 template <typename T>
-void add_color(StringWriter& w, const T* src, size_t max_input_chars = SIZE_T_MAX) {
+void add_color(StringWriter& w, const T* src, size_t max_input_chars) {
   for (size_t x = 0; (x < max_input_chars) && *src; x++) {
     if (*src == '$') {
       w.put<T>('\t');

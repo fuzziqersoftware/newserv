@@ -416,7 +416,7 @@ void send_text(shared_ptr<Client> c, StringWriter& w, uint16_t command,
     string data = encode_sjis(text);
     add_color(w, data.c_str(), data.size());
   } else {
-    add_color(w, text);
+    add_color(w, text, char16len(text));
   }
   while (w.str().size() & 3) {
     w.put_u8(0);
