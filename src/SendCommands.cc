@@ -638,11 +638,11 @@ void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.reserved2 = 1;
 
   cmd.serial_number = source->license->serial_number;
-  char16ncpy(cmd.name, source->player.disp.name, countof(cmd.name));
+  strcpy_z(cmd.name, source->player.disp.name, countof(cmd.name));
   remove_language_marker_inplace(cmd.name);
-  char16ncpy(cmd.team_name, source->player.team_name, countof(cmd.team_name));
+  strcpy_z(cmd.team_name, source->player.team_name, countof(cmd.team_name));
   remove_language_marker_inplace(cmd.team_name);
-  char16ncpy(cmd.desc, source->player.guild_card_desc, countof(cmd.desc));
+  strcpy_z(cmd.desc, source->player.guild_card_desc, countof(cmd.desc));
   cmd.section_id = source->player.disp.section_id;
   cmd.char_class = source->player.disp.char_class;
 

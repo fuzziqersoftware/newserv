@@ -15,7 +15,6 @@
 
 
 int char16ncmp(const char16_t* s1, const char16_t* s2, size_t count);
-void char16ncpy(char16_t* dest, const char16_t* src, size_t count);
 size_t char16len(const char16_t* s);
 
 void encode_sjis(char* dest, const char16_t* source, size_t dest_count);
@@ -27,6 +26,19 @@ std::u16string decode_sjis(const std::string& source);
 
 
 
+// Like strncpy, but *always* null-terminates the string, even if it has to
+// truncate it.
+template <typename T>
+void strcpy_z(T* dest, const T* src, size_t count) {
+  size_t x;
+  for (x = 0; x < count - 1 && src[x] != 0; x++) {
+    dest[x] = src[x];
+  }
+  dest[x] = 0;
+}
+
+
+
 template <typename DestT, typename SrcT = DestT>
 void strncpy_t(DestT*, const SrcT*, size_t) {
   static_assert(always_false<DestT, SrcT>::v,
@@ -35,7 +47,7 @@ void strncpy_t(DestT*, const SrcT*, size_t) {
 
 template <>
 inline void strncpy_t<char>(char* dest, const char* src, size_t count) {
-  strncpy(dest, src, count);
+  strcpy_z(dest, src, count);
 }
 
 template <>
@@ -50,7 +62,7 @@ inline void strncpy_t<char16_t, char>(char16_t* dest, const char* src, size_t co
 
 template <>
 inline void strncpy_t<char16_t>(char16_t* dest, const char16_t* src, size_t count) {
-  char16ncpy(dest, src, count);
+  strcpy_z(dest, src, count);
 }
 
 

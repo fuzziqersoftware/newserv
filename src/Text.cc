@@ -30,16 +30,6 @@ int char16ncmp(const char16_t* s1, const char16_t* s2, size_t count) {
   return 0;
 }
 
-void char16ncpy(char16_t* dest, const char16_t* src, size_t count) {
-  size_t x;
-  for (x = 0; x < count && src[x] != 0; x++) {
-    dest[x] = src[x];
-  }
-  if (x < count) {
-    dest[x] = 0;
-  }
-}
-
 size_t char16len(const char16_t* s) {
   size_t x;
   for (x = 0; s[x] != 0; x++);
@@ -209,7 +199,7 @@ void remove_language_marker_inplace(char* a) {
 
 void remove_language_marker_inplace(char16_t* a) {
   if ((a[0] == '\t') && (a[1] != 'C')) {
-    char16ncpy(a, &a[2], char16len(a) - 2);
+    strcpy_z(a, &a[2], char16len(a) - 2);
   }
 }
 

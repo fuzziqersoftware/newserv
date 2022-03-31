@@ -160,7 +160,7 @@ PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
   pre.proportion_x = this->proportion_x;
   pre.proportion_y = this->proportion_y;
   memset(pre.name, 0, sizeof(pre.name));
-  char16ncpy(pre.name, this->name, 16);
+  strcpy_z(pre.name, this->name, 16);
   pre.play_time = this->play_time;
   return pre;
 }
@@ -192,7 +192,7 @@ void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
   this->proportion_x = pre.proportion_x;
   this->proportion_y = pre.proportion_y;
   memset(this->name, 0, sizeof(this->name));
-  char16ncpy(this->name, pre.name, 0x10);
+  strcpy_z(this->name, pre.name, 0x10);
   this->play_time = 0;
 }
 
@@ -244,11 +244,11 @@ void Player::import(const PSOPlayerDataBB& bb) {
   // note: we don't copy the inventory and disp here because we already have
   // it (we sent the player data to the client in the first place)
   memset(this->info_board, 0, sizeof(this->info_board));
-  char16ncpy(this->info_board, bb.info_board, 0xAC);
+  strcpy_z(this->info_board, bb.info_board, 0xAC);
   memcpy(&this->blocked, bb.blocked, sizeof(uint32_t) * 30);
   memset(this->auto_reply, 0, sizeof(this->auto_reply));
   if (bb.auto_reply_enabled) {
-    char16ncpy(this->auto_reply, bb.auto_reply, 0xAC);
+    strcpy_z(this->auto_reply, bb.auto_reply, 0xAC);
   } else {
     this->auto_reply[0] = 0;
   }
@@ -264,11 +264,11 @@ PlayerBB Player::export_bb_player_data() const {
   bb.bank = this->bank;
   bb.serial_number = this->serial_number;
   memset(bb.name, 0, sizeof(bb.name));
-  char16ncpy(bb.name, this->disp.name, 24);
+  strcpy_z(bb.name, this->disp.name, 24);
   memset(bb.team_name, 0, sizeof(bb.team_name));
-  char16ncpy(bb.team_name, this->team_name, 16);
+  strcpy_z(bb.team_name, this->team_name, 16);
   memset(bb.guild_card_desc, 0, sizeof(bb.guild_card_desc));
-  char16ncpy(bb.guild_card_desc, this->guild_card_desc, 0x58);
+  strcpy_z(bb.guild_card_desc, this->guild_card_desc, 0x58);
   bb.reserved1 = 0;
   bb.reserved2 = 0;
   bb.section_id = this->disp.section_id;
@@ -277,9 +277,9 @@ PlayerBB Player::export_bb_player_data() const {
   memcpy(bb.symbol_chats, this->symbol_chats, 0x04E0);
   memcpy(bb.shortcuts, this->shortcuts, 0x0A40);
   memset(bb.auto_reply, 0, sizeof(bb.auto_reply));
-  char16ncpy(bb.auto_reply, this->auto_reply, 0xAC);
+  strcpy_z(bb.auto_reply, this->auto_reply, 0xAC);
   memset(bb.info_board, 0, sizeof(bb.info_board));
-  char16ncpy(bb.info_board, this->info_board, 0xAC);
+  strcpy_z(bb.info_board, this->info_board, 0xAC);
   memset(bb.unknown5, 0, 0x1C);
   memcpy(bb.challenge_data, this->challenge_data, 0x0140);
   memcpy(bb.tech_menu_config, this->tech_menu_config, 0x0028);
@@ -323,7 +323,7 @@ void Player::load_account_data(const string& filename) {
   memcpy(&this->shortcuts, &account.shortcuts, 0x0A40);
   memcpy(&this->symbol_chats, &account.symbol_chats, 0x04E0);
   memset(this->team_name, 0, sizeof(this->team_name));
-  char16ncpy(this->team_name, account.team_name, 16);
+  strcpy_z(this->team_name, account.team_name, 16);
 }
 
 void Player::save_account_data(const string& filename) const {
@@ -337,7 +337,7 @@ void Player::save_account_data(const string& filename) const {
   memcpy(&account.shortcuts, &this->shortcuts, 0x0A40);
   memcpy(&account.symbol_chats, &this->symbol_chats, 0x04E0);
   memset(account.team_name, 0, sizeof(account.team_name));
-  char16ncpy(account.team_name, this->team_name, 16);
+  strcpy_z(account.team_name, this->team_name, 16);
 
   save_file(filename, &account, sizeof(account));
 }
@@ -350,14 +350,14 @@ void Player::load_player_data(const string& filename) {
   }
 
   memset(this->auto_reply, 0, sizeof(this->auto_reply));
-  char16ncpy(this->auto_reply, player.auto_reply, 0xAC);
+  strcpy_z(this->auto_reply, player.auto_reply, 0xAC);
   this->bank = player.bank;
   memcpy(&this->challenge_data, &player.challenge_data, 0x0140);
   this->disp = player.disp;
   memset(this->guild_card_desc, 0, sizeof(this->guild_card_desc));
-  char16ncpy(this->guild_card_desc, player.guild_card_desc, 0x58);
+  strcpy_z(this->guild_card_desc, player.guild_card_desc, 0x58);
   memset(this->info_board, 0, sizeof(this->info_board));
-  char16ncpy(this->info_board, player.info_board, 0xAC);
+  strcpy_z(this->info_board, player.info_board, 0xAC);
   this->inventory = player.inventory;
   memcpy(&this->quest_data1, &player.quest_data1, 0x0208);
   memcpy(&this->quest_data2, &player.quest_data2, 0x0058);
@@ -370,14 +370,14 @@ void Player::save_player_data(const string& filename) const {
   strncpy(player.signature, PLAYER_FILE_SIGNATURE, sizeof(player.signature));
   player.preview = this->disp.to_preview();
   memset(player.auto_reply, 0, sizeof(player.auto_reply));
-  char16ncpy(player.auto_reply, this->auto_reply, 0xAC);
+  strcpy_z(player.auto_reply, this->auto_reply, 0xAC);
   player.bank = this->bank;
   memcpy(&player.challenge_data, &this->challenge_data, 0x0140);
   player.disp = this->disp;
   memset(player.guild_card_desc, 0, sizeof(player.guild_card_desc));
-  char16ncpy(player.guild_card_desc,this->guild_card_desc, 0x58);
+  strcpy_z(player.guild_card_desc,this->guild_card_desc, 0x58);
   memset(player.info_board, 0, sizeof(player.info_board));
-  char16ncpy(player.info_board, this->info_board, 0xAC);
+  strcpy_z(player.info_board, this->info_board, 0xAC);
   player.inventory = this->inventory;
   memcpy(&player.quest_data1, &this->quest_data1, 0x0208);
   memcpy(&player.quest_data2, &this->quest_data2, 0x0058);

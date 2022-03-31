@@ -775,7 +775,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         if (data.size() > sizeof(C_MenuSelection)) {
           if (uses_unicode) {
             size_t max_chars = (data.size() - sizeof(C_MenuSelection)) / sizeof(char16_t);
-            char16ncpy(password, cmd.password.pcbb,
+            strcpy_z(password, cmd.password.pcbb,
                 min<size_t>(max_chars, countof(password)));
           } else {
             size_t max_chars = (data.size() - sizeof(C_MenuSelection)) / sizeof(char);
@@ -1501,8 +1501,8 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   }
 
   shared_ptr<Lobby> game(new Lobby());
-  char16ncpy(game->name, name, countof(game->name));
-  char16ncpy(game->password, password, countof(game->name));
+  strcpy_z(game->name, name, countof(game->name));
+  strcpy_z(game->password, password, countof(game->name));
   game->version = c->version;
   game->section_id = c->override_section_id >= 0
       ? c->override_section_id : c->player.disp.section_id;
