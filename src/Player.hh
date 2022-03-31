@@ -123,6 +123,7 @@ struct PlayerDispDataPCGC { // 0xD0 in size
   uint8_t config[0x48];
   uint8_t technique_levels[0x14];
 
+  void enforce_pc_limits();
   PlayerDispDataBB to_bb() const;
 } __attribute__((packed));
 
@@ -163,7 +164,7 @@ struct PlayerDispDataBB {
   uint32_t level;
   uint32_t experience;
   uint32_t meseta;
-  char guild_card[16];
+  char guild_card[0x10];
   uint32_t unknown3[2];
   uint32_t name_color;
   uint8_t extra_model;
@@ -189,6 +190,7 @@ struct PlayerDispDataBB {
   uint8_t config[0xE8];
   uint8_t technique_levels[0x14];
 
+  inline void enforce_pc_limits() { }
   PlayerDispDataPCGC to_pcgc() const;
   PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);
@@ -277,7 +279,8 @@ struct PlayerLobbyDataGC {
 struct PlayerLobbyDataBB {
   uint32_t player_tag;
   uint32_t guild_card;
-  uint32_t unknown1[5];
+  be_uint32_t ip_address; // Guess - the official builds didn't use this, but all other versions have it
+  uint32_t unknown1[4];
   uint32_t client_id;
   char16_t name[16];
   uint32_t unknown2;
@@ -308,18 +311,6 @@ struct PSOPlayerDataBB { // for command 0x61
   uint32_t blocked[0x1E];
   uint32_t auto_reply_enabled;
   char16_t auto_reply[0];
-} __attribute__((packed));
-
-// PC/GC lobby player data (used in lobby/game join commands)
-struct PlayerLobbyJoinDataPCGC {
-  PlayerInventory inventory;
-  PlayerDispDataPCGC disp;
-} __attribute__((packed));
-
-// BB lobby player data (used in lobby/game join commands)
-struct PlayerLobbyJoinDataBB {
-  PlayerInventory inventory;
-  PlayerDispDataBB disp;
 } __attribute__((packed));
 
 // complete BB player data format (used in E7 command)
@@ -416,9 +407,6 @@ struct Player {
   void import(const PSOPlayerDataPC& pd);
   void import(const PSOPlayerDataGC& pd);
   void import(const PSOPlayerDataBB& pd);
-  PlayerLobbyJoinDataPCGC export_lobby_data_pc() const;
-  PlayerLobbyJoinDataPCGC export_lobby_data_gc() const;
-  PlayerLobbyJoinDataBB export_lobby_data_bb() const;
   PlayerBB export_bb_player_data() const;
 
   void add_item(const PlayerInventoryItem& item);
@@ -434,3 +422,35 @@ std::string filename_for_player_bb(const std::string& username, uint8_t player_i
 std::string filename_for_bank_bb(const std::string& username, const char* bank_name);
 std::string filename_for_class_template_bb(uint8_t char_class);
 std::string filename_for_account_bb(const std::string& username);
+
+
+
+template <typename DestT, typename SrcT = DestT>
+DestT convert_player_disp_data(const SrcT&) {
+  static_assert(always_false<DestT, SrcT>::v,
+      "unspecialized strcpy_t should never be called");
+}
+
+template <>
+inline PlayerDispDataPCGC convert_player_disp_data<PlayerDispDataPCGC>(
+    const PlayerDispDataPCGC& src) {
+  return src;
+}
+
+template <>
+inline PlayerDispDataPCGC convert_player_disp_data<PlayerDispDataPCGC, PlayerDispDataBB>(
+    const PlayerDispDataBB& src) {
+  return src.to_pcgc();
+}
+
+template <>
+inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB, PlayerDispDataPCGC>(
+    const PlayerDispDataPCGC& src) {
+  return src.to_bb();
+}
+
+template <>
+inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB>(
+    const PlayerDispDataBB& src) {
+  return src;
+}

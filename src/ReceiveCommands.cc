@@ -24,6 +24,26 @@ using namespace std;
 
 
 
+template <typename T>
+const T& check_size_t(
+    const string& data,
+    size_t min_size = sizeof(T),
+    size_t max_size = sizeof(T)) {
+  if (data.size() < min_size) {
+    throw runtime_error(string_printf(
+        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
+        min_size, data.size()));
+  }
+  if (data.size() > max_size) {
+    throw runtime_error(string_printf(
+        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
+        max_size, data.size()));
+  }
+  return *reinterpret_cast<const T*>(data.data());
+}
+
+
+
 enum ClientStateBB {
   // initial connection. server will redirect client to another port.
   INITIAL_LOGIN = 0x00,
@@ -92,9 +112,6 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
     }
 
     case ServerBehavior::LOGIN_SERVER:
-      if (!s->welcome_message.empty()) {
-        c->flags |= ClientFlag::AT_WELCOME_MESSAGE;
-      }
       send_server_init(s, c, true);
       if (s->pre_lobby_event) {
         send_change_event(c, s->pre_lobby_event);
@@ -122,7 +139,9 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       send_ep3_rank_update(c);
     }
 
-    if (s->welcome_message.empty() || (c->flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) {
+    if (s->welcome_message.empty() ||
+        (c->flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) ||
+        !(c->flags & ClientFlag::AT_WELCOME_MESSAGE)) {
       c->flags &= ~ClientFlag::AT_WELCOME_MESSAGE;
       send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
     } else {
@@ -196,14 +215,13 @@ void process_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // DB
-  check_size(size, sizeof(VerifyLicenseCommand_GC_DB));
-  const auto* cmd = reinterpret_cast<const VerifyLicenseCommand_GC_DB*>(data);
+    uint16_t, uint32_t, const string& data) { // DB
+  const auto& cmd = check_size_t<C_VerifyLicense_GC_DB>(data);
 
-  uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
+  uint32_t serial_number = strtoul(cmd.serial_number, nullptr, 16);
   try {
-    c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
-        cmd->password);
+    c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
+        cmd.password);
   } catch (const exception& e) {
     if (!s->allow_unregistered_users) {
       u16string message = u"Login failed: " + decode_sjis(e.what());
@@ -212,33 +230,27 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       return;
     } else {
       auto l = LicenseManager::create_license_gc(serial_number,
-          cmd->access_key, cmd->password, true);
+          cmd.access_key, cmd.password, true);
       s->license_manager->add(l);
       c->license = l;
     }
   }
 
-  c->flags |= flags_for_version(c->version, cmd->sub_version);
+  c->flags |= flags_for_version(c->version, cmd.sub_version);
   send_command(c, 0x9A, 0x02);
 }
 
 void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // 9A
-  struct Cmd {
-    char unused[0x20];
-    char serial_number[0x10];
-    char access_key[0x10];
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t, uint32_t, const string& data) { // 9A
+  const auto& cmd = check_size_t<C_Login_DC_PC_GC_9A>(data);
 
-  uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
+  uint32_t serial_number = strtoul(cmd.serial_number, nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
+      c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
           nullptr);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd->access_key,
+      c->license = s->license_manager->verify_pc(serial_number, cmd.access_key,
           nullptr);
     }
   } catch (const exception& e) {
@@ -256,28 +268,19 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // 9C
-  struct Cmd {
-    char unused[8];
-    uint32_t sub_version;
-    uint32_t unused2;
-    char serial_number[0x30];
-    char access_key[0x30];
-    char password[0x30];
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t, uint32_t, const string& data) { // 9C
+  const auto& cmd = check_size_t<C_Register_DC_PC_GC_9C>(data);
 
-  c->flags |= flags_for_version(c->version, cmd->sub_version);
+  c->flags |= flags_for_version(c->version, cmd.sub_version);
 
-  uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
+  uint32_t serial_number = strtoul(cmd.serial_number, nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
-          cmd->password);
+      c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
+          cmd.password);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd->access_key,
-          cmd->password);
+      c->license = s->license_manager->verify_pc(serial_number, cmd.access_key,
+          cmd.password);
     }
   } catch (const exception& e) {
     if (!s->allow_unregistered_users) {
@@ -289,10 +292,10 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       shared_ptr<License> l;
       if (c->version == GameVersion::GC) {
         l = LicenseManager::create_license_gc(serial_number,
-            cmd->access_key, cmd->password, true);
+            cmd.access_key, cmd.password, true);
       } else {
         l = LicenseManager::create_license_pc(serial_number,
-            cmd->access_key, cmd->password, true);
+            cmd.access_key, cmd.password, true);
       }
       s->license_manager->add(l);
       c->license = l;
@@ -303,20 +306,20 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // 9D 9E
-  // sometimes the unused bytes aren't sent?
-  check_size(size, sizeof(LoginCommand_GC_9E) - 0x64, sizeof(LoginCommand_GC_9E));
-  const auto* cmd = reinterpret_cast<const LoginCommand_GC_9E*>(data);
+    uint16_t, uint32_t, const string& data) { // 9D 9E
+  // Sometimes the unused bytes aren't sent
+  const auto& cmd = check_size_t<C_Login_PC_GC_9D_9E>(data,
+      sizeof(C_Login_PC_GC_9D_9E) - 0x64, sizeof(C_Login_PC_GC_9D_9E));
 
-  c->flags |= flags_for_version(c->version, cmd->sub_version);
+  c->flags |= flags_for_version(c->version, cmd.sub_version);
 
-  uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
+  uint32_t serial_number = strtoul(cmd.serial_number, nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd->access_key,
+      c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
           nullptr);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd->access_key,
+      c->license = s->license_manager->verify_pc(serial_number, cmd.access_key,
           nullptr);
     }
   } catch (const exception& e) {
@@ -329,8 +332,11 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   try {
-    c->import_config(cmd->cfg);
+    c->import_config(cmd.cfg);
   } catch (const invalid_argument&) {
+    // If we can't import the config, assume that the client was not connected
+    // to newserv before, so we should show the welcome message.
+    c->flags |= ClientFlag::AT_WELCOME_MESSAGE;
     c->bb_game_state = 0;
     c->bb_player_index = 0;
   }
@@ -345,22 +351,13 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // 93
-  struct Cmd {
-    char unused[0x14];
-    char username[0x10];
-    char unused2[0x20];
-    char password[0x10];
-    char unused3[0x30];
-    ClientConfig cfg;
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t, uint32_t, const string& data) { // 93
+  const auto& cmd = check_size_t<C_Login_BB_93>(data);
 
   c->flags |= flags_for_version(c->version, 0);
 
   try {
-    c->license = s->license_manager->verify_bb(cmd->username, cmd->password);
+    c->license = s->license_manager->verify_bb(cmd.username, cmd.password);
   } catch (const exception& e) {
     u16string message = u"Login failed: " + decode_sjis(e.what());
     send_message_box(c, message.c_str());
@@ -369,7 +366,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   try {
-    c->import_config(cmd->cfg);
+    c->import_config(cmd.cfg);
     c->bb_game_state++;
   } catch (const invalid_argument&) {
     c->bb_game_state = 0;
@@ -413,13 +410,14 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_client_checksum(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t, const void*) { // 96
+    uint16_t, uint32_t, const string& data) { // 96
+  check_size_t<C_ClientChecksum_GC_96>(data);
   send_command(c, 0x97, 0x01);
 }
 
 void process_server_time_request(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void*) { // B1
-  check_size(size, 0);
+    uint16_t, uint32_t, const string& data) { // B1
+  check_size(data.size(), 0);
   send_server_time(c);
 }
 
@@ -430,21 +428,10 @@ void process_server_time_request(shared_ptr<ServerState>, shared_ptr<Client> c,
 // handlers that partially worked were lost in a dead hard drive, unfortunately.
 
 void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t, uint16_t size, const void* data) {
-  struct InputCmd {
-    uint32_t transaction_num;
-    uint32_t value;
-    uint32_t unknown_token;
-  } __attribute__((packed));
-  struct OutputCmd {
-    uint32_t remaining_meseta;
-    uint32_t unknown;
-    uint32_t unknown_token;
-  } __attribute__((packed));
-  check_size(size, sizeof(InputCmd));
-  const auto* in_cmd = reinterpret_cast<const InputCmd*>(data);
+    uint16_t command, uint32_t, const string& data) {
+  const auto& in_cmd = check_size_t<C_Meseta_GC_Ep3_BA>(data);
 
-  OutputCmd out_cmd = {1000000, 0x80E8, in_cmd->unknown_token};
+  S_Meseta_GC_Ep3_BA out_cmd = {1000000, 0x80E8, in_cmd.unknown_token};
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !(l->flags & LobbyFlag::EPISODE_3)) {
@@ -455,15 +442,17 @@ void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_ep3_menu_challenge(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void*) { // DC
-  check_size(size, 0);
-  send_command(c, 0xDC);
+    uint16_t, uint32_t flag, const string& data) { // DC
+  check_size(data.size(), 0);
+  if (flag != 0) {
+    send_command(c, 0xDC);
+  }
 }
 
 void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // CA
-  check_size(size, 8, 0xFFFF);
-  const PSOSubcommand* cmds = reinterpret_cast<const PSOSubcommand*>(data);
+    uint16_t, uint32_t, const string& data) { // CA
+  check_size(data.size(), 8, 0xFFFF);
+  const PSOSubcommand* cmds = reinterpret_cast<const PSOSubcommand*>(data.data());
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !(l->flags & LobbyFlag::EPISODE_3) || !l->is_game()) {
@@ -548,7 +537,7 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
 }
 
 void process_ep3_tournament_control(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t, const void*) { // E2
+    uint16_t, uint32_t, const string&) { // E2
   // The client will get stuck here unless we send something. An 01 (lobby
   // message box) seems to get them unstuck.
   send_lobby_message_box(c, u"$C6Tournaments are\nnot supported.");
@@ -567,27 +556,24 @@ void process_ep3_tournament_control(shared_ptr<ServerState>, shared_ptr<Client> 
 // menu commands
 
 void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t, const void*) { // D6
+    uint16_t, uint32_t, const string& data) { // D6
+  check_size(data.size(), 0);
   if (c->flags & ClientFlag::IN_INFORMATION_MENU) {
     send_menu(c, u"Information", INFORMATION_MENU_ID, *s->information_menu, false);
   } else if (c->flags & ClientFlag::AT_WELCOME_MESSAGE) {
     send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
     c->flags &= ~ClientFlag::AT_WELCOME_MESSAGE;
+    send_update_client_config(c);
   }
 }
 
 void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // 09
-  struct Cmd {
-    uint32_t menu_id;
-    uint32_t item_id;
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd), sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t, uint32_t, const string& data) { // 09
+  const auto& cmd = check_size_t<C_MenuItemInfoRequest_09>(data);
 
-  switch (cmd->menu_id) {
+  switch (cmd.menu_id) {
     case MAIN_MENU_ID:
-      switch (cmd->item_id) {
+      switch (cmd.item_id) {
         case MAIN_MENU_GO_TO_LOBBY:
           send_ship_info(c, u"Go to the lobby.");
           break;
@@ -610,12 +596,12 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
       break;
 
     case INFORMATION_MENU_ID:
-      if (cmd->item_id == INFORMATION_MENU_GO_BACK) {
+      if (cmd.item_id == INFORMATION_MENU_GO_BACK) {
         send_ship_info(c, u"Return to the\nmain menu.");
       } else {
         try {
           // we use item_id + 1 here because "go back" is the first item
-          send_ship_info(c, s->information_menu->at(cmd->item_id + 1).description.c_str());
+          send_ship_info(c, s->information_menu->at(cmd.item_id + 1).description.c_str());
         } catch (const out_of_range&) {
           send_ship_info(c, u"$C6No such information exists.");
         }
@@ -623,12 +609,12 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
       break;
 
     case PROXY_DESTINATIONS_MENU_ID:
-      if (cmd->item_id == PROXY_DESTINATIONS_MENU_GO_BACK) {
+      if (cmd.item_id == PROXY_DESTINATIONS_MENU_GO_BACK) {
         send_ship_info(c, u"Return to the\nmain menu.");
       } else {
         try {
           // we use item_id + 1 here because "go back" is the first item
-          send_ship_info(c, s->proxy_destinations_menu.at(cmd->item_id + 1).description.c_str());
+          send_ship_info(c, s->proxy_destinations_menu.at(cmd.item_id + 1).description.c_str());
         } catch (const out_of_range&) {
           send_ship_info(c, u"$C6No such information exists.");
         }
@@ -640,7 +626,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
         send_quest_info(c, u"$C6Quests are not available.");
         break;
       }
-      auto q = s->quest_index->get(c->version, cmd->item_id);
+      auto q = s->quest_index->get(c->version, cmd.item_id);
       if (!q) {
         send_quest_info(c, u"$C6Quest does not exist.");
         break;
@@ -656,23 +642,15 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
 }
 
 void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // 10
+    uint16_t, uint32_t, const string& data) { // 10
   bool uses_unicode = ((c->version == GameVersion::PC) || (c->version == GameVersion::BB));
 
-  struct Cmd {
-    uint32_t menu_id;
-    uint32_t item_id;
-    union {
-      char16_t pc_bb[0];
-      char dc_gc[0];
-    } __attribute__((packed)) password;
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd), sizeof(Cmd) + 0x10 * (1 + uses_unicode));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+  const auto& cmd = check_size_t<C_MenuSelection>(data,
+      sizeof(C_MenuSelection), sizeof(C_MenuSelection) + 0x10 * (1 + uses_unicode));
 
-  switch (cmd->menu_id) {
+  switch (cmd.menu_id) {
     case MAIN_MENU_ID: {
-      switch (cmd->item_id) {
+      switch (cmd.item_id) {
         case MAIN_MENU_GO_TO_LOBBY: {
           static const vector<string> version_to_port_name({
               "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "bb-lobby"});
@@ -710,13 +688,13 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
 
     case INFORMATION_MENU_ID: {
-      if (cmd->item_id == INFORMATION_MENU_GO_BACK) {
+      if (cmd.item_id == INFORMATION_MENU_GO_BACK) {
         c->flags &= ~ClientFlag::IN_INFORMATION_MENU;
         send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
 
       } else {
         try {
-          send_message_box(c, s->information_contents->at(cmd->item_id).c_str());
+          send_message_box(c, s->information_contents->at(cmd.item_id).c_str());
         } catch (const out_of_range&) {
           send_message_box(c, u"$C6No such information exists.");
         }
@@ -725,13 +703,13 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
 
     case PROXY_DESTINATIONS_MENU_ID: {
-      if (cmd->item_id == PROXY_DESTINATIONS_MENU_GO_BACK) {
+      if (cmd.item_id == PROXY_DESTINATIONS_MENU_GO_BACK) {
         send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
 
       } else {
         pair<string, uint16_t>* dest = nullptr;
         try {
-          dest = &s->proxy_destinations.at(cmd->item_id);
+          dest = &s->proxy_destinations.at(cmd.item_id);
         } catch (const out_of_range&) { }
 
         if (!dest) {
@@ -760,7 +738,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
 
     case GAME_MENU_ID: {
-      auto game = s->find_lobby(cmd->item_id);
+      auto game = s->find_lobby(cmd.item_id);
       if (!game) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it no\nlonger exists.");
         break;
@@ -793,15 +771,20 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
       if (!(c->license->privileges & Privilege::FREE_JOIN_GAMES)) {
         char16_t password[0x10];
-        if (size > sizeof(Cmd)) {
+        memset(password, 0, sizeof(password));
+        if (data.size() > sizeof(C_MenuSelection)) {
           if (uses_unicode) {
-            char16cpy(password, cmd->password.pc_bb, 0x10);
+            size_t max_chars = (data.size() - sizeof(C_MenuSelection)) / sizeof(char16_t);
+            char16ncpy(password, cmd.password.pcbb,
+                min<size_t>(max_chars, countof(password)));
           } else {
-            decode_sjis(password, cmd->password.dc_gc, 0x10);
+            size_t max_chars = (data.size() - sizeof(C_MenuSelection)) / sizeof(char);
+            decode_sjis(password, cmd.password.dcgc,
+                min<size_t>(max_chars, countof(password)));
           }
         }
 
-        if (game->password[0] && char16cmp(game->password, password, 0x10)) {
+        if (game->password[0] && char16ncmp(game->password, password, 0x10)) {
           send_message_box(c, u"$C6Incorrect password.");
           break;
         }
@@ -831,7 +814,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
       auto quests = s->quest_index->filter(c->version,
           c->flags & ClientFlag::IS_DCV1,
-          static_cast<QuestCategory>(cmd->item_id & 0xFF),
+          static_cast<QuestCategory>(cmd.item_id & 0xFF),
           l.get() ? (l->episode - 1) : -1);
       if (quests.empty()) {
         send_lobby_message_box(c, u"$C6There are no quests\navailable in that\ncategory.");
@@ -849,7 +832,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_lobby_message_box(c, u"$C6Quests are not available.");
         break;
       }
-      auto q = s->quest_index->get(c->version, cmd->item_id);
+      auto q = s->quest_index->get(c->version, cmd.item_id);
       if (!q) {
         send_lobby_message_box(c, u"$C6Quest does not exist.");
         break;
@@ -913,17 +896,12 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // 84
-  struct Cmd {
-    uint32_t menu_id;
-    uint32_t item_id;
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t, uint32_t, const string& data) { // 84
+  const auto& cmd = check_size_t<C_LobbySelection_84>(data);
 
   shared_ptr<Lobby> new_lobby;
   try {
-    new_lobby = s->find_lobby(cmd->item_id);
+    new_lobby = s->find_lobby(cmd.item_id);
   } catch (const out_of_range&) {
     send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby does not\nexist.");
     return;
@@ -938,13 +916,18 @@ void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void*) { // 08
-  check_size(size, 0);
+    uint16_t, uint32_t, const string& data) { // 08
+  check_size(data.size(), 0);
   send_game_menu(c, s);
 }
 
 void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t, const void*) { // A0
+    uint16_t, uint32_t, const string&) { // A0
+  // The client actually sends data in this command... looks like nothing
+  // important (player_tag and guild_card_number are the only discernable
+  // things, which we already know). We intentionally don't call check_size
+  // here, but instead just ignore the data.
+
   send_message_box(c, u""); // we do this to avoid the "log window in message box" bug
 
   static const vector<string> version_to_port_name({
@@ -956,17 +939,17 @@ void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // A1
-  // this server doesn't have blocks; treat block change as ship change
-  process_change_ship(s, c, command, flag, size, data);
+    uint16_t command, uint32_t flag, const string& data) { // A1
+  // newserv doesn't have blocks; treat block change as ship change
+  process_change_ship(s, c, command, flag, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Quest commands
 
 void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t flag, uint16_t size, const void*) { // A2
-  check_size(size, 0);
+    uint16_t, uint32_t flag, const string& data) { // A2
+  check_size(data.size(), 0);
 
   if (!s->quest_index) {
     send_lobby_message_box(c, u"$C6Quests are not available.");
@@ -1000,8 +983,8 @@ void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void*) { // AC
-  check_size(size, 0);
+    uint16_t, uint32_t, const string& data) { // AC
+  check_size(data.size(), 0);
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !l->is_game()) {
@@ -1030,11 +1013,11 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // D7
+    uint16_t, uint32_t, const string& data) { // D7
   static FileContentsCache file_cache;
 
-  string filename(reinterpret_cast<const char*>(data), size);
-  filename.resize(strlen(filename.data()));
+  string filename(data);
+  strip_trailing_zeroes(filename);
   auto contents = file_cache.get(filename);
 
   send_quest_file(c, filename, *contents, false, false);
@@ -1046,27 +1029,30 @@ void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
 // player data commands
 
 void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 61 98
+    uint16_t command, uint32_t flag, const string& data) { // 61 98
 
   // Note: we add extra buffer on the end when checking sizes because the
   // autoreply text is a variable length
   switch (c->version) {
     case GameVersion::PC:
-      check_size(size, sizeof(PSOPlayerDataPC), sizeof(PSOPlayerDataPC) + 2 * 0xAC);
-      c->player.import(*reinterpret_cast<const PSOPlayerDataPC*>(data));
+      check_size(data.size(), sizeof(PSOPlayerDataPC),
+          sizeof(PSOPlayerDataPC) + sizeof(char16_t) * countof(c->player.auto_reply));
+      c->player.import(*reinterpret_cast<const PSOPlayerDataPC*>(data.data()));
       break;
     case GameVersion::GC:
       if (flag == 4) { // Episode 3
-        check_size(size, sizeof(PSOPlayerDataGC) + 0x23FC);
+        check_size(data.size(), sizeof(PSOPlayerDataGC) + 0x23FC);
         // TODO: import Episode 3 data somewhere
       } else {
-        check_size(size, sizeof(PSOPlayerDataGC), sizeof(PSOPlayerDataGC) + 0xAC);
+        check_size(data.size(), sizeof(PSOPlayerDataGC),
+            sizeof(PSOPlayerDataGC) + sizeof(char) * countof(c->player.auto_reply));
       }
-      c->player.import(*reinterpret_cast<const PSOPlayerDataGC*>(data));
+      c->player.import(*reinterpret_cast<const PSOPlayerDataGC*>(data.data()));
       break;
     case GameVersion::BB:
-      check_size(size, sizeof(PSOPlayerDataBB), sizeof(PSOPlayerDataBB) + 2 * 0xAC);
-      c->player.import(*reinterpret_cast<const PSOPlayerDataBB*>(data));
+      check_size(data.size(), sizeof(PSOPlayerDataBB),
+          sizeof(PSOPlayerDataBB) + sizeof(char16_t) * countof(c->player.auto_reply));
+      c->player.import(*reinterpret_cast<const PSOPlayerDataBB*>(data.data()));
       break;
     default:
       throw logic_error("player data command not implemented for version");
@@ -1114,17 +1100,17 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
 // subcommands
 
 void process_game_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) { // 60 62 6C 6D C9 CB (C9 CB are ep3 only)
-  check_size(size, 4, 0xFFFF);
-  const PSOSubcommand* sub = reinterpret_cast<const PSOSubcommand*>(data);
+    uint16_t command, uint32_t flag, const string& data) { // 60 62 6C 6D C9 CB (C9 CB are ep3 only)
+  check_size(data.size(), 4, 0xFFFF);
+  const PSOSubcommand* sub = reinterpret_cast<const PSOSubcommand*>(data.data());
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l) {
     return;
   }
 
-  size_t count = size / 4;
-  process_subcommand(s, l, c, command, flag, sub, count);
+  process_subcommand(s, l, c, command, flag, sub,
+      data.size() / sizeof(PSOSubcommand));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1168,27 +1154,17 @@ void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // 06
-  struct Cmd {
-    uint32_t unused[2];
-    char16_t text[0];
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd), 0xFFFF);
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
-
-  process_chat_generic(s, c, cmd->text);
+    uint16_t, uint32_t, const string& data) { // 06
+  const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
+  u16string text(cmd.text.pcbb, (data.size() - sizeof(C_Chat_06)) / sizeof(char16_t));
+  text.resize(char16len(text.c_str()));
+  process_chat_generic(s, c, text);
 }
 
 void process_chat_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) {
-  struct Cmd {
-    uint32_t unused[2];
-    char text[0];
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd), 0xFFFF);
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
-
-  u16string decoded_s = decode_sjis(cmd->text);
+    uint16_t, uint32_t, const string& data) {
+  const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
+  u16string decoded_s = decode_sjis(cmd.text.dcgc, data.size() - sizeof(C_Chat_06));
   process_chat_generic(s, c, decoded_s);
 }
 
@@ -1196,22 +1172,17 @@ void process_chat_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 // BB commands
 
 void process_key_config_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void*) {
-  check_size(size, 0);
+    uint16_t, uint32_t, const string& data) {
+  check_size(data.size(), 0);
   send_team_and_key_config_bb(c);
 }
 
 void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) {
-  struct Cmd {
-    uint32_t player_index;
-    uint32_t unused;
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t, uint32_t, const string& data) {
+  const auto& cmd = check_size_t<C_PlayerPreviewRequest_BB_E3>(data);
 
   if (c->bb_game_state == ClientStateBB::CHOOSE_PLAYER) {
-    c->bb_player_index = cmd->player_index;
+    c->bb_player_index = cmd.player_index;
     c->bb_game_state++;
     send_client_init_bb(c, 0);
     send_approve_player_choice_bb(c);
@@ -1228,18 +1199,18 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
       Player p;
       p.load_player_data(filename);
       auto preview = p.disp.to_preview();
-      send_player_preview_bb(c, cmd->player_index, &preview);
+      send_player_preview_bb(c, cmd.player_index, &preview);
 
     } catch (const exception&) {
       // player doesn't exist
-      send_player_preview_bb(c, cmd->player_index, nullptr);
+      send_player_preview_bb(c, cmd.player_index, nullptr);
     }
   }
 }
 
 void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t, uint16_t size, const void*) {
-  check_size(size, 0);
+    uint16_t command, uint32_t, const string& data) {
+  check_size(data.size(), 0);
 
   if (command == 0x01E8) {
     send_accept_client_checksum_bb(c);
@@ -1251,23 +1222,16 @@ void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 void process_guild_card_data_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) {
-  struct Cmd {
-    uint32_t unknown;
-    uint32_t chunk_index;
-    uint32_t cont;
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
-
-  if (cmd->cont) {
-    send_guild_card_chunk_bb(c, cmd->chunk_index);
+    uint16_t, uint32_t, const string& data) {
+  const auto& cmd = check_size_t<C_GuildCardDataRequest_BB_DC>(data);
+  if (cmd.cont) {
+    send_guild_card_chunk_bb(c, cmd.chunk_index);
   }
 }
 
 void process_stream_file_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t, uint16_t size, const void*) {
-  check_size(size, 0);
+    uint16_t command, uint32_t, const string& data) {
+  check_size(data.size(), 0);
 
   if (command == 0x04EB) {
     send_stream_file_bb(c);
@@ -1277,13 +1241,8 @@ void process_stream_file_request_bb(shared_ptr<ServerState>, shared_ptr<Client> 
 }
 
 void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) {
-  struct Cmd {
-    uint32_t player_index;
-    PlayerDispDataBBPreview preview;
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t, uint32_t, const string& data) {
+  const auto& cmd = check_size_t<C_CreateCharacter_BB_E5>(data);
 
   if (!c->license) {
     send_message_box(c, u"$C6You are not logged in.");
@@ -1294,11 +1253,11 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
     return;
   }
 
-  c->bb_player_index = cmd->player_index;
-  snprintf(c->player.bank_name, 0x20, "player%" PRIu32, cmd->player_index + 1);
-  string player_filename = filename_for_player_bb(c->license->username, cmd->player_index);
+  c->bb_player_index = cmd.player_index;
+  snprintf(c->player.bank_name, 0x20, "player%" PRIu32, cmd.player_index + 1);
+  string player_filename = filename_for_player_bb(c->license->username, cmd.player_index);
   string bank_filename = filename_for_bank_bb(c->license->username, c->player.bank_name);
-  string template_filename = filename_for_class_template_bb(cmd->preview.char_class);
+  string template_filename = filename_for_class_template_bb(cmd.preview.char_class);
 
   Player p;
   try {
@@ -1309,7 +1268,7 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
   }
 
   try {
-    p.disp.apply_preview(cmd->preview);
+    p.disp.apply_preview(cmd.preview);
     c->player.disp.stats = s->level_table->base_stats_for_class(c->player.disp.char_class);
   } catch (const exception& e) {
     send_message_box(c, u"$C6New character could not be created.\n\nTemplate application failed.");
@@ -1336,45 +1295,36 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
 }
 
 void process_change_account_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t, uint16_t size, const void* data) {
-  union Cmd {
-    uint32_t option; // 01ED
-    uint8_t symbol_chats[0x4E0]; // 02ED
-    uint8_t chat_shortcuts[0xA40]; // 03ED
-    uint8_t key_config[0x16C]; // 04ED
-    uint8_t pad_config[0x38]; // 05ED
-    uint8_t tech_menu[0x28]; // 06ED
-    uint8_t customize[0xE8]; // 07ED
-  } __attribute__((packed));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t command, uint32_t, const string& data) {
+  const auto* cmd = reinterpret_cast<const C_UpdateAccountData_BB_ED*>(data.data());
 
   switch (command) {
     case 0x01ED:
-      check_size(size, sizeof(cmd->option));
+      check_size(data.size(), sizeof(cmd->option));
       c->player.option_flags = cmd->option;
       break;
     case 0x02ED:
-      check_size(size, sizeof(cmd->symbol_chats));
+      check_size(data.size(), sizeof(cmd->symbol_chats));
       memcpy(c->player.symbol_chats, cmd->symbol_chats, 0x04E0);
       break;
     case 0x03ED:
-      check_size(size, sizeof(cmd->chat_shortcuts));
+      check_size(data.size(), sizeof(cmd->chat_shortcuts));
       memcpy(c->player.shortcuts, cmd->chat_shortcuts, 0x0A40);
       break;
     case 0x04ED:
-      check_size(size, sizeof(cmd->key_config));
+      check_size(data.size(), sizeof(cmd->key_config));
       memcpy(&c->player.key_config.key_config, cmd->key_config, 0x016C);
       break;
     case 0x05ED:
-      check_size(size, sizeof(cmd->pad_config));
+      check_size(data.size(), sizeof(cmd->pad_config));
       memcpy(&c->player.key_config.joystick_config, cmd->pad_config, 0x0038);
       break;
     case 0x06ED:
-      check_size(size, sizeof(cmd->tech_menu));
+      check_size(data.size(), sizeof(cmd->tech_menu));
       memcpy(&c->player.tech_menu_config, cmd->tech_menu, 0x0028);
       break;
     case 0x07ED:
-      check_size(size, sizeof(cmd->customize));
+      check_size(data.size(), sizeof(cmd->customize));
       memcpy(c->player.disp.config, cmd->customize, 0xE8);
       break;
     default:
@@ -1383,22 +1333,21 @@ void process_change_account_data_bb(shared_ptr<ServerState>, shared_ptr<Client> 
 }
 
 void process_return_player_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) {
-  check_size(size, sizeof(PlayerBB));
-  const PlayerBB* cmd = reinterpret_cast<const PlayerBB*>(data);
+    uint16_t, uint32_t, const string& data) {
+  const auto& cmd = check_size_t<PlayerBB>(data);
 
-  // we only trust the player's quest data and challenge data.
-  memcpy(&c->player.challenge_data, &cmd->challenge_data, sizeof(cmd->challenge_data));
-  memcpy(&c->player.quest_data1, &cmd->quest_data1, sizeof(cmd->quest_data1));
-  memcpy(&c->player.quest_data2, &cmd->quest_data2, sizeof(cmd->quest_data2));
+  // We only trust the player's quest data and challenge data.
+  memcpy(&c->player.challenge_data, &cmd.challenge_data, sizeof(cmd.challenge_data));
+  memcpy(&c->player.quest_data1, &cmd.quest_data1, sizeof(cmd.quest_data1));
+  memcpy(&c->player.quest_data2, &cmd.quest_data2, sizeof(cmd.quest_data2));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Lobby commands
 
 void process_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t flag, uint16_t size, const void*) { // 89
-  check_size(size, 0);
+    uint16_t, uint32_t flag, const string& data) { // 89
+  check_size(data.size(), 0);
 
   c->lobby_arrow_color = flag;
   auto l = s->find_lobby(c->lobby_id);
@@ -1408,113 +1357,48 @@ void process_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // 40
-  struct Cmd {
-    uint32_t player_tag;
-    uint32_t searcher_serial_number;
-    uint32_t target_serial_number;
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
-
+    uint16_t, uint32_t, const string& data) { // 40
+  const auto& cmd = check_size_t<C_GuildCardSearch_40>(data);
   try {
-    auto result = s->find_client(nullptr, cmd->target_serial_number);
+    auto result = s->find_client(nullptr, cmd.target_serial_number);
     auto result_lobby = s->find_lobby(result->lobby_id);
     send_card_search_result(s, c, result, result_lobby);
   } catch (const out_of_range&) { }
 }
 
 void process_choice_search(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t, const void*) { // C0
+    uint16_t, uint32_t, const string&) { // C0
   // TODO: Implement choice search.
-  // Choice search works like this:
-  //   Client: C0 00 04 00
-  //   Server: C0 ## SS SS [entries] (# = overall entry count, including top-level and non-top-level)
-  //     struct Entry {
-  //       // this first two are 0 for top-level category, nonzero for choice within category
-  //       uint8_t parent_category;
-  //       uint8_t parent_category_user_settable;
-  //       uint8_t category;
-  //       uint8_t user_settable; // 0 or 1
-  //       char text[0x1C];
-  //     }
-  //     Top-level categories are things like "Level", "Class", etc.
-  //     Choices for each top-level category immediately follow the category, so
-  //     a reasonable order of items is (for example):
-  //       00 00 11 01 "Preferred difficulty"
-  //       11 01 01 01 "Normal"
-  //       11 01 02 01 "Hard"
-  //       11 01 03 01 "Very Hard"
-  //       11 01 04 01 "Ultimate"
-  //       00 00 22 00 "Character class"
-  //       22 00 01 00 "HUmar"
-  //       22 00 02 00 "HUnewearl"
-  //       etc.
-  // To set your own params:
-  //   Client: C2 00 SS SS ZZ ZZ 00 00 [entries]
-  //     Entries are the same as struct Entry from above except without the name
-  //     field. The client even sends them for non-settable parameters (the
-  //     server should just ignore those presumably)
-  //     Z = disabled (00 00 = choice search ON, 00 01 = OFF)
-  // To execute a choice search:
-  //   Client: C3 00 SS SS ?? ?? ?? ?? [entries]
-  //     Entries are the same as struct Entry from above
-  //   Server: C4 ## SS SS [results]
-  //     struct Result {
-  //       uint32_t guild_card_number;
-  //       char name[0x10]; // No language marker, as usual on GC
-  //       char info_string[0x20]; // Usually something like "<class> Lvl <level>"
-  //       // Format is stricter here; this is "LOBBYNAME,BLOCKNUM,SHIPNAME"
-  //       // If target is in game, for example, "Game Name,BLOCK01,Alexandria"
-  //       // If target is in lobby, for example, "BLOCK01-1,BLOCK01,Alexandria"
-  //       char locator_string[0x34];
-  //       // Server IP and port for "meet user" option
-  //       uint32_t server_ip;
-  //       uint16_t server_port;
-  //       uint16_t unused;
-  //       uint32_t menu_id;
-  //       uint32_t lobby_id; // These two are guesses
-  //       uint32_t game_id; // Zero if target is in a lobby rather than a game
-  //       uint8_t unused[0x58];
-  //     };
   send_text_message(c, u"$C6Choice Search is\nnot supported");
 }
 
 void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // 81
+    uint16_t, uint32_t, const string& data) { // 81
   if (c->version != GameVersion::GC) {
     // TODO: implement this for DC, PC, BB
     send_text_message(c, u"$C6Simple Mail is not\nsupported yet on\nthis platform.");
     return;
   }
 
-  struct Cmd {
-    uint32_t player_tag;
-    uint32_t source_serial_number;
-    char from_name[16];
-    uint32_t target_serial_number;
-    char data[0x200]; // on GC this appears to contain uninitialized memory!
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+  const auto& cmd = check_size_t<SC_SimpleMail_GC_81>(data);
 
-  auto target = s->find_client(nullptr, cmd->target_serial_number);
+  auto target = s->find_client(nullptr, cmd.to_serial_number);
 
-  // if the sender is blocked, don't forward the mail
+  // If the sender is blocked, don't forward the mail
   for (size_t y = 0; y < 30; y++) {
     if (target->player.blocked[y] == c->license->serial_number) {
       return;
     }
   }
 
-  // if the target has auto-reply enabled, send the autoreply
+  // If the target has auto-reply enabled, send the autoreply
   if (target->player.auto_reply[0]) {
     send_simple_mail(c, target->license->serial_number,
         target->player.disp.name, target->player.auto_reply);
   }
 
-  // forward the message
-  string message(cmd->data, strnlen(cmd->data, sizeof(cmd->data) / sizeof(cmd->data[0])));
+  // Forward the message
+  string message(cmd.text, strnlen(cmd.text, sizeof(cmd.text) / sizeof(cmd.text[0])));
   u16string u16message = decode_sjis(message);
   send_simple_mail(target, c->license->serial_number, c->player.disp.name,
       u16message.data());
@@ -1526,54 +1410,41 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
 // Info board commands
 
 void process_info_board_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void*) { // D8
-  check_size(size, 0);
-  auto l = s->find_lobby(c->lobby_id);
-  send_info_board(c, l);
+    uint16_t, uint32_t, const string& data) { // D8
+  check_size(data.size(), 0);
+  send_info_board(c, s->find_lobby(c->lobby_id));
 }
 
-void process_write_info_board_pc_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // D9
-  check_size(size, 0, 2 * 0xAC);
-  char16cpy(c->player.info_board, reinterpret_cast<const char16_t*>(data), 0xAC);
+template <typename CharT>
+void process_write_info_board_t(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // D9
+  check_size(data.size(), 0, countof(c->player.info_board) * sizeof(CharT));
+  memset(c->player.info_board, 0, sizeof(c->player.info_board));
+  strncpy_t(c->player.info_board, reinterpret_cast<const CharT*>(data.data()),
+      min<size_t>(countof(c->player.info_board), data.size() / sizeof(CharT)));
 }
 
-void process_write_info_board_dc_gc(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // D9
-  check_size(size, 0, 0xAC);
-  decode_sjis(c->player.info_board, reinterpret_cast<const char*>(data), 0xAC);
-}
-
-void process_set_auto_reply_pc_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // C7
-  check_size(size, 0, 2 * 0xAC);
-  if (size == 0) {
-    c->player.auto_reply[0] = 0;
-  } else {
-    char16cpy(c->player.auto_reply, reinterpret_cast<const char16_t*>(data), 0xAC);
-  }
-}
-
-void process_set_auto_reply_dc_gc(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // C7
-  check_size(size, 0, 0xAC);
-  if (size == 0) {
-    c->player.auto_reply[0] = 0;
-  } else {
-    decode_sjis(c->player.auto_reply, reinterpret_cast<const char*>(data), 0xAC);
-  }
+template <typename CharT>
+void process_set_auto_reply_t(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // C7
+  check_size(data.size(), 0, countof(c->player.auto_reply) * sizeof(CharT));
+  memset(c->player.auto_reply, 0, sizeof(c->player.auto_reply));
+  strncpy_t(c->player.auto_reply, reinterpret_cast<const CharT*>(data.data()),
+      min<size_t>(countof(c->player.auto_reply), data.size() / sizeof(CharT)));
 }
 
 void process_disable_auto_reply(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void*) { // C8
-  check_size(size, 0);
-  c->player.auto_reply[0] = 0;
+    uint16_t, uint32_t, const string& data) { // C8
+  check_size(data.size(), 0);
+  memset(c->player.auto_reply, 0, sizeof(c->player.auto_reply));
 }
 
 void process_set_blocked_list(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // C6
-  check_size(size, 0x78);
-  memcpy(c->player.blocked, data, 0x78);
+    uint16_t, uint32_t, const string& data) { // C6
+  const auto& cmd = check_size_t<C_SetBlockedSenders_C6>(data);
+  for (size_t x = 0; x < countof(cmd.blocked_senders); x++) {
+    c->player.blocked[x] = cmd.blocked_senders[x];
+  }
 }
 
 
@@ -1630,10 +1501,11 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   }
 
   shared_ptr<Lobby> game(new Lobby());
-  char16cpy(game->name, name, 0x10);
-  char16cpy(game->password, password, 0x10);
+  char16ncpy(game->name, name, countof(game->name));
+  char16ncpy(game->password, password, countof(game->name));
   game->version = c->version;
-  game->section_id = c->player.disp.section_id;
+  game->section_id = c->override_section_id >= 0
+      ? c->override_section_id : c->player.disp.section_id;
   game->episode = episode;
   game->difficulty = difficulty;
   if (battle) {
@@ -1652,6 +1524,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   game->min_level = min_level;
   game->max_level = 0xFFFFFFFF;
 
+  const uint32_t* variation_maxes = nullptr;
   if (game->version == GameVersion::BB) {
     // TODO: cache these somewhere so we don't read the file every time, lolz
     game->rare_item_set.reset(new RareItemSet("system/blueburst/ItemRT.rel",
@@ -1667,28 +1540,28 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
         game->episode - 1, game->difficulty);
 
     if (game->mode == 3) {
-        for (size_t x = 0; x < 0x20; x++) {
-          game->variations[x] = random_int(0, variation_maxes_solo[(episode - 1)][x] - 1);
+      if (episode > 0 && episode < 4) {
+        variation_maxes = variation_maxes_solo[episode - 1];
+      }
+      for (size_t x = 0; x < 0x10; x++) {
+        for (const char* type_char = "sm"; *type_char; type_char++) {
+          try {
+            auto filename = string_printf(
+                "system/blueburst/map/%c%hhu%zu%" PRIu32 "%" PRIu32 ".dat",
+                *type_char, game->episode, x, game->variations[x * 2],
+                game->variations[(x * 2) + 1]);
+            game->enemies = load_map(filename.c_str(), game->episode,
+                game->difficulty, bp_subtable, false);
+            break;
+          } catch (const exception& e) { }
         }
-        for (size_t x = 0; x < 0x10; x++) {
-          for (const char* type_char = "sm"; *type_char; type_char++) {
-            try {
-              auto filename = string_printf(
-                  "system/blueburst/map/%c%hhu%zu%" PRIu32 "%" PRIu32 ".dat",
-                  *type_char, game->episode, x, game->variations[x * 2],
-                  game->variations[(x * 2) + 1]);
-              game->enemies = load_map(filename.c_str(), game->episode,
-                  game->difficulty, bp_subtable, false);
-              break;
-            } catch (const exception& e) { }
-          }
-          if (game->enemies.empty()) {
-            throw runtime_error("failed to load any map data");
-          }
+        if (game->enemies.empty()) {
+          throw runtime_error("failed to load any map data");
         }
+      }
     } else {
-      for (size_t x = 0; x < 0x20; x++) {
-        game->variations[x] = random_int(0, variation_maxes_online[(episode - 1)][x] - 1);
+      if (episode > 0 && episode < 4) {
+        variation_maxes = variation_maxes_online[episode - 1];
       }
       for (size_t x = 0; x < 0x10; x++) {
         auto filename = string_printf(
@@ -1703,8 +1576,18 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   } else {
     // In non-BB games, just set the variations (we don't track items/enemies/
     // etc.)
+    if (episode > 0 && episode < 4 && !is_ep3) {
+      variation_maxes = variation_maxes_online[episode - 1];
+    }
+  }
+
+  if (variation_maxes) {
     for (size_t x = 0; x < 0x20; x++) {
-      game->variations[x] = random_int(0, variation_maxes_online[(episode - 1)][x] - 1);
+      game->variations[x] = random_int(0, variation_maxes[x] - 1);
+    }
+  } else {
+    for (size_t x = 0; x < 0x20; x++) {
+      game->variations[x] = 0;
     }
   }
 
@@ -1712,21 +1595,11 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
 }
 
 void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // C1
-  struct Cmd {
-    uint32_t unused[2];
-    char16_t name[0x10];
-    char16_t password[0x10];
-    uint8_t difficulty;
-    uint8_t battle_mode;
-    uint8_t challenge_mode;
-    uint8_t unused2;
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t, uint32_t, const string& data) { // C1
+  const auto& cmd = check_size_t<C_CreateGame_PC_C1>(data);
 
-  auto game = create_game_generic(s, c, cmd->name, cmd->password, 1,
-      cmd->difficulty, cmd->battle_mode, cmd->challenge_mode, 0);
+  auto game = create_game_generic(s, c, cmd.name, cmd.password, 1,
+      cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, 0);
 
   s->add_lobby(game);
   s->change_client_lobby(c, game);
@@ -1734,18 +1607,8 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t, uint16_t size, const void* data) { // C1 EC (EC Ep3 only)
-  struct Cmd {
-    uint32_t unused[2];
-    char name[0x10];
-    char password[0x10];
-    uint8_t difficulty;
-    uint8_t battle_mode;
-    uint8_t challenge_mode;
-    uint8_t episode;
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t command, uint32_t, const string& data) { // C1 EC (EC Ep3 only)
+  const auto& cmd = check_size_t<C_CreateGame_DC_GC_C1_EC>(data);
 
   // only allow EC from Ep3 clients
   bool client_is_ep3 = c->flags & ClientFlag::EPISODE_3_GAMES;
@@ -1753,7 +1616,7 @@ void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  uint8_t episode = cmd->episode;
+  uint8_t episode = cmd.episode;
   if (c->version == GameVersion::DC) {
     episode = 1;
   }
@@ -1761,11 +1624,11 @@ void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     episode = 0xFF;
   }
 
-  u16string name = decode_sjis(cmd->name);
-  u16string password = decode_sjis(cmd->password);
+  u16string name = decode_sjis(cmd.name);
+  u16string password = decode_sjis(cmd.password);
 
   auto game = create_game_generic(s, c, name.c_str(), password.c_str(),
-      episode, cmd->difficulty, cmd->battle_mode, cmd->challenge_mode, 0);
+      episode, cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, 0);
 
   s->add_lobby(game);
   s->change_client_lobby(c, game);
@@ -1773,24 +1636,12 @@ void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) { // C1
-  struct Cmd {
-    uint32_t unused[2];
-    char16_t name[0x10];
-    char16_t password[0x10];
-    uint8_t difficulty;
-    uint8_t battle_mode;
-    uint8_t challenge_mode;
-    uint8_t episode;
-    uint8_t solo_mode;
-    uint8_t unused2[3];
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t, uint32_t, const string& data) { // C1
+  const auto& cmd = check_size_t<C_CreateGame_BB_C1>(data);
 
-  auto game = create_game_generic(s, c, cmd->name, cmd->password,
-      cmd->episode, cmd->difficulty, cmd->battle_mode, cmd->challenge_mode,
-      cmd->solo_mode);
+  auto game = create_game_generic(s, c, cmd.name, cmd.password,
+      cmd.episode, cmd.difficulty, cmd.battle_mode, cmd.challenge_mode,
+      cmd.solo_mode);
 
   s->add_lobby(game);
   s->change_client_lobby(c, game);
@@ -1800,8 +1651,8 @@ void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void*) { // 8A
-  check_size(size, 0);
+    uint16_t, uint32_t, const string& data) { // 8A
+  check_size(data.size(), 0);
   auto l = s->find_lobby(c->lobby_id);
   if (!l) {
     throw invalid_argument("client not in any lobby");
@@ -1810,8 +1661,8 @@ void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void*) { // 6F
-  check_size(size, 0);
+    uint16_t, uint32_t, const string& data) { // 6F
+  check_size(data.size(), 0);
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !l->is_game()) {
@@ -1820,11 +1671,8 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
   c->flags &= (~ClientFlag::LOADING);
 
-  // tell the other players to stop waiting for the new player to load
   send_resume_game(l, c);
-  // tell the new player the time
   send_server_time(c);
-  // get character info
   send_get_player_info(c);
 }
 
@@ -1832,7 +1680,7 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
 // Team commands
 
 void process_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t, uint16_t, const void*) { // EA
+    uint16_t command, uint32_t, const string&) { // EA
 
   if (command == 0x01EA) {
     send_lobby_message_box(c, u"$C6Teams are not supported.");
@@ -1845,30 +1693,26 @@ void process_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
 // Patch server commands
 
 void process_encryption_ok_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void*) {
-  check_size(size, 0);
+    uint16_t, uint32_t, const string& data) {
+  check_size(data.size(), 0);
   send_command(c, 0x04); // this requests the user's login information
 }
 
 void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, uint16_t size, const void* data) {
-  struct Cmd {
-    uint32_t unused[3];
-    char username[0x10];
-    char password[0x10];
-  } __attribute__((packed));
-  check_size(size, sizeof(Cmd));
-  const auto* cmd = reinterpret_cast<const Cmd*>(data);
+    uint16_t, uint32_t, const string& data) {
+  const auto& cmd = check_size_t<C_Login_Patch_04>(data);
 
   u16string message = u"\
-$C7NewServ Patch Server v1.0\n\n\
-Please note that this server is for private use only.\n\
+$C7newserv patch server\n\
+\n\
+This server is for private use only.\n\
 This server is not affiliated with, sponsored by, or in any\n\
 other way connected to SEGA or Sonic Team, and is owned\n\
-and operated completely independently.\n\n\
+and operated completely independently.\n\
+\n\
 License check: ";
   try {
-    c->license = s->license_manager->verify_bb(cmd->username, cmd->password);
+    c->license = s->license_manager->verify_bb(cmd.username, cmd.password);
     message += u"OK";
   } catch (const exception& e) {
     message += decode_sjis(e.what());
@@ -1891,19 +1735,19 @@ License check: ";
 // Command pointer arrays
 
 void process_ignored_command(shared_ptr<ServerState>, shared_ptr<Client>,
-    uint16_t, uint32_t, uint16_t, const void*) { }
+    uint16_t, uint32_t, const string&) { }
 
 void process_unimplemented_command(shared_ptr<ServerState>, shared_ptr<Client>,
-    uint16_t command, uint32_t flag, uint16_t size, const void*) {
-  log(WARNING, "Unknown command: size=%04X command=%04X flag=%08X\n",
-      size, command, flag);
+    uint16_t command, uint32_t flag, const string& data) {
+  log(WARNING, "Unknown command: size=%04zX command=%04hX flag=%08" PRIX32 "\n",
+      data.size(), command, flag);
   throw invalid_argument("unimplemented command");
 }
 
 
 
 typedef void (*process_command_t)(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data);
+    uint16_t command, uint32_t flag, const string& data);
 
 // The entries in these arrays correspond to the ID of the command received. For
 // instance, if a command 6C is received, the function at position 0x6C in the
@@ -1973,13 +1817,13 @@ static process_command_t dc_handlers[0x100] = {
 
   // C0
   nullptr, process_create_game_dc_gc, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_dc_gc,
+  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_t<char>,
   process_disable_auto_reply, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
   // D0
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  process_info_board_request, process_write_info_board_dc_gc, nullptr, nullptr,
+  process_info_board_request, process_write_info_board_t<char>, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
   // E0
@@ -2056,13 +1900,13 @@ static process_command_t pc_handlers[0x100] = {
 
   // C0
   nullptr, process_create_game_pc, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_pc_bb,
+  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_t<char16_t>,
   process_disable_auto_reply, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
   // D0
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  process_info_board_request, process_write_info_board_pc_bb, nullptr, nullptr,
+  process_info_board_request, process_write_info_board_t<char16_t>, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
   // E0
@@ -2141,14 +1985,14 @@ static process_command_t gc_handlers[0x100] = {
 
   // C0
   process_choice_search, process_create_game_dc_gc, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_dc_gc,
+  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_t<char>,
   process_disable_auto_reply, process_game_command, process_ep3_server_data_request, process_game_command,
   nullptr, nullptr, nullptr, nullptr,
 
   // D0
   nullptr, nullptr, nullptr, nullptr, // D0 is process trade
   nullptr, nullptr, process_message_box_closed, process_gba_file_request,
-  process_info_board_request, process_write_info_board_dc_gc, nullptr, process_verify_license_gc,
+  process_info_board_request, process_write_info_board_t<char>, nullptr, process_verify_license_gc,
   process_ep3_menu_challenge, nullptr, nullptr, nullptr,
 
   // E0
@@ -2228,14 +2072,14 @@ static process_command_t bb_handlers[0x100] = {
 
   // C0
   nullptr, process_create_game_bb, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_pc_bb,
+  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_t<char16_t>,
   process_disable_auto_reply, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
   // D0
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
-  process_info_board_request, process_write_info_board_pc_bb, nullptr, nullptr,
+  process_info_board_request, process_write_info_board_t<char16_t>, nullptr, nullptr,
   process_guild_card_data_request_bb, nullptr, nullptr, nullptr,
 
   // E0
@@ -2306,14 +2150,15 @@ static process_command_t* handlers[6] = {
     dc_handlers, pc_handlers, patch_handlers, gc_handlers, bb_handlers};
 
 void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, uint16_t size, const void* data) {
+    uint16_t command, uint32_t flag, const string& data) {
   string encoded_name = remove_language_marker(encode_sjis(c->player.disp.name));
-  print_received_command(command, flag, data, size, c->version, encoded_name.c_str());
+  print_received_command(command, flag, data.data(), data.size(), c->version,
+      encoded_name.c_str());
 
   auto fn = handlers[static_cast<size_t>(c->version)][command & 0xFF];
   if (fn) {
-    fn(s, c, command, flag, size, data);
+    fn(s, c, command, flag, data);
   } else {
-    process_unimplemented_command(s, c, command, flag, size, data);
+    process_unimplemented_command(s, c, command, flag, data);
   }
 }

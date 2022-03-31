@@ -22,37 +22,56 @@ ServerState::ServerState()
     ep3_menu_song(-1) {
   memset(&this->default_key_file, 0, sizeof(this->default_key_file));
 
+  vector<shared_ptr<Lobby>> ep3_only_lobbies;
+
   for (size_t x = 0; x < 20; x++) {
     auto lobby_name = decode_sjis(string_printf("LOBBY%zu", x + 1));
+    bool is_ep3_only = (x > 14);
+
     shared_ptr<Lobby> l(new Lobby());
     l->flags |= LobbyFlag::PUBLIC | LobbyFlag::DEFAULT | LobbyFlag::PERSISTENT |
-        ((x > 14) ? LobbyFlag::EPISODE_3 : 0);
+        (is_ep3_only ? LobbyFlag::EPISODE_3 : 0);
     l->block = x + 1;
     l->type = x;
-    char16cpy(l->name, lobby_name.c_str(), 0x24);
+    char16ncpy(l->name, lobby_name.c_str(), 0x24);
     l->max_clients = 12;
     this->add_lobby(l);
+
+    if (!is_ep3_only) {
+      this->public_lobby_search_order.emplace_back(l);
+    } else {
+      ep3_only_lobbies.emplace_back(l);
+    }
   }
+
+  this->public_lobby_search_order_ep3 = this->public_lobby_search_order;
+  this->public_lobby_search_order_ep3.insert(
+      this->public_lobby_search_order_ep3.begin(),
+      ep3_only_lobbies.begin(),
+      ep3_only_lobbies.end());
 }
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
-  auto it = this->id_to_lobby.lower_bound(0);
-  for (; it != this->id_to_lobby.end(); it++) {
-    if (!(it->second->flags & LobbyFlag::PUBLIC)) {
-      continue;
-    }
+  const auto& search_order = (c->flags & ClientFlag::EPISODE_3_GAMES)
+      ? this->public_lobby_search_order_ep3
+      : this->public_lobby_search_order;
+
+  shared_ptr<Lobby> added_to_lobby;
+  for (const auto& l : search_order) {
     try {
-      it->second->add_client(c);
+      l->add_client(c);
+      added_to_lobby = l;
       break;
     } catch (const out_of_range&) { }
   }
 
-  if (it == this->id_to_lobby.end()) {
+  if (!added_to_lobby) {
+    // TODO: Add the user to a dynamically-created private lobby instead
     throw out_of_range("all lobbies full");
   }
 
-  // send a join message to the joining player, and notifications to all others
-  this->send_lobby_join_notifications(it->second, c);
+  // Send a join message to the joining player, and notifications to all others
+  this->send_lobby_join_notifications(added_to_lobby, c);
 }
 
 void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {

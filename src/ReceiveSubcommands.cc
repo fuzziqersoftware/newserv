@@ -34,7 +34,7 @@ struct ItemSubcommand {
 void check_size(uint16_t size, uint16_t min_size, uint16_t max_size) {
   if (size < min_size) {
     throw runtime_error(string_printf(
-        "command too small (expected at least 0x%hX bytes, got 0x%hX bytes)",
+        "command too small (expected at least 0x%hX bytes, received 0x%hX bytes)",
         min_size, size));
   }
   if (max_size == 0) {
@@ -42,7 +42,7 @@ void check_size(uint16_t size, uint16_t min_size, uint16_t max_size) {
   }
   if (size > max_size) {
     throw runtime_error(string_printf(
-        "command too large (expected at most 0x%hX bytes, got 0x%hX bytes)",
+        "command too large (expected at most 0x%hX bytes, received 0x%hX bytes)",
         max_size, size));
   }
 }
@@ -928,9 +928,9 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 08 */ process_subcommand_unimplemented,
   /* 09 */ process_subcommand_unimplemented,
   /* 0A */ process_subcommand_monster_hit,
-  /* 0B */ process_subcommand_forward_check_size_game, // Box destroyed
-  /* 0C */ process_subcommand_forward_check_size_game,
-  /* 0D */ process_subcommand_forward_check_size,
+  /* 0B */ process_subcommand_forward_check_size_game,
+  /* 0C */ process_subcommand_forward_check_size_game, // Add condition (poison/slow/etc.)
+  /* 0D */ process_subcommand_forward_check_size_game, // Remove condition (poison/slow/etc.)
   /* 0E */ process_subcommand_unimplemented,
   /* 0F */ process_subcommand_unimplemented,
   /* 10 */ process_subcommand_unimplemented,

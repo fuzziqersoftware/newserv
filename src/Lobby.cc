@@ -152,7 +152,7 @@ shared_ptr<Client> Lobby::find_client(const char16_t* identifier,
         (this->clients[x]->license->serial_number == serial_number)) {
       return this->clients[x];
     }
-    if (identifier && !char16cmp(this->clients[x]->player.disp.name, identifier, 0x10)) {
+    if (identifier && !char16ncmp(this->clients[x]->player.disp.name, identifier, 0x10)) {
       return this->clients[x];
     }
   }

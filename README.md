@@ -30,7 +30,6 @@ Current known issues / missing features:
 - The trade window isn't implemented yet.
 - PSO PC and PSOBB are essentially entirely untested. Only GC is fairly well-tested.
 - Add all the chat commands that khyller used to have. (Most, but not all, currently exist in newserv.)
-- The command structures are defined in multiple places. Centralize them.
 
 ## Usage
 

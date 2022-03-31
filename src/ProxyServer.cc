@@ -137,9 +137,11 @@ void ProxyServer::on_client_connect(
     case GameVersion::GC: {
       uint32_t server_key = random_object<uint32_t>();
       uint32_t client_key = random_object<uint32_t>();
-      string data = prepare_server_init_contents_dc_pc_gc(false, server_key, client_key);
-      send_command(session->bev.get(), session->version, session->crypt_out.get(), 0x02,
-          0, data.data(), data.size(), "unlinked proxy client");
+      auto cmd = prepare_server_init_contents_dc_pc_gc(
+          false, server_key, client_key);
+      send_command(session->bev.get(), session->version,
+          session->crypt_out.get(), 0x02, 0, &cmd, sizeof(cmd),
+          "unlinked proxy client");
       session->crypt_out.reset(new PSOGCEncryption(server_key));
       session->crypt_in.reset(new PSOGCEncryption(client_key));
       break;
@@ -191,11 +193,11 @@ void ProxyServer::UnlinkedSession::on_client_input() {
         if (command != 0x9E) {
           log(ERROR, "[ProxyServer] Received unexpected command %02hX", command);
           should_close_unlinked_session = true;
-        } else if (data.size() < sizeof(LoginCommand_GC_9E) - 0x64) {
+        } else if (data.size() < sizeof(C_Login_PC_GC_9D_9E) - 0x64) {
           log(ERROR, "[ProxyServer] Login command is too small");
           should_close_unlinked_session = true;
         } else {
-          const auto* cmd = reinterpret_cast<const LoginCommand_GC_9E*>(data.data());
+          const auto* cmd = reinterpret_cast<const C_Login_PC_GC_9D_9E*>(data.data());
           uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
           try {
             license = this->server->state->license_manager->verify_gc(
@@ -234,9 +236,6 @@ void ProxyServer::UnlinkedSession::on_client_input() {
         log(ERROR, "[ProxyServer/%08" PRIX32 "] Client configuration is invalid; cannot open session",
             license->serial_number);
       } else {
-        // If the client goes back to newserv, we need to set the welcome
-        // message flag so the server will know what to do
-        client_config.flags |= ClientFlag::AT_WELCOME_MESSAGE;
         session.reset(new LinkedSession(
             this->server,
             this->local_port,
@@ -506,11 +505,7 @@ void ProxyServer::LinkedSession::on_client_input() {
             }
             uint8_t leaving_id = x;
             uint8_t leader_id = this->lobby_client_id;
-            struct {
-              uint8_t client_id;
-              uint8_t leader_id;
-              uint16_t unused;
-            } __attribute__((packed)) cmd = {leaving_id, leader_id, 0};
+            S_LeaveLobby_66_69 cmd = {leaving_id, leader_id, 0};
             send_command(this->client_bev.get(), this->version,
                 this->client_output_crypt.get(), 0x69, leaving_id, &cmd,
                 sizeof(cmd), name.c_str());
@@ -519,11 +514,7 @@ void ProxyServer::LinkedSession::on_client_input() {
           // Restore the newserv client config, so the client gets its newserv
           // guild card number back and the login server knows e.g. not to show
           // the welcome message (if the appropriate flag is set)
-          struct {
-            uint32_t player_tag;
-            uint32_t serial_number;
-            ClientConfig config;
-          } __attribute__((packed)) update_client_config_cmd = {
+          S_UpdateClientConfig_DC_PC_GC_04 update_client_config_cmd = {
             0x00010000,
             this->license->serial_number,
             this->newserv_client_config,
@@ -538,7 +529,7 @@ void ProxyServer::LinkedSession::on_client_input() {
           const auto& port_name = version_to_port_name.at(static_cast<size_t>(
               this->version));
 
-          ReconnectCommand_19 reconnect_cmd = {
+          S_Reconnect_19 reconnect_cmd = {
               0, this->server->state->named_port_configuration.at(port_name).port, 0};
 
           // If the client is on a virtual connection, we can use any address
@@ -607,11 +598,11 @@ void ProxyServer::LinkedSession::on_server_input() {
             }
             // Most servers don't include after_message or have a shorter
             // after_message than newserv does, so don't require it
-            if (data.size() < offsetof(ServerInitCommand_GC_02_17, after_message)) {
+            if (data.size() < offsetof(S_ServerInit_DC_GC_02_17, after_message)) {
               throw std::runtime_error("init encryption command is too small");
             }
 
-            const auto* cmd = reinterpret_cast<const ServerInitCommand_GC_02_17*>(
+            const auto* cmd = reinterpret_cast<const S_ServerInit_DC_GC_02_17*>(
                 data.data());
 
             // This doesn't get forwarded to the client, so don't recreate the
@@ -632,7 +623,7 @@ void ProxyServer::LinkedSession::on_server_input() {
             // We don't let the client do this because it believes it already
             // did (when it was in an unlinked session).
             if (command == 0x17) {
-              VerifyLicenseCommand_GC_DB cmd;
+              C_VerifyLicense_GC_DB cmd;
               memset(&cmd, 0, sizeof(cmd));
               snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08" PRIX32 "",
                   this->license->serial_number);
@@ -654,7 +645,7 @@ void ProxyServer::LinkedSession::on_server_input() {
 
           case 0x9A: {
             should_forward = false;
-            LoginCommand_GC_9E cmd;
+            C_Login_PC_GC_9D_9E cmd;
             memset(&cmd, 0, sizeof(cmd));
 
             if (this->guild_card_number == 0) {
@@ -684,25 +675,21 @@ void ProxyServer::LinkedSession::on_server_input() {
                 0x9E,
                 0x01,
                 &cmd,
-                this->guild_card_number ? (offsetof(LoginCommand_GC_9E, cfg) + 0x20) : sizeof(cmd),
+                this->guild_card_number ? (offsetof(C_Login_PC_GC_9D_9E, cfg) + 0x20) : sizeof(cmd),
                 name.c_str());
             break;
           }
 
           case 0x04: {
-            struct Contents {
-              uint32_t player_tag;
-              uint32_t guild_card_number;
-              uint8_t client_config[0];
-            } __attribute__((packed));
-
-            if (data.size() < sizeof(Contents)) {
+            // Some servers send a short 04 command if they don't use all of the
+            // 0x20 bytes available. We should be prepared to handle that.
+            if (data.size() < offsetof(S_UpdateClientConfig_DC_PC_GC_04, cfg)) {
               throw std::runtime_error("set security data command is too small");
             }
 
             bool had_guild_card_number = (this->guild_card_number != 0);
 
-            const auto* cmd = reinterpret_cast<const Contents*>(data.data());
+            const auto* cmd = reinterpret_cast<const S_UpdateClientConfig_DC_PC_GC_04*>(data.data());
             this->guild_card_number = cmd->guild_card_number;
             log(INFO, "[ProxyServer/%08" PRIX32 "] Guild card number set to %" PRIX32,
                 this->license->serial_number, this->guild_card_number);
@@ -720,7 +707,8 @@ void ProxyServer::LinkedSession::on_server_input() {
                   ? "t Lobby Server. Copyright SEGA E"
                   : "t Port Map. Copyright SEGA Enter",
                 0x20);
-            memcpy(this->remote_client_config_data, cmd->client_config, min<size_t>(data.size() - sizeof(Contents), 0x20));
+            memcpy(this->remote_client_config_data, &cmd->cfg,
+                min<size_t>(data.size() - sizeof(S_UpdateClientConfig_DC_PC_GC_04), 0x20));
 
             // If the guild card number was not set, pretend (to the server)
             // that this is the first 04 command the client has received. The
@@ -739,11 +727,11 @@ void ProxyServer::LinkedSession::on_server_input() {
           }
 
           case 0x19: {
-            if (data.size() < sizeof(ReconnectCommand_19)) {
+            if (data.size() < sizeof(S_Reconnect_19)) {
               throw std::runtime_error("reconnect command is too small");
             }
 
-            auto* args = reinterpret_cast<ReconnectCommand_19*>(data.data());
+            auto* args = reinterpret_cast<S_Reconnect_19*>(data.data());
             memset(&this->next_destination, 0, sizeof(this->next_destination));
             struct sockaddr_in* sin = reinterpret_cast<struct sockaddr_in*>(
                 &this->next_destination);
@@ -802,19 +790,12 @@ void ProxyServer::LinkedSession::on_server_input() {
 
             bool is_download_quest = (command == 0xA6);
 
-            struct OpenFileCommand {
-              char name[0x20];
-              uint16_t unused;
-              uint16_t flags;
-              char filename[0x10];
-              uint32_t file_size;
-            };
-            if (data.size() < sizeof(OpenFileCommand)) {
+            if (data.size() < sizeof(S_OpenFile_PC_GC_44_A6)) {
               log(WARNING, "[ProxyServer/%08" PRIX32 "] Open file command is too small; skipping file",
                   this->license->serial_number);
               break;
             }
-            const auto* cmd = reinterpret_cast<const OpenFileCommand*>(data.data());
+            const auto* cmd = reinterpret_cast<const S_OpenFile_PC_GC_44_A6*>(data.data());
 
             string output_filename = string_printf("%s.%s.%" PRIu64,
                 cmd->filename, is_download_quest ? "download" : "online", now());
@@ -840,17 +821,12 @@ void ProxyServer::LinkedSession::on_server_input() {
               break;
             }
 
-            struct WriteFileCommand {
-              char filename[0x10];
-              uint8_t data[0x400];
-              uint32_t data_size;
-            };
-            if (data.size() < sizeof(WriteFileCommand)) {
+            if (data.size() < sizeof(S_WriteFile_13_A7)) {
               log(WARNING, "[ProxyServer/%08" PRIX32 "] Write file command is too small",
                   this->license->serial_number);
               break;
             }
-            const auto* cmd = reinterpret_cast<const WriteFileCommand*>(data.data());
+            const auto* cmd = reinterpret_cast<const S_WriteFile_13_A7*>(data.data());
 
             SavingFile* sf = nullptr;
             try {
@@ -933,27 +909,12 @@ void ProxyServer::LinkedSession::on_server_input() {
 
           case 0x65: // other player joined game
           case 0x68: { // other player joined lobby
-            struct Command {
-              uint8_t client_id;
-              uint8_t leader_id;
-              uint8_t disable_udp;
-              uint8_t lobby_number;
-              uint16_t block_number;
-              uint16_t event;
-              uint32_t unused;
-              struct Entry {
-                PlayerLobbyDataGC lobby_data;
-                PlayerLobbyJoinDataPCGC data;
-              } __attribute__((packed));
-              Entry entries[0];
-            } __attribute__((packed));
-
-            size_t expected_size = sizeof(Command) + sizeof(Command::Entry) * flag;
+            size_t expected_size = offsetof(S_JoinLobby_GC_65_67_68, entries) + sizeof(S_JoinLobby_GC_65_67_68::Entry) * flag;
             if (data.size() < expected_size) {
               log(WARNING, "[ProxyServer/%08" PRIX32 "] Lobby join command is incorrect size (expected 0x%zX bytes, received 0x%zX bytes)",
                   this->license->serial_number, expected_size, data.size());
             } else {
-              const auto* cmd = reinterpret_cast<const Command*>(data.data());
+              const auto* cmd = reinterpret_cast<const S_JoinLobby_GC_65_67_68*>(data.data());
 
               this->lobby_client_id = cmd->client_id;
 
@@ -964,7 +925,7 @@ void ProxyServer::LinkedSession::on_server_input() {
                       this->license->serial_number, index, x);
                 } else {
                   this->lobby_players[index].guild_card_number = cmd->entries[x].lobby_data.guild_card;
-                  this->lobby_players[index].name = cmd->entries[x].data.disp.name;
+                  this->lobby_players[index].name = cmd->entries[x].disp.name;
                   log(INFO, "[ProxyServer/%08" PRIX32 "] Added lobby player: (%zu) %" PRIu32 " %s",
                       this->license->serial_number, index,
                       this->lobby_players[index].guild_card_number,
@@ -982,20 +943,20 @@ void ProxyServer::LinkedSession::on_server_input() {
             log(WARNING, "[ProxyServer/%08" PRIX32 "] Cleared lobby players",
                 this->license->serial_number);
 
-            const size_t expected_size = offsetof(JoinGameCommand_GC_64, player);
-            const size_t ep3_expected_size = sizeof(JoinGameCommand_GC_64);
+            const size_t expected_size = offsetof(S_JoinGame_GC_64, players_ep3);
+            const size_t ep3_expected_size = sizeof(S_JoinGame_GC_64);
             if (data.size() < expected_size) {
               log(WARNING, "[ProxyServer/%08" PRIX32 "] Game join command is incorrect size (expected 0x%zX bytes, received 0x%zX bytes)",
                   this->license->serial_number, expected_size, data.size());
             } else {
-              const auto* cmd = reinterpret_cast<const JoinGameCommand_GC_64*>(data.data());
+              const auto* cmd = reinterpret_cast<const S_JoinGame_GC_64*>(data.data());
 
               this->lobby_client_id = cmd->client_id;
 
               for (size_t x = 0; x < flag; x++) {
                 this->lobby_players[x].guild_card_number = cmd->lobby_data[x].guild_card;
                 if (data.size() >= ep3_expected_size) {
-                  this->lobby_players[x].name = cmd->player[x].disp.name;
+                  this->lobby_players[x].name = cmd->players_ep3[x].disp.name;
                 } else {
                   this->lobby_players[x].name.clear();
                 }
@@ -1010,16 +971,11 @@ void ProxyServer::LinkedSession::on_server_input() {
 
           case 0x66:
           case 0x69: {
-            struct Command {
-              uint8_t client_id;
-              uint8_t leader_id;
-              uint16_t unused;
-            } __attribute__((packed));
-            if (data.size() < sizeof(Command)) {
+            if (data.size() < sizeof(S_LeaveLobby_66_69)) {
               log(WARNING, "[ProxyServer/%08" PRIX32 "] Lobby leave command is incorrect size",
                   this->license->serial_number);
             } else {
-              const auto* cmd = reinterpret_cast<const Command*>(data.data());
+              const auto* cmd = reinterpret_cast<const S_LeaveLobby_66_69*>(data.data());
               size_t index = cmd->client_id;
               if (index >= this->lobby_players.size()) {
                 log(WARNING, "[ProxyServer/%08" PRIX32 "] Lobby leave command references missing position",

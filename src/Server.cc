@@ -211,7 +211,7 @@ void Server::receive_and_process_commands(shared_ptr<Client> c) {
   for_each_received_command(c->bev, c->version, c->crypt_in.get(),
     [this, c](uint16_t command, uint16_t flag, const std::string& data) {
       try {
-        process_command(this->state, c, command, flag, data.size(), data.data());
+        process_command(this->state, c, command, flag, data);
       } catch (const exception& e) {
         log(INFO, "[Server] Error in client stream: %s", e.what());
         c->should_disconnect = true;

@@ -13,6 +13,7 @@
 #include "Menu.hh"
 #include "Quest.hh"
 #include "Text.hh"
+#include "CommandFormats.hh"
 
 
 
@@ -33,53 +34,40 @@ void send_command(std::shared_ptr<Lobby> l, uint16_t command, uint32_t flag = 0,
 void send_command(std::shared_ptr<ServerState> s, uint16_t command,
     uint32_t flag = 0, const void* data = nullptr, size_t size = 0);
 
-template <typename TARGET, typename STRUCT>
-void send_command(std::shared_ptr<TARGET> c, uint16_t command, uint32_t flag,
-    const STRUCT& data) {
+template <typename TargetT, typename StructT>
+static void send_command(std::shared_ptr<TargetT> c, uint16_t command, uint32_t flag,
+    const StructT& data) {
   send_command(c, command, flag, &data, sizeof(data));
 }
 
-template <typename TARGET>
-void send_command(std::shared_ptr<TARGET> c, uint16_t command, uint32_t flag,
+template <typename TargetT>
+static void send_command(std::shared_ptr<TargetT> c, uint16_t command, uint32_t flag,
     const std::string& data) {
   send_command(c, command, flag, data.data(), data.size());
 }
 
-template <typename TARGET, typename STRUCT>
-void send_command(std::shared_ptr<TARGET> c, uint16_t command, uint32_t flag,
-    const std::vector<STRUCT>& data) {
-  send_command(c, command, flag, data.data(), data.size() * sizeof(STRUCT));
+template <typename TargetT, typename StructT>
+void send_command(std::shared_ptr<TargetT> c, uint16_t command, uint32_t flag,
+    const std::vector<StructT>& data) {
+  send_command(c, command, flag, data.data(), data.size() * sizeof(StructT));
 }
 
-template <typename TARGET, typename STRUCT, typename ENTRY>
-void send_command(std::shared_ptr<TARGET> c, uint16_t command, uint32_t flag,
-    const STRUCT& data, const std::vector<ENTRY>& array_data) {
-  std::string all_data(reinterpret_cast<const char*>(&data), sizeof(STRUCT));
+template <typename TargetT, typename StructT, typename EntryT>
+void send_command(std::shared_ptr<TargetT> c, uint16_t command, uint32_t flag,
+    const StructT& data, const std::vector<EntryT>& array_data) {
+  std::string all_data(reinterpret_cast<const char*>(&data), sizeof(StructT));
   all_data.append(reinterpret_cast<const char*>(array_data.data()),
-      array_data.size() * sizeof(ENTRY));
+      array_data.size() * sizeof(EntryT));
   send_command(c, command, flag, all_data.data(), all_data.size());
 }
 
 
 
-struct ServerInitCommand_GC_02_17 {
-  char copyright[0x40];
-  uint32_t server_key;
-  uint32_t client_key;
-  char after_message[200];
-} __attribute__((packed));
-
-std::string prepare_server_init_contents_dc_pc_gc(
+S_ServerInit_DC_GC_02_17 prepare_server_init_contents_dc_pc_gc(
     bool initial_connection, uint32_t server_key, uint32_t client_key);
 void send_server_init(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
     bool initial_connection);
 void send_update_client_config(std::shared_ptr<Client> c);
-
-struct ReconnectCommand_19 {
-  be_uint32_t address;
-  uint16_t port;
-  uint16_t unused;
-} __attribute__((packed));
 
 void send_reconnect(std::shared_ptr<Client> c, uint32_t address, uint16_t port);
 void send_pc_gc_split_reconnect(std::shared_ptr<Client> c, uint32_t address,
@@ -111,9 +99,9 @@ void send_chat_message(std::shared_ptr<Client> c, uint32_t from_serial_number,
 void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
     const char16_t* from_name, const char16_t* text);
 
-template <typename TARGET>
+template <typename TargetT>
 __attribute__((format(printf, 2, 3))) void send_text_message_printf(
-    std::shared_ptr<TARGET> t, const char* format, ...) {
+    std::shared_ptr<TargetT> t, const char* format, ...) {
   va_list va;
   va_start(va, format);
   std::string buf = string_vprintf(format, va);
@@ -124,8 +112,11 @@ __attribute__((format(printf, 2, 3))) void send_text_message_printf(
 
 void send_info_board(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
 
-void send_card_search_result(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
-    std::shared_ptr<Client> result, std::shared_ptr<Lobby> result_lobby);
+void send_card_search_result(
+    std::shared_ptr<ServerState> s,
+    std::shared_ptr<Client> c,
+    std::shared_ptr<Client> result,
+    std::shared_ptr<Lobby> result_lobby);
 
 void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source);
 void send_menu(std::shared_ptr<Client> c, const char16_t* menu_name,
@@ -136,25 +127,6 @@ void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
 void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
     const std::vector<MenuItem>& items, bool is_download_menu);
 void send_lobby_list(std::shared_ptr<Client> c, std::shared_ptr<ServerState> s);
-
-struct JoinGameCommand_GC_64 {
-  uint32_t variations[0x20];
-  PlayerLobbyDataGC lobby_data[4];
-  uint8_t client_id;
-  uint8_t leader_id;
-  uint8_t disable_udp; // guess; putting 0 here causes no movement messages to be sent
-  uint8_t difficulty;
-  uint8_t battle_mode;
-  uint8_t event;
-  uint8_t section_id;
-  uint8_t challenge_mode;
-  uint32_t rare_seed;
-  uint32_t episode; // for PSOPC, this must be 0x00000100
-  struct {
-    PlayerInventory inventory;
-    PlayerDispDataPCGC disp;
-  } __attribute__((packed)) player[4]; // only used on ep3
-} __attribute__((packed));
 
 void send_join_lobby(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
 void send_player_join_notification(std::shared_ptr<Client> c,

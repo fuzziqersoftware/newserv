@@ -13,7 +13,7 @@ using namespace std;
 
 
 
-int char16cmp(const char16_t* s1, const char16_t* s2, size_t count) {
+int char16ncmp(const char16_t* s1, const char16_t* s2, size_t count) {
   size_t x;
   for (x = 0; x < count && s1[x] != 0 && s2[x] != 0; x++) {
     if (s1[x] < s2[x]) {
@@ -30,7 +30,7 @@ int char16cmp(const char16_t* s1, const char16_t* s2, size_t count) {
   return 0;
 }
 
-void char16cpy(char16_t* dest, const char16_t* src, size_t count) {
+void char16ncpy(char16_t* dest, const char16_t* src, size_t count) {
   size_t x;
   for (x = 0; x < count && src[x] != 0; x++) {
     dest[x] = src[x];
@@ -85,6 +85,9 @@ static const vector<char16_t>& unicode_to_sjis_table() {
   return unicode_to_sjis_table_data;
 }
 
+// TODO: It looks like these functions are probably wrong. Specifically, we
+// don't write the high byte when encoding non-ASCII chars, do we?
+
 void encode_sjis(char* dest, const char16_t* source, size_t max) {
   const auto& table = unicode_to_sjis_table();
   while (*source && (--max)) {
@@ -108,25 +111,30 @@ void decode_sjis(char16_t* dest, const char* source, size_t max) {
   *dest = 0;
 }
 
-std::string encode_sjis(const char16_t* source) {
+std::string encode_sjis(const char16_t* src, size_t src_count) {
   const auto& table = unicode_to_sjis_table();
   string ret;
-  while (*source) {
-    ret.push_back(table[*(source++)]);
+  for (; *src && (src_count > 0); src_count--) {
+    ret.push_back(table[*(src++)]);
   };
   return ret;
 }
 
-std::u16string decode_sjis(const char* source) {
+std::u16string decode_sjis(const char* src, size_t src_count) {
   const auto& table = sjis_to_unicode_table();
   u16string ret;
-  while (*source) {
-    char16_t src_char = *(source++);
+  while (*src && (src_count > 0)) {
+    char16_t src_char = *(src++);
+    src_count--;
     if (src_char & 0x80) {
-      src_char = (src_char << 8) | *(source++);
+      if (src_count == 0) {
+        return ret;
+      }
+      src_char = (src_char << 8) | *(src++);
       if ((src_char & 0xFF) == 0) {
         return ret;
       }
+      src_count--;
     }
     ret.push_back(table[src_char]);
   };
@@ -145,10 +153,13 @@ std::string encode_sjis(const std::u16string& source) {
 std::u16string decode_sjis(const std::string& source) {
   const auto& table = sjis_to_unicode_table();
   u16string ret;
-  for (size_t x = 0; x < source.size(); x++) {
-    char16_t src_char = source[x];
+  for (size_t x = 0; x < source.size();) {
+    char16_t src_char = source[x++];
     if (src_char & 0x80) {
-      src_char = (src_char << 8) | source[++x];
+      if (x == source.size()) {
+        return ret;
+      }
+      src_char = (src_char << 8) | source[x++];
       if ((src_char & 0xFF) == 0) {
         return ret;
       }
@@ -198,7 +209,7 @@ void remove_language_marker_inplace(char* a) {
 
 void remove_language_marker_inplace(char16_t* a) {
   if ((a[0] == '\t') && (a[1] != 'C')) {
-    char16cpy(a, &a[2], char16len(a) - 2);
+    char16ncpy(a, &a[2], char16len(a) - 2);
   }
 }
 

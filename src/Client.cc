@@ -38,6 +38,7 @@ Client::Client(
     lobby_client_id(0),
     lobby_arrow_color(0),
     next_exp_value(0),
+    override_section_id(-1),
     infinite_hp(false),
     infinite_tp(false),
     can_chat(true) {

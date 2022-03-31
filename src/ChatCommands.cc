@@ -524,6 +524,19 @@ static void command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands
 
+static void command_secid(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const char16_t* args) {
+  check_is_game(l, false);
+
+  if (!args[0]) {
+    c->override_section_id = -1;
+    send_text_message(l, u"$C6Override section ID\nremoved");
+  } else {
+    c->override_section_id = section_id_for_name(args);
+    send_text_message(l, u"$C6Override section ID\nset");
+  }
+}
+
 static void command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
@@ -534,7 +547,7 @@ static void command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     send_text_message(l, u"$C6Game unlocked");
 
   } else {
-    char16cpy(l->password, args, 0x10);
+    strncpy_t(l->password, args, countof(l->password));
     auto encoded = encode_sjis(l->password);
     send_text_message_printf(l, "$C6Game password:\n%s",
         encoded.c_str());
@@ -578,7 +591,7 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   check_version(c, GameVersion::BB);
 
   string encoded_args = encode_sjis(args);
-  vector<string> tokens = split(encoded_args, L' ');
+  vector<string> tokens = split(encoded_args, ' ');
 
   if (tokens.size() < 3) {
     send_text_message(c, u"$C6Not enough arguments");
@@ -909,6 +922,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"maxlevel"  , {command_max_level         , u"Usage:\nmax_level <level>"}},
     {u"minlevel"  , {command_min_level         , u"Usage:\nmin_level <level>"}},
     {u"password"  , {command_password          , u"Usage:\nlock [password]\nomit password to\nunlock game"}},
+    {u"secid"     , {command_secid             , u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
     {u"silence"   , {command_silence           , u"Usage:\nsilence <name-or-number>"}},
     {u"song"      , {command_song              , u"Usage:\nsong <song-number>"}},
     {u"type"      , {command_lobby_type        , u"Usage:\ntype <name>"}},

@@ -11,15 +11,13 @@
 #include <phosg/Time.hh>
 
 #include "PSOProtocol.hh"
+#include "CommandFormats.hh"
 #include "FileContentsCache.hh"
 #include "Text.hh"
 
 using namespace std;
 
 
-
-#pragma pack(push)
-#pragma pack(1)
 
 static FileContentsCache file_cache;
 
@@ -153,28 +151,31 @@ static const char* dc_lobby_server_copyright = "DreamCast Lobby Server. Copyrigh
 static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
-string prepare_server_init_contents_dc_pc_gc(
+S_ServerInit_DC_GC_02_17 prepare_server_init_contents_dc_pc_gc(
     bool initial_connection,
     uint32_t server_key,
     uint32_t client_key) {
-  string ret(sizeof(ServerInitCommand_GC_02_17), '\0');
-  auto* cmd = reinterpret_cast<ServerInitCommand_GC_02_17*>(ret.data());
+  S_ServerInit_DC_GC_02_17 cmd;
+  memset(&cmd, 0, sizeof(cmd));
 
-  strcpy(cmd->copyright, initial_connection ? dc_port_map_copyright : dc_lobby_server_copyright);
-  cmd->server_key = server_key;
-  cmd->client_key = client_key;
-  strcpy(cmd->after_message, anti_copyright);
-  return ret;
+  strcpy(cmd.copyright, initial_connection ? dc_port_map_copyright : dc_lobby_server_copyright);
+  cmd.server_key = server_key;
+  cmd.client_key = client_key;
+  strcpy(cmd.after_message, anti_copyright);
+  return cmd;
 }
 
-static void send_server_init_dc_pc_gc(shared_ptr<Client> c,
-    bool initial_connection, uint8_t command) {
+void send_server_init_dc_pc_gc(shared_ptr<Client> c,
+    bool initial_connection) {
+  // PC uses 17 for all server inits; GC uses it only for the first one
+  uint8_t command = (initial_connection || (c->version == GameVersion::PC))
+      ? 0x17 : 0x02;
   uint32_t server_key = random_object<uint32_t>();
   uint32_t client_key = random_object<uint32_t>();
 
-  string data = prepare_server_init_contents_dc_pc_gc(
+  auto cmd = prepare_server_init_contents_dc_pc_gc(
       initial_connection, server_key, client_key);
-  send_command(c, command, 0x00, data);
+  send_command(c, command, 0x00, cmd);
 
   switch (c->version) {
     case GameVersion::DC:
@@ -191,22 +192,8 @@ static void send_server_init_dc_pc_gc(shared_ptr<Client> c,
   }
 }
 
-static void send_server_init_pc(shared_ptr<Client> c, bool initial_connection) {
-  send_server_init_dc_pc_gc(c, initial_connection, 0x17);
-}
-
-static void send_server_init_gc(shared_ptr<Client> c, bool initial_connection) {
-  send_server_init_dc_pc_gc(c, initial_connection, initial_connection ? 0x17 : 0x02);
-}
-
-static void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  struct {
-    char copyright[0x60];
-    uint8_t server_key[0x30];
-    uint8_t client_key[0x30];
-    char after_message[200];
-  } __attribute__((packed)) cmd;
-
+void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  S_ServerInit_BB_03 cmd;
   memset(&cmd, 0, sizeof(cmd));
   strcpy(cmd.copyright, bb_game_server_copyright);
   random_data(cmd.server_key, 0x30);
@@ -220,18 +207,11 @@ static void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c)
       sizeof(cmd.client_key)));
 }
 
-static void send_server_init_patch(shared_ptr<Client> c) {
-  struct {
-    char copyright[0x40];
-    uint32_t server_key;
-    uint32_t client_key;
-    // BB rejects the command if it's not exactly this size, so we can't add the
-    // anti-copyright message... lawyers plz be kind kthx
-  } __attribute__((packed)) cmd;
-
+void send_server_init_patch(shared_ptr<Client> c) {
   uint32_t server_key = random_object<uint32_t>();
   uint32_t client_key = random_object<uint32_t>();
 
+  S_ServerInit_Patch_02 cmd;
   memset(&cmd, 0, sizeof(cmd));
   strcpy(cmd.copyright, patch_server_copyright);
   cmd.server_key = server_key;
@@ -244,37 +224,39 @@ static void send_server_init_patch(shared_ptr<Client> c) {
 
 void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
     bool initial_connection) {
-  if (c->version == GameVersion::PC) {
-    send_server_init_pc(c, initial_connection);
-  } else if (c->version == GameVersion::PATCH) {
-    send_server_init_patch(c);
-  } else if (c->version == GameVersion::GC) {
-    send_server_init_gc(c, initial_connection);
-  } else if (c->version == GameVersion::BB) {
-    send_server_init_bb(s, c);
-  } else {
-    throw logic_error("unimplemented versioned command");
+  switch (c->version) {
+    case GameVersion::DC:
+    case GameVersion::PC:
+    case GameVersion::GC:
+      send_server_init_dc_pc_gc(c, initial_connection);
+      break;
+    case GameVersion::PATCH:
+      send_server_init_patch(c);
+      break;
+    case GameVersion::BB:
+      send_server_init_bb(s, c);
+      break;
+    default:
+      throw logic_error("unimplemented versioned command");
   }
 }
 
+
+
 // for non-BB clients, updates the client's guild card and security data
 void send_update_client_config(shared_ptr<Client> c) {
-  struct {
-    uint32_t player_tag;
-    uint32_t serial_number;
-    ClientConfig config;
-  } __attribute__((packed)) cmd = {
-    0x00010000,
-    c->license->serial_number,
-    c->export_config(),
-  };
+  S_UpdateClientConfig_DC_PC_GC_04 cmd;
+  memset(&cmd, 0, sizeof(cmd));
+  cmd.player_tag = 0x00010000;
+  cmd.guild_card_number = c->license->serial_number;
+  cmd.cfg = c->export_config();
   send_command(c, 0x04, 0x00, cmd);
 }
 
 
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
-  ReconnectCommand_19 cmd = {address, port, 0};
+  S_Reconnect_19 cmd = {address, port, 0};
   send_command(c, 0x19, 0x00, cmd);
 }
 
@@ -282,17 +264,7 @@ void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
 // that connect on the same port
 void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
     uint16_t pc_port, uint16_t gc_port) {
-  struct {
-    be_uint32_t pc_address;
-    uint16_t pc_port;
-    uint8_t unused1[0x0F];
-    uint8_t gc_command;
-    uint8_t gc_flag;
-    uint16_t gc_size;
-    be_uint32_t gc_address;
-    uint16_t gc_port;
-    uint8_t unused2[0xB0 - 0x23];
-  } __attribute__((packed)) cmd;
+  S_ReconnectSplit_19 cmd;
   memset(&cmd, 0, sizeof(cmd));
   cmd.pc_address = address;
   cmd.pc_port = pc_port;
@@ -305,24 +277,14 @@ void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
 
 
 
-// sends the command that signals an error or updates the client's guild card
-// number and security data
 void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
-  struct {
-    uint32_t error; // see below
-    uint32_t player_tag;
-    uint32_t serial_number;
-    uint32_t team_id; // just randomize it; teams aren't supported
-    ClientConfig cfg;
-    uint32_t caps; // should be 0x00000102
-  } __attribute__((packed)) cmd = {
-    error,
-    0x00010000,
-    c->license->serial_number,
-    static_cast<uint32_t>(random_object<uint32_t>()),
-    c->export_config(),
-    0x00000102,
-  };
+  S_ClientInit_BB_E6 cmd;
+  cmd.error = error;
+  cmd.player_tag = 0x00010000;
+  cmd.guild_card_number = c->license->serial_number;
+  cmd.team_id = static_cast<uint32_t>(random_object<uint32_t>());
+  cmd.cfg = c->export_config();
+  cmd.caps = 0x00000102;
   send_command(c, 0x00E6, 0x00000000, cmd);
 }
 
@@ -330,50 +292,32 @@ void send_team_and_key_config_bb(shared_ptr<Client> c) {
   send_command(c, 0x00E2, 0x00000000, c->player.key_config);
 }
 
-// sends a player preview. these are used by the caracter select and character
-// creation mechanism
 void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
     const PlayerDispDataBBPreview* preview) {
 
   if (!preview) {
     // no player exists
-    struct {
-      uint32_t player_index;
-      uint32_t error;
-    } __attribute__((packed)) cmd = {player_index, 0x00000002};
+    S_PlayerPreview_NoPlayer_BB_E4 cmd = {player_index, 0x00000002};
     send_command(c, 0x00E4, 0x00000000, cmd);
 
   } else {
-    struct {
-      uint32_t player_index;
-      PlayerDispDataBBPreview preview;
-    } __attribute__((packed)) cmd = {player_index, *preview};
+    S_PlayerPreview_BB_E3 cmd = {player_index, *preview};
     send_command(c, 0x00E3, 0x00000000, cmd);
   }
 }
 
-// sent in response to the client's 01E8 command
 void send_accept_client_checksum_bb(shared_ptr<Client> c) {
-  struct {
-    uint32_t verify;
-    uint32_t unused;
-  } __attribute__((packed)) cmd = {1, 0};
+  S_AcceptClientChecksum_BB_02E8 cmd = {1, 0};
   send_command(c, 0x02E8, 0x00000000, cmd);
 }
 
-// sends the "I'm about to send your guild card file" command
 void send_guild_card_header_bb(shared_ptr<Client> c) {
   uint32_t checksum = compute_guild_card_checksum(&c->player.guild_cards,
       sizeof(GuildCardFileBB));
-  struct {
-    uint32_t unknown; // should be 1
-    uint32_t filesize; // 0x0000490
-    uint32_t checksum;
-  } __attribute__((packed)) cmd = {1, 0x490, checksum};
+  S_GuildCardHeader_BB_01DC cmd = {1, 0x00000490, checksum};
   send_command(c, 0x01DC, 0x00000000, cmd);
 }
 
-// sends a chunk of guild card data
 void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
   size_t chunk_offset = chunk_index * 0x6800;
   if (chunk_offset >= sizeof(GuildCardFileBB)) {
@@ -384,39 +328,26 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
     data_size = 0x6800;
   }
 
-  string contents(8, '\0');
-  *reinterpret_cast<uint32_t*>(contents.data()) = 0;
-  *reinterpret_cast<uint32_t*>(contents.data() + 4) = chunk_index;
-  contents.append(reinterpret_cast<char*>(&c->player.guild_cards + chunk_offset),
-      data_size);
+  StringWriter w;
+  w.put_u32l(0);
+  w.put_u32l(chunk_index);
+  w.write(&c->player.guild_cards + chunk_offset, data_size);
 
-  send_command(c, 0x02DC, 0x00000000, contents);
+  send_command(c, 0x02DC, 0x00000000, w.str());
 }
 
-// sends the game data (battleparamentry files, etc.)
 void send_stream_file_bb(shared_ptr<Client> c) {
-
-  struct StreamFileEntry {
-    uint32_t size;
-    uint32_t checksum;
-    uint32_t offset;
-    char filename[0x40];
-  } __attribute__((packed));
-
   auto index_data = file_cache.get("system/blueburst/streamfile.ind");
-  if (index_data->size() % sizeof(StreamFileEntry)) {
+  if (index_data->size() % sizeof(S_StreamFileIndexEntry_BB_01EB)) {
     throw invalid_argument("stream file index not a multiple of entry size");
   }
 
-  size_t entry_count = index_data->size() / sizeof(StreamFileEntry);
+  size_t entry_count = index_data->size() / sizeof(S_StreamFileIndexEntry_BB_01EB);
   send_command(c, 0x01EB, entry_count, index_data);
 
-  auto* entries = reinterpret_cast<const StreamFileEntry*>(index_data->data());
+  auto* entries = reinterpret_cast<const S_StreamFileIndexEntry_BB_01EB*>(index_data->data());
 
-  struct {
-    uint32_t chunk_index;
-    uint8_t data[0x6800];
-  } __attribute__((packed)) chunk_cmd;
+  S_StreamFileChunk_BB_02EB chunk_cmd;
   chunk_cmd.chunk_index = 0;
 
   uint32_t buffer_offset = 0;
@@ -453,16 +384,11 @@ void send_stream_file_bb(shared_ptr<Client> c) {
   }
 }
 
-// accepts the player's choice at char select
 void send_approve_player_choice_bb(shared_ptr<Client> c) {
-  struct {
-    uint32_t player_index;
-    uint32_t unused;
-  } __attribute__((packed)) cmd = {c->bb_player_index, 1};
+  S_ApprovePlayerChoice_BB_00E4 cmd = {c->bb_player_index, 1};
   send_command(c, 0x00E4, 0x00000000, cmd);
 }
 
-// sends player data to the client (usually sent right before entering lobby)
 void send_complete_player_bb(shared_ptr<Client> c) {
   send_command(c, 0x00E7, 0x00000000, c->player.export_bb_player_data());
 }
@@ -473,10 +399,10 @@ void send_complete_player_bb(shared_ptr<Client> c) {
 // patch functions
 
 void send_check_directory_patch(shared_ptr<Client> c, const char* dir) {
-  char data[0x40];
-  memset(data, 0, 0x40);
-  strcpy(data, dir);
-  send_command(c, 0x09, 0x00, data, 0x40);
+  S_CheckDirectory_Patch_09 cmd;
+  memset(&cmd, 0, sizeof(cmd));
+  strncpy_t(cmd.name, dir, countof(cmd.name));
+  send_command(c, 0x09, 0x00, cmd);
 }
 
 
@@ -484,74 +410,56 @@ void send_check_directory_patch(shared_ptr<Client> c, const char* dir) {
 ////////////////////////////////////////////////////////////////////////////////
 // message functions
 
-struct LargeMessageOptionalHeader {
-  uint32_t unused;
-  uint32_t serial_number;
-} __attribute__((packed));
-
-static void send_large_message_pc_patch_bb(shared_ptr<Client> c, uint8_t command,
-    const char16_t* text, uint32_t from_serial_number, bool include_header) {
-  u16string data;
-  if (include_header) {
-    data.resize(sizeof(LargeMessageOptionalHeader) / sizeof(char16_t));
-    *reinterpret_cast<LargeMessageOptionalHeader*>(data.data()) =
-        {0, from_serial_number};
-  }
-  data += text;
-  add_color_inplace(data.data() + (include_header ? sizeof(LargeMessageOptionalHeader) / sizeof(char16_t) : 0),
-      data.size() - (include_header ? sizeof(LargeMessageOptionalHeader) / sizeof(char16_t) : 0));
-  data.resize((data.size() + 4) & ~3);
-  send_command(c, command, 0x00, data);
-}
-
-static void send_large_message_dc_gc(shared_ptr<Client> c, uint8_t command,
-    const char16_t* text, uint32_t from_serial_number, bool include_header) {
-  string data;
-  if (include_header) {
-    data.resize(sizeof(LargeMessageOptionalHeader));
-    *reinterpret_cast<LargeMessageOptionalHeader*>(data.data()) =
-        {0, from_serial_number};
-  }
-  data += encode_sjis(text);
-  add_color_inplace(data.data() + (include_header ? sizeof(LargeMessageOptionalHeader) : 0),
-      data.size() - (include_header ? sizeof(LargeMessageOptionalHeader) : 0));
-  data.resize((data.size() + 4) & ~3);
-  send_command(c, command, 0x00, data);
-}
-
-static void send_large_message(shared_ptr<Client> c, uint8_t command,
-    const char16_t* text, uint32_t from_serial_number, bool include_header) {
-  if (c->version == GameVersion::PC || c->version == GameVersion::PATCH ||
-      c->version == GameVersion::BB) {
-    send_large_message_pc_patch_bb(c, command, text, from_serial_number, include_header);
+void send_text(shared_ptr<Client> c, StringWriter& w, uint16_t command,
+    const char16_t* text) {
+  if ((c->version == GameVersion::DC) || (c->version == GameVersion::GC)) {
+    string data = encode_sjis(text);
+    add_color(w, data.c_str(), data.size());
   } else {
-    send_large_message_dc_gc(c, command, text, from_serial_number, include_header);
+    add_color(w, text);
   }
+  while (w.str().size() & 3) {
+    w.put_u8(0);
+  }
+  send_command(c, command, 0x00, w.str());
+}
+
+void send_header_text(shared_ptr<Client> c, uint16_t command,
+    uint32_t guild_card_number, const char16_t* text) {
+  StringWriter w;
+  w.put(SC_TextHeader_01_06_11({0, guild_card_number}));
+  send_text(c, w, command, text);
+}
+
+void send_text(shared_ptr<Client> c, uint16_t command,
+    const char16_t* text) {
+  StringWriter w;
+  send_text(c, w, command, text);
 }
 
 void send_message_box(shared_ptr<Client> c, const char16_t* text) {
-  return send_large_message(c, (c->version == GameVersion::PATCH) ? 0x13 : 0x1A,
-      text, 0, false);
+  uint16_t command = (c->version == GameVersion::PATCH) ? 0x13 : 0x1A;
+  send_text(c, command, text);
 }
 
 void send_lobby_name(shared_ptr<Client> c, const char16_t* text) {
-  return send_large_message(c, 0x8A, text, 0, false);
+  send_text(c, 0x8A, text);
 }
 
 void send_quest_info(shared_ptr<Client> c, const char16_t* text) {
-  return send_large_message(c, 0xA3, text, 0, false);
+  send_text(c, 0xA3, text);
 }
 
 void send_lobby_message_box(shared_ptr<Client> c, const char16_t* text) {
-  return send_large_message(c, 0x01, text, 0, true);
+  send_header_text(c, 0x01, 0, text);
 }
 
 void send_ship_info(shared_ptr<Client> c, const char16_t* text) {
-  return send_large_message(c, 0x11, text, 0, true);
+  send_header_text(c, 0x11, 0, text);
 }
 
 void send_text_message(shared_ptr<Client> c, const char16_t* text) {
-  return send_large_message(c, 0xB0, text, 0, true);
+  send_header_text(c, 0xB0, 0, text);
 }
 
 void send_text_message(shared_ptr<Lobby> l, const char16_t* text) {
@@ -563,6 +471,8 @@ void send_text_message(shared_ptr<Lobby> l, const char16_t* text) {
 }
 
 void send_text_message(shared_ptr<ServerState> s, const char16_t* text) {
+  // TODO: We should have a collection of all clients (even those not in any
+  // lobby) and use that instead here
   for (auto& l : s->all_lobbies()) {
     send_text_message(l, text);
   }
@@ -577,26 +487,18 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_serial_number,
   data.append(remove_language_marker(from_name));
   data.append(u"\x09\x09J");
   data.append(text);
-  send_large_message(c, 0x06, data.c_str(), from_serial_number, true);
+  send_header_text(c, 0x06, from_serial_number, data.c_str());
 }
 
 void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_serial_number,
     const char16_t* from_name, const char16_t* text) {
-  struct {
-    uint32_t player_tag;
-    uint32_t from_serial_number;
-    char from_name[0x10];
-    uint32_t to_serial_number;
-    char text[0x200];
-  } __attribute__((packed)) cmd;
-
+  SC_SimpleMail_GC_81 cmd;
   memset(&cmd, 0, sizeof(cmd));
   cmd.player_tag = 0x00010000;
   cmd.from_serial_number = from_serial_number;
   encode_sjis(cmd.from_name, from_name, sizeof(cmd.from_name) / sizeof(cmd.from_name[0]));
   cmd.to_serial_number = c->license->serial_number;
   encode_sjis(cmd.text, text, sizeof(cmd.text) / sizeof(cmd.text[0]));
-
   send_command(c, 0x81, 0x00, cmd);
 }
 
@@ -614,58 +516,29 @@ void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
 ////////////////////////////////////////////////////////////////////////////////
 // info board
 
-static void send_info_board_pc_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  struct Entry {
-    char16_t name[0x10];
-    char16_t message[0xAC];
-  } __attribute__((packed));
-  vector<Entry> entries;
-
+template <typename CharT>
+void send_info_board_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+  vector<S_InfoBoardEntry_D8<CharT>> entries;
   for (const auto& c : l->clients) {
     if (!c.get()) {
       continue;
     }
-
     entries.emplace_back();
     auto& e = entries.back();
-    memset(&e, 0, sizeof(Entry));
-    char16cpy(e.name, c->player.disp.name, 0x10);
-    char16cpy(e.message, c->player.info_board, 0xAC);
-    add_color_inplace(e.message, 0xAC);
+    memset(&e, 0, sizeof(e));
+    strncpy_t(e.name, c->player.disp.name, countof(e.name));
+    strncpy_t(e.message, c->player.info_board, countof(e.message));
+    add_color_inplace(e.message, countof(e.message));
   }
-
-  send_command(c, 0xD8, entries.size(), entries);
-}
-
-static void send_info_board_dc_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  struct Entry {
-    char name[0x10];
-    char message[0xAC];
-  } __attribute__((packed));
-  vector<Entry> entries;
-
-  for (const auto& c : l->clients) {
-    if (!c.get()) {
-      continue;
-    }
-
-    entries.emplace_back();
-    auto& e = entries.back();
-    memset(&e, 0, sizeof(Entry));
-    encode_sjis(e.name, c->player.disp.name, 0x10);
-    encode_sjis(e.message, c->player.info_board, 0xAC);
-    add_color_inplace(e.message, 0xAC);
-  }
-
   send_command(c, 0xD8, entries.size(), entries);
 }
 
 void send_info_board(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (c->version == GameVersion::PC || c->version == GameVersion::PATCH ||
       c->version == GameVersion::BB) {
-    send_info_board_pc_bb(c, l);
+    send_info_board_t<char16_t>(c, l);
   } else {
-    send_info_board_dc_gc(c, l);
+    send_info_board_t<char>(c, l);
   }
 }
 
@@ -674,156 +547,70 @@ void send_info_board(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 ////////////////////////////////////////////////////////////////////////////////
 // CommandCardSearchResult: sends a guild card search result to a player.
 
-static void send_card_search_result_dc_pc_gc(shared_ptr<ServerState> s,
-    shared_ptr<Client> c, shared_ptr<Client> result,
+template <typename CommandHeaderT, typename CharT>
+void send_card_search_result_t(
+    shared_ptr<ServerState> s,
+    shared_ptr<Client> c,
+    shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
-  struct {
-    uint32_t player_tag;
-    uint32_t searcher_serial_number;
-    uint32_t result_serial_number;
-    struct {
-      union {
-        struct {
-          uint8_t dcgc_command;
-          uint8_t dcgc_flag;
-          uint16_t dcgc_size;
-        } __attribute__((packed));
-        struct {
-          uint16_t pc_size;
-          uint8_t pc_command;
-          uint8_t pc_flag;
-        } __attribute__((packed));
-      } __attribute__((packed));
-      uint32_t address;
-      uint16_t port;
-      uint16_t unused;
-    } __attribute__((packed)) destination_command;
-    char location_string[0x44];
-    uint32_t menu_id;
-    uint32_t lobby_id;
-    char unused[0x3C];
-    char16_t name[0x20];
-  } __attribute__((packed)) cmd;
-
+  S_GuildCardSearchResult<CommandHeaderT, CharT> cmd;
   memset(&cmd, 0, sizeof(cmd));
   cmd.player_tag = 0x00010000;
   cmd.searcher_serial_number = c->license->serial_number;
   cmd.result_serial_number = result->license->serial_number;
-  if (c->version == GameVersion::PC) {
-    cmd.destination_command.pc_size = 0x000C;
-    cmd.destination_command.pc_command = 0x19;
-    cmd.destination_command.pc_flag = 0x00;
-  } else {
-    cmd.destination_command.dcgc_command = 0x19;
-    cmd.destination_command.dcgc_flag = 0x00;
-    cmd.destination_command.dcgc_size = 0x000C;
-  }
+  cmd.reconnect_command_header.size = sizeof(cmd.reconnect_command_header) + sizeof(cmd.reconnect_command);
+  cmd.reconnect_command_header.command = 0x19;
+  cmd.reconnect_command_header.flag = 0x00;
   // TODO: make this actually make sense... currently we just take the sockname
-  // for the target client
+  // for the target client. This also doesn't work if the client is on a virtual
+  // connection (the address and port are zero).
   const sockaddr_in* local_addr = reinterpret_cast<const sockaddr_in*>(&result->local_addr);
-  cmd.destination_command.address = local_addr->sin_addr.s_addr;
-  cmd.destination_command.port = ntohs(local_addr->sin_port);
-  cmd.destination_command.unused = 0;
+  cmd.reconnect_command.address = local_addr->sin_addr.s_addr;
+  cmd.reconnect_command.port = ntohs(local_addr->sin_port);
+  cmd.reconnect_command.unused = 0;
 
   auto encoded_server_name = encode_sjis(s->name);
   if (result_lobby->is_game()) {
     string encoded_lobby_name = encode_sjis(result_lobby->name);
     snprintf(cmd.location_string, sizeof(cmd.location_string),
-        "%s, Block 00, ,%s", encoded_lobby_name.c_str(), encoded_server_name.c_str());
+        "%s,Block 00,,%s", encoded_lobby_name.c_str(), encoded_server_name.c_str());
   } else {
-    snprintf(cmd.location_string, sizeof(cmd.location_string), "Block 00, ,%s",
+    snprintf(cmd.location_string, sizeof(cmd.location_string), "Block 00,,%s",
         encoded_server_name.c_str());
   }
   cmd.menu_id = LOBBY_MENU_ID;
   cmd.lobby_id = result->lobby_id;
   memset(cmd.unused, 0, sizeof(cmd.unused));
-  char16cpy(cmd.name, result->player.disp.name, 0x20);
+  strncpy_t(cmd.name, result->player.disp.name, countof(cmd.name));
 
-  send_command(c, 0x40, 0x00, cmd);
+  send_command(c, 0x41, 0x00, cmd);
 }
 
-static void send_card_search_result_bb(shared_ptr<ServerState> s,
-    shared_ptr<Client> c, shared_ptr<Client> result,
+void send_card_search_result(
+    shared_ptr<ServerState> s,
+    shared_ptr<Client> c,
+    shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
-  // this is identical to the dc/pc/gc function above, except the reconnect
-  // command format is different. why did you do this, sega? are you so lazy
-  // that really the best thing you could do is call handle_command() on a
-  // substring of another command? lrn2code plz
-  struct {
-    uint32_t player_tag;
-    uint32_t searcher_serial_number;
-    uint32_t result_serial_number;
-    struct {
-      uint16_t size;
-      uint16_t command;
-      uint32_t flag;
-      uint32_t address;
-      uint16_t port;
-      uint16_t unused;
-    } __attribute__((packed)) destination_command;
-    char location_string[0x44];
-    uint32_t menu_id;
-    uint32_t lobby_id;
-    char unused[0x3C];
-    char16_t name[0x20];
-  } __attribute__((packed)) cmd;
-
-  memset(&cmd, 0, sizeof(cmd));
-  cmd.player_tag = 0x00010000;
-  cmd.searcher_serial_number = c->license->serial_number;
-  cmd.result_serial_number = result->license->serial_number;
-  cmd.destination_command.size = 0x0010;
-  cmd.destination_command.command = 0x19;
-  cmd.destination_command.flag = 0x00000000;
-  const sockaddr_in* local_addr = reinterpret_cast<const sockaddr_in*>(&result->local_addr);
-  cmd.destination_command.address = local_addr->sin_addr.s_addr;
-  cmd.destination_command.port = ntohs(local_addr->sin_port);
-  cmd.destination_command.unused = 0;
-
-  auto encoded_server_name = encode_sjis(s->name);
-  if (result_lobby->is_game()) {
-    string encoded_lobby_name = encode_sjis(result_lobby->name);
-    snprintf(cmd.location_string, sizeof(cmd.location_string),
-        "%s, Block 00, ,%s", encoded_lobby_name.c_str(), encoded_server_name.c_str());
+  if ((c->version == GameVersion::DC) || (c->version == GameVersion::GC)) {
+    send_card_search_result_t<PSOCommandHeaderDCGC, char>(
+        s, c, result, result_lobby);
+  } else if (c->version == GameVersion::PC) {
+    send_card_search_result_t<PSOCommandHeaderPC, char16_t>(
+        s, c, result, result_lobby);
+  } else if (c->version == GameVersion::BB) {
+    send_card_search_result_t<PSOCommandHeaderBB, char16_t>(
+        s, c, result, result_lobby);
   } else {
-    snprintf(cmd.location_string, sizeof(cmd.location_string), "Block 00, ,%s",
-        encoded_server_name.c_str());
-  }
-  cmd.menu_id = LOBBY_MENU_ID;
-  cmd.lobby_id = result->lobby_id;
-  memset(cmd.unused, 0, sizeof(cmd.unused));
-  char16cpy(cmd.name, result->player.disp.name, 0x20);
-
-  send_command(c, 0x40, 0x00, cmd);
-}
-
-void send_card_search_result(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    shared_ptr<Client> result, shared_ptr<Lobby> result_lobby) {
-  if (c->version == GameVersion::BB) {
-    send_card_search_result_bb(s, c, result, result_lobby);
-  } else {
-    send_card_search_result_dc_pc_gc(s, c, result, result_lobby);
+    throw logic_error("unimplemented versioned command");
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // CommandSendGuildCard: generates a guild card for the source player and sends it to the destination player
 
-static void send_guild_card_gc(shared_ptr<Client> c, shared_ptr<Client> source) {
-  struct {
-    uint8_t subcommand;
-    uint8_t subsize;
-    uint16_t unused;
-    uint32_t player_tag;
-    uint32_t serial_number;
-    char name[0x18];
-    char desc[0x6C];
-    uint8_t reserved1;
-    uint8_t reserved2;
-    uint8_t section_id;
-    uint8_t char_class;
-  } __attribute__((packed)) cmd;
-
+void send_guild_card_gc(shared_ptr<Client> c, shared_ptr<Client> source) {
+  S_SendGuildCard_GC cmd;
+  memset(&cmd, 0, sizeof(cmd));
   cmd.subcommand = 0x06;
   cmd.subsize = 0x25;
   cmd.unused = 0x0000;
@@ -832,30 +619,18 @@ static void send_guild_card_gc(shared_ptr<Client> c, shared_ptr<Client> source) 
   cmd.reserved2 = 1;
 
   cmd.serial_number = source->license->serial_number;
-  encode_sjis(cmd.name, source->player.disp.name, 0x18);
+  encode_sjis(cmd.name, source->player.disp.name, countof(cmd.name));
   remove_language_marker_inplace(cmd.name);
-  encode_sjis(cmd.desc, source->player.guild_card_desc, 0x6C);
+  encode_sjis(cmd.desc, source->player.guild_card_desc, countof(cmd.desc));
   cmd.section_id = source->player.disp.section_id;
   cmd.char_class = source->player.disp.char_class;
 
   send_command(c, 0x62, c->lobby_client_id, cmd);
 }
 
-static void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
-  struct {
-    uint8_t subcommand;
-    uint8_t subsize;
-    uint16_t unused;
-    uint32_t serial_number;
-    char16_t name[0x18];
-    char16_t team_name[0x10];
-    char16_t desc[0x58];
-    uint8_t reserved1;
-    uint8_t reserved2;
-    uint8_t section_id;
-    uint8_t char_class;
-  } __attribute__((packed)) cmd;
-
+void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
+  S_SendGuildCard_BB cmd;
+  memset(&cmd, 0, sizeof(cmd));
   cmd.subcommand = 0x06;
   cmd.subsize = 0x43;
   cmd.unused = 0x0000;
@@ -863,11 +638,11 @@ static void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) 
   cmd.reserved2 = 1;
 
   cmd.serial_number = source->license->serial_number;
-  char16cpy(cmd.name, source->player.disp.name, 0x18);
+  char16ncpy(cmd.name, source->player.disp.name, countof(cmd.name));
   remove_language_marker_inplace(cmd.name);
-  char16cpy(cmd.team_name, source->player.team_name, 0x10);
+  char16ncpy(cmd.team_name, source->player.team_name, countof(cmd.team_name));
   remove_language_marker_inplace(cmd.team_name);
-  char16cpy(cmd.desc, source->player.guild_card_desc, 0x58);
+  char16ncpy(cmd.desc, source->player.guild_card_desc, countof(cmd.desc));
   cmd.section_id = source->player.disp.section_id;
   cmd.char_class = source->player.disp.char_class;
 
@@ -889,88 +664,42 @@ void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
 ////////////////////////////////////////////////////////////////////////////////
 // menus
 
-static void send_menu_pc_bb(shared_ptr<Client> c, const char16_t* menu_name,
-    uint32_t menu_id, const vector<MenuItem>& items, bool is_info_menu) {
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t item_id;
-    uint16_t flags; // should be 0x0F04
-    char16_t text[17];
-  } __attribute__((packed));
+template <typename EntryT>
+void send_menu_t(
+    shared_ptr<Client> c,
+    const char16_t* menu_name,
+    uint32_t menu_id,
+    const vector<MenuItem>& items,
+    bool is_info_menu) {
 
-  vector<Entry> entries;
+  vector<EntryT> entries;
   entries.emplace_back();
   {
-    auto& entry = entries.back();
-    entry.menu_id = menu_id;
-    entry.item_id = 0xFFFFFFFF;
-    entry.flags = 0x0004;
-    char16cpy(entry.text, menu_name, 17);
+    auto& e = entries.back();
+    memset(&e, 0, sizeof(e));
+    e.menu_id = menu_id;
+    e.item_id = 0xFFFFFFFF;
+    e.flags = 0x0004;
+    strncpy_t(e.text, menu_name, countof(e.text));
   }
 
   for (const auto& item : items) {
-    if ((c->version == GameVersion::BB) && (item.flags & MenuItemFlag::INVISIBLE_ON_BB)) {
-      continue;
-    }
-    if ((c->version == GameVersion::PC) && (item.flags & MenuItemFlag::INVISIBLE_ON_PC)) {
-      continue;
-    }
-    if ((item.flags & MenuItemFlag::REQUIRES_MESSAGE_BOXES) &&
-        (c->flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) {
+    if (((c->version == GameVersion::DC) && (item.flags & MenuItemFlag::INVISIBLE_ON_DC)) ||
+        ((c->version == GameVersion::PC) && (item.flags & MenuItemFlag::INVISIBLE_ON_PC)) ||
+        ((c->version == GameVersion::GC) && (item.flags & MenuItemFlag::INVISIBLE_ON_GC)) ||
+        ((c->version == GameVersion::BB) && (item.flags & MenuItemFlag::INVISIBLE_ON_BB)) ||
+        ((c->flags & ClientFlag::EPISODE_3_GAMES) && (item.flags & MenuItemFlag::INVISIBLE_ON_GC_EPISODE_3)) ||
+        ((item.flags & MenuItemFlag::REQUIRES_MESSAGE_BOXES) && (c->flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION))) {
       continue;
     }
 
     entries.emplace_back();
-    auto& entry = entries.back();
-    entry.menu_id = menu_id;
-    entry.item_id = item.item_id;
-    entry.flags = (c->version == GameVersion::BB) ? 0x0004 : 0x0F04;
-    char16cpy(entry.text, item.name.c_str(), 17);
-  }
-
-  send_command(c, is_info_menu ? 0x1F : 0x07, entries.size() - 1, entries);
-}
-
-static void send_menu_dc_gc(shared_ptr<Client> c, const char16_t* menu_name,
-    uint32_t menu_id, const vector<MenuItem>& items, bool is_info_menu) {
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t item_id;
-    uint16_t flags; // should be 0x0F04
-    char text[18];
-  } __attribute__((packed));
-
-  vector<Entry> entries;
-  entries.emplace_back();
-  {
-    auto& entry = entries.back();
-    entry.menu_id = menu_id;
-    entry.item_id = 0xFFFFFFFF;
-    entry.flags = 0x0004;
-    encode_sjis(entry.text, menu_name, 18);
-  }
-
-  for (const auto& item : items) {
-    if ((c->version == GameVersion::DC) && (item.flags & MenuItemFlag::INVISIBLE_ON_DC)) {
-      continue;
-    }
-    if ((c->version == GameVersion::GC) && (item.flags & MenuItemFlag::INVISIBLE_ON_GC)) {
-      continue;
-    }
-    if ((c->flags & ClientFlag::EPISODE_3_GAMES) && (item.flags & MenuItemFlag::INVISIBLE_ON_GC_EPISODE_3)) {
-      continue;
-    }
-    if ((item.flags & MenuItemFlag::REQUIRES_MESSAGE_BOXES) &&
-        (c->flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) {
-      continue;
-    }
-
-    entries.emplace_back();
-    auto& entry = entries.back();
-    entry.menu_id = menu_id;
-    entry.item_id = item.item_id;
-    entry.flags = 0x0F04;
-    encode_sjis(entry.text, item.name.c_str(), 18);
+    auto& e = entries.back();
+    memset(&e, 0, sizeof(e));
+    e.menu_id = menu_id;
+    e.item_id = item.item_id;
+    e.flags = (c->version == GameVersion::BB) ? 0x0004 : 0x0F04;
+    strncpy_t(e.text, item.name.c_str(), countof(e.text));
   }
 
   send_command(c, is_info_menu ? 0x1F : 0x07, entries.size() - 1, entries);
@@ -980,33 +709,29 @@ void send_menu(shared_ptr<Client> c, const char16_t* menu_name,
     uint32_t menu_id, const vector<MenuItem>& items, bool is_info_menu) {
   if (c->version == GameVersion::PC || c->version == GameVersion::PATCH ||
       c->version == GameVersion::BB) {
-    send_menu_pc_bb(c, menu_name, menu_id, items, is_info_menu);
+    send_menu_t<S_MenuEntry_PC_BB_07>(c, menu_name, menu_id, items, is_info_menu);
   } else {
-    send_menu_dc_gc(c, menu_name, menu_id, items, is_info_menu);
+    send_menu_t<S_MenuEntry_DC_GC_07>(c, menu_name, menu_id, items, is_info_menu);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // CommandGameSelect: presents the player with a Game Select menu. returns the selection in the same way as CommandShipSelect.
 
-static void send_game_menu_pc(shared_ptr<Client> c, shared_ptr<ServerState> s) {
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t game_id;
-    uint8_t difficulty_tag; // (s->teams[x]->episode == 0xFF ? 0x0A : s->teams[x]->difficulty + 0x22);
-    uint8_t num_players;
-    char16_t name[0x10];
-    uint8_t episode;
-    uint8_t flags;
-  } __attribute__((packed));
-
-  vector<Entry> entries;
+template <typename CharT>
+void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
+  vector<S_GameMenuEntry<CharT>> entries;
   {
     entries.emplace_back();
     auto& e = entries.back();
+    memset(&e, 0, sizeof(e));
     e.menu_id = GAME_MENU_ID;
-    e.game_id = 0;
-    char16cpy(e.name, s->name.c_str(), 0x10);
+    e.game_id = 0x00000000;
+    e.difficulty_tag = 0x00;
+    e.num_players = 0x00;
+    strncpy_t(e.name, s->name.c_str(), countof(e.name));
+    e.episode = 0x00;
+    e.flags = 0x04;
   }
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
     if (!l->is_game()) {
@@ -1015,279 +740,88 @@ static void send_game_menu_pc(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     if (l->version != c->version) {
       continue;
     }
-
-    entries.emplace_back();
-    auto& e = entries.back();
-    e.menu_id = GAME_MENU_ID;
-
-    e.game_id = l->lobby_id;
-    e.difficulty_tag = l->difficulty + 0x22;
-    e.num_players = l->count_clients();
-    e.episode = 0;
-    e.flags = (l->mode << 4) | (l->password[0] ? 2 : 0);
-    char16cpy(e.name, l->name, 0x10);
-  }
-
-  send_command(c, 0x08, entries.size() - 1, entries);
-}
-
-static void send_game_menu_gc(shared_ptr<Client> c, shared_ptr<ServerState> s) {
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t game_id;
-    uint8_t difficulty_tag; // (s->teams[x]->episode == 0xFF ? 0x0A : s->teams[x]->difficulty + 0x22);
-    uint8_t num_players;
-    char name[0x10];
-    uint8_t episode;
-    uint8_t flags;
-  } __attribute__((packed));
-
-  vector<Entry> entries;
-  {
-    entries.emplace_back();
-    auto& e = entries.back();
-    e.menu_id = GAME_MENU_ID;
-    e.game_id = 0;
-    encode_sjis(e.name, s->name.c_str(), 0x10);
-    e.flags = 0x0004;
-  }
-  for (shared_ptr<Lobby> l : s->all_lobbies()) {
-    if (!l->is_game()) {
-      continue;
-    }
-    if (l->version != c->version) {
+    if (!(l->flags & LobbyFlag::EPISODE_3) != !(c->flags & ClientFlag::EPISODE_3_GAMES)) {
       continue;
     }
 
     entries.emplace_back();
     auto& e = entries.back();
+    memset(&e, 0, sizeof(e));
     e.menu_id = GAME_MENU_ID;
-
     e.game_id = l->lobby_id;
-    e.difficulty_tag = ((l->flags & LobbyFlag::EPISODE_3) ? 0x0A : (l->difficulty + 0x22));
+    e.difficulty_tag = ((l->flags & LobbyFlag::EPISODE_3)
+        ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
-    e.episode = 0;
+    e.episode = ((c->version == GameVersion::BB) ? (l->max_clients << 4) : 0) | l->episode;
     if (l->flags & LobbyFlag::EPISODE_3) {
       e.flags = (l->password[0] ? 2 : 0);
     } else {
-      e.flags = ((l->episode << 6) | (l->mode << 4) | (l->password[0] ? 2 : 0));
+      e.flags = ((l->episode << 6) | ((l->mode % 3) << 4) | (l->password[0] ? 2 : 0)) | ((l->mode == 3) ? 4 : 0);
     }
-    encode_sjis(e.name, l->name, 0x10);
-  }
-
-  send_command(c, 0x08, entries.size() - 1, entries);
-}
-
-static void send_game_menu_bb(shared_ptr<Client> c, shared_ptr<ServerState> s) {
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t game_id;
-    uint8_t difficulty_tag; // (s->teams[x]->episode == 0xFF ? 0x0A : s->teams[x]->difficulty + 0x22);
-    uint8_t num_players;
-    char16_t name[0x10];
-    uint8_t episode;
-    uint8_t flags;
-  } __attribute__((packed));
-
-  vector<Entry> entries;
-  {
-    entries.emplace_back();
-    auto& e = entries.back();
-    e.menu_id = GAME_MENU_ID;
-    e.game_id = 0;
-    e.flags = 0x0004;
-    char16cpy(e.name, s->name.c_str(), 0x10);
-  }
-  for (shared_ptr<Lobby> l : s->all_lobbies()) {
-    if (!l->is_game()) {
-      continue;
-    }
-    if (l->version != c->version) {
-      continue;
-    }
-
-    entries.emplace_back();
-    auto& e = entries.back();
-    e.menu_id = GAME_MENU_ID;
-
-    e.game_id = l->lobby_id;
-    e.difficulty_tag = l->difficulty + 0x22;
-    e.num_players = l->count_clients();
-    e.episode = (l->max_clients << 4) | l->episode;
-    e.flags = ((l->mode % 3) << 4) | (l->password[0] ? 2 : 0) | ((l->mode == 3) ? 4 : 0);
-    char16cpy(e.name, l->name, 0x10);
+    strncpy_t(e.name, l->name, countof(e.name));
   }
 
   send_command(c, 0x08, entries.size() - 1, entries);
 }
 
 void send_game_menu(shared_ptr<Client> c, shared_ptr<ServerState> s) {
-  if (c->version == GameVersion::PC) {
-    send_game_menu_pc(c, s);
-  } else if (c->version == GameVersion::GC) {
-    send_game_menu_gc(c, s);
-  } else if (c->version == GameVersion::BB) {
-    send_game_menu_bb(c, s);
+  if ((c->version == GameVersion::DC) || (c->version == GameVersion::GC)) {
+    send_game_menu_t<char>(c, s);
   } else {
-    throw logic_error("unimplemented versioned command");
+    send_game_menu_t<char16_t>(c, s);
   }
 }
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// CommandQuestSelect: presents the user with a quest select menu based on a quest list.
-
-static void send_quest_menu_pc(shared_ptr<Client> c, uint32_t menu_id,
-    const vector<shared_ptr<const Quest>>& quests, bool is_download_menu) {
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t quest_id;
-    char16_t name[0x20];
-    char16_t short_desc[0x70];
-  } __attribute__((packed));
-
-  vector<Entry> entries;
+template <typename EntryT>
+void send_quest_menu_t(
+    shared_ptr<Client> c,
+    uint32_t menu_id,
+    const vector<shared_ptr<const Quest>>& quests,
+    bool is_download_menu) {
+  vector<EntryT> entries;
   for (const auto& quest : quests) {
     entries.emplace_back();
     auto& e = entries.back();
+    memset(&e, 0, sizeof(e));
     e.menu_id = menu_id;
-    e.quest_id = quest->quest_id;
-    char16cpy(e.name, quest->name.c_str(), 0x20);
-    char16cpy(e.short_desc, quest->short_description.c_str(), 0x70);
-    add_color_inplace(e.short_desc, 0x70);
+    e.item_id = quest->quest_id;
+    strncpy_t(e.name, quest->name.c_str(), countof(e.name));
+    strncpy_t(e.short_desc, quest->short_description.c_str(), countof(e.short_desc));
+    add_color_inplace(e.short_desc, countof(e.short_desc));
   }
-
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
 
-static void send_quest_menu_pc(std::shared_ptr<Client> c, uint32_t menu_id,
-    const std::vector<MenuItem>& items, bool is_download_menu) {
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t item_id;
-    char16_t name[0x20];
-    char16_t short_desc[0x70];
-  } __attribute__((packed));
-
-  vector<Entry> entries;
+template <typename EntryT>
+void send_quest_menu_t(
+    shared_ptr<Client> c,
+    uint32_t menu_id,
+    const vector<MenuItem>& items,
+    bool is_download_menu) {
+  vector<EntryT> entries;
   for (const auto& item : items) {
     entries.emplace_back();
     auto& e = entries.back();
+    memset(&e, 0, sizeof(e));
     e.menu_id = menu_id;
     e.item_id = item.item_id;
-    char16cpy(e.name, item.name.c_str(), 0x20);
-    char16cpy(e.short_desc, item.description.c_str(), 0x70);
+    strncpy_t(e.name, item.name.c_str(), 0x20);
+    strncpy_t(e.short_desc, item.description.c_str(), 0x70);
     add_color_inplace(e.short_desc, 0x70);
   }
-
-  send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
-}
-
-static void send_quest_menu_gc(shared_ptr<Client> c, uint32_t menu_id,
-    const vector<shared_ptr<const Quest>>& quests, bool is_download_menu) {
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t quest_id;
-    char name[0x20];
-    char short_desc[0x70];
-  } __attribute__((packed));
-
-  vector<Entry> entries;
-  for (const auto& quest : quests) {
-    entries.emplace_back();
-    auto& e = entries.back();
-    e.menu_id = menu_id;
-    e.quest_id = quest->quest_id;
-    encode_sjis(e.name, quest->name.c_str(), 0x20);
-    encode_sjis(e.short_desc, quest->short_description.c_str(), 0x70);
-    add_color_inplace(e.short_desc, 0x70);
-  }
-
-  send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
-}
-
-static void send_quest_menu_gc(shared_ptr<Client> c, uint32_t menu_id,
-    const std::vector<MenuItem>& items, bool is_download_menu) {
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t item_id;
-    char name[0x20];
-    char short_desc[0x70];
-  } __attribute__((packed));
-
-  vector<Entry> entries;
-  for (const auto& item : items) {
-    entries.emplace_back();
-    auto& e = entries.back();
-    e.menu_id = menu_id;
-    e.item_id = item.item_id;
-    encode_sjis(e.name, item.name.c_str(), 0x20);
-    encode_sjis(e.short_desc, item.description.c_str(), 0x70);
-    add_color_inplace(e.short_desc, 0x70);
-  }
-
-  send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
-}
-
-static void send_quest_menu_bb(shared_ptr<Client> c, uint32_t menu_id,
-    const vector<shared_ptr<const Quest>>& quests, bool is_download_menu) {
-  // yet again sega does something inexplicable: the description is 10 chars
-  // longer than on pc, necessitating a separate function here for BB
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t quest_id;
-    char16_t name[0x20];
-    char16_t short_desc[0x7A];
-  } __attribute__((packed));
-
-  vector<Entry> entries;
-  for (const auto& quest : quests) {
-    entries.emplace_back();
-    auto& e = entries.back();
-    e.menu_id = menu_id;
-    e.quest_id = quest->quest_id;
-    char16cpy(e.name, quest->name.c_str(), 0x20);
-    char16cpy(e.short_desc, quest->short_description.c_str(), 0x7A);
-    add_color_inplace(e.short_desc, 0x7A);
-  }
-
-  send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
-}
-
-static void send_quest_menu_bb(shared_ptr<Client> c, uint32_t menu_id,
-    const std::vector<MenuItem>& items, bool is_download_menu) {
-  // yet again sega does something inexplicable: the description is 10 chars
-  // longer than on pc, necessitating a separate function here for BB
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t item_id;
-    char16_t name[0x20];
-    char16_t short_desc[0x7A];
-  } __attribute__((packed));
-
-  vector<Entry> entries;
-  for (const auto& item : items) {
-    entries.emplace_back();
-    auto& e = entries.back();
-    e.menu_id = menu_id;
-    e.item_id = item.item_id;
-    char16cpy(e.name, item.name.c_str(), 0x20);
-    char16cpy(e.short_desc, item.description.c_str(), 0x7A);
-    add_color_inplace(e.short_desc, 0x7A);
-  }
-
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
 
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
     const vector<shared_ptr<const Quest>>& quests, bool is_download_menu) {
   if (c->version == GameVersion::PC) {
-    send_quest_menu_pc(c, menu_id, quests, is_download_menu);
+    send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, quests, is_download_menu);
   } else if (c->version == GameVersion::GC) {
-    send_quest_menu_gc(c, menu_id, quests, is_download_menu);
+    send_quest_menu_t<S_QuestMenuEntry_GC_A2_A4>(c, menu_id, quests, is_download_menu);
   } else if (c->version == GameVersion::BB) {
-    send_quest_menu_bb(c, menu_id, quests, is_download_menu);
+    send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, quests, is_download_menu);
   } else {
     throw logic_error("unimplemented versioned command");
   }
@@ -1296,11 +830,11 @@ void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
     const std::vector<MenuItem>& items, bool is_download_menu) {
   if (c->version == GameVersion::PC) {
-    send_quest_menu_pc(c, menu_id, items, is_download_menu);
+    send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, items, is_download_menu);
   } else if (c->version == GameVersion::GC) {
-    send_quest_menu_gc(c, menu_id, items, is_download_menu);
+    send_quest_menu_t<S_QuestMenuEntry_GC_A2_A4>(c, menu_id, items, is_download_menu);
   } else if (c->version == GameVersion::BB) {
-    send_quest_menu_bb(c, menu_id, items, is_download_menu);
+    send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, items, is_download_menu);
   } else {
     throw logic_error("unimplemented versioned command");
   }
@@ -1311,13 +845,7 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
   // this server sends it, and does not react if it's different, except by
   // changing the lobby IDs.
 
-  struct Entry {
-    uint32_t menu_id;
-    uint32_t item_id;
-    uint32_t unused; // should be 0x00000000
-  } __attribute__((packed));
-
-  vector<Entry> entries;
+  vector<S_LobbyListEntry_83> entries;
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
     if (!(l->flags & LobbyFlag::DEFAULT)) {
       continue;
@@ -1341,77 +869,26 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
 ////////////////////////////////////////////////////////////////////////////////
 // lobby joining
 
-static void send_join_game_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  struct {
-    uint32_t variations[0x20];
-    PlayerLobbyDataPC lobby_data[4];
-    uint8_t client_id;
-    uint8_t leader_id;
-    uint8_t unused;
-    uint8_t difficulty;
-    uint8_t battle_mode;
-    uint8_t event;
-    uint8_t section_id;
-    uint8_t challenge_mode;
-    uint32_t rare_seed;
-    uint8_t episode;
-    uint8_t unused2;
-    uint8_t solo_mode;
-    uint8_t unused3;
-  } __attribute__((packed)) cmd;
+template <typename LobbyDataT, typename DispDataT>
+void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+  S_JoinGame<LobbyDataT, DispDataT> cmd;
+  memset(&cmd, 0, sizeof(cmd));
 
   size_t player_count = 0;
   memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
   for (size_t x = 0; x < 4; x++) {
-    if (!l->clients[x]) {
-      memset(&cmd.lobby_data[x], 0, sizeof(PlayerLobbyDataPC));
-    } else {
+    if (l->clients[x]) {
       cmd.lobby_data[x].player_tag = 0x00010000;
       cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-      // See comment in send_join_lobby_gc about Episode III behavior here. Even
-      // though this doesn't apply to PSO PC, it's better to be consistent.
+      // See comment in send_join_lobby_t about Episode III behavior here
       cmd.lobby_data[x].ip_address = 0x7F000001;
       cmd.lobby_data[x].client_id = c->lobby_client_id;
-      char16cpy(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
-      player_count++;
-    }
-  }
-
-  cmd.client_id = c->lobby_client_id;
-  cmd.leader_id = l->leader_id;
-  cmd.unused = 0x00;
-  cmd.difficulty = l->difficulty;
-  cmd.battle_mode = (l->mode == 1) ? 1 : 0;
-  cmd.event = l->event;
-  cmd.section_id = l->section_id;
-  cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
-  cmd.rare_seed = l->rare_seed;
-  cmd.episode = 0x00;
-  cmd.unused2 = 0x01;
-  cmd.solo_mode = 0x00;
-  cmd.unused3 = 0x00;
-
-  send_command(c, 0x64, player_count, cmd);
-}
-
-static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  JoinGameCommand_GC_64 cmd;
-
-  size_t player_count = 0;
-  memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
-  for (size_t x = 0; x < 4; x++) {
-    if (!l->clients[x]) {
-      memset(&cmd.lobby_data[x], 0, sizeof(PlayerLobbyDataGC));
-    } else {
-      cmd.lobby_data[x].player_tag = 0x00010000;
-      cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-      // See comment in send_join_lobby_gc about Episode III behavior here.
-      cmd.lobby_data[x].ip_address = 0x7F000001;
-      cmd.lobby_data[x].client_id = c->lobby_client_id;
-      encode_sjis(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
+      strncpy_t(cmd.lobby_data[x].name, l->clients[x]->player.disp.name,
+          countof(cmd.lobby_data[x].name));
       if (l->flags & LobbyFlag::EPISODE_3) {
-        cmd.player[x].inventory = l->clients[x]->player.inventory;
-        cmd.player[x].disp = l->clients[x]->player.disp.to_pcgc();
+        cmd.players_ep3[x].inventory = l->clients[x]->player.inventory;
+        cmd.players_ep3[x].disp = convert_player_disp_data<DispDataT>(
+            l->clients[x]->player.disp);
       }
       player_count++;
     }
@@ -1419,7 +896,7 @@ static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   cmd.client_id = c->lobby_client_id;
   cmd.leader_id = l->leader_id;
-  cmd.disable_udp = 0x01;
+  cmd.disable_udp = 0x01; // TODO: This is unused on PC/BB. Is it OK to use 1 here anyway?
   cmd.difficulty = l->difficulty;
   cmd.battle_mode = (l->mode == 1) ? 1 : 0;
   cmd.event = l->event;
@@ -1427,233 +904,113 @@ static void send_join_game_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
   cmd.rare_seed = l->rare_seed;
   cmd.episode = l->episode;
+  cmd.unused2 = 0x01;
+  cmd.solo_mode = (l->mode == 3);
+  cmd.unused3 = 0x00;
 
-  // player data is only sent in Episode III games; in other versions, the
+  // Player data is only sent in Episode III games; in other versions, the
   // players send each other their data using 62/6D commands during loading
   size_t data_size = (l->flags & LobbyFlag::EPISODE_3)
-      ? sizeof(cmd) : (sizeof(cmd) - sizeof(cmd.player));
+      ? sizeof(cmd) : (sizeof(cmd) - sizeof(cmd.players_ep3));
   send_command(c, 0x64, player_count, &cmd, data_size);
 }
 
-static void send_join_game_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  struct {
-    uint32_t variations[0x20];
-    PlayerLobbyDataBB lobby_data[4];
-    uint8_t client_id;
-    uint8_t leader_id;
-    uint8_t unused;
-    uint8_t difficulty;
-    uint8_t battle_mode;
-    uint8_t event;
-    uint8_t section_id;
-    uint8_t challenge_mode;
-    uint32_t rare_seed;
-    uint8_t episode;
-    uint8_t unused2;
-    uint8_t solo_mode;
-    uint8_t unused3;
-  } __attribute__((packed)) cmd;
-
-  size_t player_count = 0;
-  memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
-  for (size_t x = 0; x < 4; x++) {
-    memset(&cmd.lobby_data[x], 0, sizeof(PlayerLobbyDataBB));
-    if (l->clients[x]) {
-      cmd.lobby_data[x].player_tag = 0x00010000;
-      cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-      cmd.lobby_data[x].client_id = c->lobby_client_id;
-      char16cpy(cmd.lobby_data[x].name, l->clients[x]->player.disp.name, 0x10);
-      player_count++;
-    }
-  }
-
-  cmd.client_id = c->lobby_client_id;
-  cmd.leader_id = l->leader_id;
-  cmd.unused = 0x00;
-  cmd.difficulty = l->difficulty;
-  cmd.battle_mode = (l->mode == 1) ? 1 : 0;
-  cmd.event = l->event;
-  cmd.section_id = l->section_id;
-  cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
-  cmd.rare_seed = l->rare_seed;
-  cmd.episode = 0x00;
-  cmd.unused2 = 0x01;
-  cmd.solo_mode = 0x00;
-  cmd.unused3 = 0x00;
-
-  send_command(c, 0x64, player_count, cmd);
-}
-
-static void send_join_lobby_pc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
-  struct {
-    uint8_t client_id;
-    uint8_t leader_id;
-    uint8_t disable_udp;
-    uint8_t lobby_number;
-    uint16_t block_number;
-    uint16_t event;
-    uint32_t unused;
-  } __attribute__((packed)) cmd = {
-    c->lobby_client_id,
-    l->leader_id,
-    0x01,
-    lobby_type,
-    l->block,
-    l->event,
-    0x00000000,
-  };
-
-  struct Entry {
-    PlayerLobbyDataPC lobby_data;
-    PlayerLobbyJoinDataPCGC data;
-  } __attribute__((packed));
-  vector<Entry> entries;
-
-  for (size_t x = 0; x < l->max_clients; x++) {
-    if (!l->clients[x]) {
-      continue;
-    }
-
-    entries.emplace_back();
-    auto& e = entries.back();
-
-    e.lobby_data.player_tag = 0x00010000;
-    e.lobby_data.guild_card = l->clients[x]->license->serial_number;
-    // See comment in send_join_lobby_gc about Episode III behavior here. Even
-    // though this doesn't apply to PSO PC, it's better to be consistent.
-    e.lobby_data.ip_address = 0x7F000001;
-    e.lobby_data.client_id = l->clients[x]->lobby_client_id;
-    char16cpy(e.lobby_data.name, l->clients[x]->player.disp.name, 0x10);
-    e.data = l->clients[x]->player.export_lobby_data_pc();
-  }
-
-  send_command(c, 0x67, entries.size(), cmd, entries);
-}
-
-static void send_join_lobby_gc(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  uint8_t lobby_type = l->type;
-  if (c->flags & ClientFlag::EPISODE_3_GAMES) {
-    if ((l->type > 0x14) && (l->type < 0xE9)) {
-      lobby_type = l->block - 1;
+template <typename LobbyDataT, typename DispDataT>
+void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
+    shared_ptr<Client> joining_client = nullptr) {
+  uint8_t command;
+  if (l->is_game()) {
+    if (joining_client) {
+      command = 0x65;
+    } else {
+      throw logic_error("send_join_lobby_t should not be used for primary game join command");
     }
   } else {
-    if ((l->type > 0x11) && (l->type != 0x67) && (l->type != 0xD4) && (l->type < 0xFC)) {
+    command = joining_client ? 0x68 : 0x67;
+
+  }
+
+  uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
+  // Allow non-canonical lobby types on GC
+  if (c->version == GameVersion::GC) {
+    if (c->flags & ClientFlag::EPISODE_3_GAMES) {
+      if ((l->type > 0x14) && (l->type < 0xE9)) {
+        lobby_type = l->block - 1;
+      }
+    } else {
+      if ((l->type > 0x11) && (l->type != 0x67) && (l->type != 0xD4) && (l->type < 0xFC)) {
+        lobby_type = l->block - 1;
+      }
+    }
+  } else {
+    if (lobby_type > 0x0E) {
       lobby_type = l->block - 1;
     }
   }
 
-  struct {
-    uint8_t client_id;
-    uint8_t leader_id;
-    uint8_t disable_udp;
-    uint8_t lobby_number;
-    uint16_t block_number;
-    uint16_t event;
-    uint32_t unused;
-  } __attribute__((packed)) cmd = {
-    c->lobby_client_id,
-    l->leader_id,
-    0x01,
-    lobby_type,
-    l->block,
-    l->event,
-    0x00000000,
-  };
+  S_JoinLobby<LobbyDataT, DispDataT> cmd;
+  memset(&cmd, 0, sizeof(cmd));
+  cmd.client_id = c->lobby_client_id;
+  cmd.leader_id = l->leader_id;
+  cmd.disable_udp = 0x01;
+  cmd.lobby_number = lobby_type;
+  cmd.block_number = l->block;
+  cmd.event = l->event;
+  cmd.unused = 0x00000000;
 
-  struct Entry {
-    PlayerLobbyDataGC lobby_data;
-    PlayerLobbyJoinDataPCGC data;
-  } __attribute__((packed));
-  vector<Entry> entries;
-
-  for (size_t x = 0; x < l->max_clients; x++) {
-    if (!l->clients[x]) {
-      continue;
+  vector<shared_ptr<Client>> lobby_clients;
+  if (joining_client) {
+    lobby_clients.emplace_back(joining_client);
+  } else {
+    for (auto lc : l->clients) {
+      if (lc) {
+        lobby_clients.emplace_back(lc);
+      }
     }
+  }
 
-    entries.emplace_back();
-    auto& e = entries.back();
-
+  size_t used_entries = 0;
+  for (const auto& lc : lobby_clients) {
+    auto& e = cmd.entries[used_entries++];
+    memset(&e.lobby_data, 0, sizeof(e.lobby_data));
     e.lobby_data.player_tag = 0x00010000;
-    e.lobby_data.guild_card = l->clients[x]->license->serial_number;
+    e.lobby_data.guild_card = lc->license->serial_number;
     // There's a strange behavior (bug? "feature"?) in Episode 3 where the start
     // button does nothing in the lobby (hence you can't "quit game") if the
     // client's IP address is zero. So, we fill it in with a fake nonzero value
     // to avoid this behavior.
     e.lobby_data.ip_address = 0x7F000001;
-    e.lobby_data.client_id = l->clients[x]->lobby_client_id;
-    encode_sjis(e.lobby_data.name, l->clients[x]->player.disp.name, 0x10);
-    e.data = l->clients[x]->player.export_lobby_data_gc();
-  }
-
-  send_command(c, 0x67, entries.size(), cmd, entries);
-}
-
-static void send_join_lobby_bb(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
-  struct {
-    uint8_t client_id;
-    uint8_t leader_id;
-    uint8_t disable_udp;
-    uint8_t lobby_number;
-    uint16_t block_number;
-    uint16_t event;
-    uint32_t unused;
-  } __attribute__((packed)) cmd = {
-    c->lobby_client_id,
-    l->leader_id,
-    0x01,
-    lobby_type,
-    l->block,
-    l->event,
-    0x00000000,
-  };
-
-  struct Entry {
-    PlayerLobbyDataBB lobby_data;
-    PlayerLobbyJoinDataBB data;
-  } __attribute__((packed));
-  vector<Entry> entries;
-
-  for (size_t x = 0; x < l->max_clients; x++) {
-    if (!l->clients[x]) {
-      continue;
+    e.lobby_data.client_id = lc->lobby_client_id;
+    strncpy_t(e.lobby_data.name, lc->player.disp.name,
+        countof(e.lobby_data.name));
+    e.inventory = lc->player.inventory;
+    e.disp = convert_player_disp_data<DispDataT>(lc->player.disp);
+    if (c->version == GameVersion::PC) {
+      e.disp.enforce_pc_limits();
     }
-
-    entries.emplace_back();
-    auto& e = entries.back();
-    memset(&e.lobby_data, 0, sizeof(e.lobby_data));
-
-    e.lobby_data.player_tag = 0x00010000;
-    e.lobby_data.guild_card = l->clients[x]->license->serial_number;
-    e.lobby_data.client_id = l->clients[x]->lobby_client_id;
-    char16cpy(e.lobby_data.name, l->clients[x]->player.disp.name, 0x10);
-    e.data = l->clients[x]->player.export_lobby_data_bb();
   }
 
-  send_command(c, 0x67, entries.size(), cmd, entries);
+  send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
 }
 
 void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (l->is_game()) {
     if (c->version == GameVersion::PC) {
-      send_join_game_pc(c, l);
+      send_join_game_t<PlayerLobbyDataPC, PlayerDispDataPCGC>(c, l);
     } else if (c->version == GameVersion::GC) {
-      send_join_game_gc(c, l);
+      send_join_game_t<PlayerLobbyDataGC, PlayerDispDataPCGC>(c, l);
     } else if (c->version == GameVersion::BB) {
-      send_join_game_bb(c, l);
+      send_join_game_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l);
     } else {
       throw logic_error("unimplemented versioned command");
     }
-
   } else {
     if (c->version == GameVersion::PC) {
-      send_join_lobby_pc(c, l);
+      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataPCGC>(c, l);
     } else if (c->version == GameVersion::GC) {
-      send_join_lobby_gc(c, l);
+      send_join_lobby_t<PlayerLobbyDataGC, PlayerDispDataPCGC>(c, l);
     } else if (c->version == GameVersion::BB) {
-      send_join_lobby_bb(c, l);
+      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l);
     } else {
       throw logic_error("unimplemented versioned command");
     }
@@ -1668,122 +1025,21 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   }
 }
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-// CommandLobbyAddPlayer: notifies all players in a lobby that a new player is joining.
-// this command, unlike the previous, is virtually the same between games and lobbies.
-
-static void send_player_join_notification_pc(shared_ptr<Client> c,
+void send_player_join_notification(shared_ptr<Client> c,
     shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
-  uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
-  struct {
-    uint8_t client_id;
-    uint8_t leader_id;
-    uint8_t disable_udp;
-    uint8_t lobby_number;
-    uint16_t block_number;
-    uint16_t event;
-    uint32_t unused;
-    PlayerLobbyDataPC lobby_data;
-    PlayerLobbyJoinDataPCGC data;
-  } __attribute__((packed)) cmd = {
-    0xFF,
-    l->leader_id,
-    0x01,
-    lobby_type,
-    l->block,
-    l->event,
-    0x00000000,
-    {0x00000100, joining_client->license->serial_number, 0x00000000, joining_client->lobby_client_id, {0}},
-    joining_client->player.export_lobby_data_pc(),
-  };
-  char16cpy(cmd.lobby_data.name, joining_client->player.disp.name, 0x10);
-
-  send_command(c, l->is_game() ? 0x65 : 0x68, 0x01, cmd);
-}
-
-static void send_player_join_notification_gc(shared_ptr<Client> c,
-    shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
-  uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
-  struct {
-    uint8_t client_id;
-    uint8_t leader_id;
-    uint8_t disable_udp;
-    uint8_t lobby_number;
-    uint16_t block_number;
-    uint16_t event;
-    uint32_t unused;
-    PlayerLobbyDataGC lobby_data;
-    PlayerLobbyJoinDataPCGC data;
-  } __attribute__((packed)) cmd = {
-    0xFF,
-    l->leader_id,
-    0x01,
-    lobby_type,
-    l->block,
-    l->event,
-    0x00000000,
-    {0x00000100, joining_client->license->serial_number, 0x00000000, joining_client->lobby_client_id, {0}},
-    joining_client->player.export_lobby_data_gc(),
-  };
-  encode_sjis(cmd.lobby_data.name, joining_client->player.disp.name, 0x10);
-
-  send_command(c, l->is_game() ? 0x65 : 0x68, 0x01, cmd);
-}
-
-static void send_player_join_notification_bb(shared_ptr<Client> c,
-    shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
-  uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
-  struct {
-    uint8_t client_id;
-    uint8_t leader_id;
-    uint8_t disable_udp;
-    uint8_t lobby_number;
-    uint16_t block_number;
-    uint16_t event;
-    uint32_t unused;
-    PlayerLobbyDataBB lobby_data;
-    PlayerLobbyJoinDataBB data;
-  } __attribute__((packed)) cmd = {
-    0xFF,
-    l->leader_id,
-    0x01,
-    lobby_type,
-    l->block,
-    l->event,
-    0x00000000,
-    {},
-    joining_client->player.export_lobby_data_bb(),
-  };
-  memset(&cmd.lobby_data, 0, sizeof(cmd.lobby_data));
-  cmd.lobby_data.player_tag = 0x00010000;
-  cmd.lobby_data.guild_card = joining_client->license->serial_number;
-  cmd.lobby_data.client_id = joining_client->lobby_client_id;
-  char16cpy(cmd.lobby_data.name, joining_client->player.disp.name, 0x10);
-
-  send_command(c, l->is_game() ? 0x65 : 0x68, 0x01, cmd);
-}
-
-void send_player_join_notification(shared_ptr<Client> c, shared_ptr<Lobby> l,
-    shared_ptr<Client> joining_client) {
   if (c->version == GameVersion::PC) {
-    send_player_join_notification_pc(c, l, joining_client);
+    send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataPCGC>(c, l, joining_client);
   } else if (c->version == GameVersion::GC) {
-    send_player_join_notification_gc(c, l, joining_client);
+    send_join_lobby_t<PlayerLobbyDataGC, PlayerDispDataPCGC>(c, l, joining_client);
   } else if (c->version == GameVersion::BB) {
-    send_player_join_notification_bb(c, l, joining_client);
+    send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l, joining_client);
   } else {
     throw logic_error("unimplemented versioned command");
   }
 }
 
 void send_player_leave_notification(shared_ptr<Lobby> l, uint8_t leaving_client_id) {
-  struct {
-    uint8_t client_id;
-    uint8_t leader_id;
-    uint16_t unused;
-  } __attribute__((packed)) cmd = {leaving_client_id, l->leader_id, 0};
+  S_LeaveLobby_66_69 cmd = {leaving_client_id, l->leader_id, 0};
   send_command(l, l->is_game() ? 0x66 : 0x69, leaving_client_id, cmd);
 }
 
@@ -1797,12 +1053,7 @@ void send_get_player_info(shared_ptr<Client> c) {
 // arrows
 
 void send_arrow_update(shared_ptr<Lobby> l) {
-  struct Entry {
-    uint32_t player_tag;
-    uint32_t serial_number;
-    uint32_t arrow_color;
-  } __attribute__((packed));
-  vector<Entry> entries;
+  vector<S_ArrowUpdateEntry_88> entries;
 
   for (size_t x = 0; x < l->max_clients; x++) {
     if (!l->clients[x]) {
@@ -1909,93 +1160,51 @@ void send_revive_player(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 // notifies other players of a dropped item from a box or enemy
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float y, uint16_t request_id) {
-  struct {
-    uint8_t subcommand;
-    uint8_t subsize;
-    uint16_t unused;
-    uint8_t area;
-    uint8_t dude;
-    uint16_t request_id;
-    float x;
-    float y;
-    uint32_t unused2;
-    ItemData data;
-  } __attribute__((packed)) cmd = {0x5F, 0x0A, 0x0000, area, from_enemy, request_id, x, y, 0, item};
+  S_DropItem_BB cmd = {
+      0x5F, 0x0A, 0x0000, area, from_enemy, request_id, x, y, 0, item};
   send_command(l, 0x60, 0x00, cmd);
 }
 
 // notifies other players that a stack was split and part of it dropped (a new item was created)
 void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
     uint8_t area, float x, float y) {
-  struct {
-    uint8_t subcommand;
-    uint8_t subsize;
-    uint16_t unused;
-    uint16_t area;
-    uint16_t unused2;
-    float x;
-    float y;
-    uint32_t unused3;
-    ItemData data;
-  } __attribute__((packed)) cmd = {0x5D, 0x09, 0x0000, area, 0, x, y, 0, item};
+  S_DropStackedItem_BB cmd = {
+      0x5D, 0x09, 0x0000, area, 0, x, y, 0, item};
   send_command(l, 0x60, 0x00, cmd);
 }
 
 // notifies other players that an item was picked up
 void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint8_t area) {
-  struct {
-    uint8_t subcommand;
-    uint8_t subsize;
-    uint16_t client_id;
-    uint16_t client_id2;
-    uint16_t area;
-    uint32_t item_id;
-  } __attribute__((packed)) cmd = {0x59, 0x03, c->lobby_client_id, c->lobby_client_id, area, item_id};
+  S_PickUpItem_BB cmd = {
+      0x59, 0x03, c->lobby_client_id, c->lobby_client_id, area, item_id};
   send_command(l, 0x60, 0x00, cmd);
 }
 
 // creates an item in a player's inventory (used for withdrawing items from the bank)
 void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     const ItemData& item) {
-  struct {
-    uint8_t subcommand;
-    uint8_t subsize;
-    uint16_t client_id;
-    ItemData item;
-    uint32_t unused;
-  } __attribute__((packed)) cmd = {0xBE, 0x07, c->lobby_client_id, item, 0};
+  S_CreateInventoryItem_BB cmd = {
+      0xBE, 0x07, c->lobby_client_id, item, 0};
   send_command(l, 0x60, 0x00, cmd);
 }
 
 // destroys an item
 void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint32_t amount) {
-  struct {
-    uint8_t subcommand;
-    uint8_t subsize;
-    uint16_t client_id;
-    uint32_t item_id;
-    uint32_t amount;
-  } __attribute__((packed)) cmd = {0x29, 0x03, c->lobby_client_id, item_id, amount};
+  S_DestroyItem_BB cmd = {
+      0x29, 0x03, c->lobby_client_id, item_id, amount};
   send_command(l, 0x60, 0x00, cmd);
 }
 
-// sends the player his/her bank data
+// sends the player their bank data
 void send_bank(shared_ptr<Client> c) {
   vector<PlayerBankItem> items(c->player.bank.items,
       &c->player.bank.items[c->player.bank.num_items]);
 
   uint32_t checksum = random_object<uint32_t>();
-  struct {
-    uint8_t subcommand;
-    uint8_t unused1;
-    uint16_t unused2;
-    uint32_t size; // same as size in header (computed later)
-    uint32_t checksum; // can be random; client won't notice
-    uint32_t numItems;
-    uint32_t meseta;
-  } __attribute__((packed)) cmd = {0xBC, 0, 0, 0, checksum, c->player.bank.num_items, c->player.bank.meseta};
+  S_BankContentsHeader_BB cmd = {
+      0xBC, 0, 0, 0, checksum, c->player.bank.num_items, c->player.bank.meseta};
 
   size_t size = 8 + sizeof(cmd) + items.size() * sizeof(PlayerBankItem);
   cmd.size = size;
@@ -2005,15 +1214,7 @@ void send_bank(shared_ptr<Client> c) {
 
 // sends the player a shop's contents
 void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
-  struct {
-    uint8_t subcommand; // B6
-    uint8_t size; // 2C regardless of the number of items??
-    uint16_t params; // 037F
-    uint8_t shop_type;
-    uint8_t num_items;
-    uint16_t unused;
-    ItemData entries[20];
-  } __attribute__((packed)) cmd = {
+  S_ShopContents_BB cmd = {
     0xB6,
     0x2C,
     0x037F,
@@ -2049,6 +1250,7 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
     }
   }
 
+  // TODO: Make a real struct for this
   PSOSubcommand sub[5];
   sub[0].byte[0] = 0x30;
   sub[0].byte[1] = 0x05;
@@ -2066,6 +1268,7 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 // gives a player EXP
 void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t amount) {
+  // TODO: Make a real struct for this
   PSOSubcommand sub[2];
   sub[0].word[0] = 0x02BF;
   sub[0].word[1] = c->lobby_client_id;
@@ -2092,13 +1295,8 @@ void send_ep3_card_list_update(shared_ptr<Client> c) {
 
 // sends the client a generic rank
 void send_ep3_rank_update(shared_ptr<Client> c) {
-  struct {
-    uint32_t rank;
-    char rankText[0x0C];
-    uint32_t meseta;
-    uint32_t max_meseta;
-    uint32_t jukebox_songs_unlocked;
-  } __attribute__((packed)) cmd = {0, "\0\0\0\0\0\0\0\0\0\0\0", 0x00FFFFFF, 0x00FFFFFF, 0xFFFFFFFF};
+  S_RankUpdate_GC_Ep3_B7 cmd = {
+      0, "\0\0\0\0\0\0\0\0\0\0\0", 0x00FFFFFF, 0x00FFFFFF, 0xFFFFFFFF};
   send_command(c, 0xB7, 0x00, cmd);
 }
 
@@ -2134,54 +1332,36 @@ void send_ep3_map_data(shared_ptr<Lobby> l, uint32_t map_id) {
 
 
 
-static void send_quest_open_file_pc_gc(shared_ptr<Client> c,
-    const string& filename, uint32_t file_size, bool is_download_quest,
+template <typename CommandT>
+void send_quest_open_file_t(
+    shared_ptr<Client> c,
+    const string& filename,
+    uint32_t file_size,
+    bool is_download_quest,
     bool is_ep3_quest) {
-  struct {
-    char name[0x20];
-    uint16_t unused;
-    uint16_t flags;
-    char filename[0x10];
-    uint32_t file_size;
-  } __attribute__((packed)) cmd;
+  CommandT cmd;
   memset(&cmd, 0, sizeof(cmd));
-  strncpy(cmd.name, filename.c_str(), 0x1F);
   cmd.flags = 2 + is_ep3_quest;
-  strncpy(cmd.filename, filename.c_str(), 0x0F);
   cmd.file_size = file_size;
+  strncpy_t(cmd.name, filename.c_str(), countof(cmd.name));
+  strncpy_t(cmd.filename, filename.c_str(), countof(cmd.filename));
   send_command(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
 }
 
-static void send_quest_open_file_bb(shared_ptr<Client> c,
-    const string& filename, uint32_t file_size, bool is_download_quest,
-    bool is_ep3_quest) {
-  struct {
-    uint8_t unused[0x22];
-    uint16_t flags;
-    char filename[0x10];
-    uint32_t file_size;
-    char name[0x18];
-  } __attribute__((packed)) cmd;
-  memset(&cmd, 0, sizeof(cmd));
-  cmd.flags = 2 + is_ep3_quest;
-  strncpy(cmd.filename, filename.c_str(), 0x0F);
-  cmd.file_size = file_size;
-  send_command(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
-}
-
-static void send_quest_file_chunk(shared_ptr<Client> c, const char* filename,
-    size_t chunk_index, const void* data, size_t size, bool is_download_quest) {
+void send_quest_file_chunk(
+    shared_ptr<Client> c,
+    const char* filename,
+    size_t chunk_index,
+    const void* data,
+    size_t size,
+    bool is_download_quest) {
   if (size > 0x400) {
     throw invalid_argument("quest file chunks must be 1KB or smaller");
   }
 
-  struct {
-    char filename[0x10];
-    uint8_t data[0x400];
-    uint32_t data_size;
-  } __attribute__((packed)) cmd;
-  memset(cmd.filename, 0, 0x10);
-  strncpy(cmd.filename, filename, 0x0F);
+  S_WriteFile_13_A7 cmd;
+  memset(cmd.filename, 0, countof(cmd.filename));
+  strncpy_t(cmd.filename, filename, countof(cmd.filename));
   memcpy(cmd.data, data, size);
   if (size < 0x400) {
     memset(&cmd.data[size], 0, 0x400 - size);
@@ -2195,11 +1375,11 @@ void send_quest_file(shared_ptr<Client> c, const string& basename,
     const string& contents, bool is_download_quest, bool is_ep3_quest) {
 
   if (c->version == GameVersion::PC || c->version == GameVersion::GC) {
-    send_quest_open_file_pc_gc(c, basename, contents.size(), is_download_quest,
-        is_ep3_quest);
+    send_quest_open_file_t<S_OpenFile_PC_GC_44_A6>(
+        c, basename, contents.size(), is_download_quest, is_ep3_quest);
   } else if (c->version == GameVersion::BB) {
-    send_quest_open_file_bb(c, basename, contents.size(), is_download_quest,
-        is_ep3_quest);
+    send_quest_open_file_t<S_OpenFile_BB_44_A6>(
+        c, basename, contents.size(), is_download_quest, is_ep3_quest);
   } else {
     throw invalid_argument("cannot send quest files to this version of client");
   }
@@ -2243,5 +1423,3 @@ void send_change_event(shared_ptr<Lobby> l, uint8_t new_event) {
 void send_change_event(shared_ptr<ServerState> s, uint8_t new_event) {
   send_command(s, 0xDA, new_event);
 }
-
-#pragma pack(pop)
