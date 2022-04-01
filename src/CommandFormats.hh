@@ -653,7 +653,7 @@ struct C_Login_PC_GC_9D_9E {
     ClientConfig cfg;
     parray<uint8_t, 0x20> data;
 
-    ClientConfigFields() : cfg() { }
+    ClientConfigFields() : data() { }
   } client_config;
   parray<uint8_t, 0x64> unused4;
 };
