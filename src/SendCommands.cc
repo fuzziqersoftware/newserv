@@ -616,7 +616,6 @@ void send_guild_card_gc(shared_ptr<Client> c, shared_ptr<Client> source) {
 
 void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
   S_SendGuildCard_BB cmd;
-  memset(&cmd, 0, sizeof(cmd));
   cmd.subcommand = 0x06;
   cmd.subsize = 0x43;
   cmd.unused = 0x0000;
@@ -719,7 +718,6 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     }
 
     auto& e = entries.emplace_back();
-    memset(&e, 0, sizeof(e));
     e.menu_id = GAME_MENU_ID;
     e.game_id = l->lobby_id;
     e.difficulty_tag = (l_is_ep3 ? 0x0A : (l->difficulty + 0x22));
