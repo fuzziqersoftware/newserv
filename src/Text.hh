@@ -198,6 +198,9 @@ struct parray {
     }
     return true;
   }
+  bool operator!=(const parray& s) const {
+    return !this->operator==(s);
+  }
 
   void clear(ItemT v = 0) {
     for (size_t x = 0; x < Count; x++) {
@@ -284,6 +287,18 @@ struct ptext : parray<CharT, Count> {
   template <typename OtherCharT, size_t OtherCount>
   bool operator==(const ptext<OtherCharT, OtherCount>& s) const {
     return text_streq_t(this->items, s.items);
+  }
+  template <typename OtherCharT>
+  bool operator!=(const OtherCharT* s) const {
+    return !this->operator==(s);
+  }
+  template <typename OtherCharT>
+  bool operator!=(const std::basic_string<OtherCharT>& s) const {
+    return !this->operator==(s);
+  }
+  template <typename OtherCharT, size_t OtherCount>
+  bool operator!=(const ptext<OtherCharT, OtherCount>& s) const {
+    return !this->operator==(s);
   }
 
   template <typename OtherCharT>
