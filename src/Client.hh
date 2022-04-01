@@ -9,6 +9,7 @@
 #include "PSOEncryption.hh"
 
 #include "Text.hh"
+#include "PSOProtocol.hh"
 
 
 
@@ -80,6 +81,8 @@ struct Client {
   int16_t override_section_id; // valid if >= 0
   bool infinite_hp; // cheats enabled
   bool infinite_tp; // cheats enabled
+  bool switch_assist; // cheats enabled
+  PSOSubcommand last_switch_enabled_subcommand[3];
   bool can_chat;
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;

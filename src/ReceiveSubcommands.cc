@@ -200,6 +200,25 @@ static void process_subcommand_use_technique(shared_ptr<ServerState>,
   }
 }
 
+static void process_subcommand_switch_state_changed(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const PSOSubcommand* p, size_t count) {
+  if (!l->is_game() || (p->byte[1] != count)) {
+    return;
+  }
+  forward_subcommand(l, c, command, flag, p, count);
+  if ((count == 3) && (p[2].byte[3] == 1)) { // If this is a switch enable command
+    if ((l->flags & LobbyFlag::CHEATS_ENABLED) && c->switch_assist &&
+        (c->last_switch_enabled_subcommand[0].byte[0] == 0x05)) {
+      log(INFO, "[Switch assist] Replaying previous enable command");
+      forward_subcommand(l, c, command, flag, c->last_switch_enabled_subcommand, 3);
+      send_command(c, command, flag, c->last_switch_enabled_subcommand,
+          sizeof(c->last_switch_enabled_subcommand));
+    }
+    memcpy(&c->last_switch_enabled_subcommand, p, sizeof(c->last_switch_enabled_subcommand));
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // BB Item commands
 
@@ -922,7 +941,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 02 */ process_subcommand_unimplemented,
   /* 03 */ process_subcommand_unimplemented,
   /* 04 */ process_subcommand_unimplemented,
-  /* 05 */ process_subcommand_forward_check_size_game, // Switch flipped (door lock / lights / poison gas), or room unlocked when all enemied defeated
+  /* 05 */ process_subcommand_switch_state_changed,
   /* 06 */ process_subcommand_send_guild_card,
   /* 07 */ process_subcommand_symbol_chat,
   /* 08 */ process_subcommand_unimplemented,

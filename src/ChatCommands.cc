@@ -459,6 +459,7 @@ static void command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
       }
       c->infinite_hp = false;
       c->infinite_tp = false;
+      c->switch_assist = false;
     }
     memset(&l->next_drop_item, 0, sizeof(l->next_drop_item));
   }
@@ -866,6 +867,15 @@ static void command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_text_message_printf(c, "$C6Infinite TP %s", c->infinite_tp ? "enabled" : "disabled");
 }
 
+static void command_switch_assist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const char16_t*) {
+  check_is_game(l, true);
+  check_cheats_enabled(l);
+
+  c->switch_assist = !c->switch_assist;
+  send_text_message_printf(c, "$C6Switch assist %s", c->switch_assist ? "enabled" : "disabled");
+}
+
 static void command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const char16_t* args) {
   check_is_game(l, true);
@@ -927,6 +937,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"secid"     , {command_secid             , u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
     {u"silence"   , {command_silence           , u"Usage:\nsilence <name-or-number>"}},
     {u"song"      , {command_song              , u"Usage:\nsong <song-number>"}},
+    {u"swa"       , {command_switch_assist     , u"Usage:\nswa"}},
     {u"type"      , {command_lobby_type        , u"Usage:\ntype <name>"}},
     {u"warp"      , {command_warp              , u"Usage:\nwarp <area-number>"}},
 });
