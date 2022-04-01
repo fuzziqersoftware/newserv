@@ -212,9 +212,7 @@ struct ptext : parray<CharT, Count> {
   ptext() {
     this->clear();
   }
-  ptext(const ptext& other) {
-    this->operator=(other);
-  }
+  ptext(const ptext& other) : parray<CharT, Count>(other) { }
   ptext(ptext&& s) = delete;
 
   template <typename OtherCharT>
