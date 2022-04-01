@@ -97,6 +97,18 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     Send a lobby event update to yourself.\n\
   warp <area-id>\n\
     Send yourself to a specific area.\n\
+  set-section-id [section-id]\n\
+    Override the section ID for games you create or join. This affects the\n\
+    active drop chart if you are the leader of the game and the server doesn't\n\
+    override drops entirely. If no argument is given, clears the override.\n\
+  set-event [event]\n\
+    Override the lobby event for all lobbies and games you join. This applies\n\
+    only to you; other players do not see this override.  If no argument is\n\
+    given, clears the override.\n\
+  set-lobby-number [number]\n\
+    Override the lobby type for all lobbies you join. This applies only to you;\n\
+    other players do not see this override. If no argument is given, clears the\n\
+    override.\n\
   set-chat-filter <on|off>\n\
     Enable or disable chat filtering (enabled by default). Chat filtering\n\
     applies newserv\'s standard character replacements to chat messages (for\n\
@@ -322,6 +334,30 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     *size_field = data.size();
 
     session->send_to_end(data, true);
+
+  } else if (command_name == "set-section-id") {
+    auto session = this->get_proxy_session();
+    if (command_args.empty()) {
+      session->override_section_id = -1;
+    } else {
+      session->override_section_id = section_id_for_name(command_args);
+    }
+
+  } else if (command_name == "set-event") {
+    auto session = this->get_proxy_session();
+    if (command_args.empty()) {
+      session->override_lobby_event = -1;
+    } else {
+      session->override_lobby_event = event_for_name(command_args);
+    }
+
+  } else if (command_name == "set-lobby-number") {
+    auto session = this->get_proxy_session();
+    if (command_args.empty()) {
+      session->override_lobby_number = -1;
+    } else {
+      session->override_lobby_number = lobby_type_for_name(command_args);
+    }
 
   } else if (command_name == "set-chat-filter") {
     auto session = this->get_proxy_session();

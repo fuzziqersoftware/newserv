@@ -50,6 +50,9 @@ public:
     ClientConfig newserv_client_config;
     bool suppress_newserv_commands;
     bool enable_chat_filter;
+    int16_t override_section_id;
+    int16_t override_lobby_event;
+    int16_t override_lobby_number;
 
     struct LobbyPlayer {
       uint32_t guild_card_number;

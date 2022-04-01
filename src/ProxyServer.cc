@@ -304,6 +304,9 @@ ProxyServer::LinkedSession::LinkedSession(
     newserv_client_config(newserv_client_config),
     suppress_newserv_commands(true),
     enable_chat_filter(true),
+    override_section_id(-1),
+    override_lobby_event(-1),
+    override_lobby_number(-1),
     lobby_players(12),
     lobby_client_id(0) {
   memset(&this->next_destination, 0, sizeof(this->next_destination));
@@ -912,7 +915,7 @@ void ProxyServer::LinkedSession::on_server_input() {
               log(WARNING, "[ProxyServer/%08" PRIX32 "] Lobby join command is incorrect size (expected 0x%zX bytes, received 0x%zX bytes)",
                   this->license->serial_number, expected_size, data.size());
             } else {
-              const auto* cmd = reinterpret_cast<const S_JoinLobby_GC_65_67_68*>(data.data());
+              auto* cmd = reinterpret_cast<S_JoinLobby_GC_65_67_68*>(data.data());
 
               this->lobby_client_id = cmd->client_id;
 
@@ -929,6 +932,13 @@ void ProxyServer::LinkedSession::on_server_input() {
                       this->lobby_players[index].guild_card_number,
                       this->lobby_players[index].name.c_str());
                 }
+              }
+
+              if (this->override_lobby_event >= 0) {
+                cmd->event = this->override_lobby_event;
+              }
+              if (this->override_lobby_event >= 0) {
+                cmd->lobby_number = this->override_lobby_number;
               }
             }
             break;
@@ -947,7 +957,7 @@ void ProxyServer::LinkedSession::on_server_input() {
               log(WARNING, "[ProxyServer/%08" PRIX32 "] Game join command is incorrect size (expected 0x%zX bytes, received 0x%zX bytes)",
                   this->license->serial_number, expected_size, data.size());
             } else {
-              const auto* cmd = reinterpret_cast<const S_JoinGame_GC_64*>(data.data());
+              auto* cmd = reinterpret_cast<S_JoinGame_GC_64*>(data.data());
 
               this->lobby_client_id = cmd->client_id;
 
@@ -962,6 +972,13 @@ void ProxyServer::LinkedSession::on_server_input() {
                     this->license->serial_number, x,
                     this->lobby_players[x].guild_card_number,
                     this->lobby_players[x].name.c_str());
+              }
+
+              if (this->override_section_id >= 0) {
+                cmd->section_id = this->override_section_id;
+              }
+              if (this->override_lobby_event >= 0) {
+                cmd->event = this->override_lobby_event;
               }
             }
             break;
