@@ -785,7 +785,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           }
         }
 
-        if (!game->password.empty() && (game->password != password)) {
+        if (!game->password.empty() && (password != game->password)) {
           send_message_box(c, u"$C6Incorrect password.");
           break;
         }
@@ -1338,9 +1338,9 @@ void process_return_player_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c
   const auto& cmd = check_size_t<PlayerBB>(data);
 
   // We only trust the player's quest data and challenge data.
-  memcpy(&c->player.challenge_data, &cmd.challenge_data, sizeof(cmd.challenge_data));
-  memcpy(&c->player.quest_data1, &cmd.quest_data1, sizeof(cmd.quest_data1));
-  memcpy(&c->player.quest_data2, &cmd.quest_data2, sizeof(cmd.quest_data2));
+  c->player.challenge_data = cmd.challenge_data;
+  c->player.quest_data1 = cmd.quest_data1;
+  c->player.quest_data2 = cmd.quest_data2;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
