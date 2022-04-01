@@ -421,7 +421,7 @@ void send_text(shared_ptr<Client> c, StringWriter& w, uint16_t command,
 void send_header_text(shared_ptr<Client> c, uint16_t command,
     uint32_t guild_card_number, const char16_t* text) {
   StringWriter w;
-  w.put(SC_TextHeader_01_06_11({0, guild_card_number}));
+  w.put(SC_TextHeader_01_06_11_B0({0, guild_card_number}));
   send_text(c, w, command, text);
 }
 

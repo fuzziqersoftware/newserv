@@ -11,11 +11,25 @@
 
 
 
-// Names are like [S|C|SC]_CommandName_[Versions]_Numbers
+// This file is newserv's canonical reference of the PSO client/server protocol.
+
+// For the unfamiliar, the le_uint and be_uint types (from phosg/Encoding.hh)
+// are the same as normal uint types, but are explicitly little-endian or
+// big-endian. The parray and ptext types (from Text.hh) are the same as
+// standard arrays, but have various safety and convenience features so we don't
+// have to use easy-to-mess-up functions like memset/memcpy and strncpy.
+
+// Struct names are like [S|C|SC]_CommandName_[Versions]_Numbers
 // S/C denotes who sends the command (S = server, C = client, SC = both)
 // If versions are not specified, the format is the same for all versions.
 
-// Sorted by command number.
+// For variable-length commands, generally a zero-length array is included on
+// the end of the struct if the command is received by newserv, and is omitted
+// if it's sent by newserv. In the latter case, we often use StringWriter to
+// construct the command data instead.
+
+// Structures are sorted by command number. Long BB commands are placed in order
+// according to their low byte; for example, command 01EB is in position as EB.
 
 
 
@@ -24,9 +38,10 @@
 // 01 (S->C): Lobby message box
 // Message box appears in lower-right corner; user must press a key to continue
 
-struct SC_TextHeader_01_06_11 {
+struct SC_TextHeader_01_06_11_B0 {
   le_uint32_t unused;
   le_uint32_t guild_card_number;
+  // Text immediately follows this header (char[] on DC/GC, char16_t[] on PC/BB)
 };
 
 // 02 (S->C): Start encryption (except on BB)
@@ -36,6 +51,7 @@ struct S_ServerInit_DC_GC_02_17 {
   ptext<char, 0x40> copyright;
   le_uint32_t server_key; // Key for data sent by server
   le_uint32_t client_key; // Key for data sent by client
+  // This field is not part of SEGA's original implementation
   ptext<char, 0xBC> after_message;
 };
 
@@ -44,7 +60,7 @@ struct S_ServerInit_Patch_02 {
   le_uint32_t server_key;
   le_uint32_t client_key;
   // BB rejects the command if it's not exactly this size, so we can't add the
-  // anti-copyright message like we do in the other server init commands
+  // after_message like we do in the other server init commands
 };
 
 // 03 (S->C): Start encryption (BB)
@@ -54,6 +70,7 @@ struct S_ServerInit_BB_03 {
   ptext<char, 0x60> copyright;
   parray<uint8_t, 0x30> server_key;
   parray<uint8_t, 0x30> client_key;
+  // This field is not part of SEGA's original implementation
   ptext<char, 0xBC> after_message;
 };
 
@@ -65,8 +82,10 @@ struct S_ServerInit_BB_03 {
 struct S_UpdateClientConfig_DC_PC_GC_04 {
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
-  // This is how newserv uses this command; other servers do not use the same
-  // format for the following 0x20 bytes (or may not use it at all)
+  // The ClientConfig structure (defined in Client.hh) describes how newserv
+  // uses this command; other servers do not use the same format for the
+  // following 0x20 bytes (or may not use it at all). The cfg field is opaque to
+  // the client; it will send back the contents verbatim in its next 9E command.
   ClientConfig cfg;
 };
 
@@ -414,7 +433,8 @@ struct S_JoinGame {
     DispDataT disp;
   };
   // This field is only present if the game (+client) is Episode 3. Similarly to
-  // lobby_data above, these are always present and filled in in slot positions.
+  // lobby_data above, all four of these are always present and they are filled
+  // in in slot positions.
   PlayerEntry players_ep3[4];
 };
 struct S_JoinGame_PC_64 : S_JoinGame<PlayerLobbyDataPC, PlayerDispDataPCGC> { };
@@ -440,7 +460,7 @@ struct S_JoinLobby {
   };
   // Note: not all of these will be filled in and sent if the lobby isn't full
   // (the command size will be shorter than this struct's size)
-  Entry entries[12];
+  Entry entries[0x0C];
 
   static inline size_t size(size_t used_entries) {
     return offsetof(S_JoinLobby, entries) + used_entries * sizeof(Entry);
@@ -732,7 +752,7 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // AF: Invalid command
 
 // B0: Text message
-// Same format as 1A/D5 command (plain text)
+// Same format as 01 command (plain text with unused header)
 
 // B1 (C->S): Request server time
 // No arguments
