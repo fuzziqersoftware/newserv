@@ -40,11 +40,11 @@ void send_command(
       PSOCommandHeaderDCGC header;
       header.command = command;
       header.flag = flag;
-      header.size = sizeof(header) + size;
+      header.size = (sizeof(header) + size + 3) & ~3;
       send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
       if (size) {
         send_data.append(reinterpret_cast<const char*>(data), size);
-        send_data.resize((send_data.size() + 3) & ~3);
+        send_data.resize(header.size);
       }
       break;
     }
@@ -52,20 +52,23 @@ void send_command(
     case GameVersion::PC:
     case GameVersion::PATCH: {
       PSOCommandHeaderPC header;
-      header.size = sizeof(header) + size;
+      header.size = (sizeof(header) + size + 3) & ~3;
       header.command = command;
       header.flag = flag;
       send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
       if (size) {
         send_data.append(reinterpret_cast<const char*>(data), size);
-        send_data.resize((send_data.size() + 3) & ~3);
+        send_data.resize(header.size);
       }
       break;
     }
 
     case GameVersion::BB: {
+      // BB has an annoying behavior here: command lengths must be multiples of
+      // 4, but the actual data length must be a multiple of 8. If the size
+      // field is not divisible by 8, 4 extra bytes are sent anyway.
       PSOCommandHeaderBB header;
-      header.size = sizeof(header) + size;
+      header.size = (sizeof(header) + size + 3) & ~3;
       header.command = command;
       header.flag = flag;
       send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
@@ -854,6 +857,9 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
             l->clients[x]->player.disp);
       }
       player_count++;
+    } else {
+      // inventory doesn't have a default contructor, so clear it manually
+      memset(&cmd.players_ep3[x].inventory, 0, sizeof(cmd.players_ep3[x].inventory));
     }
   }
 
