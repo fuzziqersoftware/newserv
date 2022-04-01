@@ -645,7 +645,6 @@ void ProxyServer::LinkedSession::on_server_input() {
           case 0x9A: {
             should_forward = false;
             C_Login_PC_GC_9D_9E cmd;
-            memset(&cmd, 0, sizeof(cmd));
 
             if (this->guild_card_number == 0) {
               cmd.player_tag = 0xFFFF0000;
