@@ -21,6 +21,33 @@ using namespace std;
 
 
 
+PlayerStats::PlayerStats() noexcept
+  : atp(0), mst(0), evp(0), hp(0), dfp(0), ata(0), lck(0) { }
+
+PlayerDispDataPCGC::PlayerDispDataPCGC() noexcept
+  : level(0),
+    experience(0),
+    meseta(0),
+    unknown_a2(0),
+    name_color(0),
+    extra_model(0),
+    name_color_checksum(0),
+    section_id(0),
+    char_class(0),
+    v2_flags(0),
+    version(0),
+    v1_flags(0),
+    costume(0),
+    skin(0),
+    face(0),
+    head(0),
+    hair(0),
+    hair_r(0),
+    hair_g(0),
+    hair_b(0),
+    proportion_x(0),
+    proportion_y(0) { }
+
 void PlayerDispDataPCGC::enforce_pc_limits() {
   // PC has fewer classes, so we'll substitute some here
   if (this->char_class == 11) {
@@ -79,6 +106,32 @@ PlayerDispDataBB PlayerDispDataPCGC::to_bb() const {
   bb.technique_levels = this->technique_levels;
   return bb;
 }
+
+
+
+PlayerDispDataBB::PlayerDispDataBB() noexcept
+  : level(0),
+    experience(0),
+    meseta(0),
+    unknown_a2(0),
+    name_color(0),
+    extra_model(0),
+    name_color_checksum(0),
+    section_id(0),
+    char_class(0),
+    v2_flags(0),
+    version(0),
+    v1_flags(0),
+    costume(0),
+    skin(0),
+    face(0),
+    head(0),
+    hair(0),
+    hair_r(0),
+    hair_g(0),
+    hair_b(0),
+    proportion_x(0),
+    proportion_y(0) { }
 
 // converts BB player data to PC/GC format
 PlayerDispDataPCGC PlayerDispDataBB::to_pcgc() const {
@@ -177,6 +230,40 @@ void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
   this->proportion_y = pre.proportion_y;
   this->name = pre.name;
 }
+
+
+
+PlayerDispDataBBPreview::PlayerDispDataBBPreview() noexcept
+  : experience(0),
+    level(0),
+    unknown_a2(0),
+    name_color(0),
+    extra_model(0),
+    name_color_checksum(0),
+    section_id(0),
+    char_class(0),
+    v2_flags(0),
+    version(0),
+    v1_flags(0),
+    costume(0),
+    skin(0),
+    face(0),
+    head(0),
+    hair(0),
+    hair_r(0),
+    hair_g(0),
+    hair_b(0),
+    proportion_x(0),
+    proportion_y(0),
+    play_time(0) { }
+
+
+
+GuildCardGC::GuildCardGC() noexcept
+  : player_tag(0), serial_number(0), reserved1(1), reserved2(1), section_id(0), char_class(0) { }
+
+GuildCardBB::GuildCardBB() noexcept
+  : serial_number(0), reserved1(1), reserved2(1), section_id(0), char_class(0) { }
 
 
 
@@ -336,6 +423,17 @@ void Player::save_player_data(const string& filename) const {
   player.tech_menu_config = this->tech_menu_config;
   save_file(filename, &player, sizeof(player));
 }
+
+
+
+PlayerLobbyDataPC::PlayerLobbyDataPC() noexcept
+  : player_tag(0), guild_card(0), ip_address(0), client_id(0) { }
+
+PlayerLobbyDataGC::PlayerLobbyDataGC() noexcept
+  : player_tag(0), guild_card(0), ip_address(0), client_id(0) { }
+
+PlayerLobbyDataBB::PlayerLobbyDataBB() noexcept
+  : player_tag(0), guild_card(0), ip_address(0), client_id(0), unknown2(0) { }
 
 
 

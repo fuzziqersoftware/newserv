@@ -89,6 +89,8 @@ struct PlayerStats {
   le_uint16_t dfp;
   le_uint16_t ata;
   le_uint16_t lck;
+
+  PlayerStats() noexcept;
 } __attribute__((packed));
 
 struct PlayerDispDataBB;
@@ -124,6 +126,12 @@ struct PlayerDispDataPCGC { // 0xD0 in size
   parray<uint8_t, 0x48> config;
   parray<uint8_t, 0x14> technique_levels;
 
+  // Note: This struct has a default constructor because it's used in a command
+  // that has a fixed-size array. If we didn't define this constructor, the
+  // trivial fields in that array's members would be uninitialized, and we could
+  // send uninitialized memory to the client.
+  PlayerDispDataPCGC() noexcept;
+
   void enforce_pc_limits();
   PlayerDispDataBB to_bb() const;
 } __attribute__((packed));
@@ -155,6 +163,8 @@ struct PlayerDispDataBBPreview {
   le_float proportion_y;
   ptext<char16_t, 0x10> name;
   uint32_t play_time;
+
+  PlayerDispDataBBPreview() noexcept;
 } __attribute__((packed));
 
 // BB player appearance and stats data
@@ -189,6 +199,8 @@ struct PlayerDispDataBB {
   parray<uint8_t, 0xE8> config;
   parray<uint8_t, 0x14> technique_levels;
 
+  PlayerDispDataBB() noexcept;
+
   inline void enforce_pc_limits() { }
   PlayerDispDataPCGC to_pcgc() const;
   PlayerDispDataBBPreview to_preview() const;
@@ -206,6 +218,8 @@ struct GuildCardGC {
   uint8_t reserved2; // should be 1
   uint8_t section_id;
   uint8_t char_class;
+
+  GuildCardGC() noexcept;
 } __attribute__((packed));
 
 // BB guild card format
@@ -218,6 +232,8 @@ struct GuildCardBB {
   uint8_t reserved2; // should be 1
   uint8_t section_id;
   uint8_t char_class;
+
+  GuildCardBB() noexcept;
 } __attribute__((packed));
 
 // an entry in the BB guild card file
@@ -265,6 +281,8 @@ struct PlayerLobbyDataPC {
   be_uint32_t ip_address;
   le_uint32_t client_id;
   ptext<char16_t, 0x10> name;
+
+  PlayerLobbyDataPC() noexcept;
 } __attribute__((packed));
 
 struct PlayerLobbyDataGC {
@@ -273,6 +291,8 @@ struct PlayerLobbyDataGC {
   be_uint32_t ip_address;
   le_uint32_t client_id;
   ptext<char, 0x10> name;
+
+  PlayerLobbyDataGC() noexcept;
 } __attribute__((packed));
 
 struct PlayerLobbyDataBB {
@@ -283,6 +303,8 @@ struct PlayerLobbyDataBB {
   le_uint32_t client_id;
   ptext<char16_t, 0x10> name;
   le_uint32_t unknown2;
+
+  PlayerLobbyDataBB() noexcept;
 } __attribute__((packed));
 
 
