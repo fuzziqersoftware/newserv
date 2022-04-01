@@ -21,9 +21,6 @@ Lobby::Lobby() : lobby_id(0), min_level(0), max_level(0xFFFFFFFF),
     this->next_item_id[x] = 0;
   }
   memset(&this->next_drop_item, 0, sizeof(this->next_drop_item));
-  memset(this->variations, 0, 0x20 * sizeof(this->variations[0]));
-  memset(this->password, 0, 36 * sizeof(this->password[0]));
-  memset(this->name, 0, 36 * sizeof(this->name[0]));
 }
 
 bool Lobby::is_game() const {
@@ -152,7 +149,7 @@ shared_ptr<Client> Lobby::find_client(const char16_t* identifier,
         (this->clients[x]->license->serial_number == serial_number)) {
       return this->clients[x];
     }
-    if (identifier && !char16ncmp(this->clients[x]->player.disp.name, identifier, 0x10)) {
+    if (identifier && (this->clients[x]->player.disp.name == identifier)) {
       return this->clients[x];
     }
   }

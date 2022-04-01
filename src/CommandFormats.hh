@@ -33,14 +33,14 @@ struct SC_TextHeader_01_06_11 {
 // Client will respond with an (encrypted) 9A, 9D, or 9E command
 
 struct S_ServerInit_DC_GC_02_17 {
-  char copyright[0x40];
+  ptext<char, 0x40> copyright;
   le_uint32_t server_key; // Key for data sent by server
   le_uint32_t client_key; // Key for data sent by client
-  char after_message[200];
+  ptext<char, 0xBC> after_message;
 };
 
 struct S_ServerInit_Patch_02 {
-  char copyright[0x40];
+  ptext<char, 0x40> copyright;
   le_uint32_t server_key;
   le_uint32_t client_key;
   // BB rejects the command if it's not exactly this size, so we can't add the
@@ -51,10 +51,10 @@ struct S_ServerInit_Patch_02 {
 // Client will respond with a 93 command
 
 struct S_ServerInit_BB_03 {
-  char copyright[0x60];
-  uint8_t server_key[0x30];
-  uint8_t client_key[0x30];
-  char after_message[200];
+  ptext<char, 0x60> copyright;
+  parray<uint8_t, 0x30> server_key;
+  parray<uint8_t, 0x30> client_key;
+  ptext<char, 0xBC> after_message;
 };
 
 // 04 (S->C): Set guild card number and update client config ("security data")
@@ -74,9 +74,9 @@ struct S_UpdateClientConfig_DC_PC_GC_04 {
 // 04 (C->S): Log in (patch server)
 
 struct C_Login_Patch_04 {
-  le_uint32_t unused[3];
-  char username[0x10];
-  char password[0x10];
+  parray<le_uint32_t, 3> unused;
+  ptext<char, 0x10> username;
+  ptext<char, 0x10> password;
 };
 
 // 05: Disconnect
@@ -89,7 +89,7 @@ struct C_Login_Patch_04 {
 // The guild_card_number field is used only in server->client commands
 
 struct C_Chat_06 {
-  le_uint32_t unused[2];
+  uint64_t unused;
   union {
     char dcgc[0];
     char16_t pcbb[0];
@@ -107,7 +107,7 @@ struct S_MenuEntry {
   le_uint32_t menu_id;
   le_uint32_t item_id;
   le_uint16_t flags; // should be 0x0F04
-  CharT text[EntryLength];
+  ptext<CharT, EntryLength> text;
 };
 struct S_MenuEntry_PC_BB_07 : S_MenuEntry<char16_t, 17> { };
 struct S_MenuEntry_DC_GC_07 : S_MenuEntry<char, 18> { };
@@ -126,7 +126,7 @@ struct S_GameMenuEntry {
   le_uint32_t game_id;
   uint8_t difficulty_tag; // 0x0A = Ep3; else difficulty + 0x22 (so 0x25 = Ult)
   uint8_t num_players;
-  CharT name[0x10];
+  ptext<CharT, 0x10> name;
   uint8_t episode; // 40 = Ep1, 41 = Ep2, 43 = Ep4. Ignored on Ep3
   uint8_t flags; // 02 = locked, 04 = disabled (BB), 10 = battle, 20 = challenge
 };
@@ -136,7 +136,7 @@ struct S_GameMenuEntry_GC_08 : S_GameMenuEntry<char> { };
 // 09 (S->C): Check directory (patch server)
 
 struct S_CheckDirectory_Patch_09 {
-  char name[0x40];
+  ptext<char, 0x40> name;
 };
 
 // 09 (C->S): Menu item info request
@@ -189,7 +189,7 @@ struct C_MenuSelection {
 
 // Header flag = file chunk index
 struct S_WriteFile_13_A7 {
-  char filename[0x10];
+  ptext<char, 0x10> filename;
   uint8_t data[0x400];
   le_uint32_t data_size;
 };
@@ -220,13 +220,13 @@ struct S_Reconnect_19 {
 struct S_ReconnectSplit_19 {
   be_uint32_t pc_address;
   le_uint16_t pc_port;
-  uint8_t unused1[0x0F];
+  parray<uint8_t, 0x0F> unused1;
   uint8_t gc_command;
   uint8_t gc_flag;
   le_uint16_t gc_size;
   be_uint32_t gc_address;
   le_uint16_t gc_port;
-  uint8_t unused2[0xB0 - 0x23];
+  parray<uint8_t, 0xB0 - 0x23> unused2;
 };
 
 // 1A: Large message box
@@ -256,7 +256,7 @@ struct S_ReconnectSplit_19 {
 // command had no payload). The latest version uses this 16-byte challenge.
 
 struct SC_GameCardCheck_BB_22 {
-  uint8_t data[0x10];
+  parray<uint8_t, 0x10> data;
 };
 
 // 23: Invalid command
@@ -304,11 +304,11 @@ struct S_GuildCardSearchResult {
   le_uint32_t result_serial_number;
   HeaderT reconnect_command_header;
   S_Reconnect_19 reconnect_command;
-  char location_string[0x44];
+  ptext<char, 0x44> location_string;
   le_uint32_t menu_id;
   le_uint32_t lobby_id;
-  char unused[0x3C];
-  CharT name[0x20];
+  ptext<char, 0x3C> unused;
+  ptext<CharT, 0x20> name;
 };
 struct S_GuildCardSearchResult_PC_40 : S_GuildCardSearchResult<PSOCommandHeaderPC, char16_t> { };
 struct S_GuildCardSearchResult_DC_GC_40 : S_GuildCardSearchResult<PSOCommandHeaderDCGC, char> { };
@@ -326,19 +326,19 @@ struct S_GuildCardSearchResult_BB_40 : S_GuildCardSearchResult<PSOCommandHeaderB
 // Used for downloading online quests
 
 struct S_OpenFile_PC_GC_44_A6 {
-  char name[0x20];
+  ptext<char, 0x20> name;
   le_uint16_t unused;
   le_uint16_t flags;
-  char filename[0x10];
+  ptext<char, 0x10> filename;
   le_uint32_t file_size;
 };
 
 struct S_OpenFile_BB_44_A6 {
-  uint8_t unused[0x22];
+  parray<uint8_t, 0x22> unused;
   le_uint16_t flags;
-  char filename[0x10];
+  ptext<char, 0x10> filename;
   le_uint32_t file_size;
-  char name[0x18];
+  ptext<char, 0x18> name;
 };
 
 // 45: Invalid command
@@ -391,7 +391,7 @@ struct S_OpenFile_BB_44_A6 {
 // Header flag = entry count
 template <typename LobbyDataT, typename DispDataT>
 struct S_JoinGame {
-  le_uint32_t variations[0x20];
+  parray<le_uint32_t, 0x20> variations;
   // Unlike lobby join commands, these are filled in in their slot positions.
   // That is, if there's one player in a game with ID 2, then the first two of
   // these are blank and the player's data is in the third entry here.
@@ -514,9 +514,9 @@ struct S_LeaveLobby_66_69 {
 struct SC_SimpleMail_GC_81 {
   le_uint32_t player_tag;
   le_uint32_t from_serial_number;
-  char from_name[0x10];
+  ptext<char, 0x10> from_name;
   le_uint32_t to_serial_number;
-  char text[0x200];
+  ptext<char, 0x200> text;
 };
 
 // 82: Invalid command
@@ -574,11 +574,11 @@ struct S_ArrowUpdateEntry_88 {
 // 93 (C->S): Log in (BB)
 
 struct C_Login_BB_93 {
-  char unused[0x14];
-  char username[0x10];
-  char unused2[0x20];
-  char password[0x10];
-  char unused3[0x30];
+  ptext<char, 0x14> unused;
+  ptext<char, 0x10> username;
+  ptext<char, 0x20> unused2;
+  ptext<char, 0x10> password;
+  ptext<char, 0x30> unused3;
   ClientConfig cfg;
 };
 
@@ -611,9 +611,9 @@ struct C_ClientChecksum_GC_96 {
 // 9A (C->S): Initial login (no password or client config)
 
 struct C_Login_DC_PC_GC_9A {
-  char unused[0x20];
-  char serial_number[0x10];
-  char access_key[0x10];
+  ptext<char, 0x20> unused;
+  ptext<char, 0x10> serial_number;
+  ptext<char, 0x10> access_key;
 };
 
 // 9B: Invalid command
@@ -625,12 +625,12 @@ struct C_Login_DC_PC_GC_9A {
 // 9C (C->S): Register
 
 struct C_Register_DC_PC_GC_9C {
-  char unused[8];
+  ptext<char, 8> unused;
   le_uint32_t sub_version;
   le_uint32_t unused2;
-  char serial_number[0x30];
-  char access_key[0x30];
-  char password[0x30];
+  ptext<char, 0x30> serial_number;
+  ptext<char, 0x30> access_key;
+  ptext<char, 0x30> password;
 };
 
 // 9D (C->S): Log in with client config
@@ -641,19 +641,19 @@ struct C_Register_DC_PC_GC_9C {
 struct C_Login_PC_GC_9D_9E {
   le_uint32_t player_tag; // 00 00 01 00 if guild card is set (via 04)
   le_uint32_t guild_card_number; // FF FF FF FF if not set
-  le_uint32_t unused1[2];
+  le_uint64_t unused;
   le_uint32_t sub_version;
-  uint8_t unused2[0x24]; // 00 01 00 00 ... (rest is 00)
-  char serial_number[0x10];
-  char access_key[0x10];
-  char serial_number2[0x30];
-  char access_key2[0x30];
-  char name[0x10];
+  parray<uint8_t, 0x24> unused2; // 00 01 00 00 ... (rest is 00)
+  ptext<char, 0x10> serial_number;
+  ptext<char, 0x10> access_key;
+  ptext<char, 0x30> serial_number2;
+  ptext<char, 0x30> access_key2;
+  ptext<char, 0x10> name;
   // Note: there are 8 bytes at the end of cfg that are technically not
   // included in the client config on GC, but the field after it is
   // sufficiently large and unused anyway
   ClientConfig cfg;
-  uint8_t unused4[0x5C];
+  parray<uint8_t, 0x5C> unused4;
 };
 
 // 9F: Invalid command
@@ -679,8 +679,8 @@ template <typename CharT>
 struct S_QuestMenuEntry {
   le_uint32_t menu_id;
   le_uint32_t item_id;
-  CharT name[0x20];
-  CharT short_desc[0x70];
+  ptext<CharT, 0x20> name;
+  ptext<CharT, 0x70> short_desc;
 };
 struct S_QuestMenuEntry_PC_A2_A4 : S_QuestMenuEntry<char16_t> { };
 struct S_QuestMenuEntry_GC_A2_A4 : S_QuestMenuEntry<char> { };
@@ -688,8 +688,9 @@ struct S_QuestMenuEntry_GC_A2_A4 : S_QuestMenuEntry<char> { };
 struct S_QuestMenuEntry_BB_A2_A4 {
   le_uint32_t menu_id;
   le_uint32_t item_id;
-  char16_t name[0x20];
-  char16_t short_desc[0x7A]; // Why is this not the same as PC? Mysteries of SEGA's engineering...
+  ptext<char16_t, 0x20> name;
+  // Why is this 10 characters longer than on other versions...?
+  ptext<char16_t, 0x7A> short_desc;
 };
 
 // A3 (S->C): Quest information
@@ -755,7 +756,7 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 
 struct S_RankUpdate_GC_Ep3_B7 {
   le_uint32_t rank;
-  char rank_text[0x0C];
+  ptext<char, 0x0C> rank_text;
   le_uint32_t meseta;
   le_uint32_t max_meseta;
   le_uint32_t jukebox_songs_unlocked;
@@ -799,7 +800,7 @@ struct S_ChoiceSearchEntry {
   // be set by the user at any time; otherwise it can't.
   le_uint16_t parent_category_id; // 0 for top-level categories
   le_uint16_t category_id;
-  CharT text[0x1C];
+  ptext<CharT, 0x1C> text;
 };
 struct S_ChoiceSearchEntry_DC_GC_C0 : S_ChoiceSearchEntry<char> { };
 struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<char16_t> { };
@@ -821,9 +822,9 @@ struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<char16_t> { };
 
 template <typename CharT>
 struct C_CreateGame {
-  le_uint32_t unused[2];
-  CharT name[0x10];
-  CharT password[0x10];
+  le_uint64_t unused;
+  ptext<CharT, 0x10> name;
+  ptext<CharT, 0x10> password;
   uint8_t difficulty;
   uint8_t battle_mode;
   uint8_t challenge_mode;
@@ -831,6 +832,7 @@ struct C_CreateGame {
 };
 struct C_CreateGame_DC_GC_C1_EC : C_CreateGame<char> { };
 struct C_CreateGame_PC_C1 : C_CreateGame<char16_t> { };
+
 struct C_CreateGame_BB_C1 : C_CreateGame<char16_t> {
   uint8_t solo_mode;
   uint8_t unused2[3];
@@ -864,12 +866,12 @@ struct C_ExecuteChoiceSearch_C3 {
 // Command is a list of these; header.flag is the entry count
 struct S_ChoiceSearchResultEntry_GC_C4 {
   le_uint32_t guild_card_number;
-  char name[0x10]; // No language marker, as usual on GC
-  char info_string[0x20]; // Usually something like "<class> Lvl <level>"
+  ptext<char, 0x10> name; // No language marker, as usual on GC
+  ptext<char, 0x20> info_string; // Usually something like "<class> Lvl <level>"
   // Format is stricter here; this is "LOBBYNAME,BLOCKNUM,SHIPNAME"
   // If target is in game, for example, "Game Name,BLOCK01,Alexandria"
   // If target is in lobby, for example, "BLOCK01-1,BLOCK01,Alexandria"
-  char locator_string[0x34];
+  ptext<char, 0x34> locator_string;
   // Server IP and port for "meet user" option
   le_uint32_t server_ip;
   le_uint16_t server_port;
@@ -877,7 +879,7 @@ struct S_ChoiceSearchResultEntry_GC_C4 {
   le_uint32_t menu_id;
   le_uint32_t lobby_id; // These two are guesses
   le_uint32_t game_id; // Zero if target is in a lobby rather than a game
-  uint8_t unused2[0x58];
+  parray<uint8_t, 0x58> unused2;
 };
 
 // C5 (S->C): Challenge rank update
@@ -886,7 +888,7 @@ struct S_ChoiceSearchResultEntry_GC_C4 {
 // C6 (C->S): Set blocked senders list
 
 struct C_SetBlockedSenders_C6 {
-  le_uint32_t blocked_senders[30];
+  parray<le_uint32_t, 30> blocked_senders;
 };
 
 // C7 (C->S): Enable simple mail auto-reply
@@ -936,7 +938,7 @@ struct C_SetBlockedSenders_C6 {
 // D7 (C->S): Request GBA game file
 
 struct C_GBAGameRequest_GC_D7 {
-  char filename[0x10];
+  ptext<char, 0x10> filename;
 };
 
 // D8 (S->C): Info board
@@ -944,8 +946,8 @@ struct C_GBAGameRequest_GC_D7 {
 // Command is a list of these; header.flag is the entry count
 template <typename CharT>
 struct S_InfoBoardEntry_D8 {
-  CharT name[0x10];
-  CharT message[0xAC];
+  ptext<CharT, 0x10> name;
+  ptext<CharT, 0xAC> message;
 };
 struct S_InfoBoardEntry_PC_BB_D8 : S_InfoBoardEntry_D8<char16_t> { };
 struct S_InfoBoardEntry_DC_GC_D8 : S_InfoBoardEntry_D8<char> { };
@@ -959,14 +961,14 @@ struct S_InfoBoardEntry_DC_GC_D8 : S_InfoBoardEntry_D8<char> { };
 // DB (S->C): Verify license (GC)
 
 struct C_VerifyLicense_GC_DB {
-  char unused[0x20];
-  char serial_number[0x10];
-  char access_key[0x10];
-  char unused2[0x08];
+  ptext<char, 0x20> unused;
+  ptext<char, 0x10> serial_number;
+  ptext<char, 0x10> access_key;
+  ptext<char, 0x08> unused2;
   le_uint32_t sub_version;
-  char serial_number2[0x30];
-  char access_key2[0x30];
-  char password[0x30];
+  ptext<char, 0x30> serial_number2;
+  ptext<char, 0x30> access_key2;
+  ptext<char, 0x30> password;
 };
 
 // DC: Player menu state (Episode 3)
@@ -1002,7 +1004,7 @@ struct S_GuildCardHeader_BB_01DC {
 struct S_TournamentEntry_GC_Ep3_E0 {
   le_uint32_t menu_id;
   le_uint32_t item_id;
-  uint8_t unknown[0x30];
+  parray<uint8_t, 0x30> unknown;
 };
 
 // E0 (C->S): Request team and key config (BB)
@@ -1104,7 +1106,7 @@ struct S_StreamFileIndexEntry_BB_01EB {
   le_uint32_t size;
   le_uint32_t checksum;
   le_uint32_t offset;
-  char filename[0x40];
+  ptext<char, 0x40> filename;
 } __attribute__((packed));
 
 struct S_StreamFileChunk_BB_02EB {
@@ -1123,12 +1125,12 @@ struct S_StreamFileChunk_BB_02EB {
 
 union C_UpdateAccountData_BB_ED {
   le_uint32_t option; // 01ED
-  uint8_t symbol_chats[0x4E0]; // 02ED
-  uint8_t chat_shortcuts[0xA40]; // 03ED
-  uint8_t key_config[0x16C]; // 04ED
-  uint8_t pad_config[0x38]; // 05ED
-  uint8_t tech_menu[0x28]; // 06ED
-  uint8_t customize[0xE8]; // 07ED
+  parray<uint8_t, 0x4E0> symbol_chats; // 02ED
+  parray<uint8_t, 0xA40> chat_shortcuts; // 03ED
+  parray<uint8_t, 0x16C> key_config; // 04ED
+  parray<uint8_t, 0x38> pad_config; // 05ED
+  parray<uint8_t, 0x28> tech_menu; // 06ED
+  parray<uint8_t, 0xE8> customize; // 07ED
 } __attribute__((packed));
 
 // EE: Scrolling message (BB)
@@ -1162,8 +1164,8 @@ struct S_SendGuildCard_GC {
   le_uint16_t unused;
   le_uint32_t player_tag;
   le_uint32_t serial_number;
-  char name[0x18];
-  char desc[0x6C];
+  ptext<char, 0x18> name;
+  ptext<char, 0x6C> desc;
   uint8_t reserved1;
   uint8_t reserved2;
   uint8_t section_id;
@@ -1175,9 +1177,9 @@ struct S_SendGuildCard_BB {
   uint8_t subsize;
   le_uint16_t unused;
   le_uint32_t serial_number;
-  char16_t name[0x18];
-  char16_t team_name[0x10];
-  char16_t desc[0x58];
+  ptext<char16_t, 0x18> name;
+  ptext<char16_t, 0x10> team_name;
+  ptext<char16_t, 0x58> desc;
   uint8_t reserved1;
   uint8_t reserved2;
   uint8_t section_id;

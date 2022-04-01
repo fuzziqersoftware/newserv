@@ -168,7 +168,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
 
   auto& item = c->player.inventory.items[item_index];
   if (item.data.item_data1w[0] == 0x0203) { // technique disk
-    c->player.disp.technique_levels[item.data.item_data1[4]] = item.data.item_data1[2];
+    c->player.disp.technique_levels.data()[item.data.item_data1[4]] = item.data.item_data1[2];
 
   } else if (item.data.item_data1w[0] == 0x0A03) { // grinder
     if (equipped_weapon < 0) {

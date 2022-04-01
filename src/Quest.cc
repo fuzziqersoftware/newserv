@@ -77,9 +77,9 @@ struct PSOQuestHeaderDC { // same for dc v1 and v2, thankfully
   uint8_t is_download;
   uint8_t unknown1;
   uint16_t quest_number; // 0xFFFF for challenge quests
-  char name[0x20];
-  char short_description[0x80];
-  char long_description[0x120];
+  ptext<char, 0x20> name;
+  ptext<char, 0x80> short_description;
+  ptext<char, 0x120> long_description;
 } __attribute__((packed));
 
 struct PSOQuestHeaderPC {
@@ -90,9 +90,9 @@ struct PSOQuestHeaderPC {
   uint8_t is_download;
   uint8_t unknown1;
   uint16_t quest_number; // 0xFFFF for challenge quests
-  char16_t name[0x20];
-  char16_t short_description[0x80];
-  char16_t long_description[0x120];
+  ptext<char16_t, 0x20> name;
+  ptext<char16_t, 0x80> short_description;
+  ptext<char16_t, 0x120> long_description;
 } __attribute__((packed));
 
 struct PSOQuestHeaderGC {
@@ -104,21 +104,21 @@ struct PSOQuestHeaderGC {
   uint8_t unknown1;
   uint8_t quest_number;
   uint8_t episode; // 1 = ep2. apparently some quests have 0xFF here, which means ep1 (?)
-  char name[0x20];
-  char short_description[0x80];
-  char long_description[0x120];
+  ptext<char, 0x20> name;
+  ptext<char, 0x80> short_description;
+  ptext<char, 0x120> long_description;
 } __attribute__((packed));
 
 struct PSOQuestHeaderGCEpisode3 {
   // there's actually a lot of other important stuff in here but I'm lazy. it
   // looks like map data, cutscene data, and maybe special cards used during
   // the quest
-  uint8_t unused[0x1DF0];
-  char name[0x14];
-  char location[0x14];
-  char location2[0x3C];
-  char description[0x190];
-  uint8_t unused2[0x3A34];
+  parray<uint8_t, 0x1DF0> unknown_a1;
+  ptext<char, 0x14> name;
+  ptext<char, 0x14> location;
+  ptext<char, 0x3C> location2;
+  ptext<char, 0x190> description;
+  parray<uint8_t, 0x3A34> unknown_a2;
 } __attribute__((packed));
 
 struct PSOQuestHeaderBB {
@@ -132,9 +132,9 @@ struct PSOQuestHeaderBB {
   uint8_t max_players;
   uint8_t joinable_in_progress;
   uint8_t unknown;
-  char16_t name[0x20];
-  char16_t short_description[0x80];
-  char16_t long_description[0x120];
+  ptext<char16_t, 0x20> name;
+  ptext<char16_t, 0x80> short_description;
+  ptext<char16_t, 0x120> long_description;
 } __attribute__((packed));
 
 

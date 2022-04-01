@@ -49,19 +49,15 @@ PlayerDispDataBB PlayerDispDataPCGC::to_bb() const {
   bb.stats.dfp = this->stats.dfp;
   bb.stats.ata = this->stats.ata;
   bb.stats.lck = this->stats.lck;
-  bb.unknown1 = this->unknown1;
-  bb.unknown2[0] = this->unknown2[0];
-  bb.unknown2[1] = this->unknown2[1];
+  bb.unknown_a1 = this->unknown_a1;
   bb.level = this->level;
   bb.experience = this->experience;
   bb.meseta = this->meseta;
-  memset(bb.guild_card, 0, sizeof(bb.guild_card));
-  strncpy(bb.guild_card, "         0", 0x10);
-  bb.unknown3[0] = this->unknown3[0];
-  bb.unknown3[1] = this->unknown3[1];
+  bb.guild_card = "         0";
+  bb.unknown_a2 = this->unknown_a2;
   bb.name_color = this->name_color;
   bb.extra_model = this->extra_model;
-  memcpy(&bb.unused, &this->unused, 15);
+  bb.unused = this->unused;
   bb.name_color_checksum = this->name_color_checksum;
   bb.section_id = this->section_id;
   bb.char_class = this->char_class;
@@ -78,11 +74,9 @@ PlayerDispDataBB PlayerDispDataPCGC::to_bb() const {
   bb.hair_b = this->hair_b;
   bb.proportion_x = this->proportion_x;
   bb.proportion_y = this->proportion_y;
-  memset(bb.name, 0, sizeof(bb.name));
-  decode_sjis(bb.name, this->name, 0x10);
-  add_language_marker_inplace(bb.name, 'J', 0x10);
-  memcpy(&bb.config, &this->config, 0x48);
-  memcpy(&bb.technique_levels, &this->technique_levels, 0x14);
+  bb.name = add_language_marker(this->name, 'J');
+  bb.config = this->config;
+  bb.technique_levels = this->technique_levels;
   return bb;
 }
 
@@ -96,17 +90,14 @@ PlayerDispDataPCGC PlayerDispDataBB::to_pcgc() const {
   pcgc.stats.dfp = this->stats.dfp;
   pcgc.stats.ata = this->stats.ata;
   pcgc.stats.lck = this->stats.lck;
-  pcgc.unknown1 = this->unknown1;
-  pcgc.unknown2[0] = this->unknown2[0];
-  pcgc.unknown2[1] = this->unknown2[1];
+  pcgc.unknown_a1 = this->unknown_a1;
   pcgc.level = this->level;
   pcgc.experience = this->experience;
   pcgc.meseta = this->meseta;
-  pcgc.unknown3[0] = this->unknown3[0];
-  pcgc.unknown3[1] = this->unknown3[1];
+  pcgc.unknown_a2 = this->unknown_a2;
   pcgc.name_color = this->name_color;
   pcgc.extra_model = this->extra_model;
-  memcpy(&pcgc.unused, &this->unused, 15);
+  pcgc.unused = this->unused;
   pcgc.name_color_checksum = this->name_color_checksum;
   pcgc.section_id = this->section_id;
   pcgc.char_class = this->char_class;
@@ -123,11 +114,9 @@ PlayerDispDataPCGC PlayerDispDataBB::to_pcgc() const {
   pcgc.hair_b = this->hair_b;
   pcgc.proportion_x = this->proportion_x;
   pcgc.proportion_y = this->proportion_y;
-  memset(pcgc.name, 0, sizeof(pcgc.name));
-  encode_sjis(pcgc.name, this->name, 0x10);
-  remove_language_marker_inplace(pcgc.name);
-  memcpy(&pcgc.config, &this->config, 0x48);
-  memcpy(&pcgc.technique_levels, &this->technique_levels, 0x14);
+  pcgc.name = remove_language_marker(this->name);
+  pcgc.config = this->config;
+  pcgc.technique_levels = this->technique_levels;
   return pcgc;
 }
 
@@ -136,13 +125,11 @@ PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
   PlayerDispDataBBPreview pre;
   pre.level = this->level;
   pre.experience = this->experience;
-  memset(pre.guild_card, 0, sizeof(pre.guild_card));
-  strncpy(pre.guild_card, this->guild_card, 0x10);
-  pre.unknown3[0] = this->unknown3[0];
-  pre.unknown3[1] = this->unknown3[1];
+  pre.guild_card = this->guild_card;
+  pre.unknown_a2 = this->unknown_a2;
   pre.name_color = this->name_color;
   pre.extra_model = this->extra_model;
-  memcpy(&pre.unused, &this->unused, 11);
+  pre.unused = this->unused;
   pre.name_color_checksum = this->name_color_checksum;
   pre.section_id = this->section_id;
   pre.char_class = this->char_class;
@@ -159,22 +146,19 @@ PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
   pre.hair_b = this->hair_b;
   pre.proportion_x = this->proportion_x;
   pre.proportion_y = this->proportion_y;
-  memset(pre.name, 0, sizeof(pre.name));
-  strcpy_z(pre.name, this->name, 16);
-  pre.play_time = this->play_time;
+  pre.name = this->name;
+  pre.play_time = 0; // TODO: Store this somewhere and return it here
   return pre;
 }
 
 void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
   this->level = pre.level;
   this->experience = pre.experience;
-  memset(this->guild_card, 0, sizeof(this->guild_card));
-  strncpy(this->guild_card, pre.guild_card, 0x10);
-  this->unknown3[0] = pre.unknown3[0];
-  this->unknown3[1] = pre.unknown3[1];
+  this->guild_card = pre.guild_card;
+  this->unknown_a2 = pre.unknown_a2;
   this->name_color = pre.name_color;
   this->extra_model = pre.extra_model;
-  memcpy(&this->unused, &pre.unused, 11);
+  this->unused = pre.unused;
   this->name_color_checksum = pre.name_color_checksum;
   this->section_id = pre.section_id;
   this->char_class = pre.char_class;
@@ -191,9 +175,7 @@ void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
   this->hair_b = pre.hair_b;
   this->proportion_x = pre.proportion_x;
   this->proportion_y = pre.proportion_y;
-  memset(this->name, 0, sizeof(this->name));
-  strcpy_z(this->name, pre.name, 0x10);
-  this->play_time = 0;
+  this->name = pre.name;
 }
 
 
@@ -214,43 +196,33 @@ void PlayerBank::save(const string& filename) const {
 void Player::import(const PSOPlayerDataPC& pc) {
   this->inventory = pc.inventory;
   this->disp = pc.disp.to_bb();
-  /* TODO: fix and re-enable this functionality
-  memset(this->info_board, 0, sizeof(this->info_board));
-  decode_sjis(this->info_board, pc->info_board);
-  memcpy(&this->blocked, pc->blocked, sizeof(uint32_t) * 30);
-  memset(this->auto_reply, 0, sizeof(this->auto_reply));
-  if (pc->auto_reply_enabled) {
-    decode_sjis(this->auto_reply, pc->auto_reply);
-  } else {*/
-  this->auto_reply[0] = 0;
-  //}
+  // TODO: Add these fields to the existing structure so we can parse them
+  // this->info_board = pc.info_board;
+  // this->blocked_senders = pc.blocked_senders;
+  // this->auto_reply = pc.auto_reply;
 }
 
 void Player::import(const PSOPlayerDataGC& gc) {
   this->inventory = gc.inventory;
   this->disp = gc.disp.to_bb();
-  memset(this->info_board, 0, sizeof(this->info_board));
-  decode_sjis(this->info_board, gc.info_board, 0xAC);
-  memcpy(&this->blocked, gc.blocked, sizeof(uint32_t) * 30);
-  memset(this->auto_reply, 0, sizeof(this->auto_reply));
+  this->info_board = gc.info_board;
+  this->blocked_senders = gc.blocked_senders;
   if (gc.auto_reply_enabled) {
-    decode_sjis(this->auto_reply, gc.auto_reply, 0xAC);
+    this->auto_reply = gc.auto_reply;
   } else {
-    this->auto_reply[0] = 0;
+    this->auto_reply.clear();
   }
 }
 
 void Player::import(const PSOPlayerDataBB& bb) {
-  // note: we don't copy the inventory and disp here because we already have
+  // Note: we don't copy the inventory and disp here because we already have
   // it (we sent the player data to the client in the first place)
-  memset(this->info_board, 0, sizeof(this->info_board));
-  strcpy_z(this->info_board, bb.info_board, 0xAC);
-  memcpy(&this->blocked, bb.blocked, sizeof(uint32_t) * 30);
-  memset(this->auto_reply, 0, sizeof(this->auto_reply));
+  this->info_board = bb.info_board;
+  this->blocked_senders = bb.blocked_senders;
   if (bb.auto_reply_enabled) {
-    strcpy_z(this->auto_reply, bb.auto_reply, 0xAC);
+    this->auto_reply = bb.auto_reply;
   } else {
-    this->auto_reply[0] = 0;
+    this->auto_reply.clear();
   }
 }
 
@@ -258,33 +230,28 @@ PlayerBB Player::export_bb_player_data() const {
   PlayerBB bb;
   bb.inventory = this->inventory;
   bb.disp = this->disp;
-  memset(bb.unknown, 0, 0x10);
+  bb.unknown.clear();
   bb.option_flags = this->option_flags;
-  memcpy(bb.quest_data1, &this->quest_data1, 0x0208);
+  bb.quest_data1 = this->quest_data1;
   bb.bank = this->bank;
   bb.serial_number = this->serial_number;
-  memset(bb.name, 0, sizeof(bb.name));
-  strcpy_z(bb.name, this->disp.name, 24);
-  memset(bb.team_name, 0, sizeof(bb.team_name));
-  strcpy_z(bb.team_name, this->team_name, 16);
-  memset(bb.guild_card_desc, 0, sizeof(bb.guild_card_desc));
-  strcpy_z(bb.guild_card_desc, this->guild_card_desc, 0x58);
+  bb.name = this->disp.name;
+  bb.team_name = this->team_name;
+  bb.guild_card_desc = this->guild_card_desc;
   bb.reserved1 = 0;
   bb.reserved2 = 0;
   bb.section_id = this->disp.section_id;
   bb.char_class = this->disp.char_class;
   bb.unknown3 = 0;
-  memcpy(bb.symbol_chats, this->symbol_chats, 0x04E0);
-  memcpy(bb.shortcuts, this->shortcuts, 0x0A40);
-  memset(bb.auto_reply, 0, sizeof(bb.auto_reply));
-  strcpy_z(bb.auto_reply, this->auto_reply, 0xAC);
-  memset(bb.info_board, 0, sizeof(bb.info_board));
-  strcpy_z(bb.info_board, this->info_board, 0xAC);
-  memset(bb.unknown5, 0, 0x1C);
-  memcpy(bb.challenge_data, this->challenge_data, 0x0140);
-  memcpy(bb.tech_menu_config, this->tech_menu_config, 0x0028);
-  memset(bb.unknown6, 0, 0x2C);
-  memcpy(bb.quest_data2, &this->quest_data2, 0x0058);
+  bb.symbol_chats = this->symbol_chats;
+  bb.shortcuts = this->shortcuts;
+  bb.auto_reply = this->auto_reply;
+  bb.info_board = this->info_board;
+  bb.unknown5.clear();
+  bb.challenge_data = this->challenge_data;
+  bb.tech_menu_config = this->tech_menu_config;
+  bb.unknown6.clear();
+  bb.quest_data2 = this->quest_data2;
   bb.key_config = this->key_config;
   return bb;
 }
@@ -311,78 +278,62 @@ uint32_t compute_guild_card_checksum(const void* vdata, size_t size) {
 
 void Player::load_account_data(const string& filename) {
   SavedAccountBB account = load_object_file<SavedAccountBB>(filename);
-
-  if (strcmp(account.signature, ACCOUNT_FILE_SIGNATURE)) {
+  if (account.signature != ACCOUNT_FILE_SIGNATURE) {
     throw runtime_error("account data header is incorrect");
   }
-
-  memcpy(&this->blocked, &account.blocked, sizeof(uint32_t) * 30);
+  this->blocked_senders = account.blocked_senders;
   this->guild_cards = account.guild_cards;
   this->key_config = account.key_config;
   this->option_flags = account.option_flags;
-  memcpy(&this->shortcuts, &account.shortcuts, 0x0A40);
-  memcpy(&this->symbol_chats, &account.symbol_chats, 0x04E0);
-  memset(this->team_name, 0, sizeof(this->team_name));
-  strcpy_z(this->team_name, account.team_name, 16);
+  this->shortcuts = account.shortcuts;
+  this->symbol_chats = account.symbol_chats;
+  this->team_name = account.team_name;
 }
 
 void Player::save_account_data(const string& filename) const {
   SavedAccountBB account;
-
-  strncpy(account.signature, ACCOUNT_FILE_SIGNATURE, sizeof(account.signature));
-  memcpy(&account.blocked, &this->blocked, sizeof(uint32_t) * 30);
+  account.signature = ACCOUNT_FILE_SIGNATURE;
+  account.blocked_senders = this->blocked_senders;
   account.guild_cards = this->guild_cards;
   account.key_config = this->key_config;
   account.option_flags = this->option_flags;
-  memcpy(&account.shortcuts, &this->shortcuts, 0x0A40);
-  memcpy(&account.symbol_chats, &this->symbol_chats, 0x04E0);
-  memset(account.team_name, 0, sizeof(account.team_name));
-  strcpy_z(account.team_name, this->team_name, 16);
-
+  account.shortcuts = this->shortcuts;
+  account.symbol_chats = this->symbol_chats;
+  account.team_name = this->team_name;
   save_file(filename, &account, sizeof(account));
 }
 
 void Player::load_player_data(const string& filename) {
   SavedPlayerBB player = load_object_file<SavedPlayerBB>(filename);
-
-  if (strcmp(player.signature, PLAYER_FILE_SIGNATURE)) {
+  if (player.signature != PLAYER_FILE_SIGNATURE) {
     throw runtime_error("account data header is incorrect");
   }
-
-  memset(this->auto_reply, 0, sizeof(this->auto_reply));
-  strcpy_z(this->auto_reply, player.auto_reply, 0xAC);
+  this->auto_reply = player.auto_reply;
   this->bank = player.bank;
-  memcpy(&this->challenge_data, &player.challenge_data, 0x0140);
+  this->challenge_data = player.challenge_data;
   this->disp = player.disp;
-  memset(this->guild_card_desc, 0, sizeof(this->guild_card_desc));
-  strcpy_z(this->guild_card_desc, player.guild_card_desc, 0x58);
-  memset(this->info_board, 0, sizeof(this->info_board));
-  strcpy_z(this->info_board, player.info_board, 0xAC);
+  this->guild_card_desc = player.guild_card_desc;
+  this->info_board = player.info_board;
   this->inventory = player.inventory;
-  memcpy(&this->quest_data1, &player.quest_data1, 0x0208);
-  memcpy(&this->quest_data2, &player.quest_data2, 0x0058);
-  memcpy(&this->tech_menu_config, &player.tech_menu_config, 0x0028);
+  this->quest_data1 = player.quest_data1;
+  this->quest_data2 = player.quest_data2;
+  this->tech_menu_config = player.tech_menu_config;
 }
 
 void Player::save_player_data(const string& filename) const {
   SavedPlayerBB player;
-
-  strncpy(player.signature, PLAYER_FILE_SIGNATURE, sizeof(player.signature));
+  player.signature = PLAYER_FILE_SIGNATURE;
   player.preview = this->disp.to_preview();
-  memset(player.auto_reply, 0, sizeof(player.auto_reply));
-  strcpy_z(player.auto_reply, this->auto_reply, 0xAC);
+  player.auto_reply = this->auto_reply;
   player.bank = this->bank;
-  memcpy(&player.challenge_data, &this->challenge_data, 0x0140);
+  player.challenge_data = this->challenge_data;
   player.disp = this->disp;
-  memset(player.guild_card_desc, 0, sizeof(player.guild_card_desc));
-  strcpy_z(player.guild_card_desc,this->guild_card_desc, 0x58);
-  memset(player.info_board, 0, sizeof(player.info_board));
-  strcpy_z(player.info_board, this->info_board, 0xAC);
+  player.guild_card_desc = this->guild_card_desc;
+  player.info_board = this->info_board;
   player.inventory = this->inventory;
-  memcpy(&player.quest_data1, &this->quest_data1, 0x0208);
-  memcpy(&player.quest_data2, &this->quest_data2, 0x0058);
-  memcpy(&player.tech_menu_config, &this->tech_menu_config, 0x0028);
-
+  player.quest_data1 = this->quest_data1;
+  player.quest_data2 = this->quest_data2;
+  player.tech_menu_config = this->tech_menu_config;
   save_file(filename, &player, sizeof(player));
 }
 
@@ -639,9 +590,9 @@ string filename_for_player_bb(const string& username, uint8_t player_index) {
       static_cast<uint8_t>(player_index + 1));
 }
 
-string filename_for_bank_bb(const string& username, const char* bank_name) {
+string filename_for_bank_bb(const string& username, const std::string& bank_name) {
   return string_printf("system/players/bank_%s_%s.nsb", username.c_str(),
-      bank_name);
+      bank_name.c_str());
 }
 
 string filename_for_class_template_bb(uint8_t char_class) {

@@ -63,8 +63,8 @@ ClientConfig Client::export_config() const {
   cc.flags = this->flags;
   cc.proxy_destination_address = this->proxy_destination_address;
   cc.proxy_destination_port = this->proxy_destination_port;
-  memset(cc.unused, 0xFF, sizeof(cc.unused));
-  memset(cc.unused_bb_only, 0xFF, sizeof(cc.unused_bb_only));
+  cc.unused.clear(0xFF);
+  cc.unused_bb_only.clear(0xFF);
   return cc;
 }
 

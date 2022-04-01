@@ -159,7 +159,7 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
         c->player.load_account_data("system/blueburst/default.nsa");
       }
 
-      sprintf(c->player.bank_name, "player%d", c->bb_player_index + 1);
+      c->player.bank_name = string_printf("player%d", c->bb_player_index + 1);
 
       string player_filename = filename_for_player_bb(c->license->username,
           c->bb_player_index);
@@ -198,7 +198,10 @@ void process_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   }
 
   if (c->version == GameVersion::BB) {
-    c->player.disp.play_time += ((now() - c->play_time_begin) / 1000000);
+    // TODO: Make a timer event for each connected player that saves their data
+    // periodically, not only when they disconnect
+    // TODO: Track play time somewhere
+    // c->player.disp.play_time += ((now() - c->play_time_begin) / 1000000);
     string account_filename = filename_for_account_bb(c->license->username);
     string player_filename = filename_for_player_bb(c->license->username,
         c->bb_player_index);
@@ -218,10 +221,10 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // DB
   const auto& cmd = check_size_t<C_VerifyLicense_GC_DB>(data);
 
-  uint32_t serial_number = strtoul(cmd.serial_number, nullptr, 16);
+  uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
   try {
-    c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
-        cmd.password);
+    c->license = s->license_manager->verify_gc(serial_number,
+        cmd.access_key.c_str(), cmd.password.c_str());
   } catch (const exception& e) {
     if (!s->allow_unregistered_users) {
       u16string message = u"Login failed: " + decode_sjis(e.what());
@@ -230,7 +233,7 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       return;
     } else {
       auto l = LicenseManager::create_license_gc(serial_number,
-          cmd.access_key, cmd.password, true);
+          cmd.access_key.c_str(), cmd.password.c_str(), true);
       s->license_manager->add(l);
       c->license = l;
     }
@@ -244,14 +247,14 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 9A
   const auto& cmd = check_size_t<C_Login_DC_PC_GC_9A>(data);
 
-  uint32_t serial_number = strtoul(cmd.serial_number, nullptr, 16);
+  uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
-          nullptr);
+      c->license = s->license_manager->verify_gc(serial_number,
+          cmd.access_key.c_str(), nullptr);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd.access_key,
-          nullptr);
+      c->license = s->license_manager->verify_pc(serial_number,
+          cmd.access_key.c_str(), nullptr);
     }
   } catch (const exception& e) {
     // The client should have sent a different command containing the password
@@ -273,14 +276,14 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   c->flags |= flags_for_version(c->version, cmd.sub_version);
 
-  uint32_t serial_number = strtoul(cmd.serial_number, nullptr, 16);
+  uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
-          cmd.password);
+      c->license = s->license_manager->verify_gc(serial_number,
+          cmd.access_key.c_str(), cmd.password.c_str());
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd.access_key,
-          cmd.password);
+      c->license = s->license_manager->verify_pc(serial_number,
+          cmd.access_key.c_str(), cmd.password.c_str());
     }
   } catch (const exception& e) {
     if (!s->allow_unregistered_users) {
@@ -292,10 +295,10 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       shared_ptr<License> l;
       if (c->version == GameVersion::GC) {
         l = LicenseManager::create_license_gc(serial_number,
-            cmd.access_key, cmd.password, true);
+            cmd.access_key.c_str(), cmd.password.c_str(), true);
       } else {
         l = LicenseManager::create_license_pc(serial_number,
-            cmd.access_key, cmd.password, true);
+            cmd.access_key.c_str(), cmd.password.c_str(), true);
       }
       s->license_manager->add(l);
       c->license = l;
@@ -313,14 +316,14 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   c->flags |= flags_for_version(c->version, cmd.sub_version);
 
-  uint32_t serial_number = strtoul(cmd.serial_number, nullptr, 16);
+  uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
-          nullptr);
+      c->license = s->license_manager->verify_gc(serial_number,
+          cmd.access_key.c_str(), nullptr);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd.access_key,
-          nullptr);
+      c->license = s->license_manager->verify_pc(serial_number,
+          cmd.access_key.c_str(), nullptr);
     }
   } catch (const exception& e) {
     // See comment in 9A handler about why we do this even if unregistered users
@@ -357,7 +360,8 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   c->flags |= flags_for_version(c->version, 0);
 
   try {
-    c->license = s->license_manager->verify_bb(cmd.username, cmd.password);
+    c->license = s->license_manager->verify_bb(
+        cmd.username.c_str(), cmd.password.c_str());
   } catch (const exception& e) {
     u16string message = u"Login failed: " + decode_sjis(e.what());
     send_message_box(c, message.c_str());
@@ -770,21 +774,18 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
 
       if (!(c->license->privileges & Privilege::FREE_JOIN_GAMES)) {
-        char16_t password[0x10];
-        memset(password, 0, sizeof(password));
+        ptext<char16_t, 0x10> password;
         if (data.size() > sizeof(C_MenuSelection)) {
           if (uses_unicode) {
             size_t max_chars = (data.size() - sizeof(C_MenuSelection)) / sizeof(char16_t);
-            strcpy_z(password, cmd.password.pcbb,
-                min<size_t>(max_chars, countof(password)));
+            password.assign(cmd.password.pcbb, max_chars);
           } else {
             size_t max_chars = (data.size() - sizeof(C_MenuSelection)) / sizeof(char);
-            decode_sjis(password, cmd.password.dcgc,
-                min<size_t>(max_chars, countof(password)));
+            password = decode_sjis(cmd.password.dcgc, max_chars);
           }
         }
 
-        if (game->password[0] && char16ncmp(game->password, password, 0x10)) {
+        if (!game->password.empty() && (game->password != password)) {
           send_message_box(c, u"$C6Incorrect password.");
           break;
         }
@@ -1036,7 +1037,7 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
   switch (c->version) {
     case GameVersion::PC:
       check_size(data.size(), sizeof(PSOPlayerDataPC),
-          sizeof(PSOPlayerDataPC) + sizeof(char16_t) * countof(c->player.auto_reply));
+          sizeof(PSOPlayerDataPC) + sizeof(char16_t) * c->player.auto_reply.size());
       c->player.import(*reinterpret_cast<const PSOPlayerDataPC*>(data.data()));
       break;
     case GameVersion::GC:
@@ -1045,13 +1046,13 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
         // TODO: import Episode 3 data somewhere
       } else {
         check_size(data.size(), sizeof(PSOPlayerDataGC),
-            sizeof(PSOPlayerDataGC) + sizeof(char) * countof(c->player.auto_reply));
+            sizeof(PSOPlayerDataGC) + sizeof(char) * c->player.auto_reply.size());
       }
       c->player.import(*reinterpret_cast<const PSOPlayerDataGC*>(data.data()));
       break;
     case GameVersion::BB:
       check_size(data.size(), sizeof(PSOPlayerDataBB),
-          sizeof(PSOPlayerDataBB) + sizeof(char16_t) * countof(c->player.auto_reply));
+          sizeof(PSOPlayerDataBB) + sizeof(char16_t) * c->player.auto_reply.size());
       c->player.import(*reinterpret_cast<const PSOPlayerDataBB*>(data.data()));
       break;
     default:
@@ -1148,7 +1149,7 @@ void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
         continue;
       }
       send_chat_message(l->clients[x], c->license->serial_number,
-          c->player.disp.name, processed_text.c_str());
+          c->player.disp.name.data(), processed_text.c_str());
     }
   }
 }
@@ -1157,7 +1158,7 @@ void process_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 06
   const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
   u16string text(cmd.text.pcbb, (data.size() - sizeof(C_Chat_06)) / sizeof(char16_t));
-  text.resize(char16len(text.c_str()));
+  strip_trailing_zeroes(text);
   process_chat_generic(s, c, text);
 }
 
@@ -1248,13 +1249,13 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
     send_message_box(c, u"$C6You are not logged in.");
     return;
   }
-  if (c->player.disp.name[0]) {
+  if (!c->player.disp.name.empty()) {
     send_message_box(c, u"$C6You have already loaded a character.");
     return;
   }
 
   c->bb_player_index = cmd.player_index;
-  snprintf(c->player.bank_name, 0x20, "player%" PRIu32, cmd.player_index + 1);
+  c->player.bank_name = string_printf("player%" PRIu32, cmd.player_index + 1);
   string player_filename = filename_for_player_bb(c->license->username, cmd.player_index);
   string bank_filename = filename_for_bank_bb(c->license->username, c->player.bank_name);
   string template_filename = filename_for_class_template_bb(cmd.preview.char_class);
@@ -1305,27 +1306,27 @@ void process_change_account_data_bb(shared_ptr<ServerState>, shared_ptr<Client> 
       break;
     case 0x02ED:
       check_size(data.size(), sizeof(cmd->symbol_chats));
-      memcpy(c->player.symbol_chats, cmd->symbol_chats, 0x04E0);
+      c->player.symbol_chats = cmd->symbol_chats;
       break;
     case 0x03ED:
       check_size(data.size(), sizeof(cmd->chat_shortcuts));
-      memcpy(c->player.shortcuts, cmd->chat_shortcuts, 0x0A40);
+      c->player.shortcuts = cmd->chat_shortcuts;
       break;
     case 0x04ED:
       check_size(data.size(), sizeof(cmd->key_config));
-      memcpy(&c->player.key_config.key_config, cmd->key_config, 0x016C);
+      c->player.key_config.key_config = cmd->key_config;
       break;
     case 0x05ED:
       check_size(data.size(), sizeof(cmd->pad_config));
-      memcpy(&c->player.key_config.joystick_config, cmd->pad_config, 0x0038);
+      c->player.key_config.joystick_config = cmd->pad_config;
       break;
     case 0x06ED:
       check_size(data.size(), sizeof(cmd->tech_menu));
-      memcpy(&c->player.tech_menu_config, cmd->tech_menu, 0x0028);
+      c->player.tech_menu_config = cmd->tech_menu;
       break;
     case 0x07ED:
       check_size(data.size(), sizeof(cmd->customize));
-      memcpy(c->player.disp.config, cmd->customize, 0xE8);
+      c->player.disp.config = cmd->customize;
       break;
     default:
       throw invalid_argument("unknown account command");
@@ -1386,22 +1387,21 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   // If the sender is blocked, don't forward the mail
   for (size_t y = 0; y < 30; y++) {
-    if (target->player.blocked[y] == c->license->serial_number) {
+    if (target->player.blocked_senders.data()[y] == c->license->serial_number) {
       return;
     }
   }
 
   // If the target has auto-reply enabled, send the autoreply
-  if (target->player.auto_reply[0]) {
+  if (!target->player.auto_reply.empty()) {
     send_simple_mail(c, target->license->serial_number,
-        target->player.disp.name, target->player.auto_reply);
+        target->player.disp.name.c_str(), target->player.auto_reply.c_str());
   }
 
   // Forward the message
-  string message(cmd.text, strnlen(cmd.text, sizeof(cmd.text) / sizeof(cmd.text[0])));
-  u16string u16message = decode_sjis(message);
-  send_simple_mail(target, c->license->serial_number, c->player.disp.name,
-      u16message.data());
+  u16string u16message = decode_sjis(cmd.text);
+  send_simple_mail(target, c->license->serial_number,
+      c->player.disp.name.c_str(), u16message.c_str());
 }
 
 
@@ -1418,33 +1418,31 @@ void process_info_board_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
 template <typename CharT>
 void process_write_info_board_t(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D9
-  check_size(data.size(), 0, countof(c->player.info_board) * sizeof(CharT));
-  memset(c->player.info_board, 0, sizeof(c->player.info_board));
-  strncpy_t(c->player.info_board, reinterpret_cast<const CharT*>(data.data()),
-      min<size_t>(countof(c->player.info_board), data.size() / sizeof(CharT)));
+  check_size(data.size(), 0, c->player.info_board.size() * sizeof(CharT));
+  c->player.info_board.assign(
+      reinterpret_cast<const CharT*>(data.data()),
+      data.size() / sizeof(CharT));
 }
 
 template <typename CharT>
 void process_set_auto_reply_t(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C7
-  check_size(data.size(), 0, countof(c->player.auto_reply) * sizeof(CharT));
-  memset(c->player.auto_reply, 0, sizeof(c->player.auto_reply));
-  strncpy_t(c->player.auto_reply, reinterpret_cast<const CharT*>(data.data()),
-      min<size_t>(countof(c->player.auto_reply), data.size() / sizeof(CharT)));
+  check_size(data.size(), 0, c->player.auto_reply.size() * sizeof(CharT));
+  c->player.auto_reply.assign(
+      reinterpret_cast<const CharT*>(data.data()),
+      data.size() / sizeof(CharT));
 }
 
 void process_disable_auto_reply(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C8
   check_size(data.size(), 0);
-  memset(c->player.auto_reply, 0, sizeof(c->player.auto_reply));
+  c->player.auto_reply.clear();
 }
 
-void process_set_blocked_list(shared_ptr<ServerState>, shared_ptr<Client> c,
+void process_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C6
   const auto& cmd = check_size_t<C_SetBlockedSenders_C6>(data);
-  for (size_t x = 0; x < countof(cmd.blocked_senders); x++) {
-    c->player.blocked[x] = cmd.blocked_senders[x];
-  }
+  c->player.blocked_senders = cmd.blocked_senders;
 }
 
 
@@ -1501,8 +1499,8 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   }
 
   shared_ptr<Lobby> game(new Lobby());
-  strcpy_z(game->name, name, countof(game->name));
-  strcpy_z(game->password, password, countof(game->name));
+  game->name = name;
+  game->password = password;
   game->version = c->version;
   game->section_id = c->override_section_id >= 0
       ? c->override_section_id : c->player.disp.section_id;
@@ -1548,8 +1546,9 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
           try {
             auto filename = string_printf(
                 "system/blueburst/map/%c%hhu%zu%" PRIu32 "%" PRIu32 ".dat",
-                *type_char, game->episode, x, game->variations[x * 2],
-                game->variations[(x * 2) + 1]);
+                *type_char, game->episode, x,
+                game->variations.data()[x * 2].load(),
+                game->variations.data()[(x * 2) + 1].load());
             game->enemies = load_map(filename.c_str(), game->episode,
                 game->difficulty, bp_subtable, false);
             break;
@@ -1566,8 +1565,9 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
       for (size_t x = 0; x < 0x10; x++) {
         auto filename = string_printf(
             "system/blueburst/map/m%hhu%zu%" PRIu32 "%" PRIu32 ".dat",
-            game->episode, x, game->variations[x * 2],
-            game->variations[(x * 2) + 1]);
+            game->episode, x,
+            game->variations.data()[x * 2].load(),
+            game->variations.data()[(x * 2) + 1].load());
         game->enemies = load_map(filename.c_str(), game->episode,
             game->difficulty, bp_subtable, false);
       }
@@ -1583,11 +1583,11 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
 
   if (variation_maxes) {
     for (size_t x = 0; x < 0x20; x++) {
-      game->variations[x] = random_int(0, variation_maxes[x] - 1);
+      game->variations.data()[x] = random_int(0, variation_maxes[x] - 1);
     }
   } else {
     for (size_t x = 0; x < 0x20; x++) {
-      game->variations[x] = 0;
+      game->variations.data()[x] = 0;
     }
   }
 
@@ -1598,7 +1598,7 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_PC_C1>(data);
 
-  auto game = create_game_generic(s, c, cmd.name, cmd.password, 1,
+  auto game = create_game_generic(s, c, cmd.name.c_str(), cmd.password.c_str(), 1,
       cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, 0);
 
   s->add_lobby(game);
@@ -1639,7 +1639,7 @@ void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_BB_C1>(data);
 
-  auto game = create_game_generic(s, c, cmd.name, cmd.password,
+  auto game = create_game_generic(s, c, cmd.name.c_str(), cmd.password.c_str(),
       cmd.episode, cmd.difficulty, cmd.battle_mode, cmd.challenge_mode,
       cmd.solo_mode);
 
@@ -1657,7 +1657,7 @@ void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (!l) {
     throw invalid_argument("client not in any lobby");
   }
-  send_lobby_name(c, l->name);
+  send_lobby_name(c, l->name.c_str());
 }
 
 void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1712,7 +1712,8 @@ and operated completely independently.\n\
 \n\
 License check: ";
   try {
-    c->license = s->license_manager->verify_bb(cmd.username, cmd.password);
+    c->license = s->license_manager->verify_bb(
+        cmd.username.c_str(), cmd.password.c_str());
     message += u"OK";
   } catch (const exception& e) {
     message += decode_sjis(e.what());
@@ -1817,7 +1818,7 @@ static process_command_t dc_handlers[0x100] = {
 
   // C0
   nullptr, process_create_game_dc_gc, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_t<char>,
+  nullptr, nullptr, process_set_blocked_senders_list, process_set_auto_reply_t<char>,
   process_disable_auto_reply, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
@@ -1900,7 +1901,7 @@ static process_command_t pc_handlers[0x100] = {
 
   // C0
   nullptr, process_create_game_pc, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_t<char16_t>,
+  nullptr, nullptr, process_set_blocked_senders_list, process_set_auto_reply_t<char16_t>,
   process_disable_auto_reply, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
@@ -1985,7 +1986,7 @@ static process_command_t gc_handlers[0x100] = {
 
   // C0
   process_choice_search, process_create_game_dc_gc, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_t<char>,
+  nullptr, nullptr, process_set_blocked_senders_list, process_set_auto_reply_t<char>,
   process_disable_auto_reply, process_game_command, process_ep3_server_data_request, process_game_command,
   nullptr, nullptr, nullptr, nullptr,
 
@@ -2072,7 +2073,7 @@ static process_command_t bb_handlers[0x100] = {
 
   // C0
   nullptr, process_create_game_bb, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_list, process_set_auto_reply_t<char16_t>,
+  nullptr, nullptr, process_set_blocked_senders_list, process_set_auto_reply_t<char16_t>,
   process_disable_auto_reply, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 

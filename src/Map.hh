@@ -10,11 +10,11 @@ struct BattleParams {
     uint16_t atp; // attack power
     uint16_t psv; // perseverance (intelligence?)
     uint16_t evp; // evasion
-    uint16_t hp; // hit points
+    uint16_t hp;  // hit points
     uint16_t dfp; // defense
     uint16_t ata; // accuracy
     uint16_t lck; // luck
-    uint8_t unknown[14];
+    uint8_t unknown_a1[0x0E];
     uint32_t experience;
     uint32_t difficulty;
 } __attribute__((packed));

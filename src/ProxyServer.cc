@@ -198,14 +198,14 @@ void ProxyServer::UnlinkedSession::on_client_input() {
           should_close_unlinked_session = true;
         } else {
           const auto* cmd = reinterpret_cast<const C_Login_PC_GC_9D_9E*>(data.data());
-          uint32_t serial_number = strtoul(cmd->serial_number, nullptr, 16);
+          uint32_t serial_number = strtoul(cmd->serial_number.c_str(), nullptr, 16);
           try {
             license = this->server->state->license_manager->verify_gc(
-                serial_number, cmd->access_key, nullptr);
+                serial_number, cmd->access_key.c_str(), nullptr);
             sub_version = cmd->sub_version;
             character_name = cmd->name;
             memcpy(&client_config, &cmd->cfg, offsetof(ClientConfig, unused_bb_only));
-            memset(client_config.unused_bb_only, 0xFF, sizeof(client_config.unused_bb_only));
+            client_config.unused_bb_only.clear(0xFF);
           } catch (const exception& e) {
             log(ERROR, "[ProxyServer] Unlinked client has no valid license");
             should_close_unlinked_session = true;
@@ -306,7 +306,6 @@ ProxyServer::LinkedSession::LinkedSession(
     enable_chat_filter(true),
     lobby_players(12),
     lobby_client_id(0) {
-  memset(this->remote_client_config_data, 0, 0x20);
   memset(&this->next_destination, 0, sizeof(this->next_destination));
   struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
   dest_sin->sin_family = AF_INET;
@@ -625,14 +624,13 @@ void ProxyServer::LinkedSession::on_server_input() {
             if (command == 0x17) {
               C_VerifyLicense_GC_DB cmd;
               memset(&cmd, 0, sizeof(cmd));
-              snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08" PRIX32 "",
+              cmd.serial_number = string_printf("%08" PRIX32 "",
                   this->license->serial_number);
-              memcpy(cmd.access_key, this->license->access_key, 0x10);
+              cmd.access_key = this->license->access_key;
               cmd.sub_version = this->sub_version;
-              snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08" PRIX32 "",
-                  this->license->serial_number);
-              memcpy(cmd.access_key2, this->license->access_key, 0x10);
-              memcpy(cmd.password, this->license->gc_password, 0x0C);
+              cmd.serial_number2 = cmd.serial_number;
+              cmd.access_key2 = cmd.access_key;
+              cmd.password = this->license->gc_password;
               send_command(this->server_bev.get(), this->version,
                   this->server_output_crypt.get(), 0xDB, 0, &cmd, sizeof(cmd),
                   name.c_str());
@@ -656,15 +654,14 @@ void ProxyServer::LinkedSession::on_server_input() {
               cmd.guild_card_number = this->guild_card_number;
             }
             cmd.sub_version = this->sub_version;
-            cmd.unused2[1] = 1;
-            snprintf(cmd.serial_number, sizeof(cmd.serial_number), "%08" PRIX32 "",
+            cmd.unused2.data()[1] = 1;
+            cmd.serial_number = string_printf("%08" PRIX32 "",
                 this->license->serial_number);
-            memcpy(cmd.access_key, this->license->access_key, 0x10);
-            snprintf(cmd.serial_number2, sizeof(cmd.serial_number2), "%08" PRIX32 "",
-                this->license->serial_number);
-            memcpy(cmd.access_key2, this->license->access_key, 0x10);
-            strncpy(cmd.name, this->character_name.c_str(), sizeof(cmd.name) - 1);
-            memcpy(&cmd.cfg, this->remote_client_config_data, 0x20);
+            cmd.access_key = this->license->access_key;
+            cmd.serial_number2 = cmd.serial_number;
+            cmd.access_key2 = cmd.access_key;
+            cmd.name = this->character_name;
+            memcpy(&cmd.cfg, this->remote_client_config_data.data(), 0x20);
 
             // If there's a guild card number, a shorter 9E is sent that ends
             // right after the client config data
@@ -701,14 +698,14 @@ void ProxyServer::LinkedSession::on_server_input() {
             // server init command). We simulate that bug here.
             // If there was previously a guild card number, assume we got the
             // lobby server init text instead of the port map init text.
-            memcpy(
-                this->remote_client_config_data,
+            memcpy(this->remote_client_config_data.data(),
                 had_guild_card_number
                   ? "t Lobby Server. Copyright SEGA E"
                   : "t Port Map. Copyright SEGA Enter",
-                0x20);
-            memcpy(this->remote_client_config_data, &cmd->cfg,
-                min<size_t>(data.size() - sizeof(S_UpdateClientConfig_DC_PC_GC_04), 0x20));
+                this->remote_client_config_data.bytes());
+            memcpy(this->remote_client_config_data.data(), &cmd->cfg,
+                min<size_t>(data.size() - sizeof(S_UpdateClientConfig_DC_PC_GC_04),
+                  this->remote_client_config_data.bytes()));
 
             // If the guild card number was not set, pretend (to the server)
             // that this is the first 04 command the client has received. The
@@ -798,7 +795,8 @@ void ProxyServer::LinkedSession::on_server_input() {
             const auto* cmd = reinterpret_cast<const S_OpenFile_PC_GC_44_A6*>(data.data());
 
             string output_filename = string_printf("%s.%s.%" PRIu64,
-                cmd->filename, is_download_quest ? "download" : "online", now());
+                cmd->filename.c_str(),
+                is_download_quest ? "download" : "online", now());
             for (size_t x = 0; x < output_filename.size(); x++) {
               if (output_filename[x] < 0x20 || output_filename[x] > 0x7E || output_filename[x] == '/') {
                 output_filename[x] = '_';
@@ -833,7 +831,7 @@ void ProxyServer::LinkedSession::on_server_input() {
               sf = &this->saving_files.at(cmd->filename);
             } catch (const out_of_range&) {
               log(WARNING, "[ProxyServer/%08" PRIX32 "] Received data for non-open file %s",
-                  this->license->serial_number, cmd->filename);
+                  this->license->serial_number, cmd->filename.c_str());
               break;
             }
 

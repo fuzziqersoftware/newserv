@@ -402,7 +402,8 @@ static void command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
       level_string = string_printf("Levels: %d-%d", l->min_level + 1, l->max_level + 1);
     }
 
-    send_text_message_printf(c, "$C6Game ID: %08X\n%s\nSection ID: %s\nCheat mode: %s",
+    send_text_message_printf(c,
+        "$C6Game ID: %08X\n%s\nSection ID: %s\nCheat mode: %s",
         l->lobby_id, level_string.c_str(),
         name_for_section_id(l->section_id).c_str(),
         (l->flags & LobbyFlag::CHEATS_ENABLED) ? "on" : "off");
@@ -547,7 +548,7 @@ static void command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     send_text_message(l, u"$C6Game unlocked");
 
   } else {
-    strncpy_t(l->password, args, countof(l->password));
+    l->password = args;
     auto encoded = encode_sjis(l->password);
     send_text_message_printf(l, "$C6Game password:\n%s",
         encoded.c_str());
@@ -619,7 +620,9 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   } else if (tokens[0] == "level") {
     c->player.disp.level = stoul(tokens[1]) - 1;
   } else if (tokens[0] == "namecolor") {
-    sscanf(tokens[1].c_str(), "%8X", &c->player.disp.name_color);
+    uint32_t new_color;
+    sscanf(tokens[1].c_str(), "%8X", &new_color);
+    c->player.disp.name_color = new_color;
   } else if (tokens[0] == "secid") {
     uint8_t secid = section_id_for_name(decode_sjis(tokens[1]));
     if (secid == 0xFF) {
@@ -629,8 +632,7 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
       c->player.disp.section_id = secid;
     }
   } else if (tokens[0] == "name") {
-    decode_sjis(c->player.disp.name, tokens[1].c_str(), 0x10);
-    add_language_marker_inplace(c->player.disp.name, u'J', 0x10);
+    c->player.disp.name = add_language_marker(tokens[1], 'J');
   } else if (tokens[0] == "npc") {
     if (tokens[1] == "none") {
       c->player.disp.extra_model = 0;
@@ -648,7 +650,7 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     uint8_t level = stoul(tokens[2]) - 1;
     if (tokens[1] == "all") {
       for (size_t x = 0; x < 0x14; x++) {
-        c->player.disp.technique_levels[x] = level;
+        c->player.disp.technique_levels.data()[x] = level;
       }
     } else {
       uint8_t tech_id = technique_for_name(decode_sjis(tokens[1]));
@@ -656,7 +658,7 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
         send_text_message(c, u"$C6No such technique.");
         return;
       }
-      c->player.disp.technique_levels[tech_id] = level;
+      c->player.disp.technique_levels.data()[tech_id] = level;
     }
   } else {
     send_text_message(c, u"$C6Unknown field.");

@@ -33,7 +33,7 @@ ServerState::ServerState()
         (is_ep3_only ? LobbyFlag::EPISODE_3 : 0);
     l->block = x + 1;
     l->type = x;
-    strcpy_z(l->name, lobby_name.c_str(), 0x24);
+    l->name = lobby_name;
     l->max_clients = 12;
     this->add_lobby(l);
 

@@ -114,7 +114,7 @@ static void process_subcommand_send_guild_card(shared_ptr<ServerState>,
     if (count < 0x25) {
       return;
     }
-    decode_sjis(c->player.guild_card_desc,
+    c->player.guild_card_desc = decode_sjis(
         reinterpret_cast<const char*>(&p[9].byte[0]), 0x58);
   }
 

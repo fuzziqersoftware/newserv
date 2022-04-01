@@ -156,12 +156,11 @@ S_ServerInit_DC_GC_02_17 prepare_server_init_contents_dc_pc_gc(
     uint32_t server_key,
     uint32_t client_key) {
   S_ServerInit_DC_GC_02_17 cmd;
-  memset(&cmd, 0, sizeof(cmd));
-
-  strcpy(cmd.copyright, initial_connection ? dc_port_map_copyright : dc_lobby_server_copyright);
+  cmd.copyright = initial_connection
+      ? dc_port_map_copyright : dc_lobby_server_copyright;
   cmd.server_key = server_key;
   cmd.client_key = client_key;
-  strcpy(cmd.after_message, anti_copyright);
+  cmd.after_message = anti_copyright;
   return cmd;
 }
 
@@ -194,17 +193,16 @@ void send_server_init_dc_pc_gc(shared_ptr<Client> c,
 
 void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   S_ServerInit_BB_03 cmd;
-  memset(&cmd, 0, sizeof(cmd));
-  strcpy(cmd.copyright, bb_game_server_copyright);
-  random_data(cmd.server_key, 0x30);
-  random_data(cmd.client_key, 0x30);
-  strcpy(cmd.after_message, anti_copyright);
+  cmd.copyright = bb_game_server_copyright;
+  random_data(cmd.server_key.data(), cmd.server_key.bytes());
+  random_data(cmd.client_key.data(), cmd.client_key.bytes());
+  cmd.after_message = anti_copyright;
   send_command(c, 0x03, 0x00, cmd);
 
-  c->crypt_out.reset(new PSOBBEncryption(s->default_key_file, cmd.server_key,
-      sizeof(cmd.server_key)));
-  c->crypt_in.reset(new PSOBBEncryption(s->default_key_file, cmd.client_key,
-      sizeof(cmd.client_key)));
+  c->crypt_out.reset(new PSOBBEncryption(s->default_key_file,
+      cmd.server_key.data(), cmd.server_key.bytes()));
+  c->crypt_in.reset(new PSOBBEncryption(s->default_key_file,
+      cmd.client_key.data(), cmd.client_key.bytes()));
 }
 
 void send_server_init_patch(shared_ptr<Client> c) {
@@ -212,8 +210,7 @@ void send_server_init_patch(shared_ptr<Client> c) {
   uint32_t client_key = random_object<uint32_t>();
 
   S_ServerInit_Patch_02 cmd;
-  memset(&cmd, 0, sizeof(cmd));
-  strcpy(cmd.copyright, patch_server_copyright);
+  cmd.copyright = patch_server_copyright;
   cmd.server_key = server_key;
   cmd.client_key = client_key;
   send_command(c, 0x02, 0x00, cmd);
@@ -246,7 +243,6 @@ void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
 // for non-BB clients, updates the client's guild card and security data
 void send_update_client_config(shared_ptr<Client> c) {
   S_UpdateClientConfig_DC_PC_GC_04 cmd;
-  memset(&cmd, 0, sizeof(cmd));
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = c->license->serial_number;
   cmd.cfg = c->export_config();
@@ -265,7 +261,6 @@ void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
 void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
     uint16_t pc_port, uint16_t gc_port) {
   S_ReconnectSplit_19 cmd;
-  memset(&cmd, 0, sizeof(cmd));
   cmd.pc_address = address;
   cmd.pc_port = pc_port;
   cmd.gc_command = 0x19;
@@ -352,7 +347,7 @@ void send_stream_file_bb(shared_ptr<Client> c) {
 
   uint32_t buffer_offset = 0;
   for (size_t x = 0; x < entry_count; x++) {
-    auto filename = string_printf("system/blueburst/%s", entries[x].filename);
+    auto filename = string_printf("system/blueburst/%s", entries[x].filename.c_str());
     auto file_data = file_cache.get(filename);
 
     size_t file_data_remaining = file_data->size();
@@ -366,11 +361,12 @@ void send_stream_file_bb(shared_ptr<Client> c) {
       }
       memcpy(&chunk_cmd.data[buffer_offset],
           file_data->data() + file_data->size() - file_data_remaining, read_size);
+      // TODO: We probably should clear the rest of the buffer on the last chunk
       buffer_offset += read_size;
       file_data_remaining -= read_size;
 
       if (buffer_offset == 0x6800) {
-        // note: the client sends 0x03EB in response to these, but we'll just
+        // Note: the client sends 0x03EB in response to these, but we'll just
         // ignore them because we don't need any of the contents
         send_command(c, 0x02EB, 0x00000000, chunk_cmd);
         buffer_offset = 0;
@@ -399,9 +395,7 @@ void send_complete_player_bb(shared_ptr<Client> c) {
 // patch functions
 
 void send_check_directory_patch(shared_ptr<Client> c, const char* dir) {
-  S_CheckDirectory_Patch_09 cmd;
-  memset(&cmd, 0, sizeof(cmd));
-  strncpy_t(cmd.name, dir, countof(cmd.name));
+  S_CheckDirectory_Patch_09 cmd = {dir};
   send_command(c, 0x09, 0x00, cmd);
 }
 
@@ -416,7 +410,7 @@ void send_text(shared_ptr<Client> c, StringWriter& w, uint16_t command,
     string data = encode_sjis(text);
     add_color(w, data.c_str(), data.size());
   } else {
-    add_color(w, text, char16len(text));
+    add_color(w, text, text_strlen_t(text));
   }
   while (w.str().size() & 3) {
     w.put_u8(0);
@@ -493,12 +487,11 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_serial_number,
 void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_serial_number,
     const char16_t* from_name, const char16_t* text) {
   SC_SimpleMail_GC_81 cmd;
-  memset(&cmd, 0, sizeof(cmd));
   cmd.player_tag = 0x00010000;
   cmd.from_serial_number = from_serial_number;
-  encode_sjis(cmd.from_name, from_name, sizeof(cmd.from_name) / sizeof(cmd.from_name[0]));
+  cmd.from_name = from_name;
   cmd.to_serial_number = c->license->serial_number;
-  encode_sjis(cmd.text, text, sizeof(cmd.text) / sizeof(cmd.text[0]));
+  cmd.text = text;
   send_command(c, 0x81, 0x00, cmd);
 }
 
@@ -523,12 +516,10 @@ void send_info_board_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     if (!c.get()) {
       continue;
     }
-    entries.emplace_back();
-    auto& e = entries.back();
-    memset(&e, 0, sizeof(e));
-    strncpy_t(e.name, c->player.disp.name, countof(e.name));
-    strncpy_t(e.message, c->player.info_board, countof(e.message));
-    add_color_inplace(e.message, countof(e.message));
+    auto& e = entries.emplace_back();
+    e.name = c->player.disp.name;
+    e.message = c->player.info_board;
+    add_color_inplace(e.message);
   }
   send_command(c, 0xD8, entries.size(), entries);
 }
@@ -554,7 +545,6 @@ void send_card_search_result_t(
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
   S_GuildCardSearchResult<CommandHeaderT, CharT> cmd;
-  memset(&cmd, 0, sizeof(cmd));
   cmd.player_tag = 0x00010000;
   cmd.searcher_serial_number = c->license->serial_number;
   cmd.result_serial_number = result->license->serial_number;
@@ -570,18 +560,18 @@ void send_card_search_result_t(
   cmd.reconnect_command.unused = 0;
 
   auto encoded_server_name = encode_sjis(s->name);
+  string location_string;
   if (result_lobby->is_game()) {
     string encoded_lobby_name = encode_sjis(result_lobby->name);
-    snprintf(cmd.location_string, sizeof(cmd.location_string),
-        "%s,Block 00,,%s", encoded_lobby_name.c_str(), encoded_server_name.c_str());
+    location_string = string_printf("%s,Block 00,,%s",
+        encoded_lobby_name.c_str(), encoded_server_name.c_str());
   } else {
-    snprintf(cmd.location_string, sizeof(cmd.location_string), "Block 00,,%s",
-        encoded_server_name.c_str());
+    location_string = string_printf("Block 00,,%s", encoded_server_name.c_str());
   }
+  cmd.location_string = location_string;
   cmd.menu_id = LOBBY_MENU_ID;
   cmd.lobby_id = result->lobby_id;
-  memset(cmd.unused, 0, sizeof(cmd.unused));
-  strncpy_t(cmd.name, result->player.disp.name, countof(cmd.name));
+  cmd.name = result->player.disp.name;
 
   send_command(c, 0x41, 0x00, cmd);
 }
@@ -605,26 +595,22 @@ void send_card_search_result(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// CommandSendGuildCard: generates a guild card for the source player and sends it to the destination player
+
 
 void send_guild_card_gc(shared_ptr<Client> c, shared_ptr<Client> source) {
   S_SendGuildCard_GC cmd;
-  memset(&cmd, 0, sizeof(cmd));
   cmd.subcommand = 0x06;
   cmd.subsize = 0x25;
   cmd.unused = 0x0000;
   cmd.player_tag = 0x00010000;
   cmd.reserved1 = 1;
   cmd.reserved2 = 1;
-
   cmd.serial_number = source->license->serial_number;
-  encode_sjis(cmd.name, source->player.disp.name, countof(cmd.name));
+  cmd.name = source->player.disp.name;
   remove_language_marker_inplace(cmd.name);
-  encode_sjis(cmd.desc, source->player.guild_card_desc, countof(cmd.desc));
+  cmd.desc = source->player.guild_card_desc;
   cmd.section_id = source->player.disp.section_id;
   cmd.char_class = source->player.disp.char_class;
-
   send_command(c, 0x62, c->lobby_client_id, cmd);
 }
 
@@ -636,16 +622,12 @@ void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.unused = 0x0000;
   cmd.reserved1 = 1;
   cmd.reserved2 = 1;
-
   cmd.serial_number = source->license->serial_number;
-  strcpy_z(cmd.name, source->player.disp.name, countof(cmd.name));
-  remove_language_marker_inplace(cmd.name);
-  strcpy_z(cmd.team_name, source->player.team_name, countof(cmd.team_name));
-  remove_language_marker_inplace(cmd.team_name);
-  strcpy_z(cmd.desc, source->player.guild_card_desc, countof(cmd.desc));
+  cmd.name = remove_language_marker(source->player.disp.name);
+  cmd.team_name = remove_language_marker(source->player.team_name);
+  cmd.desc = source->player.guild_card_desc;
   cmd.section_id = source->player.disp.section_id;
   cmd.char_class = source->player.disp.char_class;
-
   send_command(c, 0x62, c->lobby_client_id, cmd);
 }
 
@@ -673,14 +655,12 @@ void send_menu_t(
     bool is_info_menu) {
 
   vector<EntryT> entries;
-  entries.emplace_back();
   {
-    auto& e = entries.back();
-    memset(&e, 0, sizeof(e));
+    auto& e = entries.emplace_back();
     e.menu_id = menu_id;
     e.item_id = 0xFFFFFFFF;
     e.flags = 0x0004;
-    strncpy_t(e.text, menu_name, countof(e.text));
+    e.text = menu_name;
   }
 
   for (const auto& item : items) {
@@ -692,14 +672,11 @@ void send_menu_t(
         ((item.flags & MenuItemFlag::REQUIRES_MESSAGE_BOXES) && (c->flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION))) {
       continue;
     }
-
-    entries.emplace_back();
-    auto& e = entries.back();
-    memset(&e, 0, sizeof(e));
+    auto& e = entries.emplace_back();
     e.menu_id = menu_id;
     e.item_id = item.item_id;
     e.flags = (c->version == GameVersion::BB) ? 0x0004 : 0x0F04;
-    strncpy_t(e.text, item.name.c_str(), countof(e.text));
+    e.text = item.name;
   }
 
   send_command(c, is_info_menu ? 0x1F : 0x07, entries.size() - 1, entries);
@@ -722,43 +699,38 @@ template <typename CharT>
 void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
   vector<S_GameMenuEntry<CharT>> entries;
   {
-    entries.emplace_back();
-    auto& e = entries.back();
-    memset(&e, 0, sizeof(e));
+    auto& e = entries.emplace_back();
     e.menu_id = GAME_MENU_ID;
     e.game_id = 0x00000000;
     e.difficulty_tag = 0x00;
     e.num_players = 0x00;
-    strncpy_t(e.name, s->name.c_str(), countof(e.name));
+    e.name = s->name;
     e.episode = 0x00;
     e.flags = 0x04;
   }
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
-    if (!l->is_game()) {
+    if (!l->is_game() || (l->version != c->version)) {
       continue;
     }
-    if (l->version != c->version) {
-      continue;
-    }
-    if (!(l->flags & LobbyFlag::EPISODE_3) != !(c->flags & ClientFlag::EPISODE_3_GAMES)) {
+    bool l_is_ep3 = !!(l->flags & LobbyFlag::EPISODE_3);
+    bool c_is_ep3 = !!(c->flags & ClientFlag::EPISODE_3_GAMES);
+    if (l_is_ep3 != c_is_ep3) {
       continue;
     }
 
-    entries.emplace_back();
-    auto& e = entries.back();
+    auto& e = entries.emplace_back();
     memset(&e, 0, sizeof(e));
     e.menu_id = GAME_MENU_ID;
     e.game_id = l->lobby_id;
-    e.difficulty_tag = ((l->flags & LobbyFlag::EPISODE_3)
-        ? 0x0A : (l->difficulty + 0x22));
+    e.difficulty_tag = (l_is_ep3 ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
     e.episode = ((c->version == GameVersion::BB) ? (l->max_clients << 4) : 0) | l->episode;
     if (l->flags & LobbyFlag::EPISODE_3) {
-      e.flags = (l->password[0] ? 2 : 0);
+      e.flags = (l->password.empty() ? 0 : 2);
     } else {
-      e.flags = ((l->episode << 6) | ((l->mode % 3) << 4) | (l->password[0] ? 2 : 0)) | ((l->mode == 3) ? 4 : 0);
+      e.flags = ((l->episode << 6) | ((l->mode % 3) << 4) | (l->password.empty() ? 0 : 2)) | ((l->mode == 3) ? 4 : 0);
     }
-    strncpy_t(e.name, l->name, countof(e.name));
+    e.name = l->name;
   }
 
   send_command(c, 0x08, entries.size() - 1, entries);
@@ -782,14 +754,12 @@ void send_quest_menu_t(
     bool is_download_menu) {
   vector<EntryT> entries;
   for (const auto& quest : quests) {
-    entries.emplace_back();
-    auto& e = entries.back();
-    memset(&e, 0, sizeof(e));
+    auto& e = entries.emplace_back();
     e.menu_id = menu_id;
     e.item_id = quest->quest_id;
-    strncpy_t(e.name, quest->name.c_str(), countof(e.name));
-    strncpy_t(e.short_desc, quest->short_description.c_str(), countof(e.short_desc));
-    add_color_inplace(e.short_desc, countof(e.short_desc));
+    e.name = quest->name;
+    e.short_desc = quest->short_description;
+    add_color_inplace(e.short_desc);
   }
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
@@ -802,14 +772,12 @@ void send_quest_menu_t(
     bool is_download_menu) {
   vector<EntryT> entries;
   for (const auto& item : items) {
-    entries.emplace_back();
-    auto& e = entries.back();
-    memset(&e, 0, sizeof(e));
+    auto& e = entries.emplace_back();
     e.menu_id = menu_id;
     e.item_id = item.item_id;
-    strncpy_t(e.name, item.name.c_str(), 0x20);
-    strncpy_t(e.short_desc, item.description.c_str(), 0x70);
-    add_color_inplace(e.short_desc, 0x70);
+    e.name = item.name;
+    e.short_desc = item.description;
+    add_color_inplace(e.short_desc);
   }
   send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
@@ -853,9 +821,7 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     if ((l->flags & LobbyFlag::EPISODE_3) && !(c->flags & ClientFlag::EPISODE_3_GAMES)) {
       continue;
     }
-
-    entries.emplace_back();
-    auto& e = entries.back();
+    auto& e = entries.emplace_back();
     e.menu_id = LOBBY_MENU_ID;
     e.item_id = l->lobby_id;
     e.unused = 0;
@@ -872,10 +838,10 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
 template <typename LobbyDataT, typename DispDataT>
 void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   S_JoinGame<LobbyDataT, DispDataT> cmd;
-  memset(&cmd, 0, sizeof(cmd));
+
+  cmd.variations = l->variations;
 
   size_t player_count = 0;
-  memcpy(cmd.variations, l->variations, sizeof(cmd.variations));
   for (size_t x = 0; x < 4; x++) {
     if (l->clients[x]) {
       cmd.lobby_data[x].player_tag = 0x00010000;
@@ -883,8 +849,7 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       // See comment in send_join_lobby_t about Episode III behavior here
       cmd.lobby_data[x].ip_address = 0x7F000001;
       cmd.lobby_data[x].client_id = c->lobby_client_id;
-      strncpy_t(cmd.lobby_data[x].name, l->clients[x]->player.disp.name,
-          countof(cmd.lobby_data[x].name));
+      cmd.lobby_data[x].name = l->clients[x]->player.disp.name;
       if (l->flags & LobbyFlag::EPISODE_3) {
         cmd.players_ep3[x].inventory = l->clients[x]->player.inventory;
         cmd.players_ep3[x].disp = convert_player_disp_data<DispDataT>(
@@ -927,7 +892,6 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     }
   } else {
     command = joining_client ? 0x68 : 0x67;
-
   }
 
   uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
@@ -949,7 +913,6 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   }
 
   S_JoinLobby<LobbyDataT, DispDataT> cmd;
-  memset(&cmd, 0, sizeof(cmd));
   cmd.client_id = c->lobby_client_id;
   cmd.leader_id = l->leader_id;
   cmd.disable_udp = 0x01;
@@ -972,7 +935,6 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   size_t used_entries = 0;
   for (const auto& lc : lobby_clients) {
     auto& e = cmd.entries[used_entries++];
-    memset(&e.lobby_data, 0, sizeof(e.lobby_data));
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = lc->license->serial_number;
     // There's a strange behavior (bug? "feature"?) in Episode 3 where the start
@@ -981,8 +943,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     // to avoid this behavior.
     e.lobby_data.ip_address = 0x7F000001;
     e.lobby_data.client_id = lc->lobby_client_id;
-    strncpy_t(e.lobby_data.name, lc->player.disp.name,
-        countof(e.lobby_data.name));
+    e.lobby_data.name = lc->player.disp.name;
     e.inventory = lc->player.inventory;
     e.disp = convert_player_disp_data<DispDataT>(lc->player.disp);
     if (c->version == GameVersion::PC) {
@@ -1059,9 +1020,7 @@ void send_arrow_update(shared_ptr<Lobby> l) {
     if (!l->clients[x]) {
       continue;
     }
-
-    entries.emplace_back();
-    auto& e = entries.back();
+    auto& e = entries.emplace_back();
     e.player_tag = 0x00010000;
     e.serial_number = l->clients[x]->license->serial_number;
     e.arrow_color = l->clients[x]->lobby_arrow_color;
@@ -1092,16 +1051,14 @@ void send_player_stats_change(shared_ptr<Lobby> l, shared_ptr<Client> c,
   vector<PSOSubcommand> subs;
   while (amount > 0) {
     {
-      subs.emplace_back();
-      auto& sub = subs.back();
+      auto& sub = subs.emplace_back();
       sub.byte[0] = 0x9A;
       sub.byte[1] = 0x02;
       sub.byte[2] = c->lobby_client_id;
       sub.byte[3] = 0x00;
     }
     {
-      subs.emplace_back();
-      auto& sub = subs.back();
+      auto& sub = subs.emplace_back();
       sub.byte[0] = 0x00;
       sub.byte[1] = 0x00;
       sub.byte[2] = stat;
@@ -1288,7 +1245,6 @@ void send_ep3_card_list_update(shared_ptr<Client> c) {
   StringWriter w;
   w.put_u32l(file_data->size());
   w.write(*file_data);
-  w.str().resize((w.str().size() + 3) & (~3));
 
   send_command(c, 0xB8, 0x00, w.str());
 }
@@ -1340,11 +1296,10 @@ void send_quest_open_file_t(
     bool is_download_quest,
     bool is_ep3_quest) {
   CommandT cmd;
-  memset(&cmd, 0, sizeof(cmd));
   cmd.flags = 2 + is_ep3_quest;
   cmd.file_size = file_size;
-  strncpy_t(cmd.name, filename.c_str(), countof(cmd.name));
-  strncpy_t(cmd.filename, filename.c_str(), countof(cmd.filename));
+  cmd.name = filename.c_str();
+  cmd.filename = filename.c_str();
   send_command(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
 }
 
@@ -1360,8 +1315,7 @@ void send_quest_file_chunk(
   }
 
   S_WriteFile_13_A7 cmd;
-  memset(cmd.filename, 0, countof(cmd.filename));
-  strncpy_t(cmd.filename, filename, countof(cmd.filename));
+  cmd.filename = filename;
   memcpy(cmd.data, data, size);
   if (size < 0x400) {
     memset(&cmd.data[size], 0, 0x400 - size);

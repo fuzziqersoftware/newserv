@@ -33,7 +33,7 @@ struct Lobby {
   uint32_t next_game_item_id;
   PlayerInventoryItem next_drop_item;
   std::unordered_map<uint32_t, PlayerInventoryItem> item_id_to_floor_item;
-  uint32_t variations[0x20];
+  parray<le_uint32_t, 0x20> variations;
 
   // game config
   GameVersion version;
@@ -41,8 +41,8 @@ struct Lobby {
   uint8_t episode;
   uint8_t difficulty;
   uint8_t mode;
-  char16_t password[0x24];
-  char16_t name[0x24];
+  std::u16string password;
+  std::u16string name;
   uint32_t rare_seed;
 
   //EP3_GAME_CONFIG* ep3; // only present if this is an Episode 3 game

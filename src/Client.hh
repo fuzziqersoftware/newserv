@@ -8,6 +8,8 @@
 #include "Player.hh"
 #include "PSOEncryption.hh"
 
+#include "Text.hh"
+
 
 
 extern const uint64_t CLIENT_CONFIG_MAGIC;
@@ -30,8 +32,8 @@ struct ClientConfig {
   uint16_t flags;
   uint32_t proxy_destination_address;
   uint16_t proxy_destination_port;
-  uint8_t unused[0x0E];
-  uint8_t unused_bb_only[0x08];
+  parray<uint8_t, 0x0E> unused;
+  parray<uint8_t, 0x08> unused_bb_only;
 } __attribute__((packed));
 
 struct Client {

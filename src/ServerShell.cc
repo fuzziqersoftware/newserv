@@ -149,25 +149,25 @@ Proxy commands (these will only work when exactly one client is connected):\n\
         if (token.size() >= 29) {
           throw invalid_argument("username too long");
         }
-        strcpy(l->username, token.c_str() + 9);
+        l->username = token.substr(9);
 
       } else if (starts_with(token, "bb-password=")) {
         if (token.size() >= 32) {
           throw invalid_argument("bb-password too long");
         }
-        strcpy(l->bb_password, token.c_str() + 12);
+        l->bb_password = token.substr(12);
 
       } else if (starts_with(token, "gc-password=")) {
         if (token.size() > 20) {
           throw invalid_argument("gc-password too long");
         }
-        strcpy(l->gc_password, token.c_str() + 12);
+        l->gc_password = token.substr(12);
 
       } else if (starts_with(token, "access-key=")) {
         if (token.size() > 23) {
           throw invalid_argument("access-key is too long");
         }
-        strcpy(l->access_key, token.c_str() + 11);
+        l->access_key = token.substr(11);
 
       } else if (starts_with(token, "serial=")) {
         l->serial_number = stoul(token.substr(7));

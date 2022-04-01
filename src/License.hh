@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 
+#include "Text.hh"
+
 enum Privilege {
   KICK_USER         = 0x00000001,
   BAN_USER          = 0x00000002,
@@ -30,11 +32,11 @@ enum LicenseVerifyAction {
 };
 
 struct License {
-  char username[20]; // BB username (max. 16 chars; should technically be Unicode)
-  char bb_password[20]; // BB password (max. 16 chars)
+  ptext<char, 0x14> username; // BB username (max. 16 chars; should technically be Unicode)
+  ptext<char, 0x14> bb_password; // BB password (max. 16 chars)
   uint32_t serial_number; // PC/GC serial number. MUST BE PRESENT FOR BB LICENSES TOO; this is also the player's guild card number.
-  char access_key[16]; // PC/GC access key. (to log in using PC on a GC license, just enter the first 8 characters of the GC access key)
-  char gc_password[12]; // GC password
+  ptext<char, 0x10> access_key; // PC/GC access key. (to log in using PC on a GC license, just enter the first 8 characters of the GC access key)
+  ptext<char, 0x0C> gc_password; // GC password
   uint32_t privileges; // privilege level
   uint64_t ban_end_time; // end time of ban (zero = not banned)
 
