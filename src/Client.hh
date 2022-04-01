@@ -34,7 +34,11 @@ struct ClientConfig {
   uint32_t proxy_destination_address;
   uint16_t proxy_destination_port;
   parray<uint8_t, 0x0E> unused;
-  parray<uint8_t, 0x08> unused_bb_only;
+} __attribute__((packed));
+
+struct ClientConfigBB {
+  ClientConfig cfg;
+  parray<uint8_t, 0x08> unused;
 } __attribute__((packed));
 
 struct Client {
@@ -91,5 +95,6 @@ struct Client {
       ServerBehavior server_behavior);
 
   ClientConfig export_config() const;
+  ClientConfigBB export_config_bb() const;
   void import_config(const ClientConfig& cc);
 };

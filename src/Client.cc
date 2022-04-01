@@ -65,7 +65,13 @@ ClientConfig Client::export_config() const {
   cc.proxy_destination_address = this->proxy_destination_address;
   cc.proxy_destination_port = this->proxy_destination_port;
   cc.unused.clear(0xFF);
-  cc.unused_bb_only.clear(0xFF);
+  return cc;
+}
+
+ClientConfigBB Client::export_config_bb() const {
+  ClientConfigBB cc;
+  cc.cfg = this->export_config();
+  cc.unused.clear(0xFF);
   return cc;
 }
 

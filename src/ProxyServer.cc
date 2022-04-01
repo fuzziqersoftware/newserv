@@ -204,8 +204,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
                 serial_number, cmd->access_key.c_str(), nullptr);
             sub_version = cmd->sub_version;
             character_name = cmd->name;
-            memcpy(&client_config, &cmd->cfg, offsetof(ClientConfig, unused_bb_only));
-            client_config.unused_bb_only.clear(0xFF);
+            client_config = cmd->client_config.cfg;
           } catch (const exception& e) {
             log(ERROR, "[ProxyServer] Unlinked client has no valid license");
             should_close_unlinked_session = true;
@@ -626,7 +625,6 @@ void ProxyServer::LinkedSession::on_server_input() {
             // did (when it was in an unlinked session).
             if (command == 0x17) {
               C_VerifyLicense_GC_DB cmd;
-              memset(&cmd, 0, sizeof(cmd));
               cmd.serial_number = string_printf("%08" PRIX32 "",
                   this->license->serial_number);
               cmd.access_key = this->license->access_key;
@@ -664,7 +662,7 @@ void ProxyServer::LinkedSession::on_server_input() {
             cmd.serial_number2 = cmd.serial_number;
             cmd.access_key2 = cmd.access_key;
             cmd.name = this->character_name;
-            memcpy(&cmd.cfg, this->remote_client_config_data.data(), 0x20);
+            cmd.client_config.data = this->remote_client_config_data;
 
             // If there's a guild card number, a shorter 9E is sent that ends
             // right after the client config data
@@ -675,7 +673,7 @@ void ProxyServer::LinkedSession::on_server_input() {
                 0x9E,
                 0x01,
                 &cmd,
-                this->guild_card_number ? (offsetof(C_Login_PC_GC_9D_9E, cfg) + 0x20) : sizeof(cmd),
+                this->guild_card_number ? offsetof(C_Login_PC_GC_9D_9E, unused4) : sizeof(cmd),
                 name.c_str());
             break;
           }

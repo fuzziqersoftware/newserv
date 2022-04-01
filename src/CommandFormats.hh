@@ -579,7 +579,7 @@ struct C_Login_BB_93 {
   ptext<char, 0x20> unused2;
   ptext<char, 0x10> password;
   ptext<char, 0x30> unused3;
-  ClientConfig cfg;
+  ClientConfigBB client_config;
 };
 
 // 94: Invalid command
@@ -649,11 +649,13 @@ struct C_Login_PC_GC_9D_9E {
   ptext<char, 0x30> serial_number2;
   ptext<char, 0x30> access_key2;
   ptext<char, 0x10> name;
-  // Note: there are 8 bytes at the end of cfg that are technically not
-  // included in the client config on GC, but the field after it is
-  // sufficiently large and unused anyway
-  ClientConfig cfg;
-  parray<uint8_t, 0x5C> unused4;
+  union ClientConfigFields {
+    ClientConfig cfg;
+    parray<uint8_t, 0x20> data;
+
+    ClientConfigFields() : cfg() { }
+  } client_config;
+  parray<uint8_t, 0x64> unused4;
 };
 
 // 9F: Invalid command
@@ -1081,7 +1083,7 @@ struct S_ClientInit_BB_E6 {
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
   le_uint32_t team_id;
-  ClientConfig cfg;
+  ClientConfigBB cfg;
   le_uint32_t caps; // should be 0x00000102
 };
 

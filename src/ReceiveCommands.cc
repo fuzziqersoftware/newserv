@@ -335,7 +335,7 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   try {
-    c->import_config(cmd.cfg);
+    c->import_config(cmd.client_config.cfg);
   } catch (const invalid_argument&) {
     // If we can't import the config, assume that the client was not connected
     // to newserv before, so we should show the welcome message.
@@ -370,7 +370,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   try {
-    c->import_config(cmd.cfg);
+    c->import_config(cmd.client_config.cfg);
     c->bb_game_state++;
   } catch (const invalid_argument&) {
     c->bb_game_state = 0;

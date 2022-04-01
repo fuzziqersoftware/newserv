@@ -278,7 +278,7 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = c->license->serial_number;
   cmd.team_id = static_cast<uint32_t>(random_object<uint32_t>());
-  cmd.cfg = c->export_config();
+  cmd.cfg = c->export_config_bb();
   cmd.caps = 0x00000102;
   send_command(c, 0x00E6, 0x00000000, cmd);
 }
