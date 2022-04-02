@@ -62,6 +62,8 @@ Server commands:\n\
     Shut down the server.\n\
   reload <item> ...\n\
     Reload data. <item> can be licenses, battle-params, level-table, or quests.\n\
+    Reloading will not affect items that are in use; for example, if a client\'s\n\
+    license is deleted by reloading, they will not be disconnected immediately.\n\
   add-license <parameters>\n\
     Add a license to the server. <parameters> is some subset of the following:\n\
       username=<username> (BB username)\n\
@@ -98,11 +100,13 @@ Proxy commands (these will only work when exactly one client is connected):\n\
   dchat <data>\n\
     Send a chat message to the server with arbitrary data in it.\n\
   info-board <text>\n\
-    Set your info board contents.\n\
+    Set your info board contents. This will affect the current session only,\n\
+    and will not be saved for future sessions.\n\
   info-board-data <data>\n\
-    Set your info board contents with arbitrary data.\n\
+    Set your info board contents with arbitrary data. Like the above, affects\n\
+    the current session only.\n\
   marker <color-id>\n\
-    Send a lobby marker message to the server.\n\
+    Change your lobby marker color.\n\
   warp <area-id>\n\
     Send yourself to a specific area.\n\
   set-override-section-id [section-id]\n\
@@ -119,8 +123,8 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     override.\n\
   set-chat-filter <on|off>\n\
     Enable or disable chat filtering (enabled by default). Chat filtering\n\
-    applies newserv\'s standard character replacements to chat messages (for\n\
-    example, $ becomes a tab character and # becomes a newline).\n\
+    applies newserv\'s standard character replacements to chat messages; for\n\
+    example, $ becomes a tab character and # becomes a newline.\n\
   set-chat-safety <on|off>\n\
     Enable or disable chat safety (enabled by default). When chat safety is on,\n\
     all chat messages that begin with a $ are not sent to the remote server.\n\
@@ -136,8 +140,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     Enable or disable saving of game files (disabled by default). When this is\n\
     on, any file that the remote server sends to the client will be saved to\n\
     the current directory. This includes data like quests, Episode 3 card\n\
-    definitions, and GBA games. Unlike other proxy commands, this command\n\
-    affects all proxy sessions.\n\
+    definitions, and GBA games.\n\
 ");
 
 
@@ -381,11 +384,8 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     set_boolean(&session->enable_switch_assist, command_args);
 
   } else if (command_name == "set-save-files") {
-    if (this->state->proxy_server.get()) {
-      set_boolean(&this->state->proxy_server->save_files, command_args);
-    } else {
-      throw invalid_argument("proxy server is not available");
-    }
+    auto session = this->get_proxy_session();
+    set_boolean(&session->save_files, command_args);
 
   } else {
     throw invalid_argument("unknown command; try \'help\'");

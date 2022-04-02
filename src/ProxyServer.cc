@@ -45,8 +45,7 @@ static void flush_and_free_bufferevent(struct bufferevent* bev) {
 ProxyServer::ProxyServer(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
-  : save_files(false),
-    base(base),
+  : base(base),
     state(state),
     next_unlicensed_session_id(0xFF00000000000001) { }
 
@@ -383,6 +382,8 @@ ProxyServer::LinkedSession::LinkedSession(
     guild_card_number(0),
     suppress_newserv_commands(true),
     enable_chat_filter(true),
+    enable_switch_assist(false),
+    save_files(false),
     override_section_id(-1),
     override_lobby_event(-1),
     override_lobby_number(-1),
@@ -1023,7 +1024,7 @@ void ProxyServer::LinkedSession::on_server_input() {
             if (this->version != GameVersion::GC) {
               break;
             }
-            if (!this->server->save_files) {
+            if (!this->save_files) {
               break;
             }
 
@@ -1060,7 +1061,7 @@ void ProxyServer::LinkedSession::on_server_input() {
             if (this->version != GameVersion::GC) {
               break;
             }
-            if (!this->server->save_files) {
+            if (!this->save_files) {
               break;
             }
 
@@ -1111,7 +1112,7 @@ void ProxyServer::LinkedSession::on_server_input() {
             if (this->version != GameVersion::GC) {
               break;
             }
-            if (!this->server->save_files) {
+            if (!this->save_files) {
               break;
             }
             if (data.size() < 4) {
