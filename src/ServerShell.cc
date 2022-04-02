@@ -126,6 +126,12 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     all chat messages that begin with a $ are not sent to the remote server.\n\
     This can prevent embarrassing situations if the remote server isn\'t a\n\
     newserv instance and you have newserv commands in your chat shortcuts.\n\
+  set-switch-assist <on|off>\n\
+    Enable or disable switch assist. When switch assist is on, the proxy will\n\
+    remember the last \"enable switch\" command that you send, and will send it\n\
+    to you and the server when you step on another switch. Using this, you can\n\
+    unlock any doors that require two players to stand on switches by touching\n\
+    both switches yourself. With this, all online maps can be completed solo.\n\
   set-save-files <on|off>\n\
     Enable or disable saving of game files (disabled by default). When this is\n\
     on, any file that the remote server sends to the client will be saved to\n\
