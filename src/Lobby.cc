@@ -23,10 +23,6 @@ Lobby::Lobby() : lobby_id(0), min_level(0), max_level(0xFFFFFFFF),
   memset(&this->next_drop_item, 0, sizeof(this->next_drop_item));
 }
 
-bool Lobby::is_game() const {
-  return this->flags & LobbyFlag::IS_GAME;
-}
-
 void Lobby::reassign_leader_on_client_departure(size_t leaving_client_index) {
   for (size_t x = 0; x < this->max_clients; x++) {
     if (x == leaving_client_index) {
@@ -45,7 +41,7 @@ bool Lobby::any_client_loading() const {
     if (!this->clients[x].get()) {
       continue;
     }
-    if (this->clients[x]->flags & ClientFlag::LOADING) {
+    if (this->clients[x]->flags & Client::Flag::LOADING) {
       return true;
     }
   }

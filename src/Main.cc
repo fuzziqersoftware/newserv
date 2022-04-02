@@ -107,7 +107,7 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     for (const auto& item : d.at("InformationMenuContents")->as_list()) {
       auto& v = item->as_list();
       information_menu->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-          decode_sjis(v.at(1)->as_string()), MenuItemFlag::REQUIRES_MESSAGE_BOXES);
+          decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
       information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
       item_id++;
     }
@@ -131,10 +131,14 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   s->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",
       u"Join the lobby", 0);
   s->main_menu.emplace_back(MAIN_MENU_INFORMATION, u"Information",
-      u"View server information", MenuItemFlag::REQUIRES_MESSAGE_BOXES);
-  if (!s->proxy_destinations.empty()) {
+      u"View server information", MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+  if (!s->proxy_destinations_pc.empty()) {
     s->main_menu.emplace_back(MAIN_MENU_PROXY_DESTINATIONS, u"Proxy server",
-        u"Connect to another\nserver", 0);
+        u"Connect to another\nserver", MenuItem::Flag::PC_ONLY);
+  }
+  if (!s->proxy_destinations_gc.empty()) {
+    s->main_menu.emplace_back(MAIN_MENU_PROXY_DESTINATIONS, u"Proxy server",
+        u"Connect to another\nserver", MenuItem::Flag::GC_ONLY);
   }
   s->main_menu.emplace_back(MAIN_MENU_DOWNLOAD_QUESTS, u"Download quests",
       u"Download quests", 0);

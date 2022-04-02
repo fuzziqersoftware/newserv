@@ -9,18 +9,18 @@
 #include "Map.hh"
 #include "RareItemSet.hh"
 
-enum LobbyFlag {
-  IS_GAME = 0x01,
-  CHEATS_ENABLED = 0x02, // game only
-  PUBLIC = 0x04, // lobby only
-  EPISODE_3 = 0x08, // lobby & game
-  QUEST_IN_PROGRESS = 0x10, // game only
-  JOINABLE_QUEST_IN_PROGRESS = 0x20, // game only
-  DEFAULT = 0x40, // lobby only; not set for games and private lobbies
-  PERSISTENT = 0x80, // if not set, lobby is deleted when empty
-};
-
 struct Lobby {
+  enum Flag {
+    GAME = 0x01,
+    CHEATS_ENABLED = 0x02, // game only
+    PUBLIC = 0x04, // lobby only
+    EPISODE_3_ONLY = 0x08, // lobby & game
+    QUEST_IN_PROGRESS = 0x10, // game only
+    JOINABLE_QUEST_IN_PROGRESS = 0x20, // game only
+    DEFAULT = 0x40, // lobby only; not set for games and private lobbies
+    PERSISTENT = 0x80, // if not set, lobby is deleted when empty
+  };
+
   uint32_t lobby_id;
 
   uint32_t min_level;
@@ -59,7 +59,9 @@ struct Lobby {
 
   Lobby();
 
-  bool is_game() const;
+  inline bool is_game() const {
+    return this->flags & Flag::GAME;
+  }
 
   void reassign_leader_on_client_departure(size_t leaving_client_id);
   size_t count_clients() const;

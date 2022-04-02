@@ -65,8 +65,8 @@ vector<MenuItem> quest_categories_menu({
   MenuItem(static_cast<uint32_t>(QuestCategory::EXTERMINATION), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
   MenuItem(static_cast<uint32_t>(QuestCategory::EVENT), u"Events", u"$E$C6Quests that are part\nof an event", 0),
   MenuItem(static_cast<uint32_t>(QuestCategory::SHOP), u"Shops", u"$E$C6Quests that contain\nshops", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItemFlag::INVISIBLE_ON_DC | MenuItemFlag::INVISIBLE_ON_PC),
-  MenuItem(static_cast<uint32_t>(QuestCategory::TOWER), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItemFlag::INVISIBLE_ON_DC | MenuItemFlag::INVISIBLE_ON_PC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::TOWER), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
 });
 
 vector<MenuItem> quest_battle_menu({
@@ -92,8 +92,8 @@ vector<MenuItem> quest_download_menu({
   MenuItem(static_cast<uint32_t>(QuestCategory::EXTERMINATION), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
   MenuItem(static_cast<uint32_t>(QuestCategory::EVENT), u"Events", u"$E$C6Quests that are part\nof an event", 0),
   MenuItem(static_cast<uint32_t>(QuestCategory::SHOP), u"Shops", u"$E$C6Quests that contain\nshops", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItemFlag::INVISIBLE_ON_DC | MenuItemFlag::INVISIBLE_ON_PC),
-  MenuItem(static_cast<uint32_t>(QuestCategory::TOWER), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItemFlag::INVISIBLE_ON_DC | MenuItemFlag::INVISIBLE_ON_PC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
+  MenuItem(static_cast<uint32_t>(QuestCategory::TOWER), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
   MenuItem(static_cast<uint32_t>(QuestCategory::DOWNLOAD), u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
 });
 
@@ -134,15 +134,15 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   if (c->server_behavior == ServerBehavior::LOGIN_SERVER) {
     // on the login server, send the ep3 updates and the main menu or welcome
     // message
-    if (c->flags & ClientFlag::EPISODE_3_GAMES) {
+    if (c->flags & Client::Flag::EPISODE_3) {
       send_ep3_card_list_update(c);
       send_ep3_rank_update(c);
     }
 
     if (s->welcome_message.empty() ||
-        (c->flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) ||
-        !(c->flags & ClientFlag::AT_WELCOME_MESSAGE)) {
-      c->flags &= ~ClientFlag::AT_WELCOME_MESSAGE;
+        (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) ||
+        !(c->flags & Client::Flag::AT_WELCOME_MESSAGE)) {
+      c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
       send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
     } else {
       send_message_box(c, s->welcome_message.c_str());
@@ -339,12 +339,12 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   } catch (const invalid_argument&) {
     // If we can't import the config, assume that the client was not connected
     // to newserv before, so we should show the welcome message.
-    c->flags |= ClientFlag::AT_WELCOME_MESSAGE;
+    c->flags |= Client::Flag::AT_WELCOME_MESSAGE;
     c->bb_game_state = 0;
     c->bb_player_index = 0;
   }
 
-  if ((c->flags & ClientFlag::EPISODE_3_GAMES) && (s->ep3_menu_song >= 0)) {
+  if ((c->flags & Client::Flag::EPISODE_3) && (s->ep3_menu_song >= 0)) {
     send_ep3_change_music(c, s->ep3_menu_song);
   }
 
@@ -438,7 +438,7 @@ void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
   S_Meseta_GC_Ep3_BA out_cmd = {1000000, 0x80E8, in_cmd.unknown_token};
 
   auto l = s->find_lobby(c->lobby_id);
-  if (!l || !(l->flags & LobbyFlag::EPISODE_3)) {
+  if (!l || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
     return;
   }
 
@@ -459,7 +459,7 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
   const PSOSubcommand* cmds = reinterpret_cast<const PSOSubcommand*>(data.data());
 
   auto l = s->find_lobby(c->lobby_id);
-  if (!l || !(l->flags & LobbyFlag::EPISODE_3) || !l->is_game()) {
+  if (!l || !(l->flags & Lobby::Flag::EPISODE_3_ONLY) || !l->is_game()) {
     c->should_disconnect = true;
     return;
   }
@@ -562,11 +562,11 @@ void process_ep3_tournament_control(shared_ptr<ServerState>, shared_ptr<Client> 
 void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D6
   check_size(data.size(), 0);
-  if (c->flags & ClientFlag::IN_INFORMATION_MENU) {
+  if (c->flags & Client::Flag::IN_INFORMATION_MENU) {
     send_menu(c, u"Information", INFORMATION_MENU_ID, *s->information_menu, false);
-  } else if (c->flags & ClientFlag::AT_WELCOME_MESSAGE) {
+  } else if (c->flags & Client::Flag::AT_WELCOME_MESSAGE) {
     send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
-    c->flags &= ~ClientFlag::AT_WELCOME_MESSAGE;
+    c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
     send_update_client_config(c);
   }
 }
@@ -668,7 +668,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         case MAIN_MENU_INFORMATION:
           send_menu(c, u"Information", INFORMATION_MENU_ID,
               *s->information_menu, false);
-          c->flags |= ClientFlag::IN_INFORMATION_MENU;
+          c->flags |= Client::Flag::IN_INFORMATION_MENU;
           break;
 
         case MAIN_MENU_PROXY_DESTINATIONS:
@@ -693,7 +693,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
     case INFORMATION_MENU_ID: {
       if (cmd.item_id == INFORMATION_MENU_GO_BACK) {
-        c->flags &= ~ClientFlag::IN_INFORMATION_MENU;
+        c->flags &= ~Client::Flag::IN_INFORMATION_MENU;
         send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
 
       } else {
@@ -756,11 +756,11 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         break;
       }
       if ((game->version != c->version) ||
-          (!(game->flags & LobbyFlag::EPISODE_3) != !(c->flags & LobbyFlag::EPISODE_3))) {
+          (!(game->flags & Lobby::Flag::EPISODE_3_ONLY) != !(c->flags & Client::Flag::EPISODE_3))) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
         break;
       }
-      if (game->flags & LobbyFlag::QUEST_IN_PROGRESS) {
+      if (game->flags & Lobby::Flag::QUEST_IN_PROGRESS) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because a\nquest is already\nin progress.");
         break;
       }
@@ -800,7 +800,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
 
       s->change_client_lobby(c, game);
-      c->flags |= ClientFlag::LOADING;
+      c->flags |= Client::Flag::LOADING;
       if (c->version == GameVersion::BB) {
         game->assign_item_ids_for_player(c->lobby_client_id, c->player.inventory);
       }
@@ -814,7 +814,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
       shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
       auto quests = s->quest_index->filter(c->version,
-          c->flags & ClientFlag::IS_DCV1,
+          c->flags & Client::Flag::DCV1,
           static_cast<QuestCategory>(cmd.item_id & 0xFF),
           l.get() ? (l->episode - 1) : -1);
       if (quests.empty()) {
@@ -857,9 +857,9 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
       if (l) {
         if (q->joinable) {
-          l->flags |= LobbyFlag::JOINABLE_QUEST_IN_PROGRESS;
+          l->flags |= Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS;
         } else {
-          l->flags |= LobbyFlag::QUEST_IN_PROGRESS;
+          l->flags |= Lobby::Flag::QUEST_IN_PROGRESS;
         }
         l->loading_quest_id = q->quest_id;
         for (size_t x = 0; x < l->max_clients; x++) {
@@ -874,7 +874,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_quest_file(l->clients[x], bin_basename, *bin_contents, false, false);
           send_quest_file(l->clients[x], dat_basename, *dat_contents, false, false);
 
-          l->clients[x]->flags |= ClientFlag::LOADING;
+          l->clients[x]->flags |= Client::Flag::LOADING;
         }
 
       } else {
@@ -908,7 +908,7 @@ void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  if ((new_lobby->flags & LobbyFlag::EPISODE_3) && !(c->flags & ClientFlag::EPISODE_3_GAMES)) {
+  if ((new_lobby->flags & Lobby::Flag::EPISODE_3_ONLY) && !(c->flags & Client::Flag::EPISODE_3)) {
     send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby is for\nEpisode 3 only.");
     return;
   }
@@ -992,7 +992,7 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  c->flags &= ~ClientFlag::LOADING;
+  c->flags &= ~Client::Flag::LOADING;
 
   // check if any client is still loading
   // TODO: we need to handle clients disconnecting while loading. probably
@@ -1002,7 +1002,7 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     if (!l->clients[x]) {
       continue;
     }
-    if (l->clients[x]->flags & ClientFlag::LOADING) {
+    if (l->clients[x]->flags & Client::Flag::LOADING) {
       break;
     }
   }
@@ -1518,7 +1518,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   game->event = Lobby::game_event_for_lobby_event(current_lobby->event);
   game->block = 0xFF;
   game->max_clients = 4;
-  game->flags = (is_ep3 ? LobbyFlag::EPISODE_3 : 0) | LobbyFlag::IS_GAME;
+  game->flags = (is_ep3 ? Lobby::Flag::EPISODE_3_ONLY : 0) | Lobby::Flag::GAME;
   game->min_level = min_level;
   game->max_level = 0xFFFFFFFF;
 
@@ -1603,7 +1603,7 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   s->add_lobby(game);
   s->change_client_lobby(c, game);
-  c->flags |= ClientFlag::LOADING;
+  c->flags |= Client::Flag::LOADING;
 }
 
 void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1611,7 +1611,7 @@ void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& cmd = check_size_t<C_CreateGame_DC_GC_C1_EC>(data);
 
   // only allow EC from Ep3 clients
-  bool client_is_ep3 = c->flags & ClientFlag::EPISODE_3_GAMES;
+  bool client_is_ep3 = c->flags & Client::Flag::EPISODE_3;
   if ((command == 0xEC) && !client_is_ep3) {
     return;
   }
@@ -1632,7 +1632,7 @@ void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   s->add_lobby(game);
   s->change_client_lobby(c, game);
-  c->flags |= ClientFlag::LOADING;
+  c->flags |= Client::Flag::LOADING;
 }
 
 void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1645,7 +1645,7 @@ void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   s->add_lobby(game);
   s->change_client_lobby(c, game);
-  c->flags |= ClientFlag::LOADING;
+  c->flags |= Client::Flag::LOADING;
 
   game->assign_item_ids_for_player(c->lobby_client_id, c->player.inventory);
 }
@@ -1669,7 +1669,7 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     // go home client; you're drunk
     throw invalid_argument("ready command cannot be sent outside game");
   }
-  c->flags &= (~ClientFlag::LOADING);
+  c->flags &= (~Client::Flag::LOADING);
 
   send_resume_game(l, c);
   send_server_time(c);

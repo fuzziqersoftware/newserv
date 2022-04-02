@@ -42,6 +42,38 @@ struct ClientConfigBB {
 } __attribute__((packed));
 
 struct Client {
+  enum Flag {
+    // For patch server clients, client is Blue Burst rather than PC
+    BB_PATCH = 0x0001,
+    // After joining a lobby, client will no longer send D6 commands when they
+    // close message boxes
+    NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN = 0x0002,
+    // Client has the above flag and has already joined a lobby, or is Blue Burst
+    // (BB never sends D6 commands)
+    NO_MESSAGE_BOX_CLOSE_CONFIRMATION = 0x0004,
+    // Client is Episode 3, should be able to see CARD lobbies, and should only be
+    // able to see/join games with the IS_EPISODE_3 flag
+    EPISODE_3 = 0x0008,
+    // Client is DC v1 (disables some features)
+    DCV1 = 0x0010,
+    // Client is loading into a game
+    LOADING = 0x0020,
+    // Client is in the information menu (login server only)
+    IN_INFORMATION_MENU = 0x0040,
+    // Client is at the welcome message (login server only)
+    AT_WELCOME_MESSAGE = 0x0080,
+
+    // Note: There isn't a good way to detect Episode 3 until the player data is
+    // sent (via a 61 command), so the IS_EPISODE_3 flag is set in that handler
+    DEFAULT_V1 = DCV1,
+    DEFAULT_V2_DC = 0x0000,
+    DEFAULT_V2_PC = 0x0000,
+    DEFAULT_V3_GC = 0x0000,
+    DEFAULT_V3_GC_PLUS = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN,
+    DEFAULT_V3_GC_EP3 = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | EPISODE_3,
+    DEFAULT_V4_BB = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | NO_MESSAGE_BOX_CLOSE_CONFIRMATION,
+  };
+
   // License & account
   std::shared_ptr<const License> license;
   GameVersion version;

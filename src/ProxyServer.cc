@@ -771,7 +771,7 @@ void ProxyServer::LinkedSession::on_server_input() {
             // If the client has the no-close-confirmation flag set in its
             // newserv client config, send a fake confirmation to the remote
             // server immediately.
-            if (this->newserv_client_config.flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) {
+            if (this->newserv_client_config.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) {
               send_command(this->server_bev.get(), this->version,
                   this->server_output_crypt.get(), 0xD6, 0x00, "", 0,
                   name.c_str());
@@ -899,8 +899,8 @@ void ProxyServer::LinkedSession::on_server_input() {
             // this behavior in the client config, so if it happens during a
             // proxy session, update the client config that we'll restore if the
             // client uses the change ship or change block command.
-            if (this->newserv_client_config.flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
-              this->newserv_client_config.flags |= ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
+            if (this->newserv_client_config.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
+              this->newserv_client_config.flags |= Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
             }
 
             [[fallthrough]];

@@ -62,7 +62,7 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
 
   // if the command is an Ep3-only command, make sure an Ep3 client sent it
   bool command_is_ep3 = (command & 0xF0) == 0xC0;
-  if (command_is_ep3 && !(c->flags & ClientFlag::EPISODE_3_GAMES)) {
+  if (command_is_ep3 && !(c->flags & Client::Flag::EPISODE_3)) {
     return;
   }
 
@@ -74,7 +74,7 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     if (!target) {
       return;
     }
-    if (command_is_ep3 && !(target->flags & ClientFlag::EPISODE_3_GAMES)) {
+    if (command_is_ep3 && !(target->flags & Client::Flag::EPISODE_3)) {
       return;
     }
     send_command(target, command, flag, p, count * 4);
@@ -82,7 +82,7 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
   } else {
     if (command_is_ep3) {
       for (auto& target : l->clients) {
-        if (!target || (target == c) || !(target->flags & ClientFlag::EPISODE_3_GAMES)) {
+        if (!target || (target == c) || !(target->flags & Client::Flag::EPISODE_3)) {
           continue;
         }
         send_command(target, command, flag, p, count * 4);
@@ -182,7 +182,7 @@ static void process_subcommand_hit_by_monster(shared_ptr<ServerState>,
     return;
   }
   forward_subcommand(l, c, command, flag, p, count);
-  if ((l->flags & LobbyFlag::CHEATS_ENABLED) && c->infinite_hp) {
+  if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->infinite_hp) {
     send_player_stats_change(l, c, PlayerStatsChange::ADD_HP, 1020);
   }
 }
@@ -195,7 +195,7 @@ static void process_subcommand_use_technique(shared_ptr<ServerState>,
     return;
   }
   forward_subcommand(l, c, command, flag, p, count);
-  if ((l->flags & LobbyFlag::CHEATS_ENABLED) && c->infinite_tp) {
+  if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->infinite_tp) {
     send_player_stats_change(l, c, PlayerStatsChange::ADD_TP, 255);
   }
 }
@@ -208,7 +208,7 @@ static void process_subcommand_switch_state_changed(shared_ptr<ServerState>,
   }
   forward_subcommand(l, c, command, flag, p, count);
   if ((count == 3) && (p[2].byte[3] == 1)) { // If this is a switch enable command
-    if ((l->flags & LobbyFlag::CHEATS_ENABLED) && c->switch_assist &&
+    if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->switch_assist &&
         (c->last_switch_enabled_subcommand[0].byte[0] == 0x05)) {
       log(INFO, "[Switch assist] Replaying previous enable command");
       forward_subcommand(l, c, command, flag, c->last_switch_enabled_subcommand, 3);
@@ -381,7 +381,7 @@ static void process_subcommand_use_item(shared_ptr<ServerState>,
 static void process_subcommand_open_shop_or_ep3_unknown(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  if (l->flags & LobbyFlag::EPISODE_3) {
+  if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
     check_size(count, 2, 0xFFFF);
     forward_subcommand(l, c, command, flag, p, count);
 
@@ -896,7 +896,7 @@ static void process_subcommand_forward_check_size_game(shared_ptr<ServerState>,
 static void process_subcommand_forward_check_size_ep3_lobby(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const PSOSubcommand* p, size_t count) {
-  if (!(l->flags & LobbyFlag::EPISODE_3) || l->is_game() || (p->byte[1] != count)) {
+  if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY) || (p->byte[1] != count)) {
     return;
   }
   forward_subcommand(l, c, command, flag, p, count);

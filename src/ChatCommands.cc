@@ -363,7 +363,7 @@ static void check_is_game(shared_ptr<Lobby> l, bool is_game) {
 }
 
 static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
-  if (!!(c->flags & ClientFlag::EPISODE_3_GAMES) != is_ep3) {
+  if (!!(c->flags & Client::Flag::EPISODE_3) != is_ep3) {
     throw precondition_failed(is_ep3 ?
         u"$C6This command can only\nbe used in Episode 3." :
         u"$C6This command cannot\nbe used in Episode 3.");
@@ -371,7 +371,7 @@ static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
 }
 
 static void check_cheats_enabled(shared_ptr<Lobby> l) {
-  if (!(l->flags & LobbyFlag::CHEATS_ENABLED)) {
+  if (!(l->flags & Lobby::Flag::CHEATS_ENABLED)) {
     throw precondition_failed(u"$C6This command can\nonly be used in\ncheat mode.");
   }
 }
@@ -406,7 +406,7 @@ static void command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
         "$C6Game ID: %08X\n%s\nSection ID: %s\nCheat mode: %s",
         l->lobby_id, level_string.c_str(),
         name_for_section_id(l->section_id).c_str(),
-        (l->flags & LobbyFlag::CHEATS_ENABLED) ? "on" : "off");
+        (l->flags & Lobby::Flag::CHEATS_ENABLED) ? "on" : "off");
 
   } else {
     size_t num_clients = l->count_clients();
@@ -446,12 +446,12 @@ static void command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   check_is_game(l, true);
   check_is_leader(l, c);
 
-  l->flags ^= LobbyFlag::CHEATS_ENABLED;
+  l->flags ^= Lobby::Flag::CHEATS_ENABLED;
   send_text_message_printf(l, "Cheat mode %s",
-      (l->flags & LobbyFlag::CHEATS_ENABLED) ? "enabled" : "disabled");
+      (l->flags & Lobby::Flag::CHEATS_ENABLED) ? "enabled" : "disabled");
 
   // if cheat mode was disabled, turn off all the cheat features that were on
-  if (!(l->flags & LobbyFlag::CHEATS_ENABLED)) {
+  if (!(l->flags & Lobby::Flag::CHEATS_ENABLED)) {
     for (size_t x = 0; x < l->max_clients; x++) {
       auto c = l->clients[x];
       if (!c) {
@@ -491,7 +491,7 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
   }
 
   for (auto l : s->all_lobbies()) {
-    if (l->is_game() || !(l->flags & LobbyFlag::DEFAULT)) {
+    if (l->is_game() || !(l->flags & Lobby::Flag::DEFAULT)) {
       continue;
     }
 
@@ -512,7 +512,7 @@ static void command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 
   l->type = new_type;
-  if (l->type < ((l->flags & LobbyFlag::EPISODE_3) ? 20 : 15)) {
+  if (l->type < ((l->flags & Lobby::Flag::EPISODE_3_ONLY) ? 20 : 15)) {
     l->type = l->block - 1;
   }
 

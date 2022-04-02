@@ -29,8 +29,8 @@ ServerState::ServerState()
     bool is_ep3_only = (x > 14);
 
     shared_ptr<Lobby> l(new Lobby());
-    l->flags |= LobbyFlag::PUBLIC | LobbyFlag::DEFAULT | LobbyFlag::PERSISTENT |
-        (is_ep3_only ? LobbyFlag::EPISODE_3 : 0);
+    l->flags |= Lobby::Flag::PUBLIC | Lobby::Flag::DEFAULT | Lobby::Flag::PERSISTENT |
+        (is_ep3_only ? Lobby::Flag::EPISODE_3_ONLY : 0);
     l->block = x + 1;
     l->type = x;
     l->name = lobby_name;
@@ -52,7 +52,7 @@ ServerState::ServerState()
 }
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
-  const auto& search_order = (c->flags & ClientFlag::EPISODE_3_GAMES)
+  const auto& search_order = (c->flags & Client::Flag::EPISODE_3)
       ? this->public_lobby_search_order_ep3
       : this->public_lobby_search_order;
 
@@ -77,7 +77,7 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
 void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
   auto l = this->id_to_lobby.at(c->lobby_id);
   l->remove_client(c);
-  if (!(l->flags & LobbyFlag::PERSISTENT) && (l->count_clients() == 0)) {
+  if (!(l->flags & Lobby::Flag::PERSISTENT) && (l->count_clients() == 0)) {
     this->remove_lobby(l->lobby_id);
   } else {
     send_player_leave_notification(l, c->lobby_client_id);
@@ -100,7 +100,7 @@ void ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> ne
   }
 
   if (current_lobby) {
-    if (!(current_lobby->flags & LobbyFlag::PERSISTENT) && (current_lobby->count_clients() == 0)) {
+    if (!(current_lobby->flags & Lobby::Flag::PERSISTENT) && (current_lobby->count_clients() == 0)) {
       this->remove_lobby(current_lobby->lobby_id);
     } else {
       send_player_leave_notification(current_lobby, old_lobby_client_id);

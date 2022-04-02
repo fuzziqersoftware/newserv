@@ -666,12 +666,12 @@ void send_menu_t(
   }
 
   for (const auto& item : items) {
-    if (((c->version == GameVersion::DC) && (item.flags & MenuItemFlag::INVISIBLE_ON_DC)) ||
-        ((c->version == GameVersion::PC) && (item.flags & MenuItemFlag::INVISIBLE_ON_PC)) ||
-        ((c->version == GameVersion::GC) && (item.flags & MenuItemFlag::INVISIBLE_ON_GC)) ||
-        ((c->version == GameVersion::BB) && (item.flags & MenuItemFlag::INVISIBLE_ON_BB)) ||
-        ((c->flags & ClientFlag::EPISODE_3_GAMES) && (item.flags & MenuItemFlag::INVISIBLE_ON_GC_EPISODE_3)) ||
-        ((item.flags & MenuItemFlag::REQUIRES_MESSAGE_BOXES) && (c->flags & ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION))) {
+    if (((c->version == GameVersion::DC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_DC)) ||
+        ((c->version == GameVersion::PC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_PC)) ||
+        ((c->version == GameVersion::GC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC)) ||
+        ((c->version == GameVersion::BB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_BB)) ||
+        ((c->flags & Client::Flag::EPISODE_3) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC_EPISODE_3)) ||
+        ((item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) && (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION))) {
       continue;
     }
     auto& e = entries.emplace_back();
@@ -714,8 +714,8 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     if (!l->is_game() || (l->version != c->version)) {
       continue;
     }
-    bool l_is_ep3 = !!(l->flags & LobbyFlag::EPISODE_3);
-    bool c_is_ep3 = !!(c->flags & ClientFlag::EPISODE_3_GAMES);
+    bool l_is_ep3 = !!(l->flags & Lobby::Flag::EPISODE_3_ONLY);
+    bool c_is_ep3 = !!(c->flags & Client::Flag::EPISODE_3);
     if (l_is_ep3 != c_is_ep3) {
       continue;
     }
@@ -726,7 +726,7 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     e.difficulty_tag = (l_is_ep3 ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
     e.episode = ((c->version == GameVersion::BB) ? (l->max_clients << 4) : 0) | l->episode;
-    if (l->flags & LobbyFlag::EPISODE_3) {
+    if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
       e.flags = (l->password.empty() ? 0 : 2);
     } else {
       e.flags = ((l->episode << 6) | ((l->mode % 3) << 4) | (l->password.empty() ? 0 : 2)) | ((l->mode == 3) ? 4 : 0);
@@ -816,10 +816,10 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
 
   vector<S_LobbyListEntry_83> entries;
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
-    if (!(l->flags & LobbyFlag::DEFAULT)) {
+    if (!(l->flags & Lobby::Flag::DEFAULT)) {
       continue;
     }
-    if ((l->flags & LobbyFlag::EPISODE_3) && !(c->flags & ClientFlag::EPISODE_3_GAMES)) {
+    if ((l->flags & Lobby::Flag::EPISODE_3_ONLY) && !(c->flags & Client::Flag::EPISODE_3)) {
       continue;
     }
     auto& e = entries.emplace_back();
@@ -851,7 +851,7 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       cmd.lobby_data[x].ip_address = 0x7F000001;
       cmd.lobby_data[x].client_id = c->lobby_client_id;
       cmd.lobby_data[x].name = l->clients[x]->player.disp.name;
-      if (l->flags & LobbyFlag::EPISODE_3) {
+      if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
         cmd.players_ep3[x].inventory = l->clients[x]->player.inventory;
         cmd.players_ep3[x].disp = convert_player_disp_data<DispDataT>(
             l->clients[x]->player.disp);
@@ -879,7 +879,7 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   // Player data is only sent in Episode III games; in other versions, the
   // players send each other their data using 62/6D commands during loading
-  size_t data_size = (l->flags & LobbyFlag::EPISODE_3)
+  size_t data_size = (l->flags & Lobby::Flag::EPISODE_3_ONLY)
       ? sizeof(cmd) : (sizeof(cmd) - sizeof(cmd.players_ep3));
   send_command(c, 0x64, player_count, &cmd, data_size);
 }
@@ -901,7 +901,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
   // Allow non-canonical lobby types on GC
   if (c->version == GameVersion::GC) {
-    if (c->flags & ClientFlag::EPISODE_3_GAMES) {
+    if (c->flags & Client::Flag::EPISODE_3) {
       if ((l->type > 0x14) && (l->type < 0xE9)) {
         lobby_type = l->block - 1;
       }
@@ -983,9 +983,9 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   // If the client will stop sending message box close confirmations after
   // joining any lobby, set the appropriate flag and update the client config
-  if ((c->flags & (ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION))
-      == ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
-    c->flags |= ClientFlag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
+  if ((c->flags & (Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION))
+      == Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
+    c->flags |= Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
     send_update_client_config(c);
   }
 }
