@@ -197,13 +197,37 @@ uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
 
 
 
+const vector<MenuItem>& ServerState::proxy_destinations_menu_for_version(GameVersion version) {
+  if (version == GameVersion::PC) {
+    return this->proxy_destinations_menu_pc;
+  } else if (version == GameVersion::GC) {
+    return this->proxy_destinations_menu_gc;
+  }
+  throw out_of_range("no proxy destinations menu exists for this version");
+}
+
+const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_version(GameVersion version) {
+  if (version == GameVersion::PC) {
+    return this->proxy_destinations_pc;
+  } else if (version == GameVersion::GC) {
+    return this->proxy_destinations_gc;
+  }
+  throw out_of_range("no proxy destinations menu exists for this version");
+}
+
+
+
 void ServerState::set_port_configuration(
-    const std::unordered_map<std::string, PortConfiguration>& named_port_configuration) {
-  this->named_port_configuration = named_port_configuration;
-  this->numbered_port_configuration.clear();
-  for (const auto& it : this->named_port_configuration) {
-    if (!this->numbered_port_configuration.emplace(it.second.port, it.second).second) {
-      throw runtime_error("duplicate port in configuration");
+    const vector<PortConfiguration>& port_configs) {
+  this->name_to_port_config.clear();
+  this->number_to_port_config.clear();
+  for (const auto& pc : port_configs) {
+    shared_ptr<PortConfiguration> spc(new PortConfiguration(pc));
+    if (!this->name_to_port_config.emplace(spc->name, spc).second) {
+      throw logic_error("duplicate name in port configuration");
+    }
+    if (!this->number_to_port_config.emplace(spc->port, spc).second) {
+      throw logic_error("duplicate number in port configuration");
     }
   }
 }

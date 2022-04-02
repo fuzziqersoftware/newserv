@@ -104,8 +104,8 @@ vector<MenuItem> quest_download_menu({
 void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
   switch (c->server_behavior) {
     case ServerBehavior::SPLIT_RECONNECT: {
-      uint16_t pc_port = s->named_port_configuration.at("pc-login").port;
-      uint16_t gc_port = s->named_port_configuration.at("gc-jp10").port;
+      uint16_t pc_port = s->name_to_port_config.at("pc-login")->port;
+      uint16_t gc_port = s->name_to_port_config.at("gc-jp10")->port;
       send_pc_gc_split_reconnect(c, s->connect_address_for_client(c), pc_port, gc_port);
       c->should_disconnect = true;
       break;
@@ -383,7 +383,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case ClientStateBB::INITIAL_LOGIN:
       // first login? send them to the other port
       send_reconnect(c, s->connect_address_for_client(c),
-          s->named_port_configuration.at("bb-data1").port);
+          s->name_to_port_config.at("bb-data1")->port);
       break;
 
     case ClientStateBB::DOWNLOAD_DATA: {
@@ -409,7 +409,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
     default:
       send_reconnect(c, s->connect_address_for_client(c),
-          s->named_port_configuration.at("bb-login").port);
+          s->name_to_port_config.at("bb-login")->port);
   }
 }
 
@@ -617,8 +617,9 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
         send_ship_info(c, u"Return to the\nmain menu.");
       } else {
         try {
+          const auto& menu = s->proxy_destinations_menu_for_version(c->version);
           // we use item_id + 1 here because "go back" is the first item
-          send_ship_info(c, s->proxy_destinations_menu.at(cmd.item_id + 1).description.c_str());
+          send_ship_info(c, menu.at(cmd.item_id + 1).description.c_str());
         } catch (const out_of_range&) {
           send_ship_info(c, u"$C6No such information exists.");
         }
@@ -661,7 +662,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
 
           send_reconnect(c, s->connect_address_for_client(c),
-              s->named_port_configuration.at(port_name).port);
+              s->name_to_port_config.at(port_name)->port);
           break;
         }
 
@@ -673,7 +674,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
         case MAIN_MENU_PROXY_DESTINATIONS:
           send_menu(c, u"Proxy server", PROXY_DESTINATIONS_MENU_ID,
-              s->proxy_destinations_menu, false);
+              s->proxy_destinations_menu_for_version(c->version), false);
           break;
 
         case MAIN_MENU_DOWNLOAD_QUESTS:
@@ -711,9 +712,9 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
 
       } else {
-        pair<string, uint16_t>* dest = nullptr;
+        const pair<string, uint16_t>* dest = nullptr;
         try {
-          dest = &s->proxy_destinations.at(cmd.item_id);
+          dest = &s->proxy_destinations_for_version(c->version).at(cmd.item_id);
         } catch (const out_of_range&) { }
 
         if (!dest) {
@@ -735,7 +736,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
               "dc-proxy", "pc-proxy", "", "gc-proxy", "bb-proxy"});
           const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
           send_reconnect(c, s->connect_address_for_client(c),
-              s->named_port_configuration.at(port_name).port);
+              s->name_to_port_config.at(port_name)->port);
         }
       }
       break;
@@ -936,7 +937,7 @@ void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
 
   send_reconnect(c, s->connect_address_for_client(c),
-      s->named_port_configuration.at(port_name).port);
+      s->name_to_port_config.at(port_name)->port);
 }
 
 void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1700,7 +1701,14 @@ void process_encryption_ok_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_Login_Patch_04>(data);
+  const auto& cmd = check_size_t<C_Login_Patch_04>(data,
+      offsetof(C_Login_Patch_04, email), sizeof(C_Login_Patch_04));
+
+  if (data.size() == offsetof(C_Login_Patch_04, email)) {
+    c->flags |= Client::Flag::BB_PATCH;
+  } else if (data.size() != sizeof(C_Login_Patch_04)) {
+    throw runtime_error("unknown patch server login format");
+  }
 
   u16string message = u"\
 $C7newserv patch server\n\

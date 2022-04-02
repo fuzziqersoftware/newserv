@@ -96,6 +96,7 @@ struct C_Login_Patch_04 {
   parray<le_uint32_t, 3> unused;
   ptext<char, 0x10> username;
   ptext<char, 0x10> password;
+  ptext<char, 0x40> email; // Note: this field is not present on BB
 };
 
 // 05: Disconnect

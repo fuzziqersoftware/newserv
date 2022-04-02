@@ -22,6 +22,7 @@
 class ProxyServer;
 
 struct PortConfiguration {
+  std::string name;
   uint16_t port;
   GameVersion version;
   ServerBehavior behavior;
@@ -35,8 +36,8 @@ struct ServerState {
   };
 
   std::u16string name;
-  std::unordered_map<std::string, PortConfiguration> named_port_configuration;
-  std::unordered_map<uint16_t, PortConfiguration> numbered_port_configuration;
+  std::unordered_map<std::string, std::shared_ptr<PortConfiguration>> name_to_port_config;
+  std::unordered_map<uint16_t, std::shared_ptr<PortConfiguration>> number_to_port_config;
   std::string username;
   uint16_t dns_server_port;
   std::vector<std::string> ip_stack_addresses;
@@ -54,8 +55,11 @@ struct ServerState {
   std::vector<MenuItem> main_menu;
   std::shared_ptr<std::vector<MenuItem>> information_menu;
   std::shared_ptr<std::vector<std::u16string>> information_contents;
-  std::vector<MenuItem> proxy_destinations_menu;
-  std::vector<std::pair<std::string, uint16_t>> proxy_destinations;
+  std::vector<MenuItem> proxy_destinations_menu_pc;
+  std::vector<MenuItem> proxy_destinations_menu_gc;
+  std::vector<std::pair<std::string, uint16_t>> proxy_destinations_pc;
+  std::vector<std::pair<std::string, uint16_t>> proxy_destinations_gc;
+  std::pair<std::string, uint16_t> proxy_destination_patch;
   std::u16string welcome_message;
 
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
@@ -94,6 +98,9 @@ struct ServerState {
 
   uint32_t connect_address_for_client(std::shared_ptr<Client> c);
 
+  const std::vector<MenuItem>& proxy_destinations_menu_for_version(GameVersion version);
+  const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations_for_version(GameVersion version);
+
   void set_port_configuration(
-      const std::unordered_map<std::string, PortConfiguration>& named_port_configuration);
+    const std::vector<PortConfiguration>& port_configs);
 };

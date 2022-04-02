@@ -25,10 +25,15 @@
   // strings to this list to listen for tapserver connections on a TCP port.
   "IPStackListen": [],
 
-  // Other servers to support proxying to. If this is empty, the proxy server is
-  // disabled. Entries are like "name": "address:port"; the names are visible to
-  // clients in the proxy server menu.
-  "ProxyDestinations": {},
+  // Other servers to support proxying to. If either of these is empty, the
+  // proxy server is disabled for that game version. Entries are like
+  // "name": "address:port"; the names are used in the proxy server menu.
+  "ProxyDestinations-GC": {},
+  "ProxyDestinations-PC": {},
+  // Proxy destination for patch server clients. If this is given, the internal
+  // patch server (for PC and BB) is bypassed, and any client that connects to
+  // the patch server is instead proxied to this destination.
+  // "ProxyDestination-Patch": "",
 
   // By default, the interactive shell runs if stdin is a terminal, and doesn't
   // run if it's not. This option, if present, overrides that behavior.

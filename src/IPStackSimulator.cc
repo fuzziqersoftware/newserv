@@ -759,9 +759,9 @@ void IPStackSimulator::open_server_connection(
   // Link the client to the server - the server sees this as a normal TCP
   // connection and treats it as if the client connected to one of its listening
   // sockets
-  const PortConfiguration* port_config;
+  shared_ptr<const PortConfiguration> port_config;
   try {
-    port_config = &this->state->numbered_port_configuration.at(conn.server_port);
+    port_config = this->state->number_to_port_config.at(conn.server_port);
   } catch (const out_of_range&) {
     bufferevent_free(bevs[1]);
     throw logic_error("client connected to port missing from configuration");

@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <phosg/Filesystem.hh>
 
 #include "PSOEncryption.hh"
 #include "PSOProtocol.hh"
@@ -26,12 +27,14 @@ public:
       std::shared_ptr<ServerState> state);
   virtual ~ProxyServer() = default;
 
-  void listen(uint16_t port, GameVersion version);
+  void listen(uint16_t port, GameVersion version,
+      const struct sockaddr_storage* default_destination = nullptr);
 
   void connect_client(struct bufferevent* bev, uint16_t server_port);
 
   struct LinkedSession {
     ProxyServer* server;
+    uint64_t id;
 
     std::unique_ptr<struct event, void(*)(struct event*)> timeout_event;
 
@@ -80,12 +83,24 @@ public:
     };
     std::unordered_map<std::string, SavingFile> saving_files;
 
+    // TODO: This first constructor should be private
+    LinkedSession(
+        ProxyServer* server,
+        uint64_t id,
+        uint16_t local_port,
+        GameVersion version);
     LinkedSession(
         ProxyServer* server,
         uint16_t local_port,
         GameVersion version,
         std::shared_ptr<const License> license,
         const ClientConfig& newserv_client_config);
+    LinkedSession(
+        ProxyServer* server,
+        uint64_t id,
+        uint16_t local_port,
+        GameVersion version,
+        const struct sockaddr_storage& next_destination);
 
     void resume(
         std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
@@ -93,6 +108,8 @@ public:
         std::shared_ptr<PSOEncryption> client_output_crypt,
         uint32_t sub_version,
         const std::string& character_name);
+    void resume(struct bufferevent* bev);
+    void connect();
 
     static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
     static void dispatch_on_client_error(struct bufferevent* bev, short events,
@@ -115,7 +132,7 @@ public:
   };
 
   std::shared_ptr<LinkedSession> get_session();
-  void delete_session(uint32_t serial_number);
+  void delete_session(uint64_t id);
 
   bool save_files;
 
@@ -123,10 +140,17 @@ private:
   struct ListeningSocket {
     ProxyServer* server;
 
-    int fd;
     uint16_t port;
+    scoped_fd fd;
     std::unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)> listener;
     GameVersion version;
+    struct sockaddr_storage default_destination;
+
+    ListeningSocket(
+        ProxyServer* server,
+        uint16_t port,
+        GameVersion version,
+        const struct sockaddr_storage* default_destination);
 
     static void dispatch_on_listen_accept(struct evconnlistener* listener,
         evutil_socket_t fd, struct sockaddr *address, int socklen, void* ctx);
@@ -160,7 +184,12 @@ private:
   std::shared_ptr<ServerState> state;
   std::map<int, std::shared_ptr<ListeningSocket>> listeners;
   std::unordered_map<struct bufferevent*, std::shared_ptr<UnlinkedSession>> bev_to_unlinked_session;
-  std::unordered_map<uint32_t, std::shared_ptr<LinkedSession>> serial_number_to_session;
+  std::unordered_map<uint64_t, std::shared_ptr<LinkedSession>> id_to_session;
+  uint64_t next_unlicensed_session_id;
 
-  void on_client_connect(struct bufferevent* bev, uint16_t port, GameVersion version);
+  void on_client_connect(
+      struct bufferevent* bev,
+      uint16_t listen_port,
+      GameVersion version,
+      const struct sockaddr_storage* default_destination);
 };

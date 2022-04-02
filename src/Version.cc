@@ -1,8 +1,10 @@
 #include "Version.hh"
 
+#include <strings.h>
+
 #include <stdexcept>
 
-#include <strings.h>
+#include "Client.hh"
 
 using namespace std;
 
