@@ -58,10 +58,12 @@ struct Client {
     DCV1 = 0x0010,
     // Client is loading into a game
     LOADING = 0x0020,
+    // Client is loading a quest
+    LOADING_QUEST = 0x0040,
     // Client is in the information menu (login server only)
-    IN_INFORMATION_MENU = 0x0040,
+    IN_INFORMATION_MENU = 0x0080,
     // Client is at the welcome message (login server only)
-    AT_WELCOME_MESSAGE = 0x0080,
+    AT_WELCOME_MESSAGE = 0x0100,
 
     // Note: There isn't a good way to detect Episode 3 until the player data is
     // sent (via a 61 command), so the IS_EPISODE_3 flag is set in that handler

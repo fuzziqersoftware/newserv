@@ -894,7 +894,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_quest_file(l->clients[x], bin_basename, *bin_contents, false, false);
           send_quest_file(l->clients[x], dat_basename, *dat_contents, false, false);
 
-          l->clients[x]->flags |= Client::Flag::LOADING;
+          l->clients[x]->flags |= Client::Flag::LOADING_QUEST;
         }
 
       } else {
@@ -1012,7 +1012,13 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  c->flags &= ~Client::Flag::LOADING;
+  // If this client is NOT loading, they should not send an AC. Sending an AC to
+  // a client that isn't waiting to start a quest will crash the client, so we
+  // have to be careful not to do so.
+  if (!(c->flags & Client::Flag::LOADING_QUEST)) {
+    return;
+  }
+  c->flags &= ~Client::Flag::LOADING_QUEST;
 
   // check if any client is still loading
   // TODO: we need to handle clients disconnecting while loading. probably
@@ -1022,7 +1028,7 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     if (!l->clients[x]) {
       continue;
     }
-    if (l->clients[x]->flags & Client::Flag::LOADING) {
+    if (l->clients[x]->flags & Client::Flag::LOADING_QUEST) {
       break;
     }
   }

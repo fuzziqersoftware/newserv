@@ -41,7 +41,7 @@ bool Lobby::any_client_loading() const {
     if (!this->clients[x].get()) {
       continue;
     }
-    if (this->clients[x]->flags & Client::Flag::LOADING) {
+    if (this->clients[x]->flags & (Client::Flag::LOADING | Client::Flag::LOADING_QUEST)) {
       return true;
     }
   }
