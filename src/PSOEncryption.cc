@@ -30,8 +30,7 @@ void PSOPCEncryption::update_stream() {
   eax = edi;
   while (edx > 0) {
     esi = this->stream[eax + 0x1F];
-    ebp = this->stream[eax];
-    ebp = ebp - esi;
+    ebp = this->stream[eax] - esi;
     this->stream[eax] = ebp;
     eax++;
     edx--;
@@ -41,8 +40,7 @@ void PSOPCEncryption::update_stream() {
   eax = edi;
   while (edx > 0) {
     esi = this->stream[eax - 0x18];
-    ebp = this->stream[eax];
-    ebp = ebp - esi;
+    ebp = this->stream[eax] - esi;
     this->stream[eax] = ebp;
     eax++;
     edx--;

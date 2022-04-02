@@ -8,7 +8,7 @@
 
 
 
-#define PC_STREAM_LENGTH 57
+#define PC_STREAM_LENGTH 56
 #define GC_STREAM_LENGTH 521
 #define BB_STREAM_LENGTH 1042
 
@@ -18,6 +18,14 @@ public:
 
   virtual void encrypt(void* data, size_t size, bool advance = true) = 0;
   virtual void decrypt(void* data, size_t size, bool advance = true);
+
+  inline void encrypt(std::string& data, bool advance = true) {
+    this->encrypt(data.data(), data.size(), advance);
+  }
+  inline void decrypt(std::string& data, bool advance = true) {
+    this->decrypt(data.data(), data.size(), advance);
+  }
+
   virtual void skip(size_t size) = 0;
 
 protected:
@@ -35,8 +43,8 @@ protected:
   void update_stream();
   uint32_t next(bool advance = true);
 
-  uint32_t stream[PC_STREAM_LENGTH];
-  uint16_t offset;
+  uint32_t stream[PC_STREAM_LENGTH + 1];
+  uint8_t offset;
 };
 
 class PSOGCEncryption : public PSOEncryption {
