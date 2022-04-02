@@ -31,6 +31,16 @@ shared_ptr<ProxyServer::LinkedSession> ServerShell::get_proxy_session() {
   return this->state->proxy_server->get_session();
 }
 
+static void set_boolean(bool* target, const string& args) {
+  if (args == "on") {
+    *target = true;
+  } else if (args == "off") {
+    *target = false;
+  } else {
+    throw invalid_argument("argument must be \"on\" or \"off\"");
+  }
+}
+
 void ServerShell::execute_command(const string& command) {
   // find the entry in the command table and run the command
   size_t command_end = skip_non_whitespace(command, 0);
@@ -93,19 +103,17 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     Set your info board contents with arbitrary data.\n\
   marker <color-id>\n\
     Send a lobby marker message to the server.\n\
-  event <event-id>\n\
-    Send a lobby event update to yourself.\n\
   warp <area-id>\n\
     Send yourself to a specific area.\n\
-  set-section-id [section-id]\n\
+  set-override-section-id [section-id]\n\
     Override the section ID for games you create or join. This affects the\n\
     active drop chart if you are the leader of the game and the server doesn't\n\
     override drops entirely. If no argument is given, clears the override.\n\
-  set-event [event]\n\
+  set-override-event [event]\n\
     Override the lobby event for all lobbies and games you join. This applies\n\
     only to you; other players do not see this override.  If no argument is\n\
     given, clears the override.\n\
-  set-lobby-number [number]\n\
+  set-override-lobby-number [number]\n\
     Override the lobby type for all lobbies you join. This applies only to you;\n\
     other players do not see this override. If no argument is given, clears the\n\
     override.\n\
@@ -298,14 +306,6 @@ Proxy commands (these will only work when exactly one client is connected):\n\
 
     session->send_to_end(data, true);
 
-  } else if (command_name == "event") {
-    auto session = this->get_proxy_session();
-
-    string data("\xDA\x00\x04\x00", 4);
-    data[1] = stod(command_args);
-
-    session->send_to_end(data, false);
-
   } else if (command_name == "warp") {
     auto session = this->get_proxy_session();
 
@@ -335,7 +335,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
 
     session->send_to_end(data, true);
 
-  } else if (command_name == "set-section-id") {
+  } else if (command_name == "set-override-section-id") {
     auto session = this->get_proxy_session();
     if (command_args.empty()) {
       session->override_section_id = -1;
@@ -343,15 +343,18 @@ Proxy commands (these will only work when exactly one client is connected):\n\
       session->override_section_id = section_id_for_name(command_args);
     }
 
-  } else if (command_name == "set-event") {
+  } else if (command_name == "set-override-event") {
     auto session = this->get_proxy_session();
     if (command_args.empty()) {
       session->override_lobby_event = -1;
     } else {
       session->override_lobby_event = event_for_name(command_args);
+      string data("\xDA\x00\x04\x00", 4);
+      data[1] = session->override_lobby_event;
+      session->send_to_end(data, false);
     }
 
-  } else if (command_name == "set-lobby-number") {
+  } else if (command_name == "set-override-lobby-number") {
     auto session = this->get_proxy_session();
     if (command_args.empty()) {
       session->override_lobby_number = -1;
@@ -361,41 +364,22 @@ Proxy commands (these will only work when exactly one client is connected):\n\
 
   } else if (command_name == "set-chat-filter") {
     auto session = this->get_proxy_session();
-
-    if (command_args == "on") {
-      session->enable_chat_filter = true;
-    } else if (command_args == "off") {
-      session->enable_chat_filter = false;
-    } else {
-      throw invalid_argument("argument must be \"on\" or \"off\"");
-    }
+    set_boolean(&session->enable_chat_filter, command_args);
 
   } else if (command_name == "set-chat-safety") {
     auto session = this->get_proxy_session();
+    set_boolean(&session->suppress_newserv_commands, command_args);
 
-    if (command_args == "on") {
-      session->suppress_newserv_commands = true;
-    } else if (command_args == "off") {
-      session->suppress_newserv_commands = false;
-    } else {
-      throw invalid_argument("argument must be \"on\" or \"off\"");
-    }
+  } else if (command_name == "set-switch-assist") {
+    auto session = this->get_proxy_session();
+    set_boolean(&session->enable_switch_assist, command_args);
 
   } else if (command_name == "set-save-files") {
     if (this->state->proxy_server.get()) {
-      if (command_args == "on") {
-        this->state->proxy_server->save_files = true;
-      } else if (command_args == "off") {
-        this->state->proxy_server->save_files = false;
-      } else {
-        throw invalid_argument("argument must be \"on\" or \"off\"");
-      }
-
+      set_boolean(&this->state->proxy_server->save_files, command_args);
     } else {
       throw invalid_argument("proxy server is not available");
     }
-
-
 
   } else {
     throw invalid_argument("unknown command; try \'help\'");

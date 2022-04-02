@@ -53,6 +53,8 @@ public:
     ClientConfig newserv_client_config;
     bool suppress_newserv_commands;
     bool enable_chat_filter;
+    bool enable_switch_assist;
+    std::string last_switch_enabled_subcommand;
     int16_t override_section_id;
     int16_t override_lobby_event;
     int16_t override_lobby_number;

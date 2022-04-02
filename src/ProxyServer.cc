@@ -580,17 +580,13 @@ void ProxyServer::LinkedSession::disconnect() {
 
 
 
-static void check_implemented_subcommand(
-    uint64_t id, uint16_t command, const string& data) {
-  if (command == 0x60 || command == 0x6C || command == 0xC9 ||
-      command == 0x62 || command == 0x6D || command == 0xCB) {
-    if (data.size() < 4) {
-      log(WARNING, "[ProxyServer/%08" PRIX64 "] Received broadcast/target command with no contents", id);
-    } else {
-      if (!subcommand_is_implemented(data[0])) {
-        log(WARNING, "[ProxyServer/%08" PRIX64 "] Received subcommand %02hhX which is not implemented on the server",
-            id, data[0]);
-      }
+static void check_implemented_subcommand(uint64_t id, const string& data) {
+  if (data.size() < 4) {
+    log(WARNING, "[ProxyServer/%08" PRIX64 "] Received broadcast/target command with no contents", id);
+  } else {
+    if (!subcommand_is_implemented(data[0])) {
+      log(WARNING, "[ProxyServer/%08" PRIX64 "] Received subcommand %02hhX which is not implemented on the server",
+          id, data[0]);
     }
   }
 }
@@ -601,7 +597,6 @@ void ProxyServer::LinkedSession::on_client_input() {
     [&](uint16_t command, uint32_t flag, string& data) {
       print_received_command(command, flag, data.data(), data.size(),
           this->version, name.c_str());
-      check_implemented_subcommand(this->id, command, data);
 
       bool should_forward = true;
       switch (command) {
@@ -621,6 +616,26 @@ void ProxyServer::LinkedSession::on_client_input() {
           } else if (this->enable_chat_filter) {
             // Turn all $ into \t and all # into \n
             add_color_inplace(data.data() + 8, data.size() - 8);
+          }
+          break;
+
+        case 0x60:
+        case 0x62:
+        case 0x6C:
+        case 0x6D:
+        case 0xC9:
+        case 0xCB:
+          check_implemented_subcommand(this->id, data);
+          if (!data.empty() && (data[0] == 0x05) && (data[data.size() - 1] == 0x01) && this->enable_switch_assist) {
+            if (!this->last_switch_enabled_subcommand.empty()) {
+              log(WARNING, "[ProxyServer/%08" PRIX64 "] Switch assist: replaying previous enable subcommand",
+                  this->id);
+              send_command(this->client_bev.get(), this->version,
+                  this->client_output_crypt.get(), 0x60, 0x00,
+                  this->last_switch_enabled_subcommand.data(),
+                  this->last_switch_enabled_subcommand.size(), name.c_str());
+            }
+            this->last_switch_enabled_subcommand = data;
           }
           break;
 
@@ -724,7 +739,6 @@ void ProxyServer::LinkedSession::on_server_input() {
       [&](uint16_t command, uint32_t flag, string& data) {
         print_received_command(command, flag, data.data(), data.size(),
             this->version, name.c_str());
-        check_implemented_subcommand(this->id, command, data);
 
         // In the case of server init commands, the client output crypt cannot
         // be set until after we forwarwd the command to the client, hence this
@@ -991,6 +1005,15 @@ void ProxyServer::LinkedSession::on_server_input() {
             break;
           }
 
+          case 0x60:
+          case 0x62:
+          case 0x6C:
+          case 0x6D:
+          case 0xC9:
+          case 0xCB:
+            check_implemented_subcommand(this->id, data);
+            break;
+
           case 0x44:
           case 0xA6: {
             if (this->version != GameVersion::GC) {
@@ -1163,7 +1186,7 @@ void ProxyServer::LinkedSession::on_server_input() {
               if (this->override_lobby_event >= 0) {
                 cmd->event = this->override_lobby_event;
               }
-              if (this->override_lobby_event >= 0) {
+              if (this->override_lobby_number >= 0) {
                 cmd->lobby_number = this->override_lobby_number;
               }
             }
