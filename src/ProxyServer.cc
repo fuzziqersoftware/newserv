@@ -842,17 +842,21 @@ void ProxyServer::LinkedSession::on_server_input() {
                       this->server_output_crypt.get(), 0xDB, 0, &cmd, sizeof(cmd),
                       name.c_str());
                   break;
-
-                } else if (command == 0x02) {
-                  // Command 02 should be handled like 9A at this point (we
-                  // should send a 9E in response)
-                  [[fallthrough]];
                 }
-
               } else {
                 throw logic_error("invalid game version in server init handler");
               }
             }
+
+            // If we get here, then:
+            // - The session has a license
+            // - The session's version is GC
+            // - The received command is 02, not 17
+            // The command should be handled like 9A at this point (we should
+            // send a 9E in response). GCC can't seem to understand this
+            // fallthrough label unless it's right here, so we can't put it in a
+            // more intuitive place (e.g. in an `else` above), unfortunately.
+            [[fallthrough]];
           }
 
           case 0x9A: {
