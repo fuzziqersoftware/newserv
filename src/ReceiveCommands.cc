@@ -247,6 +247,8 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 9A
   const auto& cmd = check_size_t<C_Login_DC_PC_GC_9A>(data);
 
+  c->flags |= flags_for_version(c->version, cmd.sub_version);
+
   uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
@@ -257,10 +259,10 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
           cmd.access_key.c_str(), nullptr);
     }
   } catch (const exception& e) {
-    // The client should have sent a different command containing the password
-    // already, which should have created and added a temporary license. If no
-    // license exists, disconnect the client even if unregistered clients are
-    // allowed.
+    // On GC, the client should have sent a different command containing the
+    // password already, which should have created and added a temporary
+    // license. So, if no license exists at this point, disconnect the client
+    // even if unregistered clients are allowed.
     u16string message = u"Login failed: " + decode_sjis(e.what());
     send_message_box(c, message.c_str());
     c->should_disconnect = true;
@@ -309,21 +311,45 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) { // 9D 9E
-  // Sometimes the unused bytes aren't sent
-  const auto& cmd = check_size_t<C_Login_PC_GC_9D_9E>(data,
-      sizeof(C_Login_PC_GC_9D_9E) - 0x64, sizeof(C_Login_PC_GC_9D_9E));
+    uint16_t command, uint32_t, const string& data) { // 9D 9E
 
-  c->flags |= flags_for_version(c->version, cmd.sub_version);
+  // The client sends extra unused data the first time it sends these commands,
+  // hence the odd check_size calls here
 
-  uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
+  const C_Login_PC_9D* base_cmd;
+  if (command == 0x9D) {
+    base_cmd = &check_size_t<C_Login_PC_9D>(data,
+        sizeof(C_Login_PC_9D), sizeof(C_Login_PC_9D) + 0x84);
+
+  } else if (command == 0x9E) {
+    const auto& cmd = check_size_t<C_Login_GC_9E>(data,
+        sizeof(C_Login_GC_9E), sizeof(C_Login_GC_9E) + 0x64);
+    base_cmd = &cmd;
+
+    try {
+      c->import_config(cmd.client_config.cfg);
+    } catch (const invalid_argument&) {
+      // If we can't import the config, assume that the client was not connected
+      // to newserv before, so we should show the welcome message.
+      c->flags |= Client::Flag::AT_WELCOME_MESSAGE;
+      c->bb_game_state = 0;
+      c->bb_player_index = 0;
+    }
+
+  } else {
+    throw logic_error("9D/9E handler called for incorrect command");
+  }
+
+  c->flags |= flags_for_version(c->version, base_cmd->sub_version);
+
+  uint32_t serial_number = strtoul(base_cmd->serial_number.c_str(), nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
       c->license = s->license_manager->verify_gc(serial_number,
-          cmd.access_key.c_str(), nullptr);
+          base_cmd->access_key.c_str(), nullptr);
     } else {
       c->license = s->license_manager->verify_pc(serial_number,
-          cmd.access_key.c_str(), nullptr);
+          base_cmd->access_key.c_str(), nullptr);
     }
   } catch (const exception& e) {
     // See comment in 9A handler about why we do this even if unregistered users
@@ -332,16 +358,6 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     send_message_box(c, message.c_str());
     c->should_disconnect = true;
     return;
-  }
-
-  try {
-    c->import_config(cmd.client_config.cfg);
-  } catch (const invalid_argument&) {
-    // If we can't import the config, assume that the client was not connected
-    // to newserv before, so we should show the welcome message.
-    c->flags |= Client::Flag::AT_WELCOME_MESSAGE;
-    c->bb_game_state = 0;
-    c->bb_player_index = 0;
   }
 
   if ((c->flags & Client::Flag::EPISODE_3) && (s->ep3_menu_song >= 0)) {
@@ -726,17 +742,20 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           // the client to the proxy server instead (would have to provide
           // license/char name/etc. for remote auth)
 
+          static const vector<string> version_to_port_name({
+              "dc-proxy", "pc-proxy", "", "gc-proxy", "bb-proxy"});
+          const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
+          uint16_t local_port = s->name_to_port_config.at(port_name)->port;
+
           c->proxy_destination_address = resolve_ipv4(dest->first);
           c->proxy_destination_port = dest->second;
           send_update_client_config(c);
 
           s->proxy_server->delete_session(c->license->serial_number);
+          s->proxy_server->create_licensed_session(
+              c->license, local_port, c->version, c->export_config());
 
-          static const vector<string> version_to_port_name({
-              "dc-proxy", "pc-proxy", "", "gc-proxy", "bb-proxy"});
-          const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
-          send_reconnect(c, s->connect_address_for_client(c),
-              s->name_to_port_config.at(port_name)->port);
+          send_reconnect(c, s->connect_address_for_client(c), local_port);
         }
       }
       break;
@@ -1362,7 +1381,7 @@ void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 40
   const auto& cmd = check_size_t<C_GuildCardSearch_40>(data);
   try {
-    auto result = s->find_client(nullptr, cmd.target_serial_number);
+    auto result = s->find_client(nullptr, cmd.target_guild_card_number);
     auto result_lobby = s->find_lobby(result->lobby_id);
     send_card_search_result(s, c, result, result_lobby);
   } catch (const out_of_range&) { }
@@ -1384,7 +1403,7 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   const auto& cmd = check_size_t<SC_SimpleMail_GC_81>(data);
 
-  auto target = s->find_client(nullptr, cmd.to_serial_number);
+  auto target = s->find_client(nullptr, cmd.to_guild_card_number);
 
   // If the sender is blocked, don't forward the mail
   for (size_t y = 0; y < 30; y++) {
@@ -1710,20 +1729,39 @@ void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     throw runtime_error("unknown patch server login format");
   }
 
-  u16string message = u"\
+  // On BB we can use colors and newlines should be \n; on PC we can't use
+  // colors, the text is auto-word-wrapped, and newlines should be \r\n.
+  u16string message;
+  if (c->flags & Client::Flag::BB_PATCH) {
+    message = u"\
 $C7newserv patch server\n\
 \n\
-This server is for private use only.\n\
 This server is not affiliated with, sponsored by, or in any\n\
 other way connected to SEGA or Sonic Team, and is owned\n\
 and operated completely independently.\n\
-\n\
-License check: ";
+\n";
+  } else {
+    message = u"\
+newserv patch server\r\n\
+\r\n\
+This server is not affiliated with, sponsored by, or in any other way \
+connected to SEGA or Sonic Team, and is owned and operated completely \
+independently.\r\n\
+\r\n";
+  }
+  message += u"License check ";
   try {
-    c->license = s->license_manager->verify_bb(
-        cmd.username.c_str(), cmd.password.c_str());
+    if (c->flags & Client::Flag::BB_PATCH) {
+      c->license = s->license_manager->verify_bb(
+          cmd.username.c_str(), cmd.password.c_str());
+    } else {
+      uint32_t serial_number = strtoul(cmd.username.c_str(), nullptr, 16);
+      c->license = s->license_manager->verify_pc(
+          serial_number, cmd.password.c_str(), nullptr);
+    }
     message += u"OK";
   } catch (const exception& e) {
+    message += u"failed: ";
     message += decode_sjis(e.what());
   }
 
@@ -1735,8 +1773,8 @@ License check: ";
   send_command(c, 0x0A);
   send_command(c, 0x0A);
 
-  // this command terminates the patch connection successfully. PSO complains if
-  // we don't check the above directories though
+  // This command terminates the patch connection successfully. PSOBB complains
+  // if we don't check the above directories before sending this though
   send_command(c, 0x0012, 0x00000000);
 }
 

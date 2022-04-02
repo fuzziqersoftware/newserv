@@ -154,11 +154,11 @@ static const char* dc_lobby_server_copyright = "DreamCast Lobby Server. Copyrigh
 static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
-S_ServerInit_DC_GC_02_17 prepare_server_init_contents_dc_pc_gc(
+S_ServerInit_DC_PC_GC_02_17 prepare_server_init_contents_dc_pc_gc(
     bool initial_connection,
     uint32_t server_key,
     uint32_t client_key) {
-  S_ServerInit_DC_GC_02_17 cmd;
+  S_ServerInit_DC_PC_GC_02_17 cmd;
   cmd.copyright = initial_connection
       ? dc_port_map_copyright : dc_lobby_server_copyright;
   cmd.server_key = server_key;
@@ -169,9 +169,7 @@ S_ServerInit_DC_GC_02_17 prepare_server_init_contents_dc_pc_gc(
 
 void send_server_init_dc_pc_gc(shared_ptr<Client> c,
     bool initial_connection) {
-  // PC uses 17 for all server inits; GC uses it only for the first one
-  uint8_t command = (initial_connection || (c->version == GameVersion::PC))
-      ? 0x17 : 0x02;
+  uint8_t command = initial_connection ? 0x17 : 0x02;
   uint32_t server_key = random_object<uint32_t>();
   uint32_t client_key = random_object<uint32_t>();
 
@@ -475,7 +473,7 @@ void send_text_message(shared_ptr<ServerState> s, const char16_t* text) {
   }
 }
 
-void send_chat_message(shared_ptr<Client> c, uint32_t from_serial_number,
+void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
     const char16_t* from_name, const char16_t* text) {
   u16string data;
   if (c->version == GameVersion::BB) {
@@ -484,24 +482,24 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_serial_number,
   data.append(remove_language_marker(from_name));
   data.append(u"\x09\x09J");
   data.append(text);
-  send_header_text(c, 0x06, from_serial_number, data.c_str());
+  send_header_text(c, 0x06, from_guild_card_number, data.c_str());
 }
 
-void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_serial_number,
+void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_guild_card_number,
     const char16_t* from_name, const char16_t* text) {
   SC_SimpleMail_GC_81 cmd;
   cmd.player_tag = 0x00010000;
-  cmd.from_serial_number = from_serial_number;
+  cmd.from_guild_card_number = from_guild_card_number;
   cmd.from_name = from_name;
-  cmd.to_serial_number = c->license->serial_number;
+  cmd.to_guild_card_number = c->license->serial_number;
   cmd.text = text;
   send_command(c, 0x81, 0x00, cmd);
 }
 
-void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
+void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_guild_card_number,
     const char16_t* from_name, const char16_t* text) {
   if (c->version == GameVersion::GC) {
-    send_simple_mail_gc(c, from_serial_number, from_name, text);
+    send_simple_mail_gc(c, from_guild_card_number, from_name, text);
   } else {
     throw logic_error("unimplemented versioned command");
   }
@@ -549,8 +547,8 @@ void send_card_search_result_t(
     shared_ptr<Lobby> result_lobby) {
   S_GuildCardSearchResult<CommandHeaderT, CharT> cmd;
   cmd.player_tag = 0x00010000;
-  cmd.searcher_serial_number = c->license->serial_number;
-  cmd.result_serial_number = result->license->serial_number;
+  cmd.searcher_guild_card_number = c->license->serial_number;
+  cmd.result_guild_card_number = result->license->serial_number;
   cmd.reconnect_command_header.size = sizeof(cmd.reconnect_command_header) + sizeof(cmd.reconnect_command);
   cmd.reconnect_command_header.command = 0x19;
   cmd.reconnect_command_header.flag = 0x00;
@@ -608,7 +606,7 @@ void send_guild_card_gc(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.player_tag = 0x00010000;
   cmd.reserved1 = 1;
   cmd.reserved2 = 1;
-  cmd.serial_number = source->license->serial_number;
+  cmd.guild_card_number = source->license->serial_number;
   cmd.name = source->player.disp.name;
   remove_language_marker_inplace(cmd.name);
   cmd.desc = source->player.guild_card_desc;
@@ -624,7 +622,7 @@ void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.unused = 0x0000;
   cmd.reserved1 = 1;
   cmd.reserved2 = 1;
-  cmd.serial_number = source->license->serial_number;
+  cmd.guild_card_number = source->license->serial_number;
   cmd.name = remove_language_marker(source->player.disp.name);
   cmd.team_name = remove_language_marker(source->player.team_name);
   cmd.desc = source->player.guild_card_desc;
@@ -670,7 +668,6 @@ void send_menu_t(
         ((c->version == GameVersion::PC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_PC)) ||
         ((c->version == GameVersion::GC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC)) ||
         ((c->version == GameVersion::BB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_BB)) ||
-        ((c->flags & Client::Flag::EPISODE_3) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC_EPISODE_3)) ||
         ((item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) && (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION))) {
       continue;
     }
@@ -1026,7 +1023,7 @@ void send_arrow_update(shared_ptr<Lobby> l) {
     }
     auto& e = entries.emplace_back();
     e.player_tag = 0x00010000;
-    e.serial_number = l->clients[x]->license->serial_number;
+    e.guild_card_number = l->clients[x]->license->serial_number;
     e.arrow_color = l->clients[x]->lobby_arrow_color;
   }
 

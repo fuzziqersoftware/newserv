@@ -93,8 +93,8 @@ ProxyServer::ListeningSocket::ListeningSocket(
 }
 
 void ProxyServer::ListeningSocket::dispatch_on_listen_accept(
-    struct evconnlistener*, evutil_socket_t, struct sockaddr* address, int socklen, void* ctx) {
-  reinterpret_cast<ListeningSocket*>(ctx)->on_listen_accept(address, socklen);
+    struct evconnlistener*, evutil_socket_t fd, struct sockaddr*, int, void* ctx) {
+  reinterpret_cast<ListeningSocket*>(ctx)->on_listen_accept(fd);
 }
 
 void ProxyServer::ListeningSocket::dispatch_on_listen_error(
@@ -102,7 +102,7 @@ void ProxyServer::ListeningSocket::dispatch_on_listen_error(
   reinterpret_cast<ListeningSocket*>(ctx)->on_listen_error();
 }
 
-void ProxyServer::ListeningSocket::on_listen_accept(struct sockaddr*, int fd) {
+void ProxyServer::ListeningSocket::on_listen_accept(int fd) {
   log(INFO, "[ProxyServer] Client connected on fd %d", fd);
   auto* bev = bufferevent_socket_new(this->server->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
@@ -158,7 +158,7 @@ void ProxyServer::on_client_connect(
       throw logic_error("linked session already exists for unlicensed client");
     }
     auto session = emplace_ret.first->second;
-    log(INFO, "[ProxyServer/%08" PRIX64 "] Opened session", session->id);
+    log(INFO, "[ProxyServer/%08" PRIX64 "] Opened linked session", session->id);
     session->resume(bev);
 
   // If no default destination exists, create an unlinked session - we'll have
@@ -171,6 +171,7 @@ void ProxyServer::on_client_connect(
       throw logic_error("stale unlinked session exists");
     }
     auto session = emplace_ret.first->second;
+    log(INFO, "[ProxyServer] Opened unlinked session");
 
     switch (version) {
       case GameVersion::PATCH:
@@ -181,11 +182,23 @@ void ProxyServer::on_client_connect(
         uint32_t client_key = random_object<uint32_t>();
         auto cmd = prepare_server_init_contents_dc_pc_gc(
             false, server_key, client_key);
-        send_command(session->bev.get(), session->version,
-            session->crypt_out.get(), 0x02, 0, &cmd, sizeof(cmd),
+        send_command(
+            session->bev.get(),
+            session->version,
+            session->crypt_out.get(),
+            0x02,
+            0,
+            &cmd,
+            sizeof(cmd),
             "unlinked proxy client");
-        session->crypt_out.reset(new PSOGCEncryption(server_key));
-        session->crypt_in.reset(new PSOGCEncryption(client_key));
+        bufferevent_flush(session->bev.get(), EV_READ | EV_WRITE, BEV_FLUSH);
+        if (version == GameVersion::PC) {
+          session->crypt_out.reset(new PSOPCEncryption(server_key));
+          session->crypt_in.reset(new PSOPCEncryption(client_key));
+        } else {
+          session->crypt_out.reset(new PSOGCEncryption(server_key));
+          session->crypt_in.reset(new PSOGCEncryption(client_key));
+        }
         break;
       }
       default:
@@ -230,17 +243,41 @@ void ProxyServer::UnlinkedSession::on_client_input() {
       print_received_command(command, flag, data.data(), data.size(),
           this->version, "unlinked proxy client");
 
-      if (this->version == GameVersion::GC) {
-        // We should really only get a 9E while the session is unlinked; if we
-        // get anything else, disconnect
-        if (command != 0x9E) {
+      if (this->version == GameVersion::PC) {
+        // We should only get a 9D while the session is unlinked; if we get
+        // anything else, disconnect
+        if (command != 0x9D) {
           log(ERROR, "[ProxyServer] Received unexpected command %02hX", command);
           should_close_unlinked_session = true;
-        } else if (data.size() < sizeof(C_Login_PC_GC_9D_9E) - 0x64) {
+        } else if (data.size() < sizeof(C_Login_GC_9E) - 0x64) {
           log(ERROR, "[ProxyServer] Login command is too small");
           should_close_unlinked_session = true;
         } else {
-          const auto* cmd = reinterpret_cast<const C_Login_PC_GC_9D_9E*>(data.data());
+          const auto* cmd = reinterpret_cast<const C_Login_GC_9E*>(data.data());
+          uint32_t serial_number = strtoul(cmd->serial_number.c_str(), nullptr, 16);
+          try {
+            license = this->server->state->license_manager->verify_pc(
+                serial_number, cmd->access_key.c_str(), nullptr);
+            sub_version = cmd->sub_version;
+            character_name = cmd->name;
+            client_config = cmd->client_config.cfg;
+          } catch (const exception& e) {
+            log(ERROR, "[ProxyServer] Unlinked client has no valid license");
+            should_close_unlinked_session = true;
+          }
+        }
+
+      } else if (this->version == GameVersion::GC) {
+        // We should only get a 9E while the session is unlinked; if we get
+        // anything else, disconnect
+        if (command != 0x9E) {
+          log(ERROR, "[ProxyServer] Received unexpected command %02hX", command);
+          should_close_unlinked_session = true;
+        } else if (data.size() < sizeof(C_Login_GC_9E) - 0x64) {
+          log(ERROR, "[ProxyServer] Login command is too small");
+          should_close_unlinked_session = true;
+        } else {
+          const auto* cmd = reinterpret_cast<const C_Login_GC_9E*>(data.data());
           uint32_t serial_number = strtoul(cmd->serial_number.c_str(), nullptr, 16);
           try {
             license = this->server->state->license_manager->verify_gc(
@@ -253,6 +290,9 @@ void ProxyServer::UnlinkedSession::on_client_input() {
             should_close_unlinked_session = true;
           }
         }
+
+      } else {
+        throw logic_error("unsupported unlinked session version");
       }
     });
 
@@ -269,6 +309,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
     shared_ptr<LinkedSession> session;
     try {
       session = this->server->id_to_session.at(license->serial_number);
+      log(INFO, "[ProxyServer/%08" PRIX64 "] Resuming linked session from unlinked session", session->id);
 
     } catch (const out_of_range&) {
       // If there's no open session for this license, then there must be a valid
@@ -284,7 +325,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
             license,
             client_config));
         this->server->id_to_session.emplace(license->serial_number, session);
-        log(INFO, "[ProxyServer/%08" PRIX64 "] Opened session", session->id);
+        log(INFO, "[ProxyServer/%08" PRIX64 "] Opened licensed session for unlinked session", session->id);
       }
     }
 
@@ -355,6 +396,7 @@ ProxyServer::LinkedSession::LinkedSession(
     std::shared_ptr<const License> license,
     const ClientConfig& newserv_client_config)
   : LinkedSession(server, license->serial_number, local_port, version) {
+  this->license = license;
   this->newserv_client_config = newserv_client_config;
   memset(&this->next_destination, 0, sizeof(this->next_destination));
   struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
@@ -701,13 +743,16 @@ void ProxyServer::LinkedSession::on_server_input() {
 
             // Most servers don't include after_message or have a shorter
             // after_message than newserv does, so don't require it
-            if (data.size() < offsetof(S_ServerInit_DC_GC_02_17, after_message)) {
+            if (data.size() < offsetof(S_ServerInit_DC_PC_GC_02_17, after_message)) {
               throw std::runtime_error("init encryption command is too small");
             }
-            const auto* cmd = reinterpret_cast<const S_ServerInit_DC_GC_02_17*>(
+            const auto* cmd = reinterpret_cast<const S_ServerInit_DC_PC_GC_02_17*>(
                 data.data());
 
             if (!this->license) {
+              log(INFO, "[ProxyServer/%08" PRIX64 "] No license in linked session",
+                  this->id);
+
               if ((this->version == GameVersion::PC) || (this->version == GameVersion::PATCH)) {
                 this->server_input_crypt.reset(new PSOPCEncryption(cmd->server_key));
                 this->server_output_crypt.reset(new PSOPCEncryption(cmd->client_key));
@@ -724,6 +769,9 @@ void ProxyServer::LinkedSession::on_server_input() {
               break;
 
             } else {
+              log(INFO, "[ProxyServer/%08" PRIX64 "] Existing license in linked session",
+                  this->id);
+
               // This doesn't get forwarded to the client, so don't recreate the
               // client's crypts
               if (this->version == GameVersion::PATCH) {
@@ -740,26 +788,56 @@ void ProxyServer::LinkedSession::on_server_input() {
 
               should_forward = false;
 
-              // If this is a 17, respond with a DB; otherwise respond with a 9E.
-              // We don't let the client do this because it believes it already
-              // did (when it was in an unlinked session).
-              if (command == 0x17) {
-                C_VerifyLicense_GC_DB cmd;
+              // Respond with an appropriate login command. We don't let the
+              // client do this because it believes it already did (when it was
+              // in an unlinked session).
+              if (this->version == GameVersion::PC) {
+                C_Login_PC_9D cmd;
+                if (this->guild_card_number == 0) {
+                  cmd.player_tag = 0xFFFF0000;
+                  cmd.guild_card_number = 0xFFFFFFFF;
+                } else {
+                  cmd.player_tag = 0x00010000;
+                  cmd.guild_card_number = this->guild_card_number;
+                }
+                cmd.unused = 0xFFFFFFFFFFFF0000;
+                cmd.sub_version = this->sub_version;
+                cmd.unused2.data()[1] = 1;
                 cmd.serial_number = string_printf("%08" PRIX32 "",
                     this->license->serial_number);
                 cmd.access_key = this->license->access_key;
-                cmd.sub_version = this->sub_version;
                 cmd.serial_number2 = cmd.serial_number;
                 cmd.access_key2 = cmd.access_key;
-                cmd.password = this->license->gc_password;
+                cmd.name = this->character_name;
                 send_command(this->server_bev.get(), this->version,
-                    this->server_output_crypt.get(), 0xDB, 0, &cmd, sizeof(cmd),
+                    this->server_output_crypt.get(), 0x9D, 0, &cmd, sizeof(cmd),
                     name.c_str());
                 break;
+
+              } else if (this->version == GameVersion::GC) {
+                if (command == 0x17) {
+                  C_VerifyLicense_GC_DB cmd;
+                  cmd.serial_number = string_printf("%08" PRIX32 "",
+                      this->license->serial_number);
+                  cmd.access_key = this->license->access_key;
+                  cmd.sub_version = this->sub_version;
+                  cmd.serial_number2 = cmd.serial_number;
+                  cmd.access_key2 = cmd.access_key;
+                  cmd.password = this->license->gc_password;
+                  send_command(this->server_bev.get(), this->version,
+                      this->server_output_crypt.get(), 0xDB, 0, &cmd, sizeof(cmd),
+                      name.c_str());
+                  break;
+
+                } else if (command == 0x02) {
+                  // Command 02 should be handled like 9A at this point (we
+                  // should send a 9E in response)
+                  [[fallthrough]];
+                }
+
+              } else {
+                throw logic_error("invalid game version in server init handler");
               }
-              // Command 02 should be handled like 9A at this point (we should
-              // send a 9E in response)
-              [[fallthrough]];
             }
           }
 
@@ -767,9 +845,11 @@ void ProxyServer::LinkedSession::on_server_input() {
             if (!this->license) {
               break;
             }
+            if (this->version != GameVersion::GC) {
+              throw runtime_error("9A received in non-GC session");
+            }
             should_forward = false;
-            C_Login_PC_GC_9D_9E cmd;
-
+            C_LoginWithUnusedSpace_GC_9E cmd;
             if (this->guild_card_number == 0) {
               cmd.player_tag = 0xFFFF0000;
               cmd.guild_card_number = 0xFFFFFFFF;
@@ -796,16 +876,12 @@ void ProxyServer::LinkedSession::on_server_input() {
                 0x9E,
                 0x01,
                 &cmd,
-                this->guild_card_number ? offsetof(C_Login_PC_GC_9D_9E, unused4) : sizeof(cmd),
+                sizeof(C_LoginWithUnusedSpace_GC_9E) - (this->guild_card_number ? sizeof(cmd.unused_space) : 0),
                 name.c_str());
             break;
           }
 
           case 0x04: {
-            if (this->version != GameVersion::GC) {
-              break;
-            }
-
             // Some servers send a short 04 command if they don't use all of the
             // 0x20 bytes available. We should be prepared to handle that.
             if (data.size() < offsetof(S_UpdateClientConfig_DC_PC_GC_04, cfg)) {
@@ -900,7 +976,7 @@ void ProxyServer::LinkedSession::on_server_input() {
 
           case 0x1A:
           case 0xD5: {
-            if (this->version != GameVersion::PATCH) {
+            if (this->version != GameVersion::GC) {
               break;
             }
 
@@ -1227,6 +1303,20 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() {
   }
   return this->id_to_session.begin()->second;
 }
+
+std::shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
+    std::shared_ptr<const License> l, uint16_t local_port, GameVersion version,
+    const ClientConfig& newserv_client_config) {
+  shared_ptr<LinkedSession> session(new LinkedSession(
+      this, local_port, version, l, newserv_client_config));
+  auto emplace_ret = this->id_to_session.emplace(session->id, session);
+  if (!emplace_ret.second) {
+    throw runtime_error("session already exists for this license");
+  }
+  log(INFO, "[ProxyServer/%08" PRIX64 "] Opening licensed session", session->id);
+  return emplace_ret.first->second;
+}
+
 
 void ProxyServer::delete_session(uint64_t id) {
   if (this->id_to_session.erase(id)) {

@@ -132,6 +132,11 @@ public:
   };
 
   std::shared_ptr<LinkedSession> get_session();
+  std::shared_ptr<LinkedSession> create_licensed_session(
+    std::shared_ptr<const License> l,
+    uint16_t local_port,
+    GameVersion version,
+    const ClientConfig& newserv_client_config);
   void delete_session(uint64_t id);
 
   bool save_files;
@@ -155,7 +160,7 @@ private:
     static void dispatch_on_listen_accept(struct evconnlistener* listener,
         evutil_socket_t fd, struct sockaddr *address, int socklen, void* ctx);
     static void dispatch_on_listen_error(struct evconnlistener* listener, void* ctx);
-    void on_listen_accept(struct sockaddr *address, int socklen);
+    void on_listen_accept(int fd);
     void on_listen_error();
   };
 

@@ -47,7 +47,7 @@ struct SC_TextHeader_01_06_11_B0 {
 // 02 (S->C): Start encryption (except on BB)
 // Client will respond with an (encrypted) 9A, 9D, or 9E command
 
-struct S_ServerInit_DC_GC_02_17 {
+struct S_ServerInit_DC_PC_GC_02_17 {
   ptext<char, 0x40> copyright;
   le_uint32_t server_key; // Key for data sent by server
   le_uint32_t client_key; // Key for data sent by client
@@ -313,15 +313,15 @@ struct SC_GameCardCheck_BB_22 {
 
 struct C_GuildCardSearch_40 {
   le_uint32_t player_tag;
-  le_uint32_t searcher_serial_number;
-  le_uint32_t target_serial_number;
+  le_uint32_t searcher_guild_card_number;
+  le_uint32_t target_guild_card_number;
 } __attribute__((packed));
 
 template <typename HeaderT, typename CharT>
 struct S_GuildCardSearchResult {
   le_uint32_t player_tag;
-  le_uint32_t searcher_serial_number;
-  le_uint32_t result_serial_number;
+  le_uint32_t searcher_guild_card_number;
+  le_uint32_t result_guild_card_number;
   HeaderT reconnect_command_header;
   S_Reconnect_19 reconnect_command;
   ptext<char, 0x44> location_string;
@@ -534,9 +534,9 @@ struct S_LeaveLobby_66_69 {
 
 struct SC_SimpleMail_GC_81 {
   le_uint32_t player_tag;
-  le_uint32_t from_serial_number;
+  le_uint32_t from_guild_card_number;
   ptext<char, 0x10> from_name;
-  le_uint32_t to_serial_number;
+  le_uint32_t to_guild_card_number;
   ptext<char, 0x200> text;
 };
 
@@ -568,7 +568,7 @@ struct C_LobbySelection_84 {
 // Command is a list of these; header.flag is the entry count
 struct S_ArrowUpdateEntry_88 {
   le_uint32_t player_tag;
-  le_uint32_t serial_number;
+  le_uint32_t guild_card_number;
   le_uint32_t arrow_color;
 };
 
@@ -635,6 +635,12 @@ struct C_Login_DC_PC_GC_9A {
   ptext<char, 0x20> unused;
   ptext<char, 0x10> serial_number;
   ptext<char, 0x10> access_key;
+  uint32_t player_tag;
+  uint32_t guild_card_number;
+  uint32_t sub_version;
+  ptext<char, 0x30> serial_number2;
+  ptext<char, 0x30> access_key2;
+  ptext<char, 0x30> email_address;
 };
 
 // 9B: Invalid command
@@ -654,12 +660,9 @@ struct C_Register_DC_PC_GC_9C {
   ptext<char, 0x30> password;
 };
 
-// 9D (C->S): Log in with client config
-// Same as 9E? (We treat them identicall in newserv)
+// 9D (C->S): Log in
 
-// 9E (C->S): Log in with client config
-
-struct C_Login_PC_GC_9D_9E {
+struct C_Login_PC_9D {
   le_uint32_t player_tag; // 00 00 01 00 if guild card is set (via 04)
   le_uint32_t guild_card_number; // FF FF FF FF if not set
   le_uint64_t unused;
@@ -670,13 +673,23 @@ struct C_Login_PC_GC_9D_9E {
   ptext<char, 0x30> serial_number2;
   ptext<char, 0x30> access_key2;
   ptext<char, 0x10> name;
+};
+struct C_LoginWithUnusedSpace_PC_9D : C_Login_PC_9D {
+  parray<uint8_t, 0x84> unused_space;
+};
+
+// 9E (C->S): Log in with client config
+
+// This struct is identical to PC's 9D command, but it has more data at the end
+struct C_Login_GC_9E : C_Login_PC_9D {
   union ClientConfigFields {
     ClientConfig cfg;
     parray<uint8_t, 0x20> data;
-
     ClientConfigFields() : data() { }
   } client_config;
-  parray<uint8_t, 0x64> unused4;
+};
+struct C_LoginWithUnusedSpace_GC_9E : C_Login_GC_9E {
+  parray<uint8_t, 0x64> unused_space;
 };
 
 // 9F: Invalid command
@@ -1186,7 +1199,7 @@ struct S_SendGuildCard_GC {
   uint8_t subsize;
   le_uint16_t unused;
   le_uint32_t player_tag;
-  le_uint32_t serial_number;
+  le_uint32_t guild_card_number;
   ptext<char, 0x18> name;
   ptext<char, 0x6C> desc;
   uint8_t reserved1;
@@ -1199,7 +1212,7 @@ struct S_SendGuildCard_BB {
   uint8_t subcommand;
   uint8_t subsize;
   le_uint16_t unused;
-  le_uint32_t serial_number;
+  le_uint32_t guild_card_number;
   ptext<char16_t, 0x18> name;
   ptext<char16_t, 0x10> team_name;
   ptext<char16_t, 0x58> desc;

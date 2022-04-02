@@ -63,8 +63,10 @@ void send_command(std::shared_ptr<TargetT> c, uint16_t command, uint32_t flag,
 
 
 
-S_ServerInit_DC_GC_02_17 prepare_server_init_contents_dc_pc_gc(
-    bool initial_connection, uint32_t server_key, uint32_t client_key);
+S_ServerInit_DC_PC_GC_02_17 prepare_server_init_contents_dc_pc_gc(
+    bool initial_connection,
+    uint32_t server_key,
+    uint32_t client_key);
 void send_server_init(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
     bool initial_connection);
 void send_update_client_config(std::shared_ptr<Client> c);
