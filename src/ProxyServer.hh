@@ -35,6 +35,9 @@ public:
   struct LinkedSession {
     ProxyServer* server;
     uint64_t id;
+    std::string client_name;
+    std::string server_name;
+    PrefixedLogger log;
 
     std::unique_ptr<struct event, void(*)(struct event*)> timeout_event;
 
@@ -126,8 +129,13 @@ public:
     void on_stream_error(short events, bool is_server_stream);
     void on_timeout();
 
-    void send_to_end(const void* data, size_t size, bool to_server);
-    void send_to_end(const std::string& data, bool to_server);
+    void send_to_end(bool to_server, uint16_t command, uint32_t flag,
+        const void* data = nullptr, size_t size = 0);
+    void send_to_end(bool to_server, uint16_t command, uint32_t flag,
+        const std::string& data);
+    void send_to_end_with_header(
+        bool to_server, const void* data, size_t size);
+    void send_to_end_with_header(bool to_server, const std::string& data);
 
     void disconnect();
 

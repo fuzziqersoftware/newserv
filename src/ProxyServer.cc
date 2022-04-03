@@ -26,6 +26,7 @@
 #include "SendCommands.hh"
 #include "ReceiveCommands.hh"
 #include "ReceiveSubcommands.hh"
+#include "ProxyCommands.hh"
 
 using namespace std;
 
@@ -157,7 +158,7 @@ void ProxyServer::on_client_connect(
       throw logic_error("linked session already exists for unlicensed client");
     }
     auto session = emplace_ret.first->second;
-    log(INFO, "[ProxyServer/%08" PRIX64 "] Opened linked session", session->id);
+    session->log(INFO, "Opened linked session");
     session->resume(bev);
 
   // If no default destination exists, create an unlinked session - we'll have
@@ -293,7 +294,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
     shared_ptr<LinkedSession> session;
     try {
       session = this->server->id_to_session.at(license->serial_number);
-      log(INFO, "[ProxyServer/%08" PRIX64 "] Resuming linked session from unlinked session", session->id);
+      session->log(INFO, "Resuming linked session from unlinked session");
 
     } catch (const out_of_range&) {
       // If there's no open session for this license, then there must be a valid
@@ -309,13 +310,12 @@ void ProxyServer::UnlinkedSession::on_client_input() {
             license,
             client_config));
         this->server->id_to_session.emplace(license->serial_number, session);
-        log(INFO, "[ProxyServer/%08" PRIX64 "] Opened licensed session for unlinked session", session->id);
+        session->log(INFO, "Opened licensed session for unlinked session");
       }
     }
 
     if (session.get() && (session->version != this->version)) {
-      log(ERROR, "[ProxyServer/%08" PRIX64 "] Linked session has different game version",
-          session->id);
+      session->log(ERROR, "Linked session has different game version");
     } else {
       // Resume the linked session using the unlinked session
       try {
@@ -323,8 +323,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
         this->crypt_in.reset();
         this->crypt_out.reset();
       } catch (const exception& e) {
-        log(ERROR, "[ProxyServer/%08" PRIX64 "] Failed to resume linked session: %s",
-            session->id, e.what());
+        session->log(ERROR, "Failed to resume linked session: %s", e.what());
       }
     }
   }
@@ -356,6 +355,9 @@ ProxyServer::LinkedSession::LinkedSession(
     GameVersion version)
   : server(server),
     id(id),
+    client_name(string_printf("LinkedSession:%08" PRIX64 ":client", this->id)),
+    server_name(string_printf("LinkedSession:%08" PRIX64 ":server", this->id)),
+    log(string_printf("[LinkedSession:%08" PRIX64 "] ", this->id)),
     timeout_event(event_new(this->server->base.get(), -1, EV_TIMEOUT,
         &LinkedSession::dispatch_on_timeout, this), event_free),
     license(nullptr),
@@ -471,7 +473,7 @@ void ProxyServer::LinkedSession::connect() {
   local_sin->sin_addr.s_addr = dest_sin->sin_addr.s_addr;
 
   string netloc_str = render_sockaddr_storage(local_ss);
-  log(INFO, "[ProxyServer/%08" PRIX64 "] Connecting to %s", this->id, netloc_str.c_str());
+  this->log(INFO, "Connecting to %s", netloc_str.c_str());
   if (bufferevent_socket_connect(this->server_bev.get(),
       reinterpret_cast<const sockaddr*>(local_sin), sizeof(*local_sin)) != 0) {
     throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
@@ -526,7 +528,7 @@ void ProxyServer::LinkedSession::dispatch_on_timeout(
 
 
 void ProxyServer::LinkedSession::on_timeout() {
-  log(INFO, "[ProxyServer/%08" PRIX64 "] Session timed out", this->id);
+  this->log(INFO, "Session timed out");
   this->server->delete_session(this->id);
 }
 
@@ -536,13 +538,13 @@ void ProxyServer::LinkedSession::on_stream_error(
     short events, bool is_server_stream) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "[ProxyServer/%08" PRIX64 "] Error %d (%s) in %s stream",
-        this->id, err, evutil_socket_error_to_string(err),
+    this->log(WARNING, "Error %d (%s) in %s stream",
+        err, evutil_socket_error_to_string(err),
         is_server_stream ? "server" : "client");
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    log(INFO, "[ProxyServer/%08" PRIX64 "] %s has disconnected",
-        this->id, is_server_stream ? "Server" : "Client");
+    this->log(INFO, "%s has disconnected",
+        is_server_stream ? "Server" : "Client");
     this->disconnect();
   }
 }
@@ -566,951 +568,82 @@ void ProxyServer::LinkedSession::disconnect() {
 
 
 
-static void check_implemented_subcommand(uint64_t id, const string& data) {
-  if (data.size() < 4) {
-    log(WARNING, "[ProxyServer/%08" PRIX64 "] Received broadcast/target command with no contents", id);
-  } else {
-    if (!subcommand_is_implemented(data[0])) {
-      log(WARNING, "[ProxyServer/%08" PRIX64 "] Received subcommand %02hhX which is not implemented on the server",
-          id, data[0]);
-    }
-  }
-}
-
 void ProxyServer::LinkedSession::on_client_input() {
-  string name = string_printf("ProxySession:%08" PRIX64 ":client", this->id);
-  try {
-    for_each_received_command(this->client_bev.get(), this->version, this->client_input_crypt.get(),
-      [&](uint16_t command, uint32_t flag, string& data) {
-        print_received_command(command, flag, data.data(), data.size(),
-            this->version, name.c_str());
-
-        bool should_forward = true;
-        switch (command) {
-          case 0x06:
-            if (this->version != GameVersion::GC) {
-              break;
-            }
-            if (data.size() < 12) {
-              break;
-            }
-            // If this chat message looks like a newserv chat command, suppress it
-            if (this->suppress_newserv_commands &&
-                (data[8] == '$' || (data[8] == '\t' && data[9] != 'C' && data[10] == '$'))) {
-              log(WARNING, "[ProxyServer/%08" PRIX64 "] Chat message appears to be a server command; dropping it",
-                  this->id);
-              should_forward = false;
-            } else if (this->enable_chat_filter) {
-              // Turn all $ into \t and all # into \n
-              add_color_inplace(data.data() + 8, data.size() - 8);
-            }
-            break;
-
-          case 0x40: {
-            if (this->license) {
-              auto& cmd = check_size_t<C_GuildCardSearch_40>(data);
-              if (cmd.searcher_guild_card_number == this->license->serial_number) {
-                log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                    this->id);
-                cmd.searcher_guild_card_number = this->remote_guild_card_number;
-              }
-              if (cmd.target_guild_card_number == this->license->serial_number) {
-                log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                    this->id);
-                cmd.target_guild_card_number = this->remote_guild_card_number;
-              }
-            }
-            break;
-          }
-
-          case 0x81: {
-            if (this->license) {
-              // TODO: Handle this on PC as well (the format isn't in
-              // CommandFormats yet)
-              if (this->version == GameVersion::GC) {
-                auto& cmd = check_size_t<SC_SimpleMail_GC_81>(data);
-                if (cmd.from_guild_card_number == this->license->serial_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.from_guild_card_number = this->remote_guild_card_number;
-                }
-                if (cmd.to_guild_card_number == this->license->serial_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.to_guild_card_number = this->remote_guild_card_number;
-                }
-              }
-            }
-            break;
-          }
-
-          case 0x60:
-          case 0x62:
-          case 0x6C:
-          case 0x6D:
-          case 0xC9:
-          case 0xCB:
-            check_implemented_subcommand(this->id, data);
-
-            if (this->license && !data.empty() && (data[0] == 0x06)) {
-              auto& cmd = check_size_t<S_SendGuildCard_GC>(data);
-              if (cmd.guild_card_number == this->license->serial_number) {
-                log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                    this->id);
-                cmd.guild_card_number = this->remote_guild_card_number;
-              }
-
-            } else if (!data.empty() && (data[0] == 0x05) && (data[data.size() - 1] == 0x01) && this->enable_switch_assist) {
-              if (!this->last_switch_enabled_subcommand.empty()) {
-                log(WARNING, "[ProxyServer/%08" PRIX64 "] Switch assist: replaying previous enable subcommand",
-                    this->id);
-                send_command(this->client_bev.get(), this->version,
-                    this->client_output_crypt.get(), 0x60, 0x00,
-                    this->last_switch_enabled_subcommand.data(),
-                    this->last_switch_enabled_subcommand.size(), name.c_str());
-              }
-              this->last_switch_enabled_subcommand = data;
-            }
-            break;
-
-          case 0xA0: // Change ship
-          case 0xA1: { // Change block
-            if ((this->version == GameVersion::PATCH) || (this->version == GameVersion::BB)) {
-              break;
-            }
-            if (!this->license) {
-              break;
-            }
-
-            // These will take you back to the newserv main menu instead of the
-            // proxied service's menu
-
-            // Delete all the other players
-            for (size_t x = 0; x < this->lobby_players.size(); x++) {
-              if (this->lobby_players[x].guild_card_number == 0) {
-                continue;
-              }
-              uint8_t leaving_id = x;
-              uint8_t leader_id = this->lobby_client_id;
-              S_LeaveLobby_66_69 cmd = {leaving_id, leader_id, 0};
-              send_command(this->client_bev.get(), this->version,
-                  this->client_output_crypt.get(), 0x69, leaving_id, &cmd,
-                  sizeof(cmd), name.c_str());
-            }
-
-            // Restore the newserv client config, so the client gets its newserv
-            // guild card number back and the login server knows e.g. not to show
-            // the welcome message (if the appropriate flag is set)
-            S_UpdateClientConfig_DC_PC_GC_04 update_client_config_cmd = {
-              0x00010000,
-              this->license->serial_number,
-              this->newserv_client_config,
-            };
-            send_command(this->client_bev.get(), this->version,
-                this->client_output_crypt.get(), 0x04, 0x00,
-                &update_client_config_cmd, sizeof(update_client_config_cmd),
-                name.c_str());
-
-            static const vector<string> version_to_port_name({
-                "dc-login", "pc-login", "bb-patch", "gc-us3", "bb-login"});
-            const auto& port_name = version_to_port_name.at(static_cast<size_t>(
-                this->version));
-
-            S_Reconnect_19 reconnect_cmd = {
-                0, this->server->state->name_to_port_config.at(port_name)->port, 0};
-
-            // If the client is on a virtual connection, we can use any address
-            // here and they should be able to connect back to the game server. If
-            // the client is on a real connection, we'll use the sockname of the
-            // existing connection (like we do in the server 19 command handler).
-            int fd = bufferevent_getfd(this->client_bev.get());
-            if (fd < 0) {
-              struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
-              if (dest_sin->sin_family != AF_INET) {
-                throw logic_error("ss not AF_INET");
-              }
-              reconnect_cmd.address.store_raw(dest_sin->sin_addr.s_addr);
-            } else {
-              struct sockaddr_storage sockname_ss;
-              socklen_t len = sizeof(sockname_ss);
-              getsockname(fd, reinterpret_cast<struct sockaddr*>(&sockname_ss), &len);
-              if (sockname_ss.ss_family != AF_INET) {
-                throw logic_error("existing connection is not ipv4");
-              }
-
-              struct sockaddr_in* sockname_sin = reinterpret_cast<struct sockaddr_in*>(
-                  &sockname_ss);
-              reconnect_cmd.address.store_raw(sockname_sin->sin_addr.s_addr);
-            }
-
-            send_command(this->client_bev.get(), this->version,
-                this->client_output_crypt.get(), 0x19, 0x00, &reconnect_cmd,
-                sizeof(reconnect_cmd), name.c_str());
-            break;
-          }
-        }
-
-        if (should_forward) {
-          if (!this->client_bev.get()) {
-            log(WARNING, "[ProxyServer/%08" PRIX64 "] No server is present; dropping command",
-                this->id);
-          } else {
-            // Note: we intentionally don't pass a name string here because we already
-            // printed the command above
-            send_command(this->server_bev.get(), this->version,
-                this->server_output_crypt.get(), command, flag,
-                data.data(), data.size());
-          }
-        }
-      });
-  } catch (const exception& e) {
-    log(ERROR, "[ProxyServer/%08" PRIX64 "] Failed to process command from client: %s",
-        this->id, e.what());
-    this->disconnect();
-  }
+  for_each_received_command(this->client_bev.get(), this->version, this->client_input_crypt.get(),
+    [&](uint16_t command, uint32_t flag, string& data) {
+      print_received_command(command, flag, data.data(), data.size(),
+          this->version, this->client_name.c_str());
+      process_proxy_command(
+          this->server->state,
+          *this,
+          false, // from_server
+          command,
+          flag,
+          data);
+    });
 }
 
 void ProxyServer::LinkedSession::on_server_input() {
-  string name = string_printf("ProxySession:%08" PRIX64 ":server", this->id);
-
-  try {
-    for_each_received_command(this->server_bev.get(), this->version, this->server_input_crypt.get(),
-      [&](uint16_t command, uint32_t flag, string& data) {
-        print_received_command(command, flag, data.data(), data.size(),
-            this->version, name.c_str());
-
-        // In the case of server init commands, the client output crypt cannot
-        // be set until after we forwarwd the command to the client, hence this
-        // variable.
-        shared_ptr<PSOEncryption> new_client_output_crypt;
-        bool should_forward = true;
-        switch (command) {
-          case 0x02:
-          case 0x17: {
-            if (this->version == GameVersion::PATCH && command == 0x17) {
-              throw invalid_argument("patch server sent 17 server init");
-            }
-            if (this->version == GameVersion::BB) {
-              throw invalid_argument("console server init received on BB");
-            }
-
-            // Most servers don't include after_message or have a shorter
-            // after_message than newserv does, so don't require it
-            const auto& cmd = check_size_t<S_ServerInit_DC_PC_GC_02_17>(data,
-                offsetof(S_ServerInit_DC_PC_GC_02_17, after_message),
-                sizeof(S_ServerInit_DC_PC_GC_02_17));
-
-            if (!this->license) {
-              log(INFO, "[ProxyServer/%08" PRIX64 "] No license in linked session",
-                  this->id);
-
-              if ((this->version == GameVersion::PC) || (this->version == GameVersion::PATCH)) {
-                this->server_input_crypt.reset(new PSOPCEncryption(cmd.server_key));
-                this->server_output_crypt.reset(new PSOPCEncryption(cmd.client_key));
-                this->client_input_crypt.reset(new PSOPCEncryption(cmd.client_key));
-                new_client_output_crypt.reset(new PSOPCEncryption(cmd.server_key));
-              } else if (this->version == GameVersion::GC) {
-                this->server_input_crypt.reset(new PSOGCEncryption(cmd.server_key));
-                this->server_output_crypt.reset(new PSOGCEncryption(cmd.client_key));
-                this->client_input_crypt.reset(new PSOGCEncryption(cmd.client_key));
-                new_client_output_crypt.reset(new PSOGCEncryption(cmd.server_key));
-              } else {
-                throw invalid_argument("unsupported version");
-              }
-              break;
-
-            } else {
-              log(INFO, "[ProxyServer/%08" PRIX64 "] Existing license in linked session",
-                  this->id);
-
-              // This doesn't get forwarded to the client, so don't recreate the
-              // client's crypts
-              if (this->version == GameVersion::PATCH) {
-                throw logic_error("patch session is indirect");
-              } else if (this->version == GameVersion::PC) {
-                this->server_input_crypt.reset(new PSOPCEncryption(cmd.server_key));
-                this->server_output_crypt.reset(new PSOPCEncryption(cmd.client_key));
-              } else if (this->version == GameVersion::GC) {
-                this->server_input_crypt.reset(new PSOGCEncryption(cmd.server_key));
-                this->server_output_crypt.reset(new PSOGCEncryption(cmd.client_key));
-              } else {
-                throw invalid_argument("unsupported version");
-              }
-
-              should_forward = false;
-
-              // Respond with an appropriate login command. We don't let the
-              // client do this because it believes it already did (when it was
-              // in an unlinked session).
-              if (this->version == GameVersion::PC) {
-                C_Login_PC_9D cmd;
-                if (this->remote_guild_card_number == 0) {
-                  cmd.player_tag = 0xFFFF0000;
-                  cmd.guild_card_number = 0xFFFFFFFF;
-                } else {
-                  cmd.player_tag = 0x00010000;
-                  cmd.guild_card_number = this->remote_guild_card_number;
-                }
-                cmd.unused = 0xFFFFFFFFFFFF0000;
-                cmd.sub_version = this->sub_version;
-                cmd.unused2.data()[1] = 1;
-                cmd.serial_number = string_printf("%08" PRIX32 "",
-                    this->license->serial_number);
-                cmd.access_key = this->license->access_key;
-                cmd.serial_number2 = cmd.serial_number;
-                cmd.access_key2 = cmd.access_key;
-                cmd.name = this->character_name;
-                send_command(this->server_bev.get(), this->version,
-                    this->server_output_crypt.get(), 0x9D, 0, &cmd, sizeof(cmd),
-                    name.c_str());
-                break;
-
-              } else if (this->version == GameVersion::GC) {
-                if (command == 0x17) {
-                  C_VerifyLicense_GC_DB cmd;
-                  cmd.serial_number = string_printf("%08" PRIX32 "",
-                      this->license->serial_number);
-                  cmd.access_key = this->license->access_key;
-                  cmd.sub_version = this->sub_version;
-                  cmd.serial_number2 = cmd.serial_number;
-                  cmd.access_key2 = cmd.access_key;
-                  cmd.password = this->license->gc_password;
-                  send_command(this->server_bev.get(), this->version,
-                      this->server_output_crypt.get(), 0xDB, 0, &cmd, sizeof(cmd),
-                      name.c_str());
-                  break;
-                }
-              } else {
-                throw logic_error("invalid game version in server init handler");
-              }
-            }
-
-            // If we get here, then:
-            // - The session has a license
-            // - The session's version is GC
-            // - The received command is 02, not 17
-            // The command should be handled like 9A at this point (we should
-            // send a 9E in response). GCC can't seem to understand this
-            // fallthrough label unless it's right here, so we can't put it in a
-            // more intuitive place (e.g. in an `else` above), unfortunately.
-            [[fallthrough]];
-          }
-
-          case 0x9A: {
-            if (!this->license) {
-              break;
-            }
-            if (this->version != GameVersion::GC) {
-              throw runtime_error("9A received in non-GC session");
-            }
-            should_forward = false;
-            C_LoginWithUnusedSpace_GC_9E cmd;
-            if (this->remote_guild_card_number == 0) {
-              cmd.player_tag = 0xFFFF0000;
-              cmd.guild_card_number = 0xFFFFFFFF;
-            } else {
-              cmd.player_tag = 0x00010000;
-              cmd.guild_card_number = this->remote_guild_card_number;
-            }
-            cmd.sub_version = this->sub_version;
-            cmd.unused2.data()[1] = 1;
-            cmd.serial_number = string_printf("%08" PRIX32 "",
-                this->license->serial_number);
-            cmd.access_key = this->license->access_key;
-            cmd.serial_number2 = cmd.serial_number;
-            cmd.access_key2 = cmd.access_key;
-            cmd.name = this->character_name;
-            cmd.client_config.data = this->remote_client_config_data;
-
-            // If there's a guild card number, a shorter 9E is sent that ends
-            // right after the client config data
-            send_command(
-                this->server_bev.get(),
-                this->version,
-                this->server_output_crypt.get(),
-                0x9E,
-                0x01,
-                &cmd,
-                sizeof(C_LoginWithUnusedSpace_GC_9E) - (this->remote_guild_card_number ? sizeof(cmd.unused_space) : 0),
-                name.c_str());
-            break;
-          }
-
-          case 0x04: {
-            // Some servers send a short 04 command if they don't use all of the
-            // 0x20 bytes available. We should be prepared to handle that.
-            auto& cmd = check_size_t<S_UpdateClientConfig_DC_PC_GC_04>(data,
-                offsetof(S_UpdateClientConfig_DC_PC_GC_04, cfg),
-                sizeof(S_UpdateClientConfig_DC_PC_GC_04));
-
-            // If this is a licensed session, hide the guild card number
-            // assigned by the remote server so the client doesn't see it
-            // change. If this is an unlicensed session, then the client never
-            // received a guild card number from newserv anyway, so it's safe to
-            // let the client see the number from the remote server.
-            bool had_guild_card_number = (this->remote_guild_card_number != 0);
-            this->remote_guild_card_number = cmd.guild_card_number;
-            log(INFO, "[ProxyServer/%08" PRIX64 "] Remote guild card number set to %" PRIX32,
-                this->id, this->remote_guild_card_number);
-            if (this->license) {
-              log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                  this->id);
-              cmd.guild_card_number = this->license->serial_number;
-            }
-
-            // It seems the client ignores the length of the 04 command, and
-            // always copies 0x20 bytes to its config data. So if the server
-            // sends a short 04 command, part of the previous command ends up in
-            // the security data (usually part of the copyright string from the
-            // server init command). We simulate that bug here.
-            // If there was previously a guild card number, assume we got the
-            // lobby server init text instead of the port map init text.
-            memcpy(this->remote_client_config_data.data(),
-                had_guild_card_number
-                  ? "t Lobby Server. Copyright SEGA E"
-                  : "t Port Map. Copyright SEGA Enter",
-                this->remote_client_config_data.bytes());
-            memcpy(this->remote_client_config_data.data(), &cmd.cfg,
-                min<size_t>(data.size() - sizeof(S_UpdateClientConfig_DC_PC_GC_04),
-                  this->remote_client_config_data.bytes()));
-
-            // If the guild card number was not set, pretend (to the server)
-            // that this is the first 04 command the client has received. The
-            // client responds with a 96 (checksum) in that case.
-            if (!had_guild_card_number) {
-              // We don't actually have a client checksum, of course...
-              // hopefully just random data will do (probably no private servers
-              // check this at all)
-              le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
-              send_command(this->server_bev.get(), this->version,
-                  this->server_output_crypt.get(), 0x96, 0x00, &checksum,
-                  sizeof(checksum), name.c_str());
-            }
-
-            break;
-          }
-
-          case 0x06: {
-            if (this->license) {
-              auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0>(data,
-                  sizeof(SC_TextHeader_01_06_11_B0),
-                  0xFFFF);
-              if (cmd.guild_card_number == this->remote_guild_card_number) {
-                log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                    this->id);
-                cmd.guild_card_number = this->license->serial_number;
-              }
-            }
-            break;
-          }
-          case 0x41: {
-            if (this->license) {
-              if (this->version == GameVersion::PC) {
-                auto& cmd = check_size_t<S_GuildCardSearchResult_PC_41>(data);
-                if (cmd.searcher_guild_card_number == this->remote_guild_card_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.searcher_guild_card_number = this->license->serial_number;
-                }
-                if (cmd.result_guild_card_number == this->remote_guild_card_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.result_guild_card_number = this->license->serial_number;
-                }
-
-              } else if (this->version == GameVersion::GC) {
-                auto& cmd = check_size_t<S_GuildCardSearchResult_DC_GC_41>(data);
-                if (cmd.searcher_guild_card_number == this->remote_guild_card_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.searcher_guild_card_number = this->license->serial_number;
-                }
-                if (cmd.result_guild_card_number == this->remote_guild_card_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.result_guild_card_number = this->license->serial_number;
-                }
-              }
-            }
-            break;
-          }
-
-          case 0x81: {
-            if (this->license) {
-              // TODO: Handle this on PC as well (the format isn't in
-              // CommandFormats yet)
-              if (this->version == GameVersion::GC) {
-                auto& cmd = check_size_t<SC_SimpleMail_GC_81>(data);
-                if (cmd.from_guild_card_number == this->remote_guild_card_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.from_guild_card_number = this->license->serial_number;
-                }
-                if (cmd.to_guild_card_number == this->remote_guild_card_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.to_guild_card_number = this->license->serial_number;
-                }
-              }
-            }
-            break;
-          }
-
-          case 0x88: {
-            if (this->license) {
-              size_t expected_size = sizeof(S_ArrowUpdateEntry_88) * flag;
-              auto* entries = &check_size_t<S_ArrowUpdateEntry_88>(data,
-                  expected_size, expected_size);
-              for (size_t x = 0; x < flag; x++) {
-                if (entries[x].guild_card_number == this->remote_guild_card_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  entries[x].guild_card_number = this->license->serial_number;
-                }
-              }
-            }
-            break;
-          }
-          case 0xC4: {
-            if (this->license) {
-              // TODO: Implement this for PC too
-              if (this->version == GameVersion::GC) {
-                size_t expected_size = sizeof(S_ChoiceSearchResultEntry_GC_C4) * flag;
-                auto* entries = &check_size_t<S_ChoiceSearchResultEntry_GC_C4>(data,
-                    expected_size, expected_size);
-                for (size_t x = 0; x < flag; x++) {
-                  if (entries[x].guild_card_number == this->remote_guild_card_number) {
-                    log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                        this->id);
-                    entries[x].guild_card_number = this->license->serial_number;
-                  }
-                }
-              }
-            }
-            break;
-          }
-          case 0xE4: {
-            if (this->license && this->version == GameVersion::GC) {
-              auto& cmd = check_size_t<S_CardLobbyGame_GC_E4>(data);
-              for (size_t x = 0; x < 4; x++) {
-                if (cmd.entries[x].guild_card_number == this->remote_guild_card_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.entries[x].guild_card_number = this->license->serial_number;
-                }
-              }
-            }
-            break;
-          }
-
-          case 0x19: {
-            if (this->version == GameVersion::PATCH) {
-              break;
-            }
-
-            auto& cmd = check_size_t<S_Reconnect_19>(data);
-            memset(&this->next_destination, 0, sizeof(this->next_destination));
-            struct sockaddr_in* sin = reinterpret_cast<struct sockaddr_in*>(
-                &this->next_destination);
-            sin->sin_family = AF_INET;
-            sin->sin_addr.s_addr = cmd.address.load_raw();
-            sin->sin_port = htons(cmd.port);
-
-            if (!this->client_bev.get()) {
-              log(WARNING, "[ProxyServer/%08" PRIX64 "] Received reconnect command with no destination present",
-                  this->id);
-
-            } else {
-              // If the client is on a virtual connection (fd < 0), only change
-              // the port (so we'll know which version to treat the next
-              // connection as). It's better to leave the address as-is so we
-              // can circumvent the Plus/Ep3 same-network-server check.
-              int fd = bufferevent_getfd(this->client_bev.get());
-              if (fd >= 0) {
-                struct sockaddr_storage sockname_ss;
-                socklen_t len = sizeof(sockname_ss);
-                getsockname(fd, reinterpret_cast<struct sockaddr*>(&sockname_ss), &len);
-                if (sockname_ss.ss_family != AF_INET) {
-                  throw logic_error("existing connection is not ipv4");
-                }
-
-                struct sockaddr_in* sockname_sin = reinterpret_cast<struct sockaddr_in*>(
-                    &sockname_ss);
-                cmd.address.store_raw(sockname_sin->sin_addr.s_addr);
-                cmd.port = ntohs(sockname_sin->sin_port);
-
-              } else {
-                cmd.port = this->local_port;
-              }
-            }
-            break;
-          }
-
-          case 0x1A:
-          case 0xD5: {
-            if (this->version != GameVersion::GC) {
-              break;
-            }
-
-            // If the client has the no-close-confirmation flag set in its
-            // newserv client config, send a fake confirmation to the remote
-            // server immediately.
-            if (this->newserv_client_config.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) {
-              send_command(this->server_bev.get(), this->version,
-                  this->server_output_crypt.get(), 0xD6, 0x00, "", 0,
-                  name.c_str());
-            }
-            break;
-          }
-
-          case 0x60:
-          case 0x62:
-          case 0x6C:
-          case 0x6D:
-          case 0xC9:
-          case 0xCB:
-            check_implemented_subcommand(this->id, data);
-            break;
-
-          case 0x44:
-          case 0xA6: {
-            if (this->version != GameVersion::GC) {
-              break;
-            }
-            if (!this->save_files) {
-              break;
-            }
-
-            const auto& cmd = check_size_t<S_OpenFile_PC_GC_44_A6>(data);
-            bool is_download_quest = (command == 0xA6);
-
-            string output_filename = string_printf("%s.%s.%" PRIu64,
-                cmd.filename.c_str(),
-                is_download_quest ? "download" : "online", now());
-            for (size_t x = 0; x < output_filename.size(); x++) {
-              if (output_filename[x] < 0x20 || output_filename[x] > 0x7E || output_filename[x] == '/') {
-                output_filename[x] = '_';
-              }
-            }
-            if (output_filename[0] == '.') {
-              output_filename[0] = '_';
-            }
-
-            SavingFile sf(cmd.filename, output_filename, cmd.file_size);
-            this->saving_files.emplace(cmd.filename, move(sf));
-            log(INFO, "[ProxyServer/%08" PRIX64 "] Opened file %s",
-                this->id, output_filename.c_str());
-            break;
-          }
-
-          case 0x13:
-          case 0xA7: {
-            if (this->version != GameVersion::GC) {
-              break;
-            }
-            if (!this->save_files) {
-              break;
-            }
-
-            const auto& cmd = check_size_t<S_WriteFile_13_A7>(data);
-
-            SavingFile* sf = nullptr;
-            try {
-              sf = &this->saving_files.at(cmd.filename);
-            } catch (const out_of_range&) {
-              log(WARNING, "[ProxyServer/%08" PRIX64 "] Received data for non-open file %s",
-                  this->id, cmd.filename.c_str());
-              break;
-            }
-
-            size_t bytes_to_write = cmd.data_size;
-            if (bytes_to_write > 0x400) {
-              log(WARNING, "[ProxyServer/%08" PRIX64 "] Chunk data size is invalid; truncating to 0x400",
-                  this->id);
-              bytes_to_write = 0x400;
-            }
-
-            log(INFO, "[ProxyServer/%08" PRIX64 "] Writing %zu bytes to %s",
-                this->id, bytes_to_write,
-                sf->output_filename.c_str());
-            fwritex(sf->f.get(), cmd.data, bytes_to_write);
-            if (bytes_to_write > sf->remaining_bytes) {
-              log(WARNING, "[ProxyServer/%08" PRIX64 "] Chunk size extends beyond original file size; file may be truncated",
-                  this->id);
-              sf->remaining_bytes = 0;
-            } else {
-              sf->remaining_bytes -= bytes_to_write;
-            }
-
-            if (sf->remaining_bytes == 0) {
-              log(INFO, "[ProxyServer/%08" PRIX64 "] File %s is complete",
-                  this->id, sf->output_filename.c_str());
-              this->saving_files.erase(cmd.filename);
-            }
-            break;
-          }
-
-          case 0xB8: {
-            if (this->version != GameVersion::GC) {
-              break;
-            }
-            if (!this->save_files) {
-              break;
-            }
-            if (data.size() < 4) {
-              log(WARNING, "[ProxyServer/%08" PRIX64 "] Card list data size is too small; skipping file",
-                  this->id);
-              break;
-            }
-
-            StringReader r(data);
-            size_t size = r.get_u32l();
-            if (r.remaining() < size) {
-              log(WARNING, "[ProxyServer/%08" PRIX64 "] Card list data size extends beyond end of command; skipping file",
-                  this->id);
-              break;
-            }
-
-            string output_filename = string_printf("cardupdate.mnr.%" PRIu64, now());
-            save_file(output_filename, r.read(size));
-
-            log(INFO, "[ProxyServer/%08" PRIX64 "] Wrote %zu bytes to %s",
-                this->id, size, output_filename.c_str());
-            break;
-          }
-
-          case 0x67: // join lobby
-            if (this->version != GameVersion::GC) {
-              break;
-            }
-
-            this->lobby_players.clear();
-            this->lobby_players.resize(12);
-            log(INFO, "[ProxyServer/%08" PRIX64 "] Cleared lobby players",
-                this->id);
-
-            // This command can cause the client to no longer send D6 responses
-            // when 1A/D5 large message boxes are closed. newserv keeps track of
-            // this behavior in the client config, so if it happens during a
-            // proxy session, update the client config that we'll restore if the
-            // client uses the change ship or change block command.
-            if (this->newserv_client_config.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
-              this->newserv_client_config.flags |= Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
-            }
-
-            [[fallthrough]];
-
-          case 0x65: // other player joined game
-          case 0x68: { // other player joined lobby
-            if (this->version == GameVersion::PC) {
-              size_t expected_size = offsetof(S_JoinLobby_PC_65_67_68, entries) + sizeof(S_JoinLobby_GC_65_67_68::Entry) * flag;
-              auto& cmd = check_size_t<S_JoinLobby_PC_65_67_68>(data,
-                  expected_size, expected_size);
-
-              this->lobby_client_id = cmd.client_id;
-              for (size_t x = 0; x < flag; x++) {
-                size_t index = cmd.entries[x].lobby_data.client_id;
-                if (index >= this->lobby_players.size()) {
-                  log(WARNING, "[ProxyServer/%08" PRIX64 "] Ignoring invalid player index %zu at position %zu",
-                      this->id, index, x);
-                } else {
-                  if (this->license && (cmd.entries[x].lobby_data.guild_card == this->remote_guild_card_number)) {
-                    log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                        this->id);
-                    cmd.entries[x].lobby_data.guild_card = this->license->serial_number;
-                  }
-                  this->lobby_players[index].guild_card_number = cmd.entries[x].lobby_data.guild_card;
-                  this->lobby_players[index].name = cmd.entries[x].disp.name;
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Added lobby player: (%zu) %" PRIu32 " %s",
-                      this->id, index,
-                      this->lobby_players[index].guild_card_number,
-                      this->lobby_players[index].name.c_str());
-                }
-              }
-
-              if (this->override_lobby_event >= 0) {
-                cmd.event = this->override_lobby_event;
-              }
-              if (this->override_lobby_number >= 0) {
-                cmd.lobby_number = this->override_lobby_number;
-              }
-
-            } else if (this->version == GameVersion::GC) {
-              size_t expected_size = offsetof(S_JoinLobby_GC_65_67_68, entries) + sizeof(S_JoinLobby_GC_65_67_68::Entry) * flag;
-              auto& cmd = check_size_t<S_JoinLobby_GC_65_67_68>(data,
-                  expected_size, expected_size);
-
-              this->lobby_client_id = cmd.client_id;
-              for (size_t x = 0; x < flag; x++) {
-                size_t index = cmd.entries[x].lobby_data.client_id;
-                if (index >= this->lobby_players.size()) {
-                  log(WARNING, "[ProxyServer/%08" PRIX64 "] Ignoring invalid player index %zu at position %zu",
-                      this->id, index, x);
-                } else {
-                  if (this->license && (cmd.entries[x].lobby_data.guild_card == this->remote_guild_card_number)) {
-                    log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                        this->id);
-                    cmd.entries[x].lobby_data.guild_card = this->license->serial_number;
-                  }
-                  this->lobby_players[index].guild_card_number = cmd.entries[x].lobby_data.guild_card;
-                  this->lobby_players[index].name = cmd.entries[x].disp.name;
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Added lobby player: (%zu) %" PRIu32 " %s",
-                      this->id, index,
-                      this->lobby_players[index].guild_card_number,
-                      this->lobby_players[index].name.c_str());
-                }
-              }
-
-              if (this->override_lobby_event >= 0) {
-                cmd.event = this->override_lobby_event;
-              }
-              if (this->override_lobby_number >= 0) {
-                cmd.lobby_number = this->override_lobby_number;
-              }
-            }
-            break;
-          }
-
-          case 0x64: { // join game
-            // We don't need to clear lobby_players here because we always
-            // overwrite all 4 entries for this command
-            this->lobby_players.resize(4);
-            log(INFO, "[ProxyServer/%08" PRIX64 "] Cleared lobby players",
-                this->id);
-
-            if (this->version == GameVersion::PC) {
-              auto& cmd = check_size_t<S_JoinGame_PC_64>(data);
-
-              this->lobby_client_id = cmd.client_id;
-              for (size_t x = 0; x < flag; x++) {
-                if (cmd.lobby_data[x].guild_card == this->remote_guild_card_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.lobby_data[x].guild_card = this->license->serial_number;
-                }
-                this->lobby_players[x].guild_card_number = cmd.lobby_data[x].guild_card;
-                this->lobby_players[x].name.clear();
-                log(INFO, "[ProxyServer/%08" PRIX64 "] Added lobby player: (%zu) %" PRIu32,
-                    this->id, x,
-                    this->lobby_players[x].guild_card_number);
-              }
-
-              if (this->override_section_id >= 0) {
-                cmd.section_id = this->override_section_id;
-              }
-              if (this->override_lobby_event >= 0) {
-                cmd.event = this->override_lobby_event;
-              }
-
-            } else if (this->version == GameVersion::GC) {
-              const size_t expected_size = this->sub_version >= 0x40
-                  ? sizeof(S_JoinGame_GC_64)
-                  : offsetof(S_JoinGame_GC_64, players_ep3);
-              auto& cmd = check_size_t<S_JoinGame_GC_64>(data,
-                  expected_size, expected_size);
-
-              this->lobby_client_id = cmd.client_id;
-              for (size_t x = 0; x < flag; x++) {
-                if (cmd.lobby_data[x].guild_card == this->remote_guild_card_number) {
-                  log(INFO, "[ProxyServer/%08" PRIX64 "] Overriding remote guild card number",
-                      this->id);
-                  cmd.lobby_data[x].guild_card = this->license->serial_number;
-                }
-                this->lobby_players[x].guild_card_number = cmd.lobby_data[x].guild_card;
-                if (data.size() == sizeof(S_JoinGame_GC_64)) {
-                  this->lobby_players[x].name = cmd.players_ep3[x].disp.name;
-                } else {
-                  this->lobby_players[x].name.clear();
-                }
-                log(INFO, "[ProxyServer/%08" PRIX64 "] Added lobby player: (%zu) %" PRIu32 " %s",
-                    this->id, x,
-                    this->lobby_players[x].guild_card_number,
-                    this->lobby_players[x].name.c_str());
-              }
-
-              if (this->override_section_id >= 0) {
-                cmd.section_id = this->override_section_id;
-              }
-              if (this->override_lobby_event >= 0) {
-                cmd.event = this->override_lobby_event;
-              }
-            }
-            break;
-          }
-
-          case 0x66:
-          case 0x69: {
-            if (this->version != GameVersion::GC) {
-              break;
-            }
-
-            const auto& cmd = check_size_t<S_LeaveLobby_66_69>(data);
-            size_t index = cmd.client_id;
-            if (index >= this->lobby_players.size()) {
-              log(WARNING, "[ProxyServer/%08" PRIX64 "] Lobby leave command references missing position",
-                this->id);
-            } else {
-              this->lobby_players[index].guild_card_number = 0;
-              this->lobby_players[index].name.clear();
-              log(INFO, "[ProxyServer/%08" PRIX64 "] Removed lobby player (%zu)",
-                  this->id, index);
-            }
-            break;
-          }
-        }
-
-        if (should_forward) {
-          if (!this->client_bev.get()) {
-            log(WARNING, "[ProxyServer/%08" PRIX64 "] No client is present; dropping command",
-                this->id);
-          } else {
-            // Note: we intentionally don't pass name_str here because we already
-            // printed the command above
-            send_command(this->client_bev.get(), this->version,
-                this->client_output_crypt.get(), command, flag,
-                data.data(), data.size());
-          }
-        }
-
-        if (new_client_output_crypt.get()) {
-          this->client_output_crypt = new_client_output_crypt;
-        }
-      });
-
-  } catch (const exception& e) {
-    log(ERROR, "[ProxyServer/%08" PRIX64 "] Failed to process command from server: %s",
-        this->id, e.what());
-    this->disconnect();
-  }
+  for_each_received_command(this->server_bev.get(), this->version, this->server_input_crypt.get(),
+    [&](uint16_t command, uint32_t flag, string& data) {
+      print_received_command(command, flag, data.data(), data.size(),
+          this->version, this->server_name.c_str());
+      process_proxy_command(
+          this->server->state,
+          *this,
+          true, // from_server
+          command,
+          flag,
+          data);
+    });
 }
 
 void ProxyServer::LinkedSession::send_to_end(
-    const void* data, size_t size, bool to_server) {
-  size_t header_size = PSOCommandHeader::header_size(this->version);
-  if (size < header_size) {
-    throw runtime_error("command is too small for header");
-  }
+    bool to_server,
+    uint16_t command,
+    uint32_t flag,
+    const void* data,
+    size_t size) {
   if (size & 3) {
     throw runtime_error("command size is not a multiple of 4");
   }
-  const auto* header = reinterpret_cast<const PSOCommandHeader*>(data);
-
-  string name = string_printf("ProxySession:%08" PRIX64 ":shell:%s",
+  string name = string_printf("LinkedSession:%08" PRIX64 ":synthetic:%s",
       this->id, to_server ? "server" : "client");
 
   send_command(
       to_server ? this->server_bev.get() : this->client_bev.get(),
       this->version,
       to_server ? this->server_output_crypt.get() : this->client_output_crypt.get(),
-      header->command(this->version),
-      header->flag(this->version),
-      reinterpret_cast<const uint8_t*>(data) + header_size,
-      size - header_size,
+      command,
+      flag,
+      data,
+      size,
       name.c_str());
 }
 
-void ProxyServer::LinkedSession::send_to_end(const string& data, bool to_server) {
-  this->send_to_end(data.data(), data.size(), to_server);
+void ProxyServer::LinkedSession::send_to_end(
+    bool to_server, uint16_t command, uint32_t flag, const string& data) {
+  this->send_to_end(to_server, command, flag, data.data(), data.size());
+}
+
+void ProxyServer::LinkedSession::send_to_end_with_header(
+    bool to_server, const void* data, size_t size) {
+  size_t header_size = PSOCommandHeader::header_size(this->version);
+  if (size < header_size) {
+    throw runtime_error("command is too small for header");
+  }
+  const auto* header = reinterpret_cast<const PSOCommandHeader*>(data);
+  this->send_to_end(
+      to_server,
+      header->command(this->version),
+      header->flag(this->version),
+      reinterpret_cast<const uint8_t*>(data) + header_size,
+      size - header_size);
+}
+
+void ProxyServer::LinkedSession::send_to_end_with_header(
+    bool to_server, const string& data) {
+  this->send_to_end_with_header(to_server, data.data(), data.size());
 }
 
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() {
@@ -1532,13 +665,13 @@ std::shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session
   if (!emplace_ret.second) {
     throw runtime_error("session already exists for this license");
   }
-  log(INFO, "[ProxyServer/%08" PRIX64 "] Opening licensed session", session->id);
+  session->log(INFO, "Opening licensed session");
   return emplace_ret.first->second;
 }
 
 
 void ProxyServer::delete_session(uint64_t id) {
   if (this->id_to_session.erase(id)) {
-    log(WARNING, "[ProxyServer/%08" PRIX64 "] Closed session", id);
+    log(INFO, "Closed LinkedSession:%08" PRIX64, id);
   }
 }

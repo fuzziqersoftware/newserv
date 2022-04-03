@@ -32,36 +32,37 @@ set (LIBEVENT_LIBRARIES
         ${LIBEVENT_THREAD})
 
 add_executable(newserv
-  src/FileContentsCache.cc
-  src/Menu.cc
-  src/PSOProtocol.cc
-  src/PSOEncryption.cc
-  src/Client.cc
-  src/Lobby.cc
-  src/ServerState.cc
-  src/Server.cc
-  src/License.cc
-  src/Player.cc
-  src/SendCommands.cc
   src/ChatCommands.cc
-  src/ReceiveSubcommands.cc
-  src/ReceiveCommands.cc
-  src/Version.cc
-  src/Items.cc
-  src/LevelTable.cc
+  src/Client.cc
   src/Compression.cc
-  src/Quest.cc
-  src/RareItemSet.cc
-  src/Map.cc
-  src/NetworkAddresses.cc
-  src/Text.cc
   src/DNSServer.cc
-  src/ProxyServer.cc
-  src/Shell.cc
-  src/ServerShell.cc
+  src/FileContentsCache.cc
   src/IPFrameInfo.cc
   src/IPStackSimulator.cc
+  src/Items.cc
+  src/LevelTable.cc
+  src/License.cc
+  src/Lobby.cc
   src/Main.cc
+  src/Map.cc
+  src/Menu.cc
+  src/NetworkAddresses.cc
+  src/Player.cc
+  src/ProxyCommands.cc
+  src/ProxyServer.cc
+  src/PSOEncryption.cc
+  src/PSOProtocol.cc
+  src/Quest.cc
+  src/RareItemSet.cc
+  src/ReceiveCommands.cc
+  src/ReceiveSubcommands.cc
+  src/SendCommands.cc
+  src/Server.cc
+  src/ServerShell.cc
+  src/ServerState.cc
+  src/Shell.cc
+  src/Text.cc
+  src/Version.cc
 )
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR})
 target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES})

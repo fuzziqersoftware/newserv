@@ -283,16 +283,13 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     if (data.size() == 0) {
       throw invalid_argument("no data given");
     }
-    uint16_t* size_field = reinterpret_cast<uint16_t*>(data.data() + 2);
-    *size_field = data.size();
 
-    session->send_to_end(data, to_server);
+    session->send_to_end_with_header(to_server, data);
 
   } else if ((command_name == "chat") || (command_name == "dchat")) {
     auto session = this->get_proxy_session();
 
-    string data(12, '\0');
-    data[0] = 0x06;
+    string data(8, '\0');
     data.push_back('\x09');
     data.push_back('E');
     if (command_name == "dchat") {
@@ -302,36 +299,28 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     }
     data.push_back('\0');
     data.resize((data.size() + 3) & (~3));
-    uint16_t* size_field = reinterpret_cast<uint16_t*>(data.data() + 2);
-    *size_field = data.size();
 
-    session->send_to_end(data, true);
+    session->send_to_end(true, 0x06, 0x00, data);
 
   } else if (command_name == "marker") {
     auto session = this->get_proxy_session();
-
-    string data("\x89\x00\x04\x00", 4);
-    data[1] = stod(command_args);
-
-    session->send_to_end(data, true);
+    session->send_to_end(true, 0x89, stoul(command_args));
 
   } else if (command_name == "warp") {
     auto session = this->get_proxy_session();
 
-    PSOSubcommand cmds[3];
-    cmds[0].dword = 0x000C0060; // header (60 00 0C 00)
-    cmds[1].word[0] = 0x0294;
-    cmds[1].word[1] = session->lobby_client_id;
-    cmds[2].dword = stoul(command_args);
+    PSOSubcommand cmds[2];
+    cmds[0].word[0] = 0x0294;
+    cmds[0].word[1] = session->lobby_client_id;
+    cmds[1].dword = stoul(command_args);
 
-    session->send_to_end(&cmds, sizeof(cmds), false);
-    session->send_to_end(&cmds, sizeof(cmds), true);
+    session->send_to_end(false, 0x60, 0x00, &cmds, sizeof(cmds));
+    session->send_to_end(true, 0x60, 0x00, &cmds, sizeof(cmds));
 
   } else if ((command_name == "info-board") || (command_name == "info-board-data")) {
     auto session = this->get_proxy_session();
 
-    string data(4, '\0');
-    data[0] = 0xD9;
+    string data;
     if (command_name == "info-board-data") {
       data += parse_data_string(command_args);
     } else {
@@ -339,10 +328,8 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     }
     data.push_back('\0');
     data.resize((data.size() + 3) & (~3));
-    uint16_t* size_field = reinterpret_cast<uint16_t*>(data.data() + 2);
-    *size_field = data.size();
 
-    session->send_to_end(data, true);
+    session->send_to_end(true, 0xD9, 0x00, data);
 
   } else if (command_name == "set-override-section-id") {
     auto session = this->get_proxy_session();
@@ -358,9 +345,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
       session->override_lobby_event = -1;
     } else {
       session->override_lobby_event = event_for_name(command_args);
-      string data("\xDA\x00\x04\x00", 4);
-      data[1] = session->override_lobby_event;
-      session->send_to_end(data, false);
+      session->send_to_end(false, 0xDA, session->override_lobby_event);
     }
 
   } else if (command_name == "set-override-lobby-number") {
