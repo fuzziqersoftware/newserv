@@ -386,6 +386,7 @@ template <typename CharT, size_t Count>
 void remove_language_marker_inplace(ptext<CharT, Count>& a) {
   if ((a.items[0] == '\t') && (a.items[1] != 'C')) {
     text_strnzcpy_t(a.items, Count, &a.items[2], Count);
+    a.items[text_strlen_t(a.items) + 1] = 0;
   }
 }
 
@@ -429,6 +430,8 @@ size_t add_color_inplace(T* a, size_t max_chars) {
     a++;
   }
   *d = 0;
+  // TODO: we should clear the chars after the null if the new string is shorter
+  // than the original
 
   return d - orig_d;
 }

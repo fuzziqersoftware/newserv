@@ -197,6 +197,15 @@ uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
 
 
 
+shared_ptr<const vector<MenuItem>> ServerState::information_menu_for_version(GameVersion version) {
+  if (version == GameVersion::PC) {
+    return this->information_menu_pc;
+  } else if (version == GameVersion::GC) {
+    return this->information_menu_gc;
+  }
+  throw out_of_range("no information menu exists for this version");
+}
+
 const vector<MenuItem>& ServerState::proxy_destinations_menu_for_version(GameVersion version) {
   if (version == GameVersion::PC) {
     return this->proxy_destinations_menu_pc;

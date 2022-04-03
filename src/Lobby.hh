@@ -67,7 +67,7 @@ struct Lobby {
   size_t count_clients() const;
   bool any_client_loading() const;
 
-  void add_client(std::shared_ptr<Client> c, bool reverse_indexes = false);
+  void add_client(std::shared_ptr<Client> c, bool reverse_indexes = true);
   void remove_client(std::shared_ptr<Client> c);
 
   void move_client_to_lobby(std::shared_ptr<Lobby> dest_lobby,

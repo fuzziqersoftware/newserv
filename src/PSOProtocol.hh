@@ -4,6 +4,7 @@
 #include <event2/bufferevent.h>
 
 #include <functional>
+#include <phosg/Strings.hh>
 
 #include "Version.hh"
 #include "PSOEncryption.hh"
@@ -64,3 +65,42 @@ void print_received_command(
     size_t size,
     GameVersion version,
     const char* name = nullptr);
+
+// This function is used in a lot of places to check received command sizes and
+// cast them to the appropriate type
+template <typename T>
+const T& check_size_t(
+    const std::string& data,
+    size_t min_size = sizeof(T),
+    size_t max_size = sizeof(T)) {
+  if (data.size() < min_size) {
+    throw std::runtime_error(string_printf(
+        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
+        min_size, data.size()));
+  }
+  if (data.size() > max_size) {
+    throw std::runtime_error(string_printf(
+        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
+        max_size, data.size()));
+  }
+  return *reinterpret_cast<const T*>(data.data());
+}
+template <typename T>
+T& check_size_t(
+    std::string& data,
+    size_t min_size = sizeof(T),
+    size_t max_size = sizeof(T)) {
+  if (data.size() < min_size) {
+    throw std::runtime_error(string_printf(
+        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
+        min_size, data.size()));
+  }
+  if (data.size() > max_size) {
+    throw std::runtime_error(string_printf(
+        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
+        max_size, data.size()));
+  }
+  return *reinterpret_cast<T*>(data.data());
+}
+
+void check_size_v(size_t size, size_t min_size, size_t max_size = 0);

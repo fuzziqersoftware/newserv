@@ -15,50 +15,51 @@
 
 using namespace std;
 
-// The functions in this file are called when a BB client sends a game command
-// (60, 62, 6C, or 6D) that must be handled by the server.
-
-
-
-struct ItemSubcommand {
-  uint8_t command;
-  uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
-  uint32_t item_id;
-  uint32_t amount;
-} __attribute__((packed));
-
-
-
-void check_size(uint16_t size, uint16_t min_size, uint16_t max_size) {
-  if (size < min_size) {
-    throw runtime_error(string_printf(
-        "command too small (expected at least 0x%hX bytes, received 0x%hX bytes)",
-        min_size, size));
-  }
-  if (max_size == 0) {
-    max_size = min_size;
-  }
-  if (size > max_size) {
-    throw runtime_error(string_printf(
-        "command too large (expected at most 0x%hX bytes, received 0x%hX bytes)",
-        max_size, size));
-  }
-}
+// The functions in this file are called when a client sends a game command
+// (60, 62, 6C, or 6D).
 
 
 
 bool command_is_private(uint8_t command) {
-  // TODO: are either of the ep3 commands private? looks like not
+  // TODO: are either of the Ep3 commands (C9/CB) private? Looks like not...
   return (command == 0x62) || (command == 0x6D);
 }
 
 
 
-void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    uint8_t command, uint8_t flag, const PSOSubcommand* p,
-    size_t count) {
+template <typename CmdT = PSOSubcommand>
+const CmdT* check_size_sc(
+    const string& data,
+    size_t min_size = sizeof(CmdT),
+    size_t max_size = sizeof(CmdT),
+    bool check_size_field = true) {
+  if (max_size < min_size) {
+    max_size = min_size;
+  }
+  const auto* cmd = &check_size_t<CmdT>(data, min_size, max_size);
+  if (check_size_field && cmd->size) {
+    throw runtime_error("invalid subcommand size field");
+  }
+  return cmd;
+}
+
+template <>
+const PSOSubcommand* check_size_sc<PSOSubcommand>(
+    const string& data, size_t min_size, size_t max_size, bool check_size_field) {
+  if (max_size < min_size) {
+    max_size = min_size;
+  }
+  const auto* ret = &check_size_t<PSOSubcommand>(data, min_size, max_size);
+  if (check_size_field && (ret[0].byte[1] != data.size() / 4)) {
+    throw runtime_error("invalid subcommand size field");
+  }
+  return ret;
+}
+
+
+
+static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
+    uint8_t command, uint8_t flag, const string& data) {
 
   // if the command is an Ep3-only command, make sure an Ep3 client sent it
   bool command_is_ep3 = (command & 0xF0) == 0xC0;
@@ -77,7 +78,7 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     if (command_is_ep3 && !(target->flags & Client::Flag::EPISODE_3)) {
       return;
     }
-    send_command(target, command, flag, p, count * 4);
+    send_command(target, command, flag, data);
 
   } else {
     if (command_is_ep3) {
@@ -85,11 +86,11 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
         if (!target || (target == c) || !(target->flags & Client::Flag::EPISODE_3)) {
           continue;
         }
-        send_command(target, command, flag, p, count * 4);
+        send_command(target, command, flag, data);
       }
 
     } else {
-      send_command_excluding_client(l, c, command, flag, p, count * 4);
+      send_command_excluding_client(l, c, command, flag, data.data(), data.size());
     }
   }
 }
@@ -99,23 +100,23 @@ void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
 ////////////////////////////////////////////////////////////////////////////////
 // Chat commands and the like
 
-// client requests to send a guild card
 static void process_subcommand_send_guild_card(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  check_size(count, 9, 0xFFFF);
-
-  if (!command_is_private(command) || !l || flag >= l->max_clients ||
-      (!l->clients[flag]) || (p->byte[1] != count)) {
+    const string& data) {
+  if (!command_is_private(command) || !l || (flag >= l->max_clients) ||
+      (!l->clients[flag])) {
     return;
   }
 
-  if (c->version == GameVersion::GC) {
-    if (count < 0x25) {
-      return;
-    }
-    c->player.guild_card_desc = decode_sjis(
-        reinterpret_cast<const char*>(&p[9].byte[0]), 0x58);
+  if (c->version == GameVersion::PC) {
+    const auto* cmd = check_size_sc<G_SendGuildCard_PC_6x06>(data);
+    c->player.guild_card_desc = cmd->desc;
+  } else if (c->version == GameVersion::GC) {
+    const auto* cmd = check_size_sc<G_SendGuildCard_GC_6x06>(data);
+    c->player.guild_card_desc = cmd->desc;
+  } else if (c->version == GameVersion::BB) {
+    const auto* cmd = check_size_sc<G_SendGuildCard_BB_6x06>(data);
+    c->player.guild_card_desc = cmd->desc;
   }
 
   send_guild_card(l->clients[flag], c);
@@ -124,24 +125,22 @@ static void process_subcommand_send_guild_card(shared_ptr<ServerState>,
 // client sends a symbol chat
 static void process_subcommand_symbol_chat(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  check_size(count, 2, 0xFFFF);
+    const string& data) {
+  const auto* p = check_size_sc(data, 0x08, 0xFFFF);
 
-  if (!c->can_chat || (p->byte[1] != count) || (p->byte[1] < 2) ||
-      (p[1].byte[0] != c->lobby_client_id)) {
+  if (!c->can_chat || (p[1].byte[0] != c->lobby_client_id)) {
     return;
   }
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 // client sends a word select chat
 static void process_subcommand_word_select(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  check_size(count, 8, 0xFFFF);
+    const string& data) {
+  const auto* p = check_size_sc(data, 0x20, 0xFFFF);
 
-  if (!c->can_chat || (p->byte[1] != count) || (p->byte[1] < 8) ||
-      (p->byte[2] != c->lobby_client_id)) {
+  if (!c->can_chat || (p[0].byte[2] != c->lobby_client_id)) {
     return;
   }
 
@@ -156,7 +155,7 @@ static void process_subcommand_word_select(shared_ptr<ServerState>,
       return;
     }
   }
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,23 +164,24 @@ static void process_subcommand_word_select(shared_ptr<ServerState>,
 // need to process changing areas since we keep track of where players are
 static void process_subcommand_change_area(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  check_size(count, 2, 0xFFFF);
-  if (!l->is_game() || (p->byte[1] != count)) {
+    const string& data) {
+  const auto* p = check_size_sc(data, 0x08, 0xFFFF);
+  if (!l->is_game()) {
     return;
   }
   c->area = p[1].dword;
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
-// when a player is hit by a monster, heal them if infinite HP is enabled
-static void process_subcommand_hit_by_monster(shared_ptr<ServerState>,
+// when a player is hit by an enemy, heal them if infinite HP is enabled
+static void process_subcommand_hit_by_enemy(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
+  const auto* p = check_size_sc(data, 0x04, 0xFFFF);
   if (!l->is_game() || (p->byte[2] != c->lobby_client_id)) {
     return;
   }
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
   if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->infinite_hp) {
     send_player_stats_change(l, c, PlayerStatsChange::ADD_HP, 1020);
   }
@@ -190,11 +190,12 @@ static void process_subcommand_hit_by_monster(shared_ptr<ServerState>,
 // when a player casts a tech, restore TP if infinite TP is enabled
 static void process_subcommand_use_technique(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  if (!l->is_game() || (p->byte[1] != count) || (p->byte[2] != c->lobby_client_id)) {
+    const string& data) {
+  const auto* p = check_size_sc(data, 0x04, 0xFFFF);
+  if (!l->is_game() || (p->byte[2] != c->lobby_client_id)) {
     return;
   }
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
   if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->infinite_tp) {
     send_player_stats_change(l, c, PlayerStatsChange::ADD_TP, 255);
   }
@@ -202,18 +203,18 @@ static void process_subcommand_use_technique(shared_ptr<ServerState>,
 
 static void process_subcommand_switch_state_changed(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  if (!l->is_game() || (p->byte[1] != count)) {
+    const string& data) {
+  const auto* p = check_size_sc(data, 0x0C);
+  if (!l->is_game()) {
     return;
   }
-  forward_subcommand(l, c, command, flag, p, count);
-  if ((count == 3) && (p[2].byte[3] == 1)) { // If this is a switch enable command
+  forward_subcommand(l, c, command, flag, data);
+  if (p[2].byte[3] == 1) { // If this is a switch enable command
     if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->switch_assist &&
-        (c->last_switch_enabled_subcommand[0].byte[0] == 0x05)) {
+        !c->last_switch_enabled_subcommand.empty()) {
       log(INFO, "[Switch assist] Replaying previous enable command");
-      forward_subcommand(l, c, command, flag, c->last_switch_enabled_subcommand, 3);
-      send_command(c, command, flag, c->last_switch_enabled_subcommand,
-          sizeof(c->last_switch_enabled_subcommand));
+      forward_subcommand(l, c, command, flag, c->last_switch_enabled_subcommand);
+      send_command(c, command, flag, c->last_switch_enabled_subcommand);
     }
     memcpy(&c->last_switch_enabled_subcommand, p, sizeof(c->last_switch_enabled_subcommand));
   }
@@ -225,25 +226,11 @@ static void process_subcommand_switch_state_changed(shared_ptr<ServerState>,
 // player drops an item
 static void process_subcommand_drop_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 6);
+    const auto* cmd = check_size_sc<G_PlayerDropItem_6x2A>(data);
 
-    struct Cmd {
-      uint8_t command;
-      uint8_t size;
-      uint8_t client_id;
-      uint8_t unused;
-      uint16_t unused2; // should be 1
-      uint16_t area;
-      uint32_t item_id;
-      float x;
-      float y;
-      float z;
-    } __attribute__((packed));
-    auto* cmd = reinterpret_cast<const Cmd*>(p);
-
-    if ((cmd->size != 6) || (cmd->client_id != c->lobby_client_id)) {
+    if ((cmd->client_id != c->lobby_client_id)) {
       return;
     }
 
@@ -251,31 +238,17 @@ static void process_subcommand_drop_item(shared_ptr<ServerState>,
     c->player.remove_item(cmd->item_id, 0, &item);
     l->add_item(item);
   }
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 // player splits a stack and drops part of it
 static void process_subcommand_drop_stacked_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 6);
+    const auto* cmd = check_size_sc<G_SplitStackedItem_6xC3>(data);
 
-    struct Cmd {
-      uint8_t command;
-      uint8_t size;
-      uint8_t client_id;
-      uint8_t unused;
-      uint16_t area;
-      uint16_t unused2;
-      float x;
-      float y;
-      uint32_t item_id;
-      uint32_t amount;
-    } __attribute__((packed));
-    auto* cmd = reinterpret_cast<const Cmd*>(p);
-
-    if (!l->is_game() || (cmd->size != 6) || (cmd->client_id != c->lobby_client_id)) {
+    if (!l->is_game() || (cmd->client_id != c->lobby_client_id)) {
       return;
     }
 
@@ -293,29 +266,18 @@ static void process_subcommand_drop_stacked_item(shared_ptr<ServerState>,
     send_drop_stacked_item(l, item.data, cmd->area, cmd->x, cmd->y);
 
   } else {
-    forward_subcommand(l, c, command, flag, p, count);
+    forward_subcommand(l, c, command, flag, data);
   }
 }
 
 // player requests to pick up an item
 static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 3);
+    auto* cmd = check_size_sc<G_PickUpItemRequest_6x5A>(data);
 
-    struct Cmd {
-      uint8_t command;
-      uint8_t size;
-      uint8_t client_id;
-      uint8_t unused;
-      uint32_t item_id;
-      uint8_t area;
-      uint8_t unused2[3];
-    } __attribute__((packed));
-    auto* cmd = reinterpret_cast<const Cmd*>(p);
-
-    if (!l->is_game() || (cmd->size != 3) || (cmd->client_id != c->lobby_client_id)) {
+    if (!l->is_game() || (cmd->client_id != c->lobby_client_id)) {
       return;
     }
 
@@ -326,19 +288,18 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
     send_pick_up_item(l, c, item.data.item_id, cmd->area);
 
   } else {
-    forward_subcommand(l, c, command, flag, p, count);
+    forward_subcommand(l, c, command, flag, data);
   }
 }
 
 // player equips an item
 static void process_subcommand_equip_unequip_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 3);
+    const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
 
-    auto* cmd = reinterpret_cast<const ItemSubcommand*>(p);
-    if ((cmd->size != 3) || (cmd->client_id != c->lobby_client_id)) {
+    if ((cmd->client_id != c->lobby_client_id)) {
       return;
     }
 
@@ -350,18 +311,17 @@ static void process_subcommand_equip_unequip_item(shared_ptr<ServerState>,
     }
 
   } else {
-    forward_subcommand(l, c, command, flag, p, count);
+    forward_subcommand(l, c, command, flag, data);
   }
 }
 
 static void process_subcommand_use_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 2);
+    const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
 
-    auto* cmd = reinterpret_cast<const ItemSubcommand*>(p);
-    if ((cmd->size != 2) || (cmd->client_id != c->lobby_client_id)) {
+    if (cmd->client_id != c->lobby_client_id) {
       return;
     }
 
@@ -375,17 +335,18 @@ static void process_subcommand_use_item(shared_ptr<ServerState>,
     player_use_item(c, index);
   }
 
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 static void process_subcommand_open_shop_or_ep3_unknown(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
-    check_size(count, 2, 0xFFFF);
-    forward_subcommand(l, c, command, flag, p, count);
+    check_size_sc(data, 0x08, 0xFFFF);
+    forward_subcommand(l, c, command, flag, data);
 
   } else {
+    const auto* p = check_size_sc(data, 0x08);
     uint32_t shop_type = p[1].dword;
 
     if ((l->version == GameVersion::BB) && l->is_game()) {
@@ -413,33 +374,18 @@ static void process_subcommand_open_shop_or_ep3_unknown(shared_ptr<ServerState> 
 }
 
 static void process_subcommand_open_bank(shared_ptr<ServerState>,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
-    const PSOSubcommand*, size_t) {
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const string&) {
   if ((l->version == GameVersion::BB) && l->is_game()) {
     send_bank(c);
   }
 }
 
-// player performs some bank action
 static void process_subcommand_bank_action(shared_ptr<ServerState>,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
-    const PSOSubcommand* p, size_t count) {
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 4);
+    const auto* cmd = check_size_sc<G_BankAction_BB_6xBD>(data);
 
-    struct Cmd {
-      uint8_t subcommand;
-      uint8_t size;
-      uint16_t unused;
-      uint32_t item_id;
-      uint32_t meseta_amount;
-      uint8_t action;
-      uint8_t item_amount;
-      uint16_t unused2;
-    } __attribute__((packed));
-    auto* cmd = reinterpret_cast<const Cmd*>(p);
-
-    if (!l->is_game() || (cmd->size != 4)) {
+    if (!l->is_game()) {
       return;
     }
 
@@ -484,21 +430,9 @@ static void process_subcommand_bank_action(shared_ptr<ServerState>,
 // player sorts the items in their inventory
 static void process_subcommand_sort_inventory(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 31);
-
-    struct Cmd {
-      uint8_t command;
-      uint8_t size;
-      uint16_t unused;
-      uint32_t item_ids[30];
-    } __attribute__((packed));
-    auto* cmd = reinterpret_cast<const Cmd*>(p);
-
-    if (cmd->size != 31) {
-      return;
-    }
+    const auto* cmd = check_size_sc<G_SortInventory_6xC4>(data);
 
     PlayerInventory sorted;
     memset(&sorted, 0, sizeof(PlayerInventory));
@@ -526,24 +460,11 @@ static void process_subcommand_sort_inventory(shared_ptr<ServerState>,
 // enemy killed; leader sends drop item request
 static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 6);
+    const auto* cmd = check_size_sc<G_EnemyDropItemRequest_6x60>(data);
 
-    struct Cmd {
-      uint8_t command;
-      uint8_t size;
-      uint16_t unused;
-      uint8_t area;
-      uint8_t monster_id;
-      uint16_t request_id;
-      float x;
-      float y;
-      uint32_t unknown[2];
-    } __attribute__((packed));
-    auto* cmd = reinterpret_cast<const Cmd*>(p);
-
-    if ((cmd->size != 6) || !l->is_game()) {
+    if (!l->is_game()) {
       return;
     }
 
@@ -556,13 +477,13 @@ static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
       l->next_drop_item.data.item_data1d[0] = 0;
     } else {
       if (l->rare_item_set) {
-        if (cmd->monster_id <= 0x65) {
-          is_rare = sample_rare_item(l->rare_item_set->rares[cmd->monster_id].probability);
+        if (cmd->enemy_id <= 0x65) {
+          is_rare = sample_rare_item(l->rare_item_set->rares[cmd->enemy_id].probability);
         }
       }
 
       if (is_rare) {
-        memcpy(&item.data.item_data1d, l->rare_item_set->rares[cmd->monster_id].item_code, 3);
+        memcpy(&item.data.item_data1d, l->rare_item_set->rares[cmd->enemy_id].item_code, 3);
         //RandPercentages();
         if (item.data.item_data1d[0] == 0) {
           item.data.item_data1[4] |= 0x80; // make it untekked if it's a weapon
@@ -584,31 +505,18 @@ static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
         cmd->request_id);
 
   } else {
-    forward_subcommand(l, c, command, flag, p, count);
+    forward_subcommand(l, c, command, flag, data);
   }
 }
 
 // box broken; leader sends drop item request
 static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 10);
+    const auto* cmd = check_size_sc<G_BoxItemDropRequest_6xA2>(data);
 
-    struct Cmd {
-      uint8_t command;
-      uint8_t size;
-      uint16_t unused;
-      uint8_t area;
-      uint8_t unused2;
-      uint16_t request_id;
-      float x;
-      float y;
-      uint32_t unknown[6];
-    } __attribute__((packed));
-    auto* cmd = reinterpret_cast<const Cmd*>(p);
-
-    if ((cmd->size != 10) || !l->is_game()) {
+    if (!l->is_game()) {
       return;
     }
 
@@ -656,31 +564,20 @@ static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
         cmd->request_id);
 
   } else {
-    forward_subcommand(l, c, command, flag, p, count);
+    forward_subcommand(l, c, command, flag, data);
   }
 }
 
-// monster hit by player
-static void process_subcommand_monster_hit(shared_ptr<ServerState>,
+// enemy hit by player
+static void process_subcommand_enemy_hit(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 10);
+    const auto* cmd = check_size_sc<G_EnemyHitByPlayer_6x0A>(data);
 
-    struct Cmd {
-      uint8_t command;
-      uint8_t size;
-      uint16_t enemy_id2;
-      uint16_t enemy_id;
-      uint16_t damage;
-      uint32_t flags;
-    } __attribute__((packed));
-    auto* cmd = reinterpret_cast<const Cmd*>(p);
-
-    if (cmd->size != 10) {
+    if (!l->is_game()) {
       return;
     }
-
     if (cmd->enemy_id >= l->enemies.size()) {
       return;
     }
@@ -692,35 +589,22 @@ static void process_subcommand_monster_hit(shared_ptr<ServerState>,
     l->enemies[cmd->enemy_id].last_hit = c->lobby_client_id;
   }
 
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
-// monster killed by player
-static void process_subcommand_monster_killed(shared_ptr<ServerState> s,
+// enemy killed by player
+static void process_subcommand_enemy_killed(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  if (l->version == GameVersion::BB) {
-    check_size(count, 3);
-  }
-
-  forward_subcommand(l, c, command, flag, p, count);
+    const string& data) {
+  forward_subcommand(l, c, command, flag, data);
 
   if (l->version == GameVersion::BB) {
-    struct Cmd {
-      uint8_t command;
-      uint8_t size;
-      uint16_t enemy_id2;
-      uint16_t enemy_id;
-      uint16_t killer_client_id;
-      uint32_t unused;
-    } __attribute__((packed));
-    auto* cmd = reinterpret_cast<const Cmd*>(p);
+    const auto* cmd = check_size_sc<G_EnemyKilled_6xC8>(data);
 
-    if (!l->is_game() || (cmd->size != 3) || (cmd->enemy_id >= l->enemies.size() ||
+    if (!l->is_game() || (cmd->enemy_id >= l->enemies.size() ||
         (l->enemies[cmd->enemy_id].hit_flags & 0x80))) {
       return;
     }
-
     if (l->enemies[cmd->enemy_id].experience == 0xFFFFFFFF) {
       send_text_message(c, u"$C6Unknown enemy type killed");
       return;
@@ -774,29 +658,25 @@ static void process_subcommand_monster_killed(shared_ptr<ServerState> s,
 // destroy item (sent when there are too many items on the ground)
 static void process_subcommand_destroy_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 3);
-
-    auto* cmd = reinterpret_cast<const ItemSubcommand*>(p);
-    if ((cmd->size != 3) || !l->is_game()) {
+    const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
+    if (!l->is_game()) {
       return;
     }
     l->remove_item(cmd->item_id, nullptr);
   }
 
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 // player requests to tekk an item
 static void process_subcommand_identify_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (l->version == GameVersion::BB) {
-    check_size(count, 3);
-
-    auto* cmd = reinterpret_cast<const ItemSubcommand*>(p);
-    if (!l->is_game() || (cmd->size != 3) || (cmd->client_id != c->lobby_client_id)) {
+    const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
+    if (!l->is_game() || (cmd->client_id != c->lobby_client_id)) {
       return;
     }
 
@@ -809,16 +689,17 @@ static void process_subcommand_identify_item(shared_ptr<ServerState>,
     c->player.identify_result = c->player.inventory.items[x];
     c->player.identify_result.data.item_data1[4] &= 0x7F;
 
-    // TODO: move this into a SendCommands.cc
-    PSOSubcommand sub[6];
-    sub[0].byte[0] = 0xB9;
-    sub[0].byte[1] = 0x06;
-    sub[0].word[1] = c->lobby_client_id;
-    memcpy(&sub[1], &c->player.identify_result.data, sizeof(ItemData));
-    send_command(l, 0x60, 0x00, sub, 0x18);
+    // TODO: move this into a SendCommands.cc function
+    G_IdentifyResult_BB_6xB9 res;
+    res.subcommand = 0xB9;
+    res.size = sizeof(cmd) / 4;
+    res.client_id = c->lobby_client_id;
+    res.unused = 0;
+    res.item = c->player.identify_result.data;
+    send_command(l, 0x60, 0x00, res);
 
   } else {
-    forward_subcommand(l, c, command, flag, p, count);
+    forward_subcommand(l, c, command, flag, data);
   }
 }
 
@@ -827,13 +708,12 @@ static void process_subcommand_identify_item(shared_ptr<ServerState>,
 // correct though so we can just put it in the table when we figure out the id
 // static void process_subcommand_accept_identified_item(shared_ptr<ServerState> s,
 //     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-//     const PSOSubcommand* p, size_t count) {
+//     const string& data) {
 //
 //   if (l->version == GameVersion::BB) {
-//     check_size(count, 3);
+//     const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
 //
-//     auto* cmd = reinterpret_cast<const ItemSubcommand*>(p);
-//     if ((cmd->size != 3) || (cmd->client_id != c->lobby_client_id)) {
+//     if (cmd->client_id != c->lobby_client_id) {
 //       return;
 //     }
 //
@@ -842,7 +722,7 @@ static void process_subcommand_identify_item(shared_ptr<ServerState>,
 //     // TODO: what do we send to the other clients? anything?
 //
 //   } else {
-//     forward_subcommand(l, c, command, flag, p, count);
+//     forward_subcommand(l, c, command, flag, data);
 //   }
 // }
 
@@ -850,79 +730,78 @@ static void process_subcommand_identify_item(shared_ptr<ServerState>,
 
 static void process_subcommand_forward_check_size(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  if (p->byte[1] != count) {
-    return;
-  }
-  forward_subcommand(l, c, command, flag, p, count);
+    const string& data) {
+  check_size_sc(data, sizeof(PSOSubcommand), 0xFFFF);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 static void process_subcommand_forward_check_game(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (!l->is_game()) {
     return;
   }
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 static void process_subcommand_forward_check_game_loading(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
   if (!l->is_game() || !l->any_client_loading()) {
     return;
   }
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 static void process_subcommand_forward_check_size_client(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  if ((p->byte[1] != count) || (p->byte[2] != c->lobby_client_id)) {
+    const string& data) {
+  const auto* p = check_size_sc(data, sizeof(PSOSubcommand), 0xFFFF);
+  if (p->byte[2] != c->lobby_client_id) {
     return;
   }
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 static void process_subcommand_forward_check_size_game(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  if (!l->is_game() || (p->byte[1] != count)) {
+    const string& data) {
+  check_size_sc(data, sizeof(PSOSubcommand), 0xFFFF);
+  if (!l->is_game()) {
     return;
   }
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 static void process_subcommand_forward_check_size_ep3_lobby(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
-  if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY) || (p->byte[1] != count)) {
+    const string& data) {
+  check_size_sc(data, sizeof(PSOSubcommand), 0xFFFF);
+  if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
     return;
   }
-  forward_subcommand(l, c, command, flag, p, count);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 static void process_subcommand_invalid(shared_ptr<ServerState>,
     shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
+  const auto* p = check_size_sc(data, sizeof(PSOSubcommand), 0xFFFF);
   if (command_is_private(command)) {
-    log(WARNING, "Invalid subcommand: %02hhX (%zu of them) (private to player %hhu)",
-        p->byte[0], count, flag);
+    log(WARNING, "Invalid subcommand: %02hhX (private to %hhu)", p->byte[0], flag);
   } else {
-    log(WARNING, "Invalid subcommand: %02hhX (%zu of them) (public)",
-        p->byte[0], count);
+    log(WARNING, "Invalid subcommand: %02hhX (public)", p->byte[0]);
   }
 }
 
 static void process_subcommand_unimplemented(shared_ptr<ServerState>,
     shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count) {
+    const string& data) {
+  const auto* p = check_size_sc(data, sizeof(PSOSubcommand), 0xFFFF);
   if (command_is_private(command)) {
-    log(WARNING, "Unknown subcommand: %02hhX (%zu of them) (private to player %hhu)",
-        p->byte[0], count, flag);
+    log(WARNING, "Unknown subcommand: %02hhX (private to %hhu)", p->byte[0], flag);
   } else {
-    log(WARNING, "Unknown subcommand: %02hhX (%zu of them) (public)",
-        p->byte[0], count);
+    log(WARNING, "Unknown subcommand: %02hhX (public)", p->byte[0]);
   }
 }
 
@@ -933,7 +812,7 @@ static void process_subcommand_unimplemented(shared_ptr<ServerState>,
 // for more information on flags. The maximum size is not enforced if it's zero.
 typedef void (*subcommand_handler_t)(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* p, size_t count);
+    const string& data);
 
 subcommand_handler_t subcommand_handlers[0x100] = {
   /* 00 */ process_subcommand_invalid,
@@ -946,7 +825,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 07 */ process_subcommand_symbol_chat,
   /* 08 */ process_subcommand_unimplemented,
   /* 09 */ process_subcommand_unimplemented,
-  /* 0A */ process_subcommand_monster_hit,
+  /* 0A */ process_subcommand_enemy_hit,
   /* 0B */ process_subcommand_forward_check_size_game,
   /* 0C */ process_subcommand_forward_check_size_game, // Add condition (poison/slow/etc.)
   /* 0D */ process_subcommand_forward_check_size_game, // Remove condition (poison/slow/etc.)
@@ -983,7 +862,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 2C */ process_subcommand_forward_check_size, // Talk to NPC
   /* 2D */ process_subcommand_forward_check_size, // Done talking to NPC
   /* 2E */ process_subcommand_unimplemented,
-  /* 2F */ process_subcommand_hit_by_monster,
+  /* 2F */ process_subcommand_hit_by_enemy,
   /* 30 */ process_subcommand_forward_check_size_game, // Level up
   /* 31 */ process_subcommand_forward_check_size_game, // Medical center
   /* 32 */ process_subcommand_forward_check_size_game, // Medical center
@@ -1011,8 +890,8 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 48 */ process_subcommand_use_technique,
   /* 49 */ process_subcommand_forward_check_size_client,
   /* 4A */ process_subcommand_forward_check_size_client,
-  /* 4B */ process_subcommand_hit_by_monster,
-  /* 4C */ process_subcommand_hit_by_monster,
+  /* 4B */ process_subcommand_hit_by_enemy,
+  /* 4C */ process_subcommand_hit_by_enemy,
   /* 4D */ process_subcommand_forward_check_size_client,
   /* 4E */ process_subcommand_forward_check_size_client,
   /* 4F */ process_subcommand_forward_check_size_client,
@@ -1031,7 +910,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 5C */ process_subcommand_unimplemented,
   /* 5D */ process_subcommand_forward_check_size_game, // Drop meseta or stacked item
   /* 5E */ process_subcommand_forward_check_size_game, // Buy item at shop
-  /* 5F */ process_subcommand_forward_check_size_game, // Drop item from box/monster
+  /* 5F */ process_subcommand_forward_check_size_game, // Drop item from box/enemy
   /* 60 */ process_subcommand_enemy_drop_item, // Request for item drop (handled by the server on BB)
   /* 61 */ process_subcommand_forward_check_size_game, // Feed mag
   /* 62 */ process_subcommand_unimplemented,
@@ -1054,7 +933,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 73 */ process_subcommand_invalid,
   /* 74 */ process_subcommand_word_select,
   /* 75 */ process_subcommand_forward_check_size_game,
-  /* 76 */ process_subcommand_forward_check_size_game, // Monster killed
+  /* 76 */ process_subcommand_forward_check_size_game, // Enemy killed
   /* 77 */ process_subcommand_forward_check_size_game, // Sync quest data
   /* 78 */ process_subcommand_unimplemented,
   /* 79 */ process_subcommand_forward_check_size, // Lobby 14/15 soccer game
@@ -1136,7 +1015,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* C5 */ process_subcommand_unimplemented,
   /* C6 */ process_subcommand_unimplemented,
   /* C7 */ process_subcommand_unimplemented,
-  /* C8 */ process_subcommand_monster_killed,
+  /* C8 */ process_subcommand_enemy_killed,
   /* C9 */ process_subcommand_unimplemented,
   /* CA */ process_subcommand_unimplemented,
   /* CB */ process_subcommand_unimplemented,
@@ -1195,9 +1074,12 @@ subcommand_handler_t subcommand_handlers[0x100] = {
 };
 
 void process_subcommand(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const PSOSubcommand* sub, size_t count) {
-  subcommand_handlers[sub->byte[0]](s, l, c, command, flag, sub, count);
+    shared_ptr<Client> c, uint8_t command, uint8_t flag, const string& data) {
+  if (data.empty()) {
+    throw runtime_error("game command is empty");
+  }
+  uint8_t which = static_cast<uint8_t>(data[0]);
+  subcommand_handlers[which](s, l, c, command, flag, data);
 }
 
 bool subcommand_is_implemented(uint8_t which) {

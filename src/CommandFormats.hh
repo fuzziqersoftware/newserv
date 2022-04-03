@@ -36,45 +36,6 @@
 
 
 
-// This function is used in a lot of places to check received command sizes and
-// cast them to the appropriate type
-template <typename T>
-const T& check_size_t(
-    const std::string& data,
-    size_t min_size = sizeof(T),
-    size_t max_size = sizeof(T)) {
-  if (data.size() < min_size) {
-    throw std::runtime_error(string_printf(
-        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
-        min_size, data.size()));
-  }
-  if (data.size() > max_size) {
-    throw std::runtime_error(string_printf(
-        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
-        max_size, data.size()));
-  }
-  return *reinterpret_cast<const T*>(data.data());
-}
-template <typename T>
-T& check_size_t(
-    std::string& data,
-    size_t min_size = sizeof(T),
-    size_t max_size = sizeof(T)) {
-  if (data.size() < min_size) {
-    throw std::runtime_error(string_printf(
-        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
-        min_size, data.size()));
-  }
-  if (data.size() > max_size) {
-    throw std::runtime_error(string_printf(
-        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
-        max_size, data.size()));
-  }
-  return *reinterpret_cast<T*>(data.data());
-}
-
-
-
 // 00: Invalid command
 
 // 01 (S->C): Lobby message box
@@ -357,7 +318,7 @@ struct C_GuildCardSearch_40 {
   le_uint32_t player_tag;
   le_uint32_t searcher_guild_card_number;
   le_uint32_t target_guild_card_number;
-} __attribute__((packed));
+};
 
 template <typename HeaderT, typename CharT>
 struct S_GuildCardSearchResult {
@@ -1185,7 +1146,7 @@ struct S_StreamFileIndexEntry_BB_01EB {
   le_uint32_t checksum;
   le_uint32_t offset;
   ptext<char, 0x40> filename;
-} __attribute__((packed));
+};
 
 struct S_StreamFileChunk_BB_02EB {
   le_uint32_t chunk_index;
@@ -1209,7 +1170,7 @@ union C_UpdateAccountData_BB_ED {
   parray<uint8_t, 0x38> pad_config; // 05ED
   parray<uint8_t, 0x28> tech_menu; // 06ED
   parray<uint8_t, 0xE8> customize; // 07ED
-} __attribute__((packed));
+};
 
 // EE: Scrolling message (BB)
 // Contents are plain text (char16_t)
@@ -1234,25 +1195,62 @@ union C_UpdateAccountData_BB_ED {
 
 
 
+// Now, the game subcommands (used in commands 60, 62, 6C, 6D, C9, and CB).
+// These are laid out similarly as above. These structs start with G_ to
+// indicate that they are (usually) bidirectional, and are (usually) generated
+// by clients and consumed by clients.
+
+// This structure is used by many commands (noted below)
+struct G_ItemSubcommand {
+  uint8_t command;
+  uint8_t size;
+  uint8_t client_id;
+  uint8_t unused;
+  le_uint32_t item_id;
+  le_uint32_t amount;
+};
 
 
-struct S_SendGuildCard_GC {
+
+// 00: Invalid subcommand
+// 01: Unknown
+// 02: Unknown
+// 03: Unknown
+// 04: Unknown
+
+// 05: Switch state changed
+
+// TODO: make last_switch_enabled_subcommand in both Client and Proxy use this
+// when it's available
+// struct G_SwitchStateChanged_6x05 {
+//   uint8_t subcommand;
+//   uint8_t size;
+//   TODO;
+// };
+
+// 06: Send guild card
+
+template <typename CharT>
+struct G_SendGuildCard_PC_GC {
   uint8_t subcommand;
-  uint8_t subsize;
+  uint8_t size;
   le_uint16_t unused;
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
-  ptext<char, 0x18> name;
-  ptext<char, 0x6C> desc;
+  ptext<CharT, 0x18> name;
+  ptext<CharT, 0x48> desc;
+  parray<uint8_t, 0x24> unused2;
   uint8_t reserved1;
   uint8_t reserved2;
   uint8_t section_id;
   uint8_t char_class;
 };
+struct G_SendGuildCard_PC_6x06 : G_SendGuildCard_PC_GC<char16_t> { };
+struct G_SendGuildCard_GC_6x06 : G_SendGuildCard_PC_GC<char> { };
 
-struct S_SendGuildCard_BB {
+struct G_SendGuildCard_BB_6x06 {
   uint8_t subcommand;
-  uint8_t subsize;
+  uint8_t size;
   le_uint16_t unused;
   le_uint32_t guild_card_number;
   ptext<char16_t, 0x18> name;
@@ -1264,32 +1262,150 @@ struct S_SendGuildCard_BB {
   uint8_t char_class;
 };
 
-struct S_DropItem_BB {
-  uint8_t subcommand;
-  uint8_t subsize;
-  le_uint16_t unused;
-  uint8_t area;
-  uint8_t dude;
-  le_uint16_t request_id;
-  float x;
-  float y;
-  le_uint32_t unused2;
-  ItemData data;
+// 07: Symbol chat
+// 08: Unknown
+// 09: Unknown
+
+// 0A: Enemy hit
+
+struct G_EnemyHitByPlayer_6x0A {
+  uint8_t command;
+  uint8_t size;
+  le_uint16_t enemy_id2;
+  le_uint16_t enemy_id;
+  le_uint16_t damage;
+  le_uint32_t flags;
 };
 
-struct S_DropStackedItem_BB {
+// 0B: Unknown (supported; game only)
+// 0C: Add condition (poison/slow/etc.)
+// 0D: Remove condition (poison/slow/etc.)
+// 0E: Unknown
+// 0F: Unknown
+// 10: Unknown
+// 11: Unknown
+// 12: Unknown (supported; game only)
+// 13: Unknown (supported; game only)
+// 14: Unknown (supported; game only)
+// 15: Unknown (supported; game only)
+// 16: Unknown
+// 17: Unknown (supported; game only)
+// 18: Unknown (supported; game only)
+// 19: Unknown (supported; game only)
+// 1A: Unknown
+// 1B: Unknown
+// 1C: Unknown
+// 1D: Unknown
+// 1E: Unknown
+// 1F: Unknown (supported; lobby & game)
+// 20: Unknown (supported; lobby & game)
+// 21: Inter-level warp
+// 22: Set player visibility
+// 23: Set player visibility
+// 24: Unknown (supported; game only)
+
+// 25: Equip item
+// Format is G_ItemSubcommand
+
+// 26: Unequip item
+// Format is G_ItemSubcommand
+
+// 27: Use item
+// Format is G_ItemSubcommand
+
+// 28: Feed MAG
+
+// 29: Delete item (via bank deposit / sale / feeding MAG)
+
+struct G_DestroyItem_6x29 {
   uint8_t subcommand;
   uint8_t subsize;
-  le_uint16_t unused;
+  le_uint16_t client_id;
+  le_uint32_t item_id;
+  le_uint32_t amount;
+};
+
+// 2A: Drop item
+
+struct G_PlayerDropItem_6x2A {
+  uint8_t command;
+  uint8_t size;
+  uint8_t client_id;
+  uint8_t unused;
+  le_uint16_t unused2; // should be 1
   le_uint16_t area;
-  le_uint16_t unused2;
-  float x;
-  float y;
-  le_uint32_t unused3;
-  ItemData data;
+  le_uint32_t item_id;
+  le_float x;
+  le_float y;
+  le_float z;
 };
 
-struct S_PickUpItem_BB {
+// 2B: Unknown (supported; game only)
+// 2C: Talk to NPC
+// 2D: Done talking to NPC
+// 2E: Unknown
+// 2F: Hit by enemy
+
+// 30: Level up
+
+struct G_LevelUp_6x30 {
+  uint8_t command;
+  uint8_t size;
+  uint8_t client_id;
+  uint8_t unused;
+  le_uint16_t atp;
+  le_uint16_t mst;
+  le_uint16_t evp;
+  le_uint16_t hp;
+  le_uint16_t dfp;
+  le_uint16_t ata;
+  le_uint32_t level;
+};
+
+// 31: Medical center
+// 32: Medical center
+// 33: Revive player (e.g. with moon atomizer)
+// 34: Unknown
+// 35: Unknown
+// 36: Unknown (supported; game only)
+// 37: Photon blast
+// 38: Unknown
+// 39: Photon blast ready
+// 3A: Unknown (supported; game only)
+// 3B: Unknown (supported; lobby & game)
+// 3C: Unknown
+// 3D: Unknown
+// 3E: Stop moving
+// 3F: Unknown (supported; lobby & game)
+// 40: Walk
+// 41: Unknown
+// 42: Run
+// 43: Unknown (supported; lobby & game)
+// 44: Unknown (supported; lobby & game)
+// 45: Unknown (supported; lobby & game)
+// 46: Unknown (supported; lobby & game)
+// 47: Unknown (supported; lobby & game)
+// 48: Use technique
+// 49: Unknown (supported; lobby & game)
+// 4A: Unknown (supported; lobby & game)
+// 4B: Hit by enemy
+// 4C: Hit by enemy
+// 4D: Unknown (supported; lobby & game)
+// 4E: Unknown (supported; lobby & game)
+// 4F: Unknown (supported; lobby & game)
+// 50: Unknown (supported; lobby & game)
+// 51: Unknown
+// 52: Toggle shop/bank interaction
+// 53: Unknown (supported; game only)
+// 54: Unknown
+// 55: Intra-map warp
+// 56: Unknown (supported; lobby & game)
+// 57: Unknown (supported; lobby & game)
+// 58: Unknown (supported; game only)
+
+// 59: Pick up item
+
+struct G_PickUpItem_6x59 {
   uint8_t subcommand;
   uint8_t subsize;
   le_uint16_t client_id;
@@ -1298,35 +1414,171 @@ struct S_PickUpItem_BB {
   le_uint32_t item_id;
 };
 
-struct S_CreateInventoryItem_BB {
-  uint8_t subcommand;
-  uint8_t subsize;
-  le_uint16_t client_id;
-  ItemData item;
-  le_uint32_t unused;
-};
+// 5A: Request to pick up item
 
-struct S_DestroyItem_BB {
-  uint8_t subcommand;
-  uint8_t subsize;
-  le_uint16_t client_id;
+struct G_PickUpItemRequest_6x5A {
+  uint8_t command;
+  uint8_t size;
+  uint8_t client_id;
+  uint8_t unused;
   le_uint32_t item_id;
-  le_uint32_t amount;
+  uint8_t area;
+  uint8_t unused2[3];
 };
 
-struct S_BankContentsHeader_BB {
+// 5B: Unknown
+// 5C: Unknown
+
+// 5D: Drop meseta or stacked item
+
+struct G_DropStackedItem_6x5D {
   uint8_t subcommand;
-  uint8_t unused1;
+  uint8_t subsize;
+  le_uint16_t unused;
+  le_uint16_t area;
   le_uint16_t unused2;
-  le_uint32_t size; // same as size in overall command header
-  le_uint32_t checksum; // can be random; client won't notice
-  le_uint32_t numItems;
-  le_uint32_t meseta;
+  le_float x;
+  le_float y;
+  le_uint32_t unused3;
+  ItemData data;
 };
 
-struct S_ShopContents_BB {
-  uint8_t subcommand; // B6
-  uint8_t size; // 2C regardless of the number of items??
+// 5E: Buy item at shop
+
+// 5F: Drop item from box/enemy
+
+struct G_DropItem_6x5F {
+  uint8_t subcommand;
+  uint8_t subsize;
+  le_uint16_t unused;
+  uint8_t area;
+  uint8_t enemy_instance;
+  le_uint16_t request_id;
+  le_float x;
+  le_float y;
+  le_uint32_t unused2;
+  ItemData data;
+};
+
+// 60: Request for item drop (handled by the server on BB)
+
+struct G_EnemyDropItemRequest_6x60 {
+  uint8_t command;
+  uint8_t size;
+  le_uint16_t unused;
+  uint8_t area;
+  uint8_t enemy_id;
+  le_uint16_t request_id;
+  le_float x;
+  le_float y;
+  le_uint32_t unknown[2];
+};
+
+// 61: Feed MAG
+// 62: Unknown
+// 63: Destroy an item on the ground (used when too many items have been dropped)
+// 64: Unknown
+// 65: Unknown
+// 66: Unknown
+// 67: Create enemy set
+// 68: Telepipe/Ryuker
+// 69: Unknown
+// 6A: Unknown (supported; game only)
+// 6B: Unknown (used while loading into game)
+// 6C: Unknown (used while loading into game)
+// 6D: Unknown (used while loading into game)
+// 6E: Unknown (used while loading into game)
+// 6F: Unknown (used while loading into game)
+// 70: Unknown (used while loading into game)
+// 71: Unknown (used while loading into game)
+// 72: Unknown (used while loading into game)
+// 73: Invalid subcommand
+// 74: Word select
+// 75: Unknown (supported; game only)
+// 76: Enemy killed
+// 77: Sync quest data
+// 78: Unknown
+// 79: Lobby 14/15 soccer game
+// 7A: Unknown
+// 7B: Unknown
+// 7C: Unknown (supported; game only)
+// 7D: Unknown (supported; game only)
+// 7E: Unknown
+// 7F: Unknown
+// 80: Trigger trap
+// 81: Unknown
+// 82: Unknown
+// 83: Place trap
+// 84: Unknown (supported; game only)
+// 85: Unknown (supported; game only)
+// 86: Hit destructible wall
+// 87: Unknown
+// 88: Unknown (supported; game only)
+// 89: Unknown (supported; game only)
+// 8A: Unknown
+// 8B: Unknown
+// 8C: Unknown
+// 8D: Unknown (supported; lobby & game)
+// 8E: Unknown
+// 8F: Unknown
+// 90: Unknown
+// 91: Unknown (supported; game only)
+// 92: Unknown
+// 93: Timed switch activated
+// 94: Warp (the $warp chat command is implemented using this)
+// 95: Unknown
+// 96: Unknown
+// 97: Unknown
+// 98: Unknown
+// 99: Unknown
+// 9A: Update player stat ($infhp/$inftp are implemented using this command)
+// 9B: Unknown
+// 9C: Unknown (supported; game only)
+// 9D: Unknown
+// 9E: Unknown
+// 9F: Episode 2 boss actions
+// A0: Episode 2 boss actions
+// A1: Unknown
+
+// A2: Request for item drop from box (handled by server on BB)
+
+struct G_BoxItemDropRequest_6xA2 {
+  uint8_t command;
+  uint8_t size;
+  le_uint16_t unused;
+  uint8_t area;
+  uint8_t unused2;
+  le_uint16_t request_id;
+  le_float x;
+  le_float y;
+  le_uint32_t unknown[6];
+};
+
+// A3: Episode 2 boss actions
+// A4: Unknown
+// A5: Episode 2 boss actions
+// A6: Trade proposal
+// A7: Unknown
+// A8: Episode 2 boss actions
+// A9: Episode 2 boss actions
+// AA: Episode 2 boss actions
+// AB: Create lobby chair
+// AC: Unknown
+// AD: Unknown
+// AE: Unknown (supported; lobby & game)
+// AF: Turn in lobby chair
+// B0: Move in lobby chair
+// B1: Unknown
+// B2: Unknown
+// B3: Unknown
+// B4: Unknown
+// B5: BB shop request
+
+// B6: BB shop contents (server->client only)
+
+struct G_ShopContents_BB_6xB6 {
+  uint8_t subcommand;
+  uint8_t size; // always 2C regardless of the number of items??
   le_uint16_t params; // 037F
   uint8_t shop_type;
   uint8_t num_items;
@@ -1334,6 +1586,167 @@ struct S_ShopContents_BB {
   ItemData entries[20];
 };
 
+// B7: BB buy shop item
 
+// B8: Accept tekker result
+// Format is G_IdentifyResult
+
+// B9: Provisional tekker result
+
+struct G_IdentifyResult_BB_6xB9 {
+  uint8_t subcommand;
+  uint8_t size;
+  uint8_t client_id;
+  uint8_t unused;
+  ItemData item;
+};
+
+// BA: Unknown
+// BB: BB bank request
+
+// BC: BB bank contents (server->client only)
+
+struct G_BankContentsHeader_BB_6xBC {
+  uint8_t subcommand;
+  uint8_t unused1;
+  le_uint16_t unused2;
+  le_uint32_t size; // same as size in overall command header
+  le_uint32_t checksum; // can be random; client won't notice
+  le_uint32_t numItems;
+  le_uint32_t meseta;
+  // Item data follows
+};
+
+// BD: BB bank action (take/deposit meseta/item)
+
+struct G_BankAction_BB_6xBD {
+  uint8_t subcommand;
+  uint8_t size;
+  le_uint16_t unused;
+  le_uint32_t item_id; // 0xFFFFFFFF = meseta; anything else = item
+  le_uint32_t meseta_amount;
+  uint8_t action; // 0 = deposit, 1 = take
+  uint8_t item_amount;
+  le_uint16_t unused2;
+};
+
+// BE: BB create inventory item (server->client only)
+
+struct G_CreateInventoryItem_BB_6xBE {
+  uint8_t subcommand;
+  uint8_t subsize;
+  le_uint16_t client_id;
+  ItemData item;
+  le_uint32_t unused;
+};
+
+// BF: Ep3 change music; also BB give EXP (BB usage is server->client only)
+
+struct G_GiveExperience_BB_6xBF {
+  uint8_t subcommand;
+  uint8_t size;
+  uint8_t client_id;
+  uint8_t unused;
+  le_uint32_t amount;
+};
+
+// C0: Unknown
+// C1: Unknown
+// C2: Unknown
+
+// C3: Split stacked item - not sent if entire stack is dropped
+
+struct G_SplitStackedItem_6xC3 {
+  uint8_t command;
+  uint8_t size;
+  uint8_t client_id;
+  uint8_t unused;
+  le_uint16_t area;
+  le_uint16_t unused2;
+  le_float x;
+  le_float y;
+  le_uint32_t item_id;
+  le_uint32_t amount;
+};
+
+// C4: Sort inventory
+
+struct G_SortInventory_6xC4 {
+  uint8_t command;
+  uint8_t size;
+  le_uint16_t unused;
+  le_uint32_t item_ids[30];
+};
+
+// C5: Unknown
+// C6: Unknown
+// C7: Unknown
+
+// C8: Enemy killed
+
+struct G_EnemyKilled_6xC8 {
+  uint8_t command;
+  uint8_t size;
+  le_uint16_t enemy_id2;
+  le_uint16_t enemy_id;
+  le_uint16_t killer_client_id;
+  le_uint32_t unused;
+};
+
+// C9: Unknown
+// CA: Unknown
+// CB: Unknown
+// CC: Unknown
+// CD: Unknown
+// CE: Unknown
+// CF: Unknown (supported; game only)
+// D0: Unknown
+// D1: Unknown
+// D2: Unknown
+// D3: Unknown
+// D4: Unknown
+// D5: Unknown
+// D6: Unknown
+// D7: Unknown
+// D8: Unknown
+// D9: Unknown
+// DA: Unknown
+// DB: Unknown
+// DC: Unknown
+// DD: Unknown
+// DE: Unknown
+// DF: Unknown
+// E0: Unknown
+// E1: Unknown
+// E2: Unknown
+// E3: Unknown
+// E4: Unknown
+// E5: Unknown
+// E6: Unknown
+// E7: Unknown
+// E8: Unknown
+// E9: Unknown
+// EA: Unknown
+// EB: Unknown
+// EC: Unknown
+// ED: Unknown
+// EE: Unknown
+// EF: Unknown
+// F0: Unknown
+// F1: Unknown
+// F2: Unknown
+// F3: Unknown
+// F4: Unknown
+// F5: Unknown
+// F6: Unknown
+// F7: Unknown
+// F8: Unknown
+// F9: Unknown
+// FA: Unknown
+// FB: Unknown
+// FC: Unknown
+// FD: Unknown
+// FE: Unknown
+// FF: Unknown
 
 #pragma pack(pop)

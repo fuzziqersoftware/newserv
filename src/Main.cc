@@ -97,22 +97,26 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   s->common_item_creator.reset(new CommonItemCreator(enemy_categories,
       box_categories, unit_types));
 
-  shared_ptr<vector<MenuItem>> information_menu(new vector<MenuItem>());
+  shared_ptr<vector<MenuItem>> information_menu_pc(new vector<MenuItem>());
+  shared_ptr<vector<MenuItem>> information_menu_gc(new vector<MenuItem>());
   shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
 
-  information_menu->emplace_back(INFORMATION_MENU_GO_BACK, u"Go back",
+  information_menu_gc->emplace_back(INFORMATION_MENU_GO_BACK, u"Go back",
       u"Return to the\nmain menu", 0);
   {
     uint32_t item_id = 0;
     for (const auto& item : d.at("InformationMenuContents")->as_list()) {
       auto& v = item->as_list();
-      information_menu->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
+      information_menu_pc->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
+          decode_sjis(v.at(1)->as_string()), 0);
+      information_menu_gc->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
           decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
       information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
       item_id++;
     }
   }
-  s->information_menu = information_menu;
+  s->information_menu_pc = information_menu_pc;
+  s->information_menu_gc = information_menu_gc;
   s->information_contents = information_contents;
 
   s->proxy_destinations_menu_pc.emplace_back(PROXY_DESTINATIONS_MENU_GO_BACK,

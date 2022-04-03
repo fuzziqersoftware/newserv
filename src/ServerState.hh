@@ -53,7 +53,8 @@ struct ServerState {
   std::shared_ptr<LicenseManager> license_manager;
 
   std::vector<MenuItem> main_menu;
-  std::shared_ptr<std::vector<MenuItem>> information_menu;
+  std::shared_ptr<std::vector<MenuItem>> information_menu_pc;
+  std::shared_ptr<std::vector<MenuItem>> information_menu_gc;
   std::shared_ptr<std::vector<std::u16string>> information_contents;
   std::vector<MenuItem> proxy_destinations_menu_pc;
   std::vector<MenuItem> proxy_destinations_menu_gc;
@@ -98,6 +99,7 @@ struct ServerState {
 
   uint32_t connect_address_for_client(std::shared_ptr<Client> c);
 
+  std::shared_ptr<const std::vector<MenuItem>> information_menu_for_version(GameVersion version);
   const std::vector<MenuItem>& proxy_destinations_menu_for_version(GameVersion version);
   const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations_for_version(GameVersion version);
 

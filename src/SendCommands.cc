@@ -598,42 +598,45 @@ void send_card_search_result(
 
 
 
-void send_guild_card_gc(shared_ptr<Client> c, shared_ptr<Client> source) {
-  S_SendGuildCard_GC cmd;
+template <typename CmdT>
+void send_guild_card_pc_gc(shared_ptr<Client> c, shared_ptr<Client> source) {
+  CmdT cmd;
   cmd.subcommand = 0x06;
-  cmd.subsize = 0x25;
+  cmd.size = sizeof(CmdT) / 4;
   cmd.unused = 0x0000;
   cmd.player_tag = 0x00010000;
-  cmd.reserved1 = 1;
-  cmd.reserved2 = 1;
   cmd.guild_card_number = source->license->serial_number;
   cmd.name = source->player.disp.name;
   remove_language_marker_inplace(cmd.name);
   cmd.desc = source->player.guild_card_desc;
+  cmd.reserved1 = 1;
+  cmd.reserved2 = 1;
   cmd.section_id = source->player.disp.section_id;
   cmd.char_class = source->player.disp.char_class;
   send_command(c, 0x62, c->lobby_client_id, cmd);
 }
 
 void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
-  S_SendGuildCard_BB cmd;
+  G_SendGuildCard_BB_6x06 cmd;
   cmd.subcommand = 0x06;
-  cmd.subsize = 0x43;
+  cmd.size = sizeof(cmd) / 4;
   cmd.unused = 0x0000;
-  cmd.reserved1 = 1;
-  cmd.reserved2 = 1;
   cmd.guild_card_number = source->license->serial_number;
   cmd.name = remove_language_marker(source->player.disp.name);
   cmd.team_name = remove_language_marker(source->player.team_name);
   cmd.desc = source->player.guild_card_desc;
+  cmd.reserved1 = 1;
+  cmd.reserved2 = 1;
   cmd.section_id = source->player.disp.section_id;
   cmd.char_class = source->player.disp.char_class;
   send_command(c, 0x62, c->lobby_client_id, cmd);
 }
 
 void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
-  if (c->version == GameVersion::GC) {
-    send_guild_card_gc(c, source);
+  if (c->version == GameVersion::PC) {
+    send_guild_card_pc_gc<G_SendGuildCard_PC_6x06>(c, source);
+  } else if (c->version == GameVersion::GC) {
+    send_guild_card_pc_gc<G_SendGuildCard_GC_6x06>(c, source);
   } else if (c->version == GameVersion::BB) {
     send_guild_card_bb(c, source);
   } else {
@@ -1118,7 +1121,7 @@ void send_revive_player(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 // notifies other players of a dropped item from a box or enemy
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float y, uint16_t request_id) {
-  S_DropItem_BB cmd = {
+  G_DropItem_6x5F cmd = {
       0x5F, 0x0A, 0x0000, area, from_enemy, request_id, x, y, 0, item};
   send_command(l, 0x60, 0x00, cmd);
 }
@@ -1126,7 +1129,7 @@ void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
 // notifies other players that a stack was split and part of it dropped (a new item was created)
 void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
     uint8_t area, float x, float y) {
-  S_DropStackedItem_BB cmd = {
+  G_DropStackedItem_6x5D cmd = {
       0x5D, 0x09, 0x0000, area, 0, x, y, 0, item};
   send_command(l, 0x60, 0x00, cmd);
 }
@@ -1134,7 +1137,7 @@ void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
 // notifies other players that an item was picked up
 void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint8_t area) {
-  S_PickUpItem_BB cmd = {
+  G_PickUpItem_6x59 cmd = {
       0x59, 0x03, c->lobby_client_id, c->lobby_client_id, area, item_id};
   send_command(l, 0x60, 0x00, cmd);
 }
@@ -1142,7 +1145,7 @@ void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
 // creates an item in a player's inventory (used for withdrawing items from the bank)
 void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     const ItemData& item) {
-  S_CreateInventoryItem_BB cmd = {
+  G_CreateInventoryItem_BB_6xBE cmd = {
       0xBE, 0x07, c->lobby_client_id, item, 0};
   send_command(l, 0x60, 0x00, cmd);
 }
@@ -1150,7 +1153,7 @@ void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
 // destroys an item
 void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint32_t amount) {
-  S_DestroyItem_BB cmd = {
+  G_DestroyItem_6x29 cmd = {
       0x29, 0x03, c->lobby_client_id, item_id, amount};
   send_command(l, 0x60, 0x00, cmd);
 }
@@ -1161,7 +1164,7 @@ void send_bank(shared_ptr<Client> c) {
       &c->player.bank.items[c->player.bank.num_items]);
 
   uint32_t checksum = random_object<uint32_t>();
-  S_BankContentsHeader_BB cmd = {
+  G_BankContentsHeader_BB_6xBC cmd = {
       0xBC, 0, 0, 0, checksum, c->player.bank.num_items, c->player.bank.meseta};
 
   size_t size = 8 + sizeof(cmd) + items.size() * sizeof(PlayerBankItem);
@@ -1172,7 +1175,7 @@ void send_bank(shared_ptr<Client> c) {
 
 // sends the player a shop's contents
 void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
-  S_ShopContents_BB cmd = {
+  G_ShopContents_BB_6xB6 cmd = {
     0xB6,
     0x2C,
     0x037F,
@@ -1208,30 +1211,27 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
     }
   }
 
-  // TODO: Make a real struct for this
-  PSOSubcommand sub[5];
-  sub[0].byte[0] = 0x30;
-  sub[0].byte[1] = 0x05;
-  sub[0].word[1] = c->lobby_client_id;
-  sub[1].word[0] = stats.atp;
-  sub[1].word[1] = stats.mst;
-  sub[2].word[0] = stats.evp;
-  sub[2].word[1] = stats.hp;
-  sub[3].word[0] = stats.dfp;
-  sub[3].word[1] = stats.ata;
-  sub[4].dword = c->player.disp.level;
-  send_command(l, 0x60, 0x00, sub, 0x14);
+  G_LevelUp_6x30 cmd = {
+      0x30,
+      sizeof(G_LevelUp_6x30) / 4,
+      c->lobby_client_id,
+      0,
+      stats.atp,
+      stats.mst,
+      stats.evp,
+      stats.hp,
+      stats.dfp,
+      stats.ata,
+      c->player.disp.level};
+  send_command(l, 0x60, 0x00, cmd);
 }
 
 // gives a player EXP
 void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t amount) {
-  // TODO: Make a real struct for this
-  PSOSubcommand sub[2];
-  sub[0].word[0] = 0x02BF;
-  sub[0].word[1] = c->lobby_client_id;
-  sub[1].dword = amount;
-  send_command(l, 0x60, 0x00, sub, 8);
+  G_GiveExperience_BB_6xBF cmd = {
+      0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, c->lobby_client_id, 0, amount};
+  send_command(l, 0x60, 0x00, cmd);
 }
 
 
@@ -1368,13 +1368,25 @@ void send_server_time(shared_ptr<Client> c) {
 }
 
 void send_change_event(shared_ptr<Client> c, uint8_t new_event) {
-  send_command(c, 0xDA, new_event);
+  // THis command isn't supported on versions before GC apparently
+  if ((c->version == GameVersion::GC) || (c->version == GameVersion::BB)) {
+    send_command(c, 0xDA, new_event);
+  }
 }
 
 void send_change_event(shared_ptr<Lobby> l, uint8_t new_event) {
-  send_command(l, 0xDA, new_event);
+  for (auto& c : l->clients) {
+    if (!c) {
+      continue;
+    }
+    send_change_event(c, new_event);
+  }
 }
 
 void send_change_event(shared_ptr<ServerState> s, uint8_t new_event) {
-  send_command(s, 0xDA, new_event);
+  // TODO: Create a collection of all clients on the server (including those not
+  // in lobbies) and use that here instead
+  for (auto& l : s->all_lobbies()) {
+    send_change_event(l, new_event);
+  }
 }
