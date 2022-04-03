@@ -24,26 +24,6 @@ using namespace std;
 
 
 
-template <typename T>
-const T& check_size_t(
-    const string& data,
-    size_t min_size = sizeof(T),
-    size_t max_size = sizeof(T)) {
-  if (data.size() < min_size) {
-    throw runtime_error(string_printf(
-        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
-        min_size, data.size()));
-  }
-  if (data.size() > max_size) {
-    throw runtime_error(string_printf(
-        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
-        max_size, data.size()));
-  }
-  return *reinterpret_cast<const T*>(data.data());
-}
-
-
-
 enum ClientStateBB {
   // initial connection. server will redirect client to another port.
   INITIAL_LOGIN = 0x00,

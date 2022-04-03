@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <stdexcept>
+#include <phosg/Strings.hh>
 #include <phosg/Encoding.hh>
 
 #include "PSOProtocol.hh"
@@ -33,6 +36,45 @@
 
 
 
+// This function is used in a lot of places to check received command sizes and
+// cast them to the appropriate type
+template <typename T>
+const T& check_size_t(
+    const std::string& data,
+    size_t min_size = sizeof(T),
+    size_t max_size = sizeof(T)) {
+  if (data.size() < min_size) {
+    throw std::runtime_error(string_printf(
+        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
+        min_size, data.size()));
+  }
+  if (data.size() > max_size) {
+    throw std::runtime_error(string_printf(
+        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
+        max_size, data.size()));
+  }
+  return *reinterpret_cast<const T*>(data.data());
+}
+template <typename T>
+T& check_size_t(
+    std::string& data,
+    size_t min_size = sizeof(T),
+    size_t max_size = sizeof(T)) {
+  if (data.size() < min_size) {
+    throw std::runtime_error(string_printf(
+        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
+        min_size, data.size()));
+  }
+  if (data.size() > max_size) {
+    throw std::runtime_error(string_printf(
+        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
+        max_size, data.size()));
+  }
+  return *reinterpret_cast<T*>(data.data());
+}
+
+
+
 // 00: Invalid command
 
 // 01 (S->C): Lobby message box
@@ -52,7 +94,7 @@ struct S_ServerInit_DC_PC_GC_02_17 {
   le_uint32_t server_key; // Key for data sent by server
   le_uint32_t client_key; // Key for data sent by client
   // This field is not part of SEGA's original implementation
-  ptext<char, 0xBC> after_message;
+  ptext<char, 0xC0> after_message;
 };
 
 struct S_ServerInit_Patch_02 {
@@ -71,7 +113,7 @@ struct S_ServerInit_BB_03 {
   parray<uint8_t, 0x30> server_key;
   parray<uint8_t, 0x30> client_key;
   // This field is not part of SEGA's original implementation
-  ptext<char, 0xBC> after_message;
+  ptext<char, 0xC0> after_message;
 };
 
 // 04 (S->C): Set guild card number and update client config ("security data")
@@ -330,9 +372,9 @@ struct S_GuildCardSearchResult {
   ptext<char, 0x3C> unused;
   ptext<CharT, 0x20> name;
 };
-struct S_GuildCardSearchResult_PC_40 : S_GuildCardSearchResult<PSOCommandHeaderPC, char16_t> { };
-struct S_GuildCardSearchResult_DC_GC_40 : S_GuildCardSearchResult<PSOCommandHeaderDCGC, char> { };
-struct S_GuildCardSearchResult_BB_40 : S_GuildCardSearchResult<PSOCommandHeaderBB, char16_t> { };
+struct S_GuildCardSearchResult_PC_41 : S_GuildCardSearchResult<PSOCommandHeaderPC, char16_t> { };
+struct S_GuildCardSearchResult_DC_GC_41 : S_GuildCardSearchResult<PSOCommandHeaderDCGC, char> { };
+struct S_GuildCardSearchResult_BB_41 : S_GuildCardSearchResult<PSOCommandHeaderBB, char16_t> { };
 
 // 41: Invalid command
 // 42: Invalid command

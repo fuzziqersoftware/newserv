@@ -48,7 +48,7 @@ public:
     uint32_t sub_version;
     std::string character_name;
 
-    uint32_t guild_card_number;
+    uint32_t remote_guild_card_number;
     parray<uint8_t, 0x20> remote_client_config_data;
     ClientConfig newserv_client_config;
     bool suppress_newserv_commands;
