@@ -849,7 +849,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 19 */ process_subcommand_forward_check_size_game,
   /* 1A */ process_subcommand_unimplemented,
   /* 1B */ process_subcommand_unimplemented,
-  /* 1C */ process_subcommand_unimplemented,
+  /* 1C */ process_subcommand_forward_check_size_game,
   /* 1D */ process_subcommand_unimplemented,
   /* 1E */ process_subcommand_unimplemented,
   /* 1F */ process_subcommand_forward_check_size,
@@ -864,7 +864,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 28 */ process_subcommand_forward_check_size_game, // Feed MAG
   /* 29 */ process_subcommand_forward_check_size_game, // Delete item (via bank deposit / sale / feeding MAG)
   /* 2A */ process_subcommand_drop_item,
-  /* 2B */ process_subcommand_forward_check_size_game,
+  /* 2B */ process_subcommand_forward_check_size_game, // Create inventory item (e.g. from tekker or bank withdrawal)
   /* 2C */ process_subcommand_forward_check_size, // Talk to NPC
   /* 2D */ process_subcommand_forward_check_size, // Done talking to NPC
   /* 2E */ process_subcommand_unimplemented,
@@ -926,7 +926,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 66 */ process_subcommand_unimplemented,
   /* 67 */ process_subcommand_forward_check_size_game, // Create enemy set
   /* 68 */ process_subcommand_forward_check_size_game, // Telepipe/Ryuker
-  /* 69 */ process_subcommand_unimplemented,
+  /* 69 */ process_subcommand_forward_check_size_game,
   /* 6A */ process_subcommand_forward_check_size_game,
   /* 6B */ process_subcommand_forward_check_game_loading,
   /* 6C */ process_subcommand_forward_check_game_loading,

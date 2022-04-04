@@ -1307,36 +1307,68 @@ struct G_EnemyHitByPlayer_6x0A {
 // 0F: Unknown
 // 10: Unknown
 // 11: Unknown
-// 12: Unknown (supported; game only)
-// 13: Unknown (supported; game only)
+// 12: Dragon (Episode 1 boss) actions
+// 13: Re Rol Le (Episode 1 boss) actions
 // 14: Unknown (supported; game only)
 // 15: Unknown (supported; game only)
 // 16: Unknown
 // 17: Unknown (supported; game only)
 // 18: Unknown (supported; game only)
-// 19: Unknown (supported; game only)
+// 19: Dark Falz (Episode 1 boss) actions
 // 1A: Unknown
 // 1B: Unknown
-// 1C: Unknown
+// 1C: Unknown (supported; game only)
 // 1D: Unknown
 // 1E: Unknown
 // 1F: Unknown (supported; lobby & game)
 // 20: Unknown (supported; lobby & game)
 // 21: Inter-level warp
+
 // 22: Set player visibility
 // 23: Set player visibility
+
+struct G_SetPlayerVisibility_6x22_6x23 {
+  uint8_t subcommand; // 22 = invisible, 23 = visible
+  uint8_t subsize;
+  le_uint16_t client_id;
+};
+
 // 24: Unknown (supported; game only)
 
 // 25: Equip item
-// Format is G_ItemSubcommand
+
+struct G_EquipItem_6x25 {
+  uint8_t command;
+  uint8_t size;
+  uint8_t client_id;
+  uint8_t unused;
+  le_uint32_t item_id;
+  le_uint32_t equip_slot;
+};
 
 // 26: Unequip item
-// Format is G_ItemSubcommand
+
+struct G_UnequipItem_6x26 {
+  uint8_t command;
+  uint8_t size;
+  uint8_t client_id;
+  uint8_t unused;
+  le_uint32_t item_id;
+  le_uint32_t unused2;
+};
 
 // 27: Use item
 // Format is G_ItemSubcommand
 
 // 28: Feed MAG
+
+struct G_FeedMAG_6x28 {
+  uint8_t subcommand;
+  uint8_t subsize;
+  le_uint16_t client_id;
+  le_uint32_t mag_item_id;
+  le_uint32_t fed_item_id;
+};
 
 // 29: Delete item (via bank deposit / sale / feeding MAG)
 
@@ -1363,7 +1395,17 @@ struct G_PlayerDropItem_6x2A {
   le_float z;
 };
 
-// 2B: Unknown (supported; game only)
+// 2B: Create item in inventory (e.g. via tekker or bank withdraw)
+
+struct G_PlayerCreateInventoryItem_6x2B {
+  uint8_t command;
+  uint8_t size;
+  uint8_t client_id; // TODO: verify this
+  uint8_t unused;
+  ItemData item;
+  le_uint32_t unknown;
+};
+
 // 2C: Talk to NPC
 // 2D: Done talking to NPC
 // 2E: Unknown
@@ -1399,10 +1441,43 @@ struct G_LevelUp_6x30 {
 // 3C: Unknown
 // 3D: Unknown
 // 3E: Stop moving
+
+struct G_StopAtPosition_6x3E {
+  uint8_t subcommand;
+  uint8_t subsize;
+  le_uint16_t client_id;
+  uint64_t unknown;
+  le_float x;
+  le_float y;
+  le_float z;
+  uint32_t unused;
+};
+
 // 3F: Unknown (supported; lobby & game)
+
 // 40: Walk
+
+struct G_WalkToPosition_6x40 {
+  uint8_t subcommand;
+  uint8_t subsize;
+  le_uint16_t client_id;
+  le_float x;
+  le_float z;
+  uint32_t unused;
+};
+
 // 41: Unknown
+
 // 42: Run
+
+struct G_RunToPosition_6x42 {
+  uint8_t subcommand;
+  uint8_t subsize;
+  le_uint16_t client_id;
+  le_float x;
+  le_float z;
+};
+
 // 43: Unknown (supported; lobby & game)
 // 44: Unknown (supported; lobby & game)
 // 45: Unknown (supported; lobby & game)
@@ -1468,6 +1543,14 @@ struct G_DropStackedItem_6x5D {
 
 // 5E: Buy item at shop
 
+struct G_BuyShopItem_6x5E {
+  uint8_t subcommand;
+  uint8_t subsize;
+  uint8_t client_id;
+  uint8_t unused;
+  ItemData item;
+};
+
 // 5F: Drop item from box/enemy
 
 struct G_DropItem_6x5F {
@@ -1505,7 +1588,7 @@ struct G_EnemyDropItemRequest_6x60 {
 // 66: Unknown
 // 67: Create enemy set
 // 68: Telepipe/Ryuker
-// 69: Unknown
+// 69: Unknown (supported; game only)
 // 6A: Unknown (supported; game only)
 // 6B: Unknown (used while loading into game)
 // 6C: Unknown (used while loading into game)

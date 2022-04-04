@@ -20,7 +20,7 @@ struct ItemData {
     le_uint16_t item_data1w[6];
     le_uint32_t item_data1d[3];
   } __attribute__((packed));
-  uint32_t item_id;
+  le_uint32_t item_id;
   union {
     uint8_t item_data2[4];
     le_uint16_t item_data2w[2];
