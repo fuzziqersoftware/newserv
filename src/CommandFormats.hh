@@ -1245,7 +1245,8 @@ struct G_ItemSubcommand {
 struct G_SwitchStateChanged_6x05 {
   uint8_t subcommand;
   uint8_t size;
-  parray<uint8_t, 8> unknown; // includes switch ID
+  le_uint16_t switch_id; // 0xFFFF for room clear when all enemies defeated
+  parray<uint8_t, 6> unknown;
   uint8_t area;
   uint8_t enabled;
 };

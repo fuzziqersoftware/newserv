@@ -214,7 +214,7 @@ static void process_subcommand_switch_state_changed(shared_ptr<ServerState>,
     return;
   }
   forward_subcommand(l, c, command, flag, data);
-  if (cmd.enabled) {
+  if (cmd.enabled && cmd.switch_id != 0xFFFF) {
     if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->switch_assist &&
         (c->last_switch_enabled_command.subcommand == 0x05)) {
       log(INFO, "[Switch assist] Replaying previous enable command");

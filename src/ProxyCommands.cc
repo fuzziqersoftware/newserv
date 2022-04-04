@@ -648,7 +648,7 @@ bool process_client_60_62_6C_6D_C9_CB<void>(shared_ptr<ServerState>,
 
   if (!data.empty() && (data[0] == 0x05) && session.enable_switch_assist) {
     auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
-    if (cmd.enabled) {
+    if (cmd.enabled && cmd.switch_id != 0xFFFF) {
       if (session.last_switch_enabled_command.subcommand == 0x05) {
         session.log(INFO, "Switch assist: replaying previous enable command");
         session.send_to_end(true, 0x60, 0x00, &session.last_switch_enabled_command,
