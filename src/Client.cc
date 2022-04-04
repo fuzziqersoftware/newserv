@@ -43,7 +43,7 @@ Client::Client(
     infinite_tp(false),
     switch_assist(false),
     can_chat(true) {
-  memset(&this->last_switch_enabled_subcommand, 0, sizeof(this->last_switch_enabled_subcommand));
+  this->last_switch_enabled_command.subcommand = 0;
   int fd = bufferevent_getfd(this->bev);
   if (fd < 0) {
     this->is_virtual_connection = true;

@@ -10,6 +10,7 @@
 
 #include "Text.hh"
 #include "PSOProtocol.hh"
+#include "CommandFormats.hh"
 
 
 
@@ -25,21 +26,6 @@ enum class ServerBehavior {
   PATCH_SERVER,
   PROXY_SERVER,
 };
-
-struct ClientConfig {
-  uint64_t magic;
-  uint8_t bb_game_state;
-  uint8_t bb_player_index;
-  uint16_t flags;
-  uint32_t proxy_destination_address;
-  uint16_t proxy_destination_port;
-  parray<uint8_t, 0x0E> unused;
-} __attribute__((packed));
-
-struct ClientConfigBB {
-  ClientConfig cfg;
-  parray<uint8_t, 0x08> unused;
-} __attribute__((packed));
 
 struct Client {
   enum Flag {
@@ -120,7 +106,7 @@ struct Client {
   bool infinite_hp; // cheats enabled
   bool infinite_tp; // cheats enabled
   bool switch_assist; // cheats enabled
-  std::string last_switch_enabled_subcommand;
+  G_SwitchStateChanged_6x05 last_switch_enabled_command;
   bool can_chat;
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;

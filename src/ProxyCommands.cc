@@ -646,13 +646,18 @@ bool process_client_60_62_6C_6D_C9_CB<void>(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   check_implemented_subcommand(session.id, data);
 
-  if (!data.empty() && (data[0] == 0x05) && (data[data.size() - 1] == 0x01) && session.enable_switch_assist) {
-    if (!session.last_switch_enabled_subcommand.empty()) {
-      session.log(WARNING, "Switch assist: replaying previous enable subcommand");
-      session.send_to_end(true, 0x60, 0x00, session.last_switch_enabled_subcommand);
-      session.send_to_end(false, 0x60, 0x00, session.last_switch_enabled_subcommand);
+  if (!data.empty() && (data[0] == 0x05) && session.enable_switch_assist) {
+    auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
+    if (cmd.enabled) {
+      if (session.last_switch_enabled_command.subcommand == 0x05) {
+        session.log(INFO, "Switch assist: replaying previous enable command");
+        session.send_to_end(true, 0x60, 0x00, &session.last_switch_enabled_command,
+            sizeof(session.last_switch_enabled_command));
+        session.send_to_end(false, 0x60, 0x00, &session.last_switch_enabled_command,
+            sizeof(session.last_switch_enabled_command));
+      }
+      session.last_switch_enabled_command = cmd;
     }
-    session.last_switch_enabled_subcommand = data;
   }
 
   return true;

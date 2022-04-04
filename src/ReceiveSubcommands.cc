@@ -59,7 +59,7 @@ const PSOSubcommand* check_size_sc<PSOSubcommand>(
 
 
 static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    uint8_t command, uint8_t flag, const string& data) {
+    uint8_t command, uint8_t flag, const void* data, size_t size) {
 
   // if the command is an Ep3-only command, make sure an Ep3 client sent it
   bool command_is_ep3 = (command & 0xF0) == 0xC0;
@@ -90,9 +90,14 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
       }
 
     } else {
-      send_command_excluding_client(l, c, command, flag, data.data(), data.size());
+      send_command_excluding_client(l, c, command, flag, data, size);
     }
   }
+}
+
+static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
+    uint8_t command, uint8_t flag, const string& data) {
+  forward_subcommand(l, c, command, flag, data.data(), data.size());
 }
 
 
@@ -204,19 +209,20 @@ static void process_subcommand_use_technique(shared_ptr<ServerState>,
 static void process_subcommand_switch_state_changed(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  const auto* p = check_size_sc(data, 0x0C);
+  auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
   if (!l->is_game()) {
     return;
   }
   forward_subcommand(l, c, command, flag, data);
-  if (p[2].byte[3] == 1) { // If this is a switch enable command
+  if (cmd.enabled) {
     if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->switch_assist &&
-        !c->last_switch_enabled_subcommand.empty()) {
+        (c->last_switch_enabled_command.subcommand == 0x05)) {
       log(INFO, "[Switch assist] Replaying previous enable command");
-      forward_subcommand(l, c, command, flag, c->last_switch_enabled_subcommand);
-      send_command(c, command, flag, c->last_switch_enabled_subcommand);
+      forward_subcommand(l, c, command, flag, &c->last_switch_enabled_command,
+          sizeof(c->last_switch_enabled_command));
+      send_command(c, command, flag, c->last_switch_enabled_command);
     }
-    memcpy(&c->last_switch_enabled_subcommand, p, sizeof(c->last_switch_enabled_subcommand));
+    c->last_switch_enabled_command = cmd;
   }
 }
 

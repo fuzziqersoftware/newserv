@@ -36,6 +36,26 @@
 
 
 
+// This is the format of newserv's security data, which we call the client
+// config. This data is opaque to the client, so this structure is not
+// technically part of the PSO protocol.
+struct ClientConfig {
+  uint64_t magic;
+  uint8_t bb_game_state;
+  uint8_t bb_player_index;
+  uint16_t flags;
+  uint32_t proxy_destination_address;
+  uint16_t proxy_destination_port;
+  parray<uint8_t, 0x0E> unused;
+} __attribute__((packed));
+
+struct ClientConfigBB {
+  ClientConfig cfg;
+  parray<uint8_t, 0x08> unused;
+} __attribute__((packed));
+
+
+
 // 00: Invalid command
 
 // 01 (S->C): Lobby message box
@@ -1222,11 +1242,13 @@ struct G_ItemSubcommand {
 
 // TODO: make last_switch_enabled_subcommand in both Client and Proxy use this
 // when it's available
-// struct G_SwitchStateChanged_6x05 {
-//   uint8_t subcommand;
-//   uint8_t size;
-//   TODO;
-// };
+struct G_SwitchStateChanged_6x05 {
+  uint8_t subcommand;
+  uint8_t size;
+  parray<uint8_t, 8> unknown; // includes switch ID
+  uint8_t area;
+  uint8_t enabled;
+};
 
 // 06: Send guild card
 

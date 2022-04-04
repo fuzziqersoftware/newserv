@@ -375,7 +375,9 @@ ProxyServer::LinkedSession::LinkedSession(
     override_lobby_event(-1),
     override_lobby_number(-1),
     lobby_players(12),
-    lobby_client_id(0) { }
+    lobby_client_id(0) {
+  this->last_switch_enabled_command.subcommand = 0;
+}
 
 ProxyServer::LinkedSession::LinkedSession(
     ProxyServer* server,
