@@ -121,6 +121,7 @@ template <typename DestT, typename SrcT = DestT>
 size_t text_strncpy_t(DestT*, size_t, const SrcT*, size_t) {
   static_assert(always_false<DestT, SrcT>::v,
       "unspecialized text_strncpy_t should never be called");
+  return 0;
 }
 
 template <>
@@ -153,6 +154,7 @@ template <typename DestT, typename SrcT = DestT>
 size_t text_strnzcpy_t(DestT*, size_t, const SrcT*, size_t) {
   static_assert(always_false<DestT, SrcT>::v,
       "unspecialized text_strnzcpy_t should never be called");
+  return 0;
 }
 
 template <>
