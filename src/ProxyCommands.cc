@@ -397,8 +397,9 @@ static bool process_server_44_A6(shared_ptr<ServerState>,
     const auto& cmd = check_size_t<S_OpenFile_PC_GC_44_A6>(data);
     bool is_download_quest = (command == 0xA6);
 
+    string filename = cmd.filename;
     string output_filename = string_printf("%s.%s.%" PRIu64,
-        cmd.filename.c_str(),
+        filename.c_str(),
         is_download_quest ? "download" : "online", now());
     for (size_t x = 0; x < output_filename.size(); x++) {
       if (output_filename[x] < 0x20 || output_filename[x] > 0x7E || output_filename[x] == '/') {
@@ -426,7 +427,8 @@ static bool process_server_13_A7(shared_ptr<ServerState>,
     try {
       sf = &session.saving_files.at(cmd.filename);
     } catch (const out_of_range&) {
-      session.log(WARNING, "Received data for non-open file %s", cmd.filename.c_str());
+      string filename = cmd.filename;
+      session.log(WARNING, "Received data for non-open file %s", filename.c_str());
       return true;
     }
 

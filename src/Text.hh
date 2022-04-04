@@ -18,12 +18,20 @@
 
 // (1a) Conversion functions
 
-void encode_sjis(
+// These return the number of characters written, including the terminating null
+// character. In the case of encode_sjis, two-byte characters count as two
+// characters, so the returned number is the number of bytes written.
+// allow_skip_terminator means no null byte will be written if dest_count
+// characters are written to the output. If this argument is false, a null
+// terminator is always written, even if the string is truncated.
+size_t encode_sjis(
     char* dest, size_t dest_count,
-    const char16_t* src, size_t src_count);
-void decode_sjis(
+    const char16_t* src, size_t src_count,
+    bool allow_skip_terminator = false);
+size_t decode_sjis(
     char16_t* dest, size_t dest_count,
-    const char* src, size_t src_count);
+    const char* src, size_t src_count,
+    bool allow_skip_terminator = false);
 
 std::string encode_sjis(const char16_t* source, size_t src_count);
 std::u16string decode_sjis(const char* source, size_t src_count);
@@ -42,6 +50,13 @@ template <typename T>
 size_t text_strlen_t(const T* s) {
   size_t ret = 0;
   for (; s[ret] != 0; ret++) { }
+  return ret;
+}
+
+template <typename T>
+size_t text_strnlen_t(const T* s, size_t count) {
+  size_t ret = 0;
+  for (; s[ret] != 0 && ret < count; ret++) { }
   return ret;
 }
 
@@ -74,15 +89,28 @@ size_t text_strneq_t(const T* a, const T* b, size_t count) {
   return true;
 }
 
+template <typename T>
+size_t text_strncpy_t(T* dest, const T* src, size_t count) {
+  size_t x;
+  for (x = 0; x < count && src[x] != 0; x++) {
+    dest[x] = src[x];
+  }
+  if (x < count) {
+    dest[x++] = 0;
+  }
+  return x;
+}
+
 // Like strncpy, but *always* null-terminates the string, even if it has to
 // truncate it.
 template <typename T>
-void text_strnzcpy_t(T* dest, const T* src, size_t count) {
+size_t text_strnzcpy_t(T* dest, const T* src, size_t count) {
   size_t x;
   for (x = 0; x < count - 1 && src[x] != 0; x++) {
     dest[x] = src[x];
   }
-  dest[x] = 0;
+  dest[x++] = 0;
+  return x;
 }
 
 
@@ -90,40 +118,72 @@ void text_strnzcpy_t(T* dest, const T* src, size_t count) {
 // (2) Type conversion functions
 
 template <typename DestT, typename SrcT = DestT>
-void text_strnzcpy_t(DestT*, size_t, const SrcT*, size_t) {
+size_t text_strncpy_t(DestT*, size_t, const SrcT*, size_t) {
+  static_assert(always_false<DestT, SrcT>::v,
+      "unspecialized text_strncpy_t should never be called");
+}
+
+template <>
+inline size_t text_strncpy_t<char>(
+    char* dest, size_t dest_count, const char* src, size_t src_count) {
+  size_t count = std::min<size_t>(dest_count, src_count);
+  return text_strncpy_t(dest, src, count);
+}
+
+template <>
+inline size_t text_strncpy_t<char, char16_t>(
+    char* dest, size_t dest_count, const char16_t* src, size_t src_count) {
+  return encode_sjis(dest, dest_count, src, src_count, true);
+}
+
+template <>
+inline size_t text_strncpy_t<char16_t, char>(
+    char16_t* dest, size_t dest_count, const char* src, size_t src_count) {
+  return decode_sjis(dest, dest_count, src, src_count, true);
+}
+
+template <>
+inline size_t text_strncpy_t<char16_t>(
+    char16_t* dest, size_t dest_count, const char16_t* src, size_t src_count) {
+  size_t count = std::min<size_t>(dest_count, src_count);
+  return text_strncpy_t(dest, src, count);
+}
+
+template <typename DestT, typename SrcT = DestT>
+size_t text_strnzcpy_t(DestT*, size_t, const SrcT*, size_t) {
   static_assert(always_false<DestT, SrcT>::v,
       "unspecialized text_strnzcpy_t should never be called");
 }
 
 template <>
-inline void text_strnzcpy_t<char>(
+inline size_t text_strnzcpy_t<char>(
     char* dest, size_t dest_count, const char* src, size_t src_count) {
   size_t count = std::min<size_t>(dest_count, src_count);
-  text_strnzcpy_t(dest, src, count);
+  return text_strnzcpy_t(dest, src, count);
 }
 
 template <>
-inline void text_strnzcpy_t<char, char16_t>(
+inline size_t text_strnzcpy_t<char, char16_t>(
     char* dest, size_t dest_count, const char16_t* src, size_t src_count) {
-  encode_sjis(dest, dest_count, src, src_count);
+  return encode_sjis(dest, dest_count, src, src_count);
 }
 
 template <>
-inline void text_strnzcpy_t<char16_t, char>(
+inline size_t text_strnzcpy_t<char16_t, char>(
     char16_t* dest, size_t dest_count, const char* src, size_t src_count) {
-  decode_sjis(dest, dest_count, src, src_count);
+  return decode_sjis(dest, dest_count, src, src_count);
 }
 
 template <>
-inline void text_strnzcpy_t<char16_t>(
+inline size_t text_strnzcpy_t<char16_t>(
     char16_t* dest, size_t dest_count, const char16_t* src, size_t src_count) {
   size_t count = std::min<size_t>(dest_count, src_count);
-  text_strnzcpy_t(dest, src, count);
+  return text_strnzcpy_t(dest, src, count);
 }
 
 
 
-// (3) Packed text object for use in protocol structs
+// (3) Packed text objects for use in protocol structs
 
 template <typename ItemT, size_t Count>
 struct parray {
@@ -207,9 +267,20 @@ struct parray {
       this->items[x] = v;
     }
   }
+  void clear_after(size_t position, ItemT v = 0) {
+    for (size_t x = position; x < Count; x++) {
+      this->items[x] = v;
+    }
+  }
 } __attribute__((packed));
 
 
+// TODO: It appears that these actually do not have to be null-terminated in PSO
+// commands some of the time. As an example, creating a game with a name with
+// the maximum length results in a C1 command with no null byte between the game
+// name and the password. We should be able to handle this by making ptexts not
+// required to be null-terminated in storage - this will still be safe if we
+// limit all operations by Count.
 template <typename CharT, size_t Count>
 struct ptext : parray<CharT, Count> {
   ptext() {
@@ -236,57 +307,54 @@ struct ptext : parray<CharT, Count> {
   }
 
   size_t len() const {
-    return text_strlen_t(this->items);
-  }
-  const CharT* c_str() const {
-    return this->data();
+    return text_strnlen_t(this->items, Count);
   }
 
-  // TODO: These can be made faster by only clearing the unused space after the
-  // strncpy_t (if any) instead of clearing all the space every time
+  // Q: Why is there no c_str() here?
+  // A: Because the contents of a ptext don't have to be null-terminated.
+
   ptext& operator=(const ptext& s) {
-    this->clear();
-    text_strnzcpy_t(this->items, Count, s.items, Count);
+    memcpy(this->items, s.items, sizeof(CharT) * Count);
     return *this;
   }
   ptext& operator=(ptext&& s) = delete;
 
   template <typename OtherCharT>
   ptext& operator=(const OtherCharT* s) {
-    this->clear();
-    text_strnzcpy_t(this->items, Count, s, Count);
+    size_t chars_written = text_strncpy_t(this->items, Count, s, Count);
+    this->clear_after(chars_written);
     return *this;
   }
   template <typename OtherCharT>
   ptext& assign(const OtherCharT* s, size_t s_count) {
-    this->clear();
-    text_strnzcpy_t(this->items, Count, s, s_count);
+    size_t chars_written = text_strncpy_t(this->items, Count, s, s_count);
+    this->clear_after(chars_written);
     return *this;
   }
   template <typename OtherCharT>
   ptext& operator=(const std::basic_string<OtherCharT>& s) {
-    this->clear();
-    text_strnzcpy_t(this->items, Count, s.c_str(), s.size() + 1);
+    size_t chars_written = text_strncpy_t(this->items, Count, s.c_str(), s.size());
+    this->clear_after(chars_written);
     return *this;
   }
   template <typename OtherCharT, size_t OtherCount>
   ptext& operator=(const ptext<OtherCharT, OtherCount>& s) {
-    this->clear();
-    text_strnzcpy_t(this->items, Count, s.items, OtherCount);
+    size_t chars_written = text_strncpy_t(this->items, Count, s.items, OtherCount);
+    this->clear_after(chars_written);
     return *this;
   }
 
   template <typename OtherCharT>
   bool operator==(const OtherCharT* s) const {
-    return text_streq_t(this->items, s);
+    return text_strneq_t(this->items, s, Count);
   }
   template <typename OtherCharT>
   bool operator==(const std::basic_string<OtherCharT>& s) const {
-    return text_streq_t(this->items, s.c_str());
+    return text_strneq_t(this->items, s.c_str(), Count);
   }
   template <typename OtherCharT, size_t OtherCount>
   bool operator==(const ptext<OtherCharT, OtherCount>& s) const {
-    return text_streq_t(this->items, s.items);
+    return text_strneq_t(this->items, s.items, std::min<size_t>(Count, OtherCount));
   }
   template <typename OtherCharT>
   bool operator!=(const OtherCharT* s) const {

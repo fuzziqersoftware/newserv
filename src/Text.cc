@@ -91,19 +91,21 @@ std::string encode_sjis(const char16_t* src, size_t src_count) {
   return ret;
 }
 
-void encode_sjis(
+size_t encode_sjis(
     char* dest,
     size_t dest_count,
     const char16_t* src,
-    size_t src_count) {
+    size_t src_count,
+    bool allow_skip_terminator) {
   const auto& table = unicode_to_sjis_table();
 
   if (dest_count == 0) {
     throw logic_error("cannot encode into zero-length buffer");
   }
 
+  const char* dest_start = dest;
   const char16_t* src_end = src + src_count;
-  const char* dest_end = dest + (dest_count - 1);
+  const char* dest_end = dest + (allow_skip_terminator ? dest_count : (dest_count - 1));
   while ((dest != dest_end) && (src != src_end) && *src) {
     uint16_t ch = *(src++);
     uint16_t translated_c = table[ch];
@@ -122,7 +124,11 @@ void encode_sjis(
       *(dest++) = translated_c & 0xFF;
     }
   }
-  *dest = 0;
+  if (!allow_skip_terminator || (dest != dest_end)) {
+    *dest = 0;
+    dest++;
+  }
+  return dest - dest_start;
 }
 
 std::u16string decode_sjis(const char* src, size_t src_count) {
@@ -146,19 +152,21 @@ std::u16string decode_sjis(const char* src, size_t src_count) {
   return ret;
 }
 
-void decode_sjis(
+size_t decode_sjis(
     char16_t* dest,
     size_t dest_count,
     const char* src,
-    size_t src_count) {
+    size_t src_count,
+    bool allow_skip_terminator) {
   const auto& table = sjis_to_unicode_table();
 
   if (dest_count == 0) {
     throw logic_error("cannot decode into zero-length buffer");
   }
 
+  const char16_t* dest_start = dest;
   const char* src_end = src + src_count;
-  const char16_t* dest_end = dest + (dest_count - 1);
+  const char16_t* dest_end = dest + (allow_skip_terminator ? dest_count : (dest_count - 1));
   while ((dest != dest_end) && (src != src_end) && *src) {
     uint16_t src_char = *(src++);
     if (src_char & 0x80) {
@@ -172,4 +180,8 @@ void decode_sjis(
     }
     *(dest++) = table[src_char];
   };
+  if (!allow_skip_terminator || (dest != dest_end)) {
+    *(dest++) = 0;
+  }
+  return dest - dest_start;
 }
