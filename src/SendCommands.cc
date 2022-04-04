@@ -19,7 +19,8 @@ using namespace std;
 
 
 
-static FileContentsCache file_cache;
+extern bool use_terminal_colors;
+extern FileContentsCache file_cache;
 
 
 
@@ -88,9 +89,15 @@ void send_command(
     if (name_str[0]) {
       name_token = string(" to ") + name_str;
     }
+    if (use_terminal_colors) {
+      print_color_escape(stderr, TerminalFormat::FG_YELLOW, TerminalFormat::BOLD, TerminalFormat::END);
+    }
     log(INFO, "Sending%s (version=%d command=%04hX flag=%08X)",
         name_token.c_str(), static_cast<int>(version), command, flag);
     print_data(stderr, send_data.data(), send_data.size());
+    if (use_terminal_colors) {
+      print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
+    }
   }
 
   if (crypt) {

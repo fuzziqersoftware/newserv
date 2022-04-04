@@ -587,7 +587,7 @@ void ProxyServer::LinkedSession::on_server_input() {
   for_each_received_command(this->server_bev.get(), this->version, this->server_input_crypt.get(),
     [&](uint16_t command, uint32_t flag, string& data) {
       print_received_command(command, flag, data.data(), data.size(),
-          this->version, this->server_name.c_str());
+          this->version, this->server_name.c_str(), TerminalFormat::FG_RED);
       process_proxy_command(
           this->server->state,
           *this,

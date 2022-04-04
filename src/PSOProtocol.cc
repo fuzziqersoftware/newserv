@@ -11,6 +11,10 @@ using namespace std;
 
 
 
+extern bool use_terminal_colors;
+
+
+
 PSOCommandHeader::PSOCommandHeader() {
   this->bb.size = 0;
   this->bb.command = 0;
@@ -185,7 +189,12 @@ void print_received_command(
     const void* data,
     size_t size,
     GameVersion version,
-    const char* name) {
+    const char* name,
+    TerminalFormat color) {
+  if (use_terminal_colors) {
+    print_color_escape(stderr, color, TerminalFormat::BOLD, TerminalFormat::END);
+  }
+
   string name_token;
   if (name && name[0]) {
     name_token = string(" from ") + name;
@@ -206,6 +215,10 @@ void print_received_command(
   w.write(data, size);
 
   print_data(stderr, w.str());
+
+  if (use_terminal_colors) {
+    print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
+  }
 }
 
 void check_size_v(size_t size, size_t min_size, size_t max_size) {

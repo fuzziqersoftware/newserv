@@ -1036,8 +1036,6 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D7
-  static FileContentsCache file_cache;
-
   string filename(data);
   strip_trailing_zeroes(filename);
   auto contents = file_cache.get(filename);

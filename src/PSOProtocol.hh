@@ -64,7 +64,8 @@ void print_received_command(
     const void* data,
     size_t size,
     GameVersion version,
-    const char* name = nullptr);
+    const char* name = nullptr,
+    TerminalFormat color = TerminalFormat::FG_GREEN);
 
 // This function is used in a lot of places to check received command sizes and
 // cast them to the appropriate type

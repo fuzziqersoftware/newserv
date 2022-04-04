@@ -26,6 +26,7 @@ using namespace std;
 
 
 FileContentsCache file_cache;
+bool use_terminal_colors = false;
 
 
 
@@ -278,6 +279,10 @@ void drop_privileges(const string& username) {
 
 int main(int, char**) {
   signal(SIGPIPE, SIG_IGN);
+
+  if (isatty(fileno(stderr))) {
+    use_terminal_colors = true;
+  }
 
   shared_ptr<ServerState> state(new ServerState());
 
