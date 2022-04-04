@@ -78,7 +78,7 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     if (command_is_ep3 && !(target->flags & Client::Flag::EPISODE_3)) {
       return;
     }
-    send_command(target, command, flag, data);
+    send_command(target, command, flag, data, size);
 
   } else {
     if (command_is_ep3) {
@@ -86,7 +86,7 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
         if (!target || (target == c) || !(target->flags & Client::Flag::EPISODE_3)) {
           continue;
         }
-        send_command(target, command, flag, data);
+        send_command(target, command, flag, data, size);
       }
 
     } else {

@@ -1017,7 +1017,7 @@ void send_player_leave_notification(shared_ptr<Lobby> l, uint8_t leaving_client_
 }
 
 void send_get_player_info(shared_ptr<Client> c) {
-  send_command(c, 0x95);
+  send_command(c, 0x95, 0x00);
 }
 
 

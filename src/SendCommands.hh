@@ -17,22 +17,49 @@
 
 
 
+// Note: There are so many versions of this function for a few reasons:
+// - There are a lot of different target types (sometimes we want to send a
+//   command to one client, sometimes to everyone in a lobby, etc.)
+// - For the const void* versions, the data and size arguments should not be
+//   independently optional - this can lead to bugs where a non-null data
+//   pointer is given but size is accidentally not given zero (e.g. if the type
+//   of data in the calling function is changed from string to void*).
+
 void send_command(struct bufferevent* bev, GameVersion version,
-    PSOEncryption* crypt, uint16_t command, uint32_t flag = 0,
-    const void* data = nullptr, size_t size = 0, const char* name_str = nullptr);
+    PSOEncryption* crypt, uint16_t command, uint32_t flag, const void* data,
+    size_t size, const char* name_str = nullptr);
 
 void send_command(std::shared_ptr<Client> c, uint16_t command,
-    uint32_t flag = 0, const void* data = nullptr, size_t size = 0);
+    uint32_t flag, const void* data, size_t size);
+
+inline void send_command(std::shared_ptr<Client> c, uint16_t command,
+    uint32_t flag) {
+  send_command(c, command, flag, nullptr, 0);
+}
 
 void send_command_excluding_client(std::shared_ptr<Lobby> l,
-    std::shared_ptr<Client> c, uint16_t command, uint32_t flag = 0,
-    const void* data = nullptr, size_t size = 0);
+    std::shared_ptr<Client> c, uint16_t command, uint32_t flag,
+    const void* data, size_t size);
 
-void send_command(std::shared_ptr<Lobby> l, uint16_t command, uint32_t flag = 0,
-    const void* data = nullptr, size_t size = 0);
+inline void send_command_excluding_client(std::shared_ptr<Lobby> l,
+    std::shared_ptr<Client> c, uint16_t command, uint32_t flag) {
+  send_command_excluding_client(l, c, command, flag, nullptr, 0);
+}
+
+void send_command(std::shared_ptr<Lobby> l, uint16_t command, uint32_t flag,
+    const void* data, size_t size);
+
+inline void send_command(std::shared_ptr<Lobby> l, uint16_t command, uint32_t flag) {
+  send_command(l, command, flag, nullptr, 0);
+}
 
 void send_command(std::shared_ptr<ServerState> s, uint16_t command,
-    uint32_t flag = 0, const void* data = nullptr, size_t size = 0);
+    uint32_t flag, const void* data, size_t size);
+
+inline void send_command(std::shared_ptr<ServerState> s, uint16_t command,
+    uint32_t flag) {
+  send_command(s, command, flag, nullptr, 0);
+}
 
 template <typename TargetT, typename StructT>
 static void send_command(std::shared_ptr<TargetT> c, uint16_t command, uint32_t flag,

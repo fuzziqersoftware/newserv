@@ -445,7 +445,7 @@ void process_ep3_menu_challenge(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t flag, const string& data) { // DC
   check_size_v(data.size(), 0);
   if (flag != 0) {
-    send_command(c, 0xDC);
+    send_command(c, 0xDC, 0x00);
   }
 }
 
@@ -1030,7 +1030,7 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   // if they're all done, start the quest
   if (x == l->max_clients) {
-    send_command(l, 0xAC);
+    send_command(l, 0xAC, 0x00);
   }
 }
 
@@ -1710,7 +1710,7 @@ void process_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
 void process_encryption_ok_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
-  send_command(c, 0x04); // this requests the user's login information
+  send_command(c, 0x04, 0x00); // This requests the user's login information
 }
 
 void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1762,13 +1762,13 @@ independently.\r\n\
   send_check_directory_patch(c, ".");
   send_check_directory_patch(c, "data");
   send_check_directory_patch(c, "scene");
-  send_command(c, 0x0A);
-  send_command(c, 0x0A);
-  send_command(c, 0x0A);
+  send_command(c, 0x0A, 0x00);
+  send_command(c, 0x0A, 0x00);
+  send_command(c, 0x0A, 0x00);
 
   // This command terminates the patch connection successfully. PSOBB complains
   // if we don't check the above directories before sending this though
-  send_command(c, 0x0012, 0x00000000);
+  send_command(c, 0x12, 0x00);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
