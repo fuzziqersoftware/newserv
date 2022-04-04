@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include <string>
+
 #include "Player.hh"
 
 // information on a single level for a single class

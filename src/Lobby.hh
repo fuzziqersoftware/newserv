@@ -3,11 +3,16 @@
 #include <inttypes.h>
 
 #include <vector>
+#include <string>
+#include <memory>
+#include <unordered_map>
+#include <phosg/Encoding.hh>
 
 #include "Client.hh"
 #include "Player.hh"
 #include "Map.hh"
 #include "RareItemSet.hh"
+#include "Text.hh"
 
 struct Lobby {
   enum Flag {
