@@ -71,7 +71,8 @@ struct PlayerBank {
   void load(const std::string& filename);
   void save(const std::string& filename) const;
 
-  bool switch_with_file(const char* save_filename, const char* load_filename);
+  bool switch_with_file(const std::string& save_filename,
+      const std::string& load_filename);
 
   void add_item(const PlayerBankItem& item);
   void remove_item(uint32_t item_id, uint32_t amount, PlayerBankItem* item);

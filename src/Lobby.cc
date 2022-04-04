@@ -135,7 +135,7 @@ void Lobby::move_client_to_lobby(shared_ptr<Lobby> dest_lobby,
 
 
 
-shared_ptr<Client> Lobby::find_client(const char16_t* identifier,
+shared_ptr<Client> Lobby::find_client(const u16string* identifier,
     uint64_t serial_number) {
   for (size_t x = 0; x < this->max_clients; x++) {
     if (!this->clients[x]) {
@@ -145,7 +145,7 @@ shared_ptr<Client> Lobby::find_client(const char16_t* identifier,
         (this->clients[x]->license->serial_number == serial_number)) {
       return this->clients[x];
     }
-    if (identifier && (this->clients[x]->player.disp.name == identifier)) {
+    if (identifier && (this->clients[x]->player.disp.name == *identifier)) {
       return this->clients[x];
     }
   }

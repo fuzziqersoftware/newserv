@@ -48,5 +48,5 @@ struct PSOEnemy {
   PSOEnemy(uint32_t experience, uint32_t rt_index);
 } __attribute__((packed));
 
-std::vector<PSOEnemy> load_map(const char* filename, uint8_t episode,
+std::vector<PSOEnemy> load_map(const std::string& filename, uint8_t episode,
     uint8_t difficulty, const BattleParams* bp, bool alt_enemies);

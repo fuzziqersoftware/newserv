@@ -10,7 +10,7 @@ using namespace std;
 
 
 
-LevelTable::LevelTable(const char* filename, bool compressed) {
+LevelTable::LevelTable(const string& filename, bool compressed) {
 
   string data = load_file(filename);
   if (compressed) {

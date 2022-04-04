@@ -24,7 +24,7 @@ struct LevelTable {
   uint32_t unknown[12];
   LevelStats levels[12][200];
 
-  LevelTable(const char* filename, bool compressed);
+  LevelTable(const std::string& filename, bool compressed);
 
   const PlayerStats& base_stats_for_class(uint8_t char_class) const;
   const LevelStats& stats_for_level(uint8_t char_class, uint8_t level) const;

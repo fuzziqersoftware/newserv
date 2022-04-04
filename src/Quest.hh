@@ -80,7 +80,7 @@ struct QuestIndex {
 
   std::map<std::string, std::shared_ptr<std::string>> gba_file_contents;
 
-  QuestIndex(const char* directory);
+  QuestIndex(const std::string& directory);
 
   std::shared_ptr<const Quest> get(GameVersion version, uint32_t id) const;
   std::shared_ptr<const std::string> get_gba(const std::string& name) const;

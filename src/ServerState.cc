@@ -146,13 +146,12 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
   this->id_to_lobby.erase(lobby_id);
 }
 
-shared_ptr<Client> ServerState::find_client(const char16_t* identifier,
+shared_ptr<Client> ServerState::find_client(const std::u16string* identifier,
     uint64_t serial_number, shared_ptr<Lobby> l) {
 
   if ((serial_number == 0) && identifier) {
     try {
-      string encoded = encode_sjis(identifier);
-      serial_number = stoull(encoded, nullptr, 0);
+      serial_number = stoull(encode_sjis(*identifier), nullptr, 0);
     } catch (const exception&) { }
   }
 

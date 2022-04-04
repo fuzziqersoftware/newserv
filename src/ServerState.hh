@@ -94,8 +94,10 @@ struct ServerState {
   void add_lobby(std::shared_ptr<Lobby> l);
   void remove_lobby(uint32_t lobby_id);
 
-  std::shared_ptr<Client> find_client(const char16_t* identifier = nullptr,
-    uint64_t serial_number = 0, std::shared_ptr<Lobby> l = nullptr);
+  std::shared_ptr<Client> find_client(
+    const std::u16string* identifier = nullptr,
+    uint64_t serial_number = 0,
+    std::shared_ptr<Lobby> l = nullptr);
 
   uint32_t connect_address_for_client(std::shared_ptr<Client> c);
 

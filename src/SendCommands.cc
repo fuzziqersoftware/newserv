@@ -348,7 +348,8 @@ void send_stream_file_bb(shared_ptr<Client> c) {
 
   uint32_t buffer_offset = 0;
   for (size_t x = 0; x < entry_count; x++) {
-    auto filename = string_printf("system/blueburst/%s", entries[x].filename.c_str());
+    string base_filename = entries[x].filename;
+    auto filename = "system/blueburst/" + base_filename;
     auto file_data = file_cache.get(filename);
 
     size_t file_data_remaining = file_data->size();
@@ -395,7 +396,7 @@ void send_complete_player_bb(shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 // patch functions
 
-void send_check_directory_patch(shared_ptr<Client> c, const char* dir) {
+void send_check_directory_patch(shared_ptr<Client> c, const string& dir) {
   S_CheckDirectory_Patch_09 cmd = {dir};
   send_command(c, 0x09, 0x00, cmd);
 }
@@ -406,12 +407,12 @@ void send_check_directory_patch(shared_ptr<Client> c, const char* dir) {
 // message functions
 
 void send_text(shared_ptr<Client> c, StringWriter& w, uint16_t command,
-    const char16_t* text) {
+    const u16string& text) {
   if ((c->version == GameVersion::DC) || (c->version == GameVersion::GC)) {
     string data = encode_sjis(text);
     add_color(w, data.c_str(), data.size());
   } else {
-    add_color(w, text, text_strlen_t(text));
+    add_color(w, text.c_str(), text.size());
   }
   while (w.str().size() & 3) {
     w.put_u8(0);
@@ -420,44 +421,44 @@ void send_text(shared_ptr<Client> c, StringWriter& w, uint16_t command,
 }
 
 void send_header_text(shared_ptr<Client> c, uint16_t command,
-    uint32_t guild_card_number, const char16_t* text) {
+    uint32_t guild_card_number, const u16string& text) {
   StringWriter w;
   w.put(SC_TextHeader_01_06_11_B0({0, guild_card_number}));
   send_text(c, w, command, text);
 }
 
 void send_text(shared_ptr<Client> c, uint16_t command,
-    const char16_t* text) {
+    const u16string& text) {
   StringWriter w;
   send_text(c, w, command, text);
 }
 
-void send_message_box(shared_ptr<Client> c, const char16_t* text) {
+void send_message_box(shared_ptr<Client> c, const u16string& text) {
   uint16_t command = (c->version == GameVersion::PATCH) ? 0x13 : 0x1A;
   send_text(c, command, text);
 }
 
-void send_lobby_name(shared_ptr<Client> c, const char16_t* text) {
+void send_lobby_name(shared_ptr<Client> c, const u16string& text) {
   send_text(c, 0x8A, text);
 }
 
-void send_quest_info(shared_ptr<Client> c, const char16_t* text) {
+void send_quest_info(shared_ptr<Client> c, const u16string& text) {
   send_text(c, 0xA3, text);
 }
 
-void send_lobby_message_box(shared_ptr<Client> c, const char16_t* text) {
+void send_lobby_message_box(shared_ptr<Client> c, const u16string& text) {
   send_header_text(c, 0x01, 0, text);
 }
 
-void send_ship_info(shared_ptr<Client> c, const char16_t* text) {
+void send_ship_info(shared_ptr<Client> c, const u16string& text) {
   send_header_text(c, 0x11, 0, text);
 }
 
-void send_text_message(shared_ptr<Client> c, const char16_t* text) {
+void send_text_message(shared_ptr<Client> c, const u16string& text) {
   send_header_text(c, 0xB0, 0, text);
 }
 
-void send_text_message(shared_ptr<Lobby> l, const char16_t* text) {
+void send_text_message(shared_ptr<Lobby> l, const u16string& text) {
   for (size_t x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
       send_text_message(l->clients[x], text);
@@ -465,7 +466,7 @@ void send_text_message(shared_ptr<Lobby> l, const char16_t* text) {
   }
 }
 
-void send_text_message(shared_ptr<ServerState> s, const char16_t* text) {
+void send_text_message(shared_ptr<ServerState> s, const u16string& text) {
   // TODO: We should have a collection of all clients (even those not in any
   // lobby) and use that instead here
   for (auto& l : s->all_lobbies()) {
@@ -474,7 +475,7 @@ void send_text_message(shared_ptr<ServerState> s, const char16_t* text) {
 }
 
 void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
-    const char16_t* from_name, const char16_t* text) {
+    const u16string& from_name, const u16string& text) {
   u16string data;
   if (c->version == GameVersion::BB) {
     data.append(u"\x09J");
@@ -482,11 +483,11 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
   data.append(remove_language_marker(from_name));
   data.append(u"\x09\x09J");
   data.append(text);
-  send_header_text(c, 0x06, from_guild_card_number, data.c_str());
+  send_header_text(c, 0x06, from_guild_card_number, data);
 }
 
 void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_guild_card_number,
-    const char16_t* from_name, const char16_t* text) {
+    const u16string& from_name, const u16string& text) {
   SC_SimpleMail_GC_81 cmd;
   cmd.player_tag = 0x00010000;
   cmd.from_guild_card_number = from_guild_card_number;
@@ -497,7 +498,7 @@ void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_guild_card_num
 }
 
 void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_guild_card_number,
-    const char16_t* from_name, const char16_t* text) {
+    const u16string& from_name, const u16string& text) {
   if (c->version == GameVersion::GC) {
     send_simple_mail_gc(c, from_guild_card_number, from_name, text);
   } else {
@@ -652,7 +653,7 @@ void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
 template <typename EntryT>
 void send_menu_t(
     shared_ptr<Client> c,
-    const char16_t* menu_name,
+    const u16string& menu_name,
     uint32_t menu_id,
     const vector<MenuItem>& items,
     bool is_info_menu) {
@@ -684,7 +685,7 @@ void send_menu_t(
   send_command(c, is_info_menu ? 0x1F : 0x07, entries.size() - 1, entries);
 }
 
-void send_menu(shared_ptr<Client> c, const char16_t* menu_name,
+void send_menu(shared_ptr<Client> c, const u16string& menu_name,
     uint32_t menu_id, const vector<MenuItem>& items, bool is_info_menu) {
   if (c->version == GameVersion::PC || c->version == GameVersion::PATCH ||
       c->version == GameVersion::BB) {
@@ -1306,7 +1307,7 @@ void send_quest_open_file_t(
 
 void send_quest_file_chunk(
     shared_ptr<Client> c,
-    const char* filename,
+    const string& filename,
     size_t chunk_index,
     const void* data,
     size_t size,

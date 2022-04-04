@@ -402,7 +402,7 @@ string Quest::decode_gci(const string& filename) {
 
 
 
-QuestIndex::QuestIndex(const char* directory) : directory(directory) {
+QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
   auto filename_set = list_directory(this->directory);
   vector<string> filenames(filename_set.begin(), filename_set.end());
   sort(filenames.begin(), filenames.end());

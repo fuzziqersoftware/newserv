@@ -322,15 +322,15 @@ uint8_t npc_for_name(const u16string& name) {
 
 class precondition_failed {
 public:
-  precondition_failed(const char16_t* user_msg) : user_msg(user_msg) { }
+  precondition_failed(const std::u16string& user_msg) : user_msg(user_msg) { }
   ~precondition_failed() = default;
 
-  const char16_t* what() const {
+  const std::u16string& what() const {
     return this->user_msg;
   }
 
 private:
-  const char16_t* user_msg;
+  std::u16string user_msg;
 };
 
 static void check_privileges(shared_ptr<Client> c, uint64_t mask) {
@@ -388,7 +388,7 @@ static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 // Message commands
 
 static void command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t*) {
+    shared_ptr<Client> c, const std::u16string&) {
   // no preconditions - everyone can use this command
 
   if (!l) {
@@ -417,20 +417,20 @@ static void command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 }
 
 static void command_ax(shared_ptr<ServerState>, shared_ptr<Lobby>,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::ANNOUNCE);
   string message = encode_sjis(args);
   log(INFO, "[Client message from %010u] %s\n", c->license->serial_number, message.c_str());
 }
 
 static void command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby>,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::ANNOUNCE);
   send_text_message(s, args);
 }
 
 static void command_arrow(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   // no preconditions
   c->lobby_arrow_color = stoull(encode_sjis(args), nullptr, 0);
   if (!l->is_game()) {
@@ -442,7 +442,7 @@ static void command_arrow(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 // Lobby commands
 
 static void command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t*) {
+    shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_is_leader(l, c);
 
@@ -466,7 +466,7 @@ static void command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 }
 
 static void command_lobby_event(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
   check_privileges(c, Privilege::CHANGE_EVENT);
 
@@ -481,7 +481,7 @@ static void command_lobby_event(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 }
 
 static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::CHANGE_EVENT);
 
   uint8_t new_event = event_for_name(args);
@@ -501,7 +501,7 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
 }
 
 static void command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
   check_privileges(c, Privilege::CHANGE_EVENT);
 
@@ -527,7 +527,7 @@ static void command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 // Game commands
 
 static void command_secid(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
 
   if (!args[0]) {
@@ -540,7 +540,7 @@ static void command_secid(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 }
 
 static void command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
   check_is_leader(l, c);
 
@@ -557,7 +557,7 @@ static void command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 }
 
 static void command_min_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
   check_is_leader(l, c);
 
@@ -568,7 +568,7 @@ static void command_min_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 }
 
 static void command_max_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
   check_is_leader(l, c);
 
@@ -588,7 +588,7 @@ static void command_max_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 // Character commands
 
 static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
   check_version(c, GameVersion::BB);
 
@@ -673,7 +673,7 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 }
 
 static void command_change_bank(shared_ptr<ServerState>, shared_ptr<Lobby>,
-    shared_ptr<Client> c, const char16_t*) {
+    shared_ptr<Client> c, const std::u16string&) {
   check_version(c, GameVersion::BB);
 
   // TODO: implement this
@@ -681,7 +681,7 @@ static void command_change_bank(shared_ptr<ServerState>, shared_ptr<Lobby>,
 }
 
 static void command_convert_char_to_bb(shared_ptr<ServerState> s,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
   check_not_version(c, GameVersion::BB);
 
@@ -716,10 +716,10 @@ static void command_convert_char_to_bb(shared_ptr<ServerState> s,
 // Administration commands
 
 static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::SILENCE_USER);
 
-  auto target = s->find_client(args);
+  auto target = s->find_client(&args);
   if (!target->license) {
     // this should be impossible, but I'll bet it's not actually
     send_text_message(c, u"$C6Client not logged in");
@@ -738,12 +738,12 @@ static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 }
 
 static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::KICK_USER);
 
-  auto target = s->find_client(args);
+  auto target = s->find_client(&args);
   if (!target->license) {
-    // this should be impossible, but I'll bet it's not actually
+    // This should be impossible, but I'll bet it's not actually
     send_text_message(c, u"$C6Client not logged in");
     return;
   }
@@ -760,7 +760,7 @@ static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 }
 
 static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::BAN_USER);
 
   u16string args_str(args);
@@ -770,9 +770,10 @@ static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     return;
   }
 
-  auto target = s->find_client(args_str.data() + space_pos + 1);
+  u16string identifier = args_str.substr(space_pos + 1);
+  auto target = s->find_client(&identifier);
   if (!target->license) {
-    // this should be impossible, but I'll bet it's not actually
+    // This should be impossible, but I'll bet it's not actually
     send_text_message(c, u"$C6Client not logged in");
     return;
   }
@@ -813,7 +814,7 @@ static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 // Cheat commands
 
 static void command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
   check_cheats_enabled(l);
 
@@ -842,7 +843,7 @@ static void command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 }
 
 static void command_song(shared_ptr<ServerState>, shared_ptr<Lobby>,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_is_ep3(c, true);
 
   uint32_t song = stoul(encode_sjis(args), nullptr, 0);
@@ -850,7 +851,7 @@ static void command_song(shared_ptr<ServerState>, shared_ptr<Lobby>,
 }
 
 static void command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t*) {
+    shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_cheats_enabled(l);
 
@@ -859,7 +860,7 @@ static void command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 }
 
 static void command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t*) {
+    shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_cheats_enabled(l);
 
@@ -868,7 +869,7 @@ static void command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 }
 
 static void command_switch_assist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t*) {
+    shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_cheats_enabled(l);
 
@@ -877,7 +878,7 @@ static void command_switch_assist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 }
 
 static void command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args) {
+    shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
   check_cheats_enabled(l);
 
@@ -908,50 +909,45 @@ static void command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef void (*handler_t)(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const char16_t* args);
+    shared_ptr<Client> c, const std::u16string& args);
 struct ChatCommandDefinition {
   handler_t handler;
-  const char16_t* usage;
+  u16string usage;
 };
 
 static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     // TODO: implement command_help and actually use the usage strings here
-    {u"allevent"  , {command_lobby_event_all   , u"Usage:\nallevent <name/ID>"}},
-    {u"ann"       , {command_announce          , u"Usage:\nann <message>"}},
-    {u"arrow"     , {command_arrow             , u"Usage:\narrow <color>"}},
-    {u"ax"        , {command_ax                , u"Usage:\nax <message>"}},
-    {u"ban"       , {command_ban               , u"Usage:\nban <name-or-number>"}},
-    {u"bbchar"    , {command_convert_char_to_bb, u"Usage:\nbbchar <user> <pass> <1-4>"}},
-    {u"changebank", {command_change_bank       , u"Usage:\nchangebank <bank name>"}},
-    {u"cheat"     , {command_cheat             , u"Usage:\ncheat"}},
-    {u"edit"      , {command_edit              , u"Usage:\nedit <stat> <value>"}},
-    {u"event"     , {command_lobby_event       , u"Usage:\nevent <name>"}},
-    {u"infhp"     , {command_infinite_hp       , u"Usage:\ninfhp"}},
-    {u"inftp"     , {command_infinite_tp       , u"Usage:\ninftp"}},
-    {u"item"      , {command_item              , u"Usage:\nitem <item-code>"}},
-    {u"kick"      , {command_kick              , u"Usage:\nkick <name-or-number>"}},
-    {u"li"        , {command_lobby_info        , u"Usage:\nli"}},
-    {u"maxlevel"  , {command_max_level         , u"Usage:\nmax_level <level>"}},
-    {u"minlevel"  , {command_min_level         , u"Usage:\nmin_level <level>"}},
-    {u"password"  , {command_password          , u"Usage:\nlock [password]\nomit password to\nunlock game"}},
-    {u"secid"     , {command_secid             , u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
-    {u"silence"   , {command_silence           , u"Usage:\nsilence <name-or-number>"}},
-    {u"song"      , {command_song              , u"Usage:\nsong <song-number>"}},
-    {u"swa"       , {command_switch_assist     , u"Usage:\nswa"}},
-    {u"type"      , {command_lobby_type        , u"Usage:\ntype <name>"}},
-    {u"warp"      , {command_warp              , u"Usage:\nwarp <area-number>"}},
+    {u"$allevent"  , {command_lobby_event_all   , u"Usage:\nallevent <name/ID>"}},
+    {u"$ann"       , {command_announce          , u"Usage:\nann <message>"}},
+    {u"$arrow"     , {command_arrow             , u"Usage:\narrow <color>"}},
+    {u"$ax"        , {command_ax                , u"Usage:\nax <message>"}},
+    {u"$ban"       , {command_ban               , u"Usage:\nban <name-or-number>"}},
+    {u"$bbchar"    , {command_convert_char_to_bb, u"Usage:\nbbchar <user> <pass> <1-4>"}},
+    {u"$changebank", {command_change_bank       , u"Usage:\nchangebank <bank name>"}},
+    {u"$cheat"     , {command_cheat             , u"Usage:\ncheat"}},
+    {u"$edit"      , {command_edit              , u"Usage:\nedit <stat> <value>"}},
+    {u"$event"     , {command_lobby_event       , u"Usage:\nevent <name>"}},
+    {u"$infhp"     , {command_infinite_hp       , u"Usage:\ninfhp"}},
+    {u"$inftp"     , {command_infinite_tp       , u"Usage:\ninftp"}},
+    {u"$item"      , {command_item              , u"Usage:\nitem <item-code>"}},
+    {u"$kick"      , {command_kick              , u"Usage:\nkick <name-or-number>"}},
+    {u"$li"        , {command_lobby_info        , u"Usage:\nli"}},
+    {u"$maxlevel"  , {command_max_level         , u"Usage:\nmax_level <level>"}},
+    {u"$minlevel"  , {command_min_level         , u"Usage:\nmin_level <level>"}},
+    {u"$password"  , {command_password          , u"Usage:\nlock [password]\nomit password to\nunlock game"}},
+    {u"$secid"     , {command_secid             , u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
+    {u"$silence"   , {command_silence           , u"Usage:\nsilence <name-or-number>"}},
+    {u"$song"      , {command_song              , u"Usage:\nsong <song-number>"}},
+    {u"$swa"       , {command_switch_assist     , u"Usage:\nswa"}},
+    {u"$type"      , {command_lobby_type        , u"Usage:\ntype <name>"}},
+    {u"$warp"      , {command_warp              , u"Usage:\nwarp <area-number>"}},
 });
 
-// this function is called every time any player sends a chat beginning with a dollar sign.
-// It is this function's responsibility to see if the chat is a command, and to
-// execute the command and block the chat if it is.
+// This function is called every time any player sends a chat beginning with a
+// dollar sign. It is this function's responsibility to see if the chat is a
+// command, and to execute the command and block the chat if it is.
 void process_chat_command(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l,
-    std::shared_ptr<Client> c, const char16_t* text) {
-
-  // remove the chat command marker
-  if (text[0] == u'$') {
-    text++;
-  }
+    std::shared_ptr<Client> c, const std::u16string& text) {
 
   u16string command_name;
   u16string text_str(text);

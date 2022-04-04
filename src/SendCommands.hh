@@ -86,20 +86,20 @@ void send_stream_file_bb(std::shared_ptr<Client> c);
 void send_approve_player_choice_bb(std::shared_ptr<Client> c);
 void send_complete_player_bb(std::shared_ptr<Client> c);
 
-void send_check_directory_patch(std::shared_ptr<Client> c, const char* dir);
+void send_check_directory_patch(std::shared_ptr<Client> c, const std::string& dir);
 
-void send_message_box(std::shared_ptr<Client> c, const char16_t* text);
-void send_lobby_name(std::shared_ptr<Client> c, const char16_t* text);
-void send_quest_info(std::shared_ptr<Client> c, const char16_t* text);
-void send_lobby_message_box(std::shared_ptr<Client> c, const char16_t* text);
-void send_ship_info(std::shared_ptr<Client> c, const char16_t* text);
-void send_text_message(std::shared_ptr<Client> c, const char16_t* text);
-void send_text_message(std::shared_ptr<Lobby> l, const char16_t* text);
-void send_text_message(std::shared_ptr<ServerState> l, const char16_t* text);
+void send_message_box(std::shared_ptr<Client> c, const std::u16string& text);
+void send_lobby_name(std::shared_ptr<Client> c, const std::u16string& text);
+void send_quest_info(std::shared_ptr<Client> c, const std::u16string& text);
+void send_lobby_message_box(std::shared_ptr<Client> c, const std::u16string& text);
+void send_ship_info(std::shared_ptr<Client> c, const std::u16string& text);
+void send_text_message(std::shared_ptr<Client> c, const std::u16string& text);
+void send_text_message(std::shared_ptr<Lobby> l, const std::u16string& text);
+void send_text_message(std::shared_ptr<ServerState> l, const std::u16string& text);
 void send_chat_message(std::shared_ptr<Client> c, uint32_t from_serial_number,
-    const char16_t* from_name, const char16_t* text);
+    const std::u16string& from_name, const std::u16string& text);
 void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
-    const char16_t* from_name, const char16_t* text);
+    const std::u16string& from_name, const std::u16string& text);
 
 template <typename TargetT>
 __attribute__((format(printf, 2, 3))) void send_text_message_printf(
@@ -121,7 +121,7 @@ void send_card_search_result(
     std::shared_ptr<Lobby> result_lobby);
 
 void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source);
-void send_menu(std::shared_ptr<Client> c, const char16_t* menu_name,
+void send_menu(std::shared_ptr<Client> c, const std::u16string& menu_name,
     uint32_t menu_id, const std::vector<MenuItem>& items, bool is_info_menu);
 void send_game_menu(std::shared_ptr<Client> c, std::shared_ptr<ServerState> s);
 void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,

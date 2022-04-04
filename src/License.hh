@@ -50,11 +50,13 @@ public:
   ~LicenseManager() = default;
 
   std::shared_ptr<const License> verify_pc(uint32_t serial_number,
-      const char* access_key, const char* password) const;
+      const std::string& access_key) const;
   std::shared_ptr<const License> verify_gc(uint32_t serial_number,
-      const char* access_key, const char* password) const;
-  std::shared_ptr<const License> verify_bb(const char* username,
-      const char* password) const;
+      const std::string& access_key) const;
+  std::shared_ptr<const License> verify_gc(uint32_t serial_number,
+      const std::string& access_key, const std::string& password) const;
+  std::shared_ptr<const License> verify_bb(const std::string& username,
+      const std::string& password) const;
   void ban_until(uint32_t serial_number, uint64_t seconds);
 
   size_t count() const;
@@ -64,11 +66,13 @@ public:
   std::vector<License> snapshot() const;
 
   static std::shared_ptr<License> create_license_pc(
-      uint32_t serial_number, const char* access_key, const char* password, bool temporary);
+      uint32_t serial_number, const std::string& access_key, bool temporary);
   static std::shared_ptr<License> create_license_gc(
-      uint32_t serial_number, const char* access_key, const char* password, bool temporary);
+      uint32_t serial_number, const std::string& access_key,
+      const std::string& password, bool temporary);
   static std::shared_ptr<License> create_license_bb(
-      uint32_t serial_number, const char* username, const char* password, bool temporary);
+      uint32_t serial_number, const std::string& username,
+      const std::string& password, bool temporary);
 
 protected:
   void save() const;

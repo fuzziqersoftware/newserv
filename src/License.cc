@@ -73,13 +73,10 @@ void LicenseManager::save() const {
 }
 
 shared_ptr<const License> LicenseManager::verify_pc(uint32_t serial_number,
-    const char* access_key, const char* password) const {
+    const string& access_key) const {
   auto& license = this->serial_number_to_license.at(serial_number);
   if (!license->access_key.eq_n(access_key, 8)) {
     throw invalid_argument("incorrect access key");
-  }
-  if (password && (license->gc_password != password)) {
-    throw invalid_argument("incorrect password");
   }
 
   if (license->ban_end_time && (license->ban_end_time >= now())) {
@@ -89,25 +86,36 @@ shared_ptr<const License> LicenseManager::verify_pc(uint32_t serial_number,
 }
 
 shared_ptr<const License> LicenseManager::verify_gc(uint32_t serial_number,
-    const char* access_key, const char* password) const {
+    const string& access_key) const {
   auto& license = this->serial_number_to_license.at(serial_number);
   if (!license->access_key.eq_n(access_key, 12)) {
     throw invalid_argument("incorrect access key");
   }
-  if (password && (license->gc_password != password)) {
-    throw invalid_argument("incorrect password");
-  }
-
   if (license->ban_end_time && (license->ban_end_time >= now())) {
     throw invalid_argument("user is banned");
   }
   return license;
 }
 
-shared_ptr<const License> LicenseManager::verify_bb(const char* username,
-    const char* password) const {
+shared_ptr<const License> LicenseManager::verify_gc(uint32_t serial_number,
+    const string& access_key, const string& password) const {
+  auto& license = this->serial_number_to_license.at(serial_number);
+  if (!license->access_key.eq_n(access_key, 12)) {
+    throw invalid_argument("incorrect access key");
+  }
+  if (license->gc_password != password) {
+    throw invalid_argument("incorrect password");
+  }
+  if (license->ban_end_time && (license->ban_end_time >= now())) {
+    throw invalid_argument("user is banned");
+  }
+  return license;
+}
+
+shared_ptr<const License> LicenseManager::verify_bb(const string& username,
+    const string& password) const {
   auto& license = this->bb_username_to_license.at(username);
-  if (password && (license->bb_password != password)) {
+  if (license->bb_password != password) {
     throw invalid_argument("incorrect password");
   }
 
@@ -155,13 +163,10 @@ vector<License> LicenseManager::snapshot() const {
 
 
 shared_ptr<License> LicenseManager::create_license_pc(
-    uint32_t serial_number,const char* access_key, const char* password, bool temporary) {
+    uint32_t serial_number, const string& access_key, bool temporary) {
   shared_ptr<License> l(new License());
   l->serial_number = serial_number;
   l->access_key = access_key;
-  if (password) {
-    l->gc_password = password;
-  }
   if (temporary) {
     l->privileges |= Privilege::TEMPORARY;
   }
@@ -169,13 +174,12 @@ shared_ptr<License> LicenseManager::create_license_pc(
 }
 
 shared_ptr<License> LicenseManager::create_license_gc(
-    uint32_t serial_number, const char* access_key, const char* password, bool temporary) {
+    uint32_t serial_number, const string& access_key, const string& password,
+    bool temporary) {
   shared_ptr<License> l(new License());
   l->serial_number = serial_number;
   l->access_key = access_key;
-  if (password) {
-    l->gc_password = password;
-  }
+  l->gc_password = password;
   if (temporary) {
     l->privileges |= Privilege::TEMPORARY;
   }
@@ -183,7 +187,8 @@ shared_ptr<License> LicenseManager::create_license_gc(
 }
 
 shared_ptr<License> LicenseManager::create_license_bb(
-    uint32_t serial_number, const char* username, const char* password, bool temporary) {
+    uint32_t serial_number, const string& username, const string& password,
+    bool temporary) {
   shared_ptr<License> l(new License());
   l->serial_number = serial_number;
   l->username = username;

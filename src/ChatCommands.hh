@@ -35,4 +35,4 @@ uint8_t npc_for_name(const std::string& name);
 uint8_t npc_for_name(const std::u16string& name);
 
 void process_chat_command(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l,
-    std::shared_ptr<Client> c, const char16_t* text);
+    std::shared_ptr<Client> c, const std::u16string& text);

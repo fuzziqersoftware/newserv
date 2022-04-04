@@ -251,9 +251,8 @@ void ProxyServer::UnlinkedSession::on_client_input() {
             throw runtime_error("command is not 9D");
           }
           const auto& cmd = check_size_t<C_Login_PC_9D>(data, sizeof(C_Login_PC_9D), sizeof(C_LoginWithUnusedSpace_PC_9D));
-          uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
           license = this->server->state->license_manager->verify_pc(
-              serial_number, cmd.access_key.c_str(), nullptr);
+              stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
           sub_version = cmd.sub_version;
           character_name = cmd.name;
 
@@ -264,9 +263,8 @@ void ProxyServer::UnlinkedSession::on_client_input() {
             throw runtime_error("command is not 9E");
           }
           const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_Login_GC_9E), sizeof(C_LoginWithUnusedSpace_GC_9E));
-          uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
           license = this->server->state->license_manager->verify_gc(
-              serial_number, cmd.access_key.c_str(), nullptr);
+              stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
           sub_version = cmd.sub_version;
           character_name = cmd.name;
           client_config = cmd.client_config.cfg;

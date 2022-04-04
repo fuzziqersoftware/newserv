@@ -73,7 +73,8 @@ struct Lobby {
   void move_client_to_lobby(std::shared_ptr<Lobby> dest_lobby,
       std::shared_ptr<Client> c);
 
-  std::shared_ptr<Client> find_client(const char16_t* identifier = nullptr,
+  std::shared_ptr<Client> find_client(
+      const std::u16string* identifier = nullptr,
       uint64_t serial_number = 0);
 
   void add_item(const PlayerInventoryItem& item);

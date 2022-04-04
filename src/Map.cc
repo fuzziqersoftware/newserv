@@ -433,7 +433,7 @@ static vector<PSOEnemy> parse_map(uint8_t episode, uint8_t difficulty,
   return enemies;
 }
 
-vector<PSOEnemy> load_map(const char* filename, uint8_t episode,
+vector<PSOEnemy> load_map(const std::string& filename, uint8_t episode,
     uint8_t difficulty, const BattleParams* battle_params, bool alt_enemies) {
   shared_ptr<const string> data = file_cache.get(filename);
   const EnemyEntry* entries = reinterpret_cast<const EnemyEntry*>(data->data());

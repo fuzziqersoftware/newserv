@@ -24,6 +24,10 @@ using namespace std;
 
 
 
+extern FileContentsCache file_cache;
+
+
+
 enum ClientStateBB {
   // initial connection. server will redirect client to another port.
   INITIAL_LOGIN = 0x00,
@@ -201,10 +205,10 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // DB
   const auto& cmd = check_size_t<C_VerifyLicense_GC_DB>(data);
 
-  uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
+  uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
-    c->license = s->license_manager->verify_gc(serial_number,
-        cmd.access_key.c_str(), cmd.password.c_str());
+    c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
+        cmd.password);
   } catch (const exception& e) {
     if (!s->allow_unregistered_users) {
       u16string message = u"Login failed: " + decode_sjis(e.what());
@@ -212,8 +216,8 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       c->should_disconnect = true;
       return;
     } else {
-      auto l = LicenseManager::create_license_gc(serial_number,
-          cmd.access_key.c_str(), cmd.password.c_str(), true);
+      auto l = LicenseManager::create_license_gc(serial_number, cmd.access_key,
+          cmd.password, true);
       s->license_manager->add(l);
       c->license = l;
     }
@@ -229,14 +233,12 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   c->flags |= flags_for_version(c->version, cmd.sub_version);
 
-  uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
+  uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number,
-          cmd.access_key.c_str(), nullptr);
+      c->license = s->license_manager->verify_gc(serial_number, cmd.access_key);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number,
-          cmd.access_key.c_str(), nullptr);
+      c->license = s->license_manager->verify_pc(serial_number, cmd.access_key);
     }
   } catch (const exception& e) {
     // On GC, the client should have sent a different command containing the
@@ -258,14 +260,13 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   c->flags |= flags_for_version(c->version, cmd.sub_version);
 
-  uint32_t serial_number = strtoul(cmd.serial_number.c_str(), nullptr, 16);
+  uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number,
-          cmd.access_key.c_str(), cmd.password.c_str());
+      c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
+          cmd.password);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number,
-          cmd.access_key.c_str(), cmd.password.c_str());
+      c->license = s->license_manager->verify_pc(serial_number, cmd.access_key);
     }
   } catch (const exception& e) {
     if (!s->allow_unregistered_users) {
@@ -276,11 +277,11 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     } else {
       shared_ptr<License> l;
       if (c->version == GameVersion::GC) {
-        l = LicenseManager::create_license_gc(serial_number,
-            cmd.access_key.c_str(), cmd.password.c_str(), true);
+        l = LicenseManager::create_license_gc(serial_number, cmd.access_key,
+            cmd.password, true);
       } else {
-        l = LicenseManager::create_license_pc(serial_number,
-            cmd.access_key.c_str(), cmd.password.c_str(), true);
+        l = LicenseManager::create_license_pc(serial_number, cmd.access_key,
+            true);
       }
       s->license_manager->add(l);
       c->license = l;
@@ -322,14 +323,14 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   c->flags |= flags_for_version(c->version, base_cmd->sub_version);
 
-  uint32_t serial_number = strtoul(base_cmd->serial_number.c_str(), nullptr, 16);
+  uint32_t serial_number = stoul(base_cmd->serial_number, nullptr, 16);
   try {
     if (c->version == GameVersion::GC) {
       c->license = s->license_manager->verify_gc(serial_number,
-          base_cmd->access_key.c_str(), nullptr);
+          base_cmd->access_key);
     } else {
       c->license = s->license_manager->verify_pc(serial_number,
-          base_cmd->access_key.c_str(), nullptr);
+          base_cmd->access_key);
     }
   } catch (const exception& e) {
     // See comment in 9A handler about why we do this even if unregistered users
@@ -356,8 +357,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   c->flags |= flags_for_version(c->version, 0);
 
   try {
-    c->license = s->license_manager->verify_bb(
-        cmd.username.c_str(), cmd.password.c_str());
+    c->license = s->license_manager->verify_bb(cmd.username, cmd.password);
   } catch (const exception& e) {
     u16string message = u"Login failed: " + decode_sjis(e.what());
     send_message_box(c, message.c_str());
@@ -1150,7 +1150,7 @@ void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (processed_text[0] == L'$') {
     auto l = s->find_lobby(c->lobby_id);
     if (l) {
-      process_chat_command(s, l, c, &processed_text[1]);
+      process_chat_command(s, l, c, processed_text);
     }
   } else {
     if (!c->can_chat) {
@@ -1413,13 +1413,12 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // If the target has auto-reply enabled, send the autoreply
   if (!target->player.auto_reply.empty()) {
     send_simple_mail(c, target->license->serial_number,
-        target->player.disp.name.c_str(), target->player.auto_reply.c_str());
+        target->player.disp.name, target->player.auto_reply);
   }
 
   // Forward the message
-  u16string u16message = decode_sjis(cmd.text);
-  send_simple_mail(target, c->license->serial_number,
-      c->player.disp.name.c_str(), u16message.c_str());
+  u16string msg = decode_sjis(cmd.text);
+  send_simple_mail(target, c->license->serial_number, c->player.disp.name, msg);
 }
 
 
@@ -1469,9 +1468,9 @@ void process_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client
 // Game commands
 
 shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
-    shared_ptr<Client> c, const char16_t* name, const char16_t* password,
-    uint8_t episode, uint8_t difficulty, uint8_t battle, uint8_t challenge,
-    uint8_t solo) {
+    shared_ptr<Client> c, const std::u16string& name,
+    const std::u16string& password, uint8_t episode, uint8_t difficulty,
+    uint8_t battle, uint8_t challenge, uint8_t solo) {
 
   static const uint32_t variation_maxes_online[3][0x20] = {
       {1, 1, 1, 5, 1, 5, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2,
@@ -1617,7 +1616,7 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_PC_C1>(data);
 
-  auto game = create_game_generic(s, c, cmd.name.c_str(), cmd.password.c_str(), 1,
+  auto game = create_game_generic(s, c, cmd.name, cmd.password, 1,
       cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, 0);
 
   s->add_lobby(game);
@@ -1658,9 +1657,8 @@ void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_BB_C1>(data);
 
-  auto game = create_game_generic(s, c, cmd.name.c_str(), cmd.password.c_str(),
-      cmd.episode, cmd.difficulty, cmd.battle_mode, cmd.challenge_mode,
-      cmd.solo_mode);
+  auto game = create_game_generic(s, c, cmd.name, cmd.password, cmd.episode,
+      cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, cmd.solo_mode);
 
   s->add_lobby(game);
   s->change_client_lobby(c, game);
@@ -1751,12 +1749,10 @@ independently.\r\n\
   message += u"License check ";
   try {
     if (c->flags & Client::Flag::BB_PATCH) {
-      c->license = s->license_manager->verify_bb(
-          cmd.username.c_str(), cmd.password.c_str());
+      c->license = s->license_manager->verify_bb(cmd.username, cmd.password);
     } else {
-      uint32_t serial_number = strtoul(cmd.username.c_str(), nullptr, 16);
       c->license = s->license_manager->verify_pc(
-          serial_number, cmd.password.c_str(), nullptr);
+          stoul(cmd.username, nullptr, 16), cmd.password);
     }
     message += u"OK";
   } catch (const exception& e) {
