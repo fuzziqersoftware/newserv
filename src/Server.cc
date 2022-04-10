@@ -38,9 +38,9 @@ void Server::disconnect_client(shared_ptr<Client> c) {
 
   int fd = bufferevent_getfd(bev);
   if (fd < 0) {
-    log(INFO, "[Server] Client on virtual connection %p disconnected", bev);
+    this->log(INFO, "[Server] Client on virtual connection %p disconnected", bev);
   } else {
-    log(INFO, "[Server] Client on fd %d disconnected", fd);
+    this->log(INFO, "[Server] Client on fd %d disconnected", fd);
   }
 
   // if the output buffer is not empty, move the client into the draining pool
@@ -100,13 +100,13 @@ void Server::on_listen_accept(struct evconnlistener* listener,
   try {
     listening_socket = &this->listening_sockets.at(listen_fd);
   } catch (const out_of_range& e) {
-    log(WARNING, "[Server] Can\'t determine version for socket %d; disconnecting client",
+    this->log(WARNING, "Can\'t determine version for socket %d; disconnecting client",
         listen_fd);
     close(fd);
     return;
   }
 
-  log(INFO, "[Server] Client fd %d connected via fd %d", fd, listen_fd);
+  this->log(INFO, "Client fd %d connected via fd %d", fd, listen_fd);
 
   struct bufferevent *bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
@@ -124,7 +124,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
 void Server::connect_client(
     struct bufferevent* bev, uint32_t address, uint16_t port,
     GameVersion version, ServerBehavior initial_state) {
-  log(INFO, "[Server] Client connected on virtual connection %p", bev);
+  this->log(INFO, "Client connected on virtual connection %p", bev);
 
   shared_ptr<Client> c(new Client(bev, version, initial_state));
   this->bev_to_client.emplace(make_pair(bev, c));
@@ -145,7 +145,7 @@ void Server::connect_client(
 
 void Server::on_listen_error(struct evconnlistener* listener) {
   int err = EVUTIL_SOCKET_ERROR();
-  log(ERROR, "[Server] Failure on listening socket %d: %d (%s)",
+  this->log(ERROR, "Failure on listening socket %d: %d (%s)",
       evconnlistener_get_fd(listener), err, evutil_socket_error_to_string(err));
   event_base_loopexit(this->base.get(), nullptr);
 }
@@ -155,7 +155,7 @@ void Server::on_client_input(struct bufferevent* bev) {
   try {
     c = this->bev_to_client.at(bev);
   } catch (const out_of_range& e) {
-    log(WARNING, "[Server] Received message from client with no configuration");
+    this->log(WARNING, "Received message from client with no configuration");
 
     // ignore all the data
     // TODO: we probably should disconnect them or something
@@ -186,7 +186,7 @@ void Server::on_disconnecting_client_output(struct bufferevent* bev) {
 void Server::on_client_error(struct bufferevent* bev, short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "[Server] Client caused error %d (%s)", err,
+    this->log(WARNING, "Client caused error %d (%s)", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
@@ -198,7 +198,7 @@ void Server::on_disconnecting_client_error(struct bufferevent* bev,
     short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "[Server] Disconnecting client caused error %d (%s)", err,
+    this->log(WARNING, "Disconnecting client caused error %d (%s)", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
@@ -213,20 +213,24 @@ void Server::receive_and_process_commands(shared_ptr<Client> c) {
       try {
         process_command(this->state, c, command, flag, data);
       } catch (const exception& e) {
-        log(INFO, "[Server] Error in client stream: %s", e.what());
+        this->log(INFO, "Error in client stream: %s", e.what());
         c->should_disconnect = true;
         return;
       }
     });
 }
 
-Server::Server(shared_ptr<struct event_base> base,
-    shared_ptr<ServerState> state) : base(base), state(state) { }
+Server::Server(
+    shared_ptr<struct event_base> base,
+    shared_ptr<ServerState> state)
+  : log("[Server] "),
+    base(base),
+    state(state) { }
 
 void Server::listen(const string& socket_path, GameVersion version,
     ServerBehavior behavior) {
   int fd = ::listen(socket_path, 0, SOMAXCONN);
-  log(INFO, "[Server] Listening on Unix socket %s (%s) on fd %d",
+  this->log(INFO, "Listening on Unix socket %s (%s) on fd %d",
       socket_path.c_str(), name_for_version(version), fd);
   this->add_socket(fd, version, behavior);
 }
@@ -235,7 +239,7 @@ void Server::listen(const string& addr, int port, GameVersion version,
     ServerBehavior behavior) {
   int fd = ::listen(addr, port, SOMAXCONN);
   string netloc_str = render_netloc(addr, port);
-  log(INFO, "[Server] Listening on TCP interface %s (%s) on fd %d",
+  this->log(INFO, "Listening on TCP interface %s (%s) on fd %d",
       netloc_str.c_str(), name_for_version(version), fd);
   this->add_socket(fd, version, behavior);
 }

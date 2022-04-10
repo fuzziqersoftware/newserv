@@ -30,6 +30,7 @@ public:
       GameVersion version, ServerBehavior initial_state);
 
 private:
+  PrefixedLogger log;
   std::shared_ptr<struct event_base> base;
 
   struct ListeningSocket {

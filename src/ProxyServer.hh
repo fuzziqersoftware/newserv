@@ -154,6 +154,7 @@ private:
   struct ListeningSocket {
     ProxyServer* server;
 
+    PrefixedLogger log;
     uint16_t port;
     scoped_fd fd;
     std::unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)> listener;
@@ -176,6 +177,7 @@ private:
   struct UnlinkedSession {
     ProxyServer* server;
 
+    PrefixedLogger log;
     std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> bev;
     uint16_t local_port;
     GameVersion version;
@@ -194,6 +196,7 @@ private:
     void on_client_error(short events);
   };
 
+  PrefixedLogger log;
   std::shared_ptr<struct event_base> base;
   std::shared_ptr<ServerState> state;
   std::map<int, std::shared_ptr<ListeningSocket>> listeners;

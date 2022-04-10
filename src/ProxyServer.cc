@@ -46,7 +46,8 @@ static void flush_and_free_bufferevent(struct bufferevent* bev) {
 ProxyServer::ProxyServer(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
-  : base(base),
+  : log("[ProxyServer] "),
+    base(base),
     state(state),
     next_unlicensed_session_id(0xFF00000000000001) { }
 
@@ -55,8 +56,6 @@ void ProxyServer::listen(uint16_t port, GameVersion version,
   shared_ptr<ListeningSocket> socket_obj(new ListeningSocket(
       this, port, version, default_destination));
   auto l = this->listeners.emplace(port, socket_obj).first->second;
-  log(INFO, "[ProxyServer] Listening on TCP port %hu (%s) on fd %d",
-      port, name_for_version(version), static_cast<int>(l->fd));
 }
 
 ProxyServer::ListeningSocket::ListeningSocket(
@@ -65,6 +64,7 @@ ProxyServer::ListeningSocket::ListeningSocket(
     GameVersion version,
     const struct sockaddr_storage* default_destination)
   : server(server),
+    log(string_printf("[ProxyServer:ListeningSocket:%hu] ", port)),
     port(port),
     fd(::listen("", port, SOMAXCONN)),
     listener(nullptr, evconnlistener_free),
@@ -90,6 +90,9 @@ ProxyServer::ListeningSocket::ListeningSocket(
   } else {
     this->default_destination.ss_family = 0;
   }
+
+  this->log(INFO, "Listening on TCP port %hu (%s) on fd %d",
+      this->port, name_for_version(this->version), static_cast<int>(this->fd));
 }
 
 void ProxyServer::ListeningSocket::dispatch_on_listen_accept(
@@ -103,7 +106,7 @@ void ProxyServer::ListeningSocket::dispatch_on_listen_error(
 }
 
 void ProxyServer::ListeningSocket::on_listen_accept(int fd) {
-  log(INFO, "[ProxyServer] Client connected on fd %d", fd);
+  this->log(INFO, "Client connected on fd %d", fd);
   auto* bev = bufferevent_socket_new(this->server->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   this->server->on_client_connect(bev, this->port, this->version,
@@ -112,7 +115,7 @@ void ProxyServer::ListeningSocket::on_listen_accept(int fd) {
 
 void ProxyServer::ListeningSocket::on_listen_error() {
   int err = EVUTIL_SOCKET_ERROR();
-  log(ERROR, "[ProxyServer] Failure on listening socket %d: %d (%s)",
+  this->log(ERROR, "Failure on listening socket %d: %d (%s)",
       evconnlistener_get_fd(this->listener.get()),
       err, evutil_socket_error_to_string(err));
   event_base_loopexit(this->server->base.get(), nullptr);
@@ -127,13 +130,13 @@ void ProxyServer::connect_client(struct bufferevent* bev, uint16_t server_port) 
   try {
     version = this->listeners.at(server_port)->version;
   } catch (const out_of_range&) {
-    log(INFO, "[ProxyServer] Virtual connection received on unregistered port %hu; closing it",
+    this->log(INFO, "Virtual connection received on unregistered port %hu; closing it",
         server_port);
     flush_and_free_bufferevent(bev);
     return;
   }
 
-  log(INFO, "[ProxyServer] Client connected on virtual connection %p", bev);
+  this->log(INFO, "Client connected on virtual connection %p", bev);
   this->on_client_connect(bev, server_port, version, nullptr);
 }
 
@@ -171,7 +174,7 @@ void ProxyServer::on_client_connect(
       throw logic_error("stale unlinked session exists");
     }
     auto session = emplace_ret.first->second;
-    log(INFO, "[ProxyServer] Opened unlinked session");
+    this->log(INFO, "Opened unlinked session");
 
     switch (version) {
       case GameVersion::PATCH:
@@ -212,6 +215,7 @@ void ProxyServer::on_client_connect(
 ProxyServer::UnlinkedSession::UnlinkedSession(
     ProxyServer* server, struct bufferevent* bev, uint16_t local_port, GameVersion version)
   : server(server),
+    log(string_printf("[ProxyServer:UnlinkedSession:%p] ", bev)),
     bev(bev, flush_and_free_bufferevent),
     local_port(local_port),
     version(version) {
@@ -275,7 +279,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
       });
 
   } catch (const exception& e) {
-    log(ERROR, "[ProxyServer] Failed to process command from unlinked client: %s", e.what());
+    this->log(ERROR, "Failed to process command from unlinked client: %s", e.what());
     should_close_unlinked_session = true;
   }
 
@@ -299,7 +303,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
       // destination in the client config. If there is, open a new linked
       // session and set its initial destination
       if (client_config.magic != CLIENT_CONFIG_MAGIC) {
-        log(ERROR, "[ProxyServer] Client configuration is invalid; cannot open session");
+        this->log(ERROR, "Client configuration is invalid; cannot open session");
       } else {
         session.reset(new LinkedSession(
             this->server,
@@ -327,6 +331,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
   }
 
   if (should_close_unlinked_session) {
+    this->log(INFO, "Closing session");
     this->server->bev_to_unlinked_session.erase(session_key);
     // At this point, (*this) is destroyed! We must be careful not to touch it.
   }
@@ -335,11 +340,11 @@ void ProxyServer::UnlinkedSession::on_client_input() {
 void ProxyServer::UnlinkedSession::on_client_error(short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    log(WARNING, "[ProxyServer] Error %d (%s) in unlinked client stream", err,
+    this->log(WARNING, "Error %d (%s) in unlinked client stream", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_ERROR | BEV_EVENT_EOF)) {
-    log(WARNING, "[ProxyServer] Unlinked client has disconnected");
+    this->log(WARNING, "Unlinked client has disconnected");
     this->server->bev_to_unlinked_session.erase(this->bev.get());
   }
 }
@@ -355,7 +360,7 @@ ProxyServer::LinkedSession::LinkedSession(
     id(id),
     client_name(string_printf("LinkedSession:%08" PRIX64 ":client", this->id)),
     server_name(string_printf("LinkedSession:%08" PRIX64 ":server", this->id)),
-    log(string_printf("[LinkedSession:%08" PRIX64 "] ", this->id)),
+    log(string_printf("[ProxyServer:LinkedSession:%08" PRIX64 "] ", this->id)),
     timeout_event(event_new(this->server->base.get(), -1, EV_TIMEOUT,
         &LinkedSession::dispatch_on_timeout, this), event_free),
     license(nullptr),
@@ -672,6 +677,6 @@ std::shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session
 
 void ProxyServer::delete_session(uint64_t id) {
   if (this->id_to_session.erase(id)) {
-    log(INFO, "Closed LinkedSession:%08" PRIX64, id);
+    this->log(INFO, "Closed LinkedSession:%08" PRIX64, id);
   }
 }
