@@ -210,7 +210,7 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size, bool) {
   if (size & 7) {
     throw invalid_argument("size must be a multiple of 8");
   }
-  size >>= 3;
+  size >>= 2;
 
   uint32_t* data = reinterpret_cast<uint32_t*>(vdata);
   uint32_t edx, ebx, ebp, esi, edi;
@@ -245,15 +245,14 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size, bool) {
   if (size & 7) {
     throw invalid_argument("size must be a multiple of 8");
   }
-  size >>= 3;
+  size >>= 2;
 
-  uint8_t* data = reinterpret_cast<uint8_t*>(vdata);
+  uint32_t* data = reinterpret_cast<uint32_t*>(vdata);
   uint32_t edx, ebx, ebp, esi, edi;
 
   edx = 0;
   while (edx < size) {
-    ebx = data[edx];
-    ebx = ebx ^ this->stream[0];
+    ebx = data[edx] ^ this->stream[0];
     ebp = ((this->stream[(ebx >> 0x18) + 0x12] + this->stream[((ebx >> 0x10) & 0xFF) + 0x112])
         ^ this->stream[((ebx >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebx & 0xFF) + 0x312];
     ebp = ebp ^ this->stream[1];
@@ -276,9 +275,13 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size, bool) {
   }
 }
 
+void PSOBBEncryption::skip(size_t) { }
+
 PSOBBEncryption::PSOBBEncryption(
     const KeyFile& key, const void* original_seed, size_t seed_size)
   : stream(this->generate_stream(key, original_seed, seed_size)) { }
+
+
 
 vector<uint32_t> PSOBBEncryption::generate_stream(
     const KeyFile& key, const void* original_seed, size_t seed_size) {
@@ -286,6 +289,10 @@ vector<uint32_t> PSOBBEncryption::generate_stream(
     throw invalid_argument("seed size must be divisible by 3");
   }
 
+  vector<uint32_t> stream(BB_STREAM_LENGTH, 0);
+
+  // Note: This part is done in the 03 command handler in the BB client, and
+  // isn't actually part of the encryption library. (Why did they do this?)
   string seed;
   const uint8_t* original_seed_data = reinterpret_cast<const uint8_t*>(
       original_seed);
@@ -295,8 +302,19 @@ vector<uint32_t> PSOBBEncryption::generate_stream(
     seed.push_back(original_seed_data[x + 2] ^ 0x18);
   }
 
-  vector<uint32_t> stream(BB_STREAM_LENGTH, 0);
-  memcpy(stream.data(), &key, sizeof(key));
+  if (key.is_modcrypt) {
+    for (size_t x = 0; x < 0x12; x++) {
+      uint8_t a = key.initial_keys[4 * x + 0];
+      uint8_t b = key.initial_keys[4 * x + 1];
+      uint8_t c = key.initial_keys[4 * x + 2];
+      uint8_t d = key.initial_keys[4 * x + 3];
+      stream[x] = ((a ^ d) << 24) | ((b ^ c) << 16) | (a << 8) | b;
+    }
+    memcpy(stream.data() + 0x12, &key.private_keys, sizeof(key.private_keys));
+
+  } else {
+    memcpy(stream.data(), &key, sizeof(key));
+  }
 
   // This block was formerly postprocess_initial_stream
   {
@@ -305,20 +323,20 @@ vector<uint32_t> PSOBBEncryption::generate_stream(
     ecx = 0;
     ebx = 0;
 
-    while (ebx < (seed.size() / 4)) {
+    while (ebx < 0x12) {
       ebp = static_cast<uint32_t>(seed[ecx]) << 0x18;
       eax = ecx + 1;
       edx = eax % seed.size();
-      eax = (static_cast<uint32_t>(seed[edx]) << 0x10) & 0xFF0000;
+      eax = (static_cast<uint32_t>(seed[edx]) << 0x10) & 0x00FF0000;
       ebp = (ebp | eax) & 0xFFFF00FF;
       eax = ecx + 2;
       edx = eax % seed.size();
-      eax = (static_cast<uint32_t>(seed[edx]) << 0x08) & 0xFF00;
+      eax = (static_cast<uint32_t>(seed[edx]) << 0x08) & 0x0000FF00;
       ebp = (ebp | eax) & 0xFFFFFF00;
       eax = ecx + 3;
       ecx = ecx + 4;
       edx = eax % seed.size();
-      eax = static_cast<uint32_t>(seed[edx]);
+      eax = static_cast<uint32_t>(seed[edx]) & 0x000000FF;
       ebp = ebp | eax;
       eax = ecx;
       edx = eax % seed.size();
@@ -488,5 +506,3 @@ vector<uint32_t> PSOBBEncryption::generate_stream(
 
   return stream;
 }
-
-void PSOBBEncryption::skip(size_t) { }
