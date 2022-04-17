@@ -615,8 +615,12 @@ void ProxyServer::LinkedSession::send_to_end(
   string name = string_printf("LinkedSession:%08" PRIX64 ":synthetic:%s",
       this->id, to_server ? "server" : "client");
 
+  auto* bev = to_server ? this->server_bev.get() : this->client_bev.get();
+  if (!bev) {
+    throw runtime_error("session endpoint is not connected");
+  }
   send_command(
-      to_server ? this->server_bev.get() : this->client_bev.get(),
+      bev,
       this->version,
       to_server ? this->server_output_crypt.get() : this->client_output_crypt.get(),
       command,
