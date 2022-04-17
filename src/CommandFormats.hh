@@ -99,8 +99,8 @@ struct S_ServerInit_BB_03 {
 
 // 04 (S->C): Set guild card number and update client config ("security data")
 // Client will respond with a 96 command, but only the first time it receives
-// this command (TODO: Is this true? It might instead be that it responds with a
-// 96 only if encryption was started with a 17 rather than an 02)
+// this command - for later 04 commands, the client will still update its client
+// config but will not respond.
 
 struct S_UpdateClientConfig_DC_PC_GC_04 {
   le_uint32_t player_tag;
@@ -648,9 +648,30 @@ struct C_ClientChecksum_GC_96 {
 // 99 (C->S): Server time accepted
 // No arguments
 
-// 9A (S->C): Verify result
-// 02 = license ok
-// TODO: figure out the other codes
+// 9A (S->C): License verification result
+// The result code is sent in the header.flag field.
+// 00 = license ok (don't save to memory card)
+// 01 = registration required (client responds with a 9C command)
+// 02 = license ok (save to memory card)
+// 03 = access key invalid (125)
+// 04 = serial number invalid (126)
+// 05 = network error (119)
+// 06 = network error (119)
+// 07 = invalid Hunter's License (117)
+// 08 = Hunter's License expired (116)
+// 09 = network error (119)
+// 0A = network error (119)
+// 0B = HL not registered under this serial number/access key (112)
+// 0C = HL not registered under this serial number/access key (113)
+// 0D = HL not registered under this serial number/access key (114)
+// 0E = connection error (115)
+// 0F = connection suspended (111)
+// 10 = connection suspended (111)
+// 11 = Hunter's License expired (116)
+// 12 = invalid Hunter's License (117)
+// 13 = servers under maintenance (118)
+// 14 = network error (119)
+// Seems like most (all?) of the rest of the codes are "network error" (119).
 
 // 9A (C->S): Initial login (no password or client config)
 
@@ -669,8 +690,9 @@ struct C_Login_DC_PC_GC_9A {
 // 9B: Invalid command
 
 // 9C (C->S): Log in result
-// 01 = license ok
-// TODO: figure out the other codes
+// The only possible error here seems to be wrong password (127) which is
+// displayed if the header.flag field is zero. If header.flag is nonzero, the
+// client proceeds with the login procedure by sending a 9E.
 
 // 9C (C->S): Register
 
@@ -886,6 +908,8 @@ struct C_CreateGame {
   ptext<CharT, 0x10> password;
   uint8_t difficulty;
   uint8_t battle_mode;
+  // Note: Episode 3 uses the challenge mode flag for view battle permissions.
+  // 0 = view battle allowed; 1 = not allowed
   uint8_t challenge_mode;
   uint8_t episode; // unused on DC/PC
 };
@@ -1175,7 +1199,6 @@ struct S_StreamFileChunk_BB_02EB {
 
 // EC: Create game (Episode 3)
 // Same format as C1; some fields are unused (e.g. episode, difficulty)
-// TODO: Where does the "view battle allowed" flag end up?
 
 // EC: Leave character select (BB)
 
