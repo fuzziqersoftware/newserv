@@ -32,7 +32,7 @@ using namespace std;
 
 
 
-static const uint32_t SESSION_TIMEOUT_USECS = 30000000; // 30 seconds
+static const uint32_t SESSION_TIMEOUT_USECS = 10000000; // 10 seconds
 
 
 
