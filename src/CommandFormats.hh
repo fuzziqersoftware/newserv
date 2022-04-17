@@ -1585,7 +1585,7 @@ struct G_EnemyDropItemRequest_6x60 {
 // 63: Destroy an item on the ground (used when too many items have been dropped)
 // 64: Unknown
 // 65: Unknown
-// 66: Unknown
+// 66: Use star atomizer
 // 67: Create enemy set
 // 68: Telepipe/Ryuker
 // 69: Unknown (supported; game only)
