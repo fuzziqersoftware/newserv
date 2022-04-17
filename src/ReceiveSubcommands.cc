@@ -923,7 +923,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 63 */ process_subcommand_destroy_item, // Destroy an item on the ground (used when too many items have been dropped)
   /* 64 */ process_subcommand_unimplemented,
   /* 65 */ process_subcommand_unimplemented,
-  /* 66 */ process_subcommand_unimplemented,
+  /* 66 */ process_subcommand_forward_check_size_game, // Use star atomizer
   /* 67 */ process_subcommand_forward_check_size_game, // Create enemy set
   /* 68 */ process_subcommand_forward_check_size_game, // Telepipe/Ryuker
   /* 69 */ process_subcommand_forward_check_size_game,
