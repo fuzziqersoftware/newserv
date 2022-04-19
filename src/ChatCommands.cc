@@ -842,6 +842,25 @@ static void command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_warp(c, area);
 }
 
+static void command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string&) {
+  check_is_game(l, true);
+  check_cheats_enabled(l);
+
+  if (!l->episode || (l->episode > 3)) {
+    return;
+  }
+
+  uint8_t new_area = c->area + 1;
+  if (((l->episode == 1) && (new_area > 17)) ||
+      ((l->episode == 2) && (new_area > 17)) ||
+      ((l->episode == 3) && (new_area > 10))) {
+    new_area = 0;
+  }
+
+  send_warp(c, new_area);
+}
+
 static void command_song(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_ep3(c, true);
@@ -934,6 +953,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$li"        , {command_lobby_info        , u"Usage:\nli"}},
     {u"$maxlevel"  , {command_max_level         , u"Usage:\nmax_level <level>"}},
     {u"$minlevel"  , {command_min_level         , u"Usage:\nmin_level <level>"}},
+    {u"$next"      , {command_next              , u"Usage:\nnext"}},
     {u"$password"  , {command_password          , u"Usage:\nlock [password]\nomit password to\nunlock game"}},
     {u"$secid"     , {command_secid             , u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
     {u"$silence"   , {command_silence           , u"Usage:\nsilence <name-or-number>"}},

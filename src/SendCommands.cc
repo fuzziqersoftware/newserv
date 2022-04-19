@@ -1090,6 +1090,7 @@ void send_warp(shared_ptr<Client> c, uint32_t area) {
   cmds[0].byte[3] = 0x00;
   cmds[1].dword = area;
   send_command(c, 0x62, c->lobby_client_id, cmds, 8);
+  c->area = area;
 }
 
 void send_ep3_change_music(shared_ptr<Client> c, uint32_t song) {
