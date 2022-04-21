@@ -38,12 +38,14 @@ class Quest {
 private:
   static std::string decode_gci(const std::string& filename);
   static std::string decode_dlq(const std::string& filename);
+  static std::pair<std::string, std::string> decode_qst(const std::string& filename);
 
 public:
   enum class FileFormat {
     BIN_DAT = 0,
     BIN_DAT_GCI,
     BIN_DAT_DLQ,
+    QST,
   };
   int64_t quest_id;
   QuestCategory category;

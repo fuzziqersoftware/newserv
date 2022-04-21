@@ -4,21 +4,9 @@ newserv is a game server and proxy for Phantasy Star Online (PSO).
 
 This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself; this data was originally created by Sega.
 
-This project is a rewrite of a rewrite of a game server that I wrote many years ago. So far, it works well with PSO GC Episodes 1 & 2, and lobbies (but not games) are implemented on Episode 3. newserv is based on an older project of mine that supported other versions (PC and BB), but I no longer have a way to test those versions, so the implementation here probably doesn't work for them.
+This project is a rewrite of a rewrite of a game server that I wrote many years ago. So far, it works well with PSO GC Episodes 1 & 2, and lobbies (but not games) are implemented on Episode 3. Some basic functionality works on PSO PC, but there are probably still some cases that lead to errors (which will disconnect the client). newserv is based on an older project of mine that supported BB as well, but I no longer have a way to test BB, so the implementation here probably doesn't work for it.
 
 Feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
-
-## History
-
-In ages long past (probably 2004? I honestly can't remember), I wrote a proxy for PSO, which I named khyps. This haphazardly-glued-together mess of Windows GUI code and socket programming provided an interface to insert commands into the connection between PSO and its server, enabling some fun new features. Importantly, it also automatically blocked malformed commands which would have crashed the client, providing a safe way to navigate the wasteland that the official Sega servers had turned into after the Action Replay enable code for the game was released.
-
-khyps soon reached "maturity" and became uninteresting, so in 2005 I began writing a PSO server. This project became known as khyller, evolving into a full-featured environment supporting all versions of the game that I had access to - PC, GC, and BB. But as this evolution occurred, the code became increasingly ugly and hard to work with, littered with debugging filth that I never cleaned up and odd coding patterns that I had picked up over the years.
-
-Sometime in 2006 or 2007, I abandoned khyller and rebuilt the entire thing from scratch, resulting in newserv. But this newserv was not the project you're looking at now; 2007's newserv was substantially cleaner in code than khyller but was still quite ugly, and it lacked a few of the more esoteric features I had originally written (for example, the ability to convert any quest into a download quest). I felt better about working with this code, but it still had some stability problems. It turns out that 2007's newserv's concurrency implementation was simply incorrect - I had derived the concept of a mutex myself (before taking any real computer engineering classes) but implemented it incorrectly. No wonder newserv would randomly crash after running seemingly fine for a few days.
-
-A little-known fact is that no version of khyller or newserv was ever tested with the DreamCast versions of PSO. Both projects claimed to support them, but the DC server implementations were based only on chat conversations (likely now lost to time) with other people in the community who had done research on the DC version.
-
-Sometime in October 2018, I had some random cause to reminisce. I looked back in my old code archives and came across newserv. Somehow inspired, I spent a weekend and a couple more evenings rewriting the entire project again, cleaning up ancient patterns I had used eleven years ago, replacing entire modules with simple STL containers, and eliminating even more support files in favor of configuration autodetection. The code is now suitably modern and it no longer has insidious concurrency bugs because it's no longer concurrent - the server is now entirely event-driven.
 
 ## Future
 
@@ -41,6 +29,28 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 - Rename system/config.example.json to system/config.json, and edit it appropriately.
 - Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
 - Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
+
+### Installing quests
+
+newserv automatically finds quests in the system/quests directory. To install your own quests, or to use quests you've saved using the proxy's set-save-files option, just put them in that directory and name them appropriately.
+
+There are multiple PSO quest formats out there; newserv supports most of them. Specifically, newserv can use quests in any of the following formats:
+- bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file.
+- Unencrypted GCI format: These quests also consist of a .bin and .dat file, but an encoding is applied on top of them. The filenames should end in .bin.gci and .dat.gci.
+- Encrypted DLQ format: These quests also consist of a .bin and .dat file, but downlaod quest encryption is applied on top of them. The filenames should end in .bin.dlq and .dat.dlq.
+- QST format: These quests consist of only a .qst file, which contains both the .bin and .dat files within it.
+
+Standard quest file names should be like `q###-CATEGORY-VERSION.EXT`; battle quests should be named like `b###-VERSION.EXT`, and challenge quests should be named like `c###-VERSION.EXT`. The fields in each filename are:
+- `###`: quest number (this doesn't really matter; it should just be unique for the version)
+- `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, dl = Download (these don't appear during online play), 1p = Solo (BB only)
+- `VERSION`: d1 = DreamCast v1, dc = DreamCast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
+- `EXT`: file extension (bin, dat, bin.gci, dat.gci, bin.dlq, dat.dlq, or qst)
+
+When newserv indexes the quests during startup, it will warn (but not fail) if any quests are corrupt or in unrecognized formats.
+
+If you've changed the contents of the quests directory, you can re-index the quests without restarting the server by running `reload quests` in the interactive shell.
+
+All quests, including those originally in GCI or DLQ format, are treated as online quests unless their filenames specify the dl category. newserv allows players to download all quests, even those in non-download categories.
 
 ### Using newserv as a proxy
 

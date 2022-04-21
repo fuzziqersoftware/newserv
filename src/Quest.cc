@@ -8,6 +8,7 @@
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 
+#include "CommandFormats.hh"
 #include "Compression.hh"
 #include "PSOEncryption.hh"
 #include "Text.hh"
@@ -153,6 +154,9 @@ Quest::Quest(const string& bin_filename)
   } else if (ends_with(bin_filename, ".bin.dlq")) {
     this->file_format = FileFormat::BIN_DAT_DLQ;
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
+  } else if (ends_with(bin_filename, ".qst")) {
+    this->file_format = FileFormat::QST;
+    this->file_basename = bin_filename.substr(0, bin_filename.size() - 4);
   } else if (ends_with(bin_filename, ".bin")) {
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 4);
   } else {
@@ -168,7 +172,9 @@ Quest::Quest(const string& bin_filename)
       basename = bin_filename;
     }
   }
-  basename.resize(basename.size() - ((this->file_format == FileFormat::BIN_DAT) ? 4 : 8));
+  bool has_short_extension = (this->file_format == FileFormat::BIN_DAT) ||
+      (this->file_format == FileFormat::QST);
+  basename.resize(basename.size() - (has_short_extension ? 4 : 8));
 
   // quest filenames are like:
   // b###-VV.bin for battle mode
@@ -346,6 +352,12 @@ shared_ptr<const string> Quest::bin_contents() const {
       case FileFormat::BIN_DAT_DLQ:
         this->bin_contents_ptr.reset(new string(this->decode_dlq(this->file_basename + ".bin.dlq")));
         break;
+      case FileFormat::QST: {
+        auto result = this->decode_qst(this->file_basename + ".qst");
+        this->bin_contents_ptr.reset(new string(move(result.first)));
+        this->dat_contents_ptr.reset(new string(move(result.second)));
+        break;
+      }
       default:
         throw logic_error("invalid quest file format");
     }
@@ -365,40 +377,17 @@ shared_ptr<const string> Quest::dat_contents() const {
       case FileFormat::BIN_DAT_DLQ:
         this->dat_contents_ptr.reset(new string(this->decode_dlq(this->file_basename + ".dat.dlq")));
         break;
+      case FileFormat::QST: {
+        auto result = this->decode_qst(this->file_basename + ".qst");
+        this->bin_contents_ptr.reset(new string(move(result.first)));
+        this->dat_contents_ptr.reset(new string(move(result.second)));
+        break;
+      }
       default:
         throw logic_error("invalid quest file format");
     }
   }
   return this->dat_contents_ptr;
-}
-
-string Quest::decode_dlq(const string& filename) {
-  uint32_t decompressed_size;
-  uint32_t key;
-  string data;
-  {
-    auto f = fopen_unique(filename, "rb");
-    decompressed_size = freadx<le_uint32_t>(f.get());
-    key = freadx<le_uint32_t>(f.get());
-    data = read_all(f.get());
-  }
-
-  PSOPCEncryption encr(key);
-
-  // The compressed data size does not need to be a multiple of 4, but the PC
-  // encryption (which is used for all download quests, even in V3) requires the
-  // data size to be a multiple of 4. We'll just temporarily stick a few bytes
-  // on the end, then throw them away later if needed.
-  size_t original_size = data.size();
-  data.resize((data.size() + 3) & (~3));
-  encr.decrypt(data);
-  data.resize(original_size);
-
-  if (prs_decompress_size(data) != decompressed_size) {
-    throw runtime_error("decompressed size does not match size in header");
-  }
-
-  return data;
 }
 
 string Quest::decode_gci(const string& filename) {
@@ -448,6 +437,147 @@ string Quest::decode_gci(const string& filename) {
   return data_to_decompress;
 }
 
+string Quest::decode_dlq(const string& filename) {
+  uint32_t decompressed_size;
+  uint32_t key;
+  string data;
+  {
+    auto f = fopen_unique(filename, "rb");
+    decompressed_size = freadx<le_uint32_t>(f.get());
+    key = freadx<le_uint32_t>(f.get());
+    data = read_all(f.get());
+  }
+
+  PSOPCEncryption encr(key);
+
+  // The compressed data size does not need to be a multiple of 4, but the PC
+  // encryption (which is used for all download quests, even in V3) requires the
+  // data size to be a multiple of 4. We'll just temporarily stick a few bytes
+  // on the end, then throw them away later if needed.
+  size_t original_size = data.size();
+  data.resize((data.size() + 3) & (~3));
+  encr.decrypt(data);
+  data.resize(original_size);
+
+  if (prs_decompress_size(data) != decompressed_size) {
+    throw runtime_error("decompressed size does not match size in header");
+  }
+
+  return data;
+}
+
+template <typename HeaderT, typename OpenFileT>
+static pair<string, string> decode_qst_t(FILE* f) {
+  string qst_data = read_all(f);
+  StringReader r(qst_data);
+
+  string bin_contents;
+  string dat_contents;
+  string internal_bin_filename;
+  string internal_dat_filename;
+  uint32_t bin_file_size = 0;
+  uint32_t dat_file_size = 0;
+  while (!r.eof()) {
+    // Handle BB's implicit 8-byte command alignment
+    static constexpr size_t alignment = sizeof(HeaderT);
+    size_t next_command_offset = (r.where() + (alignment - 1)) & ~(alignment - 1);
+    r.go(next_command_offset);
+    if (r.eof()) {
+      break;
+    }
+
+    const auto& header = r.get<HeaderT>();
+    if (header.command == 0x44) {
+      if (header.size != sizeof(HeaderT) + sizeof(OpenFileT)) {
+        throw runtime_error("qst open file command has incorrect size");
+      }
+      const auto& cmd = r.get<OpenFileT>(f);
+      string internal_filename = cmd.filename;
+
+      if (ends_with(internal_filename, ".bin")) {
+        if (internal_bin_filename.empty()) {
+          internal_bin_filename = internal_filename;
+        } else {
+          throw runtime_error("qst contains multiple bin files");
+        }
+        bin_file_size = cmd.file_size;
+
+      } else if (ends_with(internal_filename, ".dat")) {
+        if (internal_dat_filename.empty()) {
+          internal_dat_filename = internal_filename;
+        } else {
+          throw runtime_error("qst contains multiple dat files");
+        }
+        dat_file_size = cmd.file_size;
+
+      } else {
+        throw runtime_error("qst contains non-bin, non-dat file");
+      }
+
+    } else if (header.command == 0x13) {
+      if (header.size != sizeof(HeaderT) + sizeof(S_WriteFile_13_A7)) {
+        throw runtime_error("qst write file command has incorrect size");
+      }
+      const auto& cmd = r.get<S_WriteFile_13_A7>();
+      string filename = cmd.filename;
+
+      string* dest = nullptr;
+      if (filename == internal_bin_filename) {
+        dest = &bin_contents;
+      } else if (filename == internal_dat_filename) {
+        dest = &dat_contents;
+      } else {
+        throw runtime_error("qst contains write commnd for non-open file");
+      }
+
+      if (cmd.data_size > 0x400) {
+        throw runtime_error("qst contains invalid write command");
+      }
+      if (dest->size() & 0x3FF) {
+        throw runtime_error("qst contains uneven chunks out of order");
+      }
+      if (header.flag != dest->size() / 0x400) {
+        throw runtime_error("qst contains chunks out of order");
+      }
+      dest->append(reinterpret_cast<const char*>(cmd.data), cmd.data_size);
+
+    } else {
+      throw runtime_error("invalid command in qst file");
+    }
+  }
+
+  if (bin_contents.size() != bin_file_size) {
+    throw runtime_error("bin file does not match expected size");
+  }
+  if (dat_contents.size() != dat_file_size) {
+    throw runtime_error("dat file does not match expected size");
+  }
+
+  return make_pair(bin_contents, dat_contents);
+}
+
+pair<string, string> Quest::decode_qst(const string& filename) {
+  auto f = fopen_unique(filename, "rb");
+
+  // qst files start with an open file command, but the format differs depending
+  // on the PSO version that the qst file is for. We can detect the format from
+  // the first 4 bytes in the file:
+  // - BB: 58 00 44 00
+  // - PC: 3C ?? 44 00
+  // - DC/GC: 44 ?? 3C 00
+  uint32_t signature = freadx<be_uint32_t>(f.get());
+  fseek(f.get(), 0, SEEK_SET);
+  if (signature == 0x58004400) {
+    return decode_qst_t<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(f.get());
+  } else if ((signature & 0xFF00FFFF) == 0x3C004400) {
+    return decode_qst_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(f.get());
+  } else if ((signature & 0xFF00FFFF) == 0x44003C00) {
+    return decode_qst_t<PSOCommandHeaderDCGC, S_OpenFile_PC_GC_44_A6>(f.get());
+  } else {
+    throw runtime_error("invalid qst file format");
+  }
+}
+
 
 
 QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
@@ -465,7 +595,8 @@ QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
 
     if (ends_with(filename, ".bin") ||
         ends_with(filename, ".bin.gci") ||
-        ends_with(filename, ".bin.dlq")) {
+        ends_with(filename, ".bin.dlq") ||
+        ends_with(filename, ".qst")) {
       try {
         shared_ptr<Quest> q(new Quest(full_path));
         this->version_id_to_quest.emplace(make_pair(q->version, q->quest_id), q);

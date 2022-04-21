@@ -6,6 +6,8 @@
 #include <phosg/Encoding.hh>
 
 #include "PSOProtocol.hh"
+#include "Text.hh"
+#include "Player.hh"
 
 
 
