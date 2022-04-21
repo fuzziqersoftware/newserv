@@ -24,12 +24,10 @@ link_directories("/usr/local/lib")
 find_path     (LIBEVENT_INCLUDE_DIR NAMES event.h)
 find_library  (LIBEVENT_LIBRARY     NAMES event)
 find_library  (LIBEVENT_CORE        NAMES event_core)
-find_library  (LIBEVENT_THREAD      NAMES event_pthreads)
 set (LIBEVENT_INCLUDE_DIRS ${LIBEVENT_INCLUDE_DIR})
 set (LIBEVENT_LIBRARIES
         ${LIBEVENT_LIBRARY}
-        ${LIBEVENT_CORE}
-        ${LIBEVENT_THREAD})
+        ${LIBEVENT_CORE})
 
 add_executable(newserv
   src/ChatCommands.cc
