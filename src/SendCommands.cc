@@ -1301,14 +1301,22 @@ void send_ep3_map_data(shared_ptr<Lobby> l, uint32_t map_id) {
 template <typename CommandT>
 void send_quest_open_file_t(
     shared_ptr<Client> c,
+    const string& quest_name,
     const string& filename,
     uint32_t file_size,
     bool is_download_quest,
     bool is_ep3_quest) {
   CommandT cmd;
-  cmd.flags = 2 + is_ep3_quest;
+  cmd.unused = 0;
+  if (is_ep3_quest) {
+    cmd.flags = 3;
+  } else if (is_download_quest) {
+    cmd.flags = 0;
+  } else {
+    cmd.flags = 2;
+  }
   cmd.file_size = file_size;
-  cmd.name = filename.c_str();
+  cmd.name = "PSO/" + quest_name;
   cmd.filename = filename.c_str();
   send_command(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
 }
@@ -1335,15 +1343,16 @@ void send_quest_file_chunk(
   send_command(c, is_download_quest ? 0xA7 : 0x13, chunk_index, cmd);
 }
 
-void send_quest_file(shared_ptr<Client> c, const string& basename,
-    const string& contents, bool is_download_quest, bool is_ep3_quest) {
+void send_quest_file(shared_ptr<Client> c, const string& quest_name,
+    const string& basename, const string& contents, bool is_download_quest,
+    bool is_ep3_quest) {
 
   if (c->version == GameVersion::PC || c->version == GameVersion::GC) {
     send_quest_open_file_t<S_OpenFile_PC_GC_44_A6>(
-        c, basename, contents.size(), is_download_quest, is_ep3_quest);
+        c, quest_name, basename, contents.size(), is_download_quest, is_ep3_quest);
   } else if (c->version == GameVersion::BB) {
     send_quest_open_file_t<S_OpenFile_BB_44_A6>(
-        c, basename, contents.size(), is_download_quest, is_ep3_quest);
+        c, quest_name, basename, contents.size(), is_download_quest, is_ep3_quest);
   } else {
     throw invalid_argument("cannot send quest files to this version of client");
   }

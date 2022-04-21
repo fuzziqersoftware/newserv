@@ -19,9 +19,9 @@ using namespace std;
 struct PSODownloadQuestHeader {
   // When sending a DLQ to the client, this is the DECOMPRESSED size. When
   // reading it from a GCI file, this is the COMPRESSED size.
-  be_uint32_t size;
+  le_uint32_t size;
   // Note: use PSO PC encryption, even for GC quests.
-  be_uint32_t encryption_seed;
+  le_uint32_t encryption_seed;
 } __attribute__((packed));
 
 
@@ -145,10 +145,13 @@ Quest::Quest(const string& bin_filename)
     episode(0),
     is_dcv1(false),
     joinable(false),
-    gci_format(false) {
+    file_format(FileFormat::BIN_DAT) {
 
   if (ends_with(bin_filename, ".bin.gci")) {
-    this->gci_format = true;
+    this->file_format = FileFormat::BIN_DAT_GCI;
+    this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
+  } else if (ends_with(bin_filename, ".bin.dlq")) {
+    this->file_format = FileFormat::BIN_DAT_DLQ;
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
   } else if (ends_with(bin_filename, ".bin")) {
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 4);
@@ -165,7 +168,7 @@ Quest::Quest(const string& bin_filename)
       basename = bin_filename;
     }
   }
-  basename.resize(basename.size() - (this->gci_format ? 8 : 4));
+  basename.resize(basename.size() - ((this->file_format == FileFormat::BIN_DAT) ? 4 : 8));
 
   // quest filenames are like:
   // b###-VV.bin for battle mode
@@ -333,10 +336,18 @@ std::string Quest::dat_filename() const {
 
 shared_ptr<const string> Quest::bin_contents() const {
   if (!this->bin_contents_ptr) {
-    if (this->gci_format) {
-      this->bin_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".bin.gci")));
-    } else {
-      this->bin_contents_ptr.reset(new string(load_file(this->file_basename + ".bin")));
+    switch (this->file_format) {
+      case FileFormat::BIN_DAT:
+        this->bin_contents_ptr.reset(new string(load_file(this->file_basename + ".bin")));
+        break;
+      case FileFormat::BIN_DAT_GCI:
+        this->bin_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".bin.gci")));
+        break;
+      case FileFormat::BIN_DAT_DLQ:
+        this->bin_contents_ptr.reset(new string(this->decode_dlq(this->file_basename + ".bin.dlq")));
+        break;
+      default:
+        throw logic_error("invalid quest file format");
     }
   }
   return this->bin_contents_ptr;
@@ -344,13 +355,50 @@ shared_ptr<const string> Quest::bin_contents() const {
 
 shared_ptr<const string> Quest::dat_contents() const {
   if (!this->dat_contents_ptr) {
-    if (this->gci_format) {
-      this->dat_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".dat.gci")));
-    } else {
-      this->dat_contents_ptr.reset(new string(load_file(this->file_basename + ".dat")));
+    switch (this->file_format) {
+      case FileFormat::BIN_DAT:
+        this->dat_contents_ptr.reset(new string(load_file(this->file_basename + ".dat")));
+        break;
+      case FileFormat::BIN_DAT_GCI:
+        this->dat_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".dat.gci")));
+        break;
+      case FileFormat::BIN_DAT_DLQ:
+        this->dat_contents_ptr.reset(new string(this->decode_dlq(this->file_basename + ".dat.dlq")));
+        break;
+      default:
+        throw logic_error("invalid quest file format");
     }
   }
   return this->dat_contents_ptr;
+}
+
+string Quest::decode_dlq(const string& filename) {
+  uint32_t decompressed_size;
+  uint32_t key;
+  string data;
+  {
+    auto f = fopen_unique(filename, "rb");
+    decompressed_size = freadx<le_uint32_t>(f.get());
+    key = freadx<le_uint32_t>(f.get());
+    data = read_all(f.get());
+  }
+
+  PSOPCEncryption encr(key);
+
+  // The compressed data size does not need to be a multiple of 4, but the PC
+  // encryption (which is used for all download quests, even in V3) requires the
+  // data size to be a multiple of 4. We'll just temporarily stick a few bytes
+  // on the end, then throw them away later if needed.
+  size_t original_size = data.size();
+  data.resize((data.size() + 3) & (~3));
+  encr.decrypt(data);
+  data.resize(original_size);
+
+  if (prs_decompress_size(data) != decompressed_size) {
+    throw runtime_error("decompressed size does not match size in header");
+  }
+
+  return data;
 }
 
 string Quest::decode_gci(const string& filename) {
@@ -415,7 +463,9 @@ QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
       continue;
     }
 
-    if (ends_with(filename, ".bin") || ends_with(filename, ".bin.gci")) {
+    if (ends_with(filename, ".bin") ||
+        ends_with(filename, ".bin.gci") ||
+        ends_with(filename, ".bin.dlq")) {
       try {
         shared_ptr<Quest> q(new Quest(full_path));
         this->version_id_to_quest.emplace(make_pair(q->version, q->quest_id), q);
@@ -469,38 +519,52 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(GameVersion version,
 
 
 static string create_download_quest_file(const string& compressed_data,
-    size_t decompressed_size) {
+    size_t decompressed_size, uint32_t seed = 0) {
+  if (seed == 0) {
+    seed = random_object<uint32_t>();
+  }
+
   string data(8, '\0');
   auto* header = reinterpret_cast<PSODownloadQuestHeader*>(data.data());
-  header->size = decompressed_size + sizeof(PSODownloadQuestHeader);
-  header->encryption_seed = random_object<uint32_t>();
+  header->size = decompressed_size;
+  header->encryption_seed = seed;
   data += compressed_data;
 
-  // add extra bytes if necessary so encryption won't fail
+  // Add temporary extra bytes if necessary so encryption won't fail
+  size_t original_size = data.size();
   data.resize((data.size() + 3) & (~3));
 
-  // TODO: for DC quests, do we use DC encryption?
-  PSOPCEncryption encr(header->encryption_seed);
+  PSOPCEncryption encr(seed);
   encr.encrypt(data.data() + sizeof(PSODownloadQuestHeader),
       data.size() - sizeof(PSODownloadQuestHeader));
+  data.resize(original_size);
+
   return data;
 }
 
 shared_ptr<Quest> Quest::create_download_quest() const {
-  if (this->category == QuestCategory::DOWNLOAD) {
-    throw invalid_argument("quest is already a download quest");
-  }
-
   string decompressed_bin = prs_decompress(*this->bin_contents());
+
+  // The download flag needs to be set in the bin header, or else the client
+  // will ignore it when scanning for download quests in an offline game.
   void* data_ptr = decompressed_bin.data();
   switch (this->version) {
     case GameVersion::DC:
+      if (decompressed_bin.size() < sizeof(PSOQuestHeaderDC)) {
+        throw runtime_error("bin file is too small for header");
+      }
       reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
       break;
     case GameVersion::PC:
+      if (decompressed_bin.size() < sizeof(PSOQuestHeaderPC)) {
+        throw runtime_error("bin file is too small for header");
+      }
       reinterpret_cast<PSOQuestHeaderPC*>(data_ptr)->is_download = 0x01;
       break;
     case GameVersion::GC:
+      if (decompressed_bin.size() < sizeof(PSOQuestHeaderGC)) {
+        throw runtime_error("bin file is too small for header");
+      }
       reinterpret_cast<PSOQuestHeaderGC*>(data_ptr)->is_download = 0x01;
       break;
     case GameVersion::BB:
@@ -510,14 +574,13 @@ shared_ptr<Quest> Quest::create_download_quest() const {
   }
 
   shared_ptr<Quest> dlq(new Quest(*this));
-  dlq->category = QuestCategory::DOWNLOAD;
 
+  string compressed_bin = prs_compress(decompressed_bin);
   dlq->bin_contents_ptr.reset(new string(create_download_quest_file(
-      prs_compress(decompressed_bin), decompressed_bin.size())));
+      compressed_bin, decompressed_bin.size())));
 
-  auto dat_contents = this->dat_contents();
   dlq->dat_contents_ptr.reset(new string(create_download_quest_file(
-      *dat_contents, prs_decompress_size(*dat_contents))));
+      *this->dat_contents(), prs_decompress_size(*this->dat_contents()))));
 
   return dlq;
 }

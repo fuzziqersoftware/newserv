@@ -13,18 +13,15 @@ using namespace std;
 
 
 struct prs_compress_ctx {
-  unsigned char bitpos;
+  uint8_t bitpos;
   std::string forward_log;
   std::string output;
 
-  prs_compress_ctx() : bitpos(0) { }
+  prs_compress_ctx() : bitpos(0), forward_log("\0", 1) { }
 
   string finish() {
     this->put_control_bit(0);
     this->put_control_bit(1);
-    if (this->bitpos != 0) {
-      this->forward_log[0] = ((this->forward_log[0] << this->bitpos) >> 8);
-    }
     this->put_static_data(0);
     this->put_static_data(0);
     this->output += this->forward_log;
@@ -33,8 +30,9 @@ struct prs_compress_ctx {
   }
 
   void put_control_bit_nosave(bool bit) {
-    this->forward_log[0] = this->forward_log[0] >> 1;
-    this->forward_log[0] |= ((!!bit) << 7);
+    if (bit) {
+      this->forward_log[0] |= 1 << this->bitpos;
+    }
     this->bitpos++;
   }
 
@@ -53,7 +51,7 @@ struct prs_compress_ctx {
   }
 
   void put_static_data(uint8_t data) {
-    this->forward_log += static_cast<char>(data);
+    this->forward_log.push_back(static_cast<char>(data));
   }
 
   void raw_byte(uint8_t value) {
@@ -108,10 +106,10 @@ string prs_compress(const string& data) {
     // look for a chunk of data in history matching what's at the current offset
     ssize_t best_offset = 0;
     ssize_t best_size = 0;
-    for (ssize_t this_offset = -3;
-         (this_offset + data_ssize >= 0) &&
-         (this_offset > -0x1FF0) &&
-         (best_size < 255);
+    for (ssize_t this_offset = -3; // min copy size is 3 bytes
+         (this_offset + read_offset >= 0) && // don't go before the beginning
+         (this_offset > -0x1FF0) && // max offset is -0x1FF0
+         (best_size < 255); // max size is 0xFF bytes
          this_offset--) {
 
       // for this offset, expand the match as much as possible

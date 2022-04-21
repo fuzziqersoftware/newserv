@@ -25,7 +25,6 @@ Sometime in October 2018, I had some random cause to reminisce. I looked back in
 This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance.
 
 Current known issues / missing features:
-- Download quests are mostly implemented, but the client doesn't always accept them. It's probably a format issue in file generation.
 - Test all the communication features (info board, simple mail, card search, etc.)
 - The trade window isn't implemented yet.
 - PSO PC and PSOBB are essentially entirely untested. Only GC is fairly well-tested.

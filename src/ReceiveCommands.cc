@@ -675,7 +675,21 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           break;
 
         case MAIN_MENU_DOWNLOAD_QUESTS:
-          send_quest_menu(c, QUEST_FILTER_MENU_ID, quest_download_menu, true);
+          if (c->flags & Client::Flag::EPISODE_3) {
+            shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
+            auto quests = s->quest_index->filter(c->version, false, QuestCategory::EPISODE_3, 0xFF);
+            if (quests.empty()) {
+              send_lobby_message_box(c, u"$C6There are no quests\navailable.");
+            } else {
+              // Episode 3 has only download quests, not online quests, so this
+              // is always the download quest menu. (Episode 3 does actually
+              // have online quests, but they don't use the file download
+              // paradigm that all other versions use.)
+              send_quest_menu(c, QUEST_MENU_ID, quests, true);
+            }
+          } else {
+            send_quest_menu(c, QUEST_FILTER_MENU_ID, quest_download_menu, true);
+          }
           break;
 
         case MAIN_MENU_DISCONNECT:
@@ -817,7 +831,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       auto quests = s->quest_index->filter(c->version,
           c->flags & Client::Flag::DCV1,
           static_cast<QuestCategory>(cmd.item_id & 0xFF),
-          l.get() ? (l->episode - 1) : -1);
+          c->flags & Client::Flag::EPISODE_3 ? 0xFF : (l.get() ? (l->episode - 1) : -1));
       if (quests.empty()) {
         send_lobby_message_box(c, u"$C6There are no quests\navailable in that\ncategory.");
         break;
@@ -851,10 +865,15 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         }
       }
 
-      auto bin_basename = q->bin_filename();
-      auto dat_basename = q->dat_filename();
-      auto bin_contents = q->bin_contents();
-      auto dat_contents = q->dat_contents();
+      bool is_ep3 = (q->episode == 0xFF);
+      string bin_basename = q->bin_filename();
+      shared_ptr<const string> bin_contents = q->bin_contents();
+      string dat_basename;
+      shared_ptr<const string> dat_contents;
+      if (!is_ep3) {
+        dat_basename = q->dat_filename();
+        dat_contents = q->dat_contents();
+      }
 
       if (l) {
         if (q->joinable) {
@@ -872,8 +891,10 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           // cause GC clients to crash in rare cases. Find a way to slow this down
           // (perhaps by only sending each new chunk when they acknowledge the
           // previous chunk with a 44 [first chunk] or 13 [later chunks] command).
-          send_quest_file(l->clients[x], bin_basename, *bin_contents, false, false);
-          send_quest_file(l->clients[x], dat_basename, *dat_contents, false, false);
+          send_quest_file(l->clients[x], bin_basename + ".bin", bin_basename, *bin_contents, false, is_ep3);
+          if (dat_contents) {
+            send_quest_file(l->clients[x], dat_basename + ".dat", dat_basename, *dat_contents, false, is_ep3);
+          }
 
           // There is no such thing as command AC on PSO PC - quests just start
           // immediately when they're done downloading. There are also no chunk
@@ -886,10 +907,17 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         }
 
       } else {
-        // TODO: cache dlq somewhere maybe
-        auto dlq = q->create_download_quest();
-        send_quest_file(c, bin_basename, *bin_contents, true, false);
-        send_quest_file(c, dat_basename, *dat_contents, true, false);
+        string quest_name = encode_sjis(q->name);
+        // Episode 3 uses the download quest commands (A6/A7) but does not
+        // expect the server to have already encrypted the quest files, unlike
+        // other versions.
+        if (!is_ep3) {
+          q = q->create_download_quest();
+        }
+        send_quest_file(c, quest_name, bin_basename, *q->bin_contents(), true, is_ep3);
+        if (dat_contents) {
+          send_quest_file(c, quest_name, dat_basename, *q->dat_contents(), true, is_ep3);
+        }
       }
       break;
     }
@@ -978,24 +1006,31 @@ void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  vector<MenuItem>* menu = nullptr;
-  if ((c->version == GameVersion::BB) && flag) {
-    menu = &quest_government_menu;
-  } else {
-    if (l->mode == 0) {
-      menu = &quest_categories_menu;
-    } else if (l->mode == 1) {
-      menu = &quest_battle_menu;
-    } else if (l->mode == 1) {
-      menu = &quest_challenge_menu;
-    } else if (l->mode == 1) {
-      menu = &quest_solo_menu;
-    } else {
-      throw logic_error("no quest menu available for mode");
-    }
-  }
+  // In Episode 3, there are no quest categories, so skip directly to the quest
+  // filter menu.
+  if (c->flags & Client::Flag::EPISODE_3) {
+    send_lobby_message_box(c, u"$C6Episode 3 does not\nprovide online quests\nvia this interface.");
 
-  send_quest_menu(c, QUEST_FILTER_MENU_ID, *menu, false);
+  } else {
+    vector<MenuItem>* menu = nullptr;
+    if ((c->version == GameVersion::BB) && flag) {
+      menu = &quest_government_menu;
+    } else {
+      if (l->mode == 0) {
+        menu = &quest_categories_menu;
+      } else if (l->mode == 1) {
+        menu = &quest_battle_menu;
+      } else if (l->mode == 1) {
+        menu = &quest_challenge_menu;
+      } else if (l->mode == 1) {
+        menu = &quest_solo_menu;
+      } else {
+        throw logic_error("no quest menu available for mode");
+      }
+    }
+
+    send_quest_menu(c, QUEST_FILTER_MENU_ID, *menu, false);
+  }
 }
 
 void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1040,7 +1075,7 @@ void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
   strip_trailing_zeroes(filename);
   auto contents = file_cache.get(filename);
 
-  send_quest_file(c, filename, *contents, false, false);
+  send_quest_file(c, filename, filename, *contents, false, false);
 }
 
 

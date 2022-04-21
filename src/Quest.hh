@@ -37,8 +37,14 @@ const char* name_for_category(QuestCategory category);
 class Quest {
 private:
   static std::string decode_gci(const std::string& filename);
+  static std::string decode_dlq(const std::string& filename);
 
 public:
+  enum class FileFormat {
+    BIN_DAT = 0,
+    BIN_DAT_GCI,
+    BIN_DAT_DLQ,
+  };
   int64_t quest_id;
   QuestCategory category;
   uint8_t episode; // 0 = ep1, 1 = ep2, 2 = ep4, 0xFF = ep3
@@ -46,7 +52,7 @@ public:
   bool joinable;
   GameVersion version;
   std::string file_basename; // we append -<version>.<bin/dat> when reading
-  bool gci_format;
+  FileFormat file_format;
   std::u16string name;
   std::u16string short_description;
   std::u16string long_description;
