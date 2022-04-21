@@ -639,8 +639,8 @@ static bool process_client_40(shared_ptr<ServerState>,
 template <typename CmdT>
 static bool process_client_81(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  auto& cmd = check_size_t<SC_SimpleMail_GC_81>(data);
   if (session.license) {
-    auto& cmd = check_size_t<SC_SimpleMail_GC_81>(data);
     if (cmd.from_guild_card_number == session.license->serial_number) {
       cmd.from_guild_card_number = session.remote_guild_card_number;
     }
@@ -648,6 +648,8 @@ static bool process_client_81(shared_ptr<ServerState>,
       cmd.to_guild_card_number = session.remote_guild_card_number;
     }
   }
+  // GC clients send uninitialized memory here; don't forward it
+  cmd.text.clear_after(cmd.text.len());
   return true;
 }
 
