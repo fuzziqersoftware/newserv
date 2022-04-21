@@ -232,14 +232,19 @@ struct C_MenuSelection {
 // 13 (C->S): Confirm file write
 // Client sends this in response to each 13 sent by the server. It appears these
 // are only sent by V3 and BB - PSO PC does not send these.
-// TODO: Document format here (even though newserv ignores these)
+// This structure is for documentation only; newserv ignores these.
+
+// header.flag = file chunk index (same as in the 13/A7 sent by the server)
+struct C_WriteFileConfirmation_GC_BB_13_A7 {
+  ptext<char, 0x10> filename;
+};
 
 // 13 (S->C): Write online quest file
 // Used for downloading online quests. All chunks except the last must have
 // 0x400 data bytes. When downloading an online quest, the .bin and .dat chunks
 // may be interleaved (although newserv currently sends them sequentially).
 
-// Header flag = file chunk index (start offset / 0x400)
+// header.flag = file chunk index (start offset / 0x400)
 struct S_WriteFile_13_A7 {
   ptext<char, 0x10> filename;
   uint8_t data[0x400];
@@ -382,7 +387,14 @@ struct S_GuildCardSearchResult_BB_41 : S_GuildCardSearchResult<PSOCommandHeaderB
 // 44 (C->S): Confirm open file
 // Client sends this in response to each 44 sent by the server.
 // TODO: Are these V3-only just like the 13 (C->S) command?
-// TODO: Document format here (even though newserv ignores these)
+// This structure is for documentation only; newserv ignores these.
+
+// header.flag = quest number (sort of - seems like the client just echoes
+// whatever the server sent in its header.flag field. Also quest numbers can be
+// > 0xFF so the flag is essentially meaningless)
+struct C_OpenFileConfirmation_44_A6 {
+  ptext<char, 0x10> filename;
+};
 
 // 44 (S->C): Open file for download
 // Used for downloading online quests.
