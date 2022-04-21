@@ -208,29 +208,20 @@ Quest::Quest(const string& bin_filename)
 
   // get the category from the second token if needed
   if (this->category == QuestCategory::UNKNOWN) {
-    if (tokens[1] == "gov") {
-      if (this->episode == 0) {
-        this->category = QuestCategory::GOVERNMENT_EPISODE_1;
-      } else if (this->episode == 1) {
-        this->category = QuestCategory::GOVERNMENT_EPISODE_2;
-      } else if (this->episode == 2) {
-        this->category = QuestCategory::GOVERNMENT_EPISODE_4;
-      } else {
-        throw invalid_argument("government quest has incorrect episode");
-      }
-    } else {
-      static const unordered_map<std::string, QuestCategory> name_to_category({
-        {"ret", QuestCategory::RETRIEVAL},
-        {"ext", QuestCategory::EXTERMINATION},
-        {"evt", QuestCategory::EVENT},
-        {"shp", QuestCategory::SHOP},
-        {"vr",  QuestCategory::VR},
-        {"twr", QuestCategory::TOWER},
-        {"dl",  QuestCategory::DOWNLOAD},
-        {"1p",  QuestCategory::SOLO},
-      });
-      this->category = name_to_category.at(tokens[1]);
-    }
+    static const unordered_map<std::string, QuestCategory> name_to_category({
+      {"ret", QuestCategory::RETRIEVAL},
+      {"ext", QuestCategory::EXTERMINATION},
+      {"evt", QuestCategory::EVENT},
+      {"shp", QuestCategory::SHOP},
+      {"vr",  QuestCategory::VR},
+      {"twr", QuestCategory::TOWER},
+      // Note: This will be overwritten later for Episode 2 & 4 quests - we
+      // haven't parsed the episode from the quest script yet
+      {"gov", QuestCategory::GOVERNMENT_EPISODE_1},
+      {"dl",  QuestCategory::DOWNLOAD},
+      {"1p",  QuestCategory::SOLO},
+    });
+    this->category = name_to_category.at(tokens[1]);
     tokens.erase(tokens.begin() + 1);
   }
 
@@ -318,9 +309,20 @@ Quest::Quest(const string& bin_filename)
       this->name = header->name;
       this->short_description = header->short_description;
       this->long_description = header->long_description;
+      if (this->category == QuestCategory::GOVERNMENT_EPISODE_1) {
+        if (this->episode == 1) {
+          this->category = QuestCategory::GOVERNMENT_EPISODE_2;
+        } else if (this->episode == 2) {
+          this->category = QuestCategory::GOVERNMENT_EPISODE_4;
+        } else if (this->episode != 0) {
+          throw invalid_argument("government quest has invalid episode number");
+        }
+      }
       break;
-
     }
+
+    default:
+      throw logic_error("invalid quest game version");
   }
 }
 
