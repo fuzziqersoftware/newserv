@@ -878,14 +878,18 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // For example: 2022:03:30: 15:36:42.000
 // Client will respond with a 99 command.
 
-// B2 (S->C): Write memory
+// B2 (S->C): Execute code
 // GC v1.0 and v1.1 only.
 // Format unknown.
 // Client will respond with a B3 command.
 
-// B3 (C->S): Write memory response
+// B3 (C->S): Execute code response
 // GC v1.0 and v1.1 only.
-// Format unknown.
+
+struct C_ExecuteCodeResponse_GC_B3 {
+  le_uint32_t return_value;
+  le_uint32_t unused;
+};
 
 // B4: Invalid command
 // B5: Invalid command

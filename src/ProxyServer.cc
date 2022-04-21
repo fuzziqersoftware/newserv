@@ -374,6 +374,7 @@ ProxyServer::LinkedSession::LinkedSession(
     enable_chat_filter(true),
     enable_switch_assist(false),
     save_files(false),
+    function_call_return_value(-1),
     override_section_id(-1),
     override_lobby_event(-1),
     override_lobby_number(-1),

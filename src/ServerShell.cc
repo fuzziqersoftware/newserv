@@ -141,6 +141,11 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     on, any file that the remote server sends to the client will be saved to\n\
     the current directory. This includes data like quests, Episode 3 card\n\
     definitions, and GBA games.\n\
+  set-block-function-calls [return-value]\n\
+    Enable blocking of function calls from the server. When enabled, the proxy\n\
+    responds as if the function was called (with the given return value), but\n\
+    does not send the code to the client. To stop blocking function calls, omit\n\
+    the return value.\n\
 ");
 
 
@@ -371,6 +376,14 @@ Proxy commands (these will only work when exactly one client is connected):\n\
   } else if (command_name == "set-save-files") {
     auto session = this->get_proxy_session();
     set_boolean(&session->save_files, command_args);
+
+  } else if (command_name == "set-block-function-calls") {
+    auto session = this->get_proxy_session();
+    if (command_args.empty()) {
+      session->function_call_return_value = -1;
+    } else {
+      session->function_call_return_value = stoul(command_args);
+    }
 
   } else {
     throw invalid_argument("unknown command; try \'help\'");

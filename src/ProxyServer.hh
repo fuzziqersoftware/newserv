@@ -58,6 +58,7 @@ public:
     bool enable_chat_filter;
     bool enable_switch_assist;
     bool save_files;
+    int64_t function_call_return_value; // -1 = don't block function calls
     G_SwitchStateChanged_6x05 last_switch_enabled_command;
     int16_t override_section_id;
     int16_t override_lobby_event;
