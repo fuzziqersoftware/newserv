@@ -222,7 +222,7 @@ struct C_MenuSelection {
   } password;
 };
 
-// 11: Ship info
+// 11 (S->C): Ship info
 // Same format as 01 command.
 
 // 12: Session complete (patch server)
@@ -647,7 +647,10 @@ struct S_ArrowUpdateEntry_88 {
 
 // 8A (S->C): Lobby/game name
 // Contents is a string (char16_t on PC/BB, char on DC/GC) containing the lobby
-// or game name.
+// or game name. The client generally only sends this immediately after joining
+// a game, but Sega's servers also replied to it if it was sent in a lobby. They
+// would return a string like "LOBBY01" even though this would never be used
+// under normal circumstances.
 
 // 8B: Invalid command
 // 8C: Invalid command
@@ -692,7 +695,7 @@ struct C_ClientChecksum_GC_96 {
 // No arguments
 
 // 98 (C->S): Leave game
-// Same format a 61 command.
+// Same format as 61 command.
 // Client will send an 84 when it's ready to join a lobby.
 
 // 99 (C->S): Server time accepted
