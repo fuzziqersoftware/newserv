@@ -87,6 +87,7 @@ static bool process_server_gc_9A(shared_ptr<ServerState>,
     cmd.player_tag = 0x00010000;
     cmd.guild_card_number = session.remote_guild_card_number;
   }
+  cmd.unused = 0;
   cmd.sub_version = session.sub_version;
   cmd.unused2.data()[1] = 1;
   cmd.serial_number = string_printf("%08" PRIX32 "", session.license->serial_number);
