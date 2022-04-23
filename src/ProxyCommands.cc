@@ -332,7 +332,9 @@ static bool process_server_C4(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   if (session.license) {
     size_t expected_size = sizeof(CmdT) * flag;
-    auto* entries = &check_size_t<CmdT>(data, expected_size, expected_size);
+    // Some servers (e.g. Schtserv) send extra data on the end of this command;
+    // the client ignores it so we can ignore it too
+    auto* entries = &check_size_t<CmdT>(data, expected_size, 0xFFFF);
     for (size_t x = 0; x < flag; x++) {
       if (entries[x].guild_card_number == session.remote_guild_card_number) {
         entries[x].guild_card_number = session.license->serial_number;
