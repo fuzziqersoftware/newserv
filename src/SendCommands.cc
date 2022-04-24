@@ -272,6 +272,7 @@ void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
   cmd.pc_address = address;
   cmd.pc_port = pc_port;
   cmd.gc_command = 0x19;
+  cmd.gc_flag = 0x00;
   cmd.gc_size = 0x97;
   cmd.gc_address = address;
   cmd.gc_port = gc_port;
