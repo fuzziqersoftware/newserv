@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 
+#include <array>
 #include <vector>
 #include <string>
 #include <memory>
@@ -34,7 +35,7 @@ struct Lobby {
   // item info
   std::vector<PSOEnemy> enemies;
   std::shared_ptr<const RareItemSet> rare_item_set;
-  uint32_t next_item_id[12];
+  std::array<uint32_t, 12> next_item_id;
   uint32_t next_game_item_id;
   PlayerInventoryItem next_drop_item;
   std::unordered_map<uint32_t, PlayerInventoryItem> item_id_to_floor_item;
@@ -43,7 +44,7 @@ struct Lobby {
   // game config
   GameVersion version;
   uint8_t section_id;
-  uint8_t episode;
+  uint8_t episode; // 1 = Ep1, 2 = Ep2, 3 = Ep4, 0xFF = Ep3
   uint8_t difficulty;
   uint8_t mode;
   std::u16string password;
@@ -60,7 +61,7 @@ struct Lobby {
   uint8_t max_clients;
   uint32_t flags;
   uint32_t loading_quest_id; // for use with joinable quests
-  std::shared_ptr<Client> clients[12];
+  std::array<std::shared_ptr<Client>, 12> clients;
 
   Lobby();
 

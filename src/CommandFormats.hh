@@ -1682,7 +1682,7 @@ struct G_EnemyDropItemRequest_6x60 {
   le_uint16_t request_id;
   le_float x;
   le_float y;
-  le_uint32_t unknown[2];
+  le_uint64_t unknown;
 };
 
 // 61: Feed MAG

@@ -574,6 +574,49 @@ static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
   }
 }
 
+static void process_subcommand_phase_setup(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  const auto* p = check_size_sc(data, sizeof(PSOSubcommand), 0xFFFF);
+  if (!l->is_game()) {
+    return;
+  }
+  forward_subcommand(l, c, command, flag, data);
+
+  bool should_send_boss_drop_req = false;
+  if (p[2].dword == l->difficulty) {
+    if ((l->episode == 1) && (c->area == 0x0E)) {
+      // On Normal, Dark Falz does not have a third phase, so send the drop
+      // request after the end of the second phase. On all other difficulty
+      // levels, send it after the third phase.
+      if (((l->difficulty == 0) && (p[1].dword == 0x00000035)) ||
+          ((l->difficulty != 0) && (p[1].dword == 0x00000037))) {
+        should_send_boss_drop_req = true;
+      }
+    } else if ((l->episode == 2) && (p[1].dword == 0x00000057) && (c->area == 0x0D)) {
+      should_send_boss_drop_req = true;
+    }
+  }
+
+  if (should_send_boss_drop_req) {
+    auto c = l->clients.at(l->leader_id);
+    if (c) {
+      G_EnemyDropItemRequest_6x60 req = {
+        0x60,
+        0x06,
+        0x1090,
+        static_cast<uint8_t>(c->area),
+        static_cast<uint8_t>((l->episode == 2) ? 0x4E : 0x2F),
+        0x0B4F,
+        (l->episode == 2) ? -9999.0f : 10160.58984375f,
+        0.0f,
+        0xE0AEDC0100000002,
+      };
+      send_command(c, 0x62, l->leader_id, req);
+    }
+  }
+}
+
 // enemy hit by player
 static void process_subcommand_enemy_hit(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
@@ -938,7 +981,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 72 */ process_subcommand_forward_check_game_loading,
   /* 73 */ process_subcommand_invalid,
   /* 74 */ process_subcommand_word_select,
-  /* 75 */ process_subcommand_forward_check_size_game,
+  /* 75 */ process_subcommand_phase_setup,
   /* 76 */ process_subcommand_forward_check_size_game, // Enemy killed
   /* 77 */ process_subcommand_forward_check_size_game, // Sync quest data
   /* 78 */ process_subcommand_unimplemented,
