@@ -59,6 +59,7 @@ add_executable(newserv
   src/ServerShell.cc
   src/ServerState.cc
   src/Shell.cc
+  src/StaticGameData.cc
   src/Text.cc
   src/Version.cc
 )

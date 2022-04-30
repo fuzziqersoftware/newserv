@@ -33,6 +33,8 @@ Client::Client(
     play_time_begin(now()),
     last_recv_time(this->play_time_begin),
     last_send_time(0),
+    x(0.0f),
+    z(0.0f),
     area(0),
     lobby_id(0),
     lobby_client_id(0),

@@ -29,17 +29,18 @@ extern FileContentsCache file_cache;
 
 
 enum ClientStateBB {
-  // initial connection. server will redirect client to another port.
+  // Initial connection; server will redirect client to another port
   INITIAL_LOGIN = 0x00,
-  // second connection. server will send client game data and account data.
+  // Second connection; server will send client game data and account data
   DOWNLOAD_DATA = 0x01,
-  // third connection. choose character menu
+  // Third connection; client will show the choose character menu
   CHOOSE_PLAYER = 0x02,
-  // fourth connection, used for saving characters only. if you do not create a
-  // character, server sets this state in order to skip it.
-  SAVE_PLAYER   = 0x03,
-  // last connection. redirects client to login server.
-  SHIP_SELECT   = 0x04,
+  // Fourth connection; used for saving characters only. If you do not create a
+  // character, the server sets this state during the third connection so this
+  // connection is effectively skipped.
+  SAVE_PLAYER = 0x03,
+  // Last connection; redirects client to login server
+  SHIP_SELECT = 0x04,
 };
 
 
@@ -816,9 +817,6 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
       s->change_client_lobby(c, game);
       c->flags |= Client::Flag::LOADING;
-      if (c->version == GameVersion::BB) {
-        game->assign_item_ids_for_player(c->lobby_client_id, c->player.inventory);
-      }
       break;
     }
 
@@ -1696,8 +1694,6 @@ void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   s->add_lobby(game);
   s->change_client_lobby(c, game);
   c->flags |= Client::Flag::LOADING;
-
-  game->assign_item_ids_for_player(c->lobby_client_id, c->player.inventory);
 }
 
 void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1723,7 +1719,12 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   send_resume_game(l, c);
   send_server_time(c);
-  send_get_player_info(c);
+  // Only get player info again on BB, since on other versions the returned info
+  // only includes items that would be saved if the client disconnects
+  // unexpectedly (that is, only equipped items are included).
+  if (c->version == GameVersion::BB) {
+    send_get_player_info(c);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

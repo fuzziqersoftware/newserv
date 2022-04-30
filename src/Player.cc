@@ -9,6 +9,7 @@
 
 #include "Text.hh"
 #include "Version.hh"
+#include "StaticGameData.hh"
 
 using namespace std;
 
@@ -439,29 +440,16 @@ PlayerLobbyDataBB::PlayerLobbyDataBB() noexcept
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static const unordered_map<uint32_t, uint32_t> combine_item_to_max({
-  {0x030000, 10},
-  {0x030001, 10},
-  {0x030002, 10},
-  {0x030100, 10},
-  {0x030101, 10},
-  {0x030102, 10},
-  {0x030300, 10},
-  {0x030400, 10},
-  {0x030500, 10},
-  {0x030600, 10},
-  {0x030601, 10},
-  {0x030700, 10},
-  {0x030800, 10},
-  {0x031000, 99},
-  {0x031001, 99},
-  {0x031002, 99},
-});
-
-const uint32_t meseta_identifier = 0x00000004;
+const uint32_t meseta_identifier = 0x00040000;
 
 uint32_t ItemData::primary_identifier() const {
-  return (this->item_data1[0] << 16) | (this->item_data1[1] << 8) | this->item_data1[2];
+  if (this->item_data1[0] == 0x03 && this->item_data1[1] == 0x02) {
+    return 0x00030200; // Tech disk (data1[2] is level, so omit it)
+  } else if (this->item_data1[0] == 0x02) {
+    return 0x00020000 | (this->item_data1[1] << 8); // Mag
+  } else {
+    return (this->item_data1[0] << 16) | (this->item_data1[1] << 8) | this->item_data1[2];
+  }
 }
 
 PlayerBankItem PlayerInventoryItem::to_bank_item() const {
@@ -577,21 +565,20 @@ void PlayerBank::add_item(const PlayerBankItem& item) {
   this->num_items++;
 }
 
-void Player::remove_item(uint32_t item_id, uint32_t amount,
-    PlayerInventoryItem* item) {
+PlayerInventoryItem Player::remove_item(uint32_t item_id, uint32_t amount) {
+  PlayerInventoryItem ret;
 
   // are we removing meseta? then create a meseta item
   if (item_id == 0xFFFFFFFF) {
     if (amount > this->disp.meseta) {
       throw out_of_range("player does not have enough meseta");
     }
-    if (item) {
-      memset(item, 0, sizeof(*item));
-      item->data.item_data1[0] = 0x04;
-      item->data.item_data2d = amount;
-    }
+
+    memset(&ret, 0, sizeof(ret));
+    ret.data.item_data1[0] = 0x04;
+    ret.data.item_data2d = amount;
     this->disp.meseta -= amount;
-    return;
+    return ret;
   }
 
   // find this item
@@ -602,40 +589,35 @@ void Player::remove_item(uint32_t item_id, uint32_t amount,
   // (amount == 0 means remove all of it)
   if (amount && (amount < inventory_item.data.item_data1[5]) &&
       combine_item_to_max.count(inventory_item.data.primary_identifier())) {
-    if (item) {
-      *item = inventory_item;
-      item->data.item_data1[5] = amount;
-      item->data.item_id = 0xFFFFFFFF;
-    }
+    ret = inventory_item;
+    ret.data.item_data1[5] = amount;
+    ret.data.item_id = 0xFFFFFFFF;
     inventory_item.data.item_data1[5] -= amount;
-    return;
+    return ret;
   }
 
   // not a combine item, or we're removing the whole stack? then just remove the item
-  if (item) {
-    *item = inventory_item;
-  }
+  ret = inventory_item;
   this->inventory.num_items--;
   memcpy(&this->inventory.items[index], &this->inventory.items[index + 1],
       sizeof(PlayerInventoryItem) * (this->inventory.num_items - index));
+  return ret;
 }
 
 // removes an item from a bank. works just like RemoveItem for inventories; I won't comment it
-void PlayerBank::remove_item(uint32_t item_id, uint32_t amount,
-    PlayerBankItem* item) {
+PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
+  PlayerBankItem ret;
 
   // are we removing meseta? then create a meseta item
   if (item_id == 0xFFFFFFFF) {
     if (amount > this->meseta) {
       throw out_of_range("player does not have enough meseta");
     }
-    if (item) {
-      memset(item, 0, sizeof(*item));
-      item->data.item_data1[0] = 0x04;
-      item->data.item_data2d = amount;
-    }
+    memset(&ret, 0, sizeof(ret));
+    ret.data.item_data1[0] = 0x04;
+    ret.data.item_data2d = amount;
     this->meseta -= amount;
-    return;
+    return ret;
   }
 
   // find this item
@@ -646,23 +628,20 @@ void PlayerBank::remove_item(uint32_t item_id, uint32_t amount,
   // (amount == 0 means remove all of it)
   if (amount && (amount < bank_item.data.item_data1[5]) &&
       combine_item_to_max.count(bank_item.data.primary_identifier())) {
-    if (item) {
-      *item = bank_item;
-      item->data.item_data1[5] = amount;
-      item->amount = amount;
-    }
+    ret = bank_item;
+    ret.data.item_data1[5] = amount;
+    ret.amount = amount;
     bank_item.data.item_data1[5] -= amount;
     bank_item.amount -= amount;
-    return;
+    return ret;
   }
 
   // not a combine item, or we're removing the whole stack? then just remove the item
-  if (item) {
-    *item = bank_item;
-  }
+  ret = bank_item;
   this->num_items--;
   memcpy(&this->items[index], &this->items[index + 1],
       sizeof(PlayerBankItem) * (this->num_items - index));
+  return ret;
 }
 
 size_t PlayerInventory::find_item(uint32_t item_id) {
@@ -681,6 +660,17 @@ size_t PlayerBank::find_item(uint32_t item_id) {
     }
   }
   throw out_of_range("item not present");
+}
+
+void Player::print_inventory(FILE* stream) const {
+  fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", this->disp.meseta.load());
+  fprintf(stream, "[PlayerInventory] %hhu items\n", this->inventory.num_items);
+  for (size_t x = 0; x < this->inventory.num_items; x++) {
+    const auto& item = this->inventory.items[x];
+    string name = name_for_item(item.data);
+    fprintf(stream, "[PlayerInventory]   %zu (%08" PRIX32 "): %08" PRIX32 " (%s)\n",
+        x, item.data.item_id.load(), item.data.primary_identifier(), name.c_str());
+  }
 }
 
 string filename_for_player_bb(const string& username, uint8_t player_index) {

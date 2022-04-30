@@ -37,7 +37,7 @@ const CmdT* check_size_sc(
     max_size = min_size;
   }
   const auto* cmd = &check_size_t<CmdT>(data, min_size, max_size);
-  if (check_size_field && cmd->size) {
+  if (check_size_field && (cmd->size != data.size() / 4)) {
     throw runtime_error("invalid subcommand size field");
   }
   return cmd;
@@ -227,28 +227,102 @@ static void process_subcommand_switch_state_changed(shared_ptr<ServerState>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// BB Item commands
 
-// player drops an item
-static void process_subcommand_drop_item(shared_ptr<ServerState>,
+template <typename CmdT>
+void process_subcommand_movement(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  if (l->version == GameVersion::BB) {
-    const auto* cmd = check_size_sc<G_PlayerDropItem_6x2A>(data);
+  const auto* cmd = check_size_sc<CmdT>(data);
 
-    if ((cmd->client_id != c->lobby_client_id)) {
-      return;
-    }
-
-    PlayerInventoryItem item;
-    c->player.remove_item(cmd->item_id, 0, &item);
-    l->add_item(item);
+  if (cmd->client_id != c->lobby_client_id) {
+    return;
   }
+
+  c->x = cmd->x;
+  c->z = cmd->z;
+
   forward_subcommand(l, c, command, flag, data);
 }
 
-// player splits a stack and drops part of it
-static void process_subcommand_drop_stacked_item(shared_ptr<ServerState>,
+////////////////////////////////////////////////////////////////////////////////
+// Item commands
+
+static void process_subcommand_player_drop_item(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  const auto* cmd = check_size_sc<G_PlayerDropItem_6x2A>(data);
+
+  if ((cmd->client_id != c->lobby_client_id)) {
+    return;
+  }
+
+  l->add_item(c->player.remove_item(cmd->item_id, 0), cmd->area, cmd->x, cmd->z);
+
+  log(INFO, "[Items/%08" PRIX32 "] Player %hhu dropped item %08" PRIX32 " at %hu:(%g, %g)",
+      l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
+  // c->player.print_inventory(stderr);
+
+  forward_subcommand(l, c, command, flag, data);
+}
+
+static void process_subcommand_create_inventory_item(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  const auto* cmd = check_size_sc<G_PlayerCreateInventoryItem_6x2B>(data);
+
+  if ((cmd->client_id != c->lobby_client_id)) {
+    return;
+  }
+  if (c->version == GameVersion::BB) {
+    // BB should never send this command - inventory items should only be
+    // created by the server in response to shop buy / bank withdraw / etc. reqs
+    return;
+  }
+
+  PlayerInventoryItem item;
+  item.equip_flags = 0; // TODO: Use the right default flags here
+  item.tech_flag = 0;
+  item.game_flags = 0;
+  item.data = cmd->item;
+  c->player.add_item(item);
+
+  log(INFO, "[Items/%08" PRIX32 "] Player %hhu created inventory item %08" PRIX32,
+      l->lobby_id, cmd->client_id, cmd->item.item_id.load());
+  // c->player.print_inventory(stderr);
+
+  forward_subcommand(l, c, command, flag, data);
+}
+
+static void process_subcommand_drop_partial_stack(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  const auto* cmd = check_size_sc<G_DropStackedItem_6x5D>(data);
+
+  // TODO: Should we check the client ID here too?
+  if (!l->is_game()) {
+    return;
+  }
+  if (l->version == GameVersion::BB) {
+    return;
+  }
+
+  // TODO: Should we delete anything from the inventory here? Does the client
+  // send an appropriate 6x29 alongside this?
+  PlayerInventoryItem item;
+  item.equip_flags = 0; // TODO: Use the right default flags here
+  item.tech_flag = 0;
+  item.game_flags = 0;
+  item.data = cmd->data;
+  l->add_item(item, cmd->area, cmd->x, cmd->z);
+
+  log(INFO, "[Items/%08" PRIX32 "] Player %hhu split stack to create ground item %08" PRIX32 " at %hu:(%g, %g)",
+      l->lobby_id, cmd->client_id, item.data.item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
+  // c->player.print_inventory(stderr);
+
+  forward_subcommand(l, c, command, flag, data);
+}
+
+static void process_subcommand_drop_partial_stack_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -258,8 +332,7 @@ static void process_subcommand_drop_stacked_item(shared_ptr<ServerState>,
       return;
     }
 
-    PlayerInventoryItem item;
-    c->player.remove_item(cmd->item_id, cmd->amount, &item);
+    auto item = c->player.remove_item(cmd->item_id, cmd->amount);
 
     // if a stack was split, the original item still exists, so the dropped item
     // needs a new ID. remove_item signals this by returning an item with id=-1
@@ -267,19 +340,98 @@ static void process_subcommand_drop_stacked_item(shared_ptr<ServerState>,
       item.data.item_id = l->generate_item_id(c->lobby_client_id);
     }
 
-    l->add_item(item);
+    l->add_item(item, cmd->area, cmd->x, cmd->z);
 
-    send_drop_stacked_item(l, item.data, cmd->area, cmd->x, cmd->y);
+    log(INFO, "[Items/%08" PRIX32 "] Player %hhu split stack %08" PRIX32 " (%" PRIu32 " of them) at %hu:(%g, %g)",
+        l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load(),
+        cmd->area.load(), cmd->x.load(), cmd->z.load());
+    // c->player.print_inventory(stderr);
+
+    send_drop_stacked_item(l, item.data, cmd->area, cmd->x, cmd->z);
 
   } else {
     forward_subcommand(l, c, command, flag, data);
   }
 }
 
-// player requests to pick up an item
+static void process_subcommand_buy_shop_item(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  const auto* cmd = check_size_sc<G_BuyShopItem_6x5E>(data);
+
+  if (!l->is_game() || (cmd->client_id != c->lobby_client_id)) {
+    return;
+  }
+  if (l->version == GameVersion::BB) {
+    return;
+  }
+
+  PlayerInventoryItem item;
+  item.equip_flags = 0; // TODO: Use the right default flags here
+  item.tech_flag = 0;
+  item.game_flags = 0;
+  item.data = cmd->item;
+  c->player.add_item(item);
+
+  log(INFO, "[Items/%08" PRIX32 "] Player %hhu bought item %08" PRIX32 " from shop",
+      l->lobby_id, cmd->client_id, item.data.item_id.load());
+  // c->player.print_inventory(stderr);
+
+  forward_subcommand(l, c, command, flag, data);
+}
+
+static void process_subcommand_box_or_enemy_item_drop(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  const auto* cmd = check_size_sc<G_DropItem_6x5F>(data);
+
+  if (!l->is_game() || (c->lobby_client_id != l->leader_id)) {
+    return;
+  }
+  if (l->version == GameVersion::BB) {
+    return;
+  }
+
+  PlayerInventoryItem item;
+  item.equip_flags = 0; // TODO: Use the right default flags here
+  item.tech_flag = 0;
+  item.game_flags = 0;
+  item.data = cmd->data;
+  l->add_item(item, cmd->area, cmd->x, cmd->z);
+
+  log(INFO, "[Items/%08" PRIX32 "] Leader created ground item %08" PRIX32 " at %hhu:(%g, %g)",
+      l->lobby_id, item.data.item_id.load(), cmd->area, cmd->x.load(), cmd->z.load());
+  // c->player.print_inventory(stderr);
+
+  forward_subcommand(l, c, command, flag, data);
+}
+
+
 static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
+  auto* cmd = check_size_sc<G_PickUpItem_6x59>(data);
+
+  if (!l->is_game() || (cmd->client_id != c->lobby_client_id)) {
+    return;
+  }
+  if (l->version == GameVersion::BB) {
+    // BB clients should never send this; only the server should send this
+    return;
+  }
+  c->player.add_item(l->remove_item(cmd->item_id));
+
+  log(INFO, "[Items/%08" PRIX32 "] Player %hu picked up %08" PRIX32,
+      l->lobby_id, cmd->client_id.load(), cmd->item_id.load());
+  // c->player.print_inventory(stderr);
+
+  forward_subcommand(l, c, command, flag, data);
+}
+
+static void process_subcommand_pick_up_item_request(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  // This is handled by the server on BB, and by the leader on other versions
   if (l->version == GameVersion::BB) {
     auto* cmd = check_size_sc<G_PickUpItemRequest_6x5A>(data);
 
@@ -287,21 +439,19 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
       return;
     }
 
-    PlayerInventoryItem item;
-    l->remove_item(cmd->item_id, &item);
-    c->player.add_item(item);
+    c->player.add_item(l->remove_item(cmd->item_id));
 
-    send_pick_up_item(l, c, item.data.item_id, cmd->area);
+    send_pick_up_item(l, c, cmd->item_id, cmd->area);
 
   } else {
     forward_subcommand(l, c, command, flag, data);
   }
 }
 
-// player equips an item
 static void process_subcommand_equip_unequip_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
+  // We don't track equip state on non-BB versions
   if (l->version == GameVersion::BB) {
     const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
 
@@ -324,27 +474,23 @@ static void process_subcommand_equip_unequip_item(shared_ptr<ServerState>,
 static void process_subcommand_use_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  if (l->version == GameVersion::BB) {
-    const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
+  const auto* cmd = check_size_sc<G_UseItem_6x27>(data);
 
-    if (cmd->client_id != c->lobby_client_id) {
-      return;
-    }
-
-    size_t index = c->player.inventory.find_item(cmd->item_id);
-    if (cmd->command == 0x25) {
-      c->player.inventory.items[index].game_flags |= 0x00000008; // equip
-    } else {
-      c->player.inventory.items[index].game_flags &= 0xFFFFFFF7; // unequip
-    }
-
-    player_use_item(c, index);
+  if (cmd->client_id != c->lobby_client_id) {
+    return;
   }
+
+  size_t index = c->player.inventory.find_item(cmd->item_id);
+  player_use_item(c, index);
+
+  log(INFO, "[Items/%08" PRIX32 "] Player used item %hhu:%08" PRIX32,
+      l->lobby_id, cmd->client_id, cmd->item_id.load());
+  // c->player.print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void process_subcommand_open_shop_or_ep3_unknown(shared_ptr<ServerState> s,
+static void process_subcommand_open_shop_bb_or_unknown_ep3(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
@@ -379,14 +525,14 @@ static void process_subcommand_open_shop_or_ep3_unknown(shared_ptr<ServerState> 
   }
 }
 
-static void process_subcommand_open_bank(shared_ptr<ServerState>,
+static void process_subcommand_open_bank_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const string&) {
   if ((l->version == GameVersion::BB) && l->is_game()) {
     send_bank(c);
   }
 }
 
-static void process_subcommand_bank_action(shared_ptr<ServerState>,
+static void process_subcommand_bank_action_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const string& data) {
   if (l->version == GameVersion::BB) {
     const auto* cmd = check_size_sc<G_BankAction_BB_6xBD>(data);
@@ -406,8 +552,7 @@ static void process_subcommand_bank_action(shared_ptr<ServerState>,
         c->player.bank.meseta += cmd->meseta_amount;
         c->player.disp.meseta -= cmd->meseta_amount;
       } else { // item
-        PlayerInventoryItem item;
-        c->player.remove_item(cmd->item_id, cmd->item_amount, &item);
+        auto item = c->player.remove_item(cmd->item_id, cmd->item_amount);
         c->player.bank.add_item(item.to_bank_item());
         send_destroy_item(l, c, cmd->item_id, cmd->item_amount);
       }
@@ -422,8 +567,7 @@ static void process_subcommand_bank_action(shared_ptr<ServerState>,
         c->player.bank.meseta -= cmd->meseta_amount;
         c->player.disp.meseta += cmd->meseta_amount;
       } else { // item
-        PlayerBankItem bank_item;
-        c->player.bank.remove_item(cmd->item_id, cmd->item_amount, &bank_item);
+        auto bank_item = c->player.bank.remove_item(cmd->item_id, cmd->item_amount);
         PlayerInventoryItem item = bank_item.to_inventory_item();
         item.data.item_id = l->generate_item_id(0xFF);
         c->player.add_item(item);
@@ -434,7 +578,7 @@ static void process_subcommand_bank_action(shared_ptr<ServerState>,
 }
 
 // player sorts the items in their inventory
-static void process_subcommand_sort_inventory(shared_ptr<ServerState>,
+static void process_subcommand_sort_inventory_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -461,10 +605,9 @@ static void process_subcommand_sort_inventory(shared_ptr<ServerState>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// BB EXP/Drop Item commands
+// EXP/Drop Item commands
 
-// enemy killed; leader sends drop item request
-static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
+static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -506,8 +649,8 @@ static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
     }
     item.data.item_id = l->generate_item_id(0xFF);
 
-    l->add_item(item);
-    send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->y,
+    l->add_item(item, cmd->area, cmd->x, cmd->z);
+    send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->z,
         cmd->request_id);
 
   } else {
@@ -515,8 +658,7 @@ static void process_subcommand_enemy_drop_item(shared_ptr<ServerState> s,
   }
 }
 
-// box broken; leader sends drop item request
-static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
+static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -565,8 +707,8 @@ static void process_subcommand_box_drop_item(shared_ptr<ServerState> s,
     }
     item.data.item_id = l->generate_item_id(0xFF);
 
-    l->add_item(item);
-    send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->y,
+    l->add_item(item, cmd->area, cmd->x, cmd->z);
+    send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->z,
         cmd->request_id);
 
   } else {
@@ -704,23 +846,38 @@ static void process_subcommand_enemy_killed(shared_ptr<ServerState> s,
   }
 }
 
-// destroy item (sent when there are too many items on the ground)
-static void process_subcommand_destroy_item(shared_ptr<ServerState>,
+static void process_subcommand_destroy_inventory_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  if (l->version == GameVersion::BB) {
-    const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
-    if (!l->is_game()) {
-      return;
-    }
-    l->remove_item(cmd->item_id, nullptr);
+  const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
+  if (!l->is_game()) {
+    return;
   }
-
+  if (cmd->client_id != c->lobby_client_id) {
+    return;
+  }
+  c->player.remove_item(cmd->item_id, cmd->amount);
+  log(INFO, "[Items/%08" PRIX32 "] Inventory item %hhu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
+      l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load());
+  // c->player.print_inventory(stderr);
   forward_subcommand(l, c, command, flag, data);
 }
 
-// player requests to tekk an item
-static void process_subcommand_identify_item(shared_ptr<ServerState>,
+static void process_subcommand_destroy_ground_item(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
+  if (!l->is_game()) {
+    return;
+  }
+  l->remove_item(cmd->item_id);
+  log(INFO, "[Items/%08" PRIX32 "] Ground item %08" PRIX32 " destroyed (%" PRIX32 " of them)",
+      l->lobby_id, cmd->item_id.load(), cmd->amount.load());
+  // c->player.print_inventory(stderr);
+  forward_subcommand(l, c, command, flag, data);
+}
+
+static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -905,9 +1062,9 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 26 */ process_subcommand_equip_unequip_item, // Unequip item
   /* 27 */ process_subcommand_use_item,
   /* 28 */ process_subcommand_forward_check_size_game, // Feed MAG
-  /* 29 */ process_subcommand_forward_check_size_game, // Delete item (via bank deposit / sale / feeding MAG)
-  /* 2A */ process_subcommand_drop_item,
-  /* 2B */ process_subcommand_forward_check_size_game, // Create inventory item (e.g. from tekker or bank withdrawal)
+  /* 29 */ process_subcommand_destroy_inventory_item, // Delete item (via bank deposit / sale / feeding MAG)
+  /* 2A */ process_subcommand_player_drop_item,
+  /* 2B */ process_subcommand_create_inventory_item, // Create inventory item (e.g. from tekker or bank withdrawal)
   /* 2C */ process_subcommand_forward_check_size, // Talk to NPC
   /* 2D */ process_subcommand_forward_check_size, // Done talking to NPC
   /* 2E */ process_subcommand_unimplemented,
@@ -926,11 +1083,11 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 3B */ process_subcommand_forward_check_size,
   /* 3C */ process_subcommand_unimplemented,
   /* 3D */ process_subcommand_unimplemented,
-  /* 3E */ process_subcommand_forward_check_size, // Stop moving
-  /* 3F */ process_subcommand_forward_check_size,
-  /* 40 */ process_subcommand_forward_check_size, // Walk
+  /* 3E */ process_subcommand_movement<G_StopAtPosition_6x3E>, // Stop moving
+  /* 3F */ process_subcommand_movement<G_SetPosition_6x3F>, // Set position (e.g. when materializing after warp)
+  /* 40 */ process_subcommand_movement<G_WalkToPosition_6x40>, // Walk
   /* 41 */ process_subcommand_unimplemented,
-  /* 42 */ process_subcommand_forward_check_size, // Run
+  /* 42 */ process_subcommand_movement<G_RunToPosition_6x42>, // Run
   /* 43 */ process_subcommand_forward_check_size_client,
   /* 44 */ process_subcommand_forward_check_size_client,
   /* 45 */ process_subcommand_forward_check_size_client,
@@ -953,17 +1110,17 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 56 */ process_subcommand_forward_check_size_client,
   /* 57 */ process_subcommand_forward_check_size_client,
   /* 58 */ process_subcommand_forward_check_size_game,
-  /* 59 */ process_subcommand_forward_check_size_game, // Item picked up
-  /* 5A */ process_subcommand_pick_up_item, // Request to pick up item
+  /* 59 */ process_subcommand_pick_up_item, // Item picked up
+  /* 5A */ process_subcommand_pick_up_item_request, // Request to pick up item
   /* 5B */ process_subcommand_unimplemented,
   /* 5C */ process_subcommand_unimplemented,
-  /* 5D */ process_subcommand_forward_check_size_game, // Drop meseta or stacked item
-  /* 5E */ process_subcommand_forward_check_size_game, // Buy item at shop
-  /* 5F */ process_subcommand_forward_check_size_game, // Drop item from box/enemy
-  /* 60 */ process_subcommand_enemy_drop_item, // Request for item drop (handled by the server on BB)
+  /* 5D */ process_subcommand_drop_partial_stack, // Drop meseta or stacked item
+  /* 5E */ process_subcommand_buy_shop_item, // Buy item at shop
+  /* 5F */ process_subcommand_box_or_enemy_item_drop, // Drop item from box/enemy
+  /* 60 */ process_subcommand_enemy_drop_item_request, // Request for item drop (handled by the server on BB)
   /* 61 */ process_subcommand_forward_check_size_game, // Feed mag
   /* 62 */ process_subcommand_unimplemented,
-  /* 63 */ process_subcommand_destroy_item, // Destroy an item on the ground (used when too many items have been dropped)
+  /* 63 */ process_subcommand_destroy_ground_item, // Destroy an item on the ground (used when too many items have been dropped)
   /* 64 */ process_subcommand_unimplemented,
   /* 65 */ process_subcommand_unimplemented,
   /* 66 */ process_subcommand_forward_check_size_game, // Use star atomizer
@@ -1026,7 +1183,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 9F */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
   /* A0 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
   /* A1 */ process_subcommand_unimplemented,
-  /* A2 */ process_subcommand_box_drop_item, // Request for item drop from box (handled by server on BB)
+  /* A2 */ process_subcommand_box_drop_item_request, // Request for item drop from box (handled by server on BB)
   /* A3 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
   /* A4 */ process_subcommand_unimplemented,
   /* A5 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
@@ -1045,22 +1202,22 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* B2 */ process_subcommand_unimplemented,
   /* B3 */ process_subcommand_unimplemented,
   /* B4 */ process_subcommand_unimplemented,
-  /* B5 */ process_subcommand_open_shop_or_ep3_unknown, // BB shop request
+  /* B5 */ process_subcommand_open_shop_bb_or_unknown_ep3, // BB shop request
   /* B6 */ process_subcommand_unimplemented, // BB shop contents (server->client only)
   /* B7 */ process_subcommand_unimplemented, // TODO: BB buy shop item
-  /* B8 */ process_subcommand_identify_item, // Accept tekker result
+  /* B8 */ process_subcommand_identify_item_bb, // Accept tekker result
   /* B9 */ process_subcommand_unimplemented,
   /* BA */ process_subcommand_unimplemented,
-  /* BB */ process_subcommand_open_bank, // BB Bank request
+  /* BB */ process_subcommand_open_bank_bb, // BB Bank request
   /* BC */ process_subcommand_unimplemented, // BB bank contents (server->client only)
-  /* BD */ process_subcommand_bank_action,
+  /* BD */ process_subcommand_bank_action_bb,
   /* BE */ process_subcommand_unimplemented, // BB create inventory item (server->client only)
   /* BF */ process_subcommand_forward_check_size_ep3_lobby, // Ep3 change music, also BB give EXP (BB usage is server->client only)
   /* C0 */ process_subcommand_unimplemented,
   /* C1 */ process_subcommand_unimplemented,
   /* C2 */ process_subcommand_unimplemented,
-  /* C3 */ process_subcommand_drop_stacked_item, // Split stacked item - not sent if entire stack is dropped
-  /* C4 */ process_subcommand_sort_inventory,
+  /* C3 */ process_subcommand_drop_partial_stack_bb, // Split stacked item - not sent if entire stack is dropped
+  /* C4 */ process_subcommand_sort_inventory_bb,
   /* C5 */ process_subcommand_unimplemented,
   /* C6 */ process_subcommand_unimplemented,
   /* C7 */ process_subcommand_unimplemented,

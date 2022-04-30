@@ -75,7 +75,7 @@ struct PlayerBank {
       const std::string& load_filename);
 
   void add_item(const PlayerBankItem& item);
-  void remove_item(uint32_t item_id, uint32_t amount, PlayerBankItem* item);
+  PlayerBankItem remove_item(uint32_t item_id, uint32_t amount);
   size_t find_item(uint32_t item_id);
 } __attribute__((packed));
 
@@ -430,8 +430,10 @@ struct Player {
   PlayerBB export_bb_player_data() const;
 
   void add_item(const PlayerInventoryItem& item);
-  void remove_item(uint32_t item_id, uint32_t amount, PlayerInventoryItem* item);
+  PlayerInventoryItem remove_item(uint32_t item_id, uint32_t amount);
   size_t find_item(uint32_t item_id);
+
+  void print_inventory(FILE* stream) const;
 };
 
 

@@ -6,9 +6,9 @@
 
 #include <phosg/Strings.hh>
 
-#include "ChatCommands.hh"
 #include "ServerState.hh"
 #include "SendCommands.hh"
+#include "StaticGameData.hh"
 
 using namespace std;
 

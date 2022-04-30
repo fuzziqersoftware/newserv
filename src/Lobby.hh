@@ -33,12 +33,18 @@ struct Lobby {
   uint32_t max_level;
 
   // item info
+  struct FloorItem {
+    PlayerInventoryItem inv_item;
+    float x;
+    float z;
+    uint8_t area;
+  };
   std::vector<PSOEnemy> enemies;
   std::shared_ptr<const RareItemSet> rare_item_set;
   std::array<uint32_t, 12> next_item_id;
   uint32_t next_game_item_id;
   PlayerInventoryItem next_drop_item;
-  std::unordered_map<uint32_t, PlayerInventoryItem> item_id_to_floor_item;
+  std::unordered_map<uint32_t, FloorItem> item_id_to_floor_item;
   parray<le_uint32_t, 0x20> variations;
 
   // game config
@@ -83,12 +89,10 @@ struct Lobby {
       const std::u16string* identifier = nullptr,
       uint64_t serial_number = 0);
 
-  void add_item(const PlayerInventoryItem& item);
-  void remove_item(uint32_t item_id, PlayerInventoryItem* item);
+  void add_item(const PlayerInventoryItem& item, uint8_t area, float x, float z);
+  PlayerInventoryItem remove_item(uint32_t item_id);
   size_t find_item(uint32_t item_id);
   uint32_t generate_item_id(uint8_t client_id);
-
-  void assign_item_ids_for_player(uint32_t client_id, PlayerInventory& inv);
 
   static uint8_t game_event_for_lobby_event(uint8_t lobby_event);
 };

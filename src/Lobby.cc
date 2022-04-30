@@ -96,6 +96,16 @@ void Lobby::add_client(shared_ptr<Client> c, bool reverse_indexes) {
       this->leader_id = c->lobby_client_id;
     }
   }
+
+  // If the lobby is a game, assign the inventory's item IDs
+  if (this->is_game()) {
+    auto& inv = c->player.inventory;
+    size_t count = max<uint8_t>(inv.num_items, 30);
+    for (size_t x = 0; x < count; x++) {
+      inv.items[x].data.item_id = 0x00010000 + 0x00200000 * c->lobby_client_id + x;
+    }
+    c->player.print_inventory(stderr);
+  }
 }
 
 void Lobby::remove_client(shared_ptr<Client> c) {
@@ -170,17 +180,22 @@ uint8_t Lobby::game_event_for_lobby_event(uint8_t lobby_event) {
 
 
 
-void Lobby::add_item(const PlayerInventoryItem& item) {
-  this->item_id_to_floor_item.emplace(item.data.item_id, item);
+void Lobby::add_item(const PlayerInventoryItem& item, uint8_t area, float x, float z) {
+  auto& fi = this->item_id_to_floor_item[item.data.item_id];
+  fi.inv_item = item;
+  fi.area = area;
+  fi.x = x;
+  fi.z = z;
 }
 
-void Lobby::remove_item(uint32_t item_id, PlayerInventoryItem* item) {
+PlayerInventoryItem Lobby::remove_item(uint32_t item_id) {
   auto item_it = this->item_id_to_floor_item.find(item_id);
   if (item_it == this->item_id_to_floor_item.end()) {
     throw out_of_range("item not present");
   }
-  *item = move(item_it->second);
+  PlayerInventoryItem ret = move(item_it->second.inv_item);
   this->item_id_to_floor_item.erase(item_it);
+  return ret;
 }
 
 uint32_t Lobby::generate_item_id(uint8_t client_id) {
@@ -188,10 +203,4 @@ uint32_t Lobby::generate_item_id(uint8_t client_id) {
     return this->next_item_id[client_id]++;
   }
   return this->next_game_item_id++;
-}
-
-void Lobby::assign_item_ids_for_player(uint32_t client_id, PlayerInventory& inv) {
-  for (size_t x = 0; x < inv.num_items; x++) {
-    inv.items[x].data.item_id = this->generate_item_id(client_id);
-  }
 }

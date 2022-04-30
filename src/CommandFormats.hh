@@ -453,6 +453,11 @@ struct S_OpenFile_BB_44_A6 {
 // 61 (C->S): Player data
 // See PSOPlayerDataPC, PSOPlayerDataGC, PSOPlayerDataBB in Player.hh for this
 // command's format.
+// Note: If the client is in a game, the inventory sent by the client only
+// includes items that would not disappear if the client was disconnected!
+// Upon joining a game, the client assigns inventory item IDs sequentially as
+// (0x00010000 + (0x00200000 * lobby_client_id) + x). So, for example, player
+// 3's 8th item's ID would become 0x00610007.
 
 // 62: Target command
 // When a client sends this command, the server should forward it to the player
@@ -1434,7 +1439,7 @@ struct G_EnemyHitByPlayer_6x0A {
 
 struct G_SetPlayerVisibility_6x22_6x23 {
   uint8_t subcommand; // 22 = invisible, 23 = visible
-  uint8_t subsize;
+  uint8_t size;
   le_uint16_t client_id;
 };
 
@@ -1463,27 +1468,29 @@ struct G_UnequipItem_6x26 {
 };
 
 // 27: Use item
-// Format is G_ItemSubcommand
+
+struct G_UseItem_6x27 {
+  uint8_t command;
+  uint8_t size;
+  uint8_t client_id;
+  uint8_t unused;
+  le_uint32_t item_id;
+};
 
 // 28: Feed MAG
 
 struct G_FeedMAG_6x28 {
   uint8_t subcommand;
-  uint8_t subsize;
+  uint8_t size;
   le_uint16_t client_id;
   le_uint32_t mag_item_id;
   le_uint32_t fed_item_id;
 };
 
 // 29: Delete item (via bank deposit / sale / feeding MAG)
-
-struct G_DestroyItem_6x29 {
-  uint8_t subcommand;
-  uint8_t subsize;
-  le_uint16_t client_id;
-  le_uint32_t item_id;
-  le_uint32_t amount;
-};
+// This subcommand is also used for reducing the size of stacks - if amount is
+// less than the stack count, the item is not deleted; its item ID remains valid
+// Format is G_ItemSubcommand
 
 // 2A: Drop item
 
@@ -1549,22 +1556,32 @@ struct G_LevelUp_6x30 {
 
 struct G_StopAtPosition_6x3E {
   uint8_t subcommand;
-  uint8_t subsize;
+  uint8_t size;
   le_uint16_t client_id;
   uint64_t unknown;
   le_float x;
   le_float y;
   le_float z;
-  uint32_t unused;
 };
 
-// 3F: Unknown (supported; lobby & game)
+// 3F: Set position
+
+struct G_SetPosition_6x3F {
+  uint8_t subcommand;
+  uint8_t size;
+  le_uint16_t client_id;
+  le_uint32_t unknown;
+  le_uint32_t area;
+  le_float x;
+  le_float y;
+  le_float z;
+};
 
 // 40: Walk
 
 struct G_WalkToPosition_6x40 {
   uint8_t subcommand;
-  uint8_t subsize;
+  uint8_t size;
   le_uint16_t client_id;
   le_float x;
   le_float z;
@@ -1577,7 +1594,7 @@ struct G_WalkToPosition_6x40 {
 
 struct G_RunToPosition_6x42 {
   uint8_t subcommand;
-  uint8_t subsize;
+  uint8_t size;
   le_uint16_t client_id;
   le_float x;
   le_float z;
@@ -1610,7 +1627,7 @@ struct G_RunToPosition_6x42 {
 
 struct G_PickUpItem_6x59 {
   uint8_t subcommand;
-  uint8_t subsize;
+  uint8_t size;
   le_uint16_t client_id;
   le_uint16_t client_id2;
   le_uint16_t area;
@@ -1636,21 +1653,22 @@ struct G_PickUpItemRequest_6x5A {
 
 struct G_DropStackedItem_6x5D {
   uint8_t subcommand;
-  uint8_t subsize;
-  le_uint16_t unused;
+  uint8_t size;
+  uint8_t client_id; // TODO: verify this
+  uint8_t unused;
   le_uint16_t area;
   le_uint16_t unused2;
   le_float x;
-  le_float y;
-  le_uint32_t unused3;
+  le_float z;
   ItemData data;
+  le_uint32_t unused3;
 };
 
 // 5E: Buy item at shop
 
 struct G_BuyShopItem_6x5E {
   uint8_t subcommand;
-  uint8_t subsize;
+  uint8_t size;
   uint8_t client_id;
   uint8_t unused;
   ItemData item;
@@ -1660,15 +1678,16 @@ struct G_BuyShopItem_6x5E {
 
 struct G_DropItem_6x5F {
   uint8_t subcommand;
-  uint8_t subsize;
+  uint8_t size;
   le_uint16_t unused;
   uint8_t area;
   uint8_t enemy_instance;
   le_uint16_t request_id;
   le_float x;
-  le_float y;
+  le_float z;
   le_uint32_t unused2;
   ItemData data;
+  le_uint32_t unused3;
 };
 
 // 60: Request for item drop (handled by the server on BB)
@@ -1681,7 +1700,7 @@ struct G_EnemyDropItemRequest_6x60 {
   uint8_t enemy_id;
   le_uint16_t request_id;
   le_float x;
-  le_float y;
+  le_float z;
   le_uint64_t unknown;
 };
 
@@ -1761,7 +1780,7 @@ struct G_BoxItemDropRequest_6xA2 {
   uint8_t unused2;
   le_uint16_t request_id;
   le_float x;
-  le_float y;
+  le_float z;
   le_uint32_t unknown[6];
 };
 
@@ -1847,7 +1866,7 @@ struct G_BankAction_BB_6xBD {
 
 struct G_CreateInventoryItem_BB_6xBE {
   uint8_t subcommand;
-  uint8_t subsize;
+  uint8_t size;
   le_uint16_t client_id;
   ItemData item;
   le_uint32_t unused;
@@ -1877,7 +1896,7 @@ struct G_SplitStackedItem_6xC3 {
   le_uint16_t area;
   le_uint16_t unused2;
   le_float x;
-  le_float y;
+  le_float z;
   le_uint32_t item_id;
   le_uint32_t amount;
 };

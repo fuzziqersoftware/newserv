@@ -13,305 +13,9 @@
 #include "Client.hh"
 #include "SendCommands.hh"
 #include "Text.hh"
+#include "StaticGameData.hh"
 
 using namespace std;
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-const vector<string> section_id_to_name({
-  "Viridia", "Greennill", "Skyly", "Bluefull", "Purplenum", "Pinkal", "Redria",
-  "Oran", "Yellowboze", "Whitill"});
-
-const unordered_map<string, uint8_t> name_to_section_id({
-  {"viridia", 0},
-  {"greennill", 1},
-  {"skyly", 2},
-  {"bluefull", 3},
-  {"purplenum", 4},
-  {"pinkal", 5},
-  {"redria", 6},
-  {"oran", 7},
-  {"yellowboze", 8},
-  {"whitill", 9}});
-
-const vector<string> lobby_event_to_name({
-  "none", "xmas", "none", "val", "easter", "hallo", "sonic", "newyear",
-  "summer", "white", "wedding", "fall", "s-spring", "s-summer", "spring"});
-
-const unordered_map<string, uint8_t> name_to_lobby_event({
-  {"none",     0},
-  {"xmas",     1},
-  {"val",      3},
-  {"easter",   4},
-  {"hallo",    5},
-  {"sonic",    6},
-  {"newyear",  7},
-  {"summer",   8},
-  {"white",    9},
-  {"wedding",  10},
-  {"fall",     11},
-  {"s-spring", 12},
-  {"s-summer", 13},
-  {"spring",   14},
-});
-
-const unordered_map<uint8_t, string> lobby_type_to_name({
-  {0x00, "normal"},
-  {0x0F, "inormal"},
-  {0x10, "ipc"},
-  {0x11, "iball"},
-  {0x67, "cave2u"},
-  {0xD4, "cave1"},
-  {0xE9, "planet"},
-  {0xEA, "clouds"},
-  {0xED, "cave"},
-  {0xEE, "jungle"},
-  {0xEF, "forest2-2"},
-  {0xF0, "forest2-1"},
-  {0xF1, "windpower"},
-  {0xF2, "overview"},
-  {0xF3, "seaside"},
-  {0xF4, "some?"},
-  {0xF5, "dmorgue"},
-  {0xF6, "caelum"},
-  {0xF8, "digital"},
-  {0xF9, "boss1"},
-  {0xFA, "boss2"},
-  {0xFB, "boss3"},
-  {0xFC, "dragon"},
-  {0xFD, "derolle"},
-  {0xFE, "volopt"},
-  {0xFF, "darkfalz"},
-});
-
-const unordered_map<string, uint8_t> name_to_lobby_type({
-  {"normal",    0x00},
-  {"inormal",   0x0F},
-  {"ipc",       0x10},
-  {"iball",     0x11},
-  {"cave1",     0xD4},
-  {"cave2u",    0x67},
-  {"dragon",    0xFC},
-  {"derolle",   0xFD},
-  {"volopt",    0xFE},
-  {"darkfalz",  0xFF},
-  {"planet",    0xE9},
-  {"clouds",    0xEA},
-  {"cave",      0xED},
-  {"jungle",    0xEE},
-  {"forest2-2", 0xEF},
-  {"forest2-1", 0xF0},
-  {"windpower", 0xF1},
-  {"overview",  0xF2},
-  {"seaside",   0xF3},
-  {"some?",     0xF4},
-  {"dmorgue",   0xF5},
-  {"caelum",    0xF6},
-  {"digital",   0xF8},
-  {"boss1",     0xF9},
-  {"boss2",     0xFA},
-  {"boss3",     0xFB},
-  {"knight",    0xFC},
-  {"sky",       0xFE},
-  {"morgue",    0xFF},
-});
-
-const vector<string> tech_id_to_name({
-  "foie", "gifoie", "rafoie",
-  "barta", "gibarta", "rabarta",
-  "zonde", "gizonde", "razonde",
-  "grants", "deband", "jellen", "zalure", "shifta",
-  "ryuker", "resta", "anti", "reverser", "megid"});
-
-const unordered_map<string, uint8_t> name_to_tech_id({
-  {"foie",     0},
-  {"gifoie",   1},
-  {"rafoie",   2},
-  {"barta",    3},
-  {"gibarta",  4},
-  {"rabarta",  5},
-  {"zonde",    6},
-  {"gizonde",  7},
-  {"razonde",  8},
-  {"grants",   9},
-  {"deband",   10},
-  {"jellen",   11},
-  {"zalure",   12},
-  {"shifta",   13},
-  {"ryuker",   14},
-  {"resta",    15},
-  {"anti",     16},
-  {"reverser", 17},
-  {"megid",    18},
-});
-
-const vector<string> npc_id_to_name({
-  "ninja", "rico", "sonic", "knuckles", "tails", "flowen", "elly"});
-
-const unordered_map<string, uint8_t> name_to_npc_id({
-  {"ninja", 0},
-  {"rico", 1},
-  {"sonic", 2},
-  {"knuckles", 3},
-  {"tails", 4},
-  {"flowen", 5},
-  {"elly", 6}});
-
-const string& name_for_section_id(uint8_t section_id) {
-  if (section_id < section_id_to_name.size()) {
-    return section_id_to_name[section_id];
-  } else {
-    static const string ret = "<Unknown section id>";
-    return ret;
-  }
-}
-
-u16string u16name_for_section_id(uint8_t section_id) {
-  return decode_sjis(name_for_section_id(section_id));
-}
-
-uint8_t section_id_for_name(const string& name) {
-  try {
-    return name_to_section_id.at(name);
-  } catch (const out_of_range&) { }
-  try {
-    uint64_t x = stoul(name);
-    if (x < section_id_to_name.size()) {
-      return x;
-    }
-  } catch (const invalid_argument&) {
-  } catch (const out_of_range&) { }
-  return 0xFF;
-}
-
-uint8_t section_id_for_name(const u16string& name) {
-  return section_id_for_name(encode_sjis(name));
-}
-
-const string& name_for_event(uint8_t event) {
-  if (event < lobby_event_to_name.size()) {
-    return lobby_event_to_name[event];
-  } else {
-    static const string ret = "<Unknown lobby event>";
-    return ret;
-  }
-}
-
-u16string u16name_for_event(uint8_t event) {
-  return decode_sjis(name_for_event(event));
-}
-
-uint8_t event_for_name(const string& name) {
-  try {
-    return name_to_lobby_event.at(name);
-  } catch (const out_of_range&) { }
-  try {
-    uint64_t x = stoul(name);
-    if (x < lobby_event_to_name.size()) {
-      return x;
-    }
-  } catch (const invalid_argument&) {
-  } catch (const out_of_range&) { }
-  return 0xFF;
-}
-
-uint8_t event_for_name(const u16string& name) {
-  return event_for_name(encode_sjis(name));
-}
-
-const string& name_for_lobby_type(uint8_t type) {
-  try {
-    return lobby_type_to_name.at(type);
-  } catch (const out_of_range&) {
-    static const string ret = "<Unknown lobby type>";
-    return ret;
-  }
-}
-
-u16string u16name_for_lobby_type(uint8_t type) {
-  return decode_sjis(name_for_lobby_type(type));
-}
-
-uint8_t lobby_type_for_name(const string& name) {
-  try {
-    return name_to_lobby_type.at(name);
-  } catch (const out_of_range&) { }
-  try {
-    uint64_t x = stoul(name);
-    if (x < lobby_type_to_name.size()) {
-      return x;
-    }
-  } catch (const invalid_argument&) {
-  } catch (const out_of_range&) { }
-  return 0x80;
-}
-
-uint8_t lobby_type_for_name(const u16string& name) {
-  return lobby_type_for_name(encode_sjis(name));
-}
-
-const string& name_for_technique(uint8_t tech) {
-  try {
-    return tech_id_to_name.at(tech);
-  } catch (const out_of_range&) {
-    static const string ret = "<Unknown technique>";
-    return ret;
-  }
-}
-
-u16string u16name_for_technique(uint8_t tech) {
-  return decode_sjis(name_for_technique(tech));
-}
-
-uint8_t technique_for_name(const string& name) {
-  try {
-    return name_to_tech_id.at(name);
-  } catch (const out_of_range&) { }
-  try {
-    uint64_t x = stoul(name);
-    if (x < tech_id_to_name.size()) {
-      return x;
-    }
-  } catch (const invalid_argument&) {
-  } catch (const out_of_range&) { }
-  return 0xFF;
-}
-
-uint8_t technique_for_name(const u16string& name) {
-  return technique_for_name(encode_sjis(name));
-}
-
-const string& name_for_npc(uint8_t npc) {
-  try {
-    return npc_id_to_name.at(npc);
-  } catch (const out_of_range&) {
-    static const string ret = "<Unknown NPC>";
-    return ret;
-  }
-}
-
-u16string u16name_for_npc(uint8_t npc) {
-  return decode_sjis(name_for_npc(npc));
-}
-
-uint8_t npc_for_name(const string& name) {
-  try {
-    return name_to_npc_id.at(name);
-  } catch (const out_of_range&) { }
-  try {
-    uint64_t x = stoul(name);
-    if (x < npc_id_to_name.size()) {
-      return x;
-    }
-  } catch (const invalid_argument&) {
-  } catch (const out_of_range&) { }
-  return 0xFF;
-}
-
-uint8_t npc_for_name(const u16string& name) {
-  return npc_for_name(encode_sjis(name));
-}
 
 
 
@@ -861,6 +565,38 @@ static void command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_warp(c, new_area);
 }
 
+static void command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string&) {
+  check_is_game(l, true);
+  if (!l->episode || (l->episode > 3)) {
+    return;
+  }
+
+  float min_dist2 = 0.0f;
+  uint32_t nearest_item_id = 0xFFFFFFFF;
+  for (const auto& it : l->item_id_to_floor_item) {
+    if (it.second.area != c->area) {
+      continue;
+    }
+    float dx = it.second.x - c->x;
+    float dz = it.second.z - c->z;
+    float dist2 = (dx * dx) + (dz * dz);
+    if ((nearest_item_id == 0xFFFFFFFF) || (dist2 < min_dist2)) {
+      nearest_item_id = it.first;
+      min_dist2 = dist2;
+    }
+  }
+
+  if (nearest_item_id == 0xFFFFFFFF) {
+    send_text_message(c, u"No items are near you");
+  } else {
+    const auto& item = l->item_id_to_floor_item.at(nearest_item_id);
+    string name = name_for_item(item.inv_item.data);
+    send_text_message_printf(c, "$C6%s\n$C7ID: %08" PRIX32,
+        name.c_str(), item.inv_item.data.item_id.load());
+  }
+}
+
 static void command_song(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_ep3(c, true);
@@ -961,6 +697,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$swa"       , {command_switch_assist     , u"Usage:\nswa"}},
     {u"$type"      , {command_lobby_type        , u"Usage:\ntype <name>"}},
     {u"$warp"      , {command_warp              , u"Usage:\nwarp <area-number>"}},
+    {u"$what"      , {command_what              , u"Usage:\nwhat"}},
 });
 
 // This function is called every time any player sends a chat beginning with a

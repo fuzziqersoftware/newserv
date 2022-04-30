@@ -186,9 +186,9 @@ void send_set_player_visibility(std::shared_ptr<Lobby> l,
 void send_revive_player(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c);
 
 void send_drop_item(std::shared_ptr<Lobby> l, const ItemData& item,
-    bool from_enemy, uint8_t area, float x, float y, uint16_t request_id);
+    bool from_enemy, uint8_t area, float x, float z, uint16_t request_id);
 void send_drop_stacked_item(std::shared_ptr<Lobby> l, const ItemData& item,
-    uint8_t area, float x, float y);
+    uint8_t area, float x, float z);
 void send_pick_up_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c, uint32_t id,
     uint8_t area);
 void send_create_inventory_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,

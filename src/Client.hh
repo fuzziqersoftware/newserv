@@ -94,6 +94,8 @@ struct Client {
   uint64_t last_send_time; // time of last data sent
 
   // Lobby/positioning
+  float x;
+  float z;
   uint32_t area; // which area is the client in?
   uint32_t lobby_id; // which lobby is this person in?
   uint8_t lobby_client_id; // which client number is this person?
