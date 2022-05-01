@@ -1177,7 +1177,7 @@ const unordered_map<uint32_t, ItemNameInfo> name_info_for_primary_identifier({
   {0x030D14, "Cladding of Epsilon"},
   {0x030D15, "De Rol Le shell"},
   {0x030E00, "Berill Photon"},
-  {0x030E01, "Patasitic gene \"Flow\""},
+  {0x030E01, "Parasitic gene \"Flow\""},
   {0x030E02, "Magic stone \"Iritista\""},
   {0x030E03, "Blue-black stone"},
   {0x030E04, "Syncesta"},
