@@ -667,7 +667,7 @@ void Player::print_inventory(FILE* stream) const {
   fprintf(stream, "[PlayerInventory] %hhu items\n", this->inventory.num_items);
   for (size_t x = 0; x < this->inventory.num_items; x++) {
     const auto& item = this->inventory.items[x];
-    string name = name_for_item(item.data);
+    auto name = name_for_item(item.data, false);
     fprintf(stream, "[PlayerInventory]   %zu (%08" PRIX32 "): %08" PRIX32 " (%s)\n",
         x, item.data.item_id.load(), item.data.primary_identifier(), name.c_str());
   }

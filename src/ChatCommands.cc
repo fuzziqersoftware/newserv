@@ -591,9 +591,8 @@ static void command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     send_text_message(c, u"No items are near you");
   } else {
     const auto& item = l->item_id_to_floor_item.at(nearest_item_id);
-    string name = name_for_item(item.inv_item.data);
-    send_text_message_printf(c, "$C6%s\n$C7ID: %08" PRIX32,
-        name.c_str(), item.inv_item.data.item_id.load());
+    string name = name_for_item(item.inv_item.data, true);
+    send_text_message(c, decode_sjis(name));
   }
 }
 

@@ -38,4 +38,4 @@ std::u16string u16name_for_npc(uint8_t npc);
 uint8_t npc_for_name(const std::string& name);
 uint8_t npc_for_name(const std::u16string& name);
 
-std::string name_for_item(const ItemData& item);
+std::string name_for_item(const ItemData& item, bool include_color_codes);
