@@ -559,31 +559,31 @@ const unordered_map<uint32_t, const char*> name_for_primary_identifier({
   {0x006D01, "POWER MASER"},
   {0x006E00, "GAME MAGAZINE"},
   {0x006F00, "FLOWER BOUQUET"},
-  {0x007000, "(S-Rank) SABER"},
-  {0x007100, "(S-Rank) SWORD"},
-  {0x007200, "(S-Rank) BLADE"},
-  {0x007300, "(S-Rank) PARTISAN"},
-  {0x007400, "(S-Rank) SLICER"},
-  {0x007500, "(S-Rank) GUN"},
-  {0x007600, "(S-Rank) RIFLE"},
-  {0x007700, "(S-Rank) MECHGUN"},
-  {0x007800, "(S-Rank) SHOT"},
-  {0x007900, "(S-Rank) CANE"},
-  {0x007A00, "(S-Rank) ROD"},
-  {0x007B00, "(S-Rank) WAND"},
-  {0x007C00, "(S-Rank) TWIN"},
-  {0x007D00, "(S-Rank) CLAW"},
-  {0x007E00, "(S-Rank) BAZOOKA"},
-  {0x007F00, "(S-Rank) NEEDLE"},
-  {0x008000, "(S-Rank) SCYTHE"},
-  {0x008100, "(S-Rank) HAMMER"},
-  {0x008200, "(S-Rank) MOON"},
-  {0x008300, "(S-Rank) PSYCHOGUN"},
-  {0x008400, "(S-Rank) PUNCH"},
-  {0x008500, "(S-Rank) WINDMILL"},
-  {0x008600, "(S-Rank) HARISEN"},
-  {0x008700, "(S-Rank) KATANA"},
-  {0x008800, "(S-Rank) J-CUTTER"},
+  {0x007000, "S-RANK SABER"},
+  {0x007100, "S-RANK SWORD"},
+  {0x007200, "S-RANK BLADE"},
+  {0x007300, "S-RANK PARTISAN"},
+  {0x007400, "S-RANK SLICER"},
+  {0x007500, "S-RANK GUN"},
+  {0x007600, "S-RANK RIFLE"},
+  {0x007700, "S-RANK MECHGUN"},
+  {0x007800, "S-RANK SHOT"},
+  {0x007900, "S-RANK CANE"},
+  {0x007A00, "S-RANK ROD"},
+  {0x007B00, "S-RANK WAND"},
+  {0x007C00, "S-RANK TWIN"},
+  {0x007D00, "S-RANK CLAW"},
+  {0x007E00, "S-RANK BAZOOKA"},
+  {0x007F00, "S-RANK NEEDLE"},
+  {0x008000, "S-RANK SCYTHE"},
+  {0x008100, "S-RANK HAMMER"},
+  {0x008200, "S-RANK MOON"},
+  {0x008300, "S-RANK PSYCHOGUN"},
+  {0x008400, "S-RANK PUNCH"},
+  {0x008500, "S-RANK WINDMILL"},
+  {0x008600, "S-RANK HARISEN"},
+  {0x008700, "S-RANK KATANA"},
+  {0x008800, "S-RANK J-CUTTER"},
   {0x008900, "MUSASHI"},
   {0x008901, "YAMATO"},
   {0x008902, "ASUKA"},
@@ -652,11 +652,11 @@ const unordered_map<uint32_t, const char*> name_for_primary_identifier({
   {0x00A202, "GIGOBOOMA\'S CLAW"},
   {0x00A300, "RUBY BULLET"},
   {0x00A400, "AMORE ROSE"},
-  {0x00A500, "(S-Rank) SWORDS"},
-  {0x00A600, "(S-Rank) LAUNCHER"},
-  {0x00A700, "(S-Rank) CARD"},
-  {0x00A800, "(S-Rank) KNUCKLE"},
-  {0x00A900, "(S-Rank) AXE"},
+  {0x00A500, "S-RANK SWORDS"},
+  {0x00A600, "S-RANK LAUNCHER"},
+  {0x00A700, "S-RANK CARD"},
+  {0x00A800, "S-RANK KNUCKLE"},
+  {0x00A900, "S-RANK AXE"},
   {0x00AA00, "SLICER OF FANATIC"},
   {0x00AB00, "LAME D\'ARGENT"},
   {0x00AC00, "EXCALIBUR"},
@@ -1401,26 +1401,54 @@ string name_for_item(const ItemData& item) {
     }
   }
 
-  // For weapons, add the grind and percentages
+  // For weapons, add the grind and percentages, or S-rank name if applicable
   if (item.item_data1[0] == 0x00) {
     if (item.item_data1[3] > 0) {
       ret_tokens.emplace_back(string_printf("+%hhu", item.item_data1[3]));
     }
-    uint8_t percentages[5] = {0, 0, 0, 0, 0};
-    for (size_t x = 0; x < 3; x++) {
-      uint8_t which = item.item_data1[6 + 2 * x];
-      uint8_t value = item.item_data1[7 + 2 * x];
-      if (which == 0) {
-        continue;
+
+    if (item.item_data1[6] & 0x18) { // S-rank (has name instead of percents)
+      uint8_t char_indexes[8] = {
+        static_cast<uint8_t>((item.item_data1w[3] >> 5) & 0x1F),
+        static_cast<uint8_t>(item.item_data1w[3] & 0x1F),
+        static_cast<uint8_t>((item.item_data1w[4] >> 10) & 0x1F),
+        static_cast<uint8_t>((item.item_data1w[4] >> 5) & 0x1F),
+        static_cast<uint8_t>(item.item_data1w[4] & 0x1F),
+        static_cast<uint8_t>((item.item_data1w[5] >> 10) & 0x1F),
+        static_cast<uint8_t>((item.item_data1w[5] >> 5) & 0x1F),
+        static_cast<uint8_t>(item.item_data1w[5] & 0x1F),
+      };
+      const char* translation_table = "\0ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
+
+      string name;
+      for (size_t x = 0; x < 8; x++) {
+        char ch = translation_table[char_indexes[x]];
+        if (ch == 0) {
+          break;
+        }
+        name += ch;
       }
-      if (which > 5) {
-        ret_tokens.emplace_back(string_printf("!PC:%02hhX%02hhX", which, value));
-      } else {
-        percentages[which] = value;
+      if (!name.empty()) {
+        ret_tokens.emplace_back("(" + name + ")");
       }
+
+    } else { // Not S-rank (extended name bits not set)
+      uint8_t percentages[5] = {0, 0, 0, 0, 0};
+      for (size_t x = 0; x < 3; x++) {
+        uint8_t which = item.item_data1[6 + 2 * x];
+        uint8_t value = item.item_data1[7 + 2 * x];
+        if (which == 0) {
+          continue;
+        }
+        if (which > 5) {
+          ret_tokens.emplace_back(string_printf("!PC:%02hhX%02hhX", which, value));
+        } else {
+          percentages[which] = value;
+        }
+      }
+      ret_tokens.emplace_back(string_printf("%hhu/%hhu/%hhu/%hhu/%hhu",
+          percentages[0], percentages[1], percentages[2], percentages[3], percentages[4]));
     }
-    ret_tokens.emplace_back(string_printf("%hhu/%hhu/%hhu/%hhu/%hhu",
-        percentages[0], percentages[1], percentages[2], percentages[3], percentages[4]));
 
   // For armors, add the slots, unit modifiers, and/or DEF/EVP bonuses
   } else if (item.item_data1[0] == 0x01) {
@@ -1491,6 +1519,7 @@ string name_for_item(const ItemData& item) {
         // an index into this modified list to determine the actual left PB.
         // Here, we don't construct a temporary list and instead just skip the
         // center and right PB values with a loop instead.
+        // TODO: There is probably a cleaner way to do this. I'm lazy for now.
         uint8_t actual_left_pb = 0;
         for (;;) {
           if ((actual_left_pb == center_pb) || (actual_left_pb == right_pb)) {
