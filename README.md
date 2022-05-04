@@ -26,7 +26,7 @@ So, you've read all of the above and you want to try it out? Here's what you do:
 - Make sure you have CMake and libevent installed.
 - Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 - Run `cmake . && make`.
-- Rename system/config.example.json to system/config.json, and edit it appropriately.
+- In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
 - Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
 - Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
 
@@ -103,8 +103,8 @@ To use the proxy, add an entry to the ProxyDestinations dictionary in config.jso
 
 A few things to be aware of when using the proxy server:
 - There are shell commands that affect clients on the proxy (run 'help' in the shell to see what they are). All proxy commands in the shell only work when there's exactly one client connected through the proxy, since there isn't (yet) a way to say via the shell which session you want to affect.
-- The remote server will probably try to assign you a guild card number that doesn't match the one you have on newserv. The proxy server rewrites the commands on the fly to make it look like the remote server assigned you the same guild card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the guild card number that the remote server assigned you. This number is printed to the terminal at the time it's assigned, but is not (yet) shown to the client in any way.
-- Using the "change ship" or "change block" actions from the lobby counter will bring you back to newserv's main menu, not the remote server's ship select. You can go back to the server you were just on by choosing it from newserv's proxy server menu again.
+- The remote server will probably try to assign you a guild card number that doesn't match the one you have on newserv. The proxy server rewrites the commands on the fly to make it look like the remote server assigned you the same guild card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the guild card number that the remote server believes it has assigned to you. This number is printed to the terminal at the time it's assigned, but is not (yet) shown to the client in any way.
+- On PC and GC, using the Change Ship or Change Block actions from the lobby counter will bring you back to newserv's main menu, not the remote server's ship select. You can go back to the server you were just on by choosing it from newserv's proxy server menu again.
 - The proxy server blocks chat commands that look like newserv commands by default, but you can change this with the `set-chat-safety off` shell command if needed.
 
 ### Connecting local clients
