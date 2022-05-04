@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
