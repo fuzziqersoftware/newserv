@@ -74,8 +74,8 @@ struct Client {
   uint16_t flags;
 
   // Encryption
-  std::unique_ptr<PSOEncryption> crypt_in;
-  std::unique_ptr<PSOEncryption> crypt_out;
+  std::shared_ptr<PSOEncryption> crypt_in;
+  std::shared_ptr<PSOEncryption> crypt_out;
 
   // Network
   struct sockaddr_storage local_addr;

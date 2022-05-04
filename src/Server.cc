@@ -38,9 +38,9 @@ void Server::disconnect_client(shared_ptr<Client> c) {
 
   int fd = bufferevent_getfd(bev);
   if (fd < 0) {
-    this->log(INFO, "[Server] Client on virtual connection %p disconnected", bev);
+    this->log(INFO, "Client on virtual connection %p disconnected", bev);
   } else {
-    this->log(INFO, "[Server] Client on fd %d disconnected", fd);
+    this->log(INFO, "Client on fd %d disconnected", fd);
   }
 
   // if the output buffer is not empty, move the client into the draining pool
@@ -208,16 +208,16 @@ void Server::on_disconnecting_client_error(struct bufferevent* bev,
 }
 
 void Server::receive_and_process_commands(shared_ptr<Client> c) {
-  for_each_received_command(c->bev, c->version, c->crypt_in.get(),
-    [this, c](uint16_t command, uint16_t flag, const std::string& data) {
-      try {
-        process_command(this->state, c, command, flag, data);
-      } catch (const exception& e) {
-        this->log(INFO, "Error in client stream: %s", e.what());
-        c->should_disconnect = true;
-        return;
-      }
-    });
+  try {
+    for_each_received_command(c->bev, c->version, c->crypt_in.get(),
+        [this, c](uint16_t command, uint16_t flag, const std::string& data) {
+          process_command(this->state, c, command, flag, data);
+        });
+  } catch (const exception& e) {
+    this->log(INFO, "Error in client stream: %s", e.what());
+    c->should_disconnect = true;
+    return;
+  }
 }
 
 Server::Server(

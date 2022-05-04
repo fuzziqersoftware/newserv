@@ -49,10 +49,6 @@
   // users cannot be banned!
   "AllowUnregisteredUsers": false,
 
-  // If you want to use Blue Burst clients with a different private key, put a
-  // .nsk file in system/blueburst/keys and put its name here.
-  "BlueBurstKeyFile": "default",
-
   // User to run the server as. If present, newserv will attempt to switch to
   // this user's permissions after loading its configuration and opening
   // listening sockets. The special value $SUDO_USER causes newserv to look up

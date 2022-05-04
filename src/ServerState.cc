@@ -20,8 +20,6 @@ ServerState::ServerState()
     run_shell_behavior(RunShellBehavior::DEFAULT), next_lobby_id(1),
     pre_lobby_event(0),
     ep3_menu_song(-1) {
-  memset(&this->default_key_file, 0, sizeof(this->default_key_file));
-
   vector<shared_ptr<Lobby>> ep3_only_lobbies;
 
   for (size_t x = 0; x < 20; x++) {

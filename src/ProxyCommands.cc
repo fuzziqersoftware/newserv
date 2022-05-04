@@ -223,10 +223,14 @@ static bool process_server_bb_03(shared_ptr<ServerState> s,
 
   // BB encryption is stateless after it's initialized, unlike previous
   // versions, so we can get away with only two instances instead of four here.
-  session.server_input_crypt.reset(new PSOBBEncryption(
-      s->default_key_file, cmd.server_key.data(), sizeof(cmd.server_key)));
-  session.server_output_crypt.reset(new PSOBBEncryption(
-      s->default_key_file, cmd.client_key.data(), sizeof(cmd.client_key)));
+  // This is convenient because the two encryptions are linked together due to
+  // our use of multiple private keys, unlike for the other versions.
+  static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
+  shared_ptr<PSOBBMultiKeyClientEncryption> client_encr(new PSOBBMultiKeyClientEncryption(
+      s->bb_private_keys, expected_first_data, cmd.client_key.data(), sizeof(cmd.client_key)));
+  session.server_input_crypt.reset(new PSOBBMultiKeyServerEncryption(
+      client_encr, cmd.server_key.data(), sizeof(cmd.server_key)));
+  session.server_output_crypt = client_encr;
   session.client_input_crypt = session.server_output_crypt;
   session.client_output_crypt = session.server_input_crypt;
 

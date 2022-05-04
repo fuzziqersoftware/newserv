@@ -79,8 +79,51 @@ public:
   virtual void skip(size_t size);
 
 protected:
+  PSOBBEncryption();
+
   static std::vector<uint32_t> generate_stream(
       const KeyFile& key, const void* seed, size_t seed_size);
 
-  const std::vector<uint32_t> stream;
+  std::vector<uint32_t> stream;
+};
+
+// The following classes provide support for multiple PSOBB private keys, and
+// the ability to automatically detect which key the client is using based on
+// the first 8 bytes they send.
+
+class PSOBBMultiKeyClientEncryption : public PSOBBEncryption {
+public:
+  PSOBBMultiKeyClientEncryption(
+      const std::vector<std::shared_ptr<const KeyFile>>& possible_keys,
+      const std::string& expected_first_data,
+      const void* seed,
+      size_t seed_size);
+
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+  virtual void decrypt(void* data, size_t size, bool advance = true);
+
+  friend class PSOBBMultiKeyServerEncryption;
+
+protected:
+  std::vector<std::shared_ptr<const KeyFile>> possible_keys;
+  std::shared_ptr<const KeyFile> active_key;
+  std::string expected_first_data;
+  std::string seed;
+};
+
+class PSOBBMultiKeyServerEncryption : public PSOBBEncryption {
+public:
+  PSOBBMultiKeyServerEncryption(
+      std::shared_ptr<const PSOBBMultiKeyClientEncryption> client_crypt,
+      const void* seed,
+      size_t seed_size);
+
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+  virtual void decrypt(void* data, size_t size, bool advance = true);
+
+protected:
+  void ensure_stream_ready();
+
+  std::shared_ptr<const PSOBBMultiKeyClientEncryption> client_crypt;
+  std::string seed;
 };

@@ -281,6 +281,8 @@ PSOBBEncryption::PSOBBEncryption(
     const KeyFile& key, const void* original_seed, size_t seed_size)
   : stream(this->generate_stream(key, original_seed, seed_size)) { }
 
+PSOBBEncryption::PSOBBEncryption() { }
+
 
 
 vector<uint32_t> PSOBBEncryption::generate_stream(
@@ -505,4 +507,75 @@ vector<uint32_t> PSOBBEncryption::generate_stream(
   }
 
   return stream;
+}
+
+
+
+PSOBBMultiKeyClientEncryption::PSOBBMultiKeyClientEncryption(
+    const vector<shared_ptr<const KeyFile>>& possible_keys,
+    const string& expected_first_data,
+    const void* seed,
+    size_t seed_size)
+  : possible_keys(possible_keys),
+    expected_first_data(expected_first_data),
+    seed(reinterpret_cast<const char*>(seed), seed_size) { }
+
+void PSOBBMultiKeyClientEncryption::encrypt(void* data, size_t size, bool advance) {
+  if (this->stream.empty()) {
+    throw logic_error("PSOBB multi-key encryption requires client input first");
+  }
+  this->PSOBBEncryption::encrypt(data, size, advance);
+}
+
+void PSOBBMultiKeyClientEncryption::decrypt(void* data, size_t size, bool advance) {
+  if (this->stream.empty()) {
+    if (size != this->expected_first_data.size()) {
+      throw logic_error("initial decryption size does not match expected first data size");
+    }
+
+    for (const auto& key : this->possible_keys) {
+      this->active_key = key;
+      this->stream = PSOBBEncryption::generate_stream(
+          *this->active_key.get(), this->seed.data(), this->seed.size());
+      string test_data(reinterpret_cast<const char*>(data), size);
+      this->PSOBBEncryption::decrypt(test_data.data(), test_data.size());
+      if (test_data == this->expected_first_data) {
+        break;
+      }
+      this->active_key.reset();
+      this->stream.clear();
+    }
+    if (!this->active_key.get()) {
+      throw runtime_error("none of the registered private keys are valid for this client");
+    }
+  }
+  this->PSOBBEncryption::decrypt(data, size, advance);
+}
+
+PSOBBMultiKeyServerEncryption::PSOBBMultiKeyServerEncryption(
+    shared_ptr<const PSOBBMultiKeyClientEncryption> client_crypt,
+    const void* seed,
+    size_t seed_size)
+  : client_crypt(client_crypt),
+    seed(reinterpret_cast<const char*>(seed), seed_size) { }
+
+void PSOBBMultiKeyServerEncryption::encrypt(void* data, size_t size, bool advance) {
+  this->ensure_stream_ready();
+  this->PSOBBEncryption::encrypt(data, size, advance);
+}
+
+void PSOBBMultiKeyServerEncryption::decrypt(void* data, size_t size, bool advance) {
+  this->ensure_stream_ready();
+  this->PSOBBEncryption::decrypt(data, size, advance);
+}
+
+void PSOBBMultiKeyServerEncryption::ensure_stream_ready() {
+  if (this->stream.empty()) {
+    if (!this->client_crypt->active_key.get()) {
+      throw logic_error("server crypt cannot be initialized because client crypt is not ready");
+    }
+    log(INFO, "[PSOBB/MK] Generating server stream");
+    this->stream = PSOBBEncryption::generate_stream(
+        *this->client_crypt->active_key, this->seed.data(), this->seed.size());
+  }
 }

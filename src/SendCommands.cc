@@ -207,10 +207,11 @@ void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   cmd.after_message = anti_copyright;
   send_command(c, 0x03, 0x00, cmd);
 
-  c->crypt_out.reset(new PSOBBEncryption(s->default_key_file,
-      cmd.server_key.data(), cmd.server_key.bytes()));
-  c->crypt_in.reset(new PSOBBEncryption(s->default_key_file,
-      cmd.client_key.data(), cmd.client_key.bytes()));
+  static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
+  shared_ptr<PSOBBMultiKeyClientEncryption> client_encr(new PSOBBMultiKeyClientEncryption(
+      s->bb_private_keys, expected_first_data, cmd.client_key.data(), sizeof(cmd.client_key)));
+  c->crypt_in = client_encr;
+  c->crypt_out.reset(new PSOBBMultiKeyServerEncryption(client_encr, cmd.server_key.data(), sizeof(cmd.server_key)));
 }
 
 void send_server_init_patch(shared_ptr<Client> c) {

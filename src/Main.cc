@@ -239,18 +239,22 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     s->allow_unregistered_users = true;
   }
 
-  {
-    string key_file_name = d.at("BlueBurstKeyFile")->as_string();
-    string key_file_contents = load_file("system/blueburst/keys/" + key_file_name + ".nsk");
-    if (key_file_contents.size() != sizeof(PSOBBEncryption::KeyFile)) {
-      log(WARNING, "Blue Burst key file is the wrong size (%zu bytes; should be %zu bytes)",
-          key_file_contents.size(), sizeof(PSOBBEncryption::KeyFile));
-      log(WARNING, "Ignoring key file; Blue Burst clients will not be able to connect");
+  for (const string& filename : list_directory("system/blueburst/keys")) {
+    if (!ends_with(filename, ".nsk")) {
+      continue;
+    }
+    string contents = load_file("system/blueburst/keys/" + filename);
+    if (contents.size() != sizeof(PSOBBEncryption::KeyFile)) {
+      log(WARNING, "Blue Burst key file %s is the wrong size (%zu bytes; should be %zu bytes)",
+          filename.c_str(), contents.size(), sizeof(PSOBBEncryption::KeyFile));
     } else {
-      memcpy(&s->default_key_file, key_file_contents.data(), sizeof(PSOBBEncryption::KeyFile));
-      log(INFO, "Loaded Blue Burst key file: %s", key_file_name.c_str());
+      shared_ptr<PSOBBEncryption::KeyFile> k(new PSOBBEncryption::KeyFile());
+      memcpy(k.get(), contents.data(), sizeof(PSOBBEncryption::KeyFile));
+      s->bb_private_keys.emplace_back(k);
+      log(INFO, "Loaded Blue Burst key file: %s", filename.c_str());
     }
   }
+  log(INFO, "%zu Blue Burst key file(s) loaded", s->bb_private_keys.size());
 
   try {
     bool run_shell = d.at("RunInteractiveShell")->as_bool();

@@ -44,7 +44,7 @@ struct ServerState {
   bool ip_stack_debug;
   bool allow_unregistered_users;
   RunShellBehavior run_shell_behavior;
-  PSOBBEncryption::KeyFile default_key_file;
+  std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamTable> battle_params;

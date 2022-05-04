@@ -575,33 +575,43 @@ void ProxyServer::LinkedSession::disconnect() {
 
 
 void ProxyServer::LinkedSession::on_client_input() {
-  for_each_received_command(this->client_bev.get(), this->version, this->client_input_crypt.get(),
-    [&](uint16_t command, uint32_t flag, string& data) {
-      print_received_command(command, flag, data.data(), data.size(),
-          this->version, this->client_name.c_str());
-      process_proxy_command(
-          this->server->state,
-          *this,
-          false, // from_server
-          command,
-          flag,
-          data);
-    });
+  try {
+    for_each_received_command(this->client_bev.get(), this->version, this->client_input_crypt.get(),
+      [&](uint16_t command, uint32_t flag, string& data) {
+        print_received_command(command, flag, data.data(), data.size(),
+            this->version, this->client_name.c_str());
+        process_proxy_command(
+            this->server->state,
+            *this,
+            false, // from_server
+            command,
+            flag,
+            data);
+      });
+  } catch (const exception& e) {
+    this->log(ERROR, "Failed to process command from client: %s", e.what());
+    this->disconnect();
+  }
 }
 
 void ProxyServer::LinkedSession::on_server_input() {
-  for_each_received_command(this->server_bev.get(), this->version, this->server_input_crypt.get(),
-    [&](uint16_t command, uint32_t flag, string& data) {
-      print_received_command(command, flag, data.data(), data.size(),
-          this->version, this->server_name.c_str(), TerminalFormat::FG_RED);
-      process_proxy_command(
-          this->server->state,
-          *this,
-          true, // from_server
-          command,
-          flag,
-          data);
-    });
+  try {
+    for_each_received_command(this->server_bev.get(), this->version, this->server_input_crypt.get(),
+      [&](uint16_t command, uint32_t flag, string& data) {
+        print_received_command(command, flag, data.data(), data.size(),
+            this->version, this->server_name.c_str(), TerminalFormat::FG_RED);
+        process_proxy_command(
+            this->server->state,
+            *this,
+            true, // from_server
+            command,
+            flag,
+            data);
+      });
+  } catch (const exception& e) {
+    this->log(ERROR, "Failed to process command from server: %s", e.what());
+    this->disconnect();
+  }
 }
 
 void ProxyServer::LinkedSession::send_to_end(
