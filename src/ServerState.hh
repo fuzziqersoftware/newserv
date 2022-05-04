@@ -61,6 +61,7 @@ struct ServerState {
   std::vector<std::pair<std::string, uint16_t>> proxy_destinations_pc;
   std::vector<std::pair<std::string, uint16_t>> proxy_destinations_gc;
   std::pair<std::string, uint16_t> proxy_destination_patch;
+  std::pair<std::string, uint16_t> proxy_destination_bb;
   std::u16string welcome_message;
 
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;

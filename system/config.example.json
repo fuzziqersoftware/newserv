@@ -34,6 +34,9 @@
   // patch server (for PC and BB) is bypassed, and any client that connects to
   // the patch server is instead proxied to this destination.
   // "ProxyDestination-Patch": "",
+  // Proxy destination for BB clients. If this is given, all BB clients that
+  // connect to newserv will be proxied to this destination.
+  // "ProxyDestination-BB": "",
 
   // By default, the interactive shell runs if stdin is a terminal, and doesn't
   // run if it's not. This option, if present, overrides that behavior.

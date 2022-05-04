@@ -53,7 +53,7 @@ public:
 
     uint32_t remote_guild_card_number;
     parray<uint8_t, 0x20> remote_client_config_data;
-    ClientConfig newserv_client_config;
+    ClientConfigBB newserv_client_config;
     bool suppress_newserv_commands;
     bool enable_chat_filter;
     bool enable_switch_assist;
@@ -101,7 +101,7 @@ public:
         uint16_t local_port,
         GameVersion version,
         std::shared_ptr<const License> license,
-        const ClientConfig& newserv_client_config);
+        const ClientConfigBB& newserv_client_config);
     LinkedSession(
         ProxyServer* server,
         uint64_t id,
@@ -148,7 +148,7 @@ public:
     std::shared_ptr<const License> l,
     uint16_t local_port,
     GameVersion version,
-    const ClientConfig& newserv_client_config);
+    const ClientConfigBB& newserv_client_config);
   void delete_session(uint64_t id);
 
 private:

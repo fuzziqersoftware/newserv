@@ -155,7 +155,7 @@ void for_each_received_command(
     // BB pads commands to 8-byte boundaries, and this is not reflected in the
     // size field
     size_t command_physical_size = (version == GameVersion::BB)
-        ? (command_logical_size + header_size - 1) & ~(header_size - 1)
+        ? ((command_logical_size + header_size - 1) & ~(header_size - 1))
         : command_logical_size;
     if (evbuffer_get_length(buf) < command_physical_size) {
       break;
@@ -165,19 +165,17 @@ void for_each_received_command(
 
     evbuffer_drain(buf, header_size);
 
-    string command_data(command_logical_size - header_size, '\0');
+    string command_data(command_physical_size - header_size, '\0');
     if (evbuffer_remove(buf, command_data.data(), command_data.size())
         < static_cast<ssize_t>(command_data.size())) {
       throw logic_error("enough bytes available, but could not remove them");
-    }
-    if (command_logical_size != command_physical_size) {
-      evbuffer_drain(buf, command_physical_size - command_logical_size);
     }
 
     if (crypt) {
       crypt->skip(header_size);
       crypt->decrypt(command_data.data(), command_data.size());
     }
+    command_data.resize(command_logical_size - header_size);
 
     fn(header.command(version), header.flag(version), command_data);
   }

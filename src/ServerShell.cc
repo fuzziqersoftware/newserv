@@ -66,7 +66,7 @@ Server commands:\n\
     license is deleted by reloading, they will not be disconnected immediately.\n\
   add-license <parameters>\n\
     Add a license to the server. <parameters> is some subset of the following:\n\
-      username=<username> (BB username)\n\
+      bb-username=<username> (BB username)\n\
       bb-password=<password> (BB password)\n\
       gc-password=<password> (GC password)\n\
       access-key=<access-key> (GC/PC access key)\n\
@@ -179,11 +179,11 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     shared_ptr<License> l(new License());
 
     for (const string& token : split(command_args, ' ')) {
-      if (starts_with(token, "username=")) {
-        if (token.size() >= 29) {
+      if (starts_with(token, "bb-username=")) {
+        if (token.size() >= 32) {
           throw invalid_argument("username too long");
         }
-        l->username = token.substr(9);
+        l->username = token.substr(12);
 
       } else if (starts_with(token, "bb-password=")) {
         if (token.size() >= 32) {

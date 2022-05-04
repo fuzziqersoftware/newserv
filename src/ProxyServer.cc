@@ -240,7 +240,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
   shared_ptr<const License> license;
   uint32_t sub_version = 0;
   string character_name;
-  ClientConfig client_config;
+  ClientConfigBB client_config;
 
   try {
     for_each_received_command(this->bev.get(), this->version, this->crypt_in.get(),
@@ -271,7 +271,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
               stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
           sub_version = cmd.sub_version;
           character_name = cmd.name;
-          client_config = cmd.client_config.cfg;
+          client_config.cfg = cmd.client_config.cfg;
 
         } else {
           throw logic_error("unsupported unlinked session version");
@@ -302,7 +302,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
       // If there's no open session for this license, then there must be a valid
       // destination in the client config. If there is, open a new linked
       // session and set its initial destination
-      if (client_config.magic != CLIENT_CONFIG_MAGIC) {
+      if (client_config.cfg.magic != CLIENT_CONFIG_MAGIC) {
         this->log(ERROR, "Client configuration is invalid; cannot open session");
       } else {
         session.reset(new LinkedSession(
@@ -388,15 +388,15 @@ ProxyServer::LinkedSession::LinkedSession(
     uint16_t local_port,
     GameVersion version,
     std::shared_ptr<const License> license,
-    const ClientConfig& newserv_client_config)
+    const ClientConfigBB& newserv_client_config)
   : LinkedSession(server, license->serial_number, local_port, version) {
   this->license = license;
   this->newserv_client_config = newserv_client_config;
   memset(&this->next_destination, 0, sizeof(this->next_destination));
   struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
   dest_sin->sin_family = AF_INET;
-  dest_sin->sin_port = htons(this->newserv_client_config.proxy_destination_port);
-  dest_sin->sin_addr.s_addr = htonl(this->newserv_client_config.proxy_destination_address);
+  dest_sin->sin_port = htons(this->newserv_client_config.cfg.proxy_destination_port);
+  dest_sin->sin_addr.s_addr = htonl(this->newserv_client_config.cfg.proxy_destination_address);
 }
 
 ProxyServer::LinkedSession::LinkedSession(
@@ -668,7 +668,7 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() {
 
 std::shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
     std::shared_ptr<const License> l, uint16_t local_port, GameVersion version,
-    const ClientConfig& newserv_client_config) {
+    const ClientConfigBB& newserv_client_config) {
   shared_ptr<LinkedSession> session(new LinkedSession(
       this, local_port, version, l, newserv_client_config));
   auto emplace_ret = this->id_to_session.emplace(session->id, session);

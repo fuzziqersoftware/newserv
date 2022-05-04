@@ -130,7 +130,7 @@ struct C_Login_Patch_04 {
   parray<le_uint32_t, 3> unused;
   ptext<char, 0x10> username;
   ptext<char, 0x10> password;
-  ptext<char, 0x40> email; // Note: this field is not present on BB
+  ptext<char, 0x40> email; // Note: this field is blank on BB
 };
 
 // 05: Disconnect
@@ -684,7 +684,11 @@ struct C_Login_BB_93 {
   // will be something like "Ver. 1.24.3". Note also that some old versions
   // (before 1.23.8?) omit the unknown field before the client config, so the
   // client config starts 8 bytes earlier on those versions.
-  ClientConfigBB client_config;
+  union ClientConfigFields {
+    ClientConfigBB cfg;
+    ptext<char, 0x28> version_string;
+    ClientConfigFields() : version_string() { }
+  } client_config;
 };
 
 // 94: Invalid command

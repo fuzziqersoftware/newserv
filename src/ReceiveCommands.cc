@@ -367,7 +367,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   try {
-    c->import_config(cmd.client_config.cfg);
+    c->import_config(cmd.client_config.cfg.cfg);
     c->bb_game_state++;
   } catch (const invalid_argument&) {
     c->bb_game_state = 0;
@@ -749,7 +749,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
           s->proxy_server->delete_session(c->license->serial_number);
           s->proxy_server->create_licensed_session(
-              c->license, local_port, c->version, c->export_config());
+              c->license, local_port, c->version, c->export_config_bb());
 
           send_reconnect(c, s->connect_address_for_client(c), local_port);
         }
@@ -1751,13 +1751,10 @@ void process_encryption_ok_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_Login_Patch_04>(data,
-      offsetof(C_Login_Patch_04, email), sizeof(C_Login_Patch_04));
+  const auto& cmd = check_size_t<C_Login_Patch_04>(data);
 
-  if (data.size() == offsetof(C_Login_Patch_04, email)) {
+  if (cmd.email.len() == 0) {
     c->flags |= Client::Flag::BB_PATCH;
-  } else if (data.size() != sizeof(C_Login_Patch_04)) {
-    throw runtime_error("unknown patch server login format");
   }
 
   // On BB we can use colors and newlines should be \n; on PC we can't use

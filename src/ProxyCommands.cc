@@ -115,8 +115,7 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
   // Most servers don't include after_message or have a shorter
   // after_message than newserv does, so don't require it
   const auto& cmd = check_size_t<S_ServerInit_DC_PC_GC_02_17>(data,
-      offsetof(S_ServerInit_DC_PC_GC_02_17, after_message),
-      sizeof(S_ServerInit_DC_PC_GC_02_17));
+      offsetof(S_ServerInit_DC_PC_GC_02_17, after_message), 0xFFFF);
 
   if (!session.license) {
     session.log(INFO, "No license in linked session");
@@ -200,6 +199,38 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
   } else {
     throw logic_error("invalid game version in server init handler");
   }
+}
+
+static bool process_server_bb_03(shared_ptr<ServerState> s,
+    ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
+  // Most servers don't include after_message or have a shorter
+  // after_message than newserv does, so don't require it
+  const auto& cmd = check_size_t<S_ServerInit_BB_03>(data,
+      offsetof(S_ServerInit_BB_03, after_message), 0xFFFF);
+
+  // Unlike on PC/GC, BB linked sessions never have licenses.
+  // TODO: Is there any way we can support this in the future? Probably not, due
+  // to BB's login and character select flow, right?
+  if (session.license) {
+    throw runtime_error("BB linked session has license");
+  }
+
+  session.log(INFO, "No license in linked session");
+
+  // We have to forward the command before setting up encryption, so the
+  // client will be able to understand it.
+  forward_command(session, false, command, flag, data);
+
+  // BB encryption is stateless after it's initialized, unlike previous
+  // versions, so we can get away with only two instances instead of four here.
+  session.server_input_crypt.reset(new PSOBBEncryption(
+      s->default_key_file, cmd.server_key.data(), sizeof(cmd.server_key)));
+  session.server_output_crypt.reset(new PSOBBEncryption(
+      s->default_key_file, cmd.client_key.data(), sizeof(cmd.client_key)));
+  session.client_input_crypt = session.server_output_crypt;
+  session.client_output_crypt = session.server_input_crypt;
+
+  return false;
 }
 
 static bool process_server_dc_pc_gc_04(shared_ptr<ServerState>,
@@ -401,7 +432,7 @@ static bool process_server_gc_1A_D5(shared_ptr<ServerState>,
   // If the client has the no-close-confirmation flag set in its
   // newserv client config, send a fake confirmation to the remote
   // server immediately.
-  if (session.newserv_client_config.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) {
+  if (session.newserv_client_config.cfg.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) {
     session.send_to_end(true, 0xD6, 0x00, "", 0);
   }
   return true;
@@ -514,8 +545,8 @@ static bool process_server_65_67_68(shared_ptr<ServerState>,
     // behavior in the client config, so if it happens during a proxy session,
     // update the client config that we'll restore if the client uses the change
     // ship or change block command.
-    if (session.newserv_client_config.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
-      session.newserv_client_config.flags |= Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
+    if (session.newserv_client_config.cfg.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
+      session.newserv_client_config.cfg.flags |= Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
     }
   }
 
@@ -714,7 +745,7 @@ static bool process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
   S_UpdateClientConfig_DC_PC_GC_04 update_client_config_cmd = {
     0x00010000,
     session.license->serial_number,
-    session.newserv_client_config,
+    session.newserv_client_config.cfg,
   };
   session.send_to_end(false, 0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
 
@@ -824,7 +855,7 @@ static process_command_t gc_server_handlers[0x100] = {
   /* F0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
 };
 static process_command_t bb_server_handlers[0x100] = {
-  /* 00 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 00 */ defh, defh, defh, process_server_bb_03, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, defh, defh, process_server_19, defh, defh, defh, defh, defh, defh,
   /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,

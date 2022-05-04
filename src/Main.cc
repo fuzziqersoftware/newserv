@@ -31,29 +31,31 @@ bool use_terminal_colors = false;
 
 
 static const vector<PortConfiguration> default_port_to_behavior({
-  {"gc-jp10",  9000,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-jp11",  9001,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-jp3",   9003,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-us10",  9100,  GameVersion::PC,    ServerBehavior::SPLIT_RECONNECT},
-  {"gc-us3",   9103,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-eu10",  9200,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-eu11",  9201,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-eu3",   9203,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"pc-login", 9300,  GameVersion::PC,    ServerBehavior::LOGIN_SERVER},
-  {"pc-patch", 10000, GameVersion::PATCH, ServerBehavior::PATCH_SERVER},
-  {"bb-patch", 11000, GameVersion::PATCH, ServerBehavior::PATCH_SERVER},
-  {"bb-data",  12000, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
+  {"gc-jp10",   9000,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
+  {"gc-jp11",   9001,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
+  {"gc-jp3",    9003,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
+  {"gc-us10",   9100,  GameVersion::PC,    ServerBehavior::SPLIT_RECONNECT},
+  {"gc-us3",    9103,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
+  {"gc-eu10",   9200,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
+  {"gc-eu11",   9201,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
+  {"gc-eu3",    9203,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
+  {"pc-login",  9300,  GameVersion::PC,    ServerBehavior::LOGIN_SERVER},
+  {"pc-patch",  10000, GameVersion::PATCH, ServerBehavior::PATCH_SERVER},
+  {"bb-patch",  11000, GameVersion::PATCH, ServerBehavior::PATCH_SERVER},
+  {"bb-init",   12000, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
+  {"bb-patch2", 13000, GameVersion::PATCH, ServerBehavior::PATCH_SERVER},
+  {"bb-init2",  14000, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
 
-  // these aren't hardcoded in any games; user can override them
-  {"bb-data1", 12004, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
-  {"bb-data2", 12005, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
-  {"bb-login", 12008, GameVersion::BB,    ServerBehavior::LOGIN_SERVER},
-  {"pc-lobby", 9420,  GameVersion::PC,    ServerBehavior::LOBBY_SERVER},
-  {"gc-lobby", 9421,  GameVersion::GC,    ServerBehavior::LOBBY_SERVER},
-  {"bb-lobby", 9422,  GameVersion::BB,    ServerBehavior::LOBBY_SERVER},
-  {"pc-proxy", 9520,  GameVersion::PC,    ServerBehavior::PROXY_SERVER},
-  {"gc-proxy", 9521,  GameVersion::GC,    ServerBehavior::PROXY_SERVER},
-  {"bb-proxy", 9522,  GameVersion::BB,    ServerBehavior::PROXY_SERVER},
+  // These aren't hardcoded in clients; user should be allowed to override them
+  {"bb-data1",  12004, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
+  {"bb-data2",  12005, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
+  {"bb-login",  12008, GameVersion::BB,    ServerBehavior::LOGIN_SERVER},
+  {"pc-lobby",  9420,  GameVersion::PC,    ServerBehavior::LOBBY_SERVER},
+  {"gc-lobby",  9421,  GameVersion::GC,    ServerBehavior::LOBBY_SERVER},
+  {"bb-lobby",  9422,  GameVersion::BB,    ServerBehavior::LOBBY_SERVER},
+  {"pc-proxy",  9520,  GameVersion::PC,    ServerBehavior::PROXY_SERVER},
+  {"gc-proxy",  9521,  GameVersion::GC,    ServerBehavior::PROXY_SERVER},
+  {"bb-proxy",  9522,  GameVersion::BB,    ServerBehavior::PROXY_SERVER},
 });
 
 
@@ -156,6 +158,19 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   } catch (const out_of_range&) {
     s->proxy_destination_patch.first = "";
     s->proxy_destination_patch.second = 0;
+  }
+  try {
+    const string& netloc_str = d.at("ProxyDestination-BB")->as_string();
+    s->proxy_destination_bb = parse_netloc(netloc_str);
+    log(INFO, "BB proxy is enabled with destination %s", netloc_str.c_str());
+    for (auto& it : s->name_to_port_config) {
+      if (it.second->version == GameVersion::BB) {
+        it.second->behavior = ServerBehavior::PROXY_SERVER;
+      }
+    }
+  } catch (const out_of_range&) {
+    s->proxy_destination_bb.first = "";
+    s->proxy_destination_bb.second = 0;
   }
 
   s->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",
@@ -322,30 +337,39 @@ int main(int, char**) {
   }
 
   shared_ptr<Server> game_server;
-  if (!state->proxy_destinations_pc.empty() ||
-      !state->proxy_destinations_gc.empty() ||
-      (state->proxy_destination_patch.second != 0)) {
-    log(INFO, "Starting proxy server");
-    state->proxy_server.reset(new ProxyServer(base, state));
-  }
-
-  log(INFO, "Starting game server");
-  game_server.reset(new Server(base, state));
 
   log(INFO, "Opening sockets");
   for (const auto& it : state->name_to_port_config) {
     if (it.second->behavior == ServerBehavior::PROXY_SERVER) {
+      if (!state->proxy_server.get()) {
+        log(INFO, "Starting proxy server");
+        state->proxy_server.reset(new ProxyServer(base, state));
+      }
       if (state->proxy_server.get()) {
+        // For PC and GC, proxy sessions are dynamically created when a client
+        // picks a destination from the menu. For patch and BB clients, there's
+        // no way to ask the client which destination they want, so only one
+        // destination is supported, and we have to manually specify the
+        // destination netloc here.
         if (it.second->version == GameVersion::PATCH) {
           struct sockaddr_storage ss = make_sockaddr_storage(
               state->proxy_destination_patch.first,
               state->proxy_destination_patch.second).first;
+          state->proxy_server->listen(it.second->port, it.second->version, &ss);
+        } if (it.second->version == GameVersion::BB) {
+          struct sockaddr_storage ss = make_sockaddr_storage(
+              state->proxy_destination_bb.first,
+              state->proxy_destination_bb.second).first;
           state->proxy_server->listen(it.second->port, it.second->version, &ss);
         } else {
           state->proxy_server->listen(it.second->port, it.second->version);
         }
       }
     } else {
+      if (!game_server.get()) {
+        log(INFO, "Starting game server");
+        game_server.reset(new Server(base, state));
+      }
       game_server->listen("", it.second->port, it.second->version, it.second->behavior);
     }
   }
