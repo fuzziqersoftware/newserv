@@ -110,6 +110,8 @@ struct S_ServerInit_BB_03 {
 // confuse the client, and (on pre-V3 clients) possibly corrupt the character
 // data. For this reason, newserv tries pretty hard to hide the remote guild
 // card number when clients connect to the proxy server.
+// Note: PSOBB has a handler for the 04 command, but (as of yet) I haven't
+// figured out what it does.
 
 struct S_UpdateClientConfig_DC_PC_GC_04 {
   le_uint32_t player_tag;
@@ -225,6 +227,8 @@ struct C_MenuSelection {
 // 11 (S->C): Ship info
 // Same format as 01 command.
 
+// 12 (S->C): Unknown (BB)
+
 // 12: Session complete (patch server)
 // No arguments
 
@@ -253,9 +257,9 @@ struct S_WriteFile_13_A7 {
   le_uint32_t data_size;
 };
 
-// 14: Invalid command
+// 14 (S->C): Unknown (BB)
 // 15: Invalid command
-// 16: Invalid command
+// 16 (S->C): Unknown (BB)
 
 // 17 (S->C): Start encryption at login server (except on BB)
 // Same format as 02 command, but a different copyright string.
@@ -324,9 +328,9 @@ struct SC_GameCardCheck_BB_22 {
   parray<uint8_t, 0x10> data;
 };
 
-// 23: Invalid command
-// 24: Invalid command
-// 25: Invalid command
+// 23 (S->C): Unknown (BB)
+// 24 (S->C): Unknown (BB)
+// 25 (S->C): Unknown (BB)
 // 26: Invalid command
 // 27: Invalid command
 // 28: Invalid command
@@ -673,7 +677,13 @@ struct C_Login_BB_93 {
   ptext<char, 0x10> username;
   ptext<char, 0x20> unused2;
   ptext<char, 0x10> password;
-  ptext<char, 0x30> unused3;
+  ptext<char, 0x28> unused3;
+  uint64_t unknown;
+  // Note: Unlike other versions, BB puts the version string in the client
+  // config at connect time. So the first time the server gets this command, it
+  // will be something like "Ver. 1.24.3". Note also that some old versions
+  // (before 1.23.8?) omit the unknown field before the client config, so the
+  // client config starts 8 bytes earlier on those versions.
   ClientConfigBB client_config;
 };
 
@@ -740,9 +750,9 @@ struct C_Login_DC_PC_GC_9A {
   ptext<char, 0x30> email_address;
 };
 
-// 9B: Invalid command
+// 9B (S->C): Unknown (BB)
 
-// 9C (C->S): Login result
+// 9C (S->C): Login result
 // The only possible error here seems to be wrong password (127) which is
 // displayed if the header.flag field is zero. If header.flag is nonzero, the
 // client proceeds with the login procedure by sending a 9E.
@@ -795,7 +805,7 @@ struct C_LoginWithUnusedSpace_GC_9E : C_Login_GC_9E {
   parray<uint8_t, 0x64> unused_space;
 };
 
-// 9F: Invalid command
+// 9F (S->C): Unknown (BB)
 
 // A0 (C->S): Change ship
 // No arguments
@@ -845,7 +855,7 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // should be sent with A6/A7 commands rather than 44/13, and it must be in a
 // different encrypted format (not described here).
 
-// A5: Invalid command
+// A5 (S->C): Unknown (BB)
 
 // A6: Open file for download
 // Used for download quests and GBA games.
@@ -860,7 +870,7 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // No arguments
 
 // AA: Invalid command
-// AB: Invalid command
+// AB (S->C): Unknown (BB)
 
 // AC (C->S): Ready to start quest
 // AC (S->C): Start quest
@@ -890,6 +900,7 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // GC v1.0 and v1.1 only.
 // Format unknown.
 // Client will respond with a B3 command.
+// Note: BB has a handler for this, but (as of yet) I don't know what it does.
 
 // B3 (C->S): Execute code response
 // GC v1.0 and v1.1 only.
@@ -918,6 +929,8 @@ struct S_RankUpdate_GC_Ep3_B7 {
 // (PRS-compressed) data, followed immediately by the data. newserv sends the
 // system/ep3/cardupdate.mnr file verbatim using this command when an Episode 3
 // client connects to the login server.
+// Note: BB has a handler for this, but (as of yet) I don't know what it does.
+// It almost certainly doesn't do the same thing as the Ep3 B8 command.
 
 // B9: Invalid command
 
@@ -1102,6 +1115,8 @@ struct C_GBAGameRequest_GC_D7 {
   ptext<char, 0x10> filename;
 };
 
+// D7 (S->C): Unknown (BB)
+
 // D8 (C->S): Info board request
 // No arguments
 // The server should respond with a D8 command (described below).
@@ -1161,8 +1176,8 @@ struct S_GuildCardHeader_BB_01DC {
 // uint32_t chunk_index;
 // uint8_t data[0x6800, or less if last chunk]
 
-// DD: Invalid command
-// DE: Unknown (used by BB)
+// DD (S->C): Unknown (BB)
+// DE (S->C): Unknown (BB)
 // DF: Invalid command
 
 // E0 (S->C): Tournament list (Episode 3)
@@ -1302,11 +1317,11 @@ union C_UpdateAccountData_BB_ED {
   parray<uint8_t, 0xE8> customize; // 07ED
 };
 
-// EE: Scrolling message (BB)
+// EE (S->C): Scrolling message (BB)
 // Contents are plain text (char16_t)
 
-// EF: Invalid command
-// F0: Invalid command
+// EF (S->C): Unknown (BB)
+// F0 (S->C): Unknown (BB)
 // F1: Invalid command
 // F2: Invalid command
 // F3: Invalid command
