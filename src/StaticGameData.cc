@@ -18,7 +18,20 @@ const unordered_map<string, uint8_t> name_to_section_id({
   {"redria", 6},
   {"oran", 7},
   {"yellowboze", 8},
-  {"whitill", 9}});
+  {"whitill", 9},
+
+  // Shortcuts for chat commands
+  {"b", 3},
+  {"g", 1},
+  {"o", 7},
+  {"pi", 5},
+  {"pu", 4},
+  {"r", 6},
+  {"s", 2},
+  {"v", 0},
+  {"w", 9},
+  {"y", 8},
+});
 
 const vector<string> lobby_event_to_name({
   "none", "xmas", "none", "val", "easter", "hallo", "sonic", "newyear",
