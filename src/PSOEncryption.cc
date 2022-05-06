@@ -574,7 +574,6 @@ void PSOBBMultiKeyServerEncryption::ensure_stream_ready() {
     if (!this->client_crypt->active_key.get()) {
       throw logic_error("server crypt cannot be initialized because client crypt is not ready");
     }
-    log(INFO, "[PSOBB/MK] Generating server stream");
     this->stream = PSOBBEncryption::generate_stream(
         *this->client_crypt->active_key, this->seed.data(), this->seed.size());
   }

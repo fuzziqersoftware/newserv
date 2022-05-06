@@ -1370,16 +1370,16 @@ uint8_t technique_for_name(const u16string& name) {
 }
 
 string name_for_item(const ItemData& item, bool include_color_codes) {
-  if (item.item_data1[0] == 0x04) {
-    return string_printf("%" PRIu32 " Meseta", item.item_data2d.load());
+  if (item.data1[0] == 0x04) {
+    return string_printf("%" PRIu32 " Meseta", item.data2d.load());
   }
 
   vector<string> ret_tokens;
 
   // For weapons, specials appear before the weapon name
-  if ((item.item_data1[0] == 0x00) && (item.item_data1[4] != 0x00)) {
-    bool is_present = item.item_data1[4] & 0x40;
-    uint8_t special_id = item.item_data1[4] & 0x3F;
+  if ((item.data1[0] == 0x00) && (item.data1[4] != 0x00)) {
+    bool is_present = item.data1[4] & 0x40;
+    uint8_t special_id = item.data1[4] & 0x3F;
     if (is_present) {
       ret_tokens.emplace_back("Wrapped");
     }
@@ -1392,7 +1392,7 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
     }
   }
   // Mags can be wrapped as well
-  if ((item.item_data1[0] == 0x02) && (item.item_data2[1] & 0x40)) {
+  if ((item.data1[0] == 0x02) && (item.data2[1] & 0x40)) {
     ret_tokens.emplace_back("Wrapped");
   }
 
@@ -1402,10 +1402,10 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
   ItemNameInfo name_info(nullptr, false, false);
   uint32_t primary_identifier = item.primary_identifier();
   if ((primary_identifier & 0xFFFFFF00) == 0x00030200) {
-    string technique_name = name_for_technique(item.item_data1[4]);
+    string technique_name = name_for_technique(item.data1[4]);
     technique_name[0] = toupper(technique_name[0]);
     ret_tokens.emplace_back(string_printf(
-        "Disk:%s Lv.%d", technique_name.c_str(), item.item_data1[2] + 1));
+        "Disk:%s Lv.%d", technique_name.c_str(), item.data1[2] + 1));
   } else {
     try {
       name_info = name_info_for_primary_identifier.at(primary_identifier);
@@ -1416,22 +1416,22 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
   }
 
   // For weapons, add the grind and percentages, or S-rank name if applicable
-  if (item.item_data1[0] == 0x00) {
-    if (item.item_data1[3] > 0) {
-      ret_tokens.emplace_back(string_printf("+%hhu", item.item_data1[3]));
+  if (item.data1[0] == 0x00) {
+    if (item.data1[3] > 0) {
+      ret_tokens.emplace_back(string_printf("+%hhu", item.data1[3]));
     }
 
-    if (name_info.is_s_rank && (item.item_data1[6] & 0x18)) {
+    if (name_info.is_s_rank && (item.data1[6] & 0x18)) {
       // S-rank (has name instead of percent bonuses)
       uint8_t char_indexes[8] = {
-        static_cast<uint8_t>((item.item_data1w[3] >> 5) & 0x1F),
-        static_cast<uint8_t>(item.item_data1w[3] & 0x1F),
-        static_cast<uint8_t>((item.item_data1w[4] >> 10) & 0x1F),
-        static_cast<uint8_t>((item.item_data1w[4] >> 5) & 0x1F),
-        static_cast<uint8_t>(item.item_data1w[4] & 0x1F),
-        static_cast<uint8_t>((item.item_data1w[5] >> 10) & 0x1F),
-        static_cast<uint8_t>((item.item_data1w[5] >> 5) & 0x1F),
-        static_cast<uint8_t>(item.item_data1w[5] & 0x1F),
+        static_cast<uint8_t>((item.data1w[3] >> 5) & 0x1F),
+        static_cast<uint8_t>(item.data1w[3] & 0x1F),
+        static_cast<uint8_t>((item.data1w[4] >> 10) & 0x1F),
+        static_cast<uint8_t>((item.data1w[4] >> 5) & 0x1F),
+        static_cast<uint8_t>(item.data1w[4] & 0x1F),
+        static_cast<uint8_t>((item.data1w[5] >> 10) & 0x1F),
+        static_cast<uint8_t>((item.data1w[5] >> 5) & 0x1F),
+        static_cast<uint8_t>(item.data1w[5] & 0x1F),
       };
       const char* translation_table = "\0ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
 
@@ -1450,8 +1450,8 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
     } else { // Not S-rank (extended name bits not set)
       uint8_t percentages[5] = {0, 0, 0, 0, 0};
       for (size_t x = 0; x < 3; x++) {
-        uint8_t which = item.item_data1[6 + 2 * x];
-        uint8_t value = item.item_data1[7 + 2 * x];
+        uint8_t which = item.data1[6 + 2 * x];
+        uint8_t value = item.data1[7 + 2 * x];
         if (which == 0) {
           continue;
         }
@@ -1466,9 +1466,9 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
     }
 
   // For armors, add the slots, unit modifiers, and/or DEF/EVP bonuses
-  } else if (item.item_data1[0] == 0x01) {
-    if (item.item_data1[1] == 0x03) { // Units
-      uint16_t modifier = (item.item_data1[8] << 8) | item.item_data1[7];
+  } else if (item.data1[0] == 0x01) {
+    if (item.data1[1] == 0x03) { // Units
+      uint16_t modifier = (item.data1[8] << 8) | item.data1[7];
       if (modifier == 0x0001 || modifier == 0x0002) {
         ret_tokens.back().append("+");
       } else if (modifier == 0x0003 || modifier == 0x0004) {
@@ -1482,42 +1482,42 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
       }
 
     } else { // Armor/shields
-      if (item.item_data1[5] > 0) {
-        if (item.item_data1[5] == 1) {
+      if (item.data1[5] > 0) {
+        if (item.data1[5] == 1) {
           ret_tokens.emplace_back("(1 slot)");
         } else {
-          ret_tokens.emplace_back(string_printf("(%hhu slots)", item.item_data1[5]));
+          ret_tokens.emplace_back(string_printf("(%hhu slots)", item.data1[5]));
         }
       }
-      if (item.item_data1w[3] != 0) {
+      if (item.data1w[3] != 0) {
         ret_tokens.emplace_back(string_printf("+%hdDEF",
-            static_cast<int16_t>(item.item_data1w[3].load())));
+            static_cast<int16_t>(item.data1w[3].load())));
       }
-      if (item.item_data1w[4] != 0) {
+      if (item.data1w[4] != 0) {
         ret_tokens.emplace_back(string_printf("+%hdEVP",
-            static_cast<int16_t>(item.item_data1w[4].load())));
+            static_cast<int16_t>(item.data1w[4].load())));
       }
     }
 
   // For mags, add tons of info
-  } else if (item.item_data1[0] == 0x02) {
-    ret_tokens.emplace_back(string_printf("LV%hhu", item.item_data1[2]));
+  } else if (item.data1[0] == 0x02) {
+    ret_tokens.emplace_back(string_printf("LV%hhu", item.data1[2]));
 
     ret_tokens.emplace_back(string_printf("%d/%d/%d/%d",
-        item.item_data1w[2] / 100, item.item_data1w[3] / 100,
-        item.item_data1w[4] / 100, item.item_data1w[5] / 100));
-    ret_tokens.emplace_back(string_printf("%hu%%", item.item_data2[3]));
-    ret_tokens.emplace_back(string_printf("%huIQ", item.item_data2[2]));
+        item.data1w[2] / 100, item.data1w[3] / 100,
+        item.data1w[4] / 100, item.data1w[5] / 100));
+    ret_tokens.emplace_back(string_printf("%hu%%", item.data2[3]));
+    ret_tokens.emplace_back(string_printf("%huIQ", item.data2[2]));
 
-    uint8_t flags = item.item_data2[1];
+    uint8_t flags = item.data2[1];
     if (flags & 7) {
       static const vector<const char*> pb_shortnames = {
           "F", "E", "G", "P", "L", "M&Y", "MG", "GR"};
 
       const char* pb_names[3] = {nullptr, nullptr, nullptr};
-      uint8_t center_pb = (flags & 2) ? (item.item_data1[3] & 7) : 0xFF;
-      uint8_t right_pb = (flags & 1) ? ((item.item_data1[3] >> 3) & 7) : 0xFF;
-      uint8_t left_pb = (flags & 4) ? ((item.item_data1[3] >> 6) & 3) : 0xFF;
+      uint8_t center_pb = (flags & 2) ? (item.data1[3] & 7) : 0xFF;
+      uint8_t right_pb = (flags & 1) ? ((item.data1[3] >> 3) & 7) : 0xFF;
+      uint8_t left_pb = (flags & 4) ? ((item.data1[3] >> 6) & 3) : 0xFF;
       if (center_pb != 0xFF) {
         pb_names[1] = pb_shortnames[center_pb];
       }
@@ -1584,16 +1584,16 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
         "costume color",
       });
       try {
-        ret_tokens.emplace_back(string_printf("(%s)", mag_colors.at(item.item_data2[0])));
+        ret_tokens.emplace_back(string_printf("(%s)", mag_colors.at(item.data2[0])));
       } catch (const out_of_range&) {
-        ret_tokens.emplace_back(string_printf("(!CL:%02hhX)", item.item_data2[0]));
+        ret_tokens.emplace_back(string_printf("(!CL:%02hhX)", item.data2[0]));
       }
     }
 
   // For tools, add the amount (if applicable)
-  } else if (item.item_data1[0] == 0x03) {
+  } else if (item.data1[0] == 0x03) {
     if (combine_item_to_max.count(primary_identifier)) {
-      ret_tokens.emplace_back(string_printf("x%hhu", item.item_data1[5]));
+      ret_tokens.emplace_back(string_printf("x%hhu", item.data1[5]));
     }
   }
 

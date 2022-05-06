@@ -3,8 +3,21 @@
 #include <stdint.h>
 
 #include <string>
+#include <phosg/Encoding.hh>
 
-#include "Player.hh"
+
+
+struct PlayerStats {
+  le_uint16_t atp;
+  le_uint16_t mst;
+  le_uint16_t evp;
+  le_uint16_t hp;
+  le_uint16_t dfp;
+  le_uint16_t ata;
+  le_uint16_t lck;
+
+  PlayerStats() noexcept;
+} __attribute__((packed));
 
 // information on a single level for a single class
 struct LevelStats {
@@ -15,7 +28,7 @@ struct LevelStats {
   uint8_t dfp; // dfp to add on level up
   uint8_t ata; // ata to add on level up
   uint8_t unknown[2];
-  uint32_t experience; // EXP value of this level
+  le_uint32_t experience; // EXP value of this level
 
   void apply(PlayerStats& ps) const;
 } __attribute__((packed));
@@ -23,7 +36,7 @@ struct LevelStats {
 // level table format (PlyLevelTbl.prs)
 struct LevelTable {
   PlayerStats base_stats[12];
-  uint32_t unknown[12];
+  le_uint32_t unknown[12];
   LevelStats levels[12][200];
 
   LevelTable(const std::string& filename, bool compressed);

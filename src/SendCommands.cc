@@ -113,7 +113,11 @@ void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
   if (!c->bev) {
     return;
   }
-  string encoded_name = remove_language_marker(encode_sjis(c->player.disp.name));
+  string encoded_name;
+  auto player = c->game_data.player(false);
+  if (player) {
+    encoded_name = remove_language_marker(encode_sjis(player->disp.name));
+  }
   send_command(c->bev, c->version, c->crypt_out.get(), command, flag, data,
       size, encoded_name.c_str());
 }
@@ -294,7 +298,7 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
 }
 
 void send_team_and_key_config_bb(shared_ptr<Client> c) {
-  send_command(c, 0x00E2, 0x00000000, c->player.key_config);
+  send_command(c, 0x00E2, 0x00000000, c->game_data.account()->key_config);
 }
 
 void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
@@ -317,8 +321,8 @@ void send_accept_client_checksum_bb(shared_ptr<Client> c) {
 }
 
 void send_guild_card_header_bb(shared_ptr<Client> c) {
-  uint32_t checksum = compute_guild_card_checksum(&c->player.guild_cards,
-      sizeof(GuildCardFileBB));
+  uint32_t checksum = compute_guild_card_checksum(
+      &c->game_data.account()->guild_cards, sizeof(GuildCardFileBB));
   S_GuildCardHeader_BB_01DC cmd = {1, 0x00000490, checksum};
   send_command(c, 0x01DC, 0x00000000, cmd);
 }
@@ -336,7 +340,8 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
   StringWriter w;
   w.put_u32l(0);
   w.put_u32l(chunk_index);
-  w.write(&c->player.guild_cards + chunk_offset, data_size);
+  w.write(reinterpret_cast<const uint8_t*>(&c->game_data.account()->guild_cards) + chunk_offset,
+      data_size);
 
   send_command(c, 0x02DC, 0x00000000, w.str());
 }
@@ -397,7 +402,7 @@ void send_approve_player_choice_bb(shared_ptr<Client> c) {
 }
 
 void send_complete_player_bb(shared_ptr<Client> c) {
-  send_command(c, 0x00E7, 0x00000000, c->player.export_bb_player_data());
+  send_command(c, 0x00E7, 0x00000000, c->game_data.export_player_bb());
 }
 
 
@@ -528,8 +533,8 @@ void send_info_board_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       continue;
     }
     auto& e = entries.emplace_back();
-    e.name = c->player.disp.name;
-    e.message = c->player.info_board;
+    e.name = c->game_data.player()->disp.name;
+    e.message = c->game_data.player()->info_board;
     add_color_inplace(e.message);
   }
   send_command(c, 0xD8, entries.size(), entries);
@@ -582,7 +587,7 @@ void send_card_search_result_t(
   cmd.location_string = location_string;
   cmd.menu_id = LOBBY_MENU_ID;
   cmd.lobby_id = result->lobby_id;
-  cmd.name = result->player.disp.name;
+  cmd.name = result->game_data.player()->disp.name;
 
   send_command(c, 0x41, 0x00, cmd);
 }
@@ -616,13 +621,13 @@ void send_guild_card_pc_gc(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.unused = 0x0000;
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = source->license->serial_number;
-  cmd.name = source->player.disp.name;
+  cmd.name = source->game_data.player()->disp.name;
   remove_language_marker_inplace(cmd.name);
-  cmd.desc = source->player.guild_card_desc;
+  cmd.desc = source->game_data.player()->guild_card_desc;
   cmd.reserved1 = 1;
   cmd.reserved2 = 1;
-  cmd.section_id = source->player.disp.section_id;
-  cmd.char_class = source->player.disp.char_class;
+  cmd.section_id = source->game_data.player()->disp.section_id;
+  cmd.char_class = source->game_data.player()->disp.char_class;
   send_command(c, 0x62, c->lobby_client_id, cmd);
 }
 
@@ -632,13 +637,13 @@ void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.size = sizeof(cmd) / 4;
   cmd.unused = 0x0000;
   cmd.guild_card_number = source->license->serial_number;
-  cmd.name = remove_language_marker(source->player.disp.name);
-  cmd.team_name = remove_language_marker(source->player.team_name);
-  cmd.desc = source->player.guild_card_desc;
+  cmd.name = remove_language_marker(source->game_data.player()->disp.name);
+  cmd.team_name = remove_language_marker(source->game_data.account()->team_name);
+  cmd.desc = source->game_data.player()->guild_card_desc;
   cmd.reserved1 = 1;
   cmd.reserved2 = 1;
-  cmd.section_id = source->player.disp.section_id;
-  cmd.char_class = source->player.disp.char_class;
+  cmd.section_id = source->game_data.player()->disp.section_id;
+  cmd.char_class = source->game_data.player()->disp.char_class;
   send_command(c, 0x62, c->lobby_client_id, cmd);
 }
 
@@ -860,11 +865,11 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       // See comment in send_join_lobby_t about Episode III behavior here
       cmd.lobby_data[x].ip_address = 0x7F000001;
       cmd.lobby_data[x].client_id = c->lobby_client_id;
-      cmd.lobby_data[x].name = l->clients[x]->player.disp.name;
+      cmd.lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
       if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
-        cmd.players_ep3[x].inventory = l->clients[x]->player.inventory;
+        cmd.players_ep3[x].inventory = l->clients[x]->game_data.player()->inventory;
         cmd.players_ep3[x].disp = convert_player_disp_data<DispDataT>(
-            l->clients[x]->player.disp);
+            l->clients[x]->game_data.player()->disp);
       }
       player_count++;
     } else {
@@ -957,9 +962,9 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     // to avoid this behavior.
     e.lobby_data.ip_address = 0x7F000001;
     e.lobby_data.client_id = lc->lobby_client_id;
-    e.lobby_data.name = lc->player.disp.name;
-    e.inventory = lc->player.inventory;
-    e.disp = convert_player_disp_data<DispDataT>(lc->player.disp);
+    e.lobby_data.name = lc->game_data.player()->disp.name;
+    e.inventory = lc->game_data.player()->inventory;
+    e.disp = convert_player_disp_data<DispDataT>(lc->game_data.player()->disp);
     if (c->version == GameVersion::PC) {
       e.disp.enforce_pc_limits();
     }
@@ -1173,12 +1178,12 @@ void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
 
 // sends the player their bank data
 void send_bank(shared_ptr<Client> c) {
-  vector<PlayerBankItem> items(c->player.bank.items,
-      &c->player.bank.items[c->player.bank.num_items]);
+  vector<PlayerBankItem> items(c->game_data.player()->bank.items,
+      &c->game_data.player()->bank.items[c->game_data.player()->bank.num_items]);
 
   uint32_t checksum = random_object<uint32_t>();
   G_BankContentsHeader_BB_6xBC cmd = {
-      0xBC, 0, 0, 0, checksum, c->player.bank.num_items, c->player.bank.meseta};
+      0xBC, 0, 0, 0, checksum, c->game_data.player()->bank.num_items, c->game_data.player()->bank.meseta};
 
   size_t size = 8 + sizeof(cmd) + items.size() * sizeof(PlayerBankItem);
   cmd.size = size;
@@ -1193,18 +1198,18 @@ void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
     0x2C,
     0x037F,
     shop_type,
-    static_cast<uint8_t>(c->player.current_shop_contents.size()),
+    static_cast<uint8_t>(c->game_data.shop_contents.size()),
     0,
     {},
   };
 
-  size_t count = c->player.current_shop_contents.size();
+  size_t count = c->game_data.shop_contents.size();
   if (count > sizeof(cmd.entries) / sizeof(cmd.entries[0])) {
     throw logic_error("too many items in shop");
   }
 
   for (size_t x = 0; x < count; x++) {
-    cmd.entries[x] = c->player.current_shop_contents[x];
+    cmd.entries[x] = c->game_data.shop_contents[x];
   }
 
   send_command(c, 0x6C, 0x00, &cmd, sizeof(cmd) - sizeof(cmd.entries[0]) * (20 - count));
@@ -1212,15 +1217,15 @@ void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
 
 // notifies players about a level up
 void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
-  PlayerStats stats = c->player.disp.stats;
+  PlayerStats stats = c->game_data.player()->disp.stats;
 
-  for (size_t x = 0; x < c->player.inventory.num_items; x++) {
-    if ((c->player.inventory.items[x].equip_flags & 0x08) &&
-        (c->player.inventory.items[x].data.item_data1[0] == 0x02)) {
-      stats.dfp += (c->player.inventory.items[x].data.item_data1w[2] / 100);
-      stats.atp += (c->player.inventory.items[x].data.item_data1w[3] / 50);
-      stats.ata += (c->player.inventory.items[x].data.item_data1w[4] / 200);
-      stats.mst += (c->player.inventory.items[x].data.item_data1w[5] / 50);
+  for (size_t x = 0; x < c->game_data.player()->inventory.num_items; x++) {
+    if ((c->game_data.player()->inventory.items[x].equip_flags & 0x08) &&
+        (c->game_data.player()->inventory.items[x].data.data1[0] == 0x02)) {
+      stats.dfp += (c->game_data.player()->inventory.items[x].data.data1w[2] / 100);
+      stats.atp += (c->game_data.player()->inventory.items[x].data.data1w[3] / 50);
+      stats.ata += (c->game_data.player()->inventory.items[x].data.data1w[4] / 200);
+      stats.mst += (c->game_data.player()->inventory.items[x].data.data1w[5] / 50);
     }
   }
 
@@ -1235,7 +1240,7 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
       stats.hp,
       stats.dfp,
       stats.ata,
-      c->player.disp.level};
+      c->game_data.player()->disp.level};
   send_command(l, 0x60, 0x00, cmd);
 }
 

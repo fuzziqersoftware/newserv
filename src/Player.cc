@@ -15,10 +15,13 @@ using namespace std;
 
 
 
-// originally there was going to be a language-based header, but then I decided against it.
-// these strings were already in use for that parser, so I didn't bother changing them.
-#define PLAYER_FILE_SIGNATURE   "newserv player file format; 10 sections present; sequential;"
-#define ACCOUNT_FILE_SIGNATURE  "newserv account file format; 7 sections present; sequential;"
+// Originally there was going to be a language-based header, but then I decided
+// against it. These strings were already in use for that parser, so I didn't
+// bother changing them.
+static const string PLAYER_FILE_SIGNATURE =
+    "newserv player file format; 10 sections present; sequential;";
+static const string ACCOUNT_FILE_SIGNATURE =
+    "newserv account file format; 7 sections present; sequential;";
 
 
 
@@ -52,14 +55,15 @@ PlayerDispDataPCGC::PlayerDispDataPCGC() noexcept
 void PlayerDispDataPCGC::enforce_pc_limits() {
   // PC has fewer classes, so we'll substitute some here
   if (this->char_class == 11) {
-    this->char_class = 0; // fomar -> humar
+    this->char_class = 0; // FOmar -> HUmar
   } else if (this->char_class == 10) {
-    this->char_class = 1; // ramarl -> hunewearl
+    this->char_class = 1; // RAmarl -> HUnewearl
   } else if (this->char_class == 9) {
-    this->char_class = 5; // hucaseal -> racaseal
+    this->char_class = 5; // HUcaseal -> RAcaseal
   }
 
-  // if the player is still not a valid class, make them appear as the "ninja" NPC
+  // If the player is somehow still not a valid class, make them appear as the
+  // "ninja" NPC
   if (this->char_class > 8) {
     this->extra_model = 0;
     this->v2_flags |= 2;
@@ -67,7 +71,6 @@ void PlayerDispDataPCGC::enforce_pc_limits() {
   this->version = 2;
 }
 
-// converts PC/GC player data to BB format
 PlayerDispDataBB PlayerDispDataPCGC::to_bb() const {
   PlayerDispDataBB bb;
   bb.stats.atp = this->stats.atp;
@@ -134,7 +137,6 @@ PlayerDispDataBB::PlayerDispDataBB() noexcept
     proportion_x(0),
     proportion_y(0) { }
 
-// converts BB player data to PC/GC format
 PlayerDispDataPCGC PlayerDispDataBB::to_pcgc() const {
   PlayerDispDataPCGC pcgc;
   pcgc.stats.atp = this->stats.atp;
@@ -174,7 +176,6 @@ PlayerDispDataPCGC PlayerDispDataBB::to_pcgc() const {
   return pcgc;
 }
 
-// creates a player preview, which can then be sent to a BB client for character select
 PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
   PlayerDispDataBBPreview pre;
   pre.level = this->level;
@@ -271,7 +272,7 @@ GuildCardBB::GuildCardBB() noexcept
 void PlayerBank::load(const string& filename) {
   *this = load_object_file<PlayerBank>(filename);
   for (uint32_t x = 0; x < this->num_items; x++) {
-    this->items[x].data.item_id = 0x0F010000 + x;
+    this->items[x].data.id = 0x0F010000 + x;
   }
 }
 
@@ -281,72 +282,8 @@ void PlayerBank::save(const string& filename) const {
 
 
 
-void Player::import(const PSOPlayerDataPC& pc) {
-  this->inventory = pc.inventory;
-  this->disp = pc.disp.to_bb();
-  // TODO: Add these fields to the existing structure so we can parse them
-  // this->info_board = pc.info_board;
-  // this->blocked_senders = pc.blocked_senders;
-  // this->auto_reply = pc.auto_reply;
-}
-
-void Player::import(const PSOPlayerDataGC& gc) {
-  this->inventory = gc.inventory;
-  this->disp = gc.disp.to_bb();
-  this->info_board = gc.info_board;
-  this->blocked_senders = gc.blocked_senders;
-  if (gc.auto_reply_enabled) {
-    this->auto_reply = gc.auto_reply;
-  } else {
-    this->auto_reply.clear();
-  }
-}
-
-void Player::import(const PSOPlayerDataBB& bb) {
-  // Note: we don't copy the inventory and disp here because we already have
-  // it (we sent the player data to the client in the first place)
-  this->info_board = bb.info_board;
-  this->blocked_senders = bb.blocked_senders;
-  if (bb.auto_reply_enabled) {
-    this->auto_reply = bb.auto_reply;
-  } else {
-    this->auto_reply.clear();
-  }
-}
-
-PlayerBB Player::export_bb_player_data() const {
-  PlayerBB bb;
-  bb.inventory = this->inventory;
-  bb.disp = this->disp;
-  bb.unknown.clear();
-  bb.option_flags = this->option_flags;
-  bb.quest_data1 = this->quest_data1;
-  bb.bank = this->bank;
-  bb.serial_number = this->serial_number;
-  bb.name = this->disp.name;
-  bb.team_name = this->team_name;
-  bb.guild_card_desc = this->guild_card_desc;
-  bb.reserved1 = 0;
-  bb.reserved2 = 0;
-  bb.section_id = this->disp.section_id;
-  bb.char_class = this->disp.char_class;
-  bb.unknown3 = 0;
-  bb.symbol_chats = this->symbol_chats;
-  bb.shortcuts = this->shortcuts;
-  bb.auto_reply = this->auto_reply;
-  bb.info_board = this->info_board;
-  bb.unknown5.clear();
-  bb.challenge_data = this->challenge_data;
-  bb.tech_menu_config = this->tech_menu_config;
-  bb.unknown6.clear();
-  bb.quest_data2 = this->quest_data2;
-  bb.key_config = this->key_config;
-  return bb;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
-// checksums the guild card file for BB player account data
 uint32_t compute_guild_card_checksum(const void* vdata, size_t size) {
   const uint8_t* data = reinterpret_cast<const uint8_t*>(vdata);
 
@@ -364,65 +301,213 @@ uint32_t compute_guild_card_checksum(const void* vdata, size_t size) {
   return (cs ^ 0xFFFFFFFF);
 }
 
-void Player::load_account_data(const string& filename) {
-  SavedAccountBB account = load_object_file<SavedAccountBB>(filename);
-  if (account.signature != ACCOUNT_FILE_SIGNATURE) {
-    throw runtime_error("account data header is incorrect");
+ClientGameData::~ClientGameData() {
+  if (!this->bb_username.empty()) {
+    if (this->account_data.get()) {
+      this->save_account_data();
+    }
+    if (this->player_data.get()) {
+      this->save_player_data();
+    }
   }
-  this->blocked_senders = account.blocked_senders;
-  this->guild_cards = account.guild_cards;
-  this->key_config = account.key_config;
-  this->option_flags = account.option_flags;
-  this->shortcuts = account.shortcuts;
-  this->symbol_chats = account.symbol_chats;
-  this->team_name = account.team_name;
 }
 
-void Player::save_account_data(const string& filename) const {
-  SavedAccountBB account;
-  account.signature = ACCOUNT_FILE_SIGNATURE;
-  account.blocked_senders = this->blocked_senders;
-  account.guild_cards = this->guild_cards;
-  account.key_config = this->key_config;
-  account.option_flags = this->option_flags;
-  account.shortcuts = this->shortcuts;
-  account.symbol_chats = this->symbol_chats;
-  account.team_name = this->team_name;
-  save_file(filename, &account, sizeof(account));
-}
-
-void Player::load_player_data(const string& filename) {
-  SavedPlayerBB player = load_object_file<SavedPlayerBB>(filename);
-  if (player.signature != PLAYER_FILE_SIGNATURE) {
-    throw runtime_error("account data header is incorrect");
+shared_ptr<SavedAccountDataBB> ClientGameData::account(bool should_load) {
+  if (!this->account_data.get() && should_load) {
+    if (this->bb_username.empty()) {
+      this->account_data.reset(new SavedAccountDataBB());
+    } else {
+      this->load_account_data();
+    }
   }
-  this->auto_reply = player.auto_reply;
-  this->bank = player.bank;
-  this->challenge_data = player.challenge_data;
-  this->disp = player.disp;
-  this->guild_card_desc = player.guild_card_desc;
-  this->info_board = player.info_board;
-  this->inventory = player.inventory;
-  this->quest_data1 = player.quest_data1;
-  this->quest_data2 = player.quest_data2;
-  this->tech_menu_config = player.tech_menu_config;
+  return this->account_data;
 }
 
-void Player::save_player_data(const string& filename) const {
-  SavedPlayerBB player;
-  player.signature = PLAYER_FILE_SIGNATURE;
-  player.preview = this->disp.to_preview();
-  player.auto_reply = this->auto_reply;
-  player.bank = this->bank;
-  player.challenge_data = this->challenge_data;
-  player.disp = this->disp;
-  player.guild_card_desc = this->guild_card_desc;
-  player.info_board = this->info_board;
-  player.inventory = this->inventory;
-  player.quest_data1 = this->quest_data1;
-  player.quest_data2 = this->quest_data2;
-  player.tech_menu_config = this->tech_menu_config;
-  save_file(filename, &player, sizeof(player));
+shared_ptr<SavedPlayerDataBB> ClientGameData::player(bool should_load) {
+  if (!this->player_data.get() && should_load) {
+    if (this->bb_username.empty()) {
+      this->player_data.reset(new SavedPlayerDataBB());
+    } else {
+      this->load_player_data();
+    }
+  }
+  return this->player_data;
+}
+
+shared_ptr<const SavedAccountDataBB> ClientGameData::account() const {
+  if (!this->account_data.get()) {
+    throw runtime_error("account data is not loaded");
+  }
+  return this->account_data;
+}
+
+shared_ptr<const SavedPlayerDataBB> ClientGameData::player() const {
+  if (!this->player_data.get()) {
+    throw runtime_error("player data is not loaded");
+  }
+  return this->player_data;
+}
+
+string ClientGameData::account_data_filename() const {
+  if (this->bb_username.empty()) {
+    throw logic_error("non-BB players do not have account data");
+  }
+  return string_printf("system/players/account_%s.nsa",
+      this->bb_username.c_str());
+}
+
+string ClientGameData::player_data_filename() const {
+  if (this->bb_username.empty()) {
+    throw logic_error("non-BB players do not have account data");
+  }
+  if (this->bb_player_index == 0) {
+    throw logic_error("0 is not a valid player index");
+  }
+  return string_printf("system/players/player_%s_%zu.nsc",
+      this->bb_username.c_str(), this->bb_player_index + 1);
+}
+
+string ClientGameData::player_template_filename(uint8_t char_class) {
+  return string_printf("system/blueburst/player_class_%hhu.nsc", char_class);
+}
+
+void ClientGameData::create_player(
+    const PlayerDispDataBBPreview& preview,
+    shared_ptr<const LevelTable> level_table) {
+  shared_ptr<SavedPlayerDataBB> data(new SavedPlayerDataBB(
+      load_object_file<SavedPlayerDataBB>(player_template_filename(preview.char_class))));
+  if (data->signature != PLAYER_FILE_SIGNATURE) {
+    throw runtime_error("player data header is incorrect");
+  }
+
+  try {
+    data->disp.apply_preview(preview);
+    data->disp.stats = level_table->base_stats_for_class(data->disp.char_class);
+  } catch (const exception& e) {
+    throw runtime_error(string_printf("template application failed: %s", e.what()));
+  }
+
+  this->player_data = data;
+
+  this->save_player_data();
+}
+
+void ClientGameData::load_account_data() {
+  string filename = this->account_data_filename();
+
+  shared_ptr<SavedAccountDataBB> data;
+  try {
+    data.reset(new SavedAccountDataBB(
+        load_object_file<SavedAccountDataBB>(filename)));
+    if (data->signature != ACCOUNT_FILE_SIGNATURE) {
+      throw runtime_error("account data header is incorrect");
+    }
+  } catch (const exception& e) {
+    log(INFO, "[BB/Account] No account data for %s; using default",
+        this->bb_username.c_str());
+    data.reset(new SavedAccountDataBB(
+        load_object_file<SavedAccountDataBB>("system/blueburst/default.nsa")));
+    if (data->signature != ACCOUNT_FILE_SIGNATURE) {
+      throw runtime_error("default account data header is incorrect");
+    }
+  }
+
+  this->account_data = data;
+  log(INFO, "Loaded account data file %s", filename.c_str());
+}
+
+void ClientGameData::save_account_data() const {
+  string filename = this->account_data_filename();
+  save_file(filename, this->account_data.get(), sizeof(SavedAccountDataBB));
+  log(INFO, "Saved account data file %s", filename.c_str());
+}
+
+void ClientGameData::load_player_data() {
+  string filename = this->player_data_filename();
+  shared_ptr<SavedPlayerDataBB> data(new SavedPlayerDataBB(
+      load_object_file<SavedPlayerDataBB>(filename)));
+  if (data->signature != PLAYER_FILE_SIGNATURE) {
+    throw runtime_error("player data header is incorrect");
+  }
+  this->player_data = data;
+  log(INFO, "Loaded player data file %s", filename.c_str());
+}
+
+void ClientGameData::save_player_data() const {
+  string filename = this->player_data_filename();
+  save_file(filename, this->player_data.get(), sizeof(SavedPlayerDataBB));
+  log(INFO, "Saved player data file %s", filename.c_str());
+}
+
+void ClientGameData::import_player(const PSOPlayerDataPC& pc) {
+  auto player = this->player();
+  player->inventory = pc.inventory;
+  player->disp = pc.disp.to_bb();
+  // TODO: Add these fields to the command structure so we can parse them
+  // info_board = pc.info_board;
+  // blocked_senders = pc.blocked_senders;
+  // auto_reply = pc.auto_reply;
+}
+
+void ClientGameData::import_player(const PSOPlayerDataGC& gc) {
+  auto account = this->account();
+  auto player = this->player();
+  player->inventory = gc.inventory;
+  player->disp = gc.disp.to_bb();
+  player->info_board = gc.info_board;
+  account->blocked_senders = gc.blocked_senders;
+  if (gc.auto_reply_enabled) {
+    player->auto_reply = gc.auto_reply;
+  } else {
+    player->auto_reply.clear();
+  }
+}
+
+void ClientGameData::import_player(const PSOPlayerDataBB& bb) {
+  auto account = this->account();
+  auto player = this->player();
+  // Note: we don't copy the inventory and disp here because we already have
+  // them (we sent the player data to the client in the first place)
+  player->info_board = bb.info_board;
+  account->blocked_senders = bb.blocked_senders;
+  if (bb.auto_reply_enabled) {
+    player->auto_reply = bb.auto_reply;
+  } else {
+    player->auto_reply.clear();
+  }
+}
+
+PlayerBB ClientGameData::export_player_bb() const {
+  auto account = this->account();
+  auto player = this->player();
+
+  PlayerBB ret;
+  ret.inventory = player->inventory;
+  ret.disp = player->disp;
+  ret.unknown.clear();
+  ret.option_flags = account->option_flags;
+  ret.quest_data1 = player->quest_data1;
+  ret.bank = player->bank;
+  ret.serial_number = this->serial_number;
+  ret.name = player->disp.name;
+  ret.team_name = account->team_name;
+  ret.guild_card_desc = player->guild_card_desc;
+  ret.reserved1 = 0;
+  ret.reserved2 = 0;
+  ret.section_id = player->disp.section_id;
+  ret.char_class = player->disp.char_class;
+  ret.unknown3 = 0;
+  ret.symbol_chats = account->symbol_chats;
+  ret.shortcuts = account->shortcuts;
+  ret.auto_reply = player->auto_reply;
+  ret.info_board = player->info_board;
+  ret.unknown5.clear();
+  ret.challenge_data = player->challenge_data;
+  ret.tech_menu_config = player->tech_menu_config;
+  ret.unknown6.clear();
+  ret.quest_data2 = player->quest_data2;
+  ret.key_config = account->key_config;
+  return ret;
 }
 
 
@@ -440,62 +525,63 @@ PlayerLobbyDataBB::PlayerLobbyDataBB() noexcept
 
 ////////////////////////////////////////////////////////////////////////////////
 
-const uint32_t meseta_identifier = 0x00040000;
+constexpr uint32_t MESETA_IDENTIFIER = 0x00040000;
+
+ItemData::ItemData() {
+  this->data1d[0] = 0;
+  this->data1d[1] = 0;
+  this->data1d[2] = 0;
+  this->id = 0xFFFFFFFF;
+  this->data2d = 0;
+}
 
 uint32_t ItemData::primary_identifier() const {
-  if (this->item_data1[0] == 0x03 && this->item_data1[1] == 0x02) {
+  if (this->data1[0] == 0x03 && this->data1[1] == 0x02) {
     return 0x00030200; // Tech disk (data1[2] is level, so omit it)
-  } else if (this->item_data1[0] == 0x02) {
-    return 0x00020000 | (this->item_data1[1] << 8); // Mag
+  } else if (this->data1[0] == 0x02) {
+    return 0x00020000 | (this->data1[1] << 8); // Mag
   } else {
-    return (this->item_data1[0] << 16) | (this->item_data1[1] << 8) | this->item_data1[2];
+    return (this->data1[0] << 16) | (this->data1[1] << 8) | this->data1[2];
   }
 }
 
-PlayerBankItem PlayerInventoryItem::to_bank_item() const {
-  PlayerBankItem bank_item;
-  bank_item.data = this->data;
+PlayerInventoryItem::PlayerInventoryItem()
+  : equip_flags(0x0000), tech_flag(0x0000), data() { }
 
-  if (combine_item_to_max.count(this->data.primary_identifier())) {
-    bank_item.amount = this->data.item_data1[5];
-  } else {
-    bank_item.amount = 1;
-  }
-  bank_item.show_flags = 1;
+PlayerInventoryItem::PlayerInventoryItem(const PlayerBankItem& src)
+  : equip_flags((this->data.data1[0] > 2) ? 0x0044 : 0x0050),
+    tech_flag(0x0001),
+    data(src.data) { }
 
-  return bank_item;
-}
+PlayerBankItem::PlayerBankItem()
+  : data(), amount(0), show_flags(0) { }
 
-PlayerInventoryItem PlayerBankItem::to_inventory_item() const {
-  PlayerInventoryItem item;
-  item.data = this->data;
-  if (item.data.item_data1[0] > 2) {
-    item.equip_flags = 0x0044;
-  } else {
-    item.equip_flags = 0x0050;
-  }
-  item.equip_flags = 0x0001; // TODO: is this a bug?
-  item.tech_flag = 0x0001;
-  return item;
-}
+PlayerBankItem::PlayerBankItem(const PlayerInventoryItem& src)
+  : data(src.data),
+    amount(combine_item_to_max.count(this->data.primary_identifier()) ? this->data.data1[5] : 1),
+    show_flags(1) { }
 
-void Player::add_item(const PlayerInventoryItem& item) {
+// TODO: Eliminate duplication between this function and the parallel function
+// in PlayerBank
+void SavedPlayerDataBB::add_item(const PlayerInventoryItem& item) {
   uint32_t pid = item.data.primary_identifier();
 
-  // is it meseta? then just add to the meseta total
-  if (pid == meseta_identifier) {
-    this->disp.meseta += item.data.item_data2d;
+  // Annoyingly, meseta is in the disp data, not in the inventory struct. If the
+  // item is meseta, we have to modify disp instead.
+  if (pid == MESETA_IDENTIFIER) {
+    this->disp.meseta += item.data.data2d;
     if (this->disp.meseta > 999999) {
       this->disp.meseta = 999999;
     }
     return;
   }
 
-  // is it a combine item?
+  // Handle combinable items
   try {
     uint32_t combine_max = combine_item_to_max.at(pid);
 
-    // is there already a stack of it in the player's inventory?
+    // Get the item index if there's already a stack of the same item in the
+    // player's inventory
     size_t y;
     for (y = 0; y < this->inventory.num_items; y++) {
       if (this->inventory.items[y].data.primary_identifier() == item.data.primary_identifier()) {
@@ -503,17 +589,18 @@ void Player::add_item(const PlayerInventoryItem& item) {
       }
     }
 
-    // if there's already a stack, add to the stack and return
+    // If we found an existing stack, add it to the total and return
     if (y < this->inventory.num_items) {
-      this->inventory.items[y].data.item_data1[5] += item.data.item_data1[5];
-      if (this->inventory.items[y].data.item_data1[5] > combine_max) {
-        this->inventory.items[y].data.item_data1[5] = combine_max;
+      this->inventory.items[y].data.data1[5] += item.data.data1[5];
+      if (this->inventory.items[y].data.data1[5] > combine_max) {
+        this->inventory.items[y].data.data1[5] = combine_max;
       }
       return;
     }
   } catch (const out_of_range&) { }
 
-  // else, just add the item if there's room
+  // If we get here, then it's not meseta and not a combine item, so it needs to
+  // go into an empty inventory slot
   if (this->inventory.num_items >= 30) {
     throw runtime_error("inventory is full");
   }
@@ -521,24 +608,20 @@ void Player::add_item(const PlayerInventoryItem& item) {
   this->inventory.num_items++;
 }
 
-// adds an item to a bank
 void PlayerBank::add_item(const PlayerBankItem& item) {
   uint32_t pid = item.data.primary_identifier();
 
-  // is it meseta? then just add to the meseta total
-  if (pid == meseta_identifier) {
-    this->meseta += item.data.item_data2d;
+  if (pid == MESETA_IDENTIFIER) {
+    this->meseta += item.data.data2d;
     if (this->meseta > 999999) {
       this->meseta = 999999;
     }
     return;
   }
 
-  // is it a combine item?
   try {
     uint32_t combine_max = combine_item_to_max.at(pid);
 
-    // is there already a stack of it in the player's inventory?
     size_t y;
     for (y = 0; y < this->num_items; y++) {
       if (this->items[y].data.primary_identifier() == item.data.primary_identifier()) {
@@ -546,18 +629,16 @@ void PlayerBank::add_item(const PlayerBankItem& item) {
       }
     }
 
-    // if there's already a stack, add to the stack and return
     if (y < this->num_items) {
-      this->items[y].data.item_data1[5] += item.data.item_data1[5];
-      if (this->items[y].data.item_data1[5] > combine_max) {
-        this->items[y].data.item_data1[5] = combine_max;
+      this->items[y].data.data1[5] += item.data.data1[5];
+      if (this->items[y].data.data1[5] > combine_max) {
+        this->items[y].data.data1[5] = combine_max;
       }
-      this->items[y].amount = this->items[y].data.item_data1[5];
+      this->items[y].amount = this->items[y].data.data1[5];
       return;
     }
   } catch (const out_of_range&) { }
 
-  // else, just add the item if there's room
   if (this->num_items >= 200) {
     throw runtime_error("bank is full");
   }
@@ -565,38 +646,45 @@ void PlayerBank::add_item(const PlayerBankItem& item) {
   this->num_items++;
 }
 
-PlayerInventoryItem Player::remove_item(uint32_t item_id, uint32_t amount) {
+// TODO: Eliminate code duplication between this function and the parallel
+// function in PlayerBank
+PlayerInventoryItem SavedPlayerDataBB::remove_item(
+    uint32_t item_id, uint32_t amount) {
   PlayerInventoryItem ret;
 
-  // are we removing meseta? then create a meseta item
+  // If we're removing meseta (signaled by an invalid item ID), then create a
+  // meseta item.
   if (item_id == 0xFFFFFFFF) {
     if (amount > this->disp.meseta) {
       throw out_of_range("player does not have enough meseta");
     }
 
     memset(&ret, 0, sizeof(ret));
-    ret.data.item_data1[0] = 0x04;
-    ret.data.item_data2d = amount;
+    ret.data.data1[0] = 0x04;
+    ret.data.data2d = amount;
     this->disp.meseta -= amount;
     return ret;
   }
 
-  // find this item
   size_t index = this->inventory.find_item(item_id);
   auto& inventory_item = this->inventory.items[index];
 
-  // is it a combine item, and are we removing less than we have of it?
-  // (amount == 0 means remove all of it)
-  if (amount && (amount < inventory_item.data.item_data1[5]) &&
+  // If the item is a combine item and are we removing less than we have of it,
+  // then create a new item and reduce the amount of the existing stack. Note
+  // that passing amount == 0 means to remove the entire stack, so this only
+  // applies if amount is nonzero.
+  if (amount && (amount < inventory_item.data.data1[5]) &&
       combine_item_to_max.count(inventory_item.data.primary_identifier())) {
     ret = inventory_item;
-    ret.data.item_data1[5] = amount;
-    ret.data.item_id = 0xFFFFFFFF;
-    inventory_item.data.item_data1[5] -= amount;
+    ret.data.data1[5] = amount;
+    ret.data.id = 0xFFFFFFFF;
+    inventory_item.data.data1[5] -= amount;
     return ret;
   }
 
-  // not a combine item, or we're removing the whole stack? then just remove the item
+  // If we get here, then it's not meseta, and either it's not a combine item or
+  // we're removing the entire stack. Delete the item from the inventory slot
+  // and return the deleted item.
   ret = inventory_item;
   this->inventory.num_items--;
   memcpy(&this->inventory.items[index], &this->inventory.items[index + 1],
@@ -604,39 +692,33 @@ PlayerInventoryItem Player::remove_item(uint32_t item_id, uint32_t amount) {
   return ret;
 }
 
-// removes an item from a bank. works just like RemoveItem for inventories; I won't comment it
 PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
   PlayerBankItem ret;
 
-  // are we removing meseta? then create a meseta item
   if (item_id == 0xFFFFFFFF) {
     if (amount > this->meseta) {
       throw out_of_range("player does not have enough meseta");
     }
     memset(&ret, 0, sizeof(ret));
-    ret.data.item_data1[0] = 0x04;
-    ret.data.item_data2d = amount;
+    ret.data.data1[0] = 0x04;
+    ret.data.data2d = amount;
     this->meseta -= amount;
     return ret;
   }
 
-  // find this item
   size_t index = this->find_item(item_id);
   auto& bank_item = this->items[index];
 
-  // is it a combine item, and are we removing less than we have of it?
-  // (amount == 0 means remove all of it)
-  if (amount && (amount < bank_item.data.item_data1[5]) &&
+  if (amount && (amount < bank_item.data.data1[5]) &&
       combine_item_to_max.count(bank_item.data.primary_identifier())) {
     ret = bank_item;
-    ret.data.item_data1[5] = amount;
+    ret.data.data1[5] = amount;
     ret.amount = amount;
-    bank_item.data.item_data1[5] -= amount;
+    bank_item.data.data1[5] -= amount;
     bank_item.amount -= amount;
     return ret;
   }
 
-  // not a combine item, or we're removing the whole stack? then just remove the item
   ret = bank_item;
   this->num_items--;
   memcpy(&this->items[index], &this->items[index + 1],
@@ -646,7 +728,7 @@ PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
 
 size_t PlayerInventory::find_item(uint32_t item_id) {
   for (size_t x = 0; x < this->num_items; x++) {
-    if (this->items[x].data.item_id == item_id) {
+    if (this->items[x].data.id == item_id) {
       return x;
     }
   }
@@ -655,38 +737,20 @@ size_t PlayerInventory::find_item(uint32_t item_id) {
 
 size_t PlayerBank::find_item(uint32_t item_id) {
   for (size_t x = 0; x < this->num_items; x++) {
-    if (this->items[x].data.item_id == item_id) {
+    if (this->items[x].data.id == item_id) {
       return x;
     }
   }
   throw out_of_range("item not present");
 }
 
-void Player::print_inventory(FILE* stream) const {
+void SavedPlayerDataBB::print_inventory(FILE* stream) const {
   fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", this->disp.meseta.load());
   fprintf(stream, "[PlayerInventory] %hhu items\n", this->inventory.num_items);
   for (size_t x = 0; x < this->inventory.num_items; x++) {
     const auto& item = this->inventory.items[x];
     auto name = name_for_item(item.data, false);
-    fprintf(stream, "[PlayerInventory]   %zu (%08" PRIX32 "): %08" PRIX32 " (%s)\n",
-        x, item.data.item_id.load(), item.data.primary_identifier(), name.c_str());
+    fprintf(stream, "[PlayerInventory]   %zu (%08" PRIX32 "): %06" PRIX32 " (%s)\n",
+        x, item.data.id.load(), item.data.primary_identifier(), name.c_str());
   }
-}
-
-string filename_for_player_bb(const string& username, uint8_t player_index) {
-  return string_printf("system/players/player_%s_%hhu.nsc", username.c_str(),
-      static_cast<uint8_t>(player_index + 1));
-}
-
-string filename_for_bank_bb(const string& username, const std::string& bank_name) {
-  return string_printf("system/players/bank_%s_%s.nsb", username.c_str(),
-      bank_name.c_str());
-}
-
-string filename_for_class_template_bb(uint8_t char_class) {
-  return string_printf("system/blueburst/player_class_%hhu.nsc", char_class);
-}
-
-string filename_for_account_bb(const string& username) {
-  return string_printf("system/players/account_%s.nsa", username.c_str());
 }

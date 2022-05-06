@@ -58,6 +58,14 @@ Client::Client(
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
 }
 
+void Client::set_license(shared_ptr<const License> l) {
+  this->license = l;
+  this->game_data.serial_number = this->license->serial_number;
+  if (this->version == GameVersion::BB) {
+    this->game_data.bb_username = this->license->username;
+  }
+}
+
 ClientConfig Client::export_config() const {
   ClientConfig cc;
   cc.magic = CLIENT_CONFIG_MAGIC;

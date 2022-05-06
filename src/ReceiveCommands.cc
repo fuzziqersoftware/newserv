@@ -135,37 +135,8 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 
   } else if (c->server_behavior == ServerBehavior::LOBBY_SERVER) {
 
-    // if the client is BB, load thair player and account data
     if (c->version == GameVersion::BB) {
-      string account_filename = filename_for_account_bb(c->license->username);
-      try {
-        c->player.load_account_data(account_filename);
-      } catch (const exception& e) {
-        c->player.load_account_data("system/blueburst/default.nsa");
-      }
-
-      c->player.bank_name = string_printf("player%d", c->bb_player_index + 1);
-
-      string player_filename = filename_for_player_bb(c->license->username,
-          c->bb_player_index);
-      try {
-        c->player.load_player_data(player_filename);
-      } catch (const exception&) {
-        send_message_box(c, u"$C6Your player data cannot be found.");
-        c->should_disconnect = true;
-        return;
-      }
-
-      string bank_filename = filename_for_bank_bb(c->license->username,
-          c->player.bank_name);
-      try {
-        c->player.bank.load(bank_filename);
-      } catch (const exception&) {
-        send_message_box(c, u"$C6Your bank data cannot be found.");
-        c->should_disconnect = true;
-        return;
-      }
-
+      // This implicitly loads the client's account and player data
       send_complete_player_bb(c);
     }
 
@@ -182,20 +153,13 @@ void process_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
     s->remove_client_from_lobby(c);
   }
 
-  if (c->version == GameVersion::BB) {
-    // TODO: Make a timer event for each connected player that saves their data
-    // periodically, not only when they disconnect
-    // TODO: Track play time somewhere
-    // c->player.disp.play_time += ((now() - c->play_time_begin) / 1000000);
-    string account_filename = filename_for_account_bb(c->license->username);
-    string player_filename = filename_for_player_bb(c->license->username,
-        c->bb_player_index);
-    string bank_filename = filename_for_bank_bb(c->license->username,
-        c->player.bank_name);
-    c->player.save_account_data(account_filename);
-    c->player.save_player_data(player_filename);
-    c->player.bank.save(bank_filename);
-  }
+  // TODO: Make a timer event for each connected player that saves their data
+  // periodically, not only when they disconnect
+  // TODO: Track play time somewhere for BB players
+  // c->game_data.player()->disp.play_time += ((now() - c->play_time_begin) / 1000000);
+
+  // Note: The client's GameData destructor should save their player data
+  // shortly after this point
 }
 
 
@@ -208,8 +172,9 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
-    c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
+    auto l = s->license_manager->verify_gc(serial_number, cmd.access_key,
         cmd.password);
+    c->set_license(l);
   } catch (const exception& e) {
     if (!s->allow_unregistered_users) {
       u16string message = u"Login failed: " + decode_sjis(e.what());
@@ -220,7 +185,7 @@ void process_verify_license_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       auto l = LicenseManager::create_license_gc(serial_number, cmd.access_key,
           cmd.password, true);
       s->license_manager->add(l);
-      c->license = l;
+      c->set_license(l);
     }
   }
 
@@ -236,11 +201,14 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
+    shared_ptr<const License> l;
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd.access_key);
+      l = s->license_manager->verify_gc(serial_number, cmd.access_key);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd.access_key);
+      l = s->license_manager->verify_pc(serial_number, cmd.access_key);
     }
+    c->set_license(l);
+
   } catch (const exception& e) {
     // On GC, the client should have sent a different command containing the
     // password already, which should have created and added a temporary
@@ -263,12 +231,15 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
+    shared_ptr<const License> l;
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number, cmd.access_key,
+      l = s->license_manager->verify_gc(serial_number, cmd.access_key,
           cmd.password);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number, cmd.access_key);
+      l = s->license_manager->verify_pc(serial_number, cmd.access_key);
     }
+    c->set_license(l);
+
   } catch (const exception& e) {
     if (!s->allow_unregistered_users) {
       u16string message = u"Login failed: " + decode_sjis(e.what());
@@ -285,7 +256,7 @@ void process_login_c_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
             true);
       }
       s->license_manager->add(l);
-      c->license = l;
+      c->set_license(l);
     }
   }
 
@@ -326,13 +297,16 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   uint32_t serial_number = stoul(base_cmd->serial_number, nullptr, 16);
   try {
+    shared_ptr<const License> l;
     if (c->version == GameVersion::GC) {
-      c->license = s->license_manager->verify_gc(serial_number,
+      l = s->license_manager->verify_gc(serial_number,
           base_cmd->access_key);
     } else {
-      c->license = s->license_manager->verify_pc(serial_number,
+      l = s->license_manager->verify_pc(serial_number,
           base_cmd->access_key);
     }
+    c->set_license(l);
+
   } catch (const exception& e) {
     // See comment in 9A handler about why we do this even if unregistered users
     // are allowed on the server
@@ -358,7 +332,8 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   c->flags |= flags_for_version(c->version, 0);
 
   try {
-    c->license = s->license_manager->verify_bb(cmd.username, cmd.password);
+    auto l = s->license_manager->verify_bb(cmd.username, cmd.password);
+    c->set_license(l);
   } catch (const exception& e) {
     u16string message = u"Login failed: " + decode_sjis(e.what());
     send_message_box(c, message.c_str());
@@ -378,29 +353,19 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   switch (c->bb_game_state) {
     case ClientStateBB::INITIAL_LOGIN:
-      // first login? send them to the other port
+      // On first login, send the client to the data server port
       send_reconnect(c, s->connect_address_for_client(c),
           s->name_to_port_config.at("bb-data1")->port);
       break;
 
-    case ClientStateBB::DOWNLOAD_DATA: {
-      // download data? send them their account data and player previews
-      string account_filename = filename_for_account_bb(c->license->username);
-      try {
-        c->player.load_account_data(account_filename);
-      } catch (const exception& e) {
-        c->player.load_account_data("system/blueburst/default.nsa");
-      }
-      break;
-    }
-
+    case ClientStateBB::DOWNLOAD_DATA:
     case ClientStateBB::CHOOSE_PLAYER:
     case ClientStateBB::SAVE_PLAYER:
-      // just wait; the command handlers will handle it
+      // Just wait in these cases; the client will request something from us and
+      // the command handlers will take care of it
       break;
 
     case ClientStateBB::SHIP_SELECT:
-      // this happens on the login server and later
       process_login_complete(s, c);
       break;
 
@@ -805,11 +770,11 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_message_box(c, u"$C6Incorrect password.");
           break;
         }
-        if (c->player.disp.level < game->min_level) {
+        if (c->game_data.player()->disp.level < game->min_level) {
           send_message_box(c, u"$C6Your level is too\nlow to join this\ngame.");
           break;
         }
-        if (c->player.disp.level > game->max_level) {
+        if (c->game_data.player()->disp.level > game->max_level) {
           send_message_box(c, u"$C6Your level is too\nhigh to join this\ngame.");
           break;
         }
@@ -1087,47 +1052,47 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // Note: we add extra buffer on the end when checking sizes because the
   // autoreply text is a variable length
   switch (c->version) {
-    case GameVersion::PC:
-      check_size_v(data.size(), sizeof(PSOPlayerDataPC), 0xFFFF);
-      c->player.import(*reinterpret_cast<const PSOPlayerDataPC*>(data.data()));
+    case GameVersion::PC: {
+      const auto& disp = check_size_t<PSOPlayerDataPC>(data,
+          sizeof(PSOPlayerDataPC), 0xFFFF);
+      c->game_data.import_player(disp);
       break;
-    case GameVersion::GC:
+    }
+    case GameVersion::GC: {
+      const PSOPlayerDataGC* disp;
       if (flag == 4) { // Episode 3
-        check_size_v(data.size(), sizeof(PSOPlayerDataGC) + 0x23FC);
+        disp = &check_size_t<PSOPlayerDataGC>(data,
+            sizeof(PSOPlayerDataGC) + 0x23FC);
         // TODO: import Episode 3 data somewhere
       } else {
-        check_size_v(data.size(), sizeof(PSOPlayerDataGC),
-            sizeof(PSOPlayerDataGC) + sizeof(char) * c->player.auto_reply.size());
+        disp = &check_size_t<PSOPlayerDataGC>(data, sizeof(PSOPlayerDataGC),
+            sizeof(PSOPlayerDataGC) + c->game_data.player()->auto_reply.bytes());
       }
-      c->player.import(*reinterpret_cast<const PSOPlayerDataGC*>(data.data()));
+      c->game_data.import_player(*disp);
       break;
-    case GameVersion::BB:
-      check_size_v(data.size(), sizeof(PSOPlayerDataBB),
-          sizeof(PSOPlayerDataBB) + sizeof(char16_t) * c->player.auto_reply.size());
-      c->player.import(*reinterpret_cast<const PSOPlayerDataBB*>(data.data()));
+    }
+    case GameVersion::BB: {
+      const auto& disp = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB),
+          sizeof(PSOPlayerDataBB) + c->game_data.player()->auto_reply.bytes());
+      c->game_data.import_player(disp);
       break;
+    }
     default:
       throw logic_error("player data command not implemented for version");
   }
 
   if (command == 0x61 && !c->pending_bb_save_username.empty()) {
+    string prev_bb_username = c->game_data.bb_username;
+    size_t prev_bb_player_index = c->game_data.bb_player_index;
+
+    c->game_data.bb_username = c->pending_bb_save_username;
+    c->game_data.bb_player_index = c->pending_bb_save_player_index;
+
     bool failure = false;
     try {
-      string filename = filename_for_player_bb(c->pending_bb_save_username,
-          c->pending_bb_save_player_index + 1);
-      c->player.save_player_data(filename);
+      c->game_data.save_player_data();
     } catch (const exception& e) {
       u16string buffer = u"$C6PSOBB player data could\nnot be saved:\n" + decode_sjis(e.what());
-      send_text_message(c, buffer.c_str());
-      failure = true;
-    }
-
-    try {
-      string filename = string_printf("system/players/player_%s_player%d.nsb",
-          c->pending_bb_save_username.c_str(), c->pending_bb_save_player_index + 1);
-      c->player.bank.save(filename);
-    } catch (const exception& e) {
-      u16string buffer = u"$C6PSOBB bank data could\nnot be saved:\n" + decode_sjis(e.what());
       send_text_message(c, buffer.c_str());
       failure = true;
     }
@@ -1138,6 +1103,9 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
           static_cast<uint8_t>(c->pending_bb_save_player_index + 1),
           c->pending_bb_save_username.c_str());
     }
+
+    c->game_data.bb_username = prev_bb_username;
+    c->game_data.bb_player_index = prev_bb_player_index;
 
     c->pending_bb_save_username.clear();
   }
@@ -1198,7 +1166,7 @@ void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
         continue;
       }
       send_chat_message(l->clients[x], c->license->serial_number,
-          c->player.disp.name.data(), processed_text.c_str());
+          c->game_data.player()->disp.name.data(), processed_text.c_str());
     }
   }
 }
@@ -1241,18 +1209,18 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
       c->should_disconnect = true;
       return;
     }
-    string filename = filename_for_player_bb(c->license->username,
-        c->bb_player_index);
+
+    ClientGameData temp_gd;
+    temp_gd.serial_number = c->license->serial_number;
+    temp_gd.bb_username = c->license->username;
+    temp_gd.bb_player_index = c->bb_player_index;
 
     try {
-      // generate a preview
-      Player p;
-      p.load_player_data(filename);
-      auto preview = p.disp.to_preview();
+      auto preview = temp_gd.player()->disp.to_preview();
       send_player_preview_bb(c, cmd.player_index, &preview);
 
     } catch (const exception&) {
-      // player doesn't exist
+      // Player doesn't exist
       send_player_preview_bb(c, cmd.player_index, nullptr);
     }
   }
@@ -1298,45 +1266,18 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
     send_message_box(c, u"$C6You are not logged in.");
     return;
   }
-  if (!c->player.disp.name.empty()) {
+  if (!c->game_data.player()->disp.name.empty()) {
     send_message_box(c, u"$C6You have already loaded a character.");
     return;
   }
 
   c->bb_player_index = cmd.player_index;
-  c->player.bank_name = string_printf("player%" PRIu32, cmd.player_index + 1);
-  string player_filename = filename_for_player_bb(c->license->username, cmd.player_index);
-  string bank_filename = filename_for_bank_bb(c->license->username, c->player.bank_name);
-  string template_filename = filename_for_class_template_bb(cmd.preview.char_class);
-
-  Player p;
-  try {
-    p.load_player_data(template_filename);
-  } catch (const exception& e) {
-    send_message_box(c, u"$C6New character could not be created.\n\nA server file is missing.");
-    return;
-  }
 
   try {
-    p.disp.apply_preview(cmd.preview);
-    c->player.disp.stats = s->level_table->base_stats_for_class(c->player.disp.char_class);
+    c->game_data.create_player(cmd.preview, s->level_table);
   } catch (const exception& e) {
-    send_message_box(c, u"$C6New character could not be created.\n\nTemplate application failed.");
-    return;
-  }
-
-  try {
-    p.save_player_data(player_filename);
-  } catch (const exception& e) {
-    send_message_box(c, u"$C6New character could not be created.\n\nThe disk is full or write-protected.");
-    return;
-  }
-
-  try {
-    p.bank.save(bank_filename);
-  } catch (const exception& e) {
-    unlink(player_filename);
-    send_message_box(c, u"$C6New bank could not be created.\n\nThe disk is full or write-protected.");
+    string message = string_printf("$C6New character could not be created:\n%s", e.what());
+    send_message_box(c, decode_sjis(message));
     return;
   }
 
@@ -1351,31 +1292,31 @@ void process_change_account_data_bb(shared_ptr<ServerState>, shared_ptr<Client> 
   switch (command) {
     case 0x01ED:
       check_size_v(data.size(), sizeof(cmd->option));
-      c->player.option_flags = cmd->option;
+      c->game_data.account()->option_flags = cmd->option;
       break;
     case 0x02ED:
       check_size_v(data.size(), sizeof(cmd->symbol_chats));
-      c->player.symbol_chats = cmd->symbol_chats;
+      c->game_data.account()->symbol_chats = cmd->symbol_chats;
       break;
     case 0x03ED:
       check_size_v(data.size(), sizeof(cmd->chat_shortcuts));
-      c->player.shortcuts = cmd->chat_shortcuts;
+      c->game_data.account()->shortcuts = cmd->chat_shortcuts;
       break;
     case 0x04ED:
       check_size_v(data.size(), sizeof(cmd->key_config));
-      c->player.key_config.key_config = cmd->key_config;
+      c->game_data.account()->key_config.key_config = cmd->key_config;
       break;
     case 0x05ED:
       check_size_v(data.size(), sizeof(cmd->pad_config));
-      c->player.key_config.joystick_config = cmd->pad_config;
+      c->game_data.account()->key_config.joystick_config = cmd->pad_config;
       break;
     case 0x06ED:
       check_size_v(data.size(), sizeof(cmd->tech_menu));
-      c->player.tech_menu_config = cmd->tech_menu;
+      c->game_data.player()->tech_menu_config = cmd->tech_menu;
       break;
     case 0x07ED:
       check_size_v(data.size(), sizeof(cmd->customize));
-      c->player.disp.config = cmd->customize;
+      c->game_data.player()->disp.config = cmd->customize;
       break;
     default:
       throw invalid_argument("unknown account command");
@@ -1387,9 +1328,18 @@ void process_return_player_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c
   const auto& cmd = check_size_t<PlayerBB>(data);
 
   // We only trust the player's quest data and challenge data.
-  c->player.challenge_data = cmd.challenge_data;
-  c->player.quest_data1 = cmd.quest_data1;
-  c->player.quest_data2 = cmd.quest_data2;
+  c->game_data.player()->challenge_data = cmd.challenge_data;
+  c->game_data.player()->quest_data1 = cmd.quest_data1;
+  c->game_data.player()->quest_data2 = cmd.quest_data2;
+}
+
+void process_update_key_config_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) {
+  // Some clients have only a uint32_t at the end for team rewards
+  check_size_t<KeyAndTeamConfigBB>(data,
+      sizeof(KeyAndTeamConfigBB) - 4, sizeof(KeyAndTeamConfigBB));
+  memcpy(&c->game_data.account()->key_config, data.data(), data.size());
+  // TODO: We should send a response here, but I don't know which one!
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1436,20 +1386,21 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   // If the sender is blocked, don't forward the mail
   for (size_t y = 0; y < 30; y++) {
-    if (target->player.blocked_senders.data()[y] == c->license->serial_number) {
+    if (target->game_data.account()->blocked_senders.data()[y] == c->license->serial_number) {
       return;
     }
   }
 
   // If the target has auto-reply enabled, send the autoreply
-  if (!target->player.auto_reply.empty()) {
+  if (!target->game_data.player()->auto_reply.empty()) {
     send_simple_mail(c, target->license->serial_number,
-        target->player.disp.name, target->player.auto_reply);
+        target->game_data.player()->disp.name,
+        target->game_data.player()->auto_reply);
   }
 
   // Forward the message
   u16string msg = decode_sjis(cmd.text);
-  send_simple_mail(target, c->license->serial_number, c->player.disp.name, msg);
+  send_simple_mail(target, c->license->serial_number, c->game_data.player()->disp.name, msg);
 }
 
 
@@ -1466,8 +1417,8 @@ void process_info_board_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
 template <typename CharT>
 void process_write_info_board_t(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D9
-  check_size_v(data.size(), 0, c->player.info_board.size() * sizeof(CharT));
-  c->player.info_board.assign(
+  check_size_v(data.size(), 0, c->game_data.player()->info_board.size() * sizeof(CharT));
+  c->game_data.player()->info_board.assign(
       reinterpret_cast<const CharT*>(data.data()),
       data.size() / sizeof(CharT));
 }
@@ -1475,8 +1426,8 @@ void process_write_info_board_t(shared_ptr<ServerState>, shared_ptr<Client> c,
 template <typename CharT>
 void process_set_auto_reply_t(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C7
-  check_size_v(data.size(), 0, c->player.auto_reply.size() * sizeof(CharT));
-  c->player.auto_reply.assign(
+  check_size_v(data.size(), 0, c->game_data.player()->auto_reply.size() * sizeof(CharT));
+  c->game_data.player()->auto_reply.assign(
       reinterpret_cast<const CharT*>(data.data()),
       data.size() / sizeof(CharT));
 }
@@ -1484,13 +1435,13 @@ void process_set_auto_reply_t(shared_ptr<ServerState>, shared_ptr<Client> c,
 void process_disable_auto_reply(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C8
   check_size_v(data.size(), 0);
-  c->player.auto_reply.clear();
+  c->game_data.player()->auto_reply.clear();
 }
 
 void process_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C6
   const auto& cmd = check_size_t<C_SetBlockedSenders_C6>(data);
-  c->player.blocked_senders = cmd.blocked_senders;
+  c->game_data.account()->blocked_senders = cmd.blocked_senders;
 }
 
 
@@ -1543,7 +1494,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
 
   uint8_t min_level = ((episode == 0xFF) ? 0 : default_minimum_levels[episode - 1][difficulty]);
   if (!(c->license->privileges & Privilege::FREE_JOIN_GAMES) &&
-      (min_level > c->player.disp.level)) {
+      (min_level > c->game_data.player()->disp.level)) {
     throw invalid_argument("level too low for difficulty");
   }
 
@@ -1552,7 +1503,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   game->password = password;
   game->version = c->version;
   game->section_id = c->override_section_id >= 0
-      ? c->override_section_id : c->player.disp.section_id;
+      ? c->override_section_id : c->game_data.player()->disp.section_id;
   game->episode = episode;
   game->difficulty = difficulty;
   if (battle) {
@@ -1779,12 +1730,14 @@ independently.\r\n\
   }
   message += u"License check ";
   try {
+    shared_ptr<const License> l;
     if (c->flags & Client::Flag::BB_PATCH) {
-      c->license = s->license_manager->verify_bb(cmd.username, cmd.password);
+      l = s->license_manager->verify_bb(cmd.username, cmd.password);
     } else {
-      c->license = s->license_manager->verify_pc(
+      l = s->license_manager->verify_pc(
           stoul(cmd.username, nullptr, 16), cmd.password);
     }
+    c->set_license(l);
     message += u"OK";
   } catch (const exception& e) {
     message += u"failed: ";
@@ -2156,7 +2109,7 @@ static process_command_t bb_handlers[0x100] = {
   process_guild_card_data_request_bb, nullptr, nullptr, nullptr,
 
   // E0
-  process_key_config_request_bb, nullptr, nullptr, process_player_preview_request_bb,
+  process_key_config_request_bb, nullptr, process_update_key_config_bb, process_player_preview_request_bb,
   nullptr, process_create_character_bb, nullptr, process_return_player_data_bb,
   process_client_checksum_bb, nullptr, process_team_command_bb, process_stream_file_request_bb,
   process_ignored_command, process_change_account_data_bb, nullptr, nullptr,
@@ -2224,7 +2177,11 @@ static process_command_t* handlers[6] = {
 
 void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) {
-  string encoded_name = remove_language_marker(encode_sjis(c->player.disp.name));
+  string encoded_name;
+  auto player = c->game_data.player(false);
+  if (player) {
+    encoded_name = remove_language_marker(encode_sjis(player->disp.name));
+  }
   print_received_command(command, flag, data.data(), data.size(), c->version,
       encoded_name.c_str());
 

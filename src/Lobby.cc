@@ -99,12 +99,12 @@ void Lobby::add_client(shared_ptr<Client> c, bool reverse_indexes) {
 
   // If the lobby is a game, assign the inventory's item IDs
   if (this->is_game()) {
-    auto& inv = c->player.inventory;
+    auto& inv = c->game_data.player()->inventory;
     size_t count = max<uint8_t>(inv.num_items, 30);
     for (size_t x = 0; x < count; x++) {
-      inv.items[x].data.item_id = 0x00010000 + 0x00200000 * c->lobby_client_id + x;
+      inv.items[x].data.id = 0x00010000 + 0x00200000 * c->lobby_client_id + x;
     }
-    c->player.print_inventory(stderr);
+    c->game_data.player()->print_inventory(stderr);
   }
 }
 
@@ -155,7 +155,7 @@ shared_ptr<Client> Lobby::find_client(const u16string* identifier,
         (this->clients[x]->license->serial_number == serial_number)) {
       return this->clients[x];
     }
-    if (identifier && (this->clients[x]->player.disp.name == *identifier)) {
+    if (identifier && (this->clients[x]->game_data.player()->disp.name == *identifier)) {
       return this->clients[x];
     }
   }
@@ -181,7 +181,7 @@ uint8_t Lobby::game_event_for_lobby_event(uint8_t lobby_event) {
 
 
 void Lobby::add_item(const PlayerInventoryItem& item, uint8_t area, float x, float z) {
-  auto& fi = this->item_id_to_floor_item[item.data.item_id];
+  auto& fi = this->item_id_to_floor_item[item.data.id];
   fi.inv_item = item;
   fi.area = area;
   fi.x = x;

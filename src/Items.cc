@@ -142,23 +142,24 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 void player_use_item(shared_ptr<Client> c, size_t item_index) {
+  auto player = c->game_data.player();
 
   ssize_t equipped_weapon = -1;
   // ssize_t equipped_armor = -1;
   // ssize_t equipped_shield = -1;
   // ssize_t equipped_mag = -1;
-  for (size_t y = 0; y < c->player.inventory.num_items; y++) {
-    if (c->player.inventory.items[y].equip_flags & 0x0008) {
-      if (c->player.inventory.items[y].data.item_data1[0] == 0) {
+  for (size_t y = 0; y < c->game_data.player()->inventory.num_items; y++) {
+    if (c->game_data.player()->inventory.items[y].equip_flags & 0x0008) {
+      if (c->game_data.player()->inventory.items[y].data.data1[0] == 0) {
         equipped_weapon = y;
       }
-      // else if ((c->player.inventory.items[y].data.item_data1[0] == 1) &&
-      //            (c->player.inventory.items[y].data.item_data1[1] == 1)) {
+      // else if ((c->game_data.player()->inventory.items[y].data.data1[0] == 1) &&
+      //            (c->game_data.player()->inventory.items[y].data.data1[1] == 1)) {
       //   equipped_armor = y;
-      // } else if ((c->player.inventory.items[y].data.item_data1[0] == 1) &&
-      //            (c->player.inventory.items[y].data.item_data1[1] == 2)) {
+      // } else if ((c->game_data.player()->inventory.items[y].data.data1[0] == 1) &&
+      //            (c->game_data.player()->inventory.items[y].data.data1[1] == 2)) {
       //   equipped_shield = y;
-      // } else if (c->player.inventory.items[y].data.item_data1[0] == 2) {
+      // } else if (c->game_data.player()->inventory.items[y].data.data1[0] == 2) {
       //   equipped_mag = y;
       // }
     }
@@ -166,42 +167,42 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
 
   bool should_delete_item = true;
 
-  auto& item = c->player.inventory.items[item_index];
-  if (item.data.item_data1w[0] == 0x0203) { // technique disk
-    c->player.disp.technique_levels.data()[item.data.item_data1[4]] = item.data.item_data1[2];
+  auto& item = c->game_data.player()->inventory.items[item_index];
+  if (item.data.data1w[0] == 0x0203) { // technique disk
+    c->game_data.player()->disp.technique_levels.data()[item.data.data1[4]] = item.data.data1[2];
 
-  } else if (item.data.item_data1w[0] == 0x0A03) { // grinder
+  } else if (item.data.data1w[0] == 0x0A03) { // grinder
     if (equipped_weapon < 0) {
       throw invalid_argument("grinder used with no weapon equipped");
     }
-    if (item.data.item_data1[2] > 2) {
+    if (item.data.data1[2] > 2) {
       throw invalid_argument("incorrect grinder value");
     }
-    c->player.inventory.items[equipped_weapon].data.item_data1[3] += (item.data.item_data1[2] + 1);
+    c->game_data.player()->inventory.items[equipped_weapon].data.data1[3] += (item.data.data1[2] + 1);
     // TODO: we should check for max grind here
 
-  } else if (item.data.item_data1w[0] == 0x0B03) { // material
-    switch (item.data.item_data1[2]) {
+  } else if (item.data.data1w[0] == 0x0B03) { // material
+    switch (item.data.data1[2]) {
       case 0: // Power Material
-        c->player.disp.stats.atp += 2;
+        c->game_data.player()->disp.stats.atp += 2;
         break;
       case 1: // Mind Material
-        c->player.disp.stats.mst += 2;
+        c->game_data.player()->disp.stats.mst += 2;
         break;
       case 2: // Evade Material
-        c->player.disp.stats.evp += 2;
+        c->game_data.player()->disp.stats.evp += 2;
         break;
       case 3: // HP Material
-        c->player.inventory.hp_materials_used += 2;
+        c->game_data.player()->inventory.hp_materials_used += 2;
         break;
       case 4: // TP Material
-        c->player.inventory.tp_materials_used += 2;
+        c->game_data.player()->inventory.tp_materials_used += 2;
         break;
       case 5: // Def Material
-        c->player.disp.stats.dfp += 2;
+        c->game_data.player()->disp.stats.dfp += 2;
         break;
       case 6: // Luck Material
-        c->player.disp.stats.lck += 2;
+        c->game_data.player()->disp.stats.lck += 2;
         break;
       default:
         throw invalid_argument("unknown material used");
@@ -209,17 +210,17 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
 
   } else {
     // default item action is to unwrap the item if it's a present
-    if ((item.data.item_data1[0] == 2) && (item.data.item_data2[2] & 0x40)) {
-      item.data.item_data2[2] &= 0xBF;
+    if ((item.data.data1[0] == 2) && (item.data.data2[2] & 0x40)) {
+      item.data.data2[2] &= 0xBF;
       should_delete_item = false;
-    } else if ((item.data.item_data1[0] != 2) && (item.data.item_data1[4] & 0x40)) {
-      item.data.item_data1[4] &= 0xBF;
+    } else if ((item.data.data1[0] != 2) && (item.data.data1[4] & 0x40)) {
+      item.data.data1[4] &= 0xBF;
       should_delete_item = false;
     }
   }
 
   if (should_delete_item) {
-    c->player.remove_item(item.data.item_id, 1);
+    c->game_data.player()->remove_item(item.data.id, 1);
   }
 }
 
@@ -323,56 +324,56 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
   int32_t type = this->decide_item_type(is_box);
   switch (type) {
     case 0x00: // material
-      item.item_data1[0] = 0x03;
-      item.item_data1[1] = 0x0B;
-      item.item_data1[2] = random_int(0, 6);
+      item.data1[0] = 0x03;
+      item.data1[1] = 0x0B;
+      item.data1[2] = random_int(0, 6);
       break;
 
     case 0x01: // equipment
       switch (random_int(0, 3)) {
         case 0x00: // weapon
-          item.item_data1[1] = random_int(1, 12); // random normal class
-          item.item_data1[2] = difficulty + random_int(0, 2); // special type
-          if ((item.item_data1[1] > 0x09) && (item.item_data1[2] > 0x04)) {
-            item.item_data1[2] = 0x04; // no special classes above 4
+          item.data1[1] = random_int(1, 12); // random normal class
+          item.data1[2] = difficulty + random_int(0, 2); // special type
+          if ((item.data1[1] > 0x09) && (item.data1[2] > 0x04)) {
+            item.data1[2] = 0x04; // no special classes above 4
           }
-          item.item_data1[4] = 0x80; // untekked
-          if (item.item_data1[2] < 0x04) {
-            item.item_data1[4] |= random_int(0, 40); // give a special
+          item.data1[4] = 0x80; // untekked
+          if (item.data1[2] < 0x04) {
+            item.data1[4] |= random_int(0, 40); // give a special
           }
           for (size_t x = 0, y = 0; (x < 5) && (y < 3); x++) { // percentages
             if (random_int(0, 10) == 1) { // 1/11 chance of getting each type of percentage
-              item.item_data1[6 + (y * 2)] = x + 1;
-              item.item_data1[7 + (y * 2)] = random_int(0, 10) * 5;
+              item.data1[6 + (y * 2)] = x + 1;
+              item.data1[7 + (y * 2)] = random_int(0, 10) * 5;
               y++;
             }
           }
           break;
 
         case 0x01: // armor
-          item.item_data1[0] = 0x01;
-          item.item_data1[1] = 0x01;
-          item.item_data1[2] = (6 * difficulty) + random_int(0, ((area / 2) + 2) - 1); // standard type based on difficulty and area
-          if (item.item_data1[2] > 0x17) {
-            item.item_data1[2] = 0x17; // no standard types above 0x17
+          item.data1[0] = 0x01;
+          item.data1[1] = 0x01;
+          item.data1[2] = (6 * difficulty) + random_int(0, ((area / 2) + 2) - 1); // standard type based on difficulty and area
+          if (item.data1[2] > 0x17) {
+            item.data1[2] = 0x17; // no standard types above 0x17
           }
           if (random_int(0, 10) == 0) { // +/-
-            item.item_data1[4] = random_int(0, 5);
-            item.item_data1[6] = random_int(0, 2);
+            item.data1[4] = random_int(0, 5);
+            item.data1[6] = random_int(0, 2);
           }
-          item.item_data1[5] = random_int(0, 4); // slots
+          item.data1[5] = random_int(0, 4); // slots
           break;
 
         case 0x02: // shield
-          item.item_data1[0] = 0x01;
-          item.item_data1[1] = 0x02;
-          item.item_data1[2] = (5 * difficulty) + random_int(0, ((area / 2) + 2) - 1); // standard type based on difficulty and area
-          if (item.item_data1[2] > 0x14) {
-            item.item_data1[2] = 0x14; // no standard types above 0x14
+          item.data1[0] = 0x01;
+          item.data1[1] = 0x02;
+          item.data1[2] = (5 * difficulty) + random_int(0, ((area / 2) + 2) - 1); // standard type based on difficulty and area
+          if (item.data1[2] > 0x14) {
+            item.data1[2] = 0x14; // no standard types above 0x14
           }
           if (random_int(0, 10) == 0) { // +/-
-            item.item_data1[4] = random_int(0, 5);
-            item.item_data1[6] = random_int(0, 5);
+            item.data1[4] = random_int(0, 5);
+            item.data1[6] = random_int(0, 5);
           }
           break;
 
@@ -382,81 +383,81 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
           if (type == 0xFF) {
             throw out_of_range("no item dropped"); // 0xFF -> no item drops
           }
-          item.item_data1[0] = 0x01;
-          item.item_data1[1] = 0x03;
-          item.item_data1[2] = type;
+          item.data1[0] = 0x01;
+          item.data1[1] = 0x03;
+          item.data1[2] = type;
           break;
         }
       }
       break;
 
     case 0x02: // technique
-      item.item_data1[0] = 0x03;
-      item.item_data1[1] = 0x02;
-      item.item_data1[4] = random_int(0, 18); // tech type
-      if ((item.item_data1[4] != 14) && (item.item_data1[4] != 17)) { // if not ryuker or reverser, give it a level
-        if (item.item_data1[4] == 16) { // if not anti, give it a level between 1 and 30
+      item.data1[0] = 0x03;
+      item.data1[1] = 0x02;
+      item.data1[4] = random_int(0, 18); // tech type
+      if ((item.data1[4] != 14) && (item.data1[4] != 17)) { // if not ryuker or reverser, give it a level
+        if (item.data1[4] == 16) { // if not anti, give it a level between 1 and 30
           if (area > 3) {
-            item.item_data1[2] = difficulty + random_int(0, ((area - 1) / 2) - 1);
+            item.data1[2] = difficulty + random_int(0, ((area - 1) / 2) - 1);
           } else {
-            item.item_data1[2] = difficulty;
+            item.data1[2] = difficulty;
           }
-          if (item.item_data1[2] > 6) {
-            item.item_data1[2] = 6;
+          if (item.data1[2] > 6) {
+            item.data1[2] = 6;
           }
         } else {
-          item.item_data1[2] = (5 * difficulty) + random_int(0, ((area * 3) / 2) - 1); // else between 1 and 7
+          item.data1[2] = (5 * difficulty) + random_int(0, ((area * 3) / 2) - 1); // else between 1 and 7
         }
       }
       break;
 
     case 0x03: // scape doll
-      item.item_data1[0] = 0x03;
-      item.item_data1[1] = 0x09;
-      item.item_data1[2] = 0x00;
+      item.data1[0] = 0x03;
+      item.data1[1] = 0x09;
+      item.data1[2] = 0x00;
       break;
 
     case 0x04: // grinder
-      item.item_data1[0] = 0x03;
-      item.item_data1[1] = 0x0A;
-      item.item_data1[2] = random_int(0, 2); // mono, di, tri
+      item.data1[0] = 0x03;
+      item.data1[1] = 0x0A;
+      item.data1[2] = random_int(0, 2); // mono, di, tri
       break;
 
     case 0x05: // consumable
-      item.item_data1[0] = 0x03;
-      item.item_data1[5] = 0x01;
+      item.data1[0] = 0x03;
+      item.data1[5] = 0x01;
       switch (random_int(0, 2)) {
         case 0: // antidote / antiparalysis
-          item.item_data1[1] = 6;
-          item.item_data1[2] = random_int(0, 1);
+          item.data1[1] = 6;
+          item.data1[2] = random_int(0, 1);
           break;
 
         case 1: // telepipe / trap vision
-          item.item_data1[1] = 7 + random_int(0, 1);
+          item.data1[1] = 7 + random_int(0, 1);
           break;
 
         case 2: // sol / moon / star atomizer
-          item.item_data1[1] = 3 + random_int(0, 2);
+          item.data1[1] = 3 + random_int(0, 2);
           break;
       }
       break;
 
     case 0x06: // consumable
-      item.item_data1[0] = 0x03;
-      item.item_data1[5] = 0x01;
-      item.item_data1[1] = random_int(0, 1); // mate or fluid
+      item.data1[0] = 0x03;
+      item.data1[5] = 0x01;
+      item.data1[1] = random_int(0, 1); // mate or fluid
       if (difficulty == 0) {
-        item.item_data1[2] = random_int(0, 1); // only mono and di on normal
+        item.data1[2] = random_int(0, 1); // only mono and di on normal
       } else if (difficulty == 3) {
-        item.item_data1[2] = random_int(1, 2); // only di and tri on ultimate
+        item.data1[2] = random_int(1, 2); // only di and tri on ultimate
       } else {
-        item.item_data1[2] = random_int(0, 2); // else, any of the three
+        item.data1[2] = random_int(0, 2); // else, any of the three
       }
       break;
 
     case 0x07: // meseta
-      item.item_data1[0] = 0x04;
-      item.item_data2d = (90 * difficulty) + (random_int(0, 20) * (area * 2)); // meseta amount
+      item.data1[0] = 0x04;
+      item.data2d = (90 * difficulty) + (random_int(0, 20) * (area * 2)); // meseta amount
       break;
 
     default:
@@ -477,27 +478,27 @@ ItemData CommonItemCreator::create_shop_item(uint8_t difficulty,
   ItemData item;
   memset(&item, 0, sizeof(item));
 
-  item.item_data1[0] = item_type;
-  while (item.item_data1[0] == 2) {
-    item.item_data1[0] = rand() % 3;
+  item.data1[0] = item_type;
+  while (item.data1[0] == 2) {
+    item.data1[0] = rand() % 3;
   }
-  switch (item.item_data1[0]) {
+  switch (item.data1[0]) {
     case 0: { // weapon
-      item.item_data1[1] = (rand() % 12) + 1;
-      if (item.item_data1[1] > 9) {
-        item.item_data1[2] = difficulty;
+      item.data1[1] = (rand() % 12) + 1;
+      if (item.data1[1] > 9) {
+        item.data1[2] = difficulty;
       } else {
-        item.item_data1[2] = (rand() & 1) + difficulty;
+        item.data1[2] = (rand() & 1) + difficulty;
       }
 
-      item.item_data1[3] = rand() % 11;
-      item.item_data1[4] = rand() % 11;
+      item.data1[3] = rand() % 11;
+      item.data1[4] = rand() % 11;
 
       size_t num_percentages = 0;
       for (size_t x = 0; (x < 5) && (num_percentages < 3); x++) {
         if ((rand() % 4) == 1) {
-          item.item_data1[(num_percentages * 2) + 6] = x;
-          item.item_data1[(num_percentages * 2) + 7] = rand() % (max_percentages[difficulty] + 1);
+          item.data1[(num_percentages * 2) + 6] = x;
+          item.data1[(num_percentages * 2) + 7] = rand() % (max_percentages[difficulty] + 1);
           num_percentages++;
         }
       }
@@ -505,69 +506,69 @@ ItemData CommonItemCreator::create_shop_item(uint8_t difficulty,
     }
 
     case 1: // armor
-      item.item_data1[1] = 0;
-      while (item.item_data1[1] == 0) {
-        item.item_data1[1] = rand() & 3;
+      item.data1[1] = 0;
+      while (item.data1[1] == 0) {
+        item.data1[1] = rand() & 3;
       }
-      switch (item.item_data1[1]) {
+      switch (item.data1[1]) {
         case 1:
-          item.item_data1[2] = (rand() % 6) + (difficulty * 6);
-          item.item_data1[5] = rand() % 5;
+          item.data1[2] = (rand() % 6) + (difficulty * 6);
+          item.data1[5] = rand() % 5;
           break;
         case 2:
-          item.item_data2[2] = (rand() % 6) + (difficulty * 5);
-          *reinterpret_cast<short*>(&item.item_data1[6]) = (rand() % 9) - 4;
-          *reinterpret_cast<short*>(&item.item_data1[9]) = (rand() % 9) - 4;
+          item.data2[2] = (rand() % 6) + (difficulty * 5);
+          *reinterpret_cast<short*>(&item.data1[6]) = (rand() % 9) - 4;
+          *reinterpret_cast<short*>(&item.data1[9]) = (rand() % 9) - 4;
           break;
         case 3:
-          item.item_data2[2] = rand() % 0x3B;
-          *reinterpret_cast<short*>(&item.item_data1[7]) = (rand() % 5) - 4;
+          item.data2[2] = rand() % 0x3B;
+          *reinterpret_cast<short*>(&item.data1[7]) = (rand() % 5) - 4;
           break;
       }
       break;
 
     case 3: // tool
-      item.item_data1[1] = rand() % 12;
-      switch (item.item_data1[1]) {
+      item.data1[1] = rand() % 12;
+      switch (item.data1[1]) {
         case 0:
         case 1:
           if (difficulty == 0) {
-            item.item_data1[2] = 0;
+            item.data1[2] = 0;
           } else if (difficulty == 1) {
-            item.item_data1[2] = rand() % 2;
+            item.data1[2] = rand() % 2;
           } else if (difficulty == 2) {
-            item.item_data1[2] = (rand() % 2) + 1;
+            item.data1[2] = (rand() % 2) + 1;
           } else if (difficulty == 3) {
-            item.item_data1[2] = 2;
+            item.data1[2] = 2;
           }
           break;
 
         case 6:
-          item.item_data1[2] = rand() % 2;
+          item.data1[2] = rand() % 2;
           break;
 
         case 10:
-          item.item_data1[2] = rand() % 3;
+          item.data1[2] = rand() % 3;
           break;
 
         case 11:
-          item.item_data1[2] = rand() % 7;
+          item.data1[2] = rand() % 7;
           break;
       }
 
-      switch (item.item_data1[1]) {
+      switch (item.data1[1]) {
         case 2:
-          item.item_data1[4] = rand() % 19;
-          switch (item.item_data1[4]) {
+          item.data1[4] = rand() % 19;
+          switch (item.data1[4]) {
             case 14:
             case 17:
-              item.item_data1[2] = 0; // reverser & ryuker always level 1 
+              item.data1[2] = 0; // reverser & ryuker always level 1 
               break;
             case 16:
-              item.item_data1[2] = rand() % max_anti_level[difficulty];
+              item.data1[2] = rand() % max_anti_level[difficulty];
               break;
             default:
-              item.item_data1[2] = rand() % max_tech_level[difficulty];
+              item.data1[2] = rand() % max_tech_level[difficulty];
           }
           break;
         case 0:
@@ -579,7 +580,7 @@ ItemData CommonItemCreator::create_shop_item(uint8_t difficulty,
         case 7:
         case 8:
         case 16:
-          item.item_data1[5] = rand() % (max_quantity[difficulty] + 1);
+          item.data1[5] = rand() % (max_quantity[difficulty] + 1);
           break;
       }
   }

@@ -115,13 +115,13 @@ static void process_subcommand_send_guild_card(shared_ptr<ServerState>,
 
   if (c->version == GameVersion::PC) {
     const auto* cmd = check_size_sc<G_SendGuildCard_PC_6x06>(data);
-    c->player.guild_card_desc = cmd->desc;
+    c->game_data.player()->guild_card_desc = cmd->desc;
   } else if (c->version == GameVersion::GC) {
     const auto* cmd = check_size_sc<G_SendGuildCard_GC_6x06>(data);
-    c->player.guild_card_desc = cmd->desc;
+    c->game_data.player()->guild_card_desc = cmd->desc;
   } else if (c->version == GameVersion::BB) {
     const auto* cmd = check_size_sc<G_SendGuildCard_BB_6x06>(data);
-    c->player.guild_card_desc = cmd->desc;
+    c->game_data.player()->guild_card_desc = cmd->desc;
   }
 
   send_guild_card(l->clients[flag], c);
@@ -256,11 +256,12 @@ static void process_subcommand_player_drop_item(shared_ptr<ServerState>,
     return;
   }
 
-  l->add_item(c->player.remove_item(cmd->item_id, 0), cmd->area, cmd->x, cmd->z);
+  l->add_item(c->game_data.player()->remove_item(cmd->item_id, 0),
+      cmd->area, cmd->x, cmd->z);
 
   log(INFO, "[Items/%08" PRIX32 "] Player %hhu dropped item %08" PRIX32 " at %hu:(%g, %g)",
       l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
-  // c->player.print_inventory(stderr);
+  // c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -284,11 +285,11 @@ static void process_subcommand_create_inventory_item(shared_ptr<ServerState>,
   item.tech_flag = 0;
   item.game_flags = 0;
   item.data = cmd->item;
-  c->player.add_item(item);
+  c->game_data.player()->add_item(item);
 
   log(INFO, "[Items/%08" PRIX32 "] Player %hhu created inventory item %08" PRIX32,
-      l->lobby_id, cmd->client_id, cmd->item.item_id.load());
-  // c->player.print_inventory(stderr);
+      l->lobby_id, cmd->client_id, cmd->item.id.load());
+  // c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -316,8 +317,8 @@ static void process_subcommand_drop_partial_stack(shared_ptr<ServerState>,
   l->add_item(item, cmd->area, cmd->x, cmd->z);
 
   log(INFO, "[Items/%08" PRIX32 "] Player %hhu split stack to create ground item %08" PRIX32 " at %hu:(%g, %g)",
-      l->lobby_id, cmd->client_id, item.data.item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
-  // c->player.print_inventory(stderr);
+      l->lobby_id, cmd->client_id, item.data.id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
+  // c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -332,12 +333,12 @@ static void process_subcommand_drop_partial_stack_bb(shared_ptr<ServerState>,
       return;
     }
 
-    auto item = c->player.remove_item(cmd->item_id, cmd->amount);
+    auto item = c->game_data.player()->remove_item(cmd->item_id, cmd->amount);
 
     // if a stack was split, the original item still exists, so the dropped item
     // needs a new ID. remove_item signals this by returning an item with id=-1
-    if (item.data.item_id == 0xFFFFFFFF) {
-      item.data.item_id = l->generate_item_id(c->lobby_client_id);
+    if (item.data.id == 0xFFFFFFFF) {
+      item.data.id = l->generate_item_id(c->lobby_client_id);
     }
 
     l->add_item(item, cmd->area, cmd->x, cmd->z);
@@ -345,7 +346,7 @@ static void process_subcommand_drop_partial_stack_bb(shared_ptr<ServerState>,
     log(INFO, "[Items/%08" PRIX32 "] Player %hhu split stack %08" PRIX32 " (%" PRIu32 " of them) at %hu:(%g, %g)",
         l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load(),
         cmd->area.load(), cmd->x.load(), cmd->z.load());
-    // c->player.print_inventory(stderr);
+    // c->game_data.player()->print_inventory(stderr);
 
     send_drop_stacked_item(l, item.data, cmd->area, cmd->x, cmd->z);
 
@@ -371,11 +372,11 @@ static void process_subcommand_buy_shop_item(shared_ptr<ServerState>,
   item.tech_flag = 0;
   item.game_flags = 0;
   item.data = cmd->item;
-  c->player.add_item(item);
+  c->game_data.player()->add_item(item);
 
   log(INFO, "[Items/%08" PRIX32 "] Player %hhu bought item %08" PRIX32 " from shop",
-      l->lobby_id, cmd->client_id, item.data.item_id.load());
-  // c->player.print_inventory(stderr);
+      l->lobby_id, cmd->client_id, item.data.id.load());
+  // c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -400,8 +401,8 @@ static void process_subcommand_box_or_enemy_item_drop(shared_ptr<ServerState>,
   l->add_item(item, cmd->area, cmd->x, cmd->z);
 
   log(INFO, "[Items/%08" PRIX32 "] Leader created ground item %08" PRIX32 " at %hhu:(%g, %g)",
-      l->lobby_id, item.data.item_id.load(), cmd->area, cmd->x.load(), cmd->z.load());
-  // c->player.print_inventory(stderr);
+      l->lobby_id, item.data.id.load(), cmd->area, cmd->x.load(), cmd->z.load());
+  // c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -419,11 +420,11 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
     // BB clients should never send this; only the server should send this
     return;
   }
-  c->player.add_item(l->remove_item(cmd->item_id));
+  c->game_data.player()->add_item(l->remove_item(cmd->item_id));
 
   log(INFO, "[Items/%08" PRIX32 "] Player %hu picked up %08" PRIX32,
       l->lobby_id, cmd->client_id.load(), cmd->item_id.load());
-  // c->player.print_inventory(stderr);
+  // c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -439,7 +440,7 @@ static void process_subcommand_pick_up_item_request(shared_ptr<ServerState>,
       return;
     }
 
-    c->player.add_item(l->remove_item(cmd->item_id));
+    c->game_data.player()->add_item(l->remove_item(cmd->item_id));
 
     send_pick_up_item(l, c, cmd->item_id, cmd->area);
 
@@ -459,11 +460,11 @@ static void process_subcommand_equip_unequip_item(shared_ptr<ServerState>,
       return;
     }
 
-    size_t index = c->player.inventory.find_item(cmd->item_id);
+    size_t index = c->game_data.player()->inventory.find_item(cmd->item_id);
     if (cmd->command == 0x25) {
-      c->player.inventory.items[index].game_flags |= 0x00000008; // equip
+      c->game_data.player()->inventory.items[index].game_flags |= 0x00000008; // equip
     } else {
-      c->player.inventory.items[index].game_flags &= 0xFFFFFFF7; // unequip
+      c->game_data.player()->inventory.items[index].game_flags &= 0xFFFFFFF7; // unequip
     }
 
   } else {
@@ -480,12 +481,12 @@ static void process_subcommand_use_item(shared_ptr<ServerState>,
     return;
   }
 
-  size_t index = c->player.inventory.find_item(cmd->item_id);
+  size_t index = c->game_data.player()->inventory.find_item(cmd->item_id);
   player_use_item(c, index);
 
   log(INFO, "[Items/%08" PRIX32 "] Player used item %hhu:%08" PRIX32,
       l->lobby_id, cmd->client_id, cmd->item_id.load());
-  // c->player.print_inventory(stderr);
+  // c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -502,9 +503,9 @@ static void process_subcommand_open_shop_bb_or_unknown_ep3(shared_ptr<ServerStat
     uint32_t shop_type = p[1].dword;
 
     if ((l->version == GameVersion::BB) && l->is_game()) {
-      size_t num_items = (rand() % 4) + 9;
-      c->player.current_shop_contents.clear();
-      while (c->player.current_shop_contents.size() < num_items) {
+      size_t num_items = 9 + (rand() % 4);
+      c->game_data.shop_contents.clear();
+      while (c->game_data.shop_contents.size() < num_items) {
         ItemData item_data;
         if (shop_type == 0) { // tool shop
           item_data = s->common_item_creator->create_shop_item(l->difficulty, 3);
@@ -516,8 +517,8 @@ static void process_subcommand_open_shop_bb_or_unknown_ep3(shared_ptr<ServerStat
           break;
         }
 
-        item_data.item_id = l->generate_item_id(c->lobby_client_id);
-        c->player.current_shop_contents.emplace_back(item_data);
+        item_data.id = l->generate_item_id(c->lobby_client_id);
+        c->game_data.shop_contents.emplace_back(item_data);
       }
 
       send_shop(c, shop_type);
@@ -543,34 +544,34 @@ static void process_subcommand_bank_action_bb(shared_ptr<ServerState>,
 
     if (cmd->action == 0) { // deposit
       if (cmd->item_id == 0xFFFFFFFF) { // meseta
-        if (cmd->meseta_amount > c->player.disp.meseta) {
+        if (cmd->meseta_amount > c->game_data.player()->disp.meseta) {
           return;
         }
-        if ((c->player.bank.meseta + cmd->meseta_amount) > 999999) {
+        if ((c->game_data.player()->bank.meseta + cmd->meseta_amount) > 999999) {
           return;
         }
-        c->player.bank.meseta += cmd->meseta_amount;
-        c->player.disp.meseta -= cmd->meseta_amount;
+        c->game_data.player()->bank.meseta += cmd->meseta_amount;
+        c->game_data.player()->disp.meseta -= cmd->meseta_amount;
       } else { // item
-        auto item = c->player.remove_item(cmd->item_id, cmd->item_amount);
-        c->player.bank.add_item(item.to_bank_item());
+        auto item = c->game_data.player()->remove_item(cmd->item_id, cmd->item_amount);
+        c->game_data.player()->bank.add_item(item);
         send_destroy_item(l, c, cmd->item_id, cmd->item_amount);
       }
     } else if (cmd->action == 1) { // take
       if (cmd->item_id == 0xFFFFFFFF) { // meseta
-        if (cmd->meseta_amount > c->player.bank.meseta) {
+        if (cmd->meseta_amount > c->game_data.player()->bank.meseta) {
           return;
         }
-        if ((c->player.disp.meseta + cmd->meseta_amount) > 999999) {
+        if ((c->game_data.player()->disp.meseta + cmd->meseta_amount) > 999999) {
           return;
         }
-        c->player.bank.meseta -= cmd->meseta_amount;
-        c->player.disp.meseta += cmd->meseta_amount;
+        c->game_data.player()->bank.meseta -= cmd->meseta_amount;
+        c->game_data.player()->disp.meseta += cmd->meseta_amount;
       } else { // item
-        auto bank_item = c->player.bank.remove_item(cmd->item_id, cmd->item_amount);
-        PlayerInventoryItem item = bank_item.to_inventory_item();
-        item.data.item_id = l->generate_item_id(0xFF);
-        c->player.add_item(item);
+        auto bank_item = c->game_data.player()->bank.remove_item(cmd->item_id, cmd->item_amount);
+        PlayerInventoryItem item = bank_item;
+        item.data.id = l->generate_item_id(0xFF);
+        c->game_data.player()->add_item(item);
         send_create_inventory_item(l, c, item.data);
       }
     }
@@ -589,18 +590,18 @@ static void process_subcommand_sort_inventory_bb(shared_ptr<ServerState>,
 
     for (size_t x = 0; x < 30; x++) {
       if (cmd->item_ids[x] == 0xFFFFFFFF) {
-        sorted.items[x].data.item_id = 0xFFFFFFFF;
+        sorted.items[x].data.id = 0xFFFFFFFF;
       } else {
-        size_t index = c->player.inventory.find_item(cmd->item_ids[x]);
-        sorted.items[x] = c->player.inventory.items[index];
+        size_t index = c->game_data.player()->inventory.find_item(cmd->item_ids[x]);
+        sorted.items[x] = c->game_data.player()->inventory.items[index];
       }
     }
 
-    sorted.num_items = c->player.inventory.num_items;
-    sorted.hp_materials_used = c->player.inventory.hp_materials_used;
-    sorted.tp_materials_used = c->player.inventory.tp_materials_used;
-    sorted.language = c->player.inventory.language;
-    c->player.inventory = sorted;
+    sorted.num_items = c->game_data.player()->inventory.num_items;
+    sorted.hp_materials_used = c->game_data.player()->inventory.hp_materials_used;
+    sorted.tp_materials_used = c->game_data.player()->inventory.tp_materials_used;
+    sorted.language = c->game_data.player()->inventory.language;
+    c->game_data.player()->inventory = sorted;
   }
 }
 
@@ -620,10 +621,11 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s
     PlayerInventoryItem item;
     memset(&item, 0, sizeof(PlayerInventoryItem));
 
+    // TODO: Deduplicate this code with the box drop item request handler
     bool is_rare = false;
-    if (l->next_drop_item.data.item_data1d[0]) {
+    if (l->next_drop_item.data.data1d[0]) {
       item = l->next_drop_item;
-      l->next_drop_item.data.item_data1d[0] = 0;
+      l->next_drop_item.data.data1d[0] = 0;
     } else {
       if (l->rare_item_set) {
         if (cmd->enemy_id <= 0x65) {
@@ -632,10 +634,10 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s
       }
 
       if (is_rare) {
-        memcpy(&item.data.item_data1d, l->rare_item_set->rares[cmd->enemy_id].item_code, 3);
+        memcpy(&item.data.data1d, l->rare_item_set->rares[cmd->enemy_id].item_code, 3);
         //RandPercentages();
-        if (item.data.item_data1d[0] == 0) {
-          item.data.item_data1[4] |= 0x80; // make it untekked if it's a weapon
+        if (item.data.data1d[0] == 0) {
+          item.data.data1[4] |= 0x80; // make it unidentified if it's a weapon
         }
       } else {
         try {
@@ -647,7 +649,7 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s
         }
       }
     }
-    item.data.item_id = l->generate_item_id(0xFF);
+    item.data.id = l->generate_item_id(0xFF);
 
     l->add_item(item, cmd->area, cmd->x, cmd->z);
     send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->z,
@@ -672,9 +674,9 @@ static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
     memset(&item, 0, sizeof(PlayerInventoryItem));
 
     bool is_rare = false;
-    if (l->next_drop_item.data.item_data1d[0]) {
+    if (l->next_drop_item.data.data1d[0]) {
       item = l->next_drop_item;
-      l->next_drop_item.data.item_data1d[0] = 0;
+      l->next_drop_item.data.data1d[0] = 0;
     } else {
       size_t index;
       if (l->rare_item_set) {
@@ -690,10 +692,10 @@ static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
       }
 
       if (is_rare) {
-        memcpy(item.data.item_data1, l->rare_item_set->box_rares[index].item_code, 3);
+        memcpy(item.data.data1, l->rare_item_set->box_rares[index].item_code, 3);
         //RandPercentages();
-        if (item.data.item_data1d[0] == 0) {
-          item.data.item_data1[4] |= 0x80; // make it untekked if it's a weapon
+        if (item.data.data1d[0] == 0) {
+          item.data.data1[4] |= 0x80; // make it unidentified if it's a weapon
         }
       } else {
         try {
@@ -705,7 +707,7 @@ static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
         }
       }
     }
-    item.data.item_id = l->generate_item_id(0xFF);
+    item.data.id = l->generate_item_id(0xFF);
 
     l->add_item(item, cmd->area, cmd->x, cmd->z);
     send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->z,
@@ -812,7 +814,7 @@ static void process_subcommand_enemy_killed(shared_ptr<ServerState> s,
       if (!other_c) {
         continue; // no player
       }
-      if (other_c->player.disp.level >= 199) {
+      if (other_c->game_data.player()->disp.level >= 199) {
         continue; // player is level 200 or higher
       }
 
@@ -824,21 +826,21 @@ static void process_subcommand_enemy_killed(shared_ptr<ServerState> s,
         exp = ((enemy.experience * 77) / 100);
       }
 
-      other_c->player.disp.experience += exp;
+      other_c->game_data.player()->disp.experience += exp;
       send_give_experience(l, other_c, exp);
 
       bool leveled_up = false;
       do {
         const auto& level = s->level_table->stats_for_level(
-            other_c->player.disp.char_class, other_c->player.disp.level + 1);
-        if (other_c->player.disp.experience >= level.experience) {
+            other_c->game_data.player()->disp.char_class, other_c->game_data.player()->disp.level + 1);
+        if (other_c->game_data.player()->disp.experience >= level.experience) {
           leveled_up = true;
-          level.apply(other_c->player.disp.stats);
-          other_c->player.disp.level++;
+          level.apply(other_c->game_data.player()->disp.stats);
+          other_c->game_data.player()->disp.level++;
         } else {
           break;
         }
-      } while (other_c->player.disp.level < 199);
+      } while (other_c->game_data.player()->disp.level < 199);
       if (leveled_up) {
         send_level_up(l, other_c);
       }
@@ -856,10 +858,10 @@ static void process_subcommand_destroy_inventory_item(shared_ptr<ServerState>,
   if (cmd->client_id != c->lobby_client_id) {
     return;
   }
-  c->player.remove_item(cmd->item_id, cmd->amount);
+  c->game_data.player()->remove_item(cmd->item_id, cmd->amount);
   log(INFO, "[Items/%08" PRIX32 "] Inventory item %hhu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
       l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load());
-  // c->player.print_inventory(stderr);
+  // c->game_data.player()->print_inventory(stderr);
   forward_subcommand(l, c, command, flag, data);
 }
 
@@ -873,7 +875,7 @@ static void process_subcommand_destroy_ground_item(shared_ptr<ServerState>,
   l->remove_item(cmd->item_id);
   log(INFO, "[Items/%08" PRIX32 "] Ground item %08" PRIX32 " destroyed (%" PRIX32 " of them)",
       l->lobby_id, cmd->item_id.load(), cmd->amount.load());
-  // c->player.print_inventory(stderr);
+  // c->game_data.player()->print_inventory(stderr);
   forward_subcommand(l, c, command, flag, data);
 }
 
@@ -886,14 +888,14 @@ static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
       return;
     }
 
-    size_t x = c->player.inventory.find_item(cmd->item_id);
-    if (c->player.inventory.items[x].data.item_data1[0] != 0) {
+    size_t x = c->game_data.player()->inventory.find_item(cmd->item_id);
+    if (c->game_data.player()->inventory.items[x].data.data1[0] != 0) {
       return; // only weapons can be identified
     }
 
-    c->player.disp.meseta -= 100;
-    c->player.identify_result = c->player.inventory.items[x];
-    c->player.identify_result.data.item_data1[4] &= 0x7F;
+    c->game_data.player()->disp.meseta -= 100;
+    c->game_data.identify_result = c->game_data.player()->inventory.items[x];
+    c->game_data.identify_result.data.data1[4] &= 0x7F;
 
     // TODO: move this into a SendCommands.cc function
     G_IdentifyResult_BB_6xB9 res;
@@ -901,7 +903,7 @@ static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
     res.size = sizeof(cmd) / 4;
     res.client_id = c->lobby_client_id;
     res.unused = 0;
-    res.item = c->player.identify_result.data;
+    res.item = c->game_data.identify_result.data;
     send_command(l, 0x60, 0x00, res);
 
   } else {
@@ -923,8 +925,8 @@ static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
 //       return;
 //     }
 //
-//     size_t x = c->player.inventory.find_item(cmd->item_id);
-//     c->player.inventory.items[x] = c->player.identify_result;
+//     size_t x = c->game_data.player()->inventory.find_item(cmd->item_id);
+//     c->game_data.player()->inventory.items[x] = c->game_data.player()->identify_result;
 //     // TODO: what do we send to the other clients? anything?
 //
 //   } else {

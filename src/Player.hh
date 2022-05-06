@@ -7,51 +7,51 @@
 #include <vector>
 #include <phosg/Encoding.hh>
 
+#include "LevelTable.hh"
 #include "Version.hh"
 #include "Text.hh"
 
 
 
-// raw item data
-// TODO: use parray for the fields here
 struct ItemData {
   union {
-    uint8_t item_data1[12];
-    le_uint16_t item_data1w[6];
-    le_uint32_t item_data1d[3];
+    uint8_t data1[12];
+    le_uint16_t data1w[6];
+    le_uint32_t data1d[3];
   } __attribute__((packed));
-  le_uint32_t item_id;
+  le_uint32_t id;
   union {
-    uint8_t item_data2[4];
-    le_uint16_t item_data2w[2];
-    le_uint32_t item_data2d;
+    uint8_t data2[4];
+    le_uint16_t data2w[2];
+    le_uint32_t data2d;
   } __attribute__((packed));
+
+  ItemData();
 
   uint32_t primary_identifier() const;
 } __attribute__((packed));
 
 struct PlayerBankItem;
 
-// an item in a player's inventory
 struct PlayerInventoryItem {
   le_uint16_t equip_flags;
   le_uint16_t tech_flag;
   le_uint32_t game_flags;
   ItemData data;
 
-  PlayerBankItem to_bank_item() const;
+  PlayerInventoryItem();
+  PlayerInventoryItem(const PlayerBankItem&);
 } __attribute__((packed));
 
-// an item in a player's bank
 struct PlayerBankItem {
   ItemData data;
   le_uint16_t amount;
   le_uint16_t show_flags;
 
-  PlayerInventoryItem to_inventory_item() const;
+  PlayerBankItem();
+  PlayerBankItem(const PlayerInventoryItem&);
 } __attribute__((packed));
 
-// a player's inventory (remarkably, the format is the same in all versions of PSO)
 struct PlayerInventory {
   uint8_t num_items;
   uint8_t hp_materials_used;
@@ -62,7 +62,6 @@ struct PlayerInventory {
   size_t find_item(uint32_t item_id);
 } __attribute__((packed));
 
-// a player's bank
 struct PlayerBank {
   le_uint32_t num_items;
   le_uint32_t meseta;
@@ -80,19 +79,6 @@ struct PlayerBank {
 } __attribute__((packed));
 
 
-
-// simple player stats
-struct PlayerStats {
-  le_uint16_t atp;
-  le_uint16_t mst;
-  le_uint16_t evp;
-  le_uint16_t hp;
-  le_uint16_t dfp;
-  le_uint16_t ata;
-  le_uint16_t lck;
-
-  PlayerStats() noexcept;
-} __attribute__((packed));
 
 struct PlayerDispDataBB;
 
@@ -310,12 +296,12 @@ struct PlayerLobbyDataBB {
 
 
 
-struct PSOPlayerDataPC { // for command 0x61
+struct PSOPlayerDataPC { // For command 61
   PlayerInventory inventory;
   PlayerDispDataPCGC disp;
 } __attribute__((packed));
 
-struct PSOPlayerDataGC { // for command 0x61
+struct PSOPlayerDataGC { // For command 61
   PlayerInventory inventory;
   PlayerDispDataPCGC disp;
   parray<uint8_t, 0x134> unknown;
@@ -325,7 +311,7 @@ struct PSOPlayerDataGC { // for command 0x61
   char auto_reply[0];
 } __attribute__((packed));
 
-struct PSOPlayerDataBB { // for command 0x61
+struct PSOPlayerDataBB { // For command 61
   PlayerInventory inventory;
   PlayerDispDataBB disp;
   ptext<char, 0x174> unused;
@@ -335,53 +321,57 @@ struct PSOPlayerDataBB { // for command 0x61
   char16_t auto_reply[0];
 } __attribute__((packed));
 
-// complete BB player data format (used in E7 command)
-struct PlayerBB {
-  PlayerInventory inventory;               // 0000 // player
-  PlayerDispDataBB disp;                   // 034C // player
+struct PlayerBB { // Used in 00E7 command
+  PlayerInventory inventory;                // 0000 // player
+  PlayerDispDataBB disp;                    // 034C // player
   parray<uint8_t, 0x0010> unknown;          // 04DC //
-  le_uint32_t option_flags;                   // 04EC // account
+  le_uint32_t option_flags;                 // 04EC // account
   parray<uint8_t, 0x0208> quest_data1;      // 04F0 // player
-  PlayerBank bank;                         // 06F8 // player
-  le_uint32_t serial_number;                  // 19C0 // player
-  ptext<char16_t, 0x18> name;              // 19C4 // player
-  ptext<char16_t, 0x10> team_name;         // 19C4 // player
-  ptext<char16_t, 0x58> guild_card_desc;   // 1A14 // player
-  uint8_t reserved1;                       // 1AC4 // player
-  uint8_t reserved2;                       // 1AC5 // player
-  uint8_t section_id;                      // 1AC6 // player
-  uint8_t char_class;                      // 1AC7 // player
-  le_uint32_t unknown3;                       // 1AC8 //
+  PlayerBank bank;                          // 06F8 // player
+  le_uint32_t serial_number;                // 19C0 // player
+  ptext<char16_t, 0x18> name;               // 19C4 // player
+  ptext<char16_t, 0x10> team_name;          // 19C4 // player
+  ptext<char16_t, 0x58> guild_card_desc;    // 1A14 // player
+  uint8_t reserved1;                        // 1AC4 // player
+  uint8_t reserved2;                        // 1AC5 // player
+  uint8_t section_id;                       // 1AC6 // player
+  uint8_t char_class;                       // 1AC7 // player
+  le_uint32_t unknown3;                     // 1AC8 //
   parray<uint8_t, 0x04E0> symbol_chats;     // 1ACC // account
   parray<uint8_t, 0x0A40> shortcuts;        // 1FAC // account
-  ptext<char16_t, 0x00AC> auto_reply;      // 29EC // player
-  ptext<char16_t, 0x00AC> info_board;      // 2B44 // player
+  ptext<char16_t, 0x00AC> auto_reply;       // 29EC // player
+  ptext<char16_t, 0x00AC> info_board;       // 2B44 // player
   parray<uint8_t, 0x001C> unknown5;         // 2C9C //
   parray<uint8_t, 0x0140> challenge_data;   // 2CB8 // player
   parray<uint8_t, 0x0028> tech_menu_config; // 2DF8 // player
   parray<uint8_t, 0x002C> unknown6;         // 2E20 //
   parray<uint8_t, 0x0058> quest_data2;      // 2E4C // player
-  KeyAndTeamConfigBB key_config;           // 2EA4 // account
-} __attribute__((packed));                 // total size: 39A0
+  KeyAndTeamConfigBB key_config;            // 2EA4 // account
+} __attribute__((packed));                  // total size: 39A0
 
 
 
-struct SavedPlayerBB { // .nsc file format
+struct SavedPlayerDataBB { // .nsc file format
   ptext<char, 0x40>       signature;
   PlayerDispDataBBPreview preview;
   ptext<char16_t, 0x00AC> auto_reply;
   PlayerBank              bank;
   parray<uint8_t, 0x0140> challenge_data;
   PlayerDispDataBB        disp;
-  ptext<char16_t, 0x58>   guild_card_desc;
+  ptext<char16_t, 0x0058> guild_card_desc;
   ptext<char16_t, 0x00AC> info_board;
   PlayerInventory         inventory;
   parray<uint8_t, 0x0208> quest_data1;
   parray<uint8_t, 0x0058> quest_data2;
   parray<uint8_t, 0x0028> tech_menu_config;
+
+  void add_item(const PlayerInventoryItem& item);
+  PlayerInventoryItem remove_item(uint32_t item_id, uint32_t amount);
+
+  void print_inventory(FILE* stream) const;
 } __attribute__((packed));
 
-struct SavedAccountBB { // .nsa file format
+struct SavedAccountDataBB { // .nsa file format
   ptext<char, 0x40>           signature;
   parray<le_uint32_t, 0x001E> blocked_senders;
   GuildCardFileBB             guild_cards;
@@ -392,58 +382,55 @@ struct SavedAccountBB { // .nsa file format
   ptext<char16_t, 0x0010>     team_name;
 } __attribute__((packed));
 
-// complete player info stored by the server
-struct Player {
-  le_uint32_t                 loaded_from_shipgate_time;
-  ptext<char16_t, 0x00AC>     auto_reply;            // player
-  PlayerBank                  bank;                  // player
-  ptext<char, 0x0020>         bank_name;             // not saved
-  parray<le_uint32_t, 0x001E> blocked_senders;       // account
-  parray<uint8_t, 0x0140>     challenge_data;        // player
-  PlayerDispDataBB            disp;                  // player
-  parray<uint8_t, 0x2408>     ep3_config;            // not saved
-  ptext<char16_t, 0x0058>     guild_card_desc;       // player
-  GuildCardFileBB             guild_cards;           // account
-  PlayerInventoryItem         identify_result;       // not saved
-  ptext<char16_t, 0x00AC>     info_board;            // player
-  PlayerInventory             inventory;             // player
-  KeyAndTeamConfigBB          key_config;            // account
-  le_uint32_t                 option_flags;          // account
-  parray<uint8_t, 0x0208>     quest_data1;           // player
-  parray<uint8_t, 0x0058>     quest_data2;           // player
-  le_uint32_t                 serial_number;         // account identifier
-  std::vector<ItemData>       current_shop_contents; // not saved
-  parray<uint8_t, 0x0A40>     shortcuts;             // account
-  parray<uint8_t, 0x04E0>     symbol_chats;          // account
-  ptext<char16_t, 0x0010>     team_name;             // account
-  parray<uint8_t, 0x0028>     tech_menu_config;      // player
+class ClientGameData {
+private:
+  std::shared_ptr<SavedAccountDataBB> account_data;
+  std::shared_ptr<SavedPlayerDataBB> player_data;
 
-  void load_player_data(const std::string& filename);
-  void save_player_data(const std::string& filename) const;
+public:
+  uint32_t serial_number;
 
-  void load_account_data(const std::string& filename);
-  void save_account_data(const std::string& filename) const;
+  // The following fields are not saved, and are only used in certain situations
 
-  void import(const PSOPlayerDataPC& pd);
-  void import(const PSOPlayerDataGC& pd);
-  void import(const PSOPlayerDataBB& pd);
-  PlayerBB export_bb_player_data() const;
+  // Null unless the client is Episode 3 and has sent its config already
+  std::shared_ptr<parray<uint8_t, 0x2408>> ep3_config;
 
-  void add_item(const PlayerInventoryItem& item);
-  PlayerInventoryItem remove_item(uint32_t item_id, uint32_t amount);
-  size_t find_item(uint32_t item_id);
+  // These are only used if the client is BB
+  std::string bb_username;
+  size_t bb_player_index;
+  PlayerInventoryItem identify_result;
+  std::vector<ItemData> shop_contents;
 
-  void print_inventory(FILE* stream) const;
+  ClientGameData() : serial_number(0), bb_player_index(0) { }
+  ~ClientGameData();
+
+  std::shared_ptr<SavedAccountDataBB> account(bool should_load = true);
+  std::shared_ptr<SavedPlayerDataBB> player(bool should_load = true);
+  std::shared_ptr<const SavedAccountDataBB> account() const;
+  std::shared_ptr<const SavedPlayerDataBB> player() const;
+
+  std::string account_data_filename() const;
+  std::string player_data_filename() const;
+  static std::string player_template_filename(uint8_t char_class);
+
+  void create_player(
+      const PlayerDispDataBBPreview& preview,
+      std::shared_ptr<const LevelTable> level_table);
+
+  void load_account_data();
+  void save_account_data() const;
+  void load_player_data();
+  void save_player_data() const;
+
+  void import_player(const PSOPlayerDataPC& pd);
+  void import_player(const PSOPlayerDataGC& pd);
+  void import_player(const PSOPlayerDataBB& pd);
+  PlayerBB export_player_bb() const;
 };
 
 
 
 uint32_t compute_guild_card_checksum(const void* data, size_t size);
-
-std::string filename_for_player_bb(const std::string& username, uint8_t player_index);
-std::string filename_for_bank_bb(const std::string& username, const std::string& bank_name);
-std::string filename_for_class_template_bb(uint8_t char_class);
-std::string filename_for_account_bb(const std::string& username);
 
 
 

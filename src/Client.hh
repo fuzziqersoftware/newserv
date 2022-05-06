@@ -100,7 +100,7 @@ struct Client {
   uint32_t lobby_id; // which lobby is this person in?
   uint8_t lobby_client_id; // which client number is this person?
   uint8_t lobby_arrow_color; // lobby arrow color ID
-  Player player;
+  ClientGameData game_data;
 
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give
@@ -115,6 +115,8 @@ struct Client {
 
   Client(struct bufferevent* bev, GameVersion version,
       ServerBehavior server_behavior);
+
+  void set_license(std::shared_ptr<const License> l);
 
   ClientConfig export_config() const;
   ClientConfigBB export_config_bb() const;

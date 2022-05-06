@@ -305,57 +305,57 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   }
 
   if (tokens[0] == "atp") {
-    c->player.disp.stats.atp = stoul(tokens[1]);
+    c->game_data.player()->disp.stats.atp = stoul(tokens[1]);
   } else if (tokens[0] == "mst") {
-    c->player.disp.stats.mst = stoul(tokens[1]);
+    c->game_data.player()->disp.stats.mst = stoul(tokens[1]);
   } else if (tokens[0] == "evp") {
-    c->player.disp.stats.evp = stoul(tokens[1]);
+    c->game_data.player()->disp.stats.evp = stoul(tokens[1]);
   } else if (tokens[0] == "hp") {
-    c->player.disp.stats.hp = stoul(tokens[1]);
+    c->game_data.player()->disp.stats.hp = stoul(tokens[1]);
   } else if (tokens[0] == "dfp") {
-    c->player.disp.stats.dfp = stoul(tokens[1]);
+    c->game_data.player()->disp.stats.dfp = stoul(tokens[1]);
   } else if (tokens[0] == "ata") {
-    c->player.disp.stats.ata = stoul(tokens[1]);
+    c->game_data.player()->disp.stats.ata = stoul(tokens[1]);
   } else if (tokens[0] == "lck") {
-    c->player.disp.stats.lck = stoul(tokens[1]);
+    c->game_data.player()->disp.stats.lck = stoul(tokens[1]);
   } else if (tokens[0] == "meseta") {
-    c->player.disp.meseta = stoul(tokens[1]);
+    c->game_data.player()->disp.meseta = stoul(tokens[1]);
   } else if (tokens[0] == "exp") {
-    c->player.disp.experience = stoul(tokens[1]);
+    c->game_data.player()->disp.experience = stoul(tokens[1]);
   } else if (tokens[0] == "level") {
-    c->player.disp.level = stoul(tokens[1]) - 1;
+    c->game_data.player()->disp.level = stoul(tokens[1]) - 1;
   } else if (tokens[0] == "namecolor") {
     uint32_t new_color;
     sscanf(tokens[1].c_str(), "%8X", &new_color);
-    c->player.disp.name_color = new_color;
+    c->game_data.player()->disp.name_color = new_color;
   } else if (tokens[0] == "secid") {
     uint8_t secid = section_id_for_name(decode_sjis(tokens[1]));
     if (secid == 0xFF) {
       send_text_message(c, u"$C6No such section ID.");
       return;
     } else {
-      c->player.disp.section_id = secid;
+      c->game_data.player()->disp.section_id = secid;
     }
   } else if (tokens[0] == "name") {
-    c->player.disp.name = add_language_marker(tokens[1], 'J');
+    c->game_data.player()->disp.name = add_language_marker(tokens[1], 'J');
   } else if (tokens[0] == "npc") {
     if (tokens[1] == "none") {
-      c->player.disp.extra_model = 0;
-      c->player.disp.v2_flags &= 0xFD;
+      c->game_data.player()->disp.extra_model = 0;
+      c->game_data.player()->disp.v2_flags &= 0xFD;
     } else {
       uint8_t npc = npc_for_name(decode_sjis(tokens[1]));
       if (npc == 0xFF) {
         send_text_message(c, u"$C6No such NPC.");
         return;
       }
-      c->player.disp.extra_model = npc;
-      c->player.disp.v2_flags |= 0x02;
+      c->game_data.player()->disp.extra_model = npc;
+      c->game_data.player()->disp.v2_flags |= 0x02;
     }
   } else if ((tokens[0] == "tech") && (tokens.size() > 2)) {
     uint8_t level = stoul(tokens[2]) - 1;
     if (tokens[1] == "all") {
       for (size_t x = 0; x < 0x14; x++) {
-        c->player.disp.technique_levels.data()[x] = level;
+        c->game_data.player()->disp.technique_levels.data()[x] = level;
       }
     } else {
       uint8_t tech_id = technique_for_name(decode_sjis(tokens[1]));
@@ -363,7 +363,7 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
         send_text_message(c, u"$C6No such technique.");
         return;
       }
-      c->player.disp.technique_levels.data()[tech_id] = level;
+      c->game_data.player()->disp.technique_levels.data()[tech_id] = level;
     }
   } else {
     send_text_message(c, u"$C6Unknown field.");
@@ -376,13 +376,14 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   s->send_lobby_join_notifications(l, c);
 }
 
-static void command_change_bank(shared_ptr<ServerState>, shared_ptr<Lobby>,
+// TODO: implement this
+// TODO: make sure the bank name is filesystem-safe
+/* static void command_change_bank(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string&) {
   check_version(c, GameVersion::BB);
 
-  // TODO: implement this
-  // TODO: make sure the bank name is filesystem-safe
-}
+  TODO
+} */
 
 static void command_convert_char_to_bb(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args) {
@@ -419,6 +420,19 @@ static void command_convert_char_to_bb(shared_ptr<ServerState> s,
 ////////////////////////////////////////////////////////////////////////////////
 // Administration commands
 
+static string name_for_client(shared_ptr<Client> c) {
+  auto player = c->game_data.player(false);
+  if (player.get()) {
+    return encode_sjis(player->disp.name);
+  }
+
+  if (c->license.get()) {
+    return string_printf("SN:%" PRIu32, c->license->serial_number);
+  }
+
+  return "Player";
+}
+
 static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::SILENCE_USER);
@@ -436,8 +450,8 @@ static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   }
 
   target->can_chat = !target->can_chat;
-  string target_name_sjis = encode_sjis(target->player.disp.name);
-  send_text_message_printf(l, "$C6%s %ssilenced", target_name_sjis.c_str(),
+  string target_name = name_for_client(target);
+  send_text_message_printf(l, "$C6%s %ssilenced", target_name.c_str(),
       target->can_chat ? "un" : "");
 }
 
@@ -459,8 +473,8 @@ static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 
   send_message_box(target, u"$C6You were kicked off by a moderator.");
   target->should_disconnect = true;
-  string target_name_sjis = encode_sjis(target->player.disp.name);
-  send_text_message_printf(l, "$C6%s kicked off", target_name_sjis.c_str());
+  string target_name = name_for_client(target);
+  send_text_message_printf(l, "$C6%s kicked off", target_name.c_str());
 }
 
 static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
@@ -510,8 +524,8 @@ static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   s->license_manager->ban_until(target->license->serial_number, now() + usecs);
   send_message_box(target, u"$C6You were banned by a moderator.");
   target->should_disconnect = true;
-  auto encoded_name = encode_sjis(target->player.disp.name);
-  send_text_message_printf(l, "$C6%s banned", encoded_name.c_str());
+  string target_name = name_for_client(target);
+  send_text_message_printf(l, "$C6%s banned", target_name.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -648,11 +662,11 @@ static void command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 
   ItemData item_data;
   memset(&item_data, 0, sizeof(item_data));
-  if (data.size() < 12) {
-    memcpy(&l->next_drop_item.data.item_data1, data.data(), data.size());
+  if (data.size() <= 12) {
+    memcpy(&l->next_drop_item.data.data1, data.data(), data.size());
   } else {
-    memcpy(&l->next_drop_item.data.item_data1, data.data(), 12);
-    memcpy(&l->next_drop_item.data.item_data2, data.data() + 12, 12 - data.size());
+    memcpy(&l->next_drop_item.data.data1, data.data(), 12);
+    memcpy(&l->next_drop_item.data.data2, data.data() + 12, 12 - data.size());
   }
 
   send_text_message(c, u"$C6Next drop chosen.");
@@ -677,7 +691,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$ax"        , {command_ax                , u"Usage:\nax <message>"}},
     {u"$ban"       , {command_ban               , u"Usage:\nban <name-or-number>"}},
     {u"$bbchar"    , {command_convert_char_to_bb, u"Usage:\nbbchar <user> <pass> <1-4>"}},
-    {u"$changebank", {command_change_bank       , u"Usage:\nchangebank <bank name>"}},
+    // {u"$bank",       {command_bank              , u"Usage:\nbank <bank name>"}},
     {u"$cheat"     , {command_cheat             , u"Usage:\ncheat"}},
     {u"$edit"      , {command_edit              , u"Usage:\nedit <stat> <value>"}},
     {u"$event"     , {command_lobby_event       , u"Usage:\nevent <name>"}},
