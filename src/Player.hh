@@ -238,7 +238,6 @@ struct GuildCardFileBB {
   parray<uint8_t, 0x01AC> unknown_a2;
 } __attribute__((packed));
 
-// PSOBB key config and team info
 struct KeyAndTeamConfigBB {
   parray<uint8_t, 0x0114> unknown_a1;      // 0000
   parray<uint8_t, 0x016C> key_config;      // 0114
@@ -250,16 +249,7 @@ struct KeyAndTeamConfigBB {
   le_uint16_t reserved;                    // 02CA
   ptext<char16_t, 0x0010> team_name;       // 02CC
   parray<uint8_t, 0x0800> team_flag;       // 02EC
-  le_uint64_t team_rewards;                // 0AEC
-} __attribute__((packed));
-
-// BB account data
-struct PlayerAccountDataBB {
-  parray<uint8_t, 0x04E0> symbol_chats;
-  KeyAndTeamConfigBB key_config;
-  GuildCardFileBB guild_cards;
-  le_uint32_t options;
-  parray<uint8_t, 0x0A40> shortcuts; // chat shortcuts (@1FB4 in E7 command)
+  le_uint32_t team_rewards;                // 0AEC
 } __attribute__((packed));
 
 
@@ -349,6 +339,7 @@ struct PlayerBB { // Used in 00E7 command
   parray<uint8_t, 0x002C> unknown6;         // 2E20 //
   parray<uint8_t, 0x0058> quest_data2;      // 2E4C // player
   KeyAndTeamConfigBB key_config;            // 2EA4 // account
+  le_uint32_t unused;
 } __attribute__((packed));                  // total size: 39A0
 
 
@@ -378,6 +369,7 @@ struct SavedAccountDataBB { // .nsa file format
   parray<le_uint32_t, 0x001E> blocked_senders;
   GuildCardFileBB             guild_cards;
   KeyAndTeamConfigBB          key_config;
+  le_uint32_t                 unused;
   le_uint32_t                 option_flags;
   parray<uint8_t, 0x0A40>     shortcuts;
   parray<uint8_t, 0x04E0>     symbol_chats;

@@ -1340,9 +1340,9 @@ void process_return_player_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c
 void process_update_key_config_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   // Some clients have only a uint32_t at the end for team rewards
-  check_size_t<KeyAndTeamConfigBB>(data,
+  auto& cmd = check_size_t<KeyAndTeamConfigBB>(data,
       sizeof(KeyAndTeamConfigBB) - 4, sizeof(KeyAndTeamConfigBB));
-  memcpy(&c->game_data.account()->key_config, data.data(), data.size());
+  c->game_data.account()->key_config = cmd;
   // TODO: We should send a response here, but I don't know which one!
 }
 
