@@ -526,7 +526,7 @@ uint32_t ItemData::primary_identifier() const {
 }
 
 PlayerInventoryItem::PlayerInventoryItem()
-  : equip_flags(0x0000), tech_flag(0x0000), data() { }
+  : equip_flags(0x0000), tech_flag(0x0000), game_flags(0x00000000), data() { }
 
 PlayerInventoryItem::PlayerInventoryItem(const PlayerBankItem& src)
   : equip_flags((this->data.data1[0] > 2) ? 0x0044 : 0x0050),

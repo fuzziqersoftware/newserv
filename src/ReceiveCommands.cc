@@ -1052,7 +1052,7 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
       const PSOPlayerDataGC* disp;
       if (flag == 4) { // Episode 3
         disp = &check_size_t<PSOPlayerDataGC>(data,
-            sizeof(PSOPlayerDataGC) + 0x23FC);
+            sizeof(PSOPlayerDataGC) + 0x23FC, sizeof(PSOPlayerDataGC) + 0x23FC);
         // TODO: import Episode 3 data somewhere
       } else {
         disp = &check_size_t<PSOPlayerDataGC>(data, sizeof(PSOPlayerDataGC),
