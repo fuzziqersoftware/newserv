@@ -280,17 +280,6 @@ void drop_privileges(const string& username) {
 
 
 int main(int, char**) {
-  if (true) {
-    static const string seed("\x33\xF7\x40\xA2\xB4\xFD\x5C\x07\xD8\x94\x09\x9F\x8B\x76\x35\xF9\x97\x76\x8B\x16\x5C\x73\x9F\x2E\xF1\x1F\x1A\xC0\xB9\x53\xFE\x59\xE4\xDD\xC5\xC8\x11\xA0\x78\xD5\x56\x5A\xF7\xC3\x47\xD5\xCA\x67", 0x30);
-    static const string encrypted_data("\x83\x9A\xE7\xE1\xDD\xB2\x41\x38", 0x08);
-    string decrypted_data = encrypted_data;
-    auto private_key = load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/default.nsk");
-    PSOBBEncryption crypt(private_key, seed.data(), seed.size());
-    crypt.decrypt(decrypted_data.data(), decrypted_data.size());
-    fprintf(stderr, "decrypted\n");
-    print_data(stderr, decrypted_data);
-  }
-
   signal(SIGPIPE, SIG_IGN);
 
   if (isatty(fileno(stderr))) {
