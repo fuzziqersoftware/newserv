@@ -168,7 +168,7 @@ struct S_EnterDirectory_Patch_09 {
 // 0A (S->C): Exit directory
 // No arguments
 
-// 0B (S->C): Unknown; possibly start patch session
+// 0B (S->C): Unknown; maybe start patch session, or go to game's root directory
 // No arguments
 
 // 0C (S->C): File checksum request
