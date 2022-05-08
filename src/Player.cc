@@ -675,10 +675,10 @@ PlayerInventoryItem SavedPlayerDataBB::remove_item(
   // and return the deleted item.
   ret = inventory_item;
   this->inventory.num_items--;
-  for (size_t x = index; x < this->inventory.num_items - 1; x++) {
+  for (size_t x = index; x < this->inventory.num_items; x++) {
     this->inventory.items[x] = this->inventory.items[x + 1];
   }
-  this->inventory.items[this->inventory.num_items - 1] = PlayerInventoryItem();
+  this->inventory.items[this->inventory.num_items] = PlayerInventoryItem();
   return ret;
 }
 
@@ -710,10 +710,10 @@ PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
 
   ret = bank_item;
   this->num_items--;
-  for (size_t x = index; x < this->num_items - 1; x++) {
+  for (size_t x = index; x < this->num_items; x++) {
     this->items[x] = this->items[x + 1];
   }
-  this->items[this->num_items - 1] = PlayerBankItem();
+  this->items[this->num_items] = PlayerBankItem();
   return ret;
 }
 
