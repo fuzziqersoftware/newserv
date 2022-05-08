@@ -1744,9 +1744,9 @@ independently.\r\n\
   }
 
   send_message_box(c, message.c_str());
-  send_check_directory_patch(c, ".");
-  send_check_directory_patch(c, "data");
-  send_check_directory_patch(c, "scene");
+  send_enter_directory_patch(c, ".");
+  send_enter_directory_patch(c, "data");
+  send_enter_directory_patch(c, "scene");
   send_command(c, 0x0A, 0x00);
   send_command(c, 0x0A, 0x00);
   send_command(c, 0x0A, 0x00);

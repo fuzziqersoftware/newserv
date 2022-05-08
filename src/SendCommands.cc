@@ -267,7 +267,9 @@ void send_update_client_config(shared_ptr<Client> c) {
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
   S_Reconnect_19 cmd = {address, port, 0};
-  send_command_t(c, 0x19, 0x00, cmd);
+  // On the patch server, 14 is the reconnect command, but it works exactly the
+  // same way as 19 on the game server.
+  send_command_t(c, (c->version == GameVersion::PATCH) ? 0x14 : 0x19, 0x00, cmd);
 }
 
 // Sends the command (first used by Schthack) that separates PC and GC users
@@ -426,8 +428,8 @@ void send_complete_player_bb(shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 // patch functions
 
-void send_check_directory_patch(shared_ptr<Client> c, const string& dir) {
-  S_CheckDirectory_Patch_09 cmd = {dir};
+void send_enter_directory_patch(shared_ptr<Client> c, const string& dir) {
+  S_EnterDirectory_Patch_09 cmd = {dir};
   send_command_t(c, 0x09, 0x00, cmd);
 }
 

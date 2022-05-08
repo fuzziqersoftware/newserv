@@ -77,6 +77,150 @@ struct ClientConfigBB {
 
 
 
+// Patch server commands
+
+// A patch server session generally goes like this:
+// Server: 02
+// Client: 02
+// Server: 04
+// Client: 04
+// Server: 13 (if desired)
+// Server: 0B
+// Server: 09 (with directory name ".")
+// For each directory to be checked:
+//   Server: 09
+//   Server: (commands to check subdirectories - more 09/0A/0C)
+//   For each file in the directory:
+//     Server: 0C
+//   Server: 0A
+// Server: 0D
+// For each 0C sent by the server earlier:
+//   Client: 0F
+// Client: 10
+// If there are any files to be updated:
+//   Server: 11
+//   For each directory containing files to be updated:
+//     Server: 09
+//     Server: (commands to update subdirectories)
+//     For each file to be updated in this directory:
+//       Server: 06
+//       Server: 07 (possibly multiple 07s if the file is large)
+//       Server: 08
+//     Server: 0A
+// Server: 12
+
+// 02 (S->C): Start encryption
+
+struct S_ServerInit_Patch_02 {
+  ptext<char, 0x40> copyright;
+  le_uint32_t server_key;
+  le_uint32_t client_key;
+  // BB rejects the command if it's larger than this size, so we can't add the
+  // after_message like we do in the other server init commands
+};
+
+// 04 (S->C): Request login information (no arguments); max. size 4
+// 04 (C->S): Log in (patch)
+
+struct C_Login_Patch_04 {
+  parray<le_uint32_t, 3> unused;
+  ptext<char, 0x10> username;
+  ptext<char, 0x10> password;
+  ptext<char, 0x40> email; // Note: this field is blank on BB
+};
+
+// 05 (S->C): Unknown
+// No arguments
+
+// 06 (S->C): Open file for writing
+
+struct S_OpenFile_Patch_06 {
+  le_uint32_t unknown; // Seems to always be zero
+  le_uint32_t size;
+  ptext<char, 0x30> filename;
+};
+
+// 07 (S->C): Write file
+// The client's handler table says this command's maximum size is 0x6010
+// including the header, but the only servers I've seen use this command limit
+// chunks to 0x4010 (including the header).
+
+struct S_WriteFileHeader_Patch_07 {
+  le_uint32_t chunk_index;
+  le_uint32_t chunk_checksum; // crc32
+  le_uint32_t chunk_size;
+  // The chunk data immediately follows here
+};
+
+// 08 (S->C): Close current file
+// Maximum size 8 (including header)
+
+struct S_CloseCurrentFile_Patch_08 {
+  le_uint32_t unknown; // Seems to always be zero
+};
+
+// 09 (S->C): Enter directory
+
+struct S_EnterDirectory_Patch_09 {
+  ptext<char, 0x40> name;
+};
+
+// 0A (S->C): Exit directory
+// No arguments
+
+// 0B (S->C): Unknown; possibly start patch session
+// No arguments
+
+// 0C (S->C): File checksum request
+
+struct S_FileChecksumRequest_Patch_0C {
+  le_uint32_t request_id;
+  ptext<char, 0x20> filename;
+};
+
+// 0D (S->C): End of file check requests
+// No arguments
+
+// 0F (C->S): File information
+
+struct C_FileInformation_Patch_0F {
+  le_uint32_t request_id;
+  le_uint32_t checksum;
+  le_uint32_t size;
+};
+
+// 10 (C->S): End of file information command list
+// No arguments
+
+// 11 (S->C): Start file downloads
+
+struct S_Unknown_Patch_11 {
+  le_uint32_t total_bytes;
+  le_uint32_t num_files;
+};
+
+// 12 (S->C): End patch session successfully
+// No arguments
+
+// 13 (S->C): Message box
+// Same as 1A/D5 on the game server. On PSOBB, the message appears in the upper
+// message box and functions like a normal PSO message box. On PSOPC, the
+// message appears in a Windows edit field, so line breaks must be \r\n (as
+// opposed to just \n on PSOBB) and standard PSO color escapes don't work.
+// THe maximum size of this command is 0x2004 bytes, including the header.
+
+// 14 (S->C): Reconnect
+// Same as 19 on the game server.
+
+// 15 (S->C): Unknown
+// No arguments
+
+// No commands beyond 15 are valid on the patch server.
+
+
+
+// Game server commands
+
 // 00: Invalid command
 
 // 01 (S->C): Lobby message box
@@ -98,14 +242,6 @@ struct S_ServerInit_DC_PC_GC_02_17 {
   le_uint32_t client_key; // Key for data sent by client
   // This field is not part of SEGA's original implementation
   ptext<char, 0xC0> after_message;
-};
-
-struct S_ServerInit_Patch_02 {
-  ptext<char, 0x40> copyright;
-  le_uint32_t server_key;
-  le_uint32_t client_key;
-  // BB rejects the command if it's not exactly this size, so we can't add the
-  // after_message like we do in the other server init commands
 };
 
 // 03 (S->C): Start encryption (BB)
@@ -138,16 +274,6 @@ struct S_UpdateClientConfig_DC_PC_GC_04 {
   // following 0x20 bytes (or may not use it at all). The cfg field is opaque to
   // the client; it will send back the contents verbatim in its next 9E command.
   ClientConfig cfg;
-};
-
-// 04 (S->C): Request login information (patch server) (no arguments)
-// 04 (C->S): Log in (patch server)
-
-struct C_Login_Patch_04 {
-  parray<le_uint32_t, 3> unused;
-  ptext<char, 0x10> username;
-  ptext<char, 0x10> password;
-  ptext<char, 0x40> email; // Note: this field is blank on BB
 };
 
 // 05: Disconnect
@@ -203,12 +329,6 @@ struct S_GameMenuEntry {
 struct S_GameMenuEntry_PC_BB_08 : S_GameMenuEntry<char16_t> { };
 struct S_GameMenuEntry_GC_08 : S_GameMenuEntry<char> { };
 
-// 09 (S->C): Check directory (patch server)
-
-struct S_CheckDirectory_Patch_09 {
-  ptext<char, 0x40> name;
-};
-
 // 09 (C->S): Menu item info request
 // Server will respond with an 11 command, or an A3 if it's the quest menu.
 
@@ -216,9 +336,6 @@ struct C_MenuItemInfoRequest_09 {
   le_uint32_t menu_id;
   le_uint32_t item_id;
 };
-
-// 0A: Done checking directory (patch server)
-// No arguemnts
 
 // 0B: Invalid command
 
