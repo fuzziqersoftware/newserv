@@ -220,7 +220,7 @@ static void process_subcommand_switch_state_changed(shared_ptr<ServerState>,
       log(INFO, "[Switch assist] Replaying previous enable command");
       forward_subcommand(l, c, command, flag, &c->last_switch_enabled_command,
           sizeof(c->last_switch_enabled_command));
-      send_command(c, command, flag, c->last_switch_enabled_command);
+      send_command_t(c, command, flag, c->last_switch_enabled_command);
     }
     c->last_switch_enabled_command = cmd;
   }
@@ -756,7 +756,7 @@ static void process_subcommand_phase_setup(shared_ptr<ServerState>,
         0.0f,
         0xE0AEDC0100000002,
       };
-      send_command(c, 0x62, l->leader_id, req);
+      send_command_t(c, 0x62, l->leader_id, req);
     }
   }
 }
@@ -904,7 +904,7 @@ static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
     res.client_id = c->lobby_client_id;
     res.unused = 0;
     res.item = c->game_data.identify_result.data;
-    send_command(l, 0x60, 0x00, res);
+    send_command_t(l, 0x60, 0x00, res);
 
   } else {
     forward_subcommand(l, c, command, flag, data);

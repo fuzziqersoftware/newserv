@@ -284,23 +284,6 @@ void PlayerBank::save(const string& filename) const {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t compute_guild_card_checksum(const void* vdata, size_t size) {
-  const uint8_t* data = reinterpret_cast<const uint8_t*>(vdata);
-
-  uint32_t cs = 0xFFFFFFFF;
-  for (size_t offset = 0; offset < size; offset++) {
-    cs ^= data[offset];
-    for (size_t y = 0; y < 8; y++) {
-      if (!(cs & 1)) {
-        cs = (cs >> 1) & 0x7FFFFFFF;
-      } else {
-        cs = ((cs >> 1) & 0x7FFFFFFF) ^ 0xEDB88320;
-      }
-    }
-  }
-  return (cs ^ 0xFFFFFFFF);
-}
-
 ClientGameData::~ClientGameData() {
   if (!this->bb_username.empty()) {
     if (this->account_data.get()) {
@@ -359,9 +342,6 @@ string ClientGameData::account_data_filename() const {
 string ClientGameData::player_data_filename() const {
   if (this->bb_username.empty()) {
     throw logic_error("non-BB players do not have account data");
-  }
-  if (this->bb_player_index == 0) {
-    throw logic_error("0 is not a valid player index");
   }
   return string_printf("system/players/player_%s_%zu.nsc",
       this->bb_username.c_str(), this->bb_player_index + 1);
@@ -477,7 +457,7 @@ void ClientGameData::import_player(const PSOPlayerDataBB& bb) {
   }
 }
 
-PlayerBB ClientGameData::export_player_bb() const {
+PlayerBB ClientGameData::export_player_bb() {
   auto account = this->account();
   auto player = this->player();
 

@@ -35,6 +35,11 @@ public:
   std::shared_ptr<const std::string> get(const std::string& name);
   std::shared_ptr<const std::string> get(const char* name);
 
+  std::shared_ptr<const std::string> get(
+      const std::string& name, std::function<std::string()> generate);
+  std::shared_ptr<const std::string> get(
+      const char* name, std::function<std::string()> generate);
+
 private:
   std::unordered_map<std::string, File> name_to_file;
 };

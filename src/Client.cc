@@ -69,8 +69,6 @@ void Client::set_license(shared_ptr<const License> l) {
 ClientConfig Client::export_config() const {
   ClientConfig cc;
   cc.magic = CLIENT_CONFIG_MAGIC;
-  cc.bb_game_state = this->bb_game_state;
-  cc.bb_player_index = this->bb_player_index;
   cc.flags = this->flags;
   cc.proxy_destination_address = this->proxy_destination_address;
   cc.proxy_destination_port = this->proxy_destination_port;
@@ -81,6 +79,8 @@ ClientConfig Client::export_config() const {
 ClientConfigBB Client::export_config_bb() const {
   ClientConfigBB cc;
   cc.cfg = this->export_config();
+  cc.bb_game_state = this->bb_game_state;
+  cc.bb_player_index = this->bb_player_index;
   cc.unused.clear(0xFF);
   return cc;
 }
@@ -89,9 +89,13 @@ void Client::import_config(const ClientConfig& cc) {
   if (cc.magic != CLIENT_CONFIG_MAGIC) {
     throw invalid_argument("invalid client config");
   }
-  this->bb_game_state = cc.bb_game_state;
-  this->bb_player_index = cc.bb_player_index;
   this->flags = cc.flags;
   this->proxy_destination_address = cc.proxy_destination_address;
   this->proxy_destination_port = cc.proxy_destination_port;
+}
+
+void Client::import_config(const ClientConfigBB& cc) {
+  this->import_config(cc.cfg);
+  this->bb_game_state = cc.bb_game_state;
+  this->bb_player_index = cc.bb_player_index;
 }

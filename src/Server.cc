@@ -106,7 +106,8 @@ void Server::on_listen_accept(struct evconnlistener* listener,
     return;
   }
 
-  this->log(INFO, "Client fd %d connected via fd %d", fd, listen_fd);
+  this->log(INFO, "Client fd %d connected via fd %d (%s)",
+      fd, listen_fd, listening_socket->name.c_str());
 
   struct bufferevent *bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
@@ -227,37 +228,48 @@ Server::Server(
     base(base),
     state(state) { }
 
-void Server::listen(const string& socket_path, GameVersion version,
+void Server::listen(
+    const std::string& name,
+    const string& socket_path,
+    GameVersion version,
     ServerBehavior behavior) {
   int fd = ::listen(socket_path, 0, SOMAXCONN);
-  this->log(INFO, "Listening on Unix socket %s (%s) on fd %d",
-      socket_path.c_str(), name_for_version(version), fd);
-  this->add_socket(fd, version, behavior);
+  this->log(INFO, "Listening on Unix socket %s (%s) on fd %d (name: %s)",
+      socket_path.c_str(), name_for_version(version), fd, name.c_str());
+  this->add_socket(name, fd, version, behavior);
 }
 
-void Server::listen(const string& addr, int port, GameVersion version,
+void Server::listen(
+    const std::string& name,
+    const string& addr,
+    int port,
+    GameVersion version,
     ServerBehavior behavior) {
   int fd = ::listen(addr, port, SOMAXCONN);
   string netloc_str = render_netloc(addr, port);
-  this->log(INFO, "Listening on TCP interface %s (%s) on fd %d",
-      netloc_str.c_str(), name_for_version(version), fd);
-  this->add_socket(fd, version, behavior);
+  this->log(INFO, "Listening on TCP interface %s (%s) on fd %d (name: %s)",
+      netloc_str.c_str(), name_for_version(version), fd, name.c_str());
+  this->add_socket(name, fd, version, behavior);
 }
 
-void Server::listen(int port, GameVersion version, ServerBehavior behavior) {
-  this->listen("", port, version, behavior);
+void Server::listen(const std::string& name, int port, GameVersion version, ServerBehavior behavior) {
+  this->listen(name, "", port, version, behavior);
 }
 
-Server::ListeningSocket::ListeningSocket(Server* s, int fd,
-    GameVersion version, ServerBehavior behavior) :
-    fd(fd), version(version), behavior(behavior), listener(
+Server::ListeningSocket::ListeningSocket(Server* s, const std::string& name,
+    int fd, GameVersion version, ServerBehavior behavior) :
+    name(name), fd(fd), version(version), behavior(behavior), listener(
         evconnlistener_new(s->base.get(), Server::dispatch_on_listen_accept, s,
           LEV_OPT_REUSEABLE, 0, this->fd), evconnlistener_free) {
   evconnlistener_set_error_cb(this->listener.get(),
       Server::dispatch_on_listen_error);
 }
 
-void Server::add_socket(int fd, GameVersion version, ServerBehavior behavior) {
+void Server::add_socket(
+    const std::string& name,
+    int fd,
+    GameVersion version,
+    ServerBehavior behavior) {
   this->listening_sockets.emplace(piecewise_construct, forward_as_tuple(fd),
-      forward_as_tuple(this, fd, version, behavior));
+      forward_as_tuple(this, name, fd, version, behavior));
 }

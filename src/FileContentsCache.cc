@@ -12,7 +12,15 @@ FileContentsCache::File::File(const string& name, shared_ptr<const string> conte
     uint64_t load_time) : name(name), contents(contents), load_time(load_time) { }
 
 shared_ptr<const string> FileContentsCache::get(const std::string& name) {
+  return this->get(name, [name]() -> string { return load_file(name); });
+}
 
+shared_ptr<const string> FileContentsCache::get(const char* name) {
+  return this->get(string(name));
+}
+
+shared_ptr<const string> FileContentsCache::get(const std::string& name,
+    std::function<std::string()> generate) {
   uint64_t t = now();
   try {
     auto& entry = this->name_to_file.at(name);
@@ -21,7 +29,7 @@ shared_ptr<const string> FileContentsCache::get(const std::string& name) {
     }
   } catch (const out_of_range& e) { }
 
-  shared_ptr<const string> contents(new string(load_file(name)));
+  shared_ptr<const string> contents(new string(generate()));
   this->name_to_file.erase(name);
   this->name_to_file.emplace(piecewise_construct, forward_as_tuple(name),
       forward_as_tuple(name, contents, t));
@@ -29,6 +37,7 @@ shared_ptr<const string> FileContentsCache::get(const std::string& name) {
   return contents;
 }
 
-shared_ptr<const string> FileContentsCache::get(const char* name) {
-  return this->get(string(name));
+shared_ptr<const string> FileContentsCache::get(const char* name,
+    std::function<std::string()> generate) {
+  return this->get(string(name), generate);
 }

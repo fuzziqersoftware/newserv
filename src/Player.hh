@@ -425,7 +425,9 @@ public:
   void import_player(const PSOPlayerDataPC& pd);
   void import_player(const PSOPlayerDataGC& pd);
   void import_player(const PSOPlayerDataBB& pd);
-  PlayerBB export_player_bb() const;
+  // Note: this function is not const because it can cause player and account
+  // data to be loaded
+  PlayerBB export_player_bb();
 };
 
 

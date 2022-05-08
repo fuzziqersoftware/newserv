@@ -28,23 +28,6 @@ extern FileContentsCache file_cache;
 
 
 
-enum ClientStateBB {
-  // Initial connection; server will redirect client to another port
-  INITIAL_LOGIN = 0x00,
-  // Second connection; server will send client game data and account data
-  DOWNLOAD_DATA = 0x01,
-  // Third connection; client will show the choose character menu
-  CHOOSE_PLAYER = 0x02,
-  // Fourth connection; used for saving characters only. If you do not create a
-  // character, the server sets this state during the third connection so this
-  // connection is effectively skipped.
-  SAVE_PLAYER = 0x03,
-  // Last connection; redirects client to login server
-  SHIP_SELECT = 0x04,
-};
-
-
-
 vector<MenuItem> quest_categories_menu({
   MenuItem(static_cast<uint32_t>(QuestCategory::RETRIEVAL), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
   MenuItem(static_cast<uint32_t>(QuestCategory::EXTERMINATION), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
@@ -103,9 +86,9 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
       }
       break;
 
-    case ServerBehavior::LOBBY_SERVER:
     case ServerBehavior::DATA_SERVER_BB:
     case ServerBehavior::PATCH_SERVER:
+    case ServerBehavior::LOBBY_SERVER:
       send_server_init(s, c, false);
       break;
 
@@ -116,8 +99,11 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
 }
 
 void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  if (c->server_behavior == ServerBehavior::LOGIN_SERVER) {
-    // on the login server, send the ep3 updates and the main menu or welcome
+  // On the BB data server, this function is called only on the last connection
+  // (when we should send ths ship select menu).
+  if ((c->server_behavior == ServerBehavior::LOGIN_SERVER) ||
+      (c->server_behavior == ServerBehavior::DATA_SERVER_BB)) {
+    // On the login server, send the ep3 updates and the main menu or welcome
     // message
     if (c->flags & Client::Flag::EPISODE_3) {
       send_ep3_card_list_update(c);
@@ -285,7 +271,7 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       // If we can't import the config, assume that the client was not connected
       // to newserv before, so we should show the welcome message.
       c->flags |= Client::Flag::AT_WELCOME_MESSAGE;
-      c->bb_game_state = 0;
+      c->bb_game_state = ClientStateBB::INITIAL_LOGIN;
       c->bb_player_index = 0;
     }
 
@@ -342,10 +328,12 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   try {
-    c->import_config(cmd.client_config.cfg.cfg);
-    c->bb_game_state++;
+    c->import_config(cmd.client_config.cfg);
+    if (c->bb_game_state < ClientStateBB::IN_GAME) {
+      c->bb_game_state++;
+    }
   } catch (const invalid_argument&) {
-    c->bb_game_state = 0;
+    c->bb_game_state = ClientStateBB::INITIAL_LOGIN;
     c->bb_player_index = 0;
   }
 
@@ -369,9 +357,11 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
       process_login_complete(s, c);
       break;
 
+    case ClientStateBB::IN_GAME:
+      break;
+
     default:
-      send_reconnect(c, s->connect_address_for_client(c),
-          s->name_to_port_config.at("bb-login")->port);
+      throw runtime_error("invalid bb game state");
   }
 }
 
@@ -1213,14 +1203,15 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
     ClientGameData temp_gd;
     temp_gd.serial_number = c->license->serial_number;
     temp_gd.bb_username = c->license->username;
-    temp_gd.bb_player_index = c->bb_player_index;
+    temp_gd.bb_player_index = cmd.player_index;
 
     try {
       auto preview = temp_gd.player()->disp.to_preview();
       send_player_preview_bb(c, cmd.player_index, &preview);
 
-    } catch (const exception&) {
+    } catch (const exception& e) {
       // Player doesn't exist
+      log(INFO, "[BB debug] No player in slot: %s", e.what());
       send_player_preview_bb(c, cmd.player_index, nullptr);
     }
   }
@@ -1228,11 +1219,11 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
 
 void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) {
-  check_size_v(data.size(), 0);
-
   if (command == 0x01E8) {
+    check_size_v(data.size(), 8);
     send_accept_client_checksum_bb(c);
   } else if (command == 0x03E8) {
+    check_size_v(data.size(), 0);
     send_guild_card_header_bb(c);
   } else {
     throw invalid_argument("unimplemented command");
@@ -1241,18 +1232,20 @@ void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 void process_guild_card_data_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_GuildCardDataRequest_BB_DC>(data);
+  const auto& cmd = check_size_t<C_GuildCardDataRequest_BB_03DC>(data);
   if (cmd.cont) {
     send_guild_card_chunk_bb(c, cmd.chunk_index);
   }
 }
 
 void process_stream_file_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string& data) {
+    uint16_t command, uint32_t flag, const string& data) {
   check_size_v(data.size(), 0);
 
   if (command == 0x04EB) {
-    send_stream_file_bb(c);
+    send_stream_file_index_bb(c);
+  } else if (command == 0x03EB) {
+    send_stream_file_chunk_bb(c, flag);
   } else {
     throw invalid_argument("unimplemented command");
   }
@@ -1260,14 +1253,25 @@ void process_stream_file_request_bb(shared_ptr<ServerState>, shared_ptr<Client> 
 
 void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_CreateCharacter_BB_E5>(data);
+  const auto& cmd = check_size_t<SC_PlayerPreview_CreateCharacter_BB_E5>(data);
 
   if (!c->license) {
     send_message_box(c, u"$C6You are not logged in.");
     return;
   }
-  if (!c->game_data.player()->disp.name.empty()) {
-    send_message_box(c, u"$C6You have already loaded a character.");
+
+  // Hack: We use the security data to indicate to the server which phase the
+  // client is in (download data, character select, lobby, etc.). This presents
+  // a problem: the client expects to get an E4 (approve player choice) command
+  // immediately after the E5 (create character) command, but the client also
+  // will disconnect immediately after it receives that command. If we send an
+  // E6 before the E5 to update the security data (setting the correct next
+  // state), then the client sends ANOTHER E5, but this time it's blank! So, to
+  // be able to both create characters correctly and set security data
+  // correctly, we need to process only the first E5, and ignore the second. We
+  // do this by only creating a player if the current connection has no loaded
+  // player data.
+  if (c->game_data.player(false).get()) {
     return;
   }
 
@@ -1470,6 +1474,8 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
       {1, 1, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 1, 1, 3,
        3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
 
+  // A player's actual level is their displayed level - 1, so the minimums for
+  // Episode 1 (for example) are actually 1, 20, 40, 80.
   static const uint32_t default_minimum_levels[3][4] = {
       {0, 19, 39, 79}, // episode 1
       {0, 29, 49, 89}, // episode 2
@@ -1537,40 +1543,31 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     const auto* bp_subtable = s->battle_params->get_subtable(game->mode == 3,
         game->episode - 1, game->difficulty);
 
-    if (game->mode == 3) {
-      if (episode > 0 && episode < 4) {
-        variation_maxes = variation_maxes_solo[episode - 1];
-      }
-      for (size_t x = 0; x < 0x10; x++) {
-        for (const char* type_char = "sm"; *type_char; type_char++) {
-          try {
-            auto filename = string_printf(
-                "system/blueburst/map/%c%hhu%zu%" PRIu32 "%" PRIu32 ".dat",
-                *type_char, game->episode, x,
-                game->variations.data()[x * 2].load(),
-                game->variations.data()[(x * 2) + 1].load());
-            game->enemies = load_map(filename.c_str(), game->episode,
-                game->difficulty, bp_subtable, false);
-            break;
-          } catch (const exception& e) { }
-        }
-        if (game->enemies.empty()) {
-          throw runtime_error("failed to load any map data");
-        }
-      }
-    } else {
-      if (episode > 0 && episode < 4) {
-        variation_maxes = variation_maxes_online[episode - 1];
-      }
-      for (size_t x = 0; x < 0x10; x++) {
+    const char* type_chars = (game->mode == 3) ? "sm" : "m";
+    if (episode > 0 && episode < 4) {
+      variation_maxes = (game->mode == 3) ? variation_maxes_solo[episode - 1] : variation_maxes_online[episode - 1];
+    }
+
+    for (size_t x = 0; x < 0x10; x++) {
+      for (const char* type = type_chars; *type; type++) {
         auto filename = string_printf(
-            "system/blueburst/map/m%hhu%zu%" PRIu32 "%" PRIu32 ".dat",
-            game->episode, x,
+            "system/blueburst/map/%c%hhX%zX%" PRIX32 "%" PRIX32 ".dat",
+            *type, game->episode, x,
             game->variations.data()[x * 2].load(),
             game->variations.data()[(x * 2) + 1].load());
-        game->enemies = load_map(filename.c_str(), game->episode,
-            game->difficulty, bp_subtable, false);
+        try {
+          game->enemies = load_map(filename.c_str(), game->episode,
+              game->difficulty, bp_subtable, false);
+          log(INFO, "Loaded map %s", filename.c_str());
+          break;
+        } catch (const exception& e) {
+          log(WARNING, "Failed to load map %s: %s", filename.c_str(), e.what());
+        }
       }
+    }
+
+    if (game->enemies.empty()) {
+      throw runtime_error("failed to load any map data");
     }
 
   } else {
@@ -1686,6 +1683,8 @@ void process_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
 
   if (command == 0x01EA) {
     send_lobby_message_box(c, u"$C6Teams are not supported.");
+  } else if (command == 0x14EA) {
+    // Do nothing (for now)
   } else {
     throw invalid_argument("unimplemented team command");
   }

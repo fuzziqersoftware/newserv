@@ -21,10 +21,10 @@ public:
       std::shared_ptr<ServerState> state);
   virtual ~Server() = default;
 
-  void listen(const std::string& socket_path, GameVersion version, ServerBehavior initial_state);
-  void listen(const std::string& addr, int port, GameVersion version, ServerBehavior initial_state);
-  void listen(int port, GameVersion version, ServerBehavior initial_state);
-  void add_socket(int fd, GameVersion version, ServerBehavior initial_state);
+  void listen(const std::string& name, const std::string& socket_path, GameVersion version, ServerBehavior initial_state);
+  void listen(const std::string& name, const std::string& addr, int port, GameVersion version, ServerBehavior initial_state);
+  void listen(const std::string& name, int port, GameVersion version, ServerBehavior initial_state);
+  void add_socket(const std::string& name, int fd, GameVersion version, ServerBehavior initial_state);
 
   void connect_client(struct bufferevent* bev, uint32_t address, uint16_t port,
       GameVersion version, ServerBehavior initial_state);
@@ -34,12 +34,17 @@ private:
   std::shared_ptr<struct event_base> base;
 
   struct ListeningSocket {
+    std::string name;
     int fd;
     GameVersion version;
     ServerBehavior behavior;
     std::unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)> listener;
 
-    ListeningSocket(Server* s, int fd, GameVersion version,
+    ListeningSocket(
+        Server* s,
+        const std::string& name,
+        int fd,
+        GameVersion version,
         ServerBehavior behavior);
   };
   std::unordered_map<int, ListeningSocket> listening_sockets;

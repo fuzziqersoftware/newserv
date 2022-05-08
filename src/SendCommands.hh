@@ -62,26 +62,26 @@ inline void send_command(std::shared_ptr<ServerState> s, uint16_t command,
 }
 
 template <typename TargetT, typename StructT>
-static void send_command(std::shared_ptr<TargetT> c, uint16_t command, uint32_t flag,
-    const StructT& data) {
+static void send_command_t(std::shared_ptr<TargetT> c, uint16_t command,
+    uint32_t flag, const StructT& data) {
   send_command(c, command, flag, &data, sizeof(data));
 }
 
 template <typename TargetT>
-static void send_command(std::shared_ptr<TargetT> c, uint16_t command, uint32_t flag,
-    const std::string& data) {
+static void send_command(std::shared_ptr<TargetT> c, uint16_t command,
+    uint32_t flag, const std::string& data) {
   send_command(c, command, flag, data.data(), data.size());
 }
 
 template <typename TargetT, typename StructT>
-void send_command(std::shared_ptr<TargetT> c, uint16_t command, uint32_t flag,
-    const std::vector<StructT>& data) {
+void send_command_vt(std::shared_ptr<TargetT> c, uint16_t command,
+    uint32_t flag, const std::vector<StructT>& data) {
   send_command(c, command, flag, data.data(), data.size() * sizeof(StructT));
 }
 
 template <typename TargetT, typename StructT, typename EntryT>
-void send_command(std::shared_ptr<TargetT> c, uint16_t command, uint32_t flag,
-    const StructT& data, const std::vector<EntryT>& array_data) {
+void send_command_t_vt(std::shared_ptr<TargetT> c, uint16_t command,
+    uint32_t flag, const StructT& data, const std::vector<EntryT>& array_data) {
   std::string all_data(reinterpret_cast<const char*>(&data), sizeof(StructT));
   all_data.append(reinterpret_cast<const char*>(array_data.data()),
       array_data.size() * sizeof(EntryT));
@@ -109,7 +109,8 @@ void send_player_preview_bb(std::shared_ptr<Client> c, uint8_t player_index,
 void send_accept_client_checksum_bb(std::shared_ptr<Client> c);
 void send_guild_card_header_bb(std::shared_ptr<Client> c);
 void send_guild_card_chunk_bb(std::shared_ptr<Client> c, size_t chunk_index);
-void send_stream_file_bb(std::shared_ptr<Client> c);
+void send_stream_file_index_bb(std::shared_ptr<Client> c);
+void send_stream_file_chunk_bb(std::shared_ptr<Client> c, uint32_t chunk_index);
 void send_approve_player_choice_bb(std::shared_ptr<Client> c);
 void send_complete_player_bb(std::shared_ptr<Client> c);
 

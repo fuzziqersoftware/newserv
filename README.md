@@ -4,7 +4,7 @@ newserv is a game server and proxy for Phantasy Star Online (PSO).
 
 This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself; this data was originally created by Sega.
 
-This project is a rewrite of a rewrite of a game server that I wrote many years ago. So far, it works well with PSO GC Episodes 1 & 2, and lobbies (but not games) are implemented on Episode 3. Some basic functionality works on PSO PC, but there are probably still some cases that lead to errors (which will disconnect the client). newserv is based on an older project of mine that supported BB as well, but I no longer have a way to test BB, so the implementation here probably doesn't work for it.
+This project is a rewrite of a rewrite of a game server that I wrote many years ago. So far, it works well with PSO GC Episodes 1 & 2, and lobbies (but not games) are implemented on Episode 3. Some basic functionality works on PSO PC and PSO BB, but there are probably still some cases that lead to errors (which will disconnect the client).
 
 Feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
 
@@ -15,7 +15,7 @@ This project is primarily for my own nostalgia; I offer no guarantees on how or 
 Current known issues / missing features:
 - Test all the communication features (info board, simple mail, card search, etc.)
 - The trade window isn't implemented yet.
-- PSO PC and PSOBB are essentially entirely untested. Only GC is fairly well-tested.
+- PSO PC and PSOBB are not well-tested and likely will disconnect when clients try to use unimplemented features. Only GC is known to be stable and mostly complete.
 - Add all the chat commands that khyller used to have. (Most, but not all, currently exist in newserv.)
 
 ## Usage

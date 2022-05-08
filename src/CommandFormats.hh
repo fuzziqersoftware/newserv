@@ -43,19 +43,36 @@
 // technically part of the PSO protocol. Because it is opaque to the client, we
 // can use the server's native-endian types instead of being explicit as we do
 // for all the other structs in this file.
+enum ClientStateBB : uint8_t {
+  // Initial connection; server will redirect client to another port
+  INITIAL_LOGIN = 0x00,
+  // Second connection; server will send client game data and account data
+  DOWNLOAD_DATA = 0x01,
+  // Third connection; client will show the choose character menu
+  CHOOSE_PLAYER = 0x02,
+  // Fourth connection; used for saving characters only. If you do not create a
+  // character, the server sets this state during the third connection so this
+  // connection is effectively skipped.
+  SAVE_PLAYER = 0x03,
+  // Fifth connection; redirects client to login server
+  SHIP_SELECT = 0x04,
+  // All other connections
+  IN_GAME = 0x05,
+};
+
 struct ClientConfig {
   uint64_t magic;
-  uint8_t bb_game_state;
-  uint8_t bb_player_index;
   uint16_t flags;
   uint32_t proxy_destination_address;
   uint16_t proxy_destination_port;
-  parray<uint8_t, 0x0E> unused;
+  parray<uint8_t, 0x10> unused;
 };
 
 struct ClientConfigBB {
   ClientConfig cfg;
-  parray<uint8_t, 0x08> unused;
+  uint8_t bb_game_state;
+  uint8_t bb_player_index;
+  parray<uint8_t, 0x06> unused;
 };
 
 
@@ -1163,7 +1180,7 @@ struct C_VerifyLicense_GC_DB {
 
 // DC: Guild card data (BB)
 
-struct C_GuildCardDataRequest_BB_DC {
+struct C_GuildCardDataRequest_BB_03DC {
   le_uint32_t unknown;
   le_uint32_t chunk_index;
   le_uint32_t cont;
@@ -1171,7 +1188,7 @@ struct C_GuildCardDataRequest_BB_DC {
 
 struct S_GuildCardHeader_BB_01DC {
   le_uint32_t unknown; // should be 1
-  le_uint32_t filesize; // 0x0000490
+  le_uint32_t filesize; // 0x0000D590
   le_uint32_t checksum;
 };
 
@@ -1210,16 +1227,11 @@ struct S_TournamentEntry_GC_Ep3_E0 {
 // E2 (S->C): Team and key config (BB)
 // See KeyAndTeamConfigBB in Player.hh for format
 
-// E3: Player previews (BB)
+// E3: Player preview request (BB)
 
 struct C_PlayerPreviewRequest_BB_E3 {
   le_uint32_t player_index;
   le_uint32_t unused;
-};
-
-struct S_PlayerPreview_BB_E3 {
-  le_uint32_t player_index;
-  PlayerDispDataBBPreview preview;
 };
 
 // E4: CARD lobby game (Episode 3)
@@ -1253,9 +1265,10 @@ struct S_PlayerPreview_NoPlayer_BB_E4 {
   le_uint32_t error;
 };
 
+// E5 (S->C): Player preview (BB)
 // E5 (C->S): Create character (BB)
 
-struct C_CreateCharacter_BB_E5 {
+struct SC_PlayerPreview_CreateCharacter_BB_E5 {
   le_uint32_t player_index;
   PlayerDispDataBBPreview preview;
 };
@@ -1293,8 +1306,8 @@ struct S_AcceptClientChecksum_BB_02E8 {
 // Command is a list of these; header.flag is the entry count.
 struct S_StreamFileIndexEntry_BB_01EB {
   le_uint32_t size;
-  le_uint32_t checksum;
-  le_uint32_t offset;
+  le_uint32_t checksum; // crc32 of file data
+  le_uint32_t offset; // offset in stream (== sum of all previous files' sizes)
   ptext<char, 0x40> filename;
 };
 

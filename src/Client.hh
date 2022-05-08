@@ -18,15 +18,6 @@ extern const uint64_t CLIENT_CONFIG_MAGIC;
 
 
 
-enum class ServerBehavior {
-  SPLIT_RECONNECT = 0,
-  LOGIN_SERVER,
-  LOBBY_SERVER,
-  DATA_SERVER_BB,
-  PATCH_SERVER,
-  PROXY_SERVER,
-};
-
 struct Client {
   enum Flag {
     // For patch server clients, client is Blue Burst rather than PC
@@ -121,4 +112,5 @@ struct Client {
   ClientConfig export_config() const;
   ClientConfigBB export_config_bb() const;
   void import_config(const ClientConfig& cc);
+  void import_config(const ClientConfigBB& cc);
 };

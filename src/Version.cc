@@ -67,16 +67,53 @@ const char* name_for_version(GameVersion version) {
 GameVersion version_for_name(const char* name) {
   if (!strcasecmp(name, "DC") || !strcasecmp(name, "DreamCast")) {
     return GameVersion::DC;
-  }
-  if (!strcasecmp(name, "PC")) {
+  } else if (!strcasecmp(name, "PC")) {
     return GameVersion::PC;
-  }
-  if (!strcasecmp(name, "GC") || !strcasecmp(name, "GameCube")) {
+  } else if (!strcasecmp(name, "GC") || !strcasecmp(name, "GameCube")) {
     return GameVersion::GC;
-  }
-  if (!strcasecmp(name, "BB") || !strcasecmp(name, "BlueBurst") ||
+  } else if (!strcasecmp(name, "BB") || !strcasecmp(name, "BlueBurst") ||
       !strcasecmp(name, "Blue Burst")) {
     return GameVersion::BB;
+  } else if (!strcasecmp(name, "Patch")) {
+    return GameVersion::PATCH;
+  } else {
+    throw invalid_argument("incorrect version name");
   }
-  throw invalid_argument("incorrect version name");
+}
+
+const char* name_for_server_behavior(ServerBehavior behavior) {
+  switch (behavior) {
+    case ServerBehavior::SPLIT_RECONNECT:
+      return "split_reconnect";
+    case ServerBehavior::LOGIN_SERVER:
+      return "login_server";
+    case ServerBehavior::LOBBY_SERVER:
+      return "lobby_server";
+    case ServerBehavior::DATA_SERVER_BB:
+      return "data_server_bb";
+    case ServerBehavior::PATCH_SERVER:
+      return "patch_server";
+    case ServerBehavior::PROXY_SERVER:
+      return "proxy_server";
+    default:
+      throw logic_error("invalid server behavior");
+  }
+}
+
+ServerBehavior server_behavior_for_name(const char* name) {
+  if (!strcasecmp(name, "split_reconnect")) {
+    return ServerBehavior::SPLIT_RECONNECT;
+  } else if (!strcasecmp(name, "login_server") || !strcasecmp(name, "login")) {
+    return ServerBehavior::LOGIN_SERVER;
+  } else if (!strcasecmp(name, "lobby_server") || !strcasecmp(name, "lobby")) {
+    return ServerBehavior::LOBBY_SERVER;
+  } else if (!strcasecmp(name, "data_server_bb") || !strcasecmp(name, "data_server") || !strcasecmp(name, "data")) {
+    return ServerBehavior::DATA_SERVER_BB;
+  } else if (!strcasecmp(name, "patch_server") || !strcasecmp(name, "patch")) {
+    return ServerBehavior::PATCH_SERVER;
+  } else if (!strcasecmp(name, "proxy_server") || !strcasecmp(name, "proxy")) {
+    return ServerBehavior::PROXY_SERVER;
+  } else {
+    throw invalid_argument("incorrect server behavior name");
+  }
 }

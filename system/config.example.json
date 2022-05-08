@@ -15,6 +15,49 @@
   // out or set it to zero.
   "DNSServerPort": 53,
 
+  // Ports to listen for game connections on.
+  "PortConfiguration": {
+    // name: [port, version, behavior]
+
+    // Various versions of PSO hardcode these ports in the clients. Don't change
+    // these unless you don't want to support certain versions of PSO.
+    "gc-jp10":   [9000,  "gc",    "login_server"],
+    "gc-jp11":   [9001,  "gc",    "login_server"],
+    "gc-jp3":    [9003,  "gc",    "login_server"],
+    "gc-us10":   [9100,  "pc",    "split_reconnect"],
+    "gc-us3":    [9103,  "gc",    "login_server"],
+    "gc-eu10":   [9200,  "gc",    "login_server"],
+    "gc-eu11":   [9201,  "gc",    "login_server"],
+    "gc-eu3":    [9203,  "gc",    "login_server"],
+    "pc-login":  [9300,  "pc",    "login_server"],
+    "pc-patch":  [10000, "patch", "patch_server"],
+    "bb-patch":  [11000, "patch", "patch_server"],
+    "bb-init":   [12000, "bb",    "data_server_bb"],
+
+    // Schthack PSOBB uses these ports.
+    // "bb-patch2": [10500, "patch", "patch_server"],
+    // "bb-init2":  [13000, "bb",    "data_server_bb"],
+
+    // Ephinea PSOBB uses these ports. Note that 13000 is also used by Schthack
+    // PSOBB, but not for the patch server; this means you unfortunately can't
+    // support both Schthack and Ephinea PSOBB clients at the same time.
+    // "bb-patch3": [13000, "patch", "patch_server"],
+    // "bb-init3":  [14000, "bb",    "data_server_bb"],
+
+    // newserv uses these ports, but there is no external reason that these
+    // numbers were chosen. You can change the port numbers here without any
+    // issues. Note that the bb-data1 and bb-data2 ports must be sequential;
+    // that is, the bb-data2 port must be the bb-data1 port + 1.
+    "pc-lobby":  [9420,  "pc",    "lobby_server"],
+    "gc-lobby":  [9421,  "gc",    "lobby_server"],
+    "bb-lobby":  [9422,  "bb",    "lobby_server"],
+    "pc-proxy":  [9520,  "pc",    "proxy_server"],
+    "gc-proxy":  [9521,  "gc",    "proxy_server"],
+    "bb-proxy":  [9522,  "bb",    "proxy_server"],
+    "bb-data1":  [12004, "bb",    "data_server_bb"],
+    "bb-data2":  [12005, "bb",    "data_server_bb"],
+  },
+
   // Where to listen for IP stack clients. This exists to interface with PSO GC
   // clients running in a local Dolphin emulator. To enable local Dolphin
   // clients to connect, set this to ["/tmp/dolphin-tap"] and configure Dolphin

@@ -9,6 +9,7 @@
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
+#include <phosg/Hash.hh>
 
 #include "PSOProtocol.hh"
 #include "CommandFormats.hh"
@@ -186,7 +187,7 @@ void send_server_init_dc_pc_gc(shared_ptr<Client> c,
 
   auto cmd = prepare_server_init_contents_dc_pc_gc(
       initial_connection, server_key, client_key);
-  send_command(c, command, 0x00, cmd);
+  send_command_t(c, command, 0x00, cmd);
 
   switch (c->version) {
     case GameVersion::DC:
@@ -209,7 +210,7 @@ void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   random_data(cmd.server_key.data(), cmd.server_key.bytes());
   random_data(cmd.client_key.data(), cmd.client_key.bytes());
   cmd.after_message = anti_copyright;
-  send_command(c, 0x03, 0x00, cmd);
+  send_command_t(c, 0x03, 0x00, cmd);
 
   static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
   shared_ptr<PSOBBMultiKeyClientEncryption> client_encr(new PSOBBMultiKeyClientEncryption(
@@ -226,7 +227,7 @@ void send_server_init_patch(shared_ptr<Client> c) {
   cmd.copyright = patch_server_copyright;
   cmd.server_key = server_key;
   cmd.client_key = client_key;
-  send_command(c, 0x02, 0x00, cmd);
+  send_command_t(c, 0x02, 0x00, cmd);
 
   c->crypt_out.reset(new PSOPCEncryption(server_key));
   c->crypt_in.reset(new PSOPCEncryption(client_key));
@@ -259,17 +260,17 @@ void send_update_client_config(shared_ptr<Client> c) {
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = c->license->serial_number;
   cmd.cfg = c->export_config();
-  send_command(c, 0x04, 0x00, cmd);
+  send_command_t(c, 0x04, 0x00, cmd);
 }
 
 
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
   S_Reconnect_19 cmd = {address, port, 0};
-  send_command(c, 0x19, 0x00, cmd);
+  send_command_t(c, 0x19, 0x00, cmd);
 }
 
-// sends the command (first used by Schthack) that separates PC and GC users
+// Sends the command (first used by Schthack) that separates PC and GC users
 // that connect on the same port
 void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
     uint16_t pc_port, uint16_t gc_port) {
@@ -281,7 +282,7 @@ void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
   cmd.gc_size = 0x97;
   cmd.gc_address = address;
   cmd.gc_port = gc_port;
-  send_command(c, 0x19, 0x00, cmd);
+  send_command_t(c, 0x19, 0x00, cmd);
 }
 
 
@@ -294,11 +295,11 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
   cmd.team_id = static_cast<uint32_t>(random_object<uint32_t>());
   cmd.cfg = c->export_config_bb();
   cmd.caps = 0x00000102;
-  send_command(c, 0x00E6, 0x00000000, cmd);
+  send_command_t(c, 0x00E6, 0x00000000, cmd);
 }
 
 void send_team_and_key_config_bb(shared_ptr<Client> c) {
-  send_command(c, 0x00E2, 0x00000000, c->game_data.account()->key_config);
+  send_command_t(c, 0x00E2, 0x00000000, c->game_data.account()->key_config);
 }
 
 void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
@@ -307,24 +308,24 @@ void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
   if (!preview) {
     // no player exists
     S_PlayerPreview_NoPlayer_BB_E4 cmd = {player_index, 0x00000002};
-    send_command(c, 0x00E4, 0x00000000, cmd);
+    send_command_t(c, 0x00E4, 0x00000000, cmd);
 
   } else {
-    S_PlayerPreview_BB_E3 cmd = {player_index, *preview};
-    send_command(c, 0x00E3, 0x00000000, cmd);
+    SC_PlayerPreview_CreateCharacter_BB_E5 cmd = {player_index, *preview};
+    send_command_t(c, 0x00E5, 0x00000000, cmd);
   }
 }
 
 void send_accept_client_checksum_bb(shared_ptr<Client> c) {
   S_AcceptClientChecksum_BB_02E8 cmd = {1, 0};
-  send_command(c, 0x02E8, 0x00000000, cmd);
+  send_command_t(c, 0x02E8, 0x00000000, cmd);
 }
 
 void send_guild_card_header_bb(shared_ptr<Client> c) {
-  uint32_t checksum = compute_guild_card_checksum(
+  uint32_t checksum = crc32(
       &c->game_data.account()->guild_cards, sizeof(GuildCardFileBB));
-  S_GuildCardHeader_BB_01DC cmd = {1, 0x00000490, checksum};
-  send_command(c, 0x01DC, 0x00000000, cmd);
+  S_GuildCardHeader_BB_01DC cmd = {1, sizeof(GuildCardFileBB), checksum};
+  send_command_t(c, 0x01DC, 0x00000000, cmd);
 }
 
 void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
@@ -346,63 +347,78 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
   send_command(c, 0x02DC, 0x00000000, w.str());
 }
 
-void send_stream_file_bb(shared_ptr<Client> c) {
-  auto index_data = file_cache.get("system/blueburst/streamfile.ind");
-  if (index_data->size() % sizeof(S_StreamFileIndexEntry_BB_01EB)) {
-    throw invalid_argument("stream file index not a multiple of entry size");
+static const vector<string> stream_file_entries = {
+  "ItemMagEdit.prs",
+  "ItemPMT.prs",
+  "BattleParamEntry.dat",
+  "BattleParamEntry_on.dat",
+  "BattleParamEntry_lab.dat",
+  "BattleParamEntry_lab_on.dat",
+  "BattleParamEntry_ep4.dat",
+  "BattleParamEntry_ep4_on.dat",
+  "PlyLevelTbl.prs",
+};
+
+void send_stream_file_index_bb(shared_ptr<Client> c) {
+
+  struct S_StreamFileIndexEntry_BB_01EB {
+    le_uint32_t size;
+    le_uint32_t checksum; // crc32 of file data
+    le_uint32_t offset; // offset in stream (== sum of all previous files' sizes)
+    ptext<char, 0x40> filename;
+  };
+
+  vector<S_StreamFileIndexEntry_BB_01EB> entries;
+  size_t offset = 0;
+  for (const string& filename : stream_file_entries) {
+    auto file_data = file_cache.get("system/blueburst/" + filename);
+    auto& e = entries.emplace_back();
+    e.size = file_data->size();
+    // TODO: memoize the checksum somewhere; computing it can be slow
+    e.checksum = crc32(file_data->data(), e.size);
+    e.offset = offset;
+    e.filename = filename;
+    offset += e.size;
   }
+  send_command_vt(c, 0x01EB, entries.size(), entries);
+}
 
-  size_t entry_count = index_data->size() / sizeof(S_StreamFileIndexEntry_BB_01EB);
-  send_command(c, 0x01EB, entry_count, index_data);
+void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
+  auto contents = file_cache.get("<BB stream file>", +[]() -> string {
+    size_t bytes = 0;
+    for (const auto& name : stream_file_entries) {
+      bytes += file_cache.get("system/blueburst/" + name)->size();
+    }
 
-  auto* entries = reinterpret_cast<const S_StreamFileIndexEntry_BB_01EB*>(index_data->data());
+    string ret;
+    ret.reserve(bytes);
+    for (const auto& name : stream_file_entries) {
+      ret += *file_cache.get("system/blueburst/" + name);
+    }
+    return ret;
+  });
 
   S_StreamFileChunk_BB_02EB chunk_cmd;
-  chunk_cmd.chunk_index = 0;
-
-  uint32_t buffer_offset = 0;
-  for (size_t x = 0; x < entry_count; x++) {
-    string base_filename = entries[x].filename;
-    auto filename = "system/blueburst/" + base_filename;
-    auto file_data = file_cache.get(filename);
-
-    size_t file_data_remaining = file_data->size();
-    if (file_data_remaining != entries[x].size) {
-      throw invalid_argument(filename + " does not match size in stream file index");
-    }
-    while (file_data_remaining) {
-      size_t read_size = 0x6800 - buffer_offset;
-      if (read_size > file_data_remaining) {
-        read_size = file_data_remaining;
-      }
-      memcpy(&chunk_cmd.data[buffer_offset],
-          file_data->data() + file_data->size() - file_data_remaining, read_size);
-      // TODO: We probably should clear the rest of the buffer on the last chunk
-      buffer_offset += read_size;
-      file_data_remaining -= read_size;
-
-      if (buffer_offset == 0x6800) {
-        // Note: the client sends 0x03EB in response to these, but we'll just
-        // ignore them because we don't need any of the contents
-        send_command(c, 0x02EB, 0x00000000, chunk_cmd);
-        buffer_offset = 0;
-        chunk_cmd.chunk_index++;
-      }
-    }
-
-    if (buffer_offset > 0) {
-      send_command(c, 0x02EB, 0x00000000, &chunk_cmd, (buffer_offset + 15) & ~3);
-    }
+  chunk_cmd.chunk_index = chunk_index;
+  size_t offset = sizeof(chunk_cmd.data) * chunk_index;
+  if (offset > contents->size()) {
+    throw runtime_error("client requested chunk beyond end of stream file");
   }
+  size_t bytes = min<size_t>(contents->size() - offset, sizeof(chunk_cmd.data));
+  memcpy(chunk_cmd.data, contents->data() + offset, bytes);
+
+  size_t cmd_size = offsetof(S_StreamFileChunk_BB_02EB, data) + bytes;
+  cmd_size = (cmd_size + 3) & ~3;
+  send_command(c, 0x02EB, 0x00000000, &chunk_cmd, cmd_size);
 }
 
 void send_approve_player_choice_bb(shared_ptr<Client> c) {
   S_ApprovePlayerChoice_BB_00E4 cmd = {c->bb_player_index, 1};
-  send_command(c, 0x00E4, 0x00000000, cmd);
+  send_command_t(c, 0x00E4, 0x00000000, cmd);
 }
 
 void send_complete_player_bb(shared_ptr<Client> c) {
-  send_command(c, 0x00E7, 0x00000000, c->game_data.export_player_bb());
+  send_command_t(c, 0x00E7, 0x00000000, c->game_data.export_player_bb());
 }
 
 
@@ -412,7 +428,7 @@ void send_complete_player_bb(shared_ptr<Client> c) {
 
 void send_check_directory_patch(shared_ptr<Client> c, const string& dir) {
   S_CheckDirectory_Patch_09 cmd = {dir};
-  send_command(c, 0x09, 0x00, cmd);
+  send_command_t(c, 0x09, 0x00, cmd);
 }
 
 
@@ -508,7 +524,7 @@ void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_guild_card_num
   cmd.from_name = from_name;
   cmd.to_guild_card_number = c->license->serial_number;
   cmd.text = text;
-  send_command(c, 0x81, 0x00, cmd);
+  send_command_t(c, 0x81, 0x00, cmd);
 }
 
 void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_guild_card_number,
@@ -537,7 +553,7 @@ void send_info_board_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     e.message = c->game_data.player()->info_board;
     add_color_inplace(e.message);
   }
-  send_command(c, 0xD8, entries.size(), entries);
+  send_command_vt(c, 0xD8, entries.size(), entries);
 }
 
 void send_info_board(shared_ptr<Client> c, shared_ptr<Lobby> l) {
@@ -589,7 +605,7 @@ void send_card_search_result_t(
   cmd.lobby_id = result->lobby_id;
   cmd.name = result->game_data.player()->disp.name;
 
-  send_command(c, 0x41, 0x00, cmd);
+  send_command_t(c, 0x41, 0x00, cmd);
 }
 
 void send_card_search_result(
@@ -628,7 +644,7 @@ void send_guild_card_pc_gc(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.reserved2 = 1;
   cmd.section_id = source->game_data.player()->disp.section_id;
   cmd.char_class = source->game_data.player()->disp.char_class;
-  send_command(c, 0x62, c->lobby_client_id, cmd);
+  send_command_t(c, 0x62, c->lobby_client_id, cmd);
 }
 
 void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
@@ -644,7 +660,7 @@ void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.reserved2 = 1;
   cmd.section_id = source->game_data.player()->disp.section_id;
   cmd.char_class = source->game_data.player()->disp.char_class;
-  send_command(c, 0x62, c->lobby_client_id, cmd);
+  send_command_t(c, 0x62, c->lobby_client_id, cmd);
 }
 
 void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
@@ -696,7 +712,7 @@ void send_menu_t(
     e.text = item.name;
   }
 
-  send_command(c, is_info_menu ? 0x1F : 0x07, entries.size() - 1, entries);
+  send_command_vt(c, is_info_menu ? 0x1F : 0x07, entries.size() - 1, entries);
 }
 
 void send_menu(shared_ptr<Client> c, const u16string& menu_name,
@@ -749,7 +765,7 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     e.name = l->name;
   }
 
-  send_command(c, 0x08, entries.size() - 1, entries);
+  send_command_vt(c, 0x08, entries.size() - 1, entries);
 }
 
 void send_game_menu(shared_ptr<Client> c, shared_ptr<ServerState> s) {
@@ -777,7 +793,7 @@ void send_quest_menu_t(
     e.short_desc = quest->short_description;
     add_color_inplace(e.short_desc);
   }
-  send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
+  send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
 
 template <typename EntryT>
@@ -795,7 +811,7 @@ void send_quest_menu_t(
     e.short_desc = item.description;
     add_color_inplace(e.short_desc);
   }
-  send_command(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
+  send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
 
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
@@ -843,7 +859,7 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     e.unused = 0;
   }
 
-  send_command(c, 0x83, entries.size(), entries);
+  send_command_vt(c, 0x83, entries.size(), entries);
 }
 
 
@@ -1020,7 +1036,7 @@ void send_player_join_notification(shared_ptr<Client> c,
 
 void send_player_leave_notification(shared_ptr<Lobby> l, uint8_t leaving_client_id) {
   S_LeaveLobby_66_69 cmd = {leaving_client_id, l->leader_id, 0};
-  send_command(l, l->is_game() ? 0x66 : 0x69, leaving_client_id, cmd);
+  send_command_t(l, l->is_game() ? 0x66 : 0x69, leaving_client_id, cmd);
 }
 
 void send_get_player_info(shared_ptr<Client> c) {
@@ -1045,7 +1061,7 @@ void send_arrow_update(shared_ptr<Lobby> l) {
     e.arrow_color = l->clients[x]->lobby_arrow_color;
   }
 
-  send_command(l, 0x88, entries.size(), entries);
+  send_command_vt(l, 0x88, entries.size(), entries);
 }
 
 // tells the player that the joining player is done joining, and the game can resume
@@ -1086,7 +1102,7 @@ void send_player_stats_change(shared_ptr<Lobby> l, shared_ptr<Client> c,
     }
   }
 
-  send_command(l, 0x60, 0x00, subs);
+  send_command_vt(l, 0x60, 0x00, subs);
 }
 
 void send_warp(shared_ptr<Client> c, uint32_t area) {
@@ -1139,7 +1155,7 @@ void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
   G_DropItem_6x5F cmd = {
       0x5F, 0x0A, 0x0000, area, from_enemy, request_id, x, z, 0, item, 0};
-  send_command(l, 0x60, 0x00, cmd);
+  send_command_t(l, 0x60, 0x00, cmd);
 }
 
 // notifies other players that a stack was split and part of it dropped (a new item was created)
@@ -1149,7 +1165,7 @@ void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
   // GC sends {0, item} (the last two fields in the struct are switched).
   G_DropStackedItem_6x5D cmd = {
       0x5D, 0x09, 0x00, 0x00, area, 0, x, z, item, 0};
-  send_command(l, 0x60, 0x00, cmd);
+  send_command_t(l, 0x60, 0x00, cmd);
 }
 
 // notifies other players that an item was picked up
@@ -1157,7 +1173,7 @@ void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint8_t area) {
   G_PickUpItem_6x59 cmd = {
       0x59, 0x03, c->lobby_client_id, c->lobby_client_id, area, item_id};
-  send_command(l, 0x60, 0x00, cmd);
+  send_command_t(l, 0x60, 0x00, cmd);
 }
 
 // creates an item in a player's inventory (used for withdrawing items from the bank)
@@ -1165,7 +1181,7 @@ void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     const ItemData& item) {
   G_CreateInventoryItem_BB_6xBE cmd = {
       0xBE, 0x07, c->lobby_client_id, item, 0};
-  send_command(l, 0x60, 0x00, cmd);
+  send_command_t(l, 0x60, 0x00, cmd);
 }
 
 // destroys an item
@@ -1173,7 +1189,7 @@ void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint32_t amount) {
   G_ItemSubcommand cmd = {
       0x29, 0x03, c->lobby_client_id, 0x00, item_id, amount};
-  send_command(l, 0x60, 0x00, cmd);
+  send_command_t(l, 0x60, 0x00, cmd);
 }
 
 // sends the player their bank data
@@ -1188,7 +1204,7 @@ void send_bank(shared_ptr<Client> c) {
   size_t size = 8 + sizeof(cmd) + items.size() * sizeof(PlayerBankItem);
   cmd.size = size;
 
-  send_command(c, 0x6C, 0x00, cmd, items);
+  send_command_t_vt(c, 0x6C, 0x00, cmd, items);
 }
 
 // sends the player a shop's contents
@@ -1241,7 +1257,7 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
       stats.dfp,
       stats.ata,
       c->game_data.player()->disp.level};
-  send_command(l, 0x60, 0x00, cmd);
+  send_command_t(l, 0x60, 0x00, cmd);
 }
 
 // gives a player EXP
@@ -1249,7 +1265,7 @@ void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t amount) {
   G_GiveExperience_BB_6xBF cmd = {
       0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, c->lobby_client_id, 0, amount};
-  send_command(l, 0x60, 0x00, cmd);
+  send_command_t(l, 0x60, 0x00, cmd);
 }
 
 
@@ -1272,7 +1288,7 @@ void send_ep3_card_list_update(shared_ptr<Client> c) {
 void send_ep3_rank_update(shared_ptr<Client> c) {
   S_RankUpdate_GC_Ep3_B7 cmd = {
       0, "\0\0\0\0\0\0\0\0\0\0\0", 0x00FFFFFF, 0x00FFFFFF, 0xFFFFFFFF};
-  send_command(c, 0xB7, 0x00, cmd);
+  send_command_t(c, 0xB7, 0x00, cmd);
 }
 
 // sends the map list (used for battle setup) to all players in a game
@@ -1327,7 +1343,7 @@ void send_quest_open_file_t(
   cmd.file_size = file_size;
   cmd.name = "PSO/" + quest_name;
   cmd.filename = filename.c_str();
-  send_command(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
+  send_command_t(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
 }
 
 void send_quest_file_chunk(
@@ -1349,7 +1365,7 @@ void send_quest_file_chunk(
   }
   cmd.data_size = size;
 
-  send_command(c, is_download_quest ? 0xA7 : 0x13, chunk_index, cmd);
+  send_command_t(c, is_download_quest ? 0xA7 : 0x13, chunk_index, cmd);
 }
 
 void send_quest_file(shared_ptr<Client> c, const string& quest_name,

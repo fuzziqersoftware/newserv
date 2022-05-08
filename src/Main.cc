@@ -30,35 +30,19 @@ bool use_terminal_colors = false;
 
 
 
-static const vector<PortConfiguration> default_port_to_behavior({
-  {"gc-jp10",   9000,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-jp11",   9001,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-jp3",    9003,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-us10",   9100,  GameVersion::PC,    ServerBehavior::SPLIT_RECONNECT},
-  {"gc-us3",    9103,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-eu10",   9200,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-eu11",   9201,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"gc-eu3",    9203,  GameVersion::GC,    ServerBehavior::LOGIN_SERVER},
-  {"pc-login",  9300,  GameVersion::PC,    ServerBehavior::LOGIN_SERVER},
-  {"pc-patch",  10000, GameVersion::PATCH, ServerBehavior::PATCH_SERVER},
-  {"bb-patch",  11000, GameVersion::PATCH, ServerBehavior::PATCH_SERVER},
-  {"bb-init",   12000, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
-  {"bb-patch2", 13000, GameVersion::PATCH, ServerBehavior::PATCH_SERVER},
-  {"bb-init2",  14000, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
-
-  // These aren't hardcoded in clients; user should be allowed to override them
-  {"bb-data1",  12004, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
-  {"bb-data2",  12005, GameVersion::BB,    ServerBehavior::DATA_SERVER_BB},
-  {"bb-login",  12008, GameVersion::BB,    ServerBehavior::LOGIN_SERVER},
-  {"pc-lobby",  9420,  GameVersion::PC,    ServerBehavior::LOBBY_SERVER},
-  {"gc-lobby",  9421,  GameVersion::GC,    ServerBehavior::LOBBY_SERVER},
-  {"bb-lobby",  9422,  GameVersion::BB,    ServerBehavior::LOBBY_SERVER},
-  {"pc-proxy",  9520,  GameVersion::PC,    ServerBehavior::PROXY_SERVER},
-  {"gc-proxy",  9521,  GameVersion::GC,    ServerBehavior::PROXY_SERVER},
-  {"bb-proxy",  9522,  GameVersion::BB,    ServerBehavior::PROXY_SERVER},
-});
-
-
+static vector<PortConfiguration> parse_port_configuration(
+    shared_ptr<const JSONObject> json) {
+  vector<PortConfiguration> ret;
+  for (const auto& item_json_it : json->as_dict()) {
+    auto item_list = item_json_it.second->as_list();
+    PortConfiguration& pc = ret.emplace_back();
+    pc.name = item_json_it.first;
+    pc.port = item_list[0]->as_int();
+    pc.version = version_for_name(item_list[1]->as_string().c_str());
+    pc.behavior = server_behavior_for_name(item_list[2]->as_string().c_str());
+  }
+  return ret;
+}
 
 template <typename T>
 vector<T> parse_int_vector(shared_ptr<const JSONObject> o) {
@@ -88,8 +72,7 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     }
   } catch (const out_of_range&) { }
 
-  // TODO: make this configurable
-  s->set_port_configuration(default_port_to_behavior);
+  s->set_port_configuration(parse_port_configuration(d.at("PortConfiguration")));
 
   auto enemy_categories = parse_int_vector<uint32_t>(d.at("CommonItemDropRates-Enemy"));
   auto box_categories = parse_int_vector<uint32_t>(d.at("CommonItemDropRates-Box"));
@@ -297,6 +280,17 @@ void drop_privileges(const string& username) {
 
 
 int main(int, char**) {
+  if (true) {
+    static const string seed("\x33\xF7\x40\xA2\xB4\xFD\x5C\x07\xD8\x94\x09\x9F\x8B\x76\x35\xF9\x97\x76\x8B\x16\x5C\x73\x9F\x2E\xF1\x1F\x1A\xC0\xB9\x53\xFE\x59\xE4\xDD\xC5\xC8\x11\xA0\x78\xD5\x56\x5A\xF7\xC3\x47\xD5\xCA\x67", 0x30);
+    static const string encrypted_data("\x83\x9A\xE7\xE1\xDD\xB2\x41\x38", 0x08);
+    string decrypted_data = encrypted_data;
+    auto private_key = load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/default.nsk");
+    PSOBBEncryption crypt(private_key, seed.data(), seed.size());
+    crypt.decrypt(decrypted_data.data(), decrypted_data.size());
+    fprintf(stderr, "decrypted\n");
+    print_data(stderr, decrypted_data);
+  }
+
   signal(SIGPIPE, SIG_IGN);
 
   if (isatty(fileno(stderr))) {
@@ -344,7 +338,8 @@ int main(int, char**) {
 
   log(INFO, "Opening sockets");
   for (const auto& it : state->name_to_port_config) {
-    if (it.second->behavior == ServerBehavior::PROXY_SERVER) {
+    const auto& pc = it.second;
+    if (pc->behavior == ServerBehavior::PROXY_SERVER) {
       if (!state->proxy_server.get()) {
         log(INFO, "Starting proxy server");
         state->proxy_server.reset(new ProxyServer(base, state));
@@ -355,18 +350,18 @@ int main(int, char**) {
         // no way to ask the client which destination they want, so only one
         // destination is supported, and we have to manually specify the
         // destination netloc here.
-        if (it.second->version == GameVersion::PATCH) {
+        if (pc->version == GameVersion::PATCH) {
           struct sockaddr_storage ss = make_sockaddr_storage(
               state->proxy_destination_patch.first,
               state->proxy_destination_patch.second).first;
-          state->proxy_server->listen(it.second->port, it.second->version, &ss);
-        } if (it.second->version == GameVersion::BB) {
+          state->proxy_server->listen(pc->port, pc->version, &ss);
+        } else if (pc->version == GameVersion::BB) {
           struct sockaddr_storage ss = make_sockaddr_storage(
               state->proxy_destination_bb.first,
               state->proxy_destination_bb.second).first;
-          state->proxy_server->listen(it.second->port, it.second->version, &ss);
+          state->proxy_server->listen(pc->port, pc->version, &ss);
         } else {
-          state->proxy_server->listen(it.second->port, it.second->version);
+          state->proxy_server->listen(pc->port, pc->version);
         }
       }
     } else {
@@ -374,7 +369,10 @@ int main(int, char**) {
         log(INFO, "Starting game server");
         game_server.reset(new Server(base, state));
       }
-      game_server->listen("", it.second->port, it.second->version, it.second->behavior);
+      string name = string_printf("%s (%s, %s) on port %hu",
+          pc->name.c_str(), name_for_version(pc->version),
+          name_for_server_behavior(pc->behavior), pc->port);
+      game_server->listen(name, "", pc->port, pc->version, pc->behavior);
     }
   }
 

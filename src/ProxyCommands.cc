@@ -142,9 +142,7 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
   session.log(INFO, "Existing license in linked session");
 
   // This isn't forwarded to the client, so don't recreate the client's crypts
-  if (session.version == GameVersion::PATCH) {
-    throw logic_error("patch session is indirect");
-  } else if (session.version == GameVersion::PC) {
+  if ((session.version == GameVersion::PATCH) || (session.version == GameVersion::PC)) {
     session.server_input_crypt.reset(new PSOPCEncryption(cmd.server_key));
     session.server_output_crypt.reset(new PSOPCEncryption(cmd.client_key));
   } else if (session.version == GameVersion::GC) {
@@ -154,10 +152,15 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
     throw invalid_argument("unsupported version");
   }
 
-  // Respond with an appropriate login command. We don't let the
-  // client do this because it believes it already did (when it was
-  // in an unlinked session).
-  if (session.version == GameVersion::PC) {
+  // Respond with an appropriate login command. We don't let the client do this
+  // because it believes it already did (when it was in an unlinked session, or
+  // in the patch server case, during the current session due to a hidden
+  // redirect).
+  if (session.version == GameVersion::PATCH) {
+    session.send_to_end(true, 0x02, 0x00);
+    return false;
+
+  } else if (session.version == GameVersion::PC) {
     C_Login_PC_9D cmd;
     if (session.remote_guild_card_number == 0) {
       cmd.player_tag = 0xFFFF0000;
@@ -390,8 +393,8 @@ static bool process_server_gc_E4(shared_ptr<ServerState>,
   return true;
 }
 
-static bool process_server_19(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+static bool process_server_game_19_patch_14(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t command, uint32_t, string& data) {
   // This weird maximum size is here to properly handle the version-split
   // command that some servers (including newserv) use on port 9100
   auto& cmd = check_size_t<S_Reconnect_19>(data, sizeof(S_Reconnect_19), 0xB0);
@@ -404,6 +407,23 @@ static bool process_server_19(shared_ptr<ServerState>,
 
   if (!session.client_bev.get()) {
     session.log(WARNING, "Received reconnect command with no destination present");
+    return false;
+
+  } else if (command == 0x14) {
+    // On the patch server, hide redirects from the client completely. The new
+    // destination server will presumably send a new 02 command to start
+    // encryption; it appears that PSOBB doesn't fail if this happens, and
+    // simply re-initializes its encryption appropriately.
+    session.server_input_crypt.reset();
+    session.server_output_crypt.reset();
+
+    struct sockaddr_in* dest_sin = reinterpret_cast<sockaddr_in*>(
+        &session.next_destination);
+    dest_sin->sin_family = AF_INET;
+    dest_sin->sin_addr.s_addr = cmd.address.load_raw();
+    dest_sin->sin_port = cmd.port;
+    session.connect();
+    return false;
 
   } else {
     // If the client is on a virtual connection (fd < 0), only change
@@ -427,8 +447,8 @@ static bool process_server_19(shared_ptr<ServerState>,
     } else {
       cmd.port = session.local_port;
     }
+    return true;
   }
-  return true;
 }
 
 static bool process_server_gc_1A_D5(shared_ptr<ServerState>,
@@ -806,7 +826,7 @@ auto defh = process_default;
 
 static process_command_t dc_server_handlers[0x100] = {
   /* 00 */ defh, defh, defh, defh, process_server_dc_pc_gc_04, defh, process_server_dc_pc_gc_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, defh, defh, process_server_19, defh, defh, defh, defh, defh, defh,
+  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, defh, defh, process_server_game_19_patch_14, defh, defh, defh, defh, defh, defh,
   /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 40 */ defh, process_server_41<S_GuildCardSearchResult_DC_GC_41>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -824,7 +844,7 @@ static process_command_t dc_server_handlers[0x100] = {
 };
 static process_command_t pc_server_handlers[0x100] = {
   /* 00 */ defh, defh, process_server_pc_gc_patch_02_17, defh, process_server_dc_pc_gc_04, defh, process_server_dc_pc_gc_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, process_server_pc_gc_patch_02_17, defh, process_server_19, defh, defh, defh, defh, defh, defh,
+  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, process_server_pc_gc_patch_02_17, defh, process_server_game_19_patch_14, defh, defh, defh, defh, defh, defh,
   /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 40 */ defh, process_server_41<S_GuildCardSearchResult_PC_41>, defh, defh, process_server_44_A6<S_OpenFile_PC_GC_44_A6>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -842,7 +862,7 @@ static process_command_t pc_server_handlers[0x100] = {
 };
 static process_command_t gc_server_handlers[0x100] = {
   /* 00 */ defh, defh, process_server_pc_gc_patch_02_17, defh, process_server_dc_pc_gc_04, defh, process_server_dc_pc_gc_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, process_server_pc_gc_patch_02_17, defh, process_server_19, process_server_gc_1A_D5, defh, defh, defh, defh, defh,
+  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, process_server_pc_gc_patch_02_17, defh, process_server_game_19_patch_14, process_server_gc_1A_D5, defh, defh, defh, defh, defh,
   /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 40 */ defh, process_server_41<S_GuildCardSearchResult_DC_GC_41>, defh, defh, process_server_44_A6<S_OpenFile_PC_GC_44_A6>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -860,7 +880,7 @@ static process_command_t gc_server_handlers[0x100] = {
 };
 static process_command_t bb_server_handlers[0x100] = {
   /* 00 */ defh, defh, defh, process_server_bb_03, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, defh, defh, process_server_19, defh, defh, defh, defh, defh, defh,
+  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, defh, defh, process_server_game_19_patch_14, defh, defh, defh, defh, defh, defh,
   /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 40 */ defh, process_server_41<S_GuildCardSearchResult_BB_41>, defh, defh, process_server_44_A6<S_OpenFile_BB_44_A6>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -878,7 +898,7 @@ static process_command_t bb_server_handlers[0x100] = {
 };
 static process_command_t patch_server_handlers[0x100] = {
   /* 00 */ defh, defh, process_server_pc_gc_patch_02_17, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 10 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 10 */ defh, defh, defh, defh, process_server_game_19_patch_14, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 40 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
