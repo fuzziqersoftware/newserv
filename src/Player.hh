@@ -59,6 +59,8 @@ struct PlayerInventory {
   uint8_t language;
   PlayerInventoryItem items[30];
 
+  PlayerInventory();
+
   size_t find_item(uint32_t item_id);
 } __attribute__((packed));
 

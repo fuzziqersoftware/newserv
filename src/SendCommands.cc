@@ -890,9 +890,6 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
             l->clients[x]->game_data.player()->disp);
       }
       player_count++;
-    } else {
-      // inventory doesn't have a default contructor, so clear it manually
-      memset(&cmd.players_ep3[x].inventory, 0, sizeof(cmd.players_ep3[x].inventory));
     }
   }
 

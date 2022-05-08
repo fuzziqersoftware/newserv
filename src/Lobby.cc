@@ -20,7 +20,7 @@ Lobby::Lobby() : lobby_id(0), min_level(0), max_level(0xFFFFFFFF),
   for (size_t x = 0; x < 12; x++) {
     this->next_item_id[x] = 0;
   }
-  memset(&this->next_drop_item, 0, sizeof(this->next_drop_item));
+  this->next_drop_item = PlayerInventoryItem();
 }
 
 void Lobby::reassign_leader_on_client_departure(size_t leaving_client_index) {

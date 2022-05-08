@@ -165,7 +165,7 @@ static void command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
       c->infinite_tp = false;
       c->switch_assist = false;
     }
-    memset(&l->next_drop_item, 0, sizeof(l->next_drop_item));
+    l->next_drop_item = PlayerInventoryItem();
   }
 }
 
@@ -661,7 +661,6 @@ static void command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 
   ItemData item_data;
-  memset(&item_data, 0, sizeof(item_data));
   if (data.size() <= 12) {
     memcpy(&l->next_drop_item.data.data1, data.data(), data.size());
   } else {

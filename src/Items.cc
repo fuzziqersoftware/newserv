@@ -316,7 +316,6 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
   }
 
   ItemData item;
-  memset(&item, 0, sizeof(item));
 
   // picks a random non-rare item type, then gives it appropriate random stats
   // modify some of the constants in this section to change the system's
@@ -476,7 +475,6 @@ ItemData CommonItemCreator::create_shop_item(uint8_t difficulty,
   static const uint8_t max_anti_level[4] =  { 2,  4,  6,  7};
 
   ItemData item;
-  memset(&item, 0, sizeof(item));
 
   item.data1[0] = item_type;
   while (item.data1[0] == 2) {

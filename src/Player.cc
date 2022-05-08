@@ -541,6 +541,16 @@ PlayerBankItem::PlayerBankItem(const PlayerInventoryItem& src)
     amount(combine_item_to_max.count(this->data.primary_identifier()) ? this->data.data1[5] : 1),
     show_flags(1) { }
 
+
+
+PlayerInventory::PlayerInventory()
+  : num_items(0),
+    hp_materials_used(0),
+    tp_materials_used(0),
+    language(0) { }
+
+
+
 // TODO: Eliminate duplication between this function and the parallel function
 // in PlayerBank
 void SavedPlayerDataBB::add_item(const PlayerInventoryItem& item) {
@@ -638,8 +648,6 @@ PlayerInventoryItem SavedPlayerDataBB::remove_item(
     if (amount > this->disp.meseta) {
       throw out_of_range("player does not have enough meseta");
     }
-
-    memset(&ret, 0, sizeof(ret));
     ret.data.data1[0] = 0x04;
     ret.data.data2d = amount;
     this->disp.meseta -= amount;
@@ -667,8 +675,10 @@ PlayerInventoryItem SavedPlayerDataBB::remove_item(
   // and return the deleted item.
   ret = inventory_item;
   this->inventory.num_items--;
-  memcpy(&this->inventory.items[index], &this->inventory.items[index + 1],
-      sizeof(PlayerInventoryItem) * (this->inventory.num_items - index));
+  for (size_t x = index; x < this->inventory.num_items - 1; x++) {
+    this->inventory.items[x] = this->inventory.items[x + 1];
+  }
+  this->inventory.items[this->inventory.num_items - 1] = PlayerInventoryItem();
   return ret;
 }
 
@@ -679,7 +689,6 @@ PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
     if (amount > this->meseta) {
       throw out_of_range("player does not have enough meseta");
     }
-    memset(&ret, 0, sizeof(ret));
     ret.data.data1[0] = 0x04;
     ret.data.data2d = amount;
     this->meseta -= amount;
@@ -701,8 +710,10 @@ PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
 
   ret = bank_item;
   this->num_items--;
-  memcpy(&this->items[index], &this->items[index + 1],
-      sizeof(PlayerBankItem) * (this->num_items - index));
+  for (size_t x = index; x < this->num_items - 1; x++) {
+    this->items[x] = this->items[x + 1];
+  }
+  this->items[this->num_items - 1] = PlayerBankItem();
   return ret;
 }
 

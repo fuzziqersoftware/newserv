@@ -586,7 +586,6 @@ static void process_subcommand_sort_inventory_bb(shared_ptr<ServerState>,
     const auto* cmd = check_size_sc<G_SortInventory_6xC4>(data);
 
     PlayerInventory sorted;
-    memset(&sorted, 0, sizeof(PlayerInventory));
 
     for (size_t x = 0; x < 30; x++) {
       if (cmd->item_ids[x] == 0xFFFFFFFF) {
@@ -619,7 +618,6 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s
     }
 
     PlayerInventoryItem item;
-    memset(&item, 0, sizeof(PlayerInventoryItem));
 
     // TODO: Deduplicate this code with the box drop item request handler
     bool is_rare = false;
@@ -634,7 +632,10 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s
       }
 
       if (is_rare) {
-        memcpy(&item.data.data1d, l->rare_item_set->rares[cmd->enemy_id].item_code, 3);
+        const auto& code = l->rare_item_set->rares[cmd->enemy_id].item_code;
+        item.data.data1[0] = code[0];
+        item.data.data1[1] = code[1];
+        item.data.data1[2] = code[2];
         //RandPercentages();
         if (item.data.data1d[0] == 0) {
           item.data.data1[4] |= 0x80; // make it unidentified if it's a weapon
@@ -671,7 +672,6 @@ static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
     }
 
     PlayerInventoryItem item;
-    memset(&item, 0, sizeof(PlayerInventoryItem));
 
     bool is_rare = false;
     if (l->next_drop_item.data.data1d[0]) {
@@ -692,7 +692,10 @@ static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
       }
 
       if (is_rare) {
-        memcpy(item.data.data1, l->rare_item_set->box_rares[index].item_code, 3);
+        const auto& code = l->rare_item_set->box_rares[index].item_code;
+        item.data.data1[0] = code[0];
+        item.data.data1[1] = code[1];
+        item.data.data1[2] = code[2];
         //RandPercentages();
         if (item.data.data1d[0] == 0) {
           item.data.data1[4] |= 0x80; // make it unidentified if it's a weapon
