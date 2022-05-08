@@ -93,8 +93,8 @@ void send_command(
     if (use_terminal_colors) {
       print_color_escape(stderr, TerminalFormat::FG_YELLOW, TerminalFormat::BOLD, TerminalFormat::END);
     }
-    log(INFO, "Sending%s (version=%d command=%04hX flag=%08X)",
-        name_token.c_str(), static_cast<int>(version), command, flag);
+    log(INFO, "Sending%s (version=%s command=%04hX flag=%08X)",
+        name_token.c_str(), name_for_version(version), command, flag);
     print_data(stderr, send_data.data(), send_data.size());
     if (use_terminal_colors) {
       print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);

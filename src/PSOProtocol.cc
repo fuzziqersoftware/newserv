@@ -197,8 +197,8 @@ void print_received_command(
   if (name && name[0]) {
     name_token = string(" from ") + name;
   }
-  log(INFO, "Received%s (version=%d command=%04hX flag=%08X)",
-      name_token.c_str(), static_cast<int>(version), command, flag);
+  log(INFO, "Received%s (version=%s command=%04hX flag=%08X)",
+      name_token.c_str(), name_for_version(version), command, flag);
 
   PSOCommandHeader header;
   size_t header_size = header.header_size(version);
