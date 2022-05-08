@@ -529,9 +529,9 @@ PlayerInventoryItem::PlayerInventoryItem()
   : equip_flags(0x0000), tech_flag(0x0000), game_flags(0x00000000), data() { }
 
 PlayerInventoryItem::PlayerInventoryItem(const PlayerBankItem& src)
-  : equip_flags((this->data.data1[0] > 2) ? 0x0044 : 0x0050),
-    tech_flag(0x0001),
-    data(src.data) { }
+  : tech_flag(0x0001), data(src.data) {
+  this->equip_flags = (this->data.data1[0] > 2) ? 0x0044 : 0x0050;
+}
 
 PlayerBankItem::PlayerBankItem()
   : data(), amount(0), show_flags(0) { }

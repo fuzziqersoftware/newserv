@@ -129,7 +129,7 @@ struct C_Login_Patch_04 {
   ptext<char, 0x40> email; // Note: this field is blank on BB
 };
 
-// 05 (S->C): Unknown
+// 05 (S->C): Unknown; probably disconnect
 // No arguments
 
 // 06 (S->C): Open file for writing
