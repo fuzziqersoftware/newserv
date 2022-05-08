@@ -1498,9 +1498,9 @@ struct G_ItemSubcommand {
 
 
 // 00: Invalid subcommand
-// 01: Unknown
+// 01: Invalid subcommand
 // 02: Unknown
-// 03: Unknown
+// 03: Unknown (same handler as 02)
 // 04: Unknown
 
 // 05: Switch state changed
@@ -1551,7 +1551,7 @@ struct G_SendGuildCard_BB_6x06 {
 };
 
 // 07: Symbol chat
-// 08: Unknown
+// 08: Invalid subcommand
 // 09: Unknown
 
 // 0A: Enemy hit
@@ -1569,7 +1569,7 @@ struct G_EnemyHitByPlayer_6x0A {
 // 0C: Add condition (poison/slow/etc.)
 // 0D: Remove condition (poison/slow/etc.)
 // 0E: Unknown
-// 0F: Unknown
+// 0F: Invalid subcommand
 // 10: Unknown
 // 11: Unknown
 // 12: Dragon (Episode 1 boss) actions
@@ -1580,11 +1580,11 @@ struct G_EnemyHitByPlayer_6x0A {
 // 17: Unknown (supported; game only)
 // 18: Unknown (supported; game only)
 // 19: Dark Falz (Episode 1 boss) actions
-// 1A: Unknown
+// 1A: Invalid subcommand
 // 1B: Unknown
 // 1C: Unknown (supported; game only)
-// 1D: Unknown
-// 1E: Unknown
+// 1D: Invalid subcommand
+// 1E: Invalid subcommand
 // 1F: Unknown (supported; lobby & game)
 // 20: Unknown (supported; lobby & game)
 // 21: Inter-level warp
@@ -1698,15 +1698,15 @@ struct G_LevelUp_6x30 {
 // 32: Medical center
 // 33: Revive player (e.g. with moon atomizer)
 // 34: Unknown
-// 35: Unknown
+// 35: Invalid subcommand
 // 36: Unknown (supported; game only)
 // 37: Photon blast
 // 38: Unknown
 // 39: Photon blast ready
 // 3A: Unknown (supported; game only)
 // 3B: Unknown (supported; lobby & game)
-// 3C: Unknown
-// 3D: Unknown
+// 3C: Invalid subcommand
+// 3D: Invalid subcommand
 // 3E: Stop moving
 
 struct G_StopAtPosition_6x3E {
@@ -1769,7 +1769,7 @@ struct G_RunToPosition_6x42 {
 // 4E: Unknown (supported; lobby & game)
 // 4F: Unknown (supported; lobby & game)
 // 50: Unknown (supported; lobby & game)
-// 51: Unknown
+// 51: Invalid subcommand
 // 52: Toggle shop/bank interaction
 // 53: Unknown (supported; game only)
 // 54: Unknown
@@ -1801,7 +1801,7 @@ struct G_PickUpItemRequest_6x5A {
   uint8_t unused2[3];
 };
 
-// 5B: Unknown
+// 5B: Invalid subcommand
 // 5C: Unknown
 
 // 5D: Drop meseta or stacked item
@@ -1877,7 +1877,7 @@ struct G_EnemyDropItemRequest_6x60 {
 // 70: Unknown (used while loading into game)
 // 71: Unknown (used while loading into game)
 // 72: Unknown (used while loading into game)
-// 73: Invalid subcommand
+// 73: Invalid subcommand (but apparently valid on BB; function is unknown)
 // 74: Word select
 // 75: Unknown (supported; game only)
 // 76: Enemy killed
@@ -1916,7 +1916,7 @@ struct G_EnemyDropItemRequest_6x60 {
 // 97: Unknown
 // 98: Unknown
 // 99: Unknown
-// 9A: Update player stat ($infhp/$inftp are implemented using this command)
+// 9A: Update player stat ($infhp/$inftp are implemented using this)
 // 9B: Unknown
 // 9C: Unknown (supported; game only)
 // 9D: Unknown
@@ -1955,10 +1955,10 @@ struct G_BoxItemDropRequest_6xA2 {
 // B0: Move in lobby chair
 // B1: Unknown
 // B2: Unknown
-// B3: Unknown
-// B4: Unknown
+// B3: Invalid subcommand
+// B4: Invalid subcommand
 // B5: Episode 3 game setup menu state sync
-// B5: BB shop request
+// B5: BB shop request (handled by the server)
 // B6: Episode 3 map list (server->client only)
 
 // B6: BB shop contents (server->client only)
@@ -1973,9 +1973,9 @@ struct G_ShopContents_BB_6xB6 {
   ItemData entries[20];
 };
 
-// B7: BB buy shop item
+// B7: BB buy shop item (handled by the server)
 
-// B8: Accept tekker result
+// B8: Accept tekker result (handled by the server on BB)
 // Format is G_IdentifyResult
 
 // B9: Provisional tekker result
@@ -1988,8 +1988,8 @@ struct G_IdentifyResult_BB_6xB9 {
   ItemData item;
 };
 
-// BA: Unknown
-// BB: BB bank request
+// BA: Invalid subcommand
+// BB: BB bank request (handled by the server)
 
 // BC: BB bank contents (server->client only)
 
@@ -2004,7 +2004,7 @@ struct G_BankContentsHeader_BB_6xBC {
   // Item data follows
 };
 
-// BD: BB bank action (take/deposit meseta/item)
+// BD: BB bank action (take/deposit meseta/item) (handled by the server)
 
 struct G_BankAction_BB_6xBD {
   uint8_t subcommand;
@@ -2027,7 +2027,8 @@ struct G_CreateInventoryItem_BB_6xBE {
   le_uint32_t unused;
 };
 
-// BF: Ep3 change music; also BB give EXP (BB usage is server->client only)
+// BF: Ep3 change music
+// BF: Give EXP (BB) (server->client only)
 
 struct G_GiveExperience_BB_6xBF {
   uint8_t subcommand;
@@ -2041,7 +2042,7 @@ struct G_GiveExperience_BB_6xBF {
 // C1: Unknown
 // C2: Unknown
 
-// C3: Split stacked item - not sent if entire stack is dropped
+// C3: Split stacked item (not sent if entire stack is dropped) (handled by the server on BB)
 
 struct G_SplitStackedItem_6xC3 {
   uint8_t command;
@@ -2056,7 +2057,7 @@ struct G_SplitStackedItem_6xC3 {
   le_uint32_t amount;
 };
 
-// C4: Sort inventory
+// C4: Sort inventory (handled by the server on BB)
 
 struct G_SortInventory_6xC4 {
   uint8_t command;
@@ -2065,11 +2066,11 @@ struct G_SortInventory_6xC4 {
   le_uint32_t item_ids[30];
 };
 
-// C5: Unknown
-// C6: Unknown
-// C7: Unknown
+// C5: Invalid subcommand
+// C6: Invalid subcommand
+// C7: Invalid subcommand
 
-// C8: Enemy killed
+// C8: Enemy killed (handled by the server on BB)
 
 struct G_EnemyKilled_6xC8 {
   uint8_t command;
@@ -2080,60 +2081,60 @@ struct G_EnemyKilled_6xC8 {
   le_uint32_t unused;
 };
 
-// C9: Unknown
-// CA: Unknown
+// C9: Invalid subcommand
+// CA: Invalid subcommand
 // CB: Unknown
 // CC: Unknown
 // CD: Unknown
 // CE: Unknown
-// CF: Unknown (supported; game only)
-// D0: Unknown
-// D1: Unknown
+// CF: Unknown (supported; game only) (handled by the server on BB)
+// D0: Invalid subcommand
+// D1: Invalid subcommand
 // D2: Unknown
-// D3: Unknown
+// D3: Invalid subcommand
 // D4: Unknown
-// D5: Unknown
-// D6: Unknown
-// D7: Unknown
-// D8: Unknown
-// D9: Unknown
-// DA: Unknown
+// D5: Invalid subcommand
+// D6: Invalid subcommand
+// D7: Invalid subcommand
+// D8: Invalid subcommand
+// D9: Invalid subcommand
+// DA: Invalid subcommand
 // DB: Unknown
 // DC: Unknown
 // DD: Unknown
-// DE: Unknown
-// DF: Unknown
-// E0: Unknown
-// E1: Unknown
-// E2: Unknown
+// DE: Invalid subcommand
+// DF: Invalid subcommand
+// E0: Invalid subcommand
+// E1: Invalid subcommand
+// E2: Invalid subcommand
 // E3: Unknown
-// E4: Unknown
-// E5: Unknown
-// E6: Unknown
-// E7: Unknown
-// E8: Unknown
-// E9: Unknown
-// EA: Unknown
-// EB: Unknown
-// EC: Unknown
-// ED: Unknown
-// EE: Unknown
-// EF: Unknown
-// F0: Unknown
-// F1: Unknown
-// F2: Unknown
-// F3: Unknown
-// F4: Unknown
-// F5: Unknown
-// F6: Unknown
-// F7: Unknown
-// F8: Unknown
-// F9: Unknown
-// FA: Unknown
-// FB: Unknown
-// FC: Unknown
-// FD: Unknown
-// FE: Unknown
-// FF: Unknown
+// E4: Invalid subcommand
+// E5: Invalid subcommand
+// E6: Invalid subcommand
+// E7: Invalid subcommand
+// E8: Invalid subcommand
+// E9: Invalid subcommand
+// EA: Invalid subcommand
+// EB: Invalid subcommand
+// EC: Invalid subcommand
+// ED: Invalid subcommand
+// EE: Invalid subcommand
+// EF: Invalid subcommand
+// F0: Invalid subcommand
+// F1: Invalid subcommand
+// F2: Invalid subcommand
+// F3: Invalid subcommand
+// F4: Invalid subcommand
+// F5: Invalid subcommand
+// F6: Invalid subcommand
+// F7: Invalid subcommand
+// F8: Invalid subcommand
+// F9: Invalid subcommand
+// FA: Invalid subcommand
+// FB: Invalid subcommand
+// FC: Invalid subcommand
+// FD: Invalid subcommand
+// FE: Invalid subcommand
+// FF: Invalid subcommand
 
 #pragma pack(pop)
