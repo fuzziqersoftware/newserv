@@ -279,7 +279,84 @@ void drop_privileges(const string& username) {
 
 
 
-int main(int, char**) {
+enum class Behavior {
+  RUN_SERVER = 0,
+  DECRYPT_DATA,
+  ENCRYPT_DATA,
+};
+
+enum class EncryptionType {
+  PC = 0,
+  GC,
+  BB,
+};
+
+int main(int argc, char** argv) {
+  Behavior behavior = Behavior::RUN_SERVER;
+  EncryptionType crypt_type = EncryptionType::PC;
+  string seed;
+  string key_file_name;
+  bool parse_data = false;
+  for (int x = 1; x < argc; x++) {
+    if (!strcmp(argv[x], "--decrypt-data")) {
+      behavior = Behavior::DECRYPT_DATA;
+    } else if (!strcmp(argv[x], "--encrypt-data")) {
+      behavior = Behavior::ENCRYPT_DATA;
+    } else if (!strcmp(argv[x], "--pc")) {
+      crypt_type = EncryptionType::PC;
+    } else if (!strcmp(argv[x], "--gc")) {
+      crypt_type = EncryptionType::GC;
+    } else if (!strcmp(argv[x], "--bb")) {
+      crypt_type = EncryptionType::BB;
+    } else if (!strncmp(argv[x], "--seed=", 7)) {
+      seed = &argv[x][7];
+    } else if (!strncmp(argv[x], "--key=", 6)) {
+      key_file_name = &argv[x][6];
+    } else if (!strcmp(argv[x], "--parse-data")) {
+      parse_data = true;
+    } else {
+      throw invalid_argument(string_printf("unknown option: %s", argv[x]));
+    }
+  }
+
+  if (behavior != Behavior::RUN_SERVER) {
+    shared_ptr<PSOEncryption> crypt;
+    if (crypt_type == EncryptionType::PC) {
+      crypt.reset(new PSOPCEncryption(stoul(seed, nullptr, 16)));
+    } else if (crypt_type == EncryptionType::GC) {
+      crypt.reset(new PSOGCEncryption(stoul(seed, nullptr, 16)));
+    } else if (crypt_type == EncryptionType::BB) {
+      seed = parse_data_string(seed);
+      auto key = load_object_file<PSOBBEncryption::KeyFile>(
+          "system/blueburst/keys/" + key_file_name + ".nsk");
+      crypt.reset(new PSOBBEncryption(key, seed.data(), seed.size()));
+    } else {
+      throw logic_error("invalid encryption type");
+    }
+
+    string data = read_all(stdin);
+    if (parse_data) {
+      data = parse_data_string(data);
+    }
+
+    if (behavior == Behavior::DECRYPT_DATA) {
+      crypt->decrypt(data.data(), data.size());
+    } else if (behavior == Behavior::ENCRYPT_DATA) {
+      crypt->encrypt(data.data(), data.size());
+    } else {
+      throw logic_error("invalid behavior");
+    }
+
+    if (isatty(fileno(stdout))) {
+      print_data(stdout, data);
+    } else {
+      fwritex(stdout, data);
+    }
+    fflush(stdout);
+
+    return 0;
+  }
+
   signal(SIGPIPE, SIG_IGN);
 
   if (isatty(fileno(stderr))) {
