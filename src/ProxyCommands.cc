@@ -204,38 +204,33 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
   }
 }
 
-static bool process_server_bb_03(shared_ptr<ServerState> s,
-    ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
+static bool process_server_bb_03(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // Most servers don't include after_message or have a shorter
   // after_message than newserv does, so don't require it
   const auto& cmd = check_size_t<S_ServerInit_BB_03>(data,
       offsetof(S_ServerInit_BB_03, after_message), 0xFFFF);
 
-  // Unlike on PC/GC, BB linked sessions never have licenses.
-  // TODO: Is there any way we can support this in the future? Probably not, due
-  // to BB's login and character select flow, right?
-  if (session.license) {
-    throw runtime_error("BB linked session has license");
+  if (!session.detector_crypt.get()) {
+    throw runtime_error("BB linked session has no detector crypt");
+  }
+  if (!session.login_command_bb.username.len()) {
+    throw logic_error("linked BB session does not have a saved login command");
   }
 
-  session.log(INFO, "No license in linked session");
+  // This isn't forwarded to the client, so only recreate the server's crypts.
+  // Use the same crypt type as the client... the server has the luxury of being
+  // able to try all the crypts it knows to detect what type the client uses,
+  // but the client can't do this since it sends the first encrypted data on the
+  // connection.
+  session.server_input_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+      session.detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false));
+  session.server_output_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+      session.detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false));
 
-  // We have to forward the command before setting up encryption, so the
-  // client will be able to understand it.
-  forward_command(session, false, command, flag, data);
-
-  // BB encryption is stateless after it's initialized, unlike previous
-  // versions, so we can get away with only two instances instead of four here.
-  // This is convenient because the two encryptions are linked together due to
-  // our use of multiple private keys, unlike for the other versions.
-  static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
-  shared_ptr<PSOBBMultiKeyClientEncryption> client_encr(new PSOBBMultiKeyClientEncryption(
-      s->bb_private_keys, expected_first_data, cmd.client_key.data(), sizeof(cmd.client_key)));
-  session.server_input_crypt.reset(new PSOBBMultiKeyServerEncryption(
-      client_encr, cmd.server_key.data(), sizeof(cmd.server_key)));
-  session.server_output_crypt = client_encr;
-  session.client_input_crypt = session.server_output_crypt;
-  session.client_output_crypt = session.server_input_crypt;
+  // Forward the login command we saved during the unlinked session.
+  session.send_to_end(true, 0x93, 0x00, &session.login_command_bb,
+      sizeof(session.login_command_bb));
 
   return false;
 }
@@ -395,6 +390,22 @@ static bool process_server_gc_E4(shared_ptr<ServerState>,
 
 static bool process_server_game_19_patch_14(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t, string& data) {
+  // If the command is shorter than 6 bytes, use the previous server command to
+  // fill it in. This simulates a behavior used by some private servers where a
+  // longer previous command is used to fill part of the client's receive buffer
+  // with meaningful data, then an intentionally undersize 19 command is sent
+  // which results in the client using the previous command's data as part of
+  // the 19 command's contents. They presumably do this in an attempt to prevent
+  // people from using proxies.
+  if (data.size() < sizeof(session.prev_server_command_bytes)) {
+    data.append(
+        reinterpret_cast<const char*>(&session.prev_server_command_bytes[data.size()]),
+        sizeof(session.prev_server_command_bytes) - data.size());
+  }
+  if (data.size() < sizeof(S_Reconnect_19)) {
+    data.resize(sizeof(S_Reconnect_19), '\0');
+  }
+
   // This weird maximum size is here to properly handle the version-split
   // command that some servers (including newserv) use on port 9100
   auto& cmd = check_size_t<S_Reconnect_19>(data, sizeof(S_Reconnect_19), 0xB0);

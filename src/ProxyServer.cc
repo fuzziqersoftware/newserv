@@ -106,7 +106,8 @@ void ProxyServer::ListeningSocket::dispatch_on_listen_error(
 }
 
 void ProxyServer::ListeningSocket::on_listen_accept(int fd) {
-  this->log(INFO, "Client connected on fd %d", fd);
+  this->log(INFO, "Client connected on fd %d (port %hu, version %s)",
+      fd, this->port, name_for_version(this->version));
   auto* bev = bufferevent_socket_new(this->server->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   this->server->on_client_connect(bev, this->port, this->version,
@@ -136,7 +137,8 @@ void ProxyServer::connect_client(struct bufferevent* bev, uint16_t server_port) 
     return;
   }
 
-  this->log(INFO, "Client connected on virtual connection %p", bev);
+  this->log(INFO, "Client connected on virtual connection %p (port %hu)", bev,
+      server_port);
   this->on_client_connect(bev, server_port, version, nullptr);
 }
 
@@ -147,9 +149,10 @@ void ProxyServer::on_client_connect(
     uint16_t listen_port,
     GameVersion version,
     const struct sockaddr_storage* default_destination) {
-  // If a default destination exists for this client, create a linked session
-  // immediately and connect to the remote server. This creates a direct session
-  if (default_destination) {
+  // If a default destination exists for this client and the client is a patch
+  // client, create a linked session immediately and connect to the remote
+  // server. This creates a direct session.
+  if (default_destination && (version == GameVersion::PATCH)) {
     uint64_t session_id = this->next_unlicensed_session_id++;
     if (this->next_unlicensed_session_id == 0) {
       this->next_unlicensed_session_id = 0xFF00000000000001;
@@ -164,9 +167,9 @@ void ProxyServer::on_client_connect(
     session->log(INFO, "Opened linked session");
     session->resume(bev);
 
-  // If no default destination exists, create an unlinked session - we'll have
-  // to get the destination from the client's config, which we'll get via a 9E
-  // command soon
+  // If no default destination exists, or the client is not a patch client,
+  // create an unlinked session - we'll have to get the destination from the
+  // client's config, which we'll get via a 9E command soon.
   } else {
     auto emplace_ret = this->bev_to_unlinked_session.emplace(bev, new UnlinkedSession(
         this, bev, listen_port, version));
@@ -175,6 +178,12 @@ void ProxyServer::on_client_connect(
     }
     auto session = emplace_ret.first->second;
     this->log(INFO, "Opened unlinked session");
+
+    // Note that this should only be set when the linked session is created, not
+    // when it is resumed!
+    if (default_destination) {
+      session->next_destination = *default_destination;
+    }
 
     switch (version) {
       case GameVersion::PATCH:
@@ -204,6 +213,31 @@ void ProxyServer::on_client_connect(
         }
         break;
       }
+      case GameVersion::BB: {
+        parray<uint8_t, 0x30> server_key;
+        parray<uint8_t, 0x30> client_key;
+        random_data(server_key.data(), server_key.bytes());
+        random_data(client_key.data(), client_key.bytes());
+        auto cmd = prepare_server_init_contents_bb(server_key, client_key);
+        send_command(
+            session->bev.get(),
+            session->version,
+            session->crypt_out.get(),
+            0x03,
+            0,
+            &cmd,
+            sizeof(cmd),
+            "unlinked proxy client");
+        bufferevent_flush(session->bev.get(), EV_READ | EV_WRITE, BEV_FLUSH);
+
+        static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
+        session->detector_crypt.reset(new PSOBBMultiKeyDetectorEncryption(
+            this->state->bb_private_keys, expected_first_data, cmd.client_key.data(), sizeof(cmd.client_key)));
+        session->crypt_in = session->detector_crypt;
+        session->crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
+            session->detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true));
+        break;
+      }
       default:
         throw logic_error("unsupported game version on proxy server");
     }
@@ -219,6 +253,7 @@ ProxyServer::UnlinkedSession::UnlinkedSession(
     bev(bev, flush_and_free_bufferevent),
     local_port(local_port),
     version(version) {
+  memset(&this->next_destination, 0, sizeof(this->next_destination));
   bufferevent_setcb(this->bev.get(),
       &UnlinkedSession::dispatch_on_client_input, nullptr,
       &UnlinkedSession::dispatch_on_client_error, this);
@@ -241,6 +276,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
   uint32_t sub_version = 0;
   string character_name;
   ClientConfigBB client_config;
+  C_Login_BB_93 login_command_bb;
 
   try {
     for_each_received_command(this->bev.get(), this->version, this->crypt_in.get(),
@@ -273,6 +309,17 @@ void ProxyServer::UnlinkedSession::on_client_input() {
           character_name = cmd.name;
           client_config.cfg = cmd.client_config.cfg;
 
+        } else if (this->version == GameVersion::BB) {
+          // We should only get a 93 while the session is unlinked; if we get
+          // anything else, disconnect
+          if (command != 0x93) {
+            throw runtime_error("command is not 93");
+          }
+          const auto& cmd = check_size_t<C_Login_BB_93>(data);
+          license = this->server->state->license_manager->verify_bb(
+              cmd.username, cmd.password);
+          login_command_bb = cmd;
+
         } else {
           throw logic_error("unsupported unlinked session version");
         }
@@ -300,32 +347,48 @@ void ProxyServer::UnlinkedSession::on_client_input() {
 
     } catch (const out_of_range&) {
       // If there's no open session for this license, then there must be a valid
-      // destination in the client config. If there is, open a new linked
-      // session and set its initial destination
-      if (client_config.cfg.magic != CLIENT_CONFIG_MAGIC) {
-        this->log(ERROR, "Client configuration is invalid; cannot open session");
-      } else {
+      // destination somewhere - either in the client config or in the unlinked
+      // session
+      if (client_config.cfg.magic == CLIENT_CONFIG_MAGIC) {
         session.reset(new LinkedSession(
             this->server,
             this->local_port,
             this->version,
             license,
             client_config));
-        this->server->id_to_session.emplace(license->serial_number, session);
-        session->log(INFO, "Opened licensed session for unlinked session");
+        session->log(INFO, "Opened licensed session for unlinked session based on client config");
+      } else if (this->next_destination.ss_family == AF_INET) {
+        session.reset(new LinkedSession(
+            this->server,
+            this->local_port,
+            this->version,
+            license,
+            this->next_destination));
+        session->log(INFO, "Opened licensed session for unlinked session based on unlinked default destination");
+      } else {
+        this->log(ERROR, "Cannot open linked session: no valid destination in client config or unlinked session");
       }
     }
 
-    if (session.get() && (session->version != this->version)) {
-      session->log(ERROR, "Linked session has different game version");
-    } else {
-      // Resume the linked session using the unlinked session
-      try {
-        session->resume(move(this->bev), this->crypt_in, this->crypt_out, sub_version, character_name);
-        this->crypt_in.reset();
-        this->crypt_out.reset();
-      } catch (const exception& e) {
-        session->log(ERROR, "Failed to resume linked session: %s", e.what());
+    if (session.get()) {
+      this->server->id_to_session.emplace(license->serial_number, session);
+      if (session->version != this->version) {
+        session->log(ERROR, "Linked session has different game version");
+      } else {
+        // Resume the linked session using the unlinked session
+        try {
+          if (this->version == GameVersion::BB) {
+            session->resume(move(this->bev), this->crypt_in, this->crypt_out,
+                this->detector_crypt, login_command_bb);
+          } else {
+            session->resume(move(this->bev), this->crypt_in, this->crypt_out,
+                this->detector_crypt, sub_version, character_name);
+          }
+          this->crypt_in.reset();
+          this->crypt_out.reset();
+        } catch (const exception& e) {
+          session->log(ERROR, "Failed to resume linked session: %s", e.what());
+        }
       }
     }
   }
@@ -381,13 +444,14 @@ ProxyServer::LinkedSession::LinkedSession(
     lobby_players(12),
     lobby_client_id(0) {
   this->last_switch_enabled_command.subcommand = 0;
+  memset(this->prev_server_command_bytes, 0, sizeof(this->prev_server_command_bytes));
 }
 
 ProxyServer::LinkedSession::LinkedSession(
     ProxyServer* server,
     uint16_t local_port,
     GameVersion version,
-    std::shared_ptr<const License> license,
+    shared_ptr<const License> license,
     const ClientConfigBB& newserv_client_config)
   : LinkedSession(server, license->serial_number, local_port, version) {
   this->license = license;
@@ -401,6 +465,17 @@ ProxyServer::LinkedSession::LinkedSession(
 
 ProxyServer::LinkedSession::LinkedSession(
     ProxyServer* server,
+    uint16_t local_port,
+    GameVersion version,
+    std::shared_ptr<const License> license,
+    const struct sockaddr_storage& next_destination)
+  : LinkedSession(server, license->serial_number, local_port, version) {
+  this->license = license;
+  this->next_destination = next_destination;
+}
+
+ProxyServer::LinkedSession::LinkedSession(
+    ProxyServer* server,
     uint64_t id,
     uint16_t local_port,
     GameVersion version,
@@ -410,16 +485,47 @@ ProxyServer::LinkedSession::LinkedSession(
 }
 
 void ProxyServer::LinkedSession::resume(
-    std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
-    std::shared_ptr<PSOEncryption> client_input_crypt,
-    std::shared_ptr<PSOEncryption> client_output_crypt,
+    unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
+    shared_ptr<PSOEncryption> client_input_crypt,
+    shared_ptr<PSOEncryption> client_output_crypt,
+    shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
     uint32_t sub_version,
     const string& character_name) {
+  this->sub_version = sub_version;
+  this->character_name = character_name;
+  this->resume_inner(move(client_bev), client_input_crypt, client_output_crypt,
+      detector_crypt);
+}
+
+void ProxyServer::LinkedSession::resume(
+    unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
+    shared_ptr<PSOEncryption> client_input_crypt,
+    shared_ptr<PSOEncryption> client_output_crypt,
+    shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
+    C_Login_BB_93 login_command_bb) {
+  this->login_command_bb = login_command_bb;
+  this->resume_inner(move(client_bev), client_input_crypt, client_output_crypt,
+      detector_crypt);
+}
+
+void ProxyServer::LinkedSession::resume(struct bufferevent* client_bev) {
+  unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> bev_unique(
+      client_bev, flush_and_free_bufferevent);
+  this->sub_version = 0;
+  this->character_name.clear();
+  this->resume_inner(move(bev_unique), nullptr, nullptr, nullptr);
+}
+
+void ProxyServer::LinkedSession::resume_inner(
+    unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
+    shared_ptr<PSOEncryption> client_input_crypt,
+    shared_ptr<PSOEncryption> client_output_crypt,
+    shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt) {
   if (this->client_bev.get()) {
     throw runtime_error("client connection is already open for this session");
   }
   if (this->next_destination.ss_family != AF_INET) {
-    throw logic_error("attempted to resume an unlicensed linked session wihout destination set");
+    throw logic_error("attempted to resume an unlicensed linked session without destination set");
   }
 
   this->client_bev = move(client_bev);
@@ -428,34 +534,11 @@ void ProxyServer::LinkedSession::resume(
       &ProxyServer::LinkedSession::dispatch_on_client_error, this);
   bufferevent_enable(this->client_bev.get(), EV_READ | EV_WRITE);
 
+  this->detector_crypt = detector_crypt;
   this->client_input_crypt = client_input_crypt;
   this->client_output_crypt = client_output_crypt;
-  this->sub_version = sub_version;
-  this->character_name = character_name;
   this->server_input_crypt.reset();
   this->server_output_crypt.reset();
-  this->saving_files.clear();
-
-  this->connect();
-}
-
-void ProxyServer::LinkedSession::resume(struct bufferevent* client_bev) {
-  if (this->client_bev.get()) {
-    throw runtime_error("client connection is already open for this session");
-  }
-
-  this->client_bev.reset(client_bev);
-  bufferevent_setcb(this->client_bev.get(),
-      &ProxyServer::LinkedSession::dispatch_on_client_input, nullptr,
-      &ProxyServer::LinkedSession::dispatch_on_client_error, this);
-  bufferevent_enable(this->client_bev.get(), EV_READ | EV_WRITE);
-
-  this->client_input_crypt.reset();
-  this->client_output_crypt.reset();
-  this->server_input_crypt.reset();
-  this->server_output_crypt.reset();
-  this->sub_version = 0;
-  this->character_name.clear();
   this->saving_files.clear();
 
   this->connect();
@@ -496,8 +579,8 @@ void ProxyServer::LinkedSession::connect() {
 
 
 ProxyServer::LinkedSession::SavingFile::SavingFile(
-    const std::string& basename,
-    const std::string& output_filename,
+    const string& basename,
+    const string& output_filename,
     uint32_t remaining_bytes)
   : basename(basename),
     output_filename(output_filename),
@@ -600,6 +683,8 @@ void ProxyServer::LinkedSession::on_server_input() {
       [&](uint16_t command, uint32_t flag, string& data) {
         print_received_command(command, flag, data.data(), data.size(),
             this->version, this->server_name.c_str(), TerminalFormat::FG_RED);
+        size_t bytes_to_save = min<size_t>(data.size(), sizeof(this->prev_server_command_bytes));
+        memcpy(this->prev_server_command_bytes, data.data(), bytes_to_save);
         process_proxy_command(
             this->server->state,
             *this,
@@ -676,8 +761,8 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() {
   return this->id_to_session.begin()->second;
 }
 
-std::shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
-    std::shared_ptr<const License> l, uint16_t local_port, GameVersion version,
+shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
+    shared_ptr<const License> l, uint16_t local_port, GameVersion version,
     const ClientConfigBB& newserv_client_config) {
   shared_ptr<LinkedSession> session(new LinkedSession(
       this, local_port, version, l, newserv_client_config));

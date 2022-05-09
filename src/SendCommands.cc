@@ -35,6 +35,7 @@ void send_command(
     size_t size,
     const char* name_str) {
   string send_data;
+  size_t logical_size;
 
   switch (version) {
     case GameVersion::GC:
@@ -46,8 +47,9 @@ void send_command(
       send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
       if (size) {
         send_data.append(reinterpret_cast<const char*>(data), size);
-        send_data.resize(header.size);
+        send_data.resize(header.size, '\0');
       }
+      logical_size = header.size;
       break;
     }
 
@@ -60,8 +62,9 @@ void send_command(
       send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
       if (size) {
         send_data.append(reinterpret_cast<const char*>(data), size);
-        send_data.resize(header.size);
+        send_data.resize(header.size, '\0');
       }
+      logical_size = header.size;
       break;
     }
 
@@ -76,8 +79,13 @@ void send_command(
       send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
       if (size) {
         send_data.append(reinterpret_cast<const char*>(data), size);
-        send_data.resize((send_data.size() + 7) & ~7);
+        if (crypt) {
+          send_data.resize((send_data.size() + 7) & ~7, '\0');
+        } else {
+          send_data.resize(header.size, '\0');
+        }
       }
+      logical_size = header.size;
       break;
     }
 
@@ -95,7 +103,7 @@ void send_command(
     }
     log(INFO, "Sending%s (version=%s command=%04hX flag=%08X)",
         name_token.c_str(), name_for_version(version), command, flag);
-    print_data(stderr, send_data.data(), send_data.size());
+    print_data(stderr, send_data.data(), logical_size);
     if (use_terminal_colors) {
       print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
     }
@@ -204,19 +212,31 @@ void send_server_init_dc_pc_gc(shared_ptr<Client> c,
   }
 }
 
-void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+S_ServerInit_BB_03 prepare_server_init_contents_bb(
+    const parray<uint8_t, 0x30>& server_key,
+    const parray<uint8_t, 0x30>& client_key) {
   S_ServerInit_BB_03 cmd;
   cmd.copyright = bb_game_server_copyright;
-  random_data(cmd.server_key.data(), cmd.server_key.bytes());
-  random_data(cmd.client_key.data(), cmd.client_key.bytes());
+  cmd.server_key = server_key;
+  cmd.client_key = client_key;
   cmd.after_message = anti_copyright;
+  return cmd;
+}
+
+void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  parray<uint8_t, 0x30> server_key;
+  parray<uint8_t, 0x30> client_key;
+  random_data(server_key.data(), server_key.bytes());
+  random_data(client_key.data(), client_key.bytes());
+  auto cmd = prepare_server_init_contents_bb(server_key, client_key);
   send_command_t(c, 0x03, 0x00, cmd);
 
   static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
-  shared_ptr<PSOBBMultiKeyClientEncryption> client_encr(new PSOBBMultiKeyClientEncryption(
+  shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt(new PSOBBMultiKeyDetectorEncryption(
       s->bb_private_keys, expected_first_data, cmd.client_key.data(), sizeof(cmd.client_key)));
-  c->crypt_in = client_encr;
-  c->crypt_out.reset(new PSOBBMultiKeyServerEncryption(client_encr, cmd.server_key.data(), sizeof(cmd.server_key)));
+  c->crypt_in = detector_crypt;
+  c->crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
+      detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true));
 }
 
 void send_server_init_patch(shared_ptr<Client> c) {

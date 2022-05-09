@@ -138,7 +138,7 @@ void for_each_received_command(
     function<void(uint16_t, uint16_t, string&)> fn) {
   struct evbuffer* buf = bufferevent_get_input(bev);
 
-  size_t header_size = version == GameVersion::BB ? 8 : 4;
+  size_t header_size = (version == GameVersion::BB) ? 8 : 4;
   for (;;) {
     PSOCommandHeader header;
     if (evbuffer_copyout(buf, &header, header_size)
@@ -152,18 +152,26 @@ void for_each_received_command(
 
     size_t command_logical_size = header.size(version);
 
-    // BB pads commands to 8-byte boundaries, and this is not reflected in the
-    // size field
-    size_t command_physical_size = (version == GameVersion::BB)
+    // If encryption is enabled, BB pads commands to 8-byte boundaries, and this
+    // is not reflected in the size field. This logic does not occur if
+    // encryption is not yet enabled.
+    size_t command_physical_size = (crypt && (version == GameVersion::BB))
         ? ((command_logical_size + header_size - 1) & ~(header_size - 1))
         : command_logical_size;
     if (evbuffer_get_length(buf) < command_physical_size) {
       break;
     }
 
-    // If we get here, then there is a full command in the buffer
+    // If we get here, then there is a full command in the buffer. Some
+    // encryption algorithms' advancement depends on the decrypted data, so we
+    // have to actually decrypt the header again (with advance=true) to keep
+    // them in a consistent state.
 
-    evbuffer_drain(buf, header_size);
+    string header_data(header_size, '\0');
+    if (evbuffer_remove(buf, header_data.data(), header_data.size())
+        < static_cast<ssize_t>(header_data.size())) {
+      throw logic_error("enough bytes available, but could not remove them");
+    }
 
     string command_data(command_physical_size - header_size, '\0');
     if (evbuffer_remove(buf, command_data.data(), command_data.size())
@@ -172,7 +180,7 @@ void for_each_received_command(
     }
 
     if (crypt) {
-      crypt->skip(header_size);
+      crypt->decrypt(header_data.data(), header_data.size());
       crypt->decrypt(command_data.data(), command_data.size());
     }
     command_data.resize(command_logical_size - header_size);

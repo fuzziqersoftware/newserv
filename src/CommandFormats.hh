@@ -822,6 +822,12 @@ struct C_Login_BB_93 {
     ClientConfigBB cfg;
     ptext<char, 0x28> version_string;
     ClientConfigFields() : version_string() { }
+    ClientConfigFields(const ClientConfigFields& other)
+      : version_string(other.version_string) { }
+    inline ClientConfigFields& operator=(const ClientConfigFields& other) {
+      this->version_string = other.version_string;
+      return *this;
+    }
   } client_config;
 };
 

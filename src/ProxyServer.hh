@@ -47,9 +47,13 @@ public:
     std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> server_bev;
     uint16_t local_port;
     struct sockaddr_storage next_destination;
+
+    uint8_t prev_server_command_bytes[6];
+
     GameVersion version;
     uint32_t sub_version;
     std::string character_name;
+    C_Login_BB_93 login_command_bb;
 
     uint32_t remote_guild_card_number;
     parray<uint8_t, 0x20> remote_client_config_data;
@@ -76,6 +80,7 @@ public:
     std::shared_ptr<PSOEncryption> client_output_crypt;
     std::shared_ptr<PSOEncryption> server_input_crypt;
     std::shared_ptr<PSOEncryption> server_output_crypt;
+    std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
 
     struct SavingFile {
       std::string basename;
@@ -104,6 +109,12 @@ public:
         const ClientConfigBB& newserv_client_config);
     LinkedSession(
         ProxyServer* server,
+        uint16_t local_port,
+        GameVersion version,
+        std::shared_ptr<const License> license,
+        const struct sockaddr_storage& next_destination);
+    LinkedSession(
+        ProxyServer* server,
         uint64_t id,
         uint16_t local_port,
         GameVersion version,
@@ -113,9 +124,21 @@ public:
         std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
         std::shared_ptr<PSOEncryption> client_input_crypt,
         std::shared_ptr<PSOEncryption> client_output_crypt,
+        std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
         uint32_t sub_version,
         const std::string& character_name);
-    void resume(struct bufferevent* bev);
+    void resume(
+        std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
+        std::shared_ptr<PSOEncryption> client_input_crypt,
+        std::shared_ptr<PSOEncryption> client_output_crypt,
+        std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
+        C_Login_BB_93 login_command_bb);
+    void resume(struct bufferevent* client_bev);
+    void resume_inner(
+        std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
+        std::shared_ptr<PSOEncryption> client_input_crypt,
+        std::shared_ptr<PSOEncryption> client_output_crypt,
+        std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt);
     void connect();
 
     static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
@@ -182,9 +205,11 @@ private:
     std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> bev;
     uint16_t local_port;
     GameVersion version;
+    struct sockaddr_storage next_destination;
 
     std::shared_ptr<PSOEncryption> crypt_out;
     std::shared_ptr<PSOEncryption> crypt_in;
+    std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
 
     UnlinkedSession(ProxyServer* server, struct bufferevent* bev, uint16_t port, GameVersion version);
 

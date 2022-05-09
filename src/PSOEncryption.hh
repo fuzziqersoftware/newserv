@@ -27,8 +27,6 @@ public:
     this->decrypt(data.data(), data.size(), advance);
   }
 
-  virtual void skip(size_t size) = 0;
-
 protected:
   PSOEncryption() = default;
 };
@@ -38,7 +36,6 @@ public:
   explicit PSOPCEncryption(uint32_t seed);
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
-  virtual void skip(size_t size);
 
 protected:
   void update_stream();
@@ -53,7 +50,6 @@ public:
   explicit PSOGCEncryption(uint32_t key);
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
-  virtual void skip(size_t size);
 
 protected:
   void update_stream();
@@ -65,37 +61,39 @@ protected:
 
 class PSOBBEncryption : public PSOEncryption {
 public:
+  enum Subtype : uint8_t {
+    STANDARD = 0x00,
+    MOCB1 = 0x01,
+    JSD1 = 0x02,
+  };
+
   struct KeyFile {
     // initial_keys are actually a stream of uint32_ts, but we treat them as
     // bytes for code simplicity
     uint8_t initial_keys[0x12 * 4];
     uint32_t private_keys[0x400];
-    uint8_t is_modcrypt;
+    Subtype subtype;
   } __attribute__((packed));
 
   PSOBBEncryption(const KeyFile& key, const void* seed, size_t seed_size);
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
   virtual void decrypt(void* data, size_t size, bool advance = true);
-  virtual void skip(size_t size);
 
 protected:
-  PSOBBEncryption();
-
-  static std::vector<uint32_t> generate_stream(
-      const KeyFile& key, const void* seed, size_t seed_size);
-
+  Subtype subtype;
   std::vector<uint32_t> stream;
+  uint8_t jsd1_stream_offset;
 };
 
 // The following classes provide support for multiple PSOBB private keys, and
 // the ability to automatically detect which key the client is using based on
 // the first 8 bytes they send.
 
-class PSOBBMultiKeyClientEncryption : public PSOBBEncryption {
+class PSOBBMultiKeyDetectorEncryption : public PSOEncryption {
 public:
-  PSOBBMultiKeyClientEncryption(
-      const std::vector<std::shared_ptr<const KeyFile>>& possible_keys,
+  PSOBBMultiKeyDetectorEncryption(
+      const std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>>& possible_keys,
       const std::string& expected_first_data,
       const void* seed,
       size_t seed_size);
@@ -103,28 +101,37 @@ public:
   virtual void encrypt(void* data, size_t size, bool advance = true);
   virtual void decrypt(void* data, size_t size, bool advance = true);
 
-  friend class PSOBBMultiKeyServerEncryption;
+  inline std::shared_ptr<const PSOBBEncryption::KeyFile> get_active_key() const {
+    return this->active_key;
+  }
+  inline const std::string& get_seed() const {
+    return this->seed;
+  }
 
 protected:
-  std::vector<std::shared_ptr<const KeyFile>> possible_keys;
-  std::shared_ptr<const KeyFile> active_key;
+  std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> possible_keys;
+  std::shared_ptr<const PSOBBEncryption::KeyFile> active_key;
+  std::shared_ptr<PSOBBEncryption> active_crypt;
   std::string expected_first_data;
   std::string seed;
 };
 
-class PSOBBMultiKeyServerEncryption : public PSOBBEncryption {
+class PSOBBMultiKeyImitatorEncryption : public PSOEncryption {
 public:
-  PSOBBMultiKeyServerEncryption(
-      std::shared_ptr<const PSOBBMultiKeyClientEncryption> client_crypt,
+  PSOBBMultiKeyImitatorEncryption(
+      std::shared_ptr<const PSOBBMultiKeyDetectorEncryption> client_crypt,
       const void* seed,
-      size_t seed_size);
+      size_t seed_size,
+      bool jsd1_use_detector_seed);
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
   virtual void decrypt(void* data, size_t size, bool advance = true);
 
 protected:
-  void ensure_stream_ready();
+  std::shared_ptr<PSOBBEncryption> ensure_crypt();
 
-  std::shared_ptr<const PSOBBMultiKeyClientEncryption> client_crypt;
+  std::shared_ptr<const PSOBBMultiKeyDetectorEncryption> detector_crypt;
+  std::shared_ptr<PSOBBEncryption> active_crypt;
   std::string seed;
+  bool jsd1_use_detector_seed;
 };
