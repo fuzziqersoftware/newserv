@@ -807,7 +807,10 @@ struct S_ArrowUpdateEntry_88 {
 // 93 (C->S): Log in (BB)
 
 struct C_Login_BB_93 {
-  ptext<char, 0x14> unused;
+  le_uint32_t player_tag;
+  le_uint32_t guild_card_number;
+  ptext<char, 0x08> unused;
+  le_uint32_t team_id;
   ptext<char, 0x10> username;
   ptext<char, 0x20> unused2;
   ptext<char, 0x10> password;
