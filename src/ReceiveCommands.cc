@@ -20,8 +20,6 @@
 
 using namespace std;
 
-#define CONFIG_MAGIC 0x48615467
-
 
 
 extern FileContentsCache file_cache;
