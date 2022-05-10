@@ -633,7 +633,8 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         case MAIN_MENU_DOWNLOAD_QUESTS:
           if (c->flags & Client::Flag::EPISODE_3) {
             shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
-            auto quests = s->quest_index->filter(c->version, false, QuestCategory::EPISODE_3, 0xFF);
+            auto quests = s->quest_index->filter(
+                c->version, false, QuestCategory::EPISODE_3);
             if (quests.empty()) {
               send_lobby_message_box(c, u"$C6There are no quests\navailable.");
             } else {
@@ -783,8 +784,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
       auto quests = s->quest_index->filter(c->version,
           c->flags & Client::Flag::DCV1,
-          static_cast<QuestCategory>(cmd.item_id & 0xFF),
-          c->flags & Client::Flag::EPISODE_3 ? 0xFF : (l.get() ? (l->episode - 1) : -1));
+          static_cast<QuestCategory>(cmd.item_id & 0xFF));
       if (quests.empty()) {
         send_lobby_message_box(c, u"$C6There are no quests\navailable in that\ncategory.");
         break;
@@ -834,7 +834,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         } else {
           l->flags |= Lobby::Flag::QUEST_IN_PROGRESS;
         }
-        l->loading_quest_id = q->quest_id;
+        l->loading_quest = q;
         for (size_t x = 0; x < l->max_clients; x++) {
           if (!l->clients[x]) {
             continue;
@@ -973,9 +973,9 @@ void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
         menu = &quest_categories_menu;
       } else if (l->mode == 1) {
         menu = &quest_battle_menu;
-      } else if (l->mode == 1) {
+      } else if (l->mode == 2) {
         menu = &quest_challenge_menu;
-      } else if (l->mode == 1) {
+      } else if (l->mode == 3) {
         menu = &quest_solo_menu;
       } else {
         throw logic_error("no quest menu available for mode");

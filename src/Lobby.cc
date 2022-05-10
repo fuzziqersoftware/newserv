@@ -14,8 +14,7 @@ using namespace std;
 Lobby::Lobby() : lobby_id(0), min_level(0), max_level(0xFFFFFFFF),
     next_game_item_id(0), version(GameVersion::GC), section_id(0), episode(1),
     difficulty(0), mode(0), rare_seed(random_object<uint32_t>()), event(0),
-    block(0), type(0), leader_id(0), max_clients(12), flags(0),
-    loading_quest_id(0) {
+    block(0), type(0), leader_id(0), max_clients(12), flags(0) {
 
   for (size_t x = 0; x < 12; x++) {
     this->next_item_id[x] = 0;

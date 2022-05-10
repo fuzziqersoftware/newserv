@@ -141,7 +141,8 @@ struct PSOQuestHeaderBB {
 
 
 Quest::Quest(const string& bin_filename)
-  : quest_id(-1),
+  : internal_id(-1),
+    menu_item_id(0),
     category(QuestCategory::UNKNOWN),
     episode(0),
     is_dcv1(false),
@@ -204,7 +205,7 @@ Quest::Quest(const string& bin_filename)
   }
 
   // parse the number out of the first token
-  this->quest_id = strtoull(tokens[0].c_str() + 1, nullptr, 10);
+  this->internal_id = strtoull(tokens[0].c_str() + 1, nullptr, 10);
 
   // get the category from the second token if needed
   if (this->category == QuestCategory::UNKNOWN) {
@@ -586,6 +587,7 @@ QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
   auto filename_set = list_directory(this->directory);
   vector<string> filenames(filename_set.begin(), filename_set.end());
   sort(filenames.begin(), filenames.end());
+  uint32_t next_menu_item_id = 1;
   for (const auto& filename : filenames) {
     string full_path = this->directory + "/" + filename;
 
@@ -601,12 +603,21 @@ QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
         ends_with(filename, ".qst")) {
       try {
         shared_ptr<Quest> q(new Quest(full_path));
-        this->version_id_to_quest.emplace(make_pair(q->version, q->quest_id), q);
-        this->version_name_to_quest.emplace(make_pair(q->version, q->name), q);
+        q->menu_item_id = next_menu_item_id++;
         string ascii_name = encode_sjis(q->name);
-        log(INFO, "Indexed quest %s (%s-%" PRId64 ", %s, episode=%hhu, joinable=%s, dcv1=%s)",
-            ascii_name.c_str(), name_for_version(q->version), q->quest_id,
-            name_for_category(q->category), q->episode,
+        if (!this->version_menu_item_id_to_quest.emplace(
+            make_pair(q->version, q->menu_item_id), q).second) {
+          throw logic_error("duplicate quest menu item id");
+        }
+        if (!this->version_name_to_quest.emplace(
+            make_pair(q->version, q->name), q).second) {
+          throw runtime_error(string_printf(
+              "duplicate quest name (%s-%" PRId64 "): %s",
+              name_for_version(q->version), q->internal_id, ascii_name.c_str()));
+        }
+        log(INFO, "Indexed quest %s (%s-%" PRId64 " => %" PRIu32 ", %s, episode=%hhu, joinable=%s, dcv1=%s)",
+            ascii_name.c_str(), name_for_version(q->version), q->internal_id,
+            q->menu_item_id, name_for_category(q->category), q->episode,
             q->joinable ? "true" : "false", q->is_dcv1 ? "true" : "false");
       } catch (const exception& e) {
         log(WARNING, "Failed to parse quest file %s (%s)", filename.c_str(), e.what());
@@ -616,8 +627,8 @@ QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
 }
 
 shared_ptr<const Quest> QuestIndex::get(GameVersion version,
-    uint32_t id) const {
-  return this->version_id_to_quest.at(make_pair(version, id));
+    uint32_t menu_item_id) const {
+  return this->version_menu_item_id_to_quest.at(make_pair(version, menu_item_id));
 }
 
 shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
@@ -625,9 +636,9 @@ shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
 }
 
 vector<shared_ptr<const Quest>> QuestIndex::filter(GameVersion version,
-    bool is_dcv1, QuestCategory category, int16_t episode) const {
-  auto it = this->version_id_to_quest.lower_bound(make_pair(version, 0));
-  auto end_it = this->version_id_to_quest.upper_bound(make_pair(version, 0xFFFFFFFF));
+    bool is_dcv1, QuestCategory category) const {
+  auto it = this->version_menu_item_id_to_quest.lower_bound(make_pair(version, 0));
+  auto end_it = this->version_menu_item_id_to_quest.upper_bound(make_pair(version, 0xFFFFFFFF));
 
   vector<shared_ptr<const Quest>> ret;
   for (; it != end_it; it++) {
@@ -635,14 +646,6 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(GameVersion version,
     if ((q->is_dcv1 != is_dcv1) || (q->category != category)) {
       continue;
     }
-
-    // Only check episode and solo if the category isn't a mode (that is, ignore
-    // episode if querying for battle/challenge/solo quests). Also, ignore
-    // ignore episode if it's < 0 (e.g. for the download quest menu).
-    if ((episode >= 0) && !category_is_mode(category) && ((q->episode != episode))) {
-      continue;
-    }
-
     ret.emplace_back(q);
   }
 

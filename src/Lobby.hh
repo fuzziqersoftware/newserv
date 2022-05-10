@@ -14,6 +14,7 @@
 #include "Map.hh"
 #include "RareItemSet.hh"
 #include "Text.hh"
+#include "Quest.hh"
 
 struct Lobby {
   enum Flag {
@@ -66,7 +67,7 @@ struct Lobby {
   uint8_t leader_id;
   uint8_t max_clients;
   uint32_t flags;
-  uint32_t loading_quest_id; // for use with joinable quests
+  std::shared_ptr<const Quest> loading_quest;
   std::array<std::shared_ptr<Client>, 12> clients;
 
   Lobby();

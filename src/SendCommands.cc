@@ -810,7 +810,7 @@ void send_quest_menu_t(
   for (const auto& quest : quests) {
     auto& e = entries.emplace_back();
     e.menu_id = menu_id;
-    e.item_id = quest->quest_id;
+    e.item_id = quest->menu_item_id;
     e.name = quest->name;
     e.short_desc = quest->short_description;
     add_color_inplace(e.short_desc);

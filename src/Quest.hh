@@ -47,7 +47,8 @@ public:
     BIN_DAT_DLQ,
     QST,
   };
-  int64_t quest_id;
+  int64_t internal_id;
+  uint32_t menu_item_id;
   QuestCategory category;
   uint8_t episode; // 0 = ep1, 1 = ep2, 2 = ep4, 0xFF = ep3
   bool is_dcv1;
@@ -81,7 +82,7 @@ public:
 struct QuestIndex {
   std::string directory;
 
-  std::map<std::pair<GameVersion, uint64_t>, std::shared_ptr<Quest>> version_id_to_quest;
+  std::map<std::pair<GameVersion, uint64_t>, std::shared_ptr<Quest>> version_menu_item_id_to_quest;
   std::map<std::pair<GameVersion, std::u16string>, std::shared_ptr<Quest>> version_name_to_quest;
 
   std::map<std::string, std::vector<std::shared_ptr<Quest>>> category_to_quests;
@@ -93,5 +94,5 @@ struct QuestIndex {
   std::shared_ptr<const Quest> get(GameVersion version, uint32_t id) const;
   std::shared_ptr<const std::string> get_gba(const std::string& name) const;
   std::vector<std::shared_ptr<const Quest>> filter(GameVersion version,
-    bool is_dcv1, QuestCategory category, int16_t episode) const;
+    bool is_dcv1, QuestCategory category) const;
 };
