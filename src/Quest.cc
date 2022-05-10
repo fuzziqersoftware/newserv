@@ -652,22 +652,27 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(GameVersion version,
 
 
 static string create_download_quest_file(const string& compressed_data,
-    size_t decompressed_size, uint32_t seed = 0) {
-  if (seed == 0) {
-    seed = random_object<uint32_t>();
+    size_t decompressed_size, uint32_t encryption_seed = 0) {
+  // Download quest files are like normal (PRS-compressed) quest files, but they
+  // are encrypted with the PSOPC encryption (even on V3 / PSO GC), and a small
+  // header (PSODownloadQuestHeader) is prepended to the encrypted data.
+
+  if (encryption_seed == 0) {
+    encryption_seed = random_object<uint32_t>();
   }
 
   string data(8, '\0');
   auto* header = reinterpret_cast<PSODownloadQuestHeader*>(data.data());
   header->size = decompressed_size;
-  header->encryption_seed = seed;
+  header->encryption_seed = encryption_seed;
   data += compressed_data;
 
-  // Add temporary extra bytes if necessary so encryption won't fail
+  // Add temporary extra bytes if necessary so encryption won't fail - the data
+  // size must be a multiple of 4 for PSO PC encryption.
   size_t original_size = data.size();
   data.resize((data.size() + 3) & (~3));
 
-  PSOPCEncryption encr(seed);
+  PSOPCEncryption encr(encryption_seed);
   encr.encrypt(data.data() + sizeof(PSODownloadQuestHeader),
       data.size() - sizeof(PSODownloadQuestHeader));
   data.resize(original_size);
@@ -676,10 +681,13 @@ static string create_download_quest_file(const string& compressed_data,
 }
 
 shared_ptr<Quest> Quest::create_download_quest() const {
+  // The download flag needs to be set in the bin header, or else the client
+  // will ignore it when scanning for download quests in an offline game. To set
+  // this flag, we need to decompress the quest's .bin file, set the flag, then
+  // recompress it again.
+
   string decompressed_bin = prs_decompress(*this->bin_contents());
 
-  // The download flag needs to be set in the bin header, or else the client
-  // will ignore it when scanning for download quests in an offline game.
   void* data_ptr = decompressed_bin.data();
   switch (this->version) {
     case GameVersion::DC:
@@ -706,14 +714,14 @@ shared_ptr<Quest> Quest::create_download_quest() const {
       throw invalid_argument("unknown game version");
   }
 
-  shared_ptr<Quest> dlq(new Quest(*this));
-
   string compressed_bin = prs_compress(decompressed_bin);
+
+  // We'll create a new Quest object with appropriately-processed .bin and .dat
+  // file contents.
+  shared_ptr<Quest> dlq(new Quest(*this));
   dlq->bin_contents_ptr.reset(new string(create_download_quest_file(
       compressed_bin, decompressed_bin.size())));
-
   dlq->dat_contents_ptr.reset(new string(create_download_quest_file(
       *this->dat_contents(), prs_decompress_size(*this->dat_contents()))));
-
   return dlq;
 }

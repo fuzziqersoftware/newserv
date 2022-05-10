@@ -387,7 +387,7 @@ void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) {
   const auto& in_cmd = check_size_t<C_Meseta_GC_Ep3_BA>(data);
 
-  S_Meseta_GC_Ep3_BA out_cmd = {1000000, 0x80E8, in_cmd.unknown_token};
+  S_Meseta_GC_Ep3_BA out_cmd = {1000000, 0x80E8, in_cmd.request_token};
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
@@ -1253,7 +1253,7 @@ void process_stream_file_request_bb(shared_ptr<ServerState>, shared_ptr<Client> 
 
 void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<SC_PlayerPreview_CreateCharacter_BB_E5>(data);
+  const auto& cmd = check_size_t<SC_PlayerPreview_CreateCharacter_BB_00E5>(data);
 
   if (!c->license) {
     send_message_box(c, u"$C6You are not logged in.");

@@ -292,8 +292,6 @@ void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
   send_command_t(c, (c->version == GameVersion::PATCH) ? 0x14 : 0x19, 0x00, cmd);
 }
 
-// Sends the command (first used by Schthack) that separates PC and GC users
-// that connect on the same port
 void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
     uint16_t pc_port, uint16_t gc_port) {
   S_ReconnectSplit_19 cmd;
@@ -310,7 +308,7 @@ void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
 
 
 void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
-  S_ClientInit_BB_E6 cmd;
+  S_ClientInit_BB_00E6 cmd;
   cmd.error = error;
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = c->license->serial_number;
@@ -329,11 +327,11 @@ void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
 
   if (!preview) {
     // no player exists
-    S_PlayerPreview_NoPlayer_BB_E4 cmd = {player_index, 0x00000002};
+    S_PlayerPreview_NoPlayer_BB_00E4 cmd = {player_index, 0x00000002};
     send_command_t(c, 0x00E4, 0x00000000, cmd);
 
   } else {
-    SC_PlayerPreview_CreateCharacter_BB_E5 cmd = {player_index, *preview};
+    SC_PlayerPreview_CreateCharacter_BB_00E5 cmd = {player_index, *preview};
     send_command_t(c, 0x00E5, 0x00000000, cmd);
   }
 }
@@ -355,18 +353,20 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
   if (chunk_offset >= sizeof(GuildCardFileBB)) {
     throw logic_error("attempted to send chunk beyond end of guild card file");
   }
-  size_t data_size = sizeof(GuildCardFileBB) - chunk_offset;
-  if (data_size > 0x6800) {
-    data_size = 0x6800;
-  }
 
-  StringWriter w;
-  w.put_u32l(0);
-  w.put_u32l(chunk_index);
-  w.write(reinterpret_cast<const uint8_t*>(&c->game_data.account()->guild_cards) + chunk_offset,
+  S_GuildCardFileChunk_02DC cmd;
+
+  size_t data_size = min<size_t>(
+      sizeof(GuildCardFileBB) - chunk_offset, sizeof(cmd.data));
+
+  cmd.unknown = 0;
+  cmd.chunk_index = chunk_index;
+  memcpy(
+      cmd.data,
+      reinterpret_cast<const uint8_t*>(&c->game_data.account()->guild_cards) + chunk_offset,
       data_size);
 
-  send_command(c, 0x02DC, 0x00000000, w.str());
+  send_command(c, 0x02DC, 0x00000000, &cmd, sizeof(cmd) - sizeof(cmd.data) + data_size);
 }
 
 static const vector<string> stream_file_entries = {
@@ -617,10 +617,10 @@ void send_card_search_result_t(
   string location_string;
   if (result_lobby->is_game()) {
     string encoded_lobby_name = encode_sjis(result_lobby->name);
-    location_string = string_printf("%s,Block 00,,%s",
+    location_string = string_printf("%s,BLOCK00,%s",
         encoded_lobby_name.c_str(), encoded_server_name.c_str());
   } else {
-    location_string = string_printf("Block 00,,%s", encoded_server_name.c_str());
+    location_string = string_printf(",BLOCK00,%s", encoded_server_name.c_str());
   }
   cmd.location_string = location_string;
   cmd.menu_id = LOBBY_MENU_ID;
