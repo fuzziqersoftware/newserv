@@ -63,6 +63,28 @@ static void check_implemented_subcommand(uint64_t id, const string& data) {
 
 
 
+static void send_text_message_to_client(
+    ProxyServer::LinkedSession& session,
+    uint8_t command,
+    const std::string& message) {
+  StringWriter w;
+  w.put<SC_TextHeader_01_06_11_B0>({0, 0});
+  if (session.version == GameVersion::PC) {
+    auto decoded = decode_sjis(message);
+    w.write(decoded.data(), decoded.size() * sizeof(decoded[0]));
+    w.put_u16l(0);
+  } else {
+    w.write(message);
+    w.put_u8(0);
+  }
+  while (w.size() & 3) {
+    w.put_u8(0);
+  }
+  session.send_to_end(false, command, 0x00, w.str());
+}
+
+
+
 // Command handlers. These are called to preprocess or react to specific
 // commands in either direction. If they return true, the command (which the
 // function may have modified) is forwarded to the other end; if they return
@@ -248,9 +270,14 @@ static bool process_server_dc_pc_gc_04(shared_ptr<ServerState>,
   // session, then the client never received a guild card number from newserv
   // anyway, so we can let the client see the number from the remote server.
   bool had_guild_card_number = (session.remote_guild_card_number != 0);
-  session.remote_guild_card_number = cmd.guild_card_number;
-  session.log(INFO, "Remote guild card number set to %" PRIu32,
-      session.remote_guild_card_number);
+  if (session.remote_guild_card_number != cmd.guild_card_number) {
+    session.remote_guild_card_number = cmd.guild_card_number;
+    session.log(INFO, "Remote guild card number set to %" PRIu32,
+        session.remote_guild_card_number);
+    send_text_message_to_client(session, 0x11, string_printf(
+        "The remote server\nhas assigned your\nGuild Card number as\n\tC6%" PRIu32,
+        session.remote_guild_card_number));
+  }
   if (session.license) {
     cmd.guild_card_number = session.license->serial_number;
   }
@@ -775,6 +802,10 @@ static bool process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
     S_LeaveLobby_66_69 cmd = {leaving_id, leader_id, 0};
     session.send_to_end(false, 0x69, leaving_id, &cmd, sizeof(cmd));
   }
+
+  string encoded_name = encode_sjis(s->name);
+  send_text_message_to_client(session, 0x11, string_printf(
+      "You\'ve returned to\n\tC6%s", encoded_name.c_str()));
 
   // Restore newserv_client_config, so the login server gets the client flags
   S_UpdateClientConfig_DC_PC_GC_04 update_client_config_cmd = {
