@@ -249,7 +249,7 @@ static bool process_server_dc_pc_gc_04(shared_ptr<ServerState>,
   // anyway, so we can let the client see the number from the remote server.
   bool had_guild_card_number = (session.remote_guild_card_number != 0);
   session.remote_guild_card_number = cmd.guild_card_number;
-  session.log(INFO, "Remote guild card number set to %" PRIX32,
+  session.log(INFO, "Remote guild card number set to %" PRIu32,
       session.remote_guild_card_number);
   if (session.license) {
     cmd.guild_card_number = session.license->serial_number;
