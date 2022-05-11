@@ -1025,12 +1025,9 @@ struct C_LoginWithUnusedSpace_GC_9E : C_Login_GC_9E {
 // 9F (S->C): Unknown (BB)
 
 // A0 (C->S): Change ship
-// The client sends the arguments described below in this command when it closes
-// the download quest menu. In contrast, when the player chooses "Change ship"
-// from the lobby transport menu, the client sends an A0 with no arguments.
 // This structure is for documentation only; newserv ignores the arguments here.
 
-struct C_ChangeShip_FromDownloadQuestMenu_A0 {
+struct C_ChangeShipOrBlock_A0_A1 {
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
   parray<uint8_t, 0x10> unknown; // all zeroes
@@ -1040,7 +1037,7 @@ struct C_ChangeShip_FromDownloadQuestMenu_A0 {
 // Same as 07 command.
 
 // A1 (C->S): Change block
-// No arguments
+// Same format as A0. Like with A0, newserv ignores the arguments.
 
 // A1 (S->C): Block select menu
 // Same as 07 command.
