@@ -1183,7 +1183,7 @@ struct C_ExecuteCodeResult_GC_B3 {
 // B5: Invalid command
 // B6: Invalid command
 
-// B7: Rank update (Episode 3)
+// B7 (S->C): Rank update (Episode 3)
 
 struct S_RankUpdate_GC_Ep3_B7 {
   le_uint32_t rank;
@@ -1193,6 +1193,10 @@ struct S_RankUpdate_GC_Ep3_B7 {
   le_uint32_t jukebox_songs_unlocked;
 };
 
+// B8 (C->S): Confirm rank update
+// No arguments
+// The client sends this after it receives a B8 from the server.
+
 // B8 (S->C): Update card definitions (Episode 3)
 // Contents is a single little-endian le_uint32_t specifying the size of the
 // (PRS-compressed) data, followed immediately by the data. newserv sends the
@@ -1200,6 +1204,10 @@ struct S_RankUpdate_GC_Ep3_B7 {
 // client connects to the login server.
 // Note: BB has a handler for B8, but (as of yet) I don't know what it does. It
 // almost certainly doesn't do the same thing as the Ep3 B8 command.
+
+// B8 (C->S): Confirm updated card definitions
+// No arguments
+// The client sends this after it receives a B8 from the server.
 
 // B9: Invalid command
 
