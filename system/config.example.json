@@ -120,9 +120,10 @@
     ["Ep3 lobby types", "$C7Display lobby type\nlist for Episode\nIII", "These values can be used with the %sln command.\n$C6*$C7 indicates lobbies where players can't move.\n$C8Pink$C7 indicates Episode 3 only lobbies.\n\nnormal - standard lobby\n$C8planet$C7 - Blank Ragol Lobby\n$C8clouds$C7 - Blank Sky Lobby\n$C8cave$C7 - Unguis Lapis\n$C8jungle$C7 - Episode 2 Jungle\n$C8forest2-1$C7 - Episode 1 Forest 2 (ground)\n$C8forest2-2$C7 - Episode 1 Forest 2 (near Dome)\n$C8windpower$C7\n$C8overview$C7\n$C8seaside$C7 - Episode 2 Seaside\n$C8some?$C7\n$C8dmorgue$C7 - Destroyed Morgue\n$C8caelum$C7 - Caelum\n$C8digital$C7\n$C8boss1$C7\n$C8boss2$C7\n$C8boss3$C7\n$C8knight$C7 - Leukon Knight stage\n$C8sky$C7 - Via Tubus\n$C8morgue$C7 - Morgue"],
     ["Area list",       "$C7Display stage code\nlist", "These values can be used with the $C6%swarp$C7 command.\n\n$C2Green$C7 areas will be empty unless you are in a quest.\n$C6Yellow$C7 areas will not allow you to move.\n\n   $C8Episode 1  / Episode 2        / Episode 4$C7\n0: Pioneer 2  / Pioneer 2        / Pioneer 2\n1: Forest 1   / Temple Alpha    / Crater East\n2: Forest 2   / Temple Beta     / Crater West\n3: Caves 1    / Spaceship Alpha / Crater South\n4: Caves 2    / Spaceship Beta  / Crater North\n5: Caves 3    / CCA              / Crater Interior\n6: Mines 1    / Jungle North     / Desert 1\n7: Mines 2    / Jungle South     / Desert 2\n8: Ruins 1     / Mountain         / Desert 3\n9: Ruins 2     / Seaside          / Saint Million\n10: Ruins 3   / Seabed Upper    / $C6Purgatory$C7\n11: Dragon    / Seabed Lower\n12: De Rol Le / Gal Gryphon\n13: Vol Opt   / Olga Flow\n14: Dark Falz / Barba Ray\n15: $C2Lobby$C7     / Gol Dragon\n16: $C6Battle 1$C7  / $C6Seaside Night$C7\n17: $C6Battle 2$C7  / $C2Tower$C7"],
   ],
-  // Welcome message. If not blank, this message will be shown to console users
+  // Welcome message. If not blank, this message will be shown to PSO GC users
   // upon first connecting. (If this is blank, they will be taken directly to
-  // the main menu instead.)
+  // the main menu instead.) The welcome message is never shown to PSO PC or PSO
+  // BB users.
   "WelcomeMessage": "",
 
   // Item drop rates for non-rare items in BB games. For each type (boxes or
