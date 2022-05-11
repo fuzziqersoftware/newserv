@@ -1716,14 +1716,14 @@ struct G_EnemyHitByPlayer_6x0A {
 // 0F: Invalid subcommand
 // 10: Unknown
 // 11: Unknown
-// 12: Dragon (Episode 1 boss) actions
-// 13: Re Rol Le (Episode 1 boss) actions
+// 12: Dragon actions
+// 13: Re Rol Le actions
 // 14: Unknown (supported; game only)
-// 15: Unknown (supported; game only)
-// 16: Unknown
+// 15: Vol Opt boss actions
+// 16: Vol Opt boss actions
 // 17: Unknown (supported; game only)
 // 18: Unknown (supported; game only)
-// 19: Dark Falz (Episode 1 boss) actions
+// 19: Dark Falz actions
 // 1A: Invalid subcommand
 // 1B: Unknown
 // 1C: Unknown (supported; game only)
@@ -2066,8 +2066,8 @@ struct G_EnemyDropItemRequest_6x60 {
 // 9C: Unknown (supported; game only)
 // 9D: Unknown
 // 9E: Unknown
-// 9F: Episode 2 boss actions
-// A0: Episode 2 boss actions
+// 9F: Gal Gryphon actions
+// A0: Gal Gryphon actions
 // A1: Unknown
 
 // A2: Request for item drop from box (handled by server on BB)
@@ -2085,12 +2085,12 @@ struct G_BoxItemDropRequest_6xA2 {
 };
 
 // A3: Episode 2 boss actions
-// A4: Unknown
-// A5: Episode 2 boss actions
+// A4: Olga Flow phase 1 actions
+// A5: Olga Flow phase 2 actions
 // A6: Trade proposal
 // A7: Unknown
-// A8: Episode 2 boss actions
-// A9: Episode 2 boss actions
+// A8: Gol Dragon actions
+// A9: Barba Ray actions
 // AA: Episode 2 boss actions
 // AB: Create lobby chair
 // AC: Unknown

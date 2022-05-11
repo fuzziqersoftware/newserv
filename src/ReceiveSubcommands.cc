@@ -1044,14 +1044,14 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 0F */ process_subcommand_unimplemented,
   /* 10 */ process_subcommand_unimplemented,
   /* 11 */ process_subcommand_unimplemented,
-  /* 12 */ process_subcommand_forward_check_size_game,
-  /* 13 */ process_subcommand_forward_check_size_game,
+  /* 12 */ process_subcommand_forward_check_size_game, // Dragon actions
+  /* 13 */ process_subcommand_forward_check_size_game, // De Rol Le actions
   /* 14 */ process_subcommand_forward_check_size_game,
-  /* 15 */ process_subcommand_forward_check_size_game,
-  /* 16 */ process_subcommand_unimplemented,
+  /* 15 */ process_subcommand_forward_check_size_game, // Vol Opt actions
+  /* 16 */ process_subcommand_forward_check_size_game, // Vol Opt actions
   /* 17 */ process_subcommand_forward_check_size_game,
   /* 18 */ process_subcommand_forward_check_size_game,
-  /* 19 */ process_subcommand_forward_check_size_game,
+  /* 19 */ process_subcommand_forward_check_size_game, // Dark Falz actions
   /* 1A */ process_subcommand_unimplemented,
   /* 1B */ process_subcommand_unimplemented,
   /* 1C */ process_subcommand_forward_check_size_game,
@@ -1154,10 +1154,10 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 7D */ process_subcommand_forward_check_size_game,
   /* 7E */ process_subcommand_unimplemented,
   /* 7F */ process_subcommand_unimplemented,
-  /* 80 */ process_subcommand_forward_check_size_game, // trigger trap
+  /* 80 */ process_subcommand_forward_check_size_game, // Trigger trap
   /* 81 */ process_subcommand_unimplemented,
   /* 82 */ process_subcommand_unimplemented,
-  /* 83 */ process_subcommand_forward_check_size_game, // place trap
+  /* 83 */ process_subcommand_forward_check_size_game, // Place trap
   /* 84 */ process_subcommand_forward_check_size_game,
   /* 85 */ process_subcommand_forward_check_size_game,
   /* 86 */ process_subcommand_forward_check_size_game, // Hit destructible wall
@@ -1185,21 +1185,21 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 9C */ process_subcommand_forward_check_size_game,
   /* 9D */ process_subcommand_unimplemented,
   /* 9E */ process_subcommand_unimplemented,
-  /* 9F */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
-  /* A0 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
+  /* 9F */ process_subcommand_forward_check_size_game, // Gal Gryphon actions
+  /* A0 */ process_subcommand_forward_check_size_game, // Gal Gryphon actions
   /* A1 */ process_subcommand_unimplemented,
   /* A2 */ process_subcommand_box_drop_item_request, // Request for item drop from box (handled by server on BB)
   /* A3 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
-  /* A4 */ process_subcommand_unimplemented,
-  /* A5 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
-  /* A6 */ process_subcommand_forward_check_size, // trade proposal
+  /* A4 */ process_subcommand_forward_check_size_game, // Olga Flow phase 1 actions
+  /* A5 */ process_subcommand_forward_check_size_game, // Olga Flow phase 2 actions
+  /* A6 */ process_subcommand_forward_check_size, // Trade proposal
   /* A7 */ process_subcommand_unimplemented,
-  /* A8 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
-  /* A9 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
+  /* A8 */ process_subcommand_forward_check_size_game, // Gol Dragon actions
+  /* A9 */ process_subcommand_forward_check_size_game, // Barba Ray actions
   /* AA */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
   /* AB */ process_subcommand_forward_check_size_client, // Create lobby chair
   /* AC */ process_subcommand_unimplemented,
-  /* AD */ process_subcommand_unimplemented,
+  /* AD */ process_subcommand_forward_check_size_game, // Olga Flow phase 2 subordinate boss actions
   /* AE */ process_subcommand_forward_check_size_client,
   /* AF */ process_subcommand_forward_check_size_client, // Turn in lobby chair
   /* B0 */ process_subcommand_forward_check_size_client, // Move in lobby chair
