@@ -1096,11 +1096,29 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // download quest menu is closed, either by downloading a quest or canceling,
 // the client sends A0 instead.
 
-// AA: Invalid command
-// TODO: Sylverant defines this as quest stats, specifically used during Maximum
-// Attack 2. Verify this and document if needed.
+// AA (C->S): Update quest statistics
+// This command is used in Maximum Attack 2, but its format is unlikely to be
+// specific to that quest. The structure here represents the only instance I've
+// seen so far.
+// The server will respond with an AB command.
 
-// AB (S->C): Unknown (BB)
+struct C_UpdateQuestStatistics_AA {
+  le_uint32_t quest_internal_id;
+  le_uint16_t request_token;
+  le_uint16_t unknown_a1;
+  le_uint32_t unknown_a2;
+  le_uint32_t kill_count;
+  le_uint32_t time_taken; // in seconds
+  parray<uint8_t, 0x14> unknown_a3;
+};
+
+// AB (S->C): Confirm update quest statistics
+
+struct S_ConfirmUpdateQuestStatistics_AB {
+  le_uint32_t unknown_a1; // 0
+  le_uint16_t request_token; // Should match token sent in AA command
+  le_uint16_t unknown_a2; // Schtserv always sends 0xBFFF here
+};
 
 // AC: Quest barrier
 // No arguments

@@ -1025,6 +1025,23 @@ void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
+void process_update_quest_statistics(shared_ptr<ServerState> s,
+    shared_ptr<Client> c, uint16_t, uint32_t, const string& data) { // AA
+  const auto& cmd = check_size_t<C_UpdateQuestStatistics_AA>(data);
+
+  auto l = s->find_lobby(c->lobby_id);
+  if (!l || !l->is_game() || !l->loading_quest.get() ||
+      (l->loading_quest->internal_id != cmd.quest_internal_id)) {
+    return;
+  }
+
+  S_ConfirmUpdateQuestStatistics_AB response;
+  response.unknown_a1 = 0;
+  response.request_token = cmd.request_token;
+  response.unknown_a2 = 0xBFFF;
+  send_command_t(c, 0xAB, 0x00, response);
+}
+
 void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D7
   string filename(data);
@@ -1835,7 +1852,7 @@ static process_command_t dc_handlers[0x100] = {
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
   nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, nullptr,
+  nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
   process_quest_ready, nullptr, nullptr, nullptr,
 
   // B0
@@ -1918,7 +1935,7 @@ static process_command_t pc_handlers[0x100] = {
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
   nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, nullptr,
+  nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
   process_quest_ready, nullptr, nullptr, nullptr,
 
   // B0
@@ -2002,7 +2019,7 @@ static process_command_t gc_handlers[0x100] = {
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
   nullptr, nullptr, process_ignored_command, process_ignored_command,
-  nullptr, process_ignored_command, nullptr, nullptr,
+  nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
   process_quest_ready, nullptr, nullptr, nullptr,
 
   // B0
@@ -2091,7 +2108,7 @@ static process_command_t bb_handlers[0x100] = {
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
   nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, nullptr,
+  nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
   process_quest_ready, nullptr, nullptr, nullptr,
 
   // B0
