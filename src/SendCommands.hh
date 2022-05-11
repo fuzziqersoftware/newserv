@@ -209,9 +209,16 @@ void send_ep3_rank_update(std::shared_ptr<Client> c);
 void send_ep3_map_list(std::shared_ptr<Lobby> l);
 void send_ep3_map_data(std::shared_ptr<Lobby> l, uint32_t map_id);
 
+enum class QuestFileType {
+  ONLINE = 0,
+  DOWNLOAD,
+  EPISODE_3,
+  GBA_DEMO,
+};
+
 void send_quest_file(std::shared_ptr<Client> c, const std::string& quest_name,
     const std::string& basename, const std::string& contents,
-    bool is_download_quest, bool is_ep3_quest);
+    QuestFileType type);
 
 void send_server_time(std::shared_ptr<Client> c);
 

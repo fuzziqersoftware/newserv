@@ -1348,21 +1348,37 @@ void send_quest_open_file_t(
     const string& quest_name,
     const string& filename,
     uint32_t file_size,
-    bool is_download_quest,
-    bool is_ep3_quest) {
+    QuestFileType type) {
   CommandT cmd;
-  cmd.unused = 0;
-  if (is_ep3_quest) {
-    cmd.flags = 3;
-  } else if (is_download_quest) {
-    cmd.flags = 0;
-  } else {
-    cmd.flags = 2;
+  uint8_t command_num;
+  switch (type) {
+    case QuestFileType::ONLINE:
+      command_num = 0x44;
+      cmd.name = "PSO/" + quest_name;
+      cmd.flags = 2;
+      break;
+    case QuestFileType::GBA_DEMO:
+      command_num = 0xA6;
+      cmd.name = "GBA Demo";
+      cmd.flags = 2;
+      break;
+    case QuestFileType::DOWNLOAD:
+      command_num = 0xA6;
+      cmd.name = "PSO/" + quest_name;
+      cmd.flags = 0;
+      break;
+    case QuestFileType::EPISODE_3:
+      command_num = 0xA6;
+      cmd.name = "PSO/" + quest_name;
+      cmd.flags = 3;
+      break;
+    default:
+      throw logic_error("invalid quest file type");
   }
+  cmd.unused = 0;
   cmd.file_size = file_size;
-  cmd.name = "PSO/" + quest_name;
   cmd.filename = filename.c_str();
-  send_command_t(c, is_download_quest ? 0xA6 : 0x44, 0x00, cmd);
+  send_command_t(c, command_num, 0x00, cmd);
 }
 
 void send_quest_file_chunk(
@@ -1371,7 +1387,7 @@ void send_quest_file_chunk(
     size_t chunk_index,
     const void* data,
     size_t size,
-    bool is_download_quest) {
+    QuestFileType type) {
   if (size > 0x400) {
     throw invalid_argument("quest file chunks must be 1KB or smaller");
   }
@@ -1384,19 +1400,18 @@ void send_quest_file_chunk(
   }
   cmd.data_size = size;
 
-  send_command_t(c, is_download_quest ? 0xA7 : 0x13, chunk_index, cmd);
+  send_command_t(c, (type == QuestFileType::ONLINE) ? 0x13 : 0xA7, chunk_index, cmd);
 }
 
 void send_quest_file(shared_ptr<Client> c, const string& quest_name,
-    const string& basename, const string& contents, bool is_download_quest,
-    bool is_ep3_quest) {
+    const string& basename, const string& contents, QuestFileType type) {
 
   if (c->version == GameVersion::PC || c->version == GameVersion::GC) {
     send_quest_open_file_t<S_OpenFile_PC_GC_44_A6>(
-        c, quest_name, basename, contents.size(), is_download_quest, is_ep3_quest);
+        c, quest_name, basename, contents.size(), type);
   } else if (c->version == GameVersion::BB) {
     send_quest_open_file_t<S_OpenFile_BB_44_A6>(
-        c, quest_name, basename, contents.size(), is_download_quest, is_ep3_quest);
+        c, quest_name, basename, contents.size(), type);
   } else {
     throw invalid_argument("cannot send quest files to this version of client");
   }
@@ -1407,7 +1422,7 @@ void send_quest_file(shared_ptr<Client> c, const string& quest_name,
       chunk_bytes = 0x400;
     }
     send_quest_file_chunk(c, basename.c_str(), offset / 0x400,
-        contents.data() + offset, chunk_bytes, is_download_quest);
+        contents.data() + offset, chunk_bytes, type);
   }
 }
 

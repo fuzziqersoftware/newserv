@@ -827,6 +827,9 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
 
       if (l) {
+        if (is_ep3 || !dat_contents) {
+          throw runtime_error("episode 3 quests cannot be loaded during games");
+        }
         if (q->joinable) {
           l->flags |= Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS;
         } else {
@@ -842,10 +845,10 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           // cause GC clients to crash in rare cases. Find a way to slow this down
           // (perhaps by only sending each new chunk when they acknowledge the
           // previous chunk with a 44 [first chunk] or 13 [later chunks] command).
-          send_quest_file(l->clients[x], bin_basename + ".bin", bin_basename, *bin_contents, false, is_ep3);
-          if (dat_contents) {
-            send_quest_file(l->clients[x], dat_basename + ".dat", dat_basename, *dat_contents, false, is_ep3);
-          }
+          send_quest_file(l->clients[x], bin_basename + ".bin", bin_basename,
+              *bin_contents, QuestFileType::ONLINE);
+          send_quest_file(l->clients[x], dat_basename + ".dat", dat_basename,
+              *dat_contents, QuestFileType::ONLINE);
 
           // There is no such thing as command AC on PSO PC - quests just start
           // immediately when they're done downloading. There are also no chunk
@@ -865,9 +868,11 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         if (!is_ep3) {
           q = q->create_download_quest();
         }
-        send_quest_file(c, quest_name, bin_basename, *q->bin_contents(), true, is_ep3);
+        send_quest_file(c, quest_name, bin_basename, *q->bin_contents(),
+            is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
         if (dat_contents) {
-          send_quest_file(c, quest_name, dat_basename, *q->dat_contents(), true, is_ep3);
+          send_quest_file(c, quest_name, dat_basename, *q->dat_contents(),
+              is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
         }
       }
       break;
@@ -1024,9 +1029,9 @@ void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D7
   string filename(data);
   strip_trailing_zeroes(filename);
-  auto contents = file_cache.get(filename);
+  auto contents = file_cache.get("system/gba/" + filename);
 
-  send_quest_file(c, filename, filename, *contents, false, false);
+  send_quest_file(c, "", filename, *contents, QuestFileType::GBA_DEMO);
 }
 
 
