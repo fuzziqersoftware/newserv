@@ -566,7 +566,7 @@ struct S_GuildCardSearchResult_BB_41 : S_GuildCardSearchResult<PSOCommandHeaderB
 
 struct S_OpenFile_PC_GC_44_A6 {
   ptext<char, 0x20> name;
-  le_uint16_t unused;
+  parray<uint8_t, 2> unused;
   le_uint16_t flags; // 0 = download quest, 2 = online quest, 3 = Episode 3
   ptext<char, 0x10> filename;
   le_uint32_t file_size;

@@ -1375,7 +1375,7 @@ void send_quest_open_file_t(
     default:
       throw logic_error("invalid quest file type");
   }
-  cmd.unused = 0;
+  cmd.unused.clear();
   cmd.file_size = file_size;
   cmd.filename = filename.c_str();
   send_command_t(c, command_num, 0x00, cmd);
