@@ -80,7 +80,7 @@ ClientConfigBB Client::export_config_bb() const {
   ClientConfigBB cc;
   cc.cfg = this->export_config();
   cc.bb_game_state = this->bb_game_state;
-  cc.bb_player_index = this->bb_player_index;
+  cc.bb_player_index = this->game_data.bb_player_index;
   cc.unused.clear(0xFF);
   return cc;
 }
@@ -97,5 +97,5 @@ void Client::import_config(const ClientConfig& cc) {
 void Client::import_config(const ClientConfigBB& cc) {
   this->import_config(cc.cfg);
   this->bb_game_state = cc.bb_game_state;
-  this->bb_player_index = cc.bb_player_index;
+  this->game_data.bb_player_index = cc.bb_player_index;
 }

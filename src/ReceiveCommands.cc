@@ -270,7 +270,7 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
       // to newserv before, so we should show the welcome message.
       c->flags |= Client::Flag::AT_WELCOME_MESSAGE;
       c->bb_game_state = ClientStateBB::INITIAL_LOGIN;
-      c->bb_player_index = 0;
+      c->game_data.bb_player_index = 0;
     }
 
   } else {
@@ -346,7 +346,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
   } catch (const invalid_argument&) {
     c->bb_game_state = ClientStateBB::INITIAL_LOGIN;
-    c->bb_player_index = 0;
+    c->game_data.bb_player_index = 0;
   }
 
   send_client_init_bb(c, 0);
@@ -1224,7 +1224,7 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
   const auto& cmd = check_size_t<C_PlayerPreviewRequest_BB_E3>(data);
 
   if (c->bb_game_state == ClientStateBB::CHOOSE_PLAYER) {
-    c->bb_player_index = cmd.player_index;
+    c->game_data.bb_player_index = cmd.player_index;
     c->bb_game_state++;
     send_client_init_bb(c, 0);
     send_approve_player_choice_bb(c);
@@ -1309,7 +1309,7 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
     return;
   }
 
-  c->bb_player_index = cmd.player_index;
+  c->game_data.bb_player_index = cmd.player_index;
 
   try {
     c->game_data.create_player(cmd.preview, s->level_table);

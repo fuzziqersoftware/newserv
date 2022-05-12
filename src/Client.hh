@@ -61,7 +61,6 @@ struct Client {
   // config can be up to 0x20 bytes; on BB it can be 0x28 bytes. We don't use
   // all of that space.
   uint8_t bb_game_state;
-  uint8_t bb_player_index;
   uint16_t flags;
 
   // Encryption
