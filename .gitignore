@@ -12,3 +12,8 @@ CTestTestFile.cmake
 Testing
 cmake_install.cmake
 install_manifest.txt
+
+# Files modified by the user and/or server that don't have defaults
+system/config.json
+system/licenses.nsi
+system/players/*
