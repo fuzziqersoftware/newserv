@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <string>
+#include <stdexcept>
 #include <phosg/Encoding.hh>
 #include <phosg/Strings.hh>
 
@@ -246,6 +247,9 @@ struct parray {
   }
 
   parray& operator=(const ItemT* s) {
+    if (!s) {
+      throw std::logic_error("attempted to assign nullptr to parray");
+    }
     for (size_t x = 0; x < Count; x++) {
       this->items[x] = s[x];
     }
@@ -293,10 +297,16 @@ struct ptext : parray<CharT, Count> {
 
   template <typename OtherCharT>
   ptext(const OtherCharT* s) {
+    if (!s) {
+      throw std::logic_error("attempted to assign nullptr to ptext");
+    }
     this->operator=(s);
   }
   template <typename OtherCharT>
   ptext(const OtherCharT* s, size_t count) {
+    if (!s) {
+      throw std::logic_error("attempted to assign nullptr to ptext");
+    }
     this->assign(s, count);
   }
   template <typename OtherCharT>
@@ -323,12 +333,18 @@ struct ptext : parray<CharT, Count> {
 
   template <typename OtherCharT>
   ptext& operator=(const OtherCharT* s) {
+    if (!s) {
+      throw std::logic_error("attempted to assign nullptr to ptext");
+    }
     size_t chars_written = text_strncpy_t(this->items, Count, s, Count);
     this->clear_after(chars_written);
     return *this;
   }
   template <typename OtherCharT>
   ptext& assign(const OtherCharT* s, size_t s_count) {
+    if (!s) {
+      throw std::logic_error("attempted to assign nullptr to ptext");
+    }
     size_t chars_written = text_strncpy_t(this->items, Count, s, s_count);
     this->clear_after(chars_written);
     return *this;
@@ -348,6 +364,9 @@ struct ptext : parray<CharT, Count> {
 
   template <typename OtherCharT>
   bool operator==(const OtherCharT* s) const {
+    if (!s) {
+      throw std::logic_error("attempted to compare ptext to nullptr");
+    }
     return text_strneq_t(this->items, s, Count);
   }
   template <typename OtherCharT>
@@ -360,6 +379,9 @@ struct ptext : parray<CharT, Count> {
   }
   template <typename OtherCharT>
   bool operator!=(const OtherCharT* s) const {
+    if (!s) {
+      throw std::logic_error("attempted to compare ptext to nullptr");
+    }
     return !this->operator==(s);
   }
   template <typename OtherCharT>
@@ -373,6 +395,9 @@ struct ptext : parray<CharT, Count> {
 
   template <typename OtherCharT>
   bool eq_n(const OtherCharT* s, size_t count) const {
+    if (!s) {
+      throw std::logic_error("attempted to compare ptext to nullptr");
+    }
     return text_strneq_t(this->items, s, count);
   }
   template <typename OtherCharT>
