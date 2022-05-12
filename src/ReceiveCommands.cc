@@ -1362,7 +1362,7 @@ void process_change_account_data_bb(shared_ptr<ServerState>, shared_ptr<Client> 
 }
 
 void process_return_player_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+    uint16_t, uint32_t, const string& data) { // 00E7
   const auto& cmd = check_size_t<PlayerBB>(data);
 
   // We only trust the player's quest data and challenge data.

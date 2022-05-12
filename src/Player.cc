@@ -489,7 +489,6 @@ PlayerBB ClientGameData::export_player_bb() {
   ret.unknown6.clear();
   ret.quest_data2 = player->quest_data2;
   ret.key_config = account->key_config;
-  ret.unused = 0;
   return ret;
 }
 

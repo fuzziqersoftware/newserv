@@ -314,33 +314,32 @@ struct PSOPlayerDataBB { // For command 61
 } __attribute__((packed));
 
 struct PlayerBB { // Used in 00E7 command
-  PlayerInventory inventory;                // 0000 // player
-  PlayerDispDataBB disp;                    // 034C // player
-  parray<uint8_t, 0x0010> unknown;          // 04DC //
-  le_uint32_t option_flags;                 // 04EC // account
-  parray<uint8_t, 0x0208> quest_data1;      // 04F0 // player
-  PlayerBank bank;                          // 06F8 // player
-  le_uint32_t serial_number;                // 19C0 // player
-  ptext<char16_t, 0x18> name;               // 19C4 // player
-  ptext<char16_t, 0x10> team_name;          // 19C4 // player
-  ptext<char16_t, 0x58> guild_card_desc;    // 1A14 // player
-  uint8_t reserved1;                        // 1AC4 // player
-  uint8_t reserved2;                        // 1AC5 // player
-  uint8_t section_id;                       // 1AC6 // player
-  uint8_t char_class;                       // 1AC7 // player
-  le_uint32_t unknown3;                     // 1AC8 //
-  parray<uint8_t, 0x04E0> symbol_chats;     // 1ACC // account
-  parray<uint8_t, 0x0A40> shortcuts;        // 1FAC // account
-  ptext<char16_t, 0x00AC> auto_reply;       // 29EC // player
-  ptext<char16_t, 0x00AC> info_board;       // 2B44 // player
-  parray<uint8_t, 0x001C> unknown5;         // 2C9C //
-  parray<uint8_t, 0x0140> challenge_data;   // 2CB8 // player
-  parray<uint8_t, 0x0028> tech_menu_config; // 2DF8 // player
-  parray<uint8_t, 0x002C> unknown6;         // 2E20 //
-  parray<uint8_t, 0x0058> quest_data2;      // 2E4C // player
-  KeyAndTeamConfigBB key_config;            // 2EA4 // account
-  le_uint32_t unused;
-} __attribute__((packed));                  // total size: 39A0
+  PlayerInventory inventory;                // player
+  PlayerDispDataBB disp;                    // player
+  parray<uint8_t, 0x0010> unknown;          // not saved
+  le_uint32_t option_flags;                 // account
+  parray<uint8_t, 0x0208> quest_data1;      // player
+  PlayerBank bank;                          // player
+  le_uint32_t serial_number;                // player
+  ptext<char16_t, 0x18> name;               // player
+  ptext<char16_t, 0x10> team_name;          // player
+  ptext<char16_t, 0x58> guild_card_desc;    // player
+  uint8_t reserved1;                        // player
+  uint8_t reserved2;                        // player
+  uint8_t section_id;                       // player
+  uint8_t char_class;                       // player
+  le_uint32_t unknown3;                     // not saved
+  parray<uint8_t, 0x04E0> symbol_chats;     // account
+  parray<uint8_t, 0x0A40> shortcuts;        // account
+  ptext<char16_t, 0x00AC> auto_reply;       // player
+  ptext<char16_t, 0x00AC> info_board;       // player
+  parray<uint8_t, 0x001C> unknown5;         // not saved
+  parray<uint8_t, 0x0140> challenge_data;   // player
+  parray<uint8_t, 0x0028> tech_menu_config; // player
+  parray<uint8_t, 0x002C> unknown6;         // not saved
+  parray<uint8_t, 0x0058> quest_data2;      // player
+  KeyAndTeamConfigBB key_config;            // account
+} __attribute__((packed));
 
 
 
