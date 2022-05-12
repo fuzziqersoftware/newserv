@@ -1123,7 +1123,7 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
     if (!failure) {
       send_text_message_printf(c,
-          "$C6PSOBB player data saved\nas player %hhu for user\n%s",
+          "$C6BB player data saved\nas player %hhu for user\n%s",
           static_cast<uint8_t>(c->pending_bb_save_player_index + 1),
           c->pending_bb_save_username.c_str());
     }
