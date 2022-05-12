@@ -311,7 +311,17 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 93
-  const auto& cmd = check_size_t<C_Login_BB_93>(data);
+  const auto& cmd = check_size_t<C_Login_BB_93>(data,
+      sizeof(C_Login_BB_93) - 8, sizeof(C_Login_BB_93));
+
+  bool is_old_format;
+  if (data.size() == sizeof(C_Login_BB_93) - 8) {
+    is_old_format = true;
+  } else if (data.size() == sizeof(C_Login_BB_93)) {
+    is_old_format = false;
+  } else {
+    throw runtime_error("invalid size for 93 command");
+  }
 
   c->flags |= flags_for_version(c->version, 0);
 
@@ -326,7 +336,11 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   try {
-    c->import_config(cmd.client_config.cfg);
+    if (is_old_format) {
+      c->import_config(cmd.var.old_clients_cfg.cfg);
+    } else {
+      c->import_config(cmd.var.new_clients.cfg.cfg);
+    }
     if (c->bb_game_state < ClientStateBB::IN_GAME) {
       c->bb_game_state++;
     }

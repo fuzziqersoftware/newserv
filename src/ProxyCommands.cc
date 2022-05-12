@@ -236,7 +236,7 @@ static bool process_server_bb_03(shared_ptr<ServerState>,
   if (!session.detector_crypt.get()) {
     throw runtime_error("BB linked session has no detector crypt");
   }
-  if (!session.login_command_bb.username.len()) {
+  if (session.login_command_bb.empty()) {
     throw logic_error("linked BB session does not have a saved login command");
   }
 
@@ -251,8 +251,7 @@ static bool process_server_bb_03(shared_ptr<ServerState>,
       session.detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false));
 
   // Forward the login command we saved during the unlinked session.
-  session.send_to_end(true, 0x93, 0x00, &session.login_command_bb,
-      sizeof(session.login_command_bb));
+  session.send_to_end(true, 0x93, 0x00, session.login_command_bb);
 
   return false;
 }

@@ -53,7 +53,7 @@ public:
     GameVersion version;
     uint32_t sub_version;
     std::string character_name;
-    C_Login_BB_93 login_command_bb;
+    std::string login_command_bb;
 
     uint32_t remote_guild_card_number;
     parray<uint8_t, 0x20> remote_client_config_data;
@@ -132,7 +132,7 @@ public:
         std::shared_ptr<PSOEncryption> client_input_crypt,
         std::shared_ptr<PSOEncryption> client_output_crypt,
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
-        C_Login_BB_93 login_command_bb);
+        std::string&& login_command_bb);
     void resume(struct bufferevent* client_bev);
     void resume_inner(
         std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,

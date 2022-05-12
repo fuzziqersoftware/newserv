@@ -276,7 +276,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
   uint32_t sub_version = 0;
   string character_name;
   ClientConfigBB client_config;
-  C_Login_BB_93 login_command_bb;
+  string login_command_bb;
 
   try {
     for_each_received_command(this->bev.get(), this->version, this->crypt_in.get(),
@@ -318,7 +318,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
           const auto& cmd = check_size_t<C_Login_BB_93>(data);
           license = this->server->state->license_manager->verify_bb(
               cmd.username, cmd.password);
-          login_command_bb = cmd;
+          login_command_bb = data;
 
         } else {
           throw logic_error("unsupported unlinked session version");
@@ -379,7 +379,7 @@ void ProxyServer::UnlinkedSession::on_client_input() {
         try {
           if (this->version == GameVersion::BB) {
             session->resume(move(this->bev), this->crypt_in, this->crypt_out,
-                this->detector_crypt, login_command_bb);
+                this->detector_crypt, move(login_command_bb));
           } else {
             session->resume(move(this->bev), this->crypt_in, this->crypt_out,
                 this->detector_crypt, sub_version, character_name);
@@ -502,8 +502,8 @@ void ProxyServer::LinkedSession::resume(
     shared_ptr<PSOEncryption> client_input_crypt,
     shared_ptr<PSOEncryption> client_output_crypt,
     shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
-    C_Login_BB_93 login_command_bb) {
-  this->login_command_bb = login_command_bb;
+    string&& login_command_bb) {
+  this->login_command_bb = move(login_command_bb);
   this->resume_inner(move(client_bev), client_input_crypt, client_output_crypt,
       detector_crypt);
 }

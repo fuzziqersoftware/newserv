@@ -878,24 +878,25 @@ struct C_Login_BB_93 {
   ptext<char, 0x20> unused2;
   ptext<char, 0x10> password;
   ptext<char, 0x28> unused3;
-  uint64_t hardware_info;
+
   // Note: Unlike other versions, BB puts the version string in the client
   // config at connect time. So the first time the server gets this command, it
   // will be something like "Ver. 1.24.3". Note also that some old versions
   // (before 1.23.8?) omit the hardware_info field before the client config, so
   // the client config starts 8 bytes earlier on those versions and the entire
-  // command is 8 bytes shorter.
-  union ClientConfigFields {
-    ClientConfigBB cfg;
-    ptext<char, 0x28> version_string;
-    ClientConfigFields() : version_string() { }
-    ClientConfigFields(const ClientConfigFields& other)
-      : version_string(other.version_string) { }
-    inline ClientConfigFields& operator=(const ClientConfigFields& other) {
-      this->version_string = other.version_string;
-      return *this;
-    }
-  } client_config;
+  // command is 8 bytes shorter, hence this odd-looking union.
+  union VariableLengthSection {
+    union ClientConfigFields {
+      ClientConfigBB cfg;
+      ptext<char, 0x28> version_string;
+    };
+
+    ClientConfigFields old_clients_cfg;
+    struct NewFormat {
+      uint64_t hardware_info;
+      ClientConfigFields cfg;
+    } new_clients;
+  } var;
 };
 
 // 94: Invalid command
