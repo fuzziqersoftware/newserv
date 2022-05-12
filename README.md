@@ -24,7 +24,7 @@ Currently this code should build on macOS and Ubuntu. It will likely work on oth
 There is a probably-not-too-old macOS release on the newserv GitHub repository (look in the right sidebar).
 
 If you're running Linux or want to build newserv yourself, here's what you do:
-- Make sure you have CMake and libevent installed. (`brew install libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
+- Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
 - Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 - Run `cmake . && make` on the newserv directory.
 - In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
@@ -33,19 +33,19 @@ If you're running Linux or want to build newserv yourself, here's what you do:
 
 ### Installing quests
 
-newserv automatically finds quests in the system/quests directory. To install your own quests, or to use quests you've saved using the proxy's set-save-files option, just put them in that directory and name them appropriately.
-
-There are multiple PSO quest formats out there; newserv supports most of them. Specifically, newserv can use quests in any of the following formats:
-- bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file.
-- Unencrypted GCI format: These quests also consist of a .bin and .dat file, but an encoding is applied on top of them. The filenames should end in .bin.gci and .dat.gci. (Note that there also exists an encrypted GCI format, which newserv does not support.)
-- Encrypted DLQ format: These quests also consist of a .bin and .dat file, but downlaod quest encryption is applied on top of them. The filenames should end in .bin.dlq and .dat.dlq.
-- QST format: These quests consist of only a .qst file, which contains both the .bin and .dat files within it.
+newserv automatically finds quests in the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's set-save-files option, just put them in that directory and name them appropriately.
 
 Standard quest file names should be like `q###-CATEGORY-VERSION.EXT`; battle quests should be named like `b###-VERSION.EXT`, and challenge quests should be named like `c###-VERSION.EXT`. The fields in each filename are:
 - `###`: quest number (this doesn't really matter; it should just be unique for the version)
 - `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gov = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
 - `VERSION`: d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
 - `EXT`: file extension (bin, dat, bin.gci, dat.gci, bin.dlq, dat.dlq, or qst)
+
+There are multiple PSO quest formats out there; newserv supports most of them. Specifically, newserv can use quests in any of the following formats:
+- bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file.
+- Unencrypted GCI format: These quests also consist of a .bin and .dat file, but an encoding is applied on top of them. The filenames should end in .bin.gci and .dat.gci. (Note that there also exists an encrypted GCI format, which newserv does not support.)
+- Encrypted DLQ format: These quests also consist of a .bin and .dat file, but downlaod quest encryption is applied on top of them. The filenames should end in .bin.dlq and .dat.dlq.
+- QST format: These quests consist of only a .qst file, which contains both the .bin and .dat files within it.
 
 When newserv indexes the quests during startup, it will warn (but not fail) if any quests are corrupt or in unrecognized formats.
 
