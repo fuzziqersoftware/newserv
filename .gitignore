@@ -16,4 +16,6 @@ install_manifest.txt
 # Files modified by the user and/or server that don't have defaults
 system/config.json
 system/licenses.nsi
-system/players/*
+system/players/player_*
+system/players/account_*
+system/players/bank_*

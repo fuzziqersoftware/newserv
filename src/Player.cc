@@ -350,7 +350,7 @@ string ClientGameData::player_data_filename() const {
 }
 
 string ClientGameData::player_template_filename(uint8_t char_class) {
-  return string_printf("system/blueburst/player_class_%hhu.nsc", char_class);
+  return string_printf("system/players/default_player_%hhu.nsc", char_class);
 }
 
 void ClientGameData::create_player(
@@ -388,7 +388,7 @@ void ClientGameData::load_account_data() {
     log(INFO, "[BB/Account] No account data for %s; using default",
         this->bb_username.c_str());
     data.reset(new SavedAccountDataBB(
-        load_object_file<SavedAccountDataBB>("system/blueburst/default.nsa")));
+        load_object_file<SavedAccountDataBB>("system/players/default.nsa")));
     if (data->signature != ACCOUNT_FILE_SIGNATURE) {
       throw runtime_error("default account data header is incorrect");
     }
