@@ -261,7 +261,7 @@ static void process_subcommand_player_drop_item(shared_ptr<ServerState>,
 
   log(INFO, "[Items/%08" PRIX32 "] Player %hhu dropped item %08" PRIX32 " at %hu:(%g, %g)",
       l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
-  // c->game_data.player()->print_inventory(stderr);
+  c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -289,7 +289,7 @@ static void process_subcommand_create_inventory_item(shared_ptr<ServerState>,
 
   log(INFO, "[Items/%08" PRIX32 "] Player %hhu created inventory item %08" PRIX32,
       l->lobby_id, cmd->client_id, cmd->item.id.load());
-  // c->game_data.player()->print_inventory(stderr);
+  c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -318,7 +318,7 @@ static void process_subcommand_drop_partial_stack(shared_ptr<ServerState>,
 
   log(INFO, "[Items/%08" PRIX32 "] Player %hhu split stack to create ground item %08" PRIX32 " at %hu:(%g, %g)",
       l->lobby_id, cmd->client_id, item.data.id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
-  // c->game_data.player()->print_inventory(stderr);
+  c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -346,7 +346,7 @@ static void process_subcommand_drop_partial_stack_bb(shared_ptr<ServerState>,
     log(INFO, "[Items/%08" PRIX32 "] Player %hhu split stack %08" PRIX32 " (%" PRIu32 " of them) at %hu:(%g, %g)",
         l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load(),
         cmd->area.load(), cmd->x.load(), cmd->z.load());
-    // c->game_data.player()->print_inventory(stderr);
+    c->game_data.player()->print_inventory(stderr);
 
     send_drop_stacked_item(l, item.data, cmd->area, cmd->x, cmd->z);
 
@@ -376,7 +376,7 @@ static void process_subcommand_buy_shop_item(shared_ptr<ServerState>,
 
   log(INFO, "[Items/%08" PRIX32 "] Player %hhu bought item %08" PRIX32 " from shop",
       l->lobby_id, cmd->client_id, item.data.id.load());
-  // c->game_data.player()->print_inventory(stderr);
+  c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -402,7 +402,7 @@ static void process_subcommand_box_or_enemy_item_drop(shared_ptr<ServerState>,
 
   log(INFO, "[Items/%08" PRIX32 "] Leader created ground item %08" PRIX32 " at %hhu:(%g, %g)",
       l->lobby_id, item.data.id.load(), cmd->area, cmd->x.load(), cmd->z.load());
-  // c->game_data.player()->print_inventory(stderr);
+  c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -424,7 +424,7 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
 
   log(INFO, "[Items/%08" PRIX32 "] Player %hu picked up %08" PRIX32,
       l->lobby_id, cmd->client_id.load(), cmd->item_id.load());
-  // c->game_data.player()->print_inventory(stderr);
+  c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -486,7 +486,7 @@ static void process_subcommand_use_item(shared_ptr<ServerState>,
 
   log(INFO, "[Items/%08" PRIX32 "] Player used item %hhu:%08" PRIX32,
       l->lobby_id, cmd->client_id, cmd->item_id.load());
-  // c->game_data.player()->print_inventory(stderr);
+  c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -864,7 +864,7 @@ static void process_subcommand_destroy_inventory_item(shared_ptr<ServerState>,
   c->game_data.player()->remove_item(cmd->item_id, cmd->amount);
   log(INFO, "[Items/%08" PRIX32 "] Inventory item %hhu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
       l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load());
-  // c->game_data.player()->print_inventory(stderr);
+  c->game_data.player()->print_inventory(stderr);
   forward_subcommand(l, c, command, flag, data);
 }
 
@@ -878,7 +878,7 @@ static void process_subcommand_destroy_ground_item(shared_ptr<ServerState>,
   l->remove_item(cmd->item_id);
   log(INFO, "[Items/%08" PRIX32 "] Ground item %08" PRIX32 " destroyed (%" PRIX32 " of them)",
       l->lobby_id, cmd->item_id.load(), cmd->amount.load());
-  // c->game_data.player()->print_inventory(stderr);
+  c->game_data.player()->print_inventory(stderr);
   forward_subcommand(l, c, command, flag, data);
 }
 
