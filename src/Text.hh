@@ -423,9 +423,7 @@ struct ptext : parray<CharT, Count> {
   }
 
   operator std::basic_string<CharT>() const {
-    std::basic_string<CharT> ret(this->items, Count);
-    strip_trailing_zeroes(ret);
-    return ret;
+    return std::basic_string<CharT>(this->items, this->len());
   }
 
   bool empty() const {
