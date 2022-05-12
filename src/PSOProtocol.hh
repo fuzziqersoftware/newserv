@@ -10,7 +10,7 @@
 #include "PSOEncryption.hh"
 
 struct PSOCommandHeaderPC {
-  uint16_t size;
+  le_uint16_t size;
   uint8_t command;
   uint8_t flag;
 } __attribute__((packed));
@@ -18,13 +18,13 @@ struct PSOCommandHeaderPC {
 struct PSOCommandHeaderDCGC {
   uint8_t command;
   uint8_t flag;
-  uint16_t size;
+  le_uint16_t size;
 } __attribute__((packed));
 
 struct PSOCommandHeaderBB {
-  uint16_t size;
-  uint16_t command;
-  uint32_t flag;
+  le_uint16_t size;
+  le_uint16_t command;
+  le_uint32_t flag;
 } __attribute__((packed));
 
 union PSOCommandHeader {
@@ -48,8 +48,8 @@ union PSOCommandHeader {
 
 union PSOSubcommand {
   uint8_t byte[4];
-  uint16_t word[2];
-  uint32_t dword;
+  le_uint16_t word[2];
+  le_uint32_t dword;
 } __attribute__((packed));
 
 void for_each_received_command(
