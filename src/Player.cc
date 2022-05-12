@@ -299,6 +299,7 @@ shared_ptr<SavedAccountDataBB> ClientGameData::account(bool should_load) {
   if (!this->account_data.get() && should_load) {
     if (this->bb_username.empty()) {
       this->account_data.reset(new SavedAccountDataBB());
+      this->account_data->signature = ACCOUNT_FILE_SIGNATURE;
     } else {
       this->load_account_data();
     }
@@ -310,6 +311,7 @@ shared_ptr<SavedPlayerDataBB> ClientGameData::player(bool should_load) {
   if (!this->player_data.get() && should_load) {
     if (this->bb_username.empty()) {
       this->player_data.reset(new SavedPlayerDataBB());
+      this->player_data->signature = PLAYER_FILE_SIGNATURE;
     } else {
       this->load_player_data();
     }
