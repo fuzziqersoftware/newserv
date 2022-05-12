@@ -6,6 +6,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <phosg/Encoding.hh>
+
+#include "Text.hh" // for parray
 
 
 
@@ -70,8 +73,21 @@ public:
   struct KeyFile {
     // initial_keys are actually a stream of uint32_ts, but we treat them as
     // bytes for code simplicity
-    uint8_t initial_keys[0x12 * 4];
-    uint32_t private_keys[0x400];
+    union InitialKeys {
+      uint8_t jsd1_stream_offset;
+      parray<uint8_t, 0x48> as8;
+      parray<le_uint32_t, 0x12> as32;
+      InitialKeys() : as32() { }
+      InitialKeys(const InitialKeys& other) : as32(other.as32) { }
+    } __attribute__((packed));
+    union PrivateKeys {
+      parray<uint8_t, 0x1000> as8;
+      parray<le_uint32_t, 0x400> as32;
+      PrivateKeys() : as32() { }
+      PrivateKeys(const PrivateKeys& other) : as32(other.as32) { }
+    } __attribute__((packed));
+    InitialKeys initial_keys;
+    PrivateKeys private_keys;
     Subtype subtype;
   } __attribute__((packed));
 
@@ -81,9 +97,9 @@ public:
   virtual void decrypt(void* data, size_t size, bool advance = true);
 
 protected:
-  Subtype subtype;
-  std::vector<uint32_t> stream;
-  uint8_t jsd1_stream_offset;
+  KeyFile state;
+
+  void apply_seed(const void* original_seed, size_t seed_size);
 };
 
 // The following classes provide support for multiple PSOBB private keys, and

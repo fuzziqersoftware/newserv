@@ -176,7 +176,7 @@ void PSOGCEncryption::encrypt(void* vdata, size_t size, bool advance) {
 
 
 void PSOBBEncryption::decrypt(void* vdata, size_t size, bool advance) {
-  if (this->subtype != Subtype::JSD1) {
+  if (this->state.subtype != Subtype::JSD1) {
     if (size & 7) {
       throw invalid_argument("size must be a multiple of 8");
     }
@@ -187,30 +187,30 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size, bool advance) {
     edx = 0;
     while (edx < num_dwords) {
       ebx = dwords[edx];
-      ebx = ebx ^ this->stream[5];
-      ebp = ((this->stream[(ebx >> 0x18) + 0x12] +
-              this->stream[((ebx >> 0x10) & 0xFF) + 0x112]) ^
-             this->stream[((ebx >> 0x8) & 0xFF) + 0x212]) +
-            this->stream[(ebx & 0xFF) + 0x312];
-      ebp = ebp ^ this->stream[4];
+      ebx = ebx ^ this->state.initial_keys.as32[5];
+      ebp = ((this->state.private_keys.as32[(ebx >> 0x18)] +
+              this->state.private_keys.as32[((ebx >> 0x10) & 0xFF) + 0x100]) ^
+             this->state.private_keys.as32[((ebx >> 0x8) & 0xFF) + 0x200]) +
+            this->state.private_keys.as32[(ebx & 0xFF) + 0x300];
+      ebp = ebp ^ this->state.initial_keys.as32[4];
       ebp ^= dwords[edx + 1];
-      edi = ((this->stream[(ebp >> 0x18) + 0x12] +
-              this->stream[((ebp >> 0x10) & 0xFF) + 0x112]) ^
-             this->stream[((ebp >> 0x8) & 0xFF) + 0x212]) +
-            this->stream[(ebp & 0xFF) + 0x312];
-      edi = edi ^ this->stream[3];
+      edi = ((this->state.private_keys.as32[(ebp >> 0x18)] +
+              this->state.private_keys.as32[((ebp >> 0x10) & 0xFF) + 0x100]) ^
+             this->state.private_keys.as32[((ebp >> 0x8) & 0xFF) + 0x200]) +
+            this->state.private_keys.as32[(ebp & 0xFF) + 0x300];
+      edi = edi ^ this->state.initial_keys.as32[3];
       ebx = ebx ^ edi;
-      esi = ((this->stream[(ebx >> 0x18) + 0x12] +
-              this->stream[((ebx >> 0x10) & 0xFF) + 0x112]) ^
-             this->stream[((ebx >> 0x8) & 0xFF) + 0x212]) +
-            this->stream[(ebx & 0xFF) + 0x312];
-      ebp = ebp ^ esi ^ this->stream[2];
-      edi = ((this->stream[(ebp >> 0x18) + 0x12] +
-              this->stream[((ebp >> 0x10) & 0xFF) + 0x112]) ^
-             this->stream[((ebp >> 0x8) & 0xFF) + 0x212]) +
-            this->stream[(ebp & 0xFF) + 0x312];
-      edi = edi ^ this->stream[1];
-      ebp = ebp ^ this->stream[0];
+      esi = ((this->state.private_keys.as32[(ebx >> 0x18)] +
+              this->state.private_keys.as32[((ebx >> 0x10) & 0xFF) + 0x100]) ^
+             this->state.private_keys.as32[((ebx >> 0x8) & 0xFF) + 0x200]) +
+            this->state.private_keys.as32[(ebx & 0xFF) + 0x300];
+      ebp = ebp ^ esi ^ this->state.initial_keys.as32[2];
+      edi = ((this->state.private_keys.as32[(ebp >> 0x18)] +
+              this->state.private_keys.as32[((ebp >> 0x10) & 0xFF) + 0x100]) ^
+             this->state.private_keys.as32[((ebp >> 0x8) & 0xFF) + 0x200]) +
+            this->state.private_keys.as32[(ebp & 0xFF) + 0x300];
+      edi = edi ^ this->state.initial_keys.as32[1];
+      ebp = ebp ^ this->state.initial_keys.as32[0];
       ebx = ebx ^ edi;
       dwords[edx] = ebp;
       dwords[edx + 1] = ebx;
@@ -228,22 +228,21 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size, bool advance) {
       bytes[z] = (a & 0x55) | (b & 0xAA);
       bytes[z + 1] = (a & 0xAA) | (b & 0x55);
     }
-    uint8_t* stream_bytes = reinterpret_cast<uint8_t*>(this->stream.data());
     for (size_t z = 0; z < size; z++) {
-      bytes[z] ^= stream_bytes[this->jsd1_stream_offset];
+      bytes[z] ^= this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset];
       if (advance) {
-        stream_bytes[this->jsd1_stream_offset] -= bytes[z];
+        this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset] -= bytes[z];
       }
-      this->jsd1_stream_offset++;
+      this->state.initial_keys.jsd1_stream_offset++;
     }
     if (!advance) {
-      this->jsd1_stream_offset -= size;
+      this->state.initial_keys.jsd1_stream_offset -= size;
     }
   }
 }
 
 void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
-  if (this->subtype != Subtype::JSD1) {
+  if (this->state.subtype != Subtype::JSD1) {
     if (size & 7) {
       throw invalid_argument("size must be a multiple of 8");
     }
@@ -254,22 +253,30 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
 
     edx = 0;
     while (edx < num_dwords) {
-      ebx = data[edx] ^ this->stream[0];
-      ebp = ((this->stream[(ebx >> 0x18) + 0x12] + this->stream[((ebx >> 0x10) & 0xFF) + 0x112])
-          ^ this->stream[((ebx >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebx & 0xFF) + 0x312];
-      ebp = ebp ^ this->stream[1];
+      ebx = data[edx] ^ this->state.initial_keys.as32[0];
+      ebp = ((this->state.private_keys.as32[(ebx >> 0x18)] +
+              this->state.private_keys.as32[((ebx >> 0x10) & 0xFF) + 0x100]) ^
+             this->state.private_keys.as32[((ebx >> 0x8) & 0xFF) + 0x200]) +
+            this->state.private_keys.as32[(ebx & 0xFF) + 0x300];
+      ebp = ebp ^ this->state.initial_keys.as32[1];
       ebp ^= data[edx + 1];
-      edi = ((this->stream[(ebp >> 0x18) + 0x12] + this->stream[((ebp >> 0x10) & 0xFF) + 0x112])
-          ^ this->stream[((ebp >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebp & 0xFF) + 0x312];
-      edi = edi ^ this->stream[2];
+      edi = ((this->state.private_keys.as32[(ebp >> 0x18)] +
+              this->state.private_keys.as32[((ebp >> 0x10) & 0xFF) + 0x100]) ^
+             this->state.private_keys.as32[((ebp >> 0x8) & 0xFF) + 0x200]) +
+            this->state.private_keys.as32[(ebp & 0xFF) + 0x300];
+      edi = edi ^ this->state.initial_keys.as32[2];
       ebx = ebx ^ edi;
-      esi = ((this->stream[(ebx >> 0x18) + 0x12] + this->stream[((ebx >> 0x10) & 0xFF) + 0x112])
-          ^ this->stream[((ebx >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebx & 0xFF) + 0x312];
-      ebp = ebp ^ esi ^ this->stream[3];
-      edi = ((this->stream[(ebp >> 0x18) + 0x12] + this->stream[((ebp >> 0x10) & 0xFF) + 0x112])
-          ^ this->stream[((ebp >> 0x8) & 0xFF) + 0x212]) + this->stream[(ebp & 0xFF) + 0x312];
-      edi = edi ^ this->stream[4];
-      ebp = ebp ^ this->stream[5];
+      esi = ((this->state.private_keys.as32[(ebx >> 0x18)] +
+              this->state.private_keys.as32[((ebx >> 0x10) & 0xFF) + 0x100]) ^
+             this->state.private_keys.as32[((ebx >> 0x8) & 0xFF) + 0x200]) +
+            this->state.private_keys.as32[(ebx & 0xFF) + 0x300];
+      ebp = ebp ^ esi ^ this->state.initial_keys.as32[3];
+      edi = ((this->state.private_keys.as32[(ebp >> 0x18)] +
+              this->state.private_keys.as32[((ebp >> 0x10) & 0xFF) + 0x100]) ^
+             this->state.private_keys.as32[((ebp >> 0x8) & 0xFF) + 0x200]) +
+            this->state.private_keys.as32[(ebp & 0xFF) + 0x300];
+      edi = edi ^ this->state.initial_keys.as32[4];
+      ebp = ebp ^ this->state.initial_keys.as32[5];
       ebx = ebx ^ edi;
       data[edx] = ebp;
       data[edx + 1] = ebx;
@@ -281,17 +288,16 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
       throw logic_error("JSD1 can only peek-encrypt up to 0x100 bytes");
     }
     uint8_t* bytes = reinterpret_cast<uint8_t*>(vdata);
-    uint8_t* stream_bytes = reinterpret_cast<uint8_t*>(this->stream.data());
     for (size_t z = 0; z < size; z++) {
       uint8_t v = bytes[z];
-      bytes[z] = v ^ stream_bytes[this->jsd1_stream_offset];
+      bytes[z] = v ^ this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset];
       if (advance) {
-        stream_bytes[this->jsd1_stream_offset] -= v;
+        this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset] -= v;
       }
-      this->jsd1_stream_offset++;
+      this->state.initial_keys.jsd1_stream_offset++;
     }
     if (!advance) {
-      this->jsd1_stream_offset -= size;
+      this->state.initial_keys.jsd1_stream_offset -= size;
     }
     for (size_t z = 0; z < size; z += 2) {
       uint8_t a = bytes[z];
@@ -304,8 +310,11 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
 
 PSOBBEncryption::PSOBBEncryption(
     const KeyFile& key, const void* original_seed, size_t seed_size)
-  : subtype(key.subtype), jsd1_stream_offset(0) {
+  : state(key) {
+  this->apply_seed(original_seed, seed_size);
+}
 
+void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
   // Note: This part is done in the 03 command handler in the BB client, and
   // isn't actually part of the encryption library. (Why did they do this?)
   string seed;
@@ -317,25 +326,19 @@ PSOBBEncryption::PSOBBEncryption(
     seed.push_back(original_seed_data[x + 2] ^ 0x18);
   }
 
-  if (this->subtype != Subtype::JSD1) {
+  if (this->state.subtype != Subtype::JSD1) {
     if (seed_size % 3) {
       throw invalid_argument("seed size must be divisible by 3");
     }
 
-    this->stream.resize(BB_STREAM_LENGTH, 0);
-
-    if (key.subtype == Subtype::MOCB1) {
+    if (this->state.subtype == Subtype::MOCB1) {
       for (size_t x = 0; x < 0x12; x++) {
-        uint8_t a = key.initial_keys[4 * x + 0];
-        uint8_t b = key.initial_keys[4 * x + 1];
-        uint8_t c = key.initial_keys[4 * x + 2];
-        uint8_t d = key.initial_keys[4 * x + 3];
-        this->stream[x] = ((a ^ d) << 24) | ((b ^ c) << 16) | (a << 8) | b;
+        uint8_t a = this->state.initial_keys.as8[4 * x + 0];
+        uint8_t b = this->state.initial_keys.as8[4 * x + 1];
+        uint8_t c = this->state.initial_keys.as8[4 * x + 2];
+        uint8_t d = this->state.initial_keys.as8[4 * x + 3];
+        this->state.initial_keys.as32[x] = ((a ^ d) << 24) | ((b ^ c) << 16) | (a << 8) | b;
       }
-      memcpy(this->stream.data() + 0x12, &key.private_keys, sizeof(key.private_keys));
-
-    } else {
-      memcpy(this->stream.data(), &key, sizeof(key));
     }
 
     // This block was formerly postprocess_initial_stream
@@ -362,7 +365,7 @@ PSOBBEncryption::PSOBBEncryption(
         ebp = ebp | eax;
         eax = ecx;
         edx = eax % seed.size();
-        this->stream[ebx] ^= ebp;
+        this->state.initial_keys.as32[ebx] ^= ebp;
         ecx = edx;
         ebx++;
       }
@@ -375,73 +378,73 @@ PSOBBEncryption::PSOBBEncryption(
       edx = 0x48;
 
       while (edi < edx) {
-        esi = esi ^ this->stream[0];
+        esi = esi ^ this->state.initial_keys.as32[0];
         eax = esi >> 0x18;
         ebx = (esi >> 0x10) & 0xFF;
-        eax = this->stream[eax + 0x12] + this->stream[ebx + 0x112];
+        eax = this->state.private_keys.as32[eax] + this->state.private_keys.as32[ebx + 0x100];
         ebx = (esi >> 8) & 0xFF;
-        eax = eax ^ this->stream[ebx + 0x212];
+        eax = eax ^ this->state.private_keys.as32[ebx + 0x200];
         ebx = esi & 0xFF;
-        eax = eax + this->stream[ebx + 0x312];
+        eax = eax + this->state.private_keys.as32[ebx + 0x300];
 
-        eax = eax ^ this->stream[1];
+        eax = eax ^ this->state.initial_keys.as32[1];
         ecx = ecx ^ eax;
         ebx = ecx >> 0x18;
         eax = (ecx >> 0x10) & 0xFF;
-        ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
+        ebx = this->state.private_keys.as32[ebx] + this->state.private_keys.as32[eax + 0x100];
         eax = (ecx >> 8) & 0xFF;
-        ebx = ebx ^ this->stream[eax + 0x212];
+        ebx = ebx ^ this->state.private_keys.as32[eax + 0x200];
         eax = ecx & 0xFF;
-        ebx = ebx + this->stream[eax + 0x312];
+        ebx = ebx + this->state.private_keys.as32[eax + 0x300];
 
         for (x = 0; x <= 5; x++) {
-          ebx = ebx ^ this->stream[(x * 2) + 2];
+          ebx = ebx ^ this->state.initial_keys.as32[(x * 2) + 2];
           esi = esi ^ ebx;
           ebx = esi >> 0x18;
           eax = (esi >> 0x10) & 0xFF;
-          ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
+          ebx = this->state.private_keys.as32[ebx] + this->state.private_keys.as32[eax + 0x100];
           eax = (esi >> 8) & 0xFF;
-          ebx = ebx ^ this->stream[eax + 0x212];
+          ebx = ebx ^ this->state.private_keys.as32[eax + 0x200];
           eax = esi & 0xFF;
-          ebx = ebx + this->stream[eax + 0x312];
+          ebx = ebx + this->state.private_keys.as32[eax + 0x300];
 
-          ebx = ebx ^ this->stream[(x * 2) + 3];
+          ebx = ebx ^ this->state.initial_keys.as32[(x * 2) + 3];
           ecx = ecx ^ ebx;
           ebx = ecx >> 0x18;
           eax = (ecx >> 0x10) & 0xFF;
-          ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
+          ebx = this->state.private_keys.as32[ebx] + this->state.private_keys.as32[eax + 0x100];
           eax = (ecx >> 8) & 0xFF;
-          ebx = ebx ^ this->stream[eax + 0x212];
+          ebx = ebx ^ this->state.private_keys.as32[eax + 0x200];
           eax = ecx & 0xFF;
-          ebx = ebx + this->stream[eax + 0x312];
+          ebx = ebx + this->state.private_keys.as32[eax + 0x300];
         }
 
-        ebx = ebx ^ this->stream[14];
+        ebx = ebx ^ this->state.initial_keys.as32[14];
         esi = esi ^ ebx;
         eax = esi >> 0x18;
         ebx = (esi >> 0x10) & 0xFF;
-        eax = this->stream[eax + 0x12] + this->stream[ebx + 0x112];
+        eax = this->state.private_keys.as32[eax] + this->state.private_keys.as32[ebx + 0x100];
         ebx = (esi >> 8) & 0xFF;
-        eax = eax ^ this->stream[ebx + 0x212];
+        eax = eax ^ this->state.private_keys.as32[ebx + 0x200];
         ebx = esi & 0xFF;
-        eax = eax + this->stream[ebx + 0x312];
+        eax = eax + this->state.private_keys.as32[ebx + 0x300];
 
-        eax = eax ^ this->stream[15];
+        eax = eax ^ this->state.initial_keys.as32[15];
         eax = ecx ^ eax;
         ecx = eax >> 0x18;
         ebx = (eax >> 0x10) & 0xFF;
-        ecx = this->stream[ecx + 0x12] + this->stream[ebx + 0x112];
+        ecx = this->state.private_keys.as32[ecx] + this->state.private_keys.as32[ebx + 0x100];
         ebx = (eax >> 8) & 0xFF;
-        ecx = ecx ^ this->stream[ebx + 0x212];
+        ecx = ecx ^ this->state.private_keys.as32[ebx + 0x200];
         ebx = eax & 0xFF;
-        ecx = ecx + this->stream[ebx + 0x312];
+        ecx = ecx + this->state.private_keys.as32[ebx + 0x300];
 
-        ecx = ecx ^ this->stream[16];
+        ecx = ecx ^ this->state.initial_keys.as32[16];
         ecx = ecx ^ esi;
-        esi = this->stream[17];
+        esi = this->state.initial_keys.as32[17];
         esi = esi ^ eax;
-        this->stream[(edi / 4)] = esi;
-        this->stream[(edi / 4)+1] = ecx;
+        this->state.initial_keys.as32[(edi / 4)] = esi;
+        this->state.initial_keys.as32[(edi / 4)+1] = ecx;
         edi = edi + 8;
       }
 
@@ -449,77 +452,77 @@ PSOBBEncryption::PSOBBEncryption(
       edx = 0;
       ou = 0;
       while (ou < 0x1000) {
-        edi = 0x48;
-        edx = 0x448;
+        edi = 0;
+        edx = 0x400;
 
         while (edi < edx) {
-          esi = esi ^ this->stream[0];
+          esi = esi ^ this->state.initial_keys.as32[0];
           eax = esi >> 0x18;
           ebx = (esi >> 0x10) & 0xFF;
-          eax = this->stream[eax + 0x12] + this->stream[ebx + 0x112];
+          eax = this->state.private_keys.as32[eax] + this->state.private_keys.as32[ebx + 0x100];
           ebx = (esi >> 8) & 0xFF;
-          eax = eax ^ this->stream[ebx + 0x212];
+          eax = eax ^ this->state.private_keys.as32[ebx + 0x200];
           ebx = esi & 0xFF;
-          eax = eax + this->stream[ebx + 0x312];
+          eax = eax + this->state.private_keys.as32[ebx + 0x300];
 
-          eax = eax ^ this->stream[1];
+          eax = eax ^ this->state.initial_keys.as32[1];
           ecx = ecx ^ eax;
           ebx = ecx >> 0x18;
           eax = (ecx >> 0x10) & 0xFF;
-          ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
+          ebx = this->state.private_keys.as32[ebx] + this->state.private_keys.as32[eax + 0x100];
           eax = (ecx >> 8) & 0xFF;
-          ebx = ebx ^ this->stream[eax + 0x212];
+          ebx = ebx ^ this->state.private_keys.as32[eax + 0x200];
           eax = ecx & 0xFF;
-          ebx = ebx + this->stream[eax + 0x312];
+          ebx = ebx + this->state.private_keys.as32[eax + 0x300];
 
           for (x = 0; x <= 5; x++) {
-            ebx = ebx ^ this->stream[(x * 2) + 2];
+            ebx = ebx ^ this->state.initial_keys.as32[(x * 2) + 2];
             esi = esi ^ ebx;
             ebx = esi >> 0x18;
             eax = (esi >> 0x10) & 0xFF;
-            ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
+            ebx = this->state.private_keys.as32[ebx] + this->state.private_keys.as32[eax + 0x100];
             eax = (esi >> 8) & 0xFF;
-            ebx = ebx ^ this->stream[eax + 0x212];
+            ebx = ebx ^ this->state.private_keys.as32[eax + 0x200];
             eax = esi & 0xFF;
-            ebx = ebx + this->stream[eax + 0x312];
+            ebx = ebx + this->state.private_keys.as32[eax + 0x300];
 
-            ebx = ebx ^ this->stream[(x * 2) + 3];
+            ebx = ebx ^ this->state.initial_keys.as32[(x * 2) + 3];
             ecx = ecx ^ ebx;
             ebx = ecx >> 0x18;
             eax = (ecx >> 0x10) & 0xFF;
-            ebx = this->stream[ebx + 0x12] + this->stream[eax + 0x112];
+            ebx = this->state.private_keys.as32[ebx] + this->state.private_keys.as32[eax + 0x100];
             eax = (ecx >> 8) & 0xFF;
-            ebx = ebx ^ this->stream[eax + 0x212];
+            ebx = ebx ^ this->state.private_keys.as32[eax + 0x200];
             eax = ecx & 0xFF;
-            ebx = ebx + this->stream[eax + 0x312];
+            ebx = ebx + this->state.private_keys.as32[eax + 0x300];
           }
 
-          ebx = ebx ^ this->stream[14];
+          ebx = ebx ^ this->state.initial_keys.as32[14];
           esi = esi ^ ebx;
           eax = esi >> 0x18;
           ebx = (esi >> 0x10) & 0xFF;
-          eax = this->stream[eax + 0x12] + this->stream[ebx + 0x112];
+          eax = this->state.private_keys.as32[eax] + this->state.private_keys.as32[ebx + 0x100];
           ebx = (esi >> 8) & 0xFF;
-          eax = eax ^ this->stream[ebx + 0x212];
+          eax = eax ^ this->state.private_keys.as32[ebx + 0x200];
           ebx = esi & 0xFF;
-          eax = eax + this->stream[ebx + 0x312];
+          eax = eax + this->state.private_keys.as32[ebx + 0x300];
 
-          eax = eax ^ this->stream[15];
+          eax = eax ^ this->state.initial_keys.as32[15];
           eax = ecx ^ eax;
           ecx = eax >> 0x18;
           ebx = (eax >> 0x10) & 0xFF;
-          ecx = this->stream[ecx + 0x12] + this->stream[ebx + 0x112];
+          ecx = this->state.private_keys.as32[ecx] + this->state.private_keys.as32[ebx + 0x100];
           ebx = (eax >> 8) & 0xFF;
-          ecx = ecx ^ this->stream[ebx + 0x212];
+          ecx = ecx ^ this->state.private_keys.as32[ebx + 0x200];
           ebx = eax & 0xFF;
-          ecx = ecx + this->stream[ebx + 0x312];
+          ecx = ecx + this->state.private_keys.as32[ebx + 0x300];
 
-          ecx = ecx ^ this->stream[16];
+          ecx = ecx ^ this->state.initial_keys.as32[16];
           ecx = ecx ^ esi;
-          esi = this->stream[17];
+          esi = this->state.initial_keys.as32[17];
           esi = esi ^ eax;
-          this->stream[(ou / 4) + (edi / 4)] = esi;
-          this->stream[(ou / 4) + (edi / 4) + 1] = ecx;
+          this->state.private_keys.as32[(ou / 4) + (edi / 4)] = esi;
+          this->state.private_keys.as32[(ou / 4) + (edi / 4) + 1] = ecx;
           edi = edi + 8;
         }
         ou = ou + 0x400;
@@ -527,11 +530,9 @@ PSOBBEncryption::PSOBBEncryption(
     }
 
   } else { // subtype == Subtype::JSD1
-    this->stream.resize(0x40);
-    uint8_t* stream_bytes = reinterpret_cast<uint8_t*>(this->stream.data());
     size_t seed_offset = 0;
     for (size_t z = 0; z < 0x100; z++) {
-      stream_bytes[z] = (z + seed[seed_offset]) ^ (static_cast<uint8_t>(seed[seed_offset]) >> 1);
+      this->state.private_keys.as8[z] = (z + seed[seed_offset]) ^ (static_cast<uint8_t>(seed[seed_offset]) >> 1);
       seed_offset = (seed_offset + 1) % seed.size();
     }
   }

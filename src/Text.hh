@@ -218,6 +218,19 @@ struct parray {
     return this->items;
   }
 
+  ItemT& operator[](size_t index) {
+    if (index >= Count) {
+      throw std::out_of_range("array index out of bounds");
+    }
+    return this->items[index];
+  }
+  const ItemT& operator[](size_t index) const {
+    if (index >= Count) {
+      throw std::out_of_range("array index out of bounds");
+    }
+    return this->items[index];
+  }
+
   // TODO: These can be made faster by only clearing the unused space after the
   // strncpy_t (if any) instead of clearing all the space every time
   parray& operator=(const parray& s) {

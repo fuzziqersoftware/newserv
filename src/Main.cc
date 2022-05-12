@@ -226,16 +226,9 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     if (!ends_with(filename, ".nsk")) {
       continue;
     }
-    string contents = load_file("system/blueburst/keys/" + filename);
-    if (contents.size() != sizeof(PSOBBEncryption::KeyFile)) {
-      log(WARNING, "Blue Burst key file %s is the wrong size (%zu bytes; should be %zu bytes)",
-          filename.c_str(), contents.size(), sizeof(PSOBBEncryption::KeyFile));
-    } else {
-      shared_ptr<PSOBBEncryption::KeyFile> k(new PSOBBEncryption::KeyFile());
-      memcpy(k.get(), contents.data(), sizeof(PSOBBEncryption::KeyFile));
-      s->bb_private_keys.emplace_back(k);
-      log(INFO, "Loaded Blue Burst key file: %s", filename.c_str());
-    }
+    s->bb_private_keys.emplace_back(new PSOBBEncryption::KeyFile(
+        load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
+    log(INFO, "Loaded Blue Burst key file: %s", filename.c_str());
   }
   log(INFO, "%zu Blue Burst key file(s) loaded", s->bb_private_keys.size());
 
