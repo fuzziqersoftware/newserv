@@ -1003,7 +1003,7 @@ void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_quest_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
+void process_quest_barrier(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // AC
   check_size_v(data.size(), 0);
 
@@ -1867,7 +1867,7 @@ static process_command_t dc_handlers[0x100] = {
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
   nullptr, nullptr, nullptr, nullptr,
   nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
-  process_quest_ready, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // B0
   nullptr, process_server_time_request, nullptr, nullptr,
@@ -1950,7 +1950,7 @@ static process_command_t pc_handlers[0x100] = {
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
   nullptr, nullptr, nullptr, nullptr,
   nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
-  process_quest_ready, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // B0
   nullptr, process_server_time_request, nullptr, nullptr,
@@ -2034,7 +2034,7 @@ static process_command_t gc_handlers[0x100] = {
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
   nullptr, nullptr, process_ignored_command, process_ignored_command,
   nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
-  process_quest_ready, nullptr, nullptr, nullptr,
+  process_quest_barrier, nullptr, nullptr, nullptr,
 
   // B0
   nullptr, process_server_time_request, nullptr, nullptr,
@@ -2123,7 +2123,7 @@ static process_command_t bb_handlers[0x100] = {
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
   nullptr, nullptr, nullptr, nullptr,
   nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
-  process_quest_ready, nullptr, nullptr, nullptr,
+  process_quest_barrier, nullptr, nullptr, nullptr,
 
   // B0
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
