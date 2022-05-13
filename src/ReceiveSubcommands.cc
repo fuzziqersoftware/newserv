@@ -341,9 +341,14 @@ static void process_subcommand_drop_partial_stack_bb(shared_ptr<ServerState>,
       item.data.id = l->generate_item_id(c->lobby_client_id);
     }
 
+    // PSOBB sends a 6x29 command after it receives the 6x5D, so we need to add
+    // the item back to the player's inventory to correct for this (it will get
+    // removed again by the 6x29 handler)
+    c->game_data.player()->add_item(item);
+
     l->add_item(item, cmd->area, cmd->x, cmd->z);
 
-    log(INFO, "[Items/%08" PRIX32 "] Player %hhu split stack %08" PRIX32 " (%" PRIu32 " of them) at %hu:(%g, %g)",
+    log(INFO, "[Items/%08" PRIX32 "/BB] Player %hhu split stack %08" PRIX32 " (%" PRIu32 " of them) at %hu:(%g, %g)",
         l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load(),
         cmd->area.load(), cmd->x.load(), cmd->z.load());
     c->game_data.player()->print_inventory(stderr);
@@ -441,6 +446,10 @@ static void process_subcommand_pick_up_item_request(shared_ptr<ServerState>,
     }
 
     c->game_data.player()->add_item(l->remove_item(cmd->item_id));
+
+    log(INFO, "[Items/%08" PRIX32 "/BB] Player %hhu picked up %08" PRIX32,
+        l->lobby_id, cmd->client_id, cmd->item_id.load());
+    c->game_data.player()->print_inventory(stderr);
 
     send_pick_up_item(l, c, cmd->item_id, cmd->area);
 

@@ -12,12 +12,12 @@ using namespace std;
 
 
 Lobby::Lobby() : lobby_id(0), min_level(0), max_level(0xFFFFFFFF),
-    next_game_item_id(0), version(GameVersion::GC), section_id(0), episode(1),
-    difficulty(0), mode(0), rare_seed(random_object<uint32_t>()), event(0),
-    block(0), type(0), leader_id(0), max_clients(12), flags(0) {
+    next_game_item_id(0x00810000), version(GameVersion::GC), section_id(0),
+    episode(1), difficulty(0), mode(0), rare_seed(random_object<uint32_t>()),
+    event(0), block(0), type(0), leader_id(0), max_clients(12), flags(0) {
 
   for (size_t x = 0; x < 12; x++) {
-    this->next_item_id[x] = 0;
+    this->next_item_id[x] = 0x00010000 + 0x00200000 * x;
   }
   this->next_drop_item = PlayerInventoryItem();
 }
@@ -84,7 +84,7 @@ void Lobby::add_client(shared_ptr<Client> c, bool reverse_indexes) {
   c->lobby_client_id = index;
   c->lobby_id = this->lobby_id;
 
-  // if there's no one else in the lobby, set the leader id as well
+  // If there's no one else in the lobby, set the leader id as well
   if (index == (max_clients - 1) * reverse_indexes) {
     for (index = 0; index < max_clients; index++) {
       if (this->clients[index].get() && this->clients[index] != c) {
@@ -99,9 +99,9 @@ void Lobby::add_client(shared_ptr<Client> c, bool reverse_indexes) {
   // If the lobby is a game, assign the inventory's item IDs
   if (this->is_game()) {
     auto& inv = c->game_data.player()->inventory;
-    size_t count = max<uint8_t>(inv.num_items, 30);
+    size_t count = min<uint8_t>(inv.num_items, 30);
     for (size_t x = 0; x < count; x++) {
-      inv.items[x].data.id = 0x00010000 + 0x00200000 * c->lobby_client_id + x;
+      inv.items[x].data.id = this->generate_item_id(c->lobby_client_id);
     }
     c->game_data.player()->print_inventory(stderr);
   }
@@ -118,7 +118,7 @@ void Lobby::remove_client(shared_ptr<Client> c) {
 
   this->clients[c->lobby_client_id] = nullptr;
 
-  // unassign the client's lobby if it matches the current lobby's id (it may
+  // Unassign the client's lobby if it matches the current lobby's id (it may
   // not match if the client was already added to another lobby - this can
   // happen during the lobby change procedure)
   if (c->lobby_id == this->lobby_id) {

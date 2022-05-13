@@ -1169,25 +1169,24 @@ void send_revive_player(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 // BB game commands
 
-// notifies other players of a dropped item from a box or enemy
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
   G_DropItem_6x5F cmd = {
-      0x5F, 0x0A, 0x0000, area, from_enemy, request_id, x, z, 0, item, 0};
+      0x5F, 0x0B, 0x0000, area, from_enemy, request_id, x, z, 0, item, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-// notifies other players that a stack was split and part of it dropped (a new item was created)
+// Notifies other players that a stack was split and part of it dropped (a new
+// item was created)
 void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
     uint8_t area, float x, float z) {
   // TODO: Is this order correct? The original code sent {item, 0}, but it seems
   // GC sends {0, item} (the last two fields in the struct are switched).
   G_DropStackedItem_6x5D cmd = {
-      0x5D, 0x09, 0x00, 0x00, area, 0, x, z, item, 0};
+      0x5D, 0x0A, 0x00, 0x00, area, 0, x, z, item, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-// notifies other players that an item was picked up
 void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint8_t area) {
   G_PickUpItem_6x59 cmd = {
@@ -1195,7 +1194,8 @@ void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-// creates an item in a player's inventory (used for withdrawing items from the bank)
+// Creates an item in a player's inventory (used for withdrawing items from the
+// bank)
 void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     const ItemData& item) {
   G_CreateInventoryItem_BB_6xBE cmd = {

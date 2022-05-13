@@ -169,7 +169,7 @@ void populate_state_from_config(shared_ptr<ServerState> s,
         u"Connect to another\nserver", MenuItem::Flag::GC_ONLY);
   }
   s->main_menu.emplace_back(MAIN_MENU_DOWNLOAD_QUESTS, u"Download quests",
-      u"Download quests", 0);
+      u"Download quests", MenuItem::Flag::INVISIBLE_ON_BB);
   s->main_menu.emplace_back(MAIN_MENU_DISCONNECT, u"Disconnect",
       u"Disconnect", 0);
 

@@ -456,7 +456,7 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
 
     case 0x07: // meseta
       item.data1[0] = 0x04;
-      item.data2d = (90 * difficulty) + (random_int(0, 20) * (area * 2)); // meseta amount
+      item.data2d = (90 * difficulty) + (random_int(1, 20) * (area * 2)); // meseta amount
       break;
 
     default:
