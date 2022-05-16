@@ -253,24 +253,25 @@ uint8_t npc_for_name(const u16string& name) {
 
 
 
-const unordered_map<uint32_t, uint32_t> combine_item_to_max({
-  {0x030000, 10},
-  {0x030001, 10},
-  {0x030002, 10},
-  {0x030100, 10},
-  {0x030101, 10},
-  {0x030102, 10},
-  {0x030300, 10},
-  {0x030400, 10},
-  {0x030500, 10},
-  {0x030600, 10},
-  {0x030601, 10},
-  {0x030700, 10},
-  {0x030800, 10},
-  {0x031000, 99},
-  {0x031001, 99},
-  {0x031002, 99},
-});
+size_t stack_size_for_item(uint8_t data0, uint8_t data1) {
+  if (data0 == 4) {
+    return 999999;
+  }
+  if (data0 == 3) {
+    if ((data1 < 9) && (data1 != 2)) {
+      return 10;
+    } else if (data1 == 0x10) {
+      return 99;
+    }
+  }
+  return 1;
+}
+
+size_t stack_size_for_item(const ItemData& item) {
+  return stack_size_for_item(item.data1[0], item.data1[1]);
+}
+
+
 
 const unordered_map<uint8_t, const char*> name_for_weapon_special({
   {0x00, nullptr},
@@ -1592,7 +1593,7 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
 
   // For tools, add the amount (if applicable)
   } else if (item.data1[0] == 0x03) {
-    if (combine_item_to_max.count(primary_identifier)) {
+    if (stack_size_for_item(item) > 1) {
       ret_tokens.emplace_back(string_printf("x%hhu", item.data1[5]));
     }
   }

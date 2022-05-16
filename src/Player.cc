@@ -540,7 +540,7 @@ PlayerBankItem::PlayerBankItem()
 
 PlayerBankItem::PlayerBankItem(const PlayerInventoryItem& src)
   : data(src.data),
-    amount(combine_item_to_max.count(this->data.primary_identifier()) ? this->data.data1[5] : 1),
+    amount(stack_size_for_item(this->data)),
     show_flags(1) { }
 
 
@@ -569,9 +569,8 @@ void SavedPlayerDataBB::add_item(const PlayerInventoryItem& item) {
   }
 
   // Handle combinable items
-  try {
-    uint32_t combine_max = combine_item_to_max.at(pid);
-
+  size_t combine_max = stack_size_for_item(item.data);
+  if (combine_max > 1) {
     // Get the item index if there's already a stack of the same item in the
     // player's inventory
     size_t y;
@@ -589,7 +588,7 @@ void SavedPlayerDataBB::add_item(const PlayerInventoryItem& item) {
       }
       return;
     }
-  } catch (const out_of_range&) { }
+  }
 
   // If we get here, then it's not meseta and not a combine item, so it needs to
   // go into an empty inventory slot
@@ -611,9 +610,8 @@ void PlayerBank::add_item(const PlayerBankItem& item) {
     return;
   }
 
-  try {
-    uint32_t combine_max = combine_item_to_max.at(pid);
-
+  size_t combine_max = stack_size_for_item(item.data);
+  if (combine_max > 1) {
     size_t y;
     for (y = 0; y < this->num_items; y++) {
       if (this->items[y].data.primary_identifier() == item.data.primary_identifier()) {
@@ -629,7 +627,7 @@ void PlayerBank::add_item(const PlayerBankItem& item) {
       this->items[y].amount = this->items[y].data.data1[5];
       return;
     }
-  } catch (const out_of_range&) { }
+  }
 
   if (this->num_items >= 200) {
     throw runtime_error("bank is full");
@@ -663,8 +661,8 @@ PlayerInventoryItem SavedPlayerDataBB::remove_item(
   // then create a new item and reduce the amount of the existing stack. Note
   // that passing amount == 0 means to remove the entire stack, so this only
   // applies if amount is nonzero.
-  if (amount && (amount < inventory_item.data.data1[5]) &&
-      combine_item_to_max.count(inventory_item.data.primary_identifier())) {
+  if (amount && (stack_size_for_item(inventory_item.data) > 1) &&
+      (amount < inventory_item.data.data1[5])) {
     ret = inventory_item;
     ret.data.data1[5] = amount;
     ret.data.id = 0xFFFFFFFF;
@@ -700,8 +698,8 @@ PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
   size_t index = this->find_item(item_id);
   auto& bank_item = this->items[index];
 
-  if (amount && (amount < bank_item.data.data1[5]) &&
-      combine_item_to_max.count(bank_item.data.primary_identifier())) {
+  if (amount && (stack_size_for_item(bank_item.data) > 1) &&
+      (amount < bank_item.data.data1[5])) {
     ret = bank_item;
     ret.data.data1[5] = amount;
     ret.amount = amount;

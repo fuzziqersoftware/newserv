@@ -8,7 +8,9 @@
 
 
 
-extern const std::unordered_map<uint32_t, uint32_t> combine_item_to_max;
+size_t stack_size_for_item(uint8_t data0, uint8_t data1);
+size_t stack_size_for_item(const ItemData& item);
+
 extern const std::unordered_map<uint8_t, const char*> name_for_weapon_special;
 extern const std::unordered_map<uint8_t, const char*> name_for_s_rank_special;
 extern const std::unordered_map<uint32_t, const char*> name_for_primary_identifier;
