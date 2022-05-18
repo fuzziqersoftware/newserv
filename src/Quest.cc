@@ -609,12 +609,6 @@ QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
             make_pair(q->version, q->menu_item_id), q).second) {
           throw logic_error("duplicate quest menu item id");
         }
-        if (!this->version_name_to_quest.emplace(
-            make_pair(q->version, q->name), q).second) {
-          throw runtime_error(string_printf(
-              "duplicate quest name (%s-%" PRId64 "): %s",
-              name_for_version(q->version), q->internal_id, ascii_name.c_str()));
-        }
         log(INFO, "Indexed quest %s (%s-%" PRId64 " => %" PRIu32 ", %s, episode=%hhu, joinable=%s, dcv1=%s)",
             ascii_name.c_str(), name_for_version(q->version), q->internal_id,
             q->menu_item_id, name_for_category(q->category), q->episode,

@@ -83,7 +83,6 @@ struct QuestIndex {
   std::string directory;
 
   std::map<std::pair<GameVersion, uint64_t>, std::shared_ptr<Quest>> version_menu_item_id_to_quest;
-  std::map<std::pair<GameVersion, std::u16string>, std::shared_ptr<Quest>> version_name_to_quest;
 
   std::map<std::string, std::vector<std::shared_ptr<Quest>>> category_to_quests;
 
