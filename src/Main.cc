@@ -276,6 +276,7 @@ enum class Behavior {
   RUN_SERVER = 0,
   DECRYPT_DATA,
   ENCRYPT_DATA,
+  DECODE_QUEST_FILE,
 };
 
 enum class EncryptionType {
@@ -284,9 +285,17 @@ enum class EncryptionType {
   BB,
 };
 
+enum class QuestFileFormat {
+  GCI = 0,
+  DLQ,
+  QST,
+};
+
 int main(int argc, char** argv) {
   Behavior behavior = Behavior::RUN_SERVER;
   EncryptionType crypt_type = EncryptionType::PC;
+  QuestFileFormat quest_file_type = QuestFileFormat::GCI;
+  string quest_filename;
   string seed;
   string key_file_name;
   bool parse_data = false;
@@ -295,6 +304,18 @@ int main(int argc, char** argv) {
       behavior = Behavior::DECRYPT_DATA;
     } else if (!strcmp(argv[x], "--encrypt-data")) {
       behavior = Behavior::ENCRYPT_DATA;
+    } else if (!strncmp(argv[x], "--decode-gci=", 13)) {
+      behavior = Behavior::DECODE_QUEST_FILE;
+      quest_file_type = QuestFileFormat::GCI;
+      quest_filename = &argv[x][13];
+    } else if (!strncmp(argv[x], "--decode-dlq=", 13)) {
+      behavior = Behavior::DECODE_QUEST_FILE;
+      quest_file_type = QuestFileFormat::DLQ;
+      quest_filename = &argv[x][13];
+    } else if (!strncmp(argv[x], "--decode-qst=", 13)) {
+      behavior = Behavior::DECODE_QUEST_FILE;
+      quest_file_type = QuestFileFormat::QST;
+      quest_filename = &argv[x][13];
     } else if (!strcmp(argv[x], "--pc")) {
       crypt_type = EncryptionType::PC;
     } else if (!strcmp(argv[x], "--gc")) {
@@ -312,7 +333,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (behavior != Behavior::RUN_SERVER) {
+  if (behavior == Behavior::DECRYPT_DATA || behavior == Behavior::ENCRYPT_DATA) {
     shared_ptr<PSOEncryption> crypt;
     if (crypt_type == EncryptionType::PC) {
       crypt.reset(new PSOPCEncryption(stoul(seed, nullptr, 16)));
@@ -346,6 +367,21 @@ int main(int argc, char** argv) {
       fwritex(stdout, data);
     }
     fflush(stdout);
+
+    return 0;
+
+  } else if (behavior == Behavior::DECODE_QUEST_FILE) {
+    if (quest_file_type == QuestFileFormat::GCI) {
+      save_file(quest_filename + ".dec", Quest::decode_gci(quest_filename));
+    } else if (quest_file_type == QuestFileFormat::DLQ) {
+      save_file(quest_filename + ".dec", Quest::decode_dlq(quest_filename));
+    } else if (quest_file_type == QuestFileFormat::QST) {
+      auto data = Quest::decode_qst(quest_filename);
+      save_file(quest_filename + ".bin", data.first);
+      save_file(quest_filename + ".dat", data.second);
+    } else {
+      throw logic_error("invalid quest file format");
+    }
 
     return 0;
   }
