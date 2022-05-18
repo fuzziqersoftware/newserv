@@ -1317,7 +1317,7 @@ void send_ep3_map_list(shared_ptr<Lobby> l) {
   string data(16, '\0');
   PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(data.data());
   subs[0].dword = 0x000000B6;
-  subs[1].dword = (23 + file_data->size()) & 0xFFFFFFFC;
+  subs[1].dword = (file_data->size() + 0x14 + 3) & 0xFFFFFFFC;
   subs[2].dword = 0x00000040;
   subs[3].dword = file_data->size();
   data += *file_data;

@@ -1003,6 +1003,16 @@ static void process_subcommand_forward_check_size_ep3_lobby(shared_ptr<ServerSta
   forward_subcommand(l, c, command, flag, data);
 }
 
+static void process_subcommand_forward_check_size_ep3_game(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  check_size_sc(data, sizeof(PSOSubcommand), 0xFFFF);
+  if (!l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    return;
+  }
+  forward_subcommand(l, c, command, flag, data);
+}
+
 static void process_subcommand_invalid(shared_ptr<ServerState>,
     shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
     const string& data) {
@@ -1215,7 +1225,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* B1 */ process_subcommand_unimplemented,
   /* B2 */ process_subcommand_unimplemented,
   /* B3 */ process_subcommand_unimplemented,
-  /* B4 */ process_subcommand_unimplemented,
+  /* B4 */ process_subcommand_forward_check_size_ep3_game,
   /* B5 */ process_subcommand_open_shop_bb_or_unknown_ep3, // BB shop request
   /* B6 */ process_subcommand_unimplemented, // BB shop contents (server->client only)
   /* B7 */ process_subcommand_unimplemented, // TODO: BB buy shop item
