@@ -1749,7 +1749,7 @@ struct G_EnemyHitByPlayer_6x0A {
 // 1D: Invalid subcommand
 // 1E: Invalid subcommand
 // 1F: Unknown (supported; lobby & game)
-// 20: Unknown (supported; lobby & game)
+// 20: Set position (existing clients send when a new client joins a lobby/game)
 // 21: Inter-level warp
 
 // 22: Set player visibility
@@ -2114,7 +2114,7 @@ struct G_BoxItemDropRequest_6xA2 {
 // AB: Create lobby chair
 // AC: Unknown
 // AD: Unknown
-// AE: Unknown (supported; lobby & game)
+// AE: Set chair state? (like 20, sent by existing clients at join time)
 // AF: Turn in lobby chair
 // B0: Move in lobby chair
 // B1: Unknown
