@@ -1085,28 +1085,28 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // autoreply text is a variable length
   switch (c->version) {
     case GameVersion::PC: {
-      const auto& disp = check_size_t<PSOPlayerDataPC>(data,
+      const auto& pd = check_size_t<PSOPlayerDataPC>(data,
           sizeof(PSOPlayerDataPC), 0xFFFF);
-      c->game_data.import_player(disp);
+      c->game_data.import_player(pd);
       break;
     }
     case GameVersion::GC: {
-      const PSOPlayerDataGC* disp;
+      const PSOPlayerDataGC* pd;
       if (flag == 4) { // Episode 3
-        disp = &check_size_t<PSOPlayerDataGC>(data,
-            sizeof(PSOPlayerDataGC) + 0x23FC, sizeof(PSOPlayerDataGC) + 0x23FC);
-        // TODO: import Episode 3 data somewhere
+        const auto* pd3 = &check_size_t<PSOPlayerDataGCEp3>(data);
+        c->game_data.ep3_config.reset(new Ep3Config(pd3->ep3_config));
+        pd = reinterpret_cast<const PSOPlayerDataGC*>(pd3);
       } else {
-        disp = &check_size_t<PSOPlayerDataGC>(data, sizeof(PSOPlayerDataGC),
+        pd = &check_size_t<PSOPlayerDataGC>(data, sizeof(PSOPlayerDataGC),
             sizeof(PSOPlayerDataGC) + c->game_data.player()->auto_reply.bytes());
       }
-      c->game_data.import_player(*disp);
+      c->game_data.import_player(*pd);
       break;
     }
     case GameVersion::BB: {
-      const auto& disp = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB),
+      const auto& pd = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB),
           sizeof(PSOPlayerDataBB) + c->game_data.player()->auto_reply.bytes());
-      c->game_data.import_player(disp);
+      c->game_data.import_player(pd);
       break;
     }
     default:

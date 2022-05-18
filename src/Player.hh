@@ -254,6 +254,41 @@ struct KeyAndTeamConfigBB {
 
 
 
+struct Ep3Deck {
+  // TODO: are the last 4 bytes actually part of this? They don't seem to be
+  // used for anything else, but the game limits the name to 14 chars + a
+  // language marker, which equals exactly 0x10 characters.
+  ptext<char, 0x14> name;
+  // List of card IDs. The card count is the number of nonzero entries here
+  // before a zero entry (or 50 if no entries are nonzero). The first card ID is
+  // the SC card, which the game implicitly subtracts from the limit - so a
+  // valid deck should actually have 31 cards in it.
+  le_uint16_t card_ids[50];
+  uint32_t unknown_a1;
+  // Last modification time
+  le_uint16_t year;
+  uint8_t month;
+  uint8_t day;
+  uint8_t hour;
+  uint8_t minute;
+  uint8_t second;
+  uint8_t unknown_a2;
+} __attribute__((packed));
+
+struct Ep3Config {
+  parray<uint8_t, 0x1434> unknown_a1; // at 728 in 61/98 command
+  Ep3Deck decks[25]; // at 1B5C in 61/98 command
+  uint64_t unknown_a2; // at 2840 in 61/98 command
+  be_uint32_t offline_clv_exp; // CLvOff = this / 100
+  be_uint32_t online_clv_exp; // CLvOn = this / 100
+  parray<uint8_t, 0x14C> unknown_a3; // at 2850 in 61/98 command
+  ptext<char, 0x10> name; // at 299C in 61/98 command
+  // Other records are probably somewhere in here - e.g. win/loss, play time, etc.
+  parray<uint8_t, 0xCC> unknown_a4; // at 29AC in 61/98 command
+} __attribute__((packed));
+
+
+
 struct PlayerLobbyDataPC {
   le_uint32_t player_tag;
   le_uint32_t guild_card;
@@ -301,6 +336,17 @@ struct PSOPlayerDataGC { // For command 61
   parray<le_uint32_t, 0x1E> blocked_senders;
   le_uint32_t auto_reply_enabled;
   char auto_reply[0];
+} __attribute__((packed));
+
+struct PSOPlayerDataGCEp3 { // For command 61
+  PlayerInventory inventory;
+  PlayerDispDataPCGC disp;
+  parray<uint8_t, 0x134> unknown;
+  ptext<char, 0xAC> info_board;
+  parray<le_uint32_t, 0x1E> blocked_senders;
+  le_uint32_t auto_reply_enabled;
+  char auto_reply[0xAC];
+  Ep3Config ep3_config;
 } __attribute__((packed));
 
 struct PSOPlayerDataBB { // For command 61
@@ -375,6 +421,8 @@ struct SavedAccountDataBB { // .nsa file format
   ptext<char16_t, 0x0010>     team_name;
 } __attribute__((packed));
 
+
+
 class ClientGameData {
 private:
   std::shared_ptr<SavedAccountDataBB> account_data;
@@ -386,7 +434,7 @@ public:
   // The following fields are not saved, and are only used in certain situations
 
   // Null unless the client is Episode 3 and has sent its config already
-  std::shared_ptr<parray<uint8_t, 0x2408>> ep3_config;
+  std::shared_ptr<Ep3Config> ep3_config;
 
   // These are only used if the client is BB
   std::string bb_username;
