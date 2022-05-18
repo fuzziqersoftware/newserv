@@ -121,7 +121,8 @@ void send_enter_directory_patch(std::shared_ptr<Client> c, const std::string& di
 
 void send_message_box(std::shared_ptr<Client> c, const std::u16string& text);
 void send_lobby_name(std::shared_ptr<Client> c, const std::u16string& text);
-void send_quest_info(std::shared_ptr<Client> c, const std::u16string& text);
+void send_quest_info(std::shared_ptr<Client> c, const std::u16string& text,
+    bool is_download_quest);
 void send_lobby_message_box(std::shared_ptr<Client> c, const std::u16string& text);
 void send_ship_info(std::shared_ptr<Client> c, const std::u16string& text);
 void send_text_message(std::shared_ptr<Client> c, const std::u16string& text);

@@ -494,8 +494,9 @@ void send_lobby_name(shared_ptr<Client> c, const u16string& text) {
   send_text(c, 0x8A, text);
 }
 
-void send_quest_info(shared_ptr<Client> c, const u16string& text) {
-  send_text(c, 0xA3, text);
+void send_quest_info(shared_ptr<Client> c, const u16string& text,
+    bool is_download_quest) {
+  send_text(c, is_download_quest ? 0xA5 : 0xA3, text);
 }
 
 void send_lobby_message_box(shared_ptr<Client> c, const u16string& text) {

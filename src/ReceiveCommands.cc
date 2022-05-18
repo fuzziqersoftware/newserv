@@ -593,15 +593,15 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
 
     case QUEST_MENU_ID: {
       if (!s->quest_index) {
-        send_quest_info(c, u"$C6Quests are not available.");
+        send_quest_info(c, u"$C6Quests are not available.", !c->lobby_id);
         break;
       }
       auto q = s->quest_index->get(c->version, cmd.item_id);
       if (!q) {
-        send_quest_info(c, u"$C6Quest does not exist.");
+        send_quest_info(c, u"$C6Quest does not exist.", !c->lobby_id);
         break;
       }
-      send_quest_info(c, q->long_description.c_str());
+      send_quest_info(c, q->long_description.c_str(), !c->lobby_id);
       break;
     }
 
