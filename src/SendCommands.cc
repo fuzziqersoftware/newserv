@@ -1059,6 +1059,11 @@ void send_player_leave_notification(shared_ptr<Lobby> l, uint8_t leaving_client_
   send_command_t(l, l->is_game() ? 0x66 : 0x69, leaving_client_id, cmd);
 }
 
+void send_self_leave_notification(shared_ptr<Client> c) {
+  S_LeaveLobby_66_69 cmd = {c->lobby_client_id, 0, 0};
+  send_command_t(c, 0x69, c->lobby_client_id, cmd);
+}
+
 void send_get_player_info(shared_ptr<Client> c) {
   send_command(c, 0x95, 0x00);
 }

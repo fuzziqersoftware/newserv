@@ -167,6 +167,7 @@ void send_player_join_notification(std::shared_ptr<Client> c,
     std::shared_ptr<Lobby> l, std::shared_ptr<Client> joining_client);
 void send_player_leave_notification(std::shared_ptr<Lobby> l,
     uint8_t leaving_client_id);
+void send_self_leave_notification(std::shared_ptr<Client> c);
 void send_get_player_info(std::shared_ptr<Client> c);
 
 void send_arrow_update(std::shared_ptr<Lobby> l);

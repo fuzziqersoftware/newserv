@@ -942,7 +942,15 @@ void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // things, which we already know). We intentionally don't call check_size
   // here, but instead just ignore the data.
 
-  send_message_box(c, u""); // we do this to avoid the "log window in message box" bug
+  // Delete the player from the lobby they're in (but only visible to themself).
+  // This makes it safe to allow the player to choose download quests from the
+  // main menu again - if we didn't do this, they could move in the lobby after
+  // canceling the download quests menu, which looks really bad.
+  send_self_leave_notification(c);
+
+  // Sending a blank message box here works around the bug where the log window
+  // contents appear prepended to the next large message box.
+  send_message_box(c, u"");
 
   static const vector<string> version_to_port_name({
       "dc-login", "pc-login", "bb-patch", "gc-us3", "bb-login"});
@@ -954,7 +962,7 @@ void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) { // A1
-  // newserv doesn't have blocks; treat block change as ship change
+  // newserv doesn't have blocks; treat block change the same as ship change
   process_change_ship(s, c, command, flag, data);
 }
 
