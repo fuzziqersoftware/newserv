@@ -10,6 +10,7 @@
 #include "LevelTable.hh"
 #include "Version.hh"
 #include "Text.hh"
+#include "Episode3.hh"
 
 
 
@@ -250,41 +251,6 @@ struct KeyAndTeamConfigBB {
   ptext<char16_t, 0x0010> team_name;       // 02CC
   parray<uint8_t, 0x0800> team_flag;       // 02EC
   le_uint32_t team_rewards;                // 0AEC
-} __attribute__((packed));
-
-
-
-struct Ep3Deck {
-  // TODO: are the last 4 bytes actually part of this? They don't seem to be
-  // used for anything else, but the game limits the name to 14 chars + a
-  // language marker, which equals exactly 0x10 characters.
-  ptext<char, 0x14> name;
-  // List of card IDs. The card count is the number of nonzero entries here
-  // before a zero entry (or 50 if no entries are nonzero). The first card ID is
-  // the SC card, which the game implicitly subtracts from the limit - so a
-  // valid deck should actually have 31 cards in it.
-  le_uint16_t card_ids[50];
-  uint32_t unknown_a1;
-  // Last modification time
-  le_uint16_t year;
-  uint8_t month;
-  uint8_t day;
-  uint8_t hour;
-  uint8_t minute;
-  uint8_t second;
-  uint8_t unknown_a2;
-} __attribute__((packed));
-
-struct Ep3Config {
-  parray<uint8_t, 0x1434> unknown_a1; // at 728 in 61/98 command
-  Ep3Deck decks[25]; // at 1B5C in 61/98 command
-  uint64_t unknown_a2; // at 2840 in 61/98 command
-  be_uint32_t offline_clv_exp; // CLvOff = this / 100
-  be_uint32_t online_clv_exp; // CLvOn = this / 100
-  parray<uint8_t, 0x14C> unknown_a3; // at 2850 in 61/98 command
-  ptext<char, 0x10> name; // at 299C in 61/98 command
-  // Other records are probably somewhere in here - e.g. win/loss, play time, etc.
-  parray<uint8_t, 0xCC> unknown_a4; // at 29AC in 61/98 command
 } __attribute__((packed));
 
 
