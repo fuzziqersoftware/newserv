@@ -277,6 +277,7 @@ enum class Behavior {
   DECRYPT_DATA,
   ENCRYPT_DATA,
   DECODE_QUEST_FILE,
+  DECODE_SJIS,
 };
 
 enum class EncryptionType {
@@ -304,6 +305,8 @@ int main(int argc, char** argv) {
       behavior = Behavior::DECRYPT_DATA;
     } else if (!strcmp(argv[x], "--encrypt-data")) {
       behavior = Behavior::ENCRYPT_DATA;
+    } else if (!strcmp(argv[x], "--decode-sjis")) {
+      behavior = Behavior::DECODE_SJIS;
     } else if (!strncmp(argv[x], "--decode-gci=", 13)) {
       behavior = Behavior::DECODE_QUEST_FILE;
       quest_file_type = QuestFileFormat::GCI;
@@ -383,6 +386,15 @@ int main(int argc, char** argv) {
       throw logic_error("invalid quest file format");
     }
 
+    return 0;
+
+  } else if (behavior == Behavior::DECODE_SJIS) {
+    string data = read_all(stdin);
+    if (parse_data) {
+      data = parse_data_string(data);
+    }
+    auto decoded = decode_sjis(data);
+    print_data(stderr, decoded.data(), decoded.size() * sizeof(decoded[0]));
     return 0;
   }
 
