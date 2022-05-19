@@ -1,3 +1,12 @@
+#pragma once
+
+#include <stdint.h>
+
+#include <phosg/Encoding.hh>
+
+#include "Text.hh"
+
+
 
 struct Ep3Deck {
   // TODO: are the last 4 bytes actually part of this? They don't seem to be
