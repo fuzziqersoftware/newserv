@@ -2,17 +2,57 @@
 
 #include <stdint.h>
 
+#include <string>
+#include <map>
+#include <memory>
+#include <unordered_map>
 #include <phosg/Encoding.hh>
 
 #include "Text.hh"
 
 
 
-struct Ep3Deck {
-  // TODO: are the last 4 bytes actually part of this? They don't seem to be
-  // used for anything else, but the game limits the name to 14 chars + a
-  // language marker, which equals exactly 0x10 characters.
+struct Ep3CardDefinition {
+  struct Stat {
+    be_uint16_t code;
+    uint8_t type;
+    uint8_t stat;
+  } __attribute__((packed));
+  be_uint32_t card_id;
+  parray<uint8_t, 0x40> jp_name;
+  uint8_t type;
+  uint8_t cost;
+  be_uint16_t unused;
+  Stat hp;
+  Stat ap;
+  Stat tp;
+  Stat mv;
+  parray<uint8_t, 8> left_colors;
+  parray<uint8_t, 8> right_colors;
+  parray<uint8_t, 8> top_colors;
+  parray<be_uint32_t, 8> range;
+  parray<uint8_t, 0x10> unknown_a2;
   ptext<char, 0x14> name;
+  ptext<char, 0x0B> jp_short_name;
+  ptext<char, 0x07> short_name;
+  be_uint16_t unknown_a3; // Could be has_abilities?
+  parray<uint8_t, 0x60> unknown_a4;
+} __attribute__((packed));
+
+struct Ep3CardDefinitionsFooter {
+  be_uint32_t num_cards1;
+  be_uint32_t unknown_a1;
+  be_uint32_t num_cards2;
+  be_uint32_t unknown_a2[11];
+  be_uint32_t unknown_offset_a3;
+  be_uint32_t unknown_a4[3];
+  be_uint32_t footer_offset;
+  be_uint32_t unknown_a5[3];
+} __attribute__((packed));
+
+struct Ep3Deck {
+  ptext<char, 0x10> name;
+  be_uint32_t client_id; // 0-3
   // List of card IDs. The card count is the number of nonzero entries here
   // before a zero entry (or 50 if no entries are nonzero). The first card ID is
   // the SC card, which the game implicitly subtracts from the limit - so a
@@ -76,8 +116,8 @@ struct Ep3MapList {
   struct Entry { // Should be 0x220 bytes in total
     // These 3 fields probably include the location ID (scenery to load) and the
     // music ID
-    be_uint16_t scene_data0;
-    be_uint16_t scene_data1;
+    be_uint16_t map_x;
+    be_uint16_t map_y;
     be_uint16_t scene_data2;
     be_uint16_t map_number;
     // Text offsets are from the beginning of the strings block after all map
@@ -98,7 +138,13 @@ struct Ep3MapList {
   // char strings[...EOF]; // Null-terminated strings, pointed to by offsets in Entry structs
 } __attribute__((packed));
 
-struct Ep3Map { // .mnm file format (after decompression)
+struct Ep3CompressedMapHeader { // .mnm file format
+  le_uint32_t map_number;
+  le_uint32_t compressed_data_size;
+  // Compressed data immediately follows (which decompresses to an Ep3Map)
+} __attribute__((packed));
+
+struct Ep3Map { // .mnm format (after decompressing and discarding the header)
   /* 0000 */ be_uint32_t unknown_a1;
   /* 0004 */ be_uint32_t map_number;
   /* 0008 */ uint8_t width;
@@ -139,22 +185,22 @@ struct Ep3Map { // .mnm file format (after decompression)
   /* 1D68 */ parray<uint8_t, 0x74> unknown_a6;
   /* 1DDC */ Ep3BattleRules default_rules;
   /* 1DEC */ parray<uint8_t, 4> unknown_a7;
-  /* 1DF0 */ ptext<char, 0x14> map_name;
+  /* 1DF0 */ ptext<char, 0x14> name;
   /* 1E04 */ ptext<char, 0x14> location_name;
   /* 1E18 */ ptext<char, 0x3C> quest_name; // Same a location_name for non-quest maps
   /* 1E54 */ ptext<char, 0x190> description;
-  /* 1FE4 */ be_uint16_t scene_data0;
-  /* 1FE6 */ be_uint16_t scene_data1;
+  /* 1FE4 */ be_uint16_t map_x;
+  /* 1FE6 */ be_uint16_t map_y;
   struct NPCDeck {
     ptext<char, 0x18> name;
-    parray<be_uint32_t, 0x20> card_ids; // Last one appears to always be FFFF
+    parray<be_uint16_t, 0x20> card_ids; // Last one appears to always be FFFF
   } __attribute__((packed));
   /* 1FE8 */ NPCDeck npc_decks[3]; // Unused if name[0] == 0
   struct NPCCharacter {
     parray<be_uint16_t, 2> unknown_a1;
     parray<uint8_t, 4> unknown_a2;
     ptext<char, 0x10> name;
-    parray<be_uint16_t, 0x80> unknown_a3;
+    parray<be_uint16_t, 0x7E> unknown_a3;
   } __attribute__((packed));
   /* 20F0 */ parray<NPCCharacter, 3> npc_chars; // Unused if name[0] == 0
   /* 242C */ parray<uint8_t, 0x14> unknown_a8; // Always FF?
@@ -171,3 +217,26 @@ struct Ep3Map { // .mnm file format (after decompression)
   /* 59B2 */ parray<be_uint16_t, 0x33> unknown_a9;
   /* 5A18 */
 } __attribute__((packed));
+
+class Ep3DataIndex {
+public:
+  explicit Ep3DataIndex(const std::string& directory);
+
+  const std::string& get_compressed_card_definitions() const;
+  std::shared_ptr<const Ep3CardDefinition> get_card_definition(uint32_t id) const;
+
+  struct MapEntry {
+    Ep3Map map;
+    std::string compressed_data;
+  };
+
+  const std::string& get_compressed_map_list() const;
+  std::shared_ptr<const MapEntry> get_map(uint32_t id) const;
+
+private:
+  std::string compressed_card_definitions;
+  std::unordered_map<uint32_t, std::shared_ptr<Ep3CardDefinition>> card_definitions;
+
+  std::string compressed_map_list;
+  std::map<uint32_t, std::shared_ptr<MapEntry>> maps;
+};

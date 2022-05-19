@@ -1215,9 +1215,7 @@ struct S_RankUpdate_GC_Ep3_B7 {
 
 // B8 (S->C): Update card definitions (Episode 3)
 // Contents is a single little-endian le_uint32_t specifying the size of the
-// (PRS-compressed) data, followed immediately by the data. newserv sends the
-// system/ep3/cardupdate.mnr file verbatim using this command when an Episode 3
-// client connects to the login server.
+// (PRS-compressed) data, followed immediately by the data.
 // Note: BB has a handler for B8, but (as of yet) I don't know what it does. It
 // almost certainly doesn't do the same thing as the Ep3 B8 command.
 

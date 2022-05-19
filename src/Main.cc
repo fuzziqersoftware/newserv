@@ -416,6 +416,9 @@ int main(int argc, char** argv) {
   log(INFO, "Loading level table");
   state->level_table.reset(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));
 
+  log(INFO, "Collecting Episode 3 data");
+  state->ep3_data_index.reset(new Ep3DataIndex("system/ep3"));
+
   log(INFO, "Collecting quest metadata");
   state->quest_index.reset(new QuestIndex("system/quests"));
 

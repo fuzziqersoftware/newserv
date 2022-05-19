@@ -104,7 +104,7 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
     // On the login server, send the ep3 updates and the main menu or welcome
     // message
     if (c->flags & Client::Flag::EPISODE_3) {
-      send_ep3_card_list_update(c);
+      send_ep3_card_list_update(s, c);
       send_ep3_rank_update(c);
     }
 
@@ -436,10 +436,10 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
   switch (cmds[1].byte[0]) {
     // phase 1: map select
     case 0x40:
-      send_ep3_map_list(l);
+      send_ep3_map_list(s, l);
       break;
     case 0x41:
-      send_ep3_map_data(l, cmds[4].dword);
+      send_ep3_map_data(s, l, cmds[4].dword);
       break;
     /*// phase 2: deck/name entry
     case 0x13:

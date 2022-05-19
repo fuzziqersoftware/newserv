@@ -1298,13 +1298,12 @@ void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
 ////////////////////////////////////////////////////////////////////////////////
 // ep3 only commands
 
-// sends the (PRS-compressed) card list to the client
-void send_ep3_card_list_update(shared_ptr<Client> c) {
-  auto file_data = file_cache.get("system/ep3/cardupdate.mnr");
+void send_ep3_card_list_update(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  const auto& data = s->ep3_data_index->get_compressed_card_definitions();
 
   StringWriter w;
-  w.put_u32l(file_data->size());
-  w.write(*file_data);
+  w.put_u32l(data.size());
+  w.write(data);
 
   send_command(c, 0xB8, 0x00, w.str());
 }
@@ -1317,31 +1316,30 @@ void send_ep3_rank_update(shared_ptr<Client> c) {
 }
 
 // sends the map list (used for battle setup) to all players in a game
-void send_ep3_map_list(shared_ptr<Lobby> l) {
-  auto file_data = file_cache.get("system/ep3/maplist.mnr");
+void send_ep3_map_list(shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
+  const auto& data = s->ep3_data_index->get_compressed_map_list();
 
-  string data(16, '\0');
-  PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(data.data());
+  string cmd_data(16, '\0');
+  PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(cmd_data.data());
   subs[0].dword = 0x000000B6;
-  subs[1].dword = (file_data->size() + 0x14 + 3) & 0xFFFFFFFC;
+  subs[1].dword = (data.size() + 0x14 + 3) & 0xFFFFFFFC;
   subs[2].dword = 0x00000040;
-  subs[3].dword = file_data->size();
-  data += *file_data;
+  subs[3].dword = data.size();
+  cmd_data += data;
 
-  send_command(l, 0x6C, 0x00, data);
+  send_command(l, 0x6C, 0x00, cmd_data);
 }
 
 // sends the map data for the chosen map to all players in the game
-void send_ep3_map_data(shared_ptr<Lobby> l, uint32_t map_id) {
-  string filename = string_printf("system/ep3/map%08" PRIX32 ".mnm", map_id);
-  auto file_data = file_cache.get(filename);
+void send_ep3_map_data(shared_ptr<ServerState> s, shared_ptr<Lobby> l, uint32_t map_id) {
+  auto entry = s->ep3_data_index->get_map(map_id);
 
   string data(12, '\0');
   PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(data.data());
   subs[0].dword = 0x000000B6;
-  subs[1].dword = (19 + file_data->size()) & 0xFFFFFFFC;
+  subs[1].dword = (19 + entry->compressed_data.size()) & 0xFFFFFFFC;
   subs[2].dword = 0x00000041;
-  data += *file_data;
+  data += entry->compressed_data;
 
   send_command(l, 0x6C, 0x00, data);
 }

@@ -36,6 +36,7 @@ add_executable(newserv
   src/Client.cc
   src/Compression.cc
   src/DNSServer.cc
+  src/Episode3.cc
   src/FileContentsCache.cc
   src/IPFrameInfo.cc
   src/IPStackSimulator.cc
