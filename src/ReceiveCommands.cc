@@ -399,7 +399,7 @@ void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) {
   const auto& in_cmd = check_size_t<C_Meseta_GC_Ep3_BA>(data);
 
-  S_Meseta_GC_Ep3_BA out_cmd = {1000000, 0x80E8, in_cmd.request_token};
+  S_Meseta_GC_Ep3_BA out_cmd = {1000000, 1000000, in_cmd.request_token};
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {

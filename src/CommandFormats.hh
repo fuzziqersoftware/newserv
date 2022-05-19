@@ -1235,7 +1235,7 @@ struct C_Meseta_GC_Ep3_BA {
 
 struct S_Meseta_GC_Ep3_BA {
   le_uint32_t remaining_meseta;
-  le_uint32_t unknown; // Sylverant documents this as "total meseta ever earned"
+  le_uint32_t total_meseta_awarded;
   le_uint32_t request_token; // Should match the token sent by the client
 };
 
