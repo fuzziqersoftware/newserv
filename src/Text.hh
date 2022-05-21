@@ -291,6 +291,15 @@ struct parray {
       this->items[x] = v;
     }
   }
+
+  bool is_filled_with(ItemT v) const {
+    for (size_t x = 0; x < Count; x++) {
+      if (this->items[x] != v) {
+        return false;
+      }
+    }
+    return true;
+  }
 } __attribute__((packed));
 
 
