@@ -12,17 +12,77 @@
 
 
 
-struct Ep3CardDefinition {
+// Note: Much of the structures and enums here are based on the card list file,
+// and comparing the card text with the data in the file. Some inferences may be
+// incorrect here, since Episode 3's card text is wrong in various places.
+
+struct Ep3CardStats {
+  enum Rarity : uint8_t {
+    N1    = 0x01,
+    R1    = 0x02,
+    S     = 0x03,
+    E     = 0x04,
+    N2    = 0x05,
+    N3    = 0x06,
+    N4    = 0x07,
+    R2    = 0x08,
+    R3    = 0x09,
+    R4    = 0x0A,
+    SS    = 0x0B,
+    D1    = 0x0C,
+    D2    = 0x0D,
+    INVIS = 0x0E,
+  };
+
+  enum Type : uint8_t {
+    SC_HUNTERS = 0x00, // No subtypes
+    SC_ARKZ    = 0x01, // No subtypes
+    ITEM       = 0x02, // Subtype 01 = sword, 02 = gun, 03 = cane. TODO: there are many more subtypes than those 3
+    CREATURE   = 0x03, // No subtypes (TODO: Where are attributes stored then?)
+    ACTION     = 0x04, // TODO: What do the subtypes mean? Are they actually flags instead?
+    ASSIST     = 0x05, // No subtypes
+  };
+
   struct Stat {
+    enum Type : uint8_t {
+      BLANK = 0,
+      STAT = 1,
+      PLUS_STAT = 2,
+      MINUS_STAT = 3,
+      EQUALS_STAT = 4,
+      UNKNOWN = 5,
+      PLUS_UNKNOWN = 6,
+      MINUS_UNKNOWN = 7,
+      EQUALS_UNKNOWN = 8,
+    };
     be_uint16_t code;
-    uint8_t type;
-    uint8_t stat;
+    Type type;
+    int8_t stat;
+
+    void decode_code();
+    std::string str() const;
   } __attribute__((packed));
+
+  struct Effect {
+    uint8_t command;
+    ptext<char, 0x0F> expr; // May be blank if the command doesn't use it
+    uint8_t when;
+    ptext<char, 4> arg1;
+    ptext<char, 4> arg2;
+    ptext<char, 4> arg3;
+    parray<uint8_t, 3> unknown_a3;
+
+    bool is_empty() const;
+    static std::string str_for_arg(const std::string& arg);
+    std::string str() const;
+  } __attribute__((packed));
+
   be_uint32_t card_id;
   parray<uint8_t, 0x40> jp_name;
-  uint8_t type;
-  uint8_t cost;
-  be_uint16_t unused;
+  int8_t type; // Type enum. If <0, then this is the end of the card list
+  uint8_t self_cost; // ATK dice points required
+  uint8_t ally_cost; // ATK points from allies required; PBs use this
+  uint8_t unused_a0; // Always 0
   Stat hp;
   Stat ap;
   Stat tp;
@@ -30,16 +90,49 @@ struct Ep3CardDefinition {
   parray<uint8_t, 8> left_colors;
   parray<uint8_t, 8> right_colors;
   parray<uint8_t, 8> top_colors;
-  parray<be_uint32_t, 8> range;
-  parray<uint8_t, 0x10> unknown_a2;
+  parray<be_uint32_t, 6> range;
+  be_uint32_t unused_a1; // Always 0
+  // Target modes:
+  // 00 = no targeting (used for defense cards, mags, shields, etc.)
+  // 01 = single enemy
+  // 02 = multiple enemies (with range)
+  // 03 = self (assist)
+  // 04 = team (assist)
+  // 05 = everyone (assist)
+  // 06 = multiple allies (with range); only used by Shifta
+  // 07 = all allies including yourself; see Anti, Resta, Leilla
+  // 08 = all (attack); see e.g. Last Judgment, Earthquake
+  // 09 = your own FCs but not SCs; see Traitor
+  uint8_t target_mode;
+  uint8_t assist_turns; // 90 = once, 99 = forever
+  uint8_t cannot_move; // 0 for SC and creature cards; 1 for everything else
+  uint8_t cannot_attack; // 1 for shields, mags, defense actions, and assist cards
+  uint8_t unused_a2; // Always 0
+  uint8_t hide_in_deck_edit; // 0 = player can use this card (appears in deck edit)
+  uint8_t subtype; // e.g. gun, sword, etc. (used for checking if SCs can use it)
+  uint8_t rarity; // Rarity enum
+  be_uint32_t unknown_a2;
+  // These two fields seem to always contain the same value, and are always 0
+  // for non-assist cards and nonzero for assists. Each assist card has a unique
+  // value here and no effects, which makes it look like this is how assist
+  // effects are implemented. There seems to be some 1k-modulation going on here
+  // too; most cards are in the range 101-174 but a few have e.g. 1150, 2141. A
+  // few pairs of cards have the same effect, which makes it look like some
+  // other fields are also involved in determining their effects (see e.g. Skip
+  // Draw / Skip Move, Dice Fever / Dice Fever +, Reverse Card / Rich +).
+  parray<be_uint16_t, 2> assist_effect;
+  parray<be_uint16_t, 2> unknown_a3;
   ptext<char, 0x14> name;
   ptext<char, 0x0B> jp_short_name;
   ptext<char, 0x07> short_name;
-  be_uint16_t unknown_a3; // Could be has_abilities?
-  parray<uint8_t, 0x60> unknown_a4;
-} __attribute__((packed));
+  be_uint16_t has_effects; // 1 if any of the following structs are not blank
+  Effect effects[3];
 
-struct Ep3CardDefinitionsFooter {
+  void decode_range();
+  std::string str() const;
+} __attribute__((packed)); // 0x128 bytes in total
+
+struct Ep3CardStatsFooter {
   be_uint32_t num_cards1;
   be_uint32_t unknown_a1;
   be_uint32_t num_cards2;
@@ -222,20 +315,25 @@ class Ep3DataIndex {
 public:
   explicit Ep3DataIndex(const std::string& directory);
 
-  const std::string& get_compressed_card_definitions() const;
-  std::shared_ptr<const Ep3CardDefinition> get_card_definition(uint32_t id) const;
+  struct CardEntry {
+    Ep3CardStats stats;
+    std::vector<std::string> text;
+  };
 
   struct MapEntry {
     Ep3Map map;
     std::string compressed_data;
   };
 
+  const std::string& get_compressed_card_definitions() const;
+  std::shared_ptr<const CardEntry> get_card_definition(uint32_t id) const;
+
   const std::string& get_compressed_map_list() const;
   std::shared_ptr<const MapEntry> get_map(uint32_t id) const;
 
 private:
   std::string compressed_card_definitions;
-  std::unordered_map<uint32_t, std::shared_ptr<Ep3CardDefinition>> card_definitions;
+  std::unordered_map<uint32_t, std::shared_ptr<CardEntry>> card_definitions;
 
   std::string compressed_map_list;
   std::map<uint32_t, std::shared_ptr<MapEntry>> maps;
