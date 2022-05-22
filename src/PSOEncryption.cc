@@ -176,7 +176,59 @@ void PSOGCEncryption::encrypt(void* vdata, size_t size, bool advance) {
 
 
 void PSOBBEncryption::decrypt(void* vdata, size_t size, bool advance) {
-  if (this->state.subtype != Subtype::JSD1) {
+  if (this->state.subtype == Subtype::TFS1) {
+    if (size & 7) {
+      throw invalid_argument("size must be a multiple of 8");
+    }
+
+    le_uint32_t* dwords = reinterpret_cast<le_uint32_t*>(vdata);
+    for (size_t x = 0; x < (size >> 2); x += 2) {
+      for (size_t y = 4; y > 0; y -= 2) {
+        dwords[x] = dwords[x] ^ this->state.initial_keys.as32[y + 1];
+        dwords[x + 1] ^= ((this->state.private_keys.as32[dwords[x] >> 24] +
+                             this->state.private_keys.as32[((dwords[x] >> 16) & 0xFF) + 0x100]) ^
+                            this->state.private_keys.as32[((dwords[x] >> 8) & 0xFF) + 0x200]) +
+                           this->state.private_keys.as32[(dwords[x] & 0xFF) + 0x300];
+        dwords[x + 1] ^= this->state.initial_keys.as32[y];
+        dwords[x] ^= ((this->state.private_keys.as32[dwords[x + 1] >> 24] +
+                         this->state.private_keys.as32[((dwords[x + 1] >> 16) & 0xFF) + 0x100]) ^
+                        this->state.private_keys.as32[((dwords[x + 1] >> 8) & 0xFF) + 0x200]) +
+                       this->state.private_keys.as32[(dwords[x + 1] & 0xFF) + 0x300];
+      }
+      dwords[x] ^= this->state.initial_keys.as32[1];
+      dwords[x + 1] ^= this->state.initial_keys.as32[0];
+
+      uint32_t a = dwords[x];
+      dwords[x] = dwords[x + 1];
+      dwords[x + 1] = a;
+    }
+
+  } else if (this->state.subtype == Subtype::JSD1) {
+    if (size & 1) {
+      throw invalid_argument("size must be a multiple of 2");
+    }
+    if (!advance && (size > 0x100)) {
+      throw logic_error("JSD1 can only peek-decrypt up to 0x100 bytes");
+    }
+    uint8_t* bytes = reinterpret_cast<uint8_t*>(vdata);
+    for (size_t z = 0; z < size; z += 2) {
+      uint8_t a = bytes[z];
+      uint8_t b = bytes[z + 1];
+      bytes[z] = (a & 0x55) | (b & 0xAA);
+      bytes[z + 1] = (a & 0xAA) | (b & 0x55);
+    }
+    for (size_t z = 0; z < size; z++) {
+      bytes[z] ^= this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset];
+      if (advance) {
+        this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset] -= bytes[z];
+      }
+      this->state.initial_keys.jsd1_stream_offset++;
+    }
+    if (!advance) {
+      this->state.initial_keys.jsd1_stream_offset -= size;
+    }
+
+  } else { // STANDARD or MOCB1
     if (size & 7) {
       throw invalid_argument("size must be a multiple of 8");
     }
@@ -216,33 +268,64 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size, bool advance) {
       dwords[edx + 1] = ebx;
       edx += 2;
     }
+  }
+}
 
-  } else { // subtype == Subtype::JSD1
+void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
+  if (this->state.subtype == Subtype::TFS1) {
+    if (size & 7) {
+      throw invalid_argument("size must be a multiple of 8");
+    }
+
+    le_uint32_t* dwords = reinterpret_cast<le_uint32_t*>(vdata);
+    for (size_t x = 0; x < (size >> 2); x += 2) {
+      for (size_t y = 0; y < 4; y += 2) {
+        dwords[x] ^= this->state.initial_keys.as32[y];
+        dwords[x + 1] ^= ((this->state.private_keys.as32[dwords[x] >> 24] +
+                         this->state.private_keys.as32[((dwords[x] >> 16) & 0xFF) + 0x100]) ^
+                        this->state.private_keys.as32[((dwords[x] >> 8) & 0xFF) + 0x200]) +
+                       this->state.private_keys.as32[(dwords[x] & 0xFF) + 0x300];
+        dwords[x + 1] ^= this->state.initial_keys.as32[y + 1];
+        dwords[x] ^= ((this->state.private_keys.as32[dwords[x + 1] >> 24] +
+                     this->state.private_keys.as32[(dwords[x + 1] >> 16 & 0xFF) + 0x100]) ^
+                    this->state.private_keys.as32[(dwords[x + 1] >> 8 & 0xFF) + 0x200]) +
+                   this->state.private_keys.as32[(dwords[x + 1] & 0xFF) + 0x300];
+      }
+      dwords[x] ^= this->state.initial_keys.as32[4];
+      dwords[x + 1] ^= this->state.initial_keys.as32[5];
+
+      uint32_t a = dwords[x];
+      dwords[x] = dwords[x + 1];
+      dwords[x + 1] = a;
+    }
+
+  } else if (this->state.subtype == Subtype::JSD1) {
+    if (size & 1) {
+      throw invalid_argument("size must be a multiple of 2");
+    }
     if (!advance && (size > 0x100)) {
-      throw logic_error("JSD1 can only peek-decrypt up to 0x100 bytes");
+      throw logic_error("JSD1 can only peek-encrypt up to 0x100 bytes");
     }
     uint8_t* bytes = reinterpret_cast<uint8_t*>(vdata);
-    for (size_t z = 0; z < size; z += 2) {
-      uint8_t a = bytes[z];
-      uint8_t b = bytes[z + 1];
-      bytes[z] = (a & 0x55) | (b & 0xAA);
-      bytes[z + 1] = (a & 0xAA) | (b & 0x55);
-    }
     for (size_t z = 0; z < size; z++) {
-      bytes[z] ^= this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset];
+      uint8_t v = bytes[z];
+      bytes[z] = v ^ this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset];
       if (advance) {
-        this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset] -= bytes[z];
+        this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset] -= v;
       }
       this->state.initial_keys.jsd1_stream_offset++;
     }
     if (!advance) {
       this->state.initial_keys.jsd1_stream_offset -= size;
     }
-  }
-}
+    for (size_t z = 0; z < size; z += 2) {
+      uint8_t a = bytes[z];
+      uint8_t b = bytes[z + 1];
+      bytes[z] = (a & 0x55) | (b & 0xAA);
+      bytes[z + 1] = (a & 0xAA) | (b & 0x55);
+    }
 
-void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
-  if (this->state.subtype != Subtype::JSD1) {
+  } else { // STANDARD or MOCB1
     if (size & 7) {
       throw invalid_argument("size must be a multiple of 8");
     }
@@ -282,29 +365,6 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
       data[edx + 1] = ebx;
       edx += 2;
     }
-
-  } else { // subtype == Subtype::JSD1
-    if (!advance && (size > 0x100)) {
-      throw logic_error("JSD1 can only peek-encrypt up to 0x100 bytes");
-    }
-    uint8_t* bytes = reinterpret_cast<uint8_t*>(vdata);
-    for (size_t z = 0; z < size; z++) {
-      uint8_t v = bytes[z];
-      bytes[z] = v ^ this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset];
-      if (advance) {
-        this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset] -= v;
-      }
-      this->state.initial_keys.jsd1_stream_offset++;
-    }
-    if (!advance) {
-      this->state.initial_keys.jsd1_stream_offset -= size;
-    }
-    for (size_t z = 0; z < size; z += 2) {
-      uint8_t a = bytes[z];
-      uint8_t b = bytes[z + 1];
-      bytes[z] = (a & 0x55) | (b & 0xAA);
-      bytes[z + 1] = (a & 0xAA) | (b & 0x55);
-    }
   }
 }
 
@@ -312,6 +372,24 @@ PSOBBEncryption::PSOBBEncryption(
     const KeyFile& key, const void* original_seed, size_t seed_size)
   : state(key) {
   this->apply_seed(original_seed, seed_size);
+}
+
+void PSOBBEncryption::tfs1_scramble(uint32_t* out1, uint32_t* out2) const {
+  uint32_t a = *out1;
+  uint32_t b = *out2;
+  for (size_t x = 0; x < 0x10; x += 2) {
+    a ^= this->state.initial_keys.as32[x];
+    b ^= (((this->state.private_keys.as32[a >> 24] +
+            this->state.private_keys.as32[((a >> 16) & 0xFF) + 0x100]) ^
+           this->state.private_keys.as32[((a >> 8) & 0xFF) + 0x200]) +
+          this->state.private_keys.as32[(a & 0xFF) + 0x300]) ^ this->state.initial_keys.as32[x + 1];
+    a ^= ((this->state.private_keys.as32[b >> 24] +
+           this->state.private_keys.as32[((b >> 16) & 0xFF) + 0x100]) ^
+          this->state.private_keys.as32[((b >> 8) & 0xFF) + 0x200]) +
+         this->state.private_keys.as32[(b & 0xFF) + 0x300];
+  }
+  *out1 = this->state.initial_keys.as32[0x11] ^ b;
+  *out2 = this->state.initial_keys.as32[0x10] ^ a;
 }
 
 void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
@@ -326,7 +404,43 @@ void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
     seed.push_back(original_seed_data[x + 2] ^ 0x18);
   }
 
-  if (this->state.subtype != Subtype::JSD1) {
+  if (this->state.subtype == Subtype::TFS1) {
+    for (size_t x = 0; x < 0x12; x++) {
+      uint32_t a = this->state.initial_keys.as32[x] & 0xFFFF;
+      this->state.initial_keys.as32[x] = ((a << 0x10) ^ (this->state.initial_keys.as32[x] & 0xFFFF0000)) + a;
+    };
+
+    const uint8_t* useed = reinterpret_cast<const uint8_t*>(seed.data());
+    for (size_t x = 0; x < 0x48; x += 4) {
+      uint32_t seed_data =
+          (useed[x % seed_size] << 24) |
+          (useed[(x + 1) % seed_size] << 16) |
+          (useed[(x + 2) % seed_size] << 8) |
+          useed[(x + 3) % seed_size];
+      this->state.initial_keys.as32[x >> 2] ^= seed_data;
+    }
+
+    uint32_t a = 0, b = 0;
+    for (size_t x = 0; x < 0x12; x += 2) {
+      this->tfs1_scramble(&a, &b);
+      this->state.initial_keys.as32[x] = a;
+      this->state.initial_keys.as32[x + 1] = b;
+    }
+
+    for (size_t x = 0; x < 0x400; x += 2) {
+      this->tfs1_scramble(&a, &b);
+      this->state.private_keys.as32[x] = a;
+      this->state.private_keys.as32[x + 1] = b;
+    }
+
+  } else if (this->state.subtype == Subtype::JSD1) {
+    size_t seed_offset = 0;
+    for (size_t z = 0; z < 0x100; z++) {
+      this->state.private_keys.as8[z] = (z + seed[seed_offset]) ^ (static_cast<uint8_t>(seed[seed_offset]) >> 1);
+      seed_offset = (seed_offset + 1) % seed.size();
+    }
+
+  } else { // STANDARD or MOCB1 (they share most of their logic)
     if (seed_size % 3) {
       throw invalid_argument("seed size must be divisible by 3");
     }
@@ -527,13 +641,6 @@ void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
         }
         ou = ou + 0x400;
       }
-    }
-
-  } else { // subtype == Subtype::JSD1
-    size_t seed_offset = 0;
-    for (size_t z = 0; z < 0x100; z++) {
-      this->state.private_keys.as8[z] = (z + seed[seed_offset]) ^ (static_cast<uint8_t>(seed[seed_offset]) >> 1);
-      seed_offset = (seed_offset + 1) % seed.size();
     }
   }
 }

@@ -68,6 +68,7 @@ public:
     STANDARD = 0x00,
     MOCB1 = 0x01,
     JSD1 = 0x02,
+    TFS1 = 0x03,
   };
 
   struct KeyFile {
@@ -99,6 +100,7 @@ public:
 protected:
   KeyFile state;
 
+  void tfs1_scramble(uint32_t* out1, uint32_t* out2) const;
   void apply_seed(const void* original_seed, size_t seed_size);
 };
 
