@@ -146,6 +146,8 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     responds as if the function was called (with the given return value), but\n\
     does not send the code to the client. To stop blocking function calls, omit\n\
     the return value.\n\
+  close-idle-sessions\n\
+    Closes all sessions that don\'t have a client and server connected.\n\
 ");
 
 
@@ -384,6 +386,10 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     } else {
       session->function_call_return_value = stoul(command_args);
     }
+
+  } else if (command_name == "close-idle-sessions") {
+    size_t count = this->state->proxy_server->delete_disconnected_sessions();
+    fprintf(stderr, "%zu sessions closed\n", count);
 
   } else {
     throw invalid_argument("unknown command; try \'help\'");

@@ -32,7 +32,7 @@ using namespace std;
 
 
 
-static const uint32_t SESSION_TIMEOUT_USECS = 10000000; // 10 seconds
+static const uint32_t SESSION_TIMEOUT_USECS = 10 * 60 * 1000000; // 10 minutes
 
 
 
@@ -655,6 +655,10 @@ void ProxyServer::LinkedSession::disconnect() {
   event_add(this->timeout_event.get(), &tv);
 }
 
+bool ProxyServer::LinkedSession::is_connected() const {
+  return (this->server_bev.get() && this->client_bev.get());
+}
+
 
 
 void ProxyServer::LinkedSession::on_client_input() {
@@ -774,9 +778,21 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
   return emplace_ret.first->second;
 }
 
-
 void ProxyServer::delete_session(uint64_t id) {
   if (this->id_to_session.erase(id)) {
     this->log(INFO, "Closed LinkedSession:%08" PRIX64, id);
   }
+}
+
+size_t ProxyServer::delete_disconnected_sessions() {
+  size_t count = 0;
+  for (auto it = this->id_to_session.begin(); it != this->id_to_session.end();) {
+    if (!it->second->is_connected()) {
+      it = this->id_to_session.erase(it);
+      count++;
+    } else {
+      it++;
+    }
+  }
+  return count;
 }

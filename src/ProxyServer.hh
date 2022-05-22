@@ -163,7 +163,7 @@ public:
 
     void disconnect();
 
-    bool is_open() const;
+    bool is_connected() const;
   };
 
   std::shared_ptr<LinkedSession> get_session();
@@ -173,6 +173,8 @@ public:
     GameVersion version,
     const ClientConfigBB& newserv_client_config);
   void delete_session(uint64_t id);
+
+  size_t delete_disconnected_sessions();
 
 private:
   struct ListeningSocket {
