@@ -251,7 +251,7 @@ struct S_StartFileDownloads_Patch_11 {
 // A small message box appears in lower-right corner, and the player must press
 // a key to continue.
 
-struct SC_TextHeader_01_06_11_B0 {
+struct SC_TextHeader_01_06_11_B0_EE {
   le_uint32_t unused;
   le_uint32_t guild_card_number;
   // Text immediately follows this header (char[] on DC/GC, char16_t[] on PC/BB)
@@ -1692,8 +1692,8 @@ union C_UpdateAccountData_BB_ED {
 };
 
 // EE (S->C): Scrolling message (BB)
-// Contents are plain text (char16_t). The message appears at the top of the
-// screen and slowly scrolls to the left.
+// Same format as 01. The message appears at the top of the screen and slowly
+// scrolls to the left.
 
 // EF (S->C): Unknown (BB)
 // Has an unknown number of subcommands (00EF, 01EF, etc.)

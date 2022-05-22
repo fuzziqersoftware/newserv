@@ -68,7 +68,7 @@ static void send_text_message_to_client(
     uint8_t command,
     const std::string& message) {
   StringWriter w;
-  w.put<SC_TextHeader_01_06_11_B0>({0, 0});
+  w.put<SC_TextHeader_01_06_11_B0_EE>({0, 0});
   if (session.version == GameVersion::PC) {
     auto decoded = decode_sjis(message);
     w.write(decoded.data(), decoded.size() * sizeof(decoded[0]));
@@ -312,8 +312,8 @@ static bool process_server_dc_pc_gc_04(shared_ptr<ServerState>,
 static bool process_server_dc_pc_gc_06(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.license) {
-    auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0>(data,
-        sizeof(SC_TextHeader_01_06_11_B0), 0xFFFF);
+    auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0_EE>(data,
+        sizeof(SC_TextHeader_01_06_11_B0_EE), 0xFFFF);
     if (cmd.guild_card_number == session.remote_guild_card_number) {
       cmd.guild_card_number = session.license->serial_number;
     }
