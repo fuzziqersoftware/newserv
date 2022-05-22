@@ -172,6 +172,7 @@ static const char* anti_copyright = "This server is in no way affiliated, sponso
 static const char* dc_port_map_copyright = "DreamCast Port Map. Copyright SEGA Enterprises. 1999";
 static const char* dc_lobby_server_copyright = "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999";
 static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM.";
+// static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
 S_ServerInit_DC_PC_GC_02_17 prepare_server_init_contents_dc_pc_gc(

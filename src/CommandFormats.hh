@@ -311,6 +311,11 @@ struct S_UpdateClientConfig_DC_PC_GC_04 {
   ClientConfig cfg;
 };
 
+struct S_Unknown_BB_04 {
+  // header.flag is used too, but it's not clear what it does
+  le_uint32_t unknown_a1[12];
+};
+
 // 05: Disconnect
 // No arguments
 
@@ -395,7 +400,7 @@ struct C_MenuSelection {
 // 11 (S->C): Ship info
 // Same format as 01 command.
 
-// 12 (S->C): Unknown (BB)
+// 12 (S->C): Valid but ignored (BB)
 
 // 13 (S->C): Write online quest file
 // Used for downloading online quests. For download quests (to be saved to the
@@ -421,9 +426,9 @@ struct C_WriteFileConfirmation_GC_BB_13_A7 {
   ptext<char, 0x10> filename;
 };
 
-// 14 (S->C): Unknown (BB)
+// 14 (S->C): Valid but ignored (BB)
 // 15: Invalid command
-// 16 (S->C): Unknown (BB)
+// 16 (S->C): Valid but ignored (BB)
 
 // 17 (S->C): Start encryption at login server (except on BB)
 // Same format as 02 command, but a different copyright string.
@@ -484,7 +489,7 @@ struct S_ReconnectSplit_19 {
 
 // 20: Invalid command
 
-// 21: GameGuard control (BB)
+// 21: GameGuard control (old versions of BB)
 // Format unknown
 
 // 22: GameGuard check (BB)
@@ -496,8 +501,27 @@ struct SC_GameCardCheck_BB_22 {
 };
 
 // 23 (S->C): Unknown (BB)
+// header.flag is used, but command has no other arguments.
+
 // 24 (S->C): Unknown (BB)
+
+struct S_Unknown_BB_24 {
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  parray<le_uint32_t, 8> values;
+};
+
 // 25 (S->C): Unknown (BB)
+
+struct S_Unknown_BB_25 {
+  le_uint16_t unknown_a1;
+  uint8_t offset1;
+  uint8_t value1;
+  uint8_t offset2;
+  uint8_t value2;
+  le_uint16_t unused;
+};
+
 // 26: Invalid command
 // 27: Invalid command
 // 28: Invalid command
@@ -966,7 +990,14 @@ struct C_Login_DC_PC_GC_9A {
 // 13 = servers under maintenance (118)
 // Seems like most (all?) of the rest of the codes are "network error" (119).
 
-// 9B (S->C): Unknown (BB)
+// 9B (S->C): Secondary server init? (BB)
+// Format is the same as 03 (and the client uses the same encryption afterward).
+// The only differences that 9B has from 03:
+// - 9B does not work on the data-server phase (before the client has reached
+//   the ship select menu), whereas 03 does.
+// - The copyright string must be
+//   "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM." for command 9B.
+// - The client will respond with a command DB instead of a command 93.
 
 // 9C (C->S): Register
 
@@ -1025,6 +1056,10 @@ struct C_LoginWithUnusedSpace_GC_9E : C_Login_GC_9E {
 
 // 9F (S->C): Unknown (BB)
 
+struct S_Unknown_BB_9F {
+  le_uint32_t unknown_a1[10];
+};
+
 // A0 (C->S): Change ship
 // This structure is for documentation only; newserv ignores the arguments here.
 
@@ -1080,7 +1115,8 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // be in a different encrypted format. The download quest format is documented
 // in create_download_quest and create_download_quest_file in Quest.cc.
 
-// A5 (S->C): Unknown (BB)
+// A5 (S->C): Download quest information
+// Same format as 1A/D5 command (plain text)
 
 // A6: Open file for download
 // Used for download quests and GBA games.
@@ -1239,8 +1275,7 @@ struct S_RankUpdate_GC_Ep3_B7 {
 // B8 (S->C): Update card definitions (Episode 3)
 // Contents is a single little-endian le_uint32_t specifying the size of the
 // (PRS-compressed) data, followed immediately by the data.
-// Note: BB has a handler for B8, but (as of yet) I don't know what it does. It
-// almost certainly doesn't do the same thing as the Ep3 B8 command.
+// Note: BB has a handler for B8, but it does nothing - the client ignores B8.
 
 // B8 (C->S): Confirm updated card definitions
 // No arguments
@@ -1436,7 +1471,7 @@ struct C_GBAGameRequest_GC_D7 {
   ptext<char, 0x10> filename;
 };
 
-// D7 (S->C): Unknown (BB)
+// D7 (S->C): Valid but ignored (BB)
 
 // D8 (C->S): Info board request
 // No arguments
@@ -1461,7 +1496,7 @@ struct S_InfoBoardEntry_DC_GC_D8 : S_InfoBoardEntry_D8<char> { };
 // DA (S->C): Change lobby event
 // header.flag = new event number; no other arguments.
 
-// DB (C->S): Verify license (GC)
+// DB (C->S): Verify license (GC/BB)
 // Server should respond with a 9A command.
 
 struct C_VerifyLicense_GC_DB {
@@ -1473,6 +1508,16 @@ struct C_VerifyLicense_GC_DB {
   ptext<char, 0x30> serial_number2;
   ptext<char, 0x30> access_key2;
   ptext<char, 0x30> password;
+};
+
+struct C_VerifyLicense_BB_DB {
+  ptext<char, 0x10> unknown_a1;
+  ptext<char, 0x10> unknown_a2;
+  ptext<char, 0x10> unknown_a3;
+  ptext<char, 0x10> unknown_a4;
+  ptext<char, 0x30> unknown_a5;
+  ptext<char, 0x30> unknown_a6;
+  ptext<char, 0x30> unknown_a7;
 };
 
 // DC: Player menu state (Episode 3)
@@ -1500,7 +1545,14 @@ struct C_GuildCardDataRequest_BB_03DC {
 };
 
 // DD (S->C): Unknown (BB)
+// header.flag is used, but the command body is unused (no other arguments).
+
 // DE (S->C): Unknown (BB)
+
+struct S_Unknown_BB_DE {
+  le_uint32_t unknown_a1[8];
+};
+
 // DF: Invalid command
 
 // E0 (S->C): Tournament list (Episode 3)
@@ -1644,7 +1696,18 @@ union C_UpdateAccountData_BB_ED {
 // screen and slowly scrolls to the left.
 
 // EF (S->C): Unknown (BB)
+// Has an unknown number of subcommands (00EF, 01EF, etc.)
+// Contents are plain text (char).
+
 // F0 (S->C): Unknown (BB)
+
+struct S_Unknown_BB_F0 {
+  le_uint32_t unknown_a1[7];
+  le_uint32_t which; // Must be < 12
+  ptext<char16_t, 0x10> unknown_a2;
+  le_uint32_t unknown_a3;
+};
+
 // F1: Invalid command
 // F2: Invalid command
 // F3: Invalid command
