@@ -953,7 +953,7 @@ void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_message_box(c, u"");
 
   static const vector<string> version_to_port_name({
-      "dc-login", "pc-login", "bb-patch", "gc-us3", "bb-login"});
+      "dc-login", "pc-login", "bb-patch", "gc-us3", "bb-init"});
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
 
   send_reconnect(c, s->connect_address_for_client(c),
