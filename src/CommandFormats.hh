@@ -1152,10 +1152,9 @@ struct S_ConfirmUpdateQuestStatistics_AB {
 // Client will respond with a 99 command.
 
 // B2 (S->C): Execute code and/or checksum memory
-// GC v1.0 and v1.1 only.
+// GC v1.0/v1.1 and BB only.
 // Much of this command's information came from Sylverant's documentation.
 // Client will respond with a B3 command.
-// Note: BB has a handler for this, but (as of yet) I don't know what it does.
 
 struct S_ExecuteCode_GC_B2 {
   // Offsets in this command are relative to the start of the header, not the
@@ -1187,11 +1186,35 @@ struct S_ExecuteCode_Relocations_GC_B2 {
   // le_uint16_t offsets[count];
 };
 
-// B3 (C->S): Execute code and/or checksum memory result
-// GC v1.0 and v1.1 only.
+// Support exists in BB for this command, but to my knowledge it has never been
+// used. Like on GC, the client will respond with a B3 command.
 
-struct C_ExecuteCodeResult_GC_B3 {
-  le_uint32_t return_value;
+struct S_ExecuteCode_BB_B2 {
+  // If code_size == 0, no code is executed (but checksumming may still occur).
+  le_uint32_t code_size; // Size of code (following this struct) and footer
+  le_uint32_t checksum_address; // May be null if size is zero
+  le_uint32_t checksum_size;
+};
+
+struct S_ExecuteCode_Footer_BB_B2 {
+  // Relocations is a list of words (le_uint16_t) containing the number of words
+  // to skip for each relocation. The relocation pointer starts immediately
+  // after the checksum_size field in the header, and advances by the value of
+  // one word before each relocation. At each relocated doubleword, the address
+  // of the first byte of the code (after checksum_size) is added to the
+  // existing value.
+  le_uint32_t relocations_offset;
+  le_uint32_t num_relocations;
+  le_uint32_t unknown_a1[2];
+  le_uint32_t entrypoint_offset; // Relative to code base (after checksum_size)
+  le_uint32_t unknown_a2[3];
+};
+
+// B3 (C->S): Execute code and/or checksum memory result
+// GC v1.0/v1.1 and BB only.
+
+struct C_ExecuteCodeResult_GC_BB_B3 {
+  le_uint32_t return_value; // 0 if no code was run
   le_uint32_t checksum;
 };
 

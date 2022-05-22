@@ -366,7 +366,7 @@ static bool process_server_88(shared_ptr<ServerState>,
   return true;
 }
 
-static bool process_server_gc_B2(shared_ptr<ServerState>,
+static bool process_server_B2(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   if (session.save_files) {
     string output_filename = string_printf("code.bin.%" PRId64, now());
@@ -376,7 +376,7 @@ static bool process_server_gc_B2(shared_ptr<ServerState>,
 
   if (session.function_call_return_value >= 0) {
     session.log(INFO, "Blocking function call from server");
-    C_ExecuteCodeResult_GC_B3 cmd;
+    C_ExecuteCodeResult_GC_BB_B3 cmd;
     cmd.return_value = session.function_call_return_value;
     cmd.checksum = 0;
     session.send_to_end(true, 0xB3, flag, &cmd, sizeof(cmd));
@@ -913,7 +913,7 @@ static process_command_t gc_server_handlers[0x100] = {
   /* 80 */ defh, process_server_81<SC_SimpleMail_GC_81>, defh, defh, defh, defh, defh, defh, process_server_88, defh, defh, defh, defh, defh, defh, defh,
   /* 90 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, process_server_gc_9A, defh, defh, defh, defh, defh,
   /* A0 */ defh, defh, defh, defh, defh, defh, process_server_44_A6<S_OpenFile_PC_GC_44_A6>, process_server_13_A7, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* B0 */ defh, defh, process_server_gc_B2, defh, defh, defh, defh, defh, process_server_gc_B8, defh, defh, defh, defh, defh, defh, defh,
+  /* B0 */ defh, defh, process_server_B2, defh, defh, defh, defh, defh, process_server_gc_B8, defh, defh, defh, defh, defh, defh, defh,
   /* C0 */ defh, defh, defh, defh, process_server_C4<S_ChoiceSearchResultEntry_GC_C4>, defh, defh, defh, defh, process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, defh, defh, defh,
   /* D0 */ defh, defh, defh, defh, defh, process_server_gc_1A_D5, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* E0 */ defh, defh, defh, defh, process_server_gc_E4, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -931,7 +931,7 @@ static process_command_t bb_server_handlers[0x100] = {
   /* 80 */ defh, defh, defh, defh, defh, defh, defh, defh, process_server_88, defh, defh, defh, defh, defh, defh, defh,
   /* 90 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* A0 */ defh, defh, defh, defh, defh, defh, process_server_44_A6<S_OpenFile_BB_44_A6>, process_server_13_A7, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* B0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* B0 */ defh, defh, process_server_B2, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* C0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* D0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* E0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
