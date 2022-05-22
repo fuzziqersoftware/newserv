@@ -29,6 +29,8 @@ public:
   void connect_client(struct bufferevent* bev, uint32_t address, uint16_t port,
       GameVersion version, ServerBehavior initial_state);
 
+  std::shared_ptr<Client> get_client() const;
+
 private:
   PrefixedLogger log;
   std::shared_ptr<struct event_base> base;

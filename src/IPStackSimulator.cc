@@ -77,10 +77,8 @@ string IPStackSimulator::str_for_tcp_connection(shared_ptr<const IPClient> c,
 
 IPStackSimulator::IPStackSimulator(
     std::shared_ptr<struct event_base> base,
-    std::shared_ptr<Server> game_server,
     std::shared_ptr<ServerState> state)
   : base(base),
-    game_server(game_server),
     state(state),
     pcap_text_log_file(state->ip_stack_debug ? fopen("IPStackSimulator-Log.txt", "wt") : nullptr) {
   memset(this->host_mac_address_bytes, 0x90, 6);
@@ -779,9 +777,9 @@ void IPStackSimulator::open_server_connection(
       this->log(INFO, "Connected TCP connection %s to proxy server",
           conn_str.c_str());
     }
-  } else if (this->game_server.get()) {
-    this->game_server->connect_client(bevs[1], c->ipv4_addr, conn.client_port,
-        port_config->version, port_config->behavior);
+  } else if (this->state->game_server.get()) {
+    this->state->game_server->connect_client(bevs[1], c->ipv4_addr,
+        conn.client_port, port_config->version, port_config->behavior);
     this->log(INFO, "Connected TCP connection %s to game server",
         conn_str.c_str());
   } else {

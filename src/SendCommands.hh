@@ -22,8 +22,8 @@
 //   command to one client, sometimes to everyone in a lobby, etc.)
 // - For the const void* versions, the data and size arguments should not be
 //   independently optional - this can lead to bugs where a non-null data
-//   pointer is given but size is accidentally not given zero (e.g. if the type
-//   of data in the calling function is changed from string to void*).
+//   pointer is given but size is accidentally not given (e.g. if the type of
+//   data in the calling function is changed from string to void*).
 
 void send_command(struct bufferevent* bev, GameVersion version,
     PSOEncryption* crypt, uint16_t command, uint32_t flag, const void* data,
@@ -87,6 +87,9 @@ void send_command_t_vt(std::shared_ptr<TargetT> c, uint16_t command,
       array_data.size() * sizeof(EntryT));
   send_command(c, command, flag, all_data.data(), all_data.size());
 }
+
+void send_command_with_header(std::shared_ptr<Client> c, const void* data,
+    size_t size);
 
 
 

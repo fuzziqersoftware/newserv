@@ -444,8 +444,6 @@ int main(int argc, char** argv) {
     log(INFO, "DNS server is disabled");
   }
 
-  shared_ptr<Server> game_server;
-
   log(INFO, "Opening sockets");
   for (const auto& it : state->name_to_port_config) {
     const auto& pc = it.second;
@@ -475,22 +473,21 @@ int main(int argc, char** argv) {
         }
       }
     } else {
-      if (!game_server.get()) {
+      if (!state->game_server.get()) {
         log(INFO, "Starting game server");
-        game_server.reset(new Server(base, state));
+        state->game_server.reset(new Server(base, state));
       }
       string name = string_printf("%s (%s, %s) on port %hu",
           pc->name.c_str(), name_for_version(pc->version),
           name_for_server_behavior(pc->behavior), pc->port);
-      game_server->listen(name, "", pc->port, pc->version, pc->behavior);
+      state->game_server->listen(name, "", pc->port, pc->version, pc->behavior);
     }
   }
 
   shared_ptr<IPStackSimulator> ip_stack_simulator;
   if (!state->ip_stack_addresses.empty()) {
     log(INFO, "Starting IP stack simulator");
-    ip_stack_simulator.reset(new IPStackSimulator(
-        base, game_server, state));
+    ip_stack_simulator.reset(new IPStackSimulator(base, state));
     for (const auto& it : state->ip_stack_addresses) {
       auto netloc = parse_netloc(it);
       ip_stack_simulator->listen(netloc.first, netloc.second);

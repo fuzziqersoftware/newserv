@@ -280,9 +280,6 @@ Proxy commands (these will only work when exactly one client is connected):\n\
   // PROXY COMMANDS
 
   } else if ((command_name == "sc") || (command_name == "ss")) {
-    auto session = this->get_proxy_session();
-
-    bool to_server = (command_name[1] == 's');
     string data = parse_data_string(command_args);
     if (data.size() & 3) {
       throw invalid_argument("data size is not a multiple of 4");
@@ -291,7 +288,23 @@ Proxy commands (these will only work when exactly one client is connected):\n\
       throw invalid_argument("no data given");
     }
 
-    session->send_to_end_with_header(to_server, data);
+    shared_ptr<ProxyServer::LinkedSession> proxy_session;
+    try {
+      proxy_session = this->get_proxy_session();
+    } catch (const exception&) { }
+
+    if (proxy_session.get()) {
+      bool to_server = (command_name[1] == 's');
+      proxy_session->send_to_end_with_header(to_server, data);
+
+    } else {
+      if (command_name [1] == 's') {
+        throw runtime_error("cannot send to server in non-proxy session");
+      }
+
+      auto c = this->state->game_server->get_client();
+      send_command_with_header(c, data.data(), data.size());
+    }
 
   } else if ((command_name == "chat") || (command_name == "dchat")) {
     auto session = this->get_proxy_session();

@@ -273,3 +273,13 @@ void Server::add_socket(
   this->listening_sockets.emplace(piecewise_construct, forward_as_tuple(fd),
       forward_as_tuple(this, name, fd, version, behavior));
 }
+
+shared_ptr<Client> Server::get_client() const {
+  if (this->bev_to_client.empty()) {
+    throw runtime_error("no clients on game server");
+  }
+  if (this->bev_to_client.size() > 1) {
+    throw runtime_error("multiple clients on game server");
+  }
+  return this->bev_to_client.begin()->second;
+}

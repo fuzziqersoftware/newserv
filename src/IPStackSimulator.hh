@@ -17,7 +17,6 @@ class IPStackSimulator {
 public:
   IPStackSimulator(
       std::shared_ptr<struct event_base> base,
-      std::shared_ptr<Server> game_server,
       std::shared_ptr<ServerState> state);
   ~IPStackSimulator();
 
@@ -31,7 +30,6 @@ public:
 private:
   static PrefixedLogger log;
   std::shared_ptr<struct event_base> base;
-  std::shared_ptr<Server> game_server;
   std::shared_ptr<ServerState> state;
 
   using unique_listener = std::unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)>;

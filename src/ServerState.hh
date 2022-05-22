@@ -18,8 +18,9 @@
 
 
 
-// Forwawrd declaration due to reference cycle
+// Forwawrd declarations due to reference cycles
 class ProxyServer;
+class Server;
 
 struct PortConfiguration {
   std::string name;
@@ -76,9 +77,8 @@ struct ServerState {
   uint32_t local_address;
   uint32_t external_address;
 
-  // TODO: This is only here because the menu selection handler has to call
-  // delete_session on it. Find a cleaner way to do this.
   std::shared_ptr<ProxyServer> proxy_server;
+  std::shared_ptr<Server> game_server;
 
   ServerState();
 

@@ -153,6 +153,33 @@ void send_command(shared_ptr<ServerState> s, uint16_t command, uint32_t flag,
   }
 }
 
+template <typename HeaderT>
+void send_command_with_header_t(shared_ptr<Client> c, const void* data,
+    size_t size) {
+  const HeaderT* header = reinterpret_cast<const HeaderT*>(data);
+  send_command(c, header->command, header->flag, header + 1, size - sizeof(HeaderT));
+}
+
+void send_command_with_header(shared_ptr<Client> c, const void* data,
+    size_t size) {
+  switch (c->version) {
+    case GameVersion::GC:
+    case GameVersion::DC:
+      send_command_with_header_t<PSOCommandHeaderDCGC>(c, data, size);
+      break;
+    case GameVersion::PC:
+    case GameVersion::PATCH:
+      send_command_with_header_t<PSOCommandHeaderPC>(c, data, size);
+      break;
+    case GameVersion::BB:
+      send_command_with_header_t<PSOCommandHeaderBB>(c, data, size);
+      break;
+    default:
+      throw logic_error("unimplemented game version in send_command_with_header");
+  }
+}
+
+
 
 
 // specific command sending functions follow. in general, they're written in
@@ -540,7 +567,7 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
   send_header_text(c, 0x06, from_guild_card_number, data);
 }
 
-void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_guild_card_number,
+void send_simple_mail_gc(shared_ptr<Client> c, uint32_t from_guild_card_number,
     const u16string& from_name, const u16string& text) {
   SC_SimpleMail_GC_81 cmd;
   cmd.player_tag = 0x00010000;
@@ -551,7 +578,7 @@ void send_simple_mail_gc(std::shared_ptr<Client> c, uint32_t from_guild_card_num
   send_command_t(c, 0x81, 0x00, cmd);
 }
 
-void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_guild_card_number,
+void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number,
     const u16string& from_name, const u16string& text) {
   if (c->version == GameVersion::GC) {
     send_simple_mail_gc(c, from_guild_card_number, from_name, text);
@@ -852,7 +879,7 @@ void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
 }
 
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
-    const std::vector<MenuItem>& items, bool is_download_menu) {
+    const vector<MenuItem>& items, bool is_download_menu) {
   if (c->version == GameVersion::PC) {
     send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, items, is_download_menu);
   } else if (c->version == GameVersion::GC) {
