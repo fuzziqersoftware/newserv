@@ -61,6 +61,8 @@ public:
     bool suppress_newserv_commands;
     bool enable_chat_filter;
     bool enable_switch_assist;
+    bool infinite_hp;
+    bool infinite_tp;
     bool save_files;
     int64_t function_call_return_value; // -1 = don't block function calls
     G_SwitchStateChanged_6x05 last_switch_enabled_command;

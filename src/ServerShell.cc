@@ -130,6 +130,10 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     all chat messages that begin with a $ are not sent to the remote server.\n\
     This can prevent embarrassing situations if the remote server isn\'t a\n\
     newserv instance and you have newserv commands in your chat shortcuts.\n\
+  set-infinite-hp <on|off>\n\
+  set-infinite-tp <on|off>\n\
+    Enable or disable infinite HP or TP. When infinite HP is enabled, attacks\n\
+    that would kill you in one hit will still do so.\n\
   set-switch-assist <on|off>\n\
     Enable or disable switch assist. When switch assist is on, the proxy will\n\
     remember the last \"enable switch\" command that you send, and will send it\n\
@@ -383,6 +387,14 @@ Proxy commands (these will only work when exactly one client is connected):\n\
   } else if (command_name == "set-chat-safety") {
     auto session = this->get_proxy_session();
     set_boolean(&session->suppress_newserv_commands, command_args);
+
+  } else if (command_name == "set-infinite-hp") {
+    auto session = this->get_proxy_session();
+    set_boolean(&session->infinite_hp, command_args);
+
+  } else if (command_name == "set-infinite-tp") {
+    auto session = this->get_proxy_session();
+    set_boolean(&session->infinite_tp, command_args);
 
   } else if (command_name == "set-switch-assist") {
     auto session = this->get_proxy_session();

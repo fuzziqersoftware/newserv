@@ -751,10 +751,39 @@ static bool process_client_81(shared_ptr<ServerState>,
 template <typename SendGuildCardCmdT>
 static bool process_client_60_62_6C_6D_C9_CB(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
-  if (session.license && !data.empty() && (data[0] == 0x06)) {
-    auto& cmd = check_size_t<SendGuildCardCmdT>(data);
-    if (cmd.guild_card_number == session.license->serial_number) {
-      cmd.guild_card_number = session.remote_guild_card_number;
+  if (session.license && !data.empty()) {
+    if (data[0] == 0x06) {
+      auto& cmd = check_size_t<SendGuildCardCmdT>(data);
+      if (cmd.guild_card_number == session.license->serial_number) {
+        cmd.guild_card_number = session.remote_guild_card_number;
+      }
+    } else if (data[0] == 0x2F || data[0] == 0x4C) {
+      if (session.infinite_hp) {
+        vector<PSOSubcommand> subs;
+        for (size_t amount = 1020; amount > 0;) {
+          auto& sub1 = subs.emplace_back();
+          sub1.word[0] = 0x029A;
+          sub1.byte[2] = session.lobby_client_id;
+          sub1.byte[3] = 0x00;
+          auto& sub2 = subs.emplace_back();
+          sub2.word[0] = 0x0000;
+          sub2.byte[2] = PlayerStatsChange::ADD_HP;
+          sub2.byte[3] = (amount > 0xFF) ? 0xFF : amount;
+          amount -= sub2.byte[3];
+        }
+        session.send_to_end(false, 0x60, 0x00, subs.data(), subs.size() * sizeof(PSOSubcommand));
+      }
+    } else if (data[0] == 0x48) {
+      if (session.infinite_tp) {
+        PSOSubcommand subs[2];
+        subs[0].word[0] = 0x029A;
+        subs[0].byte[2] = session.lobby_client_id;
+        subs[0].byte[3] = 0x00;
+        subs[1].word[0] = 0x0000;
+        subs[1].byte[2] = PlayerStatsChange::ADD_TP;
+        subs[1].byte[3] = 0xFF;
+        session.send_to_end(false, 0x60, 0x00, &subs[0], sizeof(subs));
+      }
     }
   }
   return process_client_60_62_6C_6D_C9_CB<void>(s, session, command, flag, data);
