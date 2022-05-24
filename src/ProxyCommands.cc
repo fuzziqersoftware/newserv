@@ -254,7 +254,7 @@ static bool process_server_bb_03(shared_ptr<ServerState> s,
     // Forward the login command we saved during the unlinked session.
     if (session.enable_remote_ip_crc_patch && (session.login_command_bb.size() >= 0x98)) {
       *reinterpret_cast<le_uint32_t*>(session.login_command_bb.data() + 0x94) =
-          session.remote_ip_crc ^ (1309539928 + 1248334810);
+          session.remote_ip_crc ^ (1309539928UL + 1248334810UL);
     }
     session.send_to_end(true, 0x93, 0x00, session.login_command_bb);
 
