@@ -913,11 +913,12 @@ struct C_Login_BB_93 {
     union ClientConfigFields {
       ClientConfigBB cfg;
       ptext<char, 0x28> version_string;
+      le_uint32_t as_u32[10];
     };
 
     ClientConfigFields old_clients_cfg;
     struct NewFormat {
-      uint64_t hardware_info;
+      le_uint32_t hardware_info[2];
       ClientConfigFields cfg;
     } new_clients;
   } var;
@@ -1544,13 +1545,14 @@ struct C_GuildCardDataRequest_BB_03DC {
   le_uint32_t cont;
 };
 
-// DD (S->C): Unknown (BB)
-// header.flag is used, but the command body is unused (no other arguments).
+// DD (S->C): Send quest state to joining player (BB)
+// header.flag is the client ID that the leader should send quest state to.
+// No other arguments
 
-// DE (S->C): Unknown (BB)
+// DE (S->C): Rare monster configuration (BB)
 
-struct S_Unknown_BB_DE {
-  le_uint32_t unknown_a1[8];
+struct S_RareMonsterConfig_BB_DE {
+  le_uint16_t data[16];
 };
 
 // DF: Invalid command

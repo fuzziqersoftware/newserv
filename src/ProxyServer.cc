@@ -32,7 +32,8 @@ using namespace std;
 
 
 
-static const uint32_t SESSION_TIMEOUT_USECS = 10 * 60 * 1000000; // 10 minutes
+static const uint32_t LICENSED_SESSION_TIMEOUT_USECS = 5 * 60 * 1000000; // 5 minutes
+static const uint32_t UNLICENSED_SESSION_TIMEOUT_USECS = 10 * 1000000; // 10 seconds
 
 
 
@@ -430,6 +431,8 @@ ProxyServer::LinkedSession::LinkedSession(
     client_bev(nullptr, flush_and_free_bufferevent),
     server_bev(nullptr, flush_and_free_bufferevent),
     local_port(local_port),
+    remote_ip_crc(0),
+    enable_remote_ip_crc_patch(false),
     version(version),
     sub_version(0), // This is set during resume()
     remote_guild_card_number(0),
@@ -653,7 +656,8 @@ void ProxyServer::LinkedSession::disconnect() {
 
   // Set a timeout to delete the session entirely (in case the client doesn't
   // reconnect)
-  struct timeval tv = usecs_to_timeval(SESSION_TIMEOUT_USECS);
+  struct timeval tv = usecs_to_timeval(this->license.get()
+      ? LICENSED_SESSION_TIMEOUT_USECS : UNLICENSED_SESSION_TIMEOUT_USECS);
   event_add(this->timeout_event.get(), &tv);
 }
 

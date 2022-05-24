@@ -49,6 +49,8 @@ public:
     struct sockaddr_storage next_destination;
 
     uint8_t prev_server_command_bytes[6];
+    uint32_t remote_ip_crc;
+    bool enable_remote_ip_crc_patch;
 
     GameVersion version;
     uint32_t sub_version;

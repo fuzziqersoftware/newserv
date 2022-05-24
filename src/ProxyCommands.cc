@@ -17,6 +17,7 @@
 #include <iostream>
 #include <phosg/Encoding.hh>
 #include <phosg/Filesystem.hh>
+#include <phosg/Hash.hh>
 #include <phosg/Network.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
@@ -226,34 +227,61 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
   }
 }
 
-static bool process_server_bb_03(shared_ptr<ServerState>,
+static bool process_server_bb_03(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  // Most servers don't include after_message or have a shorter
-  // after_message than newserv does, so don't require it
+  // Most servers don't include after_message or have a shorter after_message
+  // than newserv does, so don't require it
   const auto& cmd = check_size_t<S_ServerInit_BB_03>(data,
       offsetof(S_ServerInit_BB_03, after_message), 0xFFFF);
 
-  if (!session.detector_crypt.get()) {
-    throw runtime_error("BB linked session has no detector crypt");
+  // If the session has a detector crypt, then it was resumed from an unlinked
+  // session, during which we already sent an 03 command.
+  if (session.detector_crypt.get()) {
+    if (session.login_command_bb.empty()) {
+      throw logic_error("linked BB session does not have a saved login command");
+    }
+
+    // This isn't forwarded to the client, so only recreate the server's crypts.
+    // Use the same crypt type as the client... the server has the luxury of
+    // being able to try all the crypts it knows to detect what type the client
+    // uses, but the client can't do this since it sends the first encrypted
+    // data on the connection.
+    session.server_input_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+        session.detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false));
+    session.server_output_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+        session.detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false));
+
+    // Forward the login command we saved during the unlinked session.
+    if (session.enable_remote_ip_crc_patch && (session.login_command_bb.size() >= 0x98)) {
+      *reinterpret_cast<le_uint32_t*>(session.login_command_bb.data() + 0x94) =
+          session.remote_ip_crc ^ (1309539928 + 1248334810);
+    }
+    session.send_to_end(true, 0x93, 0x00, session.login_command_bb);
+
+    return false;
+
+  // If there's no detector crypt, then the session is new and was linked
+  // immediately at connect time, and an 03 was not yet sent to the client, so
+  // we should forward this one.
+  } else {
+    // Forward the command to the client before setting up the crypts, so the
+    // client receives the unencrypted data
+    session.send_to_end(false, 0x03, 0x00, data);
+
+    static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
+    session.detector_crypt.reset(new PSOBBMultiKeyDetectorEncryption(
+        s->bb_private_keys, expected_first_data, cmd.client_key.data(), sizeof(cmd.client_key)));
+    session.client_input_crypt = session.detector_crypt;
+    session.client_output_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+        session.detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true));
+    session.server_input_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+        session.detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false));
+    session.server_output_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+        session.detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false));
+
+    // We already forwarded the command, so don't do so again
+    return false;
   }
-  if (session.login_command_bb.empty()) {
-    throw logic_error("linked BB session does not have a saved login command");
-  }
-
-  // This isn't forwarded to the client, so only recreate the server's crypts.
-  // Use the same crypt type as the client... the server has the luxury of being
-  // able to try all the crypts it knows to detect what type the client uses,
-  // but the client can't do this since it sends the first encrypted data on the
-  // connection.
-  session.server_input_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
-      session.detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false));
-  session.server_output_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
-      session.detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false));
-
-  // Forward the login command we saved during the unlinked session.
-  session.send_to_end(true, 0x93, 0x00, session.login_command_bb);
-
-  return false;
 }
 
 static bool process_server_dc_pc_gc_04(shared_ptr<ServerState>,
@@ -386,6 +414,16 @@ static bool process_server_B2(shared_ptr<ServerState>,
   }
 }
 
+static bool process_server_E7(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  if (session.save_files) {
+    string output_filename = string_printf("player.bin.%" PRId64, now());
+    save_file(output_filename, data);
+    session.log(INFO, "Wrote player data to file %s", output_filename.c_str());
+  }
+  return true;
+}
+
 template <typename CmdT>
 static bool process_server_C4(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
@@ -414,6 +452,25 @@ static bool process_server_gc_E4(shared_ptr<ServerState>,
   return true;
 }
 
+static bool process_server_bb_22(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  // We use this command (which is sent before the init encryption command) to
+  // detect a particular server behavior that we'll have to work around later.
+  // It looks like this command's existence is another anti-proxy measure, since
+  // this command is 0x34 bytes in total, and the logic that adds padding bytes
+  // when the command size isn't a multiple of 8 is only active when encryption
+  // is enabled. Presumably some simpler proxies would get this wrong.
+  // Editor's note: There's an unsavory message in this command's data field,
+  // hence the hash here instead of a direct string comparison. I'd love to hear
+  // the story behind why they put that string there.
+  if ((data.size() == 0x2C) &&
+      (fnv1a64(data.data(), data.size()) == 0x8AF8314316A27994)) {
+    session.log(INFO, "Enabling remote IP CRC patch");
+    session.enable_remote_ip_crc_patch = true;
+  }
+  return true;
+}
+
 static bool process_server_game_19_patch_14(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t, string& data) {
   // If the command is shorter than 6 bytes, use the previous server command to
@@ -430,6 +487,10 @@ static bool process_server_game_19_patch_14(shared_ptr<ServerState>,
   }
   if (data.size() < sizeof(S_Reconnect_19)) {
     data.resize(sizeof(S_Reconnect_19), '\0');
+  }
+
+  if (session.enable_remote_ip_crc_patch) {
+    session.remote_ip_crc = crc32(data.data(), 4);
   }
 
   // This weird maximum size is here to properly handle the version-split
@@ -951,7 +1012,7 @@ static process_command_t gc_server_handlers[0x100] = {
 static process_command_t bb_server_handlers[0x100] = {
   /* 00 */ defh, defh, defh, process_server_bb_03, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, defh, defh, process_server_game_19_patch_14, defh, defh, defh, defh, defh, defh,
-  /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 20 */ defh, defh, process_server_bb_22, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 40 */ defh, process_server_41<S_GuildCardSearchResult_BB_41>, defh, defh, process_server_44_A6<S_OpenFile_BB_44_A6>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 50 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -963,7 +1024,7 @@ static process_command_t bb_server_handlers[0x100] = {
   /* B0 */ defh, defh, process_server_B2, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* C0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* D0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* E0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* E0 */ defh, defh, defh, defh, defh, defh, defh, process_server_E7, defh, defh, defh, defh, defh, defh, defh, defh,
   /* F0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
 };
 static process_command_t patch_server_handlers[0x100] = {
