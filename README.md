@@ -4,7 +4,7 @@ newserv is a game server and proxy for Phantasy Star Online (PSO).
 
 This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself; this data was originally created by Sega.
 
-This project is a rewrite of a rewrite of a game server that I wrote many years ago. So far, it works well with PSO GC Episodes 1 & 2, and lobbies (but not games) are implemented on Episode 3. Some basic functionality works on PSO PC and PSO BB, but there are probably still some cases that lead to errors (which will disconnect the client).
+This project is a rewrite of a rewrite of a game server that I wrote many years ago. So far, it works well with PSO GC Episodes 1 & 2, and lobbies (but not games) are implemented on Episode 3. Some basic functionality works on PSO PC and PSO BB, but there are probably still some cases that lead to errors (which will disconnect the client). The proxy works well with PSO GC and PSO BB.
 
 Feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
 
@@ -24,12 +24,14 @@ Currently this code should build on macOS and Ubuntu. It will likely work on oth
 There is a probably-not-too-old macOS release on the newserv GitHub repository (look in the right sidebar).
 
 If you're running Linux or want to build newserv yourself, here's what you do:
-- Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
+1. Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
 - Build and install phosg (https://github.com/fuzziqersoftware/phosg).
-- Run `cmake . && make` on the newserv directory.
-- In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
-- Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
-- Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
+2. Run `cmake . && make` on the newserv directory.
+
+After building newserv or downloading a release, do this to set it up and use it:
+1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
+2. Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
+3. Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
 
 ### Installing quests
 

@@ -40,7 +40,9 @@
 
     // Ephinea PSOBB uses these ports. Note that 13000 is also used by Schthack
     // PSOBB, but not for the patch server; this means you unfortunately can't
-    // support both Schthack and Ephinea PSOBB clients at the same time.
+    // support both Schthack and Ephinea PSOBB clients at the same time. This
+    // may be fixed in the future using a similar technique as the
+    // split_reconnect behavior, but this isn't implemented yet.
     // "bb-patch3": [13000, "patch", "patch_server"],
     // "bb-init3":  [14000, "bb",    "data_server_bb"],
 
@@ -86,10 +88,10 @@
   // "RunInteractiveShell": false,
 
   // By default, the server only allows users who are registered in the license
-  // file to connect. By enabling this option, all users will be allowed to
-  // connect. This option has no effect for Blue Burst clients; they are always
-  // required to be registered before connecting. Keep in mind that unregistered
-  // users cannot be banned!
+  // file to connect. By enabling this option, all non-BB users will be allowed
+  // to connect. This option has no effect for Blue Burst clients; they are
+  // always required to be registered before connecting. Keep in mind that
+  // unregistered users cannot be banned!
   "AllowUnregisteredUsers": false,
 
   // User to run the server as. If present, newserv will attempt to switch to
