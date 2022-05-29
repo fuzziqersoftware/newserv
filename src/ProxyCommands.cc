@@ -897,11 +897,10 @@ static bool process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
       "You\'ve returned to\n\tC6%s", encoded_name.c_str()));
 
   // Restore newserv_client_config, so the login server gets the client flags
-  S_UpdateClientConfig_DC_PC_GC_04 update_client_config_cmd = {
-    0x00010000,
-    session.license->serial_number,
-    session.newserv_client_config.cfg,
-  };
+  S_UpdateClientConfig_DC_PC_GC_04 update_client_config_cmd;
+  update_client_config_cmd.player_tag = 0x00010000;
+  update_client_config_cmd.guild_card_number = session.license->serial_number;
+  update_client_config_cmd.cfg = session.newserv_client_config.cfg;
   session.send_to_end(false, 0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
 
   static const vector<string> version_to_port_name({
