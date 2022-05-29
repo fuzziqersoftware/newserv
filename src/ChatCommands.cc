@@ -142,6 +142,11 @@ static void command_arrow(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 }
 
+static void command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
+    shared_ptr<Client> c, const std::u16string&) {
+  c->prefer_high_lobby_client_id = !c->prefer_high_lobby_client_id;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Lobby commands
 
@@ -692,6 +697,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$bbchar"    , {command_convert_char_to_bb, u"Usage:\nbbchar <user> <pass> <1-4>"}},
     // {u"$bank",       {command_bank              , u"Usage:\nbank <bank name>"}},
     {u"$cheat"     , {command_cheat             , u"Usage:\ncheat"}},
+    {u"$dbgid"     , {command_dbgid             , u"Usage:\ndngid"}},
     {u"$edit"      , {command_edit              , u"Usage:\nedit <stat> <value>"}},
     {u"$event"     , {command_lobby_event       , u"Usage:\nevent <name>"}},
     {u"$infhp"     , {command_infinite_hp       , u"Usage:\ninfhp"}},

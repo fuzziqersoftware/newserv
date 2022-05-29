@@ -57,9 +57,9 @@ size_t Lobby::count_clients() const {
   return ret;
 }
 
-void Lobby::add_client(shared_ptr<Client> c, bool reverse_indexes) {
+void Lobby::add_client(shared_ptr<Client> c) {
   ssize_t index;
-  if (reverse_indexes) {
+  if (c->prefer_high_lobby_client_id) {
     for (index = max_clients - 1; index >= 0; index--) {
       if (!this->clients[index].get()) {
         this->clients[index] = c;
@@ -85,7 +85,7 @@ void Lobby::add_client(shared_ptr<Client> c, bool reverse_indexes) {
   c->lobby_id = this->lobby_id;
 
   // If there's no one else in the lobby, set the leader id as well
-  if (index == (max_clients - 1) * reverse_indexes) {
+  if (index == (max_clients - 1) * c->prefer_high_lobby_client_id) {
     for (index = 0; index < max_clients; index++) {
       if (this->clients[index].get() && this->clients[index] != c) {
         break;

@@ -39,6 +39,7 @@ Client::Client(
     lobby_id(0),
     lobby_client_id(0),
     lobby_arrow_color(0),
+    prefer_high_lobby_client_id(false),
     next_exp_value(0),
     override_section_id(-1),
     infinite_hp(false),
