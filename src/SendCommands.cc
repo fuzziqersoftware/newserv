@@ -181,7 +181,6 @@ void send_command_with_header(shared_ptr<Client> c, const void* data,
 
 
 
-
 // specific command sending functions follow. in general, they're written in
 // such a way that you don't need to think about anything, even the client's
 // version, before calling them. for this reason, some of them are quite
@@ -202,11 +201,11 @@ static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst G
 // static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
-S_ServerInit_DC_PC_GC_02_17 prepare_server_init_contents_dc_pc_gc(
+S_ServerInit_DC_PC_GC_02_17_92_9B prepare_server_init_contents_dc_pc_gc(
     bool initial_connection,
     uint32_t server_key,
     uint32_t client_key) {
-  S_ServerInit_DC_PC_GC_02_17 cmd;
+  S_ServerInit_DC_PC_GC_02_17_92_9B cmd;
   cmd.copyright = initial_connection
       ? dc_port_map_copyright : dc_lobby_server_copyright;
   cmd.server_key = server_key;
@@ -1083,12 +1082,12 @@ void send_player_join_notification(shared_ptr<Client> c,
 }
 
 void send_player_leave_notification(shared_ptr<Lobby> l, uint8_t leaving_client_id) {
-  S_LeaveLobby_66_69 cmd = {leaving_client_id, l->leader_id, 0};
+  S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_client_id, l->leader_id, 0};
   send_command_t(l, l->is_game() ? 0x66 : 0x69, leaving_client_id, cmd);
 }
 
 void send_self_leave_notification(shared_ptr<Client> c) {
-  S_LeaveLobby_66_69 cmd = {c->lobby_client_id, 0, 0};
+  S_LeaveLobby_66_69_Ep3_E9 cmd = {c->lobby_client_id, 0, 0};
   send_command_t(c, 0x69, c->lobby_client_id, cmd);
 }
 

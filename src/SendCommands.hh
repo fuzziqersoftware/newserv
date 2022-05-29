@@ -93,7 +93,7 @@ void send_command_with_header(std::shared_ptr<Client> c, const void* data,
 
 
 
-S_ServerInit_DC_PC_GC_02_17 prepare_server_init_contents_dc_pc_gc(
+S_ServerInit_DC_PC_GC_02_17_92_9B prepare_server_init_contents_dc_pc_gc(
     bool initial_connection,
     uint32_t server_key,
     uint32_t client_key);

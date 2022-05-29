@@ -137,8 +137,8 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
 
   // Most servers don't include after_message or have a shorter
   // after_message than newserv does, so don't require it
-  const auto& cmd = check_size_t<S_ServerInit_DC_PC_GC_02_17>(data,
-      offsetof(S_ServerInit_DC_PC_GC_02_17, after_message), 0xFFFF);
+  const auto& cmd = check_size_t<S_ServerInit_DC_PC_GC_02_17_92_9B>(data,
+      offsetof(S_ServerInit_DC_PC_GC_02_17_92_9B, after_message), 0xFFFF);
 
   if (!session.license) {
     session.log(INFO, "No license in linked session");
@@ -747,7 +747,7 @@ static bool process_server_64(shared_ptr<ServerState>,
 
 static bool process_server_66_69(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  const auto& cmd = check_size_t<S_LeaveLobby_66_69>(data);
+  const auto& cmd = check_size_t<S_LeaveLobby_66_69_Ep3_E9>(data);
   size_t index = cmd.client_id;
   if (index >= session.lobby_players.size()) {
     session.log(WARNING, "Lobby leave command references missing position");
@@ -888,7 +888,7 @@ static bool process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
     }
     uint8_t leaving_id = x;
     uint8_t leader_id = session.lobby_client_id;
-    S_LeaveLobby_66_69 cmd = {leaving_id, leader_id, 0};
+    S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_id, leader_id, 0};
     session.send_to_end(false, 0x69, leaving_id, &cmd, sizeof(cmd));
   }
 

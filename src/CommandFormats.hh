@@ -266,13 +266,22 @@ struct SC_TextHeader_01_06_11_B0_EE {
 // The copyright field in the below structure must contain the following text:
 // "DreamCast Port Map. Copyright SEGA Enterprises. 1999"
 
-struct S_ServerInit_DC_PC_GC_02_17 {
+struct S_ServerInit_DC_PC_GC_02_17_92_9B {
   ptext<char, 0x40> copyright;
   le_uint32_t server_key; // Key for data sent by server
   le_uint32_t client_key; // Key for data sent by client
   // This field is not part of SEGA's implementation. The client ignores it.
   ptext<char, 0xC0> after_message;
 };
+
+// 03 (S->C): Legacy password check result (non-BB)
+// header.flag specifies if the password was correct. If header.flag is 0, the
+// password saved to the memory card (if any) is deleted and the client is
+// disconnected. If header.flag is nonzero, the client responds with an 04
+// command. On GC at least, it's likely this command is a relic from earlier
+// versions of the login sequence; most servers use the DB/9A/9C/9E commands for
+// logging in GC clients.
+// No other arguments
 
 // 03 (S->C): Start encryption (BB)
 // Client will respond with an (encrypted) 93 command.
@@ -287,6 +296,18 @@ struct S_ServerInit_BB_03 {
   ptext<char, 0xC0> after_message;
 };
 
+// 04 (C->S): Legacy login
+// See comments on non-BB 03 (S->C). This is likely a relic of an older,
+// now-unused sequence.
+// header.flag is nonzero, but it's not clear what it's used for.
+struct C_LegacyLogin_GC_04 {
+  uint32_t unknown_a1[2];
+  le_uint32_t sub_version;
+  le_uint32_t player_tag;
+  ptext<char, 0x10> serial_number;
+  ptext<char, 0x10> access_key;
+};
+
 // 04 (S->C): Set guild card number and update client config ("security data")
 // The client config field in this command is only used by V3 clients (PSO GC).
 // We send it anyway to clients on earlier versions (e.g. PSO PC), but they
@@ -298,23 +319,20 @@ struct S_ServerInit_BB_03 {
 // confuse the client, and (on pre-V3 clients) possibly corrupt the character
 // data. For this reason, newserv tries pretty hard to hide the remote guild
 // card number when clients connect to the proxy server.
-// Note: PSOBB has a handler for the 04 command, but (as of yet) I haven't
-// figured out what it does.
 
-struct S_UpdateClientConfig_DC_PC_GC_04 {
+template <typename ClientConfigT>
+struct S_UpdateClientConfig {
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
   // The ClientConfig structure (defined in Client.hh) describes how newserv
   // uses this command; other servers do not use the same format for the
   // following 0x20 bytes (or may not use it at all). The cfg field is opaque to
   // the client; it will send back the contents verbatim in its next 9E command.
-  ClientConfig cfg;
+  ClientConfigT cfg;
 };
 
-struct S_Unknown_BB_04 {
-  // header.flag is used too, but it's not clear what it does
-  le_uint32_t unknown_a1[12];
-};
+struct S_UpdateClientConfig_DC_PC_GC_04 : S_UpdateClientConfig<ClientConfig> { };
+struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> { };
 
 // 05: Disconnect
 // No arguments
@@ -366,7 +384,7 @@ struct S_GameMenuEntry {
   uint8_t flags; // 02 = locked, 04 = disabled (BB), 10 = battle, 20 = challenge
 };
 struct S_GameMenuEntry_PC_BB_08 : S_GameMenuEntry<char16_t> { };
-struct S_GameMenuEntry_GC_08 : S_GameMenuEntry<char> { };
+struct S_GameMenuEntry_GC_08_Ep3_E6 : S_GameMenuEntry<char> { };
 
 // 09 (C->S): Menu item info request
 // Server will respond with an 11 command, or an A3 if it's the quest menu.
@@ -382,7 +400,22 @@ struct C_MenuItemInfoRequest_09 {
 // Format unknown
 
 // 0D: Invalid command
-// 0E: Invalid command
+
+// 0E (S->C): Unknown; possibly legacy join game (GC)
+
+struct S_Unknown_GC_0E {
+  PlayerLobbyDataGC lobby_data[4]; // This type is a guess
+  struct UnknownA0 {
+    uint8_t unknown_a1[2];
+    le_uint16_t unknown_a2;
+    le_uint32_t unknown_a3;
+  };
+  UnknownA0 unknown_a0[8];
+  le_uint32_t unknown_a1;
+  parray<uint8_t, 0x20> unknown_a2;
+  uint8_t unknown_a3[4];
+};
+
 // 0F: Invalid command
 
 // 10 (C->S): Menu selection
@@ -400,7 +433,7 @@ struct C_MenuSelection {
 // 11 (S->C): Ship info
 // Same format as 01 command.
 
-// 12 (S->C): Valid but ignored (BB)
+// 12 (S->C): Valid but ignored (GC, BB)
 
 // 13 (S->C): Write online quest file
 // Used for downloading online quests. For download quests (to be saved to the
@@ -426,9 +459,9 @@ struct C_WriteFileConfirmation_GC_BB_13_A7 {
   ptext<char, 0x10> filename;
 };
 
-// 14 (S->C): Valid but ignored (BB)
+// 14 (S->C): Valid but ignored (GC, BB)
 // 15: Invalid command
-// 16 (S->C): Valid but ignored (BB)
+// 16 (S->C): Valid but ignored (GC, BB)
 
 // 17 (S->C): Start encryption at login server (except on BB)
 // Same format as 02 command, but a different copyright string.
@@ -438,7 +471,8 @@ struct C_WriteFileConfirmation_GC_BB_13_A7 {
 // The copyright field in the structure must contain the following text:
 // "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999";
 
-// 18: Invalid command
+// 18 (S->C): License verification result (GC)
+// Behaves exactly the same as 9A (S->C). No arguments except header.flag.
 
 // 19 (S->C): Reconnect to different address
 // Client will disconnect, and reconnect to the given address/port.
@@ -473,9 +507,10 @@ struct S_ReconnectSplit_19 {
 // There is a bug in V3 (and possibly all versions) where if this command is
 // sent after the client has joined a lobby, the chat log window contents will
 // appear in the message box, prepended to the message text from the command.
+// The maximum length of the message is 0x400 bytes.
 
-// 1B: Invalid command
-// 1C: Invalid command
+// 1B: Valid but ignored (GC)
+// 1C: Valid but ignored (GC)
 
 // 1D: Ping
 // No arguments
@@ -647,6 +682,8 @@ struct C_OpenFileConfirmation_44_A6 {
 // When a client sends this command, the server should forward it to all players
 // in the same game/lobby, except the player who originally sent the command.
 // See ReceiveSubcommands or the subcommand index below for details on contents.
+// The data in this command may be up to 0x400 bytes in length. If it's larger,
+// the client will exhibit undefined behavior.
 
 // 61 (C->S): Player data
 // See PSOPlayerDataPC, PSOPlayerDataGC, and PSOPlayerDataBB in Player.hh for
@@ -665,6 +702,8 @@ struct C_OpenFileConfirmation_44_A6 {
 // identified by header.flag in the same game/lobby, even if that player is the
 // player who originally sent it.
 // See ReceiveSubcommands or the subcommand index below for details on contents.
+// The data in this command may be up to 0x400 bytes in length. If it's larger,
+// the client will exhibit undefined behavior.
 
 // 63: Invalid command
 
@@ -741,7 +780,7 @@ struct S_JoinLobby_BB_65_67_68 : S_JoinLobby<PlayerLobbyDataBB, PlayerDispDataBB
 // This is sent to all players in a game except the leaving player.
 
 // Header flag = leaving player ID (same as client_id);
-struct S_LeaveLobby_66_69 {
+struct S_LeaveLobby_66_69_Ep3_E9 {
   uint8_t client_id;
   uint8_t leader_id;
   le_uint16_t unused;
@@ -762,10 +801,10 @@ struct S_LeaveLobby_66_69 {
 // 6B: Invalid command
 
 // 6C: Broadcast command
-// Same format and usage as 60 command.
+// Same format and usage as 60 command, but with no size limit.
 
 // 6D: Target command
-// Same format and usage as 62 command.
+// Same format and usage as 62 command, but with no size limit.
 
 // 6E: Invalid command
 
@@ -790,7 +829,18 @@ struct S_LeaveLobby_66_69 {
 // 7D: Invalid command
 // 7E: Invalid command
 // 7F: Invalid command
-// 80: Invalid command
+
+// 80 (S->C): Unknown (GC)
+// This command has the following structure, but the client ignores the contents
+// and does nothing in response.
+
+struct S_Unknown_GC_80 {
+  le_uint32_t unknown_a1;
+  parray<uint8_t, 2> unknown_a2;
+  le_uint16_t unknown_a3;
+  le_uint32_t unknown_a4;
+  parray<uint8_t, 8> unknown_a5;
+};
 
 // 81: Simple mail
 // Format is the same in both directions. The server should forward the command
@@ -887,9 +937,27 @@ struct S_ArrowUpdateEntry_88 {
 // 8D: Invalid command
 // 8E: Invalid command
 // 8F: Invalid command
-// 90: Invalid command
-// 91: Invalid command
-// 92: Invalid command
+
+// 90 (C->S): Legacy login (GC)
+// From looking at Sylverant source, it appears this command is used during the
+// DC login sequence. If a GC client receives a 91 command, however, it will
+// also send a 90 in response, though the contents will be blank (all zeroes).
+
+struct C_LegacyLogin_GC_90 {
+  ptext<char, 0x11> serial_number;
+  ptext<char, 0x13> access_key;
+};
+
+// 90 (S->C): License verification result (GC)
+// Behaves exactly the same as 9A (S->C). No arguments except header.flag.
+
+// 91 (S->C): Start encryption at login server (legacy; non-BB only)
+// Same format and usage as 17 command, except the client will respond with a 90
+// command. On versions that support it, this is strictly less useful than the
+// 17 command.
+
+// 92 (S->C): Register result (non-BB)
+// Same format and usage as 9C (S->C) command.
 
 // 93 (C->S): Log in (BB)
 
@@ -991,6 +1059,9 @@ struct C_Login_DC_PC_GC_9A {
 // 13 = servers under maintenance (118)
 // Seems like most (all?) of the rest of the codes are "network error" (119).
 
+// 9B (S->C): Secondary server init (non-BB)
+// Behaves exactly the same as 17 (S->C).
+
 // 9B (S->C): Secondary server init? (BB)
 // Format is the same as 03 (and the client uses the same encryption afterward).
 // The only differences that 9B has from 03:
@@ -1011,7 +1082,7 @@ struct C_Register_DC_PC_GC_9C {
   ptext<char, 0x30> password;
 };
 
-// 9C (S->C): Login result
+// 9C (S->C): Register result
 // The only possible error here seems to be wrong password (127) which is
 // displayed if the header.flag field is zero. If header.flag is nonzero, the
 // client proceeds with the login procedure by sending a 9D/9E.
@@ -1055,11 +1126,11 @@ struct C_LoginWithUnusedSpace_GC_9E : C_Login_GC_9E {
   parray<uint8_t, 0x64> unused_space;
 };
 
-// 9F (S->C): Unknown (BB)
+// 9F (S->C): Request client config / security data
+// No arguments
 
-struct S_Unknown_BB_9F {
-  le_uint32_t unknown_a1[10];
-};
+// 9F (C->S): Client config / security data response
+// Format is ClientConfig on GC, or ClientConfigBB on BB
 
 // A0 (C->S): Change ship
 // This structure is for documentation only; newserv ignores the arguments here.
@@ -1151,15 +1222,17 @@ struct C_UpdateQuestStatistics_AA {
 };
 
 // AB (S->C): Confirm update quest statistics
+// TODO: Does this command have a different meaning in Episode 3?
 
 struct S_ConfirmUpdateQuestStatistics_AB {
-  le_uint32_t unknown_a1; // 0
+  le_uint16_t unknown_a1; // 0
+  be_uint16_t unknown_a2; // Probably actually unused
   le_uint16_t request_token; // Should match token sent in AA command
-  le_uint16_t unknown_a2; // Schtserv always sends 0xBFFF here
+  le_uint16_t unknown_a3; // Schtserv always sends 0xBFFF here
 };
 
 // AC: Quest barrier
-// No arguments
+// No arguments; header.flag must be 0
 // After a quest begins loading in a game (the server sends 44/13 commands to
 // each player with the quest's data), each player will send an AC to the server
 // when it has parsed the quest and is ready to start. When all players in a
@@ -1189,70 +1262,53 @@ struct S_ConfirmUpdateQuestStatistics_AB {
 // Client will respond with a 99 command.
 
 // B2 (S->C): Execute code and/or checksum memory
-// GC v1.0/v1.1 and BB only.
-// Much of this command's information came from Sylverant's documentation.
-// Client will respond with a B3 command.
+// GC v1.0/v1.1 and BB only - this doesn't work on PSO Plus (v1.2) or Episode 3.
+// Client will respond with a B3 command with the same header.flag value as was
+// sent in the B2.
 
-struct S_ExecuteCode_GC_B2 {
-  // Offsets in this command are relative to the start of the header, not the
-  // start of this structure! Add 4 to the offsets if computing them relative to
-  // the start of this struct.
-  le_uint32_t relocations_offset;
-  le_uint32_t checksum_start; // CRC32; 0 = no checksum requested
-  le_uint32_t checksum_size; // CRC32; 0 = no checksum requested
-  // This field is big-endian on GC, little-endian on other systems. The value
-  // is relative to the field itself, so e.g. 4 means that the code immediately
-  // follows this field. I've seen some commands in the wild where this field is
-  // set to a memory address (8xxxxxxxx) rather than an offset, but it's not
-  // clear what that means.
-  union {
-    le_uint32_t l;
-    be_uint32_t b;
-  } code_offset;
-  // Code (usually) immediately follows here.
-};
-
-struct S_ExecuteCode_Relocations_GC_B2 {
-  le_uint32_t count_offset;
-  le_uint32_t count;
-  le_uint32_t unknown_a1;
-  le_uint32_t unknown_a2;
-  le_uint32_t offset_start;
-  le_uint16_t offset_entry;
-  // Variable-length field:
-  // le_uint16_t offsets[count];
-};
-
-// Support exists in BB for this command, but to my knowledge it has never been
-// used. Like on GC, the client will respond with a B3 command.
-
-struct S_ExecuteCode_BB_B2 {
-  // If code_size == 0, no code is executed (but checksumming may still occur).
+struct S_ExecuteCode_B2 {
+  // If code_size == 0, no code is executed, but checksumming may still occur.
+  // In that case, this structure is the entire body of the command (no footer
+  // is sent).
   le_uint32_t code_size; // Size of code (following this struct) and footer
-  le_uint32_t checksum_address; // May be null if size is zero
-  le_uint32_t checksum_size;
+  le_uint32_t checksum_start; // May be null if size is zero
+  le_uint32_t checksum_size; // If zero, no checksum is computed
+  // The code immediately follows, ending with an S_ExecuteCode_Footer_B2
 };
 
-struct S_ExecuteCode_Footer_BB_B2 {
-  // Relocations is a list of words (le_uint16_t) containing the number of words
-  // to skip for each relocation. The relocation pointer starts immediately
-  // after the checksum_size field in the header, and advances by the value of
-  // one word before each relocation. At each relocated doubleword, the address
-  // of the first byte of the code (after checksum_size) is added to the
-  // existing value.
-  le_uint32_t relocations_offset;
-  le_uint32_t num_relocations;
-  le_uint32_t unknown_a1[2];
-  le_uint32_t entrypoint_offset; // Relative to code base (after checksum_size)
-  le_uint32_t unknown_a2[3];
+template <typename LongT>
+struct S_ExecuteCode_Footer_B2 {
+  // Relocations is a list of words (uint16_t) containing the number of
+  // doublewords (uint32_t) to skip for each relocation. The relocation pointer
+  // starts immediately after the checksum_size field in the header, and
+  // advances by the value of one relocation word (times 4) before each
+  // relocation. At each relocated doubleword, the address of the first byte of
+  // the code (after checksum_size) is added to the existing value.
+  // If there is a small number of relocations, they may be placed in the unused
+  // fields of this structure to save space and/or confuse reverse engineers.
+  // The game never accesses the last 12 bytes of this structure unless
+  // relocations_offset points there, so those 12 bytes may also be omitted from
+  // the command entirely (without changing code_size - so code_size would
+  // technically extend beyond the end of the B2 command).
+  LongT relocations_offset; // Relative to code base (after checksum_size)
+  LongT num_relocations;
+  parray<LongT, 2> unused1;
+  // entrypoint_offset is doubly indirect - it points to a pointer to a 32-bit
+  // value that itself is the actual entrypoint. This is presumably done so the
+  // entrypoint can be optionally relocated.
+  LongT entrypoint_addr_offset; // Relative to code base (after checksum_size).
+  parray<LongT, 3> unused2;
 };
+
+struct S_ExecuteCode_Footer_GC_B2 : S_ExecuteCode_Footer_B2<be_uint32_t> { };
+struct S_ExecuteCode_Footer_BB_B2 : S_ExecuteCode_Footer_B2<le_uint32_t> { };
 
 // B3 (C->S): Execute code and/or checksum memory result
 // GC v1.0/v1.1 and BB only.
 
 struct C_ExecuteCodeResult_GC_BB_B3 {
   le_uint32_t return_value; // 0 if no code was run
-  le_uint32_t checksum;
+  le_uint32_t checksum; // 0 if no checksum was computed
 };
 
 // B4: Invalid command
@@ -1282,7 +1338,18 @@ struct S_RankUpdate_GC_Ep3_B7 {
 // No arguments
 // The client sends this after it receives a B8 from the server.
 
-// B9: Invalid command
+// B9 (S->C): Unknown (Episode 3)
+
+struct S_Unknown_GC_Ep3_B9 {
+  le_uint32_t unknown_a1; // Must be 1-4 (inclusive)
+  le_uint32_t unknown_a2;
+  le_uint16_t unknown_a3;
+  le_uint16_t unknown_a4;
+  parray<uint8_t, 0x3800> unknown_a5;
+};
+
+// B9 (C->S): Confirm received B9 (Episode 3)
+// No arguments
 
 // BA: Meseta transaction (Episode 3)
 
@@ -1298,7 +1365,20 @@ struct S_Meseta_GC_Ep3_BA {
   le_uint32_t request_token; // Should match the token sent by the client
 };
 
-// BB: Invalid command
+// BB (S->C): Unknown (Episode 3)
+// header.flag is used, but it's not clear for what.
+
+struct S_Unknown_GC_Ep3_BB {
+  uint8_t unknown_a1[0x20];
+  struct Entry {
+    le_uint16_t unknown_a1[2];
+    uint8_t unknown_a2[0x20];
+  };
+  Entry entries[0x20];
+  le_uint16_t unknown_a2[2];
+  uint8_t unknown_a3[0x900];
+};
+
 // BC: Invalid command
 // BD: Invalid command
 // BE: Invalid command
@@ -1431,7 +1511,19 @@ struct C_SetBlockedSenders_C6 {
 // CB: Broadcast command (Episode 3)
 // Same as 60, but only send to Episode 3 clients.
 
-// CC: Invalid command
+// CC (S->C): Unknown (Episode 3)
+
+struct S_Unknown_GC_Ep3_CC {
+  parray<uint8_t, 0x40> unknown_a1;
+  parray<le_uint16_t, 4> unknown_a2;
+  parray<uint8_t, 0x40> unknown_a3;
+  struct Entry {
+    parray<le_uint16_t, 2> unknown_a1;
+    parray<uint8_t, 0x20> unknown_a2;
+  };
+  Entry entries[0x20];
+};
+
 // CD: Invalid command
 // CE: Invalid command
 // CF: Invalid command
@@ -1453,8 +1545,9 @@ struct C_SetBlockedSenders_C6 {
 // No arguments
 
 // D5: Large message box
-// Same as 1A command. Sylverant's documentation notes that D5 is not valid on
-// pre-V3 versions (PSO DC or PSO PC).
+// Same as 1A command, except the maximum length of the message is 0x1000 bytes.
+// Sylverant's documentation notes that D5 is not valid on pre-V3 versions (PSO
+// DC or PSO PC).
 
 // D6 (C->S): Large message box closed (GC)
 // No arguments
@@ -1471,6 +1564,11 @@ struct C_SetBlockedSenders_C6 {
 struct C_GBAGameRequest_GC_D7 {
   ptext<char, 0x10> filename;
 };
+
+// D7 (S->C): Unknown (GC)
+// This command does... something. The command isn't *completely* ignored: it
+// sets a global state variable, but it's not clear what that variable does, or
+// even if it does anything at all.
 
 // D7 (S->C): Valid but ignored (BB)
 
@@ -1523,7 +1621,9 @@ struct C_VerifyLicense_BB_DB {
 
 // DC: Player menu state (Episode 3)
 // No arguments. It seems the client expects the server to respond with another
-// DC command with header.flag = 0.
+// DC command, the contents and flag of which are ignored entirely - all it does
+// is set a global flag on the client. This could be the mechanism for waiting
+// until all players are at the counter, like how AC (quest barrier) works.
 
 // DC: Guild card data (BB)
 
@@ -1559,17 +1659,27 @@ struct S_RareMonsterConfig_BB_DE {
 
 // E0 (S->C): Tournament list (Episode 3)
 
-// Command is a list of these; header.flag is the entry count. Some servers
-// always send 0x740 bytes even if the entries don't fill the space.
-struct S_TournamentEntry_GC_Ep3_E0 {
-  le_uint32_t menu_id;
-  le_uint32_t item_id;
-  parray<uint8_t, 0x30> unknown;
+// header.flag is the count of filled-in entries.
+struct S_TournamentList_GC_Ep3_E0 {
+  struct Entry {
+    le_uint32_t menu_id;
+    le_uint32_t item_id;
+    parray<uint8_t, 4> unknown_a1;
+    le_uint32_t unknown_a2;
+    parray<le_uint32_t, 8> unknown_a3;
+    parray<le_uint16_t, 4> unknown_a4;
+  };
+  Entry entries[0x20];
+  uint8_t unknown_a1[4];
 };
 
 // E0 (C->S): Request team and key config (BB)
 
-// E1: Invalid command
+// E1 (S->C): Unknown (Episode 3)
+
+struct S_Unknown_GC_Ep3_E1 {
+  uint8_t unknown_a1[0x294];
+};
 
 // E2 (C->S): Tournament control (Episode 3)
 // Flag = 0 => request tournament list (server responds with E0)
@@ -1580,8 +1690,35 @@ struct S_TournamentEntry_GC_Ep3_E0 {
 
 // E2 (S->C): Tournament entry control (Episode 3)
 
+struct S_TournamentControl_GC_Ep3_E2 {
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  struct Entry {
+    le_uint32_t menu_id;
+    le_uint32_t item_id;
+    parray<uint8_t, 4> unknown_a1;
+    parray<le_uint32_t, 8> unknown_a2;
+  };
+  Entry entries[0x20];
+};
+
 // E2 (S->C): Team and key config (BB)
 // See KeyAndTeamConfigBB in Player.hh for format
+
+// E3 (S->C): Unknown (Episode 3)
+
+struct S_Unknown_GC_Ep3_E3 {
+  struct Entry {
+    parray<uint8_t, 0x20> unknown_a1;
+    le_uint16_t unknown_a2;
+    le_uint16_t unknown_a3;
+  };
+  parray<uint8_t, 0x34> unknown_a1;
+  Entry entries[0x20];
+  parray<uint8_t, 0x100> unknown_a2;
+  parray<le_uint16_t, 4> unknown_a3;
+  parray<uint8_t, 0x180> unknown_a4;
+};
 
 // E3 (C->S): Player preview request (BB)
 
@@ -1603,7 +1740,8 @@ struct C_CardLobbyGame_GC_E4 {
 // Header flag = 2
 struct S_CardLobbyGame_GC_E4 {
   struct Entry {
-    le_uint32_t present; // 1 = player present, 0 = no player
+    le_uint16_t present; // 1 = player present, 0 = no player
+    le_uint16_t unknown_a1;
     le_uint32_t guild_card_number;
   };
   Entry entries[4];
@@ -1643,8 +1781,39 @@ struct S_ClientInit_BB_00E6 {
   le_uint32_t caps; // should be 0x00000102
 };
 
+// E7 (S->C): Unknown (Episode 3)
+// Same format as E2 command.
+
 // E7: Save or load full player data
 // See export_bb_player_data() in Player.cc for format.
+
+// E8 (S->C): Join spectator team (probably) (Episode 3)
+
+struct S_Unknown_GC_Ep3_E8 {
+  parray<le_uint32_t, 0x20> unknown_a1;
+  struct PlayerEntry {
+    PlayerLobbyDataGC lobby_data;
+    PlayerInventory inventory;
+    PlayerDispDataPCGC disp;
+  };
+  PlayerEntry players[4];
+  parray<uint8_t, 8> unknown_a2;
+  le_uint32_t unknown_a3;
+  parray<uint8_t, 4> unknown_a4;
+  struct SpectatorEntry {
+    // TODO: The game treats this as [8][8][16][32], but that doesn't
+    // necessarily mean it's a player tag / guild card number pair.
+    le_uint32_t player_tag;
+    le_uint32_t guild_card_number;
+    parray<be_uint32_t, 8> unknown_a2;
+    uint8_t unknown_a3[2];
+    le_uint16_t unknown_a4;
+    parray<le_uint32_t, 2> unknown_a5;
+    parray<le_uint16_t, 2> unknown_a6;
+  };
+  SpectatorEntry entries[12];
+  parray<uint8_t, 0x20> unknown_a5;
+};
 
 // E8 (C->S): Client checksum (BB)
 // E8 (S->C): Accept client checksum (BB)
@@ -1654,11 +1823,35 @@ struct S_AcceptClientChecksum_BB_02E8 {
   le_uint32_t unused;
 };
 
-// E9: Invalid command
+// E9 (S->C): Other player left spectator team (probably) (Episode 3)
+// Same format as 66/69 commands.
+
+// EA (S->C): Unknown (Episode 3)
+// header.flag is relevant - the behavior is different if it's 1 (vs. any other
+// value)
+
+struct S_Unknown_GC_Ep3_EA {
+  le_uint32_t unknown_a1;
+  parray<uint8_t, 0x1000> unknown_a2;
+};
+
 // EA: Team control (BB)
 // Format unknown. There are many subcommands - up to at least 14EA.
 
-// EB (S->C): Send stream file index and chunks
+// EB (S->C): Unknown (Episode 3)
+// Looks like another lobby-joining type of command.
+
+struct S_Unknown_GC_Ep3_EB {
+  parray<uint8_t, 0x0c> unknown_a1;
+  struct PlayerEntry {
+    PlayerLobbyDataGC lobby_data;
+    PlayerInventory inventory;
+    PlayerDispDataPCGC disp;
+  };
+  PlayerEntry players[12];
+};
+
+// EB (S->C): Send stream file index and chunks (BB)
 
 // Command is a list of these; header.flag is the entry count.
 struct S_StreamFileIndexEntry_BB_01EB {
@@ -1678,6 +1871,9 @@ struct S_StreamFileChunk_BB_02EB {
 
 // EC: Leave character select (BB)
 
+// ED (S->C): Unknown (Episode 3)
+// No arguments
+
 // ED (C->S): Update account data (BB)
 // There are several subcommands (noted in the union below) that each update a
 // specific kind of account data.
@@ -1693,9 +1889,44 @@ union C_UpdateAccountData_BB_ED {
   parray<uint8_t, 0xE8> customize; // 07ED
 };
 
+// EE (S->C): Unknown (Episode 3)
+// This command has different forms depending on the header.flag value. Since
+// the relevant flag values match the Episodes 1 & 2 trade window commands, this
+// may be used for trading cards.
+
+union S_Unknown_GC_Ep3_EE {
+  struct {
+    le_uint16_t unknown_a1;
+    le_uint16_t unknown_a2;
+    struct Entry {
+      le_uint32_t unknown_a1;
+      le_uint32_t unknown_a2;
+    };
+    Entry entries[4];
+  } flag_D3;
+  struct {
+    le_uint32_t unknown_a1;
+  } flag_D1;
+  struct {
+    le_uint32_t unknown_a1;
+  } flag_D4;
+};
+
 // EE (S->C): Scrolling message (BB)
 // Same format as 01. The message appears at the top of the screen and slowly
 // scrolls to the left.
+
+// EF (S->C): Unknown (Episode 3)
+
+struct S_Unknown_GC_Ep3_EF {
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  struct Entry {
+    le_uint16_t unknown_a1;
+    le_uint16_t unknown_a2;
+  };
+  Entry entries[0x14];
+};
 
 // EF (S->C): Unknown (BB)
 // Has an unknown number of subcommands (00EF, 01EF, etc.)

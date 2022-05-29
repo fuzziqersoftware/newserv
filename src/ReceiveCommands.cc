@@ -377,6 +377,17 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
+void process_return_client_config(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // 9F
+  if (c->version == GameVersion::BB) {
+    const auto& cfg = check_size_t<ClientConfigBB>(data);
+    c->import_config(cfg);
+  } else {
+    const auto& cfg = check_size_t<ClientConfig>(data);
+    c->import_config(cfg);
+  }
+}
+
 void process_client_checksum(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 96
   check_size_t<C_ClientChecksum_GC_96>(data);
@@ -1058,9 +1069,10 @@ void process_update_quest_statistics(shared_ptr<ServerState> s,
   }
 
   S_ConfirmUpdateQuestStatistics_AB response;
-  response.unknown_a1 = 0;
+  response.unknown_a1 = 0x0000;
+  response.unknown_a2 = 0x0000;
   response.request_token = cmd.request_token;
-  response.unknown_a2 = 0xBFFF;
+  response.unknown_a3 = 0xBFFF;
   send_command_t(c, 0xAB, 0x00, response);
 }
 
@@ -2036,7 +2048,7 @@ static process_command_t gc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, process_client_checksum, nullptr,
   process_player_data, process_ignored_command, nullptr, nullptr,
-  process_login_c_dc_pc_gc, process_login_d_e_pc_gc, process_login_d_e_pc_gc, nullptr,
+  process_login_c_dc_pc_gc, process_login_d_e_pc_gc, process_login_d_e_pc_gc, process_return_client_config,
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
@@ -2125,7 +2137,7 @@ static process_command_t bb_handlers[0x100] = {
   nullptr, nullptr, nullptr, process_login_bb,
   nullptr, nullptr, nullptr, nullptr,
   process_player_data, process_ignored_command, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, process_return_client_config,
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
