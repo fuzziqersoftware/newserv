@@ -418,7 +418,7 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
     const string& data) {
   auto* cmd = check_size_sc<G_PickUpItem_6x59>(data);
 
-  if (!l->is_game() || (cmd->client_id != c->lobby_client_id)) {
+  if (!l->is_game()) {
     return;
   }
   if (l->version == GameVersion::BB) {
