@@ -2057,7 +2057,7 @@ static process_command_t gc_handlers[0x100] = {
   process_quest_barrier, nullptr, nullptr, nullptr,
 
   // B0
-  nullptr, process_server_time_request, nullptr, nullptr,
+  nullptr, process_server_time_request, nullptr, process_ignored_command,
   nullptr, nullptr, nullptr, process_ignored_command,
   process_ignored_command, nullptr, process_ep3_jukebox, nullptr,
   nullptr, nullptr, nullptr, nullptr,
@@ -2146,8 +2146,10 @@ static process_command_t bb_handlers[0x100] = {
   process_quest_barrier, nullptr, nullptr, nullptr,
 
   // B0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, process_ignored_command,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
 
   // C0
   nullptr, process_create_game_bb, nullptr, nullptr,

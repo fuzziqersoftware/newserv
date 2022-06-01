@@ -16,6 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
+        with_resource_file: ['true', 'false']
 
     steps:
     - uses: actions/checkout@v2
@@ -27,6 +28,15 @@ jobs:
     - name: Install libraries (macOS)
       if: ${{ matrix.os == 'macos-latest' }}
       run: brew install libevent
+
+    - name: Install resource_file
+      if: ${{ matrix.with_resource_file == 'true' }}
+      run: |
+        git clone https://github.com/fuzziqersoftware/resource_dasm.git
+        cd resource_dasm
+        cmake .
+        make
+        sudo make install
 
     - name: Install phosg
       run: |

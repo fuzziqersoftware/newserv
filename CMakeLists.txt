@@ -21,7 +21,7 @@ set(CMAKE_BUILD_TYPE Debug)
 
 
 
-# Executable definitions
+# Library search
 
 find_path     (LIBEVENT_INCLUDE_DIR NAMES event.h)
 find_library  (LIBEVENT_LIBRARY     NAMES event)
@@ -31,6 +31,19 @@ set (LIBEVENT_LIBRARIES
         ${LIBEVENT_LIBRARY}
         ${LIBEVENT_CORE})
 
+find_path     (RESOURCE_FILE_INCLUDE_DIR NAMES resource_file/ResourceFile.hh)
+find_library  (RESOURCE_FILE_LIBRARY     NAMES resource_file)
+
+if(RESOURCE_FILE_INCLUDE_DIR AND RESOURCE_FILE_LIBRARY)
+  set(RESOURCE_FILE_FOUND 1)
+else()
+  set(RESOURCE_FILE_FOUND 0)
+endif()
+
+
+
+# Executable definition
+
 add_executable(newserv
   src/ChatCommands.cc
   src/Client.cc
@@ -38,6 +51,7 @@ add_executable(newserv
   src/DNSServer.cc
   src/Episode3.cc
   src/FileContentsCache.cc
+  src/FunctionCompiler.cc
   src/IPFrameInfo.cc
   src/IPStackSimulator.cc
   src/Items.cc
@@ -68,6 +82,15 @@ add_executable(newserv
 )
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR})
 target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES})
+
+if(RESOURCE_FILE_FOUND)
+  target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)
+  target_include_directories(newserv PUBLIC ${RESOURCE_FILE_INCLUDE_DIR})
+  target_link_libraries(newserv ${RESOURCE_FILE_LIBRARY})
+  message(STATUS "libresource_file found; enabling patch support")
+else()
+  message(WARNING "libresource_file not available; disabling patch support")
+endif()
 
 
 

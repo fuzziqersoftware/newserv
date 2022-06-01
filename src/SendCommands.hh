@@ -14,6 +14,7 @@
 #include "Quest.hh"
 #include "Text.hh"
 #include "CommandFormats.hh"
+#include "FunctionCompiler.hh"
 
 
 
@@ -103,6 +104,14 @@ S_ServerInit_BB_03 prepare_server_init_contents_bb(
 void send_server_init(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
     bool initial_connection);
 void send_update_client_config(std::shared_ptr<Client> c);
+
+void send_function_call(
+    std::shared_ptr<Client> c,
+    std::shared_ptr<CompiledFunctionCode> code,
+    const std::unordered_map<std::string, uint32_t>& label_writes = {},
+    const std::string& suffix = "",
+    uint32_t checksum_addr = 0,
+    uint32_t checksum_size = 0);
 
 void send_reconnect(std::shared_ptr<Client> c, uint32_t address, uint16_t port);
 void send_pc_gc_split_reconnect(std::shared_ptr<Client> c, uint32_t address,

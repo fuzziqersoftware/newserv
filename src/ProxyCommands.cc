@@ -22,6 +22,9 @@
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
+#ifdef HAVE_RESOURCE_FILE
+#include <resource_file/Emulators/PPC32Emulator.hh>
+#endif
 
 #include "PSOProtocol.hh"
 #include "SendCommands.hh"
@@ -397,9 +400,64 @@ static bool process_server_88(shared_ptr<ServerState>,
 static bool process_server_B2(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   if (session.save_files) {
-    string output_filename = string_printf("code.bin.%" PRId64, now());
+    string output_filename = string_printf("code.%" PRId64 ".bin", now());
     save_file(output_filename, data);
     session.log(INFO, "Wrote code from server to file %s", output_filename.c_str());
+
+#ifdef HAVE_RESOURCE_FILE
+    try {
+      // Note: we copy header here because we might modify data later, which
+      // would break the reference
+      auto header = StringReader(data).get<S_ExecuteCode_B2>();
+
+      size_t footer_end_offset = header.code_size;
+      size_t footer_offset = footer_end_offset - sizeof(S_ExecuteCode_Footer_GC_B2);
+      size_t orig_size = data.size() - sizeof(header);
+      if (data.size() < (sizeof(header) + footer_end_offset)) {
+        data.resize((sizeof(header) + footer_end_offset), '\0');
+      }
+
+      fprintf(stderr, "footer_offset = %08zX\n", footer_offset);
+      print_data(stderr, data);
+
+      StringReader r(data.data() + sizeof(header), data.size() - sizeof(header));
+      const auto& footer = r.pget<S_ExecuteCode_Footer_GC_B2>(footer_offset);
+
+      multimap<uint32_t, string> labels;
+      r.go(footer.relocations_offset);
+      uint32_t reloc_offset = 0;
+      for (size_t x = 0; x < footer.num_relocations; x++) {
+        reloc_offset += (r.get_u16b() * 4);
+        labels.emplace(reloc_offset, string_printf("reloc%zu", x));
+      }
+      labels.emplace(footer.entrypoint_addr_offset.load(), "entry_ptr");
+      labels.emplace(footer_offset, "footer");
+      labels.emplace(r.pget_u32b(footer.entrypoint_addr_offset), "start");
+
+      for (const auto& it : labels) {
+        fprintf(stderr, "label: %08" PRIX32 " => %s\n", it.first, it.second.c_str());
+      }
+
+      string disassembly = PPC32Emulator::disassemble(
+          &r.pget<uint8_t>(0, orig_size),
+          orig_size,
+          0,
+          &labels);
+
+      output_filename = string_printf("code.%" PRId64 ".txt", now());
+      {
+        auto f = fopen_unique(output_filename, "wt");
+        fprintf(f.get(), "// code_size = 0x%" PRIX32 "\n", header.code_size.load());
+        fprintf(f.get(), "// checksum_addr = 0x%" PRIX32 "\n", header.checksum_start.load());
+        fprintf(f.get(), "// checksum_size = 0x%" PRIX32 "\n", header.checksum_size.load());
+        fwritex(f.get(), disassembly);
+      }
+      session.log(INFO, "Wrote disassembly to file %s", output_filename.c_str());
+
+    } catch (const exception& e) {
+      session.log(INFO, "Failed to disassemble code from server: %s", e.what());
+    }
+#endif
   }
 
   if (session.function_call_return_value >= 0) {
@@ -417,7 +475,7 @@ static bool process_server_B2(shared_ptr<ServerState>,
 static bool process_server_E7(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.save_files) {
-    string output_filename = string_printf("player.bin.%" PRId64, now());
+    string output_filename = string_printf("player.%" PRId64 ".bin", now());
     save_file(output_filename, data);
     session.log(INFO, "Wrote player data to file %s", output_filename.c_str());
   }
@@ -646,7 +704,7 @@ static bool process_server_gc_B8(shared_ptr<ServerState>,
       return true;
     }
 
-    string output_filename = string_printf("cardupdate.mnr.%" PRIu64, now());
+    string output_filename = string_printf("cardupdate.%" PRIu64 ".mnr", now());
     save_file(output_filename, r.read(size));
 
     session.log(INFO, "Wrote %zu bytes to %s", size, output_filename.c_str());

@@ -434,6 +434,9 @@ int main(int argc, char** argv) {
   log(INFO, "Collecting quest metadata");
   state->quest_index.reset(new QuestIndex("system/quests"));
 
+  log(INFO, "Compiling client functions");
+  state->function_code_index.reset(new FunctionCodeIndex("system/ppc"));
+
   shared_ptr<DNSServer> dns_server;
   if (state->dns_server_port) {
     log(INFO, "Starting DNS server");

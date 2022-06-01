@@ -93,6 +93,11 @@ void send_command(
       throw logic_error("unimplemented game version in send_command");
   }
 
+  // Most client versions I've seen have a receive buffer 0x7C00 bytes in size
+  if (send_data.size() > 0x7C00) {
+    throw runtime_error("outbound command too large");
+  }
+
   if (name_str) {
     string name_token;
     if (name_str[0]) {
@@ -308,6 +313,38 @@ void send_update_client_config(shared_ptr<Client> c) {
   cmd.guild_card_number = c->license->serial_number;
   cmd.cfg = c->export_config();
   send_command_t(c, 0x04, 0x00, cmd);
+}
+
+
+
+void send_function_call(
+    shared_ptr<Client> c,
+    shared_ptr<CompiledFunctionCode> code,
+    const std::unordered_map<std::string, uint32_t>& label_writes,
+    const std::string& suffix,
+    uint32_t checksum_addr,
+    uint32_t checksum_size) {
+  if (c->version != GameVersion::GC) {
+    throw logic_error("cannot send function calls to non-GameCube clients");
+  }
+  if (c->flags & Client::Flag::EPISODE_3) {
+    throw logic_error("cannot send function calls to Episode 3 clients");
+  }
+
+  string data;
+  uint8_t index = 0xFF;
+  if (code.get()) {
+    data = code->generate_client_command(label_writes, suffix);
+    index = code->index;
+  }
+
+  S_ExecuteCode_B2 header = {data.size(), checksum_addr, checksum_size};
+
+  StringWriter w;
+  w.put(header);
+  w.write(data);
+
+  send_command(c, 0xB2, index, w.str());
 }
 
 
