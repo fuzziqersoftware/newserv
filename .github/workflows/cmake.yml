@@ -29,19 +29,19 @@ jobs:
       if: ${{ matrix.os == 'macos-latest' }}
       run: brew install libevent
 
+    - name: Install phosg
+      run: |
+        git clone https://github.com/fuzziqersoftware/phosg.git
+        cd phosg
+        cmake .
+        make
+        sudo make install
+
     - name: Install resource_file
       if: ${{ matrix.with_resource_file == 'true' }}
       run: |
         git clone https://github.com/fuzziqersoftware/resource_dasm.git
         cd resource_dasm
-        cmake .
-        make
-        sudo make install
-
-    - name: Install phosg
-      run: |
-        git clone https://github.com/fuzziqersoftware/phosg.git
-        cd phosg
         cmake .
         make
         sudo make install
