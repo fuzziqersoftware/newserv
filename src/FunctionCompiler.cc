@@ -26,9 +26,9 @@ bool function_compiler_available() {
 
 
 
-std::string CompiledFunctionCode::generate_client_command(
-      const std::unordered_map<std::string, uint32_t>& label_writes,
-      const std::string& suffix) const {
+string CompiledFunctionCode::generate_client_command(
+      const unordered_map<string, uint32_t>& label_writes,
+      const string& suffix) const {
   S_ExecuteCode_Footer_GC_B2 footer;
   footer.num_relocations = this->relocation_deltas.size();
   footer.unused1.clear();
@@ -66,18 +66,39 @@ std::string CompiledFunctionCode::generate_client_command(
   return move(w.str());
 }
 
-shared_ptr<CompiledFunctionCode> compile_function_code(const std::string& text) {
+shared_ptr<CompiledFunctionCode> compile_function_code(
+    const string& directory, const string& name, const string& text) {
 #ifndef HAVE_RESOURCE_FILE
+  (void)directory;
+  (void)name;
   (void)text;
   throw runtime_error("PowerPC assembler is not available");
 
 #else
-  auto assembled = PPC32Emulator::assemble(text);
+  std::unordered_set<string> get_include_stack; // For mutual recursion detection
+  function<string(const string&)> get_include = [&](const string& name) -> string {
+    if (!get_include_stack.emplace(name).second) {
+      throw runtime_error("mutual recursion between includes");
+    }
+
+    string filename = directory + "/" + name + ".inc.s";
+    if (isfile(filename)) {
+      return PPC32Emulator::assemble(load_file(filename), get_include).code;
+    }
+    filename = directory + "/" + name + ".inc.bin";
+    if (isfile(filename)) {
+      return load_file(filename);
+    }
+    throw runtime_error("data not found for include " + name);
+  };
 
   shared_ptr<CompiledFunctionCode> ret(new CompiledFunctionCode());
+  ret->name = name;
+  ret->index = 0;
+
+  auto assembled = PPC32Emulator::assemble(text, get_include);
   ret->code = move(assembled.code);
   ret->label_offsets = move(assembled.label_offsets);
-  ret->index = 0xFF;
 
   set<uint32_t> reloc_indexes;
   for (const auto& it : ret->label_offsets) {
@@ -110,32 +131,101 @@ shared_ptr<CompiledFunctionCode> compile_function_code(const std::string& text) 
 
 
 
-FunctionCodeIndex::FunctionCodeIndex(const std::string& directory) {
-  this->index_to_function.resize(0x100);
-
+FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
   if (!function_compiler_available()) {
     log(INFO, "Function compiler is not available");
     return;
   }
 
+  uint32_t next_menu_item_id = 0;
   for (const auto& filename : list_directory(directory)) {
-    if (!ends_with(filename, ".s")) {
+    if (!ends_with(filename, ".s") || ends_with(filename, ".inc.s")) {
       continue;
     }
-    string name = filename.substr(0, filename.size() - 2);
+    bool is_patch = ends_with(filename, ".patch.s");
+    string name = filename.substr(0, filename.size() - (is_patch ? 8 : 2));
 
     try {
       string path = directory + "/" + filename;
       string text = load_file(path);
-      auto code = compile_function_code(text);
-      if (code->index < 0xFF) {
-        this->index_to_function.at(code->index) = code;
+      auto code = compile_function_code(directory, name, text);
+      if (code->index != 0) {
+        if (!this->index_to_function.emplace(code->index, code).second) {
+          throw runtime_error(string_printf(
+              "duplicate function index: %08" PRIX32, code->index));
+        }
       }
       this->name_to_function.emplace(name, code);
-      log(WARNING, "Compiled function %s", name.c_str());
+      if (is_patch) {
+        this->menu_item_id_to_patch_function.emplace(next_menu_item_id++, code);
+        this->name_to_patch_function.emplace(name, code);
+      }
+      if (code->index) {
+        log(INFO, "Compiled function %02X => %s", code->index, name.c_str());
+      } else {
+        log(INFO, "Compiled function %s", name.c_str());
+      }
 
     } catch (const exception& e) {
       log(WARNING, "Failed to compile function %s: %s", name.c_str(), e.what());
     }
   }
+}
+
+vector<MenuItem> FunctionCodeIndex::patch_menu() const {
+  vector<MenuItem> ret;
+  ret.emplace_back(PatchesMenuItemID::GO_BACK, u"Go back", u"", 0);
+  for (const auto& it : this->name_to_patch_function) {
+    const auto& fn = it.second;
+    ret.emplace_back(fn->menu_item_id, decode_sjis(fn->name), u"",
+        MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+  }
+  return ret;
+}
+
+
+
+DOLFileIndex::DOLFileIndex(const string& directory) {
+  if (!function_compiler_available()) {
+    log(INFO, "Function compiler is not available");
+    return;
+  }
+  if (!isdir(directory)) {
+    log(INFO, "DOL file directory is missing");
+    return;
+  }
+
+  uint32_t next_menu_item_id = 0;
+  for (const auto& filename : list_directory(directory)) {
+    if (!ends_with(filename, ".dol")) {
+      continue;
+    }
+    string name = filename.substr(0, filename.size() - 4);
+
+    try {
+      shared_ptr<DOLFile> dol(new DOLFile());
+      dol->menu_item_id = next_menu_item_id++;
+      dol->name = name;
+
+      string path = directory + "/" + filename;
+      dol->data = load_file(path);
+
+      this->name_to_file.emplace(dol->name, dol);
+      this->item_id_to_file.emplace_back(dol);
+      log(WARNING, "Loaded DOL file %s", filename.c_str());
+
+    } catch (const exception& e) {
+      log(WARNING, "Failed to load DOL file %s: %s", filename.c_str(), e.what());
+    }
+  }
+}
+
+vector<MenuItem> DOLFileIndex::menu() const {
+  vector<MenuItem> ret;
+  ret.emplace_back(ProgramsMenuItemID::GO_BACK, u"Go back", u"", 0);
+  for (const auto& dol : this->item_id_to_file) {
+    ret.emplace_back(dol->menu_item_id, decode_sjis(dol->name), u"",
+        MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+  }
+  return ret;
 }

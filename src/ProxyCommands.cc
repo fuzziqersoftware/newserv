@@ -462,7 +462,7 @@ static bool process_server_B2(shared_ptr<ServerState>,
 
   if (session.function_call_return_value >= 0) {
     session.log(INFO, "Blocking function call from server");
-    C_ExecuteCodeResult_GC_BB_B3 cmd;
+    C_ExecuteCodeResult_B3 cmd;
     cmd.return_value = session.function_call_return_value;
     cmd.checksum = 0;
     session.send_to_end(true, 0xB3, flag, &cmd, sizeof(cmd));

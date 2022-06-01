@@ -1,5 +1,7 @@
 #include "StaticGameData.hh"
 
+#include <array>
+
 using namespace std;
 
 
@@ -249,6 +251,93 @@ uint8_t npc_for_name(const string& name) {
 
 uint8_t npc_for_name(const u16string& name) {
   return npc_for_name(encode_sjis(name));
+}
+
+
+
+const char* name_for_char_class(uint8_t cls) {
+  static const array<const char*, 12> names = {
+    "HUmar",
+    "HUnewearl",
+    "HUcast",
+    "RAmar",
+    "RAcast",
+    "RAcaseal",
+    "FOmarl",
+    "FOnewm",
+    "FOnewearl",
+    "HUcaseal",
+    "FOmar",
+    "RAmarl",
+  };
+  try {
+    return names.at(cls);
+  } catch (const out_of_range&) {
+    return "Unknown";
+  }
+}
+
+const char* abbreviation_for_char_class(uint8_t cls) {
+  static const array<const char*, 12> names = {
+    "HUmr",
+    "HUnl",
+    "HUcs",
+    "RAmr",
+    "RAcs",
+    "RAcl",
+    "FOml",
+    "FOnm",
+    "FOnl",
+    "HUcl",
+    "FOmr",
+    "RAml",
+  };
+  try {
+    return names.at(cls);
+  } catch (const out_of_range&) {
+    return "???";
+  }
+}
+
+
+
+const char* name_for_difficulty(uint8_t difficulty) {
+  static const array<const char*, 4> names = {
+    "Normal",
+    "Hard",
+    "Very Hard",
+    "Ultimate",
+  };
+  try {
+    return names.at(difficulty);
+  } catch (const out_of_range&) {
+    return "Unknown";
+  }
+}
+
+char abbreviation_for_difficulty(uint8_t difficulty) {
+  static const array<char, 4> names = {'N', 'H', 'V', 'U'};
+  try {
+    return names.at(difficulty);
+  } catch (const out_of_range&) {
+    return '?';
+  }
+}
+
+
+
+const char* abbreviation_for_game_mode(uint8_t mode) {
+  static const array<const char*, 4> names = {
+    "Nml",
+    "Btl",
+    "Chl",
+    "Solo",
+  };
+  try {
+    return names.at(mode);
+  } catch (const out_of_range&) {
+    return "???";
+  }
 }
 
 

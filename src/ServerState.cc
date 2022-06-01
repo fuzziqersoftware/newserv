@@ -3,10 +3,11 @@
 #include <string.h>
 
 #include <memory>
+#include <phosg/Network.hh>
 
-#include "SendCommands.hh"
-#include "NetworkAddresses.hh"
 #include "IPStackSimulator.hh"
+#include "NetworkAddresses.hh"
+#include "SendCommands.hh"
 #include "Text.hh"
 
 using namespace std;
@@ -236,4 +237,112 @@ void ServerState::set_port_configuration(
       throw logic_error("duplicate number in port configuration");
     }
   }
+}
+
+
+
+void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
+  const auto& d = config_json->as_dict();
+
+  shared_ptr<vector<MenuItem>> information_menu_pc(new vector<MenuItem>());
+  shared_ptr<vector<MenuItem>> information_menu_gc(new vector<MenuItem>());
+  shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
+
+  information_menu_gc->emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
+      u"Return to the\nmain menu", 0);
+  {
+    uint32_t item_id = 0;
+    for (const auto& item : d.at("InformationMenuContents")->as_list()) {
+      auto& v = item->as_list();
+      information_menu_pc->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
+          decode_sjis(v.at(1)->as_string()), 0);
+      information_menu_gc->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
+          decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+      information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
+      item_id++;
+    }
+  }
+  this->information_menu_pc = information_menu_pc;
+  this->information_menu_gc = information_menu_gc;
+  this->information_contents = information_contents;
+
+  this->proxy_destinations_menu_pc.emplace_back(ProxyDestinationsMenuItemID::GO_BACK,
+      u"Go back", u"Return to the\nmain menu", 0);
+  this->proxy_destinations_menu_gc.emplace_back(ProxyDestinationsMenuItemID::GO_BACK,
+      u"Go back", u"Return to the\nmain menu", 0);
+  {
+    uint32_t item_id = 0;
+    for (const auto& item : d.at("ProxyDestinations-GC")->as_dict()) {
+      const string& netloc_str = item.second->as_string();
+      this->proxy_destinations_menu_gc.emplace_back(item_id, decode_sjis(item.first),
+          decode_sjis(netloc_str), 0);
+      this->proxy_destinations_gc.emplace_back(parse_netloc(netloc_str));
+      item_id++;
+    }
+  }
+  {
+    uint32_t item_id = 0;
+    for (const auto& item : d.at("ProxyDestinations-PC")->as_dict()) {
+      const string& netloc_str = item.second->as_string();
+      this->proxy_destinations_menu_pc.emplace_back(item_id, decode_sjis(item.first),
+          decode_sjis(netloc_str), 0);
+      this->proxy_destinations_pc.emplace_back(parse_netloc(netloc_str));
+      item_id++;
+    }
+  }
+  try {
+    const string& netloc_str = d.at("ProxyDestination-Patch")->as_string();
+    this->proxy_destination_patch = parse_netloc(netloc_str);
+    log(INFO, "Patch server proxy is enabled with destination %s", netloc_str.c_str());
+    for (auto& it : this->name_to_port_config) {
+      if (it.second->version == GameVersion::PATCH) {
+        it.second->behavior = ServerBehavior::PROXY_SERVER;
+      }
+    }
+  } catch (const out_of_range&) {
+    this->proxy_destination_patch.first = "";
+    this->proxy_destination_patch.second = 0;
+  }
+  try {
+    const string& netloc_str = d.at("ProxyDestination-BB")->as_string();
+    this->proxy_destination_bb = parse_netloc(netloc_str);
+    log(INFO, "BB proxy is enabled with destination %s", netloc_str.c_str());
+    for (auto& it : this->name_to_port_config) {
+      if (it.second->version == GameVersion::BB) {
+        it.second->behavior = ServerBehavior::PROXY_SERVER;
+      }
+    }
+  } catch (const out_of_range&) {
+    this->proxy_destination_bb.first = "";
+    this->proxy_destination_bb.second = 0;
+  }
+
+  this->main_menu.emplace_back(MainMenuItemID::GO_TO_LOBBY, u"Go to lobby",
+      u"Join the lobby", 0);
+  this->main_menu.emplace_back(MainMenuItemID::INFORMATION, u"Information",
+      u"View server\ninformation", MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+  if (!this->proxy_destinations_pc.empty()) {
+    this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
+        u"Connect to another\nserver", MenuItem::Flag::PC_ONLY);
+  }
+  if (!this->proxy_destinations_gc.empty()) {
+    this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
+        u"Connect to another\nserver", MenuItem::Flag::GC_ONLY);
+  }
+  this->main_menu.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, u"Download quests",
+      u"Download quests", MenuItem::Flag::INVISIBLE_ON_BB);
+  if (!this->dol_file_index->empty()) {
+    this->main_menu.emplace_back(MainMenuItemID::PATCHES, u"Patches",
+        u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+  }
+  if (!this->dol_file_index->empty()) {
+    this->main_menu.emplace_back(MainMenuItemID::PROGRAMS, u"Programs",
+        u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+  }
+  this->main_menu.emplace_back(MainMenuItemID::DISCONNECT, u"Disconnect",
+      u"Disconnect", 0);
+
+  try {
+    this->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());
+  } catch (const out_of_range&) { }
 }

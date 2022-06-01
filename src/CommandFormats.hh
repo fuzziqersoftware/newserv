@@ -520,7 +520,10 @@ struct S_ReconnectSplit_19 {
 // 1E: Invalid command
 
 // 1F (S->C): Information menu
-// Same format and usage as 07 command
+// Same format and usage as 07 command, except:
+// - The menu title will say "Information" instead of "Ship Select".
+// - There is no way to request information before selecting a menu item (the
+//   client will not send 09 commands).
 
 // 20: Invalid command
 
@@ -1306,7 +1309,7 @@ struct S_ExecuteCode_Footer_BB_B2 : S_ExecuteCode_Footer_B2<le_uint32_t> { };
 // B3 (C->S): Execute code and/or checksum memory result
 // GC v1.0/v1.1 and BB only.
 
-struct C_ExecuteCodeResult_GC_BB_B3 {
+struct C_ExecuteCodeResult_B3 {
   le_uint32_t return_value; // 0 if no code was run
   le_uint32_t checksum; // 0 if no checksum was computed
 };

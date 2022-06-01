@@ -2,20 +2,21 @@
 
 #include <atomic>
 #include <map>
-#include <unordered_map>
-#include <string>
 #include <memory>
-#include <vector>
+#include <phosg/JSON.hh>
 #include <set>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "Client.hh"
+#include "FunctionCompiler.hh"
 #include "Items.hh"
 #include "LevelTable.hh"
 #include "License.hh"
 #include "Lobby.hh"
 #include "Menu.hh"
 #include "Quest.hh"
-#include "FunctionCompiler.hh"
 
 
 
@@ -48,6 +49,7 @@ struct ServerState {
   RunShellBehavior run_shell_behavior;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
+  std::shared_ptr<const DOLFileIndex> dol_file_index;
   std::shared_ptr<const Ep3DataIndex> ep3_data_index;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
@@ -111,4 +113,6 @@ struct ServerState {
 
   void set_port_configuration(
     const std::vector<PortConfiguration>& port_configs);
+
+  void create_menus(std::shared_ptr<const JSONObject> config_json);
 };

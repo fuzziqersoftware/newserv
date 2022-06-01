@@ -10,13 +10,14 @@
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
-#include "PSOProtocol.hh"
-#include "FileContentsCache.hh"
-#include "Text.hh"
-#include "SendCommands.hh"
-#include "ReceiveSubcommands.hh"
 #include "ChatCommands.hh"
+#include "FileContentsCache.hh"
 #include "ProxyServer.hh"
+#include "PSOProtocol.hh"
+#include "ReceiveSubcommands.hh"
+#include "SendCommands.hh"
+#include "StaticGameData.hh"
+#include "Text.hh"
 
 using namespace std;
 
@@ -112,7 +113,7 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
         (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) ||
         !(c->flags & Client::Flag::AT_WELCOME_MESSAGE)) {
       c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
-      send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
+      send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu, false);
     } else {
       send_message_box(c, s->welcome_message.c_str());
     }
@@ -538,10 +539,10 @@ void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D6
   check_size_v(data.size(), 0);
   if (c->flags & Client::Flag::IN_INFORMATION_MENU) {
-    send_menu(c, u"Information", INFORMATION_MENU_ID,
+    send_menu(c, u"Information", MenuID::INFORMATION,
         *s->information_menu_for_version(c->version), false);
   } else if (c->flags & Client::Flag::AT_WELCOME_MESSAGE) {
-    send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
+    send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu, false);
     c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
     send_update_client_config(c);
   }
@@ -552,31 +553,16 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
   const auto& cmd = check_size_t<C_MenuItemInfoRequest_09>(data);
 
   switch (cmd.menu_id) {
-    case MAIN_MENU_ID:
-      switch (cmd.item_id) {
-        case MAIN_MENU_GO_TO_LOBBY:
-          send_ship_info(c, u"Go to the lobby.");
-          break;
-        case MAIN_MENU_INFORMATION:
-          send_ship_info(c, u"View server\ninformation.");
-          break;
-        case MAIN_MENU_PROXY_DESTINATIONS:
-          send_ship_info(c, u"Connect to another\nserver.");
-          break;
-        case MAIN_MENU_DOWNLOAD_QUESTS:
-          send_ship_info(c, u"Download a quest.");
-          break;
-        case MAIN_MENU_DISCONNECT:
-          send_ship_info(c, u"End your session.");
-          break;
-        default:
-          send_ship_info(c, u"Incorrect menu item ID.");
-          break;
+    case MenuID::MAIN:
+      for (const auto& item : s->main_menu) {
+        if (item.item_id == cmd.item_id) {
+          send_ship_info(c, item.description);
+        }
       }
       break;
 
-    case INFORMATION_MENU_ID:
-      if (cmd.item_id == INFORMATION_MENU_GO_BACK) {
+    case MenuID::INFORMATION:
+      if (cmd.item_id == InformationMenuItemID::GO_BACK) {
         send_ship_info(c, u"Return to the\nmain menu.");
       } else {
         try {
@@ -588,8 +574,8 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
       }
       break;
 
-    case PROXY_DESTINATIONS_MENU_ID:
-      if (cmd.item_id == PROXY_DESTINATIONS_MENU_GO_BACK) {
+    case MenuID::PROXY_DESTINATIONS:
+      if (cmd.item_id == ProxyDestinationsMenuItemID::GO_BACK) {
         send_ship_info(c, u"Return to the\nmain menu.");
       } else {
         try {
@@ -602,7 +588,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
       }
       break;
 
-    case QUEST_MENU_ID: {
+    case MenuID::QUEST: {
       if (!s->quest_index) {
         send_quest_info(c, u"$C6Quests are not available.", !c->lobby_id);
         break;
@@ -613,6 +599,97 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
         break;
       }
       send_quest_info(c, q->long_description.c_str(), !c->lobby_id);
+      break;
+    }
+
+    case MenuID::GAME: {
+      shared_ptr<Lobby> game;
+      try {
+        game = s->find_lobby(cmd.item_id);
+      } catch (const out_of_range& e) {
+        send_ship_info(c, u"$C4Game no longer\nexists.");
+        break;
+      }
+
+      if (!game->is_game()) {
+        send_ship_info(c, u"$C4Incorrect game ID");
+
+      } else {
+        string info;
+        for (size_t x = 0; x < game->max_clients; x++) {
+          const auto& game_c = game->clients[x];
+          if (game_c.get()) {
+            auto player = game_c->game_data.player();
+            auto name = encode_sjis(player->disp.name);
+            if (game->flags & Lobby::Flag::EPISODE_3_ONLY) {
+              info += string_printf("%zu: $C6%s$C7 L%" PRIu32 "\n",
+                  x + 1, name.c_str(), player->disp.level + 1);
+            } else {
+              info += string_printf("%zu: $C6%s$C7 %s L%" PRIu32 "\n",
+                  x + 1, name.c_str(),
+                  abbreviation_for_char_class(player->disp.char_class),
+                  player->disp.level + 1);
+            }
+          }
+        }
+
+        int episode = game->episode;
+        if (episode == 3) {
+          episode = 4;
+        } else if (episode == 0xFF) {
+          episode = 3;
+        }
+        string secid_str = name_for_section_id(game->section_id);
+        info += string_printf("Ep%d %c %s %s\n",
+            episode,
+            abbreviation_for_difficulty(game->difficulty),
+            abbreviation_for_game_mode(game->mode),
+            secid_str.c_str());
+
+        bool cheats_enabled = game->flags & Lobby::Flag::CHEATS_ENABLED;
+        bool locked = !game->password.empty();
+        if (cheats_enabled && locked) {
+          info += "$C4Locked$C7, $C6cheats enabled$C7\n";
+        } else if (cheats_enabled) {
+          info += "$C6Cheats enabled$C7\n";
+        } else if (locked) {
+          info += "$C4Locked$C7\n";
+        }
+
+        if (game->loading_quest) {
+          if (game->flags & Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) {
+            info += "$C6Quest: " + encode_sjis(game->loading_quest->name);
+          } else {
+            info += "$C4Quest: " + encode_sjis(game->loading_quest->name);
+          }
+        } else if (game->flags & Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) {
+          info += "$C6Quest in progress";
+        } else if (game->flags & Lobby::Flag::QUEST_IN_PROGRESS) {
+          info += "$C4Quest in progress";
+        }
+
+        send_ship_info(c, decode_sjis(info));
+      }
+      break;
+    }
+
+    case MenuID::PATCHES:
+      // TODO: Find a way to provide desccriptions for patches.
+      break;
+
+    case MenuID::PROGRAMS: {
+      if (cmd.item_id == ProgramsMenuItemID::GO_BACK) {
+        send_ship_info(c, u"Return to the\nmain menu.");
+      } else {
+        try {
+          auto dol = s->dol_file_index->item_id_to_file.at(cmd.item_id);
+          string size_str = format_size(dol->data.size());
+          string info = string_printf("$C6%s$C7\n%s", dol->name.c_str(), size_str.c_str());
+          send_ship_info(c, decode_sjis(info));
+        } catch (const out_of_range&) {
+          send_ship_info(c, u"Incorrect program ID.");
+        }
+      }
       break;
     }
 
@@ -630,9 +707,9 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       sizeof(C_MenuSelection), sizeof(C_MenuSelection) + 0x10 * (1 + uses_unicode));
 
   switch (cmd.menu_id) {
-    case MAIN_MENU_ID: {
+    case MenuID::MAIN: {
       switch (cmd.item_id) {
-        case MAIN_MENU_GO_TO_LOBBY: {
+        case MainMenuItemID::GO_TO_LOBBY: {
           static const vector<string> version_to_port_name({
               "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "bb-lobby"});
           const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
@@ -642,18 +719,18 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           break;
         }
 
-        case MAIN_MENU_INFORMATION:
-          send_menu(c, u"Information", INFORMATION_MENU_ID,
+        case MainMenuItemID::INFORMATION:
+          send_menu(c, u"Information", MenuID::INFORMATION,
               *s->information_menu_for_version(c->version), true);
           c->flags |= Client::Flag::IN_INFORMATION_MENU;
           break;
 
-        case MAIN_MENU_PROXY_DESTINATIONS:
-          send_menu(c, u"Proxy server", PROXY_DESTINATIONS_MENU_ID,
+        case MainMenuItemID::PROXY_DESTINATIONS:
+          send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
               s->proxy_destinations_menu_for_version(c->version), false);
           break;
 
-        case MAIN_MENU_DOWNLOAD_QUESTS:
+        case MainMenuItemID::DOWNLOAD_QUESTS:
           if (c->flags & Client::Flag::EPISODE_3) {
             shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
             auto quests = s->quest_index->filter(
@@ -665,14 +742,23 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
               // is always the download quest menu. (Episode 3 does actually
               // have online quests, but they don't use the file download
               // paradigm that all other versions use.)
-              send_quest_menu(c, QUEST_MENU_ID, quests, true);
+              send_quest_menu(c, MenuID::QUEST, quests, true);
             }
           } else {
-            send_quest_menu(c, QUEST_FILTER_MENU_ID, quest_download_menu, true);
+            send_quest_menu(c, MenuID::QUEST_FILTER, quest_download_menu, true);
           }
           break;
 
-        case MAIN_MENU_DISCONNECT:
+        case MainMenuItemID::PATCHES:
+          send_menu(c, u"Patches", MenuID::PATCHES, s->function_code_index->patch_menu());
+          break;
+
+        case MainMenuItemID::PROGRAMS:
+          send_menu(c, u"Programs", MenuID::PROGRAMS,
+              s->dol_file_index->menu(), false);
+          break;
+
+        case MainMenuItemID::DISCONNECT:
           c->should_disconnect = true;
           break;
 
@@ -683,10 +769,10 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       break;
     }
 
-    case INFORMATION_MENU_ID: {
-      if (cmd.item_id == INFORMATION_MENU_GO_BACK) {
+    case MenuID::INFORMATION: {
+      if (cmd.item_id == InformationMenuItemID::GO_BACK) {
         c->flags &= ~Client::Flag::IN_INFORMATION_MENU;
-        send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
+        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu, false);
 
       } else {
         try {
@@ -698,9 +784,9 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       break;
     }
 
-    case PROXY_DESTINATIONS_MENU_ID: {
-      if (cmd.item_id == PROXY_DESTINATIONS_MENU_GO_BACK) {
-        send_menu(c, s->name.c_str(), MAIN_MENU_ID, s->main_menu, false);
+    case MenuID::PROXY_DESTINATIONS: {
+      if (cmd.item_id == ProxyDestinationsMenuItemID::GO_BACK) {
+        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu, false);
 
       } else {
         const pair<string, uint16_t>* dest = nullptr;
@@ -736,7 +822,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       break;
     }
 
-    case GAME_MENU_ID: {
+    case MenuID::GAME: {
       auto game = s->find_lobby(cmd.item_id);
       if (!game) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it no\nlonger exists.");
@@ -799,7 +885,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       break;
     }
 
-    case QUEST_FILTER_MENU_ID: {
+    case MenuID::QUEST_FILTER: {
       if (!s->quest_index) {
         send_lobby_message_box(c, u"$C6Quests are not available.");
         break;
@@ -815,11 +901,11 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
       // Hack: assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
-      send_quest_menu(c, QUEST_MENU_ID, quests, !c->lobby_id);
+      send_quest_menu(c, MenuID::QUEST, quests, !c->lobby_id);
       break;
     }
 
-    case QUEST_MENU_ID: {
+    case MenuID::QUEST: {
       if (!s->quest_index) {
         send_lobby_message_box(c, u"$C6Quests are not available.");
         break;
@@ -903,8 +989,40 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       break;
     }
 
-    case LOBBY_MENU_ID:
-      // TODO;
+    case MenuID::PATCHES:
+      if (cmd.item_id == PatchesMenuItemID::GO_BACK) {
+        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+
+      } else {
+        if (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL) {
+          throw runtime_error("client does not support send_function_call");
+        }
+
+        send_function_call(
+            c, s->function_code_index->menu_item_id_to_patch_function.at(cmd.item_id));
+        send_menu(c, u"Patches", MenuID::PATCHES, s->function_code_index->patch_menu());
+      }
+      break;
+
+    case MenuID::PROGRAMS:
+      if (cmd.item_id == ProgramsMenuItemID::GO_BACK) {
+        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu, false);
+
+      } else {
+        if (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL) {
+          throw runtime_error("client does not support send_function_call");
+        }
+
+        c->loading_dol_file = s->dol_file_index->item_id_to_file.at(cmd.item_id);
+
+        // Send the first function call, which triggers the process of loading a
+        // DOL file. This function call determines the necessary base address
+        // for loading the file.
+        send_function_call(
+            c,
+            s->function_code_index->name_to_function.at("ReadMemoryWord"),
+            {{"address", 0x80000034}}); // ArenaHigh from GC globals
+      }
       break;
 
     default:
@@ -916,6 +1034,11 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 84
   const auto& cmd = check_size_t<C_LobbySelection_84>(data);
+
+  if (cmd.menu_id != MenuID::LOBBY) {
+    send_message_box(c, u"Incorrect menu ID.");
+    return;
+  }
 
   shared_ptr<Lobby> new_lobby;
   try {
@@ -942,7 +1065,7 @@ void process_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
 void process_information_menu_request_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 1F
   check_size_v(data.size(), 0);
-  send_menu(c, u"Information", INFORMATION_MENU_ID,
+  send_menu(c, u"Information", MenuID::INFORMATION,
       *s->information_menu_for_version(c->version), true);
 }
 
@@ -975,6 +1098,57 @@ void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) { // A1
   // newserv doesn't have blocks; treat block change the same as ship change
   process_change_ship(s, c, command, flag, data);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// DOL loading commands
+
+static void send_dol_file_chunk(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint32_t start_addr) {
+  size_t offset = start_addr - c->dol_base_addr;
+  if (offset >= c->loading_dol_file->data.size()) {
+    throw logic_error("DOL file offset beyond end of data");
+  }
+  size_t bytes_to_send = min<size_t>(0x7800, c->loading_dol_file->data.size() - offset);
+  string data_to_send = c->loading_dol_file->data.substr(offset, bytes_to_send);
+
+  auto fn = s->function_code_index->name_to_function.at("WriteMemory");
+  unordered_map<string, uint32_t> label_writes(
+      {{"dest_addr", start_addr}, {"size", bytes_to_send}});
+  send_function_call(c, fn, label_writes, data_to_send);
+
+  size_t progress_percent = ((offset + bytes_to_send) * 100) / c->loading_dol_file->data.size();
+  string info = string_printf("Loading $C6%s$C7\n%zu%%%% complete",
+      c->loading_dol_file->name.c_str(), progress_percent);
+  send_ship_info(c, decode_sjis(info));
+}
+
+void process_function_call_result(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t flag, const string& data) { // B3
+  const auto& cmd = check_size_t<C_ExecuteCodeResult_B3>(data);
+  if (flag == 0) {
+    return;
+  }
+
+  auto called_fn = s->function_code_index->index_to_function.at(flag);
+  if (c->loading_dol_file.get()) {
+    if (called_fn->name == "ReadMemoryWord") {
+      c->dol_base_addr = (cmd.return_value - c->loading_dol_file->data.size()) & (~3);
+      send_dol_file_chunk(s, c, c->dol_base_addr);
+    } else if (called_fn->name == "WriteMemory") {
+      if (cmd.return_value >= c->dol_base_addr + c->loading_dol_file->data.size()) {
+        auto fn = s->function_code_index->name_to_function.at("RunDOL");
+        unordered_map<string, uint32_t> label_writes(
+            {{"dol_base_ptr", c->dol_base_addr}});
+        send_function_call(c, fn, label_writes);
+        // The client will stop running PSO after this, so disconnect them
+        c->should_disconnect = true;
+
+      } else {
+        send_dol_file_chunk(s, c, cmd.return_value);
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1018,7 +1192,7 @@ void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
     }
 
-    send_quest_menu(c, QUEST_FILTER_MENU_ID, *menu, false);
+    send_quest_menu(c, MenuID::QUEST_FILTER, *menu, false);
   }
 }
 
@@ -1105,6 +1279,9 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case GameVersion::GC: {
       const PSOPlayerDataGC* pd;
       if (flag == 4) { // Episode 3
+        if (!(c->flags & Client::Flag::EPISODE_3)) {
+          throw runtime_error("non-Episode 3 client sent Episode 3 player data");
+        }
         const auto* pd3 = &check_size_t<PSOPlayerDataGCEp3>(data);
         c->game_data.ep3_config.reset(new Ep3Config(pd3->ep3_config));
         pd = reinterpret_cast<const PSOPlayerDataGC*>(pd3);
@@ -1890,7 +2067,7 @@ static process_command_t dc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
 
   // B0
-  nullptr, process_server_time_request, nullptr, nullptr,
+  nullptr, process_server_time_request, nullptr, process_function_call_result,
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
@@ -1973,7 +2150,7 @@ static process_command_t pc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
 
   // B0
-  nullptr, process_server_time_request, nullptr, nullptr,
+  nullptr, process_server_time_request, nullptr, process_function_call_result,
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
@@ -2057,7 +2234,7 @@ static process_command_t gc_handlers[0x100] = {
   process_quest_barrier, nullptr, nullptr, nullptr,
 
   // B0
-  nullptr, process_server_time_request, nullptr, process_ignored_command,
+  nullptr, process_server_time_request, nullptr, process_function_call_result,
   nullptr, nullptr, nullptr, process_ignored_command,
   process_ignored_command, nullptr, process_ep3_jukebox, nullptr,
   nullptr, nullptr, nullptr, nullptr,
@@ -2146,7 +2323,7 @@ static process_command_t bb_handlers[0x100] = {
   process_quest_barrier, nullptr, nullptr, nullptr,
 
   // B0
-  nullptr, nullptr, nullptr, process_ignored_command,
+  nullptr, nullptr, nullptr, process_function_call_result,
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,

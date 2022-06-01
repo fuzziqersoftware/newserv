@@ -40,4 +40,12 @@ std::u16string u16name_for_npc(uint8_t npc);
 uint8_t npc_for_name(const std::string& name);
 uint8_t npc_for_name(const std::u16string& name);
 
+const char* name_for_char_class(uint8_t cls);
+const char* abbreviation_for_char_class(uint8_t cls);
+
+const char* name_for_difficulty(uint8_t difficulty);
+char abbreviation_for_difficulty(uint8_t difficulty);
+
+const char* abbreviation_for_game_mode(uint8_t);
+
 std::string name_for_item(const ItemData& item, bool include_color_codes);

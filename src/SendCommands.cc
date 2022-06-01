@@ -332,7 +332,7 @@ void send_function_call(
   }
 
   string data;
-  uint8_t index = 0xFF;
+  uint32_t index = 0;
   if (code.get()) {
     data = code->generate_client_command(label_writes, suffix);
     index = code->index;
@@ -688,7 +688,7 @@ void send_card_search_result_t(
     location_string = string_printf(",BLOCK00,%s", encoded_server_name.c_str());
   }
   cmd.location_string = location_string;
-  cmd.menu_id = LOBBY_MENU_ID;
+  cmd.menu_id = MenuID::LOBBY;
   cmd.lobby_id = result->lobby_id;
   cmd.name = result->game_data.player()->disp.name;
 
@@ -789,7 +789,8 @@ void send_menu_t(
         ((c->version == GameVersion::PC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_PC)) ||
         ((c->version == GameVersion::GC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC)) ||
         ((c->version == GameVersion::BB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_BB)) ||
-        ((item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) && (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION))) {
+        ((item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) && (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) ||
+        ((item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) && (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL))) {
       continue;
     }
     auto& e = entries.emplace_back();
@@ -820,7 +821,7 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
   vector<S_GameMenuEntry<CharT>> entries;
   {
     auto& e = entries.emplace_back();
-    e.menu_id = GAME_MENU_ID;
+    e.menu_id = MenuID::GAME;
     e.game_id = 0x00000000;
     e.difficulty_tag = 0x00;
     e.num_players = 0x00;
@@ -839,7 +840,7 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     }
 
     auto& e = entries.emplace_back();
-    e.menu_id = GAME_MENU_ID;
+    e.menu_id = MenuID::GAME;
     e.game_id = l->lobby_id;
     e.difficulty_tag = (l_is_ep3 ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
@@ -941,7 +942,7 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
       continue;
     }
     auto& e = entries.emplace_back();
-    e.menu_id = LOBBY_MENU_ID;
+    e.menu_id = MenuID::LOBBY;
     e.item_id = l->lobby_id;
     e.unused = 0;
   }

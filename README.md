@@ -16,6 +16,8 @@ Current known issues / missing features:
 - Test all the communication features (info board, simple mail, card search, etc.)
 - The trade window isn't implemented yet.
 - PSO PC and PSOBB are not well-tested and likely will disconnect when clients try to use unimplemented features. Only GC is known to be stable and mostly complete.
+- Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to use properly.
+- Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
 
 ## Usage
 
@@ -26,7 +28,8 @@ There is a probably-not-too-old macOS release on the newserv GitHub repository (
 If you're running Linux or want to build newserv yourself, here's what you do:
 1. Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
 2. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
-3. Run `cmake . && make` on the newserv directory.
+3. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
+4. Run `cmake . && make` on the newserv directory.
 
 After building newserv or downloading a release, do this to set it up and use it:
 1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
@@ -46,7 +49,7 @@ Standard quest file names should be like `q###-CATEGORY-VERSION.EXT`; battle que
 There are multiple PSO quest formats out there; newserv supports most of them. Specifically, newserv can use quests in any of the following formats:
 - bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file.
 - Unencrypted GCI format: These quests also consist of a .bin and .dat file, but an encoding is applied on top of them. The filenames should end in .bin.gci and .dat.gci. (Note that there also exists an encrypted GCI format, which newserv does not support.)
-- Encrypted DLQ format: These quests also consist of a .bin and .dat file, but downlaod quest encryption is applied on top of them. The filenames should end in .bin.dlq and .dat.dlq.
+- Encrypted DLQ format: These quests also consist of a .bin and .dat file, but download quest encryption is applied on top of them. The filenames should end in .bin.dlq and .dat.dlq.
 - QST format: These quests consist of only a .qst file, which contains both the .bin and .dat files within it.
 
 When newserv indexes the quests during startup, it will warn (but not fail) if any quests are corrupt or in unrecognized formats.
@@ -54,6 +57,16 @@ When newserv indexes the quests during startup, it will warn (but not fail) if a
 If you've changed the contents of the quests directory, you can re-index the quests without restarting the server by running `reload quests` in the interactive shell.
 
 All quests, including those originally in GCI or DLQ format, are treated as online quests unless their filenames specify the dl category. newserv allows players to download all quests, even those in non-download categories.
+
+### Patches and DOL files
+
+Everything in this section requires resource_dasm to be installed, so newserv can use the PowerPC assembler and disassembler from its libresource_file library. If resource_dasm is not installed, newserv will still build and run, but these features will not be available.
+
+You can put patches in the system/ppc directory with filenames like PatchName.patch.s and they will appear in the Patches menu for PSO GC clients that support patching. Patches are written in PowerPC assembly and are compiled when newserv is started. See system/ppc/WriteMemory.s for a commented example of such a function.
+
+You can also put DOL files in the system/dol directory, and they will appear in the Programs menu. Selecting a DOL file there will load the file into their GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWord.s, WriteMemory.s, and RunDOL.s must be present in the system/ppc directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
+
+I mainly built the DOL loading functionality for documentation purposes. By now, there are many better ways to load homebrew code on an unmodified GameCube, but to my knowledge there isn't another open-source implementation of this method in existence.
 
 ### Chat commands
 

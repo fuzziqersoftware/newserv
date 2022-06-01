@@ -45,7 +45,9 @@ Client::Client(
     infinite_hp(false),
     infinite_tp(false),
     switch_assist(false),
-    can_chat(true) {
+    can_chat(true),
+    pending_bb_save_player_index(0),
+    dol_base_addr(0) {
   this->last_switch_enabled_command.subcommand = 0;
   int fd = bufferevent_getfd(this->bev);
   if (fd < 0) {

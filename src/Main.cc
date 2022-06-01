@@ -83,100 +83,6 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   s->common_item_creator.reset(new CommonItemCreator(enemy_categories,
       box_categories, unit_types));
 
-  shared_ptr<vector<MenuItem>> information_menu_pc(new vector<MenuItem>());
-  shared_ptr<vector<MenuItem>> information_menu_gc(new vector<MenuItem>());
-  shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
-
-  information_menu_gc->emplace_back(INFORMATION_MENU_GO_BACK, u"Go back",
-      u"Return to the\nmain menu", 0);
-  {
-    uint32_t item_id = 0;
-    for (const auto& item : d.at("InformationMenuContents")->as_list()) {
-      auto& v = item->as_list();
-      information_menu_pc->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-          decode_sjis(v.at(1)->as_string()), 0);
-      information_menu_gc->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-          decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
-      information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
-      item_id++;
-    }
-  }
-  s->information_menu_pc = information_menu_pc;
-  s->information_menu_gc = information_menu_gc;
-  s->information_contents = information_contents;
-
-  s->proxy_destinations_menu_pc.emplace_back(PROXY_DESTINATIONS_MENU_GO_BACK,
-      u"Go back", u"Return to the\nmain menu", 0);
-  s->proxy_destinations_menu_gc.emplace_back(PROXY_DESTINATIONS_MENU_GO_BACK,
-      u"Go back", u"Return to the\nmain menu", 0);
-  {
-    uint32_t item_id = 0;
-    for (const auto& item : d.at("ProxyDestinations-GC")->as_dict()) {
-      const string& netloc_str = item.second->as_string();
-      s->proxy_destinations_menu_gc.emplace_back(item_id, decode_sjis(item.first),
-          decode_sjis(netloc_str), 0);
-      s->proxy_destinations_gc.emplace_back(parse_netloc(netloc_str));
-      item_id++;
-    }
-  }
-  {
-    uint32_t item_id = 0;
-    for (const auto& item : d.at("ProxyDestinations-PC")->as_dict()) {
-      const string& netloc_str = item.second->as_string();
-      s->proxy_destinations_menu_pc.emplace_back(item_id, decode_sjis(item.first),
-          decode_sjis(netloc_str), 0);
-      s->proxy_destinations_pc.emplace_back(parse_netloc(netloc_str));
-      item_id++;
-    }
-  }
-  try {
-    const string& netloc_str = d.at("ProxyDestination-Patch")->as_string();
-    s->proxy_destination_patch = parse_netloc(netloc_str);
-    log(INFO, "Patch server proxy is enabled with destination %s", netloc_str.c_str());
-    for (auto& it : s->name_to_port_config) {
-      if (it.second->version == GameVersion::PATCH) {
-        it.second->behavior = ServerBehavior::PROXY_SERVER;
-      }
-    }
-  } catch (const out_of_range&) {
-    s->proxy_destination_patch.first = "";
-    s->proxy_destination_patch.second = 0;
-  }
-  try {
-    const string& netloc_str = d.at("ProxyDestination-BB")->as_string();
-    s->proxy_destination_bb = parse_netloc(netloc_str);
-    log(INFO, "BB proxy is enabled with destination %s", netloc_str.c_str());
-    for (auto& it : s->name_to_port_config) {
-      if (it.second->version == GameVersion::BB) {
-        it.second->behavior = ServerBehavior::PROXY_SERVER;
-      }
-    }
-  } catch (const out_of_range&) {
-    s->proxy_destination_bb.first = "";
-    s->proxy_destination_bb.second = 0;
-  }
-
-  s->main_menu.emplace_back(MAIN_MENU_GO_TO_LOBBY, u"Go to lobby",
-      u"Join the lobby", 0);
-  s->main_menu.emplace_back(MAIN_MENU_INFORMATION, u"Information",
-      u"View server information", MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
-  if (!s->proxy_destinations_pc.empty()) {
-    s->main_menu.emplace_back(MAIN_MENU_PROXY_DESTINATIONS, u"Proxy server",
-        u"Connect to another\nserver", MenuItem::Flag::PC_ONLY);
-  }
-  if (!s->proxy_destinations_gc.empty()) {
-    s->main_menu.emplace_back(MAIN_MENU_PROXY_DESTINATIONS, u"Proxy server",
-        u"Connect to another\nserver", MenuItem::Flag::GC_ONLY);
-  }
-  s->main_menu.emplace_back(MAIN_MENU_DOWNLOAD_QUESTS, u"Download quests",
-      u"Download quests", MenuItem::Flag::INVISIBLE_ON_BB);
-  s->main_menu.emplace_back(MAIN_MENU_DISCONNECT, u"Disconnect",
-      u"Disconnect", 0);
-
-  try {
-    s->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());
-  } catch (const out_of_range&) { }
-
   auto local_address_str = d.at("LocalAddress")->as_string();
   try {
     s->local_address = s->all_addresses.at(local_address_str);
@@ -436,6 +342,12 @@ int main(int argc, char** argv) {
 
   log(INFO, "Compiling client functions");
   state->function_code_index.reset(new FunctionCodeIndex("system/ppc"));
+
+  log(INFO, "Loading DOL files");
+  state->dol_file_index.reset(new DOLFileIndex("system/dol"));
+
+  log(INFO, "Creating menus");
+  state->create_menus(config_json);
 
   shared_ptr<DNSServer> dns_server;
   if (state->dns_server_port) {

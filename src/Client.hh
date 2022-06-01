@@ -4,13 +4,13 @@
 
 #include <memory>
 
+#include "CommandFormats.hh"
+#include "FunctionCompiler.hh"
 #include "License.hh"
 #include "Player.hh"
 #include "PSOEncryption.hh"
-
-#include "Text.hh"
 #include "PSOProtocol.hh"
-#include "CommandFormats.hh"
+#include "Text.hh"
 
 
 
@@ -41,15 +41,16 @@ struct Client {
     IN_INFORMATION_MENU = 0x0080,
     // Client is at the welcome message (login server only)
     AT_WELCOME_MESSAGE = 0x0100,
+    // Client disconnect if it receives B2 (send_function_call)
+    DOES_NOT_SUPPORT_SEND_FUNCTION_CALL = 0x0200,
 
-    // Note: There isn't a good way to detect Episode 3 until the player data is
-    // sent (via a 61 command), so the IS_EPISODE_3 flag is set in that handler
-    DEFAULT_V1 = DCV1,
+    // TODO: Do DCv1 and PC support send_function_call? Here we assume they don't
+    DEFAULT_V1 = DCV1 | DOES_NOT_SUPPORT_SEND_FUNCTION_CALL,
     DEFAULT_V2_DC = 0x0000,
-    DEFAULT_V2_PC = NO_MESSAGE_BOX_CLOSE_CONFIRMATION,
+    DEFAULT_V2_PC = NO_MESSAGE_BOX_CLOSE_CONFIRMATION | DOES_NOT_SUPPORT_SEND_FUNCTION_CALL,
     DEFAULT_V3_GC = 0x0000,
-    DEFAULT_V3_GC_PLUS = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN,
-    DEFAULT_V3_GC_EP3 = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | EPISODE_3,
+    DEFAULT_V3_GC_PLUS = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | DOES_NOT_SUPPORT_SEND_FUNCTION_CALL,
+    DEFAULT_V3_GC_EP3 = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | EPISODE_3 | DOES_NOT_SUPPORT_SEND_FUNCTION_CALL,
     DEFAULT_V4_BB = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | NO_MESSAGE_BOX_CLOSE_CONFIRMATION,
   };
 
@@ -103,6 +104,10 @@ struct Client {
   bool can_chat;
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;
+
+  // DOL file loading state
+  uint32_t dol_base_addr;
+  std::shared_ptr<DOLFileIndex::DOLFile> loading_dol_file;
 
   Client(struct bufferevent* bev, GameVersion version,
       ServerBehavior server_behavior);
