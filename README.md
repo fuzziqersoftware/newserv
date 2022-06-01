@@ -25,8 +25,8 @@ There is a probably-not-too-old macOS release on the newserv GitHub repository (
 
 If you're running Linux or want to build newserv yourself, here's what you do:
 1. Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
-- Build and install phosg (https://github.com/fuzziqersoftware/phosg).
-2. Run `cmake . && make` on the newserv directory.
+2. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
+3. Run `cmake . && make` on the newserv directory.
 
 After building newserv or downloading a release, do this to set it up and use it:
 1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
