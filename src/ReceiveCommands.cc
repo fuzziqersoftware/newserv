@@ -113,7 +113,7 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
         (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) ||
         !(c->flags & Client::Flag::AT_WELCOME_MESSAGE)) {
       c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
-      send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu, false);
+      send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
     } else {
       send_message_box(c, s->welcome_message.c_str());
     }
@@ -556,9 +556,9 @@ void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
   check_size_v(data.size(), 0);
   if (c->flags & Client::Flag::IN_INFORMATION_MENU) {
     send_menu(c, u"Information", MenuID::INFORMATION,
-        *s->information_menu_for_version(c->version), false);
+        *s->information_menu_for_version(c->version));
   } else if (c->flags & Client::Flag::AT_WELCOME_MESSAGE) {
-    send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu, false);
+    send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
     c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
     send_update_client_config(c);
   }
@@ -743,13 +743,13 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
         case MainMenuItemID::INFORMATION:
           send_menu(c, u"Information", MenuID::INFORMATION,
-              *s->information_menu_for_version(c->version), true);
+              *s->information_menu_for_version(c->version));
           c->flags |= Client::Flag::IN_INFORMATION_MENU;
           break;
 
         case MainMenuItemID::PROXY_DESTINATIONS:
           send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
-              s->proxy_destinations_menu_for_version(c->version), false);
+              s->proxy_destinations_menu_for_version(c->version));
           break;
 
         case MainMenuItemID::DOWNLOAD_QUESTS:
@@ -776,8 +776,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           break;
 
         case MainMenuItemID::PROGRAMS:
-          send_menu(c, u"Programs", MenuID::PROGRAMS,
-              s->dol_file_index->menu(), false);
+          send_menu(c, u"Programs", MenuID::PROGRAMS, s->dol_file_index->menu());
           break;
 
         case MainMenuItemID::DISCONNECT:
@@ -794,7 +793,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case MenuID::INFORMATION: {
       if (cmd.item_id == InformationMenuItemID::GO_BACK) {
         c->flags &= ~Client::Flag::IN_INFORMATION_MENU;
-        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu, false);
+        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
 
       } else {
         try {
@@ -808,7 +807,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
     case MenuID::PROXY_DESTINATIONS: {
       if (cmd.item_id == ProxyDestinationsMenuItemID::GO_BACK) {
-        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu, false);
+        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
 
       } else {
         const pair<string, uint16_t>* dest = nullptr;
@@ -1028,7 +1027,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
     case MenuID::PROGRAMS:
       if (cmd.item_id == ProgramsMenuItemID::GO_BACK) {
-        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu, false);
+        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
 
       } else {
         if (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL) {
