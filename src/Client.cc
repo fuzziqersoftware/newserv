@@ -28,6 +28,7 @@ Client::Client(
     bev(bev),
     server_behavior(server_behavior),
     should_disconnect(false),
+    should_send_to_lobby_server(false),
     proxy_destination_address(0),
     proxy_destination_port(0),
     play_time_begin(now()),

@@ -99,6 +99,17 @@ static bool process_default(shared_ptr<ServerState>,
   return true;
 }
 
+static bool process_server_97(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  // Trap 97 commands and always send 97 01 04 00. (If flag is 0, the client
+  // triggers cheat protection and deletes a bunch of data.)
+  session.send_to_end(false, 0x97, 0x01);
+  // Also, update the newserv client config so we'll know not to show the
+  // programs menu if they return to newserv.
+  session.newserv_client_config.cfg.flags |= Client::Flag::SAVE_ENABLED;
+  return false;
+}
+
 static bool process_server_gc_9A(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   if (!session.license) {
@@ -1022,7 +1033,7 @@ static process_command_t dc_server_handlers[0x100] = {
   /* 60 */ process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, defh, defh, process_server_66_69, defh, defh, process_server_66_69, defh, defh, process_server_60_62_6C_6D_C9_CB, process_server_60_62_6C_6D_C9_CB, defh, defh,
   /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 80 */ defh, defh, defh, defh, defh, defh, defh, defh, process_server_88, defh, defh, defh, defh, defh, defh, defh,
-  /* 90 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 90 */ defh, defh, defh, defh, defh, defh, defh, process_server_97, defh, defh, defh, defh, defh, defh, defh, defh,
   /* A0 */ defh, defh, defh, defh, defh, defh, defh, process_server_13_A7, defh, defh, defh, defh, defh, defh, defh, defh,
   /* B0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* C0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -1040,7 +1051,7 @@ static process_command_t pc_server_handlers[0x100] = {
   /* 60 */ process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, process_server_64<S_JoinGame_PC_64>, process_server_65_67_68<S_JoinLobby_PC_65_67_68>, process_server_66_69, process_server_65_67_68<S_JoinLobby_PC_65_67_68>, process_server_65_67_68<S_JoinLobby_PC_65_67_68>, process_server_66_69, defh, defh, process_server_60_62_6C_6D_C9_CB, process_server_60_62_6C_6D_C9_CB, defh, defh,
   /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 80 */ defh, defh, defh, defh, defh, defh, defh, defh, process_server_88, defh, defh, defh, defh, defh, defh, defh,
-  /* 90 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 90 */ defh, defh, defh, defh, defh, defh, defh, process_server_97, defh, defh, defh, defh, defh, defh, defh, defh,
   /* A0 */ defh, defh, defh, defh, defh, defh, process_server_44_A6<S_OpenFile_PC_GC_44_A6>, process_server_13_A7, defh, defh, defh, defh, defh, defh, defh, defh,
   /* B0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* C0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -1058,7 +1069,7 @@ static process_command_t gc_server_handlers[0x100] = {
   /* 60 */ process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, process_server_64<S_JoinGame_GC_64>, process_server_65_67_68<S_JoinLobby_GC_65_67_68>, process_server_66_69, process_server_65_67_68<S_JoinLobby_GC_65_67_68>, process_server_65_67_68<S_JoinLobby_GC_65_67_68>, process_server_66_69, defh, defh, process_server_60_62_6C_6D_C9_CB, process_server_60_62_6C_6D_C9_CB, defh, defh,
   /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 80 */ defh, process_server_81<SC_SimpleMail_GC_81>, defh, defh, defh, defh, defh, defh, process_server_88, defh, defh, defh, defh, defh, defh, defh,
-  /* 90 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, process_server_gc_9A, defh, defh, defh, defh, defh,
+  /* 90 */ defh, defh, defh, defh, defh, defh, defh, process_server_97, defh, defh, process_server_gc_9A, defh, defh, defh, defh, defh,
   /* A0 */ defh, defh, defh, defh, defh, defh, process_server_44_A6<S_OpenFile_PC_GC_44_A6>, process_server_13_A7, defh, defh, defh, defh, defh, defh, defh, defh,
   /* B0 */ defh, defh, process_server_B2, defh, defh, defh, defh, defh, process_server_gc_B8, defh, defh, defh, defh, defh, defh, defh,
   /* C0 */ defh, defh, defh, defh, process_server_C4<S_ChoiceSearchResultEntry_GC_C4>, defh, defh, defh, defh, process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, defh, defh, defh,

@@ -790,7 +790,8 @@ void send_menu_t(
         ((c->version == GameVersion::GC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC)) ||
         ((c->version == GameVersion::BB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_BB)) ||
         ((item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) && (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) ||
-        ((item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) && (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL))) {
+        ((item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) && (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL)) ||
+        ((item.flags & MenuItem::Flag::REQUIRES_SAVE_DISABLED) && (c->flags & Client::Flag::SAVE_ENABLED))) {
       continue;
     }
     auto& e = entries.emplace_back();

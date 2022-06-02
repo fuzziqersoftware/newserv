@@ -392,13 +392,29 @@ void process_return_client_config(shared_ptr<ServerState>, shared_ptr<Client> c,
 void process_client_checksum(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 96
   check_size_t<C_ClientChecksum_GC_96>(data);
-  send_command(c, 0x97, 0x01);
+  send_server_time(c);
 }
 
-void process_server_time_request(shared_ptr<ServerState>, shared_ptr<Client> c,
+void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // B1
   check_size_v(data.size(), 0);
   send_server_time(c);
+  // The B1 command is sent in response to a 97 command, which is normally part
+  // of the pre-ship-select login sequence. However, newserv delays this until
+  // after the ship select menu so that loading a GameCube program doesn't cause
+  // the player's items to be deleted when they next play PSO. It's also not a
+  // good idea to send a 97 and 19 at the same time, because the memory card and
+  // BBA are on the same EXI bus on the GameCube and this seems to cause the SYN
+  // packet after a 19 to get dropped pretty often, which causes a delay in
+  // joining the lobby. This is why we delay the 19 command until the client
+  // responds after saving.
+  if (c->should_send_to_lobby_server) {
+    static const vector<string> version_to_port_name({
+        "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "bb-lobby"});
+    const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
+    send_reconnect(c, s->connect_address_for_client(c),
+        s->name_to_port_config.at(port_name)->port);
+  }
 }
 
 
@@ -710,12 +726,18 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case MenuID::MAIN: {
       switch (cmd.item_id) {
         case MainMenuItemID::GO_TO_LOBBY: {
-          static const vector<string> version_to_port_name({
-              "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "bb-lobby"});
-          const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
-
-          send_reconnect(c, s->connect_address_for_client(c),
-              s->name_to_port_config.at(port_name)->port);
+          c->should_send_to_lobby_server = true;
+          if (!(c->flags & Client::Flag::SAVE_ENABLED)) {
+            send_command(c, 0x97, 0x01);
+            c->flags |= Client::Flag::SAVE_ENABLED;
+            send_update_client_config(c);
+          } else {
+            static const vector<string> version_to_port_name({
+                "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "bb-lobby"});
+            const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
+            send_reconnect(c, s->connect_address_for_client(c),
+                s->name_to_port_config.at(port_name)->port);
+          }
           break;
         }
 

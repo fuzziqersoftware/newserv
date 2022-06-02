@@ -337,7 +337,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   }
   if (!this->dol_file_index->empty()) {
     this->main_menu.emplace_back(MainMenuItemID::PROGRAMS, u"Programs",
-        u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+        u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
   }
   this->main_menu.emplace_back(MainMenuItemID::DISCONNECT, u"Disconnect",
       u"Disconnect", 0);

@@ -25,11 +25,10 @@ struct Client {
     // After joining a lobby, client will no longer send D6 commands when they
     // close message boxes
     NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN = 0x0002,
-    // Client has the above flag and has already joined a lobby, or is Blue Burst
-    // (BB never sends D6 commands)
+    // Client has the above flag and has already joined a lobby, or is not GC
     NO_MESSAGE_BOX_CLOSE_CONFIRMATION = 0x0004,
-    // Client is Episode 3, should be able to see CARD lobbies, and should only be
-    // able to see/join games with the IS_EPISODE_3 flag
+    // Client is Episode 3, should be able to see CARD lobbies, and should only
+    // be able to see/join games with the IS_EPISODE_3 flag
     EPISODE_3 = 0x0008,
     // Client is DC v1 (disables some features)
     DCV1 = 0x0010,
@@ -43,10 +42,13 @@ struct Client {
     AT_WELCOME_MESSAGE = 0x0100,
     // Client disconnect if it receives B2 (send_function_call)
     DOES_NOT_SUPPORT_SEND_FUNCTION_CALL = 0x0200,
+    // Client has already received a 97 (enable saves) command, so don't show
+    // the programs menu anymore
+    SAVE_ENABLED = 0x0400,
 
     // TODO: Do DCv1 and PC support send_function_call? Here we assume they don't
-    DEFAULT_V1 = DCV1 | DOES_NOT_SUPPORT_SEND_FUNCTION_CALL,
-    DEFAULT_V2_DC = 0x0000,
+    DEFAULT_V1 = DCV1 | NO_MESSAGE_BOX_CLOSE_CONFIRMATION | DOES_NOT_SUPPORT_SEND_FUNCTION_CALL,
+    DEFAULT_V2_DC = NO_MESSAGE_BOX_CLOSE_CONFIRMATION,
     DEFAULT_V2_PC = NO_MESSAGE_BOX_CLOSE_CONFIRMATION | DOES_NOT_SUPPORT_SEND_FUNCTION_CALL,
     DEFAULT_V3_GC = 0x0000,
     DEFAULT_V3_GC_PLUS = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | DOES_NOT_SUPPORT_SEND_FUNCTION_CALL,
@@ -76,6 +78,7 @@ struct Client {
   ServerBehavior server_behavior;
   bool is_virtual_connection;
   bool should_disconnect;
+  bool should_send_to_lobby_server;
   uint32_t proxy_destination_address;
   uint16_t proxy_destination_port;
 
