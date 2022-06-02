@@ -524,6 +524,9 @@ struct S_ReconnectSplit_19 {
 // - The menu title will say "Information" instead of "Ship Select".
 // - There is no way to request information before selecting a menu item (the
 //   client will not send 09 commands).
+// - The player can press a button (B on GC, for example) to close the menu
+//   without selecting anything, unlike the ship select menu. The client does
+//   not send anything when this happens.
 
 // 20: Invalid command
 
@@ -1065,13 +1068,13 @@ struct C_Login_DC_PC_GC_9A {
 // 9B (S->C): Secondary server init (non-BB)
 // Behaves exactly the same as 17 (S->C).
 
-// 9B (S->C): Secondary server init? (BB)
+// 9B (S->C): Secondary server init (BB)
 // Format is the same as 03 (and the client uses the same encryption afterward).
 // The only differences that 9B has from 03:
 // - 9B does not work on the data-server phase (before the client has reached
 //   the ship select menu), whereas 03 does.
-// - The copyright string must be
-//   "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM." for command 9B.
+// - For command 9B, the copyright string must be
+//   "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.".
 // - The client will respond with a command DB instead of a command 93.
 
 // 9C (C->S): Register
