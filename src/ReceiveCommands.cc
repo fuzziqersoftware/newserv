@@ -604,6 +604,12 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
       }
       break;
 
+    case MenuID::QUEST_FILTER:
+      // Don't send anything here. The quest filter menu already has short
+      // descriptions included with the entries, which the client shows in the
+      // usual location on the screen.
+      break;
+
     case MenuID::QUEST: {
       if (!s->quest_index) {
         send_quest_info(c, u"$C6Quests are not available.", !c->lobby_id);
