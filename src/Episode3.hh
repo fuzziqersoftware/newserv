@@ -335,6 +335,10 @@ private:
   std::string compressed_card_definitions;
   std::unordered_map<uint32_t, std::shared_ptr<CardEntry>> card_definitions;
 
-  std::string compressed_map_list;
+  // The compressed map list is generated on demand from the maps map below.
+  // It's marked mutable because the logical consistency of the Ep3DataIndex
+  // object is not violated from the caller's perspective even if we don't
+  // generate the compressed map list at load time.
+  mutable std::string compressed_map_list;
   std::map<uint32_t, std::shared_ptr<MapEntry>> maps;
 };

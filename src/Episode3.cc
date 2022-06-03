@@ -802,60 +802,6 @@ Ep3DataIndex::Ep3DataIndex(const string& directory) {
       }
     }
   }
-
-  // TODO: Write a version of prs_compress that takes iovecs (or something
-  // similar) so we can eliminate all this string copying here. At least this
-  // only happens once at load time...
-  StringWriter entries_w;
-  StringWriter strings_w;
-
-  for (const auto& map_it : this->maps) {
-    Ep3MapList::Entry e;
-    const auto& map = map_it.second->map;
-    e.map_x = map.map_x;
-    e.map_y = map.map_y;
-    e.scene_data2 = map.scene_data2;
-    e.map_number = map.map_number.load();
-    e.width = map.width;
-    e.height = map.height;
-    e.map_tiles = map.map_tiles;
-    e.modification_tiles = map.modification_tiles;
-
-    e.name_offset = strings_w.size();
-    strings_w.write(map.name.data(), map.name.len());
-    strings_w.put_u8(0);
-    e.location_name_offset = strings_w.size();
-    strings_w.write(map.location_name.data(), map.location_name.len());
-    strings_w.put_u8(0);
-    e.quest_name_offset = strings_w.size();
-    strings_w.write(map.quest_name.data(), map.quest_name.len());
-    strings_w.put_u8(0);
-    e.description_offset = strings_w.size();
-    strings_w.write(map.description.data(), map.description.len());
-    strings_w.put_u8(0);
-
-    e.unknown_a2 = 0xFF000000;
-
-    entries_w.put(e);
-  }
-
-  Ep3MapList header;
-  header.num_maps = this->maps.size();
-  header.unknown_a1 = 0;
-  header.strings_offset = entries_w.size();
-  header.total_size = sizeof(Ep3MapList) + entries_w.size() + strings_w.size();
-
-  StringWriter w;
-  w.put(header);
-  w.write(entries_w.str());
-  w.write(strings_w.str());
-
-  StringWriter compressed_w;
-  compressed_w.put_u32b(w.str().size());
-  compressed_w.write(prs_compress(w.str()));
-  this->compressed_map_list = move(compressed_w.str());
-  log(INFO, "Generated Episode 3 compressed map list (%zu -> %zu bytes)",
-      w.size(), this->compressed_map_list.size());
 }
 
 const string& Ep3DataIndex::get_compressed_card_definitions() const {
@@ -872,7 +818,58 @@ shared_ptr<const Ep3DataIndex::CardEntry> Ep3DataIndex::get_card_definition(
 
 const string& Ep3DataIndex::get_compressed_map_list() const {
   if (this->compressed_map_list.empty()) {
-    throw runtime_error("map list is not available");
+    // TODO: Write a version of prs_compress that takes iovecs (or something
+    // similar) so we can eliminate all this string copying here.
+    StringWriter entries_w;
+    StringWriter strings_w;
+
+    for (const auto& map_it : this->maps) {
+      Ep3MapList::Entry e;
+      const auto& map = map_it.second->map;
+      e.map_x = map.map_x;
+      e.map_y = map.map_y;
+      e.scene_data2 = map.scene_data2;
+      e.map_number = map.map_number.load();
+      e.width = map.width;
+      e.height = map.height;
+      e.map_tiles = map.map_tiles;
+      e.modification_tiles = map.modification_tiles;
+
+      e.name_offset = strings_w.size();
+      strings_w.write(map.name.data(), map.name.len());
+      strings_w.put_u8(0);
+      e.location_name_offset = strings_w.size();
+      strings_w.write(map.location_name.data(), map.location_name.len());
+      strings_w.put_u8(0);
+      e.quest_name_offset = strings_w.size();
+      strings_w.write(map.quest_name.data(), map.quest_name.len());
+      strings_w.put_u8(0);
+      e.description_offset = strings_w.size();
+      strings_w.write(map.description.data(), map.description.len());
+      strings_w.put_u8(0);
+
+      e.unknown_a2 = 0xFF000000;
+
+      entries_w.put(e);
+    }
+
+    Ep3MapList header;
+    header.num_maps = this->maps.size();
+    header.unknown_a1 = 0;
+    header.strings_offset = entries_w.size();
+    header.total_size = sizeof(Ep3MapList) + entries_w.size() + strings_w.size();
+
+    StringWriter w;
+    w.put(header);
+    w.write(entries_w.str());
+    w.write(strings_w.str());
+
+    StringWriter compressed_w;
+    compressed_w.put_u32b(w.str().size());
+    compressed_w.write(prs_compress(w.str()));
+    this->compressed_map_list = move(compressed_w.str());
+    log(INFO, "Generated Episode 3 compressed map list (%zu -> %zu bytes)",
+        w.size(), this->compressed_map_list.size());
   }
   return this->compressed_map_list;
 }
