@@ -632,6 +632,20 @@ static bool process_server_gc_1A_D5(shared_ptr<ServerState>,
 static bool process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   check_implemented_subcommand(session.id, data);
+
+  if (session.save_files) {
+    if ((session.version == GameVersion::GC) && (data.size() >= 0x14)) {
+      PSOSubcommand* subs = &check_size_t<PSOSubcommand>(data, 0x14, 0xFFFF);
+      if (subs[0].dword == 0x000000B6 && subs[2].dword == 0x00000041) {
+        string filename = string_printf("map%08" PRIX32 ".%" PRIu64 ".mnm",
+            subs[3].dword.load(), now());
+        string file_data = data.substr(0x0C);
+        save_file(filename, file_data);
+        session.log(INFO, "Wrote %zu bytes to %s", file_data.size(), filename.c_str());
+      }
+    }
+  }
+
   return true;
 }
 
@@ -717,7 +731,6 @@ static bool process_server_gc_B8(shared_ptr<ServerState>,
 
     string output_filename = string_printf("cardupdate.%" PRIu64 ".mnr", now());
     save_file(output_filename, r.read(size));
-
     session.log(INFO, "Wrote %zu bytes to %s", size, output_filename.c_str());
   }
   return true;
