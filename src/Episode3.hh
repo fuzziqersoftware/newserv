@@ -295,7 +295,7 @@ struct Ep3Map { // .mnm format (after decompressing and discarding the header)
     ptext<char, 0x10> name;
     parray<be_uint16_t, 0x7E> unknown_a3;
   } __attribute__((packed));
-  /* 20F0 */ parray<NPCCharacter, 3> npc_chars; // Unused if name[0] == 0
+  /* 20F0 */ NPCCharacter npc_chars[3]; // Unused if name[0] == 0
   /* 242C */ parray<uint8_t, 0x14> unknown_a8; // Always FF?
   /* 2440 */ ptext<char, 0x190> before_message;
   /* 25D0 */ ptext<char, 0x190> after_message;
@@ -305,7 +305,7 @@ struct Ep3Map { // .mnm format (after decompressing and discarding the header)
     be_uint16_t unknown_a2; // Always 0x0064 if valid, 0xFFFF if unused?
     ptext<char, 0x40> strings[4];
   } __attribute__((packed)); // Total size: 0x104 bytes
-  /* 28F0 */ parray<DialogueSet, 0x10> dialogue_sets[3]; // Up to 0x10 per valid NPC
+  /* 28F0 */ DialogueSet dialogue_sets[3][0x10]; // Up to 0x10 per valid NPC
   /* 59B0 */ be_uint16_t reward_card_id; // TODO: This could be an array. The only examples I've seen have only one here
   /* 59B2 */ parray<be_uint16_t, 0x33> unknown_a9;
   /* 5A18 */
@@ -320,9 +320,17 @@ public:
     std::vector<std::string> text;
   };
 
-  struct MapEntry {
+  class MapEntry {
+  public:
     Ep3Map map;
-    std::string compressed_data;
+
+    MapEntry(const Ep3Map& map);
+    MapEntry(const std::string& compressed_data);
+
+    std::string compressed() const;
+
+  private:
+    mutable std::string compressed_data;
   };
 
   const std::string& get_compressed_card_definitions() const;

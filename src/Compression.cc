@@ -96,10 +96,11 @@ struct prs_compress_ctx {
   }
 };
 
-string prs_compress(const string& data) {
+string prs_compress(const void* vdata, size_t size) {
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(vdata);
   prs_compress_ctx pc;
 
-  ssize_t data_ssize = static_cast<ssize_t>(data.size());
+  ssize_t data_ssize = static_cast<ssize_t>(size);
   ssize_t read_offset = 0;
   while (read_offset < data_ssize) {
 
@@ -117,8 +118,8 @@ string prs_compress(const string& data) {
       while ((this_size < 0x100) && // max copy size is 255 bytes
              ((this_offset + this_size) < 0) && // don't copy past the read offset
              (this_size <= data_ssize - read_offset) && // don't copy past the end
-             !memcmp(data.data() + read_offset + this_offset,
-                     data.data() + read_offset, this_size)) {
+             !memcmp(data + read_offset + this_offset, data + read_offset,
+                     this_size)) {
         this_size++;
       }
       this_size--;
@@ -141,6 +142,10 @@ string prs_compress(const string& data) {
   }
 
   return pc.finish();
+}
+
+string prs_compress(const string& data) {
+  return prs_compress(data.data(), data.size());
 }
 
 

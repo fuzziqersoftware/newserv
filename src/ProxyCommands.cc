@@ -26,6 +26,7 @@
 #include <resource_file/Emulators/PPC32Emulator.hh>
 #endif
 
+#include "Compression.hh"
 #include "PSOProtocol.hh"
 #include "SendCommands.hh"
 #include "ReceiveCommands.hh"
@@ -637,11 +638,11 @@ static bool process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
     if ((session.version == GameVersion::GC) && (data.size() >= 0x14)) {
       PSOSubcommand* subs = &check_size_t<PSOSubcommand>(data, 0x14, 0xFFFF);
       if (subs[0].dword == 0x000000B6 && subs[2].dword == 0x00000041) {
-        string filename = string_printf("map%08" PRIX32 ".%" PRIu64 ".mnm",
+        string filename = string_printf("map%08" PRIX32 ".%" PRIu64 ".mnmd",
             subs[3].dword.load(), now());
-        string file_data = data.substr(0x0C);
-        save_file(filename, file_data);
-        session.log(INFO, "Wrote %zu bytes to %s", file_data.size(), filename.c_str());
+        string map_data = prs_decompress(data.substr(0x14));
+        save_file(filename, map_data);
+        session.log(INFO, "Wrote %zu bytes to %s", map_data.size(), filename.c_str());
       }
     }
   }

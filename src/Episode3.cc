@@ -774,34 +774,49 @@ Ep3DataIndex::Ep3DataIndex(const string& directory) {
   }
 
   for (const auto& filename : list_directory(directory)) {
-    if (ends_with(filename, ".mnm")) {
-      try {
-        string compressed_data = load_file(directory + "/" + filename);
-        // There's a small header (Ep3CompressedMapHeader) before the compressed
-        // data, which we ignore
-        string data_to_decompress = compressed_data.substr(8);
-        string data = prs_decompress(data_to_decompress);
-        if (data.size() != sizeof(Ep3Map)) {
-          throw runtime_error(string_printf(
-              "decompressed data size is incorrect (expected %zu bytes, read %zu bytes)",
-              sizeof(Ep3Map), data.size()));
-        }
+    try {
+      shared_ptr<MapEntry> entry;
 
-        shared_ptr<MapEntry> entry(new MapEntry(
-            {*reinterpret_cast<const Ep3Map*>(data.data()), move(compressed_data)}));
+      if (ends_with(filename, ".mnmd")) {
+        entry.reset(new MapEntry(load_object_file<Ep3Map>(directory + "/" + filename)));
+      } else if (ends_with(filename, ".mnm")) {
+        entry.reset(new MapEntry(load_file(directory + "/" + filename)));
+      }
+
+      if (entry.get()) {
         if (!this->maps.emplace(entry->map.map_number, entry).second) {
           throw runtime_error("duplicate map number");
         }
         string name = entry->map.name;
         log(INFO, "Indexed Episode 3 map %s (%08" PRIX32 "; %s)",
             filename.c_str(), entry->map.map_number.load(), name.c_str());
-
-      } catch (const exception& e) {
-        log(WARNING, "Failed to index Episode 3 map %s: %s",
-            filename.c_str(), e.what());
       }
+
+    } catch (const exception& e) {
+      log(WARNING, "Failed to index Episode 3 map %s: %s",
+          filename.c_str(), e.what());
     }
   }
+}
+
+Ep3DataIndex::MapEntry::MapEntry(const Ep3Map& map) : map(map) { }
+
+Ep3DataIndex::MapEntry::MapEntry(const string& compressed)
+  : compressed_data(compressed) {
+  string decompressed = prs_decompress(this->compressed_data);
+  if (decompressed.size() != sizeof(Ep3Map)) {
+    throw runtime_error(string_printf(
+        "decompressed data size is incorrect (expected %zu bytes, read %zu bytes)",
+        sizeof(Ep3Map), decompressed.size()));
+  }
+  this->map = *reinterpret_cast<const Ep3Map*>(decompressed.data());
+}
+
+string Ep3DataIndex::MapEntry::compressed() const {
+  if (this->compressed_data.empty()) {
+    this->compressed_data = prs_compress(&this->map, sizeof(this->map));
+  }
+  return this->compressed_data;
 }
 
 const string& Ep3DataIndex::get_compressed_card_definitions() const {

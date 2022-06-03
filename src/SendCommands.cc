@@ -1399,13 +1399,19 @@ void send_ep3_map_list(shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
 // sends the map data for the chosen map to all players in the game
 void send_ep3_map_data(shared_ptr<ServerState> s, shared_ptr<Lobby> l, uint32_t map_id) {
   auto entry = s->ep3_data_index->get_map(map_id);
+  const auto& compressed = entry->compressed();
 
-  string data(12, '\0');
+  string data(0x14, '\0');
   PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(data.data());
   subs[0].dword = 0x000000B6;
-  subs[1].dword = (19 + entry->compressed_data.size()) & 0xFFFFFFFC;
+  subs[1].dword = (19 + compressed.size()) & 0xFFFFFFFC;
   subs[2].dword = 0x00000041;
-  data += entry->compressed_data;
+  subs[3].dword = entry->map.map_number.load();
+  subs[4].dword = compressed.size();
+  data += compressed;
+  while (data.size() & 3) {
+    data.push_back('\0');
+  }
 
   send_command(l, 0x6C, 0x00, data);
 }
