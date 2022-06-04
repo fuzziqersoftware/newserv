@@ -163,6 +163,23 @@ static void process_subcommand_word_select(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
+// client is done loading into a lobby (we use this to trigger arrow updates)
+static void process_subcommand_set_player_visibility(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  const auto& p = check_size_sc(data, 4);
+
+  if (p[0].byte[2] != c->lobby_client_id) {
+    return;
+  }
+
+  forward_subcommand(l, c, command, flag, data);
+
+  if (!l->is_game()) {
+    send_arrow_update(l);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands used by cheat mechanisms
 
@@ -1080,7 +1097,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 20 */ process_subcommand_forward_check_size,
   /* 21 */ process_subcommand_change_area, // Inter-level warp
   /* 22 */ process_subcommand_forward_check_size_client, // Set player visibility
-  /* 23 */ process_subcommand_forward_check_size_client, // Set player visibility
+  /* 23 */ process_subcommand_set_player_visibility, // Set player visibility
   /* 24 */ process_subcommand_forward_check_size_game,
   /* 25 */ process_subcommand_equip_unequip_item, // Equip item
   /* 26 */ process_subcommand_equip_unequip_item, // Unequip item
