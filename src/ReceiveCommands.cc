@@ -1702,7 +1702,7 @@ void process_disable_auto_reply(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 void process_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C6
-  const auto& cmd = check_size_t<C_SetBlockedSenders_C6>(data);
+  const auto& cmd = check_size_t<C_SetBlockedSenders_GC_BB_C6>(data);
   c->game_data.account()->blocked_senders = cmd.blocked_senders;
 }
 
