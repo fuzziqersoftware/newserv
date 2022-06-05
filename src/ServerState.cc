@@ -266,30 +266,36 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   this->information_menu_gc = information_menu_gc;
   this->information_contents = information_contents;
 
-  this->proxy_destinations_menu_pc.emplace_back(ProxyDestinationsMenuItemID::GO_BACK,
-      u"Go back", u"Return to the\nmain menu", 0);
-  this->proxy_destinations_menu_gc.emplace_back(ProxyDestinationsMenuItemID::GO_BACK,
-      u"Go back", u"Return to the\nmain menu", 0);
-  {
+  auto generate_proxy_destinations_menu = +[](
+      vector<MenuItem>& ret_menu,
+      vector<pair<string, uint16_t>>& ret_pds,
+      const unordered_map<string, shared_ptr<JSONObject>>& d) {
+    ret_menu.clear();
+    ret_pds.clear();
+
+    ret_menu.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
+        u"Return to the\nmain menu", 0);
+
     uint32_t item_id = 0;
-    for (const auto& item : d.at("ProxyDestinations-GC")->as_dict()) {
+    for (const auto& item : d) {
       const string& netloc_str = item.second->as_string();
-      this->proxy_destinations_menu_gc.emplace_back(item_id, decode_sjis(item.first),
-          decode_sjis(netloc_str), 0);
-      this->proxy_destinations_gc.emplace_back(parse_netloc(netloc_str));
+      const string& description = "$C7Remote server:\n$C6" + netloc_str;
+      ret_menu.emplace_back(item_id, decode_sjis(item.first),
+          decode_sjis(description), 0);
+      ret_pds.emplace_back(parse_netloc(netloc_str));
       item_id++;
     }
-  }
-  {
-    uint32_t item_id = 0;
-    for (const auto& item : d.at("ProxyDestinations-PC")->as_dict()) {
-      const string& netloc_str = item.second->as_string();
-      this->proxy_destinations_menu_pc.emplace_back(item_id, decode_sjis(item.first),
-          decode_sjis(netloc_str), 0);
-      this->proxy_destinations_pc.emplace_back(parse_netloc(netloc_str));
-      item_id++;
-    }
-  }
+  };
+
+  generate_proxy_destinations_menu(
+      this->proxy_destinations_menu_pc,
+      this->proxy_destinations_pc,
+      d.at("ProxyDestinations-PC")->as_dict());
+  generate_proxy_destinations_menu(
+      this->proxy_destinations_menu_gc,
+      this->proxy_destinations_gc,
+      d.at("ProxyDestinations-GC")->as_dict());
+
   try {
     const string& netloc_str = d.at("ProxyDestination-Patch")->as_string();
     this->proxy_destination_patch = parse_netloc(netloc_str);
