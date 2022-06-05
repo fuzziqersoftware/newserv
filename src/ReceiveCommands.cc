@@ -585,7 +585,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
           // we use item_id + 1 here because "go back" is the first item
           send_ship_info(c, s->information_menu_for_version(c->version)->at(cmd.item_id + 1).description.c_str());
         } catch (const out_of_range&) {
-          send_ship_info(c, u"$C6No such information exists.");
+          send_ship_info(c, u"$C4Missing information\nmenu item");
         }
       }
       break;
@@ -599,7 +599,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
           // we use item_id + 1 here because "go back" is the first item
           send_ship_info(c, menu.at(cmd.item_id + 1).description.c_str());
         } catch (const out_of_range&) {
-          send_ship_info(c, u"$C6No such information exists.");
+          send_ship_info(c, u"$C4Missing proxy\ndestination");
         }
       }
       break;
@@ -617,7 +617,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
       }
       auto q = s->quest_index->get(c->version, cmd.item_id);
       if (!q) {
-        send_quest_info(c, u"$C6Quest does not exist.", !c->lobby_id);
+        send_quest_info(c, u"$C4Quest does not\nexist.", !c->lobby_id);
         break;
       }
       send_quest_info(c, q->long_description.c_str(), !c->lobby_id);
