@@ -104,7 +104,7 @@ struct Ep3CardStats {
   // 08 = all (attack); see e.g. Last Judgment, Earthquake
   // 09 = your own FCs but not SCs; see Traitor
   uint8_t target_mode;
-  uint8_t assist_turns; // 90 = once, 99 = forever
+  uint8_t assist_turns; // 90 (dec) = once, 99 (dec) = forever
   uint8_t cannot_move; // 0 for SC and creature cards; 1 for everything else
   uint8_t cannot_attack; // 1 for shields, mags, defense actions, and assist cards
   uint8_t unused_a2; // Always 0
@@ -237,7 +237,7 @@ struct Ep3CompressedMapHeader { // .mnm file format
   // Compressed data immediately follows (which decompresses to an Ep3Map)
 } __attribute__((packed));
 
-struct Ep3Map { // .mnm format (after decompressing and discarding the header)
+struct Ep3Map { // .mnmd format
   /* 0000 */ be_uint32_t unknown_a1;
   /* 0004 */ be_uint32_t map_number;
   /* 0008 */ uint8_t width;
@@ -274,13 +274,12 @@ struct Ep3Map { // .mnm format (after decompressing and discarding the header)
   // 50 = appears as improperly-z-buffered teal cube in preview
   // TODO: There may be more values that are valid here.
   /* 1C68 */ parray<uint8_t, 0x100> modification_tiles;
-  // Note: The rules are near the end of this struct (starting 0x14 bytes before the end)
   /* 1D68 */ parray<uint8_t, 0x74> unknown_a6;
   /* 1DDC */ Ep3BattleRules default_rules;
   /* 1DEC */ parray<uint8_t, 4> unknown_a7;
   /* 1DF0 */ ptext<char, 0x14> name;
   /* 1E04 */ ptext<char, 0x14> location_name;
-  /* 1E18 */ ptext<char, 0x3C> quest_name; // Same a location_name for non-quest maps
+  /* 1E18 */ ptext<char, 0x3C> quest_name; // == location_name if not a quest
   /* 1E54 */ ptext<char, 0x190> description;
   /* 1FE4 */ be_uint16_t map_x;
   /* 1FE6 */ be_uint16_t map_y;
