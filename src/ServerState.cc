@@ -347,6 +347,8 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   }
   this->main_menu.emplace_back(MainMenuItemID::DISCONNECT, u"Disconnect",
       u"Disconnect", 0);
+  this->main_menu.emplace_back(MainMenuItemID::CLEAR_LICENSE, u"Clear license",
+      u"Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password", 0);
 
   try {
     this->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());

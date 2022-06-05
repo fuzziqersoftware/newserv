@@ -789,6 +789,11 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           c->should_disconnect = true;
           break;
 
+        case MainMenuItemID::CLEAR_LICENSE:
+          send_command(c, 0x9A, 0x04);
+          c->should_disconnect = true;
+          break;
+
         default:
           send_message_box(c, u"Incorrect menu item ID.");
           break;

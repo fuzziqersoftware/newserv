@@ -32,6 +32,7 @@ namespace MainMenuItemID {
   constexpr uint32_t PATCHES            = 0x11666611;
   constexpr uint32_t PROGRAMS           = 0x11777711;
   constexpr uint32_t DISCONNECT         = 0x11888811;
+  constexpr uint32_t CLEAR_LICENSE      = 0x11999911;
 }
 
 namespace InformationMenuItemID {
