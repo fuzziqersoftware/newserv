@@ -68,6 +68,21 @@ const char* name_for_category(QuestCategory category) {
   }
 }
 
+static const char* name_for_episode(uint8_t episode) {
+  switch (episode) {
+    case 0:
+      return "Ep1";
+    case 1:
+      return "Ep2";
+    case 2:
+      return "Ep4";
+    case 0xFF:
+      return "Ep3";
+    default:
+      return "InvalidEpisode";
+  }
+}
+
 
 
 struct PSOQuestHeaderDC { // same for dc v1 and v2, thankfully
@@ -609,9 +624,9 @@ QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
             make_pair(q->version, q->menu_item_id), q).second) {
           throw logic_error("duplicate quest menu item id");
         }
-        log(INFO, "Indexed quest %s (%s-%" PRId64 " => %" PRIu32 ", %s, episode=%hhu, joinable=%s, dcv1=%s)",
+        log(INFO, "Indexed quest %s (%s-%" PRId64 " => %" PRIu32 ", %s, %s, joinable=%s, dcv1=%s)",
             ascii_name.c_str(), name_for_version(q->version), q->internal_id,
-            q->menu_item_id, name_for_category(q->category), q->episode,
+            q->menu_item_id, name_for_category(q->category), name_for_episode(q->episode),
             q->joinable ? "true" : "false", q->is_dcv1 ? "true" : "false");
       } catch (const exception& e) {
         log(WARNING, "Failed to parse quest file %s (%s)", filename.c_str(), e.what());
