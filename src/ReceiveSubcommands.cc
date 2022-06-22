@@ -1113,7 +1113,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 30 */ process_subcommand_forward_check_size_game, // Level up
   /* 31 */ process_subcommand_forward_check_size_game, // Medical center
   /* 32 */ process_subcommand_forward_check_size_game, // Medical center
-  /* 33 */ process_subcommand_forward_check_size_game, // Revive player (only confirmed with moon atomizer)
+  /* 33 */ process_subcommand_forward_check_size_game, // Moon atomizer/Reverser
   /* 34 */ process_subcommand_unimplemented,
   /* 35 */ process_subcommand_unimplemented,
   /* 36 */ process_subcommand_forward_check_game,
@@ -1223,7 +1223,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 9E */ process_subcommand_unimplemented,
   /* 9F */ process_subcommand_forward_check_size_game, // Gal Gryphon actions
   /* A0 */ process_subcommand_forward_check_size_game, // Gal Gryphon actions
-  /* A1 */ process_subcommand_unimplemented,
+  /* A1 */ process_subcommand_forward_check_size_game, // Part of revive process. Occurs right after revive command, function unclear.
   /* A2 */ process_subcommand_box_drop_item_request, // Request for item drop from box (handled by server on BB)
   /* A3 */ process_subcommand_forward_check_size_game, // Episode 2 boss actions
   /* A4 */ process_subcommand_forward_check_size_game, // Olga Flow phase 1 actions
