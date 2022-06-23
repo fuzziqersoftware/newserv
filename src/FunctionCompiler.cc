@@ -212,7 +212,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
 
       this->name_to_file.emplace(dol->name, dol);
       this->item_id_to_file.emplace_back(dol);
-      log(WARNING, "Loaded DOL file %s", filename.c_str());
+      log(INFO, "Loaded DOL file %s", filename.c_str());
 
     } catch (const exception& e) {
       log(WARNING, "Failed to load DOL file %s: %s", filename.c_str(), e.what());
