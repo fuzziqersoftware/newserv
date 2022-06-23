@@ -101,7 +101,7 @@ void DNSServer::on_receive_message(int fd, short) {
 
     } else if (bytes < 0x0C) {
       log(WARNING, "[DNSServer] input query too small");
-      print_data(stderr, input);
+      print_data(stderr, input.data(), bytes);
 
     } else {
       input.resize(bytes);
