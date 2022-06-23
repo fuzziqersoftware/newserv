@@ -214,13 +214,10 @@ void print_received_command(
   header.set_flag(version, flag);
   header.set_size(version, size + header_size);
 
-  // TODO: This is unnecessarily slow. It'd be nice to have a print_data_v() so
-  // we don't have to copy data around here.
-  StringWriter w;
-  w.write(&header, header_size);
-  w.write(data, size);
-
-  print_data(stderr, w.str());
+  vector<struct iovec> iovs;
+  iovs.emplace_back(iovec{.iov_base = &header, .iov_len = header_size});
+  iovs.emplace_back(iovec{.iov_base = const_cast<void*>(data), .iov_len = size});
+  print_data(stderr, iovs, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR);
 
   if (use_terminal_colors) {
     print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
