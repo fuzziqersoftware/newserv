@@ -429,9 +429,6 @@ static bool process_server_B2(shared_ptr<ServerState>,
         data.resize((sizeof(header) + footer_end_offset), '\0');
       }
 
-      fprintf(stderr, "footer_offset = %08zX\n", footer_offset);
-      print_data(stderr, data);
-
       StringReader r(data.data() + sizeof(header), data.size() - sizeof(header));
       const auto& footer = r.pget<S_ExecuteCode_Footer_GC_B2>(footer_offset);
 
