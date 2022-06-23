@@ -71,7 +71,11 @@ void send_command(
     case GameVersion::BB: {
       // BB has an annoying behavior here: command lengths must be multiples of
       // 4, but the actual data length must be a multiple of 8. If the size
-      // field is not divisible by 8, 4 extra bytes are sent anyway.
+      // field is not divisible by 8, 4 extra bytes are sent anyway. This
+      // behavior only applies when encryption is enabled - any commands sent
+      // before encryption is enabled have no size restrictions (except they
+      // must include a full header and must fit in the client's receive
+      // buffer), and no implicit extra bytes are sent.
       PSOCommandHeaderBB header;
       header.size = (sizeof(header) + size + 3) & ~3;
       header.command = command;
@@ -108,7 +112,7 @@ void send_command(
     }
     log(INFO, "Sending%s (version=%s command=%04hX flag=%08X)",
         name_token.c_str(), name_for_version(version), command, flag);
-    print_data(stderr, send_data.data(), logical_size);
+    print_data(stderr, send_data.data(), logical_size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR);
     if (use_terminal_colors) {
       print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
     }
