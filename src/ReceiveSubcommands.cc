@@ -424,7 +424,6 @@ static void process_subcommand_box_or_enemy_item_drop(shared_ptr<ServerState>,
 
   log(INFO, "[Items/%08" PRIX32 "] Leader created ground item %08" PRIX32 " at %hhu:(%g, %g)",
       l->lobby_id, item.data.id.load(), cmd->area, cmd->x.load(), cmd->z.load());
-  c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -442,11 +441,16 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
     // BB clients should never send this; only the server should send this
     return;
   }
-  c->game_data.player()->add_item(l->remove_item(cmd->item_id));
 
+  auto effective_c = l->clients.at(cmd->client_id);
+  if (!effective_c.get()) {
+    return;
+  }
+
+  effective_c->game_data.player()->add_item(l->remove_item(cmd->item_id));
   log(INFO, "[Items/%08" PRIX32 "] Player %hu picked up %08" PRIX32,
       l->lobby_id, cmd->client_id.load(), cmd->item_id.load());
-  c->game_data.player()->print_inventory(stderr);
+  effective_c->game_data.player()->print_inventory(stderr);
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -904,7 +908,6 @@ static void process_subcommand_destroy_ground_item(shared_ptr<ServerState>,
   l->remove_item(cmd->item_id);
   log(INFO, "[Items/%08" PRIX32 "] Ground item %08" PRIX32 " destroyed (%" PRIX32 " of them)",
       l->lobby_id, cmd->item_id.load(), cmd->amount.load());
-  c->game_data.player()->print_inventory(stderr);
   forward_subcommand(l, c, command, flag, data);
 }
 
