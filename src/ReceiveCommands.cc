@@ -1767,6 +1767,8 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     throw invalid_argument("level too low for difficulty");
   }
 
+  bool item_tracking_enabled = (c->version == GameVersion::BB) | s->item_tracking_enabled;
+
   shared_ptr<Lobby> game(new Lobby());
   game->name = name;
   game->password = password;
@@ -1787,7 +1789,10 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   game->event = Lobby::game_event_for_lobby_event(current_lobby->event);
   game->block = 0xFF;
   game->max_clients = 4;
-  game->flags = (is_ep3 ? Lobby::Flag::EPISODE_3_ONLY : 0) | Lobby::Flag::GAME;
+  game->flags =
+      (is_ep3 ? Lobby::Flag::EPISODE_3_ONLY : 0) |
+      (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0) |
+      Lobby::Flag::GAME;
   game->min_level = min_level;
   game->max_level = 0xFFFFFFFF;
 

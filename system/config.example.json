@@ -128,6 +128,14 @@
   // BB users.
   "WelcomeMessage": "",
 
+  // By default, the server keeps track of items in all games, even for versions
+  // other than Blue Burst. This enables use of the $what command, as well as
+  // protection against item duplication cheats (the cheater is disconnected
+  // instead of the other players). If item tracking causes any issues, it can
+  // be turned off here. This option has no effect on Blue Burst games - item
+  // tracking is always enabled for them.
+  "EnableItemTracking": true,
+
   // Item drop rates for non-rare items in BB games. For each type (boxes or
   // enemies), all the categories must add up to a number less than 0x100000000.
   // Each number is a probability (out of 0x100000000) that the given item type

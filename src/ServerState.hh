@@ -46,6 +46,7 @@ struct ServerState {
   std::vector<std::string> ip_stack_addresses;
   bool ip_stack_debug;
   bool allow_unregistered_users;
+  bool item_tracking_enabled;
   RunShellBehavior run_shell_behavior;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;

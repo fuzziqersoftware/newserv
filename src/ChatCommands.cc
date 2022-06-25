@@ -590,28 +590,31 @@ static void command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   if (!l->episode || (l->episode > 3)) {
     return;
   }
-
-  float min_dist2 = 0.0f;
-  uint32_t nearest_item_id = 0xFFFFFFFF;
-  for (const auto& it : l->item_id_to_floor_item) {
-    if (it.second.area != c->area) {
-      continue;
-    }
-    float dx = it.second.x - c->x;
-    float dz = it.second.z - c->z;
-    float dist2 = (dx * dx) + (dz * dz);
-    if ((nearest_item_id == 0xFFFFFFFF) || (dist2 < min_dist2)) {
-      nearest_item_id = it.first;
-      min_dist2 = dist2;
-    }
-  }
-
-  if (nearest_item_id == 0xFFFFFFFF) {
-    send_text_message(c, u"No items are near you");
+  if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+    send_text_message(c, u"$C4Item tracking is off");
   } else {
-    const auto& item = l->item_id_to_floor_item.at(nearest_item_id);
-    string name = name_for_item(item.inv_item.data, true);
-    send_text_message(c, decode_sjis(name));
+    float min_dist2 = 0.0f;
+    uint32_t nearest_item_id = 0xFFFFFFFF;
+    for (const auto& it : l->item_id_to_floor_item) {
+      if (it.second.area != c->area) {
+        continue;
+      }
+      float dx = it.second.x - c->x;
+      float dz = it.second.z - c->z;
+      float dist2 = (dx * dx) + (dz * dz);
+      if ((nearest_item_id == 0xFFFFFFFF) || (dist2 < min_dist2)) {
+        nearest_item_id = it.first;
+        min_dist2 = dist2;
+      }
+    }
+
+    if (nearest_item_id == 0xFFFFFFFF) {
+      send_text_message(c, u"$C4No items are near you");
+    } else {
+      const auto& item = l->item_id_to_floor_item.at(nearest_item_id);
+      string name = name_for_item(item.inv_item.data, true);
+      send_text_message(c, decode_sjis(name));
+    }
   }
 }
 

@@ -1468,6 +1468,8 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
 
   // For weapons, specials appear before the weapon name
   if ((item.data1[0] == 0x00) && (item.data1[4] != 0x00)) {
+    // 0x80 is the unidentified flag, but we always return the identified name
+    // of the item here, so we ignore it
     bool is_present = item.data1[4] & 0x40;
     uint8_t special_id = item.data1[4] & 0x3F;
     if (is_present) {

@@ -18,14 +18,19 @@
 
 struct Lobby {
   enum Flag {
-    GAME = 0x01,
-    CHEATS_ENABLED = 0x02, // game only
-    PUBLIC = 0x04, // lobby only
-    EPISODE_3_ONLY = 0x08, // lobby & game
-    QUEST_IN_PROGRESS = 0x10, // game only
-    JOINABLE_QUEST_IN_PROGRESS = 0x20, // game only
-    DEFAULT = 0x40, // lobby only; not set for games and private lobbies
-    PERSISTENT = 0x80, // if not set, lobby is deleted when empty
+    GAME                       = 0x00000001,
+    EPISODE_3_ONLY             = 0x00000002,
+
+    // Flags used only for games
+    CHEATS_ENABLED             = 0x00000100,
+    QUEST_IN_PROGRESS          = 0x00000200,
+    JOINABLE_QUEST_IN_PROGRESS = 0x00000400,
+    ITEM_TRACKING_ENABLED      = 0x00000800,
+
+    // Flags used only for lobbies
+    PUBLIC                     = 0x00010000,
+    DEFAULT                    = 0x00020000,
+    PERSISTENT                 = 0x00040000,
   };
 
   uint32_t lobby_id;

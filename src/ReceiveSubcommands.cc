@@ -273,12 +273,14 @@ static void process_subcommand_player_drop_item(shared_ptr<ServerState>,
     return;
   }
 
-  l->add_item(c->game_data.player()->remove_item(cmd->item_id, 0),
-      cmd->area, cmd->x, cmd->z);
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    l->add_item(c->game_data.player()->remove_item(cmd->item_id, 0),
+        cmd->area, cmd->x, cmd->z);
 
-  log(INFO, "[Items/%08" PRIX32 "] Player %hhu dropped item %08" PRIX32 " at %hu:(%g, %g)",
-      l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
-  c->game_data.player()->print_inventory(stderr);
+    log(INFO, "[Items/%08" PRIX32 "] Player %hhu dropped item %08" PRIX32 " at %hu:(%g, %g)",
+        l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
+    c->game_data.player()->print_inventory(stderr);
+  }
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -297,16 +299,18 @@ static void process_subcommand_create_inventory_item(shared_ptr<ServerState>,
     return;
   }
 
-  PlayerInventoryItem item;
-  item.equip_flags = 0; // TODO: Use the right default flags here
-  item.tech_flag = 0;
-  item.game_flags = 0;
-  item.data = cmd->item;
-  c->game_data.player()->add_item(item);
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    PlayerInventoryItem item;
+    item.equip_flags = 0; // TODO: Use the right default flags here
+    item.tech_flag = 0;
+    item.game_flags = 0;
+    item.data = cmd->item;
+    c->game_data.player()->add_item(item);
 
-  log(INFO, "[Items/%08" PRIX32 "] Player %hhu created inventory item %08" PRIX32,
-      l->lobby_id, cmd->client_id, cmd->item.id.load());
-  c->game_data.player()->print_inventory(stderr);
+    log(INFO, "[Items/%08" PRIX32 "] Player %hhu created inventory item %08" PRIX32,
+        l->lobby_id, cmd->client_id, cmd->item.id.load());
+    c->game_data.player()->print_inventory(stderr);
+  }
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -324,18 +328,20 @@ static void process_subcommand_drop_partial_stack(shared_ptr<ServerState>,
     return;
   }
 
-  // TODO: Should we delete anything from the inventory here? Does the client
-  // send an appropriate 6x29 alongside this?
-  PlayerInventoryItem item;
-  item.equip_flags = 0; // TODO: Use the right default flags here
-  item.tech_flag = 0;
-  item.game_flags = 0;
-  item.data = cmd->data;
-  l->add_item(item, cmd->area, cmd->x, cmd->z);
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    // TODO: Should we delete anything from the inventory here? Does the client
+    // send an appropriate 6x29 alongside this?
+    PlayerInventoryItem item;
+    item.equip_flags = 0; // TODO: Use the right default flags here
+    item.tech_flag = 0;
+    item.game_flags = 0;
+    item.data = cmd->data;
+    l->add_item(item, cmd->area, cmd->x, cmd->z);
 
-  log(INFO, "[Items/%08" PRIX32 "] Player %hhu split stack to create ground item %08" PRIX32 " at %hu:(%g, %g)",
-      l->lobby_id, cmd->client_id, item.data.id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
-  c->game_data.player()->print_inventory(stderr);
+    log(INFO, "[Items/%08" PRIX32 "] Player %hhu split stack to create ground item %08" PRIX32 " at %hu:(%g, %g)",
+        l->lobby_id, cmd->client_id, item.data.id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
+    c->game_data.player()->print_inventory(stderr);
+  }
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -348,6 +354,10 @@ static void process_subcommand_drop_partial_stack_bb(shared_ptr<ServerState>,
 
     if (!l->is_game() || (cmd->client_id != c->lobby_client_id)) {
       return;
+    }
+
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
     }
 
     auto item = c->game_data.player()->remove_item(cmd->item_id, cmd->amount);
@@ -389,16 +399,18 @@ static void process_subcommand_buy_shop_item(shared_ptr<ServerState>,
     return;
   }
 
-  PlayerInventoryItem item;
-  item.equip_flags = 0; // TODO: Use the right default flags here
-  item.tech_flag = 0;
-  item.game_flags = 0;
-  item.data = cmd->item;
-  c->game_data.player()->add_item(item);
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    PlayerInventoryItem item;
+    item.equip_flags = 0; // TODO: Use the right default flags here
+    item.tech_flag = 0;
+    item.game_flags = 0;
+    item.data = cmd->item;
+    c->game_data.player()->add_item(item);
 
-  log(INFO, "[Items/%08" PRIX32 "] Player %hhu bought item %08" PRIX32 " from shop",
-      l->lobby_id, cmd->client_id, item.data.id.load());
-  c->game_data.player()->print_inventory(stderr);
+    log(INFO, "[Items/%08" PRIX32 "] Player %hhu bought item %08" PRIX32 " from shop",
+        l->lobby_id, cmd->client_id, item.data.id.load());
+    c->game_data.player()->print_inventory(stderr);
+  }
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -447,10 +459,12 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
     return;
   }
 
-  effective_c->game_data.player()->add_item(l->remove_item(cmd->item_id));
-  log(INFO, "[Items/%08" PRIX32 "] Player %hu picked up %08" PRIX32,
-      l->lobby_id, cmd->client_id.load(), cmd->item_id.load());
-  effective_c->game_data.player()->print_inventory(stderr);
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    effective_c->game_data.player()->add_item(l->remove_item(cmd->item_id));
+    log(INFO, "[Items/%08" PRIX32 "] Player %hu picked up %08" PRIX32,
+        l->lobby_id, cmd->client_id.load(), cmd->item_id.load());
+    effective_c->game_data.player()->print_inventory(stderr);
+  }
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -464,6 +478,10 @@ static void process_subcommand_pick_up_item_request(shared_ptr<ServerState>,
 
     if (!l->is_game() || (cmd->client_id != c->lobby_client_id)) {
       return;
+    }
+
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
     }
 
     c->game_data.player()->add_item(l->remove_item(cmd->item_id));
@@ -482,12 +500,16 @@ static void process_subcommand_pick_up_item_request(shared_ptr<ServerState>,
 static void process_subcommand_equip_unequip_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  // We don't track equip state on non-BB versions
+  // TODO: We should track equip state on non-BB versions
   if (l->version == GameVersion::BB) {
     const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
 
     if ((cmd->client_id != c->lobby_client_id)) {
       return;
+    }
+
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
     }
 
     size_t index = c->game_data.player()->inventory.find_item(cmd->item_id);
@@ -511,12 +533,14 @@ static void process_subcommand_use_item(shared_ptr<ServerState>,
     return;
   }
 
-  size_t index = c->game_data.player()->inventory.find_item(cmd->item_id);
-  player_use_item(c, index);
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    size_t index = c->game_data.player()->inventory.find_item(cmd->item_id);
+    player_use_item(c, index);
 
-  log(INFO, "[Items/%08" PRIX32 "] Player used item %hhu:%08" PRIX32,
-      l->lobby_id, cmd->client_id, cmd->item_id.load());
-  c->game_data.player()->print_inventory(stderr);
+    log(INFO, "[Items/%08" PRIX32 "] Player used item %hhu:%08" PRIX32,
+        l->lobby_id, cmd->client_id, cmd->item_id.load());
+    c->game_data.player()->print_inventory(stderr);
+  }
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -572,6 +596,10 @@ static void process_subcommand_bank_action_bb(shared_ptr<ServerState>,
       return;
     }
 
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
+    }
+
     if (cmd->action == 0) { // deposit
       if (cmd->item_id == 0xFFFFFFFF) { // meseta
         if (cmd->meseta_amount > c->game_data.player()->disp.meseta) {
@@ -615,6 +643,10 @@ static void process_subcommand_sort_inventory_bb(shared_ptr<ServerState>,
   if (l->version == GameVersion::BB) {
     const auto* cmd = check_size_sc<G_SortInventory_6xC4>(data);
 
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
+    }
+
     PlayerInventory sorted;
 
     for (size_t x = 0; x < 30; x++) {
@@ -645,6 +677,10 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s
 
     if (!l->is_game()) {
       return;
+    }
+
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
     }
 
     PlayerInventoryItem item;
@@ -699,6 +735,10 @@ static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
 
     if (!l->is_game()) {
       return;
+    }
+
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
     }
 
     PlayerInventoryItem item;
@@ -891,11 +931,13 @@ static void process_subcommand_destroy_inventory_item(shared_ptr<ServerState>,
   if (cmd->client_id != c->lobby_client_id) {
     return;
   }
-  c->game_data.player()->remove_item(cmd->item_id, cmd->amount);
-  log(INFO, "[Items/%08" PRIX32 "] Inventory item %hhu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
-      l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load());
-  c->game_data.player()->print_inventory(stderr);
-  forward_subcommand(l, c, command, flag, data);
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    c->game_data.player()->remove_item(cmd->item_id, cmd->amount);
+    log(INFO, "[Items/%08" PRIX32 "] Inventory item %hhu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
+        l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load());
+    c->game_data.player()->print_inventory(stderr);
+    forward_subcommand(l, c, command, flag, data);
+  }
 }
 
 static void process_subcommand_destroy_ground_item(shared_ptr<ServerState>,
@@ -905,10 +947,12 @@ static void process_subcommand_destroy_ground_item(shared_ptr<ServerState>,
   if (!l->is_game()) {
     return;
   }
-  l->remove_item(cmd->item_id);
-  log(INFO, "[Items/%08" PRIX32 "] Ground item %08" PRIX32 " destroyed (%" PRIX32 " of them)",
-      l->lobby_id, cmd->item_id.load(), cmd->amount.load());
-  forward_subcommand(l, c, command, flag, data);
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    l->remove_item(cmd->item_id);
+    log(INFO, "[Items/%08" PRIX32 "] Ground item %08" PRIX32 " destroyed (%" PRIX32 " of them)",
+        l->lobby_id, cmd->item_id.load(), cmd->amount.load());
+    forward_subcommand(l, c, command, flag, data);
+  }
 }
 
 static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
@@ -918,6 +962,10 @@ static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
     const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
     if (!l->is_game() || (cmd->client_id != c->lobby_client_id)) {
       return;
+    }
+
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
     }
 
     size_t x = c->game_data.player()->inventory.find_item(cmd->item_id);
@@ -955,6 +1003,9 @@ static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
 //
 //     if (cmd->client_id != c->lobby_client_id) {
 //       return;
+//     }
+//     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+//       throw logic_error("item tracking not enabled in BB game");
 //     }
 //
 //     size_t x = c->game_data.player()->inventory.find_item(cmd->item_id);

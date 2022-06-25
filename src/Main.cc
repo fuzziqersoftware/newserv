@@ -128,6 +128,12 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     s->allow_unregistered_users = true;
   }
 
+  try {
+    s->item_tracking_enabled = d.at("EnableItemTracking")->as_bool();
+  } catch (const out_of_range&) {
+    s->item_tracking_enabled = true;
+  }
+
   for (const string& filename : list_directory("system/blueburst/keys")) {
     if (!ends_with(filename, ".nsk")) {
       continue;

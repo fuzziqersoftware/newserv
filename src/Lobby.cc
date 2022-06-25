@@ -96,8 +96,9 @@ void Lobby::add_client(shared_ptr<Client> c) {
     }
   }
 
-  // If the lobby is a game, assign the inventory's item IDs
-  if (this->is_game()) {
+  // If the lobby is a game and item tracking is enabled, assign the inventory's
+  // item IDs
+  if (this->is_game() && (this->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto& inv = c->game_data.player()->inventory;
     size_t count = min<uint8_t>(inv.num_items, 30);
     for (size_t x = 0; x < count; x++) {
