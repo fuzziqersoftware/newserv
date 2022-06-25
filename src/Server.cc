@@ -24,41 +24,25 @@
 #include "ReceiveCommands.hh"
 
 using namespace std;
+using namespace std::placeholders;
 
 
-
-void Server::disconnect_client(struct bufferevent* bev) {
-  this->disconnect_client(this->bev_to_client.at(bev));
-}
 
 void Server::disconnect_client(shared_ptr<Client> c) {
-  this->bev_to_client.erase(c->bev);
-  struct bufferevent* bev = c->bev;
-  c->bev = nullptr;
-
-  int fd = bufferevent_getfd(bev);
-  if (fd < 0) {
-    this->log(INFO, "Client on virtual connection %p disconnected", bev);
+  if (c->channel.is_virtual_connection) {
+    this->log(INFO, "Disconnecting client on virtual connection %p",
+        c->channel.bev.get());
   } else {
-    this->log(INFO, "Client on fd %d disconnected", fd);
+    this->log(INFO, "Disconnecting client on fd %d",
+        bufferevent_getfd(c->channel.bev.get()));
   }
 
-  // if the output buffer is not empty, move the client into the draining pool
-  // instead of disconnecting it, to make sure all the data gets sent
-  struct evbuffer* out_buffer = bufferevent_get_output(bev);
-  if (evbuffer_get_length(out_buffer) == 0) {
-    bufferevent_flush(bev, EV_WRITE, BEV_FINISHED);
-    bufferevent_free(bev);
-  } else {
-    // the callbacks will free it when all the data is sent or the client
-    // disconnects
-    bufferevent_setcb(bev, nullptr,
-        Server::dispatch_on_disconnecting_client_output,
-        Server::dispatch_on_disconnecting_client_error, this);
-    bufferevent_disable(bev, EV_READ);
-  }
+  this->channel_to_client.erase(&c->channel);
+  c->channel.disconnect();
 
   process_disconnect(this->state, c);
+  // c is destroyed here (process_disconnect should remove any other references
+  // to it, e.g. from Lobby objects)
 }
 
 void Server::dispatch_on_listen_accept(
@@ -71,25 +55,6 @@ void Server::dispatch_on_listen_accept(
 void Server::dispatch_on_listen_error(struct evconnlistener* listener,
     void* ctx) {
   reinterpret_cast<Server*>(ctx)->on_listen_error(listener);
-}
-
-void Server::dispatch_on_client_input(struct bufferevent* bev, void* ctx) {
-  reinterpret_cast<Server*>(ctx)->on_client_input(bev);
-}
-
-void Server::dispatch_on_client_error(struct bufferevent* bev, short events,
-    void* ctx) {
-  reinterpret_cast<Server*>(ctx)->on_client_error(bev, events);
-}
-
-void Server::dispatch_on_disconnecting_client_output(struct bufferevent* bev,
-    void* ctx) {
-  reinterpret_cast<Server*>(ctx)->on_disconnecting_client_output(bev);
-}
-
-void Server::dispatch_on_disconnecting_client_error(struct bufferevent* bev,
-    short events, void* ctx) {
-  reinterpret_cast<Server*>(ctx)->on_disconnecting_client_error(bev, events);
 }
 
 void Server::on_listen_accept(struct evconnlistener* listener,
@@ -111,13 +76,12 @@ void Server::on_listen_accept(struct evconnlistener* listener,
 
   struct bufferevent *bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  shared_ptr<Client> c(new Client(bev, listening_socket->version,
-      listening_socket->behavior));
-  this->bev_to_client.emplace(make_pair(bev, c));
-
-  bufferevent_setcb(bev, &Server::dispatch_on_client_input, nullptr,
-      &Server::dispatch_on_client_error, this);
-  bufferevent_enable(bev, EV_READ | EV_WRITE);
+  shared_ptr<Client> c(new Client(
+      bev, listening_socket->version, listening_socket->behavior));
+  c->channel.on_command_received = Server::on_client_input;
+  c->channel.on_error = Server::on_client_error;
+  c->channel.context_obj = this;
+  this->channel_to_client.emplace(&c->channel, c);
 
   process_connect(this->state, c);
 }
@@ -128,18 +92,18 @@ void Server::connect_client(
   this->log(INFO, "Client connected on virtual connection %p", bev);
 
   shared_ptr<Client> c(new Client(bev, version, initial_state));
-  this->bev_to_client.emplace(make_pair(bev, c));
+  c->channel.on_command_received = Server::on_client_input;
+  c->channel.on_error = Server::on_client_error;
+  c->channel.context_obj = this;
+
+  this->channel_to_client.emplace(&c->channel, c);
 
   // Manually set the remote address, since the bufferevent has no fd and the
-  // Client constructor can't figure out the virtual remote address
-  auto* sin = reinterpret_cast<sockaddr_in*>(&c->remote_addr);
+  // Channel constructor can't figure out the virtual remote address
+  auto* sin = reinterpret_cast<sockaddr_in*>(&c->channel.remote_addr);
   sin->sin_family = AF_INET;
   sin->sin_addr.s_addr = htonl(address);
   sin->sin_port = htons(port);
-
-  bufferevent_setcb(bev, &Server::dispatch_on_client_input, nullptr,
-      &Server::dispatch_on_client_error, this);
-  bufferevent_enable(bev, EV_READ | EV_WRITE);
 
   process_connect(this->state, c);
 }
@@ -151,73 +115,31 @@ void Server::on_listen_error(struct evconnlistener* listener) {
   event_base_loopexit(this->base.get(), nullptr);
 }
 
-void Server::on_client_input(struct bufferevent* bev) {
-  shared_ptr<Client> c;
-  try {
-    c = this->bev_to_client.at(bev);
-  } catch (const out_of_range& e) {
-    this->log(WARNING, "Received message from client with no configuration");
-
-    // ignore all the data
-    // TODO: we probably should disconnect them or something
-    struct evbuffer* in_buffer = bufferevent_get_input(bev);
-    evbuffer_drain(in_buffer, evbuffer_get_length(in_buffer));
-    return;
-  }
+void Server::on_client_input(Channel& ch, uint16_t command, uint32_t flag, std::string& data) {
+  Server* server = reinterpret_cast<Server*>(ch.context_obj);
+  shared_ptr<Client> c = server->channel_to_client.at(&ch);
 
   if (c->should_disconnect) {
-    this->disconnect_client(bev);
-    return;
-  }
-
-  c->last_recv_time = now();
-  this->receive_and_process_commands(c);
-
-  if (c->should_disconnect) {
-    this->disconnect_client(bev);
-    return;
+    server->disconnect_client(c);
+  } else {
+    process_command(server->state, c, command, flag, data);
+    if (c->should_disconnect) {
+      server->disconnect_client(c);
+    }
   }
 }
 
-void Server::on_disconnecting_client_output(struct bufferevent* bev) {
-  bufferevent_flush(bev, EV_WRITE, BEV_FINISHED);
-  bufferevent_free(bev);
-}
+void Server::on_client_error(Channel& ch, short events) {
+  Server* server = reinterpret_cast<Server*>(ch.context_obj);
+  shared_ptr<Client> c = server->channel_to_client.at(&ch);
 
-void Server::on_client_error(struct bufferevent* bev, short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    this->log(WARNING, "Client caused error %d (%s)", err,
+    server->log(WARNING, "Client caused error %d (%s)", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    this->disconnect_client(bev);
-  }
-}
-
-void Server::on_disconnecting_client_error(struct bufferevent* bev,
-    short events) {
-  if (events & BEV_EVENT_ERROR) {
-    int err = EVUTIL_SOCKET_ERROR();
-    this->log(WARNING, "Disconnecting client caused error %d (%s)", err,
-        evutil_socket_error_to_string(err));
-  }
-  if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    bufferevent_flush(bev, EV_WRITE, BEV_FINISHED);
-    bufferevent_free(bev);
-  }
-}
-
-void Server::receive_and_process_commands(shared_ptr<Client> c) {
-  try {
-    for_each_received_command(c->bev, c->version, c->crypt_in.get(),
-        [this, c](uint16_t command, uint16_t flag, const std::string& data) {
-          process_command(this->state, c, command, flag, data);
-        });
-  } catch (const exception& e) {
-    this->log(INFO, "Error in client stream: %s", e.what());
-    c->should_disconnect = true;
-    return;
+    server->disconnect_client(c);
   }
 }
 
@@ -275,11 +197,11 @@ void Server::add_socket(
 }
 
 shared_ptr<Client> Server::get_client() const {
-  if (this->bev_to_client.empty()) {
+  if (this->channel_to_client.empty()) {
     throw runtime_error("no clients on game server");
   }
-  if (this->bev_to_client.size() > 1) {
+  if (this->channel_to_client.size() > 1) {
     throw runtime_error("multiple clients on game server");
   }
-  return this->bev_to_client.begin()->second;
+  return this->channel_to_client.begin()->second;
 }

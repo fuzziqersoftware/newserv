@@ -26,6 +26,7 @@
 #include <resource_file/Emulators/PPC32Emulator.hh>
 #endif
 
+#include "ChatCommands.hh"
 #include "Compression.hh"
 #include "PSOProtocol.hh"
 #include "SendCommands.hh"
@@ -37,21 +38,13 @@ using namespace std;
 
 
 static void forward_command(ProxyServer::LinkedSession& session, bool to_server,
-    uint16_t command, uint32_t flag, string& data) {
-  auto* bev = to_server ? session.server_bev.get() : session.client_bev.get();
-  if (!bev) {
+    uint16_t command, uint32_t flag, string& data, bool print_contents = true) {
+  auto& ch = to_server ? session.server_channel : session.client_channel;
+  if (!ch.connected()) {
     session.log(WARNING, "No endpoint is present; dropping command");
   } else {
-    // Note: we intentionally don't pass name_str here because we already
-    // printed the command before calling the handler
-    send_command(
-        bev,
-        session.version,
-        to_server ? session.server_output_crypt.get() : session.client_output_crypt.get(),
-        command,
-        flag,
-        data.data(),
-        data.size());
+    // TODO: Don't print the command here (usually)
+    ch.send(command, flag, data, print_contents);
   }
 }
 
@@ -85,7 +78,7 @@ static void send_text_message_to_client(
   while (w.size() & 3) {
     w.put_u8(0);
   }
-  session.send_to_end(false, command, 0x00, w.str());
+  session.client_channel.send(command, 0x00, w.str());
 }
 
 
@@ -95,26 +88,33 @@ static void send_text_message_to_client(
 // function may have modified) is forwarded to the other end; if they return
 // false; it is not.
 
-static bool process_default(shared_ptr<ServerState>,
+enum class HandlerResult {
+  FORWARD = 0,
+  SUPPRESS,
+  MODIFIED,
+};
+
+static HandlerResult process_default(shared_ptr<ServerState>,
     ProxyServer::LinkedSession&, uint16_t, uint32_t, string&) {
-  return true;
+  return HandlerResult::FORWARD;
 }
 
-static bool process_server_97(shared_ptr<ServerState>,
+static HandlerResult process_server_97(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
-  // Trap 97 commands and always send 97 01 04 00. (If flag is 0, the client
-  // triggers cheat protection and deletes a bunch of data.)
-  session.send_to_end(false, 0x97, 0x01);
+  // Trap 97 commands and always send 97 01 04 00. This protects the client from
+  // cheat detection - if the flag is 0, the client triggers cheat detection and
+  // deletes a bunch of data.
+  session.client_channel.send(0x97, 0x01);
   // Also, update the newserv client config so we'll know not to show the
   // programs menu if they return to newserv.
   session.newserv_client_config.cfg.flags |= Client::Flag::SAVE_ENABLED;
-  return false;
+  return HandlerResult::SUPPRESS;
 }
 
-static bool process_server_gc_9A(shared_ptr<ServerState>,
+static HandlerResult process_server_gc_9A(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   if (!session.license) {
-    return true;
+    return HandlerResult::FORWARD;
   }
 
   C_LoginWithUnusedSpace_GC_9E cmd;
@@ -138,13 +138,13 @@ static bool process_server_gc_9A(shared_ptr<ServerState>,
   // If there's a guild card number, a shorter 9E is sent that ends
   // right after the client config data
 
-  session.send_to_end(
-      true, 0x9E, 0x01, &cmd, 
+  session.server_channel.send(
+      0x9E, 0x01, &cmd, 
       sizeof(C_LoginWithUnusedSpace_GC_9E) - (session.remote_guild_card_number ? sizeof(cmd.unused_space) : 0));
-  return false;
+  return HandlerResult::SUPPRESS;
 }
 
-static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
+static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
   if (session.version == GameVersion::PATCH && command == 0x17) {
     throw invalid_argument("patch server sent 17 server init");
@@ -163,29 +163,29 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
     forward_command(session, false, command, flag, data);
 
     if (session.version == GameVersion::GC) {
-      session.server_input_crypt.reset(new PSOGCEncryption(cmd.server_key));
-      session.server_output_crypt.reset(new PSOGCEncryption(cmd.client_key));
-      session.client_input_crypt.reset(new PSOGCEncryption(cmd.client_key));
-      session.client_output_crypt.reset(new PSOGCEncryption(cmd.server_key));
+      session.server_channel.crypt_in.reset(new PSOGCEncryption(cmd.server_key));
+      session.server_channel.crypt_out.reset(new PSOGCEncryption(cmd.client_key));
+      session.client_channel.crypt_in.reset(new PSOGCEncryption(cmd.client_key));
+      session.client_channel.crypt_out.reset(new PSOGCEncryption(cmd.server_key));
     } else { // PC or patch server (they both use PC encryption)
-      session.server_input_crypt.reset(new PSOPCEncryption(cmd.server_key));
-      session.server_output_crypt.reset(new PSOPCEncryption(cmd.client_key));
-      session.client_input_crypt.reset(new PSOPCEncryption(cmd.client_key));
-      session.client_output_crypt.reset(new PSOPCEncryption(cmd.server_key));
+      session.server_channel.crypt_in.reset(new PSOPCEncryption(cmd.server_key));
+      session.server_channel.crypt_out.reset(new PSOPCEncryption(cmd.client_key));
+      session.client_channel.crypt_in.reset(new PSOPCEncryption(cmd.client_key));
+      session.client_channel.crypt_out.reset(new PSOPCEncryption(cmd.server_key));
     }
 
-    return false;
+    return HandlerResult::SUPPRESS;
   }
 
   session.log(INFO, "Existing license in linked session");
 
   // This isn't forwarded to the client, so don't recreate the client's crypts
   if ((session.version == GameVersion::PATCH) || (session.version == GameVersion::PC)) {
-    session.server_input_crypt.reset(new PSOPCEncryption(cmd.server_key));
-    session.server_output_crypt.reset(new PSOPCEncryption(cmd.client_key));
+    session.server_channel.crypt_in.reset(new PSOPCEncryption(cmd.server_key));
+    session.server_channel.crypt_out.reset(new PSOPCEncryption(cmd.client_key));
   } else if (session.version == GameVersion::GC) {
-    session.server_input_crypt.reset(new PSOGCEncryption(cmd.server_key));
-    session.server_output_crypt.reset(new PSOGCEncryption(cmd.client_key));
+    session.server_channel.crypt_in.reset(new PSOGCEncryption(cmd.server_key));
+    session.server_channel.crypt_out.reset(new PSOGCEncryption(cmd.client_key));
   } else {
     throw invalid_argument("unsupported version");
   }
@@ -195,8 +195,8 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
   // in the patch server case, during the current session due to a hidden
   // redirect).
   if (session.version == GameVersion::PATCH) {
-    session.send_to_end(true, 0x02, 0x00);
-    return false;
+    session.server_channel.send(0x02);
+    return HandlerResult::SUPPRESS;
 
   } else if (session.version == GameVersion::PC) {
     C_Login_PC_9D cmd;
@@ -216,8 +216,8 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
     cmd.serial_number2 = cmd.serial_number;
     cmd.access_key2 = cmd.access_key;
     cmd.name = session.character_name;
-    session.send_to_end(true, 0x9D, 0x00, &cmd, sizeof(cmd));
-    return false;
+    session.server_channel.send(0x9D, 0x00, &cmd, sizeof(cmd));
+    return HandlerResult::SUPPRESS;
 
   } else if (session.version == GameVersion::GC) {
     if (command == 0x17) {
@@ -229,8 +229,8 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
       cmd.serial_number2 = cmd.serial_number;
       cmd.access_key2 = cmd.access_key;
       cmd.password = session.license->gc_password;
-      session.send_to_end(true, 0xDB, 0x00, &cmd, sizeof(cmd));
-      return false;
+      session.server_channel.send(0xDB, 0x00, &cmd, sizeof(cmd));
+      return HandlerResult::SUPPRESS;
 
     } else {
       // For command 02, send the same as if we had received 9A from the server
@@ -242,7 +242,7 @@ static bool process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
   }
 }
 
-static bool process_server_bb_03(shared_ptr<ServerState> s,
+static HandlerResult process_server_bb_03(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // Most servers don't include after_message or have a shorter after_message
   // than newserv does, so don't require it
@@ -261,9 +261,9 @@ static bool process_server_bb_03(shared_ptr<ServerState> s,
     // being able to try all the crypts it knows to detect what type the client
     // uses, but the client can't do this since it sends the first encrypted
     // data on the connection.
-    session.server_input_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+    session.server_channel.crypt_in.reset(new PSOBBMultiKeyImitatorEncryption(
         session.detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false));
-    session.server_output_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+    session.server_channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
         session.detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false));
 
     // Forward the login command we saved during the unlinked session.
@@ -271,9 +271,9 @@ static bool process_server_bb_03(shared_ptr<ServerState> s,
       *reinterpret_cast<le_uint32_t*>(session.login_command_bb.data() + 0x94) =
           session.remote_ip_crc ^ (1309539928UL + 1248334810UL);
     }
-    session.send_to_end(true, 0x93, 0x00, session.login_command_bb);
+    session.server_channel.send(0x93, 0x00, session.login_command_bb);
 
-    return false;
+    return HandlerResult::SUPPRESS;
 
   // If there's no detector crypt, then the session is new and was linked
   // immediately at connect time, and an 03 was not yet sent to the client, so
@@ -281,25 +281,25 @@ static bool process_server_bb_03(shared_ptr<ServerState> s,
   } else {
     // Forward the command to the client before setting up the crypts, so the
     // client receives the unencrypted data
-    session.send_to_end(false, 0x03, 0x00, data);
+    session.client_channel.send(0x03, 0x00, data);
 
     static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
     session.detector_crypt.reset(new PSOBBMultiKeyDetectorEncryption(
         s->bb_private_keys, expected_first_data, cmd.client_key.data(), sizeof(cmd.client_key)));
-    session.client_input_crypt = session.detector_crypt;
-    session.client_output_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+    session.client_channel.crypt_in = session.detector_crypt;
+    session.client_channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
         session.detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true));
-    session.server_input_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+    session.server_channel.crypt_in.reset(new PSOBBMultiKeyImitatorEncryption(
         session.detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false));
-    session.server_output_crypt.reset(new PSOBBMultiKeyImitatorEncryption(
+    session.server_channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
         session.detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false));
 
     // We already forwarded the command, so don't do so again
-    return false;
+    return HandlerResult::SUPPRESS;
   }
 }
 
-static bool process_server_dc_pc_gc_04(shared_ptr<ServerState>,
+static HandlerResult process_server_dc_pc_gc_04(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // Some servers send a short 04 command if they don't use all of the 0x20
   // bytes available. We should be prepared to handle that.
@@ -346,56 +346,64 @@ static bool process_server_dc_pc_gc_04(shared_ptr<ServerState>,
     // We don't actually have a client checksum, of course... hopefully just
     // random data will do (probably no private servers check this at all)
     le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
-    session.send_to_end(true, 0x96, 0x00, &checksum, sizeof(checksum));
+    session.server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
   }
 
-  return true;
+  return session.license ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static bool process_server_dc_pc_gc_06(shared_ptr<ServerState>,
+static HandlerResult process_server_dc_pc_gc_06(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.license) {
     auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0_EE>(data,
         sizeof(SC_TextHeader_01_06_11_B0_EE), 0xFFFF);
     if (cmd.guild_card_number == session.remote_guild_card_number) {
       cmd.guild_card_number = session.license->serial_number;
+      return HandlerResult::MODIFIED;
     }
   }
-  return true;
+  return HandlerResult::FORWARD;
 }
 
 template <typename CmdT>
-static bool process_server_41(shared_ptr<ServerState>,
+static HandlerResult process_server_41(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  bool modified = false;
   if (session.license) {
     auto& cmd = check_size_t<CmdT>(data);
     if (cmd.searcher_guild_card_number == session.remote_guild_card_number) {
       cmd.searcher_guild_card_number = session.license->serial_number;
+      modified = true;
     }
     if (cmd.result_guild_card_number == session.remote_guild_card_number) {
       cmd.result_guild_card_number = session.license->serial_number;
+      modified = true;
     }
   }
-  return true;
+  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
 template <typename CmdT>
-static bool process_server_81(shared_ptr<ServerState>,
+static HandlerResult process_server_81(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  bool modified = false;
   if (session.license) {
     auto& cmd = check_size_t<CmdT>(data);
     if (cmd.from_guild_card_number == session.remote_guild_card_number) {
       cmd.from_guild_card_number = session.license->serial_number;
+      modified = true;
     }
     if (cmd.to_guild_card_number == session.remote_guild_card_number) {
       cmd.to_guild_card_number = session.license->serial_number;
+      modified = true;
     }
   }
-  return true;
+  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static bool process_server_88(shared_ptr<ServerState>,
+static HandlerResult process_server_88(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
+  bool modified = false;
   if (session.license) {
     size_t expected_size = sizeof(S_ArrowUpdateEntry_88) * flag;
     auto* entries = &check_size_t<S_ArrowUpdateEntry_88>(data,
@@ -403,13 +411,14 @@ static bool process_server_88(shared_ptr<ServerState>,
     for (size_t x = 0; x < flag; x++) {
       if (entries[x].guild_card_number == session.remote_guild_card_number) {
         entries[x].guild_card_number = session.license->serial_number;
+        modified = true;
       }
     }
   }
-  return true;
+  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static bool process_server_B2(shared_ptr<ServerState>,
+static HandlerResult process_server_B2(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   if (session.save_files) {
     string output_filename = string_printf("code.%" PRId64 ".bin", now());
@@ -474,26 +483,27 @@ static bool process_server_B2(shared_ptr<ServerState>,
     C_ExecuteCodeResult_B3 cmd;
     cmd.return_value = session.function_call_return_value;
     cmd.checksum = 0;
-    session.send_to_end(true, 0xB3, flag, &cmd, sizeof(cmd));
-    return false;
+    session.server_channel.send(0xB3, flag, &cmd, sizeof(cmd));
+    return HandlerResult::SUPPRESS;
   } else {
-    return true;
+    return HandlerResult::FORWARD;
   }
 }
 
-static bool process_server_E7(shared_ptr<ServerState>,
+static HandlerResult process_server_E7(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.save_files) {
     string output_filename = string_printf("player.%" PRId64 ".bin", now());
     save_file(output_filename, data);
     session.log(INFO, "Wrote player data to file %s", output_filename.c_str());
   }
-  return true;
+  return HandlerResult::FORWARD;
 }
 
 template <typename CmdT>
-static bool process_server_C4(shared_ptr<ServerState>,
+static HandlerResult process_server_C4(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
+  bool modified = false;
   if (session.license) {
     size_t expected_size = sizeof(CmdT) * flag;
     // Some servers (e.g. Schtserv) send extra data on the end of this command;
@@ -502,24 +512,27 @@ static bool process_server_C4(shared_ptr<ServerState>,
     for (size_t x = 0; x < flag; x++) {
       if (entries[x].guild_card_number == session.remote_guild_card_number) {
         entries[x].guild_card_number = session.license->serial_number;
+        modified = true;
       }
     }
   }
-  return true;
+  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static bool process_server_gc_E4(shared_ptr<ServerState>,
+static HandlerResult process_server_gc_E4(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   auto& cmd = check_size_t<S_CardLobbyGame_GC_E4>(data);
+  bool modified = false;
   for (size_t x = 0; x < 4; x++) {
     if (cmd.entries[x].guild_card_number == session.remote_guild_card_number) {
       cmd.entries[x].guild_card_number = session.license->serial_number;
+      modified = true;
     }
   }
-  return true;
+  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static bool process_server_bb_22(shared_ptr<ServerState>,
+static HandlerResult process_server_bb_22(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // We use this command (which is sent before the init encryption command) to
   // detect a particular server behavior that we'll have to work around later.
@@ -535,10 +548,10 @@ static bool process_server_bb_22(shared_ptr<ServerState>,
     session.log(INFO, "Enabling remote IP CRC patch");
     session.enable_remote_ip_crc_patch = true;
   }
-  return true;
+  return HandlerResult::FORWARD;
 }
 
-static bool process_server_game_19_patch_14(shared_ptr<ServerState>,
+static HandlerResult process_server_game_19_patch_14(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t, string& data) {
   // If the command is shorter than 6 bytes, use the previous server command to
   // fill it in. This simulates a behavior used by some private servers where a
@@ -570,17 +583,17 @@ static bool process_server_game_19_patch_14(shared_ptr<ServerState>,
   sin->sin_addr.s_addr = cmd.address.load_raw();
   sin->sin_port = htons(cmd.port);
 
-  if (!session.client_bev.get()) {
+  if (!session.client_channel.connected()) {
     session.log(WARNING, "Received reconnect command with no destination present");
-    return false;
+    return HandlerResult::SUPPRESS;
 
   } else if (command == 0x14) {
     // On the patch server, hide redirects from the client completely. The new
     // destination server will presumably send a new 02 command to start
     // encryption; it appears that PSOBB doesn't fail if this happens, and
     // simply re-initializes its encryption appropriately.
-    session.server_input_crypt.reset();
-    session.server_output_crypt.reset();
+    session.server_channel.crypt_in.reset();
+    session.server_channel.crypt_out.reset();
 
     struct sockaddr_in* dest_sin = reinterpret_cast<sockaddr_in*>(
         &session.next_destination);
@@ -588,46 +601,41 @@ static bool process_server_game_19_patch_14(shared_ptr<ServerState>,
     dest_sin->sin_addr.s_addr = cmd.address.load_raw();
     dest_sin->sin_port = cmd.port;
     session.connect();
-    return false;
+    return HandlerResult::SUPPRESS;
 
   } else {
     // If the client is on a virtual connection (fd < 0), only change
     // the port (so we'll know which version to treat the next
     // connection as). It's better to leave the address as-is so we
     // can circumvent the Plus/Ep3 same-network-server check.
-    int fd = bufferevent_getfd(session.client_bev.get());
-    if (fd >= 0) {
-      struct sockaddr_storage sockname_ss;
-      socklen_t len = sizeof(sockname_ss);
-      getsockname(fd, reinterpret_cast<struct sockaddr*>(&sockname_ss), &len);
-      if (sockname_ss.ss_family != AF_INET) {
+    if (session.client_channel.is_virtual_connection) {
+      cmd.port = session.local_port;
+    } else {
+      const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
+          &session.client_channel.local_addr);
+      if (sin->sin_family != AF_INET) {
         throw logic_error("existing connection is not ipv4");
       }
-
-      struct sockaddr_in* sockname_sin = reinterpret_cast<struct sockaddr_in*>(
-          &sockname_ss);
-      cmd.address.store_raw(sockname_sin->sin_addr.s_addr);
-      cmd.port = ntohs(sockname_sin->sin_port);
-
-    } else {
-      cmd.port = session.local_port;
+      cmd.address.store_raw(sin->sin_addr.s_addr);
+      cmd.port = ntohs(sin->sin_port);
     }
-    return true;
+    return HandlerResult::MODIFIED;
   }
 }
 
-static bool process_server_gc_1A_D5(shared_ptr<ServerState>,
+static HandlerResult process_server_gc_1A_D5(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
-  // If the client has the no-close-confirmation flag set in its
-  // newserv client config, send a fake confirmation to the remote
-  // server immediately.
-  if (session.newserv_client_config.cfg.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) {
-    session.send_to_end(true, 0xD6, 0x00, "", 0);
+  // If the client is a version that sends close confirmations and the client
+  // has the no-close-confirmation flag set in its newserv client config, send a
+  // fake confirmation to the remote server immediately.
+  if ((session.version == GameVersion::GC) &&
+      (session.newserv_client_config.cfg.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) {
+    session.server_channel.send(0xD6);
   }
-  return true;
+  return HandlerResult::FORWARD;
 }
 
-static bool process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
+static HandlerResult process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   check_implemented_subcommand(session.id, data);
 
@@ -644,11 +652,11 @@ static bool process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
     }
   }
 
-  return true;
+  return HandlerResult::FORWARD;
 }
 
 template <typename T>
-static bool process_server_44_A6(shared_ptr<ServerState>,
+static HandlerResult process_server_44_A6(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t, string& data) {
   if (session.save_files) {
     const auto& cmd = check_size_t<S_OpenFile_PC_GC_44_A6>(data);
@@ -672,10 +680,10 @@ static bool process_server_44_A6(shared_ptr<ServerState>,
     session.saving_files.emplace(cmd.filename, move(sf));
     session.log(INFO, "Opened file %s", output_filename.c_str());
   }
-  return true;
+  return HandlerResult::FORWARD;
 }
 
-static bool process_server_13_A7(shared_ptr<ServerState>,
+static HandlerResult process_server_13_A7(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.save_files) {
     const auto& cmd = check_size_t<S_WriteFile_13_A7>(data);
@@ -686,7 +694,7 @@ static bool process_server_13_A7(shared_ptr<ServerState>,
     } catch (const out_of_range&) {
       string filename = cmd.filename;
       session.log(WARNING, "Received data for non-open file %s", filename.c_str());
-      return true;
+      return HandlerResult::FORWARD;
     }
 
     size_t bytes_to_write = cmd.data_size;
@@ -709,33 +717,33 @@ static bool process_server_13_A7(shared_ptr<ServerState>,
       session.saving_files.erase(cmd.filename);
     }
   }
-  return true;
+  return HandlerResult::FORWARD;
 }
 
-static bool process_server_gc_B8(shared_ptr<ServerState>,
+static HandlerResult process_server_gc_B8(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.save_files) {
     if (data.size() < 4) {
-      session.log(WARNING, "Card list data size is too small; skipping file");
-      return true;
+      session.log(WARNING, "Card list data size is too small; not saving file");
+      return HandlerResult::FORWARD;
     }
 
     StringReader r(data);
     size_t size = r.get_u32l();
     if (r.remaining() < size) {
-      session.log(WARNING, "Card list data size extends beyond end of command; skipping file");
-      return true;
+      session.log(WARNING, "Card list data size extends beyond end of command; not saving file");
+      return HandlerResult::FORWARD;
     }
 
     string output_filename = string_printf("cardupdate.%" PRIu64 ".mnr", now());
     save_file(output_filename, r.read(size));
     session.log(INFO, "Wrote %zu bytes to %s", size, output_filename.c_str());
   }
-  return true;
+  return HandlerResult::FORWARD;
 }
 
 template <typename CmdT>
-static bool process_server_65_67_68(shared_ptr<ServerState>,
+static HandlerResult process_server_65_67_68(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
   if (command == 0x67) {
     session.lobby_players.clear();
@@ -754,6 +762,7 @@ static bool process_server_65_67_68(shared_ptr<ServerState>,
 
   size_t expected_size = offsetof(CmdT, entries) + sizeof(typename CmdT::Entry) * flag;
   auto& cmd = check_size_t<CmdT>(data, expected_size, expected_size);
+  bool modified = false;
 
   session.lobby_client_id = cmd.client_id;
   for (size_t x = 0; x < flag; x++) {
@@ -763,6 +772,7 @@ static bool process_server_65_67_68(shared_ptr<ServerState>,
     } else {
       if (session.license && (cmd.entries[x].lobby_data.guild_card == session.remote_guild_card_number)) {
         cmd.entries[x].lobby_data.guild_card = session.license->serial_number;
+        modified = true;
       }
       session.lobby_players[index].guild_card_number = cmd.entries[x].lobby_data.guild_card;
       ptext<char, 0x10> name = cmd.entries[x].disp.name;
@@ -776,16 +786,18 @@ static bool process_server_65_67_68(shared_ptr<ServerState>,
 
   if (session.override_lobby_event >= 0) {
     cmd.event = session.override_lobby_event;
+    modified = true;
   }
   if (session.override_lobby_number >= 0) {
     cmd.lobby_number = session.override_lobby_number;
+    modified = true;
   }
 
-  return true;
+  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
 template <typename CmdT>
-static bool process_server_64(shared_ptr<ServerState>,
+static HandlerResult process_server_64(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   // We don't need to clear lobby_players here because we always
   // overwrite all 4 entries for this command
@@ -796,11 +808,13 @@ static bool process_server_64(shared_ptr<ServerState>,
       ? sizeof(CmdT)
       : offsetof(CmdT, players_ep3);
   auto& cmd = check_size_t<CmdT>(data, expected_size, expected_size);
+  bool modified = false;
 
   session.lobby_client_id = cmd.client_id;
   for (size_t x = 0; x < flag; x++) {
     if (cmd.lobby_data[x].guild_card == session.remote_guild_card_number) {
       cmd.lobby_data[x].guild_card = session.license->serial_number;
+      modified = true;
     }
     session.lobby_players[x].guild_card_number = cmd.lobby_data[x].guild_card;
     if (data.size() == sizeof(CmdT)) {
@@ -817,15 +831,17 @@ static bool process_server_64(shared_ptr<ServerState>,
 
   if (session.override_section_id >= 0) {
     cmd.section_id = session.override_section_id;
+    modified = true;
   }
   if (session.override_lobby_event >= 0) {
     cmd.event = session.override_lobby_event;
+    modified = true;
   }
 
-  return true;
+  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static bool process_server_66_69(shared_ptr<ServerState>,
+static HandlerResult process_server_66_69(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<S_LeaveLobby_66_69_Ep3_E9>(data);
   size_t index = cmd.client_id;
@@ -836,44 +852,71 @@ static bool process_server_66_69(shared_ptr<ServerState>,
     session.lobby_players[index].name.clear();
     session.log(INFO, "Removed lobby player (%zu)", index);
   }
-  return true;
+  return HandlerResult::FORWARD;
 }
 
-
-
-
-
-static bool process_client_06(shared_ptr<ServerState>,
+static HandlerResult process_client_06(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (data.size() >= 12) {
-    // If this chat message looks like a newserv chat command, suppress it
-    if (session.suppress_newserv_commands &&
-        (data[8] == '$' || (data[8] == '\t' && data[9] != 'C' && data[10] == '$'))) {
-      session.log(WARNING, "Chat message appears to be a server command; dropping it");
-      return false;
+    u16string text;
+    if (session.version == GameVersion::PC || session.version == GameVersion::BB) {
+      const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
+      text = u16string(cmd.text.pcbb, (data.size() - sizeof(C_Chat_06)) / sizeof(char16_t));
+    } else {
+      const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
+      text = decode_sjis(cmd.text.dcgc, data.size() - sizeof(C_Chat_06));
+    }
+    strip_trailing_zeroes(text);
+
+    if (text.empty()) {
+      return HandlerResult::SUPPRESS;
+    }
+
+    bool is_command = (text[0] == '$' || (text[0] == '\t' && text[1] != 'C' && text[2] == '$'));
+    if (is_command) {
+      text = text.substr((text[0] == '$') ? 0 : 2);
+      if (text.size() >= 2 && text[1] == '$') {
+        send_chat_message(session.server_channel, text.substr(1));
+        return HandlerResult::SUPPRESS;
+      } else {
+        process_chat_command(s, session, text);
+        return HandlerResult::SUPPRESS;
+      }
+
     } else if (session.enable_chat_filter) {
       add_color_inplace(data.data() + 8, data.size() - 8);
+      // TODO: We should return MODIFIED here if the message was changed by
+      // the add_color_inplace call
+      return HandlerResult::FORWARD;
+
+    } else {
+      return HandlerResult::FORWARD;
     }
+
+  } else {
+    return HandlerResult::FORWARD;
   }
-  return true;
 }
 
-static bool process_client_40(shared_ptr<ServerState>,
+static HandlerResult process_client_40(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  bool modified = false;
   if (session.license) {
     auto& cmd = check_size_t<C_GuildCardSearch_40>(data);
     if (cmd.searcher_guild_card_number == session.license->serial_number) {
       cmd.searcher_guild_card_number = session.remote_guild_card_number;
+      modified = true;
     }
     if (cmd.target_guild_card_number == session.license->serial_number) {
       cmd.target_guild_card_number = session.remote_guild_card_number;
+      modified = true;
     }
   }
-  return true;
+  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
 template <typename CmdT>
-static bool process_client_81(shared_ptr<ServerState>,
+static HandlerResult process_client_81(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   auto& cmd = check_size_t<SC_SimpleMail_GC_81>(data);
   if (session.license) {
@@ -886,11 +929,11 @@ static bool process_client_81(shared_ptr<ServerState>,
   }
   // GC clients send uninitialized memory here; don't forward it
   cmd.text.clear_after(cmd.text.len());
-  return true;
+  return HandlerResult::MODIFIED;
 }
 
 template <typename SendGuildCardCmdT>
-static bool process_client_60_62_6C_6D_C9_CB(shared_ptr<ServerState> s,
+static HandlerResult process_client_60_62_6C_6D_C9_CB(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
   if (session.license && !data.empty()) {
     if (data[0] == 0x06) {
@@ -912,7 +955,7 @@ static bool process_client_60_62_6C_6D_C9_CB(shared_ptr<ServerState> s,
           sub2.byte[3] = (amount > 0xFF) ? 0xFF : amount;
           amount -= sub2.byte[3];
         }
-        session.send_to_end(false, 0x60, 0x00, subs.data(), subs.size() * sizeof(PSOSubcommand));
+        session.client_channel.send(0x60, 0x00, subs.data(), subs.size() * sizeof(PSOSubcommand));
       }
     } else if (data[0] == 0x48) {
       if (session.infinite_tp) {
@@ -923,7 +966,7 @@ static bool process_client_60_62_6C_6D_C9_CB(shared_ptr<ServerState> s,
         subs[1].word[0] = 0x0000;
         subs[1].byte[2] = PlayerStatsChange::ADD_TP;
         subs[1].byte[3] = 0xFF;
-        session.send_to_end(false, 0x60, 0x00, &subs[0], sizeof(subs));
+        session.client_channel.send(0x60, 0x00, &subs[0], sizeof(subs));
       }
     }
   }
@@ -931,31 +974,31 @@ static bool process_client_60_62_6C_6D_C9_CB(shared_ptr<ServerState> s,
 }
 
 template <>
-bool process_client_60_62_6C_6D_C9_CB<void>(shared_ptr<ServerState>,
+HandlerResult process_client_60_62_6C_6D_C9_CB<void>(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   check_implemented_subcommand(session.id, data);
 
-  if (!data.empty() && (data[0] == 0x05) && session.enable_switch_assist) {
+  if (!data.empty() && (data[0] == 0x05) && session.switch_assist) {
     auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
     if (cmd.enabled && cmd.switch_id != 0xFFFF) {
       if (session.last_switch_enabled_command.subcommand == 0x05) {
         session.log(INFO, "Switch assist: replaying previous enable command");
-        session.send_to_end(true, 0x60, 0x00, &session.last_switch_enabled_command,
+        session.server_channel.send(0x60, 0x00, &session.last_switch_enabled_command,
             sizeof(session.last_switch_enabled_command));
-        session.send_to_end(false, 0x60, 0x00, &session.last_switch_enabled_command,
+        session.client_channel.send(0x60, 0x00, &session.last_switch_enabled_command,
             sizeof(session.last_switch_enabled_command));
       }
       session.last_switch_enabled_command = cmd;
     }
   }
 
-  return true;
+  return HandlerResult::FORWARD;
 }
 
-static bool process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
+static HandlerResult process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   if (!session.license) {
-    return true;
+    return HandlerResult::FORWARD;
   }
 
   // For licensed sessions, send them back to newserv's main menu instead of
@@ -969,7 +1012,7 @@ static bool process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
     uint8_t leaving_id = x;
     uint8_t leader_id = session.lobby_client_id;
     S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_id, leader_id, 0};
-    session.send_to_end(false, 0x69, leaving_id, &cmd, sizeof(cmd));
+    session.client_channel.send(0x69, leaving_id, &cmd, sizeof(cmd));
   }
 
   string encoded_name = encode_sjis(s->name);
@@ -981,7 +1024,7 @@ static bool process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
   update_client_config_cmd.player_tag = 0x00010000;
   update_client_config_cmd.guild_card_number = session.license->serial_number;
   update_client_config_cmd.cfg = session.newserv_client_config.cfg;
-  session.send_to_end(false, 0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
+  session.client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
 
   static const vector<string> version_to_port_name({
       "dc-login", "pc-login", "bb-patch", "gc-us3", "bb-login"});
@@ -995,34 +1038,29 @@ static bool process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
   // here and they should be able to connect back to the game server. If
   // the client is on a real connection, we'll use the sockname of the
   // existing connection (like we do in the server 19 command handler).
-  int fd = bufferevent_getfd(session.client_bev.get());
-  if (fd < 0) {
+  if (session.client_channel.is_virtual_connection) {
     struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&session.next_destination);
     if (dest_sin->sin_family != AF_INET) {
       throw logic_error("ss not AF_INET");
     }
     reconnect_cmd.address.store_raw(dest_sin->sin_addr.s_addr);
   } else {
-    struct sockaddr_storage sockname_ss;
-    socklen_t len = sizeof(sockname_ss);
-    getsockname(fd, reinterpret_cast<struct sockaddr*>(&sockname_ss), &len);
-    if (sockname_ss.ss_family != AF_INET) {
+    const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
+        &session.client_channel.local_addr);
+    if (sin->sin_family != AF_INET) {
       throw logic_error("existing connection is not ipv4");
     }
-
-    struct sockaddr_in* sockname_sin = reinterpret_cast<struct sockaddr_in*>(
-        &sockname_ss);
-    reconnect_cmd.address.store_raw(sockname_sin->sin_addr.s_addr);
+    reconnect_cmd.address.store_raw(sin->sin_addr.s_addr);
   }
 
-  session.send_to_end(false, 0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
+  session.client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
 
-  return false;
+  return HandlerResult::SUPPRESS;
 }
 
 
 
-typedef bool (*process_command_t)(
+typedef HandlerResult (*process_command_t)(
     shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session,
     uint16_t command,
@@ -1242,9 +1280,18 @@ void process_proxy_command(
     string& data) {
   auto fn = get_handler(session.version, from_server, command);
   try {
-    bool should_forward = fn(s, session, command, flag, data);
-    if (should_forward) {
+    auto res = fn(s, session, command, flag, data);
+    if (res == HandlerResult::FORWARD) {
+      forward_command(session, !from_server, command, flag, data, false);
+    } else if (res == HandlerResult::MODIFIED) {
+      session.log(INFO, "The preceding command from the %s was modified in transit",
+          from_server ? "server" : "client");
       forward_command(session, !from_server, command, flag, data);
+    } else if (res == HandlerResult::SUPPRESS) {
+      session.log(INFO, "The preceding command from the %s was not forwarded",
+          from_server ? "server" : "client");
+    } else {
+      throw logic_error("invalid handler result");
     }
   } catch (const exception& e) {
     session.log(ERROR, "Failed to process command: %s", e.what());

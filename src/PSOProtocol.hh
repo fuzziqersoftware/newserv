@@ -52,21 +52,6 @@ union PSOSubcommand {
   le_uint32_t dword;
 } __attribute__((packed));
 
-void for_each_received_command(
-    struct bufferevent* bev,
-    GameVersion version,
-    PSOEncryption* crypt,
-    std::function<void(uint16_t, uint16_t, std::string&)> fn);
-
-void print_received_command(
-    uint16_t command,
-    uint32_t flag,
-    const void* data,
-    size_t size,
-    GameVersion version,
-    const char* name = nullptr,
-    TerminalFormat color = TerminalFormat::FG_GREEN);
-
 // This function is used in a lot of places to check received command sizes and
 // cast them to the appropriate type
 template <typename T>

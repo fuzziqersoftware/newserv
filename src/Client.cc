@@ -24,16 +24,14 @@ Client::Client(
     GameVersion version,
     ServerBehavior server_behavior)
   : version(version),
+    bb_game_state(0),
     flags(flags_for_version(this->version, 0)),
-    bev(bev),
+    channel(bev, this->version, nullptr, nullptr, this, "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
     server_behavior(server_behavior),
     should_disconnect(false),
     should_send_to_lobby_server(false),
     proxy_destination_address(0),
     proxy_destination_port(0),
-    play_time_begin(now()),
-    last_recv_time(this->play_time_begin),
-    last_send_time(0),
     x(0.0f),
     z(0.0f),
     area(0),
@@ -50,15 +48,6 @@ Client::Client(
     pending_bb_save_player_index(0),
     dol_base_addr(0) {
   this->last_switch_enabled_command.subcommand = 0;
-  int fd = bufferevent_getfd(this->bev);
-  if (fd < 0) {
-    this->is_virtual_connection = true;
-    memset(&this->local_addr, 0, sizeof(this->local_addr));
-    memset(&this->remote_addr, 0, sizeof(this->remote_addr));
-  } else {
-    this->is_virtual_connection = false;
-    get_socket_addresses(fd, &this->local_addr, &this->remote_addr);
-  }
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
 }
 

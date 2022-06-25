@@ -25,119 +25,9 @@ extern FileContentsCache file_cache;
 
 
 
-void send_command(
-    struct bufferevent* bev,
-    GameVersion version,
-    PSOEncryption* crypt,
-    uint16_t command,
-    uint32_t flag,
-    const void* data,
-    size_t size,
-    const char* name_str) {
-  string send_data;
-  size_t logical_size;
-
-  switch (version) {
-    case GameVersion::GC:
-    case GameVersion::DC: {
-      PSOCommandHeaderDCGC header;
-      header.command = command;
-      header.flag = flag;
-      header.size = (sizeof(header) + size + 3) & ~3;
-      send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
-      if (size) {
-        send_data.append(reinterpret_cast<const char*>(data), size);
-        send_data.resize(header.size, '\0');
-      }
-      logical_size = header.size;
-      break;
-    }
-
-    case GameVersion::PC:
-    case GameVersion::PATCH: {
-      PSOCommandHeaderPC header;
-      header.size = (sizeof(header) + size + 3) & ~3;
-      header.command = command;
-      header.flag = flag;
-      send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
-      if (size) {
-        send_data.append(reinterpret_cast<const char*>(data), size);
-        send_data.resize(header.size, '\0');
-      }
-      logical_size = header.size;
-      break;
-    }
-
-    case GameVersion::BB: {
-      // BB has an annoying behavior here: command lengths must be multiples of
-      // 4, but the actual data length must be a multiple of 8. If the size
-      // field is not divisible by 8, 4 extra bytes are sent anyway. This
-      // behavior only applies when encryption is enabled - any commands sent
-      // before encryption is enabled have no size restrictions (except they
-      // must include a full header and must fit in the client's receive
-      // buffer), and no implicit extra bytes are sent.
-      PSOCommandHeaderBB header;
-      header.size = (sizeof(header) + size + 3) & ~3;
-      header.command = command;
-      header.flag = flag;
-      send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
-      if (size) {
-        send_data.append(reinterpret_cast<const char*>(data), size);
-        if (crypt) {
-          send_data.resize((send_data.size() + 7) & ~7, '\0');
-        } else {
-          send_data.resize(header.size, '\0');
-        }
-      }
-      logical_size = header.size;
-      break;
-    }
-
-    default:
-      throw logic_error("unimplemented game version in send_command");
-  }
-
-  // Most client versions I've seen have a receive buffer 0x7C00 bytes in size
-  if (send_data.size() > 0x7C00) {
-    throw runtime_error("outbound command too large");
-  }
-
-  if (name_str) {
-    string name_token;
-    if (name_str[0]) {
-      name_token = string(" to ") + name_str;
-    }
-    if (use_terminal_colors) {
-      print_color_escape(stderr, TerminalFormat::FG_YELLOW, TerminalFormat::BOLD, TerminalFormat::END);
-    }
-    log(INFO, "Sending%s (version=%s command=%04hX flag=%08X)",
-        name_token.c_str(), name_for_version(version), command, flag);
-    print_data(stderr, send_data.data(), logical_size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR);
-    if (use_terminal_colors) {
-      print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
-    }
-  }
-
-  if (crypt) {
-    crypt->encrypt(send_data.data(), send_data.size());
-  }
-
-  struct evbuffer* buf = bufferevent_get_output(bev);
-  evbuffer_add(buf, send_data.data(), send_data.size());
-}
-
 void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
     const void* data, size_t size) {
-  if (!c->bev) {
-    return;
-  }
-  string encoded_name;
-  auto player = c->game_data.player(false);
-  if (player) {
-    encoded_name = remove_language_marker(encode_sjis(player->disp.name));
-  }
-  send_command(c->bev, c->version, c->crypt_out.get(), command, flag, data,
-      size, encoded_name.c_str());
+  c->channel.send(command, flag, data, size);
 }
 
 void send_command_excluding_client(shared_ptr<Lobby> l, shared_ptr<Client> c,
@@ -236,12 +126,12 @@ void send_server_init_dc_pc_gc(shared_ptr<Client> c,
   switch (c->version) {
     case GameVersion::DC:
     case GameVersion::PC:
-      c->crypt_out.reset(new PSOPCEncryption(server_key));
-      c->crypt_in.reset(new PSOPCEncryption(client_key));
+      c->channel.crypt_out.reset(new PSOPCEncryption(server_key));
+      c->channel.crypt_in.reset(new PSOPCEncryption(client_key));
       break;
     case GameVersion::GC:
-      c->crypt_out.reset(new PSOGCEncryption(server_key));
-      c->crypt_in.reset(new PSOGCEncryption(client_key));
+      c->channel.crypt_out.reset(new PSOGCEncryption(server_key));
+      c->channel.crypt_in.reset(new PSOGCEncryption(client_key));
       break;
     default:
       throw invalid_argument("incorrect client version");
@@ -270,8 +160,8 @@ void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
   shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt(new PSOBBMultiKeyDetectorEncryption(
       s->bb_private_keys, expected_first_data, cmd.client_key.data(), sizeof(cmd.client_key)));
-  c->crypt_in = detector_crypt;
-  c->crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
+  c->channel.crypt_in = detector_crypt;
+  c->channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
       detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true));
 }
 
@@ -285,8 +175,8 @@ void send_server_init_patch(shared_ptr<Client> c) {
   cmd.client_key = client_key;
   send_command_t(c, 0x02, 0x00, cmd);
 
-  c->crypt_out.reset(new PSOPCEncryption(server_key));
-  c->crypt_in.reset(new PSOPCEncryption(client_key));
+  c->channel.crypt_out.reset(new PSOPCEncryption(server_key));
+  c->channel.crypt_in.reset(new PSOPCEncryption(client_key));
 }
 
 void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -526,57 +416,70 @@ void send_enter_directory_patch(shared_ptr<Client> c, const string& dir) {
 ////////////////////////////////////////////////////////////////////////////////
 // message functions
 
-void send_text(shared_ptr<Client> c, StringWriter& w, uint16_t command,
-    const u16string& text) {
-  if ((c->version == GameVersion::DC) || (c->version == GameVersion::GC)) {
+void send_text(Channel& ch, StringWriter& w, uint16_t command,
+    const u16string& text, bool should_add_color) {
+  if ((ch.version == GameVersion::DC) || (ch.version == GameVersion::GC)) {
     string data = encode_sjis(text);
-    add_color(w, data.c_str(), data.size());
+    if (should_add_color) {
+      add_color(w, data.c_str(), data.size());
+    } else {
+      w.write(data);
+    }
+    w.put_u8(0);
   } else {
-    add_color(w, text.c_str(), text.size());
+    if (should_add_color) {
+      add_color(w, text.c_str(), text.size());
+    } else {
+      w.write(text.data(), text.size() * sizeof(char16_t));
+    }
+    w.put_u16(0);
   }
   while (w.str().size() & 3) {
     w.put_u8(0);
   }
-  send_command(c, command, 0x00, w.str());
+  ch.send(command, 0x00, w.str());
 }
 
-void send_header_text(shared_ptr<Client> c, uint16_t command,
-    uint32_t guild_card_number, const u16string& text) {
+void send_text(Channel& ch, uint16_t command, const u16string& text, bool should_add_color) {
+  StringWriter w;
+  send_text(ch, w, command, text, should_add_color);
+}
+
+void send_header_text(Channel& ch, uint16_t command,
+    uint32_t guild_card_number, const u16string& text, bool should_add_color) {
   StringWriter w;
   w.put(SC_TextHeader_01_06_11_B0_EE({0, guild_card_number}));
-  send_text(c, w, command, text);
-}
-
-void send_text(shared_ptr<Client> c, uint16_t command,
-    const u16string& text) {
-  StringWriter w;
-  send_text(c, w, command, text);
+  send_text(ch, w, command, text, should_add_color);
 }
 
 void send_message_box(shared_ptr<Client> c, const u16string& text) {
   uint16_t command = (c->version == GameVersion::PATCH) ? 0x13 : 0x1A;
-  send_text(c, command, text);
+  send_text(c->channel, command, text, true);
 }
 
 void send_lobby_name(shared_ptr<Client> c, const u16string& text) {
-  send_text(c, 0x8A, text);
+  send_text(c->channel, 0x8A, text, false);
 }
 
 void send_quest_info(shared_ptr<Client> c, const u16string& text,
     bool is_download_quest) {
-  send_text(c, is_download_quest ? 0xA5 : 0xA3, text);
+  send_text(c->channel, is_download_quest ? 0xA5 : 0xA3, text, true);
 }
 
 void send_lobby_message_box(shared_ptr<Client> c, const u16string& text) {
-  send_header_text(c, 0x01, 0, text);
+  send_header_text(c->channel, 0x01, 0, text, true);
 }
 
 void send_ship_info(shared_ptr<Client> c, const u16string& text) {
-  send_header_text(c, 0x11, 0, text);
+  send_header_text(c->channel, 0x11, 0, text, true);
+}
+
+void send_text_message(Channel& ch, const std::u16string& text) {
+  send_header_text(ch, 0xB0, 0, text, true);
 }
 
 void send_text_message(shared_ptr<Client> c, const u16string& text) {
-  send_header_text(c, 0xB0, 0, text);
+  send_header_text(c->channel, 0xB0, 0, text, true);
 }
 
 void send_text_message(shared_ptr<Lobby> l, const u16string& text) {
@@ -595,6 +498,10 @@ void send_text_message(shared_ptr<ServerState> s, const u16string& text) {
   }
 }
 
+void send_chat_message(Channel& ch, const u16string& text) {
+  send_header_text(ch, 0x06, 0, text, false);
+}
+
 void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
     const u16string& from_name, const u16string& text) {
   u16string data;
@@ -604,7 +511,7 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
   data.append(remove_language_marker(from_name));
   data.append(u"\x09\x09J");
   data.append(text);
-  send_header_text(c, 0x06, from_guild_card_number, data);
+  send_header_text(c->channel, 0x06, from_guild_card_number, data, false);
 }
 
 void send_simple_mail_gc(shared_ptr<Client> c, uint32_t from_guild_card_number,
@@ -677,7 +584,8 @@ void send_card_search_result_t(
   // TODO: make this actually make sense... currently we just take the sockname
   // for the target client. This also doesn't work if the client is on a virtual
   // connection (the address and port are zero).
-  const sockaddr_in* local_addr = reinterpret_cast<const sockaddr_in*>(&result->local_addr);
+  const sockaddr_in* local_addr = reinterpret_cast<const sockaddr_in*>(
+      &result->channel.local_addr);
   cmd.reconnect_command.address = local_addr->sin_addr.s_addr;
   cmd.reconnect_command.port = ntohs(local_addr->sin_port);
   cmd.reconnect_command.unused = 0;
@@ -1198,6 +1106,16 @@ void send_player_stats_change(shared_ptr<Lobby> l, shared_ptr<Client> c,
   }
 
   send_command_vt(l, 0x60, 0x00, subs);
+}
+
+void send_warp(Channel& ch, uint8_t client_id, uint32_t area) {
+  PSOSubcommand cmds[2];
+  cmds[0].byte[0] = 0x94;
+  cmds[0].byte[1] = 0x02;
+  cmds[0].byte[2] = client_id;
+  cmds[0].byte[3] = 0x00;
+  cmds[1].dword = area;
+  ch.send(0x62, client_id, cmds, 8);
 }
 
 void send_warp(shared_ptr<Client> c, uint32_t area) {

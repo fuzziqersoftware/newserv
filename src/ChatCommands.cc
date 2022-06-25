@@ -9,6 +9,7 @@
 #include <phosg/Time.hh>
 
 #include "Server.hh"
+#include "ProxyServer.hh"
 #include "Lobby.hh"
 #include "Client.hh"
 #include "SendCommands.hh"
@@ -91,7 +92,7 @@ static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 // Message commands
 
-static void command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   // no preconditions - everyone can use this command
 
@@ -120,20 +121,61 @@ static void command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 }
 
-static void command_ax(shared_ptr<ServerState>, shared_ptr<Lobby>,
+static void proxy_command_lobby_info(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string&) {
+  vector<const char*> cheats_tokens;
+  if (session.switch_assist) {
+    cheats_tokens.emplace_back("SWA");
+  }
+  if (session.infinite_hp) {
+    cheats_tokens.emplace_back("HP");
+  }
+  if (session.infinite_tp) {
+    cheats_tokens.emplace_back("TP");
+  }
+  string cheats_str = cheats_tokens.empty() ? "none" : join(cheats_tokens, ",");
+
+  vector<const char*> behaviors_tokens;
+  if (session.save_files) {
+    behaviors_tokens.emplace_back("SF");
+  }
+  if (session.function_call_return_value >= 0) {
+    behaviors_tokens.emplace_back("BFC");
+  }
+  string behaviors_str = behaviors_tokens.empty() ? "none" : join(behaviors_tokens, ",");
+
+  string section_id_override = "none";
+  if (session.override_section_id >= 0) {
+    section_id_override = name_for_section_id(session.override_section_id);
+  }
+
+  send_text_message_printf(session.client_channel,
+      "$C7GC: $C6%" PRIu32 "\n"
+      "$C7Client ID: $C6%zu\n"
+      "$C7Cheats: $C6%s\n"
+      "$C7Flags: $C6%s\n"
+      "$C7SecID override: $C6%s\n",
+      session.remote_guild_card_number,
+      session.lobby_client_id,
+      cheats_str.c_str(),
+      behaviors_str.c_str(),
+      section_id_override.c_str());
+}
+
+static void server_command_ax(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::ANNOUNCE);
   string message = encode_sjis(args);
   log(INFO, "[Client message from %010u] %s\n", c->license->serial_number, message.c_str());
 }
 
-static void command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby>,
+static void server_command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::ANNOUNCE);
   send_text_message(s, args);
 }
 
-static void command_arrow(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_arrow(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   // no preconditions
   c->lobby_arrow_color = stoull(encode_sjis(args), nullptr, 0);
@@ -142,7 +184,12 @@ static void command_arrow(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 }
 
-static void command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
+static void proxy_command_arrow(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  session.server_channel.send(0x89, stoull(encode_sjis(args), nullptr, 0));
+}
+
+static void server_command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string&) {
   c->prefer_high_lobby_client_id = !c->prefer_high_lobby_client_id;
 }
@@ -150,7 +197,7 @@ static void command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
 ////////////////////////////////////////////////////////////////////////////////
 // Lobby commands
 
-static void command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -174,7 +221,7 @@ static void command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 }
 
-static void command_lobby_event(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_lobby_event(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
   check_privileges(c, Privilege::CHANGE_EVENT);
@@ -189,7 +236,24 @@ static void command_lobby_event(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_change_event(l, l->event);
 }
 
-static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>,
+static void proxy_command_lobby_event(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  if (args.empty()) {
+    session.override_lobby_event = -1;
+  } else {
+    uint8_t new_event = event_for_name(args);
+    if (new_event == 0xFF) {
+      send_text_message(session.client_channel, u"$C6No such lobby event.");
+    } else {
+      session.override_lobby_event = new_event;
+      if (session.version == GameVersion::GC || session.version == GameVersion::BB) {
+        session.client_channel.send(0xDA, session.override_lobby_event);
+      }
+    }
+  }
+}
+
+static void server_command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::CHANGE_EVENT);
 
@@ -209,7 +273,7 @@ static void command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr<Lobby>
   }
 }
 
-static void command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
   check_privileges(c, Privilege::CHANGE_EVENT);
@@ -235,20 +299,41 @@ static void command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands
 
-static void command_secid(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_secid(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
 
   if (!args[0]) {
     c->override_section_id = -1;
-    send_text_message(l, u"$C6Override section ID\nremoved");
+    send_text_message(c, u"$C6Override section ID\nremoved");
   } else {
-    c->override_section_id = section_id_for_name(args);
-    send_text_message(l, u"$C6Override section ID\nset");
+    uint8_t new_secid = section_id_for_name(args);
+    if (new_secid == 0xFF) {
+      send_text_message(c, u"$C6Invalid section ID");
+    } else {
+      c->override_section_id = new_secid;
+      send_text_message(c, u"$C6Override section ID\nset");
+    }
   }
 }
 
-static void command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void proxy_command_secid(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  if (!args[0]) {
+    session.override_section_id = -1;
+    send_text_message(session.client_channel, u"$C6Override section ID\nremoved");
+  } else {
+    uint8_t new_secid = section_id_for_name(args);
+    if (new_secid == 0xFF) {
+      send_text_message(session.client_channel, u"$C6Invalid section ID");
+    } else {
+      session.override_section_id = new_secid;
+      send_text_message(session.client_channel, u"$C6Override section ID\nset");
+    }
+  }
+}
+
+static void server_command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -265,7 +350,7 @@ static void command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 }
 
-static void command_min_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_min_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -276,7 +361,7 @@ static void command_min_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
       l->min_level + 1);
 }
 
-static void command_max_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_max_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
   check_is_leader(l, c);
@@ -296,7 +381,7 @@ static void command_max_level(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 ////////////////////////////////////////////////////////////////////////////////
 // Character commands
 
-static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void server_command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
   check_version(c, GameVersion::BB);
@@ -383,14 +468,15 @@ static void command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 
 // TODO: implement this
 // TODO: make sure the bank name is filesystem-safe
-/* static void command_change_bank(shared_ptr<ServerState>, shared_ptr<Lobby>,
+/* static void server_command_change_bank(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string&) {
   check_version(c, GameVersion::BB);
 
   TODO
 } */
 
-static void command_convert_char_to_bb(shared_ptr<ServerState> s,
+// TODO: This can be implemented on the proxy server too.
+static void server_command_convert_char_to_bb(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
   check_not_version(c, GameVersion::BB);
@@ -438,7 +524,7 @@ static string name_for_client(shared_ptr<Client> c) {
   return "Player";
 }
 
-static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void server_command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::SILENCE_USER);
 
@@ -460,7 +546,7 @@ static void command_silence(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
       target->can_chat ? "un" : "");
 }
 
-static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void server_command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::KICK_USER);
 
@@ -482,7 +568,7 @@ static void command_kick(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   send_text_message_printf(l, "$C6%s kicked off", target_name.c_str());
 }
 
-static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+static void server_command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::BAN_USER);
 
@@ -536,7 +622,7 @@ static void command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 ////////////////////////////////////////////////////////////////////////////////
 // Cheat commands
 
-static void command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -565,7 +651,13 @@ static void command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_warp(c, area);
 }
 
-static void command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void proxy_command_warp(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  uint32_t area = stoul(encode_sjis(args), nullptr, 0);
+  send_warp(session.client_channel, session.lobby_client_id, area);
+}
+
+static void server_command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -584,7 +676,7 @@ static void command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_warp(c, new_area);
 }
 
-static void command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   if (!l->episode || (l->episode > 3)) {
@@ -618,7 +710,7 @@ static void command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 }
 
-static void command_song(shared_ptr<ServerState>, shared_ptr<Lobby>,
+static void server_command_song(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_ep3(c, true);
 
@@ -626,7 +718,7 @@ static void command_song(shared_ptr<ServerState>, shared_ptr<Lobby>,
   send_ep3_change_music(c, song);
 }
 
-static void command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -635,7 +727,14 @@ static void command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_text_message_printf(c, "$C6Infinite HP %s", c->infinite_hp ? "enabled" : "disabled");
 }
 
-static void command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void proxy_command_infinite_hp(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string&) {
+  session.infinite_hp = !session.infinite_hp;
+  send_text_message_printf(session.client_channel, "$C6Infinite HP %s",
+      session.infinite_hp ? "enabled" : "disabled");
+}
+
+static void server_command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -644,7 +743,14 @@ static void command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_text_message_printf(c, "$C6Infinite TP %s", c->infinite_tp ? "enabled" : "disabled");
 }
 
-static void command_switch_assist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void proxy_command_infinite_tp(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string&) {
+  session.infinite_tp = !session.infinite_tp;
+  send_text_message_printf(session.client_channel, "$C6Infinite TP %s",
+      session.infinite_tp ? "enabled" : "disabled");
+}
+
+static void server_command_switch_assist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -653,7 +759,13 @@ static void command_switch_assist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_text_message_printf(c, "$C6Switch assist %s", c->switch_assist ? "enabled" : "disabled");
 }
 
-static void command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void proxy_command_switch_assist(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string&) {
+  session.switch_assist = !session.switch_assist;
+  send_text_message_printf(session.client_channel, "$C6Switch assist %s", session.switch_assist ? "enabled" : "disabled");
+}
+
+static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
   check_cheats_enabled(l);
@@ -683,74 +795,113 @@ static void command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef void (*handler_t)(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+typedef void (*server_handler_t)(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args);
+typedef void (*proxy_handler_t)(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args);
 struct ChatCommandDefinition {
-  handler_t handler;
+  server_handler_t server_handler;
+  proxy_handler_t proxy_handler;
   u16string usage;
 };
 
 static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     // TODO: implement command_help and actually use the usage strings here
-    {u"$allevent"  , {command_lobby_event_all   , u"Usage:\nallevent <name/ID>"}},
-    {u"$ann"       , {command_announce          , u"Usage:\nann <message>"}},
-    {u"$arrow"     , {command_arrow             , u"Usage:\narrow <color>"}},
-    {u"$ax"        , {command_ax                , u"Usage:\nax <message>"}},
-    {u"$ban"       , {command_ban               , u"Usage:\nban <name-or-number>"}},
-    {u"$bbchar"    , {command_convert_char_to_bb, u"Usage:\nbbchar <user> <pass> <1-4>"}},
-    // {u"$bank",       {command_bank              , u"Usage:\nbank <bank name>"}},
-    {u"$cheat"     , {command_cheat             , u"Usage:\ncheat"}},
-    {u"$dbgid"     , {command_dbgid             , u"Usage:\ndngid"}},
-    {u"$edit"      , {command_edit              , u"Usage:\nedit <stat> <value>"}},
-    {u"$event"     , {command_lobby_event       , u"Usage:\nevent <name>"}},
-    {u"$infhp"     , {command_infinite_hp       , u"Usage:\ninfhp"}},
-    {u"$inftp"     , {command_infinite_tp       , u"Usage:\ninftp"}},
-    {u"$item"      , {command_item              , u"Usage:\nitem <item-code>"}},
-    {u"$kick"      , {command_kick              , u"Usage:\nkick <name-or-number>"}},
-    {u"$li"        , {command_lobby_info        , u"Usage:\nli"}},
-    {u"$maxlevel"  , {command_max_level         , u"Usage:\nmax_level <level>"}},
-    {u"$minlevel"  , {command_min_level         , u"Usage:\nmin_level <level>"}},
-    {u"$next"      , {command_next              , u"Usage:\nnext"}},
-    {u"$password"  , {command_password          , u"Usage:\nlock [password]\nomit password to\nunlock game"}},
-    {u"$secid"     , {command_secid             , u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
-    {u"$silence"   , {command_silence           , u"Usage:\nsilence <name-or-number>"}},
-    {u"$song"      , {command_song              , u"Usage:\nsong <song-number>"}},
-    {u"$swa"       , {command_switch_assist     , u"Usage:\nswa"}},
-    {u"$type"      , {command_lobby_type        , u"Usage:\ntype <name>"}},
-    {u"$warp"      , {command_warp              , u"Usage:\nwarp <area-number>"}},
-    {u"$what"      , {command_what              , u"Usage:\nwhat"}},
+    {u"$allevent"  , {server_command_lobby_event_all   , nullptr                    , u"Usage:\nallevent <name/ID>"}},
+    {u"$ann"       , {server_command_announce          , nullptr                    , u"Usage:\nann <message>"}},
+    {u"$arrow"     , {server_command_arrow             , proxy_command_arrow        , u"Usage:\narrow <color>"}},
+    {u"$ax"        , {server_command_ax                , nullptr                    , u"Usage:\nax <message>"}},
+    {u"$ban"       , {server_command_ban               , nullptr                    , u"Usage:\nban <name-or-number>"}},
+    // TODO: implement this on proxy server
+    {u"$bbchar"    , {server_command_convert_char_to_bb, nullptr                    , u"Usage:\nbbchar <user> <pass> <1-4>"}},
+    {u"$cheat"     , {server_command_cheat             , nullptr                    , u"Usage:\ncheat"}},
+    {u"$dbgid"     , {server_command_dbgid             , nullptr                    , u"Usage:\ndbgid"}},
+    {u"$edit"      , {server_command_edit              , nullptr                    , u"Usage:\nedit <stat> <value>"}},
+    {u"$event"     , {server_command_lobby_event       , proxy_command_lobby_event  , u"Usage:\nevent <name>"}},
+    {u"$infhp"     , {server_command_infinite_hp       , proxy_command_infinite_hp  , u"Usage:\ninfhp"}},
+    {u"$inftp"     , {server_command_infinite_tp       , proxy_command_infinite_tp  , u"Usage:\ninftp"}},
+    {u"$item"      , {server_command_item              , nullptr                    , u"Usage:\nitem <item-code>"}},
+    {u"$kick"      , {server_command_kick              , nullptr                    , u"Usage:\nkick <name-or-number>"}},
+    {u"$li"        , {server_command_lobby_info        , proxy_command_lobby_info   , u"Usage:\nli"}},
+    {u"$maxlevel"  , {server_command_max_level         , nullptr                    , u"Usage:\nmax_level <level>"}},
+    {u"$minlevel"  , {server_command_min_level         , nullptr                    , u"Usage:\nmin_level <level>"}},
+    // TODO: implement this on proxy server
+    {u"$next"      , {server_command_next              , nullptr                    , u"Usage:\nnext"}},
+    {u"$password"  , {server_command_password          , nullptr                    , u"Usage:\nlock [password]\nomit password to\nunlock game"}},
+    {u"$secid"     , {server_command_secid             , proxy_command_secid        , u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
+    {u"$silence"   , {server_command_silence           , nullptr                    , u"Usage:\nsilence <name-or-number>"}},
+    // TODO: implement this on proxy server
+    {u"$song"      , {server_command_song              , nullptr                    , u"Usage:\nsong <song-number>"}},
+    {u"$swa"       , {server_command_switch_assist     , proxy_command_switch_assist, u"Usage:\nswa"}},
+    {u"$type"      , {server_command_lobby_type        , nullptr                    , u"Usage:\ntype <name>"}},
+    {u"$warp"      , {server_command_warp              , proxy_command_warp         , u"Usage:\nwarp <area-number>"}},
+    {u"$what"      , {server_command_what              , nullptr                    , u"Usage:\nwhat"}},
 });
+
+struct SplitCommand {
+  u16string name;
+  u16string args;
+
+  SplitCommand(const u16string& text) {
+    size_t space_pos = text.find(u' ');
+    if (space_pos != string::npos) {
+      this->name = text.substr(0, space_pos);
+      this->args = text.substr(space_pos + 1);
+    } else {
+      this->name = text;
+    }
+  }
+};
 
 // This function is called every time any player sends a chat beginning with a
 // dollar sign. It is this function's responsibility to see if the chat is a
 // command, and to execute the command and block the chat if it is.
 void process_chat_command(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l,
     std::shared_ptr<Client> c, const std::u16string& text) {
-
-  u16string command_name;
-  u16string text_str(text);
-  size_t space_pos = text_str.find(u' ');
-  if (space_pos != string::npos) {
-    command_name = text_str.substr(0, space_pos);
-    text_str = text_str.substr(space_pos + 1);
-  } else {
-    command_name = text_str;
-    text_str.clear();
-  }
+  SplitCommand cmd(text);
 
   const ChatCommandDefinition* def = nullptr;
   try {
-    def = &chat_commands.at(command_name);
+    def = &chat_commands.at(cmd.name);
   } catch (const out_of_range&) {
-    send_text_message(c, u"$C6Unknown command.");
+    send_text_message(c, u"$C6Unknown command");
     return;
   }
 
+  if (!def->server_handler) {
+    send_text_message(c, u"$C6Command not available\non game server");
+  } else {
+    try {
+      def->server_handler(s, l, c, cmd.args);
+    } catch (const precondition_failed& e) {
+      send_text_message(c, e.what());
+    } catch (const exception& e) {
+      send_text_message_printf(c, "$C6Failed:\n%s", e.what());
+    }
+  }
+}
+
+void process_chat_command(std::shared_ptr<ServerState> s,
+    ProxyServer::LinkedSession& session, const std::u16string& text) {
+  SplitCommand cmd(text);
+
+  const ChatCommandDefinition* def = nullptr;
   try {
-    def->handler(s, l, c, text_str.c_str());
-  } catch (const precondition_failed& e) {
-    send_text_message(c, e.what());
-  } catch (const exception& e) {
-    send_text_message_printf(c, "$C6Failed:\n%s", e.what());
+    def = &chat_commands.at(cmd.name);
+  } catch (const out_of_range&) {
+    send_text_message(session.client_channel, u"$C6Unknown command");
+    return;
+  }
+
+  if (!def->proxy_handler) {
+    send_text_message(session.client_channel, u"$C6Command not available\non proxy server");
+  } else {
+    try {
+      def->proxy_handler(s, session, cmd.args);
+    } catch (const precondition_failed& e) {
+      send_text_message(session.client_channel, e.what());
+    } catch (const exception& e) {
+      send_text_message_printf(session.client_channel, "$C6Failed:\n%s", e.what());
+    }
   }
 }

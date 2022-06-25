@@ -50,31 +50,20 @@ private:
         ServerBehavior behavior);
   };
   std::unordered_map<int, ListeningSocket> listening_sockets;
-  std::unordered_map<struct bufferevent*, std::shared_ptr<Client>> bev_to_client;
+  std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
 
   std::shared_ptr<ServerState> state;
 
   static void dispatch_on_listen_accept(struct evconnlistener* listener,
       evutil_socket_t fd, struct sockaddr *address, int socklen, void* ctx);
   static void dispatch_on_listen_error(struct evconnlistener* listener, void* ctx);
-  static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
-  static void dispatch_on_client_error(struct bufferevent* bev, short events,
-      void* ctx);
-  static void dispatch_on_disconnecting_client_output(struct bufferevent* bev,
-      void* ctx);
-  static void dispatch_on_disconnecting_client_error(struct bufferevent* bev,
-      short events, void* ctx);
 
-  void disconnect_client(struct bufferevent* bev);
   void disconnect_client(std::shared_ptr<Client> c);
 
   void on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd,
       struct sockaddr *address, int socklen);
   void on_listen_error(struct evconnlistener* listener);
-  void on_client_input(struct bufferevent* bev);
-  void on_client_error(struct bufferevent* bev, short events);
-  void on_disconnecting_client_output(struct bufferevent* bev);
-  void on_disconnecting_client_error(struct bufferevent* bev, short events);
 
-  void receive_and_process_commands(std::shared_ptr<Client> c);
+  static void on_client_input(Channel& ch, uint16_t command, uint32_t flag, std::string& data);
+  static void on_client_error(Channel& ch, short events);
 };

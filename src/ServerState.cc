@@ -176,17 +176,17 @@ shared_ptr<Client> ServerState::find_client(const std::u16string* identifier,
 }
 
 uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
-  if (c->is_virtual_connection) {
-    if (c->remote_addr.ss_family != AF_INET) {
+  if (c->channel.is_virtual_connection) {
+    if (c->channel.remote_addr.ss_family != AF_INET) {
       throw logic_error("virtual connection is missing remote IPv4 address");
     }
-    const auto* sin = reinterpret_cast<const sockaddr_in*>(&c->remote_addr);
+    const auto* sin = reinterpret_cast<const sockaddr_in*>(&c->channel.remote_addr);
     return IPStackSimulator::connect_address_for_remote_address(
         ntohl(sin->sin_addr.s_addr));
   } else {
     // TODO: we can do something smarter here, like use the sockname to find
     // out which interface the client is connected to, and return that address
-    if (is_local_address(c->remote_addr)) {
+    if (is_local_address(c->channel.remote_addr)) {
       return this->local_address;
     } else {
       return this->external_address;

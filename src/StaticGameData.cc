@@ -143,8 +143,9 @@ u16string u16name_for_section_id(uint8_t section_id) {
 }
 
 uint8_t section_id_for_name(const string& name) {
+  string lower_name = tolower(name);
   try {
-    return name_to_section_id.at(name);
+    return name_to_section_id.at(lower_name);
   } catch (const out_of_range&) { }
   try {
     uint64_t x = stoul(name);

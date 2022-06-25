@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include "Channel.hh"
 #include "CommandFormats.hh"
 #include "FunctionCompiler.hh"
 #include "License.hh"
@@ -66,26 +67,14 @@ struct Client {
   uint8_t bb_game_state;
   uint16_t flags;
 
-  // Encryption
-  std::shared_ptr<PSOEncryption> crypt_in;
-  std::shared_ptr<PSOEncryption> crypt_out;
-
   // Network
-  struct sockaddr_storage local_addr;
-  struct sockaddr_storage remote_addr;
-  struct bufferevent* bev;
+  Channel channel;
   struct sockaddr_storage next_connection_addr;
   ServerBehavior server_behavior;
-  bool is_virtual_connection;
   bool should_disconnect;
   bool should_send_to_lobby_server;
   uint32_t proxy_destination_address;
   uint16_t proxy_destination_port;
-
-  // Timing & menus
-  uint64_t play_time_begin; // time of connection (used for incrementing play time on BB)
-  uint64_t last_recv_time; // time of last data received
-  uint64_t last_send_time; // time of last data sent
 
   // Lobby/positioning
   float x;
@@ -112,8 +101,7 @@ struct Client {
   uint32_t dol_base_addr;
   std::shared_ptr<DOLFileIndex::DOLFile> loading_dol_file;
 
-  Client(struct bufferevent* bev, GameVersion version,
-      ServerBehavior server_behavior);
+  Client(struct bufferevent* bev, GameVersion version, ServerBehavior server_behavior);
 
   void set_license(std::shared_ptr<const License> l);
 

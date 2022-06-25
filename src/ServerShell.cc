@@ -125,11 +125,6 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     Enable or disable chat filtering (enabled by default). Chat filtering\n\
     applies newserv\'s standard character replacements to chat messages; for\n\
     example, $ becomes a tab character and # becomes a newline.\n\
-  set-chat-safety <on|off>\n\
-    Enable or disable chat safety (enabled by default). When chat safety is on,\n\
-    all chat messages that begin with a $ are not sent to the remote server.\n\
-    This can prevent embarrassing situations if the remote server isn\'t a\n\
-    newserv instance and you have newserv commands in your chat shortcuts.\n\
   set-infinite-hp <on|off>\n\
   set-infinite-tp <on|off>\n\
     Enable or disable infinite HP or TP. When infinite HP is enabled, attacks\n\
@@ -298,8 +293,11 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     } catch (const exception&) { }
 
     if (proxy_session.get()) {
-      bool to_server = (command_name[1] == 's');
-      proxy_session->send_to_end_with_header(to_server, data);
+      if (command_name[1] == 's') {
+        proxy_session->server_channel.send(data);
+      } else {
+        proxy_session->client_channel.send(data);
+      }
 
     } else {
       if (command_name [1] == 's') {
@@ -324,11 +322,11 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     data.push_back('\0');
     data.resize((data.size() + 3) & (~3));
 
-    session->send_to_end(true, 0x06, 0x00, data);
+    session->server_channel.send(0x06, 0x00, data);
 
   } else if (command_name == "marker") {
     auto session = this->get_proxy_session();
-    session->send_to_end(true, 0x89, stoul(command_args));
+    session->server_channel.send(0x89, stoul(command_args));
 
   } else if (command_name == "warp") {
     auto session = this->get_proxy_session();
@@ -338,8 +336,8 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     cmds[0].word[1] = session->lobby_client_id;
     cmds[1].dword = stoul(command_args);
 
-    session->send_to_end(false, 0x60, 0x00, &cmds, sizeof(cmds));
-    session->send_to_end(true, 0x60, 0x00, &cmds, sizeof(cmds));
+    session->client_channel.send(0x60, 0x00, &cmds, sizeof(cmds));
+    session->server_channel.send(0x60, 0x00, &cmds, sizeof(cmds));
 
   } else if ((command_name == "info-board") || (command_name == "info-board-data")) {
     auto session = this->get_proxy_session();
@@ -353,7 +351,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     data.push_back('\0');
     data.resize((data.size() + 3) & (~3));
 
-    session->send_to_end(true, 0xD9, 0x00, data);
+    session->server_channel.send(0xD9, 0x00, data);
 
   } else if (command_name == "set-override-section-id") {
     auto session = this->get_proxy_session();
@@ -369,7 +367,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
       session->override_lobby_event = -1;
     } else {
       session->override_lobby_event = event_for_name(command_args);
-      session->send_to_end(false, 0xDA, session->override_lobby_event);
+      session->client_channel.send(0xDA, session->override_lobby_event);
     }
 
   } else if (command_name == "set-override-lobby-number") {
@@ -384,10 +382,6 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     auto session = this->get_proxy_session();
     set_boolean(&session->enable_chat_filter, command_args);
 
-  } else if (command_name == "set-chat-safety") {
-    auto session = this->get_proxy_session();
-    set_boolean(&session->suppress_newserv_commands, command_args);
-
   } else if (command_name == "set-infinite-hp") {
     auto session = this->get_proxy_session();
     set_boolean(&session->infinite_hp, command_args);
@@ -398,7 +392,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
 
   } else if (command_name == "set-switch-assist") {
     auto session = this->get_proxy_session();
-    set_boolean(&session->enable_switch_assist, command_args);
+    set_boolean(&session->switch_assist, command_args);
 
   } else if (command_name == "set-save-files") {
     auto session = this->get_proxy_session();

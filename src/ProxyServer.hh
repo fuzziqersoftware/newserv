@@ -35,16 +35,14 @@ public:
   struct LinkedSession {
     ProxyServer* server;
     uint64_t id;
-    std::string client_name;
-    std::string server_name;
     PrefixedLogger log;
 
     std::unique_ptr<struct event, void(*)(struct event*)> timeout_event;
 
     std::shared_ptr<const License> license;
 
-    std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> client_bev;
-    std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> server_bev;
+    Channel client_channel;
+    Channel server_channel;
     uint16_t local_port;
     struct sockaddr_storage next_destination;
 
@@ -60,9 +58,8 @@ public:
     uint32_t remote_guild_card_number;
     parray<uint8_t, 0x20> remote_client_config_data;
     ClientConfigBB newserv_client_config;
-    bool suppress_newserv_commands;
     bool enable_chat_filter;
-    bool enable_switch_assist;
+    bool switch_assist;
     bool infinite_hp;
     bool infinite_tp;
     bool save_files;
@@ -80,10 +77,6 @@ public:
     std::vector<LobbyPlayer> lobby_players;
     size_t lobby_client_id;
 
-    std::shared_ptr<PSOEncryption> client_input_crypt;
-    std::shared_ptr<PSOEncryption> client_output_crypt;
-    std::shared_ptr<PSOEncryption> server_input_crypt;
-    std::shared_ptr<PSOEncryption> server_output_crypt;
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
 
     struct SavingFile {
@@ -125,45 +118,24 @@ public:
         const struct sockaddr_storage& next_destination);
 
     void resume(
-        std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
-        std::shared_ptr<PSOEncryption> client_input_crypt,
-        std::shared_ptr<PSOEncryption> client_output_crypt,
+        Channel&& client_channel,
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
         uint32_t sub_version,
         const std::string& character_name);
     void resume(
-        std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
-        std::shared_ptr<PSOEncryption> client_input_crypt,
-        std::shared_ptr<PSOEncryption> client_output_crypt,
+        Channel&& client_channel,
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
         std::string&& login_command_bb);
-    void resume(struct bufferevent* client_bev);
+    void resume(Channel&& client_channel);
     void resume_inner(
-        std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)>&& client_bev,
-        std::shared_ptr<PSOEncryption> client_input_crypt,
-        std::shared_ptr<PSOEncryption> client_output_crypt,
+        Channel&& client_channel,
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt);
     void connect();
 
-    static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
-    static void dispatch_on_client_error(struct bufferevent* bev, short events,
-        void* ctx);
-    static void dispatch_on_server_input(struct bufferevent* bev, void* ctx);
-    static void dispatch_on_server_error(struct bufferevent* bev, short events,
-        void* ctx);
     static void dispatch_on_timeout(evutil_socket_t fd, short what, void* ctx);
-    void on_client_input();
-    void on_server_input();
-    void on_stream_error(short events, bool is_server_stream);
+    static void on_input(Channel& ch, uint16_t, uint32_t, std::string& msg);
+    static void on_error(Channel& ch, short events);
     void on_timeout();
-
-    void send_to_end(bool to_server, uint16_t command, uint32_t flag,
-        const void* data = nullptr, size_t size = 0);
-    void send_to_end(bool to_server, uint16_t command, uint32_t flag,
-        const std::string& data);
-    void send_to_end_with_header(
-        bool to_server, const void* data, size_t size);
-    void send_to_end_with_header(bool to_server, const std::string& data);
 
     void disconnect();
 
@@ -208,24 +180,19 @@ private:
     ProxyServer* server;
 
     PrefixedLogger log;
-    std::unique_ptr<struct bufferevent, void(*)(struct bufferevent*)> bev;
+    Channel channel;
     uint16_t local_port;
     GameVersion version;
     struct sockaddr_storage next_destination;
 
-    std::shared_ptr<PSOEncryption> crypt_out;
-    std::shared_ptr<PSOEncryption> crypt_in;
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
 
     UnlinkedSession(ProxyServer* server, struct bufferevent* bev, uint16_t port, GameVersion version);
 
     void receive_and_process_commands();
 
-    static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
-    static void dispatch_on_client_error(struct bufferevent* bev, short events,
-        void* ctx);
-    void on_client_input();
-    void on_client_error(short events);
+    static void on_input(Channel& ch, uint16_t command, uint32_t flag, std::string& msg);
+    static void on_error(Channel& ch, short events);
   };
 
   PrefixedLogger log;

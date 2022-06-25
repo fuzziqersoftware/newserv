@@ -1334,6 +1334,11 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
       throw logic_error("player data command not implemented for version");
   }
 
+  auto player = c->game_data.player(false);
+  if (player) {
+    c->channel.name = remove_language_marker(encode_sjis(player->disp.name));
+  }
+
   if (command == 0x61 && !c->pending_bb_save_username.empty()) {
     string prev_bb_username = c->game_data.bb_username;
     size_t prev_bb_player_index = c->game_data.bb_player_index;
@@ -1390,37 +1395,35 @@ void process_game_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
 void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
     const u16string& text) { // 06
 
-  if (!c->can_chat) {
-    return;
-  }
-
   u16string processed_text = remove_language_marker(text);
   if (processed_text.empty()) {
     return;
   }
 
+  auto l = s->find_lobby(c->lobby_id);
+  if (!l) {
+    return;
+  }
+
   if (processed_text[0] == L'$') {
-    auto l = s->find_lobby(c->lobby_id);
-    if (l) {
+    if (processed_text[1] == L'$') {
+      processed_text = processed_text.substr(1);
+    } else {
       process_chat_command(s, l, c, processed_text);
-    }
-  } else {
-    if (!c->can_chat) {
       return;
     }
+  }
 
-    auto l = s->find_lobby(c->lobby_id);
-    if (!l) {
-      return;
-    }
+  if (!c->can_chat) {
+    return;
+  }
 
-    for (size_t x = 0; x < l->max_clients; x++) {
-      if (!l->clients[x]) {
-        continue;
-      }
-      send_chat_message(l->clients[x], c->license->serial_number,
-          c->game_data.player()->disp.name.data(), processed_text.c_str());
+  for (size_t x = 0; x < l->max_clients; x++) {
+    if (!l->clients[x]) {
+      continue;
     }
+    send_chat_message(l->clients[x], c->license->serial_number,
+        c->game_data.player()->disp.name.data(), processed_text.c_str());
   }
 }
 
@@ -2451,8 +2454,6 @@ void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (player) {
     encoded_name = remove_language_marker(encode_sjis(player->disp.name));
   }
-  print_received_command(command, flag, data.data(), data.size(), c->version,
-      encoded_name.c_str());
 
   auto fn = handlers[static_cast<size_t>(c->version)][command & 0xFF];
   if (fn) {

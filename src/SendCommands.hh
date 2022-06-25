@@ -18,6 +18,9 @@
 
 
 
+// TODO: Many of these functions should take a Channel& instead of a
+// shared_ptr<Client>. Refactor functions appropriately.
+
 // Note: There are so many versions of this function for a few reasons:
 // - There are a lot of different target types (sometimes we want to send a
 //   command to one client, sometimes to everyone in a lobby, etc.)
@@ -26,9 +29,8 @@
 //   pointer is given but size is accidentally not given (e.g. if the type of
 //   data in the calling function is changed from string to void*).
 
-void send_command(struct bufferevent* bev, GameVersion version,
-    PSOEncryption* crypt, uint16_t command, uint32_t flag, const void* data,
-    size_t size, const char* name_str = nullptr);
+void send_command(Channel& ch, uint16_t command, uint32_t flag,
+    const void* data, size_t size);
 
 void send_command(std::shared_ptr<Client> c, uint16_t command,
     uint32_t flag, const void* data, size_t size);
@@ -137,9 +139,11 @@ void send_quest_info(std::shared_ptr<Client> c, const std::u16string& text,
     bool is_download_quest);
 void send_lobby_message_box(std::shared_ptr<Client> c, const std::u16string& text);
 void send_ship_info(std::shared_ptr<Client> c, const std::u16string& text);
+void send_text_message(Channel& ch, const std::u16string& text);
 void send_text_message(std::shared_ptr<Client> c, const std::u16string& text);
 void send_text_message(std::shared_ptr<Lobby> l, const std::u16string& text);
 void send_text_message(std::shared_ptr<ServerState> l, const std::u16string& text);
+void send_chat_message(Channel& ch, const std::u16string& text);
 void send_chat_message(std::shared_ptr<Client> c, uint32_t from_serial_number,
     const std::u16string& from_name, const std::u16string& text);
 void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
@@ -147,7 +151,7 @@ void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
 
 template <typename TargetT>
 __attribute__((format(printf, 2, 3))) void send_text_message_printf(
-    std::shared_ptr<TargetT> t, const char* format, ...) {
+    TargetT& t, const char* format, ...) {
   va_list va;
   va_start(va, format);
   std::string buf = string_vprintf(format, va);
@@ -196,6 +200,7 @@ enum PlayerStatsChange {
 
 void send_player_stats_change(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
     PlayerStatsChange which, uint32_t amount);
+void send_warp(Channel& ch, uint8_t client_id, uint32_t area);
 void send_warp(std::shared_ptr<Client> c, uint32_t area);
 
 void send_ep3_change_music(std::shared_ptr<Client> c, uint32_t song);

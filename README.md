@@ -73,43 +73,46 @@ I mainly built the DOL loading functionality for documentation purposes. By now,
 
 The server's shell supports a variety of administration commands. If the interactive shell is enabled, you can enter these commands at any time, even if the prompt isn't visible. Run `help` in the server's shell to see all of the commands and how to use them.
 
-newserv also supports a variety of commands players can use via the chat interface. These commands work on the game server (that is, in lobbies and games hosted by newserv); they do not work on the proxy server. The chat commands are:
+newserv also supports a variety of commands players can use via the chat interface. Any chat message that begins with `$` is treated as a chat command. (If you actually want to send a chat message starting with `$`, type `$$` instead.)
+
+Some commands only work on the game server and not on the proxy server. The chat commands are:
 
 * Information commands
-    * `$li`: Shows basic information about the lobby or game you're in.
-    * `$what`: Shows the type, name, and stats of the nearest item on the ground.
+    * `$li`: Shows basic information about the lobby or game you're in. If you're on the proxy server, shows information about your connection (remote Guild Card number, client ID, etc.) instead.
+    * `$what` (game server only): Shows the type, name, and stats of the nearest item on the ground.
 
 * Personal state commands
     * `$arrow <color-id>`: Changes your lobby arrow color.
     * `$secid <section-id>`: Sets your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. To revert to your actual section id, run `$secid` with no name after it.
 
-* Blue Burst player commands
+* Blue Burst player commands (game server only)
     * `$bbchar <username> <password> <1-4>`: Use this command when playing on a non-BB version of PSO. If the username and password are correct, this command converts your current character to BB format and saves it on the server in the given slot.
     * `$edit <stat> <value>`: Modifies your character data.
     * `$item <data>`: Sets the next item to be dropped from an enemy or box.
 
-* Game state commands
+* Game state commands (game server only)
     * `$maxlevel <level>`: Sets the maximum level for players to join the current game.
     * `$minlevel <level>`: Sets the minimum level for players to join the current game.
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
 
 * Cheat mode commands
-    * `$cheat`: Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled.
+    * `$cheat`: Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. This command does nothing on the proxy server, since cheat mode is always enabled there.
     * `$infhp` / `$inftp`: Enables or disables infinite HP or TP mode. Applies to only you. In infinite HP mode, one-hit KO attacks will still kill you.
     * `$warp <area-id>`: Warps yourself to the given area.
-    * `$next`: Warps yourself to the next area.
+    * `$next` (game server only): Warps yourself to the next area.
     * `$swa`: Enables or disables switch assist. When enabled, the server will attempt to automatically unlock two-player doors in solo games if you step on both switches sequentially.
 
 * Configuration commands
-    * `$event <event>` / `$allevent <event>`: Sets the current holiday event in the current lobby, or in all lobbies. Holiday events are documented in the "Using $event" item in the information menu.
-    * `$song <song-id>`: Plays a specific song in the current lobby (Episode 3 only).
+    * `$event <event>`: Sets the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, only you will see the new event; other players will not.
+    * `$allevent <event>` (game server only): Sets the current holiday event in all lobbies.
+    * `$song <song-id>` (game server only, Episode 3 only): Plays a specific song in the current lobby.
 
-* Administration commands
+* Administration commands (game server only)
     * `$ann <message>`: Sends an announcement message. The message text is sent to all players in all games and lobbies.
     * `$ax <message>`: Sends a message to the server's terminal. This cannot be used to run server shell commands; it only prints text to stderr.
-    * `$silence <identifier>`: Silences a player (remove their ability to chat) or unsilences a player. The identifier may be the player's name or guild card number.
-    * `$kick <identifier>`: Disconnects a player. The identifier may be the player's name or guild card number.
-    * `$ban <identifier>`: Bans a player. The identifier may be the player's name or guild card number.
+    * `$silence <identifier>`: Silences a player (remove their ability to chat) or unsilences a player. The identifier may be the player's name or Guild Card number.
+    * `$kick <identifier>`: Disconnects a player. The identifier may be the player's name or Guild Card number.
+    * `$ban <identifier>`: Bans a player. The identifier may be the player's name or Guild Card number.
 
 ### Using newserv as a proxy
 
@@ -119,8 +122,7 @@ To use the proxy, add an entry to the ProxyDestinations dictionary in config.jso
 
 A few things to be aware of when using the proxy server:
 - On PC and GC, using the Change Ship or Change Block actions from the lobby counter will bring you back to newserv's main menu, not the remote server's ship select. You can go back to the server you were just on by choosing it from newserv's proxy server menu again.
-- The remote server will probably try to assign you a guild card number that doesn't match the one you have on newserv. The proxy server rewrites the commands on the fly to make it look like the remote server assigned you the same guild card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the guild card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you connect to the remote server.
-- The proxy server blocks chat commands that look like newserv commands by default, but you can change this with the `set-chat-safety off` shell command if needed.
+- The remote server will probably try to assign you a Guild Card number that doesn't match the one you have on newserv. The proxy server rewrites the commands on the fly to make it look like the remote server assigned you the same Guild Card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the Guild Card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you first connect to the remote server, and you can retrieve it in lobbies or during games with the $li command.
 - There are shell commands that affect clients on the proxy (run 'help' in the shell to see what they are). All proxy commands in the shell only work when there's exactly one client connected through the proxy, since there isn't (yet) a way to say via the shell which session you want to affect.
 
 ### Connecting local clients
