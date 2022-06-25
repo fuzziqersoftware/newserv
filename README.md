@@ -18,6 +18,7 @@ Current known issues / missing features:
 - PSO PC and PSOBB are not well-tested and likely will disconnect when clients try to use unimplemented features. Only GC is known to be stable and mostly complete.
 - Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to use properly.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
+- Implement private lobbies, and add a way to make games persistent.
 
 ## Usage
 
