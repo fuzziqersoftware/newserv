@@ -40,7 +40,11 @@ void Server::disconnect_client(shared_ptr<Client> c) {
   this->channel_to_client.erase(&c->channel);
   c->channel.disconnect();
 
-  process_disconnect(this->state, c);
+  try {
+    process_disconnect(this->state, c);
+  } catch (const exception& e) {
+    this->log(WARNING, "Error during client disconnect cleanup: %s", e.what());
+  }
   // c is destroyed here (process_disconnect should remove any other references
   // to it, e.g. from Lobby objects)
 }
@@ -83,7 +87,12 @@ void Server::on_listen_accept(struct evconnlistener* listener,
   c->channel.context_obj = this;
   this->channel_to_client.emplace(&c->channel, c);
 
-  process_connect(this->state, c);
+  try {
+    process_connect(this->state, c);
+  } catch (const exception& e) {
+    this->log(WARNING, "Error during client initialization: %s", e.what());
+    this->disconnect_client(c);
+  }
 }
 
 void Server::connect_client(
@@ -105,7 +114,12 @@ void Server::connect_client(
   sin->sin_addr.s_addr = htonl(address);
   sin->sin_port = htons(port);
 
-  process_connect(this->state, c);
+  try {
+    process_connect(this->state, c);
+  } catch (const exception& e) {
+    this->log(WARNING, "Error during client initialization: %s", e.what());
+    this->disconnect_client(c);
+  }
 }
 
 void Server::on_listen_error(struct evconnlistener* listener) {
@@ -122,7 +136,12 @@ void Server::on_client_input(Channel& ch, uint16_t command, uint32_t flag, std::
   if (c->should_disconnect) {
     server->disconnect_client(c);
   } else {
-    process_command(server->state, c, command, flag, data);
+    try {
+      process_command(server->state, c, command, flag, data);
+    } catch (const exception& e) {
+      server->log(WARNING, "Error processing client command: %s", e.what());
+      c->should_disconnect = true;
+    }
     if (c->should_disconnect) {
       server->disconnect_client(c);
     }
