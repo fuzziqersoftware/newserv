@@ -277,6 +277,20 @@ struct S_ServerInit_DC_PC_GC_02_17_92_9B {
   ptext<char, 0xC0> after_message;
 };
 
+// 03 (C->S): Legacy login (non-BB)
+
+struct C_LegacyLogin_PC_GC_03 {
+  le_uint64_t unused; // Same as unused field in 9D/9E
+  le_uint32_t sub_version;
+  parray<uint8_t, 4> unused2; // Same as the first 4 bytes of 9D/9E's unused2
+  // Note: These are suffixed with 2 since they come from the same source data
+  // as the corresponding fields in 9D/9E. (Even though serial_number and
+  // serial_number2 have the same contents in 9E, they do not come from the same
+  // field on the client's connection context object.)
+  ptext<char, 0x10> serial_number2;
+  ptext<char, 0x10> access_key2;
+};
+
 // 03 (S->C): Legacy password check result (non-BB)
 // header.flag specifies if the password was correct. If header.flag is 0, the
 // password saved to the memory card (if any) is deleted and the client is
@@ -303,12 +317,18 @@ struct S_ServerInit_BB_03 {
 // See comments on non-BB 03 (S->C). This is likely a relic of an older,
 // now-unused sequence.
 // header.flag is nonzero, but it's not clear what it's used for.
-struct C_LegacyLogin_GC_04 {
-  uint32_t unknown_a1[2];
+struct C_LegacyLogin_PC_GC_04 {
+  le_uint64_t unused1; // Same as unused field in 9D/9E
   le_uint32_t sub_version;
-  le_uint32_t player_tag;
+  le_uint32_t unused2;
   ptext<char, 0x10> serial_number;
   ptext<char, 0x10> access_key;
+};
+
+struct C_LegacyLogin_BB_04 {
+  parray<le_uint32_t, 3> unknown_a1;
+  ptext<char, 0x10> username;
+  ptext<char, 0x10> password;
 };
 
 // 04 (S->C): Set guild card number and update client config ("security data")
@@ -427,16 +447,43 @@ struct S_Unknown_GC_0E {
 // 0F: Invalid command
 
 // 10 (C->S): Menu selection
+// header.flag contains two flags: 02 specifies if a password is present, and 01
+// specifies... something else. These two bits directly correspond to the two
+// lowest bits in the flags field of the game menu: 02 specifies that the game
+// is locked, but the function of 01 is unknown.
 
-struct C_MenuSelection {
+struct C_MenuSelection_10_Flag00 {
   le_uint32_t menu_id;
   le_uint32_t item_id;
-  // Password is only present when client attempts to join a locked game.
-  union {
-    char dcgc[0];
-    char16_t pcbb[0];
-  } password;
 };
+
+template <typename CharT>
+struct C_MenuSelection_10_Flag01 {
+  le_uint32_t menu_id;
+  le_uint32_t item_id;
+  ptext<CharT, 0x10> unknown_a1;
+};
+struct C_MenuSelection_DC_GC_10_Flag01 : C_MenuSelection_10_Flag01<char> { };
+struct C_MenuSelection_PC_BB_10_Flag01 : C_MenuSelection_10_Flag01<char16_t> { };
+
+template <typename CharT>
+struct C_MenuSelection_10_Flag02 {
+  le_uint32_t menu_id;
+  le_uint32_t item_id;
+  ptext<CharT, 0x10> password;
+};
+struct C_MenuSelection_DC_GC_10_Flag02 : C_MenuSelection_10_Flag02<char> { };
+struct C_MenuSelection_PC_BB_10_Flag02 : C_MenuSelection_10_Flag02<char16_t> { };
+
+template <typename CharT>
+struct C_MenuSelection_10_Flag03 {
+  le_uint32_t menu_id;
+  le_uint32_t item_id;
+  ptext<CharT, 0x10> unknown_a1;
+  ptext<CharT, 0x10> password;
+};
+struct C_MenuSelection_DC_GC_10_Flag03 : C_MenuSelection_10_Flag03<char> { };
+struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<char16_t> { };
 
 // 11 (S->C): Ship info
 // Same format as 01 command.
@@ -527,6 +574,11 @@ struct S_ReconnectSplit_19 {
 
 // 1E: Invalid command
 
+// 1F (C->S): Request information menu
+// No arguments
+// This command is used in PSO PC. It exists in PSO GC as well but is apparently
+// unused.
+
 // 1F (S->C): Information menu
 // Same format and usage as 07 command, except:
 // - The menu title will say "Information" instead of "Ship Select".
@@ -542,12 +594,15 @@ struct S_ReconnectSplit_19 {
 // Format unknown
 
 // 22: GameGuard check (BB)
-// An older version of BB used a 4-byte challenge in the flag field (and the
-// command had no payload). The latest version uses this 16-byte challenge.
 
-struct SC_GameCardCheck_BB_22 {
-  parray<uint8_t, 0x10> data;
+// Command 0022 is a 16-byte challenge (sent in the data field) using the
+// following structure.
+
+struct SC_GameCardCheck_BB_0022 {
+  parray<le_uint32_t, 4> data;
 };
+
+// Command 0122 uses a 4-byte challenge sent in the header.flag field instead.
 
 // 23 (S->C): Unknown (BB)
 // header.flag is used, but command has no other arguments.
@@ -701,7 +756,8 @@ struct C_OpenFileConfirmation_44_A6 {
 
 // 61 (C->S): Player data
 // See PSOPlayerDataPC, PSOPlayerDataGC, and PSOPlayerDataBB in Player.hh for
-// this command's format.
+// this command's format. header.flag appears to be the game's major version:
+// it's 02 on PSO PC, 03 on PSO GC and BB, and 04 on Episode 3.
 // Upon joining a game, the client assigns inventory item IDs sequentially as
 // (0x00010000 + (0x00200000 * lobby_client_id) + x). So, for example, player
 // 3's 8th item's ID would become 0x00610007. The item IDs from the last game
@@ -966,7 +1022,8 @@ struct S_ArrowUpdateEntry_88 {
 
 struct C_LegacyLogin_GC_90 {
   ptext<char, 0x11> serial_number;
-  ptext<char, 0x13> access_key;
+  ptext<char, 0x11> access_key;
+  parray<uint8_t, 2> unused;
 };
 
 // 90 (S->C): License verification result (GC)
@@ -1024,23 +1081,32 @@ struct C_Login_BB_93 {
 // servers may have just duplicated Sega's behavior verbatim.
 // Client will respond with a 61 command.
 
-// 96 (C->S): Client checksum
+// 96 (C->S): Character save information
 
-struct C_ClientChecksum_GC_96 {
-  // It seems only at most 48 bits of this are actually used - the highest-order
-  // (last) two bytes seem to always be zero.
-  le_uint64_t checksum;
+struct C_CharSaveInfo_GC_BB_96 {
+  // This field appears to be a checksum or random stamp of some sort; it seems
+  // to be unique and constant per character.
+  le_uint32_t unknown_a1;
+  // This field counts certain events on a per-character basis. One of the
+  // relevant events is the act of sending a 96 command; another is the act of
+  // receiving a 97 command (to which the client responds with a B1 command).
+  // Presumably Sega's original implementation could keep track of this value
+  // for each character and could therefore tell if a character had connected to
+  // an unofficial server between connections to Sega's servers.
+  le_uint32_t event_counter;
 };
 
 // 97 (S->C): Save to memory card
 // No arguments
-// According to Sylverant's documentation, sending this command with header.flag
-// == 0 will cause the client to delete a lot of the character's data. This was
-// presumably intended to be used by Sega if they detected cheating. newserv
-// always sends header.flag = 1 here, which saves without deleting anything.
+// Sending this command with header.flag == 0 will show a message saying that
+// "character data was improperly saved", and will delete the character's items
+// and challenge mode records. newserv (and all other unofficial servers) always
+// send this command with flag == 1, which causes the client to save normally.
+// Client will respond with a B1 command if header.flag is nonzero.
 
 // 98 (C->S): Leave game
-// Same format as 61 command.
+// Same format as 61 command. header.flag appears to be the major game version;
+// it's 03 on PSO GC Episodes 1 & 2 (and BB) and 04 on Episode 3.
 // Client will send an 84 when it's ready to join a lobby.
 
 // 99 (C->S): Server time accepted
@@ -1049,12 +1115,13 @@ struct C_ClientChecksum_GC_96 {
 // 9A (C->S): Initial login (no password or client config)
 
 struct C_Login_DC_PC_GC_9A {
-  ptext<char, 0x20> unused;
+  ptext<char, 0x10> unused1;
+  ptext<char, 0x10> unused2;
   ptext<char, 0x10> serial_number;
   ptext<char, 0x10> access_key;
-  uint32_t player_tag;
-  uint32_t guild_card_number;
-  uint32_t sub_version;
+  le_uint32_t player_tag;
+  le_uint32_t guild_card_number;
+  le_uint32_t sub_version;
   ptext<char, 0x30> serial_number2;
   ptext<char, 0x30> access_key2;
   ptext<char, 0x30> email_address;
@@ -1093,14 +1160,23 @@ struct C_Login_DC_PC_GC_9A {
 // - The client will respond with a command DB instead of a command 93.
 
 // 9C (C->S): Register
+// It appears PSO GC sends uninitialized data in the header.flag field here.
 
 struct C_Register_DC_PC_GC_9C {
-  ptext<char, 8> unused;
+  le_uint64_t unused;
   le_uint32_t sub_version;
   le_uint32_t unused2;
   ptext<char, 0x30> serial_number;
   ptext<char, 0x30> access_key;
   ptext<char, 0x30> password;
+};
+
+struct C_Register_BB_9C {
+  le_uint32_t sub_version;
+  le_uint32_t unknown_a1; // Only the second byte (0x0000??00) is used, but is 0
+  ptext<char, 0x30> username;
+  ptext<char, 0x30> password;
+  ptext<char, 0x30> game_tag; // "psopc2" on BB
 };
 
 // 9C (S->C): Register result
@@ -1119,15 +1195,19 @@ struct C_Login_PC_9D {
   le_uint32_t guild_card_number; // 0xFFFFFFFF if not set
   le_uint64_t unused;
   le_uint32_t sub_version;
-  parray<uint8_t, 0x24> unused2; // 00 01 00 00 ... (rest is 00)
+  uint8_t is_extended; // If 1, structure has extended format
+  uint8_t unknown_a1; // Always 1?
+  parray<uint8_t, 0x2> unused3; // Always zeroes?
+  ptext<char, 0x10> unused1; // Same as unused1/unused2 in 9A
+  ptext<char, 0x10> unused2;
   ptext<char, 0x10> serial_number;
   ptext<char, 0x10> access_key;
   ptext<char, 0x30> serial_number2;
   ptext<char, 0x30> access_key2;
   ptext<char, 0x10> name;
 };
-struct C_LoginWithUnusedSpace_PC_9D : C_Login_PC_9D {
-  parray<uint8_t, 0x84> unused_space;
+struct C_LoginExtended_PC_9D : C_Login_PC_9D {
+  parray<uint8_t, 0x84> unknown_a2;
 };
 
 // 9E (C->S): Log in with client config
@@ -1143,8 +1223,25 @@ struct C_Login_GC_9E : C_Login_PC_9D {
     ClientConfigFields() : data() { }
   } client_config;
 };
-struct C_LoginWithUnusedSpace_GC_9E : C_Login_GC_9E {
-  parray<uint8_t, 0x64> unused_space;
+struct C_LoginExtended_GC_9E : C_Login_GC_9E {
+  parray<uint8_t, 0x64> unknown_a2;
+};
+
+struct C_LoginExtended_BB_9E {
+  le_uint32_t player_tag;
+  le_uint32_t guild_card_number; // == serial_number when on newserv
+  le_uint32_t sub_version;
+  le_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
+  ptext<char, 0x10> unknown_a3; // Always blank?
+  ptext<char, 0x10> unknown_a4; // == "?"
+  ptext<char, 0x10> unknown_a5; // Always blank?
+  ptext<char, 0x10> unknown_a6; // Always blank?
+  ptext<char, 0x30> username;
+  ptext<char, 0x30> password;
+  ptext<char, 0x10> guild_card_number_str;
+  parray<le_uint32_t, 10> unknown_a7;
+  parray<uint8_t, 0x84> unused; // Always zero
 };
 
 // 9F (S->C): Request client config / security data
@@ -1159,7 +1256,7 @@ struct C_LoginWithUnusedSpace_GC_9E : C_Login_GC_9E {
 struct C_ChangeShipOrBlock_A0_A1 {
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
-  parray<uint8_t, 0x10> unknown; // all zeroes
+  parray<uint8_t, 0x10> unused; // Verified as unused from client disassembly
 };
 
 // A0 (S->C): Ship select menu
@@ -1225,6 +1322,7 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // This command is sent when the in-game quest menu (A2) is closed. When the
 // download quest menu is closed, either by downloading a quest or canceling,
 // the client sends A0 instead.
+// Curiously, PSO GC sends uninitialized data in the flag argument.
 
 // AA (C->S): Update quest statistics
 // This command is used in Maximum Attack 2, but its format is unlikely to be
@@ -1233,13 +1331,14 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // The server will respond with an AB command.
 
 struct C_UpdateQuestStatistics_AA {
-  le_uint32_t quest_internal_id;
+  le_uint16_t quest_internal_id;
+  le_uint16_t unused;
   le_uint16_t request_token;
   le_uint16_t unknown_a1;
   le_uint32_t unknown_a2;
   le_uint32_t kill_count;
   le_uint32_t time_taken; // in seconds
-  parray<uint8_t, 0x14> unknown_a3;
+  parray<le_uint32_t, 5> unknown_a3;
 };
 
 // AB (S->C): Confirm update quest statistics
@@ -1356,9 +1455,9 @@ struct S_RankUpdate_GC_Ep3_B7 {
   le_uint32_t jukebox_songs_unlocked;
 };
 
-// B8 (C->S): Confirm rank update
+// B7 (C->S): Confirm rank update
 // No arguments
-// The client sends this after it receives a B8 from the server.
+// The client sends this after it receives a B7 from the server.
 
 // B8 (S->C): Update card definitions (Episode 3)
 // Contents is a single little-endian le_uint32_t specifying the size of the
@@ -1450,15 +1549,15 @@ struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<char16_t> { };
 
 template <typename CharT>
 struct C_CreateGame {
-  le_uint64_t unused;
+  parray<le_uint32_t, 2> unused;
   ptext<CharT, 0x10> name;
   ptext<CharT, 0x10> password;
-  uint8_t difficulty; // 0-3
-  uint8_t battle_mode; // 0 or 1
+  uint8_t difficulty; // 0-3 (always 0 on Episode 3)
+  uint8_t battle_mode; // 0 or 1 (always 0 on Episode 3)
   // Note: Episode 3 uses the challenge mode flag for view battle permissions.
   // 0 = view battle allowed; 1 = not allowed
   uint8_t challenge_mode; // 0 or 1
-  uint8_t episode; // 1-4 on V3+; unused on DC/PC
+  uint8_t episode; // 1-4 on V3+ (3 on Episode 3); unused on DC/PC
 };
 struct C_CreateGame_DC_GC_C1_EC : C_CreateGame<char> { };
 struct C_CreateGame_PC_C1 : C_CreateGame<char16_t> { };
@@ -1537,7 +1636,38 @@ struct C_SetBlockedSenders_GC_BB_C6 {
 // Same as 60, but only send to Episode 3 clients.
 
 // CA (C->S): Server data request (Episode 3)
-// TODO: Document this. It does many different things.
+// The format is generally the same as the subcommand-based commands (60, 62,
+// etc.), but the server is expected to respond to the command instead of
+// forwarding it. (The client has no handler for CA commands at all.)
+// Generally a CA command looks like this:
+// CA 00 SS SS B3 TT 00 00 WW 00 00 00 ...
+//   S = command size
+//   T = subcommand size in uint32_ts (== (S / 4) - 1)
+//   W = subcommand number
+// We refer to Episode 3 server data commands as CAxWW, where W comes from the
+// format above. The server data commands are:
+//   CAx0B (T=05) - Unknown
+//   CAx0C (T=05) - Unknown
+//   CAx0D (T=07) - Unknown
+//   CAx0E (T=05) - Unknown
+//   CAx0F (T=07) - Unknown
+//   CAx10 (T=06) - Unknown
+//   CAx11 (T=1E) - Unknown
+//   CAx12 (T=05) - Unknown
+//   CAx13 (T=AF) - Update game state (?)
+//   CAx14 (T=1B) - Update playfield state (?)
+//   CAx1B (T=09) - Update names (?)
+//   CAx1D (T=04) - Unknown
+//   CAx21 (T=05) - Unknown
+//   CAx28 (T=05) - Unknown
+//   CAx2B (T=05) - Unknown
+//   CAx34 (T=05) - Unknown
+//   CAx3A (T=04) - Unknown
+//   CAx40 (T=04) - Map list request. See send_ep3_map_list for server response.
+//   CAx41 (T=05) - Map data request. See send_ep3_map_data for server response.
+//   CAx48 (T=05) - Unknown
+//   CAx49 (T=C1) - Unknown
+// TODO: Document the above commands that are currently unknown.
 
 // CB: Broadcast command (Episode 3)
 // Same as 60, but only send to Episode 3 clients.
@@ -1562,12 +1692,15 @@ struct S_Unknown_GC_Ep3_CC {
 // D0 (C->S): Execute trade via trade window (GC/BB)
 // General sequence: client sends D0, server sends D1 to that client, server
 // sends D3 to other client, server sends D4 to both (?) clients.
-// Format unknown
+// Format unknown. On PSO GC it appears to be always 0x288 bytes in size; on BB
+// it is 0x28C bytes in size, implying that the format is the same between the
+// two versions (since BB headers are 4 bytes longer).
 
 // D1 (S->C): Confirm trade to initiator (GC/BB)
 // No arguments
 
-// D2: Invalid command
+// D2 (C->S): Unknown (used in trade sequence)
+// No arguments
 
 // D3 (S->C): Execute trade with accepter (GC/BB)
 // Format unknown; appears to be same as D0.
@@ -1640,14 +1773,18 @@ struct C_VerifyLicense_GC_DB {
   ptext<char, 0x30> password;
 };
 
+// Note: This login pathway generally isn't used on BB (and isn't supported at
+// all during the data server phase). All current servers use 03/93 instead.
 struct C_VerifyLicense_BB_DB {
-  ptext<char, 0x10> unknown_a1;
-  ptext<char, 0x10> unknown_a2;
-  ptext<char, 0x10> unknown_a3;
-  ptext<char, 0x10> unknown_a4;
-  ptext<char, 0x30> unknown_a5;
-  ptext<char, 0x30> unknown_a6;
-  ptext<char, 0x30> unknown_a7;
+  // Note: These four fields are likely the same as those used in BB's 9E
+  ptext<char, 0x10> unknown_a3; // Always blank?
+  ptext<char, 0x10> unknown_a4; // == "?"
+  ptext<char, 0x10> unknown_a5; // Always blank?
+  ptext<char, 0x10> unknown_a6; // Always blank?
+  le_uint32_t sub_version;
+  ptext<char, 0x30> username;
+  ptext<char, 0x30> password;
+  ptext<char, 0x30> game_tag; // "psopc2"
 };
 
 // DC: Player menu state (Episode 3)
@@ -1691,7 +1828,39 @@ struct S_RareMonsterConfig_BB_DE {
   le_uint16_t data[16];
 };
 
-// DF: Invalid command
+// DF (C->S): Unknown (BB)
+// This command has many subcommands. It's not clear what any of them do.
+
+struct C_Unknown_BB_01DF {
+  le_uint32_t unknown_a1;
+};
+
+struct C_Unknown_BB_02DF {
+  le_uint32_t unknown_a1;
+};
+
+struct C_Unknown_BB_03DF {
+  le_uint32_t unknown_a1;
+};
+
+struct C_Unknown_BB_04DF {
+  le_uint32_t unknown_a1;
+};
+
+struct C_Unknown_BB_05DF {
+  le_uint32_t unknown_a1;
+  ptext<char16_t, 0x0C> unknown_a2;
+};
+
+struct C_Unknown_BB_06DF {
+  parray<le_uint32_t, 3> unknown_a1;
+};
+
+struct C_Unknown_BB_07DF {
+  le_uint32_t unused1; // Always 0xFFFFFFFF
+  le_uint32_t unused2; // Always 0
+  parray<le_uint32_t, 5> unknown_a1;
+};
 
 // E0 (S->C): Tournament list (Episode 3)
 
@@ -1718,11 +1887,13 @@ struct S_Unknown_GC_Ep3_E1 {
 };
 
 // E2 (C->S): Tournament control (Episode 3)
-// Flag = 0 => request tournament list (server responds with E0)
-// Flag = 1 => check tournament
-// Flag = 2 => cancel tournament entry
-// Flag = 3 => create tournament spectator team
-// Flag = 4 => join tournament spectator team
+// No arguments (in any of its forms)
+// Command meaning differs based on the value of header.flag. Specifically:
+//   header.flag = 00 => request tournament list (server responds with E0)
+//   header.flag = 01 => check tournament
+//   header.flag = 02 => cancel tournament entry
+//   header.flag = 03 => create tournament spectator team
+//   header.flag = 04 => join tournament spectator team
 
 // E2 (S->C): Tournament entry control (Episode 3)
 
@@ -1795,6 +1966,10 @@ struct S_PlayerPreview_NoPlayer_BB_00E4 {
   le_uint32_t error; // 2 = no player present
 };
 
+// E5 (C->S): CARD lobby game? (Episode 3)
+// Appears to be the same as E4 (C->S), but also appears never to be sent by the
+// client.
+
 // E5 (S->C): Player preview (BB)
 // E5 (C->S): Create character (BB)
 
@@ -1803,8 +1978,25 @@ struct SC_PlayerPreview_CreateCharacter_BB_00E5 {
   PlayerDispDataBBPreview preview;
 };
 
-// E6: Spectator team list (Episode 3)
+// E6 (C->S): Spectator team control (Episode 3)
+
+// With header.flag == 0, this command has no arguments and is used for
+// requesting the spectator team list. The server responds with an E6 command.
+
+// With header.flag == 1, this command is presumably used for joining a
+// spectator team (TODO: verify this). The following arguments are given in this
+// form:
+
+struct C_JoinSpectatorTeam_GC_Ep3_E6_Flag01 {
+  le_uint32_t menu_id;
+  le_uint32_t item_id;
+};
+
+// E6 (S->C): Spectator team list (Episode 3)
 // Same format as 08 command.
+// TODO: There are two separate functions on the client for this, one that sends
+// with header.flag == 0, and one that sends with header.flag == 1. Figure out
+// the difference between these two and document it here.
 
 // E6 (S->C): Set guild card number and update client config (BB)
 
@@ -1817,11 +2009,22 @@ struct S_ClientInit_BB_00E6 {
   le_uint32_t caps; // should be 0x00000102
 };
 
+// E7 (C->S): Create spectator team (Episode 3)
+
+struct C_CreateSpectatorTeam_GC_Ep3_E7 {
+  le_uint32_t menu_id;
+  le_uint32_t item_id;
+  ptext<char, 0x10> name;
+  ptext<char, 0x10> password;
+  le_uint32_t unused;
+};
+
 // E7 (S->C): Unknown (Episode 3)
 // Same format as E2 command.
 
 // E7: Save or load full player data (BB)
 // See export_bb_player_data() in Player.cc for format.
+// TODO: Verify full breakdown from send_E7 in BB disassembly.
 
 // E8 (S->C): Join spectator team (probably) (Episode 3)
 
@@ -1873,13 +2076,42 @@ struct S_AcceptClientChecksum_BB_02E8 {
 // No arguments
 // Server should send the guild card file data using DC commands.
 
-// 04E8 (C->S): Accept sent guild card
+// 04E8 (C->S): Add guild card
+
+struct C_AddOrUpdateGuildCard_BB_04E8_06E8_07E8 {
+  // TODO: Document this format
+  parray<uint8_t, 0x0108> unknown_a1;
+};
+
 // 05E8 (C->S): Delete guild card
+
+struct C_DeleteGuildCard_BB_05E8_08E8 {
+  le_uint32_t guild_card_number;
+};
+
 // 06E8 (C->S): Set guild card text
-// 07E8 (C->S): Block user
-// 08E8 (C->S): Unblock user
+// Same format as 04E8.
+
+// 07E8 (C->S): Add blocked user
+// Same format as 04E8.
+
+// 08E8 (C->S): Delete blocked user
+// Same format as 05E8.
+
 // 09E8 (C->S): Write comment
+
+struct C_WriteGuildCardComment_BB_09E8 {
+  ptext<char16_t, 0x5A> comment;
+};
+
 // 0AE8 (C->S): Set guild card position in list
+
+struct C_MoveGuildCard_BB_0AE8 {
+  // TODO: One of these is the GC number, the other is the position. Figure out
+  // which is which.
+  le_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
+};
 
 // E9 (S->C): Other player left spectator team (probably) (Episode 3)
 // Same format as 66/69 commands.
@@ -1896,23 +2128,82 @@ struct S_Unknown_GC_Ep3_EA {
 // EA: Team control (BB)
 
 // 01EA (C->S): Create team
+
+struct C_CreateTeam_BB_01EA {
+  ptext<char16_t, 0x10> name;
+};
+
 // 03EA (C->S): Add team member
+
+struct C_AddOrRemoveTeamMember_BB_03EA_05EA {
+  le_uint32_t guild_card_number;
+};
+
 // 05EA (C->S): Remove team member
+// Same format as 03EA.
+
 // 07EA (C->S): Team chat
+
 // 08EA (C->S): Team admin
+// No arguments
+
 // 0DEA (C->S): Unknown
+// No arguments
+
 // 0EEA (S->C): Unknown
+
 // 0FEA (C->S): Set team flag
+
+struct C_SetTeamFlag_BB_0FEA {
+  parray<uint8_t, 0x800> data;
+};
+
 // 10EA: Delete team
+// No arguments
+
 // 11EA (C->S): Promote team member
+// TODO: header.flag is used for this command. Figure out what it's for.
+
+struct C_PromoteTeamMember_BB_11EA {
+  le_uint32_t unknown_a1;
+};
+
 // 12EA (S->C): Unknown
+
 // 13EA: Unknown
+// No arguments
+
 // 14EA (C->S): Unknown
+// No arguments. Client always sends 1 in the header.flag field.
+
 // 15EA (S->C): Unknown
+
 // 18EA: Membership information
+// No arguments (C->S)
+// TODO: Document S->C format
+
 // 19EA: Privilege list
+// No arguments (C->S)
+// TODO: Document S->C format
+
 // 1AEA: Unknown
 // 1CEA (C->S): Ranking information
+
+// 1BEA (C->S): Unknown
+// header.flag is used, but no other arguments
+
+// 1CEA (C->S): Unknown
+// No arguments
+
+// 1EEA (C->S): Unknown
+// header.flag is used, but it's unknown what the value means.
+
+struct C_Unknown_BB_1EEA {
+  ptext<char16_t, 0x10> unknown_a1;
+};
+
+// 20EA (C->S): Unknown
+// header.flag is used, but no other arguments
 
 // EB (S->C): Unknown (Episode 3)
 // Looks like another lobby-joining type of command.
@@ -1963,6 +2254,7 @@ union C_UpdateAccountData_BB_ED {
   parray<uint8_t, 0x38> pad_config; // 05ED
   parray<uint8_t, 0x28> tech_menu; // 06ED
   parray<uint8_t, 0xE8> customize; // 07ED
+  parray<uint8_t, 0x140> challenge_battle_config; // 08ED
 };
 
 // EE (S->C): Unknown (Episode 3)
@@ -1970,27 +2262,38 @@ union C_UpdateAccountData_BB_ED {
 // the relevant flag values match the Episodes 1 & 2 trade window commands, this
 // may be used for trading cards.
 
-union S_Unknown_GC_Ep3_EE {
-  struct {
-    le_uint16_t unknown_a1;
-    le_uint16_t unknown_a2;
-    struct Entry {
-      le_uint32_t unknown_a1;
-      le_uint32_t unknown_a2;
-    };
-    Entry entries[4];
-  } flag_D3;
-  struct {
+struct C_Unknown_GC_Ep3_EE_FlagD0 {
+  parray<le_uint32_t, 9> unknown_a1;
+};
+
+struct S_Unknown_GC_Ep3_EE_FlagD1 {
+  le_uint32_t unknown_a1;
+};
+
+// EE D2 04 00 (C->S) - no arguments
+
+struct S_Unknown_GC_Ep3_EE_FlagD3 {
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  struct Entry {
     le_uint32_t unknown_a1;
-  } flag_D1;
-  struct {
-    le_uint32_t unknown_a1;
-  } flag_D4;
+    le_uint32_t unknown_a2;
+  };
+  Entry entries[4];
+};
+
+// EE D4 04 00 (C->S) - no arguments
+
+struct S_Unknown_GC_Ep3_EE_FlagD4 {
+  le_uint32_t unknown_a1;
 };
 
 // EE (S->C): Scrolling message (BB)
 // Same format as 01. The message appears at the top of the screen and slowly
 // scrolls to the left.
+
+// EF (C->S): Unknown (Episode 3)
+// No arguments
 
 // EF (S->C): Unknown (Episode 3)
 

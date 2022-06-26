@@ -209,7 +209,7 @@ void ProxyServer::on_client_connect(
         parray<uint8_t, 0x30> client_key;
         random_data(server_key.data(), server_key.bytes());
         random_data(client_key.data(), client_key.bytes());
-        auto cmd = prepare_server_init_contents_bb(server_key, client_key);
+        auto cmd = prepare_server_init_contents_bb(server_key, client_key, false);
         session->channel.send(0x03, 0x00, &cmd, sizeof(cmd));
         // TODO: Is this actually needed?
         // bufferevent_flush(session->bev.get(), EV_READ | EV_WRITE, BEV_FLUSH);
@@ -265,7 +265,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         throw runtime_error("command is not 9D");
       }
       const auto& cmd = check_size_t<C_Login_PC_9D>(
-          data, sizeof(C_Login_PC_9D), sizeof(C_LoginWithUnusedSpace_PC_9D));
+          data, sizeof(C_Login_PC_9D), sizeof(C_LoginExtended_PC_9D));
       license = session->server->state->license_manager->verify_pc(
           stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
       sub_version = cmd.sub_version;
@@ -278,7 +278,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         throw runtime_error("command is not 9E");
       }
       const auto& cmd = check_size_t<C_Login_GC_9E>(
-          data, sizeof(C_Login_GC_9E), sizeof(C_LoginWithUnusedSpace_GC_9E));
+          data, sizeof(C_Login_GC_9E), sizeof(C_LoginExtended_GC_9E));
       license = session->server->state->license_manager->verify_gc(
           stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
       sub_version = cmd.sub_version;

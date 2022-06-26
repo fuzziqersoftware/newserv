@@ -102,9 +102,10 @@ S_ServerInit_DC_PC_GC_02_17_92_9B prepare_server_init_contents_dc_pc_gc(
     uint32_t client_key);
 S_ServerInit_BB_03 prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
-    const parray<uint8_t, 0x30>& client_key);
+    const parray<uint8_t, 0x30>& client_key,
+    bool use_secondary_message);
 void send_server_init(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
-    bool initial_connection);
+    bool initial_connection, bool use_secondary_message);
 void send_update_client_config(std::shared_ptr<Client> c);
 
 void send_function_call(

@@ -79,7 +79,7 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
     }
 
     case ServerBehavior::LOGIN_SERVER:
-      send_server_init(s, c, true);
+      send_server_init(s, c, true, false);
       if (s->pre_lobby_event) {
         send_change_event(c, s->pre_lobby_event);
       }
@@ -88,7 +88,7 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
     case ServerBehavior::DATA_SERVER_BB:
     case ServerBehavior::PATCH_SERVER:
     case ServerBehavior::LOBBY_SERVER:
-      send_server_init(s, c, false);
+      send_server_init(s, c, false, false);
       break;
 
     default:
@@ -257,11 +257,11 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const C_Login_PC_9D* base_cmd;
   if (command == 0x9D) {
     base_cmd = &check_size_t<C_Login_PC_9D>(data,
-        sizeof(C_Login_PC_9D), sizeof(C_Login_PC_9D) + 0x84);
+        sizeof(C_Login_PC_9D), sizeof(C_LoginExtended_PC_9D));
 
   } else if (command == 0x9E) {
     const auto& cmd = check_size_t<C_Login_GC_9E>(data,
-        sizeof(C_Login_GC_9E), sizeof(C_Login_GC_9E) + 0x64);
+        sizeof(C_Login_GC_9E), sizeof(C_LoginExtended_GC_9E));
     base_cmd = &cmd;
 
     try {
@@ -391,7 +391,7 @@ void process_return_client_config(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 void process_client_checksum(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 96
-  check_size_t<C_ClientChecksum_GC_96>(data);
+  check_size_t<C_CharSaveInfo_GC_BB_96>(data);
   send_server_time(c);
 }
 
@@ -722,20 +722,68 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
 }
 
 void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) { // 10
+    uint16_t, uint32_t flags, const string& data) { // 10
   bool uses_unicode = ((c->version == GameVersion::PC) || (c->version == GameVersion::BB));
 
-  const auto& cmd = check_size_t<C_MenuSelection>(data,
-      sizeof(C_MenuSelection), sizeof(C_MenuSelection) + 0x10 * (1 + uses_unicode));
+  uint32_t menu_id;
+  uint32_t item_id;
+  u16string password;
+  u16string unknown_a1;
 
-  switch (cmd.menu_id) {
+  if (flags == 0) {
+    const auto& cmd = check_size_t<C_MenuSelection_10_Flag00>(data);
+    menu_id = cmd.menu_id;
+    item_id = cmd.item_id;
+  } else if (flags == 1) {
+    if (uses_unicode) {
+      const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag01>(data);
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+      unknown_a1 = cmd.unknown_a1;
+    } else {
+      const auto& cmd = check_size_t<C_MenuSelection_DC_GC_10_Flag01>(data);
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+      unknown_a1 = decode_sjis(cmd.unknown_a1);
+    }
+  } else if (flags == 2) {
+    if (uses_unicode) {
+      const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag02>(data);
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+      password = cmd.password;
+    } else {
+      const auto& cmd = check_size_t<C_MenuSelection_DC_GC_10_Flag02>(data);
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+      password = decode_sjis(cmd.password);
+    }
+  } else if (flags == 3) {
+    if (uses_unicode) {
+      const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag03>(data);
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+      unknown_a1 = cmd.unknown_a1;
+      password = cmd.password;
+    } else {
+      const auto& cmd = check_size_t<C_MenuSelection_DC_GC_10_Flag03>(data);
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+      unknown_a1 = decode_sjis(cmd.unknown_a1);
+      password = decode_sjis(cmd.password);
+    }
+  } else {
+    throw runtime_error("invalid flag");
+  }
+
+  switch (menu_id) {
     case MenuID::MAIN: {
-      switch (cmd.item_id) {
+      switch (item_id) {
         case MainMenuItemID::GO_TO_LOBBY: {
           c->should_send_to_lobby_server = true;
           if (!(c->flags & Client::Flag::SAVE_ENABLED)) {
-            send_command(c, 0x97, 0x01);
             c->flags |= Client::Flag::SAVE_ENABLED;
+            send_command(c, 0x97, 0x01);
             send_update_client_config(c);
           } else {
             static const vector<string> version_to_port_name({
@@ -802,13 +850,13 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
 
     case MenuID::INFORMATION: {
-      if (cmd.item_id == InformationMenuItemID::GO_BACK) {
+      if (item_id == InformationMenuItemID::GO_BACK) {
         c->flags &= ~Client::Flag::IN_INFORMATION_MENU;
         send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
 
       } else {
         try {
-          send_message_box(c, s->information_contents->at(cmd.item_id).c_str());
+          send_message_box(c, s->information_contents->at(item_id).c_str());
         } catch (const out_of_range&) {
           send_message_box(c, u"$C6No such information exists.");
         }
@@ -817,13 +865,13 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
 
     case MenuID::PROXY_DESTINATIONS: {
-      if (cmd.item_id == ProxyDestinationsMenuItemID::GO_BACK) {
+      if (item_id == ProxyDestinationsMenuItemID::GO_BACK) {
         send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
 
       } else {
         const pair<string, uint16_t>* dest = nullptr;
         try {
-          dest = &s->proxy_destinations_for_version(c->version).at(cmd.item_id);
+          dest = &s->proxy_destinations_for_version(c->version).at(item_id);
         } catch (const out_of_range&) { }
 
         if (!dest) {
@@ -855,7 +903,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
 
     case MenuID::GAME: {
-      auto game = s->find_lobby(cmd.item_id);
+      auto game = s->find_lobby(item_id);
       if (!game) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it no\nlonger exists.");
         break;
@@ -887,17 +935,6 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
 
       if (!(c->license->privileges & Privilege::FREE_JOIN_GAMES)) {
-        ptext<char16_t, 0x10> password;
-        if (data.size() > sizeof(C_MenuSelection)) {
-          if (uses_unicode) {
-            size_t max_chars = (data.size() - sizeof(C_MenuSelection)) / sizeof(char16_t);
-            password.assign(cmd.password.pcbb, max_chars);
-          } else {
-            size_t max_chars = (data.size() - sizeof(C_MenuSelection)) / sizeof(char);
-            password = decode_sjis(cmd.password.dcgc, max_chars);
-          }
-        }
-
         if (!game->password.empty() && (password != game->password)) {
           send_message_box(c, u"$C6Incorrect password.");
           break;
@@ -925,7 +962,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
       auto quests = s->quest_index->filter(c->version,
           c->flags & Client::Flag::DCV1,
-          static_cast<QuestCategory>(cmd.item_id & 0xFF));
+          static_cast<QuestCategory>(item_id & 0xFF));
       if (quests.empty()) {
         send_lobby_message_box(c, u"$C6There are no quests\navailable in that\ncategory.");
         break;
@@ -942,7 +979,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_lobby_message_box(c, u"$C6Quests are not available.");
         break;
       }
-      auto q = s->quest_index->get(c->version, cmd.item_id);
+      auto q = s->quest_index->get(c->version, item_id);
       if (!q) {
         send_lobby_message_box(c, u"$C6Quest does not exist.");
         break;
@@ -1022,7 +1059,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
 
     case MenuID::PATCHES:
-      if (cmd.item_id == PatchesMenuItemID::GO_BACK) {
+      if (item_id == PatchesMenuItemID::GO_BACK) {
         send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
 
       } else {
@@ -1031,13 +1068,13 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         }
 
         send_function_call(
-            c, s->function_code_index->menu_item_id_to_patch_function.at(cmd.item_id));
+            c, s->function_code_index->menu_item_id_to_patch_function.at(item_id));
         send_menu(c, u"Patches", MenuID::PATCHES, s->function_code_index->patch_menu());
       }
       break;
 
     case MenuID::PROGRAMS:
-      if (cmd.item_id == ProgramsMenuItemID::GO_BACK) {
+      if (item_id == ProgramsMenuItemID::GO_BACK) {
         send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
 
       } else {
@@ -1045,7 +1082,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           throw runtime_error("client does not support send_function_call");
         }
 
-        c->loading_dol_file = s->dol_file_index->item_id_to_file.at(cmd.item_id);
+        c->loading_dol_file = s->dol_file_index->item_id_to_file.at(item_id);
 
         // Send the first function call, which triggers the process of loading a
         // DOL file. This function call determines the necessary base address

@@ -97,7 +97,7 @@ static const char* anti_copyright = "This server is in no way affiliated, sponso
 static const char* dc_port_map_copyright = "DreamCast Port Map. Copyright SEGA Enterprises. 1999";
 static const char* dc_lobby_server_copyright = "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999";
 static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM.";
-// static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
+static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
 S_ServerInit_DC_PC_GC_02_17_92_9B prepare_server_init_contents_dc_pc_gc(
@@ -140,26 +140,32 @@ void send_server_init_dc_pc_gc(shared_ptr<Client> c,
 
 S_ServerInit_BB_03 prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
-    const parray<uint8_t, 0x30>& client_key) {
+    const parray<uint8_t, 0x30>& client_key,
+    bool use_secondary_message) {
   S_ServerInit_BB_03 cmd;
-  cmd.copyright = bb_game_server_copyright;
+  cmd.copyright = use_secondary_message ? bb_pm_server_copyright : bb_game_server_copyright;
   cmd.server_key = server_key;
   cmd.client_key = client_key;
   cmd.after_message = anti_copyright;
   return cmd;
 }
 
-void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    bool use_secondary_message) {
   parray<uint8_t, 0x30> server_key;
   parray<uint8_t, 0x30> client_key;
   random_data(server_key.data(), server_key.bytes());
   random_data(client_key.data(), client_key.bytes());
-  auto cmd = prepare_server_init_contents_bb(server_key, client_key);
-  send_command_t(c, 0x03, 0x00, cmd);
+  auto cmd = prepare_server_init_contents_bb(server_key, client_key, use_secondary_message);
+  send_command_t(c, use_secondary_message ? 0x9B : 0x03, 0x00, cmd);
 
-  static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
+  static const string primary_expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
+  static const string secondary_expected_first_data("\xDC\x00\xDB\x00\x00\x00\x00\x00", 8);
   shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt(new PSOBBMultiKeyDetectorEncryption(
-      s->bb_private_keys, expected_first_data, cmd.client_key.data(), sizeof(cmd.client_key)));
+      s->bb_private_keys,
+      use_secondary_message ? secondary_expected_first_data : primary_expected_first_data,
+      cmd.client_key.data(),
+      sizeof(cmd.client_key)));
   c->channel.crypt_in = detector_crypt;
   c->channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
       detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true));
@@ -180,7 +186,7 @@ void send_server_init_patch(shared_ptr<Client> c) {
 }
 
 void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    bool initial_connection) {
+    bool initial_connection, bool use_secondary_message) {
   switch (c->version) {
     case GameVersion::DC:
     case GameVersion::PC:
@@ -191,7 +197,7 @@ void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
       send_server_init_patch(c);
       break;
     case GameVersion::BB:
-      send_server_init_bb(s, c);
+      send_server_init_bb(s, c, use_secondary_message);
       break;
     default:
       throw logic_error("unimplemented versioned command");
