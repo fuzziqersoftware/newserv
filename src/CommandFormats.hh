@@ -2107,6 +2107,29 @@ struct G_SendGuildCard_BB_6x06 {
 };
 
 // 07: Symbol chat
+
+struct G_SymbolChat_6x07 {
+  uint8_t command;
+  uint8_t size;
+  le_uint16_t unused1;
+  le_uint32_t client_id;
+  uint8_t face_spec; // Bits: SSSCCCFF (S = sound, C = face color, F = face shape)
+  uint8_t disable_sound; // If low bit is set, no sound is played
+  le_uint16_t unused2;
+  struct CornerObject {
+    uint8_t type; // FF = no object in this slot
+    uint8_t flags_color; // Bits: 000VHCCC (V = reverse vertical, H = reverse horizontal, C = color)
+  };
+  CornerObject corner_objects[4]; // In reading order (top-left is first)
+  struct FacePart {
+    uint8_t type; // FF = no part in this slot
+    uint8_t x;
+    uint8_t y;
+    uint8_t flags; // Bits: 000000VH (V = reverse vertical, H = reverse horizontal)
+  };
+  FacePart face_parts[12];
+};
+
 // 08: Invalid subcommand
 // 09: Unknown
 
