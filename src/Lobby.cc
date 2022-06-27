@@ -12,11 +12,24 @@ using namespace std;
 
 
 
-Lobby::Lobby() : lobby_id(0), min_level(0), max_level(0xFFFFFFFF),
-    next_game_item_id(0x00810000), version(GameVersion::GC), section_id(0),
-    episode(1), difficulty(0), mode(0), rare_seed(random_object<uint32_t>()),
-    event(0), block(0), type(0), leader_id(0), max_clients(12), flags(0) {
-
+Lobby::Lobby(uint32_t id)
+  : log(string_printf("[Lobby/%" PRIX32 "] ", id), lobby_log.min_level),
+    lobby_id(id),
+    min_level(0),
+    max_level(0xFFFFFFFF),
+    next_game_item_id(0x00810000),
+    version(GameVersion::GC),
+    section_id(0),
+    episode(1),
+    difficulty(0),
+    mode(0),
+    rare_seed(random_object<uint32_t>()),
+    event(0),
+    block(0),
+    type(0),
+    leader_id(0),
+    max_clients(12),
+    flags(0) {
   for (size_t x = 0; x < 12; x++) {
     this->next_item_id[x] = 0x00010000 + 0x00200000 * x;
   }

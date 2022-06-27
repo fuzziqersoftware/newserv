@@ -29,14 +29,13 @@ ServerState::ServerState()
     auto lobby_name = decode_sjis(string_printf("LOBBY%zu", x + 1));
     bool is_ep3_only = (x > 14);
 
-    shared_ptr<Lobby> l(new Lobby());
+    shared_ptr<Lobby> l = this->create_lobby();
     l->flags |= Lobby::Flag::PUBLIC | Lobby::Flag::DEFAULT | Lobby::Flag::PERSISTENT |
         (is_ep3_only ? Lobby::Flag::EPISODE_3_ONLY : 0);
     l->block = x + 1;
     l->type = x;
     l->name = lobby_name;
     l->max_clients = 12;
-    this->add_lobby(l);
 
     if (!is_ep3_only) {
       this->public_lobby_search_order.emplace_back(l);
@@ -52,18 +51,28 @@ ServerState::ServerState()
       ep3_only_lobbies.end());
 }
 
-void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
-  const auto& search_order = (c->flags & Client::Flag::EPISODE_3)
-      ? this->public_lobby_search_order_ep3
-      : this->public_lobby_search_order;
-
+void ServerState::add_client_to_available_lobby(
+    shared_ptr<Client> c, shared_ptr<Lobby> preferred_lobby) {
   shared_ptr<Lobby> added_to_lobby;
-  for (const auto& l : search_order) {
+
+  if (preferred_lobby) {
     try {
-      l->add_client(c);
-      added_to_lobby = l;
-      break;
+      preferred_lobby->add_client(c);
+      added_to_lobby = preferred_lobby;
     } catch (const out_of_range&) { }
+  }
+
+  if (!added_to_lobby.get()) {
+    const auto& search_order = (c->flags & Client::Flag::EPISODE_3)
+        ? this->public_lobby_search_order_ep3
+        : this->public_lobby_search_order;
+    for (const auto& l : search_order) {
+      try {
+        l->add_client(c);
+        added_to_lobby = l;
+        break;
+      } catch (const out_of_range&) { }
+    }
   }
 
   if (!added_to_lobby) {
@@ -85,7 +94,7 @@ void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
   }
 }
 
-void ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> new_lobby) {
+bool ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> new_lobby) {
   uint8_t old_lobby_client_id = c->lobby_client_id;
 
   shared_ptr<Lobby> current_lobby = this->find_lobby(c->lobby_id);
@@ -96,8 +105,7 @@ void ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> ne
       new_lobby->add_client(c);
     }
   } catch (const out_of_range&) {
-    send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby is full.");
-    return;
+    return false;
   }
 
   if (current_lobby) {
@@ -108,6 +116,7 @@ void ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> ne
     }
   }
   this->send_lobby_join_notifications(new_lobby, c);
+  return true;
 }
 
 void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
@@ -135,16 +144,22 @@ vector<shared_ptr<Lobby>> ServerState::all_lobbies() {
   return ret;
 }
 
-void ServerState::add_lobby(shared_ptr<Lobby> l) {
-  l->lobby_id = this->next_lobby_id++;
-  if (this->id_to_lobby.count(l->lobby_id)) {
+shared_ptr<Lobby> ServerState::create_lobby() {
+  shared_ptr<Lobby> l(new Lobby(this->next_lobby_id++));
+  if (!this->id_to_lobby.emplace(l->lobby_id, l).second) {
     throw logic_error("lobby already exists with the given id");
   }
-  this->id_to_lobby.emplace(l->lobby_id, l);
+  l->log.info("Created lobby");
+  return l;
 }
 
 void ServerState::remove_lobby(uint32_t lobby_id) {
-  this->id_to_lobby.erase(lobby_id);
+  auto lobby_it = this->id_to_lobby.find(lobby_id);
+  if (lobby_it == this->id_to_lobby.end()) {
+    throw logic_error("attempted to remove nonexistent lobby");
+  }
+  lobby_it->second->log.info("Deleted lobby");
+  this->id_to_lobby.erase(lobby_it);
 }
 
 shared_ptr<Client> ServerState::find_client(const std::u16string* identifier,

@@ -950,7 +950,9 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         }
       }
 
-      s->change_client_lobby(c, game);
+      if (!s->change_client_lobby(c, game)) {
+        throw logic_error("client cannot join game after all preconditions satisfied");
+      }
       c->flags |= Client::Flag::LOADING;
       break;
     }
@@ -1110,20 +1112,37 @@ void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  shared_ptr<Lobby> new_lobby;
-  try {
-    new_lobby = s->find_lobby(cmd.item_id);
-  } catch (const out_of_range&) {
-    send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby does not\nexist.");
-    return;
-  }
+  // If the client isn't in any lobby, then they just left a game. Ignore their
+  // selection and add them to any lobby with room. If they're already in a
+  // lobby, then they used the lobby teleporter - add them to a specific lobby.
+  if (c->lobby_id == 0) {
+    shared_ptr<Lobby> new_lobby;
+    try {
+      new_lobby = s->find_lobby(cmd.item_id);
+    } catch (const out_of_range&) { }
 
-  if ((new_lobby->flags & Lobby::Flag::EPISODE_3_ONLY) && !(c->flags & Client::Flag::EPISODE_3)) {
-    send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby is for\nEpisode 3 only.");
-    return;
-  }
+    s->add_client_to_available_lobby(c, new_lobby);
 
-  s->change_client_lobby(c, new_lobby);
+  // If the client already is in a lobby, then they're using the lobby
+  // teleporter; add them to the lobby they requested or send a failure message.
+  } else {
+    shared_ptr<Lobby> new_lobby;
+    try {
+      new_lobby = s->find_lobby(cmd.item_id);
+    } catch (const out_of_range&) {
+      send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby does not\nexist.");
+      return;
+    }
+
+    if ((new_lobby->flags & Lobby::Flag::EPISODE_3_ONLY) && !(c->flags & Client::Flag::EPISODE_3)) {
+      send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby is for\nEpisode 3 only.");
+      return;
+    }
+
+    if (!s->change_client_lobby(c, new_lobby)) {
+      send_lobby_message_box(c, u"$C6Can\'t change lobby\n\n$C7The lobby is full.");
+    }
+  }
 }
 
 void process_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1377,38 +1396,46 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
     c->channel.name = remove_language_marker(encode_sjis(player->disp.name));
   }
 
-  if (command == 0x61 && !c->pending_bb_save_username.empty()) {
-    string prev_bb_username = c->game_data.bb_username;
-    size_t prev_bb_player_index = c->game_data.bb_player_index;
+  // 98 should only be sent when leaving a game, and we should leave the client
+  // in no lobby (they will send an 84 soon afterward to choose a lobby).
+  if (command == 0x98) {
+    s->remove_client_from_lobby(c);
 
-    c->game_data.bb_username = c->pending_bb_save_username;
-    c->game_data.bb_player_index = c->pending_bb_save_player_index;
+  } else if (command == 0x61) {
+    if (!c->pending_bb_save_username.empty()) {
+      string prev_bb_username = c->game_data.bb_username;
+      size_t prev_bb_player_index = c->game_data.bb_player_index;
 
-    bool failure = false;
-    try {
-      c->game_data.save_player_data();
-    } catch (const exception& e) {
-      u16string buffer = u"$C6PSOBB player data could\nnot be saved:\n" + decode_sjis(e.what());
-      send_text_message(c, buffer.c_str());
-      failure = true;
+      c->game_data.bb_username = c->pending_bb_save_username;
+      c->game_data.bb_player_index = c->pending_bb_save_player_index;
+
+      bool failure = false;
+      try {
+        c->game_data.save_player_data();
+      } catch (const exception& e) {
+        u16string buffer = u"$C6PSOBB player data could\nnot be saved:\n" + decode_sjis(e.what());
+        send_text_message(c, buffer.c_str());
+        failure = true;
+      }
+
+      if (!failure) {
+        send_text_message_printf(c,
+            "$C6BB player data saved\nas player %hhu for user\n%s",
+            static_cast<uint8_t>(c->pending_bb_save_player_index + 1),
+            c->pending_bb_save_username.c_str());
+      }
+
+      c->game_data.bb_username = prev_bb_username;
+      c->game_data.bb_player_index = prev_bb_player_index;
+
+      c->pending_bb_save_username.clear();
     }
 
-    if (!failure) {
-      send_text_message_printf(c,
-          "$C6BB player data saved\nas player %hhu for user\n%s",
-          static_cast<uint8_t>(c->pending_bb_save_player_index + 1),
-          c->pending_bb_save_username.c_str());
+    // We use 61 during the lobby server init sequence to trigger joining an
+    // available lobby
+    if (!c->lobby_id && (c->server_behavior == ServerBehavior::LOBBY_SERVER)) {
+      s->add_client_to_available_lobby(c);
     }
-
-    c->game_data.bb_username = prev_bb_username;
-    c->game_data.bb_player_index = prev_bb_player_index;
-
-    c->pending_bb_save_username.clear();
-  }
-
-  // if the client isn't in a lobby, add them to an available lobby
-  if (!c->lobby_id && (c->server_behavior == ServerBehavior::LOBBY_SERVER)) {
-    s->add_client_to_available_lobby(c);
   }
 }
 
@@ -1809,7 +1836,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
 
   bool item_tracking_enabled = (c->version == GameVersion::BB) | s->item_tracking_enabled;
 
-  shared_ptr<Lobby> game(new Lobby());
+  shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
   game->password = password;
   game->version = c->version;
@@ -1896,6 +1923,9 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     }
   }
 
+  s->change_client_lobby(c, game);
+  c->flags |= Client::Flag::LOADING;
+
   return game;
 }
 
@@ -1903,12 +1933,8 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_PC_C1>(data);
 
-  auto game = create_game_generic(s, c, cmd.name, cmd.password, 1,
+  create_game_generic(s, c, cmd.name, cmd.password, 1,
       cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, 0);
-
-  s->add_lobby(game);
-  s->change_client_lobby(c, game);
-  c->flags |= Client::Flag::LOADING;
 }
 
 void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1932,24 +1958,16 @@ void process_create_game_dc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   u16string name = decode_sjis(cmd.name);
   u16string password = decode_sjis(cmd.password);
 
-  auto game = create_game_generic(s, c, name.c_str(), password.c_str(),
+  create_game_generic(s, c, name.c_str(), password.c_str(),
       episode, cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, 0);
-
-  s->add_lobby(game);
-  s->change_client_lobby(c, game);
-  c->flags |= Client::Flag::LOADING;
 }
 
 void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_BB_C1>(data);
 
-  auto game = create_game_generic(s, c, cmd.name, cmd.password, cmd.episode,
+  create_game_generic(s, c, cmd.name, cmd.password, cmd.episode,
       cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, cmd.solo_mode);
-
-  s->add_lobby(game);
-  s->change_client_lobby(c, game);
-  c->flags |= Client::Flag::LOADING;
 }
 
 void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,

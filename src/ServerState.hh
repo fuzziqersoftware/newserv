@@ -74,6 +74,9 @@ struct ServerState {
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_ep3;
+  // TODO: Use a free-list instead of an incrementer to prevent wrap-around
+  // behavioral bugs. This... will probably never be an issue for anyone, but we
+  // technically should handle it.
   std::atomic<int32_t> next_lobby_id;
   uint8_t pre_lobby_event;
   int32_t ep3_menu_song;
@@ -87,9 +90,10 @@ struct ServerState {
 
   ServerState();
 
-  void add_client_to_available_lobby(std::shared_ptr<Client> c);
+  void add_client_to_available_lobby(std::shared_ptr<Client> c,
+      std::shared_ptr<Lobby> preferred_lobby = nullptr);
   void remove_client_from_lobby(std::shared_ptr<Client> c);
-  void change_client_lobby(std::shared_ptr<Client> c,
+  bool change_client_lobby(std::shared_ptr<Client> c,
       std::shared_ptr<Lobby> new_lobby);
 
   void send_lobby_join_notifications(std::shared_ptr<Lobby> l,
@@ -98,7 +102,7 @@ struct ServerState {
   std::shared_ptr<Lobby> find_lobby(uint32_t lobby_id);
   std::vector<std::shared_ptr<Lobby>> all_lobbies();
 
-  void add_lobby(std::shared_ptr<Lobby> l);
+  std::shared_ptr<Lobby> create_lobby();
   void remove_lobby(uint32_t lobby_id);
 
   std::shared_ptr<Client> find_client(
