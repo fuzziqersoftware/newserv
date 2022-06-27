@@ -23,9 +23,9 @@ using namespace std;
 030D00 = Sorcerer's Right Arm
 030D01 = S-beat's Arms
 030D02 = P-arm's Arms
-030D03 = Delsabre's Right Arm
+030D03 = Delsaber's Right Arm
 030D04 = C-bringer's Right Arm
-030D05 = Delsabre's Left Arm
+030D05 = Delsaber's Left Arm
 030D06 = S-red's Arms
 030D07 = Dragon's Claw
 030D08 = Hildebear's Head
