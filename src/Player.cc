@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <phosg/Filesystem.hh>
 
+#include "Loggers.hh"
 #include "Text.hh"
 #include "Version.hh"
 #include "StaticGameData.hh"
@@ -385,7 +386,7 @@ void ClientGameData::load_account_data() {
       throw runtime_error("account data header is incorrect");
     }
   } catch (const exception& e) {
-    log(INFO, "[BB/Account] No account data for %s; using default",
+    player_data_log.info("No account data for %s; using default",
         this->bb_username.c_str());
     data.reset(new SavedAccountDataBB(
         load_object_file<SavedAccountDataBB>("system/players/default.nsa")));
@@ -395,13 +396,13 @@ void ClientGameData::load_account_data() {
   }
 
   this->account_data = data;
-  log(INFO, "Loaded account data file %s", filename.c_str());
+  player_data_log.info("Loaded account data file %s", filename.c_str());
 }
 
 void ClientGameData::save_account_data() const {
   string filename = this->account_data_filename();
   save_file(filename, this->account_data.get(), sizeof(SavedAccountDataBB));
-  log(INFO, "Saved account data file %s", filename.c_str());
+  player_data_log.info("Saved account data file %s", filename.c_str());
 }
 
 void ClientGameData::load_player_data() {
@@ -412,13 +413,13 @@ void ClientGameData::load_player_data() {
     throw runtime_error("player data header is incorrect");
   }
   this->player_data = data;
-  log(INFO, "Loaded player data file %s", filename.c_str());
+  player_data_log.info("Loaded player data file %s", filename.c_str());
 }
 
 void ClientGameData::save_player_data() const {
   string filename = this->player_data_filename();
   save_file(filename, this->player_data.get(), sizeof(SavedPlayerDataBB));
-  log(INFO, "Saved player data file %s", filename.c_str());
+  player_data_log.info("Saved player data file %s", filename.c_str());
 }
 
 void ClientGameData::import_player(const PSOPlayerDataPC& pc) {

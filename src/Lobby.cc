@@ -4,6 +4,7 @@
 
 #include <phosg/Random.hh>
 
+#include "Loggers.hh"
 #include "SendCommands.hh"
 #include "Text.hh"
 

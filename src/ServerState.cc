@@ -5,6 +5,7 @@
 #include <memory>
 #include <phosg/Network.hh>
 
+#include "Loggers.hh"
 #include "IPStackSimulator.hh"
 #include "NetworkAddresses.hh"
 #include "SendCommands.hh"
@@ -300,7 +301,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   try {
     const string& netloc_str = d.at("ProxyDestination-Patch")->as_string();
     this->proxy_destination_patch = parse_netloc(netloc_str);
-    log(INFO, "Patch server proxy is enabled with destination %s", netloc_str.c_str());
+    config_log.info("Patch server proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
       if (it.second->version == GameVersion::PATCH) {
         it.second->behavior = ServerBehavior::PROXY_SERVER;
@@ -313,7 +314,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   try {
     const string& netloc_str = d.at("ProxyDestination-BB")->as_string();
     this->proxy_destination_bb = parse_netloc(netloc_str);
-    log(INFO, "BB proxy is enabled with destination %s", netloc_str.c_str());
+    config_log.info("BB proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
       if (it.second->version == GameVersion::BB) {
         it.second->behavior = ServerBehavior::PROXY_SERVER;

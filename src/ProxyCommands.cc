@@ -26,6 +26,7 @@
 #include <resource_file/Emulators/PPC32Emulator.hh>
 #endif
 
+#include "Loggers.hh"
 #include "ChatCommands.hh"
 #include "Compression.hh"
 #include "PSOProtocol.hh"
@@ -41,20 +42,21 @@ static void forward_command(ProxyServer::LinkedSession& session, bool to_server,
     uint16_t command, uint32_t flag, string& data, bool print_contents = true) {
   auto& ch = to_server ? session.server_channel : session.client_channel;
   if (!ch.connected()) {
-    session.log(WARNING, "No endpoint is present; dropping command");
+    proxy_server_log.warning("No endpoint is present; dropping command");
   } else {
     // TODO: Don't print the command here (usually)
     ch.send(command, flag, data, print_contents);
   }
 }
 
-static void check_implemented_subcommand(uint64_t id, const string& data) {
+static void check_implemented_subcommand(
+    ProxyServer::LinkedSession& session, const string& data) {
   if (data.size() < 4) {
-    log(WARNING, "[ProxyServer/%08" PRIX64 "] Received broadcast/target command with no contents", id);
+    session.log.warning("Received broadcast/target command with no contents");
   } else {
     if (!subcommand_is_implemented(data[0])) {
-      log(WARNING, "[ProxyServer/%08" PRIX64 "] Received subcommand %02hhX which is not implemented on the server",
-          id, data[0]);
+      session.log.warning("Received subcommand %02hhX which is not implemented on the server",
+          data[0]);
     }
   }
 }
@@ -157,7 +159,7 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
       offsetof(S_ServerInit_DC_PC_GC_02_17_92_9B, after_message), 0xFFFF);
 
   if (!session.license) {
-    session.log(INFO, "No license in linked session");
+    session.log.info("No license in linked session");
 
     // We have to forward the command before setting up encryption, so the
     // client will be able to understand it.
@@ -178,7 +180,7 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
     return HandlerResult::SUPPRESS;
   }
 
-  session.log(INFO, "Existing license in linked session");
+  session.log.info("Existing license in linked session");
 
   // This isn't forwarded to the client, so don't recreate the client's crypts
   if ((session.version == GameVersion::PATCH) || (session.version == GameVersion::PC)) {
@@ -316,7 +318,7 @@ static HandlerResult process_server_dc_pc_gc_04(shared_ptr<ServerState>,
   bool had_guild_card_number = (session.remote_guild_card_number != 0);
   if (session.remote_guild_card_number != cmd.guild_card_number) {
     session.remote_guild_card_number = cmd.guild_card_number;
-    session.log(INFO, "Remote guild card number set to %" PRIu32,
+    session.log.info("Remote guild card number set to %" PRIu32,
         session.remote_guild_card_number);
     send_text_message_to_client(session, 0x11, string_printf(
         "The remote server\nhas assigned your\nGuild Card number as\n\tC6%" PRIu32,
@@ -425,7 +427,7 @@ static HandlerResult process_server_B2(shared_ptr<ServerState>,
   if (session.save_files) {
     string output_filename = string_printf("code.%" PRId64 ".bin", now());
     save_file(output_filename, data);
-    session.log(INFO, "Wrote code from server to file %s", output_filename.c_str());
+    session.log.info("Wrote code from server to file %s", output_filename.c_str());
 
 #ifdef HAVE_RESOURCE_FILE
     try {
@@ -472,16 +474,16 @@ static HandlerResult process_server_B2(shared_ptr<ServerState>,
         fprintf(f.get(), "// checksum_size = 0x%" PRIX32 "\n", header.checksum_size.load());
         fwritex(f.get(), disassembly);
       }
-      session.log(INFO, "Wrote disassembly to file %s", output_filename.c_str());
+      session.log.info("Wrote disassembly to file %s", output_filename.c_str());
 
     } catch (const exception& e) {
-      session.log(INFO, "Failed to disassemble code from server: %s", e.what());
+      session.log.info("Failed to disassemble code from server: %s", e.what());
     }
 #endif
   }
 
   if (session.function_call_return_value >= 0) {
-    session.log(INFO, "Blocking function call from server");
+    session.log.info("Blocking function call from server");
     C_ExecuteCodeResult_B3 cmd;
     cmd.return_value = session.function_call_return_value;
     cmd.checksum = 0;
@@ -497,7 +499,7 @@ static HandlerResult process_server_E7(shared_ptr<ServerState>,
   if (session.save_files) {
     string output_filename = string_printf("player.%" PRId64 ".bin", now());
     save_file(output_filename, data);
-    session.log(INFO, "Wrote player data to file %s", output_filename.c_str());
+    session.log.info("Wrote player data to file %s", output_filename.c_str());
   }
   return HandlerResult::FORWARD;
 }
@@ -547,7 +549,7 @@ static HandlerResult process_server_bb_22(shared_ptr<ServerState>,
   // the story behind why they put that string there.
   if ((data.size() == 0x2C) &&
       (fnv1a64(data.data(), data.size()) == 0x8AF8314316A27994)) {
-    session.log(INFO, "Enabling remote IP CRC patch");
+    session.log.info("Enabling remote IP CRC patch");
     session.enable_remote_ip_crc_patch = true;
   }
   return HandlerResult::FORWARD;
@@ -586,7 +588,7 @@ static HandlerResult process_server_game_19_patch_14(shared_ptr<ServerState>,
   sin->sin_port = htons(cmd.port);
 
   if (!session.client_channel.connected()) {
-    session.log(WARNING, "Received reconnect command with no destination present");
+    session.log.warning("Received reconnect command with no destination present");
     return HandlerResult::SUPPRESS;
 
   } else if (command == 0x14) {
@@ -639,7 +641,7 @@ static HandlerResult process_server_gc_1A_D5(shared_ptr<ServerState>,
 
 static HandlerResult process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  check_implemented_subcommand(session.id, data);
+  check_implemented_subcommand(session, data);
 
   if (session.save_files) {
     if ((session.version == GameVersion::GC) && (data.size() >= 0x14)) {
@@ -649,7 +651,7 @@ static HandlerResult process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
             subs[3].dword.load(), now());
         string map_data = prs_decompress(data.substr(0x14));
         save_file(filename, map_data);
-        session.log(INFO, "Wrote %zu bytes to %s", map_data.size(), filename.c_str());
+        session.log.warning("Wrote %zu bytes to %s", map_data.size(), filename.c_str());
       }
     }
   }
@@ -680,7 +682,7 @@ static HandlerResult process_server_44_A6(shared_ptr<ServerState>,
     ProxyServer::LinkedSession::SavingFile sf(
         cmd.filename, output_filename, cmd.file_size);
     session.saving_files.emplace(cmd.filename, move(sf));
-    session.log(INFO, "Opened file %s", output_filename.c_str());
+    session.log.info("Opened file %s", output_filename.c_str());
   }
   return HandlerResult::FORWARD;
 }
@@ -695,27 +697,27 @@ static HandlerResult process_server_13_A7(shared_ptr<ServerState>,
       sf = &session.saving_files.at(cmd.filename);
     } catch (const out_of_range&) {
       string filename = cmd.filename;
-      session.log(WARNING, "Received data for non-open file %s", filename.c_str());
+      session.log.warning("Received data for non-open file %s", filename.c_str());
       return HandlerResult::FORWARD;
     }
 
     size_t bytes_to_write = cmd.data_size;
     if (bytes_to_write > 0x400) {
-      session.log(WARNING, "Chunk data size is invalid; truncating to 0x400");
+      session.log.warning("Chunk data size is invalid; truncating to 0x400");
       bytes_to_write = 0x400;
     }
 
-    session.log(INFO, "Writing %zu bytes to %s", bytes_to_write, sf->output_filename.c_str());
+    session.log.info("Writing %zu bytes to %s", bytes_to_write, sf->output_filename.c_str());
     fwritex(sf->f.get(), cmd.data, bytes_to_write);
     if (bytes_to_write > sf->remaining_bytes) {
-      session.log(WARNING, "Chunk size extends beyond original file size; file may be truncated");
+      session.log.warning("Chunk size extends beyond original file size; file may be truncated");
       sf->remaining_bytes = 0;
     } else {
       sf->remaining_bytes -= bytes_to_write;
     }
 
     if (sf->remaining_bytes == 0) {
-      session.log(INFO, "File %s is complete", sf->output_filename.c_str());
+      session.log.info("File %s is complete", sf->output_filename.c_str());
       session.saving_files.erase(cmd.filename);
     }
   }
@@ -726,20 +728,20 @@ static HandlerResult process_server_gc_B8(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.save_files) {
     if (data.size() < 4) {
-      session.log(WARNING, "Card list data size is too small; not saving file");
+      session.log.warning("Card list data size is too small; not saving file");
       return HandlerResult::FORWARD;
     }
 
     StringReader r(data);
     size_t size = r.get_u32l();
     if (r.remaining() < size) {
-      session.log(WARNING, "Card list data size extends beyond end of command; not saving file");
+      session.log.warning("Card list data size extends beyond end of command; not saving file");
       return HandlerResult::FORWARD;
     }
 
     string output_filename = string_printf("cardupdate.%" PRIu64 ".mnr", now());
     save_file(output_filename, r.read(size));
-    session.log(INFO, "Wrote %zu bytes to %s", size, output_filename.c_str());
+    session.log.info("Wrote %zu bytes to %s", size, output_filename.c_str());
   }
   return HandlerResult::FORWARD;
 }
@@ -750,7 +752,7 @@ static HandlerResult process_server_65_67_68(shared_ptr<ServerState>,
   if (command == 0x67) {
     session.lobby_players.clear();
     session.lobby_players.resize(12);
-    session.log(INFO, "Cleared lobby players");
+    session.log.info("Cleared lobby players");
 
     // This command can cause the client to no longer send D6 responses when
     // 1A/D5 large message boxes are closed. newserv keeps track of this
@@ -770,7 +772,7 @@ static HandlerResult process_server_65_67_68(shared_ptr<ServerState>,
   for (size_t x = 0; x < flag; x++) {
     size_t index = cmd.entries[x].lobby_data.client_id;
     if (index >= session.lobby_players.size()) {
-      session.log(WARNING, "Ignoring invalid player index %zu at position %zu", index, x);
+      session.log.warning("Ignoring invalid player index %zu at position %zu", index, x);
     } else {
       if (session.license && (cmd.entries[x].lobby_data.guild_card == session.remote_guild_card_number)) {
         cmd.entries[x].lobby_data.guild_card = session.license->serial_number;
@@ -779,7 +781,7 @@ static HandlerResult process_server_65_67_68(shared_ptr<ServerState>,
       session.lobby_players[index].guild_card_number = cmd.entries[x].lobby_data.guild_card;
       ptext<char, 0x10> name = cmd.entries[x].disp.name;
       session.lobby_players[index].name = name;
-      session.log(INFO, "Added lobby player: (%zu) %" PRIu32 " %s",
+      session.log.info("Added lobby player: (%zu) %" PRIu32 " %s",
           index,
           session.lobby_players[index].guild_card_number,
           session.lobby_players[index].name.c_str());
@@ -804,7 +806,7 @@ static HandlerResult process_server_64(shared_ptr<ServerState>,
   // We don't need to clear lobby_players here because we always
   // overwrite all 4 entries for this command
   session.lobby_players.resize(4);
-  session.log(INFO, "Cleared lobby players");
+  session.log.info("Cleared lobby players");
 
   const size_t expected_size = session.sub_version >= 0x40
       ? sizeof(CmdT)
@@ -825,7 +827,7 @@ static HandlerResult process_server_64(shared_ptr<ServerState>,
     } else {
       session.lobby_players[x].name.clear();
     }
-    session.log(INFO, "Added lobby player: (%zu) %" PRIu32 " %s",
+    session.log.info("Added lobby player: (%zu) %" PRIu32 " %s",
         x,
         session.lobby_players[x].guild_card_number,
         session.lobby_players[x].name.c_str());
@@ -848,11 +850,11 @@ static HandlerResult process_server_66_69(shared_ptr<ServerState>,
   const auto& cmd = check_size_t<S_LeaveLobby_66_69_Ep3_E9>(data);
   size_t index = cmd.client_id;
   if (index >= session.lobby_players.size()) {
-    session.log(WARNING, "Lobby leave command references missing position");
+    session.log.warning("Lobby leave command references missing position");
   } else {
     session.lobby_players[index].guild_card_number = 0;
     session.lobby_players[index].name.clear();
-    session.log(INFO, "Removed lobby player (%zu)", index);
+    session.log.info("Removed lobby player (%zu)", index);
   }
   return HandlerResult::FORWARD;
 }
@@ -978,13 +980,13 @@ static HandlerResult process_client_60_62_6C_6D_C9_CB(shared_ptr<ServerState> s,
 template <>
 HandlerResult process_client_60_62_6C_6D_C9_CB<void>(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  check_implemented_subcommand(session.id, data);
+  check_implemented_subcommand(session, data);
 
   if (!data.empty() && (data[0] == 0x05) && session.switch_assist) {
     auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
     if (cmd.enabled && cmd.switch_id != 0xFFFF) {
       if (session.last_switch_enabled_command.subcommand == 0x05) {
-        session.log(INFO, "Switch assist: replaying previous enable command");
+        session.log.info("Switch assist: replaying previous enable command");
         session.server_channel.send(0x60, 0x00, &session.last_switch_enabled_command,
             sizeof(session.last_switch_enabled_command));
         session.client_channel.send(0x60, 0x00, &session.last_switch_enabled_command,
@@ -1286,17 +1288,17 @@ void process_proxy_command(
     if (res == HandlerResult::FORWARD) {
       forward_command(session, !from_server, command, flag, data, false);
     } else if (res == HandlerResult::MODIFIED) {
-      session.log(INFO, "The preceding command from the %s was modified in transit",
+      session.log.info("The preceding command from the %s was modified in transit",
           from_server ? "server" : "client");
       forward_command(session, !from_server, command, flag, data);
     } else if (res == HandlerResult::SUPPRESS) {
-      session.log(INFO, "The preceding command from the %s was not forwarded",
+      session.log.info("The preceding command from the %s was not forwarded",
           from_server ? "server" : "client");
     } else {
       throw logic_error("invalid handler result");
     }
   } catch (const exception& e) {
-    session.log(ERROR, "Failed to process command: %s", e.what());
+    session.log.error("Failed to process command: %s", e.what());
     session.disconnect();
   }
 }

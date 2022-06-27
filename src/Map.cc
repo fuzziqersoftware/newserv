@@ -1,7 +1,9 @@
 #include "Map.hh"
 
 #include <phosg/Filesystem.hh>
+#include <phosg/Strings.hh>
 
+#include "Loggers.hh"
 #include "FileContentsCache.hh"
 
 using namespace std;
@@ -420,8 +422,8 @@ static vector<PSOEnemy> parse_map(uint8_t episode, uint8_t difficulty,
         break;
       default:
         enemies[num_enemies].experience = 0xFFFFFFFF;
-        log(WARNING, "Unknown enemy type %08" PRIX32 " %08" PRIX32, map[y].base,
-            map[y].skin);
+        static_game_data_log.warning("Unknown enemy type %08" PRIX32 " %08" PRIX32,
+            map[y].base, map[y].skin);
         break;
       }
       if (num_clones) {

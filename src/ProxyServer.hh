@@ -195,7 +195,6 @@ private:
     static void on_error(Channel& ch, short events);
   };
 
-  PrefixedLogger log;
   std::shared_ptr<struct event_base> base;
   std::shared_ptr<ServerState> state;
   std::map<int, std::shared_ptr<ListeningSocket>> listeners;

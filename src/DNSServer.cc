@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 
+#include "Loggers.hh"
 #include "NetworkAddresses.hh"
 
 using namespace std;
@@ -91,7 +92,7 @@ void DNSServer::on_receive_message(int fd, short) {
 
     if (bytes < 0) {
       if (errno != EAGAIN) {
-        log(INFO, "[DNSServer] input error %d", errno);
+        dns_server_log.error("input error %d", errno);
         throw runtime_error("cannot read from udp socket");
       }
       break;
@@ -100,7 +101,7 @@ void DNSServer::on_receive_message(int fd, short) {
       break;
 
     } else if (bytes < 0x0C) {
-      log(WARNING, "[DNSServer] input query too small");
+      dns_server_log.warning("input query too small");
       print_data(stderr, input.data(), bytes);
 
     } else {

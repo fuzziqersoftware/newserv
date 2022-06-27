@@ -10,6 +10,7 @@
 #include <phosg/Network.hh>
 #include <phosg/Time.hh>
 
+#include "Loggers.hh"
 #include "Version.hh"
 
 using namespace std;
@@ -133,7 +134,8 @@ void Channel::disconnect() {
       auto on_error = +[](struct bufferevent* bev, short events, void*) -> void {
         if (events & BEV_EVENT_ERROR) {
           int err = EVUTIL_SOCKET_ERROR();
-          log(WARNING, "Disconnecting channel caused error %d (%s)", err,
+          channel_exceptions_log.warning(
+              "Disconnecting channel caused error %d (%s)", err,
               evutil_socket_error_to_string(err));
         }
         if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
@@ -215,7 +217,7 @@ Channel::Message Channel::recv(bool print_contents) {
     if (!this->name.empty()) {
       name_token = " from " + this->name;
     }
-    log(INFO, "Received%s (version=%s command=%04hX flag=%08X)",
+    command_data_log.info("Received%s (version=%s command=%04hX flag=%08X)",
         name_token.c_str(),
         name_for_version(this->version),
         header.command(this->version),
@@ -241,7 +243,7 @@ Channel::Message Channel::recv(bool print_contents) {
 void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
     bool print_contents) {
   if (!this->connected()) {
-    log(WARNING, "Attempted to send command on closed channel; dropping data");
+    channel_exceptions_log.warning("Attempted to send command on closed channel; dropping data");
   }
 
   string send_data;
@@ -325,7 +327,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
       print_color_escape(stderr, TerminalFormat::FG_YELLOW, TerminalFormat::BOLD, TerminalFormat::END);
     }
-    log(INFO, "Sending%s (version=%s command=%04hX flag=%08X)",
+    command_data_log.info("Sending%s (version=%s command=%04hX flag=%08X)",
         name_token.c_str(), name_for_version(version), cmd, flag);
     print_data(stderr, send_data.data(), logical_size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR);
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
@@ -373,7 +375,7 @@ void Channel::dispatch_on_input(struct bufferevent*, void* ctx) {
     } catch (const out_of_range&) {
       break;
     } catch (const exception& e) {
-      log(WARNING, "Error receiving on channel: %s", e.what());
+      channel_exceptions_log.warning("Error receiving on channel: %s", e.what());
       ch->on_error(*ch, BEV_EVENT_ERROR);
       break;
     }

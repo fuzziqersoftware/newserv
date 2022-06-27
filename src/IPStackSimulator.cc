@@ -19,6 +19,7 @@
 #include <phosg/Random.hh>
 #include <phosg/Time.hh>
 
+#include "Loggers.hh"
 #include "IPFrameInfo.hh"
 #include "DNSServer.hh"
 
@@ -27,7 +28,6 @@ using namespace std;
 
 
 static const size_t DEFAULT_RESEND_PUSH_USECS = 200000; // 200ms
-PrefixedLogger IPStackSimulator::log("[IPStackSimulator] ");
 
 
 
@@ -161,8 +161,7 @@ void IPStackSimulator::dispatch_on_listen_accept(
 void IPStackSimulator::on_listen_accept(struct evconnlistener* listener,
     evutil_socket_t fd, struct sockaddr*, int) {
   int listen_fd = evconnlistener_get_fd(listener);
-  this->log(INFO, "Client fd %d connected via fd %d",
-      fd, listen_fd);
+  ip_stack_simulator_log.info("Client fd %d connected via fd %d", fd, listen_fd);
 
   struct bufferevent *bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
@@ -182,7 +181,7 @@ void IPStackSimulator::dispatch_on_listen_error(
 
 void IPStackSimulator::on_listen_error(struct evconnlistener* listener) {
   int err = EVUTIL_SOCKET_ERROR();
-  this->log(ERROR, "Failure on listening socket %d: %d (%s)",
+  ip_stack_simulator_log.error("Failure on listening socket %d: %d (%s)",
       evconnlistener_get_fd(listener), err, evutil_socket_error_to_string(err));
   event_base_loopexit(this->base.get(), nullptr);
 }
@@ -202,7 +201,7 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
     c = this->bev_to_client.at(bev);
   } catch (const out_of_range&) {
     size_t bytes = evbuffer_get_length(buf);
-    this->log(ERROR, "Ignoring data received from unregistered client (0x%zX bytes)",
+    ip_stack_simulator_log.warning("Ignoring data received from unregistered client (0x%zX bytes)",
         bytes);
     evbuffer_drain(buf, bytes);
     return;
@@ -223,7 +222,7 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
       this->on_client_frame(c, frame);
     } catch (const exception& e) {
       if (this->state->ip_stack_debug) {
-        this->log(WARNING, "Failed to process client frame: %s", e.what());
+        ip_stack_simulator_log.warning("Failed to process client frame: %s", e.what());
         print_data(stderr, frame);
       }
     }
@@ -238,13 +237,11 @@ void IPStackSimulator::on_client_error(struct bufferevent* bev,
     short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    this->log(WARNING, "Client caused error %d (%s)", err,
+    ip_stack_simulator_log.warning("Client caused error %d (%s)", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    this->log(INFO, "Client fd %d disconnected",
-        bufferevent_getfd(bev));
-
+    ip_stack_simulator_log.info("Client fd %d disconnected", bufferevent_getfd(bev));
     this->bev_to_client.erase(bev);
   }
 }
@@ -255,7 +252,7 @@ void IPStackSimulator::on_client_frame(
     shared_ptr<IPClient> c, const string& frame) {
   if (this->state->ip_stack_debug) {
     fputc('\n', stderr);
-    this->log(INFO, "Client sent frame");
+    ip_stack_simulator_log.info("Client sent frame");
     print_data(stderr, frame);
   }
   this->log_frame(frame);
@@ -263,7 +260,7 @@ void IPStackSimulator::on_client_frame(
   FrameInfo fi(frame);
   if (this->state->ip_stack_debug) {
     string fi_header = fi.header_str();
-    this->log(INFO, "Frame header: %s", fi_header.c_str());
+    ip_stack_simulator_log.info("Frame header: %s", fi_header.c_str());
   }
 
   if (fi.arp) {
@@ -372,7 +369,7 @@ void IPStackSimulator::on_client_arp_frame(
   evbuffer_add(out_buf, r_payload, sizeof(r_payload));
 
   if (this->state->ip_stack_debug) {
-    this->log(INFO, "Sending ARP response");
+    ip_stack_simulator_log.info("Sending ARP response");
   }
 
   if (this->pcap_text_log_file) {
@@ -434,7 +431,7 @@ void IPStackSimulator::on_client_udp_frame(
 
   if (this->state->ip_stack_debug) {
     string remote_str = this->str_for_ipv4_netloc(fi.ipv4->src_addr, fi.udp->src_port);
-    this->log(INFO, "Sending DNS response to %s", remote_str.c_str());
+    ip_stack_simulator_log.info("Sending DNS response to %s", remote_str.c_str());
   }
 
   uint16_t frame_size = sizeof(r_ether) + sizeof(r_ipv4) + sizeof(r_udp) + r_data.size();
@@ -481,7 +478,7 @@ uint64_t IPStackSimulator::tcp_conn_key_for_client_frame(const FrameInfo& fi) {
 void IPStackSimulator::on_client_tcp_frame(
     shared_ptr<IPClient> c, const FrameInfo& fi) {
   if (this->state->ip_stack_debug) {
-    this->log(INFO, "Client sent TCP frame (seq=%08" PRIX32 ", ack=%08" PRIX32 ")",
+    ip_stack_simulator_log.info("Client sent TCP frame (seq=%08" PRIX32 ", ack=%08" PRIX32 ")",
         fi.tcp->seq_num.load(), fi.tcp->ack_num.load());
   }
 
@@ -561,10 +558,10 @@ void IPStackSimulator::on_client_tcp_frame(
 
       conn_str = this->str_for_tcp_connection(c, conn);
       if (this->state->ip_stack_debug) {
-        this->log(INFO, "Client opened TCP connection %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
+        ip_stack_simulator_log.info("Client opened TCP connection %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
             conn_str.c_str(), conn.acked_server_seq, conn.next_client_seq);
       } else {
-        this->log(INFO, "Client opened TCP connection %s",
+        ip_stack_simulator_log.info("Client opened TCP connection %s",
             conn_str.c_str());
       }
 
@@ -577,7 +574,7 @@ void IPStackSimulator::on_client_tcp_frame(
       // they're correct
       conn_str = this->str_for_tcp_connection(c, conn);
       if (this->state->ip_stack_debug) {
-        this->log(INFO, "Client resent SYN for TCP connection %s",
+        ip_stack_simulator_log.info("Client resent SYN for TCP connection %s",
             conn_str.c_str());
       }
     }
@@ -585,7 +582,7 @@ void IPStackSimulator::on_client_tcp_frame(
     // Send a SYN+ACK (send_tcp_frame always adds the ACK flag)
     this->send_tcp_frame(c, conn, TCPHeader::Flag::SYN);
     if (this->state->ip_stack_debug) {
-      this->log(INFO, "Sent SYN+ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
+      ip_stack_simulator_log.info("Sent SYN+ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
           conn_str.c_str(), conn.acked_server_seq, conn.next_client_seq);
     }
 
@@ -602,7 +599,7 @@ void IPStackSimulator::on_client_tcp_frame(
 
     if (fi.tcp->flags & TCPHeader::Flag::ACK) {
       if (this->state->ip_stack_debug) {
-        this->log(INFO, "Client sent ACK %08" PRIX32, fi.tcp->ack_num.load());
+        ip_stack_simulator_log.info("Client sent ACK %08" PRIX32, fi.tcp->ack_num.load());
       }
       if (conn->awaiting_first_ack) {
         if (fi.tcp->ack_num != conn->acked_server_seq + 1) {
@@ -614,7 +611,7 @@ void IPStackSimulator::on_client_tcp_frame(
       } else {
         if (seq_num_greater(fi.tcp->ack_num, conn->acked_server_seq)) {
           if (this->state->ip_stack_debug) {
-            this->log(INFO, "Advancing acked_server_seq from %08" PRIX32, conn->acked_server_seq);
+            ip_stack_simulator_log.info("Advancing acked_server_seq from %08" PRIX32, conn->acked_server_seq);
           }
           uint32_t ack_delta = fi.tcp->ack_num - conn->acked_server_seq;
           size_t pending_bytes = evbuffer_get_length(conn->pending_data.get());
@@ -627,7 +624,7 @@ void IPStackSimulator::on_client_tcp_frame(
           conn->resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
 
           if (this->state->ip_stack_debug) {
-            this->log(INFO, "Removed %08" PRIX32 " bytes from pending buffer and advanced acked_server_seq to %08" PRIX32,
+            ip_stack_simulator_log.info("Removed %08" PRIX32 " bytes from pending buffer and advanced acked_server_seq to %08" PRIX32,
                 ack_delta, conn->acked_server_seq);
           }
 
@@ -648,7 +645,7 @@ void IPStackSimulator::on_client_tcp_frame(
       }
 
       string conn_str = this->str_for_tcp_connection(c, *conn);
-      this->log(INFO, "Client closed TCP connection %s", conn_str.c_str());
+      ip_stack_simulator_log.info("Client closed TCP connection %s", conn_str.c_str());
 
       // TODO: Are we supposed to send a response to an RST? Here we do, and the
       // client probably just ignores it anyway
@@ -689,7 +686,7 @@ void IPStackSimulator::on_client_tcp_frame(
         // ignore it (but warn) and send an ACK later, and the client should
         // retransmit the lost data
         if (this->state->ip_stack_debug) {
-          this->log(WARNING,
+          ip_stack_simulator_log.warning(
               "Client sent out-of-order sequence number (expected %08" PRIX32 ", received %08" PRIX32 ", 0x%zX data bytes)",
               conn->next_client_seq, fi.tcp->seq_num.load(), fi.payload_size);
         }
@@ -706,10 +703,10 @@ void IPStackSimulator::on_client_tcp_frame(
 
         if (this->state->ip_stack_debug) {
           if (payload_skip_bytes) {
-            this->log(INFO, "Client sent data on TCP connection %s, overlapping existing ack'ed data (0x%zX bytes ignored)",
+            ip_stack_simulator_log.info("Client sent data on TCP connection %s, overlapping existing ack'ed data (0x%zX bytes ignored)",
                 conn_str.c_str(), payload_skip_bytes);
           } else {
-            this->log(INFO, "Client sent data on TCP connection %s",
+            ip_stack_simulator_log.info("Client sent data on TCP connection %s",
                 conn_str.c_str());
           }
           print_data(stderr, payload, payload_size);
@@ -728,7 +725,7 @@ void IPStackSimulator::on_client_tcp_frame(
       // Send an ACK
       this->send_tcp_frame(c, *conn);
       if (this->state->ip_stack_debug) {
-        this->log(INFO, "Sent PSH ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ", bytes_received=0x%zX)",
+        ip_stack_simulator_log.info("Sent PSH ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ", bytes_received=0x%zX)",
             conn_str.c_str(), conn->acked_server_seq, conn->next_client_seq, conn->bytes_received);
       }
     }
@@ -769,21 +766,21 @@ void IPStackSimulator::open_server_connection(
   string conn_str = this->str_for_tcp_connection(c, conn);
   if (port_config->behavior == ServerBehavior::PROXY_SERVER) {
     if (!this->state->proxy_server.get()) {
-      this->log(ERROR, "TCP connection %s is to non-running proxy server",
+      ip_stack_simulator_log.error("TCP connection %s is to non-running proxy server",
           conn_str.c_str());
       flush_and_free_bufferevent(bevs[1]);
     } else {
       this->state->proxy_server->connect_client(bevs[1], conn.server_port);
-      this->log(INFO, "Connected TCP connection %s to proxy server",
+      ip_stack_simulator_log.info("Connected TCP connection %s to proxy server",
           conn_str.c_str());
     }
   } else if (this->state->game_server.get()) {
     this->state->game_server->connect_client(bevs[1], c->ipv4_addr,
         conn.client_port, port_config->version, port_config->behavior);
-    this->log(INFO, "Connected TCP connection %s to game server",
+    ip_stack_simulator_log.info("Connected TCP connection %s to game server",
         conn_str.c_str());
   } else {
-    this->log(ERROR, "No server available for TCP connection %s",
+    ip_stack_simulator_log.error("No server available for TCP connection %s",
         conn_str.c_str());
     flush_and_free_bufferevent(bevs[1]);
   }
@@ -799,7 +796,7 @@ void IPStackSimulator::send_pending_push_frame(
   size_t bytes_to_send = min<size_t>(pending_bytes, conn.max_frame_size);
 
   if (this->state->ip_stack_debug) {
-    this->log(INFO, "Sending PSH frame with seq_num %08" PRIX32 ", 0x%zX/0x%zX data bytes",
+    ip_stack_simulator_log.info("Sending PSH frame with seq_num %08" PRIX32 ", 0x%zX/0x%zX data bytes",
         conn.acked_server_seq, bytes_to_send, pending_bytes);
   }
 
@@ -887,7 +884,7 @@ void IPStackSimulator::dispatch_on_resend_push(evutil_socket_t, short, void* ctx
   auto* conn = reinterpret_cast<IPClient::TCPConnection*>(ctx);
   auto c = conn->client.lock();
   if (!c.get()) {
-    IPStackSimulator::log(WARNING, "Resend push event triggered for deleted client; ignoring");
+    ip_stack_simulator_log.warning("Resend push event triggered for deleted client; ignoring");
   } else {
     c->sim->on_resend_push(c, *conn);
   }
@@ -901,7 +898,7 @@ void IPStackSimulator::dispatch_on_server_input(struct bufferevent*, void* ctx) 
   auto* conn = reinterpret_cast<IPClient::TCPConnection*>(ctx);
   auto c = conn->client.lock();
   if (!c.get()) {
-    IPStackSimulator::log(WARNING, "Server input event triggered for deleted client; ignoring");
+    ip_stack_simulator_log.warning("Server input event triggered for deleted client; ignoring");
   } else {
     c->sim->on_server_input(c, *conn);
   }
@@ -910,7 +907,7 @@ void IPStackSimulator::dispatch_on_server_input(struct bufferevent*, void* ctx) 
 void IPStackSimulator::on_server_input(shared_ptr<IPClient> c, IPClient::TCPConnection& conn) {
   struct evbuffer* buf = bufferevent_get_input(conn.server_bev.get());
   if (this->state->ip_stack_debug) {
-    this->log(INFO, "Server input event: 0x%zX bytes to read",
+    ip_stack_simulator_log.info("Server input event: 0x%zX bytes to read",
         evbuffer_get_length(buf));
   }
 
@@ -923,7 +920,7 @@ void IPStackSimulator::dispatch_on_server_error(
   auto* conn = reinterpret_cast<IPClient::TCPConnection*>(ctx);
   auto c = conn->client.lock();
   if (!c.get()) {
-    IPStackSimulator::log(WARNING, "Server error event triggered for deleted client; ignoring");
+    ip_stack_simulator_log.warning("Server error event triggered for deleted client; ignoring");
   } else {
     c->sim->on_server_error(c, *conn, events);
   }
@@ -933,7 +930,7 @@ void IPStackSimulator::on_server_error(
     shared_ptr<IPClient> c, IPClient::TCPConnection& conn, short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    this->log(WARNING, "Received error %d from virtual connection (%s)", err,
+    ip_stack_simulator_log.warning("Received error %d from virtual connection (%s)", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
@@ -945,7 +942,7 @@ void IPStackSimulator::on_server_error(
     // Delete the connection object (this also flushes and frees the server
     // virtual connection bufferevent)
     string conn_str = this->str_for_tcp_connection(c, conn);
-    this->log(INFO, "Server closed TCP connection %s",
+    ip_stack_simulator_log.info("Server closed TCP connection %s",
         conn_str.c_str());
     c->tcp_connections.erase(this->tcp_conn_key_for_connection(conn));
   }

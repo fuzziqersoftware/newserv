@@ -5,6 +5,7 @@
 #include <memory>
 #include <phosg/Strings.hh>
 
+#include "Loggers.hh"
 #include "Client.hh"
 #include "Lobby.hh"
 #include "Player.hh"
@@ -234,7 +235,7 @@ static void process_subcommand_switch_state_changed(shared_ptr<ServerState>,
   if (cmd.enabled && cmd.switch_id != 0xFFFF) {
     if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->switch_assist &&
         (c->last_switch_enabled_command.subcommand == 0x05)) {
-      log(INFO, "[Switch assist] Replaying previous enable command");
+      c->log.info("[Switch assist] Replaying previous enable command");
       forward_subcommand(l, c, command, flag, &c->last_switch_enabled_command,
           sizeof(c->last_switch_enabled_command));
       send_command_t(c, command, flag, c->last_switch_enabled_command);
@@ -277,8 +278,8 @@ static void process_subcommand_player_drop_item(shared_ptr<ServerState>,
     l->add_item(c->game_data.player()->remove_item(cmd->item_id, 0),
         cmd->area, cmd->x, cmd->z);
 
-    log(INFO, "[Items/%08" PRIX32 "] Player %hhu dropped item %08" PRIX32 " at %hu:(%g, %g)",
-        l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
+    l->log.info("Player %hhu dropped item %08" PRIX32 " at %hu:(%g, %g)",
+        cmd->client_id, cmd->item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -307,8 +308,8 @@ static void process_subcommand_create_inventory_item(shared_ptr<ServerState>,
     item.data = cmd->item;
     c->game_data.player()->add_item(item);
 
-    log(INFO, "[Items/%08" PRIX32 "] Player %hhu created inventory item %08" PRIX32,
-        l->lobby_id, cmd->client_id, cmd->item.id.load());
+    l->log.info("Player %hhu created inventory item %08" PRIX32,
+        cmd->client_id, cmd->item.id.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -338,8 +339,8 @@ static void process_subcommand_drop_partial_stack(shared_ptr<ServerState>,
     item.data = cmd->data;
     l->add_item(item, cmd->area, cmd->x, cmd->z);
 
-    log(INFO, "[Items/%08" PRIX32 "] Player %hhu split stack to create ground item %08" PRIX32 " at %hu:(%g, %g)",
-        l->lobby_id, cmd->client_id, item.data.id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
+    l->log.info("Player %hhu split stack to create ground item %08" PRIX32 " at %hu:(%g, %g)",
+        cmd->client_id, item.data.id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -375,8 +376,8 @@ static void process_subcommand_drop_partial_stack_bb(shared_ptr<ServerState>,
 
     l->add_item(item, cmd->area, cmd->x, cmd->z);
 
-    log(INFO, "[Items/%08" PRIX32 "/BB] Player %hhu split stack %08" PRIX32 " (%" PRIu32 " of them) at %hu:(%g, %g)",
-        l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load(),
+    l->log.info("Player %hhu split stack %08" PRIX32 " (%" PRIu32 " of them) at %hu:(%g, %g)",
+        cmd->client_id, cmd->item_id.load(), cmd->amount.load(),
         cmd->area.load(), cmd->x.load(), cmd->z.load());
     c->game_data.player()->print_inventory(stderr);
 
@@ -407,8 +408,8 @@ static void process_subcommand_buy_shop_item(shared_ptr<ServerState>,
     item.data = cmd->item;
     c->game_data.player()->add_item(item);
 
-    log(INFO, "[Items/%08" PRIX32 "] Player %hhu bought item %08" PRIX32 " from shop",
-        l->lobby_id, cmd->client_id, item.data.id.load());
+    l->log.info("Player %hhu bought item %08" PRIX32 " from shop",
+        cmd->client_id, item.data.id.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -434,8 +435,8 @@ static void process_subcommand_box_or_enemy_item_drop(shared_ptr<ServerState>,
   item.data = cmd->data;
   l->add_item(item, cmd->area, cmd->x, cmd->z);
 
-  log(INFO, "[Items/%08" PRIX32 "] Leader created ground item %08" PRIX32 " at %hhu:(%g, %g)",
-      l->lobby_id, item.data.id.load(), cmd->area, cmd->x.load(), cmd->z.load());
+  l->log.info("Leader created ground item %08" PRIX32 " at %hhu:(%g, %g)",
+      item.data.id.load(), cmd->area, cmd->x.load(), cmd->z.load());
 
   forward_subcommand(l, c, command, flag, data);
 }
@@ -461,8 +462,8 @@ static void process_subcommand_pick_up_item(shared_ptr<ServerState>,
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     effective_c->game_data.player()->add_item(l->remove_item(cmd->item_id));
-    log(INFO, "[Items/%08" PRIX32 "] Player %hu picked up %08" PRIX32,
-        l->lobby_id, cmd->client_id.load(), cmd->item_id.load());
+    l->log.info("Player %hu picked up %08" PRIX32,
+        cmd->client_id.load(), cmd->item_id.load());
     effective_c->game_data.player()->print_inventory(stderr);
   }
 
@@ -486,8 +487,7 @@ static void process_subcommand_pick_up_item_request(shared_ptr<ServerState>,
 
     c->game_data.player()->add_item(l->remove_item(cmd->item_id));
 
-    log(INFO, "[Items/%08" PRIX32 "/BB] Player %hhu picked up %08" PRIX32,
-        l->lobby_id, cmd->client_id, cmd->item_id.load());
+    l->log.info("Player %hhu picked up %08" PRIX32, cmd->client_id, cmd->item_id.load());
     c->game_data.player()->print_inventory(stderr);
 
     send_pick_up_item(l, c, cmd->item_id, cmd->area);
@@ -537,8 +537,7 @@ static void process_subcommand_use_item(shared_ptr<ServerState>,
     size_t index = c->game_data.player()->inventory.find_item(cmd->item_id);
     player_use_item(c, index);
 
-    log(INFO, "[Items/%08" PRIX32 "] Player used item %hhu:%08" PRIX32,
-        l->lobby_id, cmd->client_id, cmd->item_id.load());
+    l->log.info("Player used item %hhu:%08" PRIX32, cmd->client_id, cmd->item_id.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -933,8 +932,8 @@ static void process_subcommand_destroy_inventory_item(shared_ptr<ServerState>,
   }
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     c->game_data.player()->remove_item(cmd->item_id, cmd->amount);
-    log(INFO, "[Items/%08" PRIX32 "] Inventory item %hhu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
-        l->lobby_id, cmd->client_id, cmd->item_id.load(), cmd->amount.load());
+    l->log.info("Inventory item %hhu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
+        cmd->client_id, cmd->item_id.load(), cmd->amount.load());
     c->game_data.player()->print_inventory(stderr);
     forward_subcommand(l, c, command, flag, data);
   }
@@ -949,8 +948,8 @@ static void process_subcommand_destroy_ground_item(shared_ptr<ServerState>,
   }
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     l->remove_item(cmd->item_id);
-    log(INFO, "[Items/%08" PRIX32 "] Ground item %08" PRIX32 " destroyed (%" PRIX32 " of them)",
-        l->lobby_id, cmd->item_id.load(), cmd->amount.load());
+    l->log.info("Ground item %08" PRIX32 " destroyed (%" PRIX32 " of them)",
+        cmd->item_id.load(), cmd->amount.load());
     forward_subcommand(l, c, command, flag, data);
   }
 }
@@ -1085,24 +1084,24 @@ static void process_subcommand_forward_check_size_ep3_game(shared_ptr<ServerStat
 }
 
 static void process_subcommand_invalid(shared_ptr<ServerState>,
-    shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
+    shared_ptr<Lobby>, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto* p = check_size_sc(data, sizeof(PSOSubcommand), 0xFFFF);
   if (command_is_private(command)) {
-    log(WARNING, "Invalid subcommand: %02hhX (private to %hhu)", p->byte[0], flag);
+    c->log.error("Invalid subcommand: %02hhX (private to %hhu)", p->byte[0], flag);
   } else {
-    log(WARNING, "Invalid subcommand: %02hhX (public)", p->byte[0]);
+    c->log.error("Invalid subcommand: %02hhX (public)", p->byte[0]);
   }
 }
 
 static void process_subcommand_unimplemented(shared_ptr<ServerState>,
-    shared_ptr<Lobby>, shared_ptr<Client>, uint8_t command, uint8_t flag,
+    shared_ptr<Lobby>, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto* p = check_size_sc(data, sizeof(PSOSubcommand), 0xFFFF);
   if (command_is_private(command)) {
-    log(WARNING, "Unknown subcommand: %02hhX (private to %hhu)", p->byte[0], flag);
+    c->log.warning("Unknown subcommand: %02hhX (private to %hhu)", p->byte[0], flag);
   } else {
-    log(WARNING, "Unknown subcommand: %02hhX (public)", p->byte[0]);
+    c->log.warning("Unknown subcommand: %02hhX (public)", p->byte[0]);
   }
 }
 

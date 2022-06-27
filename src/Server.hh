@@ -32,7 +32,6 @@ public:
   std::shared_ptr<Client> get_client() const;
 
 private:
-  PrefixedLogger log;
   std::shared_ptr<struct event_base> base;
 
   struct ListeningSocket {

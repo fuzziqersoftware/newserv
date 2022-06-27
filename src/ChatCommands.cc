@@ -8,6 +8,7 @@
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
+#include "Loggers.hh"
 #include "Server.hh"
 #include "ProxyServer.hh"
 #include "Lobby.hh"
@@ -166,7 +167,7 @@ static void server_command_ax(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
   check_privileges(c, Privilege::ANNOUNCE);
   string message = encode_sjis(args);
-  log(INFO, "[Client message from %010u] %s\n", c->license->serial_number, message.c_str());
+  ax_messages_log.info("%s", message.c_str());
 }
 
 static void server_command_announce(shared_ptr<ServerState> s, shared_ptr<Lobby>,

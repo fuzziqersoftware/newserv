@@ -10,6 +10,7 @@
 #include <phosg/Filesystem.hh>
 #include <set>
 
+#include "Loggers.hh"
 #include "NetworkAddresses.hh"
 #include "SendCommands.hh"
 #include "DNSServer.hh"
@@ -87,11 +88,11 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   try {
     s->local_address = s->all_addresses.at(local_address_str);
     string addr_str = string_for_address(s->local_address);
-    log(INFO, "Added local address: %s (%s)", addr_str.c_str(),
+    config_log.info("Added local address: %s (%s)", addr_str.c_str(),
         local_address_str.c_str());
   } catch (const out_of_range&) {
     s->local_address = address_for_string(local_address_str.c_str());
-    log(INFO, "Added local address: %s", local_address_str.c_str());
+    config_log.info("Added local address: %s", local_address_str.c_str());
   }
   s->all_addresses.emplace("<local>", s->local_address);
 
@@ -99,11 +100,11 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   try {
     s->external_address = s->all_addresses.at(external_address_str);
     string addr_str = string_for_address(s->external_address);
-    log(INFO, "Added external address: %s (%s)", addr_str.c_str(),
+    config_log.info("Added external address: %s (%s)", addr_str.c_str(),
         external_address_str.c_str());
   } catch (const out_of_range&) {
     s->external_address = address_for_string(external_address_str.c_str());
-    log(INFO, "Added external address: %s", external_address_str.c_str());
+    config_log.info("Added external address: %s", external_address_str.c_str());
   }
   s->all_addresses.emplace("<external>", s->external_address);
 
@@ -134,15 +135,23 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     s->item_tracking_enabled = true;
   }
 
+  shared_ptr<JSONObject> log_levels_json;
+  try {
+    log_levels_json = d.at("LogLevels");
+  } catch (const out_of_range&) { }
+  if (log_levels_json.get()) {
+    set_log_levels_from_json(log_levels_json);
+  }
+
   for (const string& filename : list_directory("system/blueburst/keys")) {
     if (!ends_with(filename, ".nsk")) {
       continue;
     }
     s->bb_private_keys.emplace_back(new PSOBBEncryption::KeyFile(
         load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
-    log(INFO, "Loaded Blue Burst key file: %s", filename.c_str());
+    config_log.info("Loaded Blue Burst key file: %s", filename.c_str());
   }
-  log(INFO, "%zu Blue Burst key file(s) loaded", s->bb_private_keys.size());
+  config_log.info("%zu Blue Burst key file(s) loaded", s->bb_private_keys.size());
 
   try {
     bool run_shell = d.at("RunInteractiveShell")->as_bool();
@@ -178,8 +187,7 @@ void drop_privileges(const string& username) {
     throw runtime_error(string_printf("can\'t switch to user %d (%s)",
         pw->pw_uid, error.c_str()));
   }
-  log(INFO, "Switched to user %s (%d:%d)",  username.c_str(), pw->pw_uid,
-      pw->pw_gid);
+  config_log.info("Switched to user %s (%d:%d)",  username.c_str(), pw->pw_uid, pw->pw_gid);
 }
 
 
@@ -320,57 +328,57 @@ int main(int argc, char** argv) {
 
   shared_ptr<struct event_base> base(event_base_new(), event_base_free);
 
-  log(INFO, "Reading network addresses");
+  config_log.info("Reading network addresses");
   state->all_addresses = get_local_addresses();
   for (const auto& it : state->all_addresses) {
     string addr_str = string_for_address(it.second);
-    log(INFO, "Found interface: %s = %s", it.first.c_str(), addr_str.c_str());
+    config_log.info("Found interface: %s = %s", it.first.c_str(), addr_str.c_str());
   }
 
-  log(INFO, "Loading configuration");
+  config_log.info("Loading configuration");
   auto config_json = JSONObject::parse(load_file("system/config.json"));
   populate_state_from_config(state, config_json);
 
-  log(INFO, "Loading license list");
+  config_log.info("Loading license list");
   state->license_manager.reset(new LicenseManager("system/licenses.nsi"));
 
-  log(INFO, "Loading battle parameters");
+  config_log.info("Loading battle parameters");
   state->battle_params.reset(new BattleParamTable("system/blueburst/BattleParamEntry"));
 
-  log(INFO, "Loading level table");
+  config_log.info("Loading level table");
   state->level_table.reset(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));
 
-  log(INFO, "Collecting Episode 3 data");
+  config_log.info("Collecting Episode 3 data");
   state->ep3_data_index.reset(new Ep3DataIndex("system/ep3"));
 
-  log(INFO, "Collecting quest metadata");
+  config_log.info("Collecting quest metadata");
   state->quest_index.reset(new QuestIndex("system/quests"));
 
-  log(INFO, "Compiling client functions");
+  config_log.info("Compiling client functions");
   state->function_code_index.reset(new FunctionCodeIndex("system/ppc"));
 
-  log(INFO, "Loading DOL files");
+  config_log.info("Loading DOL files");
   state->dol_file_index.reset(new DOLFileIndex("system/dol"));
 
-  log(INFO, "Creating menus");
+  config_log.info("Creating menus");
   state->create_menus(config_json);
 
   shared_ptr<DNSServer> dns_server;
   if (state->dns_server_port) {
-    log(INFO, "Starting DNS server");
+    config_log.info("Starting DNS server");
     dns_server.reset(new DNSServer(base, state->local_address,
         state->external_address));
     dns_server->listen("", state->dns_server_port);
   } else {
-    log(INFO, "DNS server is disabled");
+    config_log.info("DNS server is disabled");
   }
 
-  log(INFO, "Opening sockets");
+  config_log.info("Opening sockets");
   for (const auto& it : state->name_to_port_config) {
     const auto& pc = it.second;
     if (pc->behavior == ServerBehavior::PROXY_SERVER) {
       if (!state->proxy_server.get()) {
-        log(INFO, "Starting proxy server");
+        config_log.info("Starting proxy server");
         state->proxy_server.reset(new ProxyServer(base, state));
       }
       if (state->proxy_server.get()) {
@@ -395,7 +403,7 @@ int main(int argc, char** argv) {
       }
     } else {
       if (!state->game_server.get()) {
-        log(INFO, "Starting game server");
+        config_log.info("Starting game server");
         state->game_server.reset(new Server(base, state));
       }
       string name = string_printf("%s (%s, %s) on port %hu",
@@ -407,7 +415,7 @@ int main(int argc, char** argv) {
 
   shared_ptr<IPStackSimulator> ip_stack_simulator;
   if (!state->ip_stack_addresses.empty()) {
-    log(INFO, "Starting IP stack simulator");
+    config_log.info("Starting IP stack simulator");
     ip_stack_simulator.reset(new IPStackSimulator(base, state));
     for (const auto& it : state->ip_stack_addresses) {
       auto netloc = parse_netloc(it);
@@ -416,7 +424,7 @@ int main(int argc, char** argv) {
   }
 
   if (!state->username.empty()) {
-    log(INFO, "Switching to user %s", state->username.c_str());
+    config_log.info("Switching to user %s", state->username.c_str());
     drop_privileges(state->username);
   }
 
@@ -430,10 +438,10 @@ int main(int argc, char** argv) {
     shell.reset(new ServerShell(base, state));
   }
 
-  log(INFO, "Ready");
+  config_log.info("Ready");
   event_base_dispatch(base.get());
 
-  log(INFO, "Normal shutdown");
+  config_log.info("Normal shutdown");
   state->proxy_server.reset(); // Break reference cycle
   return 0;
 }

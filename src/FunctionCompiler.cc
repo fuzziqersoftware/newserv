@@ -10,6 +10,7 @@
 #include <resource_file/Emulators/PPC32Emulator.hh>
 #endif
 
+#include "Loggers.hh"
 #include "CommandFormats.hh"
 
 using namespace std;
@@ -133,7 +134,7 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
 
 FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
   if (!function_compiler_available()) {
-    log(INFO, "Function compiler is not available");
+    function_compiler_log.info("Function compiler is not available");
     return;
   }
 
@@ -161,13 +162,13 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
         this->name_to_patch_function.emplace(name, code);
       }
       if (code->index) {
-        log(INFO, "Compiled function %02X => %s", code->index, name.c_str());
+        function_compiler_log.info("Compiled function %02X => %s", code->index, name.c_str());
       } else {
-        log(INFO, "Compiled function %s", name.c_str());
+        function_compiler_log.info("Compiled function %s", name.c_str());
       }
 
     } catch (const exception& e) {
-      log(WARNING, "Failed to compile function %s: %s", name.c_str(), e.what());
+      function_compiler_log.warning("Failed to compile function %s: %s", name.c_str(), e.what());
     }
   }
 }
@@ -187,11 +188,11 @@ vector<MenuItem> FunctionCodeIndex::patch_menu() const {
 
 DOLFileIndex::DOLFileIndex(const string& directory) {
   if (!function_compiler_available()) {
-    log(INFO, "Function compiler is not available");
+    function_compiler_log.info("Function compiler is not available");
     return;
   }
   if (!isdir(directory)) {
-    log(INFO, "DOL file directory is missing");
+    function_compiler_log.info("DOL file directory is missing");
     return;
   }
 
@@ -212,10 +213,10 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
 
       this->name_to_file.emplace(dol->name, dol);
       this->item_id_to_file.emplace_back(dol);
-      log(INFO, "Loaded DOL file %s", filename.c_str());
+      function_compiler_log.info("Loaded DOL file %s", filename.c_str());
 
     } catch (const exception& e) {
-      log(WARNING, "Failed to load DOL file %s: %s", filename.c_str(), e.what());
+      function_compiler_log.warning("Failed to load DOL file %s: %s", filename.c_str(), e.what());
     }
   }
 }

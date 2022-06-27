@@ -5,6 +5,7 @@
 #include <phosg/Filesystem.hh>
 #include <phosg/Time.hh>
 
+#include "Loggers.hh"
 #include "License.hh"
 
 using namespace std;
@@ -57,7 +58,7 @@ LicenseManager::LicenseManager(const string& filename) : filename(filename) {
     }
 
   } catch (const cannot_open_file&) {
-    log(WARNING, "File %s does not exist; no licenses are registered",
+    license_log.warning("File %s does not exist; no licenses are registered",
         this->filename.c_str());
   }
 }

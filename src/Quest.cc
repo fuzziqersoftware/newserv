@@ -8,6 +8,7 @@
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 
+#include "Loggers.hh"
 #include "CommandFormats.hh"
 #include "Compression.hh"
 #include "PSOEncryption.hh"
@@ -624,12 +625,12 @@ QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
             make_pair(q->version, q->menu_item_id), q).second) {
           throw logic_error("duplicate quest menu item id");
         }
-        log(INFO, "Indexed quest %s (%s-%" PRId64 " => %" PRIu32 ", %s, %s, joinable=%s, dcv1=%s)",
+        static_game_data_log.info("Indexed quest %s (%s-%" PRId64 " => %" PRIu32 ", %s, %s, joinable=%s, dcv1=%s)",
             ascii_name.c_str(), name_for_version(q->version), q->internal_id,
             q->menu_item_id, name_for_category(q->category), name_for_episode(q->episode),
             q->joinable ? "true" : "false", q->is_dcv1 ? "true" : "false");
       } catch (const exception& e) {
-        log(WARNING, "Failed to parse quest file %s (%s)", filename.c_str(), e.what());
+        static_game_data_log.warning("Failed to parse quest file %s (%s)", filename.c_str(), e.what());
       }
     }
   }

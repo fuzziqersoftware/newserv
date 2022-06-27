@@ -28,7 +28,6 @@ public:
   static uint32_t connect_address_for_remote_address(uint32_t remote_addr);
 
 private:
-  static PrefixedLogger log;
   std::shared_ptr<struct event_base> base;
   std::shared_ptr<ServerState> state;
 

@@ -87,6 +87,56 @@
   // run if it's not. This option, if present, overrides that behavior.
   // "RunInteractiveShell": false,
 
+  // Specify which kinds of logging you want to be enabled. This allows you to
+  // make the terminal more or less noisy when players are connected, so you can
+  // see only the log messages you care about. The log levels are, in decreasing
+  // order of verbosity, "debug", "info", "warning", "error", and "disabled".
+  "LogLevels": {
+    // AX messages are messages sent to the terminal with the $ax command.
+    "AXMessages": "info",
+    // Channel exceptions are messages about clients disconnecting unexpectedly,
+    // or other unexpected network-level events.
+    "ChannelExceptions": "info",
+    // Client messages describe events that are specific to a single client's
+    // connection or game state.
+    "Clients": "info",
+    // Command data messages show the raw data for all commands sent and
+    // received, on both the game server and proxy server. If stderr is a
+    // terminal, these messages are colored as well; green is for commands sent
+    // by the client, yellow is for commands sent by newserv, and red is for
+    // commands sent by the remote server (for proxy server sessions).
+    "CommandData": "info",
+    // Config messages describe server-wide events, and generally only occur
+    // during the startup procedure.
+    "Config": "info",
+    // DNS server messages describe erroneous queries that the DNS server does
+    // not respond to. Normal DNS queries do not generate any log messages.
+    "DNSServer": "info",
+    // Function compiler messages describe PowerPC function call assembly
+    // events, which generally only occur during startup.
+    "FunctionCompiler": "info",
+    // IP stack simulator messages describe clients connecting and disconnecting
+    // via the IP stack interface, and errors that occur at the simulated
+    // network level within the simulator.
+    "IPStackSimulator": "info",
+    // License manager messages describe the creation of new license files.
+    "LicenseManager": "info",
+    // Lobby messages describe creation and deletion of lobbies and games, as
+    // well as item tracking events within games.
+    "Lobbies": "info",
+    // Player data messages describe the loading and saving of player and
+    // account data files.
+    "PlayerData": "info",
+    // Proxy server messages describe clients connecting and disconnecting from
+    // the proxy server, as well as events that occur in each session.
+    "ProxyServer": "info",
+    // Game server messages describe clients connecting and disconnecting from
+    // the game server.
+    "GameServer": "info",
+    // Static game data messages describe the loading of any kind of game data.
+    "StaticGameData": "info",
+  },
+
   // By default, the server only allows users who are registered in the license
   // file to connect. By enabling this option, all non-BB users will be allowed
   // to connect. This option has no effect for Blue Burst clients; they are

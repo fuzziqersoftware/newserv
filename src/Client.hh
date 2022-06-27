@@ -57,6 +57,8 @@ struct Client {
     DEFAULT_V4_BB = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | NO_MESSAGE_BOX_CLOSE_CONFIRMATION | SAVE_ENABLED,
   };
 
+  PrefixedLogger log;
+
   // License & account
   std::shared_ptr<const License> license;
   GameVersion version;

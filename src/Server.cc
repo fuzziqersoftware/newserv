@@ -20,6 +20,7 @@
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
+#include "Loggers.hh"
 #include "PSOProtocol.hh"
 #include "ReceiveCommands.hh"
 
@@ -30,10 +31,10 @@ using namespace std::placeholders;
 
 void Server::disconnect_client(shared_ptr<Client> c) {
   if (c->channel.is_virtual_connection) {
-    this->log(INFO, "Disconnecting client on virtual connection %p",
+    server_log.info("Disconnecting client on virtual connection %p",
         c->channel.bev.get());
   } else {
-    this->log(INFO, "Disconnecting client on fd %d",
+    server_log.info("Disconnecting client on fd %d",
         bufferevent_getfd(c->channel.bev.get()));
   }
 
@@ -43,7 +44,7 @@ void Server::disconnect_client(shared_ptr<Client> c) {
   try {
     process_disconnect(this->state, c);
   } catch (const exception& e) {
-    this->log(WARNING, "Error during client disconnect cleanup: %s", e.what());
+    server_log.warning("Error during client disconnect cleanup: %s", e.what());
   }
   // c is destroyed here (process_disconnect should remove any other references
   // to it, e.g. from Lobby objects)
@@ -69,13 +70,13 @@ void Server::on_listen_accept(struct evconnlistener* listener,
   try {
     listening_socket = &this->listening_sockets.at(listen_fd);
   } catch (const out_of_range& e) {
-    this->log(WARNING, "Can\'t determine version for socket %d; disconnecting client",
+    server_log.warning("Can\'t determine version for socket %d; disconnecting client",
         listen_fd);
     close(fd);
     return;
   }
 
-  this->log(INFO, "Client fd %d connected via fd %d (%s)",
+  server_log.info("Client fd %d connected via fd %d (%s)",
       fd, listen_fd, listening_socket->name.c_str());
 
   struct bufferevent *bev = bufferevent_socket_new(this->base.get(), fd,
@@ -90,7 +91,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
   try {
     process_connect(this->state, c);
   } catch (const exception& e) {
-    this->log(WARNING, "Error during client initialization: %s", e.what());
+    server_log.warning("Error during client initialization: %s", e.what());
     this->disconnect_client(c);
   }
 }
@@ -98,7 +99,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
 void Server::connect_client(
     struct bufferevent* bev, uint32_t address, uint16_t port,
     GameVersion version, ServerBehavior initial_state) {
-  this->log(INFO, "Client connected on virtual connection %p", bev);
+  server_log.info("Client connected on virtual connection %p", bev);
 
   shared_ptr<Client> c(new Client(bev, version, initial_state));
   c->channel.on_command_received = Server::on_client_input;
@@ -117,14 +118,14 @@ void Server::connect_client(
   try {
     process_connect(this->state, c);
   } catch (const exception& e) {
-    this->log(WARNING, "Error during client initialization: %s", e.what());
+    server_log.error("Error during client initialization: %s", e.what());
     this->disconnect_client(c);
   }
 }
 
 void Server::on_listen_error(struct evconnlistener* listener) {
   int err = EVUTIL_SOCKET_ERROR();
-  this->log(ERROR, "Failure on listening socket %d: %d (%s)",
+  server_log.error("Failure on listening socket %d: %d (%s)",
       evconnlistener_get_fd(listener), err, evutil_socket_error_to_string(err));
   event_base_loopexit(this->base.get(), nullptr);
 }
@@ -139,7 +140,7 @@ void Server::on_client_input(Channel& ch, uint16_t command, uint32_t flag, std::
     try {
       process_command(server->state, c, command, flag, data);
     } catch (const exception& e) {
-      server->log(WARNING, "Error processing client command: %s", e.what());
+      server_log.warning("Error processing client command: %s", e.what());
       c->should_disconnect = true;
     }
     if (c->should_disconnect) {
@@ -154,7 +155,7 @@ void Server::on_client_error(Channel& ch, short events) {
 
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    server->log(WARNING, "Client caused error %d (%s)", err,
+    server_log.warning("Client caused error %d (%s)", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
@@ -165,9 +166,7 @@ void Server::on_client_error(Channel& ch, short events) {
 Server::Server(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
-  : log("[Server] "),
-    base(base),
-    state(state) { }
+  : base(base), state(state) { }
 
 void Server::listen(
     const std::string& name,
@@ -175,7 +174,7 @@ void Server::listen(
     GameVersion version,
     ServerBehavior behavior) {
   int fd = ::listen(socket_path, 0, SOMAXCONN);
-  this->log(INFO, "Listening on Unix socket %s (%s) on fd %d (name: %s)",
+  server_log.info("Listening on Unix socket %s (%s) on fd %d (name: %s)",
       socket_path.c_str(), name_for_version(version), fd, name.c_str());
   this->add_socket(name, fd, version, behavior);
 }
@@ -188,7 +187,7 @@ void Server::listen(
     ServerBehavior behavior) {
   int fd = ::listen(addr, port, SOMAXCONN);
   string netloc_str = render_netloc(addr, port);
-  this->log(INFO, "Listening on TCP interface %s (%s) on fd %d (name: %s)",
+  server_log.info("Listening on TCP interface %s (%s) on fd %d (name: %s)",
       netloc_str.c_str(), name_for_version(version), fd, name.c_str());
   this->add_socket(name, fd, version, behavior);
 }

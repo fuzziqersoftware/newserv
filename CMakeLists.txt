@@ -59,6 +59,7 @@ add_executable(newserv
   src/LevelTable.cc
   src/License.cc
   src/Lobby.cc
+  src/Loggers.cc
   src/Main.cc
   src/Map.cc
   src/Menu.cc

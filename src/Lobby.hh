@@ -33,6 +33,8 @@ struct Lobby {
     PERSISTENT                 = 0x00040000,
   };
 
+  PrefixedLogger log;
+
   uint32_t lobby_id;
 
   uint32_t min_level;
@@ -75,7 +77,7 @@ struct Lobby {
   std::shared_ptr<const Quest> loading_quest;
   std::array<std::shared_ptr<Client>, 12> clients;
 
-  Lobby();
+  explicit Lobby(uint32_t id);
 
   inline bool is_game() const {
     return this->flags & Flag::GAME;

@@ -5,6 +5,7 @@
 #include <array>
 #include <phosg/Filesystem.hh>
 
+#include "Loggers.hh"
 #include "Compression.hh"
 #include "Text.hh"
 
@@ -722,7 +723,7 @@ Ep3DataIndex::Ep3DataIndex(const string& directory) {
       }
 
     } catch (const exception& e) {
-      log(WARNING, "Failed to load card text: %s", e.what());
+      static_game_data_log.warning("Failed to load card text: %s", e.what());
     }
   }
 
@@ -768,9 +769,9 @@ Ep3DataIndex::Ep3DataIndex(const string& directory) {
       }
     }
 
-    log(INFO, "Indexed %zu Episode 3 card definitions", this->card_definitions.size());
+    static_game_data_log.info("Indexed %zu Episode 3 card definitions", this->card_definitions.size());
   } catch (const exception& e) {
-    log(WARNING, "Failed to load Episode 3 card update: %s", e.what());
+    static_game_data_log.warning("Failed to load Episode 3 card update: %s", e.what());
   }
 
   for (const auto& filename : list_directory(directory)) {
@@ -788,12 +789,12 @@ Ep3DataIndex::Ep3DataIndex(const string& directory) {
           throw runtime_error("duplicate map number");
         }
         string name = entry->map.name;
-        log(INFO, "Indexed Episode 3 map %s (%08" PRIX32 "; %s)",
+        static_game_data_log.info("Indexed Episode 3 map %s (%08" PRIX32 "; %s)",
             filename.c_str(), entry->map.map_number.load(), name.c_str());
       }
 
     } catch (const exception& e) {
-      log(WARNING, "Failed to index Episode 3 map %s: %s",
+      static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
           filename.c_str(), e.what());
     }
   }
@@ -883,7 +884,7 @@ const string& Ep3DataIndex::get_compressed_map_list() const {
     compressed_w.put_u32b(w.str().size());
     compressed_w.write(prs_compress(w.str()));
     this->compressed_map_list = move(compressed_w.str());
-    log(INFO, "Generated Episode 3 compressed map list (%zu -> %zu bytes)",
+    static_game_data_log.info("Generated Episode 3 compressed map list (%zu -> %zu bytes)",
         w.size(), this->compressed_map_list.size());
   }
   return this->compressed_map_list;

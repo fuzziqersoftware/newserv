@@ -9,6 +9,7 @@
 #include <phosg/Network.hh>
 #include <phosg/Time.hh>
 
+#include "Loggers.hh"
 #include "Version.hh"
 
 using namespace std;
@@ -23,7 +24,8 @@ Client::Client(
     struct bufferevent* bev,
     GameVersion version,
     ServerBehavior server_behavior)
-  : version(version),
+  : log("", client_log.min_level),
+    version(version),
     bb_game_state(0),
     flags(flags_for_version(this->version, 0)),
     channel(bev, this->version, nullptr, nullptr, this, "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),

@@ -10,6 +10,7 @@
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
+#include "Loggers.hh"
 #include "ChatCommands.hh"
 #include "FileContentsCache.hh"
 #include "ProxyServer.hh"
@@ -92,7 +93,7 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
       break;
 
     default:
-      log(ERROR, "Unimplemented behavior: %" PRId64,
+      c->log.error("Unimplemented behavior: %" PRId64,
           static_cast<int64_t>(c->server_behavior));
   }
 }
@@ -528,7 +529,7 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
       CommandEp3InitBegin(s, c);
       break; */
     default:
-      log(WARNING, "Unknown Episode III server data request: %02X", cmds[1].byte[0]);
+      c->log.error("Unknown Episode III server data request: %02X", cmds[1].byte[0]);
   }
 }
 
@@ -1514,7 +1515,6 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
 
     } catch (const exception& e) {
       // Player doesn't exist
-      log(INFO, "[BB debug] No player in slot: %s", e.what());
       send_player_preview_bb(c, cmd.player_index, nullptr);
     }
   }
@@ -1866,10 +1866,10 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
         try {
           game->enemies = load_map(filename.c_str(), game->episode,
               game->difficulty, bp_subtable, false);
-          log(INFO, "Loaded map %s", filename.c_str());
+          c->log.info("Loaded map %s", filename.c_str());
           break;
         } catch (const exception& e) {
-          log(WARNING, "Failed to load map %s: %s", filename.c_str(), e.what());
+          c->log.warning("Failed to load map %s: %s", filename.c_str(), e.what());
         }
       }
     }
@@ -2070,9 +2070,9 @@ independently.\r\n\
 void process_ignored_command(shared_ptr<ServerState>, shared_ptr<Client>,
     uint16_t, uint32_t, const string&) { }
 
-void process_unimplemented_command(shared_ptr<ServerState>, shared_ptr<Client>,
-    uint16_t command, uint32_t flag, const string& data) {
-  log(WARNING, "Unknown command: size=%04zX command=%04hX flag=%08" PRIX32 "\n",
+void process_unimplemented_command(shared_ptr<ServerState>,
+    shared_ptr<Client> c, uint16_t command, uint32_t flag, const string& data) {
+  c->log.warning("Unknown command: size=%04zX command=%04hX flag=%08" PRIX32 "\n",
       data.size(), command, flag);
   throw invalid_argument("unimplemented command");
 }
