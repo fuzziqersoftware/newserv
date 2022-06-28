@@ -267,7 +267,7 @@ struct SC_TextHeader_01_06_11_B0_EE {
 // The client will respond with an (encrypted) 9A or 9E command on PSO GC; on
 // PSO PC, the client will respond with an (encrypted) 9A or 9D command.
 // The copyright field in the below structure must contain the following text:
-// "DreamCast Port Map. Copyright SEGA Enterprises. 1999"
+// "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999"
 
 struct S_ServerInit_DC_PC_GC_02_17_92_9B {
   ptext<char, 0x40> copyright;
@@ -524,7 +524,7 @@ struct C_WriteFileConfirmation_GC_BB_13_A7 {
 // receive a 17 command in any online session; after the first time, they will
 // respond with a 9E. Non-V3 clients will respond with a 9D.
 // The copyright field in the structure must contain the following text:
-// "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999";
+// "DreamCast Port Map. Copyright SEGA Enterprises. 1999"
 
 // 18 (S->C): License verification result (PC/GC)
 // Behaves exactly the same as 9A (S->C). No arguments except header.flag.
@@ -540,8 +540,8 @@ struct S_Reconnect_19 {
 
 // Because PSO PC and some versions of PSO GC use the same port but different
 // protocols, we use a specially-crafted 19 command to send them to two
-// different ports depending on the client version. I originally saw this
-// technique used by Schthack; I don't know if it was his original creation.
+// different ports depending on the client version. I first saw this technique
+// used by Schthack; I don't know if it was his original creation.
 
 struct S_ReconnectSplit_19 {
   be_uint32_t pc_address;
@@ -556,13 +556,15 @@ struct S_ReconnectSplit_19 {
 };
 
 // 1A: Large message box
-// Client will usually respond with a D6 command (see D6 for more information).
+// On V3 (PSO GC), client will usually respond with a D6 command (see D6 for
+// more information).
 // Contents are plain text (char on DC/GC, char16_t on PC/BB). There must be at
 // least one null character ('\0') before the end of the command data.
 // There is a bug in V3 (and possibly all versions) where if this command is
 // sent after the client has joined a lobby, the chat log window contents will
 // appear in the message box, prepended to the message text from the command.
-// The maximum length of the message is 0x400 bytes.
+// The maximum length of the message is 0x400 bytes. This is the only difference
+// between this command and the D5 command.
 
 // 1B: Valid but ignored (PC/GC)
 // 1C: Valid but ignored (PC/GC)
@@ -1710,17 +1712,15 @@ struct S_Unknown_GC_Ep3_CC {
 
 // D5: Large message box (GC/BB)
 // Same as 1A command, except the maximum length of the message is 0x1000 bytes.
-// Sylverant's documentation notes that D5 is not valid on pre-V3 versions (PSO
-// DC or PSO PC).
 
 // D6 (C->S): Large message box closed (GC)
 // No arguments
-// DC and PC do not send this command at all. GC v1.0 and v1.1 will send this
-// command when any large message box (1A/D5) is closed; GC Plus and Episode 3
-// will send D6 only for large message boxes that occur before the client has
-// joined a lobby. (After joining a lobby, large message boxes will still be
-// displayed if sent by the server, but the client won't send a D6 when they are
-// closed.)
+// DC, PC, and BB do not send this command at all. GC v1.0 and v1.1 will send
+// this command when any large message box (1A/D5) is closed; GC Plus and
+// Episode 3 will send D6 only for large message boxes that occur before the
+// client has joined a lobby. (After joining a lobby, large message boxes will
+// still be displayed if sent by the server, but the client won't send a D6 when
+// they are closed.)
 
 // D7 (C->S): Request GBA game file (GC)
 // The server should send the requested file using A6/A7 commands.
@@ -1729,12 +1729,12 @@ struct C_GBAGameRequest_GC_D7 {
   ptext<char, 0x10> filename;
 };
 
-// D7 (S->C): Unknown (GC)
-// This command does... something. The command isn't *completely* ignored: it
-// sets a global state variable, but it's not clear what that variable does, or
-// even if it does anything at all.
-
-// D7 (S->C): Valid but ignored (BB)
+// D7 (S->C): Unknown (GC/BB)
+// No arguments
+// On PSO GC, this command does... something. The command isn't *completely*
+// ignored: it sets a global state variable, but it's not clear what that
+// variable does, or even if it does anything at all.
+// PSO BB completely ignores this command.
 
 // D8 (C->S): Info board request (GC/BB)
 // No arguments
