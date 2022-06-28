@@ -424,17 +424,11 @@ void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c
 // Ep3 commands. Note that these commands are not at all functional. The command
 // handlers that partially worked were lost in a dead hard drive, unfortunately.
 
-void process_ep3_jukebox(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string& data) {
+void process_ep3_meseta_transaction(shared_ptr<ServerState>,
+    shared_ptr<Client> c, uint16_t command, uint32_t, const string& data) {
   const auto& in_cmd = check_size_t<C_Meseta_GC_Ep3_BA>(data);
 
   S_Meseta_GC_Ep3_BA out_cmd = {1000000, 1000000, in_cmd.request_token};
-
-  auto l = s->find_lobby(c->lobby_id);
-  if (!l || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
-    return;
-  }
-
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
@@ -2332,7 +2326,7 @@ static process_command_t gc_handlers[0x100] = {
   // B0
   nullptr, process_server_time_request, nullptr, process_function_call_result,
   nullptr, nullptr, nullptr, process_ignored_command,
-  process_ignored_command, nullptr, process_ep3_jukebox, nullptr,
+  process_ignored_command, nullptr, process_ep3_meseta_transaction, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
   // C0

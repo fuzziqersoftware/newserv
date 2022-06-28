@@ -902,23 +902,12 @@ struct S_LeaveLobby_66_69_Ep3_E9 {
 // 7E: Invalid command
 // 7F: Invalid command
 
-// 80 (S->C): Unknown (PC/GC)
+// 80 (S->C): Ignored (PC/GC)
 
-struct S_Unknown_PC_80 {
+struct S_Unknown_PC_GC_80 {
   le_uint32_t which; // Expected to be in the range 00-0B... maybe client ID?
-  le_uint32_t unused;
-  le_uint32_t unknown_a1;
-};
-
-// On PSO GC, this command has the following structure, but the client ignores
-// the contents and does nothing in response.
-
-struct S_Unknown_GC_80 {
-  le_uint32_t unknown_a1;
-  parray<uint8_t, 2> unknown_a2;
-  le_uint16_t unknown_a3;
-  le_uint32_t unknown_a4;
-  parray<uint8_t, 8> unknown_a5;
+  le_uint32_t unknown_a1; // Could be player_tag
+  le_uint32_t unknown_a2; // Could be guild_card_number
 };
 
 // 81: Simple mail
@@ -1501,13 +1490,13 @@ struct S_Meseta_GC_Ep3_BA {
 // header.flag is used, but it's not clear for what.
 
 struct S_Unknown_GC_Ep3_BB {
-  uint8_t unknown_a1[0x20];
   struct Entry {
-    le_uint16_t unknown_a1[2];
-    uint8_t unknown_a2[0x20];
+    uint8_t unknown_a1[0x20];
+    le_uint16_t unknown_a2;
+    le_uint16_t unknown_a3;
   };
-  Entry entries[0x20];
-  le_uint16_t unknown_a2[2];
+  // The first entry here is probably fake, like for ship select menus
+  Entry entries[0x21];
   uint8_t unknown_a3[0x900];
 };
 
@@ -1883,7 +1872,7 @@ struct S_TournamentList_GC_Ep3_E0 {
 // E1 (S->C): Unknown (Episode 3)
 
 struct S_Unknown_GC_Ep3_E1 {
-  uint8_t unknown_a1[0x294];
+  parray<uint8_t, 0x294> unknown_a1;
 };
 
 // E2 (C->S): Tournament control (Episode 3)
@@ -1994,9 +1983,6 @@ struct C_JoinSpectatorTeam_GC_Ep3_E6_Flag01 {
 
 // E6 (S->C): Spectator team list (Episode 3)
 // Same format as 08 command.
-// TODO: There are two separate functions on the client for this, one that sends
-// with header.flag == 0, and one that sends with header.flag == 1. Figure out
-// the difference between these two and document it here.
 
 // E6 (S->C): Set guild card number and update client config (BB)
 
@@ -2116,13 +2102,18 @@ struct C_MoveGuildCard_BB_0AE8 {
 // E9 (S->C): Other player left spectator team (probably) (Episode 3)
 // Same format as 66/69 commands.
 
-// EA (S->C): Unknown (Episode 3)
-// header.flag is relevant - the behavior is different if it's 1 (vs. any other
-// value)
+// EA (S->C): Timed message box (Episode 3)
+// The message appears in the upper half of the screen; the box is as wide as
+// the 1A/D5 box but is vertically shorter. The box cannot be dismissed or
+// interacted with by the player in any way; it disappears by itself after the
+// given number of frames.
+// header.flag appears to be relevant - the handler's behavior is different if
+// it's 1 (vs. any other value). There don't seem to be any in-game behavioral
+// differences though.
 
-struct S_Unknown_GC_Ep3_EA {
-  le_uint32_t unknown_a1;
-  parray<uint8_t, 0x1000> unknown_a2;
+struct S_TimedMessageBoxHeader_GC_Ep3_EA {
+  le_uint32_t duration; // In frames; 30 frames = 1 second
+  // Message data follows here (up to 0x1000 chars)
 };
 
 // EA: Team control (BB)
@@ -2209,7 +2200,7 @@ struct C_Unknown_BB_1EEA {
 // Looks like another lobby-joining type of command.
 
 struct S_Unknown_GC_Ep3_EB {
-  parray<uint8_t, 0x0c> unknown_a1;
+  parray<uint8_t, 12> unknown_a1;
   struct PlayerEntry {
     PlayerLobbyDataGC lobby_data;
     PlayerInventory inventory;
@@ -2238,8 +2229,14 @@ struct S_StreamFileChunk_BB_02EB {
 
 // EC: Leave character select (BB)
 
-// ED (S->C): Unknown (Episode 3)
+// ED (S->C): Force leave lobby/game (Episode 3)
 // No arguments
+// This command forces the client out of the game or lobby they're currently in
+// and sends them to the lobby. If the client is in a lobby (and not a game),
+// the client sends a 98 in response as if they were in a game. Curiously, the
+// client also sends a meseta transaction (BA) with a value of zero before
+// sending an 84 to be added to a lobby. It's likely this is used when a
+// spectator team is disbanded because the target game ends.
 
 // ED (C->S): Update account data (BB)
 // There are several subcommands (noted in the union below) that each update a
