@@ -130,7 +130,7 @@ static HandlerResult process_server_gc_9A(shared_ptr<ServerState>,
   cmd.unused = 0;
   cmd.sub_version = session.sub_version;
   cmd.is_extended = session.remote_guild_card_number ? 0 : 1;
-  cmd.unknown_a1 = 1;
+  cmd.language = session.language;
   cmd.serial_number = string_printf("%08" PRIX32 "", session.license->serial_number);
   cmd.access_key = session.license->access_key;
   cmd.serial_number2 = cmd.serial_number;
@@ -213,7 +213,7 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
     cmd.unused = 0xFFFFFFFFFFFF0000;
     cmd.sub_version = session.sub_version;
     cmd.is_extended = 0;
-    cmd.unknown_a1 = 1;
+    cmd.language = session.language;
     cmd.serial_number = string_printf("%08" PRIX32 "",
         session.license->serial_number);
     cmd.access_key = session.license->access_key;

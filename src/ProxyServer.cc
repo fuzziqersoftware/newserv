@@ -253,6 +253,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   bool should_close_unlinked_session = false;
   shared_ptr<const License> license;
   uint32_t sub_version = 0;
+  uint8_t language = 1; // Default = English
   string character_name;
   ClientConfigBB client_config;
   string login_command_bb;
@@ -269,6 +270,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       license = session->server->state->license_manager->verify_pc(
           stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
       sub_version = cmd.sub_version;
+      language = cmd.language;
       character_name = cmd.name;
 
     } else if (session->version == GameVersion::GC) {
@@ -282,6 +284,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       license = session->server->state->license_manager->verify_gc(
           stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
       sub_version = cmd.sub_version;
+      language = cmd.language;
       character_name = cmd.name;
       client_config.cfg = cmd.client_config.cfg;
 
@@ -362,6 +365,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
                 move(session->channel),
                 session->detector_crypt,
                 sub_version,
+                language,
                 character_name);
           }
         } catch (const exception& e) {
@@ -426,6 +430,7 @@ ProxyServer::LinkedSession::LinkedSession(
     enable_remote_ip_crc_patch(false),
     version(version),
     sub_version(0), // This is set during resume()
+    language(1), // Default = English. This is also set during resume()
     remote_guild_card_number(0),
     enable_chat_filter(true),
     switch_assist(false),
@@ -483,8 +488,10 @@ void ProxyServer::LinkedSession::resume(
     Channel&& client_channel,
     shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
     uint32_t sub_version,
+    uint8_t language,
     const string& character_name) {
   this->sub_version = sub_version;
+  this->language = language;
   this->character_name = character_name;
   this->resume_inner(move(client_channel), detector_crypt);
 }
@@ -499,6 +506,7 @@ void ProxyServer::LinkedSession::resume(
 
 void ProxyServer::LinkedSession::resume(Channel&& client_channel) {
   this->sub_version = 0;
+  this->language = 1;
   this->character_name.clear();
   this->resume_inner(move(client_channel), nullptr);
 }
