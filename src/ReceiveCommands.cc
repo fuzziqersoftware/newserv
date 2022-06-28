@@ -731,11 +731,12 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
   u16string password;
   u16string unknown_a1;
 
-  if (flags == 0) {
+  uint8_t type_flags = flags & 3;
+  if (type_flags == 0) {
     const auto& cmd = check_size_t<C_MenuSelection_10_Flag00>(data);
     menu_id = cmd.menu_id;
     item_id = cmd.item_id;
-  } else if (flags == 1) {
+  } else if (type_flags == 1) {
     if (uses_unicode) {
       const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag01>(data);
       menu_id = cmd.menu_id;
@@ -747,7 +748,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       item_id = cmd.item_id;
       unknown_a1 = decode_sjis(cmd.unknown_a1);
     }
-  } else if (flags == 2) {
+  } else if (type_flags == 2) {
     if (uses_unicode) {
       const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag02>(data);
       menu_id = cmd.menu_id;
@@ -759,7 +760,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       item_id = cmd.item_id;
       password = decode_sjis(cmd.password);
     }
-  } else if (flags == 3) {
+  } else if (type_flags == 3) {
     if (uses_unicode) {
       const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag03>(data);
       menu_id = cmd.menu_id;
@@ -774,7 +775,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       password = decode_sjis(cmd.password);
     }
   } else {
-    throw runtime_error("invalid flag");
+    throw logic_error("invalid type flag");
   }
 
   switch (menu_id) {
