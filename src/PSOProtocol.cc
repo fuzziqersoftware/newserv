@@ -146,3 +146,58 @@ void check_size_v(size_t size, size_t min_size, size_t max_size) {
         max_size, size));
   }
 }
+
+
+
+std::string prepend_command_header(
+    GameVersion version,
+    bool encryption_enabled,
+    uint16_t cmd,
+    uint32_t flag,
+    const std::string& data) {
+  StringWriter ret;
+  switch (version) {
+    case GameVersion::GC:
+    case GameVersion::DC: {
+      PSOCommandHeaderDCGC header;
+      if (encryption_enabled) {
+        header.size = (sizeof(header) + data.size() + 3) & ~3;
+      } else {
+        header.size = (sizeof(header) + data.size());
+      }
+      header.command = cmd;
+      header.flag = flag;
+      ret.put(header);
+      break;
+    }
+    case GameVersion::PC:
+    case GameVersion::PATCH: {
+      PSOCommandHeaderPC header;
+      if (encryption_enabled) {
+        header.size = (sizeof(header) + data.size() + 3) & ~3;
+      } else {
+        header.size = (sizeof(header) + data.size());
+      }
+      header.command = cmd;
+      header.flag = flag;
+      ret.put(header);
+      break;
+    }
+    case GameVersion::BB: {
+      PSOCommandHeaderBB header;
+      if (encryption_enabled) {
+        header.size = (sizeof(header) + data.size() + 7) & ~7;
+      } else {
+        header.size = (sizeof(header) + data.size());
+      }
+      header.command = cmd;
+      header.flag = flag;
+      ret.put(header);
+      break;
+    }
+    default:
+      throw logic_error("unimplemented game version in prepend_command_header");
+  }
+  ret.write(data);
+  return move(ret.str());
+}

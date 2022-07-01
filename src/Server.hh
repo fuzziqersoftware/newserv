@@ -21,12 +21,13 @@ public:
       std::shared_ptr<ServerState> state);
   virtual ~Server() = default;
 
-  void listen(const std::string& name, const std::string& socket_path, GameVersion version, ServerBehavior initial_state);
-  void listen(const std::string& name, const std::string& addr, int port, GameVersion version, ServerBehavior initial_state);
-  void listen(const std::string& name, int port, GameVersion version, ServerBehavior initial_state);
-  void add_socket(const std::string& name, int fd, GameVersion version, ServerBehavior initial_state);
+  void listen(const std::string& addr_str, const std::string& socket_path, GameVersion version, ServerBehavior initial_state);
+  void listen(const std::string& addr_str, const std::string& addr, int port, GameVersion version, ServerBehavior initial_state);
+  void listen(const std::string& addr_str, int port, GameVersion version, ServerBehavior initial_state);
+  void add_socket(const std::string& addr_str, int fd, GameVersion version, ServerBehavior initial_state);
 
-  void connect_client(struct bufferevent* bev, uint32_t address, uint16_t port,
+  void connect_client(struct bufferevent* bev, uint32_t address,
+      uint16_t client_port, uint16_t server_port,
       GameVersion version, ServerBehavior initial_state);
 
   std::shared_ptr<Client> get_client() const;
@@ -35,7 +36,7 @@ private:
   std::shared_ptr<struct event_base> base;
 
   struct ListeningSocket {
-    std::string name;
+    std::string addr_str;
     int fd;
     GameVersion version;
     ServerBehavior behavior;

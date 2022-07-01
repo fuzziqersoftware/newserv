@@ -73,6 +73,7 @@ add_executable(newserv
   src/RareItemSet.cc
   src/ReceiveCommands.cc
   src/ReceiveSubcommands.cc
+  src/ReplaySession.cc
   src/SendCommands.cc
   src/Server.cc
   src/ServerShell.cc

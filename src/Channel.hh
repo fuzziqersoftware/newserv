@@ -38,14 +38,16 @@ struct Channel {
   on_error_t on_error;
   void* context_obj;
 
+  // Creates an unconnected channel
   Channel(
       GameVersion version,
       on_command_received_t on_command_received,
       on_error_t on_error,
       void* context_obj,
-      const std::string& name = "",
+      const std::string& name,
       TerminalFormat terminal_send_color = TerminalFormat::END,
       TerminalFormat terminal_recv_color = TerminalFormat::END);
+  // Creates a connected channel
   Channel(
       struct bufferevent* bev,
       GameVersion version,

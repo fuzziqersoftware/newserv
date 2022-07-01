@@ -90,3 +90,10 @@ T& check_size_t(
 }
 
 void check_size_v(size_t size, size_t min_size, size_t max_size = 0);
+
+std::string prepend_command_header(
+    GameVersion version,
+    bool encryption_enabled,
+    uint16_t cmd,
+    uint32_t flag,
+    const std::string& data);

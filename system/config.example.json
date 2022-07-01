@@ -130,6 +130,9 @@
     // Proxy server messages describe clients connecting and disconnecting from
     // the proxy server, as well as events that occur in each session.
     "ProxyServer": "info",
+    // Replay messages are generated when replaying a session log (usually
+    // during functional testing).
+    "Replay": "info",
     // Game server messages describe clients connecting and disconnecting from
     // the game server.
     "GameServer": "info",

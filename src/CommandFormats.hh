@@ -269,7 +269,7 @@ struct SC_TextHeader_01_06_11_B0_EE {
 // The copyright field in the below structure must contain the following text:
 // "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999"
 
-struct S_ServerInit_DC_PC_GC_02_17_92_9B {
+struct S_ServerInit_DC_PC_GC_02_17_91_9B {
   ptext<char, 0x40> copyright;
   le_uint32_t server_key; // Key for data sent by server
   le_uint32_t client_key; // Key for data sent by client
@@ -305,7 +305,7 @@ struct C_LegacyLogin_PC_GC_03 {
 // The copyright field in the below structure must contain the following text:
 // "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM."
 
-struct S_ServerInit_BB_03 {
+struct S_ServerInit_BB_03_9B {
   ptext<char, 0x60> copyright;
   parray<uint8_t, 0x30> server_key;
   parray<uint8_t, 0x30> client_key;

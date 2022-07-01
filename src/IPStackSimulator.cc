@@ -776,7 +776,8 @@ void IPStackSimulator::open_server_connection(
     }
   } else if (this->state->game_server.get()) {
     this->state->game_server->connect_client(bevs[1], c->ipv4_addr,
-        conn.client_port, port_config->version, port_config->behavior);
+        conn.client_port, conn.server_port, port_config->version,
+        port_config->behavior);
     ip_stack_simulator_log.info("Connected TCP connection %s to game server",
         conn_str.c_str());
   } else {

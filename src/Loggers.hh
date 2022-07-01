@@ -17,6 +17,7 @@ extern PrefixedLogger license_log;
 extern PrefixedLogger lobby_log;
 extern PrefixedLogger player_data_log;
 extern PrefixedLogger proxy_server_log;
+extern PrefixedLogger replay_log;
 extern PrefixedLogger server_log;
 extern PrefixedLogger static_game_data_log;
 

@@ -1,26 +1,27 @@
-#include <signal.h>
-#include <pwd.h>
 #include <event2/event.h>
+#include <pwd.h>
+#include <signal.h>
 #include <string.h>
 
-#include <unordered_map>
+#include <phosg/Filesystem.hh>
 #include <phosg/JSON.hh>
 #include <phosg/Network.hh>
 #include <phosg/Strings.hh>
-#include <phosg/Filesystem.hh>
 #include <set>
+#include <unordered_map>
 
+#include "DNSServer.hh"
+#include "FileContentsCache.hh"
+#include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
-#include "SendCommands.hh"
-#include "DNSServer.hh"
 #include "ProxyServer.hh"
-#include "ServerState.hh"
+#include "ReplaySession.hh"
+#include "SendCommands.hh"
 #include "Server.hh"
-#include "FileContentsCache.hh"
-#include "Text.hh"
 #include "ServerShell.hh"
-#include "IPStackSimulator.hh"
+#include "ServerState.hh"
+#include "Text.hh"
 
 using namespace std;
 
@@ -198,6 +199,7 @@ enum class Behavior {
   ENCRYPT_DATA,
   DECODE_QUEST_FILE,
   DECODE_SJIS,
+  REPLAY_LOG,
 };
 
 enum class EncryptionType {
@@ -220,6 +222,7 @@ int main(int argc, char** argv) {
   string seed;
   string key_file_name;
   bool parse_data = false;
+  const char* replay_log_filename = nullptr;
   for (int x = 1; x < argc; x++) {
     if (!strcmp(argv[x], "--decrypt-data")) {
       behavior = Behavior::DECRYPT_DATA;
@@ -251,6 +254,9 @@ int main(int argc, char** argv) {
       key_file_name = &argv[x][6];
     } else if (!strcmp(argv[x], "--parse-data")) {
       parse_data = true;
+    } else if (!strncmp(argv[x], "--replay-log=", 13)) {
+      behavior = Behavior::REPLAY_LOG;
+      replay_log_filename = &argv[x][13];
     } else {
       throw invalid_argument(string_printf("unknown option: %s", argv[x]));
     }
@@ -373,54 +379,71 @@ int main(int argc, char** argv) {
     config_log.info("DNS server is disabled");
   }
 
-  config_log.info("Opening sockets");
-  for (const auto& it : state->name_to_port_config) {
-    const auto& pc = it.second;
-    if (pc->behavior == ServerBehavior::PROXY_SERVER) {
-      if (!state->proxy_server.get()) {
-        config_log.info("Starting proxy server");
-        state->proxy_server.reset(new ProxyServer(base, state));
-      }
-      if (state->proxy_server.get()) {
-        // For PC and GC, proxy sessions are dynamically created when a client
-        // picks a destination from the menu. For patch and BB clients, there's
-        // no way to ask the client which destination they want, so only one
-        // destination is supported, and we have to manually specify the
-        // destination netloc here.
-        if (pc->version == GameVersion::PATCH) {
-          struct sockaddr_storage ss = make_sockaddr_storage(
-              state->proxy_destination_patch.first,
-              state->proxy_destination_patch.second).first;
-          state->proxy_server->listen(pc->port, pc->version, &ss);
-        } else if (pc->version == GameVersion::BB) {
-          struct sockaddr_storage ss = make_sockaddr_storage(
-              state->proxy_destination_bb.first,
-              state->proxy_destination_bb.second).first;
-          state->proxy_server->listen(pc->port, pc->version, &ss);
-        } else {
-          state->proxy_server->listen(pc->port, pc->version);
-        }
-      }
-    } else {
-      if (!state->game_server.get()) {
-        config_log.info("Starting game server");
-        state->game_server.reset(new Server(base, state));
-      }
-      string name = string_printf("%s (%s, %s) on port %hu",
-          pc->name.c_str(), name_for_version(pc->version),
-          name_for_server_behavior(pc->behavior), pc->port);
-      state->game_server->listen(name, "", pc->port, pc->version, pc->behavior);
-    }
-  }
-
+  shared_ptr<Shell> shell;
+  shared_ptr<ReplaySession> replay_session;
   shared_ptr<IPStackSimulator> ip_stack_simulator;
-  if (!state->ip_stack_addresses.empty()) {
-    config_log.info("Starting IP stack simulator");
-    ip_stack_simulator.reset(new IPStackSimulator(base, state));
-    for (const auto& it : state->ip_stack_addresses) {
-      auto netloc = parse_netloc(it);
-      ip_stack_simulator->listen(netloc.first, netloc.second);
+  if (behavior == Behavior::REPLAY_LOG) {
+    config_log.info("Starting proxy server");
+    state->proxy_server.reset(new ProxyServer(base, state));
+    config_log.info("Starting game server");
+    state->game_server.reset(new Server(base, state));
+
+    auto f = fopen_unique(replay_log_filename, "rt");
+    replay_session.reset(new ReplaySession(base, f.get(), state));
+    replay_session->start();
+
+  } else if (behavior == Behavior::RUN_SERVER) {
+    config_log.info("Opening sockets");
+    for (const auto& it : state->name_to_port_config) {
+      const auto& pc = it.second;
+      if (pc->behavior == ServerBehavior::PROXY_SERVER) {
+        if (!state->proxy_server.get()) {
+          config_log.info("Starting proxy server");
+          state->proxy_server.reset(new ProxyServer(base, state));
+        }
+        if (state->proxy_server.get()) {
+          // For PC and GC, proxy sessions are dynamically created when a client
+          // picks a destination from the menu. For patch and BB clients, there's
+          // no way to ask the client which destination they want, so only one
+          // destination is supported, and we have to manually specify the
+          // destination netloc here.
+          if (pc->version == GameVersion::PATCH) {
+            struct sockaddr_storage ss = make_sockaddr_storage(
+                state->proxy_destination_patch.first,
+                state->proxy_destination_patch.second).first;
+            state->proxy_server->listen(pc->port, pc->version, &ss);
+          } else if (pc->version == GameVersion::BB) {
+            struct sockaddr_storage ss = make_sockaddr_storage(
+                state->proxy_destination_bb.first,
+                state->proxy_destination_bb.second).first;
+            state->proxy_server->listen(pc->port, pc->version, &ss);
+          } else {
+            state->proxy_server->listen(pc->port, pc->version);
+          }
+        }
+      } else {
+        if (!state->game_server.get()) {
+          config_log.info("Starting game server");
+          state->game_server.reset(new Server(base, state));
+        }
+        string spec = string_printf("T-%hu-%s-%s-%s",
+            pc->port, name_for_version(pc->version), pc->name.c_str(),
+            name_for_server_behavior(pc->behavior));
+        state->game_server->listen(spec, "", pc->port, pc->version, pc->behavior);
+      }
     }
+
+    if (!state->ip_stack_addresses.empty()) {
+      config_log.info("Starting IP stack simulator");
+      ip_stack_simulator.reset(new IPStackSimulator(base, state));
+      for (const auto& it : state->ip_stack_addresses) {
+        auto netloc = parse_netloc(it);
+        ip_stack_simulator->listen(netloc.first, netloc.second);
+      }
+    }
+
+  } else {
+    throw logic_error("invalid behavior");
   }
 
   if (!state->username.empty()) {
@@ -428,12 +451,17 @@ int main(int argc, char** argv) {
     drop_privileges(state->username);
   }
 
-  bool should_run_shell = (state->run_shell_behavior == ServerState::RunShellBehavior::ALWAYS);
+  bool should_run_shell;
   if (state->run_shell_behavior == ServerState::RunShellBehavior::DEFAULT) {
     should_run_shell = isatty(fileno(stdin));
+  } else if (state->run_shell_behavior == ServerState::RunShellBehavior::ALWAYS) {
+    should_run_shell = true;
+  } else {
+    should_run_shell = false;
   }
-
-  shared_ptr<Shell> shell;
+  if (should_run_shell) {
+    should_run_shell = !replay_session.get();
+  }
   if (should_run_shell) {
     shell.reset(new ServerShell(base, state));
   }

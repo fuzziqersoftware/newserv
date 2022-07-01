@@ -213,12 +213,8 @@ Channel::Message Channel::recv(bool print_contents) {
       print_color_escape(stderr, this->terminal_recv_color, TerminalFormat::BOLD, TerminalFormat::END);
     }
 
-    string name_token;
-    if (!this->name.empty()) {
-      name_token = " from " + this->name;
-    }
-    command_data_log.info("Received%s (version=%s command=%04hX flag=%08X)",
-        name_token.c_str(),
+    command_data_log.info("Received from %s (version=%s command=%04hX flag=%08X)",
+        this->name.c_str(),
         name_for_version(this->version),
         header.command(this->version),
         header.flag(this->version));
@@ -320,15 +316,11 @@ void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
   }
 
   if (print_contents && (this->terminal_send_color != TerminalFormat::END)) {
-    string name_token;
-    if (!this->name.empty()) {
-      name_token = " to " + this->name;
-    }
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
       print_color_escape(stderr, TerminalFormat::FG_YELLOW, TerminalFormat::BOLD, TerminalFormat::END);
     }
-    command_data_log.info("Sending%s (version=%s command=%04hX flag=%08X)",
-        name_token.c_str(), name_for_version(version), cmd, flag);
+    command_data_log.info("Sending to %s (version=%s command=%04hX flag=%08X)",
+        this->name.c_str(), name_for_version(version), cmd, flag);
     print_data(stderr, send_data.data(), logical_size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR);
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
       print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);

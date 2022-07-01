@@ -8,6 +8,8 @@
 #include "Shell.hh"
 #include "ProxyServer.hh"
 
+#define SHELL_PROMPT "newserv> "
+
 
 
 class ServerShell : public Shell {

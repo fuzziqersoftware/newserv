@@ -10,6 +10,10 @@ using namespace std;
 
 
 
+const std::string Shell::PROMPT("newserv> ");
+
+
+
 Shell::exit_shell::exit_shell() : runtime_error("shell exited") { }
 
 

@@ -1388,7 +1388,9 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   auto player = c->game_data.player(false);
   if (player) {
-    c->channel.name = remove_language_marker(encode_sjis(player->disp.name));
+    string name_str = remove_language_marker(encode_sjis(player->disp.name));
+    c->channel.name = string_printf("C-%" PRIX64 " (%s)",
+        c->id, name_str.c_str());
   }
 
   // 98 should only be sent when leaving a game, and we should leave the client

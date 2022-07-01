@@ -20,7 +20,7 @@ ServerShell::ServerShell(
   : Shell(base, state) { }
 
 void ServerShell::print_prompt() {
-  fwrite("newserv> ", 9, 1, stdout);
+  fwritex(stdout, Shell::PROMPT);
   fflush(stdout);
 }
 

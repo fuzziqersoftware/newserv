@@ -21,6 +21,8 @@ public:
   Shell& operator=(const Shell&) = delete;
   Shell& operator=(Shell&&) = delete;
 
+  static const std::string PROMPT;
+
 protected:
   std::shared_ptr<struct event_base> base;
   std::shared_ptr<ServerState> state;

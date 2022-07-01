@@ -100,11 +100,11 @@ static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst G
 static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
-S_ServerInit_DC_PC_GC_02_17_92_9B prepare_server_init_contents_dc_pc_gc(
+S_ServerInit_DC_PC_GC_02_17_91_9B prepare_server_init_contents_dc_pc_gc(
     bool initial_connection,
     uint32_t server_key,
     uint32_t client_key) {
-  S_ServerInit_DC_PC_GC_02_17_92_9B cmd;
+  S_ServerInit_DC_PC_GC_02_17_91_9B cmd;
   cmd.copyright = initial_connection
       ? dc_port_map_copyright : dc_lobby_server_copyright;
   cmd.server_key = server_key;
@@ -138,11 +138,11 @@ void send_server_init_dc_pc_gc(shared_ptr<Client> c,
   }
 }
 
-S_ServerInit_BB_03 prepare_server_init_contents_bb(
+S_ServerInit_BB_03_9B prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
     const parray<uint8_t, 0x30>& client_key,
     bool use_secondary_message) {
-  S_ServerInit_BB_03 cmd;
+  S_ServerInit_BB_03_9B cmd;
   cmd.copyright = use_secondary_message ? bb_pm_server_copyright : bb_game_server_copyright;
   cmd.server_key = server_key;
   cmd.client_key = client_key;

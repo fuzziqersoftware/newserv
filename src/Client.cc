@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <phosg/Network.hh>
 #include <phosg/Time.hh>
 
@@ -18,17 +19,20 @@ using namespace std;
 
 const uint64_t CLIENT_CONFIG_MAGIC = 0x492A890E82AC9839;
 
+static atomic<uint64_t> next_id(1);
+
 
 
 Client::Client(
     struct bufferevent* bev,
     GameVersion version,
     ServerBehavior server_behavior)
-  : log("", client_log.min_level),
+  : id(next_id++),
+    log("", client_log.min_level),
     version(version),
     bb_game_state(0),
     flags(flags_for_version(this->version, 0)),
-    channel(bev, this->version, nullptr, nullptr, this, "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
+    channel(bev, this->version, nullptr, nullptr, this, string_printf("C-%" PRIX64, this->id), TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
     server_behavior(server_behavior),
     should_disconnect(false),
     should_send_to_lobby_server(false),

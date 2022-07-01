@@ -57,6 +57,7 @@ struct Client {
     DEFAULT_V4_BB = NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | NO_MESSAGE_BOX_CLOSE_CONFIRMATION | SAVE_ENABLED,
   };
 
+  uint64_t id;
   PrefixedLogger log;
 
   // License & account
