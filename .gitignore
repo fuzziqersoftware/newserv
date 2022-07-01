@@ -5,13 +5,13 @@
 newserv
 
 # CMake files
+cmake_install.cmake
 CMakeCache.txt
 CMakeFiles
-Makefile
 CTestTestFile.cmake
-Testing
-cmake_install.cmake
 install_manifest.txt
+Makefile
+Testing
 
 # Files modified by the user and/or server that don't have defaults
 system/config.json
@@ -19,3 +19,13 @@ system/licenses.nsi
 system/players/player_*
 system/players/account_*
 system/players/bank_*
+
+# Files fuzziqersoftware uses that don't make sense to be committed to the main
+# repository
+files
+make_release.py
+notes
+old-khyller
+old-newserv
+release
+release.zip
