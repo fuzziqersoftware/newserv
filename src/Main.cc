@@ -221,6 +221,7 @@ int main(int argc, char** argv) {
   string quest_filename;
   string seed;
   string key_file_name;
+  const char* config_filename = "system/config.json";
   bool parse_data = false;
   const char* replay_log_filename = nullptr;
   for (int x = 1; x < argc; x++) {
@@ -257,6 +258,8 @@ int main(int argc, char** argv) {
     } else if (!strncmp(argv[x], "--replay-log=", 13)) {
       behavior = Behavior::REPLAY_LOG;
       replay_log_filename = &argv[x][13];
+    } else if (!strncmp(argv[x], "--config=", 9)) {
+      config_filename = &argv[x][9];
     } else {
       throw invalid_argument(string_printf("unknown option: %s", argv[x]));
     }
@@ -342,7 +345,7 @@ int main(int argc, char** argv) {
   }
 
   config_log.info("Loading configuration");
-  auto config_json = JSONObject::parse(load_file("system/config.json"));
+  auto config_json = JSONObject::parse(load_file(config_filename));
   populate_state_from_config(state, config_json);
 
   config_log.info("Loading license list");

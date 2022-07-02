@@ -97,6 +97,18 @@ endif()
 
 
 
+# Test configuration
+
+enable_testing()
+
+file(GLOB TestCases ${CMAKE_SOURCE_DIR}/tests/*.test.txt)
+
+foreach(TestCase IN ITEMS ${TestCases})
+  add_test(NAME ${TestCase} COMMAND ${CMAKE_BUILD_DIR}/newserv --replay-log=${TestCase} --config=tests/config.json)
+endforeach()
+
+
+
 # Installation configuration
 
 install(TARGETS newserv DESTINATION bin)
