@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <phosg/Filesystem.hh>
+#include <phosg/Hash.hh>
 #include <phosg/Network.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
@@ -331,10 +332,17 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     auto l = s->license_manager->verify_bb(cmd.username, cmd.password);
     c->set_license(l);
   } catch (const exception& e) {
-    u16string message = u"Login failed: " + decode_sjis(e.what());
-    send_message_box(c, message.c_str());
-    c->should_disconnect = true;
-    return;
+    if (!s->allow_unregistered_users) {
+      u16string message = u"Login failed: " + decode_sjis(e.what());
+      send_message_box(c, message.c_str());
+      c->should_disconnect = true;
+      return;
+    } else {
+      shared_ptr<License> l = LicenseManager::create_license_bb(
+          fnv1a32(cmd.username), cmd.username, cmd.password, true);
+      s->license_manager->add(l);
+      c->set_license(l);
+    }
   }
 
   try {

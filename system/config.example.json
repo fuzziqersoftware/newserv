@@ -141,10 +141,13 @@
   },
 
   // By default, the server only allows users who are registered in the license
-  // file to connect. By enabling this option, all non-BB users will be allowed
-  // to connect. This option has no effect for Blue Burst clients; they are
-  // always required to be registered before connecting. Keep in mind that
-  // unregistered users cannot be banned!
+  // file to connect. By enabling this option, all users will be allowed to
+  // connect. Each time a user connects with an unregistered license (serial
+  // number / access key combination, or username/password combination on BB), a
+  // temporary license is created for them, which lasts until the server is
+  // shut down. This license is not saved to the license file. For BB, player
+  // and account data is still saved on the server, even for users with
+  // temporary licenses.
   "AllowUnregisteredUsers": false,
 
   // User to run the server as. If present, newserv will attempt to switch to
