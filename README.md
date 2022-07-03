@@ -13,29 +13,32 @@ Feel free to submit GitHub issues if you find bugs or have feature requests. I'd
 This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance.
 
 Current known issues / missing features:
-- Test all the communication features (info board, simple mail, card search, etc.)
-- The trade window isn't implemented yet.
+- Test all the communication features in cross-version scenarios (info board, simple mail, card search, etc.)
+- The trade window isn't implemented.
+- Episode 3 battles aren't implemented.
 - PSO PC and PSOBB are not well-tested and likely will disconnect when clients try to use unimplemented features. Only GC is known to be stable and mostly complete.
-- Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to use properly.
+- Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
-- Implement private lobbies, and add a way to make games persistent.
+- Implement private and overflow lobbies.
 
 ## Usage
 
 Currently this code should build on macOS and Ubuntu. It will likely work on other Linux flavors too. It should work on Windows as well, but I haven't tested it - the build process could be very manual.
 
-There is a probably-not-too-old macOS release on the newserv GitHub repository (look in the right sidebar).
+There is a probably-not-too-old macOS ARM64 release on the newserv GitHub repository. You may need to install libevent manually even if you use this release (run `brew install libevent`).
 
-If you're running Linux or want to build newserv yourself, here's what you do:
+If you're using an older x64 Mac, you're running Linux, or you just want to build newserv yourself, here's what you do:
 1. Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
 2. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
-3. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
+3. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to run patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
 4. Run `cmake . && make` on the newserv directory.
 
 After building newserv or downloading a release, do this to set it up and use it:
 1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
 2. Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
 3. Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
+
+See the "Connecting local clients" or "Connecting remote clients" section to see how to get your game client to connect.
 
 ### Installing quests
 
@@ -63,9 +66,9 @@ All quests, including those originally in GCI or DLQ format, are treated as onli
 
 Everything in this section requires resource_dasm to be installed, so newserv can use the PowerPC assembler and disassembler from its libresource_file library. If resource_dasm is not installed, newserv will still build and run, but these features will not be available.
 
-You can put patches in the system/ppc directory with filenames like PatchName.patch.s and they will appear in the Patches menu for PSO GC clients that support patching. Patches are written in PowerPC assembly and are compiled when newserv is started. See system/ppc/WriteMemory.s for a commented example of such a function.
+You can put patches in the system/ppc directory with filenames like PatchName.patch.s and they will appear in the Patches menu for PSO GC clients that support patching. Patches are written in PowerPC assembly and are compiled when newserv is started. The PowerPC assembly system's features are documented in the comments in system/ppc/WriteMemory.s - this file is not a patch itself, but it describes how patches may be written and the restrictions that apply to them.
 
-You can also put DOL files in the system/dol directory, and they will appear in the Programs menu. Selecting a DOL file there will load the file into their GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWord.s, WriteMemory.s, and RunDOL.s must be present in the system/ppc directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
+You can also put DOL files in the system/dol directory, and they will appear in the Programs menu. Selecting a DOL file there will load the file into the GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWord.s, WriteMemory.s, and RunDOL.s must be present in the system/ppc directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
 
 I mainly built the DOL loading functionality for documentation purposes. By now, there are many better ways to load homebrew code on an unmodified GameCube, but to my knowledge there isn't another open-source implementation of this method in existence.
 
@@ -78,7 +81,7 @@ newserv also supports a variety of commands players can use via the chat interfa
 Some commands only work on the game server and not on the proxy server. The chat commands are:
 
 * Information commands
-    * `$li`: Shows basic information about the lobby or game you're in. If you're on the proxy server, shows information about your connection (remote Guild Card number, client ID, etc.) instead.
+    * `$li`: Shows basic information about the lobby or game you're in. If you're on the proxy server, shows information about your connection instead (remote Guild Card number, client ID, etc.).
     * `$what` (game server only): Shows the type, name, and stats of the nearest item on the ground.
 
 * Personal state commands
@@ -96,14 +99,14 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
 
 * Cheat mode commands
-    * `$cheat`: Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. This command does nothing on the proxy server, since cheat mode is always enabled there.
+    * `$cheat`: Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. This command does nothing on the proxy server - cheat commands are always available there, but are off by default.
     * `$infhp` / `$inftp`: Enables or disables infinite HP or TP mode. Applies to only you. In infinite HP mode, one-hit KO attacks will still kill you.
     * `$warp <area-id>`: Warps yourself to the given area.
     * `$next` (game server only): Warps yourself to the next area.
     * `$swa`: Enables or disables switch assist. When enabled, the server will attempt to automatically unlock two-player doors in solo games if you step on both switches sequentially.
 
 * Configuration commands
-    * `$event <event>`: Sets the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, only you will see the new event; other players will not.
+    * `$event <event>`: Sets the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, this applies to all lobbies and games you join, but only you will see the new event - other players will not.
     * `$allevent <event>` (game server only): Sets the current holiday event in all lobbies.
     * `$song <song-id>` (game server only, Episode 3 only): Plays a specific song in the current lobby.
 
@@ -118,20 +121,32 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 If you want to play online on remote servers rather than running your own server, newserv also includes a PSO proxy. Currently this works with PSO GC and may work with PC; it also works with some BB clients in specific situations.
 
-To use the proxy, add an entry to the ProxyDestinations dictionary in config.json, then run newserv and connect to it as normal (see below). You'll see a "Proxy server" option in the main menu, and you can pick which remote server to connect to.
+To use the proxy for PSO PC or PSO GC, add an entry to the ProxyDestinations dictionary in config.json, then run newserv and connect to it as normal (see below). You'll see a "Proxy server" option in the main menu, and you can pick which remote server to connect to.
+
+To use the proxy for PSO BB, set the ProxyDestination-BB entry in config.json. If this option is set, it essentially disables the game server for all PSO BB clients - all clients will be proxied to the specified destination instead. Unfortunately, because PSO BB uses a different set of handlers for the data server phase and character selection, there's no in-game way to present the player with a list of options, like there is on PSO PC and PSO GC.
 
 A few things to be aware of when using the proxy server:
-- On PC and GC, using the Change Ship or Change Block actions from the lobby counter will bring you back to newserv's main menu, not the remote server's ship select. You can go back to the server you were just on by choosing it from newserv's proxy server menu again.
-- The remote server will probably try to assign you a Guild Card number that doesn't match the one you have on newserv. The proxy server rewrites the commands on the fly to make it look like the remote server assigned you the same Guild Card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the Guild Card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you first connect to the remote server, and you can retrieve it in lobbies or during games with the $li command.
+- On PC and GC, using the Change Ship or Change Block actions from the lobby counter will send you back to newserv's main menu, not the remote server's ship select. You can go back to the server you were just on by choosing it from the proxy server menu again.
+- The remote server will probably try to assign you a Guild Card number that doesn't match the one you have on newserv. On PC and GC, the proxy server rewrites the commands in transit to make it look like the remote server assigned you the same Guild Card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the Guild Card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you first connect to the remote server, and you can retrieve it in lobbies or during games with the $li command.
 - There are shell commands that affect clients on the proxy (run 'help' in the shell to see what they are). All proxy commands in the shell only work when there's exactly one client connected through the proxy, since there isn't (yet) a way to say via the shell which session you want to affect.
 
 ### Connecting local clients
 
-If you're running PSO on a real GameCube, you can make it connect to newserv by setting its default gateway and DNS server addresses to newserv's address. newserv's DNS server must be running on port 53 and accessible.
+#### PSO PC
+
+The version of PSO PC I have has the server addresses starting at offset 0x29CB34 in pso.exe. Using a hex editor, change those to "localhost" (without quotes) if you just want to connect to a locally-running newserv instance. Alternatively, you can add an entry to the Windows hosts file (C:\Windows\System32\drivers\etc\hosts) to redirect the connection to 127.0.0.1 (localhost) or any other IP address.
+
+#### PSO GC on a real GameCube
+
+You can make PSO connect to newserv by setting its default gateway and DNS server addresses to newserv's address. newserv's DNS server must be running on port 53 and accessible.
 
 If you have PSO Plus or Episode III, it won't want to connect to a server on the same local network as the GameCube itself, as determined by the GameCube's IP address and subnet mask. In the old days, one way to get around this was to create a fake network adapter on the server (or use an existing real one) that has an IP address on a different subnet, tell the GameCube that the server is the default gateway, and have the server reply to the DNS request with its non-local IP address. To do this with newserv, just set LocalAddress in the config file to a different interface. For example, if the GameCube is on the 192.168.0.x network and your other adapter has address 10.0.1.6, set newserv's LocalAddress to 10.0.1.6 and set PSO's DNS server and default gateway addresses to the server's 192.168.0.x address. This may not work on modern systems or on non-Windows machines - I haven't tested it in many years.
 
-If you're emulating PSO using a version of Dolphin with tapserver support (currently only the macOS version), you can make it connect to a newserv instance running on the same machine via the tapserver interface. This works for all PSO versions, including Plus and Episode III, without the trickery described above. To do this:
+#### PSO GC on Dolphin
+
+If you have BBA support via a tap interface, you may be able to just set the DNS server address (as you would on a real GameCube, above) and it may work. This does not work on macOS, but you can use the tapserver interface instead (below).
+
+If you're using a version of Dolphin with tapserver support (currently only the macOS version), you can make it connect to a newserv instance running on the same machine via the tapserver interface. This works for all PSO versions, including Plus and Episode III, without any of the dual-interface trickery described above. To do this:
 - Set Dolphin's BBA type to tapserver (Config -> GameCube -> SP1).
 - Enable newserv's IP stack simulator according to the comments in config.json, and start newserv. You do not need to install or run tapserver.
 - In PSO, you have to configure the network settings manually (DHCP doesn't work), but the actual values don't matter as long as they're valid IP addresses. Example values:

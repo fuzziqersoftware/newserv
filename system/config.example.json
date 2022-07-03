@@ -1,14 +1,15 @@
 {
   // Configuration file for newserv. This file is standard JSON with comments.
 
-  // Server's name (maximum 16 characters)
+  // Server's name (maximum 16 characters). This appears in the upper-right
+  // corner of the screen while in lobbies.
   "ServerName": "newserv",
 
   // Address to connect local clients to (IP address or interface name)
   "LocalAddress": "en0",
   // Address to connect external clients to (IP address or interface name). If
-  // you're running newserv behind a NAT, this should be your router's external
-  // address.
+  // you're running newserv behind a NAT, this should be your router's
+  // public-facing address.
   "ExternalAddress": "10.0.1.5",
 
   // Port to listen for DNS queries on. To disable the DNS server, comment this
@@ -17,6 +18,7 @@
 
   // Ports to listen for game connections on.
   "PortConfiguration": {
+    // Format of entries in this dictionary:
     // name: [port, version, behavior]
 
     // Various versions of PSO hardcode these ports in the clients. Don't change
