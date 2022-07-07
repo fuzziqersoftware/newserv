@@ -555,7 +555,7 @@ struct S_ReconnectSplit_19 {
   parray<uint8_t, 0xB0 - 0x23> unused2;
 };
 
-// 1A: Large message box
+// 1A (S->C): Large message box
 // On V3 (PSO GC), client will usually respond with a D6 command (see D6 for
 // more information).
 // Contents are plain text (char on DC/GC, char16_t on PC/BB). There must be at
@@ -566,8 +566,8 @@ struct S_ReconnectSplit_19 {
 // The maximum length of the message is 0x400 bytes. This is the only difference
 // between this command and the D5 command.
 
-// 1B: Valid but ignored (PC/GC)
-// 1C: Valid but ignored (PC/GC)
+// 1B (S->C): Valid but ignored (PC/GC)
+// 1C (S->C): Valid but ignored (PC/GC)
 
 // 1D: Ping
 // No arguments
@@ -693,6 +693,8 @@ struct S_GuildCardSearchResult_BB_41 : S_GuildCardSearchResult<PSOCommandHeaderB
 // 44 (S->C): Open file for download
 // Used for downloading online quests. For download quests (to be saved to the
 // memory card), use A6 instead.
+// Unlike the A6 command, the client will react to a 44 command only if the
+// filename ends in .bin or .dat.
 
 struct S_OpenFile_PC_GC_44_A6 {
   ptext<char, 0x20> name;
@@ -1239,7 +1241,10 @@ struct C_LoginExtended_BB_9E {
 // No arguments
 
 // 9F (C->S): Client config / security data response
-// Format is ClientConfig on GC, or ClientConfigBB on BB
+// The data is opaque to the client, as described at the top of this file.
+// If newserv ever sent a 9F command (it currently does not), the response
+// format here would be ClientConfig (0x20 bytes) on GC, or ClientConfigBB (0x28
+// bytes) on BB.
 
 // A0 (C->S): Change ship
 // This structure is for documentation only; newserv ignores the arguments here.
@@ -1300,15 +1305,21 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // Same format as 1A/D5 command (plain text)
 
 // A6: Open file for download
-// Used for download quests and GBA games.
 // Same format as 44.
+// Used for download quests and GBA games. The client will react to this command
+// if the filename ends in .bin/.dat (download quests), .gba (GameBoy Advance
+// games), and, curiously, .pvr (textures). To my knowledge, the .pvr handler in
+// this command has never been used.
+// For .bin files, the flags field should be zero. For .pvr files, the flags
+// field should be 1. For .dat and .gba files, it seems the value in the flags
+// field does not matter.
 
 // A7: Write download file
 // Same format as 13.
 
 // A8: Invalid command
 
-// A9: Quest menu closed (canceled)
+// A9 (C->S): Quest menu closed (canceled)
 // No arguments
 // This command is sent when the in-game quest menu (A2) is closed. When the
 // download quest menu is closed, either by downloading a quest or canceling,
@@ -1333,7 +1344,8 @@ struct C_UpdateQuestStatistics_AA {
 };
 
 // AB (S->C): Confirm update quest statistics
-// TODO: Does this command have a different meaning in Episode 3?
+// TODO: Does this command have a different meaning in Episode 3? Is it used at
+// all there, or is the handler an undeleted vestige from Episodes 1&2?
 
 struct S_ConfirmUpdateQuestStatistics_AB {
   le_uint16_t unknown_a1; // 0
@@ -1356,7 +1368,7 @@ struct S_ConfirmUpdateQuestStatistics_AB {
 // AE: Invalid command
 // AF: Invalid command
 
-// B0: Text message
+// B0 (S->C): Text message
 // Same format as 01 command.
 // The message appears as an overlay on the right side of the screen. The player
 // doesn't do anything to dismiss it; it will disappear after a few seconds.
@@ -1933,7 +1945,7 @@ struct C_CardLobbyGame_GC_E4 {
   le_uint16_t seat_number;
 };
 
-// Header flag = 2
+// Header flag = table number
 struct S_CardLobbyGame_GC_E4 {
   struct Entry {
     le_uint16_t present; // 1 = player present, 0 = no player

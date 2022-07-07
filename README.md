@@ -20,6 +20,7 @@ Current known issues / missing features:
 - Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
 - Implement private and overflow lobbies.
+- Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
 
 ## Usage
 
