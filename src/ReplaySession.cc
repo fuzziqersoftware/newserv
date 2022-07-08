@@ -82,8 +82,9 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           cmd_mask.client_key = 0;
           break;
         }
-        case 0x0019: {
-          auto& cmd_mask = check_size_t<S_Reconnect_19>(cmd_data, cmd_size);
+        case 0x19: {
+          auto& cmd_mask = check_size_t<S_Reconnect_19>(cmd_data, cmd_size,
+              sizeof(S_Reconnect_19), sizeof(S_ReconnectSplit_19));
           cmd_mask.address = 0;
           break;
         }
