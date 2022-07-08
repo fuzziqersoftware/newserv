@@ -197,10 +197,19 @@ void process_login_a_dc_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     // password already, which should have created and added a temporary
     // license. So, if no license exists at this point, disconnect the client
     // even if unregistered clients are allowed.
-    u16string message = u"Login failed: " + decode_sjis(e.what());
-    send_message_box(c, message.c_str());
-    c->should_disconnect = true;
-    return;
+    shared_ptr<License> l;
+    if (c->version == GameVersion::GC) {
+      u16string message = u"Login failed: " + decode_sjis(e.what());
+      send_message_box(c, message.c_str());
+      c->should_disconnect = true;
+      return;
+    } else if (c->version == GameVersion::PC) {
+      l = LicenseManager::create_license_pc(serial_number, cmd.access_key, true);
+    } else {
+      throw runtime_error("unsupported game version");
+    }
+    s->license_manager->add(l);
+    c->set_license(l);
   }
 
   send_command(c, 0x9C, 0x01);
