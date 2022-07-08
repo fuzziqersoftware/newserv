@@ -361,11 +361,15 @@ int main(int argc, char** argv) {
   config_log.info("Collecting quest metadata");
   state->quest_index.reset(new QuestIndex("system/quests"));
 
-  config_log.info("Compiling client functions");
-  state->function_code_index.reset(new FunctionCodeIndex("system/ppc"));
-
-  config_log.info("Loading DOL files");
-  state->dol_file_index.reset(new DOLFileIndex("system/dol"));
+  if (!replay_log_filename) {
+    config_log.info("Compiling client functions");
+    state->function_code_index.reset(new FunctionCodeIndex("system/ppc"));
+    config_log.info("Loading DOL files");
+    state->dol_file_index.reset(new DOLFileIndex("system/dol"));
+  } else {
+    state->function_code_index.reset(new FunctionCodeIndex());
+    state->dol_file_index.reset(new DOLFileIndex());
+  }
 
   config_log.info("Creating menus");
   state->create_menus(config_json);

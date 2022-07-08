@@ -41,7 +41,8 @@ std::shared_ptr<CompiledFunctionCode> compile_function_code(
 
 
 struct FunctionCodeIndex {
-  FunctionCodeIndex(const std::string& directory);
+  FunctionCodeIndex() = default;
+  explicit FunctionCodeIndex(const std::string& directory);
 
   std::unordered_map<std::string, std::shared_ptr<CompiledFunctionCode>> name_to_function;
   std::unordered_map<uint32_t, std::shared_ptr<CompiledFunctionCode>> index_to_function;
@@ -67,7 +68,8 @@ struct DOLFileIndex {
   std::vector<std::shared_ptr<DOLFile>> item_id_to_file;
   std::map<std::string, std::shared_ptr<DOLFile>> name_to_file;
 
-  DOLFileIndex(const std::string& directory);
+  DOLFileIndex() = default;
+  explicit DOLFileIndex(const std::string& directory);
 
   std::vector<MenuItem> menu() const;
   inline bool empty() const {
