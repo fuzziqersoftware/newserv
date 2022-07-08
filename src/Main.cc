@@ -11,7 +11,6 @@
 #include <unordered_map>
 
 #include "DNSServer.hh"
-#include "FileContentsCache.hh"
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
@@ -27,7 +26,6 @@ using namespace std;
 
 
 
-FileContentsCache file_cache;
 bool use_terminal_colors = false;
 
 
@@ -372,8 +370,14 @@ int main(int argc, char** argv) {
   config_log.info("Creating menus");
   state->create_menus(config_json);
 
+  if (replay_log_filename) {
+    state->allow_saving = false;
+    state->license_manager->set_autosave(false);
+    config_log.info("Saving disabled because this is a replay session");
+  }
+
   shared_ptr<DNSServer> dns_server;
-  if (state->dns_server_port) {
+  if (state->dns_server_port && !replay_log_filename) {
     config_log.info("Starting DNS server");
     dns_server.reset(new DNSServer(base, state->local_address,
         state->external_address));

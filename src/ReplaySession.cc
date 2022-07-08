@@ -44,6 +44,117 @@ shared_ptr<ReplaySession::Event> ReplaySession::create_event(
   return event;
 }
 
+void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
+  auto version = this->clients.at(ev->client_id)->version;
+
+  void* cmd_data = ev->mask.data() + ((version == GameVersion::BB) ? 8 : 4);
+  size_t cmd_size = ev->mask.size() - ((version == GameVersion::BB) ? 8 : 4);
+
+  switch (version) {
+    case GameVersion::PATCH: {
+      const auto& header = check_size_t<PSOCommandHeaderPC>(
+          ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF);
+      if (header.command == 0x02) {
+        auto& cmd_mask = check_size_t<S_ServerInit_Patch_02>(cmd_data, cmd_size);
+        cmd_mask.server_key = 0;
+        cmd_mask.client_key = 0;
+      }
+      break;
+    }
+    case GameVersion::PC:
+    case GameVersion::GC: {
+      uint8_t command;
+      if (version == GameVersion::PC) {
+        command = check_size_t<PSOCommandHeaderPC>(
+            ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF).command;
+      } else {
+        command = check_size_t<PSOCommandHeaderDCGC>(
+            ev->data, sizeof(PSOCommandHeaderDCGC), 0xFFFF).command;
+      }
+      switch (command) {
+        case 0x02:
+        case 0x17:
+        case 0x91:
+        case 0x9B: {
+          auto& cmd_mask = check_size_t<S_ServerInit_DC_PC_GC_02_17_91_9B>(
+              cmd_data, cmd_size, sizeof(S_ServerInit_DC_PC_GC_02_17_91_9B), 0xFFFF);
+          cmd_mask.server_key = 0;
+          cmd_mask.client_key = 0;
+          break;
+        }
+        case 0x0019: {
+          auto& cmd_mask = check_size_t<S_Reconnect_19>(cmd_data, cmd_size);
+          cmd_mask.address = 0;
+          break;
+        }
+        case 0x64: {
+          if (version == GameVersion::PC) {
+            auto& cmd_mask = check_size_t<S_JoinGame_PC_64>(cmd_data, cmd_size,
+                offsetof(S_JoinGame_GC_64, players_ep3));
+            cmd_mask.variations.clear(0);
+            cmd_mask.rare_seed = 0;
+          } else { // GC
+            auto& cmd_mask = check_size_t<S_JoinGame_GC_64>(cmd_data, cmd_size,
+                offsetof(S_JoinGame_GC_64, players_ep3));
+            cmd_mask.variations.clear(0);
+            cmd_mask.rare_seed = 0;
+          }
+          break;
+        }
+        case 0xB1: {
+          for (size_t x = 8; x < ev->mask.size(); x++) {
+            ev->mask[x] = 0;
+          }
+          break;
+        }
+      }
+      break;
+    }
+    case GameVersion::BB: {
+      uint16_t command = check_size_t<PSOCommandHeaderBB>(
+            ev->data, sizeof(PSOCommandHeaderBB), 0xFFFF).command;
+      switch (command) {
+        case 0x0003: {
+          auto& cmd_mask = check_size_t<S_ServerInit_BB_03_9B>(
+              cmd_data, cmd_size, sizeof(S_ServerInit_BB_03_9B), 0xFFFF);
+          cmd_mask.server_key.clear(0);
+          cmd_mask.client_key.clear(0);
+          break;
+        }
+        case 0x0019: {
+          auto& cmd_mask = check_size_t<S_Reconnect_19>(cmd_data, cmd_size);
+          cmd_mask.address = 0;
+          break;
+        }
+        case 0x0064: {
+          auto& cmd_mask = check_size_t<S_JoinGame_BB_64>(cmd_data, cmd_size,
+              offsetof(S_JoinGame_BB_64, players_ep3),
+              offsetof(S_JoinGame_BB_64, players_ep3));
+          cmd_mask.variations.clear(0);
+          cmd_mask.rare_seed = 0;
+          break;
+        }
+        case 0x00B1: {
+          for (size_t x = 8; x < ev->mask.size(); x++) {
+            ev->mask[x] = 0;
+          }
+          break;
+        }
+        case 0x00E6: {
+          auto& cmd_mask = check_size_t<S_ClientInit_BB_00E6>(cmd_data, cmd_size);
+          cmd_mask.team_id = 0;
+          break;
+        }
+      }
+      break;
+    }
+    case GameVersion::DC:
+      throw logic_error("DC auto-masking is not implemented");
+    default:
+      throw logic_error("invalid game version");
+  }
+}
+
 ReplaySession::ReplaySession(
     shared_ptr<struct event_base> base,
     FILE* input_log,
@@ -79,6 +190,9 @@ ReplaySession::ReplaySession(
         parsing_command->mask += mask_bytes;
         continue;
       } else {
+        if (parsing_command->type == Event::Type::RECEIVE) {
+          this->apply_default_mask(parsing_command);
+        }
         parsing_command = nullptr;
       }
     }
@@ -304,6 +418,13 @@ void ReplaySession::on_command_received(
   switch (c->version) {
     case GameVersion::DC:
       throw runtime_error("DC encryption is not supported during replays");
+    case GameVersion::PATCH:
+      if (command == 0x02) {
+        auto& cmd = check_size_t<S_ServerInit_Patch_02>(data);
+        c->channel.crypt_in.reset(new PSOPCEncryption(cmd.server_key));
+        c->channel.crypt_out.reset(new PSOPCEncryption(cmd.client_key));
+      }
+      break;
     case GameVersion::PC:
     case GameVersion::GC:
       if (command == 0x02 || command == 0x17 || command == 0x91 || command == 0x9B) {

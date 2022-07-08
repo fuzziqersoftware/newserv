@@ -8,8 +8,6 @@
 
 using namespace std;
 
-extern FileContentsCache file_cache;
-
 
 
 static void load_battle_param_file(const string& filename, BattleParams* entries) {
@@ -437,7 +435,8 @@ static vector<PSOEnemy> parse_map(uint8_t episode, uint8_t difficulty,
 
 vector<PSOEnemy> load_map(const std::string& filename, uint8_t episode,
     uint8_t difficulty, const BattleParams* battle_params, bool alt_enemies) {
-  shared_ptr<const string> data = file_cache.get(filename);
+  static FileContentsCache map_file_cache(300 * 1000 * 1000);
+  shared_ptr<const string> data = map_file_cache.get_or_load(filename).data;
   const EnemyEntry* entries = reinterpret_cast<const EnemyEntry*>(data->data());
   size_t entry_count = data->size() / sizeof(EnemyEntry);
   return parse_map(episode, difficulty, battle_params, entries, entry_count,

@@ -19,6 +19,7 @@ ServerState::ServerState()
   : dns_server_port(0),
     ip_stack_debug(false),
     allow_unregistered_users(false),
+    allow_saving(true),
     item_tracking_enabled(true),
     run_shell_behavior(RunShellBehavior::DEFAULT), next_lobby_id(1),
     pre_lobby_event(0),

@@ -56,37 +56,53 @@ union PSOSubcommand {
 // cast them to the appropriate type
 template <typename T>
 const T& check_size_t(
+    const void* data,
+    size_t size,
+    size_t min_size = sizeof(T),
+    size_t max_size = sizeof(T)) {
+  if (size < min_size) {
+    throw std::runtime_error(string_printf(
+        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
+        min_size, size));
+  }
+  if (size > max_size) {
+    throw std::runtime_error(string_printf(
+        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
+        max_size, size));
+  }
+  return *reinterpret_cast<const T*>(data);
+}
+template <typename T>
+const T& check_size_t(
     const std::string& data,
     size_t min_size = sizeof(T),
     size_t max_size = sizeof(T)) {
-  if (data.size() < min_size) {
+  return check_size_t<T>(data.data(), data.size(), min_size, max_size);
+}
+template <typename T>
+T& check_size_t(
+    void* data,
+    size_t size,
+    size_t min_size = sizeof(T),
+    size_t max_size = sizeof(T)) {
+  if (size < min_size) {
     throw std::runtime_error(string_printf(
         "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
-        min_size, data.size()));
+        min_size, size));
   }
-  if (data.size() > max_size) {
+  if (size > max_size) {
     throw std::runtime_error(string_printf(
         "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
-        max_size, data.size()));
+        max_size, size));
   }
-  return *reinterpret_cast<const T*>(data.data());
+  return *reinterpret_cast<T*>(data);
 }
 template <typename T>
 T& check_size_t(
     std::string& data,
     size_t min_size = sizeof(T),
     size_t max_size = sizeof(T)) {
-  if (data.size() < min_size) {
-    throw std::runtime_error(string_printf(
-        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
-        min_size, data.size()));
-  }
-  if (data.size() > max_size) {
-    throw std::runtime_error(string_printf(
-        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
-        max_size, data.size()));
-  }
-  return *reinterpret_cast<T*>(data.data());
+  return check_size_t<T>(data.data(), data.size(), min_size, max_size);
 }
 
 void check_size_v(size_t size, size_t min_size, size_t max_size = 0);

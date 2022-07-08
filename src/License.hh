@@ -49,6 +49,9 @@ public:
   LicenseManager(const std::string& filename);
   ~LicenseManager() = default;
 
+  void save() const;
+  void set_autosave(bool autosave);
+
   std::shared_ptr<const License> verify_pc(uint32_t serial_number,
       const std::string& access_key) const;
   std::shared_ptr<const License> verify_gc(uint32_t serial_number,
@@ -75,9 +78,9 @@ public:
       const std::string& password, bool temporary);
 
 protected:
-  void save() const;
-
   std::string filename;
+  bool autosave;
+
   std::unordered_map<std::string, std::shared_ptr<License>> bb_username_to_license;
   std::unordered_map<uint32_t, std::shared_ptr<License>> serial_number_to_license;
 };

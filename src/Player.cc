@@ -7,10 +7,11 @@
 #include <stdexcept>
 #include <phosg/Filesystem.hh>
 
+#include "FileContentsCache.hh"
 #include "Loggers.hh"
+#include "StaticGameData.hh"
 #include "Text.hh"
 #include "Version.hh"
-#include "StaticGameData.hh"
 
 using namespace std;
 
@@ -23,6 +24,10 @@ static const string PLAYER_FILE_SIGNATURE =
     "newserv player file format; 10 sections present; sequential;";
 static const string ACCOUNT_FILE_SIGNATURE =
     "newserv account file format; 7 sections present; sequential;";
+
+
+
+static FileContentsCache player_files_cache(300 * 1000 * 1000);
 
 
 
@@ -271,14 +276,17 @@ GuildCardBB::GuildCardBB() noexcept
 
 
 void PlayerBank::load(const string& filename) {
-  *this = load_object_file<PlayerBank>(filename);
+  *this = player_files_cache.get_obj_or_load<PlayerBank>(filename).obj;
   for (uint32_t x = 0; x < this->num_items; x++) {
     this->items[x].data.id = 0x0F010000 + x;
   }
 }
 
-void PlayerBank::save(const string& filename) const {
-  save_file(filename, this, sizeof(*this));
+void PlayerBank::save(const string& filename, bool save_to_filesystem) const {
+  player_files_cache.replace(filename, this, sizeof(*this));
+  if (save_to_filesystem) {
+    save_file(filename, this, sizeof(*this));
+  }
 }
 
 
@@ -381,35 +389,45 @@ void ClientGameData::load_account_data() {
   shared_ptr<SavedAccountDataBB> data;
   try {
     data.reset(new SavedAccountDataBB(
-        load_object_file<SavedAccountDataBB>(filename)));
+        player_files_cache.get_obj_or_load<SavedAccountDataBB>(filename).obj));
     if (data->signature != ACCOUNT_FILE_SIGNATURE) {
       throw runtime_error("account data header is incorrect");
     }
+    player_data_log.info("Loaded account data file %s", filename.c_str());
+
   } catch (const exception& e) {
-    player_data_log.info("No account data for %s; using default",
-        this->bb_username.c_str());
+    player_data_log.info("Cannot load account data for %s (%s); using default",
+        this->bb_username.c_str(), e.what());
+    player_files_cache.delete_key(filename);
     data.reset(new SavedAccountDataBB(
-        load_object_file<SavedAccountDataBB>("system/players/default.nsa")));
+        player_files_cache.get_obj_or_load<SavedAccountDataBB>(
+          "system/players/default.nsa").obj));
     if (data->signature != ACCOUNT_FILE_SIGNATURE) {
       throw runtime_error("default account data header is incorrect");
     }
+    player_data_log.info("Loaded default account data file");
   }
 
   this->account_data = data;
-  player_data_log.info("Loaded account data file %s", filename.c_str());
 }
 
 void ClientGameData::save_account_data() const {
   string filename = this->account_data_filename();
-  save_file(filename, this->account_data.get(), sizeof(SavedAccountDataBB));
-  player_data_log.info("Saved account data file %s", filename.c_str());
+  player_files_cache.replace(filename, this->account_data.get(), sizeof(SavedAccountDataBB));
+  if (this->should_save) {
+    save_file(filename, this->account_data.get(), sizeof(SavedAccountDataBB));
+    player_data_log.info("Saved account data file %s to filesystem", filename.c_str());
+  } else {
+    player_data_log.info("Saved account data file %s to cache only", filename.c_str());
+  }
 }
 
 void ClientGameData::load_player_data() {
   string filename = this->player_data_filename();
   shared_ptr<SavedPlayerDataBB> data(new SavedPlayerDataBB(
-      load_object_file<SavedPlayerDataBB>(filename)));
+      player_files_cache.get_obj_or_load<SavedPlayerDataBB>(filename).obj));
   if (data->signature != PLAYER_FILE_SIGNATURE) {
+    player_files_cache.delete_key(filename);
     throw runtime_error("player data header is incorrect");
   }
   this->player_data = data;
@@ -418,8 +436,13 @@ void ClientGameData::load_player_data() {
 
 void ClientGameData::save_player_data() const {
   string filename = this->player_data_filename();
-  save_file(filename, this->player_data.get(), sizeof(SavedPlayerDataBB));
-  player_data_log.info("Saved player data file %s", filename.c_str());
+  player_files_cache.replace(filename, this->player_data.get(), sizeof(SavedPlayerDataBB));
+  if (this->should_save) {
+    save_file(filename, this->player_data.get(), sizeof(SavedPlayerDataBB));
+    player_data_log.info("Saved player data file %s to filesystem", filename.c_str());
+  } else {
+    player_data_log.info("Saved player data file %s to cache only", filename.c_str());
+  }
 }
 
 void ClientGameData::import_player(const PSOPlayerDataPC& pc) {

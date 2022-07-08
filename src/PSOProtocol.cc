@@ -186,7 +186,7 @@ std::string prepend_command_header(
     case GameVersion::BB: {
       PSOCommandHeaderBB header;
       if (encryption_enabled) {
-        header.size = (sizeof(header) + data.size() + 7) & ~7;
+        header.size = (sizeof(header) + data.size() + 3) & ~3;
       } else {
         header.size = (sizeof(header) + data.size());
       }

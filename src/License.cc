@@ -41,7 +41,8 @@ string License::str() const {
 
 
 
-LicenseManager::LicenseManager(const string& filename) : filename(filename) {
+LicenseManager::LicenseManager(const string& filename)
+  : filename(filename), autosave(true) {
   try {
     auto licenses = load_vector_file<License>(this->filename);
     for (const auto& read_license : licenses) {
@@ -71,6 +72,10 @@ void LicenseManager::save() const {
     }
     fwritex(f.get(), it.second.get(), sizeof(License));
   }
+}
+
+void LicenseManager::set_autosave(bool autosave) {
+  this->autosave = autosave;
 }
 
 shared_ptr<const License> LicenseManager::verify_pc(uint32_t serial_number,
@@ -132,7 +137,9 @@ size_t LicenseManager::count() const {
 
 void LicenseManager::ban_until(uint32_t serial_number, uint64_t end_time) {
   this->serial_number_to_license.at(serial_number)->ban_end_time = end_time;
-  this->save();
+  if (this->autosave) {
+    this->save();
+  }
 }
 
 void LicenseManager::add(shared_ptr<License> l) {
@@ -141,7 +148,9 @@ void LicenseManager::add(shared_ptr<License> l) {
   if (!l->username.empty()) {
     this->bb_username_to_license.emplace(l->username, l);
   }
-  this->save();
+  if (this->autosave) {
+    this->save();
+  }
 }
 
 void LicenseManager::remove(uint32_t serial_number) {
@@ -150,7 +159,9 @@ void LicenseManager::remove(uint32_t serial_number) {
   if (!l->username.empty()) {
     this->bb_username_to_license.erase(l->username);
   }
-  this->save();
+  if (this->autosave) {
+    this->save();
+  }
 }
 
 vector<License> LicenseManager::snapshot() const {

@@ -71,7 +71,7 @@ struct PlayerBank {
   PlayerBankItem items[200];
 
   void load(const std::string& filename);
-  void save(const std::string& filename) const;
+  void save(const std::string& filename, bool save_to_filesystem) const;
 
   bool switch_with_file(const std::string& save_filename,
       const std::string& load_filename);
@@ -407,8 +407,9 @@ public:
   size_t bb_player_index;
   PlayerInventoryItem identify_result;
   std::vector<ItemData> shop_contents;
+  bool should_save;
 
-  ClientGameData() : serial_number(0), bb_player_index(0) { }
+  ClientGameData() : serial_number(0), bb_player_index(0), should_save(true) { }
   ~ClientGameData();
 
   std::shared_ptr<SavedAccountDataBB> account(bool should_load = true);

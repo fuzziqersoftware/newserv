@@ -344,6 +344,7 @@ static const vector<string> stream_file_entries = {
   "BattleParamEntry_ep4_on.dat",
   "PlyLevelTbl.prs",
 };
+static FileContentsCache bb_stream_files_cache(3600 * 1000 * 1000);
 
 void send_stream_file_index_bb(shared_ptr<Client> c) {
 
@@ -357,11 +358,22 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
   vector<S_StreamFileIndexEntry_BB_01EB> entries;
   size_t offset = 0;
   for (const string& filename : stream_file_entries) {
-    auto file_data = file_cache.get("system/blueburst/" + filename);
+    string key = "system/blueburst/" + filename;
+    auto cache_res = bb_stream_files_cache.get_or_load(key);
     auto& e = entries.emplace_back();
-    e.size = file_data->size();
-    // TODO: memoize the checksum somewhere; computing it can be slow
-    e.checksum = crc32(file_data->data(), e.size);
+    e.size = cache_res.data->size();
+    // Computing the checksum can be slow, so we cache it along with the file
+    // data. If the cache result was just populated, then it may be different,
+    // so we always recompute the checksum in that case.
+    if (cache_res.generate_called) {
+      e.checksum = crc32(cache_res.data->data(), e.size);
+      bb_stream_files_cache.replace_obj<uint32_t>(key + ".crc32", e.checksum);
+    } else {
+      auto compute_checksum = [&](const string&) -> uint32_t {
+        return crc32(cache_res.data->data(), e.size);
+      };
+      e.checksum = bb_stream_files_cache.get_obj<uint32_t>(key + ".crc32", compute_checksum).obj;
+    }
     e.offset = offset;
     e.filename = filename;
     offset += e.size;
@@ -370,19 +382,20 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
 }
 
 void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
-  auto contents = file_cache.get("<BB stream file>", +[]() -> string {
+  auto cache_result = bb_stream_files_cache.get("<BB stream file>", +[](const string&) -> string {
     size_t bytes = 0;
     for (const auto& name : stream_file_entries) {
-      bytes += file_cache.get("system/blueburst/" + name)->size();
+      bytes += bb_stream_files_cache.get_or_load("system/blueburst/" + name).data->size();
     }
 
     string ret;
     ret.reserve(bytes);
     for (const auto& name : stream_file_entries) {
-      ret += *file_cache.get("system/blueburst/" + name);
+      ret += *bb_stream_files_cache.get_or_load("system/blueburst/" + name).data;
     }
     return ret;
   });
+  auto contents = cache_result.data;
 
   S_StreamFileChunk_BB_02EB chunk_cmd;
   chunk_cmd.chunk_index = chunk_index;

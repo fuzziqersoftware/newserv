@@ -78,6 +78,8 @@ private:
       Event::Type type, std::shared_ptr<Client> c);
   void update_timeout_event();
 
+  void apply_default_mask(std::shared_ptr<Event> ev);
+
   static void dispatch_on_timeout(evutil_socket_t fd, short events, void* ctx);
   static void dispatch_on_command_received(
       Channel& ch, uint16_t command, uint32_t flag, std::string& data);

@@ -80,6 +80,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   shared_ptr<Client> c(new Client(
       bev, listening_socket->version, listening_socket->behavior));
+  c->game_data.should_save = this->state->allow_saving;
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;
@@ -100,6 +101,7 @@ void Server::connect_client(
     struct bufferevent* bev, uint32_t address, uint16_t client_port,
     uint16_t server_port, GameVersion version, ServerBehavior initial_state) {
   shared_ptr<Client> c(new Client(bev, version, initial_state));
+  c->game_data.should_save = this->state->allow_saving;
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;

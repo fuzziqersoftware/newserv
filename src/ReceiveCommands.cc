@@ -25,10 +25,6 @@ using namespace std;
 
 
 
-extern FileContentsCache file_cache;
-
-
-
 vector<MenuItem> quest_categories_menu({
   MenuItem(static_cast<uint32_t>(QuestCategory::RETRIEVAL), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
   MenuItem(static_cast<uint32_t>(QuestCategory::EXTERMINATION), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
@@ -339,7 +335,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
       return;
     } else {
       shared_ptr<License> l = LicenseManager::create_license_bb(
-          fnv1a32(cmd.username), cmd.username, cmd.password, true);
+          fnv1a32(cmd.username) & 0x7FFFFFFF, cmd.username, cmd.password, true);
       s->license_manager->add(l);
       c->set_license(l);
     }
@@ -1346,7 +1342,9 @@ void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D7
   string filename(data);
   strip_trailing_zeroes(filename);
-  auto contents = file_cache.get("system/gba/" + filename);
+
+  static FileContentsCache gba_file_cache(300 * 1000 * 1000);
+  auto contents = gba_file_cache.get_or_load("system/gba/" + filename).data;
 
   send_quest_file(c, "", filename, *contents, QuestFileType::GBA_DEMO);
 }
