@@ -344,7 +344,7 @@ static const vector<string> stream_file_entries = {
   "BattleParamEntry_ep4_on.dat",
   "PlyLevelTbl.prs",
 };
-static FileContentsCache bb_stream_files_cache(3600 * 1000 * 1000);
+static FileContentsCache bb_stream_files_cache(3600000000ULL);
 
 void send_stream_file_index_bb(shared_ptr<Client> c) {
 
