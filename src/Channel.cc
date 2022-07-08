@@ -213,11 +213,18 @@ Channel::Message Channel::recv(bool print_contents) {
       print_color_escape(stderr, this->terminal_recv_color, TerminalFormat::BOLD, TerminalFormat::END);
     }
 
-    command_data_log.info("Received from %s (version=%s command=%04hX flag=%08X)",
-        this->name.c_str(),
-        name_for_version(this->version),
-        header.command(this->version),
-        header.flag(this->version));
+    if (version == GameVersion::BB) {
+      command_data_log.info("Received from %s (version=BB command=%04hX flag=%08" PRIX32 ")",
+          this->name.c_str(),
+          header.command(this->version),
+          header.flag(this->version));
+    } else {
+      command_data_log.info("Received from %s (version=%s command=%02hX flag=%02" PRIX32 ")",
+          this->name.c_str(),
+          name_for_version(this->version),
+          header.command(this->version),
+          header.flag(this->version));
+    }
 
     vector<struct iovec> iovs;
     iovs.emplace_back(iovec{.iov_base = header_data.data(), .iov_len = header_data.size()});
@@ -319,8 +326,13 @@ void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
       print_color_escape(stderr, TerminalFormat::FG_YELLOW, TerminalFormat::BOLD, TerminalFormat::END);
     }
-    command_data_log.info("Sending to %s (version=%s command=%04hX flag=%08X)",
-        this->name.c_str(), name_for_version(version), cmd, flag);
+    if (version == GameVersion::BB) {
+      command_data_log.info("Sending to %s (version=BB command=%04hX flag=%08" PRIX32 ")",
+          this->name.c_str(), cmd, flag);
+    } else {
+      command_data_log.info("Sending to %s (version=%s command=%02hX flag=%02" PRIX32 ")",
+          this->name.c_str(), name_for_version(version), cmd, flag);
+    }
     print_data(stderr, send_data.data(), logical_size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR);
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
       print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
