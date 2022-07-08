@@ -124,6 +124,9 @@ static void server_command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby>
 
 static void proxy_command_lobby_info(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
+  string msg = string_printf("$C7GC: $C6%" PRIu32 "\n$C7Client ID: $C6%zu",
+      session.remote_guild_card_number, session.lobby_client_id);
+
   vector<const char*> cheats_tokens;
   if (session.switch_assist) {
     cheats_tokens.emplace_back("SWA");
@@ -134,33 +137,29 @@ static void proxy_command_lobby_info(shared_ptr<ServerState>,
   if (session.infinite_tp) {
     cheats_tokens.emplace_back("TP");
   }
-  string cheats_str = cheats_tokens.empty() ? "none" : join(cheats_tokens, ",");
+  if (!cheats_tokens.empty()) {
+    msg += "\n$C7Cheats: $C6";
+    msg += join(cheats_tokens, ",");
+  }
 
   vector<const char*> behaviors_tokens;
   if (session.save_files) {
-    behaviors_tokens.emplace_back("SF");
+    behaviors_tokens.emplace_back("SAVE");
   }
   if (session.function_call_return_value >= 0) {
     behaviors_tokens.emplace_back("BFC");
   }
-  string behaviors_str = behaviors_tokens.empty() ? "none" : join(behaviors_tokens, ",");
-
-  string section_id_override = "none";
-  if (session.override_section_id >= 0) {
-    section_id_override = name_for_section_id(session.override_section_id);
+  if (!behaviors_tokens.empty()) {
+    msg += "\n$C7Flags: $C6";
+    msg += join(behaviors_tokens, ",");
   }
 
-  send_text_message_printf(session.client_channel,
-      "$C7GC: $C6%" PRIu32 "\n"
-      "$C7Client ID: $C6%zu\n"
-      "$C7Cheats: $C6%s\n"
-      "$C7Flags: $C6%s\n"
-      "$C7SecID override: $C6%s\n",
-      session.remote_guild_card_number,
-      session.lobby_client_id,
-      cheats_str.c_str(),
-      behaviors_str.c_str(),
-      section_id_override.c_str());
+  if (session.override_section_id >= 0) {
+    msg += "\n$C7SecID override: $C6%s";
+    msg += name_for_section_id(session.override_section_id);
+  }
+
+  send_text_message(session.client_channel, decode_sjis(msg));
 }
 
 static void server_command_ax(shared_ptr<ServerState>, shared_ptr<Lobby>,
