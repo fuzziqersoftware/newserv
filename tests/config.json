@@ -1,0 +1,144 @@
+{
+  // This configuration file is used when replaying tests. It mostly matches the
+  // configuration file fuzziqersoftware uses while developing, with a few
+  // relevant differences:
+  // 1. The LocalAddress and ExternalAddress are both set to en0, since the
+  //    replay runner uses virtual connections instead.
+  // 2. The IP stack simulator is disabled.
+  // 3. Unregistered users are allowed. This enables the tests to run on other
+  //    machines, which won't have the same license file.
+  "ServerName": "Alexandria",
+
+  "LocalAddress": "en0",
+  "ExternalAddress": "en0",
+
+  "DNSServerPort": 0,
+  "IPStackListen": [],
+  "EnableItemTracking": true,
+
+  "PortConfiguration": {
+    "gc-jp10":   [9000,  "gc",    "login_server"],
+    "gc-jp11":   [9001,  "gc",    "login_server"],
+    "gc-jp3":    [9003,  "gc",    "login_server"],
+    "gc-us10":   [9100,  "pc",    "split_reconnect"],
+    "gc-us3":    [9103,  "gc",    "login_server"],
+    "gc-eu10":   [9200,  "gc",    "login_server"],
+    "gc-eu11":   [9201,  "gc",    "login_server"],
+    "gc-eu3":    [9203,  "gc",    "login_server"],
+    "pc-login":  [9300,  "pc",    "login_server"],
+    "pc-patch":  [10000, "patch", "patch_server"],
+    "bb-patch":  [11000, "patch", "patch_server"],
+    "bb-init":   [12000, "bb",    "data_server_bb"],
+    "bb-patch2": [10500, "patch", "patch_server"],
+    "bb-init2":  [13000, "bb",    "data_server_bb"],
+    "bb-proxy2": [9932,  "bb",    "proxy_server"],
+    "bb-data1":  [12004, "bb",    "data_server_bb"],
+    "bb-data2":  [12005, "bb",    "data_server_bb"],
+    "pc-lobby":  [9420,  "pc",    "lobby_server"],
+    "gc-lobby":  [9421,  "gc",    "lobby_server"],
+    "bb-lobby":  [9422,  "bb",    "lobby_server"],
+    "pc-proxy":  [9520,  "pc",    "proxy_server"],
+    "gc-proxy":  [9521,  "gc",    "proxy_server"],
+    "bb-proxy":  [9522,  "bb",    "proxy_server"],
+  },
+
+  "ProxyDestinations-GC": {
+    "Schtserv": "149.56.167.128:9103",
+    "Sylverant": "sylverant.net:9103",
+  },
+  "ProxyDestinations-PC": {
+    "Schtserv": "149.56.167.128:9100",
+    "Sylverant": "sylverant.net:9100",
+  },
+
+  "LogLevels": {
+    "AXMessages": "info",
+    "ChannelExceptions": "info",
+    "Clients": "info",
+    "CommandData": "info",
+    "Config": "info",
+    "DNSServer": "info",
+    "FunctionCompiler": "info",
+    "IPStackSimulator": "info",
+    "LicenseManager": "info",
+    "Lobbies": "info",
+    "PlayerData": "info",
+    "ProxyServer": "info",
+    "GameServer": "info",
+    "StaticGameData": "info",
+  },
+
+  "AllowUnregisteredUsers": true,
+
+  "InformationMenuContents": [
+    ["Text",            "$C7Some things you\nmay need to know\nabout text on\nthis server", "$C7Everything you type will be filtered.\n\nDollar signs will become tab chars, which can be\nused to color team names and info boards.\nTo color your text, type %sCx, where x is a\nvalue from the Text Colors list.\n\nPound signs (number signs) will become returns\n(newlines), the sequence %%s will become %s,\nand the sequence %%%% will become %%."],
+    ["Text colors",     "$C7Display color values", "These values can be used to color text.\n\n$C0Color 0$C7 - Black\n$C1Color 1$C7 - Blue\n$C2Color 2$C7 - Green\n$C3Color 3$C7 - Cyan\n$C4Color 4$C7 - Red\n$C5Color 5$C7 - Purple\n$C6Color 6$C7 - Yellow\n$C7Color 7$C7 - White\n$C8Color 8$C7 - Pink\n$C9Color 9$C7 - Violet\n$CGColor G$C7 - Orange Pulse"],
+    ["Lobby commands",  "$C7Display commands\nfor use in the\nlobby", "Lobby commands: you must be a moderator to use\nthese commands.\n\n%sallevent <event> - change the server's event\n%sevent <event> - change this lobby's event\n%stype <type> - change this lobby's type\n%sann <message> - announce a message\n%sax <message> - send a message to the server"],
+    ["Game commands",   "$C7Display commands\nfor use in games", "Game commands: you must be the game leader to\nuse these commands.\n\n%spassword <password> - set the game's password\n%smaxlevel <%n> - set the game's maximum level\n%sminlevel <%n> - set the game's minimum level\n%scheat - enable or disable cheat mode"],
+    ["Player commands", "$C7Display commands\nfor player data", "Player commands: anyone can use these commands.\n\n%sarrow <color> - change your lobby arrow color\n%sbbchar - convert a character to PSOBB format\n%sli - show lobby/game information"],
+    ["Cheat commands",  "$C7Display commands\nfor cheating", "Cheat commands: cheat mode must be enabled in the\ngame for these commands to work.\n\n%scheat - enables or disables cheat mode in a game.\n%sinfhp - enables or disables infinite HP.\n%sinftp - enables or disables infinite TP.\n%swarp <area> - sends you to a certain area.\n%sitem - creates an item. (BB only)\n%sedit - changes your character's stats. (BB only)"],
+    ["Mod commands",    "$C7Display commands\nfor moderators", "Moderation commands: you must be a moderator to\nuse these commands.\n\n%ssilence <serial> - silence/unsilence a player\n%skick <serial> - kick a player\n%sban <serial> - ban a player"],
+    ["Using $item",     "$C7Show how to use\nthe %sitem command", "Using the %sitem command\n\nFor PSOBB, the %sitem command is used to create\nitems. Use it like this:\n\n%sitem <item code in hexadecimal>\n\nThe item code must be from 2 to 16 bytes (4 to 32\ncharacters) of hexadecimal data. Any bytes you\nomit will become zeroes.\n\nThe item that you specify will appear from the next\nenemy you kill or box you break.\n\nTo create meseta, use the command like this:\n\n%sitem 04000000 %n0 %n0 <amount>"],
+    ["Using $edit",     "$C7Show how to use\nthe %sedit command", "Using the %sedit command\n\n%sedit is used on PSOBB to change character stats.\nUse one of the following subcommands:\n\n%sedit ATP <value>\n%sedit MST <value>\n%sedit EVP <value>\n%sedit HP <value>\n%sedit DFP <value>\n%sedit ATA <value>\n%sedit LCK <value>\n%sedit MESETA <amount>\n%sedit EXP <amount>\n%sedit LEVEL <level>\n%sedit NAMECOLOR <color in hex, AARRGGBB format)\n%sedit SECID <section ID name>\n%sedit NAME <new character name>\n%sedit NPC <NPC name>\n%sedit TECH <technique name> <new technique level>\n\nNPC names: none, ninja, rico, sonic, knuckles,\n     flowen, elly\n\nTechnique names: foie, gifoie, rafoie, barta,\n     gibarta, rabarta, zonde, gizonde, razonde,\n     grants, deband, jellen, zalure, shifta, ryuker,\n     resta, anti, reverser, megid, all"],
+    ["Using $bbchar",   "$C7Show how to use\nthe %sbbchar command", "Using the %sbbchar command\n\n%sbbchar is used to convert a character from an\nolder version of PSO to Blue Burst format and save\nit on this server. Use the command like this:\n\n%sbbchar <username> <password> <slot>\n\nIf the username and password are correct, the\ncharacter that you're currently playing as will be\nconverted to PSOBB format and saved under that\naccount, in the specified character slot."],
+    ["Using banks",     "$C7Show how to use\nthe bank switching\nfeature on PSOBB", "Using PSOBB banks\n\nThe %schangebank command allows you to borrow\nthe bank from another character in your account.\nUse it like this:\n\n%schangebank player<%n>\n\nFor example, to use character 4's bank, type:\n\n%schangebank player4"],
+    ["Arrow colors",    "$C7Display lobby arrow\ncolor list", "$C7These values can be used with the $C6%sarrow$C7 command.\n\n0: no marker\n1: red\n2: blue\n3: green\n4: yellow\n5: purple\n6: cyan\n7: orange\n8: pink\n9: white\n10: white\n11: white\n12: black"],
+    ["Event values",    "$C7Display lobby event\nlist", "These values can be used with the $C6%sevent$C7 command.\n\nnone - no event\nxmas - Christmas event\nval - Valentine's Day\neaster - Easter Sunday event\nhallo - Halloween event\nsonic - Sonic Adventure DX event\nnewyear - New Year's event\nbval - White Day\nwedding - Wedding Day event\nspring - spring event\ns-spring - spring event with striped background\nsummer - summer event\ns-summer - summer event with striped background\nfall - fall event"],
+    ["GC lobby types",  "$C7Display lobby type\nlist for Episodes\nI & II", "These values can be used with the %sln command.\n$C6*$C7 indicates lobbies where players can't move.\n$C2Green$C7 indicates Episode 1 & 2 (GC) only lobbies.\n\nnormal - standard lobby\n$C2inormal$C7 - under standard lobby $C6*$C7\n$C2ipc$C7 - under PC lobby $C6*$C7\n$C2iball$C7 - under soccer lobby $C6*$C7\n$C2cave1$C7 - Cave 1 $C6*$C7\n$C2cave2u$C7 - Cave 2 Ultimate $C6*$C7\n$C2dragon$C7 - Dragon stage (floor is black)\n$C2derolle$C7 - De Rol Le stage (water/walls are gone)\n$C2volopt$C7 - Vol Opt stage\n$C2darkfalz$C7 - Dark Falz stage"],
+    ["Ep3 lobby types", "$C7Display lobby type\nlist for Episode\nIII", "These values can be used with the %sln command.\n$C6*$C7 indicates lobbies where players can't move.\n$C8Pink$C7 indicates Episode 3 only lobbies.\n\nnormal - standard lobby\n$C8planet$C7 - Blank Ragol Lobby\n$C8clouds$C7 - Blank Sky Lobby\n$C8cave$C7 - Unguis Lapis\n$C8jungle$C7 - Episode 2 Jungle\n$C8forest2-1$C7 - Episode 1 Forest 2 (ground)\n$C8forest2-2$C7 - Episode 1 Forest 2 (near Dome)\n$C8windpower$C7\n$C8overview$C7\n$C8seaside$C7 - Episode 2 Seaside\n$C8some?$C7\n$C8dmorgue$C7 - Destroyed Morgue\n$C8caelum$C7 - Caelum\n$C8digital$C7\n$C8boss1$C7\n$C8boss2$C7\n$C8boss3$C7\n$C8knight$C7 - Leukon Knight stage\n$C8sky$C7 - Via Tubus\n$C8morgue$C7 - Morgue"],
+    ["Area list",       "$C7Display stage code\nlist", "These values can be used with the $C6%swarp$C7 command.\n\n$C2Green$C7 areas will be empty unless you are in a quest.\n$C6Yellow$C7 areas will not allow you to move.\n\n   $C8Episode 1  / Episode 2        / Episode 4$C7\n0: Pioneer 2  / Pioneer 2        / Pioneer 2\n1: Forest 1   / Temple Alpha    / Crater East\n2: Forest 2   / Temple Beta     / Crater West\n3: Caves 1    / Spaceship Alpha / Crater South\n4: Caves 2    / Spaceship Beta  / Crater North\n5: Caves 3    / CCA              / Crater Interior\n6: Mines 1    / Jungle North     / Desert 1\n7: Mines 2    / Jungle South     / Desert 2\n8: Ruins 1     / Mountain         / Desert 3\n9: Ruins 2     / Seaside          / Saint Million\n10: Ruins 3   / Seabed Upper    / $C6Purgatory$C7\n11: Dragon    / Seabed Lower\n12: De Rol Le / Gal Gryphon\n13: Vol Opt   / Olga Flow\n14: Dark Falz / Barba Ray\n15: $C2Lobby$C7     / Gol Dragon\n16: $C6Battle 1$C7  / $C6Seaside Night$C7\n17: $C6Battle 2$C7  / $C2Tower$C7"],
+  ],
+  "WelcomeMessage": "You are connected to $C6Alexandria$C7.",
+
+  "CommonItemDropRates-Enemy": [
+    0x03000000, // material
+    0x20000000, // equipment
+    0x06000000, // technique disk
+    0x01800000, // scape doll
+    0x06000000, // grinder
+    0x10000000, // atomizers, etc.
+    0x20000000, // mates/fluids
+    0x40000000, // meseta
+  ],
+  "CommonItemDropRates-Box": [
+    0x00800000, // material
+    0x20000000, // equipment
+    0x01000000, // technique disk
+    0x02000000, // scape doll
+    0x08000000, // grinder
+    0x10000000, // atomizers, etc.
+    0x20000000, // mates/fluids
+    0x80000000, // meseta
+  ],
+
+  "CommonUnitTypes": [
+    // normal
+    [0x00, 0x00, 0x00, 0x04, 0x04, 0x04, 0x08, 0x08, 0x08, 0x0C, 0x0C, 0x0C,
+     0x10, 0x10, 0x10, 0x14, 0x14, 0x14, 0x18, 0x18, 0x18, 0x21, 0x21, 0x21,
+     0x24, 0x24, 0x24, 0x27, 0x27, 0x27, 0x2A, 0x2A, 0x2A, 0xFF, 0xFF, 0xFF,
+     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+     0xFF, 0xFF, 0xFF, 0xFF],
+    // hard
+    [0x01, 0x01, 0x05, 0x05, 0x09, 0x09, 0x0D, 0x0D, 0x11, 0x11, 0x15, 0x15,
+     0x19, 0x19, 0x21, 0x21, 0x24, 0x24, 0x27, 0x27, 0x2A, 0x2A, 0x30, 0x30,
+     0x33, 0x33, 0x36, 0x36, 0x39, 0x39, 0x3C, 0x3C, 0x3F, 0x3F, 0xFF, 0xFF,
+     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+     0xFF, 0xFF, 0xFF, 0xFF],
+    // very hard
+    [0x02, 0x02, 0x06, 0x06, 0x0A, 0x0A, 0x0E, 0x0E, 0x12, 0x12, 0x16, 0x16,
+     0x1A, 0x1A, 0x22, 0x22, 0x25, 0x25, 0x28, 0x28, 0x2B, 0x2B, 0x31, 0x31,
+     0x34, 0x34, 0x37, 0x37, 0x3A, 0x3A, 0x3D, 0x3D, 0x3F, 0x3F, 0x41, 0x41,
+     0x42, 0x42, 0x43, 0x43, 0x44, 0x44, 0x45, 0x45, 0x46, 0x46, 0x47, 0x47,
+     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+     0xFF, 0xFF, 0xFF, 0xFF],
+    // ultimate
+    [0x02, 0x02, 0x06, 0x06, 0x0A, 0x0A, 0x0E, 0x0E, 0x12, 0x12, 0x16, 0x16,
+     0x1A, 0x1A, 0x23, 0x23, 0x26, 0x26, 0x29, 0x29, 0x2C, 0x2C, 0x31, 0x31,
+     0x34, 0x34, 0x37, 0x37, 0x3A, 0x3A, 0x3D, 0x3D, 0x3F, 0x3F, 0x41, 0x41,
+     0x42, 0x42, 0x43, 0x43, 0x44, 0x44, 0x45, 0x45, 0x46, 0x46, 0x47, 0x47,
+     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+     0xFF, 0xFF, 0xFF, 0xFF],
+  ],
+}
