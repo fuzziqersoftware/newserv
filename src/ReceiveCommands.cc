@@ -2037,7 +2037,7 @@ void process_encryption_ok_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
   send_command(c, 0x04, 0x00); // This requests the user's login information
 }
 
-void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
+void process_login_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Login_Patch_04>(data);
 
@@ -2054,31 +2054,14 @@ $C7newserv patch server\n\
 \n\
 This server is not affiliated with, sponsored by, or in any\n\
 other way connected to SEGA or Sonic Team, and is owned\n\
-and operated completely independently.\n\
-\n";
+and operated completely independently.";
   } else {
     message = u"\
 newserv patch server\r\n\
 \r\n\
 This server is not affiliated with, sponsored by, or in any other way \
 connected to SEGA or Sonic Team, and is owned and operated completely \
-independently.\r\n\
-\r\n";
-  }
-  message += u"License check ";
-  try {
-    shared_ptr<const License> l;
-    if (c->flags & Client::Flag::BB_PATCH) {
-      l = s->license_manager->verify_bb(cmd.username, cmd.password);
-    } else {
-      l = s->license_manager->verify_pc(
-          stoul(cmd.username, nullptr, 16), cmd.password);
-    }
-    c->set_license(l);
-    message += u"OK";
-  } catch (const exception& e) {
-    message += u"failed: ";
-    message += decode_sjis(e.what());
+independently.";
   }
 
   send_message_box(c, message.c_str());
