@@ -104,7 +104,7 @@ enable_testing()
 file(GLOB TestCases ${CMAKE_SOURCE_DIR}/tests/*.test.txt)
 
 foreach(TestCase IN ITEMS ${TestCases})
-  add_test(NAME ${TestCase} COMMAND ${CMAKE_BUILD_DIR}/newserv --replay-log=${TestCase} --config=tests/config.json)
+  add_test(NAME ${TestCase} COMMAND ${CMAKE_BUILD_DIR}/newserv --replay-log=${TestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json)
 endforeach()
 
 
