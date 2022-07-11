@@ -841,6 +841,10 @@ static HandlerResult process_server_64(shared_ptr<ServerState>,
     cmd.event = session.override_lobby_event;
     modified = true;
   }
+  if (session.override_random_seed >= 0) {
+    cmd.rare_seed = session.override_random_seed;
+    modified = true;
+  }
 
   return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }

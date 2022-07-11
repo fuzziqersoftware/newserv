@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 
+#include <random>
 #include <array>
 #include <vector>
 #include <string>
@@ -15,6 +16,7 @@
 #include "RareItemSet.hh"
 #include "Text.hh"
 #include "Quest.hh"
+#include "Items.hh"
 
 struct Lobby {
   enum Flag {
@@ -63,9 +65,10 @@ struct Lobby {
   uint8_t mode;
   std::u16string password;
   std::u16string name;
-  uint32_t rare_seed;
-
-  //EP3_GAME_CONFIG* ep3; // only present if this is an Episode 3 game
+  // This seed is also sent to the client for rare enemy generation
+  uint32_t random_seed;
+  std::shared_ptr<std::mt19937> random;
+  std::shared_ptr<const CommonItemCreator> common_item_creator;
 
   // lobby stuff
   uint8_t event;

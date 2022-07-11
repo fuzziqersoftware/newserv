@@ -92,6 +92,7 @@ struct Client {
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give
   int16_t override_section_id; // valid if >= 0
+  int64_t override_random_seed; // valid if >= 0
   bool infinite_hp; // cheats enabled
   bool infinite_tp; // cheats enabled
   bool switch_assist; // cheats enabled

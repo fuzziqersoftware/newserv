@@ -14,11 +14,11 @@ RareItemSet::RareItemSet(const char* filename, uint8_t episode,
   preadx(fd, this, sizeof(*this), offset);
 }
 
-bool sample_rare_item(uint8_t pc) {
+bool sample_rare_item(mt19937& random, uint8_t pc) {
   int8_t shift = ((pc >> 3) & 0x1F) - 4;
   if (shift < 0) {
     shift = 0;
   }
   uint32_t rate = ((2 << shift) * ((pc & 7) + 7));
-  return (random_object<uint32_t>() < rate);
+  return (random() < rate);
 }

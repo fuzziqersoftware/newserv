@@ -333,6 +333,30 @@ static void proxy_command_secid(shared_ptr<ServerState>,
   }
 }
 
+static void server_command_rand(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string& args) {
+  check_is_game(l, false);
+
+  if (!args[0]) {
+    c->override_random_seed = -1;
+    send_text_message(c, u"$C6Override seed\nremoved");
+  } else {
+    c->override_random_seed = stoul(encode_sjis(args), 0, 16);
+    send_text_message(c, u"$C6Override seed\nset");
+  }
+}
+
+static void proxy_command_rand(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  if (!args[0]) {
+    session.override_random_seed = -1;
+    send_text_message(session.client_channel, u"$C6Override seed\nremoved");
+  } else {
+    session.override_random_seed = stoul(encode_sjis(args), 0, 16);
+    send_text_message(session.client_channel, u"$C6Override seed\nset");
+  }
+}
+
 static void server_command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
@@ -828,6 +852,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     // TODO: implement this on proxy server
     {u"$next"      , {server_command_next              , nullptr                    , u"Usage:\nnext"}},
     {u"$password"  , {server_command_password          , nullptr                    , u"Usage:\nlock [password]\nomit password to\nunlock game"}},
+    {u"$rand"      , {server_command_rand              , proxy_command_rand         , u"Usage:\nrand [hex seed]\nomit seed to revert\nto default"}},
     {u"$secid"     , {server_command_secid             , proxy_command_secid        , u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
     {u"$silence"   , {server_command_silence           , nullptr                    , u"Usage:\nsilence <name-or-number>"}},
     // TODO: implement this on proxy server

@@ -1865,6 +1865,12 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   if (solo) {
     game->mode = 3;
   }
+  if (c->override_random_seed >= 0) {
+    game->random_seed = c->override_random_seed;
+    game->random->seed(game->random_seed);
+  }
+  game->common_item_creator.reset(new CommonItemCreator(
+      s->common_item_data, game->random));
   game->event = Lobby::game_event_for_lobby_event(current_lobby->event);
   game->block = 0xFF;
   game->max_clients = 4;
@@ -1927,7 +1933,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
 
   if (variation_maxes) {
     for (size_t x = 0; x < 0x20; x++) {
-      game->variations.data()[x] = random_int(0, variation_maxes[x] - 1);
+      game->variations.data()[x] = (*game->random)() % variation_maxes[x];
     }
   } else {
     for (size_t x = 0; x < 0x20; x++) {

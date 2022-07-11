@@ -919,7 +919,7 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   cmd.event = l->event;
   cmd.section_id = l->section_id;
   cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
-  cmd.rare_seed = l->rare_seed;
+  cmd.rare_seed = l->random_seed;
   cmd.episode = l->episode;
   cmd.unused2 = 0x01;
   cmd.solo_mode = (l->mode == 3);

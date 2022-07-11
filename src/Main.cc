@@ -74,14 +74,16 @@ void populate_state_from_config(shared_ptr<ServerState> s,
 
   s->set_port_configuration(parse_port_configuration(d.at("PortConfiguration")));
 
-  auto enemy_categories = parse_int_vector<uint32_t>(d.at("CommonItemDropRates-Enemy"));
-  auto box_categories = parse_int_vector<uint32_t>(d.at("CommonItemDropRates-Box"));
-  vector<vector<uint8_t>> unit_types;
-  for (const auto& item : d.at("CommonUnitTypes")->as_list()) {
-    unit_types.emplace_back(parse_int_vector<uint8_t>(item));
+  {
+    auto enemy_categories = parse_int_vector<uint32_t>(d.at("CommonItemDropRates-Enemy"));
+    auto box_categories = parse_int_vector<uint32_t>(d.at("CommonItemDropRates-Box"));
+    vector<vector<uint8_t>> unit_types;
+    for (const auto& item : d.at("CommonUnitTypes")->as_list()) {
+      unit_types.emplace_back(parse_int_vector<uint8_t>(item));
+    }
+    s->common_item_data.reset(new CommonItemData(
+        move(enemy_categories), move(box_categories), move(unit_types)));
   }
-  s->common_item_creator.reset(new CommonItemCreator(enemy_categories,
-      box_categories, unit_types));
 
   auto local_address_str = d.at("LocalAddress")->as_string();
   try {

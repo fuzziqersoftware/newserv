@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include <random>
+
 
 
 struct RareItemDrop {
@@ -24,4 +26,4 @@ struct RareItemSet {
   	  uint8_t secid);
 } __attribute__((packed));
 
-bool sample_rare_item(uint8_t pc);
+bool sample_rare_item(std::mt19937& rand, uint8_t pc);

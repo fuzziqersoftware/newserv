@@ -544,12 +544,15 @@ static void process_subcommand_use_item(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void process_subcommand_open_shop_bb_or_unknown_ep3(shared_ptr<ServerState> s,
+static void process_subcommand_open_shop_bb_or_unknown_ep3(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
     check_size_sc(data, 0x08, 0xFFFF);
     forward_subcommand(l, c, command, flag, data);
+
+  } else if (!l->common_item_creator.get()) {
+    throw runtime_error("received shop subcommand without item creator present");
 
   } else {
     const auto* p = check_size_sc(data, 0x08);
@@ -561,11 +564,11 @@ static void process_subcommand_open_shop_bb_or_unknown_ep3(shared_ptr<ServerStat
       while (c->game_data.shop_contents.size() < num_items) {
         ItemData item_data;
         if (shop_type == 0) { // tool shop
-          item_data = s->common_item_creator->create_shop_item(l->difficulty, 3);
+          item_data = l->common_item_creator->create_shop_item(l->difficulty, 3);
         } else if (shop_type == 1) { // weapon shop
-          item_data = s->common_item_creator->create_shop_item(l->difficulty, 0);
+          item_data = l->common_item_creator->create_shop_item(l->difficulty, 0);
         } else if (shop_type == 2) { // guards shop
-          item_data = s->common_item_creator->create_shop_item(l->difficulty, 1);
+          item_data = l->common_item_creator->create_shop_item(l->difficulty, 1);
         } else { // unknown shop... just leave it blank I guess
           break;
         }
@@ -668,7 +671,7 @@ static void process_subcommand_sort_inventory_bb(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 // EXP/Drop Item commands
 
-static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s,
+static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -677,9 +680,11 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s
     if (!l->is_game()) {
       return;
     }
-
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
       throw logic_error("item tracking not enabled in BB game");
+    }
+    if (!l->common_item_creator.get()) {
+      throw runtime_error("received box drop subcommand without item creator present");
     }
 
     PlayerInventoryItem item;
@@ -692,7 +697,8 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s
     } else {
       if (l->rare_item_set) {
         if (cmd->enemy_id <= 0x65) {
-          is_rare = sample_rare_item(l->rare_item_set->rares[cmd->enemy_id].probability);
+          is_rare = sample_rare_item(*
+              l->random, l->rare_item_set->rares[cmd->enemy_id].probability);
         }
       }
 
@@ -707,7 +713,7 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s
         }
       } else {
         try {
-          item.data = s->common_item_creator->create_drop_item(false, l->episode,
+          item.data = l->common_item_creator->create_drop_item(false, l->episode,
               l->difficulty, cmd->area, l->section_id);
         } catch (const out_of_range&) {
           // create_common_item throws this when it doesn't want to make an item
@@ -726,7 +732,7 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s
   }
 }
 
-static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
+static void process_subcommand_box_drop_item_request(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -735,9 +741,11 @@ static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
     if (!l->is_game()) {
       return;
     }
-
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
       throw logic_error("item tracking not enabled in BB game");
+    }
+    if (!l->common_item_creator.get()) {
+      throw runtime_error("received box drop subcommand without item creator present");
     }
 
     PlayerInventoryItem item;
@@ -753,7 +761,8 @@ static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
           if (l->rare_item_set->box_areas[index] != cmd->area) {
             continue;
           }
-          if (sample_rare_item(l->rare_item_set->box_rares[index].probability)) {
+          if (sample_rare_item(
+              *l->random, l->rare_item_set->box_rares[index].probability)) {
             is_rare = true;
             break;
           }
@@ -771,7 +780,7 @@ static void process_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
         }
       } else {
         try {
-          item.data = s->common_item_creator->create_drop_item(true, l->episode,
+          item.data = l->common_item_creator->create_drop_item(true, l->episode,
               l->difficulty, cmd->area, l->section_id);
         } catch (const out_of_range&) {
           // create_common_item throws this when it doesn't want to make an item

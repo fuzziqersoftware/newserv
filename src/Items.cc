@@ -8,6 +8,13 @@ using namespace std;
 
 
 
+uint32_t random_int(shared_ptr<mt19937> rand, uint32_t min, uint32_t max) {
+  uint32_t range = max - min + 1;
+  return min + ((*rand)() % range);
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 
 /* these items all need some kind of special handling that hasn't been implemented yet.
@@ -226,14 +233,13 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// reads the non-rare item preferences from the config file.
-CommonItemCreator::CommonItemCreator(
-    const vector<uint32_t>& enemy_item_categories,
-    const vector<uint32_t>& box_item_categories,
-    const vector<vector<uint8_t>>& unit_types) :
-    enemy_item_categories(enemy_item_categories),
-    box_item_categories(box_item_categories),
-    unit_types(unit_types) {
+CommonItemData::CommonItemData(
+    vector<uint32_t>&& enemy_item_categories,
+    vector<uint32_t>&& box_item_categories,
+    vector<vector<uint8_t>>&& unit_types) :
+    enemy_item_categories(move(enemy_item_categories)),
+    box_item_categories(move(box_item_categories)),
+    unit_types(move(unit_types)) {
 
   // sanity check the values
   if (this->enemy_item_categories.size() != 8) {
@@ -267,16 +273,21 @@ CommonItemCreator::CommonItemCreator(
   }
 }
 
-int32_t CommonItemCreator::decide_item_type(bool is_box) const {
-  uint32_t determinant = random_object<uint32_t>();
+CommonItemCreator::CommonItemCreator(
+    std::shared_ptr<const CommonItemData> data,
+    std::shared_ptr<std::mt19937> random)
+  : data(data), random(random) { }
 
-  const auto* v = is_box ? &this->box_item_categories : &this->enemy_item_categories;
-  for (size_t x = 0; x < v->size(); x++) {
-    uint32_t probability = v->at(x);
-    if (probability > determinant) {
+int32_t CommonItemCreator::decide_item_type(bool is_box) const {
+  uint32_t det = (*this->random)();
+
+  const auto& v = is_box ? this->data->box_item_categories : this->data->enemy_item_categories;
+  for (size_t x = 0; x < v.size(); x++) {
+    uint32_t probability = v.at(x);
+    if (probability > det) {
       return x;
     }
-    determinant -= probability;
+    det -= probability;
   }
   return -1;
 }
@@ -325,25 +336,25 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
     case 0x00: // material
       item.data1[0] = 0x03;
       item.data1[1] = 0x0B;
-      item.data1[2] = random_int(0, 6);
+      item.data1[2] = random_int(this->random, 0, 6);
       break;
 
     case 0x01: // equipment
-      switch (random_int(0, 3)) {
+      switch (random_int(this->random, 0, 3)) {
         case 0x00: // weapon
-          item.data1[1] = random_int(1, 12); // random normal class
-          item.data1[2] = difficulty + random_int(0, 2); // special type
+          item.data1[1] = random_int(this->random, 1, 12); // random normal class
+          item.data1[2] = difficulty + random_int(this->random, 0, 2); // special type
           if ((item.data1[1] > 0x09) && (item.data1[2] > 0x04)) {
             item.data1[2] = 0x04; // no special classes above 4
           }
           item.data1[4] = 0x80; // untekked
           if (item.data1[2] < 0x04) {
-            item.data1[4] |= random_int(0, 40); // give a special
+            item.data1[4] |= random_int(this->random, 0, 40); // give a special
           }
           for (size_t x = 0, y = 0; (x < 5) && (y < 3); x++) { // percentages
-            if (random_int(0, 10) == 1) { // 1/11 chance of getting each type of percentage
+            if (random_int(this->random, 0, 10) == 1) { // 1/11 chance of getting each type of percentage
               item.data1[6 + (y * 2)] = x + 1;
-              item.data1[7 + (y * 2)] = random_int(0, 10) * 5;
+              item.data1[7 + (y * 2)] = random_int(this->random, 0, 10) * 5;
               y++;
             }
           }
@@ -352,33 +363,33 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
         case 0x01: // armor
           item.data1[0] = 0x01;
           item.data1[1] = 0x01;
-          item.data1[2] = (6 * difficulty) + random_int(0, ((area / 2) + 2) - 1); // standard type based on difficulty and area
+          item.data1[2] = (6 * difficulty) + random_int(this->random, 0, ((area / 2) + 2) - 1); // standard type based on difficulty and area
           if (item.data1[2] > 0x17) {
             item.data1[2] = 0x17; // no standard types above 0x17
           }
-          if (random_int(0, 10) == 0) { // +/-
-            item.data1[4] = random_int(0, 5);
-            item.data1[6] = random_int(0, 2);
+          if (random_int(this->random, 0, 10) == 0) { // +/-
+            item.data1[4] = random_int(this->random, 0, 5);
+            item.data1[6] = random_int(this->random, 0, 2);
           }
-          item.data1[5] = random_int(0, 4); // slots
+          item.data1[5] = random_int(this->random, 0, 4); // slots
           break;
 
         case 0x02: // shield
           item.data1[0] = 0x01;
           item.data1[1] = 0x02;
-          item.data1[2] = (5 * difficulty) + random_int(0, ((area / 2) + 2) - 1); // standard type based on difficulty and area
+          item.data1[2] = (5 * difficulty) + random_int(this->random, 0, ((area / 2) + 2) - 1); // standard type based on difficulty and area
           if (item.data1[2] > 0x14) {
             item.data1[2] = 0x14; // no standard types above 0x14
           }
-          if (random_int(0, 10) == 0) { // +/-
-            item.data1[4] = random_int(0, 5);
-            item.data1[6] = random_int(0, 5);
+          if (random_int(this->random, 0, 10) == 0) { // +/-
+            item.data1[4] = random_int(this->random, 0, 5);
+            item.data1[6] = random_int(this->random, 0, 5);
           }
           break;
 
         case 0x03: { // unit
-          const auto& type_table = this->unit_types.at(difficulty);
-          uint8_t type = type_table[random_int(0, type_table.size() - 1)];
+          const auto& type_table = this->data->unit_types.at(difficulty);
+          uint8_t type = type_table[random_int(this->random, 0, type_table.size() - 1)];
           if (type == 0xFF) {
             throw out_of_range("no item dropped"); // 0xFF -> no item drops
           }
@@ -393,11 +404,11 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
     case 0x02: // technique
       item.data1[0] = 0x03;
       item.data1[1] = 0x02;
-      item.data1[4] = random_int(0, 18); // tech type
+      item.data1[4] = random_int(this->random, 0, 18); // tech type
       if ((item.data1[4] != 14) && (item.data1[4] != 17)) { // if not ryuker or reverser, give it a level
         if (item.data1[4] == 16) { // if not anti, give it a level between 1 and 30
           if (area > 3) {
-            item.data1[2] = difficulty + random_int(0, ((area - 1) / 2) - 1);
+            item.data1[2] = difficulty + random_int(this->random, 0, ((area - 1) / 2) - 1);
           } else {
             item.data1[2] = difficulty;
           }
@@ -405,7 +416,7 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
             item.data1[2] = 6;
           }
         } else {
-          item.data1[2] = (5 * difficulty) + random_int(0, ((area * 3) / 2) - 1); // else between 1 and 7
+          item.data1[2] = (5 * difficulty) + random_int(this->random, 0, ((area * 3) / 2) - 1); // else between 1 and 7
         }
       }
       break;
@@ -419,24 +430,24 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
     case 0x04: // grinder
       item.data1[0] = 0x03;
       item.data1[1] = 0x0A;
-      item.data1[2] = random_int(0, 2); // mono, di, tri
+      item.data1[2] = random_int(this->random, 0, 2); // mono, di, tri
       break;
 
     case 0x05: // consumable
       item.data1[0] = 0x03;
       item.data1[5] = 0x01;
-      switch (random_int(0, 2)) {
+      switch (random_int(this->random, 0, 2)) {
         case 0: // antidote / antiparalysis
           item.data1[1] = 6;
-          item.data1[2] = random_int(0, 1);
+          item.data1[2] = random_int(this->random, 0, 1);
           break;
 
         case 1: // telepipe / trap vision
-          item.data1[1] = 7 + random_int(0, 1);
+          item.data1[1] = 7 + random_int(this->random, 0, 1);
           break;
 
         case 2: // sol / moon / star atomizer
-          item.data1[1] = 3 + random_int(0, 2);
+          item.data1[1] = 3 + random_int(this->random, 0, 2);
           break;
       }
       break;
@@ -444,19 +455,19 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
     case 0x06: // consumable
       item.data1[0] = 0x03;
       item.data1[5] = 0x01;
-      item.data1[1] = random_int(0, 1); // mate or fluid
+      item.data1[1] = random_int(this->random, 0, 1); // mate or fluid
       if (difficulty == 0) {
-        item.data1[2] = random_int(0, 1); // only mono and di on normal
+        item.data1[2] = random_int(this->random, 0, 1); // only mono and di on normal
       } else if (difficulty == 3) {
-        item.data1[2] = random_int(1, 2); // only di and tri on ultimate
+        item.data1[2] = random_int(this->random, 1, 2); // only di and tri on ultimate
       } else {
-        item.data1[2] = random_int(0, 2); // else, any of the three
+        item.data1[2] = random_int(this->random, 0, 2); // else, any of the three
       }
       break;
 
     case 0x07: // meseta
       item.data1[0] = 0x04;
-      item.data2d = (90 * difficulty) + (random_int(1, 20) * (area * 2)); // meseta amount
+      item.data2d = (90 * difficulty) + (random_int(this->random, 1, 20) * (area * 2)); // meseta amount
       break;
 
     default:

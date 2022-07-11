@@ -69,6 +69,7 @@ public:
     int16_t override_section_id;
     int16_t override_lobby_event;
     int16_t override_lobby_number;
+    int64_t override_random_seed;
 
     struct LobbyPlayer {
       uint32_t guild_card_number;
