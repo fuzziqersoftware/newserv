@@ -355,7 +355,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   }
   this->main_menu.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, u"Download quests",
       u"Download quests", MenuItem::Flag::INVISIBLE_ON_BB);
-  if (!this->dol_file_index->empty()) {
+  if (!this->function_code_index->patch_menu_empty()) {
     this->main_menu.emplace_back(MainMenuItemID::PATCHES, u"Patches",
         u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
   }
