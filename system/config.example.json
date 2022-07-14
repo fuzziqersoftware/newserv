@@ -186,6 +186,18 @@
   // BB users.
   "WelcomeMessage": "",
 
+  // Default lobby event. If set, this sets the holiday event in all lobbies at
+  // server start time, as well as the pre-lobby holiday event. The event can be
+  // changed in each lobby independently with the $event command, or in all
+  // lobbies with the $allevent command. When a game is created, it inherits the
+  // holiday event from the lobby from which it was created.
+  // The value for this field can be a string like "xmas" (the values have the
+  // same meanings as the $event command), or an integer.
+  // "LobbyEvent": "xmas",
+  // Episode 3 menu song. If set, Episode 3 clients will hear this song when
+  // they are at the newserv main menu. If set, this value must be an integer.
+  // "Episode3MenuSong": 0,
+
   // By default, the server keeps track of items in all games, even for versions
   // other than Blue Burst. This enables use of the $what command, as well as
   // protection against item duplication cheats (the cheater is disconnected

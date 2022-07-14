@@ -20,6 +20,7 @@
 #include "Server.hh"
 #include "ServerShell.hh"
 #include "ServerState.hh"
+#include "StaticGameData.hh"
 #include "Text.hh"
 
 using namespace std;
@@ -159,6 +160,19 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     s->run_shell_behavior = run_shell ?
         ServerState::RunShellBehavior::ALWAYS :
         ServerState::RunShellBehavior::NEVER;
+  } catch (const out_of_range&) { }
+
+  try {
+    auto v = d.at("LobbyEvent");
+    uint8_t event = v->is_int() ? v->as_int() : event_for_name(v->as_string());
+    s->pre_lobby_event = event;
+    for (const auto& l : s->all_lobbies()) {
+      l->event = event;
+    }
+  } catch (const out_of_range&) { }
+
+  try {
+    s->ep3_menu_song = d.at("Episode3MenuSong")->as_int();
   } catch (const out_of_range&) { }
 }
 
