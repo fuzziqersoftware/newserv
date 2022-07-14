@@ -44,7 +44,6 @@ static void forward_command(ProxyServer::LinkedSession& session, bool to_server,
   if (!ch.connected()) {
     proxy_server_log.warning("No endpoint is present; dropping command");
   } else {
-    // TODO: Don't print the command here (usually)
     ch.send(command, flag, data, print_contents);
   }
 }
@@ -90,33 +89,45 @@ static void send_text_message_to_client(
 // function may have modified) is forwarded to the other end; if they return
 // false; it is not.
 
-enum class HandlerResult {
-  FORWARD = 0,
-  SUPPRESS,
-  MODIFIED,
+struct HandlerResult {
+  enum class Type {
+    FORWARD = 0,
+    SUPPRESS,
+    MODIFIED,
+  };
+  Type type;
+  // These are only used if Type is MODIFIED. If either are -1, then the
+  // original command's value is used instead.
+  int32_t new_command;
+  int64_t new_flag;
+
+  HandlerResult(Type type) : type(type), new_command(-1), new_flag(-1) { }
+  HandlerResult(Type type, uint16_t new_command, uint32_t new_flag)
+      : type(type), new_command(new_command), new_flag(new_flag) { }
 };
 
 static HandlerResult process_default(shared_ptr<ServerState>,
     ProxyServer::LinkedSession&, uint16_t, uint32_t, string&) {
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_97(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
-  // Trap 97 commands and always send 97 01 04 00. This protects the client from
-  // cheat detection - if the flag is 0, the client triggers cheat detection and
-  // deletes a bunch of data.
-  session.client_channel.send(0x97, 0x01);
-  // Also, update the newserv client config so we'll know not to show the
-  // programs menu if they return to newserv.
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string&) {
+  // Update the newserv client config so we'll know not to show the Programs
+  // menu if they return to newserv
   session.newserv_client_config.cfg.flags |= Client::Flag::SAVE_ENABLED;
-  return HandlerResult::SUPPRESS;
+  // Trap any 97 command that would have triggered cheat protection, and always
+  // send 97 01 04 00
+  if (flag == 0) {
+    return HandlerResult(HandlerResult::Type::MODIFIED, 0x97, 0x01);
+  }
+  return HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_gc_9A(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   if (!session.license) {
-    return HandlerResult::FORWARD;
+    return HandlerResult::Type::FORWARD;
   }
 
   C_LoginExtended_GC_9E cmd;
@@ -144,7 +155,7 @@ static HandlerResult process_server_gc_9A(shared_ptr<ServerState>,
   session.server_channel.send(
       0x9E, 0x01, &cmd,
       cmd.is_extended ? sizeof(C_LoginExtended_GC_9E) : sizeof(C_Login_GC_9E));
-  return HandlerResult::SUPPRESS;
+  return HandlerResult::Type::SUPPRESS;
 }
 
 static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
@@ -177,7 +188,7 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
       session.client_channel.crypt_out.reset(new PSOPCEncryption(cmd.server_key));
     }
 
-    return HandlerResult::SUPPRESS;
+    return HandlerResult::Type::SUPPRESS;
   }
 
   session.log.info("Existing license in linked session");
@@ -199,7 +210,7 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
   // redirect).
   if (session.version == GameVersion::PATCH) {
     session.server_channel.send(0x02);
-    return HandlerResult::SUPPRESS;
+    return HandlerResult::Type::SUPPRESS;
 
   } else if (session.version == GameVersion::PC) {
     C_Login_PC_9D cmd;
@@ -221,7 +232,7 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
     cmd.access_key2 = cmd.access_key;
     cmd.name = session.character_name;
     session.server_channel.send(0x9D, 0x00, &cmd, sizeof(cmd));
-    return HandlerResult::SUPPRESS;
+    return HandlerResult::Type::SUPPRESS;
 
   } else if (session.version == GameVersion::GC) {
     if (command == 0x17) {
@@ -234,7 +245,7 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
       cmd.access_key2 = cmd.access_key;
       cmd.password = session.license->gc_password;
       session.server_channel.send(0xDB, 0x00, &cmd, sizeof(cmd));
-      return HandlerResult::SUPPRESS;
+      return HandlerResult::Type::SUPPRESS;
 
     } else {
       // For command 02, send the same as if we had received 9A from the server
@@ -277,7 +288,7 @@ static HandlerResult process_server_bb_03(shared_ptr<ServerState> s,
     }
     session.server_channel.send(0x93, 0x00, session.login_command_bb);
 
-    return HandlerResult::SUPPRESS;
+    return HandlerResult::Type::SUPPRESS;
 
   // If there's no detector crypt, then the session is new and was linked
   // immediately at connect time, and an 03 was not yet sent to the client, so
@@ -299,7 +310,7 @@ static HandlerResult process_server_bb_03(shared_ptr<ServerState> s,
         session.detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false));
 
     // We already forwarded the command, so don't do so again
-    return HandlerResult::SUPPRESS;
+    return HandlerResult::Type::SUPPRESS;
   }
 }
 
@@ -349,11 +360,13 @@ static HandlerResult process_server_dc_pc_gc_04(shared_ptr<ServerState>,
   if (!had_guild_card_number) {
     // We don't actually have a client checksum, of course... hopefully just
     // random data will do (probably no private servers check this at all)
+    // TODO: Presumably we can save these values from the client when they
+    // connected to newserv originally, but I'm too lazy to do this right now
     le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
     session.server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
   }
 
-  return session.license ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
+  return session.license ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_dc_pc_gc_06(shared_ptr<ServerState>,
@@ -363,10 +376,10 @@ static HandlerResult process_server_dc_pc_gc_06(shared_ptr<ServerState>,
         sizeof(SC_TextHeader_01_06_11_B0_EE), 0xFFFF);
     if (cmd.guild_card_number == session.remote_guild_card_number) {
       cmd.guild_card_number = session.license->serial_number;
-      return HandlerResult::MODIFIED;
+      return HandlerResult::Type::MODIFIED;
     }
   }
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 template <typename CmdT>
@@ -384,7 +397,7 @@ static HandlerResult process_server_41(shared_ptr<ServerState>,
       modified = true;
     }
   }
-  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 template <typename CmdT>
@@ -402,7 +415,7 @@ static HandlerResult process_server_81(shared_ptr<ServerState>,
       modified = true;
     }
   }
-  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_88(shared_ptr<ServerState>,
@@ -419,7 +432,7 @@ static HandlerResult process_server_88(shared_ptr<ServerState>,
       }
     }
   }
-  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_B2(shared_ptr<ServerState>,
@@ -488,9 +501,9 @@ static HandlerResult process_server_B2(shared_ptr<ServerState>,
     cmd.return_value = session.function_call_return_value;
     cmd.checksum = 0;
     session.server_channel.send(0xB3, flag, &cmd, sizeof(cmd));
-    return HandlerResult::SUPPRESS;
+    return HandlerResult::Type::SUPPRESS;
   } else {
-    return HandlerResult::FORWARD;
+    return HandlerResult::Type::FORWARD;
   }
 }
 
@@ -501,7 +514,7 @@ static HandlerResult process_server_E7(shared_ptr<ServerState>,
     save_file(output_filename, data);
     session.log.info("Wrote player data to file %s", output_filename.c_str());
   }
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 template <typename CmdT>
@@ -520,7 +533,7 @@ static HandlerResult process_server_C4(shared_ptr<ServerState>,
       }
     }
   }
-  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_gc_E4(shared_ptr<ServerState>,
@@ -533,7 +546,7 @@ static HandlerResult process_server_gc_E4(shared_ptr<ServerState>,
       modified = true;
     }
   }
-  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_bb_22(shared_ptr<ServerState>,
@@ -552,7 +565,7 @@ static HandlerResult process_server_bb_22(shared_ptr<ServerState>,
     session.log.info("Enabling remote IP CRC patch");
     session.enable_remote_ip_crc_patch = true;
   }
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_game_19_patch_14(shared_ptr<ServerState>,
@@ -589,7 +602,7 @@ static HandlerResult process_server_game_19_patch_14(shared_ptr<ServerState>,
 
   if (!session.client_channel.connected()) {
     session.log.warning("Received reconnect command with no destination present");
-    return HandlerResult::SUPPRESS;
+    return HandlerResult::Type::SUPPRESS;
 
   } else if (command == 0x14) {
     // On the patch server, hide redirects from the client completely. The new
@@ -605,7 +618,7 @@ static HandlerResult process_server_game_19_patch_14(shared_ptr<ServerState>,
     dest_sin->sin_addr.s_addr = cmd.address.load_raw();
     dest_sin->sin_port = cmd.port;
     session.connect();
-    return HandlerResult::SUPPRESS;
+    return HandlerResult::Type::SUPPRESS;
 
   } else {
     // If the client is on a virtual connection (fd < 0), only change
@@ -623,7 +636,7 @@ static HandlerResult process_server_game_19_patch_14(shared_ptr<ServerState>,
       cmd.address.store_raw(sin->sin_addr.s_addr);
       cmd.port = ntohs(sin->sin_port);
     }
-    return HandlerResult::MODIFIED;
+    return HandlerResult::Type::MODIFIED;
   }
 }
 
@@ -636,7 +649,7 @@ static HandlerResult process_server_gc_1A_D5(shared_ptr<ServerState>,
       (session.newserv_client_config.cfg.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) {
     session.server_channel.send(0xD6);
   }
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
@@ -656,7 +669,7 @@ static HandlerResult process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
     }
   }
 
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 template <typename T>
@@ -684,7 +697,7 @@ static HandlerResult process_server_44_A6(shared_ptr<ServerState>,
     session.saving_files.emplace(cmd.filename, move(sf));
     session.log.info("Opened file %s", output_filename.c_str());
   }
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_13_A7(shared_ptr<ServerState>,
@@ -698,7 +711,7 @@ static HandlerResult process_server_13_A7(shared_ptr<ServerState>,
     } catch (const out_of_range&) {
       string filename = cmd.filename;
       session.log.warning("Received data for non-open file %s", filename.c_str());
-      return HandlerResult::FORWARD;
+      return HandlerResult::Type::FORWARD;
     }
 
     size_t bytes_to_write = cmd.data_size;
@@ -721,7 +734,7 @@ static HandlerResult process_server_13_A7(shared_ptr<ServerState>,
       session.saving_files.erase(cmd.filename);
     }
   }
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_gc_B8(shared_ptr<ServerState>,
@@ -729,21 +742,21 @@ static HandlerResult process_server_gc_B8(shared_ptr<ServerState>,
   if (session.save_files) {
     if (data.size() < 4) {
       session.log.warning("Card list data size is too small; not saving file");
-      return HandlerResult::FORWARD;
+      return HandlerResult::Type::FORWARD;
     }
 
     StringReader r(data);
     size_t size = r.get_u32l();
     if (r.remaining() < size) {
       session.log.warning("Card list data size extends beyond end of command; not saving file");
-      return HandlerResult::FORWARD;
+      return HandlerResult::Type::FORWARD;
     }
 
     string output_filename = string_printf("cardupdate.%" PRIu64 ".mnr", now());
     save_file(output_filename, r.read(size));
     session.log.info("Wrote %zu bytes to %s", size, output_filename.c_str());
   }
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 template <typename CmdT>
@@ -797,7 +810,7 @@ static HandlerResult process_server_65_67_68(shared_ptr<ServerState>,
     modified = true;
   }
 
-  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 template <typename CmdT>
@@ -846,7 +859,7 @@ static HandlerResult process_server_64(shared_ptr<ServerState>,
     modified = true;
   }
 
-  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_server_66_69(shared_ptr<ServerState>,
@@ -860,7 +873,7 @@ static HandlerResult process_server_66_69(shared_ptr<ServerState>,
     session.lobby_players[index].name.clear();
     session.log.info("Removed lobby player (%zu)", index);
   }
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_client_06(shared_ptr<ServerState> s,
@@ -877,7 +890,7 @@ static HandlerResult process_client_06(shared_ptr<ServerState> s,
     strip_trailing_zeroes(text);
 
     if (text.empty()) {
-      return HandlerResult::SUPPRESS;
+      return HandlerResult::Type::SUPPRESS;
     }
 
     bool is_command = (text[0] == '$' || (text[0] == '\t' && text[1] != 'C' && text[2] == '$'));
@@ -885,24 +898,24 @@ static HandlerResult process_client_06(shared_ptr<ServerState> s,
       text = text.substr((text[0] == '$') ? 0 : 2);
       if (text.size() >= 2 && text[1] == '$') {
         send_chat_message(session.server_channel, text.substr(1));
-        return HandlerResult::SUPPRESS;
+        return HandlerResult::Type::SUPPRESS;
       } else {
         process_chat_command(s, session, text);
-        return HandlerResult::SUPPRESS;
+        return HandlerResult::Type::SUPPRESS;
       }
 
     } else if (session.enable_chat_filter) {
       add_color_inplace(data.data() + 8, data.size() - 8);
       // TODO: We should return MODIFIED here if the message was changed by
       // the add_color_inplace call
-      return HandlerResult::FORWARD;
+      return HandlerResult::Type::FORWARD;
 
     } else {
-      return HandlerResult::FORWARD;
+      return HandlerResult::Type::FORWARD;
     }
 
   } else {
-    return HandlerResult::FORWARD;
+    return HandlerResult::Type::FORWARD;
   }
 }
 
@@ -920,7 +933,7 @@ static HandlerResult process_client_40(shared_ptr<ServerState>,
       modified = true;
     }
   }
-  return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 template <typename CmdT>
@@ -937,7 +950,7 @@ static HandlerResult process_client_81(shared_ptr<ServerState>,
   }
   // GC clients send uninitialized memory here; don't forward it
   cmd.text.clear_after(cmd.text.len());
-  return HandlerResult::MODIFIED;
+  return HandlerResult::Type::MODIFIED;
 }
 
 template <typename SendGuildCardCmdT>
@@ -1000,13 +1013,13 @@ HandlerResult process_client_60_62_6C_6D_C9_CB<void>(shared_ptr<ServerState>,
     }
   }
 
-  return HandlerResult::FORWARD;
+  return HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   if (!session.license) {
-    return HandlerResult::FORWARD;
+    return HandlerResult::Type::FORWARD;
   }
 
   // For licensed sessions, send them back to newserv's main menu instead of
@@ -1063,7 +1076,7 @@ static HandlerResult process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
 
   session.client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
 
-  return HandlerResult::SUPPRESS;
+  return HandlerResult::Type::SUPPRESS;
 }
 
 
@@ -1289,13 +1302,18 @@ void process_proxy_command(
   auto fn = get_handler(session.version, from_server, command);
   try {
     auto res = fn(s, session, command, flag, data);
-    if (res == HandlerResult::FORWARD) {
+    if (res.type == HandlerResult::Type::FORWARD) {
       forward_command(session, !from_server, command, flag, data, false);
-    } else if (res == HandlerResult::MODIFIED) {
+    } else if (res.type == HandlerResult::Type::MODIFIED) {
       session.log.info("The preceding command from the %s was modified in transit",
           from_server ? "server" : "client");
-      forward_command(session, !from_server, command, flag, data);
-    } else if (res == HandlerResult::SUPPRESS) {
+      forward_command(
+          session,
+          !from_server,
+          res.new_command >= 0 ? res.new_command : command,
+          res.new_flag >= 0 ? res.new_flag : flag,
+          data);
+    } else if (res.type == HandlerResult::Type::SUPPRESS) {
       session.log.info("The preceding command from the %s was not forwarded",
           from_server ? "server" : "client");
     } else {
