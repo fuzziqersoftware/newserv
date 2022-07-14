@@ -320,7 +320,9 @@ struct S_ServerInit_BB_03_9B {
 struct C_LegacyLogin_PC_GC_04 {
   le_uint64_t unused1; // Same as unused field in 9D/9E
   le_uint32_t sub_version;
-  le_uint32_t unused2;
+  uint8_t unknown_a1;
+  uint8_t language; // Same as 9D/9E
+  le_uint16_t unknown_a2;
   ptext<char, 0x10> serial_number;
   ptext<char, 0x10> access_key;
 };
