@@ -155,7 +155,7 @@ static void proxy_command_lobby_info(shared_ptr<ServerState>,
   }
 
   if (session.override_section_id >= 0) {
-    msg += "\n$C7SecID override: $C6%s";
+    msg += "\n$C7SecID override: $C6";
     msg += name_for_section_id(session.override_section_id);
   }
 
