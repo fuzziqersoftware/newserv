@@ -347,10 +347,10 @@ template <typename ClientConfigT>
 struct S_UpdateClientConfig {
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
-  // The ClientConfig structure (defined in Client.hh) describes how newserv
-  // uses this command; other servers do not use the same format for the
-  // following 0x20 bytes (or may not use it at all). The cfg field is opaque to
-  // the client; it will send back the contents verbatim in its next 9E command.
+  // The ClientConfig structure describes how newserv uses this command; other
+  // servers do not use the same format for the following 0x20 or 0x28 bytes (or
+  // may not use it at all). The cfg field is opaque to the client; it will send
+  // back the contents verbatim in its next 9E command.
   ClientConfigT cfg;
 };
 
@@ -366,7 +366,7 @@ struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> { };
 // struct to make parsing easier.
 
 struct C_Chat_06 {
-  uint64_t unused;
+  parray<le_uint32_t, 2> unused;
   union {
     char dcgc[0];
     char16_t pcbb[0];
@@ -385,8 +385,8 @@ struct S_MenuEntry {
   le_uint16_t flags; // should be 0x0F04
   ptext<CharT, EntryLength> text;
 };
-struct S_MenuEntry_PC_BB_07 : S_MenuEntry<char16_t, 17> { };
-struct S_MenuEntry_DC_GC_07 : S_MenuEntry<char, 18> { };
+struct S_MenuEntry_PC_BB_07_1F : S_MenuEntry<char16_t, 17> { };
+struct S_MenuEntry_DC_GC_07_1F : S_MenuEntry<char, 18> { };
 
 // 08 (C->S): Request game list
 // No arguments
@@ -458,27 +458,21 @@ struct C_MenuSelection_10_Flag00 {
 };
 
 template <typename CharT>
-struct C_MenuSelection_10_Flag01 {
-  le_uint32_t menu_id;
-  le_uint32_t item_id;
+struct C_MenuSelection_10_Flag01 : C_MenuSelection_10_Flag00 {
   ptext<CharT, 0x10> unknown_a1;
 };
 struct C_MenuSelection_DC_GC_10_Flag01 : C_MenuSelection_10_Flag01<char> { };
 struct C_MenuSelection_PC_BB_10_Flag01 : C_MenuSelection_10_Flag01<char16_t> { };
 
 template <typename CharT>
-struct C_MenuSelection_10_Flag02 {
-  le_uint32_t menu_id;
-  le_uint32_t item_id;
+struct C_MenuSelection_10_Flag02 : C_MenuSelection_10_Flag00 {
   ptext<CharT, 0x10> password;
 };
 struct C_MenuSelection_DC_GC_10_Flag02 : C_MenuSelection_10_Flag02<char> { };
 struct C_MenuSelection_PC_BB_10_Flag02 : C_MenuSelection_10_Flag02<char16_t> { };
 
 template <typename CharT>
-struct C_MenuSelection_10_Flag03 {
-  le_uint32_t menu_id;
-  le_uint32_t item_id;
+struct C_MenuSelection_10_Flag03 : C_MenuSelection_10_Flag00 {
   ptext<CharT, 0x10> unknown_a1;
   ptext<CharT, 0x10> password;
 };

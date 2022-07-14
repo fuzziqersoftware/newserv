@@ -739,9 +739,9 @@ void send_menu(shared_ptr<Client> c, const u16string& menu_name,
     uint32_t menu_id, const vector<MenuItem>& items, bool is_info_menu) {
   if (c->version == GameVersion::PC || c->version == GameVersion::PATCH ||
       c->version == GameVersion::BB) {
-    send_menu_t<S_MenuEntry_PC_BB_07>(c, menu_name, menu_id, items, is_info_menu);
+    send_menu_t<S_MenuEntry_PC_BB_07_1F>(c, menu_name, menu_id, items, is_info_menu);
   } else {
-    send_menu_t<S_MenuEntry_DC_GC_07>(c, menu_name, menu_id, items, is_info_menu);
+    send_menu_t<S_MenuEntry_DC_GC_07_1F>(c, menu_name, menu_id, items, is_info_menu);
   }
 }
 
