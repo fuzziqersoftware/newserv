@@ -28,17 +28,16 @@ uint16_t flags_for_version(GameVersion version, uint8_t sub_version) {
       break;
     case 0x29: // PSO PC
       return Client::Flag::DEFAULT_V2_PC;
-    case 0x30: // ???
+    case 0x30: // PSO Ep1&2 JP v1.02
     case 0x31: // PSO Ep1&2 US v1.00, US v1.01, EU v1.00, JP v1.00
-    case 0x33: // PSO Ep1&2 EU 50Hz
-    case 0x34: // PSO Ep1&2 JP v1.01
+    case 0x32: // PSO Ep1&2 EU 50Hz
+    case 0x33: // PSO Ep1&2 EU 60Hz
+    case 0x34: // PSO Ep1&2 JP v1.03
       return Client::Flag::DEFAULT_V3_GC;
-    case 0x35: // PSO Ep1&2 JP Plus (1.04)
+    case 0x35: // PSO Ep1&2 JP v1.04 (Plus)
       return Client::Flag::DEFAULT_V3_GC_PLUS;
-    // TODO: Figure out which of the below is which and update the comments
-    case 0x32: // PSO Ep1&2 US v1.02, JP v1.02
-    case 0x36: // PSO Ep1&2 US v1.02, JP v1.02
-    case 0x39: // PSO Ep1&2 US v1.02, JP v1.02
+    case 0x36: // PSO Ep1&2 US v1.02 (Plus)
+    case 0x39: // PSO Ep1&2 JP v1.05 (Plus)
       return Client::Flag::DEFAULT_V3_GC_PLUS_NO_SFC;
     case 0x42: // PSO Ep3 JP
       return Client::Flag::DEFAULT_V3_GC_EP3;

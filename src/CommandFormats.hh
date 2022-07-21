@@ -1387,11 +1387,11 @@ struct S_ConfirmUpdateQuestStatistics_AB {
 // relocated, but is not actually executed, so the return_value field in the
 // resulting B3 command is always 0. The checksum functionality does work on PSO
 // PC, just like the other versions.
-// This command doesn't work on the later JP PSO Plus (v1.5?), US PSO Plus
-// (v1.2), or US Episode 3. Sega presumably removed it after taking heat from
-// Nintendo about enabling homebrew on the GameCube. On the earlier JP PSO Plus
-// (v1.4) and JP Episode 3, this command is implemented as described here, with
-// some additional compression and encryption steps added, similarly to how
+// This command doesn't work on the later JP PSO Plus (v1.05), US PSO Plus
+// (v1.02), or US/EU Episode 3. Sega presumably removed it after taking heat
+// from Nintendo about enabling homebrew on the GameCube. On the earlier JP PSO
+// Plus (v1.04) and JP Episode 3, this command is implemented as described here,
+// with some additional compression and encryption steps added, similarly to how
 // download quests are encoded. See send_function_call in SendCommands.cc for
 // more details on how this works.
 
@@ -1433,8 +1433,7 @@ struct S_ExecuteCode_Footer_GC_B2 : S_ExecuteCode_Footer_B2<be_uint32_t> { };
 struct S_ExecuteCode_Footer_PC_BB_B2 : S_ExecuteCode_Footer_B2<le_uint32_t> { };
 
 // B3 (C->S): Execute code and/or checksum memory result
-// Not used on PSO Plus (GC v1.2) and Episode 3, since those versions do not
-// support the B2 command.
+// Not used on versions that don't support the B2 command (see above).
 
 struct C_ExecuteCodeResult_B3 {
   // On PSO PC, return_value is always 0.
@@ -1717,8 +1716,8 @@ struct S_Unknown_GC_Ep3_CC {
 
 // D6 (C->S): Large message box closed (GC)
 // No arguments
-// DC, PC, and BB do not send this command at all. GC v1.0 and v1.1 will send
-// this command when any large message box (1A/D5) is closed; GC Plus and
+// DC, PC, and BB do not send this command at all. GC US v1.00 and v1.01 will
+// send this command when any large message box (1A/D5) is closed; GC Plus and
 // Episode 3 will send D6 only for large message boxes that occur before the
 // client has joined a lobby. (After joining a lobby, large message boxes will
 // still be displayed if sent by the server, but the client won't send a D6 when
