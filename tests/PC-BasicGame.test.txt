@@ -128,7 +128,7 @@ I 80820 2022-07-07 23:34:04 - [Commands] Received from C-2 (version=PC command=9
 0000000000000140 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 I 80820 2022-07-07 23:34:04 - [Commands] Sending to C-2 (version=PC command=04 flag=00)
 0000000000000000 | 2C 00 04 00 00 00 01 00 78 62 F8 10 39 98 AC 82 | ,       xb  9   
-0000000000000010 | 0E 89 2A 49 04 02 00 00 00 00 00 00 FF FF FF FF |   *I            
+0000000000000010 | 0E 89 2A 49 04 10 00 00 00 00 00 00 FF FF FF FF |   *I            
 0000000000000020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 80820 2022-07-07 23:34:04 - [Commands] Sending to C-2 (version=PC command=07 flag=05)
 0000000000000000 | 0C 01 07 05 11 00 00 11 FF FF FF FF 04 00 41 00 |               A 
@@ -161,7 +161,7 @@ I 80820 2022-07-07 23:34:09 - [Commands] Sending to C-2 (version=PC command=97 f
 0000000000000000 | 04 00 97 01                                     |                 
 I 80820 2022-07-07 23:34:09 - [Commands] Sending to C-2 (version=PC command=04 flag=00)
 0000000000000000 | 2C 00 04 00 00 00 01 00 78 62 F8 10 39 98 AC 82 | ,       xb  9   
-0000000000000010 | 0E 89 2A 49 04 06 00 00 00 00 00 00 FF FF FF FF |   *I            
+0000000000000010 | 0E 89 2A 49 04 14 00 00 00 00 00 00 FF FF FF FF |   *I            
 0000000000000020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 80820 2022-07-07 23:34:10 - [Commands] Received from C-2 (version=PC command=B1 flag=00)
 0000000000000000 | 04 00 B1 00                                     |                 
@@ -208,7 +208,7 @@ I 80820 2022-07-07 23:34:10 - [Commands] Received from C-3 (version=PC command=9
 00000000000000C0 | 65 61 00 00 00 00 00 00 00 00 00 00             | ea              
 I 80820 2022-07-07 23:34:10 - [Commands] Sending to C-3 (version=PC command=04 flag=00)
 0000000000000000 | 2C 00 04 00 00 00 01 00 78 62 F8 10 39 98 AC 82 | ,       xb  9   
-0000000000000010 | 0E 89 2A 49 04 02 00 00 00 00 00 00 FF FF FF FF |   *I            
+0000000000000010 | 0E 89 2A 49 04 10 00 00 00 00 00 00 FF FF FF FF |   *I            
 0000000000000020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 80820 2022-07-07 23:34:10 - [Commands] Sending to C-3 (version=PC command=83 flag=0F)
 0000000000000000 | B8 00 83 0F 33 00 00 33 01 00 00 00 00 00 00 00 |     3  3        
@@ -2130,7 +2130,7 @@ I 80820 2022-07-07 23:37:10 - [Commands] Received from C-4 (version=PC command=9
 0000000000000140 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 I 80820 2022-07-07 23:37:10 - [Commands] Sending to C-4 (version=PC command=04 flag=00)
 0000000000000000 | 2C 00 04 00 00 00 01 00 78 62 F8 10 39 98 AC 82 | ,       xb  9   
-0000000000000010 | 0E 89 2A 49 04 02 00 00 00 00 00 00 FF FF FF FF |   *I            
+0000000000000010 | 0E 89 2A 49 04 10 00 00 00 00 00 00 FF FF FF FF |   *I            
 0000000000000020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 80820 2022-07-07 23:37:10 - [Commands] Sending to C-4 (version=PC command=07 flag=05)
 0000000000000000 | 0C 01 07 05 11 00 00 11 FF FF FF FF 04 00 41 00 |               A 

@@ -229,6 +229,9 @@ void send_function_call(
   if (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL) {
     throw logic_error("client does not support function calls");
   }
+  if (code.get() && (c->flags & Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
+    throw logic_error("client only supports checksums in send_function_call");
+  }
 
   string data;
   uint32_t index = 0;
