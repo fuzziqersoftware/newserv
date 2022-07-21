@@ -245,7 +245,7 @@ void send_function_call(
     w.put_u32b(key);
 
     // Round size up to a multiple of 4 for encryption
-    data.resize(data.size() + 3 & ~3);
+    data.resize((data.size() + 3) & ~3);
 
     // For this format, the code section is decrypted without byteswapping on
     // the client (GameCube), which is big-endian, so we have to treat the data
