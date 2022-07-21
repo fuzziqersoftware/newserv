@@ -33,16 +33,20 @@ uint16_t flags_for_version(GameVersion version, uint8_t sub_version) {
     case 0x33: // PSO Ep1&2 EU50HZ
     case 0x34: // PSO Ep1&2 JP11
       return Client::Flag::DEFAULT_V3_GC;
+    // TODO: Which of these is the first version of JP PSO Plus? That version
+    // supports encrypted send_function_call; we should set the appropriate flag
+    // here.
     case 0x32: // PSO Ep1&2 US12, JP12
     case 0x35: // PSO Ep1&2 US12, JP12
     case 0x36: // PSO Ep1&2 US12, JP12
     case 0x39: // PSO Ep1&2 US12, JP12
-      return Client::Flag::DEFAULT_V3_GC_PLUS;
+      return Client::Flag::DEFAULT_V3_GC_PLUS_NO_SFC;
     case 0x40: // PSO Ep3 trial
     case 0x41: // PSO Ep3 US
-    case 0x42: // PSO Ep3 JP
     case 0x43: // PSO Ep3 UK
-      return Client::Flag::DEFAULT_V3_GC_EP3;
+      return Client::Flag::DEFAULT_V3_GC_EP3_NO_SFC;
+    case 0x42: // PSO Ep3 JP
+      return Client::Flag::DEFAULT_V3_GC_PLUS;
   }
   return 0;
 }

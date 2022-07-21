@@ -13,6 +13,7 @@
 
 #include "PSOProtocol.hh"
 #include "CommandFormats.hh"
+#include "Compression.hh"
 #include "FileContentsCache.hh"
 #include "Text.hh"
 
@@ -225,8 +226,8 @@ void send_function_call(
   if (c->version != GameVersion::GC) {
     throw logic_error("cannot send function calls to non-GameCube clients");
   }
-  if (c->flags & Client::Flag::EPISODE_3) {
-    throw logic_error("cannot send function calls to Episode 3 clients");
+  if (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL) {
+    throw logic_error("client does not support function calls");
   }
 
   string data;
@@ -234,6 +235,29 @@ void send_function_call(
   if (code.get()) {
     data = code->generate_client_command(label_writes, suffix);
     index = code->index;
+  }
+
+  if (c->flags & Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL) {
+    uint32_t key = random_object<uint32_t>();
+
+    StringWriter w;
+    w.put_u32b(data.size());
+    w.put_u32b(key);
+
+    // Round size up to a multiple of 4 for encryption
+    data.resize(data.size() + 3 & ~3);
+
+    // For this format, the code section is decrypted without byteswapping on
+    // the client (GameCube), which is big-endian, so we have to treat the data
+    // the same way here (hence we can't just use crypt.encrypt).
+    data = prs_compress(data);
+    StringReader compressed_r(data);
+    PSOPCEncryption crypt(key);
+    while (!compressed_r.eof()) {
+      w.put_u32b(compressed_r.get_u32b() ^ crypt.next());
+    }
+
+    data = move(w.str());
   }
 
   S_ExecuteCode_B2 header = {data.size(), checksum_addr, checksum_size};

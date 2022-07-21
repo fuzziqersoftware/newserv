@@ -1383,12 +1383,17 @@ struct S_ConfirmUpdateQuestStatistics_AB {
 // B2 (S->C): Execute code and/or checksum memory
 // Client will respond with a B3 command with the same header.flag value as was
 // sent in the B2.
-// This command doesn't work on PSO Plus (v1.2) or Episode 3. Sega presumably
-// removed it after taking heat from Nintendo about enabling homebrew on the
-// GameCube. On PSO PC, the code section (if included in the B2 command) is
-// parsed and relocated, but is not actually executed, so the return_value field
-// in the resulting B3 command is always 0. The checksum functionality does work
-// on PSO PC, just like the other versions.
+// On PSO PC, the code section (if included in the B2 command) is parsed and
+// relocated, but is not actually executed, so the return_value field in the
+// resulting B3 command is always 0. The checksum functionality does work on PSO
+// PC, just like the other versions.
+// This command doesn't work on the later JP PSO Plus (v1.5?), US PSO Plus
+// (v1.2), or US Episode 3. Sega presumably removed it after taking heat from
+// Nintendo about enabling homebrew on the GameCube. On the earlier JP PSO Plus
+// (v1.4) and JP Episode 3, this command is implemented as described here, with
+// some additional compression and encryption steps added, similarly to how
+// download quests are encoded. See send_function_call in SendCommands.cc for
+// more details on how this works.
 
 struct S_ExecuteCode_B2 {
   // If code_size == 0, no code is executed, but checksumming may still occur.

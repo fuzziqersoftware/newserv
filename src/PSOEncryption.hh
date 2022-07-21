@@ -40,9 +40,10 @@ public:
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
 
+  uint32_t next(bool advance = true);
+
 protected:
   void update_stream();
-  uint32_t next(bool advance = true);
 
   uint32_t stream[PC_STREAM_LENGTH + 1];
   uint8_t offset;
@@ -54,9 +55,10 @@ public:
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
 
+  uint32_t next(bool advance = true);
+
 protected:
   void update_stream();
-  uint32_t next(bool advance = true);
 
   uint32_t stream[GC_STREAM_LENGTH];
   uint16_t offset;
