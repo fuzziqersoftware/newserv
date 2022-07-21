@@ -286,6 +286,7 @@ int main(int argc, char** argv) {
   string key_file_name;
   const char* config_filename = "system/config.json";
   bool parse_data = false;
+  bool byteswap_data = false;
   const char* replay_log_filename = nullptr;
   struct sockaddr_storage cat_client_remote;
   for (int x = 1; x < argc; x++) {
@@ -329,6 +330,8 @@ int main(int argc, char** argv) {
       key_file_name = &argv[x][6];
     } else if (!strcmp(argv[x], "--parse-data")) {
       parse_data = true;
+    } else if (!strcmp(argv[x], "--byteswap-data")) {
+      byteswap_data = true;
     } else if (!strncmp(argv[x], "--replay-log=", 13)) {
       behavior = Behavior::REPLAY_LOG;
       replay_log_filename = &argv[x][13];
@@ -368,12 +371,26 @@ int main(int argc, char** argv) {
         data = parse_data_string(data);
       }
 
+      if (byteswap_data) {
+        uint32_t* dwords = reinterpret_cast<uint32_t*>(data.data());
+        for (size_t x = 0; x < (data.size() >> 2); x++) {
+          dwords[x] = bswap32(dwords[x]);
+        }
+      }
+
       if (behavior == Behavior::DECRYPT_DATA) {
         crypt->decrypt(data.data(), data.size());
       } else if (behavior == Behavior::ENCRYPT_DATA) {
         crypt->encrypt(data.data(), data.size());
       } else {
         throw logic_error("invalid behavior");
+      }
+
+      if (byteswap_data) {
+        uint32_t* dwords = reinterpret_cast<uint32_t*>(data.data());
+        for (size_t x = 0; x < (data.size() >> 2); x++) {
+          dwords[x] = bswap32(dwords[x]);
+        }
       }
 
       if (isatty(fileno(stdout))) {
