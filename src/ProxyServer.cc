@@ -538,24 +538,19 @@ void ProxyServer::LinkedSession::resume_inner(
 void ProxyServer::LinkedSession::connect() {
   // Connect to the remote server. The command handlers will do the login steps
   // and set up forwarding
-  struct sockaddr_storage local_ss;
-  struct sockaddr_in* local_sin = reinterpret_cast<struct sockaddr_in*>(&local_ss);
-  memset(local_sin, 0, sizeof(*local_sin));
-  local_sin->sin_family = AF_INET;
-  const struct sockaddr_in* dest_sin = reinterpret_cast<const sockaddr_in*>(&this->next_destination);
+  const struct sockaddr_in* dest_sin = reinterpret_cast<const sockaddr_in*>(
+      &this->next_destination);
   if (dest_sin->sin_family != AF_INET) {
-    throw logic_error("ss not AF_INET");
+    throw runtime_error("destination is not AF_INET");
   }
-  local_sin->sin_port = dest_sin->sin_port;
-  local_sin->sin_addr.s_addr = dest_sin->sin_addr.s_addr;
 
-  string netloc_str = render_sockaddr_storage(local_ss);
+  string netloc_str = render_sockaddr_storage(this->next_destination);
   this->log.info("Connecting to %s", netloc_str.c_str());
 
   this->server_channel.set_bufferevent(bufferevent_socket_new(
       this->server->base.get(), -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS));
   if (bufferevent_socket_connect(this->server_channel.bev.get(),
-      reinterpret_cast<const sockaddr*>(local_sin), sizeof(*local_sin)) != 0) {
+      reinterpret_cast<const sockaddr*>(dest_sin), sizeof(*dest_sin)) != 0) {
     throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
   }
 

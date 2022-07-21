@@ -53,25 +53,23 @@ void send_command(shared_ptr<ServerState> s, uint16_t command, uint32_t flag,
 }
 
 template <typename HeaderT>
-void send_command_with_header_t(shared_ptr<Client> c, const void* data,
-    size_t size) {
+void send_command_with_header_t(Channel& ch, const void* data, size_t size) {
   const HeaderT* header = reinterpret_cast<const HeaderT*>(data);
-  send_command(c, header->command, header->flag, header + 1, size - sizeof(HeaderT));
+  ch.send(header->command, header->flag, header + 1, size - sizeof(HeaderT));
 }
 
-void send_command_with_header(shared_ptr<Client> c, const void* data,
-    size_t size) {
-  switch (c->version) {
+void send_command_with_header(Channel& ch, const void* data, size_t size) {
+  switch (ch.version) {
     case GameVersion::GC:
     case GameVersion::DC:
-      send_command_with_header_t<PSOCommandHeaderDCGC>(c, data, size);
+      send_command_with_header_t<PSOCommandHeaderDCGC>(ch, data, size);
       break;
     case GameVersion::PC:
     case GameVersion::PATCH:
-      send_command_with_header_t<PSOCommandHeaderPC>(c, data, size);
+      send_command_with_header_t<PSOCommandHeaderPC>(ch, data, size);
       break;
     case GameVersion::BB:
-      send_command_with_header_t<PSOCommandHeaderBB>(c, data, size);
+      send_command_with_header_t<PSOCommandHeaderBB>(ch, data, size);
       break;
     default:
       throw logic_error("unimplemented game version in send_command_with_header");

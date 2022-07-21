@@ -17,7 +17,7 @@ using namespace std;
 ServerShell::ServerShell(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
-  : Shell(base, state) { }
+  : Shell(base), state(state) { }
 
 void ServerShell::print_prompt() {
   fwritex(stdout, Shell::PROMPT);
@@ -305,7 +305,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
       }
 
       auto c = this->state->game_server->get_client();
-      send_command_with_header(c, data.data(), data.size());
+      send_command_with_header(c->channel, data.data(), data.size());
     }
 
   } else if ((command_name == "chat") || (command_name == "dchat")) {

@@ -24,6 +24,8 @@ public:
   ServerShell& operator=(ServerShell&&) = delete;
 
 protected:
+  std::shared_ptr<ServerState> state;
+
   std::shared_ptr<ProxyServer::LinkedSession> get_proxy_session();
 
   virtual void print_prompt();

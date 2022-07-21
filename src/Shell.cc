@@ -18,15 +18,15 @@ Shell::exit_shell::exit_shell() : runtime_error("shell exited") { }
 
 
 
-Shell::Shell(std::shared_ptr<struct event_base> base,
-    std::shared_ptr<ServerState> state) : base(base), state(state),
+Shell::Shell(std::shared_ptr<struct event_base> base)
+  : base(base),
     read_event(event_new(this->base.get(), 0, EV_READ | EV_PERSIST,
       &Shell::dispatch_read_stdin, this), event_free),
     prompt_event(event_new(this->base.get(), 0, EV_TIMEOUT,
       &Shell::dispatch_print_prompt, this), event_free) {
   event_add(this->read_event.get(), nullptr);
 
-  // schedule an event to print the prompt as soon as the event loop starts
+  // Schedule an event to print the prompt as soon as the event loop starts
   // running. we do this so the prompt appears after any initialization
   // messages that come after starting the shell
   struct timeval tv = {0, 0};

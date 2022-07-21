@@ -13,8 +13,7 @@
 
 class Shell {
 public:
-  Shell(std::shared_ptr<struct event_base> base,
-      std::shared_ptr<ServerState> state);
+  Shell(std::shared_ptr<struct event_base> base);
   virtual ~Shell() = default;
   Shell(const Shell&) = delete;
   Shell(Shell&&) = delete;
@@ -25,7 +24,6 @@ public:
 
 protected:
   std::shared_ptr<struct event_base> base;
-  std::shared_ptr<ServerState> state;
   std::unique_ptr<struct event, void (*)(struct event*)> read_event;
   std::unique_ptr<struct event, void (*)(struct event*)> prompt_event;
   Poll poll;

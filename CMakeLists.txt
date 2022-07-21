@@ -45,6 +45,7 @@ endif()
 # Executable definition
 
 add_executable(newserv
+  src/CatSession.cc
   src/Channel.cc
   src/ChatCommands.cc
   src/Client.cc

@@ -29,9 +29,6 @@
 //   pointer is given but size is accidentally not given (e.g. if the type of
 //   data in the calling function is changed from string to void*).
 
-void send_command(Channel& ch, uint16_t command, uint32_t flag,
-    const void* data, size_t size);
-
 void send_command(std::shared_ptr<Client> c, uint16_t command,
     uint32_t flag, const void* data, size_t size);
 
@@ -91,8 +88,7 @@ void send_command_t_vt(std::shared_ptr<TargetT> c, uint16_t command,
   send_command(c, command, flag, all_data.data(), all_data.size());
 }
 
-void send_command_with_header(std::shared_ptr<Client> c, const void* data,
-    size_t size);
+void send_command_with_header(Channel& c, const void* data, size_t size);
 
 
 
