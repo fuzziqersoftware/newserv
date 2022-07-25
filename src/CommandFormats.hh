@@ -779,7 +779,7 @@ struct C_OpenFileConfirmation_44_A6 {
 
 // 64 (S->C): Join game
 // This is sent to the joining player; the other players get a 65 instead.
-// Note that (except on Episode 3) this comamnd does not include the player's
+// Note that (except on Episode 3) this command does not include the player's
 // disp or inventory data. The clients in the game are responsible for sending
 // that data to each other during the join process with 60/62/6C/6D commands.
 
@@ -1807,7 +1807,7 @@ struct S_GuildCardHeader_BB_01DC {
 struct S_GuildCardFileChunk_02DC {
   uint32_t unknown; // 0
   uint32_t chunk_index;
-  uint8_t data[0x6800]; // Comamnd may be shorter if this is the last chunk
+  uint8_t data[0x6800]; // Command may be shorter if this is the last chunk
 };
 
 struct C_GuildCardDataRequest_BB_03DC {
