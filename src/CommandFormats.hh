@@ -2470,19 +2470,19 @@ struct G_EnemyHitByPlayer_6x0A {
 // 0D: Remove condition (poison/slow/etc.)
 // 0E: Unknown
 // 0F: Invalid subcommand
-// 10: Unknown
-// 11: Unknown
-// 12: Dragon actions
-// 13: Re Rol Le actions
-// 14: Unknown (supported; game only)
-// 15: Vol Opt boss actions
-// 16: Vol Opt boss actions
-// 17: Unknown (supported; game only)
-// 18: Unknown (supported; game only)
-// 19: Dark Falz actions
+// 10: Unknown (not valid on Episode 3)
+// 11: Unknown (not valid on Episode 3)
+// 12: Dragon actions (not valid on Episode 3)
+// 13: Re Rol Le actions (not valid on Episode 3)
+// 14: Unknown (supported; game only; not valid on Episode 3)
+// 15: Vol Opt boss actions (not valid on Episode 3)
+// 16: Vol Opt boss actions (not valid on Episode 3)
+// 17: Unknown (supported; game only; not valid on Episode 3)
+// 18: Unknown (supported; game only; not valid on Episode 3)
+// 19: Dark Falz actions (not valid on Episode 3)
 // 1A: Invalid subcommand
-// 1B: Unknown
-// 1C: Unknown (supported; game only)
+// 1B: Unknown (not valid on Episode 3)
+// 1C: Unknown (supported; game only; not valid on Episode 3)
 // 1D: Invalid subcommand
 // 1E: Invalid subcommand
 // 1F: Unknown (supported; lobby & game)
@@ -2763,13 +2763,13 @@ struct G_EnemyDropItemRequest_6x60 {
 // 61: Feed MAG
 // 62: Unknown
 // 63: Destroy an item on the ground (used when too many items have been dropped)
-// 64: Unknown
-// 65: Unknown
+// 64: Unknown (not valid on Episode 3)
+// 65: Unknown (not valid on Episode 3)
 // 66: Use star atomizer
 // 67: Create enemy set
 // 68: Telepipe/Ryuker
 // 69: Unknown (supported; game only)
-// 6A: Unknown (supported; game only)
+// 6A: Unknown (supported; game only; not valid on Episode 3)
 // 6B: Unknown (used while loading into game)
 // 6C: Unknown (used while loading into game)
 // 6D: Unknown (used while loading into game)
@@ -2787,46 +2787,46 @@ struct G_EnemyDropItemRequest_6x60 {
 // 79: Lobby 14/15 soccer game
 // 7A: Unknown
 // 7B: Unknown
-// 7C: Unknown (supported; game only)
-// 7D: Unknown (supported; game only)
-// 7E: Unknown
-// 7F: Unknown
-// 80: Trigger trap
+// 7C: Unknown (supported; game only; not valid on Episode 3)
+// 7D: Unknown (supported; game only; not valid on Episode 3)
+// 7E: Unknown (not valid on Episode 3)
+// 7F: Unknown (not valid on Episode 3)
+// 80: Trigger trap (not valid on Episode 3)
 // 81: Unknown
 // 82: Unknown
 // 83: Place trap
-// 84: Unknown (supported; game only)
-// 85: Unknown (supported; game only)
-// 86: Hit destructible wall
+// 84: Unknown (supported; game only; not valid on Episode 3)
+// 85: Unknown (supported; game only; not valid on Episode 3)
+// 86: Hit destructible wall (not valid on Episode 3)
 // 87: Unknown
 // 88: Unknown (supported; game only)
 // 89: Unknown (supported; game only)
-// 8A: Unknown
-// 8B: Unknown
-// 8C: Unknown
+// 8A: Unknown (not valid on Episode 3)
+// 8B: Unknown (not valid on Episode 3)
+// 8C: Unknown (not valid on Episode 3)
 // 8D: Unknown (supported; lobby & game)
-// 8E: Unknown
-// 8F: Unknown
-// 90: Unknown
+// 8E: Unknown (not valid on Episode 3)
+// 8F: Unknown (not valid on Episode 3)
+// 90: Unknown (not valid on Episode 3)
 // 91: Unknown (supported; game only)
-// 92: Unknown
-// 93: Timed switch activated
-// 94: Warp (the $warp chat command is implemented using this)
-// 95: Unknown
-// 96: Unknown
-// 97: Unknown
+// 92: Unknown (not valid on Episode 3)
+// 93: Timed switch activated (not valid on Episode 3)
+// 94: Warp (not valid on Episode 3)
+// 95: Unknown (not valid on Episode 3)
+// 96: Unknown (not valid on Episode 3)
+// 97: Unknown (not valid on Episode 3)
 // 98: Unknown
 // 99: Unknown
-// 9A: Update player stat ($infhp/$inftp are implemented using this)
+// 9A: Update player stat (not valid on Episode 3)
 // 9B: Unknown
-// 9C: Unknown (supported; game only)
-// 9D: Unknown
-// 9E: Unknown
-// 9F: Gal Gryphon actions
-// A0: Gal Gryphon actions
-// A1: Unknown
+// 9C: Unknown (supported; game only; not valid on Episode 3)
+// 9D: Unknown (not valid on Episode 3)
+// 9E: Unknown (not valid on Episode 3)
+// 9F: Gal Gryphon actions (not valid on PC or Episode 3)
+// A0: Gal Gryphon actions (not valid on PC or Episode 3)
+// A1: Unknown (not valid on PC)
 
-// A2: Request for item drop from box (handled by server on BB)
+// A2: Request for item drop from box (not valid on PC; handled by server on BB)
 
 struct G_BoxItemDropRequest_6xA2 {
   uint8_t command;
@@ -2840,24 +2840,24 @@ struct G_BoxItemDropRequest_6xA2 {
   le_uint32_t unknown[6];
 };
 
-// A3: Episode 2 boss actions
-// A4: Olga Flow phase 1 actions
-// A5: Olga Flow phase 2 actions
-// A6: Trade proposal
-// A7: Unknown
-// A8: Gol Dragon actions
-// A9: Barba Ray actions
-// AA: Episode 2 boss actions
-// AB: Create lobby chair
-// AC: Unknown
-// AD: Unknown
-// AE: Set chair state? (like 20, sent by existing clients at join time)
-// AF: Turn in lobby chair
-// B0: Move in lobby chair
-// B1: Unknown
-// B2: Unknown
-// B3: Invalid subcommand
-// B4: Invalid subcommand
+// A3: Episode 2 boss actions (not valid on PC or Episode 3)
+// A4: Olga Flow phase 1 actions (not valid on PC or Episode 3)
+// A5: Olga Flow phase 2 actions (not valid on PC or Episode 3)
+// A6: Modify trade proposal (not valid on PC)
+// A7: Unknown (not valid on PC)
+// A8: Gol Dragon actions (not valid on PC or Episode 3)
+// A9: Barba Ray actions (not valid on PC or Episode 3)
+// AA: Episode 2 boss actions (not valid on PC or Episode 3)
+// AB: Create lobby chair (not valid on PC)
+// AC: Unknown (not valid on PC)
+// AD: Unknown (not valid on PC or Episode 3)
+// AE: Set chair state? (like 20, sent by existing clients at join time; not valid on PC)
+// AF: Turn in lobby chair (not valid on PC)
+// B0: Move in lobby chair (not valid on PC)
+// B1: Unknown (not valid on PC)
+// B2: Unknown (not valid on PC)
+// B3: Unknown (Episode 3 only)
+// B4: Unknown (Episode 3 only)
 // B5: Episode 3 game setup menu state sync
 // B5: BB shop request (handled by the server)
 // B6: Episode 3 map list (server->client only)
@@ -2889,9 +2889,10 @@ struct G_IdentifyResult_BB_6xB9 {
   ItemData item;
 };
 
-// BA: Invalid subcommand
+// BA: Unknown (Episode 3 only)
+// BB: Unknown (Episode 3)
 // BB: BB bank request (handled by the server)
-
+// BC: Unknown (Episode 3)
 // BC: BB bank contents (server->client only)
 
 struct G_BankContentsHeader_BB_6xBC {
@@ -2905,6 +2906,7 @@ struct G_BankContentsHeader_BB_6xBC {
   // Item data follows
 };
 
+// BD: Unknown (Episode 3)
 // BD: BB bank action (take/deposit meseta/item) (handled by the server)
 
 struct G_BankAction_BB_6xBD {
@@ -2918,6 +2920,7 @@ struct G_BankAction_BB_6xBD {
   le_uint16_t unused2;
 };
 
+// BE: Unknown (Episode 3)
 // BE: BB create inventory item (server->client only)
 
 struct G_CreateInventoryItem_BB_6xBE {
@@ -2928,7 +2931,7 @@ struct G_CreateInventoryItem_BB_6xBE {
   le_uint32_t unused;
 };
 
-// BF: Ep3 change music
+// BF: Change lobby music (Episode 3)
 // BF: Give EXP (BB) (server->client only)
 
 struct G_GiveExperience_BB_6xBF {
@@ -2943,7 +2946,9 @@ struct G_GiveExperience_BB_6xBF {
 // C1: Unknown
 // C2: Unknown
 
-// C3: Split stacked item (not sent if entire stack is dropped) (handled by the server on BB)
+// C3: Split stacked item (handled by the server on BB)
+// Note: This is not sent if an entire stack is dropped; in that case, a normal
+// item drop subcommand is generated instead.
 
 struct G_SplitStackedItem_6xC3 {
   uint8_t command;
@@ -2988,7 +2993,7 @@ struct G_EnemyKilled_6xC8 {
 // CC: Unknown
 // CD: Unknown
 // CE: Unknown
-// CF: Unknown (supported; game only) (handled by the server on BB)
+// CF: Unknown (supported; game only; handled by the server on BB)
 // D0: Invalid subcommand
 // D1: Invalid subcommand
 // D2: Unknown
