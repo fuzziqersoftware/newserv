@@ -14,7 +14,6 @@ This project is primarily for my own nostalgia; I offer no guarantees on how or 
 
 Current known issues / missing features:
 - Test all the communication features in cross-version scenarios (info board, simple mail, card search, etc.)
-- The trade window isn't implemented.
 - Episode 3 battles aren't implemented.
 - PSO PC and PSOBB are not well-tested and likely will disconnect when clients try to use unimplemented features. Only GC is known to be stable and mostly complete.
 - Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.

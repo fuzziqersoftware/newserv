@@ -1093,6 +1093,25 @@ void send_get_player_info(shared_ptr<Client> c) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Trade window
+
+void send_execute_item_trade(std::shared_ptr<Client> c,
+    const std::vector<ItemData>& items) {
+  SC_TradeItems_D0_D3 cmd;
+  if (items.size() > sizeof(cmd.items) / sizeof(cmd.items[0])) {
+    throw logic_error("too many items in execute trade command");
+  }
+  cmd.target_client_id = c->lobby_client_id;
+  cmd.item_count = items.size();
+  for (size_t x = 0; x < items.size(); x++) {
+    cmd.items[x] = items[x];
+  }
+  send_command_t(c, 0xD3, 0x00, cmd);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 // arrows
 
 void send_arrow_update(shared_ptr<Lobby> l) {

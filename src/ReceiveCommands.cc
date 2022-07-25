@@ -2020,6 +2020,109 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Trade window commands
+
+void process_trade_start(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // D0
+  auto& cmd = check_size_t<SC_TradeItems_D0_D3>(data);
+
+  if (c->game_data.pending_item_trade) {
+    throw runtime_error("player started a trade when one is already pending");
+  }
+  if (cmd.item_count > 0x20) {
+    throw runtime_error("invalid item count in trade items command");
+  }
+
+  auto l = s->find_lobby(c->lobby_id);
+  if (!l || !l->is_game()) {
+    throw runtime_error("trade command received in non-game lobby");
+  }
+  auto target_c = l->clients.at(cmd.target_client_id);
+  if (!target_c) {
+    throw runtime_error("trade command sent to missing player");
+  }
+
+  c->game_data.pending_item_trade.reset(new PendingItemTrade());
+  c->game_data.pending_item_trade->other_client_id = cmd.target_client_id;
+  for (size_t x = 0; x < cmd.item_count; x++) {
+    c->game_data.pending_item_trade->items.emplace_back(cmd.items[x]);
+  }
+
+  // If the other player has a pending trade as well, assume this is the second
+  // half of the trade sequence, and send a D1 to both clients (which should
+  // cause them to delete the appropriate inventory items and send D2s). If the
+  // other player does not have a pending trade, assume this is the first half
+  // of the trade sequence, and send a D1 only to the target player (to request
+  // its D0 command).
+  send_command(target_c, 0xD1, 0x00);
+  if (target_c->game_data.pending_item_trade) {
+    send_command(c, 0xD1, 0x00);
+  }
+}
+
+void process_trade_execute(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // D2
+  check_size_v(data.size(), 0);
+
+  if (!c->game_data.pending_item_trade) {
+    throw runtime_error("player executed a trade with none pending");
+  }
+
+  auto l = s->find_lobby(c->lobby_id);
+  if (!l || !l->is_game()) {
+    throw runtime_error("trade command received in non-game lobby");
+  }
+  auto target_c = l->clients.at(c->game_data.pending_item_trade->other_client_id);
+  if (!target_c) {
+    throw runtime_error("target player is missing");
+  }
+  if (!target_c->game_data.pending_item_trade) {
+    throw runtime_error("player executed a trade with no other side pending");
+  }
+
+  c->game_data.pending_item_trade->confirmed = true;
+  if (target_c->game_data.pending_item_trade->confirmed) {
+    send_execute_item_trade(c, target_c->game_data.pending_item_trade->items);
+    send_execute_item_trade(target_c, c->game_data.pending_item_trade->items);
+    send_command(c, 0xD4, 0x01);
+    send_command(target_c, 0xD4, 0x01);
+    c->game_data.pending_item_trade.reset();
+    target_c->game_data.pending_item_trade.reset();
+  }
+}
+
+void process_trade_error(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // D4
+  check_size_v(data.size(), 0);
+
+  // Annoyingly, if the other client disconnects at a certain point during the
+  // trade sequence, the client can get into a state where it sends this command
+  // many times in a row. To deal with this, we just do nothing if the client
+  // has no trade pending.
+  if (!c->game_data.pending_item_trade) {
+    return;
+  }
+  uint8_t other_client_id = c->game_data.pending_item_trade->other_client_id;
+  c->game_data.pending_item_trade.reset();
+  send_command(c, 0xD4, 0x00);
+
+  // Cancel the other side of the trade too, if it's open
+  auto l = s->find_lobby(c->lobby_id);
+  if (!l || !l->is_game()) {
+    throw runtime_error("trade command received in non-game lobby");
+  }
+  auto target_c = l->clients.at(other_client_id);
+  if (!target_c) {
+    return;
+  }
+  if (!target_c->game_data.pending_item_trade) {
+    return;
+  }
+  target_c->game_data.pending_item_trade.reset();
+  send_command(target_c, 0xD4, 0x00);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Team commands
 
 void process_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
@@ -2342,8 +2445,8 @@ static process_command_t gc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
 
   // D0
-  nullptr, nullptr, nullptr, nullptr, // D0 is process trade
-  nullptr, nullptr, process_message_box_closed, process_gba_file_request,
+  process_trade_start, nullptr, process_trade_execute, nullptr,
+  process_trade_error, nullptr, process_message_box_closed, process_gba_file_request,
   process_info_board_request, process_write_info_board_t<char>, nullptr, process_verify_license_gc,
   process_ep3_menu_challenge, nullptr, nullptr, nullptr,
 
@@ -2431,8 +2534,8 @@ static process_command_t bb_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
 
   // D0
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
+  process_trade_start, nullptr, process_trade_execute, nullptr,
+  process_trade_error, nullptr, nullptr, nullptr,
   process_info_board_request, process_write_info_board_t<char16_t>, nullptr, nullptr,
   process_guild_card_data_request_bb, nullptr, nullptr, nullptr,
 

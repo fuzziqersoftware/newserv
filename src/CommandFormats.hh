@@ -1700,24 +1700,53 @@ struct S_Unknown_GC_Ep3_CC {
 // CE: Invalid command
 // CF: Invalid command
 
-// D0 (C->S): Execute trade via trade window (GC/BB)
-// General sequence: client sends D0, server sends D1 to that client, server
-// sends D3 to other client, server sends D4 to both (?) clients.
-// Format unknown. On PSO GC it appears to be always 0x288 bytes in size; on BB
-// it is 0x28C bytes in size, implying that the format is the same between the
-// two versions (since BB headers are 4 bytes longer).
+// D0 (C->S): Start trade sequence (GC/BB)
+// The trade window sequence is a bit complicated. The normal flow is:
+// - Clients sync trade state with 60xA6 commands (technically 62xA6)
+// - When both have confirmed, one client (the initiator) sends a D0
+// - Server sends a D1 to the non-initiator
+// - Non-initiator sends a D0
+// - Server sends a D1 to both clients
+// - Both clients delete the sent items from their inventories (and send the
+//   appropriate subcommand)
+// - Both clients send a D2 (similarly to how AC works, the server should not
+//   proceed until both D2s are received)
+// - Server sends a D3 to both clients with each other's data from their D0s,
+//   followed immediately by a D4 01 to both clients, which completes the trade
+// - Both clients send the appropriate subcommand to create inventory items
+// TODO: On BB, is the server responsible for sending the appropriate item
+// subcommands?
+// At any point if an error occurs, either client may send a D4 00, which
+// cancels the entire sequence. The server should then send D4 00 to both
+// clients.
 
-// D1 (S->C): Confirm trade to initiator (GC/BB)
+struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
+  le_uint16_t target_client_id;
+  le_uint16_t item_count;
+  // Note: PSO GC sends uninitialized data in the unused entries of this
+  // command. newserv parses and regenerates the item data when sending D3,
+  // which effectively erases the uninitialized data.
+  ItemData items[0x20];
+};
+
+// D1 (S->C): Advance trade state (GC/BB)
 // No arguments
+// See D0 description for usage information.
 
-// D2 (C->S): Unknown (used in trade sequence)
+// D2 (C->S): Trade can proceed (GC/BB)
 // No arguments
+// See D0 description for usage information.
 
-// D3 (S->C): Execute trade with accepter (GC/BB)
-// Format unknown; appears to be same as D0.
+// D3 (S->C): Execute trade (GC/BB)
+// Same format as D0. See D0 description for usage information.
 
-// D4 (S->C): Close trade (GC/BB)
+// D4 (C->S): Trade failed (GC/BB)
 // No arguments
+// See D0 description for usage information.
+
+// D4 (S->C): Trade complete (GC/BB)
+// header.flag must be 0 (trade failed) or 1 (trade complete).
+// See D0 description for usage information.
 
 // D5: Large message box (GC/BB)
 // Same as 1A command, except the maximum length of the message is 0x1000 bytes.

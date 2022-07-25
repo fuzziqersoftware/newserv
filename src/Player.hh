@@ -83,6 +83,14 @@ struct PlayerBank { // 0xFA8 bytes
 
 
 
+struct PendingItemTrade {
+  uint8_t other_client_id;
+  bool confirmed; // true if client has sent a D2 command
+  std::vector<ItemData> items;
+};
+
+
+
 struct PlayerDispDataBB;
 
 // PC/GC player appearance and stats data
@@ -436,6 +444,9 @@ public:
   uint32_t serial_number;
 
   // The following fields are not saved, and are only used in certain situations
+
+  // Null unless the client is within the trade sequence (D0-D4 commands)
+  std::unique_ptr<PendingItemTrade> pending_item_trade;
 
   // Null unless the client is Episode 3 and has sent its config already
   std::shared_ptr<Ep3Config> ep3_config;
