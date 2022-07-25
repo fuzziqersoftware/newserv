@@ -45,6 +45,7 @@ Client::Client(
     lobby_client_id(0),
     lobby_arrow_color(0),
     prefer_high_lobby_client_id(false),
+    preferred_lobby_id(-1),
     next_exp_value(0),
     override_section_id(-1),
     override_random_seed(-1),

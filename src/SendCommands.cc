@@ -618,6 +618,10 @@ void send_card_search_result_t(
     shared_ptr<Client> c,
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
+  static const vector<string> version_to_port_name({
+      "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "bb-lobby"});
+  const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
+
   S_GuildCardSearchResult<CommandHeaderT, CharT> cmd;
   cmd.player_tag = 0x00010000;
   cmd.searcher_guild_card_number = c->license->serial_number;
@@ -625,23 +629,22 @@ void send_card_search_result_t(
   cmd.reconnect_command_header.size = sizeof(cmd.reconnect_command_header) + sizeof(cmd.reconnect_command);
   cmd.reconnect_command_header.command = 0x19;
   cmd.reconnect_command_header.flag = 0x00;
-  // TODO: make this actually make sense... currently we just take the sockname
-  // for the target client. This also doesn't work if the client is on a virtual
-  // connection (the address and port are zero).
-  const sockaddr_in* local_addr = reinterpret_cast<const sockaddr_in*>(
-      &result->channel.local_addr);
-  cmd.reconnect_command.address = local_addr->sin_addr.s_addr;
-  cmd.reconnect_command.port = ntohs(local_addr->sin_port);
+  cmd.reconnect_command.address = s->connect_address_for_client(c);
+  cmd.reconnect_command.port = s->name_to_port_config.at(port_name)->port;
   cmd.reconnect_command.unused = 0;
 
   auto encoded_server_name = encode_sjis(s->name);
   string location_string;
   if (result_lobby->is_game()) {
     string encoded_lobby_name = encode_sjis(result_lobby->name);
-    location_string = string_printf("%s,BLOCK00,%s",
+    location_string = string_printf("%s,BLOCK01,%s",
         encoded_lobby_name.c_str(), encoded_server_name.c_str());
+  } else if (result_lobby->flags & Lobby::Flag::EPISODE_3_ONLY) {
+    location_string = string_printf("BLOCK01-C%02" PRIu32 ",BLOCK01,%s",
+        result_lobby->lobby_id - 15, encoded_server_name.c_str());
   } else {
-    location_string = string_printf(",BLOCK00,%s", encoded_server_name.c_str());
+    location_string = string_printf("BLOCK01-%02" PRIu32 ",BLOCK01,%s",
+        result_lobby->lobby_id, encoded_server_name.c_str());
   }
   cmd.location_string = location_string;
   cmd.menu_id = MenuID::LOBBY;

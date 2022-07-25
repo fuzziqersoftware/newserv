@@ -270,6 +270,12 @@ void process_login_d_e_pc_gc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     const auto& cmd = check_size_t<C_Login_GC_9E>(data,
         sizeof(C_Login_GC_9E), sizeof(C_LoginExtended_GC_9E));
     base_cmd = &cmd;
+    if (cmd.is_extended) {
+      const auto& cmd = check_size_t<C_LoginExtended_GC_9E>(data);
+      if (cmd.menu_id == MenuID::LOBBY) {
+        c->preferred_lobby_id = cmd.preferred_lobby_id;
+      }
+    }
 
     try {
       c->import_config(cmd.client_config.cfg);
@@ -1124,12 +1130,8 @@ void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // selection and add them to any lobby with room. If they're already in a
   // lobby, then they used the lobby teleporter - add them to a specific lobby.
   if (c->lobby_id == 0) {
-    shared_ptr<Lobby> new_lobby;
-    try {
-      new_lobby = s->find_lobby(cmd.item_id);
-    } catch (const out_of_range&) { }
-
-    s->add_client_to_available_lobby(c, new_lobby);
+    c->preferred_lobby_id = cmd.item_id;
+    s->add_client_to_available_lobby(c);
 
   // If the client already is in a lobby, then they're using the lobby
   // teleporter; add them to the lobby they requested or send a failure message.

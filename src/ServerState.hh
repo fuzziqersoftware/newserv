@@ -91,8 +91,7 @@ struct ServerState {
 
   ServerState();
 
-  void add_client_to_available_lobby(std::shared_ptr<Client> c,
-      std::shared_ptr<Lobby> preferred_lobby = nullptr);
+  void add_client_to_available_lobby(std::shared_ptr<Client> c);
   void remove_client_from_lobby(std::shared_ptr<Client> c);
   bool change_client_lobby(std::shared_ptr<Client> c,
       std::shared_ptr<Lobby> new_lobby);

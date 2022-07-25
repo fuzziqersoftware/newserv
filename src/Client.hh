@@ -118,6 +118,7 @@ struct Client {
   uint8_t lobby_client_id; // which client number is this person?
   uint8_t lobby_arrow_color; // lobby arrow color ID
   bool prefer_high_lobby_client_id;
+  int64_t preferred_lobby_id; // <0 = no preference
   ClientGameData game_data;
 
   // Miscellaneous (used by chat commands)

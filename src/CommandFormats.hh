@@ -1196,7 +1196,9 @@ struct C_Login_PC_9D {
   ptext<char, 0x10> name;
 };
 struct C_LoginExtended_PC_9D : C_Login_PC_9D {
-  parray<uint8_t, 0x84> unknown_a2;
+  le_uint32_t menu_id;
+  le_uint32_t preferred_lobby_id;
+  parray<uint8_t, 0x7C> unknown_a1; // TODO: target_player_name is somewhere in here
 };
 
 // 9E (C->S): Log in with client config
@@ -1213,7 +1215,11 @@ struct C_Login_GC_9E : C_Login_PC_9D {
   } client_config;
 };
 struct C_LoginExtended_GC_9E : C_Login_GC_9E {
-  parray<uint8_t, 0x64> unknown_a2;
+  le_uint32_t menu_id;
+  le_uint32_t preferred_lobby_id;
+  parray<uint8_t, 0x3C> unknown_a1;
+  ptext<char, 0x10> target_player_name;
+  parray<uint8_t, 0x10> unknown_a2;
 };
 
 struct C_LoginExtended_BB_9E {

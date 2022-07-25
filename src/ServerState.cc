@@ -52,14 +52,16 @@ ServerState::ServerState()
       ep3_only_lobbies.end());
 }
 
-void ServerState::add_client_to_available_lobby(
-    shared_ptr<Client> c, shared_ptr<Lobby> preferred_lobby) {
+void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   shared_ptr<Lobby> added_to_lobby;
 
-  if (preferred_lobby) {
+  if (c->preferred_lobby_id >= 0) {
     try {
-      preferred_lobby->add_client(c);
-      added_to_lobby = preferred_lobby;
+      auto l = this->find_lobby(c->preferred_lobby_id);
+      if (!l->is_game() && (l->flags & Lobby::Flag::PUBLIC)) {
+        l->add_client(c);
+        added_to_lobby = l;
+      }
     } catch (const out_of_range&) { }
   }
 
