@@ -239,8 +239,10 @@ struct S_StartFileDownloads_Patch_11 {
 // 14 (S->C): Reconnect
 // Same format and usage as command 19 on the game server (described below).
 
-// 15 (S->C): Unknown
+// 15 (S->C): Login failure
 // No arguments
+// The client shows a message like "Incorrect game ID or password" and
+// disconnects.
 
 // No commands beyond 15 are valid on the patch server.
 
