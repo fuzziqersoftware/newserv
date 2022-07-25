@@ -14,7 +14,7 @@
 
 
 
-struct ItemData {
+struct ItemData { // 0x14 bytes
   union {
     uint8_t data1[12];
     le_uint16_t data1w[6];
@@ -34,7 +34,7 @@ struct ItemData {
 
 struct PlayerBankItem;
 
-struct PlayerInventoryItem {
+struct PlayerInventoryItem { // 0x1C bytes
   le_uint16_t equip_flags;
   le_uint16_t tech_flag;
   le_uint32_t game_flags;
@@ -44,7 +44,7 @@ struct PlayerInventoryItem {
   PlayerInventoryItem(const PlayerBankItem&);
 } __attribute__((packed));
 
-struct PlayerBankItem {
+struct PlayerBankItem { // 0x18 bytes
   ItemData data;
   le_uint16_t amount;
   le_uint16_t show_flags;
@@ -53,7 +53,7 @@ struct PlayerBankItem {
   PlayerBankItem(const PlayerInventoryItem&);
 } __attribute__((packed));
 
-struct PlayerInventory {
+struct PlayerInventory { // 0x34C bytes
   uint8_t num_items;
   uint8_t hp_materials_used;
   uint8_t tp_materials_used;
@@ -65,7 +65,7 @@ struct PlayerInventory {
   size_t find_item(uint32_t item_id);
 } __attribute__((packed));
 
-struct PlayerBank {
+struct PlayerBank { // 0xFA8 bytes
   le_uint32_t num_items;
   le_uint32_t meseta;
   PlayerBankItem items[200];
@@ -86,7 +86,7 @@ struct PlayerBank {
 struct PlayerDispDataBB;
 
 // PC/GC player appearance and stats data
-struct PlayerDispDataPCGC { // 0xD0 in size
+struct PlayerDispDataPCGC { // 0xD0 bytes
   PlayerStats stats;
   parray<uint8_t, 0x0A> unknown_a1;
   le_uint32_t level;
@@ -289,6 +289,41 @@ struct PlayerLobbyDataBB {
 
 
 
+struct PlayerChallengeDataGC {
+  le_uint32_t client_id;
+  struct {
+    le_uint16_t unknown_a1;
+    parray<uint8_t, 2> unknown_a2; // Possibly unused
+    parray<le_uint32_t, 0x17> unknown_a3;
+    struct {
+      parray<uint8_t, 4> unknown_a1;
+      le_uint16_t unknown_a2;
+      parray<uint8_t, 2> unknown_a3;
+      parray<le_uint32_t, 5> unknown_a4;
+      parray<uint8_t, 0x34> unknown_a5;
+    } __attribute__((packed)) unknown_a4;
+    struct {
+      parray<uint8_t, 4> unknown_a1;
+      parray<le_uint32_t, 3> unknown_a2;
+    } __attribute__((packed)) unknown_a5;
+    struct UnknownPair {
+      le_uint32_t unknown_a1;
+      le_uint32_t unknown_a2;
+    } __attribute__((packed));
+    parray<UnknownPair, 3> unknown_a6;
+    parray<uint8_t, 0x28> unknown_a7;
+  } __attribute__((packed)) unknown_a1;
+  parray<le_uint16_t, 8> unknown_a2;
+  parray<le_uint32_t, 2> unknown_a3;
+} __attribute__((packed));
+
+struct PlayerChallengeDataBB {
+  le_uint32_t client_id;
+  parray<uint8_t, 0x158> unknown_a1;
+} __attribute__((packed));
+
+
+
 struct PSOPlayerDataPC { // For command 61
   PlayerInventory inventory;
   PlayerDispDataPCGC disp;
@@ -297,7 +332,8 @@ struct PSOPlayerDataPC { // For command 61
 struct PSOPlayerDataGC { // For command 61
   PlayerInventory inventory;
   PlayerDispDataPCGC disp;
-  parray<uint8_t, 0x134> unknown;
+  PlayerChallengeDataGC challenge_data;
+  parray<uint8_t, 0x18> unknown;
   ptext<char, 0xAC> info_board;
   parray<le_uint32_t, 0x1E> blocked_senders;
   le_uint32_t auto_reply_enabled;
@@ -307,7 +343,8 @@ struct PSOPlayerDataGC { // For command 61
 struct PSOPlayerDataGCEp3 { // For command 61
   PlayerInventory inventory;
   PlayerDispDataPCGC disp;
-  parray<uint8_t, 0x134> unknown;
+  PlayerChallengeDataGC challenge_data;
+  parray<uint8_t, 0x18> unknown;
   ptext<char, 0xAC> info_board;
   parray<le_uint32_t, 0x1E> blocked_senders;
   le_uint32_t auto_reply_enabled;
@@ -318,7 +355,8 @@ struct PSOPlayerDataGCEp3 { // For command 61
 struct PSOPlayerDataBB { // For command 61
   PlayerInventory inventory;
   PlayerDispDataBB disp;
-  ptext<char, 0x174> unused;
+  PlayerChallengeDataBB challenge_data;
+  parray<uint8_t, 0x18> unknown;
   ptext<char16_t, 0xAC> info_board;
   parray<le_uint32_t, 0x1E> blocked_senders;
   le_uint32_t auto_reply_enabled;

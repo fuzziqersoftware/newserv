@@ -1616,8 +1616,16 @@ struct S_ChoiceSearchResultEntry_GC_C4 {
   parray<uint8_t, 0x58> unused2;
 };
 
-// C5 (S->C): Challenge rank update
-// TODO: Document format and usage for this command
+// C5 (S->C): Challenge rank update (GC/BB)
+// header.flag = entry count
+// The server sends this command when a player joins a lobby to update the
+// challenge mode records of all the present players.
+// Entry format is PlayerChallengeDataGC or PlayerChallengeDataBB.
+// newserv currently doesn't send this command at all because the GC and
+// BB formats aren't fully documented.
+// TODO: Figure out where the text is in those formats, write appropriate
+// conversion functions, and implement the command. Don't forget to override the
+// client_id field in each entry before sending.
 
 // C6 (C->S): Set blocked senders list (GC/BB)
 
