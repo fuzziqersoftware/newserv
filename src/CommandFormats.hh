@@ -1742,7 +1742,8 @@ struct C_GBAGameRequest_GC_D7 {
 // No arguments
 // On PSO GC, this command does... something. The command isn't *completely*
 // ignored: it sets a global state variable, but it's not clear what that
-// variable does, or even if it does anything at all.
+// variable does. That variable is also set when a D7 is sent by the client, so
+// it likely is related to GBA game loading in some way.
 // PSO BB completely ignores this command.
 
 // D8 (C->S): Info board request (GC/BB)
