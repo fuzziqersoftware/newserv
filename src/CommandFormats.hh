@@ -88,30 +88,35 @@ struct ClientConfigBB {
 // Client: 02
 // Server: 04
 // Client: 04
-// Server: 13 (if desired)
-// Server: 0B
-// Server: 09 (with directory name ".")
-// For each directory to be checked:
-//   Server: 09
-//   Server: (commands to check subdirectories - more 09/0A/0C)
-//   For each file in the directory:
-//     Server: 0C
-//   Server: 0A
-// Server: 0D
-// For each 0C sent by the server earlier:
-//   Client: 0F
-// Client: 10
-// If there are any files to be updated:
-//   Server: 11
-//   For each directory containing files to be updated:
+// If client's login information is wrong and server chooses to reject it:
+//   Server: 15
+//   Server disconnects
+// Otherwise:
+//   Server: 13 (if desired)
+//   Server: 0B
+//   Server: 09 (with directory name ".")
+//   For each directory to be checked:
 //     Server: 09
-//     Server: (commands to update subdirectories)
-//     For each file to be updated in this directory:
-//       Server: 06
-//       Server: 07 (possibly multiple 07s if the file is large)
-//       Server: 08
+//     Server: (commands to check subdirectories - more 09/0A/0C)
+//     For each file in the directory:
+//       Server: 0C
 //     Server: 0A
-// Server: 12
+//   Server: 0D
+//   For each 0C sent by the server earlier:
+//     Client: 0F
+//   Client: 10
+//   If there are any files to be updated:
+//     Server: 11
+//     For each directory containing files to be updated:
+//       Server: 09
+//       Server: (commands to update subdirectories)
+//       For each file to be updated in this directory:
+//         Server: 06
+//         Server: 07 (possibly multiple 07s if the file is large)
+//         Server: 08
+//       Server: 0A
+//   Server: 12
+//   Server disconnects
 
 // 00: Invalid command
 // 01: Invalid command
