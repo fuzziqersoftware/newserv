@@ -253,9 +253,10 @@ void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
   size_t logical_size;
   size_t send_data_size = 0;
   switch (this->version) {
+    case GameVersion::DC:
     case GameVersion::GC:
-    case GameVersion::DC: {
-      PSOCommandHeaderDCGC header;
+    case GameVersion::XB: {
+      PSOCommandHeaderDCV3 header;
       if (this->crypt_out.get()) {
         send_data_size = (sizeof(header) + size + 3) & ~3;
       } else {
@@ -311,7 +312,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
       throw logic_error("unimplemented game version in send_command");
   }
 
-  // All versions of PSO I've seen (PC, GC, BB) have a receive buffer 0x7C00
+  // All versions of PSO I've seen (so far) have a receive buffer 0x7C00
   // bytes in size
   if (send_data_size > 0x7C00) {
     throw runtime_error("outbound command too large");

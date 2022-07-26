@@ -36,6 +36,9 @@
     "bb-patch":  [11000, "patch", "patch_server"],
     "bb-init":   [12000, "bb",    "data_server_bb"],
 
+    // TODO: If Xbox support ever gets built, add this port to the above config.
+    // "xb-login": [????, "xb", "login_server"],
+
     // Schthack PSOBB uses these ports.
     // "bb-patch2": [10500, "patch", "patch_server"],
     // "bb-init2":  [13000, "bb",    "data_server_bb"],
@@ -55,9 +58,11 @@
     "pc-lobby":  [9420,  "pc",    "lobby_server"],
     "gc-lobby":  [9421,  "gc",    "lobby_server"],
     "bb-lobby":  [9422,  "bb",    "lobby_server"],
+    "xb-lobby":  [9423,  "xb",    "lobby_server"],
     "pc-proxy":  [9520,  "pc",    "proxy_server"],
     "gc-proxy":  [9521,  "gc",    "proxy_server"],
     "bb-proxy":  [9522,  "bb",    "proxy_server"],
+    "xb-proxy":  [9523,  "xb",    "proxy_server"],
     "bb-data1":  [12004, "bb",    "data_server_bb"],
     "bb-data2":  [12005, "bb",    "data_server_bb"],
   },
@@ -75,8 +80,9 @@
   // Other servers to support proxying to. If either of these is empty, the
   // proxy server is disabled for that game version. Entries are like
   // "name": "address:port"; the names are used in the proxy server menu.
-  "ProxyDestinations-GC": {},
   "ProxyDestinations-PC": {},
+  "ProxyDestinations-GC": {},
+  "ProxyDestinations-XB": {},
   // Proxy destination for patch server clients. If this is given, the internal
   // patch server (for PC and BB) is bypassed, and any client that connects to
   // the patch server is instead proxied to this destination.

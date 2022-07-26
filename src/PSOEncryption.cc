@@ -23,7 +23,7 @@ void PSOEncryption::decrypt(void* data, size_t size, bool advance) {
 
 
 
-void PSOPCEncryption::update_stream() {
+void PSOV2Encryption::update_stream() {
   uint32_t esi, edi, eax, ebp, edx;
   edi = 1;
   edx = 0x18;
@@ -47,7 +47,7 @@ void PSOPCEncryption::update_stream() {
   }
 }
 
-PSOPCEncryption::PSOPCEncryption(uint32_t seed) : offset(1) {
+PSOV2Encryption::PSOV2Encryption(uint32_t seed) : offset(1) {
   uint32_t esi, ebx, edi, eax, edx, var1;
   esi = 1;
   ebx = seed;
@@ -69,8 +69,8 @@ PSOPCEncryption::PSOPCEncryption(uint32_t seed) : offset(1) {
   }
 }
 
-uint32_t PSOPCEncryption::next(bool advance) {
-  if (this->offset == PC_STREAM_LENGTH) {
+uint32_t PSOV2Encryption::next(bool advance) {
+  if (this->offset == V2_STREAM_LENGTH) {
     this->update_stream();
     this->offset = 1;
   }
@@ -81,7 +81,7 @@ uint32_t PSOPCEncryption::next(bool advance) {
   return ret;
 }
 
-void PSOPCEncryption::encrypt(void* vdata, size_t size, bool advance) {
+void PSOV2Encryption::encrypt(void* vdata, size_t size, bool advance) {
   if (size & 3) {
     throw invalid_argument("size must be a multiple of 4");
   }
@@ -98,25 +98,25 @@ void PSOPCEncryption::encrypt(void* vdata, size_t size, bool advance) {
 
 
 
-void PSOGCEncryption::update_stream() {
+void PSOV3Encryption::update_stream() {
   uint32_t r5, r6, r7;
   r5 = 0;
   r6 = 489;
   r7 = 0;
 
-  while (r6 != GC_STREAM_LENGTH) {
+  while (r6 != V3_STREAM_LENGTH) {
     this->stream[r5++] ^= this->stream[r6++];
   }
 
-  while (r5 != GC_STREAM_LENGTH) {
+  while (r5 != V3_STREAM_LENGTH) {
     this->stream[r5++] ^= this->stream[r7++];
   }
 
   this->offset = 0;
 }
 
-uint32_t PSOGCEncryption::next(bool advance) {
-  if (this->offset == GC_STREAM_LENGTH) {
+uint32_t PSOV3Encryption::next(bool advance) {
+  if (this->offset == V3_STREAM_LENGTH) {
     this->update_stream();
   }
   uint32_t ret = this->stream[this->offset];
@@ -126,7 +126,7 @@ uint32_t PSOGCEncryption::next(bool advance) {
   return ret;
 }
 
-PSOGCEncryption::PSOGCEncryption(uint32_t seed) : offset(0) {
+PSOV3Encryption::PSOV3Encryption(uint32_t seed) : offset(0) {
   uint32_t x, y, basekey, source1, source2, source3;
   basekey = 0;
 
@@ -149,7 +149,7 @@ PSOGCEncryption::PSOGCEncryption(uint32_t seed) : offset(0) {
   source1 = 0;
   source2 = 1;
   source3 = this->offset - 1;
-  while (this->offset != GC_STREAM_LENGTH) {
+  while (this->offset != V3_STREAM_LENGTH) {
     this->stream[this->offset++] = (this->stream[source3++] ^ (((this->stream[source1++] << 23) & 0xFF800000) ^ ((this->stream[source2++] >> 9) & 0x007FFFFF)));
   }
 
@@ -158,7 +158,7 @@ PSOGCEncryption::PSOGCEncryption(uint32_t seed) : offset(0) {
   }
 }
 
-void PSOGCEncryption::encrypt(void* vdata, size_t size, bool advance) {
+void PSOV3Encryption::encrypt(void* vdata, size_t size, bool advance) {
   if (size & 3) {
     throw invalid_argument("size must be a multiple of 4");
   }

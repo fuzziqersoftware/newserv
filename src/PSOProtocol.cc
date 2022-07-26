@@ -27,6 +27,8 @@ uint16_t PSOCommandHeader::command(GameVersion version) const {
       return this->dc.command;
     case GameVersion::GC:
       return this->gc.command;
+    case GameVersion::XB:
+      return this->xb.command;
     case GameVersion::PC:
     case GameVersion::PATCH:
       return this->pc.command;
@@ -44,6 +46,9 @@ void PSOCommandHeader::set_command(GameVersion version, uint16_t command) {
       break;
     case GameVersion::GC:
       this->gc.command = command;
+      break;
+    case GameVersion::XB:
+      this->xb.command = command;
       break;
     case GameVersion::PC:
     case GameVersion::PATCH:
@@ -63,6 +68,8 @@ uint16_t PSOCommandHeader::size(GameVersion version) const {
       return this->dc.size;
     case GameVersion::GC:
       return this->gc.size;
+    case GameVersion::XB:
+      return this->xb.size;
     case GameVersion::PC:
     case GameVersion::PATCH:
       return this->pc.size;
@@ -80,6 +87,9 @@ void PSOCommandHeader::set_size(GameVersion version, uint32_t size) {
       break;
     case GameVersion::GC:
       this->gc.size = size;
+      break;
+    case GameVersion::XB:
+      this->xb.size = size;
       break;
     case GameVersion::PC:
     case GameVersion::PATCH:
@@ -99,6 +109,8 @@ uint32_t PSOCommandHeader::flag(GameVersion version) const {
       return this->dc.flag;
     case GameVersion::GC:
       return this->gc.flag;
+    case GameVersion::XB:
+      return this->xb.flag;
     case GameVersion::PC:
     case GameVersion::PATCH:
       return this->pc.flag;
@@ -116,6 +128,9 @@ void PSOCommandHeader::set_flag(GameVersion version, uint32_t flag) {
       break;
     case GameVersion::GC:
       this->gc.flag = flag;
+      break;
+    case GameVersion::XB:
+      this->xb.flag = flag;
       break;
     case GameVersion::PC:
     case GameVersion::PATCH:
@@ -157,9 +172,10 @@ std::string prepend_command_header(
     const std::string& data) {
   StringWriter ret;
   switch (version) {
+    case GameVersion::DC:
     case GameVersion::GC:
-    case GameVersion::DC: {
-      PSOCommandHeaderDCGC header;
+    case GameVersion::XB: {
+      PSOCommandHeaderDCV3 header;
       if (encryption_enabled) {
         header.size = (sizeof(header) + data.size() + 3) & ~3;
       } else {

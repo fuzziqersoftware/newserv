@@ -9,6 +9,7 @@ enum class GameVersion {
   PC,
   PATCH,
   GC,
+  XB,
   BB,
 };
 
@@ -21,7 +22,7 @@ enum class ServerBehavior {
   PROXY_SERVER,
 };
 
-uint16_t flags_for_version(GameVersion version, uint8_t sub_version);
+uint16_t flags_for_version(GameVersion version, int64_t sub_version);
 const char* name_for_version(GameVersion version);
 GameVersion version_for_name(const char* name);
 

@@ -246,7 +246,9 @@ static void proxy_command_lobby_event(shared_ptr<ServerState>,
       send_text_message(session.client_channel, u"$C6No such lobby event.");
     } else {
       session.override_lobby_event = new_event;
-      if (session.version == GameVersion::GC || session.version == GameVersion::BB) {
+      if ((session.version == GameVersion::GC) ||
+          (session.version == GameVersion::XB) ||
+          (session.version == GameVersion::BB)) {
         session.client_channel.send(0xDA, session.override_lobby_event);
       }
     }

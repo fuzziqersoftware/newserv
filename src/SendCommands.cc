@@ -61,9 +61,10 @@ void send_command_with_header_t(Channel& ch, const void* data, size_t size) {
 
 void send_command_with_header(Channel& ch, const void* data, size_t size) {
   switch (ch.version) {
-    case GameVersion::GC:
     case GameVersion::DC:
-      send_command_with_header_t<PSOCommandHeaderDCGC>(ch, data, size);
+    case GameVersion::GC:
+    case GameVersion::XB:
+      send_command_with_header_t<PSOCommandHeaderDCV3>(ch, data, size);
       break;
     case GameVersion::PC:
     case GameVersion::PATCH:
@@ -79,15 +80,6 @@ void send_command_with_header(Channel& ch, const void* data, size_t size) {
 
 
 
-// specific command sending functions follow. in general, they're written in
-// such a way that you don't need to think about anything, even the client's
-// version, before calling them. for this reason, some of them are quite
-// complex. many are split into several functions, one for each version of PSO,
-// named with suffixes _GC, _BB, and the like. in these cases, the function
-// without the suffix simply calls the appropriate function for the client's
-// version. thus, if you change something in one of the version-specific
-// functions, you may have to change it in all of them.
-
 ////////////////////////////////////////////////////////////////////////////////
 // CommandServerInit: this function sends the command that initializes encryption
 
@@ -99,11 +91,11 @@ static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst G
 static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
-S_ServerInit_DC_PC_GC_02_17_91_9B prepare_server_init_contents_dc_pc_gc(
+S_ServerInit_DC_PC_V3_02_17_91_9B prepare_server_init_contents_dc_pc_v3(
     bool initial_connection,
     uint32_t server_key,
     uint32_t client_key) {
-  S_ServerInit_DC_PC_GC_02_17_91_9B cmd;
+  S_ServerInit_DC_PC_V3_02_17_91_9B cmd;
   cmd.copyright = initial_connection
       ? dc_port_map_copyright : dc_lobby_server_copyright;
   cmd.server_key = server_key;
@@ -112,25 +104,26 @@ S_ServerInit_DC_PC_GC_02_17_91_9B prepare_server_init_contents_dc_pc_gc(
   return cmd;
 }
 
-void send_server_init_dc_pc_gc(shared_ptr<Client> c,
+void send_server_init_dc_pc_v3(shared_ptr<Client> c,
     bool initial_connection) {
   uint8_t command = initial_connection ? 0x17 : 0x02;
   uint32_t server_key = random_object<uint32_t>();
   uint32_t client_key = random_object<uint32_t>();
 
-  auto cmd = prepare_server_init_contents_dc_pc_gc(
+  auto cmd = prepare_server_init_contents_dc_pc_v3(
       initial_connection, server_key, client_key);
   send_command_t(c, command, 0x00, cmd);
 
   switch (c->version) {
     case GameVersion::DC:
     case GameVersion::PC:
-      c->channel.crypt_out.reset(new PSOPCEncryption(server_key));
-      c->channel.crypt_in.reset(new PSOPCEncryption(client_key));
+      c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
+      c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
       break;
     case GameVersion::GC:
-      c->channel.crypt_out.reset(new PSOGCEncryption(server_key));
-      c->channel.crypt_in.reset(new PSOGCEncryption(client_key));
+    case GameVersion::XB:
+      c->channel.crypt_out.reset(new PSOV3Encryption(server_key));
+      c->channel.crypt_in.reset(new PSOV3Encryption(client_key));
       break;
     default:
       throw invalid_argument("incorrect client version");
@@ -180,8 +173,8 @@ void send_server_init_patch(shared_ptr<Client> c) {
   cmd.client_key = client_key;
   send_command_t(c, 0x02, 0x00, cmd);
 
-  c->channel.crypt_out.reset(new PSOPCEncryption(server_key));
-  c->channel.crypt_in.reset(new PSOPCEncryption(client_key));
+  c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
+  c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
 }
 
 void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -190,7 +183,8 @@ void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case GameVersion::DC:
     case GameVersion::PC:
     case GameVersion::GC:
-      send_server_init_dc_pc_gc(c, initial_connection);
+    case GameVersion::XB:
+      send_server_init_dc_pc_v3(c, initial_connection);
       break;
     case GameVersion::PATCH:
       send_server_init_patch(c);
@@ -207,7 +201,7 @@ void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 // for non-BB clients, updates the client's guild card and security data
 void send_update_client_config(shared_ptr<Client> c) {
-  S_UpdateClientConfig_DC_PC_GC_04 cmd;
+  S_UpdateClientConfig_DC_PC_V3_04 cmd;
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = c->license->serial_number;
   cmd.cfg = c->export_config();
@@ -236,31 +230,33 @@ void send_function_call(
   string data;
   uint32_t index = 0;
   if (code.get()) {
+    // TODO: If we end up supporting B2 on non-GC platforms, we have to rework
+    // generate_client_command to be able to generate little-endian footers.
     data = code->generate_client_command(label_writes, suffix);
     index = code->index;
-  }
 
-  if (c->flags & Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL) {
-    uint32_t key = random_object<uint32_t>();
+    if (c->flags & Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL) {
+      uint32_t key = random_object<uint32_t>();
 
-    StringWriter w;
-    w.put_u32b(data.size());
-    w.put_u32b(key);
+      StringWriter w;
+      w.put_u32b(data.size());
+      w.put_u32b(key);
 
-    // Round size up to a multiple of 4 for encryption
-    data.resize((data.size() + 3) & ~3);
+      // Round size up to a multiple of 4 for encryption
+      data.resize((data.size() + 3) & ~3);
 
-    // For this format, the code section is decrypted without byteswapping on
-    // the client (GameCube), which is big-endian, so we have to treat the data
-    // the same way here (hence we can't just use crypt.encrypt).
-    data = prs_compress(data);
-    StringReader compressed_r(data);
-    PSOPCEncryption crypt(key);
-    while (!compressed_r.eof()) {
-      w.put_u32b(compressed_r.get_u32b() ^ crypt.next());
+      // For this format, the code section is decrypted without byteswapping on
+      // the client (GameCube), which is big-endian, so we have to treat the data
+      // the same way here (hence we can't just use crypt.encrypt).
+      data = prs_compress(data);
+      StringReader compressed_r(data);
+      PSOV2Encryption crypt(key);
+      while (!compressed_r.eof()) {
+        w.put_u32b(compressed_r.get_u32b() ^ crypt.next());
+      }
+
+      data = move(w.str());
     }
-
-    data = move(w.str());
   }
 
   S_ExecuteCode_B2 header = {data.size(), checksum_addr, checksum_size};
@@ -462,7 +458,9 @@ void send_enter_directory_patch(shared_ptr<Client> c, const string& dir) {
 
 void send_text(Channel& ch, StringWriter& w, uint16_t command,
     const u16string& text, bool should_add_color) {
-  if ((ch.version == GameVersion::DC) || (ch.version == GameVersion::GC)) {
+  if ((ch.version == GameVersion::DC) ||
+      (ch.version == GameVersion::GC) ||
+      (ch.version == GameVersion::XB)) {
     string data = encode_sjis(text);
     if (should_add_color) {
       add_color(w, data.c_str(), data.size());
@@ -558,9 +556,9 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
   send_header_text(c->channel, 0x06, from_guild_card_number, data, false);
 }
 
-void send_simple_mail_gc(shared_ptr<Client> c, uint32_t from_guild_card_number,
+void send_simple_mail_v3(shared_ptr<Client> c, uint32_t from_guild_card_number,
     const u16string& from_name, const u16string& text) {
-  SC_SimpleMail_GC_81 cmd;
+  SC_SimpleMail_V3_81 cmd;
   cmd.player_tag = 0x00010000;
   cmd.from_guild_card_number = from_guild_card_number;
   cmd.from_name = from_name;
@@ -571,8 +569,8 @@ void send_simple_mail_gc(shared_ptr<Client> c, uint32_t from_guild_card_number,
 
 void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number,
     const u16string& from_name, const u16string& text) {
-  if (c->version == GameVersion::GC) {
-    send_simple_mail_gc(c, from_guild_card_number, from_name, text);
+  if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
+    send_simple_mail_v3(c, from_guild_card_number, from_name, text);
   } else {
     throw logic_error("unimplemented versioned command");
   }
@@ -619,7 +617,7 @@ void send_card_search_result_t(
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
   static const vector<string> version_to_port_name({
-      "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "bb-lobby"});
+      "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "xb-lobby", "bb-lobby"});
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
 
   S_GuildCardSearchResult<CommandHeaderT, CharT> cmd;
@@ -659,8 +657,10 @@ void send_card_search_result(
     shared_ptr<Client> c,
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
-  if ((c->version == GameVersion::DC) || (c->version == GameVersion::GC)) {
-    send_card_search_result_t<PSOCommandHeaderDCGC, char>(
+  if ((c->version == GameVersion::DC) ||
+      (c->version == GameVersion::GC) ||
+      (c->version == GameVersion::XB)) {
+    send_card_search_result_t<PSOCommandHeaderDCV3, char>(
         s, c, result, result_lobby);
   } else if (c->version == GameVersion::PC) {
     send_card_search_result_t<PSOCommandHeaderPC, char16_t>(
@@ -676,7 +676,7 @@ void send_card_search_result(
 
 
 template <typename CmdT>
-void send_guild_card_pc_gc(shared_ptr<Client> c, shared_ptr<Client> source) {
+void send_guild_card_pc_v3(shared_ptr<Client> c, shared_ptr<Client> source) {
   CmdT cmd;
   cmd.subcommand = 0x06;
   cmd.size = sizeof(CmdT) / 4;
@@ -711,9 +711,10 @@ void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
 
 void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
   if (c->version == GameVersion::PC) {
-    send_guild_card_pc_gc<G_SendGuildCard_PC_6x06>(c, source);
-  } else if (c->version == GameVersion::GC) {
-    send_guild_card_pc_gc<G_SendGuildCard_GC_6x06>(c, source);
+    send_guild_card_pc_v3<G_SendGuildCard_PC_6x06>(c, source);
+  } else if ((c->version == GameVersion::GC) ||
+             (c->version == GameVersion::XB)) {
+    send_guild_card_pc_v3<G_SendGuildCard_V3_6x06>(c, source);
   } else if (c->version == GameVersion::BB) {
     send_guild_card_bb(c, source);
   } else {
@@ -747,6 +748,7 @@ void send_menu_t(
     if (((c->version == GameVersion::DC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_DC)) ||
         ((c->version == GameVersion::PC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_PC)) ||
         ((c->version == GameVersion::GC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC)) ||
+        ((c->version == GameVersion::XB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_XB)) ||
         ((c->version == GameVersion::BB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_BB)) ||
         ((item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) && (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) ||
         ((item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) && (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL)) ||
@@ -769,7 +771,7 @@ void send_menu(shared_ptr<Client> c, const u16string& menu_name,
       c->version == GameVersion::BB) {
     send_menu_t<S_MenuEntry_PC_BB_07_1F>(c, menu_name, menu_id, items, is_info_menu);
   } else {
-    send_menu_t<S_MenuEntry_DC_GC_07_1F>(c, menu_name, menu_id, items, is_info_menu);
+    send_menu_t<S_MenuEntry_DC_V3_07_1F>(c, menu_name, menu_id, items, is_info_menu);
   }
 }
 
@@ -817,7 +819,9 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
 }
 
 void send_game_menu(shared_ptr<Client> c, shared_ptr<ServerState> s) {
-  if ((c->version == GameVersion::DC) || (c->version == GameVersion::GC)) {
+  if ((c->version == GameVersion::DC) ||
+      (c->version == GameVersion::GC) ||
+      (c->version == GameVersion::XB)) {
     send_game_menu_t<char>(c, s);
   } else {
     send_game_menu_t<char16_t>(c, s);
@@ -868,6 +872,8 @@ void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
     send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, quests, is_download_menu);
   } else if (c->version == GameVersion::GC) {
     send_quest_menu_t<S_QuestMenuEntry_GC_A2_A4>(c, menu_id, quests, is_download_menu);
+  } else if (c->version == GameVersion::XB) {
+    send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, quests, is_download_menu);
   } else if (c->version == GameVersion::BB) {
     send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, quests, is_download_menu);
   } else {
@@ -881,6 +887,8 @@ void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
     send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, items, is_download_menu);
   } else if (c->version == GameVersion::GC) {
     send_quest_menu_t<S_QuestMenuEntry_GC_A2_A4>(c, menu_id, items, is_download_menu);
+  } else if (c->version == GameVersion::XB) {
+    send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, items, is_download_menu);
   } else if (c->version == GameVersion::BB) {
     send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, items, is_download_menu);
   } else {
@@ -917,47 +925,55 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
 
 template <typename LobbyDataT, typename DispDataT>
 void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  S_JoinGame<LobbyDataT, DispDataT> cmd;
+  bool is_ep3 = (l->flags & Lobby::Flag::EPISODE_3_ONLY);
+  string data(is_ep3 ? sizeof(S_JoinGame_GC_Ep3_64) : sizeof(S_JoinGame<LobbyDataT, DispDataT>), '\0');
 
-  cmd.variations = l->variations;
+  // TODO: This is a terrible way to handle the different Ep3 format within the
+  // template. Find a way to make this cleaner.
+  auto* cmd = reinterpret_cast<S_JoinGame<LobbyDataT, DispDataT>*>(data.data());
+  S_JoinGame_GC_Ep3_64* cmd_ep3 = nullptr;
+  if (is_ep3) {
+    cmd_ep3 = reinterpret_cast<S_JoinGame_GC_Ep3_64*>(data.data());
+    new (cmd_ep3) S_JoinGame_GC_Ep3_64();
+  } else {
+    new (cmd) S_JoinGame<LobbyDataT, DispDataT>();
+  }
+
+  cmd->variations = l->variations;
 
   size_t player_count = 0;
   for (size_t x = 0; x < 4; x++) {
     if (l->clients[x]) {
-      cmd.lobby_data[x].player_tag = 0x00010000;
-      cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-      // See comment in send_join_lobby_t about Episode III behavior here
-      cmd.lobby_data[x].ip_address = 0x7F000001;
-      cmd.lobby_data[x].client_id = c->lobby_client_id;
-      cmd.lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
-      if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
-        cmd.players_ep3[x].inventory = l->clients[x]->game_data.player()->inventory;
-        cmd.players_ep3[x].disp = convert_player_disp_data<DispDataT>(
+      cmd->lobby_data[x].player_tag = 0x00010000;
+      cmd->lobby_data[x].guild_card = l->clients[x]->license->serial_number;
+      cmd->lobby_data[x].client_id = c->lobby_client_id;
+      cmd->lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
+      if (cmd_ep3) {
+        cmd_ep3->players_ep3[x].inventory = l->clients[x]->game_data.player()->inventory;
+        cmd_ep3->players_ep3[x].disp = convert_player_disp_data<PlayerDispDataPCV3>(
             l->clients[x]->game_data.player()->disp);
       }
       player_count++;
+    } else {
+      cmd->lobby_data[x].clear();
     }
   }
 
-  cmd.client_id = c->lobby_client_id;
-  cmd.leader_id = l->leader_id;
-  cmd.disable_udp = 0x01; // TODO: This is unused on PC/BB. Is it OK to use 1 here anyway?
-  cmd.difficulty = l->difficulty;
-  cmd.battle_mode = (l->mode == 1) ? 1 : 0;
-  cmd.event = l->event;
-  cmd.section_id = l->section_id;
-  cmd.challenge_mode = (l->mode == 2) ? 1 : 0;
-  cmd.rare_seed = l->random_seed;
-  cmd.episode = l->episode;
-  cmd.unused2 = 0x01;
-  cmd.solo_mode = (l->mode == 3);
-  cmd.unused3 = 0x00;
+  cmd->client_id = c->lobby_client_id;
+  cmd->leader_id = l->leader_id;
+  cmd->disable_udp = 0x01; // Unused on PC/XB/BB
+  cmd->difficulty = l->difficulty;
+  cmd->battle_mode = (l->mode == 1) ? 1 : 0;
+  cmd->event = l->event;
+  cmd->section_id = l->section_id;
+  cmd->challenge_mode = (l->mode == 2) ? 1 : 0;
+  cmd->rare_seed = l->random_seed;
+  cmd->episode = l->episode;
+  cmd->unused2 = 0x01;
+  cmd->solo_mode = (l->mode == 3);
+  cmd->unused3 = 0x00;
 
-  // Player data is only sent in Episode III games; in other versions, the
-  // players send each other their data using 62/6D commands during loading
-  size_t data_size = (l->flags & Lobby::Flag::EPISODE_3_ONLY)
-      ? sizeof(cmd) : (sizeof(cmd) - sizeof(cmd.players_ep3));
-  send_command(c, 0x64, player_count, &cmd, data_size);
+  send_command(c, 0x64, player_count, data);
 }
 
 template <typename LobbyDataT, typename DispDataT>
@@ -975,7 +991,8 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   }
 
   uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
-  // Allow non-canonical lobby types on GC
+  // Allow non-canonical lobby types on GC. They may work on other versions too,
+  // but I haven't verified which values don't crash on each version.
   if (c->version == GameVersion::GC) {
     if (c->flags & Client::Flag::EPISODE_3) {
       if ((l->type > 0x14) && (l->type < 0xE9)) {
@@ -998,8 +1015,9 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   cmd.disable_udp = 0x01;
   cmd.lobby_number = lobby_type;
   cmd.block_number = l->block;
+  cmd.unknown_a1 = 0;
   cmd.event = l->event;
-  cmd.unused = 0x00000000;
+  cmd.unknown_a2 = 0;
 
   vector<shared_ptr<Client>> lobby_clients;
   if (joining_client) {
@@ -1017,11 +1035,6 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     auto& e = cmd.entries[used_entries++];
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = lc->license->serial_number;
-    // There's a strange behavior (bug? "feature"?) in Episode 3 where the start
-    // button does nothing in the lobby (hence you can't "quit game") if the
-    // client's IP address is zero. So, we fill it in with a fake nonzero value
-    // to avoid this behavior.
-    e.lobby_data.ip_address = 0x7F000001;
     e.lobby_data.client_id = lc->lobby_client_id;
     e.lobby_data.name = lc->game_data.player()->disp.name;
     e.inventory = lc->game_data.player()->inventory;
@@ -1037,9 +1050,11 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
 void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (l->is_game()) {
     if (c->version == GameVersion::PC) {
-      send_join_game_t<PlayerLobbyDataPC, PlayerDispDataPCGC>(c, l);
+      send_join_game_t<PlayerLobbyDataPC, PlayerDispDataPCV3>(c, l);
     } else if (c->version == GameVersion::GC) {
-      send_join_game_t<PlayerLobbyDataGC, PlayerDispDataPCGC>(c, l);
+      send_join_game_t<PlayerLobbyDataGC, PlayerDispDataPCV3>(c, l);
+    } else if (c->version == GameVersion::XB) {
+      send_join_game_t<PlayerLobbyDataXB, PlayerDispDataPCV3>(c, l);
     } else if (c->version == GameVersion::BB) {
       send_join_game_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l);
     } else {
@@ -1047,9 +1062,11 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     }
   } else {
     if (c->version == GameVersion::PC) {
-      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataPCGC>(c, l);
+      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataPCV3>(c, l);
     } else if (c->version == GameVersion::GC) {
-      send_join_lobby_t<PlayerLobbyDataGC, PlayerDispDataPCGC>(c, l);
+      send_join_lobby_t<PlayerLobbyDataGC, PlayerDispDataPCV3>(c, l);
+    } else if (c->version == GameVersion::XB) {
+      send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataPCV3>(c, l);
     } else if (c->version == GameVersion::BB) {
       send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l);
     } else {
@@ -1069,9 +1086,11 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 void send_player_join_notification(shared_ptr<Client> c,
     shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
   if (c->version == GameVersion::PC) {
-    send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataPCGC>(c, l, joining_client);
+    send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataPCV3>(c, l, joining_client);
   } else if (c->version == GameVersion::GC) {
-    send_join_lobby_t<PlayerLobbyDataGC, PlayerDispDataPCGC>(c, l, joining_client);
+    send_join_lobby_t<PlayerLobbyDataGC, PlayerDispDataPCV3>(c, l, joining_client);
+  } else if (c->version == GameVersion::XB) {
+    send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataPCV3>(c, l, joining_client);
   } else if (c->version == GameVersion::BB) {
     send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l, joining_client);
   } else {
@@ -1470,8 +1489,10 @@ void send_quest_file_chunk(
 void send_quest_file(shared_ptr<Client> c, const string& quest_name,
     const string& basename, const string& contents, QuestFileType type) {
 
-  if (c->version == GameVersion::PC || c->version == GameVersion::GC) {
-    send_quest_open_file_t<S_OpenFile_PC_GC_44_A6>(
+  if ((c->version == GameVersion::PC) ||
+      (c->version == GameVersion::GC) ||
+      (c->version == GameVersion::XB)) {
+    send_quest_open_file_t<S_OpenFile_PC_V3_44_A6>(
         c, quest_name, basename, contents.size(), type);
   } else if (c->version == GameVersion::BB) {
     send_quest_open_file_t<S_OpenFile_BB_44_A6>(
@@ -1509,8 +1530,10 @@ void send_server_time(shared_ptr<Client> c) {
 }
 
 void send_change_event(shared_ptr<Client> c, uint8_t new_event) {
-  // THis command isn't supported on versions before GC apparently
-  if ((c->version == GameVersion::GC) || (c->version == GameVersion::BB)) {
+  // THis command isn't supported on versions before V3
+  if ((c->version == GameVersion::GC) ||
+      (c->version == GameVersion::XB) ||
+      (c->version == GameVersion::BB)) {
     send_command(c, 0xDA, new_event);
   }
 }

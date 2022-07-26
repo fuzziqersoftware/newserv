@@ -75,17 +75,18 @@ void CatSession::on_channel_input(
     uint16_t command, uint32_t flag, std::string& data) {
   if (this->channel.version != GameVersion::BB) {
     if (command == 0x02 || command == 0x17 || command == 0x91 || command == 0x9B) {
-      const auto& cmd = check_size_t<S_ServerInit_DC_PC_GC_02_17_91_9B>(data,
-          offsetof(S_ServerInit_DC_PC_GC_02_17_91_9B, after_message), 0xFFFF);
-      if (this->channel.version == GameVersion::GC) {
-        this->channel.crypt_in.reset(new PSOGCEncryption(cmd.server_key));
-        this->channel.crypt_out.reset(new PSOGCEncryption(cmd.client_key));
-        this->log.info("Enabled GC encryption (server key %08" PRIX32 ", client key %08" PRIX32 ")",
+      const auto& cmd = check_size_t<S_ServerInit_DC_PC_V3_02_17_91_9B>(data,
+          offsetof(S_ServerInit_DC_PC_V3_02_17_91_9B, after_message), 0xFFFF);
+      if ((this->channel.version == GameVersion::GC) ||
+          (this->channel.version == GameVersion::XB)) {
+        this->channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
+        this->channel.crypt_out.reset(new PSOV3Encryption(cmd.client_key));
+        this->log.info("Enabled V3 encryption (server key %08" PRIX32 ", client key %08" PRIX32 ")",
             cmd.server_key.load(), cmd.client_key.load());
       } else { // PC, DC, or patch server
-        this->channel.crypt_in.reset(new PSOPCEncryption(cmd.server_key));
-        this->channel.crypt_out.reset(new PSOPCEncryption(cmd.client_key));
-        this->log.info("Enabled PC encryption (server key %08" PRIX32 ", client key %08" PRIX32 ")",
+        this->channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
+        this->channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
+        this->log.info("Enabled V2 encryption (server key %08" PRIX32 ", client key %08" PRIX32 ")",
             cmd.server_key.load(), cmd.client_key.load());
       }
     }

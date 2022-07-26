@@ -112,6 +112,8 @@ struct PSOQuestHeaderPC {
   ptext<char16_t, 0x120> long_description;
 } __attribute__((packed));
 
+// TODO: Is the XB quest header format the same as on GC? If not, make a
+// separate struct; if so, rename this struct to V3.
 struct PSOQuestHeaderGC {
   uint32_t start_offset;
   uint32_t unknown_offset1;
@@ -248,6 +250,7 @@ Quest::Quest(const string& bin_filename)
     {"pc",  GameVersion::PC},
     {"gc",  GameVersion::GC},
     {"gc3", GameVersion::GC},
+    {"xb",  GameVersion::XB},
     {"bb",  GameVersion::BB},
   });
   this->version = name_to_version.at(tokens[1]);
@@ -290,6 +293,7 @@ Quest::Quest(const string& bin_filename)
       break;
     }
 
+    case GameVersion::XB:
     case GameVersion::GC: {
       if (this->category == QuestCategory::EPISODE_3) {
         // these all appear to be the same size
@@ -467,12 +471,11 @@ string Quest::decode_dlq(const string& filename) {
     data = read_all(f.get());
   }
 
-  PSOPCEncryption encr(key);
-
-  // The compressed data size does not need to be a multiple of 4, but the PC
+  // The compressed data size does not need to be a multiple of 4, but the V2
   // encryption (which is used for all download quests, even in V3) requires the
   // data size to be a multiple of 4. We'll just temporarily stick a few bytes
   // on the end, then throw them away later if needed.
+  PSOV2Encryption encr(key);
   size_t original_size = data.size();
   data.resize((data.size() + 3) & (~3));
   encr.decrypt(data);
@@ -583,15 +586,15 @@ pair<string, string> Quest::decode_qst(const string& filename) {
   // the first 4 bytes in the file:
   // - BB: 58 00 44 00
   // - PC: 3C ?? 44 00
-  // - DC/GC: 44 ?? 3C 00
+  // - DC/V3: 44 ?? 3C 00
   uint32_t signature = freadx<be_uint32_t>(f.get());
   fseek(f.get(), 0, SEEK_SET);
   if (signature == 0x58004400) {
     return decode_qst_t<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(f.get());
   } else if ((signature & 0xFF00FFFF) == 0x3C004400) {
-    return decode_qst_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(f.get());
+    return decode_qst_t<PSOCommandHeaderPC, S_OpenFile_PC_V3_44_A6>(f.get());
   } else if ((signature & 0xFF00FFFF) == 0x44003C00) {
-    return decode_qst_t<PSOCommandHeaderDCGC, S_OpenFile_PC_GC_44_A6>(f.get());
+    return decode_qst_t<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(f.get());
   } else {
     throw runtime_error("invalid qst file format");
   }
@@ -681,11 +684,11 @@ static string create_download_quest_file(const string& compressed_data,
   data += compressed_data;
 
   // Add temporary extra bytes if necessary so encryption won't fail - the data
-  // size must be a multiple of 4 for PSO PC encryption.
+  // size must be a multiple of 4 for PSO V2 encryption.
   size_t original_size = data.size();
   data.resize((data.size() + 3) & (~3));
 
-  PSOPCEncryption encr(encryption_seed);
+  PSOV3Encryption encr(encryption_seed);
   encr.encrypt(data.data() + sizeof(PSODownloadQuestHeader),
       data.size() - sizeof(PSODownloadQuestHeader));
   data.resize(original_size);
@@ -715,6 +718,7 @@ shared_ptr<Quest> Quest::create_download_quest() const {
       }
       reinterpret_cast<PSOQuestHeaderPC*>(data_ptr)->is_download = 0x01;
       break;
+    case GameVersion::XB:
     case GameVersion::GC:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderGC)) {
         throw runtime_error("bin file is too small for header");

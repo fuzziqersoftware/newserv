@@ -218,8 +218,8 @@ uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
 shared_ptr<const vector<MenuItem>> ServerState::information_menu_for_version(GameVersion version) {
   if (version == GameVersion::PC) {
     return this->information_menu_pc;
-  } else if (version == GameVersion::GC) {
-    return this->information_menu_gc;
+  } else if ((version == GameVersion::GC) || (version == GameVersion::XB)) {
+    return this->information_menu_v3;
   }
   throw out_of_range("no information menu exists for this version");
 }
@@ -229,6 +229,8 @@ const vector<MenuItem>& ServerState::proxy_destinations_menu_for_version(GameVer
     return this->proxy_destinations_menu_pc;
   } else if (version == GameVersion::GC) {
     return this->proxy_destinations_menu_gc;
+  } else if (version == GameVersion::XB) {
+    return this->proxy_destinations_menu_xb;
   }
   throw out_of_range("no proxy destinations menu exists for this version");
 }
@@ -238,6 +240,8 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_versio
     return this->proxy_destinations_pc;
   } else if (version == GameVersion::GC) {
     return this->proxy_destinations_gc;
+  } else if (version == GameVersion::XB) {
+    return this->proxy_destinations_xb;
   }
   throw out_of_range("no proxy destinations menu exists for this version");
 }
@@ -265,10 +269,10 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   const auto& d = config_json->as_dict();
 
   shared_ptr<vector<MenuItem>> information_menu_pc(new vector<MenuItem>());
-  shared_ptr<vector<MenuItem>> information_menu_gc(new vector<MenuItem>());
+  shared_ptr<vector<MenuItem>> information_menu_v3(new vector<MenuItem>());
   shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
 
-  information_menu_gc->emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
+  information_menu_v3->emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
       u"Return to the\nmain menu", 0);
   {
     uint32_t item_id = 0;
@@ -276,45 +280,52 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       auto& v = item->as_list();
       information_menu_pc->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
           decode_sjis(v.at(1)->as_string()), 0);
-      information_menu_gc->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
+      information_menu_v3->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
           decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
       information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
       item_id++;
     }
   }
   this->information_menu_pc = information_menu_pc;
-  this->information_menu_gc = information_menu_gc;
+  this->information_menu_v3 = information_menu_v3;
   this->information_contents = information_contents;
 
-  auto generate_proxy_destinations_menu = +[](
+  auto generate_proxy_destinations_menu = [&](
       vector<MenuItem>& ret_menu,
       vector<pair<string, uint16_t>>& ret_pds,
-      const unordered_map<string, shared_ptr<JSONObject>>& d) {
-    ret_menu.clear();
-    ret_pds.clear();
+      const char* key) {
+    try {
+      const auto& items = d.at(key);
+      ret_menu.clear();
+      ret_pds.clear();
 
-    ret_menu.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
-        u"Return to the\nmain menu", 0);
+      ret_menu.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
+          u"Return to the\nmain menu", 0);
 
-    uint32_t item_id = 0;
-    for (const auto& item : d) {
-      const string& netloc_str = item.second->as_string();
-      const string& description = "$C7Remote server:\n$C6" + netloc_str;
-      ret_menu.emplace_back(item_id, decode_sjis(item.first),
-          decode_sjis(description), 0);
-      ret_pds.emplace_back(parse_netloc(netloc_str));
-      item_id++;
-    }
+      uint32_t item_id = 0;
+      for (const auto& item : items->as_dict()) {
+        const string& netloc_str = item.second->as_string();
+        const string& description = "$C7Remote server:\n$C6" + netloc_str;
+        ret_menu.emplace_back(item_id, decode_sjis(item.first),
+            decode_sjis(description), 0);
+        ret_pds.emplace_back(parse_netloc(netloc_str));
+        item_id++;
+      }
+    } catch (const out_of_range&) { }
   };
 
   generate_proxy_destinations_menu(
       this->proxy_destinations_menu_pc,
       this->proxy_destinations_pc,
-      d.at("ProxyDestinations-PC")->as_dict());
+      "ProxyDestinations-PC");
   generate_proxy_destinations_menu(
       this->proxy_destinations_menu_gc,
       this->proxy_destinations_gc,
-      d.at("ProxyDestinations-GC")->as_dict());
+      "ProxyDestinations-GC");
+  generate_proxy_destinations_menu(
+      this->proxy_destinations_menu_xb,
+      this->proxy_destinations_xb,
+      "ProxyDestinations-XB");
 
   try {
     const string& netloc_str = d.at("ProxyDestination-Patch")->as_string();
@@ -354,6 +365,10 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   if (!this->proxy_destinations_gc.empty()) {
     this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
         u"Connect to another\nserver", MenuItem::Flag::GC_ONLY);
+  }
+  if (!this->proxy_destinations_xb.empty()) {
+    this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
+        u"Connect to another\nserver", MenuItem::Flag::XB_ONLY);
   }
   this->main_menu.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, u"Download quests",
       u"Download quests", MenuItem::Flag::INVISIBLE_ON_BB);

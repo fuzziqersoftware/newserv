@@ -12,8 +12,8 @@
 
 
 
-#define PC_STREAM_LENGTH 56
-#define GC_STREAM_LENGTH 521
+#define V2_STREAM_LENGTH 56
+#define V3_STREAM_LENGTH 521
 #define BB_STREAM_LENGTH 1042
 
 class PSOEncryption {
@@ -34,9 +34,9 @@ protected:
   PSOEncryption() = default;
 };
 
-class PSOPCEncryption : public PSOEncryption {
+class PSOV2Encryption : public PSOEncryption {
 public:
-  explicit PSOPCEncryption(uint32_t seed);
+  explicit PSOV2Encryption(uint32_t seed);
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
 
@@ -45,13 +45,13 @@ public:
 protected:
   void update_stream();
 
-  uint32_t stream[PC_STREAM_LENGTH + 1];
+  uint32_t stream[V2_STREAM_LENGTH + 1];
   uint8_t offset;
 };
 
-class PSOGCEncryption : public PSOEncryption {
+class PSOV3Encryption : public PSOEncryption {
 public:
-  explicit PSOGCEncryption(uint32_t key);
+  explicit PSOV3Encryption(uint32_t key);
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
 
@@ -60,7 +60,7 @@ public:
 protected:
   void update_stream();
 
-  uint32_t stream[GC_STREAM_LENGTH];
+  uint32_t stream[V3_STREAM_LENGTH];
   uint16_t offset;
 };
 

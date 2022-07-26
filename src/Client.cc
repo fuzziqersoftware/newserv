@@ -31,7 +31,7 @@ Client::Client(
     log("", client_log.min_level),
     version(version),
     bb_game_state(0),
-    flags(flags_for_version(this->version, 0)),
+    flags(flags_for_version(this->version, -1)),
     channel(bev, this->version, nullptr, nullptr, this, string_printf("C-%" PRIX64, this->id), TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
     server_behavior(server_behavior),
     should_disconnect(false),

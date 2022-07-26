@@ -322,6 +322,8 @@ int main(int argc, char** argv) {
       cli_version = GameVersion::PC;
     } else if (!strcmp(argv[x], "--gc")) {
       cli_version = GameVersion::GC;
+    } else if (!strcmp(argv[x], "--xb")) {
+      cli_version = GameVersion::XB;
     } else if (!strcmp(argv[x], "--bb")) {
       cli_version = GameVersion::BB;
     } else if (!strncmp(argv[x], "--seed=", 7)) {
@@ -350,10 +352,11 @@ int main(int argc, char** argv) {
         case GameVersion::PATCH:
         case GameVersion::DC:
         case GameVersion::PC:
-          crypt.reset(new PSOPCEncryption(stoul(seed, nullptr, 16)));
+          crypt.reset(new PSOV2Encryption(stoul(seed, nullptr, 16)));
           break;
         case GameVersion::GC:
-          crypt.reset(new PSOGCEncryption(stoul(seed, nullptr, 16)));
+        case GameVersion::XB:
+          crypt.reset(new PSOV3Encryption(stoul(seed, nullptr, 16)));
           break;
         case GameVersion::BB: {
           seed = parse_data_string(seed);

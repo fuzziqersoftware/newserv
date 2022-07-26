@@ -62,22 +62,23 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
       break;
     }
     case GameVersion::PC:
-    case GameVersion::GC: {
+    case GameVersion::GC:
+    case GameVersion::XB: {
       uint8_t command;
       if (version == GameVersion::PC) {
         command = check_size_t<PSOCommandHeaderPC>(
             ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF).command;
-      } else {
-        command = check_size_t<PSOCommandHeaderDCGC>(
-            ev->data, sizeof(PSOCommandHeaderDCGC), 0xFFFF).command;
+      } else { // V3
+        command = check_size_t<PSOCommandHeaderDCV3>(
+            ev->data, sizeof(PSOCommandHeaderDCV3), 0xFFFF).command;
       }
       switch (command) {
         case 0x02:
         case 0x17:
         case 0x91:
         case 0x9B: {
-          auto& cmd_mask = check_size_t<S_ServerInit_DC_PC_GC_02_17_91_9B>(
-              cmd_data, cmd_size, sizeof(S_ServerInit_DC_PC_GC_02_17_91_9B), 0xFFFF);
+          auto& cmd_mask = check_size_t<S_ServerInit_DC_PC_V3_02_17_91_9B>(
+              cmd_data, cmd_size, sizeof(S_ServerInit_DC_PC_V3_02_17_91_9B), 0xFFFF);
           cmd_mask.server_key = 0;
           cmd_mask.client_key = 0;
           break;
@@ -90,13 +91,12 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         }
         case 0x64: {
           if (version == GameVersion::PC) {
-            auto& cmd_mask = check_size_t<S_JoinGame_PC_64>(cmd_data, cmd_size,
-                offsetof(S_JoinGame_GC_64, players_ep3));
+            auto& cmd_mask = check_size_t<S_JoinGame_PC_64>(cmd_data, cmd_size);
             cmd_mask.variations.clear(0);
             cmd_mask.rare_seed = 0;
-          } else { // GC
+          } else { // V3
             auto& cmd_mask = check_size_t<S_JoinGame_GC_64>(cmd_data, cmd_size,
-                offsetof(S_JoinGame_GC_64, players_ep3));
+                sizeof(S_JoinGame_GC_64), sizeof(S_JoinGame_GC_Ep3_64));
             cmd_mask.variations.clear(0);
             cmd_mask.rare_seed = 0;
           }
@@ -128,9 +128,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           break;
         }
         case 0x0064: {
-          auto& cmd_mask = check_size_t<S_JoinGame_BB_64>(cmd_data, cmd_size,
-              offsetof(S_JoinGame_BB_64, players_ep3),
-              offsetof(S_JoinGame_BB_64, players_ep3));
+          auto& cmd_mask = check_size_t<S_JoinGame_BB_64>(cmd_data, cmd_size);
           cmd_mask.variations.clear(0);
           cmd_mask.rare_seed = 0;
           break;
@@ -422,21 +420,22 @@ void ReplaySession::on_command_received(
     case GameVersion::PATCH:
       if (command == 0x02) {
         auto& cmd = check_size_t<S_ServerInit_Patch_02>(data);
-        c->channel.crypt_in.reset(new PSOPCEncryption(cmd.server_key));
-        c->channel.crypt_out.reset(new PSOPCEncryption(cmd.client_key));
+        c->channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
+        c->channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
       }
       break;
     case GameVersion::PC:
     case GameVersion::GC:
+    case GameVersion::XB:
       if (command == 0x02 || command == 0x17 || command == 0x91 || command == 0x9B) {
-        auto& cmd = check_size_t<S_ServerInit_DC_PC_GC_02_17_91_9B>(data,
-            offsetof(S_ServerInit_DC_PC_GC_02_17_91_9B, after_message), 0xFFFF);
-        if (c->version == GameVersion::GC) {
-          c->channel.crypt_in.reset(new PSOGCEncryption(cmd.server_key));
-          c->channel.crypt_out.reset(new PSOGCEncryption(cmd.client_key));
-        } else {
-          c->channel.crypt_in.reset(new PSOPCEncryption(cmd.server_key));
-          c->channel.crypt_out.reset(new PSOPCEncryption(cmd.client_key));
+        auto& cmd = check_size_t<S_ServerInit_DC_PC_V3_02_17_91_9B>(data,
+            offsetof(S_ServerInit_DC_PC_V3_02_17_91_9B, after_message), 0xFFFF);
+        if (c->version == GameVersion::PC) {
+          c->channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
+          c->channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
+        } else { // V3
+          c->channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
+          c->channel.crypt_out.reset(new PSOV3Encryption(cmd.client_key));
         }
       }
       break;

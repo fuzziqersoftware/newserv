@@ -34,7 +34,7 @@ static FileContentsCache player_files_cache(300 * 1000 * 1000);
 PlayerStats::PlayerStats() noexcept
   : atp(0), mst(0), evp(0), hp(0), dfp(0), ata(0), lck(0) { }
 
-PlayerDispDataPCGC::PlayerDispDataPCGC() noexcept
+PlayerDispDataPCV3::PlayerDispDataPCV3() noexcept
   : level(0),
     experience(0),
     meseta(0),
@@ -58,7 +58,7 @@ PlayerDispDataPCGC::PlayerDispDataPCGC() noexcept
     proportion_x(0),
     proportion_y(0) { }
 
-void PlayerDispDataPCGC::enforce_pc_limits() {
+void PlayerDispDataPCV3::enforce_pc_limits() {
   // PC has fewer classes, so we'll substitute some here
   if (this->char_class == 11) {
     this->char_class = 0; // FOmar -> HUmar
@@ -77,7 +77,7 @@ void PlayerDispDataPCGC::enforce_pc_limits() {
   this->version = 2;
 }
 
-PlayerDispDataBB PlayerDispDataPCGC::to_bb() const {
+PlayerDispDataBB PlayerDispDataPCV3::to_bb() const {
   PlayerDispDataBB bb;
   bb.stats.atp = this->stats.atp;
   bb.stats.mst = this->stats.mst;
@@ -143,43 +143,43 @@ PlayerDispDataBB::PlayerDispDataBB() noexcept
     proportion_x(0),
     proportion_y(0) { }
 
-PlayerDispDataPCGC PlayerDispDataBB::to_pcgc() const {
-  PlayerDispDataPCGC pcgc;
-  pcgc.stats.atp = this->stats.atp;
-  pcgc.stats.mst = this->stats.mst;
-  pcgc.stats.evp = this->stats.evp;
-  pcgc.stats.hp = this->stats.hp;
-  pcgc.stats.dfp = this->stats.dfp;
-  pcgc.stats.ata = this->stats.ata;
-  pcgc.stats.lck = this->stats.lck;
-  pcgc.unknown_a1 = this->unknown_a1;
-  pcgc.level = this->level;
-  pcgc.experience = this->experience;
-  pcgc.meseta = this->meseta;
-  pcgc.unknown_a2 = this->unknown_a2;
-  pcgc.name_color = this->name_color;
-  pcgc.extra_model = this->extra_model;
-  pcgc.unused = this->unused;
-  pcgc.name_color_checksum = this->name_color_checksum;
-  pcgc.section_id = this->section_id;
-  pcgc.char_class = this->char_class;
-  pcgc.v2_flags = this->v2_flags;
-  pcgc.version = this->version;
-  pcgc.v1_flags = this->v1_flags;
-  pcgc.costume = this->costume;
-  pcgc.skin = this->skin;
-  pcgc.face = this->face;
-  pcgc.head = this->head;
-  pcgc.hair = this->hair;
-  pcgc.hair_r = this->hair_r;
-  pcgc.hair_g = this->hair_g;
-  pcgc.hair_b = this->hair_b;
-  pcgc.proportion_x = this->proportion_x;
-  pcgc.proportion_y = this->proportion_y;
-  pcgc.name = remove_language_marker(this->name);
-  pcgc.config = this->config;
-  pcgc.technique_levels = this->technique_levels;
-  return pcgc;
+PlayerDispDataPCV3 PlayerDispDataBB::to_pcv3() const {
+  PlayerDispDataPCV3 ret;
+  ret.stats.atp = this->stats.atp;
+  ret.stats.mst = this->stats.mst;
+  ret.stats.evp = this->stats.evp;
+  ret.stats.hp = this->stats.hp;
+  ret.stats.dfp = this->stats.dfp;
+  ret.stats.ata = this->stats.ata;
+  ret.stats.lck = this->stats.lck;
+  ret.unknown_a1 = this->unknown_a1;
+  ret.level = this->level;
+  ret.experience = this->experience;
+  ret.meseta = this->meseta;
+  ret.unknown_a2 = this->unknown_a2;
+  ret.name_color = this->name_color;
+  ret.extra_model = this->extra_model;
+  ret.unused = this->unused;
+  ret.name_color_checksum = this->name_color_checksum;
+  ret.section_id = this->section_id;
+  ret.char_class = this->char_class;
+  ret.v2_flags = this->v2_flags;
+  ret.version = this->version;
+  ret.v1_flags = this->v1_flags;
+  ret.costume = this->costume;
+  ret.skin = this->skin;
+  ret.face = this->face;
+  ret.head = this->head;
+  ret.hair = this->hair;
+  ret.hair_r = this->hair_r;
+  ret.hair_g = this->hair_g;
+  ret.hair_b = this->hair_b;
+  ret.proportion_x = this->proportion_x;
+  ret.proportion_y = this->proportion_y;
+  ret.name = remove_language_marker(this->name);
+  ret.config = this->config;
+  ret.technique_levels = this->technique_levels;
+  return ret;
 }
 
 PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
@@ -267,11 +267,20 @@ PlayerDispDataBBPreview::PlayerDispDataBBPreview() noexcept
 
 
 
-GuildCardGC::GuildCardGC() noexcept
-  : player_tag(0), serial_number(0), reserved1(1), reserved2(1), section_id(0), char_class(0) { }
+GuildCardV3::GuildCardV3() noexcept
+  : player_tag(0),
+    serial_number(0),
+    reserved1(1),
+    reserved2(1),
+    section_id(0),
+    char_class(0) { }
 
 GuildCardBB::GuildCardBB() noexcept
-  : serial_number(0), reserved1(1), reserved2(1), section_id(0), char_class(0) { }
+  : serial_number(0),
+    reserved1(1),
+    reserved2(1),
+    section_id(0),
+    char_class(0) { }
 
 
 
@@ -455,7 +464,7 @@ void ClientGameData::import_player(const PSOPlayerDataPC& pc) {
   // auto_reply = pc.auto_reply;
 }
 
-void ClientGameData::import_player(const PSOPlayerDataGC& gc) {
+void ClientGameData::import_player(const PSOPlayerDataV3& gc) {
   auto account = this->account();
   auto player = this->player();
   player->inventory = gc.inventory;
@@ -518,15 +527,77 @@ PlayerBB ClientGameData::export_player_bb() {
 
 
 
+XBNetworkLocation::XBNetworkLocation() noexcept
+  : internal_ipv4_address(0x0A0A0A0A),
+    external_ipv4_address(0x23232323),
+    port(9100),
+    account_id(0xFFFFFFFFFFFFFFFF) {
+  this->unknown_a1[0] = 0xCCCCCCCC;
+  this->unknown_a1[1] = 0xDDDDDDDD;
+  this->mac_address.clear(0x77);
+}
+
+// There's a strange behavior (bug? "feature"?) in Episode 3 where the start
+// button does nothing in the lobby (hence you can't "quit game") if the
+// client's IP address is zero. So, we fill it in with a fake nonzero value to
+// avoid this behavior, and to be consistent, we make IP addresses fake and
+// nonzero on all other versions too.
+
 PlayerLobbyDataPC::PlayerLobbyDataPC() noexcept
-  : player_tag(0), guild_card(0), ip_address(0), client_id(0) { }
+  : player_tag(0), guild_card(0), ip_address(0x7F000001), client_id(0) { }
 
 PlayerLobbyDataGC::PlayerLobbyDataGC() noexcept
-  : player_tag(0), guild_card(0), ip_address(0), client_id(0) { }
+  : player_tag(0), guild_card(0), ip_address(0x7F000001), client_id(0) { }
+
+PlayerLobbyDataXB::PlayerLobbyDataXB() noexcept
+  : player_tag(0), guild_card(0), client_id(0) { }
 
 PlayerLobbyDataBB::PlayerLobbyDataBB() noexcept
-  : player_tag(0), guild_card(0), ip_address(0), client_id(0), unknown2(0) { }
+  : player_tag(0), guild_card(0), ip_address(0x7F000001), client_id(0), unknown_a2(0) { }
 
+void PlayerLobbyDataPC::clear() {
+  this->player_tag = 0;
+  this->guild_card = 0;
+  this->ip_address = 0;
+  this->client_id = 0;
+  ptext<char16_t, 0x10> name;
+}
+
+void PlayerLobbyDataGC::clear() {
+  this->player_tag = 0;
+  this->guild_card = 0;
+  this->ip_address = 0;
+  this->client_id = 0;
+  ptext<char, 0x10> name;
+}
+
+void XBNetworkLocation::clear() {
+  this->internal_ipv4_address = 0;
+  this->external_ipv4_address = 0;
+  this->port = 0;
+  this->mac_address.clear(0);
+  this->unknown_a1.clear(0);
+  this->account_id = 0;
+  this->unknown_a2.clear(0);
+}
+
+void PlayerLobbyDataXB::clear() {
+  this->player_tag = 0;
+  this->guild_card = 0;
+  this->netloc.clear();
+  this->client_id = 0;
+  this->name.clear(0);
+}
+
+void PlayerLobbyDataBB::clear() {
+  this->player_tag = 0;
+  this->guild_card = 0;
+  this->ip_address = 0;
+  this->unknown_a1.clear(0);
+  this->client_id = 0;
+  this->name.clear(0);
+  this->unknown_a2 = 0;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////

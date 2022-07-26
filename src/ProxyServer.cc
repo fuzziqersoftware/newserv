@@ -187,20 +187,21 @@ void ProxyServer::on_client_connect(
       case GameVersion::PATCH:
         throw logic_error("cannot create unlinked patch session");
       case GameVersion::PC:
-      case GameVersion::GC: {
+      case GameVersion::GC:
+      case GameVersion::XB: {
         uint32_t server_key = random_object<uint32_t>();
         uint32_t client_key = random_object<uint32_t>();
-        auto cmd = prepare_server_init_contents_dc_pc_gc(
+        auto cmd = prepare_server_init_contents_dc_pc_v3(
             false, server_key, client_key);
         session->channel.send(0x02, 0x00, &cmd, sizeof(cmd));
         // TODO: Is this actually needed?
         // bufferevent_flush(session->channel.bev.get(), EV_READ | EV_WRITE, BEV_FLUSH);
         if (version == GameVersion::PC) {
-          session->channel.crypt_out.reset(new PSOPCEncryption(server_key));
-          session->channel.crypt_in.reset(new PSOPCEncryption(client_key));
+          session->channel.crypt_out.reset(new PSOV2Encryption(server_key));
+          session->channel.crypt_in.reset(new PSOV2Encryption(client_key));
         } else {
-          session->channel.crypt_out.reset(new PSOGCEncryption(server_key));
-          session->channel.crypt_in.reset(new PSOGCEncryption(client_key));
+          session->channel.crypt_out.reset(new PSOV3Encryption(server_key));
+          session->channel.crypt_in.reset(new PSOV3Encryption(client_key));
         }
         break;
       }
@@ -230,7 +231,10 @@ void ProxyServer::on_client_connect(
 
 
 ProxyServer::UnlinkedSession::UnlinkedSession(
-    ProxyServer* server, struct bufferevent* bev, uint16_t local_port, GameVersion version)
+    ProxyServer* server,
+    struct bufferevent* bev,
+    uint16_t local_port,
+    GameVersion version)
   : server(server),
     log(string_printf("[ProxyServer:UnlinkedSession:%p] ", bev), proxy_server_log.min_level),
     channel(
@@ -287,6 +291,9 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       language = cmd.language;
       character_name = cmd.name;
       client_config.cfg = cmd.client_config.cfg;
+
+    } else if (session->version == GameVersion::XB) {
+      throw runtime_error("xbox licenses are not implemented");
 
     } else if (session->version == GameVersion::BB) {
       // We should only get a 93 while the session is unlinked; if we get

@@ -93,8 +93,8 @@ struct PendingItemTrade {
 
 struct PlayerDispDataBB;
 
-// PC/GC player appearance and stats data
-struct PlayerDispDataPCGC { // 0xD0 bytes
+// PC/V3 player appearance and stats data
+struct PlayerDispDataPCV3 { // 0xD0 bytes
   PlayerStats stats;
   parray<uint8_t, 0x0A> unknown_a1;
   le_uint32_t level;
@@ -128,7 +128,7 @@ struct PlayerDispDataPCGC { // 0xD0 bytes
   // that has a fixed-size array. If we didn't define this constructor, the
   // trivial fields in that array's members would be uninitialized, and we could
   // send uninitialized memory to the client.
-  PlayerDispDataPCGC() noexcept;
+  PlayerDispDataPCV3() noexcept;
 
   void enforce_pc_limits();
   PlayerDispDataBB to_bb() const;
@@ -200,14 +200,16 @@ struct PlayerDispDataBB {
   PlayerDispDataBB() noexcept;
 
   inline void enforce_pc_limits() { }
-  PlayerDispDataPCGC to_pcgc() const;
+  PlayerDispDataPCV3 to_pcv3() const;
   PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);
 } __attribute__((packed));
 
 
 
-struct GuildCardGC {
+// TODO: Is this the same for XB as it is for GC? (This struct is based on the
+// GC format)
+struct GuildCardV3 {
   le_uint32_t player_tag;
   le_uint32_t serial_number;
   ptext<char, 0x18> name;
@@ -217,7 +219,7 @@ struct GuildCardGC {
   uint8_t section_id;
   uint8_t char_class;
 
-  GuildCardGC() noexcept;
+  GuildCardV3() noexcept;
 } __attribute__((packed));
 
 // BB guild card format
@@ -271,6 +273,7 @@ struct PlayerLobbyDataPC {
   ptext<char16_t, 0x10> name;
 
   PlayerLobbyDataPC() noexcept;
+  void clear();
 } __attribute__((packed));
 
 struct PlayerLobbyDataGC {
@@ -281,6 +284,31 @@ struct PlayerLobbyDataGC {
   ptext<char, 0x10> name;
 
   PlayerLobbyDataGC() noexcept;
+  void clear();
+} __attribute__((packed));
+
+struct XBNetworkLocation {
+  le_uint32_t internal_ipv4_address;
+  le_uint32_t external_ipv4_address;
+  le_uint16_t port;
+  parray<uint8_t, 6> mac_address;
+  parray<le_uint32_t, 2> unknown_a1;
+  le_uint64_t account_id;
+  parray<le_uint32_t, 4> unknown_a2;
+
+  XBNetworkLocation() noexcept;
+  void clear();
+} __attribute__((packed));
+
+struct PlayerLobbyDataXB {
+  le_uint32_t player_tag;
+  le_uint32_t guild_card;
+  XBNetworkLocation netloc;
+  le_uint32_t client_id;
+  ptext<char, 0x10> name;
+
+  PlayerLobbyDataXB() noexcept;
+  void clear();
 } __attribute__((packed));
 
 struct PlayerLobbyDataBB {
@@ -290,14 +318,15 @@ struct PlayerLobbyDataBB {
   parray<uint8_t, 0x10> unknown_a1;
   le_uint32_t client_id;
   ptext<char16_t, 0x10> name;
-  le_uint32_t unknown2;
+  le_uint32_t unknown_a2;
 
   PlayerLobbyDataBB() noexcept;
+  void clear();
 } __attribute__((packed));
 
 
 
-struct PlayerChallengeDataGC {
+struct PlayerChallengeDataV3 {
   le_uint32_t client_id;
   struct {
     le_uint16_t unknown_a1;
@@ -309,21 +338,21 @@ struct PlayerChallengeDataGC {
       parray<uint8_t, 2> unknown_a3;
       parray<le_uint32_t, 5> unknown_a4;
       parray<uint8_t, 0x34> unknown_a5;
-    } __attribute__((packed)) unknown_a4;
+    } __attribute__((packed)) unknown_a4; // 0x50 bytes
     struct {
       parray<uint8_t, 4> unknown_a1;
       parray<le_uint32_t, 3> unknown_a2;
-    } __attribute__((packed)) unknown_a5;
+    } __attribute__((packed)) unknown_a5; // 0x10 bytes
     struct UnknownPair {
       le_uint32_t unknown_a1;
       le_uint32_t unknown_a2;
     } __attribute__((packed));
-    parray<UnknownPair, 3> unknown_a6;
+    parray<UnknownPair, 3> unknown_a6; // 0x18 bytes
     parray<uint8_t, 0x28> unknown_a7;
-  } __attribute__((packed)) unknown_a1;
+  } __attribute__((packed)) unknown_a1; // 0x100 bytes
   parray<le_uint16_t, 8> unknown_a2;
   parray<le_uint32_t, 2> unknown_a3;
-} __attribute__((packed));
+} __attribute__((packed)); // 0x11C bytes
 
 struct PlayerChallengeDataBB {
   le_uint32_t client_id;
@@ -334,24 +363,27 @@ struct PlayerChallengeDataBB {
 
 struct PSOPlayerDataPC { // For command 61
   PlayerInventory inventory;
-  PlayerDispDataPCGC disp;
+  PlayerDispDataPCV3 disp;
 } __attribute__((packed));
 
-struct PSOPlayerDataGC { // For command 61
+struct PSOPlayerDataV3 { // For command 61
   PlayerInventory inventory;
-  PlayerDispDataPCGC disp;
-  PlayerChallengeDataGC challenge_data;
+  PlayerDispDataPCV3 disp;
+  PlayerChallengeDataV3 challenge_data;
   parray<uint8_t, 0x18> unknown;
   ptext<char, 0xAC> info_board;
   parray<le_uint32_t, 0x1E> blocked_senders;
   le_uint32_t auto_reply_enabled;
+  // The auto-reply message can be up to 0x200 bytes. If it's shorter than that,
+  // the client truncates the command after the first zero byte (rounded up to
+  // the next 4-byte boundary).
   char auto_reply[0];
 } __attribute__((packed));
 
 struct PSOPlayerDataGCEp3 { // For command 61
   PlayerInventory inventory;
-  PlayerDispDataPCGC disp;
-  PlayerChallengeDataGC challenge_data;
+  PlayerDispDataPCV3 disp;
+  PlayerChallengeDataV3 challenge_data;
   parray<uint8_t, 0x18> unknown;
   ptext<char, 0xAC> info_board;
   parray<le_uint32_t, 0x1E> blocked_senders;
@@ -480,7 +512,7 @@ public:
   void save_player_data() const;
 
   void import_player(const PSOPlayerDataPC& pd);
-  void import_player(const PSOPlayerDataGC& pd);
+  void import_player(const PSOPlayerDataV3& pd);
   void import_player(const PSOPlayerDataBB& pd);
   // Note: this function is not const because it can cause player and account
   // data to be loaded
@@ -500,20 +532,20 @@ DestT convert_player_disp_data(const SrcT&) {
 }
 
 template <>
-inline PlayerDispDataPCGC convert_player_disp_data<PlayerDispDataPCGC>(
-    const PlayerDispDataPCGC& src) {
+inline PlayerDispDataPCV3 convert_player_disp_data<PlayerDispDataPCV3>(
+    const PlayerDispDataPCV3& src) {
   return src;
 }
 
 template <>
-inline PlayerDispDataPCGC convert_player_disp_data<PlayerDispDataPCGC, PlayerDispDataBB>(
+inline PlayerDispDataPCV3 convert_player_disp_data<PlayerDispDataPCV3, PlayerDispDataBB>(
     const PlayerDispDataBB& src) {
-  return src.to_pcgc();
+  return src.to_pcv3();
 }
 
 template <>
-inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB, PlayerDispDataPCGC>(
-    const PlayerDispDataPCGC& src) {
+inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB, PlayerDispDataPCV3>(
+    const PlayerDispDataPCV3& src) {
   return src.to_bb();
 }
 

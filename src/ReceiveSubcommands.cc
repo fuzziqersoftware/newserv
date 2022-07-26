@@ -117,8 +117,8 @@ static void process_subcommand_send_guild_card(shared_ptr<ServerState>,
   if (c->version == GameVersion::PC) {
     const auto* cmd = check_size_sc<G_SendGuildCard_PC_6x06>(data);
     c->game_data.player()->guild_card_desc = cmd->desc;
-  } else if (c->version == GameVersion::GC) {
-    const auto* cmd = check_size_sc<G_SendGuildCard_GC_6x06>(data);
+  } else if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
+    const auto* cmd = check_size_sc<G_SendGuildCard_V3_6x06>(data);
     c->game_data.player()->guild_card_desc = cmd->desc;
   } else if (c->version == GameVersion::BB) {
     const auto* cmd = check_size_sc<G_SendGuildCard_BB_6x06>(data);

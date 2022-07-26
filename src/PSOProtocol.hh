@@ -15,7 +15,7 @@ struct PSOCommandHeaderPC {
   uint8_t flag;
 } __attribute__((packed));
 
-struct PSOCommandHeaderDCGC {
+struct PSOCommandHeaderDCV3 {
   uint8_t command;
   uint8_t flag;
   le_uint16_t size;
@@ -28,9 +28,10 @@ struct PSOCommandHeaderBB {
 } __attribute__((packed));
 
 union PSOCommandHeader {
-  PSOCommandHeaderDCGC dc;
+  PSOCommandHeaderDCV3 dc;
   PSOCommandHeaderPC pc;
-  PSOCommandHeaderDCGC gc;
+  PSOCommandHeaderDCV3 gc;
+  PSOCommandHeaderDCV3 xb;
   PSOCommandHeaderBB bb;
 
   uint16_t command(GameVersion version) const;

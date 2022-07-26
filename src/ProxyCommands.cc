@@ -68,7 +68,8 @@ static void send_text_message_to_client(
     const std::string& message) {
   StringWriter w;
   w.put<SC_TextHeader_01_06_11_B0_EE>({0, 0});
-  if (session.version == GameVersion::PC) {
+  if ((session.version == GameVersion::PC) ||
+      (session.version == GameVersion::BB)) {
     auto decoded = decode_sjis(message);
     w.write(decoded.data(), decoded.size() * sizeof(decoded[0]));
     w.put_u16l(0);
@@ -158,7 +159,7 @@ static HandlerResult process_server_gc_9A(shared_ptr<ServerState>,
   return HandlerResult::Type::SUPPRESS;
 }
 
-static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
+static HandlerResult process_server_pc_v3_patch_02_17(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
   if (session.version == GameVersion::PATCH && command == 0x17) {
     throw invalid_argument("patch server sent 17 server init");
@@ -166,8 +167,8 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
 
   // Most servers don't include after_message or have a shorter
   // after_message than newserv does, so don't require it
-  const auto& cmd = check_size_t<S_ServerInit_DC_PC_GC_02_17_91_9B>(data,
-      offsetof(S_ServerInit_DC_PC_GC_02_17_91_9B, after_message), 0xFFFF);
+  const auto& cmd = check_size_t<S_ServerInit_DC_PC_V3_02_17_91_9B>(data,
+      offsetof(S_ServerInit_DC_PC_V3_02_17_91_9B, after_message), 0xFFFF);
 
   if (!session.license) {
     session.log.info("No license in linked session");
@@ -176,16 +177,17 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
     // client will be able to understand it.
     forward_command(session, false, command, flag, data);
 
-    if (session.version == GameVersion::GC) {
-      session.server_channel.crypt_in.reset(new PSOGCEncryption(cmd.server_key));
-      session.server_channel.crypt_out.reset(new PSOGCEncryption(cmd.client_key));
-      session.client_channel.crypt_in.reset(new PSOGCEncryption(cmd.client_key));
-      session.client_channel.crypt_out.reset(new PSOGCEncryption(cmd.server_key));
+    if ((session.version == GameVersion::GC) ||
+        (session.version == GameVersion::XB)) {
+      session.server_channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
+      session.server_channel.crypt_out.reset(new PSOV3Encryption(cmd.client_key));
+      session.client_channel.crypt_in.reset(new PSOV3Encryption(cmd.client_key));
+      session.client_channel.crypt_out.reset(new PSOV3Encryption(cmd.server_key));
     } else { // PC or patch server (they both use PC encryption)
-      session.server_channel.crypt_in.reset(new PSOPCEncryption(cmd.server_key));
-      session.server_channel.crypt_out.reset(new PSOPCEncryption(cmd.client_key));
-      session.client_channel.crypt_in.reset(new PSOPCEncryption(cmd.client_key));
-      session.client_channel.crypt_out.reset(new PSOPCEncryption(cmd.server_key));
+      session.server_channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
+      session.server_channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
+      session.client_channel.crypt_in.reset(new PSOV2Encryption(cmd.client_key));
+      session.client_channel.crypt_out.reset(new PSOV2Encryption(cmd.server_key));
     }
 
     return HandlerResult::Type::SUPPRESS;
@@ -194,12 +196,14 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
   session.log.info("Existing license in linked session");
 
   // This isn't forwarded to the client, so don't recreate the client's crypts
-  if ((session.version == GameVersion::PATCH) || (session.version == GameVersion::PC)) {
-    session.server_channel.crypt_in.reset(new PSOPCEncryption(cmd.server_key));
-    session.server_channel.crypt_out.reset(new PSOPCEncryption(cmd.client_key));
-  } else if (session.version == GameVersion::GC) {
-    session.server_channel.crypt_in.reset(new PSOGCEncryption(cmd.server_key));
-    session.server_channel.crypt_out.reset(new PSOGCEncryption(cmd.client_key));
+  if ((session.version == GameVersion::PATCH) ||
+      (session.version == GameVersion::PC)) {
+    session.server_channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
+    session.server_channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
+  } else if ((session.version == GameVersion::GC) ||
+             (session.version == GameVersion::XB)) {
+    session.server_channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
+    session.server_channel.crypt_out.reset(new PSOV3Encryption(cmd.client_key));
   } else {
     throw invalid_argument("unsupported version");
   }
@@ -236,7 +240,7 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
 
   } else if (session.version == GameVersion::GC) {
     if (command == 0x17) {
-      C_VerifyLicense_GC_DB cmd;
+      C_VerifyLicense_V3_DB cmd;
       cmd.serial_number = string_printf("%08" PRIX32 "",
           session.license->serial_number);
       cmd.access_key = session.license->access_key;
@@ -251,6 +255,9 @@ static HandlerResult process_server_pc_gc_patch_02_17(shared_ptr<ServerState> s,
       // For command 02, send the same as if we had received 9A from the server
       return process_server_gc_9A(s, session, command, flag, data);
     }
+
+  } else if (session.version == GameVersion::XB) {
+    throw runtime_error("xbox licenses are not implemented");
 
   } else {
     throw logic_error("invalid game version in server init handler");
@@ -314,13 +321,13 @@ static HandlerResult process_server_bb_03(shared_ptr<ServerState> s,
   }
 }
 
-static HandlerResult process_server_dc_pc_gc_04(shared_ptr<ServerState>,
+static HandlerResult process_server_dc_pc_v3_04(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // Some servers send a short 04 command if they don't use all of the 0x20
   // bytes available. We should be prepared to handle that.
-  auto& cmd = check_size_t<S_UpdateClientConfig_DC_PC_GC_04>(data,
-      offsetof(S_UpdateClientConfig_DC_PC_GC_04, cfg),
-      sizeof(S_UpdateClientConfig_DC_PC_GC_04));
+  auto& cmd = check_size_t<S_UpdateClientConfig_DC_PC_V3_04>(data,
+      offsetof(S_UpdateClientConfig_DC_PC_V3_04, cfg),
+      sizeof(S_UpdateClientConfig_DC_PC_V3_04));
 
   // If this is a licensed session, hide the guild card number assigned by the
   // remote server so the client doesn't see it change. If this is an unlicensed
@@ -351,7 +358,7 @@ static HandlerResult process_server_dc_pc_gc_04(shared_ptr<ServerState>,
         : "t Port Map. Copyright SEGA Enter",
       session.remote_client_config_data.bytes());
   memcpy(session.remote_client_config_data.data(), &cmd.cfg,
-      min<size_t>(data.size() - sizeof(S_UpdateClientConfig_DC_PC_GC_04),
+      min<size_t>(data.size() - sizeof(S_UpdateClientConfig_DC_PC_V3_04),
         session.remote_client_config_data.bytes()));
 
   // If the guild card number was not set, pretend (to the server) that this is
@@ -369,7 +376,7 @@ static HandlerResult process_server_dc_pc_gc_04(shared_ptr<ServerState>,
   return session.license ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult process_server_dc_pc_gc_06(shared_ptr<ServerState>,
+static HandlerResult process_server_dc_pc_v3_06(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.license) {
     auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0_EE>(data,
@@ -538,7 +545,7 @@ static HandlerResult process_server_C4(shared_ptr<ServerState>,
 
 static HandlerResult process_server_gc_E4(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  auto& cmd = check_size_t<S_CardLobbyGame_GC_E4>(data);
+  auto& cmd = check_size_t<S_CardLobbyGame_GC_Ep3_E4>(data);
   bool modified = false;
   for (size_t x = 0; x < 4; x++) {
     if (cmd.entries[x].guild_card_number == session.remote_guild_card_number) {
@@ -640,12 +647,12 @@ static HandlerResult process_server_game_19_patch_14(shared_ptr<ServerState>,
   }
 }
 
-static HandlerResult process_server_gc_1A_D5(shared_ptr<ServerState>,
+static HandlerResult process_server_v3_1A_D5(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   // If the client is a version that sends close confirmations and the client
   // has the no-close-confirmation flag set in its newserv client config, send a
   // fake confirmation to the remote server immediately.
-  if ((session.version == GameVersion::GC) &&
+  if (((session.version == GameVersion::GC) || (session.version == GameVersion::XB)) &&
       (session.newserv_client_config.cfg.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) {
     session.server_channel.send(0xD6);
   }
@@ -676,7 +683,7 @@ template <typename T>
 static HandlerResult process_server_44_A6(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t, string& data) {
   if (session.save_files) {
-    const auto& cmd = check_size_t<S_OpenFile_PC_GC_44_A6>(data);
+    const auto& cmd = check_size_t<S_OpenFile_PC_V3_44_A6>(data);
     bool is_download_quest = (command == 0xA6);
 
     string filename = cmd.filename;
@@ -821,21 +828,26 @@ static HandlerResult process_server_64(shared_ptr<ServerState>,
   session.lobby_players.resize(4);
   session.log.info("Cleared lobby players");
 
-  const size_t expected_size = session.sub_version >= 0x40
-      ? sizeof(CmdT)
-      : offsetof(CmdT, players_ep3);
-  auto& cmd = check_size_t<CmdT>(data, expected_size, expected_size);
+  CmdT* cmd;
+  S_JoinGame_GC_Ep3_64* cmd_ep3 = nullptr;
+  if (session.sub_version >= 0x40) {
+    cmd = &check_size_t<CmdT>(data, sizeof(S_JoinGame_GC_Ep3_64), sizeof(S_JoinGame_GC_Ep3_64));
+    cmd_ep3 = &check_size_t<S_JoinGame_GC_Ep3_64>(data);
+  } else {
+    cmd = &check_size_t<CmdT>(data);
+  }
+
   bool modified = false;
 
-  session.lobby_client_id = cmd.client_id;
+  session.lobby_client_id = cmd->client_id;
   for (size_t x = 0; x < flag; x++) {
-    if (cmd.lobby_data[x].guild_card == session.remote_guild_card_number) {
-      cmd.lobby_data[x].guild_card = session.license->serial_number;
+    if (cmd->lobby_data[x].guild_card == session.remote_guild_card_number) {
+      cmd->lobby_data[x].guild_card = session.license->serial_number;
       modified = true;
     }
-    session.lobby_players[x].guild_card_number = cmd.lobby_data[x].guild_card;
-    if (data.size() == sizeof(CmdT)) {
-      ptext<char, 0x10> name = cmd.players_ep3[x].disp.name;
+    session.lobby_players[x].guild_card_number = cmd->lobby_data[x].guild_card;
+    if (cmd_ep3) {
+      ptext<char, 0x10> name = cmd_ep3->players_ep3[x].disp.name;
       session.lobby_players[x].name = name;
     } else {
       session.lobby_players[x].name.clear();
@@ -847,15 +859,15 @@ static HandlerResult process_server_64(shared_ptr<ServerState>,
   }
 
   if (session.override_section_id >= 0) {
-    cmd.section_id = session.override_section_id;
+    cmd->section_id = session.override_section_id;
     modified = true;
   }
   if (session.override_lobby_event >= 0) {
-    cmd.event = session.override_lobby_event;
+    cmd->event = session.override_lobby_event;
     modified = true;
   }
   if (session.override_random_seed >= 0) {
-    cmd.rare_seed = session.override_random_seed;
+    cmd->rare_seed = session.override_random_seed;
     modified = true;
   }
 
@@ -885,7 +897,7 @@ static HandlerResult process_client_06(shared_ptr<ServerState> s,
       text = u16string(cmd.text.pcbb, (data.size() - sizeof(C_Chat_06)) / sizeof(char16_t));
     } else {
       const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
-      text = decode_sjis(cmd.text.dcgc, data.size() - sizeof(C_Chat_06));
+      text = decode_sjis(cmd.text.dcv3, data.size() - sizeof(C_Chat_06));
     }
     strip_trailing_zeroes(text);
 
@@ -939,7 +951,7 @@ static HandlerResult process_client_40(shared_ptr<ServerState>,
 template <typename CmdT>
 static HandlerResult process_client_81(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  auto& cmd = check_size_t<SC_SimpleMail_GC_81>(data);
+  auto& cmd = check_size_t<SC_SimpleMail_V3_81>(data);
   if (session.license) {
     if (cmd.from_guild_card_number == session.license->serial_number) {
       cmd.from_guild_card_number = session.remote_guild_card_number;
@@ -1016,7 +1028,7 @@ HandlerResult process_client_60_62_6C_6D_C9_CB<void>(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
+static HandlerResult process_client_dc_pc_v3_A0_A1(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   if (!session.license) {
     return HandlerResult::Type::FORWARD;
@@ -1041,14 +1053,14 @@ static HandlerResult process_client_dc_pc_gc_A0_A1(shared_ptr<ServerState> s,
       "You\'ve returned to\n\tC6%s", encoded_name.c_str()));
 
   // Restore newserv_client_config, so the login server gets the client flags
-  S_UpdateClientConfig_DC_PC_GC_04 update_client_config_cmd;
+  S_UpdateClientConfig_DC_PC_V3_04 update_client_config_cmd;
   update_client_config_cmd.player_tag = 0x00010000;
   update_client_config_cmd.guild_card_number = session.license->serial_number;
   update_client_config_cmd.cfg = session.newserv_client_config.cfg;
   session.client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
 
   static const vector<string> version_to_port_name({
-      "dc-login", "pc-login", "bb-patch", "gc-us3", "bb-login"});
+      "dc-login", "pc-login", "bb-patch", "gc-us3", "xb-login", "bb-login"});
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(
       session.version));
 
@@ -1094,11 +1106,11 @@ typedef HandlerResult (*process_command_t)(
 auto defh = process_default;
 
 static process_command_t dc_server_handlers[0x100] = {
-  /* 00 */ defh, defh, defh, defh, process_server_dc_pc_gc_04, defh, process_server_dc_pc_gc_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 00 */ defh, defh, defh, defh, process_server_dc_pc_v3_04, defh, process_server_dc_pc_v3_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, defh, defh, process_server_game_19_patch_14, defh, defh, defh, defh, defh, defh,
   /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 40 */ defh, process_server_41<S_GuildCardSearchResult_DC_GC_41>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 40 */ defh, process_server_41<S_GuildCardSearchResult_DC_V3_41>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 50 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 60 */ process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, defh, defh, process_server_66_69, defh, defh, process_server_66_69, defh, defh, process_server_60_62_6C_6D_C9_CB, process_server_60_62_6C_6D_C9_CB, defh, defh,
   /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -1112,17 +1124,17 @@ static process_command_t dc_server_handlers[0x100] = {
   /* F0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
 };
 static process_command_t pc_server_handlers[0x100] = {
-  /* 00 */ defh, defh, process_server_pc_gc_patch_02_17, defh, process_server_dc_pc_gc_04, defh, process_server_dc_pc_gc_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, process_server_pc_gc_patch_02_17, defh, process_server_game_19_patch_14, defh, defh, defh, defh, defh, defh,
+  /* 00 */ defh, defh, process_server_pc_v3_patch_02_17, defh, process_server_dc_pc_v3_04, defh, process_server_dc_pc_v3_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, process_server_pc_v3_patch_02_17, defh, process_server_game_19_patch_14, defh, defh, defh, defh, defh, defh,
   /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 40 */ defh, process_server_41<S_GuildCardSearchResult_PC_41>, defh, defh, process_server_44_A6<S_OpenFile_PC_GC_44_A6>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 40 */ defh, process_server_41<S_GuildCardSearchResult_PC_41>, defh, defh, process_server_44_A6<S_OpenFile_PC_V3_44_A6>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 50 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 60 */ process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, process_server_64<S_JoinGame_PC_64>, process_server_65_67_68<S_JoinLobby_PC_65_67_68>, process_server_66_69, process_server_65_67_68<S_JoinLobby_PC_65_67_68>, process_server_65_67_68<S_JoinLobby_PC_65_67_68>, process_server_66_69, defh, defh, process_server_60_62_6C_6D_C9_CB, process_server_60_62_6C_6D_C9_CB, defh, defh,
   /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 80 */ defh, defh, defh, defh, defh, defh, defh, defh, process_server_88, defh, defh, defh, defh, defh, defh, defh,
   /* 90 */ defh, defh, defh, defh, defh, defh, defh, process_server_97, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* A0 */ defh, defh, defh, defh, defh, defh, process_server_44_A6<S_OpenFile_PC_GC_44_A6>, process_server_13_A7, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* A0 */ defh, defh, defh, defh, defh, defh, process_server_44_A6<S_OpenFile_PC_V3_44_A6>, process_server_13_A7, defh, defh, defh, defh, defh, defh, defh, defh,
   /* B0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* C0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* D0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -1130,21 +1142,39 @@ static process_command_t pc_server_handlers[0x100] = {
   /* F0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
 };
 static process_command_t gc_server_handlers[0x100] = {
-  /* 00 */ defh, defh, process_server_pc_gc_patch_02_17, defh, process_server_dc_pc_gc_04, defh, process_server_dc_pc_gc_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, process_server_pc_gc_patch_02_17, defh, process_server_game_19_patch_14, process_server_gc_1A_D5, defh, defh, defh, defh, defh,
+  /* 00 */ defh, defh, process_server_pc_v3_patch_02_17, defh, process_server_dc_pc_v3_04, defh, process_server_dc_pc_v3_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, process_server_pc_v3_patch_02_17, defh, process_server_game_19_patch_14, process_server_v3_1A_D5, defh, defh, defh, defh, defh,
   /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 40 */ defh, process_server_41<S_GuildCardSearchResult_DC_GC_41>, defh, defh, process_server_44_A6<S_OpenFile_PC_GC_44_A6>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 40 */ defh, process_server_41<S_GuildCardSearchResult_DC_V3_41>, defh, defh, process_server_44_A6<S_OpenFile_PC_V3_44_A6>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 50 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 60 */ process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, process_server_64<S_JoinGame_GC_64>, process_server_65_67_68<S_JoinLobby_GC_65_67_68>, process_server_66_69, process_server_65_67_68<S_JoinLobby_GC_65_67_68>, process_server_65_67_68<S_JoinLobby_GC_65_67_68>, process_server_66_69, defh, defh, process_server_60_62_6C_6D_C9_CB, process_server_60_62_6C_6D_C9_CB, defh, defh,
   /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 80 */ defh, process_server_81<SC_SimpleMail_GC_81>, defh, defh, defh, defh, defh, defh, process_server_88, defh, defh, defh, defh, defh, defh, defh,
+  /* 80 */ defh, process_server_81<SC_SimpleMail_V3_81>, defh, defh, defh, defh, defh, defh, process_server_88, defh, defh, defh, defh, defh, defh, defh,
   /* 90 */ defh, defh, defh, defh, defh, defh, defh, process_server_97, defh, defh, process_server_gc_9A, defh, defh, defh, defh, defh,
-  /* A0 */ defh, defh, defh, defh, defh, defh, process_server_44_A6<S_OpenFile_PC_GC_44_A6>, process_server_13_A7, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* A0 */ defh, defh, defh, defh, defh, defh, process_server_44_A6<S_OpenFile_PC_V3_44_A6>, process_server_13_A7, defh, defh, defh, defh, defh, defh, defh, defh,
   /* B0 */ defh, defh, process_server_B2, defh, defh, defh, defh, defh, process_server_gc_B8, defh, defh, defh, defh, defh, defh, defh,
-  /* C0 */ defh, defh, defh, defh, process_server_C4<S_ChoiceSearchResultEntry_GC_C4>, defh, defh, defh, defh, process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, defh, defh, defh,
-  /* D0 */ defh, defh, defh, defh, defh, process_server_gc_1A_D5, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* C0 */ defh, defh, defh, defh, process_server_C4<S_ChoiceSearchResultEntry_V3_C4>, defh, defh, defh, defh, process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, defh, defh, defh,
+  /* D0 */ defh, defh, defh, defh, defh, process_server_v3_1A_D5, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* E0 */ defh, defh, defh, defh, process_server_gc_E4, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* F0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+};
+static process_command_t xb_server_handlers[0x100] = {
+  /* 00 */ defh, defh, process_server_pc_v3_patch_02_17, defh, process_server_dc_pc_v3_04, defh, process_server_dc_pc_v3_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 10 */ defh, defh, defh, process_server_13_A7, defh, defh, defh, process_server_pc_v3_patch_02_17, defh, process_server_game_19_patch_14, process_server_v3_1A_D5, defh, defh, defh, defh, defh,
+  /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 40 */ defh, process_server_41<S_GuildCardSearchResult_DC_V3_41>, defh, defh, process_server_44_A6<S_OpenFile_PC_V3_44_A6>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 50 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 60 */ process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, process_server_64<S_JoinGame_GC_64>, process_server_65_67_68<S_JoinLobby_GC_65_67_68>, process_server_66_69, process_server_65_67_68<S_JoinLobby_GC_65_67_68>, process_server_65_67_68<S_JoinLobby_GC_65_67_68>, process_server_66_69, defh, defh, process_server_60_62_6C_6D_C9_CB, process_server_60_62_6C_6D_C9_CB, defh, defh,
+  /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 80 */ defh, process_server_81<SC_SimpleMail_V3_81>, defh, defh, defh, defh, defh, defh, process_server_88, defh, defh, defh, defh, defh, defh, defh,
+  /* 90 */ defh, defh, defh, defh, defh, defh, defh, process_server_97, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* A0 */ defh, defh, defh, defh, defh, defh, process_server_44_A6<S_OpenFile_PC_V3_44_A6>, process_server_13_A7, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* B0 */ defh, defh, process_server_B2, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* C0 */ defh, defh, defh, defh, process_server_C4<S_ChoiceSearchResultEntry_V3_C4>, defh, defh, defh, defh, process_server_60_62_6C_6D_C9_CB, defh, process_server_60_62_6C_6D_C9_CB, defh, defh, defh, defh,
+  /* D0 */ defh, defh, defh, defh, defh, process_server_v3_1A_D5, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* E0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* F0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
 };
 static process_command_t bb_server_handlers[0x100] = {
@@ -1166,7 +1196,7 @@ static process_command_t bb_server_handlers[0x100] = {
   /* F0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
 };
 static process_command_t patch_server_handlers[0x100] = {
-  /* 00 */ defh, defh, process_server_pc_gc_patch_02_17, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 00 */ defh, defh, process_server_pc_v3_patch_02_17, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 10 */ defh, defh, defh, defh, process_server_game_19_patch_14, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -1197,7 +1227,7 @@ static process_command_t dc_client_handlers[0x100] = {
   /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 80 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 90 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* A0 */ process_client_dc_pc_gc_A0_A1, process_client_dc_pc_gc_A0_A1, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* A0 */ process_client_dc_pc_v3_A0_A1, process_client_dc_pc_v3_A0_A1, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* B0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* C0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* D0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -1215,7 +1245,7 @@ static process_command_t pc_client_handlers[0x100] = {
   /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 80 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 90 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* A0 */ process_client_dc_pc_gc_A0_A1, process_client_dc_pc_gc_A0_A1, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* A0 */ process_client_dc_pc_v3_A0_A1, process_client_dc_pc_v3_A0_A1, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* B0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* C0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* D0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -1229,11 +1259,29 @@ static process_command_t gc_client_handlers[0x100] = {
   /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 40 */ process_client_40, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 50 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 60 */ process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_GC_6x06>, defh, process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_GC_6x06>, defh, defh, defh, defh, defh, defh, defh, defh, defh, process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_GC_6x06>, process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_GC_6x06>, defh, defh,
+  /* 60 */ process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>, defh, process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>, defh, defh, defh, defh, defh, defh, defh, defh, defh, process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>, process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>, defh, defh,
   /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* 80 */ defh, process_client_81<SC_SimpleMail_GC_81>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 80 */ defh, process_client_81<SC_SimpleMail_V3_81>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* 90 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
-  /* A0 */ process_client_dc_pc_gc_A0_A1, process_client_dc_pc_gc_A0_A1, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* A0 */ process_client_dc_pc_v3_A0_A1, process_client_dc_pc_v3_A0_A1, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* B0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* C0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* D0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* E0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* F0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+};
+static process_command_t xb_client_handlers[0x100] = {
+  /* 00 */ defh, defh, defh, defh, defh, defh, process_client_06, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 10 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 20 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 30 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 40 */ process_client_40, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 50 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 60 */ process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>, defh, process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>, defh, defh, defh, defh, defh, defh, defh, defh, defh, process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>, process_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>, defh, defh,
+  /* 70 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 80 */ defh, process_client_81<SC_SimpleMail_V3_81>, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* 90 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
+  /* A0 */ process_client_dc_pc_v3_A0_A1, process_client_dc_pc_v3_A0_A1, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* B0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* C0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
   /* D0 */ defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh, defh,
@@ -1280,13 +1328,23 @@ static process_command_t patch_client_handlers[0x100] = {
 
 
 static process_command_t* server_handlers[] = {
-    dc_server_handlers, pc_server_handlers, patch_server_handlers, gc_server_handlers, bb_server_handlers};
+    dc_server_handlers,
+    pc_server_handlers,
+    patch_server_handlers,
+    gc_server_handlers,
+    xb_server_handlers,
+    bb_server_handlers};
 static process_command_t* client_handlers[] = {
-    dc_client_handlers, pc_client_handlers, patch_client_handlers, gc_client_handlers, bb_client_handlers};
+    dc_client_handlers,
+    pc_client_handlers,
+    patch_client_handlers,
+    gc_client_handlers,
+    xb_client_handlers,
+    bb_client_handlers};
 
 static process_command_t get_handler(GameVersion version, bool from_server, uint8_t command) {
   size_t version_index = static_cast<size_t>(version);
-  if (version_index >= 5) {
+  if (version_index >= 6) {
     throw logic_error("invalid game version on proxy server");
   }
   return (from_server ? server_handlers : client_handlers)[version_index][command];

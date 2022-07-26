@@ -10,13 +10,14 @@ using namespace std;
 
 
 
-uint16_t flags_for_version(GameVersion version, uint8_t sub_version) {
+uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
   switch (sub_version) {
-    case 0x00: // initial check (before 9E recognition)
+    case -1: // initial check (before 9E recognition)
       switch (version) {
         case GameVersion::DC:
           return Client::Flag::DEFAULT_V2_DC;
         case GameVersion::GC:
+        case GameVersion::XB:
           return Client::Flag::DEFAULT_V3_GC;
         case GameVersion::PC:
           return Client::Flag::DEFAULT_V2_PC;
@@ -26,33 +27,35 @@ uint16_t flags_for_version(GameVersion version, uint8_t sub_version) {
           return Client::Flag::DEFAULT_V4_BB;
       }
       break;
-    case 0x29: // PSO PC
+    case 0x29: // PC
       return Client::Flag::DEFAULT_V2_PC;
-    case 0x30: // PSO Ep1&2 JP v1.02
-    case 0x31: // PSO Ep1&2 US v1.00, US v1.01, EU v1.00, JP v1.00
-    case 0x32: // PSO Ep1&2 EU 50Hz
-    case 0x33: // PSO Ep1&2 EU 60Hz
-    case 0x34: // PSO Ep1&2 JP v1.03
+    case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
+    case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
+    case 0x32: // GC Ep1&2 EU 50Hz
+    case 0x33: // GC Ep1&2 EU 60Hz
+    case 0x34: // GC Ep1&2 JP v1.03
       return Client::Flag::DEFAULT_V3_GC;
-    case 0x35: // PSO Ep1&2 JP v1.04 (Plus)
+    case 0x35: // GC Ep1&2 JP v1.04 (Plus)
       return Client::Flag::DEFAULT_V3_GC_PLUS;
-    case 0x36: // PSO Ep1&2 US v1.02 (Plus)
-    case 0x39: // PSO Ep1&2 JP v1.05 (Plus)
+    case 0x36: // GC Ep1&2 US v1.02 (Plus)
+    case 0x39: // GC Ep1&2 JP v1.05 (Plus)
       return Client::Flag::DEFAULT_V3_GC_PLUS_NO_SFC;
-    case 0x42: // PSO Ep3 JP
+    case 0x42: // GC Ep3 JP
       return Client::Flag::DEFAULT_V3_GC_EP3;
-    case 0x40: // PSO Ep3 trial (TODO: Does this support send_function_call?)
-    case 0x41: // PSO Ep3 US
-    case 0x43: // PSO Ep3 EU
+    case 0x40: // GC Ep3 trial (TODO: Does this support send_function_call?)
+    case 0x41: // GC Ep3 US
+    case 0x43: // GC Ep3 EU
       return Client::Flag::DEFAULT_V3_GC_EP3_NO_SFC;
   }
-  return 0;
+  throw runtime_error("unknown sub_version");
 }
 
 const char* name_for_version(GameVersion version) {
   switch (version) {
     case GameVersion::GC:
       return "GC";
+    case GameVersion::XB:
+      return "XB";
     case GameVersion::PC:
       return "PC";
     case GameVersion::BB:
@@ -73,6 +76,8 @@ GameVersion version_for_name(const char* name) {
     return GameVersion::PC;
   } else if (!strcasecmp(name, "GC") || !strcasecmp(name, "GameCube")) {
     return GameVersion::GC;
+  } else if (!strcasecmp(name, "XB") || !strcasecmp(name, "Xbox")) {
+    return GameVersion::XB;
   } else if (!strcasecmp(name, "BB") || !strcasecmp(name, "BlueBurst") ||
       !strcasecmp(name, "Blue Burst")) {
     return GameVersion::BB;
