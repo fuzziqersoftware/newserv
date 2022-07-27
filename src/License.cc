@@ -41,6 +41,8 @@ string License::str() const {
 
 
 
+LicenseManager::LicenseManager() : filename(""), autosave(false) { }
+
 LicenseManager::LicenseManager(const string& filename)
   : filename(filename), autosave(true) {
   try {
@@ -65,6 +67,9 @@ LicenseManager::LicenseManager(const string& filename)
 }
 
 void LicenseManager::save() const {
+  if (this->filename.empty()) {
+    throw logic_error("license manager has no filename; cannot save");
+  }
   auto f = fopen_unique(this->filename, "wb");
   for (const auto& it : this->serial_number_to_license) {
     if (it.second->privileges & Privilege::TEMPORARY) {

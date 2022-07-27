@@ -19,7 +19,9 @@ public:
   ReplaySession(
       std::shared_ptr<struct event_base> base,
       FILE* input_log,
-      std::shared_ptr<ServerState> state);
+      std::shared_ptr<ServerState> state,
+      const std::string& required_access_key = "",
+      const std::string& required_password = "");
   ReplaySession(const ReplaySession&) = delete;
   ReplaySession(ReplaySession&&) = delete;
   ReplaySession& operator=(const ReplaySession&) = delete;
@@ -59,6 +61,8 @@ private:
   };
 
   std::shared_ptr<ServerState> state;
+  std::string required_access_key;
+  std::string required_password;
 
   std::unordered_map<uint64_t, std::shared_ptr<Client>> clients;
   std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
@@ -79,6 +83,7 @@ private:
   void update_timeout_event();
 
   void apply_default_mask(std::shared_ptr<Event> ev);
+  void check_for_password(std::shared_ptr<const Event> ev) const;
 
   static void dispatch_on_timeout(evutil_socket_t fd, short events, void* ctx);
   static void dispatch_on_command_received(

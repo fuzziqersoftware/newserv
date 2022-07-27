@@ -46,7 +46,8 @@ struct License {
 
 class LicenseManager {
 public:
-  LicenseManager(const std::string& filename);
+  LicenseManager();
+  explicit LicenseManager(const std::string& filename);
   ~LicenseManager() = default;
 
   void save() const;

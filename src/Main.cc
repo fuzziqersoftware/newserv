@@ -288,6 +288,8 @@ int main(int argc, char** argv) {
   bool parse_data = false;
   bool byteswap_data = false;
   const char* replay_log_filename = nullptr;
+  const char* replay_required_access_key = "";
+  const char* replay_required_password = "";
   struct sockaddr_storage cat_client_remote;
   for (int x = 1; x < argc; x++) {
     if (!strcmp(argv[x], "--help")) {
@@ -337,6 +339,10 @@ int main(int argc, char** argv) {
     } else if (!strncmp(argv[x], "--replay-log=", 13)) {
       behavior = Behavior::REPLAY_LOG;
       replay_log_filename = &argv[x][13];
+    } else if (!strncmp(argv[x], "--require-password=", 19)) {
+      replay_required_password = &argv[x][19];
+    } else if (!strncmp(argv[x], "--require-access-key=", 21)) {
+      replay_required_access_key = &argv[x][21];
     } else if (!strncmp(argv[x], "--config=", 9)) {
       config_filename = &argv[x][9];
     } else {
@@ -461,8 +467,12 @@ int main(int argc, char** argv) {
       auto config_json = JSONObject::parse(load_file(config_filename));
       populate_state_from_config(state, config_json);
 
-      config_log.info("Loading license list");
-      state->license_manager.reset(new LicenseManager("system/licenses.nsi"));
+      if (!replay_log_filename) {
+        config_log.info("Loading license list");
+        state->license_manager.reset(new LicenseManager("system/licenses.nsi"));
+      } else {
+        state->license_manager.reset(new LicenseManager());
+      }
 
       config_log.info("Loading battle parameters");
       state->battle_params.reset(new BattleParamTable("system/blueburst/BattleParamEntry"));
@@ -515,7 +525,8 @@ int main(int argc, char** argv) {
         state->game_server.reset(new Server(base, state));
 
         auto f = fopen_unique(replay_log_filename, "rt");
-        replay_session.reset(new ReplaySession(base, f.get(), state));
+        replay_session.reset(new ReplaySession(
+            base, f.get(), state, replay_required_access_key, replay_required_password));
         replay_session->start();
 
       } else if (behavior == Behavior::RUN_SERVER) {

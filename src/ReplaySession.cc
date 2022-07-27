@@ -44,6 +44,133 @@ shared_ptr<ReplaySession::Event> ReplaySession::create_event(
   return event;
 }
 
+void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
+  auto version = this->clients.at(ev->client_id)->version;
+
+  auto check_pw = [&](const string& pw) {
+    if (!this->required_password.empty() && (pw != this->required_password)) {
+      throw runtime_error("sent password is incorrect");
+    }
+  };
+  auto check_ak = [&](const string& ak) {
+    if (this->required_access_key.empty()) {
+      return;
+    }
+    string ref_access_key;
+    if (version == GameVersion::DC || version == GameVersion::PC || version == GameVersion::PATCH) {
+      ref_access_key = this->required_access_key.substr(0, 8);
+    } else {
+      ref_access_key = this->required_access_key;
+    }
+    if (ak != ref_access_key) {
+      throw runtime_error("sent access key is incorrect");
+    }
+  };
+  auto check_either = [&](const string& s) {
+    try {
+      check_ak(s);
+    } catch (const exception&) {
+      check_pw(s);
+    }
+  };
+
+  const void* cmd_data = ev->data.data() + ((version == GameVersion::BB) ? 8 : 4);
+  size_t cmd_size = ev->data.size() - ((version == GameVersion::BB) ? 8 : 4);
+
+  switch (version) {
+    case GameVersion::DC:
+      // TODO
+      throw logic_error("sent passwords cannot be checked on DC");
+    case GameVersion::PATCH: {
+      const auto& header = check_size_t<PSOCommandHeaderPC>(
+          ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF);
+      if (header.command == 0x04) {
+        check_either(check_size_t<C_Login_Patch_04>(cmd_data, cmd_size).password);
+      }
+      break;
+    }
+    case GameVersion::PC: {
+      const auto& header = check_size_t<PSOCommandHeaderPC>(
+          ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF);
+      if (header.command == 0x03) {
+        check_ak(check_size_t<C_LegacyLogin_PC_V3_03>(cmd_data, cmd_size).access_key2);
+      } else if (header.command == 0x04) {
+        check_ak(check_size_t<C_LegacyLogin_PC_V3_04>(cmd_data, cmd_size).access_key);
+      } else if (header.command == 0x9A) {
+        const auto& cmd = check_size_t<C_Login_DC_PC_V3_9A>(cmd_data, cmd_size);
+        check_ak(cmd.access_key);
+        check_ak(cmd.access_key2);
+      } else if (header.command == 0x9C) {
+        const auto& cmd = check_size_t<C_Register_DC_PC_V3_9C>(cmd_data, cmd_size);
+        check_ak(cmd.access_key);
+        check_pw(cmd.password);
+      } else if (header.command == 0x9D) {
+        const auto& cmd = check_size_t<C_Login_PC_9D>(cmd_data, cmd_size,
+            sizeof(C_Login_PC_9D), sizeof(C_LoginExtended_PC_9D));
+        check_ak(cmd.access_key);
+        check_ak(cmd.access_key2);
+      }
+      break;
+    }
+    case GameVersion::GC:
+    case GameVersion::XB: {
+      const auto& header = check_size_t<PSOCommandHeaderDCV3>(
+          ev->data, sizeof(PSOCommandHeaderDCV3), 0xFFFF);
+      if (header.command == 0x03) {
+        check_ak(check_size_t<C_LegacyLogin_PC_V3_03>(cmd_data, cmd_size).access_key2);
+      } else if (header.command == 0x04) {
+        check_ak(check_size_t<C_LegacyLogin_PC_V3_04>(cmd_data, cmd_size).access_key);
+      } else if (header.command == 0x90) {
+        check_ak(check_size_t<C_LegacyLogin_V3_90>(cmd_data, cmd_size).access_key);
+      } else if (header.command == 0x9A) {
+        const auto& cmd = check_size_t<C_Login_DC_PC_V3_9A>(cmd_data, cmd_size);
+        check_ak(cmd.access_key);
+        check_ak(cmd.access_key2);
+      } else if (header.command == 0x9C) {
+        const auto& cmd = check_size_t<C_Register_DC_PC_V3_9C>(cmd_data, cmd_size);
+        check_ak(cmd.access_key);
+        check_pw(cmd.password);
+      } else if (header.command == 0x9E) {
+        if (version == GameVersion::GC) {
+          const auto& cmd = check_size_t<C_Login_GC_9E>(cmd_data, cmd_size,
+              sizeof(C_Login_GC_9E), sizeof(C_LoginExtended_GC_9E));
+          check_ak(cmd.access_key);
+          check_ak(cmd.access_key2);
+        } else { // XB
+          const auto& cmd = check_size_t<C_Login_XB_9E>(cmd_data, cmd_size,
+              sizeof(C_Login_XB_9E), sizeof(C_LoginExtended_XB_9E));
+          check_ak(cmd.access_key);
+          check_ak(cmd.access_key2);
+        }
+      } else if (header.command == 0xDB) {
+        const auto& cmd = check_size_t<C_VerifyLicense_V3_DB>(cmd_data, cmd_size);
+        check_ak(cmd.access_key);
+        check_ak(cmd.access_key2);
+        check_pw(cmd.password);
+      }
+      break;
+    }
+    case GameVersion::BB: {
+      const auto& header = check_size_t<PSOCommandHeaderBB>(
+          ev->data, sizeof(PSOCommandHeaderBB), 0xFFFF);
+      if (header.command == 0x04) {
+        check_pw(check_size_t<C_LegacyLogin_BB_04>(cmd_data, cmd_size).password);
+      } else if (header.command == 0x93) {
+        check_pw(check_size_t<C_Login_BB_93>(cmd_data, cmd_size).password);
+      } else if (header.command == 0x9C) {
+        check_pw(check_size_t<C_Register_BB_9C>(cmd_data, cmd_size).password);
+      } else if (header.command == 0x9E) {
+        check_pw(check_size_t<C_LoginExtended_BB_9E>(cmd_data, cmd_size).password);
+      } else if (header.command == 0xDB) {
+        check_pw(check_size_t<C_VerifyLicense_BB_DB>(cmd_data, cmd_size).password);
+      }
+      break;
+    }
+    default:
+      throw logic_error("invalid game version");
+  }
+}
+
 void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
   auto version = this->clients.at(ev->client_id)->version;
 
@@ -157,8 +284,12 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
 ReplaySession::ReplaySession(
     shared_ptr<struct event_base> base,
     FILE* input_log,
-    shared_ptr<ServerState> state)
+    shared_ptr<ServerState> state,
+    const string& required_access_key,
+    const string& required_password)
   : state(state),
+    required_access_key(required_access_key),
+    required_password(required_password),
     base(base),
     commands_sent(0),
     bytes_sent(0),
@@ -191,6 +322,13 @@ ReplaySession::ReplaySession(
       } else {
         if (parsing_command->type == Event::Type::RECEIVE) {
           this->apply_default_mask(parsing_command);
+        } else if (parsing_command->type == Event::Type::SEND) {
+          try {
+            this->check_for_password(parsing_command);
+          } catch (...) {
+            print_data(stderr, parsing_command->data);
+            throw;
+          }
         }
         parsing_command = nullptr;
       }
