@@ -1815,10 +1815,11 @@ struct C_SetBlockedSenders_V3_BB_C6 {
 
 // CC (S->C): Unknown (Episode 3)
 
-struct S_Unknown_GC_Ep3_CC {
-  parray<uint8_t, 0x40> unknown_a1;
+struct S_ConfirmTournamentEntry_GC_Ep3_CC {
+  ptext<char, 0x40> tournament_name;
   parray<le_uint16_t, 4> unknown_a2;
-  parray<uint8_t, 0x40> unknown_a3;
+  ptext<char, 0x20> server_name;
+  ptext<char, 0x20> start_time; // e.g. "15:09:30"
   struct Entry {
     parray<le_uint16_t, 2> unknown_a1;
     parray<uint8_t, 0x20> unknown_a2;
@@ -2034,6 +2035,9 @@ struct C_Unknown_BB_07DF {
 };
 
 // E0 (S->C): Tournament list (Episode 3)
+// The client will send 09 and 10 commands to inspect or enter a tournament. The
+// server should respond to an 09 command with an E3 command; the server should
+// respond to a 10 command with an E2 04 command.
 
 // header.flag is the count of filled-in entries.
 struct S_TournamentList_GC_Ep3_E0 {
@@ -2041,12 +2045,13 @@ struct S_TournamentList_GC_Ep3_E0 {
     le_uint32_t menu_id;
     le_uint32_t item_id;
     parray<uint8_t, 4> unknown_a1;
-    le_uint32_t unknown_a2;
-    parray<le_uint32_t, 8> unknown_a3;
-    parray<le_uint16_t, 4> unknown_a4;
+    le_uint32_t start_time; // In seconds since Unix epoch
+    ptext<char, 0x20> name;
+    le_uint16_t num_teams;
+    le_uint16_t max_teams;
+    parray<le_uint16_t, 2> unknown_a3;
   };
   Entry entries[0x20];
-  uint8_t unknown_a1[4];
 };
 
 // E0 (C->S): Request team and key config (BB)
@@ -2066,7 +2071,13 @@ struct S_Unknown_GC_Ep3_E1 {
 //   header.flag = 03 => create tournament spectator team
 //   header.flag = 04 => join tournament spectator team
 
-// E2 (S->C): Tournament entry control (Episode 3)
+// E2 (S->C): Tournament entry list (Episode 3)
+// Client may send 09 commands if the player presses X. It's not clear what the
+// server should respond with in this case.
+// If the player selects an entry slot, client will respond with a long-form 10
+// command (the Flag03 variant); in this case, unknown_a1 is the team name, and
+// password is the team password. The server should respond to that with a CC
+// command.
 
 struct S_TournamentControl_GC_Ep3_E2 {
   le_uint16_t unknown_a1;
@@ -2075,7 +2086,7 @@ struct S_TournamentControl_GC_Ep3_E2 {
     le_uint32_t menu_id;
     le_uint32_t item_id;
     parray<uint8_t, 4> unknown_a1;
-    parray<le_uint32_t, 8> unknown_a2;
+    ptext<char, 0x20> team_name;
   };
   Entry entries[0x20];
 };
@@ -2083,19 +2094,25 @@ struct S_TournamentControl_GC_Ep3_E2 {
 // E2 (S->C): Team and key config (BB)
 // See KeyAndTeamConfigBB in Player.hh for format
 
-// E3 (S->C): Unknown (Episode 3)
+// E3 (S->C): Tournament info (Episode 3)
 
-struct S_Unknown_GC_Ep3_E3 {
+struct S_TournamentInfo_GC_Ep3_E3 {
   struct Entry {
-    parray<uint8_t, 0x20> unknown_a1;
+    le_uint16_t unknown_a1;
     le_uint16_t unknown_a2;
-    le_uint16_t unknown_a3;
+    ptext<char, 0x20> team_name;
   };
-  parray<uint8_t, 0x34> unknown_a1;
+
+  ptext<char, 0x20> name;
+  ptext<char, 0x20> map_name;
+  Ep3BattleRules rules;
   Entry entries[0x20];
-  parray<uint8_t, 0x100> unknown_a2;
-  parray<le_uint16_t, 4> unknown_a3;
-  parray<uint8_t, 0x180> unknown_a4;
+  parray<uint8_t, 0xE4> unknown_a2;
+  le_uint16_t max_entries;
+  le_uint16_t unknown_a3;
+  le_uint16_t unknown_a4;
+  le_uint16_t unknown_a5;
+  parray<uint8_t, 0x180> unknown_a6;
 };
 
 // E3 (C->S): Player preview request (BB)
