@@ -247,6 +247,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
     bool print_contents) {
   if (!this->connected()) {
     channel_exceptions_log.warning("Attempted to send command on closed channel; dropping data");
+    return;
   }
 
   string send_data;

@@ -65,6 +65,7 @@ private:
       uint32_t next_client_seq;
       uint32_t acked_server_seq;
       size_t resend_push_usecs;
+      size_t next_push_max_frame_size;
       size_t max_frame_size;
       size_t bytes_received;
       size_t bytes_sent;

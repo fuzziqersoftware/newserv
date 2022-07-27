@@ -553,8 +553,11 @@ void IPStackSimulator::on_client_tcp_frame(
       conn.next_client_seq = fi.tcp->seq_num + 1;
       conn.acked_server_seq = random_object<uint32_t>();
       conn.resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
+      conn.next_push_max_frame_size = max_frame_size;
       conn.awaiting_first_ack = true;
       conn.max_frame_size = max_frame_size;
+      conn.bytes_received = 0;
+      conn.bytes_sent = 0;
 
       conn_str = this->str_for_tcp_connection(c, conn);
       if (this->state->ip_stack_debug) {
@@ -622,6 +625,7 @@ void IPStackSimulator::on_client_tcp_frame(
           evbuffer_drain(conn->pending_data.get(), ack_delta);
           conn->acked_server_seq += ack_delta;
           conn->resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
+          conn->next_push_max_frame_size = conn->max_frame_size;
 
           if (this->state->ip_stack_debug) {
             ip_stack_simulator_log.info("Removed %08" PRIX32 " bytes from pending buffer and advanced acked_server_seq to %08" PRIX32,
@@ -794,7 +798,7 @@ void IPStackSimulator::send_pending_push_frame(
     return;
   }
 
-  size_t bytes_to_send = min<size_t>(pending_bytes, conn.max_frame_size);
+  size_t bytes_to_send = min<size_t>(pending_bytes, conn.next_push_max_frame_size);
 
   if (this->state->ip_stack_debug) {
     ip_stack_simulator_log.info("Sending PSH frame with seq_num %08" PRIX32 ", 0x%zX/0x%zX data bytes",
@@ -809,11 +813,14 @@ void IPStackSimulator::send_pending_push_frame(
   // If the client isn't responding to our PSHes, back off exponentially up to
   // a limit of 5 seconds between PSH frames. This window is reset when
   // acked_server_seq changes (that is, when the client has acknowledged any new
-  // data)
+  // data). It seems some situations cause GameCube clients to drop packets more
+  // often; to alleviate this, we also try to resend less data.
   conn.resend_push_usecs *= 2;
   if (conn.resend_push_usecs > 5000000) {
     conn.resend_push_usecs = 5000000;
   }
+  conn.next_push_max_frame_size = max<size_t>(
+      0x100, conn.next_push_max_frame_size - 0x100);
 }
 
 void IPStackSimulator::send_tcp_frame(
