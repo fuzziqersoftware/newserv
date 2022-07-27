@@ -500,28 +500,26 @@ static void process_subcommand_pick_up_item_request(shared_ptr<ServerState>,
 static void process_subcommand_equip_unequip_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  // TODO: We should track equip state on non-BB versions
-  if (l->version == GameVersion::BB) {
-    const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
+  const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
 
-    if ((cmd->client_id != c->lobby_client_id)) {
-      return;
-    }
+  if (cmd->client_id != c->lobby_client_id) {
+    return;
+  }
 
-    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      throw logic_error("item tracking not enabled in BB game");
-    }
-
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     size_t index = c->game_data.player()->inventory.find_item(cmd->item_id);
     if (cmd->command == 0x25) {
       c->game_data.player()->inventory.items[index].game_flags |= 0x00000008; // equip
     } else {
       c->game_data.player()->inventory.items[index].game_flags &= 0xFFFFFFF7; // unequip
     }
-
-  } else {
-    forward_subcommand(l, c, command, flag, data);
+  } else if (l->version == GameVersion::BB) {
+    throw logic_error("item tracking not enabled in BB game");
   }
+
+  // TODO: Should we forward this command on BB? The old version of newserv
+  // didn't, but that seems wrong.
+  forward_subcommand(l, c, command, flag, data);
 }
 
 static void process_subcommand_use_item(shared_ptr<ServerState>,
