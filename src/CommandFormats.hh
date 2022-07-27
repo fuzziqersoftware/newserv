@@ -502,6 +502,9 @@ struct S_Unknown_GC_0E {
 // specifies... something else. These two bits directly correspond to the two
 // lowest bits in the flags field of the game menu: 02 specifies that the game
 // is locked, but the function of 01 is unknown.
+// Annoyingly, the no-arguments form of the command can have any flag value, so
+// it doesn't suffice to check the flag value to know which format is being
+// used!
 
 struct C_MenuSelection_10_Flag00 {
   le_uint32_t menu_id;

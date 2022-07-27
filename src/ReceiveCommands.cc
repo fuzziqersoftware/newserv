@@ -766,59 +766,29 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
 }
 
 void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t flags, const string& data) { // 10
+    uint16_t, uint32_t, const string& data) { // 10
   bool uses_unicode = ((c->version == GameVersion::PC) || (c->version == GameVersion::BB));
 
   uint32_t menu_id;
   uint32_t item_id;
   u16string password;
-  u16string unknown_a1;
 
-  uint8_t type_flags = flags & 3;
-  if (type_flags == 0) {
+  if (data.size() > sizeof(C_MenuSelection_10_Flag00)) {
+    if (uses_unicode) {
+      const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag02>(data);
+      password = cmd.password;
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+    } else {
+      const auto& cmd = check_size_t<C_MenuSelection_DC_V3_10_Flag02>(data);
+      password = decode_sjis(cmd.password);
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+    }
+  } else {
     const auto& cmd = check_size_t<C_MenuSelection_10_Flag00>(data);
     menu_id = cmd.menu_id;
     item_id = cmd.item_id;
-  } else if (type_flags == 1) {
-    if (uses_unicode) {
-      const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag01>(data);
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
-      unknown_a1 = cmd.unknown_a1;
-    } else {
-      const auto& cmd = check_size_t<C_MenuSelection_DC_V3_10_Flag01>(data);
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
-      unknown_a1 = decode_sjis(cmd.unknown_a1);
-    }
-  } else if (type_flags == 2) {
-    if (uses_unicode) {
-      const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag02>(data);
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
-      password = cmd.password;
-    } else {
-      const auto& cmd = check_size_t<C_MenuSelection_DC_V3_10_Flag02>(data);
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
-      password = decode_sjis(cmd.password);
-    }
-  } else if (type_flags == 3) {
-    if (uses_unicode) {
-      const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag03>(data);
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
-      unknown_a1 = cmd.unknown_a1;
-      password = cmd.password;
-    } else {
-      const auto& cmd = check_size_t<C_MenuSelection_DC_V3_10_Flag03>(data);
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
-      unknown_a1 = decode_sjis(cmd.unknown_a1);
-      password = decode_sjis(cmd.password);
-    }
-  } else {
-    throw logic_error("invalid type flag");
   }
 
   switch (menu_id) {
