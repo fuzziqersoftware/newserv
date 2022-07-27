@@ -466,7 +466,8 @@ struct C_MenuItemInfoRequest_09 {
 // 0B: Invalid command
 
 // 0C: Create game (DCv1)
-// Format unknown
+// Same format as C1, but fields not supported by v1 (e.g. episode, v2 mode) are
+// unused.
 
 // 0D: Invalid command
 
@@ -1680,6 +1681,9 @@ struct C_CreateGame {
   // Note: Episode 3 uses the challenge mode flag for view battle permissions.
   // 0 = view battle allowed; 1 = not allowed
   uint8_t challenge_mode; // 0 or 1
+  // Note: According to the Sylverant wiki, in v2-land, the episode field has a
+  // different meaning: if set to 0, the game can be joined by v1 and v2
+  // players; if set to 1, it's v2-only.
   uint8_t episode; // 1-4 on V3+ (3 on Episode 3); unused on DC/PC
 };
 struct C_CreateGame_DC_V3_C1_Ep3_EC : C_CreateGame<char> { };
