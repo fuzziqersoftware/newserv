@@ -509,9 +509,9 @@ static void process_subcommand_equip_unequip_item(shared_ptr<ServerState>,
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     size_t index = c->game_data.player()->inventory.find_item(cmd->item_id);
     if (cmd->command == 0x25) {
-      c->game_data.player()->inventory.items[index].game_flags |= 0x00000008; // equip
+      c->game_data.player()->inventory.items[index].equip_flags |= 0x00000008; // equip
     } else {
-      c->game_data.player()->inventory.items[index].game_flags &= 0xFFFFFFF7; // unequip
+      c->game_data.player()->inventory.items[index].equip_flags &= 0xFFFFFFF7; // unequip
     }
   } else if (l->version == GameVersion::BB) {
     throw logic_error("item tracking not enabled in BB game");
