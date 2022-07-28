@@ -52,7 +52,8 @@ Standard quest file names should be like `q###-CATEGORY-VERSION.EXT`; battle que
 - `EXT`: file extension (bin, dat, bin.gci, dat.gci, bin.dlq, dat.dlq, or qst)
 
 There are multiple PSO quest formats out there; newserv supports most of them. Specifically, newserv can use quests in any of the following formats:
-- bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file.
+- Compressed bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file.
+- Uncompressed bin/dat format: These quests consist of two files with the same base name, a .bind file and a .datd file.
 - Unencrypted GCI format: These quests also consist of a .bin and .dat file, but an encoding is applied on top of them. The filenames should end in .bin.gci and .dat.gci. (Note that there also exists an encrypted GCI format, which newserv does not support.)
 - Encrypted DLQ format: These quests also consist of a .bin and .dat file, but download quest encryption is applied on top of them. The filenames should end in .bin.dlq and .dat.dlq.
 - QST format: These quests consist of only a .qst file, which contains both the .bin and .dat files within it.

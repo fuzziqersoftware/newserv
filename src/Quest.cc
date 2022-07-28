@@ -177,23 +177,24 @@ Quest::Quest(const string& bin_filename)
     this->file_format = FileFormat::QST;
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 4);
   } else if (ends_with(bin_filename, ".bin")) {
+    this->file_format = FileFormat::BIN_DAT;
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 4);
+  } else if (ends_with(bin_filename, ".bind")) {
+    this->file_format = FileFormat::BIN_DAT_UNCOMPRESSED;
+    this->file_basename = bin_filename.substr(0, bin_filename.size() - 5);
   } else {
     throw runtime_error("quest does not have a valid .bin file");
   }
 
   string basename;
   {
-    size_t slash_pos = bin_filename.rfind('/');
+    size_t slash_pos = this->file_basename.rfind('/');
     if (slash_pos != string::npos) {
-      basename = bin_filename.substr(slash_pos + 1);
+      basename = this->file_basename.substr(slash_pos + 1);
     } else {
-      basename = bin_filename;
+      basename = this->file_basename;
     }
   }
-  bool has_short_extension = (this->file_format == FileFormat::BIN_DAT) ||
-      (this->file_format == FileFormat::QST);
-  basename.resize(basename.size() - (has_short_extension ? 4 : 8));
 
   // quest filenames are like:
   // b###-VV.bin for battle mode
@@ -255,7 +256,7 @@ Quest::Quest(const string& bin_filename)
   });
   this->version = name_to_version.at(tokens[1]);
 
-  // the rest of the information needs to be fetched from the .bin file's
+  // The rest of the information needs to be fetched from the .bin file's
   // contents
 
   auto bin_compressed = this->bin_contents();
@@ -369,6 +370,9 @@ shared_ptr<const string> Quest::bin_contents() const {
       case FileFormat::BIN_DAT:
         this->bin_contents_ptr.reset(new string(load_file(this->file_basename + ".bin")));
         break;
+      case FileFormat::BIN_DAT_UNCOMPRESSED:
+        this->bin_contents_ptr.reset(new string(prs_compress(load_file(this->file_basename + ".bind"))));
+        break;
       case FileFormat::BIN_DAT_GCI:
         this->bin_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".bin.gci")));
         break;
@@ -393,6 +397,9 @@ shared_ptr<const string> Quest::dat_contents() const {
     switch (this->file_format) {
       case FileFormat::BIN_DAT:
         this->dat_contents_ptr.reset(new string(load_file(this->file_basename + ".dat")));
+        break;
+      case FileFormat::BIN_DAT_UNCOMPRESSED:
+        this->dat_contents_ptr.reset(new string(prs_compress(load_file(this->file_basename + ".datd"))));
         break;
       case FileFormat::BIN_DAT_GCI:
         this->dat_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".dat.gci")));
@@ -617,6 +624,7 @@ QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
     }
 
     if (ends_with(filename, ".bin") ||
+        ends_with(filename, ".bind") ||
         ends_with(filename, ".bin.gci") ||
         ends_with(filename, ".bin.dlq") ||
         ends_with(filename, ".qst")) {

@@ -38,6 +38,7 @@ class Quest {
 public:
   enum class FileFormat {
     BIN_DAT = 0,
+    BIN_DAT_UNCOMPRESSED,
     BIN_DAT_GCI,
     BIN_DAT_DLQ,
     QST,
