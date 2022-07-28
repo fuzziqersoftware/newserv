@@ -456,7 +456,8 @@ struct S_GameMenuEntry_PC_BB_08 : S_GameMenuEntry<char16_t> { };
 struct S_GameMenuEntry_V3_08_Ep3_E6 : S_GameMenuEntry<char> { };
 
 // 09 (C->S): Menu item info request
-// Server will respond with an 11 command, or an A3 if it's the quest menu.
+// Server will respond with an 11 command, or an A3 or A5 if the specified menu
+// is the quest menu.
 
 struct C_MenuItemInfoRequest_09 {
   le_uint32_t menu_id;
@@ -481,7 +482,7 @@ struct S_Unknown_PC_0E {
   parray<uint8_t, 0x21> unknown_a1;
 };
 
-// TODO: Document XB format for this
+// TODO: Document XB format for this. It's probably the same as the GC format.
 struct S_Unknown_GC_0E {
   PlayerLobbyDataGC lobby_data[4]; // This type is a guess
   struct UnknownA0 {
@@ -540,7 +541,7 @@ struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<char16_t> { }
 
 // 13 (S->C): Write online quest file
 // Used for downloading online quests. For download quests (to be saved to the
-// memory card), use A6 instead.
+// memory card), use A7 instead.
 // All chunks except the last must have 0x400 data bytes. When downloading an
 // online quest, the .bin and .dat chunks may be interleaved (although newserv
 // currently sends them sequentially).
@@ -569,7 +570,7 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 // 17 (S->C): Start encryption at login server (except on BB)
 // Same format as 02 command, but a different copyright string.
 // All commands after this command will be encrypted with PSO V2 encryption on
-// PC, or PSO V3 on V3.
+// PC, or PSO V3 encryption on V3.
 // V3 clients will respond with a DB command the first time they receive a 17
 // command in any online session; after the first time, they will respond with a
 // 9E. Non-V3 clients will respond with a 9D.
@@ -740,9 +741,12 @@ struct S_GuildCardSearchResult {
   ptext<uint8_t, 0x3C> unused;
   ptext<CharT, 0x20> name;
 };
-struct S_GuildCardSearchResult_PC_41 : S_GuildCardSearchResult<PSOCommandHeaderPC, char16_t> { };
-struct S_GuildCardSearchResult_DC_V3_41 : S_GuildCardSearchResult<PSOCommandHeaderDCV3, char> { };
-struct S_GuildCardSearchResult_BB_41 : S_GuildCardSearchResult<PSOCommandHeaderBB, char16_t> { };
+struct S_GuildCardSearchResult_PC_41
+    : S_GuildCardSearchResult<PSOCommandHeaderPC, char16_t> { };
+struct S_GuildCardSearchResult_DC_V3_41
+    : S_GuildCardSearchResult<PSOCommandHeaderDCV3, char> { };
+struct S_GuildCardSearchResult_BB_41
+    : S_GuildCardSearchResult<PSOCommandHeaderBB, char16_t> { };
 
 // 42: Invalid command
 // 43: Invalid command
@@ -921,9 +925,12 @@ struct S_JoinLobby {
     return offsetof(S_JoinLobby, entries) + used_entries * sizeof(Entry);
   }
 };
-struct S_JoinLobby_PC_65_67_68 : S_JoinLobby<PlayerLobbyDataPC, PlayerDispDataPCV3> { };
-struct S_JoinLobby_GC_65_67_68 : S_JoinLobby<PlayerLobbyDataGC, PlayerDispDataPCV3> { };
-struct S_JoinLobby_BB_65_67_68 : S_JoinLobby<PlayerLobbyDataBB, PlayerDispDataBB> { };
+struct S_JoinLobby_PC_65_67_68
+    : S_JoinLobby<PlayerLobbyDataPC, PlayerDispDataPCV3> { };
+struct S_JoinLobby_GC_65_67_68
+    : S_JoinLobby<PlayerLobbyDataGC, PlayerDispDataPCV3> { };
+struct S_JoinLobby_BB_65_67_68
+    : S_JoinLobby<PlayerLobbyDataBB, PlayerDispDataBB> { };
 
 struct S_JoinLobby_XB_65_67_68 {
   uint8_t client_id;
@@ -946,7 +953,8 @@ struct S_JoinLobby_XB_65_67_68 {
   Entry entries[0x0C];
 
   static inline size_t size(size_t used_entries) {
-    return offsetof(S_JoinLobby_XB_65_67_68, entries) + used_entries * sizeof(Entry);
+    return offsetof(S_JoinLobby_XB_65_67_68, entries)
+        + used_entries * sizeof(Entry);
   }
 };
 
@@ -1554,7 +1562,8 @@ struct S_ExecuteCode_Footer_B2 {
 };
 
 struct S_ExecuteCode_Footer_GC_B2 : S_ExecuteCode_Footer_B2<be_uint32_t> { };
-struct S_ExecuteCode_Footer_PC_XB_BB_B2 : S_ExecuteCode_Footer_B2<le_uint32_t> { };
+struct S_ExecuteCode_Footer_PC_XB_BB_B2
+    : S_ExecuteCode_Footer_B2<le_uint32_t> { };
 
 // B3 (C->S): Execute code and/or checksum memory result
 // Not used on versions that don't support the B2 command (see above).
@@ -2615,19 +2624,22 @@ struct G_SymbolChat_6x07 {
   uint8_t size;
   le_uint16_t unused1;
   le_uint32_t client_id;
-  uint8_t face_spec; // Bits: SSSCCCFF (S = sound, C = face color, F = face shape)
+  // Bits: SSSCCCFF (S = sound, C = face color, F = face shape)
+  uint8_t face_spec;
   uint8_t disable_sound; // If low bit is set, no sound is played
   le_uint16_t unused2;
   struct CornerObject {
     uint8_t type; // FF = no object in this slot
-    uint8_t flags_color; // Bits: 000VHCCC (V = reverse vertical, H = reverse horizontal, C = color)
+    // Bits: 000VHCCC (V = reverse vertical, H = reverse horizontal, C = color)
+    uint8_t flags_color;
   };
   CornerObject corner_objects[4]; // In reading order (top-left is first)
   struct FacePart {
     uint8_t type; // FF = no part in this slot
     uint8_t x;
     uint8_t y;
-    uint8_t flags; // Bits: 000000VH (V = reverse vertical, H = reverse horizontal)
+    // Bits: 000000VH (V = reverse vertical, H = reverse horizontal)
+    uint8_t flags;
   };
   FacePart face_parts[12];
 };
@@ -2943,7 +2955,7 @@ struct G_EnemyDropItemRequest_6x60 {
 
 // 61: Feed MAG
 // 62: Unknown
-// 63: Destroy an item on the ground (used when too many items have been dropped)
+// 63: Destroy item on the ground (used when too many items have been dropped)
 // 64: Unknown (not valid on Episode 3)
 // 65: Unknown (not valid on Episode 3)
 // 66: Use star atomizer
@@ -3032,7 +3044,7 @@ struct G_BoxItemDropRequest_6xA2 {
 // AB: Create lobby chair (not valid on PC)
 // AC: Unknown (not valid on PC)
 // AD: Unknown (not valid on PC or Episode 3)
-// AE: Set chair state? (like 20, sent by existing clients at join time; not valid on PC)
+// AE: Set chair state? (sent by existing clients at join time; not valid on PC)
 // AF: Turn in lobby chair (not valid on PC)
 // B0: Move in lobby chair (not valid on PC)
 // B1: Unknown (not valid on PC)
