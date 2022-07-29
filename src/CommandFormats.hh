@@ -731,7 +731,7 @@ struct S_GuildCardSearchResult {
   // player is not in a game, GAME-NAME should be the lobby name - for standard
   // lobbies this is "BLOCK<blocknum>-<lobbynum>"; for CARD lobbies this is
   // "BLOCK<blocknum>-C<lobbynum>".
-  ptext<char, 0x44> location_string;
+  ptext<CharT, 0x44> location_string;
   // If the player chooses to meet the user, this menu ID and lobby ID is sent
   // in the login command (9D/9E) after connecting to the server designated in
   // reconnect_command. In fact, the remaining fields in this structure directly
