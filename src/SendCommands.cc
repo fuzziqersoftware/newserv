@@ -556,9 +556,13 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
   send_header_text(c->channel, 0x06, from_guild_card_number, data, false);
 }
 
-void send_simple_mail_v3(shared_ptr<Client> c, uint32_t from_guild_card_number,
-    const u16string& from_name, const u16string& text) {
-  SC_SimpleMail_V3_81 cmd;
+template <typename CmdT>
+void send_simple_mail_t(
+    shared_ptr<Client> c,
+    uint32_t from_guild_card_number,
+    const u16string& from_name,
+    const u16string& text) {
+  CmdT cmd;
   cmd.player_tag = 0x00010000;
   cmd.from_guild_card_number = from_guild_card_number;
   cmd.from_name = from_name;
@@ -570,7 +574,11 @@ void send_simple_mail_v3(shared_ptr<Client> c, uint32_t from_guild_card_number,
 void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number,
     const u16string& from_name, const u16string& text) {
   if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
-    send_simple_mail_v3(c, from_guild_card_number, from_name, text);
+    send_simple_mail_t<SC_SimpleMail_V3_81>(
+        c, from_guild_card_number, from_name, text);
+  } else if (c->version == GameVersion::PC) {
+    send_simple_mail_t<SC_SimpleMail_PC_81>(
+        c, from_guild_card_number, from_name, text);
   } else {
     throw logic_error("unimplemented versioned command");
   }

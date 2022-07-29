@@ -1724,15 +1724,25 @@ void process_choice_search(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 81
-  if ((c->version != GameVersion::GC) && (c->version != GameVersion::XB)) {
-    // TODO: implement this for non-V3
+  u16string message;
+  uint32_t to_guild_card_number;
+  if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
+    const auto& cmd = check_size_t<SC_SimpleMail_V3_81>(data);
+    to_guild_card_number = cmd.to_guild_card_number;
+    message = decode_sjis(cmd.text);
+
+  } else if (c->version == GameVersion::PC) {
+    const auto& cmd = check_size_t<SC_SimpleMail_PC_81>(data);
+    to_guild_card_number = cmd.to_guild_card_number;
+    message = cmd.text;
+
+  } else {
+    // TODO
     send_text_message(c, u"$C6Simple Mail is not\nsupported yet on\nthis platform.");
     return;
   }
 
-  const auto& cmd = check_size_t<SC_SimpleMail_V3_81>(data);
-
-  auto target = s->find_client(nullptr, cmd.to_guild_card_number);
+  auto target = s->find_client(nullptr, to_guild_card_number);
 
   // If the sender is blocked, don't forward the mail
   for (size_t y = 0; y < 30; y++) {
@@ -1749,8 +1759,11 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   // Forward the message
-  u16string msg = decode_sjis(cmd.text);
-  send_simple_mail(target, c->license->serial_number, c->game_data.player()->disp.name, msg);
+  send_simple_mail(
+      target,
+      c->license->serial_number,
+      c->game_data.player()->disp.name,
+      message);
 }
 
 

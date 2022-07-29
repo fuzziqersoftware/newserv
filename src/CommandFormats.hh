@@ -1031,13 +1031,17 @@ struct S_Unknown_PC_V3_80 {
 // uninitialized data for security reasons before forwarding and things seem to
 // work fine.
 
-struct SC_SimpleMail_V3_81 {
+template <typename CharT>
+struct SC_SimpleMail_81 {
   le_uint32_t player_tag;
   le_uint32_t from_guild_card_number;
-  ptext<char, 0x10> from_name;
+  ptext<CharT, 0x10> from_name;
   le_uint32_t to_guild_card_number;
-  ptext<char, 0x200> text;
+  ptext<CharT, 0x200> text;
 };
+
+struct SC_SimpleMail_PC_81 : SC_SimpleMail_81<char16_t> { };
+struct SC_SimpleMail_V3_81 : SC_SimpleMail_81<char> { };
 
 // 82: Invalid command
 
