@@ -289,6 +289,12 @@ void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (command == 0x9D) {
     base_cmd = &check_size_t<C_Login_PC_9D>(data,
         sizeof(C_Login_PC_9D), sizeof(C_LoginExtended_PC_9D));
+    if (base_cmd->is_extended) {
+      const auto& cmd = check_size_t<C_LoginExtended_PC_9D>(data);
+      if (cmd.extension.menu_id == MenuID::LOBBY) {
+        c->preferred_lobby_id = cmd.extension.preferred_lobby_id;
+      }
+    }
 
   } else if (command == 0x9E) {
     const auto& cmd = check_size_t<C_Login_GC_9E>(data,
