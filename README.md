@@ -13,9 +13,9 @@ Feel free to submit GitHub issues if you find bugs or have feature requests. I'd
 This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance.
 
 Current known issues / missing features:
-- Test all the communication features in cross-version scenarios (info board, simple mail, card search, etc.)
+- Test all the communication features in cross-version scenarios involving BB (info board, simple mail, card search, etc.)
 - Episode 3 battles aren't implemented.
-- PSO PC and PSOBB are not well-tested and likely will disconnect when clients try to use unimplemented features. Only GC is known to be stable and mostly complete.
+- PSOBB is not well-tested and likely will disconnect when clients try to use unimplemented features. GC is known to be stable and mostly complete; PC is not well-tested but is likely stable and complete as well.
 - Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
 - Implement private and overflow lobbies.
@@ -24,7 +24,7 @@ Current known issues / missing features:
 
 ## Usage
 
-Currently this code should build on macOS and Ubuntu. It will likely work on other Linux flavors too. It should work on Windows as well, but I haven't tested it - the build process could be very manual.
+Currently newserv should build on macOS and Ubuntu. It will likely work on other Linux flavors too. It should work on Windows as well, but I haven't tested it - the build process could be very manual. Cygwin is likely the easiest Windows environment in which to build newserv.
 
 There is a probably-not-too-old macOS ARM64 release on the newserv GitHub repository. You may need to install libevent manually even if you use this release (run `brew install libevent`).
 
