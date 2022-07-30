@@ -1158,10 +1158,14 @@ struct C_Login_BB_93 {
   le_uint32_t guild_card_number;
   ptext<char, 0x08> unused;
   le_uint32_t team_id;
-  ptext<char, 0x10> username;
-  ptext<char, 0x20> unused2;
-  ptext<char, 0x10> password;
-  ptext<char, 0x28> unused3;
+  ptext<char, 0x30> username;
+  ptext<char, 0x30> password;
+
+  // These fields map to the same fields in C_Login_MeetUserExtension. There is
+  // no equivalent of the name field from that structure on BB (though newserv
+  // doesn't use it anyway).
+  le_uint32_t menu_id;
+  le_uint32_t preferred_lobby_id;
 
   // Note: Unlike other versions, BB puts the version string in the client
   // config at connect time. So the first time the server gets this command, it

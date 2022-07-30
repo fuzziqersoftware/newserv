@@ -107,6 +107,14 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       send_ep3_rank_update(c);
     }
 
+    // On BB, send the pre-lobby event, if set. This normally happens on the
+    // login server immediately after the encryption init command, but on BB we
+    // don't know the client's state until after we receive the login command,
+    // so we do it here instead.
+    if ((c->version == GameVersion::BB) && s->pre_lobby_event) {
+      send_change_event(c, s->pre_lobby_event);
+    }
+
     if (s->welcome_message.empty() ||
         (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) ||
         !(c->flags & Client::Flag::AT_WELCOME_MESSAGE)) {
