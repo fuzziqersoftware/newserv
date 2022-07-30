@@ -13,10 +13,9 @@ Feel free to submit GitHub issues if you find bugs or have feature requests. I'd
 This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance.
 
 Current known issues / missing features:
-- Test all the communication features in cross-version scenarios involving BB (info board, simple mail, card search, etc.)
 - Guild card file modifications don't save on BB.
 - Episode 3 battles aren't implemented.
-- PSOBB is not well-tested and likely will disconnect when clients try to use unimplemented features. GC is known to be stable and mostly complete; PC is not well-tested but is likely stable and complete as well.
+- PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features. GC is known to be stable and mostly complete; PC is not well-tested but is likely stable and complete as well.
 - Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
 - Implement private and overflow lobbies.
@@ -53,7 +52,7 @@ Standard quest file names should be like `q###-CATEGORY-VERSION.EXT`; battle que
 - `EXT`: file extension (bin, dat, bin.gci, dat.gci, bin.dlq, dat.dlq, or qst)
 
 There are multiple PSO quest formats out there; newserv supports most of them. Specifically, newserv can use quests in any of the following formats:
-- Compressed bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file.
+- Compressed bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file. (This is the format you'll get if you saved a quest with set-save-files.)
 - Uncompressed bin/dat format: These quests consist of two files with the same base name, a .bind file and a .datd file.
 - Unencrypted GCI format: These quests also consist of a .bin and .dat file, but an encoding is applied on top of them. The filenames should end in .bin.gci and .dat.gci. (Note that there also exists an encrypted GCI format, which newserv does not support.)
 - Encrypted DLQ format: These quests also consist of a .bin and .dat file, but download quest encryption is applied on top of them. The filenames should end in .bin.dlq and .dat.dlq.
