@@ -1043,6 +1043,15 @@ struct SC_SimpleMail_81 {
 struct SC_SimpleMail_PC_81 : SC_SimpleMail_81<char16_t> { };
 struct SC_SimpleMail_V3_81 : SC_SimpleMail_81<char> { };
 
+struct SC_SimpleMail_BB_81 {
+  le_uint32_t player_tag;
+  le_uint32_t from_guild_card_number;
+  ptext<char16_t, 0x10> from_name;
+  le_uint32_t to_guild_card_number;
+  ptext<char16_t, 0x14> received_date;
+  ptext<char16_t, 0x200> text;
+};
+
 // 82: Invalid command
 
 // 83 (S->C): Lobby menu

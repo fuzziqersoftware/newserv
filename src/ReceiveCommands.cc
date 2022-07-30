@@ -1848,6 +1848,11 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
     to_guild_card_number = cmd.to_guild_card_number;
     message = cmd.text;
 
+  } else if (c->version == GameVersion::BB) {
+    const auto& cmd = check_size_t<SC_SimpleMail_BB_81>(data);
+    to_guild_card_number = cmd.to_guild_card_number;
+    message = cmd.text;
+
   } else {
     // TODO
     send_text_message(c, u"$C6Simple Mail is not\nsupported yet on\nthis platform.");
