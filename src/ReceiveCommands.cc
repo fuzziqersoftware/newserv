@@ -414,6 +414,10 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     c->game_data.bb_player_index = 0;
   }
 
+  if (cmd.menu_id == MenuID::LOBBY) {
+    c->preferred_lobby_id = cmd.preferred_lobby_id;
+  }
+
   send_client_init_bb(c, 0);
 
   switch (c->bb_game_state) {
