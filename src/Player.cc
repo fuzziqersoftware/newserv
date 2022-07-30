@@ -269,16 +269,16 @@ PlayerDispDataBBPreview::PlayerDispDataBBPreview() noexcept
 
 GuildCardV3::GuildCardV3() noexcept
   : player_tag(0),
-    serial_number(0),
-    reserved1(1),
-    reserved2(1),
+    guild_card_number(0),
+    present(0),
+    present2(0),
     section_id(0),
     char_class(0) { }
 
 GuildCardBB::GuildCardBB() noexcept
   : guild_card_number(0),
-    reserved1(1),
-    reserved2(1),
+    present(0),
+    present2(0),
     section_id(0),
     char_class(0) { }
 
@@ -287,8 +287,8 @@ void GuildCardBB::clear() {
   this->name.clear();
   this->team_name.clear();
   this->description.clear();
-  this->reserved1 = 1;
-  this->reserved2 = 1;
+  this->present = 0;
+  this->present2 = 0;
   this->section_id = 0;
   this->char_class = 0;
 }

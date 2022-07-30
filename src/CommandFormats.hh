@@ -2607,8 +2607,8 @@ struct G_SendGuildCard_PC_V3 {
   ptext<CharT, 0x18> name;
   ptext<CharT, 0x48> description;
   parray<uint8_t, 0x24> unused2;
-  uint8_t reserved1;
-  uint8_t reserved2;
+  uint8_t present;
+  uint8_t present2;
   uint8_t section_id;
   uint8_t char_class;
 };
@@ -2623,8 +2623,8 @@ struct G_SendGuildCard_BB_6x06 {
   ptext<char16_t, 0x18> name;
   ptext<char16_t, 0x10> team_name;
   ptext<char16_t, 0x58> description;
-  uint8_t reserved1;
-  uint8_t reserved2;
+  uint8_t present;
+  uint8_t present2;
   uint8_t section_id;
   uint8_t char_class;
 };

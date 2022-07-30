@@ -13,7 +13,6 @@ Feel free to submit GitHub issues if you find bugs or have feature requests. I'd
 This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance.
 
 Current known issues / missing features:
-- Guild card file modifications don't save on BB.
 - Episode 3 battles aren't implemented.
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features. GC is known to be stable and mostly complete; PC is not well-tested but is likely stable and complete as well.
 - Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.

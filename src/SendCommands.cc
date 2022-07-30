@@ -706,8 +706,8 @@ void send_guild_card_pc_v3_t(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.name = source->game_data.player()->disp.name;
   remove_language_marker_inplace(cmd.name);
   cmd.description = source->game_data.player()->guild_card_description;
-  cmd.reserved1 = 1;
-  cmd.reserved2 = 1;
+  cmd.present = 1;
+  cmd.present2 = 1;
   cmd.section_id = source->game_data.player()->disp.section_id;
   cmd.char_class = source->game_data.player()->disp.char_class;
   send_command_t(c, 0x62, c->lobby_client_id, cmd);
@@ -722,8 +722,8 @@ void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.name = remove_language_marker(source->game_data.player()->disp.name);
   cmd.team_name = remove_language_marker(source->game_data.account()->team_name);
   cmd.description = source->game_data.player()->guild_card_description;
-  cmd.reserved1 = 1;
-  cmd.reserved2 = 1;
+  cmd.present = 1;
+  cmd.present2 = 1;
   cmd.section_id = source->game_data.player()->disp.section_id;
   cmd.char_class = source->game_data.player()->disp.char_class;
   send_command_t(c, 0x62, c->lobby_client_id, cmd);
