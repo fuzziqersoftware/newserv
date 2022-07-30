@@ -1587,12 +1587,13 @@ void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
   constexpr size_t max_blocked = sizeof(GuildCardFileBB::blocked) / sizeof(GuildCardBB);
   switch (command) {
     case 0x01E8: { // Check guild card file checksum
-      check_size_v(data.size(), sizeof(C_GuildCardChecksum_01E8));
-      // TODO: Presumably this response tells the client whether the file needs
-      // to be downloaded at all. In the future, we could actually use the
-      // checksum to skip downloading if the file isn't modified, to save time.
-      S_GuildCardChecksumResponse_BB_02E8 cmd = {1, 0};
-      send_command_t(c, 0x02E8, 0x00000000, cmd);
+      const auto& cmd = check_size_t<C_GuildCardChecksum_01E8>(data);
+      uint32_t checksum = c->game_data.account()->guild_cards.checksum();
+      c->log.info("(Guild card file) Server checksum = %08" PRIX32 ", client checksum = %08" PRIX32,
+          checksum, cmd.checksum.load());
+      S_GuildCardChecksumResponse_BB_02E8 response = {
+          (cmd.checksum != checksum), 0};
+      send_command_t(c, 0x02E8, 0x00000000, response);
       break;
     }
     case 0x03E8: // Download guild card file

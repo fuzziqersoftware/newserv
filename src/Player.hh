@@ -252,6 +252,8 @@ struct GuildCardFileBB {
   GuildCardBB blocked[0x1C];
   parray<uint8_t, 0x180> unknown_a2;
   GuildCardEntryBB entries[0x69];
+
+  uint32_t checksum() const;
 } __attribute__((packed));
 
 struct KeyAndTeamConfigBB {

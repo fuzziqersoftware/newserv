@@ -2284,9 +2284,13 @@ struct C_GuildCardChecksum_01E8 {
 };
 
 // 02E8 (S->C): Accept/decline guild card file checksum
+// If needs_update is nonzero, the client will request the guild card file by
+// sending an 03E8 command. If needs_update is zero, the client will skip
+// downloading the guild card file and send a 04EB command (requesting the
+// stream file) instead.
 
 struct S_GuildCardChecksumResponse_BB_02E8 {
-  le_uint32_t verify;
+  le_uint32_t needs_update;
   le_uint32_t unused;
 };
 
@@ -2436,7 +2440,7 @@ struct S_Unknown_GC_Ep3_EB {
   PlayerEntry players[12];
 };
 
-// EB (S->C): Send stream file index and chunks (BB)
+// 01EB (S->C): Send stream file index (BB)
 
 // Command is a list of these; header.flag is the entry count.
 struct S_StreamFileIndexEntry_BB_01EB {
@@ -2446,10 +2450,19 @@ struct S_StreamFileIndexEntry_BB_01EB {
   ptext<char, 0x40> filename;
 };
 
+// 02EB (S->C): Send stream file chunk (BB)
+
 struct S_StreamFileChunk_BB_02EB {
   le_uint32_t chunk_index;
   uint8_t data[0x6800];
 };
+
+// 03EB (C->S): Request a specific stream file chunk
+// header.flag is the chunk index. Server should respond with a 02EB command.
+
+// 04EB (C->S): Request stream file header
+// No arguments
+// Server should respond with a 01EB command.
 
 // EC: Create game (Episode 3)
 // Same format as C1; some fields are unused (e.g. episode, difficulty).

@@ -322,8 +322,7 @@ void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
 }
 
 void send_guild_card_header_bb(shared_ptr<Client> c) {
-  uint32_t checksum = crc32(
-      &c->game_data.account()->guild_cards, sizeof(GuildCardFileBB));
+  uint32_t checksum = c->game_data.account()->guild_cards.checksum();
   S_GuildCardHeader_BB_01DC cmd = {1, sizeof(GuildCardFileBB), checksum};
   send_command_t(c, 0x01DC, 0x00000000, cmd);
 }

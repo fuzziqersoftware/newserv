@@ -6,6 +6,7 @@
 
 #include <stdexcept>
 #include <phosg/Filesystem.hh>
+#include <phosg/Hash.hh>
 
 #include "FileContentsCache.hh"
 #include "Loggers.hh"
@@ -296,6 +297,10 @@ void GuildCardBB::clear() {
 void GuildCardEntryBB::clear() {
   this->data.clear();
   this->unknown_a1.clear();
+}
+
+uint32_t GuildCardFileBB::checksum() const {
+  return crc32(this, sizeof(*this));
 }
 
 
