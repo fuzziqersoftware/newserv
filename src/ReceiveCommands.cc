@@ -1583,7 +1583,8 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
 
 void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) {
-  constexpr size_t max_count = sizeof(GuildCardFileBB) / sizeof(GuildCardEntryBB);
+  constexpr size_t max_count = sizeof(GuildCardFileBB::entries) / sizeof(GuildCardEntryBB);
+  constexpr size_t max_blocked = sizeof(GuildCardFileBB::blocked) / sizeof(GuildCardBB);
   switch (command) {
     case 0x01E8: { // Check guild card file checksum
       check_size_v(data.size(), sizeof(C_GuildCardChecksum_01E8));
@@ -1615,19 +1616,16 @@ void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     case 0x05E8: { // Delete guild card
       auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
       auto& gcf = c->game_data.account()->guild_cards;
-      size_t z;
-      for (z = 0; z < max_count; z++) {
+      for (size_t z = 0; z < max_count; z++) {
         if (gcf.entries[z].data.guild_card_number == cmd.guild_card_number) {
+          c->log.info("Deleted guild card %" PRIu32 " at position %zu",
+              cmd.guild_card_number.load(), z);
+          for (z = 0; z < max_count - 1; z++) {
+            gcf.entries[z] = gcf.entries[z + 1];
+          }
+          gcf.entries[max_count - 1].clear();
           break;
         }
-      }
-      if (z < max_count) {
-        c->log.info("Deleted guild card %" PRIu32 " at position %zu",
-            cmd.guild_card_number.load(), z);
-        for (z = 0; z < max_count - 1; z++) {
-          gcf.entries[z] = gcf.entries[z + 1];
-        }
-        gcf.entries[max_count - 1].clear();
       }
       break;
     }
@@ -1644,15 +1642,36 @@ void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
       break;
     }
     case 0x07E8: { // Add blocked user
-      // TODO: Where do these go in GuildCardFileBB?
-      // auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
-      throw runtime_error("blocked users are not yet implemented on BB");
+      auto& new_gc = check_size_t<GuildCardBB>(data);
+      auto& gcf = c->game_data.account()->guild_cards;
+      for (size_t z = 0; z < max_blocked; z++) {
+        if (!gcf.blocked[z].present) {
+          gcf.blocked[z] = new_gc;
+          c->log.info("Added blocked guild card %" PRIu32 " at position %zu",
+              new_gc.guild_card_number.load(), z);
+          // Note: The client also sends a C6 command, so we don't have to
+          // manually sync the actual blocked senders list here
+          break;
+        }
+      }
       break;
     }
     case 0x08E8: { // Delete blocked user
-      // TODO: Where do these go in GuildCardFileBB?
-      // auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
-      throw runtime_error("blocked users are not yet implemented on BB");
+      auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
+      auto& gcf = c->game_data.account()->guild_cards;
+      for (size_t z = 0; z < max_blocked; z++) {
+        if (gcf.blocked[z].guild_card_number == cmd.guild_card_number) {
+          c->log.info("Deleted blocked guild card %" PRIu32 " at position %zu",
+              cmd.guild_card_number.load(), z);
+          for (z = 0; z < max_blocked - 1; z++) {
+            gcf.blocked[z] = gcf.blocked[z + 1];
+          }
+          gcf.blocked[max_blocked - 1].clear();
+          // Note: The client also sends a C6 command, so we don't have to
+          // manually sync the actual blocked senders list here
+          break;
+        }
+      }
       break;
     }
     case 0x09E8: { // Write comment
@@ -1932,8 +1951,13 @@ void process_disable_auto_reply(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 void process_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C6
-  const auto& cmd = check_size_t<C_SetBlockedSenders_V3_BB_C6>(data);
-  c->game_data.account()->blocked_senders = cmd.blocked_senders;
+  if (c->version == GameVersion::BB) {
+    const auto& cmd = check_size_t<C_SetBlockedSenders_BB_C6>(data);
+    c->game_data.account()->blocked_senders = cmd.blocked_senders;
+  } else {
+    const auto& cmd = check_size_t<C_SetBlockedSenders_V3_C6>(data);
+    c->game_data.account()->blocked_senders = cmd.blocked_senders;
+  }
 }
 
 

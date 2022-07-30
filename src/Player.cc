@@ -271,14 +271,14 @@ GuildCardV3::GuildCardV3() noexcept
   : player_tag(0),
     guild_card_number(0),
     present(0),
-    present2(0),
+    language(0),
     section_id(0),
     char_class(0) { }
 
 GuildCardBB::GuildCardBB() noexcept
   : guild_card_number(0),
     present(0),
-    present2(0),
+    language(0),
     section_id(0),
     char_class(0) { }
 
@@ -288,7 +288,7 @@ void GuildCardBB::clear() {
   this->team_name.clear();
   this->description.clear();
   this->present = 0;
-  this->present2 = 0;
+  this->language = 0;
   this->section_id = 0;
   this->char_class = 0;
 }

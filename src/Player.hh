@@ -215,7 +215,7 @@ struct GuildCardV3 {
   ptext<char, 0x18> name;
   ptext<char, 0x6C> description;
   uint8_t present; // should be 1
-  uint8_t present2; // should be 1
+  uint8_t language;
   uint8_t section_id;
   uint8_t char_class;
 
@@ -229,7 +229,7 @@ struct GuildCardBB {
   ptext<char16_t, 0x10> team_name;
   ptext<char16_t, 0x58> description;
   uint8_t present; // should be 1 if guild card entry exists
-  uint8_t present2; // should be 1 if guild card entry exists
+  uint8_t language;
   uint8_t section_id;
   uint8_t char_class;
 
@@ -248,8 +248,10 @@ struct GuildCardEntryBB {
 
 // the format of the BB guild card file
 struct GuildCardFileBB {
-  parray<uint8_t, 0x1F74> unknown_a3;
-  GuildCardEntryBB entries[0x0069]; // that's 105 of them in decimal
+  parray<uint8_t, 0x114> unknown_a1;
+  GuildCardBB blocked[0x1C];
+  parray<uint8_t, 0x180> unknown_a2;
+  GuildCardEntryBB entries[0x69];
 } __attribute__((packed));
 
 struct KeyAndTeamConfigBB {

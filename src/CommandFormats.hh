@@ -1781,12 +1781,16 @@ struct S_ChoiceSearchResultEntry_V3_C4 {
 // client_id field in each entry before sending.
 
 // C6 (C->S): Set blocked senders list (V3/BB)
+// The command always contains the same number of entries, even if the entries
+// at the end are blank (zero).
 
-struct C_SetBlockedSenders_V3_BB_C6 {
-  // The command always contains 30 entries, even if the entries at the end are
-  // blank (zero).
-  parray<le_uint32_t, 30> blocked_senders;
+template <size_t Count>
+struct C_SetBlockedSenders_C6 {
+  parray<le_uint32_t, Count> blocked_senders;
 };
+
+struct C_SetBlockedSenders_V3_C6 : C_SetBlockedSenders_C6<30> { };
+struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { };
 
 // C7 (C->S): Enable simple mail auto-reply (V3/BB)
 // Same format as 1A/D5 command (plain text).
@@ -2299,7 +2303,7 @@ struct C_DeleteGuildCard_BB_05E8_08E8 {
   le_uint32_t guild_card_number;
 };
 
-// 06E8 (C->S): Set guild card text
+// 06E8 (C->S): Update (overwrite) guild card
 // Format is GuildCardBB (see Player.hh)
 
 // 07E8 (C->S): Add blocked user
