@@ -1571,14 +1571,120 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
 
 void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) {
-  if (command == 0x01E8) {
-    check_size_v(data.size(), 8);
-    send_accept_client_checksum_bb(c);
-  } else if (command == 0x03E8) {
-    check_size_v(data.size(), 0);
-    send_guild_card_header_bb(c);
-  } else {
-    throw invalid_argument("unimplemented command");
+  switch (command) {
+    case 0x01E8: { // Check guild card file checksum
+      check_size_v(data.size(), sizeof(C_GuildCardChecksum_01E8));
+      // TODO: Presumably this response tells the client whether the file needs
+      // to be downloaded at all. In the future, we could actually use the
+      // checksum to skip downloading if the file isn't modified, to save time.
+      S_GuildCardChecksumResponse_BB_02E8 cmd = {1, 0};
+      send_command_t(c, 0x02E8, 0x00000000, cmd);
+      break;
+    }
+    case 0x03E8: // Download guild card file
+      check_size_v(data.size(), 0);
+      send_guild_card_header_bb(c);
+      break;
+    case 0x04E8: { // Add guild card
+      auto& new_gc = check_size_t<GuildCardBB>(data);
+      auto& gcf = c->game_data.account()->guild_cards;
+      if (gcf.num_guild_cards < sizeof(gcf.entries) / sizeof(gcf.entries[0])) {
+        gcf.entries[gcf.num_guild_cards].data = new_gc;
+        gcf.entries[gcf.num_guild_cards].unknown_a1.clear();
+        c->log.info("Added guild card %" PRIu32 " at position %hhu",
+            new_gc.guild_card_number.load(), gcf.num_guild_cards);
+        gcf.num_guild_cards++;
+      }
+      break;
+    }
+    case 0x05E8: { // Delete guild card
+      auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
+      auto& gcf = c->game_data.account()->guild_cards;
+      size_t z;
+      for (z = 0; z < gcf.num_guild_cards; z++) {
+        if (gcf.entries[z].data.guild_card_number == cmd.guild_card_number) {
+          break;
+        }
+      }
+      if (z < gcf.num_guild_cards) {
+        c->log.info("Deleted guild card %" PRIu32 " at position %zu",
+            cmd.guild_card_number.load(), z);
+        gcf.num_guild_cards--;
+        for (z = 0; z < gcf.num_guild_cards; z++) {
+          gcf.entries[z] = gcf.entries[z + 1];
+        }
+      }
+      break;
+    }
+    case 0x06E8: { // Update guild card
+      auto& new_gc = check_size_t<GuildCardBB>(data);
+      auto& gcf = c->game_data.account()->guild_cards;
+      for (size_t z = 0; z < gcf.num_guild_cards; z++) {
+        if (gcf.entries[z].data.guild_card_number == new_gc.guild_card_number) {
+          gcf.entries[z].data = new_gc;
+          c->log.info("Updated guild card %" PRIu32 " at position %zu",
+              new_gc.guild_card_number.load(), z);
+        }
+      }
+      break;
+    }
+    case 0x07E8: { // Add blocked user
+      // TODO: Where do these go in GuildCardFileBB?
+      // auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
+      throw runtime_error("blocked users are not yet implemented on BB");
+      break;
+    }
+    case 0x08E8: { // Delete blocked user
+      // TODO: Where do these go in GuildCardFileBB?
+      // auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
+      throw runtime_error("blocked users are not yet implemented on BB");
+      break;
+    }
+    case 0x09E8: { // Write comment
+      // TODO: We need to know the comment storage format in the guild card file
+      // in order to implement this (see comment in Player.hh). The
+      // implementation should go very much like this:
+      // auto& cmd = check_size_t<C_WriteGuildCardComment_BB_09E8>(data);
+      // auto& gcf = c->game_data.account()->guild_cards;
+      // for (size_t z = 0; z < gcf.num_guild_cards; z++) {
+      //   if (gcf.entries[z].data.guild_card_number == cmd.guild_card_number) {
+      //     gcf.entries[z].comment = cmd.comment;
+      //     c->log.info("Updated comment on guild card %" PRIu32 " at position %zu",
+      //         cmd.guild_card_number.load(), z);
+      //   }
+      // }
+      throw runtime_error("guild card comments are not yet implemented on BB");
+      break;
+    }
+    case 0x0AE8: { // Move guild card in list
+      auto& cmd = check_size_t<C_MoveGuildCard_BB_0AE8>(data);
+      auto& gcf = c->game_data.account()->guild_cards;
+      if (cmd.position >= gcf.num_guild_cards) {
+        throw invalid_argument("invalid new position");
+      }
+      size_t index;
+      for (index = 0; index < gcf.num_guild_cards; index++) {
+        if (gcf.entries[index].data.guild_card_number == cmd.guild_card_number) {
+          break;
+        }
+      }
+      if (index >= gcf.num_guild_cards) {
+        throw invalid_argument("player does not have requested guild card");
+      }
+      auto moved_gc = gcf.entries[index];
+      for (; index < cmd.position; index++) {
+        gcf.entries[index] = gcf.entries[index + 1];
+      }
+      for (; index > cmd.position; index--) {
+        gcf.entries[index] = gcf.entries[index - 1];
+      }
+      gcf.entries[index] = moved_gc;
+      c->log.info("Moved guild card %" PRIu32 " to position %zu",
+            cmd.guild_card_number.load(), index);
+      break;
+    }
+    default:
+      throw invalid_argument("invalid command");
   }
 }
 

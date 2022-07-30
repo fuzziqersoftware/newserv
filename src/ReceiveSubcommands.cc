@@ -116,13 +116,15 @@ static void process_subcommand_send_guild_card(shared_ptr<ServerState>,
 
   if (c->version == GameVersion::PC) {
     const auto* cmd = check_size_sc<G_SendGuildCard_PC_6x06>(data);
-    c->game_data.player()->guild_card_desc = cmd->desc;
+    c->game_data.player()->guild_card_description = cmd->description;
   } else if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
     const auto* cmd = check_size_sc<G_SendGuildCard_V3_6x06>(data);
-    c->game_data.player()->guild_card_desc = cmd->desc;
+    c->game_data.player()->guild_card_description = cmd->description;
   } else if (c->version == GameVersion::BB) {
-    const auto* cmd = check_size_sc<G_SendGuildCard_BB_6x06>(data);
-    c->game_data.player()->guild_card_desc = cmd->desc;
+    // Nothing to do... the command is blank; the server generates the guild
+    // card to be sent
+  } else {
+    throw runtime_error("unsupported game version");
   }
 
   send_guild_card(l->clients[flag], c);

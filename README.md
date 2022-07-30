@@ -14,6 +14,7 @@ This project is primarily for my own nostalgia; I offer no guarantees on how or 
 
 Current known issues / missing features:
 - Test all the communication features in cross-version scenarios involving BB (info board, simple mail, card search, etc.)
+- Guild card file modifications don't save on BB.
 - Episode 3 battles aren't implemented.
 - PSOBB is not well-tested and likely will disconnect when clients try to use unimplemented features. GC is known to be stable and mostly complete; PC is not well-tested but is likely stable and complete as well.
 - Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.

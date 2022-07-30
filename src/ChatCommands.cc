@@ -194,6 +194,11 @@ static void server_command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
   c->prefer_high_lobby_client_id = !c->prefer_high_lobby_client_id;
 }
 
+static void server_command_get_self_card(shared_ptr<ServerState>, shared_ptr<Lobby>,
+    shared_ptr<Client> c, const std::u16string&) {
+  send_guild_card(c, c);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Lobby commands
 
@@ -844,6 +849,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$dbgid"     , {server_command_dbgid             , nullptr                    , u"Usage:\ndbgid"}},
     {u"$edit"      , {server_command_edit              , nullptr                    , u"Usage:\nedit <stat> <value>"}},
     {u"$event"     , {server_command_lobby_event       , proxy_command_lobby_event  , u"Usage:\nevent <name>"}},
+    {u"$gc"        , {server_command_get_self_card     , nullptr                    , u"Usage:\ngc"}},
     {u"$infhp"     , {server_command_infinite_hp       , proxy_command_infinite_hp  , u"Usage:\ninfhp"}},
     {u"$inftp"     , {server_command_infinite_tp       , proxy_command_infinite_tp  , u"Usage:\ninftp"}},
     {u"$item"      , {server_command_item              , nullptr                    , u"Usage:\nitem <item-code>"}},

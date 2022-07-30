@@ -1405,7 +1405,7 @@ struct S_QuestMenuEntry {
   le_uint32_t menu_id;
   le_uint32_t item_id;
   ptext<CharT, 0x20> name;
-  ptext<CharT, ShortDescLength> short_desc;
+  ptext<CharT, ShortDescLength> short_description;
 };
 struct S_QuestMenuEntry_PC_A2_A4 : S_QuestMenuEntry<char16_t, 0x70> { };
 struct S_QuestMenuEntry_GC_A2_A4 : S_QuestMenuEntry<char, 0x70> { };
@@ -2261,14 +2261,14 @@ struct S_Unknown_GC_Ep3_E8 {
 
 // This struct is for documentation purposes only; newserv ignores the contents
 // of this command.
-struct C_ClientChecksum_01E8 {
+struct C_GuildCardChecksum_01E8 {
   le_uint32_t checksum;
   le_uint32_t unused;
 };
 
-// 02E8 (S->C): Accept guild card file checksum
+// 02E8 (S->C): Accept/decline guild card file checksum
 
-struct S_AcceptClientChecksum_BB_02E8 {
+struct S_GuildCardChecksumResponse_BB_02E8 {
   le_uint32_t verify;
   le_uint32_t unused;
 };
@@ -2278,11 +2278,7 @@ struct S_AcceptClientChecksum_BB_02E8 {
 // Server should send the guild card file data using DC commands.
 
 // 04E8 (C->S): Add guild card
-
-struct C_AddOrUpdateGuildCard_BB_04E8_06E8_07E8 {
-  // TODO: Document this format
-  parray<uint8_t, 0x0108> unknown_a1;
-};
+// Format is GuildCardBB (see Player.hh)
 
 // 05E8 (C->S): Delete guild card
 
@@ -2291,10 +2287,10 @@ struct C_DeleteGuildCard_BB_05E8_08E8 {
 };
 
 // 06E8 (C->S): Set guild card text
-// Same format as 04E8.
+// Format is GuildCardBB (see Player.hh)
 
 // 07E8 (C->S): Add blocked user
-// Same format as 04E8.
+// Format is GuildCardBB (see Player.hh)
 
 // 08E8 (C->S): Delete blocked user
 // Same format as 05E8.
@@ -2302,16 +2298,15 @@ struct C_DeleteGuildCard_BB_05E8_08E8 {
 // 09E8 (C->S): Write comment
 
 struct C_WriteGuildCardComment_BB_09E8 {
-  ptext<char16_t, 0x5A> comment;
+  le_uint32_t guild_card_number;
+  ptext<char16_t, 0x58> comment;
 };
 
 // 0AE8 (C->S): Set guild card position in list
 
 struct C_MoveGuildCard_BB_0AE8 {
-  // TODO: One of these is the GC number, the other is the position. Figure out
-  // which is which.
-  le_uint32_t unknown_a1;
-  le_uint32_t unknown_a2;
+  le_uint32_t guild_card_number;
+  le_uint32_t position;
 };
 
 // E9 (S->C): Other player left spectator team (probably) (Episode 3)
@@ -2597,7 +2592,7 @@ struct G_SendGuildCard_PC_V3 {
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
   ptext<CharT, 0x18> name;
-  ptext<CharT, 0x48> desc;
+  ptext<CharT, 0x48> description;
   parray<uint8_t, 0x24> unused2;
   uint8_t reserved1;
   uint8_t reserved2;
@@ -2614,7 +2609,7 @@ struct G_SendGuildCard_BB_6x06 {
   le_uint32_t guild_card_number;
   ptext<char16_t, 0x18> name;
   ptext<char16_t, 0x10> team_name;
-  ptext<char16_t, 0x58> desc;
+  ptext<char16_t, 0x58> description;
   uint8_t reserved1;
   uint8_t reserved2;
   uint8_t section_id;

@@ -276,11 +276,27 @@ GuildCardV3::GuildCardV3() noexcept
     char_class(0) { }
 
 GuildCardBB::GuildCardBB() noexcept
-  : serial_number(0),
+  : guild_card_number(0),
     reserved1(1),
     reserved2(1),
     section_id(0),
     char_class(0) { }
+
+void GuildCardBB::clear() {
+  this->guild_card_number = 0;
+  this->name.clear();
+  this->team_name.clear();
+  this->description.clear();
+  this->reserved1 = 1;
+  this->reserved2 = 1;
+  this->section_id = 0;
+  this->char_class = 0;
+}
+
+void GuildCardEntryBB::clear() {
+  this->data.clear();
+  this->unknown_a1.clear();
+}
 
 
 
@@ -506,7 +522,7 @@ PlayerBB ClientGameData::export_player_bb() {
   ret.serial_number = this->serial_number;
   ret.name = player->disp.name;
   ret.team_name = account->team_name;
-  ret.guild_card_desc = player->guild_card_desc;
+  ret.guild_card_description = player->guild_card_description;
   ret.reserved1 = 0;
   ret.reserved2 = 0;
   ret.section_id = player->disp.section_id;

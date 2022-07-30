@@ -213,7 +213,7 @@ struct GuildCardV3 {
   le_uint32_t player_tag;
   le_uint32_t serial_number;
   ptext<char, 0x18> name;
-  ptext<char, 0x6C> desc;
+  ptext<char, 0x6C> description;
   uint8_t reserved1; // should be 1
   uint8_t reserved2; // should be 1
   uint8_t section_id;
@@ -224,29 +224,37 @@ struct GuildCardV3 {
 
 // BB guild card format
 struct GuildCardBB {
-  le_uint32_t serial_number;
+  le_uint32_t guild_card_number;
   ptext<char16_t, 0x18> name;
-  ptext<char16_t, 0x10> teamname;
-  ptext<char16_t, 0x58> desc;
+  ptext<char16_t, 0x10> team_name;
+  ptext<char16_t, 0x58> description;
   uint8_t reserved1; // should be 1
   uint8_t reserved2; // should be 1
   uint8_t section_id;
   uint8_t char_class;
 
   GuildCardBB() noexcept;
+  void clear();
 } __attribute__((packed));
 
 // an entry in the BB guild card file
 struct GuildCardEntryBB {
   GuildCardBB data;
-  parray<uint8_t, 0xB4> unknown;
+  // TODO: Almost all of this space (0x58 char16_ts) is probably the comment,
+  // but is the unknown 4 bytes at the beginning or end of this space?
+  parray<uint8_t, 0xB4> unknown_a1;
+
+  void clear();
 } __attribute__((packed));
 
 // the format of the BB guild card file
 struct GuildCardFileBB {
-  parray<uint8_t, 0x1F84> unknown_a1;
-  GuildCardEntryBB entry[0x0068]; // that's 104 of them in decimal
-  parray<uint8_t, 0x01AC> unknown_a2;
+  parray<uint8_t, 6> unknown_a1;
+  uint8_t num_guild_cards; // TODO: This is a guess. Verify this.
+  uint8_t unknown_a2;
+  parray<uint8_t, 0x1F7C> unknown_a3;
+  GuildCardEntryBB entries[0x0068]; // that's 104 of them in decimal
+  parray<uint8_t, 0x01AC> unknown_a4;
 } __attribute__((packed));
 
 struct KeyAndTeamConfigBB {
@@ -404,31 +412,31 @@ struct PSOPlayerDataBB { // For command 61
 } __attribute__((packed));
 
 struct PlayerBB { // Used in 00E7 command
-  PlayerInventory inventory;                // player
-  PlayerDispDataBB disp;                    // player
-  parray<uint8_t, 0x0010> unknown;          // not saved
-  le_uint32_t option_flags;                 // account
-  parray<uint8_t, 0x0208> quest_data1;      // player
-  PlayerBank bank;                          // player
-  le_uint32_t serial_number;                // player
-  ptext<char16_t, 0x18> name;               // player
-  ptext<char16_t, 0x10> team_name;          // player
-  ptext<char16_t, 0x58> guild_card_desc;    // player
-  uint8_t reserved1;                        // player
-  uint8_t reserved2;                        // player
-  uint8_t section_id;                       // player
-  uint8_t char_class;                       // player
-  le_uint32_t unknown3;                     // not saved
-  parray<uint8_t, 0x04E0> symbol_chats;     // account
-  parray<uint8_t, 0x0A40> shortcuts;        // account
-  ptext<char16_t, 0x00AC> auto_reply;       // player
-  ptext<char16_t, 0x00AC> info_board;       // player
-  parray<uint8_t, 0x001C> unknown5;         // not saved
-  parray<uint8_t, 0x0140> challenge_data;   // player
-  parray<uint8_t, 0x0028> tech_menu_config; // player
-  parray<uint8_t, 0x002C> unknown6;         // not saved
-  parray<uint8_t, 0x0058> quest_data2;      // player
-  KeyAndTeamConfigBB key_config;            // account
+  PlayerInventory inventory;                    // player
+  PlayerDispDataBB disp;                        // player
+  parray<uint8_t, 0x0010> unknown;              // not saved
+  le_uint32_t option_flags;                     // account
+  parray<uint8_t, 0x0208> quest_data1;          // player
+  PlayerBank bank;                              // player
+  le_uint32_t serial_number;                    // player
+  ptext<char16_t, 0x18> name;                   // player
+  ptext<char16_t, 0x10> team_name;              // player
+  ptext<char16_t, 0x58> guild_card_description; // player
+  uint8_t reserved1;                            // player
+  uint8_t reserved2;                            // player
+  uint8_t section_id;                           // player
+  uint8_t char_class;                           // player
+  le_uint32_t unknown3;                         // not saved
+  parray<uint8_t, 0x04E0> symbol_chats;         // account
+  parray<uint8_t, 0x0A40> shortcuts;            // account
+  ptext<char16_t, 0x00AC> auto_reply;           // player
+  ptext<char16_t, 0x00AC> info_board;           // player
+  parray<uint8_t, 0x001C> unknown5;             // not saved
+  parray<uint8_t, 0x0140> challenge_data;       // player
+  parray<uint8_t, 0x0028> tech_menu_config;     // player
+  parray<uint8_t, 0x002C> unknown6;             // not saved
+  parray<uint8_t, 0x0058> quest_data2;          // player
+  KeyAndTeamConfigBB key_config;                // account
 } __attribute__((packed));
 
 
@@ -440,7 +448,7 @@ struct SavedPlayerDataBB { // .nsc file format
   PlayerBank              bank;
   parray<uint8_t, 0x0140> challenge_data;
   PlayerDispDataBB        disp;
-  ptext<char16_t, 0x0058> guild_card_desc;
+  ptext<char16_t, 0x0058> guild_card_description;
   ptext<char16_t, 0x00AC> info_board;
   PlayerInventory         inventory;
   parray<uint8_t, 0x0208> quest_data1;

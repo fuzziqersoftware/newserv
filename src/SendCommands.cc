@@ -321,11 +321,6 @@ void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
   }
 }
 
-void send_accept_client_checksum_bb(shared_ptr<Client> c) {
-  S_AcceptClientChecksum_BB_02E8 cmd = {1, 0};
-  send_command_t(c, 0x02E8, 0x00000000, cmd);
-}
-
 void send_guild_card_header_bb(shared_ptr<Client> c) {
   uint32_t checksum = crc32(
       &c->game_data.account()->guild_cards, sizeof(GuildCardFileBB));
@@ -684,7 +679,7 @@ void send_card_search_result(
 
 
 template <typename CmdT>
-void send_guild_card_pc_v3(shared_ptr<Client> c, shared_ptr<Client> source) {
+void send_guild_card_pc_v3_t(shared_ptr<Client> c, shared_ptr<Client> source) {
   CmdT cmd;
   cmd.subcommand = 0x06;
   cmd.size = sizeof(CmdT) / 4;
@@ -693,7 +688,7 @@ void send_guild_card_pc_v3(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.guild_card_number = source->license->serial_number;
   cmd.name = source->game_data.player()->disp.name;
   remove_language_marker_inplace(cmd.name);
-  cmd.desc = source->game_data.player()->guild_card_desc;
+  cmd.description = source->game_data.player()->guild_card_description;
   cmd.reserved1 = 1;
   cmd.reserved2 = 1;
   cmd.section_id = source->game_data.player()->disp.section_id;
@@ -709,7 +704,7 @@ void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
   cmd.guild_card_number = source->license->serial_number;
   cmd.name = remove_language_marker(source->game_data.player()->disp.name);
   cmd.team_name = remove_language_marker(source->game_data.account()->team_name);
-  cmd.desc = source->game_data.player()->guild_card_desc;
+  cmd.description = source->game_data.player()->guild_card_description;
   cmd.reserved1 = 1;
   cmd.reserved2 = 1;
   cmd.section_id = source->game_data.player()->disp.section_id;
@@ -719,10 +714,10 @@ void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
 
 void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
   if (c->version == GameVersion::PC) {
-    send_guild_card_pc_v3<G_SendGuildCard_PC_6x06>(c, source);
+    send_guild_card_pc_v3_t<G_SendGuildCard_PC_6x06>(c, source);
   } else if ((c->version == GameVersion::GC) ||
              (c->version == GameVersion::XB)) {
-    send_guild_card_pc_v3<G_SendGuildCard_V3_6x06>(c, source);
+    send_guild_card_pc_v3_t<G_SendGuildCard_V3_6x06>(c, source);
   } else if (c->version == GameVersion::BB) {
     send_guild_card_bb(c, source);
   } else {
@@ -850,8 +845,8 @@ void send_quest_menu_t(
     e.menu_id = menu_id;
     e.item_id = quest->menu_item_id;
     e.name = quest->name;
-    e.short_desc = quest->short_description;
-    add_color_inplace(e.short_desc);
+    e.short_description = quest->short_description;
+    add_color_inplace(e.short_description);
   }
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
@@ -868,8 +863,8 @@ void send_quest_menu_t(
     e.menu_id = menu_id;
     e.item_id = item.item_id;
     e.name = item.name;
-    e.short_desc = item.description;
-    add_color_inplace(e.short_desc);
+    e.short_description = item.description;
+    add_color_inplace(e.short_description);
   }
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
