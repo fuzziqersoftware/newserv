@@ -93,7 +93,6 @@ Some commands only work on the game server and not on the proxy server. The chat
 * Blue Burst player commands (game server only)
     * `$bbchar <username> <password> <1-4>`: Use this command when playing on a non-BB version of PSO. If the username and password are correct, this command converts your current character to BB format and saves it on the server in the given slot.
     * `$edit <stat> <value>`: Modifies your character data.
-    * `$item <data>`: Sets the next item to be dropped from an enemy or box.
 
 * Game state commands (game server only)
     * `$maxlevel <level>`: Sets the maximum level for players to join the current game.
@@ -101,11 +100,12 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
 
 * Cheat mode commands
-    * `$cheat`: Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. This command does nothing on the proxy server - cheat commands are always available there, but are off by default.
+    * `$cheat`: Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. This command does nothing on the proxy server - cheat commands are always available there.
     * `$infhp` / `$inftp`: Enables or disables infinite HP or TP mode. Applies to only you. In infinite HP mode, one-hit KO attacks will still kill you.
     * `$warp <area-id>`: Warps yourself to the given area.
     * `$next` (game server only): Warps yourself to the next area.
     * `$swa`: Enables or disables switch assist. When enabled, the server will attempt to automatically unlock two-player doors in solo games if you step on both switches sequentially.
+    * `$item <data>`: Sets the next item to be dropped from an enemy or box. Item codes must be between 2 and 16 hex bytes; all unspecified bytes are zeroes. If you are on the proxy server, you must be the game leader and not using Blue Burst for this command to work. On the game server, this command works for all versions, and you do not have to be the game leader.
 
 * Configuration commands
     * `$event <event>`: Sets the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, this applies to all lobbies and games you join, but only you will see the new event - other players will not.

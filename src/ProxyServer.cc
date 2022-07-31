@@ -445,11 +445,13 @@ ProxyServer::LinkedSession::LinkedSession(
     infinite_tp(false),
     save_files(false),
     function_call_return_value(-1),
+    next_item_id(0x0F000000),
     override_section_id(-1),
     override_lobby_event(-1),
     override_lobby_number(-1),
     lobby_players(12),
-    lobby_client_id(0) {
+    lobby_client_id(0),
+    leader_client_id(0) {
   this->last_switch_enabled_command.subcommand = 0;
   memset(this->prev_server_command_bytes, 0, sizeof(this->prev_server_command_bytes));
 }

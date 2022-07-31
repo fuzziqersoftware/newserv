@@ -626,6 +626,10 @@ void PlayerLobbyDataBB::clear() {
 constexpr uint32_t MESETA_IDENTIFIER = 0x00040000;
 
 ItemData::ItemData() {
+  this->clear();
+}
+
+void ItemData::clear() {
   this->data1d[0] = 0;
   this->data1d[1] = 0;
   this->data1d[2] = 0;
@@ -643,21 +647,36 @@ uint32_t ItemData::primary_identifier() const {
   }
 }
 
-PlayerInventoryItem::PlayerInventoryItem()
-  : equip_flags(0x0000), tech_flag(0x0000), game_flags(0x00000000), data() { }
+PlayerInventoryItem::PlayerInventoryItem() {
+  this->clear();
+}
 
 PlayerInventoryItem::PlayerInventoryItem(const PlayerBankItem& src)
   : tech_flag(0x0001), data(src.data) {
   this->equip_flags = (this->data.data1[0] > 2) ? 0x0044 : 0x0050;
 }
 
-PlayerBankItem::PlayerBankItem()
-  : data(), amount(0), show_flags(0) { }
+void PlayerInventoryItem::clear() {
+  this->equip_flags = 0x0000;
+  this->tech_flag = 0x0000;
+  this->game_flags = 0x00000000;
+  this->data.clear();
+}
+
+PlayerBankItem::PlayerBankItem() {
+  this->clear();
+}
 
 PlayerBankItem::PlayerBankItem(const PlayerInventoryItem& src)
   : data(src.data),
     amount(stack_size_for_item(this->data)),
     show_flags(1) { }
+
+void PlayerBankItem::clear() {
+  this->data.clear();
+  this->amount = 0;
+  this->show_flags = 0;
+}
 
 
 

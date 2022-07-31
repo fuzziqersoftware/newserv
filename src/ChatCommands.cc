@@ -803,23 +803,59 @@ static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 
   string data = parse_data_string(encode_sjis(args));
   if (data.size() < 2) {
-    send_text_message(c, u"$C6Item codes must be\n2 bytes or more.");
+    send_text_message(c, u"$C6Item codes must be\n2 bytes or more");
     return;
   }
   if (data.size() > 16) {
-    send_text_message(c, u"$C6Item codes must be\n16 bytes or fewer.");
+    send_text_message(c, u"$C6Item codes must be\n16 bytes or fewer");
     return;
   }
 
-  ItemData item_data;
+  l->next_drop_item.clear();
   if (data.size() <= 12) {
     memcpy(&l->next_drop_item.data.data1, data.data(), data.size());
   } else {
     memcpy(&l->next_drop_item.data.data1, data.data(), 12);
-    memcpy(&l->next_drop_item.data.data2, data.data() + 12, 12 - data.size());
+    memcpy(&l->next_drop_item.data.data2, data.data() + 12, data.size() - 12);
   }
 
-  send_text_message(c, u"$C6Next drop chosen.");
+  string name = name_for_item(l->next_drop_item.data, true);
+  send_text_message(c, u"$C7Next drop:\n" + decode_sjis(name));
+}
+
+static void proxy_command_item(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  if (session.version == GameVersion::BB) {
+    send_text_message(session.client_channel,
+        u"$C6This command cannot\nbe used on the proxy\nserver in BB games");
+    return;
+  }
+  if (session.lobby_client_id != session.leader_client_id) {
+    send_text_message(session.client_channel,
+        u"$C6You must be the\nleader to use this\ncommand");
+    return;
+  }
+
+  string data = parse_data_string(encode_sjis(args));
+  if (data.size() < 2) {
+    send_text_message(session.client_channel, u"$C6Item codes must be\n2 bytes or more");
+    return;
+  }
+  if (data.size() > 16) {
+    send_text_message(session.client_channel, u"$C6Item codes must be\n16 bytes or fewer");
+    return;
+  }
+
+  session.next_drop_item.clear();
+  if (data.size() <= 12) {
+    memcpy(&session.next_drop_item.data.data1, data.data(), data.size());
+  } else {
+    memcpy(&session.next_drop_item.data.data1, data.data(), 12);
+    memcpy(&session.next_drop_item.data.data2, data.data() + 12, data.size() - 12);
+  }
+
+  string name = name_for_item(session.next_drop_item.data, true);
+  send_text_message(session.client_channel, u"$C7Next drop:\n" + decode_sjis(name));
 }
 
 
@@ -852,7 +888,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$gc"        , {server_command_get_self_card     , nullptr                    , u"Usage:\ngc"}},
     {u"$infhp"     , {server_command_infinite_hp       , proxy_command_infinite_hp  , u"Usage:\ninfhp"}},
     {u"$inftp"     , {server_command_infinite_tp       , proxy_command_infinite_tp  , u"Usage:\ninftp"}},
-    {u"$item"      , {server_command_item              , nullptr                    , u"Usage:\nitem <item-code>"}},
+    {u"$item"      , {server_command_item              , proxy_command_item         , u"Usage:\nitem <item-code>"}},
     {u"$kick"      , {server_command_kick              , nullptr                    , u"Usage:\nkick <name-or-number>"}},
     {u"$li"        , {server_command_lobby_info        , proxy_command_lobby_info   , u"Usage:\nli"}},
     {u"$maxlevel"  , {server_command_max_level         , nullptr                    , u"Usage:\nmax_level <level>"}},

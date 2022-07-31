@@ -478,11 +478,11 @@ struct C_MenuItemInfoRequest_09 {
 // softlocking the game.
 
 struct S_Unknown_PC_0E {
-  PlayerLobbyDataPC lobby_data[4]; // This type is a guess
-  parray<uint8_t, 0x21> unknown_a1;
+  parray<uint8_t, 0x08> unknown_a1;
+  parray<uint8_t, 0x18> unknown_a2[4];
+  parray<uint8_t, 0x18> unknown_a3;
 };
 
-// TODO: Document XB format for this. It's probably the same as the GC format.
 struct S_Unknown_GC_0E {
   PlayerLobbyDataGC lobby_data[4]; // This type is a guess
   struct UnknownA0 {
@@ -494,6 +494,10 @@ struct S_Unknown_GC_0E {
   le_uint32_t unknown_a1;
   parray<uint8_t, 0x20> unknown_a2;
   uint8_t unknown_a3[4];
+};
+
+struct S_Unknown_XB_0E {
+  parray<uint8_t, 0xE8> unknown_a1;
 };
 
 // 0F: Invalid command

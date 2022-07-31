@@ -1267,6 +1267,13 @@ void send_revive_player(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 // BB game commands
 
+void send_drop_item(Channel& ch, const ItemData& item,
+    bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
+  G_DropItem_6x5F cmd = {
+      0x5F, 0x0B, 0x0000, area, from_enemy, request_id, x, z, 0, item, 0};
+  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
+}
+
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
   G_DropItem_6x5F cmd = {

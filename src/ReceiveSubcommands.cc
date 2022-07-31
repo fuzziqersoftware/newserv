@@ -671,63 +671,91 @@ static void process_subcommand_sort_inventory_bb(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 // EXP/Drop Item commands
 
-static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState>,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const string& data) {
-  if (l->version == GameVersion::BB) {
-    const auto* cmd = check_size_sc<G_EnemyDropItemRequest_6x60>(data);
+static bool drop_item(
+    std::shared_ptr<Lobby> l,
+    int64_t enemy_id,
+    uint8_t area,
+    float x,
+    float z,
+    uint16_t request_id) {
 
-    if (!l->is_game()) {
-      return;
-    }
-    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      throw logic_error("item tracking not enabled in BB game");
-    }
+  PlayerInventoryItem item;
+
+  // If there's an override item set (via the $item command), use that item code
+  if (l->next_drop_item.data.data1d[0]) {
+    item = l->next_drop_item;
+    l->next_drop_item.clear();
+
+  // If the game is BB, run the rare + common drop logic
+  } else if (l->version == GameVersion::BB) {
     if (!l->common_item_creator.get()) {
       throw runtime_error("received box drop subcommand without item creator present");
     }
 
-    PlayerInventoryItem item;
-
-    // TODO: Deduplicate this code with the box drop item request handler
-    bool is_rare = false;
-    if (l->next_drop_item.data.data1d[0]) {
-      item = l->next_drop_item;
-      l->next_drop_item.data.data1d[0] = 0;
-    } else {
-      if (l->rare_item_set) {
-        if (cmd->enemy_id <= 0x65) {
-          is_rare = sample_rare_item(*
-              l->random, l->rare_item_set->rares[cmd->enemy_id].probability);
-        }
-      }
-
-      if (is_rare) {
-        const auto& code = l->rare_item_set->rares[cmd->enemy_id].item_code;
-        item.data.data1[0] = code[0];
-        item.data.data1[1] = code[1];
-        item.data.data1[2] = code[2];
-        //RandPercentages();
-        if (item.data.data1d[0] == 0) {
-          item.data.data1[4] |= 0x80; // make it unidentified if it's a weapon
+    const RareItemDrop* rare_drop = nullptr;
+    if (l->rare_item_set) {
+      if (enemy_id < 0) {
+        for (size_t z = 0; z < 30; z++) {
+          if (l->rare_item_set->box_areas[z] != area) {
+            continue;
+          }
+          if (sample_rare_item(
+              *l->random, l->rare_item_set->box_rares[z].probability)) {
+            rare_drop = &l->rare_item_set->box_rares[z];
+            break;
+          }
         }
       } else {
-        try {
-          item.data = l->common_item_creator->create_drop_item(false, l->episode,
-              l->difficulty, cmd->area, l->section_id);
-        } catch (const out_of_range&) {
-          // create_common_item throws this when it doesn't want to make an item
-          return;
+        if ((enemy_id <= 0x65) &&
+            sample_rare_item(
+                *l->random, l->rare_item_set->rares[enemy_id].probability)) {
+          rare_drop = &l->rare_item_set->rares[enemy_id];
         }
       }
     }
-    item.data.id = l->generate_item_id(0xFF);
 
-    l->add_item(item, cmd->area, cmd->x, cmd->z);
-    send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->z,
-        cmd->request_id);
+    if (rare_drop) {
+      item.data.data1[0] = rare_drop->item_code[0];
+      item.data.data1[1] = rare_drop->item_code[1];
+      item.data.data1[2] = rare_drop->item_code[2];
+      // TODO: Add random percentages
+      if (item.data.data1d[0] == 0) {
+        item.data.data1[4] |= 0x80; // make it unidentified if it's a weapon
+      }
+    } else {
+      try {
+        item.data = l->common_item_creator->create_drop_item(
+            false, l->episode, l->difficulty, area, l->section_id);
+      } catch (const out_of_range&) {
+        // create_common_item throws this when it doesn't want to make an item
+        return true;
+      }
+    }
 
+  // If the game is not BB and there's no override item, forward the request to
+  // the leader instead of generating the item drop command
   } else {
+    return false;
+  }
+
+  item.data.id = l->generate_item_id(0xFF);
+
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    l->add_item(item, area, x, z);
+  }
+  send_drop_item(l, item.data, (enemy_id >= 0), area, x, z, request_id);
+  return true;
+}
+
+static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  if (!l->is_game()) {
+    return;
+  }
+
+  const auto* cmd = check_size_sc<G_EnemyDropItemRequest_6x60>(data);
+  if (!drop_item(l, cmd->enemy_id, cmd->area, cmd->x, cmd->z, cmd->request_id)) {
     forward_subcommand(l, c, command, flag, data);
   }
 }
@@ -735,66 +763,12 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState>,
 static void process_subcommand_box_drop_item_request(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  if (l->version == GameVersion::BB) {
-    const auto* cmd = check_size_sc<G_BoxItemDropRequest_6xA2>(data);
+  if (!l->is_game()) {
+    return;
+  }
 
-    if (!l->is_game()) {
-      return;
-    }
-    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      throw logic_error("item tracking not enabled in BB game");
-    }
-    if (!l->common_item_creator.get()) {
-      throw runtime_error("received box drop subcommand without item creator present");
-    }
-
-    PlayerInventoryItem item;
-
-    bool is_rare = false;
-    if (l->next_drop_item.data.data1d[0]) {
-      item = l->next_drop_item;
-      l->next_drop_item.data.data1d[0] = 0;
-    } else {
-      size_t index;
-      if (l->rare_item_set) {
-        for (index = 0; index < 30; index++) {
-          if (l->rare_item_set->box_areas[index] != cmd->area) {
-            continue;
-          }
-          if (sample_rare_item(
-              *l->random, l->rare_item_set->box_rares[index].probability)) {
-            is_rare = true;
-            break;
-          }
-        }
-      }
-
-      if (is_rare) {
-        const auto& code = l->rare_item_set->box_rares[index].item_code;
-        item.data.data1[0] = code[0];
-        item.data.data1[1] = code[1];
-        item.data.data1[2] = code[2];
-        //RandPercentages();
-        if (item.data.data1d[0] == 0) {
-          item.data.data1[4] |= 0x80; // make it unidentified if it's a weapon
-        }
-      } else {
-        try {
-          item.data = l->common_item_creator->create_drop_item(true, l->episode,
-              l->difficulty, cmd->area, l->section_id);
-        } catch (const out_of_range&) {
-          // create_common_item throws this when it doesn't want to make an item
-          return;
-        }
-      }
-    }
-    item.data.id = l->generate_item_id(0xFF);
-
-    l->add_item(item, cmd->area, cmd->x, cmd->z);
-    send_drop_item(l, item.data, false, cmd->area, cmd->x, cmd->z,
-        cmd->request_id);
-
-  } else {
+  const auto* cmd = check_size_sc<G_BoxItemDropRequest_6xA2>(data);
+  if (!drop_item(l, -1, cmd->area, cmd->x, cmd->z, cmd->request_id)) {
     forward_subcommand(l, c, command, flag, data);
   }
 }

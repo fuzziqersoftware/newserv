@@ -28,6 +28,7 @@ struct ItemData { // 0x14 bytes
   } __attribute__((packed));
 
   ItemData();
+  void clear();
 
   uint32_t primary_identifier() const;
 } __attribute__((packed));
@@ -42,6 +43,7 @@ struct PlayerInventoryItem { // 0x1C bytes
 
   PlayerInventoryItem();
   PlayerInventoryItem(const PlayerBankItem&);
+  void clear();
 } __attribute__((packed));
 
 struct PlayerBankItem { // 0x18 bytes
@@ -51,6 +53,7 @@ struct PlayerBankItem { // 0x18 bytes
 
   PlayerBankItem();
   PlayerBankItem(const PlayerInventoryItem&);
+  void clear();
 } __attribute__((packed));
 
 struct PlayerInventory { // 0x34C bytes

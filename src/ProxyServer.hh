@@ -66,6 +66,8 @@ public:
     bool save_files;
     int64_t function_call_return_value; // -1 = don't block function calls
     G_SwitchStateChanged_6x05 last_switch_enabled_command;
+    PlayerInventoryItem next_drop_item;
+    uint32_t next_item_id;
     int16_t override_section_id;
     int16_t override_lobby_event;
     int16_t override_lobby_number;
@@ -78,6 +80,7 @@ public:
     };
     std::vector<LobbyPlayer> lobby_players;
     size_t lobby_client_id;
+    size_t leader_client_id;
 
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
 

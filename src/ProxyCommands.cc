@@ -676,6 +676,30 @@ static HandlerResult process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
     }
   }
 
+  if (!data.empty() &&
+      session.next_drop_item.data.data1d[0] &&
+      (session.version != GameVersion::BB)) {
+    if (data[0] == 0x60) {
+      const auto& cmd = check_size_t<G_EnemyDropItemRequest_6x60>(data);
+      session.next_drop_item.data.id = session.next_item_id++;
+      send_drop_item(session.server_channel, session.next_drop_item.data,
+          true, cmd.area, cmd.x, cmd.z, cmd.request_id);
+      send_drop_item(session.client_channel, session.next_drop_item.data,
+          true, cmd.area, cmd.x, cmd.z, cmd.request_id);
+      session.next_drop_item.clear();
+      return HandlerResult::Type::SUPPRESS;
+    } else if (data[0] == -0x5E) { // A2
+      const auto& cmd = check_size_t<G_BoxItemDropRequest_6xA2>(data);
+      session.next_drop_item.data.id = session.next_item_id++;
+      send_drop_item(session.server_channel, session.next_drop_item.data,
+          false, cmd.area, cmd.x, cmd.z, cmd.request_id);
+      send_drop_item(session.client_channel, session.next_drop_item.data,
+          false, cmd.area, cmd.x, cmd.z, cmd.request_id);
+      session.next_drop_item.clear();
+      return HandlerResult::Type::SUPPRESS;
+    }
+  }
+
   return HandlerResult::Type::FORWARD;
 }
 
@@ -766,6 +790,16 @@ static HandlerResult process_server_gc_B8(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
+static void update_leader_id(ProxyServer::LinkedSession& session, uint8_t leader_id) {
+  if (session.leader_client_id != leader_id) {
+    session.leader_client_id = leader_id;
+    session.log.info("Changed room leader to %zu", session.leader_client_id);
+    if (session.leader_client_id == session.lobby_client_id) {
+      send_text_message(session.client_channel, u"$C6You are now the leader");
+    }
+  }
+}
+
 template <typename CmdT>
 static HandlerResult process_server_65_67_68(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
@@ -789,6 +823,7 @@ static HandlerResult process_server_65_67_68(shared_ptr<ServerState>,
   bool modified = false;
 
   session.lobby_client_id = cmd.client_id;
+  update_leader_id(session, cmd.leader_id);
   for (size_t x = 0; x < flag; x++) {
     size_t index = cmd.entries[x].lobby_data.client_id;
     if (index >= session.lobby_players.size()) {
@@ -840,6 +875,7 @@ static HandlerResult process_server_64(shared_ptr<ServerState>,
   bool modified = false;
 
   session.lobby_client_id = cmd->client_id;
+  update_leader_id(session, cmd->leader_id);
   for (size_t x = 0; x < flag; x++) {
     if (cmd->lobby_data[x].guild_card == session.remote_guild_card_number) {
       cmd->lobby_data[x].guild_card = session.license->serial_number;
@@ -885,6 +921,7 @@ static HandlerResult process_server_66_69(shared_ptr<ServerState>,
     session.lobby_players[index].name.clear();
     session.log.info("Removed lobby player (%zu)", index);
   }
+  update_leader_id(session, cmd.leader_id);
   return HandlerResult::Type::FORWARD;
 }
 
@@ -974,7 +1011,11 @@ static HandlerResult process_client_60_62_6C_6D_C9_CB(shared_ptr<ServerState> s,
       if (cmd.guild_card_number == session.license->serial_number) {
         cmd.guild_card_number = session.remote_guild_card_number;
       }
-    } else if (data[0] == 0x2F || data[0] == 0x4C) {
+    }
+  }
+
+  if (!data.empty()) {
+    if (data[0] == 0x2F || data[0] == 0x4C) {
       if (session.infinite_hp) {
         vector<PSOSubcommand> subs;
         for (size_t amount = 1020; amount > 0;) {
