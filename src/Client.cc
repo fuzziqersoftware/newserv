@@ -2,6 +2,7 @@
 
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
+#include <event2/event.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -46,6 +47,11 @@ Client::Client(
     lobby_arrow_color(0),
     prefer_high_lobby_client_id(false),
     preferred_lobby_id(-1),
+    save_game_data_event(
+        event_new(
+          bufferevent_get_base(bev), -1, EV_TIMEOUT | EV_PERSIST,
+          &Client::dispatch_save_game_data, this),
+        event_free),
     next_exp_value(0),
     override_section_id(-1),
     override_random_seed(-1),
@@ -57,6 +63,11 @@ Client::Client(
     dol_base_addr(0) {
   this->last_switch_enabled_command.subcommand = 0;
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
+
+  if (this->version == GameVersion::BB) {
+    struct timeval tv = usecs_to_timeval(60000000); // 1 minute
+    event_add(this->save_game_data_event.get(), &tv);
+  }
 }
 
 void Client::set_license(shared_ptr<const License> l) {
@@ -99,4 +110,22 @@ void Client::import_config(const ClientConfigBB& cc) {
   this->import_config(cc.cfg);
   this->bb_game_state = cc.bb_game_state;
   this->game_data.bb_player_index = cc.bb_player_index;
+}
+
+
+
+void Client::dispatch_save_game_data(evutil_socket_t, short, void* ctx) {
+  reinterpret_cast<Client*>(ctx)->save_game_data();
+}
+
+void Client::save_game_data() {
+  if (this->version != GameVersion::BB) {
+    throw logic_error("save_game_data called for non-BB client");
+  }
+  if (this->game_data.account(false)) {
+    this->game_data.save_account_data();
+  }
+  if (this->game_data.player(false)) {
+    this->game_data.save_player_data();
+  }
 }

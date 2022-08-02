@@ -84,6 +84,7 @@ struct Client {
   bool prefer_high_lobby_client_id;
   int64_t preferred_lobby_id; // <0 = no preference
   ClientGameData game_data;
+  std::unique_ptr<struct event, void(*)(struct event*)> save_game_data_event;
 
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give
@@ -109,4 +110,7 @@ struct Client {
   ClientConfigBB export_config_bb() const;
   void import_config(const ClientConfig& cc);
   void import_config(const ClientConfigBB& cc);
+
+  static void dispatch_save_game_data(evutil_socket_t, short, void* ctx);
+  void save_game_data();
 };
