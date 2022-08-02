@@ -13,6 +13,7 @@
 #include "SendCommands.hh"
 #include "Text.hh"
 #include "Items.hh"
+#include "Map.hh"
 
 using namespace std;
 
@@ -840,7 +841,6 @@ static void process_subcommand_enemy_hit(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-// enemy killed by player
 static void process_subcommand_enemy_killed(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
@@ -849,9 +849,17 @@ static void process_subcommand_enemy_killed(shared_ptr<ServerState> s,
   if (l->version == GameVersion::BB) {
     const auto* cmd = check_size_sc<G_EnemyKilled_6xC8>(data);
 
-    if (!l->is_game() || (cmd->enemy_id >= l->enemies.size() ||
-        (l->enemies[cmd->enemy_id].hit_flags & 0x80))) {
+    if (!l->is_game()) {
+      throw runtime_error("client should not kill enemies outside of games");
+    }
+    if (cmd->enemy_id >= l->enemies.size()) {
+      send_text_message(c, u"$C6Missing enemy killed");
       return;
+    }
+    string e_str = l->enemies[cmd->enemy_id].str();
+    c->log.info("Enemy killed: entry %hu => %s", cmd->enemy_id.load(), e_str.c_str());
+    if (l->enemies[cmd->enemy_id].hit_flags & 0x80) {
+      return; // Enemy is already dead
     }
     if (l->enemies[cmd->enemy_id].experience == 0xFFFFFFFF) {
       send_text_message(c, u"$C6Unknown enemy type killed");
@@ -862,18 +870,18 @@ static void process_subcommand_enemy_killed(shared_ptr<ServerState> s,
     enemy.hit_flags |= 0x80;
     for (size_t x = 0; x < l->max_clients; x++) {
       if (!((enemy.hit_flags >> x) & 1)) {
-        continue; // player did not hit this enemy
+        continue; // Player did not hit this enemy
       }
 
       auto other_c = l->clients[x];
       if (!other_c) {
-        continue; // no player
+        continue; // No player
       }
       if (other_c->game_data.player()->disp.level >= 199) {
-        continue; // player is level 200 or higher
+        continue; // Player is level 200 or higher
       }
 
-      // killer gets full experience, others get 77%
+      // Killer gets full experience, others get 77%
       uint32_t exp;
       if (enemy.last_hit == other_c->lobby_client_id) {
         exp = enemy.experience;

@@ -2112,7 +2112,6 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
       game->next_item_id[x] = (0x00200000 * x) + 0x00010000;
     }
     game->next_game_item_id = 0x00810000;
-    game->enemies.resize(0x0B50);
 
     const auto* bp_subtable = s->battle_params->get_subtable(game->mode == 3,
         game->episode - 1, game->difficulty);
@@ -2130,9 +2129,14 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
             game->variations.data()[x * 2].load(),
             game->variations.data()[(x * 2) + 1].load());
         try {
-          game->enemies = load_map(filename.c_str(), game->episode,
+          auto enemies = load_map(filename.c_str(), game->episode,
               game->difficulty, bp_subtable, false);
-          c->log.info("Loaded map %s", filename.c_str());
+          game->enemies.insert(game->enemies.end(), enemies.begin(), enemies.end());
+          c->log.info("Loaded map %s (%zu entries)", filename.c_str(), enemies.size());
+          for (size_t z = 0; z < enemies.size(); z++) {
+            string e_str = enemies[z].str();
+            static_game_data_log.info("(Entry %zu) %s", z, e_str.c_str());
+          }
           break;
         } catch (const exception& e) {
           c->log.warning("Failed to load map %s: %s", filename.c_str(), e.what());
@@ -2143,6 +2147,7 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     if (game->enemies.empty()) {
       throw runtime_error("failed to load any map data");
     }
+    c->log.info("Loaded maps contain %zu entries overall", game->enemies.size());
 
   } else {
     // In non-BB games, just set the variations (we don't track items/enemies/
