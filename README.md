@@ -48,7 +48,7 @@ Standard quest file names should be like `q###-CATEGORY-VERSION.EXT`; battle que
 - `###`: quest number (this doesn't really matter; it should just be unique for the version)
 - `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gov = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
 - `VERSION`: d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
-- `EXT`: file extension (bin, dat, bin.gci, dat.gci, bin.dlq, dat.dlq, or qst)
+- `EXT`: file extension (bin, dat, bind, datd, bin.gci, dat.gci, bin.dlq, dat.dlq, or qst)
 
 There are multiple PSO quest formats out there; newserv supports most of them. Specifically, newserv can use quests in any of the following formats:
 - Compressed bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file. (This is the format you'll get if you saved a quest with set-save-files.)
@@ -105,7 +105,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$warp <area-id>`: Warps yourself to the given area.
     * `$next` (game server only): Warps yourself to the next area.
     * `$swa`: Enables or disables switch assist. When enabled, the server will attempt to automatically unlock two-player doors in solo games if you step on both switches sequentially.
-    * `$item <data>`: Sets the next item to be dropped from an enemy or box. Item codes must be between 2 and 16 hex bytes; all unspecified bytes are zeroes. If you are on the proxy server, you must be the game leader and not using Blue Burst for this command to work. On the game server, this command works for all versions, and you do not have to be the game leader.
+    * `$item <data>`: Sets the next item to be dropped from an enemy or box. Item codes are 16 hex bytes; at least 2 bytes must be specified, and all unspecified bytes are zeroes. If you are on the proxy server, you must be the game leader and not using Blue Burst for this command to work. On the game server, this command works for all versions, and you do not have to be the game leader.
 
 * Configuration commands
     * `$event <event>`: Sets the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, this applies to all lobbies and games you join, but only you will see the new event - other players will not.
