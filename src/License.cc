@@ -85,55 +85,71 @@ void LicenseManager::set_autosave(bool autosave) {
 
 shared_ptr<const License> LicenseManager::verify_pc(uint32_t serial_number,
     const string& access_key) const {
-  auto& license = this->serial_number_to_license.at(serial_number);
-  if (!license->access_key.eq_n(access_key, 8)) {
-    throw invalid_argument("incorrect access key");
-  }
+  try {
+    auto& license = this->serial_number_to_license.at(serial_number);
+    if (!license->access_key.eq_n(access_key, 8)) {
+      throw incorrect_access_key();
+    }
 
-  if (license->ban_end_time && (license->ban_end_time >= now())) {
-    throw invalid_argument("user is banned");
+    if (license->ban_end_time && (license->ban_end_time >= now())) {
+      throw invalid_argument("user is banned");
+    }
+    return license;
+  } catch (const out_of_range&) {
+    throw missing_license();
   }
-  return license;
 }
 
 shared_ptr<const License> LicenseManager::verify_gc(uint32_t serial_number,
     const string& access_key) const {
-  auto& license = this->serial_number_to_license.at(serial_number);
-  if (!license->access_key.eq_n(access_key, 12)) {
-    throw invalid_argument("incorrect access key");
+  try {
+    auto& license = this->serial_number_to_license.at(serial_number);
+    if (!license->access_key.eq_n(access_key, 12)) {
+      throw incorrect_access_key();
+    }
+    if (license->ban_end_time && (license->ban_end_time >= now())) {
+      throw invalid_argument("user is banned");
+    }
+    return license;
+  } catch (const out_of_range&) {
+    throw missing_license();
   }
-  if (license->ban_end_time && (license->ban_end_time >= now())) {
-    throw invalid_argument("user is banned");
-  }
-  return license;
 }
 
 shared_ptr<const License> LicenseManager::verify_gc(uint32_t serial_number,
     const string& access_key, const string& password) const {
-  auto& license = this->serial_number_to_license.at(serial_number);
-  if (!license->access_key.eq_n(access_key, 12)) {
-    throw invalid_argument("incorrect access key");
+  try {
+    auto& license = this->serial_number_to_license.at(serial_number);
+    if (!license->access_key.eq_n(access_key, 12)) {
+      throw incorrect_access_key();
+    }
+    if (license->gc_password != password) {
+      throw incorrect_password();
+    }
+    if (license->ban_end_time && (license->ban_end_time >= now())) {
+      throw invalid_argument("user is banned");
+    }
+    return license;
+  } catch (const out_of_range&) {
+    throw missing_license();
   }
-  if (license->gc_password != password) {
-    throw invalid_argument("incorrect password");
-  }
-  if (license->ban_end_time && (license->ban_end_time >= now())) {
-    throw invalid_argument("user is banned");
-  }
-  return license;
 }
 
 shared_ptr<const License> LicenseManager::verify_bb(const string& username,
     const string& password) const {
-  auto& license = this->bb_username_to_license.at(username);
-  if (license->bb_password != password) {
-    throw invalid_argument("incorrect password");
-  }
+  try {
+    auto& license = this->bb_username_to_license.at(username);
+    if (license->bb_password != password) {
+      throw incorrect_password();
+    }
 
-  if (license->ban_end_time && (license->ban_end_time >= now())) {
-    throw invalid_argument("user is banned");
+    if (license->ban_end_time && (license->ban_end_time >= now())) {
+      throw invalid_argument("user is banned");
+    }
+    return license;
+  } catch (const out_of_range&) {
+    throw missing_license();
   }
-  return license;
 }
 
 size_t LicenseManager::count() const {

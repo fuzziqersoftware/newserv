@@ -44,6 +44,21 @@ struct License {
   std::string str() const;
 } __attribute__((packed));
 
+class incorrect_password : public std::invalid_argument {
+public:
+  incorrect_password() : invalid_argument("incorrect password") { }
+};
+
+class incorrect_access_key : public std::invalid_argument {
+public:
+  incorrect_access_key() : invalid_argument("incorrect access key") { }
+};
+
+class missing_license : public std::invalid_argument {
+public:
+  missing_license() : invalid_argument("missing license") { }
+};
+
 class LicenseManager {
 public:
   LicenseManager();

@@ -160,16 +160,28 @@ void process_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 void process_verify_license_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // DB
   const auto& cmd = check_size_t<C_VerifyLicense_V3_DB>(data);
+  c->flags |= flags_for_version(c->version, cmd.sub_version);
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
     auto l = s->license_manager->verify_gc(serial_number, cmd.access_key,
         cmd.password);
     c->set_license(l);
-  } catch (const exception& e) {
+    send_command(c, 0x9A, 0x02);
+
+  } catch (const incorrect_access_key& e) {
+    send_command(c, 0x9A, 0x03);
+    c->should_disconnect = true;
+    return;
+
+  } catch (const incorrect_password& e) {
+    send_command(c, 0x9A, 0x07);
+    c->should_disconnect = true;
+    return;
+
+  } catch (const missing_license& e) {
     if (!s->allow_unregistered_users) {
-      u16string message = u"Login failed: " + decode_sjis(e.what());
-      send_message_box(c, message.c_str());
+      send_command(c, 0x9A, 0x04);
       c->should_disconnect = true;
       return;
     } else {
@@ -177,11 +189,9 @@ void process_verify_license_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
           cmd.password, true);
       s->license_manager->add(l);
       c->set_license(l);
+      send_command(c, 0x9A, 0x02);
     }
   }
-
-  c->flags |= flags_for_version(c->version, cmd.sub_version);
-  send_command(c, 0x9A, 0x02);
 }
 
 void process_login_a_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -207,28 +217,37 @@ void process_login_a_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
         throw logic_error("unsupported versioned command");
     }
     c->set_license(l);
+    send_command(c, 0x9A, 0x02);
 
-  } catch (const exception& e) {
+  } catch (const incorrect_access_key& e) {
+    send_command(c, 0x9A, 0x03);
+    c->should_disconnect = true;
+    return;
+
+  } catch (const incorrect_password& e) {
+    send_command(c, 0x9A, 0x07);
+    c->should_disconnect = true;
+    return;
+
+  } catch (const missing_license& e) {
     // On V3, the client should have sent a different command containing the
     // password already, which should have created and added a temporary
     // license. So, if no license exists at this point, disconnect the client
     // even if unregistered clients are allowed.
     shared_ptr<License> l;
     if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
-      u16string message = u"Login failed: " + decode_sjis(e.what());
-      send_message_box(c, message.c_str());
+      send_command(c, 0x9A, 0x04);
       c->should_disconnect = true;
       return;
     } else if (c->version == GameVersion::PC) {
       l = LicenseManager::create_license_pc(serial_number, cmd.access_key, true);
+      s->license_manager->add(l);
+      c->set_license(l);
+      send_command(c, 0x9A, 0x02);
     } else {
       throw runtime_error("unsupported game version");
     }
-    s->license_manager->add(l);
-    c->set_license(l);
   }
-
-  send_command(c, 0x9C, 0x01);
 }
 
 void process_login_c_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -255,11 +274,16 @@ void process_login_c_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
         throw logic_error("unsupported versioned command");
     }
     c->set_license(l);
+    send_command(c, 0x9C, 0x01);
 
-  } catch (const exception& e) {
+  } catch (const incorrect_password& e) {
+    send_command(c, 0x9C, 0x00);
+    c->should_disconnect = true;
+    return;
+
+  } catch (const missing_license& e) {
     if (!s->allow_unregistered_users) {
-      u16string message = u"Login failed: " + decode_sjis(e.what());
-      send_message_box(c, message.c_str());
+      send_command(c, 0x9C, 0x00);
       c->should_disconnect = true;
       return;
     } else {
@@ -281,10 +305,9 @@ void process_login_c_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
       s->license_manager->add(l);
       c->set_license(l);
+      send_command(c, 0x9C, 0x01);
     }
   }
-
-  send_command(c, 0x9C, 0x01);
 }
 
 void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -349,13 +372,33 @@ void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
     c->set_license(l);
 
-  } catch (const exception& e) {
-    // See comment in 9A handler about why we do this even if unregistered users
-    // are allowed on the server
-    u16string message = u"Login failed: " + decode_sjis(e.what());
-    send_message_box(c, message.c_str());
+  } catch (const incorrect_access_key& e) {
+    send_command(c, 0x04, 0x03);
     c->should_disconnect = true;
     return;
+
+  } catch (const incorrect_password& e) {
+    send_command(c, 0x04, 0x06);
+    c->should_disconnect = true;
+    return;
+
+  } catch (const missing_license& e) {
+    // On V3, the client should have sent a different command containing the
+    // password already, which should have created and added a temporary
+    // license. So, if no license exists at this point, disconnect the client
+    // even if unregistered clients are allowed.
+    shared_ptr<License> l;
+    if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
+      send_command(c, 0x04, 0x04);
+      c->should_disconnect = true;
+      return;
+    } else if (c->version == GameVersion::PC) {
+      l = LicenseManager::create_license_pc(serial_number, base_cmd->access_key, true);
+      s->license_manager->add(l);
+      c->set_license(l);
+    } else {
+      throw runtime_error("unsupported game version");
+    }
   }
 
   if ((c->flags & Client::Flag::EPISODE_3) && (s->ep3_menu_song >= 0)) {
@@ -386,7 +429,14 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   try {
     auto l = s->license_manager->verify_bb(cmd.username, cmd.password);
     c->set_license(l);
-  } catch (const exception& e) {
+
+  } catch (const incorrect_password& e) {
+    u16string message = u"Login failed: " + decode_sjis(e.what());
+    send_message_box(c, message.c_str());
+    c->should_disconnect = true;
+    return;
+
+  } catch (const missing_license& e) {
     if (!s->allow_unregistered_users) {
       u16string message = u"Login failed: " + decode_sjis(e.what());
       send_message_box(c, message.c_str());
