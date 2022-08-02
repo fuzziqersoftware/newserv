@@ -12,40 +12,55 @@ using namespace std;
 
 uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
   switch (sub_version) {
-    case -1: // initial check (before 9E recognition)
+    case -1: // Initial check (before 9E recognition)
       switch (version) {
         case GameVersion::DC:
-          return Client::Flag::DEFAULT_V2_DC;
+          // TODO: For DCv1, the flags should be:
+          //   Client::Flag::DCV1 |
+          //   Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
+          //   Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL
+          return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
         case GameVersion::GC:
         case GameVersion::XB:
-          return Client::Flag::DEFAULT_V3_GC;
+          return 0;
         case GameVersion::PC:
-          return Client::Flag::DEFAULT_V2_PC;
+          return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
+                 Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
         case GameVersion::PATCH:
-          return Client::Flag::DEFAULT_V2_PC;
+          return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
+                 Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL;
         case GameVersion::BB:
-          return Client::Flag::DEFAULT_V4_BB;
+          return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
+                 Client::Flag::SAVE_ENABLED;
       }
       break;
     case 0x29: // PC
-      return Client::Flag::DEFAULT_V2_PC;
+      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
+             Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
     case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
     case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
+    case 0x34: // GC Ep1&2 JP v1.03
+      return 0;
     case 0x32: // GC Ep1&2 EU 50Hz
     case 0x33: // GC Ep1&2 EU 60Hz
-    case 0x34: // GC Ep1&2 JP v1.03
-      return Client::Flag::DEFAULT_V3_GC;
+      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN;
     case 0x35: // GC Ep1&2 JP v1.04 (Plus)
-      return Client::Flag::DEFAULT_V3_GC_PLUS;
+      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
+             Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
     case 0x36: // GC Ep1&2 US v1.02 (Plus)
     case 0x39: // GC Ep1&2 JP v1.05 (Plus)
-      return Client::Flag::DEFAULT_V3_GC_PLUS_NO_SFC;
+      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
+             Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL;
     case 0x42: // GC Ep3 JP
-      return Client::Flag::DEFAULT_V3_GC_EP3;
+      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
+             Client::Flag::EPISODE_3 |
+             Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
     case 0x40: // GC Ep3 trial (TODO: Does this support send_function_call?)
     case 0x41: // GC Ep3 US
     case 0x43: // GC Ep3 EU
-      return Client::Flag::DEFAULT_V3_GC_EP3_NO_SFC;
+      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
+             Client::Flag::EPISODE_3 |
+             Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL;
   }
   throw runtime_error("unknown sub_version");
 }

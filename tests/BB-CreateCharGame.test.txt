@@ -111,7 +111,7 @@ I 80350 2022-07-07 23:26:22 - [Commands] Received from C-3 (version=BB command=0
 I 80350 2022-07-07 23:26:22 - [Commands] Sending to C-3 (version=BB command=00E6 flag=00000000)
 0000000000000000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0000000000000010 | 5B 30 B0 21 10 11 69 77 39 98 AC 82 0E 89 2A 49 | [0 !  iw9     *I
-0000000000000020 | 06 04 00 00 00 00 00 00 FF FF FF FF FF FF FF FF |                 
+0000000000000020 | 04 04 00 00 00 00 00 00 FF FF FF FF FF FF FF FF |                 
 0000000000000030 | FF FF FF FF FF FF FF FF 00 00 FF FF FF FF FF FF |                 
 0000000000000040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:26:22 - [Commands] Sending to C-3 (version=BB command=0019 flag=00000000)
