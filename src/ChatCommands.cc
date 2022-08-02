@@ -417,81 +417,86 @@ static void server_command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   check_is_game(l, false);
   check_version(c, GameVersion::BB);
 
-  string encoded_args = encode_sjis(args);
+  string encoded_args = tolower(encode_sjis(args));
   vector<string> tokens = split(encoded_args, ' ');
 
-  if (tokens.size() < 3) {
+  try {
+    if (tokens.at(0) == "atp") {
+      c->game_data.player()->disp.stats.atp = stoul(tokens.at(1));
+    } else if (tokens.at(0) == "mst") {
+      c->game_data.player()->disp.stats.mst = stoul(tokens.at(1));
+    } else if (tokens.at(0) == "evp") {
+      c->game_data.player()->disp.stats.evp = stoul(tokens.at(1));
+    } else if (tokens.at(0) == "hp") {
+      c->game_data.player()->disp.stats.hp = stoul(tokens.at(1));
+    } else if (tokens.at(0) == "dfp") {
+      c->game_data.player()->disp.stats.dfp = stoul(tokens.at(1));
+    } else if (tokens.at(0) == "ata") {
+      c->game_data.player()->disp.stats.ata = stoul(tokens.at(1));
+    } else if (tokens.at(0) == "lck") {
+      c->game_data.player()->disp.stats.lck = stoul(tokens.at(1));
+    } else if (tokens.at(0) == "meseta") {
+      c->game_data.player()->disp.meseta = stoul(tokens.at(1));
+    } else if (tokens.at(0) == "exp") {
+      c->game_data.player()->disp.experience = stoul(tokens.at(1));
+    } else if (tokens.at(0) == "level") {
+      c->game_data.player()->disp.level = stoul(tokens.at(1)) - 1;
+    } else if (tokens.at(0) == "namecolor") {
+      uint32_t new_color;
+      sscanf(tokens.at(1).c_str(), "%8X", &new_color);
+      c->game_data.player()->disp.name_color = new_color;
+    } else if (tokens.at(0) == "secid") {
+      uint8_t secid = section_id_for_name(decode_sjis(tokens.at(1)));
+      if (secid == 0xFF) {
+        send_text_message(c, u"$C6No such section ID");
+        return;
+      } else {
+        c->game_data.player()->disp.section_id = secid;
+      }
+    } else if (tokens.at(0) == "name") {
+      c->game_data.player()->disp.name = add_language_marker(tokens.at(1), 'J');
+    } else if (tokens.at(0) == "npc") {
+      if (tokens.at(1) == "none") {
+        c->game_data.player()->disp.extra_model = 0;
+        c->game_data.player()->disp.v2_flags &= 0xFD;
+      } else {
+        uint8_t npc = npc_for_name(decode_sjis(tokens.at(1)));
+        if (npc == 0xFF) {
+          send_text_message(c, u"$C6No such NPC");
+          return;
+        }
+        c->game_data.player()->disp.extra_model = npc;
+        c->game_data.player()->disp.v2_flags |= 0x02;
+      }
+    } else if (tokens.at(0) == "tech") {
+      uint8_t level = stoul(tokens.at(2)) - 1;
+      if (tokens.at(1) == "all") {
+        for (size_t x = 0; x < 0x14; x++) {
+          c->game_data.player()->disp.technique_levels.data()[x] = level;
+        }
+      } else {
+        uint8_t tech_id = technique_for_name(decode_sjis(tokens.at(1)));
+        if (tech_id == 0xFF) {
+          send_text_message(c, u"$C6No such technique");
+          return;
+        }
+        try {
+          c->game_data.player()->disp.technique_levels[tech_id] = level;
+        } catch (const out_of_range&) {
+          send_text_message(c, u"$C6Invalid technique");
+          return;
+        }
+      }
+    } else {
+      send_text_message(c, u"$C6Unknown field");
+      return;
+    }
+  } catch (const out_of_range&) {
     send_text_message(c, u"$C6Not enough arguments");
     return;
   }
 
-  if (tokens[0] == "atp") {
-    c->game_data.player()->disp.stats.atp = stoul(tokens[1]);
-  } else if (tokens[0] == "mst") {
-    c->game_data.player()->disp.stats.mst = stoul(tokens[1]);
-  } else if (tokens[0] == "evp") {
-    c->game_data.player()->disp.stats.evp = stoul(tokens[1]);
-  } else if (tokens[0] == "hp") {
-    c->game_data.player()->disp.stats.hp = stoul(tokens[1]);
-  } else if (tokens[0] == "dfp") {
-    c->game_data.player()->disp.stats.dfp = stoul(tokens[1]);
-  } else if (tokens[0] == "ata") {
-    c->game_data.player()->disp.stats.ata = stoul(tokens[1]);
-  } else if (tokens[0] == "lck") {
-    c->game_data.player()->disp.stats.lck = stoul(tokens[1]);
-  } else if (tokens[0] == "meseta") {
-    c->game_data.player()->disp.meseta = stoul(tokens[1]);
-  } else if (tokens[0] == "exp") {
-    c->game_data.player()->disp.experience = stoul(tokens[1]);
-  } else if (tokens[0] == "level") {
-    c->game_data.player()->disp.level = stoul(tokens[1]) - 1;
-  } else if (tokens[0] == "namecolor") {
-    uint32_t new_color;
-    sscanf(tokens[1].c_str(), "%8X", &new_color);
-    c->game_data.player()->disp.name_color = new_color;
-  } else if (tokens[0] == "secid") {
-    uint8_t secid = section_id_for_name(decode_sjis(tokens[1]));
-    if (secid == 0xFF) {
-      send_text_message(c, u"$C6No such section ID.");
-      return;
-    } else {
-      c->game_data.player()->disp.section_id = secid;
-    }
-  } else if (tokens[0] == "name") {
-    c->game_data.player()->disp.name = add_language_marker(tokens[1], 'J');
-  } else if (tokens[0] == "npc") {
-    if (tokens[1] == "none") {
-      c->game_data.player()->disp.extra_model = 0;
-      c->game_data.player()->disp.v2_flags &= 0xFD;
-    } else {
-      uint8_t npc = npc_for_name(decode_sjis(tokens[1]));
-      if (npc == 0xFF) {
-        send_text_message(c, u"$C6No such NPC.");
-        return;
-      }
-      c->game_data.player()->disp.extra_model = npc;
-      c->game_data.player()->disp.v2_flags |= 0x02;
-    }
-  } else if ((tokens[0] == "tech") && (tokens.size() > 2)) {
-    uint8_t level = stoul(tokens[2]) - 1;
-    if (tokens[1] == "all") {
-      for (size_t x = 0; x < 0x14; x++) {
-        c->game_data.player()->disp.technique_levels.data()[x] = level;
-      }
-    } else {
-      uint8_t tech_id = technique_for_name(decode_sjis(tokens[1]));
-      if (tech_id == 0xFF) {
-        send_text_message(c, u"$C6No such technique.");
-        return;
-      }
-      c->game_data.player()->disp.technique_levels.data()[tech_id] = level;
-    }
-  } else {
-    send_text_message(c, u"$C6Unknown field.");
-    return;
-  }
-
-  // reload the client in the lobby/game
+  // Reload the client in the lobby
   send_player_leave_notification(l, c->lobby_client_id);
   send_complete_player_bb(c);
   s->send_lobby_join_notifications(l, c);
@@ -534,7 +539,7 @@ static void server_command_convert_char_to_bb(shared_ptr<ServerState> s,
 
   c->pending_bb_save_username = tokens[0];
 
-  // request the player data. the client will respond with a 61, and the handler
+  // Request the player data. The client will respond with a 61, and the handler
   // for that command will execute the conversion
   send_command(c, 0x95, 0x00);
 }
