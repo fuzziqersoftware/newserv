@@ -2584,7 +2584,7 @@ struct S_Unknown_BB_F0 {
 // indicate that they are (usually) bidirectional, and are (usually) generated
 // by clients and consumed by clients.
 
-// This structure is used by many commands (noted below)
+// These structures are used by many commands (noted below)
 struct G_ItemSubcommand {
   uint8_t command;
   uint8_t size;
@@ -2593,6 +2593,14 @@ struct G_ItemSubcommand {
   le_uint32_t item_id;
   le_uint32_t amount;
 };
+
+struct G_ItemIDSubcommand {
+  uint8_t subcommand;
+  uint8_t size;
+  le_uint16_t unused;
+  le_uint32_t item_id;
+};
+
 
 
 
@@ -3102,10 +3110,21 @@ struct G_ShopContents_BB_6xB6 {
 
 // B7: BB buy shop item (handled by the server)
 
-// B8: Accept tekker result (handled by the server on BB)
-// Format is G_IdentifyResult
+struct G_BuyShopItem_BB_6xB7 {
+  uint8_t subcommand;
+  uint8_t size;
+  le_uint16_t unused;
+  le_uint32_t inventory_item_id;
+  uint8_t shop_type;
+  uint8_t item_index;
+  uint8_t amount;
+  uint8_t unknown_a1; // TODO: Probably actually unused; verify this
+};
 
-// B9: Provisional tekker result
+// B8: BB accept tekker result (handled by the server)
+// Format is G_ItemIDSubcommand
+
+// B9: BB provisional tekker result
 
 struct G_IdentifyResult_BB_6xB9 {
   uint8_t subcommand;
@@ -3115,7 +3134,11 @@ struct G_IdentifyResult_BB_6xB9 {
   ItemData item;
 };
 
-// BA: Unknown (Episode 3 only)
+// BA: Unknown (Episode 3)
+
+// BA: BB accept tekker result (handled by the server)
+// Format is G_ItemIDSubcommand
+
 // BB: Unknown (Episode 3)
 // BB: BB bank request (handled by the server)
 // BC: Unknown (Episode 3)
@@ -3168,7 +3191,9 @@ struct G_GiveExperience_BB_6xBF {
   le_uint32_t amount;
 };
 
-// C0: Unknown
+// C0: BB sell item at shop
+// Format is G_ItemSubcommand
+
 // C1: Unknown
 // C2: Unknown
 

@@ -949,11 +949,10 @@ static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->version == GameVersion::BB) {
-    const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
-    if (!l->is_game() || (cmd->client_id != c->lobby_client_id)) {
+    const auto* cmd = check_size_sc<G_ItemIDSubcommand>(data);
+    if (!l->is_game()) {
       return;
     }
-
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
       throw logic_error("item tracking not enabled in BB game");
     }
@@ -970,7 +969,7 @@ static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
     // TODO: move this into a SendCommands.cc function
     G_IdentifyResult_BB_6xB9 res;
     res.subcommand = 0xB9;
-    res.size = sizeof(cmd) / 4;
+    res.size = sizeof(res) / 4;
     res.client_id = c->lobby_client_id;
     res.unused = 0;
     res.item = c->game_data.identify_result.data;
@@ -981,31 +980,65 @@ static void process_subcommand_identify_item_bb(shared_ptr<ServerState>,
   }
 }
 
-// player accepts the tekk
-// TODO: I don't know which subcommand id this is; the function should be
-// correct though so we can just put it in the table when we figure out the id
-// static void process_subcommand_accept_identified_item(shared_ptr<ServerState> s,
-//     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-//     const string& data) {
-//
-//   if (l->version == GameVersion::BB) {
-//     const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
-//
-//     if (cmd->client_id != c->lobby_client_id) {
-//       return;
-//     }
-//     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-//       throw logic_error("item tracking not enabled in BB game");
-//     }
-//
-//     size_t x = c->game_data.player()->inventory.find_item(cmd->item_id);
-//     c->game_data.player()->inventory.items[x] = c->game_data.player()->identify_result;
-//     // TODO: what do we send to the other clients? anything?
-//
-//   } else {
-//     forward_subcommand(l, c, command, flag, data);
-//   }
-// }
+static void process_subcommand_accept_identify_item_bb(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+
+  if (l->version == GameVersion::BB) {
+    const auto* cmd = check_size_sc<G_ItemIDSubcommand>(data);
+
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
+    }
+
+    if (!c->game_data.identify_result.data.id) {
+      throw runtime_error("no identify result present");
+    }
+    if (c->game_data.identify_result.data.id != cmd->item_id) {
+      throw runtime_error("accepted item ID does not match previous identify request");
+    }
+    c->game_data.player()->add_item(c->game_data.identify_result);
+    send_create_inventory_item(l, c, c->game_data.identify_result.data);
+    c->game_data.identify_result.clear();
+
+  } else {
+    forward_subcommand(l, c, command, flag, data);
+  }
+}
+
+static void process_subcommand_sell_item_at_shop_bb(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client>, uint8_t, uint8_t, const string&) {
+
+  if (l->version == GameVersion::BB) {
+    // const auto* cmd = check_size_sc<G_ItemSubcommand>(data);
+
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
+    }
+
+    // TODO: We should subtract the appropriate amount of meseta and do an
+    // appropriate send_create_inventory_item call here. Shop prices are not
+    // implemented yet, though, which is why this is difficult.
+    throw logic_error("shop actions are not yet implemented");
+  }
+}
+
+static void process_subcommand_buy_shop_item_bb(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client>, uint8_t, uint8_t, const string&) {
+
+  if (l->version == GameVersion::BB) {
+    // const auto* cmd = check_size_sc<G_BuyShopItem_BB_6xB7>(data);
+
+    if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      throw logic_error("item tracking not enabled in BB game");
+    }
+
+    // TODO: We should subtract the appropriate amount of meseta and do an
+    // appropriate send_create_inventory_item call here. Shop prices are not
+    // implemented yet, though, which is why this is difficult.
+    throw logic_error("shop actions are not yet implemented");
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1289,16 +1322,16 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* B4 */ process_subcommand_forward_check_size_ep3_game,
   /* B5 */ process_subcommand_open_shop_bb_or_unknown_ep3, // BB shop request
   /* B6 */ process_subcommand_unimplemented, // BB shop contents (server->client only)
-  /* B7 */ process_subcommand_unimplemented, // TODO: BB buy shop item
-  /* B8 */ process_subcommand_identify_item_bb, // Accept tekker result
+  /* B7 */ process_subcommand_buy_shop_item_bb,
+  /* B8 */ process_subcommand_identify_item_bb,
   /* B9 */ process_subcommand_unimplemented,
-  /* BA */ process_subcommand_unimplemented,
-  /* BB */ process_subcommand_open_bank_bb, // BB Bank request
+  /* BA */ process_subcommand_accept_identify_item_bb,
+  /* BB */ process_subcommand_open_bank_bb,
   /* BC */ process_subcommand_unimplemented, // BB bank contents (server->client only)
   /* BD */ process_subcommand_bank_action_bb,
   /* BE */ process_subcommand_unimplemented, // BB create inventory item (server->client only)
   /* BF */ process_subcommand_forward_check_size_ep3_lobby, // Ep3 change music, also BB give EXP (BB usage is server->client only)
-  /* C0 */ process_subcommand_unimplemented,
+  /* C0 */ process_subcommand_sell_item_at_shop_bb,
   /* C1 */ process_subcommand_unimplemented,
   /* C2 */ process_subcommand_unimplemented,
   /* C3 */ process_subcommand_drop_partial_stack_bb, // Split stacked item - not sent if entire stack is dropped
