@@ -389,4 +389,10 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   try {
     this->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());
   } catch (const out_of_range&) { }
+  try {
+    this->pc_patch_server_message = decode_sjis(d.at("PCPatchServerMessage")->as_string());
+  } catch (const out_of_range&) { }
+  try {
+    this->bb_patch_server_message = decode_sjis(d.at("BBPatchServerMessage")->as_string());
+  } catch (const out_of_range&) { }
 }

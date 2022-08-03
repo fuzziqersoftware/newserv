@@ -189,8 +189,17 @@
   // Welcome message. If not blank, this message will be shown to PSO GC users
   // upon first connecting. (If this is blank, they will be taken directly to
   // the main menu instead.) The welcome message is never shown to PSO PC or PSO
-  // BB users.
+  // BB users, though the patch server message (below) can be used for a similar
+  // purpose.
   "WelcomeMessage": "",
+
+  // Patch server message. If not blank, these messages will be shown to PSO PC
+  // and PSO BB users (respectively) when they connect to the patch server. Note
+  // that PSO PC displays the text in a Windows edit control instead of using
+  // PSO's normal text renderer, so linebreaks must be \r\n and color escapes
+  // (e.g. $C6) do not work in PCPatchServerMessage.
+  "PCPatchServerMessage": "$C7newserv patch server\n\nThis server is not affiliated with, sponsored by, or in any\nother way connected to SEGA or Sonic Team, and is owned\nand operated completely independently.",
+  "BBPatchServerMessage": "newserv patch server\r\n\r\nThis server is not affiliated with, sponsored by, or in any other way connected to SEGA or Sonic Team, and is owned and operated completely independently.",
 
   // Default lobby event. If set, this sets the holiday event in all lobbies at
   // server start time, as well as the pre-lobby holiday event. The event can be

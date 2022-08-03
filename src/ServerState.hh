@@ -20,7 +20,7 @@
 
 
 
-// Forwawrd declarations due to reference cycles
+// Forward declarations due to reference cycles
 class ProxyServer;
 class Server;
 
@@ -73,6 +73,8 @@ struct ServerState {
   std::pair<std::string, uint16_t> proxy_destination_patch;
   std::pair<std::string, uint16_t> proxy_destination_bb;
   std::u16string welcome_message;
+  std::u16string pc_patch_server_message;
+  std::u16string bb_patch_server_message;
 
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order;

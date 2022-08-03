@@ -2372,7 +2372,7 @@ void process_encryption_ok_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
   send_command(c, 0x04, 0x00); // This requests the user's login information
 }
 
-void process_login_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
+void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Login_Patch_04>(data);
 
@@ -2382,24 +2382,13 @@ void process_login_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
 
   // On BB we can use colors and newlines should be \n; on PC we can't use
   // colors, the text is auto-word-wrapped, and newlines should be \r\n.
-  u16string message;
-  if (c->flags & Client::Flag::BB_PATCH) {
-    message = u"\
-$C7newserv patch server\n\
-\n\
-This server is not affiliated with, sponsored by, or in any\n\
-other way connected to SEGA or Sonic Team, and is owned\n\
-and operated completely independently.";
-  } else {
-    message = u"\
-newserv patch server\r\n\
-\r\n\
-This server is not affiliated with, sponsored by, or in any other way \
-connected to SEGA or Sonic Team, and is owned and operated completely \
-independently.";
+  const u16string& message = (c->flags & Client::Flag::BB_PATCH)
+      ? s->bb_patch_server_message : s->pc_patch_server_message;
+  if (!message.empty()) {
+    send_message_box(c, message.c_str());
   }
 
-  send_message_box(c, message.c_str());
+  // TODO: Implement patch serving for realz.
   send_enter_directory_patch(c, ".");
   send_enter_directory_patch(c, "data");
   send_enter_directory_patch(c, "scene");
