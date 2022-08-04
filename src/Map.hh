@@ -6,6 +6,8 @@
 #include <vector>
 #include <string>
 
+#include "Text.hh"
+
 
 
 struct BattleParams {
@@ -21,24 +23,24 @@ struct BattleParams {
     le_uint32_t difficulty;
 } __attribute__((packed));
 
-struct BattleParamTable {
-  BattleParams entries[2][3][4][0x60]; // online/offline, episode, difficulty, monster type
+class BattleParamsIndex {
+public:
+  using TableT = parray<BattleParams, 0x60>;
 
-  BattleParamTable(const char* filename_prefix);
+  BattleParamsIndex(const char* filename_prefix);
 
   const BattleParams& get(bool solo, uint8_t episode, uint8_t difficulty,
       uint8_t monster_type) const;
-  const BattleParams* get_subtable(bool solo, uint8_t episode,
-      uint8_t difficulty) const;
-} __attribute__((packed));
+  std::shared_ptr<const TableT> get_subtable(
+      bool solo, uint8_t episode, uint8_t difficulty) const;
+
+private:
+  // online/offline, episode, difficulty
+  std::shared_ptr<TableT> entries[2][3][4];
+};
 
 
 
-struct BattleParamIndex {
-  BattleParamTable table_for_episode[3];
-} __attribute__((packed));
-
-// an enemy entry as loaded by the game
 struct PSOEnemy {
   uint64_t id;
   uint16_t source_type;
@@ -53,5 +55,10 @@ struct PSOEnemy {
   std::string str() const;
 } __attribute__((packed));
 
-std::vector<PSOEnemy> load_map(const std::string& filename, uint8_t episode,
-    uint8_t difficulty, const BattleParams* bp, bool alt_enemies);
+std::vector<PSOEnemy> parse_map(
+    uint8_t episode,
+    uint8_t difficulty,
+    std::shared_ptr<const BattleParamsIndex::TableT> battle_params,
+    const void* data,
+    size_t size,
+    bool alt_enemies);

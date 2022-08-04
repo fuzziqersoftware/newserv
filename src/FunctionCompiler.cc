@@ -32,9 +32,9 @@ string CompiledFunctionCode::generate_client_command(
       const string& suffix) const {
   S_ExecuteCode_Footer_GC_B2 footer;
   footer.num_relocations = this->relocation_deltas.size();
-  footer.unused1.clear();
+  footer.unused1.clear(0);
   footer.entrypoint_addr_offset = this->entrypoint_offset_offset;
-  footer.unused2.clear();
+  footer.unused2.clear(0);
 
   StringWriter w;
   if (!label_writes.empty()) {

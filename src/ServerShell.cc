@@ -163,7 +163,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
         shared_ptr<LicenseManager> lm(new LicenseManager("system/licenses.nsi"));
         this->state->license_manager = lm;
       } else if (type == "battle-params") {
-        shared_ptr<BattleParamTable> bpt(new BattleParamTable("system/blueburst/BattleParamEntry"));
+        shared_ptr<BattleParamsIndex> bpt(new BattleParamsIndex("system/blueburst/BattleParamEntry"));
         this->state->battle_params = bpt;
       } else if (type == "level-table") {
         shared_ptr<LevelTable> lt(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));

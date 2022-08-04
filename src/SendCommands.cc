@@ -376,16 +376,16 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
     string key = "system/blueburst/" + filename;
     auto cache_res = bb_stream_files_cache.get_or_load(key);
     auto& e = entries.emplace_back();
-    e.size = cache_res.data->size();
+    e.size = cache_res.file->data.size();
     // Computing the checksum can be slow, so we cache it along with the file
     // data. If the cache result was just populated, then it may be different,
     // so we always recompute the checksum in that case.
     if (cache_res.generate_called) {
-      e.checksum = crc32(cache_res.data->data(), e.size);
+      e.checksum = crc32(cache_res.file->data.data(), e.size);
       bb_stream_files_cache.replace_obj<uint32_t>(key + ".crc32", e.checksum);
     } else {
       auto compute_checksum = [&](const string&) -> uint32_t {
-        return crc32(cache_res.data->data(), e.size);
+        return crc32(cache_res.file->data.data(), e.size);
       };
       e.checksum = bb_stream_files_cache.get_obj<uint32_t>(key + ".crc32", compute_checksum).obj;
     }
@@ -400,26 +400,26 @@ void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
   auto cache_result = bb_stream_files_cache.get("<BB stream file>", +[](const string&) -> string {
     size_t bytes = 0;
     for (const auto& name : stream_file_entries) {
-      bytes += bb_stream_files_cache.get_or_load("system/blueburst/" + name).data->size();
+      bytes += bb_stream_files_cache.get_or_load("system/blueburst/" + name).file->data.size();
     }
 
     string ret;
     ret.reserve(bytes);
     for (const auto& name : stream_file_entries) {
-      ret += *bb_stream_files_cache.get_or_load("system/blueburst/" + name).data;
+      ret += bb_stream_files_cache.get_or_load("system/blueburst/" + name).file->data;
     }
     return ret;
   });
-  auto contents = cache_result.data;
+  const auto& contents = cache_result.file->data;
 
   S_StreamFileChunk_BB_02EB chunk_cmd;
   chunk_cmd.chunk_index = chunk_index;
   size_t offset = sizeof(chunk_cmd.data) * chunk_index;
-  if (offset > contents->size()) {
+  if (offset > contents.size()) {
     throw runtime_error("client requested chunk beyond end of stream file");
   }
-  size_t bytes = min<size_t>(contents->size() - offset, sizeof(chunk_cmd.data));
-  memcpy(chunk_cmd.data, contents->data() + offset, bytes);
+  size_t bytes = min<size_t>(contents.size() - offset, sizeof(chunk_cmd.data));
+  memcpy(chunk_cmd.data, contents.data() + offset, bytes);
 
   size_t cmd_size = offsetof(S_StreamFileChunk_BB_02EB, data) + bytes;
   cmd_size = (cmd_size + 3) & ~3;
@@ -1484,7 +1484,7 @@ void send_quest_open_file_t(
     default:
       throw logic_error("invalid quest file type");
   }
-  cmd.unused.clear();
+  cmd.unused.clear(0);
   cmd.file_size = file_size;
   cmd.filename = filename.c_str();
   send_command_t(c, command_num, 0x00, cmd);

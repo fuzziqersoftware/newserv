@@ -475,7 +475,7 @@ int main(int argc, char** argv) {
       }
 
       config_log.info("Loading battle parameters");
-      state->battle_params.reset(new BattleParamTable("system/blueburst/BattleParamEntry"));
+      state->battle_params.reset(new BattleParamsIndex("system/blueburst/BattleParamEntry"));
 
       config_log.info("Loading level table");
       state->level_table.reset(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));

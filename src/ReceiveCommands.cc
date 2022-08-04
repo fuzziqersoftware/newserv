@@ -1424,9 +1424,9 @@ void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
   strip_trailing_zeroes(filename);
 
   static FileContentsCache gba_file_cache(300 * 1000 * 1000);
-  auto contents = gba_file_cache.get_or_load("system/gba/" + filename).data;
+  auto f = gba_file_cache.get_or_load("system/gba/" + filename).file;
 
-  send_quest_file(c, "", filename, *contents, QuestFileType::GBA_DEMO);
+  send_quest_file(c, "", filename, f->data, QuestFileType::GBA_DEMO);
 }
 
 
@@ -1656,7 +1656,7 @@ void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
       for (size_t z = 0; z < max_count; z++) {
         if (!gcf.entries[z].data.present) {
           gcf.entries[z].data = new_gc;
-          gcf.entries[z].unknown_a1.clear();
+          gcf.entries[z].unknown_a1.clear(0);
           c->log.info("Added guild card %" PRIu32 " at position %zu",
               new_gc.guild_card_number.load(), z);
           break;
@@ -1997,7 +1997,7 @@ void process_set_auto_reply_t(shared_ptr<ServerState>, shared_ptr<Client> c,
 void process_disable_auto_reply(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C8
   check_size_v(data.size(), 0);
-  c->game_data.player()->auto_reply.clear();
+  c->game_data.player()->auto_reply.clear(0);
 }
 
 void process_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client> c,
@@ -2020,22 +2020,6 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     shared_ptr<Client> c, const std::u16string& name,
     const std::u16string& password, uint8_t episode, uint8_t difficulty,
     uint8_t battle, uint8_t challenge, uint8_t solo) {
-
-  static const uint32_t variation_maxes_online[3][0x20] = {
-      {1, 1, 1, 5, 1, 5, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2,
-       3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-      {1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 3, 1, 3, 1, 3,
-       2, 2, 1, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1},
-      {1, 1, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 1, 1, 3,
-       3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
-
-  static const uint32_t variation_maxes_solo[3][0x20] = {
-      {1, 1, 1, 3, 1, 3, 3, 1, 3, 1, 3, 1, 3, 2, 3, 2,
-       3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-      {1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 3, 1, 3, 1, 3,
-       2, 2, 1, 3, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-      {1, 1, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 1, 1, 3,
-       3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
 
   // A player's actual level is their displayed level - 1, so the minimums for
   // Episode 1 (for example) are actually 1, 20, 40, 80.
@@ -2102,7 +2086,6 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   game->min_level = min_level;
   game->max_level = 0xFFFFFFFF;
 
-  const uint32_t* variation_maxes = nullptr;
   if (game->version == GameVersion::BB) {
     // TODO: cache these somewhere so we don't read the file every time, lolz
     game->rare_item_set.reset(new RareItemSet("system/blueburst/ItemRT.rel",
@@ -2113,34 +2096,38 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     }
     game->next_game_item_id = 0x00810000;
 
-    const auto* bp_subtable = s->battle_params->get_subtable(game->mode == 3,
+    auto bp_subtable = s->battle_params->get_subtable(game->mode == 3,
         game->episode - 1, game->difficulty);
 
-    const char* type_chars = (game->mode == 3) ? "sm" : "m";
-    if (episode > 0 && episode < 4) {
-      variation_maxes = (game->mode == 3) ? variation_maxes_solo[episode - 1] : variation_maxes_online[episode - 1];
-    }
+    generate_variations(
+        game->variations, game->random, game->episode, game->mode == 3);
 
     for (size_t x = 0; x < 0x10; x++) {
-      for (const char* type = type_chars; *type; type++) {
-        auto filename = string_printf(
-            "system/blueburst/map/%c%hhX%zX%" PRIX32 "%" PRIX32 ".dat",
-            *type, game->episode, x,
-            game->variations.data()[x * 2].load(),
-            game->variations.data()[(x * 2) + 1].load());
-        try {
-          auto enemies = load_map(filename.c_str(), game->episode,
-              game->difficulty, bp_subtable, false);
-          game->enemies.insert(game->enemies.end(), enemies.begin(), enemies.end());
-          c->log.info("Loaded map %s (%zu entries)", filename.c_str(), enemies.size());
-          for (size_t z = 0; z < enemies.size(); z++) {
-            string e_str = enemies[z].str();
-            static_game_data_log.info("(Entry %zu) %s", z, e_str.c_str());
-          }
-          break;
-        } catch (const exception& e) {
-          c->log.warning("Failed to load map %s: %s", filename.c_str(), e.what());
+      try {
+        auto file = map_data_for_variation(
+            game->episode,
+            game->mode == 3,
+            x,
+            game->variations[x * 2 + 0],
+            game->variations[x * 2 + 1]);
+        auto area_enemies = parse_map(
+            game->episode,
+            game->difficulty,
+            bp_subtable,
+            file->data.data(),
+            file->data.size(),
+            false);
+        game->enemies.insert(
+            game->enemies.end(),
+            area_enemies.begin(),
+            area_enemies.end());
+        c->log.info("Loaded map for area %zu (%zu entries)", x, area_enemies.size());
+        for (size_t z = 0; z < area_enemies.size(); z++) {
+          string e_str = area_enemies[z].str();
+          static_game_data_log.info("(Entry %zu) %s", z, e_str.c_str());
         }
+      } catch (const exception& e) {
+        c->log.warning("Failed to load map for area %zu: %s", x, e.what());
       }
     }
 
@@ -2149,22 +2136,12 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     }
     c->log.info("Loaded maps contain %zu entries overall", game->enemies.size());
 
-  } else {
-    // In non-BB games, just set the variations (we don't track items/enemies/
-    // etc.)
-    if (episode > 0 && episode < 4 && !is_ep3) {
-      variation_maxes = variation_maxes_online[episode - 1];
-    }
-  }
+  } else if (is_ep3) {
+    game->variations.clear(0);
 
-  if (variation_maxes) {
-    for (size_t x = 0; x < 0x20; x++) {
-      game->variations.data()[x] = (*game->random)() % variation_maxes[x];
-    }
   } else {
-    for (size_t x = 0; x < 0x20; x++) {
-      game->variations.data()[x] = 0;
-    }
+    // In non-BB non-Ep3 games, just set the variations (we don't track enemies)
+    generate_variations(game->variations, game->random, game->episode, false);
   }
 
   s->change_client_lobby(c, game);

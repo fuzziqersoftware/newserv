@@ -10,27 +10,35 @@ using namespace std;
 
 
 
-static void load_battle_param_file(const string& filename, BattleParams* entries) {
-  scoped_fd fd(filename, O_RDONLY);
-  readx(fd, entries, 0x60 * sizeof(BattleParams));
+BattleParamsIndex::BattleParamsIndex(const char* prefix) {
+  for (uint8_t is_solo = 0; is_solo < 2; is_solo++) {
+    for (uint8_t episode = 0; episode < 3; episode++) {
+      string filename = prefix;
+      if (episode == 1) {
+        filename += "_lab";
+      } else if (episode == 2) {
+        filename += "_ep4";
+      }
+      if (!is_solo) {
+        filename += "_on";
+      }
+      filename += ".dat";
+
+      this->entries[is_solo][episode][0].reset(new TableT());
+      this->entries[is_solo][episode][1].reset(new TableT());
+      this->entries[is_solo][episode][2].reset(new TableT());
+      this->entries[is_solo][episode][3].reset(new TableT());
+
+      scoped_fd fd(filename, O_RDONLY);
+      readx(fd, this->entries[is_solo][episode][0].get(), sizeof(TableT));
+      readx(fd, this->entries[is_solo][episode][1].get(), sizeof(TableT));
+      readx(fd, this->entries[is_solo][episode][2].get(), sizeof(TableT));
+      readx(fd, this->entries[is_solo][episode][3].get(), sizeof(TableT));
+    }
+  }
 }
 
-BattleParamTable::BattleParamTable(const char* prefix) {
-  load_battle_param_file(string_printf("%s_on.dat", prefix),
-      &this->entries[0][0][0][0]);
-  load_battle_param_file(string_printf("%s_lab_on.dat", prefix),
-      &this->entries[0][1][0][0]);
-  load_battle_param_file(string_printf("%s_ep4_on.dat", prefix),
-      &this->entries[0][2][0][0]);
-  load_battle_param_file(string_printf("%s.dat", prefix),
-      &this->entries[1][0][0][0]);
-  load_battle_param_file(string_printf("%s_lab.dat", prefix),
-      &this->entries[1][1][0][0]);
-  load_battle_param_file(string_printf("%s_ep4.dat", prefix),
-      &this->entries[1][2][0][0]);
-}
-
-const BattleParams& BattleParamTable::get(bool solo, uint8_t episode,
+const BattleParams& BattleParamsIndex::get(bool solo, uint8_t episode,
     uint8_t difficulty, uint8_t monster_type) const {
   if (episode > 3) {
     throw invalid_argument("incorrect episode");
@@ -41,18 +49,19 @@ const BattleParams& BattleParamTable::get(bool solo, uint8_t episode,
   if (monster_type > 0x60) {
     throw invalid_argument("incorrect monster type");
   }
-  return this->entries[!!solo][episode][difficulty][monster_type];
+  return (*this->entries[!!solo][episode][difficulty])[monster_type];
 }
 
-const BattleParams* BattleParamTable::get_subtable(bool solo, uint8_t episode,
-    uint8_t difficulty) const {
+shared_ptr<const BattleParamsIndex::TableT>
+BattleParamsIndex::get_subtable(
+    bool solo, uint8_t episode, uint8_t difficulty) const {
   if (episode > 3) {
     throw invalid_argument("incorrect episode");
   }
   if (difficulty > 4) {
     throw invalid_argument("incorrect difficulty");
   }
-  return &this->entries[!!solo][episode][difficulty][0];
+  return this->entries[!!solo][episode][difficulty];
 }
 
 
@@ -92,9 +101,19 @@ struct EnemyEntry {
 
 static uint64_t next_enemy_id = 1;
 
-static vector<PSOEnemy> parse_map(uint8_t episode, uint8_t difficulty,
-    const BattleParams* battle_params, const EnemyEntry* map,
-    size_t entry_count, bool alt_enemies) {
+vector<PSOEnemy> parse_map(
+    uint8_t episode,
+    uint8_t difficulty,
+    shared_ptr<const BattleParamsIndex::TableT> battle_params_table,
+    const void* data,
+    size_t size,
+    bool alt_enemies) {
+
+  const auto* map = reinterpret_cast<const EnemyEntry*>(data);
+  size_t entry_count = size / sizeof(EnemyEntry);
+  if (size != entry_count * sizeof(EnemyEntry)) {
+    throw runtime_error("data size is not a multiple of entry size");
+  }
 
   vector<PSOEnemy> enemies;
   auto create_clones = [&](size_t count) {
@@ -103,6 +122,7 @@ static vector<PSOEnemy> parse_map(uint8_t episode, uint8_t difficulty,
     }
   };
 
+  const auto& battle_params = *battle_params_table;
   for (size_t y = 0; y < entry_count; y++) {
     const auto& e = map[y];
     size_t num_clones = e.num_clones;
@@ -254,7 +274,7 @@ static vector<PSOEnemy> parse_map(uint8_t episode, uint8_t difficulty,
       case 0xC0: // Dragon or Gal Gryphon
         if (episode == 1) {
           enemies.emplace_back(next_enemy_id++, e.base, battle_params[0x12].experience, 44);
-        } else if (episode == 0x02) {
+        } else if (episode == 2) {
           enemies.emplace_back(next_enemy_id++, e.base, battle_params[0x1E].experience, 77);
         }
         break;
@@ -343,7 +363,7 @@ static vector<PSOEnemy> parse_map(uint8_t episode, uint8_t difficulty,
         }
         break;
       case 0xE0: // Epsilon, Sinow Zoa and Zele
-        if ((episode == 0x02) && (alt_enemies)) {
+        if ((episode == 2) && (alt_enemies)) {
           enemies.emplace_back(next_enemy_id++, e.base, battle_params[0x23].experience, 84);
           create_clones(4);
         } else {
@@ -412,14 +432,4 @@ static vector<PSOEnemy> parse_map(uint8_t episode, uint8_t difficulty,
   }
 
   return enemies;
-}
-
-vector<PSOEnemy> load_map(const std::string& filename, uint8_t episode,
-    uint8_t difficulty, const BattleParams* battle_params, bool alt_enemies) {
-  static FileContentsCache map_file_cache(300 * 1000 * 1000);
-  shared_ptr<const string> data = map_file_cache.get_or_load(filename).data;
-  const EnemyEntry* entries = reinterpret_cast<const EnemyEntry*>(data->data());
-  size_t entry_count = data->size() / sizeof(EnemyEntry);
-  return parse_map(episode, difficulty, battle_params, entries, entry_count,
-      alt_enemies);
 }

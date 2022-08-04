@@ -192,9 +192,13 @@ template <typename ItemT, size_t Count>
 struct parray {
   ItemT items[Count];
 
+  template <typename ArgT = ItemT> requires (std::is_arithmetic<ItemT>::value)
   parray() {
-    this->clear();
+    this->clear(0);
   }
+  template <typename ArgT = ItemT> requires (!std::is_arithmetic<ItemT>::value)
+  parray() { }
+
   parray(const parray& other) {
     this->operator=(other);
   }
@@ -281,7 +285,7 @@ struct parray {
     return !this->operator==(s);
   }
 
-  void clear(ItemT v = 0) {
+  void clear(ItemT v) {
     for (size_t x = 0; x < Count; x++) {
       this->items[x] = v;
     }
@@ -312,7 +316,7 @@ struct parray {
 template <typename CharT, size_t Count>
 struct ptext : parray<CharT, Count> {
   ptext() {
-    this->clear();
+    this->clear(0);
   }
   ptext(const ptext& other) : parray<CharT, Count>(other) { }
   ptext(ptext&& s) = delete;

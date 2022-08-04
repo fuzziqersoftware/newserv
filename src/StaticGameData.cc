@@ -2,7 +2,213 @@
 
 #include <array>
 
+#include "FileContentsCache.hh"
+
 using namespace std;
+
+
+
+struct AreaMapFileIndex {
+  const char* name_token;
+  std::vector<uint32_t> variation1_values;
+  std::vector<uint32_t> variation2_values;
+
+  AreaMapFileIndex(
+      const char* name_token,
+      std::vector<uint32_t> variation1_values,
+      std::vector<uint32_t> variation2_values)
+    : name_token(name_token),
+      variation1_values(variation1_values),
+      variation2_values(variation2_values) { }
+};
+
+// These are indexed as [episode][is_solo][area]
+// (Note that Lobby::episode is 1-3, so we actually use episode - 1)
+static const std::vector<std::vector<std::vector<AreaMapFileIndex>>> map_file_info = {
+  { // Episode 1
+    { // Non-solo
+      {"city00",    {},        {0}},
+      {"forest01",  {},        {0, 1, 2, 3, 4}},
+      {"forest02",  {},        {0, 1, 2, 3, 4}},
+      {"cave01",    {0, 1, 2}, {0, 1}},
+      {"cave02",    {0, 1, 2}, {0, 1}},
+      {"cave03",    {0, 1, 2}, {0, 1}},
+      {"machine01", {0, 1, 2}, {0, 1}},
+      {"machine02", {0, 1, 2}, {0, 1}},
+      {"ancient01", {0, 1, 2}, {0, 1}},
+      {"ancient02", {0, 1, 2}, {0, 1}},
+      {"ancient03", {0, 1, 2}, {0, 1}},
+      {"boss01",    {},        {}},
+      {"boss02",    {},        {}},
+      {"boss03",    {},        {}},
+      {"boss04",    {},        {}},
+      {nullptr,     {},        {}},
+    },
+    { // Solo
+      {"city00",    {},        {0}},
+      {"forest01",  {},        {0, 2, 4}},
+      {"forest02",  {},        {0, 3, 4}},
+      {"cave01",    {0, 1, 2}, {0}},
+      {"cave02",    {0, 1, 2}, {0}},
+      {"cave03",    {0, 1, 2}, {0}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+    },
+  },
+  { // Episode 2
+    { // Non-solo
+      {"labo00",    {},        {0}},
+      {"ruins01",   {0, 1},    {0}},
+      {"ruins02",   {0, 1},    {0}},
+      {"space01",   {0, 1},    {0}},
+      {"space02",   {0, 1},    {0}},
+      {"jungle01",  {},        {0, 1, 2}},
+      {"jungle02",  {},        {0, 1, 2}},
+      {"jungle03",  {},        {0, 1, 2}},
+      {"jungle04",  {0, 1},    {0, 1}},
+      {"jungle05",  {},        {0, 1, 2}},
+      {"seabed01",  {0, 1},    {0, 1}},
+      {"seabed02",  {0, 1},    {0, 1}},
+      {"boss05",    {},        {}},
+      {"boss06",    {},        {}},
+      {"boss07",    {},        {}},
+      {"boss08",    {},        {}},
+    },
+    { // Solo
+      {"labo00",    {},        {0}},
+      {"ruins01",   {0, 1},    {0}},
+      {"ruins02",   {0, 1},    {0}},
+      {"space01",   {0, 1},    {0}},
+      {"space02",   {0, 1},    {0}},
+      {"jungle01",  {},        {0, 1, 2}},
+      {"jungle02",  {},        {0, 1, 2}},
+      {"jungle03",  {},        {0, 1, 2}},
+      {"jungle04",  {0, 1},    {0, 1}},
+      {"jungle05",  {},        {0, 1, 2}},
+      {"seabed01",  {0, 1},    {0}},
+      {"seabed02",  {0, 1},    {0}},
+      {"boss05",    {},        {}},
+      {"boss06",    {},        {}},
+      {"boss07",    {},        {}},
+      {"boss08",    {},        {}},
+    },
+  },
+  { // Episode 4
+    { // Non-solo
+      {"city02",    {0},       {0}},
+      {"wilds01",   {0},       {0, 1, 2}},
+      {"wilds01",   {1},       {0, 1, 2}},
+      {"wilds01",   {2},       {0, 1, 2}},
+      {"wilds01",   {3},       {0, 1, 2}},
+      {"crater01",  {0},       {0, 1, 2}},
+      {"desert01",  {0, 1, 2}, {0}},
+      {"desert02",  {0},       {0, 1, 2}},
+      {"desert03",  {0, 1, 2}, {0}},
+      {"boss09",    {0},       {0}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+    },
+    { // Solo
+      {"city02",    {0},       {0}},
+      {"wilds01",   {0},       {0, 1, 2}},
+      {"wilds01",   {1},       {0, 1, 2}},
+      {"wilds01",   {2},       {0, 1, 2}},
+      {"wilds01",   {3},       {0, 1, 2}},
+      {"crater01",  {0},       {0, 1, 2}},
+      {"desert01",  {0, 1, 2}, {0}},
+      {"desert02",  {0},       {0, 1, 2}},
+      {"desert03",  {0, 1, 2}, {0}},
+      {"boss09",    {0},       {0}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+      {nullptr,     {},        {}},
+    },
+  },
+};
+
+void generate_variations(
+    parray<le_uint32_t, 0x20>& variations,
+    std::shared_ptr<std::mt19937> random,
+    uint8_t episode,
+    bool is_solo) {
+  const auto& ep_index = map_file_info.at(episode - 1);
+  for (size_t z = 0; z < 0x10; z++) {
+    const AreaMapFileIndex* a = nullptr;
+    if (is_solo) {
+      a = &ep_index.at(true).at(z);
+    }
+    if (!a || !a->name_token) {
+      a = &ep_index.at(false).at(z);
+    }
+    if (!a->name_token) {
+      variations[z * 2 + 0] = 0;
+      variations[z * 2 + 1] = 0;
+    } else {
+      variations[z * 2 + 0] = (a->variation1_values.size() < 2) ? 0 :
+          ((*random)() % a->variation1_values.size());
+      variations[z * 2 + 1] = (a->variation2_values.size() < 2) ? 0 :
+          ((*random)() % a->variation2_values.size());
+    }
+  }
+}
+
+std::shared_ptr<const FileContentsCache::File> map_data_for_variation(
+    uint8_t episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2) {
+  static FileContentsCache cache(300 * 1000 * 1000);
+
+  // Map filenames are like map_<name_token>[_VV][_VV][_off]<e|o>[_s].dat
+  //   name_token comes from AreaMapFileIndex
+  //   _VV are the values from the variation<1|2>_values vector (in contrast to
+  //     the values sent in the 64 command, which are INDEXES INTO THAT VECTOR)
+  //   _off or _s are used for solo mode (try both - city uses _s whereas levels
+  //     use _off apparently)
+  //   e|o specifies what kind of data: e = enemies, o = objects
+  const auto& ep_index = map_file_info.at(episode - 1);
+  const AreaMapFileIndex* a = nullptr;
+  if (is_solo) {
+    a = &ep_index.at(true).at(area);
+  }
+  if (!a || !a->name_token) {
+    a = &ep_index.at(false).at(area);
+  }
+  if (!a->name_token) {
+    throw out_of_range("no map data for area");
+  }
+
+  string filename = "system/blueburst/map/map_";
+  filename += a->name_token;
+  if (!a->variation1_values.empty()) {
+    filename += string_printf("_%02" PRIX32, a->variation1_values.at(var1));
+  }
+  if (!a->variation2_values.empty()) {
+    filename += string_printf("_%02" PRIX32, a->variation2_values.at(var2));
+  }
+  if (is_solo) {
+    // Try both _offe.dat and e_s.dat suffixes
+    try {
+      return cache.get_or_load(filename + "_offe.dat").file;
+    } catch (const cannot_open_file&) {
+      return cache.get_or_load(filename + "e_s.dat").file;
+    }
+  } else {
+    return cache.get_or_load(filename + "e.dat").file;
+  }
+}
 
 
 

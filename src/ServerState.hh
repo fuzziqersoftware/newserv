@@ -55,7 +55,7 @@ struct ServerState {
   std::shared_ptr<const Ep3DataIndex> ep3_data_index;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
-  std::shared_ptr<const BattleParamTable> battle_params;
+  std::shared_ptr<const BattleParamsIndex> battle_params;
   std::shared_ptr<const CommonItemData> common_item_data;
 
   std::shared_ptr<LicenseManager> license_manager;

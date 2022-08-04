@@ -11,15 +11,14 @@ using namespace std;
 
 
 class FileContentsCache {
-private:
+public:
   struct File {
     std::string name;
-    std::shared_ptr<const std::string> contents;
+    std::string data;
     uint64_t load_time;
 
     File() = delete;
-    File(const std::string& name, std::shared_ptr<const std::string> contents,
-        uint64_t load_time);
+    File(const std::string& name, std::string&& contents, uint64_t load_time);
     File(const File&) = delete;
     File(File&&) = delete;
     File& operator=(const File&) = delete;
@@ -27,7 +26,6 @@ private:
     ~File() = default;
   };
 
-public:
   explicit FileContentsCache(uint64_t ttl_usecs);
   FileContentsCache(const FileContentsCache&) = delete;
   FileContentsCache(FileContentsCache&&) = delete;
@@ -40,20 +38,20 @@ public:
     return this->name_to_file.erase(key);
   }
 
-  std::shared_ptr<const std::string> replace(
+  std::shared_ptr<const File> replace(
       const std::string& name, std::string&& data, uint64_t t = 0);
-  std::shared_ptr<const std::string> replace(
+  std::shared_ptr<const File> replace(
       const std::string& name, const void* data, size_t size, uint64_t t = 0);
 
   struct GetResult {
-    std::shared_ptr<const std::string> data;
+    std::shared_ptr<const File> file;
     bool generate_called;
   };
 
   GetResult get_or_load(const std::string& name);
   GetResult get_or_load(const char* name);
-  std::shared_ptr<const string> get_or_throw(const std::string& name);
-  std::shared_ptr<const string> get_or_throw(const char* name);
+  std::shared_ptr<const File> get_or_throw(const std::string& name);
+  std::shared_ptr<const File> get_or_throw(const char* name);
 
   GetResult get(
       const std::string& name, std::function<std::string(const std::string&)> generate);
@@ -63,36 +61,36 @@ public:
   template <typename T>
   struct GetObjResult {
     const T& obj;
-    std::shared_ptr<const std::string> data;
+    std::shared_ptr<const File> data;
     bool generate_called;
   };
 
   template <typename T, typename NameT>
   GetObjResult<T> get_obj_or_load(NameT name) {
     auto res = this->get_or_load(name);
-    if (res.data->size() != sizeof(T)) {
+    if (res.file->data.size() != sizeof(T)) {
       throw runtime_error("cached string size is incorrect");
     }
-    return {*reinterpret_cast<const T*>(res.data->data()), res.data, res.generate_called};
+    return {*reinterpret_cast<const T*>(res.file->data.data()), res.file, res.generate_called};
   }
   template <typename T, typename NameT>
   GetObjResult<T> get_obj_or_throw(NameT name) {
     auto res = this->get_or_throw(name);
-    if (res->size() != sizeof(T)) {
+    if (res.file->data.size() != sizeof(T)) {
       throw runtime_error("cached string size is incorrect");
     }
-    return {*reinterpret_cast<const T*>(res.data->data()), res.data, res.generate_called};
+    return {*reinterpret_cast<const T*>(res.file->data.data()), res.file, res.generate_called};
   }
   template <typename T, typename NameT>
   GetObjResult<T> get_obj(NameT name, std::function<T(const std::string&)> generate) {
     uint64_t t = now();
     try {
-      auto& entry = this->name_to_file.at(name);
-      if (entry.contents->size() != sizeof(T)) {
+      auto& f = this->name_to_file.at(name);
+      if (f->data.size() != sizeof(T)) {
         throw runtime_error("cached string size is incorrect");
       }
-      if (this->ttl_usecs && (t - entry.load_time < this->ttl_usecs)) {
-        return {*reinterpret_cast<const T*>(entry.contents->data()), entry.contents, false};
+      if (this->ttl_usecs && (t - f->load_time < this->ttl_usecs)) {
+        return {*reinterpret_cast<const T*>(f->data.data()), f, false};
       }
     } catch (const out_of_range& e) { }
     T value = generate(name);
@@ -103,10 +101,10 @@ public:
   template <typename T, typename NameT>
   GetObjResult<T> replace_obj(NameT name, const T& value) {
     auto cached_value = this->replace(name, &value, sizeof(value));
-    return {*reinterpret_cast<const T*>(cached_value->data()), cached_value, false};
+    return {*reinterpret_cast<const T*>(cached_value->data.data()), cached_value, false};
   }
 
 private:
-  std::unordered_map<std::string, File> name_to_file;
+  std::unordered_map<std::string, std::shared_ptr<File>> name_to_file;
   uint64_t ttl_usecs;
 };

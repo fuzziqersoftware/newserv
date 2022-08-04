@@ -285,9 +285,9 @@ GuildCardBB::GuildCardBB() noexcept
 
 void GuildCardBB::clear() {
   this->guild_card_number = 0;
-  this->name.clear();
-  this->team_name.clear();
-  this->description.clear();
+  this->name.clear(0);
+  this->team_name.clear(0);
+  this->description.clear(0);
   this->present = 0;
   this->language = 0;
   this->section_id = 0;
@@ -296,7 +296,7 @@ void GuildCardBB::clear() {
 
 void GuildCardEntryBB::clear() {
   this->data.clear();
-  this->unknown_a1.clear();
+  this->unknown_a1.clear(0);
 }
 
 uint32_t GuildCardFileBB::checksum() const {
@@ -495,7 +495,7 @@ void ClientGameData::import_player(const PSOPlayerDataV3& gc) {
   if (gc.auto_reply_enabled) {
     player->auto_reply = gc.auto_reply;
   } else {
-    player->auto_reply.clear();
+    player->auto_reply.clear(0);
   }
 }
 
@@ -509,7 +509,7 @@ void ClientGameData::import_player(const PSOPlayerDataBB& bb) {
   if (bb.auto_reply_enabled) {
     player->auto_reply = bb.auto_reply;
   } else {
-    player->auto_reply.clear();
+    player->auto_reply.clear(0);
   }
 }
 
@@ -520,7 +520,7 @@ PlayerBB ClientGameData::export_player_bb() {
   PlayerBB ret;
   ret.inventory = player->inventory;
   ret.disp = player->disp;
-  ret.unknown.clear();
+  ret.unknown.clear(0);
   ret.option_flags = account->option_flags;
   ret.quest_data1 = player->quest_data1;
   ret.bank = player->bank;
@@ -537,10 +537,10 @@ PlayerBB ClientGameData::export_player_bb() {
   ret.shortcuts = account->shortcuts;
   ret.auto_reply = player->auto_reply;
   ret.info_board = player->info_board;
-  ret.unknown5.clear();
+  ret.unknown5.clear(0);
   ret.challenge_data = player->challenge_data;
   ret.tech_menu_config = player->tech_menu_config;
-  ret.unknown6.clear();
+  ret.unknown6.clear(0);
   ret.quest_data2 = player->quest_data2;
   ret.key_config = account->key_config;
   return ret;

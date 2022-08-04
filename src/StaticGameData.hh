@@ -3,10 +3,21 @@
 #include <stdint.h>
 
 #include <unordered_map>
+#include <random>
 
+#include "FileContentsCache.hh"
 #include "Player.hh"
 
 
+
+void generate_variations(
+    parray<le_uint32_t, 0x20>& variations,
+    std::shared_ptr<std::mt19937> random,
+    uint8_t episode,
+    bool is_solo);
+std::shared_ptr<const FileContentsCache::File> map_data_for_variation(
+    uint8_t episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2);
+void load_map_files();
 
 size_t stack_size_for_item(uint8_t data0, uint8_t data1);
 size_t stack_size_for_item(const ItemData& item);
