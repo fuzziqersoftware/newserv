@@ -1040,6 +1040,17 @@ static void process_subcommand_buy_shop_item_bb(shared_ptr<ServerState>,
   }
 }
 
+static void process_subcommand_medical_center_bb(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const string&) {
+
+  if (l->version == GameVersion::BB) {
+    if (c->game_data.player()->disp.meseta < 10) {
+      throw runtime_error("insufficient funds");
+    }
+    c->game_data.player()->disp.meseta -= 10;
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 static void process_subcommand_forward_check_size(shared_ptr<ServerState>,
@@ -1336,7 +1347,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* C2 */ process_subcommand_unimplemented,
   /* C3 */ process_subcommand_drop_partial_stack_bb, // Split stacked item - not sent if entire stack is dropped
   /* C4 */ process_subcommand_sort_inventory_bb,
-  /* C5 */ process_subcommand_unimplemented,
+  /* C5 */ process_subcommand_medical_center_bb,
   /* C6 */ process_subcommand_unimplemented,
   /* C7 */ process_subcommand_unimplemented,
   /* C8 */ process_subcommand_enemy_killed,

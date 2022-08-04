@@ -3223,7 +3223,7 @@ struct G_SortInventory_6xC4 {
   le_uint32_t item_ids[30];
 };
 
-// C5: Invalid subcommand
+// C5: Medical center used
 // C6: Invalid subcommand
 // C7: Invalid subcommand
 
