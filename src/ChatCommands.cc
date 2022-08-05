@@ -124,8 +124,10 @@ static void server_command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby>
 
 static void proxy_command_lobby_info(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
-  string msg = string_printf("$C7GC: $C6%" PRIu32 "\n$C7Client ID: $C6%zu",
-      session.remote_guild_card_number, session.lobby_client_id);
+  string msg = string_printf("$C7GC: $C6%" PRIu32 "\n$C7Client ID: $C6%zu%s",
+      session.remote_guild_card_number,
+      session.lobby_client_id,
+      (session.leader_client_id == session.lobby_client_id) ? " (L)" : "");
 
   vector<const char*> cheats_tokens;
   if (session.switch_assist) {
