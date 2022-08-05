@@ -192,11 +192,11 @@ template <typename ItemT, size_t Count>
 struct parray {
   ItemT items[Count];
 
-  template <typename ArgT = ItemT> requires (std::is_arithmetic<ItemT>::value)
+  template <typename ArgT = ItemT, std::enable_if_t<std::is_arithmetic<ArgT>::value, bool> = true>
   parray() {
     this->clear(0);
   }
-  template <typename ArgT = ItemT> requires (!std::is_arithmetic<ItemT>::value)
+  template <typename ArgT = ItemT, std::enable_if_t<!std::is_arithmetic<ArgT>::value, bool> = true>
   parray() { }
 
   parray(const parray& other) {
