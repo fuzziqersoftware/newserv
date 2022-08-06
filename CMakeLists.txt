@@ -65,6 +65,7 @@ add_executable(newserv
   src/Map.cc
   src/Menu.cc
   src/NetworkAddresses.cc
+  src/PatchFileIndex.cc
   src/Player.cc
   src/ProxyCommands.cc
   src/ProxyServer.cc

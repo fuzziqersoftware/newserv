@@ -113,8 +113,10 @@ const char* name_for_server_behavior(ServerBehavior behavior) {
       return "lobby_server";
     case ServerBehavior::DATA_SERVER_BB:
       return "data_server_bb";
-    case ServerBehavior::PATCH_SERVER:
-      return "patch_server";
+    case ServerBehavior::PATCH_SERVER_PC:
+      return "patch_server_pc";
+    case ServerBehavior::PATCH_SERVER_BB:
+      return "patch_server_bb";
     case ServerBehavior::PROXY_SERVER:
       return "proxy_server";
     default:
@@ -131,8 +133,10 @@ ServerBehavior server_behavior_for_name(const char* name) {
     return ServerBehavior::LOBBY_SERVER;
   } else if (!strcasecmp(name, "data_server_bb") || !strcasecmp(name, "data_server") || !strcasecmp(name, "data")) {
     return ServerBehavior::DATA_SERVER_BB;
-  } else if (!strcasecmp(name, "patch_server") || !strcasecmp(name, "patch")) {
-    return ServerBehavior::PATCH_SERVER;
+  } else if (!strcasecmp(name, "patch_server_pc") || !strcasecmp(name, "patch_pc")) {
+    return ServerBehavior::PATCH_SERVER_PC;
+  } else if (!strcasecmp(name, "patch_server_bb") || !strcasecmp(name, "patch_bb")) {
+    return ServerBehavior::PATCH_SERVER_BB;
   } else if (!strcasecmp(name, "proxy_server") || !strcasecmp(name, "proxy")) {
     return ServerBehavior::PROXY_SERVER;
   } else {

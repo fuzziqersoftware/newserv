@@ -15,6 +15,7 @@ extern PrefixedLogger function_compiler_log;
 extern PrefixedLogger ip_stack_simulator_log;
 extern PrefixedLogger license_log;
 extern PrefixedLogger lobby_log;
+extern PrefixedLogger patch_index_log;
 extern PrefixedLogger player_data_log;
 extern PrefixedLogger proxy_server_log;
 extern PrefixedLogger replay_log;

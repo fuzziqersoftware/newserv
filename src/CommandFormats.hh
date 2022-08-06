@@ -88,8 +88,8 @@ struct ClientConfigBB {
 
 // Patch server commands
 
-// The patch protocol is nearly identical between PSO PC and PSO BB (the only
-// versions on which it is used). Only the client's 04 command differs.
+// The patch protocol is identical between PSO PC and PSO BB (the only versions
+// on which it is used).
 
 // A patch server session generally goes like this:
 // Server: 02 (unencrypted)
@@ -157,12 +157,14 @@ struct S_ServerInit_Patch_02 {
 // Client will respond with an 04 command.
 
 // 04 (C->S): Log in (patch)
+// The email field is always blank on BB. It may be blank on PC too, so this
+// cannot be used to determine the game version used by a patch client.
 
 struct C_Login_Patch_04 {
   parray<le_uint32_t, 3> unused;
   ptext<char, 0x10> username;
   ptext<char, 0x10> password;
-  ptext<char, 0x40> email; // Note: this field is blank on BB
+  ptext<char, 0x40> email;
 };
 
 // 05 (S->C): Unknown

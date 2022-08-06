@@ -32,8 +32,8 @@
     "gc-eu11":   [9201,  "gc",    "login_server"],
     "gc-eu3":    [9203,  "gc",    "login_server"],
     "pc-login":  [9300,  "pc",    "login_server"],
-    "pc-patch":  [10000, "patch", "patch_server"],
-    "bb-patch":  [11000, "patch", "patch_server"],
+    "pc-patch":  [10000, "patch", "patch_server_pc"],
+    "bb-patch":  [11000, "patch", "patch_server_bb"],
     "bb-init":   [12000, "bb",    "data_server_bb"],
 
     // TODO: If Xbox support ever gets built, add this port to the above config.
@@ -132,6 +132,9 @@
     // Lobby messages describe creation and deletion of lobbies and games, as
     // well as item tracking events within games.
     "Lobbies": "info",
+    // Patch file index messages describe finding and preloading the patch files
+    // available for download to BB and PC clients.
+    "PatchFileIndex": "info",
     // Player data messages describe the loading and saving of player and
     // account data files.
     "PlayerData": "info",

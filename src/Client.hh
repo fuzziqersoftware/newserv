@@ -8,6 +8,7 @@
 #include "CommandFormats.hh"
 #include "FunctionCompiler.hh"
 #include "License.hh"
+#include "PatchFileIndex.hh"
 #include "Player.hh"
 #include "PSOEncryption.hh"
 #include "PSOProtocol.hh"
@@ -73,6 +74,9 @@ struct Client {
   bool should_send_to_lobby_server;
   uint32_t proxy_destination_address;
   uint16_t proxy_destination_port;
+
+  // Patch server
+  std::vector<PatchFileChecksumRequest> patch_file_checksum_requests;
 
   // Lobby/positioning
   float x;

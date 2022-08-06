@@ -83,8 +83,10 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
       }
       break;
 
+    case ServerBehavior::PATCH_SERVER_BB:
+      c->flags |= Client::Flag::BB_PATCH;
+    case ServerBehavior::PATCH_SERVER_PC:
     case ServerBehavior::DATA_SERVER_BB:
-    case ServerBehavior::PATCH_SERVER:
     case ServerBehavior::LOBBY_SERVER:
       send_server_init(s, c, false, false);
       break;
@@ -2349,13 +2351,40 @@ void process_encryption_ok_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
   send_command(c, 0x04, 0x00); // This requests the user's login information
 }
 
+static void change_to_directory_patch(
+    shared_ptr<Client> c,
+    vector<string>& client_path_directories,
+    const vector<string>& file_path_directories) {
+  // First, exit all leaf directories that don't match the desired path
+  while (!client_path_directories.empty() &&
+         ((client_path_directories.size() > file_path_directories.size()) ||
+          (client_path_directories.back() != file_path_directories[client_path_directories.size() - 1]))) {
+    send_command(c, 0x0A, 0x00);
+    client_path_directories.pop_back();
+  }
+
+  // At this point, client_path_directories should be a prefix of
+  // file_path_directories (or should match exactly)
+  if (client_path_directories.size() > file_path_directories.size()) {
+    throw logic_error("did not exit all necessary directories");
+  }
+  for (size_t x = 0; x < client_path_directories.size(); x++) {
+    if (client_path_directories[x] != file_path_directories[x]) {
+      throw logic_error("intermediate path is not a prefix of final path");
+    }
+  }
+
+  // Second, enter all necessary leaf directories
+  while (client_path_directories.size() < file_path_directories.size()) {
+    const string& dir = file_path_directories[client_path_directories.size()];
+    send_enter_directory_patch(c, dir);
+    client_path_directories.emplace_back(dir);
+  }
+}
+
 void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_Login_Patch_04>(data);
-
-  if (cmd.email.len() == 0) {
-    c->flags |= Client::Flag::BB_PATCH;
-  }
+  check_size_v(data.size(), sizeof(C_Login_Patch_04));
 
   // On BB we can use colors and newlines should be \n; on PC we can't use
   // colors, the text is auto-word-wrapped, and newlines should be \r\n.
@@ -2365,16 +2394,72 @@ void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     send_message_box(c, message.c_str());
   }
 
-  // TODO: Implement patch serving for realz.
-  send_enter_directory_patch(c, ".");
-  send_enter_directory_patch(c, "data");
-  send_enter_directory_patch(c, "scene");
-  send_command(c, 0x0A, 0x00);
-  send_command(c, 0x0A, 0x00);
-  send_command(c, 0x0A, 0x00);
+  auto index = (c->flags & Client::Flag::BB_PATCH) ?
+      s->bb_patch_file_index : s->pc_patch_file_index;
+  if (index.get()) {
+    send_command(c, 0x0B, 0x00); // Start patch session; go to root directory
 
-  // This command terminates the patch connection successfully. PSOBB complains
-  // if we don't check the above directories before sending this though
+    vector<string> path_directories;
+    for (const auto& file : index->files) {
+      change_to_directory_patch(c, path_directories, file->path_directories);
+
+      S_FileChecksumRequest_Patch_0C req = {
+          c->patch_file_checksum_requests.size(), file->name};
+      send_command_t(c, 0x0C, 0x00, req);
+      c->patch_file_checksum_requests.emplace_back(file);
+    }
+    change_to_directory_patch(c, path_directories, {});
+
+    send_command(c, 0x0D, 0x00); // End of checksum requests
+
+  } else {
+    // No patch index present: just do something that will satisfy the client
+    // without actually checking or downloading any files
+    send_enter_directory_patch(c, ".");
+    send_enter_directory_patch(c, "data");
+    send_enter_directory_patch(c, "scene");
+    send_command(c, 0x0A, 0x00);
+    send_command(c, 0x0A, 0x00);
+    send_command(c, 0x0A, 0x00);
+    send_command(c, 0x12, 0x00);
+  }
+}
+
+void process_file_checksum_result_patch(shared_ptr<ServerState>,
+    shared_ptr<Client> c, uint16_t, uint32_t, const string& data) { // 0F
+  auto& cmd = check_size_t<C_FileInformation_Patch_0F>(data);
+  auto& req = c->patch_file_checksum_requests.at(cmd.request_id);
+  req.crc32 = cmd.checksum;
+  req.size = cmd.size;
+  req.response_received = true;
+}
+
+void process_file_checksum_results_done_patch(shared_ptr<ServerState>,
+    shared_ptr<Client> c, uint16_t, uint32_t, const string&) { // 10
+
+  S_StartFileDownloads_Patch_11 start_cmd = {0, 0};
+  for (const auto& req : c->patch_file_checksum_requests) {
+    if (!req.response_received) {
+      throw runtime_error("client did not respond to checksum request");
+    }
+    if (req.needs_update()) {
+      start_cmd.total_bytes += req.file->size;
+      start_cmd.num_files++;
+    }
+  }
+
+  if (start_cmd.num_files) {
+    send_command_t(c, 0x11, 0x00, start_cmd);
+    vector<string> path_directories;
+    for (const auto& req : c->patch_file_checksum_requests) {
+      if (req.needs_update()) {
+        change_to_directory_patch(c, path_directories, req.file->path_directories);
+        send_patch_file(c, req.file);
+      }
+    }
+    change_to_directory_patch(c, path_directories, {});
+  }
+
   send_command(c, 0x12, 0x00);
 }
 
@@ -2832,11 +2917,15 @@ static process_command_t patch_handlers[0x100] = {
   // 00
   nullptr, nullptr, process_encryption_ok_patch, nullptr,
   process_login_patch, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, process_file_checksum_result_patch,
 
   // 10
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  process_file_checksum_results_done_patch, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+
   // 20
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,

@@ -496,6 +496,19 @@ int main(int argc, char** argv) {
         state->dol_file_index.reset(new DOLFileIndex());
       }
 
+      if (isdir("system/patch-pc")) {
+        config_log.info("Indexing PSO PC patch files");
+        state->pc_patch_file_index.reset(new PatchFileIndex("system/patch-pc"));
+      } else {
+        config_log.info("PSO PC patch files not present");
+      }
+      if (isdir("system/patch-bb")) {
+        config_log.info("Indexing PSO BB patch files");
+        state->bb_patch_file_index.reset(new PatchFileIndex("system/patch-bb"));
+      } else {
+        config_log.info("PSO BB patch files not present");
+      }
+
       config_log.info("Creating menus");
       state->create_menus(config_json);
 

@@ -16,6 +16,7 @@ PrefixedLogger function_compiler_log ("[FunctionCompiler] ", LogLevel::USE_DEFAU
 PrefixedLogger ip_stack_simulator_log("[IPStackSimulator] ", LogLevel::USE_DEFAULT);
 PrefixedLogger license_log           ("[LicenseManager] "  , LogLevel::USE_DEFAULT);
 PrefixedLogger lobby_log             (""                   , LogLevel::USE_DEFAULT);
+PrefixedLogger patch_index_log       ("[PatchFileIndex] "  , LogLevel::USE_DEFAULT);
 PrefixedLogger player_data_log       (""                   , LogLevel::USE_DEFAULT);
 PrefixedLogger proxy_server_log      ("[ProxyServer] "     , LogLevel::USE_DEFAULT);
 PrefixedLogger replay_log            ("[ReplaySession] "   , LogLevel::USE_DEFAULT);
@@ -51,6 +52,7 @@ void set_log_levels_from_json(shared_ptr<JSONObject> json) {
   set_log_level_from_json(ip_stack_simulator_log, json, "IPStackSimulator");
   set_log_level_from_json(license_log           , json, "LicenseManager");
   set_log_level_from_json(lobby_log             , json, "Lobbies");
+  set_log_level_from_json(patch_index_log       , json, "PatchFileIndex");
   set_log_level_from_json(player_data_log       , json, "PlayerData");
   set_log_level_from_json(proxy_server_log      , json, "ProxyServer");
   set_log_level_from_json(replay_log            , json, "Replay");
