@@ -85,6 +85,7 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
 
     case ServerBehavior::PATCH_SERVER_BB:
       c->flags |= Client::Flag::BB_PATCH;
+      [[fallthrough]];
     case ServerBehavior::PATCH_SERVER_PC:
     case ServerBehavior::DATA_SERVER_BB:
     case ServerBehavior::LOBBY_SERVER:
