@@ -1,15 +1,15 @@
-I 80350 2022-07-07 23:26:14 - [Server] Client connected: C-2 on fd 29 via 20 (T-10500-Patch-bb-patch2-patch_server)
-I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=02 flag=00)
+newserv> I 58384 2022-08-08 23:38:14 - [Server] Client connected: C-1 on fd 32 via 5 (T-11000-Patch-bb-patch-patch_server_bb)
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=02 flag=00)
 0000000000000000 | 4C 00 02 00 50 61 74 63 68 20 53 65 72 76 65 72 | L   Patch Server
 0000000000000010 | 2E 20 43 6F 70 79 72 69 67 68 74 20 53 6F 6E 69 | . Copyright Soni
 0000000000000020 | 63 54 65 61 6D 2C 20 4C 54 44 2E 20 32 30 30 31 | cTeam, LTD. 2001
 0000000000000030 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
-0000000000000040 | 00 00 00 00 BB D1 71 90 F0 02 10 E1             |       q         
-I 80350 2022-07-07 23:26:14 - [Commands] Received from C-2 (version=Patch command=02 flag=00)
+0000000000000040 | 00 00 00 00 77 73 35 8D 0E E2 9C 02             |     ws5         
+I 58384 2022-08-08 23:38:14 - [Commands] Received from C-1 (version=Patch command=02 flag=00)
 0000000000000000 | 04 00 02 00                                     |                 
-I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=04 flag=00)
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=04 flag=00)
 0000000000000000 | 04 00 04 00                                     |                 
-I 80350 2022-07-07 23:26:14 - [Commands] Received from C-2 (version=Patch command=04 flag=00)
+I 58384 2022-08-08 23:38:14 - [Commands] Received from C-1 (version=Patch command=04 flag=00)
 0000000000000000 | 70 00 04 00 00 00 00 00 00 00 00 00 00 00 00 00 | p               
 0000000000000010 | 74 65 73 74 2D 75 73 65 72 00 00 00 00 00 00 00 | test-user       
 0000000000000020 | 70 61 73 73 77 6F 72 64 00 00 00 00 00 00 00 00 | password        
@@ -17,7 +17,7 @@ I 80350 2022-07-07 23:26:14 - [Commands] Received from C-2 (version=Patch comman
 0000000000000040 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000050 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000060 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
-I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=13 flag=00)
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=13 flag=00)
 0000000000000000 | 70 01 13 00 09 00 43 00 37 00 6E 00 65 00 77 00 | p     C 7 n e w 
 0000000000000010 | 73 00 65 00 72 00 76 00 20 00 70 00 61 00 74 00 | s e r v   p a t 
 0000000000000020 | 63 00 68 00 20 00 73 00 65 00 72 00 76 00 65 00 | c h   s e r v e 
@@ -41,33 +41,68 @@ I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=1
 0000000000000140 | 6C 00 65 00 74 00 65 00 6C 00 79 00 20 00 69 00 | l e t e l y   i 
 0000000000000150 | 6E 00 64 00 65 00 70 00 65 00 6E 00 64 00 65 00 | n d e p e n d e 
 0000000000000160 | 6E 00 74 00 6C 00 79 00 2E 00 00 00 00 00 00 00 | n t l y .       
-I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=09 flag=00)
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=0B flag=00)
+0000000000000000 | 04 00 0B 00                                     |                 
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=09 flag=00)
 0000000000000000 | 44 00 09 00 2E 00 00 00 00 00 00 00 00 00 00 00 | D   .           
 0000000000000010 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000020 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000030 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000040 | 00 00 00 00                                     |                 
-I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=09 flag=00)
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=09 flag=00)
 0000000000000000 | 44 00 09 00 64 61 74 61 00 00 00 00 00 00 00 00 | D   data        
 0000000000000010 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000020 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000030 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000040 | 00 00 00 00                                     |                 
-I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=09 flag=00)
-0000000000000000 | 44 00 09 00 73 63 65 6E 65 00 00 00 00 00 00 00 | D   scene       
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=0C flag=00)
+0000000000000000 | 28 00 0C 00 00 00 00 00 6E 65 77 73 65 72 76 2D | (       newserv-
+0000000000000010 | 74 65 73 74 2D 62 62 2E 74 78 74 00 00 00 00 00 | test-bb.txt     
+0000000000000020 | 00 00 00 00 00 00 00 00                         |                 
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=0A flag=00)
+0000000000000000 | 04 00 0A 00                                     |                 
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=0A flag=00)
+0000000000000000 | 04 00 0A 00                                     |                 
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=0D flag=00)
+0000000000000000 | 04 00 0D 00                                     |                 
+I 58384 2022-08-08 23:38:14 - [Commands] Received from C-1 (version=Patch command=0F flag=00)
+0000000000000000 | 10 00 0F 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
+I 58384 2022-08-08 23:38:14 - [Commands] Received from C-1 (version=Patch command=10 flag=00)
+0000000000000000 | 04 00 10 00                                     |                 
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=11 flag=00)
+0000000000000000 | 0C 00 11 00 33 00 00 00 01 00 00 00             |     3           
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=09 flag=00)
+0000000000000000 | 44 00 09 00 2E 00 00 00 00 00 00 00 00 00 00 00 | D   .           
 0000000000000010 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000020 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000030 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000040 | 00 00 00 00                                     |                 
-I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=0A flag=00)
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=09 flag=00)
+0000000000000000 | 44 00 09 00 64 61 74 61 00 00 00 00 00 00 00 00 | D   data        
+0000000000000010 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
+0000000000000020 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
+0000000000000030 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
+0000000000000040 | 00 00 00 00                                     |                 
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=06 flag=00)
+0000000000000000 | 3C 00 06 00 00 00 00 00 33 00 00 00 6E 65 77 73 | <       3   news
+0000000000000010 | 65 72 76 2D 74 65 73 74 2D 62 62 2E 74 78 74 00 | erv-test-bb.txt 
+0000000000000020 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
+0000000000000030 | 00 00 00 00 00 00 00 00 00 00 00 00             |                 
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=07 flag=00)
+0000000000000000 | 44 00 07 00 00 00 00 00 00 00 00 00 33 00 00 00 | D           3   
+0000000000000010 | 54 68 69 73 20 66 69 6C 65 20 65 78 69 73 74 73 | This file exists
+0000000000000020 | 20 74 6F 20 74 65 73 74 20 74 68 65 20 70 61 74 |  to test the pat
+0000000000000030 | 63 68 20 64 6F 77 6E 6C 6F 61 64 20 73 79 73 74 | ch download syst
+0000000000000040 | 65 6D 2E 00                                     | em.             
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=08 flag=00)
+0000000000000000 | 08 00 08 00 00 00 00 00                         |                 
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=0A flag=00)
 0000000000000000 | 04 00 0A 00                                     |                 
-I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=0A flag=00)
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=0A flag=00)
 0000000000000000 | 04 00 0A 00                                     |                 
-I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=0A flag=00)
-0000000000000000 | 04 00 0A 00                                     |                 
-I 80350 2022-07-07 23:26:14 - [Commands] Sending to C-2 (version=Patch command=12 flag=00)
+I 58384 2022-08-08 23:38:14 - [Commands] Sending to C-1 (version=Patch command=12 flag=00)
 0000000000000000 | 04 00 12 00                                     |                 
-I 80350 2022-07-07 23:26:14 - [Server] Client disconnected: C-2 on fd 29
+I 58384 2022-08-08 23:38:14 - [Server] Client disconnected: C-1 on fd 32
 I 80350 2022-07-07 23:26:22 - [Server] Client connected: C-3 on fd 29 via 26 (T-13000-BB-bb-init2-data_server_bb)
 I 80350 2022-07-07 23:26:22 - [Commands] Sending to C-3 (version=BB command=0003 flag=00000000)
 0000000000000000 | 88 01 03 00 00 00 00 00 50 68 61 6E 74 61 73 79 |         Phantasy
