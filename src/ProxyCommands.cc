@@ -688,7 +688,11 @@ static HandlerResult process_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
           true, cmd.area, cmd.x, cmd.z, cmd.request_id);
       session.next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
-    } else if (data[0] == -0x5E) { // A2
+    // Note: This static_cast is required to make compilers not complain that
+    // the comparison is always false (which even happens in some environments
+    // if we use -0x5E... apparently char is unsigned on some systems, or
+    // std::string's char_type isn't char??)
+    } else if (static_cast<uint8_t>(data[0]) == 0xA2) {
       const auto& cmd = check_size_t<G_BoxItemDropRequest_6xA2>(data);
       session.next_drop_item.data.id = session.next_item_id++;
       send_drop_item(session.server_channel, session.next_drop_item.data,
