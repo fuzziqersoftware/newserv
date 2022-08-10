@@ -1710,7 +1710,7 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
       name_info = name_info_for_primary_identifier.at(primary_identifier);
       ret_tokens.emplace_back(name_info.name);
     } catch (const out_of_range&) {
-      ret_tokens.emplace_back("!ID:%06" PRIX32, primary_identifier);
+      ret_tokens.emplace_back(string_printf("!ID:%06" PRIX32, primary_identifier));
     }
   }
 
