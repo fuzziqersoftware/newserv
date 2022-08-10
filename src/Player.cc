@@ -638,6 +638,11 @@ void ItemData::clear() {
 }
 
 uint32_t ItemData::primary_identifier() const {
+  // The game treats any item starting with 04 as Meseta, and ignores the rest
+  // of data1 (the value is in data2)
+  if (this->data1[0] == 0x04) {
+    return 0x00040000;
+  }
   if (this->data1[0] == 0x03 && this->data1[1] == 0x02) {
     return 0x00030200; // Tech disk (data1[2] is level, so omit it)
   } else if (this->data1[0] == 0x02) {
