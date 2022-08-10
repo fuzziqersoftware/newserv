@@ -2,19 +2,32 @@
 
 newserv is a game server and proxy for Phantasy Star Online (PSO).
 
-This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself; this data was originally created by Sega.
+This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself, which was originally created by Sega.
 
-This project is a rewrite of a rewrite of a game server that I wrote many years ago. So far, it works well with PSO GC Episodes 1 & 2, and lobbies (but not games) are implemented on Episode 3. Some basic functionality works on PSO PC and PSO BB, but there are probably still some cases that lead to errors (which will disconnect the client). The proxy works well with PSO GC and PSO BB.
+## Compatibility
 
-Feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
+newserv supports several versions of PSO. Specifically:
+| Version    | Basic commands | Lobbies       | Games         | Proxy         |
+|------------|----------------|---------------|---------------|---------------|
+| Dreamcast  | Not supported  | Not supported | Not supported | Not supported |
+| PC (V2)    | Supported      | Supported     | Supported     | Supported     |
+| GC Ep1&2   | Supported      | Supported     | Supported     | Supported     |
+| GC Ep3     | Supported      | Supported     | Partial (1)   | Supported     |
+| XBOX Ep1&2 | Untested (3)   | Untested (3)  | Untested (3)  | Untested (3)  |
+| Blue Burst | Supported      | Supported     | Partial (2)   | Supported     |
+*Notes:*
+1. *Episode 3 players can create and join games, but CARD battles are not implemented yet.*
+2. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get this to a playable state.*
+3. *newserv's implementation of PSOX is based on disassembly of the client executable and probably doesn't work.*
 
 ## Future
 
-This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance.
+This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance. WIth that said, feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
 
 Current known issues / missing features:
 - Episode 3 battles aren't implemented.
-- PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features. GC is known to be stable and mostly complete; PC is not well-tested but is likely stable and complete as well.
+- PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
+- PSOX is not tested at all.
 - Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
 - Implement private and overflow lobbies.
@@ -27,7 +40,7 @@ Currently newserv should build on macOS and Ubuntu. It will likely work on other
 
 There is a probably-not-too-old macOS ARM64 release on the newserv GitHub repository. You may need to install libevent manually even if you use this release (run `brew install libevent`).
 
-If you're using an older x64 Mac, you're running Linux, or you just want to build newserv yourself, here's what you do:
+If you're using an older AMD64 Mac, you're running Linux, or you just want to build newserv yourself, here's what you do:
 1. Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
 2. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 3. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to run patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
@@ -37,15 +50,14 @@ After building newserv or downloading a release, do this to set it up and use it
 1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
 2. Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
 3. Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
-
-See the "Connecting local clients" or "Connecting remote clients" section to see how to get your game client to connect.
+4. Set your client's network settings appropriately and start an online game. See the "Connecting local clients" or "Connecting remote clients" section to see how to get your game client to connect.
 
 ### Installing quests
 
 newserv automatically finds quests in the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's set-save-files option, just put them in that directory and name them appropriately.
 
-Standard quest file names should be like `q###-CATEGORY-VERSION.EXT`; battle quests should be named like `b###-VERSION.EXT`, and challenge quests should be named like `c###-VERSION.EXT`. The fields in each filename are:
-- `###`: quest number (this doesn't really matter; it should just be unique for the version)
+Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle quests should be named like `b###-VERSION.EXT`, and challenge quests should be named like `c###-VERSION.EXT`. The fields in each filename are:
+- `###`: quest number (this doesn't really matter; it should just be unique for the PSO version)
 - `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gov = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
 - `VERSION`: d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
 - `EXT`: file extension (bin, dat, bind, datd, bin.gci, dat.gci, bin.dlq, dat.dlq, or qst)
@@ -56,6 +68,8 @@ There are multiple PSO quest formats out there; newserv supports most of them. S
 - Unencrypted GCI format: These quests also consist of a .bin and .dat file, but an encoding is applied on top of them. The filenames should end in .bin.gci and .dat.gci. (Note that there also exists an encrypted GCI format, which newserv does not support.)
 - Encrypted DLQ format: These quests also consist of a .bin and .dat file, but download quest encryption is applied on top of them. The filenames should end in .bin.dlq and .dat.dlq.
 - QST format: These quests consist of only a .qst file, which contains both the .bin and .dat files within it.
+
+Episode 3 quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 .bin files can be encoded in any of the formats described above, except .qst.
 
 When newserv indexes the quests during startup, it will warn (but not fail) if any quests are corrupt or in unrecognized formats.
 
