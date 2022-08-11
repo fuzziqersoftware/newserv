@@ -27,10 +27,24 @@ bool function_compiler_available() {
 
 
 
-string CompiledFunctionCode::generate_client_command(
+const char* name_for_architecture(CompiledFunctionCode::Architecture arch) {
+  switch (arch) {
+    case CompiledFunctionCode::Architecture::POWERPC:
+      return "PowerPC";
+    case CompiledFunctionCode::Architecture::X86:
+      return "x86";
+    default:
+      throw logic_error("invalid architecture");
+  }
+}
+
+
+
+template <typename FooterT, typename U16T>
+string CompiledFunctionCode::generate_client_command_t(
       const unordered_map<string, uint32_t>& label_writes,
       const string& suffix) const {
-  S_ExecuteCode_Footer_GC_B2 footer;
+  FooterT footer;
   footer.num_relocations = this->relocation_deltas.size();
   footer.unused1.clear(0);
   footer.entrypoint_addr_offset = this->entrypoint_offset_offset;
@@ -57,7 +71,7 @@ string CompiledFunctionCode::generate_client_command(
 
   footer.relocations_offset = w.size();
   for (uint16_t delta : this->relocation_deltas) {
-    w.put_u16b(delta);
+    w.put<U16T>(delta);
   }
   if (this->relocation_deltas.size() & 1) {
     w.put_u16(0);
@@ -67,13 +81,37 @@ string CompiledFunctionCode::generate_client_command(
   return move(w.str());
 }
 
+string CompiledFunctionCode::generate_client_command(
+      const unordered_map<string, uint32_t>& label_writes,
+      const string& suffix) const {
+  if (this->arch == Architecture::POWERPC) {
+    return this->generate_client_command_t<S_ExecuteCode_Footer_GC_B2, be_uint16_t>(
+        label_writes, suffix);
+  } else if (this->arch == Architecture::X86) {
+    return this->generate_client_command_t<S_ExecuteCode_Footer_PC_XB_BB_B2, le_uint16_t>(
+        label_writes, suffix);
+  } else {
+    throw logic_error("invalid architecture");
+  }
+}
+
+bool CompiledFunctionCode::is_big_endian() const {
+  return this->arch == Architecture::POWERPC;
+}
+
+
+
 shared_ptr<CompiledFunctionCode> compile_function_code(
-    const string& directory, const string& name, const string& text) {
+    CompiledFunctionCode::Architecture arch,
+    const string& directory,
+    const string& name,
+    const string& text) {
 #ifndef HAVE_RESOURCE_FILE
+  (void)arch;
   (void)directory;
   (void)name;
   (void)text;
-  throw runtime_error("PowerPC assembler is not available");
+  throw runtime_error("function compiler is not available");
 
 #else
   std::unordered_set<string> get_include_stack; // For mutual recursion detection
@@ -94,12 +132,17 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
   };
 
   shared_ptr<CompiledFunctionCode> ret(new CompiledFunctionCode());
+  ret->arch = arch;
   ret->name = name;
   ret->index = 0;
 
-  auto assembled = PPC32Emulator::assemble(text, get_include);
-  ret->code = move(assembled.code);
-  ret->label_offsets = move(assembled.label_offsets);
+  if (arch == CompiledFunctionCode::Architecture::POWERPC) {
+    auto assembled = PPC32Emulator::assemble(text, get_include);
+    ret->code = move(assembled.code);
+    ret->label_offsets = move(assembled.label_offsets);
+  } else if (arch == CompiledFunctionCode::Architecture::X86) {
+    throw runtime_error("x86 assembler is not implemented");
+  }
 
   set<uint32_t> reloc_indexes;
   for (const auto& it : ret->label_offsets) {
@@ -149,7 +192,8 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
     try {
       string path = directory + "/" + filename;
       string text = load_file(path);
-      auto code = compile_function_code(directory, name, text);
+      auto code = compile_function_code(
+          CompiledFunctionCode::Architecture::POWERPC, directory, name, text);
       if (code->index != 0) {
         if (!this->index_to_function.emplace(code->index, code).second) {
           throw runtime_error(string_printf(
@@ -162,9 +206,11 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
         this->name_to_patch_function.emplace(name, code);
       }
       if (code->index) {
-        function_compiler_log.info("Compiled function %02X => %s", code->index, name.c_str());
+        function_compiler_log.info("Compiled function %02X => %s (%s)",
+            code->index, name.c_str(), name_for_architecture(code->arch));
       } else {
-        function_compiler_log.info("Compiled function %s", name.c_str());
+        function_compiler_log.info("Compiled function %s (%s)",
+            name.c_str(), name_for_architecture(code->arch));
       }
 
     } catch (const exception& e) {

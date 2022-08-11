@@ -217,9 +217,6 @@ void send_function_call(
     const std::string& suffix,
     uint32_t checksum_addr,
     uint32_t checksum_size) {
-  if (c->version != GameVersion::GC) {
-    throw logic_error("cannot send function calls to non-GameCube clients");
-  }
   if (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL) {
     throw logic_error("client does not support function calls");
   }
@@ -230,29 +227,39 @@ void send_function_call(
   string data;
   uint32_t index = 0;
   if (code.get()) {
-    // TODO: If we end up supporting B2 on non-GC platforms, we have to rework
-    // generate_client_command to be able to generate little-endian footers.
     data = code->generate_client_command(label_writes, suffix);
     index = code->index;
 
     if (c->flags & Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL) {
       uint32_t key = random_object<uint32_t>();
 
+      // This format was probably never used on any little-endian system, but we
+      // implement the way it would probably work there if it was used.
       StringWriter w;
-      w.put_u32b(data.size());
-      w.put_u32b(key);
+      if (code->is_big_endian()) {
+        w.put_u32b(data.size());
+        w.put_u32b(key);
+      } else {
+        w.put_u32l(data.size());
+        w.put_u32l(key);
+      }
+
+      data = prs_compress(data);
 
       // Round size up to a multiple of 4 for encryption
       data.resize((data.size() + 3) & ~3);
-
-      // For this format, the code section is decrypted without byteswapping on
-      // the client (GameCube), which is big-endian, so we have to treat the data
-      // the same way here (hence we can't just use crypt.encrypt).
-      data = prs_compress(data);
-      StringReader compressed_r(data);
       PSOV2Encryption crypt(key);
-      while (!compressed_r.eof()) {
-        w.put_u32b(compressed_r.get_u32b() ^ crypt.next());
+      if (code->is_big_endian()) {
+        // The code section is decrypted without byteswapping on the client.
+        // Since PowerPC systems (including the GameCube) are usually
+        // big-endian, we have to treat the data the same way here (hence we
+        // can't just use crypt.encrypt).
+        StringReader compressed_r(data);
+        while (!compressed_r.eof()) {
+          w.put_u32b(compressed_r.get_u32b() ^ crypt.next());
+        }
+      } else {
+        crypt.encrypt(data.data(), data.size());
       }
 
       data = move(w.str());

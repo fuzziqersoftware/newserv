@@ -20,6 +20,11 @@ bool function_compiler_available();
 // PPC32 because I haven't written an appropriate x86 assembler yet.
 
 struct CompiledFunctionCode {
+  enum class Architecture {
+    POWERPC = 0,
+    X86,
+  };
+  Architecture arch;
   std::string code;
   std::vector<uint16_t> relocation_deltas;
   std::unordered_map<std::string, uint32_t> label_offsets;
@@ -28,12 +33,21 @@ struct CompiledFunctionCode {
   uint32_t index; // 0 = unused (not registered in index_to_function)
   uint32_t menu_item_id;
 
+  bool is_big_endian() const;
+
+  template <typename FooterT, typename U16T>
+  std::string generate_client_command_t(
+        const std::unordered_map<std::string, uint32_t>& label_writes,
+        const std::string& suffix) const;
   std::string generate_client_command(
       const std::unordered_map<std::string, uint32_t>& label_writes = {},
       const std::string& suffix = "") const;
 };
 
+const char* name_for_architecture(CompiledFunctionCode::Architecture arch);
+
 std::shared_ptr<CompiledFunctionCode> compile_function_code(
+    CompiledFunctionCode::Architecture arch,
     const std::string& directory,
     const std::string& name,
     const std::string& text);
