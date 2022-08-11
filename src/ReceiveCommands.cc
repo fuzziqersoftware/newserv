@@ -2713,7 +2713,7 @@ static process_command_t gc_handlers[0x100] = {
   // B0
   nullptr, process_server_time_request, nullptr, process_function_call_result,
   nullptr, nullptr, nullptr, process_ignored_command,
-  process_ignored_command, nullptr, process_ep3_meseta_transaction, nullptr,
+  process_ignored_command, process_ignored_command, process_ep3_meseta_transaction, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
   // C0

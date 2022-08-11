@@ -1621,9 +1621,9 @@ struct S_RankUpdate_GC_Ep3_B7 {
 // B8 (S->C): Update card definitions (Episode 3)
 // Contents is a single little-endian le_uint32_t specifying the size of the
 // (PRS-compressed) data, followed immediately by the data.
-// Note: BB has a handler for B8, but it does nothing - the client ignores B8.
+// Note: PSO BB accepts this command as well, but ignores it.
 
-// B8 (C->S): Confirm updated card definitions
+// B8 (C->S): Confirm updated card definitions (Episode 3)
 // No arguments
 // The client sends this after it receives a B8 from the server.
 
@@ -1633,7 +1633,7 @@ struct S_Unknown_GC_Ep3_B9 {
   le_uint32_t unknown_a1; // Must be 1-4 (inclusive)
   le_uint32_t unknown_a2;
   le_uint16_t unknown_a3;
-  le_uint16_t unknown_a4;
+  le_uint16_t unused;
   parray<uint8_t, 0x3800> unknown_a5;
 };
 
@@ -2708,14 +2708,14 @@ struct G_EnemyHitByPlayer_6x0A {
 // 0F: Invalid subcommand
 // 10: Unknown (not valid on Episode 3)
 // 11: Unknown (not valid on Episode 3)
-// 12: Dragon actions (not valid on Episode 3)
-// 13: Re Rol Le actions (not valid on Episode 3)
+// 12: Dragon boss actions (not valid on Episode 3)
+// 13: Re Rol Le boss actions (not valid on Episode 3)
 // 14: Unknown (supported; game only; not valid on Episode 3)
 // 15: Vol Opt boss actions (not valid on Episode 3)
 // 16: Vol Opt boss actions (not valid on Episode 3)
 // 17: Unknown (supported; game only; not valid on Episode 3)
 // 18: Unknown (supported; game only; not valid on Episode 3)
-// 19: Dark Falz actions (not valid on Episode 3)
+// 19: Dark Falz boss actions (not valid on Episode 3)
 // 1A: Invalid subcommand
 // 1B: Unknown (not valid on Episode 3)
 // 1C: Unknown (supported; game only; not valid on Episode 3)
@@ -3096,7 +3096,7 @@ struct G_BoxItemDropRequest_6xA2 {
 // B4: Unknown (Episode 3 only)
 // B5: Episode 3 game setup menu state sync
 // B5: BB shop request (handled by the server)
-// B6: Episode 3 map list (server->client only)
+// B6: Episode 3 subcommands (server->client only)
 
 // B6: BB shop contents (server->client only)
 

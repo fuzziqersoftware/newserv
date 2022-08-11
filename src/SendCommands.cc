@@ -1450,7 +1450,7 @@ void send_ep3_map_list(shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
   string cmd_data(16, '\0');
   PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(cmd_data.data());
   subs[0].dword = 0x000000B6;
-  subs[1].dword = (data.size() + 0x14 + 3) & 0xFFFFFFFC;
+  subs[1].dword = (data.size() + 0x10 + 3) & 0xFFFFFFFC;
   subs[2].dword = 0x00000040;
   subs[3].dword = data.size();
   cmd_data += data;
@@ -1466,7 +1466,7 @@ void send_ep3_map_data(shared_ptr<ServerState> s, shared_ptr<Lobby> l, uint32_t 
   string data(0x14, '\0');
   PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(data.data());
   subs[0].dword = 0x000000B6;
-  subs[1].dword = (19 + compressed.size()) & 0xFFFFFFFC;
+  subs[1].dword = (compressed.size() + 0x14 + 3) & 0xFFFFFFFC;
   subs[2].dword = 0x00000041;
   subs[3].dword = entry->map.map_number.load();
   subs[4].dword = compressed.size();
