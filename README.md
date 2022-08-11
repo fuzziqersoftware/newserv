@@ -15,10 +15,11 @@ newserv supports several versions of PSO. Specifically:
 | GC Ep3     | Supported      | Supported     | Partial (1)   | Supported     |
 | XBOX Ep1&2 | Untested (3)   | Untested (3)  | Untested (3)  | Untested (3)  |
 | Blue Burst | Supported      | Supported     | Partial (2)   | Supported     |
+
 *Notes:*
 1. *Episode 3 players can create and join games, but CARD battles are not implemented yet.*
 2. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get this to a playable state.*
-3. *newserv's implementation of PSOX is based on disassembly of the client executable and probably doesn't work.*
+3. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested and probably doesn't work.*
 
 ## Future
 
