@@ -34,9 +34,11 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
                  Client::Flag::SAVE_ENABLED;
       }
       break;
+
     case 0x29: // PC
       return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
              Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
+
     case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
     case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
     case 0x34: // GC Ep1&2 JP v1.03
@@ -51,11 +53,14 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
     case 0x39: // GC Ep1&2 JP v1.05 (Plus)
       return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
              Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL;
+
+    case 0x40: // GC Ep3 trial
+      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
+             Client::Flag::EPISODE_3;
     case 0x42: // GC Ep3 JP
       return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
              Client::Flag::EPISODE_3 |
              Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
-    case 0x40: // GC Ep3 trial (TODO: Does this support send_function_call?)
     case 0x41: // GC Ep3 US
     case 0x43: // GC Ep3 EU
       return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |

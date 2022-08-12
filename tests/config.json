@@ -19,6 +19,7 @@
   "PortConfiguration": {
     "gc-jp10":   [9000,  "gc",    "login_server"],
     "gc-jp11":   [9001,  "gc",    "login_server"],
+    "gc-jpte":   [9002,  "gc",    "login_server"],
     "gc-jp3":    [9003,  "gc",    "login_server"],
     "gc-us10":   [9100,  "pc",    "split_reconnect"],
     "gc-us3":    [9103,  "gc",    "login_server"],
