@@ -2385,7 +2385,31 @@ static void change_to_directory_patch(
 
 void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  check_size_v(data.size(), sizeof(C_Login_Patch_04));
+  const auto& cmd = check_size_t<C_Login_Patch_04>(data);
+
+  try {
+    auto l = s->license_manager->verify_bb(cmd.username, cmd.password);
+    c->set_license(l);
+
+  } catch (const incorrect_password& e) {
+    u16string message = u"Login failed: " + decode_sjis(e.what());
+    send_message_box(c, message.c_str());
+    c->should_disconnect = true;
+    return;
+
+  } catch (const missing_license& e) {
+    if (!s->allow_unregistered_users) {
+      u16string message = u"Login failed: " + decode_sjis(e.what());
+      send_message_box(c, message.c_str());
+      c->should_disconnect = true;
+      return;
+    } else {
+      shared_ptr<License> l = LicenseManager::create_license_bb(
+          fnv1a32(cmd.username) & 0x7FFFFFFF, cmd.username, cmd.password, true);
+      s->license_manager->add(l);
+      c->set_license(l);
+    }
+  }
 
   // On BB we can use colors and newlines should be \n; on PC we can't use
   // colors, the text is auto-word-wrapped, and newlines should be \r\n.
@@ -2974,12 +2998,52 @@ static process_command_t patch_handlers[0x100] = {
 static process_command_t* handlers[6] = {
     dc_handlers, pc_handlers, patch_handlers, gc_handlers, xb_handlers, bb_handlers};
 
+void check_unlicensed_command(GameVersion version, uint8_t command) {
+  switch (version) {
+    case GameVersion::DC:
+      // TODO: Fix this when we support DC. It will be pretty obvious during
+      // testing that this should be fixed (and how to fix it).
+      throw runtime_error("no unlicensed commands are valid on DC");
+    case GameVersion::PC:
+      if (command != 0x9A && command != 0x9D) {
+        throw runtime_error("only commands 9A and 9D may be sent before login");
+      }
+      break;
+    case GameVersion::GC:
+    case GameVersion::XB:
+      if (command != 0xDB && command != 0x9A && command != 0x9E) {
+        throw runtime_error("only commands DB, 9A and 9E may be sent before login");
+      }
+      break;
+    case GameVersion::BB:
+      if (command != 0x93) {
+        throw runtime_error("only command 93 may be sent before login");
+      }
+      break;
+    case GameVersion::PATCH:
+      if (command != 0x02 && command != 0x04) {
+        throw runtime_error("only commands 02 and 04 may be sent before login");
+      }
+      break;
+    default:
+      throw logic_error("invalid game version");
+  }
+}
+
 void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) {
   string encoded_name;
   auto player = c->game_data.player(false);
   if (player) {
     encoded_name = remove_language_marker(encode_sjis(player->disp.name));
+  }
+
+  // Most of the command handlers assume the client is registered, logged in,
+  // and not banned (and therefore that c->license is not null), so the client
+  // is allowed to access normal functionality. This check prevents clients from
+  // sneakily sending commands to access functionality without logging in.
+  if (!c->license.get()) {
+    check_unlicensed_command(c->version, command);
   }
 
   auto fn = handlers[static_cast<size_t>(c->version)][command & 0xFF];
