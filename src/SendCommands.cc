@@ -258,11 +258,10 @@ void send_function_call(
         while (!compressed_r.eof()) {
           w.put_u32b(compressed_r.get_u32b() ^ crypt.next());
         }
+        data = move(w.str());
       } else {
         crypt.encrypt(data.data(), data.size());
       }
-
-      data = move(w.str());
     }
   }
 

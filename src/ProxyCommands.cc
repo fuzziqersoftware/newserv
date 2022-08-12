@@ -444,25 +444,57 @@ static HandlerResult process_server_88(shared_ptr<ServerState>,
 
 static HandlerResult process_server_B2(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
-  if (session.save_files) {
+  const auto& cmd = check_size_t<S_ExecuteCode_B2>(data, sizeof(S_ExecuteCode_B2), 0xFFFF);
+
+  if (cmd.code_size && session.save_files) {
+    string code = data.substr(sizeof(S_ExecuteCode_B2));
+
+    if (session.newserv_client_config.cfg.flags & Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL) {
+      StringReader r(code);
+      bool is_big_endian = (session.version == GameVersion::GC || session.version == GameVersion::DC);
+      uint32_t decompressed_size = is_big_endian ? r.get_u32b() : r.get_u32l();
+      uint32_t key = is_big_endian ? r.get_u32b() : r.get_u32l();
+
+      PSOV2Encryption crypt(key);
+      string decrypted_data;
+      if (is_big_endian) {
+        StringWriter w;
+        while (!r.eof()) {
+          w.put_u32b(r.get_u32b() ^ crypt.next());
+        }
+        decrypted_data = move(w.str());
+      } else {
+        decrypted_data = r.read(r.remaining());
+        crypt.decrypt(decrypted_data.data(), decrypted_data.size());
+      }
+
+      code = prs_decompress(decrypted_data);
+      if (decompressed_size < code.size()) {
+        code.resize(decompressed_size);
+      } else if (decompressed_size > code.size()) {
+        throw runtime_error("decompressed code smaller than expected");
+      }
+
+    } else {
+      code = data.substr(sizeof(S_ExecuteCode_B2));
+      if (code.size() < cmd.code_size) {
+        code.resize(cmd.code_size);
+      }
+    }
+
     string output_filename = string_printf("code.%" PRId64 ".bin", now());
     save_file(output_filename, data);
     session.log.info("Wrote code from server to file %s", output_filename.c_str());
 
 #ifdef HAVE_RESOURCE_FILE
     try {
-      // Note: we copy header here because we might modify data later, which
-      // would break the reference
-      auto header = StringReader(data).get<S_ExecuteCode_B2>();
-
-      size_t footer_end_offset = header.code_size;
-      size_t footer_offset = footer_end_offset - sizeof(S_ExecuteCode_Footer_GC_B2);
-      size_t orig_size = data.size() - sizeof(header);
-      if (data.size() < (sizeof(header) + footer_end_offset)) {
-        data.resize((sizeof(header) + footer_end_offset), '\0');
+      if (code.size() < sizeof(S_ExecuteCode_Footer_GC_B2)) {
+        throw runtime_error("code section is too small");
       }
 
-      StringReader r(data.data() + sizeof(header), data.size() - sizeof(header));
+      size_t footer_offset = code.size() - sizeof(S_ExecuteCode_Footer_GC_B2);
+
+      StringReader r(code.data(), code.size());
       const auto& footer = r.pget<S_ExecuteCode_Footer_GC_B2>(footer_offset);
 
       multimap<uint32_t, string> labels;
@@ -477,17 +509,17 @@ static HandlerResult process_server_B2(shared_ptr<ServerState>,
       labels.emplace(r.pget_u32b(footer.entrypoint_addr_offset), "start");
 
       string disassembly = PPC32Emulator::disassemble(
-          &r.pget<uint8_t>(0, orig_size),
-          orig_size,
+          &r.pget<uint8_t>(0, code.size()),
+          code.size(),
           0,
           &labels);
 
       output_filename = string_printf("code.%" PRId64 ".txt", now());
       {
         auto f = fopen_unique(output_filename, "wt");
-        fprintf(f.get(), "// code_size = 0x%" PRIX32 "\n", header.code_size.load());
-        fprintf(f.get(), "// checksum_addr = 0x%" PRIX32 "\n", header.checksum_start.load());
-        fprintf(f.get(), "// checksum_size = 0x%" PRIX32 "\n", header.checksum_size.load());
+        fprintf(f.get(), "// code_size = 0x%" PRIX32 "\n", cmd.code_size.load());
+        fprintf(f.get(), "// checksum_addr = 0x%" PRIX32 "\n", cmd.checksum_start.load());
+        fprintf(f.get(), "// checksum_size = 0x%" PRIX32 "\n", cmd.checksum_size.load());
         fwritex(f.get(), disassembly);
       }
       session.log.info("Wrote disassembly to file %s", output_filename.c_str());
