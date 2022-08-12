@@ -1655,7 +1655,8 @@ struct S_Meseta_GC_Ep3_BA {
 };
 
 // BB (S->C): Unknown (Episode 3)
-// header.flag is used, but it's not clear for what.
+// header.flag is used, but it's not clear for what. It may be the number of
+// valid entries, similarly to how command 07 is implemented.
 
 struct S_Unknown_GC_Ep3_BB {
   struct Entry {
@@ -1663,7 +1664,7 @@ struct S_Unknown_GC_Ep3_BB {
     le_uint16_t unknown_a2;
     le_uint16_t unknown_a3;
   };
-  // The first entry here is probably fake, like for ship select menus
+  // The first entry here is probably fake, like for ship select menus (07)
   Entry entries[0x21];
   uint8_t unknown_a3[0x900];
 };
@@ -1849,7 +1850,7 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { };
 // CB: Broadcast command (Episode 3)
 // Same as 60, but only send to Episode 3 clients.
 
-// CC (S->C): Unknown (Episode 3)
+// CC (S->C): Confirm tournament entry (Episode 3)
 
 struct S_ConfirmTournamentEntry_GC_Ep3_CC {
   ptext<char, 0x40> tournament_name;
