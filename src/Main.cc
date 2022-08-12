@@ -227,12 +227,12 @@ Specifically:\n\
       write the encrypted or decrypted result to stdout. By default, PSO GC\n\
       encryption is used, but this can be overridden with --pc or --bb. The\n\
       --seed option specifies the ecryption seed (4 hex bytes for PC or GC, or\n\
-      48 hex bytes for BB). For BB, the --key option is requires as well, and\n\
+      48 hex bytes for BB). For BB, the --key option is required as well, and\n\
       should refer to a .nsk file in system/blueburst/keys (without the\n\
       directory or .nsk extension).\n\
   --decode-sjis\n\
       If this option is given, newserv applies its text decoding algorithm to\n\
-      the data on stding, producing little-endian UTF-16 data on stdout.\n\
+      the data on stdin, producing little-endian UTF-16 data on stdout.\n\
   --decode-gci=FILENAME\n\
   --decode-dlq=FILENAME\n\
   --decode-qst=FILENAME\n\
