@@ -602,6 +602,9 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
   auto* session = reinterpret_cast<LinkedSession*>(ch.context_obj);
   bool is_server_stream = (&ch == &session->server_channel);
 
+  if (events & BEV_EVENT_CONNECTED) {
+    session->log.info("%s channel connected", is_server_stream ? "Server" : "Client");
+  }
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
     session->log.warning("Error %d (%s) in %s stream",

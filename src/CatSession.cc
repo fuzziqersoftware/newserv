@@ -111,6 +111,9 @@ void CatSession::dispatch_on_channel_error(Channel& ch, short events) {
 }
 
 void CatSession::on_channel_error(short events) {
+  if (events & BEV_EVENT_CONNECTED) {
+    this->log.info("Channel connected");
+  }
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
     this->log.warning("Error %d (%s) in unlinked client stream", err,
