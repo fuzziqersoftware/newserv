@@ -476,10 +476,6 @@ static HandlerResult process_server_B2(shared_ptr<ServerState>,
       labels.emplace(footer_offset, "footer");
       labels.emplace(r.pget_u32b(footer.entrypoint_addr_offset), "start");
 
-      for (const auto& it : labels) {
-        fprintf(stderr, "label: %08" PRIX32 " => %s\n", it.first, it.second.c_str());
-      }
-
       string disassembly = PPC32Emulator::disassemble(
           &r.pget<uint8_t>(0, orig_size),
           orig_size,
