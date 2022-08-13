@@ -1638,6 +1638,7 @@ struct S_RankUpdate_GC_Ep3_B7 {
 // The client sends this after it receives a B8 from the server.
 
 // B9 (S->C): Unknown (Episode 3)
+// This command is not valid on Episode 3 Trial Edition.
 
 struct S_Unknown_GC_Ep3_B9 {
   le_uint32_t unknown_a1; // Must be 1-4 (inclusive)
@@ -1649,8 +1650,10 @@ struct S_Unknown_GC_Ep3_B9 {
 
 // B9 (C->S): Confirm received B9 (Episode 3)
 // No arguments
+// This command is not valid on Episode 3 Trial Edition.
 
 // BA: Meseta transaction (Episode 3)
+// This command is not valid on Episode 3 Trial Edition.
 
 struct C_Meseta_GC_Ep3_BA {
   le_uint32_t transaction_num;
@@ -1667,6 +1670,7 @@ struct S_Meseta_GC_Ep3_BA {
 // BB (S->C): Unknown (Episode 3)
 // header.flag is used, but it's not clear for what. It may be the number of
 // valid entries, similarly to how command 07 is implemented.
+// This command is not valid on Episode 3 Trial Edition.
 
 struct S_Unknown_GC_Ep3_BB {
   struct Entry {
@@ -1859,8 +1863,11 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { };
 
 // CB: Broadcast command (Episode 3)
 // Same as 60, but only send to Episode 3 clients.
+// This command is identical to C9, except that CB is not valid on Episode 3
+// Trial Edition (whereas C9 is valid).
 
 // CC (S->C): Confirm tournament entry (Episode 3)
+// This command is not valid on Episode 3 Trial Edition.
 
 struct S_ConfirmTournamentEntry_GC_Ep3_CC {
   ptext<char, 0x40> tournament_name;
@@ -3124,6 +3131,7 @@ struct G_ShopContents_BB_6xB6 {
   ItemData entries[20];
 };
 
+// B7: Unknown (Episode 3 Trial Edition)
 // B7: BB buy shop item (handled by the server)
 
 struct G_BuyShopItem_BB_6xB7 {
@@ -3137,9 +3145,11 @@ struct G_BuyShopItem_BB_6xB7 {
   uint8_t unknown_a1; // TODO: Probably actually unused; verify this
 };
 
+// B8: Unknown (Episode 3 Trial Edition)
 // B8: BB accept tekker result (handled by the server)
 // Format is G_ItemIDSubcommand
 
+// B9: Unknown (Episode 3 Trial Edition)
 // B9: BB provisional tekker result
 
 struct G_IdentifyResult_BB_6xB9 {
@@ -3171,7 +3181,7 @@ struct G_BankContentsHeader_BB_6xBC {
   // Item data follows
 };
 
-// BD: Unknown (Episode 3)
+// BD: Unknown (Episode 3; not Trial Edition)
 // BD: BB bank action (take/deposit meseta/item) (handled by the server)
 
 struct G_BankAction_BB_6xBD {
@@ -3185,7 +3195,7 @@ struct G_BankAction_BB_6xBD {
   le_uint16_t unused2;
 };
 
-// BE: Unknown (Episode 3)
+// BE: Unknown (Episode 3; not Trial Edition)
 // BE: BB create inventory item (server->client only)
 
 struct G_CreateInventoryItem_BB_6xBE {
@@ -3196,7 +3206,7 @@ struct G_CreateInventoryItem_BB_6xBE {
   le_uint32_t unused;
 };
 
-// BF: Change lobby music (Episode 3)
+// BF: Change lobby music (Episode 3; not Trial Edition)
 // BF: Give EXP (BB) (server->client only)
 
 struct G_GiveExperience_BB_6xBF {
