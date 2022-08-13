@@ -376,8 +376,10 @@ struct C_LegacyLogin_BB_04 {
 //   05 = Server down for maintenance (108)
 //   06 = Incorrect password (127)
 //   Any other nonzero value = Generic failure (101)
-// The client config field in this command is only used by V3 clients. newserv
-// sends it anyway to clients on earlier versions, but they ignore it.
+// The client config field in this command is ignored by pre-V3 clients as well
+// as Episodes 1&2 Trial Edition. All other V3 clients save it as opaque data to
+// be returned in a 9E or 9F command later. newserv sends the client config
+// anyway to clients that ignore it.
 // Client will respond with a 96 command, but only the first time it receives
 // this command - for later 04 commands, the client will still update its client
 // config but will not respond. Changing the security data at any time seems ok,
@@ -433,8 +435,8 @@ struct S_MenuEntry {
   le_uint16_t flags; // should be 0x0F04
   ptext<CharT, EntryLength> text;
 };
-struct S_MenuEntry_PC_BB_07_1F : S_MenuEntry<char16_t, 17> { };
-struct S_MenuEntry_DC_V3_07_1F : S_MenuEntry<char, 18> { };
+struct S_MenuEntry_PC_BB_07_1F : S_MenuEntry<char16_t, 0x11> { };
+struct S_MenuEntry_DC_V3_07_1F : S_MenuEntry<char, 0x12> { };
 
 // 08 (C->S): Request game list
 // No arguments
@@ -578,8 +580,9 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 // All commands after this command will be encrypted with PSO V2 encryption on
 // PC, or PSO V3 encryption on V3.
 // V3 clients will respond with a DB command the first time they receive a 17
-// command in any online session; after the first time, they will respond with a
-// 9E. Non-V3 clients will respond with a 9D.
+// command in any online session, with the exception of Episodes 1&2 trial
+// edition (which responds with a 9A). After the first time, V3 clients will
+// respond with a 9E. Non-V3 clients will respond with a 9D.
 // The copyright field in the structure must contain the following text:
 // "DreamCast Port Map. Copyright SEGA Enterprises. 1999"
 
@@ -1307,8 +1310,9 @@ struct C_Register_BB_9C {
 // displayed if the header.flag field is zero. If header.flag is nonzero, the
 // client proceeds with the login procedure by sending a 9D/9E.
 
-// 9D (C->S): Log in without client config (PC)
-// Not used on V3 - the client sends 9E instead.
+// 9D (C->S): Log in without client config (PC/GC)
+// Not used on most versions of V3 - the client sends 9E instead. The one
+// type of PSO V3 that uses 9D is the Trial Edition of Episodes 1&2.
 // The extended version of this command is sent if the client has not yet
 // received an 04 (in which case the extended fields are blank) or if the client
 // selected the Meet User option, in which case it specifies the requested lobby
@@ -1322,7 +1326,7 @@ struct C_Login_MeetUserExtension {
   ptext<CharT, 0x20> target_player_name;
 };
 
-struct C_Login_PC_9D {
+struct C_Login_PC_GC_9D {
   le_uint32_t player_tag; // 0x00010000 if guild card is set (via 04)
   le_uint32_t guild_card_number; // 0xFFFFFFFF if not set
   le_uint64_t unused;
@@ -1338,7 +1342,7 @@ struct C_Login_PC_9D {
   ptext<char, 0x30> access_key2; // On XB, this is the XBL user ID
   ptext<char, 0x10> name;
 };
-struct C_LoginExtended_PC_9D : C_Login_PC_9D {
+struct C_LoginExtended_PC_GC_9D : C_Login_PC_GC_9D {
   C_Login_MeetUserExtension<char16_t> extension;
 };
 
@@ -1346,7 +1350,7 @@ struct C_LoginExtended_PC_9D : C_Login_PC_9D {
 // The extended version of this command is used in the same circumstances as
 // when PSO PC uses the extended version of the 9D command.
 
-struct C_Login_GC_9E : C_Login_PC_9D {
+struct C_Login_GC_9E : C_Login_PC_GC_9D {
   union ClientConfigFields {
     ClientConfig cfg;
     parray<uint8_t, 0x20> data;
@@ -1383,6 +1387,8 @@ struct C_LoginExtended_BB_9E {
 };
 
 // 9F (S->C): Request client config / security data (V3/BB)
+// This command is not valid on PSO GC Episodes 1&2 Trial Edition, nor any
+// pre-V3 PSO versions.
 // No arguments
 
 // 9F (C->S): Client config / security data response (V3/BB)
@@ -1476,6 +1482,8 @@ struct S_QuestMenuEntry_BB_A2_A4 : S_QuestMenuEntry<char16_t, 0x7A> { };
 // specific to that quest. The structure here represents the only instance I've
 // seen so far.
 // The server will respond with an AB command.
+// This command is likely never sent by PSO GC Episodes 1&2 Trial Edition,
+// because the following command (AB) is definitely not valid on that version.
 
 struct C_UpdateQuestStatistics_AA {
   le_uint16_t quest_internal_id;
@@ -1489,6 +1497,7 @@ struct C_UpdateQuestStatistics_AA {
 };
 
 // AB (S->C): Confirm update quest statistics
+// This command is not valid on PSO GC Episodes 1&2 Trial Edition.
 // TODO: Does this command have a different meaning in Episode 3? Is it used at
 // all there, or is the handler an undeleted vestige from Episodes 1&2?
 
@@ -1508,6 +1517,7 @@ struct S_ConfirmUpdateQuestStatistics_AB {
 // which starts the quest for all players at (approximately) the same time.
 // Sending this command to a GC client when it is not waiting to start a quest
 // will cause it to crash.
+// This command is not valid on PSO GC Episodes 1&2 Trial Edition.
 
 // AD: Invalid command
 // AE: Invalid command
@@ -1939,6 +1949,7 @@ struct C_GBAGameRequest_V3_D7 {
 
 // D7 (S->C): Unknown (V3/BB)
 // No arguments
+// This command is not valid on PSO GC Episodes 1&2 Trial Edition.
 // On PSO V3, this command does... something. The command isn't *completely*
 // ignored: it sets a global state variable, but it's not clear what that
 // variable does. That variable is also set when a D7 is sent by the client, so
@@ -1950,6 +1961,7 @@ struct C_GBAGameRequest_V3_D7 {
 // The server should respond with a D8 command (described below).
 
 // D8 (S->C): Info board contents (V3/BB)
+// This command is not valid on PSO GC Episodes 1&2 Trial Edition.
 
 // Command is a list of these; header.flag is the entry count. There should be
 // one entry for each player in the current lobby/game.
@@ -1967,6 +1979,7 @@ struct S_InfoBoardEntry_V3_D8 : S_InfoBoardEntry_D8<char> { };
 
 // DA (S->C): Change lobby event (V3/BB)
 // header.flag = new event number; no other arguments.
+// This command is not valid on PSO GC Episodes 1&2 Trial Edition.
 
 // DB (C->S): Verify license (V3/BB)
 // Server should respond with a 9A command.
@@ -3007,10 +3020,10 @@ struct G_EnemyDropItemRequest_6x60 {
 // 68: Telepipe/Ryuker
 // 69: Unknown (supported; game only)
 // 6A: Unknown (supported; game only; not valid on Episode 3)
-// 6B: Unknown (used while loading into game)
-// 6C: Unknown (used while loading into game)
-// 6D: Unknown (used while loading into game)
-// 6E: Unknown (used while loading into game)
+// 6B: Sync enemy state (used while loading into game)
+// 6C: Sync object state (used while loading into game)
+// 6D: Sync item state (used while loading into game)
+// 6E: Sync flag state (used while loading into game)
 // 6F: Unknown (used while loading into game)
 // 70: Unknown (used while loading into game)
 // 71: Unknown (used while loading into game)
@@ -3087,12 +3100,12 @@ struct G_BoxItemDropRequest_6xA2 {
 // AA: Episode 2 boss actions (not valid on PC or Episode 3)
 // AB: Create lobby chair (not valid on PC)
 // AC: Unknown (not valid on PC)
-// AD: Unknown (not valid on PC or Episode 3)
-// AE: Set chair state? (sent by existing clients at join time; not valid on PC)
-// AF: Turn in lobby chair (not valid on PC)
-// B0: Move in lobby chair (not valid on PC)
-// B1: Unknown (not valid on PC)
-// B2: Unknown (not valid on PC)
+// AD: Unknown (not valid on PC, Episode 3, or GC Trial Edition)
+// AE: Set chair state? (sent by existing clients at join time; not valid on PC or GC Trial Edition)
+// AF: Turn in lobby chair (not valid on PC or GC Trial Edition)
+// B0: Move in lobby chair (not valid on PC or GC Trial Edition)
+// B1: Unknown (not valid on PC or GC Trial Edition)
+// B2: Unknown (not valid on PC or GC Trial Edition)
 // B3: Unknown (Episode 3 only)
 // B4: Unknown (Episode 3 only)
 // B5: Episode 3 game setup menu state sync

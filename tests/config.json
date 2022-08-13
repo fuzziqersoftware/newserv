@@ -19,12 +19,14 @@
   "PortConfiguration": {
     "gc-jp10":   [9000,  "gc",    "login_server"],
     "gc-jp11":   [9001,  "gc",    "login_server"],
-    "gc-jpte":   [9002,  "gc",    "login_server"],
+    "gc-jp3te":  [9002,  "gc",    "login_server"],
     "gc-jp3":    [9003,  "gc",    "login_server"],
+    "gc-us12t1": [9064,  "gc",    "login_server_gcte"],
     "gc-us10":   [9100,  "pc",    "split_reconnect"],
     "gc-us3":    [9103,  "gc",    "login_server"],
     "gc-eu10":   [9200,  "gc",    "login_server"],
     "gc-eu11":   [9201,  "gc",    "login_server"],
+    "gc-us12t2": [9202,  "gc",    "login_server_gcte"],
     "gc-eu3":    [9203,  "gc",    "login_server"],
     "pc-login":  [9300,  "pc",    "login_server"],
     "pc-patch":  [10000, "patch", "patch_server_pc"],
@@ -38,9 +40,12 @@
     "pc-lobby":  [9420,  "pc",    "lobby_server"],
     "gc-lobby":  [9421,  "gc",    "lobby_server"],
     "bb-lobby":  [9422,  "bb",    "lobby_server"],
+    "xb-lobby":  [9423,  "xb",    "lobby_server"],
+    "gct-lobby": [9424,  "gc",    "lobby_server_gcte"],
     "pc-proxy":  [9520,  "pc",    "proxy_server"],
     "gc-proxy":  [9521,  "gc",    "proxy_server"],
     "bb-proxy":  [9522,  "bb",    "proxy_server"],
+    "xb-proxy":  [9523,  "xb",    "proxy_server"],
   },
 
   "ProxyDestinations-GC": {

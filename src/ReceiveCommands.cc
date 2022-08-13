@@ -76,6 +76,9 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
       break;
     }
 
+    case ServerBehavior::LOGIN_SERVER_GC_TRIAL_EDITION:
+      c->flags |= Client::Flag::GC_TRIAL_EDITION;
+      [[fallthrough]];
     case ServerBehavior::LOGIN_SERVER:
       send_server_init(s, c, true, false);
       if (s->pre_lobby_event) {
@@ -85,6 +88,11 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
 
     case ServerBehavior::PATCH_SERVER_BB:
       c->flags |= Client::Flag::BB_PATCH;
+      send_server_init(s, c, false, false);
+      break;
+
+    case ServerBehavior::LOBBY_SERVER_GC_TRIAL_EDITION:
+      c->flags |= Client::Flag::GC_TRIAL_EDITION;
       [[fallthrough]];
     case ServerBehavior::PATCH_SERVER_PC:
     case ServerBehavior::DATA_SERVER_BB:
@@ -319,12 +327,12 @@ void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // The client sends extra unused data the first time it sends these commands,
   // hence the odd check_size calls here
 
-  const C_Login_PC_9D* base_cmd;
+  const C_Login_PC_GC_9D* base_cmd;
   if (command == 0x9D) {
-    base_cmd = &check_size_t<C_Login_PC_9D>(data,
-        sizeof(C_Login_PC_9D), sizeof(C_LoginExtended_PC_9D));
+    base_cmd = &check_size_t<C_Login_PC_GC_9D>(data,
+        sizeof(C_Login_PC_GC_9D), sizeof(C_LoginExtended_PC_GC_9D));
     if (base_cmd->is_extended) {
-      const auto& cmd = check_size_t<C_LoginExtended_PC_9D>(data);
+      const auto& cmd = check_size_t<C_LoginExtended_PC_GC_9D>(data);
       if (cmd.extension.menu_id == MenuID::LOBBY) {
         c->preferred_lobby_id = cmd.extension.preferred_lobby_id;
       }
@@ -1119,12 +1127,15 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_quest_file(l->clients[x], dat_basename + ".dat", dat_basename,
               *dat_contents, QuestFileType::ONLINE);
 
-          // There is no such thing as command AC on PSO PC - quests just start
-          // immediately when they're done downloading. There are also no chunk
-          // acknowledgements (C->S 13 commands) like there are on GC. So, for
-          // PC clients, we can just not set the loading flag, since we never
-          // need to check/clear it later.
-          if (l->clients[x]->version != GameVersion::PC) {
+          // There is no such thing as command AC on PSO V2 - quests just start
+          // immediately when they're done downloading. (This is also the case
+          // on V3 Trial Edition.) There are also no chunk acknowledgements
+          // (C->S 13 commands) like there are on GC. So, for PC/Trial clients,
+          // we can just not set the loading flag, since we never need to
+          // check/clear it later.
+          if ((l->clients[x]->version != GameVersion::DC) &&
+              (l->clients[x]->version != GameVersion::PC) &&
+              !(l->clients[x]->flags & Client::Flag::GC_TRIAL_EDITION)) {
             l->clients[x]->flags |= Client::Flag::LOADING_QUEST;
           }
         }
@@ -1406,6 +1417,10 @@ void process_quest_barrier(shared_ptr<ServerState> s, shared_ptr<Client> c,
 void process_update_quest_statistics(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t, const string& data) { // AA
   const auto& cmd = check_size_t<C_UpdateQuestStatistics_AA>(data);
+
+  if (c->flags & Client::Flag::GC_TRIAL_EDITION) {
+    throw runtime_error("trial edition client sent update quest stats command");
+  }
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !l->is_game() || !l->loading_quest.get() ||

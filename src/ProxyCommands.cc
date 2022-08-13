@@ -217,7 +217,7 @@ static HandlerResult process_server_pc_v3_patch_02_17(shared_ptr<ServerState> s,
     return HandlerResult::Type::SUPPRESS;
 
   } else if (session.version == GameVersion::PC) {
-    C_Login_PC_9D cmd;
+    C_Login_PC_GC_9D cmd;
     if (session.remote_guild_card_number == 0) {
       cmd.player_tag = 0xFFFF0000;
       cmd.guild_card_number = 0xFFFFFFFF;

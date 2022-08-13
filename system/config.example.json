@@ -23,14 +23,19 @@
 
     // Various versions of PSO hardcode these ports in the clients. Don't change
     // these unless you don't want to support certain versions of PSO.
+    // TODO: GC Episodes 1&2 Trial Edition also uses port 9000, but a real
+    // version of PSO uses that port too. Figure out a way to differentiate
+    // between the two versions.
     "gc-jp10":   [9000,  "gc",    "login_server"],
     "gc-jp11":   [9001,  "gc",    "login_server"],
-    "gc-jpte":   [9002,  "gc",    "login_server"],
+    "gc-jp3te":  [9002,  "gc",    "login_server"],
     "gc-jp3":    [9003,  "gc",    "login_server"],
+    "gc-us12t1": [9064,  "gc",    "login_server_gcte"],
     "gc-us10":   [9100,  "pc",    "split_reconnect"],
     "gc-us3":    [9103,  "gc",    "login_server"],
     "gc-eu10":   [9200,  "gc",    "login_server"],
     "gc-eu11":   [9201,  "gc",    "login_server"],
+    "gc-us12t2": [9202,  "gc",    "login_server_gcte"],
     "gc-eu3":    [9203,  "gc",    "login_server"],
     "pc-login":  [9300,  "pc",    "login_server"],
     "pc-patch":  [10000, "patch", "patch_server_pc"],
@@ -60,10 +65,12 @@
     "gc-lobby":  [9421,  "gc",    "lobby_server"],
     "bb-lobby":  [9422,  "bb",    "lobby_server"],
     "xb-lobby":  [9423,  "xb",    "lobby_server"],
+    "gct-lobby": [9424,  "gc",    "lobby_server_gcte"],
     "pc-proxy":  [9520,  "pc",    "proxy_server"],
     "gc-proxy":  [9521,  "gc",    "proxy_server"],
     "bb-proxy":  [9522,  "bb",    "proxy_server"],
     "xb-proxy":  [9523,  "xb",    "proxy_server"],
+    // TODO: Implement proxy server for GC Trial Edition
     "bb-data1":  [12004, "bb",    "data_server_bb"],
     "bb-data2":  [12005, "bb",    "data_server_bb"],
   },

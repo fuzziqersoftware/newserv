@@ -51,6 +51,9 @@ struct Client {
     ENCRYPTED_SEND_FUNCTION_CALL = 0x0800,
     // Client supports send_function_call but does not actually run the code
     SEND_FUNCTION_CALL_CHECKSUM_ONLY = 0x1000,
+    // Client is GC Trial Edition, and therefore uses V2 encryption instead of
+    // V3, and doesn't support some commands
+    GC_TRIAL_EDITION = 0x2000,
   };
 
   uint64_t id;

@@ -104,8 +104,7 @@ S_ServerInit_DC_PC_V3_02_17_91_9B prepare_server_init_contents_dc_pc_v3(
   return cmd;
 }
 
-void send_server_init_dc_pc_v3(shared_ptr<Client> c,
-    bool initial_connection) {
+void send_server_init_dc_pc_v3(shared_ptr<Client> c, bool initial_connection) {
   uint8_t command = initial_connection ? 0x17 : 0x02;
   uint32_t server_key = random_object<uint32_t>();
   uint32_t client_key = random_object<uint32_t>();
@@ -122,8 +121,13 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c,
       break;
     case GameVersion::GC:
     case GameVersion::XB:
-      c->channel.crypt_out.reset(new PSOV3Encryption(server_key));
-      c->channel.crypt_in.reset(new PSOV3Encryption(client_key));
+      if (c->flags & Client::Flag::GC_TRIAL_EDITION) {
+        c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
+        c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
+      } else {
+        c->channel.crypt_out.reset(new PSOV3Encryption(server_key));
+        c->channel.crypt_in.reset(new PSOV3Encryption(client_key));
+      }
       break;
     default:
       throw invalid_argument("incorrect client version");
@@ -1584,12 +1588,13 @@ void send_server_time(shared_ptr<Client> c) {
 }
 
 void send_change_event(shared_ptr<Client> c, uint8_t new_event) {
-  // THis command isn't supported on versions before V3
-  if ((c->version == GameVersion::GC) ||
-      (c->version == GameVersion::XB) ||
-      (c->version == GameVersion::BB)) {
-    send_command(c, 0xDA, new_event);
+  // This command isn't supported on versions before V3, nor on Trial Edition.
+  if ((c->version == GameVersion::DC) ||
+      (c->version == GameVersion::PC) ||
+      (c->flags & Client::Flag::GC_TRIAL_EDITION)) {
+    return;
   }
+  send_command(c, 0xDA, new_event);
 }
 
 void send_change_event(shared_ptr<Lobby> l, uint8_t new_event) {

@@ -269,8 +269,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       if (command != 0x9D) {
         throw runtime_error("command is not 9D");
       }
-      const auto& cmd = check_size_t<C_Login_PC_9D>(
-          data, sizeof(C_Login_PC_9D), sizeof(C_LoginExtended_PC_9D));
+      const auto& cmd = check_size_t<C_Login_PC_GC_9D>(
+          data, sizeof(C_Login_PC_GC_9D), sizeof(C_LoginExtended_PC_GC_9D));
       license = session->server->state->license_manager->verify_pc(
           stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
       sub_version = cmd.sub_version;

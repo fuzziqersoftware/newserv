@@ -39,6 +39,10 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
       return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
              Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
 
+    // TODO: GC Ep1&2 trial edition uses sub_version 0x30, but also uses PSO V2
+    // encryption! Find a way to tell that version apart from the others before
+    // starting encryption (hopefully it connects on a port not shared by other
+    // versions).
     case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
     case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
     case 0x34: // GC Ep1&2 JP v1.03
@@ -114,8 +118,12 @@ const char* name_for_server_behavior(ServerBehavior behavior) {
       return "split_reconnect";
     case ServerBehavior::LOGIN_SERVER:
       return "login_server";
+    case ServerBehavior::LOGIN_SERVER_GC_TRIAL_EDITION:
+      return "login_server_gcte";
     case ServerBehavior::LOBBY_SERVER:
       return "lobby_server";
+    case ServerBehavior::LOBBY_SERVER_GC_TRIAL_EDITION:
+      return "lobby_server_gcte";
     case ServerBehavior::DATA_SERVER_BB:
       return "data_server_bb";
     case ServerBehavior::PATCH_SERVER_PC:
@@ -134,8 +142,12 @@ ServerBehavior server_behavior_for_name(const char* name) {
     return ServerBehavior::SPLIT_RECONNECT;
   } else if (!strcasecmp(name, "login_server") || !strcasecmp(name, "login")) {
     return ServerBehavior::LOGIN_SERVER;
+  } else if (!strcasecmp(name, "login_server_gcte") || !strcasecmp(name, "login_gcte")) {
+    return ServerBehavior::LOGIN_SERVER_GC_TRIAL_EDITION;
   } else if (!strcasecmp(name, "lobby_server") || !strcasecmp(name, "lobby")) {
     return ServerBehavior::LOBBY_SERVER;
+  } else if (!strcasecmp(name, "lobby_server_gcte") || !strcasecmp(name, "lobby_gcte")) {
+    return ServerBehavior::LOBBY_SERVER_GC_TRIAL_EDITION;
   } else if (!strcasecmp(name, "data_server_bb") || !strcasecmp(name, "data_server") || !strcasecmp(name, "data")) {
     return ServerBehavior::DATA_SERVER_BB;
   } else if (!strcasecmp(name, "patch_server_pc") || !strcasecmp(name, "patch_pc")) {
