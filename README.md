@@ -1,4 +1,4 @@
-# newserv
+# newserv <img align="right" src="s-newserv.png" />
 
 newserv is a game server and proxy for Phantasy Star Online (PSO).
 
