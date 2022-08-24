@@ -81,7 +81,8 @@ uint32_t PSOV2Encryption::next(bool advance) {
   return ret;
 }
 
-void PSOV2Encryption::encrypt(void* vdata, size_t size, bool advance) {
+template <typename LongT>
+void PSOV2Encryption::encrypt_t(void* vdata, size_t size, bool advance) {
   if (size & 3) {
     throw invalid_argument("size must be a multiple of 4");
   }
@@ -90,10 +91,18 @@ void PSOV2Encryption::encrypt(void* vdata, size_t size, bool advance) {
   }
   size >>= 2;
 
-  le_uint32_t* data = reinterpret_cast<le_uint32_t*>(vdata);
+  LongT* data = reinterpret_cast<LongT*>(vdata);
   for (size_t x = 0; x < size; x++) {
     data[x] ^= this->next(advance);
   }
+}
+
+void PSOV2Encryption::encrypt(void* vdata, size_t size, bool advance) {
+  this->encrypt_t<le_uint32_t>(vdata, size, advance);
+}
+
+void PSOV2Encryption::encrypt_big_endian(void* vdata, size_t size, bool advance) {
+  this->encrypt_t<be_uint32_t>(vdata, size, advance);
 }
 
 
@@ -158,7 +167,8 @@ PSOV3Encryption::PSOV3Encryption(uint32_t seed) : offset(0) {
   }
 }
 
-void PSOV3Encryption::encrypt(void* vdata, size_t size, bool advance) {
+template <typename LongT>
+void PSOV3Encryption::encrypt_t(void* vdata, size_t size, bool advance) {
   if (size & 3) {
     throw invalid_argument("size must be a multiple of 4");
   }
@@ -167,10 +177,18 @@ void PSOV3Encryption::encrypt(void* vdata, size_t size, bool advance) {
   }
   size >>= 2;
 
-  le_uint32_t* data = reinterpret_cast<le_uint32_t*>(vdata);
+  LongT* data = reinterpret_cast<LongT*>(vdata);
   for (size_t x = 0; x < size; x++) {
     data[x] ^= this->next(advance);
   }
+}
+
+void PSOV3Encryption::encrypt(void* vdata, size_t size, bool advance) {
+  this->encrypt_t<le_uint32_t>(vdata, size, advance);
+}
+
+void PSOV3Encryption::encrypt_big_endian(void* vdata, size_t size, bool advance) {
+  this->encrypt_t<be_uint32_t>(vdata, size, advance);
 }
 
 

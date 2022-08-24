@@ -39,10 +39,14 @@ public:
   explicit PSOV2Encryption(uint32_t seed);
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
+  void encrypt_big_endian(void* data, size_t size, bool advance = true);
 
   uint32_t next(bool advance = true);
 
 protected:
+  template <typename LongT>
+  void encrypt_t(void* data, size_t size, bool advance);
+
   void update_stream();
 
   uint32_t stream[V2_STREAM_LENGTH + 1];
@@ -54,10 +58,14 @@ public:
   explicit PSOV3Encryption(uint32_t key);
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
+  void encrypt_big_endian(void* data, size_t size, bool advance = true);
 
   uint32_t next(bool advance = true);
 
 protected:
+  template <typename LongT>
+  void encrypt_t(void* data, size_t size, bool advance);
+
   void update_stream();
 
   uint32_t stream[V3_STREAM_LENGTH];

@@ -254,15 +254,7 @@ void send_function_call(
       data.resize((data.size() + 3) & ~3);
       PSOV2Encryption crypt(key);
       if (code->is_big_endian()) {
-        // The code section is decrypted without byteswapping on the client.
-        // Since PowerPC systems (including the GameCube) are usually
-        // big-endian, we have to treat the data the same way here (hence we
-        // can't just use crypt.encrypt).
-        StringReader compressed_r(data);
-        while (!compressed_r.eof()) {
-          w.put_u32b(compressed_r.get_u32b() ^ crypt.next());
-        }
-        data = move(w.str());
+        crypt.encrypt_big_endian(data.data(), data.size());
       } else {
         crypt.encrypt(data.data(), data.size());
       }
