@@ -521,7 +521,23 @@ void send_header_text(Channel& ch, uint16_t command,
 }
 
 void send_message_box(shared_ptr<Client> c, const u16string& text) {
-  uint16_t command = (c->version == GameVersion::PATCH) ? 0x13 : 0x1A;
+  uint16_t command;
+  switch (c->version) {
+    case GameVersion::PATCH:
+      command = 0x13;
+      break;
+    case GameVersion::DC:
+    case GameVersion::PC:
+      command = 0x1A;
+      break;
+    case GameVersion::GC:
+    case GameVersion::XB:
+    case GameVersion::BB:
+      command = 0xD5;
+      break;
+    default:
+      throw logic_error("invalid game version");
+  }
   send_text(c->channel, command, text, true);
 }
 

@@ -693,13 +693,11 @@ static string create_download_quest_file(const string& compressed_data,
 
   // Add temporary extra bytes if necessary so encryption won't fail - the data
   // size must be a multiple of 4 for PSO V2 encryption.
-  size_t original_size = data.size();
   data.resize((data.size() + 3) & (~3));
 
   PSOV3Encryption encr(encryption_seed);
   encr.encrypt(data.data() + sizeof(PSODownloadQuestHeader),
       data.size() - sizeof(PSODownloadQuestHeader));
-  data.resize(original_size);
 
   return data;
 }

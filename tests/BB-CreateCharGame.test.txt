@@ -31189,7 +31189,7 @@ I 80350 2022-07-07 23:27:19 - [Commands] Received from C-8 (NO DATA) (version=BB
 I 80350 2022-07-07 23:27:19 - [Commands] Sending to C-8 (NO DATA) (version=BB command=0069 flag=00000000)
 0000000000000000 | 0C 00 69 00 00 00 00 00 00 00 00 00             |   i             
 I 80350 2022-07-07 23:27:19 - [Commands] Sending to C-8 (NO DATA) (version=BB command=001A flag=00000000)
-0000000000000000 | 0C 00 1A 00 00 00 00 00 00 00 00 00             |                 
+0000000000000000 | 0C 00 D5 00 00 00 00 00 00 00 00 00             |                 
 I 80350 2022-07-07 23:27:19 - [Commands] Sending to C-8 (NO DATA) (version=BB command=0019 flag=00000000)
 0000000000000000 | 10 00 19 00 00 00 00 00 0A 00 00 03 E0 2E 00 00 |              .  
 I 80350 2022-07-07 23:27:19 - [Server] Client disconnected: C-8 on fd 29
@@ -33759,7 +33759,7 @@ I 80350 2022-07-07 23:29:17 - [Commands] Received from C-A (NO DATA) (version=BB
 I 80350 2022-07-07 23:29:17 - [Commands] Sending to C-A (NO DATA) (version=BB command=0069 flag=00000000)
 0000000000000000 | 0C 00 69 00 00 00 00 00 00 00 00 00             |   i             
 I 80350 2022-07-07 23:29:17 - [Commands] Sending to C-A (NO DATA) (version=BB command=001A flag=00000000)
-0000000000000000 | 0C 00 1A 00 00 00 00 00 00 00 00 00             |                 
+0000000000000000 | 0C 00 D5 00 00 00 00 00 00 00 00 00             |                 
 I 80350 2022-07-07 23:29:17 - [Commands] Sending to C-A (NO DATA) (version=BB command=0019 flag=00000000)
 0000000000000000 | 10 00 19 00 00 00 00 00 0A 00 00 03 E0 2E 00 00 |              .  
 I 80350 2022-07-07 23:29:17 - [Server] Client disconnected: C-A on fd 29

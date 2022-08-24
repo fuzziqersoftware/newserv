@@ -1889,7 +1889,7 @@ I 94711 2022-07-26 00:24:56 - [Commands] Sending to C-7 (version=GC command=B7 f
 0000000000000000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0000000000000010 | 00 00 00 00 FF FF FF 00 FF FF FF 00 FF FF FF FF |                 
 I 94711 2022-07-26 00:24:56 - [Commands] Sending to C-7 (version=GC command=1A flag=00)
-0000000000000000 | 1A 00 2C 00 59 6F 75 20 61 72 65 20 63 6F 6E 6E |   , You are conn
+0000000000000000 | D5 00 2C 00 59 6F 75 20 61 72 65 20 63 6F 6E 6E |   , You are conn
 0000000000000010 | 65 63 74 65 64 20 74 6F 20 09 43 36 41 6C 65 78 | ected to  C6Alex
 0000000000000020 | 61 6E 64 72 69 61 09 43 37 2E 00 00             | andria C7.      
 I 94711 2022-07-26 00:24:56 - [Commands] Received from C-7 (version=GC command=96 flag=00)
@@ -1959,7 +1959,7 @@ I 94711 2022-07-26 00:25:06 - [Commands] Sending to C-7 (version=GC command=07 f
 I 94711 2022-07-26 00:25:07 - [Commands] Received from C-7 (version=GC command=10 flag=00)
 0000000000000000 | 10 00 0C 00 22 00 00 22 01 00 00 00             |     "  "        
 I 94711 2022-07-26 00:25:07 - [Commands] Sending to C-7 (version=GC command=1A flag=00)
-0000000000000000 | 1A 00 24 01 4C 6F 62 62 79 20 63 6F 6D 6D 61 6E |   $ Lobby comman
+0000000000000000 | D5 00 24 01 4C 6F 62 62 79 20 63 6F 6D 6D 61 6E |   $ Lobby comman
 0000000000000010 | 64 73 3A 20 79 6F 75 20 6D 75 73 74 20 62 65 20 | ds: you must be 
 0000000000000020 | 61 20 6D 6F 64 65 72 61 74 6F 72 20 74 6F 20 75 | a moderator to u
 0000000000000030 | 73 65 0A 74 68 65 73 65 20 63 6F 6D 6D 61 6E 64 | se these command

@@ -81,7 +81,7 @@ I 26579 2022-07-01 10:22:13 - [Commands] Sending to C-5C (version=GC command=000
 0000000000000010 | 0E 89 2A 49 00 01 00 00 00 00 00 00 FF FF FF FF |   *I            
 0000000000000020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 26579 2022-07-01 10:22:13 - [Commands] Sending to C-5C (version=GC command=001A flag=00000000)
-0000000000000000 | 1A 00 2C 00 59 6F 75 20 61 72 65 20 63 6F 6E 6E |   , You are conn
+0000000000000000 | D5 00 2C 00 59 6F 75 20 61 72 65 20 63 6F 6E 6E |   , You are conn
 0000000000000010 | 65 63 74 65 64 20 74 6F 20 09 43 36 41 6C 65 78 | ected to  C6Alex
 0000000000000020 | 61 6E 64 72 69 61 09 43 37 2E 00 00             | andria C7.      
 I 26579 2022-07-01 10:22:13 - [Commands] Received from C-5C (version=GC command=0096 flag=00000000)
