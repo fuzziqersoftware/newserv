@@ -1160,6 +1160,26 @@ struct C_LegacyLogin_V3_90 {
 // 92 (S->C): Register result (non-BB)
 // Same format and usage as 9C (S->C) command.
 
+// 93 (C->S): Log in (DCv1)
+
+struct C_Login_DCv1_93 {
+  le_uint32_t player_tag;
+  le_uint32_t guild_card_number;
+  le_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
+  le_uint32_t sub_version;
+  uint8_t unknown_a3; // Probably is_extended
+  uint8_t language_code;
+  uint8_t unused1[2];
+  ptext<char, 0x11> serial_number;
+  ptext<char, 0x11> access_key;
+  // Note: The hardware_id field is likely shorter than this (only 8 bytes
+  // appear to actually be used).
+  ptext<char, 0x60> hardware_id;
+  ptext<char, 0x10> name;
+  uint8_t unused2[2];
+};
+
 // 93 (C->S): Log in (BB)
 
 struct C_Login_BB_93 {
@@ -1241,14 +1261,14 @@ struct C_CharSaveInfo_V3_BB_96 {
 // 9A (C->S): Initial login (no password or client config)
 
 struct C_Login_DC_PC_V3_9A {
-  ptext<char, 0x10> unused1;
-  ptext<char, 0x10> unused2;
+  ptext<char, 0x10> v1_serial_number;
+  ptext<char, 0x10> v1_access_key;
   ptext<char, 0x10> serial_number;
   ptext<char, 0x10> access_key;
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
   le_uint32_t sub_version;
-  ptext<char, 0x30> serial_number2;
+  ptext<char, 0x30> serial_number2; // On DCv2, this is the hardware ID
   ptext<char, 0x30> access_key2;
   ptext<char, 0x30> email_address;
 };
@@ -1338,8 +1358,8 @@ struct C_Login_PC_GC_9D {
   uint8_t is_extended; // If 1, structure has extended format
   uint8_t language; // 0 = JP, 1 = EN, 2 = DE (?), 3 = FR (?), 4 = ES
   parray<uint8_t, 0x2> unused3; // Always zeroes?
-  ptext<char, 0x10> unused1; // Same as unused1/unused2 in 9A
-  ptext<char, 0x10> unused2;
+  ptext<char, 0x10> v1_serial_number;
+  ptext<char, 0x10> v1_access_key;
   ptext<char, 0x10> serial_number; // On XB, this is the XBL gamertag
   ptext<char, 0x10> access_key; // On XB, this is the XBL user ID
   ptext<char, 0x30> serial_number2; // On XB, this is the XBL gamertag
