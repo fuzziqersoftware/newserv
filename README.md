@@ -7,23 +7,29 @@ This project includes code that was reverse-engineered by the community in ages 
 ## Compatibility
 
 newserv supports several versions of PSO. Specifically:
-| Version    | Basic commands | Lobbies       | Games         | Proxy         |
-|------------|----------------|---------------|---------------|---------------|
-| Dreamcast  | Not supported  | Not supported | Not supported | Not supported |
-| PC (V2)    | Supported      | Supported     | Supported     | Supported     |
-| GC Ep1&2   | Supported      | Supported     | Supported     | Supported     |
-| GC Ep3     | Supported      | Supported     | Partial (1)   | Supported     |
-| XBOX Ep1&2 | Untested (3)   | Untested (3)  | Untested (3)  | Untested (3)  |
-| Blue Burst | Supported      | Supported     | Partial (2)   | Supported     |
+| Version              | Basic commands | Lobbies       | Games         | Proxy         |
+|----------------------|----------------|---------------|---------------|---------------|
+| Dreamcast Trial      | Not supported  | Not supported | Not supported | Not supported |
+| Dreamcast V1         | Not supported  | Not supported | Not supported | Not supported |
+| Dreamcast V2         | Not supported  | Not supported | Not supported | Not supported |
+| PC                   | Supported      | Supported     | Supported     | Supported     |
+| GameCube Ep1&2 Trial | Untested (4)   | Untested (4)  | Untested (4)  | Untested (4)  |
+| GameCube Ep1&2       | Supported      | Supported     | Supported     | Supported     |
+| GameCube Ep1&2 Plus  | Supported      | Supported     | Supported     | Supported     |
+| GameCube Ep3 Trial   | Supported      | Supported     | Partial (1)   | Supported     |
+| GameCube Ep3         | Supported      | Supported     | Partial (1)   | Supported     |
+| XBOX Ep1&2           | Untested (3)   | Untested (3)  | Untested (3)  | Untested (3)  |
+| Blue Burst           | Supported      | Supported     | Partial (2)   | Supported     |
 
 *Notes:*
 1. *Episode 3 players can create and join games, but CARD battles are not implemented yet.*
 2. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get this to a playable state.*
 3. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested and probably doesn't work.*
+4. *This version only supports the modem adapter, which Dolphin does not currently emulate, so it's difficult to test.*
 
 ## Future
 
-This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance. WIth that said, feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
+This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance. With that said, feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
 
 Current known issues / missing features:
 - Episode 3 battles aren't implemented.
