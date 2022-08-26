@@ -432,6 +432,7 @@ void IPStackSimulator::on_client_udp_frame(
   if (this->state->ip_stack_debug) {
     string remote_str = this->str_for_ipv4_netloc(fi.ipv4->src_addr, fi.udp->src_port);
     ip_stack_simulator_log.info("Sending DNS response to %s", remote_str.c_str());
+    print_data(stderr, r_data);
   }
 
   uint16_t frame_size = sizeof(r_ether) + sizeof(r_ipv4) + sizeof(r_udp) + r_data.size();
