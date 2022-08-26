@@ -226,7 +226,7 @@ Specifically:\n\
       If either of these options is given, newserv will read from stdin and\n\
       write the encrypted or decrypted result to stdout. By default, PSO GC\n\
       encryption is used, but this can be overridden with --pc or --bb. The\n\
-      --seed option specifies the ecryption seed (4 hex bytes for PC or GC, or\n\
+      --seed option specifies the encryption seed (4 hex bytes for PC or GC, or\n\
       48 hex bytes for BB). For BB, the --key option is required as well, and\n\
       should refer to a .nsk file in system/blueburst/keys (without the\n\
       directory or .nsk extension).\n\
