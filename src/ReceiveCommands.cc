@@ -68,36 +68,27 @@ vector<MenuItem> quest_download_menu({
 
 void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
   switch (c->server_behavior) {
-    case ServerBehavior::SPLIT_RECONNECT: {
+    case ServerBehavior::PC_CONSOLE_DETECT: {
       uint16_t pc_port = s->name_to_port_config.at("pc-login")->port;
-      uint16_t gc_port = s->name_to_port_config.at("gc-jp10")->port;
-      send_pc_gc_split_reconnect(c, s->connect_address_for_client(c), pc_port, gc_port);
+      uint16_t console_port = s->name_to_port_config.at("console-login")->port;
+      send_pc_console_split_reconnect(c, s->connect_address_for_client(c), pc_port, console_port);
       c->should_disconnect = true;
       break;
     }
 
-    case ServerBehavior::LOGIN_SERVER_GC_TRIAL_EDITION:
-      c->flags |= Client::Flag::GC_TRIAL_EDITION;
-      [[fallthrough]];
     case ServerBehavior::LOGIN_SERVER:
-      send_server_init(s, c, true, false);
-      if (s->pre_lobby_event) {
-        send_change_event(c, s->pre_lobby_event);
-      }
+      send_server_init(s, c, SendServerInitFlag::IS_INITIAL_CONNECTION);
       break;
 
     case ServerBehavior::PATCH_SERVER_BB:
       c->flags |= Client::Flag::BB_PATCH;
-      send_server_init(s, c, false, false);
+      send_server_init(s, c, 0);
       break;
 
-    case ServerBehavior::LOBBY_SERVER_GC_TRIAL_EDITION:
-      c->flags |= Client::Flag::GC_TRIAL_EDITION;
-      [[fallthrough]];
     case ServerBehavior::PATCH_SERVER_PC:
     case ServerBehavior::DATA_SERVER_BB:
     case ServerBehavior::LOBBY_SERVER:
-      send_server_init(s, c, false, false);
+      send_server_init(s, c, 0);
       break;
 
     default:
@@ -111,19 +102,17 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   // (when we should send ths ship select menu).
   if ((c->server_behavior == ServerBehavior::LOGIN_SERVER) ||
       (c->server_behavior == ServerBehavior::DATA_SERVER_BB)) {
-    // On the login server, send the ep3 updates and the main menu or welcome
-    // message
+    // On the login server, send the events/songs, ep3 updates, and the main
+    // menu or welcome message
+    if (s->pre_lobby_event) {
+      send_change_event(c, s->pre_lobby_event);
+    }
     if (c->flags & Client::Flag::EPISODE_3) {
+      if (s->ep3_menu_song >= 0) {
+        send_ep3_change_music(c, s->ep3_menu_song);
+      }
       send_ep3_card_list_update(s, c);
       send_ep3_rank_update(c);
-    }
-
-    // On BB, send the pre-lobby event, if set. This normally happens on the
-    // login server immediately after the encryption init command, but on BB we
-    // don't know the client's state until after we receive the login command,
-    // so we do it here instead.
-    if ((c->version == GameVersion::BB) && s->pre_lobby_event) {
-      send_change_event(c, s->pre_lobby_event);
     }
 
     if (s->welcome_message.empty() ||
@@ -168,10 +157,28 @@ void process_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static void set_console_client_flags(
+    shared_ptr<Client> c, uint32_t sub_version) {
+  if (c->channel.crypt_in->type() == PSOEncryption::Type::V2) {
+    if (sub_version < 0x28) {
+      c->version = GameVersion::DC;
+      c->log.info("Game version changed to DC");
+    } else if (c->version == GameVersion::GC) {
+      c->flags |= Client::Flag::GC_TRIAL_EDITION;
+      c->log.info("Trial edition flag set");
+    }
+  }
+  c->flags |= flags_for_version(c->version, sub_version);
+}
+
 void process_verify_license_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // DB
   const auto& cmd = check_size_t<C_VerifyLicense_V3_DB>(data);
-  c->flags |= flags_for_version(c->version, cmd.sub_version);
+
+  if (c->channel.crypt_in->type() == PSOEncryption::Type::V2) {
+    throw runtime_error("GC trial edition client sent V3 verify license command");
+  }
+  set_console_client_flags(c, cmd.sub_version);
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
@@ -208,8 +215,7 @@ void process_verify_license_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
 void process_login_a_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 9A
   const auto& cmd = check_size_t<C_Login_DC_PC_V3_9A>(data);
-
-  c->flags |= flags_for_version(c->version, cmd.sub_version);
+  set_console_client_flags(c, cmd.sub_version);
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
@@ -323,10 +329,6 @@ void process_login_c_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) { // 9D 9E
-
-  // The client sends extra unused data the first time it sends these commands,
-  // hence the odd check_size calls here
-
   const C_Login_PC_GC_9D* base_cmd;
   if (command == 0x9D) {
     base_cmd = &check_size_t<C_Login_PC_GC_9D>(data,
@@ -339,8 +341,22 @@ void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
 
   } else if (command == 0x9E) {
+    // GC and XB send different amounts of data in this command. This is how
+    // newserv determines if a V3 client is GC or XB.
     const auto& cmd = check_size_t<C_Login_GC_9E>(data,
-        sizeof(C_Login_GC_9E), sizeof(C_LoginExtended_GC_9E));
+        sizeof(C_Login_GC_9E), sizeof(C_LoginExtended_XB_9E));
+    switch (data.size()) {
+      case sizeof(C_Login_GC_9E):
+      case sizeof(C_LoginExtended_GC_9E):
+        break;
+      case sizeof(C_Login_XB_9E):
+      case sizeof(C_LoginExtended_XB_9E):
+        c->version = GameVersion::XB;
+        c->log.info("Game version set to XB");
+        break;
+      default:
+        throw runtime_error("invalid size for 9E command");
+    }
     base_cmd = &cmd;
     if (cmd.is_extended) {
       const auto& cmd = check_size_t<C_LoginExtended_GC_9E>(data);
@@ -363,7 +379,7 @@ void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     throw logic_error("9D/9E handler called for incorrect command");
   }
 
-  c->flags |= flags_for_version(c->version, base_cmd->sub_version);
+  set_console_client_flags(c, base_cmd->sub_version);
 
   uint32_t serial_number = stoul(base_cmd->serial_number, nullptr, 16);
   try {
@@ -410,10 +426,6 @@ void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     } else {
       throw runtime_error("unsupported game version");
     }
-  }
-
-  if ((c->flags & Client::Flag::EPISODE_3) && (s->ep3_menu_song >= 0)) {
-    send_ep3_change_music(c, s->ep3_menu_song);
   }
 
   send_update_client_config(c);
@@ -539,7 +551,7 @@ void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c
   // responds after saving.
   if (c->should_send_to_lobby_server) {
     static const vector<string> version_to_port_name({
-        "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "xb-lobby", "bb-lobby"});
+        "console-lobby", "pc-lobby", "bb-lobby", "console-lobby", "console-lobby", "bb-lobby"});
     const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
     send_reconnect(c, s->connect_address_for_client(c),
         s->name_to_port_config.at(port_name)->port);
@@ -881,7 +893,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
             send_update_client_config(c);
           } else {
             static const vector<string> version_to_port_name({
-                "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "xb-lobby", "bb-lobby"});
+                "console-lobby", "pc-lobby", "bb-lobby", "console-lobby", "console-lobby", "bb-lobby"});
             const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
             send_reconnect(c, s->connect_address_for_client(c),
                 s->name_to_port_config.at(port_name)->port);
@@ -978,7 +990,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           // license/char name/etc. for remote auth)
 
           static const vector<string> version_to_port_name({
-              "dc-proxy", "pc-proxy", "", "gc-proxy", "xb-proxy", "bb-proxy"});
+              "console-proxy", "pc-proxy", "", "console-proxy", "console-proxy", "bb-proxy"});
           const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
           uint16_t local_port = s->name_to_port_config.at(port_name)->port;
 

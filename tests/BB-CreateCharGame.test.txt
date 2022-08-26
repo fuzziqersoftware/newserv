@@ -29902,9 +29902,9 @@ I 80350 2022-07-07 23:27:02 - [Commands] Sending to C-7 (version=BB command=0007
 I 80350 2022-07-07 23:27:03 - [Commands] Received from C-7 (version=BB command=0010 flag=00000000)
 0000000000000000 | 10 00 10 00 00 00 00 00 11 00 00 11 11 22 22 11 |              "" 
 I 80350 2022-07-07 23:27:03 - [Commands] Sending to C-7 (version=BB command=0019 flag=00000000)
-0000000000000000 | 10 00 19 00 00 00 00 00 0A 00 00 03 CE 24 00 00 |              $  
+0000000000000000 | 10 00 19 00 00 00 00 00 0A 00 00 03 F8 13 00 00 |              $  
 I 80350 2022-07-07 23:27:03 - [Server] Client disconnected: C-7 on fd 29
-I 80350 2022-07-07 23:27:03 - [Server] Client connected: C-8 on fd 29 via 22 (T-9422-BB-bb-lobby-lobby_server)
+I 80350 2022-07-07 23:27:03 - [Server] Client connected: C-8 on fd 29 via 22 (T-5112-BB-bb-lobby-lobby_server)
 I 80350 2022-07-07 23:27:03 - [Commands] Sending to C-8 (version=BB command=0003 flag=00000000)
 0000000000000000 | 88 01 03 00 00 00 00 00 50 68 61 6E 74 61 73 79 |         Phantasy
 0000000000000010 | 20 53 74 61 72 20 4F 6E 6C 69 6E 65 20 42 6C 75 |  Star Online Blu
@@ -31254,9 +31254,9 @@ I 80350 2022-07-07 23:27:19 - [Commands] Sending to C-9 (version=BB command=0007
 I 80350 2022-07-07 23:27:20 - [Commands] Received from C-9 (version=BB command=0010 flag=00000000)
 0000000000000000 | 10 00 10 00 00 00 00 00 11 00 00 11 11 22 22 11 |              "" 
 I 80350 2022-07-07 23:27:20 - [Commands] Sending to C-9 (version=BB command=0019 flag=00000000)
-0000000000000000 | 10 00 19 00 00 00 00 00 0A 00 00 03 CE 24 00 00 |              $  
+0000000000000000 | 10 00 19 00 00 00 00 00 0A 00 00 03 F8 13 00 00 |              $  
 I 80350 2022-07-07 23:27:20 - [Server] Client disconnected: C-9 on fd 29
-I 80350 2022-07-07 23:27:20 - [Server] Client connected: C-A on fd 29 via 22 (T-9422-BB-bb-lobby-lobby_server)
+I 80350 2022-07-07 23:27:20 - [Server] Client connected: C-A on fd 29 via 22 (T-5112-BB-bb-lobby-lobby_server)
 I 80350 2022-07-07 23:27:20 - [Commands] Sending to C-A (version=BB command=0003 flag=00000000)
 0000000000000000 | 88 01 03 00 00 00 00 00 50 68 61 6E 74 61 73 79 |         Phantasy
 0000000000000010 | 20 53 74 61 72 20 4F 6E 6C 69 6E 65 20 42 6C 75 |  Star Online Blu

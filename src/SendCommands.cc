@@ -26,6 +26,27 @@ extern FileContentsCache file_cache;
 
 
 
+const unordered_set<uint32_t> v2_crypt_initial_client_commands({
+  0x00290090, // (17) DCv1 license check
+  0x00B00093, // (02) DCv1 login
+  0x01140093, // (02) DCv1 extended login
+  0x00E0009A, // (17) DCv2 license check
+  0x00CC009D, // (02) DCv2 login
+  0x0130009D, // (02) DCv2 extended login
+  // Note: PSO PC initial commands are not listed here because we don't use a
+  // detector encryption for PSO PC (instead, we use the split reconnect command
+  // to send PC to a different port).
+});
+const unordered_set<uint32_t> v3_crypt_initial_client_commands({
+  0x00E000DB, // (17) GC/XB license check
+  0x00EC019E, // (02) GC login
+  0x0150019E, // (02) GC extended login
+  0x0130019E, // (02) XB login
+  0x0194019E, // (02) XB extended login
+});
+
+
+
 void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
     const void* data, size_t size) {
   c->channel.send(command, flag, data, size);
@@ -91,10 +112,9 @@ static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst G
 static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
-S_ServerInit_DC_PC_V3_02_17_91_9B prepare_server_init_contents_dc_pc_v3(
-    bool initial_connection,
-    uint32_t server_key,
-    uint32_t client_key) {
+S_ServerInit_DC_PC_V3_02_17_91_9B prepare_server_init_contents_console(
+    uint32_t server_key, uint32_t client_key, uint8_t flags) {
+  bool initial_connection = (flags & SendServerInitFlag::IS_INITIAL_CONNECTION);
   S_ServerInit_DC_PC_V3_02_17_91_9B cmd;
   cmd.copyright = initial_connection
       ? dc_port_map_copyright : dc_lobby_server_copyright;
@@ -104,31 +124,30 @@ S_ServerInit_DC_PC_V3_02_17_91_9B prepare_server_init_contents_dc_pc_v3(
   return cmd;
 }
 
-void send_server_init_dc_pc_v3(shared_ptr<Client> c, bool initial_connection) {
+void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
+  bool initial_connection = (flags & SendServerInitFlag::IS_INITIAL_CONNECTION);
   uint8_t command = initial_connection ? 0x17 : 0x02;
   uint32_t server_key = random_object<uint32_t>();
   uint32_t client_key = random_object<uint32_t>();
 
-  auto cmd = prepare_server_init_contents_dc_pc_v3(
-      initial_connection, server_key, client_key);
+  auto cmd = prepare_server_init_contents_console(
+      server_key, client_key, initial_connection);
   send_command_t(c, command, 0x00, cmd);
 
   switch (c->version) {
-    case GameVersion::DC:
     case GameVersion::PC:
-      c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
       c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
+      c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
       break;
+    case GameVersion::DC:
     case GameVersion::GC:
-    case GameVersion::XB:
-      if (c->flags & Client::Flag::GC_TRIAL_EDITION) {
-        c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
-        c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
-      } else {
-        c->channel.crypt_out.reset(new PSOV3Encryption(server_key));
-        c->channel.crypt_in.reset(new PSOV3Encryption(client_key));
-      }
+    case GameVersion::XB: {
+      shared_ptr<PSOV2OrV3DetectorEncryption> det_crypt(new PSOV2OrV3DetectorEncryption(
+          client_key, v2_crypt_initial_client_commands, v3_crypt_initial_client_commands));
+      c->channel.crypt_in = det_crypt;
+      c->channel.crypt_out.reset(new PSOV2OrV3ImitatorEncryption(server_key, det_crypt));
       break;
+    }
     default:
       throw invalid_argument("incorrect client version");
   }
@@ -137,7 +156,8 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, bool initial_connection) {
 S_ServerInit_BB_03_9B prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
     const parray<uint8_t, 0x30>& client_key,
-    bool use_secondary_message) {
+    uint8_t flags) {
+  bool use_secondary_message = (flags & SendServerInitFlag::USE_SECONDARY_MESSAGE);
   S_ServerInit_BB_03_9B cmd;
   cmd.copyright = use_secondary_message ? bb_pm_server_copyright : bb_game_server_copyright;
   cmd.server_key = server_key;
@@ -147,12 +167,13 @@ S_ServerInit_BB_03_9B prepare_server_init_contents_bb(
 }
 
 void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    bool use_secondary_message) {
+    uint8_t flags) {
+  bool use_secondary_message = (flags & SendServerInitFlag::USE_SECONDARY_MESSAGE);
   parray<uint8_t, 0x30> server_key;
   parray<uint8_t, 0x30> client_key;
   random_data(server_key.data(), server_key.bytes());
   random_data(client_key.data(), client_key.bytes());
-  auto cmd = prepare_server_init_contents_bb(server_key, client_key, use_secondary_message);
+  auto cmd = prepare_server_init_contents_bb(server_key, client_key, flags);
   send_command_t(c, use_secondary_message ? 0x9B : 0x03, 0x00, cmd);
 
   static const string primary_expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
@@ -181,20 +202,20 @@ void send_server_init_patch(shared_ptr<Client> c) {
   c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
 }
 
-void send_server_init(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    bool initial_connection, bool use_secondary_message) {
+void send_server_init(
+    shared_ptr<ServerState> s, shared_ptr<Client> c, uint8_t flags) {
   switch (c->version) {
     case GameVersion::DC:
     case GameVersion::PC:
     case GameVersion::GC:
     case GameVersion::XB:
-      send_server_init_dc_pc_v3(c, initial_connection);
+      send_server_init_dc_pc_v3(c, flags);
       break;
     case GameVersion::PATCH:
       send_server_init_patch(c);
       break;
     case GameVersion::BB:
-      send_server_init_bb(s, c, use_secondary_message);
+      send_server_init_bb(s, c, flags);
       break;
     default:
       throw logic_error("unimplemented versioned command");
@@ -279,8 +300,8 @@ void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
   send_command_t(c, (c->version == GameVersion::PATCH) ? 0x14 : 0x19, 0x00, cmd);
 }
 
-void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
-    uint16_t pc_port, uint16_t gc_port) {
+void send_pc_console_split_reconnect(shared_ptr<Client> c, uint32_t address,
+    uint16_t pc_port, uint16_t console_port) {
   S_ReconnectSplit_19 cmd;
   cmd.pc_address = address;
   cmd.pc_port = pc_port;
@@ -288,7 +309,7 @@ void send_pc_gc_split_reconnect(shared_ptr<Client> c, uint32_t address,
   cmd.gc_flag = 0x00;
   cmd.gc_size = 0x97;
   cmd.gc_address = address;
-  cmd.gc_port = gc_port;
+  cmd.gc_port = console_port;
   send_command_t(c, 0x19, 0x00, cmd);
 }
 
@@ -676,7 +697,7 @@ void send_card_search_result_t(
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
   static const vector<string> version_to_port_name({
-      "dc-lobby", "pc-lobby", "bb-lobby", "gc-lobby", "xb-lobby", "bb-lobby"});
+      "console-lobby", "pc-lobby", "bb-lobby", "console-lobby", "console-lobby", "bb-lobby"});
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
 
   S_GuildCardSearchResult<CommandHeaderT, CharT> cmd;

@@ -191,8 +191,8 @@ void ProxyServer::on_client_connect(
       case GameVersion::XB: {
         uint32_t server_key = random_object<uint32_t>();
         uint32_t client_key = random_object<uint32_t>();
-        auto cmd = prepare_server_init_contents_dc_pc_v3(
-            false, server_key, client_key);
+        auto cmd = prepare_server_init_contents_console(
+            server_key, client_key, 0);
         session->channel.send(0x02, 0x00, &cmd, sizeof(cmd));
         // TODO: Is this actually needed?
         // bufferevent_flush(session->channel.bev.get(), EV_READ | EV_WRITE, BEV_FLUSH);
@@ -210,7 +210,7 @@ void ProxyServer::on_client_connect(
         parray<uint8_t, 0x30> client_key;
         random_data(server_key.data(), server_key.bytes());
         random_data(client_key.data(), client_key.bytes());
-        auto cmd = prepare_server_init_contents_bb(server_key, client_key, false);
+        auto cmd = prepare_server_init_contents_bb(server_key, client_key, 0);
         session->channel.send(0x03, 0x00, &cmd, sizeof(cmd));
         // TODO: Is this actually needed?
         // bufferevent_flush(session->bev.get(), EV_READ | EV_WRITE, BEV_FLUSH);

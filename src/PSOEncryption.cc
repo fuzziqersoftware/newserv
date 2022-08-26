@@ -105,6 +105,10 @@ void PSOV2Encryption::encrypt_big_endian(void* vdata, size_t size, bool advance)
   this->encrypt_t<be_uint32_t>(vdata, size, advance);
 }
 
+PSOEncryption::Type PSOV2Encryption::type() const {
+  return Type::V2;
+}
+
 
 
 void PSOV3Encryption::update_stream() {
@@ -189,6 +193,83 @@ void PSOV3Encryption::encrypt(void* vdata, size_t size, bool advance) {
 
 void PSOV3Encryption::encrypt_big_endian(void* vdata, size_t size, bool advance) {
   this->encrypt_t<be_uint32_t>(vdata, size, advance);
+}
+
+PSOEncryption::Type PSOV3Encryption::type() const {
+  return Type::V3;
+}
+
+
+
+PSOV2OrV3DetectorEncryption::PSOV2OrV3DetectorEncryption(
+    uint32_t key,
+    const std::unordered_set<uint32_t>& v2_matches,
+    const std::unordered_set<uint32_t>& v3_matches)
+  : key(key), v2_matches(v2_matches), v3_matches(v3_matches) { }
+
+PSOEncryption::Type PSOV2OrV3DetectorEncryption::type() const {
+  if (!this->active_crypt) {
+    throw logic_error("detector encryption state is indeterminate");
+  }
+  return this->active_crypt->type();
+}
+
+void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size, bool advance) {
+  if (!this->active_crypt) {
+    if (size != 4) {
+      throw logic_error("initial detector decrypt size must be 4");
+    }
+
+    le_uint32_t encrypted = *reinterpret_cast<le_uint32_t*>(data);
+
+    le_uint32_t decrypted_v2 = encrypted;
+    unique_ptr<PSOEncryption> v2_crypt(new PSOV2Encryption(this->key));
+    v2_crypt->decrypt(&decrypted_v2, sizeof(decrypted_v2), false);
+
+    le_uint32_t decrypted_v3 = encrypted;
+    unique_ptr<PSOEncryption> v3_crypt(new PSOV3Encryption(this->key));
+    v3_crypt->decrypt(&decrypted_v3, sizeof(decrypted_v3), false);
+
+    bool v2_match = this->v2_matches.count(decrypted_v2);
+    bool v3_match = this->v3_matches.count(decrypted_v3);
+    if (!v2_match && !v3_match) {
+      throw runtime_error("unable to determine crypt version");
+    } else if (v2_match && v3_match) {
+      throw runtime_error("ambiguous crypt version");
+    } else if (v2_match) {
+      this->active_crypt = move(v2_crypt);
+    } else {
+      this->active_crypt = move(v3_crypt);
+    }
+  }
+  this->active_crypt->encrypt(data, size, advance);
+}
+
+
+
+PSOV2OrV3ImitatorEncryption::PSOV2OrV3ImitatorEncryption(
+    uint32_t key, std::shared_ptr<PSOV2OrV3DetectorEncryption> detector_crypt)
+  : key(key), detector_crypt(detector_crypt) { }
+
+void PSOV2OrV3ImitatorEncryption::encrypt(void* data, size_t size, bool advance) {
+  if (!this->active_crypt) {
+    auto t = this->detector_crypt->type();
+    if (t == Type::V2) {
+      this->active_crypt.reset(new PSOV2Encryption(this->key));
+    } else if (t == Type::V3) {
+      this->active_crypt.reset(new PSOV3Encryption(this->key));
+    } else {
+      throw logic_error("detector crypt is not V2 or V3");
+    }
+  }
+  this->active_crypt->encrypt(data, size, advance);
+}
+
+PSOEncryption::Type PSOV2OrV3ImitatorEncryption::type() const {
+  if (!this->active_crypt) {
+    return this->detector_crypt->type();
+  }
+  return this->active_crypt->type();
 }
 
 
@@ -663,6 +744,10 @@ void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
   }
 }
 
+PSOEncryption::Type PSOBBEncryption::type() const {
+  return Type::BB;
+}
+
 
 
 PSOBBMultiKeyDetectorEncryption::PSOBBMultiKeyDetectorEncryption(
@@ -706,6 +791,10 @@ void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size, bool adva
   this->active_crypt->decrypt(data, size, advance);
 }
 
+PSOEncryption::Type PSOBBMultiKeyDetectorEncryption::type() const {
+  return Type::BB;
+}
+
 
 
 PSOBBMultiKeyImitatorEncryption::PSOBBMultiKeyImitatorEncryption(
@@ -744,4 +833,8 @@ shared_ptr<PSOBBEncryption> PSOBBMultiKeyImitatorEncryption::ensure_crypt() {
     }
   }
   return this->active_crypt;
+}
+
+PSOEncryption::Type PSOBBMultiKeyImitatorEncryption::type() const {
+  return Type::BB;
 }

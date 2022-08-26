@@ -15,10 +15,6 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
     case -1: // Initial check (before 9E recognition)
       switch (version) {
         case GameVersion::DC:
-          // TODO: For DCv1, the flags should be:
-          //   Client::Flag::DCV1 |
-          //   Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
-          //   Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL
           return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
         case GameVersion::GC:
         case GameVersion::XB:
@@ -35,14 +31,19 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
       }
       break;
 
+    // TODO: Which other sub_versions of DC v1 and v2 exist?
+    case 0x21: // DCv1 US
+      return Client::Flag::DCV1 |
+             Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
+             Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL;
+
+    case 0x26: // DCv2 US
+      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
+
     case 0x29: // PC
       return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
              Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
 
-    // TODO: GC Ep1&2 trial edition uses sub_version 0x30, but also uses PSO V2
-    // encryption! Find a way to tell that version apart from the others before
-    // starting encryption (hopefully it connects on a port not shared by other
-    // versions).
     case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
     case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
     case 0x34: // GC Ep1&2 JP v1.03
@@ -114,16 +115,12 @@ GameVersion version_for_name(const char* name) {
 
 const char* name_for_server_behavior(ServerBehavior behavior) {
   switch (behavior) {
-    case ServerBehavior::SPLIT_RECONNECT:
-      return "split_reconnect";
+    case ServerBehavior::PC_CONSOLE_DETECT:
+      return "pc_console_detect";
     case ServerBehavior::LOGIN_SERVER:
       return "login_server";
-    case ServerBehavior::LOGIN_SERVER_GC_TRIAL_EDITION:
-      return "login_server_gcte";
     case ServerBehavior::LOBBY_SERVER:
       return "lobby_server";
-    case ServerBehavior::LOBBY_SERVER_GC_TRIAL_EDITION:
-      return "lobby_server_gcte";
     case ServerBehavior::DATA_SERVER_BB:
       return "data_server_bb";
     case ServerBehavior::PATCH_SERVER_PC:
@@ -138,16 +135,12 @@ const char* name_for_server_behavior(ServerBehavior behavior) {
 }
 
 ServerBehavior server_behavior_for_name(const char* name) {
-  if (!strcasecmp(name, "split_reconnect")) {
-    return ServerBehavior::SPLIT_RECONNECT;
+  if (!strcasecmp(name, "pc_console_detect")) {
+    return ServerBehavior::PC_CONSOLE_DETECT;
   } else if (!strcasecmp(name, "login_server") || !strcasecmp(name, "login")) {
     return ServerBehavior::LOGIN_SERVER;
-  } else if (!strcasecmp(name, "login_server_gcte") || !strcasecmp(name, "login_gcte")) {
-    return ServerBehavior::LOGIN_SERVER_GC_TRIAL_EDITION;
   } else if (!strcasecmp(name, "lobby_server") || !strcasecmp(name, "lobby")) {
     return ServerBehavior::LOBBY_SERVER;
-  } else if (!strcasecmp(name, "lobby_server_gcte") || !strcasecmp(name, "lobby_gcte")) {
-    return ServerBehavior::LOBBY_SERVER_GC_TRIAL_EDITION;
   } else if (!strcasecmp(name, "data_server_bb") || !strcasecmp(name, "data_server") || !strcasecmp(name, "data")) {
     return ServerBehavior::DATA_SERVER_BB;
   } else if (!strcasecmp(name, "patch_server_pc") || !strcasecmp(name, "patch_pc")) {

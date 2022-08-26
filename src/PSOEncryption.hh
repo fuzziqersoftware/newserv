@@ -18,6 +18,12 @@
 
 class PSOEncryption {
 public:
+  enum class Type {
+    V2 = 0,
+    V3,
+    BB,
+  };
+
   virtual ~PSOEncryption() = default;
 
   virtual void encrypt(void* data, size_t size, bool advance = true) = 0;
@@ -29,6 +35,8 @@ public:
   inline void decrypt(std::string& data, bool advance = true) {
     this->decrypt(data.data(), data.size(), advance);
   }
+
+  virtual Type type() const = 0;
 
 protected:
   PSOEncryption() = default;
@@ -42,6 +50,8 @@ public:
   void encrypt_big_endian(void* data, size_t size, bool advance = true);
 
   uint32_t next(bool advance = true);
+
+  virtual Type type() const;
 
 protected:
   template <typename LongT>
@@ -62,6 +72,8 @@ public:
 
   uint32_t next(bool advance = true);
 
+  virtual Type type() const;
+
 protected:
   template <typename LongT>
   void encrypt_t(void* data, size_t size, bool advance);
@@ -70,6 +82,39 @@ protected:
 
   uint32_t stream[V3_STREAM_LENGTH];
   uint16_t offset;
+};
+
+class PSOV2OrV3DetectorEncryption : public PSOEncryption {
+public:
+  PSOV2OrV3DetectorEncryption(
+      uint32_t key,
+      const std::unordered_set<uint32_t>& v2_matches,
+      const std::unordered_set<uint32_t>& v3_matches);
+
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+
+  virtual Type type() const;
+
+protected:
+  uint32_t key;
+  const std::unordered_set<uint32_t>& v2_matches;
+  const std::unordered_set<uint32_t>& v3_matches;
+  std::unique_ptr<PSOEncryption> active_crypt;
+};
+
+class PSOV2OrV3ImitatorEncryption : public PSOEncryption {
+public:
+  PSOV2OrV3ImitatorEncryption(
+      uint32_t key, std::shared_ptr<PSOV2OrV3DetectorEncryption> client_crypt);
+
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+
+  virtual Type type() const;
+
+protected:
+  uint32_t key;
+  std::shared_ptr<const PSOV2OrV3DetectorEncryption> detector_crypt;
+  std::shared_ptr<PSOEncryption> active_crypt;
 };
 
 class PSOBBEncryption : public PSOEncryption {
@@ -107,6 +152,8 @@ public:
   virtual void encrypt(void* data, size_t size, bool advance = true);
   virtual void decrypt(void* data, size_t size, bool advance = true);
 
+  virtual Type type() const;
+
 protected:
   KeyFile state;
 
@@ -136,6 +183,8 @@ public:
     return this->seed;
   }
 
+  virtual Type type() const;
+
 protected:
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> possible_keys;
   std::shared_ptr<const PSOBBEncryption::KeyFile> active_key;
@@ -154,6 +203,8 @@ public:
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
   virtual void decrypt(void* data, size_t size, bool advance = true);
+
+  virtual Type type() const;
 
 protected:
   std::shared_ptr<PSOBBEncryption> ensure_crypt();

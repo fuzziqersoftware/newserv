@@ -1291,15 +1291,19 @@ struct C_Login_DC_PC_V3_9A {
 struct C_Register_DC_PC_V3_9C {
   le_uint64_t unused;
   le_uint32_t sub_version;
-  le_uint32_t unused2;
+  uint8_t unused1;
+  uint8_t language;
+  uint8_t unused2[2];
   ptext<char, 0x30> serial_number; // On XB, this is the XBL gamertag
   ptext<char, 0x30> access_key; // On XB, this is the XBL user ID
-  ptext<char, 0x30> password; // On XB, this is unused
+  ptext<char, 0x30> password; // On XB, this contains "xbox-pso"
 };
 
 struct C_Register_BB_9C {
   le_uint32_t sub_version;
-  le_uint32_t unknown_a1; // Only the second byte (0x0000??00) is used, but is 0
+  uint8_t unused1;
+  uint8_t language;
+  uint8_t unused2[2];
   ptext<char, 0x30> username;
   ptext<char, 0x30> password;
   ptext<char, 0x30> game_tag; // "psopc2" on BB
@@ -1999,7 +2003,7 @@ struct C_VerifyLicense_V3_DB {
   le_uint32_t sub_version;
   ptext<char, 0x30> serial_number2; // On XB, this is the XBL gamertag
   ptext<char, 0x30> access_key2; // On XB, this is the XBL user ID
-  ptext<char, 0x30> password; // On XB, this is unused
+  ptext<char, 0x30> password; // On XB, this contains "xbox-pso"
 };
 
 // Note: This login pathway generally isn't used on BB (and isn't supported at

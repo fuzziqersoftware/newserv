@@ -26,27 +26,28 @@
     // TODO: GC Episodes 1&2 Trial Edition also uses port 9000, but a real
     // version of PSO uses that port too. Figure out a way to differentiate
     // between the two versions.
-    "gc-jp10":   [9000,  "gc",    "login_server"],
-    "gc-jp11":   [9001,  "gc",    "login_server"],
-    "gc-jp3te":  [9002,  "gc",    "login_server"],
-    "gc-jp3":    [9003,  "gc",    "login_server"],
-    "gc-us12t1": [9064,  "gc",    "login_server_gcte"],
-    "gc-us10":   [9100,  "pc",    "split_reconnect"],
-    "gc-us3":    [9103,  "gc",    "login_server"],
-    "gc-eu10":   [9200,  "gc",    "login_server"],
-    "gc-eu11":   [9201,  "gc",    "login_server"],
-    "gc-us12t2": [9202,  "gc",    "login_server_gcte"],
-    "gc-eu3":    [9203,  "gc",    "login_server"],
-    "pc-login":  [9300,  "pc",    "login_server"],
-    "pc-patch":  [10000, "patch", "patch_server_pc"],
-    "bb-patch":  [11000, "patch", "patch_server_bb"],
-    "bb-init":   [12000, "bb",    "data_server_bb"],
+
+    "gc-jp10":       [9000,  "pc",    "pc_console_detect"],
+    "gc-jp11":       [9001,  "pc",    "pc_console_detect"],
+    "gc-jp3te":      [9002,  "pc",    "pc_console_detect"],
+    "gc-jp3":        [9003,  "pc",    "pc_console_detect"],
+    "gc-us12t1":     [9064,  "pc",    "pc_console_detect"],
+    "gc-us10":       [9100,  "pc",    "pc_console_detect"],
+    "gc-us3":        [9103,  "pc",    "pc_console_detect"],
+    "gc-eu10":       [9200,  "pc",    "pc_console_detect"],
+    "gc-eu11":       [9201,  "pc",    "pc_console_detect"],
+    "gc-us12t2":     [9202,  "pc",    "pc_console_detect"],
+    "gc-eu3":        [9203,  "pc",    "pc_console_detect"],
+    "pc":            [9300,  "pc",    "pc_console_detect"],
+    "pc-patch":      [10000, "patch", "patch_server_pc"],
+    "bb-patch":      [11000, "patch", "patch_server_bb"],
+    "bb-init":       [12000, "bb",    "data_server_bb"],
 
     // TODO: If Xbox support ever gets built, add this port to the above config.
     // "xb-login": [????, "xb", "login_server"],
 
     // Schthack PSOBB uses these ports.
-    // "bb-patch2": [10500, "patch", "patch_server"],
+    // "bb-patch2": [10500, "patch", "patch_server_bb"],
     // "bb-init2":  [13000, "bb",    "data_server_bb"],
 
     // Ephinea PSOBB uses these ports. Note that 13000 is also used by Schthack
@@ -54,25 +55,23 @@
     // support both Schthack and Ephinea PSOBB clients at the same time. This
     // may be fixed in the future using a similar technique as the
     // split_reconnect behavior, but this isn't implemented yet.
-    // "bb-patch3": [13000, "patch", "patch_server"],
+    // "bb-patch3": [13000, "patch", "patch_server_bb"],
     // "bb-init3":  [14000, "bb",    "data_server_bb"],
 
     // newserv uses these ports, but there is no external reason that these
     // numbers were chosen. You can change the port numbers here without any
     // issues. Note that the bb-data1 and bb-data2 ports must be sequential;
     // that is, the bb-data2 port must be the bb-data1 port + 1.
-    "pc-lobby":  [9420,  "pc",    "lobby_server"],
-    "gc-lobby":  [9421,  "gc",    "lobby_server"],
-    "bb-lobby":  [9422,  "bb",    "lobby_server"],
-    "xb-lobby":  [9423,  "xb",    "lobby_server"],
-    "gct-lobby": [9424,  "gc",    "lobby_server_gcte"],
-    "pc-proxy":  [9520,  "pc",    "proxy_server"],
-    "gc-proxy":  [9521,  "gc",    "proxy_server"],
-    "bb-proxy":  [9522,  "bb",    "proxy_server"],
-    "xb-proxy":  [9523,  "xb",    "proxy_server"],
-    // TODO: Implement proxy server for GC Trial Edition
-    "bb-data1":  [12004, "bb",    "data_server_bb"],
-    "bb-data2":  [12005, "bb",    "data_server_bb"],
+    "console-login": [5100,  "gc",    "login_server"],
+    "pc-login":      [5101,  "pc",    "login_server"],
+    "console-lobby": [5110,  "gc",    "lobby_server"],
+    "pc-lobby":      [5111,  "pc",    "lobby_server"],
+    "bb-lobby":      [5112,  "bb",    "lobby_server"],
+    "console-proxy": [5120,  "gc",    "proxy_server"],
+    "pc-proxy":      [5121,  "pc",    "proxy_server"],
+    "bb-proxy":      [5122,  "bb",    "proxy_server"],
+    "bb-data1":      [12004, "bb",    "data_server_bb"],
+    "bb-data2":      [12005, "bb",    "data_server_bb"],
   },
 
   // Where to listen for IP stack clients. This exists to interface with PSO GC

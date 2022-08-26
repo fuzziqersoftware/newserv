@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <phosg/Strings.hh>
+#include <unordered_set>
 
 #include "Client.hh"
 #include "Lobby.hh"
@@ -17,6 +18,9 @@
 #include "FunctionCompiler.hh"
 
 
+
+extern const std::unordered_set<uint32_t> v2_crypt_initial_client_commands;
+extern const std::unordered_set<uint32_t> v3_crypt_initial_client_commands;
 
 // TODO: Many of these functions should take a Channel& instead of a
 // shared_ptr<Client>. Refactor functions appropriately.
@@ -92,16 +96,21 @@ void send_command_with_header(Channel& c, const void* data, size_t size);
 
 
 
-S_ServerInit_DC_PC_V3_02_17_91_9B prepare_server_init_contents_dc_pc_v3(
-    bool initial_connection,
-    uint32_t server_key,
-    uint32_t client_key);
+enum SendServerInitFlag {
+  IS_INITIAL_CONNECTION = 0x01,
+  USE_SECONDARY_MESSAGE = 0x02,
+};
+
+S_ServerInit_DC_PC_V3_02_17_91_9B prepare_server_init_contents_console(
+    uint32_t server_key, uint32_t client_key, uint8_t flags);
 S_ServerInit_BB_03_9B prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
     const parray<uint8_t, 0x30>& client_key,
-    bool use_secondary_message);
-void send_server_init(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
-    bool initial_connection, bool use_secondary_message);
+    uint8_t flags);
+void send_server_init(
+    std::shared_ptr<ServerState> s,
+    std::shared_ptr<Client> c,
+    uint8_t flags);
 void send_update_client_config(std::shared_ptr<Client> c);
 
 void send_function_call(
@@ -113,8 +122,11 @@ void send_function_call(
     uint32_t checksum_size = 0);
 
 void send_reconnect(std::shared_ptr<Client> c, uint32_t address, uint16_t port);
-void send_pc_gc_split_reconnect(std::shared_ptr<Client> c, uint32_t address,
-    uint16_t pc_port, uint16_t gc_port);
+void send_pc_console_split_reconnect(
+    std::shared_ptr<Client> c,
+    uint32_t address,
+    uint16_t pc_port,
+    uint16_t console_port);
 
 void send_client_init_bb(std::shared_ptr<Client> c, uint32_t error);
 void send_team_and_key_config_bb(std::shared_ptr<Client> c);
