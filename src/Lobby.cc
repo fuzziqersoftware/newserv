@@ -22,7 +22,6 @@ Lobby::Lobby(uint32_t id)
     section_id(0),
     episode(1),
     difficulty(0),
-    mode(0),
     random_seed(random_object<uint32_t>()),
     random(new mt19937(this->random_seed)),
     event(0),

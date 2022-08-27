@@ -12,7 +12,7 @@ using namespace std;
 
 uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
   switch (sub_version) {
-    case -1: // Initial check (before 9E recognition)
+    case -1: // Initial check (before sub_version recognition)
       switch (version) {
         case GameVersion::DC:
           return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;

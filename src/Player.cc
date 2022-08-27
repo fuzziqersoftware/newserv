@@ -35,7 +35,7 @@ static FileContentsCache player_files_cache(300 * 1000 * 1000);
 PlayerStats::PlayerStats() noexcept
   : atp(0), mst(0), evp(0), hp(0), dfp(0), ata(0), lck(0) { }
 
-PlayerDispDataPCV3::PlayerDispDataPCV3() noexcept
+PlayerDispDataDCPCV3::PlayerDispDataDCPCV3() noexcept
   : level(0),
     experience(0),
     meseta(0),
@@ -59,8 +59,8 @@ PlayerDispDataPCV3::PlayerDispDataPCV3() noexcept
     proportion_x(0),
     proportion_y(0) { }
 
-void PlayerDispDataPCV3::enforce_pc_limits() {
-  // PC has fewer classes, so we'll substitute some here
+void PlayerDispDataDCPCV3::enforce_v2_limits() {
+  // V1/V2 have fewer classes, so we'll substitute some here
   if (this->char_class == 11) {
     this->char_class = 0; // FOmar -> HUmar
   } else if (this->char_class == 10) {
@@ -78,7 +78,7 @@ void PlayerDispDataPCV3::enforce_pc_limits() {
   this->version = 2;
 }
 
-PlayerDispDataBB PlayerDispDataPCV3::to_bb() const {
+PlayerDispDataBB PlayerDispDataDCPCV3::to_bb() const {
   PlayerDispDataBB bb;
   bb.stats.atp = this->stats.atp;
   bb.stats.mst = this->stats.mst;
@@ -144,8 +144,8 @@ PlayerDispDataBB::PlayerDispDataBB() noexcept
     proportion_x(0),
     proportion_y(0) { }
 
-PlayerDispDataPCV3 PlayerDispDataBB::to_pcv3() const {
-  PlayerDispDataPCV3 ret;
+PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3() const {
+  PlayerDispDataDCPCV3 ret;
   ret.stats.atp = this->stats.atp;
   ret.stats.mst = this->stats.mst;
   ret.stats.evp = this->stats.evp;
@@ -475,14 +475,14 @@ void ClientGameData::save_player_data() const {
   }
 }
 
-void ClientGameData::import_player(const PSOPlayerDataPC& pc) {
+void ClientGameData::import_player(const PSOPlayerDataDCPC& pd) {
   auto player = this->player();
-  player->inventory = pc.inventory;
-  player->disp = pc.disp.to_bb();
+  player->inventory = pd.inventory;
+  player->disp = pd.disp.to_bb();
   // TODO: Add these fields to the command structure so we can parse them
-  // info_board = pc.info_board;
-  // blocked_senders = pc.blocked_senders;
-  // auto_reply = pc.auto_reply;
+  // info_board = pd.info_board;
+  // blocked_senders = pd.blocked_senders;
+  // auto_reply = pd.auto_reply;
 }
 
 void ClientGameData::import_player(const PSOPlayerDataV3& gc) {
@@ -567,7 +567,7 @@ XBNetworkLocation::XBNetworkLocation() noexcept
 PlayerLobbyDataPC::PlayerLobbyDataPC() noexcept
   : player_tag(0), guild_card(0), ip_address(0x7F000001), client_id(0) { }
 
-PlayerLobbyDataGC::PlayerLobbyDataGC() noexcept
+PlayerLobbyDataDCGC::PlayerLobbyDataDCGC() noexcept
   : player_tag(0), guild_card(0), ip_address(0x7F000001), client_id(0) { }
 
 PlayerLobbyDataXB::PlayerLobbyDataXB() noexcept
@@ -584,7 +584,7 @@ void PlayerLobbyDataPC::clear() {
   ptext<char16_t, 0x10> name;
 }
 
-void PlayerLobbyDataGC::clear() {
+void PlayerLobbyDataDCGC::clear() {
   this->player_tag = 0;
   this->guild_card = 0;
   this->ip_address = 0;

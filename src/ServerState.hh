@@ -63,12 +63,14 @@ struct ServerState {
   std::shared_ptr<LicenseManager> license_manager;
 
   std::vector<MenuItem> main_menu;
-  std::shared_ptr<std::vector<MenuItem>> information_menu_pc;
+  std::shared_ptr<std::vector<MenuItem>> information_menu_v2;
   std::shared_ptr<std::vector<MenuItem>> information_menu_v3;
   std::shared_ptr<std::vector<std::u16string>> information_contents;
+  std::vector<MenuItem> proxy_destinations_menu_dc;
   std::vector<MenuItem> proxy_destinations_menu_pc;
   std::vector<MenuItem> proxy_destinations_menu_gc;
   std::vector<MenuItem> proxy_destinations_menu_xb;
+  std::vector<std::pair<std::string, uint16_t>> proxy_destinations_dc;
   std::vector<std::pair<std::string, uint16_t>> proxy_destinations_pc;
   std::vector<std::pair<std::string, uint16_t>> proxy_destinations_gc;
   std::vector<std::pair<std::string, uint16_t>> proxy_destinations_xb;

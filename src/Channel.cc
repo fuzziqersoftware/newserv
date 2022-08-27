@@ -203,6 +203,15 @@ Channel::Message Channel::recv(bool print_contents) {
       < static_cast<ssize_t>(command_data.size())) {
     throw logic_error("enough bytes available, but could not remove them");
   }
+
+  // Some versions of PSO DC can send commands whose sizes are not a multiple of
+  // 4, but the server is expected to always use a multiple of 4 bytes when
+  // decrypting (the extra cipher bytes are lost). To emulate this behavior, we
+  // have to round up the size for DC commands here.
+  if (version == GameVersion::DC) {
+    command_data.resize((command_data.size() + 3) & (~3));
+  }
+
   if (this->crypt_in.get()) {
     this->crypt_in->decrypt(command_data.data(), command_data.size());
   }

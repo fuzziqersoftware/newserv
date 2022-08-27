@@ -96,8 +96,7 @@ struct PendingItemTrade {
 
 struct PlayerDispDataBB;
 
-// PC/V3 player appearance and stats data
-struct PlayerDispDataPCV3 { // 0xD0 bytes
+struct PlayerDispDataDCPCV3 { // 0xD0 bytes
   PlayerStats stats;
   parray<uint8_t, 0x0A> unknown_a1;
   le_uint32_t level;
@@ -131,9 +130,9 @@ struct PlayerDispDataPCV3 { // 0xD0 bytes
   // that has a fixed-size array. If we didn't define this constructor, the
   // trivial fields in that array's members would be uninitialized, and we could
   // send uninitialized memory to the client.
-  PlayerDispDataPCV3() noexcept;
+  PlayerDispDataDCPCV3() noexcept;
 
-  void enforce_pc_limits();
+  void enforce_v2_limits();
   PlayerDispDataBB to_bb() const;
 } __attribute__((packed));
 
@@ -202,8 +201,8 @@ struct PlayerDispDataBB {
 
   PlayerDispDataBB() noexcept;
 
-  inline void enforce_pc_limits() { }
-  PlayerDispDataPCV3 to_pcv3() const;
+  inline void enforce_v2_limits() { }
+  PlayerDispDataDCPCV3 to_dcpcv3() const;
   PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);
 } __attribute__((packed));
@@ -286,14 +285,14 @@ struct PlayerLobbyDataPC {
   void clear();
 } __attribute__((packed));
 
-struct PlayerLobbyDataGC {
+struct PlayerLobbyDataDCGC {
   le_uint32_t player_tag;
   le_uint32_t guild_card;
   be_uint32_t ip_address;
   le_uint32_t client_id;
   ptext<char, 0x10> name;
 
-  PlayerLobbyDataGC() noexcept;
+  PlayerLobbyDataDCGC() noexcept;
   void clear();
 } __attribute__((packed));
 
@@ -371,14 +370,14 @@ struct PlayerChallengeDataBB {
 
 
 
-struct PSOPlayerDataPC { // For command 61
+struct PSOPlayerDataDCPC { // For command 61
   PlayerInventory inventory;
-  PlayerDispDataPCV3 disp;
+  PlayerDispDataDCPCV3 disp;
 } __attribute__((packed));
 
 struct PSOPlayerDataV3 { // For command 61
   PlayerInventory inventory;
-  PlayerDispDataPCV3 disp;
+  PlayerDispDataDCPCV3 disp;
   PlayerChallengeDataV3 challenge_data;
   parray<uint8_t, 0x18> unknown;
   ptext<char, 0xAC> info_board;
@@ -392,7 +391,7 @@ struct PSOPlayerDataV3 { // For command 61
 
 struct PSOPlayerDataGCEp3 { // For command 61
   PlayerInventory inventory;
-  PlayerDispDataPCV3 disp;
+  PlayerDispDataDCPCV3 disp;
   PlayerChallengeDataV3 challenge_data;
   parray<uint8_t, 0x18> unknown;
   ptext<char, 0xAC> info_board;
@@ -521,7 +520,7 @@ public:
   void load_player_data();
   void save_player_data() const;
 
-  void import_player(const PSOPlayerDataPC& pd);
+  void import_player(const PSOPlayerDataDCPC& pd);
   void import_player(const PSOPlayerDataV3& pd);
   void import_player(const PSOPlayerDataBB& pd);
   // Note: this function is not const because it can cause player and account
@@ -542,20 +541,20 @@ DestT convert_player_disp_data(const SrcT&) {
 }
 
 template <>
-inline PlayerDispDataPCV3 convert_player_disp_data<PlayerDispDataPCV3>(
-    const PlayerDispDataPCV3& src) {
+inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3>(
+    const PlayerDispDataDCPCV3& src) {
   return src;
 }
 
 template <>
-inline PlayerDispDataPCV3 convert_player_disp_data<PlayerDispDataPCV3, PlayerDispDataBB>(
+inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(
     const PlayerDispDataBB& src) {
-  return src.to_pcv3();
+  return src.to_dcpcv3();
 }
 
 template <>
-inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB, PlayerDispDataPCV3>(
-    const PlayerDispDataPCV3& src) {
+inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB, PlayerDispDataDCPCV3>(
+    const PlayerDispDataDCPCV3& src) {
   return src.to_bb();
 }
 

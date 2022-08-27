@@ -233,9 +233,13 @@ void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size, bool advance)
     bool v2_match = this->v2_matches.count(decrypted_v2);
     bool v3_match = this->v3_matches.count(decrypted_v3);
     if (!v2_match && !v3_match) {
-      throw runtime_error("unable to determine crypt version");
+      throw runtime_error(string_printf(
+          "unable to determine crypt version (v2=%08" PRIX32 ", v3=%08" PRIX32 ")",
+          decrypted_v2.load(), decrypted_v3.load()));
     } else if (v2_match && v3_match) {
-      throw runtime_error("ambiguous crypt version");
+      throw runtime_error(string_printf(
+          "ambiguous crypt version (v2=%08" PRIX32 ", v3=%08" PRIX32 ")",
+          decrypted_v2.load(), decrypted_v3.load()));
     } else if (v2_match) {
       this->active_crypt = move(v2_crypt);
     } else {

@@ -115,17 +115,29 @@ static void process_subcommand_send_guild_card(shared_ptr<ServerState>,
     return;
   }
 
-  if (c->version == GameVersion::PC) {
-    const auto* cmd = check_size_sc<G_SendGuildCard_PC_6x06>(data);
-    c->game_data.player()->guild_card_description = cmd->description;
-  } else if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
-    const auto* cmd = check_size_sc<G_SendGuildCard_V3_6x06>(data);
-    c->game_data.player()->guild_card_description = cmd->description;
-  } else if (c->version == GameVersion::BB) {
-    // Nothing to do... the command is blank; the server generates the guild
-    // card to be sent
-  } else {
-    throw runtime_error("unsupported game version");
+  switch (c->version()) {
+    case GameVersion::DC: {
+      const auto* cmd = check_size_sc<G_SendGuildCard_PC_6x06>(data);
+      c->game_data.player()->guild_card_description = cmd->description;
+      break;
+    }
+    case GameVersion::PC: {
+      const auto* cmd = check_size_sc<G_SendGuildCard_PC_6x06>(data);
+      c->game_data.player()->guild_card_description = cmd->description;
+      break;
+    }
+    case GameVersion::GC:
+    case GameVersion::XB: {
+      const auto* cmd = check_size_sc<G_SendGuildCard_V3_6x06>(data);
+      c->game_data.player()->guild_card_description = cmd->description;
+      break;
+    }
+    case GameVersion::BB:
+      // Nothing to do... the command is blank; the server generates the guild
+      // card to be sent
+      break;
+    default:
+      throw logic_error("unsupported game version");
   }
 
   send_guild_card(l->clients[flag], c);
@@ -154,7 +166,7 @@ static void process_subcommand_word_select(shared_ptr<ServerState>,
   }
 
   // TODO: bring this back if it turns out to be important; I suspect it's not
-  //p->byte[2] = p->byte[3] = p->byte[(c->version == GameVersion::BB) ? 2 : 3];
+  //p->byte[2] = p->byte[3] = p->byte[(c->version() == GameVersion::BB) ? 2 : 3];
 
   for (size_t x = 1; x < 8; x++) {
     if ((p[x].word[0] > 0x1863) && (p[x].word[0] != 0xFFFF)) {
@@ -179,7 +191,7 @@ static void process_subcommand_set_player_visibility(shared_ptr<ServerState>,
 
   forward_subcommand(l, c, command, flag, data);
 
-  if (!l->is_game()) {
+  if (!l->is_game() && !(c->flags & Client::Flag::DCV1)) {
     send_arrow_update(l);
   }
 }
@@ -292,12 +304,13 @@ static void process_subcommand_player_drop_item(shared_ptr<ServerState>,
 static void process_subcommand_create_inventory_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  const auto* cmd = check_size_sc<G_PlayerCreateInventoryItem_6x2B>(data);
+  const auto* cmd = check_size_sc<G_PlayerCreateInventoryItem_DC_6x2B>(data,
+      sizeof(G_PlayerCreateInventoryItem_DC_6x2B), sizeof(G_PlayerCreateInventoryItem_PC_V3_BB_6x2B));
 
   if ((cmd->client_id != c->lobby_client_id)) {
     return;
   }
-  if (c->version == GameVersion::BB) {
+  if (c->version() == GameVersion::BB) {
     // BB should never send this command - inventory items should only be
     // created by the server in response to shop buy / bank withdraw / etc. reqs
     return;
@@ -322,7 +335,8 @@ static void process_subcommand_create_inventory_item(shared_ptr<ServerState>,
 static void process_subcommand_drop_partial_stack(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  const auto* cmd = check_size_sc<G_DropStackedItem_6x5D>(data);
+  const auto* cmd = check_size_sc<G_DropStackedItem_DC_6x5D>(data,
+      sizeof(G_DropStackedItem_DC_6x5D), sizeof(G_DropStackedItem_PC_V3_BB_6x5D));
 
   // TODO: Should we check the client ID here too?
   if (!l->is_game()) {
@@ -422,7 +436,8 @@ static void process_subcommand_buy_shop_item(shared_ptr<ServerState>,
 static void process_subcommand_box_or_enemy_item_drop(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  const auto* cmd = check_size_sc<G_DropItem_6x5F>(data);
+  const auto* cmd = check_size_sc<G_DropItem_DC_6x5F>(data,
+      sizeof(G_DropItem_DC_6x5F), sizeof(G_DropItem_PC_V3_BB_6x5F));
 
   if (!l->is_game() || (c->lobby_client_id != l->leader_id)) {
     return;
@@ -755,7 +770,9 @@ static void process_subcommand_enemy_drop_item_request(shared_ptr<ServerState>,
     return;
   }
 
-  const auto* cmd = check_size_sc<G_EnemyDropItemRequest_6x60>(data);
+  const auto* cmd = check_size_sc<G_EnemyDropItemRequest_DC_6x60>(data,
+      sizeof(G_EnemyDropItemRequest_DC_6x60),
+      sizeof(G_EnemyDropItemRequest_PC_V3_BB_6x60));
   if (!drop_item(l, cmd->enemy_id, cmd->area, cmd->x, cmd->z, cmd->request_id)) {
     forward_subcommand(l, c, command, flag, data);
   }
@@ -801,16 +818,19 @@ static void process_subcommand_phase_setup(shared_ptr<ServerState>,
   if (should_send_boss_drop_req) {
     auto c = l->clients.at(l->leader_id);
     if (c) {
-      G_EnemyDropItemRequest_6x60 req = {
-        0x60,
-        0x06,
-        0x1090,
-        static_cast<uint8_t>(c->area),
-        static_cast<uint8_t>((l->episode == 2) ? 0x4E : 0x2F),
-        0x0B4F,
-        (l->episode == 2) ? -9999.0f : 10160.58984375f,
-        0.0f,
-        0xE0AEDC0100000002,
+      G_EnemyDropItemRequest_PC_V3_BB_6x60 req = {
+        {
+          0x60,
+          0x06,
+          0x1090,
+          static_cast<uint8_t>(c->area),
+          static_cast<uint8_t>((l->episode == 2) ? 0x4E : 0x2F),
+          0x0B4F,
+          (l->episode == 2) ? -9999.0f : 10160.58984375f,
+          0.0f,
+          0x00000002,
+        },
+        0xE0AEDC01,
       };
       send_command_t(c, 0x62, l->leader_id, req);
     }

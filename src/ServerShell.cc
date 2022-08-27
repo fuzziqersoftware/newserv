@@ -69,8 +69,8 @@ Server commands:\n\
       bb-username=<username> (BB username)\n\
       bb-password=<password> (BB password)\n\
       gc-password=<password> (GC password)\n\
-      access-key=<access-key> (GC/PC access key)\n\
-      serial=<serial-number> (GC/PC serial number; required for all licenses)\n\
+      access-key=<access-key> (DC/GC/PC access key)\n\
+      serial=<serial-number> (decimal serial number; required for all licenses)\n\
       privileges=<privilege-mask> (can be normal, mod, admin, root, or numeric)\n\
   delete-license <serial-number>\n\
     Delete a license from the server.\n\

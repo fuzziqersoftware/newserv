@@ -61,7 +61,6 @@ struct Client {
 
   // License & account
   std::shared_ptr<const License> license;
-  GameVersion version;
 
   // Note: these fields are included in the client config. On GC, the client
   // config can be up to 0x20 bytes; on BB it can be 0x28 bytes. We don't use
@@ -110,6 +109,10 @@ struct Client {
   std::shared_ptr<DOLFileIndex::DOLFile> loading_dol_file;
 
   Client(struct bufferevent* bev, GameVersion version, ServerBehavior server_behavior);
+
+  inline GameVersion version() const {
+    return this->channel.version;
+  }
 
   void set_license(std::shared_ptr<const License> l);
 

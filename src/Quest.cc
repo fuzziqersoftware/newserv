@@ -656,8 +656,8 @@ shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
   return this->gba_file_contents.at(name);
 }
 
-vector<shared_ptr<const Quest>> QuestIndex::filter(GameVersion version,
-    bool is_dcv1, QuestCategory category) const {
+vector<shared_ptr<const Quest>> QuestIndex::filter(
+    GameVersion version, bool is_dcv1, QuestCategory category) const {
   auto it = this->version_menu_item_id_to_quest.lower_bound(make_pair(version, 0));
   auto end_it = this->version_menu_item_id_to_quest.upper_bound(make_pair(version, 0xFFFFFFFF));
 

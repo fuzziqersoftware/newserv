@@ -533,22 +533,6 @@ char abbreviation_for_difficulty(uint8_t difficulty) {
 
 
 
-const char* abbreviation_for_game_mode(uint8_t mode) {
-  static const array<const char*, 4> names = {
-    "Nml",
-    "Btl",
-    "Chl",
-    "Solo",
-  };
-  try {
-    return names.at(mode);
-  } catch (const out_of_range&) {
-    return "???";
-  }
-}
-
-
-
 size_t stack_size_for_item(uint8_t data0, uint8_t data1) {
   if (data0 == 4) {
     return 999999;

@@ -49,13 +49,13 @@ static void check_privileges(shared_ptr<Client> c, uint64_t mask) {
 }
 
 static void check_version(shared_ptr<Client> c, GameVersion version) {
-  if (c->version != version) {
+  if (c->version() != version) {
     throw precondition_failed(u"$C6This command cannot\nbe used for your\nversion of PSO.");
   }
 }
 
 static void check_not_version(shared_ptr<Client> c, GameVersion version) {
-  if (c->version == version) {
+  if (c->version() == version) {
     throw precondition_failed(u"$C6This command cannot\nbe used for your\nversion of PSO.");
   }
 }

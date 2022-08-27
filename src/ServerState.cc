@@ -216,8 +216,8 @@ uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
 
 
 shared_ptr<const vector<MenuItem>> ServerState::information_menu_for_version(GameVersion version) {
-  if (version == GameVersion::PC) {
-    return this->information_menu_pc;
+  if ((version == GameVersion::DC) || (version == GameVersion::PC)) {
+    return this->information_menu_v2;
   } else if ((version == GameVersion::GC) || (version == GameVersion::XB)) {
     return this->information_menu_v3;
   }
@@ -225,25 +225,33 @@ shared_ptr<const vector<MenuItem>> ServerState::information_menu_for_version(Gam
 }
 
 const vector<MenuItem>& ServerState::proxy_destinations_menu_for_version(GameVersion version) {
-  if (version == GameVersion::PC) {
-    return this->proxy_destinations_menu_pc;
-  } else if (version == GameVersion::GC) {
-    return this->proxy_destinations_menu_gc;
-  } else if (version == GameVersion::XB) {
-    return this->proxy_destinations_menu_xb;
+  switch (version) {
+    case GameVersion::DC:
+      return this->proxy_destinations_menu_dc;
+    case GameVersion::PC:
+      return this->proxy_destinations_menu_pc;
+    case GameVersion::GC:
+      return this->proxy_destinations_menu_gc;
+    case GameVersion::XB:
+      return this->proxy_destinations_menu_xb;
+    default:
+      throw out_of_range("no proxy destinations menu exists for this version");
   }
-  throw out_of_range("no proxy destinations menu exists for this version");
 }
 
 const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_version(GameVersion version) {
-  if (version == GameVersion::PC) {
-    return this->proxy_destinations_pc;
-  } else if (version == GameVersion::GC) {
-    return this->proxy_destinations_gc;
-  } else if (version == GameVersion::XB) {
-    return this->proxy_destinations_xb;
+  switch (version) {
+    case GameVersion::DC:
+      return this->proxy_destinations_dc;
+    case GameVersion::PC:
+      return this->proxy_destinations_pc;
+    case GameVersion::GC:
+      return this->proxy_destinations_gc;
+    case GameVersion::XB:
+      return this->proxy_destinations_xb;
+    default:
+      throw out_of_range("no proxy destinations menu exists for this version");
   }
-  throw out_of_range("no proxy destinations menu exists for this version");
 }
 
 
@@ -268,7 +276,7 @@ void ServerState::set_port_configuration(
 void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   const auto& d = config_json->as_dict();
 
-  shared_ptr<vector<MenuItem>> information_menu_pc(new vector<MenuItem>());
+  shared_ptr<vector<MenuItem>> information_menu_v2(new vector<MenuItem>());
   shared_ptr<vector<MenuItem>> information_menu_v3(new vector<MenuItem>());
   shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
 
@@ -278,7 +286,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
     uint32_t item_id = 0;
     for (const auto& item : d.at("InformationMenuContents")->as_list()) {
       auto& v = item->as_list();
-      information_menu_pc->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
+      information_menu_v2->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
           decode_sjis(v.at(1)->as_string()), 0);
       information_menu_v3->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
           decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
@@ -286,7 +294,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       item_id++;
     }
   }
-  this->information_menu_pc = information_menu_pc;
+  this->information_menu_v2 = information_menu_v2;
   this->information_menu_v3 = information_menu_v3;
   this->information_contents = information_contents;
 
@@ -314,6 +322,10 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
     } catch (const out_of_range&) { }
   };
 
+  generate_proxy_destinations_menu(
+      this->proxy_destinations_menu_dc,
+      this->proxy_destinations_dc,
+      "ProxyDestinations-DC");
   generate_proxy_destinations_menu(
       this->proxy_destinations_menu_pc,
       this->proxy_destinations_pc,
@@ -358,18 +370,14 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       u"Join the lobby", 0);
   this->main_menu.emplace_back(MainMenuItemID::INFORMATION, u"Information",
       u"View server\ninformation", MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
-  if (!this->proxy_destinations_pc.empty()) {
-    this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
-        u"Connect to another\nserver", MenuItem::Flag::PC_ONLY);
-  }
-  if (!this->proxy_destinations_gc.empty()) {
-    this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
-        u"Connect to another\nserver", MenuItem::Flag::GC_ONLY);
-  }
-  if (!this->proxy_destinations_xb.empty()) {
-    this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
-        u"Connect to another\nserver", MenuItem::Flag::XB_ONLY);
-  }
+  uint32_t proxy_destinations_menu_item_flags =
+      (this->proxy_destinations_dc.empty() ? MenuItem::Flag::INVISIBLE_ON_DC : 0) |
+      (this->proxy_destinations_pc.empty() ? MenuItem::Flag::INVISIBLE_ON_PC : 0) |
+      (this->proxy_destinations_gc.empty() ? MenuItem::Flag::INVISIBLE_ON_GC : 0) |
+      (this->proxy_destinations_xb.empty() ? MenuItem::Flag::INVISIBLE_ON_XB : 0) |
+      MenuItem::Flag::INVISIBLE_ON_BB;
+  this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
+      u"Connect to another\nserver", proxy_destinations_menu_item_flags);
   this->main_menu.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, u"Download quests",
       u"Download quests", MenuItem::Flag::INVISIBLE_ON_BB);
   if (!this->function_code_index->patch_menu_empty()) {

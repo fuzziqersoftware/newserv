@@ -27,7 +27,7 @@ extern FileContentsCache file_cache;
 
 
 const unordered_set<uint32_t> v2_crypt_initial_client_commands({
-  0x00290090, // (17) DCv1 license check
+  0x00280090, // (17) DCv1 license check
   0x00B00093, // (02) DCv1 login
   0x01140093, // (02) DCv1 extended login
   0x00E0009A, // (17) DCv2 license check
@@ -134,7 +134,7 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
       server_key, client_key, initial_connection);
   send_command_t(c, command, 0x00, cmd);
 
-  switch (c->version) {
+  switch (c->version()) {
     case GameVersion::PC:
       c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
       c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
@@ -204,7 +204,7 @@ void send_server_init_patch(shared_ptr<Client> c) {
 
 void send_server_init(
     shared_ptr<ServerState> s, shared_ptr<Client> c, uint8_t flags) {
-  switch (c->version) {
+  switch (c->version()) {
     case GameVersion::DC:
     case GameVersion::PC:
     case GameVersion::GC:
@@ -224,7 +224,6 @@ void send_server_init(
 
 
 
-// for non-BB clients, updates the client's guild card and security data
 void send_update_client_config(shared_ptr<Client> c) {
   S_UpdateClientConfig_DC_PC_V3_04 cmd;
   cmd.player_tag = 0x00010000;
@@ -295,9 +294,7 @@ void send_function_call(
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
   S_Reconnect_19 cmd = {address, port, 0};
-  // On the patch server, 14 is the reconnect command, but it works exactly the
-  // same way as 19 on the game server.
-  send_command_t(c, (c->version == GameVersion::PATCH) ? 0x14 : 0x19, 0x00, cmd);
+  send_command_t(c, (c->version() == GameVersion::PATCH) ? 0x14 : 0x19, 0x00, cmd);
 }
 
 void send_pc_console_split_reconnect(shared_ptr<Client> c, uint32_t address,
@@ -535,7 +532,7 @@ void send_header_text(Channel& ch, uint16_t command,
 
 void send_message_box(shared_ptr<Client> c, const u16string& text) {
   uint16_t command;
-  switch (c->version) {
+  switch (c->version()) {
     case GameVersion::PATCH:
       command = 0x13;
       break;
@@ -602,7 +599,7 @@ void send_chat_message(Channel& ch, const u16string& text) {
 void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
     const u16string& from_name, const u16string& text) {
   u16string data;
-  if (c->version == GameVersion::BB) {
+  if (c->version() == GameVersion::BB) {
     data.append(u"\x09J");
   }
   data.append(remove_language_marker(from_name));
@@ -643,16 +640,22 @@ void send_simple_mail_bb(
 
 void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number,
     const u16string& from_name, const u16string& text) {
-  if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
-    send_simple_mail_t<SC_SimpleMail_V3_81>(
-        c, from_guild_card_number, from_name, text);
-  } else if (c->version == GameVersion::PC) {
-    send_simple_mail_t<SC_SimpleMail_PC_81>(
-        c, from_guild_card_number, from_name, text);
-  } else if (c->version == GameVersion::BB) {
-    send_simple_mail_bb(c, from_guild_card_number, from_name, text);
-  } else {
-    throw logic_error("unimplemented versioned command");
+  switch (c->version()) {
+    case GameVersion::DC:
+    case GameVersion::GC:
+    case GameVersion::XB:
+      send_simple_mail_t<SC_SimpleMail_DC_V3_81>(
+          c, from_guild_card_number, from_name, text);
+      break;
+    case GameVersion::PC:
+      send_simple_mail_t<SC_SimpleMail_PC_81>(
+          c, from_guild_card_number, from_name, text);
+      break;
+    case GameVersion::BB:
+      send_simple_mail_bb(c, from_guild_card_number, from_name, text);
+      break;
+    default:
+      throw logic_error("unimplemented versioned command");
   }
 }
 
@@ -677,8 +680,9 @@ void send_info_board_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 }
 
 void send_info_board(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  if (c->version == GameVersion::PC || c->version == GameVersion::PATCH ||
-      c->version == GameVersion::BB) {
+  if (c->version() == GameVersion::PC ||
+      c->version() == GameVersion::PATCH ||
+      c->version() == GameVersion::BB) {
     send_info_board_t<char16_t>(c, l);
   } else {
     send_info_board_t<char>(c, l);
@@ -698,7 +702,7 @@ void send_card_search_result_t(
     shared_ptr<Lobby> result_lobby) {
   static const vector<string> version_to_port_name({
       "console-lobby", "pc-lobby", "bb-lobby", "console-lobby", "console-lobby", "bb-lobby"});
-  const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
+  const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
 
   S_GuildCardSearchResult<CommandHeaderT, CharT> cmd;
   cmd.player_tag = 0x00010000;
@@ -737,15 +741,15 @@ void send_card_search_result(
     shared_ptr<Client> c,
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
-  if ((c->version == GameVersion::DC) ||
-      (c->version == GameVersion::GC) ||
-      (c->version == GameVersion::XB)) {
+  if ((c->version() == GameVersion::DC) ||
+      (c->version() == GameVersion::GC) ||
+      (c->version() == GameVersion::XB)) {
     send_card_search_result_t<PSOCommandHeaderDCV3, char>(
         s, c, result, result_lobby);
-  } else if (c->version == GameVersion::PC) {
+  } else if (c->version() == GameVersion::PC) {
     send_card_search_result_t<PSOCommandHeaderPC, char16_t>(
         s, c, result, result_lobby);
-  } else if (c->version == GameVersion::BB) {
+  } else if (c->version() == GameVersion::BB) {
     send_card_search_result_t<PSOCommandHeaderBB, char16_t>(
         s, c, result, result_lobby);
   } else {
@@ -756,7 +760,7 @@ void send_card_search_result(
 
 
 template <typename CmdT>
-void send_guild_card_pc_v3_t(shared_ptr<Client> c, shared_ptr<Client> source) {
+void send_guild_card_dc_pc_v3_t(shared_ptr<Client> c, shared_ptr<Client> source) {
   CmdT cmd;
   cmd.subcommand = 0x06;
   cmd.size = sizeof(CmdT) / 4;
@@ -790,12 +794,14 @@ void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
 }
 
 void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
-  if (c->version == GameVersion::PC) {
-    send_guild_card_pc_v3_t<G_SendGuildCard_PC_6x06>(c, source);
-  } else if ((c->version == GameVersion::GC) ||
-             (c->version == GameVersion::XB)) {
-    send_guild_card_pc_v3_t<G_SendGuildCard_V3_6x06>(c, source);
-  } else if (c->version == GameVersion::BB) {
+  if (c->version() == GameVersion::DC) {
+    send_guild_card_dc_pc_v3_t<G_SendGuildCard_DC_6x06>(c, source);
+  } else if (c->version() == GameVersion::PC) {
+    send_guild_card_dc_pc_v3_t<G_SendGuildCard_PC_6x06>(c, source);
+  } else if ((c->version() == GameVersion::GC) ||
+             (c->version() == GameVersion::XB)) {
+    send_guild_card_dc_pc_v3_t<G_SendGuildCard_V3_6x06>(c, source);
+  } else if (c->version() == GameVersion::BB) {
     send_guild_card_bb(c, source);
   } else {
     throw logic_error("unimplemented versioned command");
@@ -825,11 +831,11 @@ void send_menu_t(
   }
 
   for (const auto& item : items) {
-    if (((c->version == GameVersion::DC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_DC)) ||
-        ((c->version == GameVersion::PC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_PC)) ||
-        ((c->version == GameVersion::GC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC)) ||
-        ((c->version == GameVersion::XB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_XB)) ||
-        ((c->version == GameVersion::BB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_BB)) ||
+    if (((c->version() == GameVersion::DC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_DC)) ||
+        ((c->version() == GameVersion::PC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_PC)) ||
+        ((c->version() == GameVersion::GC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC)) ||
+        ((c->version() == GameVersion::XB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_XB)) ||
+        ((c->version() == GameVersion::BB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_BB)) ||
         ((item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) && (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) ||
         ((item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) && (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL)) ||
         ((item.flags & MenuItem::Flag::REQUIRES_SAVE_DISABLED) && (c->flags & Client::Flag::SAVE_ENABLED))) {
@@ -838,7 +844,7 @@ void send_menu_t(
     auto& e = entries.emplace_back();
     e.menu_id = menu_id;
     e.item_id = item.item_id;
-    e.flags = (c->version == GameVersion::BB) ? 0x0004 : 0x0F04;
+    e.flags = (c->version() == GameVersion::BB) ? 0x0004 : 0x0F04;
     e.text = item.name;
   }
 
@@ -847,8 +853,9 @@ void send_menu_t(
 
 void send_menu(shared_ptr<Client> c, const u16string& menu_name,
     uint32_t menu_id, const vector<MenuItem>& items, bool is_info_menu) {
-  if (c->version == GameVersion::PC || c->version == GameVersion::PATCH ||
-      c->version == GameVersion::BB) {
+  if (c->version() == GameVersion::PC ||
+      c->version() == GameVersion::PATCH ||
+      c->version() == GameVersion::BB) {
     send_menu_t<S_MenuEntry_PC_BB_07_1F>(c, menu_name, menu_id, items, is_info_menu);
   } else {
     send_menu_t<S_MenuEntry_DC_V3_07_1F>(c, menu_name, menu_id, items, is_info_menu);
@@ -872,12 +879,15 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     e.flags = 0x04;
   }
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
-    if (!l->is_game() || (l->version != c->version)) {
+    if (!l->is_game() || (l->version != c->version())) {
       continue;
     }
     bool l_is_ep3 = !!(l->flags & Lobby::Flag::EPISODE_3_ONLY);
     bool c_is_ep3 = !!(c->flags & Client::Flag::EPISODE_3);
     if (l_is_ep3 != c_is_ep3) {
+      continue;
+    }
+    if ((c->flags & Client::Flag::DCV1) && (l->flags & Lobby::Flag::DC_V2_ONLY)) {
       continue;
     }
 
@@ -886,11 +896,24 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     e.game_id = l->lobby_id;
     e.difficulty_tag = (l_is_ep3 ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
-    e.episode = ((c->version == GameVersion::BB) ? (l->max_clients << 4) : 0) | l->episode;
+    if (c->version() == GameVersion::DC) {
+      e.episode = (l->flags & Lobby::Flag::DC_V2_ONLY) ? 1 : 0;
+    } else {
+      e.episode = ((c->version() == GameVersion::BB) ? (l->max_clients << 4) : 0) | l->episode;
+    }
     if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
       e.flags = (l->password.empty() ? 0 : 2);
     } else {
-      e.flags = ((l->episode << 6) | ((l->mode % 3) << 4) | (l->password.empty() ? 0 : 2)) | ((l->mode == 3) ? 4 : 0);
+      e.flags = ((l->episode << 6) | (l->password.empty() ? 0 : 2));
+      if (l->flags & Lobby::Flag::BATTLE_MODE) {
+        e.flags |= 0x10;
+      }
+      if (l->flags & Lobby::Flag::CHALLENGE_MODE) {
+        e.flags |= 0x20;
+      }
+      if (l->flags & Lobby::Flag::SOLO_MODE) {
+        e.flags |= 0x34;
+      }
     }
     e.name = l->name;
   }
@@ -899,9 +922,9 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
 }
 
 void send_game_menu(shared_ptr<Client> c, shared_ptr<ServerState> s) {
-  if ((c->version == GameVersion::DC) ||
-      (c->version == GameVersion::GC) ||
-      (c->version == GameVersion::XB)) {
+  if ((c->version() == GameVersion::DC) ||
+      (c->version() == GameVersion::GC) ||
+      (c->version() == GameVersion::XB)) {
     send_game_menu_t<char>(c, s);
   } else {
     send_game_menu_t<char16_t>(c, s);
@@ -948,31 +971,43 @@ void send_quest_menu_t(
 
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
     const vector<shared_ptr<const Quest>>& quests, bool is_download_menu) {
-  if (c->version == GameVersion::PC) {
-    send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, quests, is_download_menu);
-  } else if (c->version == GameVersion::GC) {
-    send_quest_menu_t<S_QuestMenuEntry_GC_A2_A4>(c, menu_id, quests, is_download_menu);
-  } else if (c->version == GameVersion::XB) {
-    send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, quests, is_download_menu);
-  } else if (c->version == GameVersion::BB) {
-    send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, quests, is_download_menu);
-  } else {
-    throw logic_error("unimplemented versioned command");
+  switch (c->version()) {
+    case GameVersion::PC:
+      send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, quests, is_download_menu);
+      break;
+    case GameVersion::DC:
+    case GameVersion::GC:
+      send_quest_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_id, quests, is_download_menu);
+      break;
+    case GameVersion::XB:
+      send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, quests, is_download_menu);
+      break;
+    case GameVersion::BB:
+      send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, quests, is_download_menu);
+      break;
+    default:
+      throw logic_error("unimplemented versioned command");
   }
 }
 
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
     const vector<MenuItem>& items, bool is_download_menu) {
-  if (c->version == GameVersion::PC) {
-    send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, items, is_download_menu);
-  } else if (c->version == GameVersion::GC) {
-    send_quest_menu_t<S_QuestMenuEntry_GC_A2_A4>(c, menu_id, items, is_download_menu);
-  } else if (c->version == GameVersion::XB) {
-    send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, items, is_download_menu);
-  } else if (c->version == GameVersion::BB) {
-    send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, items, is_download_menu);
-  } else {
-    throw logic_error("unimplemented versioned command");
+  switch (c->version()) {
+    case GameVersion::PC:
+      send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, items, is_download_menu);
+      break;
+    case GameVersion::DC:
+    case GameVersion::GC:
+      send_quest_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_id, items, is_download_menu);
+      break;
+    case GameVersion::XB:
+      send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, items, is_download_menu);
+      break;
+    case GameVersion::BB:
+      send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, items, is_download_menu);
+      break;
+    default:
+      throw logic_error("unimplemented versioned command");
   }
 }
 
@@ -1030,7 +1065,7 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       cmd->lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
       if (cmd_ep3) {
         cmd_ep3->players_ep3[x].inventory = l->clients[x]->game_data.player()->inventory;
-        cmd_ep3->players_ep3[x].disp = convert_player_disp_data<PlayerDispDataPCV3>(
+        cmd_ep3->players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(
             l->clients[x]->game_data.player()->disp);
       }
       player_count++;
@@ -1043,14 +1078,14 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   cmd->leader_id = l->leader_id;
   cmd->disable_udp = 0x01; // Unused on PC/XB/BB
   cmd->difficulty = l->difficulty;
-  cmd->battle_mode = (l->mode == 1) ? 1 : 0;
+  cmd->battle_mode = (l->flags & Lobby::Flag::BATTLE_MODE) ? 1 : 0;
   cmd->event = l->event;
   cmd->section_id = l->section_id;
-  cmd->challenge_mode = (l->mode == 2) ? 1 : 0;
+  cmd->challenge_mode = (l->flags & Lobby::Flag::CHALLENGE_MODE) ? 1 : 0;
   cmd->rare_seed = l->random_seed;
   cmd->episode = l->episode;
   cmd->unused2 = 0x01;
-  cmd->solo_mode = (l->mode == 3);
+  cmd->solo_mode = (l->flags & Lobby::Flag::SOLO_MODE) ? 1 : 0;
   cmd->unused3 = 0x00;
 
   send_command(c, 0x64, player_count, data);
@@ -1073,7 +1108,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
   // Allow non-canonical lobby types on GC. They may work on other versions too,
   // but I haven't verified which values don't crash on each version.
-  if (c->version == GameVersion::GC) {
+  if (c->version() == GameVersion::GC) {
     if (c->flags & Client::Flag::EPISODE_3) {
       if ((l->type > 0x14) && (l->type < 0xE9)) {
         lobby_type = l->block - 1;
@@ -1098,6 +1133,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   cmd.unknown_a1 = 0;
   cmd.event = l->event;
   cmd.unknown_a2 = 0;
+  cmd.unused = 0;
 
   vector<shared_ptr<Client>> lobby_clients;
   if (joining_client) {
@@ -1119,8 +1155,8 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.name = lc->game_data.player()->disp.name;
     e.inventory = lc->game_data.player()->inventory;
     e.disp = convert_player_disp_data<DispDataT>(lc->game_data.player()->disp);
-    if (c->version == GameVersion::PC) {
-      e.disp.enforce_pc_limits();
+    if ((c->version() == GameVersion::PC) || (c->version() == GameVersion::DC)) {
+      e.disp.enforce_v2_limits();
     }
   }
 
@@ -1129,28 +1165,40 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
 
 void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (l->is_game()) {
-    if (c->version == GameVersion::PC) {
-      send_join_game_t<PlayerLobbyDataPC, PlayerDispDataPCV3>(c, l);
-    } else if (c->version == GameVersion::GC) {
-      send_join_game_t<PlayerLobbyDataGC, PlayerDispDataPCV3>(c, l);
-    } else if (c->version == GameVersion::XB) {
-      send_join_game_t<PlayerLobbyDataXB, PlayerDispDataPCV3>(c, l);
-    } else if (c->version == GameVersion::BB) {
-      send_join_game_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l);
-    } else {
-      throw logic_error("unimplemented versioned command");
+    switch (c->version()) {
+      case GameVersion::PC:
+        send_join_game_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3>(c, l);
+        break;
+      case GameVersion::DC:
+      case GameVersion::GC:
+        send_join_game_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>(c, l);
+        break;
+      case GameVersion::XB:
+        send_join_game_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3>(c, l);
+        break;
+      case GameVersion::BB:
+        send_join_game_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l);
+        break;
+      default:
+        throw logic_error("unimplemented versioned command");
     }
   } else {
-    if (c->version == GameVersion::PC) {
-      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataPCV3>(c, l);
-    } else if (c->version == GameVersion::GC) {
-      send_join_lobby_t<PlayerLobbyDataGC, PlayerDispDataPCV3>(c, l);
-    } else if (c->version == GameVersion::XB) {
-      send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataPCV3>(c, l);
-    } else if (c->version == GameVersion::BB) {
-      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l);
-    } else {
-      throw logic_error("unimplemented versioned command");
+    switch (c->version()) {
+      case GameVersion::PC:
+        send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3>(c, l);
+        break;
+      case GameVersion::DC:
+      case GameVersion::GC:
+        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>(c, l);
+        break;
+      case GameVersion::XB:
+        send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3>(c, l);
+        break;
+      case GameVersion::BB:
+        send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l);
+        break;
+      default:
+        throw logic_error("unimplemented versioned command");
     }
   }
 
@@ -1165,16 +1213,22 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
 void send_player_join_notification(shared_ptr<Client> c,
     shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
-  if (c->version == GameVersion::PC) {
-    send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataPCV3>(c, l, joining_client);
-  } else if (c->version == GameVersion::GC) {
-    send_join_lobby_t<PlayerLobbyDataGC, PlayerDispDataPCV3>(c, l, joining_client);
-  } else if (c->version == GameVersion::XB) {
-    send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataPCV3>(c, l, joining_client);
-  } else if (c->version == GameVersion::BB) {
-    send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l, joining_client);
-  } else {
-    throw logic_error("unimplemented versioned command");
+  switch (c->version()) {
+    case GameVersion::PC:
+      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3>(c, l, joining_client);
+      break;
+    case GameVersion::DC:
+    case GameVersion::GC:
+      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>(c, l, joining_client);
+      break;
+    case GameVersion::XB:
+      send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3>(c, l, joining_client);
+      break;
+    case GameVersion::BB:
+      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l, joining_client);
+      break;
+    default:
+      throw logic_error("unimplemented versioned command");
   }
 }
 
@@ -1229,7 +1283,12 @@ void send_arrow_update(shared_ptr<Lobby> l) {
     e.arrow_color = l->clients[x]->lobby_arrow_color;
   }
 
-  send_command_vt(l, 0x88, entries.size(), entries);
+  for (size_t x = 0; x < l->max_clients; x++) {
+    if (!l->clients[x] || (l->clients[x]->flags & Client::Flag::DCV1)) {
+      continue;
+    }
+    send_command_vt(l->clients[x], 0x88, entries.size(), entries);
+  }
 }
 
 // tells the player that the joining player is done joining, and the game can resume
@@ -1330,15 +1389,15 @@ void send_revive_player(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 
 void send_drop_item(Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
-  G_DropItem_6x5F cmd = {
-      0x5F, 0x0B, 0x0000, area, from_enemy, request_id, x, z, 0, item, 0};
+  G_DropItem_PC_V3_BB_6x5F cmd = {
+      {0x5F, 0x0B, 0x0000, area, from_enemy, request_id, x, z, 0, item}, 0};
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
-  G_DropItem_6x5F cmd = {
-      0x5F, 0x0B, 0x0000, area, from_enemy, request_id, x, z, 0, item, 0};
+  G_DropItem_PC_V3_BB_6x5F cmd = {
+      {0x5F, 0x0B, 0x0000, area, from_enemy, request_id, x, z, 0, item}, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
@@ -1348,8 +1407,8 @@ void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
     uint8_t area, float x, float z) {
   // TODO: Is this order correct? The original code sent {item, 0}, but it seems
   // GC sends {0, item} (the last two fields in the struct are switched).
-  G_DropStackedItem_6x5D cmd = {
-      0x5D, 0x0A, 0x00, 0x00, area, 0, x, z, item, 0};
+  G_DropStackedItem_PC_V3_BB_6x5D cmd = {
+      {0x5D, 0x0A, 0x00, 0x00, area, 0, x, z, item}, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
@@ -1576,16 +1635,23 @@ void send_quest_file_chunk(
 void send_quest_file(shared_ptr<Client> c, const string& quest_name,
     const string& basename, const string& contents, QuestFileType type) {
 
-  if ((c->version == GameVersion::PC) ||
-      (c->version == GameVersion::GC) ||
-      (c->version == GameVersion::XB)) {
-    send_quest_open_file_t<S_OpenFile_PC_V3_44_A6>(
+  switch (c->version()) {
+    case GameVersion::DC:
+      send_quest_open_file_t<S_OpenFile_DC_44_A6>(
+          c, quest_name, basename, contents.size(), type);
+      break;
+    case GameVersion::PC:
+    case GameVersion::GC:
+    case GameVersion::XB:
+      send_quest_open_file_t<S_OpenFile_PC_V3_44_A6>(
+          c, quest_name, basename, contents.size(), type);
+      break;
+    case GameVersion::BB:
+      send_quest_open_file_t<S_OpenFile_BB_44_A6>(
         c, quest_name, basename, contents.size(), type);
-  } else if (c->version == GameVersion::BB) {
-    send_quest_open_file_t<S_OpenFile_BB_44_A6>(
-        c, quest_name, basename, contents.size(), type);
-  } else {
-    throw invalid_argument("cannot send quest files to this version of client");
+      break;
+    default:
+      throw logic_error("cannot send quest files to this version of client");
   }
 
   for (size_t offset = 0; offset < contents.size(); offset += 0x400) {
@@ -1618,8 +1684,8 @@ void send_server_time(shared_ptr<Client> c) {
 
 void send_change_event(shared_ptr<Client> c, uint8_t new_event) {
   // This command isn't supported on versions before V3, nor on Trial Edition.
-  if ((c->version == GameVersion::DC) ||
-      (c->version == GameVersion::PC) ||
+  if ((c->version() == GameVersion::DC) ||
+      (c->version() == GameVersion::PC) ||
       (c->flags & Client::Flag::GC_TRIAL_EDITION)) {
     return;
   }

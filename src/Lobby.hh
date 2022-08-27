@@ -28,6 +28,10 @@ struct Lobby {
     QUEST_IN_PROGRESS          = 0x00000200,
     JOINABLE_QUEST_IN_PROGRESS = 0x00000400,
     ITEM_TRACKING_ENABLED      = 0x00000800,
+    DC_V2_ONLY                 = 0x00001000,
+    BATTLE_MODE                = 0x00002000,
+    CHALLENGE_MODE             = 0x00004000,
+    SOLO_MODE                  = 0x00008000,
 
     // Flags used only for lobbies
     PUBLIC                     = 0x00010000,
@@ -62,7 +66,6 @@ struct Lobby {
   uint8_t section_id;
   uint8_t episode; // 1 = Ep1, 2 = Ep2, 3 = Ep4, 0xFF = Ep3
   uint8_t difficulty;
-  uint8_t mode;
   std::u16string password;
   std::u16string name;
   // This seed is also sent to the client for rare enemy generation

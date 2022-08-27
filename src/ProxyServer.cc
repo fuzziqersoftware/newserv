@@ -186,6 +186,7 @@ void ProxyServer::on_client_connect(
     switch (version) {
       case GameVersion::PATCH:
         throw logic_error("cannot create unlinked patch session");
+      case GameVersion::DC:
       case GameVersion::PC:
       case GameVersion::GC:
       case GameVersion::XB: {
@@ -196,7 +197,7 @@ void ProxyServer::on_client_connect(
         session->channel.send(0x02, 0x00, &cmd, sizeof(cmd));
         // TODO: Is this actually needed?
         // bufferevent_flush(session->channel.bev.get(), EV_READ | EV_WRITE, BEV_FLUSH);
-        if (version == GameVersion::PC) {
+        if ((version == GameVersion::DC) || (version == GameVersion::PC)) {
           session->channel.crypt_out.reset(new PSOV2Encryption(server_key));
           session->channel.crypt_in.reset(new PSOV2Encryption(client_key));
         } else {
@@ -261,16 +262,41 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   string character_name;
   ClientConfigBB client_config;
   string login_command_bb;
+  string hardware_id;
 
   try {
-    if (session->version == GameVersion::PC) {
+    if (session->version == GameVersion::DC) {
+      // We should only get a 93 or 9D while the session is unlinked; if we get
+      // anything else, disconnect
+      if (command == 0x93) {
+        const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
+        license = session->server->state->license_manager->verify_pc(
+            stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
+        sub_version = cmd.sub_version;
+        language = cmd.language;
+        character_name = cmd.name;
+        hardware_id = cmd.hardware_id;
+        client_config.cfg.flags |= Client::Flag::DCV1;
+      } else if (command == 0x9D) {
+        const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(
+            data, sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_PC_GC_9D));
+        license = session->server->state->license_manager->verify_pc(
+            stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
+        sub_version = cmd.sub_version;
+        language = cmd.language;
+        character_name = cmd.name;
+      } else {
+        throw runtime_error("command is not 93 or 9D");
+      }
+
+    } else if (session->version == GameVersion::PC) {
       // We should only get a 9D while the session is unlinked; if we get
       // anything else, disconnect
       if (command != 0x9D) {
         throw runtime_error("command is not 9D");
       }
-      const auto& cmd = check_size_t<C_Login_PC_GC_9D>(
-          data, sizeof(C_Login_PC_GC_9D), sizeof(C_LoginExtended_PC_GC_9D));
+      const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(
+          data, sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_PC_GC_9D));
       license = session->server->state->license_manager->verify_pc(
           stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
       sub_version = cmd.sub_version;
@@ -373,7 +399,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
                 session->detector_crypt,
                 sub_version,
                 language,
-                character_name);
+                character_name,
+                hardware_id);
           }
         } catch (const exception& e) {
           linked_session->log.error("Failed to resume linked session: %s", e.what());
@@ -498,10 +525,12 @@ void ProxyServer::LinkedSession::resume(
     shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
     uint32_t sub_version,
     uint8_t language,
-    const string& character_name) {
+    const string& character_name,
+    const string& hardware_id) {
   this->sub_version = sub_version;
   this->language = language;
   this->character_name = character_name;
+  this->hardware_id = hardware_id;
   this->resume_inner(move(client_channel), detector_crypt);
 }
 

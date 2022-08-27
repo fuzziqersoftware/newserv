@@ -30,10 +30,9 @@ Client::Client(
     ServerBehavior server_behavior)
   : id(next_id++),
     log("", client_log.min_level),
-    version(version),
     bb_game_state(0),
-    flags(flags_for_version(this->version, -1)),
-    channel(bev, this->version, nullptr, nullptr, this, string_printf("C-%" PRIX64, this->id), TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
+    flags(flags_for_version(version, -1)),
+    channel(bev, version, nullptr, nullptr, this, string_printf("C-%" PRIX64, this->id), TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
     server_behavior(server_behavior),
     should_disconnect(false),
     should_send_to_lobby_server(false),
@@ -64,7 +63,7 @@ Client::Client(
   this->last_switch_enabled_command.subcommand = 0;
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
 
-  if (this->version == GameVersion::BB) {
+  if (this->version() == GameVersion::BB) {
     struct timeval tv = usecs_to_timeval(60000000); // 1 minute
     event_add(this->save_game_data_event.get(), &tv);
   }
@@ -73,7 +72,7 @@ Client::Client(
 void Client::set_license(shared_ptr<const License> l) {
   this->license = l;
   this->game_data.serial_number = this->license->serial_number;
-  if (this->version == GameVersion::BB) {
+  if (this->version() == GameVersion::BB) {
     this->game_data.bb_username = this->license->username;
   }
 }
@@ -119,7 +118,7 @@ void Client::dispatch_save_game_data(evutil_socket_t, short, void* ctx) {
 }
 
 void Client::save_game_data() {
-  if (this->version != GameVersion::BB) {
+  if (this->version() != GameVersion::BB) {
     throw logic_error("save_game_data called for non-BB client");
   }
   if (this->game_data.account(false)) {

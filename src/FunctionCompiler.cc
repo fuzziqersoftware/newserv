@@ -88,7 +88,7 @@ string CompiledFunctionCode::generate_client_command(
     return this->generate_client_command_t<S_ExecuteCode_Footer_GC_B2, be_uint16_t>(
         label_writes, suffix);
   } else if (this->arch == Architecture::X86) {
-    return this->generate_client_command_t<S_ExecuteCode_Footer_PC_XB_BB_B2, le_uint16_t>(
+    return this->generate_client_command_t<S_ExecuteCode_Footer_DC_PC_XB_BB_B2, le_uint16_t>(
         label_writes, suffix);
   } else {
     throw logic_error("invalid architecture");

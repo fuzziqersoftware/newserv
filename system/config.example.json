@@ -67,9 +67,11 @@
     "console-lobby": [5110,  "gc",    "lobby_server"],
     "pc-lobby":      [5111,  "pc",    "lobby_server"],
     "bb-lobby":      [5112,  "bb",    "lobby_server"],
-    "console-proxy": [5120,  "gc",    "proxy_server"],
+    "dc-proxy":      [5120,  "dc",    "proxy_server"],
     "pc-proxy":      [5121,  "pc",    "proxy_server"],
-    "bb-proxy":      [5122,  "bb",    "proxy_server"],
+    "gc-proxy":      [5122,  "gc",    "proxy_server"],
+    "xb-proxy":      [5123,  "xb",    "proxy_server"],
+    "bb-proxy":      [5124,  "bb",    "proxy_server"],
     "bb-data1":      [12004, "bb",    "data_server_bb"],
     "bb-data2":      [12005, "bb",    "data_server_bb"],
   },
@@ -84,9 +86,10 @@
   // strings to this list to listen for tapserver connections on a TCP port.
   "IPStackListen": [],
 
-  // Other servers to support proxying to. If either of these is empty, the
-  // proxy server is disabled for that game version. Entries are like
+  // Other servers to support proxying to. If this is empty for any game
+  // version, the proxy server is disabled for that version. Entries are like
   // "name": "address:port"; the names are used in the proxy server menu.
+  "ProxyDestinations-DC": {},
   "ProxyDestinations-PC": {},
   "ProxyDestinations-GC": {},
   "ProxyDestinations-XB": {},

@@ -10,22 +10,23 @@ newserv supports several versions of PSO. Specifically:
 | Version              | Basic commands | Lobbies       | Games         | Proxy         |
 |----------------------|----------------|---------------|---------------|---------------|
 | Dreamcast Trial      | Not supported  | Not supported | Not supported | Not supported |
-| Dreamcast V1         | Not supported  | Not supported | Not supported | Not supported |
-| Dreamcast V2         | Not supported  | Not supported | Not supported | Not supported |
+| Dreamcast V1         | Supported (1)  | Supported     | Supported     | Supported     |
+| Dreamcast V2         | Supported (1)  | Supported     | Supported     | Supported     |
 | PC                   | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep1&2 Trial | Untested (4)   | Untested (4)  | Untested (4)  | Untested (4)  |
+| GameCube Ep1&2 Trial | Untested (2)   | Untested (2)  | Untested (2)  | Untested (2)  |
 | GameCube Ep1&2       | Supported      | Supported     | Supported     | Supported     |
 | GameCube Ep1&2 Plus  | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep3 Trial   | Supported      | Supported     | Partial (1)   | Supported     |
-| GameCube Ep3         | Supported      | Supported     | Partial (1)   | Supported     |
-| XBOX Ep1&2           | Untested (3)   | Untested (3)  | Untested (3)  | Untested (3)  |
-| Blue Burst           | Supported      | Supported     | Partial (2)   | Supported     |
+| GameCube Ep3 Trial   | Supported      | Supported     | Partial (3)   | Supported     |
+| GameCube Ep3         | Supported      | Supported     | Partial (3)   | Supported     |
+| XBOX Ep1&2           | Untested (4)   | Untested (4)  | Untested (4)  | Untested (4)  |
+| Blue Burst           | Supported      | Supported     | Partial (5)   | Supported     |
 
 *Notes:*
-1. *Episode 3 players can create and join games, but CARD battles are not implemented yet.*
-2. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get this to a playable state.*
-3. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested and probably doesn't work.*
-4. *This version only supports the modem adapter, which Dolphin does not currently emulate, so it's difficult to test.*
+1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
+2. *This version only supports the modem adapter, which Dolphin does not currently emulate, so it's difficult to test.*
+3. *Episode 3 players can create and join games, but CARD battles are not implemented yet. Tournaments are also not supported.*
+4. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
+5. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
 
 ## Future
 

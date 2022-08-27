@@ -54,6 +54,7 @@ public:
     uint32_t sub_version;
     uint8_t language;
     std::string character_name;
+    std::string hardware_id; // Only used for DC sessions
     std::string login_command_bb;
 
     uint32_t remote_guild_card_number;
@@ -127,7 +128,8 @@ public:
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
         uint32_t sub_version,
         uint8_t language,
-        const std::string& character_name);
+        const std::string& character_name,
+        const std::string& hardware_id);
     void resume(
         Channel&& client_channel,
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,

@@ -126,7 +126,7 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 
   } else if (c->server_behavior == ServerBehavior::LOBBY_SERVER) {
 
-    if (c->version == GameVersion::BB) {
+    if (c->version() == GameVersion::BB) {
       // This implicitly loads the client's account and player data
       send_complete_player_bb(c);
     }
@@ -161,14 +161,14 @@ static void set_console_client_flags(
     shared_ptr<Client> c, uint32_t sub_version) {
   if (c->channel.crypt_in->type() == PSOEncryption::Type::V2) {
     if (sub_version < 0x28) {
-      c->version = GameVersion::DC;
+      c->channel.version = GameVersion::DC;
       c->log.info("Game version changed to DC");
-    } else if (c->version == GameVersion::GC) {
+    } else if (c->version() == GameVersion::GC) {
       c->flags |= Client::Flag::GC_TRIAL_EDITION;
       c->log.info("Trial edition flag set");
     }
   }
-  c->flags |= flags_for_version(c->version, sub_version);
+  c->flags |= flags_for_version(c->version(), sub_version);
 }
 
 void process_verify_license_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -212,6 +212,79 @@ void process_verify_license_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
+void process_login_0_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // 90
+  const auto& cmd = check_size_t<C_LoginV1_DC_PC_V3_90>(data);
+  c->channel.version = GameVersion::DC;
+  c->flags |= flags_for_version(c->version(), -1);
+  c->flags |= Client::Flag::DCV1;
+
+  uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
+  try {
+    shared_ptr<const License> l = s->license_manager->verify_pc(
+        serial_number, cmd.access_key);
+    c->set_license(l);
+    send_command(c, 0x90, 0x02);
+
+  } catch (const incorrect_access_key& e) {
+    send_command(c, 0x90, 0x03);
+    c->should_disconnect = true;
+
+  } catch (const missing_license& e) {
+    if (!s->allow_unregistered_users) {
+      send_command(c, 0x90, 0x03);
+      c->should_disconnect = true;
+    } else {
+      auto l = LicenseManager::create_license_pc(
+          serial_number, cmd.access_key, true);
+      s->license_manager->add(l);
+      c->set_license(l);
+      send_command(c, 0x90, 0x01);
+    }
+  }
+}
+
+void process_login_2_dc(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // 92
+  check_size_t<C_RegisterV1_DC_92>(data);
+  send_command(c, 0x92, 0x01);
+}
+
+void process_login_3_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // 93
+  const auto& cmd = check_size_t<C_LoginV1_DC_93>(data,
+      sizeof(C_LoginV1_DC_93), sizeof(C_LoginExtendedV1_DC_93));
+  set_console_client_flags(c, cmd.sub_version);
+
+  uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
+  try {
+    shared_ptr<const License> l = s->license_manager->verify_pc(
+        serial_number, cmd.access_key);
+    c->set_license(l);
+
+  } catch (const incorrect_access_key& e) {
+    send_message_box(c, u"Incorrect access key");
+    c->should_disconnect = true;
+    return;
+
+  } catch (const missing_license& e) {
+    if (!s->allow_unregistered_users) {
+      send_message_box(c, u"Incorrect serial number");
+      c->should_disconnect = true;
+      return;
+    } else {
+      auto l = LicenseManager::create_license_pc(
+          serial_number, cmd.access_key, true);
+      s->license_manager->add(l);
+      c->set_license(l);
+    }
+  }
+
+  send_update_client_config(c);
+
+  process_login_complete(s, c);
+}
+
 void process_login_a_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 9A
   const auto& cmd = check_size_t<C_Login_DC_PC_V3_9A>(data);
@@ -220,7 +293,8 @@ void process_login_a_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
     shared_ptr<const License> l;
-    switch (c->version) {
+    switch (c->version()) {
+      case GameVersion::DC:
       case GameVersion::PC:
         l = s->license_manager->verify_pc(serial_number, cmd.access_key);
         break;
@@ -252,11 +326,11 @@ void process_login_a_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     // license. So, if no license exists at this point, disconnect the client
     // even if unregistered clients are allowed.
     shared_ptr<License> l;
-    if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
+    if ((c->version() == GameVersion::GC) || (c->version() == GameVersion::XB)) {
       send_command(c, 0x9A, 0x04);
       c->should_disconnect = true;
       return;
-    } else if (c->version == GameVersion::PC) {
+    } else if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
       l = LicenseManager::create_license_pc(serial_number, cmd.access_key, true);
       s->license_manager->add(l);
       c->set_license(l);
@@ -271,12 +345,13 @@ void process_login_c_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 9C
   const auto& cmd = check_size_t<C_Register_DC_PC_V3_9C>(data);
 
-  c->flags |= flags_for_version(c->version, cmd.sub_version);
+  c->flags |= flags_for_version(c->version(), cmd.sub_version);
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
     shared_ptr<const License> l;
-    switch (c->version) {
+    switch (c->version()) {
+      case GameVersion::DC:
       case GameVersion::PC:
         l = s->license_manager->verify_pc(serial_number, cmd.access_key);
         break;
@@ -305,7 +380,8 @@ void process_login_c_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
       return;
     } else {
       shared_ptr<License> l;
-      switch (c->version) {
+      switch (c->version()) {
+        case GameVersion::DC:
         case GameVersion::PC:
           l = LicenseManager::create_license_pc(serial_number, cmd.access_key,
               true);
@@ -327,14 +403,14 @@ void process_login_c_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+void process_login_d_e_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) { // 9D 9E
-  const C_Login_PC_GC_9D* base_cmd;
+  const C_Login_DC_PC_GC_9D* base_cmd;
   if (command == 0x9D) {
-    base_cmd = &check_size_t<C_Login_PC_GC_9D>(data,
-        sizeof(C_Login_PC_GC_9D), sizeof(C_LoginExtended_PC_GC_9D));
+    base_cmd = &check_size_t<C_Login_DC_PC_GC_9D>(data,
+        sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_PC_GC_9D));
     if (base_cmd->is_extended) {
-      const auto& cmd = check_size_t<C_LoginExtended_PC_GC_9D>(data);
+      const auto& cmd = check_size_t<C_LoginExtended_DC_PC_GC_9D>(data);
       if (cmd.extension.menu_id == MenuID::LOBBY) {
         c->preferred_lobby_id = cmd.extension.preferred_lobby_id;
       }
@@ -351,7 +427,7 @@ void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
         break;
       case sizeof(C_Login_XB_9E):
       case sizeof(C_LoginExtended_XB_9E):
-        c->version = GameVersion::XB;
+        c->channel.version = GameVersion::XB;
         c->log.info("Game version set to XB");
         break;
       default:
@@ -384,7 +460,8 @@ void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   uint32_t serial_number = stoul(base_cmd->serial_number, nullptr, 16);
   try {
     shared_ptr<const License> l;
-    switch (c->version) {
+    switch (c->version()) {
+      case GameVersion::DC:
       case GameVersion::PC:
         l = s->license_manager->verify_pc(serial_number, base_cmd->access_key);
         break;
@@ -415,11 +492,11 @@ void process_login_d_e_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     // license. So, if no license exists at this point, disconnect the client
     // even if unregistered clients are allowed.
     shared_ptr<License> l;
-    if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
+    if ((c->version() == GameVersion::GC) || (c->version() == GameVersion::XB)) {
       send_command(c, 0x04, 0x04);
       c->should_disconnect = true;
       return;
-    } else if (c->version == GameVersion::PC) {
+    } else if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
       l = LicenseManager::create_license_pc(serial_number, base_cmd->access_key, true);
       s->license_manager->add(l);
       c->set_license(l);
@@ -447,7 +524,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     throw runtime_error("invalid size for 93 command");
   }
 
-  c->flags |= flags_for_version(c->version, -1);
+  c->flags |= flags_for_version(c->version(), -1);
 
   try {
     auto l = s->license_manager->verify_bb(cmd.username, cmd.password);
@@ -521,7 +598,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 void process_return_client_config(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 9F
-  if (c->version == GameVersion::BB) {
+  if (c->version() == GameVersion::BB) {
     const auto& cfg = check_size_t<ClientConfigBB>(data);
     c->import_config(cfg);
   } else {
@@ -552,7 +629,7 @@ void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c
   if (c->should_send_to_lobby_server) {
     static const vector<string> version_to_port_name({
         "console-lobby", "pc-lobby", "bb-lobby", "console-lobby", "console-lobby", "bb-lobby"});
-    const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
+    const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
     send_reconnect(c, s->connect_address_for_client(c),
         s->name_to_port_config.at(port_name)->port);
   }
@@ -691,7 +768,7 @@ void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
   check_size_v(data.size(), 0);
   if (c->flags & Client::Flag::IN_INFORMATION_MENU) {
     send_menu(c, u"Information", MenuID::INFORMATION,
-        *s->information_menu_for_version(c->version));
+        *s->information_menu_for_version(c->version()));
   } else if (c->flags & Client::Flag::AT_WELCOME_MESSAGE) {
     send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
     c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
@@ -718,7 +795,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
       } else {
         try {
           // we use item_id + 1 here because "go back" is the first item
-          send_ship_info(c, s->information_menu_for_version(c->version)->at(cmd.item_id + 1).description.c_str());
+          send_ship_info(c, s->information_menu_for_version(c->version())->at(cmd.item_id + 1).description.c_str());
         } catch (const out_of_range&) {
           send_ship_info(c, u"$C4Missing information\nmenu item");
         }
@@ -730,7 +807,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
         send_ship_info(c, u"Return to the\nmain menu.");
       } else {
         try {
-          const auto& menu = s->proxy_destinations_menu_for_version(c->version);
+          const auto& menu = s->proxy_destinations_menu_for_version(c->version());
           // we use item_id + 1 here because "go back" is the first item
           send_ship_info(c, menu.at(cmd.item_id + 1).description.c_str());
         } catch (const out_of_range&) {
@@ -750,7 +827,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
         send_quest_info(c, u"$C6Quests are not available.", !c->lobby_id);
         break;
       }
-      auto q = s->quest_index->get(c->version, cmd.item_id);
+      auto q = s->quest_index->get(c->version(), cmd.item_id);
       if (!q) {
         send_quest_info(c, u"$C4Quest does not\nexist.", !c->lobby_id);
         break;
@@ -797,10 +874,18 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
           episode = 3;
         }
         string secid_str = name_for_section_id(game->section_id);
+        const char* mode_abbrev = "Nml";
+        if (game->flags & Lobby::Flag::BATTLE_MODE) {
+          mode_abbrev = "Btl";
+        } else if (game->flags & Lobby::Flag::CHALLENGE_MODE) {
+          mode_abbrev = "Chl";
+        } else if (game->flags & Lobby::Flag::SOLO_MODE) {
+          mode_abbrev = "Solo";
+        }
         info += string_printf("Ep%d %c %s %s\n",
             episode,
             abbreviation_for_difficulty(game->difficulty),
-            abbreviation_for_game_mode(game->mode),
+            mode_abbrev,
             secid_str.c_str());
 
         bool cheats_enabled = game->flags & Lobby::Flag::CHEATS_ENABLED;
@@ -858,7 +943,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
 
 void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 10
-  bool uses_unicode = ((c->version == GameVersion::PC) || (c->version == GameVersion::BB));
+  bool uses_unicode = ((c->version() == GameVersion::PC) || (c->version() == GameVersion::BB));
 
   uint32_t menu_id;
   uint32_t item_id;
@@ -894,7 +979,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           } else {
             static const vector<string> version_to_port_name({
                 "console-lobby", "pc-lobby", "bb-lobby", "console-lobby", "console-lobby", "bb-lobby"});
-            const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
+            const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
             send_reconnect(c, s->connect_address_for_client(c),
                 s->name_to_port_config.at(port_name)->port);
           }
@@ -903,20 +988,20 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
         case MainMenuItemID::INFORMATION:
           send_menu(c, u"Information", MenuID::INFORMATION,
-              *s->information_menu_for_version(c->version));
+              *s->information_menu_for_version(c->version()));
           c->flags |= Client::Flag::IN_INFORMATION_MENU;
           break;
 
         case MainMenuItemID::PROXY_DESTINATIONS:
           send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
-              s->proxy_destinations_menu_for_version(c->version));
+              s->proxy_destinations_menu_for_version(c->version()));
           break;
 
         case MainMenuItemID::DOWNLOAD_QUESTS:
           if (c->flags & Client::Flag::EPISODE_3) {
             shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
             auto quests = s->quest_index->filter(
-                c->version, false, QuestCategory::EPISODE_3);
+                c->version(), c->flags & Client::Flag::DCV1, QuestCategory::EPISODE_3);
             if (quests.empty()) {
               send_lobby_message_box(c, u"$C6There are no quests\navailable.");
             } else {
@@ -977,7 +1062,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       } else {
         const pair<string, uint16_t>* dest = nullptr;
         try {
-          dest = &s->proxy_destinations_for_version(c->version).at(item_id);
+          dest = &s->proxy_destinations_for_version(c->version()).at(item_id);
         } catch (const out_of_range&) { }
 
         if (!dest) {
@@ -990,8 +1075,8 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           // license/char name/etc. for remote auth)
 
           static const vector<string> version_to_port_name({
-              "console-proxy", "pc-proxy", "", "console-proxy", "console-proxy", "bb-proxy"});
-          const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
+              "dc-proxy", "pc-proxy", "", "gc-proxy", "xb-proxy", "bb-proxy"});
+          const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
           uint16_t local_port = s->name_to_port_config.at(port_name)->port;
 
           c->proxy_destination_address = resolve_ipv4(dest->first);
@@ -1000,7 +1085,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
           s->proxy_server->delete_session(c->license->serial_number);
           s->proxy_server->create_licensed_session(
-              c->license, local_port, c->version, c->export_config_bb());
+              c->license, local_port, c->version(), c->export_config_bb());
 
           send_reconnect(c, s->connect_address_for_client(c), local_port);
         }
@@ -1022,8 +1107,9 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nfull.");
         break;
       }
-      if ((game->version != c->version) ||
-          (!(game->flags & Lobby::Flag::EPISODE_3_ONLY) != !(c->flags & Client::Flag::EPISODE_3))) {
+      if ((game->version != c->version()) ||
+          (!(game->flags & Lobby::Flag::EPISODE_3_ONLY) != !(c->flags & Client::Flag::EPISODE_3)) ||
+          ((game->flags & Lobby::Flag::DC_V2_ONLY) && (c->flags & Client::Flag::DCV1))) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
         break;
       }
@@ -1035,7 +1121,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because\nanother player is\ncurrently loading.\nTry again soon.");
         break;
       }
-      if (game->mode == 3) {
+      if (game->flags & Lobby::Flag::SOLO_MODE) {
         send_lobby_message_box(c, u"$C6You cannot join this\n game because it is\na Solo Mode game.");
         break;
       }
@@ -1068,7 +1154,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         break;
       }
       shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
-      auto quests = s->quest_index->filter(c->version,
+      auto quests = s->quest_index->filter(c->version(),
           c->flags & Client::Flag::DCV1,
           static_cast<QuestCategory>(item_id & 0xFF));
       if (quests.empty()) {
@@ -1087,7 +1173,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_lobby_message_box(c, u"$C6Quests are not available.");
         break;
       }
-      auto q = s->quest_index->get(c->version, item_id);
+      auto q = s->quest_index->get(c->version(), item_id);
       if (!q) {
         send_lobby_message_box(c, u"$C6Quest does not exist.");
         break;
@@ -1145,8 +1231,8 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           // (C->S 13 commands) like there are on GC. So, for PC/Trial clients,
           // we can just not set the loading flag, since we never need to
           // check/clear it later.
-          if ((l->clients[x]->version != GameVersion::DC) &&
-              (l->clients[x]->version != GameVersion::PC) &&
+          if ((l->clients[x]->version() != GameVersion::DC) &&
+              (l->clients[x]->version() != GameVersion::PC) &&
               !(l->clients[x]->flags & Client::Flag::GC_TRIAL_EDITION)) {
             l->clients[x]->flags |= Client::Flag::LOADING_QUEST;
           }
@@ -1256,11 +1342,11 @@ void process_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_game_menu(c, s);
 }
 
-void process_information_menu_request_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) { // 1F
+void process_information_menu_request_dc_pc(shared_ptr<ServerState> s,
+    shared_ptr<Client> c, uint16_t, uint32_t, const string& data) { // 1F
   check_size_v(data.size(), 0);
   send_menu(c, u"Information", MenuID::INFORMATION,
-      *s->information_menu_for_version(c->version), true);
+      *s->information_menu_for_version(c->version()), true);
 }
 
 void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1281,8 +1367,8 @@ void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_message_box(c, u"");
 
   static const vector<string> version_to_port_name({
-      "dc-login", "pc-login", "bb-patch", "gc-us3", "xb-login", "bb-init"});
-  const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version));
+      "console-login", "pc-login", "bb-patch", "console-login", "console-login", "bb-init"});
+  const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
 
   send_reconnect(c, s->connect_address_for_client(c),
       s->name_to_port_config.at(port_name)->port);
@@ -1370,19 +1456,17 @@ void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   } else {
     vector<MenuItem>* menu = nullptr;
-    if ((c->version == GameVersion::BB) && flag) {
+    if ((c->version() == GameVersion::BB) && flag) {
       menu = &quest_government_menu;
     } else {
-      if (l->mode == 0) {
-        menu = &quest_categories_menu;
-      } else if (l->mode == 1) {
+      if (l->flags & Lobby::Flag::BATTLE_MODE) {
         menu = &quest_battle_menu;
-      } else if (l->mode == 2) {
+      } else if (l->flags & Lobby::Flag::CHALLENGE_MODE) {
         menu = &quest_challenge_menu;
-      } else if (l->mode == 3) {
+      } else if (l->flags & Lobby::Flag::SOLO_MODE) {
         menu = &quest_solo_menu;
       } else {
-        throw logic_error("no quest menu available for mode");
+        menu = &quest_categories_menu;
       }
     }
 
@@ -1428,7 +1512,7 @@ void process_quest_barrier(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 void process_update_quest_statistics(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t, const string& data) { // AA
-  const auto& cmd = check_size_t<C_UpdateQuestStatistics_AA>(data);
+  const auto& cmd = check_size_t<C_UpdateQuestStatistics_V3_BB_AA>(data);
 
   if (c->flags & Client::Flag::GC_TRIAL_EDITION) {
     throw runtime_error("trial edition client sent update quest stats command");
@@ -1440,7 +1524,7 @@ void process_update_quest_statistics(shared_ptr<ServerState> s,
     return;
   }
 
-  S_ConfirmUpdateQuestStatistics_AB response;
+  S_ConfirmUpdateQuestStatistics_V3_BB_AB response;
   response.unknown_a1 = 0x0000;
   response.unknown_a2 = 0x0000;
   response.request_token = cmd.request_token;
@@ -1469,10 +1553,11 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   // Note: we add extra buffer on the end when checking sizes because the
   // autoreply text is a variable length
-  switch (c->version) {
+  switch (c->version()) {
+    case GameVersion::DC:
     case GameVersion::PC: {
-      const auto& pd = check_size_t<PSOPlayerDataPC>(data,
-          sizeof(PSOPlayerDataPC), 0xFFFF);
+      const auto& pd = check_size_t<PSOPlayerDataDCPC>(data,
+          sizeof(PSOPlayerDataDCPC), 0xFFFF);
       c->game_data.import_player(pd);
       break;
     }
@@ -1950,25 +2035,29 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 81
   u16string message;
   uint32_t to_guild_card_number;
-  if ((c->version == GameVersion::GC) || (c->version == GameVersion::XB)) {
-    const auto& cmd = check_size_t<SC_SimpleMail_V3_81>(data);
-    to_guild_card_number = cmd.to_guild_card_number;
-    message = decode_sjis(cmd.text);
-
-  } else if (c->version == GameVersion::PC) {
-    const auto& cmd = check_size_t<SC_SimpleMail_PC_81>(data);
-    to_guild_card_number = cmd.to_guild_card_number;
-    message = cmd.text;
-
-  } else if (c->version == GameVersion::BB) {
-    const auto& cmd = check_size_t<SC_SimpleMail_BB_81>(data);
-    to_guild_card_number = cmd.to_guild_card_number;
-    message = cmd.text;
-
-  } else {
-    // TODO
-    send_text_message(c, u"$C6Simple Mail is not\nsupported yet on\nthis platform.");
-    return;
+  switch (c->version()) {
+    case GameVersion::DC:
+    case GameVersion::GC:
+    case GameVersion::XB: {
+      const auto& cmd = check_size_t<SC_SimpleMail_DC_V3_81>(data);
+      to_guild_card_number = cmd.to_guild_card_number;
+      message = decode_sjis(cmd.text);
+      break;
+    }
+    case GameVersion::PC: {
+      const auto& cmd = check_size_t<SC_SimpleMail_PC_81>(data);
+      to_guild_card_number = cmd.to_guild_card_number;
+      message = cmd.text;
+      break;
+    }
+    case GameVersion::BB: {
+      const auto& cmd = check_size_t<SC_SimpleMail_BB_81>(data);
+      to_guild_card_number = cmd.to_guild_card_number;
+      message = cmd.text;
+      break;
+    }
+    default:
+      throw logic_error("invalid game version");
   }
 
   auto target = s->find_client(nullptr, to_guild_card_number);
@@ -2032,7 +2121,7 @@ void process_disable_auto_reply(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 void process_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C6
-  if (c->version == GameVersion::BB) {
+  if (c->version() == GameVersion::BB) {
     const auto& cmd = check_size_t<C_SetBlockedSenders_BB_C6>(data);
     c->game_data.account()->blocked_senders = cmd.blocked_senders;
   } else {
@@ -2046,10 +2135,13 @@ void process_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands
 
-shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
-    shared_ptr<Client> c, const std::u16string& name,
-    const std::u16string& password, uint8_t episode, uint8_t difficulty,
-    uint8_t battle, uint8_t challenge, uint8_t solo) {
+static shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
+    shared_ptr<Client> c,
+    const std::u16string& name,
+    const std::u16string& password,
+    uint8_t episode,
+    uint8_t difficulty,
+    uint32_t flags) {
 
   // A player's actual level is their displayed level - 1, so the minimums for
   // Episode 1 (for example) are actually 1, 20, 40, 80.
@@ -2058,13 +2150,13 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
       {0, 29, 49, 89}, // episode 2
       {0, 39, 79, 109}}; // episode 4
 
+  bool is_ep3 = (flags & Lobby::Flag::EPISODE_3_ONLY);
   if (episode == 0) {
     episode = 0xFF;
   }
   if (((episode != 0xFF) && (episode > 3)) || (episode == 0)) {
     throw invalid_argument("incorrect episode number");
   }
-  bool is_ep3 = (episode == 0xFF);
 
   if (difficulty > 3) {
     throw invalid_argument("incorrect difficulty level");
@@ -2081,25 +2173,16 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     throw invalid_argument("level too low for difficulty");
   }
 
-  bool item_tracking_enabled = (c->version == GameVersion::BB) | s->item_tracking_enabled;
+  bool item_tracking_enabled = (c->version() == GameVersion::BB) | s->item_tracking_enabled;
 
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
   game->password = password;
-  game->version = c->version;
+  game->version = c->version();
   game->section_id = c->override_section_id >= 0
       ? c->override_section_id : c->game_data.player()->disp.section_id;
   game->episode = episode;
   game->difficulty = difficulty;
-  if (battle) {
-    game->mode = 1;
-  }
-  if (challenge) {
-    game->mode = 2;
-  }
-  if (solo) {
-    game->mode = 3;
-  }
   if (c->override_random_seed >= 0) {
     game->random_seed = c->override_random_seed;
     game->random->seed(game->random_seed);
@@ -2112,7 +2195,8 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   game->flags =
       (is_ep3 ? Lobby::Flag::EPISODE_3_ONLY : 0) |
       (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0) |
-      Lobby::Flag::GAME;
+      Lobby::Flag::GAME |
+      flags;
   game->min_level = min_level;
   game->max_level = 0xFFFFFFFF;
 
@@ -2126,17 +2210,17 @@ shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     }
     game->next_game_item_id = 0x00810000;
 
-    auto bp_subtable = s->battle_params->get_subtable(game->mode == 3,
-        game->episode - 1, game->difficulty);
+    bool is_solo = (game->flags & Lobby::Flag::SOLO_MODE);
+    auto bp_subtable = s->battle_params->get_subtable(
+        is_solo, game->episode - 1, game->difficulty);
 
-    generate_variations(
-        game->variations, game->random, game->episode, game->mode == 3);
+    generate_variations(game->variations, game->random, game->episode, is_solo);
 
     for (size_t x = 0; x < 0x10; x++) {
       try {
         auto file = map_data_for_variation(
             game->episode,
-            game->mode == 3,
+            is_solo,
             x,
             game->variations[x * 2 + 0],
             game->variations[x * 2 + 1]);
@@ -2184,41 +2268,67 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_PC_C1>(data);
 
-  create_game_generic(s, c, cmd.name, cmd.password, 1,
-      cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, 0);
+  uint32_t flags = 0;
+  if (cmd.battle_mode) {
+    flags |= Lobby::Flag::BATTLE_MODE;
+  }
+  if (cmd.challenge_mode) {
+    flags |= Lobby::Flag::CHALLENGE_MODE;
+  }
+  create_game_generic(s, c, cmd.name, cmd.password, 1, cmd.difficulty, flags);
 }
 
 void process_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string& data) { // C1 EC (EC Ep3 only)
-  const auto& cmd = check_size_t<C_CreateGame_DC_V3_C1_Ep3_EC>(data);
+    uint16_t command, uint32_t, const string& data) { // 0C C1 EC (EC Ep3 only)
+  const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
 
-  // only allow EC from Ep3 clients
+  // Only allow EC from Ep3 clients
   bool client_is_ep3 = c->flags & Client::Flag::EPISODE_3;
   if ((command == 0xEC) && !client_is_ep3) {
     return;
   }
 
   uint8_t episode = cmd.episode;
-  if ((c->version == GameVersion::DC) || (c->version == GameVersion::PC)) {
+  uint32_t flags = 0;
+  if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+    if (episode) {
+      flags |= Lobby::Flag::DC_V2_ONLY;
+    }
     episode = 1;
-  }
-  if (client_is_ep3) {
+  } else if (client_is_ep3) {
+    flags |= Lobby::Flag::EPISODE_3_ONLY;
     episode = 0xFF;
   }
 
   u16string name = decode_sjis(cmd.name);
   u16string password = decode_sjis(cmd.password);
 
-  create_game_generic(s, c, name.c_str(), password.c_str(),
-      episode, cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, 0);
+  if (cmd.battle_mode) {
+    flags |= Lobby::Flag::BATTLE_MODE;
+  }
+  if (cmd.challenge_mode) {
+    flags |= Lobby::Flag::CHALLENGE_MODE;
+  }
+  create_game_generic(
+      s, c, name.c_str(), password.c_str(), episode, cmd.difficulty, flags);
 }
 
 void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_BB_C1>(data);
 
-  create_game_generic(s, c, cmd.name, cmd.password, cmd.episode,
-      cmd.difficulty, cmd.battle_mode, cmd.challenge_mode, cmd.solo_mode);
+  uint32_t flags = 0;
+  if (cmd.battle_mode) {
+    flags |= Lobby::Flag::BATTLE_MODE;
+  }
+  if (cmd.challenge_mode) {
+    flags |= Lobby::Flag::CHALLENGE_MODE;
+  }
+  if (cmd.solo_mode) {
+    flags |= Lobby::Flag::SOLO_MODE;
+  }
+  create_game_generic(
+      s, c, cmd.name, cmd.password, cmd.episode, cmd.difficulty, flags);
 }
 
 void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -2237,8 +2347,7 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !l->is_game()) {
-    // go home client; you're drunk
-    throw invalid_argument("ready command cannot be sent outside game");
+    throw runtime_error("client sent ready command ontside of game");
   }
   c->flags &= (~Client::Flag::LOADING);
 
@@ -2247,7 +2356,7 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // Only get player info again on BB, since on other versions the returned info
   // only includes items that would be saved if the client disconnects
   // unexpectedly (that is, only equipped items are included).
-  if (c->version == GameVersion::BB) {
+  if (c->version() == GameVersion::BB) {
     send_get_player_info(c);
   }
 }
@@ -2523,7 +2632,7 @@ void process_ignored_command(shared_ptr<ServerState>, shared_ptr<Client>,
 
 void process_unimplemented_command(shared_ptr<ServerState>,
     shared_ptr<Client> c, uint16_t command, uint32_t flag, const string& data) {
-  c->log.warning("Unknown command: size=%04zX command=%04hX flag=%08" PRIX32 "\n",
+  c->log.warning("Unknown command: size=%04zX command=%04hX flag=%08" PRIX32,
       data.size(), command, flag);
   throw invalid_argument("unimplemented command");
 }
@@ -2541,13 +2650,13 @@ static process_command_t dc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
   nullptr, process_ignored_command, process_chat_dc_v3, nullptr,
   process_game_list_request, process_menu_item_info_request, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
+  process_create_game_dc_v3, nullptr, nullptr, nullptr,
 
   // 10
   process_menu_selection, nullptr, nullptr, process_ignored_command,
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, nullptr,
+  nullptr, process_ignored_command, nullptr, process_information_menu_request_dc_pc,
 
   // 20
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
@@ -2567,7 +2676,7 @@ static process_command_t dc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // 60
-  process_game_command, nullptr, process_game_command, nullptr,
+  process_game_command, process_player_data, process_game_command, nullptr,
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
   process_game_command, process_game_command, nullptr, process_client_ready,
@@ -2583,15 +2692,15 @@ static process_command_t dc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
 
   // 90
-  nullptr, nullptr, nullptr, nullptr,
+  process_login_0_dc_pc_v3, nullptr, process_login_2_dc, process_login_3_dc_pc_v3,
   nullptr, nullptr, process_client_checksum, nullptr,
-  process_player_data, process_ignored_command, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
+  process_player_data, process_ignored_command, process_login_a_dc_pc_v3, nullptr,
+  process_login_c_dc_pc_v3, process_login_d_e_dc_pc_v3, nullptr, nullptr,
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
   nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
+  nullptr, process_ignored_command, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
   // B0
@@ -2600,15 +2709,14 @@ static process_command_t dc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // C0
-  nullptr, process_create_game_dc_v3, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_senders_list, process_set_auto_reply_t<char>,
-  process_disable_auto_reply, nullptr, nullptr, nullptr,
+  process_choice_search, process_create_game_dc_v3, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
 
   // D0
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  process_info_board_request, process_write_info_board_t<char>, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 
   // E0
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
@@ -2630,7 +2738,7 @@ static process_command_t pc_handlers[0x100] = {
   process_menu_selection, nullptr, nullptr, process_ignored_command,
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, process_information_menu_request_pc,
+  nullptr, process_ignored_command, nullptr, process_information_menu_request_dc_pc,
 
   // 20
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
@@ -2669,7 +2777,7 @@ static process_command_t pc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, process_client_checksum, nullptr,
   process_player_data, process_ignored_command, process_login_a_dc_pc_v3, nullptr,
-  process_login_c_dc_pc_v3, process_login_d_e_pc_v3, process_login_d_e_pc_v3, nullptr,
+  process_login_c_dc_pc_v3, process_login_d_e_dc_pc_v3, process_login_d_e_dc_pc_v3, nullptr,
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
@@ -2750,10 +2858,10 @@ static process_command_t gc_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
 
   // 90
-  nullptr, nullptr, nullptr, nullptr,
+  process_login_0_dc_pc_v3, nullptr, nullptr, process_login_3_dc_pc_v3,
   nullptr, nullptr, process_client_checksum, nullptr,
-  process_player_data, process_ignored_command, nullptr, nullptr,
-  process_login_c_dc_pc_v3, process_login_d_e_pc_v3, process_login_d_e_pc_v3, process_return_client_config,
+  process_player_data, process_ignored_command, process_login_a_dc_pc_v3, nullptr,
+  process_login_c_dc_pc_v3, process_login_d_e_dc_pc_v3, process_login_d_e_dc_pc_v3, process_return_client_config,
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
@@ -2841,7 +2949,7 @@ static process_command_t xb_handlers[0x100] = {
   nullptr, nullptr, nullptr, nullptr,
   nullptr, nullptr, process_client_checksum, nullptr,
   process_player_data, process_ignored_command, nullptr, nullptr,
-  process_login_c_dc_pc_v3, process_login_d_e_pc_v3, process_login_d_e_pc_v3, process_return_client_config,
+  process_login_c_dc_pc_v3, process_login_d_e_dc_pc_v3, process_login_d_e_dc_pc_v3, process_return_client_config,
 
   // A0
   process_change_ship, process_change_block, process_quest_list_request, nullptr,
@@ -3028,9 +3136,10 @@ static process_command_t* handlers[6] = {
 void check_unlicensed_command(GameVersion version, uint8_t command) {
   switch (version) {
     case GameVersion::DC:
-      // TODO: Fix this when we support DC. It will be pretty obvious during
-      // testing that this should be fixed (and how to fix it).
-      throw runtime_error("no unlicensed commands are valid on DC");
+      // newserv doesn't actually know that DC clients are DC until it receives
+      // an appropriate login command (93, 9A, or 9D), but those commands also
+      // log the client in, so this case should never be executed.
+      throw logic_error("cannot check unlicensed command for DC client");
     case GameVersion::PC:
       if (command != 0x9A && command != 0x9D) {
         throw runtime_error("only commands 9A and 9D may be sent before login");
@@ -3038,8 +3147,14 @@ void check_unlicensed_command(GameVersion version, uint8_t command) {
       break;
     case GameVersion::GC:
     case GameVersion::XB:
-      if (command != 0xDB && command != 0x9A && command != 0x9E) {
-        throw runtime_error("only commands DB, 9A and 9E may be sent before login");
+      // See comment in the DC case above for why DC commands are included here.
+      if (command != 0x90 && // DC v1
+          command != 0x93 && // DC v1
+          command != 0x9A && // DC v2
+          command != 0x9D && // DC v2, GC trial edition
+          command != 0x9E && // GC non-trial
+          command != 0xDB) { // GC non-trial
+        throw runtime_error("only commands 90, 93, 9A, 9D, 9E, and DB may be sent before login");
       }
       break;
     case GameVersion::BB:
@@ -3070,10 +3185,10 @@ void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // is allowed to access normal functionality. This check prevents clients from
   // sneakily sending commands to access functionality without logging in.
   if (!c->license.get()) {
-    check_unlicensed_command(c->version, command);
+    check_unlicensed_command(c->version(), command);
   }
 
-  auto fn = handlers[static_cast<size_t>(c->version)][command & 0xFF];
+  auto fn = handlers[static_cast<size_t>(c->version())][command & 0xFF];
   if (fn) {
     fn(s, c, command, flag, data);
   } else {
