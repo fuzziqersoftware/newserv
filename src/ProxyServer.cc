@@ -17,6 +17,7 @@
 #include <iostream>
 #include <phosg/Encoding.hh>
 #include <phosg/Filesystem.hh>
+#include <phosg/Hash.hh>
 #include <phosg/Network.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
@@ -328,8 +329,18 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         throw runtime_error("command is not 93");
       }
       const auto& cmd = check_size_t<C_Login_BB_93>(data);
-      license = session->server->state->license_manager->verify_bb(
-          cmd.username, cmd.password);
+      try {
+        license = session->server->state->license_manager->verify_bb(
+            cmd.username, cmd.password);
+      } catch (const missing_license&) {
+        if (!session->server->state->allow_unregistered_users) {
+          throw;
+        }
+        shared_ptr<License> l = LicenseManager::create_license_bb(
+            fnv1a32(cmd.username) & 0x7FFFFFFF, cmd.username, cmd.password, true);
+        session->server->state->license_manager->add(l);
+        license = l;
+      }
       login_command_bb = move(data);
 
     } else {
