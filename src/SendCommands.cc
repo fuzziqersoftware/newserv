@@ -293,7 +293,7 @@ void send_function_call(
 
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
-  S_Reconnect_19 cmd = {address, port, 0};
+  S_Reconnect_19 cmd = {{address, port, 0}};
   send_command_t(c, (c->version() == GameVersion::PATCH) ? 0x14 : 0x19, 0x00, cmd);
 }
 
