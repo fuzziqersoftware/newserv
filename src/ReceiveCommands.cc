@@ -415,11 +415,18 @@ void process_login_d_e_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const C_Login_DC_PC_GC_9D* base_cmd;
   if (command == 0x9D) {
     base_cmd = &check_size_t<C_Login_DC_PC_GC_9D>(data,
-        sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_PC_GC_9D));
+        sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_PC_9D));
     if (base_cmd->is_extended) {
-      const auto& cmd = check_size_t<C_LoginExtended_DC_PC_GC_9D>(data);
-      if (cmd.extension.menu_id == MenuID::LOBBY) {
-        c->preferred_lobby_id = cmd.extension.preferred_lobby_id;
+      if (c->version() == GameVersion::PC) {
+        const auto& cmd = check_size_t<C_LoginExtended_PC_9D>(data);
+        if (cmd.extension.menu_id == MenuID::LOBBY) {
+          c->preferred_lobby_id = cmd.extension.preferred_lobby_id;
+        }
+      } else {
+        const auto& cmd = check_size_t<C_LoginExtended_DC_GC_9D>(data);
+        if (cmd.extension.menu_id == MenuID::LOBBY) {
+          c->preferred_lobby_id = cmd.extension.preferred_lobby_id;
+        }
       }
     }
 

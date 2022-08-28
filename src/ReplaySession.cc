@@ -106,7 +106,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
         check_pw(cmd.password);
       } else if (header.command == 0x9D) {
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(cmd_data, cmd_size,
-            sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_PC_GC_9D));
+            sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_PC_9D));
         check_ak(cmd.v1_access_key);
         check_ak(cmd.access_key);
         check_ak(cmd.access_key2);
@@ -139,7 +139,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
         check_pw(cmd.password);
       } else if (header.command == 0x9D) {
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(cmd_data, cmd_size,
-            sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_PC_GC_9D));
+            sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_GC_9D));
         check_ak(cmd.v1_access_key);
         check_ak(cmd.access_key);
         check_ak(cmd.access_key2);

@@ -1431,7 +1431,10 @@ struct C_Login_DC_PC_GC_9D {
   ptext<char, 0x30> access_key2; // On XB, this is the XBL user ID
   ptext<char, 0x10> name;
 };
-struct C_LoginExtended_DC_PC_GC_9D : C_Login_DC_PC_GC_9D {
+struct C_LoginExtended_DC_GC_9D : C_Login_DC_PC_GC_9D {
+  C_Login_MeetUserExtension<char> extension;
+};
+struct C_LoginExtended_PC_9D : C_Login_DC_PC_GC_9D {
   C_Login_MeetUserExtension<char16_t> extension;
 };
 

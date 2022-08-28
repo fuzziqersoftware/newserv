@@ -280,7 +280,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         client_config.cfg.flags |= Client::Flag::DCV1;
       } else if (command == 0x9D) {
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(
-            data, sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_PC_GC_9D));
+            data, sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_GC_9D));
         license = session->server->state->license_manager->verify_pc(
             stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
         sub_version = cmd.sub_version;
@@ -297,7 +297,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         throw runtime_error("command is not 9D");
       }
       const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(
-          data, sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_PC_GC_9D));
+          data, sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_PC_9D));
       license = session->server->state->license_manager->verify_pc(
           stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
       sub_version = cmd.sub_version;
@@ -307,6 +307,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
     } else if (session->version == GameVersion::GC) {
       // We should only get a 9E while the session is unlinked; if we get
       // anything else, disconnect
+      // TODO: GCTE will send 9D; we should presumably handle that too, sigh
       if (command != 0x9E) {
         throw runtime_error("command is not 9E");
       }
