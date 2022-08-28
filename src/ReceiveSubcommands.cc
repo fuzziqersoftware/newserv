@@ -117,7 +117,7 @@ static void process_subcommand_send_guild_card(shared_ptr<ServerState>,
 
   switch (c->version()) {
     case GameVersion::DC: {
-      const auto* cmd = check_size_sc<G_SendGuildCard_PC_6x06>(data);
+      const auto* cmd = check_size_sc<G_SendGuildCard_DC_6x06>(data);
       c->game_data.player()->guild_card_description = cmd->description;
       break;
     }

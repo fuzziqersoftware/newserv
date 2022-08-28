@@ -2761,7 +2761,7 @@ struct G_SendGuildCard_DC_PC_V3 {
   uint8_t char_class;
 };
 
-struct G_SendGuildCard_DC_6x06 : G_SendGuildCard_DC_PC_V3<char16_t, 0x11> {
+struct G_SendGuildCard_DC_6x06 : G_SendGuildCard_DC_PC_V3<char, 0x11> {
   parray<uint8_t, 3> unused3;
 };
 struct G_SendGuildCard_PC_6x06 : G_SendGuildCard_DC_PC_V3<char16_t, 0x24> { };
