@@ -149,6 +149,7 @@ void send_quest_info(std::shared_ptr<Client> c, const std::u16string& text,
     bool is_download_quest);
 void send_lobby_message_box(std::shared_ptr<Client> c, const std::u16string& text);
 void send_ship_info(std::shared_ptr<Client> c, const std::u16string& text);
+void send_ship_info(Channel& ch, const std::u16string& text);
 void send_text_message(Channel& ch, const std::u16string& text);
 void send_text_message(std::shared_ptr<Client> c, const std::u16string& text);
 void send_text_message(std::shared_ptr<Lobby> l, const std::u16string& text);

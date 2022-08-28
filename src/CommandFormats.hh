@@ -259,7 +259,17 @@ struct S_StartFileDownloads_Patch_11 {
 // size of this command is 0x2004 bytes, including the header.
 
 // 14 (S->C): Reconnect
-// Same format and usage as command 19 on the game server (described below).
+// Same format and usage as command 19 on the game server (described below),
+// except the port field is big-endian for some reason.
+
+template <typename PortT>
+struct S_Reconnect {
+  be_uint32_t address;
+  PortT port;
+  le_uint16_t unused;
+};
+
+struct S_Reconnect_Patch_14 : S_Reconnect<be_uint16_t> { };
 
 // 15 (S->C): Login failure
 // No arguments
@@ -618,11 +628,7 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 // Note: PSO XB seems to ignore the address field, which makes sense given its
 // networking architecture.
 
-struct S_Reconnect_19 {
-  be_uint32_t address;
-  le_uint16_t port;
-  le_uint16_t unused;
-};
+struct S_Reconnect_19 : S_Reconnect<le_uint16_t> { };
 
 // Because PSO PC and some versions of PSO DC/GC use the same port but different
 // protocols, we use a specially-crafted 19 command to send them to two

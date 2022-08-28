@@ -477,7 +477,7 @@ ProxyServer::LinkedSession::LinkedSession(
     version(version),
     sub_version(0), // This is set during resume()
     language(1), // Default = English. This is also set during resume()
-    remote_guild_card_number(0),
+    remote_guild_card_number(-1),
     enable_chat_filter(true),
     switch_assist(false),
     infinite_hp(false),
@@ -655,8 +655,67 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
     session->log.info("%s has disconnected",
         is_server_stream ? "Server" : "Client");
+    // If the server disconnected, send the client back to the game server so
+    // they're not disconnected completely.
+    if (is_server_stream) {
+      session->send_to_game_server("The server has\ndisconnected.");
+    }
     session->disconnect();
   }
+}
+
+void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) {
+  // Delete all the other players
+  for (size_t x = 0; x < this->lobby_players.size(); x++) {
+    if (this->lobby_players[x].guild_card_number == 0) {
+      continue;
+    }
+    uint8_t leaving_id = x;
+    uint8_t leader_id = this->lobby_client_id;
+    S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_id, leader_id, 0};
+    this->client_channel.send(0x69, leaving_id, &cmd, sizeof(cmd));
+  }
+
+  string encoded_name = encode_sjis(this->server->state->name);
+  send_ship_info(this->client_channel, decode_sjis(string_printf(
+      "You\'ve returned to\n\tC6%s$C7\n\n%s", encoded_name.c_str(),
+      error_message ? error_message : "")));
+
+  // Restore newserv_client_config, so the login server gets the client flags
+  S_UpdateClientConfig_DC_PC_V3_04 update_client_config_cmd;
+  update_client_config_cmd.player_tag = 0x00010000;
+  update_client_config_cmd.guild_card_number = this->license->serial_number;
+  update_client_config_cmd.cfg = this->newserv_client_config.cfg;
+  this->client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
+
+  static const vector<string> version_to_port_name({
+      "console-login", "pc-login", "bb-patch", "console-login", "console-login", "bb-login"});
+  const auto& port_name = version_to_port_name.at(static_cast<size_t>(
+      this->version));
+
+  S_Reconnect_19 reconnect_cmd = {
+      0, this->server->state->name_to_port_config.at(port_name)->port, 0};
+
+  // If the client is on a virtual connection, we can use any address
+  // here and they should be able to connect back to the game server. If
+  // the client is on a real connection, we'll use the sockname of the
+  // existing connection (like we do in the server 19 command handler).
+  if (this->client_channel.is_virtual_connection) {
+    struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
+    if (dest_sin->sin_family != AF_INET) {
+      throw logic_error("ss not AF_INET");
+    }
+    reconnect_cmd.address.store_raw(dest_sin->sin_addr.s_addr);
+  } else {
+    const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
+        &this->client_channel.local_addr);
+    if (sin->sin_family != AF_INET) {
+      throw logic_error("existing connection is not ipv4");
+    }
+    reconnect_cmd.address.store_raw(sin->sin_addr.s_addr);
+  }
+
+  this->client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
 }
 
 void ProxyServer::LinkedSession::disconnect() {

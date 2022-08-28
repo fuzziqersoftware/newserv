@@ -568,6 +568,10 @@ void send_ship_info(shared_ptr<Client> c, const u16string& text) {
   send_header_text(c->channel, 0x11, 0, text, true);
 }
 
+void send_ship_info(Channel& ch, const u16string& text) {
+  send_header_text(ch, 0x11, 0, text, true);
+}
+
 void send_text_message(Channel& ch, const std::u16string& text) {
   send_header_text(ch, 0xB0, 0, text, true);
 }

@@ -57,7 +57,7 @@ public:
     std::string hardware_id; // Only used for DC sessions
     std::string login_command_bb;
 
-    uint32_t remote_guild_card_number;
+    int64_t remote_guild_card_number;
     parray<uint8_t, 0x20> remote_client_config_data;
     ClientConfigBB newserv_client_config;
     bool enable_chat_filter;
@@ -145,6 +145,7 @@ public:
     static void on_error(Channel& ch, short events);
     void on_timeout();
 
+    void send_to_game_server(const char* error_message = nullptr);
     void disconnect();
 
     bool is_connected() const;

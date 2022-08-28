@@ -132,7 +132,7 @@ static HandlerResult process_server_gc_9A(shared_ptr<ServerState>,
   }
 
   C_LoginExtended_GC_9E cmd;
-  if (session.remote_guild_card_number == 0) {
+  if (session.remote_guild_card_number < 0) {
     cmd.player_tag = 0xFFFF0000;
     cmd.guild_card_number = 0xFFFFFFFF;
   } else {
@@ -141,7 +141,7 @@ static HandlerResult process_server_gc_9A(shared_ptr<ServerState>,
   }
   cmd.unused = 0;
   cmd.sub_version = session.sub_version;
-  cmd.is_extended = session.remote_guild_card_number ? 0 : 1;
+  cmd.is_extended = (session.remote_guild_card_number < 0) ? 0 : 1;
   cmd.language = session.language;
   cmd.serial_number = string_printf("%08" PRIX32 "", session.license->serial_number);
   cmd.access_key = session.license->access_key;
@@ -227,47 +227,82 @@ static HandlerResult process_server_dc_pc_v3_patch_02_17(
   } else if ((session.version == GameVersion::DC) ||
              (session.version == GameVersion::PC)) {
     if (session.newserv_client_config.cfg.flags & Client::Flag::DCV1) {
-      C_LoginV1_DC_93 cmd;
-      if (session.remote_guild_card_number == 0) {
-        cmd.player_tag = 0xFFFF0000;
-        cmd.guild_card_number = 0xFFFFFFFF;
+      if (command == 0x17) {
+        C_LoginV1_DC_PC_V3_90 cmd;
+        cmd.serial_number = string_printf("%08" PRIX32 "",
+            session.license->serial_number);
+        cmd.access_key = session.license->access_key;
+        cmd.access_key.clear_after(8);
+        session.server_channel.send(0x90, 0x00, &cmd, sizeof(cmd));
+        return HandlerResult::Type::SUPPRESS;
       } else {
-        cmd.player_tag = 0x00010000;
-        cmd.guild_card_number = session.remote_guild_card_number;
+        C_LoginV1_DC_93 cmd;
+        if (session.remote_guild_card_number < 0) {
+          cmd.player_tag = 0xFFFF0000;
+          cmd.guild_card_number = 0xFFFFFFFF;
+        } else {
+          cmd.player_tag = 0x00010000;
+          cmd.guild_card_number = session.remote_guild_card_number;
+        }
+        cmd.unknown_a1 = 0;
+        cmd.unknown_a2 = 0;
+        cmd.sub_version = session.sub_version;
+        cmd.is_extended = 0;
+        cmd.language = session.language;
+        cmd.serial_number = string_printf("%08" PRIX32 "",
+            session.license->serial_number);
+        cmd.access_key = session.license->access_key;
+        cmd.access_key.clear_after(8);
+        cmd.hardware_id = session.hardware_id;
+        cmd.name = session.character_name;
+        session.server_channel.send(0x93, 0x00, &cmd, sizeof(cmd));
+        return HandlerResult::Type::SUPPRESS;
       }
-      cmd.unknown_a1 = 0;
-      cmd.unknown_a2 = 0;
-      cmd.sub_version = session.sub_version;
-      cmd.is_extended = 0;
-      cmd.language = session.language;
-      cmd.serial_number = string_printf("%08" PRIX32 "",
-          session.license->serial_number);
-      cmd.access_key = session.license->access_key;
-      cmd.hardware_id = session.hardware_id;
-      cmd.name = session.character_name;
-      session.server_channel.send(0x93, 0x00, &cmd, sizeof(cmd));
-      return HandlerResult::Type::SUPPRESS;
-    } else {
-      C_Login_DC_PC_GC_9D cmd;
-      if (session.remote_guild_card_number == 0) {
-        cmd.player_tag = 0xFFFF0000;
-        cmd.guild_card_number = 0xFFFFFFFF;
+    } else { // DCv2 or PC
+      if (command == 0x17) {
+        C_Login_DC_PC_V3_9A cmd;
+        if (session.remote_guild_card_number < 0) {
+          cmd.player_tag = 0xFFFF0000;
+          cmd.guild_card_number = 0xFFFFFFFF;
+        } else {
+          cmd.player_tag = 0x00010000;
+          cmd.guild_card_number = session.remote_guild_card_number;
+        }
+        cmd.sub_version = session.sub_version;
+        cmd.serial_number = string_printf("%08" PRIX32 "",
+            session.license->serial_number);
+        cmd.access_key = session.license->access_key;
+        cmd.access_key.clear_after(8);
+        cmd.serial_number2 = cmd.serial_number;
+        cmd.access_key2 = cmd.access_key;
+        // TODO: We probably should set email_address, but we currently don't
+        // keep that value anywhere in the session object, nor is it saved in
+        // the License object.
+        session.server_channel.send(0x9A, 0x00, &cmd, sizeof(cmd));
+        return HandlerResult::Type::SUPPRESS;
       } else {
-        cmd.player_tag = 0x00010000;
-        cmd.guild_card_number = session.remote_guild_card_number;
+        C_Login_DC_PC_GC_9D cmd;
+        if (session.remote_guild_card_number < 0) {
+          cmd.player_tag = 0xFFFF0000;
+          cmd.guild_card_number = 0xFFFFFFFF;
+        } else {
+          cmd.player_tag = 0x00010000;
+          cmd.guild_card_number = session.remote_guild_card_number;
+        }
+        cmd.unused = 0;
+        cmd.sub_version = session.sub_version;
+        cmd.is_extended = 0;
+        cmd.language = session.language;
+        cmd.serial_number = string_printf("%08" PRIX32 "",
+            session.license->serial_number);
+        cmd.access_key = session.license->access_key;
+        cmd.access_key.clear_after(8);
+        cmd.serial_number2 = cmd.serial_number;
+        cmd.access_key2 = cmd.access_key;
+        cmd.name = session.character_name;
+        session.server_channel.send(0x9D, 0x00, &cmd, sizeof(cmd));
+        return HandlerResult::Type::SUPPRESS;
       }
-      cmd.unused = 0xFFFFFFFFFFFF0000;
-      cmd.sub_version = session.sub_version;
-      cmd.is_extended = 0;
-      cmd.language = session.language;
-      cmd.serial_number = string_printf("%08" PRIX32 "",
-          session.license->serial_number);
-      cmd.access_key = session.license->access_key;
-      cmd.serial_number2 = cmd.serial_number;
-      cmd.access_key2 = cmd.access_key;
-      cmd.name = session.character_name;
-      session.server_channel.send(0x9D, 0x00, &cmd, sizeof(cmd));
-      return HandlerResult::Type::SUPPRESS;
     }
 
   } else if (session.version == GameVersion::GC) {
@@ -365,13 +400,13 @@ static HandlerResult process_server_dc_pc_v3_04(shared_ptr<ServerState>,
   // remote server so the client doesn't see it change. If this is an unlicensed
   // session, then the client never received a guild card number from newserv
   // anyway, so we can let the client see the number from the remote server.
-  bool had_guild_card_number = (session.remote_guild_card_number != 0);
+  bool had_guild_card_number = (session.remote_guild_card_number >= 0);
   if (session.remote_guild_card_number != cmd.guild_card_number) {
     session.remote_guild_card_number = cmd.guild_card_number;
-    session.log.info("Remote guild card number set to %" PRIu32,
+    session.log.info("Remote guild card number set to %" PRId64,
         session.remote_guild_card_number);
     send_text_message_to_client(session, 0x11, string_printf(
-        "The remote server\nhas assigned your\nGuild Card number as\n\tC6%" PRIu32,
+        "The remote server\nhas assigned your\nGuild Card number:\n\tC6%" PRId64,
         session.remote_guild_card_number));
   }
   if (session.license) {
@@ -636,7 +671,7 @@ static HandlerResult process_server_bb_22(shared_ptr<ServerState>,
 }
 
 static HandlerResult process_server_game_19_patch_14(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, uint16_t command, uint32_t, string& data) {
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // If the command is shorter than 6 bytes, use the previous server command to
   // fill it in. This simulates a behavior used by some private servers where a
   // longer previous command is used to fill part of the client's receive buffer
@@ -657,52 +692,47 @@ static HandlerResult process_server_game_19_patch_14(shared_ptr<ServerState>,
     session.remote_ip_crc = crc32(data.data(), 4);
   }
 
-  // This weird maximum size is here to properly handle the version-split
-  // command that some servers (including newserv) use on port 9100
-  auto& cmd = check_size_t<S_Reconnect_19>(data, sizeof(S_Reconnect_19), 0xB0);
+  // Set the destination netloc appropriately
   memset(&session.next_destination, 0, sizeof(session.next_destination));
   struct sockaddr_in* sin = reinterpret_cast<struct sockaddr_in*>(
       &session.next_destination);
   sin->sin_family = AF_INET;
-  sin->sin_addr.s_addr = cmd.address.load_raw();
-  sin->sin_port = htons(cmd.port);
+  if (session.version == GameVersion::PATCH) {
+    auto& cmd = check_size_t<S_Reconnect_Patch_14>(data);
+    sin->sin_addr.s_addr = cmd.address.load_raw(); // Already big-endian
+    sin->sin_port = htons(cmd.port);
+  } else {
+    // This weird maximum size is here to properly handle the version-split
+    // command that some servers (including newserv) use on port 9100
+    auto& cmd = check_size_t<S_Reconnect_19>(data, sizeof(S_Reconnect_19), 0xFFFF);
+    sin->sin_addr.s_addr = cmd.address.load_raw(); // Already big-endian
+    sin->sin_port = htons(cmd.port);
+  }
 
   if (!session.client_channel.connected()) {
     session.log.warning("Received reconnect command with no destination present");
     return HandlerResult::Type::SUPPRESS;
 
-  } else if (command == 0x14) {
-    // On the patch server, hide redirects from the client completely. The new
-    // destination server will presumably send a new 02 command to start
-    // encryption; it appears that PSOBB doesn't fail if this happens, and
-    // simply re-initializes its encryption appropriately.
+  } else if (session.version != GameVersion::BB) {
+    // Hide redirects from the client completely. The new destination server
+    // will presumably send a new encryption init command, which the handlers
+    // will appropriately respond to.
     session.server_channel.crypt_in.reset();
     session.server_channel.crypt_out.reset();
 
-    struct sockaddr_in* dest_sin = reinterpret_cast<sockaddr_in*>(
-        &session.next_destination);
-    dest_sin->sin_family = AF_INET;
-    dest_sin->sin_addr.s_addr = cmd.address.load_raw();
-    dest_sin->sin_port = cmd.port;
+    // We already modified next_destination, so start the connection process
     session.connect();
     return HandlerResult::Type::SUPPRESS;
 
   } else {
-    // If the client is on a virtual connection (fd < 0), only change
-    // the port (so we'll know which version to treat the next
-    // connection as). It's better to leave the address as-is so we
-    // can circumvent the Plus/Ep3 same-network-server check.
-    if (session.client_channel.is_virtual_connection) {
-      cmd.port = session.local_port;
-    } else {
-      const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
-          &session.client_channel.local_addr);
-      if (sin->sin_family != AF_INET) {
-        throw logic_error("existing connection is not ipv4");
-      }
-      cmd.address.store_raw(sin->sin_addr.s_addr);
-      cmd.port = ntohs(sin->sin_port);
+    const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
+        &session.client_channel.local_addr);
+    if (sin->sin_family != AF_INET) {
+      throw logic_error("existing connection is not ipv4");
     }
+    auto& cmd = check_size_t<S_Reconnect_19>(data, sizeof(S_Reconnect_19), 0xFFFF);
+    cmd.address.store_raw(sin->sin_addr.s_addr);
+    cmd.port = ntohs(sin->sin_port);
     return HandlerResult::Type::MODIFIED;
   }
 }
@@ -1135,7 +1165,7 @@ HandlerResult process_client_60_62_6C_6D_C9_CB<void>(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult process_client_dc_pc_v3_A0_A1(shared_ptr<ServerState> s,
+static HandlerResult process_client_dc_pc_v3_A0_A1(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   if (!session.license) {
     return HandlerResult::Type::FORWARD;
@@ -1143,58 +1173,7 @@ static HandlerResult process_client_dc_pc_v3_A0_A1(shared_ptr<ServerState> s,
 
   // For licensed sessions, send them back to newserv's main menu instead of
   // going to the remote server's ship/block select menu
-
-  // Delete all the other players
-  for (size_t x = 0; x < session.lobby_players.size(); x++) {
-    if (session.lobby_players[x].guild_card_number == 0) {
-      continue;
-    }
-    uint8_t leaving_id = x;
-    uint8_t leader_id = session.lobby_client_id;
-    S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_id, leader_id, 0};
-    session.client_channel.send(0x69, leaving_id, &cmd, sizeof(cmd));
-  }
-
-  string encoded_name = encode_sjis(s->name);
-  send_text_message_to_client(session, 0x11, string_printf(
-      "You\'ve returned to\n\tC6%s", encoded_name.c_str()));
-
-  // Restore newserv_client_config, so the login server gets the client flags
-  S_UpdateClientConfig_DC_PC_V3_04 update_client_config_cmd;
-  update_client_config_cmd.player_tag = 0x00010000;
-  update_client_config_cmd.guild_card_number = session.license->serial_number;
-  update_client_config_cmd.cfg = session.newserv_client_config.cfg;
-  session.client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
-
-  static const vector<string> version_to_port_name({
-      "console-login", "pc-login", "bb-patch", "console-login", "console-login", "bb-login"});
-  const auto& port_name = version_to_port_name.at(static_cast<size_t>(
-      session.version));
-
-  S_Reconnect_19 reconnect_cmd = {
-      0, s->name_to_port_config.at(port_name)->port, 0};
-
-  // If the client is on a virtual connection, we can use any address
-  // here and they should be able to connect back to the game server. If
-  // the client is on a real connection, we'll use the sockname of the
-  // existing connection (like we do in the server 19 command handler).
-  if (session.client_channel.is_virtual_connection) {
-    struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&session.next_destination);
-    if (dest_sin->sin_family != AF_INET) {
-      throw logic_error("ss not AF_INET");
-    }
-    reconnect_cmd.address.store_raw(dest_sin->sin_addr.s_addr);
-  } else {
-    const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
-        &session.client_channel.local_addr);
-    if (sin->sin_family != AF_INET) {
-      throw logic_error("existing connection is not ipv4");
-    }
-    reconnect_cmd.address.store_raw(sin->sin_addr.s_addr);
-  }
-
-  session.client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
-
+  session.send_to_game_server();
   return HandlerResult::Type::SUPPRESS;
 }
 
@@ -1486,6 +1465,12 @@ void process_proxy_command(
     }
   } catch (const exception& e) {
     session.log.error("Failed to process command: %s", e.what());
-    session.disconnect();
+    if (from_server) {
+      string error_str = "Error: ";
+      error_str += e.what();
+      session.send_to_game_server(error_str.c_str());
+    } else {
+      session.disconnect();
+    }
   }
 }
