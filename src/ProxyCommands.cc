@@ -1167,7 +1167,7 @@ static HandlerResult process_client_dc_pc_v3_A0_A1(shared_ptr<ServerState> s,
   session.client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
 
   static const vector<string> version_to_port_name({
-      "dc-login", "pc-login", "bb-patch", "gc-us3", "xb-login", "bb-login"});
+      "console-login", "pc-login", "bb-patch", "console-login", "console-login", "bb-login"});
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(
       session.version));
 
