@@ -280,6 +280,13 @@ void process_login_3_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
   }
 
+  if (cmd.is_extended) {
+    const auto& ext_cmd = check_size_t<C_LoginExtendedV1_DC_93>(data);
+    if (ext_cmd.extension.menu_id == MenuID::LOBBY) {
+      c->preferred_lobby_id = ext_cmd.extension.preferred_lobby_id;
+    }
+  }
+
   send_update_client_config(c);
 
   process_login_complete(s, c);

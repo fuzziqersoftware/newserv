@@ -1218,13 +1218,21 @@ struct C_RegisterV1_DC_92 {
 
 // 93 (C->S): Log in (DCv1)
 
+template <typename CharT>
+struct C_Login_MeetUserExtension {
+  le_uint32_t menu_id;
+  le_uint32_t preferred_lobby_id;
+  parray<uint8_t, 0x3C> unknown_a1;
+  ptext<CharT, 0x20> target_player_name;
+};
+
 struct C_LoginV1_DC_93 {
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
   le_uint32_t unknown_a1;
   le_uint32_t unknown_a2;
   le_uint32_t sub_version;
-  uint8_t unknown_a3; // Probably is_extended
+  uint8_t is_extended;
   uint8_t language;
   parray<uint8_t, 2> unused1;
   ptext<char, 0x11> serial_number;
@@ -1237,7 +1245,7 @@ struct C_LoginV1_DC_93 {
 };
 
 struct C_LoginExtendedV1_DC_93 : C_LoginV1_DC_93 {
-  parray<uint8_t, 0x64> unused3;
+  C_Login_MeetUserExtension<char> extension;
 };
 
 // 93 (C->S): Log in (BB)
@@ -1406,14 +1414,6 @@ struct C_Register_BB_9C {
 // received an 04 (in which case the extended fields are blank) or if the client
 // selected the Meet User option, in which case it specifies the requested lobby
 // by its menu ID and item ID.
-
-template <typename CharT>
-struct C_Login_MeetUserExtension {
-  le_uint32_t menu_id;
-  le_uint32_t preferred_lobby_id;
-  parray<uint8_t, 0x3C> unknown_a1;
-  ptext<CharT, 0x20> target_player_name;
-};
 
 struct C_Login_DC_PC_GC_9D {
   le_uint32_t player_tag; // 0x00010000 if guild card is set (via 04)

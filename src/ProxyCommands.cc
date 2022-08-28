@@ -238,7 +238,7 @@ static HandlerResult process_server_dc_pc_v3_patch_02_17(
       cmd.unknown_a1 = 0;
       cmd.unknown_a2 = 0;
       cmd.sub_version = session.sub_version;
-      cmd.unknown_a3 = 0;
+      cmd.is_extended = 0;
       cmd.language = session.language;
       cmd.serial_number = string_printf("%08" PRIX32 "",
           session.license->serial_number);
