@@ -235,6 +235,19 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           }
           break;
         }
+        case 0x41: {
+          if (version == GameVersion::PC) {
+            auto& cmd_mask = check_size_t<S_GuildCardSearchResult_PC_41>(cmd_data, cmd_size);
+            cmd_mask.reconnect_command.address = 0;
+          } else if (version == GameVersion::BB) {
+            auto& cmd_mask = check_size_t<S_GuildCardSearchResult_BB_41>(cmd_data, cmd_size);
+            cmd_mask.reconnect_command.address = 0;
+          } else { // V3
+            auto& cmd_mask = check_size_t<S_GuildCardSearchResult_DC_V3_41>(cmd_data, cmd_size);
+            cmd_mask.reconnect_command.address = 0;
+          }
+          break;
+        }
         case 0x64: {
           if (version == GameVersion::PC) {
             auto& cmd_mask = check_size_t<S_JoinGame_PC_64>(cmd_data, cmd_size);
