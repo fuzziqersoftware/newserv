@@ -16,13 +16,14 @@ bool function_compiler_available();
 
 
 
-// TODO: Support x86 function calls in the future. Currently we only support
-// PPC32 because I haven't written an appropriate x86 assembler yet.
+// TODO: Support x86 and SH4 function calls in the future. Currently we only
+// support PPC32 because I haven't written an appropriate x86 assembler yet.
 
 struct CompiledFunctionCode {
   enum class Architecture {
-    POWERPC = 0,
-    X86,
+    POWERPC = 0, // GC
+    X86, // PC, XB, BB
+    SH4, // Dreamcast
   };
   Architecture arch;
   std::string code;
