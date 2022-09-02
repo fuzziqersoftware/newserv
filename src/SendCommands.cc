@@ -698,7 +698,7 @@ void send_card_search_result_t(
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
   static const vector<string> version_to_port_name({
-      "console-lobby", "pc-lobby", "bb-lobby", "console-lobby", "console-lobby", "bb-lobby"});
+      "bb-lobby", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"});
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
 
   S_GuildCardSearchResult<CommandHeaderT, CharT> cmd;

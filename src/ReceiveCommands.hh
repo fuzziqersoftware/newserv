@@ -6,8 +6,8 @@
 
 
 
-void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
-void process_disconnect(std::shared_ptr<ServerState> s,
+void on_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
+void on_disconnect(std::shared_ptr<ServerState> s,
     std::shared_ptr<Client> c);
-void process_command(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
+void on_command(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const std::string& data);

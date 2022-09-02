@@ -66,7 +66,7 @@ vector<MenuItem> quest_download_menu({
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
+void on_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
   switch (c->server_behavior) {
     case ServerBehavior::PC_CONSOLE_DETECT: {
       uint16_t pc_port = s->name_to_port_config.at("pc-login")->port;
@@ -97,9 +97,9 @@ void process_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) 
   }
 }
 
-void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   // On the BB data server, this function is called only on the last connection
-  // (when we should send ths ship select menu).
+  // (when we should send the ship select menu).
   if ((c->server_behavior == ServerBehavior::LOGIN_SERVER) ||
       (c->server_behavior == ServerBehavior::DATA_SERVER_BB)) {
     // On the login server, send the events/songs, ep3 updates, and the main
@@ -138,14 +138,12 @@ void process_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 
 
 
-void process_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  // if the client was in a lobby, remove them and notify the other clients
+void on_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  // If the client was in a lobby, remove them and notify the other clients
   if (c->lobby_id) {
     s->remove_client_from_lobby(c);
   }
 
-  // TODO: Make a timer event for each connected player that saves their data
-  // periodically, not only when they disconnect
   // TODO: Track play time somewhere for BB players
   // c->game_data.player()->disp.play_time += ((now() - c->play_time_begin) / 1000000);
 
@@ -171,7 +169,7 @@ static void set_console_client_flags(
   c->flags |= flags_for_version(c->version(), sub_version);
 }
 
-void process_verify_license_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_verify_license_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // DB
   const auto& cmd = check_size_t<C_VerifyLicense_V3_DB>(data);
 
@@ -212,7 +210,7 @@ void process_verify_license_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_login_0_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_login_0_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 90
   const auto& cmd = check_size_t<C_LoginV1_DC_PC_V3_90>(data);
   c->channel.version = GameVersion::DC;
@@ -244,13 +242,13 @@ void process_login_0_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_login_2_dc(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_login_2_dc(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 92
   check_size_t<C_RegisterV1_DC_92>(data);
   send_command(c, 0x92, 0x01);
 }
 
-void process_login_3_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_login_3_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 93
   const auto& cmd = check_size_t<C_LoginV1_DC_93>(data,
       sizeof(C_LoginV1_DC_93), sizeof(C_LoginExtendedV1_DC_93));
@@ -289,10 +287,10 @@ void process_login_3_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   send_update_client_config(c);
 
-  process_login_complete(s, c);
+  on_login_complete(s, c);
 }
 
-void process_login_a_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_login_a_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 9A
   const auto& cmd = check_size_t<C_Login_DC_PC_V3_9A>(data);
   set_console_client_flags(c, cmd.sub_version);
@@ -348,7 +346,7 @@ void process_login_a_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_login_c_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_login_c_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 9C
   const auto& cmd = check_size_t<C_Register_DC_PC_V3_9C>(data);
 
@@ -410,7 +408,7 @@ void process_login_c_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_login_d_e_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_login_d_e_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) { // 9D 9E
   const C_Login_DC_PC_GC_9D* base_cmd;
   if (command == 0x9D) {
@@ -521,10 +519,10 @@ void process_login_d_e_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   send_update_client_config(c);
 
-  process_login_complete(s, c);
+  on_login_complete(s, c);
 }
 
-void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 93
   const auto& cmd = check_size_t<C_Login_BB_93>(data,
       sizeof(C_Login_BB_93) - 8, sizeof(C_Login_BB_93));
@@ -599,7 +597,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
       break;
 
     case ClientStateBB::SHIP_SELECT:
-      process_login_complete(s, c);
+      on_login_complete(s, c);
       break;
 
     case ClientStateBB::IN_GAME:
@@ -610,7 +608,7 @@ void process_login_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_return_client_config(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_return_client_config(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 9F
   if (c->version() == GameVersion::BB) {
     const auto& cfg = check_size_t<ClientConfigBB>(data);
@@ -621,13 +619,13 @@ void process_return_client_config(shared_ptr<ServerState>, shared_ptr<Client> c,
   }
 }
 
-void process_client_checksum(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_client_checksum(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 96
   check_size_t<C_CharSaveInfo_V3_BB_96>(data);
   send_server_time(c);
 }
 
-void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // B1
   check_size_v(data.size(), 0);
   send_server_time(c);
@@ -642,7 +640,7 @@ void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c
   // responds after saving.
   if (c->should_send_to_lobby_server) {
     static const vector<string> version_to_port_name({
-        "console-lobby", "pc-lobby", "bb-lobby", "console-lobby", "console-lobby", "bb-lobby"});
+        "bb-lobby", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"});
     const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
     send_reconnect(c, s->connect_address_for_client(c),
         s->name_to_port_config.at(port_name)->port);
@@ -651,11 +649,7 @@ void process_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client> c
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// Ep3 commands. Note that these commands are not at all functional. The command
-// handlers that partially worked were lost in a dead hard drive, unfortunately.
-
-void process_ep3_meseta_transaction(shared_ptr<ServerState>,
+static void on_ep3_meseta_transaction(shared_ptr<ServerState>,
     shared_ptr<Client> c, uint16_t command, uint32_t, const string& data) {
   const auto& in_cmd = check_size_t<C_Meseta_GC_Ep3_BA>(data);
 
@@ -663,7 +657,7 @@ void process_ep3_meseta_transaction(shared_ptr<ServerState>,
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
-void process_ep3_menu_challenge(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_ep3_counter_state(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t flag, const string& data) { // DC
   check_size_v(data.size(), 0);
   if (flag != 0) {
@@ -671,7 +665,7 @@ void process_ep3_menu_challenge(shared_ptr<ServerState>, shared_ptr<Client> c,
   }
 }
 
-void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // CA
   check_size_v(data.size(), 8, 0xFFFF);
   const PSOSubcommand* cmds = reinterpret_cast<const PSOSubcommand*>(data.data());
@@ -764,26 +758,17 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
   }
 }
 
-void process_ep3_tournament_control(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_ep3_tournament_control(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string&) { // E2
-  // The client will get stuck here unless we send something. An 01 (lobby
-  // message box) seems to get them unstuck.
+  // The client will set their interaction mode expecting a menu to be sent, but
+  // since we don't implement tournaments, they will get stuck here unless we
+  // send something. An 01 (lobby message box) seems to work fine.
   send_lobby_message_box(c, u"$C6Tournaments are\nnot supported.");
-
-  // In case we ever implement this (doubtful), the flag values are:
-  // 00 - list tournaments
-  // 01 - check tournament entry status
-  // 02 - cancel tournament entry
-  // 03 - create tournament spectator team (presumably get battle list, like get team list)
-  // 04 - join tournament spectator team (presumably also get battle list)
 }
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// menu commands
-
-void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D6
   check_size_v(data.size(), 0);
   if (c->flags & Client::Flag::IN_INFORMATION_MENU) {
@@ -796,7 +781,7 @@ void process_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 09
   const auto& cmd = check_size_t<C_MenuItemInfoRequest_09>(data);
 
@@ -814,7 +799,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
         send_ship_info(c, u"Return to the\nmain menu.");
       } else {
         try {
-          // we use item_id + 1 here because "go back" is the first item
+          // We use item_id + 1 here because "go back" is the first item
           send_ship_info(c, s->information_menu_for_version(c->version())->at(cmd.item_id + 1).description.c_str());
         } catch (const out_of_range&) {
           send_ship_info(c, u"$C4Missing information\nmenu item");
@@ -828,7 +813,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
       } else {
         try {
           const auto& menu = s->proxy_destinations_menu_for_version(c->version());
-          // we use item_id + 1 here because "go back" is the first item
+          // We use item_id + 1 here because "go back" is the first item
           send_ship_info(c, menu.at(cmd.item_id + 1).description.c_str());
         } catch (const out_of_range&) {
           send_ship_info(c, u"$C4Missing proxy\ndestination");
@@ -936,7 +921,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
     }
 
     case MenuID::PATCHES:
-      // TODO: Find a way to provide desccriptions for patches.
+      // TODO: Find a way to provide descriptions for patches.
       break;
 
     case MenuID::PROGRAMS: {
@@ -961,7 +946,7 @@ void process_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Client
   }
 }
 
-void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 10
   bool uses_unicode = ((c->version() == GameVersion::PC) || (c->version() == GameVersion::BB));
 
@@ -998,7 +983,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
             send_update_client_config(c);
           } else {
             static const vector<string> version_to_port_name({
-                "console-lobby", "pc-lobby", "bb-lobby", "console-lobby", "console-lobby", "bb-lobby"});
+                "bb-lobby", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"});
             const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
             send_reconnect(c, s->connect_address_for_client(c),
                 s->name_to_port_config.at(port_name)->port);
@@ -1027,8 +1012,9 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
             } else {
               // Episode 3 has only download quests, not online quests, so this
               // is always the download quest menu. (Episode 3 does actually
-              // have online quests, but they don't use the file download
-              // paradigm that all other versions use.)
+              // have online quests, but they're served via a server data
+              // request instead of the file download paradigm that all other
+              // versions use.)
               send_quest_menu(c, MenuID::QUEST, quests, true);
             }
           } else {
@@ -1089,13 +1075,13 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_message_box(c, u"$C6No such destination exists.");
           c->should_disconnect = true;
         } else {
-          // TODO: We can probably avoid using client config and reconnecting the
-          // client here; it's likely we could build a way to just directly link
-          // the client to the proxy server instead (would have to provide
+          // TODO: We can probably avoid using client config and reconnecting
+          // the client here; it's likely we could build a way to just directly
+          // link the client to the proxy server instead (would have to provide
           // license/char name/etc. for remote auth)
 
           static const vector<string> version_to_port_name({
-              "dc-proxy", "pc-proxy", "", "gc-proxy", "xb-proxy", "bb-proxy"});
+              "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"});
           const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
           uint16_t local_port = s->name_to_port_config.at(port_name)->port;
 
@@ -1182,7 +1168,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         break;
       }
 
-      // Hack: assume the menu to be sent is the download quest menu if the
+      // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
       send_quest_menu(c, MenuID::QUEST, quests, !c->lobby_id);
       break;
@@ -1205,7 +1191,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       if (c->lobby_id) {
         l = s->find_lobby(c->lobby_id);
         if (!l->is_game()) {
-          send_lobby_message_box(c, u"$C6Quests cannot be loaded\nin lobbies.");
+          send_lobby_message_box(c, u"$C6Quests cannot be\nloaded in lobbies.");
           break;
         }
       }
@@ -1238,8 +1224,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           // TODO: It looks like blasting all the chunks to the client at once
           // can cause GC clients to crash in rare cases. Find a way to slow
           // this down (perhaps by only sending each new chunk when they
-          // acknowledge the previous chunk with a 44 [first chunk] or 13 [later
-          // chunks] command).
+          // acknowledge the previous chunk with a 13 command).
           send_quest_file(l->clients[x], bin_basename + ".bin", bin_basename,
               *bin_contents, QuestFileType::ONLINE);
           send_quest_file(l->clients[x], dat_basename + ".dat", dat_basename,
@@ -1303,8 +1288,8 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         c->loading_dol_file = s->dol_file_index->item_id_to_file.at(item_id);
 
         // Send the first function call, which triggers the process of loading a
-        // DOL file. This function call determines the necessary base address
-        // for loading the file.
+        // DOL file. The result of this function call determines the necessary
+        // base address for loading the file.
         send_function_call(
             c,
             s->function_code_index->name_to_function.at("ReadMemoryWord"),
@@ -1318,7 +1303,7 @@ void process_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 84
   const auto& cmd = check_size_t<C_LobbySelection_84>(data);
 
@@ -1327,9 +1312,8 @@ void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  // If the client isn't in any lobby, then they just left a game. Ignore their
-  // selection and add them to any lobby with room. If they're already in a
-  // lobby, then they used the lobby teleporter - add them to a specific lobby.
+  // If the client isn't in any lobby, then they just left a game. Add them to
+  // the lobby they requested, but fall back to another lobby if it's full.
   if (c->lobby_id == 0) {
     c->preferred_lobby_id = cmd.item_id;
     s->add_client_to_available_lobby(c);
@@ -1356,25 +1340,23 @@ void process_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 08
   check_size_v(data.size(), 0);
   send_game_menu(c, s);
 }
 
-void process_information_menu_request_dc_pc(shared_ptr<ServerState> s,
+static void on_info_menu_request_dc_pc(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t, const string& data) { // 1F
   check_size_v(data.size(), 0);
   send_menu(c, u"Information", MenuID::INFORMATION,
       *s->information_menu_for_version(c->version()), true);
 }
 
-void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string&) { // A0
-  // The client actually sends data in this command... looks like nothing
-  // important (player_tag and guild_card_number are the only discernable
-  // things, which we already know). We intentionally don't call check_size
-  // here, but instead just ignore the data.
+  // The client sends data in this command, but none of it is important. We
+  // intentionally don't call check_size here, but just ignore the data.
 
   // Delete the player from the lobby they're in (but only visible to themself).
   // This makes it safe to allow the player to choose download quests from the
@@ -1387,21 +1369,20 @@ void process_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_message_box(c, u"");
 
   static const vector<string> version_to_port_name({
-      "console-login", "pc-login", "bb-patch", "console-login", "console-login", "bb-init"});
+      "bb-patch", "console-login", "pc-login", "console-login", "console-login", "bb-init"});
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
 
   send_reconnect(c, s->connect_address_for_client(c),
       s->name_to_port_config.at(port_name)->port);
 }
 
-void process_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_change_block(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) { // A1
   // newserv doesn't have blocks; treat block change the same as ship change
-  process_change_ship(s, c, command, flag, data);
+  on_change_ship(s, c, command, flag, data);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// DOL loading commands
+
 
 static void send_dol_file_chunk(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint32_t start_addr) {
@@ -1423,7 +1404,7 @@ static void send_dol_file_chunk(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_ship_info(c, decode_sjis(info));
 }
 
-void process_function_call_result(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_function_call_result(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t flag, const string& data) { // B3
   const auto& cmd = check_size_t<C_ExecuteCodeResult_B3>(data);
   if (flag == 0) {
@@ -1451,10 +1432,9 @@ void process_function_call_result(shared_ptr<ServerState> s, shared_ptr<Client> 
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Quest commands
 
-void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
+
+static void on_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t flag, const string& data) { // A2
   check_size_v(data.size(), 0);
 
@@ -1494,7 +1474,7 @@ void process_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_quest_barrier(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_quest_barrier(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // AC
   check_size_v(data.size(), 0);
 
@@ -1511,9 +1491,9 @@ void process_quest_barrier(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
   c->flags &= ~Client::Flag::LOADING_QUEST;
 
-  // check if any client is still loading
-  // TODO: we need to handle clients disconnecting while loading. probably
-  // process_client_disconnect needs to check for this case or something
+  // Check if any client is still loading
+  // TODO: We need to handle clients disconnecting while loading. Probably
+  // on_client_disconnect needs to check for this case...
   size_t x;
   for (x = 0; x < l->max_clients; x++) {
     if (!l->clients[x]) {
@@ -1524,13 +1504,13 @@ void process_quest_barrier(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
   }
 
-  // if they're all done, start the quest
+  // If they're all done, start the quest
   if (x == l->max_clients) {
     send_command(l, 0xAC, 0x00);
   }
 }
 
-void process_update_quest_statistics(shared_ptr<ServerState> s,
+static void on_update_quest_statistics(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t, const string& data) { // AA
   const auto& cmd = check_size_t<C_UpdateQuestStatistics_V3_BB_AA>(data);
 
@@ -1552,7 +1532,7 @@ void process_update_quest_statistics(shared_ptr<ServerState> s,
   send_command_t(c, 0xAB, 0x00, response);
 }
 
-void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D7
   string filename(data);
   strip_trailing_zeroes(filename);
@@ -1565,14 +1545,9 @@ void process_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// player data commands
-
-void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) { // 61 98
 
-  // Note: we add extra buffer on the end when checking sizes because the
-  // autoreply text is a variable length
   switch (c->version()) {
     case GameVersion::DC:
     case GameVersion::PC: {
@@ -1658,10 +1633,9 @@ void process_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// subcommands
 
-void process_game_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
+
+static void on_game_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) { // 60 62 6C 6D C9 CB (C9 CB are ep3 only)
   check_size_v(data.size(), 4, 0xFFFF);
 
@@ -1670,13 +1644,12 @@ void process_game_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  process_subcommand(s, l, c, command, flag, data);
+  on_subcommand(s, l, c, command, flag, data);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// chat commands
 
-void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
+
+static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
     const u16string& text) { // 06
 
   u16string processed_text = remove_language_marker(text);
@@ -1693,7 +1666,7 @@ void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
     if (processed_text[1] == L'$') {
       processed_text = processed_text.substr(1);
     } else {
-      process_chat_command(s, l, c, processed_text);
+      on_chat_command(s, l, c, processed_text);
       return;
     }
   }
@@ -1711,31 +1684,30 @@ void process_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 06
   const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
   u16string text(cmd.text.pcbb, (data.size() - sizeof(C_Chat_06)) / sizeof(char16_t));
   strip_trailing_zeroes(text);
-  process_chat_generic(s, c, text);
+  on_chat_generic(s, c, text);
 }
 
-void process_chat_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_chat_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
   u16string decoded_s = decode_sjis(cmd.text.dcv3, data.size() - sizeof(C_Chat_06));
-  process_chat_generic(s, c, decoded_s);
+  on_chat_generic(s, c, decoded_s);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// BB commands
 
-void process_key_config_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+
+static void on_key_config_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   send_team_and_key_config_bb(c);
 }
 
-void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_PlayerPreviewRequest_BB_E3>(data);
 
@@ -1766,7 +1738,7 @@ void process_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Clien
   }
 }
 
-void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) {
   constexpr size_t max_count = sizeof(GuildCardFileBB::entries) / sizeof(GuildCardEntryBB);
   constexpr size_t max_blocked = sizeof(GuildCardFileBB::blocked) / sizeof(GuildCardBB);
@@ -1905,7 +1877,7 @@ void process_client_checksum_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
   }
 }
 
-void process_guild_card_data_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_guild_card_data_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_GuildCardDataRequest_BB_03DC>(data);
   if (cmd.cont) {
@@ -1913,7 +1885,7 @@ void process_guild_card_data_request_bb(shared_ptr<ServerState>, shared_ptr<Clie
   }
 }
 
-void process_stream_file_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_stream_file_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) {
   check_size_v(data.size(), 0);
 
@@ -1926,7 +1898,7 @@ void process_stream_file_request_bb(shared_ptr<ServerState>, shared_ptr<Client> 
   }
 }
 
-void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<SC_PlayerPreview_CreateCharacter_BB_00E5>(data);
 
@@ -1964,7 +1936,7 @@ void process_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c
   send_approve_player_choice_bb(c);
 }
 
-void process_change_account_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_change_account_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) {
   const auto* cmd = reinterpret_cast<const C_UpdateAccountData_BB_ED*>(data.data());
 
@@ -2002,7 +1974,7 @@ void process_change_account_data_bb(shared_ptr<ServerState>, shared_ptr<Client> 
   }
 }
 
-void process_return_player_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_return_player_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 00E7
   const auto& cmd = check_size_t<PlayerBB>(data);
 
@@ -2012,19 +1984,18 @@ void process_return_player_data_bb(shared_ptr<ServerState>, shared_ptr<Client> c
   c->game_data.player()->quest_data2 = cmd.quest_data2;
 }
 
-void process_update_key_config_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_update_key_config_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   // Some clients have only a uint32_t at the end for team rewards
   auto& cmd = check_size_t<KeyAndTeamConfigBB>(data,
       sizeof(KeyAndTeamConfigBB) - 4, sizeof(KeyAndTeamConfigBB));
   c->game_data.account()->key_config = cmd;
-  // TODO: We should send a response here, but I don't know which one!
+  // TODO: We should probably send a response here, but I don't know which one!
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Lobby commands
 
-void process_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c,
+
+static void on_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t flag, const string& data) { // 89
   check_size_v(data.size(), 0);
 
@@ -2035,7 +2006,7 @@ void process_change_arrow_color(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 40
   const auto& cmd = check_size_t<C_GuildCardSearch_40>(data);
   try {
@@ -2045,13 +2016,13 @@ void process_card_search(shared_ptr<ServerState> s, shared_ptr<Client> c,
   } catch (const out_of_range&) { }
 }
 
-void process_choice_search(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_choice_search(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string&) { // C0
   // TODO: Implement choice search.
   send_text_message(c, u"$C6Choice Search is\nnot supported");
 }
 
-void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 81
   u16string message;
   uint32_t to_guild_card_number;
@@ -2106,17 +2077,14 @@ void process_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// Info board commands
-
-void process_info_board_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_info_board_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D8
   check_size_v(data.size(), 0);
   send_info_board(c, s->find_lobby(c->lobby_id));
 }
 
 template <typename CharT>
-void process_write_info_board_t(shared_ptr<ServerState>, shared_ptr<Client> c,
+void on_write_info_board_t(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D9
   check_size_v(data.size(), 0, c->game_data.player()->info_board.size() * sizeof(CharT));
   c->game_data.player()->info_board.assign(
@@ -2125,7 +2093,7 @@ void process_write_info_board_t(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 template <typename CharT>
-void process_set_auto_reply_t(shared_ptr<ServerState>, shared_ptr<Client> c,
+void on_set_auto_reply_t(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C7
   check_size_v(data.size(), 0, c->game_data.player()->auto_reply.size() * sizeof(CharT));
   c->game_data.player()->auto_reply.assign(
@@ -2133,13 +2101,13 @@ void process_set_auto_reply_t(shared_ptr<ServerState>, shared_ptr<Client> c,
       data.size() / sizeof(CharT));
 }
 
-void process_disable_auto_reply(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_disable_auto_reply(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C8
   check_size_v(data.size(), 0);
   c->game_data.player()->auto_reply.clear(0);
 }
 
-void process_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C6
   if (c->version() == GameVersion::BB) {
     const auto& cmd = check_size_t<C_SetBlockedSenders_BB_C6>(data);
@@ -2152,9 +2120,6 @@ void process_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Client
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// Game commands
-
 static shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     shared_ptr<Client> c,
     const std::u16string& name,
@@ -2166,9 +2131,9 @@ static shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   // A player's actual level is their displayed level - 1, so the minimums for
   // Episode 1 (for example) are actually 1, 20, 40, 80.
   static const uint32_t default_minimum_levels[3][4] = {
-      {0, 19, 39, 79}, // episode 1
-      {0, 29, 49, 89}, // episode 2
-      {0, 39, 79, 109}}; // episode 4
+      {0, 19, 39, 79}, // Episode 1
+      {0, 29, 49, 89}, // Episode 2
+      {0, 39, 79, 109}}; // Episode 4
 
   bool is_ep3 = (flags & Lobby::Flag::EPISODE_3_ONLY);
   if (episode == 0) {
@@ -2221,7 +2186,7 @@ static shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   game->max_level = 0xFFFFFFFF;
 
   if (game->version == GameVersion::BB) {
-    // TODO: cache these somewhere so we don't read the file every time, lolz
+    // TODO: Cache these somewhere so we don't read the file every time
     game->rare_item_set.reset(new RareItemSet("system/blueburst/ItemRT.rel",
         game->episode - 1, game->difficulty, game->section_id));
 
@@ -2284,7 +2249,7 @@ static shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   return game;
 }
 
-void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_PC_C1>(data);
 
@@ -2298,7 +2263,7 @@ void process_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   create_game_generic(s, c, cmd.name, cmd.password, 1, cmd.difficulty, flags);
 }
 
-void process_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) { // 0C C1 EC (EC Ep3 only)
   const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
 
@@ -2333,7 +2298,7 @@ void process_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
       s, c, name.c_str(), password.c_str(), episode, cmd.difficulty, flags);
 }
 
-void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_BB_C1>(data);
 
@@ -2351,7 +2316,7 @@ void process_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
       s, c, cmd.name, cmd.password, cmd.episode, cmd.difficulty, flags);
 }
 
-void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 8A
   check_size_v(data.size(), 0);
   auto l = s->find_lobby(c->lobby_id);
@@ -2361,7 +2326,7 @@ void process_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_lobby_name(c, l->name.c_str());
 }
 
-void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 6F
   check_size_v(data.size(), 0);
 
@@ -2381,10 +2346,9 @@ void process_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Trade window commands
 
-void process_trade_start(shared_ptr<ServerState> s, shared_ptr<Client> c,
+
+static void on_trade_start(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D0
   auto& cmd = check_size_t<SC_TradeItems_D0_D3>(data);
 
@@ -2416,13 +2380,15 @@ void process_trade_start(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // other player does not have a pending trade, assume this is the first half
   // of the trade sequence, and send a D1 only to the target player (to request
   // its D0 command).
+  // See the description of the D0 command in CommandFormats.hh for more
+  // information on how this sequence is supposed to work.
   send_command(target_c, 0xD1, 0x00);
   if (target_c->game_data.pending_item_trade) {
     send_command(c, 0xD1, 0x00);
   }
 }
 
-void process_trade_execute(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_trade_execute(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D2
   check_size_v(data.size(), 0);
 
@@ -2453,7 +2419,7 @@ void process_trade_execute(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_trade_error(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_trade_error(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D4
   check_size_v(data.size(), 0);
 
@@ -2484,12 +2450,13 @@ void process_trade_error(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_command(target_c, 0xD4, 0x00);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Team commands
 
-void process_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+
+static void on_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string&) { // EA
 
+  // TODO: Implement teams. This command has a very large number of subcommands
+  // (up to 20EA!).
   if (command == 0x01EA) {
     send_lobby_message_box(c, u"$C6Teams are not supported.");
   } else if (command == 0x14EA) {
@@ -2499,10 +2466,9 @@ void process_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Patch server commands
 
-void process_encryption_ok_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
+
+static void on_connected_patch(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   send_command(c, 0x04, 0x00); // This requests the user's login information
@@ -2539,7 +2505,7 @@ static void change_to_directory_patch(
   }
 }
 
-void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
+static void on_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Login_Patch_04>(data);
 
@@ -2606,7 +2572,7 @@ void process_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-void process_file_checksum_result_patch(shared_ptr<ServerState>,
+static void on_checksum_patch(shared_ptr<ServerState>,
     shared_ptr<Client> c, uint16_t, uint32_t, const string& data) { // 0F
   auto& cmd = check_size_t<C_FileInformation_Patch_0F>(data);
   auto& req = c->patch_file_checksum_requests.at(cmd.request_id);
@@ -2615,7 +2581,7 @@ void process_file_checksum_result_patch(shared_ptr<ServerState>,
   req.response_received = true;
 }
 
-void process_file_checksum_results_done_patch(shared_ptr<ServerState>,
+static void on_checksums_done_patch(shared_ptr<ServerState>,
     shared_ptr<Client> c, uint16_t, uint32_t, const string&) { // 10
 
   S_StartFileDownloads_Patch_11 start_cmd = {0, 0};
@@ -2644,13 +2610,12 @@ void process_file_checksum_results_done_patch(shared_ptr<ServerState>,
   send_command(c, 0x12, 0x00);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Command pointer arrays
 
-void process_ignored_command(shared_ptr<ServerState>, shared_ptr<Client>,
+
+static void on_ignored_command(shared_ptr<ServerState>, shared_ptr<Client>,
     uint16_t, uint32_t, const string&) { }
 
-void process_unimplemented_command(shared_ptr<ServerState>,
+static void on_unimplemented_command(shared_ptr<ServerState>,
     shared_ptr<Client> c, uint16_t command, uint32_t flag, const string& data) {
   c->log.warning("Unknown command: size=%04zX command=%04hX flag=%08" PRIX32,
       data.size(), command, flag);
@@ -2659,501 +2624,281 @@ void process_unimplemented_command(shared_ptr<ServerState>,
 
 
 
-typedef void (*process_command_t)(shared_ptr<ServerState> s, shared_ptr<Client> c,
+typedef void (*on_command_t)(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data);
 
-// The entries in these arrays correspond to the ID of the command received. For
-// instance, if a command 6C is received, the function at position 0x6C in the
-// array corresponding to the client's version is called.
-static process_command_t dc_handlers[0x100] = {
-  // 00
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, process_chat_dc_v3, nullptr,
-  process_game_list_request, process_menu_item_info_request, nullptr, nullptr,
-  process_create_game_dc_v3, nullptr, nullptr, nullptr,
-
-  // 10
-  process_menu_selection, nullptr, nullptr, process_ignored_command,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, process_information_menu_request_dc_pc,
-
-  // 20
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 30
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 40
-  process_card_search, nullptr, nullptr, nullptr,
-  process_ignored_command, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 50
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 60
-  process_game_command, process_player_data, process_game_command, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  process_game_command, process_game_command, nullptr, process_client_ready,
-
-  // 70
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 80
-  nullptr, process_simple_mail, nullptr, nullptr,
-  process_change_lobby, nullptr, nullptr, nullptr,
-  nullptr, process_change_arrow_color, process_lobby_name_request, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 90
-  process_login_0_dc_pc_v3, nullptr, process_login_2_dc, process_login_3_dc_pc_v3,
-  nullptr, nullptr, process_client_checksum, nullptr,
-  process_player_data, process_ignored_command, process_login_a_dc_pc_v3, nullptr,
-  process_login_c_dc_pc_v3, process_login_d_e_dc_pc_v3, nullptr, nullptr,
-
-  // A0
-  process_change_ship, process_change_block, process_quest_list_request, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // B0
-  nullptr, process_server_time_request, nullptr, process_function_call_result,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // C0
-  process_choice_search, process_create_game_dc_v3, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // D0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // E0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // F0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+// Command handler table, indexed by command number and game version. Null
+// entries in this table cause on_unimplemented_command to be called, which
+// disconnects the client.
+static on_command_t handlers[0x100][6] = {
+  //        PATCH                    DC                          PC                               GC                           XB                           BB
+  /* 00 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 00 */
+  /* 01 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 01 */
+  /* 02 */ {on_connected_patch,      nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 02 */
+  /* 03 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 03 */
+  /* 04 */ {on_login_patch,          nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 04 */
+  /* 05 */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ignored_command,          on_ignored_command,          on_ignored_command,             }, /* 05 */
+  /* 06 */ {nullptr,                 on_chat_dc_v3,              on_chat_pc_bb,                   on_chat_dc_v3,               on_chat_dc_v3,               on_chat_pc_bb,                  }, /* 06 */
+  /* 07 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 07 */
+  /* 08 */ {nullptr,                 on_game_list_request,       on_game_list_request,            on_game_list_request,        on_game_list_request,        on_game_list_request,           }, /* 08 */
+  /* 09 */ {nullptr,                 on_menu_item_info_request,  on_menu_item_info_request,       on_menu_item_info_request,   on_menu_item_info_request,   on_menu_item_info_request,      }, /* 09 */
+  /* 0A */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 0A */
+  /* 0B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 0B */
+  /* 0C */ {nullptr,                 on_create_game_dc_v3,       nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 0C */
+  /* 0D */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 0D */
+  /* 0E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 0E */
+  /* 0F */ {on_checksum_patch,       nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 0F */
+  /* 10 */ {on_checksums_done_patch, on_menu_selection,          on_menu_selection,               on_menu_selection,           on_menu_selection,           on_menu_selection,              }, /* 10 */
+  /* 11 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 11 */
+  /* 12 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 12 */
+  /* 13 */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ignored_command,          on_ignored_command,          on_ignored_command,             }, /* 13 */
+  /* 14 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 14 */
+  /* 15 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 15 */
+  /* 16 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 16 */
+  /* 17 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 17 */
+  /* 18 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 18 */
+  /* 19 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 19 */
+  /* 1A */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 1A */
+  /* 1B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 1B */
+  /* 1C */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 1C */
+  /* 1D */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ignored_command,          on_ignored_command,          on_ignored_command,             }, /* 1D */
+  /* 1E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 1E */
+  /* 1F */ {nullptr,                 on_info_menu_request_dc_pc, on_info_menu_request_dc_pc,      nullptr,                     nullptr,                     nullptr,                        }, /* 1F */
+  //        PATCH                    DC                          PC                               GC                           XB                           BB
+  /* 20 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 20 */
+  /* 21 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 21 */
+  /* 22 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_ignored_command,             }, /* 22 */
+  /* 23 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 23 */
+  /* 24 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 24 */
+  /* 25 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 25 */
+  /* 26 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 26 */
+  /* 27 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 27 */
+  /* 28 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 28 */
+  /* 29 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 29 */
+  /* 2A */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 2A */
+  /* 2B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 2B */
+  /* 2C */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 2C */
+  /* 2D */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 2D */
+  /* 2E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 2E */
+  /* 2F */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 2F */
+  /* 30 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 30 */
+  /* 31 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 31 */
+  /* 32 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 32 */
+  /* 33 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 33 */
+  /* 34 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 34 */
+  /* 35 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 35 */
+  /* 36 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 36 */
+  /* 37 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 37 */
+  /* 38 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 38 */
+  /* 39 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 39 */
+  /* 3A */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 3A */
+  /* 3B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 3B */
+  /* 3C */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 3C */
+  /* 3D */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 3D */
+  /* 3E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 3E */
+  /* 3F */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 3F */
+  //        PATCH                    DC                          PC                               GC                           XB                           BB
+  /* 40 */ {nullptr,                 on_card_search,             on_card_search,                  on_card_search,              on_card_search,              on_card_search,                 }, /* 40 */
+  /* 41 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 41 */
+  /* 42 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 42 */
+  /* 43 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 43 */
+  /* 44 */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ignored_command,          on_ignored_command,          on_ignored_command,             }, /* 44 */
+  /* 45 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 45 */
+  /* 46 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 46 */
+  /* 47 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 47 */
+  /* 48 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 48 */
+  /* 49 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 49 */
+  /* 4A */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 4A */
+  /* 4B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 4B */
+  /* 4C */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 4C */
+  /* 4D */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 4D */
+  /* 4E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 4E */
+  /* 4F */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 4F */
+  /* 50 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 50 */
+  /* 51 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 51 */
+  /* 52 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 52 */
+  /* 53 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 53 */
+  /* 54 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 54 */
+  /* 55 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 55 */
+  /* 56 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 56 */
+  /* 57 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 57 */
+  /* 58 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 58 */
+  /* 59 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 59 */
+  /* 5A */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 5A */
+  /* 5B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 5B */
+  /* 5C */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 5C */
+  /* 5D */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 5D */
+  /* 5E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 5E */
+  /* 5F */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 5F */
+  //        PATCH                    DC                          PC                               GC                           XB                           BB
+  /* 60 */ {nullptr,                 on_game_command,            on_game_command,                 on_game_command,             on_game_command,             on_game_command,                }, /* 60 */
+  /* 61 */ {nullptr,                 on_player_data,             on_player_data,                  on_player_data,              on_player_data,              on_player_data,                 }, /* 61 */
+  /* 62 */ {nullptr,                 on_game_command,            on_game_command,                 on_game_command,             on_game_command,             on_game_command,                }, /* 62 */
+  /* 63 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 63 */
+  /* 64 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 64 */
+  /* 65 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 65 */
+  /* 66 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 66 */
+  /* 67 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 67 */
+  /* 68 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 68 */
+  /* 69 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 69 */
+  /* 6A */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 6A */
+  /* 6B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 6B */
+  /* 6C */ {nullptr,                 on_game_command,            on_game_command,                 on_game_command,             on_game_command,             on_game_command,                }, /* 6C */
+  /* 6D */ {nullptr,                 on_game_command,            on_game_command,                 on_game_command,             on_game_command,             on_game_command,                }, /* 6D */
+  /* 6E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 6E */
+  /* 6F */ {nullptr,                 on_client_ready,            on_client_ready,                 on_client_ready,             on_client_ready,             on_client_ready,                }, /* 6F */
+  /* 70 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 70 */
+  /* 71 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 71 */
+  /* 72 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 72 */
+  /* 73 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 73 */
+  /* 74 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 74 */
+  /* 75 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 75 */
+  /* 76 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 76 */
+  /* 77 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 77 */
+  /* 78 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 78 */
+  /* 79 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 79 */
+  /* 7A */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 7A */
+  /* 7B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 7B */
+  /* 7C */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 7C */
+  /* 7D */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 7D */
+  /* 7E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 7E */
+  /* 7F */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 7F */
+  //        PATCH                    DC                          PC                               GC                           XB                           BB
+  /* 80 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 80 */
+  /* 81 */ {nullptr,                 on_simple_mail,             on_simple_mail,                  on_simple_mail,              on_simple_mail,              on_simple_mail,                 }, /* 81 */
+  /* 82 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 82 */
+  /* 83 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 83 */
+  /* 84 */ {nullptr,                 on_change_lobby,            on_change_lobby,                 on_change_lobby,             on_change_lobby,             on_change_lobby,                }, /* 84 */
+  /* 85 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 85 */
+  /* 86 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 86 */
+  /* 87 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 87 */
+  /* 88 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 88 */
+  /* 89 */ {nullptr,                 on_change_arrow_color,      on_change_arrow_color,           on_change_arrow_color,       on_change_arrow_color,       on_change_arrow_color,          }, /* 89 */
+  /* 8A */ {nullptr,                 on_lobby_name_request,      on_lobby_name_request,           on_lobby_name_request,       on_lobby_name_request,       on_lobby_name_request,          }, /* 8A */
+  /* 8B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8B */
+  /* 8C */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8C */
+  /* 8D */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8D */
+  /* 8E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8E */
+  /* 8F */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8F */
+  /* 90 */ {nullptr,                 on_login_0_dc_pc_v3,        nullptr,                         on_login_0_dc_pc_v3,         nullptr,                     nullptr,                        }, /* 90 */
+  /* 91 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 91 */
+  /* 92 */ {nullptr,                 on_login_2_dc,              nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 92 */
+  /* 93 */ {nullptr,                 on_login_3_dc_pc_v3,        nullptr,                         on_login_3_dc_pc_v3,         nullptr,                     on_login_bb,                    }, /* 93 */
+  /* 94 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 94 */
+  /* 95 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 95 */
+  /* 96 */ {nullptr,                 on_client_checksum,         on_client_checksum,              on_client_checksum,          on_client_checksum,          nullptr,                        }, /* 96 */
+  /* 97 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 97 */
+  /* 98 */ {nullptr,                 on_player_data,             on_player_data,                  on_player_data,              on_player_data,              on_player_data,                 }, /* 98 */
+  /* 99 */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ignored_command,          on_ignored_command,          on_ignored_command,             }, /* 99 */
+  /* 9A */ {nullptr,                 on_login_a_dc_pc_v3,        on_login_a_dc_pc_v3,             on_login_a_dc_pc_v3,         nullptr,                     nullptr,                        }, /* 9A */
+  /* 9B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 9B */
+  /* 9C */ {nullptr,                 on_login_c_dc_pc_v3,        on_login_c_dc_pc_v3,             on_login_c_dc_pc_v3,         on_login_c_dc_pc_v3,         nullptr,                        }, /* 9C */
+  /* 9D */ {nullptr,                 on_login_d_e_dc_pc_v3,      on_login_d_e_dc_pc_v3,           on_login_d_e_dc_pc_v3,       on_login_d_e_dc_pc_v3,       nullptr,                        }, /* 9D */
+  /* 9E */ {nullptr,                 nullptr,                    on_login_d_e_dc_pc_v3,           on_login_d_e_dc_pc_v3,       on_login_d_e_dc_pc_v3,       nullptr,                        }, /* 9E */
+  /* 9F */ {nullptr,                 nullptr,                    nullptr,                         on_return_client_config,     on_return_client_config,     nullptr,                        }, /* 9F */
+  //        PATCH                    DC                          PC                               GC                           XB                           BB
+  /* A0 */ {nullptr,                 on_change_ship,             on_change_ship,                  on_change_ship,              on_change_ship,              on_change_ship,                 }, /* A0 */
+  /* A1 */ {nullptr,                 on_change_block,            on_change_block,                 on_change_block,             on_change_block,             on_change_block,                }, /* A1 */
+  /* A2 */ {nullptr,                 on_quest_list_request,      on_quest_list_request,           on_quest_list_request,       on_quest_list_request,       on_quest_list_request,          }, /* A2 */
+  /* A3 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* A3 */
+  /* A4 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* A4 */
+  /* A5 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* A5 */
+  /* A6 */ {nullptr,                 nullptr,                    nullptr,                         on_ignored_command,          on_ignored_command,          nullptr,                        }, /* A6 */
+  /* A7 */ {nullptr,                 nullptr,                    nullptr,                         on_ignored_command,          on_ignored_command,          nullptr,                        }, /* A7 */
+  /* A8 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* A8 */
+  /* A9 */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ignored_command,          on_ignored_command,          on_ignored_command,             }, /* A9 */
+  /* AA */ {nullptr,                 nullptr,                    on_update_quest_statistics,      on_update_quest_statistics,  on_update_quest_statistics,  on_update_quest_statistics,     }, /* AA */
+  /* AB */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* AB */
+  /* AC */ {nullptr,                 nullptr,                    nullptr,                         on_quest_barrier,            on_quest_barrier,            on_quest_barrier,               }, /* AC */
+  /* AD */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* AD */
+  /* AE */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* AE */
+  /* AF */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* AF */
+  /* B0 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* B0 */
+  /* B1 */ {nullptr,                 on_server_time_request,     on_server_time_request,          on_server_time_request,      on_server_time_request,      nullptr,                        }, /* B1 */
+  /* B2 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* B2 */
+  /* B3 */ {nullptr,                 on_function_call_result,    on_function_call_result,         on_function_call_result,     on_function_call_result,     on_function_call_result,        }, /* B3 */
+  /* B4 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* B4 */
+  /* B5 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* B5 */
+  /* B6 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* B6 */
+  /* B7 */ {nullptr,                 nullptr,                    nullptr,                         on_ignored_command,          nullptr,                     nullptr,                        }, /* B7 */
+  /* B8 */ {nullptr,                 nullptr,                    nullptr,                         on_ignored_command,          nullptr,                     nullptr,                        }, /* B8 */
+  /* B9 */ {nullptr,                 nullptr,                    nullptr,                         on_ignored_command,          nullptr,                     nullptr,                        }, /* B9 */
+  /* BA */ {nullptr,                 nullptr,                    nullptr,                         on_ep3_meseta_transaction,   nullptr,                     nullptr,                        }, /* BA */
+  /* BB */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* BB */
+  /* BC */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* BC */
+  /* BD */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* BD */
+  /* BE */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* BE */
+  /* BF */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* BF */
+  //        PATCH                    DC                          PC                               GC                           XB                           BB
+  /* C0 */ {nullptr,                 on_choice_search,           nullptr,                         on_choice_search,            on_choice_search,            nullptr,                        }, /* C0 */
+  /* C1 */ {nullptr,                 on_create_game_dc_v3,       on_create_game_pc,               on_create_game_dc_v3,        on_create_game_dc_v3,        on_create_game_bb,              }, /* C1 */
+  /* C2 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* C2 */
+  /* C3 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* C3 */
+  /* C4 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* C4 */
+  /* C5 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* C5 */
+  /* C6 */ {nullptr,                 nullptr,                    on_set_blocked_senders_list,     on_set_blocked_senders_list, on_set_blocked_senders_list, on_set_blocked_senders_list,    }, /* C6 */
+  /* C7 */ {nullptr,                 nullptr,                    on_set_auto_reply_t<char16_t>,   on_set_auto_reply_t<char>,   on_set_auto_reply_t<char>,   on_set_auto_reply_t<char16_t>,  }, /* C7 */
+  /* C8 */ {nullptr,                 nullptr,                    on_disable_auto_reply,           on_disable_auto_reply,       on_disable_auto_reply,       on_disable_auto_reply,          }, /* C8 */
+  /* C9 */ {nullptr,                 nullptr,                    nullptr,                         on_game_command,             nullptr,                     nullptr,                        }, /* C9 */
+  /* CA */ {nullptr,                 nullptr,                    nullptr,                         on_ep3_server_data_request,  nullptr,                     nullptr,                        }, /* CA */
+  /* CB */ {nullptr,                 nullptr,                    nullptr,                         on_game_command,             nullptr,                     nullptr,                        }, /* CB */
+  /* CC */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* CC */
+  /* CD */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* CD */
+  /* CE */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* CE */
+  /* CF */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* CF */
+  /* D0 */ {nullptr,                 nullptr,                    nullptr,                         on_trade_start,              on_trade_start,              on_trade_start,                 }, /* D0 */
+  /* D1 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* D1 */
+  /* D2 */ {nullptr,                 nullptr,                    nullptr,                         on_trade_execute,            on_trade_execute,            on_trade_execute,               }, /* D2 */
+  /* D3 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* D3 */
+  /* D4 */ {nullptr,                 nullptr,                    nullptr,                         on_trade_error,              on_trade_error,              on_trade_error,                 }, /* D4 */
+  /* D5 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* D5 */
+  /* D6 */ {nullptr,                 nullptr,                    nullptr,                         on_message_box_closed,       on_message_box_closed,       nullptr,                        }, /* D6 */
+  /* D7 */ {nullptr,                 nullptr,                    nullptr,                         on_gba_file_request,         on_gba_file_request,         nullptr,                        }, /* D7 */
+  /* D8 */ {nullptr,                 nullptr,                    on_info_board_request,           on_info_board_request,       on_info_board_request,       on_info_board_request,          }, /* D8 */
+  /* D9 */ {nullptr,                 nullptr,                    on_write_info_board_t<char16_t>, on_write_info_board_t<char>, on_write_info_board_t<char>, on_write_info_board_t<char16_t>,}, /* D9 */
+  /* DA */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* DA */
+  /* DB */ {nullptr,                 nullptr,                    nullptr,                         on_verify_license_v3,        on_verify_license_v3,        nullptr,                        }, /* DB */
+  /* DC */ {nullptr,                 nullptr,                    nullptr,                         on_ep3_counter_state,        nullptr,                     on_guild_card_data_request_bb,  }, /* DC */
+  /* DD */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* DD */
+  /* DE */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* DE */
+  /* DF */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* DF */
+  //        PATCH                    DC                          PC                               GC                           XB                           BB
+  /* E0 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_key_config_request_bb,       }, /* E0 */
+  /* E1 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* E1 */
+  /* E2 */ {nullptr,                 nullptr,                    nullptr,                         on_ep3_tournament_control,   nullptr,                     on_update_key_config_bb,        }, /* E2 */
+  /* E3 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_player_preview_request_bb,   }, /* E3 */
+  /* E4 */ {nullptr,                 nullptr,                    nullptr,                         on_ignored_command,          nullptr,                     nullptr,                        }, /* E4 */
+  /* E5 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_create_character_bb,         }, /* E5 */
+  /* E6 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* E6 */
+  /* E7 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_return_player_data_bb,       }, /* E7 */
+  /* E8 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_client_checksum_bb,          }, /* E8 */
+  /* E9 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* E9 */
+  /* EA */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_team_command_bb,             }, /* EA */
+  /* EB */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_stream_file_request_bb,      }, /* EB */
+  /* EC */ {nullptr,                 nullptr,                    nullptr,                         on_create_game_dc_v3,        nullptr,                     on_ignored_command,             }, /* EC */
+  /* ED */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_change_account_data_bb,      }, /* ED */
+  /* EE */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* EE */
+  /* EF */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* EF */
+  /* F0 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F0 */
+  /* F1 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F1 */
+  /* F2 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F2 */
+  /* F3 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F3 */
+  /* F4 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F4 */
+  /* F5 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F5 */
+  /* F6 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F6 */
+  /* F7 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F7 */
+  /* F8 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F8 */
+  /* F9 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F9 */
+  /* FA */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* FA */
+  /* FB */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* FB */
+  /* FC */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* FC */
+  /* FD */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* FD */
+  /* FE */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* FE */
+  /* FF */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* FF */
+  //        PATCH                    DC                          PC                               GC                           XB                           BB
 };
 
-static process_command_t pc_handlers[0x100] = {
-  // 00
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, process_chat_pc_bb, nullptr,
-  process_game_list_request, process_menu_item_info_request, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 10
-  process_menu_selection, nullptr, nullptr, process_ignored_command,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, process_information_menu_request_dc_pc,
-
-  // 20
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 30
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 40
-  process_card_search, nullptr, nullptr, nullptr,
-  process_ignored_command, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 50
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 60
-  process_game_command, process_player_data, process_game_command, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  process_game_command, process_game_command, nullptr, process_client_ready,
-
-  // 70
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 80
-  nullptr, process_simple_mail, nullptr, nullptr,
-  process_change_lobby, nullptr, nullptr, nullptr,
-  nullptr, process_change_arrow_color, process_lobby_name_request, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 90
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, process_client_checksum, nullptr,
-  process_player_data, process_ignored_command, process_login_a_dc_pc_v3, nullptr,
-  process_login_c_dc_pc_v3, process_login_d_e_dc_pc_v3, process_login_d_e_dc_pc_v3, nullptr,
-
-  // A0
-  process_change_ship, process_change_block, process_quest_list_request, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // B0
-  nullptr, process_server_time_request, nullptr, process_function_call_result,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // C0
-  nullptr, process_create_game_pc, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_senders_list, process_set_auto_reply_t<char16_t>,
-  process_disable_auto_reply, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // D0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  process_info_board_request, process_write_info_board_t<char16_t>, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // E0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // F0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-};
-
-static process_command_t gc_handlers[0x100] = {
-  // 00
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, process_chat_dc_v3, nullptr,
-  process_game_list_request, process_menu_item_info_request, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 10
-  process_menu_selection, nullptr, nullptr, process_ignored_command,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, nullptr,
-
-  // 20
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 30
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 40
-  process_card_search, nullptr, nullptr, nullptr,
-  process_ignored_command, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 50
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 60
-  process_game_command, process_player_data, process_game_command, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  process_game_command, process_game_command, nullptr, process_client_ready,
-
-  // 70
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 80
-  nullptr, process_simple_mail, nullptr, nullptr,
-  process_change_lobby, nullptr, nullptr, nullptr,
-  nullptr, process_change_arrow_color, process_lobby_name_request, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 90
-  process_login_0_dc_pc_v3, nullptr, nullptr, process_login_3_dc_pc_v3,
-  nullptr, nullptr, process_client_checksum, nullptr,
-  process_player_data, process_ignored_command, process_login_a_dc_pc_v3, nullptr,
-  process_login_c_dc_pc_v3, process_login_d_e_dc_pc_v3, process_login_d_e_dc_pc_v3, process_return_client_config,
-
-  // A0
-  process_change_ship, process_change_block, process_quest_list_request, nullptr,
-  nullptr, nullptr, process_ignored_command, process_ignored_command,
-  nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
-  process_quest_barrier, nullptr, nullptr, nullptr,
-
-  // B0
-  nullptr, process_server_time_request, nullptr, process_function_call_result,
-  nullptr, nullptr, nullptr, process_ignored_command,
-  process_ignored_command, process_ignored_command, process_ep3_meseta_transaction, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // C0
-  process_choice_search, process_create_game_dc_v3, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_senders_list, process_set_auto_reply_t<char>,
-  process_disable_auto_reply, process_game_command, process_ep3_server_data_request, process_game_command,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // D0
-  process_trade_start, nullptr, process_trade_execute, nullptr,
-  process_trade_error, nullptr, process_message_box_closed, process_gba_file_request,
-  process_info_board_request, process_write_info_board_t<char>, nullptr, process_verify_license_v3,
-  process_ep3_menu_challenge, nullptr, nullptr, nullptr,
-
-  // E0
-  nullptr, nullptr, process_ep3_tournament_control, nullptr,
-  process_ignored_command, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  process_create_game_dc_v3, nullptr, nullptr, nullptr,
-
-  // F0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-};
-
-static process_command_t xb_handlers[0x100] = {
-  // 00
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, process_chat_dc_v3, nullptr,
-  process_game_list_request, process_menu_item_info_request, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 10
-  process_menu_selection, nullptr, nullptr, process_ignored_command,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, nullptr,
-
-  // 20
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 30
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 40
-  process_card_search, nullptr, nullptr, nullptr,
-  process_ignored_command, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 50
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 60
-  process_game_command, process_player_data, process_game_command, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  process_game_command, process_game_command, nullptr, process_client_ready,
-
-  // 70
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 80
-  nullptr, process_simple_mail, nullptr, nullptr,
-  process_change_lobby, nullptr, nullptr, nullptr,
-  nullptr, process_change_arrow_color, process_lobby_name_request, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 90
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, process_client_checksum, nullptr,
-  process_player_data, process_ignored_command, nullptr, nullptr,
-  process_login_c_dc_pc_v3, process_login_d_e_dc_pc_v3, process_login_d_e_dc_pc_v3, process_return_client_config,
-
-  // A0
-  process_change_ship, process_change_block, process_quest_list_request, nullptr,
-  nullptr, nullptr, process_ignored_command, process_ignored_command,
-  nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
-  process_quest_barrier, nullptr, nullptr, nullptr,
-
-  // B0
-  nullptr, process_server_time_request, nullptr, process_function_call_result,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // C0
-  process_choice_search, process_create_game_dc_v3, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_senders_list, process_set_auto_reply_t<char>,
-  process_disable_auto_reply, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // D0
-  process_trade_start, nullptr, process_trade_execute, nullptr,
-  process_trade_error, nullptr, process_message_box_closed, process_gba_file_request,
-  process_info_board_request, process_write_info_board_t<char>, nullptr, process_verify_license_v3,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // E0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // F0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-};
-
-static process_command_t bb_handlers[0x100] = {
-  // 00
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, process_chat_pc_bb, nullptr,
-  process_game_list_request, process_menu_item_info_request, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 10
-  process_menu_selection, nullptr, nullptr, process_ignored_command,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, nullptr, nullptr,
-
-  // 20
-  nullptr, nullptr, process_ignored_command, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 30
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 40
-  process_card_search, nullptr, nullptr, nullptr,
-  process_ignored_command, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 50
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 60
-  process_game_command, process_player_data, process_game_command, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  process_game_command, process_game_command, nullptr, process_client_ready,
-
-  // 70
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-
-  // 80
-  nullptr, process_simple_mail, nullptr, nullptr,
-  process_change_lobby, nullptr, nullptr, nullptr,
-  nullptr, process_change_arrow_color, process_lobby_name_request, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 90
-  nullptr, nullptr, nullptr, process_login_bb,
-  nullptr, nullptr, nullptr, nullptr,
-  process_player_data, process_ignored_command, nullptr, nullptr,
-  nullptr, nullptr, nullptr, process_return_client_config,
-
-  // A0
-  process_change_ship, process_change_block, process_quest_list_request, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, process_ignored_command, process_update_quest_statistics, nullptr,
-  process_quest_barrier, nullptr, nullptr, nullptr,
-
-  // B0
-  nullptr, nullptr, nullptr, process_function_call_result,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // C0
-  nullptr, process_create_game_bb, nullptr, nullptr,
-  nullptr, nullptr, process_set_blocked_senders_list, process_set_auto_reply_t<char16_t>,
-  process_disable_auto_reply, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // D0
-  process_trade_start, nullptr, process_trade_execute, nullptr,
-  process_trade_error, nullptr, nullptr, nullptr,
-  process_info_board_request, process_write_info_board_t<char16_t>, nullptr, nullptr,
-  process_guild_card_data_request_bb, nullptr, nullptr, nullptr,
-
-  // E0
-  process_key_config_request_bb, nullptr, process_update_key_config_bb, process_player_preview_request_bb,
-  nullptr, process_create_character_bb, nullptr, process_return_player_data_bb,
-  process_client_checksum_bb, nullptr, process_team_command_bb, process_stream_file_request_bb,
-  process_ignored_command, process_change_account_data_bb, nullptr, nullptr,
-
-  // F0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-};
-
-static process_command_t patch_handlers[0x100] = {
-  // 00
-  nullptr, nullptr, process_encryption_ok_patch, nullptr,
-  process_login_patch, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, process_file_checksum_result_patch,
-
-  // 10
-  process_file_checksum_results_done_patch, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr,
-
-  // 20
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // 30
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // 40
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // 50
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // 60
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // 70
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // 80
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // 90
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // A0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // B0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // C0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // D0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // E0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  // F0
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-};
-
-static process_command_t* handlers[6] = {
-    dc_handlers, pc_handlers, patch_handlers, gc_handlers, xb_handlers, bb_handlers};
-
-void check_unlicensed_command(GameVersion version, uint8_t command) {
+static void check_unlicensed_command(GameVersion version, uint8_t command) {
   switch (version) {
     case GameVersion::DC:
       // newserv doesn't actually know that DC clients are DC until it receives
@@ -3192,7 +2937,7 @@ void check_unlicensed_command(GameVersion version, uint8_t command) {
   }
 }
 
-void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
+void on_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) {
   string encoded_name;
   auto player = c->game_data.player(false);
@@ -3208,10 +2953,10 @@ void process_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     check_unlicensed_command(c->version(), command);
   }
 
-  auto fn = handlers[static_cast<size_t>(c->version())][command & 0xFF];
+  auto fn = handlers[command & 0xFF][static_cast<size_t>(c->version())];
   if (fn) {
     fn(s, c, command, flag, data);
   } else {
-    process_unimplemented_command(s, c, command, flag, data);
+    on_unimplemented_command(s, c, command, flag, data);
   }
 }

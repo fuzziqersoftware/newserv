@@ -5,9 +5,9 @@
 
 
 enum class GameVersion {
-  DC = 0,
+  PATCH = 0,
+  DC,
   PC,
-  PATCH,
   GC,
   XB,
   BB,

@@ -10,7 +10,7 @@
 #include "Client.hh"
 #include "ProxyServer.hh"
 
-void process_chat_command(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l,
+void on_chat_command(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l,
     std::shared_ptr<Client> c, const std::u16string& text);
-void process_chat_command(std::shared_ptr<ServerState> s,
+void on_chat_command(std::shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, const std::u16string& text);

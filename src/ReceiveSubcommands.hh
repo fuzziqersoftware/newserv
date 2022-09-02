@@ -8,7 +8,7 @@
 
 
 
-void process_subcommand(std::shared_ptr<ServerState> s,
+void on_subcommand(std::shared_ptr<ServerState> s,
     std::shared_ptr<Lobby> l, std::shared_ptr<Client> c, uint8_t command,
     uint8_t flag, const std::string& data);
 

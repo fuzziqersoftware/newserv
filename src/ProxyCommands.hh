@@ -9,7 +9,7 @@
 
 
 
-void process_proxy_command(
+void on_proxy_command(
     std::shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session,
     bool from_server,

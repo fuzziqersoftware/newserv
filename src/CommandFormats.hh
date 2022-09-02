@@ -1992,7 +1992,7 @@ struct S_ConfirmTournamentEntry_GC_Ep3_CC {
 
 // D0 (C->S): Start trade sequence (V3/BB)
 // The trade window sequence is a bit complicated. The normal flow is:
-// - Clients sync trade state with 60xA6 commands (technically 62xA6)
+// - Clients sync trade state with 6xA6 commands
 // - When both have confirmed, one client (the initiator) sends a D0
 // - Server sends a D1 to the non-initiator
 // - Non-initiator sends a D0
@@ -2009,6 +2009,8 @@ struct S_ConfirmTournamentEntry_GC_Ep3_CC {
 // At any point if an error occurs, either client may send a D4 00, which
 // cancels the entire sequence. The server should then send D4 00 to both
 // clients.
+// TODO: The server should presumably also send a D4 00 if either client
+// disconnects during the sequence.
 
 struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
   le_uint16_t target_client_id;
@@ -2230,8 +2232,8 @@ struct S_Unknown_GC_Ep3_E1 {
 //   header.flag = 00 => request tournament list (server responds with E0)
 //   header.flag = 01 => check tournament
 //   header.flag = 02 => cancel tournament entry
-//   header.flag = 03 => create tournament spectator team
-//   header.flag = 04 => join tournament spectator team
+//   header.flag = 03 => create tournament spectator team (get battle list)
+//   header.flag = 04 => join tournament spectator team (get team list)
 
 // E2 (S->C): Tournament entry list (Episode 3)
 // Client may send 09 commands if the player presses X. It's not clear what the

@@ -33,6 +33,7 @@ newserv supports several versions of PSO. Specifically:
 This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance. With that said, feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
 
 Current known issues / missing features:
+- Support disconnect hooks to clean up state, like if a client disconnects during quest loading or a trade window execution.
 - Episode 3 battles aren't implemented.
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
 - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).

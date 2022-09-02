@@ -689,7 +689,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
   this->client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
 
   static const vector<string> version_to_port_name({
-      "console-login", "pc-login", "bb-patch", "console-login", "console-login", "bb-init"});
+      "bb-patch", "console-login", "pc-login", "console-login", "console-login", "bb-init"});
   const auto& port_name = version_to_port_name.at(static_cast<size_t>(
       this->version));
 
@@ -745,7 +745,7 @@ void ProxyServer::LinkedSession::on_input(Channel& ch, uint16_t command, uint32_
       size_t bytes_to_save = min<size_t>(data.size(), sizeof(session->prev_server_command_bytes));
       memcpy(session->prev_server_command_bytes, data.data(), bytes_to_save);
     }
-    process_proxy_command(
+    on_proxy_command(
         session->server->state,
         *session,
         is_server_stream,
