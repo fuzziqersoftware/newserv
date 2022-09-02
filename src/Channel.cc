@@ -238,7 +238,7 @@ Channel::Message Channel::recv(bool print_contents) {
     vector<struct iovec> iovs;
     iovs.emplace_back(iovec{.iov_base = header_data.data(), .iov_len = header_data.size()});
     iovs.emplace_back(iovec{.iov_base = command_data.data(), .iov_len = command_data.size()});
-    print_data(stderr, iovs, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR);
+    print_data(stderr, iovs, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
 
     if (use_terminal_colors && this->terminal_recv_color != TerminalFormat::NORMAL) {
       print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
@@ -344,7 +344,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
       command_data_log.info("Sending to %s (version=%s command=%02hX flag=%02" PRIX32 ")",
           this->name.c_str(), name_for_version(version), cmd, flag);
     }
-    print_data(stderr, send_data.data(), logical_size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR);
+    print_data(stderr, send_data.data(), logical_size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
       print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
     }

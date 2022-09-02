@@ -49,7 +49,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
 
   auto check_pw = [&](const string& pw) {
     if (!this->required_password.empty() && !pw.empty() && (pw != this->required_password)) {
-      print_data(stderr, ev->data);
+      print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
       throw runtime_error("sent password is incorrect");
     }
   };
@@ -64,7 +64,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
       ref_access_key = this->required_access_key;
     }
     if (ak != ref_access_key) {
-      print_data(stderr, ev->data);
+      print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
       throw runtime_error("sent access key is incorrect");
     }
   };
@@ -340,7 +340,7 @@ ReplaySession::ReplaySession(
     }
 
     if (parsing_command.get()) {
-      string expected_start = string_printf("%016zX |", parsing_command->data.size());
+      string expected_start = string_printf("%04zX |", parsing_command->data.size());
       if (starts_with(line, expected_start)) {
         // Parse out the hex part of the hex/ASCII dump
         string mask_bytes;
@@ -551,24 +551,24 @@ void ReplaySession::on_command_received(
   this->bytes_received += full_command.size();
 
   if (c->receive_events.empty()) {
-    print_data(stderr, full_command);
+    print_data(stderr, full_command, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
     throw runtime_error("received unexpected command for client");
   }
 
   auto& ev = c->receive_events.front();
   if (full_command.size() != ev->data.size()) {
     replay_log.error("Expected command:");
-    print_data(stderr, ev->data);
+    print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
     replay_log.error("Received command:");
-    print_data(stderr, full_command);
+    print_data(stderr, full_command, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
     throw runtime_error("received command sizes do not match");
   }
   for (size_t x = 0; x < full_command.size(); x++) {
     if ((full_command[x] & ev->mask[x]) != (ev->data[x] & ev->mask[x])) {
       replay_log.error("Expected command:");
-      print_data(stderr, ev->data);
+      print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
       replay_log.error("Received command:");
-      print_data(stderr, full_command, 0, ev->data.data());
+      print_data(stderr, full_command, 0, ev->data.data(), PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
       throw runtime_error("received command data does not match expected data");
     }
   }

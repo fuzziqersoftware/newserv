@@ -102,7 +102,7 @@ void CatSession::on_channel_input(
 
   string full_cmd = prepend_command_header(
       this->channel.version, this->channel.crypt_in.get(), command, flag, data);
-  print_data(stdout, full_cmd);
+  print_data(stdout, full_cmd, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
 }
 
 void CatSession::dispatch_on_channel_error(Channel& ch, short events) {
