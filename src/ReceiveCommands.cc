@@ -688,14 +688,19 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
   }
 
   switch (cmds[1].byte[0]) {
-    // phase 1: map select
+    // Phase 1: map select
     case 0x40:
       send_ep3_map_list(s, l);
       break;
     case 0x41:
       send_ep3_map_data(s, l, cmds[4].dword);
       break;
-    /*// phase 2: deck/name entry
+
+    /* What follows is some raw code that has survived since the days of khyller
+     * (approx. 2004). Much more research and engineering is needed to get
+     * Episode III battles to work, but this could be used as a starting point.
+
+    // phase 2: deck/name entry
     case 0x13:
       ti = FindTeam(s, c->teamID);
       memcpy(&ti->ep3game, ((DWORD)c->bufferin + 0x14), 0x2AC);
@@ -753,6 +758,7 @@ void process_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Clien
       CommandEp3Init_B4_39(s, c); // MISSING: 60 00 AC 00 B4 2A 00 00 39 56 00 08 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       CommandEp3InitBegin(s, c);
       break; */
+
     default:
       c->log.error("Unknown Episode III server data request: %02X", cmds[1].byte[0]);
   }

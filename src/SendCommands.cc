@@ -101,10 +101,6 @@ void send_command_with_header(Channel& ch, const void* data, size_t size) {
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// CommandServerInit: this function sends the command that initializes encryption
-
-// strings needed for various functions
 static const char* anti_copyright = "This server is in no way affiliated, sponsored, or supported by SEGA Enterprises or SONICTEAM. The preceding message exists only in order to remain compatible with programs that expect it.";
 static const char* dc_port_map_copyright = "DreamCast Port Map. Copyright SEGA Enterprises. 1999";
 static const char* dc_lobby_server_copyright = "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999";
@@ -695,9 +691,6 @@ void send_info_board(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// CommandCardSearchResult: sends a guild card search result to a player.
-
 template <typename CommandHeaderT, typename CharT>
 void send_card_search_result_t(
     shared_ptr<ServerState> s,
@@ -866,8 +859,7 @@ void send_menu(shared_ptr<Client> c, const u16string& menu_name,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// CommandGameSelect: presents the player with a Game Select menu. returns the selection in the same way as CommandShipSelect.
+
 
 template <typename CharT>
 void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
