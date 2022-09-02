@@ -23,10 +23,14 @@
 
     // Various versions of PSO hardcode these ports in the clients. Don't change
     // these unless you don't want to support certain versions of PSO.
-    // TODO: GC Episodes 1&2 Trial Edition also uses port 9000, but a real
-    // version of PSO uses that port too. Figure out a way to differentiate
-    // between the two versions.
-
+    // Note: The pc_console_detect behavior is used for separating PSO PC and
+    // DC/GC clients that connect on the same port. On these ports, newserv
+    // sends a single command that PC and DC/GC clients parse in different ways,
+    // leading them to connect to either the console-login port or the pc-login
+    // port (both of which must be defined below if pc_console_detect is used).
+    // If you want to support only PC, you can change the pc_console_detect
+    // behavior for these ports to login_server. If you don't want to support
+    // PC, you can do the same, but also change the version from pc to gc.
     "gc-jp10":       [9000,  "pc",    "pc_console_detect"],
     "gc-jp11":       [9001,  "pc",    "pc_console_detect"],
     "gc-jp3te":      [9002,  "pc",    "pc_console_detect"],
@@ -44,24 +48,39 @@
     "bb-init":       [12000, "bb",    "data_server_bb"],
 
     // TODO: If Xbox support ever gets built, add this port to the above config.
-    // "xb-login": [????, "xb", "login_server"],
+    // "xb-login":      [????, "xb", "login_server"],
 
     // Schthack PSOBB uses these ports.
-    // "bb-patch2": [10500, "patch", "patch_server_bb"],
-    // "bb-init2":  [13000, "bb",    "data_server_bb"],
+    // "bb-patch2":     [10500, "patch", "patch_server_bb"],
+    // "bb-init2":      [13000, "bb",    "data_server_bb"],
 
     // Ephinea PSOBB uses these ports. Note that 13000 is also used by Schthack
     // PSOBB, but not for the patch server; this means you unfortunately can't
     // support both Schthack and Ephinea PSOBB clients at the same time. This
     // may be fixed in the future using a similar technique as the
     // split_reconnect behavior, but this isn't implemented yet.
-    // "bb-patch3": [13000, "patch", "patch_server_bb"],
-    // "bb-init3":  [14000, "bb",    "data_server_bb"],
+    // "bb-patch3":     [13000, "patch", "patch_server_bb"],
+    // "bb-init3":      [14000, "bb",    "data_server_bb"],
 
     // newserv uses these ports, but there is no external reason that these
     // numbers were chosen. You can change the port numbers here without any
-    // issues. Note that the bb-data1 and bb-data2 ports must be sequential;
-    // that is, the bb-data2 port must be the bb-data1 port + 1.
+    // issues. Some of these names are required; specifically:
+    // - If there are any ports using the pc_console_detect behavior, then the
+    //   pc-login and console-login ports must be defined. newserv will fail on
+    //   startup if either port is not defined.
+    // - If you have any DC, GC, or XB clients connecting to the server, the
+    //   console-lobby port must be defined. The version for this port should be
+    //   "gc", even though DC and XB clients can connect to it (newserv will
+    //   automatically detect the correct game version).
+    // - If you have any PC clients connecting to the server, the pc-lobby port
+    //   must be defined.
+    // - If you have any BB clients connecting to the server, the bb-lobby,
+    //   bb-data1, and bb-data2 ports must be defined.
+    // - The bb-data1 and bb-data2 ports must be sequential; that is, the
+    //   bb-data2 port number must be equal to the bb-data1 port number + 1.
+    // - The proxy ports do not need to be defined unless the proxy server is
+    //   enabled for the respective version via the ProxyDestinations fields
+    //   (below).
     "console-login": [5100,  "gc",    "login_server"],
     "pc-login":      [5101,  "pc",    "login_server"],
     "console-lobby": [5110,  "gc",    "lobby_server"],

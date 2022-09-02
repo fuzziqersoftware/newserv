@@ -260,13 +260,32 @@ void ServerState::set_port_configuration(
     const vector<PortConfiguration>& port_configs) {
   this->name_to_port_config.clear();
   this->number_to_port_config.clear();
+
+  bool any_port_is_pc_console_detect = false;
   for (const auto& pc : port_configs) {
     shared_ptr<PortConfiguration> spc(new PortConfiguration(pc));
     if (!this->name_to_port_config.emplace(spc->name, spc).second) {
+      // Note: This is a logic_error instead of a runtime_error because
+      // port_configs comes from a JSON map, so the names should already all be
+      // unique. In contrast, the user can define port configurations with the
+      // same number while still writing valid JSON, so only one of these cases
+      // can reasonably occur as a result of user behavior.
       throw logic_error("duplicate name in port configuration");
     }
     if (!this->number_to_port_config.emplace(spc->port, spc).second) {
-      throw logic_error("duplicate number in port configuration");
+      throw runtime_error("duplicate number in port configuration");
+    }
+    if (spc->behavior == ServerBehavior::PC_CONSOLE_DETECT) {
+      any_port_is_pc_console_detect = true;
+    }
+  }
+
+  if (any_port_is_pc_console_detect) {
+    if (!this->name_to_port_config.count("pc-login")) {
+      throw runtime_error("pc-login port is not defined, but some ports use the pc_console_detect behavior");
+    }
+    if (!this->name_to_port_config.count("console-login")) {
+      throw runtime_error("console-login port is not defined, but some ports use the pc_console_detect behavior");
     }
   }
 }
