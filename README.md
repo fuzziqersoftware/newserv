@@ -35,6 +35,7 @@ This project is primarily for my own nostalgia; I offer no guarantees on how or 
 Current known issues / missing features:
 - Episode 3 battles aren't implemented.
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
+- Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
 - PSOX is not tested at all.
 - Patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
