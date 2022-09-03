@@ -54,6 +54,7 @@ add_executable(newserv
   src/Episode3.cc
   src/FileContentsCache.cc
   src/FunctionCompiler.cc
+  src/GSLArchive.cc
   src/IPFrameInfo.cc
   src/IPStackSimulator.cc
   src/Items.cc

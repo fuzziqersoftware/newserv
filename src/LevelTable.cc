@@ -10,24 +10,24 @@ using namespace std;
 
 
 
-LevelTable::LevelTable(const string& filename, bool compressed) {
-  string data = load_file(filename);
+LevelTable::LevelTable(shared_ptr<const string> data, bool compressed) {
   if (compressed) {
-    data = prs_decompress(data);
+    this->data.reset(new string(prs_decompress(*data)));
+  } else {
+    this->data = data;
   }
 
-  if (data.size() < sizeof(*this)) {
+  if (this->data->size() < sizeof(Table)) {
     throw invalid_argument("level table size is incorrect");
   }
-
-  memcpy(this, data.data(), sizeof(*this));
+  this->table = reinterpret_cast<const Table*>(this->data->data());
 }
 
 const PlayerStats& LevelTable::base_stats_for_class(uint8_t char_class) const {
   if (char_class >= 12) {
     throw out_of_range("invalid character class");
   }
-  return this->base_stats[char_class];
+  return this->table->base_stats[char_class];
 }
 
 const LevelTable::LevelStats& LevelTable::stats_for_level(uint8_t char_class,
@@ -38,7 +38,7 @@ const LevelTable::LevelStats& LevelTable::stats_for_level(uint8_t char_class,
   if (level >= 200) {
     throw invalid_argument("invalid character level");
   }
-  return this->levels[char_class][level];
+  return this->table->levels[char_class][level];
 }
 
 void LevelTable::LevelStats::apply(PlayerStats& ps) const {

@@ -684,6 +684,7 @@ static void on_subcommand_sort_inventory_bb(shared_ptr<ServerState>,
 // EXP/Drop Item commands
 
 static bool drop_item(
+    std::shared_ptr<ServerState> s,
     std::shared_ptr<Lobby> l,
     int64_t enemy_id,
     uint8_t area,
@@ -704,35 +705,35 @@ static bool drop_item(
       throw runtime_error("received box drop subcommand without item creator present");
     }
 
-    const RareItemDrop* rare_drop = nullptr;
-    if (l->rare_item_set) {
+    const RareItemSet::Table::Drop* drop = nullptr;
+    if (s->rare_item_set) {
+      const auto& table = s->rare_item_set->get_table(
+          l->episode - 1, l->difficulty, l->section_id);
       if (enemy_id < 0) {
         for (size_t z = 0; z < 30; z++) {
-          if (l->rare_item_set->box_areas[z] != area) {
+          if (table.box_areas[z] != area) {
             continue;
           }
-          if (sample_rare_item(
-              *l->random, l->rare_item_set->box_rares[z].probability)) {
-            rare_drop = &l->rare_item_set->box_rares[z];
+          if (RareItemSet::sample(*l->random, table.box_rares[z].probability)) {
+            drop = &table.box_rares[z];
             break;
           }
         }
       } else {
         if ((enemy_id <= 0x65) &&
-            sample_rare_item(
-                *l->random, l->rare_item_set->rares[enemy_id].probability)) {
-          rare_drop = &l->rare_item_set->rares[enemy_id];
+            RareItemSet::sample(*l->random, table.monster_rares[enemy_id].probability)) {
+          drop = &table.monster_rares[enemy_id];
         }
       }
     }
 
-    if (rare_drop) {
-      item.data.data1[0] = rare_drop->item_code[0];
-      item.data.data1[1] = rare_drop->item_code[1];
-      item.data.data1[2] = rare_drop->item_code[2];
-      // TODO: Add random percentages
+    if (drop) {
+      item.data.data1[0] = drop->item_code[0];
+      item.data.data1[1] = drop->item_code[1];
+      item.data.data1[2] = drop->item_code[2];
+      // TODO: Add random percentages / modifiers
       if (item.data.data1d[0] == 0) {
-        item.data.data1[4] |= 0x80; // make it unidentified if it's a weapon
+        item.data.data1[4] |= 0x80; // Make it unidentified if it's a weapon
       }
     } else {
       try {
@@ -759,7 +760,7 @@ static bool drop_item(
   return true;
 }
 
-static void on_subcommand_enemy_drop_item_request(shared_ptr<ServerState>,
+static void on_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!l->is_game()) {
@@ -769,12 +770,12 @@ static void on_subcommand_enemy_drop_item_request(shared_ptr<ServerState>,
   const auto* cmd = check_size_sc<G_EnemyDropItemRequest_DC_6x60>(data,
       sizeof(G_EnemyDropItemRequest_DC_6x60),
       sizeof(G_EnemyDropItemRequest_PC_V3_BB_6x60));
-  if (!drop_item(l, cmd->enemy_id, cmd->area, cmd->x, cmd->z, cmd->request_id)) {
+  if (!drop_item(s, l, cmd->enemy_id, cmd->area, cmd->x, cmd->z, cmd->request_id)) {
     forward_subcommand(l, c, command, flag, data);
   }
 }
 
-static void on_subcommand_box_drop_item_request(shared_ptr<ServerState>,
+static void on_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!l->is_game()) {
@@ -782,7 +783,7 @@ static void on_subcommand_box_drop_item_request(shared_ptr<ServerState>,
   }
 
   const auto* cmd = check_size_sc<G_BoxItemDropRequest_6xA2>(data);
-  if (!drop_item(l, -1, cmd->area, cmd->x, cmd->z, cmd->request_id)) {
+  if (!drop_item(s, l, -1, cmd->area, cmd->x, cmd->z, cmd->request_id)) {
     forward_subcommand(l, c, command, flag, data);
   }
 }

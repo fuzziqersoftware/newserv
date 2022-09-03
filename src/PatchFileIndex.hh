@@ -14,21 +14,22 @@ struct PatchFileIndex {
   explicit PatchFileIndex(const std::string& root_dir);
 
   struct File {
-    struct Chunk {
-      std::string data;
-      uint32_t crc32;
-    };
     std::vector<std::string> path_directories;
     std::string name;
-    std::vector<Chunk> chunks;
-    size_t size;
+    std::shared_ptr<const std::string> data;
+    std::vector<uint32_t> chunk_crcs;
     uint32_t crc32;
 
-    File() : size(0), crc32(0) { }
+    File();
     void load_data(const std::string& root_dir);
   };
 
-  std::vector<std::shared_ptr<File>> files;
+  const std::vector<std::shared_ptr<const File>>& all_files() const;
+  std::shared_ptr<const File> get(const std::string& filename) const;
+
+private:
+  std::vector<std::shared_ptr<const File>> files_by_patch_order;
+  std::unordered_map<std::string, std::shared_ptr<const File>> files_by_name;
   std::string root_dir;
 };
 
@@ -43,6 +44,6 @@ struct PatchFileChecksumRequest {
   inline bool needs_update() const {
     return !this->response_received ||
            (this->crc32 != this->file->crc32) ||
-           (this->size != this->file->size);
+           (this->size != this->file->data->size());
   }
 };

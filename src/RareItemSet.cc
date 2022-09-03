@@ -7,14 +7,28 @@ using namespace std;
 
 
 
-RareItemSet::RareItemSet(const char* filename, uint8_t episode,
-    uint8_t difficulty, uint8_t secid) {
-  scoped_fd fd(filename, O_RDONLY);
-  size_t offset = (episode * 0x6400) + (difficulty * 0x1900) + (secid * 0x0280);
-  preadx(fd, this, sizeof(*this), offset);
+RareItemSet::RareItemSet(shared_ptr<const string> data) : data(data) {
+  if (this->data->size() != sizeof(Table) * 10 * 4 * 3) {
+    throw runtime_error("data file size is incorrect");
+  }
+  this->tables = reinterpret_cast<const Table*>(this->data->data());
 }
 
-bool sample_rare_item(mt19937& random, uint8_t pc) {
+const RareItemSet::Table& RareItemSet::get_table(
+    uint8_t episode, uint8_t difficulty, uint8_t secid) const {
+  if (episode > 2) {
+    throw logic_error("incorrect episode number");
+  }
+  if (difficulty > 3) {
+    throw logic_error("incorrect difficulty");
+  }
+  if (secid > 10) {
+    throw logic_error("incorrect section id");
+  }
+  return this->tables[(episode * 10 * 4) + (difficulty * 10) + secid];
+}
+
+bool RareItemSet::sample(mt19937& random, uint8_t pc) {
   int8_t shift = ((pc >> 3) & 0x1F) - 4;
   if (shift < 0) {
     shift = 0;

@@ -54,7 +54,6 @@ struct Lobby {
     uint8_t area;
   };
   std::vector<PSOEnemy> enemies;
-  std::shared_ptr<const RareItemSet> rare_item_set;
   std::array<uint32_t, 12> next_item_id;
   uint32_t next_game_item_id;
   PlayerInventoryItem next_drop_item;

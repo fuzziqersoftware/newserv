@@ -15,17 +15,18 @@ using namespace std;
 
 
 
+PatchFileIndex::File::File() : crc32(0) { }
+
 void PatchFileIndex::File::load_data(const string& root_dir) {
   string full_path = root_dir + '/' + join(this->path_directories, "/") + '/' + this->name;
   auto f = fopen_unique(full_path, "rb");
 
-  this->size = 0;
-  this->crc32 = 0;
-  while (!feof(f.get())) {
-    auto& chunk = this->chunks.emplace_back();
-    chunk.data = fread(f.get(), 0x4000);
-    this->size += chunk.data.size();
-    this->crc32 = ::crc32(chunk.data.data(), chunk.data.size(), this->crc32);
+  string file_data = load_file(full_path);
+  this->data.reset(new string(move(file_data)));
+  this->crc32 = ::crc32(this->data->data(), this->data->size());
+  for (size_t x = 0; x < this->data->size(); x += 0x4000) {
+    size_t chunk_bytes = min<size_t>(this->data->size() - x, 0x4000);
+    this->chunk_crcs.emplace_back(::crc32(this->data->data() + x, chunk_bytes));
   }
 }
 
@@ -36,7 +37,8 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
   function<void(const string&)> collect_dir = [&](const string& dir) -> void {
     path_directories.emplace_back(dir);
 
-    string full_dir_path = root_dir + '/' + join(path_directories, "/");
+    string relative_dirs = join(path_directories, "/");
+    string full_dir_path = root_dir + '/' + relative_dirs;
     patch_index_log.info("Listing directory %s", full_dir_path.c_str());
 
     for (const auto& item : list_directory(full_dir_path)) {
@@ -45,7 +47,8 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
         continue;
       }
 
-      string full_item_path = full_dir_path + '/' + item;
+      string relative_item_path = relative_dirs + '/' + item;
+      string full_item_path = root_dir + '/' + relative_item_path;
       if (isdir(full_item_path)) {
         collect_dir(item);
       } else if (isfile(full_item_path)) {
@@ -53,9 +56,10 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
         f->path_directories = path_directories;
         f->name = item;
         f->load_data(root_dir);
-        this->files.emplace_back(f);
+        this->files_by_patch_order.emplace_back(f);
+        this->files_by_name.emplace(relative_item_path, f);
         patch_index_log.info("Added file %s (%zu bytes; %zu chunks; %08" PRIX32 ")",
-            full_item_path.c_str(), f->size, f->chunks.size(), f->crc32);
+            full_item_path.c_str(), f->data->size(), f->chunk_crcs.size(), f->crc32);
       }
     }
 
@@ -63,4 +67,14 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
   };
 
   collect_dir(".");
+}
+
+const vector<shared_ptr<const PatchFileIndex::File>>&
+PatchFileIndex::all_files() const {
+  return this->files_by_patch_order;
+}
+
+shared_ptr<const PatchFileIndex::File> PatchFileIndex::get(
+    const string& filename) const {
+  return this->files_by_name.at(filename);
 }

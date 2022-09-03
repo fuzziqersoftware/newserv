@@ -252,6 +252,9 @@ Specifically:\n\
       session. This is used for regression testing, to make sure client\n\
       sessions are repeatable and code changes don\'t affect existing (working)\n\
       functionality.\n\
+  --extract-gsl=FILENAME\n\
+      This option makes newserv extract all files from a GSL archive and place\n\
+      them in the current directory.\n\
 \n\
 A few options apply to multiple modes described above:\n\
   --parse-data\n\
@@ -268,6 +271,7 @@ enum class Behavior {
   ENCRYPT_DATA,
   DECODE_QUEST_FILE,
   DECODE_SJIS,
+  EXTRACT_GSL,
   REPLAY_LOG,
   CAT_CLIENT,
 };
@@ -289,6 +293,7 @@ int main(int argc, char** argv) {
   bool parse_data = false;
   bool byteswap_data = false;
   const char* replay_log_filename = nullptr;
+  const char* extract_gsl_filename = nullptr;
   const char* replay_required_access_key = "";
   const char* replay_required_password = "";
   struct sockaddr_storage cat_client_remote;
@@ -340,6 +345,9 @@ int main(int argc, char** argv) {
     } else if (!strncmp(argv[x], "--replay-log=", 13)) {
       behavior = Behavior::REPLAY_LOG;
       replay_log_filename = &argv[x][13];
+    } else if (!strncmp(argv[x], "--extract-gsl=", 14)) {
+      behavior = Behavior::EXTRACT_GSL;
+      extract_gsl_filename = &argv[x][14];
     } else if (!strncmp(argv[x], "--require-password=", 19)) {
       replay_required_password = &argv[x][19];
     } else if (!strncmp(argv[x], "--require-access-key=", 21)) {
@@ -438,6 +446,17 @@ int main(int argc, char** argv) {
       break;
     }
 
+    case Behavior::EXTRACT_GSL: {
+      shared_ptr<string> data(new string(load_file(extract_gsl_filename)));
+      GSLArchive gsl(data);
+      for (const auto& entry_it : gsl.all_entries()) {
+        auto e = gsl.get(entry_it.first);
+        save_file(entry_it.first, e.first, e.second);
+        fprintf(stderr, "... %s\n", entry_it.first.c_str());
+      }
+      break;
+    }
+
     case Behavior::CAT_CLIENT: {
       shared_ptr<PSOBBEncryption::KeyFile> key;
       if (cli_version == GameVersion::BB) {
@@ -483,11 +502,42 @@ int main(int argc, char** argv) {
         state->license_manager.reset(new LicenseManager());
       }
 
+      if (isdir("system/patch-pc")) {
+        config_log.info("Indexing PSO PC patch files");
+        state->pc_patch_file_index.reset(new PatchFileIndex("system/patch-pc"));
+      } else {
+        config_log.info("PSO PC patch files not present");
+      }
+      if (isdir("system/patch-bb")) {
+        config_log.info("Indexing PSO BB patch files");
+        state->bb_patch_file_index.reset(new PatchFileIndex("system/patch-bb"));
+        try {
+          auto gsl_file = state->bb_patch_file_index->get("./data/data.gsl");
+          state->bb_data_gsl.reset(new GSLArchive(gsl_file->data));
+          config_log.info("data.gsl found in BB patch files");
+        } catch (const out_of_range&) {
+          config_log.info("data.gsl is not present in BB patch files");
+        }
+      } else {
+        config_log.info("PSO BB patch files not present");
+      }
+
       config_log.info("Loading battle parameters");
-      state->battle_params.reset(new BattleParamsIndex("system/blueburst/BattleParamEntry"));
+      state->battle_params.reset(new BattleParamsIndex(
+          state->load_bb_file("BattleParamEntry_on.dat"),
+          state->load_bb_file("BattleParamEntry_lab_on.dat"),
+          state->load_bb_file("BattleParamEntry_ep4_on.dat"),
+          state->load_bb_file("BattleParamEntry.dat"),
+          state->load_bb_file("BattleParamEntry_lab.dat"),
+          state->load_bb_file("BattleParamEntry_ep4.dat")));
 
       config_log.info("Loading level table");
-      state->level_table.reset(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));
+      state->level_table.reset(new LevelTable(
+          state->load_bb_file("PlyLevelTbl.prs"), true));
+
+      config_log.info("Loading rare table");
+      state->rare_item_set.reset(new RareItemSet(
+          state->load_bb_file("ItemRT.rel")));
 
       config_log.info("Collecting Episode 3 data");
       state->ep3_data_index.reset(new Ep3DataIndex("system/ep3"));
@@ -503,19 +553,6 @@ int main(int argc, char** argv) {
       } else {
         state->function_code_index.reset(new FunctionCodeIndex());
         state->dol_file_index.reset(new DOLFileIndex());
-      }
-
-      if (isdir("system/patch-pc")) {
-        config_log.info("Indexing PSO PC patch files");
-        state->pc_patch_file_index.reset(new PatchFileIndex("system/patch-pc"));
-      } else {
-        config_log.info("PSO PC patch files not present");
-      }
-      if (isdir("system/patch-bb")) {
-        config_log.info("Indexing PSO BB patch files");
-        state->bb_patch_file_index.reset(new PatchFileIndex("system/patch-bb"));
-      } else {
-        config_log.info("PSO BB patch files not present");
       }
 
       config_log.info("Creating menus");

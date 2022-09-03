@@ -61,7 +61,7 @@ Server commands:\n\
   exit (or ctrl+d)\n\
     Shut down the server.\n\
   reload <item> ...\n\
-    Reload data. <item> can be licenses, battle-params, level-table, or quests.\n\
+    Reload data. <item> can be licenses or quests.\n\
     Reloading will not affect items that are in use; for example, if a client\'s\n\
     license is deleted by reloading, they will not be disconnected immediately.\n\
   add-license <parameters>\n\
@@ -162,12 +162,6 @@ Proxy commands (these will only work when exactly one client is connected):\n\
       if (type == "licenses") {
         shared_ptr<LicenseManager> lm(new LicenseManager("system/licenses.nsi"));
         this->state->license_manager = lm;
-      } else if (type == "battle-params") {
-        shared_ptr<BattleParamsIndex> bpt(new BattleParamsIndex("system/blueburst/BattleParamEntry"));
-        this->state->battle_params = bpt;
-      } else if (type == "level-table") {
-        shared_ptr<LevelTable> lt(new LevelTable("system/blueburst/PlyLevelTbl.prs", true));
-        this->state->level_table = lt;
       } else if (type == "quests") {
         shared_ptr<QuestIndex> qi(new QuestIndex("system/quests"));
         this->state->quest_index = qi;

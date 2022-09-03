@@ -3,14 +3,17 @@
 #include <inttypes.h>
 
 #include <phosg/Encoding.hh>
-#include <vector>
+#include <random>
 #include <string>
+#include <vector>
 
 #include "Text.hh"
 
 
 
-struct BattleParams {
+class BattleParamsIndex {
+public:
+  struct Entry {
     le_uint16_t atp; // attack power
     le_uint16_t psv; // perseverance (intelligence?)
     le_uint16_t evp; // evasion
@@ -22,22 +25,31 @@ struct BattleParams {
     uint8_t unknown_a1[0x0C];
     le_uint32_t experience;
     le_uint32_t difficulty;
-} __attribute__((packed));
+  } __attribute__((packed));
 
-class BattleParamsIndex {
-public:
-  using TableT = parray<BattleParams, 0x60>;
+  struct Table {
+    parray<parray<Entry, 0x60>, 4> difficulty;
+  } __attribute__((packed));
 
-  BattleParamsIndex(const char* filename_prefix);
+  BattleParamsIndex(
+      std::shared_ptr<const std::string> data_on_ep1, // BattleParamEntry_on.dat
+      std::shared_ptr<const std::string> data_on_ep2, // BattleParamEntry_lab_on.dat
+      std::shared_ptr<const std::string> data_on_ep4, // BattleParamEntry_ep4_on.dat
+      std::shared_ptr<const std::string> data_off_ep1, // BattleParamEntry.dat
+      std::shared_ptr<const std::string> data_off_ep2, // BattleParamEntry_lab.dat
+      std::shared_ptr<const std::string> data_off_ep4); // BattleParamEntry_ep4.dat
 
-  const BattleParams& get(bool solo, uint8_t episode, uint8_t difficulty,
+  const Entry& get(bool solo, uint8_t episode, uint8_t difficulty,
       uint8_t monster_type) const;
-  std::shared_ptr<const TableT> get_subtable(
-      bool solo, uint8_t episode, uint8_t difficulty) const;
 
 private:
-  // online/offline, episode, difficulty
-  std::shared_ptr<TableT> entries[2][3][4];
+  struct LoadedFile {
+    std::shared_ptr<const std::string> data;
+    const Table* table;
+  };
+
+  // online/offline, episode
+  LoadedFile files[2][3];
 };
 
 
@@ -57,9 +69,51 @@ struct PSOEnemy {
 } __attribute__((packed));
 
 std::vector<PSOEnemy> parse_map(
+    std::shared_ptr<const BattleParamsIndex> battle_params,
+    bool is_solo,
     uint8_t episode,
     uint8_t difficulty,
-    std::shared_ptr<const BattleParamsIndex::TableT> battle_params,
-    const void* data,
-    size_t size,
+    std::shared_ptr<const std::string> data,
     bool alt_enemies);
+
+
+
+// TODO: This class is currently unused. It would be nice if we could use this
+// to generate variations and link to the corresponding map filenames, but it
+// seems that SetDataTable.rel files link to map filenames that don't actually
+// exist in some cases, so we can't just directly use this data structure.
+class SetDataTable {
+public:
+  struct SetEntry {
+    std::string name1;
+    std::string enemy_list_basename;
+    std::string name3;
+  };
+
+  SetDataTable(std::shared_ptr<const std::string> data, bool big_endian);
+
+  inline const std::vector<std::vector<std::vector<SetEntry>>> get() const {
+    return this->entries;
+  }
+
+  void print(FILE* stream) const;
+
+private:
+  template <typename U32T>
+  void load_table_t(std::shared_ptr<const std::string> data);
+
+  // Indexes are [area_id][variation1][variation2]
+  // area_id is cumulative per episode, so Ep2 starts at area_id=18.
+  std::vector<std::vector<std::vector<SetEntry>>> entries;
+};
+
+
+
+void generate_variations(
+    parray<le_uint32_t, 0x20>& variations,
+    std::shared_ptr<std::mt19937> random,
+    uint8_t episode,
+    bool is_solo);
+std::vector<std::string> map_filenames_for_variation(
+    uint8_t episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2);
+void load_map_files();

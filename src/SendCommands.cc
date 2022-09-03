@@ -466,20 +466,22 @@ void send_enter_directory_patch(shared_ptr<Client> c, const string& dir) {
 }
 
 void send_patch_file(shared_ptr<Client> c, shared_ptr<const PatchFileIndex::File> f) {
-  S_OpenFile_Patch_06 open_cmd = {0, f->size, f->name};
+  S_OpenFile_Patch_06 open_cmd = {0, f->data->size(), f->name};
   send_command_t(c, 0x06, 0x00, open_cmd);
 
-  for (size_t x = 0; x < f->chunks.size(); x++) {
-    const auto& chunk = f->chunks[x];
-
+  for (size_t x = 0; x < f->chunk_crcs.size(); x++) {
     // TODO: The use of StringWriter here is... unfortunate. Write a version of
     // Channel::send that takes iovecs or something to avoid these dumb massive
     // string copies.
     StringWriter w;
+    size_t chunk_size = min<uint32_t>(f->data->size() - x * 0x4000, 0x4000);
     S_WriteFileHeader_Patch_07 write_cmd_header = {
-        x, chunk.crc32, chunk.data.size()};
+        x, f->chunk_crcs[x], chunk_size};
     w.put(write_cmd_header);
-    w.write(chunk.data);
+    w.write(f->data->data() + x * 0x4000, chunk_size);
+    while (w.size() & 7) {
+      w.put_u8(0);
+    }
     send_command(c, 0x07, 0x00, w.str());
   }
 

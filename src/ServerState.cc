@@ -5,8 +5,9 @@
 #include <memory>
 #include <phosg/Network.hh>
 
-#include "Loggers.hh"
+#include "FileContentsCache.hh"
 #include "IPStackSimulator.hh"
+#include "Loggers.hh"
 #include "NetworkAddresses.hh"
 #include "SendCommands.hh"
 #include "Text.hh"
@@ -422,4 +423,65 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   try {
     this->bb_patch_server_message = decode_sjis(d.at("BBPatchServerMessage")->as_string());
   } catch (const out_of_range&) { }
+}
+
+
+
+shared_ptr<const string> ServerState::load_bb_file(
+    const std::string& patch_index_filename,
+    const std::string& gsl_filename,
+    const std::string& bb_directory_filename) const {
+
+  if (this->bb_patch_file_index) {
+    // First, look in the patch tree's data directory
+    string patch_index_path = "./data/" + patch_index_filename;
+    try {
+      auto ret = this->bb_patch_file_index->get(patch_index_path)->data;
+      static_game_data_log.info("Loaded %s from file in BB patch tree", patch_index_path.c_str());
+      return ret;
+    } catch (const out_of_range&) {
+      static_game_data_log.info("%s missing from BB patch tree", patch_index_path.c_str());
+    }
+  }
+
+  if (this->bb_data_gsl) {
+    // Second, look in the patch tree's data.gsl file
+    const string& effective_gsl_filename = gsl_filename.empty() ? patch_index_filename : gsl_filename;
+    try {
+      // TODO: It's kinda not great that we copy the data here; find a way to
+      // avoid doing this (also in the below case)
+      shared_ptr<string> ret(new string(this->bb_data_gsl->get_copy(effective_gsl_filename)));
+      static_game_data_log.info("Loaded %s from data.gsl in BB patch tree", effective_gsl_filename.c_str());
+      return ret;
+    } catch (const out_of_range&) {
+      static_game_data_log.info("%s missing from data.gsl in BB patch tree", effective_gsl_filename.c_str());
+    }
+
+    // Third, look in data.gsl without the filename extension
+    size_t dot_offset = effective_gsl_filename.rfind('.');
+    if (dot_offset != string::npos) {
+      string no_ext_gsl_filename = effective_gsl_filename.substr(0, dot_offset);
+      try {
+        shared_ptr<string> ret(new string(this->bb_data_gsl->get_copy(no_ext_gsl_filename)));
+        static_game_data_log.info("Loaded %s from data.gsl in BB patch tree", no_ext_gsl_filename.c_str());
+        return ret;
+      } catch (const out_of_range&) {
+        static_game_data_log.info("%s missing from data.gsl in BB patch tree", no_ext_gsl_filename.c_str());
+      }
+    }
+  }
+
+  // Finally, look in system/blueburst
+  const string& effective_bb_directory_filename = bb_directory_filename.empty() ? patch_index_filename : bb_directory_filename;
+  static FileContentsCache cache(60 * 60 * 1000 * 1000); // 1 hour
+  try {
+    auto ret = cache.get_or_load("system/blueburst/" + effective_bb_directory_filename);
+    static_game_data_log.info("Loaded %s", effective_bb_directory_filename.c_str());
+    // TODO: It's also not great that we copy the data here... sigh
+    return shared_ptr<string>(new string(ret.file->data));
+  } catch (const exception& e) {
+    static_game_data_log.info("%s missing from system/blueburst", effective_bb_directory_filename.c_str());
+    static_game_data_log.error("%s not found in any source", patch_index_filename.c_str());
+    throw cannot_open_file(patch_index_filename);
+  }
 }

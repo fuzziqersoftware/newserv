@@ -11,6 +11,7 @@
 
 #include "Client.hh"
 #include "FunctionCompiler.hh"
+#include "GSLArchive.hh"
 #include "Items.hh"
 #include "LevelTable.hh"
 #include "License.hh"
@@ -59,6 +60,8 @@ struct ServerState {
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamsIndex> battle_params;
   std::shared_ptr<const CommonItemData> common_item_data;
+  std::shared_ptr<const GSLArchive> bb_data_gsl;
+  std::shared_ptr<const RareItemSet> rare_item_set;
 
   std::shared_ptr<LicenseManager> license_manager;
 
@@ -128,4 +131,9 @@ struct ServerState {
     const std::vector<PortConfiguration>& port_configs);
 
   void create_menus(std::shared_ptr<const JSONObject> config_json);
+
+  std::shared_ptr<const std::string> load_bb_file(
+      const std::string& patch_index_filename,
+      const std::string& gsl_filename = "",
+      const std::string& bb_directory_filename = "") const;
 };

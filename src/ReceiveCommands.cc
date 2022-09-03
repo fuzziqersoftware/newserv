@@ -2185,62 +2185,66 @@ static shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
   game->min_level = min_level;
   game->max_level = 0xFFFFFFFF;
 
-  if (game->version == GameVersion::BB) {
-    // TODO: Cache these somewhere so we don't read the file every time
-    game->rare_item_set.reset(new RareItemSet("system/blueburst/ItemRT.rel",
-        game->episode - 1, game->difficulty, game->section_id));
+  bool is_solo = (game->flags & Lobby::Flag::SOLO_MODE);
 
+  // Generate the map variations
+  if (is_ep3) {
+    game->variations.clear(0);
+  } else {
+    generate_variations(game->variations, game->random, game->episode, is_solo);
+  }
+
+  if (game->version == GameVersion::BB) {
     for (size_t x = 0; x < 4; x++) {
       game->next_item_id[x] = (0x00200000 * x) + 0x00010000;
     }
     game->next_game_item_id = 0x00810000;
 
-    bool is_solo = (game->flags & Lobby::Flag::SOLO_MODE);
-    auto bp_subtable = s->battle_params->get_subtable(
-        is_solo, game->episode - 1, game->difficulty);
+    for (size_t area = 0; area < 0x10; area++) {
+      auto filenames = map_filenames_for_variation(
+          game->episode,
+          is_solo,
+          area,
+          game->variations[area * 2],
+          game->variations[area * 2 + 1]);
 
-    generate_variations(game->variations, game->random, game->episode, is_solo);
-
-    for (size_t x = 0; x < 0x10; x++) {
-      try {
-        auto file = map_data_for_variation(
-            game->episode,
-            is_solo,
-            x,
-            game->variations[x * 2 + 0],
-            game->variations[x * 2 + 1]);
-        auto area_enemies = parse_map(
-            game->episode,
-            game->difficulty,
-            bp_subtable,
-            file->data.data(),
-            file->data.size(),
-            false);
-        game->enemies.insert(
-            game->enemies.end(),
-            area_enemies.begin(),
-            area_enemies.end());
-        c->log.info("Loaded map for area %zu (%zu entries)", x, area_enemies.size());
-        for (size_t z = 0; z < area_enemies.size(); z++) {
-          string e_str = area_enemies[z].str();
-          static_game_data_log.info("(Entry %zu) %s", z, e_str.c_str());
+      if (filenames.empty()) {
+        c->log.info("[Map/%zu] No file to load", area);
+        continue;
+      }
+      bool any_map_loaded = false;
+      for (const string& filename : filenames) {
+        try {
+          auto map_data = s->load_bb_file(filename, "", "map/" + filename);
+          std::vector<PSOEnemy> area_enemies = parse_map(
+              s->battle_params,
+              is_solo,
+              game->episode,
+              game->difficulty,
+              map_data,
+              false);
+          game->enemies.insert(
+              game->enemies.end(),
+              area_enemies.begin(),
+              area_enemies.end());
+          c->log.info("[Map/%zu] Loaded %s (%zu entries)",
+              area, filename.c_str(), area_enemies.size());
+          for (size_t z = 0; z < area_enemies.size(); z++) {
+            string e_str = area_enemies[z].str();
+            static_game_data_log.info("(Entry %zX) %s", z, e_str.c_str());
+          }
+          any_map_loaded = true;
+          break;
+        } catch (const exception& e) {
+          c->log.info("[Map/%zu] Failed to load %s: %s", area, filename.c_str(), e.what());
         }
-      } catch (const exception& e) {
-        c->log.warning("Failed to load map for area %zu: %s", x, e.what());
+      }
+      if (!any_map_loaded) {
+        throw runtime_error(string_printf("no maps loaded for area %zu", area));
       }
     }
 
-    if (game->enemies.empty()) {
-      throw runtime_error("failed to load any map data");
-    }
     c->log.info("Loaded maps contain %zu entries overall", game->enemies.size());
-
-  } else if (is_ep3) {
-    game->variations.clear(0);
-
-  } else {
-    // In non-BB non-Ep3 games, just set the variations (we don't track enemies)
-    generate_variations(game->variations, game->random, game->episode, false);
   }
 
   s->change_client_lobby(c, game);
@@ -2547,7 +2551,7 @@ static void on_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
     send_command(c, 0x0B, 0x00); // Start patch session; go to root directory
 
     vector<string> path_directories;
-    for (const auto& file : index->files) {
+    for (const auto& file : index->all_files()) {
       change_to_directory_patch(c, path_directories, file->path_directories);
 
       S_FileChecksumRequest_Patch_0C req = {
@@ -2590,8 +2594,12 @@ static void on_checksums_done_patch(shared_ptr<ServerState>,
       throw runtime_error("client did not respond to checksum request");
     }
     if (req.needs_update()) {
-      start_cmd.total_bytes += req.file->size;
+      c->log.info("File %s needs update (CRC: %08" PRIX32 "/%08" PRIX32 ", size: %zu/%" PRIu32 ")",
+          req.file->name.c_str(), req.file->crc32, req.crc32, req.file->data->size(), req.size);
+      start_cmd.total_bytes += req.file->data->size();
       start_cmd.num_files++;
+    } else {
+      c->log.info("File %s is up to date", req.file->name.c_str());
     }
   }
 
