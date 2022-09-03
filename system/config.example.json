@@ -230,8 +230,8 @@
   // that PSO PC displays the text in a Windows edit control instead of using
   // PSO's normal text renderer, so linebreaks must be \r\n and color escapes
   // (e.g. $C6) do not work in PCPatchServerMessage.
-  "PCPatchServerMessage": "$C7newserv patch server\n\nThis server is not affiliated with, sponsored by, or in any\nother way connected to SEGA or Sonic Team, and is owned\nand operated completely independently.",
-  "BBPatchServerMessage": "newserv patch server\r\n\r\nThis server is not affiliated with, sponsored by, or in any other way connected to SEGA or Sonic Team, and is owned and operated completely independently.",
+  "PCPatchServerMessage": "newserv patch server\r\n\r\nThis server is not affiliated with, sponsored by, or in any other way connected to SEGA or Sonic Team, and is owned and operated completely independently.",
+  "BBPatchServerMessage": "$C7newserv patch server\n\nThis server is not affiliated with, sponsored by, or in any\nother way connected to SEGA or Sonic Team, and is owned\nand operated completely independently.",
 
   // Default lobby event. If set, this sets the holiday event in all lobbies at
   // server start time, as well as the pre-lobby holiday event. The event can be
