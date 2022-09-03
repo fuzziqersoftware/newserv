@@ -31187,7 +31187,7 @@ I 80350 2022-07-07 23:27:19 - [Commands] Received from C-8 (NO DATA) (version=BB
 0000 | 20 00 A0 00 00 00 00 00 00 00 01 00 5B 30 B0 21 |             [0 !
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 I 80350 2022-07-07 23:27:19 - [Commands] Sending to C-8 (NO DATA) (version=BB command=0069 flag=00000000)
-0000 | 0C 00 69 00 00 00 00 00 00 00 00 00             |   i             
+0000 | 0C 00 69 00 00 00 00 00 00 00 01 00             |   i             
 I 80350 2022-07-07 23:27:19 - [Commands] Sending to C-8 (NO DATA) (version=BB command=001A flag=00000000)
 0000 | 0C 00 D5 00 00 00 00 00 00 00 00 00             |                 
 I 80350 2022-07-07 23:27:19 - [Commands] Sending to C-8 (NO DATA) (version=BB command=0019 flag=00000000)
@@ -33757,7 +33757,7 @@ I 80350 2022-07-07 23:29:17 - [Commands] Received from C-A (NO DATA) (version=BB
 0000 | 20 00 A0 00 00 00 00 00 00 00 01 00 5B 30 B0 21 |             [0 !
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 I 80350 2022-07-07 23:29:17 - [Commands] Sending to C-A (NO DATA) (version=BB command=0069 flag=00000000)
-0000 | 0C 00 69 00 00 00 00 00 00 00 00 00             |   i             
+0000 | 0C 00 69 00 00 00 00 00 00 00 01 00             |   i             
 I 80350 2022-07-07 23:29:17 - [Commands] Sending to C-A (NO DATA) (version=BB command=001A flag=00000000)
 0000 | 0C 00 D5 00 00 00 00 00 00 00 00 00             |                 
 I 80350 2022-07-07 23:29:17 - [Commands] Sending to C-A (NO DATA) (version=BB command=0019 flag=00000000)

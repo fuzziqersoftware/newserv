@@ -39,10 +39,14 @@ const unordered_set<uint32_t> v2_crypt_initial_client_commands({
 });
 const unordered_set<uint32_t> v3_crypt_initial_client_commands({
   0x00E000DB, // (17) GC/XB license check
-  0x00EC019E, // (02) GC login
-  0x0150019E, // (02) GC extended login
-  0x0130019E, // (02) XB login
-  0x0194019E, // (02) XB extended login
+  0x00EC009E, // (02) GC login
+  0x00EC019E, // (02) GC login (UDP off)
+  0x0150009E, // (02) GC extended login
+  0x0150019E, // (02) GC extended login (UDP off)
+  0x0130009E, // (02) XB login
+  0x0130019E, // (02) XB login (UDP off)
+  0x0194009E, // (02) XB extended login
+  0x0194019E, // (02) XB extended login (UDP off)
 });
 
 
@@ -1229,12 +1233,12 @@ void send_player_join_notification(shared_ptr<Client> c,
 }
 
 void send_player_leave_notification(shared_ptr<Lobby> l, uint8_t leaving_client_id) {
-  S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_client_id, l->leader_id, 0};
+  S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_client_id, l->leader_id, 1, 0};
   send_command_t(l, l->is_game() ? 0x66 : 0x69, leaving_client_id, cmd);
 }
 
 void send_self_leave_notification(shared_ptr<Client> c) {
-  S_LeaveLobby_66_69_Ep3_E9 cmd = {c->lobby_client_id, 0, 0};
+  S_LeaveLobby_66_69_Ep3_E9 cmd = {c->lobby_client_id, 0, 1, 0};
   send_command_t(c, 0x69, c->lobby_client_id, cmd);
 }
 

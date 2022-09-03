@@ -672,7 +672,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     }
     uint8_t leaving_id = x;
     uint8_t leader_id = this->lobby_client_id;
-    S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_id, leader_id, 0};
+    S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_id, leader_id, 1, 0};
     this->client_channel.send(0x69, leaving_id, &cmd, sizeof(cmd));
   }
 

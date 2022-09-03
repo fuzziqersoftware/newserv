@@ -520,7 +520,7 @@ I 69775 2022-08-27 09:37:06 - [Commands] Received from C-3 (Tali) (version=DC co
 0000 | A0 00 1C 00 00 00 01 00 77 77 77 77 00 00 00 00 |         wwww    
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00             |                 
 I 69775 2022-08-27 09:37:06 - [Commands] Sending to C-3 (Tali) (version=DC command=69 flag=00)
-0000 | 69 00 08 00 00 00 00 00                         | i               
+0000 | 69 00 08 00 00 00 01 00                         | i               
 I 69775 2022-08-27 09:37:06 - [Commands] Sending to C-3 (Tali) (version=DC command=1A flag=00)
 0000 | 1A 00 08 00 00 00 00 00                         |                 
 I 69775 2022-08-27 09:37:06 - [Commands] Sending to C-3 (Tali) (version=DC command=19 flag=00)
@@ -1612,7 +1612,7 @@ I 69775 2022-08-27 09:38:58 - [Commands] Received from C-5 (Tali) (version=DC co
 0000 | A1 00 1C 00 00 00 01 00 77 77 77 77 00 00 00 00 |         wwww    
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00             |                 
 I 69775 2022-08-27 09:38:58 - [Commands] Sending to C-5 (Tali) (version=DC command=69 flag=00)
-0000 | 69 00 08 00 00 00 00 00                         | i               
+0000 | 69 00 08 00 00 00 01 00                         | i               
 I 69775 2022-08-27 09:38:58 - [Commands] Sending to C-5 (Tali) (version=DC command=1A flag=00)
 0000 | 1A 00 08 00 00 00 00 00                         |                 
 I 69775 2022-08-27 09:38:58 - [Commands] Sending to C-5 (Tali) (version=DC command=19 flag=00)

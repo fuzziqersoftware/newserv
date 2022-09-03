@@ -927,6 +927,7 @@ struct S_JoinGame {
   // Note: The 64 command for PSO DC ends here (the next 4 fields are ignored).
   // newserv sends them anyway for code simplicity reasons.
   uint8_t episode;
+  // Similarly, PSO GC ignores the values in the following fields.
   uint8_t unused2; // Should be 1 for PSO PC?
   uint8_t solo_mode;
   uint8_t unused3;
@@ -1018,7 +1019,9 @@ struct S_JoinLobby_XB_65_67_68 {
 struct S_LeaveLobby_66_69_Ep3_E9 {
   uint8_t client_id;
   uint8_t leader_id;
-  le_uint16_t unused;
+  // Note: disable_udp only has an effect for games; it is unused for lobbies.
+  uint8_t disable_udp;
+  uint8_t unused;
 };
 
 // 67 (S->C): Join lobby
@@ -1448,6 +1451,7 @@ struct C_LoginExtended_PC_9D : C_Login_DC_PC_GC_9D {
 // Not used on GC Episodes 1&2 Trial Edition.
 // The extended version of this command is used in the same circumstances as
 // when PSO PC uses the extended version of the 9D command.
+// header.flag is 1 if the client has UDP disabled.
 
 struct C_Login_GC_9E : C_Login_DC_PC_GC_9D {
   union ClientConfigFields {
