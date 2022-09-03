@@ -71,7 +71,7 @@ Client::Client(
 
 void Client::set_license(shared_ptr<const License> l) {
   this->license = l;
-  this->game_data.serial_number = this->license->serial_number;
+  this->game_data.guild_card_number = this->license->serial_number;
   if (this->version() == GameVersion::BB) {
     this->game_data.bb_username = this->license->username;
   }

@@ -318,9 +318,8 @@ static void on_subcommand_create_inventory_item(shared_ptr<ServerState>,
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     PlayerInventoryItem item;
-    item.equip_flags = 0; // TODO: Use the right default flags here
-    item.tech_flag = 0;
-    item.game_flags = 0;
+    item.present = 1;
+    item.flags = 0;
     item.data = cmd->item;
     c->game_data.player()->add_item(item);
 
@@ -350,9 +349,8 @@ static void on_subcommand_drop_partial_stack(shared_ptr<ServerState>,
     // TODO: Should we delete anything from the inventory here? Does the client
     // send an appropriate 6x29 alongside this?
     PlayerInventoryItem item;
-    item.equip_flags = 0; // TODO: Use the right default flags here
-    item.tech_flag = 0;
-    item.game_flags = 0;
+    item.present = 1;
+    item.flags = 0;
     item.data = cmd->data;
     l->add_item(item, cmd->area, cmd->x, cmd->z);
 
@@ -419,9 +417,8 @@ static void on_subcommand_buy_shop_item(shared_ptr<ServerState>,
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     PlayerInventoryItem item;
-    item.equip_flags = 0; // TODO: Use the right default flags here
-    item.tech_flag = 0;
-    item.game_flags = 0;
+    item.present = 1;
+    item.flags = 0;
     item.data = cmd->item;
     c->game_data.player()->add_item(item);
 
@@ -447,9 +444,8 @@ static void on_subcommand_box_or_enemy_item_drop(shared_ptr<ServerState>,
   }
 
   PlayerInventoryItem item;
-  item.equip_flags = 0; // TODO: Use the right default flags here
-  item.tech_flag = 0;
-  item.game_flags = 0;
+  item.present = 1;
+  item.flags = 0;
   item.data = cmd->data;
   l->add_item(item, cmd->area, cmd->x, cmd->z);
 
@@ -526,10 +522,10 @@ static void on_subcommand_equip_unequip_item(shared_ptr<ServerState>,
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     size_t index = c->game_data.player()->inventory.find_item(cmd->item_id);
-    if (cmd->command == 0x25) {
-      c->game_data.player()->inventory.items[index].equip_flags |= 0x00000008; // equip
-    } else {
-      c->game_data.player()->inventory.items[index].equip_flags &= 0xFFFFFFF7; // unequip
+    if (cmd->command == 0x25) { // equip
+      c->game_data.player()->inventory.items[index].flags |= 0x00000008;
+    } else { // unequip
+      c->game_data.player()->inventory.items[index].flags &= 0xFFFFFFF7;
     }
   } else if (l->version == GameVersion::BB) {
     throw logic_error("item tracking not enabled in BB game");

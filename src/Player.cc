@@ -524,7 +524,7 @@ PlayerBB ClientGameData::export_player_bb() {
   ret.option_flags = account->option_flags;
   ret.quest_data1 = player->quest_data1;
   ret.bank = player->bank;
-  ret.serial_number = this->serial_number;
+  ret.guild_card_number = this->guild_card_number;
   ret.name = player->disp.name;
   ret.team_name = account->team_name;
   ret.guild_card_description = player->guild_card_description;
@@ -657,14 +657,11 @@ PlayerInventoryItem::PlayerInventoryItem() {
 }
 
 PlayerInventoryItem::PlayerInventoryItem(const PlayerBankItem& src)
-  : tech_flag(0x0001), data(src.data) {
-  this->equip_flags = (this->data.data1[0] > 2) ? 0x0044 : 0x0050;
-}
+  : present(1), flags(0), data(src.data) { }
 
 void PlayerInventoryItem::clear() {
-  this->equip_flags = 0x0000;
-  this->tech_flag = 0x0000;
-  this->game_flags = 0x00000000;
+  this->present = 0x00000000;
+  this->flags = 0x00000000;
   this->data.clear();
 }
 

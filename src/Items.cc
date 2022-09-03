@@ -156,7 +156,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
   // ssize_t equipped_shield = -1;
   // ssize_t equipped_mag = -1;
   for (size_t y = 0; y < c->game_data.player()->inventory.num_items; y++) {
-    if (c->game_data.player()->inventory.items[y].equip_flags & 0x0008) {
+    if (c->game_data.player()->inventory.items[y].flags & 0x00000008) {
       if (c->game_data.player()->inventory.items[y].data.data1[0] == 0) {
         equipped_weapon = y;
       }

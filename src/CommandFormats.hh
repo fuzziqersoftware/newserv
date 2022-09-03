@@ -3252,6 +3252,7 @@ struct G_ShopContents_BB_6xB6 {
   uint8_t shop_type;
   uint8_t num_items;
   le_uint16_t unused;
+  // Note: data2d of these entries should be the price
   ItemData entries[20];
 };
 

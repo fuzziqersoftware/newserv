@@ -1476,7 +1476,7 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
   PlayerStats stats = c->game_data.player()->disp.stats;
 
   for (size_t x = 0; x < c->game_data.player()->inventory.num_items; x++) {
-    if ((c->game_data.player()->inventory.items[x].equip_flags & 0x08) &&
+    if ((c->game_data.player()->inventory.items[x].flags & 0x08) &&
         (c->game_data.player()->inventory.items[x].data.data1[0] == 0x02)) {
       stats.dfp += (c->game_data.player()->inventory.items[x].data.data1w[2] / 100);
       stats.atp += (c->game_data.player()->inventory.items[x].data.data1w[3] / 50);

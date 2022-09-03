@@ -11,7 +11,6 @@ using namespace std;
 
 
 LevelTable::LevelTable(const string& filename, bool compressed) {
-
   string data = load_file(filename);
   if (compressed) {
     data = prs_decompress(data);
@@ -31,7 +30,7 @@ const PlayerStats& LevelTable::base_stats_for_class(uint8_t char_class) const {
   return this->base_stats[char_class];
 }
 
- const LevelStats& LevelTable::stats_for_level(uint8_t char_class,
+const LevelTable::LevelStats& LevelTable::stats_for_level(uint8_t char_class,
     uint8_t level) const {
   if (char_class >= 12) {
     throw invalid_argument("invalid character class");
@@ -42,12 +41,12 @@ const PlayerStats& LevelTable::base_stats_for_class(uint8_t char_class) const {
   return this->levels[char_class][level];
 }
 
-// Levels up a character by adding the level-up bonuses to the player's stats.
-void LevelStats::apply(PlayerStats& ps) const {
+void LevelTable::LevelStats::apply(PlayerStats& ps) const {
   ps.ata += this->ata;
   ps.atp += this->atp;
   ps.dfp += this->dfp;
   ps.evp += this->evp;
   ps.hp += this->hp;
   ps.mst += this->mst;
+  ps.lck += this->lck;
 }

@@ -1723,7 +1723,7 @@ static void on_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Cli
     }
 
     ClientGameData temp_gd;
-    temp_gd.serial_number = c->license->serial_number;
+    temp_gd.guild_card_number = c->license->serial_number;
     temp_gd.bb_username = c->license->username;
     temp_gd.bb_player_index = cmd.player_index;
 

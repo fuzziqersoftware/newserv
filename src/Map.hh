@@ -18,7 +18,8 @@ struct BattleParams {
     le_uint16_t dfp; // defense
     le_uint16_t ata; // accuracy
     le_uint16_t lck; // luck
-    uint8_t unknown_a1[0x0E];
+    le_uint16_t esp; // ???
+    uint8_t unknown_a1[0x0C];
     le_uint32_t experience;
     le_uint32_t difficulty;
 } __attribute__((packed));

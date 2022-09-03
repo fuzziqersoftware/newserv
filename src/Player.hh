@@ -36,9 +36,8 @@ struct ItemData { // 0x14 bytes
 struct PlayerBankItem;
 
 struct PlayerInventoryItem { // 0x1C bytes
-  le_uint16_t equip_flags;
-  le_uint16_t tech_flag;
-  le_uint32_t game_flags;
+  le_uint32_t present;
+  le_uint32_t flags; // 8 = equipped
   ItemData data;
 
   PlayerInventoryItem();
@@ -68,7 +67,7 @@ struct PlayerInventory { // 0x34C bytes
   size_t find_item(uint32_t item_id);
 } __attribute__((packed));
 
-struct PlayerBank { // 0xFA8 bytes
+struct PlayerBank { // 0x12C8 bytes
   le_uint32_t num_items;
   le_uint32_t meseta;
   PlayerBankItem items[200];
@@ -176,7 +175,7 @@ struct PlayerDispDataBB {
   le_uint32_t meseta;
   ptext<char, 0x10> guild_card;
   uint64_t unknown_a2;
-  le_uint32_t name_color;
+  le_uint32_t name_color; // ARGB8888
   uint8_t extra_model;
   parray<uint8_t, 0x0F> unused;
   le_uint32_t name_color_checksum;
@@ -195,7 +194,9 @@ struct PlayerDispDataBB {
   le_uint16_t hair_b;
   le_float proportion_x;
   le_float proportion_y;
-  ptext<char16_t, 0x10> name;
+  ptext<char16_t, 0x0C> name;
+  le_uint32_t play_time;
+  uint32_t unknown_a3;
   parray<uint8_t, 0xE8> config;
   parray<uint8_t, 0x14> technique_levels;
 
@@ -262,7 +263,7 @@ struct KeyAndTeamConfigBB {
   parray<uint8_t, 0x0114> unknown_a1;      // 0000
   parray<uint8_t, 0x016C> key_config;      // 0114
   parray<uint8_t, 0x0038> joystick_config; // 0280
-  le_uint32_t serial_number;               // 02B8
+  le_uint32_t guild_card_number;           // 02B8
   le_uint32_t team_id;                     // 02BC
   le_uint64_t team_info;                   // 02C0
   le_uint16_t team_privilege_level;        // 02C8
@@ -413,31 +414,31 @@ struct PSOPlayerDataBB { // For command 61
 } __attribute__((packed));
 
 struct PlayerBB { // Used in 00E7 command
-  PlayerInventory inventory;                    // player
-  PlayerDispDataBB disp;                        // player
-  parray<uint8_t, 0x0010> unknown;              // not saved
-  le_uint32_t option_flags;                     // account
-  parray<uint8_t, 0x0208> quest_data1;          // player
-  PlayerBank bank;                              // player
-  le_uint32_t serial_number;                    // player
-  ptext<char16_t, 0x18> name;                   // player
-  ptext<char16_t, 0x10> team_name;              // player
-  ptext<char16_t, 0x58> guild_card_description; // player
-  uint8_t reserved1;                            // player
-  uint8_t reserved2;                            // player
-  uint8_t section_id;                           // player
-  uint8_t char_class;                           // player
-  le_uint32_t unknown3;                         // not saved
-  parray<uint8_t, 0x04E0> symbol_chats;         // account
-  parray<uint8_t, 0x0A40> shortcuts;            // account
-  ptext<char16_t, 0x00AC> auto_reply;           // player
-  ptext<char16_t, 0x00AC> info_board;           // player
-  parray<uint8_t, 0x001C> unknown5;             // not saved
-  parray<uint8_t, 0x0140> challenge_data;       // player
-  parray<uint8_t, 0x0028> tech_menu_config;     // player
-  parray<uint8_t, 0x002C> unknown6;             // not saved
-  parray<uint8_t, 0x0058> quest_data2;          // player
-  KeyAndTeamConfigBB key_config;                // account
+  PlayerInventory inventory;                    // 0000-034C; player
+  PlayerDispDataBB disp;                        // 034C-04DC; player
+  parray<uint8_t, 0x0010> unknown;              // 04DC-04EC; not saved
+  le_uint32_t option_flags;                     // 04EC-04F0; account
+  parray<uint8_t, 0x0208> quest_data1;          // 04F0-06F8; player
+  PlayerBank bank;                              // 06F8-19C0; player
+  le_uint32_t guild_card_number;                // 19C0-19C4; player
+  ptext<char16_t, 0x18> name;                   // 19C4-19F4; player
+  ptext<char16_t, 0x10> team_name;              // 19F4-1A14; player
+  ptext<char16_t, 0x58> guild_card_description; // 1A14-1AC4; player
+  uint8_t reserved1;                            // 1AC4-1AC5; player
+  uint8_t reserved2;                            // 1AC5-1AC6; player
+  uint8_t section_id;                           // 1AC6-1AC7; player
+  uint8_t char_class;                           // 1AC7-1AC8; player
+  le_uint32_t unknown3;                         // 1AC8-1ACC; not saved
+  parray<uint8_t, 0x04E0> symbol_chats;         // 1ACC-1FAC; account
+  parray<uint8_t, 0x0A40> shortcuts;            // 1FAC-29EC; account
+  ptext<char16_t, 0x00AC> auto_reply;           // 29EC-2B44; player
+  ptext<char16_t, 0x00AC> info_board;           // 2B44-2C9C; player
+  parray<uint8_t, 0x001C> unknown5;             // 2C9C-2CB8; not saved
+  parray<uint8_t, 0x0140> challenge_data;       // 2CB8-2DF8; player
+  parray<uint8_t, 0x0028> tech_menu_config;     // 2DF8-2E20; player
+  parray<uint8_t, 0x002C> unknown6;             // 2E20-2E4C; not saved
+  parray<uint8_t, 0x0058> quest_data2;          // 2E4C-2EA4; player
+  KeyAndTeamConfigBB key_config;                // 2EA4-3994; account
 } __attribute__((packed));
 
 
@@ -482,7 +483,7 @@ private:
   std::shared_ptr<SavedPlayerDataBB> player_data;
 
 public:
-  uint32_t serial_number;
+  uint32_t guild_card_number;
 
   // The following fields are not saved, and are only used in certain situations
 
@@ -499,7 +500,7 @@ public:
   std::vector<ItemData> shop_contents;
   bool should_save;
 
-  ClientGameData() : serial_number(0), bb_player_index(0), should_save(true) { }
+  ClientGameData() : guild_card_number(0), bb_player_index(0), should_save(true) { }
   ~ClientGameData();
 
   std::shared_ptr<SavedAccountDataBB> account(bool should_load = true);
