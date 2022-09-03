@@ -23,12 +23,14 @@ public:
   CatSession(
       std::shared_ptr<struct event_base> base,
       const struct sockaddr_storage& remote,
-      GameVersion version);
+      GameVersion version,
+      std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file);
   virtual ~CatSession() = default;
 
 protected:
   PrefixedLogger log;
   Channel channel;
+  std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file;
 
   virtual void print_prompt();
   virtual void execute_command(const std::string& command);

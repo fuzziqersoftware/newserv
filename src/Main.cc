@@ -245,7 +245,8 @@ Specifically:\n\
       commands to stdout, and forward any commands typed into stdin to the\n\
       remote server. It is assumed that the input and output are terminals, so\n\
       all commands are hex-encoded. The --patch, --dc, --pc, --gc, and --bb\n\
-      options can be used to select the command format end encryption.\n\
+      options can be used to select the command format and encryption. If --bb\n\
+      is used, the --key option is also required (as in --decrypt-data above).\n\
   --replay-log=FILENAME\n\
       This option makes newserv replay terminal log as if it were a client\n\
       session. This is used for regression testing, to make sure client\n\
@@ -438,8 +439,16 @@ int main(int argc, char** argv) {
     }
 
     case Behavior::CAT_CLIENT: {
+      shared_ptr<PSOBBEncryption::KeyFile> key;
+      if (cli_version == GameVersion::BB) {
+        if (key_file_name.empty()) {
+          throw runtime_error("a key filename is required for BB client emulation");
+        }
+        key.reset(new PSOBBEncryption::KeyFile(
+            load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_file_name + ".nsk")));
+      }
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
-      CatSession session(base, cat_client_remote, cli_version);
+      CatSession session(base, cat_client_remote, cli_version, key);
       event_base_dispatch(base.get());
       break;
     }

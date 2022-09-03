@@ -36,7 +36,8 @@ using namespace std;
 CatSession::CatSession(
     shared_ptr<struct event_base> base,
     const struct sockaddr_storage& remote,
-    GameVersion version)
+    GameVersion version,
+    shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file)
   : Shell(base),
     log("[CatSession] ", proxy_server_log.min_level),
     channel(
@@ -44,7 +45,8 @@ CatSession::CatSession(
       CatSession::dispatch_on_channel_input,
       CatSession::dispatch_on_channel_error,
       this,
-      "CatSession") {
+      "CatSession"),
+    bb_key_file(bb_key_file) {
   if (remote.ss_family != AF_INET) {
     throw runtime_error("remote is not AF_INET");
   }
@@ -91,13 +93,16 @@ void CatSession::on_channel_input(
       }
     }
   } else { // BB
-    // TODO: This can easily be done; I'm just lazy. We need to have the user
-    // pass in a key name, then get that key file from this->state, then create
-    // the crypts.
-    // TODO: We really should just move encryption handling into the Channel
-    // abstraction instead of the above, but this is a bit harder because then
-    // Channels would have to know about BB key files.
-    throw runtime_error("CatSession does not implement BB encryption yet");
+    if (command == 0x03 || command == 0x9B) {
+      if (!this->bb_key_file) {
+        throw runtime_error("BB encryption requires a key file");
+      }
+      const auto& cmd = check_size_t<S_ServerInit_BB_03_9B>(data,
+          offsetof(S_ServerInit_DC_PC_V3_02_17_91_9B, after_message), 0xFFFF);
+      this->channel.crypt_in.reset(new PSOBBEncryption(*this->bb_key_file, &cmd.server_key[0], sizeof(cmd.server_key)));
+      this->channel.crypt_out.reset(new PSOBBEncryption(*this->bb_key_file, &cmd.client_key[0], sizeof(cmd.client_key)));
+      this->log.info("Enabled BB encryption");
+    }
   }
 
   string full_cmd = prepend_command_header(
