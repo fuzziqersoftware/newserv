@@ -473,7 +473,7 @@ shared_ptr<const string> ServerState::load_bb_file(
 
   // Finally, look in system/blueburst
   const string& effective_bb_directory_filename = bb_directory_filename.empty() ? patch_index_filename : bb_directory_filename;
-  static FileContentsCache cache(60 * 60 * 1000 * 1000); // 1 hour
+  static FileContentsCache cache(10 * 60 * 1000 * 1000); // 10 minutes
   try {
     auto ret = cache.get_or_load("system/blueburst/" + effective_bb_directory_filename);
     static_game_data_log.info("Loaded %s", effective_bb_directory_filename.c_str());
