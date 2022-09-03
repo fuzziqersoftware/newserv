@@ -42,7 +42,4 @@ struct LevelTable { // from PlyLevelTbl.prs
 
   const PlayerStats& base_stats_for_class(uint8_t char_class) const;
   const LevelStats& stats_for_level(uint8_t char_class, uint8_t level) const;
-
-  static std::shared_ptr<LevelTable> load_shared(
-        const std::string& filename, bool compressed);
 } __attribute__((packed));
