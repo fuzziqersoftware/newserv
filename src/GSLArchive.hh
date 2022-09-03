@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 #include <string>

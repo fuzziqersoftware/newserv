@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 
+#include <memory>
 #include <phosg/Encoding.hh>
 #include <random>
 #include <string>
