@@ -62,9 +62,15 @@ struct PSOEnemy {
   uint8_t last_hit;
   uint32_t experience;
   uint32_t rt_index;
+  const char* type_name;
 
   explicit PSOEnemy(uint64_t id);
-  PSOEnemy(uint64_t id, uint16_t source_type, uint32_t experience, uint32_t rt_index);
+  PSOEnemy(
+      uint64_t id,
+      uint16_t source_type,
+      uint32_t experience,
+      uint32_t rt_index,
+      const char* type_name);
 
   std::string str() const;
 } __attribute__((packed));
