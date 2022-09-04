@@ -21,6 +21,7 @@
 
 extern const std::unordered_set<uint32_t> v2_crypt_initial_client_commands;
 extern const std::unordered_set<uint32_t> v3_crypt_initial_client_commands;
+extern const std::unordered_set<std::string> bb_crypt_initial_client_commands;
 
 // TODO: Many of these functions should take a Channel& instead of a
 // shared_ptr<Client>. Refactor functions appropriately.

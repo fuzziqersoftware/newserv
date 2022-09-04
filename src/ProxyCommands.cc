@@ -372,9 +372,8 @@ static HandlerResult on_server_bb_03(shared_ptr<ServerState> s,
     // client receives the unencrypted data
     session.client_channel.send(0x03, 0x00, data);
 
-    static const string expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
     session.detector_crypt.reset(new PSOBBMultiKeyDetectorEncryption(
-        s->bb_private_keys, expected_first_data, cmd.client_key.data(), sizeof(cmd.client_key)));
+        s->bb_private_keys, bb_crypt_initial_client_commands, cmd.client_key.data(), sizeof(cmd.client_key)));
     session.client_channel.crypt_in = session.detector_crypt;
     session.client_channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
         session.detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true));

@@ -169,7 +169,7 @@ class PSOBBMultiKeyDetectorEncryption : public PSOEncryption {
 public:
   PSOBBMultiKeyDetectorEncryption(
       const std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>>& possible_keys,
-      const std::string& expected_first_data,
+      const std::unordered_set<std::string>& expected_first_data,
       const void* seed,
       size_t seed_size);
 
@@ -189,7 +189,7 @@ protected:
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> possible_keys;
   std::shared_ptr<const PSOBBEncryption::KeyFile> active_key;
   std::shared_ptr<PSOBBEncryption> active_crypt;
-  std::string expected_first_data;
+  const std::unordered_set<std::string>& expected_first_data;
   std::string seed;
 };
 

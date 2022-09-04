@@ -756,7 +756,7 @@ PSOEncryption::Type PSOBBEncryption::type() const {
 
 PSOBBMultiKeyDetectorEncryption::PSOBBMultiKeyDetectorEncryption(
     const vector<shared_ptr<const PSOBBEncryption::KeyFile>>& possible_keys,
-    const string& expected_first_data,
+    const unordered_set<string>& expected_first_data,
     const void* seed,
     size_t seed_size)
   : possible_keys(possible_keys),
@@ -772,7 +772,7 @@ void PSOBBMultiKeyDetectorEncryption::encrypt(void* data, size_t size, bool adva
 
 void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size, bool advance) {
   if (!this->active_crypt.get()) {
-    if (size != this->expected_first_data.size()) {
+    if (size != 8) {
       throw logic_error("initial decryption size does not match expected first data size");
     }
 
@@ -782,7 +782,7 @@ void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size, bool adva
           *this->active_key, this->seed.data(), this->seed.size()));
       string test_data(reinterpret_cast<const char*>(data), size);
       this->active_crypt->decrypt(test_data.data(), test_data.size(), false);
-      if (test_data == this->expected_first_data) {
+      if (this->expected_first_data.count(test_data)) {
         break;
       }
       this->active_key.reset();

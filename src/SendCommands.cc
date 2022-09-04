@@ -49,6 +49,12 @@ const unordered_set<uint32_t> v3_crypt_initial_client_commands({
   0x0194019E, // (02) XB extended login (UDP off)
 });
 
+const unordered_set<string> bb_crypt_initial_client_commands({
+  string("\xB4\x00\x93\x00\x00\x00\x00\x00", 8),
+  string("\xAC\x00\x93\x00\x00\x00\x00\x00", 8),
+  string("\xDC\x00\xDB\x00\x00\x00\x00\x00", 8),
+});
+
 
 
 void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
@@ -180,7 +186,7 @@ void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   static const string secondary_expected_first_data("\xDC\x00\xDB\x00\x00\x00\x00\x00", 8);
   shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt(new PSOBBMultiKeyDetectorEncryption(
       s->bb_private_keys,
-      use_secondary_message ? secondary_expected_first_data : primary_expected_first_data,
+      bb_crypt_initial_client_commands,
       cmd.client_key.data(),
       sizeof(cmd.client_key)));
   c->channel.crypt_in = detector_crypt;
