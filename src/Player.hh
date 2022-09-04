@@ -463,12 +463,16 @@ struct SavedPlayerDataBB { // .nsc file format
   void print_inventory(FILE* stream) const;
 } __attribute__((packed));
 
+enum AccountFlag {
+  IN_DRESSING_ROOM = 0x00000001,
+};
+
 struct SavedAccountDataBB { // .nsa file format
   ptext<char, 0x40>           signature;
   parray<le_uint32_t, 0x001E> blocked_senders;
   GuildCardFileBB             guild_cards;
   KeyAndTeamConfigBB          key_config;
-  le_uint32_t                 unused;
+  le_uint32_t                 newserv_flags;
   le_uint32_t                 option_flags;
   parray<uint8_t, 0x0A40>     shortcuts;
   parray<uint8_t, 0x04E0>     symbol_chats;

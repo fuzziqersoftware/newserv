@@ -1706,6 +1706,8 @@ static void on_key_config_request_bb(shared_ptr<ServerState>, shared_ptr<Client>
     uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   send_team_and_key_config_bb(c);
+  c->game_data.account()->newserv_flags &= ~AccountFlag::IN_DRESSING_ROOM;
+  c->log.info("Cleared dressing room flag for account");
 }
 
 static void on_player_preview_request_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
@@ -1899,6 +1901,18 @@ static void on_stream_file_request_bb(shared_ptr<ServerState>, shared_ptr<Client
   }
 }
 
+static void on_leave_char_select_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // EC
+  const auto& cmd = check_size_t<C_LeaveCharacterSelect_BB_00EC>(data);
+  if (cmd.reason == 2) {
+    c->game_data.account()->newserv_flags |= AccountFlag::IN_DRESSING_ROOM;
+    c->log.info("Set dressing room flag for account");
+  } else {
+    c->game_data.account()->newserv_flags &= ~AccountFlag::IN_DRESSING_ROOM;
+    c->log.info("Cleared dressing room flag for account");
+  }
+}
+
 static void on_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<SC_PlayerPreview_CreateCharacter_BB_00E5>(data);
@@ -1925,13 +1939,25 @@ static void on_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client>
 
   c->game_data.bb_player_index = cmd.player_index;
 
-  try {
-    c->game_data.create_player(cmd.preview, s->level_table);
-  } catch (const exception& e) {
-    string message = string_printf("$C6New character could not be created:\n%s", e.what());
-    send_message_box(c, decode_sjis(message));
-    return;
+  if (c->game_data.account()->newserv_flags & AccountFlag::IN_DRESSING_ROOM) {
+    try {
+      c->game_data.player()->disp.apply_preview(cmd.preview);
+    } catch (const exception& e) {
+      string message = string_printf("$C6Character could not be modified:\n%s", e.what());
+      send_message_box(c, decode_sjis(message));
+      return;
+    }
+  } else {
+    try {
+      c->game_data.create_player(cmd.preview, s->level_table);
+    } catch (const exception& e) {
+      string message = string_printf("$C6New character could not be created:\n%s", e.what());
+      send_message_box(c, decode_sjis(message));
+      return;
+    }
   }
+  c->game_data.account()->newserv_flags &= ~AccountFlag::IN_DRESSING_ROOM;
+  c->log.info("Cleared dressing room flag for account");
 
   send_client_init_bb(c, 0);
   send_approve_player_choice_bb(c);
@@ -2884,7 +2910,7 @@ static on_command_t handlers[0x100][6] = {
   /* E9 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* E9 */
   /* EA */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_team_command_bb,             }, /* EA */
   /* EB */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_stream_file_request_bb,      }, /* EB */
-  /* EC */ {nullptr,                 nullptr,                    nullptr,                         on_create_game_dc_v3,        nullptr,                     on_ignored_command,             }, /* EC */
+  /* EC */ {nullptr,                 nullptr,                    nullptr,                         on_create_game_dc_v3,        nullptr,                     on_leave_char_select_bb,        }, /* EC */
   /* ED */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_change_account_data_bb,      }, /* ED */
   /* EE */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* EE */
   /* EF */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* EF */

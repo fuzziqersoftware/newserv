@@ -2607,6 +2607,14 @@ struct S_StreamFileChunk_BB_02EB {
 
 // EC: Leave character select (BB)
 
+struct C_LeaveCharacterSelect_BB_00EC {
+  // Reason codes:
+  // 0 = canceled
+  // 1 = recreate character
+  // 2 = dressing room
+  le_uint32_t reason;
+};
+
 // ED (S->C): Force leave lobby/game (Episode 3)
 // No arguments
 // This command forces the client out of the game or lobby they're currently in
