@@ -481,9 +481,11 @@ class ClientGameData {
 private:
   std::shared_ptr<SavedAccountDataBB> account_data;
   std::shared_ptr<SavedPlayerDataBB> player_data;
+  uint64_t last_play_time_update;
 
 public:
   uint32_t guild_card_number;
+  bool should_update_play_time;
 
   // The following fields are not saved, and are only used in certain situations
 
@@ -500,7 +502,7 @@ public:
   std::vector<ItemData> shop_contents;
   bool should_save;
 
-  ClientGameData() : guild_card_number(0), bb_player_index(0), should_save(true) { }
+  ClientGameData();
   ~ClientGameData();
 
   std::shared_ptr<SavedAccountDataBB> account(bool should_load = true);
@@ -519,7 +521,8 @@ public:
   void load_account_data();
   void save_account_data() const;
   void load_player_data();
-  void save_player_data() const;
+  // Note: This function is not const because it updates the player's play time.
+  void save_player_data();
 
   void import_player(const PSOPlayerDataDCPC& pd);
   void import_player(const PSOPlayerDataV3& pd);

@@ -209,7 +209,7 @@ PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
   pre.proportion_x = this->proportion_x;
   pre.proportion_y = this->proportion_y;
   pre.name = this->name;
-  pre.play_time = 0; // TODO: Store this somewhere and return it here
+  pre.play_time = this->play_time;
   return pre;
 }
 
@@ -322,6 +322,13 @@ void PlayerBank::save(const string& filename, bool save_to_filesystem) const {
 
 
 ////////////////////////////////////////////////////////////////////////////////
+
+ClientGameData::ClientGameData()
+  : last_play_time_update(0),
+    guild_card_number(0),
+    should_update_play_time(false),
+    bb_player_index(0),
+    should_save(true) { }
 
 ClientGameData::~ClientGameData() {
   if (!this->bb_username.empty()) {
@@ -442,6 +449,9 @@ void ClientGameData::load_account_data() {
 }
 
 void ClientGameData::save_account_data() const {
+  if (!this->account_data.get()) {
+    throw logic_error("save_account_data called when no account data loaded");
+  }
   string filename = this->account_data_filename();
   player_files_cache.replace(filename, this->account_data.get(), sizeof(SavedAccountDataBB));
   if (this->should_save) {
@@ -453,6 +463,7 @@ void ClientGameData::save_account_data() const {
 }
 
 void ClientGameData::load_player_data() {
+  this->last_play_time_update = now();
   string filename = this->player_data_filename();
   shared_ptr<SavedPlayerDataBB> data(new SavedPlayerDataBB(
       player_files_cache.get_obj_or_load<SavedPlayerDataBB>(filename).obj));
@@ -464,7 +475,19 @@ void ClientGameData::load_player_data() {
   player_data_log.info("Loaded player data file %s", filename.c_str());
 }
 
-void ClientGameData::save_player_data() const {
+void ClientGameData::save_player_data() {
+  if (!this->player_data.get()) {
+    throw logic_error("save_player_data called when no player data loaded");
+  }
+  if (this->should_update_play_time) {
+    // This is slightly inaccurate, since fractions of a second are truncated
+    // off each time we save. I'm lazy, so insert shrug emoji here.
+    uint64_t t = now();
+    uint64_t seconds = (t - this->last_play_time_update) / 1000000;
+    this->player_data->disp.play_time += seconds;
+    player_data_log.info("Added %" PRIu64 " seconds to play time", seconds);
+    this->last_play_time_update = t;
+  }
   string filename = this->player_data_filename();
   player_files_cache.replace(filename, this->player_data.get(), sizeof(SavedPlayerDataBB));
   if (this->should_save) {

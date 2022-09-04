@@ -129,6 +129,7 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
     if (c->version() == GameVersion::BB) {
       // This implicitly loads the client's account and player data
       send_complete_player_bb(c);
+      c->game_data.should_update_play_time = true;
     }
 
     send_lobby_list(c, s);
