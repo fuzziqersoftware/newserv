@@ -15,7 +15,21 @@ using namespace std;
 
 
 
-PatchFileIndex::File::File() : crc32(0) { }
+PatchFileIndex::File::File(PatchFileIndex* index)
+  : index(index), crc32(0), size(0) { }
+
+std::shared_ptr<const std::string> PatchFileIndex::File::load_data() {
+  if (!this->loaded_data) {
+    string relative_path = join(this->path_directories, "/") + "/" + this->name;
+    string full_path = this->index->root_dir + "/" + relative_path;
+    patch_index_log.info("Loading data for %s", relative_path.c_str());
+    this->loaded_data.reset(new string(load_file(full_path)));
+    this->size = this->loaded_data->size();
+  }
+  return this->loaded_data;
+}
+
+
 
 PatchFileIndex::PatchFileIndex(const string& root_dir)
   : root_dir(root_dir) {
@@ -58,12 +72,14 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
 
         auto st = stat(full_item_path);
 
-        shared_ptr<File> f(new File());
+        shared_ptr<File> f(new File(this));
         f->path_directories = path_directories;
         f->name = item;
 
-        int64_t file_crc32 = -1;
+        bool should_compute_crc32s = true;
+        shared_ptr<JSONObject> cache_item_json;
         try {
+          cache_item_json = metadata_cache_json->at(relative_item_path);
           auto cache_item = metadata_cache_json->at(relative_item_path)->as_list();
           uint64_t cached_size = cache_item.at(0)->as_int();
           uint64_t cached_mtime = cache_item.at(1)->as_int();
@@ -73,34 +89,51 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
           if (static_cast<uint64_t>(st.st_size) != cached_size) {
             throw runtime_error("file size has changed");
           }
-          file_crc32 = cache_item.at(2)->as_int();
-          patch_index_log.info("Using cached checksum for %s", relative_item_path.c_str());
+          f->size = cached_size;
+          f->crc32 = cache_item.at(2)->as_int();
+          for (const auto& chunk_crc32_json : cache_item.at(3)->as_list()) {
+            f->chunk_crcs.emplace_back(chunk_crc32_json->as_int());
+          }
+          should_compute_crc32s = false;
+          patch_index_log.info("Using cached checksums for %s", relative_item_path.c_str());
         } catch (const exception& e) {
           should_write_metadata_cache = true;
-          patch_index_log.info("Cannot use cached checksum for %s: %s", relative_item_path.c_str(), e.what());
+          patch_index_log.info("Cannot use cached checksums for %s: %s", relative_item_path.c_str(), e.what());
         }
 
-        string file_data = load_file(full_item_path);
-        f->data.reset(new string(move(file_data)));
-        f->crc32 = (file_crc32 < 0)
-            ? ::crc32(f->data->data(), f->data->size()) : file_crc32;
-        for (size_t x = 0; x < f->data->size(); x += 0x4000) {
-          size_t chunk_bytes = min<size_t>(f->data->size() - x, 0x4000);
-          f->chunk_crcs.emplace_back(::crc32(f->data->data() + x, chunk_bytes));
-        }
+        if (should_compute_crc32s) {
+          auto data = f->load_data(); // Sets f->size
+          f->crc32 = crc32(data->data(), f->size);
+          for (size_t x = 0; x < data->size(); x += 0x4000) {
+            size_t chunk_bytes = min<size_t>(f->size - x, 0x4000);
+            f->chunk_crcs.emplace_back(::crc32(data->data() + x, chunk_bytes));
+          }
 
-        vector<shared_ptr<JSONObject>> new_cache_item({
-          make_json_int(f->data->size()),
-          make_json_int(st.st_mtime),
-          make_json_int(f->crc32),
-        });
-        new_metadata_cache_json->as_dict().emplace(
-            relative_item_path, make_json_list(move(new_cache_item)));
+          // File was modified or cache item was missing; make a new cache item
+          vector<shared_ptr<JSONObject>> chunk_crcs_item;
+          for (uint32_t chunk_crc : f->chunk_crcs) {
+            chunk_crcs_item.emplace_back(make_json_int(chunk_crc));
+          }
+          vector<shared_ptr<JSONObject>> new_cache_item({
+            make_json_int(f->size),
+            make_json_int(st.st_mtime),
+            make_json_int(f->crc32),
+            make_json_list(move(chunk_crcs_item)),
+          });
+          new_metadata_cache_json->as_dict().emplace(
+              relative_item_path, make_json_list(move(new_cache_item)));
+
+        } else {
+          // File was not modified and cache item was valid; just use the
+          // existing cache item
+          new_metadata_cache_json->as_dict().emplace(
+              relative_item_path, cache_item_json);
+        }
 
         this->files_by_patch_order.emplace_back(f);
         this->files_by_name.emplace(relative_item_path, f);
-        patch_index_log.info("Added file %s (%zu bytes; %zu chunks; %08" PRIX32 ")",
-            full_item_path.c_str(), f->data->size(), f->chunk_crcs.size(), f->crc32);
+        patch_index_log.info("Added file %s (%" PRIu32 " bytes; %zu chunks; %08" PRIX32 ")",
+            full_item_path.c_str(), f->size, f->chunk_crcs.size(), f->crc32);
       }
     }
 
@@ -121,12 +154,12 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
   }
 }
 
-const vector<shared_ptr<const PatchFileIndex::File>>&
+const vector<shared_ptr<PatchFileIndex::File>>&
 PatchFileIndex::all_files() const {
   return this->files_by_patch_order;
 }
 
-shared_ptr<const PatchFileIndex::File> PatchFileIndex::get(
+shared_ptr<PatchFileIndex::File> PatchFileIndex::get(
     const string& filename) const {
   return this->files_by_name.at(filename);
 }

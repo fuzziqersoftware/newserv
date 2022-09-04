@@ -2621,9 +2621,9 @@ static void on_checksums_done_patch(shared_ptr<ServerState>,
       throw runtime_error("client did not respond to checksum request");
     }
     if (req.needs_update()) {
-      c->log.info("File %s needs update (CRC: %08" PRIX32 "/%08" PRIX32 ", size: %zu/%" PRIu32 ")",
-          req.file->name.c_str(), req.file->crc32, req.crc32, req.file->data->size(), req.size);
-      start_cmd.total_bytes += req.file->data->size();
+      c->log.info("File %s needs update (CRC: %08" PRIX32 "/%08" PRIX32 ", size: %" PRIu32 "/%" PRIu32 ")",
+          req.file->name.c_str(), req.file->crc32, req.crc32, req.file->size, req.size);
+      start_cmd.total_bytes += req.file->size;
       start_cmd.num_files++;
     } else {
       c->log.info("File %s is up to date", req.file->name.c_str());

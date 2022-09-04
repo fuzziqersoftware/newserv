@@ -513,7 +513,7 @@ int main(int argc, char** argv) {
         state->bb_patch_file_index.reset(new PatchFileIndex("system/patch-bb"));
         try {
           auto gsl_file = state->bb_patch_file_index->get("./data/data.gsl");
-          state->bb_data_gsl.reset(new GSLArchive(gsl_file->data));
+          state->bb_data_gsl.reset(new GSLArchive(gsl_file->load_data()));
           config_log.info("data.gsl found in BB patch files");
         } catch (const out_of_range&) {
           config_log.info("data.gsl is not present in BB patch files");

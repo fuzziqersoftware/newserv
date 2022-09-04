@@ -436,7 +436,7 @@ shared_ptr<const string> ServerState::load_bb_file(
     // First, look in the patch tree's data directory
     string patch_index_path = "./data/" + patch_index_filename;
     try {
-      auto ret = this->bb_patch_file_index->get(patch_index_path)->data;
+      auto ret = this->bb_patch_file_index->get(patch_index_path)->load_data();
       static_game_data_log.info("Loaded %s from file in BB patch tree", patch_index_path.c_str());
       return ret;
     } catch (const out_of_range&) {

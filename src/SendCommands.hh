@@ -142,7 +142,7 @@ void send_approve_player_choice_bb(std::shared_ptr<Client> c);
 void send_complete_player_bb(std::shared_ptr<Client> c);
 
 void send_enter_directory_patch(std::shared_ptr<Client> c, const std::string& dir);
-void send_patch_file(std::shared_ptr<Client> c, std::shared_ptr<const PatchFileIndex::File> f);
+void send_patch_file(std::shared_ptr<Client> c, std::shared_ptr<PatchFileIndex::File> f);
 
 void send_message_box(std::shared_ptr<Client> c, const std::u16string& text);
 void send_lobby_name(std::shared_ptr<Client> c, const std::u16string& text);
