@@ -21,7 +21,6 @@ struct PatchFileIndex {
     uint32_t crc32;
 
     File();
-    void load_data(const std::string& root_dir);
   };
 
   const std::vector<std::shared_ptr<const File>>& all_files() const;

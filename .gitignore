@@ -19,6 +19,8 @@ system/licenses.nsi
 system/players/player_*
 system/players/account_*
 system/players/bank_*
+system/patch-pc/.metadata-cache.json
+system/patch-bb/.metadata-cache.json
 
 # Files fuzziqersoftware uses that don't make sense to be committed to the main
 # repository
