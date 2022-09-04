@@ -206,6 +206,7 @@ struct PlayerDispDataBB {
   PlayerDispDataDCPCV3 to_dcpcv3() const;
   PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);
+  void apply_dressing_room(const PlayerDispDataBBPreview&);
 } __attribute__((packed));
 
 

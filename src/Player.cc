@@ -240,6 +240,28 @@ void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
   this->name = pre.name;
 }
 
+void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
+  this->name_color = pre.name_color;
+  this->extra_model = pre.extra_model;
+  this->name_color_checksum = pre.name_color_checksum;
+  this->section_id = pre.section_id;
+  this->char_class = pre.char_class;
+  this->v2_flags = pre.v2_flags;
+  this->version = pre.version;
+  this->v1_flags = pre.v1_flags;
+  this->costume = pre.costume;
+  this->skin = pre.skin;
+  this->face = pre.face;
+  this->head = pre.head;
+  this->hair = pre.hair;
+  this->hair_r = pre.hair_r;
+  this->hair_g = pre.hair_g;
+  this->hair_b = pre.hair_b;
+  this->proportion_x = pre.proportion_x;
+  this->proportion_y = pre.proportion_y;
+  this->name = pre.name;
+}
+
 
 
 PlayerDispDataBBPreview::PlayerDispDataBBPreview() noexcept

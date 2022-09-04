@@ -1941,7 +1941,7 @@ static void on_create_character_bb(shared_ptr<ServerState> s, shared_ptr<Client>
 
   if (c->game_data.account()->newserv_flags & AccountFlag::IN_DRESSING_ROOM) {
     try {
-      c->game_data.player()->disp.apply_preview(cmd.preview);
+      c->game_data.player()->disp.apply_dressing_room(cmd.preview);
     } catch (const exception& e) {
       string message = string_printf("$C6Character could not be modified:\n%s", e.what());
       send_message_box(c, decode_sjis(message));
