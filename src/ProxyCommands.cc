@@ -902,6 +902,7 @@ static HandlerResult on_server_65_67_68(shared_ptr<ServerState>,
     session.lobby_players.clear();
     session.lobby_players.resize(12);
     session.log.info("Cleared lobby players");
+    session.is_in_game = false;
 
     // This command can cause the client to no longer send D6 responses when
     // 1A/D5 large message boxes are closed. newserv keeps track of this
@@ -957,6 +958,7 @@ static HandlerResult on_server_64(shared_ptr<ServerState>,
   // overwrite all 4 entries for this command
   session.lobby_players.resize(4);
   session.log.info("Cleared lobby players");
+  session.is_in_game = true;
 
   CmdT* cmd;
   S_JoinGame_GC_Ep3_64* cmd_ep3 = nullptr;
@@ -1017,6 +1019,12 @@ static HandlerResult on_server_66_69(shared_ptr<ServerState>,
     session.log.info("Removed lobby player (%zu)", index);
   }
   update_leader_id(session, cmd.leader_id);
+  return HandlerResult::Type::FORWARD;
+}
+
+static HandlerResult on_client_98(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  session.is_in_game = false;
   return HandlerResult::Type::FORWARD;
 }
 
@@ -1611,7 +1619,7 @@ static on_command_t handlers[6][0x100][2] = {
     /* 95 */ {nullptr,                                        nullptr},
     /* 96 */ {nullptr,                                        nullptr},
     /* 97 */ {on_server_97,                                   nullptr},
-    /* 98 */ {nullptr,                                        nullptr},
+    /* 98 */ {nullptr,                                        on_client_98},
     /* 99 */ {nullptr,                                        nullptr},
     /* 9A */ {nullptr,                                        nullptr},
     /* 9B */ {nullptr,                                        nullptr},
@@ -1877,7 +1885,7 @@ static on_command_t handlers[6][0x100][2] = {
     /* 95 */ {nullptr,                                     nullptr},
     /* 96 */ {nullptr,                                     nullptr},
     /* 97 */ {on_server_97,                                nullptr},
-    /* 98 */ {nullptr,                                     nullptr},
+    /* 98 */ {nullptr,                                     on_client_98},
     /* 99 */ {nullptr,                                     nullptr},
     /* 9A */ {nullptr,                                     nullptr},
     /* 9B */ {nullptr,                                     nullptr},
@@ -2143,7 +2151,7 @@ static on_command_t handlers[6][0x100][2] = {
     /* 95 */ {nullptr,                                        nullptr},
     /* 96 */ {nullptr,                                        nullptr},
     /* 97 */ {on_server_97,                                   nullptr},
-    /* 98 */ {nullptr,                                        nullptr},
+    /* 98 */ {nullptr,                                        on_client_98},
     /* 99 */ {nullptr,                                        nullptr},
     /* 9A */ {on_server_gc_9A,                                nullptr},
     /* 9B */ {nullptr,                                        nullptr},
@@ -2409,7 +2417,7 @@ static on_command_t handlers[6][0x100][2] = {
     /* 95 */ {nullptr,                                        nullptr},
     /* 96 */ {nullptr,                                        nullptr},
     /* 97 */ {on_server_97,                                   nullptr},
-    /* 98 */ {nullptr,                                        nullptr},
+    /* 98 */ {nullptr,                                        on_client_98},
     /* 99 */ {nullptr,                                        nullptr},
     /* 9A */ {nullptr,                                        nullptr},
     /* 9B */ {nullptr,                                        nullptr},
@@ -2675,7 +2683,7 @@ static on_command_t handlers[6][0x100][2] = {
     /* 95 */ {nullptr,                                     nullptr},
     /* 96 */ {nullptr,                                     nullptr},
     /* 97 */ {nullptr,                                     nullptr},
-    /* 98 */ {nullptr,                                     nullptr},
+    /* 98 */ {nullptr,                                     on_client_98},
     /* 99 */ {nullptr,                                     nullptr},
     /* 9A */ {nullptr,                                     nullptr},
     /* 9B */ {nullptr,                                     nullptr},
