@@ -105,6 +105,25 @@ void PSOV2Encryption::encrypt_big_endian(void* vdata, size_t size, bool advance)
   this->encrypt_t<be_uint32_t>(vdata, size, advance);
 }
 
+void PSOV2Encryption::encrypt_both_endian(
+    void* le_vdata, void* be_vdata, size_t size, bool advance) {
+  if (size & 3) {
+    throw invalid_argument("size must be a multiple of 4");
+  }
+  if (!advance && (size != 4)) {
+    throw logic_error("cannot peek-encrypt/decrypt with size > 4");
+  }
+  size >>= 2;
+
+  le_uint32_t* le_data = reinterpret_cast<le_uint32_t*>(le_vdata);
+  be_uint32_t* be_data = reinterpret_cast<be_uint32_t*>(be_vdata);
+  for (size_t x = 0; x < size; x++) {
+    uint32_t key = this->next(advance);
+    le_data[x] ^= key;
+    be_data[x] ^= key;
+  }
+}
+
 PSOEncryption::Type PSOV2Encryption::type() const {
   return Type::V2;
 }
@@ -193,6 +212,27 @@ void PSOV3Encryption::encrypt(void* vdata, size_t size, bool advance) {
 
 void PSOV3Encryption::encrypt_big_endian(void* vdata, size_t size, bool advance) {
   this->encrypt_t<be_uint32_t>(vdata, size, advance);
+}
+
+// TODO: PSOV2Encryption an PSOV3Encryption should have a base class in common
+// that implements this function, because it's identical in both classes
+void PSOV3Encryption::encrypt_both_endian(
+    void* le_vdata, void* be_vdata, size_t size, bool advance) {
+  if (size & 3) {
+    throw invalid_argument("size must be a multiple of 4");
+  }
+  if (!advance && (size != 4)) {
+    throw logic_error("cannot peek-encrypt/decrypt with size > 4");
+  }
+  size >>= 2;
+
+  le_uint32_t* le_data = reinterpret_cast<le_uint32_t*>(le_vdata);
+  be_uint32_t* be_data = reinterpret_cast<be_uint32_t*>(be_vdata);
+  for (size_t x = 0; x < size; x++) {
+    uint32_t key = this->next(advance);
+    le_data[x] ^= key;
+    be_data[x] ^= key;
+  }
 }
 
 PSOEncryption::Type PSOV3Encryption::type() const {

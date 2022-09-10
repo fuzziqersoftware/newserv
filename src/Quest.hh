@@ -70,7 +70,10 @@ public:
 
   std::shared_ptr<Quest> create_download_quest() const;
 
-  static std::string decode_gci(const std::string& filename);
+  static std::string decode_gci(
+      const std::string& filename,
+      ssize_t find_seed_num_threads = -1,
+      int64_t known_seed = -1);
   static std::string decode_dlq(const std::string& filename);
   static std::pair<std::string, std::string> decode_qst(const std::string& filename);
 

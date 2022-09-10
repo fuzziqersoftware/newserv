@@ -1,10 +1,12 @@
 #include "Quest.hh"
 
 #include <algorithm>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <phosg/Filesystem.hh>
 #include <phosg/Encoding.hh>
+#include <phosg/Hash.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 
@@ -12,15 +14,164 @@
 #include "CommandFormats.hh"
 #include "Compression.hh"
 #include "PSOEncryption.hh"
+#include "PSOEncryptionSeedFinder.hh"
 #include "Text.hh"
 
 using namespace std;
 
 
 
+// GCI decoding logic
+
+struct ShuffleTables {
+  uint8_t forward_table[0x100]; // table1 / 804FB9B8
+  uint8_t reverse_table[0x100]; // table2 / 804FBAB8
+
+  ShuffleTables(PSOV2Encryption& crypt) {
+    for (size_t x = 0; x < 0x100; x++) {
+      this->forward_table[x] = x;
+    }
+
+    int32_t r28 = 0xFF;
+    uint8_t* r31 = &this->forward_table[0xFF];
+    while (r28 >= 0) {
+      uint32_t r3 = this->pseudorand(crypt, r28 + 1);
+      if (r3 >= 0x100) {
+        throw logic_error("bad r3");
+      }
+      uint8_t t = this->forward_table[r3];
+      this->forward_table[r3] = *r31;
+      *r31 = t;
+
+      this->reverse_table[t] = r28;
+      r31--;
+      r28--;
+    }
+  }
+
+  static uint32_t pseudorand(PSOV2Encryption& crypt, uint32_t prev) {
+    return (((prev & 0xFFFF) * ((crypt.next() >> 16) & 0xFFFF)) >> 16) & 0xFFFF;
+  }
+
+  void shuffle(void* vdest, const void* vsrc, size_t size, bool reverse) {
+    uint8_t* dest = reinterpret_cast<uint8_t*>(vdest);
+    const uint8_t* src = reinterpret_cast<const uint8_t*>(vsrc);
+    const uint8_t* table = reverse ? this->reverse_table : this->forward_table;
+
+    for (size_t block_offset = 0; block_offset < (size & 0xFFFFFF00); block_offset += 0x100) {
+      for (size_t z = 0; z < 0x100; z++) {
+        dest[block_offset + table[z]] = src[block_offset + z];
+      }
+    }
+
+    // Any remaining bytes that don't fill an entire block are not shuffled
+    memcpy(&dest[size & 0xFFFFFF00], &src[size & 0xFFFFFF00], size & 0xFF);
+  }
+};
+
+struct PSOGCIFileHeader {
+  parray<uint8_t, 0x40> gci_header;
+  parray<uint8_t, 0x40> pso_header;
+  parray<uint8_t, 0x2000> banner_and_icon;
+  // data_size specifies the number of bytes in the encrypted section, including
+  // the encrypted header (below) and all encrypted data after it.
+  be_uint32_t data_size;
+  // To compute checksum, set checksum to zero, then compute the CRC32 of all
+  // fields in this struct except gci_header. (Yes, including the checksum
+  // field, which is temporarily zero.)
+  be_uint32_t checksum;
+
+  bool checksum_correct() const {
+    uint32_t cs = crc32(&this->pso_header, sizeof(this->pso_header));
+    cs = crc32(&this->banner_and_icon, sizeof(this->banner_and_icon), cs);
+    cs = crc32(&this->data_size, sizeof(this->data_size), cs);
+    cs = crc32("\0\0\0\0", 4, cs);
+    return (cs == this->checksum);
+  }
+} __attribute__((packed));
+
+struct PSOGCIFileEncryptedHeader {
+  be_uint32_t round2_seed;
+  // To compute checksum, set checksum to zero, then compute the CRC32 of the
+  // entire data section, including this header struct (but not the unencrypted
+  // header struct).
+  be_uint32_t checksum;
+  le_uint32_t decompressed_size;
+  le_uint32_t round3_seed;
+  // Data follows here.
+} __attribute__((packed));
+
+string decrypt_gci_data_section(
+    const void* data_section, size_t size, uint32_t seed) {
+  string decrypted(size, '\0');
+  {
+    PSOV2Encryption shuf_crypt(seed);
+    ShuffleTables shuf(shuf_crypt);
+    shuf.shuffle(decrypted.data(), data_section, size, true);
+  }
+
+  decrypted.resize((decrypted.size() + 3) & (~3));
+  auto* be_dwords = reinterpret_cast<be_uint32_t*>(decrypted.data());
+
+  PSOV2Encryption crypt(seed);
+  for (size_t z = 0; z < decrypted.size() / sizeof(be_uint32_t); z++) {
+    be_dwords[z] = crypt.next() - be_dwords[z];
+  }
+
+  auto* header = reinterpret_cast<PSOGCIFileEncryptedHeader*>(
+      decrypted.data());
+  PSOV2Encryption(header->round2_seed).encrypt_big_endian(
+      decrypted.data() + 4, (decrypted.size() - 4) & (~3));
+
+  uint32_t expected_crc = header->checksum;
+  header->checksum = 0;
+  uint32_t actual_crc = crc32(decrypted.data(), decrypted.size());
+  header->checksum = expected_crc;
+
+  if (expected_crc != actual_crc) {
+    throw runtime_error("incorrect decrypted data section checksum");
+  }
+
+  PSOV2Encryption(header->round3_seed).decrypt(
+      decrypted.data() + sizeof(PSOGCIFileEncryptedHeader),
+      decrypted.size() - sizeof(PSOGCIFileEncryptedHeader));
+
+  string ret = decrypted.substr(sizeof(PSOGCIFileEncryptedHeader));
+  if (prs_decompress_size(ret) != header->decompressed_size) {
+    throw runtime_error("decompressed size does not match size in header");
+  }
+
+  return ret;
+}
+
+string find_seed_and_decrypt_gci_data_section(
+    const void* data_section, size_t size, size_t num_threads) {
+  mutex result_lock;
+  string result;
+  PSOEncryptionSeedFinder::parallel_all_seeds(num_threads, [&](
+      uint32_t seed, size_t) {
+    try {
+      string ret = decrypt_gci_data_section(data_section, size, seed);
+      lock_guard<mutex> g(result_lock);
+      result = move(ret);
+      return true;
+    } catch (const runtime_error&) {
+      return false;
+    }
+  });
+
+  if (!result.empty()) {
+    return result;
+  } else {
+    throw runtime_error("no seed found");
+  }
+}
+
+
+
 struct PSODownloadQuestHeader {
   // When sending a DLQ to the client, this is the DECOMPRESSED size. When
-  // reading it from a GCI file, this is the COMPRESSED size.
+  // reading it from an (unencrypted) GCI file, this is the COMPRESSED size.
   le_uint32_t size;
   // Note: use PSO PC encryption, even for GC quests.
   le_uint32_t encryption_seed;
@@ -228,7 +379,7 @@ Quest::Quest(const string& bin_filename)
 
   // get the category from the second token if needed
   if (this->category == QuestCategory::UNKNOWN) {
-    static const unordered_map<std::string, QuestCategory> name_to_category({
+    static const unordered_map<string, QuestCategory> name_to_category({
       {"ret", QuestCategory::RETRIEVAL},
       {"ext", QuestCategory::EXTERMINATION},
       {"evt", QuestCategory::EVENT},
@@ -245,7 +396,7 @@ Quest::Quest(const string& bin_filename)
     tokens.erase(tokens.begin() + 1);
   }
 
-  static const unordered_map<std::string, GameVersion> name_to_version({
+  static const unordered_map<string, GameVersion> name_to_version({
     {"d1",  GameVersion::DC},
     {"dc",  GameVersion::DC},
     {"pc",  GameVersion::PC},
@@ -348,7 +499,7 @@ Quest::Quest(const string& bin_filename)
   }
 }
 
-static string basename_for_filename(const std::string& filename) {
+static string basename_for_filename(const string& filename) {
   size_t slash_pos = filename.rfind('/');
   if (slash_pos != string::npos) {
     return filename.substr(slash_pos + 1);
@@ -356,11 +507,11 @@ static string basename_for_filename(const std::string& filename) {
   return filename;
 }
 
-std::string Quest::bin_filename() const {
+string Quest::bin_filename() const {
   return basename_for_filename(this->file_basename + ".bin");
 }
 
-std::string Quest::dat_filename() const {
+string Quest::dat_filename() const {
   return basename_for_filename(this->file_basename + ".dat");
 }
 
@@ -374,7 +525,7 @@ shared_ptr<const string> Quest::bin_contents() const {
         this->bin_contents_ptr.reset(new string(prs_compress(load_file(this->file_basename + ".bind"))));
         break;
       case FileFormat::BIN_DAT_GCI:
-        this->bin_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".bin.gci")));
+        this->bin_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".bin.gci", false)));
         break;
       case FileFormat::BIN_DAT_DLQ:
         this->bin_contents_ptr.reset(new string(this->decode_dlq(this->file_basename + ".bin.dlq")));
@@ -402,7 +553,7 @@ shared_ptr<const string> Quest::dat_contents() const {
         this->dat_contents_ptr.reset(new string(prs_compress(load_file(this->file_basename + ".datd"))));
         break;
       case FileFormat::BIN_DAT_GCI:
-        this->dat_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".dat.gci")));
+        this->dat_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".dat.gci", false)));
         break;
       case FileFormat::BIN_DAT_DLQ:
         this->dat_contents_ptr.reset(new string(this->decode_dlq(this->file_basename + ".dat.dlq")));
@@ -420,51 +571,50 @@ shared_ptr<const string> Quest::dat_contents() const {
   return this->dat_contents_ptr;
 }
 
-string Quest::decode_gci(const string& filename) {
-
+string Quest::decode_gci(
+    const string& filename, ssize_t find_seed_num_threads, int64_t known_seed) {
   string data = load_file(filename);
-  if (data.size() < 0x2080 + sizeof(PSODownloadQuestHeader)) {
-    throw runtime_error(string_printf(
-        "GCI file is truncated before download quest header (have 0x%zX bytes)", data.size()));
-  }
-  PSODownloadQuestHeader* h = reinterpret_cast<PSODownloadQuestHeader*>(
-      data.data() + 0x2080);
 
-  string compressed_data_with_header = data.substr(0x2088, h->size);
-
-  // For now, we can only load unencrypted quests, unfortunately
-  // TODO: Figure out how GCI encryption works and implement it here.
-
-  // Unlike the DLQ header, this one is stored little-endian. The compressed
-  // data immediately follows this header.
-  struct DecryptedHeader {
-    uint32_t unknown1;
-    uint32_t unknown2;
-    uint32_t decompressed_size;
-    uint32_t unknown4;
-  } __attribute__((packed));
-  if (compressed_data_with_header.size() < sizeof(DecryptedHeader)) {
-    throw runtime_error("GCI file compressed data truncated during header");
-  }
-  DecryptedHeader* dh = reinterpret_cast<DecryptedHeader*>(
-      compressed_data_with_header.data());
-  if (dh->unknown1 || dh->unknown2 || dh->unknown4) {
-    throw runtime_error("GCI file appears to be encrypted");
+  StringReader r(data);
+  const auto& header = r.get<PSOGCIFileHeader>();
+  if (!header.checksum_correct()) {
+    throw runtime_error("GCI file unencrypted header checksum is incorrect");
   }
 
-  string data_to_decompress = compressed_data_with_header.substr(sizeof(DecryptedHeader));
-  size_t decompressed_bytes = prs_decompress_size(data_to_decompress);
+  const auto& encrypted_header = r.get<PSOGCIFileEncryptedHeader>(false);
+  // Unencrypted GCI files appear to always have zeroes in these fields.
+  // Encrypted GCI files are highly unlikely to have zeroes in ALL of these
+  // fields, so assume it's encrypted if any of them are nonzero.
+  if (encrypted_header.round2_seed || encrypted_header.checksum || encrypted_header.round3_seed) {
+    if (known_seed >= 0) {
+      return decrypt_gci_data_section(
+          r.getv(header.data_size), header.data_size, known_seed);
 
-  size_t expected_decompressed_bytes = dh->decompressed_size - 8;
-  if (decompressed_bytes < expected_decompressed_bytes) {
-    throw runtime_error(string_printf(
-        "GCI decompressed data is smaller than expected size (have 0x%zX bytes, expected 0x%zX bytes)",
-        decompressed_bytes, expected_decompressed_bytes));
+    } else {
+      if (find_seed_num_threads < 0) {
+        throw runtime_error("GCI file appears to be encrypted");
+      }
+      if (find_seed_num_threads == 0) {
+        find_seed_num_threads = thread::hardware_concurrency();
+      }
+      return find_seed_and_decrypt_gci_data_section(
+          r.getv(header.data_size), header.data_size, find_seed_num_threads);
+    }
+
+  } else { // Unencrypted GCI format
+    r.skip(sizeof(PSOGCIFileEncryptedHeader));
+    string compressed_data = r.read(r.remaining());
+    size_t decompressed_bytes = prs_decompress_size(compressed_data);
+
+    size_t expected_decompressed_bytes = encrypted_header.decompressed_size - 8;
+    if (decompressed_bytes < expected_decompressed_bytes) {
+      throw runtime_error(string_printf(
+          "GCI decompressed data is smaller than expected size (have 0x%zX bytes, expected 0x%zX bytes)",
+          decompressed_bytes, expected_decompressed_bytes));
+    }
+
+    return compressed_data;
   }
-
-  // The caller expects to get PRS-compressed data when calling bin_contents()
-  // and dat_contents(), so we shouldn't decompress it here.
-  return data_to_decompress;
 }
 
 string Quest::decode_dlq(const string& filename) {
@@ -609,7 +759,7 @@ pair<string, string> Quest::decode_qst(const string& filename) {
 
 
 
-QuestIndex::QuestIndex(const std::string& directory) : directory(directory) {
+QuestIndex::QuestIndex(const string& directory) : directory(directory) {
   auto filename_set = list_directory(this->directory);
   vector<string> filenames(filename_set.begin(), filename_set.end());
   sort(filenames.begin(), filenames.end());

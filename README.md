@@ -33,6 +33,7 @@ newserv supports several versions of PSO. Specifically:
 This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance. With that said, feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
 
 Current known issues / missing features:
+- Partially-encrypted GCI quest files probably don't work. Fix this. Also check that completely unencrypted GCI quest files actually work.
 - Support disconnect hooks to clean up state, like if a client disconnects during quest loading or a trade window execution.
 - Episode 3 battles aren't implemented.
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
@@ -76,7 +77,7 @@ Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle qu
 There are multiple PSO quest formats out there; newserv supports most of them. Specifically, newserv can use quests in any of the following formats:
 - Compressed bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file. (This is the format you'll get if you saved a quest with set-save-files.)
 - Uncompressed bin/dat format: These quests consist of two files with the same base name, a .bind file and a .datd file.
-- Unencrypted GCI format: These quests also consist of a .bin and .dat file, but an encoding is applied on top of them. The filenames should end in .bin.gci and .dat.gci. (Note that there also exists an encrypted GCI format, which newserv does not support.)
+- Unencrypted GCI format: These quests also consist of a .bin and .dat file, but an encoding is applied on top of them. The filenames should end in .bin.gci and .dat.gci. Note that there also exists an encrypted GCI format, which newserv does not support at runtime, but you can also use newserv to convert these files to bin/dat format and then use them with the server. Run `newserv --help` and see the `--decode-gci` option for more information.
 - Encrypted DLQ format: These quests also consist of a .bin and .dat file, but download quest encryption is applied on top of them. The filenames should end in .bin.dlq and .dat.dlq.
 - QST format: These quests consist of only a .qst file, which contains both the .bin and .dat files within it.
 

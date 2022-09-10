@@ -48,6 +48,7 @@ public:
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
   void encrypt_big_endian(void* data, size_t size, bool advance = true);
+  void encrypt_both_endian(void* le_data, void* be_data, size_t size, bool advance = true);
 
   uint32_t next(bool advance = true);
 
@@ -69,6 +70,7 @@ public:
 
   virtual void encrypt(void* data, size_t size, bool advance = true);
   void encrypt_big_endian(void* data, size_t size, bool advance = true);
+  void encrypt_both_endian(void* le_data, void* be_data, size_t size, bool advance = true);
 
   uint32_t next(bool advance = true);
 

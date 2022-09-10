@@ -8,6 +8,7 @@
 #include <phosg/Network.hh>
 #include <phosg/Strings.hh>
 #include <set>
+#include <thread>
 #include <unordered_map>
 
 #include "CatSession.hh"
@@ -16,6 +17,7 @@
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
 #include "ProxyServer.hh"
+#include "PSOEncryptionSeedFinder.hh"
 #include "ReplaySession.hh"
 #include "SendCommands.hh"
 #include "Server.hh"
@@ -223,38 +225,60 @@ When options are given, newserv will do things other than running the server.\n\
 Specifically:\n\
   --decrypt-data\n\
   --encrypt-data\n\
-      If either of these options is given, newserv will read from stdin and\n\
-      write the encrypted or decrypted result to stdout. By default, PSO GC\n\
-      encryption is used, but this can be overridden with --pc or --bb. The\n\
-      --seed option specifies the encryption seed (4 hex bytes for PC or GC, or\n\
-      48 hex bytes for BB). For BB, the --key option is required as well, and\n\
-      should refer to a .nsk file in system/blueburst/keys (without the\n\
-      directory or .nsk extension).\n\
+      Read from stdin, encrypt or decrypt the data, and write the result to\n\
+      stdout. By default, PSO V3 encryption is used, but this can be overridden\n\
+      with --pc or --bb. The --seed option specifies the encryption seed (4 hex\n\
+      bytes for PC or GC, or 48 hex bytes for BB). For BB, the --key option is\n\
+      required as well, and refers to a .nsk file in system/blueburst/keys\n\
+      (without the directory or .nsk extension). For non-BB ciphers, the\n\
+      --big-endian option applies the cipher masks as big-endian instead of\n\
+      little-endian, which is necessary for some GameCube file formats.\n\
+  --find-decryption-seed\n\
+      Perform a brute-force search for a decryption seed of the given data.\n\
+      The ciphertext is specified with the --encrypted= option and the expected\n\
+      plaintext is specified with the --decrypted= option. The plaintext may\n\
+      include unmatched bytes (specified with the ? operator), but overall it\n\
+      must be the same length as the ciphertext. By default, this option uses\n\
+      PSO V3 encryption, but this can be overridden with --pc. (BB encryption\n\
+      seeds are too long to be searched for with this function.) By default,\n\
+      the number of worker threads is equal the the number of CPU cores in the\n\
+      system, but this can be overridden with the --threads= option. To use a\n\
+      rainbow table instead of computing the cipherstreams inline, use the\n\
+      --rainbow-table=FILENAME option.\n\
+  --generate-rainbow-table=FILENAME\n\
+      Generate a decryption table for V3 encryption (or V2 if --pc is given).\n\
+      The --match-length= option must be given, which specifies the match\n\
+      length for the table. The total table size is the match length * 4 GB.\n\
+      As for --encrypt-data, the --big-endian option specifies that the table\n\
+      uses big-endian encryption. As for --find-decryption-seed, the --threads\n\
+      option specifies the parallelism for generating the table.\n\
   --decode-sjis\n\
-      If this option is given, newserv applies its text decoding algorithm to\n\
-      the data on stdin, producing little-endian UTF-16 data on stdout.\n\
+      Apply newserv\'s text decoding algorithm to the data on stdin, producing\n\
+      little-endian UTF-16 data on stdout.\n\
   --decode-gci=FILENAME\n\
   --decode-dlq=FILENAME\n\
   --decode-qst=FILENAME\n\
-      If any of these options are given, newserv will decode the given quest\n\
-      file into a compressed, unencrypted .bin or .dat file (or in the case of)\n\
-      --decode-qst, both a .bin and a .dat file).\n\
+      Decode the given quest file into a compressed, unencrypted .bin or .dat\n\
+      file (or in the case of --decode-qst, both a .bin and a .dat file). The\n\
+      --decode-gci option can be used to decrypt encrypted GCI files. If you\n\
+      know the player\'s serial number who generated the GCI file, use the\n\
+      --seed= option and give the serial number (as a hex-encoded integer). If\n\
+      you don\'t know the serial number, newserv will find it via a brute-force\n\
+      search, but this will likely take a long time.\n\
   --cat-client=ADDR:PORT\n\
-      If this option is given, newserv will behave as if it's a PSO client, and\n\
-      will connect to the given server. It will then print all the received\n\
-      commands to stdout, and forward any commands typed into stdin to the\n\
-      remote server. It is assumed that the input and output are terminals, so\n\
-      all commands are hex-encoded. The --patch, --dc, --pc, --gc, and --bb\n\
-      options can be used to select the command format and encryption. If --bb\n\
-      is used, the --key option is also required (as in --decrypt-data above).\n\
+      Connect to the given server and simulate a PSO client. newserv will then\n\
+      print all the received commands to stdout, and forward any commands typed\n\
+      into stdin to the remote server. It is assumed that the input and output\n\
+      are terminals, so all commands are hex-encoded. The --patch, --dc, --pc,\n\
+      --gc, and --bb options can be used to select the command format and\n\
+      encryption. If --bb is used, the --key option is also required (as in\n\
+      --decrypt-data above).\n\
   --replay-log=FILENAME\n\
-      This option makes newserv replay terminal log as if it were a client\n\
-      session. This is used for regression testing, to make sure client\n\
-      sessions are repeatable and code changes don\'t affect existing (working)\n\
-      functionality.\n\
+      Replay a terminal log as if it were a client session. This is used for\n\
+      regression testing, to make sure client sessions are repeatable and code\n\
+      changes don\'t affect existing (working) functionality.\n\
   --extract-gsl=FILENAME\n\
-      This option makes newserv extract all files from a GSL archive and place\n\
-      them in the current directory.\n\
+      Extract all files from a GSL archive into the current directory.\n\
 \n\
 A few options apply to multiple modes described above:\n\
   --parse-data\n\
@@ -269,6 +293,8 @@ enum class Behavior {
   RUN_SERVER = 0,
   DECRYPT_DATA,
   ENCRYPT_DATA,
+  FIND_DECRYPTION_SEED,
+  GENERATE_RAINBOW_TABLE,
   DECODE_QUEST_FILE,
   DECODE_SJIS,
   EXTRACT_GSL,
@@ -290,8 +316,15 @@ int main(int argc, char** argv) {
   string seed;
   string key_file_name;
   const char* config_filename = "system/config.json";
+  string rainbow_table_filename;
   bool parse_data = false;
-  bool byteswap_data = false;
+  bool big_endian = false;
+  bool skip_little_endian = false;
+  bool skip_big_endian = false;
+  size_t num_threads = 0;
+  size_t match_length = 0;
+  const char* find_decryption_seed_ciphertext = nullptr;
+  vector<const char*> find_decryption_seed_plaintexts;
   const char* replay_log_filename = nullptr;
   const char* extract_gsl_filename = nullptr;
   const char* replay_required_access_key = "";
@@ -305,6 +338,11 @@ int main(int argc, char** argv) {
       behavior = Behavior::DECRYPT_DATA;
     } else if (!strcmp(argv[x], "--encrypt-data")) {
       behavior = Behavior::ENCRYPT_DATA;
+    } else if (!strcmp(argv[x], "--find-decryption-seed")) {
+      behavior = Behavior::FIND_DECRYPTION_SEED;
+    } else if (!strncmp(argv[x], "--generate-rainbow-table=", 25)) {
+      behavior = Behavior::GENERATE_RAINBOW_TABLE;
+      rainbow_table_filename = &argv[x][25];
     } else if (!strcmp(argv[x], "--decode-sjis")) {
       behavior = Behavior::DECODE_SJIS;
     } else if (!strncmp(argv[x], "--decode-gci=", 13)) {
@@ -322,6 +360,12 @@ int main(int argc, char** argv) {
     } else if (!strncmp(argv[x], "--cat-client=", 13)) {
       behavior = Behavior::CAT_CLIENT;
       cat_client_remote = make_sockaddr_storage(parse_netloc(&argv[x][13])).first;
+    } else if (!strncmp(argv[x], "--threads=", 10)) {
+      num_threads = strtoull(&argv[x][13], nullptr, 0);
+    } else if (!strncmp(argv[x], "--match-length=", 15)) {
+      match_length = strtoull(&argv[x][15], nullptr, 0);
+    } else if (!strncmp(argv[x], "--rainbow-table=", 16)) {
+      rainbow_table_filename = &argv[x][16];
     } else if (!strcmp(argv[x], "--patch")) {
       cli_version = GameVersion::PATCH;
     } else if (!strcmp(argv[x], "--dc")) {
@@ -338,10 +382,18 @@ int main(int argc, char** argv) {
       seed = &argv[x][7];
     } else if (!strncmp(argv[x], "--key=", 6)) {
       key_file_name = &argv[x][6];
+    } else if (!strncmp(argv[x], "--encrypted=", 12)) {
+      find_decryption_seed_ciphertext = &argv[x][12];
+    } else if (!strncmp(argv[x], "--decrypted=", 12)) {
+      find_decryption_seed_plaintexts.emplace_back(&argv[x][12]);
     } else if (!strcmp(argv[x], "--parse-data")) {
       parse_data = true;
-    } else if (!strcmp(argv[x], "--byteswap-data")) {
-      byteswap_data = true;
+    } else if (!strcmp(argv[x], "--big-endian")) {
+      big_endian = true;
+    } else if (!strcmp(argv[x], "--skip-little-endian")) {
+      skip_little_endian = true;
+    } else if (!strcmp(argv[x], "--skip-big-endian")) {
+      skip_big_endian = true;
     } else if (!strncmp(argv[x], "--replay-log=", 13)) {
       behavior = Behavior::REPLAY_LOG;
       replay_log_filename = &argv[x][13];
@@ -389,7 +441,7 @@ int main(int argc, char** argv) {
         data = parse_data_string(data);
       }
 
-      if (byteswap_data) {
+      if (big_endian) {
         uint32_t* dwords = reinterpret_cast<uint32_t*>(data.data());
         for (size_t x = 0; x < (data.size() >> 2); x++) {
           dwords[x] = bswap32(dwords[x]);
@@ -404,7 +456,7 @@ int main(int argc, char** argv) {
         throw logic_error("invalid behavior");
       }
 
-      if (byteswap_data) {
+      if (big_endian) {
         uint32_t* dwords = reinterpret_cast<uint32_t*>(data.data());
         for (size_t x = 0; x < (data.size() >> 2); x++) {
           dwords[x] = bswap32(dwords[x]);
@@ -421,9 +473,76 @@ int main(int argc, char** argv) {
       break;
     }
 
+    case Behavior::FIND_DECRYPTION_SEED: {
+      if (find_decryption_seed_plaintexts.empty() || !find_decryption_seed_ciphertext) {
+        throw runtime_error("both --encrypted and --decrypted must be specified");
+      }
+      if (cli_version == GameVersion::BB) {
+        throw runtime_error("--find-decryption-seed cannot be used for BB ciphers");
+      }
+
+      vector<pair<string, string>> plaintexts;
+      for (const auto& plaintext_ascii : find_decryption_seed_plaintexts) {
+        string mask;
+        string data = parse_data_string(plaintext_ascii, &mask);
+        plaintexts.emplace_back(move(data), move(mask));
+      }
+      string ciphertext = parse_data_string(find_decryption_seed_ciphertext);
+
+      if (num_threads == 0) {
+        num_threads = thread::hardware_concurrency();
+      }
+
+      PSOEncryptionSeedFinder finder(ciphertext, plaintexts, num_threads);
+      PSOEncryptionSeedFinder::ThreadResults results;
+      if (!rainbow_table_filename.empty()) {
+        results = finder.find_seed(rainbow_table_filename);
+      } else {
+        using Flag = PSOEncryptionSeedFinder::Flag;
+        uint64_t flags =
+            (((cli_version == GameVersion::GC) || (cli_version == GameVersion::XB)) ? Flag::V3 : 0) |
+            (skip_little_endian ? Flag::SKIP_LITTLE_ENDIAN : 0) |
+            (skip_big_endian ? Flag::SKIP_BIG_ENDIAN : 0);
+        results = finder.find_seed(flags);
+      }
+
+      log_info("Minimum differences: %zu", results.min_differences);
+      for (auto result : results.results) {
+        if (result.differences != results.min_differences) {
+          throw logic_error("incorrect difference count in result");
+        }
+        if (result.is_indeterminate) {
+          log_info("Example match: %08" PRIX32 " (%zu)",
+              result.seed, result.differences);
+        } else {
+          log_info("Example match: %08" PRIX32 " (%zu; %s, %s)",
+              result.seed,
+              result.differences,
+              result.is_v3 ? "v3" : "v2",
+              result.is_big_endian ? "big-endian" : "little-endian");
+        }
+      }
+      for (size_t z = 0; z < results.difference_histogram.size(); z++) {
+        log_info("(Difference histogram) %zu => %zu results",
+            z, results.difference_histogram[z]);
+      }
+      break;
+    }
+
+    case Behavior::GENERATE_RAINBOW_TABLE: {
+      if (num_threads == 0) {
+        num_threads = thread::hardware_concurrency();
+      }
+      bool is_v3 = ((cli_version == GameVersion::GC) || (cli_version == GameVersion::XB));
+      PSOEncryptionSeedFinder::generate_rainbow_table(
+          rainbow_table_filename, is_v3, big_endian, match_length, num_threads);
+      break;
+    }
+
     case Behavior::DECODE_QUEST_FILE:
       if (quest_file_type == QuestFileFormat::GCI) {
-        save_file(quest_filename + ".dec", Quest::decode_gci(quest_filename));
+        int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
+        save_file(quest_filename + ".dec", Quest::decode_gci(quest_filename, num_threads, dec_seed));
       } else if (quest_file_type == QuestFileFormat::DLQ) {
         save_file(quest_filename + ".dec", Quest::decode_dlq(quest_filename));
       } else if (quest_file_type == QuestFileFormat::QST) {
