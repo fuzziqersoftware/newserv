@@ -171,6 +171,20 @@ A few things to be aware of when using the proxy server:
 
 ### Connecting local clients
 
+#### PSO DC
+
+Some versions of PSO DC will connect to a private server if you just set their DNS server address (in the network configuration) to newserv's address, and enable newserv's DNS server. This will not work for other versions; for those, you'll need a cheat code. Creating such a code is beyond the scope of this document.
+
+If you're emulating PSO DC or have a disc image, you can patch the appropriate files within the disc image to make it connect to any address you want. Creating such a patch is also beyond the scope of this document.
+
+Finally, if you're emulating PSO DC, you can modify the loaded executable in memory to make it connect anywhere you want. There is a script included with newserv that can do this for Flycast. The script only works on macOS because it uses memwatch, which is a macOS-specific program, but a similar technique could be done manually using scanmem on Linux or Cheat Engine on Windows. To use the script, do this:
+1. Build and install memwatch (https://github.com/fuzziqersoftware/memwatch).
+2. Start Flycast and run PSO.
+3. Run `sudo patch_flycast_memory.py <original-destination>`. `<original-destination>` should be the hostname that PSO wants to connect to (you can find this out by using Wireshark and looking for DNS queries). The script may take up to a minute; you can continue using Flycast while it runs, but don't start an online game until the script is done.
+4. Run newserv and start an online game in PSO.
+
+If you use this method, you'll have to run the script every time you start PSO in Flycast, but you won't have to run it again if you start another online game without restarting emulation.
+
 #### PSO PC
 
 The version of PSO PC I have has the server addresses starting at offset 0x29CB34 in pso.exe. Using a hex editor, change those to "localhost" (without quotes) if you just want to connect to a locally-running newserv instance. Alternatively, you can add an entry to the Windows hosts file (C:\Windows\System32\drivers\etc\hosts) to redirect the connection to 127.0.0.1 (localhost) or any other IP address.
