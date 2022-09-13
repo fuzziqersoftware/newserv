@@ -88,7 +88,7 @@ add_executable(newserv
   src/Version.cc
 )
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR})
-target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES})
+target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} pthread)
 
 if(RESOURCE_FILE_FOUND)
   target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)
