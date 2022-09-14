@@ -210,7 +210,6 @@ void PSOEncryptionSeedFinder::parallel_all_seeds_t(
     usleep(1000000);
   }
 
-  log_info("Waiting for worker threads to terminate\n");
   for (auto& t : threads) {
     t.join();
   }

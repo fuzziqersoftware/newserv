@@ -148,12 +148,14 @@ string find_seed_and_decrypt_gci_data_section(
     const void* data_section, size_t size, size_t num_threads) {
   mutex result_lock;
   string result;
+  uint32_t result_seed = 0xFFFFFFFF;
   PSOEncryptionSeedFinder::parallel_all_seeds(num_threads, [&](
       uint32_t seed, size_t) {
     try {
       string ret = decrypt_gci_data_section(data_section, size, seed);
       lock_guard<mutex> g(result_lock);
       result = move(ret);
+      result_seed = seed;
       return true;
     } catch (const runtime_error&) {
       return false;
@@ -161,6 +163,8 @@ string find_seed_and_decrypt_gci_data_section(
   });
 
   if (!result.empty()) {
+    static_game_data_log.info("Found seed %08" PRIX32 " to decrypt GCI file",
+        result_seed);
     return result;
   } else {
     throw runtime_error("no seed found");
