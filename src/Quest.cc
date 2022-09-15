@@ -71,7 +71,9 @@ struct ShuffleTables {
 
 struct PSOGCIFileHeader {
   parray<uint8_t, 0x40> gci_header;
-  parray<uint8_t, 0x40> pso_header;
+  ptext<char, 0x1C> game_name; // e.g. "PSO EPISODE I & II"
+  be_uint32_t embedded_seed; // Used in some of Ralf's quest packs
+  ptext<char, 0x20> quest_name;
   parray<uint8_t, 0x2000> banner_and_icon;
   // data_size specifies the number of bytes in the encrypted section, including
   // the encrypted header (below) and all encrypted data after it.
@@ -82,7 +84,9 @@ struct PSOGCIFileHeader {
   be_uint32_t checksum;
 
   bool checksum_correct() const {
-    uint32_t cs = crc32(&this->pso_header, sizeof(this->pso_header));
+    uint32_t cs = crc32(&this->game_name, sizeof(this->game_name));
+    cs = crc32(&this->embedded_seed, sizeof(this->embedded_seed), cs);
+    cs = crc32(&this->quest_name, sizeof(this->quest_name), cs);
     cs = crc32(&this->banner_and_icon, sizeof(this->banner_and_icon), cs);
     cs = crc32(&this->data_size, sizeof(this->data_size), cs);
     cs = crc32("\0\0\0\0", 4, cs);
@@ -110,7 +114,6 @@ string decrypt_gci_data_section(
     shuf.shuffle(decrypted.data(), data_section, size, true);
   }
 
-  decrypted.resize((decrypted.size() + 3) & (~3));
   auto* be_dwords = reinterpret_cast<be_uint32_t*>(decrypted.data());
 
   PSOV2Encryption crypt(seed);
@@ -132,13 +135,24 @@ string decrypt_gci_data_section(
     throw runtime_error("incorrect decrypted data section checksum");
   }
 
+  size_t orig_size = decrypted.size();
+  decrypted.resize((orig_size + 3) & (~3));
   PSOV2Encryption(header->round3_seed).decrypt(
       decrypted.data() + sizeof(PSOGCIFileEncryptedHeader),
       decrypted.size() - sizeof(PSOGCIFileEncryptedHeader));
+  decrypted.resize(orig_size);
 
   string ret = decrypted.substr(sizeof(PSOGCIFileEncryptedHeader));
-  if (prs_decompress_size(ret) != header->decompressed_size) {
-    throw runtime_error("decompressed size does not match size in header");
+
+  // Some GCI files have decompressed_size fields that are 8 bytes smaller than
+  // the actual decompressed size of the data. They seem to work fine, so we
+  // accept both cases as correct.
+  size_t decompressed_size = prs_decompress_size(ret);
+  if ((decompressed_size != header->decompressed_size) &&
+      (decompressed_size != header->decompressed_size - 8)) {
+    throw runtime_error(string_printf(
+        "decompressed size (%zu) does not match size in header (%" PRId32 ")",
+        decompressed_size, header->decompressed_size.load()));
   }
 
   return ret;
@@ -594,6 +608,10 @@ string Quest::decode_gci(
       return decrypt_gci_data_section(
           r.getv(header.data_size), header.data_size, known_seed);
 
+    } else if (header.embedded_seed != 0) {
+      return decrypt_gci_data_section(
+          r.getv(header.data_size), header.data_size, header.embedded_seed);
+
     } else {
       if (find_seed_num_threads < 0) {
         throw runtime_error("GCI file appears to be encrypted");
@@ -607,7 +625,7 @@ string Quest::decode_gci(
 
   } else { // Unencrypted GCI format
     r.skip(sizeof(PSOGCIFileEncryptedHeader));
-    string compressed_data = r.read(r.remaining());
+    string compressed_data = r.readx(header.data_size - sizeof(PSOGCIFileEncryptedHeader));
     size_t decompressed_bytes = prs_decompress_size(compressed_data);
 
     size_t expected_decompressed_bytes = encrypted_header.decompressed_size - 8;

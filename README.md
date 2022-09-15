@@ -33,7 +33,6 @@ newserv supports several versions of PSO. Specifically:
 This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance. With that said, feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
 
 Current known issues / missing features:
-- Partially-encrypted GCI quest files probably don't work. Fix this. Also check that completely unencrypted GCI quest files actually work.
 - Support disconnect hooks to clean up state, like if a client disconnects during quest loading or a trade window execution.
 - Episode 3 battles aren't implemented.
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
@@ -72,14 +71,24 @@ Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle qu
 - `###`: quest number (this doesn't really matter; it should just be unique for the PSO version)
 - `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gov = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
 - `VERSION`: d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
-- `EXT`: file extension (bin, dat, bind, datd, bin.gci, dat.gci, bin.dlq, dat.dlq, or qst)
+- `EXT`: file extension (see table below)
 
-There are multiple PSO quest formats out there; newserv supports most of them. Specifically, newserv can use quests in any of the following formats:
-- Compressed bin/dat format: These quests consist of two files with the same base name, a .bin file and a .dat file. (This is the format you'll get if you saved a quest with set-save-files.)
-- Uncompressed bin/dat format: These quests consist of two files with the same base name, a .bind file and a .datd file.
-- Unencrypted GCI format: These quests also consist of a .bin and .dat file, but an encoding is applied on top of them. The filenames should end in .bin.gci and .dat.gci. Note that there also exists an encrypted GCI format, which newserv does not support at runtime, but you can also use newserv to convert these files to bin/dat format and then use them with the server. Run `newserv --help` and see the `--decode-gci` option for more information.
-- Encrypted DLQ format: These quests also consist of a .bin and .dat file, but download quest encryption is applied on top of them. The filenames should end in .bin.dlq and .dat.dlq.
-- QST format: These quests consist of only a .qst file, which contains both the .bin and .dat files within it.
+There are multiple PSO quest formats out there; newserv supports most of them. Specifically:
+
+| Format                    | Extension         | Supported online? | Offline decode option     |
+|---------------------------|-------------------|-------------------|---------------------------|
+| Compressed                | .bin/.dat         | Yes               | None (1)                  |
+| Uncompressed              | .bind/.datd       | Yes               | None (2)                  |
+| Unencrypted GCI           | .bin.gci/.dat.gci | Yes               | --decode-gci=FILENAME     |
+| Encrypted GCI with key    | .bin.gci/.dat.gci | Yes               | --decode-gci=FILENAME     |
+| Encrypted GCI without key | .bin.gci/.dat.gci | No                | --decode-gci=FILENAME (3) |
+| Encrypted DLQ             | .bin.dlq/.dat.dlq | Yes               | --decode-dlq=FILENAME     |
+| QST                       | .qst              | Yes               | --decode-qst=FILENAME     |
+
+*Notes:*
+1. *This is the default format. You can convert these to uncompressed format with [gctools](https://github.com/fuzziqersoftware/gctools)' prsd like this: `prsd -d < FILENAME.bin > FILENAME.bind`*
+2. *As in (1), to compress an uncompressed quest file: `prsd < FILENAME.bind > FILENAME.bin`*
+3. *If you know the encryption seed (serial number), pass it in as a hex string with the `--seed=` option. If you don't know the encryption seed, newserv will find it for you, which will likely take a long time.*
 
 Episode 3 quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 .bin files can be encoded in any of the formats described above, except .qst.
 
