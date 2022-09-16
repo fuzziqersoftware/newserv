@@ -104,15 +104,16 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       (c->server_behavior == ServerBehavior::DATA_SERVER_BB)) {
     // On the login server, send the events/songs, ep3 updates, and the main
     // menu or welcome message
-    if (s->pre_lobby_event) {
-      send_change_event(c, s->pre_lobby_event);
-    }
     if (c->flags & Client::Flag::EPISODE_3) {
       if (s->ep3_menu_song >= 0) {
         send_ep3_change_music(c, s->ep3_menu_song);
+      } else if (s->pre_lobby_event) {
+        send_change_event(c, s->pre_lobby_event);
       }
       send_ep3_card_list_update(s, c);
       send_ep3_rank_update(c);
+    } else if (s->pre_lobby_event) {
+      send_change_event(c, s->pre_lobby_event);
     }
 
     if (s->welcome_message.empty() ||
