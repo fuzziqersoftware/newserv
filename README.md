@@ -152,6 +152,11 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$li`: Shows basic information about the lobby or game you're in. If you're on the proxy server, shows information about your connection instead (remote Guild Card number, client ID, etc.).
     * `$what` (game server only): Shows the type, name, and stats of the nearest item on the ground.
 
+* Debugging commands (game server only)
+    * `$dbgid`: Enable or disable high ID preference. When enabled, you'll be placed into the latest available slot in lobbies and games instead of the earliest. Can be useful for finding commands for which newserv doesn't handle client IDs properly.
+    * `$gc`: Send your own Guild Card to yourself.
+    * `$persist`: Enable or disable persistence for the current lobby or game. This determines whether the lobby/game is deleted when the last player leaves. You need the DEBUG permission in your user license to use this command because there are no game state checks when you do this. For example, if you make a game persistent, start a quest, then leave the game, the game can't be joined by anyone but also can't be deleted.
+
 * Personal state commands
     * `$arrow <color-id>`: Changes your lobby arrow color.
     * `$secid <section-id>`: Sets your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. To revert to your actual section id, run `$secid` with no name after it.

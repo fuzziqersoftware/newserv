@@ -17,6 +17,8 @@ enum Privilege {
   FREE_JOIN_GAMES   = 0x00000040,
   UNLOCK_GAMES      = 0x00000080,
 
+  DEBUG             = 0x01000000,
+
   MODERATOR         = 0x00000007,
   ADMINISTRATOR     = 0x0000003F,
   ROOT              = 0x7FFFFFFF,

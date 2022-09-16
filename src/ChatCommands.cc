@@ -194,6 +194,20 @@ static void proxy_command_arrow(shared_ptr<ServerState>,
 static void server_command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string&) {
   c->prefer_high_lobby_client_id = !c->prefer_high_lobby_client_id;
+  send_text_message_printf(c, "ID preference set\nto $C6%s",
+      c->prefer_high_lobby_client_id ? "high" : "low");
+}
+
+static void server_command_persist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string&) {
+  check_privileges(c, Privilege::DEBUG);
+  if (l->flags & Lobby::Flag::DEFAULT) {
+    send_text_message(c, u"$C6Default lobbies\ncannot be marked\ntemporary");
+  } else {
+    l->flags ^= Lobby::Flag::PERSISTENT;
+    send_text_message_printf(c, "Lobby persistence\n%s",
+        (l->flags & Lobby::Flag::PERSISTENT) ? "enabled" : "disabled");
+  }
 }
 
 static void server_command_get_self_card(shared_ptr<ServerState>, shared_ptr<Lobby>,
@@ -882,37 +896,38 @@ struct ChatCommandDefinition {
 
 static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     // TODO: implement command_help and actually use the usage strings here
-    {u"$allevent"  , {server_command_lobby_event_all   , nullptr                    , u"Usage:\nallevent <name/ID>"}},
-    {u"$ann"       , {server_command_announce          , nullptr                    , u"Usage:\nann <message>"}},
-    {u"$arrow"     , {server_command_arrow             , proxy_command_arrow        , u"Usage:\narrow <color>"}},
-    {u"$ax"        , {server_command_ax                , nullptr                    , u"Usage:\nax <message>"}},
-    {u"$ban"       , {server_command_ban               , nullptr                    , u"Usage:\nban <name-or-number>"}},
+    {u"$allevent", {server_command_lobby_event_all,    nullptr,                     u"Usage:\nallevent <name/ID>"}},
+    {u"$ann",      {server_command_announce,           nullptr,                     u"Usage:\nann <message>"}},
+    {u"$arrow",    {server_command_arrow,              proxy_command_arrow,         u"Usage:\narrow <color>"}},
+    {u"$ax",       {server_command_ax,                 nullptr,                     u"Usage:\nax <message>"}},
+    {u"$ban",      {server_command_ban,                nullptr,                     u"Usage:\nban <name-or-number>"}},
     // TODO: implement this on proxy server
-    {u"$bbchar"    , {server_command_convert_char_to_bb, nullptr                    , u"Usage:\nbbchar <user> <pass> <1-4>"}},
-    {u"$cheat"     , {server_command_cheat             , nullptr                    , u"Usage:\ncheat"}},
-    {u"$dbgid"     , {server_command_dbgid             , nullptr                    , u"Usage:\ndbgid"}},
-    {u"$edit"      , {server_command_edit              , nullptr                    , u"Usage:\nedit <stat> <value>"}},
-    {u"$event"     , {server_command_lobby_event       , proxy_command_lobby_event  , u"Usage:\nevent <name>"}},
-    {u"$gc"        , {server_command_get_self_card     , nullptr                    , u"Usage:\ngc"}},
-    {u"$infhp"     , {server_command_infinite_hp       , proxy_command_infinite_hp  , u"Usage:\ninfhp"}},
-    {u"$inftp"     , {server_command_infinite_tp       , proxy_command_infinite_tp  , u"Usage:\ninftp"}},
-    {u"$item"      , {server_command_item              , proxy_command_item         , u"Usage:\nitem <item-code>"}},
-    {u"$kick"      , {server_command_kick              , nullptr                    , u"Usage:\nkick <name-or-number>"}},
-    {u"$li"        , {server_command_lobby_info        , proxy_command_lobby_info   , u"Usage:\nli"}},
-    {u"$maxlevel"  , {server_command_max_level         , nullptr                    , u"Usage:\nmax_level <level>"}},
-    {u"$minlevel"  , {server_command_min_level         , nullptr                    , u"Usage:\nmin_level <level>"}},
+    {u"$bbchar",   {server_command_convert_char_to_bb, nullptr,                     u"Usage:\nbbchar <user> <pass> <1-4>"}},
+    {u"$cheat",    {server_command_cheat,              nullptr,                     u"Usage:\ncheat"}},
+    {u"$dbgid",    {server_command_dbgid,              nullptr,                     u"Usage:\ndbgid"}},
+    {u"$edit",     {server_command_edit,               nullptr  ,                   u"Usage:\nedit <stat> <value>"}},
+    {u"$event",    {server_command_lobby_event,        proxy_command_lobby_event,   u"Usage:\nevent <name>"}},
+    {u"$gc",       {server_command_get_self_card,      nullptr,                     u"Usage:\ngc"}},
+    {u"$infhp",    {server_command_infinite_hp,        proxy_command_infinite_hp,   u"Usage:\ninfhp"}},
+    {u"$inftp",    {server_command_infinite_tp,        proxy_command_infinite_tp,   u"Usage:\ninftp"}},
+    {u"$item",     {server_command_item,               proxy_command_item,          u"Usage:\nitem <item-code>"}},
+    {u"$kick",     {server_command_kick,               nullptr,                     u"Usage:\nkick <name-or-number>"}},
+    {u"$li",       {server_command_lobby_info,         proxy_command_lobby_info,    u"Usage:\nli"}},
+    {u"$maxlevel", {server_command_max_level,          nullptr,                     u"Usage:\nmax_level <level>"}},
+    {u"$minlevel", {server_command_min_level,          nullptr,                     u"Usage:\nmin_level <level>"}},
     // TODO: implement this on proxy server
-    {u"$next"      , {server_command_next              , nullptr                    , u"Usage:\nnext"}},
-    {u"$password"  , {server_command_password          , nullptr                    , u"Usage:\nlock [password]\nomit password to\nunlock game"}},
-    {u"$rand"      , {server_command_rand              , proxy_command_rand         , u"Usage:\nrand [hex seed]\nomit seed to revert\nto default"}},
-    {u"$secid"     , {server_command_secid             , proxy_command_secid        , u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
-    {u"$silence"   , {server_command_silence           , nullptr                    , u"Usage:\nsilence <name-or-number>"}},
+    {u"$next",     {server_command_next,               nullptr,                     u"Usage:\nnext"}},
+    {u"$password", {server_command_password,           nullptr,                     u"Usage:\nlock [password]\nomit password to\nunlock game"}},
+    {u"$persist",  {server_command_persist,            nullptr,                     u"Usage:\npersist"}},
+    {u"$rand",     {server_command_rand,               proxy_command_rand,          u"Usage:\nrand [hex seed]\nomit seed to revert\nto default"}},
+    {u"$secid",    {server_command_secid,              proxy_command_secid,         u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
+    {u"$silence",  {server_command_silence,            nullptr,                     u"Usage:\nsilence <name-or-number>"}},
     // TODO: implement this on proxy server
-    {u"$song"      , {server_command_song              , nullptr                    , u"Usage:\nsong <song-number>"}},
-    {u"$swa"       , {server_command_switch_assist     , proxy_command_switch_assist, u"Usage:\nswa"}},
-    {u"$type"      , {server_command_lobby_type        , nullptr                    , u"Usage:\ntype <name>"}},
-    {u"$warp"      , {server_command_warp              , proxy_command_warp         , u"Usage:\nwarp <area-number>"}},
-    {u"$what"      , {server_command_what              , nullptr                    , u"Usage:\nwhat"}},
+    {u"$song",     {server_command_song,               nullptr,                     u"Usage:\nsong <song-number>"}},
+    {u"$swa",      {server_command_switch_assist,      proxy_command_switch_assist, u"Usage:\nswa"}},
+    {u"$type",     {server_command_lobby_type,         nullptr,                     u"Usage:\ntype <name>"}},
+    {u"$warp",     {server_command_warp,               proxy_command_warp,          u"Usage:\nwarp <area-number>"}},
+    {u"$what",     {server_command_what,               nullptr,                     u"Usage:\nwhat"}},
 });
 
 struct SplitCommand {
