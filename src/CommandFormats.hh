@@ -2144,8 +2144,8 @@ struct S_GuildCardHeader_BB_01DC {
 };
 
 struct S_GuildCardFileChunk_02DC {
-  uint32_t unknown; // 0
-  uint32_t chunk_index;
+  le_uint32_t unknown; // 0
+  le_uint32_t chunk_index;
   uint8_t data[0x6800]; // Command may be shorter if this is the last chunk
 };
 
@@ -3024,7 +3024,7 @@ struct G_WalkToPosition_6x40 {
   le_uint16_t client_id;
   le_float x;
   le_float z;
-  uint32_t unused;
+  le_uint32_t unused;
 };
 
 // 41: Unknown
