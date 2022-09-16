@@ -4,6 +4,40 @@ newserv is a game server and proxy for Phantasy Star Online (PSO).
 
 This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself, which was originally created by Sega.
 
+## History
+
+The history of this project essentially mirrors my development as a software engineer from the beginning of my hobby until now. If you don't care about the story, skip to the "Compatibility" or "Usage" sections below.
+
+<img align="left" src="s-khyps.png" /> First, there was Khyps, a proxy I had written for PSO GameCube sometime in 2003. This was back in the days of the official Sega servers, and vulnerabilities weren't addressed by Sega in a timely manner or at all. It was common for malicious players using their own proxies or Action Replay codes (a story for another time) to send invalid commands that the servers would blindly forward, and cause the receiving clients to crash. These crashes were more than simply inconvenient; they could also corrupt your save data, destroying the hours of work you may have put into hunting items and leveling up your character.
+
+For a while it was essentially necessary to use a proxy to go online at all, so the proxy could block these invalid commands. Khyps was designed primarily with this function in mind, though it also implemented some convenient cheats, like the ability to give yourself or other players infinite HP and allow you to teleport to different places without using an in-game teleporter.
+
+<img align="left" src="s-khyller.png" /> After Khyps I took on the larger challenge of writing a server, which resulted in Khyller sometime in 2005. This was the first server of any type I had ever written. This project eventually evolved into a full-featured environment supporting all versions of the game that I had access to - at the time, PC, GC, and BB. But as this evolution occurred, the code became increasingly cumbersome, littered with debugging filth that I never cleaned up and odd coding patterns I had picked up over the years. My understanding of the C++ language was woefully incomplete as well (as opposed to now, when it is still incomplete but not woefully so), so Khyller was essentially a C project that had a couple of classes in it.
+
+<img align="left" src="s-aeon.png" /> Sometime in 2006 or 2007, I abandoned Khyller and rebuilt the entire thing from scratch, resulting in Aeon. Aeon was substantially cleaner in code than Khyller but still fairly hard to work with, and it lacked a few of the more arcane features I had originally written (for example, the ability to convert any quest into a download quest). In addition, the code still had some stability problems... it turns out that Aeon's concurrency primitives were simply incorrect. I had derived the concept of a mutex myself (before taking any real computer engineering classes) but implemented it incorrectly. No wonder Aeon would randomly crash after running seemingly fine for a few days.
+
+At the time of its inception, Aeon was also called newserv, and you may find some beta releases floating around the Internet with filenames like `newserv-b3.zip`. I had released betas 1, 2, and 3 before I released the entire source of beta 5 and stopped working on the project when I went to college. This was around the time when I switched from writing software primarily on Windows to primarily on macOS and Linux, so Aeon beta 5 was the last server I wrote that specifically targeted Windows. (newserv, which you're looking at now, is a bit tedious to compile in Windows but does work.)
+
+<img align="left" src="s-newserv.png" /> After a long hiatus from PSO and much professional and personal development in my technical abilities, I was reminiscing sometime in October 2018 by reading my old code archives. Somehow inspired when I came across Aeon, I spent a weekend and a couple more evenings rewriting the entire project again, cleaning up ancient patterns I had used eleven years ago, replacing entire modules with simple STL containers, and eliminating even more support files in favor of configuration autodetection. The code is now suitably modern and stable, and I'm not embarrassed by its existence, as I am by Aeon beta 5's source code and my archive of Khyller (which, thankfully, no one else ever saw).
+
+newserv is many things - a server, a proxy, an encryption and decryption tool, a decoder of various PSO-related formats, and more. Primarily, it's a reverse-engineering project in which I try to unravel the secrets of a 20-year-old video game, for honestly no reason. Solving these problems and documenting them in code has been fun, and I'll continue to do it when my time allows.
+
+## Future
+
+This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance. With that said, feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
+
+Current known issues / missing features:
+- Support disconnect hooks to clean up state, like if a client disconnects during quest loading or a trade window execution.
+- Episode 3 battles aren't implemented.
+- PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
+- Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
+- PSOX is not tested at all.
+- Memory patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
+- Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
+- Implement private and overflow lobbies.
+- Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
+- Encapsulate BB server-side random state and make replays deterministic.
+
 ## Compatibility
 
 newserv supports several versions of PSO. Specifically:
@@ -28,22 +62,6 @@ newserv supports several versions of PSO. Specifically:
 4. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
 5. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
 
-## Future
-
-This project is primarily for my own nostalgia; I offer no guarantees on how or when this project will advance. With that said, feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
-
-Current known issues / missing features:
-- Support disconnect hooks to clean up state, like if a client disconnects during quest loading or a trade window execution.
-- Episode 3 battles aren't implemented.
-- PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
-- Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
-- PSOX is not tested at all.
-- Memory patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
-- Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
-- Implement private and overflow lobbies.
-- Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
-- Encapsulate BB server-side random state and make replays deterministic.
-
 ## Usage
 
 Currently newserv should build on macOS and Ubuntu. It will likely work on other Linux flavors too. It should work on Windows as well, but I haven't tested it - the build process could be very manual. Cygwin is likely the easiest Windows environment in which to build newserv.
@@ -54,7 +72,7 @@ If you're using an older AMD64 Mac, you're running Linux, or you just want to bu
 1. Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
 2. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 3. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
-4. Run `cmake . && make` on the newserv directory.
+4. Run `cmake . && make` in the newserv directory.
 
 After building newserv or downloading a release, do this to set it up and use it:
 1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
@@ -73,7 +91,9 @@ Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle qu
 - `VERSION`: d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
 - `EXT`: file extension (see table below)
 
-There are multiple PSO quest formats out there; newserv supports most of them. Specifically:
+For example, the GameCube version of Lost HEAT SWORD is in two files named `q058-ret-gc.bin` and `q058-ret-gc.dat`. newserv knows these files are quests because they're in the system/quests/ directory, it knows they're for PSO GC because the filenames contain `-gc`, and it puts them in the Retrieval category because the filenames contain `-ret`.
+
+There are multiple PSO quest formats out there; newserv supports most of them. It can also decode any known format to standard .bin/.dat format. Specifically:
 
 | Format                    | Extension         | Supported online? | Offline decode option     |
 |---------------------------|-------------------|-------------------|---------------------------|
@@ -94,7 +114,7 @@ Episode 3 quests consist only of a .bin file - there is no corresponding .dat fi
 
 When newserv indexes the quests during startup, it will warn (but not fail) if any quests are corrupt or in unrecognized formats.
 
-If you've changed the contents of the quests directory, you can re-index the quests without restarting the server by running `reload quests` in the interactive shell.
+If you've changed the contents of the quests directory, you can re-index the quests without restarting the server by running `reload quests` in the interactive shell. The new quests will be available immediately, but any games with quests already in progress will continue using the old versions of the quests until those quests end.
 
 All quests, including those originally in GCI or DLQ format, are treated as online quests unless their filenames specify the dl category. newserv allows players to download all quests, even those in non-download categories.
 
