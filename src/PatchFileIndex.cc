@@ -76,7 +76,7 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
         f->path_directories = path_directories;
         f->name = item;
 
-        bool should_compute_crc32s = true;
+        string compute_crc32s_message; // If not empty, should compute crc32s
         shared_ptr<JSONObject> cache_item_json;
         try {
           cache_item_json = metadata_cache_json->at(relative_item_path);
@@ -94,14 +94,12 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
           for (const auto& chunk_crc32_json : cache_item.at(3)->as_list()) {
             f->chunk_crcs.emplace_back(chunk_crc32_json->as_int());
           }
-          should_compute_crc32s = false;
-          patch_index_log.info("Using cached checksums for %s", relative_item_path.c_str());
+
         } catch (const exception& e) {
-          should_write_metadata_cache = true;
-          patch_index_log.info("Cannot use cached checksums for %s: %s", relative_item_path.c_str(), e.what());
+          compute_crc32s_message = e.what();
         }
 
-        if (should_compute_crc32s) {
+        if (!compute_crc32s_message.empty()) {
           auto data = f->load_data(); // Sets f->size
           f->crc32 = crc32(data->data(), f->size);
           for (size_t x = 0; x < data->size(); x += 0x4000) {
@@ -132,8 +130,13 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
 
         this->files_by_patch_order.emplace_back(f);
         this->files_by_name.emplace(relative_item_path, f);
-        patch_index_log.info("Added file %s (%" PRIu32 " bytes; %zu chunks; %08" PRIX32 ")",
-            full_item_path.c_str(), f->size, f->chunk_crcs.size(), f->crc32);
+        if (compute_crc32s_message.empty()) {
+          patch_index_log.info("Added file %s (%" PRIu32 " bytes; %zu chunks; %08" PRIX32 " from cache)",
+              full_item_path.c_str(), f->size, f->chunk_crcs.size(), f->crc32);
+        } else {
+          patch_index_log.info("Added file %s (%" PRIu32 " bytes; %zu chunks; %08" PRIX32 " [%s])",
+              full_item_path.c_str(), f->size, f->chunk_crcs.size(), f->crc32, compute_crc32s_message.c_str());
+        }
       }
     }
 
