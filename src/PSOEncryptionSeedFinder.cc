@@ -180,6 +180,7 @@ void PSOEncryptionSeedFinder::parallel_all_seeds(
 
 
 
+// TODO: Use phosg's parallel_range for this instead
 template <typename... ThreadArgTs>
 void PSOEncryptionSeedFinder::parallel_all_seeds_t(
     size_t num_threads, ThreadArgTs... args) {
