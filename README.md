@@ -98,7 +98,7 @@ There are multiple PSO quest formats out there; newserv supports most of them. I
 | Format                    | Extension         | Supported online? | Offline decode option     |
 |---------------------------|-------------------|-------------------|---------------------------|
 | Compressed                | .bin/.dat         | Yes               | None (1)                  |
-| Uncompressed              | .bind/.datd       | Yes               | None (2)                  |
+| Uncompressed              | .bind/.datd       | Yes               | --compress-data (2)       |
 | Unencrypted GCI           | .bin.gci/.dat.gci | Yes               | --decode-gci=FILENAME     |
 | Encrypted GCI with key    | .bin.gci/.dat.gci | Yes               | --decode-gci=FILENAME     |
 | Encrypted GCI without key | .bin.gci/.dat.gci | No                | --decode-gci=FILENAME (3) |
@@ -106,8 +106,8 @@ There are multiple PSO quest formats out there; newserv supports most of them. I
 | QST                       | .qst              | Yes               | --decode-qst=FILENAME     |
 
 *Notes:*
-1. *This is the default format. You can convert these to uncompressed format with [gctools](https://github.com/fuzziqersoftware/gctools)' prsd like this: `prsd -d < FILENAME.bin > FILENAME.bind`*
-2. *As in (1), to compress an uncompressed quest file: `prsd < FILENAME.bind > FILENAME.bin`*
+1. *This is the default format. You can convert these to uncompressed format like this: `newserv --decompress-data < FILENAME.bin > FILENAME.bind`*
+2. *Similar to (1), to compress an uncompressed quest file: `newserv --compress-data < FILENAME.bind > FILENAME.bin`*
 3. *If you know the encryption seed (serial number), pass it in as a hex string with the `--seed=` option. If you don't know the encryption seed, newserv will find it for you, which will likely take a long time.*
 
 Episode 3 quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 .bin files can be encoded in any of the formats described above, except .qst.

@@ -12,6 +12,7 @@
 #include <unordered_map>
 
 #include "CatSession.hh"
+#include "Compression.hh"
 #include "DNSServer.hh"
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
@@ -223,6 +224,9 @@ system/config.json for more information.\n\
 \n\
 When options are given, newserv will do things other than running the server.\n\
 Specifically:\n\
+  --compress-data\n\
+  --decompress-data\n\
+      Compress or decompress data using the PRS algorithm.\n\
   --decrypt-data\n\
   --encrypt-data\n\
       Read from stdin, encrypt or decrypt the data, and write the result to\n\
@@ -291,6 +295,8 @@ A few options apply to multiple modes described above:\n\
 
 enum class Behavior {
   RUN_SERVER = 0,
+  DECOMPRESS_DATA,
+  COMPRESS_DATA,
   DECRYPT_DATA,
   ENCRYPT_DATA,
   FIND_DECRYPTION_SEED,
@@ -334,6 +340,10 @@ int main(int argc, char** argv) {
     if (!strcmp(argv[x], "--help")) {
       print_usage();
       return 0;
+    } else if (!strcmp(argv[x], "--decompress-data")) {
+      behavior = Behavior::DECOMPRESS_DATA;
+    } else if (!strcmp(argv[x], "--compress-data")) {
+      behavior = Behavior::COMPRESS_DATA;
     } else if (!strcmp(argv[x], "--decrypt-data")) {
       behavior = Behavior::DECRYPT_DATA;
     } else if (!strcmp(argv[x], "--encrypt-data")) {
@@ -412,6 +422,31 @@ int main(int argc, char** argv) {
   }
 
   switch (behavior) {
+    case Behavior::DECOMPRESS_DATA:
+    case Behavior::COMPRESS_DATA: {
+      string data = read_all(stdin);
+      if (parse_data) {
+        data = parse_data_string(data);
+      }
+
+      if (behavior == Behavior::DECOMPRESS_DATA) {
+        data = prs_decompress(data);
+      } else if (behavior == Behavior::COMPRESS_DATA) {
+        data = prs_compress(data);
+      } else {
+        throw logic_error("invalid behavior");
+      }
+
+      if (isatty(fileno(stdout))) {
+        print_data(stdout, data);
+      } else {
+        fwritex(stdout, data);
+      }
+      fflush(stdout);
+
+      break;
+    }
+
     case Behavior::DECRYPT_DATA:
     case Behavior::ENCRYPT_DATA: {
       shared_ptr<PSOEncryption> crypt;
