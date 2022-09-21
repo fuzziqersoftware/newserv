@@ -7,6 +7,7 @@
 #include <phosg/JSON.hh>
 #include <phosg/Network.hh>
 #include <phosg/Strings.hh>
+#include <phosg/Tools.hh>
 #include <set>
 #include <thread>
 #include <unordered_map>
@@ -18,7 +19,6 @@
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
 #include "ProxyServer.hh"
-#include "PSOEncryptionSeedFinder.hh"
 #include "ReplaySession.hh"
 #include "SendCommands.hh"
 #include "Server.hh"
@@ -246,16 +246,7 @@ Specifically:\n\
       PSO V3 encryption, but this can be overridden with --pc. (BB encryption\n\
       seeds are too long to be searched for with this function.) By default,\n\
       the number of worker threads is equal the the number of CPU cores in the\n\
-      system, but this can be overridden with the --threads= option. To use a\n\
-      rainbow table instead of computing the cipherstreams inline, use the\n\
-      --rainbow-table=FILENAME option.\n\
-  --generate-rainbow-table=FILENAME\n\
-      Generate a decryption table for V3 encryption (or V2 if --pc is given).\n\
-      The --match-length= option must be given, which specifies the match\n\
-      length for the table. The total table size is the match length * 4 GB.\n\
-      As for --encrypt-data, the --big-endian option specifies that the table\n\
-      uses big-endian encryption. As for --find-decryption-seed, the --threads\n\
-      option specifies the parallelism for generating the table.\n\
+      system, but this can be overridden with the --threads= option.\n\
   --decode-sjis\n\
       Apply newserv\'s text decoding algorithm to the data on stdin, producing\n\
       little-endian UTF-16 data on stdout.\n\
@@ -300,7 +291,6 @@ enum class Behavior {
   DECRYPT_DATA,
   ENCRYPT_DATA,
   FIND_DECRYPTION_SEED,
-  GENERATE_RAINBOW_TABLE,
   DECODE_QUEST_FILE,
   DECODE_SJIS,
   EXTRACT_GSL,
@@ -322,13 +312,11 @@ int main(int argc, char** argv) {
   string seed;
   string key_file_name;
   const char* config_filename = "system/config.json";
-  string rainbow_table_filename;
   bool parse_data = false;
   bool big_endian = false;
   bool skip_little_endian = false;
   bool skip_big_endian = false;
   size_t num_threads = 0;
-  size_t match_length = 0;
   const char* find_decryption_seed_ciphertext = nullptr;
   vector<const char*> find_decryption_seed_plaintexts;
   const char* replay_log_filename = nullptr;
@@ -350,9 +338,6 @@ int main(int argc, char** argv) {
       behavior = Behavior::ENCRYPT_DATA;
     } else if (!strcmp(argv[x], "--find-decryption-seed")) {
       behavior = Behavior::FIND_DECRYPTION_SEED;
-    } else if (!strncmp(argv[x], "--generate-rainbow-table=", 25)) {
-      behavior = Behavior::GENERATE_RAINBOW_TABLE;
-      rainbow_table_filename = &argv[x][25];
     } else if (!strcmp(argv[x], "--decode-sjis")) {
       behavior = Behavior::DECODE_SJIS;
     } else if (!strncmp(argv[x], "--decode-gci=", 13)) {
@@ -371,11 +356,7 @@ int main(int argc, char** argv) {
       behavior = Behavior::CAT_CLIENT;
       cat_client_remote = make_sockaddr_storage(parse_netloc(&argv[x][13])).first;
     } else if (!strncmp(argv[x], "--threads=", 10)) {
-      num_threads = strtoull(&argv[x][13], nullptr, 0);
-    } else if (!strncmp(argv[x], "--match-length=", 15)) {
-      match_length = strtoull(&argv[x][15], nullptr, 0);
-    } else if (!strncmp(argv[x], "--rainbow-table=", 16)) {
-      rainbow_table_filename = &argv[x][16];
+      num_threads = strtoull(&argv[x][10], nullptr, 0);
     } else if (!strcmp(argv[x], "--patch")) {
       cli_version = GameVersion::PATCH;
     } else if (!strcmp(argv[x], "--dc")) {
@@ -516,61 +497,67 @@ int main(int argc, char** argv) {
         throw runtime_error("--find-decryption-seed cannot be used for BB ciphers");
       }
 
+      size_t max_plaintext_size = 0;
       vector<pair<string, string>> plaintexts;
       for (const auto& plaintext_ascii : find_decryption_seed_plaintexts) {
         string mask;
         string data = parse_data_string(plaintext_ascii, &mask);
+        if (data.size() != mask.size()) {
+          throw logic_error("plaintext and mask are not the same size");
+        }
+        max_plaintext_size = max<size_t>(max_plaintext_size, data.size());
         plaintexts.emplace_back(move(data), move(mask));
       }
       string ciphertext = parse_data_string(find_decryption_seed_ciphertext);
 
-      if (num_threads == 0) {
-        num_threads = thread::hardware_concurrency();
-      }
-
-      PSOEncryptionSeedFinder finder(ciphertext, plaintexts, num_threads);
-      PSOEncryptionSeedFinder::ThreadResults results;
-      if (!rainbow_table_filename.empty()) {
-        results = finder.find_seed(rainbow_table_filename);
-      } else {
-        using Flag = PSOEncryptionSeedFinder::Flag;
-        uint64_t flags =
-            (((cli_version == GameVersion::GC) || (cli_version == GameVersion::XB)) ? Flag::V3 : 0) |
-            (skip_little_endian ? Flag::SKIP_LITTLE_ENDIAN : 0) |
-            (skip_big_endian ? Flag::SKIP_BIG_ENDIAN : 0);
-        results = finder.find_seed(flags);
-      }
-
-      log_info("Minimum differences: %zu", results.min_differences);
-      for (auto result : results.results) {
-        if (result.differences != results.min_differences) {
-          throw logic_error("incorrect difference count in result");
+      auto mask_match = +[](const void* a, const void* b, const void* m, size_t size) -> bool {
+        const uint8_t* a8 = reinterpret_cast<const uint8_t*>(a);
+        const uint8_t* b8 = reinterpret_cast<const uint8_t*>(b);
+        const uint8_t* m8 = reinterpret_cast<const uint8_t*>(m);
+        for (size_t z = 0; z < size; z++) {
+          if ((a8[z] & m8[z]) != (b8[z] & m8[z])) {
+            return false;
+          }
         }
-        if (result.is_indeterminate) {
-          log_info("Example match: %08" PRIX32 " (%zu)",
-              result.seed, result.differences);
-        } else {
-          log_info("Example match: %08" PRIX32 " (%zu; %s, %s)",
-              result.seed,
-              result.differences,
-              result.is_v3 ? "v3" : "v2",
-              result.is_big_endian ? "big-endian" : "little-endian");
-        }
-      }
-      for (size_t z = 0; z < results.difference_histogram.size(); z++) {
-        log_info("(Difference histogram) %zu => %zu results",
-            z, results.difference_histogram[z]);
-      }
-      break;
-    }
+        return true;
+      };
 
-    case Behavior::GENERATE_RAINBOW_TABLE: {
-      if (num_threads == 0) {
-        num_threads = thread::hardware_concurrency();
-      }
       bool is_v3 = ((cli_version == GameVersion::GC) || (cli_version == GameVersion::XB));
-      PSOEncryptionSeedFinder::generate_rainbow_table(
-          rainbow_table_filename, is_v3, big_endian, match_length, num_threads);
+      uint64_t seed = parallel_range<uint64_t>([&](uint64_t seed, size_t) -> bool {
+        string be_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
+        string le_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
+        if (is_v3) {
+          PSOV3Encryption(seed).encrypt_both_endian(
+              le_decrypt_buf.data(),
+              be_decrypt_buf.data(),
+              be_decrypt_buf.size());
+        } else {
+          PSOV2Encryption(seed).encrypt_both_endian(
+              le_decrypt_buf.data(),
+              be_decrypt_buf.data(),
+              be_decrypt_buf.size());
+        }
+
+        for (const auto& plaintext : plaintexts) {
+          if (!skip_little_endian) {
+            if (mask_match(le_decrypt_buf.data(), plaintext.first.data(), plaintext.second.data(), plaintext.second.size())) {
+              return true;
+            }
+          }
+          if (!skip_big_endian) {
+            if (mask_match(be_decrypt_buf.data(), plaintext.first.data(), plaintext.second.data(), plaintext.second.size())) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }, 0, 0x100000000, num_threads);
+
+      if (seed < 0x100000000) {
+        log_info("Found seed %08" PRIX64, seed);
+      } else {
+        log_error("No seed found");
+      }
       break;
     }
 

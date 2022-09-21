@@ -9,12 +9,12 @@
 #include <phosg/Hash.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
+#include <phosg/Tools.hh>
 
 #include "Loggers.hh"
 #include "CommandFormats.hh"
 #include "Compression.hh"
 #include "PSOEncryption.hh"
-#include "PSOEncryptionSeedFinder.hh"
 #include "Text.hh"
 
 using namespace std;
@@ -162,22 +162,19 @@ string find_seed_and_decrypt_gci_data_section(
     const void* data_section, size_t size, size_t num_threads) {
   mutex result_lock;
   string result;
-  uint32_t result_seed = 0xFFFFFFFF;
-  PSOEncryptionSeedFinder::parallel_all_seeds(num_threads, [&](
-      uint32_t seed, size_t) {
+  uint64_t result_seed = parallel_range<uint64_t>([&](uint64_t seed, size_t) {
     try {
       string ret = decrypt_gci_data_section(data_section, size, seed);
       lock_guard<mutex> g(result_lock);
       result = move(ret);
-      result_seed = seed;
       return true;
     } catch (const runtime_error&) {
       return false;
     }
-  });
+  }, 0, 0x100000000, num_threads);
 
-  if (!result.empty()) {
-    static_game_data_log.info("Found seed %08" PRIX32 " to decrypt GCI file",
+  if (!result.empty() && (result_seed < 0x100000000)) {
+    static_game_data_log.info("Found seed %08" PRIX64 " to decrypt GCI file",
         result_seed);
     return result;
   } else {
