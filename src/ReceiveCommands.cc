@@ -2079,28 +2079,40 @@ static void on_simple_mail(shared_ptr<ServerState> s, shared_ptr<Client> c,
       throw logic_error("invalid game version");
   }
 
-  auto target = s->find_client(nullptr, to_guild_card_number);
+  shared_ptr<Client> target;
+  try {
+    target = s->find_client(nullptr, to_guild_card_number);
+  } catch (const out_of_range&) { }
 
-  // If the sender is blocked, don't forward the mail
-  for (size_t y = 0; y < 30; y++) {
-    if (target->game_data.account()->blocked_senders.data()[y] == c->license->serial_number) {
-      return;
+  if (!target) {
+    // TODO: We should store pending messages for accounts somewhere, and send
+    // them when the player signs on again. We should also persist the player's
+    // autoreply setting when they're offline and use it if appropriate here.
+    send_text_message(c, u"$C6Player is offline");
+
+  } else {
+    // If the sender is blocked, don't forward the mail
+    for (size_t y = 0; y < 30; y++) {
+      if (target->game_data.account()->blocked_senders.data()[y] == c->license->serial_number) {
+        return;
+      }
     }
-  }
 
-  // If the target has auto-reply enabled, send the autoreply
-  if (!target->game_data.player()->auto_reply.empty()) {
-    send_simple_mail(c, target->license->serial_number,
-        target->game_data.player()->disp.name,
-        target->game_data.player()->auto_reply);
-  }
+    // If the target has auto-reply enabled, send the autoreply. Note that we also
+    // forward the message in this case.
+    if (!target->game_data.player()->auto_reply.empty()) {
+      send_simple_mail(c, target->license->serial_number,
+          target->game_data.player()->disp.name,
+          target->game_data.player()->auto_reply);
+    }
 
-  // Forward the message
-  send_simple_mail(
-      target,
-      c->license->serial_number,
-      c->game_data.player()->disp.name,
-      message);
+    // Forward the message
+    send_simple_mail(
+        target,
+        c->license->serial_number,
+        c->game_data.player()->disp.name,
+        message);
+  }
 }
 
 
