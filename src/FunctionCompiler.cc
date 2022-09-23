@@ -114,30 +114,13 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
   throw runtime_error("function compiler is not available");
 
 #else
-  std::unordered_set<string> get_include_stack; // For mutual recursion detection
-  function<string(const string&)> get_include = [&](const string& name) -> string {
-    if (!get_include_stack.emplace(name).second) {
-      throw runtime_error("mutual recursion between includes");
-    }
-
-    string filename = directory + "/" + name + ".inc.s";
-    if (isfile(filename)) {
-      return PPC32Emulator::assemble(load_file(filename), get_include).code;
-    }
-    filename = directory + "/" + name + ".inc.bin";
-    if (isfile(filename)) {
-      return load_file(filename);
-    }
-    throw runtime_error("data not found for include " + name);
-  };
-
   shared_ptr<CompiledFunctionCode> ret(new CompiledFunctionCode());
   ret->arch = arch;
   ret->name = name;
   ret->index = 0;
 
   if (arch == CompiledFunctionCode::Architecture::POWERPC) {
-    auto assembled = PPC32Emulator::assemble(text, get_include);
+    auto assembled = PPC32Emulator::assemble(text, {directory});
     ret->code = move(assembled.code);
     ret->label_offsets = move(assembled.label_offsets);
   } else if (arch == CompiledFunctionCode::Architecture::X86) {
