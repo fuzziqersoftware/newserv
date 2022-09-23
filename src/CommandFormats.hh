@@ -301,13 +301,16 @@ struct SC_TextHeader_01_06_11_B0_EE {
 // already selected a ship, for example). Command 17 should be used instead for
 // the first connection.
 // All commands after this command will be encrypted with PSO V2 encryption on
-// PC, or PSO V3 on V3.
-// The client will respond with an (encrypted) 9A or 9E command on V3; on PSO
-// PC, the client will respond with an (encrypted) 9A or 9D command.
+// DC, PC, and GC Episodes 1&2 Trial Edition, or PSO V3 encryption on other V3
+// versions.
+// DCv1 clients will respond with an (encrypted) 93 command.
+// DCv2 and PC clients will respond with an (encrypted) 9A or 9D command.
+// V3 clients will respond with an (encrypted) 9A or 9E command, except for GC
+// Episodes 1&2 Trial Edition, which behaves like PC.
 // The copyright field in the below structure must contain the following text:
 // "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999"
 // (The above text is required on all versions that use this command, including
-// those versions not running on the DreamCast.)
+// those versions that don't run on the DreamCast.)
 
 struct S_ServerInit_DC_PC_V3_02_17_91_9B {
   ptext<char, 0x40> copyright;
@@ -339,9 +342,8 @@ struct C_LegacyLogin_PC_V3_03 {
 // header.flag specifies if the password was correct. If header.flag is 0, the
 // password saved to the memory card (if any) is deleted and the client is
 // disconnected. If header.flag is nonzero, the client responds with an 04
-// command. On PC/V3, it's likely this command is a relic from earlier versions
-// of the login sequence; most servers use the DB/9A/9C/9E commands for logging
-// in PC/V3 clients.
+// command. Curiously, it looks like even DCv1 doesn't use this command in its
+// standard login sequence, so this may be a relic from very early development.
 // No other arguments
 
 // 03 (S->C): Start encryption (BB)
@@ -360,7 +362,8 @@ struct S_ServerInit_BB_03_9B {
 
 // 04 (C->S): Legacy login
 // See comments on non-BB 03 (S->C). This is likely a relic of an older,
-// now-unused sequence.
+// now-unused sequence. Like 03, this command isn't used by any PSO version that
+// newserv supports.
 // header.flag is nonzero, but it's not clear what it's used for.
 
 struct C_LegacyLogin_PC_V3_04 {
@@ -394,14 +397,14 @@ struct C_LegacyLogin_BB_04 {
 // as Episodes 1&2 Trial Edition. All other V3 clients save it as opaque data to
 // be returned in a 9E or 9F command later. newserv sends the client config
 // anyway to clients that ignore it.
-// Client will respond with a 96 command, but only the first time it receives
-// this command - for later 04 commands, the client will still update its client
-// config but will not respond. Changing the security data at any time seems ok,
-// but changing the guild card number of a client after it's initially set can
-// confuse the client, and (on pre-V3 clients) possibly corrupt the character
-// data. For this reason, newserv tries pretty hard to hide the remote guild
-// card number when clients connect to the proxy server.
-// BB clients have multiple client configs. This command sets the client config
+// The client will respond with a 96 command, but only the first time it
+// receives this command - for later 04 commands, the client will still update
+// its client config but will not respond. Changing the security data at any
+// time seems ok, but changing the guild card number of a client after it's
+// initially set can confuse the client, and (on pre-V3 clients) possibly
+// corrupt the character data. For this reason, newserv tries pretty hard to
+// hide the remote guild card number when clients connect to the proxy server.
+// BB clients have multiple client configs; this command sets the client config
 // that is returned by the 9E and 9F commands, but does not affect the client
 // config set by the E6 command (and returned in the 93 command). In most cases,
 // E6 should be used for BB clients instead of 04.
@@ -413,7 +416,7 @@ struct S_UpdateClientConfig {
   // The ClientConfig structure describes how newserv uses this command; other
   // servers do not use the same format for the following 0x20 or 0x28 bytes (or
   // may not use it at all). The cfg field is opaque to the client; it will send
-  // back the contents verbatim in its next 9E command.
+  // back the contents verbatim in its next 9E command (or on request via 9F).
   ClientConfigT cfg;
 };
 
@@ -474,8 +477,8 @@ struct S_GameMenuEntry {
   uint8_t num_players;
   ptext<CharT, 0x10> name;
   // The episode field is used differently by different versions:
-  // - On DC v1, PC, and GC Episode 3, the value is ignored.
-  // - On DC v2, 1 means v1 players can't join the game, and 0 means they can.
+  // - On DCv1, PC, and GC Episode 3, the value is ignored.
+  // - On DCv2, 1 means v1 players can't join the game, and 0 means they can.
   // - On GC Ep1&2, 0x40 means Episode 1, and 0x41 means Episode 2.
   // - On BB, 0x40/0x41 mean Episodes 1/2 as on GC, and 0x43 means Episode 4.
   uint8_t episode;
@@ -607,15 +610,13 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 // TODO: Check if this command exists on DC v1/v2.
 
 // 17 (S->C): Start encryption at login server (except on BB)
-// Same format as 02 command, but a different copyright string.
-// All commands after this command will be encrypted with PSO V2 encryption on
-// PC, or PSO V3 encryption on V3.
-// V3 clients will respond with a DB command the first time they receive a 17
-// command in any online session, with the exception of Episodes 1&2 trial
-// edition (which responds with a 9A). After the first time, V3 clients will
-// respond with a 9E. Non-V3 clients will respond with a 9D.
-// The copyright field in the structure must contain the following text:
+// Same format and usage as 02 command, but a different copyright string:
 // "DreamCast Port Map. Copyright SEGA Enterprises. 1999"
+// Unlike the 02 command, V3 clients will respond with a DB command the first
+// time they receive a 17 command in any online session, with the exception of
+// Episodes 1&2 trial edition (which responds with a 9A). After the first time,
+// V3 clients will respond with a 9E. DCv1 will respond with a 90. Other non-V3
+// clients will respond with a 9A or 9D.
 
 // 18 (S->C): License verification result (PC/V3)
 // Behaves exactly the same as 9A (S->C). No arguments except header.flag.
@@ -700,9 +701,10 @@ struct SC_GameCardCheck_BB_0022 {
 };
 
 // Command 0122 uses a 4-byte challenge sent in the header.flag field instead.
+// This version of the command has no other arguments.
 
 // 23 (S->C): Unknown (BB)
-// header.flag is used, but command has no other arguments.
+// header.flag is used, but the command has no other arguments.
 
 // 24 (S->C): Unknown (BB)
 
@@ -751,8 +753,8 @@ struct S_Unknown_BB_25 {
 // 3F: Invalid command
 
 // 40 (C->S): Guild card search
-// Server should respond with a 41 command if the target is online. If the
-// target is not online, server doesn't respond at all.
+// The server should respond with a 41 command if the target is online. If the
+// target is not online, the server doesn't respond at all.
 
 struct C_GuildCardSearch_40 {
   le_uint32_t player_tag;
@@ -1088,10 +1090,8 @@ struct S_Unknown_PC_V3_80 {
 // online, the server may store it for later delivery, send their auto-reply
 // message back to the original sender, or simply drop the message.
 // On GC (and probably other versions too) the unused space after the text
-// contains uninitialized memory when the client sends this command. None of the
-// unused space appears to contain anything important; newserv clears the
-// uninitialized data for security reasons before forwarding and things seem to
-// work fine.
+// contains uninitialized memory when the client sends this command. newserv
+// clears the uninitialized data for security reasons before forwarding.
 
 template <typename CharT>
 struct SC_SimpleMail_81 {
