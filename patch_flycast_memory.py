@@ -25,6 +25,7 @@ def main(argv):
   print(f'Finding occurrences of \"{original_destination}\"')
   addresses_str = subprocess.check_output(['memwatch', 'Flycast.app', 'find', f'\"{original_destination}\"'])
   for line in addresses_str.splitlines():
+    # line is like '(0) 00007FFF038500A0 (rw-)' (we care only about the address)
     tokens = line.split()
     if len(tokens) != 3:
       continue
