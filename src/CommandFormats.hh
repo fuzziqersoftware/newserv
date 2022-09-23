@@ -762,26 +762,31 @@ struct C_GuildCardSearch_40 {
 
 // 41 (S->C): Guild card search result
 
+template <typename CharT>
+struct SC_MeetUserExtension {
+  le_uint32_t menu_id;
+  le_uint32_t lobby_id;
+  parray<uint8_t, 0x3C> unknown_a1;
+  ptext<CharT, 0x20> player_name;
+};
+
 template <typename HeaderT, typename CharT>
 struct S_GuildCardSearchResult {
   le_uint32_t player_tag;
   le_uint32_t searcher_guild_card_number;
   le_uint32_t result_guild_card_number;
-  HeaderT reconnect_command_header;
+  HeaderT reconnect_command_header; // Ignored by the client
   S_Reconnect_19 reconnect_command;
-  // The format of this string is "ROOM-NAME,BLOCK##,SERVER-NAME". If the result
+  // The format of this string is "GAME-NAME,BLOCK##,SERVER-NAME". If the result
   // player is not in a game, GAME-NAME should be the lobby name - for standard
   // lobbies this is "BLOCK<blocknum>-<lobbynum>"; for CARD lobbies this is
   // "BLOCK<blocknum>-C<lobbynum>".
   ptext<CharT, 0x44> location_string;
-  // If the player chooses to meet the user, this menu ID and lobby ID is sent
-  // in the login command (9D/9E) after connecting to the server designated in
-  // reconnect_command. In fact, the remaining fields in this structure directly
-  // match the fields in the extended 9D/9E commands.
-  le_uint32_t menu_id;
-  le_uint32_t lobby_id;
-  ptext<uint8_t, 0x3C> unused;
-  ptext<CharT, 0x20> name;
+  // If the player chooses to meet the user, this extension data is sent in the
+  // login command (9D/9E) after connecting to the server designated in
+  // reconnect_command. When processing the 9D/9E, newserv uses only the
+  // lobby_id field within, but it fills in all fields when sengind a 41.
+  SC_MeetUserExtension<CharT> extension;
 };
 struct S_GuildCardSearchResult_PC_41
     : S_GuildCardSearchResult<PSOCommandHeaderPC, char16_t> { };
@@ -1227,14 +1232,6 @@ struct C_RegisterV1_DC_92 {
 
 // 93 (C->S): Log in (DCv1)
 
-template <typename CharT>
-struct C_Login_MeetUserExtension {
-  le_uint32_t menu_id;
-  le_uint32_t preferred_lobby_id;
-  parray<uint8_t, 0x3C> unknown_a1;
-  ptext<CharT, 0x20> target_player_name;
-};
-
 struct C_LoginV1_DC_93 {
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
@@ -1254,7 +1251,7 @@ struct C_LoginV1_DC_93 {
 };
 
 struct C_LoginExtendedV1_DC_93 : C_LoginV1_DC_93 {
-  C_Login_MeetUserExtension<char> extension;
+  SC_MeetUserExtension<char> extension;
 };
 
 // 93 (C->S): Log in (BB)
@@ -1267,8 +1264,8 @@ struct C_Login_BB_93 {
   ptext<char, 0x30> username;
   ptext<char, 0x30> password;
 
-  // These fields map to the same fields in C_Login_MeetUserExtension. There is
-  // no equivalent of the name field from that structure on BB (though newserv
+  // These fields map to the same fields in SC_MeetUserExtension. There is no
+  // equivalent of the name field from that structure on BB (though newserv
   // doesn't use it anyway).
   le_uint32_t menu_id;
   le_uint32_t preferred_lobby_id;
@@ -1441,10 +1438,10 @@ struct C_Login_DC_PC_GC_9D {
   ptext<char, 0x10> name;
 };
 struct C_LoginExtended_DC_GC_9D : C_Login_DC_PC_GC_9D {
-  C_Login_MeetUserExtension<char> extension;
+  SC_MeetUserExtension<char> extension;
 };
 struct C_LoginExtended_PC_9D : C_Login_DC_PC_GC_9D {
-  C_Login_MeetUserExtension<char16_t> extension;
+  SC_MeetUserExtension<char16_t> extension;
 };
 
 // 9E (C->S): Log in with client config (V3/BB)
@@ -1461,7 +1458,7 @@ struct C_Login_GC_9E : C_Login_DC_PC_GC_9D {
   } client_config;
 };
 struct C_LoginExtended_GC_9E : C_Login_GC_9E {
-  C_Login_MeetUserExtension<char> extension;
+  SC_MeetUserExtension<char> extension;
 };
 
 struct C_Login_XB_9E : C_Login_GC_9E {
@@ -1469,7 +1466,7 @@ struct C_Login_XB_9E : C_Login_GC_9E {
   parray<le_uint32_t, 6> unknown_a1;
 };
 struct C_LoginExtended_XB_9E : C_Login_XB_9E {
-  C_Login_MeetUserExtension<char> extension;
+  SC_MeetUserExtension<char> extension;
 };
 
 struct C_LoginExtended_BB_9E {
@@ -1486,7 +1483,7 @@ struct C_LoginExtended_BB_9E {
   ptext<char, 0x30> password;
   ptext<char, 0x10> guild_card_number_str;
   parray<le_uint32_t, 10> unknown_a7;
-  C_Login_MeetUserExtension<char16_t> extension;
+  SC_MeetUserExtension<char16_t> extension;
 };
 
 // 9F (S->C): Request client config / security data (V3/BB)

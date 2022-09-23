@@ -283,7 +283,7 @@ static void on_login_3_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (cmd.is_extended) {
     const auto& ext_cmd = check_size_t<C_LoginExtendedV1_DC_93>(data);
     if (ext_cmd.extension.menu_id == MenuID::LOBBY) {
-      c->preferred_lobby_id = ext_cmd.extension.preferred_lobby_id;
+      c->preferred_lobby_id = ext_cmd.extension.lobby_id;
     }
   }
 
@@ -420,12 +420,12 @@ static void on_login_d_e_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> 
       if (c->version() == GameVersion::PC) {
         const auto& cmd = check_size_t<C_LoginExtended_PC_9D>(data);
         if (cmd.extension.menu_id == MenuID::LOBBY) {
-          c->preferred_lobby_id = cmd.extension.preferred_lobby_id;
+          c->preferred_lobby_id = cmd.extension.lobby_id;
         }
       } else {
         const auto& cmd = check_size_t<C_LoginExtended_DC_GC_9D>(data);
         if (cmd.extension.menu_id == MenuID::LOBBY) {
-          c->preferred_lobby_id = cmd.extension.preferred_lobby_id;
+          c->preferred_lobby_id = cmd.extension.lobby_id;
         }
       }
     }
@@ -451,7 +451,7 @@ static void on_login_d_e_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> 
     if (cmd.is_extended) {
       const auto& cmd = check_size_t<C_LoginExtended_GC_9E>(data);
       if (cmd.extension.menu_id == MenuID::LOBBY) {
-        c->preferred_lobby_id = cmd.extension.preferred_lobby_id;
+        c->preferred_lobby_id = cmd.extension.lobby_id;
       }
     }
 

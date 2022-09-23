@@ -739,9 +739,9 @@ void send_card_search_result_t(
         result_lobby->lobby_id, encoded_server_name.c_str());
   }
   cmd.location_string = location_string;
-  cmd.menu_id = MenuID::LOBBY;
-  cmd.lobby_id = result->lobby_id;
-  cmd.name = result->game_data.player()->disp.name;
+  cmd.extension.menu_id = MenuID::LOBBY;
+  cmd.extension.lobby_id = result->lobby_id;
+  cmd.extension.player_name = result->game_data.player()->disp.name;
 
   send_command_t(c, 0x41, 0x00, cmd);
 }
