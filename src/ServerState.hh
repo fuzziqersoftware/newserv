@@ -84,7 +84,8 @@ struct ServerState {
   std::u16string bb_patch_server_message;
 
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
-  std::vector<std::shared_ptr<Lobby>> public_lobby_search_order;
+  std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_v1;
+  std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_non_v1;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_ep3;
   // TODO: Use a free-list instead of an incrementer to prevent wrap-around
   // behavioral bugs. This... will probably never be an issue for anyone, but we

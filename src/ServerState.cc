@@ -25,28 +25,40 @@ ServerState::ServerState()
     run_shell_behavior(RunShellBehavior::DEFAULT), next_lobby_id(1),
     pre_lobby_event(0),
     ep3_menu_song(-1) {
+  vector<shared_ptr<Lobby>> non_v1_only_lobbies;
   vector<shared_ptr<Lobby>> ep3_only_lobbies;
 
   for (size_t x = 0; x < 20; x++) {
     auto lobby_name = decode_sjis(string_printf("LOBBY%zu", x + 1));
+    bool is_non_v1_only = (x > 9);
     bool is_ep3_only = (x > 14);
 
     shared_ptr<Lobby> l = this->create_lobby();
-    l->flags |= Lobby::Flag::PUBLIC | Lobby::Flag::DEFAULT | Lobby::Flag::PERSISTENT |
+    l->flags |=
+        Lobby::Flag::PUBLIC |
+        Lobby::Flag::DEFAULT |
+        Lobby::Flag::PERSISTENT |
+        (is_non_v1_only ? Lobby::Flag::NON_V1_ONLY : 0) | 
         (is_ep3_only ? Lobby::Flag::EPISODE_3_ONLY : 0);
     l->block = x + 1;
     l->type = x;
     l->name = lobby_name;
     l->max_clients = 12;
 
+    if (!is_non_v1_only) {
+      this->public_lobby_search_order_v1.emplace_back(l);
+    }
     if (!is_ep3_only) {
-      this->public_lobby_search_order.emplace_back(l);
+      this->public_lobby_search_order_non_v1.emplace_back(l);
     } else {
       ep3_only_lobbies.emplace_back(l);
     }
   }
 
-  this->public_lobby_search_order_ep3 = this->public_lobby_search_order;
+  // Annoyingly, the CARD lobbies should be searched first, but are sent at the
+  // end of the lobby list command, so we have to change t he search order
+  // manually here.
+  this->public_lobby_search_order_ep3 = this->public_lobby_search_order_non_v1;
   this->public_lobby_search_order_ep3.insert(
       this->public_lobby_search_order_ep3.begin(),
       ep3_only_lobbies.begin(),
@@ -67,10 +79,13 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   }
 
   if (!added_to_lobby.get()) {
-    const auto& search_order = (c->flags & Client::Flag::EPISODE_3)
-        ? this->public_lobby_search_order_ep3
-        : this->public_lobby_search_order;
-    for (const auto& l : search_order) {
+    const auto* search_order = &this->public_lobby_search_order_non_v1;
+    if (c->flags & Client::Flag::IS_DC_V1) {
+      search_order = &this->public_lobby_search_order_v1;
+    } else if (c->flags & Client::Flag::IS_EPISODE_3) {
+      search_order = &this->public_lobby_search_order_ep3;
+    }
+    for (const auto& l : *search_order) {
       try {
         l->add_client(c);
         added_to_lobby = l;
