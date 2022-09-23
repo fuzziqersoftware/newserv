@@ -65,7 +65,7 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
 
   // if the command is an Ep3-only command, make sure an Ep3 client sent it
   bool command_is_ep3 = (command & 0xF0) == 0xC0;
-  if (command_is_ep3 && !(c->flags & Client::Flag::EPISODE_3)) {
+  if (command_is_ep3 && !(c->flags & Client::Flag::IS_EPISODE_3)) {
     return;
   }
 
@@ -77,7 +77,7 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     if (!target) {
       return;
     }
-    if (command_is_ep3 && !(target->flags & Client::Flag::EPISODE_3)) {
+    if (command_is_ep3 && !(target->flags & Client::Flag::IS_EPISODE_3)) {
       return;
     }
     send_command(target, command, flag, data, size);
@@ -85,7 +85,7 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
   } else {
     if (command_is_ep3) {
       for (auto& target : l->clients) {
-        if (!target || (target == c) || !(target->flags & Client::Flag::EPISODE_3)) {
+        if (!target || (target == c) || !(target->flags & Client::Flag::IS_EPISODE_3)) {
           continue;
         }
         send_command(target, command, flag, data, size);
@@ -191,7 +191,7 @@ static void on_subcommand_set_player_visibility(shared_ptr<ServerState>,
 
   forward_subcommand(l, c, command, flag, data);
 
-  if (!l->is_game() && !(c->flags & Client::Flag::DCV1)) {
+  if (!l->is_game() && !(c->flags & Client::Flag::IS_DC_V1)) {
     send_arrow_update(l);
   }
 }

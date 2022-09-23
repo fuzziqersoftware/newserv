@@ -81,7 +81,7 @@ void on_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
       break;
 
     case ServerBehavior::PATCH_SERVER_BB:
-      c->flags |= Client::Flag::BB_PATCH;
+      c->flags |= Client::Flag::IS_BB_PATCH;
       send_server_init(s, c, 0);
       break;
 
@@ -104,7 +104,7 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       (c->server_behavior == ServerBehavior::DATA_SERVER_BB)) {
     // On the login server, send the events/songs, ep3 updates, and the main
     // menu or welcome message
-    if (c->flags & Client::Flag::EPISODE_3) {
+    if (c->flags & Client::Flag::IS_EPISODE_3) {
       if (s->ep3_menu_song >= 0) {
         send_ep3_change_music(c, s->ep3_menu_song);
       } else if (s->pre_lobby_event) {
@@ -117,7 +117,7 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
     }
 
     if (s->welcome_message.empty() ||
-        (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION) ||
+        (c->flags & Client::Flag::NO_D6) ||
         !(c->flags & Client::Flag::AT_WELCOME_MESSAGE)) {
       c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
       send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
@@ -164,7 +164,7 @@ static void set_console_client_flags(
       c->channel.version = GameVersion::DC;
       c->log.info("Game version changed to DC");
     } else if (c->version() == GameVersion::GC) {
-      c->flags |= Client::Flag::GC_TRIAL_EDITION;
+      c->flags |= Client::Flag::IS_TRIAL_EDITION;
       c->log.info("Trial edition flag set");
     }
   }
@@ -217,7 +217,7 @@ static void on_login_0_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& cmd = check_size_t<C_LoginV1_DC_PC_V3_90>(data);
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
-  c->flags |= Client::Flag::DCV1;
+  c->flags |= Client::Flag::IS_DC_V1;
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
@@ -1005,10 +1005,10 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           break;
 
         case MainMenuItemID::DOWNLOAD_QUESTS:
-          if (c->flags & Client::Flag::EPISODE_3) {
+          if (c->flags & Client::Flag::IS_EPISODE_3) {
             shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
             auto quests = s->quest_index->filter(
-                c->version(), c->flags & Client::Flag::DCV1, QuestCategory::EPISODE_3);
+                c->version(), c->flags & Client::Flag::IS_DC_V1, QuestCategory::EPISODE_3);
             if (quests.empty()) {
               send_lobby_message_box(c, u"$C6There are no quests\navailable.");
             } else {
@@ -1116,8 +1116,8 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         break;
       }
       if ((game->version != c->version()) ||
-          (!(game->flags & Lobby::Flag::EPISODE_3_ONLY) != !(c->flags & Client::Flag::EPISODE_3)) ||
-          ((game->flags & Lobby::Flag::DC_V2_ONLY) && (c->flags & Client::Flag::DCV1))) {
+          (!(game->flags & Lobby::Flag::EPISODE_3_ONLY) != !(c->flags & Client::Flag::IS_EPISODE_3)) ||
+          ((game->flags & Lobby::Flag::NON_V1_ONLY) && (c->flags & Client::Flag::IS_DC_V1))) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
         break;
       }
@@ -1163,7 +1163,7 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
       shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
       auto quests = s->quest_index->filter(c->version(),
-          c->flags & Client::Flag::DCV1,
+          c->flags & Client::Flag::IS_DC_V1,
           static_cast<QuestCategory>(item_id & 0xFF));
       if (quests.empty()) {
         send_lobby_message_box(c, u"$C6There are no quests\navailable in that\ncategory.");
@@ -1240,7 +1240,7 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           // check/clear it later.
           if ((l->clients[x]->version() != GameVersion::DC) &&
               (l->clients[x]->version() != GameVersion::PC) &&
-              !(l->clients[x]->flags & Client::Flag::GC_TRIAL_EDITION)) {
+              !(l->clients[x]->flags & Client::Flag::IS_TRIAL_EDITION)) {
             l->clients[x]->flags |= Client::Flag::LOADING_QUEST;
           }
         }
@@ -1268,7 +1268,7 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
 
       } else {
-        if (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL) {
+        if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
           throw runtime_error("client does not support send_function_call");
         }
 
@@ -1283,7 +1283,7 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
 
       } else {
-        if (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL) {
+        if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
           throw runtime_error("client does not support send_function_call");
         }
 
@@ -1331,7 +1331,7 @@ static void on_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
       return;
     }
 
-    if ((new_lobby->flags & Lobby::Flag::EPISODE_3_ONLY) && !(c->flags & Client::Flag::EPISODE_3)) {
+    if ((new_lobby->flags & Lobby::Flag::EPISODE_3_ONLY) && !(c->flags & Client::Flag::IS_EPISODE_3)) {
       send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby is for\nEpisode 3 only.");
       return;
     }
@@ -1453,7 +1453,7 @@ static void on_quest_list_request(shared_ptr<ServerState> s, shared_ptr<Client> 
 
   // In Episode 3, there are no quest categories, so skip directly to the quest
   // filter menu.
-  if (c->flags & Client::Flag::EPISODE_3) {
+  if (c->flags & Client::Flag::IS_EPISODE_3) {
     send_lobby_message_box(c, u"$C6Episode 3 does not\nprovide online quests\nvia this interface.");
 
   } else {
@@ -1516,7 +1516,7 @@ static void on_update_quest_statistics(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t, const string& data) { // AA
   const auto& cmd = check_size_t<C_UpdateQuestStatistics_V3_BB_AA>(data);
 
-  if (c->flags & Client::Flag::GC_TRIAL_EDITION) {
+  if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
     throw runtime_error("trial edition client sent update quest stats command");
   }
 
@@ -1562,7 +1562,7 @@ static void on_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case GameVersion::XB: {
       const PSOPlayerDataV3* pd;
       if (flag == 4) { // Episode 3
-        if (!(c->flags & Client::Flag::EPISODE_3)) {
+        if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
           throw runtime_error("non-Episode 3 client sent Episode 3 player data");
         }
         const auto* pd3 = &check_size_t<PSOPlayerDataGCEp3>(data);
@@ -2297,7 +2297,7 @@ static void on_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_PC_C1>(data);
 
-  uint32_t flags = 0;
+  uint32_t flags = Lobby::Flag::NON_V1_ONLY;
   if (cmd.battle_mode) {
     flags |= Lobby::Flag::BATTLE_MODE;
   }
@@ -2312,21 +2312,23 @@ static void on_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c
   const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
 
   // Only allow EC from Ep3 clients
-  bool client_is_ep3 = c->flags & Client::Flag::EPISODE_3;
+  bool client_is_ep3 = c->flags & Client::Flag::IS_EPISODE_3;
   if ((command == 0xEC) && !client_is_ep3) {
     return;
   }
 
   uint8_t episode = cmd.episode;
   uint32_t flags = 0;
-  if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+  if (c->version() == GameVersion::DC) {
     if (episode) {
-      flags |= Lobby::Flag::DC_V2_ONLY;
+      flags |= Lobby::Flag::NON_V1_ONLY;
     }
     episode = 1;
   } else if (client_is_ep3) {
-    flags |= Lobby::Flag::EPISODE_3_ONLY;
+    flags |= (Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY);
     episode = 0xFF;
+  } else { // XB/GC non-Ep3
+    flags |= Lobby::Flag::NON_V1_ONLY;
   }
 
   u16string name = decode_sjis(cmd.name);
@@ -2346,7 +2348,7 @@ static void on_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // C1
   const auto& cmd = check_size_t<C_CreateGame_BB_C1>(data);
 
-  uint32_t flags = 0;
+  uint32_t flags = Lobby::Flag::NON_V1_ONLY;
   if (cmd.battle_mode) {
     flags |= Lobby::Flag::BATTLE_MODE;
   }
@@ -2579,13 +2581,13 @@ static void on_login_patch(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   // On BB we can use colors and newlines should be \n; on PC we can't use
   // colors, the text is auto-word-wrapped, and newlines should be \r\n.
-  const u16string& message = (c->flags & Client::Flag::BB_PATCH)
+  const u16string& message = (c->flags & Client::Flag::IS_BB_PATCH)
       ? s->bb_patch_server_message : s->pc_patch_server_message;
   if (!message.empty()) {
     send_message_box(c, message.c_str());
   }
 
-  auto index = (c->flags & Client::Flag::BB_PATCH) ?
+  auto index = (c->flags & Client::Flag::IS_BB_PATCH) ?
       s->bb_patch_file_index : s->pc_patch_file_index;
   if (index.get()) {
     send_command(c, 0x0B, 0x00); // Start patch session; go to root directory

@@ -247,7 +247,7 @@ void send_function_call(
     const std::string& suffix,
     uint32_t checksum_addr,
     uint32_t checksum_size) {
-  if (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL) {
+  if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
     throw logic_error("client does not support function calls");
   }
   if (code.get() && (c->flags & Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
@@ -846,8 +846,8 @@ void send_menu_t(
         ((c->version() == GameVersion::GC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC)) ||
         ((c->version() == GameVersion::XB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_XB)) ||
         ((c->version() == GameVersion::BB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_BB)) ||
-        ((item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) && (c->flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) ||
-        ((item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) && (c->flags & Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL)) ||
+        ((item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) && (c->flags & Client::Flag::NO_D6)) ||
+        ((item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) && (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL)) ||
         ((item.flags & MenuItem::Flag::REQUIRES_SAVE_DISABLED) && (c->flags & Client::Flag::SAVE_ENABLED))) {
       continue;
     }
@@ -892,11 +892,11 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
       continue;
     }
     bool l_is_ep3 = !!(l->flags & Lobby::Flag::EPISODE_3_ONLY);
-    bool c_is_ep3 = !!(c->flags & Client::Flag::EPISODE_3);
+    bool c_is_ep3 = !!(c->flags & Client::Flag::IS_EPISODE_3);
     if (l_is_ep3 != c_is_ep3) {
       continue;
     }
-    if ((c->flags & Client::Flag::DCV1) && (l->flags & Lobby::Flag::DC_V2_ONLY)) {
+    if ((c->flags & Client::Flag::IS_DC_V1) && (l->flags & Lobby::Flag::NON_V1_ONLY)) {
       continue;
     }
 
@@ -906,7 +906,7 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     e.difficulty_tag = (l_is_ep3 ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
     if (c->version() == GameVersion::DC) {
-      e.episode = (l->flags & Lobby::Flag::DC_V2_ONLY) ? 1 : 0;
+      e.episode = (l->flags & Lobby::Flag::NON_V1_ONLY) ? 1 : 0;
     } else {
       e.episode = ((c->version() == GameVersion::BB) ? (l->max_clients << 4) : 0) | l->episode;
     }
@@ -1030,7 +1030,10 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     if (!(l->flags & Lobby::Flag::DEFAULT)) {
       continue;
     }
-    if ((l->flags & Lobby::Flag::EPISODE_3_ONLY) && !(c->flags & Client::Flag::EPISODE_3)) {
+    if ((l->flags & Lobby::Flag::NON_V1_ONLY) && (c->flags & Client::Flag::IS_DC_V1)) {
+      continue;
+    }
+    if ((l->flags & Lobby::Flag::EPISODE_3_ONLY) && !(c->flags & Client::Flag::IS_EPISODE_3)) {
       continue;
     }
     auto& e = entries.emplace_back();
@@ -1118,7 +1121,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   // Allow non-canonical lobby types on GC. They may work on other versions too,
   // but I haven't verified which values don't crash on each version.
   if (c->version() == GameVersion::GC) {
-    if (c->flags & Client::Flag::EPISODE_3) {
+    if (c->flags & Client::Flag::IS_EPISODE_3) {
       if ((l->type > 0x14) && (l->type < 0xE9)) {
         lobby_type = l->block - 1;
       }
@@ -1213,9 +1216,8 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   // If the client will stop sending message box close confirmations after
   // joining any lobby, set the appropriate flag and update the client config
-  if ((c->flags & (Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN | Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION))
-      == Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
-    c->flags |= Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
+  if ((c->flags & (Client::Flag::NO_D6_AFTER_LOBBY | Client::Flag::NO_D6)) == Client::Flag::NO_D6_AFTER_LOBBY) {
+    c->flags |= Client::Flag::NO_D6;
     send_update_client_config(c);
   }
 }
@@ -1293,7 +1295,7 @@ void send_arrow_update(shared_ptr<Lobby> l) {
   }
 
   for (size_t x = 0; x < l->max_clients; x++) {
-    if (!l->clients[x] || (l->clients[x]->flags & Client::Flag::DCV1)) {
+    if (!l->clients[x] || (l->clients[x]->flags & Client::Flag::IS_DC_V1)) {
       continue;
     }
     send_command_vt(l->clients[x], 0x88, entries.size(), entries);
@@ -1695,7 +1697,7 @@ void send_change_event(shared_ptr<Client> c, uint8_t new_event) {
   // This command isn't supported on versions before V3, nor on Trial Edition.
   if ((c->version() == GameVersion::DC) ||
       (c->version() == GameVersion::PC) ||
-      (c->flags & Client::Flag::GC_TRIAL_EDITION)) {
+      (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
     return;
   }
   send_command(c, 0xDA, new_event);

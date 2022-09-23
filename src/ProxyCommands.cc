@@ -226,7 +226,7 @@ static HandlerResult on_server_dc_pc_v3_patch_02_17(
 
   } else if ((session.version == GameVersion::DC) ||
              (session.version == GameVersion::PC)) {
-    if (session.newserv_client_config.cfg.flags & Client::Flag::DCV1) {
+    if (session.newserv_client_config.cfg.flags & Client::Flag::IS_DC_V1) {
       if (command == 0x17) {
         C_LoginV1_DC_PC_V3_90 cmd;
         cmd.serial_number = string_printf("%08" PRIX32 "",
@@ -742,7 +742,7 @@ static HandlerResult on_server_v3_1A_D5(shared_ptr<ServerState>,
   // has the no-close-confirmation flag set in its newserv client config, send a
   // fake confirmation to the remote server immediately.
   if (((session.version == GameVersion::GC) || (session.version == GameVersion::XB)) &&
-      (session.newserv_client_config.cfg.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION)) {
+      (session.newserv_client_config.cfg.flags & Client::Flag::NO_D6)) {
     session.server_channel.send(0xD6);
   }
   return HandlerResult::Type::FORWARD;
@@ -909,8 +909,8 @@ static HandlerResult on_server_65_67_68(shared_ptr<ServerState>,
     // behavior in the client config, so if it happens during a proxy session,
     // update the client config that we'll restore if the client uses the change
     // ship or change block command.
-    if (session.newserv_client_config.cfg.flags & Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN) {
-      session.newserv_client_config.cfg.flags |= Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
+    if (session.newserv_client_config.cfg.flags & Client::Flag::NO_D6_AFTER_LOBBY) {
+      session.newserv_client_config.cfg.flags |= Client::Flag::NO_D6;
     }
   }
 

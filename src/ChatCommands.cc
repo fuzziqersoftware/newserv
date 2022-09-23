@@ -69,7 +69,7 @@ static void check_is_game(shared_ptr<Lobby> l, bool is_game) {
 }
 
 static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
-  if (!!(c->flags & Client::Flag::EPISODE_3) != is_ep3) {
+  if (!!(c->flags & Client::Flag::IS_EPISODE_3) != is_ep3) {
     throw precondition_failed(is_ep3 ?
         u"$C6This command can only\nbe used in Episode 3." :
         u"$C6This command cannot\nbe used in Episode 3.");
@@ -270,7 +270,7 @@ static void proxy_command_lobby_event(shared_ptr<ServerState>,
       if (((session.version == GameVersion::GC) ||
            (session.version == GameVersion::XB) ||
            (session.version == GameVersion::BB)) &&
-           !(session.newserv_client_config.cfg.flags & Client::Flag::GC_TRIAL_EDITION)) {
+           !(session.newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) {
         session.client_channel.send(0xDA, session.override_lobby_event);
       }
     }

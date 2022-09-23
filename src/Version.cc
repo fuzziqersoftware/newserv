@@ -15,33 +15,33 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
     case -1: // Initial check (before sub_version recognition)
       switch (version) {
         case GameVersion::DC:
-          return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
+          return Client::Flag::NO_D6;
         case GameVersion::GC:
         case GameVersion::XB:
           return 0;
         case GameVersion::PC:
-          return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
+          return Client::Flag::NO_D6 |
                  Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
         case GameVersion::PATCH:
-          return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
-                 Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL;
+          return Client::Flag::NO_D6 |
+                 Client::Flag::NO_SEND_FUNCTION_CALL;
         case GameVersion::BB:
-          return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
+          return Client::Flag::NO_D6 |
                  Client::Flag::SAVE_ENABLED;
       }
       break;
 
     // TODO: Which other sub_versions of DC v1 and v2 exist?
     case 0x21: // DCv1 US
-      return Client::Flag::DCV1 |
-             Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
-             Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL;
+      return Client::Flag::IS_DC_V1 |
+             Client::Flag::NO_D6 |
+             Client::Flag::NO_SEND_FUNCTION_CALL;
 
     case 0x26: // DCv2 US
-      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION;
+      return Client::Flag::NO_D6;
 
     case 0x29: // PC
-      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION |
+      return Client::Flag::NO_D6 |
              Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
 
     case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
@@ -50,27 +50,27 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
       return 0;
     case 0x32: // GC Ep1&2 EU 50Hz
     case 0x33: // GC Ep1&2 EU 60Hz
-      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN;
+      return Client::Flag::NO_D6_AFTER_LOBBY;
     case 0x35: // GC Ep1&2 JP v1.04 (Plus)
-      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
+      return Client::Flag::NO_D6_AFTER_LOBBY |
              Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
     case 0x36: // GC Ep1&2 US v1.02 (Plus)
     case 0x39: // GC Ep1&2 JP v1.05 (Plus)
-      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
-             Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL;
+      return Client::Flag::NO_D6_AFTER_LOBBY |
+             Client::Flag::NO_SEND_FUNCTION_CALL;
 
     case 0x40: // GC Ep3 trial
-      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
-             Client::Flag::EPISODE_3;
+      return Client::Flag::NO_D6_AFTER_LOBBY |
+             Client::Flag::IS_EPISODE_3;
     case 0x42: // GC Ep3 JP
-      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
-             Client::Flag::EPISODE_3 |
+      return Client::Flag::NO_D6_AFTER_LOBBY |
+             Client::Flag::IS_EPISODE_3 |
              Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
     case 0x41: // GC Ep3 US
     case 0x43: // GC Ep3 EU
-      return Client::Flag::NO_MESSAGE_BOX_CLOSE_CONFIRMATION_AFTER_LOBBY_JOIN |
-             Client::Flag::EPISODE_3 |
-             Client::Flag::DOES_NOT_SUPPORT_SEND_FUNCTION_CALL;
+      return Client::Flag::NO_D6_AFTER_LOBBY |
+             Client::Flag::IS_EPISODE_3 |
+             Client::Flag::NO_SEND_FUNCTION_CALL;
   }
   throw runtime_error("unknown sub_version");
 }

@@ -274,7 +274,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         language = cmd.language;
         character_name = cmd.name;
         hardware_id = cmd.hardware_id;
-        client_config.cfg.flags |= Client::Flag::DCV1;
+        client_config.cfg.flags |= Client::Flag::IS_DC_V1;
       } else if (command == 0x9D) {
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(
             data, sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_GC_9D));

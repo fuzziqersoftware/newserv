@@ -22,13 +22,13 @@ struct Lobby {
   enum Flag {
     GAME                       = 0x00000001,
     EPISODE_3_ONLY             = 0x00000002,
+    NON_V1_ONLY                = 0x00000004, // DC NTE and DCv1 not allowed
 
     // Flags used only for games
     CHEATS_ENABLED             = 0x00000100,
     QUEST_IN_PROGRESS          = 0x00000200,
     JOINABLE_QUEST_IN_PROGRESS = 0x00000400,
     ITEM_TRACKING_ENABLED      = 0x00000800,
-    DC_V2_ONLY                 = 0x00001000,
     BATTLE_MODE                = 0x00002000,
     CHALLENGE_MODE             = 0x00004000,
     SOLO_MODE                  = 0x00008000,
