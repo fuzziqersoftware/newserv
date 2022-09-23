@@ -171,8 +171,8 @@ static HandlerResult on_server_dc_pc_v3_patch_02_17(
 
   // Most servers don't include after_message or have a shorter
   // after_message than newserv does, so don't require it
-  const auto& cmd = check_size_t<S_ServerInit_DC_PC_V3_02_17_91_9B>(data,
-      offsetof(S_ServerInit_DC_PC_V3_02_17_91_9B, after_message), 0xFFFF);
+  const auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data,
+      sizeof(S_ServerInitDefault_DC_PC_V3_02_17_91_9B), 0xFFFF);
 
   if (!session.license) {
     session.log.info("No license in linked session");
@@ -335,8 +335,8 @@ static HandlerResult on_server_bb_03(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // Most servers don't include after_message or have a shorter after_message
   // than newserv does, so don't require it
-  const auto& cmd = check_size_t<S_ServerInit_BB_03_9B>(data,
-      offsetof(S_ServerInit_BB_03_9B, after_message), 0xFFFF);
+  const auto& cmd = check_size_t<S_ServerInitDefault_BB_03_9B>(data,
+      sizeof(S_ServerInitDefault_BB_03_9B), 0xFFFF);
 
   // If the session has a detector crypt, then it was resumed from an unlinked
   // session, during which we already sent an 03 command.

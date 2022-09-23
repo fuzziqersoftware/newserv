@@ -27,6 +27,7 @@ extern FileContentsCache file_cache;
 
 
 const unordered_set<uint32_t> v2_crypt_initial_client_commands({
+  0x00260088, // (17) DCNTE license check
   0x00280090, // (17) DCv1 license check
   0x00B00093, // (02) DCv1 login
   0x01140093, // (02) DCv1 extended login
@@ -111,17 +112,18 @@ void send_command_with_header(Channel& ch, const void* data, size_t size) {
 
 
 
-static const char* anti_copyright = "This server is in no way affiliated, sponsored, or supported by SEGA Enterprises or SONICTEAM. The preceding message exists only in order to remain compatible with programs that expect it.";
+static const char* anti_copyright = "This server is in no way affiliated, sponsored, or supported by SEGA Enterprises or SONICTEAM. The preceding message exists only to remain compatible with programs that expect it.";
 static const char* dc_port_map_copyright = "DreamCast Port Map. Copyright SEGA Enterprises. 1999";
 static const char* dc_lobby_server_copyright = "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999";
 static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM.";
 static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
-S_ServerInit_DC_PC_V3_02_17_91_9B prepare_server_init_contents_console(
+S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xCC>
+prepare_server_init_contents_console(
     uint32_t server_key, uint32_t client_key, uint8_t flags) {
   bool initial_connection = (flags & SendServerInitFlag::IS_INITIAL_CONNECTION);
-  S_ServerInit_DC_PC_V3_02_17_91_9B cmd;
+  S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xCC> cmd;
   cmd.copyright = initial_connection
       ? dc_port_map_copyright : dc_lobby_server_copyright;
   cmd.server_key = server_key;
@@ -138,7 +140,7 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
 
   auto cmd = prepare_server_init_contents_console(
       server_key, client_key, initial_connection);
-  send_command_t(c, command, 0x00, cmd);
+  send_command_t(c, command, 0x01, cmd);
 
   switch (c->version()) {
     case GameVersion::PC:
@@ -159,12 +161,12 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
   }
 }
 
-S_ServerInit_BB_03_9B prepare_server_init_contents_bb(
+S_ServerInitWithAfterMessage_BB_03_9B prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
     const parray<uint8_t, 0x30>& client_key,
     uint8_t flags) {
   bool use_secondary_message = (flags & SendServerInitFlag::USE_SECONDARY_MESSAGE);
-  S_ServerInit_BB_03_9B cmd;
+  S_ServerInitWithAfterMessage_BB_03_9B cmd;
   cmd.copyright = use_secondary_message ? bb_pm_server_copyright : bb_game_server_copyright;
   cmd.server_key = server_key;
   cmd.client_key = client_key;

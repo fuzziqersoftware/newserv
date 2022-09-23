@@ -312,13 +312,17 @@ struct SC_TextHeader_01_06_11_B0_EE {
 // (The above text is required on all versions that use this command, including
 // those versions that don't run on the DreamCast.)
 
-struct S_ServerInit_DC_PC_V3_02_17_91_9B {
+struct S_ServerInitDefault_DC_PC_V3_02_17_91_9B {
   ptext<char, 0x40> copyright;
   le_uint32_t server_key; // Key for data sent by server
   le_uint32_t client_key; // Key for data sent by client
+};
+
+template <size_t AfterBytes>
+struct S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B : S_ServerInitDefault_DC_PC_V3_02_17_91_9B {
   // This field is not part of SEGA's implementation; the client ignores it.
   // newserv sends a message here disavowing the preceding copyright notice.
-  ptext<char, 0xC0> after_message;
+  ptext<char, AfterBytes> after_message;
 };
 
 // 03 (C->S): Legacy login (non-BB)
@@ -352,10 +356,13 @@ struct C_LegacyLogin_PC_V3_03 {
 // The copyright field in the below structure must contain the following text:
 // "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM."
 
-struct S_ServerInit_BB_03_9B {
+struct S_ServerInitDefault_BB_03_9B {
   ptext<char, 0x60> copyright;
   parray<uint8_t, 0x30> server_key;
   parray<uint8_t, 0x30> client_key;
+};
+
+struct S_ServerInitWithAfterMessage_BB_03_9B : S_ServerInitDefault_BB_03_9B {
   // As in 02, this field is not part of SEGA's implementation.
   ptext<char, 0xC0> after_message;
 };
@@ -1144,6 +1151,19 @@ struct C_LobbySelection_84 {
 // 86: Invalid command
 // 87: Invalid command
 
+// 88 (C->S): License check (DC NTE only)
+// The server should respond with an 88 command.
+
+struct C_Login_DCNTE_88 {
+  ptext<char, 0x11> serial_number;
+  ptext<char, 0x11> access_key;
+};
+
+// 88 (S->C): License check result (DC NTE only)
+// No arguemnts except header.flag.
+// If header.flag is zero, client will respond with an 8A command. Otherwise, it
+// will respond with an 8B command.
+
 // 88 (S->C): Update lobby arrows
 // If this command is sent while a client is joining a lobby, the client may
 // ignore it. For this reason, the server should wait a few seconds after a
@@ -1178,17 +1198,51 @@ struct S_ArrowUpdateEntry_88 {
 // header.flag = arrow color number (see above); no other arguments.
 // Server should send an 88 command to all players in the lobby.
 
-// 8A (C->S): Request lobby/game name
+// 8A (C->S): Connection information (DC NTE only)
+// The server should respond with an 8A command.
+
+struct C_ConnectionInfo_DCNTE_8A {
+  ptext<char, 0x08> hardware_id;
+  le_uint32_t sub_version; // 0x20
+  le_uint32_t unknown_a1;
+  ptext<char, 0x30> username;
+  ptext<char, 0x30> password;
+  ptext<char, 0x30> email_address; // From Sylverant documentation
+};
+
+// 8A (S->C): Connection information result (DC NTE only)
+// header.flag is a success flag. If 0 is sent, the client shows an error
+// message and disconnects. Otherwise, the client responds with an 8B command.
+
+// 8A (C->S): Request lobby/game name (except DC NTE)
 // No arguments
 
-// 8A (S->C): Lobby/game name
+// 8A (S->C): Lobby/game name (except DC NTE)
 // Contents is a string (char16_t on PC/BB, char on DC/V3) containing the lobby
 // or game name. The client generally only sends this immediately after joining
 // a game, but Sega's servers also replied to it if it was sent in a lobby. They
 // would return a string like "LOBBY01" even though this would never be used
 // under normal circumstances.
 
-// 8B: Invalid command
+// 8B: Log in (DC NTE only)
+
+struct C_Login_DCNTE_8B {
+  le_uint32_t player_tag;
+  le_uint32_t guild_card_number;
+  parray<uint8_t, 0x08> hardware_id;
+  le_uint32_t sub_version;
+  uint8_t is_extended;
+  uint8_t language;
+  parray<uint8_t, 2> unused1;
+  ptext<char, 0x11> serial_number;
+  ptext<char, 0x11> access_key;
+  ptext<char, 0x30> username;
+  ptext<char, 0x30> password;
+  ptext<char, 0x10> name;
+  parray<uint8_t, 2> unused;
+  SC_MeetUserExtension<char> extension;
+};
+
 // 8C: Invalid command
 // 8D: Invalid command
 // 8E: Invalid command
@@ -1752,7 +1806,7 @@ struct S_RankUpdate_GC_Ep3_B7 {
 struct S_Unknown_GC_Ep3_B9 {
   le_uint32_t unknown_a1; // Must be 1-4 (inclusive)
   le_uint32_t unknown_a2;
-  le_uint16_t unknown_a3;
+  le_uint16_t unknown_a3; // Looks like a size of some sort
   le_uint16_t unused;
   parray<uint8_t, 0x3800> unknown_a5;
 };

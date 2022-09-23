@@ -212,6 +212,70 @@ static void on_verify_license_v3(shared_ptr<ServerState> s, shared_ptr<Client> c
   }
 }
 
+static void on_login_8_dcnte(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // 88
+  const auto& cmd = check_size_t<C_Login_DCNTE_88>(data);
+  c->channel.version = GameVersion::DC;
+  c->flags |= flags_for_version(c->version(), -1);
+  c->flags |= Client::Flag::IS_DC_V1 | Client::Flag::IS_TRIAL_EDITION;
+
+  uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
+  try {
+    shared_ptr<const License> l = s->license_manager->verify_pc(
+        serial_number, cmd.access_key);
+    c->set_license(l);
+    send_command(c, 0x88, 0x00);
+
+  } catch (const incorrect_access_key& e) {
+    send_message_box(c, u"Incorrect access key");
+    c->should_disconnect = true;
+
+  } catch (const missing_license& e) {
+    if (!s->allow_unregistered_users) {
+      send_message_box(c, u"Incorrect serial number");
+      c->should_disconnect = true;
+    } else {
+      auto l = LicenseManager::create_license_pc(
+          serial_number, cmd.access_key, true);
+      s->license_manager->add(l);
+      c->set_license(l);
+      send_command(c, 0x88, 0x00);
+    }
+  }
+}
+
+static void on_login_b_dcnte(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // 8B
+  const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data);
+  c->channel.version = GameVersion::DC;
+  c->flags |= flags_for_version(c->version(), -1);
+  c->flags |= Client::Flag::IS_DC_V1 | Client::Flag::IS_TRIAL_EDITION;
+
+  uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
+  try {
+    shared_ptr<const License> l = s->license_manager->verify_pc(
+        serial_number, cmd.access_key);
+    c->set_license(l);
+    send_command(c, 0x8B, 0x01);
+
+  } catch (const incorrect_access_key& e) {
+    send_message_box(c, u"Incorrect access key");
+    c->should_disconnect = true;
+
+  } catch (const missing_license& e) {
+    if (!s->allow_unregistered_users) {
+      send_message_box(c, u"Incorrect serial number");
+      c->should_disconnect = true;
+    } else {
+      auto l = LicenseManager::create_license_pc(
+          serial_number, cmd.access_key, true);
+      s->license_manager->add(l);
+      c->set_license(l);
+      send_command(c, 0x8B, 0x01);
+    }
+  }
+}
+
 static void on_login_0_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 90
   const auto& cmd = check_size_t<C_LoginV1_DC_PC_V3_90>(data);
@@ -2364,12 +2428,19 @@ static void on_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 8A
-  check_size_v(data.size(), 0);
-  auto l = s->find_lobby(c->lobby_id);
-  if (!l) {
-    throw invalid_argument("client not in any lobby");
+  if ((c->version() == GameVersion::DC) && (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+    const auto& cmd = check_size_t<C_ConnectionInfo_DCNTE_8A>(data);
+    set_console_client_flags(c, cmd.sub_version);
+    send_command(c, 0x8A, 0x01);
+
+  } else {
+    check_size_v(data.size(), 0);
+    auto l = s->find_lobby(c->lobby_id);
+    if (!l) {
+      throw invalid_argument("client not in any lobby");
+    }
+    send_lobby_name(c, l->name.c_str());
   }
-  send_lobby_name(c, l->name.c_str());
 }
 
 static void on_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -2822,10 +2893,10 @@ static on_command_t handlers[0x100][6] = {
   /* 85 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 85 */
   /* 86 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 86 */
   /* 87 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 87 */
-  /* 88 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 88 */
+  /* 88 */ {nullptr,                 on_login_8_dcnte,           nullptr,                         on_login_8_dcnte,            nullptr,                     nullptr,                        }, /* 88 */
   /* 89 */ {nullptr,                 on_change_arrow_color,      on_change_arrow_color,           on_change_arrow_color,       on_change_arrow_color,       on_change_arrow_color,          }, /* 89 */
   /* 8A */ {nullptr,                 on_lobby_name_request,      on_lobby_name_request,           on_lobby_name_request,       on_lobby_name_request,       on_lobby_name_request,          }, /* 8A */
-  /* 8B */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8B */
+  /* 8B */ {nullptr,                 on_login_b_dcnte,           nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8B */
   /* 8C */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8C */
   /* 8D */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8D */
   /* 8E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8E */
@@ -2963,7 +3034,8 @@ static void check_unlicensed_command(GameVersion version, uint8_t command) {
     case GameVersion::GC:
     case GameVersion::XB:
       // See comment in the DC case above for why DC commands are included here.
-      if (command != 0x90 && // DC v1
+      if (command != 0x88 && // DC NTE
+          command != 0x90 && // DC v1
           command != 0x93 && // DC v1
           command != 0x9A && // DC v2
           command != 0x9D && // DC v2, GC trial edition

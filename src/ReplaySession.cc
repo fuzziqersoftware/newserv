@@ -218,8 +218,8 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         case 0x17:
         case 0x91:
         case 0x9B: {
-          auto& cmd_mask = check_size_t<S_ServerInit_DC_PC_V3_02_17_91_9B>(
-              cmd_data, cmd_size, sizeof(S_ServerInit_DC_PC_V3_02_17_91_9B), 0xFFFF);
+          auto& cmd_mask = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(
+              cmd_data, cmd_size, sizeof(S_ServerInitDefault_DC_PC_V3_02_17_91_9B), 0xFFFF);
           cmd_mask.server_key = 0;
           cmd_mask.client_key = 0;
           break;
@@ -275,8 +275,8 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             ev->data, sizeof(PSOCommandHeaderBB), 0xFFFF).command;
       switch (command) {
         case 0x0003: {
-          auto& cmd_mask = check_size_t<S_ServerInit_BB_03_9B>(
-              cmd_data, cmd_size, sizeof(S_ServerInit_BB_03_9B), 0xFFFF);
+          auto& cmd_mask = check_size_t<S_ServerInitDefault_BB_03_9B>(
+              cmd_data, cmd_size, sizeof(S_ServerInitDefault_BB_03_9B), 0xFFFF);
           cmd_mask.server_key.clear(0);
           cmd_mask.client_key.clear(0);
           break;
@@ -593,8 +593,8 @@ void ReplaySession::on_command_received(
     case GameVersion::GC:
     case GameVersion::XB:
       if (command == 0x02 || command == 0x17 || command == 0x91 || command == 0x9B) {
-        auto& cmd = check_size_t<S_ServerInit_DC_PC_V3_02_17_91_9B>(data,
-            offsetof(S_ServerInit_DC_PC_V3_02_17_91_9B, after_message), 0xFFFF);
+        auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data,
+            sizeof(S_ServerInitDefault_DC_PC_V3_02_17_91_9B), 0xFFFF);
         if ((c->version == GameVersion::DC) || (c->version == GameVersion::PC)) {
           c->channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
           c->channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
@@ -606,8 +606,8 @@ void ReplaySession::on_command_received(
       break;
     case GameVersion::BB:
       if (command == 0x03 || command == 0x9B) {
-        auto& cmd = check_size_t<S_ServerInit_BB_03_9B>(data,
-            sizeof(S_ServerInit_BB_03_9B), 0xFFFF);
+        auto& cmd = check_size_t<S_ServerInitDefault_BB_03_9B>(data,
+            sizeof(S_ServerInitDefault_BB_03_9B), 0xFFFF);
         // TODO: At some point it may matter which BB private key file we use.
         // Don't just blindly use the first one here.
         c->channel.crypt_in.reset(new PSOBBEncryption(

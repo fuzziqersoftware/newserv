@@ -32,6 +32,9 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
       break;
 
     // TODO: Which other sub_versions of DC v1 and v2 exist?
+    case 0x20: // DCNTE
+      // In the case of DCNTE, the IS_TRIAL_EDITION flag is already set when we
+      // get here, so the remaining flags are the same as DCv1
     case 0x21: // DCv1 US
       return Client::Flag::IS_DC_V1 |
              Client::Flag::NO_D6 |
