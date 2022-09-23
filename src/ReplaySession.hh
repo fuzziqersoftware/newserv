@@ -43,10 +43,11 @@ private:
     std::string data; // Only used for SEND and RECEIVE
     std::string mask; // Only used for RECEIVE
     bool complete;
+    size_t line_num;
 
     std::shared_ptr<Event> next_event;
 
-    Event(Type type, uint64_t client_id);
+    Event(Type type, uint64_t client_id, size_t line_num);
   };
 
   struct Client {
@@ -79,7 +80,7 @@ private:
   size_t bytes_received;
 
   std::shared_ptr<ReplaySession::Event> create_event(
-      Event::Type type, std::shared_ptr<Client> c);
+      Event::Type type, std::shared_ptr<Client> c, size_t line_num);
   void update_timeout_event();
 
   void apply_default_mask(std::shared_ptr<Event> ev);

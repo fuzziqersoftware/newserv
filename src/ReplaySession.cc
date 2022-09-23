@@ -12,8 +12,8 @@ using namespace std;
 
 
 
-ReplaySession::Event::Event(Type type, uint64_t client_id)
-  : type(type), client_id(client_id), complete(false) { }
+ReplaySession::Event::Event(Type type, uint64_t client_id, size_t line_num)
+  : type(type), client_id(client_id), complete(false), line_num(line_num) { }
 
 ReplaySession::Client::Client(
     ReplaySession* session, uint64_t id, uint16_t port, GameVersion version)
@@ -30,8 +30,8 @@ ReplaySession::Client::Client(
 
 
 shared_ptr<ReplaySession::Event> ReplaySession::create_event(
-    Event::Type type, shared_ptr<Client> c) {
-  shared_ptr<Event> event(new Event(type, c->id));
+    Event::Type type, shared_ptr<Client> c, size_t line_num) {
+  shared_ptr<Event> event(new Event(type, c->id, line_num));
   if (!this->last_event.get()) {
     this->first_event = event;
   } else {
@@ -50,7 +50,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
   auto check_pw = [&](const string& pw) {
     if (!this->required_password.empty() && !pw.empty() && (pw != this->required_password)) {
       print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
-      throw runtime_error("sent password is incorrect");
+      throw runtime_error(string_printf("(ev-line %zu) sent password is incorrect", ev->line_num));
     }
   };
   auto check_ak = [&](const string& ak) {
@@ -65,7 +65,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
     }
     if (ak != ref_access_key) {
       print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
-      throw runtime_error("sent access key is incorrect");
+      throw runtime_error(string_printf("(ev-line %zu) sent access key is incorrect", ev->line_num));
     }
   };
   auto check_either = [&](const string& s) {
@@ -327,7 +327,9 @@ ReplaySession::ReplaySession(
     bytes_received(0) {
   shared_ptr<Event> parsing_command = nullptr;
 
+  size_t line_num = 0;
   while (!feof(input_log)) {
+    line_num++;
     string line = fgets(input_log);
     if (starts_with(line, Shell::PROMPT)) {
       line = line.substr(Shell::PROMPT.size());
@@ -366,14 +368,14 @@ ReplaySession::ReplaySession(
       if (offset != string::npos) {
         auto tokens = split(line, ' ');
         if (tokens.size() != 15) {
-          throw runtime_error("client connection message has incorrect token count");
+          throw runtime_error(string_printf("(ev-line %zu) client connection message has incorrect token count", line_num));
         }
         if (!starts_with(tokens[8], "C-")) {
-          throw runtime_error("client connection message missing client ID token");
+          throw runtime_error(string_printf("(ev-line %zu) client connection message missing client ID token", line_num));
         }
         auto listen_tokens = split(tokens[14], '-');
         if (listen_tokens.size() < 4) {
-          throw runtime_error("client connection message listening socket token format is incorrect");
+          throw runtime_error(string_printf("(ev-line %zu) client connection message listening socket token format is incorrect", line_num));
         }
 
         shared_ptr<Client> c(new Client(
@@ -382,9 +384,9 @@ ReplaySession::ReplaySession(
             stoul(listen_tokens[1], nullptr, 10),
             version_for_name(listen_tokens[2].c_str())));
         if (!this->clients.emplace(c->id, c).second) {
-          throw runtime_error("duplicate client ID in input log");
+          throw runtime_error(string_printf("(ev-line %zu) duplicate client ID in input log", line_num));
         }
-        this->create_event(Event::Type::CONNECT, c);
+        this->create_event(Event::Type::CONNECT, c, line_num);
         continue;
       }
 
@@ -393,20 +395,20 @@ ReplaySession::ReplaySession(
       if (offset != string::npos) {
         auto tokens = split(line, ' ');
         if (tokens.size() < 9) {
-          throw runtime_error("client disconnection message has incorrect token count");
+          throw runtime_error(string_printf("(ev-line %zu) client disconnection message has incorrect token count", line_num));
         }
         if (!starts_with(tokens[8], "C-")) {
-          throw runtime_error("client disconnection message missing client ID token");
+          throw runtime_error(string_printf("(ev-line %zu) client disconnection message missing client ID token", line_num));
         }
         uint64_t client_id = stoul(tokens[8].substr(2), nullptr, 16);
         try {
           auto& c = this->clients.at(client_id);
           if (c->disconnect_event.get()) {
-            throw runtime_error("client has multiple disconnect events");
+            throw runtime_error(string_printf("(ev-line %zu) client has multiple disconnect events", line_num));
           }
-          c->disconnect_event = this->create_event(Event::Type::DISCONNECT, c);
+          c->disconnect_event = this->create_event(Event::Type::DISCONNECT, c, line_num);
         } catch (const out_of_range&) {
-          throw runtime_error("unknown disconnecting client ID in input log");
+          throw runtime_error(string_printf("(ev-line %zu) unknown disconnecting client ID in input log", line_num));
         }
         continue;
       }
@@ -420,16 +422,17 @@ ReplaySession::ReplaySession(
       if (offset != string::npos) {
         auto tokens = split(line, ' ');
         if (tokens.size() < 10) {
-          throw runtime_error("command header line too short");
+          throw runtime_error(string_printf("(ev-line %zu) command header line too short", line_num));
         }
         bool from_client = (tokens[6] == "Received");
         uint64_t client_id = stoull(tokens[8].substr(2), nullptr, 16);
         try {
           parsing_command = this->create_event(
               from_client ? Event::Type::SEND : Event::Type::RECEIVE,
-              this->clients.at(client_id));
+              this->clients.at(client_id),
+              line_num);
         } catch (const out_of_range&) {
-          throw runtime_error("input log contains command for missing client");
+          throw runtime_error(string_printf("(ev-line %zu) input log contains command for missing client", line_num));
         }
         continue;
       }
@@ -463,7 +466,7 @@ void ReplaySession::execute_pending_events() {
       switch (this->first_event->type) {
         case Event::Type::CONNECT: {
           if (c->channel.connected()) {
-            throw runtime_error("connect event on already-connected client");
+            throw runtime_error(string_printf("(ev-line %zu) connect event on already-connected client", this->first_event->line_num));
           }
 
           struct bufferevent* bevs[2];
@@ -477,17 +480,17 @@ void ReplaySession::execute_pending_events() {
             port_config = this->state->number_to_port_config.at(c->port);
           } catch (const out_of_range&) {
             bufferevent_free(bevs[1]);
-            throw runtime_error("client connected to port missing from configuration");
+            throw runtime_error(string_printf("(ev-line %zu) client connected to port missing from configuration", this->first_event->line_num));
           }
 
           if (port_config->behavior == ServerBehavior::PROXY_SERVER) {
             // TODO: We should support this at some point in the future
-            throw runtime_error("client connected to proxy server");
+            throw runtime_error(string_printf("(ev-line %zu) client connected to proxy server", this->first_event->line_num));
           } else if (this->state->game_server.get()) {
             this->state->game_server->connect_client(bevs[1], 0x20202020,
                 1025, c->port, port_config->version, port_config->behavior);
           } else {
-            throw runtime_error("no server available for connection");
+            throw runtime_error(string_printf("(ev-line %zu) no server available for connection", this->first_event->line_num));
             bufferevent_free(bevs[1]);
           }
           break;
@@ -498,7 +501,7 @@ void ReplaySession::execute_pending_events() {
           break;
         case Event::Type::SEND:
           if (!c->channel.connected()) {
-            throw runtime_error("send event attempted on unconnected client");
+            throw runtime_error(string_printf("(ev-line %zu) send event attempted on unconnected client", this->first_event->line_num));
           }
           c->channel.send(this->first_event->data);
           this->commands_sent++;
@@ -561,7 +564,7 @@ void ReplaySession::on_command_received(
     print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
     replay_log.error("Received command:");
     print_data(stderr, full_command, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
-    throw runtime_error("received command sizes do not match");
+    throw runtime_error(string_printf("(ev-line %zu) received command sizes do not match", ev->line_num));
   }
   for (size_t x = 0; x < full_command.size(); x++) {
     if ((full_command[x] & ev->mask[x]) != (ev->data[x] & ev->mask[x])) {
@@ -569,7 +572,7 @@ void ReplaySession::on_command_received(
       print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
       replay_log.error("Received command:");
       print_data(stderr, full_command, 0, ev->data.data(), PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
-      throw runtime_error("received command data does not match expected data");
+      throw runtime_error(string_printf("(ev-line %zu) received command data does not match expected data", ev->line_num));
     }
   }
 
