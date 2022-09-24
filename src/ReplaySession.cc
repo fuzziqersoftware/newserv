@@ -15,6 +15,26 @@ using namespace std;
 ReplaySession::Event::Event(Type type, uint64_t client_id, size_t line_num)
   : type(type), client_id(client_id), complete(false), line_num(line_num) { }
 
+string ReplaySession::Event::str() const {
+  string ret;
+  if (this->type == Type::CONNECT) {
+    ret = string_printf("Event[%" PRIu64 ", CONNECT", this->client_id);
+  } else if (this->type == Type::DISCONNECT) {
+    ret = string_printf("Event[%" PRIu64 ", DISCONNECT", this->client_id);
+  } else if (this->type == Type::SEND) {
+    ret = string_printf("Event[%" PRIu64 ", SEND %04zX", this->client_id, this->data.size());
+  } else if (this->type == Type::RECEIVE) {
+    ret = string_printf("Event[%" PRIu64 ", RECEIVE %04zX", this->client_id, this->data.size());
+  }
+  if (this->complete) {
+    ret += ", done";
+  }
+  ret += string_printf(", ev-line %zu]", this->line_num);
+  return ret;
+}
+
+
+
 ReplaySession::Client::Client(
     ReplaySession* session, uint64_t id, uint16_t port, GameVersion version)
   : id(id),
@@ -26,6 +46,11 @@ ReplaySession::Client::Client(
       &ReplaySession::dispatch_on_error,
       session,
       string_printf("R-%" PRIX64, this->id)) { }
+
+string ReplaySession::Client::str() const {
+  return string_printf("Client[%" PRIu64 ", T-%hu, %s]",
+      this->id, this->port, name_for_version(this->version));
+}
 
 
 
@@ -328,6 +353,7 @@ ReplaySession::ReplaySession(
   shared_ptr<Event> parsing_command = nullptr;
 
   size_t line_num = 0;
+  size_t num_events = 0;
   while (!feof(input_log)) {
     line_num++;
     string line = fgets(input_log);
@@ -387,6 +413,7 @@ ReplaySession::ReplaySession(
           throw runtime_error(string_printf("(ev-line %zu) duplicate client ID in input log", line_num));
         }
         this->create_event(Event::Type::CONNECT, c, line_num);
+        num_events++;
         continue;
       }
 
@@ -407,6 +434,7 @@ ReplaySession::ReplaySession(
             throw runtime_error(string_printf("(ev-line %zu) client has multiple disconnect events", line_num));
           }
           c->disconnect_event = this->create_event(Event::Type::DISCONNECT, c, line_num);
+          num_events++;
         } catch (const out_of_range&) {
           throw runtime_error(string_printf("(ev-line %zu) unknown disconnecting client ID in input log", line_num));
         }
@@ -431,12 +459,25 @@ ReplaySession::ReplaySession(
               from_client ? Event::Type::SEND : Event::Type::RECEIVE,
               this->clients.at(client_id),
               line_num);
+          num_events++;
         } catch (const out_of_range&) {
           throw runtime_error(string_printf("(ev-line %zu) input log contains command for missing client", line_num));
         }
         continue;
       }
     }
+  }
+
+  replay_log.info("%zu clients in log", this->clients.size());
+  for (const auto& it : this->clients) {
+    string client_str = it.second->str();
+    replay_log.info("  %" PRIu64 " => %s", it.first, client_str.c_str());
+  }
+
+  replay_log.info("%zu events in replay log", num_events);
+  for (auto ev = this->first_event; ev != nullptr; ev = ev->next_event) {
+    string ev_str = ev->str();
+    replay_log.info("  %s", ev_str.c_str());
   }
 }
 
@@ -463,6 +504,10 @@ void ReplaySession::execute_pending_events() {
   while (this->first_event) {
     if (!this->first_event->complete) {
       auto& c = this->clients.at(this->first_event->client_id);
+
+      auto ev_str = this->first_event->str();
+      replay_log.info("Event: %s", ev_str.c_str());
+
       switch (this->first_event->type) {
         case Event::Type::CONNECT: {
           if (c->channel.connected()) {

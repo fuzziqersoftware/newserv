@@ -48,6 +48,8 @@ private:
     std::shared_ptr<Event> next_event;
 
     Event(Type type, uint64_t client_id, size_t line_num);
+
+    std::string str() const;
   };
 
   struct Client {
@@ -59,6 +61,8 @@ private:
     std::shared_ptr<Event> disconnect_event;
 
     Client(ReplaySession* session, uint64_t id, uint16_t port, GameVersion version);
+
+    std::string str() const;
   };
 
   std::shared_ptr<ServerState> state;
