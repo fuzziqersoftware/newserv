@@ -362,9 +362,10 @@ struct S_ServerInitDefault_BB_03_9B {
   parray<uint8_t, 0x30> client_key;
 };
 
+template <size_t AfterBytes>
 struct S_ServerInitWithAfterMessage_BB_03_9B : S_ServerInitDefault_BB_03_9B {
   // As in 02, this field is not part of SEGA's implementation.
-  ptext<char, 0xC0> after_message;
+  ptext<char, AfterBytes> after_message;
 };
 
 // 04 (C->S): Legacy login

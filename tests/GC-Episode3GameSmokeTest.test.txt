@@ -19,7 +19,7 @@ I 22913 2022-06-30 23:45:38 - [Server] Client disconnected: C-1 on virtual conne
 I 94711 2022-07-26 00:24:56 - [IPStackSimulator] Client opened TCP connection 31+23232323238F0671 (10.0.1.5:1649 -> 35.35.35.35:9103)
 I 94711 2022-07-26 00:24:56 - [Server] Client connected: C-7 on virtual connection 0x107004340 via T-5100-GC-login_server-VI
 I 94711 2022-07-26 00:24:56 - [Commands] Sending to C-7 (version=GC command=17 flag=00)
-0000 | 17 00 0C 01 44 72 65 61 6D 43 61 73 74 20 50 6F |     DreamCast Po
+0000 | 17 00 00 01 44 72 65 61 6D 43 61 73 74 20 50 6F |     DreamCast Po
 0010 | 72 74 20 4D 61 70 2E 20 43 6F 70 79 72 69 67 68 | rt Map. Copyrigh
 0020 | 74 20 53 45 47 41 20 45 6E 74 65 72 70 72 69 73 | t SEGA Enterpris
 0030 | 65 73 2E 20 31 39 39 39 00 00 00 00 00 00 00 00 | es. 1999        
@@ -31,11 +31,10 @@ I 94711 2022-07-26 00:24:56 - [Commands] Sending to C-7 (version=GC command=17 f
 0090 | 20 45 6E 74 65 72 70 72 69 73 65 73 20 6F 72 20 |  Enterprises or 
 00A0 | 53 4F 4E 49 43 54 45 41 4D 2E 20 54 68 65 20 70 | SONICTEAM. The p
 00B0 | 72 65 63 65 64 69 6E 67 20 6D 65 73 73 61 67 65 | receding message
-00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 69 6E 20 |  exists only in 
-00D0 | 6F 72 64 65 72 20 74 6F 20 72 65 6D 61 69 6E 20 | order to remain 
-00E0 | 63 6F 6D 70 61 74 69 62 6C 65 20 77 69 74 68 20 | compatible with 
-00F0 | 70 72 6F 67 72 61 6D 73 20 74 68 61 74 20 65 78 | programs that ex
-0100 | 70 65 63 74 20 69 74 2E 00 00 00 00             | pect it.        
+00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 74 6F 20 |  exists only to 
+00D0 | 72 65 6D 61 69 6E 20 63 6F 6D 70 61 74 69 62 6C | remain compatibl
+00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs 
+00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it. 
 I 94711 2022-07-26 00:24:56 - [IPStackSimulator] Connected TCP connection 31+23232323238F0671 (10.0.1.5:1649 -> 35.35.35.35:9103) to game server
 I 94711 2022-07-26 00:24:56 - [Commands] Received from C-7 (version=GC command=DB flag=00)
 0000 | DB 00 E0 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
@@ -2067,7 +2066,7 @@ I 94711 2022-07-26 00:25:14 - [IPStackSimulator] Client opened TCP connection 31
 I 94711 2022-07-26 00:25:14 - [Server] Client disconnected: C-7 on virtual connection 0x107004340
 I 94711 2022-07-26 00:25:14 - [Server] Client connected: C-8 on virtual connection 0x1057045f0 via T-5110-GC-lobby_server-VI
 I 94711 2022-07-26 00:25:14 - [Commands] Sending to C-8 (version=GC command=02 flag=00)
-0000 | 02 00 0C 01 44 72 65 61 6D 43 61 73 74 20 4C 6F |     DreamCast Lo
+0000 | 02 00 00 01 44 72 65 61 6D 43 61 73 74 20 4C 6F |     DreamCast Lo
 0010 | 62 62 79 20 53 65 72 76 65 72 2E 20 43 6F 70 79 | bby Server. Copy
 0020 | 72 69 67 68 74 20 53 45 47 41 20 45 6E 74 65 72 | right SEGA Enter
 0030 | 70 72 69 73 65 73 2E 20 31 39 39 39 00 00 00 00 | prises. 1999    
@@ -2079,11 +2078,10 @@ I 94711 2022-07-26 00:25:14 - [Commands] Sending to C-8 (version=GC command=02 f
 0090 | 20 45 6E 74 65 72 70 72 69 73 65 73 20 6F 72 20 |  Enterprises or 
 00A0 | 53 4F 4E 49 43 54 45 41 4D 2E 20 54 68 65 20 70 | SONICTEAM. The p
 00B0 | 72 65 63 65 64 69 6E 67 20 6D 65 73 73 61 67 65 | receding message
-00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 69 6E 20 |  exists only in 
-00D0 | 6F 72 64 65 72 20 74 6F 20 72 65 6D 61 69 6E 20 | order to remain 
-00E0 | 63 6F 6D 70 61 74 69 62 6C 65 20 77 69 74 68 20 | compatible with 
-00F0 | 70 72 6F 67 72 61 6D 73 20 74 68 61 74 20 65 78 | programs that ex
-0100 | 70 65 63 74 20 69 74 2E 00 00 00 00             | pect it.        
+00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 74 6F 20 |  exists only to 
+00D0 | 72 65 6D 61 69 6E 20 63 6F 6D 70 61 74 69 62 6C | remain compatibl
+00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs 
+00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it. 
 I 94711 2022-07-26 00:25:14 - [IPStackSimulator] Connected TCP connection 31+2323232324CD0672 (10.0.1.5:1650 -> 35.35.35.35:9421) to game server
 I 94711 2022-07-26 00:25:14 - [Commands] Received from C-8 (version=GC command=9E flag=01)
 0000 | 9E 01 EC 00 00 00 01 00 78 62 F8 10 00 00 00 00 |         xb      

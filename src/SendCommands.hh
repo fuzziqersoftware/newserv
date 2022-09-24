@@ -102,10 +102,11 @@ enum SendServerInitFlag {
   USE_SECONDARY_MESSAGE = 0x02,
 };
 
-S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xCC>
+S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xB4>
 prepare_server_init_contents_console(
     uint32_t server_key, uint32_t client_key, uint8_t flags);
-S_ServerInitWithAfterMessage_BB_03_9B prepare_server_init_contents_bb(
+S_ServerInitWithAfterMessage_BB_03_9B<0xB4>
+prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
     const parray<uint8_t, 0x30>& client_key,
     uint8_t flags);

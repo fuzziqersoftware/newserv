@@ -14,11 +14,11 @@ I 69775 2022-08-27 09:36:28 - [Commands] Sending to C-1 (version=PC command=19 f
 I 69775 2022-08-27 09:36:28 - [Server] Client disconnected: C-1 on fd 35
 I 69775 2022-08-27 09:36:28 - [Server] Client connected: C-2 on fd 35 via 6 (T-5100-DC-console-login-login_server)
 I 69775 2022-08-27 09:36:28 - [Commands] Sending to C-2 (version=GC command=17 flag=00)
-0000 | 17 00 0C 01 44 72 65 61 6D 43 61 73 74 20 50 6F |     DreamCast Po
+0000 | 17 00 00 01 44 72 65 61 6D 43 61 73 74 20 50 6F |     DreamCast Po
 0010 | 72 74 20 4D 61 70 2E 20 43 6F 70 79 72 69 67 68 | rt Map. Copyrigh
 0020 | 74 20 53 45 47 41 20 45 6E 74 65 72 70 72 69 73 | t SEGA Enterpris
 0030 | 65 73 2E 20 31 39 39 39 00 00 00 00 00 00 00 00 | es. 1999        
-0040 | 00 00 00 00 76 3B 9B 7E D0 87 66 04 54 68 69 73 |     v; ~  f This
+0040 | 00 00 00 00 A1 73 8E B5 E7 65 CA E7 54 68 69 73 |      s   e  This
 0050 | 20 73 65 72 76 65 72 20 69 73 20 69 6E 20 6E 6F |  server is in no
 0060 | 20 77 61 79 20 61 66 66 69 6C 69 61 74 65 64 2C |  way affiliated,
 0070 | 20 73 70 6F 6E 73 6F 72 65 64 2C 20 6F 72 20 73 |  sponsored, or s
@@ -26,11 +26,10 @@ I 69775 2022-08-27 09:36:28 - [Commands] Sending to C-2 (version=GC command=17 f
 0090 | 20 45 6E 74 65 72 70 72 69 73 65 73 20 6F 72 20 |  Enterprises or 
 00A0 | 53 4F 4E 49 43 54 45 41 4D 2E 20 54 68 65 20 70 | SONICTEAM. The p
 00B0 | 72 65 63 65 64 69 6E 67 20 6D 65 73 73 61 67 65 | receding message
-00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 69 6E 20 |  exists only in 
-00D0 | 6F 72 64 65 72 20 74 6F 20 72 65 6D 61 69 6E 20 | order to remain 
-00E0 | 63 6F 6D 70 61 74 69 62 6C 65 20 77 69 74 68 20 | compatible with 
-00F0 | 70 72 6F 67 72 61 6D 73 20 74 68 61 74 20 65 78 | programs that ex
-0100 | 70 65 63 74 20 69 74 2E 00 00 00 00             | pect it.        
+00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 74 6F 20 |  exists only to 
+00D0 | 72 65 6D 61 69 6E 20 63 6F 6D 70 61 74 69 62 6C | remain compatibl
+00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs 
+00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it. 
 I 69775 2022-08-27 09:36:28 - [Commands] Received from C-2 (version=GC command=90 flag=00)
 0000 | 90 00 28 00 37 37 37 37 37 37 37 37 00 00 00 00 |   ( 77777777    
 0010 | 00 00 00 00 00 31 31 31 31 31 31 31 31 00 00 00 |      11111111   
@@ -112,7 +111,7 @@ I 69775 2022-08-27 09:36:31 - [Commands] Received from C-2 (version=DC command=9
 I 69775 2022-08-27 09:36:31 - [Server] Client disconnected: C-2 on fd 35
 I 69775 2022-08-27 09:36:31 - [Server] Client connected: C-3 on fd 35 via 29 (T-5110-DC-console-lobby-lobby_server)
 I 69775 2022-08-27 09:36:31 - [Commands] Sending to C-3 (version=GC command=02 flag=00)
-0000 | 02 00 0C 01 44 72 65 61 6D 43 61 73 74 20 4C 6F |     DreamCast Lo
+0000 | 02 00 00 01 44 72 65 61 6D 43 61 73 74 20 4C 6F |     DreamCast Lo
 0010 | 62 62 79 20 53 65 72 76 65 72 2E 20 43 6F 70 79 | bby Server. Copy
 0020 | 72 69 67 68 74 20 53 45 47 41 20 45 6E 74 65 72 | right SEGA Enter
 0030 | 70 72 69 73 65 73 2E 20 31 39 39 39 00 00 00 00 | prises. 1999    
@@ -124,11 +123,10 @@ I 69775 2022-08-27 09:36:31 - [Commands] Sending to C-3 (version=GC command=02 f
 0090 | 20 45 6E 74 65 72 70 72 69 73 65 73 20 6F 72 20 |  Enterprises or 
 00A0 | 53 4F 4E 49 43 54 45 41 4D 2E 20 54 68 65 20 70 | SONICTEAM. The p
 00B0 | 72 65 63 65 64 69 6E 67 20 6D 65 73 73 61 67 65 | receding message
-00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 69 6E 20 |  exists only in 
-00D0 | 6F 72 64 65 72 20 74 6F 20 72 65 6D 61 69 6E 20 | order to remain 
-00E0 | 63 6F 6D 70 61 74 69 62 6C 65 20 77 69 74 68 20 | compatible with 
-00F0 | 70 72 6F 67 72 61 6D 73 20 74 68 61 74 20 65 78 | programs that ex
-0100 | 70 65 63 74 20 69 74 2E 00 00 00 00             | pect it.        
+00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 74 6F 20 |  exists only to 
+00D0 | 72 65 6D 61 69 6E 20 63 6F 6D 70 61 74 69 62 6C | remain compatibl
+00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs 
+00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it. 
 I 69775 2022-08-27 09:36:31 - [Commands] Received from C-3 (version=GC command=93 flag=00)
 0000 | 93 00 B0 00 00 00 01 00 77 77 77 77 00 00 8A 03 |         wwww    
 0010 | CA 3B 9F 4A 21 00 00 00 00 01 00 00 37 37 37 37 |  ; J!       7777
@@ -524,7 +522,7 @@ I 69775 2022-08-27 09:37:06 - [Commands] Sending to C-3 (Tali) (version=DC comma
 I 69775 2022-08-27 09:37:06 - [Server] Client disconnected: C-3 on fd 35
 I 69775 2022-08-27 09:37:06 - [Server] Client connected: C-4 on fd 35 via 6 (T-5100-DC-console-login-login_server)
 I 69775 2022-08-27 09:37:06 - [Commands] Sending to C-4 (version=GC command=17 flag=00)
-0000 | 17 00 0C 01 44 72 65 61 6D 43 61 73 74 20 50 6F |     DreamCast Po
+0000 | 17 00 00 01 44 72 65 61 6D 43 61 73 74 20 50 6F |     DreamCast Po
 0010 | 72 74 20 4D 61 70 2E 20 43 6F 70 79 72 69 67 68 | rt Map. Copyrigh
 0020 | 74 20 53 45 47 41 20 45 6E 74 65 72 70 72 69 73 | t SEGA Enterpris
 0030 | 65 73 2E 20 31 39 39 39 00 00 00 00 00 00 00 00 | es. 1999        
@@ -536,11 +534,10 @@ I 69775 2022-08-27 09:37:06 - [Commands] Sending to C-4 (version=GC command=17 f
 0090 | 20 45 6E 74 65 72 70 72 69 73 65 73 20 6F 72 20 |  Enterprises or 
 00A0 | 53 4F 4E 49 43 54 45 41 4D 2E 20 54 68 65 20 70 | SONICTEAM. The p
 00B0 | 72 65 63 65 64 69 6E 67 20 6D 65 73 73 61 67 65 | receding message
-00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 69 6E 20 |  exists only in 
-00D0 | 6F 72 64 65 72 20 74 6F 20 72 65 6D 61 69 6E 20 | order to remain 
-00E0 | 63 6F 6D 70 61 74 69 62 6C 65 20 77 69 74 68 20 | compatible with 
-00F0 | 70 72 6F 67 72 61 6D 73 20 74 68 61 74 20 65 78 | programs that ex
-0100 | 70 65 63 74 20 69 74 2E 00 00 00 00             | pect it.        
+00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 74 6F 20 |  exists only to 
+00D0 | 72 65 6D 61 69 6E 20 63 6F 6D 70 61 74 69 62 6C | remain compatibl
+00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs 
+00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it. 
 I 69775 2022-08-27 09:37:07 - [Commands] Received from C-4 (version=GC command=90 flag=00)
 0000 | 90 00 28 00 37 37 37 37 37 37 37 37 00 00 00 00 |   ( 77777777    
 0010 | 00 00 00 00 00 31 31 31 31 31 31 31 31 00 00 00 |      11111111   
@@ -601,7 +598,7 @@ I 69775 2022-08-27 09:37:10 - [Commands] Received from C-4 (version=DC command=9
 I 69775 2022-08-27 09:37:10 - [Server] Client disconnected: C-4 on fd 35
 I 69775 2022-08-27 09:37:10 - [Server] Client connected: C-5 on fd 35 via 29 (T-5110-DC-console-lobby-lobby_server)
 I 69775 2022-08-27 09:37:10 - [Commands] Sending to C-5 (version=GC command=02 flag=00)
-0000 | 02 00 0C 01 44 72 65 61 6D 43 61 73 74 20 4C 6F |     DreamCast Lo
+0000 | 02 00 00 01 44 72 65 61 6D 43 61 73 74 20 4C 6F |     DreamCast Lo
 0010 | 62 62 79 20 53 65 72 76 65 72 2E 20 43 6F 70 79 | bby Server. Copy
 0020 | 72 69 67 68 74 20 53 45 47 41 20 45 6E 74 65 72 | right SEGA Enter
 0030 | 70 72 69 73 65 73 2E 20 31 39 39 39 00 00 00 00 | prises. 1999    
@@ -613,11 +610,10 @@ I 69775 2022-08-27 09:37:10 - [Commands] Sending to C-5 (version=GC command=02 f
 0090 | 20 45 6E 74 65 72 70 72 69 73 65 73 20 6F 72 20 |  Enterprises or 
 00A0 | 53 4F 4E 49 43 54 45 41 4D 2E 20 54 68 65 20 70 | SONICTEAM. The p
 00B0 | 72 65 63 65 64 69 6E 67 20 6D 65 73 73 61 67 65 | receding message
-00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 69 6E 20 |  exists only in 
-00D0 | 6F 72 64 65 72 20 74 6F 20 72 65 6D 61 69 6E 20 | order to remain 
-00E0 | 63 6F 6D 70 61 74 69 62 6C 65 20 77 69 74 68 20 | compatible with 
-00F0 | 70 72 6F 67 72 61 6D 73 20 74 68 61 74 20 65 78 | programs that ex
-0100 | 70 65 63 74 20 69 74 2E 00 00 00 00             | pect it.        
+00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 74 6F 20 |  exists only to 
+00D0 | 72 65 6D 61 69 6E 20 63 6F 6D 70 61 74 69 62 6C | remain compatibl
+00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs 
+00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it. 
 I 69775 2022-08-27 09:37:10 - [Commands] Received from C-5 (version=GC command=93 flag=00)
 0000 | 93 00 B0 00 00 00 01 00 77 77 77 77 00 00 8A 03 |         wwww    
 0010 | CA 3B 9F 4A 21 00 00 00 00 01 00 00 37 37 37 37 |  ; J!       7777
@@ -1612,7 +1608,7 @@ I 69775 2022-08-27 09:38:58 - [Commands] Sending to C-5 (Tali) (version=DC comma
 I 69775 2022-08-27 09:38:59 - [Server] Client disconnected: C-5 on fd 35
 I 69775 2022-08-27 09:38:59 - [Server] Client connected: C-6 on fd 35 via 6 (T-5100-DC-console-login-login_server)
 I 69775 2022-08-27 09:38:59 - [Commands] Sending to C-6 (version=GC command=17 flag=00)
-0000 | 17 00 0C 01 44 72 65 61 6D 43 61 73 74 20 50 6F |     DreamCast Po
+0000 | 17 00 00 01 44 72 65 61 6D 43 61 73 74 20 50 6F |     DreamCast Po
 0010 | 72 74 20 4D 61 70 2E 20 43 6F 70 79 72 69 67 68 | rt Map. Copyrigh
 0020 | 74 20 53 45 47 41 20 45 6E 74 65 72 70 72 69 73 | t SEGA Enterpris
 0030 | 65 73 2E 20 31 39 39 39 00 00 00 00 00 00 00 00 | es. 1999        
@@ -1624,11 +1620,10 @@ I 69775 2022-08-27 09:38:59 - [Commands] Sending to C-6 (version=GC command=17 f
 0090 | 20 45 6E 74 65 72 70 72 69 73 65 73 20 6F 72 20 |  Enterprises or 
 00A0 | 53 4F 4E 49 43 54 45 41 4D 2E 20 54 68 65 20 70 | SONICTEAM. The p
 00B0 | 72 65 63 65 64 69 6E 67 20 6D 65 73 73 61 67 65 | receding message
-00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 69 6E 20 |  exists only in 
-00D0 | 6F 72 64 65 72 20 74 6F 20 72 65 6D 61 69 6E 20 | order to remain 
-00E0 | 63 6F 6D 70 61 74 69 62 6C 65 20 77 69 74 68 20 | compatible with 
-00F0 | 70 72 6F 67 72 61 6D 73 20 74 68 61 74 20 65 78 | programs that ex
-0100 | 70 65 63 74 20 69 74 2E 00 00 00 00             | pect it.        
+00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 74 6F 20 |  exists only to 
+00D0 | 72 65 6D 61 69 6E 20 63 6F 6D 70 61 74 69 62 6C | remain compatibl
+00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs 
+00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it. 
 I 69775 2022-08-27 09:38:59 - [Commands] Received from C-6 (version=GC command=90 flag=00)
 0000 | 90 00 28 00 37 37 37 37 37 37 37 37 00 00 00 00 |   ( 77777777    
 0010 | 00 00 00 00 00 31 31 31 31 31 31 31 31 00 00 00 |      11111111   

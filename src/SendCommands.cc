@@ -119,11 +119,11 @@ static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst G
 static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
 static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
-S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xCC>
+S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xB4>
 prepare_server_init_contents_console(
     uint32_t server_key, uint32_t client_key, uint8_t flags) {
   bool initial_connection = (flags & SendServerInitFlag::IS_INITIAL_CONNECTION);
-  S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xCC> cmd;
+  S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xB4> cmd;
   cmd.copyright = initial_connection
       ? dc_port_map_copyright : dc_lobby_server_copyright;
   cmd.server_key = server_key;
@@ -140,7 +140,7 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
 
   auto cmd = prepare_server_init_contents_console(
       server_key, client_key, initial_connection);
-  send_command_t(c, command, 0x01, cmd);
+  send_command_t(c, command, 0x00, cmd);
 
   switch (c->version()) {
     case GameVersion::PC:
@@ -161,12 +161,13 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
   }
 }
 
-S_ServerInitWithAfterMessage_BB_03_9B prepare_server_init_contents_bb(
+S_ServerInitWithAfterMessage_BB_03_9B<0xB4>
+prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
     const parray<uint8_t, 0x30>& client_key,
     uint8_t flags) {
   bool use_secondary_message = (flags & SendServerInitFlag::USE_SECONDARY_MESSAGE);
-  S_ServerInitWithAfterMessage_BB_03_9B cmd;
+  S_ServerInitWithAfterMessage_BB_03_9B<0xB4> cmd;
   cmd.copyright = use_secondary_message ? bb_pm_server_copyright : bb_game_server_copyright;
   cmd.server_key = server_key;
   cmd.client_key = client_key;
