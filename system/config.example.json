@@ -31,18 +31,21 @@
     // If you want to support only PC, you can change the pc_console_detect
     // behavior for these ports to login_server. If you don't want to support
     // PC, you can do the same, but also change the version from pc to gc.
-    "gc-jp10":       [9000,  "pc",    "pc_console_detect"],
-    "gc-jp11":       [9001,  "pc",    "pc_console_detect"],
-    "gc-jp3te":      [9002,  "pc",    "pc_console_detect"],
-    "gc-jp3":        [9003,  "pc",    "pc_console_detect"],
-    "gc-us12t1":     [9064,  "pc",    "pc_console_detect"],
+    // Note: It is not an error that no ports appear here with "dc" in their
+    // definitions. DC clients use the same ports as GC clients, and newserv can
+    // tell them apart at the time they connect.
+    "gc-jp10":       [9000,  "gc",    "login_server"],
+    "gc-jp11":       [9001,  "gc",    "login_server"],
+    "gc-jp3te":      [9002,  "gc",    "login_server"],
+    "gc-jp3":        [9003,  "gc",    "login_server"],
+    "gc-us12t1":     [9064,  "gc",    "login_server"],
     "gc-us10":       [9100,  "pc",    "pc_console_detect"],
-    "gc-us3":        [9103,  "pc",    "pc_console_detect"],
-    "gc-eu10":       [9200,  "pc",    "pc_console_detect"],
-    "gc-eu11":       [9201,  "pc",    "pc_console_detect"],
-    "gc-us12t2":     [9202,  "pc",    "pc_console_detect"],
-    "gc-eu3":        [9203,  "pc",    "pc_console_detect"],
-    "pc":            [9300,  "pc",    "pc_console_detect"],
+    "gc-us3":        [9103,  "gc",    "login_server"],
+    "gc-eu10":       [9200,  "gc",    "login_server"],
+    "gc-eu11":       [9201,  "gc",    "login_server"],
+    "gc-us12t2":     [9202,  "gc",    "login_server"],
+    "gc-eu3":        [9203,  "gc",    "login_server"],
+    "pc":            [9300,  "pc",    "login_server"],
     "pc-patch":      [10000, "patch", "patch_server_pc"],
     "bb-patch":      [11000, "patch", "patch_server_bb"],
     "bb-init":       [12000, "bb",    "data_server_bb"],
