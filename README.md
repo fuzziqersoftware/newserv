@@ -26,11 +26,11 @@ At the time of its inception, Aeon was also called newserv, and you may find som
 
 newserv is many things - a server, a proxy, an encryption and decryption tool, a decoder of various PSO-related formats, and more. Primarily, it's a reverse-engineering project in which I try to unravel the secrets of a 20-year-old video game, for honestly no reason. Solving these problems and documenting them in code has been fun, and I'll continue to do it when my time allows.
 
-With that said, I offer no guarantees on how or when this project will advance. Feel free to submit GitHub issues if you find bugs or have feature requests; I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner.
+With that said, I offer no guarantees on how or when this project will advance. Feel free to submit GitHub issues if you find bugs or have feature requests; I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner. If you feel like contributing to newserv yourself, pull requests are welcome as well.
 
 Current known issues / missing features / things to do:
 - Support disconnect hooks to clean up state, like if a client disconnects during quest loading or during a trade window execution.
-- Episode 3 battles aren't implemented.
+- Episode 3 battles aren't implemented. (Some reverse-engineering has already been done here though - see Episode3.hh/cc)
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
     - Enemy indexes also desync slightly in most games, often in later areas, leading to incorrect EXP values being given for killed enemies.
 - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
@@ -143,6 +143,20 @@ You can also put DOL files in the system/dol directory, and they will appear in 
 
 I mainly built the DOL loading functionality for documentation purposes. By now, there are many better ways to load homebrew code on an unmodified GameCube, but to my knowledge there isn't another open-source implementation of this method in existence.
 
+### Using newserv as a proxy
+
+If you want to play online on remote servers rather than running your own server, newserv also includes a PSO proxy. Currently this works with PSO GC and may work with PC and DC; it also works with some BB clients in specific situations.
+
+To use the proxy for PSO DC, PC, or GC, add an entry to the corresponding ProxyDestinations dictionary in config.json, then run newserv and connect to it as normal (see below). You'll see a "Proxy server" option in the main menu, and you can pick which remote server to connect to.
+
+To use the proxy for PSO BB, set the ProxyDestination-BB entry in config.json. If this option is set, it essentially disables the game server for all PSO BB clients - all clients will be proxied to the specified destination instead. Unfortunately, because PSO BB uses a different set of handlers for the data server phase and character selection, there's no in-game way to present the player with a list of options, like there is on PSO PC and PSO GC.
+
+When you're on PSO DC, PC, or GC and are connected to a remote server through newserv's proxy, choosing the Change Ship or Change Block action from the lobby counter will send you back to newserv's main menu instead of the remote server's ship or block select menu. You can go back to the server you were just on by choosing it from the proxy server menu again.
+
+The remote server will probably try to assign you a Guild Card number that doesn't match the one you have on newserv. On PSO DC, PC and GC, the proxy server rewrites the commands in transit to make it look like the remote server assigned you the same Guild Card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the Guild Card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you first connect to the remote server, and you can retrieve it in lobbies or during games with the $li command.
+
+Some chat commands (see below) have the same basic function on the proxy server but have different effects or conditions. In addition, there are some server shell commands that affect clients on the proxy (run 'help' in the shell to see what they are). All proxy commands in the server shell only work when there's exactly one client connected through the proxy, since there isn't (yet) a way to say via the shell which session you want the command to apply to.
+
 ### Chat commands
 
 The server's shell supports a variety of administration commands. If the interactive shell is enabled, you can enter these commands at any time, even if the prompt isn't visible. Run `help` in the server's shell to see all of the commands and how to use them.
@@ -194,19 +208,6 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$kick <identifier>`: Disconnects a player. The identifier may be the player's name or Guild Card number.
     * `$ban <identifier>`: Bans a player. The identifier may be the player's name or Guild Card number.
 
-### Using newserv as a proxy
-
-If you want to play online on remote servers rather than running your own server, newserv also includes a PSO proxy. Currently this works with PSO GC and may work with PC; it also works with some BB clients in specific situations.
-
-To use the proxy for PSO PC or PSO GC, add an entry to the ProxyDestinations dictionary in config.json, then run newserv and connect to it as normal (see below). You'll see a "Proxy server" option in the main menu, and you can pick which remote server to connect to.
-
-To use the proxy for PSO BB, set the ProxyDestination-BB entry in config.json. If this option is set, it essentially disables the game server for all PSO BB clients - all clients will be proxied to the specified destination instead. Unfortunately, because PSO BB uses a different set of handlers for the data server phase and character selection, there's no in-game way to present the player with a list of options, like there is on PSO PC and PSO GC.
-
-A few things to be aware of when using the proxy server:
-- On PC and GC, using the Change Ship or Change Block actions from the lobby counter will send you back to newserv's main menu, not the remote server's ship select. You can go back to the server you were just on by choosing it from the proxy server menu again.
-- The remote server will probably try to assign you a Guild Card number that doesn't match the one you have on newserv. On PC and GC, the proxy server rewrites the commands in transit to make it look like the remote server assigned you the same Guild Card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the Guild Card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you first connect to the remote server, and you can retrieve it in lobbies or during games with the $li command.
-- There are shell commands that affect clients on the proxy (run 'help' in the shell to see what they are). All proxy commands in the shell only work when there's exactly one client connected through the proxy, since there isn't (yet) a way to say via the shell which session you want to affect.
-
 ### Connecting local clients
 
 #### PSO DC
@@ -219,7 +220,7 @@ Finally, if you're emulating PSO DC, you can modify the loaded executable in mem
 
 To use the script, do this:
 1. Build and install memwatch (https://github.com/fuzziqersoftware/memwatch).
-2. Start Flycast and run PSO. (You must run the script below after PSO is loaded - it won't work if yun run it before loading the game.)
+2. Start Flycast and run PSO. (You must run the script below after PSO is loaded - it won't work if you run it before loading the game.)
 3. Run `sudo patch_flycast_memory.py <original-destination>`. Replace `<original-destination>` with the hostname that PSO wants to connect to (you can find this out by using Wireshark and looking for DNS queries). The script may take up to a minute; you can continue using Flycast while it runs, but don't start an online game until the script is done.
 4. Run newserv and start an online game in PSO.
 
@@ -241,9 +242,9 @@ If you have PSO Plus or Episode III, it won't want to connect to a server on the
 
 If you have BBA support via a tap interface, you may be able to just set the DNS server address (as you would on a real GameCube, above) and it may work. This does not work on macOS, but you can use the tapserver interface instead (below).
 
-If you're using a version of Dolphin with tapserver support (currently only the macOS version), you can make it connect to a newserv instance running on the same machine via the tapserver interface. This works for all PSO versions, including Plus and Episode III, without any of the dual-interface trickery described above. To do this:
+If you're using a version of Dolphin with tapserver support (currently only the macOS version), you can make it connect to a newserv instance running on the same machine via the tapserver interface. You do not need to install or run tapserver, and this works for all PSO versions without any of the dual-interface trickery described above. To do this:
 1. Set Dolphin's BBA type to tapserver (Config -> GameCube -> SP1).
-2. Enable newserv's IP stack simulator according to the comments in config.json, and start newserv. You do not need to install or run tapserver.
+2. Enable newserv's IP stack simulator according to the comments in config.json and start newserv.
 3. In PSO, you have to configure the network settings manually (DHCP doesn't work), but the actual values don't matter as long as they're valid IP addresses. Example values:
   - IP address: `10.0.1.5`
   - Subnet mask: `255.255.255.0`
