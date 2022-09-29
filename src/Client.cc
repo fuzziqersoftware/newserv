@@ -19,6 +19,7 @@ using namespace std;
 
 
 const uint64_t CLIENT_CONFIG_MAGIC = 0x492A890E82AC9839;
+FileContentsCache client_options_cache(3600 * 1000 * 1000);
 
 static atomic<uint64_t> next_id(1);
 
@@ -59,6 +60,8 @@ Client::Client(
     switch_assist(false),
     can_chat(true),
     pending_bb_save_player_index(0),
+    proxy_save_files(false),
+    proxy_suppress_remote_login(false),
     dol_base_addr(0) {
   this->last_switch_enabled_command.subcommand = 0;
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));

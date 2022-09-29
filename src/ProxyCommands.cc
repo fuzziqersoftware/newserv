@@ -62,29 +62,6 @@ static void check_implemented_subcommand(
 
 
 
-static void send_text_message_to_client(
-    ProxyServer::LinkedSession& session,
-    uint8_t command,
-    const std::string& message) {
-  StringWriter w;
-  w.put<SC_TextHeader_01_06_11_B0_EE>({0, 0});
-  if ((session.version == GameVersion::PC) ||
-      (session.version == GameVersion::BB)) {
-    auto decoded = decode_sjis(message);
-    w.write(decoded.data(), decoded.size() * sizeof(decoded[0]));
-    w.put_u16l(0);
-  } else {
-    w.write(message);
-    w.put_u8(0);
-  }
-  while (w.size() & 3) {
-    w.put_u8(0);
-  }
-  session.client_channel.send(command, 0x00, w.str());
-}
-
-
-
 // Command handlers. These are called to preprocess or react to specific
 // commands in either direction. If they return true, the command (which the
 // function may have modified) is forwarded to the other end; if they return
@@ -125,9 +102,26 @@ static HandlerResult on_server_97(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
+static HandlerResult on_client_gc_9E(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  if (session.suppress_remote_login) {
+    le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
+    session.server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
+
+    S_UpdateClientConfig_DC_PC_V3_04 cmd = {0x00010000, session.license->serial_number, ClientConfig()};
+    session.client_channel.send(0x04, 0x00, &cmd, sizeof(cmd));
+
+    return HandlerResult::Type::SUPPRESS;
+
+  } else {
+    return HandlerResult::Type::FORWARD;
+  }
+}
+
+
 static HandlerResult on_server_gc_9A(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
-  if (!session.license) {
+  if (!session.license || session.suppress_remote_login) {
     return HandlerResult::Type::FORWARD;
   }
 
@@ -318,6 +312,39 @@ static HandlerResult on_server_dc_pc_v3_patch_02_17(
       session.server_channel.send(0xDB, 0x00, &cmd, sizeof(cmd));
       return HandlerResult::Type::SUPPRESS;
 
+    } else if (session.suppress_remote_login) {
+      uint32_t guild_card_number;
+      if (session.remote_guild_card_number >= 0) {
+        guild_card_number = session.remote_guild_card_number;
+        log_info("Using Guild Card number %" PRIu32 " from session", guild_card_number);
+      } else {
+        guild_card_number = random_object<uint32_t>();
+        log_info("Using Guild Card number %" PRIu32 " from random generator", guild_card_number);
+      }
+
+      uint32_t fake_serial_number = random_object<uint32_t>() & 0x7FFFFFFF;
+      uint64_t fake_access_key = random_object<uint64_t>();
+      string fake_access_key_str = string_printf("00000000000%" PRIu64, fake_access_key);
+      if (fake_access_key_str.size() > 12) {
+        fake_access_key_str = fake_access_key_str.substr(fake_access_key_str.size() - 12);
+      }
+
+      C_LoginExtended_GC_9E cmd;
+      cmd.player_tag = 0x00010000;
+      cmd.guild_card_number = guild_card_number;
+      cmd.unused = 0;
+      cmd.sub_version = session.sub_version;
+      cmd.is_extended = 0;
+      cmd.language = session.language;
+      cmd.serial_number = string_printf("%08" PRIX32, fake_serial_number);
+      cmd.access_key = fake_access_key_str;
+      cmd.serial_number2 = cmd.serial_number;
+      cmd.access_key2 = cmd.access_key;
+      cmd.name = session.character_name;
+      cmd.client_config.data = session.remote_client_config_data;
+      session.server_channel.send(0x9E, 0x01, &cmd, sizeof(C_Login_GC_9E));
+      return HandlerResult::Type::SUPPRESS;
+
     } else {
       // For command 02, send the same as if we had received 9A from the server
       return on_server_gc_9A(s, session, command, flag, data);
@@ -389,6 +416,13 @@ static HandlerResult on_server_bb_03(shared_ptr<ServerState> s,
 
 static HandlerResult on_server_dc_pc_v3_04(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  // Suppress extremely short commands from the server instead of disconnecting.
+  if (data.size() < offsetof(S_UpdateClientConfig_DC_PC_V3_04, cfg)) {
+    le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
+    session.server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
+    return HandlerResult::Type::SUPPRESS;
+  }
+
   // Some servers send a short 04 command if they don't use all of the 0x20
   // bytes available. We should be prepared to handle that.
   auto& cmd = check_size_t<S_UpdateClientConfig_DC_PC_V3_04>(data,
@@ -404,9 +438,10 @@ static HandlerResult on_server_dc_pc_v3_04(shared_ptr<ServerState>,
     session.remote_guild_card_number = cmd.guild_card_number;
     session.log.info("Remote guild card number set to %" PRId64,
         session.remote_guild_card_number);
-    send_text_message_to_client(session, 0x11, string_printf(
+    string message = string_printf(
         "The remote server\nhas assigned your\nGuild Card number:\n\tC6%" PRId64,
-        session.remote_guild_card_number));
+        session.remote_guild_card_number);
+    send_ship_info(session.client_channel, decode_sjis(message));
   }
   if (session.license) {
     cmd.guild_card_number = session.license->serial_number;
@@ -431,10 +466,6 @@ static HandlerResult on_server_dc_pc_v3_04(shared_ptr<ServerState>,
   // the first 04 command the client has received. The client responds with a 96
   // (checksum) in that case.
   if (!had_guild_card_number) {
-    // We don't actually have a client checksum, of course... hopefully just
-    // random data will do (probably no private servers check this at all)
-    // TODO: Presumably we can save these values from the client when they
-    // connected to newserv originally, but I'm too lazy to do this right now
     le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
     session.server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
   }
@@ -918,6 +949,7 @@ static HandlerResult on_server_65_67_68(shared_ptr<ServerState>,
   auto& cmd = check_size_t<CmdT>(data, expected_size, expected_size);
   bool modified = false;
 
+  size_t num_replacements = 0;
   session.lobby_client_id = cmd.client_id;
   update_leader_id(session, cmd.leader_id);
   for (size_t x = 0; x < flag; x++) {
@@ -927,6 +959,7 @@ static HandlerResult on_server_65_67_68(shared_ptr<ServerState>,
     } else {
       if (session.license && (cmd.entries[x].lobby_data.guild_card == session.remote_guild_card_number)) {
         cmd.entries[x].lobby_data.guild_card = session.license->serial_number;
+        num_replacements++;
         modified = true;
       }
       session.lobby_players[index].guild_card_number = cmd.entries[x].lobby_data.guild_card;
@@ -937,6 +970,9 @@ static HandlerResult on_server_65_67_68(shared_ptr<ServerState>,
           session.lobby_players[index].guild_card_number,
           session.lobby_players[index].name.c_str());
     }
+  }
+  if (num_replacements > 1) {
+    throw runtime_error("proxied player appears multiple times in lobby");
   }
 
   if (session.override_lobby_event >= 0) {
@@ -2157,7 +2193,7 @@ static on_command_t handlers[6][0x100][2] = {
     /* 9B */ {nullptr,                                        nullptr},
     /* 9C */ {nullptr,                                        nullptr},
     /* 9D */ {nullptr,                                        nullptr},
-    /* 9E */ {nullptr,                                        nullptr},
+    /* 9E */ {nullptr,                                        on_client_gc_9E},
     /* 9F */ {nullptr,                                        nullptr},
     // (GC)   SERVER                                          CLIENT
     /* A0 */ {nullptr,                                        on_client_dc_pc_v3_A0_A1},

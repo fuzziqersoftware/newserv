@@ -22,6 +22,7 @@ namespace MenuID {
   constexpr uint32_t PROXY_DESTINATIONS = 0x77000077;
   constexpr uint32_t PROGRAMS           = 0x88000088;
   constexpr uint32_t PATCHES            = 0x99000099;
+  constexpr uint32_t PROXY_OPTIONS      = 0xAA0000AA;
 }
 
 namespace MainMenuItemID {
@@ -37,19 +38,29 @@ namespace MainMenuItemID {
 
 namespace InformationMenuItemID {
   constexpr uint32_t GO_BACK = 0x22FFFF22;
-};
+}
 
 namespace ProxyDestinationsMenuItemID {
   constexpr uint32_t GO_BACK = 0x77FFFF77;
-};
+  constexpr uint32_t OPTIONS = 0x77EEEE77;
+}
 
 namespace ProgramsMenuItemID {
   constexpr uint32_t GO_BACK = 0x88FFFF88;
-};
+}
 
 namespace PatchesMenuItemID {
   constexpr uint32_t GO_BACK = 0x99FFFF99;
-};
+}
+
+namespace ProxyOptionsMenuItemID {
+  constexpr uint32_t GO_BACK = 0xAAFFFFAA;
+  constexpr uint32_t INFINITE_HP = 0xAA1111AA;
+  constexpr uint32_t INFINITE_TP = 0xAA2222AA;
+  constexpr uint32_t SWITCH_ASSIST = 0xAA3333AA;
+  constexpr uint32_t SAVE_FILES = 0xAA4444AA;
+  constexpr uint32_t SUPPRESS_LOGIN = 0xAA5555AA;
+}
 
 
 

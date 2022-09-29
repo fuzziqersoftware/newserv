@@ -65,6 +65,7 @@ public:
     bool infinite_hp;
     bool infinite_tp;
     bool save_files;
+    bool suppress_remote_login;
     int64_t function_call_return_value; // -1 = don't block function calls
     G_SwitchStateChanged_6x05 last_switch_enabled_command;
     PlayerInventoryItem next_drop_item;

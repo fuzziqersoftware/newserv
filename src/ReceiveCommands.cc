@@ -875,15 +875,41 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
 
     case MenuID::PROXY_DESTINATIONS:
       if (cmd.item_id == ProxyDestinationsMenuItemID::GO_BACK) {
-        send_ship_info(c, u"Return to the\nmain menu.");
+        send_ship_info(c, u"Return to the\nmain menu");
+      } else if (cmd.item_id == ProxyDestinationsMenuItemID::OPTIONS) {
+        send_ship_info(c, u"Set proxy session\noptions");
       } else {
         try {
           const auto& menu = s->proxy_destinations_menu_for_version(c->version());
-          // We use item_id + 1 here because "go back" is the first item
-          send_ship_info(c, menu.at(cmd.item_id + 1).description.c_str());
+          // We use item_id + 2 here because "go back" and "options" are the
+          // first items
+          send_ship_info(c, menu.at(cmd.item_id + 2).description.c_str());
         } catch (const out_of_range&) {
           send_ship_info(c, u"$C4Missing proxy\ndestination");
         }
+      }
+      break;
+
+    case MenuID::PROXY_OPTIONS:
+      switch (cmd.item_id) {
+        case ProxyOptionsMenuItemID::GO_BACK:
+          send_ship_info(c, u"Return to the\nproxy menu");
+          break;
+        case ProxyOptionsMenuItemID::INFINITE_HP:
+          send_ship_info(c, u"Enable or disable\ninfinite HP\n\nYou can change this\nduring the session\nwith the %sinfhp\ncommand");
+          break;
+        case ProxyOptionsMenuItemID::INFINITE_TP:
+          send_ship_info(c, u"Enable or disable\ninfinite TP\n\nYou can change this\nduring the session\nwith the %sinftp\ncommand");
+          break;
+        case ProxyOptionsMenuItemID::SWITCH_ASSIST:
+          send_ship_info(c, u"Enable or disable\nswitch assist\n\nYou can change this\nduring the session\nwith the %sswa\ncommand");
+          break;
+        case ProxyOptionsMenuItemID::SAVE_FILES:
+          send_ship_info(c, u"Enable or disable\nsaving of files from\nthe remote server\n(quests, etc.)");
+          break;
+        case ProxyOptionsMenuItemID::SUPPRESS_LOGIN:
+          send_ship_info(c, u"Enable or disable\nalternate login\nsequence");
+          break;
       }
       break;
 
@@ -1012,6 +1038,29 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
   }
 }
 
+static vector<MenuItem> proxy_options_menu_for_client(
+    shared_ptr<const Client> c) {
+  vector<MenuItem> ret;
+  ret.emplace_back(ProxyOptionsMenuItemID::GO_BACK, u"Go back",
+      u"Return to the\nproxy menu", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::INFINITE_HP,
+      c->infinite_hp ? u"Infinite HP ON" : u"Infinite HP OFF",
+      u"Enable or disable\ninfinite HP", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::INFINITE_TP,
+      c->infinite_tp ? u"Infinite TP ON" : u"Infinite TP OFF",
+      u"Enable or disable\ninfinite TP", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::SWITCH_ASSIST,
+      c->switch_assist ? u"Switch assist ON" : u"Switch assist OFF",
+      u"Enable or disable\nswitch assist", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::SAVE_FILES,
+      c->proxy_save_files ? u"Save files ON" : u"Save files OFF",
+      u"Enable or disable\nsaving of files from\nthe remote server\n(quests, etc.)", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::SUPPRESS_LOGIN,
+      c->proxy_suppress_remote_login ? u"Skip login ON" : u"Skip login OFF",
+      u"Enable or disable\nalternate login\nsequence", 0);
+  return ret;
+}
+
 static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 10
   bool uses_unicode = ((c->version() == GameVersion::PC) || (c->version() == GameVersion::BB));
@@ -1066,6 +1115,13 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         case MainMenuItemID::PROXY_DESTINATIONS:
           send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
               s->proxy_destinations_menu_for_version(c->version()));
+          try {
+            string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
+            const auto& entry = client_options_cache.get_or_throw(key);
+            uint32_t proxy_remote_guild_card_number = stoul(entry->data, nullptr, 10);
+            string info_str = string_printf("Your remote Guild\nCard number is\noverridden as\n$C6%" PRIu32, proxy_remote_guild_card_number);
+            send_ship_info(c, decode_sjis(info_str));
+          } catch (const out_of_range&) { }
           break;
 
         case MainMenuItemID::DOWNLOAD_QUESTS:
@@ -1127,9 +1183,44 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       break;
     }
 
+    case MenuID::PROXY_OPTIONS: {
+      switch (item_id) {
+        case ProxyOptionsMenuItemID::GO_BACK:
+          send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
+              s->proxy_destinations_menu_for_version(c->version()));
+          break;
+        case ProxyOptionsMenuItemID::INFINITE_HP:
+          c->infinite_hp = !c->infinite_hp;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::INFINITE_TP:
+          c->infinite_tp = !c->infinite_tp;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::SWITCH_ASSIST:
+          c->switch_assist = !c->switch_assist;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::SAVE_FILES:
+          c->proxy_save_files = !c->proxy_save_files;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::SUPPRESS_LOGIN:
+          c->proxy_suppress_remote_login = !c->proxy_suppress_remote_login;
+        resend_proxy_options_menu:
+          send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
+              proxy_options_menu_for_client(c));
+          break;
+        default:
+          send_message_box(c, u"Incorrect menu item ID.");
+          break;
+      }
+      break;
+    }
+
     case MenuID::PROXY_DESTINATIONS: {
       if (item_id == ProxyDestinationsMenuItemID::GO_BACK) {
         send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+
+      } else if (item_id == ProxyDestinationsMenuItemID::OPTIONS) {
+        send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
+            proxy_options_menu_for_client(c));
 
       } else {
         const pair<string, uint16_t>* dest = nullptr;
@@ -1156,8 +1247,18 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_update_client_config(c);
 
           s->proxy_server->delete_session(c->license->serial_number);
-          s->proxy_server->create_licensed_session(
+          auto session = s->proxy_server->create_licensed_session(
               c->license, local_port, c->version(), c->export_config_bb());
+          session->infinite_hp = c->infinite_hp;
+          session->infinite_tp = c->infinite_tp;
+          session->switch_assist = c->switch_assist;
+          session->save_files = c->proxy_save_files;
+          session->suppress_remote_login = c->proxy_suppress_remote_login;
+          try {
+            string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
+            const auto& entry = client_options_cache.get_or_throw(key);
+            session->remote_guild_card_number = stoul(entry->data, nullptr, 10);
+          } catch (const out_of_range&) { }
 
           send_reconnect(c, s->connect_address_for_client(c), local_port);
         }

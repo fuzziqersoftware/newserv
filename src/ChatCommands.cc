@@ -198,6 +198,21 @@ static void server_command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
       c->prefer_high_lobby_client_id ? "high" : "low");
 }
 
+static void server_command_proxygc(shared_ptr<ServerState>, shared_ptr<Lobby>,
+    shared_ptr<Client> c, const std::u16string& args) {
+  uint32_t proxy_remote_guild_card_number = stoll(encode_sjis(args), nullptr, 0);
+  client_options_cache.replace(
+      string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number),
+      string_printf("%08" PRIu32, proxy_remote_guild_card_number));
+  send_text_message_printf(c, "Proxy remote Guild\nCard number set to\n$C6%" PRIu32,
+      proxy_remote_guild_card_number);
+}
+
+static void proxy_command_proxygc(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  session.remote_guild_card_number = stoll(encode_sjis(args), nullptr, 0);
+}
+
 static void server_command_persist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_privileges(c, Privilege::DEBUG);
@@ -919,6 +934,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$next",     {server_command_next,               nullptr,                     u"Usage:\nnext"}},
     {u"$password", {server_command_password,           nullptr,                     u"Usage:\nlock [password]\nomit password to\nunlock game"}},
     {u"$persist",  {server_command_persist,            nullptr,                     u"Usage:\npersist"}},
+    {u"$proxygc",  {server_command_proxygc,            proxy_command_proxygc,       u"Usage:\nproxygc <gc#>"}},
     {u"$rand",     {server_command_rand,               proxy_command_rand,          u"Usage:\nrand [hex seed]\nomit seed to revert\nto default"}},
     {u"$secid",    {server_command_secid,              proxy_command_secid,         u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
     {u"$silence",  {server_command_silence,            nullptr,                     u"Usage:\nsilence <name-or-number>"}},

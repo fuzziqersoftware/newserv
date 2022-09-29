@@ -2,8 +2,6 @@
 
 #include <array>
 
-#include "FileContentsCache.hh"
-
 using namespace std;
 
 

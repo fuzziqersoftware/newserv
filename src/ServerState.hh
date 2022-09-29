@@ -100,6 +100,7 @@ struct ServerState {
 
   std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<Server> game_server;
+  std::shared_ptr<FileContentsCache> client_options_cache;
 
   ServerState();
 

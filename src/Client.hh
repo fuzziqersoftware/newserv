@@ -6,6 +6,7 @@
 
 #include "Channel.hh"
 #include "CommandFormats.hh"
+#include "FileContentsCache.hh"
 #include "FunctionCompiler.hh"
 #include "License.hh"
 #include "PatchFileIndex.hh"
@@ -17,6 +18,7 @@
 
 
 extern const uint64_t CLIENT_CONFIG_MAGIC;
+extern FileContentsCache client_options_cache;
 
 
 
@@ -111,6 +113,9 @@ struct Client {
   bool can_chat;
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;
+
+  bool proxy_save_files;
+  bool proxy_suppress_remote_login;
 
   // DOL file loading state
   uint32_t dol_base_addr;

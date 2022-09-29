@@ -4,7 +4,6 @@
 #include <phosg/Strings.hh>
 
 #include "Loggers.hh"
-#include "FileContentsCache.hh"
 
 using namespace std;
 

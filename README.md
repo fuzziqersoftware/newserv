@@ -40,6 +40,7 @@ Current known issues / missing features / things to do:
 - Implement private and overflow lobbies.
 - Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
 - Encapsulate BB server-side random state and make replays deterministic.
+- The internal menu abstraction is ugly and hard to work with. Rewrite it.
 
 ## Compatibility
 

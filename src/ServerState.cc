@@ -344,6 +344,8 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
 
       ret_menu.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
           u"Return to the\nmain menu", 0);
+      ret_menu.emplace_back(ProxyDestinationsMenuItemID::OPTIONS, u"Options",
+          u"Set proxy options", 0);
 
       uint32_t item_id = 0;
       for (const auto& item : items->as_dict()) {

@@ -620,11 +620,10 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 // 17 (S->C): Start encryption at login server (except on BB)
 // Same format and usage as 02 command, but a different copyright string:
 // "DreamCast Port Map. Copyright SEGA Enterprises. 1999"
-// Unlike the 02 command, V3 clients will respond with a DB command the first
-// time they receive a 17 command in any online session, with the exception of
-// Episodes 1&2 trial edition (which responds with a 9A). After the first time,
-// V3 clients will respond with a 9E. DCv1 will respond with a 90. Other non-V3
-// clients will respond with a 9A or 9D.
+// Unlike the 02 command, V3 clients will respond with a DB command when they
+// receive a 17 command in any online session, with the exception of Episodes
+// 1&2 trial edition (which responds with a 9A). DCv1 will respond with a 90.
+// Other non-V3 clients will respond with a 9A or 9D.
 
 // 18 (S->C): License verification result (PC/V3)
 // Behaves exactly the same as 9A (S->C). No arguments except header.flag.

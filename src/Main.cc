@@ -621,9 +621,8 @@ int main(int argc, char** argv) {
         use_terminal_colors = true;
       }
 
-      shared_ptr<ServerState> state(new ServerState());
-
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
+      shared_ptr<ServerState> state(new ServerState());
 
       config_log.info("Reading network addresses");
       state->all_addresses = get_local_addresses();

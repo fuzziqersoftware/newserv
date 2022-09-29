@@ -21,11 +21,6 @@ using namespace std;
 
 
 
-extern bool use_terminal_colors;
-extern FileContentsCache file_cache;
-
-
-
 const unordered_set<uint32_t> v2_crypt_initial_client_commands({
   0x00260088, // (17) DCNTE license check
   0x00280090, // (17) DCv1 license check

@@ -480,6 +480,7 @@ ProxyServer::LinkedSession::LinkedSession(
     infinite_hp(false),
     infinite_tp(false),
     save_files(false),
+    suppress_remote_login(false),
     function_call_return_value(-1),
     next_item_id(0x0F000000),
     override_section_id(-1),
