@@ -19,7 +19,7 @@ using namespace std;
 
 
 const uint64_t CLIENT_CONFIG_MAGIC = 0x492A890E82AC9839;
-FileContentsCache client_options_cache(3600 * 1000 * 1000);
+FileContentsCache client_options_cache(3600000000ULL);
 
 static atomic<uint64_t> next_id(1);
 
