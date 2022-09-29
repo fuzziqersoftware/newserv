@@ -29,8 +29,9 @@
 // If versions are not specified, the format is the same for all versions.
 
 // The version tokens are as follows:
-// D1 = Dreamcast v1
-// DC = Dreamcast v2
+// DCv1 = PSO Dreamcast v1
+// DCv2 = PSO Dreamcast v2
+// DC = Both DCv1 and DCv2
 // PC = PSO PC (v2)
 // GC = PSO GC Episodes 1&2 and/or Episode 3
 // XB = PSO XBOX Episodes 1&2
