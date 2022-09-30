@@ -147,6 +147,8 @@ public:
     static void on_error(Channel& ch, short events);
     void on_timeout();
 
+    void clear_lobby_players(size_t num_slots);
+
     void send_to_game_server(const char* error_message = nullptr);
     void disconnect();
 

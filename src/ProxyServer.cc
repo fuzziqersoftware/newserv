@@ -663,6 +663,12 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
   }
 }
 
+void ProxyServer::LinkedSession::clear_lobby_players(size_t num_slots) {
+  this->lobby_players.clear();
+  this->lobby_players.resize(num_slots);
+  this->log.info("Cleared lobby players");
+}
+
 void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) {
   // Delete all the other players
   for (size_t x = 0; x < this->lobby_players.size(); x++) {

@@ -200,12 +200,18 @@ static void server_command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
 
 static void server_command_proxygc(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
-  uint32_t proxy_remote_guild_card_number = stoll(encode_sjis(args), nullptr, 0);
-  client_options_cache.replace(
-      string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number),
-      string_printf("%08" PRIu32, proxy_remote_guild_card_number));
-  send_text_message_printf(c, "Proxy remote Guild\nCard number set to\n$C6%" PRIu32,
-      proxy_remote_guild_card_number);
+  if (args.empty()) {
+    client_options_cache.delete_key(
+        string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number));
+    send_text_message(c, u"Proxy remote Guild\nCard number cleared");
+  } else {
+    uint32_t proxy_remote_guild_card_number = stoll(encode_sjis(args), nullptr, 0);
+    client_options_cache.replace(
+        string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number),
+        string_printf("%08" PRIu32, proxy_remote_guild_card_number));
+    send_text_message_printf(c, "Proxy remote Guild\nCard number set to\n$C6%" PRIu32,
+        proxy_remote_guild_card_number);
+  }
 }
 
 static void proxy_command_proxygc(shared_ptr<ServerState>,

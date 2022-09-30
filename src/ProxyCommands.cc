@@ -38,6 +38,32 @@ using namespace std;
 
 
 
+struct HandlerResult {
+  enum class Type {
+    FORWARD = 0,
+    SUPPRESS,
+    MODIFIED,
+  };
+  Type type;
+  // These are only used if Type is MODIFIED. If either are -1, then the
+  // original command's value is used instead.
+  int32_t new_command;
+  int64_t new_flag;
+
+  HandlerResult(Type type) : type(type), new_command(-1), new_flag(-1) { }
+  HandlerResult(Type type, uint16_t new_command, uint32_t new_flag)
+      : type(type), new_command(new_command), new_flag(new_flag) { }
+};
+
+typedef HandlerResult (*on_command_t)(
+    shared_ptr<ServerState> s,
+    ProxyServer::LinkedSession& session,
+    uint16_t command,
+    uint32_t flag,
+    string& data);
+
+
+
 static void forward_command(ProxyServer::LinkedSession& session, bool to_server,
     uint16_t command, uint32_t flag, string& data, bool print_contents = true) {
   auto& ch = to_server ? session.server_channel : session.client_channel;
@@ -63,33 +89,32 @@ static void check_implemented_subcommand(
 
 
 // Command handlers. These are called to preprocess or react to specific
-// commands in either direction. If they return true, the command (which the
-// function may have modified) is forwarded to the other end; if they return
-// false; it is not.
+// commands in either direction. The functions have abbreviated names in order
+// to make the massive table more readable. The functions' names are, in
+// general, <SC>_[VERSIONS]_<COMMAND-NUMBERS>, where <SC> denotes who sent the
+// command, VERSIONS denotes which versions this handler is for (with shortcuts
+// - so v123 refers to all non-BB versions, for example, and DGX refers to all
+// console versions), and COMMAND-NUMBERS are the hexadecimal value in the
+// command header field that this handler is called for. If VERSIONS is omitted,
+// the command handler is for all versions (for example, the 97 handler is like
+// this).
 
-struct HandlerResult {
-  enum class Type {
-    FORWARD = 0,
-    SUPPRESS,
-    MODIFIED,
-  };
-  Type type;
-  // These are only used if Type is MODIFIED. If either are -1, then the
-  // original command's value is used instead.
-  int32_t new_command;
-  int64_t new_flag;
-
-  HandlerResult(Type type) : type(type), new_command(-1), new_flag(-1) { }
-  HandlerResult(Type type, uint16_t new_command, uint32_t new_flag)
-      : type(type), new_command(new_command), new_flag(new_flag) { }
-};
-
-static HandlerResult on_default(shared_ptr<ServerState>,
+static HandlerResult default_handler(shared_ptr<ServerState>,
     ProxyServer::LinkedSession&, uint16_t, uint32_t, string&) {
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_97(shared_ptr<ServerState>,
+static HandlerResult S_invalid(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string&) {
+  session.log.error("Server sent invalid command");
+  string error_str = (session.version == GameVersion::BB)
+      ? string_printf("Server sent invalid\ncommand %04hX %08" PRIX32, command, flag)
+      : string_printf("Server sent invalid\ncommand %02hX %02" PRIX32, command, flag);
+  session.send_to_game_server(error_str.c_str());
+  return HandlerResult::Type::SUPPRESS;
+}
+
+static HandlerResult S_97(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string&) {
   // Update the newserv client config so we'll know not to show the Programs
   // menu if they return to newserv
@@ -102,7 +127,7 @@ static HandlerResult on_server_97(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_client_gc_9E(shared_ptr<ServerState>,
+static HandlerResult C_G_9E(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   if (session.suppress_remote_login) {
     le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
@@ -120,7 +145,7 @@ static HandlerResult on_client_gc_9E(shared_ptr<ServerState>,
 }
 
 
-static HandlerResult on_server_gc_9A(shared_ptr<ServerState>,
+static HandlerResult S_G_9A(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   if (!session.license || session.suppress_remote_login) {
     return HandlerResult::Type::FORWARD;
@@ -154,7 +179,7 @@ static HandlerResult on_server_gc_9A(shared_ptr<ServerState>,
   return HandlerResult::Type::SUPPRESS;
 }
 
-static HandlerResult on_server_dc_pc_v3_patch_02_17(
+static HandlerResult S_V123P_02_17(
     shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session,
     uint16_t command,
@@ -348,7 +373,7 @@ static HandlerResult on_server_dc_pc_v3_patch_02_17(
 
     } else {
       // For command 02, send the same as if we had received 9A from the server
-      return on_server_gc_9A(s, session, command, flag, data);
+      return S_G_9A(s, session, command, flag, data);
     }
 
   } else if (session.version == GameVersion::XB) {
@@ -359,7 +384,7 @@ static HandlerResult on_server_dc_pc_v3_patch_02_17(
   }
 }
 
-static HandlerResult on_server_bb_03(shared_ptr<ServerState> s,
+static HandlerResult S_B_03(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // Most servers don't include after_message or have a shorter after_message
   // than newserv does, so don't require it
@@ -415,7 +440,7 @@ static HandlerResult on_server_bb_03(shared_ptr<ServerState> s,
   }
 }
 
-static HandlerResult on_server_dc_pc_v3_04(shared_ptr<ServerState>,
+static HandlerResult S_V123_04(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // Suppress extremely short commands from the server instead of disconnecting.
   if (data.size() < offsetof(S_UpdateClientConfig_DC_PC_V3_04, cfg)) {
@@ -474,7 +499,7 @@ static HandlerResult on_server_dc_pc_v3_04(shared_ptr<ServerState>,
   return session.license ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_dc_pc_v3_06(shared_ptr<ServerState>,
+static HandlerResult S_V123_06(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.license) {
     auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0_EE>(data,
@@ -488,7 +513,7 @@ static HandlerResult on_server_dc_pc_v3_06(shared_ptr<ServerState>,
 }
 
 template <typename CmdT>
-static HandlerResult on_server_41(shared_ptr<ServerState>,
+static HandlerResult S_41(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   bool modified = false;
   if (session.license) {
@@ -505,8 +530,12 @@ static HandlerResult on_server_41(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
+constexpr on_command_t S_DGX_41 = &S_41<S_GuildCardSearchResult_DC_V3_41>;
+constexpr on_command_t S_P_41 = &S_41<S_GuildCardSearchResult_PC_41>;
+constexpr on_command_t S_B_41 = &S_41<S_GuildCardSearchResult_BB_41>;
+
 template <typename CmdT>
-static HandlerResult on_server_81(shared_ptr<ServerState>,
+static HandlerResult S_81(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   bool modified = false;
   if (session.license) {
@@ -523,7 +552,11 @@ static HandlerResult on_server_81(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_88(shared_ptr<ServerState>,
+constexpr on_command_t S_DGX_81 = &S_81<SC_SimpleMail_DC_V3_81>;
+constexpr on_command_t S_P_81 = &S_81<SC_SimpleMail_PC_81>;
+constexpr on_command_t S_B_81 = &S_81<SC_SimpleMail_BB_81>;
+
+static HandlerResult S_88(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   bool modified = false;
   if (session.license) {
@@ -540,7 +573,7 @@ static HandlerResult on_server_88(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_B2(shared_ptr<ServerState>,
+static HandlerResult S_B2(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   const auto& cmd = check_size_t<S_ExecuteCode_B2>(data, sizeof(S_ExecuteCode_B2), 0xFFFF);
 
@@ -585,45 +618,47 @@ static HandlerResult on_server_B2(shared_ptr<ServerState>,
     session.log.info("Wrote code from server to file %s", output_filename.c_str());
 
 #ifdef HAVE_RESOURCE_FILE
-    try {
-      if (code.size() < sizeof(S_ExecuteCode_Footer_GC_B2)) {
-        throw runtime_error("code section is too small");
+    if (session.version == GameVersion::GC) {
+      try {
+        if (code.size() < sizeof(S_ExecuteCode_Footer_GC_B2)) {
+          throw runtime_error("code section is too small");
+        }
+
+        size_t footer_offset = code.size() - sizeof(S_ExecuteCode_Footer_GC_B2);
+
+        StringReader r(code.data(), code.size());
+        const auto& footer = r.pget<S_ExecuteCode_Footer_GC_B2>(footer_offset);
+
+        multimap<uint32_t, string> labels;
+        r.go(footer.relocations_offset);
+        uint32_t reloc_offset = 0;
+        for (size_t x = 0; x < footer.num_relocations; x++) {
+          reloc_offset += (r.get_u16b() * 4);
+          labels.emplace(reloc_offset, string_printf("reloc%zu", x));
+        }
+        labels.emplace(footer.entrypoint_addr_offset.load(), "entry_ptr");
+        labels.emplace(footer_offset, "footer");
+        labels.emplace(r.pget_u32b(footer.entrypoint_addr_offset), "start");
+
+        string disassembly = PPC32Emulator::disassemble(
+            &r.pget<uint8_t>(0, code.size()),
+            code.size(),
+            0,
+            &labels);
+
+        output_filename = string_printf("code.%" PRId64 ".txt", now());
+        {
+          auto f = fopen_unique(output_filename, "wt");
+          fprintf(f.get(), "// code_size = 0x%" PRIX32 "\n", cmd.code_size.load());
+          fprintf(f.get(), "// checksum_addr = 0x%" PRIX32 "\n", cmd.checksum_start.load());
+          fprintf(f.get(), "// checksum_size = 0x%" PRIX32 "\n", cmd.checksum_size.load());
+          fwritex(f.get(), disassembly);
+        }
+        session.log.info("Wrote disassembly to file %s", output_filename.c_str());
+
+      } catch (const exception& e) {
+        session.log.info("Failed to disassemble code from server: %s", e.what());
       }
-
-      size_t footer_offset = code.size() - sizeof(S_ExecuteCode_Footer_GC_B2);
-
-      StringReader r(code.data(), code.size());
-      const auto& footer = r.pget<S_ExecuteCode_Footer_GC_B2>(footer_offset);
-
-      multimap<uint32_t, string> labels;
-      r.go(footer.relocations_offset);
-      uint32_t reloc_offset = 0;
-      for (size_t x = 0; x < footer.num_relocations; x++) {
-        reloc_offset += (r.get_u16b() * 4);
-        labels.emplace(reloc_offset, string_printf("reloc%zu", x));
-      }
-      labels.emplace(footer.entrypoint_addr_offset.load(), "entry_ptr");
-      labels.emplace(footer_offset, "footer");
-      labels.emplace(r.pget_u32b(footer.entrypoint_addr_offset), "start");
-
-      string disassembly = PPC32Emulator::disassemble(
-          &r.pget<uint8_t>(0, code.size()),
-          code.size(),
-          0,
-          &labels);
-
-      output_filename = string_printf("code.%" PRId64 ".txt", now());
-      {
-        auto f = fopen_unique(output_filename, "wt");
-        fprintf(f.get(), "// code_size = 0x%" PRIX32 "\n", cmd.code_size.load());
-        fprintf(f.get(), "// checksum_addr = 0x%" PRIX32 "\n", cmd.checksum_start.load());
-        fprintf(f.get(), "// checksum_size = 0x%" PRIX32 "\n", cmd.checksum_size.load());
-        fwritex(f.get(), disassembly);
-      }
-      session.log.info("Wrote disassembly to file %s", output_filename.c_str());
-
-    } catch (const exception& e) {
-      session.log.info("Failed to disassemble code from server: %s", e.what());
     }
 #endif
   }
@@ -640,7 +675,7 @@ static HandlerResult on_server_B2(shared_ptr<ServerState>,
   }
 }
 
-static HandlerResult on_server_E7(shared_ptr<ServerState>,
+static HandlerResult S_B_E7(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.save_files) {
     string output_filename = string_printf("player.%" PRId64 ".bin", now());
@@ -651,7 +686,7 @@ static HandlerResult on_server_E7(shared_ptr<ServerState>,
 }
 
 template <typename CmdT>
-static HandlerResult on_server_C4(shared_ptr<ServerState>,
+static HandlerResult S_C4(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   bool modified = false;
   if (session.license) {
@@ -669,7 +704,9 @@ static HandlerResult on_server_C4(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_gc_E4(shared_ptr<ServerState>,
+constexpr on_command_t S_V3_C4 = &S_C4<S_ChoiceSearchResultEntry_V3_C4>;
+
+static HandlerResult S_G_E4(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   auto& cmd = check_size_t<S_CardLobbyGame_GC_Ep3_E4>(data);
   bool modified = false;
@@ -682,7 +719,7 @@ static HandlerResult on_server_gc_E4(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_bb_22(shared_ptr<ServerState>,
+static HandlerResult S_B_22(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // We use this command (which is sent before the init encryption command) to
   // detect a particular server behavior that we'll have to work around later.
@@ -701,7 +738,7 @@ static HandlerResult on_server_bb_22(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_game_19_patch_14(shared_ptr<ServerState>,
+static HandlerResult S_19_P_14(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // If the command is shorter than 6 bytes, use the previous server command to
   // fill it in. This simulates a behavior used by some private servers where a
@@ -768,7 +805,7 @@ static HandlerResult on_server_game_19_patch_14(shared_ptr<ServerState>,
   }
 }
 
-static HandlerResult on_server_v3_1A_D5(shared_ptr<ServerState>,
+static HandlerResult S_V3_1A_D5(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   // If the client is a version that sends close confirmations and the client
   // has the no-close-confirmation flag set in its newserv client config, send a
@@ -780,7 +817,7 @@ static HandlerResult on_server_v3_1A_D5(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
+static HandlerResult S_6x(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   check_implemented_subcommand(session, data);
 
@@ -831,7 +868,7 @@ static HandlerResult on_server_60_62_6C_6D_C9_CB(shared_ptr<ServerState>,
 }
 
 template <typename T>
-static HandlerResult on_server_44_A6(shared_ptr<ServerState>,
+static HandlerResult S_44_A6(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t, string& data) {
   if (session.save_files) {
     const auto& cmd = check_size_t<S_OpenFile_PC_V3_44_A6>(data);
@@ -858,7 +895,11 @@ static HandlerResult on_server_44_A6(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_13_A7(shared_ptr<ServerState>,
+constexpr on_command_t S_D_44_A6 = &S_44_A6<S_OpenFile_DC_44_A6>;
+constexpr on_command_t S_PGX_44_A6 = &S_44_A6<S_OpenFile_PC_V3_44_A6>;
+constexpr on_command_t S_B_44_A6 = &S_44_A6<S_OpenFile_BB_44_A6>;
+
+static HandlerResult S_13_A7(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.save_files) {
     const auto& cmd = check_size_t<S_WriteFile_13_A7>(data);
@@ -895,7 +936,7 @@ static HandlerResult on_server_13_A7(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_gc_B8(shared_ptr<ServerState>,
+static HandlerResult S_G_B8(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.save_files) {
     if (data.size() < 4) {
@@ -928,12 +969,10 @@ static void update_leader_id(ProxyServer::LinkedSession& session, uint8_t leader
 }
 
 template <typename CmdT>
-static HandlerResult on_server_65_67_68(shared_ptr<ServerState>,
+static HandlerResult S_65_67_68(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
   if (command == 0x67) {
-    session.lobby_players.clear();
-    session.lobby_players.resize(12);
-    session.log.info("Cleared lobby players");
+    session.clear_lobby_players(12);
     session.is_in_game = false;
 
     // This command can cause the client to no longer send D6 responses when
@@ -973,6 +1012,7 @@ static HandlerResult on_server_65_67_68(shared_ptr<ServerState>,
     }
   }
   if (num_replacements > 1) {
+    session.clear_lobby_players(0);
     throw runtime_error("proxied player appears multiple times in lobby");
   }
 
@@ -988,12 +1028,15 @@ static HandlerResult on_server_65_67_68(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
+constexpr on_command_t S_DG_65_67_68 = &S_65_67_68<S_JoinLobby_DC_GC_65_67_68>;
+constexpr on_command_t S_P_65_67_68 = &S_65_67_68<S_JoinLobby_PC_65_67_68>;
+constexpr on_command_t S_X_65_67_68 = &S_65_67_68<S_JoinLobby_XB_65_67_68>;
+constexpr on_command_t S_B_65_67_68 = &S_65_67_68<S_JoinLobby_BB_65_67_68>;
+
 template <typename CmdT>
-static HandlerResult on_server_64(shared_ptr<ServerState>,
+static HandlerResult S_64(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
-  // We don't need to clear lobby_players here because we always
-  // overwrite all 4 entries for this command
-  session.lobby_players.resize(4);
+  session.clear_lobby_players(4);
   session.log.info("Cleared lobby players");
   session.is_in_game = true;
 
@@ -1044,7 +1087,12 @@ static HandlerResult on_server_64(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_server_66_69(shared_ptr<ServerState>,
+constexpr on_command_t S_DG_64 = &S_64<S_JoinGame_DC_GC_64>;
+constexpr on_command_t S_P_64 = &S_64<S_JoinGame_PC_64>;
+constexpr on_command_t S_X_64 = &S_64<S_JoinGame_XB_64>;
+constexpr on_command_t S_B_64 = &S_64<S_JoinGame_BB_64>;
+
+static HandlerResult S_66_69(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<S_LeaveLobby_66_69_Ep3_E9>(data);
   size_t index = cmd.client_id;
@@ -1059,13 +1107,13 @@ static HandlerResult on_server_66_69(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_client_98(shared_ptr<ServerState>,
+static HandlerResult C_98(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   session.is_in_game = false;
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_client_06(shared_ptr<ServerState> s,
+static HandlerResult C_06(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (data.size() >= 12) {
     u16string text;
@@ -1108,7 +1156,7 @@ static HandlerResult on_client_06(shared_ptr<ServerState> s,
   }
 }
 
-static HandlerResult on_client_40(shared_ptr<ServerState>,
+static HandlerResult C_40(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   bool modified = false;
   if (session.license) {
@@ -1126,7 +1174,7 @@ static HandlerResult on_client_40(shared_ptr<ServerState>,
 }
 
 template <typename CmdT>
-static HandlerResult on_client_81(shared_ptr<ServerState>,
+static HandlerResult C_81(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   auto& cmd = check_size_t<CmdT>(data);
   if (session.license) {
@@ -1142,8 +1190,12 @@ static HandlerResult on_client_81(shared_ptr<ServerState>,
   return HandlerResult::Type::MODIFIED;
 }
 
+constexpr on_command_t C_DGX_81 = &C_81<SC_SimpleMail_DC_V3_81>;
+constexpr on_command_t C_P_81 = &C_81<SC_SimpleMail_PC_81>;
+constexpr on_command_t C_B_81 = &C_81<SC_SimpleMail_BB_81>;
+
 template <typename SendGuildCardCmdT>
-static HandlerResult on_client_60_62_6C_6D_C9_CB(shared_ptr<ServerState> s,
+static HandlerResult C_6x(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
   if (session.license && !data.empty()) {
     if (data[0] == 0x06) {
@@ -1184,11 +1236,16 @@ static HandlerResult on_client_60_62_6C_6D_C9_CB(shared_ptr<ServerState> s,
       }
     }
   }
-  return on_client_60_62_6C_6D_C9_CB<void>(s, session, command, flag, data);
+  return C_6x<void>(s, session, command, flag, data);
 }
 
+constexpr on_command_t C_D_6x = &C_6x<G_SendGuildCard_DC_6x06>;
+constexpr on_command_t C_P_6x = &C_6x<G_SendGuildCard_PC_6x06>;
+constexpr on_command_t C_GX_6x = &C_6x<G_SendGuildCard_V3_6x06>;
+constexpr on_command_t C_B_6x = &C_6x<G_SendGuildCard_BB_6x06>;
+
 template <>
-HandlerResult on_client_60_62_6C_6D_C9_CB<void>(shared_ptr<ServerState>,
+HandlerResult C_6x<void>(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   check_implemented_subcommand(session, data);
 
@@ -1209,7 +1266,7 @@ HandlerResult on_client_60_62_6C_6D_C9_CB<void>(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult on_client_dc_pc_v3_A0_A1(shared_ptr<ServerState>,
+static HandlerResult C_V123_A0_A1(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
   if (!session.license) {
     return HandlerResult::Type::FORWARD;
@@ -1223,1621 +1280,282 @@ static HandlerResult on_client_dc_pc_v3_A0_A1(shared_ptr<ServerState>,
 
 
 
-typedef HandlerResult (*on_command_t)(
-    shared_ptr<ServerState> s,
-    ProxyServer::LinkedSession& session,
-    uint16_t command,
-    uint32_t flag,
-    string& data);
-
-// [version][command][is_client]
-static on_command_t handlers[6][0x100][2] = {
-  {
-    // PATCH  SERVER                          CLIENT
-    /* 00 */ {nullptr,                        nullptr},
-    /* 01 */ {nullptr,                        nullptr},
-    /* 02 */ {on_server_dc_pc_v3_patch_02_17, nullptr},
-    /* 03 */ {nullptr,                        nullptr},
-    /* 04 */ {nullptr,                        nullptr},
-    /* 05 */ {nullptr,                        nullptr},
-    /* 06 */ {nullptr,                        nullptr},
-    /* 07 */ {nullptr,                        nullptr},
-    /* 08 */ {nullptr,                        nullptr},
-    /* 09 */ {nullptr,                        nullptr},
-    /* 0A */ {nullptr,                        nullptr},
-    /* 0B */ {nullptr,                        nullptr},
-    /* 0C */ {nullptr,                        nullptr},
-    /* 0D */ {nullptr,                        nullptr},
-    /* 0E */ {nullptr,                        nullptr},
-    /* 0F */ {nullptr,                        nullptr},
-    /* 10 */ {nullptr,                        nullptr},
-    /* 11 */ {nullptr,                        nullptr},
-    /* 12 */ {nullptr,                        nullptr},
-    /* 13 */ {nullptr,                        nullptr},
-    /* 14 */ {on_server_game_19_patch_14,     nullptr},
-    /* 15 */ {nullptr,                        nullptr},
-    /* 16 */ {nullptr,                        nullptr},
-    /* 17 */ {nullptr,                        nullptr},
-    /* 18 */ {nullptr,                        nullptr},
-    /* 19 */ {nullptr,                        nullptr},
-    /* 1A */ {nullptr,                        nullptr},
-    /* 1B */ {nullptr,                        nullptr},
-    /* 1C */ {nullptr,                        nullptr},
-    /* 1D */ {nullptr,                        nullptr},
-    /* 1E */ {nullptr,                        nullptr},
-    /* 1F */ {nullptr,                        nullptr},
-    // PATCH  SERVER                          CLIENT
-    /* 20 */ {nullptr,                        nullptr},
-    /* 21 */ {nullptr,                        nullptr},
-    /* 22 */ {nullptr,                        nullptr},
-    /* 23 */ {nullptr,                        nullptr},
-    /* 24 */ {nullptr,                        nullptr},
-    /* 25 */ {nullptr,                        nullptr},
-    /* 26 */ {nullptr,                        nullptr},
-    /* 27 */ {nullptr,                        nullptr},
-    /* 28 */ {nullptr,                        nullptr},
-    /* 29 */ {nullptr,                        nullptr},
-    /* 2A */ {nullptr,                        nullptr},
-    /* 2B */ {nullptr,                        nullptr},
-    /* 2C */ {nullptr,                        nullptr},
-    /* 2D */ {nullptr,                        nullptr},
-    /* 2E */ {nullptr,                        nullptr},
-    /* 2F */ {nullptr,                        nullptr},
-    /* 30 */ {nullptr,                        nullptr},
-    /* 31 */ {nullptr,                        nullptr},
-    /* 32 */ {nullptr,                        nullptr},
-    /* 33 */ {nullptr,                        nullptr},
-    /* 34 */ {nullptr,                        nullptr},
-    /* 35 */ {nullptr,                        nullptr},
-    /* 36 */ {nullptr,                        nullptr},
-    /* 37 */ {nullptr,                        nullptr},
-    /* 38 */ {nullptr,                        nullptr},
-    /* 39 */ {nullptr,                        nullptr},
-    /* 3A */ {nullptr,                        nullptr},
-    /* 3B */ {nullptr,                        nullptr},
-    /* 3C */ {nullptr,                        nullptr},
-    /* 3D */ {nullptr,                        nullptr},
-    /* 3E */ {nullptr,                        nullptr},
-    /* 3F */ {nullptr,                        nullptr},
-    // PATCH  SERVER                          CLIENT
-    /* 40 */ {nullptr,                        nullptr},
-    /* 41 */ {nullptr,                        nullptr},
-    /* 42 */ {nullptr,                        nullptr},
-    /* 43 */ {nullptr,                        nullptr},
-    /* 44 */ {nullptr,                        nullptr},
-    /* 45 */ {nullptr,                        nullptr},
-    /* 46 */ {nullptr,                        nullptr},
-    /* 47 */ {nullptr,                        nullptr},
-    /* 48 */ {nullptr,                        nullptr},
-    /* 49 */ {nullptr,                        nullptr},
-    /* 4A */ {nullptr,                        nullptr},
-    /* 4B */ {nullptr,                        nullptr},
-    /* 4C */ {nullptr,                        nullptr},
-    /* 4D */ {nullptr,                        nullptr},
-    /* 4E */ {nullptr,                        nullptr},
-    /* 4F */ {nullptr,                        nullptr},
-    /* 50 */ {nullptr,                        nullptr},
-    /* 51 */ {nullptr,                        nullptr},
-    /* 52 */ {nullptr,                        nullptr},
-    /* 53 */ {nullptr,                        nullptr},
-    /* 54 */ {nullptr,                        nullptr},
-    /* 55 */ {nullptr,                        nullptr},
-    /* 56 */ {nullptr,                        nullptr},
-    /* 57 */ {nullptr,                        nullptr},
-    /* 58 */ {nullptr,                        nullptr},
-    /* 59 */ {nullptr,                        nullptr},
-    /* 5A */ {nullptr,                        nullptr},
-    /* 5B */ {nullptr,                        nullptr},
-    /* 5C */ {nullptr,                        nullptr},
-    /* 5D */ {nullptr,                        nullptr},
-    /* 5E */ {nullptr,                        nullptr},
-    /* 5F */ {nullptr,                        nullptr},
-    // PATCH  SERVER                          CLIENT
-    /* 60 */ {nullptr,                        nullptr},
-    /* 61 */ {nullptr,                        nullptr},
-    /* 62 */ {nullptr,                        nullptr},
-    /* 63 */ {nullptr,                        nullptr},
-    /* 64 */ {nullptr,                        nullptr},
-    /* 65 */ {nullptr,                        nullptr},
-    /* 66 */ {nullptr,                        nullptr},
-    /* 67 */ {nullptr,                        nullptr},
-    /* 68 */ {nullptr,                        nullptr},
-    /* 69 */ {nullptr,                        nullptr},
-    /* 6A */ {nullptr,                        nullptr},
-    /* 6B */ {nullptr,                        nullptr},
-    /* 6C */ {nullptr,                        nullptr},
-    /* 6D */ {nullptr,                        nullptr},
-    /* 6E */ {nullptr,                        nullptr},
-    /* 6F */ {nullptr,                        nullptr},
-    /* 70 */ {nullptr,                        nullptr},
-    /* 71 */ {nullptr,                        nullptr},
-    /* 72 */ {nullptr,                        nullptr},
-    /* 73 */ {nullptr,                        nullptr},
-    /* 74 */ {nullptr,                        nullptr},
-    /* 75 */ {nullptr,                        nullptr},
-    /* 76 */ {nullptr,                        nullptr},
-    /* 77 */ {nullptr,                        nullptr},
-    /* 78 */ {nullptr,                        nullptr},
-    /* 79 */ {nullptr,                        nullptr},
-    /* 7A */ {nullptr,                        nullptr},
-    /* 7B */ {nullptr,                        nullptr},
-    /* 7C */ {nullptr,                        nullptr},
-    /* 7D */ {nullptr,                        nullptr},
-    /* 7E */ {nullptr,                        nullptr},
-    /* 7F */ {nullptr,                        nullptr},
-    // PATCH  SERVER                          CLIENT
-    /* 80 */ {nullptr,                        nullptr},
-    /* 81 */ {nullptr,                        nullptr},
-    /* 82 */ {nullptr,                        nullptr},
-    /* 83 */ {nullptr,                        nullptr},
-    /* 84 */ {nullptr,                        nullptr},
-    /* 85 */ {nullptr,                        nullptr},
-    /* 86 */ {nullptr,                        nullptr},
-    /* 87 */ {nullptr,                        nullptr},
-    /* 88 */ {nullptr,                        nullptr},
-    /* 89 */ {nullptr,                        nullptr},
-    /* 8A */ {nullptr,                        nullptr},
-    /* 8B */ {nullptr,                        nullptr},
-    /* 8C */ {nullptr,                        nullptr},
-    /* 8D */ {nullptr,                        nullptr},
-    /* 8E */ {nullptr,                        nullptr},
-    /* 8F */ {nullptr,                        nullptr},
-    /* 90 */ {nullptr,                        nullptr},
-    /* 91 */ {nullptr,                        nullptr},
-    /* 92 */ {nullptr,                        nullptr},
-    /* 93 */ {nullptr,                        nullptr},
-    /* 94 */ {nullptr,                        nullptr},
-    /* 95 */ {nullptr,                        nullptr},
-    /* 96 */ {nullptr,                        nullptr},
-    /* 97 */ {nullptr,                        nullptr},
-    /* 98 */ {nullptr,                        nullptr},
-    /* 99 */ {nullptr,                        nullptr},
-    /* 9A */ {nullptr,                        nullptr},
-    /* 9B */ {nullptr,                        nullptr},
-    /* 9C */ {nullptr,                        nullptr},
-    /* 9D */ {nullptr,                        nullptr},
-    /* 9E */ {nullptr,                        nullptr},
-    /* 9F */ {nullptr,                        nullptr},
-    // PATCH  SERVER                          CLIENT
-    /* A0 */ {nullptr,                        nullptr},
-    /* A1 */ {nullptr,                        nullptr},
-    /* A2 */ {nullptr,                        nullptr},
-    /* A3 */ {nullptr,                        nullptr},
-    /* A4 */ {nullptr,                        nullptr},
-    /* A5 */ {nullptr,                        nullptr},
-    /* A6 */ {nullptr,                        nullptr},
-    /* A7 */ {nullptr,                        nullptr},
-    /* A8 */ {nullptr,                        nullptr},
-    /* A9 */ {nullptr,                        nullptr},
-    /* AA */ {nullptr,                        nullptr},
-    /* AB */ {nullptr,                        nullptr},
-    /* AC */ {nullptr,                        nullptr},
-    /* AD */ {nullptr,                        nullptr},
-    /* AE */ {nullptr,                        nullptr},
-    /* AF */ {nullptr,                        nullptr},
-    /* B0 */ {nullptr,                        nullptr},
-    /* B1 */ {nullptr,                        nullptr},
-    /* B2 */ {nullptr,                        nullptr},
-    /* B3 */ {nullptr,                        nullptr},
-    /* B4 */ {nullptr,                        nullptr},
-    /* B5 */ {nullptr,                        nullptr},
-    /* B6 */ {nullptr,                        nullptr},
-    /* B7 */ {nullptr,                        nullptr},
-    /* B8 */ {nullptr,                        nullptr},
-    /* B9 */ {nullptr,                        nullptr},
-    /* BA */ {nullptr,                        nullptr},
-    /* BB */ {nullptr,                        nullptr},
-    /* BC */ {nullptr,                        nullptr},
-    /* BD */ {nullptr,                        nullptr},
-    /* BE */ {nullptr,                        nullptr},
-    /* BF */ {nullptr,                        nullptr},
-    // PATCH  SERVER                          CLIENT
-    /* C0 */ {nullptr,                        nullptr},
-    /* C1 */ {nullptr,                        nullptr},
-    /* C2 */ {nullptr,                        nullptr},
-    /* C3 */ {nullptr,                        nullptr},
-    /* C4 */ {nullptr,                        nullptr},
-    /* C5 */ {nullptr,                        nullptr},
-    /* C6 */ {nullptr,                        nullptr},
-    /* C7 */ {nullptr,                        nullptr},
-    /* C8 */ {nullptr,                        nullptr},
-    /* C9 */ {nullptr,                        nullptr},
-    /* CA */ {nullptr,                        nullptr},
-    /* CB */ {nullptr,                        nullptr},
-    /* CC */ {nullptr,                        nullptr},
-    /* CD */ {nullptr,                        nullptr},
-    /* CE */ {nullptr,                        nullptr},
-    /* CF */ {nullptr,                        nullptr},
-    /* D0 */ {nullptr,                        nullptr},
-    /* D1 */ {nullptr,                        nullptr},
-    /* D2 */ {nullptr,                        nullptr},
-    /* D3 */ {nullptr,                        nullptr},
-    /* D4 */ {nullptr,                        nullptr},
-    /* D5 */ {nullptr,                        nullptr},
-    /* D6 */ {nullptr,                        nullptr},
-    /* D7 */ {nullptr,                        nullptr},
-    /* D8 */ {nullptr,                        nullptr},
-    /* D9 */ {nullptr,                        nullptr},
-    /* DA */ {nullptr,                        nullptr},
-    /* DB */ {nullptr,                        nullptr},
-    /* DC */ {nullptr,                        nullptr},
-    /* DD */ {nullptr,                        nullptr},
-    /* DE */ {nullptr,                        nullptr},
-    /* DF */ {nullptr,                        nullptr},
-    // PATCH  SERVER                          CLIENT
-    /* E0 */ {nullptr,                        nullptr},
-    /* E1 */ {nullptr,                        nullptr},
-    /* E2 */ {nullptr,                        nullptr},
-    /* E3 */ {nullptr,                        nullptr},
-    /* E4 */ {nullptr,                        nullptr},
-    /* E5 */ {nullptr,                        nullptr},
-    /* E6 */ {nullptr,                        nullptr},
-    /* E7 */ {nullptr,                        nullptr},
-    /* E8 */ {nullptr,                        nullptr},
-    /* E9 */ {nullptr,                        nullptr},
-    /* EA */ {nullptr,                        nullptr},
-    /* EB */ {nullptr,                        nullptr},
-    /* EC */ {nullptr,                        nullptr},
-    /* ED */ {nullptr,                        nullptr},
-    /* EE */ {nullptr,                        nullptr},
-    /* EF */ {nullptr,                        nullptr},
-    /* F0 */ {nullptr,                        nullptr},
-    /* F1 */ {nullptr,                        nullptr},
-    /* F2 */ {nullptr,                        nullptr},
-    /* F3 */ {nullptr,                        nullptr},
-    /* F4 */ {nullptr,                        nullptr},
-    /* F5 */ {nullptr,                        nullptr},
-    /* F6 */ {nullptr,                        nullptr},
-    /* F7 */ {nullptr,                        nullptr},
-    /* F8 */ {nullptr,                        nullptr},
-    /* F9 */ {nullptr,                        nullptr},
-    /* FA */ {nullptr,                        nullptr},
-    /* FB */ {nullptr,                        nullptr},
-    /* FC */ {nullptr,                        nullptr},
-    /* FD */ {nullptr,                        nullptr},
-    /* FE */ {nullptr,                        nullptr},
-    /* FF */ {nullptr,                        nullptr},
-    // PATCH  SERVER                          CLIENT
-  }, {
-    // (DC)   SERVER                                          CLIENT
-    /* 00 */ {nullptr,                                        nullptr},
-    /* 01 */ {nullptr,                                        nullptr},
-    /* 02 */ {on_server_dc_pc_v3_patch_02_17,                 nullptr},
-    /* 03 */ {nullptr,                                        nullptr},
-    /* 04 */ {on_server_dc_pc_v3_04,                          nullptr},
-    /* 05 */ {nullptr,                                        nullptr},
-    /* 06 */ {on_server_dc_pc_v3_06,                          on_client_06},
-    /* 07 */ {nullptr,                                        nullptr},
-    /* 08 */ {nullptr,                                        nullptr},
-    /* 09 */ {nullptr,                                        nullptr},
-    /* 0A */ {nullptr,                                        nullptr},
-    /* 0B */ {nullptr,                                        nullptr},
-    /* 0C */ {nullptr,                                        nullptr},
-    /* 0D */ {nullptr,                                        nullptr},
-    /* 0E */ {nullptr,                                        nullptr},
-    /* 0F */ {nullptr,                                        nullptr},
-    /* 10 */ {nullptr,                                        nullptr},
-    /* 11 */ {nullptr,                                        nullptr},
-    /* 12 */ {nullptr,                                        nullptr},
-    /* 13 */ {on_server_13_A7,                                nullptr},
-    /* 14 */ {nullptr,                                        nullptr},
-    /* 15 */ {nullptr,                                        nullptr},
-    /* 16 */ {nullptr,                                        nullptr},
-    /* 17 */ {on_server_dc_pc_v3_patch_02_17,                 nullptr},
-    /* 18 */ {nullptr,                                        nullptr},
-    /* 19 */ {on_server_game_19_patch_14,                     nullptr},
-    /* 1A */ {nullptr,                                        nullptr},
-    /* 1B */ {nullptr,                                        nullptr},
-    /* 1C */ {nullptr,                                        nullptr},
-    /* 1D */ {nullptr,                                        nullptr},
-    /* 1E */ {nullptr,                                        nullptr},
-    /* 1F */ {nullptr,                                        nullptr},
-    // (DC)   SERVER                                          CLIENT
-    /* 20 */ {nullptr,                                        nullptr},
-    /* 21 */ {nullptr,                                        nullptr},
-    /* 22 */ {nullptr,                                        nullptr},
-    /* 23 */ {nullptr,                                        nullptr},
-    /* 24 */ {nullptr,                                        nullptr},
-    /* 25 */ {nullptr,                                        nullptr},
-    /* 26 */ {nullptr,                                        nullptr},
-    /* 27 */ {nullptr,                                        nullptr},
-    /* 28 */ {nullptr,                                        nullptr},
-    /* 29 */ {nullptr,                                        nullptr},
-    /* 2A */ {nullptr,                                        nullptr},
-    /* 2B */ {nullptr,                                        nullptr},
-    /* 2C */ {nullptr,                                        nullptr},
-    /* 2D */ {nullptr,                                        nullptr},
-    /* 2E */ {nullptr,                                        nullptr},
-    /* 2F */ {nullptr,                                        nullptr},
-    /* 30 */ {nullptr,                                        nullptr},
-    /* 31 */ {nullptr,                                        nullptr},
-    /* 32 */ {nullptr,                                        nullptr},
-    /* 33 */ {nullptr,                                        nullptr},
-    /* 34 */ {nullptr,                                        nullptr},
-    /* 35 */ {nullptr,                                        nullptr},
-    /* 36 */ {nullptr,                                        nullptr},
-    /* 37 */ {nullptr,                                        nullptr},
-    /* 38 */ {nullptr,                                        nullptr},
-    /* 39 */ {nullptr,                                        nullptr},
-    /* 3A */ {nullptr,                                        nullptr},
-    /* 3B */ {nullptr,                                        nullptr},
-    /* 3C */ {nullptr,                                        nullptr},
-    /* 3D */ {nullptr,                                        nullptr},
-    /* 3E */ {nullptr,                                        nullptr},
-    /* 3F */ {nullptr,                                        nullptr},
-    // (DC)   SERVER                                          CLIENT
-    /* 40 */ {nullptr,                                        on_client_40},
-    /* 41 */ {on_server_41<S_GuildCardSearchResult_DC_V3_41>, nullptr},
-    /* 42 */ {nullptr,                                        nullptr},
-    /* 43 */ {nullptr,                                        nullptr},
-    /* 44 */ {on_server_44_A6<S_OpenFile_DC_44_A6>,           nullptr},
-    /* 45 */ {nullptr,                                        nullptr},
-    /* 46 */ {nullptr,                                        nullptr},
-    /* 47 */ {nullptr,                                        nullptr},
-    /* 48 */ {nullptr,                                        nullptr},
-    /* 49 */ {nullptr,                                        nullptr},
-    /* 4A */ {nullptr,                                        nullptr},
-    /* 4B */ {nullptr,                                        nullptr},
-    /* 4C */ {nullptr,                                        nullptr},
-    /* 4D */ {nullptr,                                        nullptr},
-    /* 4E */ {nullptr,                                        nullptr},
-    /* 4F */ {nullptr,                                        nullptr},
-    /* 50 */ {nullptr,                                        nullptr},
-    /* 51 */ {nullptr,                                        nullptr},
-    /* 52 */ {nullptr,                                        nullptr},
-    /* 53 */ {nullptr,                                        nullptr},
-    /* 54 */ {nullptr,                                        nullptr},
-    /* 55 */ {nullptr,                                        nullptr},
-    /* 56 */ {nullptr,                                        nullptr},
-    /* 57 */ {nullptr,                                        nullptr},
-    /* 58 */ {nullptr,                                        nullptr},
-    /* 59 */ {nullptr,                                        nullptr},
-    /* 5A */ {nullptr,                                        nullptr},
-    /* 5B */ {nullptr,                                        nullptr},
-    /* 5C */ {nullptr,                                        nullptr},
-    /* 5D */ {nullptr,                                        nullptr},
-    /* 5E */ {nullptr,                                        nullptr},
-    /* 5F */ {nullptr,                                        nullptr},
-    // (DC)   SERVER                                          CLIENT
-    /* 60 */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<void>},
-    /* 61 */ {nullptr,                                        nullptr},
-    /* 62 */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<void>},
-    /* 63 */ {nullptr,                                        nullptr},
-    /* 64 */ {on_server_64<S_JoinGame_DC_GC_64>,              nullptr},
-    /* 65 */ {on_server_65_67_68<S_JoinLobby_DC_GC_65_67_68>, nullptr},
-    /* 66 */ {on_server_66_69,                                nullptr},
-    /* 67 */ {on_server_65_67_68<S_JoinLobby_DC_GC_65_67_68>, nullptr},
-    /* 68 */ {on_server_65_67_68<S_JoinLobby_DC_GC_65_67_68>, nullptr},
-    /* 69 */ {on_server_66_69,                                nullptr},
-    /* 6A */ {nullptr,                                        nullptr},
-    /* 6B */ {nullptr,                                        nullptr},
-    /* 6C */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<void>},
-    /* 6D */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<void>},
-    /* 6E */ {nullptr,                                        nullptr},
-    /* 6F */ {nullptr,                                        nullptr},
-    /* 70 */ {nullptr,                                        nullptr},
-    /* 71 */ {nullptr,                                        nullptr},
-    /* 72 */ {nullptr,                                        nullptr},
-    /* 73 */ {nullptr,                                        nullptr},
-    /* 74 */ {nullptr,                                        nullptr},
-    /* 75 */ {nullptr,                                        nullptr},
-    /* 76 */ {nullptr,                                        nullptr},
-    /* 77 */ {nullptr,                                        nullptr},
-    /* 78 */ {nullptr,                                        nullptr},
-    /* 79 */ {nullptr,                                        nullptr},
-    /* 7A */ {nullptr,                                        nullptr},
-    /* 7B */ {nullptr,                                        nullptr},
-    /* 7C */ {nullptr,                                        nullptr},
-    /* 7D */ {nullptr,                                        nullptr},
-    /* 7E */ {nullptr,                                        nullptr},
-    /* 7F */ {nullptr,                                        nullptr},
-    // (DC)   SERVER                                          CLIENT
-    /* 80 */ {nullptr,                                        nullptr},
-    /* 81 */ {nullptr,                                        nullptr},
-    /* 82 */ {nullptr,                                        nullptr},
-    /* 83 */ {nullptr,                                        nullptr},
-    /* 84 */ {nullptr,                                        nullptr},
-    /* 85 */ {nullptr,                                        nullptr},
-    /* 86 */ {nullptr,                                        nullptr},
-    /* 87 */ {nullptr,                                        nullptr},
-    /* 88 */ {on_server_88,                                   nullptr},
-    /* 89 */ {nullptr,                                        nullptr},
-    /* 8A */ {nullptr,                                        nullptr},
-    /* 8B */ {nullptr,                                        nullptr},
-    /* 8C */ {nullptr,                                        nullptr},
-    /* 8D */ {nullptr,                                        nullptr},
-    /* 8E */ {nullptr,                                        nullptr},
-    /* 8F */ {nullptr,                                        nullptr},
-    /* 90 */ {nullptr,                                        nullptr},
-    /* 91 */ {nullptr,                                        nullptr},
-    /* 92 */ {nullptr,                                        nullptr},
-    /* 93 */ {nullptr,                                        nullptr},
-    /* 94 */ {nullptr,                                        nullptr},
-    /* 95 */ {nullptr,                                        nullptr},
-    /* 96 */ {nullptr,                                        nullptr},
-    /* 97 */ {on_server_97,                                   nullptr},
-    /* 98 */ {nullptr,                                        on_client_98},
-    /* 99 */ {nullptr,                                        nullptr},
-    /* 9A */ {nullptr,                                        nullptr},
-    /* 9B */ {nullptr,                                        nullptr},
-    /* 9C */ {nullptr,                                        nullptr},
-    /* 9D */ {nullptr,                                        nullptr},
-    /* 9E */ {nullptr,                                        nullptr},
-    /* 9F */ {nullptr,                                        nullptr},
-    // (DC)   SERVER                                          CLIENT
-    /* A0 */ {nullptr,                                        on_client_dc_pc_v3_A0_A1},
-    /* A1 */ {nullptr,                                        on_client_dc_pc_v3_A0_A1},
-    /* A2 */ {nullptr,                                        nullptr},
-    /* A3 */ {nullptr,                                        nullptr},
-    /* A4 */ {nullptr,                                        nullptr},
-    /* A5 */ {nullptr,                                        nullptr},
-    /* A6 */ {on_server_44_A6<S_OpenFile_DC_44_A6>,           nullptr},
-    /* A7 */ {on_server_13_A7,                                nullptr},
-    /* A8 */ {nullptr,                                        nullptr},
-    /* A9 */ {nullptr,                                        nullptr},
-    /* AA */ {nullptr,                                        nullptr},
-    /* AB */ {nullptr,                                        nullptr},
-    /* AC */ {nullptr,                                        nullptr},
-    /* AD */ {nullptr,                                        nullptr},
-    /* AE */ {nullptr,                                        nullptr},
-    /* AF */ {nullptr,                                        nullptr},
-    /* B0 */ {nullptr,                                        nullptr},
-    /* B1 */ {nullptr,                                        nullptr},
-    /* B2 */ {nullptr,                                        nullptr},
-    /* B3 */ {nullptr,                                        nullptr},
-    /* B4 */ {nullptr,                                        nullptr},
-    /* B5 */ {nullptr,                                        nullptr},
-    /* B6 */ {nullptr,                                        nullptr},
-    /* B7 */ {nullptr,                                        nullptr},
-    /* B8 */ {nullptr,                                        nullptr},
-    /* B9 */ {nullptr,                                        nullptr},
-    /* BA */ {nullptr,                                        nullptr},
-    /* BB */ {nullptr,                                        nullptr},
-    /* BC */ {nullptr,                                        nullptr},
-    /* BD */ {nullptr,                                        nullptr},
-    /* BE */ {nullptr,                                        nullptr},
-    /* BF */ {nullptr,                                        nullptr},
-    // (DC)   SERVER                                          CLIENT
-    /* C0 */ {nullptr,                                        nullptr},
-    /* C1 */ {nullptr,                                        nullptr},
-    /* C2 */ {nullptr,                                        nullptr},
-    /* C3 */ {nullptr,                                        nullptr},
-    /* C4 */ {nullptr,                                        nullptr},
-    /* C5 */ {nullptr,                                        nullptr},
-    /* C6 */ {nullptr,                                        nullptr},
-    /* C7 */ {nullptr,                                        nullptr},
-    /* C8 */ {nullptr,                                        nullptr},
-    /* C9 */ {nullptr,                                        nullptr},
-    /* CA */ {nullptr,                                        nullptr},
-    /* CB */ {nullptr,                                        nullptr},
-    /* CC */ {nullptr,                                        nullptr},
-    /* CD */ {nullptr,                                        nullptr},
-    /* CE */ {nullptr,                                        nullptr},
-    /* CF */ {nullptr,                                        nullptr},
-    /* D0 */ {nullptr,                                        nullptr},
-    /* D1 */ {nullptr,                                        nullptr},
-    /* D2 */ {nullptr,                                        nullptr},
-    /* D3 */ {nullptr,                                        nullptr},
-    /* D4 */ {nullptr,                                        nullptr},
-    /* D5 */ {nullptr,                                        nullptr},
-    /* D6 */ {nullptr,                                        nullptr},
-    /* D7 */ {nullptr,                                        nullptr},
-    /* D8 */ {nullptr,                                        nullptr},
-    /* D9 */ {nullptr,                                        nullptr},
-    /* DA */ {nullptr,                                        nullptr},
-    /* DB */ {nullptr,                                        nullptr},
-    /* DC */ {nullptr,                                        nullptr},
-    /* DD */ {nullptr,                                        nullptr},
-    /* DE */ {nullptr,                                        nullptr},
-    /* DF */ {nullptr,                                        nullptr},
-    // (DC)   SERVER                                          CLIENT
-    /* E0 */ {nullptr,                                        nullptr},
-    /* E1 */ {nullptr,                                        nullptr},
-    /* E2 */ {nullptr,                                        nullptr},
-    /* E3 */ {nullptr,                                        nullptr},
-    /* E4 */ {nullptr,                                        nullptr},
-    /* E5 */ {nullptr,                                        nullptr},
-    /* E6 */ {nullptr,                                        nullptr},
-    /* E7 */ {nullptr,                                        nullptr},
-    /* E8 */ {nullptr,                                        nullptr},
-    /* E9 */ {nullptr,                                        nullptr},
-    /* EA */ {nullptr,                                        nullptr},
-    /* EB */ {nullptr,                                        nullptr},
-    /* EC */ {nullptr,                                        nullptr},
-    /* ED */ {nullptr,                                        nullptr},
-    /* EE */ {nullptr,                                        nullptr},
-    /* EF */ {nullptr,                                        nullptr},
-    /* F0 */ {nullptr,                                        nullptr},
-    /* F1 */ {nullptr,                                        nullptr},
-    /* F2 */ {nullptr,                                        nullptr},
-    /* F3 */ {nullptr,                                        nullptr},
-    /* F4 */ {nullptr,                                        nullptr},
-    /* F5 */ {nullptr,                                        nullptr},
-    /* F6 */ {nullptr,                                        nullptr},
-    /* F7 */ {nullptr,                                        nullptr},
-    /* F8 */ {nullptr,                                        nullptr},
-    /* F9 */ {nullptr,                                        nullptr},
-    /* FA */ {nullptr,                                        nullptr},
-    /* FB */ {nullptr,                                        nullptr},
-    /* FC */ {nullptr,                                        nullptr},
-    /* FD */ {nullptr,                                        nullptr},
-    /* FE */ {nullptr,                                        nullptr},
-    /* FF */ {nullptr,                                        nullptr},
-    // (DC)   SERVER                                          CLIENT
-  }, {
-    // (PC)   SERVER                                       CLIENT
-    /* 00 */ {nullptr,                                     nullptr},
-    /* 01 */ {nullptr,                                     nullptr},
-    /* 02 */ {on_server_dc_pc_v3_patch_02_17,              nullptr},
-    /* 03 */ {nullptr,                                     nullptr},
-    /* 04 */ {on_server_dc_pc_v3_04,                       nullptr},
-    /* 05 */ {nullptr,                                     nullptr},
-    /* 06 */ {on_server_dc_pc_v3_06,                       on_client_06},
-    /* 07 */ {nullptr,                                     nullptr},
-    /* 08 */ {nullptr,                                     nullptr},
-    /* 09 */ {nullptr,                                     nullptr},
-    /* 0A */ {nullptr,                                     nullptr},
-    /* 0B */ {nullptr,                                     nullptr},
-    /* 0C */ {nullptr,                                     nullptr},
-    /* 0D */ {nullptr,                                     nullptr},
-    /* 0E */ {nullptr,                                     nullptr},
-    /* 0F */ {nullptr,                                     nullptr},
-    /* 10 */ {nullptr,                                     nullptr},
-    /* 11 */ {nullptr,                                     nullptr},
-    /* 12 */ {nullptr,                                     nullptr},
-    /* 13 */ {on_server_13_A7,                             nullptr},
-    /* 14 */ {nullptr,                                     nullptr},
-    /* 15 */ {nullptr,                                     nullptr},
-    /* 16 */ {nullptr,                                     nullptr},
-    /* 17 */ {on_server_dc_pc_v3_patch_02_17,              nullptr},
-    /* 18 */ {nullptr,                                     nullptr},
-    /* 19 */ {on_server_game_19_patch_14,                  nullptr},
-    /* 1A */ {nullptr,                                     nullptr},
-    /* 1B */ {nullptr,                                     nullptr},
-    /* 1C */ {nullptr,                                     nullptr},
-    /* 1D */ {nullptr,                                     nullptr},
-    /* 1E */ {nullptr,                                     nullptr},
-    /* 1F */ {nullptr,                                     nullptr},
-    // (PC)   SERVER                                       CLIENT
-    /* 20 */ {nullptr,                                     nullptr},
-    /* 21 */ {nullptr,                                     nullptr},
-    /* 22 */ {nullptr,                                     nullptr},
-    /* 23 */ {nullptr,                                     nullptr},
-    /* 24 */ {nullptr,                                     nullptr},
-    /* 25 */ {nullptr,                                     nullptr},
-    /* 26 */ {nullptr,                                     nullptr},
-    /* 27 */ {nullptr,                                     nullptr},
-    /* 28 */ {nullptr,                                     nullptr},
-    /* 29 */ {nullptr,                                     nullptr},
-    /* 2A */ {nullptr,                                     nullptr},
-    /* 2B */ {nullptr,                                     nullptr},
-    /* 2C */ {nullptr,                                     nullptr},
-    /* 2D */ {nullptr,                                     nullptr},
-    /* 2E */ {nullptr,                                     nullptr},
-    /* 2F */ {nullptr,                                     nullptr},
-    /* 30 */ {nullptr,                                     nullptr},
-    /* 31 */ {nullptr,                                     nullptr},
-    /* 32 */ {nullptr,                                     nullptr},
-    /* 33 */ {nullptr,                                     nullptr},
-    /* 34 */ {nullptr,                                     nullptr},
-    /* 35 */ {nullptr,                                     nullptr},
-    /* 36 */ {nullptr,                                     nullptr},
-    /* 37 */ {nullptr,                                     nullptr},
-    /* 38 */ {nullptr,                                     nullptr},
-    /* 39 */ {nullptr,                                     nullptr},
-    /* 3A */ {nullptr,                                     nullptr},
-    /* 3B */ {nullptr,                                     nullptr},
-    /* 3C */ {nullptr,                                     nullptr},
-    /* 3D */ {nullptr,                                     nullptr},
-    /* 3E */ {nullptr,                                     nullptr},
-    /* 3F */ {nullptr,                                     nullptr},
-    // (PC)   SERVER                                       CLIENT
-    /* 40 */ {nullptr,                                     on_client_40},
-    /* 41 */ {on_server_41<S_GuildCardSearchResult_PC_41>, nullptr},
-    /* 42 */ {nullptr,                                     nullptr},
-    /* 43 */ {nullptr,                                     nullptr},
-    /* 44 */ {on_server_44_A6<S_OpenFile_PC_V3_44_A6>,     nullptr},
-    /* 45 */ {nullptr,                                     nullptr},
-    /* 46 */ {nullptr,                                     nullptr},
-    /* 47 */ {nullptr,                                     nullptr},
-    /* 48 */ {nullptr,                                     nullptr},
-    /* 49 */ {nullptr,                                     nullptr},
-    /* 4A */ {nullptr,                                     nullptr},
-    /* 4B */ {nullptr,                                     nullptr},
-    /* 4C */ {nullptr,                                     nullptr},
-    /* 4D */ {nullptr,                                     nullptr},
-    /* 4E */ {nullptr,                                     nullptr},
-    /* 4F */ {nullptr,                                     nullptr},
-    /* 50 */ {nullptr,                                     nullptr},
-    /* 51 */ {nullptr,                                     nullptr},
-    /* 52 */ {nullptr,                                     nullptr},
-    /* 53 */ {nullptr,                                     nullptr},
-    /* 54 */ {nullptr,                                     nullptr},
-    /* 55 */ {nullptr,                                     nullptr},
-    /* 56 */ {nullptr,                                     nullptr},
-    /* 57 */ {nullptr,                                     nullptr},
-    /* 58 */ {nullptr,                                     nullptr},
-    /* 59 */ {nullptr,                                     nullptr},
-    /* 5A */ {nullptr,                                     nullptr},
-    /* 5B */ {nullptr,                                     nullptr},
-    /* 5C */ {nullptr,                                     nullptr},
-    /* 5D */ {nullptr,                                     nullptr},
-    /* 5E */ {nullptr,                                     nullptr},
-    /* 5F */ {nullptr,                                     nullptr},
-    // (PC)   SERVER                                       CLIENT
-    /* 60 */ {on_server_60_62_6C_6D_C9_CB,                 on_client_60_62_6C_6D_C9_CB<void>},
-    /* 61 */ {nullptr,                                     nullptr},
-    /* 62 */ {on_server_60_62_6C_6D_C9_CB,                 on_client_60_62_6C_6D_C9_CB<void>},
-    /* 63 */ {nullptr,                                     nullptr},
-    /* 64 */ {on_server_64<S_JoinGame_PC_64>,              nullptr},
-    /* 65 */ {on_server_65_67_68<S_JoinLobby_PC_65_67_68>, nullptr},
-    /* 66 */ {on_server_66_69,                             nullptr},
-    /* 67 */ {on_server_65_67_68<S_JoinLobby_PC_65_67_68>, nullptr},
-    /* 68 */ {on_server_65_67_68<S_JoinLobby_PC_65_67_68>, nullptr},
-    /* 69 */ {on_server_66_69,                             nullptr},
-    /* 6A */ {nullptr,                                     nullptr},
-    /* 6B */ {nullptr,                                     nullptr},
-    /* 6C */ {on_server_60_62_6C_6D_C9_CB,                 on_client_60_62_6C_6D_C9_CB<void>},
-    /* 6D */ {on_server_60_62_6C_6D_C9_CB,                 on_client_60_62_6C_6D_C9_CB<void>},
-    /* 6E */ {nullptr,                                     nullptr},
-    /* 6F */ {nullptr,                                     nullptr},
-    /* 70 */ {nullptr,                                     nullptr},
-    /* 71 */ {nullptr,                                     nullptr},
-    /* 72 */ {nullptr,                                     nullptr},
-    /* 73 */ {nullptr,                                     nullptr},
-    /* 74 */ {nullptr,                                     nullptr},
-    /* 75 */ {nullptr,                                     nullptr},
-    /* 76 */ {nullptr,                                     nullptr},
-    /* 77 */ {nullptr,                                     nullptr},
-    /* 78 */ {nullptr,                                     nullptr},
-    /* 79 */ {nullptr,                                     nullptr},
-    /* 7A */ {nullptr,                                     nullptr},
-    /* 7B */ {nullptr,                                     nullptr},
-    /* 7C */ {nullptr,                                     nullptr},
-    /* 7D */ {nullptr,                                     nullptr},
-    /* 7E */ {nullptr,                                     nullptr},
-    /* 7F */ {nullptr,                                     nullptr},
-    // (PC)   SERVER                                       CLIENT
-    /* 80 */ {nullptr,                                     nullptr},
-    /* 81 */ {nullptr,                                     nullptr},
-    /* 82 */ {nullptr,                                     nullptr},
-    /* 83 */ {nullptr,                                     nullptr},
-    /* 84 */ {nullptr,                                     nullptr},
-    /* 85 */ {nullptr,                                     nullptr},
-    /* 86 */ {nullptr,                                     nullptr},
-    /* 87 */ {nullptr,                                     nullptr},
-    /* 88 */ {on_server_88,                                nullptr},
-    /* 89 */ {nullptr,                                     nullptr},
-    /* 8A */ {nullptr,                                     nullptr},
-    /* 8B */ {nullptr,                                     nullptr},
-    /* 8C */ {nullptr,                                     nullptr},
-    /* 8D */ {nullptr,                                     nullptr},
-    /* 8E */ {nullptr,                                     nullptr},
-    /* 8F */ {nullptr,                                     nullptr},
-    /* 90 */ {nullptr,                                     nullptr},
-    /* 91 */ {nullptr,                                     nullptr},
-    /* 92 */ {nullptr,                                     nullptr},
-    /* 93 */ {nullptr,                                     nullptr},
-    /* 94 */ {nullptr,                                     nullptr},
-    /* 95 */ {nullptr,                                     nullptr},
-    /* 96 */ {nullptr,                                     nullptr},
-    /* 97 */ {on_server_97,                                nullptr},
-    /* 98 */ {nullptr,                                     on_client_98},
-    /* 99 */ {nullptr,                                     nullptr},
-    /* 9A */ {nullptr,                                     nullptr},
-    /* 9B */ {nullptr,                                     nullptr},
-    /* 9C */ {nullptr,                                     nullptr},
-    /* 9D */ {nullptr,                                     nullptr},
-    /* 9E */ {nullptr,                                     nullptr},
-    /* 9F */ {nullptr,                                     nullptr},
-    // (PC)   SERVER                                       CLIENT
-    /* A0 */ {nullptr,                                     on_client_dc_pc_v3_A0_A1},
-    /* A1 */ {nullptr,                                     on_client_dc_pc_v3_A0_A1},
-    /* A2 */ {nullptr,                                     nullptr},
-    /* A3 */ {nullptr,                                     nullptr},
-    /* A4 */ {nullptr,                                     nullptr},
-    /* A5 */ {nullptr,                                     nullptr},
-    /* A6 */ {on_server_44_A6<S_OpenFile_PC_V3_44_A6>,     nullptr},
-    /* A7 */ {on_server_13_A7,                             nullptr},
-    /* A8 */ {nullptr,                                     nullptr},
-    /* A9 */ {nullptr,                                     nullptr},
-    /* AA */ {nullptr,                                     nullptr},
-    /* AB */ {nullptr,                                     nullptr},
-    /* AC */ {nullptr,                                     nullptr},
-    /* AD */ {nullptr,                                     nullptr},
-    /* AE */ {nullptr,                                     nullptr},
-    /* AF */ {nullptr,                                     nullptr},
-    /* B0 */ {nullptr,                                     nullptr},
-    /* B1 */ {nullptr,                                     nullptr},
-    /* B2 */ {nullptr,                                     nullptr},
-    /* B3 */ {nullptr,                                     nullptr},
-    /* B4 */ {nullptr,                                     nullptr},
-    /* B5 */ {nullptr,                                     nullptr},
-    /* B6 */ {nullptr,                                     nullptr},
-    /* B7 */ {nullptr,                                     nullptr},
-    /* B8 */ {nullptr,                                     nullptr},
-    /* B9 */ {nullptr,                                     nullptr},
-    /* BA */ {nullptr,                                     nullptr},
-    /* BB */ {nullptr,                                     nullptr},
-    /* BC */ {nullptr,                                     nullptr},
-    /* BD */ {nullptr,                                     nullptr},
-    /* BE */ {nullptr,                                     nullptr},
-    /* BF */ {nullptr,                                     nullptr},
-    // (PC)   SERVER                                       CLIENT
-    /* C0 */ {nullptr,                                     nullptr},
-    /* C1 */ {nullptr,                                     nullptr},
-    /* C2 */ {nullptr,                                     nullptr},
-    /* C3 */ {nullptr,                                     nullptr},
-    /* C4 */ {nullptr,                                     nullptr},
-    /* C5 */ {nullptr,                                     nullptr},
-    /* C6 */ {nullptr,                                     nullptr},
-    /* C7 */ {nullptr,                                     nullptr},
-    /* C8 */ {nullptr,                                     nullptr},
-    /* C9 */ {nullptr,                                     nullptr},
-    /* CA */ {nullptr,                                     nullptr},
-    /* CB */ {nullptr,                                     nullptr},
-    /* CC */ {nullptr,                                     nullptr},
-    /* CD */ {nullptr,                                     nullptr},
-    /* CE */ {nullptr,                                     nullptr},
-    /* CF */ {nullptr,                                     nullptr},
-    /* D0 */ {nullptr,                                     nullptr},
-    /* D1 */ {nullptr,                                     nullptr},
-    /* D2 */ {nullptr,                                     nullptr},
-    /* D3 */ {nullptr,                                     nullptr},
-    /* D4 */ {nullptr,                                     nullptr},
-    /* D5 */ {nullptr,                                     nullptr},
-    /* D6 */ {nullptr,                                     nullptr},
-    /* D7 */ {nullptr,                                     nullptr},
-    /* D8 */ {nullptr,                                     nullptr},
-    /* D9 */ {nullptr,                                     nullptr},
-    /* DA */ {nullptr,                                     nullptr},
-    /* DB */ {nullptr,                                     nullptr},
-    /* DC */ {nullptr,                                     nullptr},
-    /* DD */ {nullptr,                                     nullptr},
-    /* DE */ {nullptr,                                     nullptr},
-    /* DF */ {nullptr,                                     nullptr},
-    // (PC)   SERVER                                       CLIENT
-    /* E0 */ {nullptr,                                     nullptr},
-    /* E1 */ {nullptr,                                     nullptr},
-    /* E2 */ {nullptr,                                     nullptr},
-    /* E3 */ {nullptr,                                     nullptr},
-    /* E4 */ {nullptr,                                     nullptr},
-    /* E5 */ {nullptr,                                     nullptr},
-    /* E6 */ {nullptr,                                     nullptr},
-    /* E7 */ {nullptr,                                     nullptr},
-    /* E8 */ {nullptr,                                     nullptr},
-    /* E9 */ {nullptr,                                     nullptr},
-    /* EA */ {nullptr,                                     nullptr},
-    /* EB */ {nullptr,                                     nullptr},
-    /* EC */ {nullptr,                                     nullptr},
-    /* ED */ {nullptr,                                     nullptr},
-    /* EE */ {nullptr,                                     nullptr},
-    /* EF */ {nullptr,                                     nullptr},
-    /* F0 */ {nullptr,                                     nullptr},
-    /* F1 */ {nullptr,                                     nullptr},
-    /* F2 */ {nullptr,                                     nullptr},
-    /* F3 */ {nullptr,                                     nullptr},
-    /* F4 */ {nullptr,                                     nullptr},
-    /* F5 */ {nullptr,                                     nullptr},
-    /* F6 */ {nullptr,                                     nullptr},
-    /* F7 */ {nullptr,                                     nullptr},
-    /* F8 */ {nullptr,                                     nullptr},
-    /* F9 */ {nullptr,                                     nullptr},
-    /* FA */ {nullptr,                                     nullptr},
-    /* FB */ {nullptr,                                     nullptr},
-    /* FC */ {nullptr,                                     nullptr},
-    /* FD */ {nullptr,                                     nullptr},
-    /* FE */ {nullptr,                                     nullptr},
-    /* FF */ {nullptr,                                     nullptr},
-    // (PC)   SERVER                                       CLIENT
-  }, {
-    // (GC)   SERVER                                          CLIENT
-    /* 00 */ {nullptr,                                        nullptr},
-    /* 01 */ {nullptr,                                        nullptr},
-    /* 02 */ {on_server_dc_pc_v3_patch_02_17,                 nullptr},
-    /* 03 */ {nullptr,                                        nullptr},
-    /* 04 */ {on_server_dc_pc_v3_04,                          nullptr},
-    /* 05 */ {nullptr,                                        nullptr},
-    /* 06 */ {on_server_dc_pc_v3_06,                          on_client_06},
-    /* 07 */ {nullptr,                                        nullptr},
-    /* 08 */ {nullptr,                                        nullptr},
-    /* 09 */ {nullptr,                                        nullptr},
-    /* 0A */ {nullptr,                                        nullptr},
-    /* 0B */ {nullptr,                                        nullptr},
-    /* 0C */ {nullptr,                                        nullptr},
-    /* 0D */ {nullptr,                                        nullptr},
-    /* 0E */ {nullptr,                                        nullptr},
-    /* 0F */ {nullptr,                                        nullptr},
-    /* 10 */ {nullptr,                                        nullptr},
-    /* 11 */ {nullptr,                                        nullptr},
-    /* 12 */ {nullptr,                                        nullptr},
-    /* 13 */ {on_server_13_A7,                                nullptr},
-    /* 14 */ {nullptr,                                        nullptr},
-    /* 15 */ {nullptr,                                        nullptr},
-    /* 16 */ {nullptr,                                        nullptr},
-    /* 17 */ {on_server_dc_pc_v3_patch_02_17,                 nullptr},
-    /* 18 */ {nullptr,                                        nullptr},
-    /* 19 */ {on_server_game_19_patch_14,                     nullptr},
-    /* 1A */ {on_server_v3_1A_D5,                             nullptr},
-    /* 1B */ {nullptr,                                        nullptr},
-    /* 1C */ {nullptr,                                        nullptr},
-    /* 1D */ {nullptr,                                        nullptr},
-    /* 1E */ {nullptr,                                        nullptr},
-    /* 1F */ {nullptr,                                        nullptr},
-    // (GC)   SERVER                                          CLIENT
-    /* 20 */ {nullptr,                                        nullptr},
-    /* 21 */ {nullptr,                                        nullptr},
-    /* 22 */ {nullptr,                                        nullptr},
-    /* 23 */ {nullptr,                                        nullptr},
-    /* 24 */ {nullptr,                                        nullptr},
-    /* 25 */ {nullptr,                                        nullptr},
-    /* 26 */ {nullptr,                                        nullptr},
-    /* 27 */ {nullptr,                                        nullptr},
-    /* 28 */ {nullptr,                                        nullptr},
-    /* 29 */ {nullptr,                                        nullptr},
-    /* 2A */ {nullptr,                                        nullptr},
-    /* 2B */ {nullptr,                                        nullptr},
-    /* 2C */ {nullptr,                                        nullptr},
-    /* 2D */ {nullptr,                                        nullptr},
-    /* 2E */ {nullptr,                                        nullptr},
-    /* 2F */ {nullptr,                                        nullptr},
-    /* 30 */ {nullptr,                                        nullptr},
-    /* 31 */ {nullptr,                                        nullptr},
-    /* 32 */ {nullptr,                                        nullptr},
-    /* 33 */ {nullptr,                                        nullptr},
-    /* 34 */ {nullptr,                                        nullptr},
-    /* 35 */ {nullptr,                                        nullptr},
-    /* 36 */ {nullptr,                                        nullptr},
-    /* 37 */ {nullptr,                                        nullptr},
-    /* 38 */ {nullptr,                                        nullptr},
-    /* 39 */ {nullptr,                                        nullptr},
-    /* 3A */ {nullptr,                                        nullptr},
-    /* 3B */ {nullptr,                                        nullptr},
-    /* 3C */ {nullptr,                                        nullptr},
-    /* 3D */ {nullptr,                                        nullptr},
-    /* 3E */ {nullptr,                                        nullptr},
-    /* 3F */ {nullptr,                                        nullptr},
-    // (GC)   SERVER                                          CLIENT
-    /* 40 */ {nullptr,                                        on_client_40},
-    /* 41 */ {on_server_41<S_GuildCardSearchResult_DC_V3_41>, nullptr},
-    /* 42 */ {nullptr,                                        nullptr},
-    /* 43 */ {nullptr,                                        nullptr},
-    /* 44 */ {on_server_44_A6<S_OpenFile_PC_V3_44_A6>,        nullptr},
-    /* 45 */ {nullptr,                                        nullptr},
-    /* 46 */ {nullptr,                                        nullptr},
-    /* 47 */ {nullptr,                                        nullptr},
-    /* 48 */ {nullptr,                                        nullptr},
-    /* 49 */ {nullptr,                                        nullptr},
-    /* 4A */ {nullptr,                                        nullptr},
-    /* 4B */ {nullptr,                                        nullptr},
-    /* 4C */ {nullptr,                                        nullptr},
-    /* 4D */ {nullptr,                                        nullptr},
-    /* 4E */ {nullptr,                                        nullptr},
-    /* 4F */ {nullptr,                                        nullptr},
-    /* 50 */ {nullptr,                                        nullptr},
-    /* 51 */ {nullptr,                                        nullptr},
-    /* 52 */ {nullptr,                                        nullptr},
-    /* 53 */ {nullptr,                                        nullptr},
-    /* 54 */ {nullptr,                                        nullptr},
-    /* 55 */ {nullptr,                                        nullptr},
-    /* 56 */ {nullptr,                                        nullptr},
-    /* 57 */ {nullptr,                                        nullptr},
-    /* 58 */ {nullptr,                                        nullptr},
-    /* 59 */ {nullptr,                                        nullptr},
-    /* 5A */ {nullptr,                                        nullptr},
-    /* 5B */ {nullptr,                                        nullptr},
-    /* 5C */ {nullptr,                                        nullptr},
-    /* 5D */ {nullptr,                                        nullptr},
-    /* 5E */ {nullptr,                                        nullptr},
-    /* 5F */ {nullptr,                                        nullptr},
-    // (GC)   SERVER                                          CLIENT
-    /* 60 */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>},
-    /* 61 */ {nullptr,                                        nullptr},
-    /* 62 */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>},
-    /* 63 */ {nullptr,                                        nullptr},
-    /* 64 */ {on_server_64<S_JoinGame_DC_GC_64>,              nullptr},
-    /* 65 */ {on_server_65_67_68<S_JoinLobby_DC_GC_65_67_68>, nullptr},
-    /* 66 */ {on_server_66_69,                                nullptr},
-    /* 67 */ {on_server_65_67_68<S_JoinLobby_DC_GC_65_67_68>, nullptr},
-    /* 68 */ {on_server_65_67_68<S_JoinLobby_DC_GC_65_67_68>, nullptr},
-    /* 69 */ {on_server_66_69,                                nullptr},
-    /* 6A */ {nullptr,                                        nullptr},
-    /* 6B */ {nullptr,                                        nullptr},
-    /* 6C */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>},
-    /* 6D */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>},
-    /* 6E */ {nullptr,                                        nullptr},
-    /* 6F */ {nullptr,                                        nullptr},
-    /* 70 */ {nullptr,                                        nullptr},
-    /* 71 */ {nullptr,                                        nullptr},
-    /* 72 */ {nullptr,                                        nullptr},
-    /* 73 */ {nullptr,                                        nullptr},
-    /* 74 */ {nullptr,                                        nullptr},
-    /* 75 */ {nullptr,                                        nullptr},
-    /* 76 */ {nullptr,                                        nullptr},
-    /* 77 */ {nullptr,                                        nullptr},
-    /* 78 */ {nullptr,                                        nullptr},
-    /* 79 */ {nullptr,                                        nullptr},
-    /* 7A */ {nullptr,                                        nullptr},
-    /* 7B */ {nullptr,                                        nullptr},
-    /* 7C */ {nullptr,                                        nullptr},
-    /* 7D */ {nullptr,                                        nullptr},
-    /* 7E */ {nullptr,                                        nullptr},
-    /* 7F */ {nullptr,                                        nullptr},
-    // (GC)   SERVER                                          CLIENT
-    /* 80 */ {nullptr,                                        nullptr},
-    /* 81 */ {on_server_81<SC_SimpleMail_DC_V3_81>,           on_client_81<SC_SimpleMail_DC_V3_81>},
-    /* 82 */ {nullptr,                                        nullptr},
-    /* 83 */ {nullptr,                                        nullptr},
-    /* 84 */ {nullptr,                                        nullptr},
-    /* 85 */ {nullptr,                                        nullptr},
-    /* 86 */ {nullptr,                                        nullptr},
-    /* 87 */ {nullptr,                                        nullptr},
-    /* 88 */ {on_server_88,                                   nullptr},
-    /* 89 */ {nullptr,                                        nullptr},
-    /* 8A */ {nullptr,                                        nullptr},
-    /* 8B */ {nullptr,                                        nullptr},
-    /* 8C */ {nullptr,                                        nullptr},
-    /* 8D */ {nullptr,                                        nullptr},
-    /* 8E */ {nullptr,                                        nullptr},
-    /* 8F */ {nullptr,                                        nullptr},
-    /* 90 */ {nullptr,                                        nullptr},
-    /* 91 */ {nullptr,                                        nullptr},
-    /* 92 */ {nullptr,                                        nullptr},
-    /* 93 */ {nullptr,                                        nullptr},
-    /* 94 */ {nullptr,                                        nullptr},
-    /* 95 */ {nullptr,                                        nullptr},
-    /* 96 */ {nullptr,                                        nullptr},
-    /* 97 */ {on_server_97,                                   nullptr},
-    /* 98 */ {nullptr,                                        on_client_98},
-    /* 99 */ {nullptr,                                        nullptr},
-    /* 9A */ {on_server_gc_9A,                                nullptr},
-    /* 9B */ {nullptr,                                        nullptr},
-    /* 9C */ {nullptr,                                        nullptr},
-    /* 9D */ {nullptr,                                        nullptr},
-    /* 9E */ {nullptr,                                        on_client_gc_9E},
-    /* 9F */ {nullptr,                                        nullptr},
-    // (GC)   SERVER                                          CLIENT
-    /* A0 */ {nullptr,                                        on_client_dc_pc_v3_A0_A1},
-    /* A1 */ {nullptr,                                        on_client_dc_pc_v3_A0_A1},
-    /* A2 */ {nullptr,                                        nullptr},
-    /* A3 */ {nullptr,                                        nullptr},
-    /* A4 */ {nullptr,                                        nullptr},
-    /* A5 */ {nullptr,                                        nullptr},
-    /* A6 */ {on_server_44_A6<S_OpenFile_PC_V3_44_A6>,        nullptr},
-    /* A7 */ {on_server_13_A7,                                nullptr},
-    /* A8 */ {nullptr,                                        nullptr},
-    /* A9 */ {nullptr,                                        nullptr},
-    /* AA */ {nullptr,                                        nullptr},
-    /* AB */ {nullptr,                                        nullptr},
-    /* AC */ {nullptr,                                        nullptr},
-    /* AD */ {nullptr,                                        nullptr},
-    /* AE */ {nullptr,                                        nullptr},
-    /* AF */ {nullptr,                                        nullptr},
-    /* B0 */ {nullptr,                                        nullptr},
-    /* B1 */ {nullptr,                                        nullptr},
-    /* B2 */ {on_server_B2,                                   nullptr},
-    /* B3 */ {nullptr,                                        nullptr},
-    /* B4 */ {nullptr,                                        nullptr},
-    /* B5 */ {nullptr,                                        nullptr},
-    /* B6 */ {nullptr,                                        nullptr},
-    /* B7 */ {nullptr,                                        nullptr},
-    /* B8 */ {on_server_gc_B8,                                nullptr},
-    /* B9 */ {nullptr,                                        nullptr},
-    /* BA */ {nullptr,                                        nullptr},
-    /* BB */ {nullptr,                                        nullptr},
-    /* BC */ {nullptr,                                        nullptr},
-    /* BD */ {nullptr,                                        nullptr},
-    /* BE */ {nullptr,                                        nullptr},
-    /* BF */ {nullptr,                                        nullptr},
-    // (GC)   SERVER                                          CLIENT
-    /* C0 */ {nullptr,                                        nullptr},
-    /* C1 */ {nullptr,                                        nullptr},
-    /* C2 */ {nullptr,                                        nullptr},
-    /* C3 */ {nullptr,                                        nullptr},
-    /* C4 */ {on_server_C4<S_ChoiceSearchResultEntry_V3_C4>,  nullptr},
-    /* C5 */ {nullptr,                                        nullptr},
-    /* C6 */ {nullptr,                                        nullptr},
-    /* C7 */ {nullptr,                                        nullptr},
-    /* C8 */ {nullptr,                                        nullptr},
-    /* C9 */ {on_server_60_62_6C_6D_C9_CB,                    nullptr},
-    /* CA */ {nullptr,                                        nullptr},
-    /* CB */ {on_server_60_62_6C_6D_C9_CB,                    nullptr},
-    /* CC */ {nullptr,                                        nullptr},
-    /* CD */ {nullptr,                                        nullptr},
-    /* CE */ {nullptr,                                        nullptr},
-    /* CF */ {nullptr,                                        nullptr},
-    /* D0 */ {nullptr,                                        nullptr},
-    /* D1 */ {nullptr,                                        nullptr},
-    /* D2 */ {nullptr,                                        nullptr},
-    /* D3 */ {nullptr,                                        nullptr},
-    /* D4 */ {nullptr,                                        nullptr},
-    /* D5 */ {on_server_v3_1A_D5,                             nullptr},
-    /* D6 */ {nullptr,                                        nullptr},
-    /* D7 */ {nullptr,                                        nullptr},
-    /* D8 */ {nullptr,                                        nullptr},
-    /* D9 */ {nullptr,                                        nullptr},
-    /* DA */ {nullptr,                                        nullptr},
-    /* DB */ {nullptr,                                        nullptr},
-    /* DC */ {nullptr,                                        nullptr},
-    /* DD */ {nullptr,                                        nullptr},
-    /* DE */ {nullptr,                                        nullptr},
-    /* DF */ {nullptr,                                        nullptr},
-    // (GC)   SERVER                                          CLIENT
-    /* E0 */ {nullptr,                                        nullptr},
-    /* E1 */ {nullptr,                                        nullptr},
-    /* E2 */ {nullptr,                                        nullptr},
-    /* E3 */ {nullptr,                                        nullptr},
-    /* E4 */ {on_server_gc_E4,                                nullptr},
-    /* E5 */ {nullptr,                                        nullptr},
-    /* E6 */ {nullptr,                                        nullptr},
-    /* E7 */ {nullptr,                                        nullptr},
-    /* E8 */ {nullptr,                                        nullptr},
-    /* E9 */ {nullptr,                                        nullptr},
-    /* EA */ {nullptr,                                        nullptr},
-    /* EB */ {nullptr,                                        nullptr},
-    /* EC */ {nullptr,                                        nullptr},
-    /* ED */ {nullptr,                                        nullptr},
-    /* EE */ {nullptr,                                        nullptr},
-    /* EF */ {nullptr,                                        nullptr},
-    /* F0 */ {nullptr,                                        nullptr},
-    /* F1 */ {nullptr,                                        nullptr},
-    /* F2 */ {nullptr,                                        nullptr},
-    /* F3 */ {nullptr,                                        nullptr},
-    /* F4 */ {nullptr,                                        nullptr},
-    /* F5 */ {nullptr,                                        nullptr},
-    /* F6 */ {nullptr,                                        nullptr},
-    /* F7 */ {nullptr,                                        nullptr},
-    /* F8 */ {nullptr,                                        nullptr},
-    /* F9 */ {nullptr,                                        nullptr},
-    /* FA */ {nullptr,                                        nullptr},
-    /* FB */ {nullptr,                                        nullptr},
-    /* FC */ {nullptr,                                        nullptr},
-    /* FD */ {nullptr,                                        nullptr},
-    /* FE */ {nullptr,                                        nullptr},
-    /* FF */ {nullptr,                                        nullptr},
-    // (GC)   SERVER                                          CLIENT
-  }, {
-    // (XB)   SERVER                                          CLIENT
-    /* 00 */ {nullptr,                                        nullptr},
-    /* 01 */ {nullptr,                                        nullptr},
-    /* 02 */ {on_server_dc_pc_v3_patch_02_17,                 nullptr},
-    /* 03 */ {nullptr,                                        nullptr},
-    /* 04 */ {on_server_dc_pc_v3_04,                          nullptr},
-    /* 05 */ {nullptr,                                        nullptr},
-    /* 06 */ {on_server_dc_pc_v3_06,                          on_client_06},
-    /* 07 */ {nullptr,                                        nullptr},
-    /* 08 */ {nullptr,                                        nullptr},
-    /* 09 */ {nullptr,                                        nullptr},
-    /* 0A */ {nullptr,                                        nullptr},
-    /* 0B */ {nullptr,                                        nullptr},
-    /* 0C */ {nullptr,                                        nullptr},
-    /* 0D */ {nullptr,                                        nullptr},
-    /* 0E */ {nullptr,                                        nullptr},
-    /* 0F */ {nullptr,                                        nullptr},
-    /* 10 */ {nullptr,                                        nullptr},
-    /* 11 */ {nullptr,                                        nullptr},
-    /* 12 */ {nullptr,                                        nullptr},
-    /* 13 */ {on_server_13_A7,                                nullptr},
-    /* 14 */ {nullptr,                                        nullptr},
-    /* 15 */ {nullptr,                                        nullptr},
-    /* 16 */ {nullptr,                                        nullptr},
-    /* 17 */ {on_server_dc_pc_v3_patch_02_17,                 nullptr},
-    /* 18 */ {nullptr,                                        nullptr},
-    /* 19 */ {on_server_game_19_patch_14,                     nullptr},
-    /* 1A */ {on_server_v3_1A_D5,                             nullptr},
-    /* 1B */ {nullptr,                                        nullptr},
-    /* 1C */ {nullptr,                                        nullptr},
-    /* 1D */ {nullptr,                                        nullptr},
-    /* 1E */ {nullptr,                                        nullptr},
-    /* 1F */ {nullptr,                                        nullptr},
-    // (XB)   SERVER                                          CLIENT
-    /* 20 */ {nullptr,                                        nullptr},
-    /* 21 */ {nullptr,                                        nullptr},
-    /* 22 */ {nullptr,                                        nullptr},
-    /* 23 */ {nullptr,                                        nullptr},
-    /* 24 */ {nullptr,                                        nullptr},
-    /* 25 */ {nullptr,                                        nullptr},
-    /* 26 */ {nullptr,                                        nullptr},
-    /* 27 */ {nullptr,                                        nullptr},
-    /* 28 */ {nullptr,                                        nullptr},
-    /* 29 */ {nullptr,                                        nullptr},
-    /* 2A */ {nullptr,                                        nullptr},
-    /* 2B */ {nullptr,                                        nullptr},
-    /* 2C */ {nullptr,                                        nullptr},
-    /* 2D */ {nullptr,                                        nullptr},
-    /* 2E */ {nullptr,                                        nullptr},
-    /* 2F */ {nullptr,                                        nullptr},
-    /* 30 */ {nullptr,                                        nullptr},
-    /* 31 */ {nullptr,                                        nullptr},
-    /* 32 */ {nullptr,                                        nullptr},
-    /* 33 */ {nullptr,                                        nullptr},
-    /* 34 */ {nullptr,                                        nullptr},
-    /* 35 */ {nullptr,                                        nullptr},
-    /* 36 */ {nullptr,                                        nullptr},
-    /* 37 */ {nullptr,                                        nullptr},
-    /* 38 */ {nullptr,                                        nullptr},
-    /* 39 */ {nullptr,                                        nullptr},
-    /* 3A */ {nullptr,                                        nullptr},
-    /* 3B */ {nullptr,                                        nullptr},
-    /* 3C */ {nullptr,                                        nullptr},
-    /* 3D */ {nullptr,                                        nullptr},
-    /* 3E */ {nullptr,                                        nullptr},
-    /* 3F */ {nullptr,                                        nullptr},
-    // (XB)   SERVER                                          CLIENT
-    /* 40 */ {nullptr,                                        on_client_40},
-    /* 41 */ {on_server_41<S_GuildCardSearchResult_DC_V3_41>, nullptr},
-    /* 42 */ {nullptr,                                        nullptr},
-    /* 43 */ {nullptr,                                        nullptr},
-    /* 44 */ {on_server_44_A6<S_OpenFile_PC_V3_44_A6>,        nullptr},
-    /* 45 */ {nullptr,                                        nullptr},
-    /* 46 */ {nullptr,                                        nullptr},
-    /* 47 */ {nullptr,                                        nullptr},
-    /* 48 */ {nullptr,                                        nullptr},
-    /* 49 */ {nullptr,                                        nullptr},
-    /* 4A */ {nullptr,                                        nullptr},
-    /* 4B */ {nullptr,                                        nullptr},
-    /* 4C */ {nullptr,                                        nullptr},
-    /* 4D */ {nullptr,                                        nullptr},
-    /* 4E */ {nullptr,                                        nullptr},
-    /* 4F */ {nullptr,                                        nullptr},
-    /* 50 */ {nullptr,                                        nullptr},
-    /* 51 */ {nullptr,                                        nullptr},
-    /* 52 */ {nullptr,                                        nullptr},
-    /* 53 */ {nullptr,                                        nullptr},
-    /* 54 */ {nullptr,                                        nullptr},
-    /* 55 */ {nullptr,                                        nullptr},
-    /* 56 */ {nullptr,                                        nullptr},
-    /* 57 */ {nullptr,                                        nullptr},
-    /* 58 */ {nullptr,                                        nullptr},
-    /* 59 */ {nullptr,                                        nullptr},
-    /* 5A */ {nullptr,                                        nullptr},
-    /* 5B */ {nullptr,                                        nullptr},
-    /* 5C */ {nullptr,                                        nullptr},
-    /* 5D */ {nullptr,                                        nullptr},
-    /* 5E */ {nullptr,                                        nullptr},
-    /* 5F */ {nullptr,                                        nullptr},
-    // (XB)   SERVER                                          CLIENT
-    /* 60 */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>},
-    /* 61 */ {nullptr,                                        nullptr},
-    /* 62 */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>},
-    /* 63 */ {nullptr,                                        nullptr},
-    /* 64 */ {on_server_64<S_JoinGame_XB_64>,                 nullptr},
-    /* 65 */ {on_server_65_67_68<S_JoinLobby_XB_65_67_68>,    nullptr},
-    /* 66 */ {on_server_66_69,                                nullptr},
-    /* 67 */ {on_server_65_67_68<S_JoinLobby_XB_65_67_68>,    nullptr},
-    /* 68 */ {on_server_65_67_68<S_JoinLobby_XB_65_67_68>,    nullptr},
-    /* 69 */ {on_server_66_69,                                nullptr},
-    /* 6A */ {nullptr,                                        nullptr},
-    /* 6B */ {nullptr,                                        nullptr},
-    /* 6C */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>},
-    /* 6D */ {on_server_60_62_6C_6D_C9_CB,                    on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_V3_6x06>},
-    /* 6E */ {nullptr,                                        nullptr},
-    /* 6F */ {nullptr,                                        nullptr},
-    /* 70 */ {nullptr,                                        nullptr},
-    /* 71 */ {nullptr,                                        nullptr},
-    /* 72 */ {nullptr,                                        nullptr},
-    /* 73 */ {nullptr,                                        nullptr},
-    /* 74 */ {nullptr,                                        nullptr},
-    /* 75 */ {nullptr,                                        nullptr},
-    /* 76 */ {nullptr,                                        nullptr},
-    /* 77 */ {nullptr,                                        nullptr},
-    /* 78 */ {nullptr,                                        nullptr},
-    /* 79 */ {nullptr,                                        nullptr},
-    /* 7A */ {nullptr,                                        nullptr},
-    /* 7B */ {nullptr,                                        nullptr},
-    /* 7C */ {nullptr,                                        nullptr},
-    /* 7D */ {nullptr,                                        nullptr},
-    /* 7E */ {nullptr,                                        nullptr},
-    /* 7F */ {nullptr,                                        nullptr},
-    // (XB)   SERVER                                          CLIENT
-    /* 80 */ {nullptr,                                        nullptr},
-    /* 81 */ {on_server_81<SC_SimpleMail_DC_V3_81>,           on_client_81<SC_SimpleMail_DC_V3_81>},
-    /* 82 */ {nullptr,                                        nullptr},
-    /* 83 */ {nullptr,                                        nullptr},
-    /* 84 */ {nullptr,                                        nullptr},
-    /* 85 */ {nullptr,                                        nullptr},
-    /* 86 */ {nullptr,                                        nullptr},
-    /* 87 */ {nullptr,                                        nullptr},
-    /* 88 */ {on_server_88,                                   nullptr},
-    /* 89 */ {nullptr,                                        nullptr},
-    /* 8A */ {nullptr,                                        nullptr},
-    /* 8B */ {nullptr,                                        nullptr},
-    /* 8C */ {nullptr,                                        nullptr},
-    /* 8D */ {nullptr,                                        nullptr},
-    /* 8E */ {nullptr,                                        nullptr},
-    /* 8F */ {nullptr,                                        nullptr},
-    /* 90 */ {nullptr,                                        nullptr},
-    /* 91 */ {nullptr,                                        nullptr},
-    /* 92 */ {nullptr,                                        nullptr},
-    /* 93 */ {nullptr,                                        nullptr},
-    /* 94 */ {nullptr,                                        nullptr},
-    /* 95 */ {nullptr,                                        nullptr},
-    /* 96 */ {nullptr,                                        nullptr},
-    /* 97 */ {on_server_97,                                   nullptr},
-    /* 98 */ {nullptr,                                        on_client_98},
-    /* 99 */ {nullptr,                                        nullptr},
-    /* 9A */ {nullptr,                                        nullptr},
-    /* 9B */ {nullptr,                                        nullptr},
-    /* 9C */ {nullptr,                                        nullptr},
-    /* 9D */ {nullptr,                                        nullptr},
-    /* 9E */ {nullptr,                                        nullptr},
-    /* 9F */ {nullptr,                                        nullptr},
-    // (XB)   SERVER                                          CLIENT
-    /* A0 */ {nullptr,                                        on_client_dc_pc_v3_A0_A1},
-    /* A1 */ {nullptr,                                        on_client_dc_pc_v3_A0_A1},
-    /* A2 */ {nullptr,                                        nullptr},
-    /* A3 */ {nullptr,                                        nullptr},
-    /* A4 */ {nullptr,                                        nullptr},
-    /* A5 */ {nullptr,                                        nullptr},
-    /* A6 */ {on_server_44_A6<S_OpenFile_PC_V3_44_A6>,        nullptr},
-    /* A7 */ {on_server_13_A7,                                nullptr},
-    /* A8 */ {nullptr,                                        nullptr},
-    /* A9 */ {nullptr,                                        nullptr},
-    /* AA */ {nullptr,                                        nullptr},
-    /* AB */ {nullptr,                                        nullptr},
-    /* AC */ {nullptr,                                        nullptr},
-    /* AD */ {nullptr,                                        nullptr},
-    /* AE */ {nullptr,                                        nullptr},
-    /* AF */ {nullptr,                                        nullptr},
-    /* B0 */ {nullptr,                                        nullptr},
-    /* B1 */ {nullptr,                                        nullptr},
-    /* B2 */ {on_server_B2,                                   nullptr},
-    /* B3 */ {nullptr,                                        nullptr},
-    /* B4 */ {nullptr,                                        nullptr},
-    /* B5 */ {nullptr,                                        nullptr},
-    /* B6 */ {nullptr,                                        nullptr},
-    /* B7 */ {nullptr,                                        nullptr},
-    /* B8 */ {nullptr,                                        nullptr},
-    /* B9 */ {nullptr,                                        nullptr},
-    /* BA */ {nullptr,                                        nullptr},
-    /* BB */ {nullptr,                                        nullptr},
-    /* BC */ {nullptr,                                        nullptr},
-    /* BD */ {nullptr,                                        nullptr},
-    /* BE */ {nullptr,                                        nullptr},
-    /* BF */ {nullptr,                                        nullptr},
-    // (XB)   SERVER                                          CLIENT
-    /* C0 */ {nullptr,                                        nullptr},
-    /* C1 */ {nullptr,                                        nullptr},
-    /* C2 */ {nullptr,                                        nullptr},
-    /* C3 */ {nullptr,                                        nullptr},
-    /* C4 */ {on_server_C4<S_ChoiceSearchResultEntry_V3_C4>,  nullptr},
-    /* C5 */ {nullptr,                                        nullptr},
-    /* C6 */ {nullptr,                                        nullptr},
-    /* C7 */ {nullptr,                                        nullptr},
-    /* C8 */ {nullptr,                                        nullptr},
-    /* C9 */ {on_server_60_62_6C_6D_C9_CB,                    nullptr},
-    /* CA */ {nullptr,                                        nullptr},
-    /* CB */ {on_server_60_62_6C_6D_C9_CB,                    nullptr},
-    /* CC */ {nullptr,                                        nullptr},
-    /* CD */ {nullptr,                                        nullptr},
-    /* CE */ {nullptr,                                        nullptr},
-    /* CF */ {nullptr,                                        nullptr},
-    /* D0 */ {nullptr,                                        nullptr},
-    /* D1 */ {nullptr,                                        nullptr},
-    /* D2 */ {nullptr,                                        nullptr},
-    /* D3 */ {nullptr,                                        nullptr},
-    /* D4 */ {nullptr,                                        nullptr},
-    /* D5 */ {on_server_v3_1A_D5,                             nullptr},
-    /* D6 */ {nullptr,                                        nullptr},
-    /* D7 */ {nullptr,                                        nullptr},
-    /* D8 */ {nullptr,                                        nullptr},
-    /* D9 */ {nullptr,                                        nullptr},
-    /* DA */ {nullptr,                                        nullptr},
-    /* DB */ {nullptr,                                        nullptr},
-    /* DC */ {nullptr,                                        nullptr},
-    /* DD */ {nullptr,                                        nullptr},
-    /* DE */ {nullptr,                                        nullptr},
-    /* DF */ {nullptr,                                        nullptr},
-    // (XB)   SERVER                                          CLIENT
-    /* E0 */ {nullptr,                                        nullptr},
-    /* E1 */ {nullptr,                                        nullptr},
-    /* E2 */ {nullptr,                                        nullptr},
-    /* E3 */ {nullptr,                                        nullptr},
-    /* E4 */ {nullptr,                                        nullptr},
-    /* E5 */ {nullptr,                                        nullptr},
-    /* E6 */ {nullptr,                                        nullptr},
-    /* E7 */ {nullptr,                                        nullptr},
-    /* E8 */ {nullptr,                                        nullptr},
-    /* E9 */ {nullptr,                                        nullptr},
-    /* EA */ {nullptr,                                        nullptr},
-    /* EB */ {nullptr,                                        nullptr},
-    /* EC */ {nullptr,                                        nullptr},
-    /* ED */ {nullptr,                                        nullptr},
-    /* EE */ {nullptr,                                        nullptr},
-    /* EF */ {nullptr,                                        nullptr},
-    /* F0 */ {nullptr,                                        nullptr},
-    /* F1 */ {nullptr,                                        nullptr},
-    /* F2 */ {nullptr,                                        nullptr},
-    /* F3 */ {nullptr,                                        nullptr},
-    /* F4 */ {nullptr,                                        nullptr},
-    /* F5 */ {nullptr,                                        nullptr},
-    /* F6 */ {nullptr,                                        nullptr},
-    /* F7 */ {nullptr,                                        nullptr},
-    /* F8 */ {nullptr,                                        nullptr},
-    /* F9 */ {nullptr,                                        nullptr},
-    /* FA */ {nullptr,                                        nullptr},
-    /* FB */ {nullptr,                                        nullptr},
-    /* FC */ {nullptr,                                        nullptr},
-    /* FD */ {nullptr,                                        nullptr},
-    /* FE */ {nullptr,                                        nullptr},
-    /* FF */ {nullptr,                                        nullptr},
-    // (XB)   SERVER                                          CLIENT
-  }, {
-    // (BB)   SERVER                                       CLIENT
-    /* 00 */ {nullptr,                                     nullptr},
-    /* 01 */ {nullptr,                                     nullptr},
-    /* 02 */ {nullptr,                                     nullptr},
-    /* 03 */ {on_server_bb_03,                             nullptr},
-    /* 04 */ {nullptr,                                     nullptr},
-    /* 05 */ {nullptr,                                     nullptr},
-    /* 06 */ {nullptr,                                     on_client_06},
-    /* 07 */ {nullptr,                                     nullptr},
-    /* 08 */ {nullptr,                                     nullptr},
-    /* 09 */ {nullptr,                                     nullptr},
-    /* 0A */ {nullptr,                                     nullptr},
-    /* 0B */ {nullptr,                                     nullptr},
-    /* 0C */ {nullptr,                                     nullptr},
-    /* 0D */ {nullptr,                                     nullptr},
-    /* 0E */ {nullptr,                                     nullptr},
-    /* 0F */ {nullptr,                                     nullptr},
-    /* 10 */ {nullptr,                                     nullptr},
-    /* 11 */ {nullptr,                                     nullptr},
-    /* 12 */ {nullptr,                                     nullptr},
-    /* 13 */ {on_server_13_A7,                             nullptr},
-    /* 14 */ {nullptr,                                     nullptr},
-    /* 15 */ {nullptr,                                     nullptr},
-    /* 16 */ {nullptr,                                     nullptr},
-    /* 17 */ {nullptr,                                     nullptr},
-    /* 18 */ {nullptr,                                     nullptr},
-    /* 19 */ {on_server_game_19_patch_14,                  nullptr},
-    /* 1A */ {nullptr,                                     nullptr},
-    /* 1B */ {nullptr,                                     nullptr},
-    /* 1C */ {nullptr,                                     nullptr},
-    /* 1D */ {nullptr,                                     nullptr},
-    /* 1E */ {nullptr,                                     nullptr},
-    /* 1F */ {nullptr,                                     nullptr},
-    // (BB)   SERVER                                       CLIENT
-    /* 20 */ {nullptr,                                     nullptr},
-    /* 21 */ {nullptr,                                     nullptr},
-    /* 22 */ {on_server_bb_22,                             nullptr},
-    /* 23 */ {nullptr,                                     nullptr},
-    /* 24 */ {nullptr,                                     nullptr},
-    /* 25 */ {nullptr,                                     nullptr},
-    /* 26 */ {nullptr,                                     nullptr},
-    /* 27 */ {nullptr,                                     nullptr},
-    /* 28 */ {nullptr,                                     nullptr},
-    /* 29 */ {nullptr,                                     nullptr},
-    /* 2A */ {nullptr,                                     nullptr},
-    /* 2B */ {nullptr,                                     nullptr},
-    /* 2C */ {nullptr,                                     nullptr},
-    /* 2D */ {nullptr,                                     nullptr},
-    /* 2E */ {nullptr,                                     nullptr},
-    /* 2F */ {nullptr,                                     nullptr},
-    /* 30 */ {nullptr,                                     nullptr},
-    /* 31 */ {nullptr,                                     nullptr},
-    /* 32 */ {nullptr,                                     nullptr},
-    /* 33 */ {nullptr,                                     nullptr},
-    /* 34 */ {nullptr,                                     nullptr},
-    /* 35 */ {nullptr,                                     nullptr},
-    /* 36 */ {nullptr,                                     nullptr},
-    /* 37 */ {nullptr,                                     nullptr},
-    /* 38 */ {nullptr,                                     nullptr},
-    /* 39 */ {nullptr,                                     nullptr},
-    /* 3A */ {nullptr,                                     nullptr},
-    /* 3B */ {nullptr,                                     nullptr},
-    /* 3C */ {nullptr,                                     nullptr},
-    /* 3D */ {nullptr,                                     nullptr},
-    /* 3E */ {nullptr,                                     nullptr},
-    /* 3F */ {nullptr,                                     nullptr},
-    // (BB)   SERVER                                       CLIENT
-    /* 40 */ {nullptr,                                     on_client_40},
-    /* 41 */ {on_server_41<S_GuildCardSearchResult_BB_41>, nullptr},
-    /* 42 */ {nullptr,                                     nullptr},
-    /* 43 */ {nullptr,                                     nullptr},
-    /* 44 */ {on_server_44_A6<S_OpenFile_BB_44_A6>,        nullptr},
-    /* 45 */ {nullptr,                                     nullptr},
-    /* 46 */ {nullptr,                                     nullptr},
-    /* 47 */ {nullptr,                                     nullptr},
-    /* 48 */ {nullptr,                                     nullptr},
-    /* 49 */ {nullptr,                                     nullptr},
-    /* 4A */ {nullptr,                                     nullptr},
-    /* 4B */ {nullptr,                                     nullptr},
-    /* 4C */ {nullptr,                                     nullptr},
-    /* 4D */ {nullptr,                                     nullptr},
-    /* 4E */ {nullptr,                                     nullptr},
-    /* 4F */ {nullptr,                                     nullptr},
-    /* 50 */ {nullptr,                                     nullptr},
-    /* 51 */ {nullptr,                                     nullptr},
-    /* 52 */ {nullptr,                                     nullptr},
-    /* 53 */ {nullptr,                                     nullptr},
-    /* 54 */ {nullptr,                                     nullptr},
-    /* 55 */ {nullptr,                                     nullptr},
-    /* 56 */ {nullptr,                                     nullptr},
-    /* 57 */ {nullptr,                                     nullptr},
-    /* 58 */ {nullptr,                                     nullptr},
-    /* 59 */ {nullptr,                                     nullptr},
-    /* 5A */ {nullptr,                                     nullptr},
-    /* 5B */ {nullptr,                                     nullptr},
-    /* 5C */ {nullptr,                                     nullptr},
-    /* 5D */ {nullptr,                                     nullptr},
-    /* 5E */ {nullptr,                                     nullptr},
-    /* 5F */ {nullptr,                                     nullptr},
-    // (BB)   SERVER                                       CLIENT
-    /* 60 */ {on_server_60_62_6C_6D_C9_CB,                 on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_BB_6x06>},
-    /* 61 */ {nullptr,                                     nullptr},
-    /* 62 */ {on_server_60_62_6C_6D_C9_CB,                 on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_BB_6x06>},
-    /* 63 */ {nullptr,                                     nullptr},
-    /* 64 */ {on_server_64<S_JoinGame_BB_64>,              nullptr},
-    /* 65 */ {on_server_65_67_68<S_JoinLobby_BB_65_67_68>, nullptr},
-    /* 66 */ {on_server_66_69,                             nullptr},
-    /* 67 */ {on_server_65_67_68<S_JoinLobby_BB_65_67_68>, nullptr},
-    /* 68 */ {on_server_65_67_68<S_JoinLobby_BB_65_67_68>, nullptr},
-    /* 69 */ {on_server_66_69,                             nullptr},
-    /* 6A */ {nullptr,                                     nullptr},
-    /* 6B */ {nullptr,                                     nullptr},
-    /* 6C */ {on_server_60_62_6C_6D_C9_CB,                 on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_BB_6x06>},
-    /* 6D */ {on_server_60_62_6C_6D_C9_CB,                 on_client_60_62_6C_6D_C9_CB<G_SendGuildCard_BB_6x06>},
-    /* 6E */ {nullptr,                                     nullptr},
-    /* 6F */ {nullptr,                                     nullptr},
-    /* 70 */ {nullptr,                                     nullptr},
-    /* 71 */ {nullptr,                                     nullptr},
-    /* 72 */ {nullptr,                                     nullptr},
-    /* 73 */ {nullptr,                                     nullptr},
-    /* 74 */ {nullptr,                                     nullptr},
-    /* 75 */ {nullptr,                                     nullptr},
-    /* 76 */ {nullptr,                                     nullptr},
-    /* 77 */ {nullptr,                                     nullptr},
-    /* 78 */ {nullptr,                                     nullptr},
-    /* 79 */ {nullptr,                                     nullptr},
-    /* 7A */ {nullptr,                                     nullptr},
-    /* 7B */ {nullptr,                                     nullptr},
-    /* 7C */ {nullptr,                                     nullptr},
-    /* 7D */ {nullptr,                                     nullptr},
-    /* 7E */ {nullptr,                                     nullptr},
-    /* 7F */ {nullptr,                                     nullptr},
-    // (BB)   SERVER                                       CLIENT
-    /* 80 */ {nullptr,                                     nullptr},
-    /* 81 */ {nullptr,                                     nullptr},
-    /* 82 */ {nullptr,                                     nullptr},
-    /* 83 */ {nullptr,                                     nullptr},
-    /* 84 */ {nullptr,                                     nullptr},
-    /* 85 */ {nullptr,                                     nullptr},
-    /* 86 */ {nullptr,                                     nullptr},
-    /* 87 */ {nullptr,                                     nullptr},
-    /* 88 */ {on_server_88,                                nullptr},
-    /* 89 */ {nullptr,                                     nullptr},
-    /* 8A */ {nullptr,                                     nullptr},
-    /* 8B */ {nullptr,                                     nullptr},
-    /* 8C */ {nullptr,                                     nullptr},
-    /* 8D */ {nullptr,                                     nullptr},
-    /* 8E */ {nullptr,                                     nullptr},
-    /* 8F */ {nullptr,                                     nullptr},
-    /* 90 */ {nullptr,                                     nullptr},
-    /* 91 */ {nullptr,                                     nullptr},
-    /* 92 */ {nullptr,                                     nullptr},
-    /* 93 */ {nullptr,                                     nullptr},
-    /* 94 */ {nullptr,                                     nullptr},
-    /* 95 */ {nullptr,                                     nullptr},
-    /* 96 */ {nullptr,                                     nullptr},
-    /* 97 */ {nullptr,                                     nullptr},
-    /* 98 */ {nullptr,                                     on_client_98},
-    /* 99 */ {nullptr,                                     nullptr},
-    /* 9A */ {nullptr,                                     nullptr},
-    /* 9B */ {nullptr,                                     nullptr},
-    /* 9C */ {nullptr,                                     nullptr},
-    /* 9D */ {nullptr,                                     nullptr},
-    /* 9E */ {nullptr,                                     nullptr},
-    /* 9F */ {nullptr,                                     nullptr},
-    // (BB)   SERVER                                       CLIENT
-    /* A0 */ {nullptr,                                     nullptr},
-    /* A1 */ {nullptr,                                     nullptr},
-    /* A2 */ {nullptr,                                     nullptr},
-    /* A3 */ {nullptr,                                     nullptr},
-    /* A4 */ {nullptr,                                     nullptr},
-    /* A5 */ {nullptr,                                     nullptr},
-    /* A6 */ {on_server_44_A6<S_OpenFile_BB_44_A6>,        nullptr},
-    /* A7 */ {on_server_13_A7,                             nullptr},
-    /* A8 */ {nullptr,                                     nullptr},
-    /* A9 */ {nullptr,                                     nullptr},
-    /* AA */ {nullptr,                                     nullptr},
-    /* AB */ {nullptr,                                     nullptr},
-    /* AC */ {nullptr,                                     nullptr},
-    /* AD */ {nullptr,                                     nullptr},
-    /* AE */ {nullptr,                                     nullptr},
-    /* AF */ {nullptr,                                     nullptr},
-    /* B0 */ {nullptr,                                     nullptr},
-    /* B1 */ {nullptr,                                     nullptr},
-    /* B2 */ {on_server_B2,                                nullptr},
-    /* B3 */ {nullptr,                                     nullptr},
-    /* B4 */ {nullptr,                                     nullptr},
-    /* B5 */ {nullptr,                                     nullptr},
-    /* B6 */ {nullptr,                                     nullptr},
-    /* B7 */ {nullptr,                                     nullptr},
-    /* B8 */ {nullptr,                                     nullptr},
-    /* B9 */ {nullptr,                                     nullptr},
-    /* BA */ {nullptr,                                     nullptr},
-    /* BB */ {nullptr,                                     nullptr},
-    /* BC */ {nullptr,                                     nullptr},
-    /* BD */ {nullptr,                                     nullptr},
-    /* BE */ {nullptr,                                     nullptr},
-    /* BF */ {nullptr,                                     nullptr},
-    // (BB)   SERVER                                       CLIENT
-    /* C0 */ {nullptr,                                     nullptr},
-    /* C1 */ {nullptr,                                     nullptr},
-    /* C2 */ {nullptr,                                     nullptr},
-    /* C3 */ {nullptr,                                     nullptr},
-    /* C4 */ {nullptr,                                     nullptr},
-    /* C5 */ {nullptr,                                     nullptr},
-    /* C6 */ {nullptr,                                     nullptr},
-    /* C7 */ {nullptr,                                     nullptr},
-    /* C8 */ {nullptr,                                     nullptr},
-    /* C9 */ {nullptr,                                     nullptr},
-    /* CA */ {nullptr,                                     nullptr},
-    /* CB */ {nullptr,                                     nullptr},
-    /* CC */ {nullptr,                                     nullptr},
-    /* CD */ {nullptr,                                     nullptr},
-    /* CE */ {nullptr,                                     nullptr},
-    /* CF */ {nullptr,                                     nullptr},
-    /* D0 */ {nullptr,                                     nullptr},
-    /* D1 */ {nullptr,                                     nullptr},
-    /* D2 */ {nullptr,                                     nullptr},
-    /* D3 */ {nullptr,                                     nullptr},
-    /* D4 */ {nullptr,                                     nullptr},
-    /* D5 */ {nullptr,                                     nullptr},
-    /* D6 */ {nullptr,                                     nullptr},
-    /* D7 */ {nullptr,                                     nullptr},
-    /* D8 */ {nullptr,                                     nullptr},
-    /* D9 */ {nullptr,                                     nullptr},
-    /* DA */ {nullptr,                                     nullptr},
-    /* DB */ {nullptr,                                     nullptr},
-    /* DC */ {nullptr,                                     nullptr},
-    /* DD */ {nullptr,                                     nullptr},
-    /* DE */ {nullptr,                                     nullptr},
-    /* DF */ {nullptr,                                     nullptr},
-    // (BB)   SERVER                                       CLIENT
-    /* E0 */ {nullptr,                                     nullptr},
-    /* E1 */ {nullptr,                                     nullptr},
-    /* E2 */ {nullptr,                                     nullptr},
-    /* E3 */ {nullptr,                                     nullptr},
-    /* E4 */ {nullptr,                                     nullptr},
-    /* E5 */ {nullptr,                                     nullptr},
-    /* E6 */ {nullptr,                                     nullptr},
-    /* E7 */ {on_server_E7,                                nullptr},
-    /* E8 */ {nullptr,                                     nullptr},
-    /* E9 */ {nullptr,                                     nullptr},
-    /* EA */ {nullptr,                                     nullptr},
-    /* EB */ {nullptr,                                     nullptr},
-    /* EC */ {nullptr,                                     nullptr},
-    /* ED */ {nullptr,                                     nullptr},
-    /* EE */ {nullptr,                                     nullptr},
-    /* EF */ {nullptr,                                     nullptr},
-    /* F0 */ {nullptr,                                     nullptr},
-    /* F1 */ {nullptr,                                     nullptr},
-    /* F2 */ {nullptr,                                     nullptr},
-    /* F3 */ {nullptr,                                     nullptr},
-    /* F4 */ {nullptr,                                     nullptr},
-    /* F5 */ {nullptr,                                     nullptr},
-    /* F6 */ {nullptr,                                     nullptr},
-    /* F7 */ {nullptr,                                     nullptr},
-    /* F8 */ {nullptr,                                     nullptr},
-    /* F9 */ {nullptr,                                     nullptr},
-    /* FA */ {nullptr,                                     nullptr},
-    /* FB */ {nullptr,                                     nullptr},
-    /* FC */ {nullptr,                                     nullptr},
-    /* FD */ {nullptr,                                     nullptr},
-    /* FE */ {nullptr,                                     nullptr},
-    /* FF */ {nullptr,                                     nullptr},
-    // (BB)   SERVER                                       CLIENT
-  },
+// [command][version][is_client]
+static on_command_t handlers[0x100][6][2] = {
+// CMD     S-PATCH        C-PATCH    S-DC           C-DC            S-PC           C-PC            S-GC           C-GC            S-XB           C-XB            S-BB          C-BB
+/* 00 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 01 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {S_invalid,    nullptr}},
+/* 02 */ {{S_V123P_02_17, nullptr}, {S_V123P_02_17, nullptr},      {S_V123P_02_17, nullptr},      {S_V123P_02_17, nullptr},      {S_V123P_02_17, nullptr},      {nullptr,      nullptr}},
+/* 03 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {S_B_03,       nullptr}},
+/* 04 */ {{nullptr,       nullptr}, {S_V123_04,     nullptr},      {S_V123_04,     nullptr},      {S_V123_04,     nullptr},      {S_V123_04,     nullptr},      {nullptr,      nullptr}},
+/* 05 */ {{nullptr,       nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 06 */ {{nullptr,       nullptr}, {S_V123_06,     C_06},         {S_V123_06,     C_06},         {S_V123_06,     C_06},         {S_V123_06,     C_06},         {nullptr,      C_06}},
+/* 07 */ {{nullptr,       nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 08 */ {{nullptr,       nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 09 */ {{nullptr,       nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 0A */ {{nullptr,       nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 0B */ {{nullptr,       nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 0C */ {{nullptr,       nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 0D */ {{nullptr,       nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 0E */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 0F */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 10 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 11 */ {{nullptr,       nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 12 */ {{nullptr,       nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 13 */ {{nullptr,       nullptr}, {S_13_A7,       nullptr},      {S_13_A7,       nullptr},      {S_13_A7,       nullptr},      {S_13_A7,       nullptr},      {S_13_A7,      nullptr}},
+/* 14 */ {{S_19_P_14,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 15 */ {{nullptr,       nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 16 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 17 */ {{S_invalid,     nullptr}, {S_V123P_02_17, nullptr},      {S_V123P_02_17, nullptr},      {S_V123P_02_17, nullptr},      {S_V123P_02_17, nullptr},      {S_invalid,    nullptr}},
+/* 18 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {S_invalid,    nullptr}},
+/* 19 */ {{S_invalid,     nullptr}, {S_19_P_14,     nullptr},      {S_19_P_14,     nullptr},      {S_19_P_14,     nullptr},      {S_19_P_14,     nullptr},      {S_19_P_14,    nullptr}},
+/* 1A */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {S_V3_1A_D5,    nullptr},      {S_V3_1A_D5,    nullptr},      {nullptr,      nullptr}},
+/* 1B */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {S_invalid,    nullptr}},
+/* 1C */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {S_invalid,    nullptr}},
+/* 1D */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 1E */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 1F */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+// CMD     S-PATCH        C-PATCH    S-DC           C-DC            S-PC           C-PC            S-GC           C-GC            S-XB           C-XB            S-BB          C-BB
+/* 20 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 21 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 22 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_B_22,       nullptr}},
+/* 23 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* 24 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* 25 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* 26 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 27 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 28 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 29 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 2A */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 2B */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 2C */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 2D */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 2E */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 2F */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 30 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 31 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 32 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 33 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 34 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 35 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 36 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 37 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 38 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 39 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 3A */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 3B */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 3C */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 3D */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 3E */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 3F */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+// CMD     S-PATCH        C-PATCH    S-DC           C-DC            S-PC           C-PC            S-GC           C-GC            S-XB           C-XB            S-BB          C-BB
+/* 40 */ {{S_invalid,     nullptr}, {S_invalid,     C_40},         {S_invalid,     C_40},         {S_invalid,     C_40},         {S_invalid,     C_40},         {S_invalid,    C_40}},
+/* 41 */ {{S_invalid,     nullptr}, {S_DGX_41,      nullptr},      {S_P_41,        nullptr},      {S_DGX_41,      nullptr},      {S_DGX_41,      nullptr},      {S_B_41,       nullptr}},
+/* 42 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 43 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 44 */ {{S_invalid,     nullptr}, {S_D_44_A6,     nullptr},      {S_PGX_44_A6,   nullptr},      {S_PGX_44_A6,   nullptr},      {S_PGX_44_A6,   nullptr},      {S_B_44_A6,    nullptr}},
+/* 45 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 46 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 47 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 48 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 49 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 4A */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 4B */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 4C */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 4D */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 4E */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 4F */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 50 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 51 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 52 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 53 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 54 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 55 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 56 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 57 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 58 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 59 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 5A */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 5B */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 5C */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 5D */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 5E */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 5F */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+// CMD     S-PATCH        C-PATCH    S-DC           C-DC            S-PC           C-PC            S-GC           C-GC            S-XB           C-XB            S-BB          C-BB
+/* 60 */ {{S_invalid,     nullptr}, {S_6x,          C_D_6x},       {S_6x,          C_P_6x},       {S_6x,          C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
+/* 61 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 62 */ {{S_invalid,     nullptr}, {S_6x,          C_D_6x},       {S_6x,          C_P_6x},       {S_6x,          C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
+/* 63 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 64 */ {{S_invalid,     nullptr}, {S_DG_64,       nullptr},      {S_P_64,        nullptr},      {S_DG_64,       nullptr},      {S_X_64,        nullptr},      {S_B_64,       nullptr}},
+/* 65 */ {{S_invalid,     nullptr}, {S_DG_65_67_68, nullptr},      {S_P_65_67_68,  nullptr},      {S_DG_65_67_68, nullptr},      {S_X_65_67_68,  nullptr},      {S_B_65_67_68, nullptr}},
+/* 66 */ {{S_invalid,     nullptr}, {S_66_69,       nullptr},      {S_66_69,       nullptr},      {S_66_69,       nullptr},      {S_66_69,       nullptr},      {S_66_69,      nullptr}},
+/* 67 */ {{S_invalid,     nullptr}, {S_DG_65_67_68, nullptr},      {S_P_65_67_68,  nullptr},      {S_DG_65_67_68, nullptr},      {S_X_65_67_68,  nullptr},      {S_B_65_67_68, nullptr}},
+/* 68 */ {{S_invalid,     nullptr}, {S_DG_65_67_68, nullptr},      {S_P_65_67_68,  nullptr},      {S_DG_65_67_68, nullptr},      {S_X_65_67_68,  nullptr},      {S_B_65_67_68, nullptr}},
+/* 69 */ {{S_invalid,     nullptr}, {S_66_69,       nullptr},      {S_66_69,       nullptr},      {S_66_69,       nullptr},      {S_66_69,       nullptr},      {S_66_69,      nullptr}},
+/* 6A */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 6B */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 6C */ {{S_invalid,     nullptr}, {S_6x,          C_D_6x},       {S_6x,          C_P_6x},       {S_6x,          C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
+/* 6D */ {{S_invalid,     nullptr}, {S_6x,          C_D_6x},       {S_6x,          C_P_6x},       {S_6x,          C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
+/* 6E */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 6F */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 70 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 71 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 72 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 73 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 74 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 75 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 76 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 77 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 78 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 79 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 7A */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 7B */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 7C */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 7D */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 7E */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 7F */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+// CMD     S-PATCH        C-PATCH    S-DC           C-DC            S-PC           C-PC            S-GC           C-GC            S-XB           C-XB            S-BB          C-BB
+/* 80 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 81 */ {{S_invalid,     nullptr}, {S_DGX_81,      C_DGX_81},     {S_P_81,        C_P_81},       {S_DGX_81,      C_DGX_81},     {S_DGX_81,      C_DGX_81},     {S_B_81,       C_B_81}},
+/* 82 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 83 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 84 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 85 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 86 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 87 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 88 */ {{S_invalid,     nullptr}, {S_88,          nullptr},      {S_88,          nullptr},      {S_88,          nullptr},      {S_88,          nullptr},      {S_88,         nullptr}},
+/* 89 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 8A */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 8B */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 8C */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 8D */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 8E */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 8F */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 90 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 91 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 92 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 93 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 94 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 95 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 96 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 97 */ {{S_invalid,     nullptr}, {S_97,          nullptr},      {S_97,          nullptr},      {S_97,          nullptr},      {S_97,          nullptr},      {nullptr,      nullptr}},
+/* 98 */ {{S_invalid,     nullptr}, {S_invalid,     C_98},         {S_invalid,     C_98},         {S_invalid,     C_98},         {S_invalid,     C_98},         {S_invalid,    C_98}},
+/* 99 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 9A */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {S_G_9A,        nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 9B */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 9C */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 9D */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 9E */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     C_G_9E},       {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 9F */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+// CMD     S-PATCH        C-PATCH    S-DC           C-DC            S-PC           C-PC            S-GC           C-GC            S-XB           C-XB            S-BB          C-BB
+/* A0 */ {{S_invalid,     nullptr}, {nullptr,       C_V123_A0_A1}, {nullptr,       C_V123_A0_A1}, {nullptr,       C_V123_A0_A1}, {nullptr,       C_V123_A0_A1}, {nullptr,      nullptr}},
+/* A1 */ {{S_invalid,     nullptr}, {nullptr,       C_V123_A0_A1}, {nullptr,       C_V123_A0_A1}, {nullptr,       C_V123_A0_A1}, {nullptr,       C_V123_A0_A1}, {nullptr,      nullptr}},
+/* A2 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* A3 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* A4 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* A5 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* A6 */ {{S_invalid,     nullptr}, {S_D_44_A6,     nullptr},      {S_PGX_44_A6,   nullptr},      {S_PGX_44_A6,   nullptr},      {S_PGX_44_A6,   nullptr},      {S_B_44_A6,    nullptr}},
+/* A7 */ {{S_invalid,     nullptr}, {S_13_A7,       nullptr},      {S_13_A7,       nullptr},      {S_13_A7,       nullptr},      {S_13_A7,       nullptr},      {S_13_A7,      nullptr}},
+/* A8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* A9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* AA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* AB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* AC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* AD */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* AE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* AF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* B0 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* B1 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* B2 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {S_B2,          nullptr},      {S_B2,          nullptr},      {S_B2,         nullptr}},
+/* B3 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* B4 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* B5 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* B6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* B7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* B8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_G_B8,        nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* B9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* BA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* BB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* BC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* BD */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* BE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* BF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+// CMD     S-PATCH        C-PATCH    S-DC           C-DC            S-PC           C-PC            S-GC           C-GC            S-XB           C-XB            S-BB          C-BB
+/* C0 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* C1 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* C2 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* C3 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* C4 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {S_V3_C4,       nullptr},      {S_V3_C4,       nullptr},      {nullptr,      nullptr}},
+/* C5 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* C6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* C7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* C8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* C9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_6x,          nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* CA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* CB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_6x,          nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* CC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* CD */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* CE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* CF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* D0 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* D1 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* D2 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* D3 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* D4 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* D5 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_V3_1A_D5,    nullptr},      {S_V3_1A_D5,    nullptr},      {nullptr,      nullptr}},
+/* D6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* D7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* D8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* D9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* DA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* DB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* DC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* DD */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* DE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* DF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+// CMD     S-PATCH        C-PATCH    S-DC           C-DC            S-PC           C-PC            S-GC           C-GC            S-XB           C-XB            S-BB          C-BB
+/* E0 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* E1 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* E2 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* E3 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* E4 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_G_E4,        nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* E5 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* E6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* E7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_B_E7,       nullptr}},
+/* E8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* E9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* EA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* EB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* EC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* ED */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* EE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* EF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* F0 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* F1 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* F2 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* F3 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* F4 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* F5 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* F6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* F7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* F8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* F9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* FA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* FB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* FC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* FD */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* FE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* FF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+// CMD     S-PATCH        C-PATCH    S-DC           C-DC            S-PC           C-PC            S-GC           C-GC            S-XB           C-XB            S-BB          C-BB
 };
 
 static on_command_t get_handler(GameVersion version, bool from_server, uint8_t command) {
   size_t version_index = static_cast<size_t>(version);
-  if (version_index >= sizeof(handlers) / sizeof(handlers[0])) {
+  if (version_index >= sizeof(handlers[0]) / sizeof(handlers[0][0])) {
     throw logic_error("invalid game version on proxy server");
   }
-  auto ret = handlers[version_index][command][!from_server];
-  return ret ? ret : on_default;
+  auto ret = handlers[command][version_index][!from_server];
+  return ret ? ret : default_handler;
 }
 
 void on_proxy_command(
