@@ -1037,7 +1037,6 @@ template <typename CmdT>
 static HandlerResult S_64(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   session.clear_lobby_players(4);
-  session.log.info("Cleared lobby players");
   session.is_in_game = true;
 
   CmdT* cmd;

@@ -64,6 +64,51 @@ vector<MenuItem> quest_download_menu({
 
 
 
+static void send_client_to_lobby_server(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  static const vector<string> version_to_port_name({
+      "bb-lobby", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"});
+  const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
+  send_reconnect(c, s->connect_address_for_client(c),
+      s->name_to_port_config.at(port_name)->port);
+}
+
+static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  static const vector<string> version_to_port_name({
+      "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"});
+  const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
+  uint16_t local_port = s->name_to_port_config.at(port_name)->port;
+
+  s->proxy_server->delete_session(c->license->serial_number);
+  auto session = s->proxy_server->create_licensed_session(
+      c->license, local_port, c->version(), c->export_config_bb());
+  session->infinite_hp = c->infinite_hp;
+  session->infinite_tp = c->infinite_tp;
+  session->switch_assist = c->switch_assist;
+  session->save_files = c->proxy_save_files;
+  session->suppress_remote_login = c->proxy_suppress_remote_login;
+  try {
+    string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
+    const auto& entry = client_options_cache.get_or_throw(key);
+    session->remote_guild_card_number = stoul(entry->data, nullptr, 10);
+  } catch (const out_of_range&) { }
+
+  send_reconnect(c, s->connect_address_for_client(c), local_port);
+}
+
+static void send_proxy_destinations_menu(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
+      s->proxy_destinations_menu_for_version(c->version()));
+  try {
+    string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
+    const auto& entry = client_options_cache.get_or_throw(key);
+    uint32_t proxy_remote_guild_card_number = stoul(entry->data, nullptr, 10);
+    string info_str = string_printf("Your remote Guild\nCard number is\noverridden as\n$C6%" PRIu32, proxy_remote_guild_card_number);
+    send_ship_info(c, decode_sjis(info_str));
+  } catch (const out_of_range&) { }
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void on_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
@@ -705,11 +750,9 @@ static void on_server_time_request(shared_ptr<ServerState> s, shared_ptr<Client>
   // joining the lobby. This is why we delay the 19 command until the client
   // responds after saving.
   if (c->should_send_to_lobby_server) {
-    static const vector<string> version_to_port_name({
-        "bb-lobby", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"});
-    const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
-    send_reconnect(c, s->connect_address_for_client(c),
-        s->name_to_port_config.at(port_name)->port);
+    send_client_to_lobby_server(s, c);
+  } else if (c->should_send_to_proxy_server) {
+    send_client_to_proxy_server(s, c);
   }
 }
 
@@ -1097,11 +1140,7 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
             send_command(c, 0x97, 0x01);
             send_update_client_config(c);
           } else {
-            static const vector<string> version_to_port_name({
-                "bb-lobby", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"});
-            const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
-            send_reconnect(c, s->connect_address_for_client(c),
-                s->name_to_port_config.at(port_name)->port);
+            send_client_to_lobby_server(s, c);
           }
           break;
         }
@@ -1113,15 +1152,7 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           break;
 
         case MainMenuItemID::PROXY_DESTINATIONS:
-          send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
-              s->proxy_destinations_menu_for_version(c->version()));
-          try {
-            string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
-            const auto& entry = client_options_cache.get_or_throw(key);
-            uint32_t proxy_remote_guild_card_number = stoul(entry->data, nullptr, 10);
-            string info_str = string_printf("Your remote Guild\nCard number is\noverridden as\n$C6%" PRIu32, proxy_remote_guild_card_number);
-            send_ship_info(c, decode_sjis(info_str));
-          } catch (const out_of_range&) { }
+          send_proxy_destinations_menu(s, c);
           break;
 
         case MainMenuItemID::DOWNLOAD_QUESTS:
@@ -1186,8 +1217,7 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case MenuID::PROXY_OPTIONS: {
       switch (item_id) {
         case ProxyOptionsMenuItemID::GO_BACK:
-          send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
-              s->proxy_destinations_menu_for_version(c->version()));
+          send_proxy_destinations_menu(s, c);
           break;
         case ProxyOptionsMenuItemID::INFINITE_HP:
           c->infinite_hp = !c->infinite_hp;
@@ -1232,35 +1262,17 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_message_box(c, u"$C6No such destination exists.");
           c->should_disconnect = true;
         } else {
-          // TODO: We can probably avoid using client config and reconnecting
-          // the client here; it's likely we could build a way to just directly
-          // link the client to the proxy server instead (would have to provide
-          // license/char name/etc. for remote auth)
-
-          static const vector<string> version_to_port_name({
-              "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"});
-          const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
-          uint16_t local_port = s->name_to_port_config.at(port_name)->port;
-
           c->proxy_destination_address = resolve_ipv4(dest->first);
           c->proxy_destination_port = dest->second;
-          send_update_client_config(c);
-
-          s->proxy_server->delete_session(c->license->serial_number);
-          auto session = s->proxy_server->create_licensed_session(
-              c->license, local_port, c->version(), c->export_config_bb());
-          session->infinite_hp = c->infinite_hp;
-          session->infinite_tp = c->infinite_tp;
-          session->switch_assist = c->switch_assist;
-          session->save_files = c->proxy_save_files;
-          session->suppress_remote_login = c->proxy_suppress_remote_login;
-          try {
-            string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
-            const auto& entry = client_options_cache.get_or_throw(key);
-            session->remote_guild_card_number = stoul(entry->data, nullptr, 10);
-          } catch (const out_of_range&) { }
-
-          send_reconnect(c, s->connect_address_for_client(c), local_port);
+          if (!(c->flags & Client::Flag::SAVE_ENABLED)) {
+            c->should_send_to_proxy_server = true;
+            c->flags |= Client::Flag::SAVE_ENABLED;
+            send_command(c, 0x97, 0x01);
+            send_update_client_config(c);
+          } else {
+            send_update_client_config(c);
+            send_client_to_proxy_server(s, c);
+          }
         }
       }
       break;

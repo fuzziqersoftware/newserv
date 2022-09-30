@@ -84,6 +84,7 @@ struct Client {
   ServerBehavior server_behavior;
   bool should_disconnect;
   bool should_send_to_lobby_server;
+  bool should_send_to_proxy_server;
   uint32_t proxy_destination_address;
   uint16_t proxy_destination_port;
 

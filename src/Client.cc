@@ -37,6 +37,7 @@ Client::Client(
     server_behavior(server_behavior),
     should_disconnect(false),
     should_send_to_lobby_server(false),
+    should_send_to_proxy_server(false),
     proxy_destination_address(0),
     proxy_destination_port(0),
     x(0.0f),
