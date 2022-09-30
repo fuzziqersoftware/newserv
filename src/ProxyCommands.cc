@@ -108,7 +108,8 @@ static HandlerResult on_client_gc_9E(shared_ptr<ServerState>,
     le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
     session.server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
 
-    S_UpdateClientConfig_DC_PC_V3_04 cmd = {0x00010000, session.license->serial_number, ClientConfig()};
+    S_UpdateClientConfig_DC_PC_V3_04 cmd = {{
+        0x00010000, session.license->serial_number, ClientConfig()}};
     session.client_channel.send(0x04, 0x00, &cmd, sizeof(cmd));
 
     return HandlerResult::Type::SUPPRESS;
