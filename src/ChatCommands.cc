@@ -148,6 +148,9 @@ static void proxy_command_lobby_info(shared_ptr<ServerState>,
   if (session.save_files) {
     behaviors_tokens.emplace_back("SAVE");
   }
+  if (session.suppress_remote_login) {
+    behaviors_tokens.emplace_back("SL");
+  }
   if (session.function_call_return_value >= 0) {
     behaviors_tokens.emplace_back("BFC");
   }
