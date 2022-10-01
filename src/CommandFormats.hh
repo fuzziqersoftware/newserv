@@ -2498,6 +2498,8 @@ struct C_DeleteGuildCard_BB_05E8_08E8 {
 };
 
 // 06E8 (C->S): Update (overwrite) guild card
+// Note: This command is also sent when the player writes a comment on their own
+// guild card.
 // Format is GuildCardBB (see Player.hh)
 
 // 07E8 (C->S): Add blocked user
