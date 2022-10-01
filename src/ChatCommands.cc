@@ -124,8 +124,12 @@ static void server_command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby>
 
 static void proxy_command_lobby_info(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
-  string msg = string_printf("$C7GC: $C6%" PRId64 "\n$C7Client ID: $C6%zu%s",
-      session.remote_guild_card_number,
+  string msg;
+  if (session.license) {
+    msg = string_printf("$C7GC: $C6%" PRId64 "\n",
+        session.remote_guild_card_number);
+  }
+  msg += string_printf("$C7Client ID: $C6%zu%s",
       session.lobby_client_id,
       (session.leader_client_id == session.lobby_client_id) ? " (L)" : "");
 
