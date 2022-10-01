@@ -962,7 +962,10 @@ static HandlerResult S_G_B8(shared_ptr<ServerState>,
     save_file(output_filename, r.read(size));
     session.log.info("Wrote %zu bytes to %s", size, output_filename.c_str());
   }
-  return HandlerResult::Type::FORWARD;
+
+  return !(session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3)
+      ? HandlerResult::Type::FORWARD
+      : HandlerResult::Type::SUPPRESS;
 }
 
 static void update_leader_id(ProxyServer::LinkedSession& session, uint8_t leader_id) {
