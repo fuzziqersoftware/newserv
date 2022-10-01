@@ -116,15 +116,22 @@ static HandlerResult S_invalid(shared_ptr<ServerState>,
 
 static HandlerResult S_97(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string&) {
-  // Update the newserv client config so we'll know not to show the Programs
-  // menu if they return to newserv
-  session.newserv_client_config.cfg.flags |= Client::Flag::SAVE_ENABLED;
-  // Trap any 97 command that would have triggered cheat protection, and always
-  // send 97 01 04 00
-  if (flag == 0) {
-    return HandlerResult(HandlerResult::Type::MODIFIED, 0x97, 0x01);
+  // If the client has already received a 97 command, block this one and
+  // immediately respond with a B1.
+  if (session.newserv_client_config.cfg.flags & Client::Flag::SAVE_ENABLED) {
+    session.server_channel.send(0xB1, 0x00);
+    return HandlerResult::Type::SUPPRESS;
+  } else {
+    // Update the newserv client config so we'll know not to show the Programs
+    // menu if they return to newserv
+    session.newserv_client_config.cfg.flags |= Client::Flag::SAVE_ENABLED;
+    // Trap any 97 command that would have triggered cheat protection, and
+    // always send 97 01 04 00
+    if (flag == 0) {
+      return HandlerResult(HandlerResult::Type::MODIFIED, 0x97, 0x01);
+    }
+    return HandlerResult::Type::FORWARD;
   }
-  return HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult C_G_9E(shared_ptr<ServerState>,
