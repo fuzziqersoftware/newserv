@@ -1610,7 +1610,7 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
         // center and right PBs from the list, and the left PB is then used as
         // an index into this modified list to determine the actual left PB.
         // Here, we don't construct a temporary list and instead just skip the
-        // center and right PB values with a loop instead.
+        // center and right PB values with a loop.
         uint8_t actual_left_pb = 0;
         for (;;) {
           if ((actual_left_pb == center_pb) || (actual_left_pb == right_pb)) {
