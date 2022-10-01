@@ -904,6 +904,11 @@ static void proxy_command_item(shared_ptr<ServerState>,
         u"$C6This command cannot\nbe used on the proxy\nserver in BB games");
     return;
   }
+  if (!session.is_in_game) {
+    send_text_message(session.client_channel,
+        u"$C6You must be in\na game to use this\ncommand");
+    return;
+  }
   if (session.lobby_client_id != session.leader_client_id) {
     send_text_message(session.client_channel,
         u"$C6You must be the\nleader to use this\ncommand");
