@@ -1002,13 +1002,14 @@ static HandlerResult S_65_67_68(shared_ptr<ServerState>,
         num_replacements++;
         modified = true;
       }
-      session.lobby_players[index].guild_card_number = cmd.entries[x].lobby_data.guild_card;
+      auto& p = session.lobby_players[index];
+      p.guild_card_number = cmd.entries[x].lobby_data.guild_card;
       ptext<char, 0x10> name = cmd.entries[x].disp.name;
-      session.lobby_players[index].name = name;
+      p.name = name;
+      p.section_id = cmd.entries[x].disp.section_id;
+      p.char_class = cmd.entries[x].disp.char_class;
       session.log.info("Added lobby player: (%zu) %" PRIu32 " %s",
-          index,
-          session.lobby_players[index].guild_card_number,
-          session.lobby_players[index].name.c_str());
+          index, p.guild_card_number, p.name.c_str());
     }
   }
   if (num_replacements > 1) {
@@ -1057,17 +1058,18 @@ static HandlerResult S_64(shared_ptr<ServerState>,
       cmd->lobby_data[x].guild_card = session.license->serial_number;
       modified = true;
     }
-    session.lobby_players[x].guild_card_number = cmd->lobby_data[x].guild_card;
+    auto& p = session.lobby_players[x];
+    p.guild_card_number = cmd->lobby_data[x].guild_card;
     if (cmd_ep3) {
       ptext<char, 0x10> name = cmd_ep3->players_ep3[x].disp.name;
-      session.lobby_players[x].name = name;
+      p.name = name;
+      p.section_id = cmd_ep3->players_ep3[x].disp.section_id;
+      p.char_class = cmd_ep3->players_ep3[x].disp.char_class;
     } else {
-      session.lobby_players[x].name.clear();
+      p.name.clear();
     }
     session.log.info("Added lobby player: (%zu) %" PRIu32 " %s",
-        x,
-        session.lobby_players[x].guild_card_number,
-        session.lobby_players[x].name.c_str());
+        x, p.guild_card_number, p.name.c_str());
   }
 
   if (session.override_section_id >= 0) {
@@ -1098,8 +1100,9 @@ static HandlerResult S_66_69(shared_ptr<ServerState>,
   if (index >= session.lobby_players.size()) {
     session.log.warning("Lobby leave command references missing position");
   } else {
-    session.lobby_players[index].guild_card_number = 0;
-    session.lobby_players[index].name.clear();
+    auto& p = session.lobby_players[index];
+    p.guild_card_number = 0;
+    p.name.clear();
     session.log.info("Removed lobby player (%zu)", index);
   }
   update_leader_id(session, cmd.leader_id);
@@ -1197,7 +1200,9 @@ template <typename SendGuildCardCmdT>
 static HandlerResult C_6x(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
   if (session.license && !data.empty()) {
-    if (data[0] == 0x06) {
+    // On BB, the 6x06 command is blank - the server generates the actual Guild
+    // Card contents and sends it to the target client.
+    if (data[0] == 0x06 && session.version != GameVersion::BB) {
       auto& cmd = check_size_t<SendGuildCardCmdT>(data);
       if (cmd.guild_card_number == session.license->serial_number) {
         cmd.guild_card_number = session.remote_guild_card_number;

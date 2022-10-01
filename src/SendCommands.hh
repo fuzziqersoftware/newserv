@@ -182,6 +182,14 @@ void send_card_search_result(
     std::shared_ptr<Client> result,
     std::shared_ptr<Lobby> result_lobby);
 
+void send_guild_card(
+    Channel& ch,
+    uint32_t guild_card_number,
+    const u16string& name,
+    const u16string& team_name,
+    const u16string& description,
+    uint8_t section_id,
+    uint8_t char_class);
 void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source);
 void send_menu(std::shared_ptr<Client> c, const std::u16string& menu_name,
     uint32_t menu_id, const std::vector<MenuItem>& items, bool is_info_menu = false);

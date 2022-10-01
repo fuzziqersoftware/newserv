@@ -770,52 +770,91 @@ void send_card_search_result(
 
 
 template <typename CmdT>
-void send_guild_card_dc_pc_v3_t(shared_ptr<Client> c, shared_ptr<Client> source) {
+void send_guild_card_dc_pc_v3_t(
+    Channel& ch,
+    uint32_t guild_card_number,
+    const u16string& name,
+    const u16string& description,
+    uint8_t section_id,
+    uint8_t char_class) {
   CmdT cmd;
   cmd.subcommand = 0x06;
   cmd.size = sizeof(CmdT) / 4;
   cmd.unused = 0x0000;
   cmd.player_tag = 0x00010000;
-  cmd.guild_card_number = source->license->serial_number;
-  cmd.name = source->game_data.player()->disp.name;
+  cmd.guild_card_number = guild_card_number;
+  cmd.name = name;
   remove_language_marker_inplace(cmd.name);
-  cmd.description = source->game_data.player()->guild_card_description;
+  cmd.description = description;
   cmd.present = 1;
   cmd.present2 = 1;
-  cmd.section_id = source->game_data.player()->disp.section_id;
-  cmd.char_class = source->game_data.player()->disp.char_class;
-  send_command_t(c, 0x62, c->lobby_client_id, cmd);
+  cmd.section_id = section_id;
+  cmd.char_class = char_class;
+  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
-void send_guild_card_bb(shared_ptr<Client> c, shared_ptr<Client> source) {
+static void send_guild_card_bb(
+    Channel& ch,
+    uint32_t guild_card_number,
+    const u16string& name,
+    const u16string& team_name,
+    const u16string& description,
+    uint8_t section_id,
+    uint8_t char_class) {
   G_SendGuildCard_BB_6x06 cmd;
   cmd.subcommand = 0x06;
   cmd.size = sizeof(cmd) / 4;
   cmd.unused = 0x0000;
-  cmd.guild_card_number = source->license->serial_number;
-  cmd.name = remove_language_marker(source->game_data.player()->disp.name);
-  cmd.team_name = remove_language_marker(source->game_data.account()->team_name);
-  cmd.description = source->game_data.player()->guild_card_description;
+  cmd.guild_card_number = guild_card_number;
+  cmd.name = remove_language_marker(name);
+  cmd.team_name = remove_language_marker(team_name);
+  cmd.description = description;
   cmd.present = 1;
   cmd.present2 = 1;
-  cmd.section_id = source->game_data.player()->disp.section_id;
-  cmd.char_class = source->game_data.player()->disp.char_class;
-  send_command_t(c, 0x62, c->lobby_client_id, cmd);
+  cmd.section_id = section_id;
+  cmd.char_class = char_class;
+  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
-void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
-  if (c->version() == GameVersion::DC) {
-    send_guild_card_dc_pc_v3_t<G_SendGuildCard_DC_6x06>(c, source);
-  } else if (c->version() == GameVersion::PC) {
-    send_guild_card_dc_pc_v3_t<G_SendGuildCard_PC_6x06>(c, source);
-  } else if ((c->version() == GameVersion::GC) ||
-             (c->version() == GameVersion::XB)) {
-    send_guild_card_dc_pc_v3_t<G_SendGuildCard_V3_6x06>(c, source);
-  } else if (c->version() == GameVersion::BB) {
-    send_guild_card_bb(c, source);
+void send_guild_card(
+    Channel& ch,
+    uint32_t guild_card_number,
+    const u16string& name,
+    const u16string& team_name,
+    const u16string& description,
+    uint8_t section_id,
+    uint8_t char_class) {
+  if (ch.version == GameVersion::DC) {
+    send_guild_card_dc_pc_v3_t<G_SendGuildCard_DC_6x06>(
+        ch, guild_card_number, name, description, section_id, char_class);
+  } else if (ch.version == GameVersion::PC) {
+    send_guild_card_dc_pc_v3_t<G_SendGuildCard_PC_6x06>(
+        ch, guild_card_number, name, description, section_id, char_class);
+  } else if ((ch.version == GameVersion::GC) ||
+             (ch.version == GameVersion::XB)) {
+    send_guild_card_dc_pc_v3_t<G_SendGuildCard_V3_6x06>(
+        ch, guild_card_number, name, description, section_id, char_class);
+  } else if (ch.version == GameVersion::BB) {
+    send_guild_card_bb(
+        ch, guild_card_number, name, team_name, description, section_id, char_class);
   } else {
     throw logic_error("unimplemented versioned command");
   }
+}
+
+void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
+  if (!source->license) {
+    throw runtime_error("source player does not have a license");
+  }
+
+  uint32_t guild_card_number = source->license->serial_number;
+  u16string name = source->game_data.player()->disp.name;
+  u16string description = source->game_data.player()->guild_card_description;
+  uint8_t section_id = source->game_data.player()->disp.section_id;
+  uint8_t char_class = source->game_data.player()->disp.char_class;
+
+  send_guild_card(
+      c->channel, guild_card_number, name, u"", description, section_id, char_class);
 }
 
 

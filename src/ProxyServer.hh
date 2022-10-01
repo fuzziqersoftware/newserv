@@ -78,7 +78,9 @@ public:
     struct LobbyPlayer {
       uint32_t guild_card_number;
       std::string name;
-      LobbyPlayer() : guild_card_number(0) { }
+      uint8_t section_id;
+      uint8_t char_class;
+      LobbyPlayer() : guild_card_number(0), section_id(0), char_class(0) { }
     };
     std::vector<LobbyPlayer> lobby_players;
     size_t lobby_client_id;
