@@ -1902,6 +1902,10 @@ I 94711 2022-07-26 00:24:56 - [Commands] Sending to C-7 (version=GC command=B8 f
 71B0 | 30 36 20 F5 3A D0 F3 3A E8 3A 2E FF 5D 00 F8 FF | 06  :  : :. ]   
 71C0 | E3 02 BD C0 FF 0D 77 FC FF CA A3 F8 F4 1F 2A A0 |       w       * 
 71D0 | 85 45 F0 24 F0 F0 8C 0A 08 FF 0B 00 00 00 00 00 |  E $            
+I 8584 2022-10-01 18:38:45 - [Commands] Sending to C-7 (version=GC command=04 flag=00)
+0000 | 04 00 2C 00 00 00 01 00 78 62 F8 10 39 98 AC 82 |   ,     xb  9   
+0010 | 0E 89 2A 49 0A 43 00 00 00 00 00 00 FF FF FF FF |   *I C          
+0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 94711 2022-07-26 00:24:56 - [Commands] Sending to C-7 (version=GC command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0010 | 00 00 00 00 FF FF FF 00 FF FF FF 00 FF FF FF FF |                 
@@ -1938,7 +1942,7 @@ I 94711 2022-07-26 00:24:59 - [Commands] Sending to C-7 (version=GC command=07 f
 00C0 | 6E 73 65 00 00 00 00 00                         | nse             
 I 94711 2022-07-26 00:24:59 - [Commands] Sending to C-7 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 78 62 F8 10 39 98 AC 82 |   ,     xb  9   
-0010 | 0E 89 2A 49 0A 02 00 00 00 00 00 00 FF FF FF FF |   *I            
+0010 | 0E 89 2A 49 0A 42 00 00 00 00 00 00 FF FF FF FF |   *I            
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 94711 2022-07-26 00:25:06 - [Commands] Received from C-7 (version=GC command=10 flag=00)
 0000 | 10 00 0C 00 11 00 00 11 11 33 33 11             |          33     
@@ -2050,7 +2054,7 @@ I 94711 2022-07-26 00:25:12 - [Commands] Sending to C-7 (version=GC command=97 f
 0000 | 97 01 04 00                                     |                 
 I 94711 2022-07-26 00:25:12 - [Commands] Sending to C-7 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 78 62 F8 10 39 98 AC 82 |   ,     xb  9   
-0010 | 0E 89 2A 49 0A 06 00 00 00 00 00 00 FF FF FF FF |   *I            
+0010 | 0E 89 2A 49 0A 46 00 00 00 00 00 00 FF FF FF FF |   *I            
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 94711 2022-07-26 00:25:12 - [Commands] Received from C-7 (version=GC command=B1 flag=00)
 0000 | B1 00 04 00                                     |                 

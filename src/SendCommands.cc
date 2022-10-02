@@ -1568,13 +1568,18 @@ void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
 // ep3 only commands
 
 void send_ep3_card_list_update(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  const auto& data = s->ep3_data_index->get_compressed_card_definitions();
+  if (!(c->flags & Client::Flag::HAS_EP3_CARD_DEFS)) {
+    const auto& data = s->ep3_data_index->get_compressed_card_definitions();
 
-  StringWriter w;
-  w.put_u32l(data.size());
-  w.write(data);
+    StringWriter w;
+    w.put_u32l(data.size());
+    w.write(data);
 
-  send_command(c, 0xB8, 0x00, w.str());
+    send_command(c, 0xB8, 0x00, w.str());
+
+    c->flags |= Client::Flag::HAS_EP3_CARD_DEFS;
+    send_update_client_config(c);
+  }
 }
 
 // sends the client a generic rank

@@ -64,6 +64,9 @@ struct Client {
     // Client has already received a 97 (enable saves) command, so don't show
     // the programs menu anymore
     SAVE_ENABLED                     = 0x0400,
+    // Client has received newserv's Episode 3 card definitions, so don't send
+    // them again
+    HAS_EP3_CARD_DEFS                = 0x4000,
   };
 
   uint64_t id;

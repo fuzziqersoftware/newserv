@@ -963,6 +963,10 @@ static HandlerResult S_G_B8(shared_ptr<ServerState>,
     session.log.info("Wrote %zu bytes to %s", size, output_filename.c_str());
   }
 
+  // Unset the flag specifying that the client has newserv's card definitions,
+  // so the file sill be sent again if the client returns to newserv.
+  session.newserv_client_config.cfg.flags &= ~Client::Flag::HAS_EP3_CARD_DEFS;
+
   return !(session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3)
       ? HandlerResult::Type::FORWARD
       : HandlerResult::Type::SUPPRESS;
