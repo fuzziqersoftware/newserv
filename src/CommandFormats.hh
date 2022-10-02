@@ -3177,8 +3177,8 @@ struct G_DropItem_DC_6x5F {
   uint8_t size;
   le_uint16_t unused;
   uint8_t area;
-  uint8_t enemy_instance;
-  le_uint16_t request_id;
+  uint8_t from_enemy;
+  le_uint16_t request_id; // < 0x0B50 if from_enemy != 0; otherwise < 0x0BA0
   le_float x;
   le_float z;
   le_uint32_t unused2;
