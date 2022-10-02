@@ -943,6 +943,16 @@ static HandlerResult S_13_A7(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
+static HandlerResult S_G_B7(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  if (session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3) {
+    return HandlerResult::Type::FORWARD;
+  } else {
+    session.server_channel.send(0xB7, 0x00);
+    return HandlerResult::Type::SUPPRESS;
+  }
+}
+
 static HandlerResult S_G_B8(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.save_files) {
@@ -1051,9 +1061,6 @@ constexpr on_command_t S_B_65_67_68 = &S_65_67_68<S_JoinLobby_BB_65_67_68>;
 template <typename CmdT>
 static HandlerResult S_64(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
-  session.clear_lobby_players(4);
-  session.is_in_game = true;
-
   CmdT* cmd;
   S_JoinGame_GC_Ep3_64* cmd_ep3 = nullptr;
   if (session.sub_version >= 0x40) {
@@ -1062,6 +1069,9 @@ static HandlerResult S_64(shared_ptr<ServerState>,
   } else {
     cmd = &check_size_t<CmdT>(data);
   }
+
+  session.clear_lobby_players(4);
+  session.is_in_game = true;
 
   bool modified = false;
 
@@ -1489,7 +1499,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* B4 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B5 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
-/* B7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* B7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_G_B7,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_G_B8,        nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* B9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* BA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
