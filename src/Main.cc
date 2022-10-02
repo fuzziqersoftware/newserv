@@ -457,6 +457,9 @@ int main(int argc, char** argv) {
         data = parse_data_string(data);
       }
 
+      size_t original_size = data.size();
+      data.resize((data.size() + 7) & (~7), '\0');
+
       if (big_endian) {
         uint32_t* dwords = reinterpret_cast<uint32_t*>(data.data());
         for (size_t x = 0; x < (data.size() >> 2); x++) {
@@ -478,6 +481,8 @@ int main(int argc, char** argv) {
           dwords[x] = bswap32(dwords[x]);
         }
       }
+
+      data.resize(original_size);
 
       if (isatty(fileno(stdout))) {
         print_data(stdout, data);
