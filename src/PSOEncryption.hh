@@ -12,10 +12,6 @@
 
 
 
-#define V2_STREAM_LENGTH 56
-#define V3_STREAM_LENGTH 521
-#define BB_STREAM_LENGTH 1042
-
 class PSOEncryption {
 public:
   enum class Type {
@@ -42,82 +38,55 @@ protected:
   PSOEncryption() = default;
 };
 
-class PSOV2Encryption : public PSOEncryption {
+
+
+class PSORC4Encryption : public PSOEncryption {
+public:
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+  void encrypt_big_endian(void* data, size_t size, bool advance = true);
+  void encrypt_both_endian(void* le_data, void* be_data, size_t size, bool advance = true);
+
+  uint32_t next(bool advance = true);
+
+protected:
+  explicit PSORC4Encryption(uint32_t seed, size_t stream_length, size_t end_offset);
+
+  template <typename LongT>
+  void encrypt_t(void* data, size_t size, bool advance);
+
+  virtual void update_stream() = 0;
+
+  std::vector<uint32_t> stream;
+  size_t offset;
+  size_t end_offset;
+  uint32_t seed;
+};
+
+class PSOV2Encryption : public PSORC4Encryption {
 public:
   explicit PSOV2Encryption(uint32_t seed);
 
-  virtual void encrypt(void* data, size_t size, bool advance = true);
-  void encrypt_big_endian(void* data, size_t size, bool advance = true);
-  void encrypt_both_endian(void* le_data, void* be_data, size_t size, bool advance = true);
-
-  uint32_t next(bool advance = true);
-
   virtual Type type() const;
 
 protected:
-  template <typename LongT>
-  void encrypt_t(void* data, size_t size, bool advance);
+  virtual void update_stream();
 
-  void update_stream();
-
-  uint32_t stream[V2_STREAM_LENGTH + 1];
-  uint8_t offset;
+  static constexpr size_t STREAM_LENGTH = 56;
 };
 
-class PSOV3Encryption : public PSOEncryption {
+class PSOV3Encryption : public PSORC4Encryption {
 public:
   explicit PSOV3Encryption(uint32_t key);
 
-  virtual void encrypt(void* data, size_t size, bool advance = true);
-  void encrypt_big_endian(void* data, size_t size, bool advance = true);
-  void encrypt_both_endian(void* le_data, void* be_data, size_t size, bool advance = true);
-
-  uint32_t next(bool advance = true);
-
   virtual Type type() const;
 
 protected:
-  template <typename LongT>
-  void encrypt_t(void* data, size_t size, bool advance);
+  virtual void update_stream();
 
-  void update_stream();
-
-  uint32_t stream[V3_STREAM_LENGTH];
-  uint16_t offset;
+  static constexpr size_t STREAM_LENGTH = 521;
 };
 
-class PSOV2OrV3DetectorEncryption : public PSOEncryption {
-public:
-  PSOV2OrV3DetectorEncryption(
-      uint32_t key,
-      const std::unordered_set<uint32_t>& v2_matches,
-      const std::unordered_set<uint32_t>& v3_matches);
 
-  virtual void encrypt(void* data, size_t size, bool advance = true);
-
-  virtual Type type() const;
-
-protected:
-  uint32_t key;
-  const std::unordered_set<uint32_t>& v2_matches;
-  const std::unordered_set<uint32_t>& v3_matches;
-  std::unique_ptr<PSOEncryption> active_crypt;
-};
-
-class PSOV2OrV3ImitatorEncryption : public PSOEncryption {
-public:
-  PSOV2OrV3ImitatorEncryption(
-      uint32_t key, std::shared_ptr<PSOV2OrV3DetectorEncryption> client_crypt);
-
-  virtual void encrypt(void* data, size_t size, bool advance = true);
-
-  virtual Type type() const;
-
-protected:
-  uint32_t key;
-  std::shared_ptr<const PSOV2OrV3DetectorEncryption> detector_crypt;
-  std::shared_ptr<PSOEncryption> active_crypt;
-};
 
 class PSOBBEncryption : public PSOEncryption {
 public:
@@ -163,9 +132,50 @@ protected:
   void apply_seed(const void* original_seed, size_t seed_size);
 };
 
+
+
+
+// The following classes provide support for automatically detecting which type
+// of encryption a client is using based on their initial response to the server
+
+class PSOV2OrV3DetectorEncryption : public PSOEncryption {
+public:
+  PSOV2OrV3DetectorEncryption(
+      uint32_t key,
+      const std::unordered_set<uint32_t>& v2_matches,
+      const std::unordered_set<uint32_t>& v3_matches);
+
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+
+  virtual Type type() const;
+
+protected:
+  uint32_t key;
+  const std::unordered_set<uint32_t>& v2_matches;
+  const std::unordered_set<uint32_t>& v3_matches;
+  std::unique_ptr<PSOEncryption> active_crypt;
+};
+
+class PSOV2OrV3ImitatorEncryption : public PSOEncryption {
+public:
+  PSOV2OrV3ImitatorEncryption(
+      uint32_t key, std::shared_ptr<PSOV2OrV3DetectorEncryption> client_crypt);
+
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+
+  virtual Type type() const;
+
+protected:
+  uint32_t key;
+  std::shared_ptr<const PSOV2OrV3DetectorEncryption> detector_crypt;
+  std::shared_ptr<PSOEncryption> active_crypt;
+};
+
+
+
 // The following classes provide support for multiple PSOBB private keys, and
 // the ability to automatically detect which key the client is using based on
-// the first 8 bytes they send.
+// the first 8 bytes they send
 
 class PSOBBMultiKeyDetectorEncryption : public PSOEncryption {
 public:
