@@ -1458,7 +1458,7 @@ void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
   // TODO: Is this order correct? The original code sent {item, 0}, but it seems
   // GC sends {0, item} (the last two fields in the struct are switched).
   G_DropStackedItem_PC_V3_BB_6x5D cmd = {
-      {0x5D, 0x0A, 0x00, 0x00, area, 0, x, z, item}, 0};
+      {0x5D, 0x0A, 0x0000, area, 0, x, z, item}, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
@@ -1482,7 +1482,7 @@ void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
 void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint32_t amount) {
   G_ItemSubcommand cmd = {
-      0x29, 0x03, c->lobby_client_id, 0x00, item_id, amount};
+      0x29, 0x03, c->lobby_client_id, item_id, amount};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
@@ -1543,7 +1543,6 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
       0x30,
       sizeof(G_LevelUp_6x30) / 4,
       c->lobby_client_id,
-      0,
       stats.atp,
       stats.mst,
       stats.evp,
@@ -1558,7 +1557,7 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t amount) {
   G_GiveExperience_BB_6xBF cmd = {
-      0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, c->lobby_client_id, 0, amount};
+      0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, c->lobby_client_id, amount};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 

@@ -293,8 +293,8 @@ static void on_subcommand_player_drop_item(shared_ptr<ServerState>,
     l->add_item(c->game_data.player()->remove_item(cmd->item_id, 0),
         cmd->area, cmd->x, cmd->z);
 
-    l->log.info("Player %hhu dropped item %08" PRIX32 " at %hu:(%g, %g)",
-        cmd->client_id, cmd->item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
+    l->log.info("Player %hu dropped item %08" PRIX32 " at %hu:(%g, %g)",
+        cmd->client_id.load(), cmd->item_id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -323,8 +323,8 @@ static void on_subcommand_create_inventory_item(shared_ptr<ServerState>,
     item.data = cmd->item;
     c->game_data.player()->add_item(item);
 
-    l->log.info("Player %hhu created inventory item %08" PRIX32,
-        cmd->client_id, cmd->item.id.load());
+    l->log.info("Player %hu created inventory item %08" PRIX32,
+        cmd->client_id.load(), cmd->item.id.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -354,8 +354,8 @@ static void on_subcommand_drop_partial_stack(shared_ptr<ServerState>,
     item.data = cmd->data;
     l->add_item(item, cmd->area, cmd->x, cmd->z);
 
-    l->log.info("Player %hhu split stack to create ground item %08" PRIX32 " at %hu:(%g, %g)",
-        cmd->client_id, item.data.id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
+    l->log.info("Player %hu split stack to create ground item %08" PRIX32 " at %hu:(%g, %g)",
+        cmd->client_id.load(), item.data.id.load(), cmd->area.load(), cmd->x.load(), cmd->z.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -391,8 +391,8 @@ static void on_subcommand_drop_partial_stack_bb(shared_ptr<ServerState>,
 
     l->add_item(item, cmd->area, cmd->x, cmd->z);
 
-    l->log.info("Player %hhu split stack %08" PRIX32 " (%" PRIu32 " of them) at %hu:(%g, %g)",
-        cmd->client_id, cmd->item_id.load(), cmd->amount.load(),
+    l->log.info("Player %hu split stack %08" PRIX32 " (%" PRIu32 " of them) at %hu:(%g, %g)",
+        cmd->client_id.load(), cmd->item_id.load(), cmd->amount.load(),
         cmd->area.load(), cmd->x.load(), cmd->z.load());
     c->game_data.player()->print_inventory(stderr);
 
@@ -422,8 +422,8 @@ static void on_subcommand_buy_shop_item(shared_ptr<ServerState>,
     item.data = cmd->item;
     c->game_data.player()->add_item(item);
 
-    l->log.info("Player %hhu bought item %08" PRIX32 " from shop",
-        cmd->client_id, item.data.id.load());
+    l->log.info("Player %hu bought item %08" PRIX32 " from shop",
+        cmd->client_id.load(), item.data.id.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -501,7 +501,8 @@ static void on_subcommand_pick_up_item_request(shared_ptr<ServerState>,
 
     c->game_data.player()->add_item(l->remove_item(cmd->item_id));
 
-    l->log.info("Player %hhu picked up %08" PRIX32, cmd->client_id, cmd->item_id.load());
+    l->log.info("Player %hu picked up %08" PRIX32,
+        cmd->client_id.load(), cmd->item_id.load());
     c->game_data.player()->print_inventory(stderr);
 
     send_pick_up_item(l, c, cmd->item_id, cmd->area);
@@ -549,7 +550,8 @@ static void on_subcommand_use_item(shared_ptr<ServerState>,
     size_t index = c->game_data.player()->inventory.find_item(cmd->item_id);
     player_use_item(c, index);
 
-    l->log.info("Player used item %hhu:%08" PRIX32, cmd->client_id, cmd->item_id.load());
+    l->log.info("Player used item %hu:%08" PRIX32,
+        cmd->client_id.load(), cmd->item_id.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -940,8 +942,8 @@ static void on_subcommand_destroy_inventory_item(shared_ptr<ServerState>,
   }
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     c->game_data.player()->remove_item(cmd->item_id, cmd->amount);
-    l->log.info("Inventory item %hhu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
-        cmd->client_id, cmd->item_id.load(), cmd->amount.load());
+    l->log.info("Inventory item %hu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
+        cmd->client_id.load(), cmd->item_id.load(), cmd->amount.load());
     c->game_data.player()->print_inventory(stderr);
     forward_subcommand(l, c, command, flag, data);
   }
@@ -988,7 +990,6 @@ static void on_subcommand_identify_item_bb(shared_ptr<ServerState>,
     res.subcommand = 0xB9;
     res.size = sizeof(res) / 4;
     res.client_id = c->lobby_client_id;
-    res.unused = 0;
     res.item = c->game_data.identify_result.data;
     send_command_t(l, 0x60, 0x00, res);
 

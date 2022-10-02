@@ -2784,8 +2784,7 @@ struct S_Unknown_BB_F0 {
 struct G_ItemSubcommand {
   uint8_t command;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   le_uint32_t item_id;
   le_uint32_t amount;
 };
@@ -2939,8 +2938,7 @@ struct G_SetPlayerVisibility_6x22_6x23 {
 struct G_EquipItem_6x25 {
   uint8_t command;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   le_uint32_t item_id;
   le_uint32_t equip_slot;
 };
@@ -2950,8 +2948,7 @@ struct G_EquipItem_6x25 {
 struct G_UnequipItem_6x26 {
   uint8_t command;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   le_uint32_t item_id;
   le_uint32_t unused2;
 };
@@ -2961,8 +2958,7 @@ struct G_UnequipItem_6x26 {
 struct G_UseItem_6x27 {
   uint8_t command;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   le_uint32_t item_id;
 };
 
@@ -2986,8 +2982,7 @@ struct G_FeedMAG_6x28 {
 struct G_PlayerDropItem_6x2A {
   uint8_t command;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   le_uint16_t unused2; // should be 1
   le_uint16_t area;
   le_uint32_t item_id;
@@ -3001,8 +2996,7 @@ struct G_PlayerDropItem_6x2A {
 struct G_PlayerCreateInventoryItem_DC_6x2B {
   uint8_t command;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   ItemData item;
 };
 
@@ -3020,8 +3014,7 @@ struct G_PlayerCreateInventoryItem_PC_V3_BB_6x2B : G_PlayerCreateInventoryItem_D
 struct G_LevelUp_6x30 {
   uint8_t command;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   le_uint16_t atp;
   le_uint16_t mst;
   le_uint16_t evp;
@@ -3132,8 +3125,7 @@ struct G_PickUpItem_6x59 {
 struct G_PickUpItemRequest_6x5A {
   uint8_t command;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   le_uint32_t item_id;
   uint8_t area;
   uint8_t unused2[3];
@@ -3147,8 +3139,7 @@ struct G_PickUpItemRequest_6x5A {
 struct G_DropStackedItem_DC_6x5D {
   uint8_t subcommand;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   le_uint16_t area;
   le_uint16_t unused2;
   le_float x;
@@ -3165,8 +3156,7 @@ struct G_DropStackedItem_PC_V3_BB_6x5D : G_DropStackedItem_DC_6x5D {
 struct G_BuyShopItem_6x5E {
   uint8_t subcommand;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   ItemData item;
 };
 
@@ -3346,8 +3336,7 @@ struct G_BuyShopItem_BB_6xB7 {
 struct G_IdentifyResult_BB_6xB9 {
   uint8_t subcommand;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   ItemData item;
 };
 
@@ -3403,8 +3392,7 @@ struct G_CreateInventoryItem_BB_6xBE {
 struct G_GiveExperience_BB_6xBF {
   uint8_t subcommand;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   le_uint32_t amount;
 };
 
@@ -3421,8 +3409,7 @@ struct G_GiveExperience_BB_6xBF {
 struct G_SplitStackedItem_6xC3 {
   uint8_t command;
   uint8_t size;
-  uint8_t client_id;
-  uint8_t unused;
+  le_uint16_t client_id;
   le_uint16_t area;
   le_uint16_t unused2;
   le_float x;
