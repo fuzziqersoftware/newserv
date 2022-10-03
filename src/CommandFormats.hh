@@ -444,6 +444,12 @@ struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> { };
 // 06: Chat
 // Server->client format is same as 01 command. The maximum size of the message
 // is 0x200 bytes.
+// When sent by the client, the text field includes only the message. When sent
+// by the server, the text field includes the origin player's name, followed by
+// a tab character, followed by the message. During Episode 3 battles, chat
+// messages can additionally be targeted to only your teammate; in this case,
+// the message (at least, when seen by spectators) is of the form
+// '<targetname>\t\t<message>'.'
 // Client->server format is very similar; we include a zero-length array in this
 // struct to make parsing easier.
 
@@ -1034,7 +1040,8 @@ struct S_JoinLobby_XB_65_67_68 {
 struct S_LeaveLobby_66_69_Ep3_E9 {
   uint8_t client_id;
   uint8_t leader_id;
-  // Note: disable_udp only has an effect for games; it is unused for lobbies.
+  // Note: disable_udp only has an effect for games; it is unused for lobbies
+  // and spectator teams.
   uint8_t disable_udp;
   uint8_t unused;
 };
@@ -2434,32 +2441,37 @@ struct C_CreateSpectatorTeam_GC_Ep3_E7 {
 // See export_bb_player_data() in Player.cc for format.
 // TODO: Verify full breakdown from send_E7 in BB disassembly.
 
-// E8 (S->C): Join spectator team (probably) (Episode 3)
+// E8 (S->C): Join spectator team (Episode 3)
+// header.flag = player count (including spectators)
 
-struct S_Unknown_GC_Ep3_E8 {
-  parray<le_uint32_t, 0x20> unknown_a1;
+struct S_JoinSpectatorTeam_GC_Ep3_E8 {
+  parray<le_uint32_t, 0x20> variations; // 04-84
   struct PlayerEntry {
-    PlayerLobbyDataDCGC lobby_data;
-    PlayerInventory inventory;
-    PlayerDispDataDCPCV3 disp;
-  };
-  PlayerEntry players[4];
-  parray<uint8_t, 8> unknown_a2;
-  le_uint32_t unknown_a3;
-  parray<uint8_t, 4> unknown_a4;
+    PlayerLobbyDataDCGC lobby_data; // 0x20 bytes
+    PlayerInventory inventory; // 0x34C bytes
+    PlayerDispDataDCPCV3 disp; // 0xD0 bytes
+  }; // 0x43C bytes
+  PlayerEntry players[4]; // 84-1174
+  parray<uint8_t, 8> unknown_a2; // 1174-117C
+  le_uint32_t unknown_a3; // 117C-1180
+  parray<uint8_t, 4> unknown_a4; // 1180-1184
   struct SpectatorEntry {
-    // TODO: The game treats these two fields as [8][8][16][32], but that
-    // doesn't necessarily mean they're a player tag / guild card number pair.
     le_uint32_t player_tag;
     le_uint32_t guild_card_number;
-    parray<be_uint32_t, 8> unknown_a2;
+    ptext<char, 0x20> name;
     uint8_t unknown_a3[2];
     le_uint16_t unknown_a4;
     parray<le_uint32_t, 2> unknown_a5;
     parray<le_uint16_t, 2> unknown_a6;
-  };
-  SpectatorEntry entries[12];
-  parray<uint8_t, 0x20> unknown_a5;
+  }; // 0x38 bytes
+  // Somewhat misleadingly, this array also includes the players actually in the
+  // battle - they appear in the first positions. Presumably the first 4 are
+  // always for battlers, and the last 8 are always for spectators.
+  SpectatorEntry entries[12]; // 1184-1424
+  ptext<uint8_t, 0x20> spectator_team_name;
+  // This field doesn't appear to be actually used by the game, but some servers
+  // send it anyway (and the game presumably ignores it)
+  PlayerEntry spectator_players[8];
 };
 
 // E8 (C->S): Guild card commands (BB)
@@ -2523,7 +2535,8 @@ struct C_MoveGuildCard_BB_0AE8 {
 };
 
 // E9 (S->C): Other player left spectator team (probably) (Episode 3)
-// Same format as 66/69 commands.
+// Same format as 66/69 commands. Like 69 (and unlike 66), the disable_udp field
+// is unused in command E9.
 
 // EA (S->C): Timed message box (Episode 3)
 // The message appears in the upper half of the screen; the box is as wide as
@@ -2620,10 +2633,14 @@ struct C_Unknown_BB_1EEA {
 // header.flag is used, but no other arguments
 
 // EB (S->C): Unknown (Episode 3)
-// Looks like another lobby-joining type of command.
+// Looks like another lobby-joining type of command. Although the command has 12
+// entries, it appears the game only uses the first one. This command is
+// presumably sent to existing spectators when a player joins a spectator team,
+// analogous to the 65 and 68 commands for games and lobbies.
+// TODO: Verify usage of this command
 
 struct S_Unknown_GC_Ep3_EB {
-  parray<uint8_t, 12> unknown_a1;
+  parray<uint8_t, 12> unused;
   struct PlayerEntry {
     PlayerLobbyDataDCGC lobby_data;
     PlayerInventory inventory;
@@ -2675,8 +2692,8 @@ struct C_LeaveCharacterSelect_BB_00EC {
 // and sends them to the lobby. If the client is in a lobby (and not a game),
 // the client sends a 98 in response as if they were in a game. Curiously, the
 // client also sends a meseta transaction (BA) with a value of zero before
-// sending an 84 to be added to a lobby. It's likely this is used when a
-// spectator team is disbanded because the target game ends.
+// sending an 84 to be added to a lobby. This is used when a spectator team is
+// disbanded because the target game ends.
 
 // ED (C->S): Update account data (BB)
 // There are several subcommands (noted in the union below) that each update a
