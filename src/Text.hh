@@ -11,12 +11,6 @@
 
 
 
-// TODO: delete these if not needed
-// int char16ncmp(const char16_t* s1, const char16_t* s2, size_t count);
-// size_t char16len(const char16_t* s);
-
-
-
 // (1a) Conversion functions
 
 // These return the number of characters written, including the terminating null

@@ -102,11 +102,15 @@ There are multiple PSO quest formats out there; newserv supports most of them. I
 | Format                    | Extension         | Supported online? | Offline decode option     |
 |---------------------------|-------------------|-------------------|---------------------------|
 | Compressed                | .bin/.dat         | Yes               | None (1)                  |
+| Compressed Ep3            | .bin              | Download only     | None (1)                  |
 | Uncompressed              | .bind/.datd       | Yes               | --compress-data (2)       |
+| Uncompressed Ep3          | .bind             | Download only     | --compress-data (2)       |
 | Unencrypted GCI           | .bin.gci/.dat.gci | Yes               | --decode-gci=FILENAME     |
 | Encrypted GCI with key    | .bin.gci/.dat.gci | Yes               | --decode-gci=FILENAME     |
 | Encrypted GCI without key | .bin.gci/.dat.gci | No                | --decode-gci=FILENAME (3) |
+| Ep3 GCI                   | .bin.gci          | Download only     | --decode-gci=FILENAME     |
 | Encrypted DLQ             | .bin.dlq/.dat.dlq | Yes               | --decode-dlq=FILENAME     |
+| Ep3 DLQ                   | .bin.dlq          | Download only     | --decode-dlq=FILENAME     |
 | QST                       | .qst              | Yes               | --decode-qst=FILENAME     |
 
 *Notes:*

@@ -237,7 +237,7 @@ struct Ep3CompressedMapHeader { // .mnm file format
   // Compressed data immediately follows (which decompresses to an Ep3Map)
 } __attribute__((packed));
 
-struct Ep3Map { // .mnmd format
+struct Ep3Map { // .mnmd format; also the format of (decompressed) Ep3 quests
   /* 0000 */ be_uint32_t unknown_a1;
   /* 0004 */ be_uint32_t map_number;
   /* 0008 */ uint8_t width;

@@ -70,8 +70,10 @@ struct ShuffleTables {
 };
 
 struct PSOGCIFileHeader {
-  parray<uint8_t, 0x40> gci_header;
-  ptext<char, 0x1C> game_name; // e.g. "PSO EPISODE I & II"
+  parray<char, 4> game_id; // 'GPOE', 'GPSP', etc.
+  parray<char, 2> developer_id; // '8P' for Sega
+  parray<uint8_t, 0x3A> remaining_gci_header; // There is a structure for this but we don't use it
+  ptext<char, 0x1C> game_name; // e.g. "PSO EPISODE I & II" or "PSO EPISODE III"
   be_uint32_t embedded_seed; // Used in some of Ralf's quest packs
   ptext<char, 0x20> quest_name;
   parray<uint8_t, 0x2000> banner_and_icon;
@@ -294,18 +296,6 @@ struct PSOQuestHeaderGC {
   ptext<char, 0x120> long_description;
 } __attribute__((packed));
 
-struct PSOQuestHeaderGCEpisode3 {
-  // there's actually a lot of other important stuff in here but I'm lazy. it
-  // looks like map data, cutscene data, and maybe special cards used during
-  // the quest
-  parray<uint8_t, 0x1DF0> unknown_a1;
-  ptext<char, 0x14> name;
-  ptext<char, 0x14> location;
-  ptext<char, 0x3C> location2;
-  ptext<char, 0x190> description;
-  parray<uint8_t, 0x3A34> unknown_a2;
-} __attribute__((packed));
-
 struct PSOQuestHeaderBB {
   uint32_t start_offset;
   uint32_t unknown_offset1;
@@ -464,14 +454,14 @@ Quest::Quest(const string& bin_filename)
     case GameVersion::GC: {
       if (this->category == QuestCategory::EPISODE_3) {
         // these all appear to be the same size
-        if (bin_decompressed.size() != sizeof(PSOQuestHeaderGCEpisode3)) {
+        if (bin_decompressed.size() != sizeof(Ep3Map)) {
           throw invalid_argument("file is incorrect size");
         }
-        auto* header = reinterpret_cast<const PSOQuestHeaderGCEpisode3*>(bin_decompressed.data());
+        auto* header = reinterpret_cast<const Ep3Map*>(bin_decompressed.data());
         this->joinable = false;
         this->episode = 0xFF;
         this->name = decode_sjis(header->name);
-        this->short_description = decode_sjis(header->location2);
+        this->short_description = decode_sjis(header->quest_name);
         this->long_description = decode_sjis(header->description);
       } else {
         if (bin_decompressed.size() < sizeof(PSOQuestHeaderGC)) {
@@ -596,43 +586,96 @@ string Quest::decode_gci(
     throw runtime_error("GCI file unencrypted header checksum is incorrect");
   }
 
-  const auto& encrypted_header = r.get<PSOGCIFileEncryptedHeader>(false);
-  // Unencrypted GCI files appear to always have zeroes in these fields.
-  // Encrypted GCI files are highly unlikely to have zeroes in ALL of these
-  // fields, so assume it's encrypted if any of them are nonzero.
-  if (encrypted_header.round2_seed || encrypted_header.checksum || encrypted_header.round3_seed) {
-    if (known_seed >= 0) {
-      return decrypt_gci_data_section(
-          r.getv(header.data_size), header.data_size, known_seed);
+  if (header.developer_id[0] != '8' || header.developer_id[1] != 'P') {
+    throw runtime_error("GCI file is not for a Sega game");
+  }
+  if (header.game_id[0] != 'G') {
+    throw runtime_error("GCI file is not for a GameCube game");
+  }
+  if (header.game_id[1] != 'P') {
+    throw runtime_error("GCI file is not for Phantasy Star Online");
+  }
 
-    } else if (header.embedded_seed != 0) {
-      return decrypt_gci_data_section(
-          r.getv(header.data_size), header.data_size, header.embedded_seed);
+  if (header.game_id[2] == 'O') { // Episodes 1&2 (GPO*)
+    const auto& encrypted_header = r.get<PSOGCIFileEncryptedHeader>(false);
+    // Unencrypted GCI files appear to always have zeroes in these fields.
+    // Encrypted GCI files are highly unlikely to have zeroes in ALL of these
+    // fields, so assume it's encrypted if any of them are nonzero.
+    if (encrypted_header.round2_seed || encrypted_header.checksum || encrypted_header.round3_seed) {
+      if (known_seed >= 0) {
+        return decrypt_gci_data_section(
+            r.getv(header.data_size), header.data_size, known_seed);
 
-    } else {
-      if (find_seed_num_threads < 0) {
-        throw runtime_error("GCI file appears to be encrypted");
+      } else if (header.embedded_seed != 0) {
+        return decrypt_gci_data_section(
+            r.getv(header.data_size), header.data_size, header.embedded_seed);
+
+      } else {
+        if (find_seed_num_threads < 0) {
+          throw runtime_error("GCI file appears to be encrypted");
+        }
+        if (find_seed_num_threads == 0) {
+          find_seed_num_threads = thread::hardware_concurrency();
+        }
+        return find_seed_and_decrypt_gci_data_section(
+            r.getv(header.data_size), header.data_size, find_seed_num_threads);
       }
-      if (find_seed_num_threads == 0) {
-        find_seed_num_threads = thread::hardware_concurrency();
+
+    } else { // Unencrypted GCI format
+      r.skip(sizeof(PSOGCIFileEncryptedHeader));
+      string compressed_data = r.readx(header.data_size - sizeof(PSOGCIFileEncryptedHeader));
+      size_t decompressed_bytes = prs_decompress_size(compressed_data);
+
+      size_t expected_decompressed_bytes = encrypted_header.decompressed_size - 8;
+      if (decompressed_bytes < expected_decompressed_bytes) {
+        throw runtime_error(string_printf(
+            "GCI decompressed data is smaller than expected size (have 0x%zX bytes, expected 0x%zX bytes)",
+            decompressed_bytes, expected_decompressed_bytes));
       }
-      return find_seed_and_decrypt_gci_data_section(
-          r.getv(header.data_size), header.data_size, find_seed_num_threads);
+
+      return compressed_data;
     }
 
-  } else { // Unencrypted GCI format
-    r.skip(sizeof(PSOGCIFileEncryptedHeader));
-    string compressed_data = r.readx(header.data_size - sizeof(PSOGCIFileEncryptedHeader));
-    size_t decompressed_bytes = prs_decompress_size(compressed_data);
+  } else if (header.game_id[2] == 'S') { // Episode 3
+    // The first 0x10 bytes in the data segment appear to be unused. In most
+    // files I've seen, the last half of it (8 bytes) are duplicates of the
+    // first 8 bytes of the unscrambled, compressed data, though this is likely
+    // the result of an uninitialized memory bug when the client encodes the
+    // file and not an actual constraint on what should be in these 8 bytes.
+    r.skip(16);
+    // The game treats this field as a 16-byte string (including the \0). The 8
+    // bytes after it appear to be completely unused.
+    if (r.readx(15) != "SONICTEAM,SEGA.") {
+      throw runtime_error("Episode 3 GCI file is not a quest");
+    }
+    r.skip(9);
 
-    size_t expected_decompressed_bytes = encrypted_header.decompressed_size - 8;
-    if (decompressed_bytes < expected_decompressed_bytes) {
+    data = r.readx(header.data_size - 40);
+
+    // For some reason, Sega decided not to encrypt Episode 3 quest files in the
+    // same way as Episodes 1&2 quest files (see above). Instead, they just
+    // wrote a fairly trivial XOR loop over the first 0x100 bytes, leaving the
+    // remaining bytes completely unencrypted (but still compressed).
+    size_t unscramble_size = min<size_t>(0x100, data.size());
+    {
+      uint8_t key = 0x80; // Technically basis + 0x80, but basis is zero
+      for (size_t z = 0; z < unscramble_size; z++) {
+        key = (key * 5) + 1;
+        data[z] ^= key;
+      }
+    }
+
+    size_t decompressed_size = prs_decompress_size(data);
+    if (decompressed_size != sizeof(Ep3Map)) {
       throw runtime_error(string_printf(
-          "GCI decompressed data is smaller than expected size (have 0x%zX bytes, expected 0x%zX bytes)",
-          decompressed_bytes, expected_decompressed_bytes));
+          "decompressed quest is 0x%zX bytes; expected 0x%zX bytes",
+          decompressed_size, sizeof(Ep3Map)));
     }
 
-    return compressed_data;
+    return data;
+
+  } else {
+    throw runtime_error("unknown game name in GCI header");
   }
 }
 
