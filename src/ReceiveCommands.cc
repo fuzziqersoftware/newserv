@@ -2682,6 +2682,114 @@ static void on_trade_error(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 
 
+static void on_card_trade(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t flag, const string& data) { // EE
+  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+    throw runtime_error("non-Ep3 client sent card trade command");
+  }
+  auto l = s->find_lobby(c->lobby_id);
+  if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    throw runtime_error("client sent card trade command outside of Ep3 lobby");
+  }
+  if (!l->is_game()) {
+    throw runtime_error("client sent card trade command in non-game lobby");
+  }
+
+  if (flag == 0xD0) {
+    auto& cmd = check_size_t<SC_TradeCards_GC_Ep3_EE_FlagD0_FlagD3>(data);
+
+    if (c->game_data.pending_card_trade) {
+      throw runtime_error("player started a card trade when one is already pending");
+    }
+    if (cmd.entry_count > 4) {
+      throw runtime_error("invalid entry count in card trade command");
+    }
+
+    auto target_c = l->clients.at(cmd.target_client_id);
+    if (!target_c) {
+      throw runtime_error("card trade command sent to missing player");
+    }
+    if (!(target_c->flags & Client::Flag::IS_EPISODE_3)) {
+      throw runtime_error("card trade target is not Episode 3");
+    }
+
+    c->game_data.pending_card_trade.reset(new PendingCardTrade());
+    c->game_data.pending_card_trade->other_client_id = cmd.target_client_id;
+    for (size_t x = 0; x < cmd.entry_count; x++) {
+      c->game_data.pending_card_trade->card_to_count.emplace_back(
+          make_pair(cmd.entries[x].card_type, cmd.entries[x].count));
+    }
+
+    // If the other player has a pending trade as well, assume this is the
+    // second half of the trade sequence, and send an EE D1 to both clients. If
+    // the other player does not have a pending trade, assume this is the first
+    // half of the trade sequence, and send an EE D1 only to the target player
+    // (to request its EE D0 command).
+    // See the description of the D0 command in CommandFormats.hh for more
+    // information on how this sequence is supposed to work. (The EE D0 command
+    // is analogous to Episodes 1&2's D0 command.)
+    S_AdvanceCardTradeState_GC_Ep3_EE_FlagD1 resp = {0};
+    send_command_t(target_c, 0xEE, 0xD1, resp);
+    if (target_c->game_data.pending_card_trade) {
+      send_command_t(c, 0xEE, 0xD1, resp);
+    }
+
+  } else if (flag == 0xD2) {
+    check_size_v(data.size(), 0);
+
+    if (!c->game_data.pending_card_trade) {
+      throw runtime_error("player executed a card trade with none pending");
+    }
+
+    auto target_c = l->clients.at(c->game_data.pending_card_trade->other_client_id);
+    if (!target_c) {
+      throw runtime_error("card trade target player is missing");
+    }
+    if (!target_c->game_data.pending_card_trade) {
+      throw runtime_error("player executed a card trade with no other side pending");
+    }
+
+    c->game_data.pending_card_trade->confirmed = true;
+    if (target_c->game_data.pending_card_trade->confirmed) {
+      send_execute_card_trade(c, target_c->game_data.pending_card_trade->card_to_count);
+      send_execute_card_trade(target_c, c->game_data.pending_card_trade->card_to_count);
+      S_CardTradeComplete_GC_Ep3_EE_FlagD4 resp = {1};
+      send_command_t(c, 0xEE, 0xD4, resp);
+      send_command_t(target_c, 0xEE, 0xD4, resp);
+      c->game_data.pending_card_trade.reset();
+      target_c->game_data.pending_card_trade.reset();
+    }
+
+  } else if (flag == 0xD4) {
+    check_size_v(data.size(), 0);
+
+    // See the D4 handler for why this check exists (and why it doesn't throw)
+    if (!c->game_data.pending_card_trade) {
+      return;
+    }
+    uint8_t other_client_id = c->game_data.pending_card_trade->other_client_id;
+    c->game_data.pending_card_trade.reset();
+    S_CardTradeComplete_GC_Ep3_EE_FlagD4 resp = {0};
+    send_command_t(c, 0xEE, 0xD4, resp);
+
+    // Cancel the other side of the trade too, if it's open
+    auto target_c = l->clients.at(other_client_id);
+    if (!target_c) {
+      return;
+    }
+    if (!target_c->game_data.pending_card_trade) {
+      return;
+    }
+    target_c->game_data.pending_card_trade.reset();
+    send_command_t(target_c, 0xEE, 0xD4, resp);
+
+  } else {
+    throw runtime_error("invalid card trade operation");
+  }
+}
+
+
+
 static void on_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string&) { // EA
 
@@ -3111,7 +3219,7 @@ static on_command_t handlers[0x100][6] = {
   /* EB */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_stream_file_request_bb,      }, /* EB */
   /* EC */ {nullptr,                 nullptr,                    nullptr,                         on_create_game_dc_v3,        nullptr,                     on_leave_char_select_bb,        }, /* EC */
   /* ED */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_change_account_data_bb,      }, /* ED */
-  /* EE */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* EE */
+  /* EE */ {nullptr,                 nullptr,                    nullptr,                         on_card_trade,               nullptr,                     nullptr,                        }, /* EE */
   /* EF */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* EF */
   /* F0 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F0 */
   /* F1 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F1 */

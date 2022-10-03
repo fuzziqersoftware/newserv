@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <utility>
 #include <phosg/Encoding.hh>
 
 #include "LevelTable.hh"
@@ -89,6 +90,12 @@ struct PendingItemTrade {
   uint8_t other_client_id;
   bool confirmed; // true if client has sent a D2 command
   std::vector<ItemData> items;
+};
+
+struct PendingCardTrade {
+  uint8_t other_client_id;
+  bool confirmed; // true if client has sent an EE D2 command
+  std::vector<std::pair<uint32_t, uint32_t>> card_to_count;
 };
 
 
@@ -494,8 +501,9 @@ public:
 
   // The following fields are not saved, and are only used in certain situations
 
-  // Null unless the client is within the trade sequence (D0-D4 commands)
+  // Null unless the client is within the trade sequence (D0-D4 or EE commands)
   std::unique_ptr<PendingItemTrade> pending_item_trade;
+  std::unique_ptr<PendingCardTrade> pending_card_trade;
 
   // Null unless the client is Episode 3 and has sent its config already
   std::shared_ptr<Ep3Config> ep3_config;

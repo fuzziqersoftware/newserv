@@ -2711,35 +2711,39 @@ union C_UpdateAccountData_BB_ED {
   parray<uint8_t, 0x140> challenge_battle_config; // 08ED
 };
 
-// EE (S->C): Unknown (Episode 3)
-// This command has different forms depending on the header.flag value. Since
-// the relevant flag values match the Episodes 1 & 2 trade window commands, this
-// is likely used for trading cards.
+// EE (S->C): Trade cards sequence (Episode 3)
+// This command has different forms depending on the header.flag value; the flag
+// values match the command numbers from the Episodes 1&2 trade window sequence.
+// The general sequence of events with the EE command also matches that of the
+// Episodes 1&2 trade - see the description of the D0 command for details.
 
-struct C_Unknown_GC_Ep3_EE_FlagD0 {
-  parray<le_uint32_t, 9> unknown_a1;
-};
-
-struct S_Unknown_GC_Ep3_EE_FlagD1 {
-  le_uint32_t unknown_a1;
-};
-
-// EE D2 04 00 (C->S) - no arguments
-
-struct S_Unknown_GC_Ep3_EE_FlagD3 {
-  le_uint16_t unknown_a1;
-  le_uint16_t unknown_a2;
+// EE D0 (C->S): Begin trade
+struct SC_TradeCards_GC_Ep3_EE_FlagD0_FlagD3 {
+  le_uint16_t target_client_id;
+  le_uint16_t entry_count;
   struct Entry {
-    le_uint32_t unknown_a1;
-    le_uint32_t unknown_a2;
+    le_uint32_t card_type;
+    le_uint32_t count;
   };
   Entry entries[4];
 };
 
-// EE D4 04 00 (C->S) - no arguments
+// EE D1 (S->C): Advance trade state
+struct S_AdvanceCardTradeState_GC_Ep3_EE_FlagD1 {
+  le_uint32_t unused;
+};
 
-struct S_Unknown_GC_Ep3_EE_FlagD4 {
-  le_uint32_t unknown_a1;
+// EE D2 (C->S): Trade can proceed
+// No arguments
+
+// EE D3 (S->C): Execute trade
+// Same format as EE D0
+
+// EE D4 (C->S): Trade failed
+// EE D4 (S->C): Trade complete
+
+struct S_CardTradeComplete_GC_Ep3_EE_FlagD4 {
+  le_uint32_t success; // 0 = failed, 1 = success, anything else = invalid
 };
 
 // EE (S->C): Scrolling message (BB)

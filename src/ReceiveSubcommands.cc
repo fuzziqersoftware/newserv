@@ -39,23 +39,25 @@ const CmdT* check_size_sc(
     max_size = min_size;
   }
   const auto* cmd = &check_size_t<CmdT>(data, min_size, max_size);
-  if (check_size_field && (cmd->size != data.size() / 4)) {
-    throw runtime_error("invalid subcommand size field");
+  if (check_size_field) {
+    const PSOSubcommand* sub = reinterpret_cast<const PSOSubcommand*>(data.data());
+    if (sub[0].byte[1] == 0) {
+      if (data.size() < 8) {
+        throw runtime_error("subcommand has extended size but is shorter than 8 bytes");
+      }
+      if (sub[1].dword != data.size()) {
+        throw runtime_error("invalid subcommand extended size field");
+      }
+    } else {
+      if (data.size() < 4) {
+        throw runtime_error("subcommand is shorter than 4 bytes");
+      }
+      if ((sub[0].byte[1] * 4) != data.size()) {
+        throw runtime_error("invalid subcommand size field");
+      }
+    }
   }
   return cmd;
-}
-
-template <>
-const PSOSubcommand* check_size_sc<PSOSubcommand>(
-    const string& data, size_t min_size, size_t max_size, bool check_size_field) {
-  if (max_size < min_size) {
-    max_size = min_size;
-  }
-  const auto* ret = &check_size_t<PSOSubcommand>(data, min_size, max_size);
-  if (check_size_field && (ret[0].byte[1] != data.size() / 4)) {
-    throw runtime_error("invalid subcommand size field");
-  }
-  return ret;
 }
 
 
@@ -596,10 +598,12 @@ static void on_subcommand_open_shop_bb_or_unknown_ep3(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_open_bank_bb(shared_ptr<ServerState>,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const string&) {
+static void on_subcommand_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag, const string& data) {
   if ((l->version == GameVersion::BB) && l->is_game()) {
     send_bank(c);
+  } else if (l->version == GameVersion::GC && l->flags & Lobby::Flag::EPISODE_3_ONLY) {
+    forward_subcommand(l, c, command, flag, data);
   }
 }
 
@@ -1355,8 +1359,8 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* B8 */ on_subcommand_identify_item_bb,
   /* B9 */ nullptr,
   /* BA */ on_subcommand_accept_identify_item_bb,
-  /* BB */ on_subcommand_open_bank_bb,
-  /* BC */ nullptr, // BB bank contents (server->client only)
+  /* BB */ on_subcommand_open_bank_bb_or_card_trade_counter_ep3,
+  /* BC */ on_subcommand_forward_check_size_ep3_game, // BB bank contents (server->client only), Ep3 card trade sequence
   /* BD */ on_subcommand_bank_action_bb,
   /* BE */ nullptr, // BB create inventory item (server->client only)
   /* BF */ on_subcommand_forward_check_size_ep3_lobby, // Ep3 change music, also BB give EXP (BB usage is server->client only)

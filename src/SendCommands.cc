@@ -1315,6 +1315,32 @@ void send_execute_item_trade(std::shared_ptr<Client> c,
   send_command_t(c, 0xD3, 0x00, cmd);
 }
 
+void send_execute_card_trade(std::shared_ptr<Client> c,
+    const std::vector<std::pair<uint32_t, uint32_t>>& card_to_count) {
+  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+    throw logic_error("cannot send trade cards command to non-Ep3 client");
+  }
+
+  SC_TradeCards_GC_Ep3_EE_FlagD0_FlagD3 cmd;
+  constexpr size_t max_entries = sizeof(cmd.entries) / sizeof(cmd.entries[0]);
+  if (card_to_count.size() > max_entries) {
+    throw logic_error("too many items in execute card trade command");
+  }
+
+  cmd.target_client_id = c->lobby_client_id;
+  cmd.entry_count = card_to_count.size();
+  size_t x;
+  for (x = 0; x < card_to_count.size(); x++) {
+    cmd.entries[x].card_type = card_to_count[x].first;
+    cmd.entries[x].count = card_to_count[x].second;
+  }
+  for (; x < max_entries; x++) {
+    cmd.entries[x].card_type = 0;
+    cmd.entries[x].count = 0;
+  }
+  send_command_t(c, 0xEE, 0xD3, cmd);
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////

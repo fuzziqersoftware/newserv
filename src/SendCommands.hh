@@ -210,6 +210,8 @@ void send_get_player_info(std::shared_ptr<Client> c);
 
 void send_execute_item_trade(std::shared_ptr<Client> c,
     const std::vector<ItemData>& items);
+void send_execute_card_trade(std::shared_ptr<Client> c,
+    const std::vector<std::pair<uint32_t, uint32_t>>& card_to_count);
 
 void send_arrow_update(std::shared_ptr<Lobby> l);
 void send_resume_game(std::shared_ptr<Lobby> l,
