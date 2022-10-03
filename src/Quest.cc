@@ -24,8 +24,8 @@ using namespace std;
 // GCI decoding logic
 
 struct ShuffleTables {
-  uint8_t forward_table[0x100]; // table1 / 804FB9B8
-  uint8_t reverse_table[0x100]; // table2 / 804FBAB8
+  uint8_t forward_table[0x100];
+  uint8_t reverse_table[0x100];
 
   ShuffleTables(PSOV2Encryption& crypt) {
     for (size_t x = 0; x < 0x100; x++) {
@@ -187,10 +187,7 @@ string find_seed_and_decrypt_gci_data_section(
 
 
 struct PSODownloadQuestHeader {
-  // When sending a DLQ to the client, this is the DECOMPRESSED size. When
-  // reading it from an (unencrypted) GCI file, this is the COMPRESSED size.
   le_uint32_t size;
-  // Note: use PSO PC encryption, even for GC quests.
   le_uint32_t encryption_seed;
 } __attribute__((packed));
 
@@ -254,7 +251,7 @@ static const char* name_for_episode(uint8_t episode) {
 
 
 
-struct PSOQuestHeaderDC { // same for dc v1 and v2, thankfully
+struct PSOQuestHeaderDC { // Same format for DC v1 and v2, thankfully
   uint32_t start_offset;
   uint32_t unknown_offset1;
   uint32_t size;
@@ -290,7 +287,7 @@ struct PSOQuestHeaderGC {
   uint8_t is_download;
   uint8_t unknown1;
   uint8_t quest_number;
-  uint8_t episode; // 1 = ep2. apparently some quests have 0xFF here, which means ep1 (?)
+  uint8_t episode; // 1 = Ep2. Apparently some quests have 0xFF here, which means ep1 (?)
   ptext<char, 0x20> name;
   ptext<char, 0x80> short_description;
   ptext<char, 0x120> long_description;
@@ -303,7 +300,7 @@ struct PSOQuestHeaderBB {
   uint32_t unused;
   uint16_t quest_number; // 0xFFFF for challenge quests
   uint16_t unused2;
-  uint8_t episode; // 0 = ep1, 1 = ep2, 2 = ep4
+  uint8_t episode; // 0 = Ep1, 1 = Ep2, 2 = Ep4
   uint8_t max_players;
   uint8_t joinable_in_progress;
   uint8_t unknown;
@@ -321,25 +318,30 @@ Quest::Quest(const string& bin_filename)
     episode(0),
     is_dcv1(false),
     joinable(false),
-    file_format(FileFormat::BIN_DAT) {
+    file_format(FileFormat::BIN_DAT),
+    has_mnm_extension(false) {
 
-  if (ends_with(bin_filename, ".bin.gci")) {
+  if (ends_with(bin_filename, ".bin.gci") || ends_with(bin_filename, ".mnm.gci")) {
     this->file_format = FileFormat::BIN_DAT_GCI;
+    this->has_mnm_extension = ends_with(bin_filename, ".mnm.gci");
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
-  } else if (ends_with(bin_filename, ".bin.dlq")) {
+  } else if (ends_with(bin_filename, ".bin.dlq") || ends_with(bin_filename, ".mnm.dlq")) {
     this->file_format = FileFormat::BIN_DAT_DLQ;
+    this->has_mnm_extension = ends_with(bin_filename, ".mnm.dlq");
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
   } else if (ends_with(bin_filename, ".qst")) {
     this->file_format = FileFormat::QST;
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 4);
-  } else if (ends_with(bin_filename, ".bin")) {
+  } else if (ends_with(bin_filename, ".bin") || ends_with(bin_filename, ".mnm")) {
     this->file_format = FileFormat::BIN_DAT;
+    this->has_mnm_extension = ends_with(bin_filename, ".mnm");
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 4);
-  } else if (ends_with(bin_filename, ".bind")) {
+  } else if (ends_with(bin_filename, ".bind") || ends_with(bin_filename, ".mnmd")) {
     this->file_format = FileFormat::BIN_DAT_UNCOMPRESSED;
+    this->has_mnm_extension = ends_with(bin_filename, ".mnmd");
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 5);
   } else {
-    throw runtime_error("quest does not have a valid .bin file");
+    throw runtime_error("quest does not have a valid .bin or .mnm file");
   }
 
   string basename;
@@ -352,10 +354,10 @@ Quest::Quest(const string& bin_filename)
     }
   }
 
-  // quest filenames are like:
+  // Quest filenames are like:
   // b###-VV.bin for battle mode
   // c###-VV.bin for challenge mode
-  // e###-gc3.bin for episode 3
+  // e###-gc3.mnm (or .bin) for episode 3
   // q###-CAT-VV.bin for normal quests
 
   if (basename.empty()) {
@@ -372,17 +374,21 @@ Quest::Quest(const string& bin_filename)
     throw invalid_argument("filename does not indicate mode");
   }
 
-  // if the quest category is still unknown, expect 3 tokens (one of them will
+  if (this->category != QuestCategory::EPISODE_3 && this->has_mnm_extension) {
+    throw invalid_argument("non-Ep3 quest has .mnm extension");
+  }
+
+  // If the quest category is still unknown, expect 3 tokens (one of them will
   // tell us the category)
   vector<string> tokens = split(basename, '-');
   if (tokens.size() != (2 + (this->category == QuestCategory::UNKNOWN))) {
     throw invalid_argument("incorrect filename format");
   }
 
-  // parse the number out of the first token
+  // Parse the number out of the first token
   this->internal_id = strtoull(tokens[0].c_str() + 1, nullptr, 10);
 
-  // get the category from the second token if needed
+  // Get the category from the second token if needed
   if (this->category == QuestCategory::UNKNOWN) {
     static const unordered_map<string, QuestCategory> name_to_category({
       {"ret", QuestCategory::RETRIEVAL},
@@ -392,7 +398,7 @@ Quest::Quest(const string& bin_filename)
       {"vr",  QuestCategory::VR},
       {"twr", QuestCategory::TOWER},
       // Note: This will be overwritten later for Episode 2 & 4 quests - we
-      // haven't parsed the episode from the quest script yet
+      // haven't parsed the episode number from the quest script yet
       {"gov", QuestCategory::GOVERNMENT_EPISODE_1},
       {"dl",  QuestCategory::DOWNLOAD},
       {"1p",  QuestCategory::SOLO},
@@ -453,7 +459,6 @@ Quest::Quest(const string& bin_filename)
     case GameVersion::XB:
     case GameVersion::GC: {
       if (this->category == QuestCategory::EPISODE_3) {
-        // these all appear to be the same size
         if (bin_decompressed.size() != sizeof(Ep3Map)) {
           throw invalid_argument("file is incorrect size");
         }
@@ -513,27 +518,39 @@ static string basename_for_filename(const string& filename) {
 }
 
 string Quest::bin_filename() const {
-  return basename_for_filename(this->file_basename + ".bin");
+  if (this->category == QuestCategory::EPISODE_3) {
+    return string_printf("m%06" PRId64 "p_e.bin", this->internal_id);
+  } else {
+    return basename_for_filename(this->file_basename + ".bin");
+  }
 }
 
 string Quest::dat_filename() const {
-  return basename_for_filename(this->file_basename + ".dat");
+  if (this->category == QuestCategory::EPISODE_3) {
+    throw logic_error("Episode 3 quests do not have .dat files");
+  } else {
+    return basename_for_filename(this->file_basename + ".dat");
+  }
 }
 
 shared_ptr<const string> Quest::bin_contents() const {
   if (!this->bin_contents_ptr) {
     switch (this->file_format) {
       case FileFormat::BIN_DAT:
-        this->bin_contents_ptr.reset(new string(load_file(this->file_basename + ".bin")));
+        this->bin_contents_ptr.reset(new string(load_file(
+            this->file_basename + (this->has_mnm_extension ? ".mnm" : ".bin"))));
         break;
       case FileFormat::BIN_DAT_UNCOMPRESSED:
-        this->bin_contents_ptr.reset(new string(prs_compress(load_file(this->file_basename + ".bind"))));
+        this->bin_contents_ptr.reset(new string(prs_compress(load_file(
+            this->file_basename + (this->has_mnm_extension ? ".mnmd" : ".bind")))));
         break;
       case FileFormat::BIN_DAT_GCI:
-        this->bin_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".bin.gci", false)));
+        this->bin_contents_ptr.reset(new string(this->decode_gci(
+            this->file_basename + (this->has_mnm_extension ? ".mnm.gci" : ".bin.gci"), false)));
         break;
       case FileFormat::BIN_DAT_DLQ:
-        this->bin_contents_ptr.reset(new string(this->decode_dlq(this->file_basename + ".bin.dlq")));
+        this->bin_contents_ptr.reset(new string(this->decode_dlq(
+            this->file_basename + (this->has_mnm_extension ? ".mnm.dlq" : ".bin.dlq"))));
         break;
       case FileFormat::QST: {
         auto result = this->decode_qst(this->file_basename + ".qst");
@@ -549,6 +566,9 @@ shared_ptr<const string> Quest::bin_contents() const {
 }
 
 shared_ptr<const string> Quest::dat_contents() const {
+  if (this->category == QuestCategory::EPISODE_3) {
+    throw logic_error("Episode 3 quests do not have .dat files");
+  }
   if (!this->dat_contents_ptr) {
     switch (this->file_format) {
       case FileFormat::BIN_DAT:
@@ -839,6 +859,10 @@ QuestIndex::QuestIndex(const string& directory) : directory(directory) {
         ends_with(filename, ".bind") ||
         ends_with(filename, ".bin.gci") ||
         ends_with(filename, ".bin.dlq") ||
+        ends_with(filename, ".mnm") ||
+        ends_with(filename, ".mnmd") ||
+        ends_with(filename, ".mnm.gci") ||
+        ends_with(filename, ".mnm.dlq") ||
         ends_with(filename, ".qst")) {
       try {
         shared_ptr<Quest> q(new Quest(full_path));
@@ -848,10 +872,16 @@ QuestIndex::QuestIndex(const string& directory) : directory(directory) {
             make_pair(q->version, q->menu_item_id), q).second) {
           throw logic_error("duplicate quest menu item id");
         }
-        static_game_data_log.info("Indexed quest %s (%s-%" PRId64 " => %" PRIu32 ", %s, %s, joinable=%s, dcv1=%s)",
-            ascii_name.c_str(), name_for_version(q->version), q->internal_id,
-            q->menu_item_id, name_for_category(q->category), name_for_episode(q->episode),
-            q->joinable ? "true" : "false", q->is_dcv1 ? "true" : "false");
+        static_game_data_log.info("Indexed quest %s (%s => %s-%" PRId64 " (%" PRIu32 "), %s, %s, joinable=%s, dcv1=%s)",
+            ascii_name.c_str(),
+            filename.c_str(),
+            name_for_version(q->version),
+            q->internal_id,
+            q->menu_item_id,
+            name_for_category(q->category),
+            name_for_episode(q->episode),
+            q->joinable ? "true" : "false",
+            q->is_dcv1 ? "true" : "false");
       } catch (const exception& e) {
         static_game_data_log.warning("Failed to parse quest file %s (%s)", filename.c_str(), e.what());
       }
@@ -890,7 +920,7 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(
 static string create_download_quest_file(const string& compressed_data,
     size_t decompressed_size, uint32_t encryption_seed = 0) {
   // Download quest files are like normal (PRS-compressed) quest files, but they
-  // are encrypted with the PSOPC encryption (even on V3 / PSO GC), and a small
+  // are encrypted with PSO V2 encryption (even on V3 / PSO GC), and a small
   // header (PSODownloadQuestHeader) is prepended to the encrypted data.
 
   if (encryption_seed == 0) {
@@ -904,7 +934,7 @@ static string create_download_quest_file(const string& compressed_data,
   data += compressed_data;
 
   // Add temporary extra bytes if necessary so encryption won't fail - the data
-  // size must be a multiple of 4 for PSO PC encryption.
+  // size must be a multiple of 4 for PSO V2 encryption.
   size_t original_size = data.size();
   data.resize((data.size() + 3) & (~3));
 
@@ -921,6 +951,12 @@ shared_ptr<Quest> Quest::create_download_quest() const {
   // will ignore it when scanning for download quests in an offline game. To set
   // this flag, we need to decompress the quest's .bin file, set the flag, then
   // recompress it again.
+
+  // This function should not be used for Episode 3 quests (they should be sent
+  // to the client as-is, without any encryption or other preprocessing)
+  if (this->category == QuestCategory::EPISODE_3) {
+    throw logic_error("Episode 3 quests cannot be converted to download quests");
+  }
 
   string decompressed_bin = prs_decompress(*this->bin_contents());
 
@@ -953,8 +989,8 @@ shared_ptr<Quest> Quest::create_download_quest() const {
 
   string compressed_bin = prs_compress(decompressed_bin);
 
-  // We'll create a new Quest object with appropriately-processed .bin and .dat
-  // file contents.
+  // Return a new Quest object with appropriately-processed .bin and .dat file
+  // contents
   shared_ptr<Quest> dlq(new Quest(*this));
   dlq->bin_contents_ptr.reset(new string(create_download_quest_file(
       compressed_bin, decompressed_bin.size())));

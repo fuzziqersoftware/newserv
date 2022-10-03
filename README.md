@@ -89,7 +89,7 @@ After building newserv or downloading a release, do this to set it up and use it
 
 newserv automatically finds quests in the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's set-save-files option, just put them in that directory and name them appropriately.
 
-Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle quests should be named like `b###-VERSION.EXT`, and challenge quests should be named like `c###-VERSION.EXT`. The fields in each filename are:
+Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle quests should be named like `b###-VERSION.EXT`, challenge quests should be named like `c###-VERSION.EXT`, and Episode 3 quests should be named like `e###-gc3.EXT`. The fields in each filename are:
 - `###`: quest number (this doesn't really matter; it should just be unique for the PSO version)
 - `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gov = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
 - `VERSION`: d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
@@ -99,26 +99,26 @@ For example, the GameCube version of Lost HEAT SWORD is in two files named `q058
 
 There are multiple PSO quest formats out there; newserv supports most of them. It can also decode any known format to standard .bin/.dat format. Specifically:
 
-| Format                    | Extension         | Supported online? | Offline decode option     |
-|---------------------------|-------------------|-------------------|---------------------------|
-| Compressed                | .bin/.dat         | Yes               | None (1)                  |
-| Compressed Ep3            | .bin              | Download only     | None (1)                  |
-| Uncompressed              | .bind/.datd       | Yes               | --compress-data (2)       |
-| Uncompressed Ep3          | .bind             | Download only     | --compress-data (2)       |
-| Unencrypted GCI           | .bin.gci/.dat.gci | Yes               | --decode-gci=FILENAME     |
-| Encrypted GCI with key    | .bin.gci/.dat.gci | Yes               | --decode-gci=FILENAME     |
-| Encrypted GCI without key | .bin.gci/.dat.gci | No                | --decode-gci=FILENAME (3) |
-| Ep3 GCI                   | .bin.gci          | Download only     | --decode-gci=FILENAME     |
-| Encrypted DLQ             | .bin.dlq/.dat.dlq | Yes               | --decode-dlq=FILENAME     |
-| Ep3 DLQ                   | .bin.dlq          | Download only     | --decode-dlq=FILENAME     |
-| QST                       | .qst              | Yes               | --decode-qst=FILENAME     |
+| Format                    | Extension             | Supported online? | Offline decode option     |
+|---------------------------|-----------------------|-------------------|---------------------------|
+| Compressed                | .bin and .dat         | Yes               | None (1)                  |
+| Compressed Ep3            | .bin or .mnm          | Download only     | None (1)                  |
+| Uncompressed              | .bind and .datd       | Yes               | --compress-data (2)       |
+| Uncompressed Ep3          | .bind or .mnm         | Download only     | --compress-data (2)       |
+| Unencrypted GCI           | .bin.gci and .dat.gci | Yes               | --decode-gci=FILENAME     |
+| Encrypted GCI with key    | .bin.gci and .dat.gci | Yes               | --decode-gci=FILENAME     |
+| Encrypted GCI without key | .bin.gci and .dat.gci | No                | --decode-gci=FILENAME (3) |
+| Ep3 GCI                   | .bin.gci or .mnm.gci  | Download only     | --decode-gci=FILENAME     |
+| Encrypted DLQ             | .bin.dlq and .dat.dlq | Yes               | --decode-dlq=FILENAME     |
+| Ep3 DLQ                   | .bin.dlq or .mnm.dlq  | Download only     | --decode-dlq=FILENAME     |
+| QST                       | .qst                  | Yes               | --decode-qst=FILENAME     |
 
 *Notes:*
 1. *This is the default format. You can convert these to uncompressed format like this: `newserv --decompress-data < FILENAME.bin > FILENAME.bind`*
 2. *Similar to (1), to compress an uncompressed quest file: `newserv --compress-data < FILENAME.bind > FILENAME.bin`*
 3. *If you know the encryption seed (serial number), pass it in as a hex string with the `--seed=` option. If you don't know the encryption seed, newserv will find it for you, which will likely take a long time.*
 
-Episode 3 quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 .bin files can be encoded in any of the formats described above, except .qst.
+Episode 3 quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 quest files may be named with the .mnm extension instead of .bin, since the format is the same as the standard map files (in system/ep3/). These files can be encoded in any of the formats described above, except .qst. There are no encrypted Episode 3 GCI formats because the game doesn't encrypt quests saved to the memory card, unlike Episodes 1&2.
 
 When newserv indexes the quests during startup, it will warn (but not fail) if any quests are corrupt or in unrecognized formats.
 

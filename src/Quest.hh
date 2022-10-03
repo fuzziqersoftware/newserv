@@ -52,6 +52,7 @@ public:
   GameVersion version;
   std::string file_basename; // we append -<version>.<bin/dat> when reading
   FileFormat file_format;
+  bool has_mnm_extension;
   std::u16string name;
   std::u16string short_description;
   std::u16string long_description;
