@@ -449,7 +449,8 @@ struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> { };
 // a tab character, followed by the message. During Episode 3 battles, chat
 // messages can additionally be targeted to only your teammate; in this case,
 // the message (at least, when seen by spectators) is of the form
-// '<targetname>\t\t<message>'.'
+// '<targetname>\tE\t<message>'. Messages sent to the entire battle group
+// (including the opponents) are of the form '<targetname>\t@\t<message>'.
 // Client->server format is very similar; we include a zero-length array in this
 // struct to make parsing easier.
 
@@ -973,7 +974,10 @@ struct S_JoinGame_XB_64 : S_JoinGame<PlayerLobbyDataXB, PlayerDispDataDCPCV3> {
 
 struct S_JoinGame_BB_64 : S_JoinGame<PlayerLobbyDataBB, PlayerDispDataBB> { };
 
-// 65 (S->C): Other player joined game
+// 65 (S->C): Add player to game
+// When a player joins an existing game, the joining player receives a 64
+// command (described above), and the players already in the game receive a 65
+// command containing only the joining player's data.
 
 // Header flag = entry count (always 1 for 65 and 68; up to 0x0C for 67)
 template <typename LobbyDataT, typename DispDataT>
@@ -1002,7 +1006,7 @@ struct S_JoinLobby {
 };
 struct S_JoinLobby_PC_65_67_68
     : S_JoinLobby<PlayerLobbyDataPC, PlayerDispDataDCPCV3> { };
-struct S_JoinLobby_DC_GC_65_67_68
+struct S_JoinLobby_DC_GC_65_67_68_Ep3_EB
     : S_JoinLobby<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3> { };
 struct S_JoinLobby_BB_65_67_68
     : S_JoinLobby<PlayerLobbyDataBB, PlayerDispDataBB> { };
@@ -1033,7 +1037,7 @@ struct S_JoinLobby_XB_65_67_68 {
   }
 };
 
-// 66 (S->C): Other player left game
+// 66 (S->C): Remove player from game
 // This is sent to all players in a game except the leaving player.
 
 // Header flag = leaving player ID (same as client_id);
@@ -1047,14 +1051,14 @@ struct S_LeaveLobby_66_69_Ep3_E9 {
 };
 
 // 67 (S->C): Join lobby
-// This is sent to the joining player; the other players get a 68 instead.
+// This is sent to the joining player; the other players receive a 68 instead.
 // Same format as 65 command, but used for lobbies instead of games.
 
-// 68 (S->C): Other player joined lobby
+// 68 (S->C): Add player to lobby
 // Same format as 65 command, but used for lobbies instead of games.
 // The command only includes the joining player's data.
 
-// 69 (S->C): Other player left lobby
+// 69 (S->C): Remove player from lobby
 // Same format as 66 command, but used for lobbies instead of games.
 
 // 6A: Invalid command
@@ -2534,7 +2538,7 @@ struct C_MoveGuildCard_BB_0AE8 {
   le_uint32_t position;
 };
 
-// E9 (S->C): Other player left spectator team (probably) (Episode 3)
+// E9 (S->C): Remove player from spectator team (Episode 3)
 // Same format as 66/69 commands. Like 69 (and unlike 66), the disable_udp field
 // is unused in command E9.
 
@@ -2632,22 +2636,14 @@ struct C_Unknown_BB_1EEA {
 // 20EA (C->S): Unknown
 // header.flag is used, but no other arguments
 
-// EB (S->C): Unknown (Episode 3)
-// Looks like another lobby-joining type of command. Although the command has 12
-// entries, it appears the game only uses the first one. This command is
-// presumably sent to existing spectators when a player joins a spectator team,
-// analogous to the 65 and 68 commands for games and lobbies.
-// TODO: Verify usage of this command
-
-struct S_Unknown_GC_Ep3_EB {
-  parray<uint8_t, 12> unused;
-  struct PlayerEntry {
-    PlayerLobbyDataDCGC lobby_data;
-    PlayerInventory inventory;
-    PlayerDispDataDCPCV3 disp;
-  };
-  PlayerEntry players[12];
-};
+// EB (S->C): Add player to spectator team (Episode 3)
+// Same format and usage as 65 and 68 commands, but sent to spectators in a
+// spectator team.
+// This command is used to add both primary players and spectators - if the
+// client ID in .lobby_data is 0-3, it's a primary player, otherwise it's a
+// spectator. (Of course, the other primary players in the game receive a 65
+// command rather than an EB command to notify them of the joining
+// player.)
 
 // 01EB (S->C): Send stream file index (BB)
 
@@ -2711,11 +2707,11 @@ union C_UpdateAccountData_BB_ED {
   parray<uint8_t, 0x140> challenge_battle_config; // 08ED
 };
 
-// EE (S->C): Trade cards sequence (Episode 3)
+// EE: Trade cards (Episode 3)
 // This command has different forms depending on the header.flag value; the flag
 // values match the command numbers from the Episodes 1&2 trade window sequence.
-// The general sequence of events with the EE command also matches that of the
-// Episodes 1&2 trade - see the description of the D0 command for details.
+// The sequence of events with the EE command matches that of the Episodes 1&2
+// trade window; see the description of the D0 command above for details.
 
 // EE D0 (C->S): Begin trade
 struct SC_TradeCards_GC_Ep3_EE_FlagD0_FlagD3 {
@@ -3314,8 +3310,8 @@ struct G_BoxItemDropRequest_6xA2 {
 // B0: Move in lobby chair (not valid on PC or GC Trial Edition)
 // B1: Unknown (not valid on PC or GC Trial Edition)
 // B2: Unknown (not valid on PC or GC Trial Edition)
-// B3: Unknown (Episode 3 only)
-// B4: Unknown (Episode 3 only)
+// B3: Unknown (XBOX and Episode 3 only; meanings are probably different for those versions)
+// B4: Unknown (XBOX and Episode 3 only; meanings are probably different for those versions)
 // B5: Episode 3 game setup menu state sync
 // B5: BB shop request (handled by the server)
 // B6: Episode 3 subcommands (server->client only)
@@ -3396,7 +3392,7 @@ struct G_BankAction_BB_6xBD {
   le_uint16_t unused2;
 };
 
-// BE: Unknown (Episode 3; not Trial Edition)
+// BE: Sound chat (Episode 3; not Trial Edition)
 // BE: BB create inventory item (server->client only)
 
 struct G_CreateInventoryItem_BB_6xBE {

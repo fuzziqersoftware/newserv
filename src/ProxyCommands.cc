@@ -1053,7 +1053,7 @@ static HandlerResult S_65_67_68(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
-constexpr on_command_t S_DG_65_67_68 = &S_65_67_68<S_JoinLobby_DC_GC_65_67_68>;
+constexpr on_command_t S_DG_65_67_68 = &S_65_67_68<S_JoinLobby_DC_GC_65_67_68_Ep3_EB>;
 constexpr on_command_t S_P_65_67_68 = &S_65_67_68<S_JoinLobby_PC_65_67_68>;
 constexpr on_command_t S_X_65_67_68 = &S_65_67_68<S_JoinLobby_XB_65_67_68>;
 constexpr on_command_t S_B_65_67_68 = &S_65_67_68<S_JoinLobby_BB_65_67_68>;
