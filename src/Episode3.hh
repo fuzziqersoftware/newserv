@@ -64,13 +64,13 @@ struct Ep3CardStats {
   } __attribute__((packed));
 
   struct Effect {
-    uint8_t command;
+    uint8_t command; // See name_for_effect_command in Episode3.cc for details
     ptext<char, 0x0F> expr; // May be blank if the command doesn't use it
-    uint8_t when;
+    uint8_t when; // See description_for_when in Episode3.cc for details
     ptext<char, 4> arg1;
     ptext<char, 4> arg2;
     ptext<char, 4> arg3;
-    parray<uint8_t, 3> unknown_a3;
+    parray<uint8_t, 3> unknown_a3; // Possibly completely unused
 
     bool is_empty() const;
     static std::string str_for_arg(const std::string& arg);
@@ -207,8 +207,6 @@ struct Ep3MapList {
   be_uint32_t total_size; // Including header, entries, and strings
 
   struct Entry { // Should be 0x220 bytes in total
-    // These 3 fields probably include the location ID (scenery to load) and the
-    // music ID
     be_uint16_t map_x;
     be_uint16_t map_y;
     be_uint16_t scene_data2;
