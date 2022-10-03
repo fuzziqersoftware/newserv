@@ -23,7 +23,6 @@ using namespace std;
 
 
 bool command_is_private(uint8_t command) {
-  // TODO: are either of the Ep3 commands (C9/CB) private? Looks like not...
   return (command == 0x62) || (command == 0x6D);
 }
 
@@ -1362,7 +1361,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* BB */ on_subcommand_open_bank_bb_or_card_trade_counter_ep3,
   /* BC */ on_subcommand_forward_check_size_ep3_game, // BB bank contents (server->client only), Ep3 card trade sequence
   /* BD */ on_subcommand_bank_action_bb,
-  /* BE */ nullptr, // BB create inventory item (server->client only)
+  /* BE */ on_subcommand_forward_check_size, // BB create inventory item (server->client only), Ep3 sound chat
   /* BF */ on_subcommand_forward_check_size_ep3_lobby, // Ep3 change music, also BB give EXP (BB usage is server->client only)
   /* C0 */ on_subcommand_sell_item_at_shop_bb,
   /* C1 */ nullptr,
