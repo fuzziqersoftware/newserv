@@ -30,7 +30,7 @@ With that said, I offer no guarantees on how or when this project will advance. 
 
 Current known issues / missing features / things to do:
 - Support disconnect hooks to clean up state, like if a client disconnects during quest loading or during a trade window execution.
-- Episode 3 battles aren't implemented. (Some reverse-engineering has already been done here though - see Episode3.hh/cc)
+- Episode 3 battles and tournaments aren't implemented. (Some reverse-engineering has already been done here though - see Episode3.hh/cc)
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
     - Enemy indexes also desync slightly in most games, often in later areas, leading to incorrect EXP values being given for killed enemies.
 - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
@@ -62,7 +62,7 @@ newserv supports several versions of PSO. Specifically:
 *Notes:*
 1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
 2. *This version only supports the modem adapter, which Dolphin does not currently emulate, so it's difficult to test.*
-3. *Episode 3 players can create and join games, but CARD battles are not implemented yet. Tournaments are also not supported.*
+3. *Episode 3 players can download quests, join lobbies, create and join games, and trade cards, but CARD battles are not implemented yet. Tournaments are also not supported.*
 4. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
 5. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
 
