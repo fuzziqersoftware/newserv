@@ -8,6 +8,8 @@
 
 #include <phosg/Strings.hh>
 
+#include "Text.hh"
+
 using namespace std;
 
 
@@ -365,4 +367,44 @@ size_t prs_decompress_size(const string& data, size_t max_size) {
       throw runtime_error("maximum output size exceeded");
     }
   }
+}
+
+
+
+string bc0_decompress(const string& data) {
+  StringReader r(data);
+  StringWriter w;
+
+  parray<uint8_t, 0x1000> memo;
+  uint16_t memo_offset = 0x0FEE;
+  uint16_t control_stream_bits = 0x0000;
+  while (!r.eof()) {
+    control_stream_bits >>= 1;
+    if ((control_stream_bits & 0x100) == 0) {
+      control_stream_bits = 0xFF00 | r.get_u8();
+      if (r.eof()) {
+        break;
+      }
+    }
+    if ((control_stream_bits & 1) == 0) {
+      uint8_t a1 = r.get_u8();
+      if (r.eof()) {
+        break;
+      }
+      uint8_t a2 = r.get_u8();
+      for (size_t z = 0; z <= (a2 & 0x0F) + 2; z++) {
+        uint8_t v = memo[((a1 | ((a2 << 4) & 0xF00)) + z) & 0x0FFF];
+        w.put_u8(v);
+        memo[memo_offset] = v;
+        memo_offset = (memo_offset + 1) & 0x0FFF;
+      }
+    } else {
+      uint8_t v = r.get_u8();
+      w.put_u8(v);
+      memo[memo_offset] = v;
+      memo_offset = (memo_offset + 1) & 0x0FFF;
+    }
+  }
+
+  return move(w.str());
 }

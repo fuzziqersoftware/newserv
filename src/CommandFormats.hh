@@ -3224,12 +3224,93 @@ struct G_EnemyDropItemRequest_PC_V3_BB_6x60 : G_EnemyDropItemRequest_DC_6x60 {
 // 68: Telepipe/Ryuker
 // 69: Unknown (supported; game only)
 // 6A: Unknown (supported; game only; not valid on Episode 3)
-// 6B: Sync enemy state (used while loading into game)
-// 6C: Sync object state (used while loading into game)
-// 6D: Sync item state (used while loading into game)
+
+// 6B: Sync enemy state (used while loading into game; same header format as 6E)
+// 6C: Sync object state (used while loading into game; same header format as 6E)
+// 6D: Sync item state (used while loading into game; same header format as 6E)
 // 6E: Sync flag state (used while loading into game)
+
+struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
+  uint8_t subcommand;
+  parray<uint8_t, 3> unused;
+  le_uint32_t subcommand_size;
+  le_uint32_t unknown_a1;
+  le_uint32_t data_size; // Must be <= subcommand_size - 0x10
+  // BC0-compressed data follows here (use bc0_decompress from Compression.hh)
+};
+
 // 6F: Unknown (used while loading into game)
-// 70: Unknown (used while loading into game)
+
+// 70: Sync player disp data and inventory (used while loading into game)
+// Annoyingly, they didn't use the same format as the 65/67/68 commands here,
+// and instead rearranged a bunch of things.
+// TODO: Some missing fields should be easy to find in the future (e.g. when the
+// sending player doesn't have 0 meseta, for example)
+
+struct G_Unknown_6x70 {
+  // Offsets in this struct are relative to the overall command header
+  /* 0004 */ uint8_t subcommand; // == 0x70
+  /* 0005 */ uint8_t basic_size; // == 0
+  /* 0006 */ le_uint16_t unused;
+  /* 0008 */ le_uint32_t subcommand_size;
+  /* 000C */ parray<le_uint16_t, 2> unknown_a1;
+  // [1] and [3] in this array (and maybe [2] also) appear to be le_floats;
+  // they could be the player's current (x, y, z) coords
+  /* 0010 */ parray<le_uint32_t, 7> unknown_a2;
+  /* 002C */ parray<le_uint16_t, 4> unknown_a3;
+  /* 0034 */ parray<parray<le_uint32_t, 3>, 5> unknown_a4;
+  /* 0070 */ le_uint32_t unknown_a5;
+  /* 0074 */ le_uint32_t player_tag;
+  /* 0078 */ le_uint32_t guild_card_number;
+  /* 007C */ parray<le_uint32_t, 2> unknown_a6;
+  /* 0084 */ struct {
+    parray<le_uint16_t, 2> unknown_a1;
+    parray<le_uint32_t, 6> unknown_a2;
+  } unknown_a7;
+  /* 00A0 */ le_uint32_t unknown_a8;
+  /* 00A4 */ parray<uint8_t, 0x14> unknown_a9;
+  /* 00B8 */ le_uint32_t unknown_a10;
+  /* 00BC */ le_uint32_t unknown_a11;
+  /* 00C0 */ parray<uint8_t, 0x14> technique_levels; // Last byte is uninitialized
+  /* 00D4 */ struct {
+    parray<uint8_t, 0x10> name;
+    uint64_t unknown_a2; // Same as unknown_a2 in PlayerDispDataDCPCV3, presumably
+    le_uint32_t name_color;
+    uint8_t extra_model;
+    parray<uint8_t, 0x0F> unused;
+    le_uint32_t name_color_checksum;
+    uint8_t section_id;
+    uint8_t char_class;
+    uint8_t v2_flags;
+    uint8_t version;
+    le_uint32_t v1_flags;
+    le_uint16_t costume;
+    le_uint16_t skin;
+    le_uint16_t face;
+    le_uint16_t head;
+    le_uint16_t hair;
+    le_uint16_t hair_r;
+    le_uint16_t hair_g;
+    le_uint16_t hair_b;
+    le_uint32_t proportion_x;
+    le_uint32_t proportion_y;
+  } disp_part2;
+  /* 0124 */ struct {
+    PlayerStats stats;
+    parray<uint8_t, 0x0A> unknown_a1;
+    le_uint32_t level;
+    le_uint32_t experience;
+    le_uint32_t meseta;
+  } disp_part1;
+  /* 0148 */ struct {
+    le_uint32_t num_items;
+    // Entries >= num_items in this array contain uninitialized data (usually
+    // the contents of a previous sync command)
+    parray<PlayerInventoryItem, 0x1E> items;
+  } inventory;
+  /* 0494 */ le_uint32_t unknown_a15;
+};
+
 // 71: Unknown (used while loading into game)
 // 72: Unknown (used while loading into game)
 // 73: Invalid subcommand (but apparently valid on BB; function is unknown)
