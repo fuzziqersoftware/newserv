@@ -1369,8 +1369,8 @@ void send_arrow_update(shared_ptr<Lobby> l) {
 
 // tells the player that the joining player is done joining, and the game can resume
 void send_resume_game(shared_ptr<Lobby> l, shared_ptr<Client> ready_client) {
-  uint32_t data = 0x081C0372;
-  send_command_excluding_client(l, ready_client, 0x60, 0x00, &data, 4);
+  static const be_uint32_t data = 0x72010000;
+  send_command_excluding_client(l, ready_client, 0x60, 0x00, &data, sizeof(be_uint32_t));
 }
 
 
