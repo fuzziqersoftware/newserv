@@ -216,27 +216,38 @@ void print_usage() {
 newserv - a Phantasy Star Online Swiss Army knife\n\
 \n\
 Usage:\n\
-  newserv [options]\n\
+  newserv [options] [input-filename [output-filename]]\n\
 \n\
 With no options, newserv runs in server mode. PSO clients can connect normally,\n\
 join lobbies, play games, and use the proxy server. See README.md and\n\
 system/config.json for more information.\n\
 \n\
 When options are given, newserv will do things other than running the server.\n\
-Specifically:\n\
-  --compress-data\n\
-  --decompress-data\n\
-      Compress or decompress data using the PRS algorithm.\n\
-  --decrypt-data\n\
+\n\
+Some modes accept input and/or output filenames; see the descriptions below for\n\
+details. If input-filename is missing or is '-', newserv reads from stdin;\n\
+similarly, if output-filename is missing or is '-', newserv writes to stdout.\n\
+\n\
+The options are:\n\
+  --compress-prs\n\
+  --decompress-prs\n\
+      Compress or decompress data using the PRS algorithm. Both input-filename\n\
+      and output-filename may be specified.\n\
+  --decompress-gjs [input-filename [output-filename]]\n\
+      Decompress data using the GJS algorithm.Both input-filename and\n\
+      output-filename may be specified.\n\
   --encrypt-data\n\
-      Read from stdin, encrypt or decrypt the data, and write the result to\n\
-      stdout. By default, PSO V3 encryption is used, but this can be overridden\n\
-      with --pc or --bb. The --seed option specifies the encryption seed (4 hex\n\
-      bytes for PC or GC, or 48 hex bytes for BB). For BB, the --key option is\n\
-      required as well, and refers to a .nsk file in system/blueburst/keys\n\
-      (without the directory or .nsk extension). For non-BB ciphers, the\n\
-      --big-endian option applies the cipher masks as big-endian instead of\n\
-      little-endian, which is necessary for some GameCube file formats.\n\
+  --decrypt-data\n\
+      Encrypt or decrypt data using PSO's standard network protocol encryption.\n\
+      Both input-filename and output-filename may be specified. By default, PSO\n\
+      V3 (GameCube/XBOX) encryption is used, but this can be overridden with\n\
+      the --pc or --bb options. The --seed= option specifies the encryption\n\
+      seed (4 hex bytes for PC or GC, or 48 hex bytes for BB). For BB, the\n\
+      --key option is required as well, and refers to a .nsk file in\n\
+      system/blueburst/keys (without the directory or .nsk extension). For\n\
+      non-BB ciphers, the --big-endian option applies the cipher masks as\n\
+      big-endian instead of little-endian, which is necessary for some GameCube\n\
+      file formats.\n\
   --find-decryption-seed\n\
       Perform a brute-force search for a decryption seed of the given data.\n\
       The ciphertext is specified with the --encrypted= option and the expected\n\
@@ -249,17 +260,21 @@ Specifically:\n\
       system, but this can be overridden with the --threads= option.\n\
   --decode-sjis\n\
       Apply newserv\'s text decoding algorithm to the data on stdin, producing\n\
-      little-endian UTF-16 data on stdout.\n\
-  --decode-gci=FILENAME\n\
-  --decode-dlq=FILENAME\n\
-  --decode-qst=FILENAME\n\
+      little-endian UTF-16 data on stdout. Both input-filename and\n\
+      output-filename may be specified.\n\
+  --decode-gci\n\
+  --decode-dlq\n\
+  --decode-qst\n\
       Decode the given quest file into a compressed, unencrypted .bin or .dat\n\
-      file (or in the case of --decode-qst, both a .bin and a .dat file). The\n\
-      --decode-gci option can be used to decrypt encrypted GCI files. If you\n\
-      know the player\'s serial number who generated the GCI file, use the\n\
-      --seed= option and give the serial number (as a hex-encoded integer). If\n\
-      you don\'t know the serial number, newserv will find it via a brute-force\n\
-      search, but this will likely take a long time.\n\
+      file (or in the case of --decode-qst, both a .bin and a .dat file).\n\
+      input-filename must be specified, but output-filename msut not be; the\n\
+      output is written to <input-filename>.dec (or .bin, or .dat). DLQ and QST\n\
+      decoding is a relatively simple operation, but GCI decoding can be\n\
+      computationally expensive if the file is encrypted and doesn't contain an\n\
+      embedded seed. If you know the player\'s serial number who generated the\n\
+      GCI file, use the --seed= option and give the serial number (as a\n\
+      hex-encoded 32-bit integer). If you don\'t know the serial number, newserv\n\
+      will find it via a brute-force search, but this will take a long time.\n\
   --cat-client=ADDR:PORT\n\
       Connect to the given server and simulate a PSO client. newserv will then\n\
       print all the received commands to stdout, and forward any commands typed\n\
@@ -268,17 +283,23 @@ Specifically:\n\
       --gc, and --bb options can be used to select the command format and\n\
       encryption. If --bb is used, the --key option is also required (as in\n\
       --decrypt-data above).\n\
-  --replay-log=FILENAME\n\
-      Replay a terminal log as if it were a client session. This is used for\n\
-      regression testing, to make sure client sessions are repeatable and code\n\
-      changes don\'t affect existing (working) functionality.\n\
-  --extract-gsl=FILENAME\n\
+  --replay-log\n\
+      Replay a terminal log as if it were a client session. input-filename may\n\
+      be specified for this option. This is used for regression testing, to\n\
+      make sure client sessions are repeatable and code changes don\'t affect\n\
+      existing (working) functionality.\n\
+  --extract-gsl\n\
       Extract all files from a GSL archive into the current directory.\n\
+      input-filename may be specified. If output-filename is specified, then it\n\
+      is treated as a prefix which is prepended to the filename of each file\n\
+      contained in the GSL archive. Importantly, if you want to put the files\n\
+      into a directory, you'll have to create the directory first, and include\n\
+      a trailing / on output-filename.\n\
 \n\
 A few options apply to multiple modes described above:\n\
   --parse-data\n\
-      For modes that take input on stdin, parse the input as a hex string\n\
-      before encrypting/decoding/etc.\n\
+      For modes that take input (from a file or from stdin), parse the input as\n\
+      a hex string before encrypting/decoding/etc.\n\
   --config=FILENAME\n\
       Use this file instead of system/config.json.\n\
 ", stderr);
@@ -286,10 +307,11 @@ A few options apply to multiple modes described above:\n\
 
 enum class Behavior {
   RUN_SERVER = 0,
-  DECOMPRESS_DATA,
-  COMPRESS_DATA,
-  DECRYPT_DATA,
+  COMPRESS_PRS,
+  DECOMPRESS_PRS,
+  DECOMPRESS_GJS,
   ENCRYPT_DATA,
+  DECRYPT_DATA,
   FIND_DECRYPTION_SEED,
   DECODE_QUEST_FILE,
   DECODE_SJIS,
@@ -297,6 +319,27 @@ enum class Behavior {
   REPLAY_LOG,
   CAT_CLIENT,
 };
+
+static bool behavior_takes_input_filename(Behavior b) {
+  return (b == Behavior::COMPRESS_PRS) ||
+         (b == Behavior::DECOMPRESS_PRS) ||
+         (b == Behavior::DECOMPRESS_GJS) ||
+         (b == Behavior::ENCRYPT_DATA) ||
+         (b == Behavior::DECRYPT_DATA) ||
+         (b == Behavior::DECODE_QUEST_FILE) ||
+         (b == Behavior::DECODE_SJIS) ||
+         (b == Behavior::EXTRACT_GSL) ||
+         (b == Behavior::REPLAY_LOG);
+}
+
+static bool behavior_takes_output_filename(Behavior b) {
+  return (b == Behavior::COMPRESS_PRS) ||
+         (b == Behavior::DECOMPRESS_PRS) ||
+         (b == Behavior::DECOMPRESS_GJS) ||
+         (b == Behavior::ENCRYPT_DATA) ||
+         (b == Behavior::DECRYPT_DATA) ||
+         (b == Behavior::DECODE_SJIS);
+}
 
 enum class QuestFileFormat {
   GCI = 0,
@@ -308,7 +351,6 @@ int main(int argc, char** argv) {
   Behavior behavior = Behavior::RUN_SERVER;
   GameVersion cli_version = GameVersion::GC;
   QuestFileFormat quest_file_type = QuestFileFormat::GCI;
-  string quest_filename;
   string seed;
   string key_file_name;
   const char* config_filename = "system/config.json";
@@ -319,8 +361,8 @@ int main(int argc, char** argv) {
   size_t num_threads = 0;
   const char* find_decryption_seed_ciphertext = nullptr;
   vector<const char*> find_decryption_seed_plaintexts;
-  const char* replay_log_filename = nullptr;
-  const char* extract_gsl_filename = nullptr;
+  const char* input_filename = nullptr;
+  const char* output_filename = nullptr;
   const char* replay_required_access_key = "";
   const char* replay_required_password = "";
   struct sockaddr_storage cat_client_remote;
@@ -328,30 +370,29 @@ int main(int argc, char** argv) {
     if (!strcmp(argv[x], "--help")) {
       print_usage();
       return 0;
-    } else if (!strcmp(argv[x], "--decompress-data")) {
-      behavior = Behavior::DECOMPRESS_DATA;
-    } else if (!strcmp(argv[x], "--compress-data")) {
-      behavior = Behavior::COMPRESS_DATA;
-    } else if (!strcmp(argv[x], "--decrypt-data")) {
-      behavior = Behavior::DECRYPT_DATA;
+    } else if (!strcmp(argv[x], "--compress-prs")) {
+      behavior = Behavior::COMPRESS_PRS;
+    } else if (!strcmp(argv[x], "--decompress-prs")) {
+      behavior = Behavior::DECOMPRESS_PRS;
+    } else if (!strcmp(argv[x], "--decompress-gjs")) {
+      behavior = Behavior::DECOMPRESS_PRS;
     } else if (!strcmp(argv[x], "--encrypt-data")) {
       behavior = Behavior::ENCRYPT_DATA;
+    } else if (!strcmp(argv[x], "--decrypt-data")) {
+      behavior = Behavior::DECRYPT_DATA;
     } else if (!strcmp(argv[x], "--find-decryption-seed")) {
       behavior = Behavior::FIND_DECRYPTION_SEED;
     } else if (!strcmp(argv[x], "--decode-sjis")) {
       behavior = Behavior::DECODE_SJIS;
-    } else if (!strncmp(argv[x], "--decode-gci=", 13)) {
+    } else if (!strcmp(argv[x], "--decode-gci")) {
       behavior = Behavior::DECODE_QUEST_FILE;
       quest_file_type = QuestFileFormat::GCI;
-      quest_filename = &argv[x][13];
-    } else if (!strncmp(argv[x], "--decode-dlq=", 13)) {
+    } else if (!strcmp(argv[x], "--decode-dlq")) {
       behavior = Behavior::DECODE_QUEST_FILE;
       quest_file_type = QuestFileFormat::DLQ;
-      quest_filename = &argv[x][13];
-    } else if (!strncmp(argv[x], "--decode-qst=", 13)) {
+    } else if (!strcmp(argv[x], "--decode-qst")) {
       behavior = Behavior::DECODE_QUEST_FILE;
       quest_file_type = QuestFileFormat::QST;
-      quest_filename = &argv[x][13];
     } else if (!strncmp(argv[x], "--cat-client=", 13)) {
       behavior = Behavior::CAT_CLIENT;
       cat_client_remote = make_sockaddr_storage(parse_netloc(&argv[x][13])).first;
@@ -385,46 +426,70 @@ int main(int argc, char** argv) {
       skip_little_endian = true;
     } else if (!strcmp(argv[x], "--skip-big-endian")) {
       skip_big_endian = true;
-    } else if (!strncmp(argv[x], "--replay-log=", 13)) {
+    } else if (!strcmp(argv[x], "--replay-log")) {
       behavior = Behavior::REPLAY_LOG;
-      replay_log_filename = &argv[x][13];
-    } else if (!strncmp(argv[x], "--extract-gsl=", 14)) {
+    } else if (!strcmp(argv[x], "--extract-gsl")) {
       behavior = Behavior::EXTRACT_GSL;
-      extract_gsl_filename = &argv[x][14];
     } else if (!strncmp(argv[x], "--require-password=", 19)) {
       replay_required_password = &argv[x][19];
     } else if (!strncmp(argv[x], "--require-access-key=", 21)) {
       replay_required_access_key = &argv[x][21];
     } else if (!strncmp(argv[x], "--config=", 9)) {
       config_filename = &argv[x][9];
+    } else if (!strcmp(argv[x], "-") || argv[x][0] != '-') {
+      if (!input_filename && behavior_takes_input_filename(behavior)) {
+        input_filename = argv[x];
+      } else if (!output_filename && behavior_takes_output_filename(behavior)) {
+        output_filename = argv[x];
+      } else {
+        throw invalid_argument(string_printf("unknown option: %s", argv[x]));
+      }
     } else {
       throw invalid_argument(string_printf("unknown option: %s", argv[x]));
     }
   }
 
+  auto read_input_data = [&]() -> string {
+    string data;
+    if (input_filename && strcmp(input_filename, "-")) {
+      return load_file(input_filename);
+    } else {
+      return read_all(stdin);
+    }
+  };
+
+  auto write_output_data = [&](const void* data, size_t size) {
+    if (output_filename && strcmp(output_filename, "-")) {
+      save_file(output_filename, data, size);
+    } else if (isatty(fileno(stdout))) {
+      print_data(stdout, data, size);
+      fflush(stdout);
+    } else {
+      fwritex(stdout, data, size);
+      fflush(stdout);
+    }
+  };
+
   switch (behavior) {
-    case Behavior::DECOMPRESS_DATA:
-    case Behavior::COMPRESS_DATA: {
-      string data = read_all(stdin);
+    case Behavior::COMPRESS_PRS:
+    case Behavior::DECOMPRESS_PRS:
+    case Behavior::DECOMPRESS_GJS: {
+      string data = read_input_data();
       if (parse_data) {
         data = parse_data_string(data);
       }
 
-      if (behavior == Behavior::DECOMPRESS_DATA) {
-        data = prs_decompress(data);
-      } else if (behavior == Behavior::COMPRESS_DATA) {
+      if (behavior == Behavior::COMPRESS_PRS) {
         data = prs_compress(data);
+      } else if (behavior == Behavior::DECOMPRESS_PRS) {
+        data = prs_decompress(data);
+      } else if (behavior == Behavior::DECOMPRESS_GJS) {
+        data = gjs_decompress(data);
       } else {
         throw logic_error("invalid behavior");
       }
 
-      if (isatty(fileno(stdout))) {
-        print_data(stdout, data);
-      } else {
-        fwritex(stdout, data);
-      }
-      fflush(stdout);
-
+      write_output_data(data.data(), data.size());
       break;
     }
 
@@ -452,7 +517,7 @@ int main(int argc, char** argv) {
           throw logic_error("invalid game version");
       }
 
-      string data = read_all(stdin);
+      string data = read_input_data();
       if (parse_data) {
         data = parse_data_string(data);
       }
@@ -484,12 +549,7 @@ int main(int argc, char** argv) {
 
       data.resize(original_size);
 
-      if (isatty(fileno(stdout))) {
-        print_data(stdout, data);
-      } else {
-        fwritex(stdout, data);
-      }
-      fflush(stdout);
+      write_output_data(data.data(), data.size());
 
       break;
     }
@@ -566,38 +626,53 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::DECODE_QUEST_FILE:
+    case Behavior::DECODE_QUEST_FILE: {
+      if (!input_filename || !strcmp(input_filename, "-")) {
+        throw invalid_argument("an input filename is required");
+      }
+
+      string output_filename_base = input_filename;
       if (quest_file_type == QuestFileFormat::GCI) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        save_file(quest_filename + ".dec", Quest::decode_gci(quest_filename, num_threads, dec_seed));
+        save_file(output_filename_base + ".dec", Quest::decode_gci(
+            input_filename, num_threads, dec_seed));
       } else if (quest_file_type == QuestFileFormat::DLQ) {
-        save_file(quest_filename + ".dec", Quest::decode_dlq(quest_filename));
+        save_file(output_filename_base + ".dec", Quest::decode_dlq(
+            input_filename));
       } else if (quest_file_type == QuestFileFormat::QST) {
-        auto data = Quest::decode_qst(quest_filename);
-        save_file(quest_filename + ".bin", data.first);
-        save_file(quest_filename + ".dat", data.second);
+        auto data = Quest::decode_qst(input_filename);
+        save_file(output_filename_base + ".bin", data.first);
+        save_file(output_filename_base + ".dat", data.second);
       } else {
         throw logic_error("invalid quest file format");
       }
-
       break;
+    }
 
     case Behavior::DECODE_SJIS: {
-      string data = read_all(stdin);
+      string data = read_input_data();
       if (parse_data) {
         data = parse_data_string(data);
       }
       auto decoded = decode_sjis(data);
-      print_data(stderr, decoded.data(), decoded.size() * sizeof(decoded[0]));
+      write_output_data(decoded.data(), decoded.size() * sizeof(decoded[0]));
       break;
     }
 
     case Behavior::EXTRACT_GSL: {
-      shared_ptr<string> data(new string(load_file(extract_gsl_filename)));
-      GSLArchive gsl(data);
+      if (!output_filename) {
+        output_filename = "";
+      } else if (!strcmp(output_filename, "-")) {
+        throw invalid_argument("output prefix cannot be stdout");
+      }
+
+      string data = read_input_data();
+
+      shared_ptr<string> data_shared(new string(move(data)));
+      GSLArchive gsl(data_shared);
       for (const auto& entry_it : gsl.all_entries()) {
         auto e = gsl.get(entry_it.first);
-        save_file(entry_it.first, e.first, e.second);
+        save_file(output_filename + entry_it.first, e.first, e.second);
         fprintf(stderr, "... %s\n", entry_it.first.c_str());
       }
       break;
@@ -640,7 +715,7 @@ int main(int argc, char** argv) {
       auto config_json = JSONObject::parse(load_file(config_filename));
       populate_state_from_config(state, config_json);
 
-      if (!replay_log_filename) {
+      if (behavior != Behavior::REPLAY_LOG) {
         config_log.info("Loading license list");
         state->license_manager.reset(new LicenseManager("system/licenses.nsi"));
       } else {
@@ -690,7 +765,7 @@ int main(int argc, char** argv) {
       config_log.info("Collecting quest metadata");
       state->quest_index.reset(new QuestIndex("system/quests"));
 
-      if (!replay_log_filename) {
+      if (behavior != Behavior::REPLAY_LOG) {
         config_log.info("Compiling client functions");
         state->function_code_index.reset(new FunctionCodeIndex("system/ppc"));
         config_log.info("Loading DOL files");
@@ -703,14 +778,14 @@ int main(int argc, char** argv) {
       config_log.info("Creating menus");
       state->create_menus(config_json);
 
-      if (replay_log_filename) {
+      if (behavior == Behavior::REPLAY_LOG) {
         state->allow_saving = false;
         state->license_manager->set_autosave(false);
         config_log.info("Saving disabled because this is a replay session");
       }
 
       shared_ptr<DNSServer> dns_server;
-      if (state->dns_server_port && !replay_log_filename) {
+      if (state->dns_server_port && (behavior != Behavior::REPLAY_LOG)) {
         config_log.info("Starting DNS server");
         dns_server.reset(new DNSServer(base, state->local_address,
             state->external_address));
@@ -728,9 +803,13 @@ int main(int argc, char** argv) {
         config_log.info("Starting game server");
         state->game_server.reset(new Server(base, state));
 
-        auto f = fopen_unique(replay_log_filename, "rt");
+        shared_ptr<FILE> log_f(stdin, +[](FILE*) { });
+        if (input_filename && strcmp(input_filename, "-")) {
+          log_f = fopen_shared(input_filename, "rt");
+        }
+
         replay_session.reset(new ReplaySession(
-            base, f.get(), state, replay_required_access_key, replay_required_password));
+            base, log_f.get(), state, replay_required_access_key, replay_required_password));
         replay_session->start();
 
       } else if (behavior == Behavior::RUN_SERVER) {
