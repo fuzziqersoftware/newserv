@@ -2112,8 +2112,6 @@ I 80820 2022-07-07 23:37:10 - [Commands] Received from C-3 (Kallea) (version=PC 
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00             |                 
 I 80820 2022-07-07 23:37:10 - [Commands] Sending to C-3 (Kallea) (version=PC command=69 flag=00)
 0000 | 08 00 69 00 00 00 01 00                         |   i             
-I 80820 2022-07-07 23:37:10 - [Commands] Sending to C-3 (Kallea) (version=PC command=1A flag=00)
-0000 | 08 00 1A 00 00 00 00 00                         |                 
 I 80820 2022-07-07 23:37:10 - [Commands] Sending to C-3 (Kallea) (version=PC command=19 flag=00)
 0000 | 0C 00 19 00 0A 00 00 03 ED 13 00 00             |         T$      
 I 80820 2022-07-07 23:37:10 - [Server] Client disconnected: C-3 on fd 29

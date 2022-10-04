@@ -1544,8 +1544,12 @@ static void on_change_ship(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_self_leave_notification(c);
 
   // Sending a blank message box here works around the bug where the log window
-  // contents appear prepended to the next large message box.
-  send_message_box(c, u"");
+  // contents appear prepended to the next large message box. But, we don't have
+  // to do this if we're not going to show the welcome message or information
+  // menu (that is, if the client will not send a close confirmation).
+  if (!(c->flags & Client::Flag::NO_D6)) {
+    send_message_box(c, u"");
+  }
 
   static const vector<string> version_to_port_name({
       "bb-patch", "console-login", "pc-login", "console-login", "console-login", "bb-init"});
