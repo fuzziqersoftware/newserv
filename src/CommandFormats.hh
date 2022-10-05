@@ -2329,7 +2329,7 @@ struct S_Unknown_GC_Ep3_E1 {
     ptext<char, 0x10> name;
     ptext<char, 0x20> description;
   };
-  /* 0024 */ parray<Entry, 4> entries;
+  /* 0024 */ Entry entries[4];
   /* 00E4 */ parray<uint8_t, 0x20> unknown_a3;
   /* 0104 */ parray<uint8_t, 0x14> unknown_a4;
   /* 0118 */ parray<uint8_t, 0x180> unknown_a5;
