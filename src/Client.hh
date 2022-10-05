@@ -120,6 +120,7 @@ struct Client {
 
   bool proxy_save_files;
   bool proxy_suppress_remote_login;
+  bool proxy_zero_remote_guild_card;
 
   // DOL file loading state
   uint32_t dol_base_addr;

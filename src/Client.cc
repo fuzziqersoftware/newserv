@@ -63,6 +63,7 @@ Client::Client(
     pending_bb_save_player_index(0),
     proxy_save_files(false),
     proxy_suppress_remote_login(false),
+    proxy_zero_remote_guild_card(false),
     dol_base_addr(0) {
   this->last_switch_enabled_command.subcommand = 0;
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));

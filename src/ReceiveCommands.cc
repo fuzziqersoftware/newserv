@@ -86,11 +86,15 @@ static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Cl
   session->switch_assist = c->switch_assist;
   session->save_files = c->proxy_save_files;
   session->suppress_remote_login = c->proxy_suppress_remote_login;
-  try {
-    string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
-    const auto& entry = client_options_cache.get_or_throw(key);
-    session->remote_guild_card_number = stoul(entry->data, nullptr, 10);
-  } catch (const out_of_range&) { }
+  if (c->proxy_zero_remote_guild_card) {
+    session->remote_guild_card_number = 0;
+  } else {
+    try {
+      string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
+      const auto& entry = client_options_cache.get_or_throw(key);
+      session->remote_guild_card_number = stoul(entry->data, nullptr, 10);
+    } catch (const out_of_range&) { }
+  }
 
   send_reconnect(c, s->connect_address_for_client(c), local_port);
 }
@@ -953,6 +957,9 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
         case ProxyOptionsMenuItemID::SUPPRESS_LOGIN:
           send_ship_info(c, u"Enable or disable\nalternate login\nsequence");
           break;
+        case ProxyOptionsMenuItemID::SKIP_CARD:
+          send_ship_info(c, u"Enable or disable\nGuild Card reset");
+          break;
       }
       break;
 
@@ -1101,6 +1108,9 @@ static vector<MenuItem> proxy_options_menu_for_client(
   ret.emplace_back(ProxyOptionsMenuItemID::SUPPRESS_LOGIN,
       c->proxy_suppress_remote_login ? u"Skip login ON" : u"Skip login OFF",
       u"Enable or disable\nalternate login\nsequence", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::SKIP_CARD,
+      c->proxy_zero_remote_guild_card ? u"Skip card ON" : u"Skip card OFF",
+      u"Enable or disable\nGuild Card reset", 0);
   return ret;
 }
 
@@ -1233,6 +1243,9 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SUPPRESS_LOGIN:
           c->proxy_suppress_remote_login = !c->proxy_suppress_remote_login;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::SKIP_CARD:
+          c->proxy_zero_remote_guild_card = !c->proxy_zero_remote_guild_card;
         resend_proxy_options_menu:
           send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
               proxy_options_menu_for_client(c));
