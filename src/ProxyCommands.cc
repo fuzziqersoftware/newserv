@@ -721,7 +721,7 @@ constexpr on_command_t S_V3_C4 = &S_C4<S_ChoiceSearchResultEntry_V3_C4>;
 
 static HandlerResult S_G_E4(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  auto& cmd = check_size_t<S_CardLobbyGame_GC_Ep3_E4>(data);
+  auto& cmd = check_size_t<S_CardBattleTableState_GC_Ep3_E4>(data);
   bool modified = false;
   for (size_t x = 0; x < 4; x++) {
     if (cmd.entries[x].guild_card_number == session.remote_guild_card_number) {

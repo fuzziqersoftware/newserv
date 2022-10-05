@@ -2072,7 +2072,8 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { };
 
 // CC (S->C): Confirm tournament entry (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
-// header.flag is 1, apparently, regardless of the number of valid entries.
+// header.flag determines the client's registration state - 1 if the client is
+// registered for the tournament, 0 if not.
 
 struct S_ConfirmTournamentEntry_GC_Ep3_CC {
   ptext<char, 0x40> tournament_name;
@@ -2081,7 +2082,7 @@ struct S_ConfirmTournamentEntry_GC_Ep3_CC {
   ptext<char, 0x20> start_time; // e.g. "15:09:30" or "13:03 PST"
   struct Entry {
     le_uint16_t unknown_a1;
-    le_uint32_t present; // 1 if team present, 0 otherwise
+    le_uint16_t present; // 1 if team present, 0 otherwise
     ptext<char, 0x20> team_name;
   };
   Entry entries[0x20];
@@ -2302,7 +2303,7 @@ struct C_Unknown_BB_07DF {
 // E0 (S->C): Tournament list (Episode 3)
 // The client will send 09 and 10 commands to inspect or enter a tournament. The
 // server should respond to an 09 command with an E3 command; the server should
-// respond to a 10 command with an E2 04 command.
+// respond to a 10 command with an E2 command.
 
 // header.flag is the count of filled-in entries.
 struct S_TournamentList_GC_Ep3_E0 {
@@ -2336,13 +2337,16 @@ struct S_Unknown_GC_Ep3_E1 {
 };
 
 // E2 (C->S): Tournament control (Episode 3)
-// No arguments (in any of its forms)
-// Command meaning differs based on the value of header.flag. Specifically:
+// No arguments (in any of its forms) except header.flag, which determines ths
+// command's meaning. Specifically:
 //   header.flag = 00 => request tournament list (server responds with E0)
-//   header.flag = 01 => check tournament
-//   header.flag = 02 => cancel tournament entry
+//   header.flag = 01 => check tournament (server responds with E2)
+//   header.flag = 02 => cancel tournament entry (server responds with CC)
 //   header.flag = 03 => create tournament spectator team (get battle list)
 //   header.flag = 04 => join tournament spectator team (get team list)
+// In case 02, the resulting CC command is apparently completely blank (all 0),
+// and has header.flag = 0 to indicate the player isn't registered.
+// In cases 03 and 04, it's not clear what the server should respond with.
 
 // E2 (S->C): Tournament entry list (Episode 3)
 // Client may send 09 commands if the player presses X. It's not clear what the
@@ -2352,7 +2356,7 @@ struct S_Unknown_GC_Ep3_E1 {
 // password is the team password. The server should respond to that with a CC
 // command.
 
-struct S_TournamentControl_GC_Ep3_E2 {
+struct S_TournamentEntryList_GC_Ep3_E2 {
   le_uint16_t unknown_a1;
   le_uint16_t unknown_a2;
   struct Entry {
@@ -2375,7 +2379,6 @@ struct S_TournamentInfo_GC_Ep3_E3 {
     le_uint16_t unknown_a2;
     ptext<char, 0x20> team_name;
   };
-
   ptext<char, 0x20> name;
   ptext<char, 0x20> map_name;
   Ep3BattleRules rules;
@@ -2395,18 +2398,18 @@ struct C_PlayerPreviewRequest_BB_E3 {
   le_uint32_t unused;
 };
 
-// E4: CARD lobby game (Episode 3)
+// E4: CARD lobby battle table state (Episode 3)
 // When client sends an E4, server should respond with another E4 (but these
 // commands have different formats).
 
 // Header flag = seated state (1 = present, 0 = leaving)
-struct C_CardLobbyGame_GC_Ep3_E4 {
+struct C_CardBattleTableState_GC_Ep3_E4 {
   le_uint16_t table_number;
   le_uint16_t seat_number;
 };
 
 // Header flag = table number
-struct S_CardLobbyGame_GC_Ep3_E4 {
+struct S_CardBattleTableState_GC_Ep3_E4 {
   struct Entry {
     le_uint16_t present; // 1 = player present, 0 = no player
     le_uint16_t unknown_a1;
@@ -2427,9 +2430,11 @@ struct S_PlayerPreview_NoPlayer_BB_00E4 {
   le_uint32_t error; // 2 = no player present
 };
 
-// E5 (C->S): CARD lobby game? (Episode 3)
-// Appears to be the same as E4 (C->S), but also appears never to be sent by the
-// client.
+// E5 (C->S): Unknown (CARD lobby battle table) (Episode 3)
+
+struct S_CardBattleTable_Unknown_GC_Ep3_E5 {
+  le_uint32_t unknown_a1;
+};
 
 // E5 (S->C): Player preview (BB)
 // E5 (C->S): Create character (BB)
