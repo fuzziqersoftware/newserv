@@ -2290,7 +2290,11 @@ struct S_TournamentList_GC_Ep3_E0 {
 // E1 (S->C): Unknown (Episode 3)
 
 struct S_Unknown_GC_Ep3_E1 {
-  parray<uint8_t, 0x294> unknown_a1;
+  /* 0004 */ parray<uint8_t, 0x20> unknown_a1;
+  /* 0024 */ parray<parray<uint8_t, 0x30>, 4> unknown_a2;
+  /* 00E4 */ parray<uint8_t, 0x20> unknown_a3;
+  /* 0104 */ parray<uint8_t, 0x14> unknown_a4;
+  /* 0118 */ parray<uint8_t, 0x180> unknown_a5;
 };
 
 // E2 (C->S): Tournament control (Episode 3)
