@@ -1043,8 +1043,7 @@ static HandlerResult S_65_67_68(shared_ptr<ServerState>,
     }
   }
   if (num_replacements > 1) {
-    session.clear_lobby_players(0);
-    throw runtime_error("proxied player appears multiple times in lobby");
+    session.log.warning("Proxied player appears multiple times in lobby");
   }
 
   if (session.override_lobby_event >= 0) {
