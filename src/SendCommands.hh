@@ -254,6 +254,11 @@ void send_give_experience(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
     uint32_t amount);
 void send_ep3_card_list_update(
     std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
+void send_ep3_media_update(
+    std::shared_ptr<Client> c,
+    uint32_t type,
+    uint32_t which,
+    const std::string& compressed_data);
 void send_ep3_rank_update(std::shared_ptr<Client> c);
 void send_ep3_map_list(
     std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l);

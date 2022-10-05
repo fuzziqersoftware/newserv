@@ -1607,6 +1607,20 @@ void send_ep3_card_list_update(shared_ptr<ServerState> s, shared_ptr<Client> c) 
   }
 }
 
+void send_ep3_media_update(
+    std::shared_ptr<Client> c,
+    uint32_t type,
+    uint32_t which,
+    const std::string& compressed_data) {
+  StringWriter w;
+  w.put<S_UpdateMediaHeader_GC_Ep3_B9>({type, which, compressed_data.size(), 0});
+  w.write(compressed_data);
+  while (w.size() & 3) {
+    w.put_u8(0);
+  }
+  send_command(c, 0xB9, 0x00, w.str());
+}
+
 // sends the client a generic rank
 void send_ep3_rank_update(shared_ptr<Client> c) {
   S_RankUpdate_GC_Ep3_B7 cmd = {

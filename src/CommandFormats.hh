@@ -1812,15 +1812,40 @@ struct S_RankUpdate_GC_Ep3_B7 {
 // No arguments
 // The client sends this after it receives a B8 from the server.
 
-// B9 (S->C): Unknown (Episode 3)
+// B9 (S->C): Update media (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
 
-struct S_Unknown_GC_Ep3_B9 {
-  le_uint32_t unknown_a1; // Must be 1-4 (inclusive)
-  le_uint32_t unknown_a2;
-  le_uint16_t unknown_a3; // Looks like a size of some sort
+struct S_UpdateMediaHeader_GC_Ep3_B9 {
+  // Valid values for the type field:
+  // 1: GVM file
+  // 2: Unknown; probably BML file
+  // 3: Unknown; probably BML file
+  // 4: Unknown; appears to be completely ignored
+  // Any other value: entire command is ignored
+  // For types 2 and 3, the game looks for various tokens in the decompressed
+  // data; specifically '****', 'GCAM', 'GJBM', 'GJTL', 'GLIM', 'GMDM', 'GSSM',
+  // 'NCAM', 'NJBM', 'NJCA', 'NLIM', 'NMDM', and 'NSSM'. Of these, 'GJTL',
+  // 'NMDM', and 'NSSM' are found in some of the game's existing BML files, but
+  // the others don't seem to be anywhere on the disc. 'NJBM' is found in
+  // psohistory_e.sfd, but not in any other files.
+  le_uint32_t type;
+  // Valid values for the type field (at least, when type is 1):
+  // 0: Unknown
+  // 1: Set lobby banner 1 (in front of where player 0 enters)
+  // 2: Set lobby banner 2 (left of banner 1)
+  // 3: Unknown
+  // 4: Set lobby banner 3 (left of banner 2; opposite where player 0 enters)
+  // 5: Unknown
+  // 6: Unknown
+  // Ay other value: entire command is ignored
+  le_uint32_t which;
+  le_uint16_t size;
   le_uint16_t unused;
-  parray<uint8_t, 0x3800> unknown_a5;
+  // The PRS-compressed data immediately follows this header. The maximum size
+  // of the compressed data is 0x3800 bytes, and the data must decompress to
+  // fewer than 0x37000 bytes of output. The size field above contains the
+  // compressed size of this data (the decompressed size is not included
+  // anywhere in the command).
 };
 
 // B9 (C->S): Confirm received B9 (Episode 3)
