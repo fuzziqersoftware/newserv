@@ -161,7 +161,7 @@ void IPStackSimulator::dispatch_on_listen_accept(
 void IPStackSimulator::on_listen_accept(struct evconnlistener* listener,
     evutil_socket_t fd, struct sockaddr*, int) {
   int listen_fd = evconnlistener_get_fd(listener);
-  ip_stack_simulator_log.info("Client fd %d connected via fd %d", fd, listen_fd);
+  ip_stack_simulator_log.info("Virtual network fd %d connected via fd %d", fd, listen_fd);
 
   struct bufferevent *bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
@@ -201,7 +201,7 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
     c = this->bev_to_client.at(bev);
   } catch (const out_of_range&) {
     size_t bytes = evbuffer_get_length(buf);
-    ip_stack_simulator_log.warning("Ignoring data received from unregistered client (0x%zX bytes)",
+    ip_stack_simulator_log.warning("Ignoring data received from unregistered virtual network (0x%zX bytes)",
         bytes);
     evbuffer_drain(buf, bytes);
     return;
@@ -222,7 +222,7 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
       this->on_client_frame(c, frame);
     } catch (const exception& e) {
       if (this->state->ip_stack_debug) {
-        ip_stack_simulator_log.warning("Failed to process client frame: %s", e.what());
+        ip_stack_simulator_log.warning("Failed to process frame: %s", e.what());
         print_data(stderr, frame);
       }
     }
@@ -237,11 +237,11 @@ void IPStackSimulator::on_client_error(struct bufferevent* bev,
     short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    ip_stack_simulator_log.warning("Client caused error %d (%s)", err,
+    ip_stack_simulator_log.warning("Virtual network caused error %d (%s)", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    ip_stack_simulator_log.info("Client fd %d disconnected", bufferevent_getfd(bev));
+    ip_stack_simulator_log.info("Virtual network fd %d disconnected", bufferevent_getfd(bev));
     this->bev_to_client.erase(bev);
   }
 }
@@ -252,7 +252,7 @@ void IPStackSimulator::on_client_frame(
     shared_ptr<IPClient> c, const string& frame) {
   if (this->state->ip_stack_debug) {
     fputc('\n', stderr);
-    ip_stack_simulator_log.info("Client sent frame");
+    ip_stack_simulator_log.info("Virtual network sent frame");
     print_data(stderr, frame);
   }
   this->log_frame(frame);
@@ -479,7 +479,7 @@ uint64_t IPStackSimulator::tcp_conn_key_for_client_frame(const FrameInfo& fi) {
 void IPStackSimulator::on_client_tcp_frame(
     shared_ptr<IPClient> c, const FrameInfo& fi) {
   if (this->state->ip_stack_debug) {
-    ip_stack_simulator_log.info("Client sent TCP frame (seq=%08" PRIX32 ", ack=%08" PRIX32 ")",
+    ip_stack_simulator_log.info("Virtual network sent TCP frame (seq=%08" PRIX32 ", ack=%08" PRIX32 ")",
         fi.tcp->seq_num.load(), fi.tcp->ack_num.load());
   }
 
