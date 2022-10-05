@@ -2840,6 +2840,23 @@ struct S_Unknown_BB_F0 {
 // by clients and consumed by clients. Generally in newserv source, these
 // commands are referred to as (for example) 6x02, etc.
 
+// All game subcommands have the same header format, which is one of:
+// - XX SS ...
+// - XX 00 ?? ?? TT TT TT TT ...
+// where X is the subcommand number (e.g. in 6xA2, it would be A2), S is the
+// size in words of the entire subcommand (that is, overall size in bytes / 4),
+// and T is the overall size in bytes. The second form is generally only used
+// when the overall size in bytes is 0x400 or longer (so the S field doesn't
+// suffice to describe its length), but it may also be used in some cases where
+// the subcommand is shorter.
+// Multiple subcommands may be sent in the same 6x command. It seems the client
+// never sends commands like this, but newserv generates commands containing
+// multiple subcommands in some situations (for example, the implementation of
+// infinite HP does this).
+// If any subcommand or group thereof is longer than 0x400 bytes, the 6C or 6D
+// commands must be used. The 60 and 62 commands exhibit undefined behavior if
+// this limit is exceeded.
+
 // These structures are used by many commands (noted below)
 struct G_ItemSubcommand {
   uint8_t command;
