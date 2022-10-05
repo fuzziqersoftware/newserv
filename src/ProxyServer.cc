@@ -469,6 +469,7 @@ ProxyServer::LinkedSession::LinkedSession(
       TerminalFormat::FG_YELLOW,
       TerminalFormat::FG_RED),
     local_port(local_port),
+    close_on_disconnect(false),
     remote_ip_crc(0),
     enable_remote_ip_crc_patch(false),
     version(version),
@@ -660,6 +661,9 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
       session->send_to_game_server("The server has\ndisconnected.");
     }
     session->disconnect();
+    if (session->close_on_disconnect) {
+      session->server->delete_session(session->id);
+    }
   }
 }
 

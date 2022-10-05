@@ -114,6 +114,12 @@ static HandlerResult S_invalid(shared_ptr<ServerState>,
   return HandlerResult::Type::SUPPRESS;
 }
 
+static HandlerResult C_05(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  session.close_on_disconnect = true;
+  return HandlerResult::Type::FORWARD;
+}
+
 static HandlerResult S_97(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string&) {
   // If the client has already received a 97 command, block this one and
@@ -1303,6 +1309,7 @@ static HandlerResult C_V123_A0_A1(shared_ptr<ServerState>,
   // For licensed sessions, send them back to newserv's main menu instead of
   // going to the remote server's ship/block select menu
   session.send_to_game_server();
+  session.close_on_disconnect = true;
   return HandlerResult::Type::SUPPRESS;
 }
 
@@ -1316,7 +1323,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* 02 */ {{S_V123P_02_17, nullptr}, {S_V123P_02_17, nullptr},      {S_V123P_02_17, nullptr},      {S_V123P_02_17, nullptr},      {S_V123P_02_17, nullptr},      {nullptr,      nullptr}},
 /* 03 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {S_B_03,       nullptr}},
 /* 04 */ {{nullptr,       nullptr}, {S_V123_04,     nullptr},      {S_V123_04,     nullptr},      {S_V123_04,     nullptr},      {S_V123_04,     nullptr},      {nullptr,      nullptr}},
-/* 05 */ {{nullptr,       nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 05 */ {{nullptr,       C_05},    {nullptr,       C_05},         {nullptr,       C_05},         {nullptr,       C_05},         {nullptr,       C_05},         {nullptr,      C_05}},
 /* 06 */ {{nullptr,       nullptr}, {S_V123_06,     C_06},         {S_V123_06,     C_06},         {S_V123_06,     C_06},         {S_V123_06,     C_06},         {nullptr,      C_06}},
 /* 07 */ {{nullptr,       nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
 /* 08 */ {{nullptr,       nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
