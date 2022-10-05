@@ -53,6 +53,8 @@ Client::Client(
           bufferevent_get_base(bev), -1, EV_TIMEOUT | EV_PERSIST,
           &Client::dispatch_save_game_data, this),
         event_free),
+    card_battle_table_number(-1),
+    card_battle_table_seat_number(0),
     next_exp_value(0),
     override_section_id(-1),
     override_random_seed(-1),

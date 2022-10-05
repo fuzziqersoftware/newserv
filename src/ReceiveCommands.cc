@@ -770,6 +770,41 @@ static void on_ep3_meseta_transaction(shared_ptr<ServerState>,
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
+static void on_ep3_battle_table_state(shared_ptr<ServerState> s,
+    shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) { // E4
+  const auto& cmd = check_size_t<C_CardBattleTableState_GC_Ep3_E4>(data);
+  auto l = s->find_lobby(c->lobby_id);
+  if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    throw runtime_error("battle table command sent in non-CARD lobby");
+  }
+
+  if (flag) {
+    c->card_battle_table_number = cmd.table_number;
+    c->card_battle_table_seat_number = cmd.seat_number;
+  } else {
+    c->card_battle_table_number = -1;
+    c->card_battle_table_seat_number = 0;
+  }
+  send_ep3_card_battle_table_state(l, c->card_battle_table_number);
+  // TODO: If a client disconnects while at the battle table, we need to send
+  // a table update to all the other clients at the table (if any). Use a
+  // disconnect hook for this.
+}
+
+static void on_ep3_battle_table_confirm(shared_ptr<ServerState> s,
+    shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) { // E4
+  check_size_t<S_CardBattleTableConfirmation_GC_Ep3_E5>(data);
+  auto l = s->find_lobby(c->lobby_id);
+  if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    throw runtime_error("battle table command sent in non-CARD lobby");
+  }
+
+  if (flag) {
+    // TODO
+    send_lobby_message_box(c, u"CARD battles are\nnot yet supported.");
+  }
+}
+
 static void on_ep3_counter_state(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t flag, const string& data) { // DC
   check_size_v(data.size(), 0);
@@ -3226,8 +3261,8 @@ static on_command_t handlers[0x100][6] = {
   /* E1 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* E1 */
   /* E2 */ {nullptr,                 nullptr,                    nullptr,                         on_ep3_tournament_control,   nullptr,                     on_update_key_config_bb,        }, /* E2 */
   /* E3 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_player_preview_request_bb,   }, /* E3 */
-  /* E4 */ {nullptr,                 nullptr,                    nullptr,                         on_ignored_command,          nullptr,                     nullptr,                        }, /* E4 */
-  /* E5 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_create_character_bb,         }, /* E5 */
+  /* E4 */ {nullptr,                 nullptr,                    nullptr,                         on_ep3_battle_table_state,   nullptr,                     nullptr,                        }, /* E4 */
+  /* E5 */ {nullptr,                 nullptr,                    nullptr,                         on_ep3_battle_table_confirm, nullptr,                     on_create_character_bb,         }, /* E5 */
   /* E6 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* E6 */
   /* E7 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_return_player_data_bb,       }, /* E7 */
   /* E8 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_client_checksum_bb,          }, /* E8 */

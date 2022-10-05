@@ -2430,10 +2430,12 @@ struct S_PlayerPreview_NoPlayer_BB_00E4 {
   le_uint32_t error; // 2 = no player present
 };
 
-// E5 (C->S): Unknown (CARD lobby battle table) (Episode 3)
+// E5 (C->S): Confirm CARD lobby battle table choice (Episode 3)
+// header.flag specifies whether the client answered "Yes" (1) or "No" (0).
 
-struct S_CardBattleTable_Unknown_GC_Ep3_E5 {
-  le_uint32_t unknown_a1;
+struct S_CardBattleTableConfirmation_GC_Ep3_E5 {
+  le_uint16_t table_number;
+  le_uint16_t seat_number;
 };
 
 // E5 (S->C): Player preview (BB)

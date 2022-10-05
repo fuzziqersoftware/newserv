@@ -1649,6 +1649,38 @@ void send_ep3_map_data(shared_ptr<ServerState> s, shared_ptr<Lobby> l, uint32_t 
   send_command(l, 0x6C, 0x00, w.str());
 }
 
+void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number) {
+  S_CardBattleTableState_GC_Ep3_E4 cmd;
+  for (size_t z = 0; z < 4; z++) {
+    cmd.entries[z].present = 0;
+    cmd.entries[z].unknown_a1 = 0;
+    cmd.entries[z].guild_card_number = 0;
+  }
+
+  set<shared_ptr<Client>> clients;
+  for (const auto& c : l->clients) {
+    if (!c) {
+      continue;
+    }
+    if (c->card_battle_table_number == table_number) {
+      if (c->card_battle_table_seat_number > 3) {
+        throw runtime_error("invalid battle table seat number");
+      }
+      auto& e = cmd.entries[c->card_battle_table_seat_number];
+      if (e.present) {
+        throw runtime_error("multiple clients in the same battle table seat");
+      }
+      e.present = 1;
+      e.guild_card_number = c->license->serial_number;
+      clients.emplace(c);
+    }
+  }
+
+  for (const auto& c : clients) {
+    send_command_t(c, 0xE4, table_number, cmd);
+  }
+}
+
 void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key) {
   if (size < 8) {
     throw logic_error("Episode 3 game command is too short for masking");
