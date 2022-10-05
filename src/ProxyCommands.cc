@@ -1235,7 +1235,7 @@ static HandlerResult C_6x(shared_ptr<ServerState> s,
   }
 
   if (!data.empty()) {
-    if (data[0] == 0x2F || data[0] == 0x4C) {
+    if (data[0] == 0x2F || data[0] == 0x4B || data[0] == 0x4C) {
       if (session.infinite_hp) {
         vector<PSOSubcommand> subs;
         for (size_t amount = 1020; amount > 0;) {
