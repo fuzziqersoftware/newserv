@@ -392,7 +392,8 @@ string bc0_decompress(const string& data) {
         break;
       }
       uint8_t a2 = r.get_u8();
-      for (size_t z = 0; z <= (a2 & 0x0F) + 2; z++) {
+      size_t count = (a2 & 0x0F) + 2;
+      for (size_t z = 0; z <= count; z++) {
         uint8_t v = memo[((a1 | ((a2 << 4) & 0xF00)) + z) & 0x0FFF];
         w.put_u8(v);
         memo[memo_offset] = v;
