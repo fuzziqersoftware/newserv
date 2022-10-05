@@ -283,6 +283,9 @@ The options are:\n\
       --gc, and --bb options can be used to select the command format and\n\
       encryption. If --bb is used, the --key option is also required (as in\n\
       --decrypt-data above).\n\
+  --show-ep3-data\n\
+      Print the Episode 3 data files (maps and card definitions) from the\n\
+      system/ep3 directory in a human-readable format.\n\
   --replay-log\n\
       Replay a terminal log as if it were a client session. input-filename may\n\
       be specified for this option. This is used for regression testing, to\n\
@@ -316,6 +319,7 @@ enum class Behavior {
   DECODE_QUEST_FILE,
   DECODE_SJIS,
   EXTRACT_GSL,
+  SHOW_EP3_DATA,
   REPLAY_LOG,
   CAT_CLIENT,
 };
@@ -426,6 +430,8 @@ int main(int argc, char** argv) {
       skip_little_endian = true;
     } else if (!strcmp(argv[x], "--skip-big-endian")) {
       skip_big_endian = true;
+    } else if (!strcmp(argv[x], "--show-ep3-data")) {
+      behavior = Behavior::SHOW_EP3_DATA;
     } else if (!strcmp(argv[x], "--replay-log")) {
       behavior = Behavior::REPLAY_LOG;
     } else if (!strcmp(argv[x], "--extract-gsl")) {
@@ -693,6 +699,33 @@ int main(int argc, char** argv) {
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
       CatSession session(base, cat_client_remote, cli_version, key);
       event_base_dispatch(base.get());
+      break;
+    }
+
+    case Behavior::SHOW_EP3_DATA: {
+      config_log.info("Collecting Episode 3 data");
+      Ep3DataIndex index("system/ep3", true);
+
+      auto map_ids = index.all_map_ids();
+      log_info("%zu maps", map_ids.size());
+      for (uint32_t map_id : map_ids) {
+        auto map = index.get_map(map_id);
+        string name = map->map.name;
+        string location = map->map.location_name;
+        log_info("(Map %08" PRIX32 ") %s @ %s", map_id, name.c_str(), location.c_str());
+        // TODO: Print more information about the map here
+      }
+
+      auto card_ids = index.all_card_ids();
+      log_info("%zu card definitions", card_ids.size());
+      for (uint32_t card_id : card_ids) {
+        auto entry = index.get_card_definition(card_id);
+        string s = entry->def.str();
+        string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
+        string text = entry->text.empty() ? "(No text available)" : entry->text;
+        log_info("%s\nTags: %s\n%s\n", s.c_str(), tags.c_str(), text.c_str());
+      }
+
       break;
     }
 

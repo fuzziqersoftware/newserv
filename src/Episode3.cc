@@ -313,7 +313,7 @@ static const std::vector<Ep3AbilityDescription> name_for_effect_command({
   {0x76, false, "Reflect", "Generate reverse attack"},
 });
 
-void Ep3CardStats::Stat::decode_code() {
+void Ep3CardDefinition::Stat::decode_code() {
   this->type = static_cast<Type>(this->code / 1000);
   int16_t value = this->code - (this->type * 1000);
   if (value != 999) {
@@ -338,7 +338,7 @@ void Ep3CardStats::Stat::decode_code() {
   }
 }
 
-string Ep3CardStats::Stat::str() const {
+string Ep3CardDefinition::Stat::str() const {
   switch (this->type) {
     case Type::BLANK:
       return "";
@@ -365,7 +365,7 @@ string Ep3CardStats::Stat::str() const {
 
 
 
-bool Ep3CardStats::Effect::is_empty() const {
+bool Ep3CardDefinition::Effect::is_empty() const {
   return (this->command == 0 &&
           this->expr.is_filled_with(0) &&
           this->when == 0 &&
@@ -375,7 +375,7 @@ bool Ep3CardStats::Effect::is_empty() const {
           this->unknown_a3.is_filled_with(0));
 }
 
-string Ep3CardStats::Effect::str_for_arg(const std::string& arg) {
+string Ep3CardDefinition::Effect::str_for_arg(const std::string& arg) {
   if (arg.empty()) {
     return arg;
   }
@@ -428,7 +428,7 @@ string Ep3CardStats::Effect::str_for_arg(const std::string& arg) {
   }
 }
 
-string Ep3CardStats::Effect::str() const {
+string Ep3CardDefinition::Effect::str() const {
   string cmd_str = string_printf("%02hhX", this->command);
   try {
     const char* name = name_for_effect_command.at(this->command).name;
@@ -463,7 +463,7 @@ string Ep3CardStats::Effect::str() const {
 
 
 
-void Ep3CardStats::decode_range() {
+void Ep3CardDefinition::decode_range() {
   // If the cell representing the FC is nonzero, the card has a range from a
   // list of constants. Otherwise, its range is already defined in the range
   // array and should be left alone.
@@ -599,7 +599,7 @@ string string_for_range(const parray<be_uint32_t, 6>& range) {
   return ret;
 }
 
-string Ep3CardStats::str() const {
+string Ep3CardDefinition::str() const {
   string type_str;
   try {
     type_str = name_for_card_type.at(this->type);
@@ -663,12 +663,12 @@ string Ep3CardStats::str() const {
 
 
 
-Ep3DataIndex::Ep3DataIndex(const string& directory) {
-  static constexpr bool debug_enabled = false;
+Ep3DataIndex::Ep3DataIndex(const string& directory, bool debug)
+  : debug(debug) {
 
   unordered_map<uint32_t, vector<string>> card_tags;
-  if (debug_enabled) {
-    unordered_map<uint32_t, string> card_text;
+  unordered_map<uint32_t, string> card_text;
+  if (this->debug) {
     try {
       string data = prs_decompress(load_file(directory + "/cardtext.mnr"));
       StringReader r(data);
@@ -676,43 +676,69 @@ Ep3DataIndex::Ep3DataIndex(const string& directory) {
       while (!r.eof()) {
         uint32_t card_id = stoul(r.get_cstr());
 
-        // Most cards have multiple pages, but we only care about the first page
-        // (for now)
-        string text = r.get_cstr();
+        // Read all pages for this card
+        string text;
+        string first_page;
+        for (;;) {
+          string line = r.get_cstr();
+          if (line.empty()) {
+            break;
+          }
+          if (first_page.empty()) {
+            first_page = line;
+          }
+          text += '\n';
+          text += line;
+        }
 
-        // Preprocess text: first, delete all color markers
-        size_t offset = text.find("\tC");
+        // In orig_text, turn all \t into $ (following newserv conventions)
+        string orig_text = text;
+        for (char& ch : orig_text) {
+          if (ch == '\t') {
+            ch = '$';
+          }
+        }
+
+        // Preprocess first page: first, delete all color markers
+        size_t offset = first_page.find("\tC");
         while (offset != string::npos) {
-          text = text.substr(0, offset) + text.substr(offset + 3);
-          offset = text.find("\tC");
+          first_page = first_page.substr(0, offset) + first_page.substr(offset + 3);
+          offset = first_page.find("\tC");
         }
-        // Preprocess text: delete all initial lines that don't start with \t
-        offset = text.find('\t');
+        // Preprocess first page: delete all lines that don't start with \t
+        offset = first_page.find('\t');
         if (offset == string::npos) {
-          text.clear();
+          first_page.clear();
         } else {
-          text = text.substr(offset);
+          first_page = first_page.substr(offset);
         }
-        // Preprocess text: merge lines that don't begin with \t
-        for (offset = 0; offset < text.size(); offset++) {
-          if (text[offset] == '\n' && text[offset + 1] != '\t') {
-            text = text.substr(0, offset) + text.substr(offset + 1);
+        // Preprocess first page: merge lines that don't begin with \t
+        for (offset = 0; offset < first_page.size(); offset++) {
+          if (first_page[offset] == '\n' && first_page[offset + 1] != '\t') {
+            first_page = first_page.substr(0, offset) + first_page.substr(offset + 1);
             offset--;
           }
         }
 
-        // Split text into tags
+        // Split first page into tags, and collapse whitespace in the tag names
         vector<string> tags;
-        auto lines = split(text, '\n');
+        auto lines = split(first_page, '\n');
         for (const auto& line : lines) {
+          string tag;
           if (line[0] == '\t' && line[1] == 'D') {
-            tags.emplace_back("D: " + line.substr(2));
+            tag = "D: " + line.substr(2);
           } else if (line[0] == '\t' && line[1] == 'S') {
-            tags.emplace_back("S: " + line.substr(2));
+            tag = "S: " + line.substr(2);
+          }
+          if (!tag.empty()) {
+            for (size_t offset = tag.find("  "); offset != string::npos; offset = tag.find("  ")) {
+              tag = tag.substr(0, offset) + tag.substr(offset + 1);
+            }
+            tags.emplace_back(move(tag));
           }
         }
 
-        if (!card_text.emplace(card_id, move(text)).second) {
+        if (!card_text.emplace(card_id, move(orig_text)).second) {
           throw runtime_error("duplicate card text id");
         }
         if (!card_tags.emplace(card_id, move(tags)).second) {
@@ -731,41 +757,40 @@ Ep3DataIndex::Ep3DataIndex(const string& directory) {
     this->compressed_card_definitions = load_file(directory + "/cardupdate.mnr");
     string data = prs_decompress(this->compressed_card_definitions);
     // There's a footer after the card definitions, but we ignore it
-    if (data.size() % sizeof(Ep3CardStats) != sizeof(Ep3CardStatsFooter)) {
+    if (data.size() % sizeof(Ep3CardDefinition) != sizeof(Ep3CardDefinitionsFooter)) {
       throw runtime_error(string_printf(
           "decompressed card update file size %zX is not aligned with card definition size %zX (%zX extra bytes)",
-          data.size(), sizeof(Ep3CardStats), data.size() % sizeof(Ep3CardStats)));
+          data.size(), sizeof(Ep3CardDefinition), data.size() % sizeof(Ep3CardDefinition)));
     }
-    const auto* stats = reinterpret_cast<const Ep3CardStats*>(data.data());
-    size_t max_cards = data.size() / sizeof(Ep3CardStats);
+    const auto* def = reinterpret_cast<const Ep3CardDefinition*>(data.data());
+    size_t max_cards = data.size() / sizeof(Ep3CardDefinition);
     for (size_t x = 0; x < max_cards; x++) {
       // The last card entry has the build date and some other metadata (and
       // isn't a real card, obviously), so skip it. Seems like the card ID is
       // always a large number that won't fit in a uint16_t, so we use that to
       // determine if the entry is a real card or not.
-      if (stats[x].card_id & 0xFFFF0000) {
+      if (def[x].card_id & 0xFFFF0000) {
         continue;
       }
-      shared_ptr<CardEntry> entry(new CardEntry({stats[x], {}}));
-      if (!this->card_definitions.emplace(entry->stats.card_id, entry).second) {
+      shared_ptr<CardEntry> entry(new CardEntry({def[x], {}, {}}));
+      if (!this->card_definitions.emplace(entry->def.card_id, entry).second) {
         throw runtime_error(string_printf(
-            "duplicate card id: %08" PRIX32, entry->stats.card_id.load()));
+            "duplicate card id: %08" PRIX32, entry->def.card_id.load()));
       }
 
-      entry->stats.hp.decode_code();
-      entry->stats.ap.decode_code();
-      entry->stats.tp.decode_code();
-      entry->stats.mv.decode_code();
-      entry->stats.decode_range();
+      entry->def.hp.decode_code();
+      entry->def.ap.decode_code();
+      entry->def.tp.decode_code();
+      entry->def.mv.decode_code();
+      entry->def.decode_range();
 
-      if (debug_enabled) {
-        string card_str = entry->stats.str();
+      if (this->debug) {
         try {
-          string tags_str = join(card_tags.at(stats[x].card_id), ", ");
-          fprintf(stderr, "%s tags: [%s]\n", card_str.c_str(), tags_str.c_str());
-        } catch (const out_of_range&) {
-          fprintf(stderr, "%s\n", card_str.c_str());
-        }
+          entry->text = move(card_text.at(def[x].card_id));
+        } catch (const out_of_range&) { }
+        try {
+          entry->debug_tags = move(card_tags.at(def[x].card_id));
+        } catch (const out_of_range&) { }
       }
     }
 
@@ -832,6 +857,14 @@ shared_ptr<const Ep3DataIndex::CardEntry> Ep3DataIndex::get_card_definition(
   return this->card_definitions.at(id);
 }
 
+std::set<uint32_t> Ep3DataIndex::all_card_ids() const {
+  std::set<uint32_t> ret;
+  for (const auto& it : this->card_definitions) {
+    ret.emplace(it.first);
+  }
+  return ret;
+}
+
 const string& Ep3DataIndex::get_compressed_map_list() const {
   if (this->compressed_map_list.empty()) {
     // TODO: Write a version of prs_compress that takes iovecs (or something
@@ -892,4 +925,12 @@ const string& Ep3DataIndex::get_compressed_map_list() const {
 
 shared_ptr<const Ep3DataIndex::MapEntry> Ep3DataIndex::get_map(uint32_t id) const {
   return this->maps.at(id);
+}
+
+std::set<uint32_t> Ep3DataIndex::all_map_ids() const {
+  std::set<uint32_t> ret;
+  for (const auto& it : this->maps) {
+    ret.emplace(it.first);
+  }
+  return ret;
 }

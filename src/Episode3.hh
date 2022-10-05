@@ -4,6 +4,7 @@
 
 #include <string>
 #include <map>
+#include <set>
 #include <memory>
 #include <unordered_map>
 #include <phosg/Encoding.hh>
@@ -16,7 +17,7 @@
 // and comparing the card text with the data in the file. Some inferences may be
 // incorrect here, since Episode 3's card text is wrong in various places.
 
-struct Ep3CardStats {
+struct Ep3CardDefinition {
   enum Rarity : uint8_t {
     N1    = 0x01,
     R1    = 0x02,
@@ -132,7 +133,7 @@ struct Ep3CardStats {
   std::string str() const;
 } __attribute__((packed)); // 0x128 bytes in total
 
-struct Ep3CardStatsFooter {
+struct Ep3CardDefinitionsFooter {
   be_uint32_t num_cards1;
   be_uint32_t unknown_a1;
   be_uint32_t num_cards2;
@@ -310,11 +311,12 @@ struct Ep3Map { // .mnmd format; also the format of (decompressed) Ep3 quests
 
 class Ep3DataIndex {
 public:
-  explicit Ep3DataIndex(const std::string& directory);
+  explicit Ep3DataIndex(const std::string& directory, bool debug = false);
 
   struct CardEntry {
-    Ep3CardStats stats;
-    std::vector<std::string> text;
+    Ep3CardDefinition def;
+    std::string text;
+    std::vector<std::string> debug_tags; // Empty unless debug == true
   };
 
   class MapEntry {
@@ -332,11 +334,15 @@ public:
 
   const std::string& get_compressed_card_definitions() const;
   std::shared_ptr<const CardEntry> get_card_definition(uint32_t id) const;
+  std::set<uint32_t> all_card_ids() const;
 
   const std::string& get_compressed_map_list() const;
   std::shared_ptr<const MapEntry> get_map(uint32_t id) const;
+  std::set<uint32_t> all_map_ids() const;
 
 private:
+  bool debug;
+
   std::string compressed_card_definitions;
   std::unordered_map<uint32_t, std::shared_ptr<CardEntry>> card_definitions;
 
