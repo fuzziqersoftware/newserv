@@ -932,6 +932,10 @@ struct C_OpenFileConfirmation_44_A6 {
 // Header flag = entry count
 template <typename LobbyDataT, typename DispDataT>
 struct S_JoinGame {
+  // Note: It seems Sega servers sent uninitialized memory in the variations
+  // field when sending this command to start an Episode 3 tournament game. This
+  // can be misleading when reading old logs from those days, but the Episode 3
+  // client really does ignore it.
   parray<le_uint32_t, 0x20> variations;
   // Unlike lobby join commands, these are filled in in their slot positions.
   // That is, if there's only one player in a game with ID 2, then the first two
@@ -2033,8 +2037,8 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { };
 //   S = command size
 //   T = subcommand size in uint32_ts (== (S / 4) - 1)
 //   W = subcommand number
-// We refer to Episode 3 server data commands as CAxWW, where W comes from the
-// format above. The server data commands are:
+// We refer to the various Episode 3 server data commands as CAxWW, where W
+// comes from the format above. The server data commands are:
 //   CAx0B (T=05) - Unknown
 //   CAx0C (T=05) - Unknown
 //   CAx0D (T=07) - Unknown
@@ -2062,18 +2066,23 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { };
 // Same as 60, but only send to Episode 3 clients.
 // This command is identical to C9, except that CB is not valid on Episode 3
 // Trial Edition (whereas C9 is valid).
+// TODO: What's the difference here? The client-side handlers are identical, so
+// presumably the server is supposed to do something different between the two
+// commands, but it's not clear what that difference should be.
 
 // CC (S->C): Confirm tournament entry (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
+// header.flag is 1, apparently, regardless of the number of valid entries.
 
 struct S_ConfirmTournamentEntry_GC_Ep3_CC {
   ptext<char, 0x40> tournament_name;
   parray<le_uint16_t, 4> unknown_a2;
   ptext<char, 0x20> server_name;
-  ptext<char, 0x20> start_time; // e.g. "15:09:30"
+  ptext<char, 0x20> start_time; // e.g. "15:09:30" or "13:03 PST"
   struct Entry {
-    parray<le_uint16_t, 2> unknown_a1;
-    parray<uint8_t, 0x20> unknown_a2;
+    le_uint16_t unknown_a1;
+    le_uint32_t present; // 1 if team present, 0 otherwise
+    ptext<char, 0x20> team_name;
   };
   Entry entries[0x20];
 };
@@ -2312,11 +2321,15 @@ struct S_TournamentList_GC_Ep3_E0 {
 
 // E0 (C->S): Request team and key config (BB)
 
-// E1 (S->C): Unknown (Episode 3)
+// E1 (S->C): Battle information (Episode 3)
 
 struct S_Unknown_GC_Ep3_E1 {
-  /* 0004 */ parray<uint8_t, 0x20> unknown_a1;
-  /* 0024 */ parray<parray<uint8_t, 0x30>, 4> unknown_a2;
+  /* 0004 */ parray<uint8_t, 0x20> game_name;
+  struct Entry {
+    ptext<char, 0x10> name;
+    ptext<char, 0x20> description;
+  };
+  /* 0024 */ parray<Entry, 4> entries;
   /* 00E4 */ parray<uint8_t, 0x20> unknown_a3;
   /* 0104 */ parray<uint8_t, 0x14> unknown_a4;
   /* 0118 */ parray<uint8_t, 0x180> unknown_a5;
@@ -2824,7 +2837,8 @@ struct S_Unknown_BB_F0 {
 // Now, the game subcommands (used in commands 60, 62, 6C, 6D, C9, and CB).
 // These are laid out similarly as above. These structs start with G_ to
 // indicate that they are (usually) bidirectional, and are (usually) generated
-// by clients and consumed by clients.
+// by clients and consumed by clients. Generally in newserv source, these
+// commands are referred to as (for example) 6x02, etc.
 
 // These structures are used by many commands (noted below)
 struct G_ItemSubcommand {
@@ -2845,13 +2859,13 @@ struct G_ItemIDSubcommand {
 
 
 
-// 00: Invalid subcommand
-// 01: Invalid subcommand
-// 02: Unknown
-// 03: Unknown (same handler as 02)
-// 04: Unknown
+// 6x00: Invalid subcommand
+// 6x01: Invalid subcommand
+// 6x02: Unknown
+// 6x03: Unknown (same handler as 02)
+// 6x04: Unknown
 
-// 05: Switch state changed
+// 6x05: Switch state changed
 // Some things that don't look like switches are implemented as switches using
 // this subcommand. For example, when all enemies in a room are defeated, this
 // subcommand is used to unlock the doors.
@@ -2865,7 +2879,7 @@ struct G_SwitchStateChanged_6x05 {
   uint8_t enabled;
 };
 
-// 06: Send guild card
+// 6x06: Send guild card
 
 template <typename CharT, size_t UnusedLength>
 struct G_SendGuildCard_DC_PC_V3 {
@@ -2903,7 +2917,7 @@ struct G_SendGuildCard_BB_6x06 {
   uint8_t char_class;
 };
 
-// 07: Symbol chat
+// 6x07: Symbol chat
 
 struct G_SymbolChat_6x07 {
   uint8_t command;
@@ -2930,10 +2944,10 @@ struct G_SymbolChat_6x07 {
   FacePart face_parts[12];
 };
 
-// 08: Invalid subcommand
-// 09: Unknown
+// 6x08: Invalid subcommand
+// 6x09: Unknown
 
-// 0A: Enemy hit
+// 6x0A: Enemy hit
 
 struct G_EnemyHitByPlayer_6x0A {
   uint8_t command;
@@ -2944,32 +2958,32 @@ struct G_EnemyHitByPlayer_6x0A {
   le_uint32_t flags;
 };
 
-// 0B: Box destroyed
-// 0C: Add condition (poison/slow/etc.)
-// 0D: Remove condition (poison/slow/etc.)
-// 0E: Unknown
-// 0F: Invalid subcommand
-// 10: Unknown (not valid on Episode 3)
-// 11: Unknown (not valid on Episode 3)
-// 12: Dragon boss actions (not valid on Episode 3)
-// 13: Re Rol Le boss actions (not valid on Episode 3)
-// 14: Unknown (supported; game only; not valid on Episode 3)
-// 15: Vol Opt boss actions (not valid on Episode 3)
-// 16: Vol Opt boss actions (not valid on Episode 3)
-// 17: Unknown (supported; game only; not valid on Episode 3)
-// 18: Unknown (supported; game only; not valid on Episode 3)
-// 19: Dark Falz boss actions (not valid on Episode 3)
-// 1A: Invalid subcommand
-// 1B: Unknown (not valid on Episode 3)
-// 1C: Unknown (supported; game only; not valid on Episode 3)
-// 1D: Invalid subcommand
-// 1E: Invalid subcommand
-// 1F: Unknown (supported; lobby & game)
-// 20: Set position (existing clients send when a new client joins a lobby/game)
-// 21: Inter-level warp
+// 6x0B: Box destroyed
+// 6x0C: Add condition (poison/slow/etc.)
+// 6x0D: Remove condition (poison/slow/etc.)
+// 6x0E: Unknown
+// 6x0F: Invalid subcommand
+// 6x10: Unknown (not valid on Episode 3)
+// 6x11: Unknown (not valid on Episode 3)
+// 6x12: Dragon boss actions (not valid on Episode 3)
+// 6x13: Re Rol Le boss actions (not valid on Episode 3)
+// 6x14: Unknown (supported; game only; not valid on Episode 3)
+// 6x15: Vol Opt boss actions (not valid on Episode 3)
+// 6x16: Vol Opt boss actions (not valid on Episode 3)
+// 6x17: Unknown (supported; game only; not valid on Episode 3)
+// 6x18: Unknown (supported; game only; not valid on Episode 3)
+// 6x19: Dark Falz boss actions (not valid on Episode 3)
+// 6x1A: Invalid subcommand
+// 6x1B: Unknown (not valid on Episode 3)
+// 6x1C: Unknown (supported; game only; not valid on Episode 3)
+// 6x1D: Invalid subcommand
+// 6x1E: Invalid subcommand
+// 6x1F: Unknown (supported; lobby & game)
+// 6x20: Set position (existing clients send when a new client joins a lobby/game)
+// 6x21: Inter-level warp
 
-// 22: Set player visibility
-// 23: Set player visibility
+// 6x22: Set player visibility
+// 6x23: Set player visibility
 
 struct G_SetPlayerVisibility_6x22_6x23 {
   uint8_t subcommand; // 22 = invisible, 23 = visible
@@ -2977,9 +2991,9 @@ struct G_SetPlayerVisibility_6x22_6x23 {
   le_uint16_t client_id;
 };
 
-// 24: Unknown (supported; game only)
+// 6x24: Unknown (supported; game only)
 
-// 25: Equip item
+// 6x25: Equip item
 
 struct G_EquipItem_6x25 {
   uint8_t command;
@@ -2989,7 +3003,7 @@ struct G_EquipItem_6x25 {
   le_uint32_t equip_slot;
 };
 
-// 26: Unequip item
+// 6x26: Unequip item
 
 struct G_UnequipItem_6x26 {
   uint8_t command;
@@ -2999,7 +3013,7 @@ struct G_UnequipItem_6x26 {
   le_uint32_t unused2;
 };
 
-// 27: Use item
+// 6x27: Use item
 
 struct G_UseItem_6x27 {
   uint8_t command;
@@ -3008,7 +3022,7 @@ struct G_UseItem_6x27 {
   le_uint32_t item_id;
 };
 
-// 28: Feed MAG
+// 6x28: Feed MAG
 
 struct G_FeedMAG_6x28 {
   uint8_t subcommand;
@@ -3018,12 +3032,12 @@ struct G_FeedMAG_6x28 {
   le_uint32_t fed_item_id;
 };
 
-// 29: Delete inventory item (via bank deposit / sale / feeding MAG)
+// 6x29: Delete inventory item (via bank deposit / sale / feeding MAG)
 // This subcommand is also used for reducing the size of stacks - if amount is
 // less than the stack count, the item is not deleted and its ID remains valid.
 // Format is G_ItemSubcommand
 
-// 2A: Drop item
+// 6x2A: Drop item
 
 struct G_PlayerDropItem_6x2A {
   uint8_t command;
@@ -3037,7 +3051,7 @@ struct G_PlayerDropItem_6x2A {
   le_float z;
 };
 
-// 2B: Create item in inventory (e.g. via tekker or bank withdraw)
+// 6x2B: Create item in inventory (e.g. via tekker or bank withdraw)
 
 struct G_PlayerCreateInventoryItem_DC_6x2B {
   uint8_t command;
@@ -3050,12 +3064,12 @@ struct G_PlayerCreateInventoryItem_PC_V3_BB_6x2B : G_PlayerCreateInventoryItem_D
   le_uint32_t unknown;
 };
 
-// 2C: Talk to NPC
-// 2D: Done talking to NPC
-// 2E: Unknown
-// 2F: Hit by enemy
+// 6x2C: Talk to NPC
+// 6x2D: Done talking to NPC
+// 6x2E: Unknown
+// 6x2F: Hit by enemy
 
-// 30: Level up
+// 6x30: Level up
 
 struct G_LevelUp_6x30 {
   uint8_t command;
@@ -3070,21 +3084,21 @@ struct G_LevelUp_6x30 {
   le_uint32_t level;
 };
 
-// 31: Medical center
-// 32: Medical center
-// 33: Revive player (e.g. with moon atomizer)
-// 34: Unknown
-// 35: Invalid subcommand
-// 36: Unknown (supported; game only)
-// 37: Photon blast
-// 38: Unknown
-// 39: Photon blast ready
-// 3A: Unknown (supported; game only)
-// 3B: Unknown (supported; lobby & game)
-// 3C: Invalid subcommand
-// 3D: Invalid subcommand
+// 6x31: Medical center
+// 6x32: Medical center
+// 6x33: Revive player (e.g. with moon atomizer)
+// 6x34: Unknown
+// 6x35: Invalid subcommand
+// 6x36: Unknown (supported; game only)
+// 6x37: Photon blast
+// 6x38: Unknown
+// 6x39: Photon blast ready
+// 6x3A: Unknown (supported; game only)
+// 6x3B: Unknown (supported; lobby & game)
+// 6x3C: Invalid subcommand
+// 6x3D: Invalid subcommand
 
-// 3E: Stop moving
+// 6x3E: Stop moving
 
 struct G_StopAtPosition_6x3E {
   uint8_t subcommand;
@@ -3096,7 +3110,7 @@ struct G_StopAtPosition_6x3E {
   le_float z;
 };
 
-// 3F: Set position
+// 6x3F: Set position
 
 struct G_SetPosition_6x3F {
   uint8_t subcommand;
@@ -3109,7 +3123,7 @@ struct G_SetPosition_6x3F {
   le_float z;
 };
 
-// 40: Walk
+// 6x40: Walk
 
 struct G_WalkToPosition_6x40 {
   uint8_t subcommand;
@@ -3120,9 +3134,9 @@ struct G_WalkToPosition_6x40 {
   le_uint32_t unused;
 };
 
-// 41: Unknown
+// 6x41: Unknown
 
-// 42: Run
+// 6x42: Run
 
 struct G_RunToPosition_6x42 {
   uint8_t subcommand;
@@ -3132,30 +3146,30 @@ struct G_RunToPosition_6x42 {
   le_float z;
 };
 
-// 43: First attack
-// 44: Second attack
-// 45: Third attack
-// 46: Attack finished (sent after each of 43, 44, and 45)
-// 47: Cast technique
-// 48: Cast technique complete
-// 49: Subtract PB energy
-// 4A: Fully shield attack
-// 4B: Hit by enemy
-// 4C: Hit by enemy
-// 4D: Unknown (supported; lobby & game)
-// 4E: Unknown (supported; lobby & game)
-// 4F: Unknown (supported; lobby & game)
-// 50: Unknown (supported; lobby & game)
-// 51: Invalid subcommand
-// 52: Toggle shop/bank interaction
-// 53: Unknown (supported; game only)
-// 54: Unknown
-// 55: Intra-map warp
-// 56: Unknown (supported; lobby & game)
-// 57: Unknown (supported; lobby & game)
-// 58: Unknown (supported; game only)
+// 6x43: First attack
+// 6x44: Second attack
+// 6x45: Third attack
+// 6x46: Attack finished (sent after each of 43, 44, and 45)
+// 6x47: Cast technique
+// 6x48: Cast technique complete
+// 6x49: Subtract PB energy
+// 6x4A: Fully shield attack
+// 6x4B: Hit by enemy
+// 6x4C: Hit by enemy
+// 6x4D: Unknown (supported; lobby & game)
+// 6x4E: Unknown (supported; lobby & game)
+// 6x4F: Unknown (supported; lobby & game)
+// 6x50: Unknown (supported; lobby & game)
+// 6x51: Invalid subcommand
+// 6x52: Toggle shop/bank interaction
+// 6x53: Unknown (supported; game only)
+// 6x54: Unknown
+// 6x55: Intra-map warp
+// 6x56: Unknown (supported; lobby & game)
+// 6x57: Unknown (supported; lobby & game)
+// 6x58: Unknown (supported; game only)
 
-// 59: Pick up item
+// 6x59: Pick up item
 
 struct G_PickUpItem_6x59 {
   uint8_t subcommand;
@@ -3166,7 +3180,7 @@ struct G_PickUpItem_6x59 {
   le_uint32_t item_id;
 };
 
-// 5A: Request to pick up item
+// 6x5A: Request to pick up item
 
 struct G_PickUpItemRequest_6x5A {
   uint8_t command;
@@ -3177,10 +3191,10 @@ struct G_PickUpItemRequest_6x5A {
   uint8_t unused2[3];
 };
 
-// 5B: Invalid subcommand
-// 5C: Unknown
+// 6x5B: Invalid subcommand
+// 6x5C: Unknown
 
-// 5D: Drop meseta or stacked item
+// 6x5D: Drop meseta or stacked item
 
 struct G_DropStackedItem_DC_6x5D {
   uint8_t subcommand;
@@ -3197,7 +3211,7 @@ struct G_DropStackedItem_PC_V3_BB_6x5D : G_DropStackedItem_DC_6x5D {
   le_uint32_t unused3;
 };
 
-// 5E: Buy item at shop
+// 6x5E: Buy item at shop
 
 struct G_BuyShopItem_6x5E {
   uint8_t subcommand;
@@ -3206,7 +3220,7 @@ struct G_BuyShopItem_6x5E {
   ItemData item;
 };
 
-// 5F: Drop item from box/enemy
+// 6x5F: Drop item from box/enemy
 
 struct G_DropItem_DC_6x5F {
   uint8_t subcommand;
@@ -3225,7 +3239,7 @@ struct G_DropItem_PC_V3_BB_6x5F : G_DropItem_DC_6x5F {
   le_uint32_t unused3;
 };
 
-// 60: Request for item drop (handled by the server on BB)
+// 6x60: Request for item drop (handled by the server on BB)
 
 struct G_EnemyDropItemRequest_DC_6x60 {
   uint8_t command;
@@ -3243,21 +3257,21 @@ struct G_EnemyDropItemRequest_PC_V3_BB_6x60 : G_EnemyDropItemRequest_DC_6x60 {
   le_uint32_t unknown_a2;
 };
 
-// 61: Feed MAG
-// 62: Unknown
-// 63: Destroy item on the ground (used when too many items have been dropped)
-// 64: Unknown (not valid on Episode 3)
-// 65: Unknown (not valid on Episode 3)
-// 66: Use star atomizer
-// 67: Create enemy set
-// 68: Telepipe/Ryuker
-// 69: Unknown (supported; game only)
-// 6A: Unknown (supported; game only; not valid on Episode 3)
+// 6x61: Feed MAG
+// 6x62: Unknown
+// 6x63: Destroy item on the ground (used when too many items have been dropped)
+// 6x64: Unknown (not valid on Episode 3)
+// 6x65: Unknown (not valid on Episode 3)
+// 6x66: Use star atomizer
+// 6x67: Create enemy set
+// 6x68: Telepipe/Ryuker
+// 6x69: Unknown (supported; game only)
+// 6x6A: Unknown (supported; game only; not valid on Episode 3)
 
-// 6B: Sync enemy state (used while loading into game; same header format as 6E)
-// 6C: Sync object state (used while loading into game; same header format as 6E)
-// 6D: Sync item state (used while loading into game; same header format as 6E)
-// 6E: Sync flag state (used while loading into game)
+// 6x6B: Sync enemy state (used while loading into game; same header format as 6E)
+// 6x6C: Sync object state (used while loading into game; same header format as 6E)
+// 6x6D: Sync item state (used while loading into game; same header format as 6E)
+// 6x6E: Sync flag state (used while loading into game)
 
 struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
   uint8_t subcommand;
@@ -3268,9 +3282,9 @@ struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
   // BC0-compressed data follows here (use bc0_decompress from Compression.hh)
 };
 
-// 6F: Unknown (used while loading into game)
+// 6x6F: Unknown (used while loading into game)
 
-// 70: Sync player disp data and inventory (used while loading into game)
+// 6x70: Sync player disp data and inventory (used while loading into game)
 // Annoyingly, they didn't use the same format as the 65/67/68 commands here,
 // and instead rearranged a bunch of things.
 // TODO: Some missing fields should be easy to find in the future (e.g. when the
@@ -3340,57 +3354,57 @@ struct G_Unknown_6x70 {
   /* 0494 */ le_uint32_t unknown_a15;
 };
 
-// 71: Unknown (used while loading into game)
-// 72: Unknown (used while loading into game)
-// 73: Invalid subcommand (but apparently valid on BB; function is unknown)
-// 74: Word select
-// 75: Unknown (supported; game only)
-// 76: Enemy killed
-// 77: Sync quest data
-// 78: Unknown
-// 79: Lobby 14/15 soccer game
-// 7A: Unknown
-// 7B: Unknown
-// 7C: Unknown (supported; game only; not valid on Episode 3)
-// 7D: Unknown (supported; game only; not valid on Episode 3)
-// 7E: Unknown (not valid on Episode 3)
-// 7F: Unknown (not valid on Episode 3)
-// 80: Trigger trap (not valid on Episode 3)
-// 81: Unknown
-// 82: Unknown
-// 83: Place trap
-// 84: Unknown (supported; game only; not valid on Episode 3)
-// 85: Unknown (supported; game only; not valid on Episode 3)
-// 86: Hit destructible wall (not valid on Episode 3)
-// 87: Unknown
-// 88: Unknown (supported; game only)
-// 89: Unknown (supported; game only)
-// 8A: Unknown (not valid on Episode 3)
-// 8B: Unknown (not valid on Episode 3)
-// 8C: Unknown (not valid on Episode 3)
-// 8D: Unknown (supported; lobby & game)
-// 8E: Unknown (not valid on Episode 3)
-// 8F: Unknown (not valid on Episode 3)
-// 90: Unknown (not valid on Episode 3)
-// 91: Unknown (supported; game only)
-// 92: Unknown (not valid on Episode 3)
-// 93: Timed switch activated (not valid on Episode 3)
-// 94: Warp (not valid on Episode 3)
-// 95: Unknown (not valid on Episode 3)
-// 96: Unknown (not valid on Episode 3)
-// 97: Unknown (not valid on Episode 3)
-// 98: Unknown
-// 99: Unknown
-// 9A: Update player stat (not valid on Episode 3)
-// 9B: Unknown
-// 9C: Unknown (supported; game only; not valid on Episode 3)
-// 9D: Unknown (not valid on Episode 3)
-// 9E: Unknown (not valid on Episode 3)
-// 9F: Gal Gryphon actions (not valid on PC or Episode 3)
-// A0: Gal Gryphon actions (not valid on PC or Episode 3)
-// A1: Unknown (not valid on PC)
+// 6x71: Unknown (used while loading into game)
+// 6x72: Unknown (used while loading into game)
+// 6x73: Invalid subcommand (but apparently valid on BB; function is unknown)
+// 6x74: Word select
+// 6x75: Unknown (supported; game only)
+// 6x76: Enemy killed
+// 6x77: Sync quest data
+// 6x78: Unknown
+// 6x79: Lobby 14/15 soccer game
+// 6x7A: Unknown
+// 6x7B: Unknown
+// 6x7C: Unknown (supported; game only; not valid on Episode 3)
+// 6x7D: Unknown (supported; game only; not valid on Episode 3)
+// 6x7E: Unknown (not valid on Episode 3)
+// 6x7F: Unknown (not valid on Episode 3)
+// 6x80: Trigger trap (not valid on Episode 3)
+// 6x81: Unknown
+// 6x82: Unknown
+// 6x83: Place trap
+// 6x84: Unknown (supported; game only; not valid on Episode 3)
+// 6x85: Unknown (supported; game only; not valid on Episode 3)
+// 6x86: Hit destructible wall (not valid on Episode 3)
+// 6x87: Unknown
+// 6x88: Unknown (supported; game only)
+// 6x89: Unknown (supported; game only)
+// 6x8A: Unknown (not valid on Episode 3)
+// 6x8B: Unknown (not valid on Episode 3)
+// 6x8C: Unknown (not valid on Episode 3)
+// 6x8D: Unknown (supported; lobby & game)
+// 6x8E: Unknown (not valid on Episode 3)
+// 6x8F: Unknown (not valid on Episode 3)
+// 6x90: Unknown (not valid on Episode 3)
+// 6x91: Unknown (supported; game only)
+// 6x92: Unknown (not valid on Episode 3)
+// 6x93: Timed switch activated (not valid on Episode 3)
+// 6x94: Warp (not valid on Episode 3)
+// 6x95: Unknown (not valid on Episode 3)
+// 6x96: Unknown (not valid on Episode 3)
+// 6x97: Unknown (not valid on Episode 3)
+// 6x98: Unknown
+// 6x99: Unknown
+// 6x9A: Update player stat (not valid on Episode 3)
+// 6x9B: Unknown
+// 6x9C: Unknown (supported; game only; not valid on Episode 3)
+// 6x9D: Unknown (not valid on Episode 3)
+// 6x9E: Unknown (not valid on Episode 3)
+// 6x9F: Gal Gryphon actions (not valid on PC or Episode 3)
+// 6xA0: Gal Gryphon actions (not valid on PC or Episode 3)
+// 6xA1: Unknown (not valid on PC)
 
-// A2: Request for item drop from box (not valid on PC; handled by server on BB)
+// 6xA2: Request for item drop from box (not valid on PC; handled by server on BB)
 
 struct G_BoxItemDropRequest_6xA2 {
   uint8_t command;
@@ -3404,29 +3418,74 @@ struct G_BoxItemDropRequest_6xA2 {
   le_uint32_t unknown[6];
 };
 
-// A3: Episode 2 boss actions (not valid on PC or Episode 3)
-// A4: Olga Flow phase 1 actions (not valid on PC or Episode 3)
-// A5: Olga Flow phase 2 actions (not valid on PC or Episode 3)
-// A6: Modify trade proposal (not valid on PC)
-// A7: Unknown (not valid on PC)
-// A8: Gol Dragon actions (not valid on PC or Episode 3)
-// A9: Barba Ray actions (not valid on PC or Episode 3)
-// AA: Episode 2 boss actions (not valid on PC or Episode 3)
-// AB: Create lobby chair (not valid on PC)
-// AC: Unknown (not valid on PC)
-// AD: Unknown (not valid on PC, Episode 3, or GC Trial Edition)
-// AE: Set chair state? (sent by existing clients at join time; not valid on PC or GC Trial Edition)
-// AF: Turn in lobby chair (not valid on PC or GC Trial Edition)
-// B0: Move in lobby chair (not valid on PC or GC Trial Edition)
-// B1: Unknown (not valid on PC or GC Trial Edition)
-// B2: Unknown (not valid on PC or GC Trial Edition)
-// B3: Unknown (XBOX and Episode 3 only; meanings are probably different for those versions)
-// B4: Unknown (XBOX and Episode 3 only; meanings are probably different for those versions)
-// B5: Episode 3 game setup menu state sync
-// B5: BB shop request (handled by the server)
-// B6: Episode 3 subcommands (server->client only)
+// 6xA3: Episode 2 boss actions (not valid on PC or Episode 3)
+// 6xA4: Olga Flow phase 1 actions (not valid on PC or Episode 3)
+// 6xA5: Olga Flow phase 2 actions (not valid on PC or Episode 3)
+// 6xA6: Modify trade proposal (not valid on PC)
+// 6xA7: Unknown (not valid on PC)
+// 6xA8: Gol Dragon actions (not valid on PC or Episode 3)
+// 6xA9: Barba Ray actions (not valid on PC or Episode 3)
+// 6xAA: Episode 2 boss actions (not valid on PC or Episode 3)
+// 6xAB: Create lobby chair (not valid on PC)
+// 6xAC: Unknown (not valid on PC)
+// 6xAD: Unknown (not valid on PC, Episode 3, or GC Trial Edition)
+// 6xAE: Set chair state? (sent by existing clients at join time; not valid on PC or GC Trial Edition)
+// 6xAF: Turn in lobby chair (not valid on PC or GC Trial Edition)
+// 6xB0: Move in lobby chair (not valid on PC or GC Trial Edition)
+// 6xB1: Unknown (not valid on PC or GC Trial Edition)
+// 6xB2: Unknown (not valid on PC or GC Trial Edition)
+// 6xB3: Unknown (XBOX)
 
-// B6: BB shop contents (server->client only)
+// 6xB3: CARD battle command (Episode 3)
+
+// These commands have multiple subcommands; see the Episode 3 subsubcommand
+// table after this table. The common format is:
+struct G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t subcommand; // 0xB3
+  uint8_t size;
+  le_uint16_t unused;
+  uint8_t subsubcommand; // See 6xBx subcommand table (after this table)
+  uint8_t unused1;
+  // If mask_key is nonzero, the remainder of the data is encrypted using a
+  // simple algorithm. See set_mask_for_ep3_game_command in SendCommands.cc for
+  // a description of this algorithm.
+  uint8_t mask_key;
+  uint8_t unused2;
+  // The subsubcommand arguments follow here
+};
+
+// 6xB4: Unknown (XBOX)
+// 6xB4: CARD battle command (Episode 3) - see 6xB3 (above)
+// 6xB5: CARD battle command (Episode 3) - see 6xB3 (above)
+// 6xB5: BB shop request (handled by the server)
+
+// 6xB6: Episode 3 map list and map contents (server->client only)
+// Unlike 6xB3-6xB5, these commands cannot be masked. Also unlike 6xB3-6xB5,
+// there are only two subsubcommands, so we list them inline here.
+// These subcommands can be rather large, so they should be sent with the 6C
+// command instead of the 60 command.
+
+struct G_MapSubsubcommand_GC_Ep3_6xB6 {
+  uint8_t subcommand; // 0xB6
+  uint8_t size; // Unused; this command uses the extended (32-bit) size field
+  le_uint16_t unused;
+  le_uint32_t subcommand_size;
+  le_uint32_t subsubcommand; // 0x40 or 0x41
+};
+
+struct G_MapList_GC_Ep3_6xB6x40 : G_MapSubsubcommand_GC_Ep3_6xB6 {
+  le_uint32_t compressed_data_size;
+  // PRS-compressed map list follows (see Ep3DataIndex::get_compressed_map_list)
+};
+
+struct G_MapData_GC_Ep3_6xB6x41 : G_MapSubsubcommand_GC_Ep3_6xB6 {
+  le_int16_t map_number;
+  le_uint16_t unused;
+  le_uint32_t compressed_data_size;
+  // PRS-compressed map data follows (which decompresses to an Ep3Map)
+};
+
+// 6xB6: BB shop contents (server->client only)
 
 struct G_ShopContents_BB_6xB6 {
   uint8_t subcommand;
@@ -3439,8 +3498,8 @@ struct G_ShopContents_BB_6xB6 {
   ItemData entries[20];
 };
 
-// B7: Unknown (Episode 3 Trial Edition)
-// B7: BB buy shop item (handled by the server)
+// 6xB7: Unknown (Episode 3 Trial Edition)
+// 6xB7: BB buy shop item (handled by the server)
 
 struct G_BuyShopItem_BB_6xB7 {
   uint8_t subcommand;
@@ -3453,12 +3512,12 @@ struct G_BuyShopItem_BB_6xB7 {
   uint8_t unknown_a1; // TODO: Probably actually unused; verify this
 };
 
-// B8: Unknown (Episode 3 Trial Edition)
-// B8: BB accept tekker result (handled by the server)
+// 6xB8: Unknown (Episode 3 Trial Edition)
+// 6xB8: BB accept tekker result (handled by the server)
 // Format is G_ItemIDSubcommand
 
-// B9: Unknown (Episode 3 Trial Edition)
-// B9: BB provisional tekker result
+// 6xB9: Unknown (Episode 3 Trial Edition)
+// 6xB9: BB provisional tekker result
 
 struct G_IdentifyResult_BB_6xB9 {
   uint8_t subcommand;
@@ -3467,15 +3526,15 @@ struct G_IdentifyResult_BB_6xB9 {
   ItemData item;
 };
 
-// BA: Unknown (Episode 3)
+// 6xBA: Unknown (Episode 3)
 
-// BA: BB accept tekker result (handled by the server)
+// 6xBA: BB accept tekker result (handled by the server)
 // Format is G_ItemIDSubcommand
 
-// BB: Unknown (Episode 3)
-// BB: BB bank request (handled by the server)
-// BC: Unknown (Episode 3)
-// BC: BB bank contents (server->client only)
+// 6xBB: Unknown (Episode 3)
+// 6xBB: BB bank request (handled by the server)
+// 6xBC: Unknown (Episode 3)
+// 6xBC: BB bank contents (server->client only)
 
 struct G_BankContentsHeader_BB_6xBC {
   uint8_t subcommand;
@@ -3488,8 +3547,8 @@ struct G_BankContentsHeader_BB_6xBC {
   // Item data follows
 };
 
-// BD: Unknown (Episode 3; not Trial Edition)
-// BD: BB bank action (take/deposit meseta/item) (handled by the server)
+// 6xBD: Unknown (Episode 3; not Trial Edition)
+// 6xBD: BB bank action (take/deposit meseta/item) (handled by the server)
 
 struct G_BankAction_BB_6xBD {
   uint8_t subcommand;
@@ -3502,8 +3561,8 @@ struct G_BankAction_BB_6xBD {
   le_uint16_t unused2;
 };
 
-// BE: Sound chat (Episode 3; not Trial Edition)
-// BE: BB create inventory item (server->client only)
+// 6xBE: Sound chat (Episode 3; not Trial Edition)
+// 6xBE: BB create inventory item (server->client only)
 
 struct G_CreateInventoryItem_BB_6xBE {
   uint8_t subcommand;
@@ -3513,8 +3572,8 @@ struct G_CreateInventoryItem_BB_6xBE {
   le_uint32_t unused;
 };
 
-// BF: Change lobby music (Episode 3; not Trial Edition)
-// BF: Give EXP (BB) (server->client only)
+// 6xBF: Change lobby music (Episode 3; not Trial Edition)
+// 6xBF: Give EXP (BB) (server->client only)
 
 struct G_GiveExperience_BB_6xBF {
   uint8_t subcommand;
@@ -3523,13 +3582,13 @@ struct G_GiveExperience_BB_6xBF {
   le_uint32_t amount;
 };
 
-// C0: BB sell item at shop
+// 6xC0: BB sell item at shop
 // Format is G_ItemSubcommand
 
-// C1: Unknown
-// C2: Unknown
+// 6xC1: Unknown
+// 6xC2: Unknown
 
-// C3: Split stacked item (handled by the server on BB)
+// 6xC3: Split stacked item (handled by the server on BB)
 // Note: This is not sent if an entire stack is dropped; in that case, a normal
 // item drop subcommand is generated instead.
 
@@ -3545,7 +3604,7 @@ struct G_SplitStackedItem_6xC3 {
   le_uint32_t amount;
 };
 
-// C4: Sort inventory (handled by the server on BB)
+// 6xC4: Sort inventory (handled by the server on BB)
 
 struct G_SortInventory_6xC4 {
   uint8_t command;
@@ -3554,11 +3613,11 @@ struct G_SortInventory_6xC4 {
   le_uint32_t item_ids[30];
 };
 
-// C5: Medical center used
-// C6: Invalid subcommand
-// C7: Invalid subcommand
+// 6xC5: Medical center used
+// 6xC6: Invalid subcommand
+// 6xC7: Invalid subcommand
 
-// C8: Enemy killed (handled by the server on BB)
+// 6xC8: Enemy killed (handled by the server on BB)
 
 struct G_EnemyKilled_6xC8 {
   uint8_t command;
@@ -3569,60 +3628,146 @@ struct G_EnemyKilled_6xC8 {
   le_uint32_t unused;
 };
 
-// C9: Invalid subcommand
-// CA: Invalid subcommand
-// CB: Unknown
-// CC: Unknown
-// CD: Unknown
-// CE: Unknown
-// CF: Unknown (supported; game only; handled by the server on BB)
-// D0: Invalid subcommand
-// D1: Invalid subcommand
-// D2: Unknown
-// D3: Invalid subcommand
-// D4: Unknown
-// D5: Invalid subcommand
-// D6: Invalid subcommand
-// D7: Invalid subcommand
-// D8: Invalid subcommand
-// D9: Invalid subcommand
-// DA: Invalid subcommand
-// DB: Unknown
-// DC: Unknown
-// DD: Unknown
-// DE: Invalid subcommand
-// DF: Invalid subcommand
-// E0: Invalid subcommand
-// E1: Invalid subcommand
-// E2: Invalid subcommand
-// E3: Unknown
-// E4: Invalid subcommand
-// E5: Invalid subcommand
-// E6: Invalid subcommand
-// E7: Invalid subcommand
-// E8: Invalid subcommand
-// E9: Invalid subcommand
-// EA: Invalid subcommand
-// EB: Invalid subcommand
-// EC: Invalid subcommand
-// ED: Invalid subcommand
-// EE: Invalid subcommand
-// EF: Invalid subcommand
-// F0: Invalid subcommand
-// F1: Invalid subcommand
-// F2: Invalid subcommand
-// F3: Invalid subcommand
-// F4: Invalid subcommand
-// F5: Invalid subcommand
-// F6: Invalid subcommand
-// F7: Invalid subcommand
-// F8: Invalid subcommand
-// F9: Invalid subcommand
-// FA: Invalid subcommand
-// FB: Invalid subcommand
-// FC: Invalid subcommand
-// FD: Invalid subcommand
-// FE: Invalid subcommand
-// FF: Invalid subcommand
+// 6xC9: Invalid subcommand
+// 6xCA: Invalid subcommand
+// 6xCB: Unknown
+// 6xCC: Unknown
+// 6xCD: Unknown
+// 6xCE: Unknown
+// 6xCF: Unknown (supported; game only; handled by the server on BB)
+// 6xD0: Invalid subcommand
+// 6xD1: Invalid subcommand
+// 6xD2: Unknown
+// 6xD3: Invalid subcommand
+// 6xD4: Unknown
+// 6xD5: Invalid subcommand
+// 6xD6: Invalid subcommand
+// 6xD7: Invalid subcommand
+// 6xD8: Invalid subcommand
+// 6xD9: Invalid subcommand
+// 6xDA: Invalid subcommand
+// 6xDB: Unknown
+// 6xDC: Unknown
+// 6xDD: Unknown
+// 6xDE: Invalid subcommand
+// 6xDF: Invalid subcommand
+// 6xE0: Invalid subcommand
+// 6xE1: Invalid subcommand
+// 6xE2: Invalid subcommand
+// 6xE3: Unknown
+// 6xE4: Invalid subcommand
+// 6xE5: Invalid subcommand
+// 6xE6: Invalid subcommand
+// 6xE7: Invalid subcommand
+// 6xE8: Invalid subcommand
+// 6xE9: Invalid subcommand
+// 6xEA: Invalid subcommand
+// 6xEB: Invalid subcommand
+// 6xEC: Invalid subcommand
+// 6xED: Invalid subcommand
+// 6xEE: Invalid subcommand
+// 6xEF: Invalid subcommand
+// 6xF0: Invalid subcommand
+// 6xF1: Invalid subcommand
+// 6xF2: Invalid subcommand
+// 6xF3: Invalid subcommand
+// 6xF4: Invalid subcommand
+// 6xF5: Invalid subcommand
+// 6xF6: Invalid subcommand
+// 6xF7: Invalid subcommand
+// 6xF8: Invalid subcommand
+// 6xF9: Invalid subcommand
+// 6xFA: Invalid subcommand
+// 6xFB: Invalid subcommand
+// 6xFC: Invalid subcommand
+// 6xFD: Invalid subcommand
+// 6xFE: Invalid subcommand
+// 6xFF: Invalid subcommand
+
+
+
+// Now, the Episode 3 CARD battle subsubcommands (used in commands 6xB3, 6xB4,
+// and 6xB5). Note that the various subsubcommands must be used with the correct
+// 6xBx subcommand - the client will ignore the command if sent via the wrong
+// 6xBx subcommand. Unlike the above listings, invalid commands are not listed
+// here, since this table is known to be complete.
+
+// 6xB4x02: Unknown
+// 6xB4x03: Unknown
+// 6xB4x04: Unknown
+// 6xB4x05: Unknown
+// 6xB4x06: Unknown
+// 6xB4x07: Unknown
+// 6xB4x09: Unknown
+// 6xB4x0A: Unknown
+// 6xB3x0B: Unknown
+// 6xB3x0C: Unknown
+// 6xB3x0D: Unknown
+// 6xB3x0E: Unknown
+// 6xB3x0F: Unknown
+// 6xB3x10: Unknown
+// 6xB3x11: Unknown
+// 6xB3x12: Unknown
+// 6xB3x13: Unknown
+// 6xB3x14: Unknown
+// 6xB3x15: Unknown
+// 6xB5x17: Unknown
+// 6xB5x1A: Unknown
+// 6xB3x1B: Unknown
+// 6xB4x1C: Unknown
+// 6xB3x1D: Unknown
+// 6xB4x1E: Unknown
+// 6xB4x1F: Unknown
+// 6xB5x20: Unknown
+// 6xB3x21: Unknown
+// 6xB4x22: Unknown
+// 6xB4x23: Unknown
+// 6xB5x27: Unknown
+// 6xB3x28: Unknown
+// 6xB4x29: Unknown
+// 6xB4x2A: Unknown
+// 6xB3x2B: Unknown
+// 6xB4x2C: Unknown
+// 6xB5x2D: Unknown
+// 6xB5x2E: Unknown
+// 6xB5x2F: Unknown
+// 6xB5x30: Unknown
+// 6xB5x31: Unknown
+// 6xB5x32: Unknown
+// 6xB4x33: Unknown
+// 6xB3x34: Unknown
+// 6xB4x35: Unknown
+// 6xB5x36: Unknown
+// 6xB3x37: Unknown
+// 6xB5x38: Unknown
+// 6xB4x39: Unknown
+// 6xB3x3A: Unknown
+// 6xB4x3B: Unknown
+// 6xB5x3C: Unknown
+// 6xB4x3D: Unknown
+// 6xB5x3E: Unknown
+// 6xB5x3F: Unknown
+// 6xB3x40: Unknown
+// 6xB3x41: Unknown
+// 6xB5x42: Unknown
+// 6xB5x43: Unknown
+// 6xB5x44: Unknown
+// 6xB5x45: Unknown
+// 6xB4x46: Unknown
+// 6xB5x47: Unknown
+// 6xB3x48: Unknown
+// 6xB3x49: Unknown
+// 6xB4x4A: Unknown
+// 6xB4x4B: Unknown
+// 6xB4x4C: Unknown
+// 6xB4x4D: Unknown
+// 6xB4x4E: Unknown
+// 6xB4x4F: Unknown
+// 6xB4x50: Unknown
+// 6xB4x51: Unknown
+// 6xB4x52: Unknown
+// 6xB4x53: Unknown
+
+
 
 #pragma pack(pop)

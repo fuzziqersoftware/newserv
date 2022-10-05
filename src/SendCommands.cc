@@ -1628,39 +1628,63 @@ void send_ep3_rank_update(shared_ptr<Client> c) {
   send_command_t(c, 0xB7, 0x00, cmd);
 }
 
-// sends the map list (used for battle setup) to all players in a game
 void send_ep3_map_list(shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
   const auto& data = s->ep3_data_index->get_compressed_map_list();
 
-  string cmd_data(16, '\0');
-  PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(cmd_data.data());
-  subs[0].dword = 0x000000B6;
-  subs[1].dword = (data.size() + 0x10 + 3) & 0xFFFFFFFC;
-  subs[2].dword = 0x00000040;
-  subs[3].dword = data.size();
-  cmd_data += data;
-
-  send_command(l, 0x6C, 0x00, cmd_data);
+  StringWriter w;
+  uint32_t subcommand_size = (data.size() + sizeof(G_MapList_GC_Ep3_6xB6x40) + 3) & (~3);
+  w.put<G_MapList_GC_Ep3_6xB6x40>({{0xB6, 0, 0, subcommand_size, 0x40}, data.size()});
+  w.write(data);
+  send_command(l, 0x6C, 0x00, w.str());
 }
 
-// sends the map data for the chosen map to all players in the game
 void send_ep3_map_data(shared_ptr<ServerState> s, shared_ptr<Lobby> l, uint32_t map_id) {
   auto entry = s->ep3_data_index->get_map(map_id);
   const auto& compressed = entry->compressed();
 
-  string data(0x14, '\0');
-  PSOSubcommand* subs = reinterpret_cast<PSOSubcommand*>(data.data());
-  subs[0].dword = 0x000000B6;
-  subs[1].dword = (compressed.size() + 0x14 + 3) & 0xFFFFFFFC;
-  subs[2].dword = 0x00000041;
-  subs[3].dword = entry->map.map_number.load();
-  subs[4].dword = compressed.size();
-  data += compressed;
-  while (data.size() & 3) {
-    data.push_back('\0');
+  StringWriter w;
+  uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_GC_Ep3_6xB6x41) + 3) & (~3);
+  w.put<G_MapData_GC_Ep3_6xB6x41>({{0xB6, 0, 0, subcommand_size, 0x41}, entry->map.map_number.load(), 0, compressed.size()});
+  w.write(compressed);
+  send_command(l, 0x6C, 0x00, w.str());
+}
+
+void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key) {
+  if (size < 8) {
+    throw logic_error("Episode 3 game command is too short for masking");
   }
 
-  send_command(l, 0x6C, 0x00, data);
+  auto* header = reinterpret_cast<G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5*>(vdata);
+  size_t command_bytes = header->size * 4;
+  if (command_bytes != size) {
+    throw runtime_error("command size field does not match actual size");
+  }
+
+  // Don't waste time if the existing mask_key is the same as the requested one
+  if (header->mask_key == mask_key) {
+    return;
+  }
+
+  // If header->mask_key isn't zero when we get here, then the command is
+  // already masked with a different mask_key, so unmask it first
+  if ((mask_key != 0) && (header->mask_key != 0)) {
+    set_mask_for_ep3_game_command(vdata, size, 0);
+  }
+
+  // Now, exactly one of header->mask_key and mask_key should be nonzero, and we
+  // are either directly masking or unmasking the command. Since this operation
+  // is symmetric, we don't need to split it into two cases.
+  if ((header->mask_key == 0) == (mask_key == 0)) {
+    throw logic_error("only one of header->mask_key and mask_key may be nonzero");
+  }
+
+  uint8_t* data = reinterpret_cast<uint8_t*>(vdata);
+  uint8_t k = (header->mask_key ^ mask_key) + 0x80;
+  for (size_t z = 8; z < command_bytes; z++) {
+    k = (k * 7) + 3;
+    data[z] ^= k;
+  }
+  header->mask_key = mask_key;
 }
 
 

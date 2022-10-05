@@ -265,6 +265,9 @@ void send_ep3_map_list(
 void send_ep3_map_data(
     std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l, uint32_t map_id);
 
+// Pass mask_key = 0 to unmask the command
+void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key);
+
 enum class QuestFileType {
   ONLINE = 0,
   DOWNLOAD,
