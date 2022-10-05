@@ -1841,7 +1841,7 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
   // 4: Set lobby banner 3 (left of banner 2; opposite where player 0 enters)
   // 5: Unknown
   // 6: Unknown
-  // Ay other value: entire command is ignored
+  // Any other value: entire command is ignored
   le_uint32_t which;
   le_uint16_t size;
   le_uint16_t unused;
