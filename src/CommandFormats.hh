@@ -3467,14 +3467,14 @@ struct G_BoxItemDropRequest_6xA2 {
 struct G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
   uint8_t subcommand; // 0xB3
   uint8_t size;
-  le_uint16_t unused;
+  le_uint16_t header_w1;
   uint8_t subsubcommand; // See 6xBx subcommand table (after this table)
-  uint8_t unused1;
+  uint8_t header_b1;
   // If mask_key is nonzero, the remainder of the data is encrypted using a
   // simple algorithm. See set_mask_for_ep3_game_command in SendCommands.cc for
   // a description of this algorithm.
   uint8_t mask_key;
-  uint8_t unused2;
+  uint8_t header_b2;
   // The subsubcommand arguments follow here
 };
 
@@ -3711,86 +3711,833 @@ struct G_EnemyKilled_6xC8 {
 
 
 // Now, the Episode 3 CARD battle subsubcommands (used in commands 6xB3, 6xB4,
-// and 6xB5). Note that the various subsubcommands must be used with the correct
-// 6xBx subcommand - the client will ignore the command if sent via the wrong
-// 6xBx subcommand. Unlike the above listings, invalid commands are not listed
-// here, since this table is known to be complete.
+// and 6xB5). Note that even though there's no overlap in the subsubcommand
+// number space, the various subsubcommands must be used with the correct 6xBx
+// subcommand - the client will ignore the command if sent via the wrong 6xBx
+// subcommand. Unlike the above listings, invalid commands are not listed here,
+// since this table is known to be complete.
 
-// 6xB4x02: Unknown
-// 6xB4x03: Unknown
-// 6xB4x04: Unknown
-// 6xB4x05: Unknown
+struct DeckCardRef { // Note: The game treats these as le_uint16_ts
+  uint8_t deck_index;
+  uint8_t client_id;
+};
+
+// 6xB4x02: Update hands and equips
+
+struct G_UpdateHand_GC_Ep3_6xB4x02 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  le_uint16_t client_id;
+  le_uint16_t unused3;
+  parray<uint8_t, 8> unknown_a1; // Dice values are in here somewhere
+  le_uint32_t unknown_a2;
+  // Empty slots in all of these arrays should be set to FFFF
+  parray<DeckCardRef, 6> cards_in_hand;
+  le_uint16_t unknown_a3;
+  parray<DeckCardRef, 8> cards_equipped;
+  // Note: The order of entries in this field matches the order of entries in
+  // 6xB4x04's entries list (and the card refs should match exactly). The first
+  // entry here is always the SC card (ref with deck_index=0).
+  parray<DeckCardRef, 16> unknown_a4;
+  parray<le_uint16_t, 2> unknown_a5; // {0, 0xFFFF} always?
+  parray<uint8_t, 6> unknown_a6; // {0, 0, 0, 0, 0x08, 0x0D} always?
+};
+
+// 6xB4x03: Set state flags
+
+struct G_SetStateFlags_GC_Ep3_6xB4x03 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  le_uint16_t unknown_a1;
+  parray<uint8_t, 6> unknown_a2;
+  parray<le_uint32_t, 2> unknown_a3;
+  be_uint16_t unknown_a4;
+  uint8_t unknown_a5;
+  // If tournament_flag is 1, the player will start at the counter instead of in
+  // the default position the next time they join a game, and they will be
+  // unable to leave the counter menu.
+  uint8_t tournament_flag;
+  be_uint32_t unknown_a6;
+};
+
+// 6xB4x04: Update SC/FC stats
+
+struct G_UpdateStats_GC_Ep3_6xB4x04 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  le_uint16_t client_id;
+  le_uint16_t unused;
+  struct Entry {
+    DeckCardRef card; // FFFF if this entry is unused (and all other fields are 0)
+    le_uint16_t hp;
+    le_uint32_t unknown_a3;
+    uint8_t card_hp;
+    uint8_t card_tp;
+    uint8_t card_ap;
+    uint8_t card_mv;
+    le_uint16_t unknown_a5;
+    le_uint16_t hp2; // Seems unused by the client, but Sega duplicated HP here
+  };
+  Entry entries[0x10];
+};
+
+// 6xB4x05: Update map state
+
+struct G_UpdateMap_GC_Ep3_6xB4x05 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  le_uint16_t width;
+  le_uint16_t height;
+  parray<uint8_t, 0x100> tiles;
+  parray<uint8_t, 0x0C> unknown_a1;
+  uint8_t num_players;
+  uint8_t unknown_a2;
+  uint8_t unknown_a3; // Handler logic branches on this
+  parray<uint8_t, 0x03> unknown_a4;
+  le_uint16_t unknown_a5;
+  // 120 from subcommand start
+  parray<uint8_t, 0x04> unknown_a6;
+  le_uint32_t map_number;
+  le_uint32_t unknown_a7; // Handler logic branches on this
+  Ep3BattleRules rules;
+  parray<uint8_t, 4> unknown_a8;
+  uint8_t unknown_a9; // Handler logic branches on this
+  parray<uint8_t, 3> unknown_a10;
+};
+
 // 6xB4x06: Unknown
-// 6xB4x07: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x06 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  parray<uint8_t, 8> unknown_a3;
+};
+
+// 6xB4x07: Update decks
+
+struct G_UpdateDecks_GC_Ep3_6xB4x07 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 4> unknown_a1;
+  struct Entry {
+    ptext<char, 0x10> player_name;
+    uint8_t present;
+    parray<uint8_t, 3> unknown_a1;
+    parray<le_uint16_t, 0x1F> card_ids;
+    parray<uint8_t, 2> unknown_a2;
+    le_uint16_t unknown_a3;
+    be_uint16_t unknown_a4;
+  };
+  Entry entries[4];
+};
+
 // 6xB4x09: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x09 {
+  le_uint16_t unknown_a1; // Probably client_id; client ignores command if < 0
+  parray<uint8_t, 2> unknown_a2;
+  le_uint16_t unknown_a3; // Probably client_id
+  be_uint16_t unknown_a4;
+  le_uint16_t unknown_a5;
+  le_uint16_t unknown_a6;
+  parray<le_uint16_t, 0x24> unknown_a7;
+  parray<le_uint16_t, 8> unknown_a8;
+  be_uint16_t unknown_a9;
+  le_uint16_t unknown_a10;
+};
+
 // 6xB4x0A: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x0A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  le_uint16_t client_id;
+  int8_t unknown_a1; // must be between -1 and 8 inclusive
+  uint8_t unknown_a2;
+
+  parray<uint8_t, 4> unknown_a3;
+  le_uint16_t unknown_a4;
+  le_uint16_t unknown_a5;
+  parray<le_uint16_t, 8> unknown_a6;
+  parray<uint8_t, 0x0C> unknown_a7;
+  le_uint32_t unknown_a8;
+  parray<le_uint16_t, 0x24> unknown_a9;
+  struct Entry {
+    parray<uint8_t, 6> unknown_a1;
+    parray<le_uint16_t, 3> unknown_a2;
+    parray<uint8_t, 4> unknown_a3;
+  };
+  Entry entries[9];
+
+  le_uint16_t unknown_a10;
+  parray<uint8_t, 6> unknown_a11;
+  le_uint32_t unknown_a12;
+  parray<le_uint16_t, 0x24> unknown_a13;
+  parray<le_uint16_t, 8> unknown_a14;
+  parray<le_uint16_t, 8> unknown_a15;
+};
+
 // 6xB3x0B: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x0B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 8> unknown_a1;
+  le_uint16_t client_id;
+  parray<uint8_t, 2> unknown_a2;
+  // Command may be longer than this structure
+};
+
 // 6xB3x0C: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x0C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 8> unknown_a1;
+  le_uint16_t client_id;
+  parray<uint8_t, 2> unknown_a2;
+  // Command may be longer than this structure
+};
+
 // 6xB3x0D: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x0D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  be_uint32_t unknown_a1;
+  parray<uint8_t, 4> unknown_a2;
+  le_uint16_t client_id;
+  parray<le_uint16_t, 5> unknown_a3;
+  // Command may be longer than this structure
+};
+
 // 6xB3x0E: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x0E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 8> unknown_a1;
+  le_uint16_t client_id;
+  le_uint16_t unknown_a2;
+  // Command may be longer than this structure
+};
+
 // 6xB3x0F: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x0F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 8> unknown_a1;
+  le_uint16_t client_id;
+  parray<le_uint16_t, 3> unknown_a2;
+  parray<uint8_t, 2> unknown_a3;
+  parray<uint8_t, 2> unused;
+  // Command may be longer than this structure
+};
+
 // 6xB3x10: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x10 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 8> unknown_a1;
+  le_uint16_t client_id;
+  le_uint16_t unknown_a2;
+  // Note: This field's type is the same as the corresponding field in 6xB3x0F
+  parray<uint8_t, 2> unknown_a3;
+  parray<uint8_t, 2> unused;
+  // Command may be longer than this structure
+};
+
 // 6xB3x11: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x11 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 8> unknown_a1;
+  le_uint16_t client_id;
+  parray<uint8_t, 2> unknown_a2;
+
+  // Note: This is byteswapped by the same function as the corresponding part of
+  // 6xB4x29
+  le_uint16_t unknown_a3;
+  parray<uint8_t, 2> unknown_a4;
+  le_uint16_t unknown_a5;
+  le_uint16_t unknown_a6;
+  parray<le_uint16_t, 0x24> unknown_a7;
+  parray<le_uint16_t, 8> unknown_a8;
+  parray<uint8_t, 2> unknown_a9;
+  le_uint16_t unknown_a10;
+};
+
 // 6xB3x12: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x12 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  be_uint32_t unknown_a1;
+  parray<uint8_t, 4> unknown_a2;
+  le_uint16_t client_id;
+  parray<uint8_t, 2> unknown_a3;
+};
+
 // 6xB3x13: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x13 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 8> unknown_a1;
+
+  // Note: This section's format is a guess based on the fact that the client
+  // calls the same function to byteswap it as for the update map command above.
+  le_uint16_t width;
+  le_uint16_t height;
+  parray<uint8_t, 0x100> tiles;
+  parray<uint8_t, 0x0C> unknown_a2;
+  uint8_t num_players;
+  uint8_t unknown_a3;
+  uint8_t unknown_a4;
+  parray<uint8_t, 0x03> unknown_a5;
+  le_uint16_t unknown_a6;
+  // 120 from subcommand start
+  parray<uint8_t, 0x04> unknown_a7;
+  le_uint32_t map_number;
+  le_uint32_t unknown_a8;
+  Ep3BattleRules rules;
+  parray<uint8_t, 4> unknown_a9;
+
+  parray<le_uint32_t, 5> unknown_a10;
+  parray<le_uint32_t, 0x10> unknown_a11;
+  parray<le_uint16_t, 0x10> unknown_a12;
+};
+
 // 6xB3x14: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x14 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 8> unknown_a1;
+  le_uint16_t client_id;
+  parray<uint8_t, 2> unknown_a2;
+  parray<uint8_t, 0x10> name;
+  parray<le_uint16_t, 0x1F> card_ids;
+  parray<uint8_t, 2> unknown_a3;
+  le_uint16_t unknown_a4;
+  parray<uint8_t, 2> unknown_a5;
+};
+
 // 6xB3x15: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x15 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // No arguments
+};
+
 // 6xB5x17: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x17 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // No arguments
+};
+
 // 6xB5x1A: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x1A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // No arguments
+};
+
 // 6xB3x1B: Unknown
-// 6xB4x1C: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x1B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // The handler reads a byte from offset 0x20 after the subcommand start (which
+  // would be offset 0x18 in this struct), so the command must be at least 0x1C
+  // bytes in total. It is unlikely to be longer, but I have no examples.
+  parray<uint8_t, 0x1C> unknown_a1;
+};
+
+// 6xB4x1C: Set player names
+
+struct G_Unknown_GC_Ep3_6xB4x1C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  struct Entry {
+    ptext<char, 0x10> name;
+    uint8_t client_id; // 0xFF if slot is empty
+    uint8_t present; // 1 if slot is occupied; 0 if empty
+    parray<uint8_t, 2> unused;
+  };
+  Entry entries[4];
+};
+
 // 6xB3x1D: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x1D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // No arguments
+};
+
 // 6xB4x1E: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x1E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  be_uint32_t unknown_a1;
+  uint8_t unknown_a2;
+  uint8_t unknown_a3;
+  parray<uint8_t, 2> unused;
+};
+
 // 6xB4x1F: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x1F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  le_uint32_t unknown_a1;
+};
+
 // 6xB5x20: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x20 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  le_uint32_t player_tag;
+  le_uint32_t guild_card_number;
+  uint8_t client_id;
+  parray<uint8_t, 3> unused;
+};
+
 // 6xB3x21: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x21 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // No arguments
+};
+
 // 6xB4x22: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x22 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // No arguments
+};
+
 // 6xB4x23: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x23 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // This command does nothing at all. If unknown_a1 == 1, then it calls another
+  // function, but that function also does nothing.
+  uint8_t unknown_a1;
+  uint8_t unknown_a2;
+  parray<uint8_t, 2> unused;
+};
+
 // 6xB5x27: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x27 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // Note: This command uses header_b1 as well, which looks like another client
+  // ID (it must be < 4, though it does not always match unknown_a1 below).
+  le_uint32_t unknown_a1; // Probably client ID (must be < 4)
+  le_uint32_t unknown_a2; // Must be < 0x10
+  le_uint32_t unknown_a3;
+  le_uint32_t unused; // Curiously, this usually contains a memory address
+};
+
 // 6xB3x28: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x28 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  be_uint32_t unknown_a1;
+  parray<uint8_t, 5> unused1;
+  int8_t unknown_a2;
+  parray<uint8_t, 2> unused2;
+};
+
 // 6xB4x29: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x29 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 4> unknown_a1;
+
+  // Note: This is byteswapped by the same function as the corresponding part of
+  // 6xB3x11
+  le_uint16_t unknown_a2;
+  parray<uint8_t, 2> unknown_a3;
+  le_uint16_t unknown_a4;
+  le_uint16_t unknown_a5;
+  parray<le_uint16_t, 0x24> unknown_a6;
+  parray<le_uint16_t, 8> unknown_a7;
+  parray<uint8_t, 2> unknown_a8;
+  le_uint16_t unknown_a9;
+};
+
 // 6xB4x2A: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x2A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 4> unknown_a1;
+  le_uint16_t unknown_a2;
+  parray<uint8_t, 2> unused;
+};
+
 // 6xB3x2B: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x2B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // This command is completely ignored by the client. Its structure (if any) is
+  // unknown.
+};
+
 // 6xB4x2C: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x2C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t unknown_a1;
+  uint8_t unknown_a2; // Only used if the preceding field == 3
+  parray<le_uint16_t, 3> unknown_a3;
+  parray<uint8_t, 4> unknown_a4;
+  parray<le_uint32_t, 2> unknown_a5;
+};
+
 // 6xB5x2D: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x2D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // This array is indexed into by a global variable. I don't have any examples
+  // of this command, so I don't know how long the array should be - 4 is a
+  // probably-incorrect guess.
+  parray<uint8_t, 4> unknown_a1;
+};
+
 // 6xB5x2E: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x2E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t unknown_a1; // Command ignored unless this is 0 or 1
+  parray<uint8_t, 3> unused;
+};
+
 // 6xB5x2F: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x2F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 4> unknown_a1;
+
+  parray<uint8_t, 0x18> unknown_a2;
+  ptext<uint8_t, 0x10> deck_name;
+  parray<uint8_t, 0x0E> unknown_a3;
+  le_uint16_t unknown_a4;
+  parray<le_uint32_t, 0x1F> card_ids;
+  parray<uint8_t, 2> unused;
+  le_uint32_t unknown_a5;
+  le_uint16_t unknown_a6;
+  le_uint16_t unknown_a7;
+};
+
 // 6xB5x30: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x30 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // No arguments
+};
+
 // 6xB5x31: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x31 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // Note: This command uses header_b1 for... something.
+  uint8_t unknown_a1; // Must be 0 or 1
+  uint8_t unknown_a2; // Must be < 4
+  uint8_t unknown_a3; // Must be < 4
+  uint8_t unknown_a4; // Must be < 0x14
+  uint8_t unknown_a5; // Used as an array index
+  parray<uint8_t, 3> unused;
+};
+
 // 6xB5x32: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x32 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // Note: This command uses header_b1 for... something.
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  parray<uint8_t, 8> unknown_a3;
+};
+
 // 6xB4x33: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x33 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t unknown_a1;
+  uint8_t unused;
+  le_uint16_t unknown_a2;
+};
+
 // 6xB3x34: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x34 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 8> unknown_a1;
+  uint8_t client_id;
+  uint8_t unknown_a2;
+  le_uint16_t unknown_a3; // Possibly DeckCardRef
+};
+
 // 6xB4x35: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x35 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t unknown_a1;
+  uint8_t unknown_a2;
+  le_uint16_t unknown_a3;
+};
+
 // 6xB5x36: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x36 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t unknown_a1; // Must be < 12 (maybe lobby or spectator team client ID)
+  parray<uint8_t, 3> unused;
+};
+
 // 6xB3x37: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x37 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 8> unused1;
+  uint8_t unknown_a1;
+  parray<uint8_t, 3> unused2;
+};
+
 // 6xB5x38: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x38 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t unknown_a1;
+  uint8_t unknown_a2;
+  parray<uint8_t, 2> unused;
+};
+
 // 6xB4x39: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x39 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  struct Entry {
+    parray<le_uint16_t, 0x13> unknown_a1;
+    parray<uint8_t, 2> unknown_a2;
+  };
+  Entry entries[4];
+};
+
 // 6xB3x3A: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x3A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // This command is completely ignored by the client. Its structure (if any) is
+  // unknown.
+};
+
 // 6xB4x3B: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x3B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 4> unused;
+};
+
 // 6xB5x3C: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x3C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // Note: This command uses header_b1 for... something.
+  uint8_t unknown_a1;
+  parray<uint8_t, 3> unused;
+};
+
 // 6xB4x3D: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x3D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 0x14> unknown_a1;
+  struct Entry {
+    uint8_t type; // 1 = human, 2 = COM
+    ptext<char, 0x10> player_name;
+    ptext<char, 0x10> deck_name; // Seems to only be used for COM players
+    parray<uint8_t, 5> unknown_a1;
+    parray<le_uint16_t, 0x1F> card_ids;
+    parray<uint8_t, 2> unused;
+    le_uint16_t unknown_a2;
+    le_uint16_t unknown_a3;
+  };
+  Entry entries[4];
+  le_uint32_t map_number;
+  uint8_t unknown_a2;
+  uint8_t unknown_a3;
+  uint8_t unknown_a4;
+  uint8_t unknown_a5;
+};
+
 // 6xB5x3E: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x3E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // Note: This command uses header_b1 for... something.
+  uint8_t unknown_a1;
+  uint8_t unknown_a2;
+  parray<uint8_t, 2> unused;
+};
+
 // 6xB5x3F: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x3F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  int8_t unknown_a1; // Must be in the range [-1, 0x14]
+  uint8_t unknown_a2; // Must be < 4
+  parray<uint8_t, 2> unused1;
+  le_uint32_t unknown_a3;
+  parray<uint8_t, 4> unused2;
+};
+
 // 6xB3x40: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x40 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // This command is completely ignored by the client. Its structure (if any) is
+  // unknown. It's possible that this command was replaced by 6xB6x40.
+};
+
 // 6xB3x41: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x41 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // This command is completely ignored by the client. Its structure (if any) is
+  // unknown. It's possible that this command was replaced by 6xB6x41.
+};
+
 // 6xB5x42: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x42 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // This command uses header_b1, but has no other arguments.
+};
+
 // 6xB5x43: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x43 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  struct Entry {
+    // Both fields here are masked. To get the actual values used by the game,
+    // XOR the values here with 0x39AB.
+    le_uint16_t masked_card_id; // Must be < 0x2F1 (when unmasked)
+    le_uint16_t masked_unknown_a1; // Must be in [1, 99] (when unmasked)
+  };
+  Entry entries[0x14];
+};
+
 // 6xB5x44: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x44 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // Note: This command uses header_b1, which must be < 4.
+  parray<le_uint16_t, 8> unknown_a1;
+};
+
 // 6xB5x45: Unknown
-// 6xB4x46: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x45 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // Note: This command uses header_b1, which must be < 4.
+  parray<parray<le_uint16_t, 4>, 8> unknown_a1;
+};
+
+// 6xB4x46: Start battle
+
+struct G_Unknown_GC_Ep3_6xB4x46 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // In all of the examples (from Sega's servers) that I've seen of this
+  // command, these fields have the following values:
+  // version_signature = "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
+  // date_str1 = "Mar  7 2007 21:42:40"
+  // date_str2 = "2005/03/04 17:31:59"
+  ptext<char, 0x40> version_signature;
+  ptext<char, 0x40> date_str1; // Possibly card definitions revision date
+  ptext<char, 0x40> date_str2; // Possibly engine build date
+  le_uint32_t unused;
+};
+
 // 6xB5x47: Unknown
+
+struct G_Unknown_GC_Ep3_6xB5x47 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // Note: This command uses header_b1, which must be < 12.
+  le_uint32_t unknown_a1;
+};
+
 // 6xB3x48: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x48 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  be_uint32_t unknown_a1;
+  parray<uint8_t, 4> unused1;
+  uint8_t unknown_a2;
+  parray<uint8_t, 3> unused2;
+};
+
 // 6xB3x49: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x49 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // This command is completely ignored by the client. Its structure (if any) is
+  // unknown. It's possible that this command was replaced by 6xB6x41.
+};
+
 // 6xB4x4A: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x4A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // Note: entry_count appears not to be bounds-checked; presumably the server
+  // could send up to 0xFF entries, but those after the 8th would not be
+  // byteswapped before the client handles them.
+  uint8_t unknown_a1;
+  uint8_t entry_count;
+  le_uint16_t unknown_a2;
+  parray<le_uint16_t, 8> entries;
+};
+
 // 6xB4x4B: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x4B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // If any of the entries [0][1] through [0][10] or [1][1] through [1][10] are
+  // < -99 or > 99, the entire command is ignored.
+  parray<parray<le_int16_t, 20>, 2> unknown_a1;
+};
+
 // 6xB4x4C: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x4C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t unknown_a1; // Must be < 4
+  int8_t unknown_a2; // Must be in [-1, 8]
+  parray<uint8_t, 2> unknown_a3;
+
+  parray<uint8_t, 4> unknown_a4;
+  le_uint16_t unknown_a5;
+  le_uint16_t unknown_a6;
+  parray<le_uint16_t, 8> unknown_a7;
+  parray<uint8_t, 0x0C> unknown_a8;
+  le_uint32_t unknown_a9;
+  parray<le_uint16_t, 0x24> unknown_a10;
+};
+
 // 6xB4x4D: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x4D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t unknown_a1; // Must be < 4
+  int8_t unknown_a2; // Must be in [-1, 8]
+  parray<uint8_t, 2> unknown_a3;
+
+  le_uint16_t unknown_a4;
+  parray<uint8_t, 6> unknown_a5;
+  le_uint32_t unknown_a6;
+  parray<le_uint16_t, 0x24> unknown_a7;
+  parray<le_uint16_t, 8> unknown_a8;
+  parray<le_uint16_t, 8> unknown_a9;
+};
+
 // 6xB4x4E: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x4E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t unknown_a1; // Must be < 4
+  int8_t unknown_a2; // Must be in [-1, 8]
+  parray<uint8_t, 2> unknown_a3;
+  struct Entry {
+    parray<uint8_t, 6> unknown_a1;
+    parray<le_uint16_t, 3> unknown_a2;
+    parray<uint8_t, 4> unknown_a3;
+  };
+  Entry entries[9];
+};
+
 // 6xB4x4F: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x4F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  uint8_t unknown_a1;
+  uint8_t unused;
+  le_uint16_t unknown_a2; // Bitmask; the 9 low-order bits are used
+};
+
 // 6xB4x50: Unknown
-// 6xB4x51: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x50 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  parray<uint8_t, 0x0C> unknown_a1;
+};
+
+// 6xB4x51: Tournament match info
+
+struct G_Unknown_GC_Ep3_6xB4x51 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  ptext<char, 0x40> match_description;
+  struct Entry {
+    ptext<char, 0x20> team_name;
+    parray<ptext<char, 0x10>, 2> player_names;
+  };
+  Entry teams[2];
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint16_t unknown_a3;
+  le_uint16_t unknown_a4;
+  le_uint32_t meseta_amount;
+  // This field apparently is supposed to contain a %s token (as for printf)
+  // that is replaced with meseta_amount.
+  ptext<char, 0x20> meseta_reward_text;
+};
+
 // 6xB4x52: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x52 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint16_t unknown_a3;
+  le_uint16_t size; // Number of valid bytes in the data field (clamped to 0xFF)
+  parray<uint8_t, 0x100> data;
+};
+
 // 6xB4x53: Unknown
+
+struct G_Unknown_GC_Ep3_6xB4x53 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+  // Note: It seems the client ignores everything in this structure. The command
+  // just sets a global state flag, then returns immediately.
+
+  parray<uint8_t, 4> unknown_a1;
+
+  le_uint16_t width;
+  le_uint16_t height;
+  parray<uint8_t, 0x100> tiles;
+  parray<uint8_t, 0x0C> unknown_a2;
+  uint8_t num_players;
+  uint8_t unknown_a3;
+  uint8_t unknown_a4;
+  parray<uint8_t, 0x03> unknown_a5;
+  le_uint16_t unknown_a6;
+  parray<uint8_t, 0x04> unknown_a7;
+  le_uint32_t map_number;
+  // Comamnd may be larger than this structure
+};
 
 
 
