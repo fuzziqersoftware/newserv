@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <phosg/Strings.hh>
+#include <phosg/Random.hh>
 
 #include "Loggers.hh"
 #include "Client.hh"
@@ -18,7 +19,7 @@
 using namespace std;
 
 // The functions in this file are called when a client sends a game command
-// (60, 62, 6C, or 6D).
+// (60, 62, 6C, 6D, C9, or CB).
 
 
 
@@ -101,6 +102,31 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
 static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint8_t command, uint8_t flag, const string& data) {
   forward_subcommand(l, c, command, flag, data.data(), data.size());
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Ep3 subcommands
+
+static void on_subcommand_ep3_battle_subs(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& orig_data) {
+  check_size_sc(
+      orig_data, sizeof(G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5), 0xFFFF);
+  if (!l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    return;
+  }
+
+  string data = orig_data;
+  set_mask_for_ep3_game_command(data.data(), data.size(), 0);
+
+  uint8_t mask_key = 0;
+  while (!mask_key) {
+    mask_key = random_object<uint8_t>();
+  }
+  set_mask_for_ep3_game_command(data.data(), data.size(), mask_key);
+  forward_subcommand(l, c, command, flag, data);
 }
 
 
@@ -559,12 +585,11 @@ static void on_subcommand_use_item(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_open_shop_bb_or_unknown_ep3(shared_ptr<ServerState>,
+static void on_subcommand_open_shop_bb_or_ep3_battle_subs(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
-    check_size_sc(data, 0x08, 0xFFFF);
-    forward_subcommand(l, c, command, flag, data);
+    on_subcommand_ep3_battle_subs(s, l, c, command, flag, data);
 
   } else if (!l->common_item_creator.get()) {
     throw runtime_error("received shop subcommand without item creator present");
@@ -655,7 +680,6 @@ static void on_subcommand_bank_action_bb(shared_ptr<ServerState>,
   }
 }
 
-// player sorts the items in their inventory
 static void on_subcommand_sort_inventory_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
     const string& data) {
@@ -1350,9 +1374,9 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* B0 */ on_subcommand_forward_check_size_client, // Move in lobby chair
   /* B1 */ nullptr,
   /* B2 */ nullptr,
-  /* B3 */ nullptr,
-  /* B4 */ on_subcommand_forward_check_size_ep3_game,
-  /* B5 */ on_subcommand_open_shop_bb_or_unknown_ep3, // BB shop request
+  /* B3 */ on_subcommand_ep3_battle_subs,
+  /* B4 */ on_subcommand_ep3_battle_subs,
+  /* B5 */ on_subcommand_open_shop_bb_or_ep3_battle_subs, // BB shop request
   /* B6 */ nullptr, // BB shop contents (server->client only)
   /* B7 */ on_subcommand_buy_shop_item_bb,
   /* B8 */ on_subcommand_identify_item_bb,
