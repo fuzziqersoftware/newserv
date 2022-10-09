@@ -865,7 +865,8 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
       const auto& cmd = check_size_t<G_AttackFinished_6x46>(data,
           offsetof(G_AttackFinished_6x46, entries),
           sizeof(G_AttackFinished_6x46));
-      if ((cmd.count > 11) || (cmd.count > cmd.header.size - 2)) {
+      size_t allowed_count = min<size_t>(cmd.header.size - 2, 11);
+      if (cmd.count > allowed_count) {
         session.log.warning("Blocking subcommand 6x46 with invalid count");
         return HandlerResult::Type::SUPPRESS;
       }
@@ -873,7 +874,8 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
       const auto& cmd = check_size_t<G_CastTechnique_6x47>(data,
           offsetof(G_CastTechnique_6x47, targets),
           sizeof(G_CastTechnique_6x47));
-      if ((cmd.target_count > 10) || (cmd.target_count > cmd.header.size - 2)) {
+      size_t allowed_count = min<size_t>(cmd.header.size - 2, 10);
+      if (cmd.target_count > allowed_count) {
         session.log.warning("Blocking subcommand 6x47 with invalid count");
         return HandlerResult::Type::SUPPRESS;
       }
@@ -881,7 +883,8 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
       const auto& cmd = check_size_t<G_SubtractPBEnergy_6x49>(data,
           offsetof(G_SubtractPBEnergy_6x49, entries),
           sizeof(G_SubtractPBEnergy_6x49));
-      if ((cmd.entry_count > 14) || (cmd.entry_count > cmd.header.size - 2)) {
+      size_t allowed_count = min<size_t>(cmd.header.size - 3, 14);
+      if (cmd.entry_count > allowed_count) {
         session.log.warning("Blocking subcommand 6x49 with invalid count");
         return HandlerResult::Type::SUPPRESS;
       }

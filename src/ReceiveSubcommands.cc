@@ -356,10 +356,8 @@ static void on_subcommand_attack_finished(shared_ptr<ServerState> s,
     const string& data) {
   const auto& cmd = check_size_sc<G_AttackFinished_6x46>(data,
       offsetof(G_AttackFinished_6x46, entries), sizeof(G_AttackFinished_6x46));
-  // The PSO GC client doesn't check bounds correctly when handling this
-  // command, which could cause it to byteswap parts of the stack, including the
-  // next frame pointer and return address. This of course leads to a crash.
-  if ((cmd.count > 11) || (cmd.count > cmd.header.size - 2)) {
+  size_t allowed_count = min<size_t>(cmd.header.size - 2, 11);
+  if (cmd.count > allowed_count) {
     throw runtime_error("invalid attack finished command");
   }
   on_subcommand_forward_check_size_client(s, l, c, command, flag, data);
@@ -370,10 +368,8 @@ static void on_subcommand_cast_technique(shared_ptr<ServerState> s,
     const string& data) {
   const auto& cmd = check_size_sc<G_CastTechnique_6x47>(data,
       offsetof(G_CastTechnique_6x47, targets), sizeof(G_CastTechnique_6x47));
-  // The PSO GC client doesn't check bounds correctly when handling this
-  // command, which could cause it to byteswap parts of the stack, including the
-  // next frame pointer and return address. This of course leads to a crash.
-  if ((cmd.target_count > 10) || (cmd.target_count > cmd.header.size - 2)) {
+  size_t allowed_count = min<size_t>(cmd.header.size - 2, 10);
+  if (cmd.target_count > allowed_count) {
     throw runtime_error("invalid cast technique command");
   }
   on_subcommand_forward_check_size_client(s, l, c, command, flag, data);
@@ -384,10 +380,8 @@ static void on_subcommand_subtract_pb_energy(shared_ptr<ServerState> s,
     const string& data) {
   const auto& cmd = check_size_sc<G_SubtractPBEnergy_6x49>(data,
       offsetof(G_SubtractPBEnergy_6x49, entries), sizeof(G_SubtractPBEnergy_6x49));
-  // The PSO GC client doesn't check bounds correctly when handling this
-  // command, which could cause it to byteswap parts of the stack, including the
-  // next frame pointer and return address. This of course leads to a crash.
-  if ((cmd.entry_count > 14) || (cmd.entry_count > cmd.header.size - 3)) {
+  size_t allowed_count = min<size_t>(cmd.header.size - 3, 14);
+  if (cmd.entry_count > allowed_count) {
     throw runtime_error("invalid subtract PB energy command");
   }
   on_subcommand_forward_check_size_client(s, l, c, command, flag, data);
