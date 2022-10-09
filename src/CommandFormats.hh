@@ -320,7 +320,8 @@ struct S_ServerInitDefault_DC_PC_V3_02_17_91_9B {
 };
 
 template <size_t AfterBytes>
-struct S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B : S_ServerInitDefault_DC_PC_V3_02_17_91_9B {
+struct S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B {
+  S_ServerInitDefault_DC_PC_V3_02_17_91_9B basic_cmd;
   // This field is not part of SEGA's implementation; the client ignores it.
   // newserv sends a message here disavowing the preceding copyright notice.
   ptext<char, AfterBytes> after_message;
@@ -364,7 +365,8 @@ struct S_ServerInitDefault_BB_03_9B {
 };
 
 template <size_t AfterBytes>
-struct S_ServerInitWithAfterMessage_BB_03_9B : S_ServerInitDefault_BB_03_9B {
+struct S_ServerInitWithAfterMessage_BB_03_9B {
+  S_ServerInitDefault_BB_03_9B basic_cmd;
   // As in 02, this field is not part of SEGA's implementation.
   ptext<char, AfterBytes> after_message;
 };
@@ -566,21 +568,24 @@ struct C_MenuSelection_10_Flag00 {
 };
 
 template <typename CharT>
-struct C_MenuSelection_10_Flag01 : C_MenuSelection_10_Flag00 {
+struct C_MenuSelection_10_Flag01 {
+  C_MenuSelection_10_Flag00 basic_cmd;
   ptext<CharT, 0x10> unknown_a1;
 };
 struct C_MenuSelection_DC_V3_10_Flag01 : C_MenuSelection_10_Flag01<char> { };
 struct C_MenuSelection_PC_BB_10_Flag01 : C_MenuSelection_10_Flag01<char16_t> { };
 
 template <typename CharT>
-struct C_MenuSelection_10_Flag02 : C_MenuSelection_10_Flag00 {
+struct C_MenuSelection_10_Flag02 {
+  C_MenuSelection_10_Flag00 basic_cmd;
   ptext<CharT, 0x10> password;
 };
 struct C_MenuSelection_DC_V3_10_Flag02 : C_MenuSelection_10_Flag02<char> { };
 struct C_MenuSelection_PC_BB_10_Flag02 : C_MenuSelection_10_Flag02<char16_t> { };
 
 template <typename CharT>
-struct C_MenuSelection_10_Flag03 : C_MenuSelection_10_Flag00 {
+struct C_MenuSelection_10_Flag03 {
+  C_MenuSelection_10_Flag00 basic_cmd;
   ptext<CharT, 0x10> unknown_a1;
   ptext<CharT, 0x10> password;
 };
@@ -1809,7 +1814,9 @@ struct S_RankUpdate_GC_Ep3_B7 {
 
 // B8 (S->C): Update card definitions (Episode 3)
 // Contents is a single little-endian le_uint32_t specifying the size of the
-// (PRS-compressed) data, followed immediately by the data.
+// (PRS-compressed) data, followed immediately by the data. The maximum size of
+// the compressed data is 0x9000 bytes, and the maximum size of the decompressed
+// data is 0x36EC0 bytes.
 // Note: PSO BB accepts this command as well, but ignores it.
 
 // B8 (C->S): Confirm updated card definitions (Episode 3)
@@ -2029,38 +2036,11 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { };
 // Same as 60, but only send to Episode 3 clients.
 
 // CA (C->S): Server data request (Episode 3)
-// The format is generally the same as the subcommand-based commands (60, 62,
-// etc.), but the server is expected to respond to the command instead of
-// forwarding it. (The client has no handler for CA commands at all.)
-// Generally a CA command looks like this:
-// CA 00 SS SS B3 TT 00 00 WW 00 00 00 ...
-//   S = command size
-//   T = subcommand size in uint32_ts (== (S / 4) - 1)
-//   W = subcommand number
-// We refer to the various Episode 3 server data commands as CAxWW, where W
-// comes from the format above. The server data commands are:
-//   CAx0B (T=05) - Unknown
-//   CAx0C (T=05) - Unknown
-//   CAx0D (T=07) - Unknown
-//   CAx0E (T=05) - Unknown
-//   CAx0F (T=07) - Unknown
-//   CAx10 (T=06) - Unknown
-//   CAx11 (T=1E) - Unknown
-//   CAx12 (T=05) - Unknown
-//   CAx13 (T=AF) - Update game state (?)
-//   CAx14 (T=1B) - Update playfield state (?)
-//   CAx1B (T=09) - Update names (?)
-//   CAx1D (T=04) - Unknown
-//   CAx21 (T=05) - Unknown
-//   CAx28 (T=05) - Unknown
-//   CAx2B (T=05) - Unknown
-//   CAx34 (T=05) - Unknown
-//   CAx3A (T=04) - Unknown
-//   CAx40 (T=04) - Map list request. See send_ep3_map_list for server response.
-//   CAx41 (T=05) - Map data request. See send_ep3_map_data for server response.
-//   CAx48 (T=05) - Unknown
-//   CAx49 (T=C1) - Unknown
-// TODO: Document the above commands that are currently unknown.
+// The CA command format is the same as that of the 6xB3 commands, and the
+// subsubcommands formats are shared as well. Unlike the 6x commands, the server
+// is expected to respond to the command appropriately instead of forwarding it.
+// However, not all 6xB3 subsubcommands are also CA subcommands - those that are
+// shared are noted in the structure names. (Search for "CAx" to find them.)
 
 // CB: Broadcast command (Episode 3)
 // Same as 60, but only send to Episode 3 clients.
@@ -2864,30 +2844,54 @@ struct S_Unknown_BB_F0 {
 // commands must be used. The 60 and 62 commands exhibit undefined behavior if
 // this limit is exceeded.
 
-// These structures are used by many commands (noted below)
-struct G_ItemSubcommand {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t client_id;
-  le_uint32_t item_id;
-  le_uint32_t amount;
-};
 
-struct G_ItemIDSubcommand {
+
+// These common structures are used my many subcommands.
+struct G_ClientIDHeader {
+  uint8_t subcommand;
+  uint8_t size;
+  le_uint16_t client_id; // <= 12
+};
+struct G_EnemyIDHeader {
+  uint8_t subcommand;
+  uint8_t size;
+  le_uint16_t enemy_id; // In range [0x1000, 0x4000)
+};
+struct G_ObjectIDHeader {
+  uint8_t subcommand;
+  uint8_t size;
+  le_uint16_t object_id; // >= 0x4000, != 0xFFFF
+};
+struct G_UnusedHeader {
   uint8_t subcommand;
   uint8_t size;
   le_uint16_t unused;
-  le_uint32_t item_id;
 };
 
+template <typename HeaderT>
+struct G_ExtendedHeader {
+  HeaderT basic_header;
+  le_uint32_t size;
+};
 
 
 
 // 6x00: Invalid subcommand
 // 6x01: Invalid subcommand
+
 // 6x02: Unknown
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x03: Unknown (same handler as 02)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x04: Unknown
+
+struct G_Unknown_6x04 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unused;
+};
 
 // 6x05: Switch state changed
 // Some things that don't look like switches are implemented as switches using
@@ -2895,21 +2899,20 @@ struct G_ItemIDSubcommand {
 // subcommand is used to unlock the doors.
 
 struct G_SwitchStateChanged_6x05 {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t switch_id; // 0xFFFF for room clear when all enemies defeated
-  parray<uint8_t, 6> unknown;
+  // Note: header.object_id is 0xFFFF for room clear when all enemies defeated
+  G_ObjectIDHeader header;
+  parray<uint8_t, 2> unknown_a1;
+  le_uint16_t unknown_a2;
+  parray<uint8_t, 2> unknown_a3;
   uint8_t area;
-  uint8_t enabled;
+  uint8_t flags; // Bit field, with 2 lowest bits having meaning
 };
 
 // 6x06: Send guild card
 
 template <typename CharT, size_t UnusedLength>
 struct G_SendGuildCard_DC_PC_V3 {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t unused;
+  G_UnusedHeader header;
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
   ptext<CharT, 0x18> name;
@@ -2928,9 +2931,7 @@ struct G_SendGuildCard_PC_6x06 : G_SendGuildCard_DC_PC_V3<char16_t, 0x24> { };
 struct G_SendGuildCard_V3_6x06 : G_SendGuildCard_DC_PC_V3<char, 0x24> { };
 
 struct G_SendGuildCard_BB_6x06 {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t unused;
+  G_UnusedHeader header;
   le_uint32_t guild_card_number;
   ptext<char16_t, 0x18> name;
   ptext<char16_t, 0x10> team_name;
@@ -2944,9 +2945,11 @@ struct G_SendGuildCard_BB_6x06 {
 // 6x07: Symbol chat
 
 struct G_SymbolChat_6x07 {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t unused1;
+  G_UnusedHeader header;
+  // TODO: How does this format differ across PSO versions? The GC version
+  // treats some fields as unexpectedly large values (for example, face_spec
+  // through unused2 are byteswapped as an le_uint32_t), so we should verify
+  // that the order of these fields is the same on other versions.
   le_uint32_t client_id;
   // Bits: SSSCCCFF (S = sound, C = face color, F = face shape)
   uint8_t face_spec;
@@ -2969,89 +2972,202 @@ struct G_SymbolChat_6x07 {
 };
 
 // 6x08: Invalid subcommand
+
 // 6x09: Unknown
+
+struct G_Unknown_6x09 {
+  G_EnemyIDHeader header;
+};
 
 // 6x0A: Enemy hit
 
 struct G_EnemyHitByPlayer_6x0A {
-  uint8_t command;
-  uint8_t size;
+  G_EnemyIDHeader header;
+  // Note: enemy_id (in header) is in the range [0x1000, 0x4000)
   le_uint16_t enemy_id2;
-  le_uint16_t enemy_id;
   le_uint16_t damage;
-  le_uint32_t flags;
+  be_uint32_t flags;
 };
 
 // 6x0B: Box destroyed
+
+struct G_BoxDestroyed_6x0B {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a2;
+  le_uint32_t unknown_a3;
+};
+
 // 6x0C: Add condition (poison/slow/etc.)
+
+struct G_AddOrRemoveCondition_6x0C_6x0D {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1; // Probably condition type
+  le_uint32_t unknown_a2;
+};
+
 // 6x0D: Remove condition (poison/slow/etc.)
+// Same format as 6x0C
+
 // 6x0E: Unknown
+
+struct G_Unknown_6x0E {
+  G_ClientIDHeader header;
+};
+
 // 6x0F: Invalid subcommand
+
 // 6x10: Unknown (not valid on Episode 3)
+
+struct G_Unknown_6x10_6x11_6x12_6x14 {
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a2;
+  le_uint16_t unknown_a3;
+  le_uint32_t unknown_a4;
+};
+
 // 6x11: Unknown (not valid on Episode 3)
+// Same format as 6x10
+
 // 6x12: Dragon boss actions (not valid on Episode 3)
-// 6x13: Re Rol Le boss actions (not valid on Episode 3)
+// Same format as 6x10
+
+// 6x13: De Rol Le boss actions (not valid on Episode 3)
+
+struct G_DeRolLeBossActions_6x13 {
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a2;
+  le_uint16_t unknown_a3;
+};
+
 // 6x14: Unknown (supported; game only; not valid on Episode 3)
+// Same format as 6x10
+
 // 6x15: Vol Opt boss actions (not valid on Episode 3)
+
+struct G_VolOptBossActions_6x15 {
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a2;
+  le_uint16_t unknown_a3;
+  le_uint16_t unknown_a4;
+  le_uint16_t unknown_a5;
+};
+
 // 6x16: Vol Opt boss actions (not valid on Episode 3)
+
+struct G_VolOptBossActions_6x16 {
+  G_UnusedHeader header;
+  parray<uint8_t, 6> unknown_a2;
+  le_uint16_t unknown_a3;
+};
+
 // 6x17: Unknown (supported; game only; not valid on Episode 3)
+
+struct G_Unknown_6x17 {
+  G_ClientIDHeader header;
+  le_float unknown_a2;
+  le_float unknown_a3;
+  le_float unknown_a4;
+  le_uint32_t unknown_a5;
+};
+
 // 6x18: Unknown (supported; game only; not valid on Episode 3)
+
+struct G_Unknown_6x18 {
+  G_ClientIDHeader header;
+  parray<le_uint16_t, 4> unknown_a2;
+};
+
 // 6x19: Dark Falz boss actions (not valid on Episode 3)
+
+struct G_DarkFalzActions_6x19 {
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a2;
+  le_uint16_t unknown_a3;
+  le_uint32_t unknown_a4;
+  le_uint32_t unused;
+};
+
 // 6x1A: Invalid subcommand
+
 // 6x1B: Unknown (not valid on Episode 3)
+
+struct G_Unknown_6x1B {
+  G_ClientIDHeader header;
+};
+
 // 6x1C: Unknown (supported; game only; not valid on Episode 3)
+
+struct G_Unknown_6x1C {
+  G_ClientIDHeader header;
+};
+
 // 6x1D: Invalid subcommand
 // 6x1E: Invalid subcommand
+
 // 6x1F: Unknown (supported; lobby & game)
+
+struct G_Unknown_6x1F {
+  G_ClientIDHeader header;
+  le_uint32_t area;
+};
+
 // 6x20: Set position (existing clients send when a new client joins a lobby/game)
+
+struct G_Unknown_6x20 {
+  G_ClientIDHeader header;
+  le_uint32_t area;
+  le_float x;
+  le_float y;
+  le_float z;
+  le_uint32_t unknown_a1;
+};
+
 // 6x21: Inter-level warp
 
-// 6x22: Set player visibility
-// 6x23: Set player visibility
+struct G_InterLevelWarp_6x21 {
+  G_ClientIDHeader header;
+  le_uint32_t area;
+};
+
+// 6x22: Set player invisible
+// 6x23: Set player visible
 
 struct G_SetPlayerVisibility_6x22_6x23 {
-  uint8_t subcommand; // 22 = invisible, 23 = visible
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
 };
 
 // 6x24: Unknown (supported; game only)
 
+struct G_Unknown_6x24 {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1;
+  le_float x;
+  le_float y;
+  le_float z;
+};
+
 // 6x25: Equip item
 
-struct G_EquipItem_6x25 {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t client_id;
+struct G_EquipOrUnequipItem_6x25_6x26 {
+  G_ClientIDHeader header;
   le_uint32_t item_id;
-  le_uint32_t equip_slot;
+  le_uint32_t equip_slot; // Unused for 6x26 (unequip item)
 };
 
 // 6x26: Unequip item
-
-struct G_UnequipItem_6x26 {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t client_id;
-  le_uint32_t item_id;
-  le_uint32_t unused2;
-};
+// Same format as 6x25
 
 // 6x27: Use item
 
 struct G_UseItem_6x27 {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   le_uint32_t item_id;
 };
 
 // 6x28: Feed MAG
 
 struct G_FeedMAG_6x28 {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   le_uint32_t mag_item_id;
   le_uint32_t fed_item_id;
 };
@@ -3059,15 +3175,18 @@ struct G_FeedMAG_6x28 {
 // 6x29: Delete inventory item (via bank deposit / sale / feeding MAG)
 // This subcommand is also used for reducing the size of stacks - if amount is
 // less than the stack count, the item is not deleted and its ID remains valid.
-// Format is G_ItemSubcommand
+
+struct G_DeleteInventoryItem_6x29 {
+  G_ClientIDHeader header;
+  le_uint32_t item_id;
+  le_uint32_t amount;
+};
 
 // 6x2A: Drop item
 
-struct G_PlayerDropItem_6x2A {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t client_id;
-  le_uint16_t unused2; // should be 1
+struct G_DropItem_6x2A {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1; // Should be 1... maybe amount?
   le_uint16_t area;
   le_uint32_t item_id;
   le_float x;
@@ -3077,58 +3196,139 @@ struct G_PlayerDropItem_6x2A {
 
 // 6x2B: Create item in inventory (e.g. via tekker or bank withdraw)
 
-struct G_PlayerCreateInventoryItem_DC_6x2B {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t client_id;
+struct G_CreateInventoryItem_DC_6x2B {
+  G_ClientIDHeader header;
   ItemData item;
 };
 
-struct G_PlayerCreateInventoryItem_PC_V3_BB_6x2B : G_PlayerCreateInventoryItem_DC_6x2B {
-  le_uint32_t unknown;
+struct G_CreateInventoryItem_PC_V3_BB_6x2B {
+  G_CreateInventoryItem_DC_6x2B basic_cmd;
+  uint8_t unused1;
+  uint8_t unknown_a2;
+  le_uint16_t unused2;
 };
 
 // 6x2C: Talk to NPC
+
+struct G_TalkToNPC_6x2C {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_float unknown_a3;
+  le_float unknown_a4;
+  le_float unknown_a5;
+};
+
 // 6x2D: Done talking to NPC
-// 6x2E: Unknown
+
+struct G_EndTalkToNPC_6x2D {
+  G_ClientIDHeader header;
+};
+
+// 6x2E: Set and/or clear player flags
+
+struct G_SetOrClearPlayerFlags_6x2E {
+  G_ClientIDHeader header;
+  le_uint32_t and_mask;
+  le_uint32_t or_mask;
+};
+
 // 6x2F: Hit by enemy
+
+struct G_HitByEnemy_6x2F {
+  G_ClientIDHeader header;
+  le_uint32_t hit_type; // 0 = set HP, 1 = add/subtract HP, 2 = add/sub fixed HP
+  le_uint16_t damage;
+  le_uint16_t client_id;
+};
 
 // 6x30: Level up
 
 struct G_LevelUp_6x30 {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   le_uint16_t atp;
   le_uint16_t mst;
   le_uint16_t evp;
   le_uint16_t hp;
   le_uint16_t dfp;
   le_uint16_t ata;
-  le_uint32_t level;
+  le_uint16_t level;
+  le_uint16_t unknown_a1; // Must be 0 or 1
 };
 
 // 6x31: Medical center
-// 6x32: Medical center
+
+struct G_UseMedicalCenter_6x31 {
+  G_ClientIDHeader header;
+};
+
+// 6x32: Unknown (occurs when using Medical Center)
+
+struct G_Unknown_6x32 {
+  G_UnusedHeader header;
+};
+
 // 6x33: Revive player (e.g. with moon atomizer)
+
+struct G_RevivePlayer_6x33 {
+  G_ClientIDHeader header;
+  le_uint16_t client_id2;
+  le_uint16_t unused;
+};
+
 // 6x34: Unknown
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x35: Invalid subcommand
+
 // 6x36: Unknown (supported; game only)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x37: Photon blast
+
+struct G_PhotonBlast_6x37 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unused;
+};
+
 // 6x38: Unknown
+
+struct G_Unknown_6x38 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unused;
+};
+
 // 6x39: Photon blast ready
+
+struct G_PhotonBlastReady_6x38 {
+  G_ClientIDHeader header;
+};
+
 // 6x3A: Unknown (supported; game only)
+
+struct G_Unknown_6x3A {
+  G_ClientIDHeader header;
+};
+
 // 6x3B: Unknown (supported; lobby & game)
+
+struct G_Unknown_6x3B {
+  G_ClientIDHeader header;
+};
+
 // 6x3C: Invalid subcommand
 // 6x3D: Invalid subcommand
 
 // 6x3E: Stop moving
 
 struct G_StopAtPosition_6x3E {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
-  uint64_t unknown;
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint16_t area;
+  le_uint16_t unknown_a3;
   le_float x;
   le_float y;
   le_float z;
@@ -3137,11 +3337,11 @@ struct G_StopAtPosition_6x3E {
 // 6x3F: Set position
 
 struct G_SetPosition_6x3F {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
-  le_uint32_t unknown;
-  le_uint32_t area;
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint16_t area;
+  le_uint16_t unknown_a3;
   le_float x;
   le_float y;
   le_float z;
@@ -3150,55 +3350,201 @@ struct G_SetPosition_6x3F {
 // 6x40: Walk
 
 struct G_WalkToPosition_6x40 {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   le_float x;
   le_float z;
-  le_uint32_t unused;
+  le_uint32_t unknown_a1;
 };
 
 // 6x41: Unknown
+// This subcommand is completely ignored (at least, by PSO GC).
 
 // 6x42: Run
 
 struct G_RunToPosition_6x42 {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   le_float x;
   le_float z;
 };
 
 // 6x43: First attack
+
+struct G_Attack_6x43_6x44_6x45 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+};
+
 // 6x44: Second attack
+// Same format as 6x43
+
 // 6x45: Third attack
+// Same format as 6x43
+
 // 6x46: Attack finished (sent after each of 43, 44, and 45)
+
+struct G_AttackFinished_6x46 {
+  G_ClientIDHeader header;
+  le_uint32_t count;
+  struct Entry {
+    le_uint16_t unknown_a1;
+    le_uint16_t unknown_a2;
+  };
+  Entry entries[11];
+};
+
 // 6x47: Cast technique
+
+struct G_CastTechnique_6x47 {
+  G_ClientIDHeader header;
+  uint8_t technique_number;
+  uint8_t unused;
+  // Note: The level here isn't the actual tech level that was cast, if the
+  // level is > 15. In that case, a 6x8D is sent first, which contains the
+  // additional level which is added to this level at cast time. They probably
+  // did this for legacy reasons when dealing with v1/v2 compatibility, and
+  // never cleaned it up.
+  uint8_t level;
+  uint8_t target_count;
+  struct TargetEntry {
+    le_uint16_t client_id;
+    le_uint16_t unknown_a2;
+  };
+  TargetEntry targets[10];
+};
+
 // 6x48: Cast technique complete
+
+struct G_CastTechniqueComplete_6x48 {
+  G_ClientIDHeader header;
+  le_uint16_t technique_number;
+  // This level matches the level sent in the 6x47 command, even if that level
+  // was overridden by a preceding 6x8D command.
+  le_uint16_t level;
+};
+
 // 6x49: Subtract PB energy
+
+struct G_SubtractPBEnergy_6x49 {
+  G_ClientIDHeader header;
+  uint8_t unknown_a1;
+  uint8_t unknown_a2;
+  le_uint16_t entry_count;
+  le_uint16_t unknown_a3;
+  le_uint16_t unknown_a4;
+  struct Entry {
+    le_uint16_t unknown_a1;
+    le_uint16_t unknown_a2;
+  };
+  Entry entries[14];
+};
+
 // 6x4A: Fully shield attack
+
+struct G_ShieldAttack_6x4A {
+  G_ClientIDHeader header;
+};
+
 // 6x4B: Hit by enemy
+
+struct G_HitByEnemy_6x4B_6x4C {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t damage;
+  le_float unknown_a2;
+  le_float unknown_a3;
+};
+
 // 6x4C: Hit by enemy
+// Same format as 6x4B
+
 // 6x4D: Unknown (supported; lobby & game)
+
+struct G_Unknown_6x4D {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1;
+};
+
 // 6x4E: Unknown (supported; lobby & game)
+
+struct G_Unknown_6x4E {
+  G_ClientIDHeader header;
+};
+
 // 6x4F: Unknown (supported; lobby & game)
+
+struct G_Unknown_6x4F {
+  G_ClientIDHeader header;
+};
+
 // 6x50: Unknown (supported; lobby & game)
+
+struct G_Unknown_6x50 {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1;
+};
+
 // 6x51: Invalid subcommand
+
 // 6x52: Toggle shop/bank interaction
+
+struct G_Unknown_6x52 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint32_t unknown_a3;
+};
+
 // 6x53: Unknown (supported; game only)
+
+struct G_Unknown_6x53 {
+  G_ClientIDHeader header;
+};
+
 // 6x54: Unknown
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x55: Intra-map warp
+
+struct G_IntraMapWarp_6x55 {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1;
+  le_float x1;
+  le_float y1;
+  le_float z1;
+  le_float x2;
+  le_float y2;
+  le_float z2;
+};
+
 // 6x56: Unknown (supported; lobby & game)
+
+struct G_Unknown_6x56 {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1;
+  le_float x;
+  le_float y;
+  le_float z;
+};
+
 // 6x57: Unknown (supported; lobby & game)
+
+struct G_Unknown_6x57 {
+  G_ClientIDHeader header;
+};
+
 // 6x58: Unknown (supported; game only)
+
+struct G_Unknown_6x58 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unused;
+};
 
 // 6x59: Pick up item
 
 struct G_PickUpItem_6x59 {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   le_uint16_t client_id2;
   le_uint16_t area;
   le_uint32_t item_id;
@@ -3207,23 +3553,26 @@ struct G_PickUpItem_6x59 {
 // 6x5A: Request to pick up item
 
 struct G_PickUpItemRequest_6x5A {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   le_uint32_t item_id;
-  uint8_t area;
-  uint8_t unused2[3];
+  le_uint16_t area;
+  le_uint16_t unused;
 };
 
 // 6x5B: Invalid subcommand
+
 // 6x5C: Unknown
+
+struct G_Unknown_6x5C {
+  G_UnusedHeader header;
+  le_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
+};
 
 // 6x5D: Drop meseta or stacked item
 
 struct G_DropStackedItem_DC_6x5D {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   le_uint16_t area;
   le_uint16_t unused2;
   le_float x;
@@ -3231,66 +3580,129 @@ struct G_DropStackedItem_DC_6x5D {
   ItemData data;
 };
 
-struct G_DropStackedItem_PC_V3_BB_6x5D : G_DropStackedItem_DC_6x5D {
+struct G_DropStackedItem_PC_V3_BB_6x5D {
+  G_DropStackedItem_DC_6x5D basic_cmd;
   le_uint32_t unused3;
 };
 
 // 6x5E: Buy item at shop
 
 struct G_BuyShopItem_6x5E {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   ItemData item;
 };
 
 // 6x5F: Drop item from box/enemy
 
 struct G_DropItem_DC_6x5F {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t unused;
+  G_UnusedHeader header;
   uint8_t area;
   uint8_t from_enemy;
   le_uint16_t request_id; // < 0x0B50 if from_enemy != 0; otherwise < 0x0BA0
   le_float x;
   le_float z;
-  le_uint32_t unused2;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
   ItemData data;
 };
 
-struct G_DropItem_PC_V3_BB_6x5F : G_DropItem_DC_6x5F {
+struct G_DropItem_PC_V3_BB_6x5F {
+  G_DropItem_DC_6x5F basic_cmd;
   le_uint32_t unused3;
 };
 
 // 6x60: Request for item drop (handled by the server on BB)
 
 struct G_EnemyDropItemRequest_DC_6x60 {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t unused;
+  G_UnusedHeader header;
   uint8_t area;
   uint8_t enemy_id;
   le_uint16_t request_id;
   le_float x;
   le_float z;
-  le_uint32_t unknown_a1;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
 };
 
-struct G_EnemyDropItemRequest_PC_V3_BB_6x60 : G_EnemyDropItemRequest_DC_6x60 {
+struct G_EnemyDropItemRequest_PC_V3_BB_6x60 {
+  G_EnemyDropItemRequest_DC_6x60 basic_cmd;
   le_uint32_t unknown_a2;
 };
 
 // 6x61: Feed MAG
+
+struct G_FeedMAG_6x61 {
+  G_UnusedHeader header;
+  le_uint32_t mag_item_id;
+  le_uint32_t fed_item_id;
+};
+
 // 6x62: Unknown
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x63: Destroy item on the ground (used when too many items have been dropped)
+
+struct G_DestroyGroundItem_6x63 {
+  G_UnusedHeader header;
+  le_uint32_t item_id;
+  le_uint32_t area;
+};
+
 // 6x64: Unknown (not valid on Episode 3)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x65: Unknown (not valid on Episode 3)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x66: Use star atomizer
+
+struct G_UseStarAtomizer_6x66 {
+  G_UnusedHeader header;
+  parray<le_uint16_t, 4> target_client_ids;
+};
+
 // 6x67: Create enemy set
+
+struct G_CreateEnemySet_6x67 {
+  G_UnusedHeader header;
+  // unused1 could be area; the client checks this againset a global but the
+  // logic is the same in both branches
+  le_uint32_t unused1;
+  le_uint32_t unknown_a1;
+  le_uint32_t unused2;
+};
+
 // 6x68: Telepipe/Ryuker
+
+struct G_CreateTelepipe_6x68 {
+  G_UnusedHeader header;
+  le_uint16_t client_id2;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  parray<uint8_t, 2> unknown_a3;
+  le_float x;
+  le_float y;
+  le_float z;
+  le_uint32_t unknown_a4;
+};
+
 // 6x69: Unknown (supported; game only)
+
+struct G_Unknown_6x69 {
+  G_UnusedHeader header;
+  le_uint16_t client_id2;
+  le_uint16_t unknown_a1;
+  le_uint16_t what; // 0-3; logic is very different for each value
+  le_uint16_t unknown_a2;
+};
+
 // 6x6A: Unknown (supported; game only; not valid on Episode 3)
+
+struct G_Unknown_6x6A {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unused;
+};
 
 // 6x6B: Sync enemy state (used while loading into game; same header format as 6E)
 // 6x6C: Sync object state (used while loading into game; same header format as 6E)
@@ -3298,15 +3710,19 @@ struct G_EnemyDropItemRequest_PC_V3_BB_6x60 : G_EnemyDropItemRequest_DC_6x60 {
 // 6x6E: Sync flag state (used while loading into game)
 
 struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
-  uint8_t subcommand;
-  parray<uint8_t, 3> unused;
+  G_ExtendedHeader<G_UnusedHeader> header;
   le_uint32_t subcommand_size;
-  le_uint32_t unknown_a1;
-  le_uint32_t data_size; // Must be <= subcommand_size - 0x10
+  le_uint32_t decompressed_size;
+  le_uint32_t compressed_size; // Must be <= subcommand_size - 0x10
   // BC0-compressed data follows here (use bc0_decompress from Compression.hh)
 };
 
 // 6x6F: Unknown (used while loading into game)
+
+struct G_Unknown_6x6F {
+  G_UnusedHeader header;
+  parray<uint8_t, 0x200> unknown_a1;
+};
 
 // 6x70: Sync player disp data and inventory (used while loading into game)
 // Annoyingly, they didn't use the same format as the 65/67/68 commands here,
@@ -3315,11 +3731,8 @@ struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
 // sending player doesn't have 0 meseta, for example)
 
 struct G_Unknown_6x70 {
+  G_ExtendedHeader<G_UnusedHeader> header;
   // Offsets in this struct are relative to the overall command header
-  /* 0004 */ uint8_t subcommand; // == 0x70
-  /* 0005 */ uint8_t basic_size; // == 0
-  /* 0006 */ le_uint16_t unused;
-  /* 0008 */ le_uint32_t subcommand_size;
   /* 000C */ parray<le_uint16_t, 2> unknown_a1;
   // [1] and [3] in this array (and maybe [2] also) appear to be le_floats;
   // they could be the player's current (x, y, z) coords
@@ -3379,85 +3792,539 @@ struct G_Unknown_6x70 {
 };
 
 // 6x71: Unknown (used while loading into game)
+
+struct G_Unknown_6x71 {
+  G_UnusedHeader header;
+};
+
 // 6x72: Unknown (used while loading into game)
-// 6x73: Invalid subcommand (but apparently valid on BB; function is unknown)
+
+struct G_Unknown_6x72 {
+  G_UnusedHeader header;
+};
+
+// 6x73: Unknown
+
+struct G_Unknown_6x73 {
+  G_UnusedHeader header;
+};
+
 // 6x74: Word select
-// 6x75: Unknown (supported; game only)
+
+struct G_WordSelect_6x74 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  parray<le_uint16_t, 8> entries;
+  le_uint32_t unknown_a3;
+  le_uint32_t unknown_a4;
+};
+
+// 6x75: Phase setup (supported; game only)
+
+// TODO: Not sure about PC format here. Is this first struct DC-only?
+struct G_PhaseSetup_DC_PC_6x75 {
+  G_UnusedHeader header;
+  le_uint16_t phase; // Must be < 0x400
+  le_uint16_t unknown_a1; // Must be 0 or 1
+};
+
+struct G_PhaseSetup_V3_BB_6x75 {
+  G_PhaseSetup_DC_PC_6x75 basic_cmd;
+  le_uint16_t difficulty;
+  le_uint16_t unused;
+};
+
 // 6x76: Enemy killed
+
+struct G_EnemyKilled_6x76 {
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2; // Flags of some sort
+};
+
 // 6x77: Sync quest data
+
+struct G_SyncQuestData_6x77 {
+  G_UnusedHeader header;
+  le_uint16_t register_number; // Must be < 0x100
+  le_uint16_t unused;
+  le_uint32_t value;
+};
+
 // 6x78: Unknown
-// 6x79: Lobby 14/15 soccer game
+
+struct G_Unknown_6x78 {
+  G_UnusedHeader header;
+  le_uint16_t client_id; // Must be < 12
+  le_uint16_t unused1;
+  le_uint32_t unused2;
+};
+
+// 6x79: Lobby 14/15 gogo ball (soccer game)
+
+struct G_GogoBall_6x79 {
+  G_UnusedHeader header;
+  le_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
+  le_float unknown_a3;
+  le_float unknown_a4;
+  uint8_t unknown_a5;
+  parray<uint8_t, 3> unused;
+};
+
 // 6x7A: Unknown
+
+struct G_Unknown_6x7A {
+  G_ClientIDHeader header;
+};
+
 // 6x7B: Unknown
+
+struct G_Unknown_6x7B {
+  G_ClientIDHeader header;
+};
+
 // 6x7C: Unknown (supported; game only; not valid on Episode 3)
+
+struct G_Unknown_6x7C {
+  G_UnusedHeader header;
+  le_uint16_t client_id;
+  parray<uint8_t, 2> unknown_a1;
+  le_uint16_t unknown_a2;
+  parray<uint8_t, 2> unknown_a3;
+  parray<le_uint32_t, 0x17> unknown_a4;
+  parray<uint8_t, 4> unknown_a5;
+  le_uint16_t unknown_a6;
+  parray<uint8_t, 2> unknown_a7;
+  le_uint32_t unknown_a8;
+  le_uint32_t unknown_a9;
+  le_uint32_t unknown_a10;
+  le_uint32_t unknown_a11;
+  le_uint32_t unknown_a12;
+  parray<uint8_t, 0x34> unknown_a13;
+  struct Entry {
+    le_uint32_t unknown_a1;
+    le_uint32_t unknown_a2;
+  };
+  Entry entries[3];
+};
+
 // 6x7D: Unknown (supported; game only; not valid on Episode 3)
+
+struct G_Unknown_6x7D {
+  G_UnusedHeader header;
+  uint8_t unknown_a1; // Must be < 7; used in jump table
+  parray<uint8_t, 3> unused;
+  parray<le_uint32_t, 4> unknown_a2;
+};
+
 // 6x7E: Unknown (not valid on Episode 3)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x7F: Unknown (not valid on Episode 3)
+
+struct G_Unknown_6x7F {
+  G_UnusedHeader header;
+  parray<uint8_t, 0x20> unknown_a1;
+};
+
 // 6x80: Trigger trap (not valid on Episode 3)
+
+struct G_TriggerTrap_6x80 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+};
+
 // 6x81: Unknown
+
+struct G_Unknown_6x81 {
+  G_ClientIDHeader header;
+};
+
 // 6x82: Unknown
+
+struct G_Unknown_6x82 {
+  G_ClientIDHeader header;
+};
+
 // 6x83: Place trap
+
+struct G_PlaceTrap_6x83 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+};
+
 // 6x84: Unknown (supported; game only; not valid on Episode 3)
+
+struct G_Unknown_6x84 {
+  G_UnusedHeader header;
+  parray<uint8_t, 6> unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint16_t unknown_a3;
+  le_uint16_t unused;
+};
+
 // 6x85: Unknown (supported; game only; not valid on Episode 3)
-// 6x86: Hit destructible wall (not valid on Episode 3)
+
+struct G_Unknown_6x85 {
+  G_UnusedHeader header;
+  le_uint16_t unknown_a1; // Command is ignored unless this is 0
+  parray<le_uint16_t, 7> unknown_a2; // Only the first 3 appear to be used
+};
+
+// 6x86: Hit destructible object (not valid on Episode 3)
+
+struct G_HitDestructibleObject_6x86 {
+  G_ObjectIDHeader header;
+  le_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
+  le_uint16_t unknown_a3;
+  le_uint16_t unknown_a4;
+};
+
 // 6x87: Unknown
+
+struct G_Unknown_6x87 {
+  G_ClientIDHeader header;
+  le_float unknown_a1;
+};
+
 // 6x88: Unknown (supported; game only)
+
+struct G_Unknown_6x88 {
+  G_ClientIDHeader header;
+};
+
 // 6x89: Unknown (supported; game only)
+
+struct G_Unknown_6x89 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unused;
+};
+
 // 6x8A: Unknown (not valid on Episode 3)
+
+struct G_Unknown_6x8A {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1; // Must be < 0x11
+};
+
 // 6x8B: Unknown (not valid on Episode 3)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x8C: Unknown (not valid on Episode 3)
-// 6x8D: Unknown (supported; lobby & game)
+// This subcommand is completely ignored (at least, by PSO GC).
+
+// 6x8D: Set technique level override
+
+struct G_SetTechniqueLevelOverride_6x8D {
+  G_ClientIDHeader header;
+  uint8_t level_upgrade;
+  uint8_t unused1;
+  le_uint16_t unused2;
+};
+
 // 6x8E: Unknown (not valid on Episode 3)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x8F: Unknown (not valid on Episode 3)
+
+struct G_Unknown_6x8F {
+  G_ClientIDHeader header;
+  le_uint16_t client_id2;
+  le_uint16_t unknown_a1;
+};
+
 // 6x90: Unknown (not valid on Episode 3)
+
+struct G_Unknown_6x90 {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1;
+};
+
 // 6x91: Unknown (supported; game only)
+
+struct G_Unknown_6x91 {
+  G_ObjectIDHeader header;
+  le_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
+  le_uint16_t unknown_a3;
+  le_uint16_t unknown_a4;
+  le_uint16_t unknown_a5;
+  parray<uint8_t, 2> unknown_a6;
+};
+
 // 6x92: Unknown (not valid on Episode 3)
+
+struct G_Unknown_6x92 {
+  G_UnusedHeader header;
+  le_uint32_t unknown_a1;
+  le_float unknown_a2;
+};
+
 // 6x93: Timed switch activated (not valid on Episode 3)
+
+struct G_TimedSwitchActivated_6x93 {
+  G_UnusedHeader header;
+  le_uint16_t area;
+  le_uint16_t switch_id;
+  uint8_t unknown_a1; // Logic is different if this is 1 vs. any other value
+  parray<uint8_t, 3> unused;
+};
+
 // 6x94: Warp (not valid on Episode 3)
+
+struct G_InterLevelWarp_6x94 {
+  G_UnusedHeader header;
+  le_uint16_t area;
+  parray<uint8_t, 2> unused;
+};
+
 // 6x95: Unknown (not valid on Episode 3)
+
+struct G_Unknown_6x95 {
+  G_UnusedHeader header;
+  le_uint32_t client_id;
+  le_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
+  le_uint32_t unknown_a3;
+};
+
 // 6x96: Unknown (not valid on Episode 3)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x97: Unknown (not valid on Episode 3)
+
+struct G_Unknown_6x97 {
+  G_UnusedHeader header;
+  le_uint32_t unused1;
+  le_uint32_t unknown_a1; // Must be 0 or 1
+  le_uint32_t unused2;
+  le_uint32_t unused3;
+};
+
 // 6x98: Unknown
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x99: Unknown
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x9A: Update player stat (not valid on Episode 3)
+
+struct G_UpdatePlayerStat_6x9A {
+  G_ClientIDHeader header;
+  le_uint16_t client_id2;
+  // Values for what:
+  // 0 = subtract HP
+  // 1 = subtract TP
+  // 2 = subtract Meseta
+  // 3 = add HP
+  // 4 = add TP
+  uint8_t what;
+  uint8_t amount;
+};
+
 // 6x9B: Unknown
+
+struct G_Unknown_6x9B {
+  G_UnusedHeader header;
+  uint8_t unknown_a1;
+  parray<uint8_t, 3> unused;
+};
+
 // 6x9C: Unknown (supported; game only; not valid on Episode 3)
+
+struct G_Unknown_6x9C {
+  G_EnemyIDHeader header;
+  le_uint32_t unknown_a1;
+};
+
 // 6x9D: Unknown (not valid on Episode 3)
+
+struct G_Unknown_6x9D {
+  G_UnusedHeader header;
+  le_uint32_t client_id2;
+};
+
 // 6x9E: Unknown (not valid on Episode 3)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6x9F: Gal Gryphon actions (not valid on PC or Episode 3)
+
+struct G_GalGryphonActions_6x9F {
+  G_EnemyIDHeader header;
+  le_uint32_t unknown_a1;
+  le_float unknown_a2;
+  le_float unknown_a3;
+};
+
 // 6xA0: Gal Gryphon actions (not valid on PC or Episode 3)
+
+struct G_GalGryphonActions_6xA0 {
+  G_EnemyIDHeader header;
+  le_float x;
+  le_float y;
+  le_float z;
+  le_uint32_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint16_t unknown_a3;
+  parray<le_uint32_t, 4> unknown_a4;
+};
+
 // 6xA1: Unknown (not valid on PC)
+
+struct G_Unknown_6xA1 {
+  G_ClientIDHeader header;
+};
 
 // 6xA2: Request for item drop from box (not valid on PC; handled by server on BB)
 
 struct G_BoxItemDropRequest_6xA2 {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t unused;
+  G_UnusedHeader header;
   uint8_t area;
-  uint8_t unused2;
+  uint8_t unknown_a1;
   le_uint16_t request_id;
   le_float x;
   le_float z;
-  le_uint32_t unknown[6];
+  le_uint16_t unknown_a2;
+  le_uint16_t unknown_a3;
+  parray<uint8_t, 4> unknown_a4;
+  le_uint32_t unknown_a5;
+  le_uint32_t unknown_a6;
+  le_uint32_t unknown_a7;
+  le_uint32_t unknown_a8;
 };
 
 // 6xA3: Episode 2 boss actions (not valid on PC or Episode 3)
+
+struct G_Episode2BossActions_6xA3 {
+  G_EnemyIDHeader header;
+  uint8_t unknown_a1;
+  uint8_t unknown_a2;
+  parray<uint8_t, 2> unknown_a3;
+};
+
 // 6xA4: Olga Flow phase 1 actions (not valid on PC or Episode 3)
+
+struct G_OlgaFlowPhase1Actions_6xA4 {
+  G_EnemyIDHeader header;
+  uint8_t what;
+  parray<uint8_t, 3> unknown_a3;
+};
+
 // 6xA5: Olga Flow phase 2 actions (not valid on PC or Episode 3)
+
+struct G_OlgaFlowPhase2Actions_6xA5 {
+  G_EnemyIDHeader header;
+  uint8_t what;
+  parray<uint8_t, 3> unknown_a3;
+};
+
 // 6xA6: Modify trade proposal (not valid on PC)
+
+struct G_ModifyTradeProposal_6xA6 {
+  G_ClientIDHeader header;
+  uint8_t unknown_a1; // Must be < 8
+  uint8_t unknown_a2;
+  parray<uint8_t, 2> unknown_a3;
+  le_uint32_t unknown_a4;
+  le_uint32_t unknown_a5;
+};
+
 // 6xA7: Unknown (not valid on PC)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6xA8: Gol Dragon actions (not valid on PC or Episode 3)
+
+struct G_GolDragonActions_6xA8 {
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint32_t unknown_a3;
+};
+
 // 6xA9: Barba Ray actions (not valid on PC or Episode 3)
+
+struct G_BarbaRayActions_6xA9 {
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+};
+
 // 6xAA: Episode 2 boss actions (not valid on PC or Episode 3)
+
+struct G_Episode2BossActions_6xAA {
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint32_t unknown_a3;
+};
+
 // 6xAB: Create lobby chair (not valid on PC)
+
+struct G_CreateLobbyChair_6xAB {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+};
+
 // 6xAC: Unknown (not valid on PC)
+
+struct G_Unknown_6xAC {
+  G_ClientIDHeader header;
+  le_uint32_t num_items;
+  parray<le_uint32_t, 0x1E> item_ids;
+};
+
 // 6xAD: Unknown (not valid on PC, Episode 3, or GC Trial Edition)
-// 6xAE: Set chair state? (sent by existing clients at join time; not valid on PC or GC Trial Edition)
-// 6xAF: Turn in lobby chair (not valid on PC or GC Trial Edition)
-// 6xB0: Move in lobby chair (not valid on PC or GC Trial Edition)
+
+struct G_Unknown_6xAD {
+  G_UnusedHeader header;
+  // The first byte in this array seems to have a special meaning
+  parray<uint8_t, 0x40> unknown_a1;
+};
+
+// 6xAE: Set lobby chair state (sent by existing clients at join time)
+// This subcommand is not valid on DC, PC, or GC Trial Edition.
+
+struct G_SetLobbyChairState_6xAE {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint32_t unknown_a3;
+  le_uint32_t unknown_a4;
+};
+
+// 6xAF: Turn lobby chair (not valid on PC or GC Trial Edition)
+
+struct G_TurnLobbyChair_6xAF {
+  G_ClientIDHeader header;
+  le_uint32_t angle; // In range [0x0000, 0xFFFF]
+};
+
+// 6xB0: Move lobby chair (not valid on PC or GC Trial Edition)
+
+struct G_MoveLobbyChair_6xB0 {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1;
+};
+
 // 6xB1: Unknown (not valid on PC or GC Trial Edition)
+// This subcommand is completely ignored (at least, by PSO GC).
+
 // 6xB2: Unknown (not valid on PC or GC Trial Edition)
+
+struct G_Unknown_6xB2 {
+  G_UnusedHeader header;
+  parray<uint8_t, 2> unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint32_t unknown_a3;
+};
+
 // 6xB3: Unknown (XBOX)
 
 // 6xB3: CARD battle command (Episode 3)
@@ -3465,23 +4332,25 @@ struct G_BoxItemDropRequest_6xA2 {
 // These commands have multiple subcommands; see the Episode 3 subsubcommand
 // table after this table. The common format is:
 struct G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  uint8_t subcommand; // 0xB3
-  uint8_t size;
-  le_uint16_t header_w1;
+  G_UnusedHeader basic_header;
   uint8_t subsubcommand; // See 6xBx subcommand table (after this table)
-  uint8_t header_b1;
-  // If mask_key is nonzero, the remainder of the data is encrypted using a
-  // simple algorithm. See set_mask_for_ep3_game_command in SendCommands.cc for
-  // a description of this algorithm.
+  uint8_t unknown_a1;
+  // If mask_key is nonzero, the remainder of the data (after header_b2 in this
+  // struct) is encrypted using a simple algorithm, which is implemented in
+  // set_mask_for_ep3_game_command in SendCommands.cc.
   uint8_t mask_key;
-  uint8_t header_b2;
-  // The subsubcommand arguments follow here
+  uint8_t unused;
 };
 
 // 6xB4: Unknown (XBOX)
 // 6xB4: CARD battle command (Episode 3) - see 6xB3 (above)
 // 6xB5: CARD battle command (Episode 3) - see 6xB3 (above)
 // 6xB5: BB shop request (handled by the server)
+
+struct G_ShopContentsRequest_BB_6xB5 {
+  G_UnusedHeader header;
+  le_uint32_t shop_type;
+};
 
 // 6xB6: Episode 3 map list and map contents (server->client only)
 // Unlike 6xB3-6xB5, these commands cannot be masked. Also unlike 6xB3-6xB5,
@@ -3490,31 +4359,30 @@ struct G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
 // command instead of the 60 command.
 
 struct G_MapSubsubcommand_GC_Ep3_6xB6 {
-  uint8_t subcommand; // 0xB6
-  uint8_t size; // Unused; this command uses the extended (32-bit) size field
-  le_uint16_t unused;
-  le_uint32_t subcommand_size;
-  le_uint32_t subsubcommand; // 0x40 or 0x41
+  G_ExtendedHeader<G_UnusedHeader> header;
+  uint8_t subsubcommand; // 0x40 or 0x41
+  parray<uint8_t, 3> unused;
 };
 
-struct G_MapList_GC_Ep3_6xB6x40 : G_MapSubsubcommand_GC_Ep3_6xB6 {
-  le_uint32_t compressed_data_size;
+struct G_MapList_GC_Ep3_6xB6x40 {
+  G_MapSubsubcommand_GC_Ep3_6xB6 header;
+  le_uint16_t compressed_data_size;
+  le_uint16_t unused;
   // PRS-compressed map list follows (see Ep3DataIndex::get_compressed_map_list)
 };
 
-struct G_MapData_GC_Ep3_6xB6x41 : G_MapSubsubcommand_GC_Ep3_6xB6 {
-  le_int16_t map_number;
+struct G_MapData_GC_Ep3_6xB6x41 {
+  G_MapSubsubcommand_GC_Ep3_6xB6 header;
+  le_uint32_t map_number;
+  le_uint16_t compressed_data_size;
   le_uint16_t unused;
-  le_uint32_t compressed_data_size;
   // PRS-compressed map data follows (which decompresses to an Ep3Map)
 };
 
 // 6xB6: BB shop contents (server->client only)
 
 struct G_ShopContents_BB_6xB6 {
-  uint8_t subcommand;
-  uint8_t size; // always 2C regardless of the number of items??
-  le_uint16_t params; // 037F
+  G_UnusedHeader header;
   uint8_t shop_type;
   uint8_t num_items;
   le_uint16_t unused;
@@ -3526,9 +4394,7 @@ struct G_ShopContents_BB_6xB6 {
 // 6xB7: BB buy shop item (handled by the server)
 
 struct G_BuyShopItem_BB_6xB7 {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t unused;
+  G_UnusedHeader header;
   le_uint32_t inventory_item_id;
   uint8_t shop_type;
   uint8_t item_index;
@@ -3538,33 +4404,62 @@ struct G_BuyShopItem_BB_6xB7 {
 
 // 6xB8: Unknown (Episode 3 Trial Edition)
 // 6xB8: BB accept tekker result (handled by the server)
-// Format is G_ItemIDSubcommand
+
+struct G_AcceptItemIdentification_BB_6xB8 {
+  G_UnusedHeader header;
+  le_uint32_t item_id;
+};
 
 // 6xB9: Unknown (Episode 3 Trial Edition)
 // 6xB9: BB provisional tekker result
 
 struct G_IdentifyResult_BB_6xB9 {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   ItemData item;
 };
 
 // 6xBA: Unknown (Episode 3)
 
+struct G_Unknown_GC_Ep3_6xBA {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1; // Low byte must be < 9
+  le_uint16_t unknown_a2;
+  le_uint32_t unknown_a3;
+  le_uint32_t unknown_a4;
+};
+
 // 6xBA: BB accept tekker result (handled by the server)
-// Format is G_ItemIDSubcommand
+
+struct G_AcceptItemIdentification_BB_6xBA {
+  G_UnusedHeader header;
+  le_uint32_t item_id;
+};
 
 // 6xBB: Unknown (Episode 3)
+
+struct G_Unknown_GC_Ep3_6xBB {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1; // Low byte must be < 5
+  le_uint16_t unknown_a2;
+  parray<le_uint32_t, 4> unknown_a3;
+};
+
 // 6xBB: BB bank request (handled by the server)
+
 // 6xBC: Unknown (Episode 3)
+
+struct G_Unknown_GC_Ep3_6xBC {
+  G_UnusedHeader header;
+  parray<uint8_t, 4> unused1;
+  // The length of this array strongly implies one flag or value per card type.
+  parray<uint8_t, 0x2F1> unknown_a1;
+  parray<uint8_t, 3> unused2;
+};
+
 // 6xBC: BB bank contents (server->client only)
 
 struct G_BankContentsHeader_BB_6xBC {
-  uint8_t subcommand;
-  uint8_t unused1;
-  le_uint16_t unused2;
-  le_uint32_t size; // same as size in overall command header
+  G_ExtendedHeader<G_UnusedHeader> header;
   le_uint32_t checksum; // can be random; client won't notice
   le_uint32_t numItems;
   le_uint32_t meseta;
@@ -3572,12 +4467,22 @@ struct G_BankContentsHeader_BB_6xBC {
 };
 
 // 6xBD: Unknown (Episode 3; not Trial Edition)
+
+// Note: This structure does not have a normal header - the client ID field is
+// big-endian!
+struct G_Unknown_GC_Ep3_6xBD {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  parray<le_uint16_t, 8> unknown_a3;
+  le_uint32_t unknown_a4;
+  le_uint32_t unknown_a5;
+};
+
 // 6xBD: BB bank action (take/deposit meseta/item) (handled by the server)
 
 struct G_BankAction_BB_6xBD {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t unused;
+  G_UnusedHeader header;
   le_uint32_t item_id; // 0xFFFFFFFF = meseta; anything else = item
   le_uint32_t meseta_amount;
   uint8_t action; // 0 = deposit, 1 = take
@@ -3586,28 +4491,42 @@ struct G_BankAction_BB_6xBD {
 };
 
 // 6xBE: Sound chat (Episode 3; not Trial Edition)
+
+struct G_SoundChat_GC_Ep3_6xBE {
+  G_UnusedHeader header;
+  le_uint32_t sound_id; // Must be < 0x27
+  be_uint32_t unknown_a1;
+};
+
 // 6xBE: BB create inventory item (server->client only)
 
 struct G_CreateInventoryItem_BB_6xBE {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   ItemData item;
   le_uint32_t unused;
 };
 
 // 6xBF: Change lobby music (Episode 3; not Trial Edition)
+
+struct G_ChangeLobbyMusic_GC_Ep3_6xBF {
+  G_UnusedHeader header;
+  le_uint32_t song_number; // Must be < 0x34
+};
+
 // 6xBF: Give EXP (BB) (server->client only)
 
 struct G_GiveExperience_BB_6xBF {
-  uint8_t subcommand;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   le_uint32_t amount;
 };
 
 // 6xC0: BB sell item at shop
-// Format is G_ItemSubcommand
+
+struct G_SellItemAtShop_BB_6xC0 {
+  G_UnusedHeader header;
+  le_uint32_t item_id;
+  le_uint32_t amount;
+};
 
 // 6xC1: Unknown
 // 6xC2: Unknown
@@ -3617,9 +4536,7 @@ struct G_GiveExperience_BB_6xBF {
 // item drop subcommand is generated instead.
 
 struct G_SplitStackedItem_6xC3 {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t client_id;
+  G_ClientIDHeader header;
   le_uint16_t area;
   le_uint16_t unused2;
   le_float x;
@@ -3631,9 +4548,7 @@ struct G_SplitStackedItem_6xC3 {
 // 6xC4: Sort inventory (handled by the server on BB)
 
 struct G_SortInventory_6xC4 {
-  uint8_t command;
-  uint8_t size;
-  le_uint16_t unused;
+  G_UnusedHeader header;
   le_uint32_t item_ids[30];
 };
 
@@ -3644,10 +4559,8 @@ struct G_SortInventory_6xC4 {
 // 6xC8: Enemy killed (handled by the server on BB)
 
 struct G_EnemyKilled_6xC8 {
-  uint8_t command;
-  uint8_t size;
+  G_EnemyIDHeader header;
   le_uint16_t enemy_id2;
-  le_uint16_t enemy_id;
   le_uint16_t killer_client_id;
   le_uint32_t unused;
 };
@@ -3724,7 +4637,8 @@ struct DeckCardRef { // Note: The game treats these as le_uint16_ts
 
 // 6xB4x02: Update hands and equips
 
-struct G_UpdateHand_GC_Ep3_6xB4x02 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_UpdateHand_GC_Ep3_6xB4x02 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   le_uint16_t client_id;
   le_uint16_t unused3;
   parray<uint8_t, 8> unknown_a1; // Dice values are in here somewhere
@@ -3743,7 +4657,8 @@ struct G_UpdateHand_GC_Ep3_6xB4x02 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_
 
 // 6xB4x03: Set state flags
 
-struct G_SetStateFlags_GC_Ep3_6xB4x03 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_SetStateFlags_GC_Ep3_6xB4x03 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   le_uint16_t unknown_a1;
   parray<uint8_t, 6> unknown_a2;
   parray<le_uint32_t, 2> unknown_a3;
@@ -3758,7 +4673,8 @@ struct G_SetStateFlags_GC_Ep3_6xB4x03 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6x
 
 // 6xB4x04: Update SC/FC stats
 
-struct G_UpdateStats_GC_Ep3_6xB4x04 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_UpdateStats_GC_Ep3_6xB4x04 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   le_uint16_t client_id;
   le_uint16_t unused;
   struct Entry {
@@ -3777,7 +4693,8 @@ struct G_UpdateStats_GC_Ep3_6xB4x04 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4
 
 // 6xB4x05: Update map state
 
-struct G_UpdateMap_GC_Ep3_6xB4x05 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_UpdateMap_GC_Ep3_6xB4x05 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   le_uint16_t width;
   le_uint16_t height;
   parray<uint8_t, 0x100> tiles;
@@ -3799,7 +4716,8 @@ struct G_UpdateMap_GC_Ep3_6xB4x05 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6
 
 // 6xB4x06: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x06 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x06 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   le_uint16_t unknown_a1;
   le_uint16_t unknown_a2;
   parray<uint8_t, 8> unknown_a3;
@@ -3807,7 +4725,8 @@ struct G_Unknown_GC_Ep3_6xB4x06 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x07: Update decks
 
-struct G_UpdateDecks_GC_Ep3_6xB4x07 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_UpdateDecks_GC_Ep3_6xB4x07 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   parray<uint8_t, 4> unknown_a1;
   struct Entry {
     ptext<char, 0x10> player_name;
@@ -3838,7 +4757,8 @@ struct G_Unknown_GC_Ep3_6xB4x09 {
 
 // 6xB4x0A: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x0A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x0A {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   le_uint16_t client_id;
   int8_t unknown_a1; // must be between -1 and 8 inclusive
   uint8_t unknown_a2;
@@ -3865,70 +4785,77 @@ struct G_Unknown_GC_Ep3_6xB4x0A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
   parray<le_uint16_t, 8> unknown_a15;
 };
 
-// 6xB3x0B: Unknown
+// 6xB3x0B / CAx0B: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x0B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  parray<uint8_t, 8> unknown_a1;
-  le_uint16_t client_id;
-  parray<uint8_t, 2> unknown_a2;
-  // Command may be longer than this structure
-};
-
-// 6xB3x0C: Unknown
-
-struct G_Unknown_GC_Ep3_6xB3x0C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  parray<uint8_t, 8> unknown_a1;
-  le_uint16_t client_id;
-  parray<uint8_t, 2> unknown_a2;
-  // Command may be longer than this structure
-};
-
-// 6xB3x0D: Unknown
-
-struct G_Unknown_GC_Ep3_6xB3x0D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB3x0B_CAx0B {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
   be_uint32_t unknown_a1;
-  parray<uint8_t, 4> unknown_a2;
   le_uint16_t client_id;
-  parray<le_uint16_t, 5> unknown_a3;
-  // Command may be longer than this structure
+  parray<uint8_t, 2> unknown_a2;
 };
 
-// 6xB3x0E: Unknown
+// 6xB3x0C / CAx0C: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x0E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  parray<uint8_t, 8> unknown_a1;
+struct G_Unknown_GC_Ep3_6xB3x0C_CAx0C {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
+  le_uint16_t client_id;
+  parray<uint8_t, 2> unknown_a2;
+};
+
+// 6xB3x0D / CAx0D: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x0D_CAx0D {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
+  le_uint16_t client_id;
+  parray<le_uint16_t, 5> unknown_a2;
+};
+
+// 6xB3x0E / CAx0E: Unknown
+
+struct G_Unknown_GC_Ep3_6xB3x0E_CAx0E {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
   le_uint16_t client_id;
   le_uint16_t unknown_a2;
-  // Command may be longer than this structure
 };
 
-// 6xB3x0F: Unknown
+// 6xB3x0F / CAx0F: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x0F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  parray<uint8_t, 8> unknown_a1;
+struct G_Unknown_GC_Ep3_6xB3x0F_CAx0F {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
   le_uint16_t client_id;
   parray<le_uint16_t, 3> unknown_a2;
   parray<uint8_t, 2> unknown_a3;
   parray<uint8_t, 2> unused;
-  // Command may be longer than this structure
 };
 
-// 6xB3x10: Unknown
+// 6xB3x10 / CAx10: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x10 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  parray<uint8_t, 8> unknown_a1;
+struct G_Unknown_GC_Ep3_6xB3x10_CAx10 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
   le_uint16_t client_id;
   le_uint16_t unknown_a2;
   // Note: This field's type is the same as the corresponding field in 6xB3x0F
   parray<uint8_t, 2> unknown_a3;
   parray<uint8_t, 2> unused;
-  // Command may be longer than this structure
 };
 
-// 6xB3x11: Unknown
+// 6xB3x11 / CAx11: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x11 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  parray<uint8_t, 8> unknown_a1;
+struct G_Unknown_GC_Ep3_6xB3x11_CAx11 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
   le_uint16_t client_id;
   parray<uint8_t, 2> unknown_a2;
 
@@ -3944,19 +4871,22 @@ struct G_Unknown_GC_Ep3_6xB3x11 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
   le_uint16_t unknown_a10;
 };
 
-// 6xB3x12: Unknown
+// 6xB3x12 / CAx12: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x12 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB3x12_CAx12 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
   be_uint32_t unknown_a1;
-  parray<uint8_t, 4> unknown_a2;
   le_uint16_t client_id;
   parray<uint8_t, 2> unknown_a3;
 };
 
-// 6xB3x13: Unknown
+// 6xB3x13 / CAx13: Update game state
 
-struct G_Unknown_GC_Ep3_6xB3x13 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  parray<uint8_t, 8> unknown_a1;
+struct G_UpdateGameState_GC_Ep3_6xB3x13_CAx13 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
 
   // Note: This section's format is a guess based on the fact that the client
   // calls the same function to byteswap it as for the update map command above.
@@ -3969,61 +4899,69 @@ struct G_Unknown_GC_Ep3_6xB3x13 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
   uint8_t unknown_a4;
   parray<uint8_t, 0x03> unknown_a5;
   le_uint16_t unknown_a6;
-  // 120 from subcommand start
   parray<uint8_t, 0x04> unknown_a7;
   le_uint32_t map_number;
   le_uint32_t unknown_a8;
   Ep3BattleRules rules;
   parray<uint8_t, 4> unknown_a9;
 
+  parray<uint8_t, 0x100> overlay_tiles;
   parray<le_uint32_t, 5> unknown_a10;
   parray<le_uint32_t, 0x10> unknown_a11;
   parray<le_uint16_t, 0x10> unknown_a12;
 };
 
-// 6xB3x14: Unknown
+// 6xB3x14 / CAx14: Update field state
 
-struct G_Unknown_GC_Ep3_6xB3x14 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  parray<uint8_t, 8> unknown_a1;
+struct G_UpdateFieldState_GC_Ep3_6xB3x14_CAx14 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
   le_uint16_t client_id;
   parray<uint8_t, 2> unknown_a2;
+
   parray<uint8_t, 0x10> name;
+  le_uint32_t unknown_a3;
   parray<le_uint16_t, 0x1F> card_ids;
-  parray<uint8_t, 2> unknown_a3;
-  le_uint16_t unknown_a4;
-  parray<uint8_t, 2> unknown_a5;
+  parray<uint8_t, 2> unknown_a4;
+  le_uint16_t unknown_a5;
+  parray<uint8_t, 2> unknown_a6;
 };
 
 // 6xB3x15: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x15 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB3x15 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // No arguments
 };
 
 // 6xB5x17: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x17 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x17 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // No arguments
 };
 
 // 6xB5x1A: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x1A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x1A {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // No arguments
 };
 
-// 6xB3x1B: Unknown
+// 6xB3x1B / CAx1B: Update names
 
-struct G_Unknown_GC_Ep3_6xB3x1B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  // The handler reads a byte from offset 0x20 after the subcommand start (which
-  // would be offset 0x18 in this struct), so the command must be at least 0x1C
-  // bytes in total. It is unlikely to be longer, but I have no examples.
-  parray<uint8_t, 0x1C> unknown_a1;
+struct G_UpdateNames_GC_Ep3_6xB3x1B_CAx1B {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
+  parray<uint8_t, 0x14> unknown_a2;
 };
 
 // 6xB4x1C: Set player names
 
-struct G_Unknown_GC_Ep3_6xB4x1C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x1C {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   struct Entry {
     ptext<char, 0x10> name;
     uint8_t client_id; // 0xFF if slot is empty
@@ -4033,15 +4971,18 @@ struct G_Unknown_GC_Ep3_6xB4x1C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
   Entry entries[4];
 };
 
-// 6xB3x1D: Unknown
+// 6xB3x1D / CAx1D: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x1D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  // No arguments
+struct G_Unknown_GC_Ep3_6xB3x1D_CAx1D {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
 };
 
 // 6xB4x1E: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x1E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x1E {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   be_uint32_t unknown_a1;
   uint8_t unknown_a2;
   uint8_t unknown_a3;
@@ -4050,34 +4991,41 @@ struct G_Unknown_GC_Ep3_6xB4x1E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x1F: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x1F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x1F {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   le_uint32_t unknown_a1;
 };
 
 // 6xB5x20: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x20 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x20 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
   uint8_t client_id;
   parray<uint8_t, 3> unused;
 };
 
-// 6xB3x21: Unknown
+// 6xB3x21 / CAx21: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x21 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  // No arguments
+struct G_Unknown_GC_Ep3_6xB3x21_CAx21 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
 };
 
 // 6xB4x22: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x22 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x22 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // No arguments
 };
 
 // 6xB4x23: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x23 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x23 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // This command does nothing at all. If unknown_a1 == 1, then it calls another
   // function, but that function also does nothing.
   uint8_t unknown_a1;
@@ -4087,7 +5035,8 @@ struct G_Unknown_GC_Ep3_6xB4x23 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x27: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x27 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x27 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Note: This command uses header_b1 as well, which looks like another client
   // ID (it must be < 4, though it does not always match unknown_a1 below).
   le_uint32_t unknown_a1; // Probably client ID (must be < 4)
@@ -4096,18 +5045,21 @@ struct G_Unknown_GC_Ep3_6xB5x27 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
   le_uint32_t unused; // Curiously, this usually contains a memory address
 };
 
-// 6xB3x28: Unknown
+// 6xB3x28 / CAx28: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x28 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB3x28_CAx28 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
   be_uint32_t unknown_a1;
-  parray<uint8_t, 5> unused1;
+  uint8_t unused1;
   int8_t unknown_a2;
   parray<uint8_t, 2> unused2;
 };
 
 // 6xB4x29: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x29 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x29 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   parray<uint8_t, 4> unknown_a1;
 
   // Note: This is byteswapped by the same function as the corresponding part of
@@ -4124,22 +5076,27 @@ struct G_Unknown_GC_Ep3_6xB4x29 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x2A: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x2A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x2A {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   parray<uint8_t, 4> unknown_a1;
   le_uint16_t unknown_a2;
   parray<uint8_t, 2> unused;
 };
 
-// 6xB3x2B: Unknown
+// 6xB3x2B / CAx2B: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x2B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  // This command is completely ignored by the client. Its structure (if any) is
-  // unknown.
+struct G_Unknown_GC_Ep3_6xB3x2B_CAx2B {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
+  le_uint16_t unknown_a2;
+  parray<uint8_t, 2> unknown_a3;
 };
 
 // 6xB4x2C: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x2C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x2C {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   uint8_t unknown_a1;
   uint8_t unknown_a2; // Only used if the preceding field == 3
   parray<le_uint16_t, 3> unknown_a3;
@@ -4149,7 +5106,8 @@ struct G_Unknown_GC_Ep3_6xB4x2C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x2D: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x2D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x2D {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // This array is indexed into by a global variable. I don't have any examples
   // of this command, so I don't know how long the array should be - 4 is a
   // probably-incorrect guess.
@@ -4158,14 +5116,16 @@ struct G_Unknown_GC_Ep3_6xB5x2D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x2E: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x2E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x2E {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   uint8_t unknown_a1; // Command ignored unless this is 0 or 1
   parray<uint8_t, 3> unused;
 };
 
 // 6xB5x2F: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x2F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x2F {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   parray<uint8_t, 4> unknown_a1;
 
   parray<uint8_t, 0x18> unknown_a2;
@@ -4181,13 +5141,15 @@ struct G_Unknown_GC_Ep3_6xB5x2F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x30: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x30 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x30 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // No arguments
 };
 
 // 6xB5x31: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x31 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x31 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Note: This command uses header_b1 for... something.
   uint8_t unknown_a1; // Must be 0 or 1
   uint8_t unknown_a2; // Must be < 4
@@ -4199,7 +5161,8 @@ struct G_Unknown_GC_Ep3_6xB5x31 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x32: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x32 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x32 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Note: This command uses header_b1 for... something.
   le_uint16_t unknown_a1;
   le_uint16_t unknown_a2;
@@ -4208,16 +5171,19 @@ struct G_Unknown_GC_Ep3_6xB5x32 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x33: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x33 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x33 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   uint8_t unknown_a1;
   uint8_t unused;
   le_uint16_t unknown_a2;
 };
 
-// 6xB3x34: Unknown
+// 6xB3x34 / CAx34: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x34 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  parray<uint8_t, 8> unknown_a1;
+struct G_Unknown_GC_Ep3_6xB3x34_CAx34 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
   uint8_t client_id;
   uint8_t unknown_a2;
   le_uint16_t unknown_a3; // Possibly DeckCardRef
@@ -4225,7 +5191,8 @@ struct G_Unknown_GC_Ep3_6xB3x34 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x35: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x35 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x35 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   uint8_t unknown_a1;
   uint8_t unknown_a2;
   le_uint16_t unknown_a3;
@@ -4233,14 +5200,16 @@ struct G_Unknown_GC_Ep3_6xB4x35 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x36: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x36 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x36 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   uint8_t unknown_a1; // Must be < 12 (maybe lobby or spectator team client ID)
   parray<uint8_t, 3> unused;
 };
 
 // 6xB3x37: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x37 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB3x37 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   parray<uint8_t, 8> unused1;
   uint8_t unknown_a1;
   parray<uint8_t, 3> unused2;
@@ -4248,7 +5217,8 @@ struct G_Unknown_GC_Ep3_6xB3x37 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x38: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x38 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x38 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   uint8_t unknown_a1;
   uint8_t unknown_a2;
   parray<uint8_t, 2> unused;
@@ -4256,7 +5226,8 @@ struct G_Unknown_GC_Ep3_6xB5x38 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x39: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x39 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x39 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   struct Entry {
     parray<le_uint16_t, 0x13> unknown_a1;
     parray<uint8_t, 2> unknown_a2;
@@ -4264,22 +5235,25 @@ struct G_Unknown_GC_Ep3_6xB4x39 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
   Entry entries[4];
 };
 
-// 6xB3x3A: Unknown
+// 6xB3x3A / CAx3A: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x3A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  // This command is completely ignored by the client. Its structure (if any) is
-  // unknown.
+struct G_Unknown_GC_Ep3_6xB3x3A_CAx3A {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
 };
 
 // 6xB4x3B: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x3B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x3B {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   parray<uint8_t, 4> unused;
 };
 
 // 6xB5x3C: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x3C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x3C {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Note: This command uses header_b1 for... something.
   uint8_t unknown_a1;
   parray<uint8_t, 3> unused;
@@ -4287,7 +5261,8 @@ struct G_Unknown_GC_Ep3_6xB5x3C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x3D: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x3D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x3D {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   parray<uint8_t, 0x14> unknown_a1;
   struct Entry {
     uint8_t type; // 1 = human, 2 = COM
@@ -4309,7 +5284,8 @@ struct G_Unknown_GC_Ep3_6xB4x3D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x3E: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x3E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x3E {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Note: This command uses header_b1 for... something.
   uint8_t unknown_a1;
   uint8_t unknown_a2;
@@ -4318,7 +5294,8 @@ struct G_Unknown_GC_Ep3_6xB5x3E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x3F: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x3F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x3F {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   int8_t unknown_a1; // Must be in the range [-1, 0x14]
   uint8_t unknown_a2; // Must be < 4
   parray<uint8_t, 2> unused1;
@@ -4326,29 +5303,38 @@ struct G_Unknown_GC_Ep3_6xB5x3F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
   parray<uint8_t, 4> unused2;
 };
 
-// 6xB3x40: Unknown
+// 6xB3x40 / CAx40: Map list request
+// If sent to a client as 6xB3x40, the client ignores the command completely. If
+// sent to the server, the server should respond with a 6xB6x40 command.
 
-struct G_Unknown_GC_Ep3_6xB3x40 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  // This command is completely ignored by the client. Its structure (if any) is
-  // unknown. It's possible that this command was replaced by 6xB6x40.
+struct G_MapListRequest_GC_Ep3_6xB3x40_CAx40 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
 };
 
-// 6xB3x41: Unknown
+// 6xB3x41 / CAx41: Map data request
+// If sent to a client as 6xB3x41, the client ignores the command completely. If
+// sent to the server, the server should respond with a 6xB6x41 command.
 
-struct G_Unknown_GC_Ep3_6xB3x41 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  // This command is completely ignored by the client. Its structure (if any) is
-  // unknown. It's possible that this command was replaced by 6xB6x41.
+struct G_MapDataRequest_GC_Ep3_6xB3x41_CAx41 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
+  le_uint32_t map_number;
 };
 
 // 6xB5x42: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x42 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x42 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // This command uses header_b1, but has no other arguments.
 };
 
 // 6xB5x43: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x43 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x43 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   struct Entry {
     // Both fields here are masked. To get the actual values used by the game,
     // XOR the values here with 0x39AB.
@@ -4360,21 +5346,24 @@ struct G_Unknown_GC_Ep3_6xB5x43 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x44: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x44 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x44 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Note: This command uses header_b1, which must be < 4.
   parray<le_uint16_t, 8> unknown_a1;
 };
 
 // 6xB5x45: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x45 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x45 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Note: This command uses header_b1, which must be < 4.
   parray<parray<le_uint16_t, 4>, 8> unknown_a1;
 };
 
 // 6xB4x46: Start battle
 
-struct G_Unknown_GC_Ep3_6xB4x46 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x46 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // In all of the examples (from Sega's servers) that I've seen of this
   // command, these fields have the following values:
   // version_signature = "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
@@ -4388,30 +5377,36 @@ struct G_Unknown_GC_Ep3_6xB4x46 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB5x47: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x47 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB5x47 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Note: This command uses header_b1, which must be < 12.
   le_uint32_t unknown_a1;
 };
 
-// 6xB3x48: Unknown
+// 6xB3x48 / CAx48: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x48 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB3x48_CAx48 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
   be_uint32_t unknown_a1;
-  parray<uint8_t, 4> unused1;
   uint8_t unknown_a2;
   parray<uint8_t, 3> unused2;
 };
 
-// 6xB3x49: Unknown
+// 6xB3x49 / CAx49: Unknown
 
-struct G_Unknown_GC_Ep3_6xB3x49 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
-  // This command is completely ignored by the client. Its structure (if any) is
-  // unknown. It's possible that this command was replaced by 6xB6x41.
+struct G_Unknown_GC_Ep3_6xB3x49_CAx49 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  be_uint32_t sequence_number;
+  be_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
+  parray<uint8_t, 0x2F0> unknown_a3;
 };
 
 // 6xB4x4A: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x4A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x4A {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Note: entry_count appears not to be bounds-checked; presumably the server
   // could send up to 0xFF entries, but those after the 8th would not be
   // byteswapped before the client handles them.
@@ -4423,7 +5418,8 @@ struct G_Unknown_GC_Ep3_6xB4x4A : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x4B: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x4B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x4B {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // If any of the entries [0][1] through [0][10] or [1][1] through [1][10] are
   // < -99 or > 99, the entire command is ignored.
   parray<parray<le_int16_t, 20>, 2> unknown_a1;
@@ -4431,7 +5427,8 @@ struct G_Unknown_GC_Ep3_6xB4x4B : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x4C: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x4C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x4C {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   uint8_t unknown_a1; // Must be < 4
   int8_t unknown_a2; // Must be in [-1, 8]
   parray<uint8_t, 2> unknown_a3;
@@ -4447,7 +5444,8 @@ struct G_Unknown_GC_Ep3_6xB4x4C : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x4D: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x4D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x4D {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   uint8_t unknown_a1; // Must be < 4
   int8_t unknown_a2; // Must be in [-1, 8]
   parray<uint8_t, 2> unknown_a3;
@@ -4462,7 +5460,8 @@ struct G_Unknown_GC_Ep3_6xB4x4D : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x4E: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x4E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x4E {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   uint8_t unknown_a1; // Must be < 4
   int8_t unknown_a2; // Must be in [-1, 8]
   parray<uint8_t, 2> unknown_a3;
@@ -4476,7 +5475,8 @@ struct G_Unknown_GC_Ep3_6xB4x4E : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x4F: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x4F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x4F {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   uint8_t unknown_a1;
   uint8_t unused;
   le_uint16_t unknown_a2; // Bitmask; the 9 low-order bits are used
@@ -4484,13 +5484,15 @@ struct G_Unknown_GC_Ep3_6xB4x4F : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x50: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x50 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x50 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   parray<uint8_t, 0x0C> unknown_a1;
 };
 
 // 6xB4x51: Tournament match info
 
-struct G_Unknown_GC_Ep3_6xB4x51 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x51 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   ptext<char, 0x40> match_description;
   struct Entry {
     ptext<char, 0x20> team_name;
@@ -4509,7 +5511,8 @@ struct G_Unknown_GC_Ep3_6xB4x51 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x52: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x52 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x52 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   le_uint16_t unknown_a1;
   le_uint16_t unknown_a2;
   le_uint16_t unknown_a3;
@@ -4519,7 +5522,8 @@ struct G_Unknown_GC_Ep3_6xB4x52 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
 
 // 6xB4x53: Unknown
 
-struct G_Unknown_GC_Ep3_6xB4x53 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 {
+struct G_Unknown_GC_Ep3_6xB4x53 {
+  G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Note: It seems the client ignores everything in this structure. The command
   // just sets a global state flag, then returns immediately.
 
@@ -4536,7 +5540,7 @@ struct G_Unknown_GC_Ep3_6xB4x53 : G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB
   le_uint16_t unknown_a6;
   parray<uint8_t, 0x04> unknown_a7;
   le_uint32_t map_number;
-  // Comamnd may be larger than this structure
+  // Command may be larger than this structure
 };
 
 

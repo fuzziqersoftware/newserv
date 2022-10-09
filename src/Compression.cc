@@ -156,9 +156,9 @@ static int16_t get_u8_or_eof(StringReader& r) {
   return r.eof() ? -1 : r.get_u8();
 }
 
-string prs_decompress(const string& data, size_t max_size) {
+string prs_decompress(const void* data, size_t size, size_t max_output_size) {
   string output;
-  StringReader r(data.data(), data.size());
+  StringReader r(data, size);
 
   int32_t r3, r5;
   int bitpos = 9;
@@ -189,7 +189,7 @@ string prs_decompress(const string& data, size_t max_size) {
         return output;
       }
       output += static_cast<char>(ch);
-      if (max_size && (output.size() > max_size)) {
+      if (max_output_size && (output.size() > max_output_size)) {
         throw runtime_error("maximum output size exceeded");
       }
       continue;
@@ -258,14 +258,18 @@ string prs_decompress(const string& data, size_t max_size) {
     t = r3;
     for (x = 0; x < t; x++) {
       output += output.at(output.size() + r5);
-      if (max_size && (output.size() > max_size)) {
+      if (max_output_size && (output.size() > max_output_size)) {
         throw runtime_error("maximum output size exceeded");
       }
     }
   }
 }
 
-size_t prs_decompress_size(const string& data, size_t max_size) {
+string prs_decompress(const string& data, size_t max_output_size) {
+  return prs_decompress(data.data(), data.size(), max_output_size);
+}
+
+size_t prs_decompress_size(const string& data, size_t max_output_size) {
   size_t output_size = 0;
   StringReader r(data.data(), data.size());
 
@@ -298,7 +302,7 @@ size_t prs_decompress_size(const string& data, size_t max_size) {
         return output_size;
       }
       output_size++;
-      if (max_size && (output_size > max_size)) {
+      if (max_output_size && (output_size > max_output_size)) {
         throw runtime_error("maximum output size exceeded");
       }
       continue;
@@ -363,7 +367,7 @@ size_t prs_decompress_size(const string& data, size_t max_size) {
       continue;
     }
     output_size += r3;
-    if (max_size && (output_size > max_size)) {
+    if (max_output_size && (output_size > max_output_size)) {
       throw runtime_error("maximum output size exceeded");
     }
   }

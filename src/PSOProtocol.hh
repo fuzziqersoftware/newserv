@@ -47,12 +47,6 @@ union PSOCommandHeader {
   PSOCommandHeader();
 } __attribute__((packed));
 
-union PSOSubcommand {
-  uint8_t byte[4];
-  le_uint16_t word[2];
-  le_uint32_t dword;
-} __attribute__((packed));
-
 // This function is used in a lot of places to check received command sizes and
 // cast them to the appropriate type
 template <typename T>

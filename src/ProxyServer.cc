@@ -215,10 +215,16 @@ void ProxyServer::on_client_connect(
         auto cmd = prepare_server_init_contents_bb(server_key, client_key, 0);
         session->channel.send(0x03, 0x00, &cmd, sizeof(cmd));
         session->detector_crypt.reset(new PSOBBMultiKeyDetectorEncryption(
-            this->state->bb_private_keys, bb_crypt_initial_client_commands, cmd.client_key.data(), sizeof(cmd.client_key)));
+            this->state->bb_private_keys,
+            bb_crypt_initial_client_commands,
+            cmd.basic_cmd.client_key.data(),
+            sizeof(cmd.basic_cmd.client_key)));
         session->channel.crypt_in = session->detector_crypt;
         session->channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
-            session->detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true));
+            session->detector_crypt,
+            cmd.basic_cmd.server_key.data(),
+            sizeof(cmd.basic_cmd.server_key),
+            true));
         break;
       }
       default:
@@ -491,7 +497,7 @@ ProxyServer::LinkedSession::LinkedSession(
     lobby_client_id(0),
     leader_client_id(0),
     is_in_game(false) {
-  this->last_switch_enabled_command.subcommand = 0;
+  this->last_switch_enabled_command.header.subcommand = 0;
   memset(this->prev_server_command_bytes, 0, sizeof(this->prev_server_command_bytes));
 }
 

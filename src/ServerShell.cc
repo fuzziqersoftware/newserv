@@ -327,13 +327,9 @@ Proxy commands (these will only work when exactly one client is connected):\n\
   } else if (command_name == "warp") {
     auto session = this->get_proxy_session();
 
-    PSOSubcommand cmds[2];
-    cmds[0].word[0] = 0x0294;
-    cmds[0].word[1] = session->lobby_client_id;
-    cmds[1].dword = stoul(command_args);
-
-    session->client_channel.send(0x60, 0x00, &cmds, sizeof(cmds));
-    session->server_channel.send(0x60, 0x00, &cmds, sizeof(cmds));
+    uint8_t area = stoul(command_args);
+    send_warp(session->client_channel, session->lobby_client_id, area);
+    send_warp(session->server_channel, session->lobby_client_id, area);
 
   } else if ((command_name == "info-board") || (command_name == "info-board-data")) {
     auto session = this->get_proxy_session();

@@ -836,13 +836,24 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
 
   if (session.save_files) {
     if ((session.version == GameVersion::GC) && (data.size() >= 0x14)) {
-      PSOSubcommand* subs = &check_size_t<PSOSubcommand>(data, 0x14, 0xFFFF);
-      if (subs[0].dword == 0x000000B6 && subs[2].dword == 0x00000041) {
-        string filename = string_printf("map%08" PRIX32 ".%" PRIu64 ".mnmd",
-            subs[3].dword.load(), now());
-        string map_data = prs_decompress(data.substr(0x14));
-        save_file(filename, map_data);
-        session.log.warning("Wrote %zu bytes to %s", map_data.size(), filename.c_str());
+      if (static_cast<uint8_t>(data[0]) == 0xB6) {
+        const auto& header = check_size_t<G_MapSubsubcommand_GC_Ep3_6xB6>(
+            data, sizeof(G_MapSubsubcommand_GC_Ep3_6xB6), 0xFFFF);
+        if (header.subsubcommand == 0x00000041) {
+          const auto& cmd = check_size_t<G_MapData_GC_Ep3_6xB6x41>(
+              data, sizeof(G_MapData_GC_Ep3_6xB6x41), 0xFFFF);
+          string filename = string_printf("map%08" PRIX32 ".%" PRIu64 ".mnmd",
+              cmd.map_number.load(), now());
+          string map_data = prs_decompress(
+              data.data() + sizeof(cmd), data.size() - sizeof(cmd));
+          save_file(filename, map_data);
+          if (map_data.size() != sizeof(Ep3Map)) {
+            session.log.warning("Wrote %zu bytes to %s (expected %zu bytes; the file may be invalid)",
+                map_data.size(), filename.c_str(), sizeof(Ep3Map));
+          } else {
+            session.log.info("Wrote %zu bytes to %s", map_data.size(), filename.c_str());
+          }
+        }
       }
     }
   }
@@ -850,7 +861,31 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
   if (!data.empty() &&
       session.next_drop_item.data.data1d[0] &&
       (session.version != GameVersion::BB)) {
-    if (data[0] == 0x60) {
+    if (data[0] == 0x46) {
+      const auto& cmd = check_size_t<G_AttackFinished_6x46>(data,
+          offsetof(G_AttackFinished_6x46, entries),
+          sizeof(G_AttackFinished_6x46));
+      if ((cmd.count > 11) || (cmd.count > cmd.header.size - 2)) {
+        session.log.warning("Blocking subcommand 6x46 with invalid count");
+        return HandlerResult::Type::SUPPRESS;
+      }
+    } else if (data[0] == 0x47) {
+      const auto& cmd = check_size_t<G_CastTechnique_6x47>(data,
+          offsetof(G_CastTechnique_6x47, targets),
+          sizeof(G_CastTechnique_6x47));
+      if ((cmd.target_count > 10) || (cmd.target_count > cmd.header.size - 2)) {
+        session.log.warning("Blocking subcommand 6x47 with invalid count");
+        return HandlerResult::Type::SUPPRESS;
+      }
+    } else if (data[0] == 0x49) {
+      const auto& cmd = check_size_t<G_SubtractPBEnergy_6x49>(data,
+          offsetof(G_SubtractPBEnergy_6x49, entries),
+          sizeof(G_SubtractPBEnergy_6x49));
+      if ((cmd.entry_count > 14) || (cmd.entry_count > cmd.header.size - 2)) {
+        session.log.warning("Blocking subcommand 6x49 with invalid count");
+        return HandlerResult::Type::SUPPRESS;
+      }
+    } else if (data[0] == 0x60) {
       const auto& cmd = check_size_t<G_EnemyDropItemRequest_DC_6x60>(data,
           sizeof(G_EnemyDropItemRequest_DC_6x60),
           sizeof(G_EnemyDropItemRequest_PC_V3_BB_6x60));
@@ -1242,30 +1277,13 @@ static HandlerResult C_6x(shared_ptr<ServerState> s,
   if (!data.empty()) {
     if (data[0] == 0x2F || data[0] == 0x4B || data[0] == 0x4C) {
       if (session.infinite_hp) {
-        vector<PSOSubcommand> subs;
-        for (size_t amount = 1020; amount > 0;) {
-          auto& sub1 = subs.emplace_back();
-          sub1.word[0] = 0x029A;
-          sub1.byte[2] = session.lobby_client_id;
-          sub1.byte[3] = 0x00;
-          auto& sub2 = subs.emplace_back();
-          sub2.word[0] = 0x0000;
-          sub2.byte[2] = PlayerStatsChange::ADD_HP;
-          sub2.byte[3] = (amount > 0xFF) ? 0xFF : amount;
-          amount -= sub2.byte[3];
-        }
-        session.client_channel.send(0x60, 0x00, subs.data(), subs.size() * sizeof(PSOSubcommand));
+        send_player_stats_change(session.client_channel,
+            session.lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
       }
     } else if (data[0] == 0x48) {
       if (session.infinite_tp) {
-        PSOSubcommand subs[2];
-        subs[0].word[0] = 0x029A;
-        subs[0].byte[2] = session.lobby_client_id;
-        subs[0].byte[3] = 0x00;
-        subs[1].word[0] = 0x0000;
-        subs[1].byte[2] = PlayerStatsChange::ADD_TP;
-        subs[1].byte[3] = 0xFF;
-        session.client_channel.send(0x60, 0x00, &subs[0], sizeof(subs));
+        send_player_stats_change(session.client_channel,
+            session.lobby_client_id, PlayerStatsChange::ADD_TP, 255);
       }
     }
   }
@@ -1284,8 +1302,8 @@ HandlerResult C_6x<void>(shared_ptr<ServerState>,
 
   if (!data.empty() && (data[0] == 0x05) && session.switch_assist) {
     auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
-    if (cmd.enabled && cmd.switch_id != 0xFFFF) {
-      if (session.last_switch_enabled_command.subcommand == 0x05) {
+    if (cmd.flags && cmd.header.object_id != 0xFFFF) {
+      if (session.last_switch_enabled_command.header.subcommand == 0x05) {
         session.log.info("Switch assist: replaying previous enable command");
         session.server_channel.send(0x60, 0x00, &session.last_switch_enabled_command,
             sizeof(session.last_switch_enabled_command));

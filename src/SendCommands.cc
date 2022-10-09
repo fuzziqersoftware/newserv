@@ -121,10 +121,10 @@ prepare_server_init_contents_console(
     uint32_t server_key, uint32_t client_key, uint8_t flags) {
   bool initial_connection = (flags & SendServerInitFlag::IS_INITIAL_CONNECTION);
   S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xB4> cmd;
-  cmd.copyright = initial_connection
+  cmd.basic_cmd.copyright = initial_connection
       ? dc_port_map_copyright : dc_lobby_server_copyright;
-  cmd.server_key = server_key;
-  cmd.client_key = client_key;
+  cmd.basic_cmd.server_key = server_key;
+  cmd.basic_cmd.client_key = client_key;
   cmd.after_message = anti_copyright;
   return cmd;
 }
@@ -165,9 +165,9 @@ prepare_server_init_contents_bb(
     uint8_t flags) {
   bool use_secondary_message = (flags & SendServerInitFlag::USE_SECONDARY_MESSAGE);
   S_ServerInitWithAfterMessage_BB_03_9B<0xB4> cmd;
-  cmd.copyright = use_secondary_message ? bb_pm_server_copyright : bb_game_server_copyright;
-  cmd.server_key = server_key;
-  cmd.client_key = client_key;
+  cmd.basic_cmd.copyright = use_secondary_message ? bb_pm_server_copyright : bb_game_server_copyright;
+  cmd.basic_cmd.server_key = server_key;
+  cmd.basic_cmd.client_key = client_key;
   cmd.after_message = anti_copyright;
   return cmd;
 }
@@ -187,11 +187,12 @@ void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt(new PSOBBMultiKeyDetectorEncryption(
       s->bb_private_keys,
       bb_crypt_initial_client_commands,
-      cmd.client_key.data(),
-      sizeof(cmd.client_key)));
+      cmd.basic_cmd.client_key.data(),
+      sizeof(cmd.basic_cmd.client_key)));
   c->channel.crypt_in = detector_crypt;
   c->channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
-      detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true));
+      detector_crypt, cmd.basic_cmd.server_key.data(),
+      sizeof(cmd.basic_cmd.server_key), true));
 }
 
 void send_server_init_patch(shared_ptr<Client> c) {
@@ -778,9 +779,9 @@ void send_guild_card_dc_pc_v3_t(
     uint8_t section_id,
     uint8_t char_class) {
   CmdT cmd;
-  cmd.subcommand = 0x06;
-  cmd.size = sizeof(CmdT) / 4;
-  cmd.unused = 0x0000;
+  cmd.header.subcommand = 0x06;
+  cmd.header.size = sizeof(CmdT) / 4;
+  cmd.header.unused = 0x0000;
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = guild_card_number;
   cmd.name = name;
@@ -802,9 +803,9 @@ static void send_guild_card_bb(
     uint8_t section_id,
     uint8_t char_class) {
   G_SendGuildCard_BB_6x06 cmd;
-  cmd.subcommand = 0x06;
-  cmd.size = sizeof(cmd) / 4;
-  cmd.unused = 0x0000;
+  cmd.header.subcommand = 0x06;
+  cmd.header.size = sizeof(cmd) / 4;
+  cmd.header.unused = 0x0000;
   cmd.guild_card_number = guild_card_number;
   cmd.name = remove_language_marker(name);
   cmd.team_name = remove_language_marker(team_name);
@@ -1378,84 +1379,54 @@ void send_resume_game(shared_ptr<Lobby> l, shared_ptr<Client> ready_client) {
 ////////////////////////////////////////////////////////////////////////////////
 // Game/cheat commands
 
-// sends an HP/TP/Meseta modifying command (see flag definitions in command-functions.h)
+static vector<G_UpdatePlayerStat_6x9A> generate_stats_change_subcommands(
+    uint16_t client_id, PlayerStatsChange stat, uint32_t amount) {
+  if (amount > (0x7BF8 * 0xFF) / sizeof(G_UpdatePlayerStat_6x9A)) {
+    throw runtime_error("stats change command is too large");
+  }
+
+  uint8_t stat_ch = static_cast<uint8_t>(stat);
+  vector<G_UpdatePlayerStat_6x9A> subs;
+  while (amount > 0) {
+    uint8_t sub_amount = min<size_t>(amount, 0xFF);
+    subs.emplace_back(G_UpdatePlayerStat_6x9A{{0x9A, 0x02, client_id}, 0, stat_ch, sub_amount});
+    amount -= sub_amount;
+  }
+  return subs;
+}
+
 void send_player_stats_change(shared_ptr<Lobby> l, shared_ptr<Client> c,
     PlayerStatsChange stat, uint32_t amount) {
+  auto subs = generate_stats_change_subcommands(c->lobby_client_id, stat, amount);
+  send_command_vt(l, (subs.size() > 0x400 / sizeof(G_UpdatePlayerStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
+}
 
-  if (amount > 2550) {
-    throw invalid_argument("amount cannot be larger than 2550");
-  }
-
-  vector<PSOSubcommand> subs;
-  while (amount > 0) {
-    {
-      auto& sub = subs.emplace_back();
-      sub.byte[0] = 0x9A;
-      sub.byte[1] = 0x02;
-      sub.byte[2] = c->lobby_client_id;
-      sub.byte[3] = 0x00;
-    }
-    {
-      auto& sub = subs.emplace_back();
-      sub.byte[0] = 0x00;
-      sub.byte[1] = 0x00;
-      sub.byte[2] = stat;
-      sub.byte[3] = (amount > 0xFF) ? 0xFF : amount;
-      amount -= sub.byte[3];
-    }
-  }
-
-  send_command_vt(l, 0x60, 0x00, subs);
+void send_player_stats_change(Channel& ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount) {
+  auto subs = generate_stats_change_subcommands(client_id, stat, amount);
+  send_command_vt(ch, (subs.size() > 0x400 / sizeof(G_UpdatePlayerStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
 void send_warp(Channel& ch, uint8_t client_id, uint32_t area) {
-  PSOSubcommand cmds[2];
-  cmds[0].byte[0] = 0x94;
-  cmds[0].byte[1] = 0x02;
-  cmds[0].byte[2] = client_id;
-  cmds[0].byte[3] = 0x00;
-  cmds[1].dword = area;
-  ch.send(0x62, client_id, cmds, 8);
+  G_InterLevelWarp_6x94 cmd = {{0x94, 0x02, 0}, area, {}};
+  ch.send(0x62, client_id, &cmd, sizeof(cmd));
 }
 
 void send_warp(shared_ptr<Client> c, uint32_t area) {
-  PSOSubcommand cmds[2];
-  cmds[0].byte[0] = 0x94;
-  cmds[0].byte[1] = 0x02;
-  cmds[0].byte[2] = c->lobby_client_id;
-  cmds[0].byte[3] = 0x00;
-  cmds[1].dword = area;
-  send_command(c, 0x62, c->lobby_client_id, cmds, 8);
+  send_warp(c->channel, c->lobby_client_id, area);
   c->area = area;
 }
 
 void send_ep3_change_music(shared_ptr<Client> c, uint32_t song) {
-  PSOSubcommand cmds[2];
-  cmds[0].byte[0] = 0xBF;
-  cmds[0].byte[1] = 0x02;
-  cmds[0].byte[2] = c->lobby_client_id;
-  cmds[0].byte[3] = 0x00;
-  cmds[1].dword = song;
-  send_command(c, 0x60, 0x00, cmds, 8);
+  G_ChangeLobbyMusic_GC_Ep3_6xBF cmd = {{0xBF, 0x02, 0}, song};
+  send_command_t(c, 0x60, 0x00, cmd);
 }
 
 void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c,
     bool visible) {
-  PSOSubcommand cmd;
-  cmd.byte[0] = visible ? 0x23 : 0x22;
-  cmd.byte[1] = 0x01;
-  cmd.byte[2] = c->lobby_client_id;
-  cmd.byte[3] = 0x00;
-  send_command(l, 0x60, 0x00, &cmd, 4);
-}
-
-void send_revive_player(shared_ptr<Lobby> l, shared_ptr<Client> c) {
-  PSOSubcommand cmd;
-  cmd.byte[0] = 0x31;
-  cmd.byte[1] = 0x01;
-  cmd.byte[2] = c->lobby_client_id;
-  cmd.byte[3] = 0x00;
-  send_command(l, 0x60, 0x00, &cmd, 4);
+  uint8_t subcmd = visible ? 0x23 : 0x22;
+  uint16_t client_id = c->lobby_client_id;
+  G_SetPlayerVisibility_6x22_6x23 cmd = {{subcmd, 0x01, client_id}};
+  send_command_t(l, 0x60, 0x00, cmd);
 }
 
 
@@ -1466,14 +1437,14 @@ void send_revive_player(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 void send_drop_item(Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
   G_DropItem_PC_V3_BB_6x5F cmd = {
-      {0x5F, 0x0B, 0x0000, area, from_enemy, request_id, x, z, 0, item}, 0};
+      {{0x5F, 0x0B, 0x0000}, area, from_enemy, request_id, x, z, 0, 0, item}, 0};
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
   G_DropItem_PC_V3_BB_6x5F cmd = {
-      {0x5F, 0x0B, 0x0000, area, from_enemy, request_id, x, z, 0, item}, 0};
+      {{0x5F, 0x0B, 0x0000}, area, from_enemy, request_id, x, z, 0, 0, item}, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
@@ -1484,14 +1455,15 @@ void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
   // TODO: Is this order correct? The original code sent {item, 0}, but it seems
   // GC sends {0, item} (the last two fields in the struct are switched).
   G_DropStackedItem_PC_V3_BB_6x5D cmd = {
-      {0x5D, 0x0A, 0x0000, area, 0, x, z, item}, 0};
+      {{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
 void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint8_t area) {
+  uint16_t client_id = c->lobby_client_id;
   G_PickUpItem_6x59 cmd = {
-      0x59, 0x03, c->lobby_client_id, c->lobby_client_id, area, item_id};
+      {0x59, 0x03, client_id}, client_id, area, item_id};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
@@ -1499,16 +1471,16 @@ void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
 // bank)
 void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     const ItemData& item) {
-  G_CreateInventoryItem_BB_6xBE cmd = {
-      0xBE, 0x07, c->lobby_client_id, item, 0};
+  uint16_t client_id = c->lobby_client_id;
+  G_CreateInventoryItem_BB_6xBE cmd = {{0xBE, 0x07, client_id}, item, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
 // destroys an item
 void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint32_t amount) {
-  G_ItemSubcommand cmd = {
-      0x29, 0x03, c->lobby_client_id, item_id, amount};
+  uint16_t client_id = c->lobby_client_id;
+  G_DeleteInventoryItem_6x29 cmd = {{0x29, 0x03, client_id}, item_id, amount};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
@@ -1519,10 +1491,10 @@ void send_bank(shared_ptr<Client> c) {
 
   uint32_t checksum = random_object<uint32_t>();
   G_BankContentsHeader_BB_6xBC cmd = {
-      0xBC, 0, 0, 0, checksum, c->game_data.player()->bank.num_items, c->game_data.player()->bank.meseta};
+      {{0xBC, 0, 0}, 0}, checksum, c->game_data.player()->bank.num_items, c->game_data.player()->bank.meseta};
 
   size_t size = 8 + sizeof(cmd) + items.size() * sizeof(PlayerBankItem);
-  cmd.size = size;
+  cmd.header.size = size;
 
   send_command_t_vt(c, 0x6C, 0x00, cmd, items);
 }
@@ -1530,9 +1502,7 @@ void send_bank(shared_ptr<Client> c) {
 // sends the player a shop's contents
 void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
   G_ShopContents_BB_6xB6 cmd = {
-    0xB6,
-    0x2C,
-    0x037F,
+    {0xB6, 0x2C, 0x037F},
     shop_type,
     static_cast<uint8_t>(c->game_data.shop_contents.size()),
     0,
@@ -1566,24 +1536,24 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
   }
 
   G_LevelUp_6x30 cmd = {
-      0x30,
-      sizeof(G_LevelUp_6x30) / 4,
-      c->lobby_client_id,
+      {0x30, sizeof(G_LevelUp_6x30) / 4, c->lobby_client_id},
       stats.atp,
       stats.mst,
       stats.evp,
       stats.hp,
       stats.dfp,
       stats.ata,
-      c->game_data.player()->disp.level};
+      c->game_data.player()->disp.level.load(),
+      0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
 // gives a player EXP
 void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t amount) {
+  uint16_t client_id = c->lobby_client_id;
   G_GiveExperience_BB_6xBF cmd = {
-      0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, c->lobby_client_id, amount};
+      {0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, client_id}, amount};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
@@ -1633,7 +1603,8 @@ void send_ep3_map_list(shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
 
   StringWriter w;
   uint32_t subcommand_size = (data.size() + sizeof(G_MapList_GC_Ep3_6xB6x40) + 3) & (~3);
-  w.put<G_MapList_GC_Ep3_6xB6x40>({{0xB6, 0, 0, subcommand_size, 0x40}, data.size()});
+  w.put<G_MapList_GC_Ep3_6xB6x40>(
+      G_MapList_GC_Ep3_6xB6x40{{{{0xB6, 0, 0}, subcommand_size}, 0x40, {}}, data.size(), 0});
   w.write(data);
   send_command(l, 0x6C, 0x00, w.str());
 }
@@ -1644,7 +1615,7 @@ void send_ep3_map_data(shared_ptr<ServerState> s, shared_ptr<Lobby> l, uint32_t 
 
   StringWriter w;
   uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_GC_Ep3_6xB6x41) + 3) & (~3);
-  w.put<G_MapData_GC_Ep3_6xB6x41>({{0xB6, 0, 0, subcommand_size, 0x41}, entry->map.map_number.load(), 0, compressed.size()});
+  w.put<G_MapData_GC_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, entry->map.map_number.load(), compressed.size(), 0});
   w.write(compressed);
   send_command(l, 0x6C, 0x00, w.str());
 }
@@ -1687,7 +1658,7 @@ void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key) {
   }
 
   auto* header = reinterpret_cast<G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5*>(vdata);
-  size_t command_bytes = header->size * 4;
+  size_t command_bytes = header->basic_header.size * 4;
   if (command_bytes != size) {
     throw runtime_error("command size field does not match actual size");
   }

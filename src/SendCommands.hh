@@ -84,6 +84,12 @@ void send_command_vt(std::shared_ptr<TargetT> c, uint16_t command,
   send_command(c, command, flag, data.data(), data.size() * sizeof(StructT));
 }
 
+template <typename StructT>
+void send_command_vt(Channel& ch, uint16_t command, uint32_t flag,
+    const std::vector<StructT>& data) {
+  ch.send(command, flag, data.data(), data.size() * sizeof(StructT));
+}
+
 template <typename TargetT, typename StructT, typename EntryT>
 void send_command_t_vt(std::shared_ptr<TargetT> c, uint16_t command,
     uint32_t flag, const StructT& data, const std::vector<EntryT>& array_data) {
@@ -226,7 +232,9 @@ enum PlayerStatsChange {
 };
 
 void send_player_stats_change(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
-    PlayerStatsChange which, uint32_t amount);
+    PlayerStatsChange stat, uint32_t amount);
+void send_player_stats_change(
+    Channel& ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount);
 void send_warp(Channel& ch, uint8_t client_id, uint32_t area);
 void send_warp(std::shared_ptr<Client> c, uint32_t area);
 

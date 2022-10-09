@@ -815,28 +815,35 @@ static void on_ep3_counter_state(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // CA
-  check_size_v(data.size(), 8, 0xFFFF);
-  const PSOSubcommand* cmds = reinterpret_cast<const PSOSubcommand*>(data.data());
-
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !(l->flags & Lobby::Flag::EPISODE_3_ONLY) || !l->is_game()) {
-    c->should_disconnect = true;
-    return;
+    throw runtime_error("Episode 3 server data request sent in lobby or non-Episode 3 game");
   }
 
-  if (cmds[0].byte[0] != 0xB3) {
-    c->should_disconnect = true;
-    return;
+  const auto& header = check_size_t<G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5>(
+      data, sizeof(G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5), 0xFFFF);
+
+  // TODO: We can support this since set_mask_for_ep3_game_command already
+  // exists; I just don't want to make a copy of the data string
+  if (header.mask_key != 0) {
+    throw runtime_error("Episode 3 server data request has nonzero mask key");
   }
 
-  switch (cmds[1].byte[0]) {
+  if (header.basic_header.subcommand != 0xB3) {
+    throw runtime_error("unknown Episode 3 server data request");
+  }
+
+  switch (header.subsubcommand) {
     // Phase 1: map select
     case 0x40:
+      check_size_t<G_MapListRequest_GC_Ep3_6xB3x40_CAx40>(data);
       send_ep3_map_list(s, l);
       break;
-    case 0x41:
-      send_ep3_map_data(s, l, cmds[4].dword);
+    case 0x41: {
+      const auto& cmd = check_size_t<G_MapDataRequest_GC_Ep3_6xB3x41_CAx41>(data);
+      send_ep3_map_data(s, l, cmd.map_number);
       break;
+    }
 
     /* What follows is some raw code that has survived since the days of khyller
      * (approx. 2004). Much more research and engineering is needed to get
@@ -902,7 +909,8 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
       break; */
 
     default:
-      c->log.error("Unknown Episode III server data request: %02X", cmds[1].byte[0]);
+      c->log.error("Unknown Episode III server data request: %02X",
+          header.subsubcommand);
   }
 }
 
@@ -1161,13 +1169,13 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     if (uses_unicode) {
       const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag02>(data);
       password = cmd.password;
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
+      menu_id = cmd.basic_cmd.menu_id;
+      item_id = cmd.basic_cmd.item_id;
     } else {
       const auto& cmd = check_size_t<C_MenuSelection_DC_V3_10_Flag02>(data);
       password = decode_sjis(cmd.password);
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
+      menu_id = cmd.basic_cmd.menu_id;
+      item_id = cmd.basic_cmd.item_id;
     }
   } else {
     const auto& cmd = check_size_t<C_MenuSelection_10_Flag00>(data);
