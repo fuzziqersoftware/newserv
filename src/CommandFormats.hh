@@ -422,6 +422,13 @@ struct C_LegacyLogin_BB_04 {
 
 template <typename ClientConfigT>
 struct S_UpdateClientConfig {
+  // Note: What we call player_tag here is actually three fields: two uint8_ts
+  // followed by a le_uint16_t. It's unknown what the uint8_t fields are for
+  // (they seem to always be zero), but the le_uint16_t is likely a boolean
+  // which denotes whether the player is present or not (for example, in lobby
+  // data structures). For historical and simplicity reasons, newserv combines
+  // these three fields into one, which takes on the value 0x00010000 when a
+  // player is present and zero when none is present.
   le_uint32_t player_tag;
   le_uint32_t guild_card_number;
   // The ClientConfig structure describes how newserv uses this command; other
