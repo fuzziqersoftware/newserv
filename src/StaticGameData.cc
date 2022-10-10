@@ -1479,8 +1479,13 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
   ItemNameInfo name_info(nullptr, false, false);
   uint32_t primary_identifier = item.primary_identifier();
   if ((primary_identifier & 0xFFFFFF00) == 0x00030200) {
-    string technique_name = name_for_technique(item.data1[4]);
-    technique_name[0] = toupper(technique_name[0]);
+    string technique_name;
+    try {
+      technique_name = tech_id_to_name.at(item.data1[4]);
+      technique_name[0] = toupper(technique_name[0]);
+    } catch (const out_of_range&) {
+      technique_name = string_printf("!TECH:%02hhX", item.data1[4]);
+    }
     ret_tokens.emplace_back(string_printf(
         "Disk:%s Lv.%d", technique_name.c_str(), item.data1[2] + 1));
   } else {
