@@ -231,11 +231,10 @@ similarly, if output-filename is missing or is '-', newserv writes to stdout.\n\
 The options are:\n\
   --compress-prs\n\
   --decompress-prs\n\
-      Compress or decompress data using the PRS algorithm. Both input-filename\n\
-      and output-filename may be specified.\n\
+  --compress-bc0 [input-filename [output-filename]]\n\
   --decompress-bc0 [input-filename [output-filename]]\n\
-      Decompress data using the BC0 algorithm. Both input-filename and\n\
-      output-filename may be specified.\n\
+      Compress or decompress data using the PRS or BC0 algorithms. Both\n\
+      input-filename and output-filename may be specified.\n\
   --encrypt-data\n\
   --decrypt-data\n\
       Encrypt or decrypt data using PSO's standard network protocol encryption.\n\
@@ -312,6 +311,7 @@ enum class Behavior {
   RUN_SERVER = 0,
   COMPRESS_PRS,
   DECOMPRESS_PRS,
+  COMPRESS_BC0,
   DECOMPRESS_BC0,
   ENCRYPT_DATA,
   DECRYPT_DATA,
@@ -327,6 +327,7 @@ enum class Behavior {
 static bool behavior_takes_input_filename(Behavior b) {
   return (b == Behavior::COMPRESS_PRS) ||
          (b == Behavior::DECOMPRESS_PRS) ||
+         (b == Behavior::COMPRESS_BC0) ||
          (b == Behavior::DECOMPRESS_BC0) ||
          (b == Behavior::ENCRYPT_DATA) ||
          (b == Behavior::DECRYPT_DATA) ||
@@ -339,6 +340,7 @@ static bool behavior_takes_input_filename(Behavior b) {
 static bool behavior_takes_output_filename(Behavior b) {
   return (b == Behavior::COMPRESS_PRS) ||
          (b == Behavior::DECOMPRESS_PRS) ||
+         (b == Behavior::COMPRESS_BC0) ||
          (b == Behavior::DECOMPRESS_BC0) ||
          (b == Behavior::ENCRYPT_DATA) ||
          (b == Behavior::DECRYPT_DATA) ||
@@ -378,6 +380,8 @@ int main(int argc, char** argv) {
       behavior = Behavior::COMPRESS_PRS;
     } else if (!strcmp(argv[x], "--decompress-prs")) {
       behavior = Behavior::DECOMPRESS_PRS;
+    } else if (!strcmp(argv[x], "--compress-bc0")) {
+      behavior = Behavior::COMPRESS_BC0;
     } else if (!strcmp(argv[x], "--decompress-bc0")) {
       behavior = Behavior::DECOMPRESS_BC0;
     } else if (!strcmp(argv[x], "--encrypt-data")) {
@@ -479,6 +483,7 @@ int main(int argc, char** argv) {
   switch (behavior) {
     case Behavior::COMPRESS_PRS:
     case Behavior::DECOMPRESS_PRS:
+    case Behavior::COMPRESS_BC0:
     case Behavior::DECOMPRESS_BC0: {
       string data = read_input_data();
       if (parse_data) {
@@ -490,6 +495,8 @@ int main(int argc, char** argv) {
         data = prs_compress(data);
       } else if (behavior == Behavior::DECOMPRESS_PRS) {
         data = prs_decompress(data);
+      } else if (behavior == Behavior::COMPRESS_BC0) {
+        data = bc0_compress(data);
       } else if (behavior == Behavior::DECOMPRESS_BC0) {
         data = bc0_decompress(data);
       } else {
