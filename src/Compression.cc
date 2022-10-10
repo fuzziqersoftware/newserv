@@ -400,13 +400,13 @@ string bc0_decompress(const string& data) {
   // that byte is at offset 0x112 in the memo, because the memo rolls over every
   // 0x1000 bytes and the first memo byte was 0x12 bytes before the beginning of
   // the next page). The memo is initially zeroed from 0 to 0xFEE; it seems PSO
-  // GC doesn't initialize the last 0x12 bytes of the first memo page. (Here, we
-  // implicitly initialize them with zeroes.)
+  // GC doesn't initialize the last 0x12 bytes of the first memo page. For this
+  // reason, we avoid generating backreferences that refer to those bytes.
   parray<uint8_t, 0x1000> memo;
   uint16_t memo_offset = 0x0FEE;
 
   // The low byte of this value contains the control stream data; the high bits
-  // specify which low bits are valid. When the last FF is shifted out of the
+  // specify which low bits are valid. When the last 1 is shifted out of the
   // high bit, we need to read a new control stream byte to get the next set of
   // control bits.
   uint16_t control_stream_bits = 0x0000;
@@ -426,7 +426,7 @@ string bc0_decompress(const string& data) {
     // a1 = 0bBBBBBBBB
     // a2 = 0bAAAACCCC
     // The offset is the concatenation of bits AAAABBBBBBBB, which refers to a
-    // position in the memo; the number of bytes to copy is (C + 3). The
+    // position in the memo; the number of bytes to copy is (CCCC + 3). The
     // decompressor copies that many bytes from that offset in the memo, and
     // writes them to the output and to the current position in the memo.
     if ((control_stream_bits & 1) == 0) {
@@ -444,7 +444,7 @@ string bc0_decompress(const string& data) {
         memo_offset = (memo_offset + 1) & 0x0FFF;
       }
 
-    // Control stream 1 means to write a byte directly from the input to the
+    // Control bit 1 means to write a byte directly from the input to the
     // output. As above, the byte is also written to the memo.
     } else {
       uint8_t v = r.get_u8();
@@ -481,7 +481,8 @@ string bc0_compress(const string& data) {
     for (size_t match_length = 3; match_length <= max_match_length; match_length++) {
 
       // Forbid matches that span the current memo position, or that cover the
-      // uninitialized part of the memo when the client decompresses
+      // uninitialized part of the memo when the client decompresses (see
+      // comment in bc0_decompress about this)
       size_t start_offset = (r.where() < 0x12) ? 0 : memo_offset;
       size_t end_offset = (memo_offset - match_length + 1) & 0xFFF;
 
@@ -494,7 +495,7 @@ string bc0_compress(const string& data) {
           }
         }
         // If a match was found at this length, don't bother looking for other
-        // matches of the same length - one will suffice
+        // matches of the same length
         if (match_found) {
           best_match_length = match_length;
           best_match_offset = offset;
@@ -508,11 +509,11 @@ string bc0_compress(const string& data) {
       }
     }
 
-    // Write a backreference if a match was found; otherwise write a literal
+    // Write a backreference if a match was found; otherwise, write a literal
     if (best_match_length >= 3) {
       pending_control_bits = (pending_control_bits >> 1) | 0x8000;
-      w.put_u8(best_match_offset & 0xFF);
-      w.put_u8(((best_match_offset >> 4) & 0xF0) | (best_match_length - 3));
+      w.put_u8(best_match_offset & 0xFF); // a1
+      w.put_u8(((best_match_offset >> 4) & 0xF0) | (best_match_length - 3)); // a2
       for (size_t z = 0; z < best_match_length; z++) {
         memo[memo_offset] = r.get_u8();
         memo_offset = (memo_offset + 1) & 0xFFF;
@@ -525,7 +526,8 @@ string bc0_compress(const string& data) {
       memo_offset = (memo_offset + 1) & 0xFFF;
     }
 
-    // Write control byte if needed
+    // Write the control byte to the output if needed, and reserve space for the
+    // next one
     if (pending_control_bits & 0x0100) {
       w.pput_u8(next_control_byte_offset, pending_control_bits & 0xFF);
       next_control_byte_offset = w.size();
@@ -534,12 +536,19 @@ string bc0_compress(const string& data) {
     }
   }
 
-  // Write the final control byte if needed
+  // Write the final control byte to the output if needed. If not needed, then
+  // there should be an empty reserved space at the end; delete it since none of
+  // its bits will be used.
   if (pending_control_bits & 0xFF00) {
     while (!(pending_control_bits & 0x0100)) {
       pending_control_bits >>= 1;
     }
     w.pput_u8(next_control_byte_offset, pending_control_bits & 0xFF);
+  } else {
+    if (next_control_byte_offset != w.size() - 1) {
+      throw logic_error("data written without control bits");
+    }
+    w.str().resize(w.str().size() - 1);
   }
 
   return move(w.str());
