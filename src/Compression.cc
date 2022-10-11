@@ -14,136 +14,181 @@ using namespace std;
 
 
 
-struct prs_compress_ctx {
-  uint8_t bitpos;
-  std::string forward_log;
-  std::string output;
+PRSCompressor::PRSCompressor()
+  : closed(false),
+    control_byte_offset(0),
+    pending_control_bits(0),
+    input_bytes(0),
+    compression_offset(0) {
+  this->output.put_u8(0);
+}
 
-  prs_compress_ctx() : bitpos(0), forward_log("\0", 1) { }
-
-  string finish() {
-    this->put_control_bit(0);
-    this->put_control_bit(1);
-    this->put_static_data(0);
-    this->put_static_data(0);
-    this->output += this->forward_log;
-    this->forward_log.clear();
-    return this->output;
+void PRSCompressor::add(const void* data, size_t size) {
+  if (this->closed) {
+    throw logic_error("compressor is closed");
   }
 
-  void put_control_bit_nosave(bool bit) {
-    if (bit) {
-      this->forward_log[0] |= 1 << this->bitpos;
+  StringReader r(data, size);
+  while (!r.eof()) {
+    this->add_byte(r.get_u8());
+  }
+}
+
+void PRSCompressor::add(const string& data) {
+  this->add(data.data(), data.size());
+}
+
+void PRSCompressor::add_byte(uint8_t v) {
+  if (this->compression_offset + 0x100 <= this->input_bytes) {
+    this->advance();
+  }
+  this->forward_log[this->input_bytes & 0xFF] = v;
+  this->input_bytes++;
+}
+
+void PRSCompressor::advance() {
+  // Search for a match in the decompressed data history
+  size_t best_match_size = 0;
+  size_t best_match_offset = 0;
+  size_t start_offset = max<ssize_t>(
+      0, static_cast<ssize_t>(this->compression_offset) - 0x1FFF);
+  for (size_t match_offset = start_offset;
+       (match_offset < this->compression_offset - best_match_size) && (best_match_size < 0x100);
+       match_offset++) {
+    size_t match_size = 0;
+    while ((match_size < 0x100) &&
+           (match_offset + match_size < this->compression_offset) &&
+           (this->compression_offset + match_size < this->input_bytes) &&
+           (this->reverse_log[(match_offset + match_size) & 0x1FFF] == this->forward_log[(this->compression_offset + match_size) & 0xFF])) {
+      match_size++;
     }
-    this->bitpos++;
-  }
 
-  void put_control_save() {
-    if (this->bitpos >= 8) {
-      this->bitpos = 0;
-      this->output += this->forward_log;
-      this->forward_log.resize(1);
-      this->forward_log[0] = 0;
+    if (match_size > best_match_size) {
+      best_match_offset = match_offset;
+      best_match_size = match_size;
     }
   }
 
-  void put_control_bit(bool bit) {
-    this->put_control_bit_nosave(bit);
-    this->put_control_save();
-  }
+  // If there is a suitable match, write a backreference
+  bool should_write_literal = false;
+  size_t advance_bytes = 0;
+  if (best_match_size < 2) {
+    should_write_literal = true;
 
-  void put_static_data(uint8_t data) {
-    this->forward_log.push_back(static_cast<char>(data));
-  }
+  } else {
+    // The backreference should be encoded:
+    // - As a short copy if offset in [-0x100, -1] and size in [2, 5]
+    // - As a long copy if offset in [-0x1FFF, -1] and size in [3, 9]
+    // - As an extended copy if offset in [-0x1FFF, -1] and size in [1, 0x100]
+    // Because an extended copy costs two control bits and three data bytes,
+    // it's not worth it to use an extended copy for sizes 1 and 2. In those
+    // cases, if a short copy can't reach back far enough, we just write a
+    // literal instead.
 
-  void raw_byte(uint8_t value) {
-    this->put_control_bit_nosave(1);
-    this->put_static_data(value);
-    this->put_control_save();
-  }
+    ssize_t backreference_offset = best_match_offset - this->compression_offset;
+    if ((backreference_offset >= -0x100) && (best_match_size <= 5)) {
+      // Write short copy
+      uint8_t size = best_match_size - 2;
+      this->write_control(false);
+      this->write_control(false);
+      this->write_control(size & 2);
+      this->write_control(size & 1);
+      this->output.put_u8(backreference_offset & 0xFF);
+      advance_bytes = best_match_size;
 
-  void short_copy(ssize_t offset, uint8_t size) {
-    size -= 2;
-    this->put_control_bit(0);
-    this->put_control_bit(0);
-    this->put_control_bit((size >> 1) & 1);
-    this->put_control_bit_nosave(size & 1);
-    this->put_static_data(offset & 0xFF);
-    this->put_control_save();
-  }
+    } else if (best_match_size < 3) {
+      // Can't use a long copy for size 2, and it's not worth it to use extended
+      // copy for this either (as noted above)
+      should_write_literal = true;
 
-  void long_copy(ssize_t offset, uint8_t size) {
-    if (size <= 9) {
-      this->put_control_bit(0);
-      this->put_control_bit_nosave(1);
-      this->put_static_data(((offset << 3) & 0xF8) | ((size - 2) & 0x07));
-      this->put_static_data((offset >> 5) & 0xFF);
-      this->put_control_save();
+    } else if ((backreference_offset >= -0x1FFF) && (best_match_size <= 9)) {
+      // Write long copy
+      this->write_control(false);
+      this->write_control(true);
+      uint16_t a = (backreference_offset << 3) | (best_match_size - 2);
+      this->output.put_u8(a & 0xFF);
+      this->output.put_u8(a >> 8);
+      advance_bytes = best_match_size;
+
+    } else if ((backreference_offset >= -0x1FFF) && (best_match_size <= 0x100)) {
+      // Write extended copy
+      this->write_control(false);
+      this->write_control(true);
+      uint16_t a = (backreference_offset << 3);
+      this->output.put_u8(a & 0xFF);
+      this->output.put_u8(a >> 8);
+      this->output.put_u8(best_match_size - 1);
+      advance_bytes = best_match_size;
+
     } else {
-      this->put_control_bit(0);
-      this->put_control_bit_nosave(1);
-      this->put_static_data((offset << 3) & 0xF8);
-      this->put_static_data((offset >> 5) & 0xFF);
-      this->put_static_data(size - 1);
-      this->put_control_save();
+      throw logic_error("invalid best match");
     }
   }
 
-  void copy(ssize_t offset, uint8_t size) {
-    if ((offset > -0x100) && (size <= 5)) {
-      this->short_copy(offset, size);
-    } else {
-      this->long_copy(offset, size);
-    }
+  if (should_write_literal) {
+    this->write_control(true);
+    this->output.put_u8(this->forward_log[this->compression_offset & 0xFF]);
+    advance_bytes = 1;
   }
-};
+
+  for (size_t z = 0; z < advance_bytes; z++) {
+    this->reverse_log[this->compression_offset & 0x1FFF] = this->forward_log[this->compression_offset & 0xFF];
+    this->compression_offset++;
+  }
+}
+
+string& PRSCompressor::close() {
+  if (!this->closed) {
+    // Advance until all input is consumed
+    while (this->compression_offset < this->input_bytes) {
+      this->advance();
+    }
+    // Write stop command
+    this->write_control(false);
+    this->write_control(true);
+    this->output.put_u8(0);
+    this->output.put_u8(0);
+    // Write remaining control bits
+    this->flush_control();
+    this->closed = true;
+  }
+  return this->output.str();
+}
+
+void PRSCompressor::write_control(bool z) {
+  if (this->pending_control_bits & 0x0100) {
+    this->output.pput_u8(
+        this->control_byte_offset, this->pending_control_bits & 0xFF);
+    this->control_byte_offset = this->output.size();
+    this->output.put_u8(0);
+    this->pending_control_bits = z ? 0x8080 : 0x8000;
+  } else {
+    this->pending_control_bits =
+        (this->pending_control_bits >> 1) | (z ? 0x8080 : 0x8000);
+  }
+}
+
+void PRSCompressor::flush_control() {
+  if (this->pending_control_bits & 0xFF00) {
+    while (!(this->pending_control_bits & 0x0100)) {
+      this->pending_control_bits >>= 1;
+    }
+    this->output.pput_u8(
+        this->control_byte_offset, this->pending_control_bits & 0xFF);
+  } else {
+    if (this->control_byte_offset != this->output.size() - 1) {
+      throw logic_error("data written without control bits");
+    }
+    this->output.str().resize(this->output.str().size() - 1);
+  }
+}
+
+
 
 string prs_compress(const void* vdata, size_t size) {
-  const uint8_t* data = reinterpret_cast<const uint8_t*>(vdata);
-  prs_compress_ctx pc;
-
-  ssize_t data_ssize = static_cast<ssize_t>(size);
-  ssize_t read_offset = 0;
-  while (read_offset < data_ssize) {
-
-    // look for a chunk of data in history matching what's at the current offset
-    ssize_t best_offset = 0;
-    ssize_t best_size = 0;
-    for (ssize_t this_offset = -3; // min copy size is 3 bytes
-         (this_offset + read_offset >= 0) && // don't go before the beginning
-         (this_offset > -0x1FF0) && // max offset is -0x1FF0
-         (best_size < 255); // max size is 0xFF bytes
-         this_offset--) {
-
-      // for this offset, expand the match as much as possible
-      ssize_t this_size = 1;
-      while ((this_size < 0x100) && // max copy size is 255 bytes
-             ((this_offset + this_size) < 0) && // don't copy past the read offset
-             (this_size <= data_ssize - read_offset) && // don't copy past the end
-             !memcmp(data + read_offset + this_offset, data + read_offset,
-                     this_size)) {
-        this_size++;
-      }
-      this_size--;
-
-      if (this_size > best_size) {
-        best_offset = this_offset;
-        best_size = this_size;
-      }
-    }
-
-    // if there are no good matches, write the byte directly
-    if (best_size < 3) {
-      pc.raw_byte(data[read_offset]);
-      read_offset++;
-
-    } else {
-      pc.copy(best_offset, best_size);
-      read_offset += best_size;
-    }
-  }
-
-  return pc.finish();
+  PRSCompressor prs;
+  prs.add(vdata, size);
+  return move(prs.close());
 }
 
 string prs_compress(const string& data) {
@@ -152,225 +197,171 @@ string prs_compress(const string& data) {
 
 
 
-static int16_t get_u8_or_eof(StringReader& r) {
-  return r.eof() ? -1 : r.get_u8();
-}
+class ControlStreamReader {
+public:
+  ControlStreamReader(StringReader& r) : r(r), bits(0x0000) { }
+
+  bool read() {
+    if (!(this->bits & 0x0100)) {
+      this->bits = 0xFF00 | this->r.get_u8();
+    }
+    bool ret = this->bits & 1;
+    this->bits >>= 1;
+    return ret;
+  }
+
+private:
+  StringReader& r;
+  uint16_t bits;
+};
 
 string prs_decompress(const void* data, size_t size, size_t max_output_size) {
-  string output;
+  // PRS is an LZ77-based compression algorithm. Compressed data is split into
+  // two streams: a control stream and a data stream. The control stream is read
+  // one bit at a time, and the data stream is read one byte at a time. The
+  // streams are interleaved such that the decompressor never has to move
+  // backward in the input stream - when the decompressor needs a control bit
+  // and there are no unused bits from the previous byte of the control stream,
+  // it reads a byte from the input and treats it as the next 8 control bits.
+
+  // There are 3 distinct commands in PRS, labeled here with their control bits:
+  // 1 - Literal byte. The decompressor copies one byte from the input data
+  //     stream to the output.
+  // 00 - Short backreference. The decompressor reads two control bits and adds
+  //      2 to this value to determine the number of bytes to copy, then reads
+  //      one byte from the data stream to determine how far back in the output
+  //      to copy from. This byte is treated as an 8-bit negative number - so
+  //      0xF7, for example, means to start copying data from 9 bytes before the
+  //      end of the output. The range must start before the end of the output,
+  //      but the end of the range may be beyond the end of the output. In this
+  //      case, the bytes between the beginning of the range and original end of
+  //      the output are simply repeated.
+  // 01 - Long backreference. The decompressor reads two bytes from the data and
+  //      byteswaps the resulting 16-bit value (that is, the low byte is read
+  //      first). The start offset (again, as a negative number) is the top 13
+  //      bits of this value; the size is the low 3 bits of this value, plus 2.
+  //      If the size bits are all zero, an additional byte is read from the
+  //      data stream and 1 is added to it to determine the backreference size
+  //      (we call this an extended backreference). Therefore, the maximum
+  //      backreference size is 256 bytes.
+  // Decompression ends when either there are no more input bytes to read, or
+  // when a long backreference is read with all zeroes in its offset field. The
+  // original implementation stops decompression successfully when any attempt
+  // to read from the input encounters the end of the stream, but newserv's
+  // implementation only allows this at the end of an opcode - if end-of-stream
+  // is encountered partway through an opcode, we throw instead, because it's
+  // likely the input has been truncated or is malformed in some way.
+
+  StringWriter w;
   StringReader r(data, size);
+  ControlStreamReader cr(r);
 
-  int32_t r3, r5;
-  int bitpos = 9;
-  int16_t currentbyte; // int16_t because it can be -1 when EOF occurs
-  int flag;
-  int offset;
-  unsigned long x, t;
-
-  currentbyte = get_u8_or_eof(r);
-  if (currentbyte == EOF) {
-    return output;
-  }
-
-  for (;;) {
-    bitpos--;
-    if (bitpos == 0) {
-      currentbyte = get_u8_or_eof(r);
-      if (currentbyte == EOF) {
-        return output;
-      }
-      bitpos = 8;
-    }
-    flag = currentbyte & 1;
-    currentbyte = currentbyte >> 1;
-    if (flag) {
-      int ch = get_u8_or_eof(r);
-      if (ch == EOF) {
-        return output;
-      }
-      output += static_cast<char>(ch);
-      if (max_output_size && (output.size() > max_output_size)) {
+  while (!r.eof()) {
+    // Control 1 = literal byte
+    if (cr.read()) {
+      if (max_output_size && w.size() == max_output_size) {
         throw runtime_error("maximum output size exceeded");
       }
-      continue;
-    }
-    bitpos--;
-    if (bitpos == 0) {
-      currentbyte = get_u8_or_eof(r);
-      if (currentbyte == EOF) {
-        return output;
-      }
-      bitpos = 8;
-    }
-    flag = currentbyte & 1;
-    currentbyte = currentbyte >> 1;
-    if (flag) {
-      r3 = get_u8_or_eof(r);
-      if (r3 == EOF) {
-        return output;
-      }
-      int high_byte = get_u8_or_eof(r);
-      if (high_byte == EOF) {
-        return output;
-      }
-      offset = ((high_byte & 0xFF) << 8) | (r3 & 0xFF);
-      if (offset == 0) {
-        return output;
-      }
-      r3 = r3 & 0x00000007;
-      r5 = (offset >> 3) | 0xFFFFE000;
-      if (r3 == 0) {
-        flag = 0;
-        r3 = get_u8_or_eof(r);
-        if (r3 == EOF) {
-          return output;
-        }
-        r3 = (r3 & 0xFF) + 1;
-      } else {
-        r3 += 2;
-      }
+      w.put_u8(r.get_u8());
+
     } else {
-      r3 = 0;
-      for (x = 0; x < 2; x++) {
-        bitpos--;
-        if (bitpos == 0) {
-          currentbyte = get_u8_or_eof(r);
-          if (currentbyte == EOF) {
-            return output;
-          }
-          bitpos = 8;
+      ssize_t offset;
+      size_t count;
+
+      // Control 01 = long backreference
+      if (cr.read()) {
+        // The bits stored in the data stream are AAAAABBBCCCCCCCC, which we
+        // rearrange into offset = CCCCCCCCAAAAA and size = BBB.
+        uint16_t a = r.get_u8();
+        a |= (r.get_u8() << 8);
+        offset = (a >> 3) | (~0x1FFF);
+        // If offset is zero, it's a stop opcode
+        if (offset == ~0x1FFF) {
+          break;
         }
-        flag = currentbyte & 1;
-        currentbyte = currentbyte >> 1;
-        offset = r3 << 1;
-        r3 = offset | flag;
+        // If the size field is zero, it's an extended backreference (size comes
+        // from another byte in the data stream)
+        count = (a & 7) ? ((a & 7) + 2) : (r.get_u8() + 1);
+
+      // Control 00 = short backreference
+      } else {
+        // Count comes from 2 bits in the control stream instead of from the
+        // data stream (and 2 is added). Importantly, the control stream bits
+        // are read first - this may involve reading another control stream
+        // byte, which happens before the offset is read from the data stream.
+        count = cr.read() << 1;
+        count = (count | cr.read()) + 2;
+        offset = r.get_u8() | (~0xFF);
       }
-      offset = get_u8_or_eof(r);
-      if (offset == EOF) {
-        return output;
+
+      // Copy bytes from the referenced location in the output. Importantly,
+      // copy only one byte at a time, in order to support ranges that cover the
+      // current end of the output.
+      size_t read_offset = w.size() + offset;
+      if (read_offset >= w.size()) {
+        throw runtime_error("backreference offset beyond beginning of output");
       }
-      r3 += 2;
-      r5 = offset | 0xFFFFFF00;
-    }
-    if (r3 == 0) {
-      continue;
-    }
-    t = r3;
-    for (x = 0; x < t; x++) {
-      output += output.at(output.size() + r5);
-      if (max_output_size && (output.size() > max_output_size)) {
-        throw runtime_error("maximum output size exceeded");
+      for (size_t z = 0; z < count; z++) {
+        if (max_output_size && w.size() == max_output_size) {
+          throw runtime_error("maximum output size exceeded");
+        }
+        w.put_u8(w.str()[read_offset + z]);
       }
     }
   }
+
+  return move(w.str());
 }
 
 string prs_decompress(const string& data, size_t max_output_size) {
   return prs_decompress(data.data(), data.size(), max_output_size);
 }
 
-size_t prs_decompress_size(const string& data, size_t max_output_size) {
-  size_t output_size = 0;
-  StringReader r(data.data(), data.size());
+size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size) {
+  size_t ret = 0;
+  StringReader r(data, size);
+  ControlStreamReader cr(r);
 
-  int32_t r3;
-  int bitpos = 9;
-  int16_t currentbyte; // int16_t because it can be -1 when EOF occurs
-  int flag;
-  int offset;
-  unsigned long x;
+  while (!r.eof()) {
+    if (cr.read()) {
+      ret++;
 
-  currentbyte = get_u8_or_eof(r);
-  if (currentbyte == EOF) {
-    return output_size;
-  }
-
-  for (;;) {
-    bitpos--;
-    if (bitpos == 0) {
-      currentbyte = get_u8_or_eof(r);
-      if (currentbyte == EOF) {
-        return output_size;
-      }
-      bitpos = 8;
-    }
-    flag = currentbyte & 1;
-    currentbyte = currentbyte >> 1;
-    if (flag) {
-      int ch = get_u8_or_eof(r);
-      if (ch == EOF) {
-        return output_size;
-      }
-      output_size++;
-      if (max_output_size && (output_size > max_output_size)) {
-        throw runtime_error("maximum output size exceeded");
-      }
-      continue;
-    }
-    bitpos--;
-    if (bitpos == 0) {
-      currentbyte = get_u8_or_eof(r);
-      if (currentbyte == EOF) {
-        return output_size;
-      }
-      bitpos = 8;
-    }
-    flag = currentbyte & 1;
-    currentbyte = currentbyte >> 1;
-    if (flag) {
-      r3 = get_u8_or_eof(r);
-      if (r3 == EOF) {
-        return output_size;
-      }
-      int high_byte = get_u8_or_eof(r);
-      if (high_byte == EOF) {
-        return output_size;
-      }
-      offset = ((high_byte & 0xFF) << 8) | (r3 & 0xFF);
-      if (offset == 0) {
-        return output_size;
-      }
-      r3 = r3 & 0x00000007;
-      if (r3 == 0) {
-        flag = 0;
-        r3 = get_u8_or_eof(r);
-        if (r3 == EOF) {
-          return output_size;
-        }
-        r3 = (r3 & 0xFF) + 1;
-      } else {
-        r3 += 2;
-      }
     } else {
-      r3 = 0;
-      for (x = 0; x < 2; x++) {
-        bitpos--;
-        if (bitpos == 0) {
-          currentbyte = get_u8_or_eof(r);
-          if (currentbyte == EOF) {
-            return output_size;
-          }
-          bitpos = 8;
+      ssize_t offset;
+      size_t count;
+
+      if (cr.read()) {
+        uint16_t a = r.get_u8();
+        a |= (r.get_u8() << 8);
+        offset = (a >> 3) | (~0x1FFF);
+        if (offset == ~0x1FFF) {
+          break;
         }
-        flag = currentbyte & 1;
-        currentbyte = currentbyte >> 1;
-        offset = r3 << 1;
-        r3 = offset | flag;
+        count = (a & 7) ? ((a & 7) + 2) : (r.get_u8() + 1);
+
+      } else {
+        count = cr.read() << 1;
+        count = (count | cr.read()) + 2;
+        offset = r.get_u8() | (~0xFF);
       }
-      offset = get_u8_or_eof(r);
-      if (offset == EOF) {
-        return output_size;
+
+      size_t read_offset = ret + offset;
+      if (read_offset >= ret) {
+        throw runtime_error("backreference offset beyond beginning of output");
       }
-      r3 += 2;
+      ret += count;
     }
-    if (r3 == 0) {
-      continue;
-    }
-    output_size += r3;
-    if (max_output_size && (output_size > max_output_size)) {
+
+    if (max_output_size && ret > max_output_size) {
       throw runtime_error("maximum output size exceeded");
     }
   }
+
+  return ret;
+}
+
+size_t prs_decompress_size(const string& data, size_t max_output_size) {
+  return prs_decompress_size(data.data(), data.size(), max_output_size);
 }
 
 
@@ -422,7 +413,7 @@ string bc0_decompress(const string& data) {
     }
 
     // Control bit 0 means to perform a backreference copy. The offset and
-    // length are stored in two bytes in the input stream, laid out as follows:
+    // size are stored in two bytes in the input stream, laid out as follows:
     // a1 = 0bBBBBBBBB
     // a2 = 0bAAAACCCC
     // The offset is the concatenation of bits AAAABBBBBBBB, which refers to a
@@ -473,48 +464,48 @@ string bc0_compress(const string& data) {
   parray<uint8_t, 17> match_buf;
   while (!r.eof()) {
     // Search in the memo for the longest string matching the upcoming data, of
-    // length 3-17 bytes
+    // size 3-17 bytes
     size_t best_match_offset = 0;
-    size_t best_match_length = 0;
-    size_t max_match_length = min<size_t>(r.remaining(), 17);
-    r.readx(match_buf.data(), max_match_length, false);
-    for (size_t match_length = 3; match_length <= max_match_length; match_length++) {
+    size_t best_match_size = 0;
+    size_t max_match_size = min<size_t>(r.remaining(), 17);
+    r.readx(match_buf.data(), max_match_size, false);
+    for (size_t match_size = 3; match_size <= max_match_size; match_size++) {
 
       // Forbid matches that span the current memo position, or that cover the
       // uninitialized part of the memo when the client decompresses (see
       // comment in bc0_decompress about this)
       size_t start_offset = (r.where() < 0x12) ? 0 : memo_offset;
-      size_t end_offset = (memo_offset - match_length + 1) & 0xFFF;
+      size_t end_offset = (memo_offset - match_size + 1) & 0xFFF;
 
       for (size_t offset = start_offset; offset != end_offset; offset = (offset + 1) & 0xFFF) {
         bool match_found = true;
-        for (size_t z = 0; z < match_length; z++) {
+        for (size_t z = 0; z < match_size; z++) {
           if (match_buf[z] != memo[(offset + z) & 0xFFF]) {
             match_found = false;
             break;
           }
         }
-        // If a match was found at this length, don't bother looking for other
-        // matches of the same length
+        // If a match was found at this size, don't bother looking for other
+        // matches of the same size
         if (match_found) {
-          best_match_length = match_length;
+          best_match_size = match_size;
           best_match_offset = offset;
           break;
         }
       }
-      // If no matches were found at the current length, don't bother looking
-      // for longer matches
-      if (best_match_length < match_length) {
+      // If no matches were found at the current size, don't bother looking for
+      // longer matches
+      if (best_match_size < match_size) {
         break;
       }
     }
 
     // Write a backreference if a match was found; otherwise, write a literal
-    if (best_match_length >= 3) {
+    if (best_match_size >= 3) {
       pending_control_bits = (pending_control_bits >> 1) | 0x8000;
       w.put_u8(best_match_offset & 0xFF); // a1
-      w.put_u8(((best_match_offset >> 4) & 0xF0) | (best_match_length - 3)); // a2
-      for (size_t z = 0; z < best_match_length; z++) {
+      w.put_u8(((best_match_offset >> 4) & 0xF0) | (best_match_size - 3)); // a2
+      for (size_t z = 0; z < best_match_size; z++) {
         memo[memo_offset] = r.get_u8();
         memo_offset = (memo_offset + 1) & 0xFFF;
       }

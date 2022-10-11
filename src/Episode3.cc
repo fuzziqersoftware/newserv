@@ -908,17 +908,17 @@ const string& Ep3DataIndex::get_compressed_map_list() const {
     header.strings_offset = entries_w.size();
     header.total_size = sizeof(Ep3MapList) + entries_w.size() + strings_w.size();
 
-    StringWriter w;
-    w.put(header);
-    w.write(entries_w.str());
-    w.write(strings_w.str());
+    PRSCompressor prs;
+    prs.add(&header, sizeof(header));
+    prs.add(entries_w.str());
+    prs.add(strings_w.str());
 
     StringWriter compressed_w;
-    compressed_w.put_u32b(w.str().size());
-    compressed_w.write(prs_compress(w.str()));
+    compressed_w.put_u32b(prs.input_size());
+    compressed_w.write(prs.close());
     this->compressed_map_list = move(compressed_w.str());
     static_game_data_log.info("Generated Episode 3 compressed map list (%zu -> %zu bytes)",
-        w.size(), this->compressed_map_list.size());
+        this->compressed_map_list.size(), this->compressed_map_list.size());
   }
   return this->compressed_map_list;
 }
