@@ -4648,18 +4648,23 @@ struct G_UpdateHand_GC_Ep3_6xB4x02 {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   le_uint16_t client_id;
   le_uint16_t unused3;
-  parray<uint8_t, 8> unknown_a1; // Dice values are in here somewhere
-  le_uint32_t unknown_a2;
+  parray<uint8_t, 2> unknown_a1;
+  uint8_t atk_die;
+  uint8_t def_die;
+  uint8_t atk_die2;
+  parray<uint8_t, 2> unknown_a2;
+  uint8_t client_id2;
+  le_uint32_t unknown_a3;
   // Empty slots in all of these arrays should be set to FFFF
   parray<DeckCardRef, 6> cards_in_hand;
-  le_uint16_t unknown_a3;
+  le_uint16_t unknown_a4;
   parray<DeckCardRef, 8> cards_equipped;
   // Note: The order of entries in this field matches the order of entries in
   // 6xB4x04's entries list (and the card refs should match exactly). The first
   // entry here is always the SC card (ref with deck_index=0).
-  parray<DeckCardRef, 16> unknown_a4;
-  parray<le_uint16_t, 2> unknown_a5; // {0, 0xFFFF} always?
-  parray<uint8_t, 6> unknown_a6; // {0, 0, 0, 0, 0x08, 0x0D} always?
+  parray<DeckCardRef, 16> unknown_a5;
+  parray<le_uint16_t, 2> unknown_a6; // {0, 0xFFFF} always?
+  parray<uint8_t, 6> unknown_a7; // {0, 0, 0, 0, 0x08, 0x0D} always?
 };
 
 // 6xB4x03: Set state flags
@@ -4730,7 +4735,7 @@ struct G_Unknown_GC_Ep3_6xB4x06 {
   parray<uint8_t, 8> unknown_a3;
 };
 
-// 6xB4x07: Update decks
+// 6xB4x07: Set battle decks
 
 struct G_UpdateDecks_GC_Ep3_6xB4x07 {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
@@ -5013,7 +5018,9 @@ struct G_Unknown_GC_Ep3_6xB5x20 {
   parray<uint8_t, 3> unused;
 };
 
-// 6xB3x21 / CAx21: Unknown
+// 6xB3x21 / CAx21: End battle
+// Server should respond by sending a 6xB4x03 (update state flags), followed by
+// a 6xB4x46 (start/end battle).
 
 struct G_Unknown_GC_Ep3_6xB3x21_CAx21 {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
@@ -5121,7 +5128,10 @@ struct G_Unknown_GC_Ep3_6xB5x2D {
   parray<uint8_t, 4> unknown_a1;
 };
 
-// 6xB5x2E: Unknown
+// 6xB5x2E: End game
+// Note: This is sent as a C9 command, not a server data (CA) command. A CAx21
+// usually follows soon after this, to which the server responds with a 6xB4x46,
+// which actually ends the battle.
 
 struct G_Unknown_GC_Ep3_6xB5x2E {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
@@ -5367,7 +5377,7 @@ struct G_Unknown_GC_Ep3_6xB5x45 {
   parray<parray<le_uint16_t, 4>, 8> unknown_a1;
 };
 
-// 6xB4x46: Start battle
+// 6xB4x46: Start or end battle
 
 struct G_Unknown_GC_Ep3_6xB4x46 {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
@@ -5375,10 +5385,14 @@ struct G_Unknown_GC_Ep3_6xB4x46 {
   // command, these fields have the following values:
   // version_signature = "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
   // date_str1 = "Mar  7 2007 21:42:40"
-  // date_str2 = "2005/03/04 17:31:59"
   ptext<char, 0x40> version_signature;
   ptext<char, 0x40> date_str1; // Possibly card definitions revision date
-  ptext<char, 0x40> date_str2; // Possibly engine build date
+  // This field is blank when starting a battle, and contains the current time
+  // (formatted like "YYYY/MM/DD hh:mm:ss") when ending a battle.
+  ptext<char, 0x40> date_str2;
+  // It seems Sega used to send 0 here when starting a battle, and 0x04157580
+  // when ending a battle. Since the field is unused by the client, it's not
+  // clear what that value means (if anything).
   le_uint32_t unused;
 };
 

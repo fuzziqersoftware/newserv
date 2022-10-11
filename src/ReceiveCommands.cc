@@ -909,7 +909,7 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
       break; */
 
     default:
-      c->log.error("Unknown Episode III server data request: %02X",
+      c->log.warning("Unknown Episode III server data request: %02X",
           header.subsubcommand);
   }
 }
