@@ -2247,10 +2247,11 @@ struct C_GuildCardDataRequest_BB_03DC {
 // target commands (62/6D) that the server can forward to the joining player.
 // No other arguments
 
-// DE (S->C): Rare monster configuration (BB)
+// DE (S->C): Rare monster list (BB)
 
-struct S_RareMonsterConfig_BB_DE {
-  le_uint16_t data[16];
+struct S_RareMonsterList_BB_DE {
+  // Unused entries are set to FFFF
+  le_uint16_t enemy_ids[16];
 };
 
 // DF (C->S): Unknown (BB)
