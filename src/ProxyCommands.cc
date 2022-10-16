@@ -858,9 +858,7 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
     }
   }
 
-  if (!data.empty() &&
-      session.next_drop_item.data.data1d[0] &&
-      (session.version != GameVersion::BB)) {
+  if (!data.empty()) {
     if (data[0] == 0x46) {
       const auto& cmd = check_size_t<G_AttackFinished_6x46>(data,
           offsetof(G_AttackFinished_6x46, entries),
@@ -888,7 +886,9 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
         session.log.warning("Blocking subcommand 6x49 with invalid count");
         return HandlerResult::Type::SUPPRESS;
       }
-    } else if (data[0] == 0x60) {
+    } else if ((data[0] == 0x60) &&
+               session.next_drop_item.data.data1d[0] &&
+               (session.version != GameVersion::BB)) {
       const auto& cmd = check_size_t<G_EnemyDropItemRequest_DC_6x60>(data,
           sizeof(G_EnemyDropItemRequest_DC_6x60),
           sizeof(G_EnemyDropItemRequest_PC_V3_BB_6x60));
@@ -899,11 +899,14 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
           true, cmd.area, cmd.x, cmd.z, cmd.request_id);
       session.next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
+
     // Note: This static_cast is required to make compilers not complain that
     // the comparison is always false (which even happens in some environments
     // if we use -0x5E... apparently char is unsigned on some systems, or
     // std::string's char_type isn't char??)
-    } else if (static_cast<uint8_t>(data[0]) == 0xA2) {
+    } else if ((static_cast<uint8_t>(data[0]) == 0xA2) &&
+               session.next_drop_item.data.data1d[0] &&
+               (session.version != GameVersion::BB)) {
       const auto& cmd = check_size_t<G_BoxItemDropRequest_6xA2>(data);
       session.next_drop_item.data.id = session.next_item_id++;
       send_drop_item(session.server_channel, session.next_drop_item.data,
