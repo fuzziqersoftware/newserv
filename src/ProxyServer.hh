@@ -86,6 +86,7 @@ public:
     std::vector<LobbyPlayer> lobby_players;
     size_t lobby_client_id;
     size_t leader_client_id;
+    uint16_t area;
     bool is_in_game;
 
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;

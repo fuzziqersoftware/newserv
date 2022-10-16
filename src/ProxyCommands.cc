@@ -1045,6 +1045,7 @@ static HandlerResult S_65_67_68(shared_ptr<ServerState>,
   if (command == 0x67) {
     session.clear_lobby_players(12);
     session.is_in_game = false;
+    session.area = 0x0F;
 
     // This command can cause the client to no longer send D6 responses when
     // 1A/D5 large message boxes are closed. newserv keeps track of this
@@ -1117,6 +1118,7 @@ static HandlerResult S_64(shared_ptr<ServerState>,
   }
 
   session.clear_lobby_players(4);
+  session.area = 0;
   session.is_in_game = true;
 
   bool modified = false;
@@ -1181,6 +1183,7 @@ static HandlerResult S_66_69(shared_ptr<ServerState>,
 
 static HandlerResult C_98(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  session.area = 0x0F;
   session.is_in_game = false;
   return HandlerResult::Type::FORWARD;
 }
@@ -1281,7 +1284,11 @@ static HandlerResult C_6x(shared_ptr<ServerState> s,
   }
 
   if (!data.empty()) {
-    if (data[0] == 0x2F || data[0] == 0x4B || data[0] == 0x4C) {
+    if (data[0] == 0x21) {
+      const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data);
+      session.area = cmd.area;
+
+    } else if (data[0] == 0x2F || data[0] == 0x4B || data[0] == 0x4C) {
       if (session.infinite_hp) {
         send_player_stats_change(session.client_channel,
             session.lobby_client_id, PlayerStatsChange::ADD_HP, 2550);

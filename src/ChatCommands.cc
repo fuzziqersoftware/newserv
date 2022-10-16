@@ -758,8 +758,13 @@ static void server_command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 
 static void proxy_command_warp(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string& args) {
+  if (!session.is_in_game) {
+    send_text_message(session.client_channel, u"$C6You must be in a\ngame to use this\ncommand");
+    return;
+  }
   uint32_t area = stoul(encode_sjis(args), nullptr, 0);
   send_warp(session.client_channel, session.lobby_client_id, area);
+  session.area = area;
 }
 
 static void server_command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
@@ -768,7 +773,7 @@ static void server_command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   check_cheats_enabled(l);
 
   if (!l->episode || (l->episode > 3)) {
-    return;
+    throw runtime_error("invalid episode number");
   }
 
   uint8_t new_area = c->area + 1;
@@ -779,6 +784,17 @@ static void server_command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 
   send_warp(c, new_area);
+}
+
+static void proxy_command_next(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string&) {
+  if (!session.is_in_game) {
+    send_text_message(session.client_channel, u"$C6You must be in a\ngame to use this\ncommand");
+    return;
+  }
+
+  session.area++;
+  send_warp(session.client_channel, session.lobby_client_id, session.area);
 }
 
 static void server_command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
@@ -972,8 +988,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$li",       {server_command_lobby_info,         proxy_command_lobby_info,      u"Usage:\nli"}},
     {u"$maxlevel", {server_command_max_level,          nullptr,                       u"Usage:\nmax_level <level>"}},
     {u"$minlevel", {server_command_min_level,          nullptr,                       u"Usage:\nmin_level <level>"}},
-    // TODO: implement this on proxy server
-    {u"$next",     {server_command_next,               nullptr,                       u"Usage:\nnext"}},
+    {u"$next",     {server_command_next,               proxy_command_next,            u"Usage:\nnext"}},
     {u"$password", {server_command_password,           nullptr,                       u"Usage:\nlock [password]\nomit password to\nunlock game"}},
     {u"$persist",  {server_command_persist,            nullptr,                       u"Usage:\npersist"}},
     {u"$proxygc",  {server_command_proxygc,            proxy_command_proxygc,         u"Usage:\nproxygc <gc#>"}},
