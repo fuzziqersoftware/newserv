@@ -81,7 +81,7 @@ struct PSOGCIFileHeader {
   // the encrypted header (below) and all encrypted data after it.
   be_uint32_t data_size;
   // To compute checksum, set checksum to zero, then compute the CRC32 of all
-  // fields in this struct except gci_header. (Yes, including the checksum
+  // fields in this struct starting with game_name. (Yes, including the checksum
   // field, which is temporarily zero.)
   be_uint32_t checksum;
 

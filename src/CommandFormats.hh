@@ -1509,7 +1509,7 @@ struct C_Login_DC_PC_GC_9D {
   le_uint64_t unused;
   le_uint32_t sub_version;
   uint8_t is_extended; // If 1, structure has extended format
-  uint8_t language; // 0 = JP, 1 = EN, 2 = DE (?), 3 = FR (?), 4 = ES
+  uint8_t language; // 0 = JP, 1 = EN, 2 = DE, 3 = FR, 4 = ES
   parray<uint8_t, 0x2> unused3; // Always zeroes?
   ptext<char, 0x10> v1_serial_number;
   ptext<char, 0x10> v1_access_key;
