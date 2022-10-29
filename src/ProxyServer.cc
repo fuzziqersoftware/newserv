@@ -651,6 +651,15 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
 
   if (events & BEV_EVENT_CONNECTED) {
     session->log.info("%s channel connected", is_server_stream ? "Server" : "Client");
+
+    if (is_server_stream && (session->override_lobby_event >= 0) &&
+        (
+          ((session->version == GameVersion::GC) && !(session->newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) ||
+          (session->version == GameVersion::XB) ||
+          (session->version == GameVersion::BB)
+        )) {
+      session->client_channel.send(0xDA, session->override_lobby_event);
+    }
   }
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();

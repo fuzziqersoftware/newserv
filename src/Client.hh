@@ -120,6 +120,7 @@ struct Client {
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;
 
+  bool proxy_block_events;
   bool proxy_save_files;
   bool proxy_suppress_remote_login;
   bool proxy_zero_remote_guild_card;

@@ -63,6 +63,7 @@ Client::Client(
     switch_assist(false),
     can_chat(true),
     pending_bb_save_player_index(0),
+    proxy_block_events(false),
     proxy_save_files(false),
     proxy_suppress_remote_login(false),
     proxy_zero_remote_guild_card(false),

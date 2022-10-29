@@ -830,6 +830,18 @@ static HandlerResult S_V3_1A_D5(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
+static HandlerResult S_V3_BB_DA(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string&) {
+  if ((session.version == GameVersion::GC) &&
+      (session.newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) {
+    return HandlerResult::Type::SUPPRESS;
+  } else if (session.override_lobby_event >= 0 && static_cast<int16_t>(flag) != session.override_lobby_event) {
+    return HandlerResult(HandlerResult::Type::MODIFIED, 0xDA, session.override_lobby_event);
+  } else {
+    return HandlerResult::Type::FORWARD;
+  }
+}
+
 static HandlerResult S_6x(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   check_implemented_subcommand(session, data);
@@ -1572,7 +1584,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* D7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
 /* D8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
 /* D9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
-/* DA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* DA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_V3_BB_DA,    nullptr},      {S_V3_BB_DA,    nullptr},      {S_V3_BB_DA,   nullptr}},
 /* DB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* DC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* DD */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},

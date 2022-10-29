@@ -62,6 +62,44 @@ vector<MenuItem> quest_download_menu({
   MenuItem(static_cast<uint32_t>(QuestCategory::DOWNLOAD), u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
 });
 
+static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descriptions({
+  {ProxyOptionsMenuItemID::GO_BACK, u"Return to the\nproxy menu"},
+  {ProxyOptionsMenuItemID::INFINITE_HP, u"If enabled, the proxy\nwill restore your HP\nwhen you are hit by\nan enemy or trap,\nbut cannot revive\nyou from one-hit\nkills"},
+  {ProxyOptionsMenuItemID::INFINITE_TP, u"If enabled, the proxy\nwill restore your TP\nwhen you cast any\ntechnique"},
+  {ProxyOptionsMenuItemID::SWITCH_ASSIST, u"If enabled, the proxy\nwill attempt to\nunlock 2-player\ndoors when you step\non both switches\nsequentially"},
+  {ProxyOptionsMenuItemID::BLOCK_EVENTS, u"If enabled, season\nevents in the lobby\nand in games are\ndisabled."},
+  {ProxyOptionsMenuItemID::SAVE_FILES, u"If enabled, the proxy\nwill save local\ncopies of files from\nthe remote server\n(quests, etc.)"},
+  {ProxyOptionsMenuItemID::SUPPRESS_LOGIN, u"If enabled, the proxy\nwill use an alternate\nlogin sequence"},
+  {ProxyOptionsMenuItemID::SKIP_CARD, u"If enabled, the proxy\nwill use an alternate\nvalue for your initial\nGuild Card"},
+});
+
+static vector<MenuItem> proxy_options_menu_for_client(
+    shared_ptr<const Client> c) {
+  vector<MenuItem> ret;
+  // Note: The descriptions are instead in the map above, because this menu is
+  // dynamically created every time it's sent to the client. This is just one
+  // way in which the menu abstraction is currently insufficient (there is a
+  // TODO about this in README.md).
+  ret.emplace_back(ProxyOptionsMenuItemID::GO_BACK, u"Go back", u"", 0);
+  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+    ret.emplace_back(ProxyOptionsMenuItemID::INFINITE_HP,
+        c->infinite_hp ? u"Infinite HP ON" : u"Infinite HP OFF", u"", 0);
+    ret.emplace_back(ProxyOptionsMenuItemID::INFINITE_TP,
+        c->infinite_tp ? u"Infinite TP ON" : u"Infinite TP OFF", u"", 0);
+    ret.emplace_back(ProxyOptionsMenuItemID::SWITCH_ASSIST,
+        c->switch_assist ? u"Switch assist ON" : u"Switch assist OFF", u"", 0);
+  }
+  ret.emplace_back(ProxyOptionsMenuItemID::BLOCK_EVENTS,
+      c->proxy_block_events ? u"Block events ON" : u"Block events OFF", u"", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::SAVE_FILES,
+      c->proxy_save_files ? u"Save files ON" : u"Save files OFF", u"", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::SUPPRESS_LOGIN,
+      c->proxy_suppress_remote_login ? u"Skip login ON" : u"Skip login OFF", u"", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::SKIP_CARD,
+      c->proxy_zero_remote_guild_card ? u"Skip card ON" : u"Skip card OFF", u"", 0);
+  return ret;
+}
+
 
 
 static void send_client_to_lobby_server(shared_ptr<ServerState> s, shared_ptr<Client> c) {
@@ -86,6 +124,9 @@ static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Cl
   session->switch_assist = c->switch_assist;
   session->save_files = c->proxy_save_files;
   session->suppress_remote_login = c->proxy_suppress_remote_login;
+  if (c->proxy_block_events) {
+    session->override_lobby_event = 0;
+  }
   if (c->proxy_zero_remote_guild_card) {
     session->remote_guild_card_number = 0;
   } else {
@@ -981,28 +1022,11 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
       break;
 
     case MenuID::PROXY_OPTIONS:
-      switch (cmd.item_id) {
-        case ProxyOptionsMenuItemID::GO_BACK:
-          send_ship_info(c, u"Return to the\nproxy menu");
-          break;
-        case ProxyOptionsMenuItemID::INFINITE_HP:
-          send_ship_info(c, u"Enable or disable\ninfinite HP\n\nYou can change this\nduring the session\nwith the %sinfhp\ncommand");
-          break;
-        case ProxyOptionsMenuItemID::INFINITE_TP:
-          send_ship_info(c, u"Enable or disable\ninfinite TP\n\nYou can change this\nduring the session\nwith the %sinftp\ncommand");
-          break;
-        case ProxyOptionsMenuItemID::SWITCH_ASSIST:
-          send_ship_info(c, u"Enable or disable\nswitch assist\n\nYou can change this\nduring the session\nwith the %sswa\ncommand");
-          break;
-        case ProxyOptionsMenuItemID::SAVE_FILES:
-          send_ship_info(c, u"Enable or disable\nsaving of files from\nthe remote server\n(quests, etc.)");
-          break;
-        case ProxyOptionsMenuItemID::SUPPRESS_LOGIN:
-          send_ship_info(c, u"Enable or disable\nalternate login\nsequence");
-          break;
-        case ProxyOptionsMenuItemID::SKIP_CARD:
-          send_ship_info(c, u"Enable or disable\nGuild Card reset");
-          break;
+      try {
+        const auto* description = proxy_options_menu_descriptions.at(cmd.item_id);
+        send_ship_info(c, description);
+      } catch (const out_of_range&) {
+        send_ship_info(c, u"$C4Missing proxy\noption");
       }
       break;
 
@@ -1131,32 +1155,6 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
   }
 }
 
-static vector<MenuItem> proxy_options_menu_for_client(
-    shared_ptr<const Client> c) {
-  vector<MenuItem> ret;
-  ret.emplace_back(ProxyOptionsMenuItemID::GO_BACK, u"Go back",
-      u"Return to the\nproxy menu", 0);
-  ret.emplace_back(ProxyOptionsMenuItemID::INFINITE_HP,
-      c->infinite_hp ? u"Infinite HP ON" : u"Infinite HP OFF",
-      u"Enable or disable\ninfinite HP", 0);
-  ret.emplace_back(ProxyOptionsMenuItemID::INFINITE_TP,
-      c->infinite_tp ? u"Infinite TP ON" : u"Infinite TP OFF",
-      u"Enable or disable\ninfinite TP", 0);
-  ret.emplace_back(ProxyOptionsMenuItemID::SWITCH_ASSIST,
-      c->switch_assist ? u"Switch assist ON" : u"Switch assist OFF",
-      u"Enable or disable\nswitch assist", 0);
-  ret.emplace_back(ProxyOptionsMenuItemID::SAVE_FILES,
-      c->proxy_save_files ? u"Save files ON" : u"Save files OFF",
-      u"Enable or disable\nsaving of files from\nthe remote server\n(quests, etc.)", 0);
-  ret.emplace_back(ProxyOptionsMenuItemID::SUPPRESS_LOGIN,
-      c->proxy_suppress_remote_login ? u"Skip login ON" : u"Skip login OFF",
-      u"Enable or disable\nalternate login\nsequence", 0);
-  ret.emplace_back(ProxyOptionsMenuItemID::SKIP_CARD,
-      c->proxy_zero_remote_guild_card ? u"Skip card ON" : u"Skip card OFF",
-      u"Enable or disable\nGuild Card reset", 0);
-  return ret;
-}
-
 static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 10
   bool uses_unicode = ((c->version() == GameVersion::PC) || (c->version() == GameVersion::BB));
@@ -1280,6 +1278,9 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SWITCH_ASSIST:
           c->switch_assist = !c->switch_assist;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::BLOCK_EVENTS:
+          c->proxy_block_events = !c->proxy_block_events;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SAVE_FILES:
           c->proxy_save_files = !c->proxy_save_files;
