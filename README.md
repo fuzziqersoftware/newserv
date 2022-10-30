@@ -47,7 +47,7 @@ Current known issues / missing features / things to do:
 newserv supports several versions of PSO. Specifically:
 | Version              | Basic commands | Lobbies       | Games         | Proxy         |
 |----------------------|----------------|---------------|---------------|---------------|
-| Dreamcast Trial      | Not supported  | Not supported | Not supported | Not supported |
+| Dreamcast Trial      | Partial (6)    | Not supported | Not supported | Not supported |
 | Dreamcast V1         | Supported (1)  | Supported     | Supported     | Supported     |
 | Dreamcast V2         | Supported (1)  | Supported     | Supported     | Supported     |
 | PC                   | Supported      | Supported     | Supported     | Supported     |
@@ -65,6 +65,7 @@ newserv supports several versions of PSO. Specifically:
 3. *Episode 3 players can download quests, join lobbies, create and join games, and trade cards, but CARD battles are not implemented yet. Tournaments are also not supported.*
 4. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
 5. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
+6. *Support for PSO Dreamcast Trial Edition is very incomplete and probably never will be complete. This is really just exploring a curiosity that sheds some light on early network engineering done by Sega, not an actual attempt at supporting this version of the game.*
 
 ## Usage
 

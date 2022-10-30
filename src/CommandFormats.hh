@@ -1268,11 +1268,18 @@ struct C_Login_DCNTE_8B {
   ptext<char, 0x30> password;
   ptext<char, 0x10> name;
   parray<uint8_t, 2> unused;
+};
+
+struct C_LoginExtended_DCNTE_8B : C_Login_DCNTE_8B {
   SC_MeetUserExtension<char> extension;
 };
 
 // 8C: Invalid command
-// 8D: Invalid command
+
+// 8D (S->C): Request player data (DC NTE only)
+// Behaves the same as 95 (S->C) on all other versions. DC NTE crashes if it
+// receives 95, so this is used instead.
+
 // 8E: Invalid command
 // 8F: Invalid command
 

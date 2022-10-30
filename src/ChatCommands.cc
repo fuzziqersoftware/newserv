@@ -610,7 +610,7 @@ static void server_command_convert_char_to_bb(shared_ptr<ServerState> s,
 
   // Request the player data. The client will respond with a 61, and the handler
   // for that command will execute the conversion
-  send_command(c, 0x95, 0x00);
+  send_get_player_info(c);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

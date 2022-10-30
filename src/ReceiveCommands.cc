@@ -336,7 +336,8 @@ static void on_login_8_dcnte(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_login_b_dcnte(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // 8B
-  const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data);
+  const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data,
+      sizeof(C_Login_DCNTE_8B), sizeof(C_LoginExtended_DCNTE_8B));
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
   c->flags |= Client::Flag::IS_DC_V1 | Client::Flag::IS_TRIAL_EDITION;
@@ -346,7 +347,7 @@ static void on_login_b_dcnte(shared_ptr<ServerState> s, shared_ptr<Client> c,
     shared_ptr<const License> l = s->license_manager->verify_pc(
         serial_number, cmd.access_key);
     c->set_license(l);
-    send_command(c, 0x8B, 0x01);
+    // send_command(c, 0x8B, 0x01);
 
   } catch (const incorrect_access_key& e) {
     send_message_box(c, u"Incorrect access key");
@@ -361,8 +362,20 @@ static void on_login_b_dcnte(shared_ptr<ServerState> s, shared_ptr<Client> c,
           serial_number, cmd.access_key, true);
       s->license_manager->add(l);
       c->set_license(l);
-      send_command(c, 0x8B, 0x01);
+      // send_command(c, 0x8B, 0x01);
     }
+  }
+
+  if (cmd.is_extended) {
+    const auto& ext_cmd = check_size_t<C_LoginExtended_DCNTE_8B>(data);
+    if (ext_cmd.extension.menu_id == MenuID::LOBBY) {
+      c->preferred_lobby_id = ext_cmd.extension.lobby_id;
+    }
+  }
+
+  if (!c->should_disconnect) {
+    send_update_client_config(c);
+    on_login_complete(s, c);
   }
 }
 
@@ -1188,8 +1201,14 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           c->should_send_to_lobby_server = true;
           if (!(c->flags & Client::Flag::SAVE_ENABLED)) {
             c->flags |= Client::Flag::SAVE_ENABLED;
-            send_command(c, 0x97, 0x01);
-            send_update_client_config(c);
+            // DC NTE crashes if it receives a 97 command, so we instead do the
+            // redirect immediately
+            if ((c->version() == GameVersion::DC) && (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+              send_client_to_lobby_server(s, c);
+            } else {
+              send_command(c, 0x97, 0x01);
+              send_update_client_config(c);
+            }
           } else {
             send_client_to_lobby_server(s, c);
           }
@@ -3178,7 +3197,7 @@ static on_command_t handlers[0x100][6] = {
   /* 88 */ {nullptr,                 on_login_8_dcnte,           nullptr,                         on_login_8_dcnte,            nullptr,                     nullptr,                        }, /* 88 */
   /* 89 */ {nullptr,                 on_change_arrow_color,      on_change_arrow_color,           on_change_arrow_color,       on_change_arrow_color,       on_change_arrow_color,          }, /* 89 */
   /* 8A */ {nullptr,                 on_lobby_name_request,      on_lobby_name_request,           on_lobby_name_request,       on_lobby_name_request,       on_lobby_name_request,          }, /* 8A */
-  /* 8B */ {nullptr,                 on_login_b_dcnte,           nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8B */
+  /* 8B */ {nullptr,                 on_login_b_dcnte,           nullptr,                         on_login_b_dcnte,            nullptr,                     nullptr,                        }, /* 8B */
   /* 8C */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8C */
   /* 8D */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8D */
   /* 8E */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 8E */
@@ -3317,13 +3336,14 @@ static void check_unlicensed_command(GameVersion version, uint8_t command) {
     case GameVersion::XB:
       // See comment in the DC case above for why DC commands are included here.
       if (command != 0x88 && // DC NTE
+          command != 0x8B && // DC NTE
           command != 0x90 && // DC v1
           command != 0x93 && // DC v1
           command != 0x9A && // DC v2
           command != 0x9D && // DC v2, GC trial edition
           command != 0x9E && // GC non-trial
           command != 0xDB) { // GC non-trial
-        throw runtime_error("only commands 90, 93, 9A, 9D, 9E, and DB may be sent before login");
+        throw runtime_error("only commands 88, 8B, 90, 93, 9A, 9D, 9E, and DB may be sent before login");
       }
       break;
     case GameVersion::BB:

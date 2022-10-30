@@ -23,6 +23,8 @@ using namespace std;
 
 const unordered_set<uint32_t> v2_crypt_initial_client_commands({
   0x00260088, // (17) DCNTE license check
+  0x00B0008B, // (02) DCNTE login
+  0x0114008B, // (02) DCNTE extended login
   0x00280090, // (17) DCv1 license check
   0x00B00093, // (02) DCv1 login
   0x01140093, // (02) DCv1 extended login
@@ -881,21 +883,49 @@ void send_menu_t(
   }
 
   for (const auto& item : items) {
-    if (((c->version() == GameVersion::DC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_DC)) ||
-        ((c->version() == GameVersion::PC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_PC)) ||
-        ((c->version() == GameVersion::GC) && (item.flags & MenuItem::Flag::INVISIBLE_ON_GC)) ||
-        ((c->version() == GameVersion::XB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_XB)) ||
-        ((c->version() == GameVersion::BB) && (item.flags & MenuItem::Flag::INVISIBLE_ON_BB)) ||
-        ((item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) && (c->flags & Client::Flag::NO_D6)) ||
-        ((item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) && (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL)) ||
-        ((item.flags & MenuItem::Flag::REQUIRES_SAVE_DISABLED) && (c->flags & Client::Flag::SAVE_ENABLED))) {
-      continue;
+    bool is_visible = true;
+    switch (c->version()) {
+      case GameVersion::DC:
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DC);
+        if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+          is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DCNTE);
+        }
+        break;
+      case GameVersion::PC:
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_PC);
+        break;
+      case GameVersion::GC:
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC);
+        if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+          is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC_TRIAL_EDITION);
+        }
+        break;
+      case GameVersion::XB:
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_XB);
+        break;
+      case GameVersion::BB:
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_BB);
+        break;
+      default:
+        throw runtime_error("menus not supported for this game version");
     }
-    auto& e = entries.emplace_back();
-    e.menu_id = menu_id;
-    e.item_id = item.item_id;
-    e.flags = (c->version() == GameVersion::BB) ? 0x0004 : 0x0F04;
-    e.text = item.name;
+    if (item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) {
+      is_visible &= !(c->flags & Client::Flag::NO_D6);
+    }
+    if (item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) {
+      is_visible &= !(c->flags & Client::Flag::NO_SEND_FUNCTION_CALL);
+    }
+    if (item.flags & MenuItem::Flag::REQUIRES_SAVE_DISABLED) {
+      is_visible &= !(c->flags & Client::Flag::SAVE_ENABLED);
+    }
+
+    if (is_visible) {
+      auto& e = entries.emplace_back();
+      e.menu_id = menu_id;
+      e.item_id = item.item_id;
+      e.flags = (c->version() == GameVersion::BB) ? 0x0004 : 0x0F04;
+      e.text = item.name;
+    }
   }
 
   send_command_vt(c, is_info_menu ? 0x1F : 0x07, entries.size() - 1, entries);
@@ -1294,7 +1324,12 @@ void send_self_leave_notification(shared_ptr<Client> c) {
 }
 
 void send_get_player_info(shared_ptr<Client> c) {
-  send_command(c, 0x95, 0x00);
+  if ((c->version() == GameVersion::DC) &&
+      (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+    send_command(c, 0x8D, 0x00);
+  } else {
+    send_command(c, 0x95, 0x00);
+  }
 }
 
 

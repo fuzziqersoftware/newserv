@@ -406,8 +406,11 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   this->main_menu.emplace_back(MainMenuItemID::GO_TO_LOBBY, u"Go to lobby",
       u"Join the lobby", 0);
   this->main_menu.emplace_back(MainMenuItemID::INFORMATION, u"Information",
-      u"View server\ninformation", MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+      u"View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
   uint32_t proxy_destinations_menu_item_flags =
+      // DCNTE doesn't support multiple ship select menus without changing
+      // servers (via a 19 command) apparently :(
+      MenuItem::Flag::INVISIBLE_ON_DCNTE |
       (this->proxy_destinations_dc.empty() ? MenuItem::Flag::INVISIBLE_ON_DC : 0) |
       (this->proxy_destinations_pc.empty() ? MenuItem::Flag::INVISIBLE_ON_PC : 0) |
       (this->proxy_destinations_gc.empty() ? MenuItem::Flag::INVISIBLE_ON_GC : 0) |
@@ -416,7 +419,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
       u"Connect to another\nserver", proxy_destinations_menu_item_flags);
   this->main_menu.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, u"Download quests",
-      u"Download quests", MenuItem::Flag::INVISIBLE_ON_BB);
+      u"Download quests", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
   if (!this->function_code_index->patch_menu_empty()) {
     this->main_menu.emplace_back(MainMenuItemID::PATCHES, u"Patches",
         u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
@@ -429,7 +432,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       u"Disconnect", 0);
   this->main_menu.emplace_back(MainMenuItemID::CLEAR_LICENSE, u"Clear license",
       u"Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password",
-      MenuItem::Flag::INVISIBLE_ON_BB);
+      MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
 
   try {
     this->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());
