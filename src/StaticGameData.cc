@@ -1540,7 +1540,7 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
         if (which > 5) {
           ret_tokens.emplace_back(string_printf("!PC:%02hhX%02hhX", which, value));
         } else {
-          percentages[which] = value;
+          percentages[which - 1] = value;
         }
       }
       ret_tokens.emplace_back(string_printf("%hhu/%hhu/%hhu/%hhu/%hhu",
