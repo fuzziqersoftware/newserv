@@ -666,6 +666,10 @@ static void on_login_d_e_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> 
   // the client to crash.
   if (base_cmd->unused1 == 0x5F5CA297) {
     c->flags &= ~(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL | Client::Flag::NO_SEND_FUNCTION_CALL);
+  } else if (!s->episode_3_send_function_call_enabled &&
+             (c->flags & Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL)) {
+    c->flags &= ~Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL;
+    c->flags |= Client::Flag::NO_SEND_FUNCTION_CALL;
   }
 
   uint32_t serial_number = stoul(base_cmd->serial_number, nullptr, 16);

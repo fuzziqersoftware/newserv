@@ -92,6 +92,10 @@ I 22913 2022-06-30 23:45:39 - [Commands] Received from C-2 (version=GC command=0
 0000 | 99 00 04 00                                     |                 
 I 22913 2022-06-30 23:45:40 - [Commands] Received from C-2 (version=GC command=00D6 flag=00000000)
 0000 | D6 00 04 00                                     |                 
+I 22913 2022-06-30 23:45:40 - [Commands] Sending to C-2 (version=GC command=0004 flag=00000000)
+0000 | 04 00 2C 00 00 00 01 00 78 62 F8 10 39 98 AC 82 |   ,     xb  9   
+0010 | 0E 89 2A 49 00 00 00 00 00 00 00 00 FF FF FF FF |   *I            
+0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 22913 2022-06-30 23:45:40 - [Commands] Sending to C-2 (version=GC command=0007 flag=00000008)
 0000 | 07 06 C8 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria        
@@ -106,11 +110,6 @@ I 22913 2022-06-30 23:45:40 - [Commands] Sending to C-2 (version=GC command=0007
 00A0 | 6E 65 63 74 00 00 00 00 00 00 00 00 11 00 00 11 | nect            
 00B0 | 11 99 99 11 04 0F 43 6C 65 61 72 20 6C 69 63 65 |       Clear lice
 00C0 | 6E 73 65 00 00 00 00 00                         | nse             
-
-I 22913 2022-06-30 23:45:40 - [Commands] Sending to C-2 (version=GC command=0004 flag=00000000)
-0000 | 04 00 2C 00 00 00 01 00 78 62 F8 10 39 98 AC 82 |   ,     xb  9   
-0010 | 0E 89 2A 49 00 00 00 00 00 00 00 00 FF FF FF FF |   *I            
-0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 22913 2022-06-30 23:45:41 - [Commands] Received from C-2 (version=GC command=0010 flag=00000000)
 0000 | 10 00 0C 00 11 00 00 11 11 88 88 11             |                 
 I 22913 2022-06-30 23:45:41 - [Server] Client disconnected: C-2 on virtual connection 0x103704560
