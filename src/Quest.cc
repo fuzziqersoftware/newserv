@@ -659,9 +659,9 @@ string Quest::decode_gci(
   } else if (header.game_id[2] == 'S') { // Episode 3
     // The first 0x10 bytes in the data segment appear to be unused. In most
     // files I've seen, the last half of it (8 bytes) are duplicates of the
-    // first 8 bytes of the unscrambled, compressed data, though this is likely
-    // the result of an uninitialized memory bug when the client encodes the
-    // file and not an actual constraint on what should be in these 8 bytes.
+    // first 8 bytes of the unscrambled, compressed data, though this is the
+    // result of an uninitialized memory bug when the client encodes the file
+    // and not an actual constraint on what should be in these 8 bytes.
     r.skip(16);
     // The game treats this field as a 16-byte string (including the \0). The 8
     // bytes after it appear to be completely unused.

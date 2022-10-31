@@ -67,7 +67,8 @@ static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descrip
   {ProxyOptionsMenuItemID::INFINITE_HP, u"If enabled, the proxy\nwill restore your HP\nwhen you are hit by\nan enemy or trap,\nbut cannot revive\nyou from one-hit\nkills"},
   {ProxyOptionsMenuItemID::INFINITE_TP, u"If enabled, the proxy\nwill restore your TP\nwhen you cast any\ntechnique"},
   {ProxyOptionsMenuItemID::SWITCH_ASSIST, u"If enabled, the proxy\nwill attempt to\nunlock 2-player\ndoors when you step\non both switches\nsequentially"},
-  {ProxyOptionsMenuItemID::BLOCK_EVENTS, u"If enabled, season\nevents in the lobby\nand in games are\ndisabled."},
+  {ProxyOptionsMenuItemID::BLOCK_EVENTS, u"If enabled, seasonal\nevents in the lobby\nand in games are\ndisabled."},
+  {ProxyOptionsMenuItemID::BLOCK_PATCHES, u"If enabled, patches\nsent by the remote\nserver are blocked."},
   {ProxyOptionsMenuItemID::SAVE_FILES, u"If enabled, the proxy\nwill save local\ncopies of files from\nthe remote server\n(quests, etc.)"},
   {ProxyOptionsMenuItemID::SUPPRESS_LOGIN, u"If enabled, the proxy\nwill use an alternate\nlogin sequence"},
   {ProxyOptionsMenuItemID::SKIP_CARD, u"If enabled, the proxy\nwill use an alternate\nvalue for your initial\nGuild Card"},
@@ -91,6 +92,8 @@ static vector<MenuItem> proxy_options_menu_for_client(
   }
   ret.emplace_back(ProxyOptionsMenuItemID::BLOCK_EVENTS,
       c->proxy_block_events ? u"Block events ON" : u"Block events OFF", u"", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::BLOCK_PATCHES,
+      c->proxy_block_function_calls ? u"Block patches ON" : u"Block patches OFF", u"", 0);
   ret.emplace_back(ProxyOptionsMenuItemID::SAVE_FILES,
       c->proxy_save_files ? u"Save files ON" : u"Save files OFF", u"", 0);
   ret.emplace_back(ProxyOptionsMenuItemID::SUPPRESS_LOGIN,
@@ -127,6 +130,9 @@ static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Cl
   if (c->proxy_block_events) {
     session->override_lobby_event = 0;
   }
+  if (c->proxy_block_function_calls) {
+    session->function_call_return_value = 0xFFFFFFFF;
+  }
   if (c->proxy_zero_remote_guild_card) {
     session->remote_guild_card_number = 0;
   } else {
@@ -150,6 +156,20 @@ static void send_proxy_destinations_menu(shared_ptr<ServerState> s, shared_ptr<C
     string info_str = string_printf("Your remote Guild\nCard number is\noverridden as\n$C6%" PRIu32, proxy_remote_guild_card_number);
     send_ship_info(c, decode_sjis(info_str));
   } catch (const out_of_range&) { }
+}
+
+static bool send_enable_send_function_call_if_applicable(
+    shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  if (c->flags & Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL) {
+    if (s->episode_3_send_function_call_enabled) {
+      send_quest_buffer_overflow(s, c);
+    } else {
+      c->flags |= Client::Flag::NO_SEND_FUNCTION_CALL;
+    }
+    c->flags &= ~Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL;
+    return true;
+  }
+  return false;
 }
 
 
@@ -210,6 +230,9 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
         (c->flags & Client::Flag::NO_D6) ||
         !(c->flags & Client::Flag::AT_WELCOME_MESSAGE)) {
       c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
+      if (send_enable_send_function_call_if_applicable(s, c)) {
+        send_update_client_config(c);
+      }
       send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
     } else {
       send_message_box(c, s->welcome_message.c_str());
@@ -637,6 +660,13 @@ static void on_login_d_e_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> 
   }
 
   set_console_client_flags(c, base_cmd->sub_version);
+  // See system/ppc/Episode3USAQuestBufferOverflow.s for where this value gets
+  // set. We use this to determine if the client has already run the code or
+  // not; sending it again when the client has already run it will likely cause
+  // the client to crash.
+  if (base_cmd->unused1 == 0x5F5CA297) {
+    c->flags &= ~(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL | Client::Flag::NO_SEND_FUNCTION_CALL);
+  }
 
   uint32_t serial_number = stoul(base_cmd->serial_number, nullptr, 16);
   try {
@@ -687,7 +717,6 @@ static void on_login_d_e_dc_pc_v3(shared_ptr<ServerState> s, shared_ptr<Client> 
   }
 
   send_update_client_config(c);
-
   on_login_complete(s, c);
 }
 
@@ -985,9 +1014,10 @@ static void on_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> 
     send_menu(c, u"Information", MenuID::INFORMATION,
         *s->information_menu_for_version(c->version()));
   } else if (c->flags & Client::Flag::AT_WELCOME_MESSAGE) {
-    send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+    send_enable_send_function_call_if_applicable(s, c);
     c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
     send_update_client_config(c);
+    send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
   }
 }
 
@@ -1300,6 +1330,9 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::BLOCK_EVENTS:
           c->proxy_block_events = !c->proxy_block_events;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::BLOCK_PATCHES:
+          c->proxy_block_function_calls = !c->proxy_block_function_calls;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SAVE_FILES:
           c->proxy_save_files = !c->proxy_save_files;

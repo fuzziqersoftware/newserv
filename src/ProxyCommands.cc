@@ -172,7 +172,8 @@ static HandlerResult S_G_9A(shared_ptr<ServerState>,
     cmd.player_tag = 0x00010000;
     cmd.guild_card_number = session.remote_guild_card_number;
   }
-  cmd.unused = 0;
+  cmd.unused1 = 0;
+  cmd.unused2 = 0;
   cmd.sub_version = session.sub_version;
   cmd.is_extended = (session.remote_guild_card_number < 0) ? 0 : 1;
   cmd.language = session.language;
@@ -322,7 +323,8 @@ static HandlerResult S_V123P_02_17(
           cmd.player_tag = 0x00010000;
           cmd.guild_card_number = session.remote_guild_card_number;
         }
-        cmd.unused = 0;
+        cmd.unused1 = 0;
+        cmd.unused2 = 0;
         cmd.sub_version = session.sub_version;
         cmd.is_extended = 0;
         cmd.language = session.language;
@@ -371,7 +373,8 @@ static HandlerResult S_V123P_02_17(
       C_LoginExtended_GC_9E cmd;
       cmd.player_tag = 0x00010000;
       cmd.guild_card_number = guild_card_number;
-      cmd.unused = 0;
+      cmd.unused1 = 0;
+      cmd.unused2 = 0;
       cmd.sub_version = session.sub_version;
       cmd.is_extended = 0;
       cmd.language = session.language;
@@ -936,14 +939,14 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
 template <typename T>
 static HandlerResult S_44_A6(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t, string& data) {
-  if (session.save_files) {
-    const auto& cmd = check_size_t<S_OpenFile_PC_V3_44_A6>(data);
-    bool is_download_quest = (command == 0xA6);
+  const auto& cmd = check_size_t<S_OpenFile_PC_V3_44_A6>(data);
 
-    string filename = cmd.filename;
-    string output_filename = string_printf("%s.%s.%" PRIu64,
+  string filename = cmd.filename;
+  string output_filename;
+  if (session.save_files) {
+    output_filename = string_printf("%s.%s.%" PRIu64,
         filename.c_str(),
-        is_download_quest ? "download" : "online", now());
+        (command == 0xA6) ? "download" : "online", now());
     for (size_t x = 0; x < output_filename.size(); x++) {
       if (output_filename[x] < 0x20 || output_filename[x] > 0x7E || output_filename[x] == '/') {
         output_filename[x] = '_';
@@ -952,12 +955,17 @@ static HandlerResult S_44_A6(shared_ptr<ServerState>,
     if (output_filename[0] == '.') {
       output_filename[0] = '_';
     }
-
-    ProxyServer::LinkedSession::SavingFile sf(
-        cmd.filename, output_filename, cmd.file_size);
-    session.saving_files.emplace(cmd.filename, move(sf));
-    session.log.info("Opened file %s", output_filename.c_str());
   }
+
+  ProxyServer::LinkedSession::SavingFile sf(
+      cmd.filename, output_filename, cmd.file_size);
+  session.saving_files.emplace(cmd.filename, move(sf));
+  if (session.save_files) {
+    session.log.info("Opened file %s", output_filename.c_str());
+  } else {
+    session.log.info("Tracking file %s", filename.c_str());
+  }
+
   return HandlerResult::Type::FORWARD;
 }
 
@@ -967,39 +975,41 @@ constexpr on_command_t S_B_44_A6 = &S_44_A6<S_OpenFile_BB_44_A6>;
 
 static HandlerResult S_13_A7(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  if (session.save_files) {
-    const auto& cmd = check_size_t<S_WriteFile_13_A7>(data);
+  auto& cmd = check_size_t<S_WriteFile_13_A7>(data);
+  bool modified = false;
 
-    ProxyServer::LinkedSession::SavingFile* sf = nullptr;
-    try {
-      sf = &session.saving_files.at(cmd.filename);
-    } catch (const out_of_range&) {
-      string filename = cmd.filename;
-      session.log.warning("Received data for non-open file %s", filename.c_str());
-      return HandlerResult::Type::FORWARD;
-    }
-
-    size_t bytes_to_write = cmd.data_size;
-    if (bytes_to_write > 0x400) {
-      session.log.warning("Chunk data size is invalid; truncating to 0x400");
-      bytes_to_write = 0x400;
-    }
-
-    session.log.info("Writing %zu bytes to %s", bytes_to_write, sf->output_filename.c_str());
-    fwritex(sf->f.get(), cmd.data, bytes_to_write);
-    if (bytes_to_write > sf->remaining_bytes) {
-      session.log.warning("Chunk size extends beyond original file size; file may be truncated");
-      sf->remaining_bytes = 0;
-    } else {
-      sf->remaining_bytes -= bytes_to_write;
-    }
-
-    if (sf->remaining_bytes == 0) {
-      session.log.info("File %s is complete", sf->output_filename.c_str());
-      session.saving_files.erase(cmd.filename);
-    }
+  ProxyServer::LinkedSession::SavingFile* sf = nullptr;
+  try {
+    sf = &session.saving_files.at(cmd.filename);
+  } catch (const out_of_range&) {
+    string filename = cmd.filename;
+    session.log.warning("Received data for non-open file %s", filename.c_str());
+    return HandlerResult::Type::FORWARD;
   }
-  return HandlerResult::Type::FORWARD;
+
+  if (cmd.data_size > sf->remaining_bytes) {
+    session.log.warning("Chunk size extends beyond original file size; truncating file");
+    cmd.data_size = sf->remaining_bytes;
+    modified = true;
+  } else if (cmd.data_size > 0x400) {
+    session.log.warning("Chunk data size is invalid; truncating to 0x400");
+    cmd.data_size = 0x400;
+    modified = true;
+  }
+
+  if (sf->f.get()) {
+    session.log.info("Writing %" PRIu32 " bytes to %s",
+        cmd.data_size.load(), sf->output_filename.c_str());
+    fwritex(sf->f.get(), cmd.data, cmd.data_size);
+  }
+  sf->remaining_bytes -= cmd.data_size;
+
+  if (sf->remaining_bytes == 0) {
+    session.log.info("Closing file %s", sf->output_filename.c_str());
+    session.saving_files.erase(cmd.filename);
+  }
+
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult S_G_B7(shared_ptr<ServerState>,

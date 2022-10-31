@@ -243,6 +243,74 @@ void send_update_client_config(shared_ptr<Client> c) {
 
 
 
+template <typename CommandT>
+void send_quest_open_file_t(
+    shared_ptr<Client> c,
+    const string& quest_name,
+    const string& filename,
+    uint32_t file_size,
+    QuestFileType type) {
+  CommandT cmd;
+  uint8_t command_num;
+  switch (type) {
+    case QuestFileType::ONLINE:
+      command_num = 0x44;
+      cmd.name = "PSO/" + quest_name;
+      cmd.flags = 2;
+      break;
+    case QuestFileType::GBA_DEMO:
+      command_num = 0xA6;
+      cmd.name = "GBA Demo";
+      cmd.flags = 2;
+      break;
+    case QuestFileType::DOWNLOAD:
+      command_num = 0xA6;
+      cmd.name = "PSO/" + quest_name;
+      cmd.flags = 0;
+      break;
+    case QuestFileType::EPISODE_3:
+      command_num = 0xA6;
+      cmd.name = "PSO/" + quest_name;
+      cmd.flags = 3;
+      break;
+    default:
+      throw logic_error("invalid quest file type");
+  }
+  cmd.unused.clear(0);
+  cmd.file_size = file_size;
+  cmd.filename = filename.c_str();
+  send_command_t(c, command_num, 0x00, cmd);
+}
+
+void send_quest_buffer_overflow(
+    shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  // TODO: Figure out a way to share this state across sessions. Maybe we could
+  // e.g. modify send_1D to send a nonzero flag value, which we could use to
+  // know that the client already has this patch? Or just add another command in
+  // the login sequence?
+
+  // PSO Episode 3 USA doesn't natively support the B2 command, but we can add
+  // it back to the game with some tricky commands. For details on how this
+  // works, see system/ppc/Episode3USAQuestBufferOverflow.s.
+  auto fn = s->function_code_index->name_to_function.at("Episode3USAQuestBufferOverflow");
+  if (fn->code.size() > 0x400) {
+    throw runtime_error("Episode 3 buffer overflow code must be a single segment");
+  }
+
+  static const string filename = "m999999p_e.bin";
+  send_quest_open_file_t<S_OpenFile_PC_V3_44_A6>(
+      c, "BufferOverflow", filename, 0x18, QuestFileType::EPISODE_3);
+
+  S_WriteFile_13_A7 cmd;
+  cmd.filename = filename;
+  memcpy(cmd.data, fn->code.data(), fn->code.size());
+  if (fn->code.size() < 0x400) {
+    memset(&cmd.data[fn->code.size()], 0, 0x400 - fn->code.size());
+  }
+  cmd.data_size = fn->code.size();
+  send_command_t(c, 0xA7, 0x00, cmd);
+}
+
 void send_function_call(
     shared_ptr<Client> c,
     shared_ptr<CompiledFunctionCode> code,
@@ -1726,45 +1794,6 @@ void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key) {
 }
 
 
-
-template <typename CommandT>
-void send_quest_open_file_t(
-    shared_ptr<Client> c,
-    const string& quest_name,
-    const string& filename,
-    uint32_t file_size,
-    QuestFileType type) {
-  CommandT cmd;
-  uint8_t command_num;
-  switch (type) {
-    case QuestFileType::ONLINE:
-      command_num = 0x44;
-      cmd.name = "PSO/" + quest_name;
-      cmd.flags = 2;
-      break;
-    case QuestFileType::GBA_DEMO:
-      command_num = 0xA6;
-      cmd.name = "GBA Demo";
-      cmd.flags = 2;
-      break;
-    case QuestFileType::DOWNLOAD:
-      command_num = 0xA6;
-      cmd.name = "PSO/" + quest_name;
-      cmd.flags = 0;
-      break;
-    case QuestFileType::EPISODE_3:
-      command_num = 0xA6;
-      cmd.name = "PSO/" + quest_name;
-      cmd.flags = 3;
-      break;
-    default:
-      throw logic_error("invalid quest file type");
-  }
-  cmd.unused.clear(0);
-  cmd.file_size = file_size;
-  cmd.filename = filename.c_str();
-  send_command_t(c, command_num, 0x00, cmd);
-}
 
 void send_quest_file_chunk(
     shared_ptr<Client> c,

@@ -122,6 +122,8 @@ void send_server_init(
     uint8_t flags);
 void send_update_client_config(std::shared_ptr<Client> c);
 
+void send_quest_buffer_overflow(
+    std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
 void send_function_call(
     std::shared_ptr<Client> c,
     std::shared_ptr<CompiledFunctionCode> code,

@@ -70,6 +70,9 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
              Client::Flag::IS_EPISODE_3 |
              Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
     case 0x41: // GC Ep3 US
+      return Client::Flag::NO_D6_AFTER_LOBBY |
+             Client::Flag::IS_EPISODE_3 |
+             Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL;
     case 0x43: // GC Ep3 EU
       return Client::Flag::NO_D6_AFTER_LOBBY |
              Client::Flag::IS_EPISODE_3 |

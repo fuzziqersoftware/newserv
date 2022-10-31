@@ -626,8 +626,11 @@ ProxyServer::LinkedSession::SavingFile::SavingFile(
     uint32_t remaining_bytes)
   : basename(basename),
     output_filename(output_filename),
-    remaining_bytes(remaining_bytes),
-    f(fopen_unique(this->output_filename, "wb")) { }
+    remaining_bytes(remaining_bytes) {
+  if (!this->output_filename.empty()) {
+    this->f = fopen_unique(this->output_filename, "wb");
+  }
+}
 
 
 

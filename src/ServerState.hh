@@ -49,6 +49,7 @@ struct ServerState {
   bool allow_unregistered_users;
   bool allow_saving;
   bool item_tracking_enabled;
+  bool episode_3_send_function_call_enabled;
   RunShellBehavior run_shell_behavior;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;

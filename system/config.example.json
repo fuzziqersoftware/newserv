@@ -248,6 +248,12 @@
   // they are at the newserv main menu. If set, this value must be an integer.
   // "Episode3MenuSong": 0,
 
+  // Whether to enable patches on Episode 3 USA. This functionality depends on
+  // exploiting a bug in Episode 3, and while it seems to work reliably on
+  // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't
+  // enable Episode 3 patches by default; it only does so if this option is on.
+  // "EnableEpisode3SendFunctionCall": true,
+
   // By default, the server keeps track of items in all games, even for versions
   // other than Blue Burst. This enables use of the $what command, as well as
   // protection against item duplication cheats (the cheater is disconnected

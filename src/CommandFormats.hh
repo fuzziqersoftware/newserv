@@ -1513,7 +1513,8 @@ struct C_Register_BB_9C {
 struct C_Login_DC_PC_GC_9D {
   le_uint32_t player_tag; // 0x00010000 if guild card is set (via 04)
   le_uint32_t guild_card_number; // 0xFFFFFFFF if not set
-  le_uint64_t unused;
+  le_uint32_t unused1;
+  le_uint32_t unused2;
   le_uint32_t sub_version;
   uint8_t is_extended; // If 1, structure has extended format
   uint8_t language; // 0 = JP, 1 = EN, 2 = DE, 3 = FR, 4 = ES

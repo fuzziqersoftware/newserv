@@ -141,6 +141,12 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     s->item_tracking_enabled = true;
   }
 
+  try {
+    s->episode_3_send_function_call_enabled = d.at("EnableEpisode3SendFunctionCall")->as_bool();
+  } catch (const out_of_range&) {
+    s->episode_3_send_function_call_enabled = false;
+  }
+
   shared_ptr<JSONObject> log_levels_json;
   try {
     log_levels_json = d.at("LogLevels");
