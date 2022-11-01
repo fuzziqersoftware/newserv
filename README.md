@@ -143,6 +143,13 @@ Specifically, the patch-bb directory should contain at least the data.gsl file a
 
 Everything in this section requires resource_dasm to be installed, so newserv can use the PowerPC assembler and disassembler from its libresource_file library. If resource_dasm is not installed, newserv will still build and run, but these features will not be available.
 
+In addition, these features are only supported for the following game versions:
+* PSO GameCube Episodes 1&2 JP, USA, and EU (not Plus)
+* PSO GameCube Episodes 1&2 Plus JP v1.04 (not v1.05)
+* PSO GameCube Episode 3 Trial Edition
+* PSO GameCube Episode 3 JP
+* PSO GameCube Episode 3 USA (experimental; must be manually enabled in config.json)
+
 You can put memory patches in the system/ppc directory with filenames like PatchName.patch.s and they will appear in the Patches menu for PSO GC clients that support patching. Memory patches are written in PowerPC assembly and are compiled when newserv is started. The PowerPC assembly system's features are documented in the comments in system/ppc/WriteMemory.s - this file is not a memory patch itself, but it describes how memory patches may be written and the restrictions that apply to them.
 
 You can also put DOL files in the system/dol directory, and they will appear in the Programs menu. Selecting a DOL file there will load the file into the GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWord.s, WriteMemory.s, and RunDOL.s must be present in the system/ppc directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
