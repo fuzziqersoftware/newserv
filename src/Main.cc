@@ -19,6 +19,7 @@
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
 #include "ProxyServer.hh"
+#include "PSOGCObjectGraph.hh"
 #include "ReplaySession.hh"
 #include "SendCommands.hh"
 #include "Server.hh"
@@ -326,6 +327,7 @@ enum class Behavior {
   DECODE_SJIS,
   EXTRACT_GSL,
   SHOW_EP3_DATA,
+  PARSE_OBJECT_GRAPH,
   REPLAY_LOG,
   CAT_CLIENT,
 };
@@ -340,6 +342,7 @@ static bool behavior_takes_input_filename(Behavior b) {
          (b == Behavior::DECODE_QUEST_FILE) ||
          (b == Behavior::DECODE_SJIS) ||
          (b == Behavior::EXTRACT_GSL) ||
+         (b == Behavior::PARSE_OBJECT_GRAPH) ||
          (b == Behavior::REPLAY_LOG);
 }
 
@@ -377,6 +380,7 @@ int main(int argc, char** argv) {
   const char* output_filename = nullptr;
   const char* replay_required_access_key = "";
   const char* replay_required_password = "";
+  uint32_t root_object_address = 0;
   struct sockaddr_storage cat_client_remote;
   for (int x = 1; x < argc; x++) {
     if (!strcmp(argv[x], "--help")) {
@@ -442,6 +446,8 @@ int main(int argc, char** argv) {
       skip_big_endian = true;
     } else if (!strcmp(argv[x], "--show-ep3-data")) {
       behavior = Behavior::SHOW_EP3_DATA;
+    } else if (!strcmp(argv[x], "--parse-object-graph")) {
+      behavior = Behavior::PARSE_OBJECT_GRAPH;
     } else if (!strcmp(argv[x], "--replay-log")) {
       behavior = Behavior::REPLAY_LOG;
     } else if (!strcmp(argv[x], "--extract-gsl")) {
@@ -450,6 +456,8 @@ int main(int argc, char** argv) {
       replay_required_password = &argv[x][19];
     } else if (!strncmp(argv[x], "--require-access-key=", 21)) {
       replay_required_access_key = &argv[x][21];
+    } else if (!strncmp(argv[x], "--root-addr=", 12)) {
+      root_object_address = strtoul(&argv[x][12], nullptr, 16);
     } else if (!strncmp(argv[x], "--config=", 9)) {
       config_filename = &argv[x][9];
     } else if (!strcmp(argv[x], "-") || argv[x][0] != '-') {
@@ -739,6 +747,13 @@ int main(int argc, char** argv) {
         log_info("%s\nTags: %s\n%s\n", s.c_str(), tags.c_str(), text.c_str());
       }
 
+      break;
+    }
+
+    case Behavior::PARSE_OBJECT_GRAPH: {
+      string data = read_input_data();
+      PSOGCObjectGraph g(data, root_object_address);
+      g.print(stdout);
       break;
     }
 

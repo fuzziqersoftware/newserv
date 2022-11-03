@@ -71,6 +71,7 @@ add_executable(newserv
   src/ProxyCommands.cc
   src/ProxyServer.cc
   src/PSOEncryption.cc
+  src/PSOGCObjectGraph.cc
   src/PSOProtocol.cc
   src/Quest.cc
   src/RareItemSet.cc
