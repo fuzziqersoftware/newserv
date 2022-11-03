@@ -1,6 +1,8 @@
 # This patch enables the debug menus in PSO Episode 3 USA. Specifically, it
 # causes them all to load, but only activates one (selected by uncommenting a
-# line below). See the comments for more information.
+# line below). See the comments for more information. Most of these editors are
+# present in PSO PC and PSOX as well, but not in GC Episodes 1 & 2. There are
+# notes in the below comments that may help get these editors working on PSO PC.
 
 # This patch is only for PSO Episode 3 USA, which means it requires the
 # EnableEpisode3SendFunctionCall option to be enabled in config.json. If that
@@ -59,6 +61,13 @@ start:
 setup_editors:
   # This function sets up various things that the editors require. Most editors
   # will crash in update() if this isn't called before construction time.
+  # Note: In PSO PC (the version I have, at least) this function may not exist.
+  # It can presumably be simulated by calling the first of each triplet of
+  # function pointers, which is essentially what this function does in Episode
+  # 3. Below, we call [r30 + 0x08], which constructs each editor; there are
+  # optional function pointers at [r30 + 0x00] and [r30 + 0x04] which prepare
+  # and clean up each editor respectively. It will probably suffice on PSOPC to
+  # simply call all the prepare functions that aren't null.
   lis    r0, 0x8002
   ori    r0, r0, 0x9D88
   mtctr  r0
@@ -66,6 +75,7 @@ setup_editors:
 
 construct_editors:
   # Call the constructors for all the editors and save the object pointers
+  # Note: In PSO PC (the version I have, at least) this table is at 00691FA8.
   lis    r30, 0x8043
   ori    r30, r30, 0x3760
   addi   r31, r30, 0xB4  # 15 entries * 12 bytes per entry
@@ -161,10 +171,12 @@ activate_chosen_editor:
   #   1 & 2.
 
   # lwz    r4, [r29 + 0x34] # TEffIndirectEditor (no visible effects)
+  #   This editor is missing in PSO PC, but is present in PSOX.
   #   TODO: It's not apparent what this editor does, or if it even survives to
   #   the update/render phase. Further research is needed here.
 
   # lwz    r4, [r29 + 0x38] # TCCScenarioDebug (movie/cutscene tests)
+  #   This editor exists only in Episode 3 - it is not in PSOPC nor PSOX.
   #   Nothing appears immediately after activating this debugger because the
   #   default page is blank. Use C-left and C-right to change major pages; use
   #   L/R to change minor pages (sets of 50 flags within each major page). Use
@@ -176,6 +188,8 @@ activate_chosen_editor:
   li     r3, 0
   mr.    r0, r4
   beq    skip_enable_editor
+  # Note: The PSO PC TObject structure is a bit different; the flags field is at
+  # +8 instead of +4 (but it is still a 16-bit integer).
   sth    [r4 + 4], r3
 skip_enable_editor:
 
