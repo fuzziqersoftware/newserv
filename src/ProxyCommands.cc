@@ -687,8 +687,20 @@ static HandlerResult S_B2(shared_ptr<ServerState>,
     session.server_channel.send(0xB3, flag, &cmd, sizeof(cmd));
     return HandlerResult::Type::SUPPRESS;
   } else {
+    session.should_forward_function_call_return_queue.emplace_back(true);
     return HandlerResult::Type::FORWARD;
   }
+}
+
+static HandlerResult C_B3(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  if (session.should_forward_function_call_return_queue.empty()) {
+    session.log.warning("Received function call result with empty result queue");
+    return HandlerResult::Type::FORWARD;
+  }
+  bool should_forward = session.should_forward_function_call_return_queue.front();
+  session.should_forward_function_call_return_queue.pop_front();
+  return should_forward ? HandlerResult::Type::FORWARD : HandlerResult::Type::SUPPRESS;
 }
 
 static HandlerResult S_B_E7(shared_ptr<ServerState>,
@@ -1554,7 +1566,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* B0 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
 /* B1 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
 /* B2 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {S_B2,          nullptr},      {S_B2,          nullptr},      {S_B2,         nullptr}},
-/* B3 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* B3 */ {{S_invalid,     C_B3},    {S_invalid,     C_B3},         {S_invalid,     C_B3},         {S_invalid,     C_B3},         {S_invalid,     C_B3},         {S_invalid,    C_B3}},
 /* B4 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B5 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},

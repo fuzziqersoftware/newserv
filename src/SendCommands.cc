@@ -318,10 +318,28 @@ void send_function_call(
     const std::string& suffix,
     uint32_t checksum_addr,
     uint32_t checksum_size) {
-  if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
+  return send_function_call(
+      c->channel,
+      c->flags,
+      code,
+      label_writes,
+      suffix,
+      checksum_addr,
+      checksum_size);
+}
+
+void send_function_call(
+    Channel& ch,
+    uint64_t client_flags,
+    shared_ptr<CompiledFunctionCode> code,
+    const std::unordered_map<std::string, uint32_t>& label_writes,
+    const std::string& suffix,
+    uint32_t checksum_addr,
+    uint32_t checksum_size) {
+  if (client_flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
     throw logic_error("client does not support function calls");
   }
-  if (code.get() && (c->flags & Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
+  if (code.get() && (client_flags & Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
     throw logic_error("client only supports checksums in send_function_call");
   }
 
@@ -331,7 +349,7 @@ void send_function_call(
     data = code->generate_client_command(label_writes, suffix);
     index = code->index;
 
-    if (c->flags & Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL) {
+    if (client_flags & Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL) {
       uint32_t key = random_object<uint32_t>();
 
       // This format was probably never used on any little-endian system, but we
@@ -364,7 +382,7 @@ void send_function_call(
   w.put(header);
   w.write(data);
 
-  send_command(c, 0xB2, index, w.str());
+  ch.send(0xB2, index, w.str());
 }
 
 

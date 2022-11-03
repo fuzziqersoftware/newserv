@@ -2,6 +2,7 @@
 
 #include <event2/event.h>
 
+#include <deque>
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
@@ -67,6 +68,7 @@ public:
     bool infinite_tp;
     bool save_files;
     bool suppress_remote_login;
+    std::deque<bool> should_forward_function_call_return_queue;
     int64_t function_call_return_value; // -1 = don't block function calls
     G_SwitchStateChanged_6x05 last_switch_enabled_command;
     PlayerInventoryItem next_drop_item;

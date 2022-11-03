@@ -216,6 +216,20 @@ static void server_command_patch(shared_ptr<ServerState> s, shared_ptr<Lobby>,
   }
 }
 
+static void proxy_command_patch(shared_ptr<ServerState> s,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  std::shared_ptr<CompiledFunctionCode> fn;
+  try {
+    fn = s->function_code_index->name_to_function.at(encode_sjis(args));
+    send_function_call(
+        session.client_channel, session.newserv_client_config.cfg.flags, fn);
+    // Don't forward the patch response to the server
+    session.should_forward_function_call_return_queue.emplace_back(false);
+  } catch (const out_of_range&) {
+    send_text_message(session.client_channel, u"Invalid patch name");
+  }
+}
+
 static void server_command_persist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_privileges(c, Privilege::DEBUG);
@@ -980,7 +994,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$minlevel", {server_command_min_level,          nullptr,                       u"Usage:\nmin_level <level>"}},
     {u"$next",     {server_command_next,               proxy_command_next,            u"Usage:\nnext"}},
     {u"$password", {server_command_password,           nullptr,                       u"Usage:\nlock [password]\nomit password to\nunlock game"}},
-    {u"$patch",    {server_command_patch,              nullptr,                       u"Usage:\npatch <name>"}},
+    {u"$patch",    {server_command_patch,              proxy_command_patch,           u"Usage:\npatch <name>"}},
     {u"$persist",  {server_command_persist,            nullptr,                       u"Usage:\npersist"}},
     {u"$rand",     {server_command_rand,               proxy_command_rand,            u"Usage:\nrand [hex seed]\nomit seed to revert\nto default"}},
     {u"$secid",    {server_command_secid,              proxy_command_secid,           u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},

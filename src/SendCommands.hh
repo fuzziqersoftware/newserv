@@ -125,6 +125,14 @@ void send_update_client_config(std::shared_ptr<Client> c);
 void send_quest_buffer_overflow(
     std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
 void send_function_call(
+    Channel& ch,
+    uint64_t client_flags,
+    std::shared_ptr<CompiledFunctionCode> code,
+    const std::unordered_map<std::string, uint32_t>& label_writes = {},
+    const std::string& suffix = "",
+    uint32_t checksum_addr = 0,
+    uint32_t checksum_size = 0);
+void send_function_call(
     std::shared_ptr<Client> c,
     std::shared_ptr<CompiledFunctionCode> code,
     const std::unordered_map<std::string, uint32_t>& label_writes = {},
