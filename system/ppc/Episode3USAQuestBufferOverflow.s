@@ -262,11 +262,11 @@ get_handle_B2_end_ptr:
   # Copy handle_B2 to 8000BD80, which is normally unused by the game
   lis     r12, 0x8000
   ori     r12, r12, 0xBD80 # r12 = 0x8000BD80
-  subi    r8, r12, 4 # r8 = r12 - 4 (so we can use stwu)
-  subi    r9, r9, 4 # r9 = r9 - 4 (so we can use lwzu)
   sub     r7, r10, r9
   rlwinm  r7, r7, 30, 2, 31 # r7 = number of words to copy
   mtctr   r7
+  subi    r8, r12, 4 # r8 = r12 - 4 (so we can use stwu)
+  subi    r9, r9, 4 # r9 = r9 - 4 (so we can use lwzu)
 copy_handle_B2_word_again:
   lwzu    r0, [r9 + 4]
   stwu    [r8 + 4], r0
