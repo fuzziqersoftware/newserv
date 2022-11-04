@@ -5308,7 +5308,7 @@ struct G_Unknown_GC_Ep3_6xB4x3D {
   uint8_t unknown_a5;
 };
 
-// 6xB5x3E: Unknown
+// 6xB5x3E: Make card auction bid
 
 struct G_MakeCardAuctionBid_GC_Ep3_6xB5x3E {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
