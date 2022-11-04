@@ -61,7 +61,7 @@ Server commands:\n\
   exit (or ctrl+d)\n\
     Shut down the server.\n\
   reload <item> ...\n\
-    Reload data. <item> can be licenses or quests.\n\
+    Reload data. <item> can be licenses, quests, functions, or programs.\n\
     Reloading will not affect items that are in use; for example, if a client\'s\n\
     license is deleted by reloading, they will not be disconnected immediately.\n\
   add-license <parameters>\n\
@@ -167,6 +167,12 @@ Proxy commands (these will only work when exactly one client is connected):\n\
       } else if (type == "quests") {
         shared_ptr<QuestIndex> qi(new QuestIndex("system/quests"));
         this->state->quest_index = qi;
+      } else if (type == "functions") {
+        shared_ptr<FunctionCodeIndex> fci(new FunctionCodeIndex("system/ppc"));
+        this->state->function_code_index = fci;
+      } else if (type == "programs") {
+        shared_ptr<DOLFileIndex> dfi(new DOLFileIndex("system/dol"));
+        this->state->dol_file_index = dfi;
       } else {
         throw invalid_argument("incorrect data type");
       }
