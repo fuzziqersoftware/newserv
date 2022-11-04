@@ -5355,11 +5355,18 @@ struct G_MapDataRequest_GC_Ep3_6xB3x41_CAx41 {
   le_uint32_t map_number;
 };
 
-// 6xB5x42: Unknown
+// 6xB5x42: Initiate card auction
+// Sending this command to a client has the same effect as sending a 6xB5x3F
+// command to tell it to open the auction menu. However, under normal operation,
+// the server doens't need to do this - the client sends this when all of the
+// following conditions are met:
+// 1. The client has a VIP card. (This is stored client-side in seq flag 7000).
+// 2. The client is in a game with 4 players.
+// 3. All clients are at the auction counter.
 
-struct G_Unknown_GC_Ep3_6xB5x42 {
+struct G_InitiateCardAuction_GC_Ep3_6xB5x42 {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
-  // This command uses header_b1, but has no other arguments.
+  // This command uses header.unknown_a1 (probably for the client's ID).
 };
 
 // 6xB5x43: Unknown
