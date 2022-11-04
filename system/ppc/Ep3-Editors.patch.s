@@ -76,10 +76,13 @@ again:
   mtctr  r0
   bctrl
   stw    [r29], r3
+  mr.    r0, r3
+  beq    editor_construction_failed
 editor_already_exists:
   li     r0, 0x0014 # Flags: disable update, disable render
   # See comment below about the flags field on PSO PC.
   sth    [r3 + 0x04], r0
+editor_construction_failed:
   addi   r30, r30, 0x0C
   addi   r29, r29, 4
   cmpl   r30, r31
