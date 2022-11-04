@@ -14,8 +14,11 @@ else()
     add_compile_options(-Wall -Wextra -Werror -Wno-address-of-packed-member)
 endif()
 
-include_directories("/usr/local/include")
-link_directories("/usr/local/lib")
+set(LOCAL_INCLUDE_DIR "/usr/local/include")
+set(LOCAL_LIB_DIR "/usr/local/lib")
+list(APPEND CMAKE_PREFIX_PATH ${LOCAL_LIB_DIR})
+include_directories(${LOCAL_INCLUDE_DIR})
+link_directories(${LOCAL_LIB_DIR})
 
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -31,14 +34,8 @@ set (LIBEVENT_LIBRARIES
         ${LIBEVENT_LIBRARY}
         ${LIBEVENT_CORE})
 
-find_path     (RESOURCE_FILE_INCLUDE_DIR NAMES resource_file/ResourceFile.hh)
-find_library  (RESOURCE_FILE_LIBRARY     NAMES resource_file)
-
-if(RESOURCE_FILE_INCLUDE_DIR AND RESOURCE_FILE_LIBRARY)
-  set(RESOURCE_FILE_FOUND 1)
-else()
-  set(RESOURCE_FILE_FOUND 0)
-endif()
+find_package(phosg REQUIRED)
+find_package(resource_file QUIET)
 
 
 
@@ -90,13 +87,12 @@ add_executable(newserv
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR})
 target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} pthread)
 
-if(RESOURCE_FILE_FOUND)
+if(resource_file_FOUND)
   target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)
-  target_include_directories(newserv PUBLIC ${RESOURCE_FILE_INCLUDE_DIR})
-  target_link_libraries(newserv ${RESOURCE_FILE_LIBRARY})
+  target_link_libraries(newserv resource_file)
   message(STATUS "libresource_file found; enabling patch support")
 else()
-  message(WARNING "libresource_file not available; disabling patch support")
+  message(WARNING "libresource_file not found; disabling patch support")
 endif()
 
 
