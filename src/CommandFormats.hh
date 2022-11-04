@@ -2791,17 +2791,17 @@ struct S_CardTradeComplete_GC_Ep3_EE_FlagD4 {
 // Same format as 01. The message appears at the top of the screen and slowly
 // scrolls to the left.
 
-// EF (C->S): Unknown (Episode 3)
+// EF (C->S): Join card auction (Episode 3)
 // No arguments
 
-// EF (S->C): Unknown (Episode 3)
+// EF (S->C): Start card auction (Episode 3)
 
-struct S_Unknown_GC_Ep3_EF {
-  le_uint16_t unknown_a1;
-  le_uint16_t unknown_a2;
+struct S_StartCardAuction_GC_Ep3_EF {
+  le_uint16_t points_available;
+  le_uint16_t unused;
   struct Entry {
-    le_uint16_t unknown_a1;
-    le_uint16_t unknown_a2;
+    le_uint16_t card_id; // Must be < 0x02F1
+    le_uint16_t price; // Must be > 0 and < 100
   };
   Entry entries[0x14];
 };
@@ -5310,20 +5310,25 @@ struct G_Unknown_GC_Ep3_6xB4x3D {
 
 // 6xB5x3E: Unknown
 
-struct G_Unknown_GC_Ep3_6xB5x3E {
+struct G_MakeCardAuctionBid_GC_Ep3_6xB5x3E {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
-  // Note: This command uses header_b1 for... something.
-  uint8_t unknown_a1;
-  uint8_t unknown_a2;
+  // Note: This command uses header.unknown_a1 for the bidder's client ID.
+  uint8_t card_index; // Index of card in EF command
+  uint8_t bid_value; // 1-99
   parray<uint8_t, 2> unused;
 };
 
-// 6xB5x3F: Unknown
+// 6xB5x3F: Open menu
 
 struct G_Unknown_GC_Ep3_6xB5x3F {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
+  // Menu type should be one of these values:
+  // 01/02 = battle prep menu
+  // 11 = card auction counter menu (join or cancel)
+  // 12 = go directly to card auction state (client sends EF command)
+  // Other values will likely crash the client.
   int8_t unknown_a1; // Must be in the range [-1, 0x14]
-  uint8_t unknown_a2; // Must be < 4
+  uint8_t client_id;
   parray<uint8_t, 2> unused1;
   le_uint32_t unknown_a3;
   parray<uint8_t, 4> unused2;
@@ -5370,20 +5375,22 @@ struct G_Unknown_GC_Ep3_6xB5x43 {
   Entry entries[0x14];
 };
 
-// 6xB5x44: Unknown
+// 6xB5x44: Card auction bid summary
 
-struct G_Unknown_GC_Ep3_6xB5x44 {
+struct G_CardAuctionBidSummary_GC_Ep3_6xB5x44 {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
-  // Note: This command uses header_b1, which must be < 4.
-  parray<le_uint16_t, 8> unknown_a1;
+  // Note: This command uses header.unknown_a1 for the bidder's client ID.
+  parray<le_uint16_t, 8> bids; // In same order as cards in the EF command
 };
 
-// 6xB5x45: Unknown
+// 6xB5x45: Card auction results
 
-struct G_Unknown_GC_Ep3_6xB5x45 {
+struct G_CardAuctionResults_GC_Ep3_6xB5x45 {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
-  // Note: This command uses header_b1, which must be < 4.
-  parray<parray<le_uint16_t, 4>, 8> unknown_a1;
+  // Note: This command uses header.unknown_a1 for the sender's client ID.
+  // This array is indexed by [card_index][client_id], and contains the final
+  // bid for each player on each card (or 0 if they did not bid on that card).
+  parray<parray<le_uint16_t, 4>, 8> bids_by_player;
 };
 
 // 6xB4x46: Start or end battle
