@@ -5320,14 +5320,14 @@ struct G_MakeCardAuctionBid_GC_Ep3_6xB5x3E {
 
 // 6xB5x3F: Open menu
 
-struct G_Unknown_GC_Ep3_6xB5x3F {
+struct G_OpenMenu_GC_Ep3_6xB5x3F {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
   // Menu type should be one of these values:
-  // 01/02 = battle prep menu
-  // 11 = card auction counter menu (join or cancel)
-  // 12 = go directly to card auction state (client sends EF command)
+  // 0x01/0x02 = battle prep menu
+  // 0x11 = card auction counter menu (join or cancel)
+  // 0x12 = go directly to card auction state (client sends EF command)
   // Other values will likely crash the client.
-  int8_t unknown_a1; // Must be in the range [-1, 0x14]
+  int8_t menu_type; // Must be in the range [-1, 0x14]
   uint8_t client_id;
   parray<uint8_t, 2> unused1;
   le_uint32_t unknown_a3;
