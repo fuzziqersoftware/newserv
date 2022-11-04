@@ -9,19 +9,6 @@
 # option is disabled, the Patches menu won't appear for the client. If this
 # patch is run on a different client version, it will do nothing.
 
-# When you run this patch (via the $patch chat command, since it must be done
-# when already in a lobby or game), the screen will go mostly black for a few
-# seconds while the editors are constructed. It's unclear why this takes so
-# long, but it doesn't seem to cause any other issues.
-
-# This patch automatically does nothing if it has been run already in the
-# current session, since some of the things it does have unclear lifecycles.
-# This means it can only be used once per power-on; in the future, we could hook
-# into the destroy functions of the various editors to know when it's OK to
-# construct them again. (We'd also have to manage some hackish bookkeeping that
-# the TEditor base class does so its list doesn't overflow, which would cause
-# any new editors to be deleted immediately.)
-
 entry_ptr:
 reloc0:
   .offsetof start
@@ -48,43 +35,49 @@ start:
   cmp    r4, r5
   bne    skip_all
 
-  # Running this patch multiple times will likely crash the client, so do
-  # nothing if we detect the patch has already run.
+  # Write a short hook that updates our editors table when TEditor_destroy() is
+  # called
+  bl     get_TEditor_destroy_hook_addr
+  mr     r4, r3
+  bl     get_TEditor_destroy_hook_end
+  sub    r5, r3, r4
+  subi   r5, r5, 0x08
+  lis    r3, 0x8000
+  ori    r3, r3, 0xBD00
+  bl     copy_code
+
+  # Make TEditor_destroy call our hook immediately before returning
+  bl     get_patch_branch_opcode
+  mr     r4, r3
+  lis    r3, 0x8002
+  ori    r3, r3, 0xE554
+  li     r5, 4
+  bl     copy_code
+
   lis    r29, 0x8000
   ori    r29, r29, 0xBD44
-  lwz    r3, [r29 - 4]
-  mr.    r0, r3
-  bne    skip_all
-  li     r0, -1
-  stw    [r29 - 4], r0
-
-setup_editors:
-  # This function sets up various things that the editors require. Most editors
-  # will crash in update() if this isn't called before construction time.
-  # Note: In PSO PC (the version I have, at least) this function may not exist.
-  # It can presumably be simulated by calling the first of each triplet of
-  # function pointers, which is essentially what this function does in Episode
-  # 3. Below, we call [r30 + 0x08], which constructs each editor; there are
-  # optional function pointers at [r30 + 0x00] and [r30 + 0x04] which prepare
-  # and clean up each editor respectively. It will probably suffice on PSOPC to
-  # simply call all the prepare functions that aren't null.
-  lis    r0, 0x8002
-  ori    r0, r0, 0x9D88
-  mtctr  r0
-  bctrl
 
 construct_editors:
-  # Call the constructors for all the editors and save the object pointers
+  # Call the constructors for all the editors and save the object pointers. If
+  # an editor already exists, set its disable flags. (This behavior allows this
+  # patch to run again to switch to a different editor without changing rooms.)
   # Note: In PSO PC (the version I have, at least) this table is at 00691FA8.
   lis    r30, 0x8043
   ori    r30, r30, 0x3760
   addi   r31, r30, 0xB4  # 15 entries * 12 bytes per entry
 again:
+  lwz    r3, [r29]
+  mr.    r0, r3
+  bne    editor_already_exists
   lwz    r0, [r30 + 0x08]
   mtctr  r0
   bctrl
-  addi   r30, r30, 0x0C
   stw    [r29], r3
+editor_already_exists:
+  li     r0, 0x0014 # Flags: disable update, disable render
+  # See comment below about the flags field on PSO PC.
+  sth    [r3 + 0x04], r0
+  addi   r30, r30, 0x0C
   addi   r29, r29, 4
   cmpl   r30, r31
   blt    again
@@ -92,9 +85,9 @@ again:
 activate_chosen_editor:
   # All of the editors have flags set at construction time that effectively
   # disable them (by disabling both the update and render functions). At the
-  # time this code is executed, the flags are already set, so we can unset them
-  # for whichever editor we want to run by uncommenting the appropriate lwz
-  # opcode below.
+  # time this code is executed, the flags are already set (and we set them again
+  # in the above loop anyway), so we can unset the flags for whichever editor we
+  # want to run by uncommenting the appropriate lwz opcode below.
   # Most of these tools expect input from the controller in port 3; the comments
   # below all refer to inputs from that port.
 
@@ -201,3 +194,42 @@ skip_all:
   addi   r1, r1, 0x20
   mtlr   r0
   blr
+
+
+
+copy_code:
+  .include CopyCode
+  blr
+
+
+
+get_addr_ret:
+  mflr   r3
+  mtlr   r0
+  blr
+
+get_TEditor_destroy_hook_addr:
+  mflr   r0
+  bl     get_addr_ret
+
+TEditor_destroy_hook:
+  li     r4, 0x0F
+  mtctr  r4
+  lis    r4, 0x8000
+  ori    r4, r4, 0xBD40
+  li     r0, 0
+TEditor_destroy_hook_check_next:
+  lwzu   r5, [r4 + 4]
+  cmp    r5, r3
+  bne    TEditor_destroy_hook_skip_clear
+  stw    [r4], r0
+TEditor_destroy_hook_skip_clear:
+  bdnz   TEditor_destroy_hook_check_next
+  blr
+
+get_TEditor_destroy_hook_end:
+get_patch_branch_opcode:
+  mflr   r0
+  bl     get_addr_ret
+
+  .data  0x4BFDD7AC # (at 8002E554) b 8000BD00
