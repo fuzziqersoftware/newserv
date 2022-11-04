@@ -7,7 +7,10 @@
 # This patch is only for PSO Episode 3 USA, which means it requires the
 # EnableEpisode3SendFunctionCall option to be enabled in config.json. If that
 # option is disabled, the Patches menu won't appear for the client. If this
-# patch is run on a different client version, it will do nothing.
+# patch is run on a different client version, it will do nothing. Also, this
+# patch must not be run from the Patches menu - it should only be run with the
+# $patch command, since the client will likely crash if the player is not in a
+# game or lobby when the patch runs.
 
 entry_ptr:
 reloc0:
