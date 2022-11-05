@@ -4680,16 +4680,21 @@ struct G_UpdateHand_GC_Ep3_6xB4x02 {
 
 struct G_SetStateFlags_GC_Ep3_6xB4x03 {
   G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5 header;
-  le_uint16_t unknown_a1;
-  parray<uint8_t, 6> unknown_a2;
-  parray<le_uint32_t, 2> unknown_a3;
-  be_uint16_t unknown_a4;
+  le_uint16_t battle_round;
+  uint8_t battle_phase;
+  uint8_t unknown_a2;
+  uint8_t unknown_a3;
+  uint8_t unknown_a4;
+  uint8_t setup_phase;
   uint8_t unknown_a5;
+  parray<le_uint32_t, 2> team_exp;
+  parray<uint8_t, 2> team_dice_boost;
+  uint8_t unknown_a6;
   // If tournament_flag is 1, the player will start at the counter instead of in
   // the default position the next time they join a game, and they will be
   // unable to leave the counter menu.
   uint8_t tournament_flag;
-  be_uint32_t unknown_a6;
+  be_uint32_t unknown_a7;
 };
 
 // 6xB4x04: Update SC/FC stats
