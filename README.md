@@ -31,6 +31,7 @@ With that said, I offer no guarantees on how or when this project will advance. 
 Current known issues / missing features / things to do:
 - Support disconnect hooks to clean up state, like if a client disconnects during quest loading or during a trade window execution.
 - Episode 3 battles and tournaments aren't implemented. (Some reverse-engineering has already been done here though - see Episode3.hh/cc)
+    - Card auctions could be supported without too much effort, though; only the EF command needs to be implemented.
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
     - Enemy indexes also desync slightly in most games, often in later areas, leading to incorrect EXP values being given for killed enemies.
 - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
