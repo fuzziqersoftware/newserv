@@ -175,7 +175,7 @@ static HandlerResult S_G_9A(shared_ptr<ServerState>,
   cmd.unused1 = 0;
   cmd.unused2 = 0;
   cmd.sub_version = session.sub_version;
-  cmd.is_extended = (session.remote_guild_card_number < 0) ? 0 : 1;
+  cmd.is_extended = (session.remote_guild_card_number < 0) ? 1 : 0;
   cmd.language = session.language;
   cmd.serial_number = string_printf("%08" PRIX32 "", session.license->serial_number);
   cmd.access_key = session.license->access_key;
@@ -183,6 +183,8 @@ static HandlerResult S_G_9A(shared_ptr<ServerState>,
   cmd.access_key2 = cmd.access_key;
   cmd.name = session.character_name;
   cmd.client_config.data = session.remote_client_config_data;
+  cmd.extension.menu_id = 0;
+  cmd.extension.lobby_id = 0;
 
   // If there's a guild card number, a shorter 9E is sent that ends
   // right after the client config data
@@ -384,6 +386,8 @@ static HandlerResult S_V123P_02_17(
       cmd.access_key2 = cmd.access_key;
       cmd.name = session.character_name;
       cmd.client_config.data = session.remote_client_config_data;
+      cmd.extension.menu_id = 0;
+      cmd.extension.lobby_id = 0;
       session.server_channel.send(0x9E, 0x01, &cmd, sizeof(C_Login_GC_9E));
       return HandlerResult::Type::SUPPRESS;
 
@@ -501,7 +505,7 @@ static HandlerResult S_V123_04(shared_ptr<ServerState>,
         : "t Port Map. Copyright SEGA Enter",
       session.remote_client_config_data.bytes());
   memcpy(session.remote_client_config_data.data(), &cmd.cfg,
-      min<size_t>(data.size() - sizeof(S_UpdateClientConfig_DC_PC_V3_04),
+      min<size_t>(data.size() - offsetof(S_UpdateClientConfig_DC_PC_V3_04, cfg),
         session.remote_client_config_data.bytes()));
 
   // If the guild card number was not set, pretend (to the server) that this is
