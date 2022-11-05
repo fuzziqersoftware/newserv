@@ -1243,9 +1243,15 @@ static HandlerResult C_06(shared_ptr<ServerState> s,
       return HandlerResult::Type::SUPPRESS;
     }
 
-    bool is_command = (text[0] == '$' || (text[0] == '\t' && text[1] != 'C' && text[2] == '$'));
+    // On Episode 3, spectator chats begin with an @ character
+    bool is_command = (text[0] == '$') ||
+        (text[0] == '@' && text[1] == '$') ||
+        (text[0] == '\t' && text[1] != 'C' && text[2] == '$') ||
+        (text[0] == '@' && text[1] == '\t' && text[2] != 'C' && text[3] == '$');
     if (is_command) {
-      text = text.substr((text[0] == '$') ? 0 : 2);
+      size_t offset = text[0] == '@' ? 1 : 0;
+      offset += text[offset] == '$' ? 0 : 2;
+      text = text.substr(offset);
       if (text.size() >= 2 && text[1] == '$') {
         send_chat_message(session.server_channel, text.substr(1));
         return HandlerResult::Type::SUPPRESS;
