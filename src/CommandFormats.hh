@@ -1443,8 +1443,11 @@ struct C_Login_DC_PC_V3_9A {
 // 00 = license ok (don't save to memory card; client responds with 9D/9E)
 // 01 = registration required (client responds with a 9C command)
 // 02 = license ok (save to memory card; client responds with 9D/9E)
-// 03 = access key invalid (125)
-// 04 = serial number invalid (126)
+// For all of the below cases, the client doesn't respond and displays a message
+// box describing the error. When the player presses a button, the client then
+// disconnects.
+// 03 = access key invalid (125) (client deletes saved license info)
+// 04 = serial number invalid (126) (client deletes saved license info)
 // 07 = invalid Hunter's License (117)
 // 08 = Hunter's License expired (116)
 // 0B = HL not registered under this serial number/access key (112)
@@ -1733,6 +1736,8 @@ struct S_ConfirmUpdateQuestStatistics_V3_BB_AB {
 // B1 (S->C): Server time
 // Contents is a string like "%Y:%m:%d: %H:%M:%S.000" (the space is not a typo).
 // For example: 2022:03:30: 15:36:42.000
+// It seems the client ignores the date part and the milliseconds part; only the
+// hour, minute, and second fields are actually used.
 // This command can be sent even if it's not requested by the client (with B1).
 // For example, some servers send this every time a client joins a game.
 // Client will respond with a 99 command.
