@@ -185,16 +185,15 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
       }
       this->name_to_function.emplace(name, code);
       if (is_patch) {
-        this->menu_item_id_to_patch_function.emplace(next_menu_item_id++, code);
+        code->menu_item_id = next_menu_item_id++;
+        this->menu_item_id_to_patch_function.emplace(code->menu_item_id, code);
         this->name_to_patch_function.emplace(name, code);
       }
-      if (code->index) {
-        function_compiler_log.info("Compiled function %02X => %s (%s)",
-            code->index, name.c_str(), name_for_architecture(code->arch));
-      } else {
-        function_compiler_log.info("Compiled function %s (%s)",
-            name.c_str(), name_for_architecture(code->arch));
-      }
+
+      string index_prefix = code->index ? string_printf("%02X => ", code->index) : "";
+      string patch_prefix = is_patch ? string_printf("[%08" PRIX32 "] ", code->menu_item_id) : "";
+      function_compiler_log.info("Compiled function %s%s%s (%s)",
+          index_prefix.c_str(), patch_prefix.c_str(), name.c_str(), name_for_architecture(code->arch));
 
     } catch (const exception& e) {
       function_compiler_log.warning("Failed to compile function %s: %s", name.c_str(), e.what());
