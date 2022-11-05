@@ -65,13 +65,14 @@ struct Ep3CardDefinition {
   } __attribute__((packed));
 
   struct Effect {
+    uint8_t effect_num;
     uint8_t command; // See name_for_effect_command in Episode3.cc for details
     ptext<char, 0x0F> expr; // May be blank if the command doesn't use it
     uint8_t when; // See description_for_when in Episode3.cc for details
     ptext<char, 4> arg1;
     ptext<char, 4> arg2;
     ptext<char, 4> arg3;
-    parray<uint8_t, 3> unknown_a3; // Possibly completely unused
+    parray<uint8_t, 2> unknown_a3;
 
     bool is_empty() const;
     static std::string str_for_arg(const std::string& arg);
@@ -112,7 +113,8 @@ struct Ep3CardDefinition {
   uint8_t hide_in_deck_edit; // 0 = player can use this card (appears in deck edit)
   uint8_t subtype; // e.g. gun, sword, etc. (used for checking if SCs can use it)
   uint8_t rarity; // Rarity enum
-  be_uint32_t unknown_a2;
+  be_uint16_t unknown_a2;
+  be_uint16_t unknown_a3;
   // These two fields seem to always contain the same value, and are always 0
   // for non-assist cards and nonzero for assists. Each assist card has a unique
   // value here and no effects, which makes it look like this is how assist
@@ -122,12 +124,29 @@ struct Ep3CardDefinition {
   // other fields are also involved in determining their effects (see e.g. Skip
   // Draw / Skip Move, Dice Fever / Dice Fever +, Reverse Card / Rich +).
   parray<be_uint16_t, 2> assist_effect;
-  parray<be_uint16_t, 2> unknown_a3;
+  // Drop rates are decimal-encoded with the following fields:
+  // - rate % 10 (that is, the lowest decimal place) specifies the required game
+  //   mode. 0 means any mode, 1 means offline only, 2 means 1P free-battle, 3
+  //   means 2P+ free battle, 4 means story mode.
+  // - (rate / 10) % 100 (that is, the tens and hundreds decimal places) specify
+  //   something else, but it's not clear what exactly.
+  // - rate / 1000 (the thousands decimal place) specifies the level class
+  //   required to get this drop.
+  // - rate / 10000 (the ten-thousands decimal place) must be either 0, 1, or 2,
+  //   but it's not clear yet what each value means.
+  // The drop rates are completely ignored if any of the following are true
+  // (which means the card can never be found in a normal post-battle draw):
+  // - type is SC_HUNTERS or SC_ARKZ
+  // - unknown_a3 is 0x23 or 0x24
+  // - rarity is E, D1, D2, or INVIS
+  // - hide_in_deck_edit is 1 (specifically 1; other nonzero values here don't
+  //   prevent the card from appearing in post-battle draws)
+  parray<be_uint16_t, 2> drop_rates;
   ptext<char, 0x14> name;
   ptext<char, 0x0B> jp_short_name;
-  ptext<char, 0x07> short_name;
-  be_uint16_t has_effects; // 1 if any of the following structs are not blank
+  ptext<char, 0x08> short_name;
   Effect effects[3];
+  uint8_t unused_a3;
 
   void decode_range();
   std::string str() const;

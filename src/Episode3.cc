@@ -429,7 +429,7 @@ string Ep3CardDefinition::Effect::str_for_arg(const std::string& arg) {
 }
 
 string Ep3CardDefinition::Effect::str() const {
-  string cmd_str = string_printf("%02hhX", this->command);
+  string cmd_str = string_printf("(%hhu) %02hhX", this->effect_num, this->command);
   try {
     const char* name = name_for_effect_command.at(this->command).name;
     if (name) {
@@ -630,8 +630,8 @@ string Ep3CardDefinition::str() const {
   return string_printf(
       "[Card: %04" PRIX32 " name=%s type=%s-%02hhX rare=%s cost=%hhX+%hhX "
       "target=%s range=%s assist_turns=%s cannot_move=%s cannot_attack=%s "
-      "hidden=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s top=%s a2=%08" PRIX32 " "
-      "assist_effect=[%hu, %hu] a3=[%hu, %hu] has_effects=%s effects=[%s]]",
+      "hidden=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s top=%s a2=%04hX "
+      "a3=%04hX assist_effect=[%hu, %hu] drop_rates=[%hu, %hu] effects=[%s]]",
       this->card_id.load(),
       this->name.data(),
       type_str.c_str(),
@@ -653,11 +653,11 @@ string Ep3CardDefinition::str() const {
       right_str.c_str(),
       top_str.c_str(),
       this->unknown_a2.load(),
+      this->unknown_a3.load(),
       this->assist_effect[0].load(),
       this->assist_effect[1].load(),
-      this->unknown_a3[0].load(),
-      this->unknown_a3[1].load(),
-      this->has_effects ? "true" : "false",
+      this->drop_rates[0].load(),
+      this->drop_rates[1].load(),
       effects_str.c_str());
 }
 
