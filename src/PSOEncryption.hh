@@ -226,3 +226,7 @@ protected:
   std::string seed;
   bool jsd1_use_detector_seed;
 };
+
+
+
+void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis);

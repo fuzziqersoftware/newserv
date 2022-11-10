@@ -278,10 +278,6 @@ void send_ep3_media_update(
     uint32_t which,
     const std::string& compressed_data);
 void send_ep3_rank_update(std::shared_ptr<Client> c);
-void send_ep3_map_list(
-    std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l);
-void send_ep3_map_data(
-    std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l, uint32_t map_id);
 void send_ep3_card_battle_table_state(std::shared_ptr<Lobby> l, uint16_t table_number);
 
 // Pass mask_key = 0 to unmask the command

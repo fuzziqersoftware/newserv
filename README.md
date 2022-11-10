@@ -30,8 +30,8 @@ With that said, I offer no guarantees on how or when this project will advance. 
 
 Current known issues / missing features / things to do:
 - Support disconnect hooks to clean up state, like if a client disconnects during quest loading or during a trade window execution.
-- Episode 3 battles and tournaments aren't implemented. (Some reverse-engineering has already been done here though - see Episode3.hh/cc)
-    - Card auctions could be supported without too much effort, though; only the EF command needs to be implemented.
+- Episode 3 battles are implemented but not well-tested.
+- Card auctions could be supported without too much effort, though; only the EF command needs to be implemented.
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
     - Enemy indexes also desync slightly in most games, often in later areas, leading to incorrect EXP values being given for killed enemies.
 - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
@@ -42,6 +42,7 @@ Current known issues / missing features / things to do:
 - Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
 - Encapsulate BB server-side random state and make replays deterministic.
 - The internal menu abstraction is ugly and hard to work with. Rewrite it.
+- Add default values for all commands (like we use for Episode 3 battle commands).
 
 ## Compatibility
 
@@ -63,7 +64,7 @@ newserv supports several versions of PSO. Specifically:
 *Notes:*
 1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
 2. *This version only supports the modem adapter, which Dolphin does not currently emulate, so it's difficult to test.*
-3. *Episode 3 players can download quests, join lobbies, create and join games, and trade cards, but CARD battles are not implemented yet. Tournaments are also not supported.*
+3. *Episode 3 players can download quests, join lobbies, create and join games, and trade cards. CARD battles are implemented but not well-tested. Tournaments and View Battle are not implemented.*
 4. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
 5. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
 6. *Support for PSO Dreamcast Trial Edition is very incomplete and probably never will be complete. This is really just exploring a curiosity that sheds some light on early network engineering done by Sega, not an actual attempt at supporting this version of the game.*

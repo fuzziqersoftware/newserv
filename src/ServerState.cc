@@ -23,6 +23,8 @@ ServerState::ServerState()
     allow_saving(true),
     item_tracking_enabled(true),
     episode_3_send_function_call_enabled(false),
+    catch_handler_exceptions(true),
+    ep3_behavior_flags(0),
     run_shell_behavior(RunShellBehavior::DEFAULT), next_lobby_id(1),
     pre_lobby_event(0),
     ep3_menu_song(-1) {

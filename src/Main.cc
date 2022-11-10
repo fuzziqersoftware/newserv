@@ -148,6 +148,18 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     s->episode_3_send_function_call_enabled = false;
   }
 
+  try {
+    s->catch_handler_exceptions = d.at("CatchHandlerExceptions")->as_bool();
+  } catch (const out_of_range&) {
+    s->catch_handler_exceptions = true;
+  }
+
+  try {
+    s->ep3_behavior_flags = d.at("Episode3BehaviorFlags")->as_int();
+  } catch (const out_of_range&) {
+    s->ep3_behavior_flags = 0;
+  }
+
   shared_ptr<JSONObject> log_levels_json;
   try {
     log_levels_json = d.at("LogLevels");
@@ -292,6 +304,8 @@ The options are:\n\
   --show-ep3-data\n\
       Print the Episode 3 data files (maps and card definitions) from the\n\
       system/ep3 directory in a human-readable format.\n\
+  --show-ep3-card=ID\n\
+      Describe the Episode 3 card with the given ID.\n\
   --replay-log\n\
       Replay a terminal log as if it were a client session. input-filename may\n\
       be specified for this option. This is used for regression testing, to\n\
@@ -322,6 +336,7 @@ enum class Behavior {
   DECOMPRESS_BC0,
   ENCRYPT_DATA,
   DECRYPT_DATA,
+  DECRYPT_TRIVIAL_DATA,
   FIND_DECRYPTION_SEED,
   DECODE_QUEST_FILE,
   DECODE_SJIS,
@@ -339,6 +354,7 @@ static bool behavior_takes_input_filename(Behavior b) {
          (b == Behavior::DECOMPRESS_BC0) ||
          (b == Behavior::ENCRYPT_DATA) ||
          (b == Behavior::DECRYPT_DATA) ||
+         (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
          (b == Behavior::DECODE_QUEST_FILE) ||
          (b == Behavior::DECODE_SJIS) ||
          (b == Behavior::EXTRACT_GSL) ||
@@ -353,6 +369,7 @@ static bool behavior_takes_output_filename(Behavior b) {
          (b == Behavior::DECOMPRESS_BC0) ||
          (b == Behavior::ENCRYPT_DATA) ||
          (b == Behavior::DECRYPT_DATA) ||
+         (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
          (b == Behavior::DECODE_SJIS);
 }
 
@@ -381,6 +398,7 @@ int main(int argc, char** argv) {
   const char* replay_required_access_key = "";
   const char* replay_required_password = "";
   uint32_t root_object_address = 0;
+  uint16_t ep3_card_id = 0xFFFF;
   struct sockaddr_storage cat_client_remote;
   for (int x = 1; x < argc; x++) {
     if (!strcmp(argv[x], "--help")) {
@@ -398,6 +416,8 @@ int main(int argc, char** argv) {
       behavior = Behavior::ENCRYPT_DATA;
     } else if (!strcmp(argv[x], "--decrypt-data")) {
       behavior = Behavior::DECRYPT_DATA;
+    } else if (!strcmp(argv[x], "--decrypt-trivial-data")) {
+      behavior = Behavior::DECRYPT_TRIVIAL_DATA;
     } else if (!strcmp(argv[x], "--find-decryption-seed")) {
       behavior = Behavior::FIND_DECRYPTION_SEED;
     } else if (!strcmp(argv[x], "--decode-sjis")) {
@@ -446,6 +466,9 @@ int main(int argc, char** argv) {
       skip_big_endian = true;
     } else if (!strcmp(argv[x], "--show-ep3-data")) {
       behavior = Behavior::SHOW_EP3_DATA;
+    } else if (!strncmp(argv[x], "--show-ep3-card=", 16)) {
+      behavior = Behavior::SHOW_EP3_DATA;
+      ep3_card_id = strtoul(&argv[x][16], nullptr, 16);
     } else if (!strcmp(argv[x], "--parse-object-graph")) {
       behavior = Behavior::PARSE_OBJECT_GRAPH;
     } else if (!strcmp(argv[x], "--replay-log")) {
@@ -476,10 +499,14 @@ int main(int argc, char** argv) {
   auto read_input_data = [&]() -> string {
     string data;
     if (input_filename && strcmp(input_filename, "-")) {
-      return load_file(input_filename);
+      data = load_file(input_filename);
     } else {
-      return read_all(stdin);
+      data = read_all(stdin);
     }
+    if (parse_data) {
+      data = parse_data_string(data);
+    }
+    return data;
   };
 
   auto write_output_data = [&](const void* data, size_t size) {
@@ -500,10 +527,6 @@ int main(int argc, char** argv) {
     case Behavior::COMPRESS_BC0:
     case Behavior::DECOMPRESS_BC0: {
       string data = read_input_data();
-      if (parse_data) {
-        data = parse_data_string(data);
-      }
-
       size_t input_bytes = data.size();
       if (behavior == Behavior::COMPRESS_PRS) {
         data = prs_compress(data);
@@ -548,9 +571,6 @@ int main(int argc, char** argv) {
       }
 
       string data = read_input_data();
-      if (parse_data) {
-        data = parse_data_string(data);
-      }
 
       size_t original_size = data.size();
       data.resize((data.size() + 7) & (~7), '\0');
@@ -581,6 +601,14 @@ int main(int argc, char** argv) {
 
       write_output_data(data.data(), data.size());
 
+      break;
+    }
+
+    case Behavior::DECRYPT_TRIVIAL_DATA: {
+      uint8_t basis = stoul(seed, nullptr, 16);
+      string data = read_input_data();
+      decrypt_trivial_gci_data(data.data(), data.size(), basis);
+      write_output_data(data.data(), data.size());
       break;
     }
 
@@ -681,9 +709,6 @@ int main(int argc, char** argv) {
 
     case Behavior::DECODE_SJIS: {
       string data = read_input_data();
-      if (parse_data) {
-        data = parse_data_string(data);
-      }
       auto decoded = decode_sjis(data);
       write_output_data(decoded.data(), decoded.size() * sizeof(decoded[0]));
       break;
@@ -725,26 +750,33 @@ int main(int argc, char** argv) {
 
     case Behavior::SHOW_EP3_DATA: {
       config_log.info("Collecting Episode 3 data");
-      Ep3DataIndex index("system/ep3", true);
+      Episode3::DataIndex index("system/ep3", true);
 
-      auto map_ids = index.all_map_ids();
-      log_info("%zu maps", map_ids.size());
-      for (uint32_t map_id : map_ids) {
-        auto map = index.get_map(map_id);
-        string name = map->map.name;
-        string location = map->map.location_name;
-        log_info("(Map %08" PRIX32 ") %s @ %s", map_id, name.c_str(), location.c_str());
-        // TODO: Print more information about the map here
-      }
+      if (ep3_card_id == 0xFFFF) {
+        auto map_ids = index.all_map_ids();
+        log_info("%zu maps", map_ids.size());
+        for (uint32_t map_id : map_ids) {
+          auto map = index.definition_for_map_number(map_id);
+          string s = map->map.str(&index);
+          fprintf(stdout, "%s\n", s.c_str());
+        }
 
-      auto card_ids = index.all_card_ids();
-      log_info("%zu card definitions", card_ids.size());
-      for (uint32_t card_id : card_ids) {
-        auto entry = index.get_card_definition(card_id);
+        auto card_ids = index.all_card_ids();
+        log_info("%zu card definitions", card_ids.size());
+        for (uint32_t card_id : card_ids) {
+          auto entry = index.definition_for_card_id(card_id);
+          string s = entry->def.str();
+          string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
+          string text = entry->text.empty() ? "(No text available)" : entry->text;
+          fprintf(stdout, "%s\nTags: %s\n%s\n\n", s.c_str(), tags.c_str(), text.c_str());
+        }
+
+      } else {
+        auto entry = index.definition_for_card_id(ep3_card_id);
         string s = entry->def.str();
         string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
         string text = entry->text.empty() ? "(No text available)" : entry->text;
-        log_info("%s\nTags: %s\n%s\n", s.c_str(), tags.c_str(), text.c_str());
+        fprintf(stdout, "%s\nTags: %s\n%s\n", s.c_str(), tags.c_str(), text.c_str());
       }
 
       break;
@@ -824,7 +856,7 @@ int main(int argc, char** argv) {
           state->load_bb_file("ItemRT.rel")));
 
       config_log.info("Collecting Episode 3 data");
-      state->ep3_data_index.reset(new Ep3DataIndex("system/ep3"));
+      state->ep3_data_index.reset(new Episode3::DataIndex("system/ep3"));
 
       config_log.info("Collecting quest metadata");
       state->quest_index.reset(new QuestIndex("system/quests"));

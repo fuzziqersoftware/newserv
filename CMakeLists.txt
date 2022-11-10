@@ -48,7 +48,16 @@ add_executable(newserv
   src/Client.cc
   src/Compression.cc
   src/DNSServer.cc
-  src/Episode3.cc
+  src/Episode3/AssistServer.cc
+  src/Episode3/Card.cc
+  src/Episode3/CardSpecial.cc
+  src/Episode3/DataIndex.cc
+  src/Episode3/DeckState.cc
+  src/Episode3/MapState.cc
+  src/Episode3/PlayerState.cc
+  src/Episode3/PlayerStateSubordinates.cc
+  src/Episode3/RulerServer.cc
+  src/Episode3/Server.cc
   src/FileContentsCache.cc
   src/FunctionCompiler.cc
   src/GSLArchive.cc

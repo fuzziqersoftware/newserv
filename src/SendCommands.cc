@@ -303,7 +303,7 @@ void send_quest_buffer_overflow(
 
   S_WriteFile_13_A7 cmd;
   cmd.filename = filename;
-  memcpy(cmd.data, fn->code.data(), fn->code.size());
+  memcpy(cmd.data.data(), fn->code.data(), fn->code.size());
   if (fn->code.size() < 0x400) {
     memset(&cmd.data[fn->code.size()], 0, 0x400 - fn->code.size());
   }
@@ -1719,28 +1719,6 @@ void send_ep3_rank_update(shared_ptr<Client> c) {
   send_command_t(c, 0xB7, 0x00, cmd);
 }
 
-void send_ep3_map_list(shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
-  const auto& data = s->ep3_data_index->get_compressed_map_list();
-
-  StringWriter w;
-  uint32_t subcommand_size = (data.size() + sizeof(G_MapList_GC_Ep3_6xB6x40) + 3) & (~3);
-  w.put<G_MapList_GC_Ep3_6xB6x40>(
-      G_MapList_GC_Ep3_6xB6x40{{{{0xB6, 0, 0}, subcommand_size}, 0x40, {}}, data.size(), 0});
-  w.write(data);
-  send_command(l, 0x6C, 0x00, w.str());
-}
-
-void send_ep3_map_data(shared_ptr<ServerState> s, shared_ptr<Lobby> l, uint32_t map_id) {
-  auto entry = s->ep3_data_index->get_map(map_id);
-  const auto& compressed = entry->compressed();
-
-  StringWriter w;
-  uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_GC_Ep3_6xB6x41) + 3) & (~3);
-  w.put<G_MapData_GC_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, entry->map.map_number.load(), compressed.size(), 0});
-  w.write(compressed);
-  send_command(l, 0x6C, 0x00, w.str());
-}
-
 void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number) {
   S_CardBattleTableState_GC_Ep3_E4 cmd;
   for (size_t z = 0; z < 4; z++) {
@@ -1778,8 +1756,8 @@ void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key) {
     throw logic_error("Episode 3 game command is too short for masking");
   }
 
-  auto* header = reinterpret_cast<G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5*>(vdata);
-  size_t command_bytes = header->basic_header.size * 4;
+  auto* header = reinterpret_cast<G_CardBattleCommandHeader*>(vdata);
+  size_t command_bytes = header->size * 4;
   if (command_bytes != size) {
     throw runtime_error("command size field does not match actual size");
   }
@@ -1826,7 +1804,7 @@ void send_quest_file_chunk(
 
   S_WriteFile_13_A7 cmd;
   cmd.filename = filename;
-  memcpy(cmd.data, data, size);
+  memcpy(cmd.data.data(), data, size);
   if (size < 0x400) {
     memset(&cmd.data[size], 0, 0x400 - size);
   }

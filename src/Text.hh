@@ -186,11 +186,18 @@ template <typename ItemT, size_t Count>
 struct parray {
   ItemT items[Count];
 
+  parray(ItemT v) {
+    this->clear(v);
+  }
   template <typename ArgT = ItemT, std::enable_if_t<std::is_arithmetic<ArgT>::value, bool> = true>
   parray() {
     this->clear(0);
   }
-  template <typename ArgT = ItemT, std::enable_if_t<!std::is_arithmetic<ArgT>::value, bool> = true>
+  template <typename ArgT = ItemT, std::enable_if_t<std::is_pointer<ArgT>::value, bool> = true>
+  parray() {
+    this->clear(nullptr);
+  }
+  template <typename ArgT = ItemT, std::enable_if_t<!std::is_arithmetic<ArgT>::value && !std::is_pointer<ArgT>::value, bool> = true>
   parray() { }
 
   parray(const parray& other) {
@@ -203,10 +210,10 @@ struct parray {
     this->operator=(s);
   }
 
-  constexpr size_t size() {
+  constexpr static size_t size() {
     return Count;
   }
-  constexpr size_t bytes() {
+  constexpr static size_t bytes() {
     return Count * sizeof(ItemT);
   }
   ItemT* data() {
@@ -220,17 +227,58 @@ struct parray {
     if (index >= Count) {
       throw std::out_of_range("array index out of bounds");
     }
-    return this->items[index];
+    // Note: This looks really dumb, but apparently works around an issue in GCC
+    // that causes a "returning address of temporary" error here.
+    return *&this->items[index];
   }
   const ItemT& operator[](size_t index) const {
     if (index >= Count) {
       throw std::out_of_range("array index out of bounds");
     }
-    return this->items[index];
+    return *&this->items[index];
   }
 
-  // TODO: These can be made faster by only clearing the unused space after the
-  // strncpy_t (if any) instead of clearing all the space every time
+  ItemT& at(size_t index) {
+    return this->operator[](index);
+  }
+  const ItemT& at(size_t index) const {
+    return this->operator[](index);
+  }
+
+  ItemT* sub_ptr(size_t offset = 0, size_t count = Count) {
+    if (offset + count > Count) {
+      throw std::out_of_range("sub-array out of range");
+    }
+    return &this->items[offset];
+  }
+  const ItemT* sub_ptr(size_t offset = 0, size_t count = Count) const {
+    if (offset + count > Count) {
+      throw std::out_of_range("sub-array out of range");
+    }
+    return &this->items[offset];
+  }
+
+  template <size_t SubCount>
+  parray<ItemT, SubCount>& sub(size_t offset = 0) {
+    if (offset + SubCount > Count) {
+      throw std::out_of_range("sub-array out of range");
+    }
+    return *reinterpret_cast<parray<ItemT, SubCount>*>(&this->items[offset]);
+  }
+  template <size_t SubCount>
+  const parray<ItemT, SubCount>& sub(size_t offset = 0) const {
+    if (offset + SubCount > Count) {
+      throw std::out_of_range("sub-array out of range");
+    }
+    return *reinterpret_cast<parray<ItemT, SubCount>*>(&this->items[offset]);
+  }
+
+  void assign_range(const ItemT* new_items, size_t count = Count, size_t start_offset = 0) {
+    for (size_t x = start_offset; (x < Count) && (x < start_offset + count); x++) {
+      this->items[x] = new_items[x];
+    }
+  }
+
   parray& operator=(const parray& s) {
     for (size_t x = 0; x < Count; x++) {
       this->items[x] = s.items[x];
@@ -282,6 +330,11 @@ struct parray {
   void clear(ItemT v) {
     for (size_t x = 0; x < Count; x++) {
       this->items[x] = v;
+    }
+  }
+  void clear() {
+    for (size_t x = 0; x < Count; x++) {
+      this->items[x] = ItemT();
     }
   }
   void clear_after(size_t position, ItemT v = 0) {

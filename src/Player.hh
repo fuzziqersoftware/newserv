@@ -11,7 +11,7 @@
 #include "LevelTable.hh"
 #include "Version.hh"
 #include "Text.hh"
-#include "Episode3.hh"
+#include "Episode3/DataIndex.hh"
 
 
 
@@ -407,7 +407,7 @@ struct PSOPlayerDataGCEp3 { // For command 61
   parray<le_uint32_t, 0x1E> blocked_senders;
   le_uint32_t auto_reply_enabled;
   char auto_reply[0xAC];
-  Ep3Config ep3_config;
+  Episode3::PlayerConfig ep3_config;
 } __attribute__((packed));
 
 struct PSOPlayerDataBB { // For command 61
@@ -506,7 +506,7 @@ public:
   std::unique_ptr<PendingCardTrade> pending_card_trade;
 
   // Null unless the client is Episode 3 and has sent its config already
-  std::shared_ptr<Ep3Config> ep3_config;
+  std::shared_ptr<Episode3::PlayerConfig> ep3_config;
 
   // These are only used if the client is BB
   std::string bb_username;

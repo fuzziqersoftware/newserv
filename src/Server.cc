@@ -144,11 +144,15 @@ void Server::on_client_input(Channel& ch, uint16_t command, uint32_t flag, std::
   if (c->should_disconnect) {
     server->disconnect_client(c);
   } else {
-    try {
+    if (server->state->catch_handler_exceptions) {
+      try {
+        on_command(server->state, c, command, flag, data);
+      } catch (const exception& e) {
+        server_log.warning("Error processing client command: %s", e.what());
+        c->should_disconnect = true;
+      }
+    } else {
       on_command(server->state, c, command, flag, data);
-    } catch (const exception& e) {
-      server_log.warning("Error processing client command: %s", e.what());
-      c->should_disconnect = true;
     }
     if (c->should_disconnect) {
       server->disconnect_client(c);

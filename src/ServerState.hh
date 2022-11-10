@@ -50,13 +50,15 @@ struct ServerState {
   bool allow_saving;
   bool item_tracking_enabled;
   bool episode_3_send_function_call_enabled;
+  bool catch_handler_exceptions;
+  uint32_t ep3_behavior_flags;
   RunShellBehavior run_shell_behavior;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
   std::shared_ptr<const DOLFileIndex> dol_file_index;
-  std::shared_ptr<const Ep3DataIndex> ep3_data_index;
+  std::shared_ptr<const Episode3::DataIndex> ep3_data_index;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamsIndex> battle_params;

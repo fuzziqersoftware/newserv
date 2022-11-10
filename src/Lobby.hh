@@ -17,6 +17,7 @@
 #include "Text.hh"
 #include "Quest.hh"
 #include "Items.hh"
+#include "Episode3/Server.hh"
 
 struct Lobby {
   enum Flag {
@@ -71,6 +72,7 @@ struct Lobby {
   uint32_t random_seed;
   std::shared_ptr<std::mt19937> random;
   std::shared_ptr<const CommonItemCreator> common_item_creator;
+  std::shared_ptr<Episode3::ServerBase> ep3_server_base;
 
   // lobby stuff
   uint8_t event;

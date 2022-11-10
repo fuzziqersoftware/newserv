@@ -834,3 +834,14 @@ shared_ptr<PSOBBEncryption> PSOBBMultiKeyImitatorEncryption::ensure_crypt() {
   }
   return this->active_crypt;
 }
+
+
+
+void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis) {
+  uint8_t* bytes = reinterpret_cast<uint8_t*>(data);
+  uint8_t key = basis + 0x80;
+  for (size_t z = 0; z < size; z++) {
+    key = (key * 5) + 1;
+    bytes[z] ^= key;
+  }
+}

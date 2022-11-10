@@ -1,0 +1,1835 @@
+#include "PlayerState.hh"
+
+#include "Server.hh"
+
+using namespace std;
+
+namespace Episode3 {
+
+
+
+PlayerState::PlayerState(uint8_t client_id, shared_ptr<Server> server)
+  : w_server(server),
+    client_id(client_id),
+    num_mulligans_allowed(1),
+    sc_card_type(CardType::HUNTERS_SC),
+    team_id(0xFF),
+    atk_points(0),
+    def_points(0),
+    atk_points2(0),
+    atk_points2_max(6),
+    atk_bonuses(0),
+    def_bonuses(0),
+    dice_results(0),
+    unknown_a4(2),
+    dice_max(6),
+    total_set_cards_cost(0),
+    sc_card_id(0xFFFF),
+    sc_card_ref(0xFFFF),
+    card_refs(0xFFFF),
+    discard_log_card_refs(0xFFFF),
+    discard_log_reasons(0),
+    assist_remaining_turns(0),
+    assist_card_set_number(0),
+    set_assist_card_id(0xFFFF),
+    god_whim_can_use_hidden_cards(false),
+    unknown_a14(0),
+    assist_flags(0),
+    assist_delay_turns(0),
+    start_facing_direction(Direction::RIGHT),
+    num_destroyed_fcs(0),
+    unknown_a16(0),
+    unknown_a17(0) { }
+
+void PlayerState::init() {
+  if (this->server()->player_states[this->client_id].get() != this) {
+    // TODO: The original code handles this, but we don't. Figure out if this is
+    // actually needed and implement it if so.
+    throw logic_error("replacing a player state object is not permitted");
+  }
+
+  this->deck_state.reset(new DeckState(
+      this->client_id,
+      this->server()->base()->deck_entries[client_id]->card_ids,
+      this->server()->random_crypt));
+  if (this->server()->base()->map_and_rules1->rules.disable_deck_shuffle) {
+    this->deck_state->disable_shuffle();
+  }
+  if (this->server()->base()->map_and_rules1->rules.disable_deck_loop) {
+    this->deck_state->disable_loop();
+  }
+
+  this->sc_card_ref = this->deck_state->sc_card_ref();
+  this->sc_card_id = this->server()->card_id_for_card_ref(this->sc_card_ref);
+  this->team_id = this->server()->base()->deck_entries[this->client_id]->team_id;
+  auto sc_ce = this->server()->definition_for_card_ref(this->sc_card_ref);
+  if (!sc_ce) {
+    throw runtime_error("SC card definition is missing");
+  }
+  if (sc_ce->def.type == CardType::HUNTERS_SC) {
+    this->sc_card_type = CardType::HUNTERS_SC;
+  } else if (sc_ce->def.type == CardType::ARKZ_SC) {
+    this->sc_card_type = CardType::ARKZ_SC;
+  } else {
+    // In the original code, sc_card_type gets left as 0xFFFFFFFF (yes, it's a
+    // uint32_t). This probably breaks some things later on, so we instead
+    // prevent it upfront.
+    throw runtime_error("SC card is not a Hunters or Arkz SC");
+  }
+
+  this->hand_and_equip.reset(new HandAndEquipState());
+  this->card_short_statuses.reset(new parray<CardShortStatus, 0x10>());
+  this->set_card_action_chains.reset(new parray<ActionChainWithConds, 9>());
+  this->set_card_action_metadatas.reset(new parray<ActionMetadata, 9>());
+
+  this->hand_and_equip->clear_FF();
+  for (size_t z = 0; z < 0x10; z++) {
+    this->card_short_statuses->at(z).clear_FF();
+  }
+  for (size_t z = 0; z < 9; z++) {
+    this->set_card_action_chains->at(z).clear_FF();
+    this->set_card_action_metadatas->at(z).clear_FF();
+  }
+
+  this->sc_card.reset(new Card(
+      this->deck_state->sc_card_id(),
+      this->sc_card_ref,
+      this->client_id,
+      this->server()));
+  this->sc_card->init();
+  this->draw_initial_hand();
+
+  this->server()->assist_server->hand_and_equip_states[this->client_id] = this->hand_and_equip;
+  this->server()->assist_server->card_short_statuses[this->client_id] = this->card_short_statuses;
+  this->server()->assist_server->deck_entries[this->client_id] = this->server()->base()->deck_entries[this->client_id];
+  this->server()->assist_server->set_card_action_chains[this->client_id] = this->set_card_action_chains;
+  this->server()->assist_server->set_card_action_metadatas[this->client_id] = this->set_card_action_metadatas;
+  this->server()->ruler_server->register_player(
+      this->client_id,
+      this->hand_and_equip,
+      this->card_short_statuses,
+      this->server()->base()->deck_entries[this->client_id],
+      this->set_card_action_chains,
+      this->set_card_action_metadatas);
+  this->server()->ruler_server->set_client_team_id(this->client_id, this->team_id);
+
+  this->server()->card_special->on_card_set(this->shared_from_this(), this->sc_card_ref);
+
+  this->god_whim_can_use_hidden_cards = (this->server()->base()->deck_entries[this->client_id]->god_whim_flag != 3);
+}
+
+shared_ptr<Server> PlayerState::server() {
+  auto s = this->w_server.lock();
+  if (!s) {
+    throw runtime_error("server is deleted");
+  }
+  return s;
+}
+
+shared_ptr<const Server> PlayerState::server() const {
+  auto s = this->w_server.lock();
+  if (!s) {
+    throw runtime_error("server is deleted");
+  }
+  return s;
+}
+
+bool PlayerState::draw_cards_allowed() const {
+  if (!(this->assist_flags & 0x80)) {
+    size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->client_id);
+    for (size_t z = 0; z < num_assists; z++) {
+      auto eff = this->server()->assist_server->get_active_assist_by_index(z);
+      if (eff == AssistEffect::SKIP_DRAW) {
+        return false;
+      }
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void PlayerState::apply_assist_card_effect_on_set(
+    shared_ptr<PlayerState> setter_ps) {
+  uint16_t assist_card_id = this->set_assist_card_id;
+  if (assist_card_id == 0xFFFF) {
+    assist_card_id = this->server()->card_id_for_card_ref(this->card_refs[6]);
+  }
+
+  auto assist_effect = assist_effect_number_for_card_id(assist_card_id);
+  if ((assist_effect == AssistEffect::RESISTANCE) ||
+      (assist_effect == AssistEffect::INDEPENDENT)) {
+    this->assist_card_set_number = 0;
+  }
+
+  if (this->server()->assist_server->should_block_assist_effects_for_client(this->client_id)) {
+    return;
+  }
+
+  switch (assist_effect) {
+    case AssistEffect::CARD_RETURN: {
+      size_t hand_index;
+      for (hand_index = 0; hand_index < 6; hand_index++) {
+        if (this->card_refs[hand_index] == 0xFFFF) {
+          break;
+        }
+      }
+
+      if (hand_index < 6) {
+        for (size_t z = 0; z < 0x10; z++) {
+          if (this->deck_state->draw_card_by_ref(this->discard_log_card_refs[z])) {
+            this->card_refs[hand_index] = this->discard_log_card_refs[z];
+            this->discard_log_card_refs[z] = 0xFFFF;
+            break;
+          }
+        }
+      }
+      break;
+    }
+
+    case AssistEffect::ATK_DICE_2:
+      this->assist_delay_turns = (!setter_ps || (setter_ps->team_id == this->team_id)) ? 2 : 1;
+      break;
+
+    case AssistEffect::EXCHANGE: {
+      uint8_t t = this->atk_points;
+      this->atk_points = this->def_points;
+      this->def_points = t;
+      this->atk_points2 = this->atk_points;
+      this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+      break;
+    }
+
+    case AssistEffect::SKIP_SET:
+    case AssistEffect::SKIP_ACT:
+      this->assist_delay_turns = 2;
+      break;
+
+    case AssistEffect::NECROMANCER: {
+      ssize_t hand_index;
+      for (hand_index = 5; hand_index >= 0; hand_index--) {
+        if (this->card_refs[hand_index] != 0xFFFF) {
+          break;
+        }
+      }
+
+      size_t log_index;
+      for (log_index = 0; log_index < 0x10; log_index++) {
+        auto ce = this->server()->definition_for_card_ref(
+            this->discard_log_card_refs[log_index]);
+        if (ce && ((ce->def.type == CardType::ITEM || ce->def.type == CardType::CREATURE))) {
+          break;
+        }
+      }
+
+      if ((hand_index >= 0) && (log_index < 0x10) &&
+          this->deck_state->draw_card_by_ref(this->discard_log_card_refs[log_index])) {
+        uint16_t hand_card_ref = this->card_refs[hand_index];
+        this->card_refs[hand_index] = this->discard_log_card_refs[log_index];
+        this->discard_log_card_refs[log_index] = hand_card_ref;
+        this->deck_state->set_card_discarded(hand_card_ref);
+      }
+      break;
+    }
+
+    case AssistEffect::LEGACY: {
+      uint16_t total_cost = 0;
+      for (ssize_t z = 7; z >= 0; z--) {
+        shared_ptr<const Card> card = this->set_cards[z];
+        if (card) {
+          auto ce = card->get_definition();
+          uint8_t card_cost = ce->def.self_cost;
+          if (this->discard_card_or_add_to_draw_pile(this->card_refs[8 + z], false)) {
+            total_cost += card_cost;
+          }
+        }
+      }
+      this->on_cards_destroyed();
+
+      this->atk_points = min<uint8_t>(9, this->atk_points + (total_cost >> 1));
+      this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+      this->server()->send_6xB4x05();
+      break;
+    }
+
+    case AssistEffect::MUSCULAR:
+      for (size_t client_id = 0; client_id < 4; client_id++) {
+        auto other_ps = this->server()->get_player_state(client_id);
+        if (other_ps) {
+          for (size_t set_index = 0; set_index < 8; set_index++) {
+            auto card = other_ps->get_set_card(set_index);
+            if (card) {
+              card->ap++;
+              card->send_6xB4x4E_4C_4D_if_needed();
+            }
+          }
+          other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+        }
+      }
+      break;
+
+    case AssistEffect::CHANGE_BODY:
+      for (size_t client_id = 0; client_id < 4; client_id++) {
+        auto other_ps = this->server()->get_player_state(client_id);
+        if (other_ps) {
+          for (size_t set_index = 0; set_index < 8; set_index++) {
+            auto card = other_ps->get_set_card(set_index);
+            if (card) {
+              uint8_t orig_ap = card->ap;
+              card->ap = card->tp;
+              card->tp = orig_ap;
+              card->send_6xB4x4E_4C_4D_if_needed();
+            }
+          }
+          other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+        }
+      }
+      break;
+
+    case AssistEffect::GOD_WHIM:
+      this->replace_all_set_assists_with_random_assists();
+      break;
+
+    case AssistEffect::ASSIST_RETURN:
+      if (this->card_refs[7] != 0xFFFF) {
+        uint8_t client_id = client_id_for_card_ref(this->card_refs[7]);
+        auto other_ps = this->server()->get_player_state(client_id);
+        if (other_ps.get() != this) {
+          other_ps->deck_state->draw_card_by_ref(this->card_refs[7]);
+          other_ps->set_card_from_hand(
+              this->card_refs[7], 0xF, nullptr, client_id, 1);
+        }
+      }
+      break;
+
+    case AssistEffect::REQUIEM:
+      this->server()->add_team_exp(this->team_id, this->num_destroyed_fcs << 1);
+      this->server()->update_battle_state_flags_and_send_6xB4x03_if_needed();
+
+      this->num_destroyed_fcs = 0;
+      this->server()->team_num_cards_destroyed[this->team_id] = 0;
+      for (size_t client_id = 0; client_id < 4; client_id++) {
+        const auto other_ps = this->server()->get_player_state(client_id);
+        if (other_ps && (this->team_id == other_ps->get_team_id())) {
+          auto card = other_ps->get_sc_card();
+          if (card) {
+            card->num_cards_destroyed_by_team_at_set_time = 0;
+            card->num_destroyed_ally_fcs = 0;
+          }
+          for (size_t set_index = 0; set_index < 8; set_index++) {
+            auto set_card = other_ps->get_set_card(set_index);
+            if (set_card) {
+              set_card->num_cards_destroyed_by_team_at_set_time = 0;
+              set_card->num_destroyed_ally_fcs = 0;
+            }
+          }
+        }
+      }
+      break;
+
+    case AssistEffect::SLOW_TIME:
+      for (size_t client_id = 0; client_id < 4; client_id++) {
+        auto other_ps = this->server()->get_player_state(client_id);
+        if (!other_ps) {
+          continue;
+        }
+
+        if (other_ps->assist_remaining_turns < 10) {
+          other_ps->assist_remaining_turns = min<uint8_t>(9, other_ps->assist_remaining_turns << 1);
+        }
+
+        for (ssize_t set_index = -1; set_index < 8; set_index++) {
+          auto card = (set_index == -1)
+              ? other_ps->get_sc_card()
+              : other_ps->get_set_card(set_index);
+          if (card) {
+            for (size_t cond_index = 0; cond_index < 9; cond_index++) {
+              auto& cond = card->action_chain.conditions[cond_index];
+              if ((cond.type != ConditionType::NONE) &&
+                  (cond.remaining_turns < 10)) {
+                cond.remaining_turns = min<uint8_t>(9, cond.remaining_turns << 1);
+              }
+            }
+          }
+        }
+
+        other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+        other_ps->send_set_card_updates();
+      }
+      break;
+
+    case AssistEffect::QUICK_TIME:
+      for (size_t client_id = 0; client_id < 4; client_id++) {
+        auto other_ps = this->server()->get_player_state(client_id);
+        if (!other_ps) {
+          continue;
+        }
+
+        if (other_ps->assist_remaining_turns < 10) {
+          other_ps->assist_remaining_turns = ((other_ps->assist_remaining_turns + 1) >> 1);
+        }
+
+        for (ssize_t set_index = -1; set_index < 8; set_index++) {
+          auto card = (set_index == -1)
+              ? other_ps->get_sc_card()
+              : other_ps->get_set_card(set_index);
+          if (card) {
+            for (size_t cond_index = 0; cond_index < 9; cond_index++) {
+              auto& cond = card->action_chain.conditions[cond_index];
+              if ((cond.type != ConditionType::NONE) &&
+                  (cond.remaining_turns < 10)) {
+                cond.remaining_turns = (cond.remaining_turns + 1) >> 1;
+              }
+            }
+          }
+        }
+        other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+        other_ps->send_set_card_updates();
+      }
+      break;
+
+    case AssistEffect::SQUEEZE:
+      this->set_random_assist_card_from_hand_for_free();
+      break;
+
+    case AssistEffect::BOMB:
+      this->assist_delay_turns = 6;
+      break;
+
+    case AssistEffect::SKIP_TURN:
+      if (!setter_ps || (setter_ps->team_id == this->team_id)) {
+        this->assist_delay_turns = 6;
+      } else {
+        this->assist_delay_turns = 5;
+      }
+      break;
+
+    default:
+      break;
+  }
+}
+
+void PlayerState::apply_dice_effects() {
+  size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->client_id);
+  for (size_t z = 0; z < num_assists; z++) {
+    auto eff = this->server()->assist_server->get_active_assist_by_index(z);
+    switch (eff) {
+      case AssistEffect::DICE_FEVER:
+        for (size_t die_index = 0; die_index < 2; die_index++) {
+          if (this->dice_results[die_index] > 0) {
+            this->dice_results[die_index] = 5;
+          }
+        }
+        break;
+      case AssistEffect::DICE_HALF:
+        for (size_t die_index = 0; die_index < 2; die_index++) {
+          if (this->dice_results[die_index] > 0) {
+            this->dice_results[die_index] = (this->dice_results[die_index] + 1) >> 1;
+          }
+        }
+        break;
+      case AssistEffect::DICE_PLUS_1:
+        for (size_t die_index = 0; die_index < 2; die_index++) {
+          if (this->dice_results[die_index] > 0) {
+            this->dice_results[die_index] = this->dice_results[die_index] + 1;
+          }
+        }
+        break;
+      case AssistEffect::DICE_FEVER_PLUS:
+        for (size_t die_index = 0; die_index < 2; die_index++) {
+          if (this->dice_results[die_index] > 0) {
+            this->dice_results[die_index] = 6;
+          }
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  for (size_t die_index = 0; die_index < 2; die_index++) {
+    this->dice_results[die_index] = min<uint8_t>(this->dice_results[die_index], 9);
+  }
+}
+
+uint16_t PlayerState::card_ref_for_hand_index(size_t hand_index) const {
+  return (hand_index < 6) ? this->card_refs[hand_index] : 0xFFFF;
+}
+
+int16_t PlayerState::compute_attack_or_defense_atk_costs(const ActionState& pa) const {
+  return this->server()->ruler_server->compute_attack_or_defense_costs(pa, 0, 0);
+}
+
+void PlayerState::compute_total_set_cards_cost() {
+  this->total_set_cards_cost = 0;
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    auto card = this->set_cards[set_index];
+    if (!card) {
+      continue;
+    }
+    auto ce = card->get_definition();
+    if (ce) {
+      this->total_set_cards_cost += ce->def.self_cost;
+    }
+  }
+}
+
+size_t PlayerState::count_set_cards() const {
+  size_t ret = 0;
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    auto card = this->set_cards[set_index];
+    if (card && !(card->card_flags & 2)) {
+      ret++;
+    }
+  }
+  return ret;
+}
+
+size_t PlayerState::count_set_refs() const {
+  size_t ret = 0;
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    if (this->card_refs[set_index] != 0xFFFF) {
+      ret++;
+    }
+  }
+  return ret;
+}
+
+void PlayerState::discard_all_assist_cards_from_hand() {
+  parray<uint16_t, 6> temp_card_refs;
+  for (size_t hand_index = 0; hand_index < 6; hand_index++) {
+    temp_card_refs[hand_index] = this->card_refs[hand_index];
+  }
+
+  for (size_t hand_index = 0; hand_index < 6; hand_index++) {
+    uint16_t card_ref = temp_card_refs[hand_index];
+    auto ce = this->server()->definition_for_card_ref(card_ref);
+    if (ce && (ce->def.type == CardType::ASSIST)) {
+      this->discard_ref_from_hand(card_ref);
+    }
+  }
+
+  this->move_null_hand_refs_to_end();
+}
+
+void PlayerState::discard_all_attack_action_cards_from_hand() {
+  parray<uint16_t, 6> temp_card_refs;
+  for (size_t hand_index = 0; hand_index < 6; hand_index++) {
+    temp_card_refs[hand_index] = this->card_refs[hand_index];
+  }
+
+  for (size_t hand_index = 0; hand_index < 6; hand_index++) {
+    uint16_t card_ref = temp_card_refs[hand_index];
+    auto ce = this->server()->definition_for_card_ref(card_ref);
+    if (ce && (ce->def.type == CardType::ACTION) &&
+        (ce->def.card_class() != CardClass::DEFENSE_ACTION)) {
+      this->discard_ref_from_hand(card_ref);
+    }
+  }
+
+  this->move_null_hand_refs_to_end();
+}
+
+void PlayerState::discard_all_item_and_creature_cards_from_hand() {
+  parray<uint16_t, 6> temp_card_refs;
+  for (size_t hand_index = 0; hand_index < 6; hand_index++) {
+    temp_card_refs[hand_index] = this->card_refs[hand_index];
+  }
+
+  for (size_t hand_index = 0; hand_index < 6; hand_index++) {
+    uint16_t card_ref = temp_card_refs[hand_index];
+    auto ce = this->server()->definition_for_card_ref(card_ref);
+    if (ce && ((ce->def.type == CardType::ITEM) || (ce->def.type == CardType::CREATURE))) {
+      this->discard_ref_from_hand(card_ref);
+    }
+  }
+
+  this->move_null_hand_refs_to_end();
+}
+
+void PlayerState::discard_and_redraw_hand() {
+  while (this->card_refs[0] != 0xFFFF) {
+    this->discard_ref_from_hand(this->card_refs[0]);
+  }
+
+  G_Unknown_GC_Ep3_6xB4x2C cmd;
+  cmd.change_type = 3;
+  cmd.client_id = this->client_id;
+  this->server()->send(cmd);
+
+  this->deck_state->restart();
+  this->draw_hand();
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+}
+
+bool PlayerState::discard_card_or_add_to_draw_pile(
+    uint16_t card_ref, bool add_to_draw_pile) {
+  ssize_t set_index = this->set_index_for_card_ref(card_ref);
+  if (set_index < 0) {
+    return false;
+  }
+
+  this->deck_state->set_card_discarded(card_ref);
+  this->card_refs[set_index + 8] = 0xFFFF;
+  this->set_cards[set_index]->card_flags |= 2;
+  if (add_to_draw_pile) {
+    this->deck_state->set_card_ref_drawable_at_end(card_ref);
+  }
+  this->log_discard(card_ref, 0);
+  return true;
+}
+
+void PlayerState::discard_random_hand_card() {
+  size_t max = this->get_hand_size();
+  if (max > 0) {
+    this->discard_ref_from_hand(this->card_refs[this->server()->get_random(max)]);
+  }
+  this->move_null_hand_refs_to_end();
+}
+
+bool PlayerState::discard_ref_from_hand(uint16_t card_ref) {
+  ssize_t index = this->hand_index_for_card_ref(card_ref);
+  if (index >= 0) {
+    this->deck_state->set_card_discarded(card_ref);
+    this->card_refs[index] = 0xFFFF;
+    this->move_null_hand_refs_to_end();
+    this->log_discard(card_ref, 0);
+    this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void PlayerState::discard_set_assist_card() {
+  this->set_assist_card_id = 0xFFFF;
+  uint8_t client_id = client_id_for_card_ref(this->card_refs[6]);
+  auto setter_ps = this->server()->get_player_state(client_id);
+  if (setter_ps) {
+    setter_ps->get_deck()->set_card_discarded(this->card_refs[6]);
+    this->card_refs[6] = 0xFFFF;
+  }
+  this->card_refs[7] = 0xFFFF;
+  this->assist_remaining_turns = 0;
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+
+  this->server()->assist_server->populate_effects();
+
+  for (size_t client_id = 0; client_id < 4; client_id++) {
+    auto other_ps = this->server()->get_player_state(client_id);
+    if (!other_ps) {
+      continue;
+    }
+    uint32_t prev_assist_flags = other_ps->assist_flags;
+    other_ps->set_assist_flags_from_assist_effects();
+    if (other_ps->assist_flags != prev_assist_flags) {
+      other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+    }
+  }
+
+  this->server()->destroy_cards_with_zero_hp();
+}
+
+bool PlayerState::do_mulligan() {
+  if (!this->is_mulligan_allowed()) {
+    return false;
+  }
+
+  this->num_mulligans_allowed--;
+  while (this->card_refs[0] != 0xFFFF) {
+    this->discard_ref_from_hand(this->card_refs[0]);
+  }
+
+  G_Unknown_GC_Ep3_6xB4x2C cmd;
+  cmd.change_type = 3;
+  cmd.client_id = this->client_id;
+  this->server()->send(cmd);
+
+  this->deck_state->do_mulligan();
+  this->draw_hand(5);
+
+  this->discard_log_card_refs.clear(0xFFFF);
+  return true;
+}
+
+void PlayerState::draw_hand(ssize_t override_count) {
+  ssize_t count = 5 - this->get_hand_size();
+  size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->client_id);
+  for (size_t z = 0; z < num_assists; z++) {
+    auto eff = this->server()->assist_server->get_active_assist_by_index(z);
+    if (eff == AssistEffect::RICH_PLUS) {
+      count = 4 - this->get_hand_size();
+    } else if (eff == AssistEffect::RICH) {
+      count = 6 - this->get_hand_size();
+    }
+  }
+
+  if ((override_count != 0) && (override_count < count)) {
+    count = override_count;
+  }
+
+  for (; count > 0; count--) {
+    uint16_t card_ref = this->deck_state->draw_card();
+    for (size_t z = 0; z < 6; z++) {
+      if (this->card_refs[z] == 0xFFFF) {
+        this->card_refs[z] = card_ref;
+        break;
+      }
+    }
+    if (this->server()->get_setup_phase() == SetupPhase::MAIN_BATTLE) {
+      this->stats.num_cards_drawn++;
+    }
+  }
+
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+}
+
+void PlayerState::draw_initial_hand() {
+  // Note: The original code called this->deck_state->init_card_states here, but
+  // we don't because that logic is now in the DeckState constructor, and this
+  // function should only be called during PlayerState construction (so, shortly
+  // after DeckState construction as well).
+  this->deck_state->restart();
+  this->card_refs.clear(0xFFFF);
+  this->draw_hand(5);
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+}
+
+int32_t PlayerState::error_code_for_client_setting_card(
+    uint16_t card_ref,
+    uint8_t card_index,
+    const Location* loc,
+    uint8_t assist_target_client_id) const {
+  int32_t code = this->server()->ruler_server->error_code_for_client_setting_card(
+      this->client_id, card_ref, loc, assist_target_client_id);
+  if (code) {
+    return code;
+  }
+
+  if (this->hand_index_for_card_ref(card_ref) < 0) {
+    return -0x7F;
+  }
+
+  if (this->deck_state->state_for_card_ref(card_ref) != DeckState::CardState::IN_HAND) {
+    return -0x7D;
+  }
+
+  auto ce = this->server()->definition_for_card_ref(card_ref);
+  if (!ce) {
+    return -0x7D;
+  }
+
+  switch (ce->def.type) {
+    case CardType::ITEM:
+    case CardType::CREATURE:
+      if ((card_index < 7) || (card_index >= 15)) {
+        return -0x7E;
+      }
+      if (this->card_refs[card_index + 1] != 0xFFFF) {
+        return -0x7E;
+      }
+      if ((ce->def.type == CardType::CREATURE) &&
+          !this->server()->base()->map_and_rules1->tile_is_vacant(loc->x, loc->y)) {
+        return -0x7A;
+      }
+      return 0;
+
+    case CardType::ASSIST:
+      return (card_index == 15) ? 0 : -0x7E;
+
+    case CardType::HUNTERS_SC:
+    case CardType::ARKZ_SC:
+    case CardType::ACTION:
+    default:
+      return -0x7D;
+  }
+}
+
+vector<uint16_t> PlayerState::get_all_cards_within_range(
+    const parray<uint8_t, 9 * 9>& range,
+    const Location& loc,
+    uint8_t target_team_id) const {
+  vector<uint16_t> ret;
+  for (size_t client_id = 0; client_id < 4; client_id++) {
+    auto other_ps = this->server()->player_states[client_id];
+    if (other_ps &&
+        ((target_team_id == 0xFF) || (target_team_id == other_ps->get_team_id()))) {
+      ret = get_card_refs_within_range(
+          range, loc, *other_ps->card_short_statuses);
+    }
+  }
+  return ret;
+}
+
+uint8_t PlayerState::get_atk_points() const {
+  return this->atk_points;
+}
+
+void PlayerState::get_short_status_for_card_index_in_hand(
+    size_t hand_index, CardShortStatus* stat) const {
+  stat->card_ref = this->card_refs[hand_index - 1];
+}
+
+shared_ptr<DeckState> PlayerState::get_deck() {
+  return this->deck_state;
+}
+
+uint8_t PlayerState::get_def_points() const {
+  return this->def_points;
+}
+
+uint8_t PlayerState::get_dice_result(size_t which) const {
+  return this->dice_results[which];
+}
+
+size_t PlayerState::get_hand_size() const {
+  size_t ret = 0;
+  for (size_t z = 0; z < 6; z++) {
+    if (this->card_refs[z] != 0xFFFF) {
+      ret++;
+    }
+  }
+  return ret;
+}
+
+uint16_t PlayerState::get_sc_card_id() const {
+  return this->sc_card_id;
+}
+
+shared_ptr<Card> PlayerState::get_sc_card() {
+  return this->sc_card;
+}
+
+shared_ptr<const Card> PlayerState::get_sc_card() const {
+  return this->sc_card;
+}
+
+uint16_t PlayerState::get_sc_card_ref() const {
+  return this->sc_card_ref;
+}
+
+CardType PlayerState::get_sc_card_type() const {
+  return this->sc_card_type;
+}
+
+shared_ptr<Card> PlayerState::get_set_card(size_t set_index) {
+  return (set_index < 8) ? this->set_cards[set_index] : nullptr;
+}
+
+shared_ptr<const Card> PlayerState::get_set_card(size_t set_index) const {
+  return (set_index < 8) ? this->set_cards[set_index] : nullptr;
+}
+
+uint16_t PlayerState::get_set_ref(size_t set_index) const {
+  return this->card_refs[set_index + 8];
+}
+
+uint8_t PlayerState::get_team_id() const {
+  return this->team_id;
+}
+
+ssize_t PlayerState::hand_index_for_card_ref(uint16_t card_ref) const {
+  for (size_t z = 0; z < 6; z++) {
+    if (this->card_refs[z] == card_ref) {
+      return z;
+    }
+  }
+  return -1;
+}
+
+size_t PlayerState::set_index_for_card_ref(uint16_t card_ref) const {
+  for (size_t z = 0; z < 8; z++) {
+    if (this->card_refs[z + 8] == card_ref) {
+      return z;
+    }
+  }
+  return -1;
+}
+
+bool PlayerState::is_mulligan_allowed() const {
+  return (this->num_mulligans_allowed > 0);
+}
+
+bool PlayerState::is_team_turn() const {
+  // Note: The original code checks if this->w_server is null before doing this.
+  // We don't check because that should never happen, and server() will throw if
+  // it does.
+  return this->server()->get_current_team_turn() == this->team_id;
+}
+
+void PlayerState::log_discard(uint16_t card_ref, uint16_t reason) {
+  for (size_t z = 15; z > 0; z--) {
+    this->discard_log_card_refs[z] = this->discard_log_card_refs[z - 1];
+    this->discard_log_reasons[z] = this->discard_log_reasons[z - 1];
+  }
+  this->discard_log_card_refs[0] = card_ref;
+  this->discard_log_reasons[0] = reason;
+}
+
+bool PlayerState::move_card_to_location_by_card_index(
+    size_t card_index, const Location& new_loc) {
+  shared_ptr<Card> card;
+  if (card_index == 0) {
+    card = this->sc_card;
+  } else {
+    if ((card_index < 7) || (card_index >= 15)) {
+      this->server()->ruler_server->error_code2 = -0x78;
+      return false;
+    }
+    card = this->set_cards[card_index - 7];
+  }
+  if (!card) {
+    this->server()->ruler_server->error_code2 = -0x78;
+    return false;
+  }
+
+  int32_t code = card->error_code_for_move_to_location(new_loc);
+  if (code) {
+    this->server()->ruler_server->error_code2 = code;
+    return false;
+  }
+
+  card->move_to_location(new_loc);
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+  this->send_6xB4x04_if_needed();
+  this->server()->send_6xB4x05();
+  this->server()->send_6xB4x39();
+  this->server()->card_special->unknown_80244AA8(card);
+  return true;
+}
+
+void PlayerState::move_null_hand_refs_to_end() {
+  size_t write_offset = 0;
+  for (size_t read_offset = 0; read_offset < 6; read_offset++) {
+    uint16_t card_ref = this->card_refs[read_offset];
+    if (card_ref != 0xFFFF) {
+      this->card_refs[write_offset++] = card_ref;
+    }
+  }
+  for (; write_offset < 6; write_offset++) {
+    this->card_refs[write_offset] = 0xFFFF;
+  }
+}
+
+void PlayerState::on_cards_destroyed() {
+  // {card_ref: should_return_to_hand}
+  unordered_multimap<uint16_t, bool> card_refs_map;
+
+  for (size_t z = 0; z < 8; z++) {
+    auto card = this->set_cards[z];
+    if (!card || !(card->card_flags & 2)) {
+      continue;
+    }
+
+    uint16_t card_ref = this->card_refs[z + 8];
+    card_refs_map.emplace(card_ref, this->server()->card_special->should_return_card_ref_to_hand_on_destruction(this->card_refs[z + 8]));
+
+    bool should_discard = true;
+    for (size_t hand_index = 0; hand_index < 6; hand_index++) {
+      if (this->card_refs[hand_index] == card_ref) {
+        should_discard = false;
+        break;
+      }
+    }
+
+    if (should_discard) {
+      this->log_discard(card_ref, 1);
+      this->deck_state->set_card_discarded(this->card_refs[z + 8]);
+    }
+
+    this->card_refs[z + 8] = 0xFFFF;
+    this->set_cards[z].reset();
+  }
+
+  size_t write_index = 0;
+  bool indexes_diverged = false;
+  for (size_t read_index = 0; read_index < 8; read_index++) {
+    auto card = this->set_cards[read_index];
+    if (card) {
+      if (read_index != write_index) {
+        this->set_cards[write_index] = card;
+        this->card_refs[write_index + 8] = this->card_refs[read_index + 8];
+        indexes_diverged = true;
+      }
+      write_index++;
+    }
+  }
+  for (; write_index < 8; write_index++) {
+    this->set_cards[write_index].reset();
+    this->card_refs[write_index + 8] = 0xFFFF;
+  }
+
+  if (indexes_diverged) {
+    this->send_set_card_updates();
+  }
+
+  for (const auto& it : card_refs_map) {
+    uint16_t card_ref = it.first;
+    bool should_return = it.second;
+
+    if (should_return) {
+      size_t hand_index;
+      for (hand_index = 0; hand_index < 6; hand_index++) {
+        if (this->card_refs[hand_index] == 0xFFFF) {
+          break;
+        }
+      }
+      if ((hand_index < 6) && this->deck_state->draw_card_by_ref(card_ref)) {
+        this->card_refs[hand_index] = card_ref;
+      }
+    }
+  }
+}
+
+void PlayerState::replace_all_set_assists_with_random_assists() {
+  for (size_t client_id = 0; client_id < 4; client_id++) {
+    auto other_ps = this->server()->get_player_state(client_id);
+    if (other_ps &&
+        ((other_ps->card_refs[6] != 0xFFFF) || (other_ps->set_assist_card_id != 0xFFFF))) {
+      uint16_t card_id = 0x0130;
+      while (card_id == 0x0130) { // God Whim
+        size_t index = this->server()->get_random(ALL_ASSIST_CARD_IDS.size());
+        card_id = ALL_ASSIST_CARD_IDS[index];
+        if (!this->god_whim_can_use_hidden_cards) {
+          auto ce = this->server()->definition_for_card_id(card_id);
+          if (!ce || ce->def.hide_in_deck_edit) {
+            continue;
+          }
+        }
+      }
+      other_ps->replace_assist_card_by_id(card_id);
+    }
+  }
+}
+
+bool PlayerState::replace_assist_card_by_id(uint16_t card_id) {
+  auto ce = this->server()->definition_for_card_id(card_id);
+  if (!ce || (ce->def.type != CardType::ASSIST)) {
+    return false;
+  }
+
+  this->discard_set_assist_card();
+  this->set_assist_card_id = card_id;
+  this->assist_remaining_turns = ce->def.assist_turns;
+  this->assist_card_set_number = this->server()->next_assist_card_set_number++;
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+  this->server()->assist_server->populate_effects();
+
+  for (size_t client_id = 0; client_id < 4; client_id++) {
+    auto other_ps = this->server()->get_player_state(client_id);
+    if (other_ps) {
+      uint32_t prev_assist_flags = other_ps->assist_flags;
+      other_ps->set_assist_flags_from_assist_effects();
+      if (prev_assist_flags != other_ps->assist_flags) {
+        other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+      }
+    }
+  }
+
+  this->apply_assist_card_effect_on_set(this->shared_from_this());
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+  return true;
+}
+
+bool PlayerState::return_set_card_to_hand2(uint16_t card_ref) {
+  size_t set_index;
+  for (set_index = 0; set_index < 8; set_index++) {
+    if (this->card_refs[set_index + 8] == card_ref) {
+      break;
+    }
+  }
+
+  if (set_index < 8) {
+    size_t hand_index;
+    for (hand_index = 0; hand_index < 6; hand_index++) {
+      if (this->card_refs[hand_index] == 0xFFFF) {
+        break;
+      }
+    }
+    if (hand_index < 6) {
+      this->deck_state->set_card_discarded(card_ref);
+      if (this->deck_state->draw_card_by_ref(card_ref)) {
+        this->card_refs[hand_index] = card_ref;
+        this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+        this->send_6xB4x04_if_needed();
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool PlayerState::return_set_card_to_hand1(uint16_t card_ref) {
+  size_t hand_index;
+  for (hand_index = 0; hand_index < 6; hand_index++) {
+    if (this->card_refs[hand_index] == 0xFFFF) {
+      break;
+    }
+  }
+
+  if ((hand_index < 6) && (card_ref != 0xFFFF)) {
+    for (size_t set_index = 0; set_index < 8; set_index++) {
+      auto card = this->set_cards[set_index];
+      if (card && (card->get_card_ref() == card_ref)) {
+        uint16_t set_card_ref = this->card_refs[set_index + 8];
+        this->card_refs[set_index + 8] = 0xFFFF;
+        card->card_flags |= 2;
+        this->deck_state->set_card_discarded(set_card_ref);
+        if (this->deck_state->draw_card_by_ref(set_card_ref)) {
+          this->card_refs[hand_index] = set_card_ref;
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+uint8_t PlayerState::roll_dice(size_t num_dice) {
+  uint8_t ret = 0;
+  for (size_t z = 0; z < num_dice; z++) {
+    this->dice_results[z] = this->server()->get_random(this->dice_max) + 1;
+    ret += this->dice_results[z];
+  }
+
+  if (num_dice < 1) {
+    this->dice_results[0] = 0;
+  }
+  if (num_dice < 2) {
+    this->dice_results[1] = 0;
+  }
+
+  return ret;
+}
+
+uint8_t PlayerState::roll_dice_with_effects(size_t num_dice) {
+  this->roll_dice(num_dice);
+  this->apply_dice_effects();
+  return this->dice_results[0];
+}
+
+void PlayerState::send_set_card_updates(bool always_send) {
+  uint16_t mask;
+  if (!this->sc_card) {
+    this->set_card_action_chains->at(0).clear();
+    this->set_card_action_metadatas->at(0).clear();
+    mask = 1;
+  } else {
+    this->sc_card->send_6xB4x4E_4C_4D_if_needed(always_send);
+    mask = 0;
+  }
+
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    auto card = this->set_cards[set_index];
+    if (!card) {
+      mask |= 1 << (set_index + 1);
+      this->set_card_action_chains->at(set_index + 1).clear();
+      this->set_card_action_metadatas->at(set_index + 1).clear();
+    } else {
+      card->send_6xB4x4E_4C_4D_if_needed(always_send);
+    }
+  }
+
+  if (mask && !this->server()->get_should_copy_prev_states_to_current_states()) {
+    G_ClearSetCardConditions_GC_Ep3_6xB4x4F cmd;
+    cmd.client_id = this->client_id;
+    cmd.clear_mask = mask;
+    this->server()->send(cmd);
+  }
+}
+
+void PlayerState::set_assist_flags_from_assist_effects() {
+  this->assist_flags &= 0xFFFFF88F;
+  size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->client_id);
+  for (size_t z = 0; z < num_assists; z++) {
+    switch (this->server()->assist_server->get_active_assist_by_index(z)) {
+      case AssistEffect::SIMPLE:
+        this->assist_flags |= 0x10;
+        break;
+      case AssistEffect::TERRITORY:
+        this->assist_flags |= 0x200;
+        break;
+      case AssistEffect::OLD_TYPE:
+        this->assist_flags |= 0x400;
+        break;
+      case AssistEffect::FLATLAND:
+        this->assist_flags |= 0x20;
+        break;
+      case AssistEffect::IMMORTALITY:
+        this->assist_flags |= 0x100;
+        break;
+      case AssistEffect::SNAIL_PACE:
+        this->assist_flags |= 0x40;
+        break;
+      default:
+        break;
+    }
+  }
+  return;
+}
+
+bool PlayerState::set_card_from_hand(
+    uint16_t card_ref,
+    uint8_t card_index,
+    const Location* loc,
+    uint8_t assist_target_client_id,
+    bool skip_error_checks_and_atk_sub) {
+  if (!skip_error_checks_and_atk_sub) {
+    int32_t code = this->error_code_for_client_setting_card(
+        card_ref, card_index, loc, assist_target_client_id);
+    if (code) {
+      this->server()->ruler_server->error_code1 = code;
+      this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+      return false;
+    }
+  }
+
+  ssize_t hand_index = this->hand_index_for_card_ref(card_ref);
+  if (hand_index >= 0) {
+    this->card_refs[hand_index] = 0xFFFF;
+    this->move_null_hand_refs_to_end();
+  }
+
+  if (!skip_error_checks_and_atk_sub) {
+    int16_t cost = this->server()->ruler_server->set_cost_for_card(
+        this->client_id, card_ref);
+    this->subtract_atk_points(cost);
+  }
+
+  this->deck_state->set_card_ref_in_play(card_ref);
+
+  auto ce = this->server()->definition_for_card_ref(card_ref);
+  if (ce->def.type == CardType::ITEM || ce->def.type == CardType::CREATURE) {
+    if ((card_index < 7) || (card_index >= 15)) {
+      return 0;
+    }
+    this->card_refs[card_index + 1] = card_ref;
+    this->set_cards[card_index - 7].reset(new Card(
+        this->server()->card_id_for_card_ref(card_ref),
+        card_ref,
+        this->client_id,
+        this->server()));
+    auto new_card = this->set_cards[card_index - 7];
+    new_card->init();
+
+    if (ce->def.type == CardType::CREATURE) {
+      new_card->loc.x = loc->x;
+      new_card->loc.y = loc->y;
+    }
+    this->stats.num_item_or_creature_cards_set++;
+
+  } else if (ce->def.type == CardType::ASSIST) {
+    if (card_index != 15) {
+      return false;
+    }
+
+    auto target_ps = this->server()->player_states[assist_target_client_id];
+    if (target_ps) {
+      uint16_t prev_assist_card_ref = target_ps->card_refs[6];
+      target_ps->discard_set_assist_card();
+      target_ps->card_refs[6] = card_ref;
+      target_ps->card_refs[7] = prev_assist_card_ref;
+
+      target_ps->assist_remaining_turns = ce->def.assist_turns;
+      target_ps->assist_delay_turns = 0;
+      target_ps->assist_card_set_number = this->server()->next_assist_card_set_number++;
+
+      this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+      target_ps->apply_assist_card_effect_on_set(this->shared_from_this());
+      target_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+      this->server()->assist_server->populate_effects();
+
+      for (size_t client_id = 0; client_id < 4; client_id++) {
+        auto other_ps = this->server()->get_player_state(client_id);
+        if (!other_ps) {
+          continue;
+        }
+        uint32_t prev_assist_flags = other_ps->assist_flags;
+        other_ps->set_assist_flags_from_assist_effects();
+        if (other_ps->assist_flags != prev_assist_flags) {
+          other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+        }
+      }
+    }
+    this->stats.num_assist_cards_set++;
+  }
+  this->stats.num_cards_set++;
+
+  this->compute_total_set_cards_cost();
+  this->server()->card_special->on_card_set(this->shared_from_this(), card_ref);
+  if (ce->def.type == CardType::ASSIST) {
+    this->server()->check_for_destroyed_cards_and_send_6xB4x05_6xB4x02();
+  }
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+  this->server()->send_6xB4x05();
+
+  G_Unknown_GC_Ep3_6xB4x4A cmd;
+  cmd.card_refs[0] = card_ref;
+  cmd.client_id = this->client_id;
+  cmd.entry_count = 1;
+  cmd.round_num = this->server()->get_round_num();
+  this->server()->send(cmd);
+
+  return true;
+}
+
+void PlayerState::set_initial_location() {
+  auto mr = this->server()->base()->map_and_rules1;
+
+  uint8_t num_team_players;
+  if (this->team_id == 0) {
+    num_team_players = mr->num_team0_players;
+  } else {
+    num_team_players = mr->num_players - mr->num_team0_players;
+  }
+
+  uint8_t player_index_within_team = 0;
+  for (size_t client_id = 0; client_id < 4; client_id++) {
+    if (client_id == this->client_id) {
+      break;
+    }
+    auto other_ps = this->server()->player_states[client_id];
+    if (other_ps && (this->team_id == other_ps->get_team_id())) {
+      player_index_within_team++;
+    }
+  }
+
+  static const uint8_t start_tile_defs_offset_for_team_size[4] = {0, 0, 1, 3};
+  if (num_team_players >= 4) {
+    throw logic_error("too many players on team");
+  }
+  size_t start_tile_def_index = start_tile_defs_offset_for_team_size[num_team_players] + player_index_within_team;
+  uint8_t player_start_tile = mr->map.start_tile_definitions[this->team_id][start_tile_def_index];
+
+  Direction facing_direction = static_cast<Direction>((player_start_tile >> 6) & 3);
+  this->start_facing_direction = facing_direction;
+  mr->start_facing_directions |= (static_cast<uint16_t>(this->start_facing_direction) << (this->client_id << 2));
+
+  for (size_t y = 0; y < 0x10; y++) {
+    for (size_t x = 0; x < 0x10; x++) {
+      if (mr->map.tiles[y][x] == (player_start_tile & 0x3F)) {
+        this->sc_card->loc.x = x;
+        this->sc_card->loc.y = y;
+        this->sc_card->loc.direction = facing_direction;
+        y = 0x10;
+        break;
+      }
+    }
+  }
+}
+
+void PlayerState::set_map_occupied_bit_for_card_on_warp_tile(
+    shared_ptr<const Card> card) {
+  if (!card) {
+    return;
+  }
+
+  auto s = this->server();
+  for (size_t warp_type = 0; warp_type < 5; warp_type++) {
+    for (size_t warp_end = 0; warp_end < 2; warp_end++) {
+      if ((s->warp_positions[warp_type][warp_end][0] == card->loc.x) &&
+          (s->warp_positions[warp_type][warp_end][1] == card->loc.y)) {
+        s->base()->map_and_rules1->set_occupied_bit_for_tile(
+            s->warp_positions[warp_type][warp_end ^ 1][0],
+            s->warp_positions[warp_type][warp_end ^ 1][1]);
+      }
+    }
+  }
+}
+
+void PlayerState::set_map_occupied_bits_for_sc_and_creatures() {
+  if (this->sc_card && !(this->sc_card->card_flags & 2)) {
+    this->server()->base()->map_and_rules1->set_occupied_bit_for_tile(
+        this->sc_card->loc.x, this->sc_card->loc.y);
+    this->set_map_occupied_bit_for_card_on_warp_tile(this->sc_card);
+  }
+
+  if (this->sc_card_type == CardType::ARKZ_SC) {
+    for (size_t set_index = 0; set_index < 8; set_index++) {
+      auto card = this->set_cards[set_index];
+      if (card) {
+        this->server()->base()->map_and_rules1->set_occupied_bit_for_tile(
+            card->loc.x, card->loc.y);
+        this->set_map_occupied_bit_for_card_on_warp_tile(card);
+      }
+    }
+  }
+}
+
+void PlayerState::subtract_def_points(uint8_t cost) {
+  this->def_points -= cost;
+}
+
+bool PlayerState::subtract_or_check_atk_or_def_points_for_action(
+    const ActionState& pa, bool deduct_points) {
+  int16_t cost = this->compute_attack_or_defense_atk_costs(pa);
+  auto type = this->server()->ruler_server->get_pending_action_type(pa);
+
+  if ((type == ActionType::ATTACK) && (cost <= this->atk_points)) {
+    if (deduct_points) {
+      this->subtract_atk_points(cost);
+    }
+    return true;
+
+  } else if ((type == ActionType::DEFENSE) && (cost <= (short)this->def_points)) {
+    if (deduct_points) {
+      this->subtract_def_points(cost);
+    }
+    return true;
+  }
+
+  return false;
+}
+
+void PlayerState::subtract_atk_points(uint8_t cost) {
+  this->atk_points -= cost;
+  this->atk_points2 = min<uint8_t>(this->atk_points, this->atk_points2_max);
+}
+
+void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(
+    bool always_send) {
+  G_UpdateHand_GC_Ep3_6xB4x02 cmd;
+  cmd.client_id = this->client_id;
+  cmd.state.dice_results = this->dice_results;
+  cmd.state.atk_points = this->atk_points;
+  cmd.state.def_points = this->def_points;
+  cmd.state.atk_points2 = this->atk_points2;
+  cmd.state.unknown_a1 = this->unknown_a14;
+  cmd.state.total_set_cards_cost = this->total_set_cards_cost;
+  cmd.state.is_cpu_player = this->server()->base()->presence_entries[this->client_id].is_cpu_player;
+  cmd.state.assist_flags = this->assist_flags;
+  for (size_t z = 0; z < 6; z++) {
+    cmd.state.hand_card_refs[z] = this->card_refs[z];
+    cmd.state.hand_card_refs2[z] = this->card_refs[z];
+  }
+  for (size_t z = 0; z < 8; z++) {
+    cmd.state.set_card_refs[z] = this->card_refs[z + 8];
+    cmd.state.set_card_refs2[z] = this->card_refs[z + 8];
+  }
+  cmd.state.assist_card_ref = this->card_refs[6];
+  cmd.state.sc_card_ref = this->sc_card_ref;
+  cmd.state.assist_card_ref2 = this->card_refs[6];
+  cmd.state.assist_card_set_number = (this->card_refs[6] == 0xFFFF)
+      ? 0 : this->assist_card_set_number;
+  cmd.state.assist_card_id = this->set_assist_card_id;
+  cmd.state.assist_remaining_turns = this->assist_remaining_turns;
+  cmd.state.assist_delay_turns = this->assist_delay_turns;
+  cmd.state.atk_bonuses = this->atk_bonuses;
+  cmd.state.def_bonuses = this->def_bonuses;
+  if (always_send || memcmp(&this->hand_and_equip, &cmd.state, sizeof(this->hand_and_equip))) {
+    *this->hand_and_equip = cmd.state;
+    this->server()->send(cmd);
+  }
+  this->send_6xB4x04_if_needed(always_send);
+}
+
+void PlayerState::set_random_assist_card_from_hand_for_free() {
+  vector<uint16_t> candidate_card_refs;
+  for (size_t hand_index = 0; hand_index < 6; hand_index++) {
+    uint16_t card_ref = this->card_refs[hand_index];
+    auto ce = this->server()->definition_for_card_ref(card_ref);
+    if (ce && (ce->def.type == CardType::ASSIST) &&
+        (assist_effect_number_for_card_id(ce->def.card_id) != AssistEffect::SQUEEZE)) {
+      candidate_card_refs.emplace_back(card_ref);
+    }
+  }
+
+  if (!candidate_card_refs.empty()) {
+    this->discard_set_assist_card();
+    size_t index = this->server()->get_random(candidate_card_refs.size());
+    this->set_card_from_hand(
+        candidate_card_refs[index], 15, nullptr, this->client_id, 1);
+  }
+}
+
+void PlayerState::send_6xB4x04_if_needed(bool always_send) {
+  G_UpdateStats_GC_Ep3_6xB4x04 cmd;
+  cmd.client_id = this->client_id;
+  // Note: The original code calls memset to clear all the short status structs
+  // at once. We don't do this because the default constructor has already
+  // cleared them at construction time; instead, we just clear the fields that
+  // won't be overwritten and aren't initialized to zero already.
+  for (size_t z = 0; z < 0x10; z++) {
+    cmd.card_statuses[z].unused1 = 0;
+  }
+
+  if (!this->sc_card) {
+    cmd.card_statuses[0].card_ref = 0xFFFF;
+  } else {
+    cmd.card_statuses[0] = this->sc_card->get_short_status();
+  }
+
+  for (size_t hand_index = 0; hand_index < 6; hand_index++) {
+    this->get_short_status_for_card_index_in_hand(
+        hand_index + 1, &cmd.card_statuses[hand_index + 1]);
+    // This write is required to mimic memset()'s effect from the original code.
+    // This field is probably ignored for hand refs anyway, but we might as well
+    // be as consistent as possible.
+    cmd.card_statuses[hand_index + 1].unused1 = 0;
+  }
+
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    auto card = this->set_cards[set_index];
+    if (!card) {
+      cmd.card_statuses[set_index + 7].card_ref = 0xFFFF;
+    } else {
+      cmd.card_statuses[set_index + 7] = card->get_short_status();
+    }
+  }
+
+  cmd.card_statuses[15].card_ref = this->card_refs[6];
+
+  if (always_send || (cmd.card_statuses != *this->card_short_statuses)) {
+    *this->card_short_statuses = cmd.card_statuses;
+    if (!this->server()->get_should_copy_prev_states_to_current_states()) {
+      this->server()->send(cmd);
+    }
+  }
+}
+
+vector<uint16_t> PlayerState::get_card_refs_within_range_from_all_players(
+    const parray<uint8_t, 9 * 9>& range,
+    const Location& loc,
+    CardType type) const {
+  vector<uint16_t> ret;
+  for (size_t client_id = 0; client_id < 4; client_id++) {
+    auto other_ps = this->server()->player_states[client_id];
+    if (other_ps && ((other_ps->get_sc_card_type() == type) || (type == CardType::ITEM))) {
+      auto card_refs = get_card_refs_within_range(range, loc, *other_ps->card_short_statuses);
+      ret.insert(ret.end(), card_refs.begin(), card_refs.end());
+    }
+  }
+  return ret;
+}
+
+void PlayerState::unknown_80239460() {
+  if (this->sc_card) {
+    this->sc_card->unknown_80235AA0();
+  }
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    if (this->set_cards[set_index]) {
+      this->set_cards[set_index]->unknown_80235AA0();
+    }
+  }
+}
+
+void PlayerState::unknown_802394C4() {
+  if (this->sc_card) {
+    this->sc_card->unknown_80235AD4();
+  }
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    if (this->set_cards[set_index]) {
+      this->set_cards[set_index]->unknown_80235AD4();
+    }
+  }
+}
+
+void PlayerState::unknown_80239528() {
+  if (this->sc_card) {
+    this->sc_card->unknown_80235B10();
+  }
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    if (this->set_cards[set_index]) {
+      this->set_cards[set_index]->unknown_80235B10();
+    }
+  }
+}
+
+void PlayerState::handle_before_turn_assist_effects() {
+  if ((this->assist_delay_turns > 0) &&
+      (--this->assist_delay_turns == 0)) {
+    this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+    size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->client_id);
+    for (size_t z = 0; z < num_assists; z++) {
+      switch (this->server()->assist_server->get_active_assist_by_index(z)) {
+        case AssistEffect::BOMB:
+          this->server()->execute_bomb_assist_effect();
+          break;
+        case AssistEffect::ATK_DICE_2:
+          // Note: This behavior doesn't match the card description. Is it
+          // supposed to add 2 or multiply by 2?
+          this->atk_points = min<int16_t>(this->atk_points + 2, 9);
+          this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+          break;
+        case AssistEffect::SKIP_TURN:
+          this->assist_flags |= 0x80;
+          this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+          break;
+        default:
+          break;
+      }
+    }
+  }
+}
+
+int16_t PlayerState::get_assist_turns_remaining() {
+  if ((this->card_refs[6] == 0xFFFF) && (this->set_assist_card_id == 0xFFFF)) {
+    return -1;
+  }
+  return this->assist_remaining_turns;
+}
+
+bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
+  auto attacker_card = this->server()->card_for_set_card_ref(pa.attacker_card_ref);
+  if (attacker_card) {
+    attacker_card->card_flags |= 0x100;
+  }
+
+  auto action_type = this->server()->ruler_server->get_pending_action_type(pa);
+  this->subtract_or_check_atk_or_def_points_for_action(pa, 1);
+
+  if (action_type == ActionType::ATTACK) {
+    G_Unknown_GC_Ep3_6xB4x4A cmd;
+    cmd.client_id = this->client_id;
+    cmd.round_num = this->server()->get_round_num();
+    cmd.entry_count = 0;
+    auto card = this->server()->card_for_set_card_ref(pa.attacker_card_ref);
+    if (card) {
+      card->loc.direction = pa.facing_direction;
+      size_t z = 0;
+      do {
+        card->unknown_80237A90(pa, pa.action_card_refs[z]);
+        card->unknown_802379BC(pa.action_card_refs[z]);
+        if (pa.action_card_refs[z] != 0xFFFF) {
+          cmd.card_refs[z] = pa.action_card_refs[z];
+          cmd.entry_count++;
+        }
+        auto ce = this->server()->definition_for_card_ref(pa.action_card_refs[z]);
+        if (ce) {
+          auto card_class = ce->def.card_class();
+          if ((card_class == CardClass::TECH) ||
+              (card_class == CardClass::PHOTON_BLAST) ||
+              (card_class == CardClass::BOSS_TECH)) {
+            this->stats.num_tech_cards_set++;
+          }
+          if ((card_class == CardClass::ATTACK_ACTION) ||
+              (card_class == CardClass::CONNECT_ONLY_ATTACK_ACTION) ||
+              (card_class == CardClass::BOSS_ATTACK_ACTION)) {
+            this->stats.num_attack_actions_set++;
+          }
+          this->stats.num_cards_set++;
+        }
+        z++;
+      } while ((z < 8) && (pa.action_card_refs[z] != 0xFFFF));
+      if (cmd.entry_count > 0) {
+        this->server()->send(cmd);
+      }
+    }
+
+  } else if (action_type == ActionType::DEFENSE) {
+    G_Unknown_GC_Ep3_6xB4x4A cmd;
+    cmd.client_id = this->client_id;
+    cmd.round_num = this->server()->get_round_num();
+    for (size_t z = 0; (z < 4 * 9) && (pa.target_card_refs[z] != 0xFFFF); z++) {
+      auto target_card = this->server()->card_for_set_card_ref(pa.target_card_refs[z]);
+      if (target_card) {
+        target_card->unknown_802379DC(pa);
+        if (this->client_id == target_card->get_client_id()) {
+          this->stats.defense_actions_set_on_self++;
+        } else {
+          this->stats.defense_actions_set_on_ally++;
+        }
+        this->stats.num_cards_set++;
+      }
+    }
+    cmd.card_refs[0] = pa.defense_card_ref;
+    cmd.entry_count = 1;
+    this->server()->send(cmd);
+  }
+  for (size_t z = 0; (z < 4 * 9) && (pa.action_card_refs[z] != 0xFFFF); z++) {
+    this->discard_ref_from_hand(pa.action_card_refs[z]);
+  }
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+  return true;
+}
+
+void PlayerState::unknown_8023C174() {
+  if (this->sc_card) {
+    this->sc_card->unknown_8023813C();
+  }
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    if (this->set_cards[set_index]) {
+      this->set_cards[set_index]->unknown_8023813C();
+    }
+  }
+
+  this->compute_total_set_cards_cost();
+  this->unknown_a14 = 0;
+  if ((this->assist_remaining_turns > 0) &&
+      (this->assist_remaining_turns < 90) &&
+      (this->assist_delay_turns == 0)) {
+    this->assist_remaining_turns--;
+    if (this->assist_remaining_turns < 1) {
+      this->discard_set_assist_card();
+    }
+  }
+  if (this->is_team_turn()) {
+    this->atk_points = 0;
+    this->def_points = 0;
+    this->atk_bonuses = 0;
+    this->def_bonuses = 0;
+    this->roll_dice(2);
+  }
+  this->assist_flags &= 0x9804;
+  this->set_assist_flags_from_assist_effects();
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed(0);
+  this->send_set_card_updates(0);
+}
+
+void PlayerState::handle_homesick_assist_effect(shared_ptr<Card> card) {
+  if (!card) {
+    return;
+  }
+
+  size_t set_index;
+  for (set_index = 0; set_index < 8; set_index++) {
+    if (this->set_cards[set_index] == card) {
+      break;
+    }
+  }
+
+  if (set_index < 8) {
+    uint16_t card_ref = card->get_card_ref();
+    size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->client_id);
+    for (size_t z = 0; z < num_assists; z++) {
+      if (this->server()->assist_server->get_active_assist_by_index(z) == AssistEffect::HOMESICK) {
+        this->return_set_card_to_hand2(card_ref);
+        this->log_discard(card_ref, 1);
+        this->set_cards[set_index]->card_flags |= 2;
+        return;
+      }
+    }
+
+    if (this->deck_state->set_card_ref_drawable_next(card_ref)) {
+      this->log_discard(card_ref, 1);
+      this->set_cards[set_index]->card_flags |= 2;
+    }
+  }
+}
+
+void PlayerState::apply_main_die_assist_effects(uint8_t* die_value) const {
+  size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->client_id);
+  for (size_t z = 0; z < num_assists; z++) {
+    switch (this->server()->assist_server->get_active_assist_by_index(z)) {
+      case AssistEffect::DICE_FEVER:
+        *die_value = 5;
+        break;
+      case AssistEffect::DICE_HALF:
+        *die_value = ((*die_value + 1) >> 1);
+        break;
+      case AssistEffect::DICE_PLUS_1:
+        (*die_value)++;
+        break;
+      case AssistEffect::DICE_FEVER_PLUS:
+        *die_value = 6;
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+void PlayerState::roll_main_dice() {
+  const auto& rules = this->server()->base()->map_and_rules1->rules;
+
+  uint8_t min_dice = rules.min_dice;
+  uint8_t max_dice = rules.max_dice;
+  if (min_dice == 0) {
+    min_dice = 1;
+  }
+  if (max_dice == 0) {
+    max_dice = 6;
+  }
+
+  if (max_dice < min_dice) {
+    uint8_t t = max_dice;
+    max_dice = min_dice;
+    min_dice = t;
+  }
+
+  uint8_t dice_range_width = (max_dice - min_dice) + 1;
+  if (dice_range_width < 2) {
+    this->dice_results[0] = min_dice;
+    this->dice_results[1] = min_dice;
+    this->atk_points = min_dice;
+    this->def_points = min_dice;
+  } else {
+    this->dice_results[0] = min_dice + this->server()->get_random(dice_range_width);
+    this->dice_results[1] = min_dice + this->server()->get_random(dice_range_width);
+    this->atk_points = this->dice_results[0];
+    this->def_points = this->dice_results[1];
+  }
+
+  bool should_exchange = false;
+  if (rules.dice_exchange_mode == DiceExchangeMode::HIGH_DEF) {
+    should_exchange = (this->dice_results[0] > this->dice_results[1]);
+  } else if (rules.dice_exchange_mode == DiceExchangeMode::HIGH_ATK) {
+    should_exchange = (this->dice_results[0] < this->dice_results[1]);
+  }
+
+  if (!should_exchange) {
+    this->atk_points = (short)(char)this->dice_results[0];
+    this->def_points = (short)(char)this->dice_results[1];
+    this->assist_flags = this->assist_flags & 0xFFFFFFFD;
+  } else {
+    this->atk_points = (short)(char)this->dice_results[1];
+    this->def_points = (short)(char)this->dice_results[0];
+    this->assist_flags = this->assist_flags | 2;
+  }
+
+  this->atk_points = this->atk_points + this->server()->card_special->client_has_atk_dice_boost_condition(this->client_id);
+
+  uint8_t atk_before_bonuses = this->atk_points;
+  uint8_t def_before_bonuses = this->def_points;
+
+  this->apply_main_die_assist_effects(&this->atk_points);
+  this->apply_main_die_assist_effects(&this->def_points);
+  this->dice_results[0] = this->atk_points;
+  this->dice_results[1] = this->def_points;
+
+  this->atk_points += this->server()->team_dice_boost[this->team_id];
+  this->def_points += this->server()->team_dice_boost[this->team_id];
+  this->atk_points = clamp<uint8_t>(this->atk_points, 1, 9);
+  this->def_points = clamp<uint8_t>(this->def_points, 1, 9);
+  this->atk_bonuses = this->atk_points - atk_before_bonuses;
+  this->def_bonuses = this->def_points - def_before_bonuses;
+  this->atk_points2 = min<uint8_t>(this->atk_points2_max, this->atk_points);
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+}
+
+void PlayerState::unknown_8023C110() {
+  if (this->sc_card) {
+    this->sc_card->unknown_802380C0();
+  }
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    auto card = this->set_cards[set_index];
+    if (card) {
+      card->unknown_802380C0();
+    }
+  }
+}
+
+void PlayerState::compute_team_dice_boost_after_draw_phase() {
+  if (this->sc_card) {
+    this->sc_card->unknown_80237F88();
+  }
+
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    if (this->set_cards[set_index]) {
+      this->set_cards[set_index]->unknown_80237F88();
+    }
+  }
+
+  uint8_t current_team_turn = this->server()->get_current_team_turn();
+  uint8_t dice_boost = this->server()->get_team_exp(current_team_turn) /
+      (this->server()->team_client_count[current_team_turn] * 12);
+  this->server()->card_special->adjust_dice_boost_if_team_has_condition_52(
+      current_team_turn, &dice_boost, 0);
+  this->server()->team_dice_boost[current_team_turn] = clamp<int16_t>(dice_boost, 0, 8);
+  this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+}
+
+
+
+} // namespace Episode3

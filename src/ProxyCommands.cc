@@ -878,9 +878,9 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
           string map_data = prs_decompress(
               data.data() + sizeof(cmd), data.size() - sizeof(cmd));
           save_file(filename, map_data);
-          if (map_data.size() != sizeof(Ep3Map)) {
+          if (map_data.size() != sizeof(Episode3::MapDefinition)) {
             session.log.warning("Wrote %zu bytes to %s (expected %zu bytes; the file may be invalid)",
-                map_data.size(), filename.c_str(), sizeof(Ep3Map));
+                map_data.size(), filename.c_str(), sizeof(Episode3::MapDefinition));
           } else {
             session.log.info("Wrote %zu bytes to %s", map_data.size(), filename.c_str());
           }
@@ -1016,7 +1016,7 @@ static HandlerResult S_13_A7(shared_ptr<ServerState>,
   if (sf->f.get()) {
     session.log.info("Writing %" PRIu32 " bytes to %s",
         cmd.data_size.load(), sf->output_filename.c_str());
-    fwritex(sf->f.get(), cmd.data, cmd.data_size);
+    fwritex(sf->f.get(), cmd.data.data(), cmd.data_size);
   }
   sf->remaining_bytes -= cmd.data_size;
 

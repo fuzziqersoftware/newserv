@@ -459,10 +459,10 @@ Quest::Quest(const string& bin_filename)
     case GameVersion::XB:
     case GameVersion::GC: {
       if (this->category == QuestCategory::EPISODE_3) {
-        if (bin_decompressed.size() != sizeof(Ep3Map)) {
+        if (bin_decompressed.size() != sizeof(Episode3::MapDefinition)) {
           throw invalid_argument("file is incorrect size");
         }
-        auto* header = reinterpret_cast<const Ep3Map*>(bin_decompressed.data());
+        auto* header = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
         this->joinable = false;
         this->episode = 0xFF;
         this->name = decode_sjis(header->name);
@@ -677,21 +677,14 @@ string Quest::decode_gci(
     // wrote a fairly trivial XOR loop over the first 0x100 bytes, leaving the
     // remaining bytes completely unencrypted (but still compressed).
     size_t unscramble_size = min<size_t>(0x100, data.size());
-    {
-      uint8_t key = 0x80; // Technically basis + 0x80, but basis is zero
-      for (size_t z = 0; z < unscramble_size; z++) {
-        key = (key * 5) + 1;
-        data[z] ^= key;
-      }
-    }
+    decrypt_trivial_gci_data(data.data(), unscramble_size, 0);
 
     size_t decompressed_size = prs_decompress_size(data);
-    if (decompressed_size != sizeof(Ep3Map)) {
+    if (decompressed_size != sizeof(Episode3::MapDefinition)) {
       throw runtime_error(string_printf(
           "decompressed quest is 0x%zX bytes; expected 0x%zX bytes",
-          decompressed_size, sizeof(Ep3Map)));
+          decompressed_size, sizeof(Episode3::MapDefinition)));
     }
-
     return data;
 
   } else {
@@ -800,7 +793,7 @@ static pair<string, string> decode_qst_t(FILE* f) {
       if (header.flag != dest->size() / 0x400) {
         throw runtime_error("qst contains chunks out of order");
       }
-      dest->append(reinterpret_cast<const char*>(cmd.data), cmd.data_size);
+      dest->append(reinterpret_cast<const char*>(cmd.data.data()), cmd.data_size);
 
     } else {
       throw runtime_error("invalid command in qst file");

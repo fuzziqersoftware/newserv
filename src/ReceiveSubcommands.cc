@@ -209,8 +209,8 @@ static void on_subcommand_forward_check_size_ep3_game(shared_ptr<ServerState>,
 static void on_subcommand_ep3_battle_subs(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& orig_data) {
-  check_size_sc<G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5>(
-      orig_data, sizeof(G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5), 0xFFFF);
+  check_size_sc<G_CardBattleCommandHeader>(
+      orig_data, sizeof(G_CardBattleCommandHeader), 0xFFFF);
   if (!l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
     return;
   }

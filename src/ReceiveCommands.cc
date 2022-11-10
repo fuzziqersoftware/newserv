@@ -907,98 +907,24 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
     throw runtime_error("Episode 3 server data request sent in lobby or non-Episode 3 game");
   }
 
-  const auto& header = check_size_t<G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5>(
-      data, sizeof(G_CardBattleCommandHeader_GC_Ep3_6xB3_6xB4_6xB5), 0xFFFF);
+  const auto& header = check_size_t<G_CardBattleCommandHeader>(
+      data, sizeof(G_CardBattleCommandHeader), 0xFFFF);
 
-  // TODO: We can support this since set_mask_for_ep3_game_command already
-  // exists; I just don't want to make a copy of the data string
-  if (header.mask_key != 0) {
-    throw runtime_error("Episode 3 server data request has nonzero mask key");
-  }
-
-  if (header.basic_header.subcommand != 0xB3) {
+  if (header.subcommand != 0xB3) {
     throw runtime_error("unknown Episode 3 server data request");
   }
 
-  switch (header.subsubcommand) {
-    // Phase 1: map select
-    case 0x40:
-      check_size_t<G_MapListRequest_GC_Ep3_6xB3x40_CAx40>(data);
-      send_ep3_map_list(s, l);
-      break;
-    case 0x41: {
-      const auto& cmd = check_size_t<G_MapDataRequest_GC_Ep3_6xB3x41_CAx41>(data);
-      send_ep3_map_data(s, l, cmd.map_number);
-      break;
+  if (!l->ep3_server_base || l->ep3_server_base->server->battle_finished) {
+    if (!l->ep3_server_base) {
+      l->log.info("Creating Episode 3 server state");
+    } else {
+      l->log.info("Recreating Episode 3 server state");
     }
-
-    /* What follows is some raw code that has survived since the days of khyller
-     * (approx. 2004). Much more research and engineering is needed to get
-     * Episode III battles to work, but this could be used as a starting point.
-
-    // phase 2: deck/name entry
-    case 0x13:
-      ti = FindTeam(s, c->teamID);
-      memcpy(&ti->ep3game, ((DWORD)c->bufferin + 0x14), 0x2AC);
-      CommandEp3InitChangeState(s, c, 1);
-      break;
-    case 0x1B:
-      ti = FindTeam(s, c->teamID);
-      memcpy(&ti->ep3names[*(BYTE*)((DWORD)c->bufferin + 0x24)], ((DWORD)c->bufferin + 0x14), 0x14); // NOTICE: may be 0x26 instead of 0x24
-      CommandEp3InitSendNames(s, c);
-      break;
-    case 0x14:
-      ti = FindTeam(s, c->teamID);
-      memcpy(&ti->ep3decks[*(BYTE*)((DWORD)c->bufferin + 0x14)], ((DWORD)c->bufferin + 0x18), 0x58); // NOTICE: may be 0x16 instead of 0x14
-      Ep3FillHand(&ti->ep3game, &ti->ep3decks[*(BYTE*)((DWORD)c->bufferin + 0x14)], &ti->ep3pcs[*(BYTE*)((DWORD)c->bufferin + 0x14)]);
-      //Ep3RollDice(&ti->ep3game, &ti->ep3pcs[*(BYTE*)((DWORD)c->bufferin + 0x14)]);
-      CommandEp3InitSendDecks(s, c);
-      CommandEp3InitSendMapLayout(s, c);
-      for (x = 0, param = 0; x < 4; x++) if ((ti->ep3decks[x].clientID != 0xFFFFFFFF) && (ti->ep3names[x].clientID != 0xFF)) param++;
-      if (param >= ti->ep3game.numPlayers) CommandEp3InitChangeState(s, c, 3);
-      break;
-    // phase 3: hands & game states
-    case 0x1D:
-      ti = FindTeam(s, c->teamID);
-      Ep3ReprocessMap(&ti->ep3game);
-      CommandEp3SendMapData(s, c, ti->ep3game.mapID);
-      for (y = 0, x = 0; x < 4; x++)
-      {
-          if ((ti->ep3decks[x].clientID == 0xFFFFFFFF) || (ti->ep3names[x].clientID == 0xFF)) continue;
-          Ep3EquipCard(&ti->ep3game, &ti->ep3decks[x], &ti->ep3pcs[x], 0); // equip SC card
-          CommandEp3InitHandUpdate(s, c, x);
-          CommandEp3InitStatUpdate(s, c, x);
-          y++;
-      }
-      CommandEp3Init_B4_06(s, c, (y == 4) ? true : false);
-      CommandEp3InitSendMapLayout(s, c);
-      for (x = 0; x < 4; x++)
-      {
-          if ((ti->ep3decks[x].clientID == 0xFFFFFFFF) || (ti->ep3names[x].clientID == 0xFF)) continue;
-          CommandEp3Init_B4_4E(s, c, x);
-          CommandEp3Init_B4_4C(s, c, x);
-          CommandEp3Init_B4_4D(s, c, x);
-          CommandEp3Init_B4_4F(s, c, x);
-      }
-      CommandEp3InitSendDecks(s, c);
-      CommandEp3InitSendMapLayout(s, c);
-      for (x = 0; x < 4; x++)
-      {
-          if ((ti->ep3decks[x].clientID == 0xFFFFFFFF) || (ti->ep3names[x].clientID == 0xFF)) continue;
-          CommandEp3InitHandUpdate(s, c, x);
-      }
-      CommandEp3InitSendNames(s, c);
-      CommandEp3InitChangeState(s, c, 4);
-      CommandEp3Init_B4_50(s, c);
-      CommandEp3InitSendMapLayout(s, c);
-      CommandEp3Init_B4_39(s, c); // MISSING: 60 00 AC 00 B4 2A 00 00 39 56 00 08 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-      CommandEp3InitBegin(s, c);
-      break; */
-
-    default:
-      c->log.warning("Unknown Episode III server data request: %02X",
-          header.subsubcommand);
+    l->ep3_server_base = make_shared<Episode3::ServerBase>(
+        l, s->ep3_data_index, s->ep3_behavior_flags, l->random_seed);
+    l->ep3_server_base->init();
   }
+  l->ep3_server_base->server->on_server_data_input(data);
 }
 
 static void on_ep3_tournament_control(shared_ptr<ServerState>, shared_ptr<Client> c,
@@ -1860,7 +1786,7 @@ static void on_player_data(shared_ptr<ServerState> s, shared_ptr<Client> c,
           throw runtime_error("non-Episode 3 client sent Episode 3 player data");
         }
         const auto* pd3 = &check_size_t<PSOPlayerDataGCEp3>(data);
-        c->game_data.ep3_config.reset(new Ep3Config(pd3->ep3_config));
+        c->game_data.ep3_config.reset(new Episode3::PlayerConfig(pd3->ep3_config));
         pd = reinterpret_cast<const PSOPlayerDataV3*>(pd3);
       } else {
         pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3),

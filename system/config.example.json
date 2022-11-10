@@ -248,11 +248,21 @@
   // they are at the newserv main menu. If set, this value must be an integer.
   // "Episode3MenuSong": 0,
 
+  // Episode 3 battle behavior flags. When set to zero, battles behave as they
+  // did on the original Sega servers.
+  // TODO: Document what nonzero values do here.
+  "Episode3BehaviorFlags": 0,
+
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on
   // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't
   // enable Episode 3 patches by default; it only does so if this option is on.
   // "EnableEpisode3SendFunctionCall": true,
+
+  // Whether to enable certain exception handling. Disabling this is generally
+  // only useful for debugging newserv itself, and it should usually be left on
+  // (which is the default behavior).
+  "CatchHandlerExceptions": true,
 
   // By default, the server keeps track of items in all games, even for versions
   // other than Blue Burst. This enables use of the $what command, as well as
