@@ -69,7 +69,7 @@
 
 # Once we have control, we clean up the allocator state (restoring the free
 # block as it was before we overwrote its header), then copy our implementation
-# of the B2 command to an otherwise-unused are of memory and apply a few more
+# of the B2 command to an otherwise-unused area of memory and apply a few more
 # patches. See the comments within the code below for more details.
 
 
