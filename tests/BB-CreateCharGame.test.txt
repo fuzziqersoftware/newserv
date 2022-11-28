@@ -40,7 +40,7 @@ I 80350 2022-07-07 23:26:22 - [Commands] Received from C-3 (version=BB command=0
 I 80350 2022-07-07 23:26:22 - [Commands] Sending to C-3 (version=BB command=00E6 flag=00000000)
 0000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0010 | 5B 30 B0 21 10 11 69 77 39 98 AC 82 0E 89 2A 49 | [0 !  iw9     *I
-0020 | 04 04 00 00 00 00 00 00 FF FF FF FF FF FF FF FF |                 
+0020 | 04 04 00 00 00 00 00 00 00 00 FF FF FF FF FF FF |                 
 0030 | FF FF FF FF FF FF FF FF 00 00 FF FF FF FF FF FF |                 
 0040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:26:22 - [Commands] Sending to C-3 (version=BB command=0019 flag=00000000)
@@ -88,7 +88,7 @@ I 80350 2022-07-07 23:26:22 - [Commands] Received from C-4 (version=BB command=0
 I 80350 2022-07-07 23:26:22 - [Commands] Sending to C-4 (version=BB command=00E6 flag=00000000)
 0000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0010 | 5B 30 B0 21 DD 7C 2B 0D 39 98 AC 82 0E 89 2A 49 | [0 ! |+ 9     *I
-0020 | 06 04 00 00 0F 2D 4D BD FF FF FF FF FF FF FF FF |      -M         
+0020 | 06 04 00 00 0F 2D 4D BD F0 7C FF FF FF FF FF FF |      -M         
 0030 | FF FF FF FF FF FF FF FF 01 00 FF FF FF FF FF FF |                 
 0040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:26:22 - [Commands] Received from C-4 (version=BB command=00E0 flag=00000000)
@@ -29650,7 +29650,7 @@ I 80350 2022-07-07 23:26:24 - [Commands] Received from C-5 (version=BB command=0
 I 80350 2022-07-07 23:26:24 - [Commands] Sending to C-5 (version=BB command=00E6 flag=00000000)
 0000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0010 | 5B 30 B0 21 2F 59 AB FF 39 98 AC 82 0E 89 2A 49 | [0 !/Y  9     *I
-0020 | 06 04 00 00 0F 2D 4D BD FF FF FF FF FF FF FF FF |      -M         
+0020 | 06 04 00 00 0F 2D 4D BD F0 7C FF FF FF FF FF FF |      -M         
 0030 | FF FF FF FF FF FF FF FF 02 00 FF FF FF FF FF FF |                 
 0040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:26:26 - [Commands] Received from C-5 (version=BB command=00EC flag=00000000)
@@ -29698,7 +29698,7 @@ I 80350 2022-07-07 23:26:53 - [Commands] Received from C-6 (version=BB command=0
 I 80350 2022-07-07 23:26:53 - [Commands] Sending to C-6 (version=BB command=00E6 flag=00000000)
 0000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0010 | 5B 30 B0 21 5D 49 6D 17 39 98 AC 82 0E 89 2A 49 | [0 !]Im 9     *I
-0020 | 06 04 00 00 0F 2D 4D BD FF FF FF FF FF FF FF FF |      -M         
+0020 | 06 04 00 00 0F 2D 4D BD F0 7C FF FF FF FF FF FF |      -M         
 0030 | FF FF FF FF FF FF FF FF 03 00 FF FF FF FF FF FF |                 
 0040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:26:53 - [Commands] Received from C-6 (version=BB command=00E5 flag=00000000)
@@ -29715,7 +29715,7 @@ I 80350 2022-07-07 23:26:53 - Saved player data file system/players/player_test-
 I 80350 2022-07-07 23:26:53 - [Commands] Sending to C-6 (version=BB command=00E6 flag=00000000)
 0000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0010 | 5B 30 B0 21 3F C9 FC 51 39 98 AC 82 0E 89 2A 49 | [0 !?  Q9     *I
-0020 | 06 04 00 00 0F 2D 4D BD FF FF FF FF FF FF FF FF |      -M         
+0020 | 06 04 00 00 0F 2D 4D BD F0 7C FF FF FF FF FF FF |      -M         
 0030 | FF FF FF FF FF FF FF FF 03 00 FF FF FF FF FF FF |                 
 0040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:26:53 - [Commands] Sending to C-6 (version=BB command=00E4 flag=00000000)
@@ -29776,7 +29776,7 @@ I 80350 2022-07-07 23:27:02 - [Commands] Received from C-7 (version=BB command=0
 I 80350 2022-07-07 23:27:02 - [Commands] Sending to C-7 (version=BB command=00E6 flag=00000000)
 0000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0010 | 5B 30 B0 21 89 3A 19 66 39 98 AC 82 0E 89 2A 49 | [0 ! : f9     *I
-0020 | 06 04 00 00 0F 2D 4D BD FF FF FF FF FF FF FF FF |      -M         
+0020 | 06 04 00 00 0F 2D 4D BD F0 7C FF FF FF FF FF FF |      -M         
 0030 | FF FF FF FF FF FF FF FF 04 00 FF FF FF FF FF FF |                 
 0040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:27:02 - [Commands] Sending to C-7 (version=BB command=0007 flag=00000003)
@@ -29836,7 +29836,7 @@ I 80350 2022-07-07 23:27:03 - [Commands] Received from C-8 (version=BB command=0
 I 80350 2022-07-07 23:27:03 - [Commands] Sending to C-8 (version=BB command=00E6 flag=00000000)
 0000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0010 | 5B 30 B0 21 72 68 14 48 39 98 AC 82 0E 89 2A 49 | [0 !rh H9     *I
-0020 | 06 04 00 00 0F 2D 4D BD FF FF FF FF FF FF FF FF |      -M         
+0020 | 06 04 00 00 0F 2D 4D BD F0 7C FF FF FF FF FF FF |      -M         
 0030 | FF FF FF FF FF FF FF FF 04 00 FF FF FF FF FF FF |                 
 0040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:27:03 - Loaded account data file system/players/account_test-user.nsa
@@ -31124,7 +31124,7 @@ I 80350 2022-07-07 23:27:19 - [Commands] Received from C-9 (version=BB command=0
 I 80350 2022-07-07 23:27:19 - [Commands] Sending to C-9 (version=BB command=00E6 flag=00000000)
 0000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0010 | 5B 30 B0 21 4E 0D 83 EC 39 98 AC 82 0E 89 2A 49 | [0 !N   9     *I
-0020 | 06 04 00 00 0F 2D 4D BD FF FF FF FF FF FF FF FF |      -M         
+0020 | 06 04 00 00 0F 2D 4D BD F0 7C FF FF FF FF FF FF |      -M         
 0030 | FF FF FF FF FF FF FF FF 04 00 FF FF FF FF FF FF |                 
 0040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:27:19 - [Commands] Sending to C-9 (version=BB command=0007 flag=00000003)
@@ -31184,7 +31184,7 @@ I 80350 2022-07-07 23:27:20 - [Commands] Received from C-A (version=BB command=0
 I 80350 2022-07-07 23:27:20 - [Commands] Sending to C-A (version=BB command=00E6 flag=00000000)
 0000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0010 | 5B 30 B0 21 D3 DC 0E 80 39 98 AC 82 0E 89 2A 49 | [0 !    9     *I
-0020 | 06 04 00 00 0F 2D 4D BD FF FF FF FF FF FF FF FF |      -M         
+0020 | 06 04 00 00 0F 2D 4D BD F0 7C FF FF FF FF FF FF |      -M         
 0030 | FF FF FF FF FF FF FF FF 04 00 FF FF FF FF FF FF |                 
 0040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:27:20 - Loaded account data file system/players/account_test-user.nsa
@@ -33690,7 +33690,7 @@ I 80350 2022-07-07 23:29:17 - [Commands] Received from C-B (version=BB command=0
 I 80350 2022-07-07 23:29:17 - [Commands] Sending to C-B (version=BB command=00E6 flag=00000000)
 0000 | 44 00 E6 00 00 00 00 00 00 00 00 00 00 00 01 00 | D               
 0010 | 5B 30 B0 21 93 32 4F 99 39 98 AC 82 0E 89 2A 49 | [0 ! 2O 9     *I
-0020 | 06 04 00 00 0F 2D 4D BD FF FF FF FF FF FF FF FF |      -M         
+0020 | 06 04 00 00 0F 2D 4D BD F0 7C FF FF FF FF FF FF |      -M         
 0030 | FF FF FF FF FF FF FF FF 04 00 FF FF FF FF FF FF |                 
 0040 | 02 01 00 00                                     |                 
 I 80350 2022-07-07 23:29:17 - [Commands] Sending to C-B (version=BB command=0007 flag=00000003)

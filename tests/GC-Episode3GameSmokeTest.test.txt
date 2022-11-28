@@ -59,7 +59,7 @@ I 13136 2022-11-27 21:06:32 - [Commands] Received from C-5 (version=GC command=9
 0140 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 I 13136 2022-11-27 21:06:32 - [Commands] Sending to C-5 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 39 98 AC 82 |   ,         9   
-0010 | 0E 89 2A 49 0A 03 00 00 00 00 00 00 FF FF FF FF |   *I            
+0010 | 0E 89 2A 49 0A 03 00 00 00 00 00 00 00 00 FF FF |   *I            
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:06:32 - [Commands] Sending to C-5 (version=GC command=B8 flag=00)
 0000 | B8 00 E0 71 D5 71 00 00 61 00 FF 01 00 87 F8 FF |    q q  a       
@@ -1886,7 +1886,7 @@ I 13136 2022-11-27 21:06:32 - [Commands] Sending to C-5 (version=GC command=B8 f
 71D0 | 85 45 F0 24 F0 F0 8C 0A 08 FF 0B 00 00 00 00 00 |  E $            
 I 13136 2022-11-27 21:06:32 - [Commands] Sending to C-5 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 39 98 AC 82 |   ,         9   
-0010 | 0E 89 2A 49 0A 43 00 00 00 00 00 00 FF FF FF FF |   *I C          
+0010 | 0E 89 2A 49 0A 43 00 00 00 00 00 00 00 00 FF FF |   *I C          
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:06:32 - [Commands] Sending to C-5 (version=GC command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
@@ -1910,7 +1910,7 @@ I 13136 2022-11-27 21:06:33 - [Commands] Received from C-5 (version=GC command=D
 0000 | D6 00 04 00                                     |                 
 I 13136 2022-11-27 21:06:33 - [Commands] Sending to C-5 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 39 98 AC 82 |   ,         9   
-0010 | 0E 89 2A 49 0A 42 00 00 00 00 00 00 FF FF FF FF |   *I B          
+0010 | 0E 89 2A 49 0A 42 00 00 00 00 00 00 00 00 FF FF |   *I B          
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:06:33 - [Commands] Sending to C-5 (version=GC command=07 flag=06)
 0000 | 07 06 C8 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
@@ -1932,7 +1932,7 @@ I 13136 2022-11-27 21:06:33 - [Commands] Sending to C-5 (version=GC command=97 f
 0000 | 97 01 04 00                                     |                 
 I 13136 2022-11-27 21:06:33 - [Commands] Sending to C-5 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 39 98 AC 82 |   ,         9   
-0010 | 0E 89 2A 49 0A 46 00 00 00 00 00 00 FF FF FF FF |   *I F          
+0010 | 0E 89 2A 49 0A 46 00 00 00 00 00 00 00 00 FF FF |   *I F          
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:06:34 - [Commands] Received from C-5 (version=GC command=B1 flag=00)
 0000 | B1 00 04 00                                     |                 
@@ -1979,11 +1979,11 @@ I 13136 2022-11-27 21:06:35 - [Commands] Received from C-6 (version=GC command=9
 00A0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 54 61 6C 69 |             Tali
 00C0 | 00 00 00 00 00 00 00 00 00 00 00 00 39 98 AC 82 |             9   
-00D0 | 0E 89 2A 49 0A 46 00 00 00 00 00 00 FF FF FF FF |   *I F          
+00D0 | 0E 89 2A 49 0A 46 00 00 00 00 00 00 00 00 FF FF |   *I F          
 00E0 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:06:35 - [Commands] Sending to C-6 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 39 98 AC 82 |   ,         9   
-0010 | 0E 89 2A 49 0A 46 00 00 00 00 00 00 FF FF FF FF |   *I F          
+0010 | 0E 89 2A 49 0A 46 00 00 00 00 00 00 00 00 FF FF |   *I F          
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:06:35 - [Commands] Sending to C-6 (version=GC command=83 flag=14)
 0000 | 83 14 F4 00 33 00 00 33 01 00 00 00 00 00 00 00 |     3  3        
@@ -2757,7 +2757,7 @@ I 13136 2022-11-27 21:06:35 - [Commands] Sending to C-6 (Tali) (version=GC comma
 0440 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:06:35 - [Commands] Sending to C-6 (Tali) (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 39 98 AC 82 |   ,         9   
-0010 | 0E 89 2A 49 0E 46 00 00 00 00 00 00 FF FF FF FF |   *I F          
+0010 | 0E 89 2A 49 0E 46 00 00 00 00 00 00 00 00 FF FF |   *I F          
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:06:37 - [Commands] Received from C-6 (Tali) (version=GC command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 00 00 0F 00 FF FF | `   ?           
@@ -3151,10 +3151,10 @@ I 13136 2022-11-27 21:06:51 - [Commands] Sending to C-6 (Tali) (version=GC comma
 0000 | C9 00 D0 00 B4 33 00 00 46 00 00 00 5B 56 31 5D |      3  F   [V1]
 0010 | 5B 46 49 4E 41 4C 32 2E 30 5D 20 30 33 2F 30 39 | [FINAL2.0] 03/09
 0020 | 2F 31 33 20 31 35 3A 33 30 20 62 79 20 4B 2E 54 | /13 15:30 by K.T
-0030 | 6F 79 61 00 00 00 00 00 00 00 00 00 00 00 00 00 | oya             
-0040 | 00 00 00 00 00 00 00 00 00 00 00 00 4A 61 6E 20 |             Jan 
+0030 | 6F 79 61 3B 20 6E 65 77 73 65 72 76 20 45 70 33 | oya; newserv Ep3
+0040 | 20 65 6E 67 69 6E 65 00 00 00 00 00 4A 61 6E 20 |  engine     Jan 
 0050 | 32 31 20 32 30 30 34 20 31 38 3A 33 36 3A 34 37 | 21 2004 18:36:47
-0060 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
+0060 | 3B 20 75 70 64 61 74 65 64 20 32 30 32 32 00 00 | ; updated 2022  
 0070 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0080 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0090 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
@@ -4728,7 +4728,7 @@ I 13136 2022-11-27 21:07:56 - [Commands] Received from C-7 (version=GC command=9
 00A0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 54 61 6C 69 |             Tali
 00C0 | 00 00 00 00 00 00 00 00 00 00 00 00 39 98 AC 82 |             9   
-00D0 | 0E 89 2A 49 0E 46 00 00 00 00 00 00 FF FF FF FF |   *I F          
+00D0 | 0E 89 2A 49 0E 46 00 00 00 00 00 00 00 00 FF FF |   *I F          
 00E0 | FF FF FF FF FF FF FF FF FF FF FF FF 00 00 00 00 |                 
 00F0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 0100 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
@@ -4738,7 +4738,7 @@ I 13136 2022-11-27 21:07:56 - [Commands] Received from C-7 (version=GC command=9
 0140 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
 I 13136 2022-11-27 21:07:56 - [Commands] Sending to C-7 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 39 98 AC 82 |   ,         9   
-0010 | 0E 89 2A 49 0E 46 00 00 00 00 00 00 FF FF FF FF |   *I F          
+0010 | 0E 89 2A 49 0E 46 00 00 00 00 00 00 00 00 FF FF |   *I F          
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:07:56 - [Commands] Sending to C-7 (version=GC command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
