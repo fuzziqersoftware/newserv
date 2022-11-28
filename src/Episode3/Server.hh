@@ -53,10 +53,11 @@ class Server;
 
 
 enum BehaviorFlag {
-  SKIP_DECK_VERIFY    = 0x00000001,
-  IGNORE_CARD_COUNTS  = 0x00000002,
-  SKIP_D1_D2_REPLACE  = 0x00000004,
-  DISABLE_TIME_LIMITS = 0x00000008,
+  SKIP_DECK_VERIFY       = 0x00000001,
+  IGNORE_CARD_COUNTS     = 0x00000002,
+  SKIP_D1_D2_REPLACE     = 0x00000004,
+  DISABLE_TIME_LIMITS    = 0x00000008,
+  ENABLE_STATUS_MESSAGES = 0x00000010,
 };
 
 class ServerBase : public std::enable_shared_from_this<ServerBase> {
@@ -117,6 +118,17 @@ public:
     this->send(&cmd, cmd.header.size * 4);
   }
   void send(const void* data, size_t size) const;
+
+  __attribute__((format(printf, 2, 3)))
+  void send_debug_message_printf(const char* fmt, ...) const;
+  __attribute__((format(printf, 2, 3)))
+  void send_info_message_printf(const char* fmt, ...) const; 
+  void send_debug_command_received_message(
+      uint8_t client_id, uint8_t subsubcommand, const char* description) const;
+  void send_debug_command_received_message(
+      uint8_t subsubcommand, const char* description) const;
+  void send_debug_message_if_error_code_nonzero(
+      uint8_t client_id, int32_t error_code) const;
 
   void add_team_exp(uint8_t team_id, int32_t exp);
   bool advance_battle_phase();

@@ -2645,7 +2645,7 @@ int32_t RulerServer::verify_deck(
   }
 
   for (size_t z = 1; z < card_ids.size(); z++) {
-    size_t count = 0;
+    ssize_t count = 0;
     for (size_t w = 1; w < card_ids.size(); w++) {
       if (card_ids.at(z) == card_ids.at(w)) {
         count++;

@@ -10,8 +10,11 @@ namespace Episode3 {
 
 
 
-static const char* VERSION_SIGNATURE = "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya";
-static const char* SIGNATURE_DATE = "Jan 21 2004 18:36:47";
+// These strings in the original implementation did not contain the semicolons
+// (or anything after them).
+static const char* VERSION_SIGNATURE =
+    "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya; newserv Ep3 engine";
+static const char* SIGNATURE_DATE = "Jan 21 2004 18:36:47; updated 2022";
 
 
 
@@ -146,6 +149,48 @@ void Server::send(const void* data, size_t size) const {
     throw runtime_error("lobby is deleted");
   }
   send_command(l, 0xC9, 0x00, data, size);
+}
+
+__attribute__((format(printf, 2, 3)))
+void Server::send_debug_message_printf(const char* fmt, ...) const {
+  auto l = this->base()->lobby.lock();
+  if (l && (this->base()->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
+    va_list va;
+    va_start(va, fmt);
+    std::string buf = string_vprintf(fmt, va);
+    va_end(va);
+    std::u16string decoded = decode_sjis(buf);
+    send_text_message(l, decoded.c_str());
+  }
+}
+
+__attribute__((format(printf, 2, 3)))
+void Server::send_info_message_printf(const char* fmt, ...) const {
+  auto l = this->base()->lobby.lock();
+  if (l) {
+    va_list va;
+    va_start(va, fmt);
+    std::string buf = string_vprintf(fmt, va);
+    va_end(va);
+    std::u16string decoded = decode_sjis(buf);
+    send_text_message(l, decoded.c_str());
+  }
+}
+
+void Server::send_debug_command_received_message(
+    uint8_t client_id, uint8_t subsubcommand, const char* description) const {
+  this->send_debug_message_printf("$C5%hhu/CAx%02hhX %s", client_id, subsubcommand, description);
+}
+
+void Server::send_debug_command_received_message(uint8_t subsubcommand, const char* description) const {
+  this->send_debug_message_printf("$C5*/CAx%02hhX %s", subsubcommand, description);
+}
+
+void Server::send_debug_message_if_error_code_nonzero(
+    uint8_t client_id, int32_t error_code) const {
+  if (error_code != 0) {
+    this->send_debug_message_printf("Client %hhu error\nCode: -0x%zX", client_id, static_cast<ssize_t>(-error_code));
+  }
 }
 
 void Server::add_team_exp(uint8_t team_id, int32_t exp) {
@@ -1400,6 +1445,8 @@ void Server::on_server_data_input(const string& data) {
 
 void Server::handle_6xB3x0B_mulligan_hand(const string& data) {
   const auto& in_cmd = check_size_t<G_RedrawInitialHand_GC_Ep3_6xB3x0B_CAx0B>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "REDRAW");
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::HAND_REDRAW_OPTION) {
@@ -1420,10 +1467,14 @@ void Server::handle_6xB3x0B_mulligan_hand(const string& data) {
   out_cmd.sequence_num = in_cmd.sequence_num.load();
   out_cmd.error_code = error_code;
   this->send(out_cmd);
+
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
 void Server::handle_6xB3x0C_end_mulligan_phase(const string& data) {
   const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_GC_Ep3_6xB3x0C_CAx0C>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 2");
 
   int32_t error_code = 0;
   if ((this->setup_phase != SetupPhase::HAND_REDRAW_OPTION) &&
@@ -1472,6 +1523,8 @@ void Server::handle_6xB3x0C_end_mulligan_phase(const string& data) {
 
 void Server::handle_6xB3x0D_end_non_action_phase(const string& data) {
   const auto& in_cmd = check_size_t<G_EndNonAttackPhase_GC_Ep3_6xB3x0D_CAx0D>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "END PHASE");
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd_ack;
   out_cmd_ack.sequence_num = in_cmd.sequence_num;
@@ -1488,6 +1541,8 @@ void Server::handle_6xB3x0D_end_non_action_phase(const string& data) {
 
 void Server::handle_6xB3x0E_discard_card_from_hand(const string& data) {
   const auto& in_cmd = check_size_t<G_DiscardCardFromHand_GC_Ep3_6xB3x0E_CAx0E>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "DISCARD");
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::MAIN_BATTLE) {
@@ -1516,10 +1571,14 @@ void Server::handle_6xB3x0E_discard_card_from_hand(const string& data) {
   out_cmd.sequence_num = in_cmd.sequence_num;
   out_cmd.error_code = error_code;
   this->send(out_cmd);
+
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
 void Server::handle_6xB3x0F_set_card_from_hand(const string& data) {
   const auto& in_cmd = check_size_t<G_SetCardFromHand_GC_Ep3_6xB3x0F_CAx0F>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "SET FC");
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::MAIN_BATTLE) {
@@ -1551,10 +1610,14 @@ void Server::handle_6xB3x0F_set_card_from_hand(const string& data) {
   out_cmd.sequence_num = in_cmd.sequence_num;
   out_cmd.error_code = this->ruler_server->error_code1;
   this->send(out_cmd);
+
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
 void Server::handle_6xB3x10_move_fc_to_location(const string& data) {
   const auto& in_cmd = check_size_t<G_MoveFieldCharacter_GC_Ep3_6xB3x10_CAx10>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "MOVE");
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::MAIN_BATTLE) {
@@ -1582,10 +1645,14 @@ void Server::handle_6xB3x10_move_fc_to_location(const string& data) {
   out_cmd.sequence_num = in_cmd.sequence_num;
   out_cmd.error_code = this->ruler_server->error_code2;
   this->send(out_cmd);
+
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
 void Server::handle_6xB3x11_enqueue_attack_or_defense(const string& data) {
   const auto& in_cmd = check_size_t<G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "ENQUEUE ACT");
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::MAIN_BATTLE) {
@@ -1611,10 +1678,14 @@ void Server::handle_6xB3x11_enqueue_attack_or_defense(const string& data) {
   out_cmd.sequence_num = in_cmd.sequence_num;
   out_cmd.error_code = this->ruler_server->error_code3;
   this->send(out_cmd);
+
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
 void Server::handle_6xB3x12_end_attack_list(const string& data) {
   const auto& in_cmd = check_size_t<G_EndAttackList_GC_Ep3_6xB3x12_CAx12>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "END ATK LIST");
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::MAIN_BATTLE) {
@@ -1631,6 +1702,8 @@ void Server::handle_6xB3x12_end_attack_list(const string& data) {
 
 void Server::handle_6xB3x13_update_map_during_setup(const string& data) {
   const auto& in_cmd = check_size_t<G_SetMapState_GC_Ep3_6xB3x13_CAx13>(data);
+  this->send_debug_command_received_message(
+      in_cmd.header.subsubcommand, "UPDATE MAP");
 
   auto b = this->base();
   if (!this->battle_in_progress &&
@@ -1659,6 +1732,8 @@ void Server::handle_6xB3x13_update_map_during_setup(const string& data) {
 
 void Server::handle_6xB3x14_update_deck_during_setup(const string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerDeck_GC_Ep3_6xB3x14_CAx14>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "UPDATE DECK");
 
   if (!this->battle_in_progress) {
     if ((this->setup_phase == SetupPhase::REGISTRATION) &&
@@ -1668,14 +1743,18 @@ void Server::handle_6xB3x14_update_deck_during_setup(const string& data) {
         return;
       }
       DeckEntry entry = in_cmd.entry;
+      int32_t verify_error = 0;
       if (!(this->base()->behavior_flags & BehaviorFlag::SKIP_DECK_VERIFY)) {
         // Note: Sega's original implementation doesn't use the card counts here
         if (this->base()->behavior_flags & BehaviorFlag::IGNORE_CARD_COUNTS) {
-          this->ruler_server->verify_deck(entry.card_ids);
+          verify_error = this->ruler_server->verify_deck(entry.card_ids);
         } else {
-          this->ruler_server->verify_deck(entry.card_ids,
+          verify_error = this->ruler_server->verify_deck(entry.card_ids,
               &this->base()->client_card_counts[in_cmd.client_id]);
         }
+      }
+      if (verify_error) {
+        throw runtime_error(string_printf("invalid deck: -0x%" PRIX32, verify_error));
       }
       if (!(this->base()->behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rarity_cards_with_Attack(entry.card_ids);
@@ -1699,12 +1778,16 @@ void Server::handle_6xB3x14_update_deck_during_setup(const string& data) {
 }
 
 void Server::handle_6xB3x15_unused_hard_reset_server_state(const string& data) {
-  check_size_t<G_HardResetServerState_GC_Ep3_6xB3x15>(data);
+  const auto& in_cmd = check_size_t<G_HardResetServerState_GC_Ep3_6xB3x15>(data);
+  this->send_debug_command_received_message(
+      in_cmd.header.subsubcommand, "HARD RESET");
   this->hard_reset_flag = true;
 }
 
 void Server::handle_6xB3x1B_update_player_name(const string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerName_GC_Ep3_6xB3x1B_CAx1B>(data);
+  this->send_debug_command_received_message(
+      in_cmd.entry.client_id, in_cmd.header.subsubcommand, "UPDATE NAME");
 
   if (!this->is_registration_complete() && (in_cmd.entry.client_id < 4)) {
     this->base()->name_entries[in_cmd.entry.client_id] = in_cmd.entry;
@@ -1719,7 +1802,9 @@ void Server::handle_6xB3x1B_update_player_name(const string& data) {
 }
 
 void Server::handle_6xB3x1D_start_battle(const string& data) {
-  check_size_t<G_StartBattle_GC_Ep3_6xB3x1D_CAx1D>(data);
+  const auto& in_cmd = check_size_t<G_StartBattle_GC_Ep3_6xB3x1D_CAx1D>(data);
+  this->send_debug_command_received_message(
+      in_cmd.header.subsubcommand, "START BATTLE");
 
   if (!this->battle_in_progress) {
     if (!this->update_registration_phase()) {
@@ -1742,7 +1827,9 @@ void Server::handle_6xB3x1D_start_battle(const string& data) {
 }
 
 void Server::handle_6xB3x21_end_battle(const string& data) {
-  check_size_t<G_EndBattle_GC_Ep3_6xB3x21_CAx21>(data);
+  const auto& in_cmd = check_size_t<G_EndBattle_GC_Ep3_6xB3x21_CAx21>(data);
+  this->send_debug_command_received_message(
+      in_cmd.header.subsubcommand, "END BATTLE");
   if (this->setup_phase == SetupPhase::BATTLE_ENDED) {
     this->battle_finished = true;
   }
@@ -1750,6 +1837,8 @@ void Server::handle_6xB3x21_end_battle(const string& data) {
 
 void Server::handle_6xB3x28_end_defense_list(const string& data) {
   const auto& in_cmd = check_size_t<G_EndDefenseList_GC_Ep3_6xB3x28_CAx28>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "END DEF LIST");
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd_ack;
   out_cmd_ack.sequence_num = in_cmd.sequence_num;
@@ -1802,6 +1891,9 @@ void Server::handle_6xB3x34_subtract_ally_atk_points(const string& data) {
   const auto& in_cmd = check_size_t<G_PhotonBlastRequest_GC_Ep3_6xB3x34_CAx34>(data);
 
   uint8_t card_ref_client_id = client_id_for_card_ref(in_cmd.card_ref);
+  this->send_debug_command_received_message(
+      card_ref_client_id, in_cmd.header.subsubcommand, "SUB ALLY ATK");
+
   if (card_ref_client_id >= 4) {
     return;
   }
@@ -1874,6 +1966,8 @@ void Server::handle_6xB3x34_subtract_ally_atk_points(const string& data) {
 
 void Server::handle_6xB3x37_client_ready_to_advance_from_starter_roll_phase(const string& data) {
   const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 1");
 
   auto ps = this->player_states[in_cmd.client_id];
   if (ps) {
@@ -1900,7 +1994,9 @@ void Server::handle_6xB3x37_client_ready_to_advance_from_starter_roll_phase(cons
 void Server::handle_6xB3x3A_ignored(const string&) { }
 
 void Server::handle_6xB3x40_map_list_request(const string& data) {
-  check_size_t<G_MapListRequest_GC_Ep3_6xB3x40_CAx40>(data);
+  const auto& in_cmd = check_size_t<G_MapListRequest_GC_Ep3_6xB3x40_CAx40>(data);
+  this->send_debug_command_received_message(
+      in_cmd.header.subsubcommand, "MAP LIST");
 
   auto l = this->base()->lobby.lock();
   if (!l) {
@@ -1919,6 +2015,8 @@ void Server::handle_6xB3x40_map_list_request(const string& data) {
 
 void Server::handle_6xB3x41_map_request(const string& data) {
   const auto& cmd = check_size_t<G_MapDataRequest_GC_Ep3_6xB3x41_CAx41>(data);
+  this->send_debug_command_received_message(
+      cmd.header.subsubcommand, "MAP DATA");
 
   auto l = this->base()->lobby.lock();
   if (!l) {
@@ -1937,6 +2035,8 @@ void Server::handle_6xB3x41_map_request(const string& data) {
 
 void Server::handle_6xB3x48_end_turn(const string& data) {
   const auto& in_cmd = check_size_t<G_EndTurn_GC_Ep3_6xB3x48_CAx48>(data);
+  this->send_debug_command_received_message(
+      in_cmd.client_id, in_cmd.header.subsubcommand, "END TURN");
 
   auto ps = this->get_player_state(in_cmd.client_id);
   if (ps && ps->draw_cards_allowed()) {
@@ -1950,6 +2050,8 @@ void Server::handle_6xB3x48_end_turn(const string& data) {
 
 void Server::handle_6xB3x49_card_counts(const string& data) {
   const auto& in_cmd = check_size_t<G_CardCounts_GC_Ep3_6xB3x49_CAx49>(data);
+  this->send_debug_command_received_message(
+      in_cmd.header.sender_client_id, in_cmd.header.subsubcommand, "CARD COUNTS");
 
   // Note: Sega's implmentation completely ignores this command. This
   // implementation is not based on the original code.
