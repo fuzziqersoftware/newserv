@@ -1241,6 +1241,11 @@ DataIndex::DataIndex(const string& directory, bool debug)
             "duplicate card id: %08" PRIX32, entry->def.card_id.load()));
       }
 
+      // Some cards intentionally have the same name, so we just leave them
+      // unindexed (they can still be looked up by ID, of course)
+      string name = entry->def.en_name;
+      this->card_definitions_by_name.emplace(name, entry);
+
       entry->def.hp.decode_code();
       entry->def.ap.decode_code();
       entry->def.tp.decode_code();
@@ -1318,6 +1323,11 @@ const string& DataIndex::get_compressed_card_definitions() const {
 shared_ptr<const DataIndex::CardEntry> DataIndex::definition_for_card_id(
     uint32_t id) const {
   return this->card_definitions.at(id);
+}
+
+shared_ptr<const DataIndex::CardEntry> DataIndex::definition_for_card_name(
+    const string& name) const {
+  return this->card_definitions_by_name.at(name);
 }
 
 set<uint32_t> DataIndex::all_card_ids() const {

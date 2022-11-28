@@ -249,9 +249,37 @@
   // "Episode3MenuSong": 0,
 
   // Episode 3 battle behavior flags. When set to zero, battles behave as they
-  // did on the original Sega servers.
-  // TODO: Document what nonzero values do here.
-  "Episode3BehaviorFlags": 0,
+  // did on the original Sega servers. Combinations of behaviors can be enabled
+  // by bitwise-OR'ing together the following values:
+  // 0x00000001 => Disable deck verification entirely
+  // 0x00000002 => Disable owned card count check during deck verification (this
+  //               enables the use of the non-saveable Have All Cards code, but
+  //               retains all the other validity checks)
+  // 0x00000004 => Allow card with the D1 and D2 ranks to be used in battle
+  // 0x00000008 => Disable overall and per-phase battle time limits, regardless
+  //               of the options chosen during battle setup
+  // 0x00000010 => Enable debug messages in Episode 3 games and battles
+  "Episode3BehaviorFlags": 0x00000002,
+
+  // Episode 3 card auction configuration. CardAuctionPoints specifies how many
+  // points each player gets when they join an auction (may be anywhere from 0
+  // to 65535, but a somewhat-low number is generally good). CardAuctionSize
+  // specifies how many cards will be present in each auction; if this is a
+  // list, then the number of cards is random in the specified range. Finally,
+  // CardAuctionContents is a dictionary specifying the relative frequencies and
+  // costs of each card in the auction pool. Relative frequencies are 64-bit
+  // integers, but should generally be less than 0x0100000000000000 to avoid
+  // excessive bias. There is no fixed summation bound for relative frequencies.
+  // Cards are always drawn (with replacement) from the same distribution.
+  "CardAuctionPoints": 30,
+  "CardAuctionSize": [2, 4],
+  "CardAuctionPool": {
+    // "CardName": [RelativeFrequency, MinPrice]
+    "Red Sword": [500, 8],
+    "Hildeblue": [400, 10],
+    "Grants":    [300, 15],
+    "Megid":     [700, 6],
+  },
 
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on

@@ -160,6 +160,34 @@ void populate_state_from_config(shared_ptr<ServerState> s,
     s->ep3_behavior_flags = 0;
   }
 
+  try {
+    s->ep3_card_auction_points = d.at("CardAuctionPoints")->as_int();
+  } catch (const out_of_range&) {
+    s->ep3_card_auction_points = 0;
+  }
+  try {
+    auto i = d.at("CardAuctionSize");
+    if (i->is_int()) {
+      s->ep3_card_auction_min_size = i->as_int();
+      s->ep3_card_auction_max_size = s->ep3_card_auction_min_size;
+    } else {
+      s->ep3_card_auction_min_size = i->as_list().at(0)->as_int();
+      s->ep3_card_auction_max_size = i->as_list().at(1)->as_int();
+    }
+  } catch (const out_of_range&) {
+    s->ep3_card_auction_min_size = 0;
+    s->ep3_card_auction_max_size = 0;
+  }
+
+  try {
+    for (const auto& it : d.at("CardAuctionPool")->as_dict()) {
+      const auto& card_name = it.first;
+      const auto& card_cfg_json = it.second->as_list();
+      s->ep3_card_auction_pool.emplace(card_name, make_pair(
+          card_cfg_json.at(0)->as_int(), card_cfg_json.at(1)->as_int()));
+    }
+  } catch (const out_of_range&) { }
+
   shared_ptr<JSONObject> log_levels_json;
   try {
     log_levels_json = d.at("LogLevels");

@@ -205,6 +205,22 @@ static void server_command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
       c->prefer_high_lobby_client_id ? "high" : "low");
 }
 
+static void server_command_auction(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string&) {
+  check_privileges(c, Privilege::DEBUG);
+  if (l->is_game() && (l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    G_InitiateCardAuction_GC_Ep3_6xB5x42 cmd;
+    send_command_t(l, 0xC9, 0x00, cmd);
+  }
+}
+
+static void proxy_command_auction(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string&) {
+  G_InitiateCardAuction_GC_Ep3_6xB5x42 cmd;
+  session.client_channel.send(0xC9, 0x00, &cmd, sizeof(cmd));
+  session.server_channel.send(0xC9, 0x00, &cmd, sizeof(cmd));
+}
+
 static void server_command_patch(shared_ptr<ServerState> s, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
   std::shared_ptr<CompiledFunctionCode> fn;
@@ -976,6 +992,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$allevent", {server_command_lobby_event_all,    nullptr,                       u"Usage:\nallevent <name/ID>"}},
     {u"$ann",      {server_command_announce,           nullptr,                       u"Usage:\nann <message>"}},
     {u"$arrow",    {server_command_arrow,              proxy_command_arrow,           u"Usage:\narrow <color>"}},
+    {u"$auction",  {server_command_auction,            proxy_command_auction,         u"Usage:\nauction"}},
     {u"$ax",       {server_command_ax,                 nullptr,                       u"Usage:\nax <message>"}},
     {u"$ban",      {server_command_ban,                nullptr,                       u"Usage:\nban <name-or-number>"}},
     // TODO: implement this on proxy server

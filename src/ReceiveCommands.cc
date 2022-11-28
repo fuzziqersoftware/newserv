@@ -923,6 +923,15 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
     l->ep3_server_base = make_shared<Episode3::ServerBase>(
         l, s->ep3_data_index, s->ep3_behavior_flags, l->random_seed);
     l->ep3_server_base->init();
+
+    if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
+      for (size_t z = 0; z < l->max_clients; z++) {
+        if (l->clients[z]) {
+          send_text_message_printf(l->clients[z], "Your client ID: $C6%zu", z);
+        }
+      }
+      send_text_message_printf(l, "State seed: $C6%08" PRIX32, l->random_seed);
+    }
   }
   l->ep3_server_base->server->on_server_data_input(data);
 }
@@ -2831,6 +2840,85 @@ static void on_card_trade(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
+static void on_card_auction_join(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t, const string& data) { // EF
+  check_size_v(data.size(), 0);
+
+  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+    throw runtime_error("non-Ep3 client sent card auction join command");
+  }
+  auto l = s->find_lobby(c->lobby_id);
+  if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    throw runtime_error("client sent card auction join command outside of Ep3 lobby");
+  }
+  if (!l->is_game()) {
+    throw runtime_error("client sent card auction join command in non-game lobby");
+  }
+
+  if (c->flags & Client::Flag::AWAITING_CARD_AUCTION) {
+    return;
+  }
+  c->flags |= Client::Flag::AWAITING_CARD_AUCTION;
+
+  // Check if any client is still loading
+  // TODO: We need to handle clients disconnecting during this procedure.
+  // Probably on_client_disconnect needs to check for this case...
+  size_t x;
+  for (x = 0; x < l->max_clients; x++) {
+    if (!l->clients[x]) {
+      continue;
+    }
+    if (!(l->clients[x]->flags & Client::Flag::AWAITING_CARD_AUCTION)) {
+      break;
+    }
+  }
+  if (x != l->max_clients) {
+    return;
+  }
+
+  for (x = 0; x < l->max_clients; x++) {
+    if (l->clients[x]) {
+      l->clients[x]->flags &= ~Client::Flag::AWAITING_CARD_AUCTION;
+    }
+  }
+
+  if ((s->ep3_card_auction_points == 0) ||
+      (s->ep3_card_auction_min_size == 0) ||
+      (s->ep3_card_auction_max_size == 0)) {
+    throw runtime_error("card auctions are not configured on this server");
+  }
+
+  uint16_t num_cards;
+  if (s->ep3_card_auction_min_size == s->ep3_card_auction_max_size) {
+    num_cards = s->ep3_card_auction_min_size;
+  } else {
+    num_cards = s->ep3_card_auction_min_size +
+        (random_object<uint16_t>() % (s->ep3_card_auction_max_size - s->ep3_card_auction_min_size + 1));
+  }
+  num_cards = min<uint16_t>(num_cards, 0x14);
+
+  uint64_t distribution_size = 0;
+  for (const auto& it : s->ep3_card_auction_pool) {
+    distribution_size += it.second.first;
+  }
+
+  S_StartCardAuction_GC_Ep3_EF cmd;
+  cmd.points_available = s->ep3_card_auction_points;
+  for (size_t z = 0; z < num_cards; z++) {
+    uint64_t v = random_object<uint64_t>() % distribution_size;
+    for (const auto& it : s->ep3_card_auction_pool) {
+      if (v >= it.second.first) {
+        v -= it.second.first;
+      } else {
+        cmd.entries[z].card_id = s->ep3_data_index->definition_for_card_name(it.first)->def.card_id.load();
+        cmd.entries[z].min_price = it.second.second;
+        break;
+      }
+    }
+  }
+  send_command_t(l, 0xEF, num_cards, cmd);
+}
+
 
 
 static void on_team_command_bb(shared_ptr<ServerState>, shared_ptr<Client> c,
@@ -3263,7 +3351,7 @@ static on_command_t handlers[0x100][6] = {
   /* EC */ {nullptr,                 nullptr,                    nullptr,                         on_create_game_dc_v3,        nullptr,                     on_leave_char_select_bb,        }, /* EC */
   /* ED */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_change_account_data_bb,      }, /* ED */
   /* EE */ {nullptr,                 nullptr,                    nullptr,                         on_card_trade,               nullptr,                     nullptr,                        }, /* EE */
-  /* EF */ {nullptr,                 nullptr,                    nullptr,                         on_ignored_command,          nullptr,                     nullptr,                        }, /* EF */
+  /* EF */ {nullptr,                 nullptr,                    nullptr,                         on_card_auction_join,        nullptr,                     nullptr,                        }, /* EF */
   /* F0 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F0 */
   /* F1 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F1 */
   /* F2 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* F2 */

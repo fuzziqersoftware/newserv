@@ -66,6 +66,11 @@ struct ServerState {
   std::shared_ptr<const GSLArchive> bb_data_gsl;
   std::shared_ptr<const RareItemSet> rare_item_set;
 
+  uint16_t ep3_card_auction_points;
+  uint16_t ep3_card_auction_min_size;
+  uint16_t ep3_card_auction_max_size;
+  std::unordered_map<std::string, std::pair<uint64_t, uint16_t>> ep3_card_auction_pool;
+
   std::shared_ptr<LicenseManager> license_manager;
 
   std::vector<MenuItem> main_menu;

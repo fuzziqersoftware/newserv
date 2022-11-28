@@ -33,43 +33,45 @@ struct Client {
     // Note that this flag is NOT set for Episode 3 Trial Edition clients, since
     // that version is similar enough to the release version of Episode 3 that
     // newserv does not have to change its behavior at all.
-    IS_TRIAL_EDITION                    = 0x2000,
+    IS_TRIAL_EDITION                    = 0x00002000,
     // Client is DC v1
-    IS_DC_V1                            = 0x0010,
+    IS_DC_V1                            = 0x00000010,
     // For patch server clients, client is Blue Burst rather than PC
-    IS_BB_PATCH                         = 0x0001,
+    IS_BB_PATCH                         = 0x00000001,
     // After joining a lobby, client will no longer send D6 commands when they
     // close message boxes
-    NO_D6_AFTER_LOBBY                   = 0x0002,
+    NO_D6_AFTER_LOBBY                   = 0x00000002,
     // Client has the above flag and has already joined a lobby, or is not GC
-    NO_D6                               = 0x0004,
+    NO_D6                               = 0x00000004,
     // Client is Episode 3, should be able to see CARD lobbies, and should only
     // be able to see/join games with the EPISODE_3_ONLY flag
-    IS_EPISODE_3                        = 0x0008,
+    IS_EPISODE_3                        = 0x00000008,
     // Client disconnects if it receives B2 (send_function_call)
-    NO_SEND_FUNCTION_CALL               = 0x0200,
+    NO_SEND_FUNCTION_CALL               = 0x00000200,
     // Client requires doubly-encrypted code section in send_function_call
-    ENCRYPTED_SEND_FUNCTION_CALL        = 0x0800,
+    ENCRYPTED_SEND_FUNCTION_CALL        = 0x00000800,
     // Client supports send_function_call but does not actually run the code
-    SEND_FUNCTION_CALL_CHECKSUM_ONLY    = 0x1000,
+    SEND_FUNCTION_CALL_CHECKSUM_ONLY    = 0x00001000,
     // Client is vulnerable to a buffer overflow that we can use to enable
     // send_function_call
-    USE_OVERFLOW_FOR_SEND_FUNCTION_CALL = 0x8000,
+    USE_OVERFLOW_FOR_SEND_FUNCTION_CALL = 0x00008000,
 
     // Client is loading into a game
-    LOADING                             = 0x0020,
+    LOADING                             = 0x00000020,
     // Client is loading a quest
-    LOADING_QUEST                       = 0x0040,
+    LOADING_QUEST                       = 0x00000040,
+    // Client is waiting to join an Episode 3 card auction
+    AWAITING_CARD_AUCTION               = 0x00010000,
     // Client is in the information menu (login server only)
-    IN_INFORMATION_MENU                 = 0x0080,
+    IN_INFORMATION_MENU                 = 0x00000080,
     // Client is at the welcome message (login server only)
-    AT_WELCOME_MESSAGE                  = 0x0100,
+    AT_WELCOME_MESSAGE                  = 0x00000100,
     // Client has already received a 97 (enable saves) command, so don't show
     // the programs menu anymore
-    SAVE_ENABLED                        = 0x0400,
+    SAVE_ENABLED                        = 0x00000400,
     // Client has received newserv's Episode 3 card definitions, so don't send
     // them again
-    HAS_EP3_CARD_DEFS                   = 0x4000,
+    HAS_EP3_CARD_DEFS                   = 0x00004000,
   };
 
   uint64_t id;
@@ -82,7 +84,7 @@ struct Client {
   // config can be up to 0x20 bytes; on BB it can be 0x28 bytes. We don't use
   // all of that space.
   uint8_t bb_game_state;
-  uint16_t flags;
+  uint32_t flags;
 
   // Network
   Channel channel;

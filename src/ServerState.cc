@@ -25,7 +25,11 @@ ServerState::ServerState()
     episode_3_send_function_call_enabled(false),
     catch_handler_exceptions(true),
     ep3_behavior_flags(0),
-    run_shell_behavior(RunShellBehavior::DEFAULT), next_lobby_id(1),
+    run_shell_behavior(RunShellBehavior::DEFAULT),
+    ep3_card_auction_points(0),
+    ep3_card_auction_min_size(0),
+    ep3_card_auction_max_size(0),
+    next_lobby_id(1),
     pre_lobby_event(0),
     ep3_menu_song(-1) {
   vector<shared_ptr<Lobby>> non_v1_only_lobbies;
