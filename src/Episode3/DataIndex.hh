@@ -416,8 +416,8 @@ struct Location {
   Location();
   Location(uint8_t x, uint8_t y);
   Location(uint8_t x, uint8_t y, Direction direction);
-  bool operator==(const Location& other) const = default;
-  bool operator!=(const Location& other) const = default;
+  bool operator==(const Location& other) const;
+  bool operator!=(const Location& other) const;
 
   void clear();
   void clear_FF();
@@ -613,8 +613,8 @@ struct Rules {
   parray<uint8_t, 3> unused;
 
   Rules();
-  bool operator==(const Rules& other) const = default;
-  bool operator!=(const Rules& other) const = default;
+  bool operator==(const Rules& other) const;
+  bool operator!=(const Rules& other) const;
   void clear();
 
   bool check_invalid_fields() const;
@@ -638,8 +638,8 @@ struct StateFlags {
   parray<CardType, 4> client_sc_card_types;
 
   StateFlags();
-  bool operator==(const StateFlags& other) const = default;
-  bool operator!=(const StateFlags& other) const = default;
+  bool operator==(const StateFlags& other) const;
+  bool operator!=(const StateFlags& other) const;
   void clear();
   void clear_FF();
 } __attribute__((packed));

@@ -12,6 +12,25 @@ Condition::Condition() {
   this->clear();
 }
 
+bool Condition::operator==(const Condition& other) const {
+  return (this->type == other.type) &&
+         (this->remaining_turns == other.remaining_turns) &&
+         (this->a_arg_value == other.a_arg_value) &&
+         (this->dice_roll_value == other.dice_roll_value) &&
+         (this->flags == other.flags) &&
+         (this->card_definition_effect_index == other.card_definition_effect_index) &&
+         (this->card_ref == other.card_ref) &&
+         (this->value == other.value) &&
+         (this->condition_giver_card_ref == other.condition_giver_card_ref) &&
+         (this->random_percent == other.random_percent) &&
+         (this->value8 == other.value8) &&
+         (this->order == other.order) &&
+         (this->unknown_a8 == other.unknown_a8);
+}
+bool Condition::operator!=(const Condition& other) const {
+  return !this->operator==(other);
+}
+
 void Condition::clear() {
   this->type = ConditionType::NONE;
   this->remaining_turns = 0;
@@ -69,6 +88,19 @@ CardShortStatus::CardShortStatus() {
   this->clear();
 }
 
+bool CardShortStatus::operator==(const CardShortStatus& other) const {
+  return (this->card_ref == other.card_ref) &&
+         (this->current_hp == other.current_hp) &&
+         (this->card_flags == other.card_flags) &&
+         (this->loc == other.loc) &&
+         (this->unused1 == other.unused1) &&
+         (this->max_hp == other.max_hp) &&
+         (this->unused2 == other.unused2);
+}
+bool CardShortStatus::operator!=(const CardShortStatus& other) const {
+  return !this->operator==(other);
+}
+
 void CardShortStatus::clear() {
   this->card_ref = 0xFFFF;
   this->current_hp = 0;
@@ -110,6 +142,33 @@ void ActionState::clear() {
 
 ActionChain::ActionChain() {
   this->clear();
+}
+
+bool ActionChain::operator==(const ActionChain& other) const {
+  return (this->effective_ap == other.effective_ap) &&
+         (this->effective_tp == other.effective_tp) &&
+         (this->ap_effect_bonus == other.ap_effect_bonus) &&
+         (this->damage == other.damage) &&
+         (this->acting_card_ref == other.acting_card_ref) &&
+         (this->unknown_card_ref_a3 == other.unknown_card_ref_a3) &&
+         (this->attack_action_card_refs == other.attack_action_card_refs) &&
+         (this->attack_action_card_ref_count == other.attack_action_card_ref_count) &&
+         (this->attack_medium == other.attack_medium) &&
+         (this->target_card_ref_count == other.target_card_ref_count) &&
+         (this->action_subphase == other.action_subphase) &&
+         (this->strike_count == other.strike_count) &&
+         (this->damage_multiplier == other.damage_multiplier) &&
+         (this->attack_number == other.attack_number) &&
+         (this->tp_effect_bonus == other.tp_effect_bonus) &&
+         (this->unused1 == other.unused1) &&
+         (this->unused2 == other.unused2) &&
+         (this->card_ap == other.card_ap) &&
+         (this->card_tp == other.card_tp) &&
+         (this->flags == other.flags) &&
+         (this->target_card_refs == other.target_card_refs);
+}
+bool ActionChain::operator!=(const ActionChain& other) const {
+  return !this->operator==(other);
 }
 
 void ActionChain::clear() {
@@ -164,6 +223,13 @@ void ActionChain::clear_FF() {
 
 ActionChainWithConds::ActionChainWithConds() {
   this->clear();
+}
+
+bool ActionChainWithConds::operator==(const ActionChainWithConds& other) const {
+  return (this->chain == other.chain && this->conditions == other.conditions);
+}
+bool ActionChainWithConds::operator!=(const ActionChainWithConds& other) const {
+  return !this->operator==(other);
 }
 
 void ActionChainWithConds::clear() {
@@ -296,6 +362,23 @@ bool ActionChainWithConds::unknown_8024DEC4() const {
 
 ActionMetadata::ActionMetadata() {
   this->clear();
+}
+
+bool ActionMetadata::operator==(const ActionMetadata& other) const {
+  return (this->card_ref == other.card_ref) &&
+         (this->target_card_ref_count == other.target_card_ref_count) &&
+         (this->defense_card_ref_count == other.defense_card_ref_count) &&
+         (this->action_subphase == other.action_subphase) &&
+         (this->defense_power == other.defense_power) &&
+         (this->defense_bonus == other.defense_bonus) &&
+         (this->attack_bonus == other.attack_bonus) &&
+         (this->flags == other.flags) &&
+         (this->target_card_refs == other.target_card_refs) &&
+         (this->defense_card_refs == other.defense_card_refs) &&
+         (this->original_attacker_card_refs == other.original_attacker_card_refs);
+}
+bool ActionMetadata::operator!=(const ActionMetadata& other) const {
+  return !this->operator==(other);
 }
 
 void ActionMetadata::clear() {

@@ -21,6 +21,16 @@ Location::Location(uint8_t x, uint8_t y) : Location(x, y, Direction::RIGHT) { }
 Location::Location(uint8_t x, uint8_t y, Direction direction)
   : x(x), y(y), direction(direction), unused(0) { }
 
+bool Location::operator==(const Location& other) const {
+  return (this->x == other.x) &&
+         (this->y == other.y) &&
+         (this->direction == other.direction) &&
+         (this->unused == other.unused);
+}
+bool Location::operator!=(const Location& other) const {
+  return !this->operator==(other);
+}
+
 void Location::clear() {
   this->x = 0;
   this->y = 0;
@@ -871,6 +881,24 @@ string Rules::str() const {
 
 StateFlags::StateFlags() {
   this->clear();
+}
+
+bool StateFlags::operator==(const StateFlags& other) const {
+  return (this->turn_num == other.turn_num) &&
+         (this->battle_phase == other.battle_phase) &&
+         (this->current_team_turn1 == other.current_team_turn1) &&
+         (this->current_team_turn2 == other.current_team_turn2) &&
+         (this->action_subphase == other.action_subphase) &&
+         (this->setup_phase == other.setup_phase) &&
+         (this->registration_phase == other.registration_phase) &&
+         (this->team_exp == other.team_exp) &&
+         (this->team_dice_boost == other.team_dice_boost) &&
+         (this->first_team_turn == other.first_team_turn) &&
+         (this->tournament_flag == other.tournament_flag) &&
+         (this->client_sc_card_types == other.client_sc_card_types);
+}
+bool StateFlags::operator!=(const StateFlags& other) const {
+  return !this->operator==(other);
 }
 
 void StateFlags::clear() {

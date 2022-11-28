@@ -31,8 +31,8 @@ struct Condition {
   uint8_t unknown_a8;
 
   Condition();
-  bool operator==(const Condition& other) const = default;
-  bool operator!=(const Condition& other) const = default;
+  bool operator==(const Condition& other) const;
+  bool operator!=(const Condition& other) const;
 
   void clear();
   void clear_FF();
@@ -51,8 +51,8 @@ struct EffectResult {
   uint8_t dice_roll_value;
 
   EffectResult();
-  bool operator==(const EffectResult& other) const = default;
-  bool operator!=(const EffectResult& other) const = default;
+  bool operator==(const EffectResult& other) const;
+  bool operator!=(const EffectResult& other) const;
 
   void clear();
 } __attribute__((packed));
@@ -67,8 +67,8 @@ struct CardShortStatus {
   uint8_t unused2;
 
   CardShortStatus();
-  bool operator==(const CardShortStatus& other) const = default;
-  bool operator!=(const CardShortStatus& other) const = default;
+  bool operator==(const CardShortStatus& other) const;
+  bool operator!=(const CardShortStatus& other) const;
 
   void clear();
   void clear_FF();
@@ -85,8 +85,8 @@ struct ActionState {
   le_uint16_t original_attacker_card_ref;
 
   ActionState();
-  bool operator==(const ActionState& other) const = default;
-  bool operator!=(const ActionState& other) const = default;
+  bool operator==(const ActionState& other) const;
+  bool operator!=(const ActionState& other) const;
 
   void clear();
 } __attribute__((packed));
@@ -115,8 +115,8 @@ struct ActionChain {
   parray<le_uint16_t, 4 * 9> target_card_refs;
 
   ActionChain();
-  bool operator==(const ActionChain& other) const = default;
-  bool operator!=(const ActionChain& other) const = default;
+  bool operator==(const ActionChain& other) const;
+  bool operator!=(const ActionChain& other) const;
 
   void clear();
   void clear_FF();
@@ -127,8 +127,8 @@ struct ActionChainWithConds {
   parray<Condition, 9> conditions;
 
   ActionChainWithConds();
-  bool operator==(const ActionChainWithConds& other) const = default;
-  bool operator!=(const ActionChainWithConds& other) const = default;
+  bool operator==(const ActionChainWithConds& other) const;
+  bool operator!=(const ActionChainWithConds& other) const;
 
   void clear();
   void clear_FF();
@@ -169,8 +169,8 @@ struct ActionMetadata {
   parray<le_uint16_t, 8> original_attacker_card_refs;
 
   ActionMetadata();
-  bool operator==(const ActionMetadata& other) const = default;
-  bool operator!=(const ActionMetadata& other) const = default;
+  bool operator==(const ActionMetadata& other) const;
+  bool operator!=(const ActionMetadata& other) const;
 
   void clear();
   void clear_FF();
@@ -213,8 +213,8 @@ struct HandAndEquipState {
   parray<uint8_t, 2> unused2;
 
   HandAndEquipState();
-  bool operator==(const HandAndEquipState& other) const = default;
-  bool operator!=(const HandAndEquipState& other) const = default;
+  bool operator==(const HandAndEquipState& other) const;
+  bool operator!=(const HandAndEquipState& other) const;
 
   void clear();
   void clear_FF();
