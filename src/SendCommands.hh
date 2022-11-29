@@ -175,7 +175,7 @@ void send_text_message(std::shared_ptr<Lobby> l, const std::u16string& text);
 void send_text_message(std::shared_ptr<ServerState> l, const std::u16string& text);
 void send_chat_message(Channel& ch, const std::u16string& text);
 void send_chat_message(std::shared_ptr<Client> c, uint32_t from_serial_number,
-    const std::u16string& from_name, const std::u16string& text);
+    const std::u16string& from_name, const std::u16string& text, char private_flags);
 void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
     const std::u16string& from_name, const std::u16string& text);
 

@@ -699,13 +699,17 @@ void send_chat_message(Channel& ch, const u16string& text) {
 }
 
 void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
-    const u16string& from_name, const u16string& text) {
+    const u16string& from_name, const u16string& text, char private_flags) {
   u16string data;
   if (c->version() == GameVersion::BB) {
-    data.append(u"\x09J");
+    data.append(u"\tJ");
   }
   data.append(remove_language_marker(from_name));
-  data.append(u"\x09\x09J");
+  data.append(1, u'\t');
+  if (private_flags) {
+    data.append(1, static_cast<uint16_t>(private_flags));
+  }
+  data.append(u"\tJ");
   data.append(text);
   send_header_text(c->channel, 0x06, from_guild_card_number, data, false);
 }

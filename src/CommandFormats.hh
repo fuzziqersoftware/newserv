@@ -289,6 +289,13 @@ struct S_Reconnect_Patch_14 : S_Reconnect<be_uint16_t> { } __packed__;
 // a key to continue. The maximum length of the message is 0x200 bytes.
 // This format is shared by multiple commands; for all of them except 06 (S->C),
 // the guild_card_number field is unused and should be 0.
+// During Episode 3 battles, the first byte of an inbound 06 command's message
+// is interpreted differently. It should be treated as a bit field, with the low
+// 4 bits intended as masks for who can see the message. If the low bit (1) is
+// set, for example, then the chat message displays as " (whisper)" on player
+// 0's screen regardless of the message contents. The next bit (2) hides the
+// message from player 1, etc. The high 4 bits of this byte appear not to be
+// used, but are often nonzero and set to the value 4.
 
 struct SC_TextHeader_01_06_11_B0_EE {
   le_uint32_t unused = 0;
@@ -4500,6 +4507,10 @@ struct G_WordSelectDuringBattle_GC_Ep3_6xBD {
   parray<le_uint16_t, 8> entries;
   le_uint32_t unknown_a4;
   le_uint32_t unknown_a5;
+  // This field has the same meaning as the first byte in an 06 command's
+  // message when sent during an Episode 3 battle.
+  uint8_t private_flags;
+  parray<uint8_t, 3> unused;
 } __packed__;
 
 // 6xBD: BB bank action (take/deposit meseta/item) (handled by the server)

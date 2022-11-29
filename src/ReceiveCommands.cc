@@ -1883,13 +1883,26 @@ static void on_game_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
 static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
     const u16string& text) { // 06
 
-  u16string processed_text = remove_language_marker(text);
-  if (processed_text.empty()) {
+  if (text.empty()) {
     return;
   }
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l) {
+    return;
+  }
+
+  char private_flags = 0;
+  u16string processed_text;
+  if ((text[0] != '\t') &&
+      (l->flags & Lobby::Flag::EPISODE_3_ONLY) &&
+      l->ep3_server_base) {
+    private_flags = text[0];
+    processed_text = remove_language_marker(text.substr(1));
+  } else {
+    processed_text = remove_language_marker(text);
+  }
+  if (processed_text.empty()) {
     return;
   }
 
@@ -1911,7 +1924,8 @@ static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
       continue;
     }
     send_chat_message(l->clients[x], c->license->serial_number,
-        c->game_data.player()->disp.name.data(), processed_text.c_str());
+        c->game_data.player()->disp.name.data(), processed_text.c_str(),
+        private_flags);
   }
 }
 
