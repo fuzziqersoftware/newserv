@@ -4442,9 +4442,9 @@ void CardSpecial::unknown_t2(shared_ptr<Card> unknown_p2) {
       ActionState target_as = this->create_defense_state_for_card_pair_action_chains(unknown_p2, set_card);
       this->unknown_8024C2B0(When1, set_card->get_card_ref(), target_as, unknown_p2->get_card_ref());
       this->unknown_8024C2B0(When4, set_card->get_card_ref(), target_as, unknown_p2->get_card_ref());
-      for (size_t z = 0; (z < 8) && (as.action_card_refs[z] != 0xFFFF); z++) {
-        this->unknown_8024C2B0(When1, as.action_card_refs[z], target_as, set_card->get_card_ref());
-        this->unknown_8024C2B0(When4, as.action_card_refs[z], target_as, set_card->get_card_ref());
+      for (size_t z = 0; (z < 8) && (target_as.action_card_refs[z] != 0xFFFF); z++) {
+        this->unknown_8024C2B0(When1, target_as.action_card_refs[z], target_as, set_card->get_card_ref());
+        this->unknown_8024C2B0(When4, target_as.action_card_refs[z], target_as, set_card->get_card_ref());
       }
     }
   }
