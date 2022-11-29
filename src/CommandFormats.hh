@@ -1834,8 +1834,9 @@ struct S_RankUpdate_GC_Ep3_B7 {
 // B8 (S->C): Update card definitions (Episode 3)
 // Contents is a single little-endian le_uint32_t specifying the size of the
 // (PRS-compressed) data, followed immediately by the data. The maximum size of
-// the compressed data is 0x9000 bytes, and the maximum size of the decompressed
-// data is 0x36EC0 bytes.
+// the compressed data is 0x9000 bytes, although the receive buffer size limit
+// applies first in practice, which limits this to 0x7BF8 bytes. The maximum
+// size of the decompressed data is 0x36EC0 bytes.
 // Note: PSO BB accepts this command as well, but ignores it.
 
 // B8 (C->S): Confirm updated card definitions (Episode 3)

@@ -1053,7 +1053,7 @@ static HandlerResult S_G_B8(shared_ptr<ServerState>,
       return HandlerResult::Type::FORWARD;
     }
 
-    string output_filename = string_printf("cardupdate.%" PRIu64 ".mnr", now());
+    string output_filename = string_printf("card-definitions.%" PRIu64 ".mnr", now());
     save_file(output_filename, r.read(size));
     session.log.info("Wrote %zu bytes to %s", size, output_filename.c_str());
   }

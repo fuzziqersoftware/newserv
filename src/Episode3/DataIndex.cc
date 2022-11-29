@@ -1161,7 +1161,7 @@ DataIndex::DataIndex(const string& directory, bool debug)
   unordered_map<uint32_t, string> card_text;
   if (this->debug) {
     try {
-      string data = prs_decompress(load_file(directory + "/cardtext.mnr"));
+      string data = prs_decompress(load_file(directory + "/card-text.mnr"));
       StringReader r(data);
 
       while (!r.eof()) {
@@ -1245,16 +1245,29 @@ DataIndex::DataIndex(const string& directory, bool debug)
   }
 
   try {
-    this->compressed_card_definitions = load_file(directory + "/cardupdate.mnr");
-    string data = prs_decompress(this->compressed_card_definitions);
+    string decompressed_data;
+    if (isfile(directory + "/card-definitions.mnrd")) {
+      decompressed_data = load_file(directory + "/card-definitions.mnrd");
+      this->compressed_card_definitions = prs_compress(decompressed_data);
+    } else {
+      this->compressed_card_definitions = load_file(directory + "/card-definitions.mnr");
+      decompressed_data = prs_decompress(this->compressed_card_definitions);
+    }
+    if (this->compressed_card_definitions.size() > 0x7BF8) {
+      throw runtime_error("compressed card list data is too long");
+    }
+    if (decompressed_data.size() > 0x36EC0) {
+      throw runtime_error("decompressed card list data is too long");
+    }
+
     // There's a footer after the card definitions, but we ignore it
-    if (data.size() % sizeof(CardDefinition) != sizeof(CardDefinitionsFooter)) {
+    if (decompressed_data.size() % sizeof(CardDefinition) != sizeof(CardDefinitionsFooter)) {
       throw runtime_error(string_printf(
           "decompressed card update file size %zX is not aligned with card definition size %zX (%zX extra bytes)",
-          data.size(), sizeof(CardDefinition), data.size() % sizeof(CardDefinition)));
+          decompressed_data.size(), sizeof(CardDefinition), decompressed_data.size() % sizeof(CardDefinition)));
     }
-    const auto* def = reinterpret_cast<const CardDefinition*>(data.data());
-    size_t max_cards = data.size() / sizeof(CardDefinition);
+    const auto* def = reinterpret_cast<const CardDefinition*>(decompressed_data.data());
+    size_t max_cards = decompressed_data.size() / sizeof(CardDefinition);
     for (size_t x = 0; x < max_cards; x++) {
       // The last card entry has the build date and some other metadata (and
       // isn't a real card, obviously), so skip it. Seems like the card ID is
