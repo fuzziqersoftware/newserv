@@ -778,7 +778,7 @@ int main(int argc, char** argv) {
 
     case Behavior::SHOW_EP3_DATA: {
       config_log.info("Collecting Episode 3 data");
-      Episode3::DataIndex index("system/ep3", true);
+      Episode3::DataIndex index("system/ep3", Episode3::BehaviorFlag::LOAD_CARD_TEXT);
 
       if (ep3_card_id == 0xFFFF) {
         auto map_ids = index.all_map_ids();
@@ -884,7 +884,8 @@ int main(int argc, char** argv) {
           state->load_bb_file("ItemRT.rel")));
 
       config_log.info("Collecting Episode 3 data");
-      state->ep3_data_index.reset(new Episode3::DataIndex("system/ep3"));
+      state->ep3_data_index.reset(new Episode3::DataIndex(
+          "system/ep3", state->ep3_behavior_flags));
 
       config_log.info("Collecting quest metadata");
       state->quest_index.reset(new QuestIndex("system/quests"));

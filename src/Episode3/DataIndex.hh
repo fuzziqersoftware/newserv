@@ -23,6 +23,17 @@ class DataIndex;
 
 
 
+enum BehaviorFlag {
+  SKIP_DECK_VERIFY       = 0x00000001,
+  IGNORE_CARD_COUNTS     = 0x00000002,
+  SKIP_D1_D2_REPLACE     = 0x00000004,
+  DISABLE_TIME_LIMITS    = 0x00000008,
+  ENABLE_STATUS_MESSAGES = 0x00000010,
+  LOAD_CARD_TEXT         = 0x00000020,
+};
+
+
+
 enum class StatSwapType : uint8_t {
   NONE = 0,
   A_T_SWAP = 1,
@@ -462,7 +473,7 @@ struct CardDefinition {
 
   be_uint32_t card_id;
   parray<uint8_t, 0x40> jp_name;
-  CardType type; // Type enum. If <0, then this is the end of the card list
+  CardType type; // If <0 (signed), then this is the end of the card list
   uint8_t self_cost; // ATK dice points required
   uint8_t ally_cost; // ATK points from allies required; PBs use this
   uint8_t unused1;
@@ -767,7 +778,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
 class DataIndex {
 public:
-  explicit DataIndex(const std::string& directory, bool debug = false);
+  DataIndex(const std::string& directory, uint32_t behavior_flags);
 
   struct CardEntry {
     CardDefinition def;
@@ -798,9 +809,9 @@ public:
   std::shared_ptr<const MapEntry> definition_for_map_number(uint32_t id) const;
   std::set<uint32_t> all_map_ids() const;
 
-private:
-  bool debug;
+  const uint32_t behavior_flags;
 
+private:
   std::string compressed_card_definitions;
   std::unordered_map<uint32_t, std::shared_ptr<CardEntry>> card_definitions;
   std::unordered_map<std::string, std::shared_ptr<CardEntry>> card_definitions_by_name;

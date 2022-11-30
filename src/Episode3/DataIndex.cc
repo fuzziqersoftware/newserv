@@ -5,6 +5,7 @@
 #include <array>
 #include <deque>
 #include <phosg/Filesystem.hh>
+#include <phosg/Time.hh>
 
 #include "../Loggers.hh"
 #include "../Compression.hh"
@@ -1154,12 +1155,12 @@ bool Rules::check_and_reset_invalid_fields() {
 
 
 
-DataIndex::DataIndex(const string& directory, bool debug)
-  : debug(debug) {
+DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
+  : behavior_flags(behavior_flags) {
 
   unordered_map<uint32_t, vector<string>> card_tags;
   unordered_map<uint32_t, string> card_text;
-  if (this->debug) {
+  if (this->behavior_flags & BehaviorFlag::LOAD_CARD_TEXT) {
     try {
       string data = prs_decompress(load_file(directory + "/card-text.mnr"));
       StringReader r(data);
@@ -1248,13 +1249,10 @@ DataIndex::DataIndex(const string& directory, bool debug)
     string decompressed_data;
     if (isfile(directory + "/card-definitions.mnrd")) {
       decompressed_data = load_file(directory + "/card-definitions.mnrd");
-      this->compressed_card_definitions = prs_compress(decompressed_data);
+      this->compressed_card_definitions.clear();
     } else {
       this->compressed_card_definitions = load_file(directory + "/card-definitions.mnr");
       decompressed_data = prs_decompress(this->compressed_card_definitions);
-    }
-    if (this->compressed_card_definitions.size() > 0x7BF8) {
-      throw runtime_error("compressed card list data is too long");
     }
     if (decompressed_data.size() > 0x36EC0) {
       throw runtime_error("decompressed card list data is too long");
@@ -1266,17 +1264,18 @@ DataIndex::DataIndex(const string& directory, bool debug)
           "decompressed card update file size %zX is not aligned with card definition size %zX (%zX extra bytes)",
           decompressed_data.size(), sizeof(CardDefinition), decompressed_data.size() % sizeof(CardDefinition)));
     }
-    const auto* def = reinterpret_cast<const CardDefinition*>(decompressed_data.data());
+    auto* defs = reinterpret_cast<CardDefinition*>(decompressed_data.data());
     size_t max_cards = decompressed_data.size() / sizeof(CardDefinition);
     for (size_t x = 0; x < max_cards; x++) {
       // The last card entry has the build date and some other metadata (and
       // isn't a real card, obviously), so skip it. Seems like the card ID is
       // always a large number that won't fit in a uint16_t, so we use that to
       // determine if the entry is a real card or not.
-      if (def[x].card_id & 0xFFFF0000) {
+      if (defs[x].card_id & 0xFFFF0000) {
         continue;
       }
-      shared_ptr<CardEntry> entry(new CardEntry({def[x], {}, {}}));
+
+      shared_ptr<CardEntry> entry(new CardEntry({defs[x], {}, {}}));
       if (!this->card_definitions.emplace(entry->def.card_id, entry).second) {
         throw runtime_error(string_printf(
             "duplicate card id: %08" PRIX32, entry->def.card_id.load()));
@@ -1293,14 +1292,26 @@ DataIndex::DataIndex(const string& directory, bool debug)
       entry->def.mv.decode_code();
       entry->def.decode_range();
 
-      if (this->debug) {
+      if (this->behavior_flags & BehaviorFlag::LOAD_CARD_TEXT) {
         try {
-          entry->text = move(card_text.at(def[x].card_id));
+          entry->text = move(card_text.at(defs[x].card_id));
         } catch (const out_of_range&) { }
         try {
-          entry->debug_tags = move(card_tags.at(def[x].card_id));
+          entry->debug_tags = move(card_tags.at(defs[x].card_id));
         } catch (const out_of_range&) { }
       }
+    }
+
+    if (this->compressed_card_definitions.empty()) {
+      uint64_t start = now();
+      this->compressed_card_definitions = prs_compress(decompressed_data);
+      uint64_t diff = now() - start;
+      static_game_data_log.info(
+          "Compressed card definitions (%zu bytes -> %zu bytes) in %" PRIu64 "ms",
+          decompressed_data.size(), this->compressed_card_definitions.size(), diff);
+    }
+    if (this->compressed_card_definitions.size() > 0x7BF8) {
+      throw runtime_error("compressed card list data is too long");
     }
 
     static_game_data_log.info("Indexed %zu Episode 3 card definitions", this->card_definitions.size());

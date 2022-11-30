@@ -921,7 +921,7 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
       l->log.info("Recreating Episode 3 server state");
     }
     l->ep3_server_base = make_shared<Episode3::ServerBase>(
-        l, s->ep3_data_index, s->ep3_behavior_flags, l->random_seed);
+        l, s->ep3_data_index, l->random_seed);
     l->ep3_server_base->init();
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {

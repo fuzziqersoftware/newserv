@@ -52,20 +52,11 @@ class Server;
 
 
 
-enum BehaviorFlag {
-  SKIP_DECK_VERIFY       = 0x00000001,
-  IGNORE_CARD_COUNTS     = 0x00000002,
-  SKIP_D1_D2_REPLACE     = 0x00000004,
-  DISABLE_TIME_LIMITS    = 0x00000008,
-  ENABLE_STATUS_MESSAGES = 0x00000010,
-};
-
 class ServerBase : public std::enable_shared_from_this<ServerBase> {
 public:
   ServerBase(
       std::shared_ptr<Lobby> lobby,
       std::shared_ptr<const DataIndex> data_index,
-      uint32_t behavior_flags,
       uint32_t random_seed);
   void init();
   void reset();
@@ -81,7 +72,6 @@ public:
 
   std::weak_ptr<Lobby> lobby;
   std::shared_ptr<const DataIndex> data_index;
-  uint32_t behavior_flags;
   uint32_t random_seed;
 
   std::shared_ptr<MapAndRulesState> map_and_rules1;

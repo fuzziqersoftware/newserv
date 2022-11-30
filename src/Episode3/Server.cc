@@ -33,11 +33,9 @@ void ServerBase::PresenceEntry::clear() {
 ServerBase::ServerBase(
     shared_ptr<Lobby> lobby,
     shared_ptr<const DataIndex> data_index,
-    uint32_t behavior_flags,
     uint32_t random_seed)
   : lobby(lobby),
     data_index(data_index),
-    behavior_flags(behavior_flags),
     random_seed(random_seed) { }
 
 void ServerBase::init() {
@@ -154,7 +152,7 @@ void Server::send(const void* data, size_t size) const {
 __attribute__((format(printf, 2, 3)))
 void Server::send_debug_message_printf(const char* fmt, ...) const {
   auto l = this->base()->lobby.lock();
-  if (l && (this->base()->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
+  if (l && (this->base()->data_index->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
     va_list va;
     va_start(va, fmt);
     std::string buf = string_vprintf(fmt, va);
@@ -1714,7 +1712,7 @@ void Server::handle_6xB3x13_update_map_during_setup(const string& data) {
     *b->map_and_rules1 = in_cmd.map_and_rules_state;
     *b->map_and_rules2 = in_cmd.map_and_rules_state;
     b->overlay_state = in_cmd.overlay_state;
-    if (b->behavior_flags & BehaviorFlag::DISABLE_TIME_LIMITS) {
+    if (b->data_index->behavior_flags & BehaviorFlag::DISABLE_TIME_LIMITS) {
       b->map_and_rules1->rules.overall_time_limit = 0;
       b->map_and_rules1->rules.phase_time_limit = 0;
       b->map_and_rules2->rules.overall_time_limit = 0;
@@ -1744,9 +1742,9 @@ void Server::handle_6xB3x14_update_deck_during_setup(const string& data) {
       }
       DeckEntry entry = in_cmd.entry;
       int32_t verify_error = 0;
-      if (!(this->base()->behavior_flags & BehaviorFlag::SKIP_DECK_VERIFY)) {
+      if (!(this->base()->data_index->behavior_flags & BehaviorFlag::SKIP_DECK_VERIFY)) {
         // Note: Sega's original implementation doesn't use the card counts here
-        if (this->base()->behavior_flags & BehaviorFlag::IGNORE_CARD_COUNTS) {
+        if (this->base()->data_index->behavior_flags & BehaviorFlag::IGNORE_CARD_COUNTS) {
           verify_error = this->ruler_server->verify_deck(entry.card_ids);
         } else {
           verify_error = this->ruler_server->verify_deck(entry.card_ids,
@@ -1756,7 +1754,7 @@ void Server::handle_6xB3x14_update_deck_during_setup(const string& data) {
       if (verify_error) {
         throw runtime_error(string_printf("invalid deck: -0x%" PRIX32, verify_error));
       }
-      if (!(this->base()->behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
+      if (!(this->base()->data_index->behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rarity_cards_with_Attack(entry.card_ids);
       }
       *this->base()->deck_entries[in_cmd.client_id] = in_cmd.entry;
