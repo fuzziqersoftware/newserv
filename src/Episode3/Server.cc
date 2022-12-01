@@ -149,7 +149,7 @@ void Server::send(const void* data, size_t size) const {
   }
 
   string masked_data;
-  if (this->base()->data_index->behavior_flags & BehaviorFlag::ENABLE_MASKING) {
+  if (!(this->base()->data_index->behavior_flags & BehaviorFlag::DISABLE_MASKING)) {
     if (size >= 8) {
       masked_data.assign(reinterpret_cast<const char*>(data), size);
       uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;

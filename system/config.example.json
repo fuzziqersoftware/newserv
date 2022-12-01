@@ -253,18 +253,18 @@
   // by bitwise-OR'ing together the following values:
   // 0x00000001 => Disable deck verification entirely
   // 0x00000002 => Disable owned card count check during deck verification (this
-  //               enables the use of the non-saveable Have All Cards code, but
-  //               retains all the other validity checks)
-  // 0x00000004 => Allow card with the D1 and D2 ranks to be used in battle
+  //               enables the use of the non-saveable Have All Cards Action
+  //               Replay code, but retains all the other validity checks)
+  // 0x00000004 => Allow cards with the D1 and D2 ranks to be used in battle
   // 0x00000008 => Disable overall and per-phase battle time limits, regardless
-  //               of the options chosen during battle setup
+  //               of the values chosen during battle rules setup
   // 0x00000010 => Enable debug messages in Episode 3 games and battles
   // 0x00000020 => Load card text as well as card definitions (has no behavioral
-  //               effects; this flag exists to be used internally when the
-  //               --show-ep3-data option is given)
+  //               effects in games; this flag exists to be used internally when
+  //               the --show-ep3-data option is given)
   // 0x00000040 => Enable battle recording (after a battle, players can save the
   //               recording with the $saverec <filename> command)
-  // 0x00000080 => Enable command masking during battles
+  // 0x00000080 => Disable command masking during battles
   "Episode3BehaviorFlags": 0x00000002,
 
   // Episode 3 card auction configuration. CardAuctionPoints specifies how many

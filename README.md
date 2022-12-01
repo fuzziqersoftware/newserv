@@ -63,16 +63,16 @@ newserv supports several versions of PSO. Specifically:
 *Notes:*
 1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
 2. *This version only supports the modem adapter, which Dolphin does not currently emulate, so it's difficult to test.*
-3. *Episode 3 players can download quests, join lobbies, create and join games, trade cards, and participate in card auctions. CARD battles are also implemented but are not well-tested. Spectator teams and tournaments are not implemented.*
+3. *Episode 3 players can download quests, join lobbies, create and join games, trade cards, and participate in card auctions. CARD battles are implemented but are not well-tested. Spectator teams are partially implemented, but are entirely untested. Tournaments are not implemented.*
 4. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
 5. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
 6. *Support for PSO Dreamcast Trial Edition is very incomplete and probably never will be complete. This is really just exploring a curiosity that sheds some light on early network engineering done by Sega, not an actual attempt at supporting this version of the game.*
 
 ## Usage
 
-Currently newserv should build on macOS and Ubuntu. It will likely work on other Linux flavors too. It should work on Windows as well, but I haven't tested it - the build process could be very manual. Cygwin is likely the easiest Windows environment in which to build newserv.
+Currently newserv should build on macOS and Ubuntu. It will likely work on other Linux flavors too. It should work on Windows as well, but I haven't tested it recently - the build process could be very manual. Cygwin is likely the easiest Windows environment in which to build newserv.
 
-There is a probably-not-too-old macOS ARM64 release on the newserv GitHub repository. You may need to install libevent manually even if you use this release (run `brew install libevent`).
+There is a fairly recent macOS ARM64 release on the newserv GitHub repository. You may need to install libevent manually even if you use this release (run `brew install libevent`).
 
 If you're using an older AMD64 Mac, you're running Linux, or you just want to build newserv yourself, here's what you do:
 1. Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
