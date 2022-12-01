@@ -8,14 +8,15 @@
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
-#include "Loggers.hh"
-#include "Server.hh"
-#include "ProxyServer.hh"
-#include "Lobby.hh"
 #include "Client.hh"
+#include "Lobby.hh"
+#include "Loggers.hh"
+#include "ProxyServer.hh"
+#include "ReceiveCommands.hh"
 #include "SendCommands.hh"
-#include "Text.hh"
+#include "Server.hh"
 #include "StaticGameData.hh"
+#include "Text.hh"
 
 using namespace std;
 
@@ -409,7 +410,7 @@ static void server_command_saverec(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   l->prev_battle_record.reset();
 }
 
-static void server_command_playrec(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_playrec(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
     send_text_message(c, u"$C4This command can\nonly be used on\nEpisode 3");
@@ -420,19 +421,20 @@ static void server_command_playrec(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     return;
   }
 
-  if (l->is_game() && (l->flags & Lobby::Flag::EPISODE_3_ONLY) && (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) && l->battle_player) {
-    l->flags |= Lobby::Flag::BATTLE_IN_PROGRESS;
+  if (l->battle_player) {
     l->battle_player->start();
-
-  } else if (args.empty()) {
-    c->next_game_battle_record.reset();
-    send_text_message(c, u"$C6Replay state\ncleared");
-
   } else {
-    string filename = "system/ep3/battle-records/" + encode_sjis(args) + ".mzrd";
-    string data = load_file(filename);
-    c->next_game_battle_record.reset(new Episode3::BattleRecord(data));
-    send_text_message(c, u"$C6Replay state set");
+    uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY | Lobby::Flag::IS_SPECTATOR_TEAM;
+    string filename = encode_sjis(args);
+    if (filename[0] == '!') {
+      flags |= Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY;
+      filename = filename.substr(1);
+    }
+    string data = load_file("system/ep3/battle-records/" + filename + ".mzrd");
+    shared_ptr<Episode3::BattleRecord> record(new Episode3::BattleRecord(data));
+    shared_ptr<Episode3::BattleRecordPlayer> battle_player(
+        new Episode3::BattleRecordPlayer(record, s->game_server->get_base()));
+    auto game = create_game_generic(s, c, args.c_str(), u"", 0xFF, 0, flags, battle_player);
   }
 }
 

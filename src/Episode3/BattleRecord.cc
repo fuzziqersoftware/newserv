@@ -283,22 +283,26 @@ void BattleRecord::set_battle_end_timestamp() {
 
 BattleRecordPlayer::BattleRecordPlayer(
     shared_ptr<const BattleRecord> rec,
-    shared_ptr<struct event_base> base,
-    shared_ptr<Lobby> l)
+    shared_ptr<struct event_base> base)
   : record(rec),
     event_it(this->record->events.begin()),
     play_start_timestamp(0),
     base(base),
-    lobby(l),
     next_command_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &BattleRecordPlayer::dispatch_schedule_events, this), event_free) { }
 
 shared_ptr<const BattleRecord> BattleRecordPlayer::get_record() const {
   return this->record;
 }
 
+void BattleRecordPlayer::set_lobby(std::shared_ptr<Lobby> l) {
+  this->lobby = l;
+}
+
 void BattleRecordPlayer::start() {
-  this->play_start_timestamp = now();
-  this->schedule_events();
+  if (this->play_start_timestamp == 0) {
+    this->play_start_timestamp = now();
+    this->schedule_events();
+  }
 }
 
 void BattleRecordPlayer::dispatch_schedule_events(
@@ -348,10 +352,10 @@ void BattleRecordPlayer::schedule_events() {
             // This should have been handled before the lobby was even created
             break;
           case BattleRecord::Event::Type::BATTLE_COMMAND:
-            send_command(l, 0xC9, 0x00, ev.data);
+            send_command(l, (ev.data.size() >= 0x400) ? 0x6C : 0xC9, 0x00, ev.data);
             break;
           case BattleRecord::Event::Type::GAME_COMMAND:
-            send_command(l, 0x60, 0x00, ev.data);
+            send_command(l, (ev.data.size() >= 0x400) ? 0x6C : 0x60, 0x00, ev.data);
             break;
           case BattleRecord::Event::Type::EP3_GAME_COMMAND:
             send_command(l, 0xCB, 0x00, ev.data);

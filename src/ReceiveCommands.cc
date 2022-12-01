@@ -1931,9 +1931,7 @@ static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   char private_flags = 0;
   u16string processed_text;
-  if ((text[0] != '\t') &&
-      (l->flags & Lobby::Flag::EPISODE_3_ONLY) &&
-      l->ep3_server_base) {
+  if ((text[0] != '\t') && (l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
     private_flags = text[0];
     processed_text = remove_language_marker(text.substr(1));
   } else {
@@ -2448,13 +2446,15 @@ static void on_set_blocked_senders_list(shared_ptr<ServerState>, shared_ptr<Clie
 
 
 
-static shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
+shared_ptr<Lobby> create_game_generic(
+    shared_ptr<ServerState> s,
     shared_ptr<Client> c,
     const std::u16string& name,
     const std::u16string& password,
     uint8_t episode,
     uint8_t difficulty,
-    uint32_t flags) {
+    uint32_t flags,
+    shared_ptr<Episode3::BattleRecordPlayer> battle_player) {
 
   // A player's actual level is their displayed level - 1, so the minimums for
   // Episode 1 (for example) are actually 1, 20, 40, 80.
@@ -2504,11 +2504,9 @@ static shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     game->random_seed = c->override_random_seed;
     game->random->seed(game->random_seed);
   }
-  if (c->next_game_battle_record) {
-    game->battle_player.reset(new Episode3::BattleRecordPlayer(
-        c->next_game_battle_record, s->game_server->get_base(), game));
-    c->next_game_battle_record.reset();
-    game->flags |= Lobby::Flag::IS_SPECTATOR_TEAM;
+  if (battle_player) {
+    game->battle_player = battle_player;
+    battle_player->set_lobby(game);
   }
   game->common_item_creator.reset(new CommonItemCreator(
       s->common_item_data, game->random));
@@ -2693,6 +2691,10 @@ static void on_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // unexpectedly (that is, only equipped items are included).
   if (c->version() == GameVersion::BB) {
     send_get_player_info(c);
+  }
+
+  if (l->battle_player && (l->flags & Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY)) {
+    l->battle_player->start();
   }
 }
 

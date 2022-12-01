@@ -98,11 +98,12 @@ class BattleRecordPlayer {
 public:
   BattleRecordPlayer(
       std::shared_ptr<const BattleRecord> rec,
-      std::shared_ptr<struct event_base> base,
-      std::shared_ptr<Lobby> l);
+      std::shared_ptr<struct event_base> base);
   ~BattleRecordPlayer() = default;
 
   std::shared_ptr<const BattleRecord> get_record() const;
+
+  void set_lobby(std::shared_ptr<Lobby> l);
   void start();
 
 private:

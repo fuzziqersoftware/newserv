@@ -22,26 +22,27 @@
 
 struct Lobby {
   enum Flag {
-    GAME                       = 0x00000001,
-    EPISODE_3_ONLY             = 0x00000002,
-    NON_V1_ONLY                = 0x00000004, // DC NTE and DCv1 not allowed
-    PERSISTENT                 = 0x00000008,
+    GAME                            = 0x00000001,
+    EPISODE_3_ONLY                  = 0x00000002,
+    NON_V1_ONLY                     = 0x00000004, // DC NTE and DCv1 not allowed
+    PERSISTENT                      = 0x00000008,
 
     // Flags used only for games
-    CHEATS_ENABLED             = 0x00000100,
-    QUEST_IN_PROGRESS          = 0x00000200,
-    BATTLE_IN_PROGRESS         = 0x00000400,
-    JOINABLE_QUEST_IN_PROGRESS = 0x00000800,
-    ITEM_TRACKING_ENABLED      = 0x00001000,
-    IS_SPECTATOR_TEAM          = 0x00002000, // EPISODE_3_ONLY must also be set
-    SPECTATORS_FORBIDDEN       = 0x00004000,
-    BATTLE_MODE                = 0x00008000,
-    CHALLENGE_MODE             = 0x00010000,
-    SOLO_MODE                  = 0x00020000,
+    CHEATS_ENABLED                  = 0x00000100,
+    QUEST_IN_PROGRESS               = 0x00000200,
+    BATTLE_IN_PROGRESS              = 0x00000400,
+    JOINABLE_QUEST_IN_PROGRESS      = 0x00000800,
+    ITEM_TRACKING_ENABLED           = 0x00001000,
+    IS_SPECTATOR_TEAM               = 0x00002000, // EPISODE_3_ONLY must also be set
+    SPECTATORS_FORBIDDEN            = 0x00004000,
+    BATTLE_MODE                     = 0x00008000,
+    CHALLENGE_MODE                  = 0x00010000,
+    SOLO_MODE                       = 0x00020000,
+    START_BATTLE_PLAYER_IMMEDIATELY = 0x00040000,
 
     // Flags used only for lobbies
-    PUBLIC                     = 0x01000000,
-    DEFAULT                    = 0x02000000,
+    PUBLIC                          = 0x01000000,
+    DEFAULT                         = 0x02000000,
   };
 
   PrefixedLogger log;

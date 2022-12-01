@@ -125,7 +125,6 @@ struct Client {
   bool can_chat;
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;
-  std::shared_ptr<const Episode3::BattleRecord> next_game_battle_record;
 
   bool proxy_block_events;
   bool proxy_block_function_calls;
