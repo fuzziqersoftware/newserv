@@ -15,6 +15,7 @@
   "DNSServerPort": 0,
   "IPStackListen": [],
   "EnableItemTracking": true,
+  "Episode3BehaviorFlags": 0x82,
 
   "PortConfiguration": {
     "gc-jp10":       [9000,  "gc",    "login_server"],
