@@ -6,6 +6,7 @@
 
 #include "../Text.hh"
 #include "../CommandFormats.hh"
+#include "../Channel.hh"
 #include "AssistServer.hh"
 #include "CardSpecial.hh"
 #include "MapState.hh"
@@ -109,6 +110,8 @@ public:
   }
   void send(const void* data, size_t size) const;
 
+  void send_commands_for_joining_spectator(Channel& ch) const;
+
   __attribute__((format(printf, 2, 3)))
   void send_debug_message_printf(const char* fmt, ...) const;
   __attribute__((format(printf, 2, 3)))
@@ -131,7 +134,7 @@ public:
   bool card_ref_is_empty_or_has_valid_card_id(uint16_t card_ref) const;
   bool check_for_battle_end();
   void check_for_destroyed_cards_and_send_6xB4x05_6xB4x02();
-  bool check_presence_entry(uint8_t client_id);
+  bool check_presence_entry(uint8_t client_id) const;
   void clear_player_flags_after_dice_phase();
   void compute_all_map_occupied_bits();
   void compute_team_dice_boost(uint8_t team_id);
@@ -213,7 +216,13 @@ public:
   void send_6xB4x39() const;
   void send_6xB4x05(); // Recomputes the map occupied bits, so can't be const
   void send_6xB4x02_for_all_players_if_needed(bool always_send = false);
-  void send_6xB4x50() const;
+  void send_6xB4x50_trap_tile_locations() const;
+
+  G_UpdateDecks_GC_Ep3_6xB4x07 prepare_6xB4x07_decks_update() const;
+  G_SetPlayerNames_GC_Ep3_6xB4x1C prepare_6xB4x1C_names_update() const;
+  static std::string prepare_6xB6x41_map_definition(
+      std::shared_ptr<const DataIndex::MapEntry> map);
+  G_SetTrapTileLocations_GC_Ep3_6xB4x50 prepare_6xB4x50_trap_tile_locations() const;
 
   std::vector<std::shared_ptr<Card>> const_cast_set_cards_v(
       const std::vector<std::shared_ptr<const Card>>& cards);
@@ -222,6 +231,7 @@ private:
   static const std::unordered_map<uint8_t, handler_t> subcommand_handlers;
 
   std::weak_ptr<ServerBase> w_base;
+  std::shared_ptr<const DataIndex::MapEntry> last_chosen_map;
 
 public:
   uint32_t battle_finished;

@@ -82,6 +82,10 @@ struct Channel {
   // Sends a message with an automatically-constructed header.
   void send(uint16_t cmd, uint32_t flag = 0, const void* data = nullptr, size_t size = 0, bool print_contents = true);
   void send(uint16_t cmd, uint32_t flag, const std::string& data, bool print_contents = true);
+  template <typename CmdT>
+  void send(uint16_t cmd, uint32_t flag, const CmdT& data) {
+    this->send(cmd, flag, &data, sizeof(data));
+  }
 
   // Sends a message with a pre-existing header (as the first few bytes in the
   // data)

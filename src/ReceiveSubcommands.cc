@@ -97,6 +97,17 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     } else {
       send_command_excluding_client(l, c, command, flag, data, size);
     }
+
+    for (const auto& watcher_lobby : l->watcher_lobbies) {
+      forward_subcommand(watcher_lobby, c, command, flag, data, size);
+    }
+
+    if (l->battle_record && l->battle_record->battle_in_progress()) {
+      auto type = ((command & 0xF0) == 0xC0)
+          ? Episode3::BattleRecord::Event::Type::EP3_GAME_COMMAND
+          : Episode3::BattleRecord::Event::Type::GAME_COMMAND;
+      l->battle_record->add_command(type, data, size);
+    }
   }
 }
 

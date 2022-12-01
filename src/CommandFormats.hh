@@ -2513,15 +2513,26 @@ struct S_JoinSpectatorTeam_GC_Ep3_E8 {
     PlayerDispDataDCPCV3 disp; // 0xD0 bytes
   } __packed__; // 0x43C bytes
   parray<PlayerEntry, 4> players; // 84-1174
-  parray<uint8_t, 8> unknown_a2; // 1174-117C
-  le_uint32_t unknown_a3 = 0; // 117C-1180
-  parray<uint8_t, 4> unknown_a4; // 1180-1184
+  uint8_t client_id = 0;
+  uint8_t leader_id = 0;
+  uint8_t disable_udp = 1;
+  uint8_t difficulty = 0;
+  uint8_t battle_mode = 0;
+  uint8_t event = 0;
+  uint8_t section_id = 0;
+  uint8_t challenge_mode = 0;
+  le_uint32_t rare_seed = 0;
+  uint8_t episode = 0;
+  uint8_t unused2 = 1;
+  uint8_t solo_mode = 0;
+  uint8_t unused3 = 0;
   struct SpectatorEntry {
-    le_uint32_t player_tag = 0x00010000;
+    le_uint32_t player_tag = 0;
     le_uint32_t guild_card_number = 0;
     ptext<char, 0x20> name;
-    parray<uint8_t, 2> unknown_a3;
-    le_uint16_t unknown_a4 = 0;
+    uint8_t present = 0;
+    uint8_t unknown_a3 = 0;
+    le_uint16_t level = 0;
     parray<le_uint32_t, 2> unknown_a5;
     parray<le_uint16_t, 2> unknown_a6;
   } __packed__; // 0x38 bytes
@@ -2529,7 +2540,7 @@ struct S_JoinSpectatorTeam_GC_Ep3_E8 {
   // battle - they appear in the first positions. Presumably the first 4 are
   // always for battlers, and the last 8 are always for spectators.
   parray<SpectatorEntry, 12> entries; // 1184-1424
-  ptext<uint8_t, 0x20> spectator_team_name;
+  ptext<char, 0x20> spectator_team_name;
   // This field doesn't appear to be actually used by the game, but some servers
   // send it anyway (and the game presumably ignores it)
   parray<PlayerEntry, 8> spectator_players;

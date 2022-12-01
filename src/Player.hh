@@ -284,61 +284,63 @@ struct KeyAndTeamConfigBB {
 
 
 struct PlayerLobbyDataPC {
-  le_uint32_t player_tag;
-  le_uint32_t guild_card;
-  be_uint32_t ip_address;
-  le_uint32_t client_id;
+  le_uint32_t player_tag = 0;
+  le_uint32_t guild_card = 0;
+  // There's a strange behavior (bug? "feature"?) in Episode 3 where the start
+  // button does nothing in the lobby (hence you can't "quit game") if the
+  // client's IP address is zero. So, we fill it in with a fake nonzero value to
+  // avoid this behavior, and to be consistent, we make IP addresses fake and
+  // nonzero on all other versions too.
+  be_uint32_t ip_address = 0x7F000001;
+  le_uint32_t client_id = 0;
   ptext<char16_t, 0x10> name;
 
-  PlayerLobbyDataPC() noexcept;
   void clear();
 } __attribute__((packed));
 
 struct PlayerLobbyDataDCGC {
-  le_uint32_t player_tag;
-  le_uint32_t guild_card;
-  be_uint32_t ip_address;
-  le_uint32_t client_id;
+  le_uint32_t player_tag = 0;
+  le_uint32_t guild_card = 0;
+  be_uint32_t ip_address = 0x7F000001;
+  le_uint32_t client_id = 0;
   ptext<char, 0x10> name;
 
-  PlayerLobbyDataDCGC() noexcept;
   void clear();
 } __attribute__((packed));
 
 struct XBNetworkLocation {
-  le_uint32_t internal_ipv4_address;
-  le_uint32_t external_ipv4_address;
-  le_uint16_t port;
-  parray<uint8_t, 6> mac_address;
+  le_uint32_t internal_ipv4_address = 0x0A0A0A0A;
+  le_uint32_t external_ipv4_address = 0x23232323;
+  le_uint16_t port = 9100;
+  parray<uint8_t, 6> mac_address = 0x77;
   parray<le_uint32_t, 2> unknown_a1;
-  le_uint64_t account_id;
+  le_uint64_t account_id = 0xFFFFFFFFFFFFFFFF;
   parray<le_uint32_t, 4> unknown_a2;
 
-  XBNetworkLocation() noexcept;
   void clear();
 } __attribute__((packed));
 
 struct PlayerLobbyDataXB {
-  le_uint32_t player_tag;
-  le_uint32_t guild_card;
+  le_uint32_t player_tag = 0;
+  le_uint32_t guild_card = 0;
   XBNetworkLocation netloc;
-  le_uint32_t client_id;
+  le_uint32_t client_id = 0;
   ptext<char, 0x10> name;
 
-  PlayerLobbyDataXB() noexcept;
   void clear();
 } __attribute__((packed));
 
 struct PlayerLobbyDataBB {
-  le_uint32_t player_tag;
-  le_uint32_t guild_card;
-  be_uint32_t ip_address; // Guess - the official builds didn't use this, but all other versions have it
+  le_uint32_t player_tag = 0;
+  le_uint32_t guild_card = 0;
+  // This field is a guess; the official builds didn't use this, but all other
+  // versions have it
+  be_uint32_t ip_address = 0x7F000001;
   parray<uint8_t, 0x10> unknown_a1;
-  le_uint32_t client_id;
+  le_uint32_t client_id = 0;
   ptext<char16_t, 0x10> name;
-  le_uint32_t unknown_a2;
+  le_uint32_t unknown_a2 = 0;
 
-  PlayerLobbyDataBB() noexcept;
   void clear();
 } __attribute__((packed));
 

@@ -392,6 +392,50 @@ static void server_command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby>
   }
 }
 
+static void server_command_saverec(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string& args) {
+  if (args.find(u'/') != string::npos) {
+    send_text_message(c, u"$C4Recording names\ncannot include\nthe / character");
+    return;
+  }
+  if (!l->prev_battle_record) {
+    send_text_message(c, u"$C4No finished\nrecording is\npresent");
+    return;
+  }
+  string filename = "system/ep3/battle-records/" + encode_sjis(args) + ".mzrd";
+  string data = l->prev_battle_record->serialize();
+  save_file(filename, data);
+  send_text_message(l, u"$C7Recording saved");
+  l->prev_battle_record.reset();
+}
+
+static void server_command_playrec(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string& args) {
+  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+    send_text_message(c, u"$C4This command can\nonly be used on\nEpisode 3");
+    return;
+  }
+  if (args.find(u'/') != string::npos) {
+    send_text_message(c, u"$C4Recording names\ncannot include\nthe / character");
+    return;
+  }
+
+  if (l->is_game() && (l->flags & Lobby::Flag::EPISODE_3_ONLY) && (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) && l->battle_player) {
+    l->flags |= Lobby::Flag::BATTLE_IN_PROGRESS;
+    l->battle_player->start();
+
+  } else if (args.empty()) {
+    c->next_game_battle_record.reset();
+    send_text_message(c, u"$C6Replay state\ncleared");
+
+  } else {
+    string filename = "system/ep3/battle-records/" + encode_sjis(args) + ".mzrd";
+    string data = load_file(filename);
+    c->next_game_battle_record.reset(new Episode3::BattleRecord(data));
+    send_text_message(c, u"$C6Replay state set");
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands
 
@@ -1013,7 +1057,9 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$password", {server_command_password,           nullptr,                       u"Usage:\nlock [password]\nomit password to\nunlock game"}},
     {u"$patch",    {server_command_patch,              proxy_command_patch,           u"Usage:\npatch <name>"}},
     {u"$persist",  {server_command_persist,            nullptr,                       u"Usage:\npersist"}},
+    {u"$playrec",  {server_command_playrec,            nullptr,                       u"Usage:\nplayrec <filename>"}},
     {u"$rand",     {server_command_rand,               proxy_command_rand,            u"Usage:\nrand [hex seed]\nomit seed to revert\nto default"}},
+    {u"$saverec",  {server_command_saverec,            nullptr,                       u"Usage:\nsaverec <filename>"}},
     {u"$secid",    {server_command_secid,              proxy_command_secid,           u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
     {u"$silence",  {server_command_silence,            nullptr,                       u"Usage:\nsilence <name-or-number>"}},
     // TODO: implement this on proxy server

@@ -73,18 +73,19 @@ size_t Lobby::count_clients() const {
 
 void Lobby::add_client(shared_ptr<Client> c) {
   ssize_t index;
+  ssize_t min_client_id = (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 4 : 0;
   if (c->prefer_high_lobby_client_id) {
-    for (index = max_clients - 1; index >= 0; index--) {
+    for (index = max_clients - 1; index >= min_client_id; index--) {
       if (!this->clients[index].get()) {
         this->clients[index] = c;
         break;
       }
     }
-    if (index < 0) {
+    if (index < min_client_id) {
       throw out_of_range("no space left in lobby");
     }
   } else {
-    for (index = 0; index < max_clients; index++) {
+    for (index = min_client_id; index < max_clients; index++) {
       if (!this->clients[index].get()) {
         this->clients[index] = c;
         break;
@@ -120,6 +121,17 @@ void Lobby::add_client(shared_ptr<Client> c) {
     }
     c->game_data.player()->print_inventory(stderr);
   }
+
+  // If the lobby is recording a battle record, add the player join event
+  if (this->battle_record) {
+    PlayerLobbyDataDCGC lobby_data;
+    lobby_data.player_tag = 0x00010000;
+    lobby_data.guild_card = c->license->serial_number;
+    lobby_data.name = encode_sjis(c->game_data.player()->disp.name);
+    this->battle_record->add_player(lobby_data,
+        c->game_data.player()->inventory,
+        c->game_data.player()->disp.to_dcpcv3());
+  }
 }
 
 void Lobby::remove_client(shared_ptr<Client> c) {
@@ -141,6 +153,11 @@ void Lobby::remove_client(shared_ptr<Client> c) {
   }
 
   this->reassign_leader_on_client_departure(c->lobby_client_id);
+
+  // If the lobby ios recording a battle record, add the player leave event
+  if (this->battle_record) {
+    this->battle_record->delete_player(c->lobby_client_id);
+  }
 }
 
 void Lobby::move_client_to_lobby(shared_ptr<Lobby> dest_lobby,

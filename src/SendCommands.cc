@@ -694,14 +694,13 @@ void send_text_message(shared_ptr<ServerState> s, const u16string& text) {
   }
 }
 
-void send_chat_message(Channel& ch, const u16string& text) {
-  send_header_text(ch, 0x06, 0, text, false);
-}
-
-void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
-    const u16string& from_name, const u16string& text, char private_flags) {
+u16string prepare_chat_message(
+    GameVersion version,
+    const u16string& from_name,
+    const u16string& text,
+    char private_flags) {
   u16string data;
-  if (c->version() == GameVersion::BB) {
+  if (version == GameVersion::BB) {
     data.append(u"\tJ");
   }
   data.append(remove_language_marker(from_name));
@@ -711,7 +710,31 @@ void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
   }
   data.append(u"\tJ");
   data.append(text);
-  send_header_text(c->channel, 0x06, from_guild_card_number, data, false);
+  return data;
+}
+
+void send_chat_message(Channel& ch, const u16string& text) {
+  send_header_text(ch, 0x06, 0, text, false);
+}
+
+void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
+    const u16string& prepared_data) {
+  send_header_text(c->channel, 0x06, from_guild_card_number, prepared_data, false);
+}
+
+void send_chat_message(shared_ptr<Lobby> l, uint32_t from_guild_card_number,
+    const u16string& prepared_data) {
+  for (auto c : l->clients) {
+    if (c) {
+      send_header_text(c->channel, 0x06, from_guild_card_number, prepared_data, false);
+    }
+  }
+}
+
+void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
+    const u16string& from_name, const u16string& text, char private_flags) {
+  auto data = prepare_chat_message(c->version(), from_name, text, private_flags);
+  send_chat_message(c, from_guild_card_number, data);
 }
 
 template <typename CmdT>
@@ -1071,7 +1094,7 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
       e.episode = ((c->version() == GameVersion::BB) ? (l->max_clients << 4) : 0) | l->episode;
     }
     if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
-      e.flags = (l->password.empty() ? 0 : 2);
+      e.flags = (l->password.empty() ? 0 : 2) | ((l->flags & Lobby::Flag::BATTLE_IN_PROGRESS) ? 4 : 0);
     } else {
       e.flags = ((l->episode << 6) | (l->password.empty() ? 0 : 2));
       if (l->flags & Lobby::Flag::BATTLE_MODE) {
@@ -1210,8 +1233,114 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
 ////////////////////////////////////////////////////////////////////////////////
 // lobby joining
 
+static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+    throw runtime_error("lobby is not Episode 3");
+  }
+  if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    throw runtime_error("lobby is not Episode 3");
+  }
+  if (!(l->flags & Lobby::Flag::IS_SPECTATOR_TEAM)) {
+    throw runtime_error("lobby is not a spectator team");
+  }
+
+  S_JoinSpectatorTeam_GC_Ep3_E8 cmd;
+
+  cmd.variations.clear(0);
+  cmd.client_id = c->lobby_client_id;
+  cmd.leader_id = l->leader_id;
+  cmd.event = l->event;
+  cmd.section_id = l->section_id;
+  cmd.rare_seed = l->random_seed;
+  cmd.episode = 3;
+
+  uint8_t player_count = 0;
+  auto watched_lobby = l->watched_lobby.lock();
+  if (watched_lobby) {
+    // Live spectating
+    for (size_t z = 0; z < 4; z++) {
+      if (watched_lobby->clients[z]) {
+        cmd.players[z].lobby_data.player_tag = 0x00010000;
+        cmd.players[z].lobby_data.guild_card = watched_lobby->clients[z]->license->serial_number;
+        cmd.players[z].lobby_data.client_id = watched_lobby->clients[z]->lobby_client_id;
+        cmd.players[z].lobby_data.name = watched_lobby->clients[z]->game_data.player()->disp.name;
+        remove_language_marker_inplace(cmd.players[z].lobby_data.name);
+        cmd.players[z].inventory = watched_lobby->clients[z]->game_data.player()->inventory;
+        cmd.players[z].disp = watched_lobby->clients[z]->game_data.player()->disp.to_dcpcv3();
+        remove_language_marker_inplace(cmd.players[z].disp.name);
+        cmd.entries[z].player_tag = 0x00010000;
+        cmd.entries[z].guild_card_number = watched_lobby->clients[z]->license->serial_number;
+        cmd.entries[z].name = watched_lobby->clients[z]->game_data.player()->disp.name;
+        remove_language_marker_inplace(cmd.entries[z].name);
+        cmd.entries[z].present = 1;
+        cmd.entries[z].level = watched_lobby->clients[z]->game_data.player()->disp.level.load();
+        player_count++;
+      }
+    }
+
+  } else if (l->battle_player) {
+    // Battle record replay
+    const auto* ev = l->battle_player->get_record()->get_first_event();
+    if (!ev) {
+      throw runtime_error("battle record contains no events");
+    }
+    if (ev->type != Episode3::BattleRecord::Event::Type::SET_INITIAL_PLAYERS) {
+      throw runtime_error("battle record does not begin with set players event");
+    }
+    for (const auto& entry : ev->players) {
+      uint8_t client_id = entry.lobby_data.client_id;
+      if (client_id >= 4) {
+        throw runtime_error("invalid client id in battle record");
+      }
+      cmd.players[client_id].lobby_data = entry.lobby_data;
+      remove_language_marker_inplace(cmd.players[client_id].lobby_data.name);
+      cmd.players[client_id].inventory = entry.inventory;
+      cmd.players[client_id].disp = entry.disp;
+      remove_language_marker_inplace(cmd.players[client_id].disp.name);
+      cmd.entries[client_id].player_tag = 0x00010000;
+      cmd.entries[client_id].guild_card_number = entry.lobby_data.guild_card;
+      cmd.entries[client_id].name = entry.disp.name;
+      remove_language_marker_inplace(cmd.entries[client_id].name);
+      cmd.entries[client_id].present = 1;
+      cmd.entries[client_id].level = entry.disp.level.load();
+      player_count++;
+    }
+
+  } else {
+    throw runtime_error("neither a watched lobby nor a battle player are present");
+  }
+
+  for (size_t z = 4; z < 12; z++) {
+    if (l->clients[z]) {
+      cmd.spectator_players[z - 4].lobby_data.player_tag = 0x00010000;
+      cmd.spectator_players[z - 4].lobby_data.guild_card = l->clients[z]->license->serial_number;
+      cmd.spectator_players[z - 4].lobby_data.client_id = l->clients[z]->lobby_client_id;
+      cmd.spectator_players[z - 4].lobby_data.name = l->clients[z]->game_data.player()->disp.name;
+      remove_language_marker_inplace(cmd.spectator_players[z - 4].lobby_data.name);
+      cmd.spectator_players[z - 4].inventory = l->clients[z]->game_data.player()->inventory;
+      cmd.spectator_players[z - 4].disp = l->clients[z]->game_data.player()->disp.to_dcpcv3();
+      remove_language_marker_inplace(cmd.spectator_players[z - 4].disp.name);
+      cmd.entries[z].player_tag = 0x00010000;
+      cmd.entries[z].guild_card_number = l->clients[z]->license->serial_number;
+      cmd.entries[z].name = l->clients[z]->game_data.player()->disp.name;
+      remove_language_marker_inplace(cmd.entries[z].name);
+      cmd.entries[z].present = 1;
+      cmd.entries[z].level = l->clients[z]->game_data.player()->disp.level.load();
+      player_count++;
+    }
+  }
+  cmd.spectator_team_name = encode_sjis(l->name);
+
+  send_command_t(c, 0xE8, player_count, cmd);
+}
+
 template <typename LobbyDataT, typename DispDataT>
 void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+  if (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
+    send_join_spectator_team(c, l);
+    return;
+  }
+
   bool is_ep3 = (l->flags & Lobby::Flag::EPISODE_3_ONLY);
   string data(is_ep3 ? sizeof(S_JoinGame_GC_Ep3_64) : sizeof(S_JoinGame<LobbyDataT, DispDataT>), '\0');
 
@@ -1233,7 +1362,7 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     if (l->clients[x]) {
       cmd->lobby_data[x].player_tag = 0x00010000;
       cmd->lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-      cmd->lobby_data[x].client_id = c->lobby_client_id;
+      cmd->lobby_data[x].client_id = l->clients[x]->lobby_client_id;
       cmd->lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
       if (cmd_ep3) {
         cmd_ep3->players_ep3[x].inventory = l->clients[x]->game_data.player()->inventory;
@@ -1269,7 +1398,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   uint8_t command;
   if (l->is_game()) {
     if (joining_client) {
-      command = 0x65;
+      command = (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 0xEB : 0x65;
     } else {
       throw logic_error("send_join_lobby_t should not be used for primary game join command");
     }
@@ -1405,7 +1534,16 @@ void send_player_join_notification(shared_ptr<Client> c,
 
 void send_player_leave_notification(shared_ptr<Lobby> l, uint8_t leaving_client_id) {
   S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_client_id, l->leader_id, 1, 0};
-  send_command_t(l, l->is_game() ? 0x66 : 0x69, leaving_client_id, cmd);
+  uint8_t cmd_num;
+  if (l->is_game()) {
+    cmd_num = (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 0xE9 : 0x66;
+  } else {
+    cmd_num = 0x69;
+  }
+  send_command_t(l, cmd_num, leaving_client_id, cmd);
+  for (const auto& watcher_l : l->watcher_lobbies) {
+    send_command_t(watcher_l, cmd_num, leaving_client_id, cmd);
+  }
 }
 
 void send_self_leave_notification(shared_ptr<Client> c) {

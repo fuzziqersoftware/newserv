@@ -593,34 +593,6 @@ PlayerBB ClientGameData::export_player_bb() {
 
 
 
-XBNetworkLocation::XBNetworkLocation() noexcept
-  : internal_ipv4_address(0x0A0A0A0A),
-    external_ipv4_address(0x23232323),
-    port(9100),
-    account_id(0xFFFFFFFFFFFFFFFF) {
-  this->unknown_a1[0] = 0xCCCCCCCC;
-  this->unknown_a1[1] = 0xDDDDDDDD;
-  this->mac_address.clear(0x77);
-}
-
-// There's a strange behavior (bug? "feature"?) in Episode 3 where the start
-// button does nothing in the lobby (hence you can't "quit game") if the
-// client's IP address is zero. So, we fill it in with a fake nonzero value to
-// avoid this behavior, and to be consistent, we make IP addresses fake and
-// nonzero on all other versions too.
-
-PlayerLobbyDataPC::PlayerLobbyDataPC() noexcept
-  : player_tag(0), guild_card(0), ip_address(0x7F000001), client_id(0) { }
-
-PlayerLobbyDataDCGC::PlayerLobbyDataDCGC() noexcept
-  : player_tag(0), guild_card(0), ip_address(0x7F000001), client_id(0) { }
-
-PlayerLobbyDataXB::PlayerLobbyDataXB() noexcept
-  : player_tag(0), guild_card(0), client_id(0) { }
-
-PlayerLobbyDataBB::PlayerLobbyDataBB() noexcept
-  : player_tag(0), guild_card(0), ip_address(0x7F000001), client_id(0), unknown_a2(0) { }
-
 void PlayerLobbyDataPC::clear() {
   this->player_tag = 0;
   this->guild_card = 0;

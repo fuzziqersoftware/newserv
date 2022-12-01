@@ -49,6 +49,7 @@ add_executable(newserv
   src/Compression.cc
   src/DNSServer.cc
   src/Episode3/AssistServer.cc
+  src/Episode3/BattleRecord.cc
   src/Episode3/Card.cc
   src/Episode3/CardSpecial.cc
   src/Episode3/DataIndex.cc

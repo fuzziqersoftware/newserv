@@ -1,6 +1,7 @@
 #include "Server.hh"
 
 #include <phosg/Time.hh>
+#include <phosg/Random.hh>
 
 #include "../SendCommands.hh"
 
@@ -146,7 +147,64 @@ void Server::send(const void* data, size_t size) const {
   if (!l) {
     throw runtime_error("lobby is deleted");
   }
+
+  string masked_data;
+  if (this->base()->data_index->behavior_flags & BehaviorFlag::ENABLE_MASKING) {
+    if (size >= 8) {
+      masked_data.assign(reinterpret_cast<const char*>(data), size);
+      uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+      set_mask_for_ep3_game_command(masked_data.data(), masked_data.size(), mask_key);
+      data = masked_data.data();
+      size = masked_data.size();
+    }
+  }
+
   send_command(l, 0xC9, 0x00, data, size);
+  for (auto watcher_l : l->watcher_lobbies) {
+    send_command(watcher_l, 0xC9, 0x00, data, size);
+  }
+  if (l->battle_record && l->battle_record->writable()) {
+    l->battle_record->add_command(
+        BattleRecord::Event::Type::BATTLE_COMMAND, data, size);
+  }
+}
+
+string Server::prepare_6xB6x41_map_definition(
+    shared_ptr<const DataIndex::MapEntry> map) {
+  const auto& compressed = map->compressed();
+
+  StringWriter w;
+  uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_GC_Ep3_6xB6x41) + 3) & (~3);
+  w.put<G_MapData_GC_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, map->map.map_number.load(), compressed.size(), 0});
+  w.write(compressed);
+  return move(w.str());
+}
+
+void Server::send_commands_for_joining_spectator(Channel& c) const {
+  bool should_send_state = true;
+  if (this->setup_phase == SetupPhase::REGISTRATION) {
+    // If registration is still in progress, we only need to send the map data
+    // (if a map is even chosen yet)
+    if ((this->registration_phase != RegistrationPhase::REGISTERED) &&
+        (this->registration_phase != RegistrationPhase::BATTLE_STARTED)) {
+      should_send_state = false;
+    }
+  }
+
+  if (this->last_chosen_map) {
+    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map);
+    c.send(0x6C, 0x00, data);
+  }
+
+  if (should_send_state) {
+    // Note: Some servers send the commented-out commands here. Is there a
+    // situation where we should send them too?
+    c.send(0xC9, 0x00, this->prepare_6xB4x07_decks_update());
+    c.send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
+    // 6xB4x3B - unknown
+    c.send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
+    // 6xB4x52 - unknown
+  }
 }
 
 __attribute__((format(printf, 2, 3)))
@@ -411,7 +469,7 @@ void Server::check_for_destroyed_cards_and_send_6xB4x05_6xB4x02() {
   this->send_6xB4x02_for_all_players_if_needed();
 }
 
-bool Server::check_presence_entry(uint8_t client_id) {
+bool Server::check_presence_entry(uint8_t client_id) const {
   return (client_id < 4)
       ? this->base()->presence_entries[client_id].player_present : false;
 }
@@ -870,7 +928,7 @@ void Server::move_phase_after() {
     // randomness per pass.
     if (this->num_trap_tiles_of_type[trap_type] == 2) {
       this->chosen_trap_tile_index_of_type[trap_type] ^= 1;
-      this->send_6xB4x50();
+      this->send_6xB4x50_trap_tile_locations();
     } else if (this->num_trap_tiles_of_type[trap_type] > 2) {
       // Generate a new random index, but forbid it from matching the existing
       // index
@@ -879,7 +937,7 @@ void Server::move_phase_after() {
         new_index++;
       }
       this->chosen_trap_tile_index_of_type[trap_type] = new_index;
-      this->send_6xB4x50();
+      this->send_6xB4x50_trap_tile_locations();
     }
   }
 
@@ -898,12 +956,16 @@ void Server::action_phase_before() {
   }
 }
 
-void Server::send_6xB4x1C_names_update() {
+G_SetPlayerNames_GC_Ep3_6xB4x1C Server::prepare_6xB4x1C_names_update() const {
   G_SetPlayerNames_GC_Ep3_6xB4x1C cmd;
   for (size_t z = 0; z < 4; z++) {
     cmd.entries[z] = this->base()->name_entries[z];
   }
-  this->send(cmd);
+  return cmd;
+}
+
+void Server::send_6xB4x1C_names_update() {
+  this->send(this->prepare_6xB4x1C_names_update());
 }
 
 int8_t Server::send_6xB4x33_remove_ally_atk_if_needed(const ActionState& pa) {
@@ -963,7 +1025,7 @@ int8_t Server::send_6xB4x33_remove_ally_atk_if_needed(const ActionState& pa) {
   return 1;
 }
 
-void Server::send_all_state_updates() {
+G_UpdateDecks_GC_Ep3_6xB4x07 Server::prepare_6xB4x07_decks_update() const {
   G_UpdateDecks_GC_Ep3_6xB4x07 cmd07;
   for (size_t z = 0; z < 4; z++) {
     if (!this->check_presence_entry(z)) {
@@ -975,7 +1037,11 @@ void Server::send_all_state_updates() {
       cmd07.entries[z] = *this->base()->deck_entries[z];
     }
   }
-  this->send(cmd07);
+  return cmd07;
+}
+
+void Server::send_all_state_updates() {
+  this->send(this->prepare_6xB4x07_decks_update());
 
   G_UpdateMap_GC_Ep3_6xB4x05 cmd05;
   cmd05.state = *this->base()->map_and_rules1;
@@ -1299,7 +1365,7 @@ void Server::setup_and_start_battle() {
   this->send_6xB4x1C_names_update();
   this->registration_phase = RegistrationPhase::BATTLE_STARTED;
   this->update_battle_state_flags_and_send_6xB4x03_if_needed(true);
-  this->send_6xB4x50();
+  this->send_6xB4x50_trap_tile_locations();
 
   G_UpdateMap_GC_Ep3_6xB4x05 cmd05;
   cmd05.state = *this->base()->map_and_rules1;
@@ -1818,6 +1884,13 @@ void Server::handle_6xB3x1D_start_battle(const string& data) {
       }
       this->battle_in_progress = false;
     } else {
+      auto l = this->base()->lobby.lock();
+      if (!l) {
+        throw runtime_error("lobby is deleted");
+      }
+      if (l->battle_record) {
+        l->battle_record->set_battle_start_timestamp();
+      }
       this->setup_and_start_battle();
       this->battle_in_progress = true;
     }
@@ -2009,6 +2082,11 @@ void Server::handle_6xB3x40_map_list_request(const string& data) {
       G_MapList_GC_Ep3_6xB6x40{{{{0xB6, 0, 0}, subcommand_size}, 0x40, {}}, list_data.size(), 0});
   w.write(list_data);
   send_command(l, 0x6C, 0x00, w.str());
+
+  if (l->battle_record && l->battle_record->writable()) {
+    l->battle_record->add_command(
+        BattleRecord::Event::Type::BATTLE_COMMAND, move(w.str()));
+  }
 }
 
 void Server::handle_6xB3x41_map_request(const string& data) {
@@ -2021,14 +2099,14 @@ void Server::handle_6xB3x41_map_request(const string& data) {
     throw runtime_error("lobby is deleted");
   }
 
-  auto entry = this->base()->data_index->definition_for_map_number(cmd.map_number);
-  const auto& compressed = entry->compressed();
+  this->last_chosen_map = this->base()->data_index->definition_for_map_number(cmd.map_number);
+  auto out_cmd = this->prepare_6xB6x41_map_definition(this->last_chosen_map);
+  send_command(l, 0x6C, 0x00, out_cmd);
 
-  StringWriter w;
-  uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_GC_Ep3_6xB6x41) + 3) & (~3);
-  w.put<G_MapData_GC_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, entry->map.map_number.load(), compressed.size(), 0});
-  w.write(compressed);
-  send_command(l, 0x6C, 0x00, w.str());
+  if (l->battle_record && l->battle_record->writable()) {
+    l->battle_record->add_command(
+        BattleRecord::Event::Type::BATTLE_COMMAND, move(out_cmd));
+  }
 }
 
 void Server::handle_6xB3x48_end_turn(const string& data) {
@@ -2509,7 +2587,7 @@ void Server::send_6xB4x02_for_all_players_if_needed(bool always_send) {
   }
 }
 
-void Server::send_6xB4x50() const {
+G_SetTrapTileLocations_GC_Ep3_6xB4x50 Server::prepare_6xB4x50_trap_tile_locations() const {
   G_SetTrapTileLocations_GC_Ep3_6xB4x50 cmd;
   for (size_t trap_type = 0; trap_type < 5; trap_type++) {
     uint8_t trap_index = this->chosen_trap_tile_index_of_type[trap_type];
@@ -2519,7 +2597,11 @@ void Server::send_6xB4x50() const {
       cmd.locations[trap_type].clear(0xFF);
     }
   }
-  this->send(cmd);
+  return cmd;
+}
+
+void Server::send_6xB4x50_trap_tile_locations() const {
+  this->send(this->prepare_6xB4x50_trap_tile_locations());
 }
 
 

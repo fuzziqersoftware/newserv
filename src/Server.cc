@@ -234,3 +234,7 @@ shared_ptr<Client> Server::get_client() const {
   }
   return this->channel_to_client.begin()->second;
 }
+
+shared_ptr<struct event_base> Server::get_base() const {
+  return this->base;
+}

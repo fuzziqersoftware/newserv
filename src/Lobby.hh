@@ -17,6 +17,7 @@
 #include "Text.hh"
 #include "Quest.hh"
 #include "Items.hh"
+#include "Episode3/BattleRecord.hh"
 #include "Episode3/Server.hh"
 
 struct Lobby {
@@ -24,20 +25,23 @@ struct Lobby {
     GAME                       = 0x00000001,
     EPISODE_3_ONLY             = 0x00000002,
     NON_V1_ONLY                = 0x00000004, // DC NTE and DCv1 not allowed
+    PERSISTENT                 = 0x00000008,
 
     // Flags used only for games
     CHEATS_ENABLED             = 0x00000100,
     QUEST_IN_PROGRESS          = 0x00000200,
-    JOINABLE_QUEST_IN_PROGRESS = 0x00000400,
-    ITEM_TRACKING_ENABLED      = 0x00000800,
-    BATTLE_MODE                = 0x00002000,
-    CHALLENGE_MODE             = 0x00004000,
-    SOLO_MODE                  = 0x00008000,
+    BATTLE_IN_PROGRESS         = 0x00000400,
+    JOINABLE_QUEST_IN_PROGRESS = 0x00000800,
+    ITEM_TRACKING_ENABLED      = 0x00001000,
+    IS_SPECTATOR_TEAM          = 0x00002000, // EPISODE_3_ONLY must also be set
+    SPECTATORS_FORBIDDEN       = 0x00004000,
+    BATTLE_MODE                = 0x00008000,
+    CHALLENGE_MODE             = 0x00010000,
+    SOLO_MODE                  = 0x00020000,
 
     // Flags used only for lobbies
-    PUBLIC                     = 0x00010000,
-    DEFAULT                    = 0x00020000,
-    PERSISTENT                 = 0x00040000,
+    PUBLIC                     = 0x01000000,
+    DEFAULT                    = 0x02000000,
   };
 
   PrefixedLogger log;
@@ -47,7 +51,7 @@ struct Lobby {
   uint32_t min_level;
   uint32_t max_level;
 
-  // item info
+  // Item info
   struct FloorItem {
     PlayerInventoryItem inv_item;
     float x;
@@ -61,7 +65,7 @@ struct Lobby {
   std::unordered_map<uint32_t, FloorItem> item_id_to_floor_item;
   parray<le_uint32_t, 0x20> variations;
 
-  // game config
+  // Game config
   GameVersion version;
   uint8_t section_id;
   uint8_t episode; // 1 = Ep1, 2 = Ep2, 3 = Ep4, 0xFF = Ep3
@@ -72,9 +76,26 @@ struct Lobby {
   uint32_t random_seed;
   std::shared_ptr<std::mt19937> random;
   std::shared_ptr<const CommonItemCreator> common_item_creator;
-  std::shared_ptr<Episode3::ServerBase> ep3_server_base;
 
-  // lobby stuff
+  // Ep3 stuff
+  // There are three kinds of Episode 3 games. All of these types have the flag
+  // EPISODE_3_ONLY; types 2 and 3 additionally have the IS_SPECTATOR_TEAM flag.
+  // 1. Primary games. These are the lobbies where battles may take place.
+  // 2. Watcher games. These lobbies receive all the battle and chat commands
+  //    from a primary game. (This the implementation of spectator teams.)
+  // 3. Replay games. These lobbies replay a sequence of battle commands and
+  //    chat commands from a previous primary game.
+  // Types 2 and 3 may be distinguished by the presence of the battle_record
+  // field - in replay games, it will be present; in watcher games it will be
+  // absent.
+  std::shared_ptr<Episode3::ServerBase> ep3_server_base; // Only used in primary games
+  std::weak_ptr<Lobby> watched_lobby; // Only used in watcher games
+  std::unordered_set<shared_ptr<Lobby>> watcher_lobbies; // Only used in primary games
+  std::shared_ptr<Episode3::BattleRecord> battle_record; // Not used in watcher games
+  std::shared_ptr<Episode3::BattleRecord> prev_battle_record; // Only used in primary games
+  std::shared_ptr<Episode3::BattleRecordPlayer> battle_player; // Only used in replay games
+
+  // Lobby stuff
   uint8_t event;
   uint8_t block;
   uint8_t type; // number to give to PSO for the lobby number

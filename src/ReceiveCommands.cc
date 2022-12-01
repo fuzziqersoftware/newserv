@@ -892,11 +892,15 @@ static void on_ep3_battle_table_confirm(shared_ptr<ServerState> s,
   }
 }
 
-static void on_ep3_counter_state(shared_ptr<ServerState>, shared_ptr<Client> c,
+static void on_ep3_counter_state(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t flag, const string& data) { // DC
   check_size_v(data.size(), 0);
+  auto l = s->find_lobby(c->lobby_id);
   if (flag != 0) {
     send_command(c, 0xDC, 0x00);
+    l->flags |= Lobby::Flag::BATTLE_IN_PROGRESS;
+  } else {
+    l->flags &= ~Lobby::Flag::BATTLE_IN_PROGRESS;
   }
 }
 
@@ -931,6 +935,29 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
         }
       }
       send_text_message_printf(l, "State seed: $C6%08" PRIX32, l->random_seed);
+    }
+
+    if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_RECORDING) {
+      if (l->battle_record) {
+        l->prev_battle_record = l->battle_record;
+        l->prev_battle_record->set_battle_end_timestamp();
+      }
+      l->battle_record.reset(new Episode3::BattleRecord(s->ep3_behavior_flags));
+      for (auto existing_c : l->clients) {
+        if (existing_c) {
+          PlayerLobbyDataDCGC lobby_data;
+          lobby_data.name = encode_sjis(existing_c->game_data.player()->disp.name);
+          lobby_data.player_tag = 0x00010000;
+          lobby_data.guild_card = existing_c->license->serial_number;
+          l->battle_record->add_player(lobby_data,
+              existing_c->game_data.player()->inventory,
+              existing_c->game_data.player()->disp.to_dcpcv3());
+        }
+      }
+      if (l->prev_battle_record) {
+        send_text_message(l, u"$C6Recording complete");
+      }
+      send_text_message(l, u"$C6Recording enabled");
     }
   }
   l->ep3_server_base->server->on_server_data_input(data);
@@ -1104,6 +1131,12 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
           info += "$C6Quest in progress";
         } else if (game->flags & Lobby::Flag::QUEST_IN_PROGRESS) {
           info += "$C4Quest in progress";
+        } else if (game->flags & Lobby::Flag::BATTLE_IN_PROGRESS) {
+          info += "$C4Battle in progress";
+        }
+
+        if (game->flags & Lobby::Flag::SPECTATORS_FORBIDDEN) {
+          info += "$C4View Battle forbidden";
         }
 
         send_ship_info(c, decode_sjis(info));
@@ -1348,6 +1381,10 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
       if (game->flags & Lobby::Flag::QUEST_IN_PROGRESS) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because a\nquest is already\nin progress.");
+        break;
+      }
+      if (game->flags & Lobby::Flag::BATTLE_IN_PROGRESS) {
+        send_lobby_message_box(c, u"$C6You cannot join this\ngame because a\nbattle is already\nin progress.");
         break;
       }
       if (game->any_client_loading()) {
@@ -1927,6 +1964,14 @@ static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
         c->game_data.player()->disp.name.data(), processed_text.c_str(),
         private_flags);
   }
+
+  if (l->battle_record && l->battle_record->battle_in_progress()) {
+    auto prepared_message = prepare_chat_message(
+        c->version(), c->game_data.player()->disp.name.data(),
+        processed_text.c_str(), private_flags);
+    string prepared_message_sjis = encode_sjis(prepared_message);
+    l->battle_record->add_chat_message(c->license->serial_number, move(prepared_message_sjis));
+  }
 }
 
 static void on_chat_pc_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -2445,6 +2490,10 @@ static shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
 
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
+  game->flags = flags |
+      Lobby::Flag::GAME |
+      (is_ep3 ? Lobby::Flag::EPISODE_3_ONLY : 0) |
+      (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0);
   game->password = password;
   game->version = c->version();
   game->section_id = c->override_section_id >= 0
@@ -2455,16 +2504,17 @@ static shared_ptr<Lobby> create_game_generic(shared_ptr<ServerState> s,
     game->random_seed = c->override_random_seed;
     game->random->seed(game->random_seed);
   }
+  if (c->next_game_battle_record) {
+    game->battle_player.reset(new Episode3::BattleRecordPlayer(
+        c->next_game_battle_record, s->game_server->get_base(), game));
+    c->next_game_battle_record.reset();
+    game->flags |= Lobby::Flag::IS_SPECTATOR_TEAM;
+  }
   game->common_item_creator.reset(new CommonItemCreator(
       s->common_item_data, game->random));
   game->event = Lobby::game_event_for_lobby_event(current_lobby->event);
   game->block = 0xFF;
-  game->max_clients = 4;
-  game->flags =
-      (is_ep3 ? Lobby::Flag::EPISODE_3_ONLY : 0) |
-      (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0) |
-      Lobby::Flag::GAME |
-      flags;
+  game->max_clients = (game->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 12 : 4;
   game->min_level = min_level;
   game->max_level = 0xFFFFFFFF;
 
@@ -2555,8 +2605,8 @@ static void on_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c
   const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
 
   // Only allow EC from Ep3 clients
-  bool client_is_ep3 = c->flags & Client::Flag::IS_EPISODE_3;
-  if ((command == 0xEC) && !client_is_ep3) {
+  bool client_is_ep3 = !!(c->flags & Client::Flag::IS_EPISODE_3);
+  if ((command == 0xEC) != client_is_ep3) {
     return;
   }
 
@@ -2581,7 +2631,11 @@ static void on_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c
     flags |= Lobby::Flag::BATTLE_MODE;
   }
   if (cmd.challenge_mode) {
-    flags |= Lobby::Flag::CHALLENGE_MODE;
+    if (client_is_ep3) {
+      flags |= Lobby::Flag::SPECTATORS_FORBIDDEN;
+    } else {
+      flags |= Lobby::Flag::CHALLENGE_MODE;
+    }
   }
   create_game_generic(
       s, c, name.c_str(), password.c_str(), episode, cmd.difficulty, flags);

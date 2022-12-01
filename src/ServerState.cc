@@ -156,6 +156,14 @@ void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
       send_player_join_notification(other_client, l, joining_client);
     }
   }
+  for (auto& watcher_l : l->watcher_lobbies) {
+    for (auto& watcher_c : watcher_l->clients) {
+      if (!watcher_c) {
+        continue;
+      }
+      send_player_join_notification(watcher_c, watcher_l, joining_client);
+    }
+  }
 }
 
 shared_ptr<Lobby> ServerState::find_lobby(uint32_t lobby_id) {
@@ -184,7 +192,33 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
   if (lobby_it == this->id_to_lobby.end()) {
     throw logic_error("attempted to remove nonexistent lobby");
   }
-  lobby_it->second->log.info("Deleted lobby");
+
+  auto l = lobby_it->second;
+  if (l->count_clients() != 0) {
+    throw logic_error("attempted to delete lobby with clients in it");
+  }
+
+  if (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
+    auto primary_l = l->watched_lobby.lock();
+    if (primary_l) {
+      primary_l->log.info("Unlinking watcher lobby %" PRIX32, l->lobby_id);
+      primary_l->watcher_lobbies.erase(l);
+    } else {
+      l->log.info("Watched lobby is missing");
+    }
+    l->watched_lobby.reset();
+  } else {
+    // Tell all players in all spectator teams to go back to the lobby
+    for (auto watcher_l : l->watcher_lobbies) {
+      if (!(watcher_l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+        throw logic_error("spectator team is not an Episode 3 lobby");
+      }
+      l->log.info("Disbanding watcher lobby %" PRIX32, watcher_l->lobby_id);
+      send_command(watcher_l, 0xED, 0x00);
+    }
+  }
+
+  l->log.info("Deleted lobby");
   this->id_to_lobby.erase(lobby_it);
 }
 

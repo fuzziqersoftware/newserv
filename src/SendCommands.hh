@@ -173,11 +173,32 @@ void send_text_message(Channel& ch, const std::u16string& text);
 void send_text_message(std::shared_ptr<Client> c, const std::u16string& text);
 void send_text_message(std::shared_ptr<Lobby> l, const std::u16string& text);
 void send_text_message(std::shared_ptr<ServerState> l, const std::u16string& text);
+
+std::u16string prepare_chat_message(
+    GameVersion version,
+    const std::u16string& from_name,
+    const std::u16string& text,
+    char private_flags);
 void send_chat_message(Channel& ch, const std::u16string& text);
-void send_chat_message(std::shared_ptr<Client> c, uint32_t from_serial_number,
-    const std::u16string& from_name, const std::u16string& text, char private_flags);
-void send_simple_mail(std::shared_ptr<Client> c, uint32_t from_serial_number,
-    const std::u16string& from_name, const std::u16string& text);
+void send_chat_message(
+    std::shared_ptr<Client> c,
+    uint32_t from_guild_card_number,
+    const std::u16string& prepared_data);
+void send_chat_message(
+    std::shared_ptr<Lobby> l,
+    uint32_t from_guild_card_number,
+    const std::u16string& prepared_data);
+void send_chat_message(
+    std::shared_ptr<Client> c,
+    uint32_t from_guild_card_number,
+    const std::u16string& from_name,
+    const u16string& text,
+    char private_flags);
+void send_simple_mail(
+    std::shared_ptr<Client> c,
+    uint32_t from_serial_number,
+    const std::u16string& from_name,
+    const std::u16string& text);
 
 template <typename TargetT>
 __attribute__((format(printf, 2, 3))) void send_text_message_printf(

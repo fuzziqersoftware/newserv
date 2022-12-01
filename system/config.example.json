@@ -262,6 +262,9 @@
   // 0x00000020 => Load card text as well as card definitions (has no behavioral
   //               effects; this flag exists to be used internally when the
   //               --show-ep3-data option is given)
+  // 0x00000040 => Enable battle recording (after a battle, players can save the
+  //               recording with the $saverec <filename> command)
+  // 0x00000080 => Enable command masking during battles
   "Episode3BehaviorFlags": 0x00000002,
 
   // Episode 3 card auction configuration. CardAuctionPoints specifies how many
