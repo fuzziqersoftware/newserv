@@ -573,15 +573,28 @@ struct DeckDefinition {
 
 struct PlayerConfig {
   // Offsets in comments in this struct are relative to start of 61/98 command
-  /* 0728 */ parray<uint8_t, 0x1434> unknown_a1;
+  /* 0728 */ parray<uint8_t, 0x154> unknown_a1;
+  /* 087C */ uint8_t is_encrypted;
+  /* 087D */ uint8_t basis;
+  /* 087E */ parray<uint8_t, 2> unknown_a3;
+  // The following fields (here through the beginning of decks) are encrypted
+  // using the trivial algorithm, with the basis specified above, if
+  // is_encrypted is equal to 1.
+  /* 0880 */ parray<uint8_t, 0x2F0> card_counts;
+  /* 0B70 */ parray<uint8_t, 0xF8> unknown_a4;
+  /* 0C9A */ parray<be_uint16_t, 50> unknown_a5;
+  // This field appears to be doubly-encrypted, likely with the same trivial
+  // algorithm (but not the same basis).
+  /* 0CCC */ parray<uint8_t, 0x70> unknown_a6;
+  /* 0D3C */ parray<uint8_t, 0xE20> unknown_a7;
   /* 1B5C */ parray<DeckDefinition, 25> decks;
-  /* 2840 */ uint64_t unknown_a2;
+  /* 2840 */ uint64_t unknown_a8;
   /* 2848 */ be_uint32_t offline_clv_exp; // CLvOff = this / 100
   /* 284C */ be_uint32_t online_clv_exp; // CLvOn = this / 100
-  /* 2850 */ parray<uint8_t, 0x14C> unknown_a3;
+  /* 2850 */ parray<uint8_t, 0x14C> unknown_a9;
   /* 299C */ ptext<char, 0x10> name;
   // Other records are probably somewhere in here - e.g. win/loss, play time, etc.
-  /* 29AC */ parray<uint8_t, 0xCC> unknown_a4;
+  /* 29AC */ parray<uint8_t, 0xCC> unknown_a10;
 } __attribute__((packed));
 
 enum class HPType : uint8_t {
