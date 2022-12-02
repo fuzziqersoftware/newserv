@@ -296,7 +296,9 @@ The options are:\n\
       file formats.\n\
   --decrypt-trivial-data\n\
       Decrypt (or encrypt - the algorithm is symmetric) data using the Episode\n\
-      3 trivial algorithm. --seed should be specified as one hex byte.\n\
+      3 trivial algorithm. --seed should be specified as one hex byte. If\n\
+      --seed is not given, newserv will truy all possible seeds and return the\n\
+      one that results in the greatest number of zero bytes in the output.\n\
   --find-decryption-seed\n\
       Perform a brute-force search for a decryption seed of the given data.\n\
       The ciphertext is specified with the --encrypted= option and the expected\n\
@@ -636,8 +638,30 @@ int main(int argc, char** argv) {
     }
 
     case Behavior::DECRYPT_TRIVIAL_DATA: {
-      uint8_t basis = stoul(seed, nullptr, 16);
       string data = read_input_data();
+      uint8_t basis;
+      if (seed.empty()) {
+        uint8_t best_seed = 0x00;
+        size_t best_seed_score = 0;
+        for (size_t z = 0; z < 0x100; z++) {
+          string decrypted = data;
+          decrypt_trivial_gci_data(decrypted.data(), decrypted.size(), z);
+          size_t score = 0;
+          for (size_t x = 0; x < decrypted.size(); x++) {
+            if (decrypted[x] == '\0') {
+              score++;
+            }
+          }
+          if (score > best_seed_score) {
+            best_seed = z;
+            best_seed_score = score;
+          }
+        }
+        fprintf(stderr, "Basis appears to be %02hhX\n", best_seed);
+        basis = best_seed;
+      } else {
+        basis = stoul(seed, nullptr, 16);
+      }
       decrypt_trivial_gci_data(data.data(), data.size(), basis);
       write_output_data(data.data(), data.size());
       break;
