@@ -1857,7 +1857,7 @@ void send_ep3_media_update(
 // sends the client a generic rank
 void send_ep3_rank_update(shared_ptr<Client> c) {
   S_RankUpdate_GC_Ep3_B7 cmd = {
-      0, "\0\0\0\0\0\0\0\0\0\0\0", 0x00FFFFFF, 0x00FFFFFF, 0xFFFFFFFF};
+      0, "\0\0\0\0\0\0\0\0\0\0\0", 1000000, 1000000, 0xFFFFFFFF};
   send_command_t(c, 0xB7, 0x00, cmd);
 }
 

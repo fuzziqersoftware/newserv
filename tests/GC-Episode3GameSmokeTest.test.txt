@@ -1890,7 +1890,7 @@ I 13136 2022-11-27 21:06:32 - [Commands] Sending to C-5 (version=GC command=04 f
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:06:32 - [Commands] Sending to C-5 (version=GC command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
-0010 | 00 00 00 00 FF FF FF 00 FF FF FF 00 FF FF FF FF |                 
+0010 | 00 00 00 00 40 42 0F 00 40 42 0F 00 FF FF FF FF |     @B  @B      
 I 13136 2022-11-27 21:06:32 - [Commands] Sending to C-5 (version=GC command=D5 flag=00)
 0000 | D5 00 2C 00 59 6F 75 20 61 72 65 20 63 6F 6E 6E |   , You are conn
 0010 | 65 63 74 65 64 20 74 6F 20 09 43 36 41 6C 65 78 | ected to  C6Alex
@@ -4742,7 +4742,7 @@ I 13136 2022-11-27 21:07:56 - [Commands] Sending to C-7 (version=GC command=04 f
 0020 | FF FF FF FF FF FF FF FF FF FF FF FF             |                 
 I 13136 2022-11-27 21:07:56 - [Commands] Sending to C-7 (version=GC command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |                 
-0010 | 00 00 00 00 FF FF FF 00 FF FF FF 00 FF FF FF FF |                 
+0010 | 00 00 00 00 40 42 0F 00 40 42 0F 00 FF FF FF FF |     @B  @B      
 I 13136 2022-11-27 21:07:56 - [Commands] Sending to C-7 (version=GC command=07 flag=05)
 0000 | 07 05 AC 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria        

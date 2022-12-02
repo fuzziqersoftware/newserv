@@ -175,7 +175,7 @@ struct C_Login_Patch_04 {
 // 06 (S->C): Open file for writing
 
 struct S_OpenFile_Patch_06 {
-  le_uint32_t unknown = 0;
+  le_uint32_t unknown_a1 = 0;
   le_uint32_t size = 0;
   ptext<char, 0x30> filename;
 } __packed__;
@@ -339,7 +339,7 @@ struct S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B {
 struct C_LegacyLogin_PC_V3_03 {
   le_uint64_t unused = 0; // Same as unused field in 9D/9E
   le_uint32_t sub_version = 0;
-  uint8_t unknown_a1 = 0;
+  uint8_t is_extended = 0;
   uint8_t language = 0; // Same as 9D/9E
   le_uint16_t unknown_a2 = 0;
   // Note: These are suffixed with 2 since they come from the same source data
@@ -386,7 +386,7 @@ struct S_ServerInitWithAfterMessage_BB_03_9B {
 struct C_LegacyLogin_PC_V3_04 {
   le_uint64_t unused1 = 0; // Same as unused field in 9D/9E
   le_uint32_t sub_version = 0;
-  uint8_t unknown_a1 = 0;
+  uint8_t is_extended = 0;
   uint8_t language = 0; // Same as 9D/9E
   le_uint16_t unknown_a2 = 0;
   ptext<char, 0x10> serial_number;
@@ -543,7 +543,7 @@ struct C_MenuItemInfoRequest_09 {
 
 struct S_Unknown_PC_0E {
   parray<uint8_t, 0x08> unknown_a1;
-  parray<uint8_t, 0x18> unknown_a2[4];
+  parray<parray<uint8_t, 0x18>, 4> unknown_a2;
   parray<uint8_t, 0x18> unknown_a3;
 } __packed__;
 
@@ -554,7 +554,7 @@ struct S_Unknown_GC_0E {
     le_uint16_t unknown_a2 = 0;
     le_uint32_t unknown_a3 = 0;
   } __packed__;
-  UnknownA0 unknown_a0[8];
+  parray<UnknownA0, 8> unknown_a0;
   le_uint32_t unknown_a1 = 0;
   parray<uint8_t, 0x20> unknown_a2;
   parray<uint8_t, 4> unknown_a3;
@@ -1255,8 +1255,8 @@ struct C_ConnectionInfo_DCNTE_8A {
 // Contents is a string (char16_t on PC/BB, char on DC/V3) containing the lobby
 // or game name. The client generally only sends this immediately after joining
 // a game, but Sega's servers also replied to it if it was sent in a lobby. They
-// would return a string like "LOBBY01" even though this would never be used
-// under normal circumstances.
+// would return a string like "LOBBY01" in that case even though this would
+// never be used under normal circumstances.
 
 // 8B: Log in (DC NTE only)
 
@@ -1313,7 +1313,7 @@ struct C_LoginV1_DC_PC_V3_90 {
 
 struct C_RegisterV1_DC_92 {
   parray<uint8_t, 0x0C> unknown_a1;
-  uint8_t unknown_a2 = 0;
+  uint8_t is_extended = 0; // TODO: This is a guess
   uint8_t language = 0; // TODO: This is a guess; verify it
   parray<uint8_t, 2> unknown_a3;
   ptext<char, 0x10> hardware_id;
@@ -1599,8 +1599,8 @@ struct C_LoginExtended_BB_9E {
 
 // A0 (C->S): Change ship
 // This structure is for documentation only; newserv ignores the arguments here.
-// TODO: This structore is valid for GC clients; check if this command has the
-// same arguments on DC/PC.
+// TODO: This structure is valid for GC clients; check if this command has the
+// same arguments on other versions.
 
 struct C_ChangeShipOrBlock_A0_A1 {
   le_uint32_t player_tag = 0x00010000;
@@ -1612,7 +1612,7 @@ struct C_ChangeShipOrBlock_A0_A1 {
 // Same as 07 command.
 
 // A1 (C->S): Change block
-// Same format as A0. Like with A0, newserv ignores the arguments.
+// Same format as A0. As with A0, newserv ignores the arguments.
 
 // A1 (S->C): Block select menu
 // Same as 07 command.
@@ -1675,19 +1675,19 @@ struct S_QuestMenuEntry_BB_A2_A4 : S_QuestMenuEntry<char16_t, 0x7A> { } __packed
 // No arguments
 // This command is sent when the in-game quest menu (A2) is closed. When the
 // download quest menu is closed, either by downloading a quest or canceling,
-// the client sends A0 instead. The existance of the A0 response on the download
+// the client sends A0 instead. The existence of the A0 response on the download
 // case makes sense, because the client may not be in a lobby and the server may
 // need to send another menu or redirect the client. But for the online quest
 // menu, the client is already in a game and can move normally after canceling
 // the quest menu, so it's not obvious why A9 is needed at all. newserv (and
 // probably all other private servers) ignores it.
-// Curiously, PSO GC sends uninitialized data in the flag argument.
+// Curiously, PSO GC sends uninitialized data in header.flag.
 
 // AA (C->S): Update quest statistics (V3/BB)
 // This command is used in Maximum Attack 2, but its format is unlikely to be
 // specific to that quest. The structure here represents the only instance I've
 // seen so far.
-// The server will respond with an AB command.
+// The server should respond with an AB command.
 // This command is likely never sent by PSO GC Episodes 1&2 Trial Edition,
 // because the following command (AB) is definitely not valid on that version.
 
@@ -1745,7 +1745,7 @@ struct S_ConfirmUpdateQuestStatistics_V3_BB_AB {
 // It seems the client ignores the date part and the milliseconds part; only the
 // hour, minute, and second fields are actually used.
 // This command can be sent even if it's not requested by the client (with B1).
-// For example, some servers send this every time a client joins a game.
+// For example, some servers send this command every time a client joins a game.
 // Client will respond with a 99 command.
 
 // B2 (S->C): Execute code and/or checksum memory
@@ -2033,8 +2033,8 @@ struct S_ChoiceSearchResultEntry_V3_C4 {
 // newserv currently doesn't send this command at all because the V3 and
 // BB formats aren't fully documented.
 // TODO: Figure out where the text is in those formats, write appropriate
-// conversion functions, and implement the command. Don't forget to override the
-// client_id field in each entry before sending.
+// conversion functions, and implement the command. Don't forget to overwrite
+// the client_id field in each entry before sending.
 
 // C6 (C->S): Set blocked senders list (V3/BB)
 // The command always contains the same number of entries, even if the entries
@@ -5367,8 +5367,8 @@ struct G_EndTurn_GC_Ep3_6xB3x48_CAx48 {
 
 // 6xB3x49 / CAx49: Card counts
 // This command is sent when a client joins a game, but it is completely ignored
-// by the server. (Not just newserv - the server implementation within Episode 3
-// itself also ignores this command.) Sega presumably could have used this to
+// by the original Episode 3 server. (newserv, however, uses this for deck
+// verification at battle start time.) Sega presumably could have used this to
 // detect the presence of unreleased cards to ban cheaters, but the effects of
 // the non-saveable Have All Cards AR code don't appear in this data, so this
 // would have been ineffective.
