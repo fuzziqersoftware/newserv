@@ -294,6 +294,9 @@ The options are:\n\
       non-BB ciphers, the --big-endian option applies the cipher masks as\n\
       big-endian instead of little-endian, which is necessary for some GameCube\n\
       file formats.\n\
+  --decrypt-trivial-data\n\
+      Decrypt (or encrypt - the algorithm is symmetric) data using the Episode\n\
+      3 trivial algorithm. --seed should be specified as one hex byte.\n\
   --find-decryption-seed\n\
       Perform a brute-force search for a decryption seed of the given data.\n\
       The ciphertext is specified with the --encrypted= option and the expected\n\
