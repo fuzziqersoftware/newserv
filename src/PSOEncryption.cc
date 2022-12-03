@@ -837,6 +837,35 @@ shared_ptr<PSOBBEncryption> PSOBBMultiKeyImitatorEncryption::ensure_crypt() {
 
 
 
+JSD0Encryption::JSD0Encryption(const void* seed, size_t seed_size) : key(0) {
+  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(seed);
+  for (size_t z = 0; z < seed_size; z++) {
+    this->key ^= bytes[z];
+  }
+}
+
+void JSD0Encryption::decrypt(void* data, size_t size, bool) {
+  uint8_t* bytes = reinterpret_cast<uint8_t*>(data);
+  for (size_t z = 0; z < size; z++) {
+    bytes[z] ^= this->key;
+    bytes[z] -= this->key;
+  }
+}
+
+void JSD0Encryption::encrypt(void* data, size_t size, bool) {
+  uint8_t* bytes = reinterpret_cast<uint8_t*>(data);
+  for (size_t z = 0; z < size; z++) {
+    bytes[z] += this->key;
+    bytes[z] ^= this->key;
+  }
+}
+
+PSOEncryption::Type JSD0Encryption::type() const {
+  return Type::JSD0;
+}
+
+
+
 void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis) {
   uint8_t* bytes = reinterpret_cast<uint8_t*>(data);
   uint8_t key = basis + 0x80;

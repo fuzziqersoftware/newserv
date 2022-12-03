@@ -18,6 +18,7 @@ public:
     V2 = 0,
     V3,
     BB,
+    JSD0,
   };
 
   virtual ~PSOEncryption() = default;
@@ -225,6 +226,21 @@ protected:
   std::shared_ptr<PSOBBEncryption> active_crypt;
   std::string seed;
   bool jsd1_use_detector_seed;
+};
+
+
+
+class JSD0Encryption : public PSOEncryption {
+public:
+  JSD0Encryption(const void* seed, size_t seed_size);
+
+  virtual void encrypt(void* data, size_t size, bool advance = true);
+  virtual void decrypt(void* data, size_t size, bool advance = true);
+
+  virtual Type type() const = 0;
+
+private:
+  uint8_t key;
 };
 
 
