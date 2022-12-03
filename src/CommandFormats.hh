@@ -2383,17 +2383,18 @@ struct S_TournamentEntryList_GC_Ep3_E2 {
 
 struct S_TournamentInfo_GC_Ep3_E3 {
   struct Entry {
-    le_uint16_t unknown_a1 = 0;
-    le_uint16_t unknown_a2 = 0;
+    le_uint16_t win_count = 0;
+    le_uint16_t is_active = 0;
     ptext<char, 0x20> team_name;
   } __packed__;
   ptext<char, 0x20> name;
   ptext<char, 0x20> map_name;
+  parray<uint8_t, 4> unknown_a1;
   Episode3::Rules rules;
   parray<Entry, 0x20> entries;
-  parray<uint8_t, 0xE4> unknown_a2;
+  parray<uint8_t, 0xE0> unknown_a2;
   le_uint16_t max_entries = 0;
-  le_uint16_t unknown_a3 = 0;
+  le_uint16_t unknown_a3 = 1;
   le_uint16_t unknown_a4 = 0;
   le_uint16_t unknown_a5 = 0;
   parray<uint8_t, 0x180> unknown_a6;
