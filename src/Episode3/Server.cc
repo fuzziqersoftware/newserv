@@ -1528,7 +1528,7 @@ void Server::handle_6xB3x0B_mulligan_hand(const string& data) {
   }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.sequence_num.load();
+  out_cmd.sequence_num = in_cmd.header.sequence_num.load();
   out_cmd.error_code = error_code;
   this->send(out_cmd);
 
@@ -1551,7 +1551,7 @@ void Server::handle_6xB3x0C_end_mulligan_phase(const string& data) {
   }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd_ack;
-  out_cmd_ack.sequence_num = in_cmd.sequence_num;
+  out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
   out_cmd_ack.response_phase = 1;
   this->send(out_cmd_ack);
 
@@ -1579,7 +1579,7 @@ void Server::handle_6xB3x0C_end_mulligan_phase(const string& data) {
   }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd_fin;
-  out_cmd_fin.sequence_num = in_cmd.sequence_num;
+  out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
   out_cmd_fin.response_phase = 2;
   out_cmd_fin.error_code = error_code;
   this->send(out_cmd_fin);
@@ -1591,14 +1591,14 @@ void Server::handle_6xB3x0D_end_non_action_phase(const string& data) {
       in_cmd.client_id, in_cmd.header.subsubcommand, "END PHASE");
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd_ack;
-  out_cmd_ack.sequence_num = in_cmd.sequence_num;
+  out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
   out_cmd_ack.response_phase = 1;
   this->send(out_cmd_ack);
 
   this->set_client_id_ready_to_advance_phase(in_cmd.client_id);
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd_fin;
-  out_cmd_fin.sequence_num = in_cmd.sequence_num;
+  out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
   out_cmd_fin.response_phase = 2;
   this->send(out_cmd_fin);
 }
@@ -1632,7 +1632,7 @@ void Server::handle_6xB3x0E_discard_card_from_hand(const string& data) {
   }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.sequence_num;
+  out_cmd.sequence_num = in_cmd.header.sequence_num;
   out_cmd.error_code = error_code;
   this->send(out_cmd);
 
@@ -1671,7 +1671,7 @@ void Server::handle_6xB3x0F_set_card_from_hand(const string& data) {
   }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.sequence_num;
+  out_cmd.sequence_num = in_cmd.header.sequence_num;
   out_cmd.error_code = this->ruler_server->error_code1;
   this->send(out_cmd);
 
@@ -1706,7 +1706,7 @@ void Server::handle_6xB3x10_move_fc_to_location(const string& data) {
   }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.sequence_num;
+  out_cmd.sequence_num = in_cmd.header.sequence_num;
   out_cmd.error_code = this->ruler_server->error_code2;
   this->send(out_cmd);
 
@@ -1739,7 +1739,7 @@ void Server::handle_6xB3x11_enqueue_attack_or_defense(const string& data) {
   }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.sequence_num;
+  out_cmd.sequence_num = in_cmd.header.sequence_num;
   out_cmd.error_code = this->ruler_server->error_code3;
   this->send(out_cmd);
 
@@ -1760,7 +1760,7 @@ void Server::handle_6xB3x12_end_attack_list(const string& data) {
   }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.sequence_num;
+  out_cmd.sequence_num = in_cmd.header.sequence_num;
   this->send(out_cmd);
 }
 
@@ -1842,7 +1842,7 @@ void Server::handle_6xB3x14_update_deck_during_setup(const string& data) {
 }
 
 void Server::handle_6xB3x15_unused_hard_reset_server_state(const string& data) {
-  const auto& in_cmd = check_size_t<G_HardResetServerState_GC_Ep3_6xB3x15>(data);
+  const auto& in_cmd = check_size_t<G_HardResetServerState_GC_Ep3_6xB3x15_CAx15>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "HARD RESET");
   this->hard_reset_flag = true;
@@ -1912,7 +1912,7 @@ void Server::handle_6xB3x28_end_defense_list(const string& data) {
       in_cmd.client_id, in_cmd.header.subsubcommand, "END DEF LIST");
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd_ack;
-  out_cmd_ack.sequence_num = in_cmd.sequence_num;
+  out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
   out_cmd_ack.response_phase = 1;
   this->send(out_cmd_ack);
 
@@ -1951,7 +1951,7 @@ void Server::handle_6xB3x28_end_defense_list(const string& data) {
   }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd_fin;
-  out_cmd_fin.sequence_num = in_cmd.sequence_num;
+  out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
   out_cmd_fin.response_phase = 2;
   this->send(out_cmd_fin);
 }
@@ -2036,7 +2036,7 @@ void Server::handle_6xB3x34_subtract_ally_atk_points(const string& data) {
 }
 
 void Server::handle_6xB3x37_client_ready_to_advance_from_starter_roll_phase(const string& data) {
-  const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37>(data);
+  const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37_CAx37>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 1");
 
@@ -2120,7 +2120,7 @@ void Server::handle_6xB3x48_end_turn(const string& data) {
   }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.sequence_num;
+  out_cmd.sequence_num = in_cmd.header.sequence_num;
   this->send(out_cmd);
 }
 

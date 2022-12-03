@@ -4384,6 +4384,21 @@ struct G_CardBattleCommandHeader {
   uint8_t unused2 = 0x00;
 } __packed__;
 
+struct G_CardServerDataCommandHeader {
+  uint8_t subcommand = 0x00;
+  uint8_t size = 0x00;
+  le_uint16_t unused1 = 0x00;
+  uint8_t subsubcommand = 0x00; // See 6xBx subcommand table (after this table)
+  uint8_t sender_client_id = 0x00;
+  // If mask_key is nonzero, the remainder of the data (after unused2 in this
+  // struct) is encrypted using a simple algorithm, which is implemented in
+  // set_mask_for_ep3_game_command in SendCommands.cc.
+  uint8_t mask_key = 0x00;
+  uint8_t unused2 = 0x00;
+  be_uint32_t sequence_num;
+  be_uint32_t context_token;
+} __packed__;
+
 // 6xB4: Unknown (XBOX)
 // 6xB4: CARD battle command (Episode 3) - see 6xB3 (above)
 // 6xB5: CARD battle command (Episode 3) - see 6xB3 (above)
@@ -4489,6 +4504,9 @@ struct G_Unknown_GC_Ep3_6xBB {
 // 6xBB: BB bank request (handled by the server)
 
 // 6xBC: Unknown (Episode 3)
+// It's possible that this was an early, now-unused implementation of the CAx49
+// command. When the client receives this command, it copies the data into a
+// globally-allocated array, but nothing ever reads from this array.
 
 struct G_Unknown_GC_Ep3_6xBC {
   G_UnusedHeader header;
@@ -4739,43 +4757,25 @@ struct G_SetActionState_GC_Ep3_6xB4x09 {
   Episode3::ActionState state;
 } __packed__;
 
-// 6xB4x0A: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB4x0A: Update action chain and metadata
+// This command seems to be unused; Sega's server implementation never sent it.
 
-struct G_Unknown_GC_Ep3_6xB4x0A {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_GC_Ep3_6xB4x0A) / 4, 0, 0x0A, 0, 0, 0};
+struct G_UpdateActionChainAndMetadata_GC_Ep3_6xB4x0A {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_UpdateActionChainAndMetadata_GC_Ep3_6xB4x0A) / 4, 0, 0x0A, 0, 0, 0};
   le_uint16_t client_id = 0;
-  int8_t unknown_a1 = 0; // must be between -1 and 8 inclusive
-  uint8_t unknown_a2 = 0;
-
-  parray<uint8_t, 4> unknown_a3;
-  le_uint16_t unknown_a4 = 0;
-  le_uint16_t unknown_a5 = 0;
-  parray<le_uint16_t, 8> unknown_a6;
-  parray<uint8_t, 0x0C> unknown_a7;
-  le_uint32_t unknown_a8 = 0;
-  parray<le_uint16_t, 0x24> unknown_a9;
-  struct Entry {
-    parray<uint8_t, 6> unknown_a1;
-    parray<le_uint16_t, 3> unknown_a2;
-    parray<uint8_t, 4> unknown_a3;
-  } __packed__;
-  parray<Entry, 9> entries;
-
-  le_uint16_t unknown_a10 = 0;
-  parray<uint8_t, 6> unknown_a11;
-  le_uint32_t unknown_a12 = 0;
-  parray<le_uint16_t, 0x24> unknown_a13;
-  parray<le_uint16_t, 8> unknown_a14;
-  parray<le_uint16_t, 8> unknown_a15;
+  // set_index must be 0xFF, or be in the range [0, 9]. If it's 0xFF, all nine
+  // chains and metadata are cleared for the client; otherwise, the provided
+  // chain and metadata are copied into the slot specified by set_index.
+  int8_t set_index = 0;
+  uint8_t unused = 0;
+  Episode3::ActionChainWithConds chain;
+  Episode3::ActionMetadata metadata;
 } __packed__;
 
 // 6xB3x0B / CAx0B: Redraw initial hand (immediately before battle)
 
 struct G_RedrawInitialHand_GC_Ep3_6xB3x0B_CAx0B {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_RedrawInitialHand_GC_Ep3_6xB3x0B_CAx0B) / 4, 0, 0x0B, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  parray<uint8_t, 4> unused1;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_RedrawInitialHand_GC_Ep3_6xB3x0B_CAx0B) / 4, 0, 0x0B, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   parray<uint8_t, 2> unused2;
 } __packed__;
@@ -4783,9 +4783,7 @@ struct G_RedrawInitialHand_GC_Ep3_6xB3x0B_CAx0B {
 // 6xB3x0C / CAx0C: End initial redraw phase
 
 struct G_EndInitialRedrawPhase_GC_Ep3_6xB3x0C_CAx0C {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_EndInitialRedrawPhase_GC_Ep3_6xB3x0C_CAx0C) / 4, 0, 0x0C, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  parray<uint8_t, 4> unused1;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndInitialRedrawPhase_GC_Ep3_6xB3x0C_CAx0C) / 4, 0, 0x0C, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   parray<uint8_t, 2> unused2;
 } __packed__;
@@ -4793,9 +4791,7 @@ struct G_EndInitialRedrawPhase_GC_Ep3_6xB3x0C_CAx0C {
 // 6xB3x0D / CAx0D: End non-attack phase
 
 struct G_EndNonAttackPhase_GC_Ep3_6xB3x0D_CAx0D {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_EndNonAttackPhase_GC_Ep3_6xB3x0D_CAx0D) / 4, 0, 0x0D, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  parray<uint8_t, 4> unused1;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndNonAttackPhase_GC_Ep3_6xB3x0D_CAx0D) / 4, 0, 0x0D, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   parray<le_uint16_t, 5> unused2;
 } __packed__;
@@ -4803,9 +4799,7 @@ struct G_EndNonAttackPhase_GC_Ep3_6xB3x0D_CAx0D {
 // 6xB3x0E / CAx0E: Discard card from hand
 
 struct G_DiscardCardFromHand_GC_Ep3_6xB3x0E_CAx0E {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_DiscardCardFromHand_GC_Ep3_6xB3x0E_CAx0E) / 4, 0, 0x0E, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  parray<uint8_t, 4> unused;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_DiscardCardFromHand_GC_Ep3_6xB3x0E_CAx0E) / 4, 0, 0x0E, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   le_uint16_t card_ref = 0xFFFF;
 } __packed__;
@@ -4813,9 +4807,7 @@ struct G_DiscardCardFromHand_GC_Ep3_6xB3x0E_CAx0E {
 // 6xB3x0F / CAx0F: Set card from hand
 
 struct G_SetCardFromHand_GC_Ep3_6xB3x0F_CAx0F {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_SetCardFromHand_GC_Ep3_6xB3x0F_CAx0F) / 4, 0, 0x0F, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  parray<uint8_t, 4> unused;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetCardFromHand_GC_Ep3_6xB3x0F_CAx0F) / 4, 0, 0x0F, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   le_uint16_t card_ref = 0xFFFF;
   le_uint16_t set_index = 0;
@@ -4826,9 +4818,7 @@ struct G_SetCardFromHand_GC_Ep3_6xB3x0F_CAx0F {
 // 6xB3x10 / CAx10: Move field character
 
 struct G_MoveFieldCharacter_GC_Ep3_6xB3x10_CAx10 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_MoveFieldCharacter_GC_Ep3_6xB3x10_CAx10) / 4, 0, 0x10, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  parray<uint8_t, 4> unused;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MoveFieldCharacter_GC_Ep3_6xB3x10_CAx10) / 4, 0, 0x10, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   le_uint16_t set_index = 0;
   Episode3::Location loc;
@@ -4837,9 +4827,7 @@ struct G_MoveFieldCharacter_GC_Ep3_6xB3x10_CAx10 {
 // 6xB3x11 / CAx11: Enqueue attack or defense
 
 struct G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11) / 4, 0, 0x11, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  parray<uint8_t, 4> unused1;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11) / 4, 0, 0x11, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   parray<uint8_t, 2> unused2;
   Episode3::ActionState entry;
@@ -4848,9 +4836,7 @@ struct G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11 {
 // 6xB3x12 / CAx12: End attack list
 
 struct G_EndAttackList_GC_Ep3_6xB3x12_CAx12 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_EndAttackList_GC_Ep3_6xB3x12_CAx12) / 4, 0, 0x12, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  parray<uint8_t, 4> unused1;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndAttackList_GC_Ep3_6xB3x12_CAx12) / 4, 0, 0x12, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   parray<uint8_t, 2> unused2;
 } __packed__;
@@ -4858,8 +4844,7 @@ struct G_EndAttackList_GC_Ep3_6xB3x12_CAx12 {
 // 6xB3x13 / CAx13: Set map state during setup
 
 struct G_SetMapState_GC_Ep3_6xB3x13_CAx13 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_SetMapState_GC_Ep3_6xB3x13_CAx13) / 4, 0, 0x13, 0, 0, 0};
-  parray<uint8_t, 8> unused;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetMapState_GC_Ep3_6xB3x13_CAx13) / 4, 0, 0x13, 0, 0, 0, 0, 0};
   Episode3::MapAndRulesState map_and_rules_state;
   Episode3::OverlayState overlay_state;
 } __packed__;
@@ -4867,8 +4852,7 @@ struct G_SetMapState_GC_Ep3_6xB3x13_CAx13 {
 // 6xB3x14 / CAx14: Set player deck during setup
 
 struct G_SetPlayerDeck_GC_Ep3_6xB3x14_CAx14 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_SetPlayerDeck_GC_Ep3_6xB3x14_CAx14) / 4, 0, 0x14, 0, 0, 0};
-  parray<uint8_t, 8> unused1;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetPlayerDeck_GC_Ep3_6xB3x14_CAx14) / 4, 0, 0x14, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   uint8_t is_cpu_player = 0;
   uint8_t unused2 = 0;
@@ -4877,8 +4861,8 @@ struct G_SetPlayerDeck_GC_Ep3_6xB3x14_CAx14 {
 
 // 6xB3x15 / CAx15: Hard-reset server state (unused)
 
-struct G_HardResetServerState_GC_Ep3_6xB3x15 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_HardResetServerState_GC_Ep3_6xB3x15) / 4, 0, 0x15, 0, 0, 0};
+struct G_HardResetServerState_GC_Ep3_6xB3x15_CAx15 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_HardResetServerState_GC_Ep3_6xB3x15_CAx15) / 4, 0, 0x15, 0, 0, 0, 0, 0};
   // No arguments
 } __packed__;
 
@@ -4903,8 +4887,7 @@ struct G_Unknown_GC_Ep3_6xB5x1A {
 // should ignore the command's contents but still send a 6xB4x1C in response.
 
 struct G_SetPlayerName_GC_Ep3_6xB3x1B_CAx1B {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_SetPlayerName_GC_Ep3_6xB3x1B_CAx1B) / 4, 0, 0x1B, 0, 0, 0};
-  parray<uint8_t, 8> unused;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetPlayerName_GC_Ep3_6xB3x1B_CAx1B) / 4, 0, 0x1B, 0, 0, 0, 0, 0};
   Episode3::NameEntry entry;
 } __packed__;
 
@@ -4918,8 +4901,7 @@ struct G_SetPlayerNames_GC_Ep3_6xB4x1C {
 // 6xB3x1D / CAx1D: Start battle
 
 struct G_StartBattle_GC_Ep3_6xB3x1D_CAx1D {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_StartBattle_GC_Ep3_6xB3x1D_CAx1D) / 4, 0, 0x1D, 0, 0, 0};
-  parray<uint8_t, 8> unused;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_StartBattle_GC_Ep3_6xB3x1D_CAx1D) / 4, 0, 0x1D, 0, 0, 0, 0, 0};
 } __packed__;
 
 // 6xB4x1E: Action result
@@ -4935,12 +4917,15 @@ struct G_ActionResult_GC_Ep3_6xB4x1E {
   parray<uint8_t, 2> unused;
 } __packed__;
 
-// 6xB4x1F: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB4x1F: Set context token
+// This token is sent back in the context_token field of all CA commands from
+// the client.
 
-struct G_Unknown_GC_Ep3_6xB4x1F {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_GC_Ep3_6xB4x1F) / 4, 0, 0x1F, 0, 0, 0};
-  le_uint32_t unknown_a1 = 0;
+struct G_SetContextToken_GC_Ep3_6xB4x1F {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetContextToken_GC_Ep3_6xB4x1F) / 4, 0, 0x1F, 0, 0, 0};
+  // Note that this field is little-endian, but the corresponding context_token
+  // field in G_CardServerDataCommandHeader is big-endian!
+  le_uint32_t context_token = 0;
 } __packed__;
 
 // 6xB5x20: Unknown
@@ -4957,13 +4942,14 @@ struct G_Unknown_GC_Ep3_6xB5x20 {
 // 6xB3x21 / CAx21: End battle
 
 struct G_EndBattle_GC_Ep3_6xB3x21_CAx21 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_EndBattle_GC_Ep3_6xB3x21_CAx21) / 4, 0, 0x21, 0, 0, 0};
-  parray<uint8_t, 8> unused1;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndBattle_GC_Ep3_6xB3x21_CAx21) / 4, 0, 0x21, 0, 0, 0, 0, 0};
   le_uint32_t unused2 = 0;
 } __packed__;
 
 // 6xB4x22: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// This command appears to be completely unused. The client's handler for this
+// command sets a flag on some data structure if it exists, but it appears that
+// that data structure is never allocated.
 
 struct G_Unknown_GC_Ep3_6xB4x22 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_GC_Ep3_6xB4x22) / 4, 0, 0x22, 0, 0, 0};
@@ -4971,14 +4957,13 @@ struct G_Unknown_GC_Ep3_6xB4x22 {
 } __packed__;
 
 // 6xB4x23: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// This command was actually sent by Sega's original servers, but it does
+// nothing on the client.
 
 struct G_Unknown_GC_Ep3_6xB4x23 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_GC_Ep3_6xB4x23) / 4, 0, 0x23, 0, 0, 0};
-  // This command does nothing at all. If unknown_a1 == 1, then it calls another
-  // function, but that function also does nothing.
-  uint8_t unknown_a1 = 0;
-  uint8_t unknown_a2 = 0;
+  uint8_t present = 0; // Handler expects this to be equal to 1
+  uint8_t client_id = 0;
   parray<uint8_t, 2> unused;
 } __packed__;
 
@@ -4998,9 +4983,8 @@ struct G_Unknown_GC_Ep3_6xB5x27 {
 // 6xB3x28 / CAx28: End defense list
 
 struct G_EndDefenseList_GC_Ep3_6xB3x28_CAx28 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_EndDefenseList_GC_Ep3_6xB3x28_CAx28) / 4, 0, 0x28, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  parray<uint8_t, 5> unused1;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndDefenseList_GC_Ep3_6xB3x28_CAx28) / 4, 0, 0x28, 0, 0, 0, 0, 0};
+  uint8_t unused1;
   uint8_t client_id = 0;
   parray<uint8_t, 2> unused2;
 } __packed__;
@@ -5029,8 +5013,7 @@ struct G_Unknown_GC_Ep3_6xB4x2A {
 // 6xB3x2B / CAx2B: Unknown
 
 struct G_Unknown_GC_Ep3_6xB3x2B_CAx2B {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_Unknown_GC_Ep3_6xB3x2B_CAx2B) / 4, 0, 0x2B, 0, 0, 0};
-  parray<uint8_t, 8> unused1;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_Unknown_GC_Ep3_6xB3x2B_CAx2B) / 4, 0, 0x2B, 0, 0, 0, 0, 0};
   le_uint16_t unused2 = 0;
   parray<uint8_t, 2> unused3;
 } __packed__;
@@ -5128,8 +5111,7 @@ struct G_SubtractAllyATKPoints_GC_Ep3_6xB4x33 {
 // 6xB3x34 / CAx34: Photon blast request
 
 struct G_PhotonBlastRequest_GC_Ep3_6xB3x34_CAx34 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_PhotonBlastRequest_GC_Ep3_6xB3x34_CAx34) / 4, 0, 0x34, 0, 0, 0};
-  parray<uint8_t, 8> unused;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_PhotonBlastRequest_GC_Ep3_6xB3x34_CAx34) / 4, 0, 0x34, 0, 0, 0, 0, 0};
   uint8_t ally_client_id = 0;
   uint8_t reason = 0;
   le_uint16_t card_ref = 0xFFFF;
@@ -5155,9 +5137,8 @@ struct G_Unknown_GC_Ep3_6xB5x36 {
 
 // 6xB3x37 / CAx37: Ready to advance from starting rolls phase
 
-struct G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37) / 4, 0, 0x37, 0, 0, 0};
-  parray<uint8_t, 8> unused1;
+struct G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37_CAx37 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37_CAx37) / 4, 0, 0x37, 0, 0, 0, 0, 0};
   uint8_t client_id = 0;
   parray<uint8_t, 3> unused2;
 } __packed__;
@@ -5182,8 +5163,7 @@ struct G_UpdateAllPlayerStatistics_GC_Ep3_6xB4x39 {
 // 6xB3x3A / CAx3A: Unknown
 
 struct G_Unknown_GC_Ep3_6xB3x3A_CAx3A {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_Unknown_GC_Ep3_6xB3x3A_CAx3A) / 4, 0, 0x3A, 0, 0, 0};
-  parray<uint8_t, 8> unused;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_Unknown_GC_Ep3_6xB3x3A_CAx3A) / 4, 0, 0x3A, 0, 0, 0, 0, 0};
 } __packed__;
 
 // 6xB4x3B: Unknown
@@ -5206,10 +5186,12 @@ struct G_Unknown_GC_Ep3_6xB5x3C {
 
 // 6xB4x3D: Unknown
 // TODO: Document this from Episode 3 client/server disassembly
+// This may be tournament metadata.
 
 struct G_Unknown_GC_Ep3_6xB4x3D {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_GC_Ep3_6xB4x3D) / 4, 0, 0x3D, 0, 0, 0};
-  parray<uint8_t, 0x14> unknown_a1;
+  Episode3::Rules rules;
+  parray<uint8_t, 4> unknown_a1;
   struct Entry {
     uint8_t type = 0; // 1 = human, 2 = COM
     ptext<char, 0x10> player_name;
@@ -5258,18 +5240,14 @@ struct G_OpenBlockingMenu_GC_Ep3_6xB5x3F {
 // The server should respond with a 6xB6x40 command.
 
 struct G_MapListRequest_GC_Ep3_6xB3x40_CAx40 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_MapListRequest_GC_Ep3_6xB3x40_CAx40) / 4, 0, 0x40, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  be_uint32_t unknown_a1 = 0;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MapListRequest_GC_Ep3_6xB3x40_CAx40) / 4, 0, 0x40, 0, 0, 0, 0, 0};
 } __packed__;
 
 // 6xB3x41 / CAx41: Map data request
 // The server should respond with a 6xB6x41 command.
 
 struct G_MapDataRequest_GC_Ep3_6xB3x41_CAx41 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_MapDataRequest_GC_Ep3_6xB3x41_CAx41) / 4, 0, 0x41, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  be_uint32_t unknown_a1 = 0;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MapDataRequest_GC_Ep3_6xB3x41_CAx41) / 4, 0, 0x41, 0, 0, 0, 0, 0};
   le_uint32_t map_number = 0;
 } __packed__;
 
@@ -5359,9 +5337,7 @@ struct G_Unknown_GC_Ep3_6xB5x47 {
 // 6xB3x48 / CAx48: End turn
 
 struct G_EndTurn_GC_Ep3_6xB3x48_CAx48 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_EndTurn_GC_Ep3_6xB3x48_CAx48) / 4, 0, 0x48, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  parray<uint8_t, 4> unused1;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndTurn_GC_Ep3_6xB3x48_CAx48) / 4, 0, 0x48, 0, 0, 0, 0, 0};
   uint8_t client_id = 0;
   parray<uint8_t, 3> unused2;
 } __packed__;
@@ -5375,9 +5351,7 @@ struct G_EndTurn_GC_Ep3_6xB3x48_CAx48 {
 // would have been ineffective.
 
 struct G_CardCounts_GC_Ep3_6xB3x49_CAx49 {
-  G_CardBattleCommandHeader header = {0xB3, sizeof(G_CardCounts_GC_Ep3_6xB3x49_CAx49) / 4, 0, 0x49, 0, 0, 0};
-  be_uint32_t sequence_num = 0;
-  be_uint32_t unknown_a1 = 0;
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_CardCounts_GC_Ep3_6xB3x49_CAx49) / 4, 0, 0x49, 0, 0, 0, 0, 0};
   uint8_t basis = 0;
   parray<uint8_t, 3> unused;
   // This is encrypted with the trivial algorithm (see decrypt_trivial_gci_data)
@@ -5479,8 +5453,8 @@ struct G_SetTrapTileLocations_GC_Ep3_6xB4x50 {
 
 // 6xB4x51: Tournament match info
 
-struct G_Unknown_GC_Ep3_6xB4x51 {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_GC_Ep3_6xB4x51) / 4, 0, 0x51, 0, 0, 0};
+struct G_TournamentMatchInfo_GC_Ep3_6xB4x51 {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_TournamentMatchInfo_GC_Ep3_6xB4x51) / 4, 0, 0x51, 0, 0, 0};
   ptext<char, 0x40> match_description;
   struct Entry {
     ptext<char, 0x20> team_name;

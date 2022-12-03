@@ -113,6 +113,7 @@ struct Client {
   std::unique_ptr<struct event, void(*)(struct event*)> save_game_data_event;
   int16_t card_battle_table_number;
   uint8_t card_battle_table_seat_number;
+  uint32_t ep3_context_token;
 
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give

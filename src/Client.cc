@@ -55,6 +55,7 @@ Client::Client(
         event_free),
     card_battle_table_number(-1),
     card_battle_table_seat_number(0),
+    ep3_context_token(0),
     next_exp_value(0),
     override_section_id(-1),
     override_random_seed(-1),

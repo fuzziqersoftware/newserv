@@ -1854,7 +1854,6 @@ void send_ep3_media_update(
   send_command(c, 0xB9, 0x00, w.str());
 }
 
-// sends the client a generic rank
 void send_ep3_rank_update(shared_ptr<Client> c) {
   S_RankUpdate_GC_Ep3_B7 cmd = {
       0, "\0\0\0\0\0\0\0\0\0\0\0", 1000000, 1000000, 0xFFFFFFFF};
@@ -1891,6 +1890,12 @@ void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number
   for (const auto& c : clients) {
     send_command_t(c, 0xE4, table_number, cmd);
   }
+}
+
+void send_ep3_set_context_token(shared_ptr<Client> c, uint32_t context_token) {
+  G_SetContextToken_GC_Ep3_6xB4x1F cmd;
+  cmd.context_token = context_token;
+  send_command_t(c, 0xC9, 0x00, cmd);
 }
 
 void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key) {
