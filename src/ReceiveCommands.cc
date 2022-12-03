@@ -208,11 +208,6 @@ void on_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
 }
 
 void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  if (c->flags & Client::Flag::IS_EPISODE_3) {
-    c->ep3_context_token = random_object<uint32_t>();
-    send_ep3_set_context_token(c, c->ep3_context_token);
-  }
-
   // On the BB data server, this function is called only on the last connection
   // (when we should send the ship select menu).
   if ((c->server_behavior == ServerBehavior::LOGIN_SERVER) ||
@@ -920,9 +915,6 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
       data, sizeof(G_CardServerDataCommandHeader), 0xFFFF);
   if (header.subcommand != 0xB3) {
     throw runtime_error("unknown Episode 3 server data request");
-  }
-  if (header.context_token != c->ep3_context_token) {
-    throw runtime_error("incorrect context token");
   }
 
   if (!l->ep3_server_base || l->ep3_server_base->server->battle_finished) {
