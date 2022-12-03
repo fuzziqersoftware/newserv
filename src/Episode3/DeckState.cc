@@ -27,8 +27,8 @@ void DeckEntry::clear() {
   this->team_id = 0xFFFFFFFF;
   this->god_whim_flag = 3;
   this->unused1 = 0;
-  this->unused2 = 0;
-  this->unused3 = 0;
+  this->player_level = 0;
+  this->unused2.clear(0);
   this->card_ids.clear(0xFFFF);
 }
 

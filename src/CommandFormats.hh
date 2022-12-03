@@ -5399,14 +5399,28 @@ struct G_Unknown_GC_Ep3_6xB4x4A {
   parray<le_uint16_t, 8> card_refs;
 } __packed__;
 
-// 6xB4x4B: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB4x4B: Set EX result values
+// This command specifies how much EX the player should get based on the
+// difference between their level and the levels of the players they defeated or
+// were defeated by. (For multi-player opponent teams, the average of the
+// opponents' levels is used.) The game scans the appropriate list for the entry
+// whose threshold is less than or equal to than the level difference, and
+// returns the corresponding value. For example, if the first two entries in the
+// win list are [20, 40] and [10, 30], and the player defeats an opponent who is
+// 15 levels above the player's level, the player will get 30 EX when they win
+// the battle. If all thresholds are greater than the level difference, the last
+// entry's value is used.
 
-struct G_Unknown_GC_Ep3_6xB4x4B {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_GC_Ep3_6xB4x4B) / 4, 0, 0x4B, 0, 0, 0};
-  // If any of the entries [0][1] through [0][10] or [1][1] through [1][10] are
-  // < -99 or > 99, the entire command is ignored.
-  parray<parray<le_int16_t, 20>, 2> unknown_a1;
+struct G_SetEXResultValues_GC_Ep3_6xB4x4B {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetEXResultValues_GC_Ep3_6xB4x4B) / 4, 0, 0x4B, 0, 0, 0};
+  struct Entry {
+    le_int16_t threshold;
+    le_int16_t value;
+  } __packed__;
+  // If any of the entries in either list has .value outside the range [-100,
+  // 100], the entire command is ignored and default values are used instead.
+  parray<Entry, 10> win_entries;
+  parray<Entry, 10> lose_entries;
 } __packed__;
 
 // 6xB4x4C: Update action chain

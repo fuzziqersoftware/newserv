@@ -31,8 +31,8 @@ struct DeckEntry {
   // always sets this to 3, and it's not clear why this even exists.
   uint8_t god_whim_flag;
   uint8_t unused1;
-  le_uint16_t unused2;
-  be_uint16_t unused3;
+  le_uint16_t player_level;
+  parray<uint8_t, 2> unused2;
 
   DeckEntry();
   void clear();
