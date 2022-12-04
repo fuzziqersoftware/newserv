@@ -2318,7 +2318,26 @@ struct S_TournamentList_GC_Ep3_E0 {
   struct Entry {
     le_uint32_t menu_id = 0;
     le_uint32_t item_id = 0;
-    parray<uint8_t, 4> unknown_a1;
+    uint8_t unknown_a1;
+    uint8_t locked; // If nonzero, the lock icon appears in the menu
+    // Values for the state field:
+    // 00 = Preparing
+    // 01 = 1st Round
+    // 02 = 2nd Round
+    // 03 = 3rd Round
+    // 04 = Semifinals
+    // 05 = Entries no longer accepted
+    // 06 = Finals
+    // 07 = Preparing for Battle
+    // 08 = Battle in progress
+    // 09 = Preparing to view Battle
+    // 0A = Viewing a Battle
+    // Values beyond 0A don't appear to cause problems, but cause strings to
+    // appear that are obviously not intended to appear in the tournament list,
+    // like "View the board" and "Board: Write". (In fact, some of the strings
+    // listed above may be unintended for this menu as well.)
+    uint8_t state;
+    uint8_t unknown_a2;
     le_uint32_t start_time = 0; // In seconds since Unix epoch
     ptext<char, 0x20> name;
     le_uint16_t num_teams = 0;
@@ -2370,7 +2389,18 @@ struct S_TournamentEntryList_GC_Ep3_E2 {
   struct Entry {
     le_uint32_t menu_id = 0;
     le_uint32_t item_id = 0;
-    parray<uint8_t, 4> unknown_a1;
+    uint8_t unknown_a1;
+    // If locked is nonzero, a lock icon appears next to this team and the
+    // player is prompted for a password if they select this team.
+    uint8_t locked;
+    // State values:
+    // 00 = empty (team_name is ignored; entry is selectable)
+    // 01 = present, joinable (team_name renders in white)
+    // 02 = present, finalized (team_name renders in yellow)
+    // If state is any other value, the entry renders as if its state were 02,
+    // but cannot be selected at all (the menu cursor simply skips over it).
+    uint8_t state;
+    uint8_t unknown_a2;
     ptext<char, 0x20> team_name;
   } __packed__;
   parray<Entry, 0x20> entries;
