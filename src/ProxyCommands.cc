@@ -598,6 +598,7 @@ static HandlerResult S_B2(shared_ptr<ServerState>,
   const auto& cmd = check_size_t<S_ExecuteCode_B2>(data, sizeof(S_ExecuteCode_B2), 0xFFFF);
 
   if (cmd.code_size && session.save_files) {
+    uint64_t filename_timestamp = now();
     string code = data.substr(sizeof(S_ExecuteCode_B2));
 
     if (session.newserv_client_config.cfg.flags & Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL) {
@@ -633,7 +634,7 @@ static HandlerResult S_B2(shared_ptr<ServerState>,
       }
     }
 
-    string output_filename = string_printf("code.%" PRId64 ".bin", now());
+    string output_filename = string_printf("code.%" PRId64 ".bin", filename_timestamp);
     save_file(output_filename, data);
     session.log.info("Wrote code from server to file %s", output_filename.c_str());
 
@@ -666,7 +667,7 @@ static HandlerResult S_B2(shared_ptr<ServerState>,
             0,
             &labels);
 
-        output_filename = string_printf("code.%" PRId64 ".txt", now());
+        output_filename = string_printf("code.%" PRId64 ".txt", filename_timestamp);
         {
           auto f = fopen_unique(output_filename, "wt");
           fprintf(f.get(), "// code_size = 0x%" PRIX32 "\n", cmd.code_size.load());
