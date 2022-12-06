@@ -50,7 +50,8 @@ void Server::disconnect_client(shared_ptr<Client> c) {
   // We can't just let c be destroyed here, since disconnect_client can be
   // called from within the client's channel's receive handler. So, we instead
   // move it to another set, which we'll clear in an immediately-enqueued
-  // callback after the current event.
+  // callback after the current event. This will also call the client's
+  // disconnect hooks (if any).
   this->clients_to_destroy.insert(move(c));
 }
 
@@ -64,7 +65,22 @@ void Server::dispatch_destroy_clients(evutil_socket_t, short, void* ctx) {
 }
 
 void Server::destroy_clients() {
-  this->clients_to_destroy.clear();
+  for (auto c_it = this->clients_to_destroy.begin();
+       c_it != this->clients_to_destroy.end();
+       c_it = this->clients_to_destroy.erase(c_it)) {
+    auto c = *c_it;
+    // Note: It's important to move the disconnect hooks out of the client here
+    // because the hooks could modify c->disconnect_hooks while it's being
+    // iterated here, which would invalidate these iterators.
+    unordered_map<string, function<void()>> hooks = move(c->disconnect_hooks);
+    for (auto h_it : hooks) {
+      try {
+        h_it.second();
+      } catch (const exception& e) {
+        c->log.warning("Disconnect hook %s failed: %s", h_it.first.c_str(), e.what());
+      }
+    }
+  }
 }
 
 void Server::dispatch_on_listen_accept(

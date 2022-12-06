@@ -5,6 +5,7 @@
 #include <array>
 #include <deque>
 #include <phosg/Filesystem.hh>
+#include <phosg/Random.hh>
 #include <phosg/Time.hh>
 
 #include "../Loggers.hh"
@@ -791,6 +792,15 @@ Rules::Rules() {
   this->clear();
 }
 
+void Rules::set_defaults() {
+  this->clear();
+  this->overall_time_limit = 24; // 2 hours
+  this->phase_time_limit = 30;
+  this->min_dice = 1;
+  this->max_dice = 6;
+  this->char_hp = 15;
+}
+
 void Rules::clear() {
   this->overall_time_limit = 0;
   this->phase_time_limit = 0;
@@ -1083,8 +1093,6 @@ string MapDefinition::str(const DataIndex* data_index) const {
   return join(lines, "\n");
 }
 
-
-
 bool Rules::check_invalid_fields() const {
   Rules t = *this;
   return t.check_and_reset_invalid_fields();
@@ -1333,6 +1341,7 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
         if (!this->maps.emplace(entry->map.map_number, entry).second) {
           throw runtime_error("duplicate map number");
         }
+        this->maps_by_name.emplace(entry->map.name, entry);
         string name = entry->map.name;
         static_game_data_log.info("Indexed Episode 3 map %s (%08" PRIX32 "; %s)",
             filename.c_str(), entry->map.map_number.load(), name.c_str());
@@ -1342,6 +1351,22 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
       static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
           filename.c_str(), e.what());
     }
+  }
+
+  try {
+    auto json = JSONObject::parse(load_file(directory + "/com-decks.json"));
+    for (const auto& def_json : json->as_list()) {
+      auto& def = this->com_decks.emplace_back(new COMDeckDefinition());
+      def->index = this->com_decks.size() - 1;
+      def->player_name = def_json->at(0)->as_string();
+      def->deck_name = def_json->at(1)->as_string();
+      auto card_ids_json = def_json->at(2)->as_list();
+      for (size_t z = 0; z < 0x1F; z++) {
+        def->card_ids[z] = card_ids_json.at(z)->as_int();
+      }
+    }
+  } catch (const exception& e) {
+    static_game_data_log.warning("Failed to load Episode 3 COM decks: %s", e.what());
   }
 }
 
@@ -1452,12 +1477,29 @@ shared_ptr<const DataIndex::MapEntry> DataIndex::definition_for_map_number(uint3
   return this->maps.at(id);
 }
 
+shared_ptr<const DataIndex::MapEntry> DataIndex::definition_for_map_name(
+    const string& name) const {
+  return this->maps_by_name.at(name);
+}
+
 set<uint32_t> DataIndex::all_map_ids() const {
   set<uint32_t> ret;
   for (const auto& it : this->maps) {
     ret.emplace(it.first);
   }
   return ret;
+}
+
+size_t DataIndex::num_com_decks() const {
+  return this->com_decks.size();
+}
+
+shared_ptr<const COMDeckDefinition> DataIndex::com_deck(size_t which) const {
+  return this->com_decks.at(which);
+}
+
+shared_ptr<const COMDeckDefinition> DataIndex::random_com_deck() const {
+  return this->com_decks[random_object<size_t>() % this->com_decks.size()];
 }
 
 

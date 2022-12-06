@@ -63,10 +63,30 @@ newserv supports several versions of PSO. Specifically:
 *Notes:*
 1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
 2. *This version only supports the modem adapter, which Dolphin does not currently emulate, so it's difficult to test.*
-3. *Episode 3 players can download quests, join lobbies, create and join games, trade cards, and participate in card auctions. CARD battles are implemented but are not well-tested. Spectator teams are partially implemented, but are entirely untested. Tournaments are not implemented.*
+3. *See the following section about Episode 3 functionality.*
 4. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
 5. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
 6. *Support for PSO Dreamcast Trial Edition is very incomplete and probably never will be complete. This is really just exploring a curiosity that sheds some light on early network engineering done by Sega, not an actual attempt at supporting this version of the game.*
+
+### Episode 3
+
+The following Episode 3 features are well-tested and work normally:
+* Downloading quests.
+* Creating and joining games.
+* Trading cards.
+* Participating in card auctions. (The auction contents must be configured in config.json.)
+
+The following Episode 3 features are implemented, but only partially tested:
+* CARD battles. If you find a feature or card ability that doesn't work, please make a GitHub issue and describe the situation (including the attacking card(s), defending card(s), and ability that didn't work).
+* Spectator teams are partially implemented, but are entirely untested.
+* Battle replays sometimes cause the client to crash during the replay. Using the $playrec command is therefore not recommended.
+* Tournaments.
+
+Tournaments work differently than they did on Sega's servers. Tournaments can be created with the `create-tournament` shell command, which enables players to register for them. (Use `help` to see all the arguments - there are many!) The `start-tournament` shell command starts the tournament, but this doesn't schedule any matches. Instead, players who are scheduled for a match can all stand at a battle table in a CARD lobby, and the tournament match will start automatically. (This also means that, for example, not all matches in round 1 must be complete before round 2 can begin - only the matches preceding each individual match must be complete for that match to be playable.)
+
+Because newserv gives all players 1000000 meseta, there is no reward for winning a tournament. This may change in the future.
+
+COM decks for tournaments are defined in system/ep3/com-decks.json. The default decks in that file come from logs from Sega's servers, so the file doesn't include every COM deck Sega ever made - the rest are probably lost to time.
 
 ## Usage
 

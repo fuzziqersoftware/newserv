@@ -43,8 +43,8 @@ PlayerState::PlayerState(uint8_t client_id, shared_ptr<Server> server)
 
 void PlayerState::init() {
   if (this->server()->player_states[this->client_id].get() != this) {
-    // TODO: The original code handles this, but we don't. Figure out if this is
-    // actually needed and implement it if so.
+    // Note: The original code handles this, but we don't. This appears not to
+    // ever happen, so we didn't bother implementing it.
     throw logic_error("replacing a player state object is not permitted");
   }
 

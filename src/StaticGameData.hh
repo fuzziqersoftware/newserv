@@ -47,4 +47,6 @@ const char* abbreviation_for_char_class(uint8_t cls);
 const char* name_for_difficulty(uint8_t difficulty);
 char abbreviation_for_difficulty(uint8_t difficulty);
 
+char char_for_language_code(uint8_t language);
+
 std::string name_for_item(const ItemData& item, bool include_color_codes);

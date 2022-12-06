@@ -34,10 +34,12 @@ void ServerBase::PresenceEntry::clear() {
 ServerBase::ServerBase(
     shared_ptr<Lobby> lobby,
     shared_ptr<const DataIndex> data_index,
-    uint32_t random_seed)
+    uint32_t random_seed,
+    bool is_tournament)
   : lobby(lobby),
     data_index(data_index),
-    random_seed(random_seed) { }
+    random_seed(random_seed),
+    is_tournament(is_tournament) { }
 
 void ServerBase::init() {
   this->reset();
@@ -96,7 +98,7 @@ Server::Server(shared_ptr<ServerBase> base)
     team_num_ally_fcs_destroyed(0),
     team_num_cards_destroyed(0),
     hard_reset_flag(false),
-    tournament_flag(0),
+    tournament_flag(base->is_tournament ? 1 : 0),
     num_trap_tiles_of_type(0),
     chosen_trap_tile_index_of_type(0),
     has_done_pb(0),
@@ -140,6 +142,39 @@ shared_ptr<const ServerBase> Server::base() const {
     throw runtime_error("server base is deleted");
   }
   return s;
+}
+
+int8_t Server::get_winner_team_id() const {
+  parray<size_t, 2> team_player_counts(0);
+  parray<size_t, 2> team_win_flag_counts(0);
+  for (size_t client_id = 0; client_id < 4; client_id++) {
+    auto ps = this->player_states[client_id];
+    if (!ps) {
+      continue;
+    }
+    uint8_t team_id = ps->get_team_id();
+    team_player_counts[team_id]++;
+    if (ps->assist_flags & 4) {
+      team_win_flag_counts[team_id]++;
+    }
+  }
+
+  if (!team_player_counts[0] || !team_player_counts[1]) {
+    throw logic_error("at least one team has no players");
+  }
+  if (team_win_flag_counts[0] && team_win_flag_counts[1]) {
+    throw logic_error("both teams have winning players");
+  }
+  for (int8_t z = 0; z < 2; z++) {
+    if (!team_win_flag_counts[z]) {
+      continue;
+    }
+    if (team_win_flag_counts[z] != team_player_counts[z]) {
+      throw logic_error("only some players on team 0 have won");
+    }
+    return z;
+  }
+  return -1; // No team has won (yet)
 }
 
 void Server::send(const void* data, size_t size) const {
@@ -418,7 +453,7 @@ bool Server::check_for_battle_end() {
       }
     } else { // Both teams defeated?? I guess this is technically possible
       ret = true;
-      this->unknown_8023D4E0(0x4000);
+      this->compute_losing_team_id_and_add_winner_flags(0x4000);
     }
 
   } else { // Not DEFEAT_TEAM
@@ -449,7 +484,7 @@ bool Server::check_for_battle_end() {
       }
     } else {
       ret = true;
-      this->unknown_8023D4E0(0x4000);
+      this->compute_losing_team_id_and_add_winner_flags(0x4000);
     }
   }
 
@@ -649,7 +684,7 @@ void Server::draw_phase_after() {
         }
       }
       if (unknown_v1) {
-        this->unknown_8023D4E0(0);
+        this->compute_losing_team_id_and_add_winner_flags(0);
       }
       this->round_num--;
       this->set_battle_ended();
@@ -2136,7 +2171,7 @@ void Server::handle_6xB3x49_card_counts(const string& data) {
   decrypt_trivial_gci_data(dest_counts.data(), dest_counts.bytes(), in_cmd.basis);
 }
 
-void Server::unknown_8023D4E0(uint32_t flags) {
+void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (ps) {
@@ -2146,8 +2181,8 @@ void Server::unknown_8023D4E0(uint32_t flags) {
 
   uint32_t flags_to_add = flags | 0x804;
 
-  // First, check which team has fewer surviving SCs
-  int8_t team_id = -1;
+  // First, check which team has more dead SCs
+  int8_t losing_team_id = -1;
   uint32_t team_counts[2] = {0, 0};
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
@@ -2160,13 +2195,13 @@ void Server::unknown_8023D4E0(uint32_t flags) {
     }
   }
   if (team_counts[1] < team_counts[0]) {
-    team_id = 0;
+    losing_team_id = 0;
   } else if (team_counts[0] < team_counts[1]) {
-    team_id = 1;
+    losing_team_id = 1;
   }
 
   // If the SC counts match, break ties by remaining SC HP
-  if (team_id == -1) {
+  if (losing_team_id == -1) {
     team_counts[0] = 0;
     team_counts[1] = 0;
     for (size_t z = 0; z < 4; z++) {
@@ -2180,14 +2215,14 @@ void Server::unknown_8023D4E0(uint32_t flags) {
       }
     }
     if (team_counts[0] < team_counts[1]) {
-      team_id = 0;
+      losing_team_id = 0;
     } else if (team_counts[1] < team_counts[0]) {
-      team_id = 1;
+      losing_team_id = 1;
     }
   }
 
   // If still tied, break ties by number of opponent cards destroyed
-  if (team_id == -1) {
+  if (losing_team_id == -1) {
     team_counts[0] = 0;
     team_counts[1] = 0;
     for (size_t z = 0; z < 4; z++) {
@@ -2198,14 +2233,14 @@ void Server::unknown_8023D4E0(uint32_t flags) {
       team_counts[ps->get_team_id()] += ps->stats.num_opponent_cards_destroyed;
     }
     if (team_counts[0] < team_counts[1]) {
-      team_id = 0;
+      losing_team_id = 0;
     } else if (team_counts[1] < team_counts[0]) {
-      team_id = 1;
+      losing_team_id = 1;
     }
   }
 
   // If still tied, break ties by amount of damage given
-  if (team_id == -1) {
+  if (losing_team_id == -1) {
     team_counts[0] = 0;
     team_counts[1] = 0;
     for (size_t z = 0; z < 4; z++) {
@@ -2216,15 +2251,15 @@ void Server::unknown_8023D4E0(uint32_t flags) {
       team_counts[ps->get_team_id()] += ps->stats.damage_given;
     }
     if (team_counts[0] < team_counts[1]) {
-      team_id = 0;
+      losing_team_id = 0;
     } else if (team_counts[1] < team_counts[0]) {
-      team_id = 1;
+      losing_team_id = 1;
     }
   }
 
   // If STILL tied, roll dice and arbitrarily make one team the winner
-  if (team_id == -1) {
-    while (team_id == -1) {
+  if (losing_team_id == -1) {
+    while (losing_team_id == -1) {
       team_counts[1] = 0;
       team_counts[0] = 0;
       for (size_t z = 0; z < 4; z++) {
@@ -2237,9 +2272,9 @@ void Server::unknown_8023D4E0(uint32_t flags) {
       team_counts[0] *= this->team_client_count[1];
       team_counts[1] *= this->team_client_count[0];
       if (team_counts[0] < team_counts[1]) {
-        team_id = 0;
+        losing_team_id = 0;
       } else if (team_counts[1] < team_counts[0]) {
-        team_id = 1;
+        losing_team_id = 1;
       }
     }
     flags_to_add = flags | 0x1004;
@@ -2250,7 +2285,7 @@ void Server::unknown_8023D4E0(uint32_t flags) {
     if (!ps) {
       continue;
     }
-    if (team_id != ps->get_team_id()) {
+    if (losing_team_id != ps->get_team_id()) {
       ps->assist_flags |= flags_to_add;
     }
     ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();

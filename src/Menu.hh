@@ -23,6 +23,8 @@ namespace MenuID {
   constexpr uint32_t PROGRAMS           = 0x88000088;
   constexpr uint32_t PATCHES            = 0x99000099;
   constexpr uint32_t PROXY_OPTIONS      = 0xAA0000AA;
+  constexpr uint32_t TOURNAMENTS        = 0xBB0000BB;
+  constexpr uint32_t TOURNAMENT_ENTRIES = 0xCC0000CC;
 }
 
 namespace MainMenuItemID {

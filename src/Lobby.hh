@@ -95,6 +95,7 @@ struct Lobby {
   std::shared_ptr<Episode3::BattleRecord> battle_record; // Not used in watcher games
   std::shared_ptr<Episode3::BattleRecord> prev_battle_record; // Only used in primary games
   std::shared_ptr<Episode3::BattleRecordPlayer> battle_player; // Only used in replay games
+  std::shared_ptr<Episode3::Tournament::Match> tournament_match;
 
   // Lobby stuff
   uint8_t event;

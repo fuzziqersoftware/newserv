@@ -58,7 +58,8 @@ public:
   ServerBase(
       std::shared_ptr<Lobby> lobby,
       std::shared_ptr<const DataIndex> data_index,
-      uint32_t random_seed);
+      uint32_t random_seed,
+      bool is_tournament);
   void init();
   void reset();
   void recreate_server();
@@ -74,6 +75,7 @@ public:
   std::weak_ptr<Lobby> lobby;
   std::shared_ptr<const DataIndex> data_index;
   uint32_t random_seed;
+  bool is_tournament;
 
   std::shared_ptr<MapAndRulesState> map_and_rules1;
   std::shared_ptr<MapAndRulesState> map_and_rules2;
@@ -93,6 +95,8 @@ public:
   void init();
   std::shared_ptr<ServerBase> base();
   std::shared_ptr<const ServerBase> base() const;
+
+  int8_t get_winner_team_id() const;
 
   template <typename T>
   void send(const T& cmd) const {
@@ -200,7 +204,7 @@ public:
   void handle_6xB3x41_map_request(const std::string& data);
   void handle_6xB3x48_end_turn(const std::string& data);
   void handle_6xB3x49_card_counts(const std::string& data);
-  void unknown_8023D4E0(uint32_t flags);
+  void compute_losing_team_id_and_add_winner_flags(uint32_t flags);
   uint32_t get_team_exp(uint8_t team_id) const;
   uint32_t send_6xB4x06_if_card_ref_invalid(
       uint16_t card_ref, int16_t negative_value);

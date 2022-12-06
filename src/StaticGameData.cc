@@ -327,6 +327,25 @@ char abbreviation_for_difficulty(uint8_t difficulty) {
 
 
 
+char char_for_language_code(uint8_t language) {
+  switch (language) {
+    case 0:
+      return 'J';
+    case 1:
+      return 'E';
+    case 2:
+      return 'G';
+    case 3:
+      return 'F';
+    case 4:
+      return 'S';
+    default:
+      return '?';
+  }
+}
+
+
+
 size_t stack_size_for_item(uint8_t data0, uint8_t data1) {
   if (data0 == 4) {
     return 999999;

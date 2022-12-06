@@ -41,6 +41,32 @@ static void set_boolean(bool* target, const string& args) {
   }
 }
 
+static string get_quoted_string(string& s) {
+  string ret;
+  char end_char = (s.at(0) == '\"') ? '\"' : ' ';
+  size_t z = (s.at(0) == '\"') ? 1 : 0;
+  for (; (z < s.size()) && (s[z] != end_char); z++) {
+    if (s[z] == '\\') {
+      if (z + 1 < s.size()) {
+        ret.push_back(s[z + 1]);
+      } else {
+        throw runtime_error("incomplete escape sequence");
+      }
+    } else {
+      ret.push_back(s[z]);
+    }
+  }
+  if (end_char != ' ') {
+    if (z >= s.size()) {
+      throw runtime_error("unterminated quoted string");
+    }
+    s = s.substr(skip_whitespace(s, z + 1));
+  } else {
+    s = s.substr(skip_whitespace(s, z));
+  }
+  return ret;
+}
+
 void ServerShell::execute_command(const string& command) {
   // find the entry in the command table and run the command
   size_t command_end = skip_non_whitespace(command, 0);
@@ -89,6 +115,22 @@ Server commands:\n\
     Song IDs are 0 through 51; the default song is -1.\n\
   announce <message>\n\
     Send an announcement message to all players.\n\
+  create-tournament \"Tournament Name\" \"Map Name\" <num-teams> [rules...]\n\
+    Create an Episode 3 tournament. Rules options:\n\
+      dice=MIN-MAX: Set minimum and maximum dice rolls\n\
+      overall-time-limit=N: Set battle time limit (in multiples of 5 minutes)\n\
+      phase-time-limit=N: Set phase time limit (in seconds)\n\
+      allowed-cards=ALL/N/NR/NRS: Set rarities of allowed cards\n\
+      deck-shuffle=ON/OFF: Enable/disable deck shuffle\n\
+      deck-loop=ON/OFF: Enable/disable deck loop\n\
+      hp=N: Set Story Character initial HP\n\
+      hp-type=TEAM/PLAYER/COMMON: Set team HP type\n\
+      allow-assists=ON/OFF: Enable/disable assist cards\n\
+      dialogue=ON/OFF: Enable/disable dialogue\n\
+      dice-exchange=ATK/DEF/NONE: Set dice exchange mode\n\
+      dice-boost=ON/OFF: Enable/disable dice boost\n\
+  start-tournament \"Tournament Name\"\n\
+    End registration for a tournament and allow matches to begin.\n\
 \n\
 Proxy commands (these will only work when exactly one client is connected):\n\
   sc <data>\n\
@@ -275,6 +317,103 @@ Proxy commands (these will only work when exactly one client is connected):\n\
   } else if (command_name == "announce") {
     u16string message16 = decode_sjis(command_args);
     send_text_message(this->state, message16.c_str());
+
+  } else if (command_name == "create-tournament") {
+    string name = get_quoted_string(command_args);
+    string map_name = get_quoted_string(command_args);
+    auto map = this->state->ep3_data_index->definition_for_map_name(map_name);
+    uint32_t num_teams = stoul(get_quoted_string(command_args), nullptr, 0);
+    Episode3::Rules rules;
+    rules.set_defaults();
+    bool is_2v2 = false;
+    if (!command_args.empty()) {
+      auto tokens = split(command_args, ' ');
+      for (auto& token : tokens) {
+        token = tolower(token);
+        if (token == "2v2") {
+          is_2v2 = true;
+        } else if (starts_with(token, "dice=")) {
+          auto subtokens = split(token.substr(5), '-');
+          if (subtokens.size() != 2) {
+            throw runtime_error("dice option must be of the form dice=X-Y");
+          }
+          rules.min_dice = stoul(subtokens[0]);
+          rules.max_dice = stoul(subtokens[0]);
+        } else if (starts_with(token, "overall-time-limit=")) {
+          uint32_t limit = stoul(token.substr(19));
+          if (limit > 600) {
+            throw runtime_error("overall-time-limit must be 600 or fewer minutes");
+          }
+          if (limit % 5) {
+            throw runtime_error("overall-time-limit must be a multiple of 5 minutes");
+          }
+          rules.overall_time_limit = limit;
+        } else if (starts_with(token, "phase-time-limit=")) {
+          rules.phase_time_limit = stoul(token.substr(17));
+        } else if (starts_with(token, "hp=")) {
+          rules.char_hp = stoul(token.substr(3));
+        } else if (token == "allowed-cards=all") {
+          rules.allowed_cards = Episode3::AllowedCards::ALL;
+        } else if (token == "allowed-cards=n") {
+          rules.allowed_cards = Episode3::AllowedCards::N_ONLY;
+        } else if (token == "allowed-cards=nr") {
+          rules.allowed_cards = Episode3::AllowedCards::N_R_ONLY;
+        } else if (token == "allowed-cards=nrs") {
+          rules.allowed_cards = Episode3::AllowedCards::N_R_S_ONLY;
+        } else if (token == "deck-shuffle=on") {
+          rules.disable_deck_shuffle = 0;
+        } else if (token == "deck-shuffle=off") {
+          rules.disable_deck_shuffle = 1;
+        } else if (token == "deck-loop=on") {
+          rules.disable_deck_loop = 0;
+        } else if (token == "deck-loop=off") {
+          rules.disable_deck_loop = 1;
+        } else if (token == "allow-assists=on") {
+          rules.no_assist_cards = 0;
+        } else if (token == "allow-assists=off") {
+          rules.no_assist_cards = 1;
+        } else if (token == "dialogue=on") {
+          rules.disable_dialogue = 0;
+        } else if (token == "dialogue=off") {
+          rules.disable_dialogue = 1;
+        } else if (token == "dice-boost=on") {
+          rules.disable_dice_boost = 0;
+        } else if (token == "dice-boost=off") {
+          rules.disable_dice_boost = 1;
+        } else if (token == "hp-type=player") {
+          rules.hp_type = Episode3::HPType::DEFEAT_PLAYER;
+        } else if (token == "hp-type=team") {
+          rules.hp_type = Episode3::HPType::DEFEAT_TEAM;
+        } else if (token == "hp-type=common") {
+          rules.hp_type = Episode3::HPType::COMMON_HP;
+        } else if (token == "dice-exchange=atk") {
+          rules.dice_exchange_mode = Episode3::DiceExchangeMode::HIGH_ATK;
+        } else if (token == "dice-exchange=def") {
+          rules.dice_exchange_mode = Episode3::DiceExchangeMode::HIGH_DEF;
+        } else if (token == "dice-exchange=none") {
+          rules.dice_exchange_mode = Episode3::DiceExchangeMode::NONE;
+        } else {
+          throw runtime_error("invalid rules option: " + token);
+        }
+      }
+    }
+    if (rules.check_and_reset_invalid_fields()) {
+      fprintf(stderr, "warning: some rules were invalid and reset to defaults\n");
+    }
+    auto tourn = this->state->ep3_tournament_index->create_tournament(
+        this->state->ep3_data_index, name, map, rules, num_teams, is_2v2);
+    fprintf(stderr, "created tournament %02hhX\n", tourn->get_number());
+
+  } else if (command_name == "start-tournament") {
+    string name = get_quoted_string(command_args);
+    auto tourn = this->state->ep3_tournament_index->get_tournament(name);
+    if (tourn) {
+      tourn->start();
+      send_ep3_text_message_printf(this->state, "$C7The tournament\n$C6%s$C7\nhas begun", tourn->get_name().c_str());
+      fprintf(stderr, "tournament started\n");
+    } else {
+      fprintf(stderr, "no such tournament exists\n");
+    }
 
 
 

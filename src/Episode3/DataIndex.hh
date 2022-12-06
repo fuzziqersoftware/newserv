@@ -642,6 +642,7 @@ struct Rules {
   bool operator==(const Rules& other) const;
   bool operator!=(const Rules& other) const;
   void clear();
+  void set_defaults();
 
   bool check_invalid_fields() const;
   bool check_and_reset_invalid_fields();
@@ -791,6 +792,15 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
 
 
+struct COMDeckDefinition {
+  size_t index;
+  std::string player_name;
+  std::string deck_name;
+  parray<le_uint16_t, 0x1F> card_ids;
+};
+
+
+
 class DataIndex {
 public:
   DataIndex(const std::string& directory, uint32_t behavior_flags);
@@ -822,7 +832,13 @@ public:
 
   const std::string& get_compressed_map_list() const;
   std::shared_ptr<const MapEntry> definition_for_map_number(uint32_t id) const;
+  std::shared_ptr<const MapEntry> definition_for_map_name(
+      const std::string& name) const;
   std::set<uint32_t> all_map_ids() const;
+
+  size_t num_com_decks() const;
+  std::shared_ptr<const COMDeckDefinition> com_deck(size_t which) const;
+  std::shared_ptr<const COMDeckDefinition> random_com_deck() const;
 
   const uint32_t behavior_flags;
 
@@ -837,6 +853,9 @@ private:
   // compressed map list at load time.
   mutable std::string compressed_map_list;
   std::map<uint32_t, std::shared_ptr<MapEntry>> maps;
+  std::unordered_map<std::string, std::shared_ptr<MapEntry>> maps_by_name;
+
+  std::vector<std::shared_ptr<COMDeckDefinition>> com_decks;
 };
 
 

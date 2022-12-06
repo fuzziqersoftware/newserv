@@ -59,6 +59,7 @@ add_executable(newserv
   src/Episode3/PlayerStateSubordinates.cc
   src/Episode3/RulerServer.cc
   src/Episode3/Server.cc
+  src/Episode3/Tournament.cc
   src/FileContentsCache.cc
   src/FunctionCompiler.cc
   src/GSLArchive.cc

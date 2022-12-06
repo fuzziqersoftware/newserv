@@ -163,6 +163,7 @@ void send_enter_directory_patch(std::shared_ptr<Client> c, const std::string& di
 void send_patch_file(std::shared_ptr<Client> c, std::shared_ptr<PatchFileIndex::File> f);
 
 void send_message_box(std::shared_ptr<Client> c, const std::u16string& text);
+void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const std::string& text);
 void send_lobby_name(std::shared_ptr<Client> c, const std::u16string& text);
 void send_quest_info(std::shared_ptr<Client> c, const std::u16string& text,
     bool is_download_quest);
@@ -210,6 +211,9 @@ __attribute__((format(printf, 2, 3))) void send_text_message_printf(
   std::u16string decoded = decode_sjis(buf);
   return send_text_message(t, decoded.c_str());
 }
+
+__attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(
+    std::shared_ptr<ServerState> s, const char* format, ...);
 
 void send_info_board(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
 
@@ -302,6 +306,26 @@ void send_ep3_rank_update(std::shared_ptr<Client> c);
 void send_ep3_card_battle_table_state(std::shared_ptr<Lobby> l, uint16_t table_number);
 void send_ep3_set_context_token(std::shared_ptr<Client> c, uint32_t context_token);
 
+void send_ep3_confirm_tournament_entry(
+    std::shared_ptr<ServerState> s,
+    std::shared_ptr<Client> c,
+    std::shared_ptr<const Episode3::Tournament> t);
+void send_ep3_tournament_list(
+    std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
+void send_ep3_tournament_entry_list(
+    std::shared_ptr<Client> c,
+    std::shared_ptr<const Episode3::Tournament> t);
+void send_ep3_tournament_info(
+    std::shared_ptr<Client> c,
+    std::shared_ptr<const Episode3::Tournament> t);
+void send_ep3_set_tournament_player_decks(
+    std::shared_ptr<Lobby> l,
+    std::shared_ptr<Client> c,
+    std::shared_ptr<const Episode3::Tournament::Match> match);
+void send_ep3_tournament_match_result_result(
+    std::shared_ptr<Lobby> l,
+    std::shared_ptr<const Episode3::Tournament::Match> match);
+
 // Pass mask_key = 0 to unmask the command
 void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key);
 
@@ -315,6 +339,10 @@ enum class QuestFileType {
 void send_quest_file(std::shared_ptr<Client> c, const std::string& quest_name,
     const std::string& basename, const std::string& contents,
     QuestFileType type);
+void send_quest_barrier_if_all_clients_ready(std::shared_ptr<Lobby> l);
+
+void send_card_auction_if_all_clients_ready(
+    std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l);
 
 void send_server_time(std::shared_ptr<Client> c);
 

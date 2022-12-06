@@ -2318,8 +2318,8 @@ struct S_TournamentList_GC_Ep3_E0 {
   struct Entry {
     le_uint32_t menu_id = 0;
     le_uint32_t item_id = 0;
-    uint8_t unknown_a1;
-    uint8_t locked; // If nonzero, the lock icon appears in the menu
+    uint8_t unknown_a1 = 0;
+    uint8_t locked = 0; // If nonzero, the lock icon appears in the menu
     // Values for the state field:
     // 00 = Preparing
     // 01 = 1st Round
@@ -2336,8 +2336,8 @@ struct S_TournamentList_GC_Ep3_E0 {
     // appear that are obviously not intended to appear in the tournament list,
     // like "View the board" and "Board: Write". (In fact, some of the strings
     // listed above may be unintended for this menu as well.)
-    uint8_t state;
-    uint8_t unknown_a2;
+    uint8_t state = 0;
+    uint8_t unknown_a2 = 0;
     le_uint32_t start_time = 0; // In seconds since Unix epoch
     ptext<char, 0x20> name;
     le_uint16_t num_teams = 0;
@@ -2349,13 +2349,13 @@ struct S_TournamentList_GC_Ep3_E0 {
 
 // E0 (C->S): Request team and key config (BB)
 
-// E1 (S->C): Battle information (Episode 3)
+// E1 (S->C): Game information (Episode 3)
 
-struct S_Unknown_GC_Ep3_E1 {
-  /* 0004 */ parray<uint8_t, 0x20> game_name;
+struct S_GameInformation_GC_Ep3_E1 {
+  /* 0004 */ ptext<char, 0x20> game_name;
   struct Entry {
-    ptext<char, 0x10> name;
-    ptext<char, 0x20> description;
+    ptext<char, 0x10> name; // From disp.name
+    ptext<char, 0x20> description; // Usually something like "FOmarl CLv30 J"
   } __packed__;
   /* 0024 */ parray<Entry, 4> entries;
   /* 00E4 */ parray<uint8_t, 0x20> unknown_a3;
@@ -2384,24 +2384,24 @@ struct S_Unknown_GC_Ep3_E1 {
 // command.
 
 struct S_TournamentEntryList_GC_Ep3_E2 {
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t players_per_team = 0;
+  le_uint16_t unused = 0;
   struct Entry {
     le_uint32_t menu_id = 0;
     le_uint32_t item_id = 0;
-    uint8_t unknown_a1;
+    uint8_t unknown_a1 = 0;
     // If locked is nonzero, a lock icon appears next to this team and the
     // player is prompted for a password if they select this team.
-    uint8_t locked;
+    uint8_t locked = 0;
     // State values:
     // 00 = empty (team_name is ignored; entry is selectable)
     // 01 = present, joinable (team_name renders in white)
     // 02 = present, finalized (team_name renders in yellow)
     // If state is any other value, the entry renders as if its state were 02,
     // but cannot be selected at all (the menu cursor simply skips over it).
-    uint8_t state;
-    uint8_t unknown_a2;
-    ptext<char, 0x20> team_name;
+    uint8_t state = 0;
+    uint8_t unknown_a2 = 0;
+    ptext<char, 0x20> name;
   } __packed__;
   parray<Entry, 0x20> entries;
 } __packed__;
@@ -5214,12 +5214,12 @@ struct G_Unknown_GC_Ep3_6xB5x3C {
   parray<uint8_t, 3> unused;
 } __packed__;
 
-// 6xB4x3D: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
-// This may be tournament metadata.
+// 6xB4x3D: Set tournament player decks
+// This is sent before the counter sequence in a tournament game, to reserve the
+// player and COM slots and set the map number.
 
-struct G_Unknown_GC_Ep3_6xB4x3D {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_GC_Ep3_6xB4x3D) / 4, 0, 0x3D, 0, 0, 0};
+struct G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D) / 4, 0, 0x3D, 0, 0, 0};
   Episode3::Rules rules;
   parray<uint8_t, 4> unknown_a1;
   struct Entry {
@@ -5228,13 +5228,14 @@ struct G_Unknown_GC_Ep3_6xB4x3D {
     ptext<char, 0x10> deck_name; // Seems to only be used for COM players
     parray<uint8_t, 5> unknown_a1;
     parray<le_uint16_t, 0x1F> card_ids;
-    parray<uint8_t, 2> unused;
+    uint8_t client_id = 0; // Unused for COMs
+    uint8_t unknown_a4 = 0;
     le_uint16_t unknown_a2 = 0;
     le_uint16_t unknown_a3 = 0;
   } __packed__;
   parray<Entry, 4> entries;
   le_uint32_t map_number = 0;
-  uint8_t unknown_a2 = 0;
+  uint8_t player_slot = 0; // Which slot is editable by the client
   uint8_t unknown_a3 = 0;
   uint8_t unknown_a4 = 0;
   uint8_t unknown_a5 = 0;
@@ -5481,20 +5482,25 @@ struct G_SetTrapTileLocations_GC_Ep3_6xB4x50 {
   parray<uint8_t, 2> unused;
 } __packed__;
 
-// 6xB4x51: Tournament match info
+// 6xB4x51: Tournament match result
+// This is sent as soon as the battle result is determined (before the battle
+// results screen). If the client is in tournament mode (tournament_flag is 1 in
+// the StateFlags struct), then it will use this information to show the
+// tournament match result screen before the battle results screen.
 
-struct G_TournamentMatchInfo_GC_Ep3_6xB4x51 {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_TournamentMatchInfo_GC_Ep3_6xB4x51) / 4, 0, 0x51, 0, 0, 0};
+struct G_TournamentMatchResult_GC_Ep3_6xB4x51 {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_TournamentMatchResult_GC_Ep3_6xB4x51) / 4, 0, 0x51, 0, 0, 0};
   ptext<char, 0x40> match_description;
-  struct Entry {
+  struct NamesEntry {
     ptext<char, 0x20> team_name;
     parray<ptext<char, 0x10>, 2> player_names;
   } __packed__;
-  parray<Entry, 2> teams;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
-  le_uint16_t unknown_a3 = 0;
-  le_uint16_t unknown_a4 = 0;
+  parray<NamesEntry, 2> names_entries;
+  struct ResultEntry {
+    le_uint16_t num_players;
+    le_uint16_t is_winner_team;
+  } __packed__;
+  parray<ResultEntry, 2> result_entries;
   le_uint32_t meseta_amount = 0;
   // This field apparently is supposed to contain a %s token (as for printf)
   // that is replaced with meseta_amount.

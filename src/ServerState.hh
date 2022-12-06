@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Episode3/DataIndex.hh"
+#include "Episode3/Tournament.hh"
 #include "Client.hh"
 #include "FunctionCompiler.hh"
 #include "GSLArchive.hh"
@@ -66,6 +68,8 @@ struct ServerState {
   std::shared_ptr<const GSLArchive> bb_data_gsl;
   std::shared_ptr<const RareItemSet> rare_item_set;
 
+  std::shared_ptr<Episode3::TournamentIndex> ep3_tournament_index;
+
   uint16_t ep3_card_auction_points;
   uint16_t ep3_card_auction_min_size;
   uint16_t ep3_card_auction_max_size;
@@ -115,7 +119,7 @@ struct ServerState {
   void add_client_to_available_lobby(std::shared_ptr<Client> c);
   void remove_client_from_lobby(std::shared_ptr<Client> c);
   bool change_client_lobby(std::shared_ptr<Client> c,
-      std::shared_ptr<Lobby> new_lobby);
+      std::shared_ptr<Lobby> new_lobby, bool send_join_notification = true);
 
   void send_lobby_join_notifications(std::shared_ptr<Lobby> l,
       std::shared_ptr<Client> joining_client);

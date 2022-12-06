@@ -21,6 +21,9 @@ using namespace std;
 
 
 
+extern const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME;
+extern const char* CARD_AUCTION_DISCONNECT_HOOK_NAME;
+
 const unordered_set<uint32_t> v2_crypt_initial_client_commands({
   0x00260088, // (17) DCNTE license check
   0x00B0008B, // (02) DCNTE login
@@ -284,11 +287,6 @@ void send_quest_open_file_t(
 
 void send_quest_buffer_overflow(
     shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  // TODO: Figure out a way to share this state across sessions. Maybe we could
-  // e.g. modify send_1D to send a nonzero flag value, which we could use to
-  // know that the client already has this patch? Or just add another command in
-  // the login sequence?
-
   // PSO Episode 3 USA doesn't natively support the B2 command, but we can add
   // it back to the game with some tricky commands. For details on how this
   // works, see system/ppc/Episode3USAQuestBufferOverflow.s.
@@ -314,8 +312,8 @@ void send_quest_buffer_overflow(
 void send_function_call(
     shared_ptr<Client> c,
     shared_ptr<CompiledFunctionCode> code,
-    const std::unordered_map<std::string, uint32_t>& label_writes,
-    const std::string& suffix,
+    const unordered_map<string, uint32_t>& label_writes,
+    const string& suffix,
     uint32_t checksum_addr,
     uint32_t checksum_size) {
   return send_function_call(
@@ -332,8 +330,8 @@ void send_function_call(
     Channel& ch,
     uint64_t client_flags,
     shared_ptr<CompiledFunctionCode> code,
-    const std::unordered_map<std::string, uint32_t>& label_writes,
-    const std::string& suffix,
+    const unordered_map<string, uint32_t>& label_writes,
+    const string& suffix,
     uint32_t checksum_addr,
     uint32_t checksum_size) {
   if (client_flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
@@ -649,6 +647,17 @@ void send_message_box(shared_ptr<Client> c, const u16string& text) {
   send_text(c->channel, command, text, true);
 }
 
+void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& message) {
+  StringWriter w;
+  w.put<S_TimedMessageBoxHeader_GC_Ep3_EA>({frames});
+  add_color(w, message.data(), message.size());
+  w.put_u8(0);
+  while (w.size() & 3) {
+    w.put_u8(0);
+  }
+  ch.send(0xEA, 0x00, w.str());
+}
+
 void send_lobby_name(shared_ptr<Client> c, const u16string& text) {
   send_text(c->channel, 0x8A, text, false);
 }
@@ -670,7 +679,7 @@ void send_ship_info(Channel& ch, const u16string& text) {
   send_header_text(ch, 0x11, 0, text, true);
 }
 
-void send_text_message(Channel& ch, const std::u16string& text) {
+void send_text_message(Channel& ch, const u16string& text) {
   send_header_text(ch, 0xB0, 0, text, true);
 }
 
@@ -691,6 +700,22 @@ void send_text_message(shared_ptr<ServerState> s, const u16string& text) {
   // lobby) and use that instead here
   for (auto& l : s->all_lobbies()) {
     send_text_message(l, text);
+  }
+}
+
+__attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(
+    std::shared_ptr<ServerState> s, const char* format, ...) {
+  va_list va;
+  va_start(va, format);
+  std::string buf = string_vprintf(format, va);
+  va_end(va);
+  std::u16string decoded = decode_sjis(buf);
+  for (auto& it : s->id_to_lobby) {
+    for (auto& c : it.second->clients) {
+      if (c && (c->flags & Client::Flag::IS_EPISODE_3)) {
+        send_text_message(c, decoded);
+      }
+    }
   }
 }
 
@@ -1565,8 +1590,8 @@ void send_get_player_info(shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 // Trade window
 
-void send_execute_item_trade(std::shared_ptr<Client> c,
-    const std::vector<ItemData>& items) {
+void send_execute_item_trade(shared_ptr<Client> c,
+    const vector<ItemData>& items) {
   SC_TradeItems_D0_D3 cmd;
   if (items.size() > sizeof(cmd.items) / sizeof(cmd.items[0])) {
     throw logic_error("too many items in execute trade command");
@@ -1579,8 +1604,8 @@ void send_execute_item_trade(std::shared_ptr<Client> c,
   send_command_t(c, 0xD3, 0x00, cmd);
 }
 
-void send_execute_card_trade(std::shared_ptr<Client> c,
-    const std::vector<std::pair<uint32_t, uint32_t>>& card_to_count) {
+void send_execute_card_trade(shared_ptr<Client> c,
+    const vector<pair<uint32_t, uint32_t>>& card_to_count) {
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
     throw logic_error("cannot send trade cards command to non-Ep3 client");
   }
@@ -1841,10 +1866,10 @@ void send_ep3_card_list_update(shared_ptr<ServerState> s, shared_ptr<Client> c) 
 }
 
 void send_ep3_media_update(
-    std::shared_ptr<Client> c,
+    shared_ptr<Client> c,
     uint32_t type,
     uint32_t which,
-    const std::string& compressed_data) {
+    const string& compressed_data) {
   StringWriter w;
   w.put<S_UpdateMediaHeader_GC_Ep3_B9>({type, which, compressed_data.size(), 0});
   w.write(compressed_data);
@@ -1896,6 +1921,228 @@ void send_ep3_set_context_token(shared_ptr<Client> c, uint32_t context_token) {
   G_SetContextToken_GC_Ep3_6xB4x1F cmd;
   cmd.context_token = context_token;
   send_command_t(c, 0xC9, 0x00, cmd);
+}
+
+void send_ep3_confirm_tournament_entry(
+    shared_ptr<ServerState> s,
+    shared_ptr<Client> c,
+    shared_ptr<const Episode3::Tournament> tourn) {
+  S_ConfirmTournamentEntry_GC_Ep3_CC cmd;
+  if (tourn) {
+    cmd.tournament_name = tourn->get_name();
+    cmd.server_name = encode_sjis(s->name);
+    // TODO: Fill this in appropriately when we support scheduled start times
+    cmd.start_time = "Unknown";
+    auto& teams = tourn->all_teams();
+    for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
+      cmd.entries[z].present = 1;
+      cmd.entries[z].team_name = teams[z]->name;
+    }
+  }
+  send_command_t(c, 0xCC, tourn ? 0x01 : 0x00, cmd);
+}
+
+void send_ep3_tournament_list(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  S_TournamentList_GC_Ep3_E0 cmd;
+  size_t z = 0;
+  for (const auto& tourn : s->ep3_tournament_index->all_tournaments()) {
+    if (z >= 0x20) {
+      throw logic_error("more than 32 tournaments exist");
+    }
+    auto& entry = cmd.entries[z];
+    entry.menu_id = MenuID::TOURNAMENTS;
+    entry.item_id = tourn->get_number();
+    // TODO: What does it mean for a tournament to be locked? Should we support
+    // that?
+    // TODO: Write appropriate round text (1st, 2nd, 3rd) here. This is
+    // nontrivial because unlike Sega's implementation, newserv does not require
+    // a round to completely finish before starting matches in the next round,
+    // as long as the winners of the preceding matches have been determined.
+    entry.state =
+        (tourn->get_state() == Episode3::Tournament::State::REGISTRATION)
+        ? 0x00 : 0x05;
+    // TODO: Fill in cmd.start_time here when we implement scheduled starts.
+    entry.name = tourn->get_name();
+    const auto& teams = tourn->all_teams();
+    for (auto team : teams) {
+      if (!team->name.empty()) {
+        entry.num_teams++;
+      }
+    }
+    entry.max_teams = teams.size();
+    entry.unknown_a3.clear(0xFFFF);
+    z++;
+  }
+  send_command_t(c, 0xE0, z, cmd);
+}
+
+void send_ep3_tournament_entry_list(
+    shared_ptr<Client> c,
+    shared_ptr<const Episode3::Tournament> tourn) {
+  S_TournamentEntryList_GC_Ep3_E2 cmd;
+  cmd.players_per_team = tourn->get_is_2v2() ? 2 : 1;
+  size_t z = 0;
+  for (const auto& team : tourn->all_teams()) {
+    if (z >= 0x20) {
+      throw logic_error("more than 32 teams in tournament");
+    }
+    auto& entry = cmd.entries[z];
+    entry.menu_id = MenuID::TOURNAMENT_ENTRIES;
+    entry.item_id = (tourn->get_number() << 16) | z;
+    entry.unknown_a2 = team->num_rounds_cleared;
+    entry.locked = team->password.empty() ? 0 : 1;
+    if (tourn->get_state() != Episode3::Tournament::State::REGISTRATION) {
+      entry.state = 2;
+    } else if (team->name.empty()) {
+      entry.state = 0;
+    } else if (team->player_serial_numbers.size() < team->max_players) {
+      entry.state = 1;
+    } else {
+      entry.state = 2;
+    }
+    entry.name = team->name;
+    z++;
+  }
+  send_command_t(c, 0xE2, z, cmd);
+}
+
+void send_ep3_tournament_info(
+    std::shared_ptr<Client> c,
+    std::shared_ptr<const Episode3::Tournament> t) {
+  S_TournamentInfo_GC_Ep3_E3 cmd;
+  cmd.name = t->get_name();
+  cmd.map_name = t->get_map()->map.name;
+  cmd.rules = t->get_rules();
+  const auto& teams = t->all_teams();
+  for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
+    cmd.entries[z].win_count = teams[z]->num_rounds_cleared;
+    cmd.entries[z].is_active = teams[z]->is_active ? 1 : 0;
+    cmd.entries[z].team_name = teams[z]->name;
+  }
+  cmd.max_entries = teams.size();
+  send_command_t(c, 0xE3, 0x02, cmd);
+}
+
+void send_ep3_set_tournament_player_decks(
+    std::shared_ptr<Lobby> l,
+    std::shared_ptr<Client> c,
+    std::shared_ptr<const Episode3::Tournament::Match> match) {
+  auto tourn = match->tournament.lock();
+  if (!tourn) {
+    throw runtime_error("tournament is deleted");
+  }
+
+  G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D cmd;
+  cmd.rules = tourn->get_rules();
+  cmd.map_number = tourn->get_map()->map.map_number.load();
+  cmd.player_slot = 0xFF;
+
+  for (size_t z = 0; z < 4; z++) {
+    auto& entry = cmd.entries[z];
+    entry.player_name.clear(0);
+    entry.deck_name.clear(0);
+    entry.unknown_a1.clear(0);
+    entry.card_ids.clear(0);
+    entry.client_id = z;
+  }
+
+  unordered_map<uint32_t, shared_ptr<Client>> serial_number_to_client;
+  for (auto client : l->clients) {
+    if (client) {
+      serial_number_to_client.emplace(client->license->serial_number, client);
+    }
+  }
+
+  size_t z = 0;
+  auto add_entries_for_team = [&](shared_ptr<const Episode3::Tournament::Team> team) -> void {
+    for (uint32_t player_serial_number : team->player_serial_numbers) {
+      auto& entry = cmd.entries[z];
+      entry.type = 1; // Human
+      entry.player_name = serial_number_to_client.at(player_serial_number)->game_data.player()->disp.name;
+      entry.unknown_a2 = 6;
+      if (player_serial_number == c->license->serial_number) {
+        cmd.player_slot = z;
+      }
+      z++;
+    }
+    for (auto com_deck : team->com_decks) {
+      auto& entry = cmd.entries[z];
+      entry.type = 2; // COM
+      entry.player_name = com_deck->player_name;
+      entry.deck_name = com_deck->deck_name;
+      entry.card_ids = com_deck->card_ids;
+      entry.unknown_a2 = 6;
+      z++;
+    }
+  };
+  add_entries_for_team(match->preceding_a->winner_team);
+  if (z < 1) {
+    throw logic_error("no entries from preceding team A");
+  }
+  if (z > 2) {
+    throw logic_error("too many entries from preceding team A");
+  }
+  z = 2;
+  add_entries_for_team(match->preceding_b->winner_team);
+  if (z < 3) {
+    throw logic_error("no entries from preceding team B");
+  }
+  if (z > 4) {
+    throw logic_error("too many entries from preceding team B");
+  }
+
+  if (!(tourn->get_data_index()->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+    uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+    set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
+  }
+
+  send_command_t(c, 0xC9, 0x00, cmd);
+
+  // TODO: Handle disconnection during the match (the other team should win)
+}
+
+void send_ep3_tournament_match_result_result(
+    shared_ptr<Lobby> l, shared_ptr<const Episode3::Tournament::Match> match) {
+  auto tourn = match->tournament.lock();
+  if (!tourn) {
+    return;
+  }
+
+  unordered_map<uint32_t, shared_ptr<Client>> serial_number_to_client;
+  for (auto client : l->clients) {
+    if (client) {
+      serial_number_to_client.emplace(client->license->serial_number, client);
+    }
+  }
+
+  auto write_player_names = [&](G_TournamentMatchResult_GC_Ep3_6xB4x51::NamesEntry& entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
+    size_t z = 0;
+    for (uint32_t player_serial_number : team->player_serial_numbers) {
+      entry.player_names[z] = serial_number_to_client.at(player_serial_number)->game_data.player()->disp.name;
+      z++;
+    }
+    for (auto com_deck : team->com_decks) {
+      entry.player_names[z] = com_deck->player_name;
+      z++;
+    }
+  };
+
+  G_TournamentMatchResult_GC_Ep3_6xB4x51 cmd;
+  cmd.match_description = string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num);
+  cmd.names_entries[0].team_name = match->preceding_a->winner_team->name;
+  write_player_names(cmd.names_entries[0], match->preceding_a->winner_team);
+  cmd.names_entries[1].team_name = match->preceding_b->winner_team->name;
+  write_player_names(cmd.names_entries[1], match->preceding_b->winner_team);
+  cmd.result_entries[0].num_players = match->preceding_a->winner_team->max_players;
+  cmd.result_entries[0].is_winner_team = (match->preceding_a->winner_team == match->winner_team);
+  cmd.result_entries[1].num_players = match->preceding_a->winner_team->max_players;
+  cmd.result_entries[1].is_winner_team = (match->preceding_b->winner_team == match->winner_team);
+  // TODO: This amount should vary depending on the match level / round number,
+  // but newserv doesn't currently implement meseta at all - we just always give
+  // the player 1000000 and never charge for anything.
+  cmd.meseta_amount = 100;
+  cmd.meseta_reward_text = "You got %s meseta!";
+  send_command_t(l, 0xC9, 0x00, cmd);
 }
 
 void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key) {
@@ -1992,6 +2239,97 @@ void send_quest_file(shared_ptr<Client> c, const string& quest_name,
   }
 }
 
+void send_quest_barrier_if_all_clients_ready(shared_ptr<Lobby> l) {
+  if (!l || !l->is_game()) {
+    return;
+  }
+
+  // Check if any client is still loading
+  size_t x;
+  for (x = 0; x < l->max_clients; x++) {
+    if (!l->clients[x]) {
+      continue;
+    }
+    if (l->clients[x]->flags & Client::Flag::LOADING_QUEST) {
+      break;
+    }
+  }
+
+  // If they're all done, start the quest
+  if (x == l->max_clients) {
+    send_command(l, 0xAC, 0x00);
+  }
+
+  // Check if any client is still loading
+  for (x = 0; x < l->max_clients; x++) {
+    l->clients[x]->disconnect_hooks.erase(QUEST_BARRIER_DISCONNECT_HOOK_NAME);
+  }
+}
+
+void send_card_auction_if_all_clients_ready(
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
+  // Check if any client is still not ready
+  size_t x;
+  for (x = 0; x < l->max_clients; x++) {
+    if (!l->clients[x]) {
+      continue;
+    }
+    if (!(l->clients[x]->flags & Client::Flag::AWAITING_CARD_AUCTION)) {
+      break;
+    }
+  }
+  if (x != l->max_clients) {
+    return;
+  }
+
+  for (x = 0; x < l->max_clients; x++) {
+    if (l->clients[x]) {
+      l->clients[x]->flags &= ~Client::Flag::AWAITING_CARD_AUCTION;
+    }
+  }
+
+  if ((s->ep3_card_auction_points == 0) ||
+      (s->ep3_card_auction_min_size == 0) ||
+      (s->ep3_card_auction_max_size == 0)) {
+    throw runtime_error("card auctions are not configured on this server");
+  }
+
+  uint16_t num_cards;
+  if (s->ep3_card_auction_min_size == s->ep3_card_auction_max_size) {
+    num_cards = s->ep3_card_auction_min_size;
+  } else {
+    num_cards = s->ep3_card_auction_min_size +
+        (random_object<uint16_t>() % (s->ep3_card_auction_max_size - s->ep3_card_auction_min_size + 1));
+  }
+  num_cards = min<uint16_t>(num_cards, 0x14);
+
+  uint64_t distribution_size = 0;
+  for (const auto& it : s->ep3_card_auction_pool) {
+    distribution_size += it.second.first;
+  }
+
+  S_StartCardAuction_GC_Ep3_EF cmd;
+  cmd.points_available = s->ep3_card_auction_points;
+  for (size_t z = 0; z < num_cards; z++) {
+    uint64_t v = random_object<uint64_t>() % distribution_size;
+    for (const auto& it : s->ep3_card_auction_pool) {
+      if (v >= it.second.first) {
+        v -= it.second.first;
+      } else {
+        cmd.entries[z].card_id = s->ep3_data_index->definition_for_card_name(it.first)->def.card_id.load();
+        cmd.entries[z].min_price = it.second.second;
+        break;
+      }
+    }
+  }
+  send_command_t(l, 0xEF, num_cards, cmd);
+
+  for (auto c : l->clients) {
+    if (c) {
+      c->disconnect_hooks.erase(CARD_AUCTION_DISCONNECT_HOOK_NAME);
+    }
+  }
+}
 void send_server_time(shared_ptr<Client> c) {
   uint64_t t = now();
 

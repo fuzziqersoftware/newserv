@@ -15,6 +15,7 @@
 #include "PSOProtocol.hh"
 #include "Text.hh"
 #include "Episode3/BattleRecord.hh"
+#include "Episode3/Tournament.hh"
 
 
 
@@ -96,6 +97,7 @@ struct Client {
   bool should_send_to_proxy_server;
   uint32_t proxy_destination_address;
   uint16_t proxy_destination_port;
+  std::unordered_map<std::string, std::function<void()>> disconnect_hooks;
 
   // Patch server
   std::vector<PatchFileChecksumRequest> patch_file_checksum_requests;
@@ -113,6 +115,7 @@ struct Client {
   std::unique_ptr<struct event, void(*)(struct event*)> save_game_data_event;
   int16_t card_battle_table_number;
   uint8_t card_battle_table_seat_number;
+  std::weak_ptr<Episode3::Tournament::Team> ep3_tournament_team;
 
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give
@@ -137,6 +140,7 @@ struct Client {
   std::shared_ptr<DOLFileIndex::DOLFile> loading_dol_file;
 
   Client(struct bufferevent* bev, GameVersion version, ServerBehavior server_behavior);
+  ~Client();
 
   inline GameVersion version() const {
     return this->channel.version;

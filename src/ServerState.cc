@@ -26,6 +26,7 @@ ServerState::ServerState()
     catch_handler_exceptions(true),
     ep3_behavior_flags(0),
     run_shell_behavior(RunShellBehavior::DEFAULT),
+    ep3_tournament_index(new Episode3::TournamentIndex()),
     ep3_card_auction_points(0),
     ep3_card_auction_min_size(0),
     ep3_card_auction_max_size(0),
@@ -120,7 +121,8 @@ void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
   }
 }
 
-bool ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> new_lobby) {
+bool ServerState::change_client_lobby(
+    shared_ptr<Client> c, shared_ptr<Lobby> new_lobby, bool send_join_notification) {
   uint8_t old_lobby_client_id = c->lobby_client_id;
 
   shared_ptr<Lobby> current_lobby = this->find_lobby(c->lobby_id);
@@ -141,7 +143,9 @@ bool ServerState::change_client_lobby(shared_ptr<Client> c, shared_ptr<Lobby> ne
       send_player_leave_notification(current_lobby, old_lobby_client_id);
     }
   }
-  this->send_lobby_join_notifications(new_lobby, c);
+  if (send_join_notification) {
+    this->send_lobby_join_notifications(new_lobby, c);
+  }
   return true;
 }
 

@@ -20,8 +20,14 @@
 #include "SendCommands.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
+#include "Episode3/Tournament.hh"
 
 using namespace std;
+
+
+
+const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME = "quest_barrier";
+const char* CARD_AUCTION_DISCONNECT_HOOK_NAME = "card_auction";
 
 
 
@@ -861,21 +867,92 @@ static void on_ep3_battle_table_state(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) { // E4
   const auto& cmd = check_size_t<C_CardBattleTableState_GC_Ep3_E4>(data);
   auto l = s->find_lobby(c->lobby_id);
-  if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
-    throw runtime_error("battle table command sent in non-CARD lobby");
-  }
 
   if (flag) {
+    if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+      throw runtime_error("battle table join command sent in non-CARD lobby");
+    }
     c->card_battle_table_number = cmd.table_number;
     c->card_battle_table_seat_number = cmd.seat_number;
-  } else {
+
+    auto team = c->ep3_tournament_team.lock();
+    if (team) {
+      auto tourn = team->tournament.lock();
+      if (tourn) {
+        auto match = tourn->next_match_for_team(team);
+        if (match) {
+          auto other_team = match->opponent_team_for_team(team);
+          unordered_set<uint32_t> required_serial_numbers;
+          for (uint32_t serial_number : team->player_serial_numbers) {
+            required_serial_numbers.emplace(serial_number);
+          }
+          for (uint32_t serial_number : other_team->player_serial_numbers) {
+            required_serial_numbers.emplace(serial_number);
+          }
+          unordered_set<shared_ptr<Client>> game_clients;
+          for (const auto& other_c : l->clients) {
+            if (!other_c) {
+              continue;
+            }
+            if ((other_c->card_battle_table_number == cmd.table_number) &&
+                required_serial_numbers.erase(other_c->license->serial_number)) {
+              game_clients.emplace(other_c);
+            }
+          }
+          if (required_serial_numbers.empty()) {
+            for (const auto& other_c : l->clients) {
+              if (other_c && (other_c->card_battle_table_number == cmd.table_number)) {
+                other_c->card_battle_table_number = -1;
+                other_c->card_battle_table_seat_number = 0;
+              }
+            }
+
+            G_SetStateFlags_GC_Ep3_6xB4x03 state_cmd;
+            state_cmd.state.turn_num = 1;
+            state_cmd.state.battle_phase = Episode3::BattlePhase::INVALID_00;
+            state_cmd.state.current_team_turn1 = 0xFF;
+            state_cmd.state.current_team_turn2 = 0xFF;
+            state_cmd.state.action_subphase = Episode3::ActionSubphase::ATTACK;
+            state_cmd.state.setup_phase = Episode3::SetupPhase::REGISTRATION;
+            state_cmd.state.registration_phase = Episode3::RegistrationPhase::AWAITING_NUM_PLAYERS;
+            state_cmd.state.team_exp.clear(0);
+            state_cmd.state.team_dice_boost.clear(0);
+            state_cmd.state.first_team_turn = 0xFF;
+            state_cmd.state.tournament_flag = 0x01;
+            state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
+
+            // TODO: We don't know if this works with multiple players. Test it.
+            uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
+            auto game = create_game_generic(s, c, u"<Tournament>", u"", 0xFF, 0, flags);
+            game->tournament_match = match;
+            for (auto game_c : game_clients) {
+              send_command_t(game_c, 0x60, 0x00, state_cmd);
+              s->change_client_lobby(game_c, game, false);
+              send_join_lobby(game_c, game);
+              game_c->flags |= Client::Flag::LOADING;
+            }
+          }
+        }
+      }
+    }
+
+  } else { // Leaving battle table
     c->card_battle_table_number = -1;
     c->card_battle_table_seat_number = 0;
   }
+
   send_ep3_card_battle_table_state(l, c->card_battle_table_number);
-  // TODO: If a client disconnects while at the battle table, we need to send
-  // a table update to all the other clients at the table (if any). Use a
-  // disconnect hook for this.
+
+  bool should_have_disconnect_hook = (c->card_battle_table_number != -1);
+
+  const char* DISCONNECT_HOOK_NAME = "battle_table_state";
+  if (should_have_disconnect_hook && !c->disconnect_hooks.count(DISCONNECT_HOOK_NAME)) {
+    c->disconnect_hooks.emplace(DISCONNECT_HOOK_NAME, [l, c]() -> void {
+      send_ep3_card_battle_table_state(l, c->card_battle_table_number);
+    });
+  } else if (!should_have_disconnect_hook) {
+    c->disconnect_hooks.erase(DISCONNECT_HOOK_NAME);
+  }
 }
 
 static void on_ep3_battle_table_confirm(shared_ptr<ServerState> s,
@@ -888,7 +965,7 @@ static void on_ep3_battle_table_confirm(shared_ptr<ServerState> s,
 
   if (flag) {
     // TODO
-    send_lobby_message_box(c, u"CARD battles are\nnot yet supported.");
+    send_lobby_message_box(c, u"Battle Tables are\nnot yet supported.");
   }
 }
 
@@ -898,6 +975,15 @@ static void on_ep3_counter_state(shared_ptr<ServerState> s, shared_ptr<Client> c
   auto l = s->find_lobby(c->lobby_id);
   if (flag != 0) {
     send_command(c, 0xDC, 0x00);
+    if (l->tournament_match) {
+      auto tourn = l->tournament_match->tournament.lock();
+      if (tourn) {
+        send_ep3_set_tournament_player_decks(l, c, l->tournament_match);
+        string data = Episode3::Server::prepare_6xB6x41_map_definition(
+            tourn->get_map());
+        c->channel.send(0x6C, 0x00, data);
+      }
+    }
     l->flags |= Lobby::Flag::BATTLE_IN_PROGRESS;
   } else {
     l->flags &= ~Lobby::Flag::BATTLE_IN_PROGRESS;
@@ -924,7 +1010,7 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
       l->log.info("Recreating Episode 3 server state");
     }
     l->ep3_server_base = make_shared<Episode3::ServerBase>(
-        l, s->ep3_data_index, l->random_seed);
+        l, s->ep3_data_index, l->random_seed, l->tournament_match ? true : false);
     l->ep3_server_base->init();
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
@@ -960,17 +1046,80 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
     }
   }
   l->ep3_server_base->server->on_server_data_input(data);
+  if (l->ep3_server_base->server->battle_finished && l->tournament_match) {
+    int8_t winner_team_id = l->ep3_server_base->server->get_winner_team_id();
+    if (winner_team_id == -1) {
+      throw runtime_error("match concluded, but winner team not specified");
+    }
+    if (winner_team_id == 0) {
+      l->tournament_match->set_winner_team(l->tournament_match->preceding_a->winner_team);
+    } else if (winner_team_id == 1) {
+      l->tournament_match->set_winner_team(l->tournament_match->preceding_b->winner_team);
+    } else {
+      throw logic_error("invalid winner team id");
+    }
+    send_ep3_tournament_match_result_result(l, l->tournament_match);
+  }
 }
 
-static void on_ep3_tournament_control(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string&) { // E2
-  // The client will set their interaction mode expecting a menu to be sent, but
-  // since we don't implement tournaments, they will get stuck here unless we
-  // send something. An 01 (lobby message box) seems to work fine.
-  send_lobby_message_box(c, u"$C6Tournaments are\nnot supported.");
+static void on_tournament_complete(
+    shared_ptr<ServerState> s, shared_ptr<const Episode3::Tournament> tourn) {
+  auto team = tourn->get_winner_team();
+  if (team->player_serial_numbers.empty()) {
+    send_ep3_text_message_printf(s, "$C7A CPU team won\nthe tournament\n$C6%s", tourn->get_name().c_str());
+  } else {
+    send_ep3_text_message_printf(s, "$C6%s$C7\nwon the tournament\n$C6%s", team->name.c_str(), tourn->get_name().c_str());
+  }
+  s->ep3_tournament_index->delete_tournament(tourn->get_number());
 }
 
-
+static void on_ep3_tournament_control(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t, uint32_t flag, const string&) { // E2
+  switch (flag) {
+    case 0x00: // Request tournament list
+      send_ep3_tournament_list(s, c);
+      break;
+    case 0x01: { // Check tournament
+      auto team = c->ep3_tournament_team.lock();
+      if (team) {
+        auto tourn = team->tournament.lock();
+        if (tourn) {
+          send_ep3_tournament_entry_list(c, tourn);
+        } else {
+          send_lobby_message_box(c, u"$C6The tournament\nhas concluded.");
+        }
+      } else {
+        send_lobby_message_box(c, u"$C6You are not\nregistered in a\ntournament.");
+      }
+      break;
+    }
+    case 0x02: { // Cancel tournament entry
+      auto team = c->ep3_tournament_team.lock();
+      if (team) {
+        auto tourn = team->tournament.lock();
+        if (tourn) {
+          if (tourn->get_state() != Episode3::Tournament::State::COMPLETE) {
+            team->unregister_player(c->license->serial_number);
+            if (tourn->get_state() == Episode3::Tournament::State::COMPLETE) {
+              on_tournament_complete(s, tourn);
+            }
+          }
+          c->ep3_tournament_team.reset();
+        }
+      }
+      send_ep3_confirm_tournament_entry(s, c, nullptr);
+      break;
+    }
+    case 0x03: // Create tournament spectator team (get battle list)
+      send_lobby_message_box(c, u"$C6Not supported"); // TODO
+      break;
+    case 0x04: // Join tournament spectator team (get team list)
+      send_lobby_message_box(c, u"$C6Not supported"); // TODO
+      break;
+    default:
+      throw runtime_error("invalid tournament operation");
+  }
+}
 
 static void on_message_box_closed(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // D6
@@ -1070,6 +1219,25 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
       if (!game->is_game()) {
         send_ship_info(c, u"$C4Incorrect game ID");
 
+      } else if ((c->flags & Client::Flag::IS_EPISODE_3) &&
+                 (game->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+        S_GameInformation_GC_Ep3_E1 cmd;
+        cmd.game_name = encode_sjis(game->name);
+        size_t num_players = 0;
+        for (const auto& client : game->clients) {
+          if (client) {
+            auto player = client->game_data.player();
+            cmd.entries[num_players].name = player->disp.name;
+            cmd.entries[num_players].description = string_printf(
+                "%s CLv%" PRIu32 " %c",
+                name_for_char_class(player->disp.char_class),
+                player->disp.level + 1,
+                char_for_language_code(player->inventory.language));
+            num_players++;
+          }
+        }
+        send_command_t(c, 0xE1, 0x00, cmd);
+
       } else {
         string info;
         for (size_t x = 0; x < game->max_clients; x++) {
@@ -1163,8 +1331,55 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
       break;
     }
 
+    case MenuID::TOURNAMENTS: {
+      if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+        send_ship_info(c, u"Incorrect menu ID");
+        break;
+      }
+      auto tourn = s->ep3_tournament_index->get_tournament(cmd.item_id);
+      if (tourn) {
+        send_ep3_tournament_info(c, tourn);
+      }
+      break;
+    }
+    case MenuID::TOURNAMENT_ENTRIES: {
+      if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+        send_ship_info(c, u"Incorrect menu ID");
+        break;
+      }
+      uint16_t tourn_num = cmd.item_id >> 16;
+      uint16_t team_index = cmd.item_id & 0xFFFF;
+      auto tourn = s->ep3_tournament_index->get_tournament(tourn_num);
+      if (tourn) {
+        auto team = tourn->get_team(team_index);
+        if (team) {
+          string message;
+          if (team->name.empty()) {
+            message = string_printf("$C7(Unnamed team)\n%zu/%zu players\n%zu wins\n%s",
+                team->player_serial_numbers.size(),
+                team->max_players,
+                team->num_rounds_cleared,
+                team->password.empty() ? "" : "Locked");
+          } else {
+            message = string_printf("$C6%s$C7\n%zu/%zu players\n%zu wins\n%s",
+                team->name.c_str(),
+                team->player_serial_numbers.size(),
+                team->max_players,
+                team->num_rounds_cleared,
+                team->password.empty() ? "" : "Locked");
+          }
+          send_ship_info(c, decode_sjis(message));
+        } else {
+          send_ship_info(c, u"$C7No such team");
+        }
+      } else {
+        send_ship_info(c, u"$C7No such tournament");
+      }
+      break;
+    }
+
     default:
-      send_ship_info(c, u"Incorrect menu ID.");
+      send_ship_info(c, u"Incorrect menu ID");
       break;
   }
 }
@@ -1175,12 +1390,21 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   uint32_t menu_id;
   uint32_t item_id;
+  u16string team_name;
   u16string password;
 
   if (data.size() > sizeof(C_MenuSelection_10_Flag00)) {
     if (uses_unicode) {
+      // TODO: We can support the Flag03 variant here, but PC/BB probably never
+      // actually use it.
       const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag02>(data);
       password = cmd.password;
+      menu_id = cmd.basic_cmd.menu_id;
+      item_id = cmd.basic_cmd.item_id;
+    } else if (data.size() > sizeof(C_MenuSelection_DC_V3_10_Flag02)) {
+      const auto& cmd = check_size_t<C_MenuSelection_DC_V3_10_Flag03>(data);
+      team_name = decode_sjis(cmd.unknown_a1);
+      password = decode_sjis(cmd.password);
       menu_id = cmd.basic_cmd.menu_id;
       item_id = cmd.basic_cmd.item_id;
     } else {
@@ -1503,6 +1727,9 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
               (l->clients[x]->version() != GameVersion::PC) &&
               !(l->clients[x]->flags & Client::Flag::IS_TRIAL_EDITION)) {
             l->clients[x]->flags |= Client::Flag::LOADING_QUEST;
+            l->clients[x]->disconnect_hooks.emplace(QUEST_BARRIER_DISCONNECT_HOOK_NAME, [l]() -> void {
+              send_quest_barrier_if_all_clients_ready(l);
+            });
           }
         }
 
@@ -1560,8 +1787,64 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
       break;
 
+    case MenuID::TOURNAMENTS: {
+      if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+        throw runtime_error("non-Episode 3 client attempted to join tournament");
+      }
+      auto tourn = s->ep3_tournament_index->get_tournament(item_id);
+      if (tourn) {
+        send_ep3_tournament_entry_list(c, tourn);
+      }
+      break;
+    }
+    case MenuID::TOURNAMENT_ENTRIES: {
+      if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+        throw runtime_error("non-Episode 3 client attempted to join tournament");
+      }
+      if (c->ep3_tournament_team.lock()) {
+        send_lobby_message_box(c, u"$C6You are registered\nin a different\ntournament already");
+        break;
+      }
+      if (team_name.empty()) {
+        team_name = c->game_data.player()->disp.name;
+        team_name += decode_sjis(string_printf("/%" PRIX32, c->license->serial_number));
+      }
+      uint16_t tourn_num = item_id >> 16;
+      uint16_t team_index = item_id & 0xFFFF;
+      auto tourn = s->ep3_tournament_index->get_tournament(tourn_num);
+      if (tourn) {
+        auto team = tourn->get_team(team_index);
+        if (team) {
+          try {
+            team->register_player(
+                c->license->serial_number,
+                encode_sjis(team_name),
+                encode_sjis(password));
+            c->ep3_tournament_team = team;
+            send_ep3_confirm_tournament_entry(s, c, tourn);
+            string message = string_printf("$C7You are registered in $C6%s$C7.\n\
+\n\
+After registration ends, you can start your\n\
+first match by standing at any Battle Table in\n\
+the lobby along with your partner (if any) and\n\
+opponent(s).", tourn->get_name().c_str());
+            send_ep3_timed_message_box(c->channel, 240, message.c_str());
+
+          } catch (const exception& e) {
+            string message = string_printf("Cannot join team:\n%s", e.what());
+            send_lobby_message_box(c, decode_sjis(message));
+          }
+        } else {
+          send_lobby_message_box(c, u"Team does not exist");
+        }
+      } else {
+        send_lobby_message_box(c, u"Tournament does\nnot exist");
+      }
+      break;
+    }
+
     default:
-      send_message_box(c, u"Incorrect menu ID.");
+      send_message_box(c, u"Incorrect menu ID");
       break;
   }
 }
@@ -1571,7 +1854,7 @@ static void on_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& cmd = check_size_t<C_LobbySelection_84>(data);
 
   if (cmd.menu_id != MenuID::LOBBY) {
-    send_message_box(c, u"Incorrect menu ID.");
+    send_message_box(c, u"Incorrect menu ID");
     return;
   }
 
@@ -1745,11 +2028,6 @@ static void on_quest_barrier(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // AC
   check_size_v(data.size(), 0);
 
-  auto l = s->find_lobby(c->lobby_id);
-  if (!l || !l->is_game()) {
-    return;
-  }
-
   // If this client is NOT loading, they should not send an AC. Sending an AC to
   // a client that isn't waiting to start a quest will crash the client, so we
   // have to be careful not to do so.
@@ -1758,23 +2036,7 @@ static void on_quest_barrier(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
   c->flags &= ~Client::Flag::LOADING_QUEST;
 
-  // Check if any client is still loading
-  // TODO: We need to handle clients disconnecting while loading. Probably
-  // on_client_disconnect needs to check for this case...
-  size_t x;
-  for (x = 0; x < l->max_clients; x++) {
-    if (!l->clients[x]) {
-      continue;
-    }
-    if (l->clients[x]->flags & Client::Flag::LOADING_QUEST) {
-      break;
-    }
-  }
-
-  // If they're all done, start the quest
-  if (x == l->max_clients) {
-    send_command(l, 0xAC, 0x00);
-  }
+  send_quest_barrier_if_all_clients_ready(s->find_lobby(c->lobby_id));
 }
 
 static void on_update_quest_statistics(shared_ptr<ServerState> s,
@@ -2576,10 +2838,6 @@ shared_ptr<Lobby> create_game_generic(
 
     c->log.info("Loaded maps contain %zu entries overall", game->enemies.size());
   }
-
-  s->change_client_lobby(c, game);
-  c->flags |= Client::Flag::LOADING;
-
   return game;
 }
 
@@ -2594,7 +2852,9 @@ static void on_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (cmd.challenge_mode) {
     flags |= Lobby::Flag::CHALLENGE_MODE;
   }
-  create_game_generic(s, c, cmd.name, cmd.password, 1, cmd.difficulty, flags);
+  auto game = create_game_generic(s, c, cmd.name, cmd.password, 1, cmd.difficulty, flags);
+  s->change_client_lobby(c, game);
+  c->flags |= Client::Flag::LOADING;
 }
 
 static void on_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -2634,8 +2894,10 @@ static void on_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c
       flags |= Lobby::Flag::CHALLENGE_MODE;
     }
   }
-  create_game_generic(
+  auto game = create_game_generic(
       s, c, name.c_str(), password.c_str(), episode, cmd.difficulty, flags);
+  s->change_client_lobby(c, game);
+  c->flags |= Client::Flag::LOADING;
 }
 
 static void on_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -2652,8 +2914,10 @@ static void on_create_game_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (cmd.solo_mode) {
     flags |= Lobby::Flag::SOLO_MODE;
   }
-  create_game_generic(
+  auto game = create_game_generic(
       s, c, cmd.name, cmd.password, cmd.episode, cmd.difficulty, flags);
+  s->change_client_lobby(c, game);
+  c->flags |= Client::Flag::LOADING;
 }
 
 static void on_lobby_name_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -2928,64 +3192,10 @@ static void on_card_auction_join(shared_ptr<ServerState> s, shared_ptr<Client> c
     return;
   }
   c->flags |= Client::Flag::AWAITING_CARD_AUCTION;
-
-  // Check if any client is still loading
-  // TODO: We need to handle clients disconnecting during this procedure.
-  // Probably on_client_disconnect needs to check for this case...
-  size_t x;
-  for (x = 0; x < l->max_clients; x++) {
-    if (!l->clients[x]) {
-      continue;
-    }
-    if (!(l->clients[x]->flags & Client::Flag::AWAITING_CARD_AUCTION)) {
-      break;
-    }
-  }
-  if (x != l->max_clients) {
-    return;
-  }
-
-  for (x = 0; x < l->max_clients; x++) {
-    if (l->clients[x]) {
-      l->clients[x]->flags &= ~Client::Flag::AWAITING_CARD_AUCTION;
-    }
-  }
-
-  if ((s->ep3_card_auction_points == 0) ||
-      (s->ep3_card_auction_min_size == 0) ||
-      (s->ep3_card_auction_max_size == 0)) {
-    throw runtime_error("card auctions are not configured on this server");
-  }
-
-  uint16_t num_cards;
-  if (s->ep3_card_auction_min_size == s->ep3_card_auction_max_size) {
-    num_cards = s->ep3_card_auction_min_size;
-  } else {
-    num_cards = s->ep3_card_auction_min_size +
-        (random_object<uint16_t>() % (s->ep3_card_auction_max_size - s->ep3_card_auction_min_size + 1));
-  }
-  num_cards = min<uint16_t>(num_cards, 0x14);
-
-  uint64_t distribution_size = 0;
-  for (const auto& it : s->ep3_card_auction_pool) {
-    distribution_size += it.second.first;
-  }
-
-  S_StartCardAuction_GC_Ep3_EF cmd;
-  cmd.points_available = s->ep3_card_auction_points;
-  for (size_t z = 0; z < num_cards; z++) {
-    uint64_t v = random_object<uint64_t>() % distribution_size;
-    for (const auto& it : s->ep3_card_auction_pool) {
-      if (v >= it.second.first) {
-        v -= it.second.first;
-      } else {
-        cmd.entries[z].card_id = s->ep3_data_index->definition_for_card_name(it.first)->def.card_id.load();
-        cmd.entries[z].min_price = it.second.second;
-        break;
-      }
-    }
-  }
-  send_command_t(l, 0xEF, num_cards, cmd);
+  c->disconnect_hooks.emplace(CARD_AUCTION_DISCONNECT_HOOK_NAME, [s, l]() -> void {
+    send_card_auction_if_all_clients_ready(s, l);
+  });
+  send_card_auction_if_all_clients_ready(s, l);
 }
 
 

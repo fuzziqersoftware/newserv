@@ -78,6 +78,15 @@ Client::Client(
   }
 }
 
+Client::~Client() {
+  if (!this->disconnect_hooks.empty()) {
+    this->log.warning("Disconnect hooks pending at client destruction time:");
+    for (const auto& it : this->disconnect_hooks) {
+      this->log.warning("  %s", it.first.c_str());
+    }
+  }
+}
+
 void Client::set_license(shared_ptr<const License> l) {
   this->license = l;
   this->game_data.guild_card_number = this->license->serial_number;
