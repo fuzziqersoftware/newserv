@@ -46,8 +46,25 @@ void Server::disconnect_client(shared_ptr<Client> c) {
   } catch (const exception& e) {
     server_log.warning("Error during client disconnect cleanup: %s", e.what());
   }
-  // c is destroyed here (on_disconnect should remove any other references
-  // to it, e.g. from Lobby objects)
+
+  // We can't just let c be destroyed here, since disconnect_client can be
+  // called from within the client's channel's receive handler. So, we instead
+  // move it to another set, which we'll clear in an immediately-enqueued
+  // callback after the current event.
+  this->clients_to_destroy.insert(move(c));
+}
+
+void Server::enqueue_destroy_clients() {
+  auto tv = usecs_to_timeval(0);
+  event_add(this->destroy_clients_ev.get(), &tv);
+}
+
+void Server::dispatch_destroy_clients(evutil_socket_t, short, void* ctx) {
+  reinterpret_cast<Server*>(ctx)->destroy_clients();
+}
+
+void Server::destroy_clients() {
+  this->clients_to_destroy.clear();
 }
 
 void Server::dispatch_on_listen_accept(
@@ -177,7 +194,9 @@ void Server::on_client_error(Channel& ch, short events) {
 Server::Server(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
-  : base(base), state(state) { }
+  : base(base),
+    destroy_clients_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &Server::dispatch_destroy_clients, this), event_free),
+    state(state) { }
 
 void Server::listen(
     const std::string& addr_str,

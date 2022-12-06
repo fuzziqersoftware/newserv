@@ -168,6 +168,7 @@ public:
     GameVersion version,
     const ClientConfigBB& newserv_client_config);
   void delete_session(uint64_t id);
+  void delete_session(struct bufferevent* bev);
 
   size_t delete_disconnected_sessions();
 
@@ -215,11 +216,16 @@ private:
   };
 
   std::shared_ptr<struct event_base> base;
+  std::shared_ptr<struct event> destroy_sessions_ev;
   std::shared_ptr<ServerState> state;
   std::map<int, std::shared_ptr<ListeningSocket>> listeners;
   std::unordered_map<struct bufferevent*, std::shared_ptr<UnlinkedSession>> bev_to_unlinked_session;
+  std::unordered_set<std::shared_ptr<UnlinkedSession>> unlinked_sessions_to_destroy;
   std::unordered_map<uint64_t, std::shared_ptr<LinkedSession>> id_to_session;
   uint64_t next_unlicensed_session_id;
+
+  static void dispatch_destroy_sessions(evutil_socket_t, short, void* ctx);
+  void destroy_sessions();
 
   void on_client_connect(
       struct bufferevent* bev,

@@ -44,6 +44,7 @@ ProxyServer::ProxyServer(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
   : base(base),
+    destroy_sessions_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &ProxyServer::dispatch_destroy_sessions, this), event_free),
     state(state),
     next_unlicensed_session_id(0xFF00000000000001) { }
 
@@ -356,6 +357,9 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
     should_close_unlinked_session = true;
   }
 
+  // Note that ch.bev will be moved from when the linked session is resumed, so
+  // we need to retain a copy of it in order to close the unlinked session
+  // afterward.
   struct bufferevent* session_key = ch.bev.get();
 
   // If license is non-null, then the client has a password and can be connected
@@ -425,9 +429,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   }
 
   if (should_close_unlinked_session) {
-    session->log.info("Closing session");
-    session->server->bev_to_unlinked_session.erase(session_key);
-    // At this point, (*this) is destroyed! We must be careful not to touch it.
+    session->server->delete_session(session_key);
   }
 }
 
@@ -440,8 +442,8 @@ void ProxyServer::UnlinkedSession::on_error(Channel& ch, short events) {
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_ERROR | BEV_EVENT_EOF)) {
-    session->log.info("Unlinked client has disconnected");
-    session->server->bev_to_unlinked_session.erase(session->channel.bev.get());
+    session->log.info("Client has disconnected");
+    session->server->delete_session(session->channel.bev.get());
   }
 }
 
@@ -821,6 +823,27 @@ void ProxyServer::delete_session(uint64_t id) {
   if (this->id_to_session.erase(id)) {
     proxy_server_log.info("Closed LinkedSession:%08" PRIX64, id);
   }
+}
+
+void ProxyServer::delete_session(struct bufferevent* bev) {
+  auto it = this->bev_to_unlinked_session.find(bev);
+  if (it == this->bev_to_unlinked_session.end()) {
+    throw logic_error("unlinked session exists but is not registered");
+  }
+  it->second->log.info("Closing session");
+  this->unlinked_sessions_to_destroy.emplace(move(it->second));
+  this->bev_to_unlinked_session.erase(it);
+
+  auto tv = usecs_to_timeval(0);
+  event_add(this->destroy_sessions_ev.get(), &tv);
+}
+
+void ProxyServer::dispatch_destroy_sessions(evutil_socket_t, short, void* ctx) {
+  reinterpret_cast<ProxyServer*>(ctx)->destroy_sessions();
+}
+
+void ProxyServer::destroy_sessions() {
+  this->unlinked_sessions_to_destroy.clear();
 }
 
 size_t ProxyServer::delete_disconnected_sessions() {

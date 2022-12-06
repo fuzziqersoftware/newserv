@@ -35,6 +35,7 @@ public:
 
 private:
   std::shared_ptr<struct event_base> base;
+  std::shared_ptr<struct event> destroy_clients_ev;
 
   struct ListeningSocket {
     std::string addr_str;
@@ -52,8 +53,13 @@ private:
   };
   std::unordered_map<int, ListeningSocket> listening_sockets;
   std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
+  std::unordered_set<std::shared_ptr<Client>> clients_to_destroy;
 
   std::shared_ptr<ServerState> state;
+
+  void enqueue_destroy_clients();
+  static void dispatch_destroy_clients(evutil_socket_t, short, void* ctx);
+  void destroy_clients();
 
   static void dispatch_on_listen_accept(struct evconnlistener* listener,
       evutil_socket_t fd, struct sockaddr *address, int socklen, void* ctx);
