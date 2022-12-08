@@ -42,6 +42,7 @@ Current known issues / missing features / things to do:
 - Encapsulate BB server-side random state and make replays deterministic.
 - The internal menu abstraction is ugly and hard to work with. Rewrite it.
 - Add default values for all commands (like we use for Episode 3 battle commands).
+- Implement a way to persist tournament state across server restarts.
 
 ## Compatibility
 
@@ -83,6 +84,8 @@ The following Episode 3 features are implemented, but only partially tested:
 * Tournaments.
 
 Tournaments work differently than they did on Sega's servers. Tournaments can be created with the `create-tournament` shell command, which enables players to register for them. (Use `help` to see all the arguments - there are many!) The `start-tournament` shell command starts the tournament, but this doesn't schedule any matches. Instead, players who are scheduled for a match can all stand at a battle table in a CARD lobby, and the tournament match will start automatically. (This also means that, for example, not all matches in round 1 must be complete before round 2 can begin - only the matches preceding each individual match must be complete for that match to be playable.)
+
+Note that tournament state is not persisted when the server restarts, so all tournaments will be in that case. This will be fixed in the future.
 
 Because newserv gives all players 1000000 meseta, there is no reward for winning a tournament. This may change in the future.
 
