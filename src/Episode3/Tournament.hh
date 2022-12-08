@@ -156,7 +156,7 @@ public:
   std::shared_ptr<Tournament> get_tournament(const std::string& name) const;
 
 private:
-  parray<std::shared_ptr<Tournament>, 0x20> tournaments;
+  std::shared_ptr<Tournament> tournaments[0x20];
 };
 
 

@@ -395,7 +395,7 @@ void Tournament::print_bracket(FILE* stream) const {
 
 vector<shared_ptr<Tournament>> TournamentIndex::all_tournaments() const {
   vector<shared_ptr<Tournament>> ret;
-  for (size_t z = 0; z < this->tournaments.size(); z++) {
+  for (size_t z = 0; z < 0x20; z++) {
     if (this->tournaments[z]) {
       ret.emplace_back(this->tournaments[z]);
     }
@@ -412,12 +412,12 @@ shared_ptr<Tournament> TournamentIndex::create_tournament(
     bool is_2v2) {
   // Find an unused tournament number
   uint8_t number;
-  for (number = 0; number < this->tournaments.size(); number++) {
+  for (number = 0; number < 0x20; number++) {
     if (!this->tournaments[number]) {
       break;
     }
   }
-  if (number >= this->tournaments.size()) {
+  if (number >= 0x20) {
     throw runtime_error("all tournament slots are full");
   }
 
@@ -436,7 +436,7 @@ shared_ptr<Tournament> TournamentIndex::get_tournament(uint8_t number) const {
 }
 
 shared_ptr<Tournament> TournamentIndex::get_tournament(const string& name) const {
-  for (size_t z = 0; z < this->tournaments.size(); z++) {
+  for (size_t z = 0; z < 0x20; z++) {
     if (this->tournaments[z] && (this->tournaments[z]->get_name() == name)) {
       return this->tournaments[z];
     }
