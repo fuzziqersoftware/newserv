@@ -1051,6 +1051,10 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
     if (winner_team_id == -1) {
       throw runtime_error("match concluded, but winner team not specified");
     }
+
+    auto tourn = l->tournament_match->tournament.lock();
+    tourn->print_bracket(stderr);
+
     if (winner_team_id == 0) {
       l->tournament_match->set_winner_team(l->tournament_match->preceding_a->winner_team);
     } else if (winner_team_id == 1) {
@@ -1060,7 +1064,7 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
     }
     send_ep3_tournament_match_result(l, l->tournament_match);
 
-    auto tourn = l->tournament_match->tournament.lock();
+    tourn->print_bracket(stderr);
     if (tourn && (tourn->get_state() == Episode3::Tournament::State::COMPLETE)) {
       s->ep3_tournament_index->delete_tournament(tourn->get_number());
     }

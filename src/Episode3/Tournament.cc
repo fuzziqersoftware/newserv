@@ -122,7 +122,7 @@ Tournament::Match::Match(
   if (this->preceding_a->round_num != this->preceding_b->round_num) {
     throw logic_error("preceding matches have different round numbers");
   }
-  this->round_num = this->preceding_a->round_num;
+  this->round_num = this->preceding_a->round_num + 1;
 }
 
 Tournament::Match::Match(
@@ -136,15 +136,17 @@ Tournament::Match::Match(
 
 string Tournament::Match::str() const {
   string winner_str = this->winner_team ? this->winner_team->str() : "(none)";
-  return "[Match winner=" + winner_str + "]";
+  return string_printf("[Match round=%zu winner=%s]", this->round_num, winner_str.c_str());
 }
 
 bool Tournament::Match::resolve_if_no_players() {
+  if (this->winner_team) {
+    return true;
+  }
   // If both matches before this one are resolved and neither winner team has
   // any humans on it, skip this match entirely and just make one team advance
   // arbitrarily
-  if (!this->winner_team &&
-      this->preceding_a->winner_team &&
+  if (this->preceding_a->winner_team &&
       this->preceding_b->winner_team &&
       this->preceding_a->winner_team->player_serial_numbers.empty() &&
       this->preceding_b->winner_team->player_serial_numbers.empty()) {
@@ -156,7 +158,7 @@ bool Tournament::Match::resolve_if_no_players() {
   }
 }
 
-void Tournament::Match::resolve_following_matches() {
+void Tournament::Match::on_winner_team_set() {
   auto tournament = this->tournament.lock();
   if (!tournament) {
     return;
@@ -164,16 +166,10 @@ void Tournament::Match::resolve_following_matches() {
 
   tournament->pending_matches.erase(this->shared_from_this());
 
-  // Resolve all matches up the chain until we can't anymore (this
-  // automatically skips CPU-only matches)
+  // Resolve the following match if possible (this skips CPU-only matches). If
+  // the following match can't be resolved, mark it pending.
   auto following = this->following.lock();
-  while (following && following->resolve_if_no_players()) {
-    tournament->pending_matches.erase(following);
-    following = following->following.lock();
-  }
-
-  // If there's a following match that wasn't resolved, mark it pending
-  if (following) {
+  if (following && !following->resolve_if_no_players()) {
     tournament->pending_matches.emplace(following);
   }
 
@@ -201,7 +197,7 @@ void Tournament::Match::set_winner_team(shared_ptr<Team> team) {
     this->preceding_a->winner_team->is_active = false;
   }
 
-  this->resolve_following_matches();
+  this->on_winner_team_set();
 }
 
 shared_ptr<Tournament::Team> Tournament::Match::opponent_team_for_team(
@@ -373,7 +369,7 @@ void Tournament::start() {
 
   // Resolve all possible CPU-only matches
   for (auto m : this->zero_round_matches) {
-    m->resolve_following_matches();
+    m->on_winner_team_set();
   }
 }
 
@@ -384,7 +380,7 @@ void Tournament::print_bracket(FILE* stream) const {
       fputc(' ', stream);
     }
     string match_str = m->str();
-    fprintf(stream, "%s\n", match_str.c_str());
+    fprintf(stream, "%s%s\n", match_str.c_str(), this->pending_matches.count(m) ? " (PENDING)" : "");
     if (m->preceding_a) {
       print_match(m->preceding_a, indent_level + 1);
     }
@@ -392,7 +388,33 @@ void Tournament::print_bracket(FILE* stream) const {
       print_match(m->preceding_b, indent_level + 1);
     }
   };
-  print_match(this->final_match, 0);
+  fprintf(stream, "Tournament %02hhX: %s\n", this->number, this->name.c_str());
+  string map_name = this->map->map.name;
+  fprintf(stream, "  Map: %08" PRIX32 " (%s)\n", this->map->map.map_number.load(), map_name.c_str());
+  string rules_str = this->rules.str();
+  fprintf(stream, "  Rules: %s\n", rules_str.c_str());
+  fprintf(stream, "  Structure: %s, %zu entries\n", this->is_2v2 ? "2v2" : "1v1", this->num_teams);
+  switch (this->current_state) {
+    case State::REGISTRATION:
+      fprintf(stream, "  State: REGISTRATION\n");
+      break;
+    case State::IN_PROGRESS:
+      fprintf(stream, "  State: IN_PROGRESS\n");
+      break;
+    case State::COMPLETE:
+      fprintf(stream, "  State: COMPLETE\n");
+      break;
+    default:
+      fprintf(stream, "  State: UNKNOWN\n");
+      break;
+  }
+  fprintf(stream, "  Standings:\n");
+  print_match(this->final_match, 2);
+  fprintf(stream, "  Pending matches:\n");
+  for (const auto& match : this->pending_matches) {
+    string match_str = match->str();
+    fprintf(stream, "    %s\n", match_str.c_str());
+  }
 }
 
 

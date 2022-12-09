@@ -76,7 +76,7 @@ public:
     std::string str() const;
 
     bool resolve_if_no_players();
-    void resolve_following_matches();
+    void on_winner_team_set();
     void set_winner_team(std::shared_ptr<Team> team);
     std::shared_ptr<Team> opponent_team_for_team(std::shared_ptr<Team> team) const;
   };
@@ -108,7 +108,6 @@ public:
   void start();
 
   void print_bracket(FILE* stream) const;
-  void print_bracket_stderr() const;
 
 private:
   PrefixedLogger log;

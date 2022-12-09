@@ -131,6 +131,8 @@ Server commands:\n\
       dice-boost=ON/OFF: Enable/disable dice boost\n\
   start-tournament \"Tournament Name\"\n\
     End registration for a tournament and allow matches to begin.\n\
+  tournament-state \"Tournament Name\"\n\
+    Print the current state of a tournament.\n\
 \n\
 Proxy commands (these will only work when exactly one client is connected):\n\
   sc <data>\n\
@@ -411,6 +413,15 @@ Proxy commands (these will only work when exactly one client is connected):\n\
       tourn->start();
       send_ep3_text_message_printf(this->state, "$C7The tournament\n$C6%s$C7\nhas begun", tourn->get_name().c_str());
       fprintf(stderr, "tournament started\n");
+    } else {
+      fprintf(stderr, "no such tournament exists\n");
+    }
+
+  } else if (command_name == "tournament-status") {
+    string name = get_quoted_string(command_args);
+    auto tourn = this->state->ep3_tournament_index->get_tournament(name);
+    if (tourn) {
+      tourn->print_bracket(stderr);
     } else {
       fprintf(stderr, "no such tournament exists\n");
     }
