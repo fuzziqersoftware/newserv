@@ -1058,7 +1058,12 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
     } else {
       throw logic_error("invalid winner team id");
     }
-    send_ep3_tournament_match_result_result(l, l->tournament_match);
+    send_ep3_tournament_match_result(l, l->tournament_match);
+
+    auto tourn = l->tournament_match->tournament.lock();
+    if (tourn && (tourn->get_state() == Episode3::Tournament::State::COMPLETE)) {
+      s->ep3_tournament_index->delete_tournament(tourn->get_number());
+    }
   }
 }
 

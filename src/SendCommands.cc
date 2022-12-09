@@ -2101,7 +2101,7 @@ void send_ep3_set_tournament_player_decks(
   // TODO: Handle disconnection during the match (the other team should win)
 }
 
-void send_ep3_tournament_match_result_result(
+void send_ep3_tournament_match_result(
     shared_ptr<Lobby> l, shared_ptr<const Episode3::Tournament::Match> match) {
   auto tourn = match->tournament.lock();
   if (!tourn) {
