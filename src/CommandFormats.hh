@@ -5416,7 +5416,17 @@ struct G_Unknown_GC_Ep3_6xB4x4A {
 // win list are [20, 40] and [10, 30], and the player defeats an opponent who is
 // 15 levels above the player's level, the player will get 30 EX when they win
 // the battle. If all thresholds are greater than the level difference, the last
-// entry's value is used.
+// entry's value is used. Finally, if the opponent team has no humans on it, the
+// resulting EX values are divided by 2 (so in the example above, the player
+// would only get 15 EX for defeating COMs).
+
+// If any entry in either list has .value < -100 or > 100, the entire command is
+// ignored and the EX thresholds and values are reset to their default values.
+// These default values are:
+// win_entries = {50, 100}, {30, 80}, {15, 70}, {10, 55}, {7, 45}, {4, 35},
+//               {1, 25}, {-1, 20}, {-9, 15}, {0, 10}
+// lose_entries = {1, 0}, {-2, 0}, {-3, 0}, {-4, 0}, {-5, 0}, {-6, 0}, {-7, 0},
+//                {-10, -10}, {-30, -10}, {0, -15}
 
 struct G_SetEXResultValues_GC_Ep3_6xB4x4B {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetEXResultValues_GC_Ep3_6xB4x4B) / 4, 0, 0x4B, 0, 0, 0};
@@ -5424,8 +5434,6 @@ struct G_SetEXResultValues_GC_Ep3_6xB4x4B {
     le_int16_t threshold;
     le_int16_t value;
   } __packed__;
-  // If any of the entries in either list has .value outside the range [-100,
-  // 100], the entire command is ignored and default values are used instead.
   parray<Entry, 10> win_entries;
   parray<Entry, 10> lose_entries;
 } __packed__;
