@@ -105,6 +105,8 @@ public:
   std::shared_ptr<Team> get_winner_team() const;
   std::shared_ptr<Match> next_match_for_team(std::shared_ptr<Team> team) const;
   std::shared_ptr<Match> get_final_match() const;
+  std::shared_ptr<Team> team_for_serial_number(uint32_t serial_number) const;
+
   void start();
 
   void print_bracket(FILE* stream) const;
@@ -154,6 +156,9 @@ public:
   void delete_tournament(uint8_t number);
   std::shared_ptr<Tournament> get_tournament(uint8_t number) const;
   std::shared_ptr<Tournament> get_tournament(const std::string& name) const;
+
+  std::shared_ptr<Tournament::Team> team_for_serial_number(
+      uint32_t serial_number) const;
 
 private:
   std::shared_ptr<Tournament> tournaments[0x20];

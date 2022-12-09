@@ -5334,7 +5334,9 @@ struct G_CardAuctionResults_GC_Ep3_6xB5x45 {
 // client just copies the included strings to global buffers and then ignores
 // them. Sega's servers sent this twice for each battle, however: once after the
 // initial setup phase (before starter rolls) and once when the results screen
-// appeared.
+// appeared. The second instance of this command appears to be caused by them
+// recreating the TCardServer object (implemented here as Episode3::Server) in
+// order to support sequential multiple battles in the same team.
 
 struct G_ServerVersionStrings_GC_Ep3_6xB4x46 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_ServerVersionStrings_GC_Ep3_6xB4x46) / 4, 0, 0x46, 0, 0, 0};

@@ -214,6 +214,11 @@ void on_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
 }
 
 void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  if (c->flags & Client::Flag::IS_EPISODE_3) {
+    c->ep3_tournament_team = s->ep3_tournament_index->team_for_serial_number(
+        c->license->serial_number);
+  }
+
   // On the BB data server, this function is called only on the last connection
   // (when we should send the ship select menu).
   if ((c->server_behavior == ServerBehavior::LOGIN_SERVER) ||
@@ -863,6 +868,113 @@ static void on_ep3_meseta_transaction(shared_ptr<ServerState>,
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
+static bool start_ep3_tournament_match_if_pending(
+    shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l,
+    shared_ptr<Client> c,
+    int16_t table_number) {
+  auto team = c->ep3_tournament_team.lock();
+  if (!team) {
+    return false; // Client is not registered in a tournament
+  }
+  auto tourn = team->tournament.lock();
+  if (!tourn) {
+    return false; // The tournament has been canceled
+  }
+  auto match = tourn->next_match_for_team(team);
+  if (!match) {
+    return false;
+  }
+
+  auto other_team = match->opponent_team_for_team(team);
+  unordered_set<uint32_t> required_serial_numbers;
+  for (uint32_t serial_number : team->player_serial_numbers) {
+    required_serial_numbers.emplace(serial_number);
+  }
+  for (uint32_t serial_number : other_team->player_serial_numbers) {
+    required_serial_numbers.emplace(serial_number);
+  }
+  unordered_set<shared_ptr<Client>> game_clients;
+  for (const auto& other_c : l->clients) {
+    if (!other_c) {
+      continue;
+    }
+    if ((other_c->card_battle_table_number == table_number) &&
+        required_serial_numbers.erase(other_c->license->serial_number)) {
+      game_clients.emplace(other_c);
+    }
+  }
+  if (!required_serial_numbers.empty()) {
+    return false;
+  }
+
+  // At this point, we've checked all the necessary conditions for a tournament
+  // match to begin.
+
+  for (const auto& other_c : l->clients) {
+    if (other_c && (other_c->card_battle_table_number == table_number)) {
+      other_c->card_battle_table_number = -1;
+      other_c->card_battle_table_seat_number = 0;
+    }
+  }
+
+  G_SetStateFlags_GC_Ep3_6xB4x03 state_cmd;
+  state_cmd.state.turn_num = 1;
+  state_cmd.state.battle_phase = Episode3::BattlePhase::INVALID_00;
+  state_cmd.state.current_team_turn1 = 0xFF;
+  state_cmd.state.current_team_turn2 = 0xFF;
+  state_cmd.state.action_subphase = Episode3::ActionSubphase::ATTACK;
+  state_cmd.state.setup_phase = Episode3::SetupPhase::REGISTRATION;
+  state_cmd.state.registration_phase = Episode3::RegistrationPhase::AWAITING_NUM_PLAYERS;
+  state_cmd.state.team_exp.clear(0);
+  state_cmd.state.team_dice_boost.clear(0);
+  state_cmd.state.first_team_turn = 0xFF;
+  state_cmd.state.tournament_flag = 0x01;
+  state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
+  if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+    uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+    set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
+  }
+
+  // For the final match, use higher EX values.
+  // TODO: What was the behavior on Sega's servers? We only have logs
+  // of two different threshold sets (which are implemented here).
+  static const std::pair<uint16_t, uint16_t> non_final_win_entries[10] = {
+      {60, 70}, {40, 50}, {25, 45}, {20, 40}, {13, 35}, {8, 30}, {5, 25}, {2, 20}, {-1, 15}, {0, 10}};
+  static const std::pair<uint16_t, uint16_t> non_final_lose_entries[10] = {
+      {1, 0}, {-1, 0}, {-3, 0}, {-5, 0}, {-7, 0}, {-10, 0}, {-12, 0}, {-15, 0}, {-18, 0}, {0, 0}};
+  static const std::pair<uint16_t, uint16_t> final_win_entries[10] = {
+      {40, 100}, {25, 95}, {20, 85}, {15, 75}, {10, 65}, {8, 60}, {5, 50}, {2, 40}, {-1, 30}, {0, 20}};
+  static const std::pair<uint16_t, uint16_t> final_lose_entries[10] = {
+      {1, -5}, {-1, -10}, {-3, -15}, {-7, -20}, {-15, -20}, {-20, -25}, {-30, -30}, {-40, -30}, {-50, -34}, {0, -40}};
+  G_SetEXResultValues_GC_Ep3_6xB4x4B ex_cmd;
+  const auto& win_entries = (match == tourn->get_final_match()) ? final_win_entries : non_final_win_entries;
+  const auto& lose_entries = (match == tourn->get_final_match()) ? final_lose_entries : non_final_lose_entries;
+  for (size_t z = 0; z < 10; z++) {
+    ex_cmd.win_entries[z].threshold = win_entries[z].first;
+    ex_cmd.win_entries[z].value = win_entries[z].second;
+    ex_cmd.lose_entries[z].threshold = lose_entries[z].first;
+    ex_cmd.lose_entries[z].value = lose_entries[z].second;
+  }
+  if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+    uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+    set_mask_for_ep3_game_command(&ex_cmd, sizeof(ex_cmd), mask_key);
+  }
+
+  // TODO: We don't know if this works with multiple players. Test it.
+  uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
+  auto game = create_game_generic(s, c, u"<Tournament>", u"", 0xFF, 0, flags);
+  game->tournament_match = match;
+  for (auto game_c : game_clients) {
+    send_command_t(game_c, 0xC9, 0x00, state_cmd);
+    send_command_t(game_c, 0xC9, 0x00, ex_cmd);
+    s->change_client_lobby(game_c, game, false);
+    send_join_lobby(game_c, game);
+    game_c->flags |= Client::Flag::LOADING;
+  }
+  return true;
+}
+
 static void on_ep3_battle_table_state(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) { // E4
   const auto& cmd = check_size_t<C_CardBattleTableState_GC_Ep3_E4>(data);
@@ -874,97 +986,7 @@ static void on_ep3_battle_table_state(shared_ptr<ServerState> s,
     }
     c->card_battle_table_number = cmd.table_number;
     c->card_battle_table_seat_number = cmd.seat_number;
-
-    auto team = c->ep3_tournament_team.lock();
-    if (team) {
-      auto tourn = team->tournament.lock();
-      if (tourn) {
-        auto match = tourn->next_match_for_team(team);
-        if (match) {
-          auto other_team = match->opponent_team_for_team(team);
-          unordered_set<uint32_t> required_serial_numbers;
-          for (uint32_t serial_number : team->player_serial_numbers) {
-            required_serial_numbers.emplace(serial_number);
-          }
-          for (uint32_t serial_number : other_team->player_serial_numbers) {
-            required_serial_numbers.emplace(serial_number);
-          }
-          unordered_set<shared_ptr<Client>> game_clients;
-          for (const auto& other_c : l->clients) {
-            if (!other_c) {
-              continue;
-            }
-            if ((other_c->card_battle_table_number == cmd.table_number) &&
-                required_serial_numbers.erase(other_c->license->serial_number)) {
-              game_clients.emplace(other_c);
-            }
-          }
-          if (required_serial_numbers.empty()) {
-            for (const auto& other_c : l->clients) {
-              if (other_c && (other_c->card_battle_table_number == cmd.table_number)) {
-                other_c->card_battle_table_number = -1;
-                other_c->card_battle_table_seat_number = 0;
-              }
-            }
-
-            G_SetStateFlags_GC_Ep3_6xB4x03 state_cmd;
-            state_cmd.state.turn_num = 1;
-            state_cmd.state.battle_phase = Episode3::BattlePhase::INVALID_00;
-            state_cmd.state.current_team_turn1 = 0xFF;
-            state_cmd.state.current_team_turn2 = 0xFF;
-            state_cmd.state.action_subphase = Episode3::ActionSubphase::ATTACK;
-            state_cmd.state.setup_phase = Episode3::SetupPhase::REGISTRATION;
-            state_cmd.state.registration_phase = Episode3::RegistrationPhase::AWAITING_NUM_PLAYERS;
-            state_cmd.state.team_exp.clear(0);
-            state_cmd.state.team_dice_boost.clear(0);
-            state_cmd.state.first_team_turn = 0xFF;
-            state_cmd.state.tournament_flag = 0x01;
-            state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
-            if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-              uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
-              set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
-            }
-
-            // For the final match, use higher EX values.
-            // TODO: What was the behavior on Sega's servers? We only have logs
-            // of two different threshold sets (which are implemented here).
-            static const std::pair<uint16_t, uint16_t> non_final_win_entries[10] = {
-                {60, 70}, {40, 50}, {25, 45}, {20, 40}, {13, 35}, {8, 30}, {5, 25}, {2, 20}, {-1, 15}, {0, 10}};
-            static const std::pair<uint16_t, uint16_t> non_final_lose_entries[10] = {
-                {1, 0}, {-1, 0}, {-3, 0}, {-5, 0}, {-7, 0}, {-10, 0}, {-12, 0}, {-15, 0}, {-18, 0}, {0, 0}};
-            static const std::pair<uint16_t, uint16_t> final_win_entries[10] = {
-                {40, 100}, {25, 95}, {20, 85}, {15, 75}, {10, 65}, {8, 60}, {5, 50}, {2, 40}, {-1, 30}, {0, 20}};
-            static const std::pair<uint16_t, uint16_t> final_lose_entries[10] = {
-                {1, -5}, {-1, -10}, {-3, -15}, {-7, -20}, {-15, -20}, {-20, -25}, {-30, -30}, {-40, -30}, {-50, -34}, {0, -40}};
-            G_SetEXResultValues_GC_Ep3_6xB4x4B ex_cmd;
-            const auto& win_entries = (match == tourn->get_final_match()) ? final_win_entries : non_final_win_entries;
-            const auto& lose_entries = (match == tourn->get_final_match()) ? final_lose_entries : non_final_lose_entries;
-            for (size_t z = 0; z < 10; z++) {
-              ex_cmd.win_entries[z].threshold = win_entries[z].first;
-              ex_cmd.win_entries[z].value = win_entries[z].second;
-              ex_cmd.lose_entries[z].threshold = lose_entries[z].first;
-              ex_cmd.lose_entries[z].value = lose_entries[z].second;
-            }
-            if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-              uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
-              set_mask_for_ep3_game_command(&ex_cmd, sizeof(ex_cmd), mask_key);
-            }
-
-            // TODO: We don't know if this works with multiple players. Test it.
-            uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
-            auto game = create_game_generic(s, c, u"<Tournament>", u"", 0xFF, 0, flags);
-            game->tournament_match = match;
-            for (auto game_c : game_clients) {
-              send_command_t(game_c, 0xC9, 0x00, state_cmd);
-              send_command_t(game_c, 0xC9, 0x00, ex_cmd);
-              s->change_client_lobby(game_c, game, false);
-              send_join_lobby(game_c, game);
-              game_c->flags |= Client::Flag::LOADING;
-            }
-          }
-        }
-      }
-    }
+    start_ep3_tournament_match_if_pending(s, l, c, cmd.table_number);
 
   } else { // Leaving battle table
     c->card_battle_table_number = -1;

@@ -345,6 +345,25 @@ shared_ptr<Tournament::Match> Tournament::get_final_match() const {
   return this->final_match;
 }
 
+shared_ptr<Tournament::Team> Tournament::team_for_serial_number(
+    uint32_t serial_number) const {
+  if (!this->all_player_serial_numbers.count(serial_number)) {
+    return nullptr;
+  }
+
+  for (auto team : this->teams) {
+    if (!team->player_serial_numbers.count(serial_number)) {
+      continue;
+    }
+    if (!team->is_active) {
+      return nullptr;
+    }
+    return team;
+  }
+
+  throw logic_error("serial number registered in tournament but not in any team");
+}
+
 void Tournament::start() {
   if (this->current_state != State::REGISTRATION) {
     throw runtime_error("tournament has already started");
@@ -465,6 +484,20 @@ shared_ptr<Tournament> TournamentIndex::get_tournament(const string& name) const
   for (size_t z = 0; z < 0x20; z++) {
     if (this->tournaments[z] && (this->tournaments[z]->get_name() == name)) {
       return this->tournaments[z];
+    }
+  }
+  return nullptr;
+}
+
+shared_ptr<Tournament::Team> TournamentIndex::team_for_serial_number(
+    uint32_t serial_number) const {
+  for (size_t z = 0; z < 0x20; z++) {
+    if (!this->tournaments[z]) {
+      continue;
+    }
+    auto team = this->tournaments[z]->team_for_serial_number(serial_number);
+    if (team) {
+      return team;
     }
   }
   return nullptr;
