@@ -2108,6 +2108,11 @@ void send_ep3_tournament_match_result(
     return;
   }
 
+  if ((match->winner_team != match->preceding_a->winner_team) &&
+      (match->winner_team != match->preceding_b->winner_team)) {
+    throw logic_error("cannot send tournament result without valid winner team");
+  }
+
   unordered_map<uint32_t, shared_ptr<Client>> serial_number_to_client;
   for (auto client : l->clients) {
     if (client) {
@@ -2133,10 +2138,11 @@ void send_ep3_tournament_match_result(
   write_player_names(cmd.names_entries[0], match->preceding_a->winner_team);
   cmd.names_entries[1].team_name = match->preceding_b->winner_team->name;
   write_player_names(cmd.names_entries[1], match->preceding_b->winner_team);
-  cmd.result_entries[0].num_players = match->preceding_a->winner_team->max_players;
-  cmd.result_entries[0].is_winner_team = (match->preceding_a->winner_team == match->winner_team);
-  cmd.result_entries[1].num_players = match->preceding_a->winner_team->max_players;
-  cmd.result_entries[1].is_winner_team = (match->preceding_b->winner_team == match->winner_team);
+  // The value 6 here causes the client to show the "Congratulations" text
+  // instead of "On to the next round"
+  cmd.round_num = (match == tourn->get_final_match()) ? 6 : match->round_num;
+  cmd.num_players_per_team = match->preceding_a->winner_team->max_players;
+  cmd.winner_team_id = (match->preceding_b->winner_team == match->winner_team);
   // TODO: This amount should vary depending on the match level / round number,
   // but newserv doesn't currently implement meseta at all - we just always give
   // the player 1000000 and never charge for anything.

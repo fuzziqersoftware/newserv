@@ -345,6 +345,10 @@ shared_ptr<Tournament::Match> Tournament::next_match_for_team(
   return nullptr;
 }
 
+shared_ptr<Tournament::Match> Tournament::get_final_match() const {
+  return this->final_match;
+}
+
 void Tournament::start() {
   if (this->current_state != State::REGISTRATION) {
     throw runtime_error("tournament has already started");

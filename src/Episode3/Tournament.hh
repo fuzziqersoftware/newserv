@@ -104,6 +104,7 @@ public:
   std::shared_ptr<Team> get_team(size_t index) const;
   std::shared_ptr<Team> get_winner_team() const;
   std::shared_ptr<Match> next_match_for_team(std::shared_ptr<Team> team) const;
+  std::shared_ptr<Match> get_final_match() const;
   void start();
 
   void print_bracket(FILE* stream) const;

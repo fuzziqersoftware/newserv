@@ -5496,11 +5496,13 @@ struct G_TournamentMatchResult_GC_Ep3_6xB4x51 {
     parray<ptext<char, 0x10>, 2> player_names;
   } __packed__;
   parray<NamesEntry, 2> names_entries;
-  struct ResultEntry {
-    le_uint16_t num_players;
-    le_uint16_t is_winner_team;
-  } __packed__;
-  parray<ResultEntry, 2> result_entries;
+  le_uint16_t unused1 = 0;
+  // If round_num is equal to 6, the "On to the next battle..." text is replaced
+  // with "Congratulations!" and some flashier graphics. This is used for the
+  // final match.
+  le_uint16_t round_num = 0;
+  le_uint16_t num_players_per_team = 0;
+  le_uint16_t winner_team_id = 0;
   le_uint32_t meseta_amount = 0;
   // This field apparently is supposed to contain a %s token (as for printf)
   // that is replaced with meseta_amount.

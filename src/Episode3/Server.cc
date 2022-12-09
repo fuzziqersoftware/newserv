@@ -145,6 +145,8 @@ shared_ptr<const ServerBase> Server::base() const {
 }
 
 int8_t Server::get_winner_team_id() const {
+  // Note: This function is not part of the original implementation.
+
   parray<size_t, 2> team_player_counts(0);
   parray<size_t, 2> team_win_flag_counts(0);
   for (size_t client_id = 0; client_id < 4; client_id++) {
