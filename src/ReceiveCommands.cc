@@ -920,13 +920,43 @@ static void on_ep3_battle_table_state(shared_ptr<ServerState> s,
             state_cmd.state.first_team_turn = 0xFF;
             state_cmd.state.tournament_flag = 0x01;
             state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
+            if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+              uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+              set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
+            }
+
+            // For the final match, use higher EX values.
+            // TODO: What was the behavior on Sega's servers? We only have logs
+            // of two different threshold sets (which are implemented here).
+            static const std::pair<uint16_t, uint16_t> non_final_win_entries[10] = {
+                {60, 70}, {40, 50}, {25, 45}, {20, 40}, {13, 35}, {8, 30}, {5, 25}, {2, 20}, {-1, 15}, {0, 10}};
+            static const std::pair<uint16_t, uint16_t> non_final_lose_entries[10] = {
+                {1, 0}, {-1, 0}, {-3, 0}, {-5, 0}, {-7, 0}, {-10, 0}, {-12, 0}, {-15, 0}, {-18, 0}, {0, 0}};
+            static const std::pair<uint16_t, uint16_t> final_win_entries[10] = {
+                {40, 100}, {25, 95}, {20, 85}, {15, 75}, {10, 65}, {8, 60}, {5, 50}, {2, 40}, {-1, 30}, {0, 20}};
+            static const std::pair<uint16_t, uint16_t> final_lose_entries[10] = {
+                {1, -5}, {-1, -10}, {-3, -15}, {-7, -20}, {-15, -20}, {-20, -25}, {-30, -30}, {-40, -30}, {-50, -34}, {0, -40}};
+            G_SetEXResultValues_GC_Ep3_6xB4x4B ex_cmd;
+            const auto& win_entries = (match == tourn->get_final_match()) ? final_win_entries : non_final_win_entries;
+            const auto& lose_entries = (match == tourn->get_final_match()) ? final_lose_entries : non_final_lose_entries;
+            for (size_t z = 0; z < 10; z++) {
+              ex_cmd.win_entries[z].threshold = win_entries[z].first;
+              ex_cmd.win_entries[z].value = win_entries[z].second;
+              ex_cmd.lose_entries[z].threshold = lose_entries[z].first;
+              ex_cmd.lose_entries[z].value = lose_entries[z].second;
+            }
+            if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+              uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+              set_mask_for_ep3_game_command(&ex_cmd, sizeof(ex_cmd), mask_key);
+            }
 
             // TODO: We don't know if this works with multiple players. Test it.
             uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
             auto game = create_game_generic(s, c, u"<Tournament>", u"", 0xFF, 0, flags);
             game->tournament_match = match;
             for (auto game_c : game_clients) {
-              send_command_t(game_c, 0x60, 0x00, state_cmd);
+              send_command_t(game_c, 0xC9, 0x00, state_cmd);
+              send_command_t(game_c, 0xC9, 0x00, ex_cmd);
               s->change_client_lobby(game_c, game, false);
               send_join_lobby(game_c, game);
               game_c->flags |= Client::Flag::LOADING;
