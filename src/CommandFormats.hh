@@ -628,7 +628,6 @@ struct S_WriteFile_13_A7 {
 // 13 (C->S): Confirm file write (V3/BB)
 // Client sends this in response to each 13 sent by the server. It appears these
 // are only sent by V3 and BB - PSO DC and PC do not send these.
-// This structure is for documentation only; newserv ignores these.
 
 // header.flag = file chunk index (same as in the 13/A7 sent by the server)
 struct C_WriteFileConfirmation_V3_BB_13_A7 {
@@ -870,10 +869,8 @@ struct S_OpenFile_BB_44_A6 {
   ptext<char, 0x18> name;
 } __packed__;
 
-// 44 (C->S): Confirm open file
+// 44 (C->S): Confirm open file (V3/BB)
 // Client sends this in response to each 44 sent by the server.
-// This structure is for documentation only; newserv ignores these.
-// TODO: Is this command sent by DC/PC clients?
 
 // header.flag = quest number (sort of - seems like the client just echoes
 // whatever the server sent in its header.flag field. Also quest numbers can be
@@ -1665,9 +1662,13 @@ struct S_QuestMenuEntry_BB_A2_A4 : S_QuestMenuEntry<char16_t, 0x7A> { } __packed
 // For .bin files, the flags field should be zero. For .pvr files, the flags
 // field should be 1. For .dat and .gba files, it seems the value in the flags
 // field does not matter.
+// Like the 44 command, the client->server form of this command is only used on
+// V3 and BB.
 
 // A7: Write download file
 // Same format as 13.
+// Like the 13 command, the client->server form of this command is only used on
+// V3 and BB.
 
 // A8: Invalid command
 

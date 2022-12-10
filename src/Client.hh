@@ -135,9 +135,10 @@ struct Client {
   bool proxy_suppress_remote_login;
   bool proxy_zero_remote_guild_card;
 
-  // DOL file loading state
+  // File loading state
   uint32_t dol_base_addr;
   std::shared_ptr<DOLFileIndex::DOLFile> loading_dol_file;
+  std::unordered_map<std::string, std::shared_ptr<const std::string>> sending_files;
 
   Client(struct bufferevent* bev, GameVersion version, ServerBehavior server_behavior);
   ~Client();

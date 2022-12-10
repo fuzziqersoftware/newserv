@@ -541,8 +541,7 @@ shared_ptr<const string> ServerState::load_bb_file(
   try {
     auto ret = cache.get_or_load("system/blueburst/" + effective_bb_directory_filename);
     static_game_data_log.info("Loaded %s", effective_bb_directory_filename.c_str());
-    // TODO: It's also not great that we copy the data here... sigh
-    return shared_ptr<string>(new string(ret.file->data));
+    return ret.file->data;
   } catch (const exception& e) {
     static_game_data_log.info("%s missing from system/blueburst", effective_bb_directory_filename.c_str());
     static_game_data_log.error("%s not found in any source", patch_index_filename.c_str());

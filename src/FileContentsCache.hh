@@ -14,7 +14,7 @@ class FileContentsCache {
 public:
   struct File {
     std::string name;
-    std::string data;
+    shared_ptr<const std::string> data;
     uint64_t load_time;
 
     File() = delete;
@@ -68,29 +68,29 @@ public:
   template <typename T, typename NameT>
   GetObjResult<T> get_obj_or_load(NameT name) {
     auto res = this->get_or_load(name);
-    if (res.file->data.size() != sizeof(T)) {
+    if (res.file->data->size() != sizeof(T)) {
       throw runtime_error("cached string size is incorrect");
     }
-    return {*reinterpret_cast<const T*>(res.file->data.data()), res.file, res.generate_called};
+    return {*reinterpret_cast<const T*>(res.file->data->data()), res.file, res.generate_called};
   }
   template <typename T, typename NameT>
   GetObjResult<T> get_obj_or_throw(NameT name) {
     auto res = this->get_or_throw(name);
-    if (res.file->data.size() != sizeof(T)) {
+    if (res.file->data->size() != sizeof(T)) {
       throw runtime_error("cached string size is incorrect");
     }
-    return {*reinterpret_cast<const T*>(res.file->data.data()), res.file, res.generate_called};
+    return {*reinterpret_cast<const T*>(res.file->data->data()), res.file, res.generate_called};
   }
   template <typename T, typename NameT>
   GetObjResult<T> get_obj(NameT name, std::function<T(const std::string&)> generate) {
     uint64_t t = now();
     try {
       auto& f = this->name_to_file.at(name);
-      if (f->data.size() != sizeof(T)) {
+      if (f->data->size() != sizeof(T)) {
         throw runtime_error("cached string size is incorrect");
       }
       if (this->ttl_usecs && (t - f->load_time < this->ttl_usecs)) {
-        return {*reinterpret_cast<const T*>(f->data.data()), f, false};
+        return {*reinterpret_cast<const T*>(f->data->data()), f, false};
       }
     } catch (const out_of_range& e) { }
     T value = generate(name);
@@ -101,7 +101,7 @@ public:
   template <typename T, typename NameT>
   GetObjResult<T> replace_obj(NameT name, const T& value) {
     auto cached_value = this->replace(name, &value, sizeof(value));
-    return {*reinterpret_cast<const T*>(cached_value->data.data()), cached_value, false};
+    return {*reinterpret_cast<const T*>(cached_value->data->data()), cached_value, false};
   }
 
 private:

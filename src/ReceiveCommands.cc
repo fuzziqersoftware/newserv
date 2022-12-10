@@ -145,7 +145,7 @@ static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Cl
     try {
       string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
       const auto& entry = client_options_cache.get_or_throw(key);
-      session->remote_guild_card_number = stoul(entry->data, nullptr, 10);
+      session->remote_guild_card_number = stoul(*entry->data, nullptr, 10);
     } catch (const out_of_range&) { }
   }
 
@@ -158,7 +158,7 @@ static void send_proxy_destinations_menu(shared_ptr<ServerState> s, shared_ptr<C
   try {
     string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
     const auto& entry = client_options_cache.get_or_throw(key);
-    uint32_t proxy_remote_guild_card_number = stoul(entry->data, nullptr, 10);
+    uint32_t proxy_remote_guild_card_number = stoul(*entry->data, nullptr, 10);
     string info_str = string_printf("Your remote Guild\nCard number is\noverridden as\n$C6%" PRIu32, proxy_remote_guild_card_number);
     send_ship_info(c, decode_sjis(info_str));
   } catch (const out_of_range&) { }
@@ -1771,14 +1771,10 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
             continue;
           }
 
-          // TODO: It looks like blasting all the chunks to the client at once
-          // can cause GC clients to crash in rare cases. Find a way to slow
-          // this down (perhaps by only sending each new chunk when they
-          // acknowledge the previous chunk with a 13 command).
-          send_quest_file(l->clients[x], bin_basename + ".bin", bin_basename,
-              *bin_contents, QuestFileType::ONLINE);
-          send_quest_file(l->clients[x], dat_basename + ".dat", dat_basename,
-              *dat_contents, QuestFileType::ONLINE);
+          send_open_quest_file(l->clients[x], bin_basename + ".bin",
+              bin_basename, bin_contents, QuestFileType::ONLINE);
+          send_open_quest_file(l->clients[x], dat_basename + ".dat",
+              dat_basename, dat_contents, QuestFileType::ONLINE);
 
           // There is no such thing as command AC on PSO V2 - quests just start
           // immediately when they're done downloading. (This is also the case
@@ -1804,10 +1800,10 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         if (!is_ep3) {
           q = q->create_download_quest();
         }
-        send_quest_file(c, quest_name, bin_basename, *q->bin_contents(),
+        send_open_quest_file(c, quest_name, bin_basename, q->bin_contents(),
             is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
         if (dat_contents) {
-          send_quest_file(c, quest_name, dat_basename, *q->dat_contents(),
+          send_open_quest_file(c, quest_name, dat_basename, q->dat_contents(),
               is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
         }
       }
@@ -2134,7 +2130,42 @@ static void on_gba_file_request(shared_ptr<ServerState>, shared_ptr<Client> c,
   static FileContentsCache gba_file_cache(300 * 1000 * 1000);
   auto f = gba_file_cache.get_or_load("system/gba/" + filename).file;
 
-  send_quest_file(c, "", filename, f->data, QuestFileType::GBA_DEMO);
+  send_open_quest_file(c, "", filename, f->data, QuestFileType::GBA_DEMO);
+}
+
+static void send_file_chunk(
+    shared_ptr<Client> c,
+    const string& filename,
+    size_t chunk_index,
+    bool is_download_quest) {
+  shared_ptr<const string> data;
+  try {
+    data = c->sending_files.at(filename);
+  } catch (const out_of_range&) {
+    return;
+  }
+
+  size_t chunk_offset = chunk_index * 0x400;
+  if (chunk_offset >= data->size()) {
+    c->log.info("Done sending file %s", filename.c_str());
+    c->sending_files.erase(filename);
+  } else {
+    const void* chunk_data = data->data() + (chunk_index * 0x400);
+    size_t chunk_size = min<size_t>(data->size() - chunk_offset, 0x400);
+    send_quest_file_chunk(c, filename, chunk_index, chunk_data, chunk_size, is_download_quest);
+  }
+}
+
+static void on_ack_open_file(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t command, uint32_t, const string& data) { // 44 A6
+  const auto& cmd = check_size_t<C_OpenFileConfirmation_44_A6>(data);
+  send_file_chunk(c, cmd.filename, 0, (command == 0xA6));
+}
+
+static void on_ack_write_file(shared_ptr<ServerState>, shared_ptr<Client> c,
+    uint16_t command, uint32_t flag, const string& data) { // 13 A7
+  const auto& cmd = check_size_t<C_WriteFileConfirmation_V3_BB_13_A7>(data);
+  send_file_chunk(c, cmd.filename, flag + 1, (command == 0xA7));
 }
 
 
@@ -3468,7 +3499,7 @@ static on_command_t handlers[0x100][6] = {
   /* 10 */ {on_checksums_done_patch, on_menu_selection,          on_menu_selection,               on_menu_selection,           on_menu_selection,           on_menu_selection,              }, /* 10 */
   /* 11 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 11 */
   /* 12 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 12 */
-  /* 13 */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ignored_command,          on_ignored_command,          on_ignored_command,             }, /* 13 */
+  /* 13 */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ack_write_file,           on_ack_write_file,           on_ack_write_file,              }, /* 13 */
   /* 14 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 14 */
   /* 15 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 15 */
   /* 16 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 16 */
@@ -3519,7 +3550,7 @@ static on_command_t handlers[0x100][6] = {
   /* 41 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 41 */
   /* 42 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 42 */
   /* 43 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 43 */
-  /* 44 */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ignored_command,          on_ignored_command,          on_ignored_command,             }, /* 44 */
+  /* 44 */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ack_open_file,            on_ack_open_file,            on_ack_open_file,               }, /* 44 */
   /* 45 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 45 */
   /* 46 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 46 */
   /* 47 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* 47 */
@@ -3620,8 +3651,8 @@ static on_command_t handlers[0x100][6] = {
   /* A3 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* A3 */
   /* A4 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* A4 */
   /* A5 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* A5 */
-  /* A6 */ {nullptr,                 nullptr,                    nullptr,                         on_ignored_command,          on_ignored_command,          nullptr,                        }, /* A6 */
-  /* A7 */ {nullptr,                 nullptr,                    nullptr,                         on_ignored_command,          on_ignored_command,          nullptr,                        }, /* A7 */
+  /* A6 */ {nullptr,                 nullptr,                    nullptr,                         on_ack_open_file,            on_ack_open_file,            nullptr,                        }, /* A6 */
+  /* A7 */ {nullptr,                 nullptr,                    nullptr,                         on_ack_write_file,           on_ack_write_file,           nullptr,                        }, /* A7 */
   /* A8 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* A8 */
   /* A9 */ {nullptr,                 on_ignored_command,         on_ignored_command,              on_ignored_command,          on_ignored_command,          on_ignored_command,             }, /* A9 */
   /* AA */ {nullptr,                 nullptr,                    on_update_quest_statistics,      on_update_quest_statistics,  on_update_quest_statistics,  on_update_quest_statistics,     }, /* AA */

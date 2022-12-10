@@ -336,9 +336,19 @@ enum class QuestFileType {
   GBA_DEMO,
 };
 
-void send_quest_file(std::shared_ptr<Client> c, const std::string& quest_name,
-    const std::string& basename, const std::string& contents,
+void send_open_quest_file(
+    std::shared_ptr<Client> c,
+    const std::string& quest_name,
+    const std::string& basename,
+    std::shared_ptr<const std::string> contents,
     QuestFileType type);
+void send_quest_file_chunk(
+    shared_ptr<Client> c,
+    const string& filename,
+    size_t chunk_index,
+    const void* data,
+    size_t size,
+    bool is_download_quest);
 void send_quest_barrier_if_all_clients_ready(std::shared_ptr<Lobby> l);
 
 void send_card_auction_if_all_clients_ready(

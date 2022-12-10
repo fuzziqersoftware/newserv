@@ -489,16 +489,16 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
     string key = "system/blueburst/" + filename;
     auto cache_res = bb_stream_files_cache.get_or_load(key);
     auto& e = entries.emplace_back();
-    e.size = cache_res.file->data.size();
+    e.size = cache_res.file->data->size();
     // Computing the checksum can be slow, so we cache it along with the file
     // data. If the cache result was just populated, then it may be different,
     // so we always recompute the checksum in that case.
     if (cache_res.generate_called) {
-      e.checksum = crc32(cache_res.file->data.data(), e.size);
+      e.checksum = crc32(cache_res.file->data->data(), e.size);
       bb_stream_files_cache.replace_obj<uint32_t>(key + ".crc32", e.checksum);
     } else {
       auto compute_checksum = [&](const string&) -> uint32_t {
-        return crc32(cache_res.file->data.data(), e.size);
+        return crc32(cache_res.file->data->data(), e.size);
       };
       e.checksum = bb_stream_files_cache.get_obj<uint32_t>(key + ".crc32", compute_checksum).obj;
     }
@@ -513,13 +513,13 @@ void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
   auto cache_result = bb_stream_files_cache.get("<BB stream file>", +[](const string&) -> string {
     size_t bytes = 0;
     for (const auto& name : stream_file_entries) {
-      bytes += bb_stream_files_cache.get_or_load("system/blueburst/" + name).file->data.size();
+      bytes += bb_stream_files_cache.get_or_load("system/blueburst/" + name).file->data->size();
     }
 
     string ret;
     ret.reserve(bytes);
     for (const auto& name : stream_file_entries) {
-      ret += bb_stream_files_cache.get_or_load("system/blueburst/" + name).file->data;
+      ret += *bb_stream_files_cache.get_or_load("system/blueburst/" + name).file->data;
     }
     return ret;
   });
@@ -528,11 +528,11 @@ void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
   S_StreamFileChunk_BB_02EB chunk_cmd;
   chunk_cmd.chunk_index = chunk_index;
   size_t offset = sizeof(chunk_cmd.data) * chunk_index;
-  if (offset > contents.size()) {
+  if (offset > contents->size()) {
     throw runtime_error("client requested chunk beyond end of stream file");
   }
-  size_t bytes = min<size_t>(contents.size() - offset, sizeof(chunk_cmd.data));
-  memcpy(chunk_cmd.data, contents.data() + offset, bytes);
+  size_t bytes = min<size_t>(contents->size() - offset, sizeof(chunk_cmd.data));
+  memcpy(chunk_cmd.data, contents->data() + offset, bytes);
 
   size_t cmd_size = offsetof(S_StreamFileChunk_BB_02EB, data) + bytes;
   cmd_size = (cmd_size + 3) & ~3;
@@ -2197,9 +2197,9 @@ void send_quest_file_chunk(
     size_t chunk_index,
     const void* data,
     size_t size,
-    QuestFileType type) {
+    bool is_download_quest) {
   if (size > 0x400) {
-    throw invalid_argument("quest file chunks must be 1KB or smaller");
+    throw logic_error("quest file chunks must be 1KB or smaller");
   }
 
   S_WriteFile_13_A7 cmd;
@@ -2210,38 +2210,45 @@ void send_quest_file_chunk(
   }
   cmd.data_size = size;
 
-  send_command_t(c, (type == QuestFileType::ONLINE) ? 0x13 : 0xA7, chunk_index, cmd);
+  send_command_t(c, is_download_quest ? 0xA7 : 0x13, chunk_index, cmd);
 }
 
-void send_quest_file(shared_ptr<Client> c, const string& quest_name,
-    const string& basename, const string& contents, QuestFileType type) {
+void send_open_quest_file(shared_ptr<Client> c, const string& quest_name,
+    const string& basename, shared_ptr<const string> contents, QuestFileType type) {
 
   switch (c->version()) {
     case GameVersion::DC:
       send_quest_open_file_t<S_OpenFile_DC_44_A6>(
-          c, quest_name, basename, contents.size(), type);
+          c, quest_name, basename, contents->size(), type);
       break;
     case GameVersion::PC:
     case GameVersion::GC:
     case GameVersion::XB:
       send_quest_open_file_t<S_OpenFile_PC_V3_44_A6>(
-          c, quest_name, basename, contents.size(), type);
+          c, quest_name, basename, contents->size(), type);
       break;
     case GameVersion::BB:
       send_quest_open_file_t<S_OpenFile_BB_44_A6>(
-        c, quest_name, basename, contents.size(), type);
+          c, quest_name, basename, contents->size(), type);
       break;
     default:
       throw logic_error("cannot send quest files to this version of client");
   }
 
-  for (size_t offset = 0; offset < contents.size(); offset += 0x400) {
-    size_t chunk_bytes = contents.size() - offset;
-    if (chunk_bytes > 0x400) {
-      chunk_bytes = 0x400;
+  // For GC/XB/BB, we wait for acknowledgement commands before sending each
+  // chunk. For DC/PC, we send the entire quest all at once.
+  if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+    for (size_t offset = 0; offset < contents->size(); offset += 0x400) {
+      size_t chunk_bytes = contents->size() - offset;
+      if (chunk_bytes > 0x400) {
+        chunk_bytes = 0x400;
+      }
+      send_quest_file_chunk(c, basename.c_str(), offset / 0x400,
+          contents->data() + offset, chunk_bytes, (type != QuestFileType::ONLINE));
     }
-    send_quest_file_chunk(c, basename.c_str(), offset / 0x400,
-        contents.data() + offset, chunk_bytes, type);
+  } else {
+    c->sending_files.emplace(basename, contents);
+    c->log.info("Opened file %s", basename.c_str());
   }
 }
 
@@ -2268,7 +2275,9 @@ void send_quest_barrier_if_all_clients_ready(shared_ptr<Lobby> l) {
 
   // Check if any client is still loading
   for (x = 0; x < l->max_clients; x++) {
-    l->clients[x]->disconnect_hooks.erase(QUEST_BARRIER_DISCONNECT_HOOK_NAME);
+    if (l->clients[x]) {
+      l->clients[x]->disconnect_hooks.erase(QUEST_BARRIER_DISCONNECT_HOOK_NAME);
+    }
   }
 }
 

@@ -15,7 +15,7 @@ FileContentsCache::File::File(
     const string& name,
     string&& data,
     uint64_t load_time)
-  : name(name), data(move(data)), load_time(load_time) { }
+  : name(name), data(new string(move(data))), load_time(load_time) { }
 
 shared_ptr<const FileContentsCache::File> FileContentsCache::replace(
     const string& name, string&& data, uint64_t t) {
