@@ -325,6 +325,7 @@ size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size
   while (!r.eof()) {
     if (cr.read()) {
       ret++;
+      r.get_u8();
 
     } else {
       ssize_t offset;

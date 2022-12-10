@@ -282,6 +282,8 @@ The options are:\n\
   --decompress-bc0 [input-filename [output-filename]]\n\
       Compress or decompress data using the PRS or BC0 algorithms. Both\n\
       input-filename and output-filename may be specified.\n\
+  --prs-size\n\
+      Compute the decompressed size of the PRS-compressed input data.\n\
   --encrypt-data\n\
   --decrypt-data\n\
       Encrypt or decrypt data using PSO's standard network protocol encryption.\n\
@@ -367,6 +369,7 @@ enum class Behavior {
   DECOMPRESS_PRS,
   COMPRESS_BC0,
   DECOMPRESS_BC0,
+  PRS_SIZE,
   ENCRYPT_DATA,
   DECRYPT_DATA,
   DECRYPT_TRIVIAL_DATA,
@@ -385,6 +388,7 @@ static bool behavior_takes_input_filename(Behavior b) {
          (b == Behavior::DECOMPRESS_PRS) ||
          (b == Behavior::COMPRESS_BC0) ||
          (b == Behavior::DECOMPRESS_BC0) ||
+         (b == Behavior::PRS_SIZE) ||
          (b == Behavior::ENCRYPT_DATA) ||
          (b == Behavior::DECRYPT_DATA) ||
          (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
@@ -445,6 +449,8 @@ int main(int argc, char** argv) {
       behavior = Behavior::COMPRESS_BC0;
     } else if (!strcmp(argv[x], "--decompress-bc0")) {
       behavior = Behavior::DECOMPRESS_BC0;
+    } else if (!strcmp(argv[x], "--prs-size")) {
+      behavior = Behavior::PRS_SIZE;
     } else if (!strcmp(argv[x], "--encrypt-data")) {
       behavior = Behavior::ENCRYPT_DATA;
     } else if (!strcmp(argv[x], "--decrypt-data")) {
@@ -576,6 +582,15 @@ int main(int argc, char** argv) {
           input_bytes, input_bytes, data.size(), data.size());
 
       write_output_data(data.data(), data.size());
+      break;
+    }
+
+    case Behavior::PRS_SIZE: {
+      string data = read_input_data();
+      size_t input_bytes = data.size();
+      size_t output_bytes = prs_decompress_size(data);
+      log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output",
+          input_bytes, input_bytes, output_bytes, output_bytes);
       break;
     }
 
