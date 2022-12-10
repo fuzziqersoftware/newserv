@@ -792,6 +792,41 @@ Rules::Rules() {
   this->clear();
 }
 
+Rules::Rules(shared_ptr<const JSONObject> json) {
+  auto dict = json->as_dict();
+  this->overall_time_limit = dict.at("overall_time_limit")->as_int();
+  this->phase_time_limit = dict.at("phase_time_limit")->as_int();
+  this->allowed_cards = static_cast<AllowedCards>(dict.at("allowed_cards")->as_int());
+  this->min_dice = dict.at("min_dice")->as_int();
+  this->max_dice = dict.at("max_dice")->as_int();
+  this->disable_deck_shuffle = dict.at("disable_deck_shuffle")->as_int();
+  this->disable_deck_loop = dict.at("disable_deck_loop")->as_int();
+  this->char_hp = dict.at("char_hp")->as_int();
+  this->hp_type = static_cast<HPType>(dict.at("hp_type")->as_int());
+  this->no_assist_cards = dict.at("no_assist_cards")->as_int();
+  this->disable_dialogue = dict.at("disable_dialogue")->as_int();
+  this->dice_exchange_mode = static_cast<DiceExchangeMode>(dict.at("dice_exchange_mode")->as_int());
+  this->disable_dice_boost = dict.at("disable_dice_boost")->as_int();
+}
+
+shared_ptr<JSONObject> Rules::json() const {
+  unordered_map<string, shared_ptr<JSONObject>> dict;
+  dict.emplace("overall_time_limit", make_json_int(this->overall_time_limit));
+  dict.emplace("phase_time_limit", make_json_int(this->phase_time_limit));
+  dict.emplace("allowed_cards", make_json_int(static_cast<uint8_t>(this->allowed_cards)));
+  dict.emplace("min_dice", make_json_int(this->min_dice));
+  dict.emplace("max_dice", make_json_int(this->max_dice));
+  dict.emplace("disable_deck_shuffle", make_json_int(this->disable_deck_shuffle));
+  dict.emplace("disable_deck_loop", make_json_int(this->disable_deck_loop));
+  dict.emplace("char_hp", make_json_int(this->char_hp));
+  dict.emplace("hp_type", make_json_int(static_cast<uint8_t>(this->hp_type)));
+  dict.emplace("no_assist_cards", make_json_int(this->no_assist_cards));
+  dict.emplace("disable_dialogue", make_json_int(this->disable_dialogue));
+  dict.emplace("dice_exchange_mode", make_json_int(static_cast<uint8_t>(this->dice_exchange_mode)));
+  dict.emplace("disable_dice_boost", make_json_int(this->disable_dice_boost));
+  return shared_ptr<JSONObject>(new JSONObject(move(dict)));
+}
+
 void Rules::set_defaults() {
   this->clear();
   this->overall_time_limit = 24; // 2 hours
@@ -1364,6 +1399,9 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
       for (size_t z = 0; z < 0x1F; z++) {
         def->card_ids[z] = card_ids_json.at(z)->as_int();
       }
+      if (!this->com_decks_by_name.emplace(def->deck_name, def).second) {
+        throw runtime_error("duplicate COM deck name: " + def->deck_name);
+      }
     }
   } catch (const exception& e) {
     static_game_data_log.warning("Failed to load Episode 3 COM decks: %s", e.what());
@@ -1496,6 +1534,10 @@ size_t DataIndex::num_com_decks() const {
 
 shared_ptr<const COMDeckDefinition> DataIndex::com_deck(size_t which) const {
   return this->com_decks.at(which);
+}
+
+shared_ptr<const COMDeckDefinition> DataIndex::com_deck(const string& which) const {
+  return this->com_decks_by_name.at(which);
 }
 
 shared_ptr<const COMDeckDefinition> DataIndex::random_com_deck() const {

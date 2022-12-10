@@ -7,6 +7,7 @@
 #include <vector>
 #include <unordered_set>
 #include <string>
+#include <phosg/JSON.hh>
 #include <phosg/Strings.hh>
 
 #include "../Player.hh"
@@ -18,9 +19,6 @@ namespace Episode3 {
 // The comment in Server.hh does not apply to this file (and Tournament.cc).
 
 
-
-// TODO: We should build a way to save tournament state to a file, so it can
-// persist across server restarts.
 
 class Tournament : public std::enable_shared_from_this<Tournament> {
 public:
@@ -35,7 +33,7 @@ public:
     size_t index;
     size_t max_players;
     std::set<uint32_t> player_serial_numbers;
-    std::set<std::shared_ptr<const COMDeckDefinition>> com_decks;
+    std::vector<std::shared_ptr<const COMDeckDefinition>> com_decks;
     std::string name;
     std::string password;
     size_t num_rounds_cleared;
@@ -55,10 +53,6 @@ public:
   };
 
   struct Match : public std::enable_shared_from_this<Match> {
-    enum class WinnerTeam {
-      A = 0,
-      B = 1,
-    };
     std::weak_ptr<Tournament> tournament;
     std::shared_ptr<Match> preceding_a;
     std::shared_ptr<Match> preceding_b;
@@ -78,6 +72,7 @@ public:
     bool resolve_if_no_players();
     void on_winner_team_set();
     void set_winner_team(std::shared_ptr<Team> team);
+    void set_winner_team_without_triggers(std::shared_ptr<Team> team);
     std::shared_ptr<Team> opponent_team_for_team(std::shared_ptr<Team> team) const;
   };
 
@@ -89,8 +84,14 @@ public:
       const Rules& rules,
       size_t num_teams,
       bool is_2v2);
+  Tournament(
+      std::shared_ptr<const DataIndex> data_index,
+      uint8_t number,
+      std::shared_ptr<const JSONObject> json);
   ~Tournament() = default;
   void init();
+
+  std::shared_ptr<JSONObject> json() const;
 
   std::shared_ptr<const DataIndex> get_data_index() const;
   uint8_t get_number() const;
@@ -115,6 +116,7 @@ private:
   PrefixedLogger log;
 
   std::shared_ptr<const DataIndex> data_index;
+  std::shared_ptr<const JSONObject> source_json;
   uint8_t number;
   std::string name;
   std::shared_ptr<const DataIndex::MapEntry> map;
@@ -141,13 +143,17 @@ private:
 
 class TournamentIndex {
 public:
-  TournamentIndex() = default;
+  explicit TournamentIndex(
+      std::shared_ptr<const DataIndex> data_index,
+      const std::string& state_filename,
+      bool skip_load_state = false);
   ~TournamentIndex() = default;
+
+  void save() const;
 
   std::vector<std::shared_ptr<Tournament>> all_tournaments() const;
 
   std::shared_ptr<Tournament> create_tournament(
-    std::shared_ptr<const DataIndex> data_index,
     const std::string& name,
     std::shared_ptr<const DataIndex::MapEntry> map,
     const Rules& rules,
@@ -161,6 +167,8 @@ public:
       uint32_t serial_number) const;
 
 private:
+  std::shared_ptr<const DataIndex> data_index;
+  std::string state_filename;
   std::shared_ptr<Tournament> tournaments[0x20];
 };
 

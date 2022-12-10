@@ -26,7 +26,6 @@ ServerState::ServerState()
     catch_handler_exceptions(true),
     ep3_behavior_flags(0),
     run_shell_behavior(RunShellBehavior::DEFAULT),
-    ep3_tournament_index(new Episode3::TournamentIndex()),
     ep3_card_auction_points(0),
     ep3_card_auction_min_size(0),
     ep3_card_auction_max_size(0),

@@ -1120,6 +1120,7 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
     if (tourn && (tourn->get_state() == Episode3::Tournament::State::COMPLETE)) {
       s->ep3_tournament_index->delete_tournament(tourn->get_number());
     }
+    s->ep3_tournament_index->save();
   }
 }
 
@@ -1132,6 +1133,7 @@ static void on_tournament_complete(
     send_ep3_text_message_printf(s, "$C6%s$C7\nwon the tournament\n$C6%s", team->name.c_str(), tourn->get_name().c_str());
   }
   s->ep3_tournament_index->delete_tournament(tourn->get_number());
+  s->ep3_tournament_index->save();
 }
 
 static void on_ep3_tournament_control(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1890,6 +1892,8 @@ first match by standing at any Battle Table in\n\
 the lobby along with your partner (if any) and\n\
 opponent(s).", tourn->get_name().c_str());
             send_ep3_timed_message_box(c->channel, 240, message.c_str());
+
+            s->ep3_tournament_index->save();
 
           } catch (const exception& e) {
             string message = string_printf("Cannot join team:\n%s", e.what());

@@ -914,6 +914,17 @@ int main(int argc, char** argv) {
       state->ep3_data_index.reset(new Episode3::DataIndex(
           "system/ep3", state->ep3_behavior_flags));
 
+      const string& tournament_state_filename = "system/ep3/tournament-state.json";
+      try {
+        state->ep3_tournament_index.reset(new Episode3::TournamentIndex(
+            state->ep3_data_index, tournament_state_filename));
+        config_log.info("Loaded Episode 3 tournament state");
+      } catch (const exception& e) {
+        config_log.warning("Cannot load Episode 3 tournament state: %s", e.what());
+        state->ep3_tournament_index.reset(new Episode3::TournamentIndex(
+            state->ep3_data_index, tournament_state_filename, true));
+      }
+
       config_log.info("Collecting quest metadata");
       state->quest_index.reset(new QuestIndex("system/quests"));
 

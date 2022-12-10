@@ -8,6 +8,7 @@
 #include <memory>
 #include <unordered_map>
 #include <phosg/Encoding.hh>
+#include <phosg/JSON.hh>
 
 #include "../Text.hh"
 
@@ -639,6 +640,8 @@ struct Rules {
   parray<uint8_t, 3> unused;
 
   Rules();
+  explicit Rules(std::shared_ptr<const JSONObject> json);
+  std::shared_ptr<JSONObject> json() const;
   bool operator==(const Rules& other) const;
   bool operator!=(const Rules& other) const;
   void clear();
@@ -838,6 +841,7 @@ public:
 
   size_t num_com_decks() const;
   std::shared_ptr<const COMDeckDefinition> com_deck(size_t which) const;
+  std::shared_ptr<const COMDeckDefinition> com_deck(const std::string& name) const;
   std::shared_ptr<const COMDeckDefinition> random_com_deck() const;
 
   const uint32_t behavior_flags;
@@ -856,6 +860,7 @@ private:
   std::unordered_map<std::string, std::shared_ptr<MapEntry>> maps_by_name;
 
   std::vector<std::shared_ptr<COMDeckDefinition>> com_decks;
+  std::unordered_map<std::string, std::shared_ptr<COMDeckDefinition>> com_decks_by_name;
 };
 
 

@@ -179,7 +179,7 @@ void Tournament::Match::on_winner_team_set() {
   }
 }
 
-void Tournament::Match::set_winner_team(shared_ptr<Team> team) {
+void Tournament::Match::set_winner_team_without_triggers(shared_ptr<Team> team) {
   if (!this->preceding_a || !this->preceding_b) {
     throw logic_error("set_winner_team called on zero-round match");
   }
@@ -196,7 +196,10 @@ void Tournament::Match::set_winner_team(shared_ptr<Team> team) {
   } else {
     this->preceding_a->winner_team->is_active = false;
   }
+}
 
+void Tournament::Match::set_winner_team(shared_ptr<Team> team) {
+  this->set_winner_team_without_triggers(team);
   this->on_winner_team_set();
 }
 
@@ -244,20 +247,65 @@ Tournament::Tournament(
   }
 }
 
+Tournament::Tournament(
+    std::shared_ptr<const DataIndex> data_index,
+    uint8_t number,
+    std::shared_ptr<const JSONObject> json)
+  : log(string_printf("[Tournament/%02hhX] ", number)),
+    data_index(data_index),
+    source_json(json),
+    number(number),
+    current_state(State::REGISTRATION) { }
+
 void Tournament::init() {
-  // Create all the teams and initial matches
-  while (this->teams.size() < this->num_teams) {
-    auto t = make_shared<Team>(
-        this->shared_from_this(), this->teams.size(), this->is_2v2 ? 2 : 1);
-    this->teams.emplace_back(t);
-    this->zero_round_matches.emplace_back(make_shared<Match>(
-        this->shared_from_this(), t));
+  vector<size_t> team_index_to_rounds_cleared;
+
+  bool is_registration_complete;
+  if (this->source_json) {
+    auto& dict = this->source_json->as_dict();
+    this->name = dict.at("name")->as_string();
+    this->map = this->data_index->definition_for_map_number(dict.at("map_number")->as_int());
+    this->rules = Rules(dict.at("rules"));
+    this->is_2v2 = dict.at("is_2v2")->as_bool();
+    is_registration_complete = dict.at("is_registration_complete")->as_bool();
+
+    for (const auto& team_json : dict.at("teams")->as_list()) {
+      auto& team_dict = team_json->as_dict();
+      auto& team = this->teams.emplace_back(new Team(
+          this->shared_from_this(),
+          this->teams.size(),
+          team_dict.at("max_players")->as_int()));
+      team->name = team_dict.at("name")->as_string();
+      team->password = team_dict.at("password")->as_string();
+      team_index_to_rounds_cleared.emplace_back(team_dict.at("num_rounds_cleared")->as_int());
+      for (const auto& serial_number_json : team_dict.at("player_serial_numbers")->as_list()) {
+        uint32_t serial_number = serial_number_json->as_int();
+        team->player_serial_numbers.emplace(serial_number);
+        this->all_player_serial_numbers.emplace(serial_number);
+      }
+      for (const auto& com_deck_name_json : team_dict.at("com_deck_names")->as_list()) {
+        team->com_decks.emplace_back(this->data_index->com_deck(
+            com_deck_name_json->as_string()));
+      }
+    }
+    this->num_teams = this->teams.size();
+
+    this->source_json.reset();
+
+  } else {
+    // Create empty teams
+    while (this->teams.size() < this->num_teams) {
+      auto t = make_shared<Team>(
+          this->shared_from_this(), this->teams.size(), this->is_2v2 ? 2 : 1);
+      this->teams.emplace_back(t);
+    }
+    is_registration_complete = false;
   }
 
-  // Make all the zero round matches pending (this is needed so that start()
-  // will auto-resolve all-CPU matches in the first round)
-  for (auto m : this->zero_round_matches) {
-    this->pending_matches.emplace(m);
+  // Create the match structure
+  while (this->zero_round_matches.size() < this->num_teams) {
+    this->zero_round_matches.emplace_back(make_shared<Match>(
+        this->shared_from_this(), this->teams[this->zero_round_matches.size()]));
   }
 
   // Create the bracket matches
@@ -276,6 +324,109 @@ void Tournament::init() {
     current_round_matches = move(next_round_matches);
   }
   this->final_match = current_round_matches.at(0);
+
+  // Compute the match state from the teams' states
+  if (is_registration_complete) {
+    this->current_state = State::IN_PROGRESS;
+
+    // Start with all first-round matches in the match queue
+    unordered_set<shared_ptr<Match>> match_queue;
+    for (auto match : this->zero_round_matches) {
+      match_queue.emplace(match->following.lock());
+    }
+    if (match_queue.count(nullptr)) {
+      throw logic_error("null match in match queue");
+    }
+
+    // For each match in the queue, either resolve it from the previous state or
+    // mark it as unresolvable (hence it should be pending when we're done)
+    while (!match_queue.empty()) {
+      auto match_it = match_queue.begin();
+      auto match = *match_it;
+      match_queue.erase(match_it);
+
+      if (!match->preceding_a->winner_team || !match->preceding_b->winner_team) {
+        throw logic_error("preceding matches are not resolved");
+      }
+      size_t& a_rounds_cleared = team_index_to_rounds_cleared[
+          match->preceding_a->winner_team->index];
+      size_t& b_rounds_cleared = team_index_to_rounds_cleared[
+          match->preceding_b->winner_team->index];
+      if (a_rounds_cleared && b_rounds_cleared) {
+        throw runtime_error("both teams won the same match");
+      }
+      if (!a_rounds_cleared && !b_rounds_cleared) {
+        this->pending_matches.emplace(match); // Neither team has won yet
+      } else {
+        if (a_rounds_cleared) {
+          a_rounds_cleared--;
+          match->set_winner_team_without_triggers(match->preceding_a->winner_team);
+        } else {
+          b_rounds_cleared--;
+          match->set_winner_team_without_triggers(match->preceding_b->winner_team);
+        }
+
+        // If both preceding matches of the following match are resolved, put
+        // the following match on the queue since it may be resolvable as well
+        auto following = match->following.lock();
+        if (following &&
+            following->preceding_a->winner_team &&
+            following->preceding_b->winner_team) {
+          match_queue.emplace(following);
+        }
+      }
+    }
+
+    if (!this->final_match->winner_team == this->pending_matches.empty()) {
+      throw logic_error("there must be pending matches if and only if the final match is not resolved");
+    }
+
+    // If all matches are resolved, then the tournament is complete
+    if (this->final_match->winner_team) {
+      this->current_state = State::COMPLETE;
+    }
+
+  } else {
+    // Make all the zero round matches pending (this is needed so that start()
+    // will auto-resolve all-CPU matches in the first round)
+    for (auto m : this->zero_round_matches) {
+      this->pending_matches.emplace(m);
+    }
+
+    this->current_state = State::REGISTRATION;
+  }
+}
+
+std::shared_ptr<JSONObject> Tournament::json() const {
+  unordered_map<string, shared_ptr<JSONObject>> dict;
+  dict.emplace("name", make_json_str(this->name));
+  dict.emplace("map_number", make_json_int(this->map->map.map_number));
+  dict.emplace("rules", this->rules.json());
+  dict.emplace("is_2v2", make_json_bool(this->is_2v2));
+  dict.emplace("is_registration_complete", make_json_bool(
+      this->current_state != State::REGISTRATION));
+
+  vector<shared_ptr<JSONObject>> teams_list;
+  for (auto team : this->teams) {
+    unordered_map<string, shared_ptr<JSONObject>> team_dict;
+    team_dict.emplace("max_players", make_json_int(team->max_players));
+    vector<shared_ptr<JSONObject>> player_serial_numbers_list;
+    for (uint32_t player_serial_number : team->player_serial_numbers) {
+      player_serial_numbers_list.emplace_back(make_json_int(player_serial_number));
+    }
+    team_dict.emplace("player_serial_numbers", make_json_list(move(player_serial_numbers_list)));
+    vector<shared_ptr<JSONObject>> com_deck_names_list;
+    for (auto com_deck : team->com_decks) {
+      com_deck_names_list.emplace_back(make_json_str(com_deck->deck_name));
+    }
+    team_dict.emplace("com_deck_names", make_json_list(move(com_deck_names_list)));
+    team_dict.emplace("name", make_json_str(team->name));
+    team_dict.emplace("password", make_json_str(team->password));
+    team_dict.emplace("num_rounds_cleared", make_json_int(team->num_rounds_cleared));
+    teams_list.emplace_back(new JSONObject(move(team_dict)));
+  }
+  dict.emplace("teams", make_json_list(move(teams_list)));
+  return shared_ptr<JSONObject>(new JSONObject(move(dict)));
 }
 
 std::shared_ptr<const DataIndex> Tournament::get_data_index() const {
@@ -382,7 +533,7 @@ void Tournament::start() {
       throw runtime_error("not enough COM decks to complete team");
     }
     while (t->player_serial_numbers.size() + t->com_decks.size() < t->max_players) {
-      t->com_decks.emplace(this->data_index->random_com_deck());
+      t->com_decks.emplace_back(this->data_index->random_com_deck());
     }
   }
 
@@ -438,6 +589,46 @@ void Tournament::print_bracket(FILE* stream) const {
 
 
 
+TournamentIndex::TournamentIndex(
+    shared_ptr<const DataIndex> data_index,
+    const string& state_filename,
+    bool skip_load_state)
+  : data_index(data_index), state_filename(state_filename) {
+  if (this->state_filename.empty() || skip_load_state) {
+    return;
+  }
+
+  auto json = JSONObject::parse(load_file(this->state_filename));
+
+  auto& list = json->as_list();
+  if (list.size() != 0x20) {
+    throw runtime_error("tournament JSON list length is incorrect");
+  }
+  for (size_t z = 0; z < 0x20; z++) {
+    if (!list.at(z)->is_null()) {
+      this->tournaments[z].reset(new Tournament(this->data_index, z, list[z]));
+      this->tournaments[z]->init();
+    }
+  }
+}
+
+void TournamentIndex::save() const {
+  if (this->state_filename.empty()) {
+    return;
+  }
+
+  vector<shared_ptr<JSONObject>> list;
+  for (size_t z = 0; z < 0x20; z++) {
+    if (this->tournaments[z]) {
+      list.emplace_back(this->tournaments[z]->json());
+    } else {
+      list.emplace_back(make_json_null());
+    }
+  }
+  auto json = make_json_list(move(list));
+  save_file(this->state_filename, json->format());
+}
+
 vector<shared_ptr<Tournament>> TournamentIndex::all_tournaments() const {
   vector<shared_ptr<Tournament>> ret;
   for (size_t z = 0; z < 0x20; z++) {
@@ -449,7 +640,6 @@ vector<shared_ptr<Tournament>> TournamentIndex::all_tournaments() const {
 }
 
 shared_ptr<Tournament> TournamentIndex::create_tournament(
-    shared_ptr<const DataIndex> data_index,
     const string& name,
     shared_ptr<const DataIndex::MapEntry> map,
     const Rules& rules,
@@ -466,7 +656,8 @@ shared_ptr<Tournament> TournamentIndex::create_tournament(
     throw runtime_error("all tournament slots are full");
   }
 
-  auto t = make_shared<Tournament>(data_index, number, name, map, rules, num_teams, is_2v2);
+  auto t = make_shared<Tournament>(
+      this->data_index, number, name, map, rules, num_teams, is_2v2);
   t->init();
   this->tournaments[number] = t;
   return t;

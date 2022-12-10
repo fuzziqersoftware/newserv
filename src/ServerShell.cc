@@ -129,10 +129,17 @@ Server commands:\n\
       dialogue=ON/OFF: Enable/disable dialogue\n\
       dice-exchange=ATK/DEF/NONE: Set dice exchange mode\n\
       dice-boost=ON/OFF: Enable/disable dice boost\n\
+  delete-tournament \"Tournament Name\"\n\
+    Delete a tournament. The quotes are required unless the tournament name\n\
+    contains no spaces.\n\
+  list-tournaments\n\
+    List the names and numbers of all existing tournaments.\n\
   start-tournament \"Tournament Name\"\n\
-    End registration for a tournament and allow matches to begin.\n\
+    End registration for a tournament and allow matches to begin. The quotes\n\
+    are required unless the tournament name contains no spaces.\n\
   tournament-state \"Tournament Name\"\n\
-    Print the current state of a tournament.\n\
+    Print the current state of a tournament. The quotes are required unless the\n\
+    tournament name contains no spaces.\n\
 \n\
 Proxy commands (these will only work when exactly one client is connected):\n\
   sc <data>\n\
@@ -403,14 +410,32 @@ Proxy commands (these will only work when exactly one client is connected):\n\
       fprintf(stderr, "warning: some rules were invalid and reset to defaults\n");
     }
     auto tourn = this->state->ep3_tournament_index->create_tournament(
-        this->state->ep3_data_index, name, map, rules, num_teams, is_2v2);
+        name, map, rules, num_teams, is_2v2);
+    this->state->ep3_tournament_index->save();
     fprintf(stderr, "created tournament %02hhX\n", tourn->get_number());
+
+  } else if (command_name == "delete-tournament") {
+    string name = get_quoted_string(command_args);
+    auto tourn = this->state->ep3_tournament_index->get_tournament(name);
+    if (tourn) {
+      this->state->ep3_tournament_index->delete_tournament(tourn->get_number());
+      this->state->ep3_tournament_index->save();
+      fprintf(stderr, "tournament deleted\n");
+    } else {
+      fprintf(stderr, "no such tournament exists\n");
+    }
+
+  } else if (command_name == "list-tournaments") {
+    for (const auto& tourn : this->state->ep3_tournament_index->all_tournaments()) {
+      fprintf(stderr, "  %s\n", tourn->get_name().c_str());
+    }
 
   } else if (command_name == "start-tournament") {
     string name = get_quoted_string(command_args);
     auto tourn = this->state->ep3_tournament_index->get_tournament(name);
     if (tourn) {
       tourn->start();
+      this->state->ep3_tournament_index->save();
       send_ep3_text_message_printf(this->state, "$C7The tournament\n$C6%s$C7\nhas begun", tourn->get_name().c_str());
       fprintf(stderr, "tournament started\n");
     } else {
