@@ -434,7 +434,7 @@ static void server_command_playrec(shared_ptr<ServerState> s, shared_ptr<Lobby> 
     shared_ptr<Episode3::BattleRecord> record(new Episode3::BattleRecord(data));
     shared_ptr<Episode3::BattleRecordPlayer> battle_player(
         new Episode3::BattleRecordPlayer(record, s->game_server->get_base()));
-    auto game = create_game_generic(s, c, args.c_str(), u"", 0xFF, 0, flags, battle_player);
+    auto game = create_game_generic(s, c, args.c_str(), u"", 0xFF, 0, flags, nullptr, battle_player);
   }
 }
 
@@ -513,6 +513,29 @@ static void server_command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l
     auto encoded = encode_sjis(l->password);
     send_text_message_printf(l, "$C6Game password:\n%s",
         encoded.c_str());
+  }
+}
+
+static void server_command_spec(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string&) {
+  check_is_game(l, true);
+  check_is_leader(l, c);
+  check_is_ep3(c, true);
+  if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    throw logic_error("Episode 3 client in non-Episode 3 game");
+  }
+
+  if (l->flags & Lobby::Flag::SPECTATORS_FORBIDDEN) {
+    l->flags &= ~Lobby::Flag::SPECTATORS_FORBIDDEN;
+    send_text_message(l, u"$C6Spectators allowed");
+
+  } else {
+    l->flags |= Lobby::Flag::SPECTATORS_FORBIDDEN;
+    for (auto watcher_l : l->watcher_lobbies) {
+      send_command(watcher_l, 0xED, 0x00);
+    }
+    l->watcher_lobbies.clear();
+    send_text_message(l, u"$C6Spectators forbidden");
   }
 }
 
@@ -1066,6 +1089,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$silence",  {server_command_silence,            nullptr,                       u"Usage:\nsilence <name-or-number>"}},
     // TODO: implement this on proxy server
     {u"$song",     {server_command_song,               nullptr,                       u"Usage:\nsong <song-number>"}},
+    {u"$spec",     {server_command_spec,               nullptr,                       u"Usage:\nspec"}},
     {u"$swa",      {server_command_switch_assist,      proxy_command_switch_assist,   u"Usage:\nswa"}},
     {u"$type",     {server_command_lobby_type,         nullptr,                       u"Usage:\ntype <name>"}},
     {u"$warp",     {server_command_warp,               proxy_command_warp,            u"Usage:\nwarp <area-number>"}},

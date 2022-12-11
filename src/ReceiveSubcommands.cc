@@ -63,6 +63,12 @@ const CmdT& check_size_sc(
 
 
 
+static const unordered_set<uint8_t> watcher_subcommands({
+  0x07, // Symbol chat
+  0x74, // Word select
+  0xBD, // Word select during battle (with private_flags)
+});
+
 static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint8_t command, uint8_t flag, const void* data, size_t size) {
 
@@ -98,8 +104,15 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
       send_command_excluding_client(l, c, command, flag, data, size);
     }
 
-    for (const auto& watcher_lobby : l->watcher_lobbies) {
-      forward_subcommand(watcher_lobby, c, command, flag, data, size);
+    // Before battle, forward only chat commands to watcher lobbies; during
+    // battle, forward everything to watcher lobbies.
+    if (size &&
+        (watcher_subcommands.count(*reinterpret_cast<const uint8_t*>(data) ||
+         (l->ep3_server_base &&
+          l->ep3_server_base->server->setup_phase != Episode3::SetupPhase::REGISTRATION)))) {
+      for (const auto& watcher_lobby : l->watcher_lobbies) {
+        forward_subcommand(watcher_lobby, c, command, flag, data, size);
+      }
     }
 
     if (l->battle_record && l->battle_record->battle_in_progress()) {

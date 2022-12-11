@@ -1084,7 +1084,11 @@ void send_menu(shared_ptr<Client> c, const u16string& menu_name,
 
 
 template <typename CharT>
-void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
+void send_game_menu_t(
+    shared_ptr<Client> c,
+    shared_ptr<ServerState> s,
+    bool is_spectator_team_list,
+    bool is_tournament_game_list) {
   vector<S_GameMenuEntry<CharT>> entries;
   {
     auto& e = entries.emplace_back();
@@ -1100,12 +1104,22 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     if (!l->is_game() || (l->version != c->version())) {
       continue;
     }
+
     bool l_is_ep3 = !!(l->flags & Lobby::Flag::EPISODE_3_ONLY);
     bool c_is_ep3 = !!(c->flags & Client::Flag::IS_EPISODE_3);
     if (l_is_ep3 != c_is_ep3) {
       continue;
     }
     if ((c->flags & Client::Flag::IS_DC_V1) && (l->flags & Lobby::Flag::NON_V1_ONLY)) {
+      continue;
+    }
+
+    bool l_is_spectator_team = !!(l->flags & Lobby::Flag::IS_SPECTATOR_TEAM);
+    if (l_is_spectator_team != is_spectator_team_list) {
+      continue;
+    }
+    bool l_is_tournament_game = !!l->tournament_match;
+    if (l_is_tournament_game != is_tournament_game_list) {
       continue;
     }
 
@@ -1136,16 +1150,20 @@ void send_game_menu_t(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     e.name = l->name;
   }
 
-  send_command_vt(c, 0x08, entries.size() - 1, entries);
+  send_command_vt(c, is_spectator_team_list ? 0xE6 : 0x08, entries.size() - 1, entries);
 }
 
-void send_game_menu(shared_ptr<Client> c, shared_ptr<ServerState> s) {
+void send_game_menu(
+    shared_ptr<Client> c,
+    shared_ptr<ServerState> s,
+    bool is_spectator_team_list,
+    bool is_tournament_game_list) {
   if ((c->version() == GameVersion::DC) ||
       (c->version() == GameVersion::GC) ||
       (c->version() == GameVersion::XB)) {
-    send_game_menu_t<char>(c, s);
+    send_game_menu_t<char>(c, s, is_spectator_team_list, is_tournament_game_list);
   } else {
-    send_game_menu_t<char16_t>(c, s);
+    send_game_menu_t<char16_t>(c, s, is_spectator_team_list, is_tournament_game_list);
   }
 }
 
@@ -2064,6 +2082,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       entry.team_name = teams[z]->name;
     }
     cmd.num_bracket_entries = teams.size();
+    cmd.players_per_team = tourn->get_is_2v2() ? 2 : 1;
 
     if (primary_lobby) {
       auto serial_number_to_client = primary_lobby->clients_by_serial_number();

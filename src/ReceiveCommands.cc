@@ -963,7 +963,7 @@ static bool start_ep3_tournament_match_if_pending(
 
   // TODO: We don't know if this works with multiple players. Test it.
   uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
-  auto game = create_game_generic(s, c, u"<Tournament>", u"", 0xFF, 0, flags);
+  auto game = create_game_generic(s, c, decode_sjis(tourn->get_name()), u"", 0xFF, 0, flags);
   game->tournament_match = match;
   for (auto game_c : game_clients) {
     send_command_t(game_c, 0xC9, 0x00, state_cmd);
@@ -1174,10 +1174,10 @@ static void on_ep3_tournament_control(shared_ptr<ServerState> s, shared_ptr<Clie
       break;
     }
     case 0x03: // Create tournament spectator team (get battle list)
-      send_lobby_message_box(c, u"$C6Not supported"); // TODO
+      send_game_menu(c, s, false, true);
       break;
     case 0x04: // Join tournament spectator team (get team list)
-      send_lobby_message_box(c, u"$C6Not supported"); // TODO
+      send_game_menu(c, s, true, true);
       break;
     default:
       throw runtime_error("invalid tournament operation");
@@ -1933,9 +1933,9 @@ static void on_change_lobby(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_game_list_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) { // 08
+    uint16_t command, uint32_t, const string& data) { // 08 E6
   check_size_v(data.size(), 0);
-  send_game_menu(c, s);
+  send_game_menu(c, s, (command == 0xE6), false);
 }
 
 static void on_info_menu_request_dc_pc(shared_ptr<ServerState> s,
@@ -2796,6 +2796,7 @@ shared_ptr<Lobby> create_game_generic(
     uint8_t episode,
     uint8_t difficulty,
     uint32_t flags,
+    shared_ptr<Lobby> watched_lobby,
     shared_ptr<Episode3::BattleRecordPlayer> battle_player) {
 
   // A player's actual level is their displayed level - 1, so the minimums for
@@ -2857,6 +2858,10 @@ shared_ptr<Lobby> create_game_generic(
   game->max_clients = (game->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 12 : 4;
   game->min_level = min_level;
   game->max_level = 0xFFFFFFFF;
+  if (watched_lobby) {
+    game->watched_lobby = watched_lobby;
+    watched_lobby->watcher_lobbies.emplace(game);
+  }
 
   bool is_solo = (game->flags & Lobby::Flag::SOLO_MODE);
 
@@ -2939,12 +2944,12 @@ static void on_create_game_pc(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string& data) { // 0C C1 EC (EC Ep3 only)
+    uint16_t command, uint32_t, const string& data) { // 0C C1 E7 EC (E7/EC are Ep3 only)
   const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
 
-  // Only allow EC from Ep3 clients
+  // Only allow E7/EC from Ep3 clients
   bool client_is_ep3 = !!(c->flags & Client::Flag::IS_EPISODE_3);
-  if ((command == 0xEC) != client_is_ep3) {
+  if (((command & 0xF0) == 0xE0) != client_is_ep3) {
     return;
   }
 
@@ -2975,8 +2980,22 @@ static void on_create_game_dc_v3(shared_ptr<ServerState> s, shared_ptr<Client> c
       flags |= Lobby::Flag::CHALLENGE_MODE;
     }
   }
+
+  shared_ptr<Lobby> watched_lobby;
+  if (command == 0xE7) {
+    if (cmd.menu_id != MenuID::GAME) {
+      throw runtime_error("incorrect menu ID");
+    }
+    watched_lobby = s->find_lobby(cmd.item_id);
+    if (watched_lobby->flags & Lobby::Flag::SPECTATORS_FORBIDDEN) {
+      send_lobby_message_box(c, u"$C6This game does not\nallow spectators");
+      return;
+    }
+    flags |= Lobby::Flag::IS_SPECTATOR_TEAM;
+  }
+
   auto game = create_game_generic(
-      s, c, name.c_str(), password.c_str(), episode, cmd.difficulty, flags);
+      s, c, name.c_str(), password.c_str(), episode, cmd.difficulty, flags, watched_lobby);
   s->change_client_lobby(c, game);
   c->flags |= Client::Flag::LOADING;
 }
@@ -3702,8 +3721,8 @@ static on_command_t handlers[0x100][6] = {
   /* E3 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_player_preview_request_bb,   }, /* E3 */
   /* E4 */ {nullptr,                 nullptr,                    nullptr,                         on_ep3_battle_table_state,   nullptr,                     nullptr,                        }, /* E4 */
   /* E5 */ {nullptr,                 nullptr,                    nullptr,                         on_ep3_battle_table_confirm, nullptr,                     on_create_character_bb,         }, /* E5 */
-  /* E6 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* E6 */
-  /* E7 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_return_player_data_bb,       }, /* E7 */
+  /* E6 */ {nullptr,                 nullptr,                    nullptr,                         on_game_list_request,        nullptr,                     nullptr,                        }, /* E6 */
+  /* E7 */ {nullptr,                 nullptr,                    nullptr,                         on_create_game_dc_v3,        nullptr,                     on_return_player_data_bb,       }, /* E7 */
   /* E8 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_client_checksum_bb,          }, /* E8 */
   /* E9 */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     nullptr,                        }, /* E9 */
   /* EA */ {nullptr,                 nullptr,                    nullptr,                         nullptr,                     nullptr,                     on_team_command_bb,             }, /* EA */

@@ -1963,7 +1963,10 @@ struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<le_uint16_t, char16_t>
 
 template <typename CharT>
 struct C_CreateGame {
-  parray<le_uint32_t, 2> unused;
+  // menu_id and item_id are only used for the E7 (create spectator team) form
+  // of this command
+  le_uint32_t menu_id;
+  le_uint32_t item_id;
   ptext<CharT, 0x10> name;
   ptext<CharT, 0x10> password;
   uint8_t difficulty = 0; // 0-3 (always 0 on Episode 3)

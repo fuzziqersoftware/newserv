@@ -2119,6 +2119,9 @@ void Server::handle_6xB3x40_map_list_request(const string& data) {
       G_MapList_GC_Ep3_6xB6x40{{{{0xB6, 0, 0}, subcommand_size}, 0x40, {}}, list_data.size(), 0});
   w.write(list_data);
   send_command(l, 0x6C, 0x00, w.str());
+  for (auto watcher_l : l->watcher_lobbies) {
+    send_command(watcher_l, 0x6C, 0x00, w.str());
+  }
 
   if (l->battle_record && l->battle_record->writable()) {
     l->battle_record->add_command(
@@ -2139,6 +2142,9 @@ void Server::handle_6xB3x41_map_request(const string& data) {
   this->last_chosen_map = this->base()->data_index->definition_for_map_number(cmd.map_number);
   auto out_cmd = this->prepare_6xB6x41_map_definition(this->last_chosen_map);
   send_command(l, 0x6C, 0x00, out_cmd);
+  for (auto watcher_l : l->watcher_lobbies) {
+    send_command(watcher_l, 0x6C, 0x00, out_cmd);
+  }
 
   if (l->battle_record && l->battle_record->writable()) {
     l->battle_record->add_command(

@@ -221,6 +221,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$maxlevel <level>`: Sets the maximum level for players to join the current game.
     * `$minlevel <level>`: Sets the minimum level for players to join the current game.
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
+    * `$spec`: Toggles the allow spectators flag. If any players are spectating when this flag is disabled, they will be sent back to the lobby.
 
 * Cheat mode commands
     * `$cheat`: Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. This command does nothing on the proxy server - cheat commands are always available there.

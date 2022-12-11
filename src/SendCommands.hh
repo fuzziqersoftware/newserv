@@ -234,7 +234,11 @@ void send_guild_card(
 void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source);
 void send_menu(std::shared_ptr<Client> c, const std::u16string& menu_name,
     uint32_t menu_id, const std::vector<MenuItem>& items, bool is_info_menu = false);
-void send_game_menu(std::shared_ptr<Client> c, std::shared_ptr<ServerState> s);
+void send_game_menu(
+    std::shared_ptr<Client> c,
+    std::shared_ptr<ServerState> s,
+    bool is_spectator_team_list,
+    bool is_tournament_game_list);
 void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
     const std::vector<std::shared_ptr<const Quest>>& quests, bool is_download_menu);
 void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
