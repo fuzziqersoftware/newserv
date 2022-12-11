@@ -235,3 +235,13 @@ uint32_t Lobby::generate_item_id(uint8_t client_id) {
   }
   return this->next_game_item_id++;
 }
+
+unordered_map<uint32_t, shared_ptr<Client>> Lobby::clients_by_serial_number() const {
+  unordered_map<uint32_t, shared_ptr<Client>> ret;
+  for (auto c : this->clients) {
+    if (c) {
+      ret.emplace(c->license->serial_number, c);
+    }
+  }
+  return ret;
+}

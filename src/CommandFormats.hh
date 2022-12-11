@@ -2074,9 +2074,9 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { } __packed__;
 // Same as 60, but only send to Episode 3 clients.
 // This command is identical to C9, except that CB is not valid on Episode 3
 // Trial Edition (whereas C9 is valid).
-// TODO: What's the difference here? The client-side handlers are identical, so
-// presumably the server is supposed to do something different between the two
-// commands, but it's not clear what that difference should be.
+// TODO: Presumably this command is meant to be forwarded from spectator teams
+// to the primary team, whereas 6x and C9 commands are not. I haven't verified
+// this or implemented this behavior yet though.
 
 // CC (S->C): Confirm tournament entry (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
@@ -2351,17 +2351,24 @@ struct S_TournamentList_GC_Ep3_E0 {
 // E0 (C->S): Request team and key config (BB)
 
 // E1 (S->C): Game information (Episode 3)
+// The header.flag argument determines which fields are valid (and which panes
+// should be shown in the information window). The values are the same as for
+// the E3 command, but each value only makes sense for one command. That is, 00,
+// 01, and 04 should be used with the E1 command, while 02, 03, and 05 should be
+// used with the E3 command. See the E3 command for descriptions of what each
+// flag value means.
 
 struct S_GameInformation_GC_Ep3_E1 {
   /* 0004 */ ptext<char, 0x20> game_name;
-  struct Entry {
+  struct PlayerEntry {
     ptext<char, 0x10> name; // From disp.name
     ptext<char, 0x20> description; // Usually something like "FOmarl CLv30 J"
   } __packed__;
-  /* 0024 */ parray<Entry, 4> entries;
+  /* 0024 */ parray<PlayerEntry, 4> player_entries;
   /* 00E4 */ parray<uint8_t, 0x20> unknown_a3;
-  /* 0104 */ parray<uint8_t, 0x14> unknown_a4;
-  /* 0118 */ parray<uint8_t, 0x180> unknown_a5;
+  /* 0104 */ Episode3::Rules rules;
+  /* 0114 */ parray<uint8_t, 4> unknown_a4;
+  /* 0118 */ parray<PlayerEntry, 8> spectator_entries;
 } __packed__;
 
 // E2 (C->S): Tournament control (Episode 3)
@@ -2410,25 +2417,63 @@ struct S_TournamentEntryList_GC_Ep3_E2 {
 // E2 (S->C): Team and key config (BB)
 // See KeyAndTeamConfigBB in Player.hh for format
 
-// E3 (S->C): Tournament info (Episode 3)
+// E3 (S->C): Game or tournament info (Episode 3)
+// The header.flag argument determines which fields are valid (and which panes
+// should be shown in the information window). The values are:
+// flag=00: Opponents pane only
+// flag=01: Opponents and Rules panes
+// flag=02: Rules and bracket panes (the bracket pane uses the tournament's name
+//          as its title)
+// flag=03: Opponents, Rules, and bracket panes
+// flag=04: Spectators and Opponents pane
+// flag=05: Spectators, Opponents, Rules, and bracket panes
+// Sending other values in the header.flag field results in a blank info window
+// with unintended strings appearing in the window title.
+// Presumably the cases above would be used in different scenarios, probably:
+// 00: When inspecting a non-tournament game with no battle in progress
+// 01: When inspecting a non-tournament game with a battle in progress
+// 02: When inspecting tournaments that have not yet started
+// 03: When inspecting a tournament match
+// 04: When inspecting a non-tournament spectator team
+// 05: When inspecting a tournament spectator team
+// The 00, 01, and 04 cases don't really make sense, because the E1 command is
+// more appropriate for inspecting non-tournament games.
 
-struct S_TournamentInfo_GC_Ep3_E3 {
-  struct Entry {
+struct S_TournamentGameDetails_GC_Ep3_E3 {
+  // These fields are used only if the Rules pane is shown
+  /* 0004/032C */ ptext<char, 0x20> name;
+  /* 0024/034C */ ptext<char, 0x20> map_name;
+  /* 0044/036C */ Episode3::Rules rules;
+
+  /* 0054/037C */ parray<uint8_t, 4> unknown_a1;
+
+  // This field is used only if the bracket pane is shown
+  struct BracketEntry {
     le_uint16_t win_count = 0;
     le_uint16_t is_active = 0;
-    ptext<char, 0x20> team_name;
+    ptext<char, 0x18> team_name;
+    parray<uint8_t, 8> unused;
   } __packed__;
-  ptext<char, 0x20> name;
-  ptext<char, 0x20> map_name;
-  parray<uint8_t, 4> unknown_a1;
-  Episode3::Rules rules;
-  parray<Entry, 0x20> entries;
-  parray<uint8_t, 0xE0> unknown_a2;
-  le_uint16_t max_entries = 0;
-  le_uint16_t unknown_a3 = 1;
-  le_uint16_t unknown_a4 = 0;
-  le_uint16_t unknown_a5 = 0;
-  parray<uint8_t, 0x180> unknown_a6;
+  /* 0058/0380 */ parray<BracketEntry, 0x20> bracket_entries;
+
+  // This field is used only if the Opponents pane is shown. If players_per_team
+  // is 2, all fields are shown; if player_per_team is 1, team_name and
+  // players[1] is ignored (only players[0] is shown).
+  struct PlayerEntry {
+    ptext<char, 0x10> name;
+    ptext<char, 0x20> description; // Usually something like "RAmarl CLv24 E"
+  } __packed__;
+  struct TeamEntry {
+    ptext<char, 0x10> team_name;
+    parray<PlayerEntry, 2> players;
+  } __packed__;
+  /* 04D8/0800 */ parray<TeamEntry, 2> team_entries;
+
+  /* 05B8/08E0 */ le_uint16_t num_bracket_entries = 0;
+  /* 05BA/08E2 */ le_uint16_t players_per_team = 0;
+  /* 05BC/08E4 */ le_uint16_t unknown_a4 = 0;
+  /* 05BE/08E6 */ le_uint16_t num_spectators = 0;
+  /* 05C0/08E8 */ parray<PlayerEntry, 8> spectator_entries;
 } __packed__;
 
 // E3 (C->S): Player preview request (BB)
@@ -2769,10 +2814,10 @@ struct S_StreamFileChunk_BB_02EB {
 // No arguments
 // Server should respond with a 01EB command.
 
-// EC: Create game (Episode 3)
+// EC (C->S): Create game (Episode 3)
 // Same format as C1; some fields are unused (e.g. episode, difficulty).
 
-// EC: Leave character select (BB)
+// EC (C->S): Leave character select (BB)
 
 struct C_LeaveCharacterSelect_BB_00EC {
   // Reason codes:
@@ -4586,6 +4631,7 @@ struct G_BankAction_BB_6xBD {
 } __packed__;
 
 // 6xBE: Sound chat (Episode 3; not Trial Edition)
+// This appears to be the only subcommand ever sent with the CB command.
 
 struct G_SoundChat_GC_Ep3_6xBE {
   G_UnusedHeader header;
@@ -4743,8 +4789,8 @@ struct G_SetStateFlags_GC_Ep3_6xB4x03 {
 
 // 6xB4x04: Update SC/FC short statuses
 
-struct G_UpdateStats_GC_Ep3_6xB4x04 {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_UpdateStats_GC_Ep3_6xB4x04) / 4, 0, 0x04, 0, 0, 0};
+struct G_UpdateShortStatuses_GC_Ep3_6xB4x04 {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_UpdateShortStatuses_GC_Ep3_6xB4x04) / 4, 0, 0x04, 0, 0, 0};
   le_uint16_t client_id = 0;
   le_uint16_t unused = 0;
   // The slots in this array have heterogeneous meanings. Specifically:
@@ -5224,11 +5270,11 @@ struct G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D {
   Episode3::Rules rules;
   parray<uint8_t, 4> unknown_a1;
   struct Entry {
-    uint8_t type = 0; // 1 = human, 2 = COM
+    uint8_t type = 0; // 0 = no player, 1 = human, 2 = COM
     ptext<char, 0x10> player_name;
-    ptext<char, 0x10> deck_name; // Seems to only be used for COM players
+    ptext<char, 0x10> deck_name; // Only be used for COM players
     parray<uint8_t, 5> unknown_a1;
-    parray<le_uint16_t, 0x1F> card_ids;
+    parray<le_uint16_t, 0x1F> card_ids; // Can be blank for human players
     uint8_t client_id = 0; // Unused for COMs
     uint8_t unknown_a4 = 0;
     le_uint16_t unknown_a2 = 0;
@@ -5252,7 +5298,7 @@ struct G_MakeCardAuctionBid_GC_Ep3_6xB5x3E {
   parray<uint8_t, 2> unused;
 } __packed__;
 
-// 6xB5x3F: Open menu
+// 6xB5x3F: Open blocking menu
 
 struct G_OpenBlockingMenu_GC_Ep3_6xB5x3F {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_OpenBlockingMenu_GC_Ep3_6xB5x3F) / 4, 0, 0x3F, 0, 0, 0};
@@ -5382,7 +5428,11 @@ struct G_EndTurn_GC_Ep3_6xB3x48_CAx48 {
 // verification at battle start time.) Sega presumably could have used this to
 // detect the presence of unreleased cards to ban cheaters, but the effects of
 // the non-saveable Have All Cards AR code don't appear in this data, so this
-// would have been ineffective.
+// would have been ineffective. There appears to be a place where Sega's server
+// intended to use this data, however - the deck verification function takes a
+// pointer to the card counts array, but Sega's implementation always passes
+// null there, which skips the owned card count check. newserv uses this data at
+// that callsite.
 
 struct G_CardCounts_GC_Ep3_6xB3x49_CAx49 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_CardCounts_GC_Ep3_6xB3x49_CAx49) / 4, 0, 0x49, 0, 0, 0, 0, 0};
@@ -5524,10 +5574,10 @@ struct G_TournamentMatchResult_GC_Ep3_6xB4x51 {
 
 struct G_Unknown_GC_Ep3_6xB4x52 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_GC_Ep3_6xB4x52) / 4, 0, 0x52, 0, 0, 0};
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
-  le_uint16_t unknown_a3 = 0;
-  le_uint16_t size = 0; // Number of valid bytes in the data field (clamped to 0xFF)
+  le_uint16_t unknown_a1 = 0; // Clamped to [0, 999] by the client
+  le_uint16_t unknown_a2 = 0; // Clamped to [0, 999] by the client
+  le_uint16_t unused = 0;
+  le_uint16_t size = 0; // Number of used bytes in data (clamped to 0xFF)
   parray<uint8_t, 0x100> data;
 } __packed__;
 

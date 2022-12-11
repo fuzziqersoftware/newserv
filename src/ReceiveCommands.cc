@@ -1284,22 +1284,7 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
 
       } else if ((c->flags & Client::Flag::IS_EPISODE_3) &&
                  (game->flags & Lobby::Flag::EPISODE_3_ONLY)) {
-        S_GameInformation_GC_Ep3_E1 cmd;
-        cmd.game_name = encode_sjis(game->name);
-        size_t num_players = 0;
-        for (const auto& client : game->clients) {
-          if (client) {
-            auto player = client->game_data.player();
-            cmd.entries[num_players].name = player->disp.name;
-            cmd.entries[num_players].description = string_printf(
-                "%s CLv%" PRIu32 " %c",
-                name_for_char_class(player->disp.char_class),
-                player->disp.level + 1,
-                char_for_language_code(player->inventory.language));
-            num_players++;
-          }
-        }
-        send_command_t(c, 0xE1, 0x00, cmd);
+        send_ep3_game_details(c, game);
 
       } else {
         string info;
@@ -1401,7 +1386,7 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
       }
       auto tourn = s->ep3_tournament_index->get_tournament(cmd.item_id);
       if (tourn) {
-        send_ep3_tournament_info(c, tourn);
+        send_ep3_tournament_details(c, tourn);
       }
       break;
     }

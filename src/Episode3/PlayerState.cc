@@ -1444,7 +1444,7 @@ void PlayerState::set_random_assist_card_from_hand_for_free() {
 }
 
 void PlayerState::send_6xB4x04_if_needed(bool always_send) {
-  G_UpdateStats_GC_Ep3_6xB4x04 cmd;
+  G_UpdateShortStatuses_GC_Ep3_6xB4x04 cmd;
   cmd.client_id = this->client_id;
   // Note: The original code calls memset to clear all the short status structs
   // at once. We don't do this because the default constructor has already

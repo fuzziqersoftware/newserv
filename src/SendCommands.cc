@@ -16,6 +16,7 @@
 #include "Compression.hh"
 #include "FileContentsCache.hh"
 #include "Text.hh"
+#include "StaticGameData.hh"
 
 using namespace std;
 
@@ -704,12 +705,12 @@ void send_text_message(shared_ptr<ServerState> s, const u16string& text) {
 }
 
 __attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(
-    std::shared_ptr<ServerState> s, const char* format, ...) {
+    shared_ptr<ServerState> s, const char* format, ...) {
   va_list va;
   va_start(va, format);
-  std::string buf = string_vprintf(format, va);
+  string buf = string_vprintf(format, va);
   va_end(va);
-  std::u16string decoded = decode_sjis(buf);
+  u16string decoded = decode_sjis(buf);
   for (auto& it : s->id_to_lobby) {
     for (auto& c : it.second->clients) {
       if (c && (c->flags & Client::Flag::IS_EPISODE_3)) {
@@ -2006,27 +2007,147 @@ void send_ep3_tournament_entry_list(
   send_command_t(c, 0xE2, z, cmd);
 }
 
-void send_ep3_tournament_info(
-    std::shared_ptr<Client> c,
-    std::shared_ptr<const Episode3::Tournament> t) {
-  S_TournamentInfo_GC_Ep3_E3 cmd;
-  cmd.name = t->get_name();
-  cmd.map_name = t->get_map()->map.name;
-  cmd.rules = t->get_rules();
-  const auto& teams = t->all_teams();
+void send_ep3_tournament_details(
+    shared_ptr<Client> c,
+    shared_ptr<const Episode3::Tournament> tourn) {
+  S_TournamentGameDetails_GC_Ep3_E3 cmd;
+  cmd.name = tourn->get_name();
+  cmd.map_name = tourn->get_map()->map.name;
+  cmd.rules = tourn->get_rules();
+  const auto& teams = tourn->all_teams();
   for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
-    cmd.entries[z].win_count = teams[z]->num_rounds_cleared;
-    cmd.entries[z].is_active = teams[z]->is_active ? 1 : 0;
-    cmd.entries[z].team_name = teams[z]->name;
+    cmd.bracket_entries[z].win_count = teams[z]->num_rounds_cleared;
+    cmd.bracket_entries[z].is_active = teams[z]->is_active ? 1 : 0;
+    cmd.bracket_entries[z].team_name = teams[z]->name;
   }
-  cmd.max_entries = teams.size();
+  cmd.num_bracket_entries = teams.size();
+  cmd.players_per_team = tourn->get_is_2v2() ? 2 : 1;
   send_command_t(c, 0xE3, 0x02, cmd);
 }
 
+string ep3_description_for_client(shared_ptr<Client> c) {
+  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+    throw runtime_error("client is not Episode 3");
+  }
+  auto player = c->game_data.player();
+  return string_printf(
+      "%s CLv%" PRIu32 " %c",
+      name_for_char_class(player->disp.char_class),
+      player->disp.level + 1,
+      char_for_language_code(player->inventory.language));
+}
+
+void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+
+  shared_ptr<Lobby> primary_lobby;
+  if (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
+    primary_lobby = l->watched_lobby.lock();
+  } else {
+    primary_lobby = l;
+  }
+
+  auto tourn_match = primary_lobby ? primary_lobby->tournament_match : nullptr;
+  auto tourn = tourn_match ? tourn_match->tournament.lock() : nullptr;
+
+  if (tourn) {
+    S_TournamentGameDetails_GC_Ep3_E3 cmd;
+    cmd.name = encode_sjis(l->name);
+
+    cmd.map_name = tourn->get_map()->map.name;
+    cmd.rules = tourn->get_rules();
+
+    const auto& teams = tourn->all_teams();
+    for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
+      auto& entry = cmd.bracket_entries[z];
+      entry.win_count = teams[z]->num_rounds_cleared;
+      entry.is_active = teams[z]->is_active ? 1 : 0;
+      entry.team_name = teams[z]->name;
+    }
+    cmd.num_bracket_entries = teams.size();
+
+    if (primary_lobby) {
+      auto serial_number_to_client = primary_lobby->clients_by_serial_number();
+      auto describe_team = [&](S_TournamentGameDetails_GC_Ep3_E3::TeamEntry& entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
+        entry.team_name = team->name;
+        size_t z = 0;
+        for (uint32_t serial_number : team->player_serial_numbers) {
+          auto c = serial_number_to_client.at(serial_number);
+          auto& player_entry = entry.players[z++];
+          player_entry.name = c->game_data.player()->disp.name;
+          player_entry.description = ep3_description_for_client(c);
+        }
+        for (auto com_deck : team->com_decks) {
+          auto& player_entry = entry.players[z++];
+          player_entry.name = com_deck->player_name;
+          player_entry.description = "Deck: " + com_deck->deck_name;
+        }
+      };
+      describe_team(cmd.team_entries[0], tourn_match->preceding_a->winner_team);
+      describe_team(cmd.team_entries[1], tourn_match->preceding_b->winner_team);
+    }
+
+    uint8_t flag;
+    if (l != primary_lobby) {
+      for (auto spec_c : l->clients) {
+        if (spec_c) {
+          auto& entry = cmd.spectator_entries[cmd.num_spectators++];
+          entry.name = encode_sjis(spec_c->game_data.player()->disp.name);
+          entry.description = ep3_description_for_client(spec_c);
+        }
+      }
+      flag = 0x05;
+    } else {
+      flag = 0x03;
+    }
+    send_command_t(c, 0xE3, flag, cmd);
+
+  } else {
+    S_GameInformation_GC_Ep3_E1 cmd;
+    cmd.game_name = encode_sjis(l->name);
+    if (primary_lobby) {
+      size_t num_players = 0;
+      for (const auto& opp_c : primary_lobby->clients) {
+        if (opp_c) {
+          cmd.player_entries[num_players].name = opp_c->game_data.player()->disp.name;
+          cmd.player_entries[num_players].description = ep3_description_for_client(opp_c);
+          num_players++;
+        }
+      }
+    }
+
+    uint8_t flag;
+    if (l != primary_lobby) {
+      // TODO: This doesn't work (nothing shows up), but it appears to be a
+      // client bug? There doesn't appear to be a count field in the command
+      // anywhere...?
+      size_t num_spectators = 0;
+      for (auto spec_c : l->clients) {
+        if (spec_c) {
+          auto& entry = cmd.spectator_entries[num_spectators++];
+          entry.name = encode_sjis(spec_c->game_data.player()->disp.name);
+          entry.description = ep3_description_for_client(spec_c);
+        }
+      }
+      flag = 0x04;
+
+    } else if (primary_lobby &&
+        primary_lobby->ep3_server_base &&
+        primary_lobby->ep3_server_base->server->get_setup_phase() != Episode3::SetupPhase::REGISTRATION) {
+      cmd.rules = primary_lobby->ep3_server_base->map_and_rules1->rules;
+      flag = 0x01;
+
+    } else {
+      flag = 0x00;
+    }
+
+    send_command_t(c, 0xE1, flag, cmd);
+  }
+}
+
 void send_ep3_set_tournament_player_decks(
-    std::shared_ptr<Lobby> l,
-    std::shared_ptr<Client> c,
-    std::shared_ptr<const Episode3::Tournament::Match> match) {
+    shared_ptr<Lobby> l,
+    shared_ptr<Client> c,
+    shared_ptr<const Episode3::Tournament::Match> match) {
   auto tourn = match->tournament.lock();
   if (!tourn) {
     throw runtime_error("tournament is deleted");
@@ -2046,12 +2167,7 @@ void send_ep3_set_tournament_player_decks(
     entry.client_id = z;
   }
 
-  unordered_map<uint32_t, shared_ptr<Client>> serial_number_to_client;
-  for (auto client : l->clients) {
-    if (client) {
-      serial_number_to_client.emplace(client->license->serial_number, client);
-    }
-  }
+  auto serial_number_to_client = l->clients_by_serial_number();
 
   size_t z = 0;
   auto add_entries_for_team = [&](shared_ptr<const Episode3::Tournament::Team> team) -> void {
@@ -2113,12 +2229,7 @@ void send_ep3_tournament_match_result(
     throw logic_error("cannot send tournament result without valid winner team");
   }
 
-  unordered_map<uint32_t, shared_ptr<Client>> serial_number_to_client;
-  for (auto client : l->clients) {
-    if (client) {
-      serial_number_to_client.emplace(client->license->serial_number, client);
-    }
-  }
+  auto serial_number_to_client = l->clients_by_serial_number();
 
   auto write_player_names = [&](G_TournamentMatchResult_GC_Ep3_6xB4x51::NamesEntry& entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
     size_t z = 0;

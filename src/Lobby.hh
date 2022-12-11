@@ -133,4 +133,6 @@ struct Lobby {
   uint32_t generate_item_id(uint8_t client_id);
 
   static uint8_t game_event_for_lobby_event(uint8_t lobby_event);
+
+  std::unordered_map<uint32_t, std::shared_ptr<Client>> clients_by_serial_number() const;
 };
