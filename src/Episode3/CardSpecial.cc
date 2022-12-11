@@ -3366,7 +3366,7 @@ void CardSpecial::unknown_80244AA8(shared_ptr<Card> card) {
   this->unknown_8024C2B0(0x13, card->get_card_ref(), as, 0xFFFF);
 }
 
-void CardSpecial::unknown_80244E20(
+void CardSpecial::check_for_defense_interference(
     shared_ptr<const Card> attacker_card,
     shared_ptr<Card> target_card,
     int16_t* inout_unknown_p4) {
@@ -3420,12 +3420,9 @@ void CardSpecial::unknown_80244E20(
   if (target_ps->unknown_a17 >= 1) {
     return;
   }
-  auto entry = unknown_8024DAFC(target_card_id, ally_sc_card_id, false);
-  if (!entry) {
-    return;
-  }
-  uint8_t rand_v = this->server()->get_random(99);
-  if (rand_v >= entry->unknown_v2) {
+  auto entry = get_interference_probability_entry(
+      target_card_id, ally_sc_card_id, false);
+  if (!entry || (this->server()->get_random(99) >= entry->defense_probability)) {
     return;
   }
 
@@ -3694,12 +3691,11 @@ void CardSpecial::clear_invalid_conditions_on_card(
   }
 }
 
-const UnknownMatrixEntry* unknown_8024DAFC(
+const InterferenceProbabilityEntry* get_interference_probability_entry(
     uint16_t row_card_id,
     uint16_t column_card_id,
-    bool use_entry_v1,
-    size_t* out_entry_index) {
-  static const UnknownMatrixEntry entries[] = {
+    bool is_attack) {
+  static const InterferenceProbabilityEntry entries[] = {
     {0x0004, 0xFF, 0xFF},
     {0x0002, 0x04, 0x00},
     {0x0002, 0x00, 0x0F},
@@ -3849,23 +3845,20 @@ const UnknownMatrixEntry* unknown_8024DAFC(
   };
   constexpr size_t num_entries = sizeof(entries) / sizeof(entries[0]);
 
-  const UnknownMatrixEntry* ret_entry = nullptr;
+  const InterferenceProbabilityEntry* ret_entry = nullptr;
   int16_t current_max = -1;
   size_t logical_index = 0;
   uint16_t current_row_card_id = 0xFFFF;
   for (size_t z = 0; z < num_entries; z++) {
     const auto& entry = entries[z];
     uint16_t current_column_card_id = entry.card_id;
-    if ((entry.unknown_v1 != 0xFF) || (entry.unknown_v2 != 0xFF)) {
+    if ((entry.attack_probability != 0xFF) || (entry.defense_probability != 0xFF)) {
       if ((row_card_id == current_row_card_id) &&
           (column_card_id == current_column_card_id)) {
-        uint8_t v = use_entry_v1 ? entry.unknown_v1 : entry.unknown_v2;
+        uint8_t v = is_attack ? entry.attack_probability : entry.defense_probability;
         if (current_max <= v) {
           ret_entry = &entry;
           current_max = v;
-          if (out_entry_index) {
-            *out_entry_index = logical_index;
-          }
         }
       }
       logical_index++;
@@ -4325,7 +4318,7 @@ void CardSpecial::unknown_8024A9D8(const ActionState& pa, uint16_t action_card_r
   }
 }
 
-void CardSpecial::unknown_8024504C(shared_ptr<Card> unknown_p2) {
+void CardSpecial::check_for_attack_interference(shared_ptr<Card> unknown_p2) {
   if (unknown_p2->action_chain.chain.damage <= 0) {
     return;
   }
@@ -4376,8 +4369,9 @@ void CardSpecial::unknown_8024504C(shared_ptr<Card> unknown_p2) {
     return;
   }
 
-  const auto* entry = unknown_8024DAFC(row_card_id, ally_sc_card_id, true);
-  if (!entry || (this->server()->get_random(99) >= entry->unknown_v1)) {
+  const auto* entry = get_interference_probability_entry(
+      row_card_id, ally_sc_card_id, true);
+  if (!entry || (this->server()->get_random(99) >= entry->attack_probability)) {
     return;
   }
 

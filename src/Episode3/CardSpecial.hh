@@ -11,17 +11,16 @@ namespace Episode3 {
 
 
 
-struct UnknownMatrixEntry {
+struct InterferenceProbabilityEntry {
   uint16_t card_id;
-  uint8_t unknown_v1;
-  uint8_t unknown_v2;
+  uint8_t attack_probability;
+  uint8_t defense_probability;
 };
 
-const UnknownMatrixEntry* unknown_8024DAFC(
+const InterferenceProbabilityEntry* get_interference_probability_entry(
     uint16_t row_card_id,
     uint16_t column_card_id,
-    bool use_entry_v1,
-    size_t* out_entry_index = nullptr);
+    bool is_attack);
 
 
 
@@ -276,7 +275,7 @@ public:
   void update_condition_orders(std::shared_ptr<Card> card);
   int16_t max_all_attack_bonuses(size_t* out_count) const;
   void unknown_80244AA8(std::shared_ptr<Card> card);
-  void unknown_80244E20(
+  void check_for_defense_interference(
       std::shared_ptr<const Card> attacker_card,
       std::shared_ptr<Card> target_card,
       int16_t* inout_unknown_p4);
@@ -324,7 +323,7 @@ public:
   void unknown_8024966C(std::shared_ptr<Card> unknown_p2, const ActionState* existing_as);
   static std::shared_ptr<Card> sc_card_for_card(std::shared_ptr<Card> unknown_p2);
   void unknown_8024A9D8(const ActionState& pa, uint16_t action_card_ref);
-  void unknown_8024504C(std::shared_ptr<Card> unknown_p2);
+  void check_for_attack_interference(std::shared_ptr<Card> unknown_p2);
   template <uint8_t When1, uint8_t When2, uint8_t When3, uint8_t When4>
   void unknown_t2(std::shared_ptr<Card> unknown_p2);
   void unknown_8024997C(std::shared_ptr<Card> card);

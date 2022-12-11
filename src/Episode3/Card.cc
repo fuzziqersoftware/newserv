@@ -470,7 +470,7 @@ void Card::execute_attack(shared_ptr<Card> attacker_card) {
 
     if (!(this->card_flags & 2) &&
         (!attacker_card || !(attacker_card->card_flags & 2))) {
-      this->server()->card_special->unknown_80244E20(
+      this->server()->card_special->check_for_defense_interference(
           attacker_card, this->shared_from_this(), &preliminary_damage);
     }
 
@@ -1208,7 +1208,7 @@ void Card::unknown_80237734() {
   }
   if (!(this->card_flags & 2)) {
     this->compute_action_chain_results(1, 0);
-    this->server()->card_special->unknown_8024504C(this->shared_from_this());
+    this->server()->card_special->check_for_attack_interference(this->shared_from_this());
   }
   this->compute_action_chain_results(1, 0);
   this->unknown_80236374(this->shared_from_this(), nullptr);
