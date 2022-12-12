@@ -1088,7 +1088,7 @@ void send_game_menu_t(
     shared_ptr<Client> c,
     shared_ptr<ServerState> s,
     bool is_spectator_team_list,
-    bool is_tournament_game_list) {
+    bool show_tournaments_only) {
   vector<S_GameMenuEntry<CharT>> entries;
   {
     auto& e = entries.emplace_back();
@@ -1118,8 +1118,7 @@ void send_game_menu_t(
     if (l_is_spectator_team != is_spectator_team_list) {
       continue;
     }
-    bool l_is_tournament_game = !!l->tournament_match;
-    if (l_is_tournament_game != is_tournament_game_list) {
+    if (show_tournaments_only && !l->tournament_match) {
       continue;
     }
 
@@ -1157,13 +1156,13 @@ void send_game_menu(
     shared_ptr<Client> c,
     shared_ptr<ServerState> s,
     bool is_spectator_team_list,
-    bool is_tournament_game_list) {
+    bool show_tournaments_only) {
   if ((c->version() == GameVersion::DC) ||
       (c->version() == GameVersion::GC) ||
       (c->version() == GameVersion::XB)) {
-    send_game_menu_t<char>(c, s, is_spectator_team_list, is_tournament_game_list);
+    send_game_menu_t<char>(c, s, is_spectator_team_list, show_tournaments_only);
   } else {
-    send_game_menu_t<char16_t>(c, s, is_spectator_team_list, is_tournament_game_list);
+    send_game_menu_t<char16_t>(c, s, is_spectator_team_list, show_tournaments_only);
   }
 }
 
@@ -1961,7 +1960,10 @@ void send_ep3_confirm_tournament_entry(
   send_command_t(c, 0xCC, tourn ? 0x01 : 0x00, cmd);
 }
 
-void send_ep3_tournament_list(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+void send_ep3_tournament_list(
+    shared_ptr<ServerState> s,
+    shared_ptr<Client> c,
+    bool is_for_spectator_team_create) {
   S_TournamentList_GC_Ep3_E0 cmd;
   size_t z = 0;
   for (const auto& tourn : s->ep3_tournament_index->all_tournaments()) {
@@ -1969,7 +1971,8 @@ void send_ep3_tournament_list(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       throw logic_error("more than 32 tournaments exist");
     }
     auto& entry = cmd.entries[z];
-    entry.menu_id = MenuID::TOURNAMENTS;
+    entry.menu_id = is_for_spectator_team_create
+        ? MenuID::TOURNAMENTS_FOR_SPEC : MenuID::TOURNAMENTS;
     entry.item_id = tourn->get_number();
     // TODO: What does it mean for a tournament to be locked? Should we support
     // that?
@@ -1997,7 +2000,8 @@ void send_ep3_tournament_list(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 
 void send_ep3_tournament_entry_list(
     shared_ptr<Client> c,
-    shared_ptr<const Episode3::Tournament> tourn) {
+    shared_ptr<const Episode3::Tournament> tourn,
+    bool is_for_spectator_team_create) {
   S_TournamentEntryList_GC_Ep3_E2 cmd;
   cmd.players_per_team = tourn->get_is_2v2() ? 2 : 1;
   size_t z = 0;
@@ -2022,7 +2026,7 @@ void send_ep3_tournament_entry_list(
     entry.name = team->name;
     z++;
   }
-  send_command_t(c, 0xE2, z, cmd);
+  send_command_t(c, is_for_spectator_team_create ? 0xE7 : 0xE2, z, cmd);
 }
 
 void send_ep3_tournament_details(

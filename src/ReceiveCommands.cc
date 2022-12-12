@@ -1141,14 +1141,14 @@ static void on_ep3_tournament_control(shared_ptr<ServerState> s, shared_ptr<Clie
     uint16_t, uint32_t flag, const string&) { // E2
   switch (flag) {
     case 0x00: // Request tournament list
-      send_ep3_tournament_list(s, c);
+      send_ep3_tournament_list(s, c, false);
       break;
     case 0x01: { // Check tournament
       auto team = c->ep3_tournament_team.lock();
       if (team) {
         auto tourn = team->tournament.lock();
         if (tourn) {
-          send_ep3_tournament_entry_list(c, tourn);
+          send_ep3_tournament_entry_list(c, tourn, false);
         } else {
           send_lobby_message_box(c, u"$C6The tournament\nhas concluded.");
         }
@@ -1175,10 +1175,8 @@ static void on_ep3_tournament_control(shared_ptr<ServerState> s, shared_ptr<Clie
       break;
     }
     case 0x03: // Create tournament spectator team (get battle list)
-      send_game_menu(c, s, false, true);
-      break;
     case 0x04: // Join tournament spectator team (get team list)
-      send_game_menu(c, s, true, true);
+      send_lobby_message_box(c, u"$C6Use View Regular\nBattle for this");
       break;
     default:
       throw runtime_error("invalid tournament operation");
@@ -1380,6 +1378,7 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
       break;
     }
 
+    case MenuID::TOURNAMENTS_FOR_SPEC:
     case MenuID::TOURNAMENTS: {
       if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
         send_ship_info(c, u"Incorrect menu ID");
@@ -1832,13 +1831,15 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
       break;
 
+    case MenuID::TOURNAMENTS_FOR_SPEC:
     case MenuID::TOURNAMENTS: {
       if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
         throw runtime_error("non-Episode 3 client attempted to join tournament");
       }
       auto tourn = s->ep3_tournament_index->get_tournament(item_id);
       if (tourn) {
-        send_ep3_tournament_entry_list(c, tourn);
+        send_ep3_tournament_entry_list(c, tourn,
+            (menu_id == MenuID::TOURNAMENTS_FOR_SPEC));
       }
       break;
     }

@@ -13,18 +13,19 @@
 // casting values all over the place, so we can't use enum classes either.
 
 namespace MenuID {
-  constexpr uint32_t MAIN               = 0x11000011;
-  constexpr uint32_t INFORMATION        = 0x22000022;
-  constexpr uint32_t LOBBY              = 0x33000033;
-  constexpr uint32_t GAME               = 0x44000044;
-  constexpr uint32_t QUEST              = 0x55000055;
-  constexpr uint32_t QUEST_FILTER       = 0x66000066;
-  constexpr uint32_t PROXY_DESTINATIONS = 0x77000077;
-  constexpr uint32_t PROGRAMS           = 0x88000088;
-  constexpr uint32_t PATCHES            = 0x99000099;
-  constexpr uint32_t PROXY_OPTIONS      = 0xAA0000AA;
-  constexpr uint32_t TOURNAMENTS        = 0xBB0000BB;
-  constexpr uint32_t TOURNAMENT_ENTRIES = 0xCC0000CC;
+  constexpr uint32_t MAIN                 = 0x11000011;
+  constexpr uint32_t INFORMATION          = 0x22000022;
+  constexpr uint32_t LOBBY                = 0x33000033;
+  constexpr uint32_t GAME                 = 0x44000044;
+  constexpr uint32_t QUEST                = 0x55000055;
+  constexpr uint32_t QUEST_FILTER         = 0x66000066;
+  constexpr uint32_t PROXY_DESTINATIONS   = 0x77000077;
+  constexpr uint32_t PROGRAMS             = 0x88000088;
+  constexpr uint32_t PATCHES              = 0x99000099;
+  constexpr uint32_t PROXY_OPTIONS        = 0xAA0000AA;
+  constexpr uint32_t TOURNAMENTS          = 0xBB0000BB;
+  constexpr uint32_t TOURNAMENTS_FOR_SPEC = 0xBB1111BB;
+  constexpr uint32_t TOURNAMENT_ENTRIES   = 0xCC0000CC;
 }
 
 namespace MainMenuItemID {

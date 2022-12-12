@@ -315,10 +315,13 @@ void send_ep3_confirm_tournament_entry(
     std::shared_ptr<Client> c,
     std::shared_ptr<const Episode3::Tournament> t);
 void send_ep3_tournament_list(
-    std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
+    std::shared_ptr<ServerState> s,
+    std::shared_ptr<Client> c,
+    bool is_for_spectator_team_create);
 void send_ep3_tournament_entry_list(
     std::shared_ptr<Client> c,
-    std::shared_ptr<const Episode3::Tournament> t);
+    std::shared_ptr<const Episode3::Tournament> t,
+    bool is_for_spectator_team_create);
 void send_ep3_tournament_info(
     std::shared_ptr<Client> c,
     std::shared_ptr<const Episode3::Tournament> t);

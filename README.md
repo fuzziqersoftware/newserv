@@ -31,6 +31,7 @@ With that said, I offer no guarantees on how or when this project will advance. 
 Current known issues / missing features / things to do:
 - Support disconnect hooks to clean up state, like if a client disconnects during quest loading or during a trade window execution.
 - Episode 3 battles are implemented but are not well-tested.
+    - Fix behavior when joining a spectator team after the beginning of a battle.
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
     - Enemy indexes also desync slightly in most games, often in later areas, leading to incorrect EXP values being given for killed enemies.
 - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
@@ -78,7 +79,7 @@ The following Episode 3 features are well-tested and work normally:
 
 The following Episode 3 features are implemented, but only partially tested:
 * CARD battles. If you find a feature or card ability that doesn't work, please make a GitHub issue and describe the situation (including the attacking card(s), defending card(s), and ability that didn't work).
-* Spectator teams are partially implemented, but are entirely untested.
+* Spectator teams are partially implemented, but are not well-tested. There is a known issue that prevents viewing battles unless you're in the spectator team when the battle begins.
 * Battle replays sometimes cause the client to crash during the replay. Using the $playrec command is therefore not recommended.
 * Tournaments.
 

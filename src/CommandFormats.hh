@@ -2396,11 +2396,11 @@ struct S_GameInformation_GC_Ep3_E1 {
 // E2 (C->S): Tournament control (Episode 3)
 // No arguments (in any of its forms) except header.flag, which determines ths
 // command's meaning. Specifically:
-//   header.flag = 00 => request tournament list (server responds with E0)
-//   header.flag = 01 => check tournament (server responds with E2)
-//   header.flag = 02 => cancel tournament entry (server responds with CC)
-//   header.flag = 03 => create tournament spectator team (get battle list)
-//   header.flag = 04 => join tournament spectator team (get team list)
+//   flag=00: request tournament list (server responds with E0)
+//   flag=01: check tournament (server responds with E2)
+//   flag=02: cancel tournament entry (server responds with CC)
+//   flag=03: create tournament spectator team (server responds with E6)
+//   flag=04: join tournament spectator team (server responds with E0)
 // In case 02, the resulting CC command is apparently completely blank (all 0),
 // and has header.flag = 0 to indicate the player isn't registered.
 // In cases 03 and 04, it's not clear what the server should respond with.
