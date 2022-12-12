@@ -234,7 +234,7 @@ void AssistServer::populate_effects() {
     const auto& hes = this->hand_and_equip_states[z];
     if (hes) {
       uint16_t card_id = hes->assist_card_id == 0xFFFF
-          ? this->card_id_for_card_ref(hes->assist_card_id)
+          ? this->card_id_for_card_ref(hes->assist_card_ref)
           : hes->assist_card_id.load();
       this->assist_effects[z] = assist_effect_number_for_card_id(card_id);
       if (this->assist_effects[z] != AssistEffect::NONE) {
