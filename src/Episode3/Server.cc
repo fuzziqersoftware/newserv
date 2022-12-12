@@ -35,11 +35,12 @@ ServerBase::ServerBase(
     shared_ptr<Lobby> lobby,
     shared_ptr<const DataIndex> data_index,
     uint32_t random_seed,
-    bool is_tournament)
+    shared_ptr<const DataIndex::MapEntry> map_if_tournament)
   : lobby(lobby),
     data_index(data_index),
     random_seed(random_seed),
-    is_tournament(is_tournament) { }
+    is_tournament(!!map_if_tournament),
+    last_chosen_map(map_if_tournament) { }
 
 void ServerBase::init() {
   this->reset();
@@ -228,8 +229,9 @@ void Server::send_commands_for_joining_spectator(Channel& c) const {
     }
   }
 
-  if (this->last_chosen_map) {
-    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map);
+  auto map = this->base()->last_chosen_map;
+  if (map) {
+    string data = this->prepare_6xB6x41_map_definition(map);
     c.send(0x6C, 0x00, data);
   }
 
@@ -2134,13 +2136,14 @@ void Server::handle_6xB3x41_map_request(const string& data) {
   this->send_debug_command_received_message(
       cmd.header.subsubcommand, "MAP DATA");
 
-  auto l = this->base()->lobby.lock();
+  auto base = this->base();
+  auto l = base->lobby.lock();
   if (!l) {
     throw runtime_error("lobby is deleted");
   }
 
-  this->last_chosen_map = this->base()->data_index->definition_for_map_number(cmd.map_number);
-  auto out_cmd = this->prepare_6xB6x41_map_definition(this->last_chosen_map);
+  base->last_chosen_map = base->data_index->definition_for_map_number(cmd.map_number);
+  auto out_cmd = this->prepare_6xB6x41_map_definition(base->last_chosen_map);
   send_command(l, 0x6C, 0x00, out_cmd);
   for (auto watcher_l : l->watcher_lobbies) {
     send_command(watcher_l, 0x6C, 0x00, out_cmd);

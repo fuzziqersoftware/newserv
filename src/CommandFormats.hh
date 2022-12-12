@@ -289,13 +289,6 @@ struct S_Reconnect_Patch_14 : S_Reconnect<be_uint16_t> { } __packed__;
 // a key to continue. The maximum length of the message is 0x200 bytes.
 // This format is shared by multiple commands; for all of them except 06 (S->C),
 // the guild_card_number field is unused and should be 0.
-// During Episode 3 battles, the first byte of an inbound 06 command's message
-// is interpreted differently. It should be treated as a bit field, with the low
-// 4 bits intended as masks for who can see the message. If the low bit (1) is
-// set, for example, then the chat message displays as " (whisper)" on player
-// 0's screen regardless of the message contents. The next bit (2) hides the
-// message from player 1, etc. The high 4 bits of this byte appear not to be
-// used, but are often nonzero and set to the value 4.
 
 struct SC_TextHeader_01_06_11_B0_EE {
   le_uint32_t unused = 0;
@@ -461,11 +454,15 @@ struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> { } __p
 // is 0x200 bytes.
 // When sent by the client, the text field includes only the message. When sent
 // by the server, the text field includes the origin player's name, followed by
-// a tab character, followed by the message. During Episode 3 battles, chat
-// messages can additionally be targeted to only your teammate; in this case,
-// the message (at least, when seen by spectators) is of the form
-// '<targetname>\tE\t<message>'. Messages sent to the entire battle group
-// (including the opponents) are of the form '<targetname>\t@\t<message>'.
+// a tab character, followed by the message.
+// During Episode 3 battles, the first byte of an inbound 06 command's message
+// is interpreted differently. It should be treated as a bit field, with the low
+// 4 bits intended as masks for who can see the message. If the low bit (1) is
+// set, for example, then the chat message displays as " (whisper)" on player
+// 0's screen regardless of the message contents. The next bit (2) hides the
+// message from player 1, etc. The high 4 bits of this byte appear not to be
+// used, but are often nonzero and set to the value 4. We call this byte
+// private_flags in the places where newserv uses it.
 // Client->server format is very similar; we include a zero-length array in this
 // struct to make parsing easier.
 
@@ -1705,8 +1702,6 @@ struct C_UpdateQuestStatistics_V3_BB_AA {
 
 // AB (S->C): Confirm update quest statistics (V3/BB)
 // This command is not valid on PSO GC Episodes 1&2 Trial Edition.
-// TODO: Does this command have a different meaning in Episode 3? Is it used at
-// all there, or is the handler an undeleted vestige from Episodes 1&2?
 
 struct S_ConfirmUpdateQuestStatistics_V3_BB_AB {
   le_uint16_t unknown_a1 = 0; // 0
@@ -1893,6 +1888,14 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
 
 // BA: Meseta transaction (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
+// header.flag specifies the transaction purpose. This has little meaning on the
+// client. Specific known values:
+// 00 = unknown
+// 01 = unknown (S->C; request_token must match the last token sent by client)
+// 02 = Spend meseta (at e.g. lobby jukebox or Pinz's shop) (C->S)
+// 03 = Spend meseta response (S->C; request_token must match the last token
+//      sent by client)
+// 04 = unknown (S->C; request_token must match the last token sent by client)
 
 struct C_Meseta_GC_Ep3_BA {
   le_uint32_t transaction_num = 0;
@@ -1906,20 +1909,32 @@ struct S_Meseta_GC_Ep3_BA {
   le_uint32_t request_token = 0; // Should match the token sent by the client
 } __packed__;
 
-// BB (S->C): Unknown (Episode 3)
-// header.flag is used, but it's not clear for what. It may be the number of
-// valid entries, similarly to how command 07 is implemented.
-// This command is not valid on Episode 3 Trial Edition.
+// BB (S->C): Tournament match information (Episode 3)
+// This command is not valid on Episode 3 Trial Edition. Because of this, it
+// must have been added fairly late in development, but it seems to be unused,
+// perhaps because the E1/E3 commands are generally more useful... but the E1/E3
+// commands exist in the Trial Edition! So why was this added? Was it just never
+// finished? We may never know...
+// header.flag is the number of valid match entries.
 
-struct S_Unknown_GC_Ep3_BB {
-  struct Entry {
-    parray<uint8_t, 0x20> unknown_a1;
-    le_uint16_t unknown_a2 = 0;
-    le_uint16_t unknown_a3 = 0;
+struct S_TournamentMatchInformation_GC_Ep3_BB {
+  ptext<char, 0x20> tournament_name;
+  struct TeamEntry {
+    le_uint16_t win_count = 0;
+    le_uint16_t is_active = 0;
+    ptext<char, 0x20> name;
   } __packed__;
-  // The first entry here is probably fake, like for ship select menus (07)
-  parray<Entry, 0x21> entries;
-  parray<uint8_t, 0x900> unknown_a3;
+  parray<TeamEntry, 0x20> team_entries;
+  le_uint16_t num_teams = 0;
+  le_uint16_t unknown_a3 = 0; // Probably actually unused
+  struct MatchEntry {
+    parray<char, 0x20> name;
+    uint8_t locked = 0;
+    uint8_t count = 0;
+    uint8_t max_count = 0;
+    uint8_t unused = 0;
+  } __packed__;
+  parray<MatchEntry, 0x40> match_entries;
 } __packed__;
 
 // BC: Invalid command
@@ -2163,7 +2178,11 @@ struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
 // Episode 3 will send D6 only for large message boxes that occur before the
 // client has joined a lobby. (After joining a lobby, large message boxes will
 // still be displayed if sent by the server, but the client won't send a D6 when
-// they are closed.)
+// they are closed.) In some of these versions, there is a bug that sets an
+// incorrect interaction mode when the message box is closed while the player is
+// in the lobby; some servers (e.g. Schtserv) send a lobby welcome message
+// anyway, along with an 01 (lobby message box) which properly sets the
+// interaction mode when closed.
 
 // D7 (C->S): Request GBA game file (V3)
 // The server should send the requested file using A6/A7 commands.
@@ -4571,28 +4590,33 @@ struct G_AcceptItemIdentification_BB_6xBA {
   le_uint32_t item_id;
 } __packed__;
 
-// 6xBB: Unknown (Episode 3)
+// 6xBB: Sync card trade state (Episode 3)
+// TODO: Certain invalid values for slot/args in this command can crash the
+// client (what is properly bounds-checked). Find out the actual limits for
+// slot/args and make newserv enforce them.
 
-struct G_Unknown_GC_Ep3_6xBB {
+struct G_SyncCardTradeState_GC_Ep3_6xBB {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1; // Low byte must be < 5
-  le_uint16_t unknown_a2;
-  parray<le_uint32_t, 4> unknown_a3;
+  le_uint16_t what; // Must be < 5; this indexes into a jump table
+  le_uint16_t slot;
+  parray<le_uint32_t, 4> args;
 } __packed__;
 
 // 6xBB: BB bank request (handled by the server)
 
-// 6xBC: Unknown (Episode 3)
+// 6xBC: Card counts (Episode 3)
 // It's possible that this was an early, now-unused implementation of the CAx49
 // command. When the client receives this command, it copies the data into a
 // globally-allocated array, but nothing ever reads from this array.
+// Curiously, this command is smaller than 0x400 bytes, but uses the extended
+// subcommand format anyway (and uses the 6D command rather than 62).
 
-struct G_Unknown_GC_Ep3_6xBC {
+struct G_CardCounts_GC_Ep3_6xBC {
   G_UnusedHeader header;
-  parray<uint8_t, 4> unused1;
-  // The length of this array strongly implies one flag or value per card type.
+  le_uint32_t size;
   parray<uint8_t, 0x2F1> unknown_a1;
-  parray<uint8_t, 3> unused2;
+  // The client sends uninitialized data in this field
+  parray<uint8_t, 3> unused;
 } __packed__;
 
 // 6xBC: BB bank contents (server->client only)
@@ -4954,11 +4978,13 @@ struct G_Unknown_GC_Ep3_6xB5x17 {
   // No arguments
 } __packed__;
 
-// 6xB5x1A: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB5x1A: Force disconnect
+// This command seems to cause the client to unconditionally disconnect. The
+// player is returned to the main menu (the "The line was disconnected" message
+// box is skipped).
 
-struct G_Unknown_GC_Ep3_6xB5x1A {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x1A) / 4, 0, 0x1A, 0, 0, 0};
+struct G_ForceDisconnect_GC_Ep3_6xB5x1A {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_ForceDisconnect_GC_Ep3_6xB5x1A) / 4, 0, 0x1A, 0, 0, 0};
   // No arguments
 } __packed__;
 
@@ -5208,6 +5234,11 @@ struct G_PhotonBlastStatus_GC_Ep3_6xB4x35 {
 
 // 6xB5x36: Unknown
 // TODO: Document this from Episode 3 client/server disassembly
+// Setting unknown_a1 to a value 4 or greater while in a game causes the player
+// to be temporarily replaced with a default HUmar and placed inside the central
+// column in the Morgue, rendering them unable to move. The only ways out of
+// this predicament appear to be either to disconnect or receive an ED (force
+// leave game) command.
 
 struct G_Unknown_GC_Ep3_6xB5x36 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x36) / 4, 0, 0x36, 0, 0, 0};
@@ -5223,13 +5254,15 @@ struct G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37_CAx37 {
   parray<uint8_t, 3> unused2;
 } __packed__;
 
-// 6xB5x38: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB5x38: Card counts request
+// This command causes the client identified by requested_client_id to send a
+// 6xBC command to the client identified by reply_to_client_id (privately, via
+// the 6D command).
 
-struct G_Unknown_GC_Ep3_6xB5x38 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x38) / 4, 0, 0x38, 0, 0, 0};
-  uint8_t unknown_a1 = 0;
-  uint8_t unknown_a2 = 0;
+struct G_CardCountsRequest_GC_Ep3_6xB5x38 {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_CardCountsRequest_GC_Ep3_6xB5x38) / 4, 0, 0x38, 0, 0, 0};
+  uint8_t requested_client_id = 0;
+  uint8_t reply_to_client_id = 0;
   parray<uint8_t, 2> unused;
 } __packed__;
 
@@ -5254,13 +5287,18 @@ struct G_Unknown_GC_Ep3_6xB4x3B {
   parray<uint8_t, 4> unused;
 } __packed__;
 
-// 6xB5x3C: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB5x3C: Set player substatus
+// This command sets the text that appears under the player's name in the HUD.
 
 struct G_Unknown_GC_Ep3_6xB5x3C {
+  // Note: header.sender_client_id specifies which client's status to update
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x3C) / 4, 0, 0x3C, 0, 0, 0};
-  // Note: This command uses header_b1 for... something.
-  uint8_t unknown_a1 = 0;
+  // Status values:
+  // 00 (or any value not listed below) = (nothing)
+  // 01 = Editing
+  // 02 = Trading...
+  // 03 = At Counter
+  uint8_t status = 0;
   parray<uint8_t, 3> unused;
 } __packed__;
 

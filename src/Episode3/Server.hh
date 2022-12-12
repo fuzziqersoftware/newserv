@@ -59,7 +59,7 @@ public:
       std::shared_ptr<Lobby> lobby,
       std::shared_ptr<const DataIndex> data_index,
       uint32_t random_seed,
-      bool is_tournament);
+      std::shared_ptr<const DataIndex::MapEntry> map_if_tournament);
   void init();
   void reset();
   void recreate_server();
@@ -76,6 +76,7 @@ public:
   std::shared_ptr<const DataIndex> data_index;
   uint32_t random_seed;
   bool is_tournament;
+  std::shared_ptr<const DataIndex::MapEntry> last_chosen_map;
 
   std::shared_ptr<MapAndRulesState> map_and_rules1;
   std::shared_ptr<MapAndRulesState> map_and_rules2;
@@ -235,7 +236,6 @@ private:
   static const std::unordered_map<uint8_t, handler_t> subcommand_handlers;
 
   std::weak_ptr<ServerBase> w_base;
-  std::shared_ptr<const DataIndex::MapEntry> last_chosen_map;
 
 public:
   uint32_t battle_finished;

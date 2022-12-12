@@ -230,10 +230,10 @@ static void on_subcommand_forward_check_size_ep3_game(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 // Ep3 subcommands
 
-static void on_subcommand_ep3_battle_subs(shared_ptr<ServerState>,
+static void on_subcommand_ep3_battle_subs(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& orig_data) {
-  check_size_sc<G_CardBattleCommandHeader>(
+  const auto& header = check_size_sc<G_CardBattleCommandHeader>(
       orig_data, sizeof(G_CardBattleCommandHeader), 0xFFFF);
   if (!l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
     return;
@@ -242,11 +242,25 @@ static void on_subcommand_ep3_battle_subs(shared_ptr<ServerState>,
   string data = orig_data;
   set_mask_for_ep3_game_command(data.data(), data.size(), 0);
 
-  uint8_t mask_key = 0;
-  while (!mask_key) {
-    mask_key = random_object<uint8_t>();
+  if (header.subcommand == 0xB5) {
+    if (header.subsubcommand == 0x1A) {
+      return;
+    } else if (header.subsubcommand == 0x36) {
+      const auto& cmd = check_size_t<G_Unknown_GC_Ep3_6xB5x36>(data);
+      if (l->is_game() && (cmd.unknown_a1 >= 4)) {
+        return;
+      }
+    }
   }
-  set_mask_for_ep3_game_command(data.data(), data.size(), mask_key);
+
+  if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+    uint8_t mask_key = 0;
+    while (!mask_key) {
+      mask_key = random_object<uint8_t>();
+    }
+    set_mask_for_ep3_game_command(data.data(), data.size(), mask_key);
+  }
+
   forward_subcommand(l, c, command, flag, data);
 }
 

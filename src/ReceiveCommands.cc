@@ -1061,8 +1061,9 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
     } else {
       l->log.info("Recreating Episode 3 server state");
     }
+    auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : nullptr;
     l->ep3_server_base = make_shared<Episode3::ServerBase>(
-        l, s->ep3_data_index, l->random_seed, l->tournament_match ? true : false);
+        l, s->ep3_data_index, l->random_seed, tourn ? tourn->get_map() : nullptr);
     l->ep3_server_base->init();
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
@@ -3056,8 +3057,11 @@ static void on_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     send_get_player_info(c);
   }
 
+  auto watched_lobby = l->watched_lobby.lock();
   if (l->battle_player && (l->flags & Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY)) {
     l->battle_player->start();
+  } else if (watched_lobby && watched_lobby->ep3_server_base) {
+    watched_lobby->ep3_server_base->server->send_commands_for_joining_spectator(c->channel);
   }
 }
 

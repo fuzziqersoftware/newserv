@@ -947,6 +947,18 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
           false, cmd.area, cmd.x, cmd.z, cmd.request_id);
       session.next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
+
+    } else if ((static_cast<uint8_t>(data[0]) == 0xB5) &&
+               (session.version == GameVersion::GC) &&
+               (data.size() > 4)) {
+      if (data[4] == 0x1A) {
+        return HandlerResult::Type::SUPPRESS;
+      } else if (data[4] == 0x36) {
+        const auto& cmd = check_size_t<G_Unknown_GC_Ep3_6xB5x36>(data);
+        if (session.is_in_game && (cmd.unknown_a1 >= 4)) {
+          return HandlerResult::Type::SUPPRESS;
+        }
+      }
     }
   }
 
