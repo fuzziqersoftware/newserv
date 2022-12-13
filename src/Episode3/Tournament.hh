@@ -107,6 +107,7 @@ public:
   std::shared_ptr<Match> next_match_for_team(std::shared_ptr<Team> team) const;
   std::shared_ptr<Match> get_final_match() const;
   std::shared_ptr<Team> team_for_serial_number(uint32_t serial_number) const;
+  const std::set<uint32_t>& get_all_player_serial_numbers() const;
 
   void start();
 

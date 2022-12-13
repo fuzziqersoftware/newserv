@@ -515,6 +515,10 @@ shared_ptr<Tournament::Team> Tournament::team_for_serial_number(
   throw logic_error("serial number registered in tournament but not in any team");
 }
 
+const set<uint32_t>& Tournament::get_all_player_serial_numbers() const {
+  return this->all_player_serial_numbers;
+}
+
 void Tournament::start() {
   if (this->current_state != State::REGISTRATION) {
     throw runtime_error("tournament has already started");

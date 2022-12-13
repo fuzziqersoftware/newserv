@@ -1953,8 +1953,9 @@ void send_ep3_confirm_tournament_entry(
     cmd.start_time = "Unknown";
     auto& teams = tourn->all_teams();
     for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
-      cmd.entries[z].present = 1;
-      cmd.entries[z].team_name = teams[z]->name;
+      cmd.team_entries[z].win_count = teams[z]->num_rounds_cleared;
+      cmd.team_entries[z].is_active = teams[z]->is_active;
+      cmd.team_entries[z].name = teams[z]->name;
     }
   }
   send_command_t(c, 0xCC, tourn ? 0x01 : 0x00, cmd);
@@ -1992,7 +1993,8 @@ void send_ep3_tournament_list(
       }
     }
     entry.max_teams = teams.size();
-    entry.unknown_a3.clear(0xFFFF);
+    entry.unknown_a3 = 0xFFFF;
+    entry.unknown_a4 = 0xFFFF;
     z++;
   }
   send_command_t(c, 0xE0, z, cmd);

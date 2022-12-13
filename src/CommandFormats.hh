@@ -2103,15 +2103,18 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { } __packed__;
 
 struct S_ConfirmTournamentEntry_GC_Ep3_CC {
   ptext<char, 0x40> tournament_name;
-  parray<le_uint16_t, 4> unknown_a2;
+  le_uint16_t num_teams = 0;
+  le_uint16_t unknown_a1 = 0;
+  le_uint16_t unknown_a2 = 0;
+  le_uint16_t unknown_a3 = 0;
   ptext<char, 0x20> server_name;
   ptext<char, 0x20> start_time; // e.g. "15:09:30" or "13:03 PST"
-  struct Entry {
-    le_uint16_t unknown_a1 = 0;
-    le_uint16_t present = 0; // 1 if team present, 0 otherwise
-    ptext<char, 0x20> team_name;
+  struct TeamEntry {
+    le_uint16_t win_count = 0;
+    le_uint16_t is_active = 0;
+    ptext<char, 0x20> name;
   } __packed__;
-  parray<Entry, 0x20> entries;
+  parray<TeamEntry, 0x20> team_entries;
 } __packed__;
 
 // CD: Invalid command
@@ -2365,7 +2368,8 @@ struct S_TournamentList_GC_Ep3_E0 {
     ptext<char, 0x20> name;
     le_uint16_t num_teams = 0;
     le_uint16_t max_teams = 0;
-    parray<le_uint16_t, 2> unknown_a3;
+    le_uint16_t unknown_a3 = 0;
+    le_uint16_t unknown_a4 = 0;
   } __packed__;
   parray<Entry, 0x20> entries;
 } __packed__;

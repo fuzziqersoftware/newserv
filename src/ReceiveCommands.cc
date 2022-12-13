@@ -215,8 +215,15 @@ void on_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
 
 void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   if (c->flags & Client::Flag::IS_EPISODE_3) {
-    c->ep3_tournament_team = s->ep3_tournament_index->team_for_serial_number(
+    auto team = s->ep3_tournament_index->team_for_serial_number(
         c->license->serial_number);
+    if (team) {
+      auto tourn = team->tournament.lock();
+      if (tourn) {
+        c->ep3_tournament_team = team;
+        send_ep3_confirm_tournament_entry(s, c, tourn);
+      }
+    }
   }
 
   // On the BB data server, this function is called only on the last connection
@@ -1042,6 +1049,42 @@ static void on_ep3_counter_state(shared_ptr<ServerState> s, shared_ptr<Client> c
   }
 }
 
+static void on_tournament_bracket_updated(
+    shared_ptr<ServerState> s, shared_ptr<const Episode3::Tournament> tourn) {
+  const auto& serial_numbers = tourn->get_all_player_serial_numbers();
+
+  for (const auto& l : s->all_lobbies()) {
+    for (const auto& c : l->clients) {
+      if (!c) {
+        continue;
+      }
+      if (!c->license || !serial_numbers.count(c->license->serial_number)) {
+        continue;
+      }
+      if (c->ep3_tournament_team.expired()) {
+        continue;
+      }
+      send_ep3_confirm_tournament_entry(s, c, tourn);
+    }
+  }
+
+  if (tourn && (tourn->get_state() == Episode3::Tournament::State::COMPLETE)) {
+    s->ep3_tournament_index->delete_tournament(tourn->get_number());
+  }
+
+  if (tourn->get_state() == Episode3::Tournament::State::COMPLETE) {
+    auto team = tourn->get_winner_team();
+    if (team->player_serial_numbers.empty()) {
+      send_ep3_text_message_printf(s, "$C7A CPU team won\nthe tournament\n$C6%s", tourn->get_name().c_str());
+    } else {
+      send_ep3_text_message_printf(s, "$C6%s$C7\nwon the tournament\n$C6%s", team->name.c_str(), tourn->get_name().c_str());
+    }
+    s->ep3_tournament_index->delete_tournament(tourn->get_number());
+  }
+
+  s->ep3_tournament_index->save();
+}
+
 static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // CA
   auto l = s->find_lobby(c->lobby_id);
@@ -1117,24 +1160,8 @@ static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Cli
     }
     send_ep3_tournament_match_result(l, l->tournament_match);
 
-    tourn->print_bracket(stderr);
-    if (tourn && (tourn->get_state() == Episode3::Tournament::State::COMPLETE)) {
-      s->ep3_tournament_index->delete_tournament(tourn->get_number());
-    }
-    s->ep3_tournament_index->save();
+    on_tournament_bracket_updated(s, tourn);
   }
-}
-
-static void on_tournament_complete(
-    shared_ptr<ServerState> s, shared_ptr<const Episode3::Tournament> tourn) {
-  auto team = tourn->get_winner_team();
-  if (team->player_serial_numbers.empty()) {
-    send_ep3_text_message_printf(s, "$C7A CPU team won\nthe tournament\n$C6%s", tourn->get_name().c_str());
-  } else {
-    send_ep3_text_message_printf(s, "$C6%s$C7\nwon the tournament\n$C6%s", team->name.c_str(), tourn->get_name().c_str());
-  }
-  s->ep3_tournament_index->delete_tournament(tourn->get_number());
-  s->ep3_tournament_index->save();
 }
 
 static void on_ep3_tournament_control(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1164,9 +1191,7 @@ static void on_ep3_tournament_control(shared_ptr<ServerState> s, shared_ptr<Clie
         if (tourn) {
           if (tourn->get_state() != Episode3::Tournament::State::COMPLETE) {
             team->unregister_player(c->license->serial_number);
-            if (tourn->get_state() == Episode3::Tournament::State::COMPLETE) {
-              on_tournament_complete(s, tourn);
-            }
+            on_tournament_bracket_updated(s, tourn);
           }
           c->ep3_tournament_team.reset();
         }
