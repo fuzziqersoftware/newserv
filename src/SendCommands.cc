@@ -2284,6 +2284,25 @@ void send_ep3_tournament_match_result(
   // the player 1000000 and never charge for anything.
   cmd.meseta_amount = 100;
   cmd.meseta_reward_text = "You got %s meseta!";
+  if (!(tourn->get_data_index()->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+    uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+    set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
+  }
+  send_command_t(l, 0xC9, 0x00, cmd);
+}
+
+void send_ep3_update_spectator_count(shared_ptr<Lobby> l) {
+  G_SetGameMetadata_GC_Ep3_6xB4x52 cmd;
+  for (auto watcher_l : l->watcher_lobbies) {
+    for (auto c : watcher_l->clients) {
+      if (c) {
+        cmd.num_spectators++;
+      }
+    }
+  }
+  // TODO: Make s available here so we can apply masking if needed (perhaps by
+  // adding a weak_ptr in Lobby... it'd be dumb to require s to be passed in to
+  // this function just to check a behavior flag)
   send_command_t(l, 0xC9, 0x00, cmd);
 }
 

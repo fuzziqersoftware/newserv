@@ -132,6 +132,18 @@ void Lobby::add_client(shared_ptr<Client> c) {
         c->game_data.player()->inventory,
         c->game_data.player()->disp.to_dcpcv3());
   }
+
+  // Send spectator count notifications if needed
+  if (this->is_game() && (this->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    if (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
+      auto watched_l = this->watched_lobby.lock();
+      if (watched_l) {
+        send_ep3_update_spectator_count(watched_l);
+      }
+    } else {
+      send_ep3_update_spectator_count(this->shared_from_this());
+    }
+  }
 }
 
 void Lobby::remove_client(shared_ptr<Client> c) {
@@ -154,9 +166,21 @@ void Lobby::remove_client(shared_ptr<Client> c) {
 
   this->reassign_leader_on_client_departure(c->lobby_client_id);
 
-  // If the lobby ios recording a battle record, add the player leave event
+  // If the lobby is recording a battle record, add the player leave event
   if (this->battle_record) {
     this->battle_record->delete_player(c->lobby_client_id);
+  }
+
+  // If the lobby is Episode 3, update the appropriate spectator counts
+  if (this->is_game() && (this->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    if (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
+      auto watched_l = this->watched_lobby.lock();
+      if (watched_l) {
+        send_ep3_update_spectator_count(watched_l);
+      }
+    } else {
+      send_ep3_update_spectator_count(this->shared_from_this());
+    }
   }
 }
 

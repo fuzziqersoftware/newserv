@@ -5615,15 +5615,25 @@ struct G_TournamentMatchResult_GC_Ep3_6xB4x51 {
   ptext<char, 0x20> meseta_reward_text;
 } __packed__;
 
-// 6xB4x52: Unknown
+// 6xB4x52: Set game metadata
 
-struct G_Unknown_GC_Ep3_6xB4x52 {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_GC_Ep3_6xB4x52) / 4, 0, 0x52, 0, 0, 0};
+struct G_SetGameMetadata_GC_Ep3_6xB4x52 {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetGameMetadata_GC_Ep3_6xB4x52) / 4, 0, 0x52, 0, 0, 0};
   le_uint16_t unknown_a1 = 0; // Clamped to [0, 999] by the client
-  le_uint16_t unknown_a2 = 0; // Clamped to [0, 999] by the client
+  // If num_spectators is nonzero, an icon appears in the middle of the screen
+  // during battle when the details view is enabled (by pressing Z). However,
+  // the number of people visible in the icon doesn't match the actual number of
+  // spectators. Specifically:
+  // 0 = no icon
+  // 1 = icon with a single spectator (green)
+  // 2-4 = icon with 3 spectators (blue)
+  // 5-10 = icon with 5 spectators (yellow)
+  // 11-29 = icon with 8 spectators (purple)
+  // 30+ = icon with 12 spectators (red)
+  le_uint16_t num_spectators = 0; // Clamped to [0, 999] by the client
   le_uint16_t unused = 0;
-  le_uint16_t size = 0; // Number of used bytes in data (clamped to 0xFF)
-  parray<uint8_t, 0x100> data;
+  le_uint16_t size = 0; // Number of used bytes in unknown_a2 (clamped to 0xFF)
+  parray<uint8_t, 0x100> unknown_a2;
 } __packed__;
 
 // 6xB4x53: Reject battle start request

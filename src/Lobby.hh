@@ -20,7 +20,7 @@
 #include "Episode3/BattleRecord.hh"
 #include "Episode3/Server.hh"
 
-struct Lobby {
+struct Lobby : public std::enable_shared_from_this<Lobby> {
   enum Flag {
     GAME                            = 0x00000001,
     EPISODE_3_ONLY                  = 0x00000002,
