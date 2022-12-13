@@ -1952,6 +1952,7 @@ void send_ep3_confirm_tournament_entry(
     // TODO: Fill this in appropriately when we support scheduled start times
     cmd.start_time = "Unknown";
     auto& teams = tourn->all_teams();
+    cmd.num_teams = min<size_t>(teams.size(), 0x20);
     for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
       cmd.team_entries[z].win_count = teams[z]->num_rounds_cleared;
       cmd.team_entries[z].is_active = teams[z]->is_active;
