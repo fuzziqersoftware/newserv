@@ -265,6 +265,8 @@
   // 0x00000040 => Enable battle recording (after a battle, players can save the
   //               recording with the $saverec <filename> command)
   // 0x00000080 => Disable command masking during battles
+  // 0x00000100 => Disable interference (COMs randomly coming to each other's
+  //               rescue)
   "Episode3BehaviorFlags": 0x00000002,
 
   // Episode 3 card auction configuration. CardAuctionPoints specifies how many

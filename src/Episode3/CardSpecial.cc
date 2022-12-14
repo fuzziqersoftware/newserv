@@ -3370,6 +3370,11 @@ void CardSpecial::check_for_defense_interference(
     shared_ptr<const Card> attacker_card,
     shared_ptr<Card> target_card,
     int16_t* inout_unknown_p4) {
+  // Note: This check is not part of the original implementation.
+  if (this->server()->base()->data_index->behavior_flags & BehaviorFlag::DISABLE_INTERFERENCE) {
+    return;
+  }
+
   if (!inout_unknown_p4) {
     return;
   }
@@ -4319,6 +4324,11 @@ void CardSpecial::unknown_8024A9D8(const ActionState& pa, uint16_t action_card_r
 }
 
 void CardSpecial::check_for_attack_interference(shared_ptr<Card> unknown_p2) {
+  // Note: This check is not part of the original implementation.
+  if (this->server()->base()->data_index->behavior_flags & BehaviorFlag::DISABLE_INTERFERENCE) {
+    return;
+  }
+
   if (unknown_p2->action_chain.chain.damage <= 0) {
     return;
   }
