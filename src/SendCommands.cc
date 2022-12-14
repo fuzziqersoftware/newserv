@@ -2021,7 +2021,7 @@ void send_ep3_tournament_entry_list(
       entry.state = 2;
     } else if (team->name.empty()) {
       entry.state = 0;
-    } else if (team->player_serial_numbers.size() < team->max_players) {
+    } else if (team->players.size() < team->max_players) {
       entry.state = 1;
     } else {
       entry.state = 2;
@@ -2093,19 +2093,19 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
     if (primary_lobby) {
       auto serial_number_to_client = primary_lobby->clients_by_serial_number();
-      auto describe_team = [&](S_TournamentGameDetails_GC_Ep3_E3::TeamEntry& entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
-        entry.team_name = team->name;
-        size_t z = 0;
-        for (uint32_t serial_number : team->player_serial_numbers) {
-          auto c = serial_number_to_client.at(serial_number);
-          auto& player_entry = entry.players[z++];
-          player_entry.name = c->game_data.player()->disp.name;
-          player_entry.description = ep3_description_for_client(c);
-        }
-        for (auto com_deck : team->com_decks) {
-          auto& player_entry = entry.players[z++];
-          player_entry.name = com_deck->player_name;
-          player_entry.description = "Deck: " + com_deck->deck_name;
+      auto describe_team = [&](S_TournamentGameDetails_GC_Ep3_E3::TeamEntry& team_entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
+        team_entry.team_name = team->name;
+        for (size_t z = 0; z < team->players.size(); z++) {
+          auto& entry = team_entry.players[z];
+          const auto& player = team->players[z];
+          if (player.is_human()) {
+            auto c = serial_number_to_client.at(player.serial_number);
+            entry.name = c->game_data.player()->disp.name;
+            entry.description = ep3_description_for_client(c);
+          } else {
+            entry.name = player.com_deck->player_name;
+            entry.description = "Deck: " + player.com_deck->deck_name;
+          }
         }
       };
       describe_team(cmd.team_entries[0], tourn_match->preceding_a->winner_team);
@@ -2195,43 +2195,27 @@ void send_ep3_set_tournament_player_decks(
 
   auto serial_number_to_client = l->clients_by_serial_number();
 
-  size_t z = 0;
-  auto add_entries_for_team = [&](shared_ptr<const Episode3::Tournament::Team> team) -> void {
-    for (uint32_t player_serial_number : team->player_serial_numbers) {
-      auto& entry = cmd.entries[z];
-      entry.type = 1; // Human
-      entry.player_name = serial_number_to_client.at(player_serial_number)->game_data.player()->disp.name;
-      entry.unknown_a2 = 6;
-      if (player_serial_number == c->license->serial_number) {
-        cmd.player_slot = z;
+  auto add_entries_for_team = [&](shared_ptr<const Episode3::Tournament::Team> team, size_t base_index) -> void {
+    for (size_t z = 0; z < team->players.size(); z++) {
+      auto& entry = cmd.entries[base_index + z];
+      const auto& player = team->players[z];
+      if (player.is_human()) {
+        entry.type = 1; // Human
+        entry.player_name = serial_number_to_client.at(player.serial_number)->game_data.player()->disp.name;
+        if (player.serial_number == c->license->serial_number) {
+          cmd.player_slot = base_index + z;
+        }
+      } else {
+        entry.type = 2; // COM
+        entry.player_name = player.com_deck->player_name;
+        entry.deck_name = player.com_deck->deck_name;
+        entry.card_ids = player.com_deck->card_ids;
       }
-      z++;
-    }
-    for (auto com_deck : team->com_decks) {
-      auto& entry = cmd.entries[z];
-      entry.type = 2; // COM
-      entry.player_name = com_deck->player_name;
-      entry.deck_name = com_deck->deck_name;
-      entry.card_ids = com_deck->card_ids;
       entry.unknown_a2 = 6;
-      z++;
     }
   };
-  add_entries_for_team(match->preceding_a->winner_team);
-  if (z < 1) {
-    throw logic_error("no entries from preceding team A");
-  }
-  if (z > 2) {
-    throw logic_error("too many entries from preceding team A");
-  }
-  z = 2;
-  add_entries_for_team(match->preceding_b->winner_team);
-  if (z < 3) {
-    throw logic_error("no entries from preceding team B");
-  }
-  if (z > 4) {
-    throw logic_error("too many entries from preceding team B");
-  }
+  add_entries_for_team(match->preceding_a->winner_team, 0);
+  add_entries_for_team(match->preceding_b->winner_team, 2);
 
   if (!(tourn->get_data_index()->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
     uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
@@ -2258,14 +2242,13 @@ void send_ep3_tournament_match_result(
   auto serial_number_to_client = l->clients_by_serial_number();
 
   auto write_player_names = [&](G_TournamentMatchResult_GC_Ep3_6xB4x51::NamesEntry& entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
-    size_t z = 0;
-    for (uint32_t player_serial_number : team->player_serial_numbers) {
-      entry.player_names[z] = serial_number_to_client.at(player_serial_number)->game_data.player()->disp.name;
-      z++;
-    }
-    for (auto com_deck : team->com_decks) {
-      entry.player_names[z] = com_deck->player_name;
-      z++;
+    for (size_t z = 0; z < team->players.size(); z++) {
+      const auto& player = team->players[z];
+      if (player.is_human()) {
+        entry.player_names[z] = serial_number_to_client.at(player.serial_number)->game_data.player()->disp.name;
+      } else {
+        entry.player_names[z] = player.com_deck->player_name;
+      }
     }
   };
 

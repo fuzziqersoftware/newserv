@@ -29,7 +29,6 @@ newserv is many things - a server, a proxy, an encryption and decryption tool, a
 With that said, I offer no guarantees on how or when this project will advance. Feel free to submit GitHub issues if you find bugs or have feature requests; I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner. If you feel like contributing to newserv yourself, pull requests are welcome as well.
 
 Current known issues / missing features / things to do:
-- Support disconnect hooks to clean up state, like if a client disconnects during quest loading or during a trade window execution.
 - Episode 3 battles are implemented but are not well-tested.
     - Fix behavior when joining a spectator team after the beginning of a battle.
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
@@ -41,8 +40,13 @@ Current known issues / missing features / things to do:
 - Implement private and overflow lobbies.
 - Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
 - Encapsulate BB server-side random state and make replays deterministic.
-- The internal menu abstraction is ugly and hard to work with. Rewrite it.
-- Add default values for all commands (like we use for Episode 3 battle commands).
+- Code style
+    - The internal menu abstraction is ugly and hard to work with. Rewrite it.
+    - Add default values for all commands (like we use for Episode 3 battle commands).
+- Episode 3 bugs
+    - Disconnecting during a match turns you into a COM if there are other humans in the match, even if the match is part of a tournament. This may be incorrect behavior for tournaments.
+    - Disconnecting during a tournament when there are no other humans in the match simply cancels the match (so it can be replayed) instead of forfeiting, which is almost certainly incorrect behavior. (Then again, no one likes losing tournaments to COMs...)
+    - There is a rare failure mode during battles that causes one of the clients to be disconnected.
 
 ## Compatibility
 

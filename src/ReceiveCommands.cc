@@ -875,54 +875,33 @@ static void on_ep3_meseta_transaction(shared_ptr<ServerState>,
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
-static bool start_ep3_tournament_match_if_pending(
-    shared_ptr<ServerState> s,
-    shared_ptr<Lobby> l,
-    shared_ptr<Client> c,
-    int16_t table_number) {
-  auto team = c->ep3_tournament_team.lock();
-  if (!team) {
-    return false; // Client is not registered in a tournament
+static bool add_next_tournament_match_client(
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
+  if (!l->tournament_match) {
+    return false;
   }
-  auto tourn = team->tournament.lock();
+  auto tourn = l->tournament_match->tournament.lock();
   if (!tourn) {
-    return false; // The tournament has been canceled
-  }
-  auto match = tourn->next_match_for_team(team);
-  if (!match) {
     return false;
   }
 
-  auto other_team = match->opponent_team_for_team(team);
-  unordered_set<uint32_t> required_serial_numbers;
-  for (uint32_t serial_number : team->player_serial_numbers) {
-    required_serial_numbers.emplace(serial_number);
+  auto it = l->tournament_clients_to_add.begin();
+  if (it == l->tournament_clients_to_add.end()) {
+    return false;
   }
-  for (uint32_t serial_number : other_team->player_serial_numbers) {
-    required_serial_numbers.emplace(serial_number);
-  }
-  unordered_set<shared_ptr<Client>> game_clients;
-  for (const auto& other_c : l->clients) {
-    if (!other_c) {
-      continue;
-    }
-    if ((other_c->card_battle_table_number == table_number) &&
-        required_serial_numbers.erase(other_c->license->serial_number)) {
-      game_clients.emplace(other_c);
-    }
-  }
-  if (!required_serial_numbers.empty()) {
+  size_t target_client_id = it->first;
+  shared_ptr<Client> c = it->second.lock();
+  l->tournament_clients_to_add.erase(it);
+
+  // If the client has disconnected before they could join the match, disband
+  // the entire game
+  if (!c) {
+    send_command(l, 0xED, 0x00);
     return false;
   }
 
-  // At this point, we've checked all the necessary conditions for a tournament
-  // match to begin.
-
-  for (const auto& other_c : l->clients) {
-    if (other_c && (other_c->card_battle_table_number == table_number)) {
-      other_c->card_battle_table_number = -1;
-      other_c->card_battle_table_seat_number = 0;
-    }
+  if (l->clients[target_client_id] != nullptr) {
+    throw logic_error("client id is already in use");
   }
 
   G_SetStateFlags_GC_Ep3_6xB4x03 state_cmd;
@@ -955,8 +934,8 @@ static bool start_ep3_tournament_match_if_pending(
   static const std::pair<uint16_t, uint16_t> final_lose_entries[10] = {
       {1, -5}, {-1, -10}, {-3, -15}, {-7, -20}, {-15, -20}, {-20, -25}, {-30, -30}, {-40, -30}, {-50, -34}, {0, -40}};
   G_SetEXResultValues_GC_Ep3_6xB4x4B ex_cmd;
-  const auto& win_entries = (match == tourn->get_final_match()) ? final_win_entries : non_final_win_entries;
-  const auto& lose_entries = (match == tourn->get_final_match()) ? final_lose_entries : non_final_lose_entries;
+  const auto& win_entries = (l->tournament_match == tourn->get_final_match()) ? final_win_entries : non_final_win_entries;
+  const auto& lose_entries = (l->tournament_match == tourn->get_final_match()) ? final_lose_entries : non_final_lose_entries;
   for (size_t z = 0; z < 10; z++) {
     ex_cmd.win_entries[z].threshold = win_entries[z].first;
     ex_cmd.win_entries[z].value = win_entries[z].second;
@@ -968,17 +947,106 @@ static bool start_ep3_tournament_match_if_pending(
     set_mask_for_ep3_game_command(&ex_cmd, sizeof(ex_cmd), mask_key);
   }
 
-  // TODO: We don't know if this works with multiple players. Test it.
+  send_command_t(c, 0xC9, 0x00, state_cmd);
+  send_command_t(c, 0xC9, 0x00, ex_cmd);
+  s->change_client_lobby(c, l, true, target_client_id);
+  c->flags |= Client::Flag::LOADING;
+  return true;
+}
+
+static bool start_ep3_tournament_match_if_pending(
+    shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l,
+    shared_ptr<Client> c,
+    int16_t table_number) {
+  auto team = c->ep3_tournament_team.lock();
+  if (!team) {
+    return false; // Client is not registered in a tournament
+  }
+  auto tourn = team->tournament.lock();
+  if (!tourn) {
+    return false; // The tournament has been canceled
+  }
+  auto match = tourn->next_match_for_team(team);
+  if (!match) {
+    return false;
+  }
+
+  auto other_team = match->opponent_team_for_team(team);
+
+  vector<uint32_t> required_serial_numbers;
+  required_serial_numbers.resize(4, 0);
+  auto add_team_players = [&](shared_ptr<const Episode3::Tournament::Team> team, size_t base_index) -> void {
+    size_t z = 0;
+    for (const auto& player : team->players) {
+      if (z >= 2) {
+        throw logic_error("more than 2 players on team");
+      }
+      if (player.is_human()) {
+        required_serial_numbers.at(base_index + z) = player.serial_number;
+      }
+      z++;
+    }
+  };
+  add_team_players(team, 0);
+  add_team_players(other_team, 2);
+
+  auto clients_map = l->clients_by_serial_number();
+  vector<shared_ptr<Client>> game_clients;
+  game_clients.resize(4);
+  for (size_t z = 0; z < required_serial_numbers.size(); z++) {
+    uint32_t serial_number = required_serial_numbers[z];
+    if (!serial_number) {
+      continue;
+    }
+    shared_ptr<Client> player_c;
+    try {
+      player_c = clients_map.at(serial_number);
+    } catch (const out_of_range&) {
+      return false;
+    }
+    if (player_c->card_battle_table_number != table_number) {
+      return false;
+    }
+    game_clients.at(z) = player_c;
+  }
+
+  // If there is already a game for this match, do nothing (the player is
+  // probably about to be pulled into it, when another player is done loading)
+  for (auto l : s->all_lobbies()) {
+    if (l->tournament_match == match) {
+      return false;
+    }
+  }
+
+  // At this point, we've checked all the necessary conditions for a tournament
+  // match to begin.
+
+  for (const auto& other_c : game_clients) {
+    if (!other_c) {
+      continue;
+    }
+
+    other_c->card_battle_table_number = -1;
+    other_c->card_battle_table_seat_number = 0;
+
+    send_self_leave_notification(other_c);
+    string message = string_printf(
+        "$C7Waiting to begin match in tournament\n$C6%s$C7...\n\n(Hold B+X+START to abort)",
+        tourn->get_name().c_str());
+    send_message_box(other_c, decode_sjis(message));
+  }
+
   uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
   auto game = create_game_generic(s, c, decode_sjis(tourn->get_name()), u"", 0xFF, 0, flags);
   game->tournament_match = match;
-  for (auto game_c : game_clients) {
-    send_command_t(game_c, 0xC9, 0x00, state_cmd);
-    send_command_t(game_c, 0xC9, 0x00, ex_cmd);
-    s->change_client_lobby(game_c, game, false);
-    send_join_lobby(game_c, game);
-    game_c->flags |= Client::Flag::LOADING;
+  game->tournament_clients_to_add.clear();
+  for (size_t z = 0; z < game_clients.size(); z++) {
+    if (game_clients[z]) {
+      game->tournament_clients_to_add.emplace(z, game_clients[z]);
+    }
   }
+  add_next_tournament_match_client(s, game);
   return true;
 }
 
@@ -1074,7 +1142,7 @@ static void on_tournament_bracket_updated(
 
   if (tourn->get_state() == Episode3::Tournament::State::COMPLETE) {
     auto team = tourn->get_winner_team();
-    if (team->player_serial_numbers.empty()) {
+    if (!team->has_any_human_players()) {
       send_ep3_text_message_printf(s, "$C7A CPU team won\nthe tournament\n$C6%s", tourn->get_name().c_str());
     } else {
       send_ep3_text_message_printf(s, "$C6%s$C7\nwon the tournament\n$C6%s", team->name.c_str(), tourn->get_name().c_str());
@@ -1426,21 +1494,14 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
       if (tourn) {
         auto team = tourn->get_team(team_index);
         if (team) {
-          string message;
-          if (team->name.empty()) {
-            message = string_printf("$C7(Unnamed team)\n%zu/%zu players\n%zu wins\n%s",
-                team->player_serial_numbers.size(),
-                team->max_players,
-                team->num_rounds_cleared,
-                team->password.empty() ? "" : "Locked");
-          } else {
-            message = string_printf("$C6%s$C7\n%zu/%zu players\n%zu wins\n%s",
-                team->name.c_str(),
-                team->player_serial_numbers.size(),
-                team->max_players,
-                team->num_rounds_cleared,
-                team->password.empty() ? "" : "Locked");
-          }
+          string team_name = team->name.empty() ? "(Unnamed team)" : team->name;
+          string message = string_printf("$C7(Unnamed team)\n%zuH/%zuC/%zu players\n%zu %s\n%s",
+              team->num_human_players(),
+              team->num_com_players(),
+              team->max_players,
+              team->num_rounds_cleared,
+              team->num_rounds_cleared == 1 ? "win" : "wins",
+              team->password.empty() ? "" : "Locked");
           send_ship_info(c, decode_sjis(message));
         } else {
           send_ship_info(c, u"$C7No such team");
@@ -3083,12 +3144,17 @@ static void on_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     send_get_player_info(c);
   }
 
+  // Handle initial commands for spectator teams
   auto watched_lobby = l->watched_lobby.lock();
   if (l->battle_player && (l->flags & Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY)) {
     l->battle_player->start();
   } else if (watched_lobby && watched_lobby->ep3_server_base) {
     watched_lobby->ep3_server_base->server->send_commands_for_joining_spectator(c->channel);
   }
+
+  // If this is a tournament match and not all players are present, try to bring
+  // in the next player
+  add_next_tournament_match_client(s, l);
 }
 
 

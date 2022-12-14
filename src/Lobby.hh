@@ -106,6 +106,8 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   uint32_t flags;
   std::shared_ptr<const Quest> loading_quest;
   std::array<std::shared_ptr<Client>, 12> clients;
+  // Keys in this map are client_id
+  std::unordered_map<size_t, std::weak_ptr<Client>> tournament_clients_to_add;
 
   explicit Lobby(uint32_t id);
 
@@ -117,11 +119,13 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   size_t count_clients() const;
   bool any_client_loading() const;
 
-  void add_client(std::shared_ptr<Client> c);
+  void add_client(std::shared_ptr<Client> c, ssize_t required_client_id = -1);
   void remove_client(std::shared_ptr<Client> c);
 
-  void move_client_to_lobby(std::shared_ptr<Lobby> dest_lobby,
-      std::shared_ptr<Client> c);
+  void move_client_to_lobby(
+      std::shared_ptr<Lobby> dest_lobby,
+      std::shared_ptr<Client> c,
+      ssize_t required_client_id = -1);
 
   std::shared_ptr<Client> find_client(
       const std::u16string* identifier = nullptr,

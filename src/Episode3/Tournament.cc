@@ -11,6 +11,23 @@ namespace Episode3 {
 
 
 
+Tournament::PlayerEntry::PlayerEntry(uint32_t serial_number)
+  : serial_number(serial_number), com_deck() { }
+
+Tournament::PlayerEntry::PlayerEntry(
+    shared_ptr<const COMDeckDefinition> com_deck)
+  : serial_number(0), com_deck(com_deck) { }
+
+bool Tournament::PlayerEntry::is_com() const {
+  return (this->com_deck != nullptr);
+}
+
+bool Tournament::PlayerEntry::is_human() const {
+  return (this->serial_number != 0);
+}
+
+
+
 Tournament::Team::Team(
     shared_ptr<Tournament> tournament, size_t index, size_t max_players)
   : tournament(tournament),
@@ -22,12 +39,21 @@ Tournament::Team::Team(
     is_active(true) { }
 
 string Tournament::Team::str() const {
-  string ret = string_printf("[Team/%zu %s %zu/%zuP name=%s pass=%s rounds=%zu",
+  size_t num_human_players = 0;
+  size_t num_com_players = 0;
+  for (const auto& player : this->players) {
+    num_human_players += player.is_human();
+    num_com_players += player.is_com();
+  }
+
+  string ret = string_printf("[Team/%zu %s %zuH/%zuC/%zuP name=%s pass=%s rounds=%zu",
       this->index, this->is_active ? "active" : "inactive",
-      this->player_serial_numbers.size(), this->max_players, this->name.c_str(),
+      num_human_players, num_com_players, this->max_players, this->name.c_str(),
       this->password.c_str(), this->num_rounds_cleared);
-  for (uint32_t serial_number : this->player_serial_numbers) {
-    ret += string_printf(" %08" PRIX32, serial_number);
+  for (const auto& player : this->players) {
+    if (player.is_human()) {
+      ret += string_printf(" %08" PRIX32, player.serial_number);
+    }
   }
   return ret + "]";
 }
@@ -36,7 +62,7 @@ void Tournament::Team::register_player(
     uint32_t serial_number,
     const string& team_name,
     const string& password) {
-  if (this->player_serial_numbers.size() >= this->max_players) {
+  if (this->players.size() >= this->max_players) {
     throw runtime_error("team is full");
   }
 
@@ -52,9 +78,13 @@ void Tournament::Team::register_player(
     throw runtime_error("player already registered in same tournament");
   }
 
-  if (!this->player_serial_numbers.emplace(serial_number).second) {
-    throw logic_error("player already registered in team but not in tournament");
+  for (const auto& player : this->players) {
+    if (player.is_human() && (player.serial_number == serial_number)) {
+      throw logic_error("player already registered in team but not in tournament");
+    }
   }
+
+  this->players.emplace_back(serial_number);
 
   if (this->name.empty()) {
     this->name = team_name;
@@ -63,8 +93,18 @@ void Tournament::Team::register_player(
 }
 
 bool Tournament::Team::unregister_player(uint32_t serial_number) {
-  if (this->player_serial_numbers.erase(serial_number)) {
-    if (this->player_serial_numbers.empty()) {
+  size_t index;
+  for (index = 0; index < this->players.size(); index++) {
+    if (this->players[index].is_human() &&
+        (this->players[index].serial_number == serial_number)) {
+      break;
+    }
+  }
+
+  if (index < this->players.size()) {
+    this->players.erase(this->players.begin() + index);
+
+    if (this->players.empty()) {
       this->name.clear();
       this->password.clear();
     }
@@ -108,6 +148,31 @@ bool Tournament::Team::unregister_player(uint32_t serial_number) {
   }
 }
 
+bool Tournament::Team::has_any_human_players() const {
+  for (const auto& player : this->players) {
+    if (player.is_human()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+size_t Tournament::Team::num_human_players() const {
+  size_t ret = 0;
+  for (const auto& player : this->players) {
+    ret += player.is_human();
+  }
+  return ret;
+}
+
+size_t Tournament::Team::num_com_players() const {
+  size_t ret = 0;
+  for (const auto& player : this->players) {
+    ret += player.is_com();
+  }
+  return ret;
+}
+
 
 
 Tournament::Match::Match(
@@ -139,7 +204,7 @@ string Tournament::Match::str() const {
   return string_printf("[Match round=%zu winner=%s]", this->round_num, winner_str.c_str());
 }
 
-bool Tournament::Match::resolve_if_no_players() {
+bool Tournament::Match::resolve_if_no_human_players() {
   if (this->winner_team) {
     return true;
   }
@@ -148,8 +213,8 @@ bool Tournament::Match::resolve_if_no_players() {
   // arbitrarily
   if (this->preceding_a->winner_team &&
       this->preceding_b->winner_team &&
-      this->preceding_a->winner_team->player_serial_numbers.empty() &&
-      this->preceding_b->winner_team->player_serial_numbers.empty()) {
+      !this->preceding_a->winner_team->has_any_human_players() &&
+      !this->preceding_b->winner_team->has_any_human_players()) {
     this->set_winner_team((random_object<uint8_t>() & 1)
         ? this->preceding_b->winner_team : this->preceding_a->winner_team);
     return true;
@@ -169,7 +234,7 @@ void Tournament::Match::on_winner_team_set() {
   // Resolve the following match if possible (this skips CPU-only matches). If
   // the following match can't be resolved, mark it pending.
   auto following = this->following.lock();
-  if (following && !following->resolve_if_no_players()) {
+  if (following && !following->resolve_if_no_human_players()) {
     tournament->pending_matches.emplace(following);
   }
 
@@ -278,14 +343,15 @@ void Tournament::init() {
       team->name = team_dict.at("name")->as_string();
       team->password = team_dict.at("password")->as_string();
       team_index_to_rounds_cleared.emplace_back(team_dict.at("num_rounds_cleared")->as_int());
-      for (const auto& serial_number_json : team_dict.at("player_serial_numbers")->as_list()) {
-        uint32_t serial_number = serial_number_json->as_int();
-        team->player_serial_numbers.emplace(serial_number);
-        this->all_player_serial_numbers.emplace(serial_number);
-      }
-      for (const auto& com_deck_name_json : team_dict.at("com_deck_names")->as_list()) {
-        team->com_decks.emplace_back(this->data_index->com_deck(
-            com_deck_name_json->as_string()));
+      for (const auto& player_json : team_dict.at("player_specs")->as_list()) {
+        if (player_json->is_int()) {
+          uint32_t serial_number = player_json->as_int();
+          team->players.emplace_back(serial_number);
+          this->all_player_serial_numbers.emplace(serial_number);
+        } else {
+          team->players.emplace_back(this->data_index->com_deck(
+              player_json->as_string()));
+        }
       }
     }
     this->num_teams = this->teams.size();
@@ -410,16 +476,15 @@ std::shared_ptr<JSONObject> Tournament::json() const {
   for (auto team : this->teams) {
     unordered_map<string, shared_ptr<JSONObject>> team_dict;
     team_dict.emplace("max_players", make_json_int(team->max_players));
-    vector<shared_ptr<JSONObject>> player_serial_numbers_list;
-    for (uint32_t player_serial_number : team->player_serial_numbers) {
-      player_serial_numbers_list.emplace_back(make_json_int(player_serial_number));
+    vector<shared_ptr<JSONObject>> player_jsons_list;
+    for (const auto& player : team->players) {
+      if (player.is_human()) {
+        player_jsons_list.emplace_back(make_json_int(player.serial_number));
+      } else {
+        player_jsons_list.emplace_back(make_json_str(player.com_deck->deck_name));
+      }
     }
-    team_dict.emplace("player_serial_numbers", make_json_list(move(player_serial_numbers_list)));
-    vector<shared_ptr<JSONObject>> com_deck_names_list;
-    for (auto com_deck : team->com_decks) {
-      com_deck_names_list.emplace_back(make_json_str(com_deck->deck_name));
-    }
-    team_dict.emplace("com_deck_names", make_json_list(move(com_deck_names_list)));
+    team_dict.emplace("player_specs", make_json_list(move(player_jsons_list)));
     team_dict.emplace("name", make_json_str(team->name));
     team_dict.emplace("password", make_json_str(team->password));
     team_dict.emplace("num_rounds_cleared", make_json_int(team->num_rounds_cleared));
@@ -503,13 +568,11 @@ shared_ptr<Tournament::Team> Tournament::team_for_serial_number(
   }
 
   for (auto team : this->teams) {
-    if (!team->player_serial_numbers.count(serial_number)) {
-      continue;
+    for (const auto& player : team->players) {
+      if (player.serial_number == serial_number) {
+        return team->is_active ? team : nullptr;
+      }
     }
-    if (!team->is_active) {
-      return nullptr;
-    }
-    return team;
   }
 
   throw logic_error("serial number registered in tournament but not in any team");
@@ -533,11 +596,18 @@ void Tournament::start() {
     if (t->name.empty()) {
       t->name = string_printf("COM:%zu", z);
     }
-    if (this->data_index->num_com_decks() < t->max_players - t->player_serial_numbers.size()) {
+    for (const auto& player : t->players) {
+      if (player.is_com()) {
+        throw logic_error("non-human player on team before tournament start");
+      }
+    }
+    if (this->data_index->num_com_decks() < t->max_players - t->players.size()) {
       throw runtime_error("not enough COM decks to complete team");
     }
-    while (t->player_serial_numbers.size() + t->com_decks.size() < t->max_players) {
-      t->com_decks.emplace_back(this->data_index->random_com_deck());
+    // TODO: Don't allow duplicate COM decks, nor duplicate COM SCs on the same
+    // team
+    while (t->players.size() < t->max_players) {
+      t->players.emplace_back(this->data_index->random_com_deck());
     }
   }
 

@@ -71,10 +71,18 @@ size_t Lobby::count_clients() const {
   return ret;
 }
 
-void Lobby::add_client(shared_ptr<Client> c) {
+void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   ssize_t index;
   ssize_t min_client_id = (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 4 : 0;
-  if (c->prefer_high_lobby_client_id) {
+
+  if (required_client_id >= 0) {
+    if (this->clients[required_client_id].get()) {
+      throw out_of_range("required slot is in use");
+    }
+    this->clients[required_client_id] = c;
+    index = required_client_id;
+
+  } else if (c->prefer_high_lobby_client_id) {
     for (index = max_clients - 1; index >= min_client_id; index--) {
       if (!this->clients[index].get()) {
         this->clients[index] = c;
@@ -100,15 +108,14 @@ void Lobby::add_client(shared_ptr<Client> c) {
   c->lobby_id = this->lobby_id;
 
   // If there's no one else in the lobby, set the leader id as well
-  if (index == (max_clients - 1) * c->prefer_high_lobby_client_id) {
-    for (index = 0; index < max_clients; index++) {
-      if (this->clients[index].get() && this->clients[index] != c) {
-        break;
-      }
+  size_t leader_index;
+  for (leader_index = 0; leader_index < max_clients; leader_index++) {
+    if (this->clients[leader_index] && (this->clients[leader_index] != c)) {
+      break;
     }
-    if (index >= max_clients) {
-      this->leader_id = c->lobby_client_id;
-    }
+  }
+  if (leader_index >= max_clients) {
+    this->leader_id = c->lobby_client_id;
   }
 
   // If the lobby is a game and item tracking is enabled, assign the inventory's
@@ -184,18 +191,28 @@ void Lobby::remove_client(shared_ptr<Client> c) {
   }
 }
 
-void Lobby::move_client_to_lobby(shared_ptr<Lobby> dest_lobby,
-    shared_ptr<Client> c) {
+void Lobby::move_client_to_lobby(
+    shared_ptr<Lobby> dest_lobby,
+    shared_ptr<Client> c,
+    ssize_t required_client_id) {
   if (dest_lobby.get() == this) {
     return;
   }
 
-  if (dest_lobby->count_clients() >= dest_lobby->max_clients) {
-    throw out_of_range("no space left in lobby");
+  if (required_client_id >= 0) {
+    if (dest_lobby->clients[required_client_id]) {
+      throw out_of_range("required slot is in use");
+    }
+  } else {
+    ssize_t min_client_id = (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 4 : 0;
+    size_t available_slots = dest_lobby->max_clients - min_client_id;
+    if (dest_lobby->count_clients() >= available_slots) {
+      throw out_of_range("no space left in lobby");
+    }
   }
 
   this->remove_client(c);
-  dest_lobby->add_client(c);
+  dest_lobby->add_client(c, required_client_id);
 }
 
 

@@ -28,12 +28,25 @@ public:
     COMPLETE,
   };
 
+  struct PlayerEntry {
+    // Invariant: (serial_number == 0) != (com_deck == nullptr)
+    // (that is, exactly one of the following must be valid)
+    uint32_t serial_number;
+    std::shared_ptr<const COMDeckDefinition> com_deck;
+
+    explicit PlayerEntry(uint32_t serial_number);
+    explicit PlayerEntry(std::shared_ptr<const COMDeckDefinition> com_deck);
+
+    bool is_com() const;
+    bool is_human() const;
+  };
+
   struct Team : public std::enable_shared_from_this<Team> {
     std::weak_ptr<Tournament> tournament;
     size_t index;
     size_t max_players;
-    std::set<uint32_t> player_serial_numbers;
-    std::vector<std::shared_ptr<const COMDeckDefinition>> com_decks;
+
+    std::vector<PlayerEntry> players;
     std::string name;
     std::string password;
     size_t num_rounds_cleared;
@@ -50,6 +63,10 @@ public:
         const std::string& team_name,
         const std::string& password);
     bool unregister_player(uint32_t serial_number);
+
+    bool has_any_human_players() const;
+    size_t num_human_players() const;
+    size_t num_com_players() const;
   };
 
   struct Match : public std::enable_shared_from_this<Match> {
@@ -69,7 +86,7 @@ public:
         std::shared_ptr<Team> winner_team);
     std::string str() const;
 
-    bool resolve_if_no_players();
+    bool resolve_if_no_human_players();
     void on_winner_team_set();
     void set_winner_team(std::shared_ptr<Team> team);
     void set_winner_team_without_triggers(std::shared_ptr<Team> team);

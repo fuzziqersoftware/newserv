@@ -121,15 +121,18 @@ void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
 }
 
 bool ServerState::change_client_lobby(
-    shared_ptr<Client> c, shared_ptr<Lobby> new_lobby, bool send_join_notification) {
+    shared_ptr<Client> c,
+    shared_ptr<Lobby> new_lobby,
+    bool send_join_notification,
+    ssize_t required_client_id) {
   uint8_t old_lobby_client_id = c->lobby_client_id;
 
   shared_ptr<Lobby> current_lobby = this->find_lobby(c->lobby_id);
   try {
     if (current_lobby) {
-      current_lobby->move_client_to_lobby(new_lobby, c);
+      current_lobby->move_client_to_lobby(new_lobby, c, required_client_id);
     } else {
-      new_lobby->add_client(c);
+      new_lobby->add_client(c, required_client_id);
     }
   } catch (const out_of_range&) {
     return false;

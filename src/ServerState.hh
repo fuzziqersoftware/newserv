@@ -118,8 +118,11 @@ struct ServerState {
 
   void add_client_to_available_lobby(std::shared_ptr<Client> c);
   void remove_client_from_lobby(std::shared_ptr<Client> c);
-  bool change_client_lobby(std::shared_ptr<Client> c,
-      std::shared_ptr<Lobby> new_lobby, bool send_join_notification = true);
+  bool change_client_lobby(
+      std::shared_ptr<Client> c,
+      std::shared_ptr<Lobby> new_lobby,
+      bool send_join_notification = true,
+      ssize_t required_client_id = -1);
 
   void send_lobby_join_notifications(std::shared_ptr<Lobby> l,
       std::shared_ptr<Client> joining_client);
