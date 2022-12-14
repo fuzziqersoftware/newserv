@@ -46,7 +46,9 @@ Current known issues / missing features / things to do:
 - Episode 3 bugs
     - Disconnecting during a match turns you into a COM if there are other humans in the match, even if the match is part of a tournament. This may be incorrect behavior for tournaments.
     - Disconnecting during a tournament when there are no other humans in the match simply cancels the match (so it can be replayed) instead of forfeiting, which is almost certainly incorrect behavior. (Then again, no one likes losing tournaments to COMs...)
+    - Tournament deck restrictions aren't enforced when populating COMs at tournament start time. This can cause weird behavior if, for example, a COM deck contains assist cards and the tournament rules forbid them.
     - There is a rare failure mode during battles that causes one of the clients to be disconnected.
+    - Battle Tables don't work properly (except for tournaments).
 
 ## Compatibility
 
@@ -87,7 +89,7 @@ The following Episode 3 features are implemented, but only partially tested:
 * Battle replays sometimes cause the client to crash during the replay. Using the $playrec command is therefore not recommended.
 * Tournaments.
 
-Tournaments work differently than they did on Sega's servers. Tournaments can be created with the `create-tournament` shell command, which enables players to register for them. (Use `help` to see all the arguments - there are many!) The `start-tournament` shell command starts the tournament, but this doesn't schedule any matches. Instead, players who are scheduled for a match can all stand at a battle table in a CARD lobby, and the tournament match will start automatically. (This also means that, for example, not all matches in round 1 must be complete before round 2 can begin - only the matches preceding each individual match must be complete for that match to be playable.)
+Tournaments work differently than they did on Sega's servers. Tournaments can be created with the `create-tournament` shell command, which enables players to register for them. (Use `help` to see all the arguments - there are many!) The `start-tournament` shell command starts the tournament, but this doesn't schedule any matches. Instead, players who are ready to play their next match can all stand at the rightmost 4-player battle table in the same CARD lobby, and the tournament match will start automatically. (This also means that, for example, not all matches in round 1 must be complete before round 2 can begin - only the matches preceding each individual match must be complete for that match to be playable.)
 
 Because newserv gives all players 1000000 meseta, there is no reward for winning a tournament. This may change in the future.
 

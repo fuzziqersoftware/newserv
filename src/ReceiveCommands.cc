@@ -1061,7 +1061,9 @@ static void on_ep3_battle_table_state(shared_ptr<ServerState> s,
     }
     c->card_battle_table_number = cmd.table_number;
     c->card_battle_table_seat_number = cmd.seat_number;
-    start_ep3_tournament_match_if_pending(s, l, c, cmd.table_number);
+    if (cmd.table_number == 2) {
+      start_ep3_tournament_match_if_pending(s, l, c, cmd.table_number);
+    }
 
   } else { // Leaving battle table
     c->card_battle_table_number = -1;
@@ -1495,7 +1497,8 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
         auto team = tourn->get_team(team_index);
         if (team) {
           string team_name = team->name.empty() ? "(Unnamed team)" : team->name;
-          string message = string_printf("$C7(Unnamed team)\n%zuH/%zuC/%zu players\n%zu %s\n%s",
+          string message = string_printf("$C7%s\n%zuH/%zuC/%zu players\n%zu %s\n%s",
+              team_name.c_str(),
               team->num_human_players(),
               team->num_com_players(),
               team->max_players,
@@ -1956,9 +1959,9 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
             send_ep3_confirm_tournament_entry(s, c, tourn);
             string message = string_printf("$C7You are registered in $C6%s$C7.\n\
 \n\
-After registration ends, you can start your\n\
-first match by standing at any Battle Table in\n\
-the lobby along with your partner (if any) and\n\
+After registration ends, start your matches by\n\
+standing at the rightmost 4-player Battle Table\n\
+in the lobby along with your partner (if any) and\n\
 opponent(s).", tourn->get_name().c_str());
             send_ep3_timed_message_box(c->channel, 240, message.c_str());
 
