@@ -1055,8 +1055,8 @@ struct S_JoinLobby_XB_65_67_68 {
 
 // 66 (S->C): Remove player from game
 // This is sent to all players in a game except the leaving player.
+// header.flag should be set to the leaving player ID (same as client_id).
 
-// Header flag = leaving player ID (same as client_id);
 struct S_LeaveLobby_66_69_Ep3_E9 {
   uint8_t client_id = 0;
   uint8_t leader_id = 0;
@@ -1192,7 +1192,7 @@ struct C_Login_DCNTE_88 {
 // If header.flag is zero, client will respond with an 8A command. Otherwise, it
 // will respond with an 8B command.
 
-// 88 (S->C): Update lobby arrows
+// 88 (S->C): Update lobby arrows (except DC NTE)
 // If this command is sent while a client is joining a lobby, the client may
 // ignore it. For this reason, the server should wait a few seconds after a
 // client joins a lobby before sending an 88 command.
@@ -1204,23 +1204,22 @@ struct C_Login_DCNTE_88 {
 struct S_ArrowUpdateEntry_88 {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
+  // Values for arrow_color:
+  // any number not specified below (including 00) - none
+  // 01 - red
+  // 02 - blue
+  // 03 - green
+  // 04 - yellow
+  // 05 - purple
+  // 06 - cyan
+  // 07 - orange
+  // 08 - pink
+  // 09 - white
+  // 0A - white
+  // 0B - white
+  // 0C - black
   le_uint32_t arrow_color = 0;
 } __packed__;
-
-// The arrow color values are:
-// any number not specified below (including 00) - none
-// 01 - red
-// 02 - blue
-// 03 - green
-// 04 - yellow
-// 05 - purple
-// 06 - cyan
-// 07 - orange
-// 08 - pink
-// 09 - white
-// 0A - white
-// 0B - white
-// 0C - black
 
 // 89 (C->S): Set lobby arrow
 // header.flag = arrow color number (see above); no other arguments.
@@ -1231,7 +1230,7 @@ struct S_ArrowUpdateEntry_88 {
 
 struct C_ConnectionInfo_DCNTE_8A {
   ptext<char, 0x08> hardware_id;
-  le_uint32_t sub_version = 0x20; // 0x20
+  le_uint32_t sub_version = 0x20;
   le_uint32_t unknown_a1 = 0;
   ptext<char, 0x30> username;
   ptext<char, 0x30> password;
