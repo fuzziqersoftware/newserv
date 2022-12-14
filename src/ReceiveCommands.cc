@@ -1494,15 +1494,23 @@ static void on_menu_item_info_request(shared_ptr<ServerState> s, shared_ptr<Clie
       if (tourn) {
         auto team = tourn->get_team(team_index);
         if (team) {
-          string team_name = team->name.empty() ? "(Unnamed team)" : team->name;
-          string message = string_printf("$C7%s\n%zuH/%zuC/%zu players\n%zu %s\n%s",
-              team_name.c_str(),
-              team->num_human_players(),
-              team->num_com_players(),
-              team->max_players,
-              team->num_rounds_cleared,
-              team->num_rounds_cleared == 1 ? "win" : "wins",
-              team->password.empty() ? "" : "Locked");
+          string message;
+          if (team->name.empty()) {
+            message = "(No registrant)";
+          } else if (team->max_players == 1) {
+            message = string_printf("$C6%s$C7\n%zu %s",
+                team->name.c_str(),
+                team->num_rounds_cleared,
+                team->num_rounds_cleared == 1 ? "win" : "wins");
+          } else {
+            message = string_printf("$C6%s$C7\n%zuH/%zuC\n%zu %s\n%s",
+                team->name.c_str(),
+                team->num_human_players(),
+                team->num_com_players(),
+                team->num_rounds_cleared,
+                team->num_rounds_cleared == 1 ? "win" : "wins",
+                team->password.empty() ? "" : "Locked");
+          }
           send_ship_info(c, decode_sjis(message));
         } else {
           send_ship_info(c, u"$C7No such team");
