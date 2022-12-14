@@ -972,8 +972,6 @@ static bool start_ep3_tournament_match_if_pending(
     return false;
   }
 
-  auto other_team = match->opponent_team_for_team(team);
-
   vector<uint32_t> required_serial_numbers;
   required_serial_numbers.resize(4, 0);
   auto add_team_players = [&](shared_ptr<const Episode3::Tournament::Team> team, size_t base_index) -> void {
@@ -988,8 +986,8 @@ static bool start_ep3_tournament_match_if_pending(
       z++;
     }
   };
-  add_team_players(team, 0);
-  add_team_players(other_team, 2);
+  add_team_players(match->preceding_a->winner_team, 0);
+  add_team_players(match->preceding_b->winner_team, 2);
 
   auto clients_map = l->clients_by_serial_number();
   vector<shared_ptr<Client>> game_clients;
