@@ -155,6 +155,12 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   }
 
   try {
+    s->proxy_allow_save_files = d.at("ProxyAllowSaveFiles")->as_bool();
+  } catch (const out_of_range&) {
+    s->proxy_allow_save_files = true;
+  }
+
+  try {
     s->ep3_behavior_flags = d.at("Episode3BehaviorFlags")->as_int();
   } catch (const out_of_range&) {
     s->ep3_behavior_flags = 0;

@@ -43,6 +43,7 @@ Current known issues / missing features / things to do:
 - Code style
     - The internal menu abstraction is ugly and hard to work with. Rewrite it.
     - Add default values for all commands (like we use for Episode 3 battle commands).
+    - Clean up the way proxy session options are passed to the session from the client object (and add user-settable options for e.g. chat filter, which currently doesn't appear in the menu).
 - Episode 3 bugs
     - Disconnecting during a match turns you into a COM if there are other humans in the match, even if the match is part of a tournament. This may be incorrect behavior for tournaments.
     - Disconnecting during a tournament when there are no other humans in the match simply cancels the match (so it can be replayed) instead of forfeiting, which is almost certainly incorrect behavior. (Then again, no one likes losing tournaments to COMs...)

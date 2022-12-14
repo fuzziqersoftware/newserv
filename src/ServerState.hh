@@ -110,6 +110,8 @@ struct ServerState {
   uint32_t local_address;
   uint32_t external_address;
 
+  bool proxy_allow_save_files;
+
   std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<Server> game_server;
   std::shared_ptr<FileContentsCache> client_options_cache;

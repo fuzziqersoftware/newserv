@@ -81,7 +81,7 @@ static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descrip
 });
 
 static vector<MenuItem> proxy_options_menu_for_client(
-    shared_ptr<const Client> c) {
+    shared_ptr<ServerState> s, shared_ptr<const Client> c) {
   vector<MenuItem> ret;
   // Note: The descriptions are instead in the map above, because this menu is
   // dynamically created every time it's sent to the client. This is just one
@@ -100,8 +100,10 @@ static vector<MenuItem> proxy_options_menu_for_client(
       c->proxy_block_events ? u"Block events ON" : u"Block events OFF", u"", 0);
   ret.emplace_back(ProxyOptionsMenuItemID::BLOCK_PATCHES,
       c->proxy_block_function_calls ? u"Block patches ON" : u"Block patches OFF", u"", 0);
-  ret.emplace_back(ProxyOptionsMenuItemID::SAVE_FILES,
-      c->proxy_save_files ? u"Save files ON" : u"Save files OFF", u"", 0);
+  if (s->proxy_allow_save_files) {
+    ret.emplace_back(ProxyOptionsMenuItemID::SAVE_FILES,
+        c->proxy_save_files ? u"Save files ON" : u"Save files OFF", u"", 0);
+  }
   ret.emplace_back(ProxyOptionsMenuItemID::SUPPRESS_LOGIN,
       c->proxy_suppress_remote_login ? u"Skip login ON" : u"Skip login OFF", u"", 0);
   ret.emplace_back(ProxyOptionsMenuItemID::SKIP_CARD,
@@ -131,7 +133,7 @@ static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Cl
   session->infinite_hp = c->infinite_hp;
   session->infinite_tp = c->infinite_tp;
   session->switch_assist = c->switch_assist;
-  session->save_files = c->proxy_save_files;
+  session->save_files = s->proxy_allow_save_files && c->proxy_save_files;
   session->suppress_remote_login = c->proxy_suppress_remote_login;
   if (c->proxy_block_events) {
     session->override_lobby_event = 0;
@@ -1682,7 +1684,7 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           c->proxy_zero_remote_guild_card = !c->proxy_zero_remote_guild_card;
         resend_proxy_options_menu:
           send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
-              proxy_options_menu_for_client(c));
+              proxy_options_menu_for_client(s, c));
           break;
         default:
           send_message_box(c, u"Incorrect menu item ID.");
@@ -1697,7 +1699,7 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
       } else if (item_id == ProxyDestinationsMenuItemID::OPTIONS) {
         send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
-            proxy_options_menu_for_client(c));
+            proxy_options_menu_for_client(s, c));
 
       } else {
         const pair<string, uint16_t>* dest = nullptr;

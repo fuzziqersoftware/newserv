@@ -31,7 +31,10 @@ ServerState::ServerState()
     ep3_card_auction_max_size(0),
     next_lobby_id(1),
     pre_lobby_event(0),
-    ep3_menu_song(-1) {
+    ep3_menu_song(-1),
+    local_address(0),
+    external_address(0),
+    proxy_allow_save_files(true) {
   vector<shared_ptr<Lobby>> non_v1_only_lobbies;
   vector<shared_ptr<Lobby>> ep3_only_lobbies;
 

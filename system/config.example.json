@@ -123,6 +123,12 @@
   // connect to newserv will be proxied to this destination.
   // "ProxyDestination-BB": "",
 
+  // There is a proxy option that allows users to save copies of various game
+  // files on the server side. If you have external clients connecting to your
+  // server, you can disable this option to prevent clients from generating
+  // files on the server side which they will never be able to access.
+  "ProxyAllowSaveFiles": true,
+
   // By default, the interactive shell runs if stdin is a terminal, and doesn't
   // run if it's not. This option, if present, overrides that behavior.
   // "RunInteractiveShell": false,
