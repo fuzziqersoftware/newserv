@@ -1259,8 +1259,16 @@ static void on_tournament_bracket_updated(
 
 static void on_ep3_server_data_request(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) { // CA
-  auto l = s->find_lobby(c->lobby_id);
-  if (!l || !(l->flags & Lobby::Flag::EPISODE_3_ONLY) || !l->is_game()) {
+  shared_ptr<Lobby> l;
+  try {
+    l = s->find_lobby(c->lobby_id);
+  } catch (const out_of_range&) {
+    // In rare cases (e.g. when two players end a tournament's match results
+    // screens at exactly the same time), the client can send a server data
+    // command when it's not in any lobby at all. We just ignore such commands.
+    return;
+  }
+  if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY) || !l->is_game()) {
     throw runtime_error("Episode 3 server data request sent outside of Episode 3 game");
   }
 
