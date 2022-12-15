@@ -1921,12 +1921,11 @@ void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number
         throw runtime_error("invalid battle table seat number");
       }
       auto& e = cmd.entries[c->card_battle_table_seat_number];
-      if (e.state != 0) {
-        throw runtime_error("multiple clients in the same battle table seat");
+      if (e.state == 0) {
+        e.state = c->card_battle_table_seat_state;
+        e.guild_card_number = c->license->serial_number;
+        clients.emplace(c);
       }
-      e.state = c->card_battle_table_seat_state;
-      e.guild_card_number = c->license->serial_number;
-      clients.emplace(c);
     }
   }
 

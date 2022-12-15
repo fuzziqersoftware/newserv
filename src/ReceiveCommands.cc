@@ -983,8 +983,10 @@ static bool start_ep3_battle_table_game_if_ready(
     if (c->card_battle_table_seat_number >= 4) {
       throw logic_error("invalid seat number");
     }
+    // Apparently this can actually happen; just prevent them from starting a
+    // battle if multiple players are in the same seat
     if (!table_clients.emplace(c->card_battle_table_seat_number, c).second) {
-      throw runtime_error("multiple clients in same battle table seat");
+      return false;
     }
     if (c->card_battle_table_seat_state == 3) {
       return false;
