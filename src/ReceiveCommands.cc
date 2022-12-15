@@ -992,8 +992,7 @@ static bool start_ep3_tournament_match_if_pending(
   add_team_players(match->preceding_b->winner_team, 2);
 
   auto clients_map = l->clients_by_serial_number();
-  vector<shared_ptr<Client>> game_clients;
-  game_clients.resize(4);
+  unordered_map<uint8_t, shared_ptr<Client>> game_clients;
   for (size_t z = 0; z < required_serial_numbers.size(); z++) {
     uint32_t serial_number = required_serial_numbers[z];
     if (!serial_number) {
@@ -1008,7 +1007,7 @@ static bool start_ep3_tournament_match_if_pending(
     if (player_c->card_battle_table_number != table_number) {
       return false;
     }
-    game_clients.at(z) = player_c;
+    game_clients.emplace(z, player_c);
   }
 
   // If there is already a game for this match, do nothing (the player is
@@ -1022,29 +1021,33 @@ static bool start_ep3_tournament_match_if_pending(
   // At this point, we've checked all the necessary conditions for a tournament
   // match to begin.
 
-  for (const auto& other_c : game_clients) {
-    if (!other_c) {
-      continue;
-    }
-
+  for (const auto& it : game_clients) {
+    auto other_c = it.second;
     other_c->card_battle_table_number = -1;
     other_c->card_battle_table_seat_number = 0;
+  }
 
-    send_self_leave_notification(other_c);
-    string message = string_printf(
-        "$C7Waiting to begin match in tournament\n$C6%s$C7...\n\n(Hold B+X+START to abort)",
-        tourn->get_name().c_str());
-    send_message_box(other_c, decode_sjis(message));
+  // If there's only one client in the match, skip the wait phase - they'll be
+  // added to the match immediately by add_next_tournament_match_client anyway
+  if (game_clients.empty()) {
+    throw logic_error("no clients to add to tournament match");
+  } else if (game_clients.size() != 1) {
+    for (const auto& it : game_clients) {
+      auto other_c = it.second;
+      send_self_leave_notification(other_c);
+      string message = string_printf(
+          "$C7Waiting to begin match in tournament\n$C6%s$C7...\n\n(Hold B+X+START to abort)",
+          tourn->get_name().c_str());
+      send_message_box(other_c, decode_sjis(message));
+    }
   }
 
   uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
   auto game = create_game_generic(s, c, decode_sjis(tourn->get_name()), u"", 0xFF, 0, flags);
   game->tournament_match = match;
   game->tournament_clients_to_add.clear();
-  for (size_t z = 0; z < game_clients.size(); z++) {
-    if (game_clients[z]) {
-      game->tournament_clients_to_add.emplace(z, game_clients[z]);
-    }
+  for (const auto& it : game_clients) {
+    game->tournament_clients_to_add.emplace(it.first, it.second);
   }
   add_next_tournament_match_client(s, game);
   return true;
