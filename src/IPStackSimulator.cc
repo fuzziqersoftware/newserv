@@ -221,8 +221,7 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
     try {
       this->on_client_frame(c, frame);
     } catch (const exception& e) {
-      if (this->state->ip_stack_debug) {
-        ip_stack_simulator_log.warning("Failed to process frame: %s", e.what());
+      if (ip_stack_simulator_log.warning("Failed to process frame: %s", e.what())) {
         print_data(stderr, frame);
       }
     }
@@ -250,15 +249,14 @@ void IPStackSimulator::on_client_error(struct bufferevent* bev,
 
 void IPStackSimulator::on_client_frame(
     shared_ptr<IPClient> c, const string& frame) {
-  if (this->state->ip_stack_debug) {
-    fputc('\n', stderr);
-    ip_stack_simulator_log.info("Virtual network sent frame");
+  if (ip_stack_simulator_log.info("Virtual network sent frame")) {
     print_data(stderr, frame);
+    fputc('\n', stderr);
   }
   this->log_frame(frame);
 
   FrameInfo fi(frame);
-  if (this->state->ip_stack_debug) {
+  if (ip_stack_simulator_log.should_log(LogLevel::INFO)) {
     string fi_header = fi.header_str();
     ip_stack_simulator_log.info("Frame header: %s", fi_header.c_str());
   }
@@ -368,9 +366,7 @@ void IPStackSimulator::on_client_arp_frame(
   evbuffer_add(out_buf, &r_arp, sizeof(r_arp));
   evbuffer_add(out_buf, r_payload, sizeof(r_payload));
 
-  if (this->state->ip_stack_debug) {
-    ip_stack_simulator_log.info("Sending ARP response");
-  }
+  ip_stack_simulator_log.info("Sending ARP response");
 
   if (this->pcap_text_log_file) {
     StringWriter w;
@@ -429,7 +425,7 @@ void IPStackSimulator::on_client_udp_frame(
 
   struct evbuffer* out_buf = bufferevent_get_output(c->bev.get());
 
-  if (this->state->ip_stack_debug) {
+  if (ip_stack_simulator_log.should_log(LogLevel::INFO)) {
     string remote_str = this->str_for_ipv4_netloc(fi.ipv4->src_addr, fi.udp->src_port);
     ip_stack_simulator_log.info("Sending DNS response to %s", remote_str.c_str());
     print_data(stderr, r_data);
@@ -478,10 +474,8 @@ uint64_t IPStackSimulator::tcp_conn_key_for_client_frame(const FrameInfo& fi) {
 
 void IPStackSimulator::on_client_tcp_frame(
     shared_ptr<IPClient> c, const FrameInfo& fi) {
-  if (this->state->ip_stack_debug) {
-    ip_stack_simulator_log.info("Virtual network sent TCP frame (seq=%08" PRIX32 ", ack=%08" PRIX32 ")",
-        fi.tcp->seq_num.load(), fi.tcp->ack_num.load());
-  }
+  ip_stack_simulator_log.info("Virtual network sent TCP frame (seq=%08" PRIX32 ", ack=%08" PRIX32 ")",
+      fi.tcp->seq_num.load(), fi.tcp->ack_num.load());
 
   if (fi.tcp->flags & (TCPHeader::Flag::NS | TCPHeader::Flag::CWR |
                        TCPHeader::Flag::ECE | TCPHeader::Flag::URG)) {
@@ -561,13 +555,8 @@ void IPStackSimulator::on_client_tcp_frame(
       conn.bytes_sent = 0;
 
       conn_str = this->str_for_tcp_connection(c, conn);
-      if (this->state->ip_stack_debug) {
-        ip_stack_simulator_log.info("Client opened TCP connection %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
-            conn_str.c_str(), conn.acked_server_seq, conn.next_client_seq);
-      } else {
-        ip_stack_simulator_log.info("Client opened TCP connection %s",
-            conn_str.c_str());
-      }
+      ip_stack_simulator_log.info("Client opened TCP connection %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
+          conn_str.c_str(), conn.acked_server_seq, conn.next_client_seq);
 
     } else {
       // Connection is NOT new; this is probably a resend of an earlier SYN
@@ -577,18 +566,14 @@ void IPStackSimulator::on_client_tcp_frame(
       // TODO: We should check the syn/ack numbers here instead of just assuming
       // they're correct
       conn_str = this->str_for_tcp_connection(c, conn);
-      if (this->state->ip_stack_debug) {
-        ip_stack_simulator_log.info("Client resent SYN for TCP connection %s",
-            conn_str.c_str());
-      }
+      ip_stack_simulator_log.info("Client resent SYN for TCP connection %s",
+          conn_str.c_str());
     }
 
     // Send a SYN+ACK (send_tcp_frame always adds the ACK flag)
     this->send_tcp_frame(c, conn, TCPHeader::Flag::SYN);
-    if (this->state->ip_stack_debug) {
-      ip_stack_simulator_log.info("Sent SYN+ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
-          conn_str.c_str(), conn.acked_server_seq, conn.next_client_seq);
-    }
+    ip_stack_simulator_log.info("Sent SYN+ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
+        conn_str.c_str(), conn.acked_server_seq, conn.next_client_seq);
 
   } else {
     // This frame isn't a SYN, so a connection object should already exist
@@ -602,9 +587,7 @@ void IPStackSimulator::on_client_tcp_frame(
     bool conn_valid = true;
 
     if (fi.tcp->flags & TCPHeader::Flag::ACK) {
-      if (this->state->ip_stack_debug) {
-        ip_stack_simulator_log.info("Client sent ACK %08" PRIX32, fi.tcp->ack_num.load());
-      }
+      ip_stack_simulator_log.info("Client sent ACK %08" PRIX32, fi.tcp->ack_num.load());
       if (conn->awaiting_first_ack) {
         if (fi.tcp->ack_num != conn->acked_server_seq + 1) {
           throw runtime_error("first ack_num was not acked_server_seq + 1");
@@ -614,9 +597,7 @@ void IPStackSimulator::on_client_tcp_frame(
 
       } else {
         if (seq_num_greater(fi.tcp->ack_num, conn->acked_server_seq)) {
-          if (this->state->ip_stack_debug) {
-            ip_stack_simulator_log.info("Advancing acked_server_seq from %08" PRIX32, conn->acked_server_seq);
-          }
+          ip_stack_simulator_log.info("Advancing acked_server_seq from %08" PRIX32, conn->acked_server_seq);
           uint32_t ack_delta = fi.tcp->ack_num - conn->acked_server_seq;
           size_t pending_bytes = evbuffer_get_length(conn->pending_data.get());
           if (pending_bytes < ack_delta) {
@@ -628,10 +609,8 @@ void IPStackSimulator::on_client_tcp_frame(
           conn->resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
           conn->next_push_max_frame_size = conn->max_frame_size;
 
-          if (this->state->ip_stack_debug) {
-            ip_stack_simulator_log.info("Removed %08" PRIX32 " bytes from pending buffer and advanced acked_server_seq to %08" PRIX32,
-                ack_delta, conn->acked_server_seq);
-          }
+          ip_stack_simulator_log.info("Removed %08" PRIX32 " bytes from pending buffer and advanced acked_server_seq to %08" PRIX32,
+              ack_delta, conn->acked_server_seq);
 
         } else if (seq_num_less(fi.tcp->ack_num, conn->acked_server_seq)) {
           throw runtime_error("client sent lower ack num than previous frame");
@@ -670,7 +649,8 @@ void IPStackSimulator::on_client_tcp_frame(
     // server immediately.
     } else if (fi.payload_size != 0) {
 
-      string conn_str = this->state->ip_stack_debug ? this->str_for_tcp_connection(c, *conn) : "";
+      string conn_str = ip_stack_simulator_log.should_log(LogLevel::WARNING)
+          ? this->str_for_tcp_connection(c, *conn) : "";
 
       size_t payload_skip_bytes;
       if (fi.tcp->seq_num == conn->next_client_seq) {
@@ -690,11 +670,9 @@ void IPStackSimulator::on_client_tcp_frame(
         // Payload is in the future - we must have missed a data frame. We'll
         // ignore it (but warn) and send an ACK later, and the client should
         // retransmit the lost data
-        if (this->state->ip_stack_debug) {
-          ip_stack_simulator_log.warning(
-              "Client sent out-of-order sequence number (expected %08" PRIX32 ", received %08" PRIX32 ", 0x%zX data bytes)",
-              conn->next_client_seq, fi.tcp->seq_num.load(), fi.payload_size);
-        }
+        ip_stack_simulator_log.warning(
+            "Client sent out-of-order sequence number (expected %08" PRIX32 ", received %08" PRIX32 ", 0x%zX data bytes)",
+            conn->next_client_seq, fi.tcp->seq_num.load(), fi.payload_size);
         payload_skip_bytes = fi.payload_size;
       }
 
@@ -706,14 +684,15 @@ void IPStackSimulator::on_client_tcp_frame(
         const void* payload = reinterpret_cast<const uint8_t*>(fi.payload) + payload_skip_bytes;
         size_t payload_size = fi.payload_size - payload_skip_bytes;
 
-        if (this->state->ip_stack_debug) {
-          if (payload_skip_bytes) {
-            ip_stack_simulator_log.info("Client sent data on TCP connection %s, overlapping existing ack'ed data (0x%zX bytes ignored)",
-                conn_str.c_str(), payload_skip_bytes);
-          } else {
-            ip_stack_simulator_log.info("Client sent data on TCP connection %s",
-                conn_str.c_str());
-          }
+        bool was_logged;
+        if (payload_skip_bytes) {
+          was_logged = ip_stack_simulator_log.info("Client sent data on TCP connection %s, overlapping existing ack'ed data (0x%zX bytes ignored)",
+              conn_str.c_str(), payload_skip_bytes);
+        } else {
+          was_logged = ip_stack_simulator_log.info("Client sent data on TCP connection %s",
+              conn_str.c_str());
+        }
+        if (was_logged) {
           print_data(stderr, payload, payload_size);
         }
 
@@ -725,14 +704,16 @@ void IPStackSimulator::on_client_tcp_frame(
         // Update the sequence number and stats
         conn->next_client_seq += payload_size;
         conn->bytes_received += payload_size;
+        if (conn->next_client_seq < payload_size) {
+          ip_stack_simulator_log.warning("Client sequence number has wrapped (next=%08" PRIX32 ", bytes=%zX)",
+              fi.tcp->seq_num.load(), payload_size);
+        }
       }
 
       // Send an ACK
       this->send_tcp_frame(c, *conn);
-      if (this->state->ip_stack_debug) {
-        ip_stack_simulator_log.info("Sent PSH ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ", bytes_received=0x%zX)",
-            conn_str.c_str(), conn->acked_server_seq, conn->next_client_seq, conn->bytes_received);
-      }
+      ip_stack_simulator_log.info("Sent PSH ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ", bytes_received=0x%zX)",
+          conn_str.c_str(), conn->acked_server_seq, conn->next_client_seq, conn->bytes_received);
     }
 
     if (conn_valid) {
@@ -801,10 +782,8 @@ void IPStackSimulator::send_pending_push_frame(
 
   size_t bytes_to_send = min<size_t>(pending_bytes, conn.next_push_max_frame_size);
 
-  if (this->state->ip_stack_debug) {
-    ip_stack_simulator_log.info("Sending PSH frame with seq_num %08" PRIX32 ", 0x%zX/0x%zX data bytes",
-        conn.acked_server_seq, bytes_to_send, pending_bytes);
-  }
+  ip_stack_simulator_log.info("Sending PSH frame with seq_num %08" PRIX32 ", 0x%zX/0x%zX data bytes",
+      conn.acked_server_seq, bytes_to_send, pending_bytes);
 
   this->send_tcp_frame(c, conn, TCPHeader::Flag::PSH, conn.pending_data.get(),
       bytes_to_send);
@@ -915,10 +894,8 @@ void IPStackSimulator::dispatch_on_server_input(struct bufferevent*, void* ctx) 
 
 void IPStackSimulator::on_server_input(shared_ptr<IPClient> c, IPClient::TCPConnection& conn) {
   struct evbuffer* buf = bufferevent_get_input(conn.server_bev.get());
-  if (this->state->ip_stack_debug) {
-    ip_stack_simulator_log.info("Server input event: 0x%zX bytes to read",
-        evbuffer_get_length(buf));
-  }
+  ip_stack_simulator_log.info("Server input event: 0x%zX bytes to read",
+      evbuffer_get_length(buf));
 
   evbuffer_add_buffer(conn.pending_data.get(), buf);
   this->send_pending_push_frame(c, conn);

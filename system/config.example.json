@@ -163,8 +163,9 @@
     "FunctionCompiler": "info",
     // IP stack simulator messages describe clients connecting and disconnecting
     // via the IP stack interface, and errors that occur at the simulated
-    // network level within the simulator.
-    "IPStackSimulator": "info",
+    // network level within the simulator. This log is fairly verbose at the
+    // info level, so by default we suppress those messages.
+    "IPStackSimulator": "warning",
     // License manager messages describe the creation of new license files.
     "LicenseManager": "info",
     // Lobby messages describe creation and deletion of lobbies and games, as
