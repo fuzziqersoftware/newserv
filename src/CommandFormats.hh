@@ -2099,6 +2099,12 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { } __packed__;
 // This command is not valid on Episode 3 Trial Edition.
 // header.flag determines the client's registration state - 1 if the client is
 // registered for the tournament, 0 if not.
+// This command controls what's shown in the Check Tactics pane in the pause
+// menu. If the client is registered (header.flag==1), the option is enabled and
+// the bracket data in the command is shown there, and a third pane on the
+// Status item shows the other information (tournament name, ship name, and
+// start time). If the client is not registered, the Check Tactics option is
+// disabled and the Status item has only two panes.
 
 struct S_ConfirmTournamentEntry_GC_Ep3_CC {
   ptext<char, 0x40> tournament_name;

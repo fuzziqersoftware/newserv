@@ -890,7 +890,21 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
     }
   }
 
+  bool modified = false;
   if (!data.empty()) {
+    // Unmask any masked Episode 3 commands from the server
+    if ((session.version == GameVersion::GC) && (data.size() > 8) &&
+        ((static_cast<uint8_t>(data[0]) == 0xB3) ||
+         (static_cast<uint8_t>(data[0]) == 0xB4) ||
+         (static_cast<uint8_t>(data[0]) == 0xB5))) {
+      const auto& header = check_size_t<G_CardBattleCommandHeader>(
+          data, sizeof(G_CardBattleCommandHeader), 0xFFFF);
+      if (header.mask_key) {
+        set_mask_for_ep3_game_command(data.data(), data.size(), 0);
+        modified = true;
+      }
+    }
+
     if (data[0] == 0x46) {
       const auto& cmd = check_size_t<G_AttackFinished_6x46>(data,
           offsetof(G_AttackFinished_6x46, entries),
@@ -962,7 +976,7 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
     }
   }
 
-  return HandlerResult::Type::FORWARD;
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 template <typename T>
