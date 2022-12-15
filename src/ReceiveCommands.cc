@@ -959,7 +959,7 @@ static bool add_next_game_client(
   return true;
 }
 
-static bool start_ep3_battle_table_game_if_pending(
+static bool start_ep3_battle_table_game_if_ready(
     shared_ptr<ServerState> s,
     shared_ptr<Lobby> l,
     int16_t table_number,
@@ -1017,7 +1017,8 @@ static bool start_ep3_battle_table_game_if_pending(
   // neither are null.
   auto tourn_match = (tourn_matches.size() == 1) ? *tourn_matches.begin() : nullptr;
   auto tourn = tourn_match ? tourn_match->tournament.lock() : nullptr;
-  if (!tourn) {
+  if (!tourn || !tourn_match->preceding_a->winner_team || !tourn_match->preceding_b->winner_team) {
+    tourn.reset();
     tourn_match.reset();
   }
 
@@ -1132,7 +1133,7 @@ static bool start_ep3_battle_table_game_if_pending(
 static void on_ep3_battle_table_state_updated(
     shared_ptr<ServerState> s, shared_ptr<Lobby> l, int16_t table_number) {
   send_ep3_card_battle_table_state(l, table_number);
-  start_ep3_battle_table_game_if_pending(s, l, table_number, 2);
+  start_ep3_battle_table_game_if_ready(s, l, table_number, 2);
 }
 
 static void on_ep3_battle_table_state(shared_ptr<ServerState> s,
