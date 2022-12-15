@@ -49,7 +49,7 @@ Current known issues / missing features / things to do:
     - Disconnecting during a tournament when there are no other humans in the match simply cancels the match (so it can be replayed) instead of forfeiting, which is almost certainly incorrect behavior. (Then again, no one likes losing tournaments to COMs...)
     - Tournament deck restrictions aren't enforced when populating COMs at tournament start time. This can cause weird behavior if, for example, a COM deck contains assist cards and the tournament rules forbid them.
     - There is a rare failure mode during battles that causes one of the clients to be disconnected.
-    - Battle Tables don't work properly (except for tournaments).
+    - Battle tables may work properly, but are not well-tested.
 
 ## Compatibility
 

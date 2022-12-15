@@ -1906,7 +1906,7 @@ void send_ep3_rank_update(shared_ptr<Client> c) {
 void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number) {
   S_CardBattleTableState_GC_Ep3_E4 cmd;
   for (size_t z = 0; z < 4; z++) {
-    cmd.entries[z].present = 0;
+    cmd.entries[z].state = 0;
     cmd.entries[z].unknown_a1 = 0;
     cmd.entries[z].guild_card_number = 0;
   }
@@ -1921,10 +1921,10 @@ void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number
         throw runtime_error("invalid battle table seat number");
       }
       auto& e = cmd.entries[c->card_battle_table_seat_number];
-      if (e.present) {
+      if (e.state != 0) {
         throw runtime_error("multiple clients in the same battle table seat");
       }
-      e.present = 1;
+      e.state = c->card_battle_table_seat_state;
       e.guild_card_number = c->license->serial_number;
       clients.emplace(c);
     }

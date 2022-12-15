@@ -2512,16 +2512,21 @@ struct C_PlayerPreviewRequest_BB_E3 {
 // When client sends an E4, server should respond with another E4 (but these
 // commands have different formats).
 
-// Header flag = seated state (1 = present, 0 = leaving)
+// header.flag = seated state (1 = present, 0 = leaving)
 struct C_CardBattleTableState_GC_Ep3_E4 {
   le_uint16_t table_number = 0;
   le_uint16_t seat_number = 0;
 } __packed__;
 
-// Header flag = table number
+// header.flag = table number
 struct S_CardBattleTableState_GC_Ep3_E4 {
   struct Entry {
-    le_uint16_t present = 0; // 1 = player present, 0 = no player
+    // State values:
+    // 0 = no player present
+    // 1 = player present, not confirmed
+    // 2 = player present, confirmed
+    // 3 = player presend, declined
+    le_uint16_t state = 0;
     le_uint16_t unknown_a1 = 0;
     le_uint32_t guild_card_number = 0;
   } __packed__;

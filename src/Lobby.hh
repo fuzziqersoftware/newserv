@@ -107,7 +107,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::shared_ptr<const Quest> loading_quest;
   std::array<std::shared_ptr<Client>, 12> clients;
   // Keys in this map are client_id
-  std::unordered_map<size_t, std::weak_ptr<Client>> tournament_clients_to_add;
+  std::unordered_map<size_t, std::weak_ptr<Client>> clients_to_add;
 
   explicit Lobby(uint32_t id);
 

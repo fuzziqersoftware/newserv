@@ -26,8 +26,10 @@ using namespace std;
 
 
 
+const char* BATTLE_TABLE_DISCONNECT_HOOK_NAME = "battle_table_state";
 const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME = "quest_barrier";
 const char* CARD_AUCTION_DISCONNECT_HOOK_NAME = "card_auction";
+const char* ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME = "add_next_game_client";
 
 
 
@@ -877,27 +879,21 @@ static void on_ep3_meseta_transaction(shared_ptr<ServerState>,
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
-static bool add_next_tournament_match_client(
+static bool add_next_game_client(
     shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
-  if (!l->tournament_match) {
-    return false;
-  }
-  auto tourn = l->tournament_match->tournament.lock();
-  if (!tourn) {
-    return false;
-  }
-
-  auto it = l->tournament_clients_to_add.begin();
-  if (it == l->tournament_clients_to_add.end()) {
+  auto it = l->clients_to_add.begin();
+  if (it == l->clients_to_add.end()) {
     return false;
   }
   size_t target_client_id = it->first;
   shared_ptr<Client> c = it->second.lock();
-  l->tournament_clients_to_add.erase(it);
+  l->clients_to_add.erase(it);
 
-  // If the client has disconnected before they could join the match, disband
-  // the entire game
-  if (!c) {
+  auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : nullptr;
+
+  // If the game is a tournament match and the client has disconnected before
+  // they could join the match, disband the entire game
+  if (!c && l->tournament_match) {
     send_command(l, 0xED, 0x00);
     return false;
   }
@@ -906,22 +902,25 @@ static bool add_next_tournament_match_client(
     throw logic_error("client id is already in use");
   }
 
-  G_SetStateFlags_GC_Ep3_6xB4x03 state_cmd;
-  state_cmd.state.turn_num = 1;
-  state_cmd.state.battle_phase = Episode3::BattlePhase::INVALID_00;
-  state_cmd.state.current_team_turn1 = 0xFF;
-  state_cmd.state.current_team_turn2 = 0xFF;
-  state_cmd.state.action_subphase = Episode3::ActionSubphase::ATTACK;
-  state_cmd.state.setup_phase = Episode3::SetupPhase::REGISTRATION;
-  state_cmd.state.registration_phase = Episode3::RegistrationPhase::AWAITING_NUM_PLAYERS;
-  state_cmd.state.team_exp.clear(0);
-  state_cmd.state.team_dice_boost.clear(0);
-  state_cmd.state.first_team_turn = 0xFF;
-  state_cmd.state.tournament_flag = 0x01;
-  state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
-  if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-    uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
-    set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
+  if (tourn) {
+    G_SetStateFlags_GC_Ep3_6xB4x03 state_cmd;
+    state_cmd.state.turn_num = 1;
+    state_cmd.state.battle_phase = Episode3::BattlePhase::INVALID_00;
+    state_cmd.state.current_team_turn1 = 0xFF;
+    state_cmd.state.current_team_turn2 = 0xFF;
+    state_cmd.state.action_subphase = Episode3::ActionSubphase::ATTACK;
+    state_cmd.state.setup_phase = Episode3::SetupPhase::REGISTRATION;
+    state_cmd.state.registration_phase = Episode3::RegistrationPhase::AWAITING_NUM_PLAYERS;
+    state_cmd.state.team_exp.clear(0);
+    state_cmd.state.team_dice_boost.clear(0);
+    state_cmd.state.first_team_turn = 0xFF;
+    state_cmd.state.tournament_flag = 0x01;
+    state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
+    if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+      uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+      set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
+    }
+    send_command_t(c, 0xC9, 0x00, state_cmd);
   }
 
   // For the final match, use higher EX values.
@@ -936,8 +935,9 @@ static bool add_next_tournament_match_client(
   static const std::pair<uint16_t, uint16_t> final_lose_entries[10] = {
       {1, -5}, {-1, -10}, {-3, -15}, {-7, -20}, {-15, -20}, {-20, -25}, {-30, -30}, {-40, -30}, {-50, -34}, {0, -40}};
   G_SetEXResultValues_GC_Ep3_6xB4x4B ex_cmd;
-  const auto& win_entries = (l->tournament_match == tourn->get_final_match()) ? final_win_entries : non_final_win_entries;
-  const auto& lose_entries = (l->tournament_match == tourn->get_final_match()) ? final_lose_entries : non_final_lose_entries;
+  bool is_final_match = (tourn && (l->tournament_match == tourn->get_final_match()));
+  const auto& win_entries = is_final_match ? final_win_entries : non_final_win_entries;
+  const auto& lose_entries = is_final_match ? final_lose_entries : non_final_lose_entries;
   for (size_t z = 0; z < 10; z++) {
     ex_cmd.win_entries[z].threshold = win_entries[z].first;
     ex_cmd.win_entries[z].value = win_entries[z].second;
@@ -948,109 +948,191 @@ static bool add_next_tournament_match_client(
     uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
     set_mask_for_ep3_game_command(&ex_cmd, sizeof(ex_cmd), mask_key);
   }
-
-  send_command_t(c, 0xC9, 0x00, state_cmd);
   send_command_t(c, 0xC9, 0x00, ex_cmd);
+
   s->change_client_lobby(c, l, true, target_client_id);
   c->flags |= Client::Flag::LOADING;
+  c->disconnect_hooks.emplace(ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME, [s, l]() -> void {
+    add_next_game_client(s, l);
+  });
+
   return true;
 }
 
-static bool start_ep3_tournament_match_if_pending(
+static bool start_ep3_battle_table_game_if_pending(
     shared_ptr<ServerState> s,
     shared_ptr<Lobby> l,
-    shared_ptr<Client> c,
-    int16_t table_number) {
-  auto team = c->ep3_tournament_team.lock();
-  if (!team) {
-    return false; // Client is not registered in a tournament
+    int16_t table_number,
+    int16_t tournament_table_number) {
+  if (table_number < 0) {
+    // Negative numbers are supposed to mean the client is not seated at a
+    // table, so it's an error for this function to be called with a negative
+    // table number
+    throw logic_error("negative table number");
   }
-  auto tourn = team->tournament.lock();
+
+  // Figure out which clients are at this table. If any client has declined, we
+  // never start a match, but we may start a match even if all clients have not
+  // yet accepted (in case of a tournament match).
+  unordered_map<size_t, shared_ptr<Client>> table_clients;
+  bool all_clients_accepted = true;
+  for (const auto& c : l->clients) {
+    if (!c || (c->card_battle_table_number != table_number)) {
+      continue;
+    }
+    if (c->card_battle_table_seat_number >= 4) {
+      throw logic_error("invalid seat number");
+    }
+    if (!table_clients.emplace(c->card_battle_table_seat_number, c).second) {
+      throw runtime_error("multiple clients in same battle table seat");
+    }
+    if (c->card_battle_table_seat_state == 3) {
+      return false;
+    }
+    if (c->card_battle_table_seat_state != 2) {
+      all_clients_accepted = false;
+    }
+  }
+  if (table_clients.size() > 4) {
+    throw runtime_error("too many clients at battle table");
+  }
+
+  // Figure out if this is a tournament match setup
+  unordered_set<shared_ptr<Episode3::Tournament::Match>> tourn_matches;
+  if (table_number == tournament_table_number) {
+    for (const auto& it : table_clients) {
+      auto team = it.second->ep3_tournament_team.lock();
+      auto tourn = team ? team->tournament.lock() : nullptr;
+      auto match = tourn ? tourn->next_match_for_team(team) : nullptr;
+      // Note: We intentionally don't check for null here. This is to handle the
+      // case where a tournament-registered player steps into a seat at a table
+      // where a non-tournament-registered player is already present - we should
+      // NOT start any match until the non-tournament-registered player leaves,
+      // or they both accept (and we start a non-tournament match).
+      tourn_matches.emplace(match);
+    }
+  }
+
+  // Get the tournament. Invariant: both tourn_match and tourn are null, or
+  // neither are null.
+  auto tourn_match = (tourn_matches.size() == 1) ? *tourn_matches.begin() : nullptr;
+  auto tourn = tourn_match ? tourn_match->tournament.lock() : nullptr;
   if (!tourn) {
-    return false; // The tournament has been canceled
+    tourn_match.reset();
   }
-  auto match = tourn->next_match_for_team(team);
-  if (!match) {
+
+  // If this is a tournament match setup, check if all required players are
+  // present and rearrange their client IDs to match their team positions
+  unordered_map<size_t, shared_ptr<Client>> game_clients;
+  if (tourn_match) {
+    unordered_map<size_t, uint32_t> required_serial_numbers;
+    auto add_team_players = [&](shared_ptr<const Episode3::Tournament::Team> team, size_t base_index) -> void {
+      size_t z = 0;
+      for (const auto& player : team->players) {
+        if (z >= 2) {
+          throw logic_error("more than 2 players on team");
+        }
+        if (player.is_human()) {
+          required_serial_numbers.emplace(base_index + z, player.serial_number);
+        }
+        z++;
+      }
+    };
+    add_team_players(tourn_match->preceding_a->winner_team, 0);
+    add_team_players(tourn_match->preceding_b->winner_team, 2);
+
+    for (const auto& it : required_serial_numbers) {
+      size_t client_id = it.first;
+      uint32_t serial_number = it.second;
+      for (const auto& it : table_clients) {
+        if (it.second->license->serial_number == serial_number) {
+          game_clients.emplace(client_id, it.second);
+        }
+      }
+    }
+
+    if (game_clients.size() != required_serial_numbers.size()) {
+      // Not all tournament match participants are present, so we can't start
+      // the tournament match. (But they can still use the battle table)
+      tourn_match.reset();
+      tourn.reset();
+    } else {
+      // If there is already a game for this match, don't allow a new one to
+      // start
+      for (auto l : s->all_lobbies()) {
+        if (l->tournament_match == tourn_match) {
+          tourn_match.reset();
+          tourn.reset();
+        }
+      }
+    }
+  }
+
+  // In the non-tournament case (or if the tournament case was rejected above),
+  // only start the game if all players have accepted. If they have, just put
+  // them in the clients map in seat order.
+  if (!tourn_match) {
+    if (!all_clients_accepted) {
+      return false;
+    }
+    game_clients = move(table_clients);
+  }
+
+  // If there are no clients, do nothing (this happens when the last player
+  // leaves a battle table without starting a game)
+  if (game_clients.empty()) {
     return false;
   }
 
-  vector<uint32_t> required_serial_numbers;
-  required_serial_numbers.resize(4, 0);
-  auto add_team_players = [&](shared_ptr<const Episode3::Tournament::Team> team, size_t base_index) -> void {
-    size_t z = 0;
-    for (const auto& player : team->players) {
-      if (z >= 2) {
-        throw logic_error("more than 2 players on team");
-      }
-      if (player.is_human()) {
-        required_serial_numbers.at(base_index + z) = player.serial_number;
-      }
-      z++;
-    }
-  };
-  add_team_players(match->preceding_a->winner_team, 0);
-  add_team_players(match->preceding_b->winner_team, 2);
+  // At this point, we've checked all the necessary conditions for a game to
+  // begin.
 
-  auto clients_map = l->clients_by_serial_number();
-  unordered_map<uint8_t, shared_ptr<Client>> game_clients;
-  for (size_t z = 0; z < required_serial_numbers.size(); z++) {
-    uint32_t serial_number = required_serial_numbers[z];
-    if (!serial_number) {
-      continue;
-    }
-    shared_ptr<Client> player_c;
-    try {
-      player_c = clients_map.at(serial_number);
-    } catch (const out_of_range&) {
-      return false;
-    }
-    if (player_c->card_battle_table_number != table_number) {
-      return false;
-    }
-    game_clients.emplace(z, player_c);
-  }
-
-  // If there is already a game for this match, do nothing (the player is
-  // probably about to be pulled into it, when another player is done loading)
-  for (auto l : s->all_lobbies()) {
-    if (l->tournament_match == match) {
-      return false;
-    }
-  }
-
-  // At this point, we've checked all the necessary conditions for a tournament
-  // match to begin.
-
+  // Remove all players from the battle table (but don't tell them about this)
   for (const auto& it : game_clients) {
     auto other_c = it.second;
     other_c->card_battle_table_number = -1;
     other_c->card_battle_table_seat_number = 0;
+    other_c->disconnect_hooks.erase(BATTLE_TABLE_DISCONNECT_HOOK_NAME);
   }
 
   // If there's only one client in the match, skip the wait phase - they'll be
-  // added to the match immediately by add_next_tournament_match_client anyway
+  // added to the match immediately by add_next_game_client anyway
   if (game_clients.empty()) {
-    throw logic_error("no clients to add to tournament match");
+    throw logic_error("no clients to add to battle table match");
+
   } else if (game_clients.size() != 1) {
     for (const auto& it : game_clients) {
       auto other_c = it.second;
       send_self_leave_notification(other_c);
-      string message = string_printf(
-          "$C7Waiting to begin match in tournament\n$C6%s$C7...\n\n(Hold B+X+START to abort)",
-          tourn->get_name().c_str());
-      send_message_box(other_c, decode_sjis(message));
+      u16string message;
+      if (tourn) {
+        message = decode_sjis(string_printf(
+            "$C7Waiting to begin match in tournament\n$C6%s$C7...\n\n(Hold B+X+START to abort)",
+            tourn->get_name().c_str()));
+      } else {
+        message = u"$C7Waiting to begin battle table match...\n\n(Hold B+X+START to abort)";
+      }
+      send_message_box(other_c, message);
     }
   }
 
   uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
-  auto game = create_game_generic(s, c, decode_sjis(tourn->get_name()), u"", 0xFF, 0, flags);
-  game->tournament_match = match;
-  game->tournament_clients_to_add.clear();
+  u16string name = tourn ? decode_sjis(tourn->get_name()) : u"<BattleTable>";
+  auto game = create_game_generic(
+      s, game_clients.begin()->second, name, u"", 0xFF, 0, flags);
+  game->tournament_match = tourn_match;
+  game->clients_to_add.clear();
   for (const auto& it : game_clients) {
-    game->tournament_clients_to_add.emplace(it.first, it.second);
+    game->clients_to_add.emplace(it.first, it.second);
   }
-  add_next_tournament_match_client(s, game);
+  add_next_game_client(s, game);
   return true;
+}
+
+static void on_ep3_battle_table_state_updated(
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l, int16_t table_number) {
+  send_ep3_card_battle_table_state(l, table_number);
+  start_ep3_battle_table_game_if_pending(s, l, table_number, 2);
 }
 
 static void on_ep3_battle_table_state(shared_ptr<ServerState> s,
@@ -1058,47 +1140,61 @@ static void on_ep3_battle_table_state(shared_ptr<ServerState> s,
   const auto& cmd = check_size_t<C_CardBattleTableState_GC_Ep3_E4>(data);
   auto l = s->find_lobby(c->lobby_id);
 
+  if (cmd.seat_number >= 4) {
+    throw runtime_error("invalid seat number");
+  }
+
   if (flag) {
     if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
       throw runtime_error("battle table join command sent in non-CARD lobby");
     }
     c->card_battle_table_number = cmd.table_number;
     c->card_battle_table_seat_number = cmd.seat_number;
-    if (cmd.table_number == 2) {
-      start_ep3_tournament_match_if_pending(s, l, c, cmd.table_number);
-    }
+    c->card_battle_table_seat_state = 1;
 
   } else { // Leaving battle table
     c->card_battle_table_number = -1;
     c->card_battle_table_seat_number = 0;
+    c->card_battle_table_seat_state = 0;
   }
 
-  send_ep3_card_battle_table_state(l, c->card_battle_table_number);
+  on_ep3_battle_table_state_updated(s, l, cmd.table_number);
 
   bool should_have_disconnect_hook = (c->card_battle_table_number != -1);
 
-  const char* DISCONNECT_HOOK_NAME = "battle_table_state";
-  if (should_have_disconnect_hook && !c->disconnect_hooks.count(DISCONNECT_HOOK_NAME)) {
-    c->disconnect_hooks.emplace(DISCONNECT_HOOK_NAME, [l, c]() -> void {
-      send_ep3_card_battle_table_state(l, c->card_battle_table_number);
+  if (should_have_disconnect_hook && !c->disconnect_hooks.count(BATTLE_TABLE_DISCONNECT_HOOK_NAME)) {
+    c->disconnect_hooks.emplace(BATTLE_TABLE_DISCONNECT_HOOK_NAME, [s, l, c]() -> void {
+      int16_t table_number = c->card_battle_table_number;
+      c->card_battle_table_number = -1;
+      c->card_battle_table_seat_number = 0;
+      c->card_battle_table_seat_state = 0;
+      if (table_number != -1) {
+        on_ep3_battle_table_state_updated(s, l, c->card_battle_table_number);
+      }
     });
   } else if (!should_have_disconnect_hook) {
-    c->disconnect_hooks.erase(DISCONNECT_HOOK_NAME);
+    c->disconnect_hooks.erase(BATTLE_TABLE_DISCONNECT_HOOK_NAME);
   }
 }
 
 static void on_ep3_battle_table_confirm(shared_ptr<ServerState> s,
-    shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) { // E4
+    shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) { // E5
   check_size_t<S_CardBattleTableConfirmation_GC_Ep3_E5>(data);
   auto l = s->find_lobby(c->lobby_id);
   if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
     throw runtime_error("battle table command sent in non-CARD lobby");
   }
 
-  if (flag) {
-    // TODO
-    send_lobby_message_box(c, u"Battle Tables are\nnot yet supported.");
+  if (c->card_battle_table_number < 0) {
+    throw runtime_error("invalid table number");
   }
+
+  if (flag) {
+    c->card_battle_table_seat_state = 2;
+  } else {
+    c->card_battle_table_seat_state = 3;
+  }
+  on_ep3_battle_table_state_updated(s, l, c->card_battle_table_number);
 }
 
 static void on_ep3_counter_state(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -3166,9 +3262,10 @@ static void on_client_ready(shared_ptr<ServerState> s, shared_ptr<Client> c,
     watched_lobby->ep3_server_base->server->send_commands_for_joining_spectator(c->channel);
   }
 
-  // If this is a tournament match and not all players are present, try to bring
-  // in the next player
-  add_next_tournament_match_client(s, l);
+
+  // If there are more players to bring in, try to do so
+  c->disconnect_hooks.erase(ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME);
+  add_next_game_client(s, l);
 }
 
 
