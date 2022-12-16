@@ -370,7 +370,7 @@ static void on_subcommand_hit_by_enemy(shared_ptr<ServerState>,
     return;
   }
   forward_subcommand(l, c, command, flag, data);
-  if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->infinite_hp) {
+  if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->options.infinite_hp) {
     send_player_stats_change(l, c, PlayerStatsChange::ADD_HP, 2550);
   }
 }
@@ -384,7 +384,7 @@ static void on_subcommand_cast_technique_finished(shared_ptr<ServerState>,
     return;
   }
   forward_subcommand(l, c, command, flag, data);
-  if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->infinite_tp) {
+  if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->options.infinite_tp) {
     send_player_stats_change(l, c, PlayerStatsChange::ADD_TP, 255);
   }
 }
@@ -434,7 +434,7 @@ static void on_subcommand_switch_state_changed(shared_ptr<ServerState>,
   }
   forward_subcommand(l, c, command, flag, data);
   if (cmd.flags && cmd.header.object_id != 0xFFFF) {
-    if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->switch_assist &&
+    if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->options.switch_assist &&
         (c->last_switch_enabled_command.header.subcommand == 0x05)) {
       c->log.info("[Switch assist] Replaying previous enable command");
       forward_subcommand(l, c, command, flag, &c->last_switch_enabled_command,

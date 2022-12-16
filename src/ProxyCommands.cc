@@ -142,7 +142,7 @@ static HandlerResult S_97(shared_ptr<ServerState>,
 
 static HandlerResult C_G_9E(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
-  if (session.suppress_remote_login) {
+  if (session.options.suppress_remote_login) {
     le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
     session.server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
 
@@ -160,7 +160,7 @@ static HandlerResult C_G_9E(shared_ptr<ServerState>,
 
 static HandlerResult S_G_9A(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
-  if (!session.license || session.suppress_remote_login) {
+  if (!session.license || session.options.suppress_remote_login) {
     return HandlerResult::Type::FORWARD;
   }
 
@@ -355,7 +355,7 @@ static HandlerResult S_V123P_02_17(
       session.server_channel.send(0xDB, 0x00, &cmd, sizeof(cmd));
       return HandlerResult::Type::SUPPRESS;
 
-    } else if (session.suppress_remote_login) {
+    } else if (session.options.suppress_remote_login) {
       uint32_t guild_card_number;
       if (session.remote_guild_card_number >= 0) {
         guild_card_number = session.remote_guild_card_number;
@@ -597,7 +597,7 @@ static HandlerResult S_B2(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   const auto& cmd = check_size_t<S_ExecuteCode_B2>(data, sizeof(S_ExecuteCode_B2), 0xFFFF);
 
-  if (cmd.code_size && session.save_files) {
+  if (cmd.code_size && session.options.save_files) {
     uint64_t filename_timestamp = now();
     string code = data.substr(sizeof(S_ExecuteCode_B2));
 
@@ -684,10 +684,10 @@ static HandlerResult S_B2(shared_ptr<ServerState>,
 #endif
   }
 
-  if (session.function_call_return_value >= 0) {
+  if (session.options.function_call_return_value >= 0) {
     session.log.info("Blocking function call from server");
     C_ExecuteCodeResult_B3 cmd;
-    cmd.return_value = session.function_call_return_value;
+    cmd.return_value = session.options.function_call_return_value;
     cmd.checksum = 0;
     session.server_channel.send(0xB3, flag, &cmd, sizeof(cmd));
     return HandlerResult::Type::SUPPRESS;
@@ -710,7 +710,7 @@ static HandlerResult C_B3(shared_ptr<ServerState>,
 
 static HandlerResult S_B_E7(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  if (session.save_files) {
+  if (session.options.save_files) {
     string output_filename = string_printf("player.%" PRId64 ".bin", now());
     save_file(output_filename, data);
     session.log.info("Wrote player data to file %s", output_filename.c_str());
@@ -855,8 +855,9 @@ static HandlerResult S_V3_BB_DA(shared_ptr<ServerState>,
   if ((session.version == GameVersion::GC) &&
       (session.newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) {
     return HandlerResult::Type::SUPPRESS;
-  } else if (session.override_lobby_event >= 0 && static_cast<int16_t>(flag) != session.override_lobby_event) {
-    return HandlerResult(HandlerResult::Type::MODIFIED, 0xDA, session.override_lobby_event);
+  } else if ((session.options.override_lobby_event >= 0) &&
+      (static_cast<int16_t>(flag) != session.options.override_lobby_event)) {
+    return HandlerResult(HandlerResult::Type::MODIFIED, 0xDA, session.options.override_lobby_event);
   } else {
     return HandlerResult::Type::FORWARD;
   }
@@ -866,7 +867,7 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   check_implemented_subcommand(session, data);
 
-  if (session.save_files) {
+  if (session.options.save_files) {
     if ((session.version == GameVersion::GC) && (data.size() >= 0x14)) {
       if (static_cast<uint8_t>(data[0]) == 0xB6) {
         const auto& header = check_size_t<G_MapSubsubcommand_GC_Ep3_6xB6>(
@@ -986,7 +987,7 @@ static HandlerResult S_44_A6(shared_ptr<ServerState>,
 
   string filename = cmd.filename;
   string output_filename;
-  if (session.save_files) {
+  if (session.options.save_files) {
     output_filename = string_printf("%s.%s.%" PRIu64,
         filename.c_str(),
         (command == 0xA6) ? "download" : "online", now());
@@ -1003,7 +1004,7 @@ static HandlerResult S_44_A6(shared_ptr<ServerState>,
   ProxyServer::LinkedSession::SavingFile sf(
       cmd.filename, output_filename, cmd.file_size);
   session.saving_files.emplace(cmd.filename, move(sf));
-  if (session.save_files) {
+  if (session.options.save_files) {
     session.log.info("Opened file %s", output_filename.c_str());
   } else {
     session.log.info("Tracking file %s", filename.c_str());
@@ -1067,7 +1068,7 @@ static HandlerResult S_G_B7(shared_ptr<ServerState>,
 
 static HandlerResult S_G_B8(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  if (session.save_files) {
+  if (session.options.save_files) {
     if (data.size() < 4) {
       session.log.warning("Card list data size is too small; not saving file");
       return HandlerResult::Type::FORWARD;
@@ -1153,12 +1154,12 @@ static HandlerResult S_65_67_68(shared_ptr<ServerState>,
     session.log.warning("Proxied player appears multiple times in lobby");
   }
 
-  if (session.override_lobby_event >= 0) {
-    cmd.event = session.override_lobby_event;
+  if (session.options.override_lobby_event >= 0) {
+    cmd.event = session.options.override_lobby_event;
     modified = true;
   }
-  if (session.override_lobby_number >= 0) {
-    cmd.lobby_number = session.override_lobby_number;
+  if (session.options.override_lobby_number >= 0) {
+    cmd.lobby_number = session.options.override_lobby_number;
     modified = true;
   }
 
@@ -1209,16 +1210,16 @@ static HandlerResult S_64(shared_ptr<ServerState>,
         x, p.guild_card_number, p.name.c_str());
   }
 
-  if (session.override_section_id >= 0) {
-    cmd->section_id = session.override_section_id;
+  if (session.options.override_section_id >= 0) {
+    cmd->section_id = session.options.override_section_id;
     modified = true;
   }
-  if (session.override_lobby_event >= 0) {
-    cmd->event = session.override_lobby_event;
+  if (session.options.override_lobby_event >= 0) {
+    cmd->event = session.options.override_lobby_event;
     modified = true;
   }
-  if (session.override_random_seed >= 0) {
-    cmd->rare_seed = session.override_random_seed;
+  if (session.options.override_random_seed >= 0) {
+    cmd->rare_seed = session.options.override_random_seed;
     modified = true;
   }
 
@@ -1287,7 +1288,7 @@ static HandlerResult C_06(shared_ptr<ServerState> s,
         return HandlerResult::Type::SUPPRESS;
       }
 
-    } else if (session.enable_chat_filter) {
+    } else if (session.options.enable_chat_filter) {
       add_color_inplace(data.data() + 8, data.size() - 8);
       // TODO: We should return MODIFIED here if the message was changed by
       // the add_color_inplace call
@@ -1360,12 +1361,12 @@ static HandlerResult C_6x(shared_ptr<ServerState> s,
       session.area = cmd.area;
 
     } else if (data[0] == 0x2F || data[0] == 0x4B || data[0] == 0x4C) {
-      if (session.infinite_hp) {
+      if (session.options.infinite_hp) {
         send_player_stats_change(session.client_channel,
             session.lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
       }
     } else if (data[0] == 0x48) {
-      if (session.infinite_tp) {
+      if (session.options.infinite_tp) {
         send_player_stats_change(session.client_channel,
             session.lobby_client_id, PlayerStatsChange::ADD_TP, 255);
       }
@@ -1384,7 +1385,7 @@ HandlerResult C_6x<void>(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   check_implemented_subcommand(session, data);
 
-  if (!data.empty() && (data[0] == 0x05) && session.switch_assist) {
+  if (!data.empty() && (data[0] == 0x05) && session.options.switch_assist) {
     auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
     if (cmd.flags && cmd.header.object_id != 0xFFFF) {
       if (session.last_switch_enabled_command.header.subcommand == 0x05) {

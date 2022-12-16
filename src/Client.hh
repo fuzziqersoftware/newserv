@@ -24,6 +24,28 @@ extern FileContentsCache client_options_cache;
 
 
 
+struct ClientOptions {
+  // Options used on both game and proxy server
+  bool switch_assist;
+  bool infinite_hp;
+  bool infinite_tp;
+  bool prefer_high_lobby_client_id;
+  int16_t override_section_id;
+  int16_t override_lobby_event;
+  int16_t override_lobby_number;
+  int64_t override_random_seed;
+
+  // Options used only on proxy server
+  bool save_files;
+  bool enable_chat_filter;
+  bool block_events;
+  bool suppress_remote_login;
+  bool zero_remote_guild_card;
+  int64_t function_call_return_value; // -1 = don't block function calls
+
+  ClientOptions();
+};
+
 struct Client {
   enum Flag {
     // This flag has two meanings. If set on a client with GameVersion::DC, then
@@ -103,13 +125,13 @@ struct Client {
   std::vector<PatchFileChecksumRequest> patch_file_checksum_requests;
 
   // Lobby/positioning
+  ClientOptions options;
   float x;
   float z;
   uint32_t area; // which area is the client in?
   uint32_t lobby_id; // which lobby is this person in?
   uint8_t lobby_client_id; // which client number is this person?
   uint8_t lobby_arrow_color; // lobby arrow color ID
-  bool prefer_high_lobby_client_id;
   int64_t preferred_lobby_id; // <0 = no preference
   ClientGameData game_data;
   std::unique_ptr<struct event, void(*)(struct event*)> save_game_data_event;
@@ -120,21 +142,10 @@ struct Client {
 
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give
-  int16_t override_section_id; // valid if >= 0
-  int64_t override_random_seed; // valid if >= 0
-  bool infinite_hp; // cheats enabled
-  bool infinite_tp; // cheats enabled
-  bool switch_assist; // cheats enabled
   G_SwitchStateChanged_6x05 last_switch_enabled_command;
   bool can_chat;
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;
-
-  bool proxy_block_events;
-  bool proxy_block_function_calls;
-  bool proxy_save_files;
-  bool proxy_suppress_remote_login;
-  bool proxy_zero_remote_guild_card;
 
   // File loading state
   uint32_t dol_base_addr;

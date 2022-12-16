@@ -529,54 +529,59 @@ Proxy commands (these will only work when exactly one client is connected):\n\
   } else if (command_name == "set-override-section-id") {
     auto session = this->get_proxy_session();
     if (command_args.empty()) {
-      session->override_section_id = -1;
+      session->options.override_section_id = -1;
     } else {
-      session->override_section_id = section_id_for_name(command_args);
+      session->options.override_section_id = section_id_for_name(command_args);
     }
 
   } else if (command_name == "set-override-event") {
     auto session = this->get_proxy_session();
     if (command_args.empty()) {
-      session->override_lobby_event = -1;
+      session->options.override_lobby_event = -1;
     } else {
-      session->override_lobby_event = event_for_name(command_args);
-      session->client_channel.send(0xDA, session->override_lobby_event);
+      session->options.override_lobby_event = event_for_name(command_args);
+      if ((session->version != GameVersion::DC) &&
+          (session->version != GameVersion::PC) && (
+          !((session->version == GameVersion::GC) &&
+            (session->newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)))) {
+        session->client_channel.send(0xDA, session->options.override_lobby_event);
+      }
     }
 
   } else if (command_name == "set-override-lobby-number") {
     auto session = this->get_proxy_session();
     if (command_args.empty()) {
-      session->override_lobby_number = -1;
+      session->options.override_lobby_number = -1;
     } else {
-      session->override_lobby_number = lobby_type_for_name(command_args);
+      session->options.override_lobby_number = lobby_type_for_name(command_args);
     }
 
   } else if (command_name == "set-chat-filter") {
     auto session = this->get_proxy_session();
-    set_boolean(&session->enable_chat_filter, command_args);
+    set_boolean(&session->options.enable_chat_filter, command_args);
 
   } else if (command_name == "set-infinite-hp") {
     auto session = this->get_proxy_session();
-    set_boolean(&session->infinite_hp, command_args);
+    set_boolean(&session->options.infinite_hp, command_args);
 
   } else if (command_name == "set-infinite-tp") {
     auto session = this->get_proxy_session();
-    set_boolean(&session->infinite_tp, command_args);
+    set_boolean(&session->options.infinite_tp, command_args);
 
   } else if (command_name == "set-switch-assist") {
     auto session = this->get_proxy_session();
-    set_boolean(&session->switch_assist, command_args);
+    set_boolean(&session->options.switch_assist, command_args);
 
   } else if (command_name == "set-save-files") {
     auto session = this->get_proxy_session();
-    set_boolean(&session->save_files, command_args);
+    set_boolean(&session->options.save_files, command_args);
 
   } else if (command_name == "set-block-function-calls") {
     auto session = this->get_proxy_session();
     if (command_args.empty()) {
-      session->function_call_return_value = -1;
+      session->options.function_call_return_value = -1;
     } else {
-      session->function_call_return_value = stoul(command_args);
+      session->options.function_call_return_value = stoul(command_args);
     }
 
   } else if (command_name == "set-next-item") {

@@ -135,13 +135,13 @@ static void proxy_command_lobby_info(shared_ptr<ServerState>,
       (session.leader_client_id == session.lobby_client_id) ? " (L)" : "");
 
   vector<const char*> cheats_tokens;
-  if (session.switch_assist) {
+  if (session.options.switch_assist) {
     cheats_tokens.emplace_back("SWA");
   }
-  if (session.infinite_hp) {
+  if (session.options.infinite_hp) {
     cheats_tokens.emplace_back("HP");
   }
-  if (session.infinite_tp) {
+  if (session.options.infinite_tp) {
     cheats_tokens.emplace_back("TP");
   }
   if (!cheats_tokens.empty()) {
@@ -150,13 +150,13 @@ static void proxy_command_lobby_info(shared_ptr<ServerState>,
   }
 
   vector<const char*> behaviors_tokens;
-  if (session.save_files) {
+  if (session.options.save_files) {
     behaviors_tokens.emplace_back("SAVE");
   }
-  if (session.suppress_remote_login) {
+  if (session.options.suppress_remote_login) {
     behaviors_tokens.emplace_back("SL");
   }
-  if (session.function_call_return_value >= 0) {
+  if (session.options.function_call_return_value >= 0) {
     behaviors_tokens.emplace_back("BFC");
   }
   if (!behaviors_tokens.empty()) {
@@ -164,9 +164,9 @@ static void proxy_command_lobby_info(shared_ptr<ServerState>,
     msg += join(behaviors_tokens, ",");
   }
 
-  if (session.override_section_id >= 0) {
-    msg += "\n$C7SecID override: $C6";
-    msg += name_for_section_id(session.override_section_id);
+  if (session.options.override_section_id >= 0) {
+    msg += "\n$C7SecID*: $C6";
+    msg += name_for_section_id(session.options.override_section_id);
   }
 
   send_text_message(session.client_channel, decode_sjis(msg));
@@ -201,9 +201,9 @@ static void proxy_command_arrow(shared_ptr<ServerState>,
 
 static void server_command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string&) {
-  c->prefer_high_lobby_client_id = !c->prefer_high_lobby_client_id;
+  c->options.prefer_high_lobby_client_id = !c->options.prefer_high_lobby_client_id;
   send_text_message_printf(c, "ID preference set\nto $C6%s",
-      c->prefer_high_lobby_client_id ? "high" : "low");
+      c->options.prefer_high_lobby_client_id ? "high" : "low");
 }
 
 static void server_command_auction(shared_ptr<ServerState>, shared_ptr<Lobby> l,
@@ -308,9 +308,9 @@ static void server_command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
       if (!c) {
         continue;
       }
-      c->infinite_hp = false;
-      c->infinite_tp = false;
-      c->switch_assist = false;
+      c->options.infinite_hp = false;
+      c->options.infinite_tp = false;
+      c->options.switch_assist = false;
     }
     l->next_drop_item = PlayerInventoryItem();
   }
@@ -334,17 +334,17 @@ static void server_command_lobby_event(shared_ptr<ServerState>, shared_ptr<Lobby
 static void proxy_command_lobby_event(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string& args) {
   if (args.empty()) {
-    session.override_lobby_event = -1;
+    session.options.override_lobby_event = -1;
   } else {
     uint8_t new_event = event_for_name(args);
     if (new_event == 0xFF) {
       send_text_message(session.client_channel, u"$C6No such lobby event.");
     } else {
-      session.override_lobby_event = new_event;
+      session.options.override_lobby_event = new_event;
       if ((session.version == GameVersion::GC && !(session.newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) ||
           (session.version == GameVersion::XB) ||
           (session.version == GameVersion::BB)) {
-        session.client_channel.send(0xDA, session.override_lobby_event);
+        session.client_channel.send(0xDA, session.options.override_lobby_event);
       }
     }
   }
@@ -446,14 +446,14 @@ static void server_command_secid(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   check_is_game(l, false);
 
   if (!args[0]) {
-    c->override_section_id = -1;
+    c->options.override_section_id = -1;
     send_text_message(c, u"$C6Override section ID\nremoved");
   } else {
     uint8_t new_secid = section_id_for_name(args);
     if (new_secid == 0xFF) {
       send_text_message(c, u"$C6Invalid section ID");
     } else {
-      c->override_section_id = new_secid;
+      c->options.override_section_id = new_secid;
       send_text_message(c, u"$C6Override section ID\nset");
     }
   }
@@ -462,14 +462,14 @@ static void server_command_secid(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 static void proxy_command_secid(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string& args) {
   if (!args[0]) {
-    session.override_section_id = -1;
+    session.options.override_section_id = -1;
     send_text_message(session.client_channel, u"$C6Override section ID\nremoved");
   } else {
     uint8_t new_secid = section_id_for_name(args);
     if (new_secid == 0xFF) {
       send_text_message(session.client_channel, u"$C6Invalid section ID");
     } else {
-      session.override_section_id = new_secid;
+      session.options.override_section_id = new_secid;
       send_text_message(session.client_channel, u"$C6Override section ID\nset");
     }
   }
@@ -480,10 +480,10 @@ static void server_command_rand(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   check_is_game(l, false);
 
   if (!args[0]) {
-    c->override_random_seed = -1;
+    c->options.override_random_seed = -1;
     send_text_message(c, u"$C6Override seed\nremoved");
   } else {
-    c->override_random_seed = stoul(encode_sjis(args), 0, 16);
+    c->options.override_random_seed = stoul(encode_sjis(args), 0, 16);
     send_text_message(c, u"$C6Override seed\nset");
   }
 }
@@ -491,10 +491,10 @@ static void server_command_rand(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 static void proxy_command_rand(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string& args) {
   if (!args[0]) {
-    session.override_random_seed = -1;
+    session.options.override_random_seed = -1;
     send_text_message(session.client_channel, u"$C6Override seed\nremoved");
   } else {
-    session.override_random_seed = stoul(encode_sjis(args), 0, 16);
+    session.options.override_random_seed = stoul(encode_sjis(args), 0, 16);
     send_text_message(session.client_channel, u"$C6Override seed\nset");
   }
 }
@@ -933,15 +933,16 @@ static void server_command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby
   check_is_game(l, true);
   check_cheats_enabled(l);
 
-  c->infinite_hp = !c->infinite_hp;
-  send_text_message_printf(c, "$C6Infinite HP %s", c->infinite_hp ? "enabled" : "disabled");
+  c->options.infinite_hp = !c->options.infinite_hp;
+  send_text_message_printf(c, "$C6Infinite HP %s",
+      c->options.infinite_hp ? "enabled" : "disabled");
 }
 
 static void proxy_command_infinite_hp(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
-  session.infinite_hp = !session.infinite_hp;
+  session.options.infinite_hp = !session.options.infinite_hp;
   send_text_message_printf(session.client_channel, "$C6Infinite HP %s",
-      session.infinite_hp ? "enabled" : "disabled");
+      session.options.infinite_hp ? "enabled" : "disabled");
 }
 
 static void server_command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
@@ -949,15 +950,16 @@ static void server_command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby
   check_is_game(l, true);
   check_cheats_enabled(l);
 
-  c->infinite_tp = !c->infinite_tp;
-  send_text_message_printf(c, "$C6Infinite TP %s", c->infinite_tp ? "enabled" : "disabled");
+  c->options.infinite_tp = !c->options.infinite_tp;
+  send_text_message_printf(c, "$C6Infinite TP %s",
+      c->options.infinite_tp ? "enabled" : "disabled");
 }
 
 static void proxy_command_infinite_tp(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
-  session.infinite_tp = !session.infinite_tp;
+  session.options.infinite_tp = !session.options.infinite_tp;
   send_text_message_printf(session.client_channel, "$C6Infinite TP %s",
-      session.infinite_tp ? "enabled" : "disabled");
+      session.options.infinite_tp ? "enabled" : "disabled");
 }
 
 static void server_command_switch_assist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
@@ -965,14 +967,16 @@ static void server_command_switch_assist(shared_ptr<ServerState>, shared_ptr<Lob
   check_is_game(l, true);
   check_cheats_enabled(l);
 
-  c->switch_assist = !c->switch_assist;
-  send_text_message_printf(c, "$C6Switch assist %s", c->switch_assist ? "enabled" : "disabled");
+  c->options.switch_assist = !c->options.switch_assist;
+  send_text_message_printf(c, "$C6Switch assist %s",
+      c->options.switch_assist ? "enabled" : "disabled");
 }
 
 static void proxy_command_switch_assist(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
-  session.switch_assist = !session.switch_assist;
-  send_text_message_printf(session.client_channel, "$C6Switch assist %s", session.switch_assist ? "enabled" : "disabled");
+  session.options.switch_assist = !session.options.switch_assist;
+  send_text_message_printf(session.client_channel, "$C6Switch assist %s",
+      session.options.switch_assist ? "enabled" : "disabled");
 }
 
 static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,

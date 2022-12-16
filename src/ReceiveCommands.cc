@@ -72,14 +72,15 @@ vector<MenuItem> quest_download_menu({
 
 static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descriptions({
   {ProxyOptionsMenuItemID::GO_BACK, u"Return to the\nproxy menu"},
-  {ProxyOptionsMenuItemID::INFINITE_HP, u"If enabled, the proxy\nwill restore your HP\nwhen you are hit by\nan enemy or trap,\nbut cannot revive\nyou from one-hit\nkills"},
-  {ProxyOptionsMenuItemID::INFINITE_TP, u"If enabled, the proxy\nwill restore your TP\nwhen you cast any\ntechnique"},
-  {ProxyOptionsMenuItemID::SWITCH_ASSIST, u"If enabled, the proxy\nwill attempt to\nunlock 2-player\ndoors when you step\non both switches\nsequentially"},
-  {ProxyOptionsMenuItemID::BLOCK_EVENTS, u"If enabled, seasonal\nevents in the lobby\nand in games are\ndisabled."},
-  {ProxyOptionsMenuItemID::BLOCK_PATCHES, u"If enabled, patches\nsent by the remote\nserver are blocked."},
-  {ProxyOptionsMenuItemID::SAVE_FILES, u"If enabled, the proxy\nwill save local\ncopies of files from\nthe remote server\n(quests, etc.)"},
-  {ProxyOptionsMenuItemID::SUPPRESS_LOGIN, u"If enabled, the proxy\nwill use an alternate\nlogin sequence"},
-  {ProxyOptionsMenuItemID::SKIP_CARD, u"If enabled, the proxy\nwill use an alternate\nvalue for your initial\nGuild Card"},
+  {ProxyOptionsMenuItemID::CHAT_FILTER, u"Enable escape\nsequences in chat\nmessages"},
+  {ProxyOptionsMenuItemID::INFINITE_HP, u"Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills"},
+  {ProxyOptionsMenuItemID::INFINITE_TP, u"Enable automatic TP\nrestoration when\nyou cast any\ntechnique"},
+  {ProxyOptionsMenuItemID::SWITCH_ASSIST, u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially"},
+  {ProxyOptionsMenuItemID::BLOCK_EVENTS, u"Disable seasonal\nevents in the lobby\nand in games"},
+  {ProxyOptionsMenuItemID::BLOCK_PATCHES, u"Disable patches sent\nby the remote server"},
+  {ProxyOptionsMenuItemID::SAVE_FILES, u"Save local copies of\nfiles from the remote\nserver (quests, etc.)"},
+  {ProxyOptionsMenuItemID::SUPPRESS_LOGIN, u"Use an alternate\nlogin sequence"},
+  {ProxyOptionsMenuItemID::SKIP_CARD, u"Use an alternate\nvalue for your initial\nGuild Card"},
 });
 
 static vector<MenuItem> proxy_options_menu_for_client(
@@ -90,26 +91,28 @@ static vector<MenuItem> proxy_options_menu_for_client(
   // way in which the menu abstraction is currently insufficient (there is a
   // TODO about this in README.md).
   ret.emplace_back(ProxyOptionsMenuItemID::GO_BACK, u"Go back", u"", 0);
+  ret.emplace_back(ProxyOptionsMenuItemID::CHAT_FILTER,
+      c->options.enable_chat_filter ? u"Chat filter ON" : u"Chat filter OFF", u"", 0);
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
     ret.emplace_back(ProxyOptionsMenuItemID::INFINITE_HP,
-        c->infinite_hp ? u"Infinite HP ON" : u"Infinite HP OFF", u"", 0);
+        c->options.infinite_hp ? u"Infinite HP ON" : u"Infinite HP OFF", u"", 0);
     ret.emplace_back(ProxyOptionsMenuItemID::INFINITE_TP,
-        c->infinite_tp ? u"Infinite TP ON" : u"Infinite TP OFF", u"", 0);
+        c->options.infinite_tp ? u"Infinite TP ON" : u"Infinite TP OFF", u"", 0);
     ret.emplace_back(ProxyOptionsMenuItemID::SWITCH_ASSIST,
-        c->switch_assist ? u"Switch assist ON" : u"Switch assist OFF", u"", 0);
+        c->options.switch_assist ? u"Switch assist ON" : u"Switch assist OFF", u"", 0);
   }
   ret.emplace_back(ProxyOptionsMenuItemID::BLOCK_EVENTS,
-      c->proxy_block_events ? u"Block events ON" : u"Block events OFF", u"", 0);
+      c->options.block_events ? u"Block events ON" : u"Block events OFF", u"", 0);
   ret.emplace_back(ProxyOptionsMenuItemID::BLOCK_PATCHES,
-      c->proxy_block_function_calls ? u"Block patches ON" : u"Block patches OFF", u"", 0);
+      (c->options.function_call_return_value >= 0) ? u"Block patches ON" : u"Block patches OFF", u"", 0);
   if (s->proxy_allow_save_files) {
     ret.emplace_back(ProxyOptionsMenuItemID::SAVE_FILES,
-        c->proxy_save_files ? u"Save files ON" : u"Save files OFF", u"", 0);
+        c->options.save_files ? u"Save files ON" : u"Save files OFF", u"", 0);
   }
   ret.emplace_back(ProxyOptionsMenuItemID::SUPPRESS_LOGIN,
-      c->proxy_suppress_remote_login ? u"Skip login ON" : u"Skip login OFF", u"", 0);
+      c->options.suppress_remote_login ? u"Skip login ON" : u"Skip login OFF", u"", 0);
   ret.emplace_back(ProxyOptionsMenuItemID::SKIP_CARD,
-      c->proxy_zero_remote_guild_card ? u"Skip card ON" : u"Skip card OFF", u"", 0);
+      c->options.zero_remote_guild_card ? u"Skip card ON" : u"Skip card OFF", u"", 0);
   return ret;
 }
 
@@ -132,25 +135,10 @@ static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Cl
   s->proxy_server->delete_session(c->license->serial_number);
   auto session = s->proxy_server->create_licensed_session(
       c->license, local_port, c->version(), c->export_config_bb());
-  session->infinite_hp = c->infinite_hp;
-  session->infinite_tp = c->infinite_tp;
-  session->switch_assist = c->switch_assist;
-  session->save_files = s->proxy_allow_save_files && c->proxy_save_files;
-  session->suppress_remote_login = c->proxy_suppress_remote_login;
-  if (c->proxy_block_events) {
-    session->override_lobby_event = 0;
-  }
-  if (c->proxy_block_function_calls) {
-    session->function_call_return_value = 0xFFFFFFFF;
-  }
-  if (c->proxy_zero_remote_guild_card) {
+  session->options = c->options;
+  session->options.save_files &= s->proxy_allow_save_files;
+  if (session->options.zero_remote_guild_card) {
     session->remote_guild_card_number = 0;
-  } else {
-    try {
-      string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
-      const auto& entry = client_options_cache.get_or_throw(key);
-      session->remote_guild_card_number = stoul(*entry->data, nullptr, 10);
-    } catch (const out_of_range&) { }
   }
 
   send_reconnect(c, s->connect_address_for_client(c), local_port);
@@ -159,13 +147,6 @@ static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Cl
 static void send_proxy_destinations_menu(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
       s->proxy_destinations_menu_for_version(c->version()));
-  try {
-    string key = string_printf("proxy_remote_guild_card_number:%" PRIX32, c->license->serial_number);
-    const auto& entry = client_options_cache.get_or_throw(key);
-    uint32_t proxy_remote_guild_card_number = stoul(*entry->data, nullptr, 10);
-    string info_str = string_printf("Your remote Guild\nCard number is\noverridden as\n$C6%" PRIu32, proxy_remote_guild_card_number);
-    send_ship_info(c, decode_sjis(info_str));
-  } catch (const out_of_range&) { }
 }
 
 static bool send_enable_send_function_call_if_applicable(
@@ -1769,29 +1750,36 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
         case ProxyOptionsMenuItemID::GO_BACK:
           send_proxy_destinations_menu(s, c);
           break;
+        case ProxyOptionsMenuItemID::CHAT_FILTER:
+          c->options.enable_chat_filter = !c->options.enable_chat_filter;
+          goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::INFINITE_HP:
-          c->infinite_hp = !c->infinite_hp;
+          c->options.infinite_hp = !c->options.infinite_hp;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::INFINITE_TP:
-          c->infinite_tp = !c->infinite_tp;
+          c->options.infinite_tp = !c->options.infinite_tp;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SWITCH_ASSIST:
-          c->switch_assist = !c->switch_assist;
+          c->options.switch_assist = !c->options.switch_assist;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::BLOCK_EVENTS:
-          c->proxy_block_events = !c->proxy_block_events;
+          c->options.block_events = !c->options.block_events;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::BLOCK_PATCHES:
-          c->proxy_block_function_calls = !c->proxy_block_function_calls;
+          if (c->options.function_call_return_value >= 0) {
+            c->options.function_call_return_value = -1;
+          } else {
+            c->options.function_call_return_value = 0xFFFFFFFF;
+          }
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SAVE_FILES:
-          c->proxy_save_files = !c->proxy_save_files;
+          c->options.save_files = !c->options.save_files;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SUPPRESS_LOGIN:
-          c->proxy_suppress_remote_login = !c->proxy_suppress_remote_login;
+          c->options.suppress_remote_login = !c->options.suppress_remote_login;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SKIP_CARD:
-          c->proxy_zero_remote_guild_card = !c->proxy_zero_remote_guild_card;
+          c->options.zero_remote_guild_card = !c->options.zero_remote_guild_card;
         resend_proxy_options_menu:
           send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
               proxy_options_menu_for_client(s, c));
@@ -3048,12 +3036,12 @@ shared_ptr<Lobby> create_game_generic(
       (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0);
   game->password = password;
   game->version = c->version();
-  game->section_id = c->override_section_id >= 0
-      ? c->override_section_id : c->game_data.player()->disp.section_id;
+  game->section_id = c->options.override_section_id >= 0
+      ? c->options.override_section_id : c->game_data.player()->disp.section_id;
   game->episode = episode;
   game->difficulty = difficulty;
-  if (c->override_random_seed >= 0) {
-    game->random_seed = c->override_random_seed;
+  if (c->options.override_random_seed >= 0) {
+    game->random_seed = c->options.override_random_seed;
     game->random->seed(game->random_seed);
   }
   if (battle_player) {

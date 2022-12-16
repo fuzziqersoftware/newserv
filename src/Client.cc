@@ -25,6 +25,24 @@ static atomic<uint64_t> next_id(1);
 
 
 
+ClientOptions::ClientOptions()
+  : switch_assist(false),
+    infinite_hp(false),
+    infinite_tp(false),
+    prefer_high_lobby_client_id(false),
+    override_section_id(-1),
+    override_lobby_event(-1),
+    override_lobby_number(-1),
+    override_random_seed(-1),
+    save_files(false),
+    enable_chat_filter(true),
+    block_events(false),
+    suppress_remote_login(false),
+    zero_remote_guild_card(false),
+    function_call_return_value(-1) { }
+
+
+
 Client::Client(
     struct bufferevent* bev,
     GameVersion version,
@@ -46,7 +64,6 @@ Client::Client(
     lobby_id(0),
     lobby_client_id(0),
     lobby_arrow_color(0),
-    prefer_high_lobby_client_id(false),
     preferred_lobby_id(-1),
     save_game_data_event(
         event_new(
@@ -57,18 +74,8 @@ Client::Client(
     card_battle_table_seat_number(0),
     card_battle_table_seat_state(0),
     next_exp_value(0),
-    override_section_id(-1),
-    override_random_seed(-1),
-    infinite_hp(false),
-    infinite_tp(false),
-    switch_assist(false),
     can_chat(true),
     pending_bb_save_player_index(0),
-    proxy_block_events(false),
-    proxy_block_function_calls(false),
-    proxy_save_files(false),
-    proxy_suppress_remote_login(false),
-    proxy_zero_remote_guild_card(false),
     dol_base_addr(0) {
   this->last_switch_enabled_command.header.subcommand = 0;
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));

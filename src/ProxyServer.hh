@@ -59,24 +59,14 @@ public:
     std::string hardware_id; // Only used for DC sessions
     std::string login_command_bb;
 
+    ClientOptions options;
     int64_t remote_guild_card_number;
     parray<uint8_t, 0x20> remote_client_config_data;
     ClientConfigBB newserv_client_config;
-    bool enable_chat_filter;
-    bool switch_assist;
-    bool infinite_hp;
-    bool infinite_tp;
-    bool save_files;
-    bool suppress_remote_login;
     std::deque<bool> should_forward_function_call_return_queue;
-    int64_t function_call_return_value; // -1 = don't block function calls
     G_SwitchStateChanged_6x05 last_switch_enabled_command;
     PlayerInventoryItem next_drop_item;
     uint32_t next_item_id;
-    int16_t override_section_id;
-    int16_t override_lobby_event;
-    int16_t override_lobby_number;
-    int64_t override_random_seed;
 
     struct LobbyPlayer {
       uint32_t guild_card_number;

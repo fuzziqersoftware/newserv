@@ -484,17 +484,7 @@ ProxyServer::LinkedSession::LinkedSession(
     sub_version(0), // This is set during resume()
     language(1), // Default = English. This is also set during resume()
     remote_guild_card_number(-1),
-    enable_chat_filter(true),
-    switch_assist(false),
-    infinite_hp(false),
-    infinite_tp(false),
-    save_files(false),
-    suppress_remote_login(false),
-    function_call_return_value(-1),
     next_item_id(0x0F000000),
-    override_section_id(-1),
-    override_lobby_event(-1),
-    override_lobby_number(-1),
     lobby_players(12),
     lobby_client_id(0),
     leader_client_id(0),
@@ -657,13 +647,13 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
   if (events & BEV_EVENT_CONNECTED) {
     session->log.info("%s channel connected", is_server_stream ? "Server" : "Client");
 
-    if (is_server_stream && (session->override_lobby_event >= 0) &&
+    if (is_server_stream && (session->options.override_lobby_event >= 0) &&
         (
           ((session->version == GameVersion::GC) && !(session->newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) ||
           (session->version == GameVersion::XB) ||
           (session->version == GameVersion::BB)
         )) {
-      session->client_channel.send(0xDA, session->override_lobby_event);
+      session->client_channel.send(0xDA, session->options.override_lobby_event);
     }
   }
   if (events & BEV_EVENT_ERROR) {

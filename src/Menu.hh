@@ -58,6 +58,7 @@ namespace PatchesMenuItemID {
 
 namespace ProxyOptionsMenuItemID {
   constexpr uint32_t GO_BACK = 0xAAFFFFAA;
+  constexpr uint32_t CHAT_FILTER = 0xAA0000AA;
   constexpr uint32_t INFINITE_HP = 0xAA1111AA;
   constexpr uint32_t INFINITE_TP = 0xAA2222AA;
   constexpr uint32_t SWITCH_ASSIST = 0xAA3333AA;
