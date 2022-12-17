@@ -5519,7 +5519,7 @@ struct G_Unknown_GC_Ep3_6xB4x4A {
 // opponents' levels is used.) The game scans the appropriate list for the entry
 // whose threshold is less than or equal to than the level difference, and
 // returns the corresponding value. For example, if the first two entries in the
-// win list are [20, 40] and [10, 30], and the player defeats an opponent who is
+// win list are {20, 40} and {10, 30}, and the player defeats an opponent who is
 // 15 levels above the player's level, the player will get 30 EX when they win
 // the battle. If all thresholds are greater than the level difference, the last
 // entry's value is used. Finally, if the opponent team has no humans on it, the
@@ -5582,7 +5582,7 @@ struct G_ClearSetCardConditions_GC_Ep3_6xB4x4F {
   uint8_t unused = 0;
   // For each 1 bit in this mask, the conditions of the corresponding card
   // should be deleted. The low bit corresponds to the SC card; the next bit
-  // corresponds to set slot 1, the next bit to set slot 2, etc. (The upper 7
+  // corresponds to set slot 0, the next bit to set slot 1, etc. (The upper 7
   // bits of this field are unused.)
   le_uint16_t clear_mask = 0;
 } __packed__;
@@ -5592,7 +5592,7 @@ struct G_ClearSetCardConditions_GC_Ep3_6xB4x4F {
 struct G_SetTrapTileLocations_GC_Ep3_6xB4x50 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetTrapTileLocations_GC_Ep3_6xB4x50) / 4, 0, 0x50, 0, 0, 0};
   // Each entry in this array corresponds to one of the 5 trap types, in order.
-  // Each entry is a, [x, y] pair; if that trap type is not present, its
+  // Each entry is an [x, y] pair; if that trap type is not present, its
   // location entry is FF FF.
   parray<parray<uint8_t, 2>, 5> locations;
   parray<uint8_t, 2> unused;
