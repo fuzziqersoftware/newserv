@@ -686,7 +686,7 @@ struct MapList {
   struct Entry { // Should be 0x220 bytes in total
     be_uint16_t map_x;
     be_uint16_t map_y;
-    be_uint16_t scene_data2;
+    be_uint16_t environment_number;
     be_uint16_t map_number;
     // Text offsets are from the beginning of the strings block after all map
     // entries (that is, add strings_offset to them to get the string offset)
@@ -717,7 +717,34 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 0004 */ be_uint32_t map_number;
   /* 0008 */ uint8_t width;
   /* 0009 */ uint8_t height;
-  /* 000A */ uint8_t scene_data2; // TODO: What is this?
+  // The environment number specifies several things:
+  // - The model to load for the main battle stage
+  // - The music to play during the main battle
+  // - The color of the battle tile outlines (probably)
+  // - The preview image to show in the upper-left corner in the map select menu
+  // The environment numbers are:
+  // 00 - Unguis Lapis
+  // 01 - Nebula Montana (1)
+  // 02 - Lupus Silva (1)
+  // 03 - Lupus Silva (2)
+  // 04 - Molae Venti
+  // 05 - Nebula Montana (2)
+  // 06 - Tener Sinus
+  // 07 - Mortis Fons
+  // 08 - Morgue (destroyed)
+  // 09 - Tower of Caelum
+  // 0A = ??? (referred to as "^mapname"; crashes)
+  // 0B = Cyber
+  // 0C = Morgue (not destroyed)
+  // 0D = (Castor/Pollux map)
+  // 0E - Dolor Odor
+  // 0F = Ravum Aedes Sacra
+  // 10 - (Amplum Umbla map)
+  // 11 - Via Tubus
+  // 12 = Morgue (same as 08?)
+  // 13 = ??? (crashes)
+  // Environment numbers beyond 13 are not used in any known quests or maps.
+  /* 000A */ uint8_t environment_number;
   // All alt_maps fields (including the floats) past num_alt_maps are filled in
   // with FF. For example, if num_alt_maps == 8, the last two fields in each
   // alt_maps array are filled with FF.

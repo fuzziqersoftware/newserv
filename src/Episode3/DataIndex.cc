@@ -994,7 +994,7 @@ string MapDefinition::str(const DataIndex* data_index) const {
   lines.emplace_back(string_printf("Map %08" PRIX32 ": %hhux%hhu",
       this->map_number.load(), this->width, this->height));
   lines.emplace_back(string_printf("  a1=%08" PRIX32, this->unknown_a1.load()));
-  lines.emplace_back(string_printf("  scene_data2=%02hhX", this->scene_data2));
+  lines.emplace_back(string_printf("  environment_number=%02hhX", this->environment_number));
   lines.emplace_back(string_printf("  num_alt_maps=%02hhX", this->num_alt_maps));
   lines.emplace_back(string_printf("  num_alt_maps=%02hhX", this->num_alt_maps));
   lines.emplace_back("  tiles:");
@@ -1025,10 +1025,11 @@ string MapDefinition::str(const DataIndex* data_index) const {
     }
   }
   for (size_t w = 0; w < 3; w++) {
-    for (size_t z = 0; z < 0x24; z += 4) {
-      lines.emplace_back(string_printf("  a5[%zu][0x%02zX:0x%02zX]=%g %g %g %g", w, z, z + 4,
-          this->unknown_a5[w][z + 0].load(), this->unknown_a5[w][z + 1].load(),
-          this->unknown_a5[w][z + 2].load(), this->unknown_a5[w][z + 3].load()));
+    for (size_t z = 0; z < 0x24; z += 3) {
+      lines.emplace_back(string_printf("  a5[%zu][0x%02zX:0x%02zX]=%g %g %g", w, z, z + 3,
+          this->unknown_a5[w][z + 0].load(),
+          this->unknown_a5[w][z + 1].load(),
+          this->unknown_a5[w][z + 2].load()));
     }
   }
   lines.emplace_back("  modification tiles:");
@@ -1465,7 +1466,7 @@ const string& DataIndex::get_compressed_map_list() const {
       const auto& map = map_it.second->map;
       e.map_x = map.map_x;
       e.map_y = map.map_y;
-      e.scene_data2 = map.scene_data2;
+      e.environment_number = map.environment_number;
       e.map_number = map.map_number.load();
       e.width = map.width;
       e.height = map.height;
