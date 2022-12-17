@@ -1184,7 +1184,14 @@ static void on_ep3_battle_table_confirm(shared_ptr<ServerState> s,
 static void on_ep3_counter_state(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t flag, const string& data) { // DC
   check_size_v(data.size(), 0);
-  auto l = s->find_lobby(c->lobby_id);
+
+  shared_ptr<Lobby> l;
+  try {
+    l = s->find_lobby(c->lobby_id);
+  } catch (const out_of_range&) {
+    return;
+  }
+
   if (flag != 0) {
     send_command(c, 0xDC, 0x00);
     if (l->tournament_match) {
