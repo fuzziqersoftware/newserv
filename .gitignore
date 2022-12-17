@@ -15,6 +15,7 @@ Testing
 
 # Files modified by the user and/or server that don't have defaults
 system/config.json
+system/ep3/tournament-state.json
 system/licenses.nsi
 system/players/player_*
 system/players/account_*
