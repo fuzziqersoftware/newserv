@@ -36,7 +36,6 @@ ClientOptions::ClientOptions()
     override_random_seed(-1),
     save_files(false),
     enable_chat_filter(true),
-    block_events(false),
     suppress_remote_login(false),
     zero_remote_guild_card(false),
     function_call_return_value(-1) { }

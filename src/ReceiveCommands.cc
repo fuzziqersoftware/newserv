@@ -102,7 +102,7 @@ static vector<MenuItem> proxy_options_menu_for_client(
         c->options.switch_assist ? u"Switch assist ON" : u"Switch assist OFF", u"", 0);
   }
   ret.emplace_back(ProxyOptionsMenuItemID::BLOCK_EVENTS,
-      c->options.block_events ? u"Block events ON" : u"Block events OFF", u"", 0);
+      (c->options.override_lobby_event >= 0) ? u"Block events ON" : u"Block events OFF", u"", 0);
   ret.emplace_back(ProxyOptionsMenuItemID::BLOCK_PATCHES,
       (c->options.function_call_return_value >= 0) ? u"Block patches ON" : u"Block patches OFF", u"", 0);
   if (s->proxy_allow_save_files) {
@@ -1763,7 +1763,11 @@ static void on_menu_selection(shared_ptr<ServerState> s, shared_ptr<Client> c,
           c->options.switch_assist = !c->options.switch_assist;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::BLOCK_EVENTS:
-          c->options.block_events = !c->options.block_events;
+          if (c->options.override_lobby_event >= 0) {
+            c->options.override_lobby_event = -1;
+          } else {
+            c->options.override_lobby_event = 0;
+          }
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::BLOCK_PATCHES:
           if (c->options.function_call_return_value >= 0) {

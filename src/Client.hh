@@ -38,7 +38,6 @@ struct ClientOptions {
   // Options used only on proxy server
   bool save_files;
   bool enable_chat_filter;
-  bool block_events;
   bool suppress_remote_login;
   bool zero_remote_guild_card;
   int64_t function_call_return_value; // -1 = don't block function calls
