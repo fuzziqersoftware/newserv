@@ -108,8 +108,8 @@ static HandlerResult S_invalid(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string&) {
   session.log.error("Server sent invalid command");
   string error_str = (session.version == GameVersion::BB)
-      ? string_printf("Server sent invalid\ncommand %04hX %08" PRIX32, command, flag)
-      : string_printf("Server sent invalid\ncommand %02hX %02" PRIX32, command, flag);
+      ? string_printf("Server sent invalid\ncommand: %04hX %08" PRIX32, command, flag)
+      : string_printf("Server sent invalid\ncommand: %02hX %02" PRIX32, command, flag);
   session.send_to_game_server(error_str.c_str());
   return HandlerResult::Type::SUPPRESS;
 }
