@@ -259,6 +259,15 @@ static void server_command_persist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 }
 
+static void proxy_command_exit(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string&) {
+  if (session.is_in_game) {
+    send_text_message(session.client_channel, u"$C6You must return to\nthe lobby first");
+  } else {
+    session.send_to_game_server();
+  }
+}
+
 static void server_command_get_self_card(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string&) {
   send_guild_card(c, c);
@@ -1074,6 +1083,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$dbgid",    {server_command_dbgid,              nullptr,                       u"Usage:\ndbgid"}},
     {u"$edit",     {server_command_edit,               nullptr  ,                     u"Usage:\nedit <stat> <value>"}},
     {u"$event",    {server_command_lobby_event,        proxy_command_lobby_event,     u"Usage:\nevent <name>"}},
+    {u"$exit",     {nullptr,                           proxy_command_exit,            u"Usage:\nexit"}},
     {u"$gc",       {server_command_get_self_card,      proxy_command_get_player_card, u"Usage:\ngc"}},
     {u"$infhp",    {server_command_infinite_hp,        proxy_command_infinite_hp,     u"Usage:\ninfhp"}},
     {u"$inftp",    {server_command_infinite_tp,        proxy_command_infinite_tp,     u"Usage:\ninftp"}},
