@@ -1091,7 +1091,14 @@ void Card::unknown_8023813C() {
         cond.remaining_turns = 1;
       }
       if (cond.remaining_turns < 99) {
-        cond.remaining_turns--;
+        // Note: There is at least one case in the original implementation where
+        // remaining_turns can go negative: Creinu's HP Assist. The condition is
+        // applied with remaining_turns=0 to all affected cards (so it should be
+        // immediately removed here). But since remaining_turns is unsigned in
+        // our implementation, we have to check for underflow here.
+        if (cond.remaining_turns > 0) {
+          cond.remaining_turns--;
+        }
         if (cond.remaining_turns < 1) {
           this->server()->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(
               cond, this->shared_from_this());
