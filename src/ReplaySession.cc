@@ -593,6 +593,8 @@ void ReplaySession::dispatch_on_error(Channel& ch, short events) {
 void ReplaySession::on_command_received(
     shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
 
+  // TODO: Use the iovec form of print_data here instead of
+  // prepend_command_header (which copies the string)
   string full_command = prepend_command_header(
       c->version, c->channel.crypt_in.get(), command, flag, data);
   this->commands_received++;

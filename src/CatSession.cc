@@ -105,6 +105,8 @@ void CatSession::on_channel_input(
     }
   }
 
+  // TODO: Use the iovec form of print_data here instead of
+  // prepend_command_header (which copies the string)
   string full_cmd = prepend_command_header(
       this->channel.version, this->channel.crypt_in.get(), command, flag, data);
   print_data(stdout, full_cmd, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
