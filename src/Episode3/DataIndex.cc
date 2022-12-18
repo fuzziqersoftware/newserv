@@ -1210,7 +1210,12 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
       StringReader r(data);
 
       while (!r.eof()) {
-        uint32_t card_id = stoul(r.get_cstr());
+        string card_id_str = r.get_cstr();
+        if (card_id_str.empty() || (static_cast<uint8_t>(card_id_str[0]) == 0xFF)) {
+          break;
+        }
+        strip_leading_whitespace(card_id_str);
+        uint32_t card_id = stoul(card_id_str);
 
         // Read all pages for this card
         string text;
