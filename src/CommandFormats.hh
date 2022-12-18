@@ -501,7 +501,9 @@ template <typename CharT>
 struct S_GameMenuEntry {
   le_uint32_t menu_id = 0;
   le_uint32_t game_id = 0;
-  uint8_t difficulty_tag = 0; // 0x0A = Ep3; else difficulty + 0x22 (so 0x25 = Ult)
+  // difficulty_tag is 0x0A on Episode 3; on all other versions, it's
+  // difficulty + 0x22 (so 0x25 means Ultimate, for example)
+  uint8_t difficulty_tag = 0;
   uint8_t num_players = 0;
   ptext<CharT, 0x10> name;
   // The episode field is used differently by different versions:
@@ -510,7 +512,14 @@ struct S_GameMenuEntry {
   // - On GC Ep1&2, 0x40 means Episode 1, and 0x41 means Episode 2.
   // - On BB, 0x40/0x41 mean Episodes 1/2 as on GC, and 0x43 means Episode 4.
   uint8_t episode = 0;
-  uint8_t flags = 0; // 02 = locked, 04 = disabled (BB), 10 = battle, 20 = challenge
+  // Flags:
+  // 02 = Locked (lock icon appears in menu; player is prompted for password if
+  //      they choose this game)
+  // 04 = In battle (Episode 3; a sword icon appears in menu)
+  // 04 = Disabled (BB; used for solo games)
+  // 10 = Is battle mode
+  // 20 = Is challenge mode
+  uint8_t flags = 0;
 } __packed__;
 struct S_GameMenuEntry_PC_BB_08 : S_GameMenuEntry<char16_t> { } __packed__;
 struct S_GameMenuEntry_DC_V3_08_Ep3_E6 : S_GameMenuEntry<char> { } __packed__;
@@ -915,7 +924,7 @@ struct C_OpenFileConfirmation_44_A6 {
 // See the PSOPlayerData structs in Player.hh for this command's format.
 // header.flag specifies the format version, which is related to (but not
 // identical to) the game's major version. For example, the format version is 01
-// on DC v1, 02 on PSO PC, 03 on PSO GC, XB, and BB, and 04 on Ep3.
+// on DC v1, 02 on PSO PC, 03 on PSO GC, XB, and BB, and 04 on Episode 3.
 // Upon joining a game, the client assigns inventory item IDs sequentially as
 // (0x00010000 + (0x00200000 * lobby_client_id) + x). So, for example, player
 // 3's 8th item's ID would become 0x00610007. The item IDs from the last game
@@ -1758,6 +1767,10 @@ struct S_ConfirmUpdateQuestStatistics_V3_BB_AB {
 // encryption steps added, similarly to how download quests are encoded. See
 // send_function_call in SendCommands.cc for more details on how this works.
 
+// newserv supports exploiting a bug in the USA version of Episode 3, which
+// re-enables the use of this command on that version of the game. See
+// system/ppc/Episode3USAQuestBufferOverflow.s for further details.
+
 struct S_ExecuteCode_B2 {
   // If code_size == 0, no code is executed, but checksumming may still occur.
   // In that case, this structure is the entire body of the command (no footer
@@ -2517,6 +2530,10 @@ struct C_PlayerPreviewRequest_BB_E3 {
 // E4: CARD lobby battle table state (Episode 3)
 // When client sends an E4, server should respond with another E4 (but these
 // commands have different formats).
+// When the client has received an E4 command in which all entries have state 0
+// or 2, the client will stop the player from moving and show a message saying
+// that the game will begin shortly. The server should send a 64 command shortly
+// thereafter.
 
 // header.flag = seated state (1 = present, 0 = leaving)
 struct C_CardBattleTableState_GC_Ep3_E4 {
@@ -2531,7 +2548,7 @@ struct S_CardBattleTableState_GC_Ep3_E4 {
     // 0 = no player present
     // 1 = player present, not confirmed
     // 2 = player present, confirmed
-    // 3 = player presend, declined
+    // 3 = player present, declined
     le_uint16_t state = 0;
     le_uint16_t unknown_a1 = 0;
     le_uint32_t guild_card_number = 0;
@@ -2619,7 +2636,7 @@ struct C_CreateSpectatorTeam_GC_Ep3_E7 {
 // header.flag = player count (including spectators)
 
 struct S_JoinSpectatorTeam_GC_Ep3_E8 {
-  parray<le_uint32_t, 0x20> variations; // 04-84
+  parray<le_uint32_t, 0x20> variations; // 04-84; unused
   struct PlayerEntry {
     PlayerLobbyDataDCGC lobby_data; // 0x20 bytes
     PlayerInventory inventory; // 0x34C bytes
@@ -4479,7 +4496,7 @@ struct G_Unknown_6xB2 {
 
 // 6xB3: Unknown (XBOX)
 
-// 6xB3: CARD battle command (Episode 3)
+// 6xB3: CARD battle server data request (Episode 3)
 
 // These commands have multiple subcommands; see the Episode 3 subsubcommand
 // table after this table. The common format is:
@@ -4512,8 +4529,8 @@ struct G_CardServerDataCommandHeader {
 } __packed__;
 
 // 6xB4: Unknown (XBOX)
-// 6xB4: CARD battle command (Episode 3) - see 6xB3 (above)
-// 6xB5: CARD battle command (Episode 3) - see 6xB3 (above)
+// 6xB4: CARD battle server response (Episode 3) - see 6xB3 (above)
+// 6xB5: CARD battle client command (Episode 3) - see 6xB3 (above)
 // 6xB5: BB shop request (handled by the server)
 
 struct G_ShopContentsRequest_BB_6xB5 {
@@ -4537,7 +4554,9 @@ struct G_MapList_GC_Ep3_6xB6x40 {
   G_MapSubsubcommand_GC_Ep3_6xB6 header;
   le_uint16_t compressed_data_size;
   le_uint16_t unused;
-  // PRS-compressed map list follows (see Ep3DataIndex::get_compressed_map_list)
+  // PRS-compressed map list data follows here. newserv generates this from the
+  // map index at startup time; see the MapList struct in Episode3/DataIndex.hh
+  // and Episode3::DataIndex::get_compressed_map_list for details on the format.
 } __packed__;
 
 struct G_MapData_GC_Ep3_6xB6x41 {
@@ -4545,7 +4564,8 @@ struct G_MapData_GC_Ep3_6xB6x41 {
   le_uint32_t map_number;
   le_uint16_t compressed_data_size;
   le_uint16_t unused;
-  // PRS-compressed map data follows (which decompresses to an Ep3Map)
+  // PRS-compressed map data follows here (which decompresses to an
+  // Episode3::MapDefinition).
 } __packed__;
 
 // 6xB6: BB shop contents (server->client only)
@@ -5621,7 +5641,8 @@ struct G_TournamentMatchResult_GC_Ep3_6xB4x51 {
   le_uint16_t winner_team_id = 0;
   le_uint32_t meseta_amount = 0;
   // This field apparently is supposed to contain a %s token (as for printf)
-  // that is replaced with meseta_amount.
+  // which is replaced with meseta_amount. The results screen animates this text
+  // counting up from 0 to meseta_amount.
   ptext<char, 0x20> meseta_reward_text;
 } __packed__;
 

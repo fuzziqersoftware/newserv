@@ -83,12 +83,12 @@ The following Episode 3 features are well-tested and work normally:
 * Creating and joining games.
 * Trading cards.
 * Participating in card auctions. (The auction contents must be configured in config.json.)
+* Tournaments. (See below)
 
 The following Episode 3 features are implemented, but only partially tested:
 * CARD battles. If you find a feature or card ability that doesn't work, please make a GitHub issue and describe the situation (including the attacking card(s), defending card(s), and ability that didn't work).
 * Spectator teams are partially implemented, but are not well-tested. There is a known issue that prevents viewing battles unless you're in the spectator team when the battle begins.
 * Battle replays sometimes cause the client to crash during the replay. Using the $playrec command is therefore not recommended.
-* Tournaments.
 
 Tournaments work differently than they did on Sega's servers. Tournaments can be created with the `create-tournament` shell command, which enables players to register for them. (Use `help` to see all the arguments - there are many!) The `start-tournament` shell command starts the tournament, but this doesn't schedule any matches. Instead, players who are ready to play their next match can all stand at the rightmost 4-player battle table in the same CARD lobby, and the tournament match will start automatically. (This also means that, for example, not all matches in round 1 must be complete before round 2 can begin - only the matches preceding each individual match must be complete for that match to be playable.)
 
