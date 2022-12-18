@@ -110,9 +110,9 @@ If you're using an older AMD64 Mac, you're running Linux, or you just want to bu
 
 After building newserv or downloading a release, do this to set it up and use it:
 1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
-2. Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
-3. Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
-4. If you plan to play PSO Blue Burst on newserv, set up the patch directory appropriately. See the "Client patch directories" section below.
+2. If you plan to play PSO Blue Burst on newserv, set up the patch directory appropriately. See the "Client patch directories" section below.
+3. Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
+4. Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
 5. Set your client's network settings appropriately and start an online game. See the "Connecting local clients" or "Connecting remote clients" section to see how to get your game client to connect.
 
 ### Installing quests
@@ -134,7 +134,7 @@ There are multiple PSO quest formats out there; newserv supports most of them. I
 | Compressed                | .bin and .dat         | Yes               | None (1)                  |
 | Compressed Ep3            | .bin or .mnm          | Download only     | None (1)                  |
 | Uncompressed              | .bind and .datd       | Yes               | --compress-data (2)       |
-| Uncompressed Ep3          | .bind or .mnm         | Download only     | --compress-data (2)       |
+| Uncompressed Ep3          | .bind or .mnmd        | Download only     | --compress-data (2)       |
 | Unencrypted GCI           | .bin.gci and .dat.gci | Yes               | --decode-gci=FILENAME     |
 | Encrypted GCI with key    | .bin.gci and .dat.gci | Yes               | --decode-gci=FILENAME     |
 | Encrypted GCI without key | .bin.gci and .dat.gci | No                | --decode-gci=FILENAME (3) |
