@@ -4486,12 +4486,15 @@ struct G_MoveLobbyChair_6xB0 {
 // This subcommand is completely ignored (at least, by PSO GC).
 
 // 6xB2: Unknown (not valid on PC or GC Trial Edition)
+// TODO: It appears this command is sent when the snapshot file is written on
+// PSO GC. Verify this.
 
 struct G_Unknown_6xB2 {
   G_UnusedHeader header;
-  parray<uint8_t, 2> unknown_a1;
-  le_uint16_t unknown_a2;
-  le_uint32_t unknown_a3;
+  uint8_t area;
+  uint8_t unused;
+  le_uint16_t client_id;
+  le_uint32_t unknown_a3; // PSO GC puts 0x00051720 here
 } __packed__;
 
 // 6xB3: Unknown (XBOX)
