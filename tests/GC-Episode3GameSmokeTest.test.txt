@@ -3385,15 +3385,15 @@ I 13136 2022-11-27 21:07:12 - [Commands] Received from C-6 (Tali) (version=GC co
 0010 | 00 00 00 00                                     |                 
 I 13136 2022-11-27 21:07:12 - [StaticGameData] Generated Episode 3 compressed map list (3117 -> 3117 bytes)
 I 13136 2022-11-27 21:07:12 - [Commands] Sending to C-6 (Tali) (version=GC command=6C flag=00)
-0000 | 6C 00 44 0C B6 00 00 00 40 0C 00 00 40 00 00 00 | l D     @   @   
-0010 | 2D 0C 00 00 00 00 2F 58 8F 00 00 00 0E FC 38 F9 | -     /X      8 
-0020 | 1D C0 FC F4 2F 58 01 B1 00 6F B0 EC 02 30 64 FF |     /X   o   0d 
+0000 | 6C 00 D4 11 B6 00 00 00 D0 11 00 00 40 00 00 00 | l           @   
+0010 | BD 11 00 00 00 00 44 FB 8F 00 00 00 15 FC 38 F9 |       D       8 
+0020 | 2C A0 FC F4 44 FB 01 B1 00 6F B0 EC 02 30 64 FF | ,   D    o   0d 
 0030 | 63 00 0D E0 1A 3C DC 27 00 07 28 FE 65 FF 2D FF | c    < '  ( e - 
 0040 | 7E C6 03 01 02 01 04 87 50 FF 0A 01 01 FE 01 FA | ~       P       
 0050 | 80 FF 0F 00 FF 1A 07 01 08 01 55 06 50 FD 10 C8 |           U P   
 0060 | FC 10 F0 FE 21 0D E0 FD 43 C0 FB 52 10 FE 68 FC |     !   C  R  h 
-0070 | F8 F8 C8 FF FF EA F0 24 01 8D 00 01 02 44 D6 99 |        $     D  
-0080 | F0 05 79 F0 21 EE 01 6D 1D 39 F0 2C 01 EF 0A 57 |   y !  m 9 ,   W
+0070 | F8 F8 C8 FF FF EA F0 24 01 8D 00 01 02 44 B6 99 |        $     D  
+0080 | F0 05 79 F0 0E 59 F0 6D 1D 39 F0 2C 01 EF 0A 57 |   y  Y m 9 ,   W
 0090 | B0 F1 11 03 02 08 EF 0B 00 EF 30 EF 80 ED 2F 00 |           0   / 
 00A0 | 07 08 88 ED BC 44 42 F7 41 43 40 D0 E4 0A 40 44 |      DB AC@   @D
 00B0 | 43 E0 EE 00 EF AE 26 01 DF 8F 00 05 02 58 99 DF | C     &      X  
@@ -3430,158 +3430,247 @@ I 13136 2022-11-27 21:07:12 - [Commands] Sending to C-6 (Tali) (version=GC comma
 02A0 | FF DA 00 78 AE 04 EF F9 29 45 5E BA 09 45 E1 AA |    x    )E^  E  
 02B0 | 0D 77 C9 44 55 87 00 45 14 00 56 3F 80 57 BF F5 |  w DU  E  V? W  
 02C0 | 98 CD 10 F9 DD F8 CD 0B 44 00 40 5D 00 80 56 0B |         D @]  V 
-02D0 | 44 42 90 DD 1B 7F 00 45 A5 AD 00 FC 00 0E 03 B7 | DB     E        
-02E0 | 41 93 0E BE 29 33 C9 09 33 BD D4 E9 32 DF 00 0C | A   )3  3   2   
-02F0 | 00 DE 13 AA 9B 34 D8 8A 09 86 FF 4E 55 AA 96 33 |      4     NU  3
-0300 | 5E 33 89 87 7D FF AA 05 87 7A 87 F0 78 BA D4 2A | ^3  }    z  x  *
-0310 | D6 60 8A 32 31 A0 FF 0B 00 56 AD 7B BF 00 EA 00 |  ` 21    V {    
-0320 | 11 03 34 19 2D 6D 6E F9 2C 78 D9 2C 82 55 B9 2C |   4 -mn ,x , U ,
-0330 | 02 89 00 34 11 89 7A 55 80 67 0E 88 CC 0C 80 88 |    4  zU g      
-0340 | 42 80 64 0E FD 88 CB FF 00 23 81 55 6E 67 75 69 | B d      # Ungui
-0350 | 1F 73 20 4C 61 70 F4 FA 98 FF 0C 30 FF 0D 54 68 |  s Lap     0  Th
-0360 | 65 3F 20 61 72 65 61 20 40 F8 FA 20 FC CF 0A 73 | e? area @      s
-0370 | 75 72 72 FF 6F 75 6E 64 65 64 20 62 E1 79 F1 63 | urr ounded b y c
-0380 | 6C 69 43 66 66 B8 61 80 EF E5 66 61 6F D6 73 74 | liCff a   fao st
-0390 | C7 9C FF 68 61 D4 6E C3 6F 74 DB 65 65 E1 6E CA |    ha n ot ee n 
-03A0 | 65 78 70 11 6C E2 68 CC E9 74 68 80 D7 BD 67 03 | exp l h  th   g 
-03B0 | 68 6C C0 01 DA DB 0E A3 20 70 99 38 C5 6F 66 FC | hl       p 8 of 
-03C0 | 9E 52 61 67 6F 6C 2E 69 20 85 0A 64 38 5C 63 6F |  Ragol.i   d8\co
-03D0 | 76 00 84 96 C1 E6 79 67 69 00 96 AC 70 97 73 73 | v     ygi   p ss
-03E0 | 69 08 87 7A 7C 80 80 63 01 74 6D 98 5A 8F 1F 93 | i  z|  c tm Z   
-03F0 | 6D 61 6B 69 20 22 56 71 C4 1F 74 42 20 10 6D 69 | maki "Vq  tB  mi
-0400 | 80 A1 EE E0 88 33 6E 65 77 10 0A 6C C2 CD 65 83 |      3new  l  e 
-0410 | 2E 00 0F 4E 65 62 75 F4 3B 20 31 BE FF 4D 6F 40 | .  Nebu ; 1  Mo@
-0420 | A3 36 61 1D 88 FF 0E DB F7 6D 79 0E 26 65 72 69 |  6a      my &eri
-0430 | 06 FF 73 0A 47 61 6C 2D 44 61 C3 2D 56 F9 20 49 |   s Gal-Da -V  I
-0440 | 21 73 B5 6E C4 7B 77 13 66 00 9B 04 1A 87 FA 13 | !s n {w f       
-0450 | F7 0A F0 79 CC 63 65 70 F0 7F 6E 67 0A 6D 01 65 |    y cep  ng m e
-0460 | 4B 86 26 65 73 70 65 F0 3D 0A 66 72 6F C7 6D 20 | K &espe = fro m 
-0470 | 48 44 68 FE F3 F5 0A 46 6C 6F 77 65 5F 6E 2E 0A | HDh    Flowe_n. 
-0480 | 54 68 51 F3 05 39 F3 61 F7 CE 01 C1 F4 70 AD 46 | ThQ  9 a     p F
-0490 | F2 F3 0A 29 F7 30 FC 09 01 2C 8C 16 D7 63 68 72 |    ) 0   ,   chr
-04A0 | F3 86 AB 69 64 D1 6F 8D 0A CA F6 66 BA 03 20 77 |    id o    f   w
-04B0 | 09 80 E7 D0 70 FA 0A 61 65 0A 72 67 0B 80 F8 09 |     p  ae rg    
-04C0 | 32 80 F8 22 79 61 67 A2 70 6F D4 3E F9 F2 30 FC | 2  "yag po >  0 
-04D0 | 0B 20 DD 0A 5C F8 2C 20 15 F6 0A 7A 55 F6 21 F2 |     \ ,    zU ! 
-04E0 | 66 65 72 FB F1 EE 61 61 F0 61 75 74 69 7F 66 75 | fer   aa auti fu
-04F0 | 6C 20 76 69 65 20 6F 45 B1 22 F4 08 69 D1 ED B5 | l vie oE "  i   
-0500 | 0A 7B ED 72 EE 69 99 EE 53 0A 72 38 6E 69 DA F1 |  { r i  S r8ni  
-0510 | A3 65 6E 78 CD 72 6F 6E 6D E3 E1 F6 2E 95 74 27 |  enx ronm   . t'
-0520 | DE 21 ED 6C 73 6F C9 F1 70 F7 72 69 6D 71 EF 6C |  ! lso  p rimq l
-0530 | 6F 63 1F 61 74 69 6F 6E 1F 0D 20 67 65 74 FF 17 | oc ation   get  
-0540 | 63 6C 6F 73 65 20 6C 1F 6F 6F 6B 20 61 05 52 D2 | close l ook a R 
-0550 | F0 B5 5F 91 EA 62 69 72 64 0A ED 85 1C FC D2 E9 |   _  bird       
-0560 | 4C 0A 81 62 67 75 74 99 EA 41 EC 6F 6C 24 DE D4 | L  bgut  A ol$  
-0570 | 21 9D EE 9C 65 38 A2 D3 F0 2C 0A 02 8B 96 A2 39 | !   e8   ,     9
-0580 | 95 42 E8 C3 61 64 34 73 65 FF 64 2E 00 4C 75 70 |  B  ad4se d. Lup
-0590 | 75 73 5F 20 53 69 6C 76 32 EE BD 90 FF 0B 28 FF | us_ Silv2     ( 
-05A0 | 0C 00 41 66 79 EE 6A A4 FC 18 EE 09 B5 E7 73 32 |   Afy j       s2
-05B0 | 3F A2 E8 50 36 36 65 11 E8 31 56 65 74 2A F0 E0 | ?  P66e  1Vet*  
-05C0 | F6 0C F7 42 ED 0A 72 D9 EA 69 6C 74 A2 F1 E9 0E |    B  r  ilt    
-05D0 | E9 E7 EF 6D 6F 6E 75 0B F7 0A 4E C3 6F 77 6A 61 |    monu   N owja
-05E0 | 79 A0 54 74 F9 E1 F5 FB 69 76 B9 F7 69 66 65 2D | y Tt    iv  ife-
-05F0 | 7E A9 E3 6D 20 0A 70 6F D0 55 A1 E8 EE F9 64 70 | ~  m  po U    dp
-0600 | 23 6C 69 6E F7 21 E7 2C 20 CA F7 0A 62 61 9B 63 | #lin ! ,    ba c
-0610 | 6B BA EC 6E 1C BF 22 E1 70 6C BA EE 65 54 FC 66 | k  n  " pl  eT f
-0620 | 61 11 EC 76 51 E9 6F ED F9 66 69 C3 B2 E9 20 CD | a  vQ o  fi     
-0630 | 74 74 55 6C E1 E9 A1 E0 F9 E1 EB 11 E1 79 94 F5 | ttUl         y  
-0640 | C6 F9 32 20 AB 0A 48 59 EA C1 EF B8 F6 0D B5 32 |   2   HY       2
-0650 | B8 F6 20 B7 F7 20 8B E5 7D 64 B1 DD 72 6F 79 65 |         }d  roye
-0660 | 55 C1 EC 3C F7 78 F7 16 01 EC F7 7E F7 20 73 81 | U  < x     ~  s 
-0670 | E0 2E 0A 41 FE 09 E1 72 67 65 20 76 6F F5 6C C1 |  . A   rge vo l 
-0680 | F6 13 EA 64 61 74 FE C1 EA 72 65 67 61 72 64 6A |    dat   regardj
-0690 | 2B DF 98 FC 09 6B D9 74 AD 2B DB EB D8 0A 43 EB | +    k t +    C 
-06A0 | 79 D9 3F 76 61 69 6C 61 62 A8 14 4B D9 C3 E9 59 | y ?vailab  K   Y
-06B0 | DD FF 2E 00 4D 6F 6C 61 65 20 55 56 AA E9 A0 FF |   . Molae UV    
-06C0 | 0B 40 FF 0C 55 E3 E1 53 D6 F1 D4 01 F1 EB FF E7 |  @  U  S        
-06D0 | 62 09 D7 F1 D5 70 6F AE B2 D8 6E 20 BB D8 04 FD | b    po   n     
-06E0 | A0 66 DA D7 4B DA 7F 70 68 6F 74 6F 6E 2E 98 E2 |  f  K  photon.  
-06F0 | 65 63 6C 2B D9 DD 76 51 D5 69 B4 DE 52 E8 0A 3A | ecl+  vQ i  R  :
-0700 | D5 BF 72 65 76 65 61 6C F1 D3 DA A9 D5 69 E8 69 |   reveal     i i
-0710 | D1 E7 63 AF 74 75 61 6C 79 D5 89 EE AE EA D3 75 |   c tualy      u
-0720 | 70 F1 E6 21 E3 B6 9C FD 20 42 DF 2D 21 F0 AA 09 | p  !     B -!   
-0730 | F7 72 D1 55 FF 8A D1 43 63 6F CA 65 50 C3 91 D1 |  r U   Cco eP   
-0740 | 4B DE E3 DC EB 0A 14 64 6D E1 69 B0 2D 73 68 93 | K      dm i -sh 
-0750 | 61 70 98 41 E7 AA 79 E1 E1 EF 91 D5 BD FB EA 6A | ap A  y        j
-0760 | D0 1A EE 81 D1 72 61 31 6E 2B 72 E9 BA E2 EA 9F |      ra1n+r     
-0770 | EF 2E 00 B5 54 2A DC 99 E6 6E 69 E6 6A 98 FF 0B |  .  T*   ni j   
-0780 | 38 FF 0B DB CC 63 D1 29 D4 DA F4 F7 72 AB 6F 67 | 8    c )    r og
-0790 | B1 CD 94 CF 37 ED D2 B1 DF 23 69 64 DA CA DD C2 |     7    #id    
-07A0 | DB 64 D1 F7 6C 4B 6F 70 2B F0 CC B1 6A 38 73 3C |  d  lKop+   j8s<
-07B0 | CC 4E C1 CB 75 6C 2B 0A 49 D0 93 E0 B0 2B 61 64 |  N  ul+ I    +ad
-07C0 | F9 F6 31 F6 E0 F9 36 6F 6E EA 64 DB F1 C7 61 E8 |   1   6on d   a 
-07D0 | 6E 65 FE CA DC 0A 6F 6E 63 65 2D FA 28 DA 09 C1 | ne    once- (   
-07E0 | F2 6C 65 6E 64 57 6F 72 2E 70 D0 0B 15 D8 CD 49 |  lendWor.p     I
-07F0 | DB 2C F9 0A 24 57 2C 20 68 09 D2 C1 CA AF F1 DC |  ,  $W, h       
-0800 | 72 65 6D 61 D2 3C F0 EA 8A C9 52 CC DF FC 6D 6F | rema <    R   mo
-0810 | BE D9 CE 73 74 75 6E CA E3 26 B1 CF 61 30 B5 2B |    stun  &  a0 +
-0820 | EB 69 D9 61 E6 4D D1 F5 46 49 C3 46 F3 75 49 CB |  i a M  FI F uI 
-0830 | 90 FF 0A 30 FF 0B 00 53 D5 E0 C3 0B C2 C8 C1 D7 |    0   S        
-0840 | 1D C4 2C EA CC DD 4A CB 8A C2 77 65 7E D9 F1 0A |   ,   J   we~   
-0850 | 6B 6E 6F 77 55 D9 EF A1 E1 71 D4 39 D9 55 71 C4 | knowU    q 9 Uq 
-0860 | F2 C6 B9 EC 99 EB F5 52 EC E9 DD 83 CD 0A 63 61 |        R      ca
-0870 | 5E E1 D4 61 62 6F D1 D6 BD F2 CA 6B C6 6D 69 78 | ^  abo     k mix
-0880 | 42 C3 A4 D2 CA C0 71 EE 5A 99 EE F1 C5 72 14 EC | B     q Z    r  
-0890 | AD 62 CC 69 CA 6E 6C C9 32 BF AB 72 67 F3 BE F6 |  b i nl 2  rg   
-08A0 | EE 61 C4 EB 61 72 91 C7 C2 BD 73 2E D7 20 49 74 |  a  ar    s.  It
-08B0 | 91 E8 A9 EB 64 B6 A9 BD 64 99 F1 20 A9 DC 57 65 |     d   d     We
-08C0 | 0A 61 96 D6 68 C0 0C DF 6B C2 65 6E 68 61 29 F3 |  a  h   k enha) 
-08D0 | 64 6E D9 F1 6F 77 29 C9 65 C5 C1 CC B1 F0 54 75 | dn  ow) e     Tu
-08E0 | AA 79 D3 ED DB E1 C3 71 D8 AC 69 69 E4 AB C0 BA |  y     q  ii    
-08F0 | B6 BA 1A C4 76 65 A1 CE B6 43 CE 2C A2 BA 0A 29 |     ve   C ,   )
-0900 | B8 AA 61 F7 E5 F2 74 BC 16 F3 FA 5C D6 31 D2 6F |   a   t    \ 1 o
-0910 | 75 72 69 5A 69 C1 71 D8 72 09 E5 EB 00 F3 11 32 | uriZi q r      2
-0920 | 00 F3 FF 00 F3 95 67 75 55 65 CD FF 96 FF DA A9 |       guUe      
-0930 | F5 3C FF F3 A9 CA AF 43 2E 41 EF 2E 52 2E 44 E9 |  <     C.A .R.D 
-0940 | BC 54 65 7F 63 68 6E 6F 6C 6F 67 B7 99 A9 52 65 |  Te chnolog   Re
-0950 | 71 E3 72 49 B5 BB 0A 4C E1 E7 72 61 41 CF BE E9 | q rI   L  raA   
-0960 | A8 6F 6E 62 6F 39 CE AE 40 D9 0B 0A 42 C1 BE 11 |  onbo9  @   B   
-0970 | EC AA 83 AA 61 BE 12 CC F9 BE D6 CA EA 73 51 B0 |     a        sQ 
-0980 | 08 FD 15 6D AF 61 64 65 0A C2 A5 8E C4 77 66 61 |    m ade     wfa
-0990 | 63 D1 A9 74 79 F5 9C A6 A9 C2 6A D1 61 68 65 AB | c  ty     j ahe 
-09A0 | 61 64 3F DE 23 A7 0B A5 AD 0A 9A B6 70 31 BE 75 | ad? #       p1 u
-09B0 | BB AA 93 E7 C2 A8 4A DC E9 C9 DE 59 B6 67 65 72 |       J    Y ger
-09C0 | 4B A6 0A 7A 39 CA A2 A2 72 75 6E FF E3 A2 43 68 | K  z9   run   Ch
-09D0 | 69 65 66 20 50 7E 49 AC 61 67 6C 61 73 AF 29 C3 | ief P~I aglas ) 
-09E0 | 43 61 65 19 C7 39 A8 75 54 51 AC 79 E6 66 20 35 | Cae  9 uTQ y f 5
-09F0 | 74 FF 80 FF 0F 03 A0 74 5B DC E3 B7 20 AF D0 FD | t      t[       
-0A00 | 59 B9 39 F6 61 6E 69 73 6D AA A1 AA 42 B4 DA A7 | Y 9 anism   B   
-0A10 | D1 D1 AA 49 C2 F1 D4 22 CB F7 C8 3A C2 9E 08 C1 |    I   "   :    
-0A20 | 09 61 6C AA 56 EA CC D1 AA AB F3 FA 89 A7 2B B0 |  al V         + 
-0A30 | 44 6F 6D 65 D5 2E A2 CE E1 BB 64 CD 6D AB 69 74 | Dome .    d m it
-0A40 | 2A A6 59 B0 73 C1 D6 6A BB 6E 6A AE D1 9E 6D BA | * Y s  j nj   m 
-0A50 | B9 BB 0A D4 72 65 C9 A0 AA 49 9C C1 A0 61 CE 02 |     re   I   a  
-0A60 | B0 55 64 29 C7 C2 9D 5C A8 5B 46 B5 73 02 A2 6D |  Ud)   \ [F s  m
-0A70 | F3 99 D5 53 DE 11 AE B1 B0 0A F1 73 75 75 C1 A5 |    S       suu  
-0A80 | 2A AB 74 69 F5 3A B9 CB B4 B2 9E 75 70 70 6E 02 | * ti :     uppn 
-0A90 | D1 61 74 61 D2 70 FD 0B 98 9A B7 0A 70 69 63 6B |  ata p      pick
-0AA0 | 7B 75 70 23 98 73 68 75 D5 94 B7 9B A1 48 C8 0B | {up# shu     H  
-0AB0 | 05 F5 32 DA 00 F5 FF 00 F5 57 44 79 E2 72 AB 20 |   2      WDy r  
-0AC0 | 4F 19 C3 A8 FF 0A 50 FF 0B 55 41 42 C1 A1 A9 9E | O     P  UAB    
-0AD0 | 93 55 5A E3 59 8A 93 A7 13 EC AD 99 B6 93 8C 66 |  UZ Y          f
-0AE0 | 91 A9 49 B8 F6 02 8A 61 C1 8A 6F 6D 6E 55 69 D9 |   I    a  omnUi 
-0AF0 | 9F EA 92 99 9E 6B 32 8C 70 F2 E6 83 8D 6F 55 A2 |      k2 p    oU 
-0B00 | BF 05 EB 33 9A 1F 8B D7 00 A6 0D 2D 2D 9C C5 A3 |    3       --   
-0B10 | B3 65 55 6D E1 AD 8B 91 B2 B1 B5 93 C0 E1 88 51 |  eUm           Q
-0B20 | 96 67 71 B1 B6 81 97 63 81 A2 76 0C FD 51 72 EF |  gq    c  v  Qr 
-0B30 | 8A E5 D4 C0 13 86 E1 B3 75 7A 49 C8 F1 89 66 65 |         uzI   fe
-0B40 | 65 EB 39 A2 67 EA 8F 39 B3 65 73 AF 63 72 69 62 | e 9 g  9 es crib
-0B50 | 25 AB 29 C5 56 BD A7 6C 29 93 31 85 AF A9 97 77 | % ) V  l) 1    w
-0B60 | 68 6F 01 84 A9 9F D5 0A 69 9A E1 87 BA 94 2E DA | ho      i     . 
-0B70 | A1 95 02 DE 74 17 B6 61 5A 82 DE 2D DC 72 E1 84 |     t  aZ  - r  
-0B80 | FB 73 95 62 7A 86 0A 73 69 67 2D 6E 91 B0 63 A2 |  s bz  sig-n  c 
-0B90 | 84 BB 3B 5C D7 6F 62 19 B0 AB 63 6C 01 DA 25 B0 |   ;\ ob   cl  % 
-0BA0 | B3 91 AA F1 92 69 E0 04 9C BA 83 AA 06 B8 AA 9A |      i          
-0BB0 | 5B 86 B9 84 7F 56 69 61 20 54 75 62 D5 41 B0 B0 | [    Via Tub A  
-0BC0 | FF 09 60 FF 09 6B AB 72 AA 2D F7 78 B0 0D E0 B0 |   `  k r - x    
-0BD0 | 0C 41 86 7A 81 F3 59 C3 65 73 3A ED 39 D2 29 7B |  A z  Y es: 9 ){
-0BE0 | 48 D1 8A 2D 53 5B 70 65 AA A7 54 D2 AB FF A9 A7 | H  -S[pe  T     
-0BF0 | 4E 65 74 77 6F 72 6B 6A 49 D8 9E DB 8A B0 50 BF | NetworkjI     P 
-0C00 | 04 AF 2E 0A 4C 69 6B 69 D9 AA 49 79 2C D8 4A 85 |   . Liki  Iy, J 
-0C10 | 94 D7 55 2C C2 A5 B1 81 C9 96 52 00 1C AE 8A A5 |   U,      R     
-0C20 | 55 A9 A5 01 8D 55 DF CB 84 55 39 7A 03 87 3D 85 | U    U   U9z  = 
-0C30 | D7 DB D5 52 8A 23 97 41 90 00 DA 24 2E 05 00 00 |    R # A   $.   
-0C40 | 00 00 00 00                                     |                 
+02D0 | 44 42 90 DD 1B 7F 00 45 A5 AD 00 FC 00 0E 03 C7 | DB     E        
+02E0 | 41 93 0E BE FC C9 18 F8 D4 AF F4 DF 00 0C 00 DE | A               
+02F0 | 13 9B 34 AA D8 8A 09 86 FF 4E 55 96 33 AA 5E 33 |   4      NU 3 ^3
+0300 | 89 87 7D FF 05 87 AA 7A 87 F0 78 BA D4 2A 60 8A |   }    z  x  *` 
+0310 | 32 F5 31 A0 FF 0B 00 56 AD 7B 00 EA 6F 00 11 03 | 2 1    V {  o   
+0320 | 34 19 2D 6E 5B F9 2C 78 D9 2C 82 B9 2C 55 02 89 | 4 -n[ ,x ,  ,U  
+0330 | 00 34 11 89 7A 80 67 0E 55 88 CC 0C 80 88 42 80 |  4  z g U     B 
+0340 | 64 0E 88 CB FF FF 00 45 82 1E 01 68 00 0B 03 85 | d      E   h    
+0350 | 8F 00 00 11 88 FC 8E C1 66 11 9A F4 AD BB A1 1B |         f       
+0360 | 0F 00 89 12 91 12 95 01 E1 44 D8 AB 09 94 F5 4C |          D     L
+0370 | AB 60 11 0F 54 D5 0D FF FE FE 80 FF 09 AD 3C 10 |  `  T         < 
+0380 | 04 FF 06 F2 43 40 56 14 AA 84 FC 60 DB 0C 7C FF |     C@V    `  | 
+0390 | 48 0E 0A AC 9C E0 DA 0A EC A6 AA 40 0D 09 80 FB | H          @    
+03A0 | 0C 27 FB C8 D9 35 AB 50 50 21 5E B5 FF 6E FF 4A |  '   5 PP!^  n J
+03B0 | 27 FF 78 FF 10 E3 25 50 FC FE C9 51 80 FF 0C B6 | ' x   %P   Q    
+03C0 | 00 FF 0B 55 C0 FD 0A 80 FC 10 65 FC 2D FC 55 7C |    U      e - U|
+03D0 | FF B8 FB 09 E0 FC 0D AE FC 95 0C FD 66 FA 54 FA |             f T 
+03E0 | D5 B5 A6 FF F8 FD 0A 80 05 1D 01 FF F4 00 5F 00 |               _ 
+03F0 | 06 03 87 00 C7 00 12 3D FC 4D 18 F8 5C AB F4 6B |        = M  \  k
+0400 | 00 67 15 21 EF 00 67 4E AA 98 78 FF 08 00 9F 05 |  g !  gN  x     
+0410 | EF 21 DE 63 13 21 FC 2F 8C F8 3E F4 55 4D 00 EF |  ! c ! /  > UM  
+0420 | 16 80 34 0E AA DD F5 80 34 3B 90 BB BC 00 EF E5 |   4     4;      
+0430 | 24 01 8D 7E 41 46 89 00 00 14 49 8C FC 54 F8 6E | $  ~AF    I  T n
+0440 | C1 22 14 82 01 23 0B 75 00 45 12 80 23 3F 80 21 |  "   # u E  #? !
+0450 | 2E 04 01 5D D8 0D 0C 20 55 8F 20 20 80 34 0E AB | .  ]    U    4  
+0460 | F0 22 0D 10 F8 FE 0E 18 22 10 00 FE 13 FA 08 00 |  "      "       
+0470 | 8F 04 BC 8A 00 00 15 8E E1 33 15 B6 F8 AE A1 44 |          3     D
+0480 | 15 D0 11 AB 00 9A 13 EA 20 C0 0F 32 9B C0 76 09 |            2  v 
+0490 | 06 00 AA 02 11 80 00 0A 18 9A 0B 80 65 09 EA F8 |             e   
+04A0 | 45 FF 00 CD AC 03 23 03 8B 8F 00 00 16 CD FC F1 | E     #         
+04B0 | DF F8 EB 00 00 AB 17 05 11 01 00 78 12 81 01 AA |            x    
+04C0 | F0 00 0B 00 56 11 78 33 0D 02 89 AA 68 00 0C 03 |     V x3    h   
+04D0 | 89 E8 01 AC 78 02 0E BA 00 02 10 78 01 0D 10 10 |     x      x    
+04E0 | F0 FE 13 EA 58 00 0B F0 00 AD 09 00 F7 01 DF 21 |     X          !
+04F0 | 00 03 03 8C 61 EF 7C D6 41 EF 8E 21 EF 01 9A 17 |     a | A  !    
+0500 | 55 B4 00 CD 14 88 BC 0E C8 9D 0B 55 80 FF 0F 00 | U          U    
+0510 | FF 1F 00 FE 16 80 86 0D 57 F8 FC 10 07 01 00 65 |         W      e
+0520 | 9C 89 CC F5 78 CE 1B 10 FF 12 F0 CC A0 55 6E 67 |     x        Ung
+0530 | 7F 75 69 73 20 4C 61 70 D0 FA 98 FF 0C 30 FF 0D |  uis Lap     0  
+0540 | 54 FF 68 65 20 61 72 65 61 20 00 F8 FA F1 20 CF | T he area       
+0550 | 0A 73 75 FF 72 72 6F 75 6E 64 65 64 87 20 62 79 |  su rrounded  by
+0560 | F1 63 0F 6C 69 66 66 B8 01 61 EF 86 E5 66 6F D6 |  c liff  a   fo 
+0570 | 73 1D 74 9C FF 68 61 0F D4 6E 6F 74 DB 87 65 65 | s t  ha  not  ee
+0580 | 6E CA 65 47 78 70 6C E2 A0 CC E9 74 01 68 D7 0E | n eGxpl    t h  
+0590 | BD 67 68 6C C0 04 DA DB 38 A3 20 70 E0 99 C5 6F |  ghl    8  p   o
+05A0 | 66 F0 9E 52 61 67 6F A7 6C 2E 20 85 0A E1 64 5C | f  Rago l.    d\
+05B0 | 63 6F 76 00 84 96 04 E6 79 03 67 69 96 C0 AC 97 | cov     y gi    
+05C0 | 73 73 21 69 87 7A 00 7C 80 06 63 74 6D 60 5A 8F | ss!i z |  ctm`Z 
+05D0 | 7E 93 6D 61 6B 69 80 22 56 71 10 1F 74 43 42 20 | ~ maki "Vq  tCB 
+05E0 | 6D 69 00 A1 EE 82 88 33 6E 43 65 77 0A 6C 08 CD | mi     3nCew l  
+05F0 | 65 83 3F 2E 00 4E 65 62 75 EC F4 20 31 BE FF 4D | e ?. Nebu   1  M
+0600 | 6F 00 A3 36 75 61 88 FF 0E DB F7 6D 79 38 26 65 | o  6ua     my8&e
+0610 | 72 69 FC 06 73 0A 47 61 6C 2D 0F 44 61 2D 56 F9 | ri  s Gal- Da-V 
+0620 | 87 20 49 73 B5 6E 10 7B 77 03 13 66 9B 68 04 87 |   Is n {w  f h  
+0630 | FA 13 F7 0A C0 79 CC 63 C3 65 70 7F 6E 67 07 0A |      y c ep ng  
+0640 | 6D 65 4B 18 26 65 73 C2 70 65 3D 0A 66 1F 72 6F | meK &es pe= f ro
+0650 | 6D 20 48 FB 44 68 F3 F5 0A 46 6C 6F 7F 77 65 6E | m H Dh   Flo wen
+0660 | 2E 0A 54 68 15 51 F3 39 F3 61 F7 04 CE C1 F4 70 | . Th Q 9 a     p
+0670 | B4 46 F2 F3 0A 29 F7 06 30 FC 09 2C 8C 58 D7 63 |  F   )  0  , X c
+0680 | 68 72 F3 18 AB 69 64 36 D1 6F 0A CA F6 66 0E BA | hr   id6 o   f  
+0690 | 20 77 09 00 E7 D0 86 70 FA 0A 65 0A 72 2D 67 80 |  w     p  e r-g 
+06A0 | F8 09 32 80 F8 22 84 79 67 A2 70 51 6F 3E F9 F2 |   2  " yg pQo>  
+06B0 | 77 30 FC 0B 20 0A 5C F8 2C 20 EB 15 F6 0A 55 F6 | w0    \ ,     U 
+06C0 | 21 F2 66 65 ED 72 F1 EE 61 61 F0 61 75 FF 74 69 | ! fe r  aa au ti
+06D0 | 66 75 6C 20 76 69 81 65 6F C4 45 22 F4 08 69 D6 | ful vi eo E"  i 
+06E0 | D1 ED 0A 7B ED 72 EE 69 4E 99 EE 0A 72 38 A5 6E |    { r iN   r8 n
+06F0 | DA F1 A3 65 E1 6E CD 72 6F 6E 8D 6D E1 F6 2E 95 |    e n ron m  . 
+0700 | 7B 74 27 21 ED 6C 73 6F DF C9 F1 70 72 69 6D 71 | {t'! lso   primq
+0710 | EF 6C 7F 6F 63 61 74 69 6F 6E 7C 0D 20 67 65 74 |  l ocation|  get
+0720 | FC 17 63 6C 6F 73 65 7F 20 6C 6F 6F 6B 20 61 14 |   close  look a 
+0730 | 52 D2 F0 7C B5 91 EA 62 69 72 64 15 0A ED 1C FC | R  |   bird     
+0740 | D2 E9 06 4C 0A 62 67 D6 74 99 EA 41 EC 6F 91 6C |    L bg t  A o l
+0750 | DE 84 D4 9D EE 9C 65 E0 A2 D3 F0 2C 0A 08 8B 96 |       e    ,    
+0760 | 88 39 95 0E 42 E8 61 64 34 FF 73 65 64 2E 00 4C |  9  B ad4 sed. L
+0770 | 75 70 7F 75 73 20 53 69 6C 76 F5 32 EE 90 FF 0B | up us Silv 2    
+0780 | 28 FF 0C 00 41 66 AA 79 EE A4 FC 18 EE 09 B5 E7 | (   Af y        
+0790 | C9 73 3F A2 E8 50 D8 36 65 11 E8 31 58 65 74 2A |  s?  P 6e  1Xet*
+07A0 | F0 DD E0 F6 0C 42 ED 0A 72 D9 EA 69 8B 6C 74 F1 |      B  r  i lt 
+07B0 | E9 0E BE E9 E7 6D 6F 6E 75 0B F7 0F 0A 4E 6F 77 |      monu    Now
+07C0 | 6A 83 61 79 54 74 F9 EE E1 F5 69 76 B9 F7 69 66 | j ayTt    iv  if
+07D0 | FB 65 2D A9 E3 6D 20 0A 70 41 6F 55 A1 E8 C3 EE |  e-  m  pAoU    
+07E0 | F9 64 23 6C 69 DD 6E 21 E7 2C 20 CA F7 0A 6F 62 |  d#li n! ,    ob
+07F0 | 61 63 6B BA EC 6E 72 BF 22 E1 70 6C E8 EE 65 54 | ack  nr " pl  eT
+0800 | FC 66 61 DA 11 EC 51 E9 6F ED F9 66 0D 69 B2 E9 |  fa   Q o  f i  
+0810 | 20 CD 57 74 74 6C E1 E9 A1 E0 AD F9 E1 11 E1 79 |   Wttl         y
+0820 | 94 F5 C6 F9 AF 32 20 0A 48 59 EA C1 EF D6 B8 F6 |      2  HY      
+0830 | 0D 32 B8 F6 20 B7 F7 20 F6 8B E5 64 B1 DD 72 6F |  2         d  ro
+0840 | 79 55 65 C1 EC 3C F7 78 F7 16 DD 01 EC 7E F7 20 | yUe  < x     ~  
+0850 | 73 81 E0 2E FB 0A 41 09 E1 72 67 65 20 D7 76 6F | s  .  A  rge  vo
+0860 | 6C C1 F6 13 EA 64 FB 61 74 C1 EA 72 65 67 61 AB | l    d at  rega 
+0870 | 72 64 2B DF 98 FC 09 6B D9 B5 74 2B DB EB D8 0A | rd+    k  t+    
+0880 | 43 EB FE 79 D9 76 61 69 6C 61 62 A0 14 4B D9 C3 | C  y vailab  K  
+0890 | E9 FE 59 DD 2E 00 4D 6F 6C 61 57 65 20 56 AA E9 |   Y . MolaWe V  
+08A0 | A0 FF 0B 55 40 FF 0C E3 E1 53 D6 F1 D4 AD 01 F1 |    U@    S      
+08B0 | FF E7 62 09 D7 F1 D5 BB 70 6F B2 D8 6E 20 BB D8 |   b     po  n   
+08C0 | 82 04 FD 66 DA D7 FE 4B DA 70 68 6F 74 6F 6E 61 |    f   K photona
+08D0 | 2E E2 65 63 B2 2B D9 DD 76 51 D5 D1 69 DE 52 E8 | . ec +  vQ  i R 
+08E0 | 0A FE 3A D5 72 65 76 65 61 6C 6A F1 D3 A9 D5 69 |   : revealj    i
+08F0 | E8 69 BF D1 E7 63 74 75 61 6C 79 D5 BA 89 EE EA |  i   ctualy     
+0900 | D3 75 70 F1 E6 DA 21 E3 9C FD 20 42 DF 2D AA 21 |  up   !    B - !
+0910 | F0 09 F7 72 D1 55 FF 0E 8A D1 63 6F CA 41 65 C3 |    r U    co Ae 
+0920 | 91 D1 8D 4B DE DC EB 0A 14 87 64 6D 69 B0 2D 4F |    K      dmi -O
+0930 | 73 68 61 70 98 AA 41 E7 79 E1 E1 EF 91 D5 AA BD | shap  A y       
+0940 | FB 6A D0 1A EE 81 D1 C7 72 61 6E 2B 72 A4 BA E2 |  j      ran+r   
+0950 | EA 9F EF D7 2E 00 54 2A DC 99 E6 6E AA 69 E6 98 |     . T*   n i  
+0960 | FF 0B 38 FF 0B DB CC 45 63 29 D4 DA AF F4 F7 72 |   8    Ec)     r
+0970 | 6F 67 B1 CD 94 CF 4A 37 ED B1 DF 23 6B 69 64 CA | og    J7   #kid 
+0980 | DD C2 DB 64 2F D1 F7 6C 6F 70 2B F0 C5 CC 6A 38 |    d/  lop+   j8
+0990 | 73 3A 3C CC C1 CB 75 6C 29 2B 49 D0 93 E0 AC B0 | s:<   ul)+I     
+09A0 | 61 64 F9 F6 31 F6 80 F9 36 AB 6F 6E 64 DB F1 C7 | ad  1   6 ond   
+09B0 | 61 E8 FB 6E 65 CA DC 0A 6F 6E 63 EB 65 2D 28 DA | a  ne   onc e-( 
+09C0 | 09 C1 F2 6C 65 5F 6E 64 6F 72 2E 70 D0 0B 35 15 |    le_ndor.p  5 
+09D0 | D8 49 DB 2C F9 0A 5F 24 2C 20 68 09 D2 BD C1 CA |  I ,  _$, h     
+09E0 | F1 DC 72 65 6D 61 D2 AA 3C F0 8A C9 52 CC DF FC |   rema  <   R   
+09F0 | FB 6D 6F D9 CE 73 74 75 6E 9A CA E3 B1 CF 61 D4 |  mo  stun     a 
+0A00 | 30 2B EB 69 D9 61 E6 4D 1A D1 F5 49 C3 46 D5 F3 | 0+ i a M   I F  
+0A10 | 49 CB 90 FF 0A 30 FF 0B 00 55 53 E0 C3 0B C2 C8 | I    0   US     
+0A20 | C1 D7 AB 1D C4 2C CC DD 4A CB 8A C2 FB 77 65 D9 |      ,  J    we 
+0A30 | F1 0A 6B 6E 6F 55 77 D9 EF A1 E1 71 D4 55 39 D9 |   knoUw    q U9 
+0A40 | 71 C4 F2 C6 B9 EC D5 99 EB 52 EC E9 DD 83 CD 0A | q        R      
+0A50 | 7B 63 61 E1 D4 61 62 6F F5 D1 D6 F2 CA 6B C6 6D | {ca  abo     k m
+0A60 | 69 78 92 42 C3 D2 CA C0 6A 71 EE 99 EE F1 C5 72 | ix B    jq     r
+0A70 | B5 14 EC 62 CC 69 CA 6E 6C C9 AE 32 BF 72 67 F3 |    b i nl  2 rg 
+0A80 | BE F6 EE AE 61 C4 61 72 91 C7 C2 BD 5F 73 2E 20 |     a ar    _s. 
+0A90 | 49 74 91 E8 DB A9 EB 64 A9 BD 64 99 F1 20 5E A9 | It     d  d   ^ 
+0AA0 | DC 65 0A 61 96 D6 7D 68 C0 0C 6B C2 65 6E 68 61 |  e a  }h  k enha
+0AB0 | BB 29 F3 64 D9 F1 6F 77 29 C9 15 65 C1 CC B1 F0 |  ) d  ow)  e    
+0AC0 | AB 54 75 79 D3 ED DB E1 C3 B2 71 D8 69 69 E4 EA |  Tuy      q ii  
+0AD0 | AB C0 B6 BA 1A C4 76 65 DA A1 CE 43 CE 2C A2 BA |       ve   C ,  
+0AE0 | 0A AA 29 B8 61 F7 E5 F2 74 BC EA 16 F3 5C D6 31 |   ) a   t    \ 1
+0AF0 | D2 6F 75 6B 72 69 69 C1 71 D8 72 AD 09 E5 00 F3 |  oukrii q r     
+0B00 | 11 32 00 F3 FF 00 F3 95 57 67 75 65 CD FF 96 FF |  2      Wgue    
+0B10 | D5 DA A9 3C FF F3 A9 CA AF 43 BF 2E 41 2E 52 2E |    <     C .A.R.
+0B20 | 44 E9 BC FF 54 65 63 68 6E 6F 6C 6F DD 67 99 A9 | D   Technolo g  
+0B30 | 52 65 71 E3 72 EE 49 B5 0A 4C E1 E7 72 61 FA 41 | Req r I  L  ra A
+0B40 | CF E9 A8 6F 6E 62 6F BA 39 CE 40 D9 0B 0A 42 C1 |    onbo 9 @   B 
+0B50 | BE AA 11 EC 83 AA 61 BE 12 CC 5A F9 BE CA EA 73 |       a   Z    s
+0B60 | 51 B0 BF 08 FD 15 6D 61 64 65 0A C2 A5 DE 8E C4 | Q     made      
+0B70 | 66 61 63 D1 A9 74 D5 79 9C A6 A9 C2 6A D1 61 AF | fac  t y    j a 
+0B80 | 68 65 61 64 3F DE 23 A7 B6 0B A5 0A 9A B6 70 31 | head? #       p1
+0B90 | BE AA 75 BB 93 E7 C2 A8 4A DC 7A E9 C9 59 B6 67 |   u     J z  Y g
+0BA0 | 65 72 EB 4B A6 0A 39 CA A2 A2 72 75 FD 6E E3 A2 | er K  9   ru n  
+0BB0 | 43 68 69 65 66 FB 20 50 49 AC 61 67 6C 61 BD 73 | Chief  PI agla s
+0BC0 | 29 C3 43 61 65 19 C7 D6 39 A8 54 51 AC 79 E6 66 | ) Cae   9 TQ y f
+0BD0 | D5 20 74 FF 80 FF 0F 03 A0 74 6C DC E3 B7 20 F5 |   t      tl     
+0BE0 | AF D0 59 B9 39 F6 61 6E 69 AB 73 6D A1 AA 42 B4 |   Y 9 ani sm  B 
+0BF0 | DA A7 AA D1 D1 49 C2 F1 D4 22 CB EA F7 C8 C2 9E |      I   "      
+0C00 | 08 C1 09 61 6C A8 56 EA CC D1 AA EA AB F3 89 A7 |    al V         
+0C10 | 2B B0 44 6F 57 6D 65 2E A2 CE E1 BB AF 64 CD 6D | + DoWme.     d m
+0C20 | 69 74 2A A6 59 B0 5A 73 C1 6A BB 6E 6A AE EB D1 | it* Y Zs j nj   
+0C30 | 9E 6D B9 BB 0A D4 72 65 AA C9 A0 49 9C C1 A0 61 |  m    re   I   a
+0C40 | CE 56 02 B0 64 29 C7 C2 9D 6D 5C A8 46 B5 73 02 |  V  d)   m\ F s 
+0C50 | A2 6D 55 F3 99 53 DE 11 AE B1 B0 D7 0A F1 73 75 |  mU  S        su
+0C60 | C1 A5 2A AB 74 D5 69 3A B9 CB B4 B2 9E 75 BB 70 |   * t i:     u p
+0C70 | 70 02 D1 61 74 61 D2 F5 70 0B 98 9A B7 0A 70 69 | p  ata  p     pi
+0C80 | EF 63 6B 75 70 23 98 73 68 55 75 94 B7 9B A1 48 |  ckup# shUu    H
+0C90 | C8 0B 6B 05 F5 32 00 F5 FF 00 F5 57 44 AF 79 E2 |   k  2     WD y 
+0CA0 | 72 20 4F 19 C3 A8 FF 0A 56 50 FF 0B 41 42 C1 A1 | r O     VP  AB  
+0CB0 | A9 55 9E 93 5A E3 59 8A 93 A7 B5 13 EC 99 B6 93 |  U  Z Y         
+0CC0 | 8C 66 91 A9 DA 49 B8 02 8A 61 C1 8A 6F 57 6D 6E |  f   I   a  oWmn
+0CD0 | 69 D9 9F EA 92 AD 99 9E 32 8C 70 F2 E6 83 8D 55 | i       2 p    U
+0CE0 | 6F A2 BF 05 EB 33 9A 5D 1F 8B 00 A6 0D 2D 2D 9C | o    3 ]     -- 
+0CF0 | C5 57 A3 B3 65 6D E1 AD 8B 91 D5 B2 B1 93 C0 E1 |  W  em          
+0D00 | 88 51 96 67 DA 71 B1 81 97 63 81 A2 76 46 0C FD |  Q g q   c  vF  
+0D10 | 72 EF 51 8A E5 C0 13 86 EB E1 B3 75 49 C8 F1 89 | r Q        uI   
+0D20 | 66 65 AD 65 39 A2 67 EA 8F 39 B3 BF 65 73 63 72 | fe e9 g  9  escr
+0D30 | 69 62 25 AB 5A 29 C5 BD A7 6C 29 93 BD 31 85 A9 | ib% Z)   l)  1  
+0D40 | 97 77 68 6F 01 84 56 A9 9F 0A 69 9A E1 87 6B BA |  who  V   i   k 
+0D50 | 94 2E A1 95 02 DE 74 6B 17 B6 61 82 DE 2D DC 72 |  .    tk  a  - r
+0D60 | ED E1 84 73 95 62 7A 86 0A 73 B7 69 67 6E 91 B0 |    s bz  s ign  
+0D70 | 63 A2 84 EC 3B 5C D7 6F 62 AE 19 B0 63 6C 01 DA | c   ;\ ob   cl  
+0D80 | 25 B0 AA B3 91 F1 92 69 E0 04 9C AA BA 83 06 B8 | %      i        
+0D90 | AA 9A 5B 86 FE B9 84 56 69 61 20 54 75 55 62 41 |   [    Via TuUbA
+0DA0 | B0 B0 FF 09 60 FF 09 AB 6B AB 72 2D F7 78 B0 0D |     `   k r- x  
+0DB0 | E0 B0 0C EA 41 86 81 F3 59 C3 65 73 B5 3A 39 D2 |     A   Y es :9 
+0DC0 | 29 7B 48 D1 8A 6F 2D 53 70 65 AA A7 54 FD D2 AB | ){H  o-Spe  T   
+0DD0 | A9 A7 4E 65 74 77 6F AB 72 6B 49 D8 9E DB 8A B0 |   Netwo rkI     
+0DE0 | FD 50 04 AF 2E 0A 4C 69 6B AA 69 D9 49 79 2C D8 |  P  . Lik i Iy, 
+0DF0 | 4A 85 56 94 D7 2C C2 A5 B1 81 49 C9 96 00 1C AE | J V  ,    I     
+0E00 | 55 8A A5 A9 A5 01 8D 55 DF 55 CB 84 39 7A 03 87 | U      U U  9z  
+0E10 | 3D 85 55 D7 DB 52 8A 23 97 41 90 DF 00 DA 24 2E | = U  R # A    $.
+0E20 | 00 46 61 D9 D8 73 FF 75 20 43 75 70 00 43 79 FF |  Fa  s u Cup Cy 
+0E30 | 62 65 72 00 81 75 89 BC FF 91 7A 90 ED 93 AC 8C | ber  u    z     
+0E40 | 50 FF 97 FB 97 70 83 56 83 7E FF 83 85 83 8C 81 | P    p V ~      
+0E50 | 5B 83 5E F0 FC 81 76 00 42 5A E3 93 91 98 6D 1A | [ ^   v BZ    m 
+0E60 | 91 D5 F9 92 6B 87 9C A8 C0 93 09 20 AA 1B B7 06 |     k           
+0E70 | 92 D8 9D 0D CB B1 AA 3A 76 CD 8B 97 C7 21 B3 5E |        :v    ! ^
+0E80 | 59 F0 20 74 61 E5 F6 ED CB 8D 82 EA 6E C1 90 65 | Y  ta       n  e
+0E90 | 72 3D 72 99 7B 2E 0A 0D B4 4B 75 6B 74 46 81 70 | r=r {.   KuktF p
+0EA0 | FF 63 61 73 74 00 56 52 3A DA 20 A1 0B 88 FF 0E |  cast VR:       
+0EB0 | 46 A9 78 3A F6 21 C5 6C 89 D1 6F 73 0A 3B 4D 69 | F x: ! l  os ;Mi
+0EC0 | 19 72 6F 6E 08 EE AB 78 C5 AA 2D D3 DB 75 B4 88 |  ron   x  -  u  
+0ED0 | 99 79 DA DB D1 BA 79 0A B6 C2 0A 55 74 BF C2 E2 |  y    y    Ut   
+0EE0 | AD DD 8E 75 F3 9F C9 6F 09 71 73 65 D7 A1 6F 63 |    u   o qse  oc
+0EF0 | 79 B2 AB 99 9D 6A AB 75 6E C3 A0 DC FD 32 70 BA | y    j un    2p 
+0F00 | 69 C1 D9 E7 27 64 F9 86 5E F1 EF 79 6F 75 5A 76 | i   'd  ^  youZv
+0F10 | AD 91 C7 E1 B0 20 39 7D CA 74 AA B1 99 32 9D 41 |       9} t   2 A
+0F20 | C6 39 F3 56 E4 F8 42 52 C3 F0 F8 AD 5D E1 7F AB |  9 V  BR    ]   
+0F30 | BC 69 6D 43 E1 D5 5B EB A1 80 A2 A6 4B 8F 74 7A |  imC  [     K tz
+0F40 | D9 62 F5 96 73 20 49 BD 0B BA 41 7E 64 0A 79 19 |  b  s I   A~d y 
+0F50 | 62 EB 65 72 79 7D E1 A2 27 64 55 0A CB F6 A2 C7 | b ery}  'dU     
+0F60 | 5A 8A B5 8A 6B ED C5 7A 89 6D B1 60 FB 0A 74 81 | Z   k  z m `  t 
+0F70 | 73 2E 00 4B 69 BE 9A 97 73 6F 75 6C D0 65 0F BF | s. Ki   soul e  
+0F80 | 81 75 83 6C 83 72 29 EA 7F 89 8D 82 92 6E 81 76 |  u l r)      n v
+0F90 | EF D8 64 0E 43 6C 69 B9 67 81 3A BF 20 41 6E 6F |   d Cli g :  Ano
+0FA0 | 6E 79 92 7C 7B 0A 44 E1 A2 69 6C 73 BC EC 0A 55 | ny |{ D  ils   U
+0FB0 | 73 E2 61 AA 1A 62 19 8D 91 81 99 90 55 69 21 7B | s a  b      Ui!{
+0FC0 | 66 DD A3 75 AB 74 D6 7A FF 78 6C E9 29 60 5A 55 | f  u t z xl )`ZU
+0FD0 | 88 1A 5E 68 A2 7F ED 49 75 E2 5D 77 DA 59 2E 0A |   ^h   Iu ]w Y. 
+0FE0 | 75 57 9A 5E B9 76 61 6C 57 39 59 64 79 2B 8C 01 | uW ^ valW9Ydy+  
+0FF0 | 86 55 1A 8A 3A 68 0C 7A 73 59 EB D9 70 27 61 69 |  U  :h zsY  p'ai
+1000 | 83 63 72 79 5A 5A 5D 59 6C 66 31 67 DB E3 6D 6D |  cryZZ]Ylf1g  mm
+1010 | D2 75 0A 89 61 65 55 6D 82 62 CA 95 A3 6D AD 51 |  u  aeUm b   m Q
+1020 | 6B 53 BA 61 A9 73 B3 E2 F5 62 F9 82 7B 58 2E 20 | kS a s   b  {X. 
+1030 | 50 F5 6C 69 90 F9 AF 68 65 6C 1D 70 F1 E2 21 20 | P li   hel p  ! 
+1040 | 55 73 F9 6F 42 57 BA EB FF C2 98 20 69 6D 6D 65 | Us oBW      imme
+1050 | 64 69 DE EB 5A 21 00 47 7A 93 49 55 6E 82 71 21 | di  Z! Gz IUn q!
+1060 | DF F4 DE 57 60 FF 0C 20 53 D2 AA DC E4 AD 61 7E |    W`   S     a~
+1070 | E1 80 72 EF E4 11 8B AB 65 65 9A 57 B1 5B 72 6F |   r     ee W [ro
+1080 | 0A 7D E0 81 53 E8 AD 67 3A D2 67 2A 94 42 7F FA |  }  S  g: g* B  
+1090 | 71 B9 AA 70 32 30 30 34 BB 2C 0A 39 98 20 62 E9 | q  p2004 , 9  b 
+10A0 | 54 7E A1 5A 6C 65 66 74 0A 16 0B 75 D0 54 3F 8A | T~ Zleft   u T? 
+10B0 | 86 2C 7A C9 A7 6B 94 65 79 51 7B F9 CD 27 55 4A |  ,z  k eyQ{  'UJ
+10C0 | ED 99 53 21 91 22 62 6D A8 E4 0E EE FD 6D FB 93 |   S! "bm     m  
+10D0 | 62 55 9B 78 D4 F5 C9 6B 52 F3 DB 3A EA 67 71 4E | bU x   kR  : gqN
+10E0 | 61 EA B1 64 AA 92 7A B2 91 F8 F7 0C 84 78 D5 77 | a  d  z      x w
+10F0 | 65 F6 59 58 A1 50 65 C3 21 00 1A 61 73 DE 61 4D | e YX Pe !  as aM
+1100 | 65 20 50 A9 4A 63 6A A9 4A A8 7C 0C C1 EB 65 FF | e P Jcj J |   e 
+1110 | B1 EB 8B 8A 43 8A DD 81 76 FA D8 7B 0B EF EB 49 |     C   v  {   I
+1120 | 6E 6F 27 55 6C 61 A5 20 DB 0D CA 53 7B 59 D8 69 | no'Ula     S{Y i
+1130 | D1 6F 21 20 4B DB D9 78 7A F2 47 62 E1 F4 67 D6 |  o! K  xz Gb  g 
+1140 | E9 4B 6C 72 52 DB 47 73 EA 39 AA B1 84 89 5C 20 |  KlrR Gs 9    \ 
+1150 | 77 5A E1 A9 21 72 49 FE FA BF BC F0 68 69 6D 20 | wZ  !rI     him 
+1160 | 72 4B EE 5E B9 83 21 00 42 0F 57 F5 45 FC 60 5D | rK ^  ! B W E `]
+1170 | 0B 4A E6 8B 83 76 FF 83 58 82 CC 90 58 81 76 F6 |  J   v  X   X v 
+1180 | 30 FF 0B 53 89 7B 65 72 3A FC 75 74 7A 0A 4D AE | 0  S {er: utz M 
+1190 | 7C 4D 81 46 90 FA 12 41 F0 6A 59 EB B3 D8 10 FB | |M F   A jY     
+11A0 | 09 6F D5 A4 58 72 78 0B 7C 0A 66 74 F6 71 C1 6B |  o  Xrx | ft q k
+11B0 | 06 F8 21 0A 20 35 4F 22 F0 00 FB 0F 21 6A 2F 7B |   !  5O"    !j/{
+11C0 | BD 62 54 6F F5 33 86 E3 40 D9 E9 21 20 00 02 00 |  bTo 3  @  !    
+11D0 | 00 00 00 00                                     |                 
 I 13136 2022-11-27 21:07:15 - [Commands] Received from C-6 (Tali) (version=GC command=C9 flag=00)
 0000 | C9 00 18 00 B5 05 00 00 32 00 00 00 00 00 FF FF |         2       
 0010 | 00 04 00 00 04 FF FF FF                         |                 

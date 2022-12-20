@@ -1368,31 +1368,36 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
     static_game_data_log.warning("Failed to load Episode 3 card update: %s", e.what());
   }
 
-  for (const auto& filename : list_directory(directory)) {
-    try {
-      shared_ptr<MapEntry> entry;
+  auto add_maps_from_dir = [&](const string& dir, bool is_quest) -> void {
+    for (const auto& filename : list_directory(dir)) {
+      try {
+        shared_ptr<MapEntry> entry;
 
-      if (ends_with(filename, ".mnmd")) {
-        entry.reset(new MapEntry(load_object_file<MapDefinition>(directory + "/" + filename)));
-      } else if (ends_with(filename, ".mnm")) {
-        entry.reset(new MapEntry(load_file(directory + "/" + filename)));
-      }
-
-      if (entry.get()) {
-        if (!this->maps.emplace(entry->map.map_number, entry).second) {
-          throw runtime_error("duplicate map number");
+        if (ends_with(filename, ".mnmd")) {
+          entry.reset(new MapEntry(load_object_file<MapDefinition>(dir + "/" + filename), is_quest));
+        } else if (ends_with(filename, ".mnm")) {
+          entry.reset(new MapEntry(load_file(dir + "/" + filename), is_quest));
         }
-        this->maps_by_name.emplace(entry->map.name, entry);
-        string name = entry->map.name;
-        static_game_data_log.info("Indexed Episode 3 map %s (%08" PRIX32 "; %s)",
-            filename.c_str(), entry->map.map_number.load(), name.c_str());
-      }
 
-    } catch (const exception& e) {
-      static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
-          filename.c_str(), e.what());
+        if (entry.get()) {
+          if (!this->maps.emplace(entry->map.map_number, entry).second) {
+            throw runtime_error("duplicate map number");
+          }
+          this->maps_by_name.emplace(entry->map.name, entry);
+          string name = entry->map.name;
+          static_game_data_log.info("Indexed Episode 3 %s %s (%08" PRIX32 "; %s)",
+              is_quest ? "online quest" : "free battle map",
+              filename.c_str(), entry->map.map_number.load(), name.c_str());
+        }
+
+      } catch (const exception& e) {
+        static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
+            filename.c_str(), e.what());
+      }
     }
-  }
+  };
+  add_maps_from_dir(directory + "/maps-free", false);
+  add_maps_from_dir(directory + "/maps-quest", true);
 
   try {
     auto json = JSONObject::parse(load_file(directory + "/com-decks.json"));
@@ -1414,10 +1419,11 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
   }
 }
 
-DataIndex::MapEntry::MapEntry(const MapDefinition& map) : map(map) { }
+DataIndex::MapEntry::MapEntry(const MapDefinition& map, bool is_quest)
+  : map(map), is_quest(is_quest) { }
 
-DataIndex::MapEntry::MapEntry(const string& compressed)
-  : compressed_data(compressed) {
+DataIndex::MapEntry::MapEntry(const string& compressed, bool is_quest)
+  : is_quest(is_quest), compressed_data(compressed) {
   string decompressed = prs_decompress(this->compressed_data);
   if (decompressed.size() != sizeof(MapDefinition)) {
     throw runtime_error(string_printf(
@@ -1491,7 +1497,7 @@ const string& DataIndex::get_compressed_map_list() const {
       strings_w.write(map.description.data(), map.description.len());
       strings_w.put_u8(0);
 
-      e.unknown_a2 = 0xFF000000;
+      e.unknown_a2 = map_it.second->is_quest ? 0x00000000 : 0xFF000000;
 
       entries_w.put(e);
     }

@@ -698,7 +698,9 @@ struct MapList {
     be_uint16_t height;
     parray<parray<uint8_t, 0x10>, 0x10> map_tiles;
     parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
-    be_uint32_t unknown_a2; // Seems to always be 0xFF000000
+    // This appears to be 0xFF000000 for free battle maps, and 0 for quests.
+    // TODO: Figure out what this field's meaning actually is
+    be_uint32_t unknown_a2;
   } __attribute__((packed));
 
   // Variable-length fields:
@@ -845,9 +847,10 @@ public:
   class MapEntry {
   public:
     MapDefinition map;
+    bool is_quest;
 
-    MapEntry(const MapDefinition& map);
-    MapEntry(const std::string& compressed_data);
+    MapEntry(const MapDefinition& map, bool is_quest);
+    MapEntry(const std::string& compressed_data, bool is_quest);
 
     std::string compressed() const;
 

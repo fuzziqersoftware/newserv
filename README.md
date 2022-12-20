@@ -94,7 +94,13 @@ Tournaments work differently than they did on Sega's servers. Tournaments can be
 
 Because newserv gives all players 1000000 meseta, there is no reward for winning a tournament. This may change in the future.
 
-COM decks for tournaments are defined in system/ep3/com-decks.json. The default decks in that file come from logs from Sega's servers, so the file doesn't include every COM deck Sega ever made - the rest are probably lost to time. Tournament state is stored in system/ep3/tournament-state.json; this file is automatically written when any tournament changes state for any reason (e.g. a tournament is created/started/deleted or a match is resolved).
+Episode 3 state and game data is stored in the system/ep3 directory. The files in there are:
+* card-definitions.mnr: Compressed card definition list, sent to Episode 3 clients at connect time. Card stats and abilities can be changed by editing this file.
+* card-definitions.mnrd: Decompressed version of the above. (If present, newserv will use this instead of the compressed version.)
+* card-text.mnr: Compressed card text archive. Generally only used for debugging.
+* com-decks.json: COM decks used in tournaments. The default decks in this file come from logs from Sega's servers, so the file doesn't include every COM deck Sega ever made - the rest are probably lost to time.
+* maps-free/ and maps-quest/: Online free battle and quest maps (.mnm/.mnmd files). Free battle and quest files have exactly the same format; the only difference between the files in these directories is which section of the menu they appear in on the client.
+* tournament-state.json: State of all active tournaments. This file is automatically written when any tournament changes state for any reason (e.g. a tournament is created/started/deleted or a match is resolved).
 
 ## Usage
 
@@ -119,7 +125,7 @@ After building newserv or downloading a release, do this to set it up and use it
 
 newserv automatically finds quests in the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's set-save-files option, just put them in that directory and name them appropriately.
 
-Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle quests should be named like `b###-VERSION.EXT`, challenge quests should be named like `c###-VERSION.EXT`, and Episode 3 quests should be named like `e###-gc3.EXT`. The fields in each filename are:
+Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle quests should be named like `b###-VERSION.EXT`, challenge quests should be named like `c###-VERSION.EXT`, and Episode 3 download quests should be named like `e###-gc3.EXT`. The fields in each filename are:
 - `###`: quest number (this doesn't really matter; it should just be unique for the PSO version)
 - `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gov = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
 - `VERSION`: d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
@@ -148,7 +154,7 @@ There are multiple PSO quest formats out there; newserv supports most of them. I
 2. *Similar to (1), to compress an uncompressed quest file: `newserv --compress-data < FILENAME.bind > FILENAME.bin`*
 3. *If you know the encryption seed (serial number), pass it in as a hex string with the `--seed=` option. If you don't know the encryption seed, newserv will find it for you, which will likely take a long time.*
 
-Episode 3 quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 quest files may be named with the .mnm extension instead of .bin, since the format is the same as the standard map files (in system/ep3/). These files can be encoded in any of the formats described above, except .qst. There are no encrypted Episode 3 GCI formats because the game doesn't encrypt quests saved to the memory card, unlike Episodes 1&2.
+Episode 3 download quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 download quest files may be named with the .mnm extension instead of .bin, since the format is the same as the standard map files (in system/ep3/). These files can be encoded in any of the formats described above, except .qst. There are no encrypted Episode 3 GCI formats because the game doesn't encrypt quests saved to the memory card, unlike Episodes 1&2.
 
 When newserv indexes the quests during startup, it will warn (but not fail) if any quests are corrupt or in unrecognized formats.
 
