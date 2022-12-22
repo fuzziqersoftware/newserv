@@ -34,7 +34,8 @@ ServerState::ServerState()
     ep3_menu_song(-1),
     local_address(0),
     external_address(0),
-    proxy_allow_save_files(true) {
+    proxy_allow_save_files(true),
+    proxy_enable_login_options(false) {
   vector<shared_ptr<Lobby>> non_v1_only_lobbies;
   vector<shared_ptr<Lobby>> ep3_only_lobbies;
 

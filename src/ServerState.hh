@@ -111,6 +111,7 @@ struct ServerState {
   uint32_t external_address;
 
   bool proxy_allow_save_files;
+  bool proxy_enable_login_options;
 
   std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<Server> game_server;

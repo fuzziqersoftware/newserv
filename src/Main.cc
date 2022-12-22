@@ -159,6 +159,11 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   } catch (const out_of_range&) {
     s->proxy_allow_save_files = true;
   }
+  try {
+    s->proxy_enable_login_options = d.at("ProxyEnableLoginOptions")->as_bool();
+  } catch (const out_of_range&) {
+    s->proxy_enable_login_options = false;
+  }
 
   try {
     s->ep3_behavior_flags = d.at("Episode3BehaviorFlags")->as_int();

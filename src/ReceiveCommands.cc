@@ -109,10 +109,12 @@ static vector<MenuItem> proxy_options_menu_for_client(
     ret.emplace_back(ProxyOptionsMenuItemID::SAVE_FILES,
         c->options.save_files ? u"Save files ON" : u"Save files OFF", u"", 0);
   }
-  ret.emplace_back(ProxyOptionsMenuItemID::SUPPRESS_LOGIN,
-      c->options.suppress_remote_login ? u"Skip login ON" : u"Skip login OFF", u"", 0);
-  ret.emplace_back(ProxyOptionsMenuItemID::SKIP_CARD,
-      c->options.zero_remote_guild_card ? u"Skip card ON" : u"Skip card OFF", u"", 0);
+  if (s->proxy_enable_login_options) {
+    ret.emplace_back(ProxyOptionsMenuItemID::SUPPRESS_LOGIN,
+        c->options.suppress_remote_login ? u"Skip login ON" : u"Skip login OFF", u"", 0);
+    ret.emplace_back(ProxyOptionsMenuItemID::SKIP_CARD,
+        c->options.zero_remote_guild_card ? u"Skip card ON" : u"Skip card OFF", u"", 0);
+  }
   return ret;
 }
 
@@ -137,7 +139,8 @@ static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Cl
       c->license, local_port, c->version(), c->export_config_bb());
   session->options = c->options;
   session->options.save_files &= s->proxy_allow_save_files;
-  if (session->options.zero_remote_guild_card) {
+  session->options.suppress_remote_login &= s->proxy_enable_login_options;
+  if (session->options.zero_remote_guild_card && s->proxy_enable_login_options) {
     session->remote_guild_card_number = 0;
   }
 

@@ -572,7 +572,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     auto session = this->get_proxy_session();
     set_boolean(&session->options.switch_assist, command_args);
 
-  } else if (command_name == "set-save-files") {
+  } else if (command_name == "set-save-files" && this->state->proxy_allow_save_files) {
     auto session = this->get_proxy_session();
     set_boolean(&session->options.save_files, command_args);
 

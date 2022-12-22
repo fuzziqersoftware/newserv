@@ -742,6 +742,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     }
 
     this->client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
+    this->close_on_disconnect = true;
   }
 }
 
