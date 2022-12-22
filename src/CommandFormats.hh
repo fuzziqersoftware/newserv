@@ -1197,7 +1197,7 @@ struct C_Login_DCNTE_88 {
 } __packed__;
 
 // 88 (S->C): License check result (DC NTE only)
-// No arguemnts except header.flag.
+// No arguments except header.flag.
 // If header.flag is zero, client will respond with an 8A command. Otherwise, it
 // will respond with an 8B command.
 
