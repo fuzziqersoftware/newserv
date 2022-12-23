@@ -283,32 +283,34 @@ system/config.json for more information.\n\
 When options are given, newserv will do things other than running the server.\n\
 \n\
 Some modes accept input and/or output filenames; see the descriptions below for\n\
-details. If input-filename is missing or is '-', newserv reads from stdin;\n\
-similarly, if output-filename is missing or is '-', newserv writes to stdout.\n\
+details. If input-filename is missing or is '-', newserv reads from stdin. If\n\
+output-filename is missing and the input is not from stdin, newserv writes the\n\
+output to <input-filename>.dec; if output-filename is '-', newserv writes the\n\
+output to stdout. If stdout is a terminal, data written there is formatted in a\n\
+hex/ASCII view; otherwise, raw (binary) data is written there.\n\
 \n\
 The options are:\n\
   --compress-prs\n\
   --decompress-prs\n\
-  --compress-bc0 [input-filename [output-filename]]\n\
-  --decompress-bc0 [input-filename [output-filename]]\n\
-      Compress or decompress data using the PRS or BC0 algorithms. Both\n\
-      input-filename and output-filename may be specified.\n\
+  --compress-bc0\n\
+  --decompress-bc0\n\
+      Compress or decompress data using the PRS or BC0 algorithms.\n\
   --prs-size\n\
-      Compute the decompressed size of the PRS-compressed input data.\n\
+      Compute the decompressed size of the PRS-compressed input data, but don\'t\n\
+      write the decompressed data anywhere.\n\
   --encrypt-data\n\
   --decrypt-data\n\
-      Encrypt or decrypt data using PSO's standard network protocol encryption.\n\
-      Both input-filename and output-filename may be specified. By default, PSO\n\
-      V3 (GameCube/XBOX) encryption is used, but this can be overridden with\n\
-      the --pc or --bb options. The --seed= option specifies the encryption\n\
-      seed (4 hex bytes for PC or GC, or 48 hex bytes for BB). For BB, the\n\
-      --key option is required as well, and refers to a .nsk file in\n\
-      system/blueburst/keys (without the directory or .nsk extension). For\n\
+      Encrypt or decrypt data using PSO\'s standard network protocol encryption.\n\
+      By default, PSO V3 (GameCube/XBOX) encryption is used, but this can be\n\
+      overridden with the --pc or --bb options. The --seed= option specifies\n\
+      the encryption seed (4 hex bytes for PC or GC, or 48 hex bytes for BB).\n\
+      For BB, the --key option is required as well, and refers to a .nsk file\n\
+      in system/blueburst/keys (without the directory or .nsk extension). For\n\
       non-BB ciphers, the --big-endian option applies the cipher masks as\n\
       big-endian instead of little-endian, which is necessary for some GameCube\n\
       file formats.\n\
   --decrypt-trivial-data\n\
-      Decrypt (or encrypt - the algorithm is symmetric) data using the Episode\n\
+      Decrypt (or encrypt; the algorithm is symmetric) data using the Episode\n\
       3 trivial algorithm. --seed should be specified as one hex byte. If\n\
       --seed is not given, newserv will truy all possible seeds and return the\n\
       one that results in the greatest number of zero bytes in the output.\n\
@@ -316,12 +318,13 @@ The options are:\n\
       Perform a brute-force search for a decryption seed of the given data.\n\
       The ciphertext is specified with the --encrypted= option and the expected\n\
       plaintext is specified with the --decrypted= option. The plaintext may\n\
-      include unmatched bytes (specified with the ? operator), but overall it\n\
-      must be the same length as the ciphertext. By default, this option uses\n\
-      PSO V3 encryption, but this can be overridden with --pc. (BB encryption\n\
-      seeds are too long to be searched for with this function.) By default,\n\
-      the number of worker threads is equal the the number of CPU cores in the\n\
-      system, but this can be overridden with the --threads= option.\n\
+      include unmatched bytes (specified with the Phosg parse_data_string ?\n\
+      operator), but overall it must be the same length as the ciphertext. By\n\
+      default, this option uses PSO V3 encryption, but this can be overridden\n\
+      with --pc. (BB encryption seeds are too long to be searched for with this\n\
+      function.) By default, the number of worker threads is equal the the\n\
+      number of CPU cores in the system, but this can be overridden with the\n\
+      --threads= option.\n\
   --decode-sjis\n\
       Apply newserv\'s text decoding algorithm to the data on stdin, producing\n\
       little-endian UTF-16 data on stdout. Both input-filename and\n\
@@ -329,12 +332,12 @@ The options are:\n\
   --decode-gci\n\
   --decode-dlq\n\
   --decode-qst\n\
-      Decode the given quest file into a compressed, unencrypted .bin or .dat\n\
+      Decode the input quest file into a compressed, unencrypted .bin or .dat\n\
       file (or in the case of --decode-qst, both a .bin and a .dat file).\n\
-      input-filename must be specified, but output-filename msut not be; the\n\
+      input-filename must be specified, but output-filename must not be; the\n\
       output is written to <input-filename>.dec (or .bin, or .dat). DLQ and QST\n\
       decoding is a relatively simple operation, but GCI decoding can be\n\
-      computationally expensive if the file is encrypted and doesn't contain an\n\
+      computationally expensive if the file is encrypted and doesn\'t contain an\n\
       embedded seed. If you know the player\'s serial number who generated the\n\
       GCI file, use the --seed= option and give the serial number (as a\n\
       hex-encoded 32-bit integer). If you don\'t know the serial number, newserv\n\
@@ -348,10 +351,10 @@ The options are:\n\
       encryption. If --bb is used, the --key option is also required (as in\n\
       --decrypt-data above).\n\
   --show-ep3-data\n\
-      Print the Episode 3 data files (maps and card definitions) from the\n\
-      system/ep3 directory in a human-readable format.\n\
+      Print the Episode 3 maps and card definitions from the system/ep3\n\
+      directory in a (sort of) human-readable format.\n\
   --show-ep3-card=ID\n\
-      Describe the Episode 3 card with the given ID.\n\
+      Describe the Episode 3 card definition with the given ID (hex).\n\
   --replay-log\n\
       Replay a terminal log as if it were a client session. input-filename may\n\
       be specified for this option. This is used for regression testing, to\n\
@@ -560,11 +563,20 @@ int main(int argc, char** argv) {
   };
 
   auto write_output_data = [&](const void* data, size_t size) {
+    // If the output is to a specified file, write it there
     if (output_filename && strcmp(output_filename, "-")) {
       save_file(output_filename, data, size);
+    // If no output filename is given and an input filename is given, write to
+    // <input-filename>.dec
+    } else if (!output_filename && input_filename && strcmp(input_filename, "-")) {
+      string filename = input_filename;
+      filename += ".dec";
+      save_file(filename, data, size);
+    // If stdout is a terminal, use print_data to write the result
     } else if (isatty(fileno(stdout))) {
       print_data(stdout, data, size);
       fflush(stdout);
+    // If stdout is not a terminal, write the data as-is
     } else {
       fwritex(stdout, data, size);
       fflush(stdout);
