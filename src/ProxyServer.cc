@@ -197,8 +197,6 @@ void ProxyServer::on_client_connect(
         auto cmd = prepare_server_init_contents_console(
             server_key, client_key, 0);
         session->channel.send(0x02, 0x00, &cmd, sizeof(cmd));
-        // TODO: Is this actually needed?
-        // bufferevent_flush(session->channel.bev.get(), EV_READ | EV_WRITE, BEV_FLUSH);
         if ((version == GameVersion::DC) || (version == GameVersion::PC)) {
           session->channel.crypt_out.reset(new PSOV2Encryption(server_key));
           session->channel.crypt_in.reset(new PSOV2Encryption(client_key));
