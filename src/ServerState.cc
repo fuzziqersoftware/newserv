@@ -189,10 +189,11 @@ vector<shared_ptr<Lobby>> ServerState::all_lobbies() {
 }
 
 shared_ptr<Lobby> ServerState::create_lobby() {
-  shared_ptr<Lobby> l(new Lobby(this->next_lobby_id++));
-  if (!this->id_to_lobby.emplace(l->lobby_id, l).second) {
-    throw logic_error("lobby already exists with the given id");
+  while (this->id_to_lobby.count(this->next_lobby_id)) {
+    this->next_lobby_id++;
   }
+  shared_ptr<Lobby> l(new Lobby(this->next_lobby_id++));
+  this->id_to_lobby.emplace(l->lobby_id, l);
   l->log.info("Created lobby");
   return l;
 }

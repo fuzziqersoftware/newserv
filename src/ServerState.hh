@@ -99,9 +99,6 @@ struct ServerState {
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_v1;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_non_v1;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_ep3;
-  // TODO: Use a free-list instead of an incrementer to prevent wrap-around
-  // behavioral bugs. This... will probably never be an issue for anyone, but we
-  // technically should handle it.
   std::atomic<int32_t> next_lobby_id;
   uint8_t pre_lobby_event;
   int32_t ep3_menu_song;
