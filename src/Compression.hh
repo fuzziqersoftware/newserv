@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 #include <string>
+#include <functional>
 
 #include "Text.hh"
 
@@ -15,7 +16,7 @@ class PRSCompressor {
 public:
   // To use this class, instantiate it, then call .add() one or more times, then
   // call .close() and use the returned string as the compressed result.
-  PRSCompressor();
+  PRSCompressor(std::function<void(size_t, size_t)> progress_fn = nullptr);
   ~PRSCompressor() = default;
 
   // Adds more input data to be compressed, which logically comes after all
@@ -39,6 +40,7 @@ private:
   void write_control(bool z);
   void flush_control();
 
+  std::function<void(size_t, size_t)> progress_fn;
   bool closed;
 
   size_t control_byte_offset;
@@ -55,8 +57,8 @@ private:
 // Compresses data from a single input buffer using PRS and returns the
 // compressed result. This is a shortcut for constructing a PRSCompressor,
 // calling .add() once, and calling .close().
-std::string prs_compress(const void* vdata, size_t size);
-std::string prs_compress(const std::string& data);
+std::string prs_compress(const void* vdata, size_t size, std::function<void(size_t, size_t)> progress_fn = nullptr);
+std::string prs_compress(const std::string& data, std::function<void(size_t, size_t)> progress_fn = nullptr);
 
 // Decompresses PRS-compressed data.
 std::string prs_decompress(const void* data, size_t size, size_t max_output_size = 0);
@@ -67,6 +69,6 @@ std::string prs_decompress(const std::string& data, size_t max_output_size = 0);
 size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size = 0);
 size_t prs_decompress_size(const std::string& data, size_t max_output_size = 0);
 
-// Decompresses and compresses data using the BC0 algorithm.
+// Compresses and decompresses data using the BC0 algorithm.
+std::string bc0_compress(const std::string& data, std::function<void(size_t, size_t)> progress_fn = nullptr);
 std::string bc0_decompress(const std::string& data);
-std::string bc0_compress(const std::string& data);

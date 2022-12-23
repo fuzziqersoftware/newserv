@@ -590,19 +590,27 @@ int main(int argc, char** argv) {
     case Behavior::DECOMPRESS_BC0: {
       string data = read_input_data();
       size_t input_bytes = data.size();
+      auto progress_fn = [&](size_t input_progress, size_t output_progress) -> void {
+        float progress = static_cast<float>(input_progress * 100) / input_bytes;
+        float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
+        fprintf(stderr, "... %zu (%g%%) <= %zu/%zu (%g%%)    \r",
+            output_progress, size_ratio, input_progress, input_bytes, progress);
+      };
+
       if (behavior == Behavior::COMPRESS_PRS) {
-        data = prs_compress(data);
+        data = prs_compress(data, progress_fn);
       } else if (behavior == Behavior::DECOMPRESS_PRS) {
         data = prs_decompress(data);
       } else if (behavior == Behavior::COMPRESS_BC0) {
-        data = bc0_compress(data);
+        data = bc0_compress(data, progress_fn);
       } else if (behavior == Behavior::DECOMPRESS_BC0) {
         data = bc0_decompress(data);
       } else {
         throw logic_error("invalid behavior");
       }
-      log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output",
-          input_bytes, input_bytes, data.size(), data.size());
+      float size_ratio = static_cast<float>(data.size() * 100) / input_bytes;
+      log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output (%g%%)",
+          input_bytes, input_bytes, data.size(), data.size(), size_ratio);
 
       write_output_data(data.data(), data.size());
       break;

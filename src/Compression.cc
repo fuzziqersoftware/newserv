@@ -14,8 +14,9 @@ using namespace std;
 
 
 
-PRSCompressor::PRSCompressor()
-  : closed(false),
+PRSCompressor::PRSCompressor(function<void(size_t, size_t)> progress_fn)
+  : progress_fn(progress_fn),
+    closed(false),
     control_byte_offset(0),
     pending_control_bits(0),
     input_bytes(0),
@@ -132,6 +133,9 @@ void PRSCompressor::advance() {
   }
 
   for (size_t z = 0; z < advance_bytes; z++) {
+    if ((this->compression_offset & 0x1000) && this->progress_fn) {
+      this->progress_fn(this->compression_offset, this->output.size());
+    }
     this->reverse_log[this->compression_offset & 0x1FFF] = this->forward_log[this->compression_offset & 0xFF];
     this->compression_offset++;
   }
@@ -185,14 +189,16 @@ void PRSCompressor::flush_control() {
 
 
 
-string prs_compress(const void* vdata, size_t size) {
-  PRSCompressor prs;
+string prs_compress(
+    const void* vdata, size_t size, function<void(size_t, size_t)> progress_fn) {
+  PRSCompressor prs(progress_fn);
   prs.add(vdata, size);
   return move(prs.close());
 }
 
-string prs_compress(const string& data) {
-  return prs_compress(data.data(), data.size());
+string prs_compress(
+    const string& data, function<void(size_t, size_t)> progress_fn) {
+  return prs_compress(data.data(), data.size(), progress_fn);
 }
 
 
@@ -373,85 +379,8 @@ size_t prs_decompress_size(const string& data, size_t max_output_size) {
 // PRS, there is only one type of backreference. Also, there is no stop opcode;
 // the decompressor simply stops when there are no more input bytes to read.
 
-// The BC0 decompression implementation in PSO GC is vulnerable to overflow
-// attacks - there is no bounds checking on the output buffer. It is unlikely
-// that this can be usefully exploited (e.g. for RCE) because the output pointer
-// is checked before every byte is written, so we cannot change the output
-// pointer to any arbitrary address.
-
-string bc0_decompress(const string& data) {
-  StringReader r(data);
-  StringWriter w;
-
-  // Unlike PRS, BC0 uses a memo which "rolls over" every 0x1000 bytes. The
-  // boundaries of these "memo pages" are offset by -0x12 bytes for some reason,
-  // so the first output byte corresponds to position 0xFEE on the first memo
-  // page. Backreferences refer to offsets based on the start of memo pages; for
-  // example, if the current output offset is 0x1234, a backreference with
-  // offset 0x123 refers to the byte that was written at offset 0x1112 (because
-  // that byte is at offset 0x112 in the memo, because the memo rolls over every
-  // 0x1000 bytes and the first memo byte was 0x12 bytes before the beginning of
-  // the next page). The memo is initially zeroed from 0 to 0xFEE; it seems PSO
-  // GC doesn't initialize the last 0x12 bytes of the first memo page. For this
-  // reason, we avoid generating backreferences that refer to those bytes.
-  parray<uint8_t, 0x1000> memo;
-  uint16_t memo_offset = 0x0FEE;
-
-  // The low byte of this value contains the control stream data; the high bits
-  // specify which low bits are valid. When the last 1 is shifted out of the
-  // high bit, we need to read a new control stream byte to get the next set of
-  // control bits.
-  uint16_t control_stream_bits = 0x0000;
-
-  while (!r.eof()) {
-    // Read control stream bits if needed
-    control_stream_bits >>= 1;
-    if ((control_stream_bits & 0x100) == 0) {
-      control_stream_bits = 0xFF00 | r.get_u8();
-      if (r.eof()) {
-        break;
-      }
-    }
-
-    // Control bit 0 means to perform a backreference copy. The offset and
-    // size are stored in two bytes in the input stream, laid out as follows:
-    // a1 = 0bBBBBBBBB
-    // a2 = 0bAAAACCCC
-    // The offset is the concatenation of bits AAAABBBBBBBB, which refers to a
-    // position in the memo; the number of bytes to copy is (CCCC + 3). The
-    // decompressor copies that many bytes from that offset in the memo, and
-    // writes them to the output and to the current position in the memo.
-    if ((control_stream_bits & 1) == 0) {
-      uint8_t a1 = r.get_u8();
-      if (r.eof()) {
-        break;
-      }
-      uint8_t a2 = r.get_u8();
-      size_t count = (a2 & 0x0F) + 3;
-      size_t backreference_offset = a1 | ((a2 << 4) & 0xF00);
-      for (size_t z = 0; z < count; z++) {
-        uint8_t v = memo[(backreference_offset + z) & 0x0FFF];
-        w.put_u8(v);
-        memo[memo_offset] = v;
-        memo_offset = (memo_offset + 1) & 0x0FFF;
-      }
-
-    // Control bit 1 means to write a byte directly from the input to the
-    // output. As above, the byte is also written to the memo.
-    } else {
-      uint8_t v = r.get_u8();
-      w.put_u8(v);
-      memo[memo_offset] = v;
-      memo_offset = (memo_offset + 1) & 0x0FFF;
-    }
-  }
-
-  return move(w.str());
-}
-
-
-
-string bc0_compress(const string& data) {
+string bc0_compress(
+    const string& data, function<void(size_t, size_t)> progress_fn) {
   StringReader r(data);
   StringWriter w;
 
@@ -464,6 +393,10 @@ string bc0_compress(const string& data) {
 
   parray<uint8_t, 17> match_buf;
   while (!r.eof()) {
+    if ((r.where() & 0x1000) && progress_fn) {
+      progress_fn(r.where(), w.size());
+    }
+
     // Search in the memo for the longest string matching the upcoming data, of
     // size 3-17 bytes
     size_t best_match_offset = 0;
@@ -541,6 +474,82 @@ string bc0_compress(const string& data) {
       throw logic_error("data written without control bits");
     }
     w.str().resize(w.str().size() - 1);
+  }
+
+  return move(w.str());
+}
+
+// The BC0 decompression implementation in PSO GC is vulnerable to overflow
+// attacks - there is no bounds checking on the output buffer. It is unlikely
+// that this can be usefully exploited (e.g. for RCE) because the output pointer
+// is checked before every byte is written, so we cannot change the output
+// pointer to any arbitrary address.
+
+string bc0_decompress(const string& data) {
+  StringReader r(data);
+  StringWriter w;
+
+  // Unlike PRS, BC0 uses a memo which "rolls over" every 0x1000 bytes. The
+  // boundaries of these "memo pages" are offset by -0x12 bytes for some reason,
+  // so the first output byte corresponds to position 0xFEE on the first memo
+  // page. Backreferences refer to offsets based on the start of memo pages; for
+  // example, if the current output offset is 0x1234, a backreference with
+  // offset 0x123 refers to the byte that was written at offset 0x1112 (because
+  // that byte is at offset 0x112 in the memo, because the memo rolls over every
+  // 0x1000 bytes and the first memo byte was 0x12 bytes before the beginning of
+  // the next page). The memo is initially zeroed from 0 to 0xFEE; it seems PSO
+  // GC doesn't initialize the last 0x12 bytes of the first memo page. For this
+  // reason, we avoid generating backreferences that refer to those bytes.
+  parray<uint8_t, 0x1000> memo;
+  uint16_t memo_offset = 0x0FEE;
+
+  // The low byte of this value contains the control stream data; the high bits
+  // specify which low bits are valid. When the last 1 is shifted out of the
+  // high bit, we need to read a new control stream byte to get the next set of
+  // control bits.
+  uint16_t control_stream_bits = 0x0000;
+
+  while (!r.eof()) {
+    // Read control stream bits if needed
+    control_stream_bits >>= 1;
+    if ((control_stream_bits & 0x100) == 0) {
+      control_stream_bits = 0xFF00 | r.get_u8();
+      if (r.eof()) {
+        break;
+      }
+    }
+
+    // Control bit 0 means to perform a backreference copy. The offset and
+    // size are stored in two bytes in the input stream, laid out as follows:
+    // a1 = 0bBBBBBBBB
+    // a2 = 0bAAAACCCC
+    // The offset is the concatenation of bits AAAABBBBBBBB, which refers to a
+    // position in the memo; the number of bytes to copy is (CCCC + 3). The
+    // decompressor copies that many bytes from that offset in the memo, and
+    // writes them to the output and to the current position in the memo.
+    if ((control_stream_bits & 1) == 0) {
+      uint8_t a1 = r.get_u8();
+      if (r.eof()) {
+        break;
+      }
+      uint8_t a2 = r.get_u8();
+      size_t count = (a2 & 0x0F) + 3;
+      size_t backreference_offset = a1 | ((a2 << 4) & 0xF00);
+      for (size_t z = 0; z < count; z++) {
+        uint8_t v = memo[(backreference_offset + z) & 0x0FFF];
+        w.put_u8(v);
+        memo[memo_offset] = v;
+        memo_offset = (memo_offset + 1) & 0x0FFF;
+      }
+
+    // Control bit 1 means to write a byte directly from the input to the
+    // output. As above, the byte is also written to the memo.
+    } else {
+      uint8_t v = r.get_u8();
+      w.put_u8(v);
+      memo[memo_offset] = v;
+      memo_offset = (memo_offset + 1) & 0x0FFF;
+    }
   }
 
   return move(w.str());
