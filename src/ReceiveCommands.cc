@@ -201,6 +201,10 @@ void on_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
   }
 }
 
+static void send_main_menu(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+}
+
 void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   if (c->flags & Client::Flag::IS_EPISODE_3) {
     auto team = s->ep3_tournament_index->team_for_serial_number(
@@ -239,7 +243,7 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       if (send_enable_send_function_call_if_applicable(s, c)) {
         send_update_client_config(c);
       }
-      send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+      send_main_menu(s, c);
     } else {
       send_message_box(c, s->welcome_message.c_str());
     }
@@ -1389,7 +1393,7 @@ static void on_D6_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     send_enable_send_function_call_if_applicable(s, c);
     c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
     send_update_client_config(c);
-    send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+    send_main_menu(s, c);
   }
 }
 
@@ -1399,9 +1403,34 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   switch (cmd.menu_id) {
     case MenuID::MAIN:
-      for (const auto& item : s->main_menu) {
-        if (item.item_id == cmd.item_id) {
-          send_ship_info(c, item.description);
+      if (cmd.item_id == MainMenuItemID::GO_TO_LOBBY) {
+        size_t num_players = 0;
+        size_t num_games = 0;
+        size_t num_compatible_games = 0;
+        for (const auto& it : s->id_to_lobby) {
+          const auto& l = it.second;
+          if (l->is_game()) {
+            num_games++;
+            if (l->version == c->version() &&
+                (!(l->flags & Lobby::Flag::EPISODE_3_ONLY) == !(c->flags & Client::Flag::IS_EPISODE_3))) {
+              num_compatible_games++;
+            }
+          }
+          for (const auto& c : l->clients) {
+            if (c) {
+              num_players++;
+            }
+          }
+        }
+        string info = string_printf(
+            "$C6%zu$C7 players online\n$C6%zu$C7 games\n$C6%zu$C7 compatible games",
+            num_players, num_games, num_compatible_games);
+        send_ship_info(c, decode_sjis(info));
+      } else {
+        for (const auto& item : s->main_menu) {
+          if (item.item_id == cmd.item_id) {
+            send_ship_info(c, item.description);
+          }
         }
       }
       break;
@@ -1743,7 +1772,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case MenuID::INFORMATION: {
       if (item_id == InformationMenuItemID::GO_BACK) {
         c->flags &= ~Client::Flag::IN_INFORMATION_MENU;
-        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+        send_main_menu(s, c);
 
       } else {
         try {
@@ -1807,7 +1836,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
     case MenuID::PROXY_DESTINATIONS: {
       if (item_id == ProxyDestinationsMenuItemID::GO_BACK) {
-        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+        send_main_menu(s, c);
 
       } else if (item_id == ProxyDestinationsMenuItemID::OPTIONS) {
         send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
@@ -2006,7 +2035,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
     case MenuID::PATCHES:
       if (item_id == PatchesMenuItemID::GO_BACK) {
-        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+        send_main_menu(s, c);
 
       } else {
         if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
@@ -2021,7 +2050,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
     case MenuID::PROGRAMS:
       if (item_id == ProgramsMenuItemID::GO_BACK) {
-        send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+        send_main_menu(s, c);
 
       } else {
         if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
