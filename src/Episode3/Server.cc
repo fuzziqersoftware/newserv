@@ -236,13 +236,11 @@ void Server::send_commands_for_joining_spectator(Channel& c) const {
   }
 
   if (should_send_state) {
-    // Note: Some servers send the commented-out commands here. Is there a
-    // situation where we should send them too?
     c.send(0xC9, 0x00, this->prepare_6xB4x07_decks_update());
     c.send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
-    // 6xB4x3B - unknown
+    G_Unknown_GC_Ep3_6xB4x3B cmd_3B;
+    c.send(0xC9, 0x00, &cmd_3B, sizeof(cmd_3B));
     c.send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
-    // 6xB4x52 - unknown
   }
 }
 
