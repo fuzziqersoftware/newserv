@@ -593,6 +593,14 @@ static HandlerResult S_88(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
+static HandlerResult S_B1(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  // Block all time updates from the remote server, so client's time remains
+  // consistent
+  session.server_channel.send(0x99, 0x00);
+  return HandlerResult::Type::SUPPRESS;
+}
+
 static HandlerResult S_B2(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
   const auto& cmd = check_size_t<S_ExecuteCode_B2>(data, sizeof(S_ExecuteCode_B2), 0xFFFF);
@@ -1602,7 +1610,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* AE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* AF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B0 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
-/* B1 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* B1 */ {{S_invalid,     nullptr}, {S_B1,          nullptr},      {S_B1,          nullptr},      {S_B1,          nullptr},      {S_B1,          nullptr},      {S_B1,         nullptr}},
 /* B2 */ {{S_invalid,     nullptr}, {nullptr,       nullptr},      {nullptr,       nullptr},      {S_B2,          nullptr},      {S_B2,          nullptr},      {S_B2,         nullptr}},
 /* B3 */ {{S_invalid,     C_B3},    {S_invalid,     C_B3},         {S_invalid,     C_B3},         {S_invalid,     C_B3},         {S_invalid,     C_B3},         {S_invalid,    C_B3}},
 /* B4 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
