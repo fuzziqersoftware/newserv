@@ -115,8 +115,11 @@ Server commands:\n\
     Song IDs are 0 through 51; the default song is -1.\n\
   announce <message>\n\
     Send an announcement message to all players.\n\
-  create-tournament \"Tournament Name\" \"Map Name\" <num-teams> [rules...]\n\
-    Create an Episode 3 tournament. Rules options:\n\
+  create-tournament \"Tournament Name\" \"Map Name\" <num-teams> [options...]\n\
+    Create an Episode 3 tournament. The quotes are required arount the\n\
+    tournament and map names, unless the names contain no spaces.\n\
+    Rules options:\n\
+      2v2: Set team size to 2 players (default is 1 without this option)\n\
       dice=MIN-MAX: Set minimum and maximum dice rolls\n\
       overall-time-limit=N: Set battle time limit (in multiples of 5 minutes)\n\
       phase-time-limit=N: Set phase time limit (in seconds)\n\
@@ -138,7 +141,7 @@ Server commands:\n\
     End registration for a tournament and allow matches to begin. The quotes\n\
     are required unless the tournament name contains no spaces.\n\
   tournament-state \"Tournament Name\"\n\
-    Print the current state of a tournament. The quotes are required unless the\n\
+    Show the current state of a tournament. The quotes are required unless the\n\
     tournament name contains no spaces.\n\
 \n\
 Proxy commands (these will only work when exactly one client is connected):\n\
