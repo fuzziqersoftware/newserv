@@ -390,7 +390,11 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       vector<pair<string, uint16_t>>& ret_pds,
       const char* key) {
     try {
-      const auto& items = d.at(key);
+      map<string, shared_ptr<JSONObject>> sorted_jsons;
+      for (const auto& it : d.at(key)->as_dict()) {
+        sorted_jsons.emplace(it.first, it.second);
+      }
+
       ret_menu.clear();
       ret_pds.clear();
 
@@ -400,7 +404,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
           u"Set proxy options", 0);
 
       uint32_t item_id = 0;
-      for (const auto& item : items->as_dict()) {
+      for (const auto& item : sorted_jsons) {
         const string& netloc_str = item.second->as_string();
         const string& description = "$C7Remote server:\n$C6" + netloc_str;
         ret_menu.emplace_back(item_id, decode_sjis(item.first),
