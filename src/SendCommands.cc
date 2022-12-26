@@ -76,6 +76,16 @@ void send_command_excluding_client(shared_ptr<Lobby> l, shared_ptr<Client> c,
   }
 }
 
+void send_command_if_not_loading(shared_ptr<Lobby> l,
+    uint16_t command, uint32_t flag, const void* data, size_t size) {
+  for (auto& client : l->clients) {
+    if (!client || (client->flags & Client::Flag::LOADING)) {
+      continue;
+    }
+    send_command(client, command, flag, data, size);
+  }
+}
+
 void send_command(shared_ptr<Lobby> l, uint16_t command, uint32_t flag,
     const void* data, size_t size) {
   send_command_excluding_client(l, nullptr, command, flag, data, size);

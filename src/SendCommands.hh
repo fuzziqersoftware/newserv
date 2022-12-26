@@ -51,6 +51,18 @@ inline void send_command_excluding_client(std::shared_ptr<Lobby> l,
   send_command_excluding_client(l, c, command, flag, nullptr, 0);
 }
 
+void send_command_if_not_loading(std::shared_ptr<Lobby> l,
+    uint16_t command, uint32_t flag, const void* data, size_t size);
+inline void send_command_if_not_loading(std::shared_ptr<Lobby> l,
+    uint16_t command, uint32_t flag, const string& data) {
+  send_command_if_not_loading(l, command, flag, data.data(), data.size());
+}
+template <typename StructT>
+inline void send_command_if_not_loading(std::shared_ptr<Lobby> l,
+    uint16_t command, uint32_t flag, const StructT& data) {
+  send_command_if_not_loading(l, command, flag, &data, sizeof(data));
+}
+
 void send_command(std::shared_ptr<Lobby> l, uint16_t command, uint32_t flag,
     const void* data, size_t size);
 
