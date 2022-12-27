@@ -2262,7 +2262,9 @@ void send_ep3_tournament_match_result(
   };
 
   G_TournamentMatchResult_GC_Ep3_6xB4x51 cmd;
-  cmd.match_description = string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num);
+  cmd.match_description = (match == tourn->get_final_match())
+      ? string_printf("(%s) Final match", tourn->get_name().c_str())
+      : string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num);
   cmd.names_entries[0].team_name = match->preceding_a->winner_team->name;
   write_player_names(cmd.names_entries[0], match->preceding_a->winner_team);
   cmd.names_entries[1].team_name = match->preceding_b->winner_team->name;
