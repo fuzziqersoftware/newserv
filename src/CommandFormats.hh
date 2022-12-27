@@ -47,6 +47,46 @@
 
 
 
+// Text escape codes
+
+// Most text fields allow the use of various escape codes to change decoding,
+// change color, or create symbols. These escape codes are always preceded by a
+// tab character (0x09, or '\t'). For brevity, we generally refer to them with $
+// instead in newserv, since the server substitutes most usage of $ in player-
+// provided text with \t. The escape codes are:
+// - Language codes
+// - - $E: Set text interpretation to English
+// - - $J: Set text interpretation to Japanese
+// - Color codes
+// - - $C0: Black (000000)
+// - - $C1: Blue (0000FF)
+// - - $C2: Green (00FF00)
+// - - $C3: Cyan (00FFFF)
+// - - $C4: Red (FF0000)
+// - - $C5: Magenta (FF00FF)
+// - - $C6: Yellow (FFFF00)
+// - - $C7: White (FFFFFF)
+// - - $C8: Pink (FF8080)
+// - - $C9: Violet (8080FF)
+// - - $CG: Orange pulse (FFE000 + darkenings thereof)
+// - - $Ca: Orange (F5A052; Episode 3 only)
+// - Special character codes (Ep3 only)
+// - - $B: Dash + small bullet
+// - - $D: Large bullet
+// - - $F: Female symbol
+// - - $I: Infinity
+// - - $M: Male symbol
+// - - $O: Open circle
+// - - $R: Solid circle
+// - - $S: Star-like ability symbol
+// - - $X: Cross
+// - - $d: Down arrow
+// - - $l: Left arrow
+// - - $r: Right arrow
+// - - $u: Up arrow
+
+
+
 // This is the format of newserv's security data, which we call the client
 // config. This data is opaque to the client, so this structure is not
 // technically part of the PSO protocol. Because it is opaque to the client, we
