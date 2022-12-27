@@ -988,10 +988,48 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
+static HandlerResult C_GXB_61(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
+  if (session.version == GameVersion::BB) {
+    auto& pd = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB), 0xFFFF);
+    add_color_inplace(pd.info_board.data(), pd.info_board.size());
+
+  } else {
+    PSOPlayerDataV3* pd;
+    if (flag == 4) { // Episode 3
+      pd = reinterpret_cast<PSOPlayerDataV3*>(&check_size_t<PSOPlayerDataGCEp3>(data));
+    } else {
+      pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3) + 0xFFFF);
+    }
+    add_color_inplace(pd->info_board.data(), pd->info_board.size());
+  }
+
+  // TODO: We should check if the info board text was actually modified and
+  // return MODIFIED if so.
+  return HandlerResult::Type::FORWARD;
+}
+
+static HandlerResult C_GX_D9(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession&, uint16_t, uint32_t, string& data) {
+  add_color_inplace(data.data(), data.size());
+  // TODO: We should check if the info board text was actually modified and
+  // return MODIFIED if so.
+  return HandlerResult::Type::FORWARD;
+}
+
+static HandlerResult C_B_D9(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession&, uint16_t, uint32_t, string& data) {
+  char16_t* text = reinterpret_cast<char16_t*>(data.data());
+  add_color_inplace(text, data.size() / sizeof(char16_t));
+  // TODO: We should check if the info board text was actually modified and
+  // return HandlerResult::MODIFIED if so.
+  return HandlerResult::Type::FORWARD;
+}
+
 template <typename T>
 static HandlerResult S_44_A6(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t, string& data) {
-  const auto& cmd = check_size_t<S_OpenFile_PC_V3_44_A6>(data);
+  const auto& cmd = check_size_t<T>(data);
 
   string filename = cmd.filename;
   string output_filename;
@@ -1528,7 +1566,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* 5F */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 // CMD     S-PATCH        C-PATCH    S-DC           C-DC            S-PC           C-PC            S-GC           C-GC            S-XB           C-XB            S-BB          C-BB
 /* 60 */ {{S_invalid,     nullptr}, {S_6x,          C_D_6x},       {S_6x,          C_P_6x},       {S_6x,          C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
-/* 61 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* 61 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     C_GXB_61},     {S_invalid,     C_GXB_61},     {S_invalid,    C_GXB_61}},
 /* 62 */ {{S_invalid,     nullptr}, {S_6x,          C_D_6x},       {S_6x,          C_P_6x},       {S_6x,          C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
 /* 63 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 64 */ {{S_invalid,     nullptr}, {S_DG_64,       nullptr},      {S_P_64,        nullptr},      {S_DG_64,       nullptr},      {S_X_64,        nullptr},      {S_B_64,       nullptr}},
@@ -1651,7 +1689,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* D6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* D7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
 /* D8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
-/* D9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* D9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     C_GX_D9},      {S_invalid,     C_GX_D9},      {S_invalid,    C_B_D9}},
 /* DA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_V3_BB_DA,    nullptr},      {S_V3_BB_DA,    nullptr},      {S_V3_BB_DA,   nullptr}},
 /* DB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* DC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
