@@ -152,6 +152,7 @@ public:
   };
 
   std::shared_ptr<LinkedSession> get_session();
+  std::shared_ptr<LinkedSession> get_session_by_name(const std::string& name);
   std::shared_ptr<LinkedSession> create_licensed_session(
     std::shared_ptr<const License> l,
     uint16_t local_port,

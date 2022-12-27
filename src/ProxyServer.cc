@@ -795,6 +795,18 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() {
   return this->id_to_session.begin()->second;
 }
 
+shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(
+    const std::string& name) {
+  try {
+    uint64_t session_id = stoull(name, nullptr, 16);
+    return this->id_to_session.at(session_id);
+  } catch (const invalid_argument&) {
+    throw runtime_error("invalid session name");
+  } catch (const out_of_range&) {
+    throw runtime_error("no such session");
+  }
+}
+
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
     shared_ptr<const License> l, uint16_t local_port, GameVersion version,
     const ClientConfigBB& newserv_client_config) {

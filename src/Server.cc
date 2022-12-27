@@ -270,6 +270,54 @@ shared_ptr<Client> Server::get_client() const {
   return this->channel_to_client.begin()->second;
 }
 
+vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident) const {
+  int64_t serial_number_hex = -1;
+  int64_t serial_number_dec = -1;
+  try {
+    serial_number_dec = stoul(ident, nullptr, 10);
+  } catch (const invalid_argument&) { }
+  try {
+    serial_number_hex = stoul(ident, nullptr, 16);
+  } catch (const invalid_argument&) { }
+  u16string u16name = decode_sjis(ident);
+
+  // TODO: It's kind of not great that we do a linear search here, but this is
+  // only used in the shell, so it should be pretty rare.
+  vector<shared_ptr<Client>> results;
+  for (const auto& it : this->channel_to_client) {
+    auto c = it.second;
+    if (c->license && c->license->serial_number == serial_number_dec) {
+      results.emplace_back(move(c));
+      continue;
+    }
+    if (c->license && c->license->serial_number == serial_number_hex) {
+      results.emplace_back(move(c));
+      continue;
+    }
+    if (c->license && c->license->username == ident) {
+      results.emplace_back(move(c));
+      continue;
+    }
+
+    auto p = c->game_data.player(false);
+    if (p && p->disp.name == u16name) {
+      results.emplace_back(move(c));
+      continue;
+    }
+
+    if (c->channel.name == ident) {
+      results.emplace_back(move(c));
+      continue;
+    }
+    if (starts_with(c->channel.name, ident + " ")) {
+      results.emplace_back(move(c));
+      continue;
+    }
+  }
+
+  return results;
+}
+
 shared_ptr<struct event_base> Server::get_base() const {
   return this->base;
 }

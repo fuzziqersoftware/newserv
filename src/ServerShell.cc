@@ -24,11 +24,14 @@ void ServerShell::print_prompt() {
   fflush(stdout);
 }
 
-shared_ptr<ProxyServer::LinkedSession> ServerShell::get_proxy_session() {
+shared_ptr<ProxyServer::LinkedSession> ServerShell::get_proxy_session(
+    const string& name) {
   if (!this->state->proxy_server.get()) {
     throw runtime_error("the proxy server is disabled");
   }
-  return this->state->proxy_server->get_session();
+  return name.empty()
+      ? this->state->proxy_server->get_session()
+      : this->state->proxy_server->get_session_by_name(name);
 }
 
 static void set_boolean(bool* target, const string& args) {
@@ -68,11 +71,22 @@ static string get_quoted_string(string& s) {
 }
 
 void ServerShell::execute_command(const string& command) {
-  // find the entry in the command table and run the command
+  // Find the entry in the command table and run the command
   size_t command_end = skip_non_whitespace(command, 0);
   size_t args_begin = skip_whitespace(command, command_end);
   string command_name = command.substr(0, command_end);
   string command_args = command.substr(args_begin);
+
+  string session_name;
+  if (command_name == "on") {
+    size_t session_name_end = skip_non_whitespace(command_args, 0);
+    size_t command_begin = skip_whitespace(command_args, session_name_end);
+    command_end = skip_non_whitespace(command_args, command_begin);
+    args_begin = skip_whitespace(command_args, command_end);
+    session_name = command_args.substr(0, session_name_end);
+    command_name = command_args.substr(command_begin, command_end - command_begin);
+    command_args = command_args.substr(args_begin);
+  }
 
   if (command_name == "exit") {
     throw exit_shell();
@@ -144,9 +158,10 @@ Server commands:\n\
     Show the current state of a tournament. The quotes are required unless the\n\
     tournament name contains no spaces.\n\
 \n\
-Proxy commands (these will only work when exactly one client is connected):\n\
+Proxy commands:\n\
   sc <data>\n\
-    Send a command to the client.\n\
+    Send a command to the client. This command also can be used to send data to\n\
+    a client on the game server.\n\
   ss <data>\n\
     Send a command to the server.\n\
   chat <text>\n\
@@ -203,6 +218,15 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     Set the next item to be dropped as if the client had run the $item command.\n\
   close-idle-sessions\n\
     Closes all sessions that don\'t have a client and server connected.\n\
+\n\
+If there are multiple clients connected, or multiple proxy sessions open, many\n\
+of the above commands will fail since they can\'t determine which session should\n\
+be affected. To specify a session, prefix the command with `on <ident>`. For\n\
+game server sessions, <ident> may be the client\'s ID (e.g. C-3), player name,\n\
+license serial number (specified in hex or in decimal), or BB account username.\n\
+For proxy sessions, <ident> may only be the session ID (which is generally the\n\
+same as the client\'s serial number). For example, to send a ping to the proxy\n\
+session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
 ");
 
 
@@ -473,7 +497,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
 
     shared_ptr<ProxyServer::LinkedSession> proxy_session;
     try {
-      proxy_session = this->get_proxy_session();
+      proxy_session = this->get_proxy_session(session_name);
     } catch (const exception&) { }
 
     if (proxy_session.get()) {
@@ -488,12 +512,30 @@ Proxy commands (these will only work when exactly one client is connected):\n\
         throw runtime_error("cannot send to server in non-proxy session");
       }
 
-      auto c = this->state->game_server->get_client();
-      send_command_with_header(c->channel, data.data(), data.size());
+      shared_ptr<Client> c;
+      if (session_name.empty()) {
+        c = this->state->game_server->get_client();
+      } else {
+        auto clients = this->state->game_server->get_clients_by_identifier(
+            session_name);
+        if (clients.empty()) {
+          throw runtime_error("no such client");
+        }
+        if (clients.size() > 1) {
+          throw runtime_error("multiple clients found");
+        }
+        c = move(clients[0]);
+      }
+
+      if (c) {
+        send_command_with_header(c->channel, data.data(), data.size());
+      } else {
+        throw runtime_error("no client available");
+      }
     }
 
   } else if ((command_name == "chat") || (command_name == "dchat")) {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
 
     string data(8, '\0');
     data.push_back('\x09');
@@ -509,18 +551,18 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     session->server_channel.send(0x06, 0x00, data);
 
   } else if (command_name == "marker") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
     session->server_channel.send(0x89, stoul(command_args));
 
   } else if (command_name == "warp") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
 
     uint8_t area = stoul(command_args);
     send_warp(session->client_channel, session->lobby_client_id, area);
     send_warp(session->server_channel, session->lobby_client_id, area);
 
   } else if ((command_name == "info-board") || (command_name == "info-board-data")) {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
 
     string data;
     if (command_name == "info-board-data") {
@@ -534,7 +576,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     session->server_channel.send(0xD9, 0x00, data);
 
   } else if (command_name == "set-override-section-id") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
     if (command_args.empty()) {
       session->options.override_section_id = -1;
     } else {
@@ -542,7 +584,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     }
 
   } else if (command_name == "set-override-event") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
     if (command_args.empty()) {
       session->options.override_lobby_event = -1;
     } else {
@@ -556,7 +598,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     }
 
   } else if (command_name == "set-override-lobby-number") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
     if (command_args.empty()) {
       session->options.override_lobby_number = -1;
     } else {
@@ -564,27 +606,27 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     }
 
   } else if (command_name == "set-chat-filter") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
     set_boolean(&session->options.enable_chat_filter, command_args);
 
   } else if (command_name == "set-infinite-hp") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
     set_boolean(&session->options.infinite_hp, command_args);
 
   } else if (command_name == "set-infinite-tp") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
     set_boolean(&session->options.infinite_tp, command_args);
 
   } else if (command_name == "set-switch-assist") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
     set_boolean(&session->options.switch_assist, command_args);
 
   } else if (command_name == "set-save-files" && this->state->proxy_allow_save_files) {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
     set_boolean(&session->options.save_files, command_args);
 
   } else if (command_name == "set-block-function-calls") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
     if (command_args.empty()) {
       session->options.function_call_return_value = -1;
     } else {
@@ -592,7 +634,7 @@ Proxy commands (these will only work when exactly one client is connected):\n\
     }
 
   } else if (command_name == "set-next-item") {
-    auto session = this->get_proxy_session();
+    auto session = this->get_proxy_session(session_name);
 
     if (session->version == GameVersion::BB) {
       throw runtime_error("proxy session is BB");

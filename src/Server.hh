@@ -31,6 +31,8 @@ public:
       GameVersion version, ServerBehavior initial_state);
 
   std::shared_ptr<Client> get_client() const;
+  std::vector<std::shared_ptr<Client>> get_clients_by_identifier(
+      const std::string& ident) const;
   std::shared_ptr<struct event_base> get_base() const;
 
 private:

@@ -26,7 +26,8 @@ public:
 protected:
   std::shared_ptr<ServerState> state;
 
-  std::shared_ptr<ProxyServer::LinkedSession> get_proxy_session();
+  std::shared_ptr<ProxyServer::LinkedSession> get_proxy_session(
+      const std::string& name);
 
   virtual void print_prompt();
   virtual void execute_command(const std::string& command);
