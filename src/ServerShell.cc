@@ -6,6 +6,7 @@
 
 #include <phosg/Strings.hh>
 
+#include "ReceiveCommands.hh"
 #include "ServerState.hh"
 #include "SendCommands.hh"
 #include "StaticGameData.hh"
@@ -508,10 +509,6 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
       }
 
     } else {
-      if (command_name [1] == 's') {
-        throw runtime_error("cannot send to server in non-proxy session");
-      }
-
       shared_ptr<Client> c;
       if (session_name.empty()) {
         c = this->state->game_server->get_client();
@@ -528,7 +525,11 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
       }
 
       if (c) {
-        send_command_with_header(c->channel, data.data(), data.size());
+        if (command_name[1] == 's') {
+          on_command_with_header(this->state, c, data);
+        } else {
+          send_command_with_header(c->channel, data.data(), data.size());
+        }
       } else {
         throw runtime_error("no client available");
       }

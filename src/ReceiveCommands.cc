@@ -4081,3 +4081,32 @@ void on_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
     on_unimplemented_command(s, c, command, flag, data);
   }
 }
+
+void on_command_with_header(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    string& data) {
+  switch (c->version()) {
+    case GameVersion::DC:
+    case GameVersion::GC:
+    case GameVersion::XB: {
+      auto& header = check_size_t<PSOCommandHeaderDCV3>(data,
+          sizeof(PSOCommandHeaderDCV3), 0xFFFF);
+      on_command(s, c, header.command, header.flag, data.substr(sizeof(header)));
+      break;
+    }
+    case GameVersion::PC:
+    case GameVersion::PATCH: {
+      auto& header = check_size_t<PSOCommandHeaderPC>(data,
+          sizeof(PSOCommandHeaderPC), 0xFFFF);
+      on_command(s, c, header.command, header.flag, data.substr(sizeof(header)));
+      break;
+    }
+    case GameVersion::BB: {
+      auto& header = check_size_t<PSOCommandHeaderBB>(data,
+          sizeof(PSOCommandHeaderBB), 0xFFFF);
+      on_command(s, c, header.command, header.flag, data.substr(sizeof(header)));
+      break;
+    }
+    default:
+      throw logic_error("unimplemented game version in on_command_with_header");
+  }
+}

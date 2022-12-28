@@ -22,3 +22,5 @@ void on_disconnect(std::shared_ptr<ServerState> s,
     std::shared_ptr<Client> c);
 void on_command(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const std::string& data);
+void on_command_with_header(std::shared_ptr<ServerState> s,
+    std::shared_ptr<Client> c, std::string& data);
