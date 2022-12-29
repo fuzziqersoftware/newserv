@@ -12,7 +12,7 @@
 
 class GSLArchive {
 public:
-  GSLArchive(std::shared_ptr<const std::string> data);
+  GSLArchive(std::shared_ptr<const std::string> data, bool big_endian);
   ~GSLArchive() = default;
 
   struct Entry {
@@ -26,6 +26,9 @@ public:
   StringReader get_reader(const std::string& name) const;
 
 private:
+  template <typename LongT>
+  void load_t();
+
   std::shared_ptr<const std::string> data;
 
   std::unordered_map<std::string, Entry> entries;

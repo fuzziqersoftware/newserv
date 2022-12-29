@@ -10,20 +10,20 @@ using namespace std;
 
 
 
-// TODO: Support big-endian GSLs also (e.g. from PSO GC)
-
+template <typename LongT>
 struct GSLHeaderEntry {
   ptext<char, 0x20> filename;
-  le_uint32_t offset; // In pages, so actual offset is this * 0x800
-  le_uint32_t size;
+  LongT offset; // In pages, so actual offset is this * 0x800
+  LongT size;
   uint64_t unused;
-};
+} __attribute__((packed));
 
-GSLArchive::GSLArchive(shared_ptr<const string> data) : data(data) {
+template <typename LongT>
+void GSLArchive::load_t() {
   StringReader r(*this->data);
   uint64_t min_data_offset = 0xFFFFFFFFFFFFFFFF;
   while (r.where() < min_data_offset) {
-    const auto& entry = r.get<GSLHeaderEntry>();
+    const auto& entry = r.get<GSLHeaderEntry<LongT>>();
     if (entry.filename.len() == 0) {
       break;
     }
@@ -32,6 +32,15 @@ GSLArchive::GSLArchive(shared_ptr<const string> data) : data(data) {
       throw runtime_error("GSL entry extends beyond end of data");
     }
     this->entries.emplace(entry.filename, Entry{offset, entry.size});
+  }
+}
+
+GSLArchive::GSLArchive(shared_ptr<const string> data, bool big_endian)
+  : data(data) {
+  if (big_endian) {
+    this->load_t<be_uint32_t>();
+  } else {
+    this->load_t<le_uint32_t>();
   }
 }
 

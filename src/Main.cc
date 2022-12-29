@@ -364,9 +364,8 @@ The options are:\n\
       Extract all files from a GSL archive into the current directory.\n\
       input-filename may be specified. If output-filename is specified, then it\n\
       is treated as a prefix which is prepended to the filename of each file\n\
-      contained in the GSL archive. Importantly, if you want to put the files\n\
-      into a directory, you'll have to create the directory first, and include\n\
-      a trailing / on output-filename.\n\
+      contained in the GSL archive. If --big-endian is given, the GSL header is\n\
+      read in GameCube format; otherwise it is read in PC/BB format.\n\
 \n\
 A few options apply to multiple modes described above:\n\
   --parse-data\n\
@@ -825,7 +824,7 @@ int main(int argc, char** argv) {
       string data = read_input_data();
 
       shared_ptr<string> data_shared(new string(move(data)));
-      GSLArchive gsl(data_shared);
+      GSLArchive gsl(data_shared, big_endian);
       for (const auto& entry_it : gsl.all_entries()) {
         auto e = gsl.get(entry_it.first);
         save_file(output_filename + entry_it.first, e.first, e.second);
@@ -930,7 +929,7 @@ int main(int argc, char** argv) {
         state->bb_patch_file_index.reset(new PatchFileIndex("system/patch-bb"));
         try {
           auto gsl_file = state->bb_patch_file_index->get("./data/data.gsl");
-          state->bb_data_gsl.reset(new GSLArchive(gsl_file->load_data()));
+          state->bb_data_gsl.reset(new GSLArchive(gsl_file->load_data(), false));
           config_log.info("data.gsl found in BB patch files");
         } catch (const out_of_range&) {
           config_log.info("data.gsl is not present in BB patch files");
