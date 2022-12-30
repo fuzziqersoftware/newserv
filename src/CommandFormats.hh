@@ -2131,7 +2131,10 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { } __packed__;
 // No arguments except header.flag
 
 // C9: Broadcast command (Episode 3)
-// Same as 60, but only send to Episode 3 clients.
+// Same as 60, but should be forwarded only to Episode 3 clients.
+// newserv uses this command for all server-generated events (in response to CA
+// commands), except for map data requests. This differs from Sega's original
+// implementation, which sent CA responses via 60 commands instead.
 
 // CA (C->S): Server data request (Episode 3)
 // The CA command format is the same as that of the 6xB3 commands, and the
@@ -2786,7 +2789,9 @@ struct C_MoveGuildCard_BB_0AE8 {
 
 // E9 (S->C): Remove player from spectator team (Episode 3)
 // Same format as 66/69 commands. Like 69 (and unlike 66), the disable_udp field
-// is unused in command E9.
+// is unused in command E9. When a spectator leaves a spectator team, the
+// primary players should receive a 6xB4x52 command to update their spectator
+// counts.
 
 // EA (S->C): Timed message box (Episode 3)
 // The message appears in the upper half of the screen; the box is as wide as
@@ -2887,9 +2892,10 @@ struct C_Unknown_BB_1EEA {
 // spectator team.
 // This command is used to add both primary players and spectators - if the
 // client ID in .lobby_data is 0-3, it's a primary player, otherwise it's a
-// spectator. (Of course, the other primary players in the game receive a 65
-// command rather than an EB command to notify them of the joining
-// player.)
+// spectator. (In the case of a primary player joining, the other primary
+// players in the game receive a 65 command rather than an EB command to notify
+// them of the joining player; in the case of a joining spectator, the primary
+// players receive a 6xB4x52 instead.)
 
 // 01EB (S->C): Send stream file index (BB)
 
@@ -2956,8 +2962,8 @@ union C_UpdateAccountData_BB_ED {
 // EE: Trade cards (Episode 3)
 // This command has different forms depending on the header.flag value; the flag
 // values match the command numbers from the Episodes 1&2 trade window sequence.
-// The sequence of events with the EE command matches that of the Episodes 1&2
-// trade window; see the description of the D0 command above for details.
+// The sequence of events with the EE command also matches that of the Episodes
+// 1&2 trade window; see the description of the D0 command above for details.
 
 // EE D0 (C->S): Begin trade
 struct SC_TradeCards_GC_Ep3_EE_FlagD0_FlagD3 {
@@ -2993,7 +2999,9 @@ struct S_CardTradeComplete_GC_Ep3_EE_FlagD4 {
 // scrolls to the left.
 
 // EF (C->S): Join card auction (Episode 3)
-// No arguments
+// This command should be treated like AC (quest barrier); that is, when all
+// players in the same game have sent an EF command, the server should send an
+// EF back to them all at the same time to start the auction.
 
 // EF (S->C): Start card auction (Episode 3)
 
@@ -5698,6 +5706,8 @@ struct G_TournamentMatchResult_GC_Ep3_6xB4x51 {
 } __packed__;
 
 // 6xB4x52: Set game metadata
+// This is sent to all players in a game and all attached spectator teams when
+// any player joins or leaves any spectator team watching the same game.
 
 struct G_SetGameMetadata_GC_Ep3_6xB4x52 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetGameMetadata_GC_Ep3_6xB4x52) / 4, 0, 0x52, 0, 0, 0};
