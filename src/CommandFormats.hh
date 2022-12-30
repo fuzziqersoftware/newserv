@@ -2461,11 +2461,17 @@ struct S_GameInformation_GC_Ep3_E1 {
 //   flag=00: request tournament list (server responds with E0)
 //   flag=01: check tournament (server responds with E2)
 //   flag=02: cancel tournament entry (server responds with CC)
-//   flag=03: create tournament spectator team (server responds with E6)
+//   flag=03: create tournament spectator team (server responds with E0)
 //   flag=04: join tournament spectator team (server responds with E0)
-// In case 02, the resulting CC command is apparently completely blank (all 0),
-// and has header.flag = 0 to indicate the player isn't registered.
-// In cases 03 and 04, it's not clear what the server should respond with.
+// In case 02, the resulting CC command has header.flag = 0 to indicate the
+// player is no longer registered.
+// In cases 03 and 04, the client handles follow-ups differently from the 00
+// case. In case 04, the client will send a 10 (to which the server responds
+// with an E2), but when a choice is made from that menu, the client sends E6 01
+// instead of 10. In case 03, the flow is similar, but the client sends E7
+// instead of E6 01.
+// newserv responds with a standard ship info box (11), but this seems not to be
+// intended since it partially overlaps some windows.
 
 // E2 (S->C): Tournament entry list (Episode 3)
 // Client may send 09 commands if the player presses X. It's not clear what the
@@ -2629,9 +2635,8 @@ struct SC_PlayerPreview_CreateCharacter_BB_00E5 {
 // With header.flag == 0, this command has no arguments and is used for
 // requesting the spectator team list. The server responds with an E6 command.
 
-// With header.flag == 1, this command is presumably used for joining a
-// spectator team (TODO: verify this). The following arguments are given in this
-// form:
+// With header.flag == 1, this command is used for joining a tournament
+// spectator team. The following arguments are given in this form:
 
 struct C_JoinSpectatorTeam_GC_Ep3_E6_Flag01 {
   le_uint32_t menu_id = 0;
@@ -2656,6 +2661,9 @@ struct S_ClientInit_BB_00E6 {
 } __packed__;
 
 // E7 (C->S): Create spectator team (Episode 3)
+// This command is used to create speectator teams for both tournaments and
+// regular games. The server should be able to tell these cases apart by the
+// menu and/or item ID.
 
 struct C_CreateSpectatorTeam_GC_Ep3_E7 {
   le_uint32_t menu_id = 0;
