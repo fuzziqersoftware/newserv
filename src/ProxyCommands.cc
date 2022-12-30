@@ -873,8 +873,6 @@ static HandlerResult S_V3_BB_DA(shared_ptr<ServerState>,
 
 static HandlerResult S_6x(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
-  check_implemented_subcommand(session, data);
-
   if (session.options.save_files) {
     if ((session.version == GameVersion::GC) && (data.size() >= 0x14)) {
       if (static_cast<uint8_t>(data[0]) == 0xB6) {
