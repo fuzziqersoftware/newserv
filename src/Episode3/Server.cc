@@ -264,7 +264,6 @@ void Server::send_debug_message_printf(const char* fmt, ...) const {
     va_start(va, fmt);
     std::string buf = string_vprintf(fmt, va);
     va_end(va);
-    this->base()->log.info("%s", buf.c_str());
     std::u16string decoded = decode_sjis(buf);
     send_text_message(l, decoded.c_str());
   }
@@ -278,7 +277,6 @@ void Server::send_info_message_printf(const char* fmt, ...) const {
     va_start(va, fmt);
     std::string buf = string_vprintf(fmt, va);
     va_end(va);
-    this->base()->log.info("%s", buf.c_str());
     std::u16string decoded = decode_sjis(buf);
     send_text_message(l, decoded.c_str());
   }
@@ -286,10 +284,12 @@ void Server::send_info_message_printf(const char* fmt, ...) const {
 
 void Server::send_debug_command_received_message(
     uint8_t client_id, uint8_t subsubcommand, const char* description) const {
+  this->log_debug("%hhu/CAx%02hhX %s", client_id, subsubcommand, description);
   this->send_debug_message_printf("$C5%hhu/CAx%02hhX %s", client_id, subsubcommand, description);
 }
 
 void Server::send_debug_command_received_message(uint8_t subsubcommand, const char* description) const {
+  this->log_debug("*/CAx%02hhX %s", subsubcommand, description);
   this->send_debug_message_printf("$C5*/CAx%02hhX %s", subsubcommand, description);
 }
 
