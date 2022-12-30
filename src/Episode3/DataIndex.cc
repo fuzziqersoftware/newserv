@@ -18,6 +18,25 @@ namespace Episode3 {
 
 
 
+const char* name_for_attack_medium(AttackMedium medium) {
+  switch (medium) {
+    case AttackMedium::UNKNOWN:
+      return "UNKNOWN";
+    case AttackMedium::PHYSICAL:
+      return "PHYSICAL";
+    case AttackMedium::TECH:
+      return "TECH";
+    case AttackMedium::UNKNOWN_03:
+      return "UNKNOWN_03";
+    case AttackMedium::INVALID_FF:
+      return "INVALID_FF";
+    default:
+      return "__INVALID__";
+  }
+}
+
+
+
 Location::Location() : Location(0, 0) { }
 Location::Location(uint8_t x, uint8_t y) : Location(x, y, Direction::RIGHT) { }
 Location::Location(uint8_t x, uint8_t y, Direction direction)
@@ -31,6 +50,11 @@ bool Location::operator==(const Location& other) const {
 }
 bool Location::operator!=(const Location& other) const {
   return !this->operator==(other);
+}
+
+std::string Location::str() const {
+  return string_printf("Location[x=%hhu, y=%hhu, dir=%s, u=%hhu]",
+      this->x, this->y, name_for_direction(this->direction), this->unused);
 }
 
 void Location::clear() {
@@ -107,7 +131,7 @@ const char* name_for_direction(Direction d) {
     case Direction::INVALID_FF:
       return "INVALID_FF";
     default:
-      return "__unknown__";
+      return "__INVALID__";
   }
 }
 
@@ -283,133 +307,158 @@ struct ConditionDescription {
 };
 
 static const vector<ConditionDescription> description_for_condition_type({
-  /* 0x00 */ {false, nullptr, nullptr},
-  /* 0x01 */ {true,  "AP Boost", "Temporarily increase AP by N"},
-  /* 0x02 */ {false, "Rampage", "Rampage"},
-  /* 0x03 */ {true,  "Multi Strike", "Duplicate attack N times"},
-  /* 0x04 */ {true,  "Damage Modifier 1", "Set attack damage / AP to N after action cards applied (step 1)"},
-  /* 0x05 */ {false, "Immobile", "Give Immobile condition"},
-  /* 0x06 */ {false, "Hold", "Give Hold condition"},
-  /* 0x07 */ {false, nullptr, nullptr},
-  /* 0x08 */ {true,  "TP Boost", "Add N TP temporarily during attack"},
-  /* 0x09 */ {true,  "Give Damage", "Cause direct N HP loss"},
-  /* 0x0A */ {false, "Guom", "Give Guom condition"},
-  /* 0x0B */ {false, "Paralyze", "Give Paralysis condition"},
-  /* 0x0C */ {false, nullptr, nullptr},
-  /* 0x0D */ {false, "A/H Swap", "Swap AP and HP temporarily"},
-  /* 0x0E */ {false, "Pierce", "Attack SC directly even if they have items equipped"},
-  /* 0x0F */ {false, nullptr, nullptr},
-  /* 0x10 */ {true,  "Heal", "Increase HP by N"},
-  /* 0x11 */ {false, "Return to Hand", "Return card to hand"},
-  /* 0x12 */ {false, nullptr, nullptr},
-  /* 0x13 */ {false, nullptr, nullptr},
-  /* 0x14 */ {false, "Acid", "Give Acid condition"},
-  /* 0x15 */ {false, nullptr, nullptr},
-  /* 0x16 */ {true,  "Mighty Knuckle", "Temporarily increase AP by N, and set ATK dice to zero"},
-  /* 0x17 */ {true,  "Unit Blow", "Temporarily increase AP by N * number of this card set within phase"},
-  /* 0x18 */ {false, "Curse", "Give Curse condition"},
-  /* 0x19 */ {false, "Combo (AP)", "Temporarily increase AP by number of this card set within phase"},
-  /* 0x1A */ {false, "Pierce/Rampage Block", "Block attack if Pierce/Rampage (?)"},
-  /* 0x1B */ {false, "Ability Trap", "Temporarily disable opponent abilities"},
-  /* 0x1C */ {false, "Freeze", "Give Freeze condition"},
-  /* 0x1D */ {false, "Anti-Abnormality", "Cure all conditions"},
-  /* 0x1E */ {false, nullptr, nullptr},
-  /* 0x1F */ {false, "Explosion", "Damage all SCs and FCs by number of this same card set * 2"},
-  /* 0x20 */ {false, nullptr, nullptr},
-  /* 0x21 */ {false, nullptr, nullptr},
-  /* 0x22 */ {false, nullptr, nullptr},
-  /* 0x23 */ {false, "Return to Deck", "Cancel discard and move to bottom of deck instead"},
-  /* 0x24 */ {false, "Aerial", "Give Aerial status"},
-  /* 0x25 */ {true,  "AP Loss", "Make attacker temporarily lose N AP during defense"},
-  /* 0x26 */ {true,  "Bonus From Leader", "Gain AP equal to the number of cards of type N on the field"},
-  /* 0x27 */ {false, "Free Maneuver", "Enable movement over occupied tiles"},
-  /* 0x28 */ {false, "Haste", "Make move actions free"},
-  /* 0x29 */ {true,  "Clone", "Make setting this card free if at least one card of type N is already on the field"},
-  /* 0x2A */ {true,  "DEF Disable by Cost", "Disable use of any defense cards costing between (N / 10) and (N % 10) points, inclusive"},
-  /* 0x2B */ {true,  "Filial", "Increase controlling SC\'s HP by N when this card is destroyed"},
-  /* 0x2C */ {true,  "Snatch", "Steal N EXP during attack"},
-  /* 0x2D */ {true,  "Hand Disrupter", "Discard N cards from hand immediately"},
-  /* 0x2E */ {false, "Drop", "Give Drop condition"},
-  /* 0x2F */ {false, "Action Disrupter", "Destroy all action cards used by attacker"},
-  /* 0x30 */ {true,  "Set HP", "Set HP to N"},
-  /* 0x31 */ {false, "Native Shield", "Block attacks from Native creatures"},
-  /* 0x32 */ {false, "A.Beast Shield", "Block attacks from A.Beast creatures"},
-  /* 0x33 */ {false, "Machine Shield", "Block attacks from Machine creatures"},
-  /* 0x34 */ {false, "Dark Shield", "Block attacks from Dark creatures"},
-  /* 0x35 */ {false, "Sword Shield", "Block attacks from Sword items"},
-  /* 0x36 */ {false, "Gun Shield", "Block attacks from Gun items"},
-  /* 0x37 */ {false, "Cane Shield", "Block attacks from Cane items"},
-  /* 0x38 */ {false, nullptr, nullptr},
-  /* 0x39 */ {false, nullptr, nullptr},
-  /* 0x3A */ {false, "Defender", "Make attacks go to setter of this card instead of original target"},
-  /* 0x3B */ {false, "Survival Decoys", "Redirect damage for multi-sided attack"},
-  /* 0x3C */ {true,  "Give/Take EXP", "Give N EXP, or take if N is negative"},
-  /* 0x3D */ {false, nullptr, nullptr},
-  /* 0x3E */ {false, "Death Companion", "If this card has 1 or 2 HP, set its HP to N"},
-  /* 0x3F */ {true,  "EXP Decoy", "If defender has EXP, lose EXP instead of getting damage when attacked"},
-  /* 0x40 */ {true,  "Set MV", "Set MV to N"},
-  /* 0x41 */ {true,  "Group", "Temporarily increase AP by N * number of this card on field, excluding itself"},
-  /* 0x42 */ {false, "Berserk", "User of this card receives the same damage as target, and isn\'t helped by target\'s defense cards"},
-  /* 0x43 */ {false, "Guard Creature", "Attacks on controlling SC damage this card instead"},
-  /* 0x44 */ {false, "Tech", "Technique cards cost 1 fewer ATK point"},
-  /* 0x45 */ {false, "Big Swing", "Increase all attacking ATK costs by 1"},
-  /* 0x46 */ {false, nullptr, nullptr},
-  /* 0x47 */ {false, "Shield Weapon", "Limit attacker\'s choice of target to guard items"},
-  /* 0x48 */ {false, "ATK Dice Boost", "Increase ATK dice roll by 1"},
-  /* 0x49 */ {false, nullptr, nullptr},
-  /* 0x4A */ {false, "Major Pierce", "If SC has over half of max HP, attacks target SC instead of equipped items"},
-  /* 0x4B */ {false, "Heavy Pierce", "If SC has 3 or more items equipped, attacks target SC instead of equipped items"},
-  /* 0x4C */ {false, "Major Rampage", "If SC has over half of max HP, attacks target SC and all equipped items"},
-  /* 0x4D */ {false, "Heavy Rampage", "If SC has 3 or more items equipped, attacks target SC and all equipped items"},
-  /* 0x4E */ {true,  "AP Growth", "Permanently increase AP by N"},
-  /* 0x4F */ {true,  "TP Growth", "Permanently increase TP by N"},
-  /* 0x50 */ {true,  "Reborn", "If any card of type N is on the field, this card goes to the hand when destroyed instead of being discarded"},
-  /* 0x51 */ {true,  "Copy", "Temporarily set AP/TP to N percent (or 100% if N is 0) of opponent\'s values"},
-  /* 0x52 */ {false, nullptr, nullptr},
-  /* 0x53 */ {true,  "Misc. Guards", "Add N to card\'s defense value"},
-  /* 0x54 */ {true,  "AP Override", "Set AP to N temporarily"},
-  /* 0x55 */ {true,  "TP Override", "Set TP to N temporarily"},
-  /* 0x56 */ {false, "Return", "Return card to hand on destruction instead of discarding"},
-  /* 0x57 */ {false, "A/T Swap Perm", "Permanently swap AP and TP"},
-  /* 0x58 */ {false, "A/H Swap Perm", "Permanently swap AP and HP"},
-  /* 0x59 */ {true,  "Slayers/Assassins", "Temporarily increase AP during attack"},
-  /* 0x5A */ {false, "Anti-Abnormality", "Remove all conditions"},
-  /* 0x5B */ {false, "Fixed Range", "Use SC\'s range instead of weapon or attack card ranges"},
-  /* 0x5C */ {false, "Elude", "SC does not lose HP when equipped items are destroyed"},
-  /* 0x5D */ {false, "Parry", "Forward attack to a random FC within one tile of original target, excluding attacker and original target"},
-  /* 0x5E */ {false, "Block Attack", "Completely block attack"},
-  /* 0x5F */ {false, nullptr, nullptr},
-  /* 0x60 */ {false, nullptr, nullptr},
-  /* 0x61 */ {true,  "Combo (TP)", "Gain TP equal to the number of cards of type N on the field"},
-  /* 0x62 */ {true,  "Misc. AP Bonuses", "Temporarily increase AP by N"},
-  /* 0x63 */ {true,  "Misc. TP Bonuses", "Temporarily increase TP by N"},
-  /* 0x64 */ {false, nullptr, nullptr},
-  /* 0x65 */ {true,  "Misc. Defense Bonuses", "Decrease damage by N"},
-  /* 0x66 */ {true,  "Mostly Halfguards", "Reduce damage from incoming attack by N"},
-  /* 0x67 */ {false, "Periodic Field", "Swap immunity to tech or physical attacks"},
-  /* 0x68 */ {false, "FC Limit by Count", "Change FC limit from 8 ATK points total to 4 FCs total"},
-  /* 0x69 */ {false, nullptr, nullptr},
-  /* 0x6A */ {true,  "MV Bonus", "Increase MV by N"},
-  /* 0x6B */ {true,  "Forward Damage", "Give N damage back to attacker during defense (?) (TODO)"},
-  /* 0x6C */ {true,  "Weak Spot / Influence", "Temporarily decrease AP by N"},
-  /* 0x6D */ {true,  "Damage Modifier 2", "Set attack damage / AP after action cards applied (step 2)"},
-  /* 0x6E */ {true,  "Weak Hit Block", "Block all attacks of N damage or less"},
-  /* 0x6F */ {true,  "AP Silence", "Temporarily decrease AP of opponent by N"},
-  /* 0x70 */ {true,  "TP Silence", "Temporarily decrease TP of opponent by N"},
-  /* 0x71 */ {false, "A/T Swap", "Temporarily swap AP and TP"},
-  /* 0x72 */ {true,  "Halfguard", "Halve damage from attacks that would inflict N or more damage"},
-  /* 0x73 */ {false, nullptr, nullptr},
-  /* 0x74 */ {true,  "Rampage AP Loss", "Temporarily reduce AP by N"},
-  /* 0x75 */ {false, nullptr, nullptr},
-  /* 0x76 */ {false, "Reflect", "Generate reverse attack"},
-  /* 0x77 */ {false, nullptr, nullptr},
-  /* 0x78 */ {false, nullptr, nullptr}, // Treated as "any condition" in find functions
-  /* 0x79 */ {false, nullptr, nullptr},
-  /* 0x7A */ {false, nullptr, nullptr},
-  /* 0x7B */ {false, nullptr, nullptr},
-  /* 0x7C */ {false, nullptr, nullptr},
-  /* 0x7D */ {false, nullptr, nullptr},
+  /* 0x00 */ {false, "NONE",                 nullptr},
+  /* 0x01 */ {true,  "AP_BOOST",             "Temporarily increase AP by N"},
+  /* 0x02 */ {false, "RAMPAGE",              "Rampage"},
+  /* 0x03 */ {true,  "MULTI_STRIKE",         "Duplicate attack N times"},
+  /* 0x04 */ {true,  "DAMAGE_MOD_1",         "Set attack damage / AP to N after action cards applied (step 1)"},
+  /* 0x05 */ {false, "IMMOBILE",             "Give Immobile condition"},
+  /* 0x06 */ {false, "HOLD",                 "Give Hold condition"},
+  /* 0x07 */ {false, "UNKNOWN_07",           nullptr},
+  /* 0x08 */ {true,  "TP_BOOST",             "Add N TP temporarily during attack"},
+  /* 0x09 */ {true,  "GIVE_DAMAGE",          "Cause direct N HP loss"},
+  /* 0x0A */ {false, "GUOM",                 "Give Guom condition"},
+  /* 0x0B */ {false, "PARALYZE",             "Give Paralysis condition"},
+  /* 0x0C */ {false, "UNKNOWN_0C",           nullptr},
+  /* 0x0D */ {false, "A_H_SWAP",             "Swap AP and HP temporarily"},
+  /* 0x0E */ {false, "PIERCE",               "Attack SC directly even if they have items equipped"},
+  /* 0x0F */ {false, "UNKNOWN_0F",           nullptr},
+  /* 0x10 */ {true,  "HEAL",                 "Increase HP by N"},
+  /* 0x11 */ {false, "RETURN_TO_HAND",       "Return card to hand"},
+  /* 0x12 */ {false, "UNKNOWN_12",           nullptr},
+  /* 0x13 */ {false, "UNKNOWN_13",           nullptr},
+  /* 0x14 */ {false, "ACID",                 "Give Acid condition"},
+  /* 0x15 */ {false, "UNKNOWN_15",           nullptr},
+  /* 0x16 */ {true,  "MIGHTY_KNUCKLE",       "Temporarily increase AP by N, and set ATK dice to zero"},
+  /* 0x17 */ {true,  "UNIT_BLOW",            "Temporarily increase AP by N * number of this card set within phase"},
+  /* 0x18 */ {false, "CURSE",                "Give Curse condition"},
+  /* 0x19 */ {false, "COMBO_AP",             "Temporarily increase AP by number of this card set within phase"},
+  /* 0x1A */ {false, "PIERCE_RAMPAGE_BLOCK", "Block attack if Pierce/Rampage (?)"},
+  /* 0x1B */ {false, "ABILITY_TRAP",         "Temporarily disable opponent abilities"},
+  /* 0x1C */ {false, "FREEZE",               "Give Freeze condition"},
+  /* 0x1D */ {false, "ANTI_ABNORMALITY_1",   "Cure all conditions"},
+  /* 0x1E */ {false, "UNKNOWN_1E",           nullptr},
+  /* 0x1F */ {false, "EXPLOSION",            "Damage all SCs and FCs by number of this same card set * 2"},
+  /* 0x20 */ {false, "UNKNOWN_20",           nullptr},
+  /* 0x21 */ {false, "UNKNOWN_21",           nullptr},
+  /* 0x22 */ {false, "UNKNOWN_22",           nullptr},
+  /* 0x23 */ {false, "RETURN_TO_DECK",       "Cancel discard and move to bottom of deck instead"},
+  /* 0x24 */ {false, "AERIAL",               "Give Aerial status"},
+  /* 0x25 */ {true,  "AP_LOSS",              "Make attacker temporarily lose N AP during defense"},
+  /* 0x26 */ {true,  "BONUS_FROM_LEADER",    "Gain AP equal to the number of cards of type N on the field"},
+  /* 0x27 */ {false, "FREE_MANEUVER",        "Enable movement over occupied tiles"},
+  /* 0x28 */ {false, "HASTE",                "Make move actions free"},
+  /* 0x29 */ {true,  "CLONE",                "Make setting this card free if at least one card of type N is already on the field"},
+  /* 0x2A */ {true,  "DEF_DISABLE_BY_COST",  "Disable use of any defense cards costing between (N / 10) and (N % 10) points, inclusive"},
+  /* 0x2B */ {true,  "FILIAL",               "Increase controlling SC\'s HP by N when this card is destroyed"},
+  /* 0x2C */ {true,  "SNATCH",               "Steal N EXP during attack"},
+  /* 0x2D */ {true,  "HAND_DISRUPTER",       "Discard N cards from hand immediately"},
+  /* 0x2E */ {false, "DROP",                 "Give Drop condition"},
+  /* 0x2F */ {false, "ACTION_DISRUPTER",     "Destroy all action cards used by attacker"},
+  /* 0x30 */ {true,  "SET_HP",               "Set HP to N"},
+  /* 0x31 */ {false, "NATIVE_SHIELD",        "Block attacks from Native creatures"},
+  /* 0x32 */ {false, "A_BEAST_SHIELD",       "Block attacks from A.Beast creatures"},
+  /* 0x33 */ {false, "MACHINE_SHIELD",       "Block attacks from Machine creatures"},
+  /* 0x34 */ {false, "DARK_SHIELD",          "Block attacks from Dark creatures"},
+  /* 0x35 */ {false, "SWORD_SHIELD",         "Block attacks from Sword items"},
+  /* 0x36 */ {false, "GUN_SHIELD",           "Block attacks from Gun items"},
+  /* 0x37 */ {false, "CANE_SHIELD",          "Block attacks from Cane items"},
+  /* 0x38 */ {false, "UNKNOWN_38",           nullptr},
+  /* 0x39 */ {false, "UNKNOWN_39",           nullptr},
+  /* 0x3A */ {false, "DEFENDER",             "Make attacks go to setter of this card instead of original target"},
+  /* 0x3B */ {false, "SURVIVAL_DECOYS",      "Redirect damage for multi-sided attack"},
+  /* 0x3C */ {true,  "GIVE_OR_TAKE_EXP",     "Give N EXP, or take if N is negative"},
+  /* 0x3D */ {false, "UNKNOWN_3D",           nullptr},
+  /* 0x3E */ {false, "DEATH_COMPANION",      "If this card has 1 or 2 HP, set its HP to N"},
+  /* 0x3F */ {true,  "EXP_DECOY",            "If defender has EXP, lose EXP instead of getting damage when attacked"},
+  /* 0x40 */ {true,  "SET_MV",               "Set MV to N"},
+  /* 0x41 */ {true,  "GROUP",                "Temporarily increase AP by N * number of this card on field, excluding itself"},
+  /* 0x42 */ {false, "BERSERK",              "User of this card receives the same damage as target, and isn\'t helped by target\'s defense cards"},
+  /* 0x43 */ {false, "GUARD_CREATURE",       "Attacks on controlling SC damage this card instead"},
+  /* 0x44 */ {false, "TECH",                 "Technique cards cost 1 fewer ATK point"},
+  /* 0x45 */ {false, "BIG_SWING",            "Increase all attacking ATK costs by 1"},
+  /* 0x46 */ {false, "UNKNOWN_46",           nullptr},
+  /* 0x47 */ {false, "SHIELD_WEAPON",        "Limit attacker\'s choice of target to guard items"},
+  /* 0x48 */ {false, "ATK_DICE_BOOST",       "Increase ATK dice roll by 1"},
+  /* 0x49 */ {false, "UNKNOWN_49",           nullptr},
+  /* 0x4A */ {false, "MAJOR_PIERCE",         "If SC has over half of max HP, attacks target SC instead of equipped items"},
+  /* 0x4B */ {false, "HEAVY_PIERCE",         "If SC has 3 or more items equipped, attacks target SC instead of equipped items"},
+  /* 0x4C */ {false, "MAJOR_RAMPAGE",        "If SC has over half of max HP, attacks target SC and all equipped items"},
+  /* 0x4D */ {false, "HEAVY_RAMPAGE",        "If SC has 3 or more items equipped, attacks target SC and all equipped items"},
+  /* 0x4E */ {true,  "AP_GROWTH",            "Permanently increase AP by N"},
+  /* 0x4F */ {true,  "TP_GROWTH",            "Permanently increase TP by N"},
+  /* 0x50 */ {true,  "REBORN",               "If any card of type N is on the field, this card goes to the hand when destroyed instead of being discarded"},
+  /* 0x51 */ {true,  "COPY",                 "Temporarily set AP/TP to N percent (or 100% if N is 0) of opponent\'s values"},
+  /* 0x52 */ {false, "UNKNOWN_52",           nullptr},
+  /* 0x53 */ {true,  "MISC_GUARDS",          "Add N to card\'s defense value"},
+  /* 0x54 */ {true,  "AP_OVERRIDE",          "Set AP to N temporarily"},
+  /* 0x55 */ {true,  "TP_OVERRIDE",          "Set TP to N temporarily"},
+  /* 0x56 */ {false, "RETURN",               "Return card to hand on destruction instead of discarding"},
+  /* 0x57 */ {false, "A_T_SWAP_PERM",        "Permanently swap AP and TP"},
+  /* 0x58 */ {false, "A_H_SWAP_PERM",        "Permanently swap AP and HP"},
+  /* 0x59 */ {true,  "SLAYERS_ASSASSINS",    "Temporarily increase AP during attack"},
+  /* 0x5A */ {false, "ANTI_ABNORMALITY_2",   "Remove all conditions"},
+  /* 0x5B */ {false, "FIXED_RANGE",          "Use SC\'s range instead of weapon or attack card ranges"},
+  /* 0x5C */ {false, "ELUDE",                "SC does not lose HP when equipped items are destroyed"},
+  /* 0x5D */ {false, "PARRY",                "Forward attack to a random FC within one tile of original target, excluding attacker and original target"},
+  /* 0x5E */ {false, "BLOCK_ATTACK",         "Completely block attack"},
+  /* 0x5F */ {false, "UNKNOWN_5F",           nullptr},
+  /* 0x60 */ {false, "UNKNOWN_60",           nullptr},
+  /* 0x61 */ {true,  "COMBO_TP",             "Gain TP equal to the number of cards of type N on the field"},
+  /* 0x62 */ {true,  "MISC_AP_BONUSES",      "Temporarily increase AP by N"},
+  /* 0x63 */ {true,  "MISC_TP_BONUSES",      "Temporarily increase TP by N"},
+  /* 0x64 */ {false, "UNKNOWN_64",           nullptr},
+  /* 0x65 */ {true,  "MISC_DEFENSE_BONUSES", "Decrease damage by N"},
+  /* 0x66 */ {true,  "MOSTLY_HALFGUARDS",    "Reduce damage from incoming attack by N"},
+  /* 0x67 */ {false, "PERIODIC_FIELD",       "Swap immunity to tech or physical attacks"},
+  /* 0x68 */ {false, "FC_LIMIT_BY_COUNT",    "Change FC limit from 8 ATK points total to 4 FCs total"},
+  /* 0x69 */ {false, "UNKNOWN_69",           nullptr},
+  /* 0x6A */ {true,  "MV_BONUS",             "Increase MV by N"},
+  /* 0x6B */ {true,  "FORWARD_DAMAGE",       "Give N damage back to attacker during defense (?) (TODO)"},
+  /* 0x6C */ {true,  "WEAK_SPOT_INFLUENCE",  "Temporarily decrease AP by N"},
+  /* 0x6D */ {true,  "DAMAGE_MODIFIER_2",    "Set attack damage / AP after action cards applied (step 2)"},
+  /* 0x6E */ {true,  "WEAK_HIT_BLOCK",       "Block all attacks of N damage or less"},
+  /* 0x6F */ {true,  "AP_SILENCE",           "Temporarily decrease AP of opponent by N"},
+  /* 0x70 */ {true,  "TP_SILENCE",           "Temporarily decrease TP of opponent by N"},
+  /* 0x71 */ {false, "A_T_SWAP",             "Temporarily swap AP and TP"},
+  /* 0x72 */ {true,  "HALFGUARD",            "Halve damage from attacks that would inflict N or more damage"},
+  /* 0x73 */ {false, "UNKNOWN_73",           nullptr},
+  /* 0x74 */ {true,  "RAMPAGE_AP_LOSS",      "Temporarily reduce AP by N"},
+  /* 0x75 */ {false, "UNKNOWN_75",           nullptr},
+  /* 0x76 */ {false, "REFLECT",              "Generate reverse attack"},
+  /* 0x77 */ {false, "UNKNOWN_77",           nullptr},
+  /* 0x78 */ {false, "ANY",                  nullptr}, // Treated as "any condition" in find functions
+  /* 0x79 */ {false, "UNKNOWN_79",           nullptr},
+  /* 0x7A */ {false, "UNKNOWN_7A",           nullptr},
+  /* 0x7B */ {false, "UNKNOWN_7B",           nullptr},
+  /* 0x7C */ {false, "UNKNOWN_7C",           nullptr},
+  /* 0x7D */ {false, "UNKNOWN_7D",           nullptr},
 });
+
+const char* name_for_condition_type(ConditionType cond_type) {
+  try {
+    return description_for_condition_type.at(static_cast<size_t>(cond_type)).name;
+  } catch (const out_of_range&) {
+    return "__INVALID__";
+  }
+}
+
+
+
+const char* name_for_action_subphase(ActionSubphase subphase) {
+  switch (subphase) {
+    case ActionSubphase::ATTACK:
+      return "ATTACK";
+    case ActionSubphase::DEFENSE:
+      return "DEFENSE";
+    case ActionSubphase::INVALID_FF:
+      return "INVALID_FF";
+    default:
+      return "__INVALID__";
+  }
+}
+
+
 
 void CardDefinition::Stat::decode_code() {
   this->type = static_cast<Type>(this->code / 1000);

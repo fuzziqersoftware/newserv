@@ -27,6 +27,10 @@ namespace Episode3 {
  * in these files map very closely to how their server implementation was
  * written; notable differences (due to necessary environment differences or bug
  * fixes) are described in the comments therein.
+ * 
+ * Some debugging functions have been added which are not part of the original
+ * implementation. Notably, this applies to functions like debug message senders
+ * and loggers and all str() functions.
  *
  * There are likely undiscovered bugs in this code, some originally written by
  * Sega, but more written by me as I manually transcribed and updated this code.
@@ -74,6 +78,7 @@ public:
 
   std::weak_ptr<Lobby> lobby;
   std::shared_ptr<const DataIndex> data_index;
+  PrefixedLogger log;
   uint32_t random_seed;
   bool is_tournament;
   std::shared_ptr<const DataIndex::MapEntry> last_chosen_map;
@@ -116,6 +121,9 @@ public:
   void send(const void* data, size_t size) const;
 
   void send_commands_for_joining_spectator(Channel& ch) const;
+
+  __attribute__((format(printf, 2, 3)))
+  void log_debug(const char* fmt, ...) const;
 
   __attribute__((format(printf, 2, 3)))
   void send_debug_message_printf(const char* fmt, ...) const;

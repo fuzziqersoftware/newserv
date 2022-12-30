@@ -36,6 +36,8 @@ struct Condition {
 
   void clear();
   void clear_FF();
+
+  std::string str() const;
 } __attribute__((packed));
 
 struct EffectResult {
@@ -53,6 +55,8 @@ struct EffectResult {
   EffectResult();
   bool operator==(const EffectResult& other) const;
   bool operator!=(const EffectResult& other) const;
+
+  std::string str() const;
 
   void clear();
 } __attribute__((packed));
@@ -72,6 +76,8 @@ struct CardShortStatus {
 
   void clear();
   void clear_FF();
+
+  std::string str() const;
 } __attribute__((packed));
 
 struct ActionState {
@@ -89,6 +95,8 @@ struct ActionState {
   bool operator!=(const ActionState& other) const;
 
   void clear();
+
+  std::string str() const;
 } __attribute__((packed));
 
 struct ActionChain {
@@ -120,6 +128,8 @@ struct ActionChain {
 
   void clear();
   void clear_FF();
+
+  std::string str() const;
 } __attribute__((packed));
 
 struct ActionChainWithConds {
@@ -153,6 +163,8 @@ struct ActionChainWithConds {
 
   void set_action_subphase_from_card(std::shared_ptr<const Card> card);
   bool unknown_8024DEC4() const;
+
+  std::string str() const;
 } __attribute__((packed));
 
 struct ActionMetadata {
@@ -171,6 +183,8 @@ struct ActionMetadata {
   ActionMetadata();
   bool operator==(const ActionMetadata& other) const;
   bool operator!=(const ActionMetadata& other) const;
+
+  std::string str() const;
 
   void clear();
   void clear_FF();
@@ -218,6 +232,8 @@ struct HandAndEquipState {
 
   void clear();
   void clear_FF();
+
+  std::string str() const;
 } __attribute__((packed));
 
 struct PlayerStats {

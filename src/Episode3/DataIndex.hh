@@ -58,6 +58,8 @@ enum class AttackMedium : uint8_t {
   INVALID_FF = 0xFF,
 };
 
+const char* name_for_attack_medium(AttackMedium medium);
+
 enum class CriterionCode : uint8_t {
   NONE = 0x00,
   HU_CLASS_SC = 0x01,
@@ -293,6 +295,8 @@ enum class ConditionType : uint8_t {
   ANY_FF               = 0xFF, // Used as a wildcard in some search functions
 };
 
+const char* name_for_condition_type(ConditionType cond_type);
+
 enum class AssistEffect : uint16_t {
   NONE              = 0x0000,
   DICE_HALF         = 0x0001,
@@ -389,6 +393,8 @@ enum class ActionSubphase : uint8_t {
   INVALID_FF = 0xFF,
 };
 
+const char* name_for_action_subphase(ActionSubphase subphase);
+
 enum class SetupPhase : uint8_t {
   REGISTRATION = 0,
   STARTER_ROLLS = 1,
@@ -433,6 +439,8 @@ struct Location {
   Location(uint8_t x, uint8_t y, Direction direction);
   bool operator==(const Location& other) const;
   bool operator!=(const Location& other) const;
+
+  std::string str() const;
 
   void clear();
   void clear_FF();

@@ -38,6 +38,7 @@ ServerBase::ServerBase(
     shared_ptr<const DataIndex::MapEntry> map_if_tournament)
   : lobby(lobby),
     data_index(data_index),
+    log(lobby->log.prefix + "[Ep3::Server] "),
     random_seed(random_seed),
     is_tournament(!!map_if_tournament),
     last_chosen_map(map_if_tournament) { }
@@ -245,6 +246,17 @@ void Server::send_commands_for_joining_spectator(Channel& c) const {
 }
 
 __attribute__((format(printf, 2, 3)))
+void Server::log_debug(const char* fmt, ...) const {
+  auto l = this->base()->lobby.lock();
+  if (l && (this->base()->data_index->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
+    va_list va;
+    va_start(va, fmt);
+    this->base()->log.info_v(fmt, va);
+    va_end(va);
+  }
+}
+
+__attribute__((format(printf, 2, 3)))
 void Server::send_debug_message_printf(const char* fmt, ...) const {
   auto l = this->base()->lobby.lock();
   if (l && (this->base()->data_index->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
@@ -252,6 +264,7 @@ void Server::send_debug_message_printf(const char* fmt, ...) const {
     va_start(va, fmt);
     std::string buf = string_vprintf(fmt, va);
     va_end(va);
+    this->base()->log.info("%s", buf.c_str());
     std::u16string decoded = decode_sjis(buf);
     send_text_message(l, decoded.c_str());
   }
@@ -265,6 +278,7 @@ void Server::send_info_message_printf(const char* fmt, ...) const {
     va_start(va, fmt);
     std::string buf = string_vprintf(fmt, va);
     va_end(va);
+    this->base()->log.info("%s", buf.c_str());
     std::u16string decoded = decode_sjis(buf);
     send_text_message(l, decoded.c_str());
   }

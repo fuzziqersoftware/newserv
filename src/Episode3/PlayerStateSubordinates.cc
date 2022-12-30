@@ -8,6 +8,24 @@ namespace Episode3 {
 
 
 
+template <size_t Count>
+std::string string_for_refs(const parray<le_uint16_t, Count>& card_refs) {
+  string ret = "[";
+  for (size_t z = 0; z < Count; z++) {
+    if (card_refs[z] != 0xFFFF) {
+      ret += string_printf("%zu:@$%04X ", z, card_refs[z].load());
+    }
+  }
+  if (!ret.empty()) {
+    ret.back() = ']'; // Replace the ' ' from the last added item
+  } else {
+    ret.push_back(']');
+  }
+  return ret;
+}
+
+
+
 Condition::Condition() {
   this->clear();
 }
@@ -63,6 +81,26 @@ void Condition::clear_FF() {
   this->unknown_a8 = 0xFF;
 }
 
+std::string Condition::str() const {
+  return string_printf(
+      "Condition[type=%s, turns=%hhu, a_arg=%hhd, dice=%hhu, flags=%02hhX, "
+                "def_eff_index=%hhu, ref=@%04hX, value=%hd, giver_ref=@%04hX "
+                "percent=%hhu value8=%hd order=%hu a8=%hu]",
+      name_for_condition_type(this->type),
+      this->remaining_turns,
+      this->a_arg_value,
+      this->dice_roll_value,
+      this->flags,
+      this->card_definition_effect_index,
+      this->card_ref.load(),
+      this->value.load(),
+      this->condition_giver_card_ref.load(),
+      this->random_percent,
+      this->value8,
+      this->order,
+      this->unknown_a8);
+}
+
 
 
 EffectResult::EffectResult() {
@@ -82,6 +120,23 @@ void EffectResult::clear() {
   this->dice_roll_value = 0;
 }
 
+std::string EffectResult::str() const {
+  return string_printf(
+      "EffectResult[att_ref=@%04hX, target_ref=@%04hX, value=%hhd, "
+                   "cur_hp=%hhd, ap=%hhd, tp=%hhd, flags=%02hhX, op=%hhd, "
+                   "cond_index=%hhu, dice=%hhu]",
+      this->attacker_card_ref.load(),
+      this->target_card_ref.load(),
+      this->value,
+      this->current_hp,
+      this->ap,
+      this->tp,
+      this->flags,
+      this->operation,
+      this->condition_index,
+      this->dice_roll_value);
+}
+
 
 
 CardShortStatus::CardShortStatus() {
@@ -99,6 +154,20 @@ bool CardShortStatus::operator==(const CardShortStatus& other) const {
 }
 bool CardShortStatus::operator!=(const CardShortStatus& other) const {
   return !this->operator==(other);
+}
+
+std::string CardShortStatus::str() const {
+  string loc_s = this->loc.str();
+  return string_printf(
+      "CardShortStatus[ref=@%04hX, cur_hp=%hd, flags=%08" PRIX32 ", loc=%s, "
+                      "u1=%04hX, max_hp=%hhd, u2=%hhu]",
+      this->card_ref.load(),
+      this->current_hp.load(),
+      this->card_flags.load(),
+      loc_s.c_str(),
+      this->unused1.load(),
+      this->max_hp,
+      this->unused2);
 }
 
 void CardShortStatus::clear() {
@@ -138,6 +207,23 @@ void ActionState::clear() {
   this->action_card_refs.clear(0xFFFF);
 }
 
+std::string ActionState::str() const {
+  string target_refs_s = string_for_refs(this->target_card_refs);
+  string action_refs_s = string_for_refs(this->action_card_refs);
+  return string_printf(
+      "ActionState[client=%hu, u=%hhu, facing=%s, attacker_ref=@%04hX, "
+                  "def_ref=@%04hX, target_refs=%s, action_refs=%s, "
+                  "orig_attacker_ref=@%04hX]",
+      this->client_id.load(),
+      this->unused,
+      name_for_direction(this->facing_direction),
+      this->attacker_card_ref.load(),
+      this->defense_card_ref.load(),
+      target_refs_s.c_str(),
+      action_refs_s.c_str(),
+      this->original_attacker_card_ref.load());
+}
+
 
 
 ActionChain::ActionChain() {
@@ -169,6 +255,40 @@ bool ActionChain::operator==(const ActionChain& other) const {
 }
 bool ActionChain::operator!=(const ActionChain& other) const {
   return !this->operator==(other);
+}
+
+std::string ActionChain::str() const {
+  string attack_action_card_refs_s = string_for_refs(this->attack_action_card_refs);
+  string target_card_refs_s = string_for_refs(this->target_card_refs);
+  return string_printf(
+      "ActionChain[eff_ap=%hhd, eff_tp=%hhd, ap_bonus=%hhd, damage=%hhd, "
+                  "acting_ref=@%04hX, unknown_ref_a3=@%04hX, "
+                  "attack_action_refs=%s, attack_action_ref_count=%hhu, "
+                  "medium=%s, target_ref_count=%hhu, subphase=%s, "
+                  "strikes=%hhu, damage_mult=%hhd, attack_num=%hhu, "
+                  "tp_bonus=%hhd, u1=%hhu, u2=%hhu, card_ap=%hhd, "
+                  "card_tp=%hhd, flags=%08" PRIX32 ", target_refs=%s]",
+      this->effective_ap,
+      this->effective_tp,
+      this->ap_effect_bonus,
+      this->damage,
+      this->acting_card_ref.load(),
+      this->unknown_card_ref_a3.load(),
+      attack_action_card_refs_s.c_str(),
+      this->attack_action_card_ref_count,
+      name_for_attack_medium(this->attack_medium),
+      this->target_card_ref_count,
+      name_for_action_subphase(this->action_subphase),
+      this->strike_count,
+      this->damage_multiplier,
+      this->attack_number,
+      this->tp_effect_bonus,
+      this->unused1,
+      this->unused2,
+      this->card_ap,
+      this->card_tp,
+      this->flags.load(),
+      target_card_refs_s.c_str());
 }
 
 void ActionChain::clear() {
@@ -230,6 +350,23 @@ bool ActionChainWithConds::operator==(const ActionChainWithConds& other) const {
 }
 bool ActionChainWithConds::operator!=(const ActionChainWithConds& other) const {
   return !this->operator==(other);
+}
+
+std::string ActionChainWithConds::str() const {
+  string ret = "ActionChainWithConds[chain=";
+  ret += this->chain.str();
+  ret += ", conds=[";
+  for (size_t z = 0; z < this->conditions.size(); z++) {
+    if (this->conditions[z].type != ConditionType::NONE) {
+      if (ret.back() != '=') {
+        ret += ", ";
+      }
+      ret += string_printf("%zu:", z);
+      ret += this->conditions[z].str();
+    }
+  }
+  ret += "]]";
+  return ret;
 }
 
 void ActionChainWithConds::clear() {
@@ -381,6 +518,28 @@ bool ActionMetadata::operator!=(const ActionMetadata& other) const {
   return !this->operator==(other);
 }
 
+std::string ActionMetadata::str() const {
+  string target_card_refs_s = string_for_refs(this->target_card_refs);
+  string defense_card_refs_s = string_for_refs(this->defense_card_refs);
+  string original_attacker_card_refs_s = string_for_refs(this->original_attacker_card_refs);
+  return string_printf(
+      "ActionMetadata[ref=@%04hX, target_ref_count=%hhu, def_ref_count=%hhu, "
+                     "subphase=%s, def_power=%hhd, def_bonus=%hhd, "
+                     "att_bonus=%hhd, flags=%08" PRIX32 ", target_refs=%s, "
+                     "defense_refs=%s, original_attacker_refs=%s]",
+      this->card_ref.load(),
+      this->target_card_ref_count,
+      this->defense_card_ref_count,
+      name_for_action_subphase(this->action_subphase),
+      this->defense_power,
+      this->defense_bonus,
+      this->attack_bonus,
+      this->flags.load(),
+      target_card_refs_s.c_str(),
+      defense_card_refs_s.c_str(),
+      original_attacker_card_refs_s.c_str());
+}
+
 void ActionMetadata::clear() {
   this->card_ref = 0xFFFF;
   this->target_card_ref_count = 0;
@@ -455,6 +614,46 @@ void ActionMetadata::add_defense_card_ref(
 
 HandAndEquipState::HandAndEquipState() {
   this->clear();
+}
+
+std::string HandAndEquipState::str() const {
+  string hand_card_refs_s = string_for_refs(this->hand_card_refs);
+  string set_card_refs_s = string_for_refs(this->set_card_refs);
+  string hand_card_refs2_s = string_for_refs(this->hand_card_refs2);
+  string set_card_refs2_s = string_for_refs(this->set_card_refs2);
+  return string_printf(
+      "HandAndEquipState[dice=[%hhu, %hhu], atk=%hhu, def=%hhu, atk2=%hhu, "
+                        "a1=%hhu, total_set_cost=%hhu, is_cpu=%hhu, "
+                        "assist_flags=%08" PRIX32 ", hand_refs=%s, "
+                        "assist_ref=@%04hX, set_refs=%s, sc_ref=@%04hX, "
+                        "hand_refs2=%s, set_refs2=%s, assist_ref2=@%04hX, "
+                        "assist_set_num=%hu, assist_card_id=%04hX, "
+                        "assist_turns=%hhu, assit_dely=%hhu, atk_bonus=%hhu, "
+                        "def_bonus=%hhu, u2=[%hhu, %hhu]]",
+      this->dice_results[0],
+      this->dice_results[1],
+      this->atk_points,
+      this->def_points,
+      this->atk_points2,
+      this->unknown_a1,
+      this->total_set_cards_cost,
+      this->is_cpu_player,
+      this->assist_flags.load(),
+      hand_card_refs_s.c_str(),
+      this->assist_card_ref.load(),
+      set_card_refs_s.c_str(),
+      this->sc_card_ref.load(),
+      hand_card_refs2_s.c_str(),
+      set_card_refs2_s.c_str(),
+      this->assist_card_ref2.load(),
+      this->assist_card_set_number.load(),
+      this->assist_card_id.load(),
+      this->assist_remaining_turns,
+      this->assist_delay_turns,
+      this->atk_bonuses,
+      this->def_bonuses,
+      this->unused2[0],
+      this->unused2[1]);
 }
 
 void HandAndEquipState::clear() {

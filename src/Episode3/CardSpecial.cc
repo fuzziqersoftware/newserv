@@ -257,6 +257,8 @@ bool CardSpecial::apply_defense_condition(
     if ((when == 2) && (defender_cond->type == ConditionType::GUOM) && (flags & 4)) {
       CardShortStatus stat = defender_card->get_short_status();
       if (stat.card_flags & 4) {
+        this->server()->base()->log.debug("(when=2) @%04hX clearing GUOM from @%04hX",
+            attacker_card_ref, defender_card->get_card_ref());
         G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
         cmd.effect.flags = 0x04;
         cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(attacker_card_ref, 0x0E);
@@ -276,6 +278,8 @@ bool CardSpecial::apply_defense_condition(
         (defender_cond->type == ConditionType::ACID)) {
       int16_t hp = defender_card->get_current_hp();
       if (hp > 0) {
+        this->server()->base()->log.debug("(when=2) @%04hX has ACID; removing 1 HP",
+            defender_cond->card_ref.load());
         this->send_6xB4x06_for_stat_delta(
             defender_card, defender_cond->card_ref, 0x20, -1, 0, 1);
         defender_card->set_current_hp(hp - 1);
@@ -3502,6 +3506,13 @@ void CardSpecial::unknown_8024C2B0(
       continue;
     }
 
+    {
+      string as_s = as.str();
+      string eff_s = card_effect.str();
+      this->server()->base()->log.debug("(when=%" PRIu32 ") set=@%04hX sc=@%04hX as=%s att=@%04hX eff=%s",
+          when, set_card_ref, sc_card_ref, as_s.c_str(), as_attacker_card_ref, eff_s.c_str());
+    }
+
     int16_t arg3_value = atoi(&card_effect.arg3[1]);
     auto targeted_cards = this->get_targeted_cards_for_condition(
         set_card_ref, def_effect_index, sc_card_ref, as, arg3_value, 1);
@@ -3570,6 +3581,7 @@ void CardSpecial::unknown_8024C2B0(
               card_effect, target_card, dice_cmd.effect.target_card_ref, sc_card_ref)) {
           applied_cond_index = target_card->apply_abnormal_condition(
               card_effect, def_effect_index, dice_cmd.effect.target_card_ref, sc_card_ref, value, dice_roll.value, random_percent);
+          // This debug_print call is in the original code.
           // this->debug_print(when, 4, &env_stats, "!set_abnormal..", target_card, card_effect.type);
         }
 
