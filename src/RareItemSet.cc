@@ -8,6 +8,7 @@ using namespace std;
 
 
 RareItemSet::RareItemSet(shared_ptr<const string> data) : data(data) {
+  // TODO: Actually parse the GSL here instead of treating it as a blob
   if (this->data->size() != sizeof(Table) * 10 * 4 * 3) {
     throw runtime_error("data file size is incorrect");
   }
