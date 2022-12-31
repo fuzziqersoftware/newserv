@@ -444,7 +444,7 @@ const unordered_map<uint32_t, ItemNameInfo> name_info_for_primary_identifier({
   {0x000103, {"Pallasch", false}},
   {0x000104, {"Gladius", false}},
   {0x000105, "DB\'s SABER"},
-  {0x000106, "KALADGOLG"},
+  {0x000106, "KALADBOLG"},
   {0x000107, "DURANDAL"},
   {0x000108, "GALATINE"},
   {0x000200, {"Sword", false}},
