@@ -997,7 +997,7 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     if (flag == 4) { // Episode 3
       pd = reinterpret_cast<PSOPlayerDataV3*>(&check_size_t<PSOPlayerDataGCEp3>(data));
     } else {
-      pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3) + 0xFFFF);
+      pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3), 0xFFFF);
     }
     add_color_inplace(pd->info_board.data(), pd->info_board.size());
   }
