@@ -38,6 +38,7 @@ ClientOptions::ClientOptions()
     enable_chat_filter(true),
     suppress_remote_login(false),
     zero_remote_guild_card(false),
+    ep3_infinite_meseta(false),
     function_call_return_value(-1) { }
 
 

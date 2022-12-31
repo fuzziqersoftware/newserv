@@ -67,6 +67,7 @@ namespace ProxyOptionsMenuItemID {
   constexpr uint32_t SAVE_FILES = 0xAA6666AA;
   constexpr uint32_t SUPPRESS_LOGIN = 0xAA7777AA;
   constexpr uint32_t SKIP_CARD = 0xAA8888AA;
+  constexpr uint32_t EP3_INFINITE_MESETA = 0xAA9999AA;
 }
 
 

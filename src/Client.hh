@@ -40,6 +40,7 @@ struct ClientOptions {
   bool enable_chat_filter;
   bool suppress_remote_login;
   bool zero_remote_guild_card;
+  bool ep3_infinite_meseta;
   int64_t function_call_return_value; // -1 = don't block function calls
 
   ClientOptions();

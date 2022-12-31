@@ -1101,8 +1101,15 @@ static HandlerResult S_13_A7(shared_ptr<ServerState>,
 }
 
 static HandlerResult S_G_B7(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3) {
+    if (session.options.ep3_infinite_meseta) {
+      auto& cmd = check_size_t<S_RankUpdate_GC_Ep3_B7>(data);
+      if (cmd.meseta != 1000000) {
+        cmd.meseta = 1000000;
+        return HandlerResult::Type::MODIFIED;
+      }
+    }
     return HandlerResult::Type::FORWARD;
   } else {
     session.server_channel.send(0xB7, 0x00);
@@ -1137,6 +1144,54 @@ static HandlerResult S_G_B8(shared_ptr<ServerState>,
   return (session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3)
       ? HandlerResult::Type::FORWARD
       : HandlerResult::Type::SUPPRESS;
+}
+
+static HandlerResult S_G_B9(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+
+  if (session.options.save_files) {
+    try {
+      const auto& header = check_size_t<S_UpdateMediaHeader_GC_Ep3_B9>(data,
+          sizeof(S_UpdateMediaHeader_GC_Ep3_B9), 0xFFFF);
+
+      if (data.size() - sizeof(header) < header.size) {
+        throw runtime_error("Media data size extends beyond end of command; not saving file");
+      }
+
+      string decompressed_data = prs_decompress(
+          data.data() + sizeof(header), data.size() - sizeof(header));
+
+      string output_filename = string_printf("media-update.%" PRIu64, now());
+      if (header.type == 1) {
+        output_filename += ".gvm";
+      } else if (header.type == 2 || header.type == 3) {
+        output_filename += ".bml";
+      } else {
+        output_filename += ".bin";
+      }
+      save_file(output_filename, decompressed_data);
+      session.log.info("Wrote %zu bytes to %s",
+          decompressed_data.size(), output_filename.c_str());
+    } catch (const exception& e) {
+      session.log.warning("Failed to save file: %s", e.what());
+    }
+  }
+
+  return (session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3)
+      ? HandlerResult::Type::FORWARD
+      : HandlerResult::Type::SUPPRESS;
+}
+
+static HandlerResult S_G_BA(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  if (session.options.ep3_infinite_meseta) {
+    auto& cmd = check_size_t<S_Meseta_GC_Ep3_BA>(data);
+    if (cmd.remaining_meseta != 1000000) {
+      cmd.remaining_meseta = 1000000;
+      return HandlerResult::Type::MODIFIED;
+    }
+  }
+  return HandlerResult::Type::FORWARD;
 }
 
 static void update_leader_id(ProxyServer::LinkedSession& session, uint8_t leader_id) {
@@ -1654,8 +1709,8 @@ static on_command_t handlers[0x100][6][2] = {
 /* B6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_G_B7,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_G_B8,        nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
-/* B9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
-/* BA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* B9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_G_B9,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* BA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_G_BA,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* BB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* BC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* BD */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},

@@ -76,6 +76,7 @@ static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descrip
   {ProxyOptionsMenuItemID::INFINITE_HP, u"Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills"},
   {ProxyOptionsMenuItemID::INFINITE_TP, u"Enable automatic TP\nrestoration when\nyou cast any\ntechnique"},
   {ProxyOptionsMenuItemID::SWITCH_ASSIST, u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially"},
+  {ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, u"Fix Meseta value\nat 1,000,000"},
   {ProxyOptionsMenuItemID::BLOCK_EVENTS, u"Disable seasonal\nevents in the lobby\nand in games"},
   {ProxyOptionsMenuItemID::BLOCK_PATCHES, u"Disable patches sent\nby the remote server"},
   {ProxyOptionsMenuItemID::SAVE_FILES, u"Save local copies of\nfiles from the remote\nserver (quests, etc.)"},
@@ -91,30 +92,32 @@ static vector<MenuItem> proxy_options_menu_for_client(
   // way in which the menu abstraction is currently insufficient (there is a
   // TODO about this in README.md).
   ret.emplace_back(ProxyOptionsMenuItemID::GO_BACK, u"Go back", u"", 0);
-  ret.emplace_back(ProxyOptionsMenuItemID::CHAT_FILTER,
-      c->options.enable_chat_filter ? u"Chat filter ON" : u"Chat filter OFF", u"", 0);
+
+  auto add_option = [&](uint32_t item_id, bool is_enabled, const char16_t* text) -> void {
+    u16string option = is_enabled ? u"* " : u"- ";
+    option += text;
+    ret.emplace_back(item_id, option, u"", 0);
+  };
+
+  add_option(ProxyOptionsMenuItemID::CHAT_FILTER, c->options.enable_chat_filter, u"Chat filter");
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
-    ret.emplace_back(ProxyOptionsMenuItemID::INFINITE_HP,
-        c->options.infinite_hp ? u"Infinite HP ON" : u"Infinite HP OFF", u"", 0);
-    ret.emplace_back(ProxyOptionsMenuItemID::INFINITE_TP,
-        c->options.infinite_tp ? u"Infinite TP ON" : u"Infinite TP OFF", u"", 0);
-    ret.emplace_back(ProxyOptionsMenuItemID::SWITCH_ASSIST,
-        c->options.switch_assist ? u"Switch assist ON" : u"Switch assist OFF", u"", 0);
+    add_option(ProxyOptionsMenuItemID::INFINITE_HP, c->options.infinite_hp, u"Infinite HP");
+    add_option(ProxyOptionsMenuItemID::INFINITE_TP, c->options.infinite_tp, u"Infinite TP");
+    add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, c->options.switch_assist, u"Switch assist");
+  } else {
+    // Note: Thie option's text is the maximum possible length for any menu item
+    add_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, c->options.ep3_infinite_meseta, u"Infinite Meseta");
   }
-  ret.emplace_back(ProxyOptionsMenuItemID::BLOCK_EVENTS,
-      (c->options.override_lobby_event >= 0) ? u"Block events ON" : u"Block events OFF", u"", 0);
-  ret.emplace_back(ProxyOptionsMenuItemID::BLOCK_PATCHES,
-      (c->options.function_call_return_value >= 0) ? u"Block patches ON" : u"Block patches OFF", u"", 0);
+  add_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->options.override_lobby_event >= 0), u"Block events");
+  add_option(ProxyOptionsMenuItemID::BLOCK_PATCHES, (c->options.function_call_return_value >= 0), u"Block patches");
   if (s->proxy_allow_save_files) {
-    ret.emplace_back(ProxyOptionsMenuItemID::SAVE_FILES,
-        c->options.save_files ? u"Save files ON" : u"Save files OFF", u"", 0);
+    add_option(ProxyOptionsMenuItemID::SAVE_FILES, c->options.save_files, u"Save files");
   }
   if (s->proxy_enable_login_options) {
-    ret.emplace_back(ProxyOptionsMenuItemID::SUPPRESS_LOGIN,
-        c->options.suppress_remote_login ? u"Skip login ON" : u"Skip login OFF", u"", 0);
-    ret.emplace_back(ProxyOptionsMenuItemID::SKIP_CARD,
-        c->options.zero_remote_guild_card ? u"Skip card ON" : u"Skip card OFF", u"", 0);
+    add_option(ProxyOptionsMenuItemID::SUPPRESS_LOGIN, c->options.suppress_remote_login, u"Skip login");
+    add_option(ProxyOptionsMenuItemID::SKIP_CARD, c->options.zero_remote_guild_card, u"Skip card");
   }
+
   return ret;
 }
 
@@ -1800,6 +1803,9 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SWITCH_ASSIST:
           c->options.switch_assist = !c->options.switch_assist;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::EP3_INFINITE_MESETA:
+          c->options.ep3_infinite_meseta = !c->options.ep3_infinite_meseta;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::BLOCK_EVENTS:
           if (c->options.override_lobby_event >= 0) {
