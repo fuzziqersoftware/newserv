@@ -79,7 +79,7 @@ static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descrip
   {ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, u"Fix Meseta value\nat 1,000,000"},
   {ProxyOptionsMenuItemID::BLOCK_EVENTS, u"Disable seasonal\nevents in the lobby\nand in games"},
   {ProxyOptionsMenuItemID::BLOCK_PATCHES, u"Disable patches sent\nby the remote server"},
-  {ProxyOptionsMenuItemID::SAVE_FILES, u"Save local copies of\nfiles from the remote\nserver (quests, etc.)"},
+  {ProxyOptionsMenuItemID::SAVE_FILES, u"Save local copies of\nfiles from the\nremote server\n(quests, etc.)"},
   {ProxyOptionsMenuItemID::SUPPRESS_LOGIN, u"Use an alternate\nlogin sequence"},
   {ProxyOptionsMenuItemID::SKIP_CARD, u"Use an alternate\nvalue for your initial\nGuild Card"},
 });
