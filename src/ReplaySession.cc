@@ -287,7 +287,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           break;
         }
         case 0xB1: {
-          for (size_t x = 8; x < ev->mask.size(); x++) {
+          for (size_t x = 4; x < ev->mask.size(); x++) {
             ev->mask[x] = 0;
           }
           break;
