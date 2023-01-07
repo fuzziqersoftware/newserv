@@ -1858,6 +1858,12 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_message_box(c, u"$C6No such destination exists.");
           c->should_disconnect = true;
         } else {
+          // Clear Check Tactics menu so client won't see newserv tournament
+          // state while logically on another server
+          if (c->flags & Client::Flag::IS_EPISODE_3) {
+            send_ep3_confirm_tournament_entry(s, c, nullptr);
+          }
+
           c->proxy_destination_address = resolve_ipv4(dest->first);
           c->proxy_destination_port = dest->second;
           if (!(c->flags & Client::Flag::SAVE_ENABLED)) {
