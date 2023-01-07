@@ -127,12 +127,27 @@ static void proxy_command_lobby_info(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
   string msg;
   if (session.license) {
-    msg = string_printf("$C7GC: $C6%" PRId64 "\n",
+    msg = string_printf("$C7GC: $C6%" PRId64 "$C7\nSlots: ",
         session.remote_guild_card_number);
   }
-  msg += string_printf("$C7Client ID: $C6%zu%s",
-      session.lobby_client_id,
-      (session.leader_client_id == session.lobby_client_id) ? " (L)" : "");
+
+  for (size_t z = 0; z < session.lobby_players.size(); z++) {
+    if (session.lobby_players[z].guild_card_number == 0) {
+      continue;
+    }
+    bool is_self = z == session.lobby_client_id;
+    bool is_leader = z == session.leader_client_id;
+    if (is_self && is_leader) {
+      msg += string_printf("$C6%zX$C7", z);
+    } else if (is_self) {
+      msg += string_printf("$C2%zX$C7", z);
+    } else if (is_leader) {
+      msg += string_printf("$C4%zX$C7", z);
+    } else {
+      msg += string_printf("%zX", z);
+    }
+  }
+  msg += "\n";
 
   vector<const char*> cheats_tokens;
   if (session.options.switch_assist) {
