@@ -1241,7 +1241,7 @@ static HandlerResult S_65_67_68(shared_ptr<ServerState>,
       }
       auto& p = session.lobby_players[index];
       p.guild_card_number = cmd.entries[x].lobby_data.guild_card;
-      ptext<char, 0x10> name = cmd.entries[x].disp.name;
+      string name = encode_sjis(cmd.entries[x].disp.name);
       p.name = name;
       p.section_id = cmd.entries[x].disp.section_id;
       p.char_class = cmd.entries[x].disp.char_class;

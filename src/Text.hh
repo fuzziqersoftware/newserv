@@ -39,6 +39,11 @@ inline std::u16string decode_sjis(const std::string& s) {
   return decode_sjis(s.data(), s.size());
 }
 
+// These functions exist so that decode_sjis and encode_sjis can be
+// indiscriminately used within templates that use different char types.
+inline const std::string& encode_sjis(const std::string& s) { return s; }
+inline const std::u16string& decode_sjis(const std::u16string& s) { return s; }
+
 // (1b) Type-independent utility functions
 
 template <typename T>
