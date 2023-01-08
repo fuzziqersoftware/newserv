@@ -20,7 +20,7 @@ list(APPEND CMAKE_PREFIX_PATH ${LOCAL_LIB_DIR})
 include_directories(${LOCAL_INCLUDE_DIR})
 link_directories(${LOCAL_LIB_DIR})
 
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 
 

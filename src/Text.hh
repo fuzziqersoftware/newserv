@@ -56,7 +56,7 @@ size_t text_strlen_t(const T* s) {
 template <typename T>
 size_t text_strnlen_t(const T* s, size_t count) {
   size_t ret = 0;
-  for (; s[ret] != 0 && ret < count; ret++) { }
+  for (; (ret < count) && (s[ret] != 0); ret++) { }
   return ret;
 }
 
