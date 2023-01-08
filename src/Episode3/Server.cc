@@ -1634,6 +1634,8 @@ void Server::handle_6xB3x0C_end_mulligan_phase(const string& data) {
   out_cmd_fin.response_phase = 2;
   out_cmd_fin.error_code = error_code;
   this->send(out_cmd_fin);
+
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
 void Server::handle_6xB3x0D_end_non_action_phase(const string& data) {
@@ -1813,6 +1815,8 @@ void Server::handle_6xB3x12_end_attack_list(const string& data) {
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
   out_cmd.sequence_num = in_cmd.header.sequence_num;
   this->send(out_cmd);
+
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
 void Server::handle_6xB3x13_update_map_during_setup(const string& data) {
