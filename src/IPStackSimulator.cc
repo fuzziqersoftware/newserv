@@ -147,7 +147,18 @@ static void flush_and_free_bufferevent(struct bufferevent* bev) {
 IPStackSimulator::IPClient::TCPConnection::TCPConnection()
   : server_bev(nullptr, flush_and_free_bufferevent),
     pending_data(evbuffer_new(), evbuffer_free),
-    resend_push_event(nullptr, event_free) { }
+    resend_push_event(nullptr, event_free),
+    awaiting_first_ack(true),
+    server_addr(0),
+    server_port(0),
+    client_port(0),
+    next_client_seq(0),
+    acked_server_seq(0),
+    resend_push_usecs(DEFAULT_RESEND_PUSH_USECS),
+    next_push_max_frame_size(1024),
+    max_frame_size(1024),
+    bytes_received(0),
+    bytes_sent(0) { }
 
 
 
