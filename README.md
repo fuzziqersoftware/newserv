@@ -120,6 +120,8 @@ After building newserv or downloading a release, do this to set it up and use it
 4. Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
 5. Set your client's network settings appropriately and start an online game. See the "Connecting local clients" or "Connecting remote clients" section to see how to get your game client to connect.
 
+To use newserv in other ways (e.g. for translating data), see the end of this document.
+
 ### Installing quests
 
 newserv automatically finds quests in the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's set-save-files option, just put them in that directory and name them appropriately.
@@ -307,3 +309,18 @@ If you're using a version of Dolphin with tapserver support (currently only the 
 If you want to accept connections from outside your local network, you'll need to set ExternalAddress to your public IP address in the configuration file, and you'll likely need to open some ports in your router's NAT configuration - specifically, all the TCP ports listed in PortConfiguration in config.json.
 
 For GC clients, you'll have to use newserv's built-in DNS server or set up your own DNS server as well. If you want external clients to be able to use your DNS server, you'll have to forward UDP port 53 to your newserv instance. Remote players can then connect to your server by entering your DNS server's IP address in their client's network configuration.
+
+### Non-server usage
+
+newserv has many CLI options, which can be used to access functionality other than the game/proxy server. Run `newserv --help` to see these options and how to use them. The non-server things newserv can do are:
+
+* Compress or decompress data in the PRS and BC0 formats
+* Compute the decompressed size of compressed PRS data without decompressing it
+* Encrypt or decrypt data using any PSO version's network encryption scheme
+* Encrypt or decrypt data using Episode 3's trivial scheme
+* Run a brute-force search for a decryption seed
+* Decode Shift-JIS text to UTF-16
+* Convert quests in .gci, .dlq, or .qst format to .bin/.dat format
+* Extract the contents of a .gsl archive
+* Connect to another PSO server and pretend to be a client
+* Format Episode 3 game data in a human-readable manner
