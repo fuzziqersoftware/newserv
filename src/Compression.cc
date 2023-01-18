@@ -20,7 +20,8 @@ PRSCompressor::PRSCompressor(function<void(size_t, size_t)> progress_fn)
     control_byte_offset(0),
     pending_control_bits(0),
     input_bytes(0),
-    compression_offset(0) {
+    compression_offset(0),
+    reverse_log_offsets(0x100) {
   this->output.put_u8(0);
 }
 
@@ -51,11 +52,12 @@ void PRSCompressor::advance() {
   // Search for a match in the decompressed data history
   size_t best_match_size = 0;
   size_t best_match_offset = 0;
-  size_t start_offset = max<ssize_t>(
-      0, static_cast<ssize_t>(this->compression_offset) - 0x1FFF);
-  for (size_t match_offset = start_offset;
-       (match_offset < this->compression_offset - best_match_size) && (best_match_size < 0x100);
-       match_offset++) {
+
+  uint8_t first_v = this->forward_log[this->compression_offset & 0xFF];
+  const auto& start_offsets = this->reverse_log_offsets[first_v];
+
+  for (auto it = start_offsets.begin(); (it != start_offsets.end()) && (best_match_size < 0x100); it++) {
+    size_t match_offset = *it;
     size_t match_size = 0;
     while ((match_size < 0x100) &&
            (match_offset + match_size < this->compression_offset) &&
@@ -73,20 +75,20 @@ void PRSCompressor::advance() {
   // If there is a suitable match, write a backreference
   bool should_write_literal = false;
   size_t advance_bytes = 0;
-  if (best_match_size < 2) {
+  ssize_t backreference_offset = best_match_offset - this->compression_offset;
+  if (best_match_size < 2 || backreference_offset == -0x2000) {
     should_write_literal = true;
 
   } else {
     // The backreference should be encoded:
     // - As a short copy if offset in [-0x100, -1] and size in [2, 5]
     // - As a long copy if offset in [-0x1FFF, -1] and size in [3, 9]
-    // - As an extended copy if offset in [-0x1FFF, -1] and size in [1, 0x100]
-    // Because an extended copy costs two control bits and three data bytes,
-    // it's not worth it to use an extended copy for sizes 1 and 2 (and 3, but
-    // that case is always done via a long copy instead). In cases 1 and 2, if a
-    // short copy can't reach back far enough, we just write literal(s) instead.
+    // - As an extended copy if offset in [-0x1FFF, -1] and size in [10, 0x100]
+    // Technically an extended copy can be used for sizes 1-9 as well, but if
+    // size is 1 or 2, writing literals is better (since it uses fewer data
+    // bytes and control bits), and a long copy can cover sizes 3-9 (and also
+    // uses fewer data bytes and control bits).
 
-    ssize_t backreference_offset = best_match_offset - this->compression_offset;
     if ((backreference_offset >= -0x100) && (best_match_size <= 5)) {
       // Write short copy
       uint8_t size = best_match_size - 2;
@@ -136,7 +138,13 @@ void PRSCompressor::advance() {
     if ((this->compression_offset & 0x1000) && this->progress_fn) {
       this->progress_fn(this->compression_offset, this->output.size());
     }
-    this->reverse_log[this->compression_offset & 0x1FFF] = this->forward_log[this->compression_offset & 0xFF];
+    size_t reverse_log_offset = this->compression_offset & 0x1FFF;
+    uint8_t existing_v = this->reverse_log[reverse_log_offset];
+    uint8_t new_v = this->forward_log[this->compression_offset & 0xFF];
+
+    this->reverse_log_offsets[existing_v].erase(this->compression_offset - this->reverse_log.size());
+    this->reverse_log[reverse_log_offset] = new_v;
+    this->reverse_log_offsets[new_v].emplace(this->compression_offset);
     this->compression_offset++;
   }
 }
