@@ -50,7 +50,7 @@ private:
   parray<uint8_t, 0x100> forward_log;
   size_t compression_offset;
   parray<uint8_t, 0x2000> reverse_log;
-  std::vector<std::unordered_set<size_t>> reverse_log_offsets;
+  std::vector<std::unordered_set<size_t>> reverse_log_index;
 
   StringWriter output;
 };

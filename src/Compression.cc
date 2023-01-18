@@ -21,7 +21,7 @@ PRSCompressor::PRSCompressor(function<void(size_t, size_t)> progress_fn)
     pending_control_bits(0),
     input_bytes(0),
     compression_offset(0),
-    reverse_log_offsets(0x100) {
+    reverse_log_index(0x100) {
   this->output.put_u8(0);
 }
 
@@ -54,7 +54,7 @@ void PRSCompressor::advance() {
   size_t best_match_offset = 0;
 
   uint8_t first_v = this->forward_log[this->compression_offset & 0xFF];
-  const auto& start_offsets = this->reverse_log_offsets[first_v];
+  const auto& start_offsets = this->reverse_log_index[first_v];
 
   for (auto it = start_offsets.begin(); (it != start_offsets.end()) && (best_match_size < 0x100); it++) {
     size_t match_offset = *it;
@@ -142,9 +142,9 @@ void PRSCompressor::advance() {
     uint8_t existing_v = this->reverse_log[reverse_log_offset];
     uint8_t new_v = this->forward_log[this->compression_offset & 0xFF];
 
-    this->reverse_log_offsets[existing_v].erase(this->compression_offset - this->reverse_log.size());
+    this->reverse_log_index[existing_v].erase(this->compression_offset - this->reverse_log.size());
     this->reverse_log[reverse_log_offset] = new_v;
-    this->reverse_log_offsets[new_v].emplace(this->compression_offset);
+    this->reverse_log_index[new_v].emplace(this->compression_offset);
     this->compression_offset++;
   }
 }
@@ -394,32 +394,56 @@ string bc0_compress(
 
   parray<uint8_t, 0x1000> memo;
   uint16_t memo_offset = 0x0FEE;
+  vector<unordered_set<size_t>> memo_index(0x100);
+  auto write_memo = [&](uint8_t new_v) -> void {
+    uint8_t existing_v = memo[memo_offset];
+    if (existing_v != new_v) {
+      memo_index[existing_v].erase(memo_offset);
+      memo[memo_offset] = new_v;
+      memo_index[new_v].emplace(memo_offset);
+    }
+    memo_offset = (memo_offset + 1) & 0xFFF;
+  };
 
   size_t next_control_byte_offset = w.size();
   w.put_u8(0);
   uint16_t pending_control_bits = 0x0000;
 
-  parray<uint8_t, 17> match_buf;
+  parray<uint8_t, 18> match_buf;
   while (!r.eof()) {
     if ((r.where() & 0x1000) && progress_fn) {
       progress_fn(r.where(), w.size());
     }
 
     // Search in the memo for the longest string matching the upcoming data, of
-    // size 3-17 bytes
+    // size 3-18 bytes
     size_t best_match_offset = 0;
     size_t best_match_size = 0;
-    size_t max_match_size = min<size_t>(r.remaining(), 17);
-    r.readx(match_buf.data(), max_match_size, false);
+    size_t max_match_size = min<size_t>(r.remaining(), 18);
+    const uint8_t* match_buf = &r.get<uint8_t>(false, max_match_size);
+
     for (size_t match_size = 3; match_size <= max_match_size; match_size++) {
+      for (size_t offset : memo_index[match_buf[0]]) {
+        // Forbid matches that span the memo boundary - during decompression,
+        // the client will be overwriting its memo while reading from it and
+        // will likely generate incorrect data
+        size_t start_memo_offset = offset;
+        size_t end_memo_offset = (offset + match_size) & 0xFFF;
+        if (end_memo_offset < start_memo_offset) {
+          if ((memo_offset < end_memo_offset) || (memo_offset > start_memo_offset)) {
+            continue;
+          }
+        } else {
+          if ((memo_offset > start_memo_offset) && (memo_offset < end_memo_offset)) {
+            continue;
+          }
+        }
 
-      // Forbid matches that span the current memo position, or that cover the
-      // uninitialized part of the memo when the client decompresses (see
-      // comment in bc0_decompress about this)
-      size_t start_offset = (r.where() < 0x12) ? 0 : memo_offset;
-      size_t end_offset = (memo_offset - match_size + 1) & 0xFFF;
+        // Note: We don't have to explicitly forbid matches that span the
+        // uninitialized part of the memo (during the first 0x12 bytes) because
+        // the preceding check will catch those too (and there can't be any
+        // start offsets in the memo index within that region anyway).
 
-      for (size_t offset = start_offset; offset != end_offset; offset = (offset + 1) & 0xFFF) {
         bool match_found = true;
         for (size_t z = 0; z < match_size; z++) {
           if (match_buf[z] != memo[(offset + z) & 0xFFF]) {
@@ -448,15 +472,13 @@ string bc0_compress(
       w.put_u8(best_match_offset & 0xFF); // a1
       w.put_u8(((best_match_offset >> 4) & 0xF0) | (best_match_size - 3)); // a2
       for (size_t z = 0; z < best_match_size; z++) {
-        memo[memo_offset] = r.get_u8();
-        memo_offset = (memo_offset + 1) & 0xFFF;
+        write_memo(r.get_u8());
       }
     } else {
       pending_control_bits = (pending_control_bits >> 1) | 0x8080;
       uint8_t v = r.get_u8();
       w.put_u8(v);
-      memo[memo_offset] = v;
-      memo_offset = (memo_offset + 1) & 0xFFF;
+      write_memo(v);
     }
 
     // Write the control byte to the output if needed, and reserve space for the
