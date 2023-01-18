@@ -271,101 +271,98 @@ void drop_privileges(const string& username) {
 
 void print_usage() {
   fputs("\
-newserv - a Phantasy Star Online Swiss Army knife\n\
-\n\
 Usage:\n\
-  newserv [options] [input-filename [output-filename]]\n\
+  newserv [ACTION [OPTIONS...]]\n\
 \n\
-With no options, newserv runs in server mode. PSO clients can connect normally,\n\
-join lobbies, play games, and use the proxy server. See README.md and\n\
-system/config.json for more information.\n\
+If ACTION is not specified, newserv runs in server mode. PSO clients can\n\
+connect normally, join lobbies, play games, and use the proxy server. See\n\
+README.md and system/config.json for more information.\n\
 \n\
-When options are given, newserv will do things other than running the server.\n\
+When ACTION is given, newserv will do things other than running the server.\n\
 \n\
-Some modes accept input and/or output filenames; see the descriptions below for\n\
-details. If input-filename is missing or is '-', newserv reads from stdin. If\n\
-output-filename is missing and the input is not from stdin, newserv writes the\n\
-output to <input-filename>.dec; if output-filename is '-', newserv writes the\n\
+Some actions accept input and/or output filenames; see the descriptions below\n\
+for details. If INPUT-FILENAME is missing or is '-', newserv reads from stdin.\n\
+If OUTPUT-FILENAME is missing and the input is not from stdin, newserv writes\n\
+the output to INPUT-FILENAME.dec; if OUTPUT-FILENAME is '-', newserv writes the\n\
 output to stdout. If stdout is a terminal, data written there is formatted in a\n\
 hex/ASCII view; otherwise, raw (binary) data is written there.\n\
 \n\
-The options are:\n\
-  --compress-prs\n\
-  --decompress-prs\n\
-  --compress-bc0\n\
-  --decompress-bc0\n\
-      Compress or decompress data using the PRS or BC0 algorithms.\n\
-  --prs-size\n\
-      Compute the decompressed size of the PRS-compressed input data, but don\'t\n\
-      write the decompressed data anywhere.\n\
-  --encrypt-data\n\
-  --decrypt-data\n\
-      Encrypt or decrypt data using PSO\'s standard network protocol encryption.\n\
-      By default, PSO V3 (GameCube/XBOX) encryption is used, but this can be\n\
-      overridden with the --pc or --bb options. The --seed= option specifies\n\
-      the encryption seed (4 hex bytes for PC or GC, or 48 hex bytes for BB).\n\
-      For BB, the --key option is required as well, and refers to a .nsk file\n\
-      in system/blueburst/keys (without the directory or .nsk extension). For\n\
-      non-BB ciphers, the --big-endian option applies the cipher masks as\n\
-      big-endian instead of little-endian, which is necessary for some GameCube\n\
-      file formats.\n\
-  --decrypt-trivial-data\n\
-      Decrypt (or encrypt; the algorithm is symmetric) data using the Episode\n\
-      3 trivial algorithm. --seed should be specified as one hex byte. If\n\
-      --seed is not given, newserv will truy all possible seeds and return the\n\
-      one that results in the greatest number of zero bytes in the output.\n\
-  --find-decryption-seed\n\
-      Perform a brute-force search for a decryption seed of the given data.\n\
-      The ciphertext is specified with the --encrypted= option and the expected\n\
-      plaintext is specified with the --decrypted= option. The plaintext may\n\
-      include unmatched bytes (specified with the Phosg parse_data_string ?\n\
-      operator), but overall it must be the same length as the ciphertext. By\n\
-      default, this option uses PSO V3 encryption, but this can be overridden\n\
-      with --pc. (BB encryption seeds are too long to be searched for with this\n\
-      function.) By default, the number of worker threads is equal the the\n\
-      number of CPU cores in the system, but this can be overridden with the\n\
-      --threads= option.\n\
-  --decode-sjis\n\
-      Apply newserv\'s text decoding algorithm to the data on stdin, producing\n\
-      little-endian UTF-16 data on stdout. Both input-filename and\n\
-      output-filename may be specified.\n\
-  --decode-gci\n\
-  --decode-dlq\n\
-  --decode-qst\n\
-      Decode the input quest file into a compressed, unencrypted .bin or .dat\n\
-      file (or in the case of --decode-qst, both a .bin and a .dat file).\n\
-      input-filename must be specified, but output-filename must not be; the\n\
-      output is written to <input-filename>.dec (or .bin, or .dat). DLQ and QST\n\
-      decoding is a relatively simple operation, but GCI decoding can be\n\
-      computationally expensive if the file is encrypted and doesn\'t contain an\n\
-      embedded seed. If you know the player\'s serial number who generated the\n\
-      GCI file, use the --seed= option and give the serial number (as a\n\
-      hex-encoded 32-bit integer). If you don\'t know the serial number, newserv\n\
-      will find it via a brute-force search, but this will take a long time.\n\
-  --cat-client=ADDR:PORT\n\
-      Connect to the given server and simulate a PSO client. newserv will then\n\
-      print all the received commands to stdout, and forward any commands typed\n\
-      into stdin to the remote server. It is assumed that the input and output\n\
-      are terminals, so all commands are hex-encoded. The --patch, --dc, --pc,\n\
-      --gc, and --bb options can be used to select the command format and\n\
-      encryption. If --bb is used, the --key option is also required (as in\n\
-      --decrypt-data above).\n\
-  --show-ep3-data\n\
-      Print the Episode 3 maps and card definitions from the system/ep3\n\
-      directory in a (sort of) human-readable format.\n\
-  --show-ep3-card=ID\n\
-      Describe the Episode 3 card definition with the given ID (hex).\n\
-  --replay-log\n\
-      Replay a terminal log as if it were a client session. input-filename may\n\
-      be specified for this option. This is used for regression testing, to\n\
-      make sure client sessions are repeatable and code changes don\'t affect\n\
-      existing (working) functionality.\n\
-  --extract-gsl\n\
-      Extract all files from a GSL archive into the current directory.\n\
-      input-filename may be specified. If output-filename is specified, then it\n\
-      is treated as a prefix which is prepended to the filename of each file\n\
-      contained in the GSL archive. If --big-endian is given, the GSL header is\n\
-      read in GameCube format; otherwise it is read in PC/BB format.\n\
+The actions are:\n\
+  help\n\
+    You\'re reading it now.\n\
+  compress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  decompress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  compress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  decompress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Compress or decompress data using the PRS or BC0 algorithms.\n\
+  prs-size [INPUT-FILENAME]\n\
+    Compute the decompressed size of the PRS-compressed input data, but don\'t\n\
+    write the decompressed data anywhere.\n\
+  encrypt-data [INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS...]]\n\
+  decrypt-data [INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS...]]\n\
+    Encrypt or decrypt data using PSO\'s standard network protocol encryption.\n\
+    By default, PSO V3 (GameCube/XBOX) encryption is used, but this can be\n\
+    overridden with the --pc or --bb options. The --seed=SEED option specifies\n\
+    the encryption seed (4 hex bytes for PC or GC, or 48 hex bytes for BB). For\n\
+    BB, the --key=KEY-NAME option is required as well, and refers to a .nsk\n\
+    file in system/blueburst/keys (without the directory or .nsk extension).\n\
+    For non-BB ciphers, the --big-endian option applies the cipher masks as\n\
+    big-endian instead of little-endian, which is necessary for some GameCube\n\
+    file formats.\n\
+  decrypt-trivial-data [--seed=SEED] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Decrypt (or encrypt; the algorithm is symmetric) data using the Episode 3\n\
+    trivial algorithm. If SEED is given, it should be specified as one hex\n\
+    byte. If SEED is not given, newserv will try all possible seeds and return\n\
+    the one that results in the greatest number of zero bytes in the output.\n\
+  find-decryption-seed <OPTIONS...>\n\
+    Perform a brute-force search for a decryption seed of the given data. The\n\
+    ciphertext is specified with the --encrypted=DATA option and the expected\n\
+    plaintext is specified with the --decrypted=DATA option. The plaintext may\n\
+    include unmatched bytes (specified with the Phosg parse_data_string ?\n\
+    operator), but overall it must be the same length as the ciphertext. By\n\
+    default, this option uses PSO V3 encryption, but this can be overridden\n\
+    with --pc. (BB encryption seeds are too long to be searched for with this\n\
+    function.) By default, the number of worker threads is equal the the number\n\
+    of CPU cores in the system, but this can be overridden with the\n\
+    --threads=NUM-THREADS option.\n\
+  decode-sjis [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Apply newserv\'s text decoding algorithm to the input data, producing\n\
+    little-endian UTF-16 output data.\n\
+  decode-gci INPUT-FILENAME [OPTIONS...]]\n\
+  decode-dlq INPUT-FILENAME\n\
+  decode-qst INPUT-FILENAME\n\
+    Decode the input quest file into a compressed, unencrypted .bin or .dat\n\
+    file (or in the case of decode-qst, both a .bin and a .dat file).\n\
+    INPUT-FILENAME must be specified, but there is no OUTPUT-FILENAME; the\n\
+    output is written to INPUT-FILENAME.dec (or .bin, or .dat). DLQ and QST\n\
+    decoding is a relatively simple operation, but GCI decoding can be\n\
+    computationally expensive if the file is encrypted and doesn\'t contain an\n\
+    embedded seed. If you know the player\'s serial number who generated the\n\
+    GCI file, use the --seed=SEED option and give the serial number (as a\n\
+    hex-encoded 32-bit integer). If you don\'t know the serial number, newserv\n\
+    will find it via a brute-force search, but this will take a long time.\n\
+  cat-client ADDR:PORT\n\
+    Connect to the given server and simulate a PSO client. newserv will then\n\
+    print all the received commands to stdout, and forward any commands typed\n\
+    into stdin to the remote server. It is assumed that the input and output\n\
+    are terminals, so all commands are hex-encoded. The --patch, --dc, --pc,\n\
+    --gc, and --bb options can be used to select the command format and\n\
+    encryption. If --bb is used, the --key=KEY-NAME option is also required (as\n\
+    in decrypt-data above).\n\
+  show-ep3-data\n\
+    Print the Episode 3 maps and card definitions from the system/ep3 directory\n\
+    in a (sort of) human-readable format.\n\
+  replay-log [INPUT-FILENAME] [OPTIONS...]\n\
+    Replay a terminal log as if it were a client session. input-filename may be\n\
+    specified for this option. This is used for regression testing, to make\n\
+    sure client sessions are repeatable and code changes don\'t affect existing\n\
+    (working) functionality.\n\
+  extract-gsl [INPUT-FILENAME] [--big-endian]\n\
+    Extract all files from a GSL archive into the current directory.\n\
+    input-filename may be specified. If output-filename is specified, then it\n\
+    is treated as a prefix which is prepended to the filename of each file\n\
+    contained in the GSL archive. If --big-endian is given, the GSL header is\n\
+    read in GameCube format; otherwise it is read in PC/BB format.\n\
 \n\
 A few options apply to multiple modes described above:\n\
   --parse-data\n\
@@ -449,43 +446,10 @@ int main(int argc, char** argv) {
   const char* replay_required_password = "";
   uint32_t root_object_address = 0;
   uint16_t ep3_card_id = 0xFFFF;
-  struct sockaddr_storage cat_client_remote;
   for (int x = 1; x < argc; x++) {
     if (!strcmp(argv[x], "--help")) {
       print_usage();
       return 0;
-    } else if (!strcmp(argv[x], "--compress-prs")) {
-      behavior = Behavior::COMPRESS_PRS;
-    } else if (!strcmp(argv[x], "--decompress-prs")) {
-      behavior = Behavior::DECOMPRESS_PRS;
-    } else if (!strcmp(argv[x], "--compress-bc0")) {
-      behavior = Behavior::COMPRESS_BC0;
-    } else if (!strcmp(argv[x], "--decompress-bc0")) {
-      behavior = Behavior::DECOMPRESS_BC0;
-    } else if (!strcmp(argv[x], "--prs-size")) {
-      behavior = Behavior::PRS_SIZE;
-    } else if (!strcmp(argv[x], "--encrypt-data")) {
-      behavior = Behavior::ENCRYPT_DATA;
-    } else if (!strcmp(argv[x], "--decrypt-data")) {
-      behavior = Behavior::DECRYPT_DATA;
-    } else if (!strcmp(argv[x], "--decrypt-trivial-data")) {
-      behavior = Behavior::DECRYPT_TRIVIAL_DATA;
-    } else if (!strcmp(argv[x], "--find-decryption-seed")) {
-      behavior = Behavior::FIND_DECRYPTION_SEED;
-    } else if (!strcmp(argv[x], "--decode-sjis")) {
-      behavior = Behavior::DECODE_SJIS;
-    } else if (!strcmp(argv[x], "--decode-gci")) {
-      behavior = Behavior::DECODE_QUEST_FILE;
-      quest_file_type = QuestFileFormat::GCI;
-    } else if (!strcmp(argv[x], "--decode-dlq")) {
-      behavior = Behavior::DECODE_QUEST_FILE;
-      quest_file_type = QuestFileFormat::DLQ;
-    } else if (!strcmp(argv[x], "--decode-qst")) {
-      behavior = Behavior::DECODE_QUEST_FILE;
-      quest_file_type = QuestFileFormat::QST;
-    } else if (!strncmp(argv[x], "--cat-client=", 13)) {
-      behavior = Behavior::CAT_CLIENT;
-      cat_client_remote = make_sockaddr_storage(parse_netloc(&argv[x][13])).first;
     } else if (!strncmp(argv[x], "--threads=", 10)) {
       num_threads = strtoull(&argv[x][10], nullptr, 0);
     } else if (!strcmp(argv[x], "--patch")) {
@@ -516,17 +480,6 @@ int main(int argc, char** argv) {
       skip_little_endian = true;
     } else if (!strcmp(argv[x], "--skip-big-endian")) {
       skip_big_endian = true;
-    } else if (!strcmp(argv[x], "--show-ep3-data")) {
-      behavior = Behavior::SHOW_EP3_DATA;
-    } else if (!strncmp(argv[x], "--show-ep3-card=", 16)) {
-      behavior = Behavior::SHOW_EP3_DATA;
-      ep3_card_id = strtoul(&argv[x][16], nullptr, 16);
-    } else if (!strcmp(argv[x], "--parse-object-graph")) {
-      behavior = Behavior::PARSE_OBJECT_GRAPH;
-    } else if (!strcmp(argv[x], "--replay-log")) {
-      behavior = Behavior::REPLAY_LOG;
-    } else if (!strcmp(argv[x], "--extract-gsl")) {
-      behavior = Behavior::EXTRACT_GSL;
     } else if (!strncmp(argv[x], "--require-password=", 19)) {
       replay_required_password = &argv[x][19];
     } else if (!strncmp(argv[x], "--require-access-key=", 21)) {
@@ -535,16 +488,64 @@ int main(int argc, char** argv) {
       root_object_address = strtoul(&argv[x][12], nullptr, 16);
     } else if (!strncmp(argv[x], "--config=", 9)) {
       config_filename = &argv[x][9];
+
     } else if (!strcmp(argv[x], "-") || argv[x][0] != '-') {
-      if (!input_filename && behavior_takes_input_filename(behavior)) {
+      if (behavior == Behavior::RUN_SERVER) {
+        if (!strcmp(argv[x], "help")) {
+          print_usage();
+          return 0;
+        } if (!strcmp(argv[x], "compress-prs")) {
+          behavior = Behavior::COMPRESS_PRS;
+        } else if (!strcmp(argv[x], "decompress-prs")) {
+          behavior = Behavior::DECOMPRESS_PRS;
+        } else if (!strcmp(argv[x], "compress-bc0")) {
+          behavior = Behavior::COMPRESS_BC0;
+        } else if (!strcmp(argv[x], "decompress-bc0")) {
+          behavior = Behavior::DECOMPRESS_BC0;
+        } else if (!strcmp(argv[x], "prs-size")) {
+          behavior = Behavior::PRS_SIZE;
+        } else if (!strcmp(argv[x], "encrypt-data")) {
+          behavior = Behavior::ENCRYPT_DATA;
+        } else if (!strcmp(argv[x], "decrypt-data")) {
+          behavior = Behavior::DECRYPT_DATA;
+        } else if (!strcmp(argv[x], "decrypt-trivial-data")) {
+          behavior = Behavior::DECRYPT_TRIVIAL_DATA;
+        } else if (!strcmp(argv[x], "find-decryption-seed")) {
+          behavior = Behavior::FIND_DECRYPTION_SEED;
+        } else if (!strcmp(argv[x], "decode-sjis")) {
+          behavior = Behavior::DECODE_SJIS;
+        } else if (!strcmp(argv[x], "decode-gci")) {
+          behavior = Behavior::DECODE_QUEST_FILE;
+          quest_file_type = QuestFileFormat::GCI;
+        } else if (!strcmp(argv[x], "decode-dlq")) {
+          behavior = Behavior::DECODE_QUEST_FILE;
+          quest_file_type = QuestFileFormat::DLQ;
+        } else if (!strcmp(argv[x], "decode-qst")) {
+          behavior = Behavior::DECODE_QUEST_FILE;
+          quest_file_type = QuestFileFormat::QST;
+        } else if (!strcmp(argv[x], "cat-client")) {
+          behavior = Behavior::CAT_CLIENT;
+        } else if (!strcmp(argv[x], "show-ep3-data")) {
+          behavior = Behavior::SHOW_EP3_DATA;
+        } else if (!strcmp(argv[x], "parse-object-graph")) {
+          behavior = Behavior::PARSE_OBJECT_GRAPH;
+        } else if (!strcmp(argv[x], "replay-log")) {
+          behavior = Behavior::REPLAY_LOG;
+        } else if (!strcmp(argv[x], "extract-gsl")) {
+          behavior = Behavior::EXTRACT_GSL;
+        } else {
+          throw invalid_argument(string_printf("unknown command: %s (try --help)", argv[x]));
+        }
+      } else if (!input_filename && behavior_takes_input_filename(behavior)) {
         input_filename = argv[x];
       } else if (!output_filename && behavior_takes_output_filename(behavior)) {
         output_filename = argv[x];
       } else {
-        throw invalid_argument(string_printf("unknown option: %s", argv[x]));
+        throw invalid_argument(string_printf("unknown option: %s (try --help)", argv[x]));
       }
+
     } else {
-      throw invalid_argument(string_printf("unknown option: %s", argv[x]));
+      throw invalid_argument(string_printf("unknown option: %s (try --help)", argv[x]));
     }
   }
 
@@ -592,8 +593,8 @@ int main(int argc, char** argv) {
       auto progress_fn = [&](size_t input_progress, size_t output_progress) -> void {
         float progress = static_cast<float>(input_progress * 100) / input_bytes;
         float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
-        fprintf(stderr, "... %zu (%g%%) <= %zu/%zu (%g%%)    \r",
-            output_progress, size_ratio, input_progress, input_bytes, progress);
+        fprintf(stderr, "... %zu/%zu (%g%%) => %zu (%g%%)    \r",
+            input_progress, input_bytes, progress, output_progress, size_ratio);
       };
 
       if (behavior == Behavior::COMPRESS_PRS) {
@@ -843,6 +844,7 @@ int main(int argc, char** argv) {
             load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_file_name + ".nsk")));
       }
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
+      auto cat_client_remote = make_sockaddr_storage(parse_netloc(input_filename)).first;
       CatSession session(base, cat_client_remote, cli_version, key);
       event_base_dispatch(base.get());
       break;

@@ -82,9 +82,9 @@ void PRSCompressor::advance() {
     // - As a long copy if offset in [-0x1FFF, -1] and size in [3, 9]
     // - As an extended copy if offset in [-0x1FFF, -1] and size in [1, 0x100]
     // Because an extended copy costs two control bits and three data bytes,
-    // it's not worth it to use an extended copy for sizes 1 and 2. In those
-    // cases, if a short copy can't reach back far enough, we just write a
-    // literal instead.
+    // it's not worth it to use an extended copy for sizes 1 and 2 (and 3, but
+    // that case is always done via a long copy instead). In cases 1 and 2, if a
+    // short copy can't reach back far enough, we just write literal(s) instead.
 
     ssize_t backreference_offset = best_match_offset - this->compression_offset;
     if ((backreference_offset >= -0x100) && (best_match_size <= 5)) {

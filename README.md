@@ -136,23 +136,23 @@ For example, the GameCube version of Lost HEAT SWORD is in two files named `q058
 
 There are multiple PSO quest formats out there; newserv supports most of them. It can also decode any known format to standard .bin/.dat format. Specifically:
 
-| Format                    | Extension             | Supported online? | Offline decode option     |
-|---------------------------|-----------------------|-------------------|---------------------------|
-| Compressed                | .bin and .dat         | Yes               | None (1)                  |
-| Compressed Ep3            | .bin or .mnm          | Download only     | None (1)                  |
-| Uncompressed              | .bind and .datd       | Yes               | --compress-data (2)       |
-| Uncompressed Ep3          | .bind or .mnmd        | Download only     | --compress-data (2)       |
-| Unencrypted GCI           | .bin.gci and .dat.gci | Yes               | --decode-gci=FILENAME     |
-| Encrypted GCI with key    | .bin.gci and .dat.gci | Yes               | --decode-gci=FILENAME     |
-| Encrypted GCI without key | .bin.gci and .dat.gci | No                | --decode-gci=FILENAME (3) |
-| Ep3 GCI                   | .bin.gci or .mnm.gci  | Download only     | --decode-gci=FILENAME     |
-| Encrypted DLQ             | .bin.dlq and .dat.dlq | Yes               | --decode-dlq=FILENAME     |
-| Ep3 DLQ                   | .bin.dlq or .mnm.dlq  | Download only     | --decode-dlq=FILENAME     |
-| QST                       | .qst                  | Yes               | --decode-qst=FILENAME     |
+| Format                    | Extension             | Supported online? | Offline decode option |
+|---------------------------|-----------------------|-------------------|-----------------------|
+| Compressed                | .bin and .dat         | Yes               | None (1)              |
+| Compressed Ep3            | .bin or .mnm          | Download only     | None (1)              |
+| Uncompressed              | .bind and .datd       | Yes               | compress-data (2)     |
+| Uncompressed Ep3          | .bind or .mnmd        | Download only     | compress-data (2)     |
+| Unencrypted GCI           | .bin.gci and .dat.gci | Yes               | decode-gci            |
+| Encrypted GCI with key    | .bin.gci and .dat.gci | Yes               | decode-gci            |
+| Encrypted GCI without key | .bin.gci and .dat.gci | No                | decode-gci (3)        |
+| Ep3 GCI                   | .bin.gci or .mnm.gci  | Download only     | decode-gci            |
+| Encrypted DLQ             | .bin.dlq and .dat.dlq | Yes               | decode-dlq            |
+| Ep3 DLQ                   | .bin.dlq or .mnm.dlq  | Download only     | decode-dlq            |
+| QST                       | .qst                  | Yes               | decode-qst            |
 
 *Notes:*
-1. *This is the default format. You can convert these to uncompressed format like this: `newserv --decompress-data < FILENAME.bin > FILENAME.bind`*
-2. *Similar to (1), to compress an uncompressed quest file: `newserv --compress-data < FILENAME.bind > FILENAME.bin`*
+1. *This is the default format. You can convert these to uncompressed format like this: `newserv decompress-prs FILENAME.bin FILENAME.bind`*
+2. *Similar to (1), to compress an uncompressed quest file: `newserv compress-prs FILENAME.bind FILENAME.bin`*
 3. *If you know the encryption seed (serial number), pass it in as a hex string with the `--seed=` option. If you don't know the encryption seed, newserv will find it for you, which will likely take a long time.*
 
 Episode 3 download quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 download quest files may be named with the .mnm extension instead of .bin, since the format is the same as the standard map files (in system/ep3/). These files can be encoded in any of the formats described above, except .qst. There are no encrypted Episode 3 GCI formats because the game doesn't encrypt quests saved to the memory card, unlike Episodes 1&2.
@@ -312,7 +312,7 @@ For GC clients, you'll have to use newserv's built-in DNS server or set up your 
 
 ### Non-server usage
 
-newserv has many CLI options, which can be used to access functionality other than the game/proxy server. Run `newserv --help` to see these options and how to use them. The non-server things newserv can do are:
+newserv has many CLI options, which can be used to access functionality other than the game/proxy server. Run `newserv help` to see these options and how to use them. The non-server things newserv can do are:
 
 * Compress or decompress data in the PRS and BC0 formats
 * Compute the decompressed size of compressed PRS data without decompressing it
