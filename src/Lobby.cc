@@ -33,7 +33,6 @@ Lobby::Lobby(uint32_t id)
   for (size_t x = 0; x < 12; x++) {
     this->next_item_id[x] = 0x00010000 + 0x00200000 * x;
   }
-  this->next_drop_item = PlayerInventoryItem();
 }
 
 void Lobby::reassign_leader_on_client_departure(size_t leaving_client_index) {

@@ -65,7 +65,6 @@ public:
     ClientConfigBB newserv_client_config;
     std::deque<bool> should_forward_function_call_return_queue;
     G_SwitchStateChanged_6x05 last_switch_enabled_command;
-    PlayerInventoryItem next_drop_item;
     uint32_t next_item_id;
 
     struct LobbyPlayer {
@@ -79,6 +78,8 @@ public:
     size_t lobby_client_id;
     size_t leader_client_id;
     uint16_t area;
+    float x;
+    float z;
     bool is_in_game;
 
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;

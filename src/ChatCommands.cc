@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
@@ -336,7 +337,6 @@ static void server_command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
       c->options.infinite_tp = false;
       c->options.switch_assist = false;
     }
-    l->next_drop_item = PlayerInventoryItem();
   }
 }
 
@@ -1018,16 +1018,20 @@ static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     return;
   }
 
-  l->next_drop_item.clear();
+  PlayerInventoryItem item;
+  item.data.id = l->generate_item_id(c->lobby_client_id);
   if (data.size() <= 12) {
-    memcpy(&l->next_drop_item.data.data1, data.data(), data.size());
+    memcpy(&item.data.data1, data.data(), data.size());
   } else {
-    memcpy(&l->next_drop_item.data.data1, data.data(), 12);
-    memcpy(&l->next_drop_item.data.data2, data.data() + 12, data.size() - 12);
+    memcpy(&item.data.data1, data.data(), 12);
+    memcpy(&item.data.data2, data.data() + 12, data.size() - 12);
   }
 
-  string name = name_for_item(l->next_drop_item.data, true);
-  send_text_message(c, u"$C7Next drop:\n" + decode_sjis(name));
+  l->add_item(item, c->area, c->x, c->z);
+  send_drop_stacked_item(l, item.data, c->area, c->x, c->z);
+
+  string name = name_for_item(item.data, true);
+  send_text_message(c, u"$C7Item created:\n" + decode_sjis(name));
 }
 
 static void proxy_command_item(shared_ptr<ServerState>,
@@ -1058,16 +1062,20 @@ static void proxy_command_item(shared_ptr<ServerState>,
     return;
   }
 
-  session.next_drop_item.clear();
+  PlayerInventoryItem item;
+  item.data.id = random_object<uint32_t>();
   if (data.size() <= 12) {
-    memcpy(&session.next_drop_item.data.data1, data.data(), data.size());
+    memcpy(&item.data.data1, data.data(), data.size());
   } else {
-    memcpy(&session.next_drop_item.data.data1, data.data(), 12);
-    memcpy(&session.next_drop_item.data.data2, data.data() + 12, data.size() - 12);
+    memcpy(&item.data.data1, data.data(), 12);
+    memcpy(&item.data.data2, data.data() + 12, data.size() - 12);
   }
 
-  string name = name_for_item(session.next_drop_item.data, true);
-  send_text_message(session.client_channel, u"$C7Next drop:\n" + decode_sjis(name));
+  send_drop_stacked_item(session.client_channel, item.data, session.area, session.x, session.z);
+  send_drop_stacked_item(session.server_channel, item.data, session.area, session.x, session.z);
+
+  string name = name_for_item(item.data, true);
+  send_text_message(session.client_channel, u"$C7Item created:\n" + decode_sjis(name));
 }
 
 
@@ -1103,6 +1111,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$infhp",    {server_command_infinite_hp,        proxy_command_infinite_hp,     u"Usage:\ninfhp"}},
     {u"$inftp",    {server_command_infinite_tp,        proxy_command_infinite_tp,     u"Usage:\ninftp"}},
     {u"$item",     {server_command_item,               proxy_command_item,            u"Usage:\nitem <item-code>"}},
+    {u"$i",        {server_command_item,               proxy_command_item,            u"Usage:\ni <item-code>"}},
     {u"$kick",     {server_command_kick,               nullptr,                       u"Usage:\nkick <name-or-number>"}},
     {u"$li",       {server_command_lobby_info,         proxy_command_lobby_info,      u"Usage:\nli"}},
     {u"$maxlevel", {server_command_max_level,          nullptr,                       u"Usage:\nmax_level <level>"}},

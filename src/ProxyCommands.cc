@@ -939,36 +939,6 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
         session.log.warning("Blocking subcommand 6x49 with invalid count");
         return HandlerResult::Type::SUPPRESS;
       }
-    } else if ((data[0] == 0x60) &&
-               session.next_drop_item.data.data1d[0] &&
-               (session.version != GameVersion::BB)) {
-      const auto& cmd = check_size_t<G_EnemyDropItemRequest_DC_6x60>(data,
-          sizeof(G_EnemyDropItemRequest_DC_6x60),
-          sizeof(G_EnemyDropItemRequest_PC_V3_BB_6x60));
-      session.next_drop_item.data.id = session.next_item_id++;
-      send_drop_item(session.server_channel, session.next_drop_item.data,
-          true, cmd.area, cmd.x, cmd.z, cmd.request_id);
-      send_drop_item(session.client_channel, session.next_drop_item.data,
-          true, cmd.area, cmd.x, cmd.z, cmd.request_id);
-      session.next_drop_item.clear();
-      return HandlerResult::Type::SUPPRESS;
-
-    // Note: This static_cast is required to make compilers not complain that
-    // the comparison is always false (which even happens in some environments
-    // if we use -0x5E... apparently char is unsigned on some systems, or
-    // std::string's char_type isn't char??)
-    } else if ((static_cast<uint8_t>(data[0]) == 0xA2) &&
-               session.next_drop_item.data.data1d[0] &&
-               (session.version != GameVersion::BB)) {
-      const auto& cmd = check_size_t<G_BoxItemDropRequest_6xA2>(data);
-      session.next_drop_item.data.id = session.next_item_id++;
-      send_drop_item(session.server_channel, session.next_drop_item.data,
-          false, cmd.area, cmd.x, cmd.z, cmd.request_id);
-      send_drop_item(session.client_channel, session.next_drop_item.data,
-          false, cmd.area, cmd.x, cmd.z, cmd.request_id);
-      session.next_drop_item.clear();
-      return HandlerResult::Type::SUPPRESS;
-
     } else if ((static_cast<uint8_t>(data[0]) == 0xB5) &&
                (session.version == GameVersion::GC) &&
                (data.size() > 4)) {
@@ -1440,6 +1410,14 @@ constexpr on_command_t C_DGX_81 = &C_81<SC_SimpleMail_DC_V3_81>;
 constexpr on_command_t C_P_81 = &C_81<SC_SimpleMail_PC_81>;
 constexpr on_command_t C_B_81 = &C_81<SC_SimpleMail_BB_81>;
 
+
+template <typename CmdT>
+void C_6x_movement(ProxyServer::LinkedSession& session, const string& data) {
+  const auto& cmd = check_size_t<CmdT>(data);
+  session.x = cmd.x;
+  session.z = cmd.z;
+}
+
 template <typename SendGuildCardCmdT>
 static HandlerResult C_6x(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
@@ -1464,6 +1442,14 @@ static HandlerResult C_6x(shared_ptr<ServerState> s,
         send_player_stats_change(session.client_channel,
             session.lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
       }
+    } else if (data[0] == 0x3E) {
+      C_6x_movement<G_StopAtPosition_6x3E>(session, data);
+    } else if (data[0] == 0x3F) {
+      C_6x_movement<G_SetPosition_6x3F>(session, data);
+    } else if (data[0] == 0x40) {
+      C_6x_movement<G_WalkToPosition_6x40>(session, data);
+    } else if (data[0] == 0x42) {
+      C_6x_movement<G_RunToPosition_6x42>(session, data);
     } else if (data[0] == 0x48) {
       if (session.options.infinite_tp) {
         send_player_stats_change(session.client_channel,

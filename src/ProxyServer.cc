@@ -486,6 +486,9 @@ ProxyServer::LinkedSession::LinkedSession(
     lobby_players(12),
     lobby_client_id(0),
     leader_client_id(0),
+    area(0),
+    x(0.0),
+    z(0.0),
     is_in_game(false) {
   this->last_switch_enabled_command.header.subcommand = 0;
   memset(this->prev_server_command_bytes, 0, sizeof(this->prev_server_command_bytes));

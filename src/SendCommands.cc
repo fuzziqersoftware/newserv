@@ -1764,12 +1764,15 @@ void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-// Notifies other players that a stack was split and part of it dropped (a new
-// item was created)
+void send_drop_stacked_item(Channel& ch, const ItemData& item,
+    uint8_t area, float x, float z) {
+  G_DropStackedItem_PC_V3_BB_6x5D cmd = {
+      {{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
+  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
+}
+
 void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
     uint8_t area, float x, float z) {
-  // TODO: Is this order correct? The original code sent {item, 0}, but it seems
-  // GC sends {0, item} (the last two fields in the struct are switched).
   G_DropStackedItem_PC_V3_BB_6x5D cmd = {
       {{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
   send_command_t(l, 0x60, 0x00, cmd);

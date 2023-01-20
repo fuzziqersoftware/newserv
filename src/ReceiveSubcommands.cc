@@ -881,13 +881,8 @@ static bool drop_item(
 
   PlayerInventoryItem item;
 
-  // If there's an override item set (via the $item command), use that item code
-  if (l->next_drop_item.data.data1d[0]) {
-    item = l->next_drop_item;
-    l->next_drop_item.clear();
-
   // If the game is BB, run the rare + common drop logic
-  } else if (l->version == GameVersion::BB) {
+  if (l->version == GameVersion::BB) {
     if (!l->common_item_creator.get()) {
       throw runtime_error("received box drop subcommand without item creator present");
     }
@@ -932,8 +927,8 @@ static bool drop_item(
       }
     }
 
-  // If the game is not BB and there's no override item, forward the request to
-  // the leader instead of generating the item drop command
+  // If the game is not BB, forward the request to the leader instead of
+  // generating the item drop command
   } else {
     return false;
   }

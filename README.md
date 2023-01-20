@@ -245,7 +245,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$warp <area-id>`: Warps yourself to the given area.
     * `$next`: Warps yourself to the next area.
     * `$swa`: Enables or disables switch assist. When enabled, the server will attempt to automatically unlock two-player doors in solo games if you step on both switches sequentially.
-    * `$item <data>`: Sets the next item to be dropped from an enemy or box. Item codes are 16 hex bytes; at least 2 bytes must be specified, and all unspecified bytes are zeroes. If you are on the proxy server, you must be the game leader and not using Blue Burst for this command to work. On the game server, this command works for all versions, and you do not have to be the game leader.
+    * `$item <data>` (or `$i <data>`): Create an item. Item codes are 16 hex bytes; at least 2 bytes must be specified, and all unspecified bytes are zeroes. If you are on the proxy server, you must not be using Blue Burst for this command to work. On the game server, this command works for all versions.
 
 * Configuration commands
     * `$event <event>`: Sets the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, this applies to all lobbies and games you join, but only you will see the new event - other players will not.

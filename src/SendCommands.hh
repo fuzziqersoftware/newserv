@@ -298,6 +298,8 @@ void send_drop_item(Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id);
 void send_drop_item(std::shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id);
+void send_drop_stacked_item(Channel& ch, const ItemData& item,
+    uint8_t area, float x, float z);
 void send_drop_stacked_item(std::shared_ptr<Lobby> l, const ItemData& item,
     uint8_t area, float x, float z);
 void send_pick_up_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c, uint32_t id,

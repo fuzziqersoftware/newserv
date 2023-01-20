@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <phosg/Strings.hh>
+#include <phosg/Random.hh>
 
 #include "ReceiveCommands.hh"
 #include "ServerState.hh"
@@ -655,16 +656,20 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
       throw runtime_error("data too long");
     }
 
-    session->next_drop_item.clear();
+    PlayerInventoryItem item;
+    item.data.id = random_object<uint32_t>();
     if (data.size() <= 12) {
-      memcpy(&session->next_drop_item.data.data1, data.data(), data.size());
+      memcpy(&item.data.data1, data.data(), data.size());
     } else {
-      memcpy(&session->next_drop_item.data.data1, data.data(), 12);
-      memcpy(&session->next_drop_item.data.data2, data.data() + 12, data.size() - 12);
+      memcpy(&item.data.data1, data.data(), 12);
+      memcpy(&item.data.data2, data.data() + 12, data.size() - 12);
     }
 
-    string name = name_for_item(session->next_drop_item.data, true);
-    send_text_message(session->client_channel, u"$C7Next drop:\n" + decode_sjis(name));
+    send_drop_stacked_item(session->client_channel, item.data, session->area, session->x, session->z);
+    send_drop_stacked_item(session->server_channel, item.data, session->area, session->x, session->z);
+
+    string name = name_for_item(item.data, true);
+    send_text_message(session->client_channel, u"$C7Item created:\n" + decode_sjis(name));
 
   } else if (command_name == "close-idle-sessions") {
     size_t count = this->state->proxy_server->delete_disconnected_sessions();

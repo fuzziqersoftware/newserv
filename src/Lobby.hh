@@ -62,7 +62,6 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::vector<PSOEnemy> enemies;
   std::array<uint32_t, 12> next_item_id;
   uint32_t next_game_item_id;
-  PlayerInventoryItem next_drop_item;
   std::unordered_map<uint32_t, FloorItem> item_id_to_floor_item;
   parray<le_uint32_t, 0x20> variations;
 
