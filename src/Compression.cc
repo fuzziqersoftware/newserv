@@ -394,7 +394,7 @@ string bc0_compress(
 
   parray<uint8_t, 0x1000> memo;
   uint16_t memo_offset = 0x0FEE;
-  vector<unordered_set<size_t>> memo_index(0x100);
+  vector<set<size_t>> memo_index(0x100);
   auto write_memo = [&](uint8_t new_v) -> void {
     uint8_t existing_v = memo[memo_offset];
     if (existing_v != new_v) {
