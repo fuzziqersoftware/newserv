@@ -1422,9 +1422,9 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
       try {
         shared_ptr<MapEntry> entry;
 
-        if (ends_with(filename, ".mnmd")) {
+        if (ends_with(filename, ".mnmd") || ends_with(filename, ".bind")) {
           entry.reset(new MapEntry(load_object_file<MapDefinition>(dir + "/" + filename), is_quest));
-        } else if (ends_with(filename, ".mnm")) {
+        } else if (ends_with(filename, ".mnm") || ends_with(filename, ".bin")) {
           entry.reset(new MapEntry(load_file(dir + "/" + filename), is_quest));
         }
 
