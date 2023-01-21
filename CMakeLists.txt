@@ -112,6 +112,11 @@ endif()
 
 enable_testing()
 
+add_test(
+    NAME compression
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_BINARY_DIR}/test-compression.sh)
+
 file(GLOB TestCases ${CMAKE_SOURCE_DIR}/tests/*.test.txt)
 
 foreach(TestCase IN ITEMS ${TestCases})

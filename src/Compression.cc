@@ -58,15 +58,22 @@ void PRSCompressor::advance() {
 
   for (auto it = start_offsets.begin(); (it != start_offsets.end()) && (best_match_size < 0x100); it++) {
     size_t match_offset = *it;
+    if (match_offset == this->compression_offset - 0x2000) {
+      continue;
+    }
+
     size_t match_size = 0;
+    size_t match_loop_bytes = this->compression_offset - match_offset;
     while ((match_size < 0x100) &&
-           (match_offset + match_size < this->compression_offset) &&
            (this->compression_offset + match_size < this->input_bytes) &&
-           (this->reverse_log[(match_offset + match_size) & 0x1FFF] == this->forward_log[(this->compression_offset + match_size) & 0xFF])) {
+           (this->reverse_log[(match_offset + (match_size % match_loop_bytes)) & 0x1FFF] == this->forward_log[(this->compression_offset + match_size) & 0xFF])) {
       match_size++;
     }
 
-    if (match_size > best_match_size) {
+    // If there are multiple matches of the longest length, use the latest one,
+    // since it's more likely that it can be expressed as a short copy instead
+    // of a long copy.
+    if (match_size >= best_match_size) {
       best_match_offset = match_offset;
       best_match_size = match_size;
     }
@@ -76,7 +83,7 @@ void PRSCompressor::advance() {
   bool should_write_literal = false;
   size_t advance_bytes = 0;
   ssize_t backreference_offset = best_match_offset - this->compression_offset;
-  if (best_match_size < 2 || backreference_offset == -0x2000) {
+  if (best_match_size < 2) {
     should_write_literal = true;
 
   } else {
@@ -142,9 +149,11 @@ void PRSCompressor::advance() {
     uint8_t existing_v = this->reverse_log[reverse_log_offset];
     uint8_t new_v = this->forward_log[this->compression_offset & 0xFF];
 
-    this->reverse_log_index[existing_v].erase(this->compression_offset - this->reverse_log.size());
+    if (this->compression_offset & (~0x1FFF)) {
+      this->reverse_log_index[existing_v].pop_front();
+    }
     this->reverse_log[reverse_log_offset] = new_v;
-    this->reverse_log_index[new_v].emplace(this->compression_offset);
+    this->reverse_log_index[new_v].emplace_back(this->compression_offset);
     this->compression_offset++;
   }
 }
@@ -381,6 +390,57 @@ size_t prs_decompress_size(const string& data, size_t max_output_size) {
 
 
 
+void prs_disassemble(FILE* stream, const void* data, size_t size) {
+  size_t output_bytes = 0;
+  StringReader r(data, size);
+  ControlStreamReader cr(r);
+
+  while (!r.eof()) {
+    size_t r_offset = r.where();
+    if (cr.read()) {
+      fprintf(stream, "[%zX => %zX] literal %02hhX\n", r_offset, output_bytes, r.get_u8());
+      output_bytes++;
+
+    } else {
+      ssize_t offset;
+      size_t count;
+
+      bool is_long_copy = cr.read();
+      if (is_long_copy) {
+        uint16_t a = r.get_u8();
+        a |= (r.get_u8() << 8);
+        offset = (a >> 3) | (~0x1FFF);
+        if (offset == ~0x1FFF) {
+          fprintf(stream, "[%zX => %zX] end\n", r_offset, output_bytes);
+          break;
+        }
+        count = (a & 7) ? ((a & 7) + 2) : (r.get_u8() + 1);
+
+      } else {
+        count = cr.read() << 1;
+        count = (count | cr.read()) + 2;
+        offset = r.get_u8() | (~0xFF);
+      }
+
+      size_t read_offset = output_bytes + offset;
+      fprintf(stream, "[%zX => %zX] %s copy -%zX (from %zX) %zX\n",
+          r_offset, output_bytes, is_long_copy ? "long" : "short",
+          -offset, read_offset, count);
+
+      if (read_offset >= output_bytes) {
+        throw runtime_error("backreference offset beyond beginning of output");
+      }
+      output_bytes += count;
+    }
+  }
+}
+
+void prs_disassemble(FILE* stream, const std::string& data) {
+  return prs_disassemble(stream, data.data(), data.size());
+}
+
+
+
 // BC0 is a compression algorithm fairly similar to PRS, but with a simpler set
 // of commands. Like PRS, there is a control stream, indicating when to copy a
 // literal byte from the input and when to copy from a backreference; unlike
@@ -394,13 +454,15 @@ string bc0_compress(
 
   parray<uint8_t, 0x1000> memo;
   uint16_t memo_offset = 0x0FEE;
-  vector<set<size_t>> memo_index(0x100);
+  vector<deque<size_t>> memo_index(0x100);
   auto write_memo = [&](uint8_t new_v) -> void {
     uint8_t existing_v = memo[memo_offset];
     if (existing_v != new_v) {
-      memo_index[existing_v].erase(memo_offset);
+      if (!memo_index[existing_v].empty()) {
+        memo_index[existing_v].pop_front();
+      }
       memo[memo_offset] = new_v;
-      memo_index[new_v].emplace(memo_offset);
+      memo_index[new_v].emplace_back(memo_offset);
     }
     memo_offset = (memo_offset + 1) & 0xFFF;
   };
@@ -427,6 +489,9 @@ string bc0_compress(
         // Forbid matches that span the memo boundary - during decompression,
         // the client will be overwriting its memo while reading from it and
         // will likely generate incorrect data
+        // TODO: We can actually support this (and it will improve compression),
+        // but we have to set a loop boundary like we have in prs_compress and
+        // I'm lazy.
         size_t start_memo_offset = offset;
         size_t end_memo_offset = (offset + match_size) & 0xFFF;
         if (end_memo_offset < start_memo_offset) {
@@ -512,8 +577,8 @@ string bc0_compress(
 // The BC0 decompression implementation in PSO GC is vulnerable to overflow
 // attacks - there is no bounds checking on the output buffer. It is unlikely
 // that this can be usefully exploited (e.g. for RCE) because the output pointer
-// is checked before every byte is written, so we cannot change the output
-// pointer to any arbitrary address.
+// is loaded from memory before every byte is written, so we cannot change the
+// output pointer to any arbitrary address.
 
 string bc0_decompress(const string& data) {
   StringReader r(data);

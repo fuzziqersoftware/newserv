@@ -380,6 +380,7 @@ enum class Behavior {
   COMPRESS_BC0,
   DECOMPRESS_BC0,
   PRS_SIZE,
+  PRS_DISASSEMBLE,
   ENCRYPT_DATA,
   DECRYPT_DATA,
   DECRYPT_TRIVIAL_DATA,
@@ -399,6 +400,7 @@ static bool behavior_takes_input_filename(Behavior b) {
          (b == Behavior::COMPRESS_BC0) ||
          (b == Behavior::DECOMPRESS_BC0) ||
          (b == Behavior::PRS_SIZE) ||
+         (b == Behavior::PRS_DISASSEMBLE) ||
          (b == Behavior::ENCRYPT_DATA) ||
          (b == Behavior::DECRYPT_DATA) ||
          (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
@@ -504,6 +506,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::DECOMPRESS_BC0;
         } else if (!strcmp(argv[x], "prs-size")) {
           behavior = Behavior::PRS_SIZE;
+        } else if (!strcmp(argv[x], "disassemble-prs")) {
+          behavior = Behavior::PRS_DISASSEMBLE;
         } else if (!strcmp(argv[x], "encrypt-data")) {
           behavior = Behavior::ENCRYPT_DATA;
         } else if (!strcmp(argv[x], "decrypt-data")) {
@@ -597,6 +601,7 @@ int main(int argc, char** argv) {
             input_progress, input_bytes, progress, output_progress, size_ratio);
       };
 
+      uint64_t start = now();
       if (behavior == Behavior::COMPRESS_PRS) {
         data = prs_compress(data, progress_fn);
       } else if (behavior == Behavior::DECOMPRESS_PRS) {
@@ -608,9 +613,12 @@ int main(int argc, char** argv) {
       } else {
         throw logic_error("invalid behavior");
       }
+      uint64_t end = now();
+      string time_str = format_duration(end - start);
+
       float size_ratio = static_cast<float>(data.size() * 100) / input_bytes;
-      log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output (%g%%)",
-          input_bytes, input_bytes, data.size(), data.size(), size_ratio);
+      log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output (%g%%) in %s",
+          input_bytes, input_bytes, data.size(), data.size(), size_ratio, time_str.c_str());
 
       write_output_data(data.data(), data.size());
       break;
@@ -622,6 +630,11 @@ int main(int argc, char** argv) {
       size_t output_bytes = prs_decompress_size(data);
       log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output",
           input_bytes, input_bytes, output_bytes, output_bytes);
+      break;
+    }
+
+    case Behavior::PRS_DISASSEMBLE: {
+      prs_disassemble(stdout, read_input_data());
       break;
     }
 

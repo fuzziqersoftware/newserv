@@ -4,7 +4,7 @@
 
 #include <string>
 #include <functional>
-#include <set>
+#include <deque>
 
 #include "Text.hh"
 
@@ -51,7 +51,7 @@ private:
   parray<uint8_t, 0x100> forward_log;
   size_t compression_offset;
   parray<uint8_t, 0x2000> reverse_log;
-  std::vector<std::set<size_t>> reverse_log_index;
+  std::vector<std::deque<size_t>> reverse_log_index;
 
   StringWriter output;
 };
@@ -70,6 +70,10 @@ std::string prs_decompress(const std::string& data, size_t max_output_size = 0);
 // decompressing it.
 size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size = 0);
 size_t prs_decompress_size(const std::string& data, size_t max_output_size = 0);
+
+// Prints the command stream from a PRS-compressed buffer.
+void prs_disassemble(FILE* stream, const void* data, size_t size);
+void prs_disassemble(FILE* stream, const std::string& data);
 
 // Compresses and decompresses data using the BC0 algorithm.
 std::string bc0_compress(const std::string& data, std::function<void(size_t, size_t)> progress_fn = nullptr);
