@@ -3313,7 +3313,7 @@ static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   auto l = s->find_lobby(c->lobby_id);
   if (!l || !l->is_game()) {
-    throw runtime_error("client sent ready command ontside of game");
+    throw runtime_error("client sent ready command outside of game");
   }
   c->flags &= (~Client::Flag::LOADING);
 
