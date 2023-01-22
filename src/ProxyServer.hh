@@ -65,6 +65,7 @@ public:
     ClientConfigBB newserv_client_config;
     std::deque<bool> should_forward_function_call_return_queue;
     G_SwitchStateChanged_6x05 last_switch_enabled_command;
+    PlayerInventoryItem next_drop_item;
     uint32_t next_item_id;
 
     struct LobbyPlayer {

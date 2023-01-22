@@ -148,7 +148,6 @@ static void proxy_command_lobby_info(shared_ptr<ServerState>,
       msg += string_printf("%zX", z);
     }
   }
-  msg += "\n";
 
   vector<const char*> cheats_tokens;
   if (session.options.switch_assist) {
@@ -1052,6 +1051,8 @@ static void proxy_command_item(shared_ptr<ServerState>,
     return;
   }
 
+  bool set_drop = (!args.empty() && (args[0] == u'!'));
+
   string data = parse_data_string(encode_sjis(args));
   if (data.size() < 2) {
     send_text_message(session.client_channel, u"$C6Item codes must be\n2 bytes or more");
@@ -1071,11 +1072,19 @@ static void proxy_command_item(shared_ptr<ServerState>,
     memcpy(&item.data.data2, data.data() + 12, data.size() - 12);
   }
 
-  send_drop_stacked_item(session.client_channel, item.data, session.area, session.x, session.z);
-  send_drop_stacked_item(session.server_channel, item.data, session.area, session.x, session.z);
+  if (set_drop) {
+    session.next_drop_item = item;
 
-  string name = name_for_item(item.data, true);
-  send_text_message(session.client_channel, u"$C7Item created:\n" + decode_sjis(name));
+    string name = name_for_item(session.next_drop_item.data, true);
+    send_text_message(session.client_channel, u"$C7Next drop:\n" + decode_sjis(name));
+
+  } else {
+    send_drop_stacked_item(session.client_channel, item.data, session.area, session.x, session.z);
+    send_drop_stacked_item(session.server_channel, item.data, session.area, session.x, session.z);
+
+    string name = name_for_item(item.data, true);
+    send_text_message(session.client_channel, u"$C7Item created:\n" + decode_sjis(name));
+  }
 }
 
 

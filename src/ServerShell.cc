@@ -216,8 +216,10 @@ Proxy commands:\n\
     responds as if the function was called (with the given return value), but\n\
     does not send the code to the client. To stop blocking function calls, omit\n\
     the return value.\n\
-  set-next-item <code>\n\
-    Set the next item to be dropped as if the client had run the $item command.\n\
+  create-item <data>\n\
+    Create an item as if the client had run the $item command.\n\
+  set-next-item <data>\n\
+    Set the next item to be dropped.\n\
   close-idle-sessions\n\
     Closes all sessions that don\'t have a client and server connected.\n\
 \n\
@@ -635,7 +637,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
       session->options.function_call_return_value = stoul(command_args);
     }
 
-  } else if (command_name == "set-next-item") {
+  } else if ((command_name == "create-item") || (command_name == "set-next-item")) {
     auto session = this->get_proxy_session(session_name);
 
     if (session->version == GameVersion::BB) {
@@ -665,11 +667,19 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
       memcpy(&item.data.data2, data.data() + 12, data.size() - 12);
     }
 
-    send_drop_stacked_item(session->client_channel, item.data, session->area, session->x, session->z);
-    send_drop_stacked_item(session->server_channel, item.data, session->area, session->x, session->z);
+    if (command_name == "set-next-item") {
+      session->next_drop_item = item;
 
-    string name = name_for_item(item.data, true);
-    send_text_message(session->client_channel, u"$C7Item created:\n" + decode_sjis(name));
+      string name = name_for_item(session->next_drop_item.data, true);
+      send_text_message(session->client_channel, u"$C7Next drop:\n" + decode_sjis(name));
+
+    } else {
+      send_drop_stacked_item(session->client_channel, item.data, session->area, session->x, session->z);
+      send_drop_stacked_item(session->server_channel, item.data, session->area, session->x, session->z);
+
+      string name = name_for_item(item.data, true);
+      send_text_message(session->client_channel, u"$C7Item created:\n" + decode_sjis(name));
+    }
 
   } else if (command_name == "close-idle-sessions") {
     size_t count = this->state->proxy_server->delete_disconnected_sessions();
