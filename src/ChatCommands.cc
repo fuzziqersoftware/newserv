@@ -97,40 +97,61 @@ static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 
 static void server_command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
-  // no preconditions - everyone can use this command
+  vector<string> lines;
 
   if (!l) {
-    send_text_message(c, u"$C6No lobby information");
-
-  } else if (l->is_game()) {
-    string level_string;
-    if (l->max_level == 0xFFFFFFFF) {
-      level_string = string_printf("Levels: %d+", l->min_level + 1);
-    } else {
-      level_string = string_printf("Levels: %d-%d", l->min_level + 1, l->max_level + 1);
-    }
-
-    send_text_message_printf(c,
-        "$C6Game ID: %08X\n%s\nSection ID: %s\nCheat mode: %s",
-        l->lobby_id, level_string.c_str(),
-        name_for_section_id(l->section_id).c_str(),
-        (l->flags & Lobby::Flag::CHEATS_ENABLED) ? "on" : "off");
+    lines.emplace_back("$C4No lobby info");
 
   } else {
-    size_t num_clients = l->count_clients();
-    size_t max_clients = l->max_clients;
-    send_text_message_printf(c, "$C6Lobby ID: %08X\nPlayers: %zu/%zu",
-        l->lobby_id, num_clients, max_clients);
+    if (l->is_game()) {
+      lines.emplace_back(string_printf("Game ID: $C6%08X$C7", l->lobby_id));
+
+      if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+        if (l->max_level == 0xFFFFFFFF) {
+          lines.emplace_back(string_printf("Levels: $C6%d+$C7", l->min_level + 1));
+        } else {
+          lines.emplace_back(string_printf("Levels: $C6%d-%d$C7", l->min_level + 1, l->max_level + 1));
+        }
+
+        lines.emplace_back(string_printf("$C7Section ID: $C6%s$C7", name_for_section_id(l->section_id).c_str()));
+        lines.emplace_back(string_printf("$C7Cheat mode: $C6%s$C7", (l->flags & Lobby::Flag::CHEATS_ENABLED) ? "on" : "off"));
+
+      } else {
+        lines.emplace_back(string_printf("$C7State seed: $C6%08X$C7", l->random_seed));
+      }
+
+    } else {
+      lines.emplace_back(string_printf("$C7Lobby ID: $C6%08X$C7", l->lobby_id));
+    }
+
+    string slots_str = "Slots: ";
+    for (size_t z = 0; z < l->clients.size(); z++) {
+      if (!l->clients[z]) {
+        slots_str += string_printf("$C0%zX$C7", z);
+      } else {
+        bool is_self = l->clients[z] == c;
+        bool is_leader = z == l->leader_id;
+        if (is_self && is_leader) {
+          slots_str += string_printf("$C6%zX$C7", z);
+        } else if (is_self) {
+          slots_str += string_printf("$C2%zX$C7", z);
+        } else if (is_leader) {
+          slots_str += string_printf("$C4%zX$C7", z);
+        } else {
+          slots_str += string_printf("%zX", z);
+        }
+      }
+    }
+    lines.emplace_back(move(slots_str));
   }
+
+  send_text_message(c, decode_sjis(join(lines, "\n")));
 }
 
 static void proxy_command_lobby_info(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
-  string msg;
-  if (session.license) {
-    msg = string_printf("$C7GC: $C6%" PRId64 "$C7\nSlots: ",
-        session.remote_guild_card_number);
-  }
+  string msg = string_printf("$C7GC: $C6%" PRId64 "$C7\nSlots: ",
+      session.remote_guild_card_number);
 
   for (size_t z = 0; z < session.lobby_players.size(); z++) {
     if (session.lobby_players[z].guild_card_number == 0) {
