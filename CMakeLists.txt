@@ -122,7 +122,7 @@ endforeach()
 add_test(
     NAME compression
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_SOURCE_DIR}/test-compression.sh)
+    COMMAND ${CMAKE_SOURCE_DIR}/test-compression.sh ${CMAKE_BINARY_DIR}/newserv)
 
 
 
