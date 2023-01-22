@@ -617,8 +617,10 @@ int main(int argc, char** argv) {
       string time_str = format_duration(end - start);
 
       float size_ratio = static_cast<float>(data.size() * 100) / input_bytes;
-      log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output (%g%%) in %s",
-          input_bytes, input_bytes, data.size(), data.size(), size_ratio, time_str.c_str());
+      double bytes_per_sec = input_bytes / (static_cast<double>(end - start) / 1000000.0);
+      string bytes_per_sec_str = format_size(bytes_per_sec);
+      log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output (%g%%) in %s (%s / sec)",
+          input_bytes, input_bytes, data.size(), data.size(), size_ratio, time_str.c_str(), bytes_per_sec_str.c_str());
 
       write_output_data(data.data(), data.size());
       break;

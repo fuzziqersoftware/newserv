@@ -20,8 +20,6 @@ list(APPEND CMAKE_PREFIX_PATH ${LOCAL_LIB_DIR})
 include_directories(${LOCAL_INCLUDE_DIR})
 link_directories(${LOCAL_LIB_DIR})
 
-set(CMAKE_BUILD_TYPE Debug)
-
 
 
 # Library search
@@ -112,11 +110,6 @@ endif()
 
 enable_testing()
 
-add_test(
-    NAME compression
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_SOURCE_DIR}/test-compression.sh)
-
 file(GLOB TestCases ${CMAKE_SOURCE_DIR}/tests/*.test.txt)
 
 foreach(TestCase IN ITEMS ${TestCases})
@@ -125,6 +118,11 @@ foreach(TestCase IN ITEMS ${TestCases})
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMAND ${CMAKE_BINARY_DIR}/newserv replay-log ${TestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json --require-password=password --require-access-key=111111111111)
 endforeach()
+
+add_test(
+    NAME compression
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_SOURCE_DIR}/test-compression.sh)
 
 
 
