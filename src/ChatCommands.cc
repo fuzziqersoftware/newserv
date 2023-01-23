@@ -334,6 +334,24 @@ static void proxy_command_get_player_card(shared_ptr<ServerState>,
   }
 }
 
+static void server_command_send_client(shared_ptr<ServerState>, shared_ptr<Lobby>,
+    shared_ptr<Client> c, const std::u16string& args) {
+  string data = parse_data_string(encode_sjis(args));
+  c->channel.send(data);
+}
+
+static void proxy_command_send_client(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  string data = parse_data_string(encode_sjis(args));
+  session.client_channel.send(data);
+}
+
+static void proxy_command_send_server(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  string data = parse_data_string(encode_sjis(args));
+  session.server_channel.send(data);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Lobby commands
 
@@ -1153,11 +1171,13 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$playrec",  {server_command_playrec,            nullptr,                       u"Usage:\nplayrec <filename>"}},
     {u"$rand",     {server_command_rand,               proxy_command_rand,            u"Usage:\nrand [hex seed]\nomit seed to revert\nto default"}},
     {u"$saverec",  {server_command_saverec,            nullptr,                       u"Usage:\nsaverec <filename>"}},
+    {u"$sc",       {server_command_send_client,        proxy_command_send_client,     u"Usage:\nsc <data>"}},
     {u"$secid",    {server_command_secid,              proxy_command_secid,           u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
     {u"$silence",  {server_command_silence,            nullptr,                       u"Usage:\nsilence <name-or-number>"}},
     // TODO: implement this on proxy server
     {u"$song",     {server_command_song,               nullptr,                       u"Usage:\nsong <song-number>"}},
     {u"$spec",     {server_command_spec,               nullptr,                       u"Usage:\nspec"}},
+    {u"$ss",       {nullptr,                           proxy_command_send_server,     u"Usage:\nss <data>"}},
     {u"$swa",      {server_command_switch_assist,      proxy_command_switch_assist,   u"Usage:\nswa"}},
     {u"$type",     {server_command_lobby_type,         nullptr,                       u"Usage:\ntype <name>"}},
     {u"$warp",     {server_command_warp,               proxy_command_warp,            u"Usage:\nwarp <area-number>"}},
