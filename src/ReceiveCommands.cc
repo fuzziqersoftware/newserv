@@ -73,7 +73,7 @@ vector<MenuItem> quest_download_menu({
 static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descriptions({
   {ProxyOptionsMenuItemID::GO_BACK, u"Return to the\nproxy menu"},
   {ProxyOptionsMenuItemID::CHAT_COMMANDS, u"Enable chat\ncommands"},
-  {ProxyOptionsMenuItemID::CHAT_FILTER, u"Enable escape\nsequences in\nchat messages"},
+  {ProxyOptionsMenuItemID::CHAT_FILTER, u"Enable escape\nsequences in\nchat messages\nand info board"},
   {ProxyOptionsMenuItemID::INFINITE_HP, u"Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills"},
   {ProxyOptionsMenuItemID::INFINITE_TP, u"Enable automatic TP\nrestoration when\nyou cast any\ntechnique"},
   {ProxyOptionsMenuItemID::SWITCH_ASSIST, u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially"},

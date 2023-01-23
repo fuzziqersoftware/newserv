@@ -989,18 +989,20 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
 
 static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
-  if (session.version == GameVersion::BB) {
-    auto& pd = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB), 0xFFFF);
-    add_color_inplace(pd.info_board.data(), pd.info_board.size());
+  if (session.options.enable_chat_filter) {
+    if (session.version == GameVersion::BB) {
+      auto& pd = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB), 0xFFFF);
+      add_color_inplace(pd.info_board.data(), pd.info_board.size());
 
-  } else {
-    PSOPlayerDataV3* pd;
-    if (flag == 4) { // Episode 3
-      pd = reinterpret_cast<PSOPlayerDataV3*>(&check_size_t<PSOPlayerDataGCEp3>(data));
     } else {
-      pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3), 0xFFFF);
+      PSOPlayerDataV3* pd;
+      if (flag == 4) { // Episode 3
+        pd = reinterpret_cast<PSOPlayerDataV3*>(&check_size_t<PSOPlayerDataGCEp3>(data));
+      } else {
+        pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3), 0xFFFF);
+      }
+      add_color_inplace(pd->info_board.data(), pd->info_board.size());
     }
-    add_color_inplace(pd->info_board.data(), pd->info_board.size());
   }
 
   // TODO: We should check if the info board text was actually modified and
@@ -1009,19 +1011,23 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
 }
 
 static HandlerResult C_GX_D9(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession&, uint16_t, uint32_t, string& data) {
-  add_color_inplace(data.data(), data.size());
-  // TODO: We should check if the info board text was actually modified and
-  // return MODIFIED if so.
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  if (session.options.enable_chat_filter) {
+    add_color_inplace(data.data(), data.size());
+    // TODO: We should check if the info board text was actually modified and
+    // return MODIFIED if so.
+  }
   return HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult C_B_D9(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession&, uint16_t, uint32_t, string& data) {
-  char16_t* text = reinterpret_cast<char16_t*>(data.data());
-  add_color_inplace(text, data.size() / sizeof(char16_t));
-  // TODO: We should check if the info board text was actually modified and
-  // return HandlerResult::MODIFIED if so.
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  if (session.options.enable_chat_filter) {
+    char16_t* text = reinterpret_cast<char16_t*>(data.data());
+    add_color_inplace(text, data.size() / sizeof(char16_t));
+    // TODO: We should check if the info board text was actually modified and
+    // return HandlerResult::MODIFIED if so.
+  }
   return HandlerResult::Type::FORWARD;
 }
 
