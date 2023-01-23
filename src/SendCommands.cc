@@ -749,8 +749,18 @@ u16string prepare_chat_message(
   return data;
 }
 
-void send_chat_message(Channel& ch, const u16string& text) {
-  send_header_text(ch, 0x06, 0, text, false);
+void send_chat_message(Channel& ch, const u16string& text, char private_flags) {
+  if (private_flags != 0) {
+    if (ch.version != GameVersion::GC) {
+      throw runtime_error("nonzero private_flags in non-GC chat message");
+    }
+    u16string effective_text;
+    effective_text.push_back(static_cast<char16_t>(private_flags));
+    effective_text += text;
+    send_header_text(ch, 0x06, 0, effective_text, false);
+  } else {
+    send_header_text(ch, 0x06, 0, text, false);
+  }
 }
 
 void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,

@@ -192,7 +192,10 @@ std::u16string prepare_chat_message(
     const std::u16string& from_name,
     const std::u16string& text,
     char private_flags);
-void send_chat_message(Channel& ch, const std::u16string& text);
+void send_chat_message(
+    Channel& ch,
+    const std::u16string& text,
+    char private_flags);
 void send_chat_message(
     std::shared_ptr<Client> c,
     uint32_t from_guild_card_number,

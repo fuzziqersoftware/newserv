@@ -35,6 +35,7 @@ ClientOptions::ClientOptions()
     override_lobby_number(-1),
     override_random_seed(-1),
     save_files(false),
+    enable_chat_commands(true),
     enable_chat_filter(true),
     suppress_remote_login(false),
     zero_remote_guild_card(false),

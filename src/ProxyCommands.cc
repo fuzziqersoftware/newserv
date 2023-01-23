@@ -1357,31 +1357,36 @@ static HandlerResult C_98(shared_ptr<ServerState>,
 static HandlerResult C_06(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (data.size() >= 12) {
+    const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
+
     u16string text;
+    uint8_t private_flags = 0;
     if (session.version == GameVersion::PC || session.version == GameVersion::BB) {
-      const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
       text = u16string(cmd.text.pcbb, (data.size() - sizeof(C_Chat_06)) / sizeof(char16_t));
+
+    } else if ((cmd.text.dcv3[0] != '\t') &&
+        (session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3)) {
+      private_flags = cmd.text.dcv3[0];
+      text = decode_sjis(cmd.text.dcv3 + 1, data.size() - sizeof(C_Chat_06));
+
     } else {
-      const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
       text = decode_sjis(cmd.text.dcv3, data.size() - sizeof(C_Chat_06));
     }
+
     strip_trailing_zeroes(text);
 
     if (text.empty()) {
       return HandlerResult::Type::SUPPRESS;
     }
 
-    // On Episode 3, spectator chats begin with an @ character
     bool is_command = (text[0] == '$') ||
-        (text[0] == '@' && text[1] == '$') ||
-        (text[0] == '\t' && text[1] != 'C' && text[2] == '$') ||
-        (text[0] == '@' && text[1] == '\t' && text[2] != 'C' && text[3] == '$');
-    if (is_command) {
-      size_t offset = text[0] == '@' ? 1 : 0;
-      offset += text[offset] == '$' ? 0 : 2;
+        (text[0] == '\t' && text[1] != 'C' && text[2] == '$');
+    if (is_command && session.options.enable_chat_commands) {
+      size_t offset = ((text[0] & 0xF0) == 0x40) ? 1 : 0;
+      offset += (text[offset] == '$') ? 0 : 2;
       text = text.substr(offset);
       if (text.size() >= 2 && text[1] == '$') {
-        send_chat_message(session.server_channel, text.substr(1));
+        send_chat_message(session.server_channel, text.substr(1), private_flags);
         return HandlerResult::Type::SUPPRESS;
       } else {
         on_chat_command(s, session, text);
