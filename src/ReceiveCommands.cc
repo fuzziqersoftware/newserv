@@ -212,15 +212,10 @@ static void send_main_menu(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 
 void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   if (c->flags & Client::Flag::IS_EPISODE_3) {
-    auto team = s->ep3_tournament_index->team_for_serial_number(
-        c->license->serial_number);
-    if (team) {
-      auto tourn = team->tournament.lock();
-      if (tourn) {
-        c->ep3_tournament_team = team;
-        send_ep3_confirm_tournament_entry(s, c, tourn);
-      }
-    }
+    auto team = s->ep3_tournament_index->team_for_serial_number(c->license->serial_number);
+    auto tourn = team ? team->tournament.lock() : nullptr;
+    c->ep3_tournament_team = team;
+    send_ep3_confirm_tournament_entry(s, c, tourn);
   }
 
   // On the BB data server, this function is called only on the last connection
