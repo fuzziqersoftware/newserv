@@ -4756,7 +4756,7 @@ struct G_BankAction_BB_6xBD {
 struct G_SoundChat_GC_Ep3_6xBE {
   G_UnusedHeader header;
   le_uint32_t sound_id; // Must be < 0x27
-  be_uint32_t unknown_a1;
+  be_uint32_t unused;
 } __packed__;
 
 // 6xBE: BB create inventory item (server->client only)
