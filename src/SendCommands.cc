@@ -382,6 +382,9 @@ void send_function_call(
       } else {
         crypt.encrypt(data.data(), data.size());
       }
+
+      w.write(data);
+      data = move(w.str());
     }
   }
 
