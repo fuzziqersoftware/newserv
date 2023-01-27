@@ -3903,12 +3903,12 @@ struct G_CreateTelepipe_6x68 {
   G_UnusedHeader header;
   le_uint16_t client_id2;
   le_uint16_t unknown_a1;
-  le_uint16_t unknown_a2;
-  parray<uint8_t, 2> unknown_a3;
+  le_uint16_t unused1;
+  parray<uint8_t, 2> unused2;
   le_float x;
   le_float y;
   le_float z;
-  le_uint32_t unknown_a4;
+  le_uint32_t unused3;
 } __packed__;
 
 // 6x69: Unknown (supported; game only)
