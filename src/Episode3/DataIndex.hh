@@ -783,8 +783,8 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 1518 */ parray<be_float, 0x12> alt_maps_unknown_a3[2][0x0A];
   /* 1AB8 */ parray<be_float, 0x24> unknown_a5[3];
   // In the modification_tiles array, the values are:
-  // 10 = blocked (as if the corresponding map_tiles value was 00)
-  // 20 = blocked (maybe one of 10 or 20 are passable by Aerial characters)
+  // 10 = blocked by rock (as if the corresponding map_tiles value was 00)
+  // 20 = blocked by fence
   // 30-34 = teleporters (2 of each value may be present)
   // 40-44 = traps (one of each type is chosen at random to be a real trap at
   //         battle start time)
