@@ -1189,6 +1189,23 @@ static HandlerResult S_G_B9(shared_ptr<ServerState>,
       : HandlerResult::Type::SUPPRESS;
 }
 
+static HandlerResult S_G_EF(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  if (session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3) {
+    if (session.options.ep3_infinite_meseta) {
+      auto& cmd = check_size_t<S_StartCardAuction_GC_Ep3_EF>(data,
+          offsetof(S_StartCardAuction_GC_Ep3_EF, unused), 0xFFFF);
+      if (cmd.points_available != 0x7FFF) {
+        cmd.points_available = 0x7FFF;
+        return HandlerResult::Type::MODIFIED;
+      }
+    }
+    return HandlerResult::Type::FORWARD;
+  } else {
+    return HandlerResult::Type::SUPPRESS;
+  }
+}
+
 static HandlerResult S_G_BA(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.options.ep3_infinite_meseta) {
@@ -1793,7 +1810,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* EC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* ED */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* EE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
-/* EF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* EF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_G_EF,        nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* F0 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* F1 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* F2 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
