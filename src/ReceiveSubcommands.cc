@@ -630,14 +630,15 @@ static void on_subcommand_box_or_enemy_item_drop(shared_ptr<ServerState>,
     return;
   }
 
-  PlayerInventoryItem item;
-  item.present = 1;
-  item.flags = 0;
-  item.data = cmd.data;
-  l->add_item(item, cmd.area, cmd.x, cmd.z);
-
-  l->log.info("Leader created ground item %08" PRIX32 " at %hhu:(%g, %g)",
-      item.data.id.load(), cmd.area, cmd.x.load(), cmd.z.load());
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    PlayerInventoryItem item;
+    item.present = 1;
+    item.flags = 0;
+    item.data = cmd.data;
+    l->add_item(item, cmd.area, cmd.x, cmd.z);
+    l->log.info("Leader created ground item %08" PRIX32 " at %hhu:(%g, %g)",
+        item.data.id.load(), cmd.area, cmd.x.load(), cmd.z.load());
+  }
 
   forward_subcommand(l, c, command, flag, data);
 }

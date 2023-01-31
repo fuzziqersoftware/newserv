@@ -1730,16 +1730,11 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
             shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
             auto quests = s->quest_index->filter(
                 c->version(), c->flags & Client::Flag::IS_DC_V1, QuestCategory::EPISODE_3);
-            if (quests.empty()) {
-              send_lobby_message_box(c, u"$C6There are no quests\navailable.");
-            } else {
-              // Episode 3 has only download quests, not online quests, so this
-              // is always the download quest menu. (Episode 3 does actually
-              // have online quests, but they're served via a server data
-              // request instead of the file download paradigm that all other
-              // versions use.)
-              send_quest_menu(c, MenuID::QUEST, quests, true);
-            }
+            // Episode 3 has only download quests, not online quests, so this is
+            // always the download quest menu. (Episode 3 does actually have
+            // online quests, but they're served via a server data request
+            // instead of the file download paradigm that other versions use.)
+            send_quest_menu(c, MenuID::QUEST, quests, true);
           } else {
             send_quest_menu(c, MenuID::QUEST_FILTER, quest_download_menu, true);
           }
@@ -1948,10 +1943,6 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
       auto quests = s->quest_index->filter(c->version(),
           c->flags & Client::Flag::IS_DC_V1,
           static_cast<QuestCategory>(item_id & 0xFF));
-      if (quests.empty()) {
-        send_lobby_message_box(c, u"$C6There are no quests\navailable in that\ncategory.");
-        break;
-      }
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
