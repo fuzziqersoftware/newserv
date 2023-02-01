@@ -328,7 +328,7 @@ The actions are:\n\
   decode-sjis [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Apply newserv\'s text decoding algorithm to the input data, producing\n\
     little-endian UTF-16 output data.\n\
-  decode-gci INPUT-FILENAME [OPTIONS...]]\n\
+  decode-gci INPUT-FILENAME [OPTIONS...]\n\
   decode-dlq INPUT-FILENAME\n\
   decode-qst INPUT-FILENAME\n\
     Decode the input quest file into a compressed, unencrypted .bin or .dat\n\
@@ -340,7 +340,7 @@ The actions are:\n\
     embedded seed. If you know the player\'s serial number who generated the\n\
     GCI file, use the --seed=SEED option and give the serial number (as a\n\
     hex-encoded 32-bit integer). If you don\'t know the serial number, newserv\n\
-    will find it via a brute-force search, but this will take a long time.\n\
+    will find it via a brute-force search, which will take a long time.\n\
   cat-client ADDR:PORT\n\
     Connect to the given server and simulate a PSO client. newserv will then\n\
     print all the received commands to stdout, and forward any commands typed\n\
@@ -424,6 +424,7 @@ static bool behavior_takes_output_filename(Behavior b) {
 
 enum class QuestFileFormat {
   GCI = 0,
+  VMS,
   DLQ,
   QST,
 };
@@ -521,6 +522,9 @@ int main(int argc, char** argv) {
         } else if (!strcmp(argv[x], "decode-gci")) {
           behavior = Behavior::DECODE_QUEST_FILE;
           quest_file_type = QuestFileFormat::GCI;
+        } else if (!strcmp(argv[x], "decode-vms")) {
+          behavior = Behavior::DECODE_QUEST_FILE;
+          quest_file_type = QuestFileFormat::VMS;
         } else if (!strcmp(argv[x], "decode-dlq")) {
           behavior = Behavior::DECODE_QUEST_FILE;
           quest_file_type = QuestFileFormat::DLQ;
@@ -809,6 +813,10 @@ int main(int argc, char** argv) {
       if (quest_file_type == QuestFileFormat::GCI) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
         save_file(output_filename_base + ".dec", Quest::decode_gci(
+            input_filename, num_threads, dec_seed));
+      } else if (quest_file_type == QuestFileFormat::VMS) {
+        int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
+        save_file(output_filename_base + ".dec", Quest::decode_vms(
             input_filename, num_threads, dec_seed));
       } else if (quest_file_type == QuestFileFormat::DLQ) {
         save_file(output_filename_base + ".dec", Quest::decode_dlq(

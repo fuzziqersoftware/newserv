@@ -96,7 +96,7 @@ struct PSOGCIFileHeader {
   }
 } __attribute__((packed));
 
-struct PSOGCIFileEncryptedHeader {
+struct PSOGCIOrVMSFileEncryptedHeader {
   be_uint32_t round2_seed;
   // To compute checksum, set checksum to zero, then compute the CRC32 of the
   // entire data section, including this header struct (but not the unencrypted
@@ -107,49 +107,69 @@ struct PSOGCIFileEncryptedHeader {
   // Data follows here.
 } __attribute__((packed));
 
-string decrypt_gci_data_section(
-    const void* data_section, size_t size, uint32_t seed) {
+template <bool IsBigEndian>
+string decrypt_gci_or_vms_v2_data_section(
+    const void* data_section,
+    size_t size,
+    uint32_t seed,
+    bool use_reverse_table) {
+
   string decrypted(size, '\0');
   {
     PSOV2Encryption shuf_crypt(seed);
     ShuffleTables shuf(shuf_crypt);
-    shuf.shuffle(decrypted.data(), data_section, size, true);
+    shuf.shuffle(decrypted.data(), data_section, size, use_reverse_table);
   }
-
-  auto* be_dwords = reinterpret_cast<be_uint32_t*>(decrypted.data());
 
   PSOV2Encryption crypt(seed);
-  for (size_t z = 0; z < decrypted.size() / sizeof(be_uint32_t); z++) {
-    be_dwords[z] = crypt.next() - be_dwords[z];
+  if (IsBigEndian) {
+    auto* be_dwords = reinterpret_cast<be_uint32_t*>(decrypted.data());
+    for (size_t z = 0; z < decrypted.size() / sizeof(be_uint32_t); z++) {
+      be_dwords[z] = crypt.next() - be_dwords[z];
+    }
+  } else {
+    auto* le_dwords = reinterpret_cast<le_uint32_t*>(decrypted.data());
+    for (size_t z = 0; z < decrypted.size() / sizeof(le_uint32_t); z++) {
+      le_dwords[z] = crypt.next() - le_dwords[z];
+    }
   }
 
-  auto* header = reinterpret_cast<PSOGCIFileEncryptedHeader*>(
+  auto* header = reinterpret_cast<PSOGCIOrVMSFileEncryptedHeader*>(
       decrypted.data());
-  PSOV2Encryption(header->round2_seed).encrypt_big_endian(
-      decrypted.data() + 4, (decrypted.size() - 4) & (~3));
+  PSOV2Encryption round2_crypt(header->round2_seed);
+  if (IsBigEndian) {
+    round2_crypt.encrypt_big_endian(
+        decrypted.data() + 4, (decrypted.size() - 4) & (~3));
+  } else {
+    round2_crypt.decrypt(
+        decrypted.data() + 4, (decrypted.size() - 4) & (~3));
+  }
 
   uint32_t expected_crc = header->checksum;
   header->checksum = 0;
   uint32_t actual_crc = crc32(decrypted.data(), decrypted.size());
   header->checksum = expected_crc;
-
   if (expected_crc != actual_crc) {
     throw runtime_error("incorrect decrypted data section checksum");
+  }
+
+  if (header->decompressed_size & 0xFFF00000) {
+    throw runtime_error("decompressed_size too large");
   }
 
   size_t orig_size = decrypted.size();
   decrypted.resize((orig_size + 3) & (~3));
   PSOV2Encryption(header->round3_seed).decrypt(
-      decrypted.data() + sizeof(PSOGCIFileEncryptedHeader),
-      decrypted.size() - sizeof(PSOGCIFileEncryptedHeader));
+      decrypted.data() + sizeof(PSOGCIOrVMSFileEncryptedHeader),
+      decrypted.size() - sizeof(PSOGCIOrVMSFileEncryptedHeader));
   decrypted.resize(orig_size);
-
-  string ret = decrypted.substr(sizeof(PSOGCIFileEncryptedHeader));
 
   // Some GCI files have decompressed_size fields that are 8 bytes smaller than
   // the actual decompressed size of the data. They seem to work fine, so we
   // accept both cases as correct.
-  size_t decompressed_size = prs_decompress_size(ret);
+  size_t decompressed_size = prs_decompress_size(
+      decrypted.data() + sizeof(PSOGCIOrVMSFileEncryptedHeader),
+      decrypted.size() - sizeof(PSOGCIOrVMSFileEncryptedHeader));
   if ((decompressed_size != header->decompressed_size) &&
       (decompressed_size != header->decompressed_size - 8)) {
     throw runtime_error(string_printf(
@@ -157,16 +177,40 @@ string decrypt_gci_data_section(
         decompressed_size, header->decompressed_size.load()));
   }
 
-  return ret;
+  return decrypted.substr(sizeof(PSOGCIOrVMSFileEncryptedHeader));
 }
 
-string find_seed_and_decrypt_gci_data_section(
+string decrypt_vms_v1_data_section(const void* data_section, size_t size) {
+  StringReader r(data_section, size);
+  uint32_t expected_decompressed_size = r.get_u32l();
+  uint32_t seed = r.get_u32l();
+
+  string data = r.read(r.remaining());
+
+  size_t orig_size = data.size();
+  data.resize((orig_size + 3) & (~3));
+  PSOV2Encryption(seed).decrypt(data.data(), data.size());
+  data.resize(orig_size);
+
+  size_t actual_decompressed_size = prs_decompress_size(data);
+  if (actual_decompressed_size != expected_decompressed_size) {
+    throw runtime_error(string_printf(
+        "decompressed size (%zu) does not match size in header (%" PRId32 ")",
+        actual_decompressed_size, expected_decompressed_size));
+  }
+
+  return data;
+}
+
+template <bool IsBigEndian>
+string find_seed_and_decrypt_gci_or_vms_v2_data_section(
     const void* data_section, size_t size, size_t num_threads) {
   mutex result_lock;
   string result;
   uint64_t result_seed = parallel_range<uint64_t>([&](uint64_t seed, size_t) {
     try {
-      string ret = decrypt_gci_data_section(data_section, size, seed);
+      string ret = decrypt_gci_or_vms_v2_data_section<IsBigEndian>(
+          data_section, size, seed, true);
       lock_guard<mutex> g(result_lock);
       result = move(ret);
       return true;
@@ -183,6 +227,48 @@ string find_seed_and_decrypt_gci_data_section(
     throw runtime_error("no seed found");
   }
 }
+
+
+
+struct PSOVMSFileHeader {
+  ptext<char, 0x10> short_desc; // "PSO/DOWNLOAD    " or "PSOV2/DOWNLOAD  "
+  ptext<char, 0x20> long_desc; // Usually quest name
+  ptext<char, 0x10> creator_id;
+  le_uint16_t num_icons;
+  le_uint16_t animation_speed;
+  le_uint16_t eyecatch_type;
+  le_uint16_t crc;
+  le_uint32_t data_size; // Not including header and icons
+  parray<uint8_t, 0x14> unused;
+  parray<le_uint16_t, 0x10> icon_palette;
+
+  // Variable-length field follows here:
+  // parray<parray<uint8_t, 0x200>, num_icons> icon;
+
+  bool checksum_correct() const {
+    auto add_data = +[](const void* data, size_t size, uint16_t crc) -> uint16_t {
+      const uint8_t* bytes = reinterpret_cast<const uint8_t*>(data);
+      for (size_t z = 0; z < size; z++) {
+        crc ^= (static_cast<uint16_t>(bytes[z]) << 8);
+        for (uint8_t bit = 0; bit < 8; bit++) {
+          if (crc & 0x8000) {
+            crc = (crc << 1) ^ 0x1021;
+          } else {
+            crc = (crc << 1);
+          }
+        }
+      }
+      return crc;
+    };
+
+    uint16_t zero = 0;
+    uint16_t crc = add_data(this, offsetof(PSOVMSFileHeader, crc), 0);
+    crc = add_data(&zero, sizeof(uint16_t), crc);
+    crc = add_data(&this->data_size,
+        sizeof(PSOVMSFileHeader) - offsetof(PSOVMSFileHeader, data_size) + this->num_icons * 0x200 + this->data_size, crc);
+    return (crc == this->crc);
+  }
+} __attribute__((packed));
 
 
 
@@ -324,6 +410,9 @@ Quest::Quest(const string& bin_filename)
   if (ends_with(bin_filename, ".bin.gci") || ends_with(bin_filename, ".mnm.gci")) {
     this->file_format = FileFormat::BIN_DAT_GCI;
     this->has_mnm_extension = ends_with(bin_filename, ".mnm.gci");
+    this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
+  } else if (ends_with(bin_filename, ".bin.vms")) {
+    this->file_format = FileFormat::BIN_DAT_VMS;
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
   } else if (ends_with(bin_filename, ".bin.dlq") || ends_with(bin_filename, ".mnm.dlq")) {
     this->file_format = FileFormat::BIN_DAT_DLQ;
@@ -546,7 +635,11 @@ shared_ptr<const string> Quest::bin_contents() const {
         break;
       case FileFormat::BIN_DAT_GCI:
         this->bin_contents_ptr.reset(new string(this->decode_gci(
-            this->file_basename + (this->has_mnm_extension ? ".mnm.gci" : ".bin.gci"), false)));
+            this->file_basename + (this->has_mnm_extension ? ".mnm.gci" : ".bin.gci"))));
+        break;
+      case FileFormat::BIN_DAT_VMS:
+        this->bin_contents_ptr.reset(new string(this->decode_vms(
+            this->file_basename + (this->has_mnm_extension ? ".mnm.vms" : ".bin.vms"))));
         break;
       case FileFormat::BIN_DAT_DLQ:
         this->bin_contents_ptr.reset(new string(this->decode_dlq(
@@ -578,7 +671,10 @@ shared_ptr<const string> Quest::dat_contents() const {
         this->dat_contents_ptr.reset(new string(prs_compress(load_file(this->file_basename + ".datd"))));
         break;
       case FileFormat::BIN_DAT_GCI:
-        this->dat_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".dat.gci", false)));
+        this->dat_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".dat.gci")));
+        break;
+      case FileFormat::BIN_DAT_VMS:
+        this->dat_contents_ptr.reset(new string(this->decode_vms(this->file_basename + ".dat.vms")));
         break;
       case FileFormat::BIN_DAT_DLQ:
         this->dat_contents_ptr.reset(new string(this->decode_dlq(this->file_basename + ".dat.dlq")));
@@ -617,18 +713,18 @@ string Quest::decode_gci(
   }
 
   if (header.game_id[2] == 'O') { // Episodes 1&2 (GPO*)
-    const auto& encrypted_header = r.get<PSOGCIFileEncryptedHeader>(false);
+    const auto& encrypted_header = r.get<PSOGCIOrVMSFileEncryptedHeader>(false);
     // Unencrypted GCI files appear to always have zeroes in these fields.
     // Encrypted GCI files are highly unlikely to have zeroes in ALL of these
     // fields, so assume it's encrypted if any of them are nonzero.
     if (encrypted_header.round2_seed || encrypted_header.checksum || encrypted_header.round3_seed) {
       if (known_seed >= 0) {
-        return decrypt_gci_data_section(
-            r.getv(header.data_size), header.data_size, known_seed);
+        return decrypt_gci_or_vms_v2_data_section<true>(
+            r.getv(header.data_size), header.data_size, known_seed, true);
 
       } else if (header.embedded_seed != 0) {
-        return decrypt_gci_data_section(
-            r.getv(header.data_size), header.data_size, header.embedded_seed);
+        return decrypt_gci_or_vms_v2_data_section<true>(
+            r.getv(header.data_size), header.data_size, header.embedded_seed, true);
 
       } else {
         if (find_seed_num_threads < 0) {
@@ -637,13 +733,13 @@ string Quest::decode_gci(
         if (find_seed_num_threads == 0) {
           find_seed_num_threads = thread::hardware_concurrency();
         }
-        return find_seed_and_decrypt_gci_data_section(
+        return find_seed_and_decrypt_gci_or_vms_v2_data_section<true>(
             r.getv(header.data_size), header.data_size, find_seed_num_threads);
       }
 
     } else { // Unencrypted GCI format
-      r.skip(sizeof(PSOGCIFileEncryptedHeader));
-      string compressed_data = r.readx(header.data_size - sizeof(PSOGCIFileEncryptedHeader));
+      r.skip(sizeof(PSOGCIOrVMSFileEncryptedHeader));
+      string compressed_data = r.readx(header.data_size - sizeof(PSOGCIOrVMSFileEncryptedHeader));
       size_t decompressed_bytes = prs_decompress_size(compressed_data);
 
       size_t expected_decompressed_bytes = encrypted_header.decompressed_size - 8;
@@ -689,6 +785,38 @@ string Quest::decode_gci(
 
   } else {
     throw runtime_error("unknown game name in GCI header");
+  }
+}
+
+string Quest::decode_vms(
+    const string& filename, ssize_t find_seed_num_threads, int64_t known_seed) {
+  string data = load_file(filename);
+
+  StringReader r(data);
+  const auto& header = r.get<PSOVMSFileHeader>();
+  if (!header.checksum_correct()) {
+    throw runtime_error("VMS file unencrypted header checksum is incorrect");
+  }
+  r.skip(header.num_icons * 0x200);
+
+  const void* data_section = r.getv(header.data_size);
+  try {
+    return decrypt_vms_v1_data_section(data_section, header.data_size);
+  } catch (const exception& e) { }
+
+  if (known_seed >= 0) {
+    return decrypt_gci_or_vms_v2_data_section<false>(
+        data_section, header.data_size, known_seed, true);
+
+  } else {
+    if (find_seed_num_threads < 0) {
+      throw runtime_error("GCI file appears to be encrypted");
+    }
+    if (find_seed_num_threads == 0) {
+      find_seed_num_threads = thread::hardware_concurrency();
+    }
+    return find_seed_and_decrypt_gci_or_vms_v2_data_section<false>(
+        data_section, header.data_size, find_seed_num_threads);
   }
 }
 
@@ -851,6 +979,7 @@ QuestIndex::QuestIndex(const string& directory) : directory(directory) {
     if (ends_with(filename, ".bin") ||
         ends_with(filename, ".bind") ||
         ends_with(filename, ".bin.gci") ||
+        ends_with(filename, ".bin.vms") ||
         ends_with(filename, ".bin.dlq") ||
         ends_with(filename, ".mnm") ||
         ends_with(filename, ".mnmd") ||

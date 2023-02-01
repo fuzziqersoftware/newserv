@@ -40,6 +40,7 @@ public:
     BIN_DAT = 0,
     BIN_DAT_UNCOMPRESSED,
     BIN_DAT_GCI,
+    BIN_DAT_VMS,
     BIN_DAT_DLQ,
     QST,
   };
@@ -72,6 +73,10 @@ public:
   std::shared_ptr<Quest> create_download_quest() const;
 
   static std::string decode_gci(
+      const std::string& filename,
+      ssize_t find_seed_num_threads = -1,
+      int64_t known_seed = -1);
+  static std::string decode_vms(
       const std::string& filename,
       ssize_t find_seed_num_threads = -1,
       int64_t known_seed = -1);
