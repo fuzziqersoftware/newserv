@@ -759,14 +759,14 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // with FF. For example, if num_alt_maps == 8, the last two fields in each
   // alt_maps array are filled with FF.
   /* 000B */ uint8_t num_alt_maps; // TODO: What are the alt maps for?
-  // In the map_tiles array, the values are:
-  // 00 = not a valid tile
-  // 01 = valid tile unless punched out (later)
+  // In the map_tiles array, the values are usually:
+  // 00 = not a valid tile (blocked)
+  // 01 = valid tile unless modified out (via modification_tiles)
   // 02 = team A start (1v1)
   // 03, 04 = team A start (2v2)
-  // 05 = ???
   // 06, 07 = team B start (2v2)
   // 08 = team B start (1v1)
+  // These values can be redefined by start_tile_definitions below, however.
   // Note that the game displays the map reversed vertically in the preview
   // window. For example, player 1 is on team A, which usually starts at the top
   // of the map as defined in this struct, or at the bottom as shown in the
@@ -784,7 +784,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 1AB8 */ parray<be_float, 0x24> unknown_a5[3];
   // In the modification_tiles array, the values are:
   // 10 = blocked by rock (as if the corresponding map_tiles value was 00)
-  // 20 = blocked by fence
+  // 20 = blocked by fence (as if the corresponding map_tiles value was 00)
   // 30-34 = teleporters (2 of each value may be present)
   // 40-44 = traps (one of each type is chosen at random to be a real trap at
   //         battle start time)
