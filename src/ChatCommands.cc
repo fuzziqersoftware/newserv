@@ -496,7 +496,7 @@ static void server_command_playrec(shared_ptr<ServerState> s, shared_ptr<Lobby> 
     shared_ptr<Episode3::BattleRecord> record(new Episode3::BattleRecord(data));
     shared_ptr<Episode3::BattleRecordPlayer> battle_player(
         new Episode3::BattleRecordPlayer(record, s->game_server->get_base()));
-    auto game = create_game_generic(s, c, args.c_str(), u"", 0xFF, 0, flags, nullptr, battle_player);
+    create_game_generic(s, c, args.c_str(), u"", 0xFF, 0, flags, nullptr, battle_player);
   }
 }
 

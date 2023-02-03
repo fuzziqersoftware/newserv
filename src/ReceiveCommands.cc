@@ -1076,7 +1076,21 @@ static bool start_ep3_battle_table_game_if_ready(
   }
 
   // At this point, we've checked all the necessary conditions for a game to
-  // begin.
+  // begin, but create_game_generic can still return null if an internal
+  // precondition fails (though this should never happen for Episode 3 games).
+
+  uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
+  u16string name = tourn ? decode_sjis(tourn->get_name()) : u"<BattleTable>";
+  auto game = create_game_generic(
+      s, game_clients.begin()->second, name, u"", 0xFF, 0, flags);
+  if (!game) {
+    return false;
+  }
+  game->tournament_match = tourn_match;
+  game->clients_to_add.clear();
+  for (const auto& it : game_clients) {
+    game->clients_to_add.emplace(it.first, it.second);
+  }
 
   // Remove all players from the battle table (but don't tell them about this)
   for (const auto& it : game_clients) {
@@ -1107,16 +1121,10 @@ static bool start_ep3_battle_table_game_if_ready(
     }
   }
 
-  uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
-  u16string name = tourn ? decode_sjis(tourn->get_name()) : u"<BattleTable>";
-  auto game = create_game_generic(
-      s, game_clients.begin()->second, name, u"", 0xFF, 0, flags);
-  game->tournament_match = tourn_match;
-  game->clients_to_add.clear();
-  for (const auto& it : game_clients) {
-    game->clients_to_add.emplace(it.first, it.second);
-  }
+  // Add the first client to the game (the remaining clients will be added when
+  // the previous is done loading)
   add_next_game_client(s, game);
+
   return true;
 }
 
@@ -3087,7 +3095,10 @@ shared_ptr<Lobby> create_game_generic(
   uint8_t min_level = ((episode == 0xFF) ? 0 : default_minimum_levels[episode - 1][difficulty]);
   if (!(c->license->privileges & Privilege::FREE_JOIN_GAMES) &&
       (min_level > c->game_data.player()->disp.level)) {
-    throw invalid_argument("level too low for difficulty");
+    // Note: We don't throw here because this is a situation players might
+    // actually encounter while playing the game normally
+    send_lobby_message_box(c, u"Your level is too\nlow for this\ndifficulty");
+    return nullptr;
   }
 
   bool item_tracking_enabled = (c->version() == GameVersion::BB) | s->item_tracking_enabled;
@@ -3200,8 +3211,10 @@ static void on_C1_PC(shared_ptr<ServerState> s, shared_ptr<Client> c,
     flags |= Lobby::Flag::CHALLENGE_MODE;
   }
   auto game = create_game_generic(s, c, cmd.name, cmd.password, 1, cmd.difficulty, flags);
-  s->change_client_lobby(c, game);
-  c->flags |= Client::Flag::LOADING;
+  if (game) {
+    s->change_client_lobby(c, game);
+    c->flags |= Client::Flag::LOADING;
+  }
 }
 
 static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -3257,8 +3270,10 @@ static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   auto game = create_game_generic(
       s, c, name.c_str(), password.c_str(), episode, cmd.difficulty, flags, watched_lobby);
-  s->change_client_lobby(c, game);
-  c->flags |= Client::Flag::LOADING;
+  if (game) {
+    s->change_client_lobby(c, game);
+    c->flags |= Client::Flag::LOADING;
+  }
 }
 
 static void on_C1_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -3277,8 +3292,10 @@ static void on_C1_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
   auto game = create_game_generic(
       s, c, cmd.name, cmd.password, cmd.episode, cmd.difficulty, flags);
-  s->change_client_lobby(c, game);
-  c->flags |= Client::Flag::LOADING;
+  if (game) {
+    s->change_client_lobby(c, game);
+    c->flags |= Client::Flag::LOADING;
+  }
 }
 
 static void on_8A(shared_ptr<ServerState> s, shared_ptr<Client> c,
