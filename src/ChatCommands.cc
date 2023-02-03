@@ -955,7 +955,7 @@ static void server_command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     return;
   }
   if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    send_text_message(c, u"$C4Item tracking is off");
+    send_text_message(c, u"$C4Item tracking is\nnot available");
   } else {
     float min_dist2 = 0.0f;
     uint32_t nearest_item_id = 0xFFFFFFFF;

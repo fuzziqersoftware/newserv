@@ -1405,7 +1405,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 87 */ nullptr,
   /* 88 */ on_subcommand_forward_check_size_game,
   /* 89 */ on_subcommand_forward_check_size_game,
-  /* 8A */ nullptr,
+  /* 8A */ on_subcommand_forward_check_size_game,
   /* 8B */ nullptr,
   /* 8C */ nullptr,
   /* 8D */ on_subcommand_forward_check_size_client,

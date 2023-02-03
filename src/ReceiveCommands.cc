@@ -3101,7 +3101,14 @@ shared_ptr<Lobby> create_game_generic(
     return nullptr;
   }
 
-  bool item_tracking_enabled = (c->version() == GameVersion::BB) | s->item_tracking_enabled;
+  // TODO: We disable item tracking for battle and challenge mode because
+  // players' inventories are reset when they start the quests, and the server
+  // is not notified when this happens. We'll have to implement this anyway for
+  // BB, but for now we ignore it.
+  bool item_tracking_enabled =
+      (c->version() == GameVersion::BB) |
+      (s->item_tracking_enabled &&
+        !(flags & (Lobby::Flag::BATTLE_MODE | Lobby::Flag::CHALLENGE_MODE)));
 
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
