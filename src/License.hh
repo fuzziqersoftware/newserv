@@ -82,6 +82,7 @@ public:
 
   size_t count() const;
 
+  std::shared_ptr<const License> get(uint32_t serial_number) const;
   void add(std::shared_ptr<License> l);
   void remove(uint32_t serial_number);
   std::vector<License> snapshot() const;

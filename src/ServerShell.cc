@@ -114,6 +114,10 @@ Server commands:\n\
       access-key=<access-key> (DC/GC/PC access key)\n\
       serial=<serial-number> (decimal serial number; required for all licenses)\n\
       privileges=<privilege-mask> (can be normal, mod, admin, root, or numeric)\n\
+  update-license <serial-number> <parameters>\n\
+    Update an existing license. <serial-number> specifies which license to\n\
+    update. The options in <parameters> are the same as for the add-license\n\
+    command.\n\
   delete-license <serial-number>\n\
     Delete a license from the server.\n\
   list-licenses\n\
@@ -310,7 +314,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
         }
 
       } else {
-        throw invalid_argument("incorrect field");
+        throw invalid_argument("incorrect field: " + token);
       }
     }
 
@@ -320,6 +324,70 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
 
     this->state->license_manager->add(l);
     fprintf(stderr, "license added\n");
+
+  } else if (command_name == "update-license") {
+    auto tokens = split(command_args, ' ');
+    if (tokens.size() < 2) {
+      throw runtime_error("not enough arguments");
+    }
+    uint32_t serial_number = stoul(tokens[0]);
+    tokens.erase(tokens.begin());
+    auto orig_l = this->state->license_manager->get(serial_number);
+    shared_ptr<License> l(new License(*orig_l));
+
+    for (const string& token : tokens) {
+      if (starts_with(token, "bb-username=")) {
+        if (token.size() >= 32) {
+          throw invalid_argument("username too long");
+        }
+        l->username = token.substr(12);
+
+      } else if (starts_with(token, "bb-password=")) {
+        if (token.size() >= 32) {
+          throw invalid_argument("bb-password too long");
+        }
+        l->bb_password = token.substr(12);
+
+      } else if (starts_with(token, "gc-password=")) {
+        if (token.size() > 20) {
+          throw invalid_argument("gc-password too long");
+        }
+        l->gc_password = token.substr(12);
+
+      } else if (starts_with(token, "access-key=")) {
+        if (token.size() > 23) {
+          throw invalid_argument("access-key is too long");
+        }
+        l->access_key = token.substr(11);
+
+      } else if (starts_with(token, "serial=")) {
+        l->serial_number = stoul(token.substr(7));
+
+      } else if (starts_with(token, "privileges=")) {
+        string mask = token.substr(11);
+        if (mask == "normal") {
+          l->privileges = 0;
+        } else if (mask == "mod") {
+          l->privileges = Privilege::MODERATOR;
+        } else if (mask == "admin") {
+          l->privileges = Privilege::ADMINISTRATOR;
+        } else if (mask == "root") {
+          l->privileges = Privilege::ROOT;
+        } else {
+          l->privileges = stoul(mask);
+        }
+
+      } else {
+        throw invalid_argument("incorrect field: " + token);
+      }
+    }
+
+    if (!l->serial_number) {
+      throw invalid_argument("license does not contain serial number");
+    }
+
+    this->state->license_manager->add(l);
+    fprintf(stderr, "license updated\n");
 
   } else if (command_name == "delete-license") {
     uint32_t serial_number = stoul(command_args);

@@ -163,11 +163,18 @@ void LicenseManager::ban_until(uint32_t serial_number, uint64_t end_time) {
   }
 }
 
+shared_ptr<const License> LicenseManager::get(uint32_t serial_number) const {
+  try {
+    return this->serial_number_to_license.at(serial_number);
+  } catch (const out_of_range&) {
+    throw missing_license();
+  }
+}
+
 void LicenseManager::add(shared_ptr<License> l) {
-  uint32_t serial_number = l->serial_number;
-  this->serial_number_to_license.emplace(serial_number, l);
+  this->serial_number_to_license[l->serial_number] = l;
   if (!l->username.empty()) {
-    this->bb_username_to_license.emplace(l->username, l);
+    this->bb_username_to_license[l->username] = l;
   }
   if (this->autosave) {
     this->save();
