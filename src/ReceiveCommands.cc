@@ -1922,15 +1922,15 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
       if (!(c->license->privileges & Privilege::FREE_JOIN_GAMES)) {
         if (!game->password.empty() && (password != game->password)) {
-          send_message_box(c, u"$C6Incorrect password.");
+          send_lobby_message_box(c, u"$C6Incorrect password.");
           break;
         }
         if (c->game_data.player()->disp.level < game->min_level) {
-          send_message_box(c, u"$C6Your level is too\nlow to join this\ngame.");
+          send_lobby_message_box(c, u"$C6Your level is too\nlow to join this\ngame.");
           break;
         }
         if (c->game_data.player()->disp.level > game->max_level) {
-          send_message_box(c, u"$C6Your level is too\nhigh to join this\ngame.");
+          send_lobby_message_box(c, u"$C6Your level is too\nhigh to join this\ngame.");
           break;
         }
       }
