@@ -608,19 +608,29 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
 
   } else if ((command_name == "chat") || (command_name == "dchat")) {
     auto session = this->get_proxy_session(session_name);
+    bool is_dchat = (command_name == "dchat");
 
-    string data(8, '\0');
-    data.push_back('\x09');
-    data.push_back('E');
-    if (command_name == "dchat") {
-      data += parse_data_string(command_args);
+    if (!is_dchat && (session->version == GameVersion::PC || session->version == GameVersion::BB)) {
+      u16string data(4, u'\0');
+      data.push_back(u'\x09');
+      data.push_back(u'E');
+      data += decode_sjis(command_args);
+      data.push_back(u'\0');
+      data.resize((data.size() + 1) & (~1));
+      session->server_channel.send(0x06, 0x00, data.data(), data.size() * sizeof(char16_t));
     } else {
-      data += command_args;
+      string data(8, '\0');
+      data.push_back('\x09');
+      data.push_back('E');
+      if (is_dchat) {
+        data += parse_data_string(command_args);
+      } else {
+        data += command_args;
+        data.push_back('\0');
+      }
+      data.resize((data.size() + 3) & (~3));
+      session->server_channel.send(0x06, 0x00, data);
     }
-    data.push_back('\0');
-    data.resize((data.size() + 3) & (~3));
-
-    session->server_channel.send(0x06, 0x00, data);
 
   } else if (command_name == "marker") {
     auto session = this->get_proxy_session(session_name);
