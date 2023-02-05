@@ -154,12 +154,11 @@ static void proxy_command_lobby_info(shared_ptr<ServerState>,
       session.remote_guild_card_number);
 
   for (size_t z = 0; z < session.lobby_players.size(); z++) {
-    if (session.lobby_players[z].guild_card_number == 0) {
-      continue;
-    }
     bool is_self = z == session.lobby_client_id;
     bool is_leader = z == session.leader_client_id;
-    if (is_self && is_leader) {
+    if (session.lobby_players[z].guild_card_number == 0) {
+      msg += string_printf("$C0%zX$C7", z);
+    } else if (is_self && is_leader) {
       msg += string_printf("$C6%zX$C7", z);
     } else if (is_self) {
       msg += string_printf("$C2%zX$C7", z);
