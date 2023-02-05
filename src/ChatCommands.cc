@@ -295,11 +295,37 @@ static void server_command_persist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   }
 }
 
+static void server_command_exit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string&) {
+  if (l->is_game()) {
+    if (c->flags & Client::Flag::IS_EPISODE_3) {
+      c->channel.send(0xED, 0x00);
+    } else {
+      send_text_message(c, u"$C6You must return to\nthe lobby first");
+    }
+  } else {
+    send_self_leave_notification(c);
+    if (!(c->flags & Client::Flag::NO_D6)) {
+      send_message_box(c, u"");
+    }
+
+    const auto& port_name = version_to_login_port_name.at(
+        static_cast<size_t>(c->version()));
+    send_reconnect(c, s->connect_address_for_client(c),
+        s->name_to_port_config.at(port_name)->port);
+  }
+}
+
 static void proxy_command_exit(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
   if (session.is_in_game) {
-    send_text_message(session.client_channel, u"$C6You must return to\nthe lobby first");
+    if (session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3) {
+      session.client_channel.send(0xED, 0x00);
+    } else {
+      send_text_message(session.client_channel, u"$C6You must return to\nthe lobby first");
+    }
   } else {
+    session.close_on_disconnect = true;
     session.send_to_game_server();
   }
 }
@@ -1154,7 +1180,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$dbgid",    {server_command_dbgid,              nullptr,                       u"Usage:\ndbgid"}},
     {u"$edit",     {server_command_edit,               nullptr  ,                     u"Usage:\nedit <stat> <value>"}},
     {u"$event",    {server_command_lobby_event,        proxy_command_lobby_event,     u"Usage:\nevent <name>"}},
-    {u"$exit",     {nullptr,                           proxy_command_exit,            u"Usage:\nexit"}},
+    {u"$exit",     {server_command_exit,               proxy_command_exit,            u"Usage:\nexit"}},
     {u"$gc",       {server_command_get_self_card,      proxy_command_get_player_card, u"Usage:\ngc"}},
     {u"$infhp",    {server_command_infinite_hp,        proxy_command_infinite_hp,     u"Usage:\ninfhp"}},
     {u"$inftp",    {server_command_infinite_tp,        proxy_command_infinite_tp,     u"Usage:\ninftp"}},

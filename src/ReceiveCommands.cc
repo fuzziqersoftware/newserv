@@ -126,17 +126,13 @@ static vector<MenuItem> proxy_options_menu_for_client(
 
 
 static void send_client_to_lobby_server(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  static const vector<string> version_to_port_name({
-      "bb-lobby", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"});
-  const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
+  const auto& port_name = version_to_lobby_port_name.at(static_cast<size_t>(c->version()));
   send_reconnect(c, s->connect_address_for_client(c),
       s->name_to_port_config.at(port_name)->port);
 }
 
 static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  static const vector<string> version_to_port_name({
-      "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"});
-  const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
+  const auto& port_name = version_to_proxy_port_name.at(static_cast<size_t>(c->version()));
   uint16_t local_port = s->name_to_port_config.at(port_name)->port;
 
   s->proxy_server->delete_session(c->license->serial_number);
@@ -2215,9 +2211,7 @@ static void on_A0(shared_ptr<ServerState> s, shared_ptr<Client> c,
     send_message_box(c, u"");
   }
 
-  static const vector<string> version_to_port_name({
-      "bb-patch", "console-login", "pc-login", "console-login", "console-login", "bb-init"});
-  const auto& port_name = version_to_port_name.at(static_cast<size_t>(c->version()));
+  const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(c->version()));
 
   send_reconnect(c, s->connect_address_for_client(c),
       s->name_to_port_config.at(port_name)->port);

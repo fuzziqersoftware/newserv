@@ -10,6 +10,13 @@ using namespace std;
 
 
 
+const vector<string> version_to_login_port_name({
+    "bb-patch", "console-login", "pc-login", "console-login", "console-login", "bb-init"});
+const vector<string> version_to_lobby_port_name({
+    "bb-patch", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"});
+const vector<string> version_to_proxy_port_name({
+    "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"});
+
 uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
   switch (sub_version) {
     case -1: // Initial check (before sub_version recognition)

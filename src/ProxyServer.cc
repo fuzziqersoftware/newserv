@@ -715,9 +715,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     update_client_config_cmd.cfg = this->newserv_client_config.cfg;
     this->client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
 
-    static const vector<string> version_to_port_name({
-        "bb-patch", "console-login", "pc-login", "console-login", "console-login", "bb-init"});
-    const auto& port_name = version_to_port_name.at(static_cast<size_t>(
+    const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(
         this->version));
 
     S_Reconnect_19 reconnect_cmd = {{
