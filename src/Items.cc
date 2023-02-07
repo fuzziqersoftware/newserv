@@ -175,7 +175,8 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
   // On PC (and presumably DC), the client sends a 6x29 after this to delete the
   // used item. On GC and later versions, this does not happen, so we should
   // delete the item here.
-  bool should_delete_item = (c->version != GameVersion::DC) && (c->version != GameVersion::PC);
+  bool should_delete_item = (c->version() != GameVersion::DC) &&
+      (c->version() != GameVersion::PC);
 
   auto& item = c->game_data.player()->inventory.items[item_index];
   if (item.data.data1w[0] == 0x0203) { // technique disk
