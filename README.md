@@ -137,20 +137,20 @@ For example, the GameCube version of Lost HEAT SWORD is in two files named `q058
 
 There are multiple PSO quest formats out there; newserv supports most of them. It can also decode any known format to standard .bin/.dat format. Specifically:
 
-| Format                    | Extension             | Supported online? | Decode action    |
-|---------------------------|-----------------------|-------------------|------------------|
-| Compressed                | .bin and .dat         | Yes               | None (1)         |
-| Compressed Ep3            | .bin or .mnm          | Yes (4)           | None (1)         |
-| Uncompressed              | .bind and .datd       | Yes               | compress-prs (2) |
-| Uncompressed Ep3          | .bind or .mnmd        | Yes (4)           | compress-prs (2) |
-| Unencrypted GCI           | .bin.gci and .dat.gci | Yes               | decode-gci       |
-| Encrypted GCI with key    | .bin.gci and .dat.gci | Yes               | decode-gci       |
-| Encrypted GCI without key | .bin.gci and .dat.gci | No                | decode-gci (3)   |
-| Ep3 GCI                   | .bin.gci or .mnm.gci  | Download only     | decode-gci       |
-| Encrypted DLQ             | .bin.dlq and .dat.dlq | Yes               | decode-dlq       |
-| Ep3 DLQ                   | .bin.dlq or .mnm.dlq  | Download only     | decode-dlq       |
-| Online QST                | .qst                  | Yes               | decode-qst       |
-| Download QST              | .qst                  | Yes               | decode-qst       |
+| Format                    | Extension             | Supported     | Decode action    |
+|---------------------------|-----------------------|---------------|------------------|
+| Compressed                | .bin and .dat         | Yes           | None (1)         |
+| Compressed Ep3            | .bin or .mnm          | Yes (4)       | None (1)         |
+| Uncompressed              | .bind and .datd       | Yes           | compress-prs (2) |
+| Uncompressed Ep3          | .bind or .mnmd        | Yes (4)       | compress-prs (2) |
+| Unencrypted GCI           | .bin.gci and .dat.gci | Yes           | decode-gci       |
+| Encrypted GCI with key    | .bin.gci and .dat.gci | Yes           | decode-gci       |
+| Encrypted GCI without key | .bin.gci and .dat.gci | No            | decode-gci (3)   |
+| Ep3 GCI                   | .bin.gci or .mnm.gci  | Download only | decode-gci       |
+| Encrypted DLQ             | .bin.dlq and .dat.dlq | Yes           | decode-dlq       |
+| Ep3 DLQ                   | .bin.dlq or .mnm.dlq  | Download only | decode-dlq       |
+| Online QST                | .qst                  | Yes           | decode-qst       |
+| Download QST              | .qst                  | Yes           | decode-qst       |
 
 *Notes:*
 1. *This is the default format. You can convert these to uncompressed format by running `newserv decompress-prs FILENAME.bin FILENAME.bind` (and similarly for .dat -> .datd)*
