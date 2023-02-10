@@ -1422,11 +1422,17 @@ static HandlerResult S_66_69_E9(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult C_98(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+static HandlerResult C_98(shared_ptr<ServerState> s,
+    ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
   session.area = 0x0F;
   session.is_in_game = false;
-  return HandlerResult::Type::FORWARD;
+  if (session.version == GameVersion::GC ||
+      session.version == GameVersion::XB ||
+      session.version == GameVersion::BB) {
+    return C_GXB_61(s, session, command, flag, data);
+  } else {
+    return HandlerResult::Type::FORWARD;
+  }
 }
 
 static HandlerResult C_06(shared_ptr<ServerState> s,
