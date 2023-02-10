@@ -149,7 +149,8 @@ There are multiple PSO quest formats out there; newserv supports most of them. I
 | Ep3 GCI                   | .bin.gci or .mnm.gci  | Download only     | decode-gci       |
 | Encrypted DLQ             | .bin.dlq and .dat.dlq | Yes               | decode-dlq       |
 | Ep3 DLQ                   | .bin.dlq or .mnm.dlq  | Download only     | decode-dlq       |
-| QST                       | .qst                  | Yes               | decode-qst       |
+| Online QST                | .qst                  | Yes               | decode-qst       |
+| Download QST              | .qst                  | Yes               | decode-qst       |
 
 *Notes:*
 1. *This is the default format. You can convert these to uncompressed format by running `newserv decompress-prs FILENAME.bin FILENAME.bind` (and similarly for .dat -> .datd)*

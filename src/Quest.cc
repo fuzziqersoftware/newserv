@@ -859,6 +859,7 @@ static pair<string, string> decode_qst_t(FILE* f) {
   string internal_dat_filename;
   uint32_t bin_file_size = 0;
   uint32_t dat_file_size = 0;
+  Quest::FileFormat subformat = Quest::FileFormat::QST; // Stand-in for unknown
   while (!r.eof()) {
     // Handle BB's implicit 8-byte command alignment
     static constexpr size_t alignment = sizeof(HeaderT);
@@ -869,7 +870,22 @@ static pair<string, string> decode_qst_t(FILE* f) {
     }
 
     const auto& header = r.get<HeaderT>();
-    if (header.command == 0x44) {
+
+    if (header.command == 0x44 || header.command == 0x13) {
+      if (subformat == Quest::FileFormat::QST) {
+        subformat = Quest::FileFormat::BIN_DAT;
+      } else if (subformat != Quest::FileFormat::BIN_DAT) {
+        throw runtime_error("QST file contains mixed download and non-download commands");
+      }
+    } else if (header.command == 0xA6 || header.command == 0xA7) {
+      if (subformat == Quest::FileFormat::QST) {
+        subformat = Quest::FileFormat::BIN_DAT_DLQ;
+      } else if (subformat != Quest::FileFormat::BIN_DAT_DLQ) {
+        throw runtime_error("QST file contains mixed download and non-download commands");
+      }
+    }
+
+    if (header.command == 0x44 || header.command == 0xA6) {
       if (header.size != sizeof(HeaderT) + sizeof(OpenFileT)) {
         throw runtime_error("qst open file command has incorrect size");
       }
@@ -896,7 +912,7 @@ static pair<string, string> decode_qst_t(FILE* f) {
         throw runtime_error("qst contains non-bin, non-dat file");
       }
 
-    } else if (header.command == 0x13) {
+    } else if (header.command == 0x13 || header.command == 0xA7) {
       if (header.size != sizeof(HeaderT) + sizeof(S_WriteFile_13_A7)) {
         throw runtime_error("qst write file command has incorrect size");
       }
@@ -935,25 +951,30 @@ static pair<string, string> decode_qst_t(FILE* f) {
     throw runtime_error("dat file does not match expected size");
   }
 
+  if (subformat == Quest::FileFormat::BIN_DAT_DLQ) {
+    bin_contents = Quest::decode_dlq(bin_contents);
+    dat_contents = Quest::decode_dlq(dat_contents);
+  }
+
   return make_pair(bin_contents, dat_contents);
 }
 
 pair<string, string> Quest::decode_qst(const string& filename) {
   auto f = fopen_unique(filename, "rb");
 
-  // qst files start with an open file command, but the format differs depending
+  // QST files start with an open file command, but the format differs depending
   // on the PSO version that the qst file is for. We can detect the format from
   // the first 4 bytes in the file:
-  // - BB: 58 00 44 00
-  // - PC: 3C ?? 44 00
-  // - DC/V3: 44 ?? 3C 00
+  // - BB:    58 00 44 00 or 58 00 A6 00
+  // - PC:    3C 00 44 ?? or 3C 00 A6 ??
+  // - DC/V3: 44 ?? 3C 00 or A6 ?? 3C 00
   uint32_t signature = freadx<be_uint32_t>(f.get());
   fseek(f.get(), 0, SEEK_SET);
-  if (signature == 0x58004400) {
+  if (signature == 0x58004400 || signature == 0x5800A600) {
     return decode_qst_t<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(f.get());
-  } else if ((signature & 0xFF00FFFF) == 0x3C004400) {
+  } else if ((signature & 0xFFFFFF00) == 0x3C004400 || (signature & 0xFFFFFF00) == 0x3C00A600) {
     return decode_qst_t<PSOCommandHeaderPC, S_OpenFile_PC_V3_44_A6>(f.get());
-  } else if ((signature & 0xFF00FFFF) == 0x44003C00) {
+  } else if ((signature & 0xFF00FFFF) == 0x44003C00 || (signature & 0xFF00FFFF) == 0xA6003C00) {
     return decode_qst_t<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(f.get());
   } else {
     throw runtime_error("invalid qst file format");
