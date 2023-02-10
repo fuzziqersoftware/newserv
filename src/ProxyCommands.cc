@@ -989,25 +989,37 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
 
 static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
-  if (session.options.enable_chat_filter) {
-    if (session.version == GameVersion::BB) {
-      auto& pd = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB), 0xFFFF);
-      add_color_inplace(pd.info_board.data(), pd.info_board.size());
+  bool modified = false;
+  // TODO: We should check if the info board text was actually modified and
+  // return MODIFIED if so.
 
+  if (session.version == GameVersion::BB) {
+    auto& pd = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB), 0xFFFF);
+    if (session.options.enable_chat_filter) {
+      add_color_inplace(pd.info_board.data(), pd.info_board.size());
+    }
+    if (session.options.red_name && pd.disp.name_color != 0xFFFF0000) {
+      pd.disp.name_color = 0xFFFF0000;
+      modified = true;
+    }
+
+  } else {
+    PSOPlayerDataV3* pd;
+    if (flag == 4) { // Episode 3
+      pd = reinterpret_cast<PSOPlayerDataV3*>(&check_size_t<PSOPlayerDataGCEp3>(data));
     } else {
-      PSOPlayerDataV3* pd;
-      if (flag == 4) { // Episode 3
-        pd = reinterpret_cast<PSOPlayerDataV3*>(&check_size_t<PSOPlayerDataGCEp3>(data));
-      } else {
-        pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3), 0xFFFF);
-      }
+      pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3), 0xFFFF);
+    }
+    if (session.options.enable_chat_filter) {
       add_color_inplace(pd->info_board.data(), pd->info_board.size());
+    }
+    if (session.options.red_name && pd->disp.name_color != 0xFFFF0000) {
+      pd->disp.name_color = 0xFFFF0000;
+      modified = true;
     }
   }
 
-  // TODO: We should check if the info board text was actually modified and
-  // return MODIFIED if so.
-  return HandlerResult::Type::FORWARD;
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult C_GX_D9(shared_ptr<ServerState>,

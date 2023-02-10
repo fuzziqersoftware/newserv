@@ -66,9 +66,10 @@ namespace ProxyOptionsMenuItemID {
   constexpr uint32_t BLOCK_EVENTS =        0xAA5555AA;
   constexpr uint32_t BLOCK_PATCHES =       0xAA6666AA;
   constexpr uint32_t SAVE_FILES =          0xAA7777AA;
-  constexpr uint32_t SUPPRESS_LOGIN =      0xAA8888AA;
-  constexpr uint32_t SKIP_CARD =           0xAA9999AA;
-  constexpr uint32_t EP3_INFINITE_MESETA = 0xAAAAAAAA;
+  constexpr uint32_t RED_NAME =            0xAA8888AA;
+  constexpr uint32_t SUPPRESS_LOGIN =      0xAA9999AA;
+  constexpr uint32_t SKIP_CARD =           0xAAAAAAAA;
+  constexpr uint32_t EP3_INFINITE_MESETA = 0xAABBBBAA;
 }
 
 
