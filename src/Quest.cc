@@ -261,9 +261,8 @@ struct PSOVMSFileHeader {
       return crc;
     };
 
-    uint16_t zero = 0;
     uint16_t crc = add_data(this, offsetof(PSOVMSFileHeader, crc), 0);
-    crc = add_data(&zero, sizeof(uint16_t), crc);
+    crc = add_data("\0\0", 2, crc);
     crc = add_data(&this->data_size,
         sizeof(PSOVMSFileHeader) - offsetof(PSOVMSFileHeader, data_size) + this->num_icons * 0x200 + this->data_size, crc);
     return (crc == this->crc);
