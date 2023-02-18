@@ -181,7 +181,9 @@ static HandlerResult S_G_9A(shared_ptr<ServerState>,
   cmd.access_key = session.license->access_key;
   cmd.serial_number2 = cmd.serial_number;
   cmd.access_key2 = cmd.access_key;
-  cmd.name = session.character_name;
+  if (!session.options.blank_name) {
+    cmd.name = session.character_name;
+  }
   cmd.client_config.data = session.remote_client_config_data;
   cmd.extension.menu_id = 0;
   cmd.extension.lobby_id = 0;
@@ -336,7 +338,9 @@ static HandlerResult S_V123P_02_17(
         cmd.access_key.clear_after(8);
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
-        cmd.name = session.character_name;
+        if (!session.options.blank_name) {
+          cmd.name = session.character_name;
+        }
         session.server_channel.send(0x9D, 0x00, &cmd, sizeof(cmd));
         return HandlerResult::Type::SUPPRESS;
       }
@@ -384,7 +388,9 @@ static HandlerResult S_V123P_02_17(
       cmd.access_key = fake_access_key_str;
       cmd.serial_number2 = cmd.serial_number;
       cmd.access_key2 = cmd.access_key;
-      cmd.name = session.character_name;
+      if (!session.options.blank_name) {
+        cmd.name = session.character_name;
+      }
       cmd.client_config.data = session.remote_client_config_data;
       cmd.extension.menu_id = 0;
       cmd.extension.lobby_id = 0;
@@ -998,6 +1004,10 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     if (session.options.enable_chat_filter) {
       add_color_inplace(pd.info_board.data(), pd.info_board.size());
     }
+    if (session.options.blank_name) {
+      pd.disp.name.clear();
+      modified = true;
+    }
     if (session.options.red_name && pd.disp.name_color != 0xFFFF0000) {
       pd.disp.name_color = 0xFFFF0000;
       modified = true;
@@ -1012,6 +1022,10 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     }
     if (session.options.enable_chat_filter) {
       add_color_inplace(pd->info_board.data(), pd->info_board.size());
+    }
+    if (session.options.blank_name) {
+      pd->disp.name.clear();
+      modified = true;
     }
     if (session.options.red_name && pd->disp.name_color != 0xFFFF0000) {
       pd->disp.name_color = 0xFFFF0000;

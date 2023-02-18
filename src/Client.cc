@@ -41,6 +41,7 @@ ClientOptions::ClientOptions()
     zero_remote_guild_card(false),
     ep3_infinite_meseta(false),
     red_name(false),
+    blank_name(false),
     function_call_return_value(-1) { }
 
 

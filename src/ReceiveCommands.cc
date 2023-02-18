@@ -82,6 +82,7 @@ static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descrip
   {ProxyOptionsMenuItemID::BLOCK_PATCHES, u"Disable patches sent\nby the remote server"},
   {ProxyOptionsMenuItemID::SAVE_FILES, u"Save local copies of\nfiles from the\nremote server\n(quests, etc.)"},
   {ProxyOptionsMenuItemID::RED_NAME, u"Set your name\ncolor to red"},
+  {ProxyOptionsMenuItemID::BLANK_NAME, u"Suppress your\ncharacter name\nduring login"},
   {ProxyOptionsMenuItemID::SUPPRESS_LOGIN, u"Use an alternate\nlogin sequence"},
   {ProxyOptionsMenuItemID::SKIP_CARD, u"Use an alternate\nvalue for your initial\nGuild Card"},
 });
@@ -118,6 +119,7 @@ static vector<MenuItem> proxy_options_menu_for_client(
   }
   if (s->proxy_enable_login_options) {
     add_option(ProxyOptionsMenuItemID::RED_NAME, c->options.red_name, u"Red name");
+    add_option(ProxyOptionsMenuItemID::BLANK_NAME, c->options.blank_name, u"Blank name");
     add_option(ProxyOptionsMenuItemID::SUPPRESS_LOGIN, c->options.suppress_remote_login, u"Skip login");
     add_option(ProxyOptionsMenuItemID::SKIP_CARD, c->options.zero_remote_guild_card, u"Skip card");
   }
@@ -1827,6 +1829,9 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::RED_NAME:
           c->options.red_name = !c->options.red_name;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::BLANK_NAME:
+          c->options.blank_name = !c->options.blank_name;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SUPPRESS_LOGIN:
           c->options.suppress_remote_login = !c->options.suppress_remote_login;

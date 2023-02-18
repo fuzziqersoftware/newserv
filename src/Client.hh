@@ -43,6 +43,7 @@ struct ClientOptions {
   bool zero_remote_guild_card;
   bool ep3_infinite_meseta;
   bool red_name;
+  bool blank_name;
   int64_t function_call_return_value; // -1 = don't block function calls
 
   ClientOptions();
