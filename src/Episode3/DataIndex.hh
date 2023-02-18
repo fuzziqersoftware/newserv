@@ -582,29 +582,48 @@ struct DeckDefinition {
 } __attribute__((packed)); // 0x84 bytes in total
 
 struct PlayerConfig {
-  // Offsets in comments in this struct are relative to start of 61/98 command
-  /* 0728 */ parray<uint8_t, 0x154> unknown_a1;
-  /* 087C */ uint8_t is_encrypted;
-  /* 087D */ uint8_t basis;
-  /* 087E */ parray<uint8_t, 2> unknown_a3;
+  // The first offsets in the comments in this struct are relative to start of
+  // 61/98 command; the second are relative to the start of the
+  // Ep3PlayerDataSegment structure in the reverse-engineering project.
+  // TODO: Fill in the unknown fields here by looking around callsites of
+  // get_player_data_segment
+  /* 0728:---- */ parray<uint8_t, 0x154> unknown_a1;
+  /* 087C:0000 */ uint8_t is_encrypted;
+  /* 087D:0001 */ uint8_t basis;
+  /* 087E:0002 */ parray<uint8_t, 2> unused;
   // The following fields (here through the beginning of decks) are encrypted
   // using the trivial algorithm, with the basis specified above, if
   // is_encrypted is equal to 1.
-  /* 0880 */ parray<uint8_t, 0x2F0> card_counts;
-  /* 0B70 */ parray<uint8_t, 0xF8> unknown_a4;
-  /* 0C9A */ parray<be_uint16_t, 50> unknown_a5;
-  // This field appears to be doubly-encrypted, likely with the same trivial
-  // algorithm (but not the same basis).
-  /* 0CCC */ parray<uint8_t, 0x70> unknown_a6;
-  /* 0D3C */ parray<uint8_t, 0xE20> unknown_a7;
-  /* 1B5C */ parray<DeckDefinition, 25> decks;
-  /* 2840 */ uint64_t unknown_a8;
-  /* 2848 */ be_uint32_t offline_clv_exp; // CLvOff = this / 100
-  /* 284C */ be_uint32_t online_clv_exp; // CLvOn = this / 100
-  /* 2850 */ parray<uint8_t, 0x14C> unknown_a9;
-  /* 299C */ ptext<char, 0x10> name;
-  // Other records are probably somewhere in here - e.g. win/loss, play time, etc.
-  /* 29AC */ parray<uint8_t, 0xCC> unknown_a10;
+  // It appears the card counts field in this structure is actually 1000 (0x3E8)
+  // bytes long, even though in every other place the counts array appears it's
+  // 0x2F0 bytes long. They presumably did this because of the checksum logic.
+  /* 0880:0004 */ parray<uint8_t, 1000> card_counts;
+  // These are a form of checksum of the card counts array, but they don't cover
+  // the entire array and instead read from later parts of this structure. This
+  // appears to be due to a copy/paste error in the original code. The algorithm
+  // sums the card_counts [0] through [19] and places that sum in
+  // card_count_checksums[0], then sums card counts [50] through [69] and places
+  // that sum in card_count_checksums[1], etc. Presumably they intended to use
+  // 20 as the stride instead of 50, which would have exactly covered the entire
+  // card_counts array.
+  /* 0C68:03EC */ parray<be_uint16_t, 50> card_count_checksums;
+  // Yes, these are actually 64-bit integers. They include card IDs and some
+  // other data, encoded in a way I don't fully understand yet.
+  /* 0CCC:0450 */ parray<be_uint64_t, 0x1C2> unknown_a4;
+  /* 1ADC:1260 */ parray<uint8_t, 0x80> unknown_a7;
+  /* 1B5C:12E0 */ parray<DeckDefinition, 25> decks;
+  /* 2840:1FC4 */ parray<uint8_t, 0x08> unknown_a8;
+  /* 2848:1FCC */ be_uint32_t offline_clv_exp; // CLvOff = this / 100
+  /* 284C:1FD0 */ be_uint32_t online_clv_exp; // CLvOn = this / 100
+  struct UnknownA9 {
+    /* 00 */ be_uint32_t unknown_a1;
+    /* 04 */ ptext<char, 0x18> unknown_a2;
+  } __attribute__((packed));
+  /* 2850:1FD4 */ parray<UnknownA9, 9> unknown_a9;
+  /* 294C:20D0 */ parray<uint8_t, 0x50> unknown_a10;
+  /* 299C:2120 */ ptext<char, 0x10> name;
+  /* 29AC:2130 */ parray<uint8_t, 0xCC> unknown_a11;
+  /* 2A78:21FC */
 } __attribute__((packed));
 
 enum class HPType : uint8_t {

@@ -370,6 +370,8 @@ struct PlayerChallengeDataV3 {
     parray<UnknownPair, 3> unknown_a6; // 0x18 bytes
     parray<uint8_t, 0x28> unknown_a7;
   } __attribute__((packed)) unknown_a1; // 0x100 bytes
+  // On Episode 3, unknown_a2[0] is win count, [1] is loss count, and [4] is
+  // disconnect count
   parray<le_uint16_t, 8> unknown_a2;
   parray<le_uint32_t, 2> unknown_a3;
 } __attribute__((packed)); // 0x11C bytes

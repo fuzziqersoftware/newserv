@@ -1016,7 +1016,17 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
   } else {
     PSOPlayerDataV3* pd;
     if (flag == 4) { // Episode 3
-      pd = reinterpret_cast<PSOPlayerDataV3*>(&check_size_t<PSOPlayerDataGCEp3>(data));
+      auto& ep3_pd = check_size_t<PSOPlayerDataGCEp3>(data);
+      if (ep3_pd.ep3_config.is_encrypted) {
+        decrypt_trivial_gci_data(
+            &ep3_pd.ep3_config.card_counts,
+            offsetof(Episode3::PlayerConfig, decks) - offsetof(Episode3::PlayerConfig, card_counts),
+            ep3_pd.ep3_config.basis);
+        ep3_pd.ep3_config.is_encrypted = 0;
+        ep3_pd.ep3_config.basis = 0;
+        modified = true;
+      }
+      pd = reinterpret_cast<PSOPlayerDataV3*>(&ep3_pd);
     } else {
       pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3), 0xFFFF);
     }
