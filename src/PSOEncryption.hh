@@ -41,7 +41,7 @@ protected:
 
 
 
-class PSORC4Encryption : public PSOEncryption {
+class PSOLFGEncryption : public PSOEncryption {
 public:
   virtual void encrypt(void* data, size_t size, bool advance = true);
   void encrypt_big_endian(void* data, size_t size, bool advance = true);
@@ -50,7 +50,7 @@ public:
   uint32_t next(bool advance = true);
 
 protected:
-  explicit PSORC4Encryption(uint32_t seed, size_t stream_length, size_t end_offset);
+  explicit PSOLFGEncryption(uint32_t seed, size_t stream_length, size_t end_offset);
 
   template <typename LongT>
   void encrypt_t(void* data, size_t size, bool advance);
@@ -63,7 +63,7 @@ protected:
   uint32_t seed;
 };
 
-class PSOV2Encryption : public PSORC4Encryption {
+class PSOV2Encryption : public PSOLFGEncryption {
 public:
   explicit PSOV2Encryption(uint32_t seed);
 
@@ -75,7 +75,7 @@ protected:
   static constexpr size_t STREAM_LENGTH = 56;
 };
 
-class PSOV3Encryption : public PSORC4Encryption {
+class PSOV3Encryption : public PSOLFGEncryption {
 public:
   explicit PSOV3Encryption(uint32_t key);
 

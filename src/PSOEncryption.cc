@@ -23,11 +23,11 @@ void PSOEncryption::decrypt(void* data, size_t size, bool advance) {
 
 
 
-PSORC4Encryption::PSORC4Encryption(
+PSOLFGEncryption::PSOLFGEncryption(
     uint32_t seed, size_t stream_length, size_t end_offset)
   : stream(stream_length, 0), offset(0), end_offset(end_offset), seed(seed) { }
 
-uint32_t PSORC4Encryption::next(bool advance) {
+uint32_t PSOLFGEncryption::next(bool advance) {
   if (this->offset == this->end_offset) {
     this->update_stream();
   }
@@ -39,7 +39,7 @@ uint32_t PSORC4Encryption::next(bool advance) {
 }
 
 template <typename LongT>
-void PSORC4Encryption::encrypt_t(void* vdata, size_t size, bool advance) {
+void PSOLFGEncryption::encrypt_t(void* vdata, size_t size, bool advance) {
   if (size & 3) {
     throw invalid_argument("size must be a multiple of 4");
   }
@@ -54,15 +54,15 @@ void PSORC4Encryption::encrypt_t(void* vdata, size_t size, bool advance) {
   }
 }
 
-void PSORC4Encryption::encrypt(void* vdata, size_t size, bool advance) {
+void PSOLFGEncryption::encrypt(void* vdata, size_t size, bool advance) {
   this->encrypt_t<le_uint32_t>(vdata, size, advance);
 }
 
-void PSORC4Encryption::encrypt_big_endian(void* vdata, size_t size, bool advance) {
+void PSOLFGEncryption::encrypt_big_endian(void* vdata, size_t size, bool advance) {
   this->encrypt_t<be_uint32_t>(vdata, size, advance);
 }
 
-void PSORC4Encryption::encrypt_both_endian(
+void PSOLFGEncryption::encrypt_both_endian(
     void* le_vdata, void* be_vdata, size_t size, bool advance) {
   if (size & 3) {
     throw invalid_argument("size must be a multiple of 4");
@@ -84,7 +84,7 @@ void PSORC4Encryption::encrypt_both_endian(
 
 
 PSOV2Encryption::PSOV2Encryption(uint32_t seed)
-  : PSORC4Encryption(seed, this->STREAM_LENGTH + 1, this->STREAM_LENGTH) {
+  : PSOLFGEncryption(seed, this->STREAM_LENGTH + 1, this->STREAM_LENGTH) {
   uint32_t esi, ebx, edi, eax, edx, var1;
   esi = 1;
   ebx = this->seed;
@@ -138,7 +138,7 @@ PSOEncryption::Type PSOV2Encryption::type() const {
 
 
 PSOV3Encryption::PSOV3Encryption(uint32_t seed)
-  : PSORC4Encryption(seed, this->STREAM_LENGTH, this->STREAM_LENGTH) {
+  : PSOLFGEncryption(seed, this->STREAM_LENGTH, this->STREAM_LENGTH) {
   uint32_t x, y, basekey, source1, source2, source3;
   basekey = 0;
 
