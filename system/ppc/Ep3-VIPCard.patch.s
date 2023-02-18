@@ -15,14 +15,7 @@ start:
   # But we leave it in to be consistent with patches for Episodes 1&2.
   .include InitClearCaches
 
-  # First, make sure this is actually Episode 3 USA; if not, do nothing
-  lis    r4, 0x4750
-  ori    r4, r4, 0x5345 # 'GPSE'
-  lis    r5, 0x8000
-  lwz    r5, [r5]
-  li     r3, -1
-  cmp    r4, r5
-  bnelr
+  .include Episode3USAOnly
 
   # Call seq_var_set(7000) - this gives the local player a VIP card
   li     r3, 7000

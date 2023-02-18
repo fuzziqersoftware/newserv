@@ -22,21 +22,14 @@ start:
   # But we leave it in to be consistent with patches for Episodes 1&2.
   .include InitClearCaches
 
+  .include Episode3USAOnly
+
   stwu   [r1 - 0x20], r1
   mflr   r0
   stw    [r1 + 0x24], r0
   stw    [r1 + 0x10], r31
   stw    [r1 + 0x0C], r30
   stw    [r1 + 0x08], r29
-
-  # First, make sure this is actually Episode 3 USA; if not, do nothing
-  lis    r4, 0x4750
-  ori    r4, r4, 0x5345 # 'GPSE'
-  lis    r5, 0x8000
-  lwz    r5, [r5]
-  li     r3, -1
-  cmp    r4, r5
-  bne    skip_all
 
   # Write a short hook that updates our editors table when TEditor_destroy() is
   # called
