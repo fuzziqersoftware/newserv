@@ -32,11 +32,11 @@ const unordered_set<uint32_t> v2_crypt_initial_client_commands({
   0x00280090, // (17) DCv1 license check
   0x00B00093, // (02) DCv1 login
   0x01140093, // (02) DCv1 extended login
-  0x00E0009A, // (17) DCv2 license check
-  0x00CC009D, // (02) DCv2 login
-  0x00CC019D, // (02) DCv2 login (UDP off)
-  0x0130009D, // (02) DCv2 extended login
-  0x0130019D, // (02) DCv2 extended login (UDP off)
+  0x00E0009A, // (17) DCv2/GCNTE license check
+  0x00CC009D, // (02) DCv2/GCNTE login
+  0x00CC019D, // (02) DCv2/GCNTE login (UDP off)
+  0x0130009D, // (02) DCv2/GCNTE extended login
+  0x0130019D, // (02) DCv2/GCNTE extended login (UDP off)
   // Note: PSO PC initial commands are not listed here because we don't use a
   // detector encryption for PSO PC (instead, we use the split reconnect command
   // to send PC to a different port).

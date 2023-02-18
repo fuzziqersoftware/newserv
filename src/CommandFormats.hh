@@ -575,7 +575,7 @@ struct C_MenuItemInfoRequest_09 {
 
 // 0B: Invalid command
 
-// 0C: Create game (DCv1)
+// 0C (C->S): Create game (DCv1)
 // Same format as C1, but fields not supported by v1 (e.g. episode, v2 mode) are
 // unused.
 
@@ -652,7 +652,8 @@ struct C_MenuSelection_DC_V3_10_Flag03 : C_MenuSelection_10_Flag03<char> { } __p
 struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<char16_t> { } __packed__;
 
 // 11 (S->C): Ship info
-// Same format as 01 command.
+// Same format as 01 command. The text appears in a small box in the lower-left
+// corner (on V3/BB) or lower-right corner of the screen.
 
 // 12 (S->C): Valid but ignored (PC/V3/BB)
 // TODO: Check if this command exists on DC v1/v2.
@@ -1464,8 +1465,10 @@ struct C_CharSaveInfo_V3_BB_96 {
 // Client will respond with a B1 command if header.flag is nonzero.
 
 // 98 (C->S): Leave game
-// Same format as 61 command.
-// Client will send an 84 when it's ready to join a lobby.
+// Same format as 61 command. The server should update its view of the client's
+// player data and remove the client from the game it's in (if any), but should
+// NOT assign it to an available lobby. The client will send an 84 when it's
+// ready to join a lobby.
 
 // 99 (C->S): Server time accepted
 // No arguments
