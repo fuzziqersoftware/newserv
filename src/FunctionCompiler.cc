@@ -118,6 +118,7 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
   ret->arch = arch;
   ret->name = name;
   ret->index = 0;
+  ret->hide_from_patches_menu = false;
 
   if (arch == CompiledFunctionCode::Architecture::POWERPC) {
     auto assembled = PPC32Emulator::assemble(text, {directory});
@@ -133,6 +134,8 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
       reloc_indexes.emplace(it.second / 4);
     } else if (starts_with(it.first, "newserv_index_")) {
       ret->index = stoul(it.first.substr(14), nullptr, 16);
+    } else if (it.first == "hide_from_patches_menu") {
+      ret->hide_from_patches_menu = true;
     }
   }
 
@@ -206,8 +209,10 @@ vector<MenuItem> FunctionCodeIndex::patch_menu() const {
   ret.emplace_back(PatchesMenuItemID::GO_BACK, u"Go back", u"", 0);
   for (const auto& it : this->name_to_patch_function) {
     const auto& fn = it.second;
-    ret.emplace_back(fn->menu_item_id, decode_sjis(fn->name), u"",
-        MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+    if (!fn->hide_from_patches_menu) {
+      ret.emplace_back(fn->menu_item_id, decode_sjis(fn->name), u"",
+          MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+    }
   }
   return ret;
 }

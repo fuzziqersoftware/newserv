@@ -33,6 +33,7 @@ struct CompiledFunctionCode {
   std::string name;
   uint32_t index; // 0 = unused (not registered in index_to_function)
   uint32_t menu_item_id;
+  bool hide_from_patches_menu;
 
   bool is_big_endian() const;
 

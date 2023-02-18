@@ -1,4 +1,4 @@
-# This gives you a VIP card in PSO Episode 3 USA.
+# This patch gives you a VIP card in PSO Episode 3 USA.
 
 # This patch is only for PSO Episode 3 USA, which means it requires the
 # EnableEpisode3SendFunctionCall option to be enabled in config.json. If that

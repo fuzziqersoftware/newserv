@@ -12,6 +12,8 @@
 # $patch command, since the client will likely crash if the player is not in a
 # game or lobby when the patch runs.
 
+hide_from_patches_menu:
+
 entry_ptr:
 reloc0:
   .offsetof start

@@ -1,4 +1,13 @@
-# This patch gives you the maximum number of each card in Episode 3 USA.
+# This patch gives you the maximum number of each card. It only works if used
+# in-game, which means it must be used with the $patch command (and not selected
+# from the Patches menu).
+
+# This patch is only for PSO Episode 3 USA, which means it requires the
+# EnableEpisode3SendFunctionCall option to be enabled in config.json. If that
+# option is disabled, the Patches menu won't appear for the client. If this
+# patch is run on a different client version, it will do nothing.
+
+hide_from_patches_menu:
 
 entry_ptr:
 reloc0:
