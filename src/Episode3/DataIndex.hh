@@ -598,14 +598,14 @@ struct PlayerConfig {
   // bytes long, even though in every other place the counts array appears it's
   // 0x2F0 bytes long. They presumably did this because of the checksum logic.
   /* 0880:0004 */ parray<uint8_t, 1000> card_counts;
-  // These are a form of checksum of the card counts array, but they don't cover
-  // the entire array and instead read from later parts of this structure. This
-  // appears to be due to a copy/paste error in the original code. The algorithm
-  // sums the card_counts [0] through [19] and places that sum in
-  // card_count_checksums[0], then sums card counts [50] through [69] and places
-  // that sum in card_count_checksums[1], etc. Presumably they intended to use
-  // 20 as the stride instead of 50, which would have exactly covered the entire
-  // card_counts array.
+  // These appear to be an attempt at checksumming the card counts array, but
+  // the algorithm don't cover the entire array and instead reads from later
+  // parts of this structure. This appears to be due to a copy/paste error in
+  // the original code. The algorithm sums card_counts [0] through [19] and puts
+  // the result in card_count_checksums[0], then sums card counts [50] through
+  // [69] and puts the result in card_count_checksums[1], etc. Presumably they
+  // intended to use 20 as the stride instead of 50, which would have exactly
+  // covered the entire card_counts array.
   /* 0C68:03EC */ parray<be_uint16_t, 50> card_count_checksums;
   // Yes, these are actually 64-bit integers. They include card IDs and some
   // other data, encoded in a way I don't fully understand yet.
@@ -619,8 +619,8 @@ struct PlayerConfig {
     /* 00 */ be_uint32_t guild_card_number;
     /* 04 */ ptext<char, 0x18> player_name;
   } __attribute__((packed));
-  // TODO: What do these player references mean? In what cases are entries added
-  // to and removed from this list?
+  // TODO: What do these player references mean? When are entries added to or
+  // removed from this list?
   /* 2850:1FD4 */ parray<PlayerReference, 9> unknown_a9;
   /* 294C:20D0 */ parray<uint8_t, 0x50> unknown_a10;
   /* 299C:2120 */ ptext<char, 0x10> name;
