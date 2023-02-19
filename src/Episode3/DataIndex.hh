@@ -615,11 +615,13 @@ struct PlayerConfig {
   /* 2840:1FC4 */ parray<uint8_t, 0x08> unknown_a8;
   /* 2848:1FCC */ be_uint32_t offline_clv_exp; // CLvOff = this / 100
   /* 284C:1FD0 */ be_uint32_t online_clv_exp; // CLvOn = this / 100
-  struct UnknownA9 {
-    /* 00 */ be_uint32_t unknown_a1;
-    /* 04 */ ptext<char, 0x18> unknown_a2;
+  struct PlayerReference {
+    /* 00 */ be_uint32_t guild_card_number;
+    /* 04 */ ptext<char, 0x18> player_name;
   } __attribute__((packed));
-  /* 2850:1FD4 */ parray<UnknownA9, 9> unknown_a9;
+  // TODO: What do these player references mean? In what cases are entries added
+  // to and removed from this list?
+  /* 2850:1FD4 */ parray<PlayerReference, 9> unknown_a9;
   /* 294C:20D0 */ parray<uint8_t, 0x50> unknown_a10;
   /* 299C:2120 */ ptext<char, 0x10> name;
   /* 29AC:2130 */ parray<uint8_t, 0xCC> unknown_a11;
