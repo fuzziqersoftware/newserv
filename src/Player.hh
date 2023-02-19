@@ -383,6 +383,20 @@ struct PlayerChallengeDataBB {
 
 
 
+template <typename ItemIDT>
+struct ChoiceSearchConfig {
+  // 0 = enabled, 1 = disabled. Unused for command C3
+  le_uint16_t choice_search_disabled = 0;
+  le_uint16_t unused = 0;
+  struct Entry {
+    ItemIDT parent_category_id = 0;
+    ItemIDT category_id = 0;
+  } __attribute__((packed));
+  parray<Entry, 5> entries;
+} __attribute__((packed));
+
+
+
 struct PSOPlayerDataDCPC { // For command 61
   PlayerInventory inventory;
   PlayerDispDataDCPCV3 disp;
@@ -392,7 +406,7 @@ struct PSOPlayerDataV3 { // For command 61
   PlayerInventory inventory;
   PlayerDispDataDCPCV3 disp;
   PlayerChallengeDataV3 challenge_data;
-  parray<uint8_t, 0x18> unknown;
+  ChoiceSearchConfig<le_uint16_t> choice_search_config;
   ptext<char, 0xAC> info_board;
   parray<le_uint32_t, 0x1E> blocked_senders;
   le_uint32_t auto_reply_enabled;
@@ -406,7 +420,7 @@ struct PSOPlayerDataGCEp3 { // For command 61
   PlayerInventory inventory;
   PlayerDispDataDCPCV3 disp;
   PlayerChallengeDataV3 challenge_data;
-  parray<uint8_t, 0x18> unknown;
+  ChoiceSearchConfig<le_uint16_t> choice_search_config;
   ptext<char, 0xAC> info_board;
   parray<le_uint32_t, 0x1E> blocked_senders;
   le_uint32_t auto_reply_enabled;
@@ -418,7 +432,7 @@ struct PSOPlayerDataBB { // For command 61
   PlayerInventory inventory;
   PlayerDispDataBB disp;
   PlayerChallengeDataBB challenge_data;
-  parray<uint8_t, 0x18> unknown;
+  ChoiceSearchConfig<le_uint16_t> choice_search_config;
   ptext<char16_t, 0xAC> info_board;
   parray<le_uint32_t, 0x1E> blocked_senders;
   le_uint32_t auto_reply_enabled;

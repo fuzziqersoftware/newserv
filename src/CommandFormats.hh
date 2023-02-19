@@ -2059,20 +2059,10 @@ struct C_CreateGame_BB_C1 : C_CreateGame<char16_t> {
 
 // C2 (C->S): Set choice search parameters
 // Server does not respond.
+// The ChoiceSearchConfig structure is defined in Player.hh.
 
-template <typename ItemIDT>
-struct C_ChoiceSearchSelections_C2_C3 {
-  le_uint16_t disabled = 0; // 0 = enabled, 1 = disabled. Unused for command C3
-  le_uint16_t unused = 0;
-  struct Entry {
-    ItemIDT parent_category_id = 0;
-    ItemIDT category_id = 0;
-  } __packed__;
-  Entry entries[0];
-} __packed__;
-
-struct C_ChoiceSearchSelections_DC_C2_C3 : C_ChoiceSearchSelections_C2_C3<le_uint32_t> { } __packed__;
-struct C_ChoiceSearchSelections_PC_V3_BB_C2_C3 : C_ChoiceSearchSelections_C2_C3<le_uint16_t> { } __packed__;
+struct C_ChoiceSearchSelections_DC_C2_C3 : ChoiceSearchConfig<le_uint32_t> { } __packed__;
+struct C_ChoiceSearchSelections_PC_V3_BB_C2_C3 : ChoiceSearchConfig<le_uint16_t> { } __packed__;
 
 // C3 (C->S): Execute choice search
 // Same format as C2. The disabled field is unused.
