@@ -424,7 +424,7 @@ struct PSOPlayerDataGCEp3 { // For command 61
   ptext<char, 0xAC> info_board;
   parray<le_uint32_t, 0x1E> blocked_senders;
   le_uint32_t auto_reply_enabled;
-  char auto_reply[0xAC];
+  ptext<char, 0xAC> auto_reply;
   Episode3::PlayerConfig ep3_config;
 } __attribute__((packed));
 
