@@ -1355,7 +1355,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 55 */ on_subcommand_forward_check_size_client, // Intra-map warp
   /* 56 */ on_subcommand_forward_check_size_client,
   /* 57 */ on_subcommand_forward_check_size_client,
-  /* 58 */ on_subcommand_forward_check_size_game,
+  /* 58 */ on_subcommand_forward_check_size_client, // Begin playing emote
   /* 59 */ on_subcommand_pick_up_item, // Item picked up
   /* 5A */ on_subcommand_pick_up_item_request, // Request to pick up item
   /* 5B */ nullptr,
