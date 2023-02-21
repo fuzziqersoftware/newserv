@@ -3667,10 +3667,10 @@ struct G_ShieldAttack_6x4A {
 
 struct G_HitByEnemy_6x4B_6x4C {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1;
+  le_uint16_t angle;
   le_uint16_t damage;
-  le_float unknown_a2;
-  le_float unknown_a3;
+  le_float x_velocity;
+  le_float z_velocity;
 } __packed__;
 
 // 6x4C: Hit by enemy
@@ -4550,31 +4550,41 @@ struct G_Unknown_6xB2 {
 
 // 6xB3: CARD battle server data request (Episode 3)
 
-// These commands have multiple subcommands; see the Episode 3 subsubcommand
-// table after this table. The common format is:
+// CARD battle subcommands have multiple subsubcommands, which we name 6xBYxZZ,
+// where Y = 3, 4, 5, or 6, and ZZ is any byte. The formats of these
+// subsubcommands are described at the end of this file.
+
+// Unlike all other 6x subcommands, the 6xB3 subcommand is sent to the server in
+// a CA command instead of a 6x, C9, or CB command. (For this reason, we refer
+// to 6xB3xZZ commands as CAxZZ commands as well.) The server is expected to
+// reply to CA commands instead of forwarding them. The logic for doing so is
+// primarily implemented in Episode3/Server.cc and the surrounding classes.
+
+// The common format for CARD battle subcommand headers is:
 struct G_CardBattleCommandHeader {
   uint8_t subcommand = 0x00;
   uint8_t size = 0x00;
-  le_uint16_t unused1 = 0x00;
+  le_uint16_t unused1 = 0x0000;
   uint8_t subsubcommand = 0x00; // See 6xBx subcommand table (after this table)
   uint8_t sender_client_id = 0x00;
   // If mask_key is nonzero, the remainder of the data (after unused2 in this
   // struct) is encrypted using a simple algorithm, which is implemented in
-  // set_mask_for_ep3_game_command in SendCommands.cc.
+  // set_mask_for_ep3_game_command in SendCommands.cc. The Episode 3 client
+  // never sends commands that have a nonzero value in this field, but it does
+  // properly handle received commands with nonzero values in this field.
   uint8_t mask_key = 0x00;
   uint8_t unused2 = 0x00;
 } __packed__;
 
+// The 6xB3 subcommand has a longer header, which is common to all CAx
+// subcommands.
 struct G_CardServerDataCommandHeader {
   uint8_t subcommand = 0x00;
   uint8_t size = 0x00;
-  le_uint16_t unused1 = 0x00;
+  le_uint16_t unused1 = 0x0000;
   uint8_t subsubcommand = 0x00; // See 6xBx subcommand table (after this table)
   uint8_t sender_client_id = 0x00;
-  // If mask_key is nonzero, the remainder of the data (after unused2 in this
-  // struct) is encrypted using a simple algorithm, which is implemented in
-  // set_mask_for_ep3_game_command in SendCommands.cc.
-  uint8_t mask_key = 0x00;
+  uint8_t mask_key = 0x00; // Same meaning as in G_CardBattleCommandHeader
   uint8_t unused2 = 0x00;
   be_uint32_t sequence_num;
   be_uint32_t context_token;
@@ -4594,7 +4604,9 @@ struct G_ShopContentsRequest_BB_6xB5 {
 // Unlike 6xB3-6xB5, these commands cannot be masked. Also unlike 6xB3-6xB5,
 // there are only two subsubcommands, so we list them inline here.
 // These subcommands can be rather large, so they should be sent with the 6C
-// command instead of the 60 command.
+// command instead of the 60 command. (The difference in header format,
+// including the extended size field, is likely the reason for 6xB6 being a
+// separate subcommand from the other CARD battle subcommands.)
 
 struct G_MapSubsubcommand_GC_Ep3_6xB6 {
   G_ExtendedHeader<G_UnusedHeader> header;
@@ -4631,7 +4643,10 @@ struct G_ShopContents_BB_6xB6 {
   ItemData entries[20];
 } __packed__;
 
-// 6xB7: Unknown (Episode 3 Trial Edition)
+// 6xB7: Alias for 6xB3 (Episode 3 Trial Edition)
+// This command behaves exactly the same as 6xB3. This alias exists only in
+// Episode 3 Trial Edition; it was removed in the final release.
+
 // 6xB7: BB buy shop item (handled by the server)
 
 struct G_BuyShopItem_BB_6xB7 {
@@ -4643,7 +4658,10 @@ struct G_BuyShopItem_BB_6xB7 {
   uint8_t unknown_a1; // TODO: Probably actually unused; verify this
 } __packed__;
 
-// 6xB8: Unknown (Episode 3 Trial Edition)
+// 6xB8: Alias for 6xB4 (Episode 3 Trial Edition)
+// This command behaves exactly the same as 6xB4. This alias exists only in
+// Episode 3 Trial Edition; it was removed in the final release.
+
 // 6xB8: BB accept tekker result (handled by the server)
 
 struct G_AcceptItemIdentification_BB_6xB8 {
@@ -4651,7 +4669,10 @@ struct G_AcceptItemIdentification_BB_6xB8 {
   le_uint32_t item_id;
 } __packed__;
 
-// 6xB9: Unknown (Episode 3 Trial Edition)
+// 6xB9: Alias for 6xB5 (Episode 3 Trial Edition)
+// This command behaves exactly the same as 6xB5. This alias exists only in
+// Episode 3 Trial Edition; it was removed in the final release.
+
 // 6xB9: BB provisional tekker result
 
 struct G_IdentifyResult_BB_6xB9 {
@@ -4659,11 +4680,12 @@ struct G_IdentifyResult_BB_6xB9 {
   ItemData item;
 } __packed__;
 
-// 6xBA: Unknown (Episode 3)
+// 6xBA: Sync card trade state (Episode 3)
+// This command calls various member functions in TCardTradeServer.
 
-struct G_Unknown_GC_Ep3_6xBA {
+struct G_SyncCardTradeState_GC_Ep3_6xBA {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1; // Low byte must be < 9
+  le_uint16_t what; // Low byte must be < 9; this indexes into a jump table
   le_uint16_t unknown_a2;
   le_uint32_t unknown_a3;
   le_uint32_t unknown_a4;
@@ -4677,6 +4699,7 @@ struct G_AcceptItemIdentification_BB_6xBA {
 } __packed__;
 
 // 6xBB: Sync card trade state (Episode 3)
+// This command calls various member functions in TCardTradeServer.
 // TODO: Certain invalid values for slot/args in this command can crash the
 // client (what is properly bounds-checked). Find out the actual limits for
 // slot/args and make newserv enforce them.
@@ -4691,11 +4714,12 @@ struct G_SyncCardTradeState_GC_Ep3_6xBB {
 // 6xBB: BB bank request (handled by the server)
 
 // 6xBC: Card counts (Episode 3)
-// It's possible that this was an early, now-unused implementation of the CAx49
+// This is sent by the client in response to a 6xB5x38 command.
+// It's possible that this is an early, now-unused implementation of the CAx49
 // command. When the client receives this command, it copies the data into a
-// globally-allocated array, but nothing ever reads from this array.
-// Curiously, this command is smaller than 0x400 bytes, but uses the extended
-// subcommand format anyway (and uses the 6D command rather than 62).
+// globally-allocated array, but nothing reads from this array. Curiously, this
+// command is smaller than 0x400 bytes, but uses the extended subcommand format
+// anyway (and uses the 6D command rather than 62).
 
 struct G_CardCounts_GC_Ep3_6xBC {
   G_UnusedHeader header;
@@ -4782,10 +4806,10 @@ struct G_SellItemAtShop_BB_6xC0 {
   le_uint32_t amount;
 } __packed__;
 
-// 6xC1: Unknown
-// 6xC2: Unknown
+// 6xC1: Unknown (BB)
+// 6xC2: Unknown (BB)
 
-// 6xC3: Split stacked item (handled by the server on BB)
+// 6xC3: Split stacked item (BB; handled by the server)
 // Note: This is not sent if an entire stack is dropped; in that case, a normal
 // item drop subcommand is generated instead.
 
@@ -4799,18 +4823,18 @@ struct G_SplitStackedItem_6xC3 {
   le_uint32_t amount;
 } __packed__;
 
-// 6xC4: Sort inventory (handled by the server on BB)
+// 6xC4: Sort inventory (BB; handled by the server)
 
 struct G_SortInventory_6xC4 {
   G_UnusedHeader header;
   le_uint32_t item_ids[30];
 } __packed__;
 
-// 6xC5: Medical center used
+// 6xC5: Medical center used (BB)
 // 6xC6: Invalid subcommand
 // 6xC7: Invalid subcommand
 
-// 6xC8: Enemy killed (handled by the server on BB)
+// 6xC8: Enemy killed (BB; handled by the server)
 
 struct G_EnemyKilled_6xC8 {
   G_EnemyIDHeader header;
@@ -4821,31 +4845,31 @@ struct G_EnemyKilled_6xC8 {
 
 // 6xC9: Invalid subcommand
 // 6xCA: Invalid subcommand
-// 6xCB: Unknown
-// 6xCC: Unknown
-// 6xCD: Unknown
-// 6xCE: Unknown
-// 6xCF: Unknown (supported; game only; handled by the server on BB)
+// 6xCB: Unknown (BB)
+// 6xCC: Unknown (BB)
+// 6xCD: Unknown (BB)
+// 6xCE: Unknown (BB)
+// 6xCF: Unknown (BB; supported; game only; handled by the server)
 // 6xD0: Invalid subcommand
 // 6xD1: Invalid subcommand
-// 6xD2: Unknown
+// 6xD2: Unknown (BB)
 // 6xD3: Invalid subcommand
-// 6xD4: Unknown
+// 6xD4: Unknown (BB)
 // 6xD5: Invalid subcommand
 // 6xD6: Invalid subcommand
 // 6xD7: Invalid subcommand
 // 6xD8: Invalid subcommand
 // 6xD9: Invalid subcommand
 // 6xDA: Invalid subcommand
-// 6xDB: Unknown
-// 6xDC: Unknown
-// 6xDD: Unknown
+// 6xDB: Unknown (BB)
+// 6xDC: Unknown (BB)
+// 6xDD: Unknown (BB)
 // 6xDE: Invalid subcommand
 // 6xDF: Invalid subcommand
 // 6xE0: Invalid subcommand
 // 6xE1: Invalid subcommand
 // 6xE2: Invalid subcommand
-// 6xE3: Unknown
+// 6xE3: Unknown (BB)
 // 6xE4: Invalid subcommand
 // 6xE5: Invalid subcommand
 // 6xE6: Invalid subcommand
@@ -4881,8 +4905,15 @@ struct G_EnemyKilled_6xC8 {
 // and 6xB5). Note that even though there's no overlap in the subsubcommand
 // number space, the various subsubcommands must be used with the correct 6xBx
 // subcommand - the client will ignore the command if sent via the wrong 6xBx
-// subcommand. Unlike the above listings, invalid commands are not listed here,
-// since this table is known to be complete.
+// subcommand. (For example, sending a 6xB5x02 command will do nothing because
+// subsubcommand 02 is only valid for the 6xB4 subcommand.) This table is known
+// to be complete, so invalid commands are not listed.
+
+// In general, 6xB3 (CAx) commands are sent by the client when it wants to take
+// an action that affects game state held on the server side. The server will
+// send one or more 6xB4 commands in response to update all clients' views of
+// the game state. 6xB5 commands do not affect state held on the server side,
+// and are generally only of concern on the client side.
 
 // 6xB4x02: Update hands and equips
 
@@ -4909,8 +4940,8 @@ struct G_UpdateShortStatuses_GC_Ep3_6xB4x04 {
   // The slots in this array have heterogeneous meanings. Specifically:
   // [0] is the SC card status
   // [1] through [6] are hand cards
-  // [7] through [14] are set cards
-  // [15] is the assist card
+  // [7] through [14] are set FC cards (items/creatures)
+  // [15] is the set assist card
   parray<Episode3::CardShortStatus, 0x10> card_statuses;
 } __packed__;
 
@@ -4948,13 +4979,13 @@ struct G_SetActionState_GC_Ep3_6xB4x09 {
 } __packed__;
 
 // 6xB4x0A: Update action chain and metadata
-// This command seems to be unused; Sega's server implementation never sent it.
+// This command seems to be unused; Sega's server implementation never sends it.
 
 struct G_UpdateActionChainAndMetadata_GC_Ep3_6xB4x0A {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_UpdateActionChainAndMetadata_GC_Ep3_6xB4x0A) / 4, 0, 0x0A, 0, 0, 0};
   le_uint16_t client_id = 0;
   // set_index must be 0xFF, or be in the range [0, 9]. If it's 0xFF, all nine
-  // chains and metadata are cleared for the client; otherwise, the provided
+  // chains and metadatas are cleared for the client; otherwise, the provided
   // chain and metadata are copied into the slot specified by set_index.
   int8_t set_index = 0;
   uint8_t unused = 0;
@@ -5014,7 +5045,11 @@ struct G_MoveFieldCharacter_GC_Ep3_6xB3x10_CAx10 {
   Episode3::Location loc;
 } __packed__;
 
-// 6xB3x11 / CAx11: Enqueue attack or defense
+// 6xB3x11 / CAx11: Enqueue action (play card(s) during action phase)
+// This command is used for playing both attacks (and the associated action
+// cards), and for playing defense cards. In the attack case, this command is
+// sent once for each attack (even if it includes multiple cards); in the
+// defense case, this command is sent once for each defense card.
 
 struct G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11) / 4, 0, 0x11, 0, 0, 0, 0, 0};
@@ -5023,7 +5058,9 @@ struct G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11 {
   Episode3::ActionState entry;
 } __packed__;
 
-// 6xB3x12 / CAx12: End attack list
+// 6xB3x12 / CAx12: End attack list (done playing cards during action phase)
+// This command informs the server that the client is done playing attacks. (In
+// the defense phase, CAx28 is used instead.)
 
 struct G_EndAttackList_GC_Ep3_6xB3x12_CAx12 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndAttackList_GC_Ep3_6xB3x12_CAx12) / 4, 0, 0x12, 0, 0, 0, 0, 0};
@@ -5049,7 +5086,8 @@ struct G_SetPlayerDeck_GC_Ep3_6xB3x14_CAx14 {
   Episode3::DeckEntry entry;
 } __packed__;
 
-// 6xB3x15 / CAx15: Hard-reset server state (unused)
+// 6xB3x15 / CAx15: Hard-reset server state
+// This command appears to be completely unused; the client never sends it.
 
 struct G_HardResetServerState_GC_Ep3_6xB3x15_CAx15 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_HardResetServerState_GC_Ep3_6xB3x15_CAx15) / 4, 0, 0x15, 0, 0, 0, 0, 0};
@@ -5083,14 +5121,17 @@ struct G_SetPlayerName_GC_Ep3_6xB3x1B_CAx1B {
   Episode3::NameEntry entry;
 } __packed__;
 
-// 6xB4x1C: Set player names
+// 6xB4x1C: Set all player names
 
 struct G_SetPlayerNames_GC_Ep3_6xB4x1C {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetPlayerNames_GC_Ep3_6xB4x1C) / 4, 0, 0x1C, 0, 0, 0};
   parray<Episode3::NameEntry, 4> entries;
 } __packed__;
 
-// 6xB3x1D / CAx1D: Start battle
+// 6xB3x1D / CAx1D: Request for battle start
+// The battle actually begins when the server sends a state flags update (in
+// response to this command) that includes RegistrationPhase::BATTLE_STARTED and
+// a SetupPhase value other than REGISTRATION.
 
 struct G_StartBattle_GC_Ep3_6xB3x1D_CAx1D {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_StartBattle_GC_Ep3_6xB3x1D_CAx1D) / 4, 0, 0x1D, 0, 0, 0, 0, 0};
@@ -5111,7 +5152,7 @@ struct G_ActionResult_GC_Ep3_6xB4x1E {
 
 // 6xB4x1F: Set context token
 // This token is sent back in the context_token field of all CA commands from
-// the client.
+// the client. It seems Sega never used this functionality.
 
 struct G_SetContextToken_GC_Ep3_6xB4x1F {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetContextToken_GC_Ep3_6xB4x1F) / 4, 0, 0x1F, 0, 0, 0};
@@ -5173,6 +5214,8 @@ struct G_Unknown_GC_Ep3_6xB5x27 {
 } __packed__;
 
 // 6xB3x28 / CAx28: End defense list
+// This command informs the server that the client is done playing defense
+// cards. (In the attack phase, CAx12 is used instead.)
 
 struct G_EndDefenseList_GC_Ep3_6xB3x28_CAx28 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndDefenseList_GC_Ep3_6xB3x28_CAx28) / 4, 0, 0x28, 0, 0, 0, 0, 0};
@@ -5182,8 +5225,8 @@ struct G_EndDefenseList_GC_Ep3_6xB3x28_CAx28 {
 } __packed__;
 
 // 6xB4x29: Set action state
-// TODO: How is this different from 6xB4x09? Looks like the server never sends
-// this (at least, from what I've disassembled so far.)
+// TODO: How is this different from 6xB4x09? It looks like the server never
+// sends this.
 
 struct G_SetActionState_GC_Ep3_6xB4x29 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetActionState_GC_Ep3_6xB4x29) / 4, 0, 0x29, 0, 0, 0};
@@ -5309,7 +5352,7 @@ struct G_PhotonBlastRequest_GC_Ep3_6xB3x34_CAx34 {
   le_uint16_t card_ref = 0xFFFF;
 } __packed__;
 
-// 6xB4x35: Photon blast status
+// 6xB4x35: Update photon blast status
 
 struct G_PhotonBlastStatus_GC_Ep3_6xB4x35 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_PhotonBlastStatus_GC_Ep3_6xB4x35) / 4, 0, 0x35, 0, 0, 0};
@@ -5343,7 +5386,8 @@ struct G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37_CAx37 {
 // 6xB5x38: Card counts request
 // This command causes the client identified by requested_client_id to send a
 // 6xBC command to the client identified by reply_to_client_id (privately, via
-// the 6D command).
+// the 6D command). This appears to be unused; it is likely superseded by the
+// CAx49 command.
 
 struct G_CardCountsRequest_GC_Ep3_6xB5x38 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_CardCountsRequest_GC_Ep3_6xB5x38) / 4, 0, 0x38, 0, 0, 0};
@@ -5376,9 +5420,9 @@ struct G_Unknown_GC_Ep3_6xB4x3B {
 // 6xB5x3C: Set player substatus
 // This command sets the text that appears under the player's name in the HUD.
 
-struct G_Unknown_GC_Ep3_6xB5x3C {
+struct G_SetPlayerSubstatus_GC_Ep3_6xB5x3C {
   // Note: header.sender_client_id specifies which client's status to update
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x3C) / 4, 0, 0x3C, 0, 0, 0};
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_SetPlayerSubstatus_GC_Ep3_6xB5x3C) / 4, 0, 0x3C, 0, 0, 0};
   // Status values:
   // 00 (or any value not listed below) = (nothing)
   // 01 = Editing
@@ -5409,7 +5453,7 @@ struct G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D {
   } __packed__;
   parray<Entry, 4> entries;
   le_uint32_t map_number = 0;
-  uint8_t player_slot = 0; // Which slot is editable by the client
+  uint8_t player_slot = 0; // Which deck slot is editable by the client
   uint8_t unknown_a3 = 0;
   uint8_t unknown_a4 = 0;
   uint8_t unknown_a5 = 0;
@@ -5441,15 +5485,16 @@ struct G_OpenBlockingMenu_GC_Ep3_6xB5x3F {
   parray<uint8_t, 4> unused2;
 } __packed__;
 
-// 6xB3x40 / CAx40: Map list request
+// 6xB3x40 / CAx40: Request map list
 // The server should respond with a 6xB6x40 command.
 
 struct G_MapListRequest_GC_Ep3_6xB3x40_CAx40 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MapListRequest_GC_Ep3_6xB3x40_CAx40) / 4, 0, 0x40, 0, 0, 0, 0, 0};
 } __packed__;
 
-// 6xB3x41 / CAx41: Map data request
-// The server should respond with a 6xB6x41 command.
+// 6xB3x41 / CAx41: Request map data
+// The server should respond with a 6xB6x41 command containing the definition of
+// the specified map.
 
 struct G_MapDataRequest_GC_Ep3_6xB3x41_CAx41 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MapDataRequest_GC_Ep3_6xB3x41_CAx41) / 4, 0, 0x41, 0, 0, 0, 0, 0};
@@ -5509,26 +5554,32 @@ struct G_CardAuctionResults_GC_Ep3_6xB5x45 {
 // them. Sega's servers sent this twice for each battle, however: once after the
 // initial setup phase (before starter rolls) and once when the results screen
 // appeared. The second instance of this command appears to be caused by them
-// recreating the TCardServer object (implemented here as Episode3::Server) in
-// order to support sequential multiple battles in the same team.
+// recreating the TCardServer object (implemented in newserv's Episode3::Server)
+// in order to support multiple sequential battles in the same team.
 
 struct G_ServerVersionStrings_GC_Ep3_6xB4x46 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_ServerVersionStrings_GC_Ep3_6xB4x46) / 4, 0, 0x46, 0, 0, 0};
   // In all of the examples (from Sega's servers) that I've seen of this
   // command, these fields have the following values:
-  // version_signature = "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
-  // date_str1 = "Mar  7 2007 21:42:40"
+  //   version_signature = "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
+  //   date_str1 = "Mar  7 2007 21:42:40"
+  // In the client, date_str1 is different:
+  //   version_signature = "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
+  //   date_str1 = "Jan 21 2004 18:36:47'
+  // Presumably if any logs exist from before 7 March 2007, they would have a
+  // different date_str1, but the unchanged version_signature likely means that
+  // Sega never made any code changes on the server side.
   ptext<char, 0x40> version_signature;
-  ptext<char, 0x40> date_str1; // Possibly card definitions revision date
+  ptext<char, 0x40> date_str1; // Probably card definitions revision date
   // In Sega's implementation, it seems this field is blank when starting a
   // battle, and contains the current time (in the format "YYYY/MM/DD hh:mm:ss")
-  // when ending a battle.
+  // when ending a battle. This may have been used for identifying debug logs.
   ptext<char, 0x40> date_str2;
   // It seems Sega used to send 0 here when starting a battle, and 0x04157580
   // when ending a battle. Since the field is unused by the client, it's not
   // clear what that value means, if anything. This behavior may be another
   // uninitialized memory bug in the server implementation (of which there are
-  // ample other examples).
+  // many other examples).
   le_uint32_t unused = 0;
 } __packed__;
 
@@ -5551,15 +5602,14 @@ struct G_EndTurn_GC_Ep3_6xB3x48_CAx48 {
 
 // 6xB3x49 / CAx49: Card counts
 // This command is sent when a client joins a game, but it is completely ignored
-// by the original Episode 3 server. (newserv, however, uses this for deck
-// verification at battle start time.) Sega presumably could have used this to
+// by the original Episode 3 server. Sega presumably could have used this to
 // detect the presence of unreleased cards to ban cheaters, but the effects of
 // the non-saveable Have All Cards AR code don't appear in this data, so this
 // would have been ineffective. There appears to be a place where Sega's server
 // intended to use this data, however - the deck verification function takes a
 // pointer to the card counts array, but Sega's implementation always passes
 // null there, which skips the owned card count check. newserv uses this data at
-// that callsite.
+// that callsite to implement one of the deck validity checks.
 
 struct G_CardCounts_GC_Ep3_6xB3x49_CAx49 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_CardCounts_GC_Ep3_6xB3x49_CAx49) / 4, 0, 0x49, 0, 0, 0, 0, 0};
@@ -5723,7 +5773,8 @@ struct G_SetGameMetadata_GC_Ep3_6xB4x52 {
 
 // 6xB4x53: Reject battle start request
 // This is sent in response to a CAx1D command if setup isn't complete (e.g. if
-// some names/decks are missing or invalid).
+// some names/decks are missing or invalid). Under normal operation, this should
+// never happen.
 // Note: It seems the client ignores everything in this structure; the command
 // handler just sets a global state flag and returns immediately.
 
