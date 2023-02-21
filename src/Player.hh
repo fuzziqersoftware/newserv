@@ -386,8 +386,7 @@ struct PlayerChallengeDataBB {
 template <typename ItemIDT>
 struct ChoiceSearchConfig {
   // 0 = enabled, 1 = disabled. Unused for command C3
-  le_uint16_t choice_search_disabled = 0;
-  le_uint16_t unused = 0;
+  le_uint32_t choice_search_disabled = 0;
   struct Entry {
     ItemIDT parent_category_id = 0;
     ItemIDT category_id = 0;
