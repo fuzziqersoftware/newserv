@@ -1012,7 +1012,17 @@ static void server_command_song(shared_ptr<ServerState>, shared_ptr<Lobby>,
   check_is_ep3(c, true);
 
   uint32_t song = stoul(encode_sjis(args), nullptr, 0);
-  send_ep3_change_music(c, song);
+  send_ep3_change_music(c->channel, song);
+}
+
+static void proxy_command_song(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  int32_t song = stol(encode_sjis(args), nullptr, 0);
+  if (song < 0) {
+    song = -song;
+    send_ep3_change_music(session.server_channel, song);
+  }
+  send_ep3_change_music(session.client_channel, song);
 }
 
 static void server_command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
@@ -1200,7 +1210,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$secid",    {server_command_secid,              proxy_command_secid,           u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
     {u"$silence",  {server_command_silence,            nullptr,                       u"Usage:\nsilence <name-or-number>"}},
     // TODO: implement this on proxy server
-    {u"$song",     {server_command_song,               nullptr,                       u"Usage:\nsong <song-number>"}},
+    {u"$song",     {server_command_song,               proxy_command_song,            u"Usage:\nsong <song-number>"}},
     {u"$spec",     {server_command_spec,               nullptr,                       u"Usage:\nspec"}},
     {u"$ss",       {nullptr,                           proxy_command_send_server,     u"Usage:\nss <data>"}},
     {u"$swa",      {server_command_switch_assist,      proxy_command_switch_assist,   u"Usage:\nswa"}},

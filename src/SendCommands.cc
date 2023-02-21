@@ -1743,9 +1743,9 @@ void send_warp(shared_ptr<Client> c, uint32_t area) {
   c->area = area;
 }
 
-void send_ep3_change_music(shared_ptr<Client> c, uint32_t song) {
+void send_ep3_change_music(Channel& ch, uint32_t song) {
   G_ChangeLobbyMusic_GC_Ep3_6xBF cmd = {{0xBF, 0x02, 0}, song};
-  send_command_t(c, 0x60, 0x00, cmd);
+  ch.send(0x60, 0x00, cmd);
 }
 
 void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c,

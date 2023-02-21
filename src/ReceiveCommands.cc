@@ -226,7 +226,7 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
     // menu or welcome message
     if (c->flags & Client::Flag::IS_EPISODE_3) {
       if (s->ep3_menu_song >= 0) {
-        send_ep3_change_music(c, s->ep3_menu_song);
+        send_ep3_change_music(c->channel, s->ep3_menu_song);
       } else if (s->pre_lobby_event) {
         send_change_event(c, s->pre_lobby_event);
       }
