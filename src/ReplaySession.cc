@@ -292,6 +292,16 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           }
           break;
         }
+        case 0xC9: {
+          if (cmd_size == 0xCC) {
+            auto& cmd_mask = check_size_t<G_ServerVersionStrings_GC_Ep3_6xB4x46>(
+                cmd_data, cmd_size);
+            cmd_mask.version_signature.clear(0);
+            cmd_mask.date_str1.clear(0);
+            cmd_mask.date_str2.clear(0);
+          }
+          break;
+        }
       }
       break;
     }

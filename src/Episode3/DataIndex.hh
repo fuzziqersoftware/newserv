@@ -892,6 +892,7 @@ public:
   std::shared_ptr<const CardEntry> definition_for_card_name(
       const std::string& name) const;
   std::set<uint32_t> all_card_ids() const;
+  uint64_t card_definitions_mtime() const;
 
   const std::string& get_compressed_map_list() const;
   std::shared_ptr<const MapEntry> definition_for_map_number(uint32_t id) const;
@@ -910,6 +911,7 @@ private:
   std::string compressed_card_definitions;
   std::unordered_map<uint32_t, std::shared_ptr<CardEntry>> card_definitions;
   std::unordered_map<std::string, std::shared_ptr<CardEntry>> card_definitions_by_name;
+  uint64_t mtime_for_card_definitions;
 
   // The compressed map list is generated on demand from the maps map below.
   // It's marked mutable because the logical consistency of the DataIndex object

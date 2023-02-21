@@ -1346,9 +1346,11 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
   try {
     string decompressed_data;
     if (isfile(directory + "/card-definitions.mnrd")) {
+      this->mtime_for_card_definitions = stat(directory + "/card-definitions.mnrd").st_mtime;
       decompressed_data = load_file(directory + "/card-definitions.mnrd");
       this->compressed_card_definitions.clear();
     } else {
+      this->mtime_for_card_definitions = stat(directory + "/card-definitions.mnr").st_mtime;
       this->compressed_card_definitions = load_file(directory + "/card-definitions.mnr");
       decompressed_data = prs_decompress(this->compressed_card_definitions);
     }
@@ -1512,6 +1514,10 @@ set<uint32_t> DataIndex::all_card_ids() const {
     ret.emplace(it.first);
   }
   return ret;
+}
+
+uint64_t DataIndex::card_definitions_mtime() const {
+  return this->mtime_for_card_definitions;
 }
 
 const string& DataIndex::get_compressed_map_list() const {

@@ -14,8 +14,7 @@ namespace Episode3 {
 // These strings in the original implementation did not contain the semicolons
 // (or anything after them).
 static const char* VERSION_SIGNATURE =
-    "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya; newserv Ep3 engine";
-static const char* SIGNATURE_DATE = "Jan 21 2004 18:36:47; updated 2022";
+    "newserv Ep3 based on [V1][FINAL2.0] 03/09/13 15:30 by K.Toya";
 
 
 
@@ -124,10 +123,7 @@ void Server::init() {
   this->ruler_server->link_objects(
       this->base()->map_and_rules1, this->state_flags, this->assist_server);
 
-  G_ServerVersionStrings_GC_Ep3_6xB4x46 cmd;
-  cmd.version_signature = VERSION_SIGNATURE;
-  cmd.date_str1 = SIGNATURE_DATE;
-  this->send(cmd);
+  this->send_6xB4x46();
 }
 
 shared_ptr<ServerBase> Server::base() {
@@ -182,6 +178,7 @@ int8_t Server::get_winner_team_id() const {
 }
 
 void Server::send(const void* data, size_t size) const {
+  // Note: This function is (obviously) not part of the original implementation.
   auto l = this->base()->lobby.lock();
   if (!l) {
     throw runtime_error("lobby is deleted");
@@ -198,6 +195,10 @@ void Server::send(const void* data, size_t size) const {
     }
   }
 
+  // Note: Sega's servers sent battle commands with the 60 command. The handlers
+  // for 60, 62, and C9 on the client are identical, so we choose to use C9
+  // instead because it's unique to Episode 3, and therefore seems more
+  // appropriate to convey battle commands.
   send_command(l, 0xC9, 0x00, data, size);
   for (auto watcher_l : l->watcher_lobbies) {
     send_command_if_not_loading(watcher_l, 0xC9, 0x00, data, size);
@@ -206,6 +207,22 @@ void Server::send(const void* data, size_t size) const {
     l->battle_record->add_command(
         BattleRecord::Event::Type::BATTLE_COMMAND, data, size);
   }
+}
+
+void Server::send_6xB4x46() const {
+  // Note: This function is not part of the original implementation; it was
+  // factored out from its callsites in this file and the strings were changed.
+  auto l = this->base()->lobby.lock();
+  if (!l) {
+    throw runtime_error("lobby is deleted");
+  }
+
+  G_ServerVersionStrings_GC_Ep3_6xB4x46 cmd46;
+  cmd46.version_signature = VERSION_SIGNATURE;
+  cmd46.date_str1 = format_time(this->base()->data_index->card_definitions_mtime() * 1000000);
+  cmd46.date_str2 = string_printf("Lobby/%08" PRIX32 " random %08" PRIX32,
+      l->lobby_id, l->random_seed);
+  this->send(cmd46);
 }
 
 string Server::prepare_6xB6x41_map_definition(
@@ -1425,10 +1442,7 @@ void Server::setup_and_start_battle() {
 
   this->battle_start_usecs = now();
 
-  G_ServerVersionStrings_GC_Ep3_6xB4x46 cmd46;
-  cmd46.version_signature = VERSION_SIGNATURE;
-  cmd46.date_str1 = SIGNATURE_DATE;
-  this->send(cmd46);
+  this->send_6xB4x46();
 }
 
 void Server::update_battle_state_flags_and_send_6xB4x03_if_needed(

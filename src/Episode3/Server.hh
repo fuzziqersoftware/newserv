@@ -136,6 +136,8 @@ public:
   void send_debug_message_if_error_code_nonzero(
       uint8_t client_id, int32_t error_code) const;
 
+  void send_6xB4x46() const;
+
   void add_team_exp(uint8_t team_id, int32_t exp);
   bool advance_battle_phase();
   void action_phase_after();
