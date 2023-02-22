@@ -581,20 +581,37 @@ struct C_MenuItemInfoRequest_09 {
 
 // 0D: Invalid command
 
-// 0E (S->C): Unknown; possibly legacy join game (PC/V3)
-// There is a failure mode in the command handlers on PC and V3 that causes the
-// thread receiving the command to loop infinitely doing nothing, effectively
-// softlocking the game.
+// 0E (S->C): Incomplete/legacy join game (PC/V3)
+// header.flag = number of valid entries in lobby_data
+
+// It's fairly clear that this command was intended for joining games since its
+// structure is similar to that of 64. Furthermore, 0E sets a flag on the client
+// which is also set by commands 64, 67, and E8 (on Episode 3), which are all
+// lobby and game join commands.
+
+// There is a failure mode in the 0E command handlers on PC and V3 that causes
+// the thread receiving the command to loop infinitely doing nothing,
+// effectively softlocking the game. This happens if the local player's Guild
+// Card number doesn't match any of the lobby_data entries. (Notably, only the
+// first (header.flag) entries are checked.)
+// If the local players' Guild Card number does match one of the entries, the
+// command does not softlock, but instead does nothing (at least, on PC and V3)
+// because the 0E second-phase handler is missing on the client.
+
 // TODO: Check if this command exists on DC v1/v2.
 
-struct S_Unknown_PC_0E {
-  parray<uint8_t, 0x08> unknown_a1;
-  parray<parray<uint8_t, 0x18>, 4> unknown_a2;
-  parray<uint8_t, 0x18> unknown_a3;
+struct S_LegacyJoinGame_PC_0E {
+  struct UnknownA1 {
+    le_uint32_t player_tag;
+    le_uint32_t guild_card_number;
+    parray<uint8_t, 0x10> unknown_a1;
+  } __packed__;
+  parray<UnknownA1, 4> unknown_a1;
+  parray<uint8_t, 0x20> unknown_a3;
 } __packed__;
 
-struct S_Unknown_GC_0E {
-  PlayerLobbyDataDCGC lobby_data[4]; // This type is a guess
+struct S_LegacyJoinGame_GC_0E {
+  PlayerLobbyDataDCGC lobby_data[4];
   struct UnknownA0 {
     parray<uint8_t, 2> unknown_a1;
     le_uint16_t unknown_a2 = 0;
@@ -606,8 +623,14 @@ struct S_Unknown_GC_0E {
   parray<uint8_t, 4> unknown_a3;
 } __packed__;
 
-struct S_Unknown_XB_0E {
-  parray<uint8_t, 0xE8> unknown_a1;
+struct S_LegacyJoinGame_XB_0E {
+  struct UnknownA1 {
+    le_uint32_t player_tag;
+    le_uint32_t guild_card_number;
+    parray<uint8_t, 0x18> unknown_a1;
+  } __packed__;
+  parray<UnknownA1, 4> unknown_a1;
+  parray<uint8_t, 0x68> unknown_a2;
 } __packed__;
 
 // 0F: Invalid command

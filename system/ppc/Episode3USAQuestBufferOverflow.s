@@ -281,8 +281,7 @@ copy_handle_B2_word_again:
   bctrl   # flush_code(copied_B2_handler, copied_B2_handler_bytes)
 
   # Replace the command handler table entry for command 0E (which appears to be
-  # a legacy command - it's unused by any modern private server and was
-  # presumably unused by Sega too) with our copied B2 implementation
+  # a legacy command and has very broken behavior) with our B2 implementation
   lis     r5, 0x8044
   ori     r5, r5, 0xF684
   li      r0, 0x00B2
