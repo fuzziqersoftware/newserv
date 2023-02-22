@@ -868,9 +868,12 @@ struct C_GuildCardSearch_40 {
 
 template <typename CharT>
 struct SC_MeetUserExtension {
-  le_uint32_t menu_id = 0;
-  le_uint32_t lobby_id = 0;
-  parray<uint8_t, 0x3C> unknown_a1;
+  struct LobbyReference {
+    le_uint32_t menu_id = 0;
+    le_uint32_t item_id = 0;
+  } __packed__;
+  parray<LobbyReference, 8> lobby_refs;
+  le_uint32_t unknown_a2 = 0;
   ptext<CharT, 0x20> player_name;
 } __packed__;
 

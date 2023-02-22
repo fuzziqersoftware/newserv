@@ -185,8 +185,6 @@ static HandlerResult S_G_9A(shared_ptr<ServerState>,
     cmd.name = session.character_name;
   }
   cmd.client_config.data = session.remote_client_config_data;
-  cmd.extension.menu_id = 0;
-  cmd.extension.lobby_id = 0;
 
   // If there's a guild card number, a shorter 9E is sent that ends
   // right after the client config data
@@ -392,8 +390,6 @@ static HandlerResult S_V123P_02_17(
         cmd.name = session.character_name;
       }
       cmd.client_config.data = session.remote_client_config_data;
-      cmd.extension.menu_id = 0;
-      cmd.extension.lobby_id = 0;
       session.server_channel.send(0x9E, 0x01, &cmd, sizeof(C_Login_GC_9E));
       return HandlerResult::Type::SUPPRESS;
 

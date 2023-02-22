@@ -401,8 +401,8 @@ static void on_8B_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   if (cmd.is_extended) {
     const auto& ext_cmd = check_size_t<C_LoginExtended_DCNTE_8B>(data);
-    if (ext_cmd.extension.menu_id == MenuID::LOBBY) {
-      c->preferred_lobby_id = ext_cmd.extension.lobby_id;
+    if (ext_cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
+      c->preferred_lobby_id = ext_cmd.extension.lobby_refs[0].item_id;
     }
   }
 
@@ -482,8 +482,8 @@ static void on_93_DC(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   if (cmd.is_extended) {
     const auto& ext_cmd = check_size_t<C_LoginExtendedV1_DC_93>(data);
-    if (ext_cmd.extension.menu_id == MenuID::LOBBY) {
-      c->preferred_lobby_id = ext_cmd.extension.lobby_id;
+    if (ext_cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
+      c->preferred_lobby_id = ext_cmd.extension.lobby_refs[0].item_id;
     }
   }
 
@@ -619,13 +619,13 @@ static void on_9D_9E(shared_ptr<ServerState> s, shared_ptr<Client> c,
     if (base_cmd->is_extended) {
       if (c->version() == GameVersion::PC) {
         const auto& cmd = check_size_t<C_LoginExtended_PC_9D>(data);
-        if (cmd.extension.menu_id == MenuID::LOBBY) {
-          c->preferred_lobby_id = cmd.extension.lobby_id;
+        if (cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
+          c->preferred_lobby_id = cmd.extension.lobby_refs[0].item_id;
         }
       } else {
         const auto& cmd = check_size_t<C_LoginExtended_DC_GC_9D>(data);
-        if (cmd.extension.menu_id == MenuID::LOBBY) {
-          c->preferred_lobby_id = cmd.extension.lobby_id;
+        if (cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
+          c->preferred_lobby_id = cmd.extension.lobby_refs[0].item_id;
         }
       }
     }
@@ -650,8 +650,8 @@ static void on_9D_9E(shared_ptr<ServerState> s, shared_ptr<Client> c,
     base_cmd = &cmd;
     if (cmd.is_extended) {
       const auto& cmd = check_size_t<C_LoginExtended_GC_9E>(data);
-      if (cmd.extension.menu_id == MenuID::LOBBY) {
-        c->preferred_lobby_id = cmd.extension.lobby_id;
+      if (cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
+        c->preferred_lobby_id = cmd.extension.lobby_refs[0].item_id;
       }
     }
 
