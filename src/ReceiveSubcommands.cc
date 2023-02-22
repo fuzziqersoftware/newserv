@@ -1402,7 +1402,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
   /* 84 */ on_subcommand_forward_check_size_game,
   /* 85 */ on_subcommand_forward_check_size_game,
   /* 86 */ on_subcommand_forward_check_size_game, // Hit destructible wall
-  /* 87 */ nullptr,
+  /* 87 */ on_subcommand_forward_check_size_client, // Shrink character
   /* 88 */ on_subcommand_forward_check_size_game,
   /* 89 */ on_subcommand_forward_check_size_game,
   /* 8A */ on_subcommand_forward_check_size_game,
