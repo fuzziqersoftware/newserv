@@ -3355,7 +3355,9 @@ struct G_Unknown_6x1F {
   le_uint32_t area;
 } __packed__;
 
-// 6x20: Set position (existing clients send when a new client joins a lobby/game)
+// 6x20: Set position
+// Existing clients send this when a new client joins a lobby/game, so the new
+// client knows where to place them.
 
 struct G_Unknown_6x20 {
   G_ClientIDHeader header;
@@ -5131,7 +5133,9 @@ struct G_Unknown_GC_Ep3_6xB5x17 {
 // 6xB5x1A: Force disconnect
 // This command seems to cause the client to unconditionally disconnect. The
 // player is returned to the main menu (the "The line was disconnected" message
-// box is skipped).
+// box is skipped). Unlike all other known ways to disconnect, the client does
+// not save when it receives this command, and instead returns directly to the
+// main menu.
 
 struct G_ForceDisconnect_GC_Ep3_6xB5x1A {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_ForceDisconnect_GC_Ep3_6xB5x1A) / 4, 0, 0x1A, 0, 0, 0};
