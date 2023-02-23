@@ -131,7 +131,7 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
 
 
 
-static void on_subcommand_invalid(shared_ptr<ServerState>,
+static void on_invalid(shared_ptr<ServerState>,
     shared_ptr<Lobby>, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_UnusedHeader>(
@@ -144,7 +144,7 @@ static void on_subcommand_invalid(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_unimplemented(shared_ptr<ServerState>,
+static void on_unimplemented(shared_ptr<ServerState>,
     shared_ptr<Lobby>, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_UnusedHeader>(
@@ -159,14 +159,14 @@ static void on_subcommand_unimplemented(shared_ptr<ServerState>,
 
 
 
-static void on_subcommand_forward_check_size(shared_ptr<ServerState>,
+static void on_forward_check_size(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   check_size_sc<G_UnusedHeader>(data, sizeof(G_UnusedHeader), 0xFFFF);
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_forward_check_game(shared_ptr<ServerState>,
+static void on_forward_check_game(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!l->is_game()) {
@@ -175,7 +175,7 @@ static void on_subcommand_forward_check_game(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_forward_check_game_loading(shared_ptr<ServerState>,
+static void on_forward_check_game_loading(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!l->is_game() || !l->any_client_loading()) {
@@ -184,7 +184,7 @@ static void on_subcommand_forward_check_game_loading(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_forward_check_size_client(shared_ptr<ServerState>,
+static void on_forward_check_size_client(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_ClientIDHeader>(
@@ -195,7 +195,7 @@ static void on_subcommand_forward_check_size_client(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_forward_check_size_game(shared_ptr<ServerState>,
+static void on_forward_check_size_game(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   check_size_sc<G_UnusedHeader>(data, sizeof(G_UnusedHeader), 0xFFFF);
@@ -205,7 +205,7 @@ static void on_subcommand_forward_check_size_game(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_forward_check_size_ep3_lobby(shared_ptr<ServerState>,
+static void on_forward_check_size_ep3_lobby(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   check_size_sc<G_UnusedHeader>(data, sizeof(G_UnusedHeader), 0xFFFF);
@@ -215,7 +215,7 @@ static void on_subcommand_forward_check_size_ep3_lobby(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_forward_check_size_ep3_game(shared_ptr<ServerState>,
+static void on_forward_check_size_ep3_game(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   check_size_sc<G_UnusedHeader>(data, sizeof(G_UnusedHeader), 0xFFFF);
@@ -230,7 +230,7 @@ static void on_subcommand_forward_check_size_ep3_game(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 // Ep3 subcommands
 
-static void on_subcommand_ep3_battle_subs(shared_ptr<ServerState> s,
+static void on_ep3_battle_subs(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& orig_data) {
   const auto& header = check_size_sc<G_CardBattleCommandHeader>(
@@ -269,7 +269,7 @@ static void on_subcommand_ep3_battle_subs(shared_ptr<ServerState> s,
 ////////////////////////////////////////////////////////////////////////////////
 // Chat commands and the like
 
-static void on_subcommand_send_guild_card(shared_ptr<ServerState>,
+static void on_send_guild_card(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!command_is_private(command) || !l || (flag >= l->max_clients) ||
@@ -306,7 +306,7 @@ static void on_subcommand_send_guild_card(shared_ptr<ServerState>,
 }
 
 // client sends a symbol chat
-static void on_subcommand_symbol_chat(shared_ptr<ServerState>,
+static void on_symbol_chat(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_SymbolChat_6x07>(data);
@@ -318,7 +318,7 @@ static void on_subcommand_symbol_chat(shared_ptr<ServerState>,
 }
 
 // client sends a word select chat
-static void on_subcommand_word_select(shared_ptr<ServerState>,
+static void on_word_select(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_WordSelect_6x74>(data);
@@ -331,7 +331,7 @@ static void on_subcommand_word_select(shared_ptr<ServerState>,
 }
 
 // client is done loading into a lobby (we use this to trigger arrow updates)
-static void on_subcommand_set_player_visibility(shared_ptr<ServerState>,
+static void on_set_player_visibility(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_SetPlayerVisibility_6x22_6x23>(data);
@@ -350,7 +350,7 @@ static void on_subcommand_set_player_visibility(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands used by cheat mechanisms
 
-static void on_subcommand_change_area(shared_ptr<ServerState>,
+static void on_change_area(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_InterLevelWarp_6x21>(data);
@@ -362,7 +362,7 @@ static void on_subcommand_change_area(shared_ptr<ServerState>,
 }
 
 // when a player is hit by an enemy, heal them if infinite HP is enabled
-static void on_subcommand_hit_by_enemy(shared_ptr<ServerState>,
+static void on_hit_by_enemy(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_ClientIDHeader>(data, sizeof(G_ClientIDHeader), 0xFFFF);
@@ -376,7 +376,7 @@ static void on_subcommand_hit_by_enemy(shared_ptr<ServerState>,
 }
 
 // when a player casts a tech, restore TP if infinite TP is enabled
-static void on_subcommand_cast_technique_finished(shared_ptr<ServerState>,
+static void on_cast_technique_finished(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_CastTechniqueComplete_6x48>(data);
@@ -389,7 +389,7 @@ static void on_subcommand_cast_technique_finished(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_attack_finished(shared_ptr<ServerState> s,
+static void on_attack_finished(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_AttackFinished_6x46>(data,
@@ -398,10 +398,10 @@ static void on_subcommand_attack_finished(shared_ptr<ServerState> s,
   if (cmd.count > allowed_count) {
     throw runtime_error("invalid attack finished command");
   }
-  on_subcommand_forward_check_size_client(s, l, c, command, flag, data);
+  on_forward_check_size_client(s, l, c, command, flag, data);
 }
 
-static void on_subcommand_cast_technique(shared_ptr<ServerState> s,
+static void on_cast_technique(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_CastTechnique_6x47>(data,
@@ -410,10 +410,10 @@ static void on_subcommand_cast_technique(shared_ptr<ServerState> s,
   if (cmd.target_count > allowed_count) {
     throw runtime_error("invalid cast technique command");
   }
-  on_subcommand_forward_check_size_client(s, l, c, command, flag, data);
+  on_forward_check_size_client(s, l, c, command, flag, data);
 }
 
-static void on_subcommand_subtract_pb_energy(shared_ptr<ServerState> s,
+static void on_subtract_pb_energy(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_SubtractPBEnergy_6x49>(data,
@@ -422,10 +422,10 @@ static void on_subcommand_subtract_pb_energy(shared_ptr<ServerState> s,
   if (cmd.entry_count > allowed_count) {
     throw runtime_error("invalid subtract PB energy command");
   }
-  on_subcommand_forward_check_size_client(s, l, c, command, flag, data);
+  on_forward_check_size_client(s, l, c, command, flag, data);
 }
 
-static void on_subcommand_switch_state_changed(shared_ptr<ServerState>,
+static void on_switch_state_changed(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
@@ -448,7 +448,7 @@ static void on_subcommand_switch_state_changed(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename CmdT>
-void on_subcommand_movement(shared_ptr<ServerState>,
+void on_movement(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<CmdT>(data);
@@ -466,7 +466,7 @@ void on_subcommand_movement(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 // Item commands
 
-static void on_subcommand_player_drop_item(shared_ptr<ServerState>,
+static void on_player_drop_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_DropItem_6x2A>(data);
@@ -488,7 +488,7 @@ static void on_subcommand_player_drop_item(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_create_inventory_item(shared_ptr<ServerState>,
+static void on_create_inventory_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_CreateInventoryItem_DC_6x2B>(data,
@@ -518,7 +518,7 @@ static void on_subcommand_create_inventory_item(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_drop_partial_stack(shared_ptr<ServerState>,
+static void on_drop_partial_stack(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_DropStackedItem_DC_6x5D>(data,
@@ -549,7 +549,7 @@ static void on_subcommand_drop_partial_stack(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_drop_partial_stack_bb(shared_ptr<ServerState>,
+static void on_drop_partial_stack_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -590,7 +590,7 @@ static void on_subcommand_drop_partial_stack_bb(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_buy_shop_item(shared_ptr<ServerState>,
+static void on_buy_shop_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_BuyShopItem_6x5E>(data);
@@ -617,7 +617,7 @@ static void on_subcommand_buy_shop_item(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_box_or_enemy_item_drop(shared_ptr<ServerState>,
+static void on_box_or_enemy_item_drop(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_DropItem_DC_6x5F>(data,
@@ -644,7 +644,7 @@ static void on_subcommand_box_or_enemy_item_drop(shared_ptr<ServerState>,
 }
 
 
-static void on_subcommand_pick_up_item(shared_ptr<ServerState>,
+static void on_pick_up_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   auto& cmd = check_size_sc<G_PickUpItem_6x59>(data);
@@ -672,7 +672,7 @@ static void on_subcommand_pick_up_item(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_pick_up_item_request(shared_ptr<ServerState>,
+static void on_pick_up_item_request(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   // This is handled by the server on BB, and by the leader on other versions
@@ -700,7 +700,7 @@ static void on_subcommand_pick_up_item_request(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_equip_unequip_item(shared_ptr<ServerState>,
+static void on_equip_unequip_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_EquipOrUnequipItem_6x25_6x26>(data);
@@ -725,7 +725,7 @@ static void on_subcommand_equip_unequip_item(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_use_item(shared_ptr<ServerState>,
+static void on_use_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_UseItem_6x27>(data);
@@ -746,11 +746,11 @@ static void on_subcommand_use_item(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_open_shop_bb_or_ep3_battle_subs(shared_ptr<ServerState> s,
+static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
-    on_subcommand_ep3_battle_subs(s, l, c, command, flag, data);
+    on_ep3_battle_subs(s, l, c, command, flag, data);
 
   } else if (!l->common_item_creator.get()) {
     throw runtime_error("received shop subcommand without item creator present");
@@ -781,7 +781,7 @@ static void on_subcommand_open_shop_bb_or_ep3_battle_subs(shared_ptr<ServerState
   }
 }
 
-static void on_subcommand_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<ServerState>,
+static void on_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag, const string& data) {
   if ((l->version == GameVersion::BB) && l->is_game()) {
     send_bank(c);
@@ -790,7 +790,7 @@ static void on_subcommand_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<Serv
   }
 }
 
-static void on_subcommand_bank_action_bb(shared_ptr<ServerState>,
+static void on_bank_action_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const string& data) {
   if (l->version == GameVersion::BB) {
     const auto& cmd = check_size_sc<G_BankAction_BB_6xBD>(data);
@@ -839,7 +839,7 @@ static void on_subcommand_bank_action_bb(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_sort_inventory_bb(shared_ptr<ServerState>,
+static void on_sort_inventory_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -943,7 +943,7 @@ static bool drop_item(
   return true;
 }
 
-static void on_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s,
+static void on_enemy_drop_item_request(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!l->is_game()) {
@@ -958,7 +958,7 @@ static void on_subcommand_enemy_drop_item_request(shared_ptr<ServerState> s,
   }
 }
 
-static void on_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
+static void on_box_drop_item_request(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!l->is_game()) {
@@ -971,7 +971,7 @@ static void on_subcommand_box_drop_item_request(shared_ptr<ServerState> s,
   }
 }
 
-static void on_subcommand_phase_setup(shared_ptr<ServerState>,
+static void on_phase_setup(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
@@ -1026,7 +1026,7 @@ static void on_subcommand_phase_setup(shared_ptr<ServerState>,
 }
 
 // enemy hit by player
-static void on_subcommand_enemy_hit(shared_ptr<ServerState>,
+static void on_enemy_hit(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -1049,7 +1049,7 @@ static void on_subcommand_enemy_hit(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_subcommand_enemy_killed(shared_ptr<ServerState> s,
+static void on_enemy_killed(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   forward_subcommand(l, c, command, flag, data);
@@ -1119,7 +1119,7 @@ static void on_subcommand_enemy_killed(shared_ptr<ServerState> s,
   }
 }
 
-static void on_subcommand_destroy_inventory_item(shared_ptr<ServerState>,
+static void on_destroy_inventory_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_DeleteInventoryItem_6x29>(data);
@@ -1138,7 +1138,7 @@ static void on_subcommand_destroy_inventory_item(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_destroy_ground_item(shared_ptr<ServerState>,
+static void on_destroy_ground_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_DestroyGroundItem_6x63>(data);
@@ -1152,7 +1152,7 @@ static void on_subcommand_destroy_ground_item(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_identify_item_bb(shared_ptr<ServerState>,
+static void on_identify_item_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (l->version == GameVersion::BB) {
@@ -1186,7 +1186,7 @@ static void on_subcommand_identify_item_bb(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_accept_identify_item_bb(shared_ptr<ServerState>,
+static void on_accept_identify_item_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
 
@@ -1212,7 +1212,7 @@ static void on_subcommand_accept_identify_item_bb(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_sell_item_at_shop_bb(shared_ptr<ServerState>,
+static void on_sell_item_at_shop_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client>, uint8_t, uint8_t, const string&) {
 
   if (l->version == GameVersion::BB) {
@@ -1229,7 +1229,7 @@ static void on_subcommand_sell_item_at_shop_bb(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_buy_shop_item_bb(shared_ptr<ServerState>,
+static void on_buy_shop_item_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client>, uint8_t, uint8_t, const string&) {
 
   if (l->version == GameVersion::BB) {
@@ -1246,7 +1246,7 @@ static void on_subcommand_buy_shop_item_bb(shared_ptr<ServerState>,
   }
 }
 
-static void on_subcommand_medical_center_bb(shared_ptr<ServerState>,
+static void on_medical_center_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const string&) {
 
   if (l->version == GameVersion::BB) {
@@ -1267,214 +1267,214 @@ typedef void (*subcommand_handler_t)(shared_ptr<ServerState> s,
     const string& data);
 
 subcommand_handler_t subcommand_handlers[0x100] = {
-  /* 00 */ on_subcommand_invalid,
+  /* 00 */ on_invalid,
   /* 01 */ nullptr,
   /* 02 */ nullptr,
   /* 03 */ nullptr,
   /* 04 */ nullptr,
-  /* 05 */ on_subcommand_switch_state_changed,
-  /* 06 */ on_subcommand_send_guild_card,
-  /* 07 */ on_subcommand_symbol_chat,
+  /* 05 */ on_switch_state_changed,
+  /* 06 */ on_send_guild_card,
+  /* 07 */ on_symbol_chat,
   /* 08 */ nullptr,
   /* 09 */ nullptr,
-  /* 0A */ on_subcommand_enemy_hit,
-  /* 0B */ on_subcommand_forward_check_size_game,
-  /* 0C */ on_subcommand_forward_check_size_game, // Add condition (poison/slow/etc.)
-  /* 0D */ on_subcommand_forward_check_size_game, // Remove condition (poison/slow/etc.)
+  /* 0A */ on_enemy_hit,
+  /* 0B */ on_forward_check_size_game,
+  /* 0C */ on_forward_check_size_game, // Add condition (poison/slow/etc.)
+  /* 0D */ on_forward_check_size_game, // Remove condition (poison/slow/etc.)
   /* 0E */ nullptr,
   /* 0F */ nullptr,
   /* 10 */ nullptr,
   /* 11 */ nullptr,
-  /* 12 */ on_subcommand_forward_check_size_game, // Dragon actions
-  /* 13 */ on_subcommand_forward_check_size_game, // De Rol Le actions
-  /* 14 */ on_subcommand_forward_check_size_game,
-  /* 15 */ on_subcommand_forward_check_size_game, // Vol Opt actions
-  /* 16 */ on_subcommand_forward_check_size_game, // Vol Opt actions
-  /* 17 */ on_subcommand_forward_check_size_game,
-  /* 18 */ on_subcommand_forward_check_size_game,
-  /* 19 */ on_subcommand_forward_check_size_game, // Dark Falz actions
+  /* 12 */ on_forward_check_size_game, // Dragon actions
+  /* 13 */ on_forward_check_size_game, // De Rol Le actions
+  /* 14 */ on_forward_check_size_game,
+  /* 15 */ on_forward_check_size_game, // Vol Opt actions
+  /* 16 */ on_forward_check_size_game, // Vol Opt actions
+  /* 17 */ on_forward_check_size_game,
+  /* 18 */ on_forward_check_size_game,
+  /* 19 */ on_forward_check_size_game, // Dark Falz actions
   /* 1A */ nullptr,
   /* 1B */ nullptr,
-  /* 1C */ on_subcommand_forward_check_size_game,
+  /* 1C */ on_forward_check_size_game,
   /* 1D */ nullptr,
   /* 1E */ nullptr,
-  /* 1F */ on_subcommand_forward_check_size,
-  /* 20 */ on_subcommand_forward_check_size,
-  /* 21 */ on_subcommand_change_area, // Inter-level warp
-  /* 22 */ on_subcommand_forward_check_size_client, // Set player visibility
-  /* 23 */ on_subcommand_set_player_visibility, // Set player visibility
-  /* 24 */ on_subcommand_forward_check_size_game,
-  /* 25 */ on_subcommand_equip_unequip_item, // Equip item
-  /* 26 */ on_subcommand_equip_unequip_item, // Unequip item
-  /* 27 */ on_subcommand_use_item,
-  /* 28 */ on_subcommand_forward_check_size_game, // Feed MAG
-  /* 29 */ on_subcommand_destroy_inventory_item, // Delete item (via bank deposit / sale / feeding MAG)
-  /* 2A */ on_subcommand_player_drop_item,
-  /* 2B */ on_subcommand_create_inventory_item, // Create inventory item (e.g. from tekker or bank withdrawal)
-  /* 2C */ on_subcommand_forward_check_size, // Talk to NPC
-  /* 2D */ on_subcommand_forward_check_size, // Done talking to NPC
+  /* 1F */ on_forward_check_size,
+  /* 20 */ on_forward_check_size,
+  /* 21 */ on_change_area, // Inter-level warp
+  /* 22 */ on_forward_check_size_client, // Set player visibility
+  /* 23 */ on_set_player_visibility, // Set player visibility
+  /* 24 */ on_forward_check_size_game,
+  /* 25 */ on_equip_unequip_item, // Equip item
+  /* 26 */ on_equip_unequip_item, // Unequip item
+  /* 27 */ on_use_item,
+  /* 28 */ on_forward_check_size_game, // Feed MAG
+  /* 29 */ on_destroy_inventory_item, // Delete item (via bank deposit / sale / feeding MAG)
+  /* 2A */ on_player_drop_item,
+  /* 2B */ on_create_inventory_item, // Create inventory item (e.g. from tekker or bank withdrawal)
+  /* 2C */ on_forward_check_size, // Talk to NPC
+  /* 2D */ on_forward_check_size, // Done talking to NPC
   /* 2E */ nullptr,
-  /* 2F */ on_subcommand_hit_by_enemy,
-  /* 30 */ on_subcommand_forward_check_size_game, // Level up
-  /* 31 */ on_subcommand_forward_check_size_game, // Medical center
-  /* 32 */ on_subcommand_forward_check_size_game, // Medical center
-  /* 33 */ on_subcommand_forward_check_size_game, // Moon atomizer/Reverser
+  /* 2F */ on_hit_by_enemy,
+  /* 30 */ on_forward_check_size_game, // Level up
+  /* 31 */ on_forward_check_size_game, // Medical center
+  /* 32 */ on_forward_check_size_game, // Medical center
+  /* 33 */ on_forward_check_size_game, // Moon atomizer/Reverser
   /* 34 */ nullptr,
   /* 35 */ nullptr,
-  /* 36 */ on_subcommand_forward_check_game,
-  /* 37 */ on_subcommand_forward_check_size_game, // Photon blast
+  /* 36 */ on_forward_check_game,
+  /* 37 */ on_forward_check_size_game, // Photon blast
   /* 38 */ nullptr,
-  /* 39 */ on_subcommand_forward_check_size_game, // Photon blast ready
-  /* 3A */ on_subcommand_forward_check_size_game,
-  /* 3B */ on_subcommand_forward_check_size,
+  /* 39 */ on_forward_check_size_game, // Photon blast ready
+  /* 3A */ on_forward_check_size_game,
+  /* 3B */ on_forward_check_size,
   /* 3C */ nullptr,
   /* 3D */ nullptr,
-  /* 3E */ on_subcommand_movement<G_StopAtPosition_6x3E>, // Stop moving
-  /* 3F */ on_subcommand_movement<G_SetPosition_6x3F>, // Set position (e.g. when materializing after warp)
-  /* 40 */ on_subcommand_movement<G_WalkToPosition_6x40>, // Walk
+  /* 3E */ on_movement<G_StopAtPosition_6x3E>, // Stop moving
+  /* 3F */ on_movement<G_SetPosition_6x3F>, // Set position (e.g. when materializing after warp)
+  /* 40 */ on_movement<G_WalkToPosition_6x40>, // Walk
   /* 41 */ nullptr,
-  /* 42 */ on_subcommand_movement<G_RunToPosition_6x42>, // Run
-  /* 43 */ on_subcommand_forward_check_size_client,
-  /* 44 */ on_subcommand_forward_check_size_client,
-  /* 45 */ on_subcommand_forward_check_size_client,
-  /* 46 */ on_subcommand_attack_finished,
-  /* 47 */ on_subcommand_cast_technique,
-  /* 48 */ on_subcommand_cast_technique_finished,
-  /* 49 */ on_subcommand_subtract_pb_energy,
-  /* 4A */ on_subcommand_forward_check_size_client,
-  /* 4B */ on_subcommand_hit_by_enemy,
-  /* 4C */ on_subcommand_hit_by_enemy,
-  /* 4D */ on_subcommand_forward_check_size_client,
-  /* 4E */ on_subcommand_forward_check_size_client,
-  /* 4F */ on_subcommand_forward_check_size_client,
-  /* 50 */ on_subcommand_forward_check_size_client,
+  /* 42 */ on_movement<G_RunToPosition_6x42>, // Run
+  /* 43 */ on_forward_check_size_client,
+  /* 44 */ on_forward_check_size_client,
+  /* 45 */ on_forward_check_size_client,
+  /* 46 */ on_attack_finished,
+  /* 47 */ on_cast_technique,
+  /* 48 */ on_cast_technique_finished,
+  /* 49 */ on_subtract_pb_energy,
+  /* 4A */ on_forward_check_size_client,
+  /* 4B */ on_hit_by_enemy,
+  /* 4C */ on_hit_by_enemy,
+  /* 4D */ on_forward_check_size_client,
+  /* 4E */ on_forward_check_size_client,
+  /* 4F */ on_forward_check_size_client,
+  /* 50 */ on_forward_check_size_client,
   /* 51 */ nullptr,
-  /* 52 */ on_subcommand_forward_check_size, // Toggle shop/bank interaction
-  /* 53 */ on_subcommand_forward_check_size_game,
+  /* 52 */ on_forward_check_size, // Toggle shop/bank interaction
+  /* 53 */ on_forward_check_size_game,
   /* 54 */ nullptr,
-  /* 55 */ on_subcommand_forward_check_size_client, // Intra-map warp
-  /* 56 */ on_subcommand_forward_check_size_client,
-  /* 57 */ on_subcommand_forward_check_size_client,
-  /* 58 */ on_subcommand_forward_check_size_client, // Begin playing emote
-  /* 59 */ on_subcommand_pick_up_item, // Item picked up
-  /* 5A */ on_subcommand_pick_up_item_request, // Request to pick up item
+  /* 55 */ on_forward_check_size_client, // Intra-map warp
+  /* 56 */ on_forward_check_size_client,
+  /* 57 */ on_forward_check_size_client,
+  /* 58 */ on_forward_check_size_client, // Begin playing emote
+  /* 59 */ on_pick_up_item, // Item picked up
+  /* 5A */ on_pick_up_item_request, // Request to pick up item
   /* 5B */ nullptr,
   /* 5C */ nullptr,
-  /* 5D */ on_subcommand_drop_partial_stack, // Drop meseta or stacked item
-  /* 5E */ on_subcommand_buy_shop_item, // Buy item at shop
-  /* 5F */ on_subcommand_box_or_enemy_item_drop, // Drop item from box/enemy
-  /* 60 */ on_subcommand_enemy_drop_item_request, // Request for item drop (handled by the server on BB)
-  /* 61 */ on_subcommand_forward_check_size_game, // Feed mag
+  /* 5D */ on_drop_partial_stack, // Drop meseta or stacked item
+  /* 5E */ on_buy_shop_item, // Buy item at shop
+  /* 5F */ on_box_or_enemy_item_drop, // Drop item from box/enemy
+  /* 60 */ on_enemy_drop_item_request, // Request for item drop (handled by the server on BB)
+  /* 61 */ on_forward_check_size_game, // Feed mag
   /* 62 */ nullptr,
-  /* 63 */ on_subcommand_destroy_ground_item, // Destroy an item on the ground (used when too many items have been dropped)
+  /* 63 */ on_destroy_ground_item, // Destroy an item on the ground (used when too many items have been dropped)
   /* 64 */ nullptr,
   /* 65 */ nullptr,
-  /* 66 */ on_subcommand_forward_check_size_game, // Use star atomizer
-  /* 67 */ on_subcommand_forward_check_size_game, // Create enemy set
-  /* 68 */ on_subcommand_forward_check_size_game, // Telepipe/Ryuker
-  /* 69 */ on_subcommand_forward_check_size_game,
-  /* 6A */ on_subcommand_forward_check_size_game,
-  /* 6B */ on_subcommand_forward_check_game_loading,
-  /* 6C */ on_subcommand_forward_check_game_loading,
-  /* 6D */ on_subcommand_forward_check_game_loading,
-  /* 6E */ on_subcommand_forward_check_game_loading,
-  /* 6F */ on_subcommand_forward_check_game_loading,
-  /* 70 */ on_subcommand_forward_check_game_loading,
-  /* 71 */ on_subcommand_forward_check_game_loading,
-  /* 72 */ on_subcommand_forward_check_game_loading,
-  /* 73 */ on_subcommand_invalid,
-  /* 74 */ on_subcommand_word_select,
-  /* 75 */ on_subcommand_phase_setup,
-  /* 76 */ on_subcommand_forward_check_size_game, // Enemy killed
-  /* 77 */ on_subcommand_forward_check_size_game, // Sync quest data
+  /* 66 */ on_forward_check_size_game, // Use star atomizer
+  /* 67 */ on_forward_check_size_game, // Create enemy set
+  /* 68 */ on_forward_check_size_game, // Telepipe/Ryuker
+  /* 69 */ on_forward_check_size_game,
+  /* 6A */ on_forward_check_size_game,
+  /* 6B */ on_forward_check_game_loading,
+  /* 6C */ on_forward_check_game_loading,
+  /* 6D */ on_forward_check_game_loading,
+  /* 6E */ on_forward_check_game_loading,
+  /* 6F */ on_forward_check_game_loading,
+  /* 70 */ on_forward_check_game_loading,
+  /* 71 */ on_forward_check_game_loading,
+  /* 72 */ on_forward_check_game_loading,
+  /* 73 */ on_invalid,
+  /* 74 */ on_word_select,
+  /* 75 */ on_phase_setup,
+  /* 76 */ on_forward_check_size_game, // Enemy killed
+  /* 77 */ on_forward_check_size_game, // Sync quest data
   /* 78 */ nullptr,
-  /* 79 */ on_subcommand_forward_check_size, // Lobby 14/15 soccer game
+  /* 79 */ on_forward_check_size, // Lobby 14/15 soccer game
   /* 7A */ nullptr,
   /* 7B */ nullptr,
-  /* 7C */ on_subcommand_forward_check_size_game,
-  /* 7D */ on_subcommand_forward_check_size_game,
+  /* 7C */ on_forward_check_size_game,
+  /* 7D */ on_forward_check_size_game,
   /* 7E */ nullptr,
   /* 7F */ nullptr,
-  /* 80 */ on_subcommand_forward_check_size_game, // Trigger trap
+  /* 80 */ on_forward_check_size_game, // Trigger trap
   /* 81 */ nullptr,
   /* 82 */ nullptr,
-  /* 83 */ on_subcommand_forward_check_size_game, // Place trap
-  /* 84 */ on_subcommand_forward_check_size_game,
-  /* 85 */ on_subcommand_forward_check_size_game,
-  /* 86 */ on_subcommand_forward_check_size_game, // Hit destructible wall
-  /* 87 */ on_subcommand_forward_check_size_client, // Shrink character
-  /* 88 */ on_subcommand_forward_check_size_game,
-  /* 89 */ on_subcommand_forward_check_size_game,
-  /* 8A */ on_subcommand_forward_check_size_game,
+  /* 83 */ on_forward_check_size_game, // Place trap
+  /* 84 */ on_forward_check_size_game,
+  /* 85 */ on_forward_check_size_game,
+  /* 86 */ on_forward_check_size_game, // Hit destructible wall
+  /* 87 */ on_forward_check_size_game, // Shrink character
+  /* 88 */ on_forward_check_size_game,
+  /* 89 */ on_forward_check_size_game,
+  /* 8A */ on_forward_check_size_game,
   /* 8B */ nullptr,
   /* 8C */ nullptr,
-  /* 8D */ on_subcommand_forward_check_size_client,
+  /* 8D */ on_forward_check_size_client,
   /* 8E */ nullptr,
   /* 8F */ nullptr,
   /* 90 */ nullptr,
-  /* 91 */ on_subcommand_forward_check_size_game,
+  /* 91 */ on_forward_check_size_game,
   /* 92 */ nullptr,
-  /* 93 */ on_subcommand_forward_check_size_game, // Timed switch activated
-  /* 94 */ on_subcommand_forward_check_size_game, // Warp (the $warp chat command is implemented using this)
+  /* 93 */ on_forward_check_size_game, // Timed switch activated
+  /* 94 */ on_forward_check_size_game, // Warp (the $warp chat command is implemented using this)
   /* 95 */ nullptr,
   /* 96 */ nullptr,
   /* 97 */ nullptr,
   /* 98 */ nullptr,
   /* 99 */ nullptr,
-  /* 9A */ on_subcommand_forward_check_size_game, // Update player stat ($infhp/$inftp are implemented using this command)
+  /* 9A */ on_forward_check_size_game, // Update player stat ($infhp/$inftp are implemented using this command)
   /* 9B */ nullptr,
-  /* 9C */ on_subcommand_forward_check_size_game,
+  /* 9C */ on_forward_check_size_game,
   /* 9D */ nullptr,
   /* 9E */ nullptr,
-  /* 9F */ on_subcommand_forward_check_size_game, // Gal Gryphon actions
-  /* A0 */ on_subcommand_forward_check_size_game, // Gal Gryphon actions
-  /* A1 */ on_subcommand_forward_check_size_game, // Part of revive process. Occurs right after revive command, function unclear.
-  /* A2 */ on_subcommand_box_drop_item_request, // Request for item drop from box (handled by server on BB)
-  /* A3 */ on_subcommand_forward_check_size_game, // Episode 2 boss actions
-  /* A4 */ on_subcommand_forward_check_size_game, // Olga Flow phase 1 actions
-  /* A5 */ on_subcommand_forward_check_size_game, // Olga Flow phase 2 actions
-  /* A6 */ on_subcommand_forward_check_size, // Trade proposal
+  /* 9F */ on_forward_check_size_game, // Gal Gryphon actions
+  /* A0 */ on_forward_check_size_game, // Gal Gryphon actions
+  /* A1 */ on_forward_check_size_game, // Part of revive process. Occurs right after revive command, function unclear.
+  /* A2 */ on_box_drop_item_request, // Request for item drop from box (handled by server on BB)
+  /* A3 */ on_forward_check_size_game, // Episode 2 boss actions
+  /* A4 */ on_forward_check_size_game, // Olga Flow phase 1 actions
+  /* A5 */ on_forward_check_size_game, // Olga Flow phase 2 actions
+  /* A6 */ on_forward_check_size, // Trade proposal
   /* A7 */ nullptr,
-  /* A8 */ on_subcommand_forward_check_size_game, // Gol Dragon actions
-  /* A9 */ on_subcommand_forward_check_size_game, // Barba Ray actions
-  /* AA */ on_subcommand_forward_check_size_game, // Episode 2 boss actions
-  /* AB */ on_subcommand_forward_check_size_client, // Create lobby chair
+  /* A8 */ on_forward_check_size_game, // Gol Dragon actions
+  /* A9 */ on_forward_check_size_game, // Barba Ray actions
+  /* AA */ on_forward_check_size_game, // Episode 2 boss actions
+  /* AB */ on_forward_check_size_client, // Create lobby chair
   /* AC */ nullptr,
-  /* AD */ on_subcommand_forward_check_size_game, // Olga Flow phase 2 subordinate boss actions
-  /* AE */ on_subcommand_forward_check_size_client,
-  /* AF */ on_subcommand_forward_check_size_client, // Turn in lobby chair
-  /* B0 */ on_subcommand_forward_check_size_client, // Move in lobby chair
+  /* AD */ on_forward_check_size_game, // Olga Flow phase 2 subordinate boss actions
+  /* AE */ on_forward_check_size_client,
+  /* AF */ on_forward_check_size_client, // Turn in lobby chair
+  /* B0 */ on_forward_check_size_client, // Move in lobby chair
   /* B1 */ nullptr,
   /* B2 */ nullptr,
-  /* B3 */ on_subcommand_ep3_battle_subs,
-  /* B4 */ on_subcommand_ep3_battle_subs,
-  /* B5 */ on_subcommand_open_shop_bb_or_ep3_battle_subs, // BB shop request
+  /* B3 */ on_ep3_battle_subs,
+  /* B4 */ on_ep3_battle_subs,
+  /* B5 */ on_open_shop_bb_or_ep3_battle_subs, // BB shop request
   /* B6 */ nullptr, // BB shop contents (server->client only)
-  /* B7 */ on_subcommand_buy_shop_item_bb,
-  /* B8 */ on_subcommand_identify_item_bb,
+  /* B7 */ on_buy_shop_item_bb,
+  /* B8 */ on_identify_item_bb,
   /* B9 */ nullptr,
-  /* BA */ on_subcommand_accept_identify_item_bb,
-  /* BB */ on_subcommand_open_bank_bb_or_card_trade_counter_ep3,
-  /* BC */ on_subcommand_forward_check_size_ep3_game, // BB bank contents (server->client only), Ep3 card trade sequence
-  /* BD */ on_subcommand_bank_action_bb,
-  /* BE */ on_subcommand_forward_check_size, // BB create inventory item (server->client only), Ep3 sound chat
-  /* BF */ on_subcommand_forward_check_size_ep3_lobby, // Ep3 change music, also BB give EXP (BB usage is server->client only)
-  /* C0 */ on_subcommand_sell_item_at_shop_bb,
+  /* BA */ on_accept_identify_item_bb,
+  /* BB */ on_open_bank_bb_or_card_trade_counter_ep3,
+  /* BC */ on_forward_check_size_ep3_game, // BB bank contents (server->client only), Ep3 card trade sequence
+  /* BD */ on_bank_action_bb,
+  /* BE */ on_forward_check_size, // BB create inventory item (server->client only), Ep3 sound chat
+  /* BF */ on_forward_check_size_ep3_lobby, // Ep3 change music, also BB give EXP (BB usage is server->client only)
+  /* C0 */ on_sell_item_at_shop_bb,
   /* C1 */ nullptr,
   /* C2 */ nullptr,
-  /* C3 */ on_subcommand_drop_partial_stack_bb, // Split stacked item - not sent if entire stack is dropped
-  /* C4 */ on_subcommand_sort_inventory_bb,
-  /* C5 */ on_subcommand_medical_center_bb,
+  /* C3 */ on_drop_partial_stack_bb, // Split stacked item - not sent if entire stack is dropped
+  /* C4 */ on_sort_inventory_bb,
+  /* C5 */ on_medical_center_bb,
   /* C6 */ nullptr,
   /* C7 */ nullptr,
-  /* C8 */ on_subcommand_enemy_killed,
+  /* C8 */ on_enemy_killed,
   /* C9 */ nullptr,
   /* CA */ nullptr,
   /* CB */ nullptr,
   /* CC */ nullptr,
   /* CD */ nullptr,
   /* CE */ nullptr,
-  /* CF */ on_subcommand_forward_check_size_game,
+  /* CF */ on_forward_check_size_game,
   /* D0 */ nullptr,
   /* D1 */ nullptr,
   /* D2 */ nullptr,
@@ -1535,7 +1535,7 @@ void on_subcommand(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   if (fn) {
     fn(s, l, c, command, flag, data);
   } else {
-    on_subcommand_unimplemented(s, l, c, command, flag, data);
+    on_unimplemented(s, l, c, command, flag, data);
   }
 }
 
