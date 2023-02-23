@@ -373,7 +373,7 @@ struct C_LegacyLogin_PC_V3_03 {
   le_uint64_t unused = 0; // Same as unused field in 9D/9E
   le_uint32_t sub_version = 0;
   uint8_t is_extended = 0;
-  uint8_t language = 0; // Same as 9D/9E
+  uint8_t language = 0;
   le_uint16_t unknown_a2 = 0;
   // Note: These are suffixed with 2 since they come from the same source data
   // as the corresponding fields in 9D/9E. (Even though serial_number and
@@ -420,7 +420,7 @@ struct C_LegacyLogin_PC_V3_04 {
   le_uint64_t unused1 = 0; // Same as unused field in 9D/9E
   le_uint32_t sub_version = 0;
   uint8_t is_extended = 0;
-  uint8_t language = 0; // Same as 9D/9E
+  uint8_t language = 0;
   le_uint16_t unknown_a2 = 0;
   ptext<char, 0x10> serial_number;
   ptext<char, 0x10> access_key;
@@ -5784,18 +5784,24 @@ struct G_TournamentMatchResult_GC_Ep3_6xB4x51 {
 
 struct G_SetGameMetadata_GC_Ep3_6xB4x52 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetGameMetadata_GC_Ep3_6xB4x52) / 4, 0, 0x52, 0, 0, 0};
-  le_uint16_t unknown_a1 = 0; // Clamped to [0, 999] by the client
-  // If num_spectators is nonzero, an icon appears in the middle of the screen
-  // during battle when the details view is enabled (by pressing Z). However,
-  // the number of people visible in the icon doesn't match the actual number of
-  // spectators. Specifically:
+  // This field appears before the slash in the spectators' HUD. Presumably this
+  // is used to indecate how many spectators are in the current spectator team.
+  // In the primary game (watched lobby), this is presumably unused.
+  le_uint16_t local_spectators = 0; // Clamped to [0, 999] by the client
+  // This field appears after the slash in the spectators' HUD. This is used to
+  // indicate how many spectators there are in all spectator teams attached to
+  // the same battle.
+  // This field also controls the icon shown in the primary game. If this field
+  // is nonzero, an icon appears in the middle of the screen during battle when
+  // the details view is enabled (by pressing Z). However, the number of people
+  // visible in the icon doesn't match the value in this field. Specifically:
   // 0 = no icon
   // 1 = icon with a single spectator (green)
   // 2-4 = icon with 3 spectators (blue)
   // 5-10 = icon with 5 spectators (yellow)
   // 11-29 = icon with 8 spectators (purple)
   // 30+ = icon with 12 spectators (red)
-  le_uint16_t num_spectators = 0; // Clamped to [0, 999] by the client
+  le_uint16_t total_spectators = 0; // Clamped to [0, 999] by the client
   le_uint16_t unused = 0;
   le_uint16_t size = 0; // Number of used bytes in unknown_a2 (clamped to 0xFF)
   parray<uint8_t, 0x100> unknown_a2;

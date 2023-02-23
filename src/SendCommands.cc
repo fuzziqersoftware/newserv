@@ -2304,15 +2304,34 @@ void send_ep3_update_spectator_count(shared_ptr<Lobby> l) {
   G_SetGameMetadata_GC_Ep3_6xB4x52 cmd;
   for (auto watcher_l : l->watcher_lobbies) {
     for (auto c : watcher_l->clients) {
-      if (c) {
-        cmd.num_spectators++;
-      }
+      cmd.total_spectators += (c.get() != nullptr);
     }
   }
+
   // TODO: Make s available here so we can apply masking if needed (perhaps by
   // adding a weak_ptr in Lobby... it'd be dumb to require s to be passed in to
   // this function just to check a behavior flag)
-  send_command_t(l, 0xC9, 0x00, cmd);
+
+  // Note: We can't use send_command_t(l, ...) here because that would send the
+  // same command to l and to all wather lobbies. The commands should have
+  // different values depending on who's in each watcher lobby, so we have to
+  // manually send to each client here.
+  for (auto c : l->clients) {
+    if (c) {
+      send_command_t(c, 0xC9, 0x00, cmd);
+    }
+  }
+  for (auto watcher_l : l->watcher_lobbies) {
+    cmd.local_spectators = 0;
+    for (auto c : watcher_l->clients) {
+      cmd.local_spectators += (c.get() != nullptr);
+    }
+    for (auto c : watcher_l->clients) {
+      if (c) {
+        send_command_t(c, 0xC9, 0x00, cmd);
+      }
+    }
+  }
 }
 
 void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key) {
