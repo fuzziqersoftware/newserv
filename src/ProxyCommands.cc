@@ -1007,6 +1007,9 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     if (session.options.red_name && pd.disp.name_color != 0xFFFF0000) {
       pd.disp.name_color = 0xFFFF0000;
       modified = true;
+    } else if (session.options.blank_name && pd.disp.name_color != 0x00000000) {
+      pd.disp.name_color = 0x00000000;
+      modified = true;
     }
 
   } else {
@@ -1035,6 +1038,9 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     }
     if (session.options.red_name && pd->disp.name_color != 0xFFFF0000) {
       pd->disp.name_color = 0xFFFF0000;
+      modified = true;
+    } else if (session.options.blank_name && pd->disp.name_color != 0x00000000) {
+      pd->disp.name_color = 0x00000000;
       modified = true;
     }
   }
