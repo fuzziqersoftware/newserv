@@ -181,7 +181,9 @@ static HandlerResult S_G_9A(shared_ptr<ServerState>,
   cmd.access_key = session.license->access_key;
   cmd.serial_number2 = cmd.serial_number;
   cmd.access_key2 = cmd.access_key;
-  if (!session.options.blank_name) {
+  if (session.options.blank_name) {
+    cmd.name = " ";
+  } else {
     cmd.name = session.character_name;
   }
   cmd.client_config.data = session.remote_client_config_data;
@@ -336,7 +338,9 @@ static HandlerResult S_V123P_02_17(
         cmd.access_key.clear_after(8);
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
-        if (!session.options.blank_name) {
+        if (session.options.blank_name) {
+          cmd.name = " ";
+        } else {
           cmd.name = session.character_name;
         }
         session.server_channel.send(0x9D, 0x00, &cmd, sizeof(cmd));
@@ -386,7 +390,9 @@ static HandlerResult S_V123P_02_17(
       cmd.access_key = fake_access_key_str;
       cmd.serial_number2 = cmd.serial_number;
       cmd.access_key2 = cmd.access_key;
-      if (!session.options.blank_name) {
+      if (session.options.blank_name) {
+        cmd.name = " ";
+      } else {
         cmd.name = session.character_name;
       }
       cmd.client_config.data = session.remote_client_config_data;
@@ -1001,7 +1007,7 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
       add_color_inplace(pd.info_board.data(), pd.info_board.size());
     }
     if (session.options.blank_name) {
-      pd.disp.name.clear();
+      pd.disp.name = " ";
       modified = true;
     }
     if (session.options.red_name && pd.disp.name_color != 0xFFFF0000) {
@@ -1033,7 +1039,7 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
       add_color_inplace(pd->info_board.data(), pd->info_board.size());
     }
     if (session.options.blank_name) {
-      pd->disp.name.clear();
+      pd->disp.name = " ";
       modified = true;
     }
     if (session.options.red_name && pd->disp.name_color != 0xFFFF0000) {
