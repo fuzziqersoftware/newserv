@@ -1908,7 +1908,7 @@ struct S_RankUpdate_GC_Ep3_B7 {
   ptext<char, 0x0C> rank_text;
   le_uint32_t meseta = 0;
   le_uint32_t max_meseta = 0;
-  le_uint32_t jukebox_songs_unlocked = 0;
+  le_uint32_t unlocked_jukebox_songs = 0xFFFFFFFF;
 } __packed__;
 
 // B7 (C->S): Confirm rank update (Episode 3)
@@ -1972,11 +1972,12 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
 // header.flag specifies the transaction purpose. This has little meaning on the
 // client. Specific known values:
 // 00 = unknown
-// 01 = unknown (S->C; request_token must match the last token sent by client)
+// 01 = Lobby jukebox object created (C->S; always has a value of 0;
+//      response request_token must match the last token sent by client)
 // 02 = Spend meseta (at e.g. lobby jukebox or Pinz's shop) (C->S)
 // 03 = Spend meseta response (S->C; request_token must match the last token
 //      sent by client)
-// 04 = unknown (S->C; request_token must match the last token sent by client)
+// 04 = unknown (C->S; request_token must match the last token sent by client)
 
 struct C_Meseta_GC_Ep3_BA {
   le_uint32_t transaction_num = 0;
@@ -4571,7 +4572,7 @@ struct G_Unknown_6xB2 {
   uint8_t area;
   uint8_t unused;
   le_uint16_t client_id;
-  le_uint32_t unknown_a3; // PSO GC puts 0x00051720 here
+  le_uint32_t unknown_a3; // PSO GC puts 0x00051720 (333600) here
 } __packed__;
 
 // 6xB3: Unknown (XBOX)
