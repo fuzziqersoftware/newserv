@@ -233,6 +233,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$secid <section-id>`: Sets your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. To revert to your actual section id, run `$secid` with no name after it.
     * `$rand <seed>`: Sets your override random seed (specified as a 32-bit hex value). This will make any games you create use the given seed for rare enemies. This also makes item drops deterministic in Blue Burst games hosted by newserv. On the proxy server, this command can cause desyncs with other players in the same game, since they will not see the overridden random seed. To remove the override, run `$rand` with no arguments.
     * `$exit`: If you're in a lobby, sends you to the main menu (which ends your proxy session, if you're in one). If you're in an Episode 3 game or spectator team, sends you to the lobby (but does not end your proxy session if you're in one).
+    * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
 
 * Blue Burst player commands (game server only)
     * `$bbchar <username> <password> <1-4>`: Use this command when playing on a non-BB version of PSO. If the username and password are correct, this command converts your current character to BB format and saves it on the server in the given slot. Any character already in that slot is overwritten.
@@ -243,6 +244,8 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$minlevel <level>`: Sets the minimum level for players to join the current game.
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
     * `$spec`: Toggles the allow spectators flag. If any players are spectating when this flag is disabled, they will be sent back to the lobby.
+    * `$saverec <name>`: Save the recording of the last Episode 3 battle.
+    * `$playrec <name>`: Play a battle recording. This command creates a spectator team and replays the specified battle log within it. There is a known issue which causes spectators to crash in some cases, so use of this command is currently not recommended.
 
 * Cheat mode commands
     * `$cheat`: Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. This command does nothing on the proxy server - cheat commands are always available there.
@@ -255,7 +258,7 @@ Some commands only work on the game server and not on the proxy server. The chat
 * Configuration commands
     * `$event <event>`: Sets the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, this applies to all lobbies and games you join, but only you will see the new event - other players will not.
     * `$allevent <event>` (game server only): Sets the current holiday event in all lobbies.
-    * `$song <song-id>` (game server only, Episode 3 only): Plays a specific song in the current lobby.
+    * `$song <song-id>` (Episode 3 only): Plays a specific song in the current lobby.
 
 * Administration commands (game server only)
     * `$ann <message>`: Sends an announcement message. The message text is sent to all players in all games and lobbies.
