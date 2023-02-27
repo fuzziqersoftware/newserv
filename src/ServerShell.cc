@@ -170,6 +170,9 @@ Proxy commands:\n\
     a client on the game server.\n\
   ss <data>\n\
     Send a command to the server.\n\
+  show-slots\n\
+    Show the player names, Guild Card numbers, and client IDs of all players in\n\
+    the current lobby or game.\n\
   chat <text>\n\
     Send a chat message to the server.\n\
   dchat <data>\n\
@@ -603,6 +606,20 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
         }
       } else {
         throw runtime_error("no client available");
+      }
+    }
+
+  } else if (command_name == "show-slots") {
+    auto session = this->get_proxy_session(session_name);
+    for (size_t z = 0; z < session->lobby_players.size(); z++) {
+      const auto& player = session->lobby_players[z];
+      if (player.guild_card_number) {
+        auto secid_name = name_for_section_id(player.section_id);
+        fprintf(stderr, "  %zu: %" PRIu32 " => %s (%s, %s)\n",
+            z, player.guild_card_number, player.name.c_str(),
+            name_for_char_class(player.char_class), secid_name.c_str());
+      } else {
+        fprintf(stderr, "  %zu: (no player)\n", z);
       }
     }
 
