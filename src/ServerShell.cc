@@ -562,7 +562,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
   // PROXY COMMANDS
 
   } else if ((command_name == "sc") || (command_name == "ss")) {
-    string data = parse_data_string(command_args);
+    string data = parse_data_string(command_args, nullptr, ParseDataFlags::ALLOW_FILES);
     if (data.size() & 3) {
       throw invalid_argument("data size is not a multiple of 4");
     }
@@ -640,7 +640,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
       data.push_back('\x09');
       data.push_back('E');
       if (is_dchat) {
-        data += parse_data_string(command_args);
+        data += parse_data_string(command_args, nullptr, ParseDataFlags::ALLOW_FILES);
       } else {
         data += command_args;
         data.push_back('\0');
@@ -665,7 +665,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
 
     string data;
     if (command_name == "info-board-data") {
-      data += parse_data_string(command_args);
+      data += parse_data_string(command_args, nullptr, ParseDataFlags::ALLOW_FILES);
     } else {
       data += command_args;
     }
@@ -745,7 +745,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
       throw runtime_error("proxy session is not game leader");
     }
 
-    string data = parse_data_string(command_args);
+    string data = parse_data_string(command_args, nullptr, ParseDataFlags::ALLOW_FILES);
     if (data.size() < 2) {
       throw runtime_error("data too short");
     }

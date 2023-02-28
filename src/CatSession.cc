@@ -136,6 +136,6 @@ void CatSession::on_channel_error(short events) {
 void CatSession::print_prompt() { }
 
 void CatSession::execute_command(const std::string& command) {
-  string full_cmd = parse_data_string(command);
+  string full_cmd = parse_data_string(command, nullptr, ParseDataFlags::ALLOW_FILES);
   send_command_with_header(this->channel, full_cmd.data(), full_cmd.size());
 }

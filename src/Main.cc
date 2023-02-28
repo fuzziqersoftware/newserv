@@ -565,7 +565,7 @@ int main(int argc, char** argv) {
       data = read_all(stdin);
     }
     if (parse_data) {
-      data = parse_data_string(data);
+      data = parse_data_string(data, nullptr, ParseDataFlags::ALLOW_FILES);
     }
     return data;
   };
@@ -658,7 +658,7 @@ int main(int argc, char** argv) {
           crypt.reset(new PSOV3Encryption(stoul(seed, nullptr, 16)));
           break;
         case GameVersion::BB: {
-          seed = parse_data_string(seed);
+          seed = parse_data_string(seed, nullptr, ParseDataFlags::ALLOW_FILES);
           auto key = load_object_file<PSOBBEncryption::KeyFile>(
               "system/blueburst/keys/" + key_file_name + ".nsk");
           crypt.reset(new PSOBBEncryption(key, seed.data(), seed.size()));
@@ -744,14 +744,14 @@ int main(int argc, char** argv) {
       vector<pair<string, string>> plaintexts;
       for (const auto& plaintext_ascii : find_decryption_seed_plaintexts) {
         string mask;
-        string data = parse_data_string(plaintext_ascii, &mask);
+        string data = parse_data_string(plaintext_ascii, &mask, ParseDataFlags::ALLOW_FILES);
         if (data.size() != mask.size()) {
           throw logic_error("plaintext and mask are not the same size");
         }
         max_plaintext_size = max<size_t>(max_plaintext_size, data.size());
         plaintexts.emplace_back(move(data), move(mask));
       }
-      string ciphertext = parse_data_string(find_decryption_seed_ciphertext);
+      string ciphertext = parse_data_string(find_decryption_seed_ciphertext, nullptr, ParseDataFlags::ALLOW_FILES);
 
       auto mask_match = +[](const void* a, const void* b, const void* m, size_t size) -> bool {
         const uint8_t* a8 = reinterpret_cast<const uint8_t*>(a);
