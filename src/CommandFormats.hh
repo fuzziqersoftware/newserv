@@ -1944,23 +1944,53 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
   // the others don't seem to be anywhere on the disc. 'NJBM' is found in
   // psohistory_e.sfd, but not in any other files.
   le_uint32_t type = 0;
-  // Valid values for the which field (at least, when type is 1):
-  // 0: Unknown
-  // 1: Set lobby banner 1 (in front of where player 0 enters)
-  // 2: Set lobby banner 2 (left of banner 1)
-  // 3: Unknown
-  // 4: Set lobby banner 3 (left of banner 2; opposite where player 0 enters)
-  // 5: Unknown
-  // 6: Unknown
-  // Any other value: entire command is ignored
-  le_uint32_t which = 0;
+  // which is a bit field specifying which positions to set. The bits are:
+  // 00000001: South above-counter banner (facing away from teleporters)
+  // 00000002: West above-counter banner
+  // 00000004: North above-counter banner (facing toward jukebox)
+  // 00000008: East above-counter banner
+  // 00000010: Banner above west (left) teleporter
+  // 00000020: Banner above east (right) teleporter
+  // 00000040: Banner at south end of lobby (opposite the jukebox)
+  // 00000080: Immediately left of 00000040
+  // 00000100: Immediately right of 00000040
+  // 00000200: Same as 00000080, but further left and at a slight inward angle
+  // 00000400: Same as 00000100, but further right and at a slight inward angle
+  // 00000800: Banner at north end of lobby, above the jukebox
+  // 00001000: Immediately right of 00000800
+  // 00002000: Immediately left of 00000800
+  // 00004000: Same as 00001000, but further right and at a slight inward angle
+  // 00008000: Same as 00002000, but further left and at a slight inward angle
+  // 00010000: Banners at west AND east ends of lobby, next to battle tables
+  // 00020000: Immediately left of 00001000 (2 banners)
+  // 00040000: Immediately right of 00001000 (2 banners)
+  // 00080000: Banners on southwest AND southeast ends of the lobby
+  // 00100000: Banners on south-southwest AND south-southeast ends of the lobby
+  // 00200000: Floor banners in front of the counter (4 banners)
+  // 00400000: Banners on both small walls in front of the battle tables
+  // 00800000: On southern platform
+  // 01000000: In front of jukebox
+  // 02000000: In western battle table corner (next to 4-player tables)
+  // 04000000: In eastern battle table corner (next to 2-player tables)
+  // 08000000: In southeastern battle table corner (next to 2-player tables)
+  // 10000000: In southwestern battle table corner (next to 4-player tables)
+  // 20000000: Just north-northwest of the counter
+  // 40000000: In front of the small wall in front of the 2-player battle tables
+  // 80000000: Inside the lobby counter, facing southeast
+  // Positions 00800000 and above appear to be intended for models and not
+  // banners - if a banner is sent in these locations, it appears sideways and
+  // halfway submerged in the floor, and has no collision. Furthermore, it seems
+  // that up to 8 positions may have banners or models set simultaneously - if 8
+  // positions are already in use, further B9 commands are ignored.
+  le_uint32_t which = 0x00000000;
+  // This field specifies the size of the compressed data. The uncompressed size
+  // is not sent anywhere in this command.
   le_uint16_t size = 0;
   le_uint16_t unused = 0;
   // The PRS-compressed data immediately follows this header. The maximum size
-  // of the compressed data is 0x3800 bytes, and the data must decompress to
-  // fewer than 0x37000 bytes of output. The size field above contains the
-  // compressed size of this data (the decompressed size is not included
-  // anywhere in the command).
+  // of the compressed data is 0x3800 bytes, and it must decompress to fewer
+  // than 0x37000 bytes of output. If either of these limits are violated, the
+  // client ignores the command.
 } __packed__;
 
 // B9 (C->S): Confirm received B9 (Episode 3)
