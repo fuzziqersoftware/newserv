@@ -1552,7 +1552,7 @@ const string& DataIndex::get_compressed_map_list() const {
       strings_w.write(map.description.data(), map.description.len());
       strings_w.put_u8(0);
 
-      e.unknown_a2 = map_it.second->is_quest ? 0x00000000 : 0xFF000000;
+      e.unknown_a1 = map_it.second->is_quest ? 0x00 : 0xFF;
 
       entries_w.put(e);
     }

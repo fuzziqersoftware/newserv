@@ -207,10 +207,10 @@ struct C_Login_Patch_04 {
   ptext<char, 0x40> email;
 } __packed__;
 
-// 05 (S->C): Unknown
-// This is probably the disconnect command, like on the game server. It seems
-// the client never sends it though.
+// 05 (S->C): Disconnect
 // No arguments
+// This command is not used in the normal flow (described above). Generally the
+// server should disconnect after sending a 12 or 15 command instead of an 05.
 
 // 06 (S->C): Open file for writing
 
@@ -1944,7 +1944,7 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
   // the others don't seem to be anywhere on the disc. 'NJBM' is found in
   // psohistory_e.sfd, but not in any other files.
   le_uint32_t type = 0;
-  // Valid values for the type field (at least, when type is 1):
+  // Valid values for the which field (at least, when type is 1):
   // 0: Unknown
   // 1: Set lobby banner 1 (in front of where player 0 enters)
   // 2: Set lobby banner 2 (left of banner 1)
@@ -1969,8 +1969,7 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
 
 // BA: Meseta transaction (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
-// header.flag specifies the transaction purpose. This has little meaning on the
-// client. Specific known values:
+// header.flag specifies the transaction purpose. Specific known values:
 // 00 = unknown
 // 01 = Lobby jukebox object created (C->S; always has a value of 0;
 //      response request_token must match the last token sent by client)
@@ -2269,6 +2268,7 @@ struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
 // interaction mode when closed.
 
 // D7 (C->S): Request GBA game file (V3)
+// header.flag is used, but it's not clear for what.
 // The server should send the requested file using A6/A7 commands.
 // This command exists on XB as well, but it presumably is never sent by the
 // client.
@@ -2282,9 +2282,11 @@ struct C_GBAGameRequest_V3_D7 {
 // This command is not valid on PSO GC Episodes 1&2 Trial Edition.
 // On PSO V3, this command does... something. The command isn't *completely*
 // ignored: it sets a global state variable, but it's not clear what that
-// variable does. That variable is also set when a D7 is sent by the client, so
-// it likely is related to GBA game loading in some way.
-// PSO BB completely ignores this command.
+// variable does. The variable is set to 0 when the client requests a GBA game
+// (by sending a D7 command), and set to 1 when the client receives a D7
+// command. The S->C D7 command may be used for declining a download or
+// signaling an error of some sort.
+// PSO BB accepts but completely ignores this command.
 
 // D8 (C->S): Info board request (V3/BB)
 // No arguments
