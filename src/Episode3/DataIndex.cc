@@ -1451,6 +1451,9 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
   add_maps_from_dir(directory + "/maps-free", false);
   add_maps_from_dir(directory + "/maps-quest", true);
 
+  // Generate (and cache) the map list to ensure it's not too large
+  this->get_compressed_map_list();
+
   try {
     auto json = JSONObject::parse(load_file(directory + "/com-decks.json"));
     for (const auto& def_json : json->as_list()) {
@@ -1573,8 +1576,12 @@ const string& DataIndex::get_compressed_map_list() const {
     compressed_w.put_u32b(prs.input_size());
     compressed_w.write(prs.close());
     this->compressed_map_list = move(compressed_w.str());
-    static_game_data_log.info("Generated Episode 3 compressed map list (%zu -> %zu bytes)",
-        this->compressed_map_list.size(), this->compressed_map_list.size());
+    if (this->compressed_map_list.size() > 0x7BEC) {
+      throw runtime_error("Episode 3 compressed map list is too large");
+    }
+    size_t decompressed_size = sizeof(header) + entries_w.size() + strings_w.size();
+    static_game_data_log.info("Generated Episode 3 compressed map list (0x%zX -> 0x%zX bytes)",
+        decompressed_size, this->compressed_map_list.size());
   }
   return this->compressed_map_list;
 }
