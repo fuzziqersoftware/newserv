@@ -810,8 +810,8 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // 30-34 = teleporters (2 of each value may be present)
   // 40-44 = traps (one of each type is chosen at random to be a real trap at
   //         battle start time)
-  // 50 = appears as improperly-z-buffered teal cube in preview, behaves as a
-  //      blocked tile (like 10 and 20)
+  // 50 = blocked by metal box (appears as improperly-z-buffered teal cube in
+  //      preview; behaves like 10 and 20 in game)
   /* 1C68 */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
   /* 1D68 */ parray<uint8_t, 0x74> unknown_a6;
   /* 1DDC */ Rules default_rules;
