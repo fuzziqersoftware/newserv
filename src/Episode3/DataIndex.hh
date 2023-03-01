@@ -847,7 +847,40 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 59B0 */ parray<be_uint16_t, 0x10> reward_card_ids;
   /* 59D0 */ parray<uint8_t, 0x0C> unknown_a9;
   /* 59DC */ uint8_t unknown_a10;
-  /* 59DD */ parray<uint8_t, 0x3B> unknown_a11;
+  /* 59DD */ parray<uint8_t, 3> unknown_a11;
+  // This array specifies which SC characters can't participate in the quest
+  // (that is, the player is not allowed to choose decks with these SC cards).
+  // The values in this array don't match the SC card IDs, however:
+  //   0000 => Guykild  (0005)      000C => Hyze   (0117)
+  //   0001 => Kylria   (0006)      000D => Rufina (0118)
+  //   0002 => Saligun  (0110)      000E => Peko   (0119)
+  //   0003 => Relmitos (0111)      000F => Creinu (011A)
+  //   0004 => Kranz    (0002)      0010 => Reiz   (011B)
+  //   0005 => Sil'fer  (0004)      0011 => Lura   (0007)
+  //   0006 => Ino'lis  (0003)      0012 => Break  (0008)
+  //   0007 => Viviana  (0112)      0013 => Rio    (011C)
+  //   0008 => Teifu    (0113)      0014 => Endu   (0116)
+  //   0009 => Orland   (0001)      0015 => Memoru (011D)
+  //   000A => Stella   (0114)      0016 => K.C.   (011E)
+  //   000B => Glustar  (0115)      0017 => Ohgun  (011F)
+  // Unused entries in this array should be set to FFFF.
+  /* 59E0 */ parray<be_uint16_t, 0x18> unavailable_sc_cards;
+  struct EntryState {
+    // Values for player_type:
+    // 00 = Player (selectable by player, COM decks not allowed)
+    // 01 = Player/COM (selectable by player)
+    // 02 = COM (selectable by player, player decks not allowed)
+    // 03 = COM (not selectable by player; uses NPC deck)
+    // 04 = NONE (not selectable by player)
+    // FF = FREE (same as Player/COM, used in free battle mode)
+    uint8_t player_type;
+    // Values for deck_type:
+    // 00 = HERO ONLY
+    // 01 = DARK ONLY
+    // FF = any deck allowed
+    uint8_t deck_type;
+  } __attribute__((packed));
+  /* 5A10 */ parray<EntryState, 4> entry_states;
   /* 5A18 */
 
   std::string str(const DataIndex* data_index = nullptr) const;

@@ -1176,6 +1176,50 @@ string MapDefinition::str(const DataIndex* data_index) const {
   }
   lines.emplace_back("  a9=" + format_data_string(this->unknown_a9.data(), this->unknown_a9.bytes()));
   lines.emplace_back("  a11=" + format_data_string(this->unknown_a11.data(), this->unknown_a11.bytes()));
+  lines.emplace_back("  unavailable_sc_cards=" + format_data_string(this->unavailable_sc_cards.data(), this->unavailable_sc_cards.bytes()));
+  for (size_t z = 0; z < 4; z++) {
+    string player_type;
+    switch (this->entry_states[z].player_type) {
+      case 0x00:
+        player_type = "Player";
+        break;
+      case 0x01:
+        player_type = "Player/COM";
+        break;
+      case 0x02:
+        player_type = "COM";
+        break;
+      case 0x03:
+        player_type = "FIXED_COM";
+        break;
+      case 0x04:
+        player_type = "NONE";
+        break;
+      case 0xFF:
+        player_type = "FREE";
+        break;
+      default:
+        player_type = string_printf("(%02hhX)", this->entry_states[z].player_type);
+        break;
+    }
+    string deck_type;
+    switch (this->entry_states[z].deck_type) {
+      case 0x00:
+        deck_type = "HERO ONLY";
+        break;
+      case 0x01:
+        deck_type = "DARK ONLY";
+        break;
+      case 0xFF:
+        deck_type = "any deck allowed";
+        break;
+      default:
+        deck_type = string_printf("(%02hhX)", this->entry_states[z].deck_type);
+        break;
+    }
+    lines.emplace_back(string_printf(
+        "  entry_states[%zu] = %s / %s", z, player_type.c_str(), deck_type.c_str()));
+  }
   return join(lines, "\n");
 }
 
