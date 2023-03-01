@@ -1109,7 +1109,8 @@ string MapDefinition::str(const DataIndex* data_index) const {
         this->npc_chars[z].unknown_a2[2], this->npc_chars[z].unknown_a2[3]));
     lines.emplace_back("    name: " + string(this->npc_chars[z].name));
     for (size_t w = 0; w < 0x78; w += 0x08) {
-      lines.emplace_back(string_printf("    a3[0x%02zX:0x%02zX]=%04hX %04hX %04hX %04hX %04hX %04hX %04hX %04hX", z, z + 0x08,
+      lines.emplace_back(string_printf("    a3[0x%02zX:0x%02zX]=%04hX %04hX %04hX %04hX %04hX %04hX %04hX %04hX",
+          w, w + 0x08,
           this->npc_chars[z].unknown_a3[w + 0x00].load(), this->npc_chars[z].unknown_a3[w + 0x01].load(),
           this->npc_chars[z].unknown_a3[w + 0x02].load(), this->npc_chars[z].unknown_a3[w + 0x03].load(),
           this->npc_chars[z].unknown_a3[w + 0x04].load(), this->npc_chars[z].unknown_a3[w + 0x05].load(),
