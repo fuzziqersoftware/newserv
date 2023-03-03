@@ -366,8 +366,7 @@ struct S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B {
   ptext<char, AfterBytes> after_message;
 } __packed__;
 
-// 03 (C->S): Legacy login (non-BB)
-// TODO: Check if this command exists on DC v1/v2.
+// 03 (C->S): Legacy register (non-BB)
 
 struct C_LegacyLogin_PC_V3_03 {
   le_uint64_t unused = 0; // Same as unused field in 9D/9E
@@ -383,7 +382,7 @@ struct C_LegacyLogin_PC_V3_03 {
   ptext<char, 0x10> access_key2;
 } __packed__;
 
-// 03 (S->C): Legacy password check result (non-BB)
+// 03 (S->C): Legacy register result (non-BB)
 // header.flag specifies if the password was correct. If header.flag is 0, the
 // password saved to the memory card (if any) is deleted and the client is
 // disconnected. If header.flag is nonzero, the client responds with an 04
@@ -581,24 +580,22 @@ struct C_MenuItemInfoRequest_09 {
 
 // 0D: Invalid command
 
-// 0E (S->C): Incomplete/legacy join game (PC/V3)
+// 0E (S->C): Incomplete/legacy join game (non-BB)
 // header.flag = number of valid entries in lobby_data
 
-// It's fairly clear that this command was intended for joining games since its
-// structure is similar to that of 64. Furthermore, 0E sets a flag on the client
-// which is also set by commands 64, 67, and E8 (on Episode 3), which are all
-// lobby and game join commands.
+// DC NTE calls this command RcvStartGame. It appears to be a vestige of very
+// early development; its second-phase handler is missing even in the earliest
+// public prototype of PSO (DC NTE), and the command format is missing some
+// important information necessary to start a game on any version of PSO.
 
-// There is a failure mode in the 0E command handlers on PC and V3 that causes
-// the thread receiving the command to loop infinitely doing nothing,
-// effectively softlocking the game. This happens if the local player's Guild
-// Card number doesn't match any of the lobby_data entries. (Notably, only the
-// first (header.flag) entries are checked.)
+// There is a failure mode in the 0E command handler that causes the thread
+// receiving the command to loop infinitely doing nothing, effectively
+// softlocking the game. This happens if the local player's Guild Card number
+// doesn't match any of the lobby_data entries. (Notably, only the first
+// (header.flag) entries are checked.)
 // If the local players' Guild Card number does match one of the entries, the
-// command does not softlock, but instead does nothing (at least, on PC and V3)
-// because the 0E second-phase handler is missing on the client.
-
-// TODO: Check if this command exists on DC v1/v2.
+// command does not softlock, but instead does nothing because the 0E
+// second-phase handler is missing.
 
 struct S_LegacyJoinGame_PC_0E {
   struct UnknownA1 {
@@ -678,8 +675,13 @@ struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<char16_t> { }
 // Same format as 01 command. The text appears in a small box in the lower-left
 // corner (on V3/BB) or lower-right corner of the screen.
 
-// 12 (S->C): Valid but ignored (PC/V3/BB)
-// TODO: Check if this command exists on DC v1/v2.
+// 12 (S->C): Valid but ignored (all versions)
+// In DC NTE, this command is named RcvBaner. This is possibly a misspelling of
+// "banner", which could be an early version of the 1A/D5 (large message box)
+// commands, or of BB's 00EE (scrolling message) command; however, the existence
+// of RcvBanerHead (16) seems to contradict this hypothesis since a text message
+// would not require a header. Even on DC NTE, this command does nothing, so
+// this must have been scrapped very early in development.
 
 // 13 (S->C): Write online quest file
 // Used for downloading online quests. For download quests (to be saved to the
@@ -704,21 +706,27 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
   ptext<char, 0x10> filename;
 } __packed__;
 
-// 14 (S->C): Valid but ignored (PC/V3/BB)
-// TODO: Check if this command exists on DC v1/v2.
+// 14 (S->C): Valid but ignored (all versions)
+// DC NTE calls this command RcvUpLoad, which seems like the logical opposite of
+// 13 (quest file download, named RcvDownLoad in DC NTE). However, even in DC
+// NTE, this command does nothing, so it must have been scrapped very early in
+// development.
 
 // 15: Invalid command
 
-// 16 (S->C): Valid but ignored (PC/V3/BB)
-// TODO: Check if this command exists on DC v1/v2.
+// 16 (S->C): Valid but ignored (all versions)
+// DC NTE calls this command RcvBanerHead. It's not clear what this means, but
+// it's likely related to 12 in some way. Like 12, this command does nothing,
+// even on DC NTE.
 
 // 17 (S->C): Start encryption at login server (except on BB)
 // Same format and usage as 02 command, but a different copyright string:
 // "DreamCast Port Map. Copyright SEGA Enterprises. 1999"
 // Unlike the 02 command, V3 clients will respond with a DB command when they
 // receive a 17 command in any online session, with the exception of Episodes
-// 1&2 trial edition (which responds with a 9A). DCv1 will respond with a 90.
-// Other non-V3 clients will respond with a 9A or 9D.
+// 1&2 trial edition (which responds with a 9A). DCv1 will respond with a 90. DC
+// NTE will respond with an 8B. Other non-V3 clients will respond with a 9A or
+// 9D.
 
 // 18 (S->C): License verification result (PC/V3)
 // Behaves exactly the same as 9A (S->C). No arguments except header.flag.
@@ -761,11 +769,13 @@ struct S_ReconnectSplit_19 {
 // The maximum length of the message is 0x400 bytes. This is the only difference
 // between this command and the D5 command.
 
-// 1B (S->C): Valid but ignored (PC/V3)
-// TODO: Check if this command exists on DC v1/v2.
+// 1B (S->C): Valid but ignored (all versions)
+// This command is named RcvBattleData in DC NTE. It does nothing in all PSO
+// versions.
 
-// 1C (S->C): Valid but ignored (PC/V3)
-// TODO: Check if this command exists on DC v1/v2.
+// 1C (S->C): Valid but ignored (all versions)
+// This command is named RcvSystemFile in DC NTE. It does nothing in all PSO
+// versions.
 
 // 1D: Ping
 // No arguments
@@ -1017,6 +1027,10 @@ struct C_OpenFileConfirmation_44_A6 {
 // disp or inventory data. The clients in the game are responsible for sending
 // that data to each other during the join process with 60/62/6C/6D commands.
 
+// Curiously, this command is named RcvStartGame3 in DC NTE, while 0E is named
+// RcvStartGame. The string RcvStartGame2 appears in DC NTE, but it seems the
+// relevant code was deleted - there are no references to the string.
+
 // Header flag = entry count
 template <typename LobbyDataT, typename DispDataT>
 struct S_JoinGame {
@@ -1146,6 +1160,10 @@ struct S_LeaveLobby_66_69_Ep3_E9 {
 // This is sent to the joining player; the other players receive a 68 instead.
 // Same format as 65 command, but used for lobbies instead of games.
 
+// Curiously, this command is named RcvStartLobby2 in DC NTE, but there is no
+// command named RcvStartLobby. The string "RcvStartLobby" does appear in the
+// game executable, but is not referenced anywhere.
+
 // 68 (S->C): Add player to lobby
 // Same format as 65 command, but used for lobbies instead of games.
 // The command only includes the joining player's data.
@@ -1186,8 +1204,10 @@ struct S_LeaveLobby_66_69_Ep3_E9 {
 // 7E: Invalid command
 // 7F: Invalid command
 
-// 80 (S->C): Ignored (PC/V3)
-// TODO: Check if this command exists on DC v1/v2.
+// 80 (S->C): Valid but ignored (all versions)
+// TODO: DC NTE calls this function RcvGenerateID and SndGenerateID, and
+// implements some logic for it. Trace this logic and figure out what it does,
+// and document it here.
 
 struct S_Unknown_PC_V3_80 {
   le_uint32_t which = 0; // Expected to be in the range 00-0B... maybe client ID?
@@ -1266,7 +1286,8 @@ struct C_Login_DCNTE_88 {
 // 88 (S->C): License check result (DC NTE only)
 // No arguments except header.flag.
 // If header.flag is zero, client will respond with an 8A command. Otherwise, it
-// will respond with an 8B command.
+// will respond with an 8B command. This is the same behavior as for the 18
+// command (and in fact, the client handler is shared between both commands.)
 
 // 88 (S->C): Update lobby arrows (except DC NTE)
 // If this command is sent while a client is joining a lobby, the client may
@@ -1300,6 +1321,9 @@ struct S_ArrowUpdateEntry_88 {
 // 89 (C->S): Set lobby arrow
 // header.flag = arrow color number (see above); no other arguments.
 // Server should send an 88 command to all players in the lobby.
+
+// 89 (S->C): Start encryption at login server (DC NTE)
+// Behaves exactly the same as the 17 command.
 
 // 8A (C->S): Connection information (DC NTE only)
 // The server should respond with an 8A command.
@@ -1352,11 +1376,14 @@ struct C_LoginExtended_DCNTE_8B : C_Login_DCNTE_8B {
 // 8C: Invalid command
 
 // 8D (S->C): Request player data (DC NTE only)
-// Behaves the same as 95 (S->C) on all other versions. DC NTE crashes if it
-// receives 95, so this is used instead.
+// Behaves the same as 95 (S->C) on all other versions, but DC NTE crashes if it
+// receives 95. This command is called RcvRecognition in the DC NTE source.
 
-// 8E: Invalid command
-// 8F: Invalid command
+// 8E: Ship select menu (DC NTE)
+// Behaves exactly the same as the A0 command (in both directions).
+
+// 8F: Block select menu (DC NTE)
+// Behaves exactly the same as the A1 command (in both directions).
 
 // 90 (C->S): V1 login (DC/PC/V3)
 // This command is used during the DCv1 login sequence; a DCv1 client will
