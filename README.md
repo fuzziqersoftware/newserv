@@ -77,15 +77,18 @@ newserv supports several versions of PSO. Specifically:
 
 ## Usage
 
-Currently newserv should build on macOS and Ubuntu. It will likely work on other Linux flavors too. It should work on Windows as well, but I haven't tested it recently - the build process could be very manual. Cygwin is likely the easiest Windows environment in which to build newserv.
+Currently newserv should build on macOS, Windows, and Ubuntu. It will likely work on other Linux flavors too.
 
 There is a fairly recent macOS ARM64 release on the newserv GitHub repository. You may need to install libevent manually even if you use this release (run `brew install libevent`).
 
-If you're using an older AMD64 Mac, you're running Linux, or you just want to build newserv yourself, here's what you do:
-1. Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
-2. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
-3. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
-4. Run `cmake . && make` in the newserv directory.
+There is a fairly recent Windows release on the newserv GitHub repository also. It's built with Cygwin, and all the necessary DLL files should be included. That said, I've only tested it on my own machine, so if it doesn't work for you, please open a GitHub issue to let me know.
+
+If you're using an AMD64 Mac, you're running Linux, or you just want to build newserv yourself, here's what you do:
+1. If you're on Windows, install Cygwin. While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `make`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
+2. Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
+3. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
+4. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
+5. Run `cmake . && make` in the newserv directory.
 
 After building newserv or downloading a release, do this to set it up and use it:
 1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.

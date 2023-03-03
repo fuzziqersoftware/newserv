@@ -106,6 +106,8 @@
   // via this interface.
   // If you're doing unusual things, you can also add numbers or "address:port"
   // strings to this list to listen for tapserver connections on a TCP port.
+  // This feature requires Unix sockets, so this option does nothing when
+  // newserv runs under Windows.
   "IPStackListen": [],
 
   // Other servers to support proxying to. If this is empty for any game
