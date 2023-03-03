@@ -13,7 +13,11 @@ using namespace std;
 
 
 ReplaySession::Event::Event(Type type, uint64_t client_id, size_t line_num)
-  : type(type), client_id(client_id), complete(false), line_num(line_num) { }
+  : type(type),
+    client_id(client_id),
+    allow_size_disparity(false),
+    complete(false),
+    line_num(line_num) { }
 
 string ReplaySession::Event::str() const {
   string ret;
@@ -25,6 +29,9 @@ string ReplaySession::Event::str() const {
     ret = string_printf("Event[%" PRIu64 ", SEND %04zX", this->client_id, this->data.size());
   } else if (this->type == Type::RECEIVE) {
     ret = string_printf("Event[%" PRIu64 ", RECEIVE %04zX", this->client_id, this->data.size());
+  }
+  if (this->allow_size_disparity) {
+    ret += ", size disparity allowed";
   }
   if (this->complete) {
     ret += ", done";
@@ -212,15 +219,17 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
 void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
   auto version = this->clients.at(ev->client_id)->version;
 
-  void* cmd_data = ev->mask.data() + ((version == GameVersion::BB) ? 8 : 4);
-  size_t cmd_size = ev->mask.size() - ((version == GameVersion::BB) ? 8 : 4);
+  void* cmd_data = ev->data.data() + ((version == GameVersion::BB) ? 8 : 4);
+  size_t cmd_size = ev->data.size() - ((version == GameVersion::BB) ? 8 : 4);
+  void* mask_data = ev->mask.data() + ((version == GameVersion::BB) ? 8 : 4);
+  size_t mask_size = ev->mask.size() - ((version == GameVersion::BB) ? 8 : 4);
 
   switch (version) {
     case GameVersion::PATCH: {
       const auto& header = check_size_t<PSOCommandHeaderPC>(
           ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF);
       if (header.command == 0x02) {
-        auto& cmd_mask = check_size_t<S_ServerInit_Patch_02>(cmd_data, cmd_size);
+        auto& cmd_mask = check_size_t<S_ServerInit_Patch_02>(mask_data, mask_size);
         cmd_mask.server_key = 0;
         cmd_mask.client_key = 0;
       }
@@ -243,46 +252,46 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         case 0x17:
         case 0x91:
         case 0x9B: {
-          auto& cmd_mask = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(
-              cmd_data, cmd_size, sizeof(S_ServerInitDefault_DC_PC_V3_02_17_91_9B), 0xFFFF);
-          cmd_mask.server_key = 0;
-          cmd_mask.client_key = 0;
+          auto& mask = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(
+              mask_data, mask_size, sizeof(S_ServerInitDefault_DC_PC_V3_02_17_91_9B), 0xFFFF);
+          mask.server_key = 0;
+          mask.client_key = 0;
           break;
         }
         case 0x19: {
-          if (cmd_size == sizeof(S_ReconnectSplit_19)) {
-            auto& cmd_mask = check_size_t<S_ReconnectSplit_19>(cmd_data, cmd_size);
-            cmd_mask.pc_address = 0;
-            cmd_mask.gc_address = 0;
+          if (mask_size == sizeof(S_ReconnectSplit_19)) {
+            auto& mask = check_size_t<S_ReconnectSplit_19>(mask_data, mask_size);
+            mask.pc_address = 0;
+            mask.gc_address = 0;
           } else {
-            auto& cmd_mask = check_size_t<S_Reconnect_19>(cmd_data, cmd_size);
-            cmd_mask.address = 0;
+            auto& mask = check_size_t<S_Reconnect_19>(mask_data, mask_size);
+            mask.address = 0;
           }
           break;
         }
         case 0x41: {
           if (version == GameVersion::PC) {
-            auto& cmd_mask = check_size_t<S_GuildCardSearchResult_PC_41>(cmd_data, cmd_size);
-            cmd_mask.reconnect_command.address = 0;
+            auto& mask = check_size_t<S_GuildCardSearchResult_PC_41>(mask_data, mask_size);
+            mask.reconnect_command.address = 0;
           } else if (version == GameVersion::BB) {
-            auto& cmd_mask = check_size_t<S_GuildCardSearchResult_BB_41>(cmd_data, cmd_size);
-            cmd_mask.reconnect_command.address = 0;
+            auto& mask = check_size_t<S_GuildCardSearchResult_BB_41>(mask_data, mask_size);
+            mask.reconnect_command.address = 0;
           } else { // V3
-            auto& cmd_mask = check_size_t<S_GuildCardSearchResult_DC_V3_41>(cmd_data, cmd_size);
-            cmd_mask.reconnect_command.address = 0;
+            auto& mask = check_size_t<S_GuildCardSearchResult_DC_V3_41>(mask_data, mask_size);
+            mask.reconnect_command.address = 0;
           }
           break;
         }
         case 0x64: {
           if (version == GameVersion::PC) {
-            auto& cmd_mask = check_size_t<S_JoinGame_PC_64>(cmd_data, cmd_size);
-            cmd_mask.variations.clear(0);
-            cmd_mask.rare_seed = 0;
+            auto& mask = check_size_t<S_JoinGame_PC_64>(mask_data, mask_size);
+            mask.variations.clear(0);
+            mask.rare_seed = 0;
           } else { // V3
-            auto& cmd_mask = check_size_t<S_JoinGame_DC_GC_64>(cmd_data, cmd_size,
+            auto& mask = check_size_t<S_JoinGame_DC_GC_64>(mask_data, mask_size,
                 sizeof(S_JoinGame_DC_GC_64), sizeof(S_JoinGame_GC_Ep3_64));
-            cmd_mask.variations.clear(0);
-            cmd_mask.rare_seed = 0;
+            mask.variations.clear(0);
+            mask.rare_seed = 0;
           }
           break;
         }
@@ -293,12 +302,31 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           break;
         }
         case 0xC9: {
-          if (cmd_size == 0xCC) {
-            auto& cmd_mask = check_size_t<G_ServerVersionStrings_GC_Ep3_6xB4x46>(
-                cmd_data, cmd_size);
-            cmd_mask.version_signature.clear(0);
-            cmd_mask.date_str1.clear(0);
-            cmd_mask.date_str2.clear(0);
+          if (mask_size == 0xCC) {
+            auto& mask = check_size_t<G_ServerVersionStrings_GC_Ep3_6xB4x46>(
+                mask_data, mask_size);
+            mask.version_signature.clear(0);
+            mask.date_str1.clear(0);
+            mask.date_str2.clear(0);
+          }
+          break;
+        }
+        case 0x6C: {
+          if (version == GameVersion::GC && mask_size >= 0x14) {
+            const auto& cmd = check_size_t<G_MapList_GC_Ep3_6xB6x40>(
+                cmd_data, cmd_size, sizeof(G_MapList_GC_Ep3_6xB6x40), 0xFFFF);
+            if ((cmd.header.header.basic_header.subcommand == 0xB6) &&
+                (cmd.header.subsubcommand == 0x40)) {
+              check_size_t<PSOCommandHeaderDCV3>(ev->mask, sizeof(PSOCommandHeaderDCV3), 0xFFFF).size = 0;
+              auto& mask = check_size_t<G_MapList_GC_Ep3_6xB6x40>(
+                  mask_data, mask_size, sizeof(G_MapList_GC_Ep3_6xB6x40), 0xFFFF);
+              mask.header.header.size = 0;
+              mask.compressed_data_size = 0;
+              ev->allow_size_disparity = true;
+              for (size_t z = sizeof(PSOCommandHeaderDCV3) + sizeof(G_MapList_GC_Ep3_6xB6x40); z < ev->mask.size(); z++) {
+                ev->mask[z] = 0;
+              }
+            }
           }
           break;
         }
@@ -310,21 +338,21 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             ev->data, sizeof(PSOCommandHeaderBB), 0xFFFF).command;
       switch (command) {
         case 0x0003: {
-          auto& cmd_mask = check_size_t<S_ServerInitDefault_BB_03_9B>(
-              cmd_data, cmd_size, sizeof(S_ServerInitDefault_BB_03_9B), 0xFFFF);
-          cmd_mask.server_key.clear(0);
-          cmd_mask.client_key.clear(0);
+          auto& mask = check_size_t<S_ServerInitDefault_BB_03_9B>(
+              mask_data, mask_size, sizeof(S_ServerInitDefault_BB_03_9B), 0xFFFF);
+          mask.server_key.clear(0);
+          mask.client_key.clear(0);
           break;
         }
         case 0x0019: {
-          auto& cmd_mask = check_size_t<S_Reconnect_19>(cmd_data, cmd_size);
-          cmd_mask.address = 0;
+          auto& mask = check_size_t<S_Reconnect_19>(mask_data, mask_size);
+          mask.address = 0;
           break;
         }
         case 0x0064: {
-          auto& cmd_mask = check_size_t<S_JoinGame_BB_64>(cmd_data, cmd_size);
-          cmd_mask.variations.clear(0);
-          cmd_mask.rare_seed = 0;
+          auto& mask = check_size_t<S_JoinGame_BB_64>(mask_data, mask_size);
+          mask.variations.clear(0);
+          mask.rare_seed = 0;
           break;
         }
         case 0x00B1: {
@@ -334,8 +362,8 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           break;
         }
         case 0x00E6: {
-          auto& cmd_mask = check_size_t<S_ClientInit_BB_00E6>(cmd_data, cmd_size);
-          cmd_mask.team_id = 0;
+          auto& mask = check_size_t<S_ClientInit_BB_00E6>(mask_data, mask_size);
+          mask.team_id = 0;
           break;
         }
       }
@@ -616,14 +644,14 @@ void ReplaySession::on_command_received(
   }
 
   auto& ev = c->receive_events.front();
-  if (full_command.size() != ev->data.size()) {
+  if ((full_command.size() != ev->data.size()) && !ev->allow_size_disparity) {
     replay_log.error("Expected command:");
     print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
     replay_log.error("Received command:");
     print_data(stderr, full_command, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
     throw runtime_error(string_printf("(ev-line %zu) received command sizes do not match", ev->line_num));
   }
-  for (size_t x = 0; x < full_command.size(); x++) {
+  for (size_t x = 0; x < min<size_t>(full_command.size(), ev->data.size()); x++) {
     if ((full_command[x] & ev->mask[x]) != (ev->data[x] & ev->mask[x])) {
       replay_log.error("Expected command:");
       print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);

@@ -42,6 +42,7 @@ private:
     uint64_t client_id;
     std::string data; // Only used for SEND and RECEIVE
     std::string mask; // Only used for RECEIVE
+    bool allow_size_disparity;
     bool complete;
     size_t line_num;
 
