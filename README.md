@@ -29,8 +29,6 @@ newserv is many things - a server, a proxy, an encryption and decryption tool, a
 With that said, I offer no guarantees on how or when this project will advance. Feel free to submit GitHub issues if you find bugs or have feature requests; I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner. If you feel like contributing to newserv yourself, pull requests are welcome as well.
 
 Current known issues / missing features / things to do:
-- Episode 3 battles are implemented but are not well-tested.
-    - Fix behavior when joining a spectator team after the beginning of a battle.
 - PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
     - Enemy indexes also desync slightly in most games, often in later areas, leading to incorrect EXP values being given for killed enemies.
 - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
@@ -41,11 +39,13 @@ Current known issues / missing features / things to do:
 - Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
 - Encapsulate BB server-side random state and make replays deterministic.
 - VMS decoding doesn't work. Complete this reverse-engineering project.
+- Make a looser form of item tracking that can be used on non-BB versions when quests replace player inventories, like in battle and challenge modes.
 - Code style
     - The internal menu abstraction is ugly and hard to work with. Rewrite it.
     - Add default values for all commands (like we use for Episode 3 battle commands).
     - Clean up the way proxy session options are passed to the session from the client object (and add user-settable options for e.g. chat filter, which currently doesn't appear in the menu).
 - Episode 3 bugs
+    - Fix behavior when joining a spectator team after the beginning of a battle.
     - Disconnecting during a match turns you into a COM if there are other humans in the match, even if the match is part of a tournament. This may be incorrect behavior for tournaments.
     - Disconnecting during a tournament when there are no other humans in the match simply cancels the match (so it can be replayed) instead of forfeiting, which is almost certainly incorrect behavior. (Then again, no one likes losing tournaments to COMs...)
     - Tournament deck restrictions aren't enforced when populating COMs at tournament start time. This can cause weird behavior if, for example, a COM deck contains assist cards and the tournament rules forbid them.
@@ -213,7 +213,7 @@ When you're on PSO DC, PC, or GC and are connected to a remote server through ne
 
 The remote server will probably try to assign you a Guild Card number that doesn't match the one you have on newserv. On PSO DC, PC and GC, the proxy server rewrites the commands in transit to make it look like the remote server assigned you the same Guild Card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the Guild Card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you first connect to the remote server, and you can retrieve it in lobbies or during games with the $li command.
 
-Some chat commands (see below) have the same basic function on the proxy server but have different effects or conditions. In addition, there are some server shell commands that affect clients on the proxy (run 'help' in the shell to see what they are). All proxy commands in the server shell only work when there's exactly one client connected through the proxy, since there isn't (yet) a way to say via the shell which session you want the command to apply to.
+Some chat commands (see below) have the same basic function on the proxy server but have different effects or conditions. In addition, there are some server shell commands that affect clients on the proxy (run `help` in the shell to see what they are). If there's only one proxy session open, the shell's proxy commands will affect that session. Otherwise, you'll have to specify which session to affect with the `on` prefix - to send a chat message in LinkedSession:17205AE4, for example, you would run `on 17205AE4 chat ...`.
 
 ### Chat commands
 
@@ -228,7 +228,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$what` (game server only): Shows the type, name, and stats of the nearest item on the ground.
 
 * Debugging commands
-    * `$dbgid` (game server only): Enable or disable high ID preference. When enabled, you'll be placed into the latest available slot in lobbies and games instead of the earliest. Can be useful for finding commands for which newserv doesn't handle client IDs properly.
+    * `$dbgid` (game server only): Enable or disable high ID preference. When enabled, you'll be placed into the highest available slot in lobbies and games instead of the lowest. This is useful for finding commands for which newserv doesn't handle client IDs properly.
     * `$gc` (game server only): Send your own Guild Card to yourself.
     * `$persist` (game server only): Enable or disable persistence for the current lobby or game. This determines whether the lobby/game is deleted when the last player leaves. You need the DEBUG permission in your user license to use this command because there are no game state checks when you do this. For example, if you make a game persistent, start a quest, then leave the game, the game can't be joined by anyone but also can't be deleted.
     * `$sc <data>`: Send a command to yourself.
@@ -236,7 +236,7 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 * Personal state commands
     * `$arrow <color-id>`: Changes your lobby arrow color.
-    * `$secid <section-id>`: Sets your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. To revert to your actual section id, run `$secid` with no name after it.
+    * `$secid <section-id>`: Sets your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. To revert to your actual section id, run `$secid` with no name after it. On the proxy server, this will not work if the remote server controls item drops (e.g. on BB, or on Schtserv with server drops enabled).
     * `$rand <seed>`: Sets your override random seed (specified as a 32-bit hex value). This will make any games you create use the given seed for rare enemies. This also makes item drops deterministic in Blue Burst games hosted by newserv. On the proxy server, this command can cause desyncs with other players in the same game, since they will not see the overridden random seed. To remove the override, run `$rand` with no arguments.
     * `$exit`: If you're in a lobby, sends you to the main menu (which ends your proxy session, if you're in one). If you're in an Episode 3 game or spectator team, sends you to the lobby (but does not end your proxy session if you're in one).
     * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
@@ -246,7 +246,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$edit <stat> <value>`: Modifies your character data.
 
 * Game state commands (game server only)
-    * `$maxlevel <level>`: Sets the maximum level for players to join the current game.
+    * `$maxlevel <level>`: Sets the maximum level for players to join the current game. (This only applies when joining; if a player joins and then levels up past this level during the game, they are not kicked out, but won't be able to rejoin if they leave.)
     * `$minlevel <level>`: Sets the minimum level for players to join the current game.
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
     * `$spec`: Toggles the allow spectators flag. If any players are spectating when this flag is disabled, they will be sent back to the lobby.
@@ -291,7 +291,7 @@ To use the script, do this:
 
 If you use this method, you'll have to run the script every time you start PSO in Flycast, but you won't have to run it again if you start another online game without restarting emulation.
 
-Finally, the script takes an optional second argument that allows you to redirect the connection elsewhere (instead of the local machine). THis allows you to connect directly to remote servers if desired.
+Finally, the script takes an optional second argument that allows you to redirect the connection elsewhere (instead of the local machine). This allows you to connect directly to remote servers if desired.
 
 #### PSO PC
 
@@ -305,9 +305,9 @@ If you have PSO Plus or Episode III, it won't want to connect to a server on the
 
 #### PSO GC on Dolphin
 
-If you have BBA support via a tap interface, you may be able to just set the DNS server address (as you would on a real GameCube, above) and it may work. This does not work on macOS, but you can use the tapserver interface instead (below).
+If you have BBA support via a tap interface or via the HLE/built-in interface, you may be able to just set the DNS server address (as you would on a real GameCube, above) and it may work.
 
-If you're using a version of Dolphin with tapserver support (currently only the macOS version), you can make it connect to a newserv instance running on the same machine via the tapserver interface. You do not need to install or run tapserver, and this works for all PSO versions without any of the dual-interface trickery described above. To do this:
+If you're using a version of Dolphin with tapserver support, you can make it connect to a newserv instance running on the same machine via the tapserver interface. You do not need to install or run tapserver, and this works for all PSO versions without any of the dual-interface trickery described above. To do this:
 1. Set Dolphin's BBA type to tapserver (Config -> GameCube -> SP1).
 2. Enable newserv's IP stack simulator according to the comments in config.json and start newserv.
 3. In PSO, you have to configure the network settings manually (DHCP doesn't work), but the actual values don't matter as long as they're valid IP addresses. Example values:
