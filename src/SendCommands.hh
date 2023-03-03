@@ -381,7 +381,7 @@ void send_quest_file_chunk(
     const void* data,
     size_t size,
     bool is_download_quest);
-void send_quest_barrier_if_all_clients_ready(std::shared_ptr<Lobby> l);
+bool send_quest_barrier_if_all_clients_ready(std::shared_ptr<Lobby> l);
 
 void send_card_auction_if_all_clients_ready(
     std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l);

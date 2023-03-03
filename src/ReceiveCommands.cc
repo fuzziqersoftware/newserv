@@ -1568,11 +1568,11 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
           info += "$C4Locked$C7\n";
         }
 
-        if (game->loading_quest) {
+        if (game->quest) {
           if (game->flags & Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) {
-            info += "$C6Quest: " + encode_sjis(game->loading_quest->name);
+            info += "$C6Quest: " + encode_sjis(game->quest->name);
           } else {
-            info += "$C4Quest: " + encode_sjis(game->loading_quest->name);
+            info += "$C4Quest: " + encode_sjis(game->quest->name);
           }
         } else if (game->flags & Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) {
           info += "$C6Quest in progress";
@@ -2005,7 +2005,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         } else {
           l->flags |= Lobby::Flag::QUEST_IN_PROGRESS;
         }
-        l->loading_quest = q;
+        l->quest = q;
         for (size_t x = 0; x < l->max_clients; x++) {
           if (!l->clients[x]) {
             continue;
@@ -2337,7 +2337,34 @@ static void on_AC_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
   c->flags &= ~Client::Flag::LOADING_QUEST;
 
-  send_quest_barrier_if_all_clients_ready(s->find_lobby(c->lobby_id));
+  auto l = s->find_lobby(c->lobby_id);
+  if (!l->quest.get()) {
+    return;
+  }
+
+  if (send_quest_barrier_if_all_clients_ready(l) &&
+      (l->version == GameVersion::BB)) {
+    // TODO: We should replace the game enemies list here. It'll look something
+    // like this (but the dat format may be different from the existing loader):
+    // try {
+    //   auto dat_data = prs_decompress(l->quest->dat_contents());
+    //   game->enemies = parse_map(
+    //       s->battle_params,
+    //       l->flags & Lobby::Flag::SOLO_MODE,
+    //       l->episode,
+    //       l->difficulty,
+    //       dat_data,
+    //       false);
+    //   c->log.info("Replaced enemies list with quest layout (%zu entries)",
+    //       l->enemies.size());
+    //   for (size_t z = 0; z < l->enemies.size(); z++) {
+    //     string e_str = l->enemies[z].str();
+    //     l->log.info("(Entry %zX) %s", z, e_str.c_str());
+    //   }
+    // } catch (const exception& e) {
+    //   c->log.info("Failed to load quest layout: %s", e.what());
+    // }
+  }
 }
 
 static void on_AA(shared_ptr<ServerState> s,
@@ -2349,8 +2376,8 @@ static void on_AA(shared_ptr<ServerState> s,
   }
 
   auto l = s->find_lobby(c->lobby_id);
-  if (!l || !l->is_game() || !l->loading_quest.get() ||
-      (l->loading_quest->internal_id != cmd.quest_internal_id)) {
+  if (!l || !l->is_game() || !l->quest.get() ||
+      (l->quest->internal_id != cmd.quest_internal_id)) {
     return;
   }
 

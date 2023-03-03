@@ -2435,9 +2435,9 @@ void send_open_quest_file(shared_ptr<Client> c, const string& quest_name,
   }
 }
 
-void send_quest_barrier_if_all_clients_ready(shared_ptr<Lobby> l) {
+bool send_quest_barrier_if_all_clients_ready(shared_ptr<Lobby> l) {
   if (!l || !l->is_game()) {
-    return;
+    return false;
   }
 
   // Check if any client is still loading
@@ -2452,16 +2452,17 @@ void send_quest_barrier_if_all_clients_ready(shared_ptr<Lobby> l) {
   }
 
   // If they're all done, start the quest
-  if (x == l->max_clients) {
-    send_command(l, 0xAC, 0x00);
+  if (x != l->max_clients) {
+    return false;
   }
 
-  // Check if any client is still loading
+  send_command(l, 0xAC, 0x00);
   for (x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
       l->clients[x]->disconnect_hooks.erase(QUEST_BARRIER_DISCONNECT_HOOK_NAME);
     }
   }
+  return true;
 }
 
 void send_card_auction_if_all_clients_ready(
