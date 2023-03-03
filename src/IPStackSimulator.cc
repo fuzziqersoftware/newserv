@@ -6,13 +6,7 @@
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
-
-#ifndef PHOSG_WINDOWS
 #include <arpa/inet.h>
-#else
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#endif
 
 #include <string>
 #include <phosg/Network.hh>

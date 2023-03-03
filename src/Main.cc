@@ -1086,6 +1086,7 @@ int main(int argc, char** argv) {
           }
         }
 
+#ifndef PHOSG_WINDOWS
         if (!state->ip_stack_addresses.empty()) {
           config_log.info("Starting IP stack simulator");
           ip_stack_simulator.reset(new IPStackSimulator(base, state));
@@ -1094,6 +1095,7 @@ int main(int argc, char** argv) {
             ip_stack_simulator->listen(netloc.first, netloc.second);
           }
         }
+#endif
 
       } else {
         throw logic_error("invalid behavior");
