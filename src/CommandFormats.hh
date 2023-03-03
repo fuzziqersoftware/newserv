@@ -1954,7 +1954,7 @@ struct S_RankUpdate_GC_Ep3_B7 {
 // No arguments
 // The client sends this after it receives a B8 from the server.
 
-// B9 (S->C): Update media (Episode 3)
+// B9 (S->C): Update CARD lobby media (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
 
 struct S_UpdateMediaHeader_GC_Ep3_B9 {
@@ -2007,8 +2007,9 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
   // Positions 00800000 and above appear to be intended for models and not
   // banners - if a banner is sent in these locations, it appears sideways and
   // halfway submerged in the floor, and has no collision. Furthermore, it seems
-  // that up to 8 positions may have banners or models set simultaneously - if 8
-  // positions are already in use, further B9 commands are ignored.
+  // that up to 8 different banners or models may be set simultaneously (though
+  // each may appear in more than one position). If 8 B9 commands have been
+  // received, further B9 commands are ignored.
   le_uint32_t which = 0x00000000;
   // This field specifies the size of the compressed data. The uncompressed size
   // is not sent anywhere in this command.
@@ -2023,6 +2024,8 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
 // B9 (C->S): Confirm received B9 (Episode 3)
 // No arguments
 // This command is not valid on Episode 3 Trial Edition.
+// The client sends this even if it ignores the contents of a B9 command (if
+// the data size was too large, or if there were already 8 banners/models).
 
 // BA: Meseta transaction (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
