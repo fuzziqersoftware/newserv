@@ -746,9 +746,10 @@ struct CompressedMapHeader { // .mnm file format
 
 struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 0000 */ be_uint32_t unknown_a1;
-  /* 0004 */ be_uint32_t map_number;
+  /* 0004 */ be_uint32_t map_number; // Must be unique across all maps
   /* 0008 */ uint8_t width;
   /* 0009 */ uint8_t height;
+
   // The environment number specifies several things:
   // - The model to load for the main battle stage
   // - The music to play during the main battle
@@ -777,10 +778,12 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // 13 = ??? (crashes)
   // Environment numbers beyond 13 are not used in any known quests or maps.
   /* 000A */ uint8_t environment_number;
+
   // All alt_maps fields (including the floats) past num_alt_maps are filled in
   // with FF. For example, if num_alt_maps == 8, the last two fields in each
   // alt_maps array are filled with FF.
   /* 000B */ uint8_t num_alt_maps; // TODO: What are the alt maps for?
+
   // In the map_tiles array, the values are usually:
   // 00 = not a valid tile (blocked)
   // 01 = valid tile unless modified out (via modification_tiles)
@@ -794,6 +797,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // of the map as defined in this struct, or at the bottom as shown in the
   // preview window.
   /* 000C */ parray<parray<uint8_t, 0x10>, 0x10> map_tiles;
+
   // The start_tile_definitions field is a list of 6 bytes for each team. The
   // low 6 bits of each byte match the starting location for the relevant player
   // in map_tiles; the high 2 bits are the player's initial facing direction.
@@ -801,9 +805,11 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // - If the team has 2 players, bytes [1] and [2] are used.
   // - If the team has 3 players, bytes [3] through [5] are used.
   /* 010C */ parray<parray<uint8_t, 6>, 2> start_tile_definitions;
+
   /* 0118 */ parray<parray<uint8_t, 0x10>, 0x10> alt_maps1[2][0x0A];
   /* 1518 */ parray<be_float, 0x12> alt_maps_unknown_a3[2][0x0A];
   /* 1AB8 */ parray<be_float, 0x24> unknown_a5[3];
+
   // In the modification_tiles array, the values are:
   // 10 = blocked by rock (as if the corresponding map_tiles value was 00)
   // 20 = blocked by fence (as if the corresponding map_tiles value was 00)
@@ -813,15 +819,21 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // 50 = blocked by metal box (appears as improperly-z-buffered teal cube in
   //      preview; behaves like 10 and 20 in game)
   /* 1C68 */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
+
   /* 1D68 */ parray<uint8_t, 0x74> unknown_a6;
   /* 1DDC */ Rules default_rules;
   /* 1DEC */ parray<uint8_t, 4> unknown_a7;
+
   /* 1DF0 */ ptext<char, 0x14> name;
   /* 1E04 */ ptext<char, 0x14> location_name;
   /* 1E18 */ ptext<char, 0x3C> quest_name; // == location_name if not a quest
   /* 1E54 */ ptext<char, 0x190> description;
+
+  // These fields describe where the map cursor on the preview screen should
+  // scroll to
   /* 1FE4 */ be_uint16_t map_x;
   /* 1FE6 */ be_uint16_t map_y;
+
   struct NPCDeck {
     ptext<char, 0x18> name;
     parray<be_uint16_t, 0x20> card_ids; // Last one appears to always be FFFF
@@ -834,23 +846,35 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     parray<be_uint16_t, 0x7E> unknown_a3;
   } __attribute__((packed));
   /* 20F0 */ NPCCharacter npc_chars[3]; // Unused if name[0] == 0
+
   /* 242C */ parray<uint8_t, 0x14> unknown_a8; // Always FF?
+
+  // before_message appears before the battle; after_message appears after the
+  // battle. In free battle and online mode, before_message is ignored, but
+  // after_message still appears after the battle if it's not blank.
   /* 2440 */ ptext<char, 0x190> before_message;
   /* 25D0 */ ptext<char, 0x190> after_message;
-  /* 2760 */ ptext<char, 0x190> dispatch_message; // Usually "You can only dispatch <character>" or blank
+  // dispatch_message is appears right before the player chooses a deck. Usually
+  // it contains something like "You can only dispatch <character>" or is blank.
+  /* 2760 */ ptext<char, 0x190> dispatch_message;
+
   struct DialogueSet {
     be_uint16_t unknown_a1;
     be_uint16_t unknown_a2; // Always 0x0064 if valid, 0xFFFF if unused?
     ptext<char, 0x40> strings[4];
   } __attribute__((packed)); // Total size: 0x104 bytes
   /* 28F0 */ DialogueSet dialogue_sets[3][0x10]; // Up to 0x10 per valid NPC
+
   /* 59B0 */ parray<be_uint16_t, 0x10> reward_card_ids;
+
   /* 59D0 */ parray<uint8_t, 0x0C> unknown_a9;
   /* 59DC */ uint8_t unknown_a10;
   /* 59DD */ parray<uint8_t, 3> unknown_a11;
+
   // This array specifies which SC characters can't participate in the quest
   // (that is, the player is not allowed to choose decks with these SC cards).
   // The values in this array don't match the SC card IDs, however:
+  //   value in array => SC name (SC card ID)
   //   0000 => Guykild  (0005)      000C => Hyze   (0117)
   //   0001 => Kylria   (0006)      000D => Rufina (0118)
   //   0002 => Saligun  (0110)      000E => Peko   (0119)
@@ -865,12 +889,14 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   //   000B => Glustar  (0115)      0017 => Ohgun  (011F)
   // Unused entries in this array should be set to FFFF.
   /* 59E0 */ parray<be_uint16_t, 0x18> unavailable_sc_cards;
+
+  // This array specifies which restrictions apply to each player slot.
   struct EntryState {
     // Values for player_type:
     // 00 = Player (selectable by player, COM decks not allowed)
-    // 01 = Player/COM (selectable by player)
+    // 01 = Player/COM (selectable by player, player and COM decks allowed)
     // 02 = COM (selectable by player, player decks not allowed)
-    // 03 = COM (not selectable by player; uses NPC deck)
+    // 03 = COM (not selectable by player; uses an NPC deck defined above)
     // 04 = NONE (not selectable by player)
     // FF = FREE (same as Player/COM, used in free battle mode)
     uint8_t player_type;
@@ -881,6 +907,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     uint8_t deck_type;
   } __attribute__((packed));
   /* 5A10 */ parray<EntryState, 4> entry_states;
+
   /* 5A18 */
 
   std::string str(const DataIndex* data_index = nullptr) const;
