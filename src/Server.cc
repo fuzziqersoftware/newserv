@@ -53,6 +53,7 @@ void Server::disconnect_client(shared_ptr<Client> c) {
   // callback after the current event. This will also call the client's
   // disconnect hooks (if any).
   this->clients_to_destroy.insert(move(c));
+  this->enqueue_destroy_clients();
 }
 
 void Server::enqueue_destroy_clients() {
