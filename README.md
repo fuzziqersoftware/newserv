@@ -56,51 +56,24 @@ Current known issues / missing features / things to do:
 newserv supports several versions of PSO. Specifically:
 | Version              | Basic commands | Lobbies       | Games         | Proxy         |
 |----------------------|----------------|---------------|---------------|---------------|
-| Dreamcast Trial      | Partial (6)    | Not supported | Not supported | Not supported |
+| Dreamcast Trial      | Partial (5)    | Not supported | Not supported | Not supported |
 | Dreamcast V1         | Supported (1)  | Supported     | Supported     | Supported     |
 | Dreamcast V2         | Supported (1)  | Supported     | Supported     | Supported     |
 | PC                   | Supported      | Supported     | Supported     | Supported     |
 | GameCube Ep1&2 Trial | Untested (2)   | Untested (2)  | Untested (2)  | Untested (2)  |
 | GameCube Ep1&2       | Supported      | Supported     | Supported     | Supported     |
 | GameCube Ep1&2 Plus  | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep3 Trial   | Supported      | Supported     | Supported (3) | Supported     |
-| GameCube Ep3         | Supported      | Supported     | Supported (3) | Supported     |
-| XBOX Ep1&2           | Untested (4)   | Untested (4)  | Untested (4)  | Untested (4)  |
-| Blue Burst           | Supported      | Supported     | Partial (5)   | Supported     |
+| GameCube Ep3 Trial   | Supported      | Supported     | Supported     | Supported     |
+| GameCube Ep3         | Supported      | Supported     | Supported     | Supported     |
+| XBOX Ep1&2           | Untested (3)   | Untested (3)  | Untested (3)  | Untested (3)  |
+| Blue Burst           | Supported      | Supported     | Partial (4)   | Supported     |
 
 *Notes:*
 1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
 2. *This version only supports the modem adapter, which Dolphin does not currently emulate, so it's difficult to test.*
-3. *See the following section about Episode 3 functionality.*
-4. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
-5. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
-6. *Support for PSO Dreamcast Trial Edition is very incomplete and probably never will be complete. This is really just exploring a curiosity that sheds some light on early network engineering done by Sega, not an actual attempt at supporting this version of the game.*
-
-### Episode 3
-
-The following Episode 3 features are well-tested and work normally:
-* Downloading quests.
-* Creating and joining games.
-* Trading cards.
-* Participating in card auctions. (The auction contents must be configured in config.json.)
-* Tournaments. (See below)
-
-The following Episode 3 features are implemented, but only partially tested:
-* CARD battles. If you find a feature or card ability that doesn't work, please make a GitHub issue and describe the situation (including the attacking card(s), defending card(s), and ability that didn't work).
-* Spectator teams are partially implemented, but are not well-tested. There is a known issue that prevents viewing battles unless you're in the spectator team when the battle begins.
-* Battle replays sometimes cause the client to crash during the replay. Using the $playrec command is therefore not recommended.
-
-Tournaments work differently than they did on Sega's servers. Tournaments can be created with the `create-tournament` shell command, which enables players to register for them. (Use `help` to see all the arguments - there are many!) The `start-tournament` shell command starts the tournament, but this doesn't schedule any matches. Instead, players who are ready to play their next match can all stand at the rightmost 4-player battle table in the same CARD lobby, and the tournament match will start automatically. (This also means that, for example, not all matches in round 1 must be complete before round 2 can begin - only the matches preceding each individual match must be complete for that match to be playable.)
-
-Because newserv gives all players 1000000 meseta, there is no reward for winning a tournament. This may change in the future.
-
-Episode 3 state and game data is stored in the system/ep3 directory. The files in there are:
-* card-definitions.mnr: Compressed card definition list, sent to Episode 3 clients at connect time. Card stats and abilities can be changed by editing this file.
-* card-definitions.mnrd: Decompressed version of the above. If present, newserv will use this instead of the compressed version, since this is easier to edit.
-* card-text.mnr: Compressed card text archive. Generally only used for debugging.
-* com-decks.json: COM decks used in tournaments. The default decks in this file come from logs from Sega's servers, so the file doesn't include every COM deck Sega ever made - the rest are probably lost to time.
-* maps-free/ and maps-quest/: Online free battle and quest maps (.mnm/.bin/.mnmd/.bind files). Free battle and quest files have exactly the same format; the only difference between the files in these directories is which section of the menu they will appear in on the client.
-* tournament-state.json: State of all active tournaments. This file is automatically written when any tournament changes state for any reason (e.g. a tournament is created/started/deleted or a match is resolved).
+3. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
+4. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
+5. *Support for PSO Dreamcast Trial Edition is very incomplete and probably never will be complete. This is really just exploring a curiosity that sheds some light on early network engineering done by Sega, not an actual attempt at supporting this version of the game.*
 
 ## Usage
 
@@ -165,6 +138,36 @@ When newserv indexes the quests during startup, it will warn (but not fail) if a
 If you've changed the contents of the quests directory, you can re-index the quests without restarting the server by running `reload quests` in the interactive shell. The new quests will be available immediately, but any games with quests already in progress will continue using the old versions of the quests until those quests end.
 
 All quests, including those originally in GCI or DLQ format, are treated as online quests unless their filenames specify the dl category. newserv allows players to download all quests, even those in non-download categories.
+
+### Episode 3 features
+
+The following Episode 3 features work:
+* Downloading quests.
+* Creating and joining games.
+* Trading cards.
+* Participating in card auctions. (The auction contents must be configured in config.json.)
+* Tournaments. (See below)
+
+The following Episode 3 features are implemented, but are only partially tested:
+* CARD battles. Almost everything works, but there may be minor behavioral bugs. If you find a feature or card ability that doesn't work, please make a GitHub issue and describe the situation (including the attacking card(s), defending card(s), and ability or condition that didn't work).
+* Spectator teams. There is a known issue that prevents viewing battles unless you're in the spectator team when the battle begins, and spectating clients sometimes crash for an unknown reason.
+* Battle replays also sometimes cause the client to crash during the replay. Using the $playrec command is therefore not recommended.
+
+Tournaments work differently than they did on Sega's servers. Tournaments can be created with the `create-tournament` shell command, which enables players to register for them. (Use `help` to see all the arguments - there are many!) The `start-tournament` shell command starts the tournament (and prevents further registrations), but this doesn't schedule any matches. Instead, players who are ready to play their next match can all stand at the rightmost 4-player battle table in the same CARD lobby, and the tournament match will start automatically.
+
+These tournament semantics mean that there can be multiple matches in the same tournament in play simultaneously, and not all matches in a round must be complete before the next round can begin - only the matches preceding each individual match must be complete for that match to be playable.
+
+Because newserv gives all players 1000000 meseta, there is no reward for winning a tournament. This may change in the future.
+
+Episode 3 state and game data is stored in the system/ep3 directory. The files in there are:
+* card-definitions.mnr: Compressed card definition list, sent to Episode 3 clients at connect time. Card stats and abilities can be changed by editing this file.
+* card-definitions.mnrd: Decompressed version of the above. If present, newserv will use this instead of the compressed version, since this is easier to edit.
+* card-text.mnr: Compressed card text archive. Generally only used for debugging.
+* com-decks.json: COM decks used in tournaments. The default decks in this file come from logs from Sega's servers, so the file doesn't include every COM deck Sega ever made - the rest are probably lost to time.
+* maps-free/ and maps-quest/: Online free battle and quest maps (.mnm/.bin/.mnmd/.bind files). Free battle and quest files have exactly the same format; the only difference between the files in these directories is which section of the menu they will appear in on the client.
+* tournament-state.json: State of all active tournaments. This file is automatically written when any tournament changes state for any reason (e.g. a tournament is created/started/deleted or a match is resolved).
+
+There is no public editor for Episode 3 maps and quests, but the format is described fairly thoroughly in src/Episode3/DataIndex.hh (see the MapDefinition structure). You'll need to use `newserv decompress-prs ...` to decompress .bin or .mnm files before editing them, but you don't need to compress the files again to use them - just put the .bind or .mnmd file in the maps directory and newserv will make it available.
 
 ### Client patch directories
 
