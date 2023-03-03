@@ -231,7 +231,9 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
   }
 
   if (should_delete_item) {
-    c->game_data.player()->remove_item(item.data.id, 1);
+    // Allow overdrafting meseta if the client is not BB, since the server isn't
+    // informed when meseta is added or removed from the bank.
+    c->game_data.player()->remove_item(item.data.id, 1, c->version() != GameVersion::BB);
   }
 }
 

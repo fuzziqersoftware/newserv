@@ -793,18 +793,21 @@ void PlayerBank::add_item(const PlayerBankItem& item) {
 // TODO: Eliminate code duplication between this function and the parallel
 // function in PlayerBank
 PlayerInventoryItem SavedPlayerDataBB::remove_item(
-    uint32_t item_id, uint32_t amount) {
+    uint32_t item_id, uint32_t amount, bool allow_meseta_overdraft) {
   PlayerInventoryItem ret;
 
   // If we're removing meseta (signaled by an invalid item ID), then create a
   // meseta item.
   if (item_id == 0xFFFFFFFF) {
-    if (amount > this->disp.meseta) {
+    if (amount <= this->disp.meseta) {
+      this->disp.meseta -= amount;
+    } else if (allow_meseta_overdraft) {
+      this->disp.meseta = 0;
+    } else {
       throw out_of_range("player does not have enough meseta");
     }
     ret.data.data1[0] = 0x04;
     ret.data.data2d = amount;
-    this->disp.meseta -= amount;
     return ret;
   }
 

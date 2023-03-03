@@ -476,8 +476,8 @@ static void on_player_drop_item(shared_ptr<ServerState>,
   }
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
-    l->add_item(c->game_data.player()->remove_item(cmd.item_id, 0), cmd.area,
-        cmd.x, cmd.z);
+    auto item = c->game_data.player()->remove_item(cmd.item_id, 0, c->version() != GameVersion::BB);
+    l->add_item(item, cmd.area, cmd.x, cmd.z);
 
     l->log.info("Player %hu dropped item %08" PRIX32 " at %hu:(%g, %g)",
         cmd.header.client_id.load(), cmd.item_id.load(), cmd.area.load(),
@@ -563,7 +563,8 @@ static void on_drop_partial_stack_bb(shared_ptr<ServerState>,
       throw logic_error("item tracking not enabled in BB game");
     }
 
-    auto item = c->game_data.player()->remove_item(cmd.item_id, cmd.amount);
+    auto item = c->game_data.player()->remove_item(
+        cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
 
     // if a stack was split, the original item still exists, so the dropped item
     // needs a new ID. remove_item signals this by returning an item with id=-1
@@ -814,7 +815,8 @@ static void on_bank_action_bb(shared_ptr<ServerState>,
         c->game_data.player()->bank.meseta += cmd.meseta_amount;
         c->game_data.player()->disp.meseta -= cmd.meseta_amount;
       } else { // item
-        auto item = c->game_data.player()->remove_item(cmd.item_id, cmd.item_amount);
+        auto item = c->game_data.player()->remove_item(
+            cmd.item_id, cmd.item_amount, c->version() != GameVersion::BB);
         c->game_data.player()->bank.add_item(item);
         send_destroy_item(l, c, cmd.item_id, cmd.item_amount);
       }
@@ -1130,7 +1132,8 @@ static void on_destroy_inventory_item(shared_ptr<ServerState>,
     return;
   }
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
-    c->game_data.player()->remove_item(cmd.item_id, cmd.amount);
+    c->game_data.player()->remove_item(
+        cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
     l->log.info("Inventory item %hu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
         cmd.header.client_id.load(), cmd.item_id.load(), cmd.amount.load());
     c->game_data.player()->print_inventory(stderr);

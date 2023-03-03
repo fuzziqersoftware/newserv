@@ -1495,9 +1495,6 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
   add_maps_from_dir(directory + "/maps-free", false);
   add_maps_from_dir(directory + "/maps-quest", true);
 
-  // Generate (and cache) the map list to ensure it's not too large
-  this->get_compressed_map_list();
-
   try {
     auto json = JSONObject::parse(load_file(directory + "/com-decks.json"));
     for (const auto& def_json : json->as_list()) {
