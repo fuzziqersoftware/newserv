@@ -62,6 +62,7 @@ struct PSOEnemy {
   uint8_t last_hit;
   uint32_t experience;
   uint32_t rt_index;
+  size_t num_clones;
   const char* type_name;
 
   explicit PSOEnemy(uint64_t id);
@@ -70,6 +71,7 @@ struct PSOEnemy {
       uint16_t source_type,
       uint32_t experience,
       uint32_t rt_index,
+      size_t num_clones,
       const char* type_name);
 
   std::string str() const;
