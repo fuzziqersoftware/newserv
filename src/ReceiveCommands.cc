@@ -2233,6 +2233,24 @@ static void on_A1(shared_ptr<ServerState> s, shared_ptr<Client> c,
   on_A0(s, c, command, flag, data);
 }
 
+static void on_8E_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t command, uint32_t flag, const string& data) {
+  if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+    on_A0(s, c, command, flag, data);
+  } else {
+    throw runtime_error("non-DCNTE client sent 8E");
+  }
+}
+
+static void on_8F_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
+    uint16_t command, uint32_t flag, const string& data) {
+  if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+    on_A1(s, c, command, flag, data);
+  } else {
+    throw runtime_error("non-DCNTE client sent 8F");
+  }
+}
+
 
 
 static void send_dol_file_chunk(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -3955,8 +3973,8 @@ static on_command_t handlers[0x100][6] = {
   /* 8B */ {nullptr, on_8B_DCNTE,    nullptr,     on_8B_DCNTE,    nullptr,        nullptr},
   /* 8C */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 8D */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 8E */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 8F */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
+  /* 8E */ {nullptr, on_8E_DCNTE,    nullptr,     nullptr,        nullptr,        nullptr},
+  /* 8F */ {nullptr, on_8F_DCNTE,    nullptr,     nullptr,        nullptr,        nullptr},
   /* 90 */ {nullptr, on_90_DC,       nullptr,     on_90_DC,       nullptr,        nullptr},
   /* 91 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 92 */ {nullptr, on_92_DC,       nullptr,     nullptr,        nullptr,        nullptr},
