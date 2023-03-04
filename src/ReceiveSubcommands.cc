@@ -156,6 +156,9 @@ static void on_unimplemented(shared_ptr<ServerState>,
   } else {
     c->log.warning("Unknown subcommand: %02hhX (public)", cmd.subcommand);
   }
+  if (c->options.debug) {
+    send_text_message_printf(c, "$C5Sub 6x%02hhX missing", cmd.subcommand);
+  }
 }
 
 
@@ -438,6 +441,9 @@ static void on_switch_state_changed(shared_ptr<ServerState>,
     if ((l->flags & Lobby::Flag::CHEATS_ENABLED) && c->options.switch_assist &&
         (c->last_switch_enabled_command.header.subcommand == 0x05)) {
       c->log.info("[Switch assist] Replaying previous enable command");
+      if (c->options.debug) {
+        send_text_message(c, u"$C5Switch assist");
+      }
       forward_subcommand(l, c, command, flag, &c->last_switch_enabled_command,
           sizeof(c->last_switch_enabled_command));
       send_command_t(c, command, flag, c->last_switch_enabled_command);
@@ -484,6 +490,11 @@ static void on_player_drop_item(shared_ptr<ServerState>,
     l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(),
         cmd.area.load(), cmd.x.load(), cmd.z.load());
+    if (c->options.debug) {
+      string name = name_for_item(item.data, true);
+      send_text_message_printf(c, "$C5Items: drop %08" PRIX32 "\n%s",
+          cmd.item_id.load(), name.c_str());
+    }
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -515,6 +526,11 @@ static void on_create_inventory_item(shared_ptr<ServerState>,
     auto name = name_for_item(item.data, false);
     l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item.id.load(), name.c_str());
+    if (c->options.debug) {
+      string name = name_for_item(item.data, true);
+      send_text_message_printf(c, "$C5Items: create %08" PRIX32 "\n%s",
+          cmd.item.id.load(), name.c_str());
+    }
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -548,6 +564,11 @@ static void on_drop_partial_stack(shared_ptr<ServerState>,
     l->log.info("Player %hu split stack to create ground item %08" PRIX32 " (%s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), item.data.id.load(), name.c_str(),
         cmd.area.load(), cmd.x.load(), cmd.z.load());
+    if (c->options.debug) {
+      string name = name_for_item(item.data, true);
+      send_text_message_printf(c, "$C5Items: split %08" PRIX32 "\n%s",
+          item.data.id.load(), name.c_str());
+    }
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -588,6 +609,11 @@ static void on_drop_partial_stack_bb(shared_ptr<ServerState>,
     l->log.info("Player %hu split stack %08" PRIX32 " (removed: %s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(),
         cmd.area.load(), cmd.x.load(), cmd.z.load());
+    if (c->options.debug) {
+      string name = name_for_item(item.data, true);
+      send_text_message_printf(c, "$C5Items: split/BB %08" PRIX32 "\n%s",
+          cmd.item_id.load(), name.c_str());
+    }
     c->game_data.player()->print_inventory(stderr);
 
     send_drop_stacked_item(l, item.data, cmd.area, cmd.x, cmd.z);
@@ -619,6 +645,11 @@ static void on_buy_shop_item(shared_ptr<ServerState>,
     auto name = name_for_item(item.data, false);
     l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop",
         cmd.header.client_id.load(), item.data.id.load(), name.c_str());
+    if (c->options.debug) {
+      string name = name_for_item(item.data, true);
+      send_text_message_printf(c, "$C5Items: buy %08" PRIX32 "\n%s",
+          item.data.id.load(), name.c_str());
+    }
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -648,6 +679,11 @@ static void on_box_or_enemy_item_drop(shared_ptr<ServerState>,
     auto name = name_for_item(item.data, false);
     l->log.info("Leader created ground item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
         item.data.id.load(), name.c_str(), cmd.area, cmd.x.load(), cmd.z.load());
+    if (c->options.debug) {
+      string name = name_for_item(item.data, true);
+      send_text_message_printf(c, "$C5Items: drop %08" PRIX32 "\n%s",
+          item.data.id.load(), name.c_str());
+    }
   }
 
   forward_subcommand(l, c, command, flag, data);
@@ -679,6 +715,11 @@ static void on_pick_up_item(shared_ptr<ServerState>,
     auto name = name_for_item(item.data, false);
     l->log.info("Player %hu picked up %08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+    if (c->options.debug) {
+      string name = name_for_item(item.data, true);
+      send_text_message_printf(c, "$C5Items: pick %08" PRIX32 "\n%s",
+          cmd.item_id.load(), name.c_str());
+    }
     effective_c->game_data.player()->print_inventory(stderr);
   }
 
@@ -706,6 +747,11 @@ static void on_pick_up_item_request(shared_ptr<ServerState>,
     auto name = name_for_item(item.data, false);
     l->log.info("Player %hu picked up %08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+    if (c->options.debug) {
+      string name = name_for_item(item.data, true);
+      send_text_message_printf(c, "$C5Items: pick/BB %08" PRIX32 "\n%s",
+          cmd.item_id.load(), name.c_str());
+    }
     c->game_data.player()->print_inventory(stderr);
 
     send_pick_up_item(l, c, cmd.item_id, cmd.area);
@@ -751,11 +797,22 @@ static void on_use_item(shared_ptr<ServerState>,
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     size_t index = c->game_data.player()->inventory.find_item(cmd.item_id);
-    auto name = name_for_item(c->game_data.player()->inventory.items[index].data, false);
+    string name, colored_name;
+    {
+      // Note: We do this weird scoping thing because player_use_item will
+      // likely delete the item, which will break the reference here.
+      const auto& item = c->game_data.player()->inventory.items[index].data;
+      name = name_for_item(item, false);
+      colored_name = name_for_item(item, true);
+    }
     player_use_item(c, index);
 
     l->log.info("Player used item %hu:%08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+    if (c->options.debug) {
+      send_text_message_printf(c, "$C5Items: use %08" PRIX32 "\n%s",
+          cmd.item_id.load(), colored_name.c_str());
+    }
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -1077,20 +1134,28 @@ static void on_enemy_killed(shared_ptr<ServerState> s,
       send_text_message(c, u"$C6Missing enemy killed");
       return;
     }
-    string e_str = l->enemies[cmd.enemy_id].str();
+
+    auto& e = l->enemies[cmd.enemy_id];
+    string e_str = e.str();
     c->log.info("Enemy killed: entry %hu => %s", cmd.enemy_id.load(), e_str.c_str());
-    if (l->enemies[cmd.enemy_id].hit_flags & 0x80) {
+    if (e.hit_flags & 0x80) {
+      if (c->options.debug) {
+        send_text_message_printf(c, "$C5E-%hX (already dead)", cmd.enemy_id.load());
+      }
       return; // Enemy is already dead
     }
-    if (l->enemies[cmd.enemy_id].experience == 0xFFFFFFFF) {
-      send_text_message(c, u"$C6Unknown enemy type killed");
+    if (e.experience == 0xFFFFFFFF) {
+      if (c->options.debug) {
+        send_text_message_printf(c, "$C5E-%hX (missing definition)", cmd.enemy_id.load());
+      } else {
+        send_text_message(c, u"$C6Unknown enemy type killed");
+      }
       return;
     }
 
-    auto& enemy = l->enemies[cmd.enemy_id];
-    enemy.hit_flags |= 0x80;
+    e.hit_flags |= 0x80;
     for (size_t x = 0; x < l->max_clients; x++) {
-      if (!((enemy.hit_flags >> x) & 1)) {
+      if (!((e.hit_flags >> x) & 1)) {
         continue; // Player did not hit this enemy
       }
 
@@ -1104,14 +1169,18 @@ static void on_enemy_killed(shared_ptr<ServerState> s,
 
       // Killer gets full experience, others get 77%
       uint32_t exp;
-      if (enemy.last_hit == other_c->lobby_client_id) {
-        exp = enemy.experience;
+      if (e.last_hit == other_c->lobby_client_id) {
+        exp = e.experience;
       } else {
-        exp = ((enemy.experience * 77) / 100);
+        exp = ((e.experience * 77) / 100);
       }
 
       other_c->game_data.player()->disp.experience += exp;
       send_give_experience(l, other_c, exp);
+      if (other_c->options.debug) {
+        send_text_message_printf(other_c, "$C5+%" PRIu32 " E-%hX (%s)",
+            exp, cmd.enemy_id.load(), e.type_name);
+      }
 
       bool leveled_up = false;
       do {

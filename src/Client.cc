@@ -29,7 +29,7 @@ ClientOptions::ClientOptions()
   : switch_assist(false),
     infinite_hp(false),
     infinite_tp(false),
-    prefer_high_lobby_client_id(false),
+    debug(false),
     override_section_id(-1),
     override_lobby_event(-1),
     override_lobby_number(-1),

@@ -81,7 +81,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     this->clients[required_client_id] = c;
     index = required_client_id;
 
-  } else if (c->options.prefer_high_lobby_client_id) {
+  } else if (c->options.debug) {
     for (index = max_clients - 1; index >= min_client_id; index--) {
       if (!this->clients[index].get()) {
         this->clients[index] = c;

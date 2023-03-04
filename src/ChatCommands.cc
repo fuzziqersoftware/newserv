@@ -234,11 +234,11 @@ static void proxy_command_arrow(shared_ptr<ServerState>,
   session.server_channel.send(0x89, stoull(encode_sjis(args), nullptr, 0));
 }
 
-static void server_command_dbgid(shared_ptr<ServerState>, shared_ptr<Lobby>,
+static void server_command_debug(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string&) {
-  c->options.prefer_high_lobby_client_id = !c->options.prefer_high_lobby_client_id;
-  send_text_message_printf(c, "ID preference set\nto $C6%s",
-      c->options.prefer_high_lobby_client_id ? "high" : "low");
+  c->options.debug = !c->options.debug;
+  send_text_message_printf(c, "Debug %s",
+      c->options.debug ? "enabled" : "disabled");
 }
 
 static void server_command_auction(shared_ptr<ServerState>, shared_ptr<Lobby> l,
@@ -1186,7 +1186,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     // TODO: implement this on proxy server
     {u"$bbchar",   {server_command_convert_char_to_bb, nullptr,                       u"Usage:\nbbchar <user> <pass> <1-4>"}},
     {u"$cheat",    {server_command_cheat,              nullptr,                       u"Usage:\ncheat"}},
-    {u"$dbgid",    {server_command_dbgid,              nullptr,                       u"Usage:\ndbgid"}},
+    {u"$debug",    {server_command_debug,              nullptr,                       u"Usage:\ndebug"}},
     {u"$edit",     {server_command_edit,               nullptr  ,                     u"Usage:\nedit <stat> <value>"}},
     {u"$event",    {server_command_lobby_event,        proxy_command_lobby_event,     u"Usage:\nevent <name>"}},
     {u"$exit",     {server_command_exit,               proxy_command_exit,            u"Usage:\nexit"}},

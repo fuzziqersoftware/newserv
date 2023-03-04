@@ -1465,7 +1465,8 @@ uint8_t technique_for_name(const u16string& name) {
 
 string name_for_item(const ItemData& item, bool include_color_codes) {
   if (item.data1[0] == 0x04) {
-    return string_printf("%" PRIu32 " Meseta", item.data2d.load());
+    return string_printf("%s%" PRIu32 " Meseta",
+        include_color_codes ? "$C7" : "", item.data2d.load());
   }
 
   vector<string> ret_tokens;
@@ -1705,7 +1706,7 @@ string name_for_item(const ItemData& item, bool include_color_codes) {
     } else if (name_info.is_rare) {
       return "$C6" + ret;
     } else {
-      return ret;
+      return "$C7" + ret;
     }
   } else {
     return ret;

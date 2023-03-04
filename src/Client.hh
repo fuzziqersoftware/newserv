@@ -29,7 +29,7 @@ struct ClientOptions {
   bool switch_assist;
   bool infinite_hp;
   bool infinite_tp;
-  bool prefer_high_lobby_client_id;
+  bool debug;
   int16_t override_section_id;
   int16_t override_lobby_event;
   int16_t override_lobby_number;
