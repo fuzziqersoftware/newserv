@@ -3291,7 +3291,7 @@ struct G_Unknown_6x09 {
 struct G_EnemyHitByPlayer_6x0A {
   G_EnemyIDHeader header;
   // Note: enemy_id (in header) is in the range [0x1000, 0x4000)
-  le_uint16_t enemy_id2;
+  le_uint16_t enemy_id;
   le_uint16_t damage;
   be_uint32_t flags;
 } __packed__;
@@ -4929,7 +4929,7 @@ struct G_SortInventory_6xC4 {
 
 struct G_EnemyKilled_6xC8 {
   G_EnemyIDHeader header;
-  le_uint16_t enemy_id2;
+  le_uint16_t enemy_id;
   le_uint16_t killer_client_id;
   le_uint32_t unused;
 } __packed__;

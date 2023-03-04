@@ -3207,6 +3207,8 @@ shared_ptr<Lobby> create_game_generic(
     game->next_game_item_id = 0x00810000;
 
     for (size_t area = 0; area < 0x10; area++) {
+      c->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
+          area, game->variations[area * 2].load(), game->variations[area * 2 + 1].load());
       auto filenames = map_filenames_for_variation(
           game->episode,
           is_solo,

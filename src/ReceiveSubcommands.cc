@@ -1037,15 +1037,15 @@ static void on_enemy_hit(shared_ptr<ServerState>,
     if (!l->is_game()) {
       return;
     }
-    if (cmd.header.enemy_id >= l->enemies.size()) {
+    if (cmd.enemy_id >= l->enemies.size()) {
       return;
     }
 
-    if (l->enemies[cmd.header.enemy_id].hit_flags & 0x80) {
+    if (l->enemies[cmd.enemy_id].hit_flags & 0x80) {
       return;
     }
-    l->enemies[cmd.header.enemy_id].hit_flags |= (1 << c->lobby_client_id);
-    l->enemies[cmd.header.enemy_id].last_hit = c->lobby_client_id;
+    l->enemies[cmd.enemy_id].hit_flags |= (1 << c->lobby_client_id);
+    l->enemies[cmd.enemy_id].last_hit = c->lobby_client_id;
   }
 
   forward_subcommand(l, c, command, flag, data);
@@ -1062,21 +1062,21 @@ static void on_enemy_killed(shared_ptr<ServerState> s,
     if (!l->is_game()) {
       throw runtime_error("client should not kill enemies outside of games");
     }
-    if (cmd.header.enemy_id >= l->enemies.size()) {
+    if (cmd.enemy_id >= l->enemies.size()) {
       send_text_message(c, u"$C6Missing enemy killed");
       return;
     }
-    string e_str = l->enemies[cmd.header.enemy_id].str();
-    c->log.info("Enemy killed: entry %hu => %s", cmd.header.enemy_id.load(), e_str.c_str());
-    if (l->enemies[cmd.header.enemy_id].hit_flags & 0x80) {
+    string e_str = l->enemies[cmd.enemy_id].str();
+    c->log.info("Enemy killed: entry %hu => %s", cmd.enemy_id.load(), e_str.c_str());
+    if (l->enemies[cmd.enemy_id].hit_flags & 0x80) {
       return; // Enemy is already dead
     }
-    if (l->enemies[cmd.header.enemy_id].experience == 0xFFFFFFFF) {
+    if (l->enemies[cmd.enemy_id].experience == 0xFFFFFFFF) {
       send_text_message(c, u"$C6Unknown enemy type killed");
       return;
     }
 
-    auto& enemy = l->enemies[cmd.header.enemy_id];
+    auto& enemy = l->enemies[cmd.enemy_id];
     enemy.hit_flags |= 0x80;
     for (size_t x = 0; x < l->max_clients; x++) {
       if (!((enemy.hit_flags >> x) & 1)) {
