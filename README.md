@@ -29,8 +29,12 @@ newserv is many things - a server, a proxy, an encryption and decryption tool, a
 With that said, I offer no guarantees on how or when this project will advance. Feel free to submit GitHub issues if you find bugs or have feature requests; I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner. If you feel like contributing to newserv yourself, pull requests are welcome as well.
 
 Current known issues / missing features / things to do:
-- PSOBB is not well-tested and likely will disconnect or misbehave when clients try to use unimplemented features.
-    - Enemy indexes also desync slightly in most games, often in later areas, leading to incorrect EXP values being given for killed enemies.
+- Implement the rest of PSOBB. Major areas of work:
+    - Find any remaining mismatches in enemy IDs / experience (Episode 1 is mostly fixed now, except for Dark Falz)
+    - Implement all remaining player_use_item use cases (there are many!)
+    - Implement shops
+    - Make non-rare drops work like they do in non-BB versions (newserv is far too generous and sometimes generates invalid items)
+    - Implement trade window
 - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
 - PSOX is not tested at all.
 - Memory patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
@@ -40,16 +44,16 @@ Current known issues / missing features / things to do:
 - Encapsulate BB server-side random state and make replays deterministic.
 - VMS decoding doesn't work. Complete this reverse-engineering project.
 - Make a looser form of item tracking that can be used on non-BB versions when quests replace player inventories, like in battle and challenge modes.
-- Code style
-    - The internal menu abstraction is ugly and hard to work with. Rewrite it.
-    - Add default values for all commands (like we use for Episode 3 battle commands).
-    - Clean up the way proxy session options are passed to the session from the client object (and add user-settable options for e.g. chat filter, which currently doesn't appear in the menu).
 - Episode 3 bugs
     - Fix behavior when joining a spectator team after the beginning of a battle.
     - Disconnecting during a match turns you into a COM if there are other humans in the match, even if the match is part of a tournament. This may be incorrect behavior for tournaments.
     - Disconnecting during a tournament when there are no other humans in the match simply cancels the match (so it can be replayed) instead of forfeiting, which is almost certainly incorrect behavior. (Then again, no one likes losing tournaments to COMs...)
     - Tournament deck restrictions aren't enforced when populating COMs at tournament start time. This can cause weird behavior if, for example, a COM deck contains assist cards and the tournament rules forbid them.
     - There is a rare failure mode during battles that causes one of the clients to be disconnected.
+- Code style
+    - The internal menu abstraction is ugly and hard to work with. Rewrite it.
+    - Add default values for all commands (like we use for Episode 3 battle commands).
+    - Clean up the way proxy session options are passed to the session from the client object (and add user-settable options for e.g. chat filter, which currently doesn't appear in the menu).
 
 ## Compatibility
 
