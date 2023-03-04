@@ -31,6 +31,7 @@ With that said, I offer no guarantees on how or when this project will advance. 
 Current known issues / missing features / things to do:
 - Implement the rest of PSOBB. Major areas of work:
     - Find any remaining mismatches in enemy IDs / experience (Episode 1 is mostly fixed now, except for Dark Falz)
+    - Replace enemy list with quest layout when loading a quest
     - Implement all remaining player_use_item use cases (there are many!)
     - Implement shops
     - Make non-rare drops work like they do in non-BB versions (newserv is far too generous and sometimes generates invalid items)
