@@ -46,7 +46,7 @@ void BattleParamsIndex::Table::print(FILE* stream) const {
   };
 
   for (size_t diff = 0; diff < 4; diff++) {
-    fprintf(stream, "%c ZZ  ATP  PSV  EVP   HP  DFP  ATA  LCK  ESP                       A1   EXP  DIFF\n",
+    fprintf(stream, "%c ZZ   ATP   PSV   EVP    HP   DFP   ATA   LCK   ESP                       A1   EXP  DIFF\n",
         abbreviation_for_difficulty(diff));
     for (size_t z = 0; z < 0x60; z++) {
       fprintf(stream, "  %02zX ", z);
