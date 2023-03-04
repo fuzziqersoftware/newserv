@@ -4,8 +4,57 @@
 #include <phosg/Strings.hh>
 
 #include "Loggers.hh"
+#include "StaticGameData.hh"
 
 using namespace std;
+
+
+
+string BattleParamsIndex::Entry::str() const {
+  string a1str = format_data_string(this->unknown_a1.data(), this->unknown_a1.bytes());
+  return string_printf(
+      "BattleParamsEntry[ATP=%hu PSV=%hu EVP=%hu HP=%hu DFP=%hu ATA=%hu LCK=%hu ESP=%hu a1=%s EXP=%" PRIu32 " diff=%" PRIu32 "]",
+      this->atp.load(),
+      this->psv.load(),
+      this->evp.load(),
+      this->hp.load(),
+      this->dfp.load(),
+      this->ata.load(),
+      this->lck.load(),
+      this->esp.load(),
+      a1str.c_str(),
+      this->experience.load(),
+      this->difficulty.load());
+}
+
+void BattleParamsIndex::Table::print(FILE* stream) const {
+  auto print_entry = +[](FILE* stream, const Entry& e) {
+    string a1str = format_data_string(e.unknown_a1.data(), e.unknown_a1.bytes());
+    fprintf(stream,
+      "%5hu %5hu %5hu %5hu %5hu %5hu %5hu %5hu %s %5" PRIu32 " %5" PRIu32,
+      e.atp.load(),
+      e.psv.load(),
+      e.evp.load(),
+      e.hp.load(),
+      e.dfp.load(),
+      e.ata.load(),
+      e.lck.load(),
+      e.esp.load(),
+      a1str.c_str(),
+      e.experience.load(),
+      e.difficulty.load());
+  };
+
+  for (size_t diff = 0; diff < 4; diff++) {
+    fprintf(stream, "%c ZZ  ATP  PSV  EVP   HP  DFP  ATA  LCK  ESP                       A1   EXP  DIFF\n",
+        abbreviation_for_difficulty(diff));
+    for (size_t z = 0; z < 0x60; z++) {
+      fprintf(stream, "  %02zX ", z);
+      print_entry(stream, this->difficulty[diff][z]);
+      fputc('\n', stream);
+    }
+  }
+}
 
 
 

@@ -23,13 +23,17 @@ public:
     le_uint16_t ata; // accuracy
     le_uint16_t lck; // luck
     le_uint16_t esp; // ???
-    uint8_t unknown_a1[0x0C];
+    parray<uint8_t, 0x0C> unknown_a1;
     le_uint32_t experience;
     le_uint32_t difficulty;
+
+    std::string str() const;
   } __attribute__((packed));
 
   struct Table {
     parray<parray<Entry, 0x60>, 4> difficulty;
+
+    void print(FILE* stream) const;
   } __attribute__((packed));
 
   BattleParamsIndex(
