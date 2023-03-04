@@ -21,6 +21,7 @@ Lobby::Lobby(uint32_t id)
     version(GameVersion::GC),
     section_id(0),
     episode(Episode::NONE),
+    mode(GameMode::NORMAL),
     difficulty(0),
     random_seed(random_object<uint32_t>()),
     random(new mt19937(this->random_seed)),

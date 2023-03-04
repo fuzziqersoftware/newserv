@@ -1175,14 +1175,20 @@ void send_game_menu_t(
       e.flags = (l->password.empty() ? 0 : 2) | ((l->flags & Lobby::Flag::BATTLE_IN_PROGRESS) ? 4 : 0);
     } else {
       e.flags = ((episode_num << 6) | (l->password.empty() ? 0 : 2));
-      if (l->flags & Lobby::Flag::BATTLE_MODE) {
-        e.flags |= 0x10;
-      }
-      if (l->flags & Lobby::Flag::CHALLENGE_MODE) {
-        e.flags |= 0x20;
-      }
-      if (l->flags & Lobby::Flag::SOLO_MODE) {
-        e.flags |= 0x34;
+      switch (l->mode) {
+        case GameMode::NORMAL:
+          break;
+        case GameMode::BATTLE:
+          e.flags |= 0x10;
+          break;
+        case GameMode::CHALLENGE:
+          e.flags |= 0x20;
+          break;
+        case GameMode::SOLO:
+          e.flags |= 0x34;
+          break;
+        default:
+          throw logic_error("invalid game mode");
       }
     }
     e.name = l->name;
@@ -1461,10 +1467,10 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   cmd->leader_id = l->leader_id;
   cmd->disable_udp = 0x01; // Unused on PC/XB/BB
   cmd->difficulty = l->difficulty;
-  cmd->battle_mode = (l->flags & Lobby::Flag::BATTLE_MODE) ? 1 : 0;
+  cmd->battle_mode = (l->mode == GameMode::BATTLE) ? 1 : 0;
   cmd->event = l->event;
   cmd->section_id = l->section_id;
-  cmd->challenge_mode = (l->flags & Lobby::Flag::CHALLENGE_MODE) ? 1 : 0;
+  cmd->challenge_mode = (l->mode == GameMode::CHALLENGE) ? 1 : 0;
   cmd->rare_seed = l->random_seed;
   switch (l->episode) {
     case Episode::EP1:
@@ -1483,7 +1489,7 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       throw logic_error("invalid episode number in game");
   }
   cmd->unused2 = 0x01;
-  cmd->solo_mode = (l->flags & Lobby::Flag::SOLO_MODE) ? 1 : 0;
+  cmd->solo_mode = (l->mode == GameMode::SOLO) ? 1 : 0;
   cmd->unused3 = 0x00;
 
   send_command(c, 0x64, player_count, data);

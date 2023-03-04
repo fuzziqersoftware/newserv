@@ -1082,7 +1082,8 @@ static bool start_ep3_battle_table_game_if_ready(
   uint32_t flags = Lobby::Flag::NON_V1_ONLY;
   u16string name = tourn ? decode_sjis(tourn->get_name()) : u"<BattleTable>";
   auto game = create_game_generic(
-      s, game_clients.begin()->second, name, u"", Episode::EP3, 0, flags);
+      s, game_clients.begin()->second, name, u"", Episode::EP3,
+      GameMode::NORMAL, 0, flags);
   if (!game) {
     return false;
   }
@@ -1537,18 +1538,10 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
         }
 
         string secid_str = name_for_section_id(game->section_id);
-        const char* mode_abbrev = "Nml";
-        if (game->flags & Lobby::Flag::BATTLE_MODE) {
-          mode_abbrev = "Btl";
-        } else if (game->flags & Lobby::Flag::CHALLENGE_MODE) {
-          mode_abbrev = "Chl";
-        } else if (game->flags & Lobby::Flag::SOLO_MODE) {
-          mode_abbrev = "Solo";
-        }
         info += string_printf("%s %c %s %s\n",
             abbreviation_for_episode(game->episode),
             abbreviation_for_difficulty(game->difficulty),
-            mode_abbrev,
+            abbreviation_for_mode(game->mode),
             secid_str.c_str());
 
         bool cheats_enabled = game->flags & Lobby::Flag::CHEATS_ENABLED;
@@ -1914,7 +1907,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because\nanother player is\ncurrently loading.\nTry again soon.");
         break;
       }
-      if (game->flags & Lobby::Flag::SOLO_MODE) {
+      if (game->mode == GameMode::SOLO) {
         send_lobby_message_box(c, u"$C6You cannot join this\n game because it is\na Solo Mode game.");
         break;
       }
@@ -2321,14 +2314,21 @@ static void on_A2(shared_ptr<ServerState> s, shared_ptr<Client> c,
     if ((c->version() == GameVersion::BB) && flag) {
       menu = &quest_government_menu;
     } else {
-      if (l->flags & Lobby::Flag::BATTLE_MODE) {
-        menu = &quest_battle_menu;
-      } else if (l->flags & Lobby::Flag::CHALLENGE_MODE) {
-        menu = &quest_challenge_menu;
-      } else if (l->flags & Lobby::Flag::SOLO_MODE) {
-        menu = &quest_solo_menu;
-      } else {
-        menu = &quest_categories_menu;
+      switch (l->mode) {
+        case GameMode::NORMAL:
+          menu = &quest_categories_menu;
+          break;
+        case GameMode::BATTLE:
+          menu = &quest_battle_menu;
+          break;
+        case GameMode::CHALLENGE:
+          menu = &quest_challenge_menu;
+          break;
+        case GameMode::SOLO:
+          menu = &quest_solo_menu;
+          break;
+        default:
+          throw logic_error("invalid game mode");
       }
     }
 
@@ -3105,6 +3105,7 @@ shared_ptr<Lobby> create_game_generic(
     const std::u16string& name,
     const std::u16string& password,
     Episode episode,
+    GameMode mode,
     uint8_t difficulty,
     uint32_t flags,
     shared_ptr<Lobby> watched_lobby,
@@ -3165,9 +3166,8 @@ shared_ptr<Lobby> create_game_generic(
   // is not notified when this happens. We'll have to implement this anyway for
   // BB, but for now we ignore it.
   bool item_tracking_enabled =
-      (c->version() == GameVersion::BB) |
-      (s->item_tracking_enabled &&
-        !(flags & (Lobby::Flag::BATTLE_MODE | Lobby::Flag::CHALLENGE_MODE)));
+      (c->version() == GameVersion::BB) ||
+      (s->item_tracking_enabled && (mode == GameMode::NORMAL || mode == GameMode::SOLO));
 
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
@@ -3179,6 +3179,7 @@ shared_ptr<Lobby> create_game_generic(
   game->section_id = c->options.override_section_id >= 0
       ? c->options.override_section_id : c->game_data.player()->disp.section_id;
   game->episode = episode;
+  game->mode = mode;
   game->difficulty = difficulty;
   if (c->options.override_random_seed >= 0) {
     game->random_seed = c->options.override_random_seed;
@@ -3200,7 +3201,7 @@ shared_ptr<Lobby> create_game_generic(
     watched_lobby->watcher_lobbies.emplace(game);
   }
 
-  bool is_solo = (game->flags & Lobby::Flag::SOLO_MODE);
+  bool is_solo = (game->mode == GameMode::SOLO);
 
   // Generate the map variations
   if (game->is_ep3()) {
@@ -3271,14 +3272,14 @@ static void on_C1_PC(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& cmd = check_size_t<C_CreateGame_PC_C1>(data);
 
   uint32_t flags = Lobby::Flag::NON_V1_ONLY;
+  GameMode mode = GameMode::NORMAL;
   if (cmd.battle_mode) {
-    flags |= Lobby::Flag::BATTLE_MODE;
-  }
-  if (cmd.challenge_mode) {
-    flags |= Lobby::Flag::CHALLENGE_MODE;
+    mode = GameMode::BATTLE;
+  } else if (cmd.challenge_mode) {
+    mode = GameMode::CHALLENGE;
   }
   auto game = create_game_generic(
-      s, c, cmd.name, cmd.password, Episode::EP1, cmd.difficulty, flags);
+      s, c, cmd.name, cmd.password, Episode::EP1, mode, cmd.difficulty, flags);
   if (game) {
     s->change_client_lobby(c, game);
     c->flags |= Client::Flag::LOADING;
@@ -3313,14 +3314,15 @@ static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
   u16string name = decode_sjis(cmd.name);
   u16string password = decode_sjis(cmd.password);
 
+  GameMode mode = GameMode::NORMAL;
   if (cmd.battle_mode) {
-    flags |= Lobby::Flag::BATTLE_MODE;
+    mode = GameMode::BATTLE;
   }
   if (cmd.challenge_mode) {
     if (client_is_ep3) {
       flags |= Lobby::Flag::SPECTATORS_FORBIDDEN;
     } else {
-      flags |= Lobby::Flag::CHALLENGE_MODE;
+      mode = GameMode::CHALLENGE;
     }
   }
 
@@ -3338,7 +3340,8 @@ static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   auto game = create_game_generic(
-      s, c, name.c_str(), password.c_str(), episode, cmd.difficulty, flags, watched_lobby);
+      s, c, name.c_str(), password.c_str(), episode, mode, cmd.difficulty,
+      flags, watched_lobby);
   if (game) {
     s->change_client_lobby(c, game);
     c->flags |= Client::Flag::LOADING;
@@ -3350,14 +3353,15 @@ static void on_C1_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& cmd = check_size_t<C_CreateGame_BB_C1>(data);
 
   uint32_t flags = Lobby::Flag::NON_V1_ONLY;
+  GameMode mode = GameMode::NORMAL;
   if (cmd.battle_mode) {
-    flags |= Lobby::Flag::BATTLE_MODE;
+    mode = GameMode::BATTLE;
   }
   if (cmd.challenge_mode) {
-    flags |= Lobby::Flag::CHALLENGE_MODE;
+    mode = GameMode::CHALLENGE;
   }
   if (cmd.solo_mode) {
-    flags |= Lobby::Flag::SOLO_MODE;
+    mode = GameMode::SOLO;
   }
 
   Episode episode;
@@ -3376,7 +3380,7 @@ static void on_C1_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   auto game = create_game_generic(
-      s, c, cmd.name, cmd.password, episode, cmd.difficulty, flags);
+      s, c, cmd.name, cmd.password, episode, mode, cmd.difficulty, flags);
   if (game) {
     s->change_client_lobby(c, game);
     c->flags |= Client::Flag::LOADING;

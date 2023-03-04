@@ -12,6 +12,7 @@ std::shared_ptr<Lobby> create_game_generic(
     const std::u16string& name,
     const std::u16string& password,
     Episode episode,
+    GameMode mode,
     uint8_t difficulty,
     uint32_t flags,
     std::shared_ptr<Lobby> watched_lobby = nullptr,

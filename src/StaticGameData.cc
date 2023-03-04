@@ -60,6 +60,38 @@ const char* abbreviation_for_episode(Episode ep) {
 
 
 
+const char* name_for_mode(GameMode mode) {
+  switch (mode) {
+    case GameMode::NORMAL:
+      return "Normal";
+    case GameMode::BATTLE:
+      return "Battle";
+    case GameMode::CHALLENGE:
+      return "Challenge";
+    case GameMode::SOLO:
+      return "Solo";
+    default:
+      return "Unknown mode";
+  }
+}
+
+const char* abbreviation_for_mode(GameMode mode) {
+  switch (mode) {
+    case GameMode::NORMAL:
+      return "Nml";
+    case GameMode::BATTLE:
+      return "Btl";
+    case GameMode::CHALLENGE:
+      return "Chl";
+    case GameMode::SOLO:
+      return "Solo";
+    default:
+      return "UnkMd";
+  }
+}
+
+
+
 const vector<string> section_id_to_name({
   "Viridia", "Greennill", "Skyly", "Bluefull", "Purplenum", "Pinkal", "Redria",
   "Oran", "Yellowboze", "Whitill"});

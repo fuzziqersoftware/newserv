@@ -37,10 +37,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     ITEM_TRACKING_ENABLED           = 0x00001000,
     IS_SPECTATOR_TEAM               = 0x00002000, // episode must be EP3 also
     SPECTATORS_FORBIDDEN            = 0x00004000,
-    BATTLE_MODE                     = 0x00008000,
-    CHALLENGE_MODE                  = 0x00010000,
-    SOLO_MODE                       = 0x00020000,
-    START_BATTLE_PLAYER_IMMEDIATELY = 0x00040000,
+    START_BATTLE_PLAYER_IMMEDIATELY = 0x00008000,
 
     // Flags used only for lobbies
     PUBLIC                          = 0x01000000,
@@ -71,6 +68,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   GameVersion version;
   uint8_t section_id;
   Episode episode;
+  GameMode mode;
   uint8_t difficulty; // 0-3
   std::u16string password;
   std::u16string name;

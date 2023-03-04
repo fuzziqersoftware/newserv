@@ -22,6 +22,16 @@ bool episode_has_arpg_semantics(Episode ep);
 const char* name_for_episode(Episode ep);
 const char* abbreviation_for_episode(Episode ep);
 
+enum class GameMode {
+  NORMAL = 0,
+  BATTLE = 1,
+  CHALLENGE = 2,
+  SOLO = 3,
+};
+
+const char* name_for_mode(GameMode mode);
+const char* abbreviation_for_mode(GameMode mode);
+
 
 
 size_t stack_size_for_item(uint8_t data0, uint8_t data1);
