@@ -86,17 +86,30 @@ BattleParamsIndex::BattleParamsIndex(
 }
 
 const BattleParamsIndex::Entry& BattleParamsIndex::get(
-    bool solo, uint8_t episode, uint8_t difficulty, uint8_t monster_type) const {
-  if (episode > 3) {
-    throw invalid_argument("incorrect episode");
-  }
+    bool solo, Episode episode, uint8_t difficulty, uint8_t monster_type) const {
   if (difficulty > 4) {
     throw invalid_argument("incorrect difficulty");
   }
   if (monster_type > 0x60) {
     throw invalid_argument("incorrect monster type");
   }
-  return this->files[!!solo][episode].table->difficulty[difficulty][monster_type];
+
+  uint8_t ep_index;
+  switch (episode) {
+    case Episode::EP1:
+      ep_index = 0;
+      break;
+    case Episode::EP2:
+      ep_index = 1;
+      break;
+    case Episode::EP4:
+      ep_index = 2;
+      break;
+    default:
+      throw invalid_argument("invalid episode");
+  }
+
+  return this->files[!!solo][ep_index].table->difficulty[difficulty][monster_type];
 }
 
 
@@ -143,7 +156,7 @@ static uint64_t next_enemy_id = 1;
 vector<PSOEnemy> parse_map(
     shared_ptr<const BattleParamsIndex> battle_params,
     bool is_solo,
-    uint8_t episode,
+    Episode episode,
     uint8_t difficulty,
     shared_ptr<const string> data,
     bool alt_enemies) {
@@ -185,7 +198,7 @@ vector<PSOEnemy> parse_map(
         create_enemy(e, 0x49 + (e.skin & 0x01), 0x01 + (e.skin & 0x01), "Hilde(bear|torr)");
         break;
       case 0x41: // Rappies
-        if (episode == 3) { // Del Rappy and Sand Rappy
+        if (episode == Episode::EP4) { // Del Rappy and Sand Rappy
           if (alt_enemies) {
             create_enemy(e, 0x17 + (e.skin & 0x01), 17 + (e.skin & 0x01), "(Del|Sand) Rappy");
           } else {
@@ -217,7 +230,7 @@ vector<PSOEnemy> parse_map(
         create_enemy(e, 0x4E, 12, "Grass Assassin");
         break;
       case 0x61: // Del Lily, Poison Lily, Nar Lily
-        if ((episode == 2) && (alt_enemies)) {
+        if ((episode == Episode::EP2) && (alt_enemies)) {
           create_enemy(e, 0x25, 83, "Del Lily");
         } else {
           create_enemy(e, 0x04 + ((e.reserved[10] & 0x800000) ? 1 : 0),
@@ -303,9 +316,9 @@ vector<PSOEnemy> parse_map(
         create_enemy(e, 0x20, 38, "Claw");
         break;
       case 0xC0: // Dragon or Gal Gryphon
-        if (episode == 1) {
+        if (episode == Episode::EP1) {
           create_enemy(e, 0x12, 44, "Dragon");
-        } else if (episode == 2) {
+        } else if (episode == Episode::EP2) {
           create_enemy(e, 0x1E, 77, "Gal Gryphon");
         }
         break;
@@ -386,7 +399,7 @@ vector<PSOEnemy> parse_map(
         }
         break;
       case 0xE0: // Epsilon, Sinow Zoa and Zele
-        if ((episode == 2) && (alt_enemies)) {
+        if ((episode == Episode::EP2) && (alt_enemies)) {
           create_enemy(e, 0x23, 84, "Epsilon");
           create_clones(4);
         } else {
@@ -524,8 +537,7 @@ struct AreaMapFileIndex {
       variation2_values(variation2_values) { }
 };
 
-// These are indexed as [episode][is_solo][area]
-// (Note that Lobby::episode is 1-3, so we actually use episode - 1)
+// These are indexed as [episode][is_solo][area], where episode is 0-2
 static const vector<vector<vector<AreaMapFileIndex>>> map_file_info = {
   { // Episode 1
     { // Non-solo
@@ -643,12 +655,25 @@ static const vector<vector<vector<AreaMapFileIndex>>> map_file_info = {
   },
 };
 
+const vector<vector<AreaMapFileIndex>>& map_file_info_for_episode(Episode ep) {
+  switch (ep) {
+    case Episode::EP1:
+      return map_file_info.at(0);
+    case Episode::EP2:
+      return map_file_info.at(1);
+    case Episode::EP4:
+      return map_file_info.at(2);
+    default:
+      throw invalid_argument("episode has no maps");
+  }
+}
+
 void generate_variations(
     parray<le_uint32_t, 0x20>& variations,
     shared_ptr<mt19937> random,
-    uint8_t episode,
+    Episode episode,
     bool is_solo) {
-  const auto& ep_index = map_file_info.at(episode - 1);
+  const auto& ep_index = map_file_info_for_episode(episode);
   for (size_t z = 0; z < 0x10; z++) {
     const AreaMapFileIndex* a = nullptr;
     if (is_solo) {
@@ -670,7 +695,7 @@ void generate_variations(
 }
 
 vector<string> map_filenames_for_variation(
-    uint8_t episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2) {
+    Episode episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2) {
   // Map filenames are like map_<name_token>[_VV][_VV][_off]<e|o>[_s].dat
   //   name_token comes from AreaMapFileIndex
   //   _VV are the values from the variation<1|2>_values vector (in contrast to
@@ -678,7 +703,7 @@ vector<string> map_filenames_for_variation(
   //   _off or _s are used for solo mode (try both - city uses _s whereas levels
   //     use _off apparently)
   //   e|o specifies what kind of data: e = enemies, o = objects
-  const auto& ep_index = map_file_info.at(episode - 1);
+  const auto& ep_index = map_file_info_for_episode(episode);
   const AreaMapFileIndex* a = nullptr;
   if (is_solo) {
     a = &ep_index.at(true).at(area);

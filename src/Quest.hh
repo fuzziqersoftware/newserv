@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "StaticGameData.hh"
 #include "Version.hh"
 
 
@@ -47,7 +48,7 @@ public:
   int64_t internal_id;
   uint32_t menu_item_id;
   QuestCategory category;
-  uint8_t episode; // 0 = ep1, 1 = ep2, 2 = ep4, 0xFF = ep3
+  Episode episode;
   bool is_dcv1;
   bool joinable;
   GameVersion version;

@@ -6,6 +6,60 @@ using namespace std;
 
 
 
+size_t area_limit_for_episode(Episode ep) {
+  switch (ep) {
+    case Episode::EP1:
+    case Episode::EP2:
+      return 17;
+      break;
+    case Episode::EP4:
+      return 10;
+      break;
+    default:
+      return 0;
+  }
+}
+
+bool episode_has_arpg_semantics(Episode ep) {
+  return (ep == Episode::EP1) || (ep == Episode::EP2) || (ep == Episode::EP4);
+}
+
+const char* name_for_episode(Episode ep) {
+  switch (ep) {
+    case Episode::NONE:
+      return "No episode";
+    case Episode::EP1:
+      return "Episode 1";
+    case Episode::EP2:
+      return "Episode 2";
+    case Episode::EP3:
+      return "Episode 3";
+    case Episode::EP4:
+      return "Episode 4";
+    default:
+      return "Unknown episode";
+  }
+}
+
+const char* abbreviation_for_episode(Episode ep) {
+  switch (ep) {
+    case Episode::NONE:
+      return "None";
+    case Episode::EP1:
+      return "Ep1";
+    case Episode::EP2:
+      return "Ep2";
+    case Episode::EP3:
+      return "Ep3";
+    case Episode::EP4:
+      return "Ep4";
+    default:
+      return "UnkEp";
+  }
+}
+
+
+
 const vector<string> section_id_to_name({
   "Viridia", "Greennill", "Skyly", "Bluefull", "Purplenum", "Pinkal", "Redria",
   "Oran", "Yellowboze", "Whitill"});

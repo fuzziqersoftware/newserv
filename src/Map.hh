@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "StaticGameData.hh"
 #include "Text.hh"
 
 
@@ -44,7 +45,7 @@ public:
       std::shared_ptr<const std::string> data_off_ep2, // BattleParamEntry_lab.dat
       std::shared_ptr<const std::string> data_off_ep4); // BattleParamEntry_ep4.dat
 
-  const Entry& get(bool solo, uint8_t episode, uint8_t difficulty,
+  const Entry& get(bool solo, Episode episode, uint8_t difficulty,
       uint8_t monster_type) const;
 
 private:
@@ -84,7 +85,7 @@ struct PSOEnemy {
 std::vector<PSOEnemy> parse_map(
     std::shared_ptr<const BattleParamsIndex> battle_params,
     bool is_solo,
-    uint8_t episode,
+    Episode episode,
     uint8_t difficulty,
     std::shared_ptr<const std::string> data,
     bool alt_enemies);
@@ -125,8 +126,8 @@ private:
 void generate_variations(
     parray<le_uint32_t, 0x20>& variations,
     std::shared_ptr<std::mt19937> random,
-    uint8_t episode,
+    Episode episode,
     bool is_solo);
 std::vector<std::string> map_filenames_for_variation(
-    uint8_t episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2);
+    Episode episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2);
 void load_map_files();

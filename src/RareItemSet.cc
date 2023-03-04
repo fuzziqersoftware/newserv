@@ -16,17 +16,30 @@ RareItemSet::RareItemSet(shared_ptr<const string> data) : data(data) {
 }
 
 const RareItemSet::Table& RareItemSet::get_table(
-    uint8_t episode, uint8_t difficulty, uint8_t secid) const {
-  if (episode > 2) {
-    throw logic_error("incorrect episode number");
-  }
+    Episode episode, uint8_t difficulty, uint8_t secid) const {
   if (difficulty > 3) {
     throw logic_error("incorrect difficulty");
   }
   if (secid > 10) {
     throw logic_error("incorrect section id");
   }
-  return this->tables[(episode * 10 * 4) + (difficulty * 10) + secid];
+
+  size_t ep_index;
+  switch (episode) {
+    case Episode::EP1:
+      ep_index = 0;
+      break;
+    case Episode::EP2:
+      ep_index = 1;
+      break;
+    case Episode::EP4:
+      ep_index = 2;
+      break;
+    default:
+      throw invalid_argument("incorrect episode");
+  }
+
+  return this->tables[(ep_index * 10 * 4) + (difficulty * 10) + secid];
 }
 
 bool RareItemSet::sample(mt19937& random, uint8_t pc) {

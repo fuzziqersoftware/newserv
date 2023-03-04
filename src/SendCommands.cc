@@ -894,7 +894,7 @@ void send_card_search_result_t(
     string encoded_lobby_name = encode_sjis(result_lobby->name);
     location_string = string_printf("%s,BLOCK01,%s",
         encoded_lobby_name.c_str(), encoded_server_name.c_str());
-  } else if (result_lobby->flags & Lobby::Flag::EPISODE_3_ONLY) {
+  } else if (result_lobby->is_ep3()) {
     location_string = string_printf("BLOCK01-C%02" PRIu32 ",BLOCK01,%s",
         result_lobby->lobby_id - 15, encoded_server_name.c_str());
   } else {
@@ -1126,7 +1126,7 @@ void send_game_menu_t(
       continue;
     }
 
-    bool l_is_ep3 = !!(l->flags & Lobby::Flag::EPISODE_3_ONLY);
+    bool l_is_ep3 = l->is_ep3();
     bool c_is_ep3 = !!(c->flags & Client::Flag::IS_EPISODE_3);
     if (l_is_ep3 != c_is_ep3) {
       continue;
@@ -1143,6 +1143,24 @@ void send_game_menu_t(
       continue;
     }
 
+    uint8_t episode_num;
+    switch (l->episode) {
+      case Episode::EP1:
+        episode_num = 1;
+        break;
+      case Episode::EP2:
+        episode_num = 2;
+        break;
+      case Episode::EP3:
+        episode_num = 0;
+        break;
+      case Episode::EP4:
+        episode_num = 3;
+        break;
+      default:
+        throw runtime_error("lobby has incorrect episode number");
+    }
+
     auto& e = entries.emplace_back();
     e.menu_id = MenuID::GAME;
     e.game_id = l->lobby_id;
@@ -1151,12 +1169,12 @@ void send_game_menu_t(
     if (c->version() == GameVersion::DC) {
       e.episode = (l->flags & Lobby::Flag::NON_V1_ONLY) ? 1 : 0;
     } else {
-      e.episode = ((c->version() == GameVersion::BB) ? (l->max_clients << 4) : 0) | l->episode;
+      e.episode = ((c->version() == GameVersion::BB) ? (l->max_clients << 4) : 0) | episode_num;
     }
-    if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
+    if (l->is_ep3()) {
       e.flags = (l->password.empty() ? 0 : 2) | ((l->flags & Lobby::Flag::BATTLE_IN_PROGRESS) ? 4 : 0);
     } else {
-      e.flags = ((l->episode << 6) | (l->password.empty() ? 0 : 2));
+      e.flags = ((episode_num << 6) | (l->password.empty() ? 0 : 2));
       if (l->flags & Lobby::Flag::BATTLE_MODE) {
         e.flags |= 0x10;
       }
@@ -1280,7 +1298,7 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
     if ((l->flags & Lobby::Flag::NON_V1_ONLY) && (c->flags & Client::Flag::IS_DC_V1)) {
       continue;
     }
-    if ((l->flags & Lobby::Flag::EPISODE_3_ONLY) && !(c->flags & Client::Flag::IS_EPISODE_3)) {
+    if (l->is_ep3() && !(c->flags & Client::Flag::IS_EPISODE_3)) {
       continue;
     }
     auto& e = entries.emplace_back();
@@ -1301,7 +1319,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
     throw runtime_error("lobby is not Episode 3");
   }
-  if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+  if (!l->is_ep3()) {
     throw runtime_error("lobby is not Episode 3");
   }
   if (!(l->flags & Lobby::Flag::IS_SPECTATOR_TEAM)) {
@@ -1405,7 +1423,7 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     return;
   }
 
-  bool is_ep3 = (l->flags & Lobby::Flag::EPISODE_3_ONLY);
+  bool is_ep3 = l->is_ep3();
   string data(is_ep3 ? sizeof(S_JoinGame_GC_Ep3_64) : sizeof(S_JoinGame<LobbyDataT, DispDataT>), '\0');
 
   // TODO: This is a terrible way to handle the different Ep3 format within the
@@ -1448,7 +1466,22 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   cmd->section_id = l->section_id;
   cmd->challenge_mode = (l->flags & Lobby::Flag::CHALLENGE_MODE) ? 1 : 0;
   cmd->rare_seed = l->random_seed;
-  cmd->episode = l->episode;
+  switch (l->episode) {
+    case Episode::EP1:
+      cmd->episode = 1;
+      break;
+    case Episode::EP2:
+      cmd->episode = 2;
+      break;
+    case Episode::EP3:
+      cmd->episode = 0xFF;
+      break;
+    case Episode::EP4:
+      cmd->episode = 3;
+      break;
+    default:
+      throw logic_error("invalid episode number in game");
+  }
   cmd->unused2 = 0x01;
   cmd->solo_mode = (l->flags & Lobby::Flag::SOLO_MODE) ? 1 : 0;
   cmd->unused3 = 0x00;

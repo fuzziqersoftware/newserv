@@ -20,7 +20,7 @@ Lobby::Lobby(uint32_t id)
     next_game_item_id(0x00810000),
     version(GameVersion::GC),
     section_id(0),
-    episode(1),
+    episode(Episode::NONE),
     difficulty(0),
     random_seed(random_object<uint32_t>()),
     random(new mt19937(this->random_seed)),
@@ -140,7 +140,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   }
 
   // Send spectator count notifications if needed
-  if (this->is_game() && (this->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+  if (this->is_game() && this->is_ep3()) {
     if (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
       auto watched_l = this->watched_lobby.lock();
       if (watched_l) {
@@ -178,7 +178,7 @@ void Lobby::remove_client(shared_ptr<Client> c) {
   }
 
   // If the lobby is Episode 3, update the appropriate spectator counts
-  if (this->is_game() && (this->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+  if (this->is_game() && this->is_ep3()) {
     if (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
       auto watched_l = this->watched_lobby.lock();
       if (watched_l) {

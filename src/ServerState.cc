@@ -49,12 +49,14 @@ ServerState::ServerState()
         Lobby::Flag::PUBLIC |
         Lobby::Flag::DEFAULT |
         Lobby::Flag::PERSISTENT |
-        (is_non_v1_only ? Lobby::Flag::NON_V1_ONLY : 0) | 
-        (is_ep3_only ? Lobby::Flag::EPISODE_3_ONLY : 0);
+        (is_non_v1_only ? Lobby::Flag::NON_V1_ONLY : 0);
     l->block = x + 1;
     l->type = x;
     l->name = lobby_name;
     l->max_clients = 12;
+    if (is_ep3_only) {
+      l->episode = Episode::EP3;
+    }
 
     if (!is_non_v1_only) {
       this->public_lobby_search_order_v1.emplace_back(l);
@@ -221,7 +223,7 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
   } else {
     // Tell all players in all spectator teams to go back to the lobby
     for (auto watcher_l : l->watcher_lobbies) {
-      if (!(watcher_l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+      if (!watcher_l->is_ep3()) {
         throw logic_error("spectator team is not an Episode 3 lobby");
       }
       l->log.info("Disbanding watcher lobby %" PRIX32, watcher_l->lobby_id);

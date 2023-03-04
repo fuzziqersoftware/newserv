@@ -6,6 +6,8 @@
 #include <string>
 #include <random>
 
+#include "StaticGameData.hh"
+
 
 
 class RareItemSet {
@@ -28,7 +30,7 @@ public:
 
   RareItemSet(std::shared_ptr<const std::string> data);
 
-  const Table& get_table(uint8_t episode, uint8_t difficulty, uint8_t secid) const;
+  const Table& get_table(Episode episode, uint8_t difficulty, uint8_t secid) const;
 
   static bool sample(std::mt19937& rand, uint8_t probability);
 

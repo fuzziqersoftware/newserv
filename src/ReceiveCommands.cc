@@ -1079,10 +1079,10 @@ static bool start_ep3_battle_table_game_if_ready(
   // begin, but create_game_generic can still return null if an internal
   // precondition fails (though this should never happen for Episode 3 games).
 
-  uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY;
+  uint32_t flags = Lobby::Flag::NON_V1_ONLY;
   u16string name = tourn ? decode_sjis(tourn->get_name()) : u"<BattleTable>";
   auto game = create_game_generic(
-      s, game_clients.begin()->second, name, u"", 0xFF, 0, flags);
+      s, game_clients.begin()->second, name, u"", Episode::EP3, 0, flags);
   if (!game) {
     return false;
   }
@@ -1144,7 +1144,7 @@ static void on_E4_Ep3(shared_ptr<ServerState> s,
   }
 
   if (flag) {
-    if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+    if (l->is_game() || !l->is_ep3()) {
       throw runtime_error("battle table join command sent in non-CARD lobby");
     }
     c->card_battle_table_number = cmd.table_number;
@@ -1180,7 +1180,7 @@ static void on_E5_Ep3(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) {
   check_size_t<S_CardBattleTableConfirmation_GC_Ep3_E5>(data);
   auto l = s->find_lobby(c->lobby_id);
-  if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+  if (l->is_game() || !l->is_ep3()) {
     throw runtime_error("battle table command sent in non-CARD lobby");
   }
 
@@ -1271,7 +1271,7 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     // command when it's not in any lobby at all. We just ignore such commands.
     return;
   }
-  if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY) || !l->is_game()) {
+  if (!l->is_game() || !l->is_ep3()) {
     throw runtime_error("Episode 3 server data request sent outside of Episode 3 game");
   }
 
@@ -1420,7 +1420,7 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
           if (l->is_game()) {
             num_games++;
             if (l->version == c->version() &&
-                (!(l->flags & Lobby::Flag::EPISODE_3_ONLY) == !(c->flags & Client::Flag::IS_EPISODE_3))) {
+                (!l->is_ep3() == !(c->flags & Client::Flag::IS_EPISODE_3))) {
               num_compatible_games++;
             }
           }
@@ -1514,8 +1514,7 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
       if (!game->is_game()) {
         send_ship_info(c, u"$C4Incorrect game ID");
 
-      } else if ((c->flags & Client::Flag::IS_EPISODE_3) &&
-                 (game->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+      } else if ((c->flags & Client::Flag::IS_EPISODE_3) && game->is_ep3()) {
         send_ep3_game_details(c, game);
 
       } else {
@@ -1525,7 +1524,7 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
           if (game_c.get()) {
             auto player = game_c->game_data.player();
             auto name = encode_sjis(player->disp.name);
-            if (game->flags & Lobby::Flag::EPISODE_3_ONLY) {
+            if (game->is_ep3()) {
               info += string_printf("%zu: $C6%s$C7 L%" PRIu32 "\n",
                   x + 1, name.c_str(), player->disp.level + 1);
             } else {
@@ -1537,12 +1536,6 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
           }
         }
 
-        int episode = game->episode;
-        if (episode == 3) {
-          episode = 4;
-        } else if (episode == 0xFF) {
-          episode = 3;
-        }
         string secid_str = name_for_section_id(game->section_id);
         const char* mode_abbrev = "Nml";
         if (game->flags & Lobby::Flag::BATTLE_MODE) {
@@ -1552,8 +1545,8 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
         } else if (game->flags & Lobby::Flag::SOLO_MODE) {
           mode_abbrev = "Solo";
         }
-        info += string_printf("Ep%d %c %s %s\n",
-            episode,
+        info += string_printf("%s %c %s %s\n",
+            abbreviation_for_episode(game->episode),
             abbreviation_for_difficulty(game->difficulty),
             mode_abbrev,
             secid_str.c_str());
@@ -1904,7 +1897,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         break;
       }
       if ((game->version != c->version()) ||
-          (!(game->flags & Lobby::Flag::EPISODE_3_ONLY) != !(c->flags & Client::Flag::IS_EPISODE_3)) ||
+          (!game->is_ep3() != !(c->flags & Client::Flag::IS_EPISODE_3)) ||
           ((game->flags & Lobby::Flag::NON_V1_ONLY) && (c->flags & Client::Flag::IS_DC_V1))) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
         break;
@@ -1986,7 +1979,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         }
       }
 
-      bool is_ep3 = (q->episode == 0xFF);
+      bool is_ep3 = (q->episode == Episode::EP3);
       string bin_basename = q->bin_filename();
       shared_ptr<const string> bin_contents = q->bin_contents();
       string dat_basename;
@@ -2178,7 +2171,7 @@ static void on_84(shared_ptr<ServerState> s, shared_ptr<Client> c,
       return;
     }
 
-    if ((new_lobby->flags & Lobby::Flag::EPISODE_3_ONLY) && !(c->flags & Client::Flag::IS_EPISODE_3)) {
+    if (new_lobby->is_ep3() && !(c->flags & Client::Flag::IS_EPISODE_3)) {
       send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby is for\nEpisode 3 only.");
       return;
     }
@@ -2573,7 +2566,7 @@ static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   char private_flags = 0;
   u16string processed_text;
-  if ((text[0] != '\t') && (l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+  if ((text[0] != '\t') && l->is_ep3()) {
     private_flags = text[0];
     processed_text = remove_language_marker(text.substr(1));
   } else {
@@ -3111,24 +3104,16 @@ shared_ptr<Lobby> create_game_generic(
     shared_ptr<Client> c,
     const std::u16string& name,
     const std::u16string& password,
-    uint8_t episode,
+    Episode episode,
     uint8_t difficulty,
     uint32_t flags,
     shared_ptr<Lobby> watched_lobby,
     shared_ptr<Episode3::BattleRecordPlayer> battle_player) {
 
-  // A player's actual level is their displayed level - 1, so the minimums for
-  // Episode 1 (for example) are actually 1, 20, 40, 80.
-  static const uint32_t default_minimum_levels[3][4] = {
-      {0, 19, 39, 79}, // Episode 1
-      {0, 29, 49, 89}, // Episode 2
-      {0, 39, 79, 109}}; // Episode 4
-
-  bool is_ep3 = (flags & Lobby::Flag::EPISODE_3_ONLY);
-  if (episode == 0) {
-    episode = 0xFF;
-  }
-  if (((episode != 0xFF) && (episode > 3)) || (episode == 0)) {
+  if ((episode != Episode::EP1) &&
+      (episode != Episode::EP2) &&
+      (episode != Episode::EP3) &&
+      (episode != Episode::EP4)) {
     throw invalid_argument("incorrect episode number");
   }
 
@@ -3141,7 +3126,32 @@ shared_ptr<Lobby> create_game_generic(
     throw invalid_argument("cannot make a game from outside any lobby");
   }
 
-  uint8_t min_level = ((episode == 0xFF) ? 0 : default_minimum_levels[episode - 1][difficulty]);
+  uint8_t min_level;
+  // A player's actual level is their displayed level - 1, so the minimums for
+  // Episode 1 (for example) are actually 1, 20, 40, 80.
+  switch (episode) {
+    case Episode::EP1: {
+      static const uint32_t min_levels[4] = {0, 19, 39, 79};
+      min_level = min_levels[difficulty];
+      break;
+    }
+    case Episode::EP2: {
+      static const uint32_t min_levels[4] = {0, 29, 49, 89};
+      min_level = min_levels[difficulty];
+      break;
+    }
+    case Episode::EP3:
+      min_level = 0;
+      break;
+    case Episode::EP4: {
+      static const uint32_t min_levels[4] = {0, 39, 79, 109};
+      min_level = min_levels[difficulty];
+      break;
+    }
+    default:
+      throw runtime_error("invalid episode");
+  }
+
   if (!(c->license->privileges & Privilege::FREE_JOIN_GAMES) &&
       (min_level > c->game_data.player()->disp.level)) {
     // Note: We don't throw here because this is a situation players might
@@ -3163,7 +3173,6 @@ shared_ptr<Lobby> create_game_generic(
   game->name = name;
   game->flags = flags |
       Lobby::Flag::GAME |
-      (is_ep3 ? Lobby::Flag::EPISODE_3_ONLY : 0) |
       (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0);
   game->password = password;
   game->version = c->version();
@@ -3194,7 +3203,7 @@ shared_ptr<Lobby> create_game_generic(
   bool is_solo = (game->flags & Lobby::Flag::SOLO_MODE);
 
   // Generate the map variations
-  if (is_ep3) {
+  if (game->is_ep3()) {
     game->variations.clear(0);
   } else {
     generate_variations(game->variations, game->random, game->episode, is_solo);
@@ -3268,7 +3277,8 @@ static void on_C1_PC(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (cmd.challenge_mode) {
     flags |= Lobby::Flag::CHALLENGE_MODE;
   }
-  auto game = create_game_generic(s, c, cmd.name, cmd.password, 1, cmd.difficulty, flags);
+  auto game = create_game_generic(
+      s, c, cmd.name, cmd.password, Episode::EP1, cmd.difficulty, flags);
   if (game) {
     s->change_client_lobby(c, game);
     c->flags |= Client::Flag::LOADING;
@@ -3282,21 +3292,22 @@ static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // Only allow E7/EC from Ep3 clients
   bool client_is_ep3 = !!(c->flags & Client::Flag::IS_EPISODE_3);
   if (((command & 0xF0) == 0xE0) != client_is_ep3) {
-    return;
+    throw runtime_error("invalid command");
   }
 
-  uint8_t episode = cmd.episode;
+  Episode episode = Episode::NONE;
   uint32_t flags = 0;
   if (c->version() == GameVersion::DC) {
-    if (episode) {
+    if (cmd.episode) {
       flags |= Lobby::Flag::NON_V1_ONLY;
     }
-    episode = 1;
+    episode = Episode::EP1;
   } else if (client_is_ep3) {
-    flags |= (Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY);
-    episode = 0xFF;
+    flags |= Lobby::Flag::NON_V1_ONLY;
+    episode = Episode::EP3;
   } else { // XB/GC non-Ep3
     flags |= Lobby::Flag::NON_V1_ONLY;
+    episode = cmd.episode == 2 ? Episode::EP2 : Episode::EP1;
   }
 
   u16string name = decode_sjis(cmd.name);
@@ -3348,8 +3359,24 @@ static void on_C1_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (cmd.solo_mode) {
     flags |= Lobby::Flag::SOLO_MODE;
   }
+
+  Episode episode;
+  switch (cmd.episode) {
+    case 1:
+      episode = Episode::EP1;
+      break;
+    case 2:
+      episode = Episode::EP2;
+      break;
+    case 3:
+      episode = Episode::EP4;
+      break;
+    default:
+      throw runtime_error("invalid episode number");
+  }
+
   auto game = create_game_generic(
-      s, c, cmd.name, cmd.password, cmd.episode, cmd.difficulty, flags);
+      s, c, cmd.name, cmd.password, episode, cmd.difficulty, flags);
   if (game) {
     s->change_client_lobby(c, game);
     c->flags |= Client::Flag::LOADING;
@@ -3518,11 +3545,8 @@ static void on_EE_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     throw runtime_error("non-Ep3 client sent card trade command");
   }
   auto l = s->find_lobby(c->lobby_id);
-  if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
-    throw runtime_error("client sent card trade command outside of Ep3 lobby");
-  }
-  if (!l->is_game()) {
-    throw runtime_error("client sent card trade command in non-game lobby");
+  if (!l->is_game() || !l->is_ep3()) {
+    throw runtime_error("client sent card trade command outside of Ep3 game");
   }
 
   if (flag == 0xD0) {
@@ -3626,11 +3650,8 @@ static void on_EF_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     throw runtime_error("non-Ep3 client sent card auction join command");
   }
   auto l = s->find_lobby(c->lobby_id);
-  if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
-    throw runtime_error("client sent card auction join command outside of Ep3 lobby");
-  }
-  if (!l->is_game()) {
-    throw runtime_error("client sent card auction join command in non-game lobby");
+  if (!l->is_game() || !l->is_ep3()) {
+    throw runtime_error("client sent card auction join command outside of Ep3 game");
   }
 
   if (c->flags & Client::Flag::AWAITING_CARD_AUCTION) {

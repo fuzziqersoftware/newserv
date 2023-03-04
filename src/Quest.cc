@@ -299,11 +299,11 @@ const char* name_for_category(QuestCategory category) {
     case QuestCategory::TOWER:
       return "Tower";
     case QuestCategory::GOVERNMENT_EPISODE_1:
-      return "GovernmentEpisode1";
+      return "GovernmentEp1";
     case QuestCategory::GOVERNMENT_EPISODE_2:
-      return "GovernmentEpisode2";
+      return "GovernmentEp2";
     case QuestCategory::GOVERNMENT_EPISODE_4:
-      return "GovernmentEpisode4";
+      return "GovernmentEp4";
     case QuestCategory::DOWNLOAD:
       return "Download";
     case QuestCategory::BATTLE:
@@ -316,21 +316,6 @@ const char* name_for_category(QuestCategory category) {
       return "Episode3";
     default:
       return "Unknown";
-  }
-}
-
-static const char* name_for_episode(uint8_t episode) {
-  switch (episode) {
-    case 0:
-      return "Ep1";
-    case 1:
-      return "Ep2";
-    case 2:
-      return "Ep4";
-    case 0xFF:
-      return "Ep3";
-    default:
-      return "InvalidEpisode";
   }
 }
 
@@ -400,7 +385,7 @@ Quest::Quest(const string& bin_filename)
   : internal_id(-1),
     menu_item_id(0),
     category(QuestCategory::UNKNOWN),
-    episode(0),
+    episode(Episode::NONE),
     is_dcv1(false),
     joinable(false),
     file_format(FileFormat::BIN_DAT),
@@ -523,7 +508,7 @@ Quest::Quest(const string& bin_filename)
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderDC*>(bin_decompressed.data());
       this->joinable = false;
-      this->episode = 0;
+      this->episode = Episode::EP1;
       this->name = decode_sjis(header->name);
       this->short_description = decode_sjis(header->short_description);
       this->long_description = decode_sjis(header->long_description);
@@ -537,7 +522,7 @@ Quest::Quest(const string& bin_filename)
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderPC*>(bin_decompressed.data());
       this->joinable = false;
-      this->episode = 0;
+      this->episode = Episode::EP1;
       this->name = header->name;
       this->short_description = header->short_description;
       this->long_description = header->long_description;
@@ -552,7 +537,7 @@ Quest::Quest(const string& bin_filename)
         }
         auto* header = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
         this->joinable = false;
-        this->episode = 0xFF;
+        this->episode = Episode::EP3;
         this->name = decode_sjis(header->name);
         this->short_description = decode_sjis(header->quest_name);
         this->long_description = decode_sjis(header->description);
@@ -562,7 +547,7 @@ Quest::Quest(const string& bin_filename)
         }
         auto* header = reinterpret_cast<const PSOQuestHeaderGC*>(bin_decompressed.data());
         this->joinable = false;
-        this->episode = (header->episode == 1);
+        this->episode = (header->episode == 1) ? Episode::EP2 : Episode::EP1;
         this->name = decode_sjis(header->name);
         this->short_description = decode_sjis(header->short_description);
         this->long_description = decode_sjis(header->long_description);
@@ -576,16 +561,28 @@ Quest::Quest(const string& bin_filename)
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderBB*>(bin_decompressed.data());
       this->joinable = header->joinable_in_progress;
-      this->episode = header->episode;
+      switch (header->episode) {
+        case 0:
+          this->episode = Episode::EP1;
+          break;
+        case 1:
+          this->episode = Episode::EP2;
+          break;
+        case 2:
+          this->episode = Episode::EP4;
+          break;
+        default:
+          throw runtime_error("invalid episode number");
+      }
       this->name = header->name;
       this->short_description = header->short_description;
       this->long_description = header->long_description;
       if (this->category == QuestCategory::GOVERNMENT_EPISODE_1) {
-        if (this->episode == 1) {
+        if (this->episode == Episode::EP2) {
           this->category = QuestCategory::GOVERNMENT_EPISODE_2;
-        } else if (this->episode == 2) {
+        } else if (this->episode == Episode::EP4) {
           this->category = QuestCategory::GOVERNMENT_EPISODE_4;
-        } else if (this->episode != 0) {
+        } else if (this->episode != Episode::EP1) {
           throw invalid_argument("government quest has invalid episode number");
         }
       }

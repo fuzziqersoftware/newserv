@@ -213,7 +213,7 @@ static void on_forward_check_size_ep3_lobby(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   check_size_sc<G_UnusedHeader>(data, sizeof(G_UnusedHeader), 0xFFFF);
-  if (l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+  if (l->is_game() || !l->is_ep3()) {
     return;
   }
   forward_subcommand(l, c, command, flag, data);
@@ -223,7 +223,7 @@ static void on_forward_check_size_ep3_game(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   check_size_sc<G_UnusedHeader>(data, sizeof(G_UnusedHeader), 0xFFFF);
-  if (!l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+  if (!l->is_game() || !l->is_ep3()) {
     return;
   }
   forward_subcommand(l, c, command, flag, data);
@@ -239,7 +239,7 @@ static void on_ep3_battle_subs(shared_ptr<ServerState> s,
     const string& orig_data) {
   const auto& header = check_size_sc<G_CardBattleCommandHeader>(
       orig_data, sizeof(G_CardBattleCommandHeader), 0xFFFF);
-  if (!l->is_game() || !(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+  if (!l->is_game() || !l->is_ep3()) {
     return;
   }
 
@@ -822,7 +822,7 @@ static void on_use_item(shared_ptr<ServerState>,
 static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
-  if (l->flags & Lobby::Flag::EPISODE_3_ONLY) {
+  if (l->is_ep3()) {
     on_ep3_battle_subs(s, l, c, command, flag, data);
 
   } else if (!l->common_item_creator.get()) {
@@ -858,7 +858,7 @@ static void on_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag, const string& data) {
   if ((l->version == GameVersion::BB) && l->is_game()) {
     send_bank(c);
-  } else if (l->version == GameVersion::GC && l->flags & Lobby::Flag::EPISODE_3_ONLY) {
+  } else if ((l->version == GameVersion::GC) && l->is_ep3()) {
     forward_subcommand(l, c, command, flag, data);
   }
 }
@@ -965,7 +965,7 @@ static bool drop_item(
     const RareItemSet::Table::Drop* drop = nullptr;
     if (s->rare_item_set) {
       const auto& table = s->rare_item_set->get_table(
-          l->episode - 1, l->difficulty, l->section_id);
+          l->episode, l->difficulty, l->section_id);
       if (enemy_id < 0) {
         for (size_t z = 0; z < 30; z++) {
           if (table.box_areas[z] != area) {
@@ -1060,8 +1060,9 @@ static void on_phase_setup(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 
   bool should_send_boss_drop_req = false;
+  bool is_ep2 = (l->episode == Episode::EP2);
   if (cmd.difficulty == l->difficulty) {
-    if ((l->episode == 1) && (c->area == 0x0E)) {
+    if ((l->episode == Episode::EP1) && (c->area == 0x0E)) {
       // On Normal, Dark Falz does not have a third phase, so send the drop
       // request after the end of the second phase. On all other difficulty
       // levels, send it after the third phase.
@@ -1069,7 +1070,7 @@ static void on_phase_setup(shared_ptr<ServerState>,
           ((l->difficulty != 0) && (cmd.basic_cmd.phase == 0x00000037))) {
         should_send_boss_drop_req = true;
       }
-    } else if ((l->episode == 2) && (cmd.basic_cmd.phase == 0x00000057) && (c->area == 0x0D)) {
+    } else if (is_ep2 && (cmd.basic_cmd.phase == 0x00000057) && (c->area == 0x0D)) {
       should_send_boss_drop_req = true;
     }
   }
@@ -1081,9 +1082,9 @@ static void on_phase_setup(shared_ptr<ServerState>,
         {
           {0x60, 0x06, 0x0000},
           static_cast<uint8_t>(c->area),
-          static_cast<uint8_t>((l->episode == 2) ? 0x4E : 0x2F),
+          static_cast<uint8_t>(is_ep2 ? 0x4E : 0x2F),
           0x0B4F,
-          (l->episode == 2) ? -9999.0f : 10160.58984375f,
+          is_ep2 ? -9999.0f : 10160.58984375f,
           0.0f,
           2,
           0,

@@ -298,12 +298,12 @@ int32_t CommonItemCreator::decide_item_type(bool is_box) const {
   return -1;
 }
 
-ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
+ItemData CommonItemCreator::create_drop_item(bool is_box, Episode episode,
     uint8_t difficulty, uint8_t area, uint8_t) const {
   // TODO: use the section ID (last argument) to vary drop frequencies appropriately
   // change the area if it's invalid (data for the bosses are actually in other areas)
   if (area > 10) {
-    if (episode == 1) {
+    if (episode == Episode::EP1) {
       if (area == 11) {
         area = 3; // dragon
       } else if (area == 12) {
@@ -315,7 +315,7 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
       } else {
         area = 1; // unknown area -> forest 1
       }
-    } else if (episode == 2) {
+    } else if (episode == Episode::EP2) {
       if (area == 12) {
         area = 9; // gal gryphon
       } else if (area == 13) {
@@ -327,7 +327,7 @@ ItemData CommonItemCreator::create_drop_item(bool is_box, uint8_t episode,
       } else {
         area = 10; // tower
       }
-    } else if (episode == 3) {
+    } else if (episode == Episode::EP4) {
       area = 1;
     }
   }

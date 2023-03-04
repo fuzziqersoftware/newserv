@@ -106,7 +106,7 @@ static void server_command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby>
     if (l->is_game()) {
       lines.emplace_back(string_printf("Game ID: $C6%08X$C7", l->lobby_id));
 
-      if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+      if (!l->is_ep3()) {
         if (l->max_level == 0xFFFFFFFF) {
           lines.emplace_back(string_printf("Levels: $C6%d+$C7", l->min_level + 1));
         } else {
@@ -244,7 +244,7 @@ static void server_command_debug(shared_ptr<ServerState>, shared_ptr<Lobby>,
 static void server_command_auction(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_privileges(c, Privilege::DEBUG);
-  if (l->is_game() && (l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+  if (l->is_game() && l->is_ep3()) {
     G_InitiateCardAuction_GC_Ep3_6xB5x42 cmd;
     send_command_t(l, 0xC9, 0x00, cmd);
   }
@@ -469,7 +469,7 @@ static void server_command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby>
   }
 
   l->type = new_type;
-  if (l->type < ((l->flags & Lobby::Flag::EPISODE_3_ONLY) ? 20 : 15)) {
+  if (l->type < (l->is_ep3() ? 20 : 15)) {
     l->type = l->block - 1;
   }
 
@@ -511,7 +511,7 @@ static void server_command_playrec(shared_ptr<ServerState> s, shared_ptr<Lobby> 
   if (l->battle_player) {
     l->battle_player->start();
   } else {
-    uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::EPISODE_3_ONLY | Lobby::Flag::IS_SPECTATOR_TEAM;
+    uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::IS_SPECTATOR_TEAM;
     string filename = encode_sjis(args);
     if (filename[0] == '!') {
       flags |= Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY;
@@ -521,7 +521,7 @@ static void server_command_playrec(shared_ptr<ServerState> s, shared_ptr<Lobby> 
     shared_ptr<Episode3::BattleRecord> record(new Episode3::BattleRecord(data));
     shared_ptr<Episode3::BattleRecordPlayer> battle_player(
         new Episode3::BattleRecordPlayer(record, s->game_server->get_base()));
-    create_game_generic(s, c, args.c_str(), u"", 0xFF, 0, flags, nullptr, battle_player);
+    create_game_generic(s, c, args.c_str(), u"", Episode::EP3, 0, flags, nullptr, battle_player);
   }
 }
 
@@ -608,7 +608,7 @@ static void server_command_spec(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   check_is_game(l, true);
   check_is_leader(l, c);
   check_is_ep3(c, true);
-  if (!(l->flags & Lobby::Flag::EPISODE_3_ONLY)) {
+  if (!l->is_ep3()) {
     throw logic_error("Episode 3 client in non-Episode 3 game");
   }
 
@@ -909,23 +909,15 @@ static void server_command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   check_cheats_enabled(l);
 
   uint32_t area = stoul(encode_sjis(args), nullptr, 0);
-  if (!l->episode || (l->episode > 3)) {
-    return;
-  }
   if (c->area == area) {
     return;
   }
 
-  if ((l->episode == 1) && (area > 17)) {
-    send_text_message(c, u"$C6Area numbers must be\n17 or less.");
+  size_t limit = area_limit_for_episode(l->episode);
+  if (limit == 0) {
     return;
-  }
-  if ((l->episode == 2) && (area > 17)) {
-    send_text_message(c, u"$C6Area numbers must be\n17 or less.");
-    return;
-  }
-  if ((l->episode == 3) && (area > 10)) {
-    send_text_message(c, u"$C6Area numbers must be\n10 or less.");
+  } else if (area > limit) {
+    send_text_message_printf(c, "$C6Area numbers must\nbe %zu or less.", limit);
     return;
   }
 
@@ -939,6 +931,7 @@ static void proxy_command_warp(shared_ptr<ServerState>,
     return;
   }
   uint32_t area = stoul(encode_sjis(args), nullptr, 0);
+  // TODO: Add limit check here like in the server command implementation
   send_warp(session.client_channel, session.lobby_client_id, area);
   session.area = area;
 }
@@ -948,18 +941,11 @@ static void server_command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   check_is_game(l, true);
   check_cheats_enabled(l);
 
-  if (!l->episode || (l->episode > 3)) {
-    throw runtime_error("invalid episode number");
+  size_t limit = area_limit_for_episode(l->episode);
+  if (limit == 0) {
+    return;
   }
-
-  uint8_t new_area = c->area + 1;
-  if (((l->episode == 1) && (new_area > 17)) ||
-      ((l->episode == 2) && (new_area > 17)) ||
-      ((l->episode == 3) && (new_area > 10))) {
-    new_area = 0;
-  }
-
-  send_warp(c, new_area);
+  send_warp(c, (c->area + 1) % limit);
 }
 
 static void proxy_command_next(shared_ptr<ServerState>,
@@ -976,7 +962,8 @@ static void proxy_command_next(shared_ptr<ServerState>,
 static void server_command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
-  if (!l->episode || (l->episode > 3)) {
+
+  if (!episode_has_arpg_semantics(l->episode)) {
     return;
   }
   if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {

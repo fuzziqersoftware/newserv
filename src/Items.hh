@@ -6,6 +6,7 @@
 #include <random>
 
 #include "Client.hh"
+#include "StaticGameData.hh"
 
 
 
@@ -31,7 +32,7 @@ struct CommonItemCreator {
       std::shared_ptr<std::mt19937> random);
 
   int32_t decide_item_type(bool is_box) const;
-  ItemData create_drop_item(bool is_box, uint8_t episode, uint8_t difficulty,
+  ItemData create_drop_item(bool is_box, Episode episode, uint8_t difficulty,
       uint8_t area, uint8_t section_id) const;
   ItemData create_shop_item(uint8_t difficulty, uint8_t shop_type) const;
 };

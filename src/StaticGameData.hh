@@ -9,6 +9,21 @@
 
 
 
+enum class Episode {
+  NONE = 0,
+  EP1 = 1,
+  EP2 = 2,
+  EP3 = 3,
+  EP4 = 4,
+};
+
+size_t area_limit_for_episode(Episode ep);
+bool episode_has_arpg_semantics(Episode ep);
+const char* name_for_episode(Episode ep);
+const char* abbreviation_for_episode(Episode ep);
+
+
+
 size_t stack_size_for_item(uint8_t data0, uint8_t data1);
 size_t stack_size_for_item(const ItemData& item);
 
