@@ -120,6 +120,7 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
           });
           new_metadata_cache_json->as_dict().emplace(
               relative_item_path, make_json_list(move(new_cache_item)));
+          should_write_metadata_cache = true;
 
         } else {
           // File was not modified and cache item was valid; just use the
