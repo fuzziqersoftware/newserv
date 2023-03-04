@@ -6,15 +6,16 @@
 #include <phosg/Strings.hh>
 #include <phosg/Random.hh>
 
-#include "Loggers.hh"
 #include "Client.hh"
+#include "Items.hh"
 #include "Lobby.hh"
+#include "Loggers.hh"
+#include "Map.hh"
 #include "Player.hh"
 #include "PSOProtocol.hh"
 #include "SendCommands.hh"
+#include "StaticGameData.hh"
 #include "Text.hh"
-#include "Items.hh"
-#include "Map.hh"
 
 using namespace std;
 
@@ -479,9 +480,10 @@ static void on_player_drop_item(shared_ptr<ServerState>,
     auto item = c->game_data.player()->remove_item(cmd.item_id, 0, c->version() != GameVersion::BB);
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
-    l->log.info("Player %hu dropped item %08" PRIX32 " at %hu:(%g, %g)",
-        cmd.header.client_id.load(), cmd.item_id.load(), cmd.area.load(),
-        cmd.x.load(), cmd.z.load());
+    auto name = name_for_item(item.data, false);
+    l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
+        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(),
+        cmd.area.load(), cmd.x.load(), cmd.z.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -510,8 +512,9 @@ static void on_create_inventory_item(shared_ptr<ServerState>,
     item.data = cmd.item;
     c->game_data.player()->add_item(item);
 
-    l->log.info("Player %hu created inventory item %08" PRIX32,
-        cmd.header.client_id.load(), cmd.item.id.load());
+    auto name = name_for_item(item.data, false);
+    l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)",
+        cmd.header.client_id.load(), cmd.item.id.load(), name.c_str());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -541,8 +544,10 @@ static void on_drop_partial_stack(shared_ptr<ServerState>,
     item.data = cmd.data;
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
-    l->log.info("Player %hu split stack to create ground item %08" PRIX32 " at %hu:(%g, %g)",
-        cmd.header.client_id.load(), item.data.id.load(), cmd.area.load(), cmd.x.load(), cmd.z.load());
+    auto name = name_for_item(item.data, false);
+    l->log.info("Player %hu split stack to create ground item %08" PRIX32 " (%s) at %hu:(%g, %g)",
+        cmd.header.client_id.load(), item.data.id.load(), name.c_str(),
+        cmd.area.load(), cmd.x.load(), cmd.z.load());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -579,8 +584,9 @@ static void on_drop_partial_stack_bb(shared_ptr<ServerState>,
 
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
-    l->log.info("Player %hu split stack %08" PRIX32 " (%" PRIu32 " of them) at %hu:(%g, %g)",
-        cmd.header.client_id.load(), cmd.item_id.load(), cmd.amount.load(),
+    auto name = name_for_item(item.data, false);
+    l->log.info("Player %hu split stack %08" PRIX32 " (removed: %s) at %hu:(%g, %g)",
+        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(),
         cmd.area.load(), cmd.x.load(), cmd.z.load());
     c->game_data.player()->print_inventory(stderr);
 
@@ -610,8 +616,9 @@ static void on_buy_shop_item(shared_ptr<ServerState>,
     item.data = cmd.item;
     c->game_data.player()->add_item(item);
 
-    l->log.info("Player %hu bought item %08" PRIX32 " from shop",
-        cmd.header.client_id.load(), item.data.id.load());
+    auto name = name_for_item(item.data, false);
+    l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop",
+        cmd.header.client_id.load(), item.data.id.load(), name.c_str());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -637,8 +644,10 @@ static void on_box_or_enemy_item_drop(shared_ptr<ServerState>,
     item.flags = 0;
     item.data = cmd.data;
     l->add_item(item, cmd.area, cmd.x, cmd.z);
-    l->log.info("Leader created ground item %08" PRIX32 " at %hhu:(%g, %g)",
-        item.data.id.load(), cmd.area, cmd.x.load(), cmd.z.load());
+
+    auto name = name_for_item(item.data, false);
+    l->log.info("Leader created ground item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
+        item.data.id.load(), name.c_str(), cmd.area, cmd.x.load(), cmd.z.load());
   }
 
   forward_subcommand(l, c, command, flag, data);
@@ -664,9 +673,12 @@ static void on_pick_up_item(shared_ptr<ServerState>,
   }
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
-    effective_c->game_data.player()->add_item(l->remove_item(cmd.item_id));
-    l->log.info("Player %hu picked up %08" PRIX32,
-        cmd.header.client_id.load(), cmd.item_id.load());
+    auto item = l->remove_item(cmd.item_id);
+    effective_c->game_data.player()->add_item(item);
+
+    auto name = name_for_item(item.data, false);
+    l->log.info("Player %hu picked up %08" PRIX32 " (%s)",
+        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     effective_c->game_data.player()->print_inventory(stderr);
   }
 
@@ -688,10 +700,12 @@ static void on_pick_up_item_request(shared_ptr<ServerState>,
       throw logic_error("item tracking not enabled in BB game");
     }
 
-    c->game_data.player()->add_item(l->remove_item(cmd.item_id));
+    auto item = l->remove_item(cmd.item_id);
+    c->game_data.player()->add_item(item);
 
-    l->log.info("Player %hu picked up %08" PRIX32,
-        cmd.header.client_id.load(), cmd.item_id.load());
+    auto name = name_for_item(item.data, false);
+    l->log.info("Player %hu picked up %08" PRIX32 " (%s)",
+        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     c->game_data.player()->print_inventory(stderr);
 
     send_pick_up_item(l, c, cmd.item_id, cmd.area);
@@ -737,10 +751,11 @@ static void on_use_item(shared_ptr<ServerState>,
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     size_t index = c->game_data.player()->inventory.find_item(cmd.item_id);
+    auto name = name_for_item(c->game_data.player()->inventory.items[index].data, false);
     player_use_item(c, index);
 
-    l->log.info("Player used item %hu:%08" PRIX32,
-        cmd.header.client_id.load(), cmd.item_id.load());
+    l->log.info("Player used item %hu:%08" PRIX32 " (%s)",
+        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     c->game_data.player()->print_inventory(stderr);
   }
 
@@ -1007,11 +1022,7 @@ static void on_phase_setup(shared_ptr<ServerState>,
     if (c) {
       G_EnemyDropItemRequest_PC_V3_BB_6x60 req = {
         {
-          {
-            0x60,
-            0x06,
-            0x0000,
-          },
+          {0x60, 0x06, 0x0000},
           static_cast<uint8_t>(c->area),
           static_cast<uint8_t>((l->episode == 2) ? 0x4E : 0x2F),
           0x0B4F,
@@ -1132,10 +1143,11 @@ static void on_destroy_inventory_item(shared_ptr<ServerState>,
     return;
   }
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
-    c->game_data.player()->remove_item(
+    auto item = c->game_data.player()->remove_item(
         cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
-    l->log.info("Inventory item %hu:%08" PRIX32 " destroyed (%" PRIX32 " of them)",
-        cmd.header.client_id.load(), cmd.item_id.load(), cmd.amount.load());
+    auto name = name_for_item(item.data, false);
+    l->log.info("Inventory item %hu:%08" PRIX32 " destroyed (%s)",
+        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     c->game_data.player()->print_inventory(stderr);
     forward_subcommand(l, c, command, flag, data);
   }
@@ -1149,8 +1161,10 @@ static void on_destroy_ground_item(shared_ptr<ServerState>,
     return;
   }
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
-    l->remove_item(cmd.item_id);
-    l->log.info("Ground item %08" PRIX32 " destroyed", cmd.item_id.load());
+    auto item = l->remove_item(cmd.item_id);
+    auto name = name_for_item(item.data, false);
+    l->log.info("Ground item %08" PRIX32 " destroyed (%s)", cmd.item_id.load(),
+        name.c_str());
     forward_subcommand(l, c, command, flag, data);
   }
 }
