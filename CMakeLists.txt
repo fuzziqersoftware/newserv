@@ -124,10 +124,13 @@ foreach(TestCase IN ITEMS ${TestCases})
 endforeach()
 
 add_test(
-    NAME compression
+    NAME compression-prs
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_SOURCE_DIR}/test-compression.sh ${CMAKE_BINARY_DIR}/newserv)
-
+    COMMAND ${CMAKE_SOURCE_DIR}/test-compression.sh prs ${CMAKE_BINARY_DIR}/newserv)
+add_test(
+    NAME compression-bc0
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_SOURCE_DIR}/test-compression.sh bc0 ${CMAKE_BINARY_DIR}/newserv)
 
 
 # Installation configuration
