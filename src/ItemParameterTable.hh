@@ -225,6 +225,7 @@ public:
   float get_sale_divisor(uint8_t data1_0, uint8_t data1_1) const;
   const MagFeedResult& get_mag_feed_result(uint8_t table_index, uint8_t which) const;
   uint8_t get_item_stars(uint16_t slot) const;
+  uint8_t get_special_stars(uint8_t det) const;
   uint8_t get_max_tech_level(uint8_t char_class, uint8_t tech_num) const;
 
   const ItemBase& get_item_definition(const ItemData& item) const;

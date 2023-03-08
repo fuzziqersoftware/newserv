@@ -120,6 +120,15 @@ uint8_t ItemParameterTable::get_item_stars(uint16_t slot) const {
   return 0;
 }
 
+uint8_t ItemParameterTable::get_special_stars(uint8_t det) const {
+  if (!(det & 0x3F) || (det & 0x80)) {
+    return 0;
+  }
+  // Note: PSO GC uses 0x1CB here. 0x256 was chosen to point to the same data in
+  // PSO BB's ItemPMT file.
+  return this->get_item_stars(det + 0x0256);
+}
+
 uint8_t ItemParameterTable::get_max_tech_level(uint8_t char_class, uint8_t tech_num) const {
   if (char_class >= 12) {
     throw logic_error("invalid character class");

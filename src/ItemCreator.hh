@@ -144,8 +144,7 @@ private:
       uint8_t offset_within_subtype_range);
   void generate_common_weapon_bonuses(ItemData& item, uint8_t area_norm);
   void generate_common_weapon_special(ItemData& item, uint8_t area_norm);
-  uint8_t unknown_8011CA54(uint8_t det);
-  uint8_t unknown_8011C63C(uint8_t det) const;
+  uint8_t choose_weapon_special(uint8_t det);
   void generate_unit_weights_tables();
   void generate_common_unit_variances(uint8_t det, ItemData& item);
   void choose_tech_disk_level_for_tool_shop(

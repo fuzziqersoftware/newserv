@@ -708,17 +708,17 @@ void ItemCreator::generate_common_weapon_special(
   if (this->rand_int(100) >= this->pt->special_percent[area_norm]) {
     return;
   }
-  item.data1[4] = this->unknown_8011CA54(
+  item.data1[4] = this->choose_weapon_special(
       special_mult * this->rand_float_0_1_from_crypt(10));
 }
 
-uint8_t ItemCreator::unknown_8011CA54(uint8_t det) {
+uint8_t ItemCreator::choose_weapon_special(uint8_t det) {
   if (det < 4) {
     static const uint8_t maxes[4] = {8, 10, 11, 11};
     uint8_t det2 = this->rand_int(maxes[det]);
     size_t index = 0;
     for (size_t z = 1; z < 0x29; z++) {
-      if (det + 1 == this->unknown_8011C63C(z)) {
+      if (det + 1 == this->item_parameter_table->get_special_stars(z)) {
         if (index == det2) {
           return z;
         } else {
@@ -728,15 +728,6 @@ uint8_t ItemCreator::unknown_8011CA54(uint8_t det) {
     }
   }
   return 0;
-}
-
-uint8_t ItemCreator::unknown_8011C63C(uint8_t det) const {
-  if (!(det & 0x3F) || (det & 0x80)) {
-    return 0;
-  }
-  // Note: PSO GC uses 0x1CB here. 0x256 was chosen to point to the same data in
-  // PSO BB's ItemPMT file.
-  return this->item_parameter_table->get_item_stars(det + 0x0256);
 }
 
 
@@ -1489,10 +1480,10 @@ void ItemCreator::generate_weapon_shop_item_special(
       item.data1[4] = 0;
       break;
     case 1:
-      item.data1[4] = this->unknown_8011CA54(0);
+      item.data1[4] = this->choose_weapon_special(0);
       break;
     case 2:
-      item.data1[4] = this->unknown_8011CA54(1);
+      item.data1[4] = this->choose_weapon_special(1);
       break;
     default:
       throw runtime_error("invalid special mode");
