@@ -44,6 +44,7 @@ add_executable(newserv
   src/Channel.cc
   src/ChatCommands.cc
   src/Client.cc
+  src/CommonItemSet.cc
   src/Compression.cc
   src/DNSServer.cc
   src/Episode3/AssistServer.cc
@@ -63,6 +64,9 @@ add_executable(newserv
   src/GSLArchive.cc
   src/IPFrameInfo.cc
   src/IPStackSimulator.cc
+  src/ItemCreator.cc
+  src/ItemData.cc
+  src/ItemParameterTable.cc
   src/Items.cc
   src/LevelTable.cc
   src/License.cc

@@ -956,9 +956,9 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
           sizeof(G_EnemyDropItemRequest_PC_V3_BB_6x60));
       session.next_drop_item.data.id = session.next_item_id++;
       send_drop_item(session.server_channel, session.next_drop_item.data,
-          true, cmd.area, cmd.x, cmd.z, cmd.request_id);
+          true, cmd.area, cmd.x, cmd.z, cmd.enemy_id);
       send_drop_item(session.client_channel, session.next_drop_item.data,
-          true, cmd.area, cmd.x, cmd.z, cmd.request_id);
+          true, cmd.area, cmd.x, cmd.z, cmd.enemy_id);
       session.next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 

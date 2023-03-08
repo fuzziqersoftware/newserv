@@ -989,7 +989,7 @@ static void server_command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
       send_text_message(c, u"$C4No items are near you");
     } else {
       const auto& item = l->item_id_to_floor_item.at(nearest_item_id);
-      string name = name_for_item(item.inv_item.data, true);
+      string name = item.inv_item.data.name(true);
       send_text_message(c, decode_sjis(name));
     }
   }
@@ -1091,7 +1091,7 @@ static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   l->add_item(item, c->area, c->x, c->z);
   send_drop_stacked_item(l, item.data, c->area, c->x, c->z);
 
-  string name = name_for_item(item.data, true);
+  string name = item.data.name(true);
   send_text_message(c, u"$C7Item created:\n" + decode_sjis(name));
 }
 
@@ -1137,14 +1137,14 @@ static void proxy_command_item(shared_ptr<ServerState>,
   if (set_drop) {
     session.next_drop_item = item;
 
-    string name = name_for_item(session.next_drop_item.data, true);
+    string name = session.next_drop_item.data.name(true);
     send_text_message(session.client_channel, u"$C7Next drop:\n" + decode_sjis(name));
 
   } else {
     send_drop_stacked_item(session.client_channel, item.data, session.area, session.x, session.z);
     send_drop_stacked_item(session.server_channel, item.data, session.area, session.x, session.z);
 
-    string name = name_for_item(item.data, true);
+    string name = item.data.name(true);
     send_text_message(session.client_channel, u"$C7Item created:\n" + decode_sjis(name));
   }
 }

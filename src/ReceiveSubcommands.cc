@@ -486,12 +486,12 @@ static void on_player_drop_item(shared_ptr<ServerState>,
     auto item = c->game_data.player()->remove_item(cmd.item_id, 0, c->version() != GameVersion::BB);
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(),
         cmd.area.load(), cmd.x.load(), cmd.z.load());
     if (c->options.debug) {
-      string name = name_for_item(item.data, true);
+      string name = item.data.name(true);
       send_text_message_printf(c, "$C5Items: drop %08" PRIX32 "\n%s",
           cmd.item_id.load(), name.c_str());
     }
@@ -523,11 +523,11 @@ static void on_create_inventory_item(shared_ptr<ServerState>,
     item.data = cmd.item;
     c->game_data.player()->add_item(item);
 
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item.id.load(), name.c_str());
     if (c->options.debug) {
-      string name = name_for_item(item.data, true);
+      string name = item.data.name(true);
       send_text_message_printf(c, "$C5Items: create %08" PRIX32 "\n%s",
           cmd.item.id.load(), name.c_str());
     }
@@ -560,12 +560,12 @@ static void on_drop_partial_stack(shared_ptr<ServerState>,
     item.data = cmd.data;
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     l->log.info("Player %hu split stack to create ground item %08" PRIX32 " (%s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), item.data.id.load(), name.c_str(),
         cmd.area.load(), cmd.x.load(), cmd.z.load());
     if (c->options.debug) {
-      string name = name_for_item(item.data, true);
+      string name = item.data.name(true);
       send_text_message_printf(c, "$C5Items: split %08" PRIX32 "\n%s",
           item.data.id.load(), name.c_str());
     }
@@ -605,12 +605,12 @@ static void on_drop_partial_stack_bb(shared_ptr<ServerState>,
 
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     l->log.info("Player %hu split stack %08" PRIX32 " (removed: %s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(),
         cmd.area.load(), cmd.x.load(), cmd.z.load());
     if (c->options.debug) {
-      string name = name_for_item(item.data, true);
+      string name = item.data.name(true);
       send_text_message_printf(c, "$C5Items: split/BB %08" PRIX32 "\n%s",
           cmd.item_id.load(), name.c_str());
     }
@@ -642,11 +642,11 @@ static void on_buy_shop_item(shared_ptr<ServerState>,
     item.data = cmd.item;
     c->game_data.player()->add_item(item);
 
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop",
         cmd.header.client_id.load(), item.data.id.load(), name.c_str());
     if (c->options.debug) {
-      string name = name_for_item(item.data, true);
+      string name = item.data.name(true);
       send_text_message_printf(c, "$C5Items: buy %08" PRIX32 "\n%s",
           item.data.id.load(), name.c_str());
     }
@@ -676,11 +676,11 @@ static void on_box_or_enemy_item_drop(shared_ptr<ServerState>,
     item.data = cmd.data;
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     l->log.info("Leader created ground item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
         item.data.id.load(), name.c_str(), cmd.area, cmd.x.load(), cmd.z.load());
     if (c->options.debug) {
-      string name = name_for_item(item.data, true);
+      string name = item.data.name(true);
       send_text_message_printf(c, "$C5Items: drop %08" PRIX32 "\n%s",
           item.data.id.load(), name.c_str());
     }
@@ -712,11 +712,11 @@ static void on_pick_up_item(shared_ptr<ServerState>,
     auto item = l->remove_item(cmd.item_id);
     effective_c->game_data.player()->add_item(item);
 
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     l->log.info("Player %hu picked up %08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
-      string name = name_for_item(item.data, true);
+      string name = item.data.name(true);
       send_text_message_printf(c, "$C5Items: pick %08" PRIX32 "\n%s",
           cmd.item_id.load(), name.c_str());
     }
@@ -744,11 +744,11 @@ static void on_pick_up_item_request(shared_ptr<ServerState>,
     auto item = l->remove_item(cmd.item_id);
     c->game_data.player()->add_item(item);
 
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     l->log.info("Player %hu picked up %08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
-      string name = name_for_item(item.data, true);
+      string name = item.data.name(true);
       send_text_message_printf(c, "$C5Items: pick/BB %08" PRIX32 "\n%s",
           cmd.item_id.load(), name.c_str());
     }
@@ -802,8 +802,8 @@ static void on_use_item(shared_ptr<ServerState>,
       // Note: We do this weird scoping thing because player_use_item will
       // likely delete the item, which will break the reference here.
       const auto& item = c->game_data.player()->inventory.items[index].data;
-      name = name_for_item(item, false);
-      colored_name = name_for_item(item, true);
+      name = item.name(false);
+      colored_name = item.name(true);
     }
     player_use_item(c, index);
 
@@ -825,28 +825,32 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<ServerState> s,
   if (l->is_ep3()) {
     on_ep3_battle_subs(s, l, c, command, flag, data);
 
-  } else if (!l->common_item_creator.get()) {
+  } else if (!l->item_creator.get()) {
     throw runtime_error("received shop subcommand without item creator present");
 
   } else {
     const auto& cmd = check_size_sc<G_ShopContentsRequest_BB_6xB5>(data, 0x08);
     if ((l->version == GameVersion::BB) && l->is_game()) {
-      size_t num_items = 9 + (rand() % 4);
-      c->game_data.shop_contents.clear();
-      while (c->game_data.shop_contents.size() < num_items) {
-        ItemData item_data;
-        if (cmd.shop_type == 0) { // tool shop
-          item_data = l->common_item_creator->create_shop_item(l->difficulty, 3);
-        } else if (cmd.shop_type == 1) { // weapon shop
-          item_data = l->common_item_creator->create_shop_item(l->difficulty, 0);
-        } else if (cmd.shop_type == 2) { // guards shop
-          item_data = l->common_item_creator->create_shop_item(l->difficulty, 1);
-        } else { // unknown shop... just leave it blank I guess
-          break;
-        }
+      if (!l->item_creator) {
+        throw logic_error("item creator missing from BB game");
+      }
 
-        item_data.id = l->generate_item_id(c->lobby_client_id);
-        c->game_data.shop_contents.emplace_back(item_data);
+      size_t level = c->game_data.player()->disp.level + 1;
+      switch (cmd.shop_type) {
+        case 0:
+          c->game_data.shop_contents = l->item_creator->generate_tool_shop_contents(level);
+          break;
+        case 1:
+          c->game_data.shop_contents = l->item_creator->generate_weapon_shop_contents(level);
+          break;
+        case 2:
+          c->game_data.shop_contents = l->item_creator->generate_armor_shop_contents(level);
+          break;
+        default:
+          throw runtime_error("invalid shop type");
+      }
+      for (auto& item : c->game_data.shop_contents) {
+        item.id = l->generate_item_id(c->lobby_client_id);
       }
 
       send_shop(c, cmd.shop_type);
@@ -946,7 +950,6 @@ static void on_sort_inventory_bb(shared_ptr<ServerState>,
 // EXP/Drop Item commands
 
 static bool drop_item(
-    std::shared_ptr<ServerState> s,
     std::shared_ptr<Lobby> l,
     int64_t enemy_id,
     uint8_t area,
@@ -958,48 +961,15 @@ static bool drop_item(
 
   // If the game is BB, run the rare + common drop logic
   if (l->version == GameVersion::BB) {
-    if (!l->common_item_creator.get()) {
+    if (!l->item_creator.get()) {
       throw runtime_error("received box drop subcommand without item creator present");
     }
 
-    const RareItemSet::Table::Drop* drop = nullptr;
-    if (s->rare_item_set) {
-      const auto& table = s->rare_item_set->get_table(
-          l->episode, l->difficulty, l->section_id);
-      if (enemy_id < 0) {
-        for (size_t z = 0; z < 30; z++) {
-          if (table.box_areas[z] != area) {
-            continue;
-          }
-          if (RareItemSet::sample(*l->random, table.box_rares[z].probability)) {
-            drop = &table.box_rares[z];
-            break;
-          }
-        }
-      } else {
-        if ((enemy_id <= 0x65) &&
-            RareItemSet::sample(*l->random, table.monster_rares[enemy_id].probability)) {
-          drop = &table.monster_rares[enemy_id];
-        }
-      }
-    }
-
-    if (drop) {
-      item.data.data1[0] = drop->item_code[0];
-      item.data.data1[1] = drop->item_code[1];
-      item.data.data1[2] = drop->item_code[2];
-      // TODO: Add random percentages / modifiers
-      if (item.data.data1d[0] == 0) {
-        item.data.data1[4] |= 0x80; // Make it unidentified if it's a weapon
-      }
+    if (enemy_id >= 0) {
+      item.data = l->item_creator->on_monster_item_drop(
+          l->enemies.at(enemy_id).rt_index, area);
     } else {
-      try {
-        item.data = l->common_item_creator->create_drop_item(
-            false, l->episode, l->difficulty, area, l->section_id);
-      } catch (const out_of_range&) {
-        // create_common_item throws this when it doesn't want to make an item
-        return true;
-      }
+      item.data = l->item_creator->on_box_item_drop(area);
     }
 
   // If the game is not BB, forward the request to the leader instead of
@@ -1017,7 +987,7 @@ static bool drop_item(
   return true;
 }
 
-static void on_enemy_drop_item_request(shared_ptr<ServerState> s,
+static void on_enemy_drop_item_request(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!l->is_game()) {
@@ -1027,12 +997,12 @@ static void on_enemy_drop_item_request(shared_ptr<ServerState> s,
   const auto& cmd = check_size_sc<G_EnemyDropItemRequest_DC_6x60>(data,
       sizeof(G_EnemyDropItemRequest_DC_6x60),
       sizeof(G_EnemyDropItemRequest_PC_V3_BB_6x60));
-  if (!drop_item(s, l, cmd.enemy_id, cmd.area, cmd.x, cmd.z, cmd.request_id)) {
+  if (!drop_item(l, cmd.enemy_id, cmd.area, cmd.x, cmd.z, cmd.enemy_id)) {
     forward_subcommand(l, c, command, flag, data);
   }
 }
 
-static void on_box_drop_item_request(shared_ptr<ServerState> s,
+static void on_box_drop_item_request(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!l->is_game()) {
@@ -1040,7 +1010,7 @@ static void on_box_drop_item_request(shared_ptr<ServerState> s,
   }
 
   const auto& cmd = check_size_sc<G_BoxItemDropRequest_6xA2>(data);
-  if (!drop_item(s, l, -1, cmd.area, cmd.x, cmd.z, cmd.request_id)) {
+  if (!drop_item(l, -1, cmd.area, cmd.x, cmd.z, cmd.request_id)) {
     forward_subcommand(l, c, command, flag, data);
   }
 }
@@ -1215,7 +1185,7 @@ static void on_destroy_inventory_item(shared_ptr<ServerState>,
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     auto item = c->game_data.player()->remove_item(
         cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     l->log.info("Inventory item %hu:%08" PRIX32 " destroyed (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     c->game_data.player()->print_inventory(stderr);
@@ -1232,7 +1202,7 @@ static void on_destroy_ground_item(shared_ptr<ServerState>,
   }
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     auto item = l->remove_item(cmd.item_id);
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     l->log.info("Ground item %08" PRIX32 " destroyed (%s)", cmd.item_id.load(),
         name.c_str());
     forward_subcommand(l, c, command, flag, data);

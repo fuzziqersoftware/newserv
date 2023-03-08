@@ -9,30 +9,12 @@
 #include <phosg/Encoding.hh>
 
 #include "LevelTable.hh"
+#include "ItemData.hh"
 #include "Version.hh"
 #include "Text.hh"
 #include "Episode3/DataIndex.hh"
 
 
-
-struct ItemData { // 0x14 bytes
-  union {
-    uint8_t data1[12];
-    le_uint16_t data1w[6];
-    le_uint32_t data1d[3];
-  } __attribute__((packed));
-  le_uint32_t id;
-  union {
-    uint8_t data2[4];
-    le_uint16_t data2w[2];
-    le_uint32_t data2d;
-  } __attribute__((packed));
-
-  ItemData();
-  void clear();
-
-  uint32_t primary_identifier() const;
-} __attribute__((packed));
 
 struct PlayerBankItem;
 

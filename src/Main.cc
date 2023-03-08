@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <phosg/Filesystem.hh>
+#include <phosg/Math.hh>
 #include <phosg/JSON.hh>
 #include <phosg/Network.hh>
 #include <phosg/Strings.hh>
@@ -79,17 +80,6 @@ void populate_state_from_config(shared_ptr<ServerState> s,
   } catch (const out_of_range&) { }
 
   s->set_port_configuration(parse_port_configuration(d.at("PortConfiguration")));
-
-  {
-    auto enemy_categories = parse_int_vector<uint32_t>(d.at("CommonItemDropRates-Enemy"));
-    auto box_categories = parse_int_vector<uint32_t>(d.at("CommonItemDropRates-Box"));
-    vector<vector<uint8_t>> unit_types;
-    for (const auto& item : d.at("CommonUnitTypes")->as_list()) {
-      unit_types.emplace_back(parse_int_vector<uint8_t>(item));
-    }
-    s->common_item_data.reset(new CommonItemData(
-        move(enemy_categories), move(box_categories), move(unit_types)));
-  }
 
   auto local_address_str = d.at("LocalAddress")->as_string();
   try {
@@ -388,6 +378,8 @@ enum class Behavior {
   DECODE_QUEST_FILE,
   DECODE_SJIS,
   EXTRACT_GSL,
+  FORMAT_ITEMRT_ENTRY,
+  FORMAT_ITEMRT_REL,
   SHOW_EP3_DATA,
   PARSE_OBJECT_GRAPH,
   REPLAY_LOG,
@@ -406,6 +398,8 @@ static bool behavior_takes_input_filename(Behavior b) {
          (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
          (b == Behavior::DECODE_QUEST_FILE) ||
          (b == Behavior::DECODE_SJIS) ||
+         (b == Behavior::FORMAT_ITEMRT_ENTRY) ||
+         (b == Behavior::FORMAT_ITEMRT_REL) ||
          (b == Behavior::EXTRACT_GSL) ||
          (b == Behavior::PARSE_OBJECT_GRAPH) ||
          (b == Behavior::REPLAY_LOG);
@@ -533,6 +527,10 @@ int main(int argc, char** argv) {
           quest_file_type = QuestFileFormat::QST;
         } else if (!strcmp(argv[x], "cat-client")) {
           behavior = Behavior::CAT_CLIENT;
+        } else if (!strcmp(argv[x], "format-itemrt-entry")) {
+          behavior = Behavior::FORMAT_ITEMRT_ENTRY;
+        } else if (!strcmp(argv[x], "format-itemrt-rel")) {
+          behavior = Behavior::FORMAT_ITEMRT_REL;
         } else if (!strcmp(argv[x], "show-ep3-data")) {
           behavior = Behavior::SHOW_EP3_DATA;
         } else if (!strcmp(argv[x], "parse-object-graph")) {
@@ -873,6 +871,111 @@ int main(int argc, char** argv) {
       break;
     }
 
+    case Behavior::FORMAT_ITEMRT_ENTRY: {
+      string data = read_input_data();
+      if (data.size() < sizeof(RareItemSet::Table)) {
+        throw runtime_error("input data too small");
+      }
+      const auto& table = *reinterpret_cast<const RareItemSet::Table*>(data.data());
+
+      auto format_drop = +[](const RareItemSet::Table::Drop& r) -> string {
+        ItemData item;
+        item.data1[0] = r.item_code[0];
+        item.data1[1] = r.item_code[1];
+        item.data1[2] = r.item_code[2];
+        string name = item.name(false);
+
+        uint32_t expanded_probability = RareItemSet::expand_rate(r.probability);
+        auto frac = reduce_fraction<uint64_t>(expanded_probability, 0x100000000);
+        return string_printf("(%02hhX => %08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX (%s)",
+            r.probability, expanded_probability, frac.first, frac.second, r.item_code[0], r.item_code[1], r.item_code[2], name.c_str());
+      };
+
+      fprintf(stdout, "Monster rares:\n");
+      for (size_t z = 0; z < 0x65; z++) {
+        const auto& r = table.monster_rares[z];
+        if (r.item_code[0] == 0 && r.item_code[1] == 0 && r.item_code[2] == 0) {
+          continue;
+        }
+        string s = format_drop(r);
+        fprintf(stdout, "  %02zX: %s\n", z, s.c_str());
+      }
+
+      fprintf(stdout, "Box rares:\n");
+      for (size_t z = 0; z < 0x1E; z++) {
+        const auto& r = table.box_rares[z];
+        if (r.item_code[0] == 0 && r.item_code[1] == 0 && r.item_code[2] == 0) {
+          continue;
+        }
+        string s = format_drop(r);
+        fprintf(stdout, "  %02zX: area %02hhX %s\n", z, table.box_areas[z], s.c_str());
+      }
+      break;
+    }
+
+    case Behavior::FORMAT_ITEMRT_REL: {
+      shared_ptr<string> data(new string(read_input_data()));
+      RELRareItemSet rs(data);
+
+      auto format_drop = +[](const RareItemSet::Table::Drop& r) -> string {
+        ItemData item;
+        item.data1[0] = r.item_code[0];
+        item.data1[1] = r.item_code[1];
+        item.data1[2] = r.item_code[2];
+        string name = item.name(false);
+
+        uint32_t expanded_probability = RareItemSet::expand_rate(r.probability);
+        auto frac = reduce_fraction<uint64_t>(expanded_probability, 0x100000000);
+        return string_printf("(%02hhX => %08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX (%s)",
+            r.probability, expanded_probability, frac.first, frac.second, r.item_code[0], r.item_code[1], r.item_code[2], name.c_str());
+      };
+
+      auto print_collection = [&](GameMode mode, Episode episode, uint8_t difficulty, uint8_t section_id) -> void {
+        const auto& table = rs.get_table(episode, mode, difficulty, section_id);
+
+        string secid_name = name_for_section_id(section_id);
+        fprintf(stdout, "%s %s %s %s\n",
+            name_for_mode(mode),
+            name_for_episode(episode),
+            name_for_difficulty(difficulty),
+            secid_name.c_str());
+
+        fprintf(stdout, "  Monster rares:\n");
+        for (size_t z = 0; z < 0x65; z++) {
+          const auto& r = table.monster_rares[z];
+          if (r.item_code[0] == 0 && r.item_code[1] == 0 && r.item_code[2] == 0) {
+            continue;
+          }
+          string s = format_drop(r);
+          fprintf(stdout, "    %02zX: %s\n", z, s.c_str());
+        }
+
+        fprintf(stdout, "  Box rares:\n");
+        for (size_t z = 0; z < 0x1E; z++) {
+          const auto& r = table.box_rares[z];
+          if (r.item_code[0] == 0 && r.item_code[1] == 0 && r.item_code[2] == 0) {
+            continue;
+          }
+          string s = format_drop(r);
+          fprintf(stdout, "    %02zX: area %02hhX %s\n", z, table.box_areas[z], s.c_str());
+        }
+      };
+
+      static const vector<Episode> episodes = {
+        Episode::EP1,
+        Episode::EP2,
+        Episode::EP4,
+      };
+      for (Episode episode : episodes) {
+        for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+          for (uint8_t section_id = 0; section_id < 10; section_id++) {
+            print_collection(GameMode::NORMAL, episode, difficulty, section_id);
+          }
+        }
+      }
+      break;
+    }
+
     case Behavior::SHOW_EP3_DATA: {
       config_log.info("Collecting Episode 3 data");
       Episode3::DataIndex index("system/ep3", Episode3::BehaviorFlag::LOAD_CARD_TEXT);
@@ -976,9 +1079,45 @@ int main(int argc, char** argv) {
       state->level_table.reset(new LevelTable(
           state->load_bb_file("PlyLevelTbl.prs"), true));
 
-      config_log.info("Loading rare table");
-      state->rare_item_set.reset(new RareItemSet(
+      config_log.info("Loading rare item table");
+      state->rare_item_set.reset(new RELRareItemSet(
           state->load_bb_file("ItemRT.rel")));
+
+      // Note: These files don't exist in BB, so we use the GC versions of them
+      // instead. This doesn't include Episode 4 of course, so we use Episode 1
+      // parameters for Episode 4 implicitly.
+      {
+        config_log.info("Loading common item tables");
+        shared_ptr<string> pt_data(new string(load_file(
+            "system/blueburst/ItemPT_GC.gsl")));
+        state->common_item_set.reset(new CommonItemSet(pt_data));
+
+        shared_ptr<string> armor_data(new string(load_file(
+            "system/blueburst/ArmorRandom_GC.rel")));
+        state->armor_random_set.reset(new ArmorRandomSet(armor_data));
+
+        shared_ptr<string> tool_data(new string(load_file(
+            "system/blueburst/ToolRandom_GC.rel")));
+        state->tool_random_set.reset(new ToolRandomSet(tool_data));
+
+        const char* filenames[4] = {
+          "system/blueburst/WeaponRandomNormal_GC.rel",
+          "system/blueburst/WeaponRandomHard_GC.rel",
+          "system/blueburst/WeaponRandomVeryHard_GC.rel",
+          "system/blueburst/WeaponRandomUltimate_GC.rel",
+        };
+        for (size_t z = 0; z < 4; z++) {
+          shared_ptr<string> weapon_data(new string(load_file(filenames[z])));
+          state->weapon_random_sets[z].reset(new WeaponRandomSet(weapon_data));
+        }
+      }
+
+      config_log.info("Loading item definition table");
+      {
+        shared_ptr<string> data(new string(prs_decompress(load_file(
+            "system/blueburst/ItemPMT.prs"))));
+        state->item_parameter_table.reset(new ItemParameterTable(data));
+      }
 
       config_log.info("Collecting Episode 3 data");
       state->ep3_data_index.reset(new Episode3::DataIndex(

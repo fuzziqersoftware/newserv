@@ -8,6 +8,7 @@
 #include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
 
+#include "ItemData.hh"
 #include "FileContentsCache.hh"
 #include "Loggers.hh"
 #include "StaticGameData.hh"
@@ -640,35 +641,6 @@ void PlayerLobbyDataBB::clear() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr uint32_t MESETA_IDENTIFIER = 0x00040000;
-
-ItemData::ItemData() {
-  this->clear();
-}
-
-void ItemData::clear() {
-  this->data1d[0] = 0;
-  this->data1d[1] = 0;
-  this->data1d[2] = 0;
-  this->id = 0xFFFFFFFF;
-  this->data2d = 0;
-}
-
-uint32_t ItemData::primary_identifier() const {
-  // The game treats any item starting with 04 as Meseta, and ignores the rest
-  // of data1 (the value is in data2)
-  if (this->data1[0] == 0x04) {
-    return 0x00040000;
-  }
-  if (this->data1[0] == 0x03 && this->data1[1] == 0x02) {
-    return 0x00030200; // Tech disk (data1[2] is level, so omit it)
-  } else if (this->data1[0] == 0x02) {
-    return 0x00020000 | (this->data1[1] << 8); // Mag
-  } else {
-    return (this->data1[0] << 16) | (this->data1[1] << 8) | this->data1[2];
-  }
-}
-
 PlayerInventoryItem::PlayerInventoryItem() {
   this->clear();
 }
@@ -688,7 +660,7 @@ PlayerBankItem::PlayerBankItem() {
 
 PlayerBankItem::PlayerBankItem(const PlayerInventoryItem& src)
   : data(src.data),
-    amount(stack_size_for_item(this->data)),
+    amount(this->data.stack_size()),
     show_flags(1) { }
 
 void PlayerBankItem::clear() {
@@ -723,7 +695,7 @@ void SavedPlayerDataBB::add_item(const PlayerInventoryItem& item) {
   }
 
   // Handle combinable items
-  size_t combine_max = stack_size_for_item(item.data);
+  size_t combine_max = item.data.max_stack_size();
   if (combine_max > 1) {
     // Get the item index if there's already a stack of the same item in the
     // player's inventory
@@ -764,7 +736,7 @@ void PlayerBank::add_item(const PlayerBankItem& item) {
     return;
   }
 
-  size_t combine_max = stack_size_for_item(item.data);
+  size_t combine_max = item.data.max_stack_size();
   if (combine_max > 1) {
     size_t y;
     for (y = 0; y < this->num_items; y++) {
@@ -818,7 +790,7 @@ PlayerInventoryItem SavedPlayerDataBB::remove_item(
   // then create a new item and reduce the amount of the existing stack. Note
   // that passing amount == 0 means to remove the entire stack, so this only
   // applies if amount is nonzero.
-  if (amount && (stack_size_for_item(inventory_item.data) > 1) &&
+  if (amount && (inventory_item.data.stack_size() > 1) &&
       (amount < inventory_item.data.data1[5])) {
     ret = inventory_item;
     ret.data.data1[5] = amount;
@@ -855,7 +827,7 @@ PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
   size_t index = this->find_item(item_id);
   auto& bank_item = this->items[index];
 
-  if (amount && (stack_size_for_item(bank_item.data) > 1) &&
+  if (amount && (bank_item.data.stack_size() > 1) &&
       (amount < bank_item.data.data1[5])) {
     ret = bank_item;
     ret.data.data1[5] = amount;
@@ -897,7 +869,7 @@ void SavedPlayerDataBB::print_inventory(FILE* stream) const {
   fprintf(stream, "[PlayerInventory] %hhu items\n", this->inventory.num_items);
   for (size_t x = 0; x < this->inventory.num_items; x++) {
     const auto& item = this->inventory.items[x];
-    auto name = name_for_item(item.data, false);
+    auto name = item.data.name(false);
     fprintf(stream, "[PlayerInventory]   %zu (%08" PRIX32 "): %06" PRIX32 " (%s)\n",
         x, item.data.id.load(), item.data.primary_identifier(), name.c_str());
   }

@@ -34,12 +34,10 @@ const char* abbreviation_for_mode(GameMode mode);
 
 
 
-size_t stack_size_for_item(uint8_t data0, uint8_t data1);
-size_t stack_size_for_item(const ItemData& item);
+size_t max_stack_size_for_item(uint8_t data0, uint8_t data1);
 
-extern const std::unordered_map<uint8_t, const char*> name_for_weapon_special;
-extern const std::unordered_map<uint8_t, const char*> name_for_s_rank_special;
-extern const std::unordered_map<uint32_t, const char*> name_for_primary_identifier;
+extern const vector<string> tech_id_to_name;
+extern const unordered_map<string, uint8_t> name_to_tech_id;
 
 const std::string& name_for_technique(uint8_t tech);
 std::u16string u16name_for_technique(uint8_t tech);
@@ -73,5 +71,3 @@ const char* name_for_difficulty(uint8_t difficulty);
 char abbreviation_for_difficulty(uint8_t difficulty);
 
 char char_for_language_code(uint8_t language);
-
-std::string name_for_item(const ItemData& item, bool include_color_codes);

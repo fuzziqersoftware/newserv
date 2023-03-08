@@ -765,14 +765,14 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
     if (command_name == "set-next-item") {
       session->next_drop_item = item;
 
-      string name = name_for_item(session->next_drop_item.data, true);
+      string name = session->next_drop_item.data.name(true);
       send_text_message(session->client_channel, u"$C7Next drop:\n" + decode_sjis(name));
 
     } else {
       send_drop_stacked_item(session->client_channel, item.data, session->area, session->x, session->z);
       send_drop_stacked_item(session->server_channel, item.data, session->area, session->x, session->z);
 
-      string name = name_for_item(item.data, true);
+      string name = item.data.name(true);
       send_text_message(session->client_channel, u"$C7Item created:\n" + decode_sjis(name));
     }
 

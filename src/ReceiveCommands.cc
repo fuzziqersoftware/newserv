@@ -11,16 +11,17 @@
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
-#include "Loggers.hh"
 #include "ChatCommands.hh"
+#include "Episode3/Tournament.hh"
 #include "FileContentsCache.hh"
+#include "ItemCreator.hh"
+#include "Loggers.hh"
 #include "ProxyServer.hh"
 #include "PSOProtocol.hh"
 #include "ReceiveSubcommands.hh"
 #include "SendCommands.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
-#include "Episode3/Tournament.hh"
 
 using namespace std;
 
@@ -3189,8 +3190,21 @@ shared_ptr<Lobby> create_game_generic(
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
   }
-  game->common_item_creator.reset(new CommonItemCreator(
-      s->common_item_data, game->random));
+  if (game->version == GameVersion::BB) {
+    // TODO: Use appropriate restrictions here if in battle mode
+    game->item_creator.reset(new ItemCreator(
+        s->common_item_set,
+        s->rare_item_set,
+        s->armor_random_set,
+        s->tool_random_set,
+        s->weapon_random_sets.at(game->difficulty),
+        s->item_parameter_table,
+        game->episode,
+        game->mode,
+        game->difficulty,
+        game->section_id,
+        game->random_seed));
+  }
   game->event = Lobby::game_event_for_lobby_event(current_lobby->event);
   game->block = 0xFF;
   game->max_clients = (game->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 12 : 4;

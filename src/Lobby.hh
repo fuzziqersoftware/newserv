@@ -13,7 +13,7 @@
 #include "Client.hh"
 #include "Episode3/BattleRecord.hh"
 #include "Episode3/Server.hh"
-#include "Items.hh"
+#include "ItemCreator.hh"
 #include "Map.hh"
 #include "Player.hh"
 #include "Quest.hh"
@@ -75,7 +75,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // This seed is also sent to the client for rare enemy generation
   uint32_t random_seed;
   std::shared_ptr<std::mt19937> random;
-  std::shared_ptr<const CommonItemCreator> common_item_creator;
+  std::shared_ptr<ItemCreator> item_creator;
 
   // Ep3 stuff
   // There are three kinds of Episode 3 games. All of these types have the flag

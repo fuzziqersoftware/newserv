@@ -20,6 +20,8 @@
 #include "Lobby.hh"
 #include "Menu.hh"
 #include "Quest.hh"
+#include "CommonItemSet.hh"
+#include "ItemParameterTable.hh"
 
 
 
@@ -64,9 +66,13 @@ struct ServerState {
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamsIndex> battle_params;
-  std::shared_ptr<const CommonItemData> common_item_data;
   std::shared_ptr<const GSLArchive> bb_data_gsl;
   std::shared_ptr<const RareItemSet> rare_item_set;
+  std::shared_ptr<const CommonItemSet> common_item_set;
+  std::shared_ptr<const ArmorRandomSet> armor_random_set;
+  std::shared_ptr<const ToolRandomSet> tool_random_set;
+  std::array<std::shared_ptr<const WeaponRandomSet>, 4> weapon_random_sets;
+  std::shared_ptr<const ItemParameterTable> item_parameter_table;
 
   std::shared_ptr<Episode3::TournamentIndex> ep3_tournament_index;
 

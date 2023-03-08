@@ -3925,8 +3925,8 @@ struct G_DropItem_PC_V3_BB_6x5F {
 struct G_EnemyDropItemRequest_DC_6x60 {
   G_UnusedHeader header;
   uint8_t area;
-  uint8_t enemy_id;
-  le_uint16_t request_id;
+  uint8_t rt_index;
+  le_uint16_t enemy_id;
   le_float x;
   le_float z;
   le_uint16_t unknown_a1;
