@@ -756,10 +756,10 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
     PlayerInventoryItem item;
     item.data.id = random_object<uint32_t>();
     if (data.size() <= 12) {
-      memcpy(&item.data.data1, data.data(), data.size());
+      memcpy(item.data.data1.data(), data.data(), data.size());
     } else {
-      memcpy(&item.data.data1, data.data(), 12);
-      memcpy(&item.data.data2, data.data() + 12, data.size() - 12);
+      memcpy(item.data.data1.data(), data.data(), 12);
+      memcpy(item.data.data2.data(), data.data() + 12, data.size() - 12);
     }
 
     if (command_name == "set-next-item") {

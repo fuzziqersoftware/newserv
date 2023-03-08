@@ -1082,10 +1082,10 @@ static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   PlayerInventoryItem item;
   item.data.id = l->generate_item_id(c->lobby_client_id);
   if (data.size() <= 12) {
-    memcpy(&item.data.data1, data.data(), data.size());
+    memcpy(item.data.data1.data(), data.data(), data.size());
   } else {
-    memcpy(&item.data.data1, data.data(), 12);
-    memcpy(&item.data.data2, data.data() + 12, data.size() - 12);
+    memcpy(item.data.data1.data(), data.data(), 12);
+    memcpy(item.data.data2.data(), data.data() + 12, data.size() - 12);
   }
 
   l->add_item(item, c->area, c->x, c->z);
@@ -1128,10 +1128,10 @@ static void proxy_command_item(shared_ptr<ServerState>,
   PlayerInventoryItem item;
   item.data.id = random_object<uint32_t>();
   if (data.size() <= 12) {
-    memcpy(&item.data.data1, data.data(), data.size());
+    memcpy(item.data.data1.data(), data.data(), data.size());
   } else {
-    memcpy(&item.data.data1, data.data(), 12);
-    memcpy(&item.data.data2, data.data() + 12, data.size() - 12);
+    memcpy(item.data.data1.data(), data.data(), 12);
+    memcpy(item.data.data2.data(), data.data() + 12, data.size() - 12);
   }
 
   if (set_drop) {
