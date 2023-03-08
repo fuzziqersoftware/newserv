@@ -59,22 +59,23 @@ Current known issues / missing features / things to do:
 ## Compatibility
 
 newserv supports several versions of PSO. Specifically:
-| Version              | Basic commands | Lobbies       | Games         | Proxy         |
-|----------------------|----------------|---------------|---------------|---------------|
-| Dreamcast Trial      | Partial (5)    | Not supported | Not supported | Not supported |
-| Dreamcast V1         | Supported (1)  | Supported     | Supported     | Supported     |
-| Dreamcast V2         | Supported (1)  | Supported     | Supported     | Supported     |
-| PC                   | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep1&2 Trial | Untested (2)   | Untested (2)  | Untested (2)  | Untested (2)  |
-| GameCube Ep1&2       | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep1&2 Plus  | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep3 Trial   | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep3         | Supported      | Supported     | Supported     | Supported     |
-| XBOX Ep1&2           | Untested (3)   | Untested (3)  | Untested (3)  | Untested (3)  |
-| Blue Burst           | Supported      | Supported     | Partial (4)   | Supported     |
+| Version                | Basic commands | Lobbies       | Games         | Proxy         |
+|------------------------|----------------|---------------|---------------|---------------|
+| Dreamcast Trial        | Partial (5)    | Not supported | Not supported | Not supported |
+| Dreamcast V1           | Supported (1)  | Supported     | Supported     | Supported     |
+| Dreamcast V2           | Supported (1)  | Supported     | Supported     | Supported     |
+| PC                     | Supported      | Supported     | Supported     | Supported     |
+| GameCube Ep1&2 Trial   | Untested (2)   | Untested (2)  | Untested (2)  | Untested (2)  |
+| GameCube Ep1&2         | Supported      | Supported     | Supported     | Supported     |
+| GameCube Ep1&2 Plus    | Supported      | Supported     | Supported     | Supported     |
+| GameCube Ep3 Trial     | Supported      | Supported     | Supported     | Supported     |
+| GameCube Ep3           | Supported      | Supported     | Supported     | Supported     |
+| XBOX Ep1&2             | Untested (3)   | Untested (3)  | Untested (3)  | Untested (3)  |
+| Blue Burst (vanilla)   | Supported      | Supported     | Partial (4)   | Supported     |
+| Blue Burst (Tethealla) | Supported      | Supported     | Partial (4)   | Supported     |
 
 *Notes:*
-1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
+1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add support for. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
 2. *This version only supports the modem adapter, which Dolphin does not currently emulate, so it's difficult to test.*
 3. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
 4. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
@@ -86,18 +87,18 @@ Currently newserv should build on macOS, Windows, and Ubuntu. It will likely wor
 
 There is a fairly recent macOS ARM64 release on the newserv GitHub repository. You may need to install libevent manually even if you use this release (run `brew install libevent`).
 
-There is a fairly recent Windows release on the newserv GitHub repository also. It's built with Cygwin, and all the necessary DLL files should be included. That said, I've only tested it on my own machine, so if it doesn't work for you, please open a GitHub issue to let me know.
+There is a fairly recent Windows release on the newserv GitHub repository also. It's built with Cygwin, and all the necessary DLL files should be included. That said, I've only tested it on my own machine and there is no CI for Windows builds like there is for macOS and Linux, so if it doesn't work for you, please open a GitHub issue to let me know.
 
-If you're using an AMD64 Mac, you're running Linux, or you just want to build newserv yourself, here's what you do:
+If you're using a non-ARM64 Mac, you're running Linux, or you just want to build newserv yourself, here's what you do:
 1. If you're on Windows, install Cygwin. While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `make`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
-2. Make sure you have CMake and libevent installed. (`brew install cmake libevent` on macOS, `sudo apt-get install cmake libevent-dev` on most Linuxes)
+2. Make sure you have CMake and libevent installed. (On macOS, `brew install cmake libevent`; on most Linuxes, `sudo apt-get install cmake libevent-dev`; on Windows, you already did this in step 1.)
 3. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 4. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
 5. Run `cmake . && make` in the newserv directory.
 
 After building newserv or downloading a release, do this to set it up and use it:
 1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
-2. If you plan to play PSO Blue Burst on newserv, set up the patch directory appropriately. See the "Client patch directories" section below.
+2. If you plan to play PSO Blue Burst on newserv, set up the patch directory. See the "Client patch directories" section below.
 3. Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
 4. Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
 5. Set your client's network settings appropriately and start an online game. See the "Connecting local clients" or "Connecting remote clients" section to see how to get your game client to connect.
@@ -106,10 +107,10 @@ To use newserv in other ways (e.g. for translating data), see the end of this do
 
 ### Installing quests
 
-newserv automatically finds quests in the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's set-save-files option, just put them in that directory and name them appropriately.
+newserv automatically finds quests in the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's "save files" option, just put them in that directory and name them appropriately.
 
 Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle quests should be named like `b###-VERSION.EXT`, challenge quests should be named like `c###-VERSION.EXT`, and Episode 3 download quests should be named like `e###-gc3.EXT`. The fields in each filename are:
-- `###`: quest number (this doesn't really matter; it should just be unique for the PSO version)
+- `###`: quest number (this doesn't really matter; it should just be unique across the PSO version)
 - `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gov = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
 - `VERSION`: d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
 - `EXT`: file extension (see table below)
