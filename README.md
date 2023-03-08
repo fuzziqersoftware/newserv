@@ -32,11 +32,9 @@ Current known issues / missing features / things to do:
 - Implement the rest of PSOBB. Major areas of work:
     - Find any remaining mismatches in enemy IDs / experience (Episode 1 is mostly fixed now, except for Dark Falz)
     - Replace enemy list with quest layout when loading a quest
-    - Implement all remaining player_use_item use cases (there are many!)
-    - Implement shops
-    - Make non-rare drops work like they do in non-BB versions (newserv is far too generous and sometimes generates invalid items)
+    - Implement all remaining player_use_item cases (there are many!)
     - Implement trade window
-- Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on V2/V3).
+- Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on other versions).
 - PSOX is not tested at all.
 - Memory patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
@@ -53,8 +51,7 @@ Current known issues / missing features / things to do:
     - There is a rare failure mode during battles that causes one of the clients to be disconnected.
 - Code style
     - The internal menu abstraction is ugly and hard to work with. Rewrite it.
-    - Add default values for all commands (like we use for Episode 3 battle commands).
-    - Clean up the way proxy session options are passed to the session from the client object (and add user-settable options for e.g. chat filter, which currently doesn't appear in the menu).
+    - Add default values in all command structures (like we use for Episode 3 battle commands).
 
 ## Compatibility
 
@@ -138,7 +135,7 @@ There are multiple PSO quest formats out there; newserv supports most of them. I
 1. *This is the default format. You can convert these to uncompressed format by running `newserv decompress-prs FILENAME.bin FILENAME.bind` (and similarly for .dat -> .datd)*
 2. *Similar to (1), to compress an uncompressed quest file: `newserv compress-prs FILENAME.bind FILENAME.bin` (and likewise for .datd -> .dat)*
 3. *If you know the encryption seed (serial number), pass it in as a hex string with the `--seed=` option. If you don't know the encryption seed, newserv will find it for you, which will likely take a long time.*
-4. *Episode 3 online quests don't go in the system/quests directory; they instead go in the system/ep3/maps-free or system/ep3/maps-quest directory. If you want an Episode 3 quest to be available for both online play and for downloading, the file must exist in both system/quests and in one of the map directories in system/ep3.*
+4. *Episode 3 online quests don't go in the system/quests directory; they instead go in the system/ep3/maps-free or system/ep3/maps-quest directories. If you want an Episode 3 quest to be available for both online play and for downloading, the file must exist in both system/quests and in one of the map directories in system/ep3.*
 
 Episode 3 download quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 download quest files may be named with the .mnm extension instead of .bin, since the format is the same as the standard map files (in system/ep3/). These files can be encoded in any of the formats described above, except .qst. There are no encrypted Episode 3 GCI formats because the game doesn't encrypt quests saved to the memory card, unlike Episodes 1&2.
 
