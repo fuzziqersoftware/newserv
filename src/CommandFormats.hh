@@ -3123,6 +3123,10 @@ struct S_StartCardAuction_GC_Ep3_EF {
 // server to know whether an EF command it sent has executed on the client, so
 // newserv's proxy unconditionally blocks this command.
 
+struct S_SetShutdownCommand_BB_01EF {
+  ptext<char, 0x200> command;
+} __packed__;
+
 // F0 (S->C): Force update player lobby data (BB)
 // Format is PlayerLobbyDataBB (in Player.hh). This command overwrites the lobby
 // data for the player given by .client_id without reloading the game or lobby.
