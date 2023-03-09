@@ -185,6 +185,18 @@ bool ItemData::has_bonuses() const {
   }
 }
 
+bool ItemData::is_s_rank_weapon() const {
+  if (this->data1[0] == 0) {
+    if ((this->data1[1] > 0x6F) && (this->data1[1] < 0x89)) {
+      return true;
+    }
+    if ((this->data1[1] > 0xA4) && (this->data1[1] < 0xAA)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 
 
 bool ItemData::compare_for_sort(const ItemData& a, const ItemData& b) {
@@ -271,10 +283,9 @@ const unordered_map<uint8_t, const char*> name_for_s_rank_special({
 struct ItemNameInfo {
   const char* name;
   bool is_rare;
-  bool is_s_rank;
 
-  ItemNameInfo(const char* name, bool is_rare = true, bool is_s_rank = false)
-    : name(name), is_rare(is_rare), is_s_rank(is_s_rank) { }
+  ItemNameInfo(const char* name, bool is_rare = true)
+    : name(name), is_rare(is_rare) { }
 };
 
 const unordered_map<uint32_t, ItemNameInfo> name_info_for_primary_identifier({
@@ -516,31 +527,31 @@ const unordered_map<uint32_t, ItemNameInfo> name_info_for_primary_identifier({
   {0x006D01, "POWER MASER"},
   {0x006E00, "GAME MAGAZINE"},
   {0x006F00, "FLOWER BOUQUET"},
-  {0x007000, {"S-RANK SABER", true, true}},
-  {0x007100, {"S-RANK SWORD", true, true}},
-  {0x007200, {"S-RANK BLADE", true, true}},
-  {0x007300, {"S-RANK PARTISAN", true, true}},
-  {0x007400, {"S-RANK SLICER", true, true}},
-  {0x007500, {"S-RANK GUN", true, true}},
-  {0x007600, {"S-RANK RIFLE", true, true}},
-  {0x007700, {"S-RANK MECHGUN", true, true}},
-  {0x007800, {"S-RANK SHOT", true, true}},
-  {0x007900, {"S-RANK CANE", true, true}},
-  {0x007A00, {"S-RANK ROD", true, true}},
-  {0x007B00, {"S-RANK WAND", true, true}},
-  {0x007C00, {"S-RANK TWIN", true, true}},
-  {0x007D00, {"S-RANK CLAW", true, true}},
-  {0x007E00, {"S-RANK BAZOOKA", true, true}},
-  {0x007F00, {"S-RANK NEEDLE", true, true}},
-  {0x008000, {"S-RANK SCYTHE", true, true}},
-  {0x008100, {"S-RANK HAMMER", true, true}},
-  {0x008200, {"S-RANK MOON", true, true}},
-  {0x008300, {"S-RANK PSYCHOGUN", true, true}},
-  {0x008400, {"S-RANK PUNCH", true, true}},
-  {0x008500, {"S-RANK WINDMILL", true, true}},
-  {0x008600, {"S-RANK HARISEN", true, true}},
-  {0x008700, {"S-RANK KATANA", true, true}},
-  {0x008800, {"S-RANK J-CUTTER", true, true}},
+  {0x007000, {"S-RANK SABER", true}},
+  {0x007100, {"S-RANK SWORD", true}},
+  {0x007200, {"S-RANK BLADE", true}},
+  {0x007300, {"S-RANK PARTISAN", true}},
+  {0x007400, {"S-RANK SLICER", true}},
+  {0x007500, {"S-RANK GUN", true}},
+  {0x007600, {"S-RANK RIFLE", true}},
+  {0x007700, {"S-RANK MECHGUN", true}},
+  {0x007800, {"S-RANK SHOT", true}},
+  {0x007900, {"S-RANK CANE", true}},
+  {0x007A00, {"S-RANK ROD", true}},
+  {0x007B00, {"S-RANK WAND", true}},
+  {0x007C00, {"S-RANK TWIN", true}},
+  {0x007D00, {"S-RANK CLAW", true}},
+  {0x007E00, {"S-RANK BAZOOKA", true}},
+  {0x007F00, {"S-RANK NEEDLE", true}},
+  {0x008000, {"S-RANK SCYTHE", true}},
+  {0x008100, {"S-RANK HAMMER", true}},
+  {0x008200, {"S-RANK MOON", true}},
+  {0x008300, {"S-RANK PSYCHOGUN", true}},
+  {0x008400, {"S-RANK PUNCH", true}},
+  {0x008500, {"S-RANK WINDMILL", true}},
+  {0x008600, {"S-RANK HARISEN", true}},
+  {0x008700, {"S-RANK KATANA", true}},
+  {0x008800, {"S-RANK J-CUTTER", true}},
   {0x008900, "MUSASHI"},
   {0x008901, "YAMATO"},
   {0x008902, "ASUKA"},
@@ -609,11 +620,11 @@ const unordered_map<uint32_t, ItemNameInfo> name_info_for_primary_identifier({
   {0x00A202, "GIGOBOOMA\'S CLAW"},
   {0x00A300, "RUBY BULLET"},
   {0x00A400, "AMORE ROSE"},
-  {0x00A500, {"S-RANK SWORDS", true, true}},
-  {0x00A600, {"S-RANK LAUNCHER", true, true}},
-  {0x00A700, {"S-RANK CARD", true, true}},
-  {0x00A800, {"S-RANK KNUCKLE", true, true}},
-  {0x00A900, {"S-RANK AXE", true, true}},
+  {0x00A500, {"S-RANK SWORDS", true}},
+  {0x00A600, {"S-RANK LAUNCHER", true}},
+  {0x00A700, {"S-RANK CARD", true}},
+  {0x00A800, {"S-RANK KNUCKLE", true}},
+  {0x00A900, {"S-RANK AXE", true}},
   {0x00AA00, "SLICER OF FANATIC"},
   {0x00AB00, "LAME D\'ARGENT"},
   {0x00AC00, "EXCALIBUR"},
@@ -1277,7 +1288,7 @@ string ItemData::name(bool include_color_codes) const {
   // Add the item name. Technique disks are special because the level is part of
   // the primary identifier, so we manually generate the name instead of looking
   // it up.
-  ItemNameInfo name_info(nullptr, false, false);
+  bool is_rare = false;
   uint32_t primary_identifier = this->primary_identifier();
   if ((primary_identifier & 0xFFFFFF00) == 0x00030200) {
     string technique_name;
@@ -1291,8 +1302,9 @@ string ItemData::name(bool include_color_codes) const {
         "Disk:%s Lv.%d", technique_name.c_str(), this->data1[2] + 1));
   } else {
     try {
-      name_info = name_info_for_primary_identifier.at(primary_identifier);
+      const auto& name_info = name_info_for_primary_identifier.at(primary_identifier);
       ret_tokens.emplace_back(name_info.name);
+      is_rare = name_info.is_rare;
     } catch (const out_of_range&) {
       ret_tokens.emplace_back(string_printf("!ID:%06" PRIX32, primary_identifier));
     }
@@ -1304,7 +1316,7 @@ string ItemData::name(bool include_color_codes) const {
       ret_tokens.emplace_back(string_printf("+%hhu", this->data1[3]));
     }
 
-    if (name_info.is_s_rank && (this->data1[6] & 0x18)) {
+    if (this->is_s_rank_weapon() && (this->data1[6] & 0x18)) {
       // S-rank (has name instead of percent bonuses)
       uint8_t char_indexes[8] = {
         static_cast<uint8_t>((this->data1w[3] >> 5) & 0x1F),
@@ -1482,10 +1494,12 @@ string ItemData::name(bool include_color_codes) const {
 
   string ret = join(ret_tokens, " ");
   if (include_color_codes) {
-    if (name_info.is_s_rank) {
+    if (this->is_s_rank_weapon()) {
       return "$C4" + ret;
-    } else if (name_info.is_rare) {
+    } else if (is_rare) {
       return "$C6" + ret;
+    } else if (this->has_bonuses()) {
+      return "$C2" + ret;
     } else {
       return "$C7" + ret;
     }

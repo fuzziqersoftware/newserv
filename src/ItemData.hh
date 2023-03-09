@@ -91,6 +91,7 @@ struct ItemData { // 0x14 bytes
   void set_unit_bonus(int16_t bonus);
 
   bool has_bonuses() const;
+  bool is_s_rank_weapon() const;
 
   bool empty() const;
 
