@@ -402,7 +402,8 @@ static bool behavior_takes_input_filename(Behavior b) {
          (b == Behavior::FORMAT_ITEMRT_REL) ||
          (b == Behavior::EXTRACT_GSL) ||
          (b == Behavior::PARSE_OBJECT_GRAPH) ||
-         (b == Behavior::REPLAY_LOG);
+         (b == Behavior::REPLAY_LOG) ||
+         (b == Behavior::CAT_CLIENT);
 }
 
 static bool behavior_takes_output_filename(Behavior b) {
