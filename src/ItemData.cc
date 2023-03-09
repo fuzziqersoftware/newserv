@@ -109,6 +109,10 @@ void ItemData::set_unidentified_or_present_flag(uint16_t v) {
   this->data1[11] = v;
 }
 
+uint8_t ItemData::get_tool_item_amount() const {
+  return this->is_stackable() ? this->data1[5] : 1;
+}
+
 void ItemData::set_tool_item_amount(uint8_t amount) {
   if (this->is_stackable()) {
     this->data1[5] = amount;
@@ -117,20 +121,68 @@ void ItemData::set_tool_item_amount(uint8_t amount) {
   }
 }
 
-
+int16_t ItemData::get_armor_or_shield_defense_bonus() const {
+  return this->data1w[3];
+}
 
 void ItemData::set_armor_or_shield_defense_bonus(int16_t bonus) {
   this->data1w[3] = bonus;
+}
+
+int16_t ItemData::get_common_armor_evasion_bonus() const {
+  return this->data1w[4];
 }
 
 void ItemData::set_common_armor_evasion_bonus(int16_t bonus) {
   this->data1w[4] = bonus;
 }
 
+int16_t ItemData::get_unit_bonus() const {
+  return this->data1w[3];
+}
 
-
-void ItemData::set_item_unit_bonus(int16_t bonus) {
+void ItemData::set_unit_bonus(int16_t bonus) {
   this->data1w[3] = bonus;
+}
+
+
+
+bool ItemData::has_bonuses() const {
+  switch (this->data1[0]) {
+    case 0:
+      for (size_t z = 6; z <= 10; z += 2) {
+        if (this->data1[z] != 0) {
+          return true;
+        }
+      }
+      return false;
+    case 1:
+      switch (this->data1[1]) {
+        case 1:
+          if (this->data1[5] != 0) {
+            return true;
+          }
+          [[fallthrough]];
+        case 2:
+          return ((this->get_armor_or_shield_defense_bonus() > 0) ||
+                  (this->get_common_armor_evasion_bonus() > 0));
+        case 3:
+          return (this->get_unit_bonus() > 0);
+        default:
+          throw runtime_error("invalid item");
+      }
+    case 2:
+      if (this->data1[1] < 0x23) {
+        return ((this->data1[1] == 0x1D) || (this->data1[1] == 0x22));
+      } else {
+        return (this->data1[1] == 0x27);
+      }
+    case 3:
+    case 4:
+      return false;
+    default:
+      throw runtime_error("invalid item");
+  }
 }
 
 

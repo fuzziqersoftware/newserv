@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 
+#include <array>
 #include <string>
 #include <vector>
 #include <utility>
@@ -512,7 +513,7 @@ public:
   std::string bb_username;
   size_t bb_player_index;
   PlayerInventoryItem identify_result;
-  std::vector<ItemData> shop_contents;
+  std::array<std::vector<ItemData>, 3> shop_contents;
   bool should_save;
 
   ClientGameData();

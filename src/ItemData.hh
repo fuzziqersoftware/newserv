@@ -81,10 +81,16 @@ struct ItemData { // 0x14 bytes
   void clear_mag_stats();
 
   void set_unidentified_or_present_flag(uint16_t v);
+  uint8_t get_tool_item_amount() const;
   void set_tool_item_amount(uint8_t amount);
+  int16_t get_armor_or_shield_defense_bonus() const;
   void set_armor_or_shield_defense_bonus(int16_t bonus);
+  int16_t get_common_armor_evasion_bonus() const;
   void set_common_armor_evasion_bonus(int16_t bonus);
-  void set_item_unit_bonus(int16_t bonus);
+  int16_t get_unit_bonus() const;
+  void set_unit_bonus(int16_t bonus);
+
+  bool has_bonuses() const;
 
   bool empty() const;
 

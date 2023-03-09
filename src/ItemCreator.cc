@@ -797,18 +797,18 @@ void ItemCreator::generate_common_unit_variances(uint8_t det, ItemData& item) {
         const auto& def = this->item_parameter_table->get_unit(item.data1[2]);
         switch (z % 5) {
           case 0:
-            item.set_item_unit_bonus(-(def.modifier_amount * 2));
+            item.set_unit_bonus(-(def.modifier_amount * 2));
             break;
           case 1:
-            item.set_item_unit_bonus(-def.modifier_amount);
+            item.set_unit_bonus(-def.modifier_amount);
             break;
           case 2:
             break;
           case 3:
-            item.set_item_unit_bonus(def.modifier_amount);
+            item.set_unit_bonus(def.modifier_amount);
             break;
           case 4:
-            item.set_item_unit_bonus(def.modifier_amount * 2);
+            item.set_unit_bonus(def.modifier_amount * 2);
             break;
         }
       }

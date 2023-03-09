@@ -229,9 +229,12 @@ public:
   uint8_t get_max_tech_level(uint8_t char_class, uint8_t tech_num) const;
 
   const ItemBase& get_item_definition(const ItemData& item) const;
-  uint8_t get_item_stars(const ItemData& item) const;
+  uint8_t get_item_base_stars(const ItemData& item) const;
+  uint8_t get_item_adjusted_stars(const ItemData& item) const;
   bool is_item_rare(const ItemData& item) const;
   bool is_unsealable_item(const ItemData& param_1) const;
+
+  size_t price_for_item(const ItemData& item) const;
 
 private:
   std::shared_ptr<const std::string> data;

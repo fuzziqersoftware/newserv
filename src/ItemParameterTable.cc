@@ -71,7 +71,7 @@ pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_class(
       }
     }
   }
-  throw out_of_range("invalid tool class");
+  throw runtime_error("invalid tool class");
 }
 
 const ItemParameterTable::Mag& ItemParameterTable::get_mag(
@@ -131,10 +131,10 @@ uint8_t ItemParameterTable::get_special_stars(uint8_t det) const {
 
 uint8_t ItemParameterTable::get_max_tech_level(uint8_t char_class, uint8_t tech_num) const {
   if (char_class >= 12) {
-    throw logic_error("invalid character class");
+    throw runtime_error("invalid character class");
   }
   if (tech_num >= 19) {
-    throw logic_error("invalid technique number");
+    throw runtime_error("invalid technique number");
   }
   return r.pget_u8(this->offsets->max_tech_level_table + tech_num * 12 + char_class);
 }
@@ -152,7 +152,7 @@ const ItemParameterTable::ItemBase& ItemParameterTable::get_item_definition(
       } else if ((item.data1[1] == 1) || (item.data1[1] == 2)) {
         return this->get_armor_or_shield(item.data1[1], item.data1[2]).base;
       }
-      throw logic_error("invalid item");
+      throw runtime_error("invalid item");
     case 2:
       return this->get_mag(item.data1[1]).base;
     case 3:
@@ -163,13 +163,13 @@ const ItemParameterTable::ItemBase& ItemParameterTable::get_item_definition(
       }
       throw logic_error("this should be impossible");
     case 4:
-      throw logic_error("item is meseta and therefore has no definition");
+      throw runtime_error("item is meseta and therefore has no definition");
     default:
-      throw logic_error("invalid item");
+      throw runtime_error("invalid item");
   }
 }
 
-uint8_t ItemParameterTable::get_item_stars(const ItemData& item) const {
+uint8_t ItemParameterTable::get_item_base_stars(const ItemData& item) const {
   if (item.data1[0] == 2) {
     return (item.data1[1] > 0x27) ? 12 : 0;
   } else if (item.data1[0] < 2) {
@@ -184,8 +184,31 @@ uint8_t ItemParameterTable::get_item_stars(const ItemData& item) const {
   }
 }
 
+uint8_t ItemParameterTable::get_item_adjusted_stars(const ItemData& item) const {
+  uint8_t ret = this->get_item_base_stars(item);
+  if (item.data1[0] == 0) {
+    if (ret < 9) {
+      if (!(item.data1[4] & 0x80)) {
+        ret += this->get_special_stars(item.data1[4]);
+      }
+    } else if (item.data1[4] & 0x80) {
+      ret = 0;
+    }
+  } else if (item.data1[0] == 1) {
+    if (item.data1[1] == 3) {
+      int16_t unit_bonus = item.get_unit_bonus();
+      if (unit_bonus < 0) {
+        ret--;
+      } else if (unit_bonus > 0) {
+        ret++;
+      }
+    }
+  }
+  return min<uint8_t>(ret, 12);
+}
+
 bool ItemParameterTable::is_item_rare(const ItemData& item) const {
-  return (this->get_item_stars(item) >= 9);
+  return (this->get_item_base_stars(item) >= 9);
 }
 
 bool ItemParameterTable::is_unsealable_item(const ItemData& item) const {
@@ -202,3 +225,81 @@ bool ItemParameterTable::is_unsealable_item(const ItemData& item) const {
   return false;
 }
 
+
+
+size_t ItemParameterTable::price_for_item(const ItemData& item) const {
+  switch (item.data1[0]) {
+    case 0: {
+      if (item.data1[4] & 0x80) {
+        return 8;
+      }
+      if (this->is_item_rare(item)) {
+        return 80;
+      }
+
+      float sale_divisor = this->get_sale_divisor(item.data1[0], item.data1[1]);
+      if (sale_divisor == 0.0) {
+        throw runtime_error("item sale divisor is zero");
+      }
+
+      const auto& def = this->get_weapon(item.data1[1], item.data1[2]);
+      double atp_max = def.atp_max + item.data1[3];
+      double atp_factor = ((atp_max * atp_max) / sale_divisor);
+
+      double bonus_factor = 0.0;
+      for (size_t bonus_index = 0; bonus_index < 3; bonus_index++) {
+        uint8_t bonus_type = item.data1[(2 * bonus_index) + 6];
+        if ((bonus_type > 0) && (bonus_type < 6)) {
+          bonus_factor += item.data1[(2 * bonus_index) + 7];
+        }
+        bonus_factor += 100.0;
+      }
+
+      size_t special_stars = this->get_special_stars(item.data1[4]);
+      double special_stars_factor = 1000.0 * special_stars * special_stars;
+
+      return special_stars_factor + (atp_factor * (bonus_factor / 100.0));
+    }
+
+    case 1: {
+      if (this->is_item_rare(item)) {
+        return 80;
+      }
+
+      if (item.data1[1] == 3) { // Unit
+        return this->get_item_adjusted_stars(item) * this->get_sale_divisor(item.data1[0], 3);
+      }
+
+      double sale_divisor = (double)this->get_sale_divisor(item.data1[0], item.data1[1]);
+      if (sale_divisor == 0.0) {
+        throw runtime_error("item sale divisor is zero");
+      }
+
+      int16_t def_bonus = item.get_armor_or_shield_defense_bonus();
+      int16_t evp_bonus = item.get_common_armor_evasion_bonus();
+
+      const auto& def = this->get_armor_or_shield(item.data1[1], item.data1[2]);
+      double power_factor = def.dfp + def.evp + def_bonus + evp_bonus;
+      double power_factor_floor = static_cast<int32_t>((power_factor * power_factor) / sale_divisor);
+      return power_factor_floor + (
+          70.0 *
+          static_cast<double>(item.data1[5] + 1) *
+          static_cast<double>(def.required_level + 1));
+    }
+
+    case 2:
+      return (item.data1[2] + 1) * this->get_sale_divisor(2, item.data1[1]);
+
+    case 3: {
+      const auto& def = this->get_tool(item.data1[1], item.data1[2]);
+      return def.cost * ((item.data1[1] == 2) ? (item.data1[2] + 1) : 1);
+    }
+
+    case 4:
+      return item.data2d;
+
+    default:
+      throw runtime_error("invalid item");
+  }
+  throw logic_error("this should be impossible");
+}

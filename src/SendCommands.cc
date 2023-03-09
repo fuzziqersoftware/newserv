@@ -1870,24 +1870,20 @@ void send_bank(shared_ptr<Client> c) {
 
 // sends the player a shop's contents
 void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
+  const auto& contents = c->game_data.shop_contents.at(shop_type);
+
   G_ShopContents_BB_6xB6 cmd = {
-    {0xB6, 0x2C, 0x037F},
+    {0xB6, static_cast<uint8_t>(2 + (sizeof(ItemData) >> 2) * contents.size()), 0x0000},
     shop_type,
-    static_cast<uint8_t>(c->game_data.shop_contents.size()),
+    static_cast<uint8_t>(contents.size()),
     0,
     {},
   };
-
-  size_t count = c->game_data.shop_contents.size();
-  if (count > sizeof(cmd.entries) / sizeof(cmd.entries[0])) {
-    throw logic_error("too many items in shop");
+  for (size_t x = 0; x < contents.size(); x++) {
+    cmd.entries[x] = contents[x];
   }
 
-  for (size_t x = 0; x < count; x++) {
-    cmd.entries[x] = c->game_data.shop_contents[x];
-  }
-
-  send_command(c, 0x6C, 0x00, &cmd, sizeof(cmd) - sizeof(cmd.entries[0]) * (20 - count));
+  send_command(c, 0x60, 0x00, &cmd, sizeof(cmd) - sizeof(cmd.entries[0]) * (20 - contents.size()));
 }
 
 // notifies players about a level up

@@ -838,19 +838,20 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<ServerState> s,
       size_t level = c->game_data.player()->disp.level + 1;
       switch (cmd.shop_type) {
         case 0:
-          c->game_data.shop_contents = l->item_creator->generate_tool_shop_contents(level);
+          c->game_data.shop_contents[0] = l->item_creator->generate_tool_shop_contents(level);
           break;
         case 1:
-          c->game_data.shop_contents = l->item_creator->generate_weapon_shop_contents(level);
+          c->game_data.shop_contents[1] = l->item_creator->generate_weapon_shop_contents(level);
           break;
         case 2:
-          c->game_data.shop_contents = l->item_creator->generate_armor_shop_contents(level);
+          c->game_data.shop_contents[2] = l->item_creator->generate_armor_shop_contents(level);
           break;
         default:
           throw runtime_error("invalid shop type");
       }
-      for (auto& item : c->game_data.shop_contents) {
+      for (auto& item : c->game_data.shop_contents[cmd.shop_type]) {
         item.id = l->generate_item_id(c->lobby_client_id);
+        item.data2d = s->item_parameter_table->price_for_item(item);
       }
 
       send_shop(c, cmd.shop_type);
@@ -1188,6 +1189,11 @@ static void on_destroy_inventory_item(shared_ptr<ServerState>,
     auto name = item.data.name(false);
     l->log.info("Inventory item %hu:%08" PRIX32 " destroyed (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+    if (c->options.debug) {
+      string name = item.data.name(true);
+      send_text_message_printf(c, "$C5Items: destroy %08" PRIX32 "\n%s",
+          cmd.item_id.load(), name.c_str());
+    }
     c->game_data.player()->print_inventory(stderr);
     forward_subcommand(l, c, command, flag, data);
   }
@@ -1205,6 +1211,11 @@ static void on_destroy_ground_item(shared_ptr<ServerState>,
     auto name = item.data.name(false);
     l->log.info("Ground item %08" PRIX32 " destroyed (%s)", cmd.item_id.load(),
         name.c_str());
+    if (c->options.debug) {
+      string name = item.data.name(true);
+      send_text_message_printf(c, "$C5Items: destroy/ground %08" PRIX32 "\n%s",
+          cmd.item_id.load(), name.c_str());
+    }
     forward_subcommand(l, c, command, flag, data);
   }
 }
@@ -1269,37 +1280,72 @@ static void on_accept_identify_item_bb(shared_ptr<ServerState>,
   }
 }
 
-static void on_sell_item_at_shop_bb(shared_ptr<ServerState>,
-    shared_ptr<Lobby> l, shared_ptr<Client>, uint8_t, uint8_t, const string&) {
+static void on_sell_item_at_shop_bb(shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag, const string& data) {
 
   if (l->version == GameVersion::BB) {
-    // const auto& cmd = check_size_sc<G_ItemSubcommand>(data);
+    const auto& cmd = check_size_sc<G_SellItemAtShop_BB_6xC0>(data);
 
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
       throw logic_error("item tracking not enabled in BB game");
     }
 
-    // TODO: We should subtract the appropriate amount of meseta and do an
-    // appropriate send_create_inventory_item call here. Shop prices are not
-    // implemented yet, though, which is why this is difficult.
-    throw logic_error("shop actions are not yet implemented");
+    auto item = c->game_data.player()->remove_item(
+        cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
+    size_t price = (s->item_parameter_table->price_for_item(item.data) >> 3) * cmd.amount;
+    c->game_data.player()->disp.meseta = min<uint32_t>(
+        c->game_data.player()->disp.meseta + price, 999999);
+
+    auto name = item.data.name(false);
+    l->log.info("Inventory item %hu:%08" PRIX32 " destroyed via sale (%s)",
+        c->lobby_client_id, cmd.item_id.load(), name.c_str());
+    c->game_data.player()->print_inventory(stderr);
+    if (c->options.debug) {
+      string name = item.data.name(true);
+      send_text_message_printf(c, "$C5Items: destroy/sale %08" PRIX32 "\n+%zu Meseta\n%s",
+          cmd.item_id.load(), price, name.c_str());
+    }
+
+    forward_subcommand(l, c, command, flag, data);
   }
 }
 
 static void on_buy_shop_item_bb(shared_ptr<ServerState>,
-    shared_ptr<Lobby> l, shared_ptr<Client>, uint8_t, uint8_t, const string&) {
-
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const string& data) {
   if (l->version == GameVersion::BB) {
-    // const auto& cmd = check_size_sc<G_BuyShopItem_BB_6xB7>(data);
-
+    const auto& cmd = check_size_sc<G_BuyShopItem_BB_6xB7>(data);
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
       throw logic_error("item tracking not enabled in BB game");
     }
 
-    // TODO: We should subtract the appropriate amount of meseta and do an
-    // appropriate send_create_inventory_item call here. Shop prices are not
-    // implemented yet, though, which is why this is difficult.
-    throw logic_error("shop actions are not yet implemented");
+    PlayerInventoryItem item;
+    item.data = c->game_data.shop_contents.at(cmd.shop_type).at(cmd.item_index);
+    if (item.data.is_stackable()) {
+      item.data.data1[5] = cmd.amount;
+    } else if (cmd.amount != 1) {
+      throw runtime_error("item is not stackable");
+    }
+
+    size_t price = item.data.data2d * cmd.amount;
+    item.data.data2d = 0;
+    if (c->game_data.player()->disp.meseta < price) {
+      throw runtime_error("player does not have enough money");
+    }
+    c->game_data.player()->disp.meseta -= price;
+
+    item.data.id = cmd.inventory_item_id;
+    c->game_data.player()->add_item(item);
+    send_create_inventory_item(l, c, item.data);
+
+    auto name = item.data.name(false);
+    l->log.info("Inventory item %hu:%08" PRIX32 " created via purchase (%s) for %zu meseta",
+        c->lobby_client_id, cmd.inventory_item_id.load(), name.c_str(), price);
+    c->game_data.player()->print_inventory(stderr);
+    if (c->options.debug) {
+      string name = item.data.name(true);
+      send_text_message_printf(c, "$C5Items: create/purchase %08" PRIX32 "\n-%zu Meseta\n%s",
+          cmd.inventory_item_id.load(), price, name.c_str());
+    }
   }
 }
 
