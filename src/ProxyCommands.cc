@@ -1250,6 +1250,11 @@ static HandlerResult S_G_EF(shared_ptr<ServerState>,
   }
 }
 
+static HandlerResult S_B_EF(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession&, uint16_t, uint32_t, string&) {
+  return HandlerResult::Type::SUPPRESS;
+}
+
 static HandlerResult S_G_BA(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.options.ep3_infinite_meseta) {
@@ -1912,7 +1917,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* EC */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* ED */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* EE */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
-/* EF */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_G_EF,           nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* EF */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_G_EF,           nullptr},      {S_invalid,     nullptr},      {S_B_EF,       nullptr}},
 /* F0 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* F1 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* F2 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},

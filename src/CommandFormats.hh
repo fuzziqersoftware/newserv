@@ -2407,7 +2407,7 @@ struct C_VerifyLicense_BB_DB {
 // is set a global flag on the client. This could be the mechanism for waiting
 // until all players are at the counter, like how AC (quest barrier) works. I
 // haven't spent any time investigating what this actually does; newserv just
-// immediately and unconditionally responds to any DC from an Episode 3 client.
+// immediately responds to any DC from an Episode 3 client.
 
 // DC: Guild card data (BB)
 
@@ -2518,6 +2518,7 @@ struct S_TournamentList_GC_Ep3_E0 {
 } __packed__;
 
 // E0 (C->S): Request team and key config (BB)
+// No arguments. The server should respond with an E1 or E2 command.
 
 // E1 (S->C): Game information (Episode 3)
 // The header.flag argument determines which fields are valid (and which panes
@@ -2538,6 +2539,18 @@ struct S_GameInformation_GC_Ep3_E1 {
   /* 0104 */ Episode3::Rules rules;
   /* 0114 */ parray<uint8_t, 4> unknown_a4;
   /* 0118 */ parray<PlayerEntry, 8> spectator_entries;
+} __packed__;
+
+// E1 (S->C): Team and key config missing? (BB)
+// This seems to take the place of 00E2 in certain cases. Perhaps it was used
+// when a client hadn't logged in before and didn't have a team or key config,
+// so the client should use appropriate defaults.
+
+struct S_TeamAndKeyConfigMissing_00E1_BB {
+  // If success is not equal to 1, the client shows a message saying "Forced
+  // server disconnect (907)" and disconnects. Otherwise, the client proceeeds
+  // as if it had received an 00E2 command, and sends its first 00E3.
+  le_uint32_t success;
 } __packed__;
 
 // E2 (C->S): Tournament control (Episode 3)
@@ -3097,18 +3110,22 @@ struct S_StartCardAuction_GC_Ep3_EF {
   parray<Entry, 0x14> entries;
 } __packed__;
 
-// EF (S->C): Unknown (BB)
-// Has an unknown number of subcommands (00EF, 01EF, etc.)
-// Contents are plain text (char).
+// EF (S->C): Set or disable shutdown command (BB)
+// All variants of EF except 00EF cause the given Windows shell command to be
+// run (via ShellExecuteA) just before the game exits normally. There can be at
+// most one shutdown command at a time; a later EF command will overwrite the
+// previous EF command's effects. The 00EF command deletes the previous shutdown
+// command if any was present, causing no command to run when the game closes.
+// There is no indication to the player that a shutdown command has been set.
 
-// F0 (S->C): Unknown (BB)
+// This command is likely just a vestigial debugging feature that Sega left in,
+// but it presents a fairly obvious security risk. There is no way for the
+// server to know whether an EF command it sent has executed on the client, so
+// newserv's proxy unconditionally blocks this command.
 
-struct S_Unknown_BB_F0 {
-  parray<le_uint32_t, 7> unknown_a1;
-  le_uint32_t which = 0; // Must be < 12
-  ptext<char16_t, 0x10> unknown_a2;
-  le_uint32_t unknown_a3 = 0;
-} __packed__;
+// F0 (S->C): Force update player lobby data (BB)
+// Format is PlayerLobbyDataBB (in Player.hh). This command overwrites the lobby
+// data for the player given by .client_id without reloading the game or lobby.
 
 // F1: Invalid command
 // F2: Invalid command
