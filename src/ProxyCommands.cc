@@ -116,7 +116,7 @@ static HandlerResult S_invalid(shared_ptr<ServerState>,
 
 static HandlerResult C_05(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
-  session.close_on_disconnect = true;
+  session.disconnect_action = ProxyServer::LinkedSession::DisconnectAction::SHORT_TIMEOUT;
   return HandlerResult::Type::FORWARD;
 }
 
@@ -1662,7 +1662,7 @@ static HandlerResult C_V123_A0_A1(shared_ptr<ServerState>,
   // For licensed sessions, send them back to newserv's main menu instead of
   // going to the remote server's ship/block select menu
   session.send_to_game_server();
-  session.close_on_disconnect = true;
+  session.disconnect_action = ProxyServer::LinkedSession::DisconnectAction::CLOSE_IMMEDIATELY;
   return HandlerResult::Type::SUPPRESS;
 }
 

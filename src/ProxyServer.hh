@@ -46,7 +46,13 @@ public:
     Channel server_channel;
     uint16_t local_port;
     struct sockaddr_storage next_destination;
-    bool close_on_disconnect;
+
+    enum class DisconnectAction {
+      LONG_TIMEOUT = 0,
+      SHORT_TIMEOUT,
+      CLOSE_IMMEDIATELY,
+    };
+    DisconnectAction disconnect_action;
 
     uint8_t prev_server_command_bytes[6];
     uint32_t remote_ip_crc;

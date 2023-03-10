@@ -150,8 +150,15 @@ static void server_command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby>
 
 static void proxy_command_lobby_info(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
-  string msg = string_printf("$C7GC: $C6%" PRId64 "$C7\nSlots: ",
-      session.remote_guild_card_number);
+  string msg;
+  // On non-masked-GC sessions (BB), there is no remote Guild Card number, so we
+  // don't show it. (The user can see it in the pause menu, unlike in masked-GC
+  // sessions like GC.)
+  if (session.remote_guild_card_number >= 0) {
+    msg = string_printf("$C7GC: $C6%" PRId64 "$C7\n",
+        session.remote_guild_card_number);
+  }
+  msg += "Slots: ";
 
   for (size_t z = 0; z < session.lobby_players.size(); z++) {
     bool is_self = z == session.lobby_client_id;
@@ -324,7 +331,7 @@ static void proxy_command_exit(shared_ptr<ServerState>,
       send_text_message(session.client_channel, u"$C6You must return to\nthe lobby first");
     }
   } else {
-    session.close_on_disconnect = true;
+    session.disconnect_action = ProxyServer::LinkedSession::DisconnectAction::CLOSE_IMMEDIATELY;
     session.send_to_game_server();
   }
 }

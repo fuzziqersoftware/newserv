@@ -475,7 +475,7 @@ ProxyServer::LinkedSession::LinkedSession(
       TerminalFormat::FG_YELLOW,
       TerminalFormat::FG_RED),
     local_port(local_port),
-    close_on_disconnect(false),
+    disconnect_action(DisconnectAction::LONG_TIMEOUT),
     remote_ip_crc(0),
     enable_remote_ip_crc_patch(false),
     version(version),
@@ -672,7 +672,7 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
       session->send_to_game_server("The server has\ndisconnected.");
     }
     session->disconnect();
-    if (session->close_on_disconnect) {
+    if (session->disconnect_action == ProxyServer::LinkedSession::DisconnectAction::CLOSE_IMMEDIATELY) {
       session->server->delete_session(session->id);
     }
   }
@@ -685,6 +685,19 @@ void ProxyServer::LinkedSession::clear_lobby_players(size_t num_slots) {
 }
 
 void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) {
+  // If there is no license, do nothing - we can't return to the game server
+  // from unlicensed sessions
+  if (!this->license) {
+    this->disconnect();
+    return;
+  }
+  // On BB, do nothing - we can't return to the game server since the remote
+  // server likely sent different game data than what newserv would have sent
+  if (this->version == GameVersion::BB) {
+    this->disconnect();
+    return;
+  }
+
   // Delete all the other players
   for (size_t x = 0; x < this->lobby_players.size(); x++) {
     if (this->lobby_players[x].guild_card_number == 0) {
@@ -741,18 +754,19 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     }
 
     this->client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
-    this->close_on_disconnect = true;
+    this->disconnect_action = DisconnectAction::CLOSE_IMMEDIATELY;
   }
 }
 
 void ProxyServer::LinkedSession::disconnect() {
-  // Forward the disconnection to the other end
+  // Disconnect both ends
   this->client_channel.disconnect();
   this->server_channel.disconnect();
 
   // Set a timeout to delete the session entirely (in case the client doesn't
   // reconnect)
-  struct timeval tv = usecs_to_timeval(this->license.get()
+  bool use_long_timeout = (this->license.get() && (this->disconnect_action == DisconnectAction::LONG_TIMEOUT));
+  struct timeval tv = usecs_to_timeval(use_long_timeout
       ? LICENSED_SESSION_TIMEOUT_USECS : UNLICENSED_SESSION_TIMEOUT_USECS);
   event_add(this->timeout_event.get(), &tv);
 }
