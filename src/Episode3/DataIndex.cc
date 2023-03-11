@@ -11,6 +11,7 @@
 #include "../Loggers.hh"
 #include "../Compression.hh"
 #include "../Text.hh"
+#include "../Quest.hh"
 
 using namespace std;
 
@@ -1473,6 +1474,10 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
           entry.reset(new MapEntry(load_object_file<MapDefinition>(dir + "/" + filename), is_quest));
         } else if (ends_with(filename, ".mnm") || ends_with(filename, ".bin")) {
           entry.reset(new MapEntry(load_file(dir + "/" + filename), is_quest));
+        } else if (ends_with(filename, ".gci")) {
+          entry.reset(new MapEntry(Quest::decode_gci(dir + "/" + filename), is_quest));
+        } else if (ends_with(filename, ".dlq")) {
+          entry.reset(new MapEntry(Quest::decode_dlq(dir + "/" + filename), is_quest));
         }
 
         if (entry.get()) {
