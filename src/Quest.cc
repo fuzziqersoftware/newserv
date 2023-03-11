@@ -728,7 +728,7 @@ string Quest::decode_gci(
 
       } else {
         if (find_seed_num_threads < 0) {
-          throw runtime_error("GCI file appears to be encrypted");
+          throw runtime_error("file is encrypted");
         }
         if (find_seed_num_threads == 0) {
           find_seed_num_threads = thread::hardware_concurrency();
@@ -810,7 +810,7 @@ string Quest::decode_vms(
 
   } else {
     if (find_seed_num_threads < 0) {
-      throw runtime_error("GCI file appears to be encrypted");
+      throw runtime_error("file is encrypted");
     }
     if (find_seed_num_threads == 0) {
       find_seed_num_threads = thread::hardware_concurrency();
