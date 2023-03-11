@@ -41,7 +41,6 @@ Current known issues / missing features / things to do:
 - Implement private and overflow lobbies.
 - Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
 - Encapsulate BB server-side random state and make replays deterministic.
-- VMS decoding doesn't work. Complete this reverse-engineering project.
 - Make a looser form of item tracking that can be used on non-BB versions when quests replace player inventories, like in battle and challenge modes.
 - Episode 3 bugs
     - Fix behavior when joining a spectator team after the beginning of a battle.
@@ -122,6 +121,7 @@ There are multiple PSO quest formats out there; newserv supports most of them. I
 | Compressed Ep3            | .bin or .mnm          | Yes (4)       | None (1)         |
 | Uncompressed              | .bind and .datd       | Yes           | compress-prs (2) |
 | Uncompressed Ep3          | .bind or .mnmd        | Yes (4)       | compress-prs (2) |
+| VMS                       | .bin.vms and .dat.vms | No            | decode-vms (3)   |
 | Unencrypted GCI           | .bin.gci and .dat.gci | Yes           | decode-gci       |
 | Encrypted GCI with key    | .bin.gci and .dat.gci | Yes           | decode-gci       |
 | Encrypted GCI without key | .bin.gci and .dat.gci | No            | decode-gci (3)   |

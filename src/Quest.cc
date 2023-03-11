@@ -96,30 +96,34 @@ struct PSOGCIFileHeader {
   }
 } __attribute__((packed));
 
-struct PSOGCIOrVMSFileEncryptedHeader {
-  be_uint32_t round2_seed;
+template <typename U32T>
+struct PSOMemCardFileEncryptedHeader {
+  U32T round2_seed;
   // To compute checksum, set checksum to zero, then compute the CRC32 of the
   // entire data section, including this header struct (but not the unencrypted
   // header struct).
-  be_uint32_t checksum;
+  U32T checksum;
   le_uint32_t decompressed_size;
   le_uint32_t round3_seed;
   // Data follows here.
 } __attribute__((packed));
 
+struct PSOVMSFileEncryptedHeader : PSOMemCardFileEncryptedHeader<le_uint32_t> { } __attribute__((packed));
+struct PSOGCIFileEncryptedHeader : PSOMemCardFileEncryptedHeader<be_uint32_t> { } __attribute__((packed));
+
 template <bool IsBigEndian>
 string decrypt_gci_or_vms_v2_data_section(
-    const void* data_section,
-    size_t size,
-    uint32_t seed,
-    bool use_reverse_table) {
+    const void* data_section, size_t size, uint32_t seed) {
 
   string decrypted(size, '\0');
   {
     PSOV2Encryption shuf_crypt(seed);
     ShuffleTables shuf(shuf_crypt);
-    shuf.shuffle(decrypted.data(), data_section, size, use_reverse_table);
+    shuf.shuffle(decrypted.data(), data_section, size, true);
   }
+
+  size_t orig_size = decrypted.size();
+  decrypted.resize((decrypted.size() + 3) & (~3));
 
   PSOV2Encryption crypt(seed);
   if (IsBigEndian) {
@@ -134,42 +138,43 @@ string decrypt_gci_or_vms_v2_data_section(
     }
   }
 
-  auto* header = reinterpret_cast<PSOGCIOrVMSFileEncryptedHeader*>(
-      decrypted.data());
+  using HeaderT = typename conditional<IsBigEndian, PSOMemCardFileEncryptedHeader<be_uint32_t>, PSOMemCardFileEncryptedHeader<le_uint32_t>>::type;
+  auto* header = reinterpret_cast<HeaderT*>(decrypted.data());
   PSOV2Encryption round2_crypt(header->round2_seed);
   if (IsBigEndian) {
     round2_crypt.encrypt_big_endian(
-        decrypted.data() + 4, (decrypted.size() - 4) & (~3));
+        decrypted.data() + 4, (decrypted.size() - 4));
   } else {
     round2_crypt.decrypt(
-        decrypted.data() + 4, (decrypted.size() - 4) & (~3));
+        decrypted.data() + 4, (decrypted.size() - 4));
+  }
+
+  if (header->decompressed_size & 0xFFF00000) {
+    throw runtime_error(string_printf(
+        "decompressed_size too large (%08" PRIX32 ")", header->decompressed_size.load()));
   }
 
   uint32_t expected_crc = header->checksum;
   header->checksum = 0;
-  uint32_t actual_crc = crc32(decrypted.data(), decrypted.size());
+  uint32_t actual_crc = crc32(decrypted.data(), orig_size);
   header->checksum = expected_crc;
-  if (expected_crc != actual_crc) {
-    throw runtime_error("incorrect decrypted data section checksum");
+  if (expected_crc != actual_crc && expected_crc != bswap32(actual_crc)) {
+    throw runtime_error(string_printf(
+        "incorrect decrypted data section checksum: expected %08" PRIX32 "; received %08" PRIX32,
+        expected_crc, actual_crc));
   }
 
-  if (header->decompressed_size & 0xFFF00000) {
-    throw runtime_error("decompressed_size too large");
-  }
-
-  size_t orig_size = decrypted.size();
-  decrypted.resize((orig_size + 3) & (~3));
   PSOV2Encryption(header->round3_seed).decrypt(
-      decrypted.data() + sizeof(PSOGCIOrVMSFileEncryptedHeader),
-      decrypted.size() - sizeof(PSOGCIOrVMSFileEncryptedHeader));
+      decrypted.data() + sizeof(HeaderT),
+      decrypted.size() - sizeof(HeaderT));
   decrypted.resize(orig_size);
 
   // Some GCI files have decompressed_size fields that are 8 bytes smaller than
   // the actual decompressed size of the data. They seem to work fine, so we
   // accept both cases as correct.
   size_t decompressed_size = prs_decompress_size(
-      decrypted.data() + sizeof(PSOGCIOrVMSFileEncryptedHeader),
-      decrypted.size() - sizeof(PSOGCIOrVMSFileEncryptedHeader));
+      decrypted.data() + sizeof(HeaderT),
+      decrypted.size() - sizeof(HeaderT));
   if ((decompressed_size != header->decompressed_size) &&
       (decompressed_size != header->decompressed_size - 8)) {
     throw runtime_error(string_printf(
@@ -177,7 +182,7 @@ string decrypt_gci_or_vms_v2_data_section(
         decompressed_size, header->decompressed_size.load()));
   }
 
-  return decrypted.substr(sizeof(PSOGCIOrVMSFileEncryptedHeader));
+  return decrypted.substr(sizeof(HeaderT));
 }
 
 string decrypt_vms_v1_data_section(const void* data_section, size_t size) {
@@ -210,7 +215,7 @@ string find_seed_and_decrypt_gci_or_vms_v2_data_section(
   uint64_t result_seed = parallel_range<uint64_t>([&](uint64_t seed, size_t) {
     try {
       string ret = decrypt_gci_or_vms_v2_data_section<IsBigEndian>(
-          data_section, size, seed, true);
+          data_section, size, seed);
       lock_guard<mutex> g(result_lock);
       result = move(ret);
       return true;
@@ -220,8 +225,7 @@ string find_seed_and_decrypt_gci_or_vms_v2_data_section(
   }, 0, 0x100000000, num_threads);
 
   if (!result.empty() && (result_seed < 0x100000000)) {
-    static_game_data_log.info("Found seed %08" PRIX64 " to decrypt GCI file",
-        result_seed);
+    static_game_data_log.info("Found seed %08" PRIX64, result_seed);
     return result;
   } else {
     throw runtime_error("no seed found");
@@ -709,18 +713,18 @@ string Quest::decode_gci(
   }
 
   if (header.game_id[2] == 'O') { // Episodes 1&2 (GPO*)
-    const auto& encrypted_header = r.get<PSOGCIOrVMSFileEncryptedHeader>(false);
+    const auto& encrypted_header = r.get<PSOGCIFileEncryptedHeader>(false);
     // Unencrypted GCI files appear to always have zeroes in these fields.
     // Encrypted GCI files are highly unlikely to have zeroes in ALL of these
     // fields, so assume it's encrypted if any of them are nonzero.
     if (encrypted_header.round2_seed || encrypted_header.checksum || encrypted_header.round3_seed) {
       if (known_seed >= 0) {
         return decrypt_gci_or_vms_v2_data_section<true>(
-            r.getv(header.data_size), header.data_size, known_seed, true);
+            r.getv(header.data_size), header.data_size, known_seed);
 
       } else if (header.embedded_seed != 0) {
         return decrypt_gci_or_vms_v2_data_section<true>(
-            r.getv(header.data_size), header.data_size, header.embedded_seed, true);
+            r.getv(header.data_size), header.data_size, header.embedded_seed);
 
       } else {
         if (find_seed_num_threads < 0) {
@@ -734,8 +738,8 @@ string Quest::decode_gci(
       }
 
     } else { // Unencrypted GCI format
-      r.skip(sizeof(PSOGCIOrVMSFileEncryptedHeader));
-      string compressed_data = r.readx(header.data_size - sizeof(PSOGCIOrVMSFileEncryptedHeader));
+      r.skip(sizeof(PSOGCIFileEncryptedHeader));
+      string compressed_data = r.readx(header.data_size - sizeof(PSOGCIFileEncryptedHeader));
       size_t decompressed_bytes = prs_decompress_size(compressed_data);
 
       size_t expected_decompressed_bytes = encrypted_header.decompressed_size - 8;
@@ -802,7 +806,7 @@ string Quest::decode_vms(
 
   if (known_seed >= 0) {
     return decrypt_gci_or_vms_v2_data_section<false>(
-        data_section, header.data_size, known_seed, true);
+        data_section, header.data_size, known_seed);
 
   } else {
     if (find_seed_num_threads < 0) {
