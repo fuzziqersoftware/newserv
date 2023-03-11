@@ -388,6 +388,10 @@ struct C_LegacyLogin_PC_V3_03 {
 // disconnected. If header.flag is nonzero, the client responds with an 04
 // command. Curiously, it looks like even DCv1 doesn't use this command in its
 // standard login sequence, so this may be a relic from very early development.
+// Even more curiously, DCv2 (and no other PSO version) has a behavior that
+// appears to be some kind of anti-cheating mechanism: if any byte in the memory
+// range 8C004000-8C007FFF is not zero, the handler for this command loops
+// infinitely doing nothing.
 // No other arguments
 
 // 03 (S->C): Start encryption (BB)
@@ -514,6 +518,7 @@ struct C_Chat_06 {
 } __packed__;
 
 // 07 (S->C): Ship select menu
+// Internally, PSO calls this RcvDirList.
 
 // Command is a list of these; header.flag is the entry count. The first entry
 // is not included in the count and does not appear on the client. The text of
@@ -583,10 +588,10 @@ struct C_MenuItemInfoRequest_09 {
 // 0E (S->C): Incomplete/legacy join game (non-BB)
 // header.flag = number of valid entries in lobby_data
 
-// DC NTE calls this command RcvStartGame. It appears to be a vestige of very
-// early development; its second-phase handler is missing even in the earliest
-// public prototype of PSO (DC NTE), and the command format is missing some
-// important information necessary to start a game on any version of PSO.
+// Internally, PSO calls this command RcvStartGame. It appears to be a vestige
+// of very early development; its second-phase handler is missing even in the
+// earliest public prototype of PSO (DC NTE), and the command format is missing
+// some important information necessary to start a game on any version.
 
 // There is a failure mode in the 0E command handler that causes the thread
 // receiving the command to loop infinitely doing nothing, effectively
@@ -676,8 +681,8 @@ struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<char16_t> { }
 // corner (on V3/BB) or lower-right corner of the screen.
 
 // 12 (S->C): Valid but ignored (all versions)
-// In DC NTE, this command is named RcvBaner. This is possibly a misspelling of
-// "banner", which could be an early version of the 1A/D5 (large message box)
+// Internally, PSO calls this command RcvBaner. This is possibly a misspelling
+// of "banner", which could be an early version of the 1A/D5 (large message box)
 // commands, or of BB's 00EE (scrolling message) command; however, the existence
 // of RcvBanerHead (16) seems to contradict this hypothesis since a text message
 // would not require a header. Even on DC NTE, this command does nothing, so
@@ -707,17 +712,17 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 } __packed__;
 
 // 14 (S->C): Valid but ignored (all versions)
-// DC NTE calls this command RcvUpLoad, which seems like the logical opposite of
-// 13 (quest file download, named RcvDownLoad in DC NTE). However, even in DC
-// NTE, this command does nothing, so it must have been scrapped very early in
-// development.
+// Internally, PSO calls this command RcvUpLoad, which seems like the logical
+// opposite of 13 (quest file download, named RcvDownLoad internally). However,
+// even in DC NTE, this command does nothing, so it must have been scrapped very
+// early in development.
 
 // 15: Invalid command
 
 // 16 (S->C): Valid but ignored (all versions)
-// DC NTE calls this command RcvBanerHead. It's not clear what this means, but
-// it's likely related to 12 in some way. Like 12, this command does nothing,
-// even on DC NTE.
+// Internally, this command is named RcvBanerHead. It's not clear what this
+// means, but it's likely related to 12 in some way. Like 12, this command does
+// nothing, even on DC NTE.
 
 // 17 (S->C): Start encryption at login server (except on BB)
 // Same format and usage as 02 command, but a different copyright string:
@@ -770,11 +775,11 @@ struct S_ReconnectSplit_19 {
 // between this command and the D5 command.
 
 // 1B (S->C): Valid but ignored (all versions)
-// This command is named RcvBattleData in DC NTE. It does nothing in all PSO
+// Internally, this command is named RcvBattleData. It does nothing in all PSO
 // versions.
 
 // 1C (S->C): Valid but ignored (all versions)
-// This command is named RcvSystemFile in DC NTE. It does nothing in all PSO
+// Internally, this command is named RcvSystemFile. It does nothing in all PSO
 // versions.
 
 // 1D: Ping
@@ -1027,9 +1032,9 @@ struct C_OpenFileConfirmation_44_A6 {
 // disp or inventory data. The clients in the game are responsible for sending
 // that data to each other during the join process with 60/62/6C/6D commands.
 
-// Curiously, this command is named RcvStartGame3 in DC NTE, while 0E is named
-// RcvStartGame. The string RcvStartGame2 appears in DC NTE, but it seems the
-// relevant code was deleted - there are no references to the string.
+// Curiously, this command is named RcvStartGame3 internally, while 0E is named
+// RcvStartGame. The string RcvStartGame2 appears in the DC versions, but it
+// seems the relevant code was deleted - there are no references to the string.
 
 // Header flag = entry count
 template <typename LobbyDataT, typename DispDataT>
@@ -1057,6 +1062,8 @@ struct S_JoinGame {
   uint8_t episode = 0;
   // Similarly, PSO GC ignores the values in the following fields.
   uint8_t unused2 = 1; // Should be 1 for PSO PC?
+  // Note: Only BB uses this field; it's unused on all other versions (since
+  // only BB has solo mode).
   uint8_t solo_mode = 0;
   uint8_t unused3 = 0;
 } __packed__;
@@ -1160,8 +1167,8 @@ struct S_LeaveLobby_66_69_Ep3_E9 {
 // This is sent to the joining player; the other players receive a 68 instead.
 // Same format as 65 command, but used for lobbies instead of games.
 
-// Curiously, this command is named RcvStartLobby2 in DC NTE, but there is no
-// command named RcvStartLobby. The string "RcvStartLobby" does appear in the
+// Curiously, this command is named RcvStartLobby2 internally, but there is no
+// command named RcvStartLobby. The string "RcvStartLobby" does appear in the DC
 // game executable, but is not referenced anywhere.
 
 // 68 (S->C): Add player to lobby
@@ -1205,14 +1212,14 @@ struct S_LeaveLobby_66_69_Ep3_E9 {
 // 7F: Invalid command
 
 // 80 (S->C): Valid but ignored (all versions)
-// TODO: DC NTE calls this function RcvGenerateID and SndGenerateID, and
+// TODO: This command is named RcvGenerateID and SndGenerateID, and PSO DC
 // implements some logic for it. Trace this logic and figure out what it does,
 // and document it here.
 
 struct S_Unknown_PC_V3_80 {
-  le_uint32_t which = 0; // Expected to be in the range 00-0B... maybe client ID?
-  le_uint32_t unknown_a1 = 0; // Could be player_tag
-  le_uint32_t unknown_a2 = 0; // Could be guild_card_number
+  le_uint32_t client_id = 0;
+  le_uint32_t player_tag = 0;
+  le_uint32_t guild_card_number = 0;
 } __packed__;
 
 // 81: Simple mail
@@ -1377,7 +1384,7 @@ struct C_LoginExtended_DCNTE_8B : C_Login_DCNTE_8B {
 
 // 8D (S->C): Request player data (DC NTE only)
 // Behaves the same as 95 (S->C) on all other versions, but DC NTE crashes if it
-// receives 95. This command is called RcvRecognition in the DC NTE source.
+// receives 95.
 
 // 8E: Ship select menu (DC NTE)
 // Behaves exactly the same as the A0 command (in both directions).
@@ -1403,7 +1410,9 @@ struct C_LoginV1_DC_PC_V3_90 {
 // 91 (S->C): Start encryption at login server (legacy; non-BB only)
 // Same format and usage as 17 command, except the client will respond with a 90
 // command. On versions that support it, this is strictly less useful than the
-// 17 command.
+// 17 command. Curiously, this command appears to have been implemented after
+// the 17 command since it's missing from the DC NTE version, but the 17 command
+// is named RcvPsoRegistConnectV2 whereas 91 is simply RcvPsoRegistConnect.
 
 // 92 (C->S): Register (DC)
 
@@ -1486,15 +1495,15 @@ struct C_Login_BB_93 {
 
 // 95 (S->C): Request player data
 // No arguments
+// Internally, PSO calls this command RcvRecognition.
 // For some reason, some servers send high values in the header.flag field here.
-// From what I can tell, that field appears to be completely unused by the
-// client - sending zero works just fine. The original Sega servers had some
-// uninitialized memory bugs, of which that may have been one, and other private
-// servers may have just duplicated Sega's behavior verbatim.
+// The header.flag field is completely unused by the client, however - sending
+// zero works just fine. The original Sega servers had some uninitialized memory
+// bugs, of which that may have been one, and other private servers may have
+// just duplicated Sega's behavior verbatim.
 // Client will respond with a 61 command.
 
 // 96 (C->S): Character save information
-// TODO: Check if this command exists on DC v1/v2.
 
 struct C_CharSaveInfo_V3_BB_96 {
   // This field appears to be a checksum or random stamp of some sort; it seems
@@ -1511,6 +1520,8 @@ struct C_CharSaveInfo_V3_BB_96 {
 
 // 97 (S->C): Save to memory card
 // No arguments
+// Internally, this command is called RcvSaveCountCheck, even though the counter
+// in the 96 command (to which 97 is a reply) counts more events than saves.
 // Sending this command with header.flag == 0 will show a message saying that
 // "character data was improperly saved", and will delete the character's items
 // and challenge mode records. newserv (and all other unofficial servers) always
@@ -1565,9 +1576,8 @@ struct C_Login_DC_PC_V3_9A {
 // 13 = servers under maintenance (118)
 // Seems like most (all?) of the rest of the codes are "network error" (119).
 
-// 9B (S->C): Secondary server init (non-BB)
+// 9B (S->C): Secondary server init (non-BB, non-DCv1)
 // Behaves exactly the same as 17 (S->C).
-// TODO: Check if this command exists on DC v1/v2.
 
 // 9B (S->C): Secondary server init (BB)
 // Format is the same as 03 (and the client uses the same encryption afterward).
@@ -1685,7 +1695,7 @@ struct C_LoginExtended_BB_9E {
 
 // 9F (S->C): Request client config / security data (V3/BB)
 // This command is not valid on PSO GC Episodes 1&2 Trial Edition, nor any
-// pre-V3 PSO versions.
+// pre-V3 PSO versions. Client will respond with a 9F command.
 // No arguments
 
 // 9F (C->S): Client config / security data response (V3/BB)
@@ -1831,6 +1841,7 @@ struct S_ConfirmUpdateQuestStatistics_V3_BB_AB {
 
 // B0 (S->C): Text message
 // Same format as 01 command.
+// Internally, PSO calls this command RcvEmergencyCall.
 // The message appears as an overlay on the right side of the screen. The player
 // doesn't do anything to dismiss it; it will disappear after a few seconds.
 // TODO: Check if this command exists on DC v1/v2.
@@ -1848,7 +1859,7 @@ struct S_ConfirmUpdateQuestStatistics_V3_BB_AB {
 // For example, some servers send this command every time a client joins a game.
 // Client will respond with a 99 command.
 
-// B2 (S->C): Execute code and/or checksum memory
+// B2 (S->C): Execute code and/or checksum memory (DCv2 and all later versions)
 // Client will respond with a B3 command with the same header.flag value as was
 // sent in the B2.
 // On PSO PC, the code section (if included in the B2 command) is parsed and
@@ -2083,11 +2094,11 @@ struct S_TournamentMatchInformation_GC_Ep3_BB {
 // BE: Invalid command
 // BF: Invalid command
 
-// C0 (C->S): Request choice search options
+// C0 (C->S): Request choice search options (DCv2 and later versions)
 // No arguments
 // Server should respond with a C0 command (described below).
 
-// C0 (S->C): Choice search options
+// C0 (S->C): Choice search options (DCv2 and later versions)
 
 // Command is a list of these; header.flag is the entry count (incl. top-level).
 template <typename ItemIDT, typename CharT>
@@ -2115,7 +2126,7 @@ struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<le_uint16_t, char16_t>
 //   22 00 02 00 "HUnewearl"
 //   etc.
 
-// C1 (C->S): Create game
+// C1 (C->S): Create game (DCv2 and later versions)
 
 template <typename CharT>
 struct C_CreateGame {
@@ -2143,18 +2154,18 @@ struct C_CreateGame_BB_C1 : C_CreateGame<char16_t> {
   parray<uint8_t, 3> unused2;
 } __packed__;
 
-// C2 (C->S): Set choice search parameters
+// C2 (C->S): Set choice search parameters (DCv2 and later versions)
 // Server does not respond.
 // The ChoiceSearchConfig structure is defined in Player.hh.
 
 struct C_ChoiceSearchSelections_DC_C2_C3 : ChoiceSearchConfig<le_uint32_t> { } __packed__;
 struct C_ChoiceSearchSelections_PC_V3_BB_C2_C3 : ChoiceSearchConfig<le_uint16_t> { } __packed__;
 
-// C3 (C->S): Execute choice search
+// C3 (C->S): Execute choice search (DCv2 and later versions)
 // Same format as C2. The disabled field is unused.
 // Server should respond with a C4 command.
 
-// C4 (S->C): Choice search results
+// C4 (S->C): Choice search results (DCv2 and later versions)
 
 // Command is a list of these; header.flag is the entry count
 struct S_ChoiceSearchResultEntry_V3_C4 {
@@ -2175,7 +2186,7 @@ struct S_ChoiceSearchResultEntry_V3_C4 {
   parray<uint8_t, 0x58> unused2;
 } __packed__;
 
-// C5 (S->C): Challenge rank update (V3/BB)
+// C5 (S->C): Challenge rank update (DCv2 and later versions)
 // header.flag = entry count
 // The server sends this command when a player joins a lobby to update the
 // challenge mode records of all the present players.
