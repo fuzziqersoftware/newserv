@@ -319,18 +319,20 @@ The actions are:\n\
     Apply newserv\'s text decoding algorithm to the input data, producing\n\
     little-endian UTF-16 output data.\n\
   decode-gci INPUT-FILENAME [OPTIONS...]\n\
+  decode-vms INPUT-FILENAME [OPTIONS...]\n\
   decode-dlq INPUT-FILENAME\n\
   decode-qst INPUT-FILENAME\n\
     Decode the input quest file into a compressed, unencrypted .bin or .dat\n\
     file (or in the case of decode-qst, both a .bin and a .dat file).\n\
     INPUT-FILENAME must be specified, but there is no OUTPUT-FILENAME; the\n\
-    output is written to INPUT-FILENAME.dec (or .bin, or .dat). DLQ and QST\n\
-    decoding is a relatively simple operation, but GCI decoding can be\n\
+    output is written to INPUT-FILENAME.dec (or .bin, or .dat). If the output\n\
+    is a .dec file, you can rename it to .bin or .dat manually. DLQ and QST\n\
+    decoding are relatively simple operations, but GCI and VMS decoding can be\n\
     computationally expensive if the file is encrypted and doesn\'t contain an\n\
     embedded seed. If you know the player\'s serial number who generated the\n\
-    GCI file, use the --seed=SEED option and give the serial number (as a\n\
-    hex-encoded 32-bit integer). If you don\'t know the serial number, newserv\n\
-    will find it via a brute-force search, which will take a long time.\n\
+    GCI or VMS file, use the --seed=SEED option and give the serial number (as\n\
+    a hex-encoded 32-bit integer). If you don\'t know the serial number,\n\
+    newserv will find it via a brute-force search, which will take a long time.\n\
   cat-client ADDR:PORT\n\
     Connect to the given server and simulate a PSO client. newserv will then\n\
     print all the received commands to stdout, and forward any commands typed\n\

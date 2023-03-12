@@ -329,7 +329,7 @@ For GC clients, you'll have to use newserv's built-in DNS server or set up your 
 
 ### Non-server usage
 
-newserv has many CLI options, which can be used to access functionality other than the game/proxy server. Run `newserv help` to see these options and how to use them. The non-server things newserv can do are:
+newserv has many CLI options, which can be used to access functionality other than the game and proxy server. Run `newserv help` to see these options and how to use them. The non-server things newserv can do are:
 
 * Compress or decompress data in the PRS and BC0 formats
 * Compute the decompressed size of compressed PRS data without decompressing it
@@ -337,7 +337,7 @@ newserv has many CLI options, which can be used to access functionality other th
 * Encrypt or decrypt data using Episode 3's trivial scheme
 * Run a brute-force search for a decryption seed
 * Decode Shift-JIS text to UTF-16
-* Convert quests in .gci, .dlq, or .qst format to .bin/.dat format
+* Convert quests in .gci, .vms, .dlq, or .qst format to .bin/.dat format
 * Extract the contents of a .gsl archive
 * Connect to another PSO server and pretend to be a client
 * Format Episode 3 game data in a human-readable manner
