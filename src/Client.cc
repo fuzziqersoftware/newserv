@@ -37,6 +37,7 @@ ClientOptions::ClientOptions()
     save_files(false),
     enable_chat_commands(true),
     enable_chat_filter(true),
+    enable_player_notifications(false),
     suppress_remote_login(false),
     zero_remote_guild_card(false),
     ep3_infinite_meseta(false),

@@ -57,20 +57,21 @@ namespace PatchesMenuItemID {
 }
 
 namespace ProxyOptionsMenuItemID {
-  constexpr uint32_t GO_BACK =             0xAAFFFFAA;
-  constexpr uint32_t CHAT_COMMANDS =       0xAA0000AA;
-  constexpr uint32_t CHAT_FILTER =         0xAA1111AA;
-  constexpr uint32_t INFINITE_HP =         0xAA2222AA;
-  constexpr uint32_t INFINITE_TP =         0xAA3333AA;
-  constexpr uint32_t SWITCH_ASSIST =       0xAA4444AA;
-  constexpr uint32_t BLOCK_EVENTS =        0xAA5555AA;
-  constexpr uint32_t BLOCK_PATCHES =       0xAA6666AA;
-  constexpr uint32_t SAVE_FILES =          0xAA7777AA;
-  constexpr uint32_t RED_NAME =            0xAA8888AA;
-  constexpr uint32_t BLANK_NAME =          0xAA9999AA;
-  constexpr uint32_t SUPPRESS_LOGIN =      0xAAAAAAAA;
-  constexpr uint32_t SKIP_CARD =           0xAABBBBAA;
-  constexpr uint32_t EP3_INFINITE_MESETA = 0xAACCCCAA;
+  constexpr uint32_t GO_BACK =              0xAAFFFFAA;
+  constexpr uint32_t CHAT_COMMANDS =        0xAA0000AA;
+  constexpr uint32_t CHAT_FILTER =          0xAA1111AA;
+  constexpr uint32_t PLAYER_NOTIFICATIONS = 0xAA2222AA;
+  constexpr uint32_t INFINITE_HP =          0xAA3333AA;
+  constexpr uint32_t INFINITE_TP =          0xAA4444AA;
+  constexpr uint32_t SWITCH_ASSIST =        0xAA5555AA;
+  constexpr uint32_t BLOCK_EVENTS =         0xAA6666AA;
+  constexpr uint32_t BLOCK_PATCHES =        0xAA7777AA;
+  constexpr uint32_t SAVE_FILES =           0xAA8888AA;
+  constexpr uint32_t RED_NAME =             0xAA9999AA;
+  constexpr uint32_t BLANK_NAME =           0xAAAAAAAA;
+  constexpr uint32_t SUPPRESS_LOGIN =       0xAABBBBAA;
+  constexpr uint32_t SKIP_CARD =            0xAACCCCAA;
+  constexpr uint32_t EP3_INFINITE_MESETA =  0xAADDDDAA;
 }
 
 

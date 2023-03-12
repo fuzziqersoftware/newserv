@@ -49,6 +49,7 @@ public:
 
     enum class DisconnectAction {
       LONG_TIMEOUT = 0,
+      MEDIUM_TIMEOUT,
       SHORT_TIMEOUT,
       CLOSE_IMMEDIATELY,
     };
@@ -146,6 +147,7 @@ public:
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt);
     void connect();
 
+    static uint64_t timeout_for_disconnect_action(DisconnectAction action);
     static void dispatch_on_timeout(evutil_socket_t fd, short what, void* ctx);
     static void on_input(Channel& ch, uint16_t, uint32_t, std::string& msg);
     static void on_error(Channel& ch, short events);
@@ -155,7 +157,6 @@ public:
 
     void send_to_game_server(const char* error_message = nullptr);
     void disconnect();
-
     bool is_connected() const;
   };
 

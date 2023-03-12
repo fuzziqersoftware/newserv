@@ -39,6 +39,7 @@ struct ClientOptions {
   bool save_files;
   bool enable_chat_commands;
   bool enable_chat_filter;
+  bool enable_player_notifications;
   bool suppress_remote_login;
   bool zero_remote_guild_card;
   bool ep3_infinite_meseta;

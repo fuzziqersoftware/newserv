@@ -116,7 +116,9 @@ static HandlerResult S_invalid(shared_ptr<ServerState>,
 
 static HandlerResult C_05(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
-  session.disconnect_action = ProxyServer::LinkedSession::DisconnectAction::SHORT_TIMEOUT;
+  session.disconnect_action = session.version == GameVersion::BB
+      ? ProxyServer::LinkedSession::DisconnectAction::MEDIUM_TIMEOUT
+      : ProxyServer::LinkedSession::DisconnectAction::SHORT_TIMEOUT;
   return HandlerResult::Type::FORWARD;
 }
 
@@ -1307,14 +1309,18 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ServerState>,
     if (index >= session.lobby_players.size()) {
       session.log.warning("Ignoring invalid player index %zu at position %zu", index, x);
     } else {
+      string name = encode_sjis(cmd.entries[x].disp.name);
+
       if (session.license && (cmd.entries[x].lobby_data.guild_card == session.remote_guild_card_number)) {
         cmd.entries[x].lobby_data.guild_card = session.license->serial_number;
         num_replacements++;
         modified = true;
+      } else if (session.options.enable_player_notifications && command != 0x67) {
+        send_text_message_printf(session.client_channel, "$C6Join: %zu / %" PRIu32 "\n%s",
+            index, cmd.entries[x].lobby_data.guild_card.load(), name.c_str());
       }
       auto& p = session.lobby_players[index];
       p.guild_card_number = cmd.entries[x].lobby_data.guild_card;
-      string name = encode_sjis(cmd.entries[x].disp.name);
       p.name = name;
       p.section_id = cmd.entries[x].disp.section_id;
       p.char_class = cmd.entries[x].disp.char_class;
@@ -1463,6 +1469,10 @@ static HandlerResult S_66_69_E9(shared_ptr<ServerState>,
     session.log.warning("Lobby leave command references missing position");
   } else {
     auto& p = session.lobby_players[index];
+    if (session.options.enable_player_notifications) {
+      send_text_message_printf(session.client_channel, "$C4Leave: %zu / %" PRIu32 "\n%s",
+          index, p.guild_card_number, p.name.c_str());
+    }
     p.guild_card_number = 0;
     p.name.clear();
     session.log.info("Removed lobby player (%zu)", index);

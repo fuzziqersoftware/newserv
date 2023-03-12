@@ -35,11 +35,6 @@ using namespace std::placeholders;
 
 
 
-static const uint32_t LICENSED_SESSION_TIMEOUT_USECS = 5 * 60 * 1000000; // 5 minutes
-static const uint32_t UNLICENSED_SESSION_TIMEOUT_USECS = 10 * 1000000; // 10 seconds
-
-
-
 ProxyServer::ProxyServer(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
@@ -635,7 +630,6 @@ void ProxyServer::LinkedSession::dispatch_on_timeout(
 
 
 void ProxyServer::LinkedSession::on_timeout() {
-  this->log.info("Session timed out");
   this->server->delete_session(this->id);
 }
 
@@ -672,9 +666,6 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
       session->send_to_game_server("The server has\ndisconnected.");
     }
     session->disconnect();
-    if (session->disconnect_action == ProxyServer::LinkedSession::DisconnectAction::CLOSE_IMMEDIATELY) {
-      session->server->delete_session(session->id);
-    }
   }
 }
 
@@ -758,6 +749,22 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
   }
 }
 
+uint64_t ProxyServer::LinkedSession::timeout_for_disconnect_action(
+    DisconnectAction action) {
+  switch (action) {
+    case DisconnectAction::LONG_TIMEOUT:
+      return 5 * 60 * 1000 * 1000; // 5 minutes
+    case DisconnectAction::MEDIUM_TIMEOUT:
+      return 30 * 1000 * 1000; // 30 seconds
+    case DisconnectAction::SHORT_TIMEOUT:
+      return 10 * 1000 * 1000; // 10 seconds
+    case DisconnectAction::CLOSE_IMMEDIATELY:
+      return 0;
+    default:
+      throw logic_error("disconnect action does not have a timeout");
+  }
+}
+
 void ProxyServer::LinkedSession::disconnect() {
   // Disconnect both ends
   this->client_channel.disconnect();
@@ -765,9 +772,8 @@ void ProxyServer::LinkedSession::disconnect() {
 
   // Set a timeout to delete the session entirely (in case the client doesn't
   // reconnect)
-  bool use_long_timeout = (this->license.get() && (this->disconnect_action == DisconnectAction::LONG_TIMEOUT));
-  struct timeval tv = usecs_to_timeval(use_long_timeout
-      ? LICENSED_SESSION_TIMEOUT_USECS : UNLICENSED_SESSION_TIMEOUT_USECS);
+  struct timeval tv = usecs_to_timeval(this->timeout_for_disconnect_action(
+      this->disconnect_action));
   event_add(this->timeout_event.get(), &tv);
 }
 

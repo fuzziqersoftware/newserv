@@ -75,6 +75,7 @@ static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descrip
   {ProxyOptionsMenuItemID::GO_BACK, u"Return to the\nproxy menu"},
   {ProxyOptionsMenuItemID::CHAT_COMMANDS, u"Enable chat\ncommands"},
   {ProxyOptionsMenuItemID::CHAT_FILTER, u"Enable escape\nsequences in\nchat messages\nand info board"},
+  {ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, u"Show a message\nwhen other players\njoin or leave"},
   {ProxyOptionsMenuItemID::INFINITE_HP, u"Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills"},
   {ProxyOptionsMenuItemID::INFINITE_TP, u"Enable automatic TP\nrestoration when\nyou cast any\ntechnique"},
   {ProxyOptionsMenuItemID::SWITCH_ASSIST, u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially"},
@@ -105,6 +106,7 @@ static vector<MenuItem> proxy_options_menu_for_client(
 
   add_option(ProxyOptionsMenuItemID::CHAT_COMMANDS, c->options.enable_chat_commands, u"Chat commands");
   add_option(ProxyOptionsMenuItemID::CHAT_FILTER, c->options.enable_chat_filter, u"Chat filter");
+  add_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, c->options.enable_player_notifications, u"Player notifs");
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
     add_option(ProxyOptionsMenuItemID::INFINITE_HP, c->options.infinite_hp, u"Infinite HP");
     add_option(ProxyOptionsMenuItemID::INFINITE_TP, c->options.infinite_tp, u"Infinite TP");
@@ -1784,6 +1786,9 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::CHAT_FILTER:
           c->options.enable_chat_filter = !c->options.enable_chat_filter;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS:
+          c->options.enable_player_notifications = !c->options.enable_player_notifications;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::INFINITE_HP:
           c->options.infinite_hp = !c->options.infinite_hp;
