@@ -55,27 +55,26 @@ Current known issues / missing features / things to do:
 ## Compatibility
 
 newserv supports several versions of PSO. Specifically:
-| Version                | Basic commands | Lobbies       | Games         | Proxy         |
-|------------------------|----------------|---------------|---------------|---------------|
-| Dreamcast Trial        | Partial (5)    | Not supported | Not supported | Not supported |
-| Dreamcast V1           | Supported (1)  | Supported     | Supported     | Supported     |
-| Dreamcast V2           | Supported (1)  | Supported     | Supported     | Supported     |
-| PC                     | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep1&2 Trial   | Untested (2)   | Untested (2)  | Untested (2)  | Untested (2)  |
-| GameCube Ep1&2         | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep1&2 Plus    | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep3 Trial     | Supported      | Supported     | Supported     | Supported     |
-| GameCube Ep3           | Supported      | Supported     | Supported     | Supported     |
-| XBOX Ep1&2             | Untested (3)   | Untested (3)  | Untested (3)  | Untested (3)  |
-| Blue Burst (vanilla)   | Supported      | Supported     | Partial (4)   | Supported     |
-| Blue Burst (Tethealla) | Supported      | Supported     | Partial (4)   | Supported     |
+| Version        | Login        | Lobbies      | Games        | Proxy        |
+|----------------|--------------|--------------|--------------|--------------|
+| DC Trial       | Partial (4)  | No           | No           | No           |
+| DC V1          | Yes (1)      | Yes          | Yes          | Yes          |
+| DC V2          | Yes (1)      | Yes          | Yes          | Yes          |
+| PC             | Yes          | Yes          | Yes          | Yes          |
+| GC Ep1&2 Trial | Untested (2) | Untested (2) | Untested (2) | Untested (2) |
+| GC Ep1&2       | Yes          | Yes          | Yes          | Yes          |
+| GC Ep1&2 Plus  | Yes          | Yes          | Yes          | Yes          |
+| GC Ep3 Trial   | Yes          | Yes          | Yes          | Yes          |
+| GC Ep3         | Yes          | Yes          | Yes          | Yes          |
+| XBOX Ep1&2     | Untested (2) | Untested (2) | Untested (2) | Untested (2) |
+| BB (vanilla)   | Yes          | Yes          | Partial (3)  | Yes          |
+| BB (Tethealla) | Yes          | Yes          | Partial (3)  | Yes          |
 
 *Notes:*
 1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add support for. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
-2. *This version only supports the modem adapter, which Dolphin does not currently emulate, so it's difficult to test.*
-3. *newserv's implementation of PSOX is based on disassembly of the client executable; it has never been tested with a real client and most likely doesn't work.*
-4. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
-5. *Support for PSO Dreamcast Trial Edition is very incomplete and probably never will be complete. This is really just exploring a curiosity that sheds some light on early network engineering done by Sega, not an actual attempt at supporting this version of the game.*
+2. *newserv's implementations of these versions are based on disassembly of the client executables and have never been tested.*
+3. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
+4. *Support for PSO Dreamcast Trial Edition is very incomplete and probably never will be complete. This is really just exploring a curiosity that sheds some light on early network engineering done by Sega, not an actual attempt at supporting this version of the game.*
 
 ## Usage
 
