@@ -1211,15 +1211,26 @@ struct S_LeaveLobby_66_69_Ep3_E9 {
 // 7E: Invalid command
 // 7F: Invalid command
 
-// 80 (S->C): Valid but ignored (all versions)
-// TODO: This command is named RcvGenerateID and SndGenerateID, and PSO DC
-// implements some logic for it. Trace this logic and figure out what it does,
-// and document it here.
+// 80: Valid but ignored (all versions)
+// This command is named RcvGenerateID and SndGenerateID. It appears to be used
+// to set the next item ID for the given player slot. PSO V3 and later accept
+// this command, but ignore it entirely. Notably, no version of PSO except for
+// DC NTE ever sends this command - it's likely it was used to implement some
+// item ID sync semantics that were later changed to use the leader as the
+// source of truth.
 
-struct S_Unknown_PC_V3_80 {
+struct C_GenerateID_DCNTE_80 {
+  le_uint32_t id;
+  uint8_t unused1; // Always 0
+  uint8_t unused2; // Always 0
+  le_uint16_t unused3; // Always 0
+  parray<uint8_t, 4> unused4; // Client sends uninitialized data here
+} __packed__;
+
+struct S_GenerateID_DC_PC_V3_80 {
   le_uint32_t client_id = 0;
-  le_uint32_t player_tag = 0;
-  le_uint32_t guild_card_number = 0;
+  le_uint32_t unused = 0;
+  le_uint32_t next_item_id = 0;
 } __packed__;
 
 // 81: Simple mail
