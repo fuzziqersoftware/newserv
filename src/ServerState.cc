@@ -5,6 +5,7 @@
 #include <memory>
 #include <phosg/Network.hh>
 
+#include "Compression.hh"
 #include "FileContentsCache.hh"
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
@@ -16,8 +17,10 @@ using namespace std;
 
 
 
-ServerState::ServerState()
-  : dns_server_port(0),
+ServerState::ServerState(const char* config_filename, bool is_replay)
+  : config_filename(config_filename),
+    is_replay(is_replay),
+    dns_server_port(0),
     ip_stack_debug(false),
     allow_unregistered_users(false),
     allow_saving(true),
@@ -69,13 +72,33 @@ ServerState::ServerState()
   }
 
   // Annoyingly, the CARD lobbies should be searched first, but are sent at the
-  // end of the lobby list command, so we have to change t he search order
+  // end of the lobby list command, so we have to change the search order
   // manually here.
   this->public_lobby_search_order_ep3 = this->public_lobby_search_order_non_v1;
   this->public_lobby_search_order_ep3.insert(
       this->public_lobby_search_order_ep3.begin(),
       ep3_only_lobbies.begin(),
       ep3_only_lobbies.end());
+
+  // Load all the necessary data
+  auto config = this->load_config();
+  this->collect_network_addresses();
+  this->parse_config(config);
+  this->load_licenses();
+  this->load_patch_indexes();
+  this->load_battle_params();
+  this->load_level_table();
+  this->load_item_tables();
+  this->load_ep3_data();
+  this->load_quest_index();
+  this->compile_functions();
+  this->load_dol_files();
+  this->create_menus(config);
+
+  if (this->is_replay) {
+    this->allow_saving = false;
+    config_log.info("Saving disabled because this is a replay session");
+  }
 }
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
@@ -363,7 +386,14 @@ void ServerState::set_port_configuration(
 
 
 void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
+  config_log.info("Creating menus");
   const auto& d = config_json->as_dict();
+
+  this->main_menu.clear();
+  this->proxy_destinations_menu_dc.clear();
+  this->proxy_destinations_menu_pc.clear();
+  this->proxy_destinations_menu_gc.clear();
+  this->proxy_destinations_menu_xb.clear();
 
   shared_ptr<vector<MenuItem>> information_menu_v2(new vector<MenuItem>());
   shared_ptr<vector<MenuItem>> information_menu_v3(new vector<MenuItem>());
@@ -561,4 +591,317 @@ shared_ptr<const string> ServerState::load_bb_file(
     static_game_data_log.error("%s not found in any source", patch_index_filename.c_str());
     throw cannot_open_file(patch_index_filename);
   }
+}
+
+
+
+void ServerState::collect_network_addresses() {
+  config_log.info("Reading network addresses");
+  this->all_addresses = get_local_addresses();
+  for (const auto& it : this->all_addresses) {
+    string addr_str = string_for_address(it.second);
+    config_log.info("Found interface: %s = %s", it.first.c_str(), addr_str.c_str());
+  }
+}
+
+shared_ptr<JSONObject> ServerState::load_config() const {
+  config_log.info("Loading configuration");
+  return JSONObject::parse(load_file(this->config_filename));
+}
+
+static vector<PortConfiguration> parse_port_configuration(
+    shared_ptr<const JSONObject> json) {
+  vector<PortConfiguration> ret;
+  for (const auto& item_json_it : json->as_dict()) {
+    auto item_list = item_json_it.second->as_list();
+    PortConfiguration& pc = ret.emplace_back();
+    pc.name = item_json_it.first;
+    pc.port = item_list[0]->as_int();
+    pc.version = version_for_name(item_list[1]->as_string().c_str());
+    pc.behavior = server_behavior_for_name(item_list[2]->as_string().c_str());
+  }
+  return ret;
+}
+
+void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
+  config_log.info("Parsing configuration");
+  const auto& d = config_json->as_dict();
+
+  this->name = decode_sjis(d.at("ServerName")->as_string());
+
+  try {
+    this->username = d.at("User")->as_string();
+    if (this->username == "$SUDO_USER") {
+      const char* user_from_env = getenv("SUDO_USER");
+      if (!user_from_env) {
+        throw runtime_error("configuration specifies $SUDO_USER, but variable is not defined");
+      }
+      this->username = user_from_env;
+    }
+  } catch (const out_of_range&) { }
+
+  this->set_port_configuration(parse_port_configuration(d.at("PortConfiguration")));
+
+  auto local_address_str = d.at("LocalAddress")->as_string();
+  try {
+    this->local_address = this->all_addresses.at(local_address_str);
+    string addr_str = string_for_address(this->local_address);
+    config_log.info("Added local address: %s (%s)", addr_str.c_str(),
+        local_address_str.c_str());
+  } catch (const out_of_range&) {
+    this->local_address = address_for_string(local_address_str.c_str());
+    config_log.info("Added local address: %s", local_address_str.c_str());
+  }
+  this->all_addresses.emplace("<local>", this->local_address);
+
+  auto external_address_str = d.at("ExternalAddress")->as_string();
+  try {
+    this->external_address = this->all_addresses.at(external_address_str);
+    string addr_str = string_for_address(this->external_address);
+    config_log.info("Added external address: %s (%s)", addr_str.c_str(),
+        external_address_str.c_str());
+  } catch (const out_of_range&) {
+    this->external_address = address_for_string(external_address_str.c_str());
+    config_log.info("Added external address: %s", external_address_str.c_str());
+  }
+  this->all_addresses.emplace("<external>", this->external_address);
+
+  try {
+    this->dns_server_port = d.at("DNSServerPort")->as_int();
+  } catch (const out_of_range&) {
+    this->dns_server_port = 0;
+  }
+
+  try {
+    for (const auto& item : d.at("IPStackListen")->as_list()) {
+      this->ip_stack_addresses.emplace_back(item->as_string());
+    }
+  } catch (const out_of_range&) { }
+  try {
+    this->ip_stack_debug = d.at("IPStackDebug")->as_bool();
+  } catch (const out_of_range&) { }
+
+  try {
+    this->allow_unregistered_users = d.at("AllowUnregisteredUsers")->as_bool();
+  } catch (const out_of_range&) {
+    this->allow_unregistered_users = true;
+  }
+
+  try {
+    this->item_tracking_enabled = d.at("EnableItemTracking")->as_bool();
+  } catch (const out_of_range&) {
+    this->item_tracking_enabled = true;
+  }
+
+  try {
+    this->episode_3_send_function_call_enabled = d.at("EnableEpisode3SendFunctionCall")->as_bool();
+  } catch (const out_of_range&) {
+    this->episode_3_send_function_call_enabled = false;
+  }
+
+  try {
+    this->catch_handler_exceptions = d.at("CatchHandlerExceptions")->as_bool();
+  } catch (const out_of_range&) {
+    this->catch_handler_exceptions = true;
+  }
+
+  try {
+    this->proxy_allow_save_files = d.at("ProxyAllowSaveFiles")->as_bool();
+  } catch (const out_of_range&) {
+    this->proxy_allow_save_files = true;
+  }
+  try {
+    this->proxy_enable_login_options = d.at("ProxyEnableLoginOptions")->as_bool();
+  } catch (const out_of_range&) {
+    this->proxy_enable_login_options = false;
+  }
+
+  try {
+    this->ep3_behavior_flags = d.at("Episode3BehaviorFlags")->as_int();
+  } catch (const out_of_range&) {
+    this->ep3_behavior_flags = 0;
+  }
+
+  try {
+    this->ep3_card_auction_points = d.at("CardAuctionPoints")->as_int();
+  } catch (const out_of_range&) {
+    this->ep3_card_auction_points = 0;
+  }
+  try {
+    auto i = d.at("CardAuctionSize");
+    if (i->is_int()) {
+      this->ep3_card_auction_min_size = i->as_int();
+      this->ep3_card_auction_max_size = this->ep3_card_auction_min_size;
+    } else {
+      this->ep3_card_auction_min_size = i->as_list().at(0)->as_int();
+      this->ep3_card_auction_max_size = i->as_list().at(1)->as_int();
+    }
+  } catch (const out_of_range&) {
+    this->ep3_card_auction_min_size = 0;
+    this->ep3_card_auction_max_size = 0;
+  }
+
+  try {
+    for (const auto& it : d.at("CardAuctionPool")->as_dict()) {
+      const auto& card_name = it.first;
+      const auto& card_cfg_json = it.second->as_list();
+      this->ep3_card_auction_pool.emplace(card_name, make_pair(
+          card_cfg_json.at(0)->as_int(), card_cfg_json.at(1)->as_int()));
+    }
+  } catch (const out_of_range&) { }
+
+  shared_ptr<JSONObject> log_levels_json;
+  try {
+    log_levels_json = d.at("LogLevels");
+  } catch (const out_of_range&) { }
+  if (log_levels_json.get()) {
+    set_log_levels_from_json(log_levels_json);
+  }
+
+  for (const string& filename : list_directory("system/blueburst/keys")) {
+    if (!ends_with(filename, ".nsk")) {
+      continue;
+    }
+    this->bb_private_keys.emplace_back(new PSOBBEncryption::KeyFile(
+        load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
+    config_log.info("Loaded Blue Burst key file: %s", filename.c_str());
+  }
+  config_log.info("%zu Blue Burst key file(s) loaded", this->bb_private_keys.size());
+
+  try {
+    bool run_shell = d.at("RunInteractiveShell")->as_bool();
+    this->run_shell_behavior = run_shell ?
+        ServerState::RunShellBehavior::ALWAYS :
+        ServerState::RunShellBehavior::NEVER;
+  } catch (const out_of_range&) { }
+
+  try {
+    auto v = d.at("LobbyEvent");
+    uint8_t event = v->is_int() ? v->as_int() : event_for_name(v->as_string());
+    this->pre_lobby_event = event;
+    for (const auto& l : this->all_lobbies()) {
+      l->event = event;
+    }
+  } catch (const out_of_range&) { }
+
+  try {
+    this->ep3_menu_song = d.at("Episode3MenuSong")->as_int();
+  } catch (const out_of_range&) { }
+}
+
+void ServerState::load_licenses() {
+  config_log.info("Loading license list");
+  this->license_manager.reset(new LicenseManager("system/licenses.nsi"));
+  if (this->is_replay) {
+    this->license_manager->set_autosave(false);
+  }
+}
+
+void ServerState::load_patch_indexes() {
+  if (isdir("system/patch-pc")) {
+    config_log.info("Indexing PSO PC patch files");
+    this->pc_patch_file_index.reset(new PatchFileIndex("system/patch-pc"));
+  } else {
+    config_log.info("PSO PC patch files not present");
+  }
+  if (isdir("system/patch-bb")) {
+    config_log.info("Indexing PSO BB patch files");
+    this->bb_patch_file_index.reset(new PatchFileIndex("system/patch-bb"));
+    try {
+      auto gsl_file = this->bb_patch_file_index->get("./data/data.gsl");
+      this->bb_data_gsl.reset(new GSLArchive(gsl_file->load_data(), false));
+      config_log.info("data.gsl found in BB patch files");
+    } catch (const out_of_range&) {
+      config_log.info("data.gsl is not present in BB patch files");
+    }
+  } else {
+    config_log.info("PSO BB patch files not present");
+  }
+}
+
+void ServerState::load_battle_params() {
+  config_log.info("Loading battle parameters");
+  this->battle_params.reset(new BattleParamsIndex(
+      this->load_bb_file("BattleParamEntry_on.dat"),
+      this->load_bb_file("BattleParamEntry_lab_on.dat"),
+      this->load_bb_file("BattleParamEntry_ep4_on.dat"),
+      this->load_bb_file("BattleParamEntry.dat"),
+      this->load_bb_file("BattleParamEntry_lab.dat"),
+      this->load_bb_file("BattleParamEntry_ep4.dat")));
+}
+
+void ServerState::load_level_table() {
+  config_log.info("Loading level table");
+  this->level_table.reset(new LevelTable(
+      this->load_bb_file("PlyLevelTbl.prs"), true));
+}
+
+void ServerState::load_item_tables() {
+  config_log.info("Loading rare item table");
+  this->rare_item_set.reset(new RELRareItemSet(
+      this->load_bb_file("ItemRT.rel")));
+
+  // Note: These files don't exist in BB, so we use the GC versions of them
+  // instead. This doesn't include Episode 4 of course, so we use Episode 1
+  // parameters for Episode 4 implicitly.
+  config_log.info("Loading common item tables");
+  shared_ptr<string> pt_data(new string(load_file(
+      "system/blueburst/ItemPT_GC.gsl")));
+  this->common_item_set.reset(new CommonItemSet(pt_data));
+
+  shared_ptr<string> armor_data(new string(load_file(
+      "system/blueburst/ArmorRandom_GC.rel")));
+  this->armor_random_set.reset(new ArmorRandomSet(armor_data));
+
+  shared_ptr<string> tool_data(new string(load_file(
+      "system/blueburst/ToolRandom_GC.rel")));
+  this->tool_random_set.reset(new ToolRandomSet(tool_data));
+
+  const char* filenames[4] = {
+    "system/blueburst/WeaponRandomNormal_GC.rel",
+    "system/blueburst/WeaponRandomHard_GC.rel",
+    "system/blueburst/WeaponRandomVeryHard_GC.rel",
+    "system/blueburst/WeaponRandomUltimate_GC.rel",
+  };
+  for (size_t z = 0; z < 4; z++) {
+    shared_ptr<string> weapon_data(new string(load_file(filenames[z])));
+    this->weapon_random_sets[z].reset(new WeaponRandomSet(weapon_data));
+  }
+
+  config_log.info("Loading item definition table");
+  shared_ptr<string> data(new string(prs_decompress(load_file(
+      "system/blueburst/ItemPMT.prs"))));
+  this->item_parameter_table.reset(new ItemParameterTable(data));
+}
+
+void ServerState::load_ep3_data() {
+  config_log.info("Collecting Episode 3 data");
+  this->ep3_data_index.reset(new Episode3::DataIndex(
+      "system/ep3", this->ep3_behavior_flags));
+
+  const string& tournament_state_filename = "system/ep3/tournament-state.json";
+  try {
+    this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
+        this->ep3_data_index, tournament_state_filename));
+    config_log.info("Loaded Episode 3 tournament state");
+  } catch (const exception& e) {
+    config_log.warning("Cannot load Episode 3 tournament state: %s", e.what());
+    this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
+        this->ep3_data_index, tournament_state_filename, true));
+  }
+}
+
+void ServerState::load_quest_index() {
+  config_log.info("Collecting quest metadata");
+  this->quest_index.reset(new QuestIndex("system/quests"));
+}
+
+void ServerState::compile_functions() {
+  config_log.info("Compiling client functions");
+  this->function_code_index.reset(new FunctionCodeIndex("system/ppc"));
+}
+
+void ServerState::load_dol_files() {
+  config_log.info("Loading DOL files");
+  this->dol_file_index.reset(new DOLFileIndex("system/dol"));
 }

@@ -103,9 +103,23 @@ Server commands:\n\
   exit (or ctrl+d)\n\
     Shut down the server.\n\
   reload <item> ...\n\
-    Reload data. <item> can be licenses, quests, functions, programs, or ep3.\n\
-    Reloading will not affect items that are in use; for example, if a client\'s\n\
-    license is deleted by reloading, they will not be disconnected immediately.\n\
+    Reload various parts of the server configuration. <item> can be:\n\
+      licenses - reload the license index file\n\
+      patches - reindex the PC and BB patch directories\n\
+      battle-params - reload the enemy stats files\n\
+      level-table - reload the level-up tables\n\
+      item-tables - reload the item generation tables\n\
+      ep3 - reload the Episode 3 card definitions and maps\n\
+      quests - reindex all quests\n\
+      functions - recompile all client-side functions\n\
+      dol-files - reindex all DOL files\n\
+      config - reload some fields from config.json\n\
+    Reloading will not affect items that are in use; for example, if an Episode\n\
+    3 battle is in progress, it will continue to use the previous map and card\n\
+    definitions. Similarly, BB clients are not forced to disconnect or reload\n\
+    the battle parameters, so if these are changed without restarting, clients\n\
+    may see (for example) EXP messages inconsistent with the amounts of EXP\n\
+    actually received.\n\
   add-license <parameters>\n\
     Add a license to the server. <parameters> is some subset of the following:\n\
       bb-username=<username> (BB username)\n\
@@ -251,21 +265,27 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
     }
     for (const string& type : types) {
       if (type == "licenses") {
-        shared_ptr<LicenseManager> lm(new LicenseManager("system/licenses.nsi"));
-        this->state->license_manager = lm;
+        this->state->load_licenses();
+      } else if (type == "patches") {
+        this->state->load_patch_indexes();
+      } else if (type == "battle-params") {
+        this->state->load_battle_params();
+      } else if (type == "level-table") {
+        this->state->load_level_table();
+      } else if (type == "item-tables") {
+        this->state->load_item_tables();
+      } else if (type == "ep3") {
+        this->state->load_ep3_data();
       } else if (type == "quests") {
-        shared_ptr<QuestIndex> qi(new QuestIndex("system/quests"));
-        this->state->quest_index = qi;
+        this->state->load_quest_index();
       } else if (type == "functions") {
-        shared_ptr<FunctionCodeIndex> fci(new FunctionCodeIndex("system/ppc"));
-        this->state->function_code_index = fci;
-      } else if (type == "programs") {
-        shared_ptr<DOLFileIndex> dfi(new DOLFileIndex("system/dol"));
-        this->state->dol_file_index = dfi;
-      } else if (type == "programs") {
-        shared_ptr<Episode3::DataIndex> data_index(new Episode3::DataIndex(
-            "system/ep3", this->state->ep3_behavior_flags));
-        this->state->ep3_data_index = data_index;
+        auto config_json = this->state->load_config();
+        this->state->compile_functions();
+        this->state->create_menus(config_json);
+      } else if (type == "dol-files") {
+        auto config_json = this->state->load_config();
+        this->state->load_dol_files();
+        this->state->create_menus(config_json);
       } else {
         throw invalid_argument("incorrect data type");
       }

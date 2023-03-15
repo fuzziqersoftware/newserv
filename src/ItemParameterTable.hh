@@ -51,8 +51,7 @@ public:
 
   struct Mag {
     ItemBase base;
-    uint8_t feed_table;
-    uint8_t unknown_a1;
+    le_uint16_t feed_table;
     uint8_t photon_blast;
     uint8_t activation;
     uint8_t on_pb_full;

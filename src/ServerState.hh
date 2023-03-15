@@ -43,6 +43,9 @@ struct ServerState {
     NEVER,
   };
 
+  std::string config_filename;
+  bool is_replay;
+
   std::u16string name;
   std::unordered_map<std::string, std::shared_ptr<PortConfiguration>> name_to_port_config;
   std::unordered_map<uint16_t, std::shared_ptr<PortConfiguration>> number_to_port_config;
@@ -120,7 +123,7 @@ struct ServerState {
   std::shared_ptr<Server> game_server;
   std::shared_ptr<FileContentsCache> client_options_cache;
 
-  ServerState();
+  ServerState(const char* config_filename, bool is_replay);
 
   void add_client_to_available_lobby(std::shared_ptr<Client> c);
   void remove_client_from_lobby(std::shared_ptr<Client> c);
@@ -153,10 +156,22 @@ struct ServerState {
   void set_port_configuration(
     const std::vector<PortConfiguration>& port_configs);
 
-  void create_menus(std::shared_ptr<const JSONObject> config_json);
-
   std::shared_ptr<const std::string> load_bb_file(
       const std::string& patch_index_filename,
       const std::string& gsl_filename = "",
       const std::string& bb_directory_filename = "") const;
+
+  std::shared_ptr<JSONObject> load_config() const;
+  void collect_network_addresses();
+  void parse_config(std::shared_ptr<const JSONObject> config_json);
+  void load_licenses();
+  void load_patch_indexes();
+  void load_battle_params();
+  void load_level_table();
+  void load_item_tables();
+  void load_ep3_data();
+  void load_quest_index();
+  void compile_functions();
+  void load_dol_files();
+  void create_menus(std::shared_ptr<const JSONObject> config_json);
 };
