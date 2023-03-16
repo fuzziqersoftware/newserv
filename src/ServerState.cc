@@ -508,13 +508,15 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       u"Connect to another\nserver", proxy_destinations_menu_item_flags);
   this->main_menu.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, u"Download quests",
       u"Download quests", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
-  if (!this->function_code_index->patch_menu_empty()) {
-    this->main_menu.emplace_back(MainMenuItemID::PATCHES, u"Patches",
-        u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
-  }
-  if (!this->dol_file_index->empty()) {
-    this->main_menu.emplace_back(MainMenuItemID::PROGRAMS, u"Programs",
-        u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
+  if (!this->is_replay) {
+    if (!this->function_code_index->patch_menu_empty()) {
+      this->main_menu.emplace_back(MainMenuItemID::PATCHES, u"Patches",
+          u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+    }
+    if (!this->dol_file_index->empty()) {
+      this->main_menu.emplace_back(MainMenuItemID::PROGRAMS, u"Programs",
+          u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
+    }
   }
   this->main_menu.emplace_back(MainMenuItemID::DISCONNECT, u"Disconnect",
       u"Disconnect", 0);
