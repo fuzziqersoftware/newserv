@@ -53,7 +53,7 @@ start:
   bl     copy_code
 
   lis    r29, 0x8000
-  ori    r29, r29, 0xBD44
+  ori    r29, r29, 0x17C4
 
 construct_editors:
   # Call the constructors for all the editors and save the object pointers. If
@@ -94,7 +94,7 @@ activate_chosen_editor:
 
   li     r4, 0
   lis    r29, 0x8000
-  ori    r29, r29, 0xBD44
+  ori    r29, r29, 0x17C4
 
   # lwz    r4, [r29 + 0x00] # TGroupSetEditor
   #   This editor is very similar to TGroupEnemySetEditor (see below).
@@ -170,7 +170,7 @@ activate_chosen_editor:
   #   the update/render phase. Further research is needed here.
 
   # lwz    r4, [r29 + 0x38] # TCCScenarioDebug (movie/cutscene tests)
-  #   This editor exists only in Episode 3 - it is not in PSOPC nor PSOX.
+  #   This editor exists only in Episode 3 - it is neither in PSOPC nor PSOX.
   #   Nothing appears immediately after activating this debugger because the
   #   default page is blank. Use C-left and C-right to change major pages; use
   #   L/R to change minor pages (sets of 50 flags within each major page). Use
