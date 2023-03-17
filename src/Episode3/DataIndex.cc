@@ -1046,10 +1046,9 @@ string MapDefinition::str(const DataIndex* data_index) const {
   lines.emplace_back(string_printf("  a1=%08" PRIX32, this->unknown_a1.load()));
   lines.emplace_back(string_printf("  environment_number=%02hhX", this->environment_number));
   lines.emplace_back(string_printf("  num_alt_maps=%02hhX", this->num_alt_maps));
-  lines.emplace_back(string_printf("  num_alt_maps=%02hhX", this->num_alt_maps));
   lines.emplace_back("  tiles:");
   add_map(this->map_tiles);
-  lines.emplace_back(string_printf("  start_tile_definitions=[%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX], [%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX]",
+  lines.emplace_back(string_printf("  start_tile_definitions=[1p=%02hhX 2p=%02hhX,%02hhX 3p=%02hhX,%02hhX,%02hhX], [1p=%02hhX 2p=%02hhX,%02hhX 3p=%02hhX,%02hhX,%02hhX]",
       this->start_tile_definitions[0][0], this->start_tile_definitions[0][1],
       this->start_tile_definitions[0][2], this->start_tile_definitions[0][3],
       this->start_tile_definitions[0][4], this->start_tile_definitions[0][5],
@@ -1076,26 +1075,26 @@ string MapDefinition::str(const DataIndex* data_index) const {
   }
   for (size_t w = 0; w < 3; w++) {
     for (size_t z = 0; z < 0x24; z += 3) {
-      lines.emplace_back(string_printf("  a5[%zu][0x%02zX:0x%02zX]=%g %g %g", w, z, z + 3,
-          this->unknown_a5[w][z + 0].load(),
-          this->unknown_a5[w][z + 1].load(),
-          this->unknown_a5[w][z + 2].load()));
+      lines.emplace_back(string_printf("  a4[%zu][0x%02zX:0x%02zX]=%g %g %g", w, z, z + 3,
+          this->unknown_a4[w][z + 0].load(),
+          this->unknown_a4[w][z + 1].load(),
+          this->unknown_a4[w][z + 2].load()));
     }
   }
   lines.emplace_back("  modification tiles:");
   add_map(this->modification_tiles);
   for (size_t z = 0; z < 0x70; z += 0x10) {
-    lines.emplace_back(string_printf("  a6[0x%02zX:0x%02zX]=%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX", z, z + 0x10,
-        this->unknown_a6[z + 0x00], this->unknown_a6[z + 0x01], this->unknown_a6[z + 0x02], this->unknown_a6[z + 0x03],
-        this->unknown_a6[z + 0x04], this->unknown_a6[z + 0x05], this->unknown_a6[z + 0x06], this->unknown_a6[z + 0x07],
-        this->unknown_a6[z + 0x08], this->unknown_a6[z + 0x09], this->unknown_a6[z + 0x0A], this->unknown_a6[z + 0x0B],
-        this->unknown_a6[z + 0x0C], this->unknown_a6[z + 0x0D], this->unknown_a6[z + 0x0E], this->unknown_a6[z + 0x0F]));
+    lines.emplace_back(string_printf("  a5[0x%02zX:0x%02zX]=%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX", z, z + 0x10,
+        this->unknown_a5[z + 0x00], this->unknown_a5[z + 0x01], this->unknown_a5[z + 0x02], this->unknown_a5[z + 0x03],
+        this->unknown_a5[z + 0x04], this->unknown_a5[z + 0x05], this->unknown_a5[z + 0x06], this->unknown_a5[z + 0x07],
+        this->unknown_a5[z + 0x08], this->unknown_a5[z + 0x09], this->unknown_a5[z + 0x0A], this->unknown_a5[z + 0x0B],
+        this->unknown_a5[z + 0x0C], this->unknown_a5[z + 0x0D], this->unknown_a5[z + 0x0E], this->unknown_a5[z + 0x0F]));
   }
-  lines.emplace_back(string_printf("  a6[0x70:0x74]=%02hhX %02hhX %02hhX %02hhX",
-      this->unknown_a6[0x70], this->unknown_a6[0x71], this->unknown_a6[0x72], this->unknown_a6[0x73]));
+  lines.emplace_back(string_printf("  a5[0x70:0x74]=%02hhX %02hhX %02hhX %02hhX",
+      this->unknown_a5[0x70], this->unknown_a5[0x71], this->unknown_a5[0x72], this->unknown_a5[0x73]));
   lines.emplace_back("  default_rules: " + this->default_rules.str());
-  lines.emplace_back(string_printf("  a7=%02hhX %02hhX %02hhX %02hhX",
-      this->unknown_a7[0], this->unknown_a6[1], this->unknown_a6[2], this->unknown_a6[3]));
+  lines.emplace_back(string_printf("  a6=%02hhX %02hhX %02hhX %02hhX",
+      this->unknown_a6[0], this->unknown_a6[1], this->unknown_a6[2], this->unknown_a6[3]));
   lines.emplace_back("  name: " + string(this->name));
   lines.emplace_back("  location_name: " + string(this->location_name));
   lines.emplace_back("  quest_name: " + string(this->quest_name));
@@ -1150,7 +1149,9 @@ string MapDefinition::str(const DataIndex* data_index) const {
       }
     }
   }
-  lines.emplace_back("  a8=" + format_data_string(this->unknown_a8.data(), this->unknown_a8.bytes()));
+  lines.emplace_back("  a7a=" + format_data_string(this->unknown_a7_a.data(), this->unknown_a7_a.bytes()));
+  lines.emplace_back(string_printf("  a7b=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "]",
+      this->unknown_a7_b[0].load(), this->unknown_a7_b[1].load(), this->unknown_a7_b[2].load()));
   if (this->before_message[0]) {
     lines.emplace_back("  before_message: " + string(this->before_message));
   }
@@ -1175,9 +1176,53 @@ string MapDefinition::str(const DataIndex* data_index) const {
       lines.emplace_back(string_printf("  reward_cards[%02zu]: %04hX", z, card_id));
     }
   }
-  lines.emplace_back("  a9=" + format_data_string(this->unknown_a9.data(), this->unknown_a9.bytes()));
-  lines.emplace_back("  a11=" + format_data_string(this->unknown_a11.data(), this->unknown_a11.bytes()));
-  lines.emplace_back("  unavailable_sc_cards=" + format_data_string(this->unavailable_sc_cards.data(), this->unavailable_sc_cards.bytes()));
+  lines.emplace_back(string_printf("  a9=[%08" PRIX32 " %08" PRIX32 " %04hX %04hX]",
+      this->unknown_a9_a.load(), this->unknown_a9_b.load(), this->unknown_a9_c.load(), this->unknown_a9_d.load()));
+  lines.emplace_back(string_printf("  a10=%02hhX", this->unknown_a10));
+  lines.emplace_back(string_printf("  cyber_block_type=%02hhX", this->cyber_block_type));
+  lines.emplace_back(string_printf("  a11=%02hhX%02hhX", this->unknown_a11[0], this->unknown_a11[1]));
+  static const array<const char*, 0x18> sc_card_entry_names = {
+    "00 (Guykild; 0005)",
+    "01 (Kylria; 0006)",
+    "02 (Saligun; 0110)",
+    "03 (Relmitos; 0111)",
+    "04 (Kranz; 0002)",
+    "05 (Sil'fer; 0004)",
+    "06 (Ino'lis; 0003)",
+    "07 (Viviana; 0112)",
+    "08 (Teifu; 0113)",
+    "09 (Orland; 0001)",
+    "0A (Stella; 0114)",
+    "0B (Glustar; 0115)",
+    "0C (Hyze; 0117)",
+    "0D (Rufina; 0118)",
+    "0E (Peko; 0119)",
+    "0F (Creinu; 011A)",
+    "10 (Reiz; 011B)",
+    "11 (Lura; 0007)",
+    "12 (Break; 0008)",
+    "13 (Rio; 011C)",
+    "14 (Endu; 0116)",
+    "15 (Memoru; 011D)",
+    "16 (K.C.; 011E)",
+    "17 (Ohgun; 011F)",
+  };
+  string unavailable_sc_cards = "  unavailable_sc_cards=[";
+  for (size_t z = 0; z < 0x18; z++) {
+    if (this->unavailable_sc_cards[z] == 0xFFFF) {
+      continue;
+    }
+    if (unavailable_sc_cards.size() > 24) {
+      unavailable_sc_cards += ", ";
+    }
+    if (this->unavailable_sc_cards[z] >= sc_card_entry_names.size()) {
+      unavailable_sc_cards += string_printf("%04hX (invalid)", this->unavailable_sc_cards[z].load());
+    } else {
+      unavailable_sc_cards += sc_card_entry_names[this->unavailable_sc_cards[z]];
+    }
+  }
+  unavailable_sc_cards += ']';
+  lines.emplace_back(move(unavailable_sc_cards));
   for (size_t z = 0; z < 4; z++) {
     string player_type;
     switch (this->entry_states[z].player_type) {

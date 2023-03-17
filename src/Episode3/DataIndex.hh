@@ -808,7 +808,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
   /* 0118 */ parray<parray<uint8_t, 0x10>, 0x10> alt_maps1[2][0x0A];
   /* 1518 */ parray<be_float, 0x12> alt_maps_unknown_a3[2][0x0A];
-  /* 1AB8 */ parray<be_float, 0x24> unknown_a5[3];
+  /* 1AB8 */ parray<be_float, 0x24> unknown_a4[3];
 
   // In the modification_tiles array, the values are:
   // 10 = blocked by rock (as if the corresponding map_tiles value was 00)
@@ -820,9 +820,9 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   //      preview; behaves like 10 and 20 in game)
   /* 1C68 */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
 
-  /* 1D68 */ parray<uint8_t, 0x74> unknown_a6;
+  /* 1D68 */ parray<uint8_t, 0x74> unknown_a5;
   /* 1DDC */ Rules default_rules;
-  /* 1DEC */ parray<uint8_t, 4> unknown_a7;
+  /* 1DEC */ parray<uint8_t, 4> unknown_a6;
 
   /* 1DF0 */ ptext<char, 0x14> name;
   /* 1E04 */ ptext<char, 0x14> location_name;
@@ -847,7 +847,8 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   } __attribute__((packed));
   /* 20F0 */ NPCCharacter npc_chars[3]; // Unused if name[0] == 0
 
-  /* 242C */ parray<uint8_t, 0x14> unknown_a8; // Always FF?
+  /* 242C */ parray<uint8_t, 8> unknown_a7_a; // Always FF?
+  /* 2434 */ parray<be_uint32_t, 3> unknown_a7_b; // Always FF?
 
   // before_message appears before the battle; after_message appears after the
   // battle. In free battle and online mode, before_message is ignored, but
@@ -867,9 +868,19 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
   /* 59B0 */ parray<be_uint16_t, 0x10> reward_card_ids;
 
-  /* 59D0 */ parray<uint8_t, 0x0C> unknown_a9;
+  /* 59D0 */be_uint32_t unknown_a9_a;
+  /* 59D4 */be_uint32_t unknown_a9_b;
+  /* 59D8 */be_uint16_t unknown_a9_c;
+  /* 59DA */be_uint16_t unknown_a9_d;
+
   /* 59DC */ uint8_t unknown_a10;
-  /* 59DD */ parray<uint8_t, 3> unknown_a11;
+
+  // This field determines the type of block to be used in the Cyber
+  // environment. There are 10 block types (0-9); if this value is >= 10, it is
+  // treated as 0.
+  /* 59DD */ uint8_t cyber_block_type;
+
+  /* 59DE */ parray<uint8_t, 2> unknown_a11;
 
   // This array specifies which SC characters can't participate in the quest
   // (that is, the player is not allowed to choose decks with these SC cards).
