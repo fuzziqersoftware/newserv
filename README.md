@@ -4,9 +4,30 @@ newserv is a game server and proxy for Phantasy Star Online (PSO).
 
 This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself, which was originally created by Sega.
 
+* Background
+    * [History](#history)
+    * [Future (and to-do list)](#future)
+* [Compatibility](#compatibility)
+* Setup
+    * [Configuration](#configuration)
+    * [Installing quests](#installing-quests)
+    * [Episode 3 features](#episode-3-features)
+    * [Client patch directories for PC and BB](#client-patch-directories)
+    * [Memory patches and DOL files for GC](#memory-patches-and-dol-files)
+    * [Using newserv as a proxy](#using-newserv-as-a-proxy)
+    * [Chat commands](#chat-commands)
+* How to connect
+    * Connecting local clients
+        * [PSO DC](#pso-dc)
+        * [PSO PC](#pso-pc)
+        * [PSO GC on a real GameCube](#pso-gc-on-a-real-gamecube)
+        * [PSO GC on Dolphin](#pso-gc-on-dolphin)
+    * [Connecting external clients](#connecting-external-clients)
+* [Non-server features](#non-server-features)
+
 ## History
 
-The history of this project essentially mirrors my development as a software engineer from the beginning of my hobby until now. If you don't care about the story, skip to the "Compatibility" or "Usage" sections below.
+The history of this project essentially mirrors my development as a software engineer from the beginning of my hobby until now. If you don't care about the story, skip to the "Compatibility" or "Setup" sections below.
 
 I originally purchased PSO GC when I heard about PSUL, and wanted to play around with running homebrew on my GameCube. This pathway eventually led to [GCARS-CS](https://github.com/fuzziqersoftware/gcars-cs), but that's another story.
 
@@ -77,15 +98,17 @@ newserv supports several versions of PSO. Specifically:
 3. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
 4. *Support for PSO Dreamcast Trial Edition is very incomplete and probably never will be complete. This is really just exploring a curiosity that sheds some light on early network engineering done by Sega, not an actual attempt at supporting this version of the game.*
 
-## Usage
+## Setup
 
-Currently newserv should build on macOS, Windows, and Ubuntu. It will likely work on other Linux flavors too.
+### Configuration
+
+Currently newserv works on macOS, Windows, and Ubuntu Linux. It will likely work on other Linux flavors too.
 
 There is a fairly recent macOS ARM64 release on the newserv GitHub repository. You may need to install libevent manually even if you use this release (run `brew install libevent`).
 
 There is a fairly recent Windows release on the newserv GitHub repository also. It's built with Cygwin, and all the necessary DLL files should be included. That said, I've only tested it on my own machine and there is no CI for Windows builds like there is for macOS and Linux, so if it doesn't work for you, please open a GitHub issue to let me know.
 
-If you're using a non-ARM64 Mac, you're running Linux, or you just want to build newserv yourself, here's what you do:
+If you're not using a release from the GitHub repository, do this to build newserv:
 1. If you're on Windows, install Cygwin. While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `make`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
 2. Make sure you have CMake and libevent installed. (On macOS, `brew install cmake libevent`; on most Linuxes, `sudo apt-get install cmake libevent-dev`; on Windows, you already did this in step 1.)
 3. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
@@ -334,7 +357,7 @@ If you want to accept connections from outside your local network, you'll need t
 
 For GC clients, you'll have to use newserv's built-in DNS server or set up your own DNS server as well. If you want external clients to be able to use your DNS server, you'll have to forward UDP port 53 to your newserv instance. Remote players can then connect to your server by entering your DNS server's IP address in their client's network configuration.
 
-### Non-server usage
+### Non-server features
 
 newserv has many CLI options, which can be used to access functionality other than the game and proxy server. Run `newserv help` to see these options and how to use them. The non-server things newserv can do are:
 
