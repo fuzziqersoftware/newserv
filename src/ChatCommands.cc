@@ -369,18 +369,21 @@ static void proxy_command_get_player_card(shared_ptr<ServerState>,
 static void server_command_send_client(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
   string data = parse_data_string(encode_sjis(args));
+  data.resize((data.size() + 3) & (~3));
   c->channel.send(data);
 }
 
 static void proxy_command_send_client(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string& args) {
   string data = parse_data_string(encode_sjis(args));
+  data.resize((data.size() + 3) & (~3));
   session.client_channel.send(data);
 }
 
 static void proxy_command_send_server(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string& args) {
   string data = parse_data_string(encode_sjis(args));
+  data.resize((data.size() + 3) & (~3));
   session.server_channel.send(data);
 }
 

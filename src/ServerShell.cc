@@ -583,12 +583,10 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
 
   } else if ((command_name == "sc") || (command_name == "ss")) {
     string data = parse_data_string(command_args, nullptr, ParseDataFlags::ALLOW_FILES);
-    if (data.size() & 3) {
-      throw invalid_argument("data size is not a multiple of 4");
-    }
     if (data.size() == 0) {
       throw invalid_argument("no data given");
     }
+    data.resize((data.size() + 3) & (~3));
 
     shared_ptr<ProxyServer::LinkedSession> proxy_session;
     try {
