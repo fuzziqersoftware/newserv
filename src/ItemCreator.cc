@@ -446,16 +446,16 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
       case 0:
       case 1:
         switch (this->restrictions->weapon_and_armor_mode) {
-          case Restrictions::WeaponAndArmorMode::NORMAL:
-          case Restrictions::WeaponAndArmorMode::NORMAL2:
+          case Restrictions::WeaponAndArmorMode::ALL_ON:
+          case Restrictions::WeaponAndArmorMode::ONLY_PICKING:
             break;
-          case Restrictions::WeaponAndArmorMode::FORBID_RARES:
+          case Restrictions::WeaponAndArmorMode::NO_RARE:
             if (!this->item_parameter_table->is_item_rare(item)) {
               this->log.info("Restricted: rare items not allowed");
               break;
             }
             [[fallthrough]];
-          case Restrictions::WeaponAndArmorMode::FORBID_ALL:
+          case Restrictions::WeaponAndArmorMode::ALL_OFF:
             this->log.info("Restricted: weapons and armors not allowed");
             item.clear();
             break;
@@ -470,14 +470,14 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
         }
         break;
       case 3:
-        if (this->restrictions->tool_mode == Restrictions::ToolMode::FORBID_ALL) {
+        if (this->restrictions->tool_mode == Restrictions::ToolMode::ALL_OFF) {
           this->log.info("Restricted: tools not allowed");
           item.clear();
         } else if (item.data1[1] == 2) {
           switch (this->restrictions->tech_disk_mode) {
-            case Restrictions::TechDiskMode::NORMAL:
+            case Restrictions::TechDiskMode::ON:
               break;
-            case Restrictions::TechDiskMode::FORBID_ALL:
+            case Restrictions::TechDiskMode::OFF:
               this->log.info("Restricted: tech disks not allowed");
               item.clear();
               break;
@@ -499,7 +499,7 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
         }
         break;
       case 4:
-        if (this->restrictions->meseta_drop_mode == Restrictions::MesetaDropMode::FORBID_ALL) {
+        if (this->restrictions->meseta_drop_mode == Restrictions::MesetaDropMode::OFF) {
           this->log.info("Restricted: meseta not allowed");
           item.clear();
         }

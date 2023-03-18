@@ -17,35 +17,31 @@ struct ItemDropSub {
 class ItemCreator {
 public:
   struct Restrictions {
-    // Note: The original code has a uint8_t enable_item_restrictions here; we
-    // omit it because the caller can just pass a null pointer for this struct.
-    // Note: The original code has many more fields in this structure; we only
-    // include those which are used by the item creator. This structure is
-    // probably actually the battle rules structure in the original game, but
-    // many rules apply only client-side and newserv doesn't have to care about
-    // their effects, so we omit those fields. The NORMAL and NORMAL2 modes
-    // behave identically from the item creator's perspective, but may actually
-    // mean "keep equipment" vs. "reset equipment" on the client side.
+    // Note: In the original code, this is actually the battle rules structure.
+    // We omit some fields here because the item creator doesn't need them.
     enum class TechDiskMode {
-      NORMAL = 0,
-      FORBID_ALL = 1,
+      ON = 0,
+      OFF = 1,
       LIMIT_LEVEL = 2,
     };
     enum class WeaponAndArmorMode {
-      NORMAL = 0,
-      NORMAL2 = 1,
-      FORBID_ALL = 2,
-      FORBID_RARES = 3,
+      // Note: These names match the value names in TPlyPKEditor
+      ALL_ON = 0,
+      ONLY_PICKING = 1,
+      ALL_OFF = 2,
+      NO_RARE = 3,
     };
     enum class ToolMode {
-      NORMAL = 0,
-      NORMAL2 = 1,
-      FORBID_ALL = 2,
+      // Note: These names match the value names in TPlyPKEditor
+      ALL_ON = 0,
+      ONLY_PICKING = 1,
+      ALL_OFF = 2,
     };
     enum class MesetaDropMode {
-      NORMAL = 0,
-      FORBID_ALL = 1,
-      UNKNOWN = 2,
+      // Note: These names match the value names in TPlyPKEditor
+      ON = 0,
+      OFF = 1,
+      ONLY_PICKING = 2,
     };
     TechDiskMode tech_disk_mode;
     WeaponAndArmorMode weapon_and_armor_mode;
