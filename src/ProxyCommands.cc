@@ -1316,7 +1316,7 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ServerState>,
         num_replacements++;
         modified = true;
       } else if (session.options.enable_player_notifications && command != 0x67) {
-        send_text_message_printf(session.client_channel, "$C6Join: %zu / %" PRIu32 "\n%s",
+        send_text_message_printf(session.client_channel, "$C6Join: %zu/%" PRIu32 "\n%s",
             index, cmd.entries[x].lobby_data.guild_card.load(), name.c_str());
       }
       auto& p = session.lobby_players[index];
@@ -1470,7 +1470,7 @@ static HandlerResult S_66_69_E9(shared_ptr<ServerState>,
   } else {
     auto& p = session.lobby_players[index];
     if (session.options.enable_player_notifications) {
-      send_text_message_printf(session.client_channel, "$C4Leave: %zu / %" PRIu32 "\n%s",
+      send_text_message_printf(session.client_channel, "$C4Leave: %zu/%" PRIu32 "\n%s",
           index, p.guild_card_number, p.name.c_str());
     }
     p.guild_card_number = 0;
