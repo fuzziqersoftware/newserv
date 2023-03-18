@@ -394,10 +394,25 @@ int main(int argc, char** argv) {
     if (output_filename && strcmp(output_filename, "-")) {
       save_file(output_filename, data, size);
     // If no output filename is given and an input filename is given, write to
-    // <input-filename>.dec
+    // <input-filename>.dec (or an appropriate extension, if it can be
+    // autodetected)
     } else if (!output_filename && input_filename && strcmp(input_filename, "-")) {
       string filename = input_filename;
-      filename += ".dec";
+      if (behavior == Behavior::COMPRESS_PRS) {
+        if (ends_with(filename, ".bind") || ends_with(filename, ".datd") || ends_with(filename, ".mnmd")) {
+          filename.resize(filename.size() - 1);
+        } else {
+          filename += ".prs";
+        }
+      } else if (behavior == Behavior::DECOMPRESS_PRS) {
+        if (ends_with(filename, ".bin") || ends_with(filename, ".dat") || ends_with(filename, ".mnm")) {
+          filename += "d";
+        } else {
+          filename += ".dec";
+        }
+      } else {
+        filename += ".dec";
+      }
       save_file(filename, data, size);
     // If stdout is a terminal, use print_data to write the result
     } else if (isatty(fileno(stdout))) {
