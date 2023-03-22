@@ -495,6 +495,8 @@ struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> { } __p
 // 06: Chat
 // Server->client format is same as 01 command. The maximum size of the message
 // is 0x200 bytes.
+// Client->server format is very similar; we include a zero-length array in this
+// struct to make parsing easier.
 // When sent by the client, the text field includes only the message. When sent
 // by the server, the text field includes the origin player's name, followed by
 // a tab character, followed by the message.
@@ -504,10 +506,10 @@ struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> { } __p
 // set, for example, then the chat message displays as " (whisper)" on player
 // 0's screen regardless of the message contents. The next bit (2) hides the
 // message from player 1, etc. The high 4 bits of this byte appear not to be
-// used, but are often nonzero and set to the value 4. We call this byte
-// private_flags in the places where newserv uses it.
-// Client->server format is very similar; we include a zero-length array in this
-// struct to make parsing easier.
+// used, but are often nonzero and set to the value 4. (This is probably done so
+// that the field is always a valid ASCII character and also never terminates
+// the chat string accidentally.) We call this byte private_flags in the places
+// where newserv uses it.
 
 struct C_Chat_06 {
   parray<le_uint32_t, 2> unused;
@@ -3303,14 +3305,15 @@ struct G_SymbolChat_6x07 {
   le_uint32_t client_id;
   // Bits: SSSCCCFF (S = sound, C = face color, F = face shape)
   uint8_t face_spec;
-  uint8_t disable_sound; // If low bit is set, no sound is played
-  le_uint16_t unused2;
+  // Bits: 000000DM (D = capture, M = mute sound)
+  uint8_t flags;
+  le_uint16_t unused;
   struct CornerObject {
     uint8_t type; // FF = no object in this slot
     // Bits: 000VHCCC (V = reverse vertical, H = reverse horizontal, C = color)
     uint8_t flags_color;
   } __packed__;
-  CornerObject corner_objects[4]; // In reading order (top-left is first)
+  parray<CornerObject, 4> corner_objects; // In reading order; top-left is first
   struct FacePart {
     uint8_t type; // FF = no part in this slot
     uint8_t x;
@@ -3318,7 +3321,7 @@ struct G_SymbolChat_6x07 {
     // Bits: 000000VH (V = reverse vertical, H = reverse horizontal)
     uint8_t flags;
   } __packed__;
-  FacePart face_parts[12];
+  parray<FacePart, 12> face_parts;
 } __packed__;
 
 // 6x08: Invalid subcommand

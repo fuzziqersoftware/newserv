@@ -1121,11 +1121,14 @@ void send_game_menu_t(
     e.episode = 0x00;
     e.flags = 0x04;
   }
+
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
-    if (!l->is_game() || (l->version != c->version())) {
+    if (!l->is_game()) {
       continue;
     }
-
+    if (l->version != c->version()) {
+      continue;
+    }
     bool l_is_ep3 = l->is_ep3();
     bool c_is_ep3 = !!(c->flags & Client::Flag::IS_EPISODE_3);
     if (l_is_ep3 != c_is_ep3) {
@@ -1134,7 +1137,6 @@ void send_game_menu_t(
     if ((c->flags & Client::Flag::IS_DC_V1) && (l->flags & Lobby::Flag::NON_V1_ONLY)) {
       continue;
     }
-
     bool l_is_spectator_team = !!(l->flags & Lobby::Flag::IS_SPECTATOR_TEAM);
     if (l_is_spectator_team != is_spectator_team_list) {
       continue;

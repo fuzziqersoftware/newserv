@@ -243,6 +243,7 @@ static void proxy_command_arrow(shared_ptr<ServerState>,
 
 static void server_command_debug(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string&) {
+  check_privileges(c, Privilege::DEBUG);
   c->options.debug = !c->options.debug;
   send_text_message_printf(c, "Debug %s",
       c->options.debug ? "enabled" : "disabled");
