@@ -13,9 +13,11 @@
 #include <thread>
 #include <unordered_map>
 
+#include "BMLArchive.hh"
 #include "CatSession.hh"
 #include "Compression.hh"
 #include "DNSServer.hh"
+#include "GSLArchive.hh"
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
@@ -168,10 +170,11 @@ The actions are:\n\
     sure client sessions are repeatable and code changes don\'t affect existing\n\
     (working) functionality.\n\
   extract-gsl [INPUT-FILENAME] [--big-endian]\n\
-    Extract all files from a GSL archive into the current directory.\n\
+  extract-bml [INPUT-FILENAME] [--big-endian]\n\
+    Extract all files from a GSL or BML archive into the current directory.\n\
     input-filename may be specified. If output-filename is specified, then it\n\
     is treated as a prefix which is prepended to the filename of each file\n\
-    contained in the GSL archive. If --big-endian is given, the GSL header is\n\
+    contained in the archive. If --big-endian is given, the archive header is\n\
     read in GameCube format; otherwise it is read in PC/BB format.\n\
 \n\
 A few options apply to multiple modes described above:\n\
@@ -198,6 +201,7 @@ enum class Behavior {
   DECODE_QUEST_FILE,
   DECODE_SJIS,
   EXTRACT_GSL,
+  EXTRACT_BML,
   FORMAT_ITEMRT_ENTRY,
   FORMAT_ITEMRT_REL,
   SHOW_EP3_DATA,
@@ -221,6 +225,7 @@ static bool behavior_takes_input_filename(Behavior b) {
          (b == Behavior::FORMAT_ITEMRT_ENTRY) ||
          (b == Behavior::FORMAT_ITEMRT_REL) ||
          (b == Behavior::EXTRACT_GSL) ||
+         (b == Behavior::EXTRACT_BML) ||
          (b == Behavior::PARSE_OBJECT_GRAPH) ||
          (b == Behavior::REPLAY_LOG) ||
          (b == Behavior::CAT_CLIENT);
@@ -234,7 +239,9 @@ static bool behavior_takes_output_filename(Behavior b) {
          (b == Behavior::ENCRYPT_DATA) ||
          (b == Behavior::DECRYPT_DATA) ||
          (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
-         (b == Behavior::DECODE_SJIS);
+         (b == Behavior::DECODE_SJIS) ||
+         (b == Behavior::EXTRACT_GSL) ||
+         (b == Behavior::EXTRACT_BML);
 }
 
 enum class QuestFileFormat {
@@ -360,6 +367,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::REPLAY_LOG;
         } else if (!strcmp(argv[x], "extract-gsl")) {
           behavior = Behavior::EXTRACT_GSL;
+        } else if (!strcmp(argv[x], "extract-bml")) {
+          behavior = Behavior::EXTRACT_BML;
         } else {
           throw invalid_argument(string_printf("unknown command: %s (try --help)", argv[x]));
         }
@@ -672,7 +681,8 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::EXTRACT_GSL: {
+    case Behavior::EXTRACT_GSL:
+    case Behavior::EXTRACT_BML: {
       if (!output_filename) {
         output_filename = "";
       } else if (!strcmp(output_filename, "-")) {
@@ -680,13 +690,35 @@ int main(int argc, char** argv) {
       }
 
       string data = read_input_data();
-
       shared_ptr<string> data_shared(new string(move(data)));
-      GSLArchive gsl(data_shared, big_endian);
-      for (const auto& entry_it : gsl.all_entries()) {
-        auto e = gsl.get(entry_it.first);
-        save_file(output_filename + entry_it.first, e.first, e.second);
-        fprintf(stderr, "... %s\n", entry_it.first.c_str());
+
+      if (behavior == Behavior::EXTRACT_GSL) {
+        GSLArchive arch(data_shared, big_endian);
+        for (const auto& entry_it : arch.all_entries()) {
+          auto e = arch.get(entry_it.first);
+          string out_file = output_filename + entry_it.first;
+          save_file(out_file.c_str(), e.first, e.second);
+          fprintf(stderr, "... %s\n", out_file.c_str());
+        }
+      } else {
+        BMLArchive arch(data_shared, big_endian);
+        for (const auto& entry_it : arch.all_entries()) {
+          {
+            auto e = arch.get(entry_it.first);
+            string data = prs_decompress(e.first, e.second);
+            string out_file = output_filename + entry_it.first;
+            save_file(out_file, data);
+            fprintf(stderr, "... %s\n", out_file.c_str());
+          }
+
+          auto gvm_e = arch.get_gvm(entry_it.first);
+          if (gvm_e.second) {
+            string data = prs_decompress(gvm_e.first, gvm_e.second);
+            string out_file = output_filename + entry_it.first + ".gvm";
+            save_file(out_file, data);
+            fprintf(stderr, "... %s\n", out_file.c_str());
+          }
+        }
       }
       break;
     }

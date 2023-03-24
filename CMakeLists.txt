@@ -40,6 +40,7 @@ find_package(resource_file QUIET)
 # Executable definition
 
 add_executable(newserv
+  src/BMLArchive.cc
   src/CatSession.cc
   src/Channel.cc
   src/ChatCommands.cc
