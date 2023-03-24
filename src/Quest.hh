@@ -55,6 +55,7 @@ public:
   std::string file_basename; // we append -<version>.<bin/dat> when reading
   FileFormat file_format;
   bool has_mnm_extension;
+  bool is_dlq_encoded;
   std::u16string name;
   std::u16string short_description;
   std::u16string long_description;
@@ -83,6 +84,8 @@ public:
       int64_t known_seed = -1);
   static std::string decode_dlq(const std::string& filename);
   static std::pair<std::string, std::string> decode_qst(const std::string& filename);
+
+  std::string export_qst(GameVersion version) const;
 
 private:
   // these are populated when requested

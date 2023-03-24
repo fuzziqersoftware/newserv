@@ -56,7 +56,8 @@ Current known issues / missing features / things to do:
     - Implement all remaining player_use_item cases (there are many!)
     - Handle mag feeding and evolution properly
     - Implement trade window
-- Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on other versions).
+    - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on other versions).
+- There is a function that encodes QST files, but there's no corresponding CLI option.
 - PSOX is not tested at all.
 - Memory patches currently are platform-specific but not version-specific. This makes them quite a bit harder to write and use properly.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.

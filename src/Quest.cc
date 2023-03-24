@@ -393,7 +393,8 @@ Quest::Quest(const string& bin_filename)
     is_dcv1(false),
     joinable(false),
     file_format(FileFormat::BIN_DAT),
-    has_mnm_extension(false) {
+    has_mnm_extension(false),
+    is_dlq_encoded(false) {
 
   if (ends_with(bin_filename, ".bin.gci") || ends_with(bin_filename, ".mnm.gci")) {
     this->file_format = FileFormat::BIN_DAT_GCI;
@@ -981,6 +982,95 @@ pair<string, string> Quest::decode_qst(const string& filename) {
   }
 }
 
+template <typename HeaderT>
+void add_command_header(
+    StringWriter& w, uint8_t command, uint8_t flag, uint16_t size) {
+  HeaderT header;
+  header.command = command;
+  header.flag = flag;
+  header.size = sizeof(HeaderT) + size;
+  w.put(header);
+}
+
+template <typename HeaderT, typename CmdT>
+void add_open_file_command(StringWriter& w, const Quest& q, bool is_bin) {
+  add_command_header<HeaderT>(
+      w, q.is_dlq_encoded ? 0xA6 : 0x44, q.internal_id,
+      sizeof(S_OpenFile_DC_44_A6));
+  CmdT cmd;
+  cmd.name = "PSO/" + encode_sjis(q.name);
+  cmd.filename = q.file_basename + (is_bin ? ".bin" : ".dat");
+  cmd.flags = q.is_dlq_encoded ? 0 : 2;
+  // TODO: It'd be nice to have something like w.emplace(...) to avoid copying
+  // the command structs into the StringWriter.
+  w.put(cmd);
+}
+
+template <typename HeaderT>
+void add_write_file_commands(
+    StringWriter& w,
+    const string& filename,
+    const string& data,
+    bool is_dlq_encoded) {
+  for (size_t z = 0; z < data.size(); z += 0x400) {
+    size_t chunk_size = min<size_t>(data.size() - z, 0x400);
+    add_command_header<HeaderT>(w, is_dlq_encoded ? 0xA7 : 0x13, z >> 10, sizeof(S_WriteFile_13_A7));
+    S_WriteFile_13_A7 cmd;
+    cmd.filename = filename;
+    memcpy(cmd.data.data(), &data[z], chunk_size);
+    cmd.data_size = chunk_size;
+    w.put(cmd);
+  }
+}
+
+string Quest::export_qst(GameVersion version) const {
+  if (this->category == QuestCategory::EPISODE_3) {
+    throw runtime_error("Episode 3 quests cannot be encoded in QST format");
+  }
+
+  StringWriter w;
+
+  switch (version) {
+    case GameVersion::DC:
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, *this, true);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, *this, false);
+      add_write_file_commands<PSOCommandHeaderDCV3>(
+          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(
+          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      break;
+    case GameVersion::PC:
+      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_V3_44_A6>(w, *this, true);
+      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_V3_44_A6>(w, *this, false);
+      add_write_file_commands<PSOCommandHeaderPC>(
+          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderPC>(
+          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      break;
+    case GameVersion::GC:
+    case GameVersion::XB:
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, true);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, false);
+      add_write_file_commands<PSOCommandHeaderDCV3>(
+          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(
+          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      break;
+    case GameVersion::BB:
+      add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, *this, true);
+      add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, *this, false);
+      add_write_file_commands<PSOCommandHeaderBB>(
+          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderBB>(
+          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      break;
+    default:
+      throw logic_error("invalid game version");
+  }
+
+  return move(w.str());
+}
+
 
 
 QuestIndex::QuestIndex(const string& directory) : directory(directory) {
@@ -1139,5 +1229,6 @@ shared_ptr<Quest> Quest::create_download_quest() const {
       compressed_bin, decompressed_bin.size())));
   dlq->dat_contents_ptr.reset(new string(create_download_quest_file(
       *this->dat_contents(), prs_decompress_size(*this->dat_contents()))));
+  dlq->is_dlq_encoded = true;
   return dlq;
 }
