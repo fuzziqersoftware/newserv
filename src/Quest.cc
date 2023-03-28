@@ -1000,7 +1000,7 @@ void add_open_file_command(StringWriter& w, const Quest& q, bool is_bin) {
   CmdT cmd;
   cmd.name = "PSO/" + encode_sjis(q.name);
   cmd.filename = q.file_basename + (is_bin ? ".bin" : ".dat");
-  cmd.flags = q.is_dlq_encoded ? 0 : 2;
+  cmd.type = 0;
   // TODO: It'd be nice to have something like w.emplace(...) to avoid copying
   // the command structs into the StringWriter.
   w.put(cmd);

@@ -923,23 +923,35 @@ struct S_GuildCardSearchResult_BB_41
 // 43: Invalid command
 
 // 44 (S->C): Open file for download
-// Used for downloading online quests. For download quests (to be saved to the
-// memory card), use A6 instead.
-// Unlike the A6 command, the client will react to a 44 command only if the
-// filename ends in .bin or .dat.
+// Used for downloading online quests. The client will react to a 44 command if
+// the filename ends in .bin or .dat.
+// For download quests (to be saved to the memory card) and GBA games, the A6
+// command is used instead. The client will react to A6 if the filename ends in
+// .bin/.dat (quests), .pvr (textures), or .gba (GameBoy Advance games).
+// It appears that the .gba handler for A6 was not deleted in PSO XB, even
+// though it doesn't make sense for an XB client to receive such a file.
 
 struct S_OpenFile_DC_44_A6 {
-  ptext<char, 0x20> name; // Should begin with "PSO/"
-  parray<uint8_t, 2> unused;
-  uint8_t flags = 0;
+  ptext<char, 0x22> name; // Should begin with "PSO/"
+  // The type field is only used for download quests (A6); it is ignored for
+  // online quests (44). The following values are valid for A6:
+  //   0 = download quest (client expects .bin and .dat files)
+  //   1 = download quest (client expects .bin, .dat, and .pvr files)
+  //   2 = GBA game (GC only; client expects .gba file only)
+  //   3 = Episode 3 download quest (Ep3 only; client expects .bin file only)
+  // There is a bug in the type logic: an A6 command always overwrites the
+  // current download type even if the filename doesn't end in .bin, .dat, .pvr,
+  // or .gba. This may lead to a resource exhaustion bug if exploited carefully,
+  // but I haven't verified this. Generally the server should send all files for
+  // a given piece of content with the same type in each file's A6 command.
+  uint8_t type = 0;
   ptext<char, 0x11> filename;
   le_uint32_t file_size = 0;
 } __packed__;
 
 struct S_OpenFile_PC_V3_44_A6 {
-  ptext<char, 0x20> name; // Should begin with "PSO/"
-  parray<uint8_t, 2> unused;
-  le_uint16_t flags = 0; // 0 = download quest, 2 = online quest, 3 = Episode 3
+  ptext<char, 0x22> name; // Should begin with "PSO/"
+  le_uint16_t type = 0;
   ptext<char, 0x10> filename;
   le_uint32_t file_size = 0;
 } __packed__;
@@ -953,7 +965,7 @@ struct S_OpenFile_XB_44_A6 : S_OpenFile_PC_V3_44_A6 {
 
 struct S_OpenFile_BB_44_A6 {
   parray<uint8_t, 0x22> unused;
-  le_uint16_t flags = 0;
+  le_uint16_t type = 0;
   ptext<char, 0x10> filename;
   le_uint32_t file_size = 0;
   ptext<char, 0x18> name;
@@ -1776,16 +1788,8 @@ struct S_QuestMenuEntry_BB_A2_A4 : S_QuestMenuEntry<char16_t, 0x7A> { } __packed
 // Same format as 1A/D5 command (plain text)
 
 // A6: Open file for download
-// Same format as 44.
-// Used for download quests and GBA games. The client will react to this command
-// if the filename ends in .bin/.dat (download quests), .gba (GameBoy Advance
-// games), and, curiously, .pvr (textures). To my knowledge, the .pvr handler in
-// this command has never been used.
-// It also appears that the .gba handler was not deleted in PSO XB, even though
-// it doesn't make sense for an XB client to receive such a file.
-// For .bin files, the flags field should be zero. For .pvr files, the flags
-// field should be 1. For .dat and .gba files, it seems the value in the flags
-// field does not matter.
+// Same format as 44. See the description of 44 for some notes on the
+// differences between the two commands.
 // Like the 44 command, the client->server form of this command is only used on
 // V3 and BB.
 

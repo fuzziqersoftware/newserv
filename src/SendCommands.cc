@@ -270,27 +270,26 @@ void send_quest_open_file_t(
     case QuestFileType::ONLINE:
       command_num = 0x44;
       cmd.name = "PSO/" + quest_name;
-      cmd.flags = 2;
+      cmd.type = 0;
       break;
     case QuestFileType::GBA_DEMO:
       command_num = 0xA6;
       cmd.name = "GBA Demo";
-      cmd.flags = 2;
+      cmd.type = 2;
       break;
     case QuestFileType::DOWNLOAD:
       command_num = 0xA6;
       cmd.name = "PSO/" + quest_name;
-      cmd.flags = 0;
+      cmd.type = 0;
       break;
     case QuestFileType::EPISODE_3:
       command_num = 0xA6;
       cmd.name = "PSO/" + quest_name;
-      cmd.flags = 3;
+      cmd.type = 3;
       break;
     default:
       throw logic_error("invalid quest file type");
   }
-  cmd.unused.clear(0);
   cmd.file_size = file_size;
   cmd.filename = filename.c_str();
   send_command_t(c, command_num, 0x00, cmd);
