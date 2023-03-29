@@ -122,7 +122,7 @@ private:
 
   void generate_rare_weapon_bonuses(ItemData& item, uint32_t random_sample);
   void deduplicate_weapon_bonuses(ItemData& item) const;
-  void set_item_unidentified_or_present_flags_if_special(ItemData& item) const;
+  void set_item_unidentified_or_present_flags_if_unsealable(ItemData& item) const;
   void set_item_unidentified_flag_if_challenge(ItemData& item) const;
   void set_tool_item_amount_to_1(ItemData& item) const;
 

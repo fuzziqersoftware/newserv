@@ -328,7 +328,7 @@ ItemData ItemCreator::check_rate_and_create_rare_item(
   }
 
   this->clear_item_if_restricted(item);
-  this->set_item_unidentified_or_present_flags_if_special(item);
+  this->set_item_unidentified_or_present_flags_if_unsealable(item);
   return item;
 }
 
@@ -390,7 +390,7 @@ void ItemCreator::deduplicate_weapon_bonuses(ItemData& item) const {
   }
 }
 
-void ItemCreator::set_item_unidentified_or_present_flags_if_special(ItemData& item) const {
+void ItemCreator::set_item_unidentified_or_present_flags_if_unsealable(ItemData& item) const {
   if (this->item_parameter_table->is_unsealable_item(item)) {
     item.set_unidentified_or_present_flag(0);
   }
@@ -552,7 +552,7 @@ void ItemCreator::generate_common_item_variances(
   }
 
   this->clear_item_if_restricted(item);
-  this->set_item_unidentified_or_present_flags_if_special(item);
+  this->set_item_unidentified_or_present_flags_if_unsealable(item);
 }
 
 void ItemCreator::generate_common_armor_or_shield_type_and_variances(
