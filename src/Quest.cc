@@ -138,6 +138,10 @@ string decrypt_gci_or_vms_v2_data_section(
     }
   }
 
+  // Note: Other PSO save files have the round 2 seed at the end of the data,
+  // not at the beginning. Presumably they did this because the system,
+  // character, and Guild Card files are a constant size, but download quest
+  // files can vary in size.
   using HeaderT = typename conditional<IsBigEndian, PSOMemCardFileEncryptedHeader<be_uint32_t>, PSOMemCardFileEncryptedHeader<le_uint32_t>>::type;
   auto* header = reinterpret_cast<HeaderT*>(decrypted.data());
   PSOV2Encryption round2_crypt(header->round2_seed);
