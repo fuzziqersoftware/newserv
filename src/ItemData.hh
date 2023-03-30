@@ -80,7 +80,7 @@ struct ItemData { // 0x14 bytes
   void assign_mag_stats(const ItemMagStats& mag);
   void clear_mag_stats();
 
-  void set_unidentified_or_present_flag(uint16_t v);
+  void set_sealed_item_kill_count(uint16_t v);
   uint8_t get_tool_item_amount() const;
   void set_tool_item_amount(uint8_t amount);
   int16_t get_armor_or_shield_defense_bonus() const;

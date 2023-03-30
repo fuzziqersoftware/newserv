@@ -104,7 +104,7 @@ void ItemData::clear_mag_stats() {
 
 
 
-void ItemData::set_unidentified_or_present_flag(uint16_t v) {
+void ItemData::set_sealed_item_kill_count(uint16_t v) {
   this->data1[10] = (v >> 8) | 0x80;
   this->data1[11] = v;
 }
