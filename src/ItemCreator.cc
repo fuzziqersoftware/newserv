@@ -423,8 +423,8 @@ void ItemCreator::clear_tool_item_if_invalid(ItemData& item) {
 
 void ItemCreator::clear_item_if_restricted(ItemData& item) const {
   if (this->item_parameter_table->is_item_rare(item) && !this->are_rare_drops_allowed()) {
-    item.clear();
     this->log.info("Restricted: item is rare, but rares not allowed");
+    item.clear();
     return;
   }
 
@@ -450,11 +450,11 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
           case Restrictions::WeaponAndArmorMode::ONLY_PICKING:
             break;
           case Restrictions::WeaponAndArmorMode::NO_RARE:
-            if (!this->item_parameter_table->is_item_rare(item)) {
+            if (this->item_parameter_table->is_item_rare(item)) {
               this->log.info("Restricted: rare items not allowed");
-              break;
+              item.clear();
             }
-            [[fallthrough]];
+            break;
           case Restrictions::WeaponAndArmorMode::ALL_OFF:
             this->log.info("Restricted: weapons and armors not allowed");
             item.clear();
@@ -509,8 +509,6 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
     }
   }
 }
-
-
 
 
 
@@ -681,7 +679,6 @@ void ItemCreator::generate_common_weapon_variances(
     this->generate_common_weapon_special(item, area_norm);
     this->set_item_unidentified_flag_if_challenge(item);
   }
-  return;
 }
 
 void ItemCreator::generate_common_weapon_grind(
