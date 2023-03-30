@@ -106,7 +106,7 @@ private:
   ItemData on_box_item_drop_with_norm_area(uint8_t area_norm);
 
   uint32_t rand_int(uint64_t max);
-  float rand_float_0_1_from_crypt(size_t which);
+  float rand_float_0_1_from_crypt();
 
   template <size_t NumRanges>
   uint32_t choose_meseta_amount(

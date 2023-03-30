@@ -252,8 +252,7 @@ uint32_t ItemCreator::rand_int(uint64_t max) {
   return this->random_crypt.next() % max;
 }
 
-float ItemCreator::rand_float_0_1_from_crypt(size_t which) {
-  (void)which;
+float ItemCreator::rand_float_0_1_from_crypt() {
   // This lacks some precision, but matches the original implementation.
   return (static_cast<double>(this->random_crypt.next() >> 16) / 65536.0);
 }
@@ -521,7 +520,7 @@ void ItemCreator::generate_common_item_variances(
     case 1:
       if (item.data1[1] == 3) {
         float f1 = 1.0 + this->pt->unit_maxes[norm_area];
-        float f2 = this->rand_float_0_1_from_crypt(14);
+        float f2 = this->rand_float_0_1_from_crypt();
         this->generate_common_unit_variances(
             static_cast<uint32_t>(f1 * f2) & 0xFF, item);
         if (item.data1[2] == 0xFF) {
@@ -578,8 +577,8 @@ void ItemCreator::generate_common_armor_slots_and_bonuses(ItemData& item) {
 
   const auto& def = this->item_parameter_table->get_armor_or_shield(
       item.data1[1], item.data1[2]);
-  item.set_armor_or_shield_defense_bonus(def.dfp_range * this->rand_float_0_1_from_crypt(12));
-  item.set_common_armor_evasion_bonus(def.evp_range * this->rand_float_0_1_from_crypt(13));
+  item.set_armor_or_shield_defense_bonus(def.dfp_range * this->rand_float_0_1_from_crypt());
+  item.set_common_armor_evasion_bonus(def.evp_range * this->rand_float_0_1_from_crypt());
 }
 
 void ItemCreator::generate_common_armor_slot_count(ItemData& item) {
@@ -706,7 +705,7 @@ void ItemCreator::generate_common_weapon_special(
     return;
   }
   item.data1[4] = this->choose_weapon_special(
-      special_mult * this->rand_float_0_1_from_crypt(10));
+      special_mult * this->rand_float_0_1_from_crypt());
 }
 
 uint8_t ItemCreator::choose_weapon_special(uint8_t det) {
