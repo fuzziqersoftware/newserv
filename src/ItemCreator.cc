@@ -429,8 +429,12 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
 
   if (this->mode == GameMode::CHALLENGE) {
     // Forbid HP/TP-restoring units and meseta in challenge mode
+    // Note: PSO GC doesn't check for 0x61 or 0x62 here since those items
+    // (HP/Resurrection and TP/Resurrection) only exist on BB.
     if (item.data1[0] == 1) {
-      if ((item.data1[1] == 3) && (item.data1[2] >= 0x33) && (item.data1[2] <= 0x38)) {
+      if ((item.data1[1] == 3) && (
+           ((item.data1[2] >= 0x33) && (item.data1[2] <= 0x38)) ||
+           (item.data1[2] == 0x61) || (item.data1[2] == 0x62))) {
         this->log.info("Restricted: restore items not allowed in Challenge mode");
         item.clear();
       }
