@@ -150,7 +150,7 @@ Server commands:\n\
   announce <message>\n\
     Send an announcement message to all players.\n\
   create-tournament \"Tournament Name\" \"Map Name\" <num-teams> [options...]\n\
-    Create an Episode 3 tournament. The quotes are required arount the\n\
+    Create an Episode 3 tournament. The quotes are required around the\n\
     tournament and map names, unless the names contain no spaces.\n\
     Rules options:\n\
       2v2: Set team size to 2 players (default is 1 without this option)\n\
