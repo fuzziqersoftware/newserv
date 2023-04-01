@@ -27,6 +27,13 @@ struct ShuffleTables {
 
 
 
+// Every PSOGC save file begins with a PSOGCIFileHeader. The first 0x40 bytes of
+// this are the .gci file header; the remaining bytes of the file are the actual
+// data from the memory card. For save files (system / character / Guild Card),
+// one of the structures below immediately follows the PSOGCIFileHeader. The
+// system file is not encrypted, but the character and Guild Card files are
+// encrypted using a seed stored in the system file.
+
 struct PSOGCIFileHeader {
   /* 0000 */ parray<char, 4> game_id; // 'GPOE', 'GPSP', etc.
   /* 0004 */ parray<char, 2> developer_id; // '8P' for Sega
@@ -45,6 +52,7 @@ struct PSOGCIFileHeader {
   // fields in this struct starting with gci_header.game_name. (Yes, including
   // the checksum field, which is temporarily zero.) See checksum_correct below.
   /* 2084 */ be_uint32_t checksum;
+  /* 2088 */
 
   bool checksum_correct() const;
   void check() const;
