@@ -45,15 +45,19 @@ class PSOLFGEncryption : public PSOEncryption {
 public:
   virtual void encrypt(void* data, size_t size, bool advance = true);
   void encrypt_big_endian(void* data, size_t size, bool advance = true);
+  void encrypt_minus(void* data, size_t size, bool advance = true);
+  void encrypt_big_endian_minus(void* data, size_t size, bool advance = true);
   void encrypt_both_endian(void* le_data, void* be_data, size_t size, bool advance = true);
+
+  template <bool IsBigEndian>
+  void encrypt_t(void* data, size_t size, bool advance = true);
+  template <bool IsBigEndian>
+  void encrypt_minus_t(void* data, size_t size, bool advance = true);
 
   uint32_t next(bool advance = true);
 
 protected:
   explicit PSOLFGEncryption(uint32_t seed, size_t stream_length, size_t end_offset);
-
-  template <typename LongT>
-  void encrypt_t(void* data, size_t size, bool advance);
 
   virtual void update_stream() = 0;
 

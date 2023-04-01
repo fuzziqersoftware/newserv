@@ -37,7 +37,7 @@ struct CompiledFunctionCode {
 
   bool is_big_endian() const;
 
-  template <typename FooterT, typename U16T>
+  template <typename FooterT>
   std::string generate_client_command_t(
         const std::unordered_map<std::string, uint32_t>& label_writes,
         const std::string& suffix) const;

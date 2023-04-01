@@ -582,8 +582,8 @@ struct DeckDefinition {
 } __attribute__((packed)); // 0x84 bytes in total
 
 struct PlayerConfig {
-  // The first offsets in the comments in this struct are relative to start of
-  // 61/98 command; the second are relative to the start of the
+  // The first offsets in the comments in this struct are relative to the start
+  // of the 61/98 command; the second are relative to the start of the
   // Ep3PlayerDataSegment structure in the reverse-engineering project.
   // TODO: Fill in the unknown fields here by looking around callsites of
   // get_player_data_segment
@@ -626,6 +626,9 @@ struct PlayerConfig {
   /* 299C:2120 */ ptext<char, 0x10> name;
   /* 29AC:2130 */ parray<uint8_t, 0xCC> unknown_a11;
   /* 2A78:21FC */
+
+  void decrypt();
+  void encrypt(uint8_t basis);
 } __attribute__((packed));
 
 enum class HPType : uint8_t {

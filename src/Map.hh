@@ -113,7 +113,7 @@ public:
   void print(FILE* stream) const;
 
 private:
-  template <typename U32T>
+  template <bool IsBigEndian>
   void load_table_t(std::shared_ptr<const std::string> data);
 
   // Indexes are [area_id][variation1][variation2]

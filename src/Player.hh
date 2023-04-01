@@ -204,14 +204,15 @@ struct PlayerDispDataBB {
 // TODO: Is this the same for XB as it is for GC? (This struct is based on the
 // GC format)
 struct GuildCardV3 {
-  le_uint32_t player_tag;
-  le_uint32_t guild_card_number;
-  ptext<char, 0x18> name;
-  ptext<char, 0x6C> description;
-  uint8_t present; // should be 1
-  uint8_t language;
-  uint8_t section_id;
-  uint8_t char_class;
+  /* 00 */ le_uint32_t player_tag;
+  /* 04 */ le_uint32_t guild_card_number;
+  /* 08 */ ptext<char, 0x18> name;
+  /* 20 */ ptext<char, 0x6C> description;
+  /* 8C */ uint8_t present; // should be 1
+  /* 8D */ uint8_t language;
+  /* 8E */ uint8_t section_id;
+  /* 8F */ uint8_t char_class;
+  /* 90 */ 
 
   GuildCardV3() noexcept;
 } __attribute__((packed));

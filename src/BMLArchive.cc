@@ -10,33 +10,37 @@ using namespace std;
 
 
 
-template <typename LongT>
+template <bool IsBigEndian>
 struct BMLHeader {
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
   parray<uint8_t, 0x04> unknown_a1;
-  LongT num_entries;
+  U32T num_entries;
   parray<uint8_t, 0x38> unknown_a2;
 } __attribute__((packed));
 
-template <typename LongT>
+template <bool IsBigEndian>
 struct BMLHeaderEntry {
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
   ptext<char, 0x20> filename;
-  LongT compressed_size;
+  U32T compressed_size;
   parray<uint8_t, 0x04> unknown_a1;
-  LongT decompressed_size;
-  LongT compressed_gvm_size;
-  LongT decompressed_gvm_size;
+  U32T decompressed_size;
+  U32T compressed_gvm_size;
+  U32T decompressed_gvm_size;
   parray<uint8_t, 0x0C> unknown_a2;
 } __attribute__((packed));
 
-template <typename LongT>
+template <bool IsBigEndian>
 void BMLArchive::load_t() {
   StringReader r(*this->data);
 
-  const auto& header = r.get<BMLHeader<LongT>>();
+  const auto& header = r.get<BMLHeader<IsBigEndian>>();
 
   size_t offset = 0x800;
   while (this->entries.size() < header.num_entries) {
-    const auto& entry = r.get<BMLHeaderEntry<LongT>>();
+    const auto& entry = r.get<BMLHeaderEntry<IsBigEndian>>();
 
     if (offset + entry.compressed_size > this->data->size()) {
       throw runtime_error("BML data entry extends beyond end of data");
@@ -58,9 +62,9 @@ void BMLArchive::load_t() {
 BMLArchive::BMLArchive(shared_ptr<const string> data, bool big_endian)
   : data(data) {
   if (big_endian) {
-    this->load_t<be_uint32_t>();
+    this->load_t<true>();
   } else {
-    this->load_t<le_uint32_t>();
+    this->load_t<false>();
   }
 }
 

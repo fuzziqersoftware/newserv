@@ -10,6 +10,7 @@
 
 #include "../Loggers.hh"
 #include "../Compression.hh"
+#include "../PSOEncryption.hh"
 #include "../Text.hh"
 #include "../Quest.hh"
 
@@ -1708,6 +1709,35 @@ shared_ptr<const COMDeckDefinition> DataIndex::com_deck(const string& which) con
 
 shared_ptr<const COMDeckDefinition> DataIndex::random_com_deck() const {
   return this->com_decks[random_object<size_t>() % this->com_decks.size()];
+}
+
+
+
+void PlayerConfig::decrypt() {
+  if (!this->is_encrypted) {
+    return;
+  }
+  decrypt_trivial_gci_data(
+      &this->card_counts,
+      offsetof(PlayerConfig, decks) - offsetof(PlayerConfig, card_counts),
+      this->basis);
+  this->is_encrypted = 0;
+  this->basis = 0;
+}
+
+void PlayerConfig::encrypt(uint8_t basis) {
+  if (this->is_encrypted) {
+    if (this->basis == basis) {
+      return;
+    }
+    this->decrypt();
+  }
+  decrypt_trivial_gci_data(
+      &this->card_counts,
+      offsetof(PlayerConfig, decks) - offsetof(PlayerConfig, card_counts),
+      basis);
+  this->is_encrypted = 1;
+  this->basis = basis;
 }
 
 

@@ -1905,8 +1905,11 @@ struct S_ExecuteCode_B2 {
   // The code immediately follows, ending with an S_ExecuteCode_Footer_B2
 } __packed__;
 
-template <typename LongT>
+template <bool IsBigEndian>
 struct S_ExecuteCode_Footer_B2 {
+  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>:: type;
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>:: type;
+
   // Relocations is a list of words (le_uint16_t on DC/PC/XB/BB, be_uint16_t on
   // GC) containing the number of doublewords (uint32_t) to skip for each
   // relocation. The relocation pointer starts immediately after the
@@ -1925,19 +1928,18 @@ struct S_ExecuteCode_Footer_B2 {
   // relocations_offset points there, so those 12 bytes may also be omitted from
   // the command entirely (without changing code_size - so code_size would
   // technically extend beyond the end of the B2 command).
-  LongT relocations_offset = 0; // Relative to code base (after checksum_size)
-  LongT num_relocations = 0;
-  parray<LongT, 2> unused1;
+  U32T relocations_offset = 0; // Relative to code base (after checksum_size)
+  U32T num_relocations = 0;
+  parray<U32T, 2> unused1;
   // entrypoint_offset is doubly indirect - it points to a pointer to a 32-bit
   // value that itself is the actual entrypoint. This is presumably done so the
   // entrypoint can be optionally relocated.
-  LongT entrypoint_addr_offset = 0; // Relative to code base (after checksum_size).
-  parray<LongT, 3> unused2;
+  U32T entrypoint_addr_offset = 0; // Relative to code base (after checksum_size).
+  parray<U32T, 3> unused2;
 } __packed__;
 
-struct S_ExecuteCode_Footer_GC_B2 : S_ExecuteCode_Footer_B2<be_uint32_t> { } __packed__;
-struct S_ExecuteCode_Footer_DC_PC_XB_BB_B2
-    : S_ExecuteCode_Footer_B2<le_uint32_t> { } __packed__;
+struct S_ExecuteCode_Footer_GC_B2 : S_ExecuteCode_Footer_B2<true> { } __packed__;
+struct S_ExecuteCode_Footer_DC_PC_XB_BB_B2 : S_ExecuteCode_Footer_B2<false> { } __packed__;
 
 // B3 (C->S): Execute code and/or checksum memory result
 // Not used on versions that don't support the B2 command (see above).

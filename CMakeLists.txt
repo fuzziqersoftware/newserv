@@ -89,6 +89,7 @@ add_executable(newserv
   src/ReceiveCommands.cc
   src/ReceiveSubcommands.cc
   src/ReplaySession.cc
+  src/SaveFileFormats.cc
   src/SendCommands.cc
   src/Server.cc
   src/ServerShell.cc
@@ -125,14 +126,23 @@ foreach(TestCase IN ITEMS ${TestCases})
 endforeach()
 
 add_test(
-    NAME compression-prs
+    NAME "compression-prs"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMAND ${CMAKE_SOURCE_DIR}/test-compression.sh prs ${CMAKE_BINARY_DIR}/newserv)
 add_test(
-    NAME compression-bc0
+    NAME "compression-bc0"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMAND ${CMAKE_SOURCE_DIR}/test-compression.sh bc0 ${CMAKE_BINARY_DIR}/newserv)
 
+add_test(
+    NAME "decode-vms"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_SOURCE_DIR}/test-decode-vms.sh ${CMAKE_BINARY_DIR}/newserv)
+
+add_test(
+    NAME "decode-gci"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_SOURCE_DIR}/test-decode-gci.sh ${CMAKE_BINARY_DIR}/newserv)
 
 # Installation configuration
 

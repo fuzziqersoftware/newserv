@@ -86,7 +86,7 @@ private:
   std::shared_ptr<const ToolRandomSet> tool_random_set;
   std::shared_ptr<const WeaponRandomSet> weapon_random_set;
   std::shared_ptr<const ItemParameterTable> item_parameter_table;
-  const CommonItemSet::Table<be_uint16_t, be_uint32_t>* pt;
+  const CommonItemSet::Table<true>* pt;
   const RareItemSet::Table* rt;
   std::shared_ptr<const Restrictions> restrictions;
 

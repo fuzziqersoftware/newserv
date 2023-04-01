@@ -10,20 +10,22 @@ using namespace std;
 
 
 
-template <typename LongT>
+template <bool IsBigEndian>
 struct GSLHeaderEntry {
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
   ptext<char, 0x20> filename;
-  LongT offset; // In pages, so actual offset is this * 0x800
-  LongT size;
+  U32T offset; // In pages, so actual offset is this * 0x800
+  U32T size;
   uint64_t unused;
 } __attribute__((packed));
 
-template <typename LongT>
+template <bool IsBigEndian>
 void GSLArchive::load_t() {
   StringReader r(*this->data);
   uint64_t min_data_offset = 0xFFFFFFFFFFFFFFFF;
   while (r.where() < min_data_offset) {
-    const auto& entry = r.get<GSLHeaderEntry<LongT>>();
+    const auto& entry = r.get<GSLHeaderEntry<IsBigEndian>>();
     if (entry.filename.len() == 0) {
       break;
     }
@@ -38,9 +40,9 @@ void GSLArchive::load_t() {
 GSLArchive::GSLArchive(shared_ptr<const string> data, bool big_endian)
   : data(data) {
   if (big_endian) {
-    this->load_t<be_uint32_t>();
+    this->load_t<true>();
   } else {
-    this->load_t<le_uint32_t>();
+    this->load_t<false>();
   }
 }
 

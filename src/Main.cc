@@ -24,6 +24,7 @@
 #include "ProxyServer.hh"
 #include "PSOGCObjectGraph.hh"
 #include "ReplaySession.hh"
+#include "SaveFileFormats.hh"
 #include "SendCommands.hh"
 #include "Server.hh"
 #include "ServerShell.hh"
@@ -124,6 +125,12 @@ The actions are:\n\
     trivial algorithm. If SEED is given, it should be specified as one hex\n\
     byte. If SEED is not given, newserv will try all possible seeds and return\n\
     the one that results in the greatest number of zero bytes in the output.\n\
+  encrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
+  decrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
+    Encrypt or decrypt a character or Guild Card file. If encrypting, the\n\
+    checksum is also recomputed and stored in the encrypted file. CRYPT-OPTION\n\
+    is required; it can be either --sys=SYSTEM-FILENAME or --seed=ROUND1-SEED\n\
+    (specified in hex).\n\
   find-decryption-seed <OPTIONS...>\n\
     Perform a brute-force search for a decryption seed of the given data. The\n\
     ciphertext is specified with the --encrypted=DATA option and the expected\n\
@@ -197,6 +204,8 @@ enum class Behavior {
   ENCRYPT_DATA,
   DECRYPT_DATA,
   DECRYPT_TRIVIAL_DATA,
+  ENCRYPT_GCI_SAVE,
+  DECRYPT_GCI_SAVE,
   FIND_DECRYPTION_SEED,
   DECODE_QUEST_FILE,
   DECODE_SJIS,
@@ -220,6 +229,8 @@ static bool behavior_takes_input_filename(Behavior b) {
          (b == Behavior::ENCRYPT_DATA) ||
          (b == Behavior::DECRYPT_DATA) ||
          (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
+         (b == Behavior::DECRYPT_GCI_SAVE) ||
+         (b == Behavior::ENCRYPT_GCI_SAVE) ||
          (b == Behavior::DECODE_QUEST_FILE) ||
          (b == Behavior::DECODE_SJIS) ||
          (b == Behavior::FORMAT_ITEMRT_ENTRY) ||
@@ -239,6 +250,8 @@ static bool behavior_takes_output_filename(Behavior b) {
          (b == Behavior::ENCRYPT_DATA) ||
          (b == Behavior::DECRYPT_DATA) ||
          (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
+         (b == Behavior::DECRYPT_GCI_SAVE) ||
+         (b == Behavior::ENCRYPT_GCI_SAVE) ||
          (b == Behavior::DECODE_SJIS) ||
          (b == Behavior::EXTRACT_GSL) ||
          (b == Behavior::EXTRACT_BML);
@@ -267,6 +280,7 @@ int main(int argc, char** argv) {
   vector<const char*> find_decryption_seed_plaintexts;
   const char* input_filename = nullptr;
   const char* output_filename = nullptr;
+  const char* system_filename = nullptr;
   const char* replay_required_access_key = "";
   const char* replay_required_password = "";
   uint32_t root_object_address = 0;
@@ -291,6 +305,8 @@ int main(int argc, char** argv) {
       cli_version = GameVersion::BB;
     } else if (!strncmp(argv[x], "--seed=", 7)) {
       seed = &argv[x][7];
+    } else if (!strncmp(argv[x], "--sys=", 6)) {
+      system_filename = &argv[x][6];
     } else if (!strncmp(argv[x], "--key=", 6)) {
       key_file_name = &argv[x][6];
     } else if (!strncmp(argv[x], "--encrypted=", 12)) {
@@ -337,6 +353,10 @@ int main(int argc, char** argv) {
           behavior = Behavior::DECRYPT_DATA;
         } else if (!strcmp(argv[x], "decrypt-trivial-data")) {
           behavior = Behavior::DECRYPT_TRIVIAL_DATA;
+        } else if (!strcmp(argv[x], "decrypt-gci-save")) {
+          behavior = Behavior::DECRYPT_GCI_SAVE;
+        } else if (!strcmp(argv[x], "encrypt-gci-save")) {
+          behavior = Behavior::ENCRYPT_GCI_SAVE;
         } else if (!strcmp(argv[x], "find-decryption-seed")) {
           behavior = Behavior::FIND_DECRYPTION_SEED;
         } else if (!strcmp(argv[x], "decode-sjis")) {
@@ -408,13 +428,29 @@ int main(int argc, char** argv) {
     } else if (!output_filename && input_filename && strcmp(input_filename, "-")) {
       string filename = input_filename;
       if (behavior == Behavior::COMPRESS_PRS) {
-        if (ends_with(filename, ".bind") || ends_with(filename, ".datd") || ends_with(filename, ".mnmd")) {
+        if (ends_with(filename, ".bind") ||
+            ends_with(filename, ".datd") ||
+            ends_with(filename, ".mnmd")) {
           filename.resize(filename.size() - 1);
         } else {
           filename += ".prs";
         }
       } else if (behavior == Behavior::DECOMPRESS_PRS) {
-        if (ends_with(filename, ".bin") || ends_with(filename, ".dat") || ends_with(filename, ".mnm")) {
+        if (ends_with(filename, ".bin") ||
+            ends_with(filename, ".dat") ||
+            ends_with(filename, ".mnm")) {
+          filename += "d";
+        } else {
+          filename += ".dec";
+        }
+      } else if (behavior == Behavior::ENCRYPT_GCI_SAVE) {
+        if (ends_with(filename, ".gcid")) {
+          filename.resize(filename.size() - 1);
+        } else {
+          filename += ".gci";
+        }
+      } else if (behavior == Behavior::DECRYPT_GCI_SAVE) {
+        if (ends_with(filename, ".gci")) {
           filename += "d";
         } else {
           filename += ".dec";
@@ -572,6 +608,76 @@ int main(int argc, char** argv) {
       }
       decrypt_trivial_gci_data(data.data(), data.size(), basis);
       write_output_data(data.data(), data.size());
+      break;
+    }
+
+    case Behavior::ENCRYPT_GCI_SAVE:
+    case Behavior::DECRYPT_GCI_SAVE: {
+      uint32_t round1_seed;
+      if (system_filename) {
+        string system_data = load_file(system_filename);
+        StringReader r(system_data);
+        const auto& header = r.get<PSOGCIFileHeader>();
+        header.check();
+        const auto& system = r.get<PSOGCSystemFile>();
+        round1_seed = system.creation_internet_time;
+      } else if (!seed.empty()) {
+        round1_seed = stoul(seed, nullptr, 16);
+      } else {
+        // TODO: We can support brute-forcing character file encryption, but I'm
+        // lazy and this would probably not be useful for anyone.
+        throw runtime_error("either --sys or --seed must be given");
+      }
+
+      bool is_decrypt = (behavior == Behavior::DECRYPT_GCI_SAVE);
+
+      auto data = read_input_data();
+      StringReader r(data);
+      const auto& header = r.get<PSOGCIFileHeader>();
+      header.check();
+
+      size_t data_start_offset = r.where();
+
+      auto process_file = [&]<typename StructT>() {
+        if (is_decrypt) {
+          const void* data_section = r.getv(header.data_size);
+          auto decrypted = decrypt_gci_fixed_size_file_data_section<StructT>(
+              data_section, header.data_size, round1_seed);
+          *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
+        } else {
+          const auto& s = r.get<StructT>();
+          auto encrypted = encrypt_gci_fixed_size_file_data_section<StructT>(
+              s, round1_seed);
+          if (data_start_offset + encrypted.size() > data.size()) {
+            throw runtime_error("encrypted result exceeds file size");
+          }
+          memcpy(data.data() + data_start_offset, encrypted.data(), encrypted.size());
+        }
+      };
+
+      if (header.data_size == sizeof(PSOGCGuildCardFile)) {
+        process_file.template operator()<PSOGCGuildCardFile>();
+      } else if (header.is_ep12() && (header.data_size == sizeof(PSOGCCharacterFile))) {
+        process_file.template operator()<PSOGCCharacterFile>();
+      } else if (header.is_ep3() && (header.data_size == sizeof(PSOGCEp3CharacterFile))) {
+        auto* charfile = reinterpret_cast<PSOGCEp3CharacterFile*>(data.data() + data_start_offset);
+        if (!is_decrypt) {
+          for (size_t z = 0; z < charfile->characters.size(); z++) {
+            charfile->characters[z].ep3_config.encrypt(random_object<uint8_t>());
+          }
+        }
+        process_file.template operator()<PSOGCEp3CharacterFile>();
+        if (is_decrypt) {
+          for (size_t z = 0; z < charfile->characters.size(); z++) {
+            charfile->characters[z].ep3_config.decrypt();
+          }
+        }
+      } else {
+        throw runtime_error("unrecognized save type");
+      }
+
+      write_output_data(data.data(), data.size());
+
       break;
     }
 

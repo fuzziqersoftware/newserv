@@ -367,6 +367,7 @@ newserv has many CLI options, which can be used to access functionality other th
 * Compute the decompressed size of compressed PRS data without decompressing it
 * Encrypt or decrypt data using any PSO version's network encryption scheme
 * Encrypt or decrypt data using Episode 3's trivial scheme
+* Encrypt or decrypt PSO GC save data (.gci files)
 * Run a brute-force search for a decryption seed
 * Decode Shift-JIS text to UTF-16
 * Convert quests in .gci, .vms, .dlq, or .qst format to .bin/.dat format

@@ -7,7 +7,7 @@
 CommonItemSet::CommonItemSet(shared_ptr<const string> data)
   : gsl(data, true) { }
 
-const CommonItemSet::BETable& CommonItemSet::get_table(
+const CommonItemSet::Table<true>& CommonItemSet::get_table(
     Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const {
   // TODO: What should we do for Ep4?
   string filename = string_printf("ItemPT%s%s%c%1d.rel",
@@ -16,12 +16,12 @@ const CommonItemSet::BETable& CommonItemSet::get_table(
       tolower(abbreviation_for_difficulty(difficulty)),
       secid);
   auto data = this->gsl.get(filename);
-  if (data.second < sizeof(BETable)) {
+  if (data.second < sizeof(Table<true>)) {
     throw runtime_error(string_printf(
         "ItemPT entry %s is too small (received %zX bytes, expected %zX bytes)",
-        filename.c_str(), data.second, sizeof(BETable)));
+        filename.c_str(), data.second, sizeof(Table<true>)));
   }
-  return *reinterpret_cast<const BETable*>(data.first);
+  return *reinterpret_cast<const Table<true>*>(data.first);
 }
 
 

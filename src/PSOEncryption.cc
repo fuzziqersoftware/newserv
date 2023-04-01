@@ -38,8 +38,10 @@ uint32_t PSOLFGEncryption::next(bool advance) {
   return ret;
 }
 
-template <typename LongT>
+template <bool IsBigEndian>
 void PSOLFGEncryption::encrypt_t(void* vdata, size_t size, bool advance) {
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
   if (size & 3) {
     throw invalid_argument("size must be a multiple of 4");
   }
@@ -48,18 +50,44 @@ void PSOLFGEncryption::encrypt_t(void* vdata, size_t size, bool advance) {
   }
   size >>= 2;
 
-  LongT* data = reinterpret_cast<LongT*>(vdata);
+  U32T* data = reinterpret_cast<U32T*>(vdata);
   for (size_t x = 0; x < size; x++) {
     data[x] ^= this->next(advance);
   }
 }
 
+template <bool IsBigEndian>
+void PSOLFGEncryption::encrypt_minus_t(void* vdata, size_t size, bool advance) {
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
+  if (size & 3) {
+    throw invalid_argument("size must be a multiple of 4");
+  }
+  if (!advance && (size != 4)) {
+    throw logic_error("cannot peek-encrypt/decrypt with size > 4");
+  }
+  size >>= 2;
+
+  U32T* data = reinterpret_cast<U32T*>(vdata);
+  for (size_t x = 0; x < size; x++) {
+    data[x] = this->next(advance) - data[x];
+  }
+}
+
 void PSOLFGEncryption::encrypt(void* vdata, size_t size, bool advance) {
-  this->encrypt_t<le_uint32_t>(vdata, size, advance);
+  this->encrypt_t<false>(vdata, size, advance);
 }
 
 void PSOLFGEncryption::encrypt_big_endian(void* vdata, size_t size, bool advance) {
-  this->encrypt_t<be_uint32_t>(vdata, size, advance);
+  this->encrypt_t<true>(vdata, size, advance);
+}
+
+void PSOLFGEncryption::encrypt_minus(void* vdata, size_t size, bool advance) {
+  this->encrypt_minus_t<false>(vdata, size, advance);
+}
+
+void PSOLFGEncryption::encrypt_big_endian_minus(void* vdata, size_t size, bool advance) {
+  this->encrypt_minus_t<true>(vdata, size, advance);
 }
 
 void PSOLFGEncryption::encrypt_both_endian(

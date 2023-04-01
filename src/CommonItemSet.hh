@@ -23,9 +23,10 @@ public:
   //       (is_ep2 ? "l" : ""),
   //       char_for_difficulty(difficulty), // One of "nhvu"
   //       section_id);
-  // For GC, use be_uint16_t/be_uint32_t; for other platforms use le variants
-  template <typename U16T, typename U32T>
+  template <bool IsBigEndian>
   struct Table {
+    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     // This data structure uses index probability tables in multiple places. An
     // index probability table is a table where each entry holds the probability
     // that that entry's index is used. For example, if the armor slot count
@@ -240,10 +241,7 @@ public:
 
   CommonItemSet(std::shared_ptr<const std::string> data);
 
-  using BETable = Table<be_uint16_t, be_uint32_t>;
-  using LETable = Table<le_uint16_t, le_uint32_t>;
-
-  const BETable& get_table(
+  const Table<true>& get_table(
       Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const;
 
 private:

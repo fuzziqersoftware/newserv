@@ -461,14 +461,16 @@ vector<PSOEnemy> parse_map(
 
 SetDataTable::SetDataTable(shared_ptr<const string> data, bool big_endian) {
   if (big_endian) {
-    this->load_table_t<be_uint32_t>(data);
+    this->load_table_t<true>(data);
   } else {
-    this->load_table_t<le_uint32_t>(data);
+    this->load_table_t<false>(data);
   }
 }
 
-template <typename U32T>
+template <bool IsBigEndian>
 void SetDataTable::load_table_t(shared_ptr<const string> data) {
+  using U32T = typename conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
   StringReader r(*data);
 
   struct Footer {

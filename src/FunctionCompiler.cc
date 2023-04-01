@@ -40,7 +40,7 @@ const char* name_for_architecture(CompiledFunctionCode::Architecture arch) {
 
 
 
-template <typename FooterT, typename U16T>
+template <typename FooterT>
 string CompiledFunctionCode::generate_client_command_t(
       const unordered_map<string, uint32_t>& label_writes,
       const string& suffix) const {
@@ -71,7 +71,7 @@ string CompiledFunctionCode::generate_client_command_t(
 
   footer.relocations_offset = w.size();
   for (uint16_t delta : this->relocation_deltas) {
-    w.put<U16T>(delta);
+    w.put<typename FooterT::U16T>(delta);
   }
   if (this->relocation_deltas.size() & 1) {
     w.put_u16(0);
@@ -85,10 +85,10 @@ string CompiledFunctionCode::generate_client_command(
       const unordered_map<string, uint32_t>& label_writes,
       const string& suffix) const {
   if (this->arch == Architecture::POWERPC) {
-    return this->generate_client_command_t<S_ExecuteCode_Footer_GC_B2, be_uint16_t>(
+    return this->generate_client_command_t<S_ExecuteCode_Footer_GC_B2>(
         label_writes, suffix);
   } else if ((this->arch == Architecture::X86) || (this->arch == Architecture::SH4)) {
-    return this->generate_client_command_t<S_ExecuteCode_Footer_DC_PC_XB_BB_B2, le_uint16_t>(
+    return this->generate_client_command_t<S_ExecuteCode_Footer_DC_PC_XB_BB_B2>(
         label_writes, suffix);
   } else {
     throw logic_error("invalid architecture");

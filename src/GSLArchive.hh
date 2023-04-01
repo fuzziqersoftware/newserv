@@ -26,7 +26,7 @@ public:
   StringReader get_reader(const std::string& name) const;
 
 private:
-  template <typename LongT>
+  template <bool IsBigEndian>
   void load_t();
 
   std::shared_ptr<const std::string> data;
