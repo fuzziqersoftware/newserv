@@ -7,12 +7,12 @@ if [ "$EXECUTABLE" == "" ]; then
   EXECUTABLE="./newserv"
 fi
 
-echo "... decode LionelV1.vms"
-$EXECUTABLE decode-vms tests/LionelV1.vms
-diff tests/LionelV1.dec tests/LionelV1.vms.dec
-echo "... decode LionelV2.vms"
-$EXECUTABLE decode-vms tests/LionelV2.vms --seed=D0231610
-diff tests/LionelV2.dec tests/LionelV2.vms.dec
+echo "... decode vms/lionel-v1.vms"
+$EXECUTABLE decode-vms tests/vms/lionel-v1.vms
+diff tests/vms/lionel-v1.dec tests/vms/lionel-v1.vms.dec
+echo "... decode vms/lionel-v2.vms"
+$EXECUTABLE decode-vms tests/vms/lionel-v2.vms --seed=D0231610
+diff tests/vms/lionel-v2.dec tests/vms/lionel-v2.vms.dec
 
 echo "... clean up"
-rm tests/*.vms.dec
+rm tests/vms/*.vms.dec
