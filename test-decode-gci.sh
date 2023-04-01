@@ -21,8 +21,8 @@ $EXECUTABLE decode-gci tests/gci/quest-without-key.gci --seed=1705B11E
 diff tests/gci/quest-without-key.dec tests/gci/quest-without-key.gci.dec
 
 echo "... re-encrypt gci/save-charfile.gci"
-./newserv encrypt-gci-save --sys=tests/gci/save-system.gci tests/gci/save-charfile.gcid tests/gci/save-charfile.gci
-./newserv decrypt-gci-save --sys=tests/gci/save-system.gci tests/gci/save-charfile.gci tests/gci/save-charfile-redec.gcid
+$EXECUTABLE encrypt-gci-save --sys=tests/gci/save-system.gci tests/gci/save-charfile.gcid tests/gci/save-charfile.gci
+$EXECUTABLE decrypt-gci-save --sys=tests/gci/save-system.gci tests/gci/save-charfile.gci tests/gci/save-charfile-redec.gcid
 hexdump -vC tests/gci/save-charfile.gcid > tests/gci/save-charfile.gcid.hex
 hexdump -vC tests/gci/save-charfile-redec.gcid > tests/gci/save-charfile-redec.gcid.hex
 # There should be differences on two lines: the checksum and the round2 seed
