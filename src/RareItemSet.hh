@@ -15,10 +15,9 @@ class RareItemSet {
 public:
   struct Table {
     // 0x280 in size; describes one difficulty, section ID, and episode
-    // TODO: It looks like this structure can actually vary. We see the offsets
-    // 0194 and 01B2 in the unused section, along with the value 1E (number of
-    // box rares). In PSOGC, these all appear to be the same size/format, but
-    // that's probably not strictly required to be the case.
+    // TODO: It looks like this structure can actually vary. In PSOGC, these all
+    // appear to be the same size/format, but that's probably not strictly
+    // required to be the case.
     struct Drop {
       uint8_t probability;
       uint8_t item_code[3];

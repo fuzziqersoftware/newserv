@@ -71,7 +71,10 @@ struct PSOGCSystemFile {
   /* 000E */ be_uint16_t surround_sound_enabled;
   /* 0010 */ parray<uint8_t, 0x100> unknown_a6;
   /* 0110 */ parray<uint8_t, 8> unknown_a7;
-  /* 0118 */ be_uint32_t creation_internet_time; // Character file round1 seed
+  // This timestamp is the number of seconds since 12:00AM on 1 January 2000.
+  // This field is also used as the round1 seed for encrypting the character and
+  // Guild Card files.
+  /* 0118 */ be_uint32_t creation_timestamp;
   /* 011C */
 } __attribute__((packed));
 
@@ -116,9 +119,9 @@ struct PSOGCCharacterFile {
     /* 0000 */ PlayerInventory inventory;
     /* 034C */ PlayerDispDataDCPCV3 disp;
     /* 041C */ be_uint32_t unknown_a1;
-    /* 0420 */ be_uint32_t save_token; // Sent in 96 command
+    /* 0420 */ be_uint32_t creation_timestamp;
     /* 0424 */ parray<be_uint32_t, 3> unknown_a2;
-    /* 0430 */ be_uint32_t save_count; // Sent in 96 command
+    /* 0430 */ be_uint32_t save_count;
     /* 0434 */ parray<uint8_t, 0x230> unknown_a3;
     /* 0664 */ PlayerBank bank;
     /* 192C */ GuildCardV3 guild_card;
@@ -148,19 +151,25 @@ struct PSOGCEp3CharacterFile {
     /* 034C */ PlayerDispDataDCPCV3 disp;
     /* 041C */ be_uint32_t unknown_a1;
     /* 0420 */ be_uint32_t save_token; // Sent in 96 command
-    /* 0424 */ parray<be_uint32_t, 3> unknown_a2;
+    // The signature field holds the value 0xA205B064, which is 2718281828 in
+    // decimal - approximately e * 10^9. It's unknown why Sega chose this value.
+    /* 0424 */ be_uint32_t signature;
+    /* 0428 */ be_uint32_t unknown_a2;
+    /* 042C */ be_uint32_t unknown_a3;
     /* 0430 */ be_uint32_t save_count; // Sent in 96 command
-    /* 0434 */ parray<uint8_t, 0x498> unknown_a3;
+    /* 0434 */ parray<uint8_t, 0x1C> unknown_a4;
+    /* 0450 */ parray<uint8_t, 0x10> unknown_a5;
+    /* 0460 */ parray<uint8_t, 0x46C> unknown_a6;
     /* 08CC */ GuildCardV3 guild_card;
     /* 095C */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
     /* 0D7C */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
-    /* 140C */ parray<uint8_t, 0xAC> unknown_a4;
+    /* 140C */ parray<uint8_t, 0xAC> unknown_a7;
     /* 14B8 */ ptext<char, 0xAC> info_board;
-    /* 1564 */ parray<uint8_t, 0xF4> unknown_a5;
+    /* 1564 */ parray<uint8_t, 0xF4> unknown_a8;
     /* 1658 */ Episode3::PlayerConfig ep3_config;
-    /* 39A8 */ be_uint32_t unknown_a7;
-    /* 39AC */ be_uint32_t unknown_a8;
-    /* 39B0 */ be_uint32_t unknown_a9;
+    /* 39A8 */ be_uint32_t unknown_a9;
+    /* 39AC */ be_uint32_t unknown_a10;
+    /* 39B0 */ be_uint32_t unknown_a11;
     /* 39B4 */
   } __attribute__((packed));
   /* 00004 */ parray<Character, 7> characters;
@@ -201,7 +210,7 @@ struct PSOGCGuildCardFile {
   } __attribute__((packed));
   /* 00C4 */ parray<GuildCardEntry, 0xD2> entries;
   /* D2C4 */ parray<GuildCardBE, 0x1C> blocked_senders;
-  /* E284 */ be_uint32_t unknown_a3;
+  /* E284 */ be_uint32_t creation_timestamp;
   /* E288 */ be_uint32_t round2_seed;
   /* E28C */
 } __attribute__((packed));
@@ -285,3 +294,13 @@ std::string encrypt_gci_fixed_size_file_data_section(
   return encrypt_gci_or_vms_v2_data_section<true>(
       &encrypted, sizeof(StructT), round1_seed);
 }
+
+
+
+uint32_t compute_psogc_timestamp(
+    uint16_t year,
+    uint8_t month,
+    uint8_t day,
+    uint8_t hour,
+    uint8_t minute,
+    uint8_t second);

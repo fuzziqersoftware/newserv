@@ -87,3 +87,23 @@ bool PSOGCIFileHeader::is_ep12() const {
 bool PSOGCIFileHeader::is_ep3() const {
   return (this->game_id[2] == 'S');
 }
+
+
+
+uint32_t compute_psogc_timestamp(
+    uint16_t year,
+    uint8_t month,
+    uint8_t day,
+    uint8_t hour,
+    uint8_t minute,
+    uint8_t second) {
+  static uint16_t month_start_day[12] = {
+      0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+
+  uint32_t year_start_day = ((year - 1998) >> 2) + (year - 2000) * 365;
+  if ((((year - 1998) & 3) == 0) && (month < 3)) {
+    year_start_day--;
+  }
+  uint32_t res_day = (day - 1) + year_start_day + month_start_day[month - 1];
+  return second + (minute + (hour + (res_day * 24)) * 60) * 60;
+}

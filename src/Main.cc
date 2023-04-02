@@ -620,7 +620,7 @@ int main(int argc, char** argv) {
         const auto& header = r.get<PSOGCIFileHeader>();
         header.check();
         const auto& system = r.get<PSOGCSystemFile>();
-        round1_seed = system.creation_internet_time;
+        round1_seed = system.creation_timestamp;
       } else if (!seed.empty()) {
         round1_seed = stoul(seed, nullptr, 16);
       } else {

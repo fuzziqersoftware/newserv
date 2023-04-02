@@ -1531,9 +1531,13 @@ struct C_Login_BB_93 {
 // 96 (C->S): Character save information
 
 struct C_CharSaveInfo_V3_BB_96 {
-  // This field appears to be a checksum or random stamp of some sort; it seems
-  // to be unique and constant per character.
-  le_uint32_t unknown_a1 = 0;
+  // The creation timestamp is the number of seconds since 12:00AM on 1 January
+  // 2000. Instead of computing this directly from the TBR (on PSO GC), the game
+  // uses localtime(), then converts that to the desired timestamp. The leap
+  // year correction in the latter phase of this computation seems incorrect; it
+  // adds a day in 2002, 2006, etc. instead of 2004, 2008, etc. See
+  // compute_psogc_timestamp in SaveFileFormats.cc for details.
+  le_uint32_t creation_timestamp = 0;
   // This field counts certain events on a per-character basis. One of the
   // relevant events is the act of sending a 96 command; another is the act of
   // receiving a 97 command (to which the client responds with a B1 command).
