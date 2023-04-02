@@ -120,18 +120,22 @@ struct PSOGCCharacterFile {
     /* 034C */ PlayerDispDataDCPCV3 disp;
     /* 041C */ be_uint32_t unknown_a1;
     /* 0420 */ be_uint32_t creation_timestamp;
-    /* 0424 */ parray<be_uint32_t, 3> unknown_a2;
+    // The signature field holds the value 0xA205B064, which is 2718281828 in
+    // decimal - approximately e * 10^9. It's unknown why Sega chose this value.
+    /* 0424 */ be_uint32_t signature;
+    /* 0428 */ be_uint32_t unknown_a2;
+    /* 042C */ be_uint32_t unknown_a3;
     /* 0430 */ be_uint32_t save_count;
-    /* 0434 */ parray<uint8_t, 0x230> unknown_a3;
+    /* 0434 */ parray<uint8_t, 0x230> unknown_a4;
     /* 0664 */ PlayerBank bank;
     /* 192C */ GuildCardV3 guild_card;
     /* 19BC */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
     /* 1DDC */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
     /* 246C */ ptext<char, 0xAC> auto_reply;
     /* 2518 */ ptext<char, 0xAC> info_board;
-    /* 25C4 */ parray<uint8_t, 0x11C> unknown_a4;
+    /* 25C4 */ parray<uint8_t, 0x11C> unknown_a5;
     /* 26E0 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
-    /* 2708 */ parray<uint8_t, 0x90> unknown_a5;
+    /* 2708 */ parray<uint8_t, 0x90> unknown_a6;
     /* 2798 */
   } __attribute__((packed));
   /* 00004 */ parray<Character, 7> characters;
@@ -150,16 +154,18 @@ struct PSOGCEp3CharacterFile {
     /* 0000 */ PlayerInventory inventory;
     /* 034C */ PlayerDispDataDCPCV3 disp;
     /* 041C */ be_uint32_t unknown_a1;
-    /* 0420 */ be_uint32_t save_token; // Sent in 96 command
-    // The signature field holds the value 0xA205B064, which is 2718281828 in
-    // decimal - approximately e * 10^9. It's unknown why Sega chose this value.
-    /* 0424 */ be_uint32_t signature;
+    /* 0420 */ be_uint32_t creation_timestamp;
+    /* 0424 */ be_uint32_t signature; // Same value as for Episodes 1&2 (above)
     /* 0428 */ be_uint32_t unknown_a2;
     /* 042C */ be_uint32_t unknown_a3;
-    /* 0430 */ be_uint32_t save_count; // Sent in 96 command
+    /* 0430 */ be_uint32_t save_count;
     /* 0434 */ parray<uint8_t, 0x1C> unknown_a4;
     /* 0450 */ parray<uint8_t, 0x10> unknown_a5;
-    /* 0460 */ parray<uint8_t, 0x46C> unknown_a6;
+    // seq_vars is an array of 1024 bits, which contain all the Episode 3 quest
+    // progress flags. This includes things like which maps are unlocked, which
+    // NPC decks are unlocked, and whether the player has a VIP card or not.
+    /* 0460 */ parray<uint8_t, 0x400> seq_vars;
+    /* 0860 */ parray<uint8_t, 0x6C> unknown_a6;
     /* 08CC */ GuildCardV3 guild_card;
     /* 095C */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
     /* 0D7C */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
@@ -178,7 +184,16 @@ struct PSOGCEp3CharacterFile {
   /* 19410 */ ptext<char, 0x10> password;
   /* 19420 */ be_uint64_t bgm_test_songs_unlocked;
   /* 19428 */ be_uint32_t save_count;
-  /* 1942C */ parray<be_uint32_t, 0x20> unknown_a4;
+  // This is an array of 1000 bits, represented here as 128 bytes, the last few
+  // of which are unused. Each bit corresponds to a card ID with the bit's
+  // index; if the bit is set, then the card's rarity is replaced with D2 if its
+  // original rarity is S, SS, E, or D2, or with D1 if the original rarity is
+  // any other value. Upon receiving a B8 command (new card definitions), the
+  // game updates this array of bits based on which cards in the received update
+  // have D1 or D2 rarities. This could have been used by Sega to persist part
+  // of the online updates into offline play, but there's no indication that
+  // they ever used this functionality.
+  /* 1942C */ parray<uint8_t, 0x80> card_rarity_override_flags;
   /* 194AC */ be_uint32_t round2_seed;
   /* 194B0 */
 } __attribute__((packed));
