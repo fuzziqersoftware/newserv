@@ -27,18 +27,30 @@ struct ShuffleTables {
 
 
 
-// Every PSOGC save file begins with a PSOGCIFileHeader. The first 0x40 bytes of
-// this are the .gci file header; the remaining bytes of the file are the actual
-// data from the memory card. For save files (system / character / Guild Card),
-// one of the structures below immediately follows the PSOGCIFileHeader. The
-// system file is not encrypted, but the character and Guild Card files are
-// encrypted using a seed stored in the system file.
-
 struct PSOGCIFileHeader {
+  // Every PSOGC save file begins with a PSOGCIFileHeader. The first 0x40 bytes
+  // of this structure are the .gci file header; the remaining bytes after that
+  // are the actual data from the memory card. For save files (system /
+  // character / Guild Card), one of the structures below immediately follows
+  // the PSOGCIFileHeader. The system file is not encrypted, but the character
+  // and Guild Card files are encrypted using a seed stored in the system file.
   /* 0000 */ parray<char, 4> game_id; // 'GPOE', 'GPSP', etc.
   /* 0004 */ parray<char, 2> developer_id; // '8P' for Sega
-  // There is a structure for this part of the header, but we don't use it
-  /* 0006 */ parray<uint8_t, 0x3A> remaining_gci_header;
+  // There is a structure for this part of the header, but we don't use it.
+  /* 0006 */ uint8_t unused;
+  /* 0007 */ uint8_t image_flags;
+  /* 0008 */ ptext<char, 0x20> internal_file_name;
+  /* 0028 */ be_uint32_t modification_time;
+  /* 002C */ be_uint32_t image_data_offset;
+  /* 0030 */ be_uint16_t icon_formats;
+  /* 0032 */ be_uint16_t icon_animation_speeds;
+  /* 0034 */ uint8_t permission_flags;
+  /* 0035 */ uint8_t copy_count;
+  /* 0036 */ be_uint16_t first_block_index;
+  /* 0038 */ be_uint16_t num_blocks;
+  /* 003A */ parray<uint8_t, 2> unused2;
+  /* 003C */ be_uint32_t comment_offset;
+  // GCI header ends here (and memcard file data begins here)
   // game_name is e.g. "PSO EPISODE I & II" or "PSO EPISODE III"
   /* 0040 */ ptext<char, 0x1C> game_name;
   /* 005C */ be_uint32_t embedded_seed; // Used in some of Ralf's quest packs
