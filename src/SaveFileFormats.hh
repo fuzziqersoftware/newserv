@@ -83,9 +83,61 @@ struct PSOGCEp3SystemFile {
   /* 012C */
 } __attribute__((packed));
 
+struct PSOGCSaveFileSymbolChatEntry {
+  /* 00 */ be_uint32_t present;
+  /* 04 */ ptext<char, 0x18> name;
+  /* 1C */ be_uint16_t unused;
+  /* 1E */ uint8_t flags;
+  /* 1F */ uint8_t face_spec;
+  struct CornerObject {
+    uint8_t type;
+    uint8_t flags_color;
+  } __attribute__((packed));
+  /* 20 */ parray<CornerObject, 4> corner_objects;
+  struct FacePart {
+    uint8_t type;
+    uint8_t x;
+    uint8_t y;
+    uint8_t flags;
+  } __attribute__((packed));
+  /* 28 */ parray<FacePart, 12> face_parts;
+  /* 58 */
+} __attribute__((packed));
+
+struct PSOGCSaveFileChatShortcutEntry {
+  /* 00 */ be_uint32_t present_type;
+  /* 04 */ parray<uint8_t, 0x50> definition;
+  /* 54 */
+} __attribute__((packed));
+
 struct PSOGCCharacterFile {
   /* 00000 */ be_uint32_t checksum;
-  /* 00004 */ parray<uint8_t, 0x11564> unknown_a1; // TODO
+  struct Character {
+    /* 0000 */ PlayerInventory inventory;
+    /* 034C */ PlayerDispDataDCPCV3 disp;
+    /* 041C */ be_uint32_t unknown_a1;
+    /* 0420 */ be_uint32_t save_token; // Sent in 96 command
+    /* 0424 */ parray<be_uint32_t, 3> unknown_a2;
+    /* 0430 */ be_uint32_t save_count; // Sent in 96 command
+    /* 0434 */ parray<uint8_t, 0x230> unknown_a3;
+    /* 0664 */ PlayerBank bank;
+    /* 192C */ GuildCardV3 guild_card;
+    /* 19BC */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
+    /* 1DDC */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
+    /* 246C */ ptext<char, 0xAC> auto_reply;
+    /* 2518 */ ptext<char, 0xAC> info_board;
+    /* 25C4 */ parray<uint8_t, 0x11C> unknown_a4;
+    /* 26E0 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
+    /* 2708 */ parray<uint8_t, 0x90> unknown_a5;
+    /* 2798 */
+  } __attribute__((packed));
+  /* 00004 */ parray<Character, 7> characters;
+  /* 1152C */ ptext<char, 0x10> serial_number; // As %08X (not decimal)
+  /* 1153C */ ptext<char, 0x10> access_key;
+  /* 1154C */ ptext<char, 0x10> password;
+  /* 1155C */ be_uint32_t unknown_a1;
+  /* 11560 */ be_uint32_t unknown_a2;
+  /* 11564 */ be_uint32_t unknown_a3;
   /* 11568 */ be_uint32_t round2_seed;
   /* 1156C */
 } __attribute__((packed));
@@ -101,33 +153,8 @@ struct PSOGCEp3CharacterFile {
     /* 0430 */ be_uint32_t save_count; // Sent in 96 command
     /* 0434 */ parray<uint8_t, 0x498> unknown_a3;
     /* 08CC */ GuildCardV3 guild_card;
-    struct SymbolChatEntry {
-      /* 00 */ be_uint32_t present;
-      /* 04 */ ptext<char, 0x18> name;
-      /* 1C */ be_uint16_t unused;
-      /* 1E */ uint8_t flags;
-      /* 1F */ uint8_t face_spec;
-      struct CornerObject {
-        uint8_t type;
-        uint8_t flags_color;
-      } __attribute__((packed));
-      /* 20 */ parray<CornerObject, 4> corner_objects;
-      struct FacePart {
-        uint8_t type;
-        uint8_t x;
-        uint8_t y;
-        uint8_t flags;
-      } __attribute__((packed));
-      /* 28 */ parray<FacePart, 12> face_parts;
-      /* 58 */
-    } __attribute__((packed));
-    /* 095C */ parray<SymbolChatEntry, 12> symbol_chats;
-    struct ChatShortcut {
-      /* 00 */ be_uint32_t present_type;
-      /* 04 */ parray<uint8_t, 0x50> definition;
-      /* 54 */
-    } __attribute__((packed));
-    /* 0D7C */ parray<ChatShortcut, 20> chat_shortcuts;
+    /* 095C */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
+    /* 0D7C */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
     /* 140C */ parray<uint8_t, 0xAC> unknown_a4;
     /* 14B8 */ ptext<char, 0xAC> info_board;
     /* 1564 */ parray<uint8_t, 0xF4> unknown_a5;
@@ -151,7 +178,32 @@ struct PSOGCEp3CharacterFile {
 
 struct PSOGCGuildCardFile {
   /* 0000 */ be_uint32_t checksum;
-  /* 0004 */ parray<uint8_t, 0xE284> unknown_a1;
+  /* 0004 */ parray<uint8_t, 0xC0> unknown_a1;
+  struct GuildCardBE {
+    // Note: This struct (up through offset 0x90) is identical to GuildCardV3
+    // except for 32-bit fields, which are big-endian here.
+    /* 0000 */ be_uint32_t player_tag; // == 0x00000001 (not 0x00010000)
+    /* 0004 */ be_uint32_t guild_card_number;
+    /* 0008 */ ptext<char, 0x18> name;
+    /* 0020 */ ptext<char, 0x6C> description;
+    /* 008C */ uint8_t present;
+    /* 008D */ uint8_t language;
+    /* 008E */ uint8_t section_id;
+    /* 008F */ uint8_t char_class;
+    /* 0090 */
+  } __attribute__((packed));
+  struct GuildCardEntry {
+    /* 0000 */ GuildCardBE base;
+    /* 0090 */ uint8_t unknown_a1;
+    /* 0091 */ uint8_t unknown_a2;
+    /* 0092 */ uint8_t unknown_a3;
+    /* 0093 */ uint8_t unknown_a4;
+    /* 0094 */ ptext<char, 0x6C> comment;
+    /* 0100 */
+  } __attribute__((packed));
+  /* 00C4 */ parray<GuildCardEntry, 0xD2> entries;
+  /* D2C4 */ parray<GuildCardBE, 0x1C> blocked_senders;
+  /* E284 */ be_uint32_t unknown_a3;
   /* E288 */ be_uint32_t round2_seed;
   /* E28C */
 } __attribute__((packed));
