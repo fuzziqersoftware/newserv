@@ -63,12 +63,12 @@ struct PSOGCIFileHeader {
 
 struct PSOGCSystemFile {
   /* 0000 */ be_uint32_t checksum;
-  /* 0004 */ be_uint16_t unknown_a1;
-  /* 0006 */ uint8_t unknown_a2;
+  /* 0004 */ be_int16_t music_volume; // 0 = full volume; -250 = min volume
+  /* 0006 */ int8_t sound_volume; // 0 = full volume; -100 = min volume
   /* 0007 */ uint8_t language;
-  /* 0008 */ be_uint32_t unknown_a3;
-  /* 000C */ be_uint16_t unknown_a4;
-  /* 000E */ be_uint16_t unknown_a5;
+  /* 0008 */ be_uint32_t unknown_a3; // Default 1728000 (== 60 * 60 * 24 * 20)
+  /* 000C */ be_uint16_t udp_behavior; // 0 = auto, 1 = on, 2 = off
+  /* 000E */ be_uint16_t surround_sound_enabled;
   /* 0010 */ parray<uint8_t, 0x100> unknown_a6;
   /* 0110 */ parray<uint8_t, 8> unknown_a7;
   /* 0118 */ be_uint32_t creation_internet_time; // Character file round1 seed
@@ -135,9 +135,8 @@ struct PSOGCCharacterFile {
   /* 1152C */ ptext<char, 0x10> serial_number; // As %08X (not decimal)
   /* 1153C */ ptext<char, 0x10> access_key;
   /* 1154C */ ptext<char, 0x10> password;
-  /* 1155C */ be_uint32_t unknown_a1;
-  /* 11560 */ be_uint32_t unknown_a2;
-  /* 11564 */ be_uint32_t unknown_a3;
+  /* 1155C */ be_uint64_t bgm_test_songs_unlocked;
+  /* 11564 */ be_uint32_t save_count;
   /* 11568 */ be_uint32_t round2_seed;
   /* 1156C */
 } __attribute__((packed));
@@ -168,9 +167,8 @@ struct PSOGCEp3CharacterFile {
   /* 193F0 */ ptext<char, 0x10> serial_number; // As %08X (not decimal)
   /* 19400 */ ptext<char, 0x10> access_key;
   /* 19410 */ ptext<char, 0x10> password;
-  /* 19420 */ be_uint32_t unknown_a1;
-  /* 19424 */ be_uint32_t unknown_a2;
-  /* 19428 */ be_uint32_t unknown_a3;
+  /* 19420 */ be_uint64_t bgm_test_songs_unlocked;
+  /* 19428 */ be_uint32_t save_count;
   /* 1942C */ parray<be_uint32_t, 0x20> unknown_a4;
   /* 194AC */ be_uint32_t round2_seed;
   /* 194B0 */
