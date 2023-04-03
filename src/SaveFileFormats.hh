@@ -135,8 +135,26 @@ struct PSOGCCharacterFile {
     // The signature field holds the value 0xA205B064, which is 2718281828 in
     // decimal - approximately e * 10^9. It's unknown why Sega chose this value.
     /* 0424 */ be_uint32_t signature;
-    /* 0428 */ be_uint32_t unknown_a2;
-    /* 042C */ be_uint32_t unknown_a3;
+    /* 0428 */ be_uint32_t play_time_seconds;
+    // This field is a collection of several flags and small values. The known
+    // fields are:
+    //   ------zA BCDEFG-- HHHIIIJJ KLMNOPQR
+    //   z = Function key setting (BB; 0 = menu shortcuts; 1 = chat shortcuts).
+    //       This bit is unused by PSO GC.
+    //   A = Keyboard controls (BB; 0 = on; 1 = off). Note that A is also used
+    //       by PSO GC, but its function is currently unknown.
+    //   G = Choice search setting (0 = enabled; 1 = disabled)
+    //   H = Player lobby labels (0 = name; 1 = name, language, and level;
+    //       2 = W/D counts; 3 = challenge rank; 4 = nothing)
+    //   I = Idle disconnect time (0 = 15 mins; 1 = 30 mins; 2 = 45 mins;
+    //       3 = 60 mins; 4 or 5: immediately; 6: 16 seconds; 7: 32 seconds).
+    //       Obviously the behaviors for 4-7 are unintended; this is the result
+    //       of a missing bounds check.
+    //   J = Message speed (0 = slow; 1 = normal; 2 = fast; 3 = very fast)
+    //   P = Cursor position (0 = saved; 1 = non-saved)
+    //   Q = Button config (0 = normal; 1 = L/R reversed)
+    //   R = Map direction (0 = non-fixed; 1 = fixed)
+    /* 042C */ be_uint32_t option_flags;
     /* 0430 */ be_uint32_t save_count;
     /* 0434 */ parray<uint8_t, 0x230> unknown_a4;
     /* 0664 */ PlayerBank bank;
@@ -163,37 +181,54 @@ struct PSOGCCharacterFile {
 struct PSOGCEp3CharacterFile {
   /* 00000 */ be_uint32_t checksum; // crc32 of this field (as 0) through end of struct
   struct Character {
-    /* 0000 */ PlayerInventory inventory;
-    /* 034C */ PlayerDispDataDCPCV3 disp;
-    /* 041C */ be_uint32_t unknown_a1;
-    /* 0420 */ be_uint32_t creation_timestamp;
-    /* 0424 */ be_uint32_t signature; // Same value as for Episodes 1&2 (above)
-    /* 0428 */ be_uint32_t unknown_a2;
-    /* 042C */ be_uint32_t unknown_a3;
-    /* 0430 */ be_uint32_t save_count;
-    /* 0434 */ parray<uint8_t, 0x1C> unknown_a4;
-    /* 0450 */ parray<uint8_t, 0x10> unknown_a5;
+    // This structure is internally split into two by the game. The offsets here
+    // are relative to the start of this structure (first column), and relative
+    // to the start of the second internal structure (second column).
+    /* 0000:---- */ PlayerInventory inventory;
+    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 041C:0000 */ be_uint32_t unknown_a1;
+    /* 0420:0004 */ be_uint32_t creation_timestamp;
+    /* 0424:0008 */ be_uint32_t signature; // Same value as for Episodes 1&2 (above)
+    /* 0428:000C */ be_uint32_t play_time_seconds;
+    // See the comment in PSOGCCharacterFile::Character about what the bits in
+    // this field mean.
+    /* 042C:0010 */ be_uint32_t option_flags;
+    /* 0430:0014 */ be_uint32_t save_count;
+    /* 0434:0018 */ parray<uint8_t, 0x1C> unknown_a2;
+    /* 0450:0034 */ parray<uint8_t, 0x10> unknown_a3;
     // seq_vars is an array of 1024 bits, which contain all the Episode 3 quest
     // progress flags. This includes things like which maps are unlocked, which
     // NPC decks are unlocked, and whether the player has a VIP card or not.
-    /* 0460 */ parray<uint8_t, 0x400> seq_vars;
-    /* 0860 */ parray<uint8_t, 0x6C> unknown_a6;
-    /* 08CC */ GuildCardV3 guild_card;
-    /* 095C */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
-    /* 0D7C */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
-    /* 140C */ parray<uint8_t, 0xAC> unknown_a7;
-    /* 14B8 */ ptext<char, 0xAC> info_board;
-    /* 1564 */ parray<uint8_t, 0xF4> unknown_a8;
-    /* 1658 */ Episode3::PlayerConfig ep3_config;
-    /* 39A8 */ be_uint32_t unknown_a9;
-    /* 39AC */ be_uint32_t unknown_a10;
-    /* 39B0 */ be_uint32_t unknown_a11;
-    /* 39B4 */
+    /* 0460:0044 */ parray<uint8_t, 0x400> seq_vars;
+    /* 0860:0444 */ be_uint32_t unknown_a4;
+    /* 0864:0448 */ be_uint32_t unknown_a5;
+    /* 0868:044C */ be_uint32_t unknown_a6;
+    /* 086C:0450 */ parray<uint8_t, 0x60> unknown_a7;
+    /* 08CC:04B0 */ GuildCardV3 guild_card;
+    /* 095C:0540 */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
+    /* 0D7C:0960 */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
+    /* 140C:0FF0 */ ptext<char, 0xAC> auto_reply;
+    /* 14B8:109C */ ptext<char, 0xAC> info_board;
+    /* 1564:1148 */ be_uint16_t win_count;
+    /* 1566:114A */ be_uint16_t lose_count;
+    /* 1568:114C */ parray<be_uint16_t, 5> unknown_a8;
+    /* 1572:1156 */ parray<uint8_t, 2> unused;
+    /* 1574:1158 */ parray<be_uint32_t, 2> unknown_a9;
+    /* 157C:1160 */ parray<uint8_t, 0xDC> unknown_a10;
+    /* 1658:123C */ Episode3::PlayerConfig ep3_config;
+    /* 39A8:358C */ be_uint32_t unknown_a11;
+    /* 39AC:3590 */ be_uint32_t unknown_a12;
+    /* 39B0:3594 */ be_uint32_t unknown_a13;
+    /* 39B4:3598 */
   } __attribute__((packed));
   /* 00004 */ parray<Character, 7> characters;
   /* 193F0 */ ptext<char, 0x10> serial_number; // As %08X (not decimal)
   /* 19400 */ ptext<char, 0x10> access_key;
   /* 19410 */ ptext<char, 0x10> password;
+  // In Episode 3, this field still exists, but is unused since BGM test was
+  // removed from the options menu in favor of the jukebox. The jukebox is
+  // accessible online only, and which songs are available there is controlled
+  // by the B7 command sent by the server instead.
   /* 19420 */ be_uint64_t bgm_test_songs_unlocked;
   /* 19428 */ be_uint32_t save_count;
   // This is an array of 1000 bits, represented here as 128 bytes, the last few

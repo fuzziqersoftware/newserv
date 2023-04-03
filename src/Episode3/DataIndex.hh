@@ -582,23 +582,26 @@ struct DeckDefinition {
 } __attribute__((packed)); // 0x84 bytes in total
 
 struct PlayerConfig {
-  // The first offsets in the comments in this struct are relative to the start
-  // of the 61/98 command; the second are relative to the start of the
-  // Ep3PlayerDataSegment structure in the reverse-engineering project; the
-  // third are relative to the start of this struct.
   // TODO: Fill in the unknown fields here by looking around callsites of
   // get_player_data_segment
-  /* 0728:----:0000 */ parray<uint8_t, 0x154> unknown_a1;
-  /* 087C:0000:0154 */ uint8_t is_encrypted;
-  /* 087D:0001:0155 */ uint8_t basis;
-  /* 087E:0002:0156 */ parray<uint8_t, 2> unused;
+  /* 0000 */ ptext<char, 12> rank_text; // From B7 command
+  /* 000C */ parray<uint8_t, 0x1C> unknown_a1;
+  /* 0028 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
+  /* 0050 */ parray<be_uint32_t, 10> choice_search_config;
+  /* 0078 */ parray<be_uint32_t, 0x30> scenario_progress;
+  /* 0138 */ be_uint16_t unknown_a2;
+  /* 013A */ be_uint16_t unknown_a3;
+  /* 013C */ parray<uint8_t, 0x18> unknown_a4;
+  /* 0154 */ uint8_t is_encrypted;
+  /* 0155 */ uint8_t basis;
+  /* 0156 */ parray<uint8_t, 2> unused;
   // The following fields (here through the beginning of decks) are encrypted
   // using the trivial algorithm, with the basis specified above, if
   // is_encrypted is equal to 1.
   // It appears the card counts field in this structure is actually 1000 (0x3E8)
   // bytes long, even though in every other place the counts array appears it's
   // 0x2F0 bytes long. They presumably did this because of the checksum logic.
-  /* 0880:0004:0158 */ parray<uint8_t, 1000> card_counts;
+  /* 0158 */ parray<uint8_t, 1000> card_counts;
   // These appear to be an attempt at checksumming the card counts array, but
   // the algorithm don't cover the entire array and instead reads from later
   // parts of this structure. This appears to be due to a copy/paste error in
@@ -607,26 +610,26 @@ struct PlayerConfig {
   // [69] and puts the result in card_count_checksums[1], etc. Presumably they
   // intended to use 20 as the stride instead of 50, which would have exactly
   // covered the entire card_counts array.
-  /* 0C68:03EC:0540 */ parray<be_uint16_t, 50> card_count_checksums;
+  /* 0540 */ parray<be_uint16_t, 50> card_count_checksums;
   // Yes, these are actually 64-bit integers. They include card IDs and some
   // other data, encoded in a way I don't fully understand yet.
-  /* 0CCC:0450:05A4 */ parray<be_uint64_t, 0x1C2> unknown_a4;
-  /* 1ADC:1260:13B4 */ parray<uint8_t, 0x80> unknown_a7;
-  /* 1B5C:12E0:1434 */ parray<DeckDefinition, 25> decks;
-  /* 2840:1FC4:2118 */ parray<uint8_t, 0x08> unknown_a8;
-  /* 2848:1FCC:2120 */ be_uint32_t offline_clv_exp; // CLvOff = this / 100
-  /* 284C:1FD0:2124 */ be_uint32_t online_clv_exp; // CLvOn = this / 100
+  /* 05A4 */ parray<be_uint64_t, 0x1C2> unknown_a5;
+  /* 13B4 */ parray<uint8_t, 0x80> unknown_a7;
+  /* 1434 */ parray<DeckDefinition, 25> decks;
+  /* 2118 */ parray<uint8_t, 0x08> unknown_a8;
+  /* 2120 */ be_uint32_t offline_clv_exp; // CLvOff = this / 100
+  /* 2124 */ be_uint32_t online_clv_exp; // CLvOn = this / 100
   struct PlayerReference {
     /* 00 */ be_uint32_t guild_card_number;
     /* 04 */ ptext<char, 0x18> player_name;
   } __attribute__((packed));
   // TODO: What do these player references mean? When are entries added to or
   // removed from this list?
-  /* 2850:1FD4:2128 */ parray<PlayerReference, 9> unknown_a9;
-  /* 294C:20D0:2224 */ parray<uint8_t, 0x50> unknown_a10;
-  /* 299C:2120:2274 */ ptext<char, 0x10> name;
-  /* 29AC:2130:2284 */ parray<uint8_t, 0xCC> unknown_a11;
-  /* 2A78:21FC:2350 */
+  /* 2128 */ parray<PlayerReference, 9> unknown_a9;
+  /* 2224 */ parray<uint8_t, 0x50> unknown_a10;
+  /* 2274 */ ptext<char, 0x10> name;
+  /* 2284 */ parray<uint8_t, 0xCC> unknown_a11;
+  /* 2350 */
 
   void decrypt();
   void encrypt(uint8_t basis);
