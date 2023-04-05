@@ -79,6 +79,7 @@ add_executable(newserv
   src/NetworkAddresses.cc
   src/PatchFileIndex.cc
   src/Player.cc
+  src/Product.cc
   src/ProxyCommands.cc
   src/ProxyServer.cc
   src/PSOEncryption.cc

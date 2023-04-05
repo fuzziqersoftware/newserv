@@ -21,6 +21,7 @@
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
+#include "Product.hh"
 #include "ProxyServer.hh"
 #include "PSOGCObjectGraph.hh"
 #include "ReplaySession.hh"
@@ -217,6 +218,8 @@ enum class Behavior {
   PARSE_OBJECT_GRAPH,
   REPLAY_LOG,
   CAT_CLIENT,
+  GENERATE_PRODUCT,
+  PRODUCT_SPEED_TEST,
 };
 
 static bool behavior_takes_input_filename(Behavior b) {
@@ -285,6 +288,8 @@ int main(int argc, char** argv) {
   const char* replay_required_password = "";
   uint32_t root_object_address = 0;
   uint16_t ep3_card_id = 0xFFFF;
+  uint8_t domain = 1;
+  uint8_t subdomain = 0xFF;
   for (int x = 1; x < argc; x++) {
     if (!strcmp(argv[x], "--help")) {
       print_usage();
@@ -305,10 +310,14 @@ int main(int argc, char** argv) {
       cli_version = GameVersion::BB;
     } else if (!strncmp(argv[x], "--seed=", 7)) {
       seed = &argv[x][7];
-    } else if (!strncmp(argv[x], "--sys=", 6)) {
-      system_filename = &argv[x][6];
     } else if (!strncmp(argv[x], "--key=", 6)) {
       key_file_name = &argv[x][6];
+    } else if (!strncmp(argv[x], "--sys=", 6)) {
+      system_filename = &argv[x][6];
+    } else if (!strncmp(argv[x], "--domain=", 9)) {
+      domain = atoi(&argv[x][9]);
+    } else if (!strncmp(argv[x], "--subdomain=", 12)) {
+      subdomain = atoi(&argv[x][12]);
     } else if (!strncmp(argv[x], "--encrypted=", 12)) {
       find_decryption_seed_ciphertext = &argv[x][12];
     } else if (!strncmp(argv[x], "--decrypted=", 12)) {
@@ -389,6 +398,10 @@ int main(int argc, char** argv) {
           behavior = Behavior::EXTRACT_GSL;
         } else if (!strcmp(argv[x], "extract-bml")) {
           behavior = Behavior::EXTRACT_BML;
+        } else if (!strcmp(argv[x], "generate-product")) {
+          behavior = Behavior::GENERATE_PRODUCT;
+        } else if (!strcmp(argv[x], "product-speed-test")) {
+          behavior = Behavior::PRODUCT_SPEED_TEST;
         } else {
           throw invalid_argument(string_printf("unknown command: %s (try --help)", argv[x]));
         }
@@ -990,6 +1003,20 @@ int main(int argc, char** argv) {
       g.print(stdout);
       break;
     }
+
+    case Behavior::GENERATE_PRODUCT: {
+      auto product = generate_product(domain, subdomain);
+      fprintf(stderr, "%s\n", product.c_str());
+      break;
+    }
+
+    case Behavior::PRODUCT_SPEED_TEST:
+      if (seed.empty()) {
+        product_speed_test();
+      } else {
+        product_speed_test(stoul(seed, nullptr, 16));
+      }
+      break;
 
     case Behavior::REPLAY_LOG:
     case Behavior::RUN_SERVER: {
