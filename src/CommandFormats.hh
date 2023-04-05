@@ -1468,9 +1468,8 @@ struct C_LoginV1_DC_93 {
   parray<uint8_t, 2> unused1;
   ptext<char, 0x11> serial_number;
   ptext<char, 0x11> access_key;
-  // Note: The hardware_id field is likely shorter than this (only 8 bytes
-  // appear to actually be used).
-  ptext<char, 0x60> hardware_id;
+  ptext<char, 0x30> hardware_id;
+  ptext<char, 0x30> unknown_a3;
   ptext<char, 0x10> name;
   parray<uint8_t, 2> unused2;
 } __packed__;
