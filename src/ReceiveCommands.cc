@@ -836,7 +836,7 @@ static void on_9F_V3(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 static void on_96(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  check_size_t<C_CharSaveInfo_V3_BB_96>(data);
+  check_size_t<C_CharSaveInfo_DCv2_PC_V3_BB_96>(data);
   send_server_time(c);
 }
 

@@ -1529,7 +1529,7 @@ struct C_Login_BB_93 {
 
 // 96 (C->S): Character save information
 
-struct C_CharSaveInfo_V3_BB_96 {
+struct C_CharSaveInfo_DCv2_PC_V3_BB_96 {
   // The creation timestamp is the number of seconds since 12:00AM on 1 January
   // 2000. Instead of computing this directly from the TBR (on PSO GC), the game
   // uses localtime(), then converts that to the desired timestamp. The leap
@@ -1860,17 +1860,19 @@ struct S_ConfirmUpdateQuestStatistics_V3_BB_AB {
 // AF: Invalid command
 
 // B0 (S->C): Text message
-// Same format as 01 command.
+// Same format as 01 command. This command is supported on DCv1 and all later
+// versions, but not on prototype versions or DC NTE.
 // Internally, PSO calls this command RcvEmergencyCall.
 // The message appears as an overlay on the right side of the screen. The player
 // doesn't do anything to dismiss it; it will disappear after a few seconds.
-// TODO: Check if this command exists on DC v1/v2.
 
 // B1 (C->S): Request server time
 // No arguments
 // Server will respond with a B1 command.
 
 // B1 (S->C): Server time
+// This command is supported on DCv1 and all later versions, but not on
+// prototype versions or DC NTE.
 // Contents is a string like "%Y:%m:%d: %H:%M:%S.000" (the space is not a typo).
 // For example: 2022:03:30: 15:36:42.000
 // It seems the client ignores the date part and the milliseconds part; only the
@@ -1910,8 +1912,8 @@ struct S_ExecuteCode_B2 {
 
 template <bool IsBigEndian>
 struct S_ExecuteCode_Footer_B2 {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>:: type;
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>:: type;
+  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
   // Relocations is a list of words (le_uint16_t on DC/PC/XB/BB, be_uint16_t on
   // GC) containing the number of doublewords (uint32_t) to skip for each
@@ -1976,11 +1978,11 @@ struct S_RankUpdate_GC_Ep3_B7 {
 // The client sends this after it receives a B7 from the server.
 
 // B8 (S->C): Update card definitions (Episode 3)
-// Contents is a single little-endian le_uint32_t specifying the size of the
-// (PRS-compressed) data, followed immediately by the data. The maximum size of
-// the compressed data is 0x9000 bytes, although the receive buffer size limit
-// applies first in practice, which limits this to 0x7BF8 bytes. The maximum
-// size of the decompressed data is 0x36EC0 bytes.
+// Contents is a single le_uint32_t specifying the size of the (PRS-compressed)
+// data, followed immediately by the data. The maximum size of the compressed
+// data is 0x9000 bytes, although the receive buffer size limit applies first in
+// practice, which limits this to 0x7BF8 bytes. The maximum size of the
+// decompressed data is 0x36EC0 bytes.
 // Note: PSO BB accepts this command as well, but ignores it.
 
 // B8 (C->S): Confirm updated card definitions (Episode 3)
@@ -2309,7 +2311,7 @@ struct S_ConfirmTournamentEntry_GC_Ep3_CC {
 //   followed immediately by a D4 01 to both clients, which completes the trade
 // - Both clients send the appropriate subcommand to create inventory items
 // TODO: On BB, is the server responsible for sending the appropriate item
-// subcommands?
+// delete/create subcommands?
 // At any point if an error occurs, either client may send a D4 00, which
 // cancels the entire sequence. The server should then send D4 00 to both
 // clients.
