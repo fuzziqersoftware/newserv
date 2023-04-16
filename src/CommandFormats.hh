@@ -327,6 +327,8 @@ struct S_Reconnect_Patch_14 : S_Reconnect<be_uint16_t> { } __packed__;
 // 01 (S->C): Lobby message box
 // A small message box appears in lower-right corner, and the player must press
 // a key to continue. The maximum length of the message is 0x200 bytes.
+// Internally, PSO calls this RcvError, since it's generally used to tell the
+// player why they can't do something (e.g. join a full game).
 // This format is shared by multiple commands; for all of them except 06 (S->C),
 // the guild_card_number field is unused and should be 0.
 
@@ -600,7 +602,7 @@ struct C_MenuItemInfoRequest_09 {
 // softlocking the game. This happens if the local player's Guild Card number
 // doesn't match any of the lobby_data entries. (Notably, only the first
 // (header.flag) entries are checked.)
-// If the local players' Guild Card number does match one of the entries, the
+// If the local player's Guild Card number does match one of the entries, the
 // command does not softlock, but instead does nothing because the 0E
 // second-phase handler is missing.
 
@@ -1437,7 +1439,10 @@ struct C_LoginV1_DC_PC_V3_90 {
 // command. On versions that support it, this is strictly less useful than the
 // 17 command. Curiously, this command appears to have been implemented after
 // the 17 command since it's missing from the DC NTE version, but the 17 command
-// is named RcvPsoRegistConnectV2 whereas 91 is simply RcvPsoRegistConnect.
+// is named RcvPsoRegistConnectV2 whereas 91 is simply RcvPsoRegistConnect. It's
+// likely that after DC NTE, Sega simply changed the command numbers for this
+// group of commands from 88-8F to 90-A1 (so DC NTE's 89 command became the 91
+// command in all later versions).
 
 // 92 (C->S): Register (DC)
 
@@ -3151,12 +3156,12 @@ struct S_StartCardAuction_GC_Ep3_EF {
 // most one shutdown command at a time; a later EF command will overwrite the
 // previous EF command's effects. The 00EF command deletes the previous shutdown
 // command if any was present, causing no command to run when the game closes.
-// There is no indication to the player that a shutdown command has been set.
+// There is no indication to the player when a shutdown command has been set.
 
 // This command is likely just a vestigial debugging feature that Sega left in,
 // but it presents a fairly obvious security risk. There is no way for the
-// server to know whether an EF command it sent has executed on the client, so
-// newserv's proxy unconditionally blocks this command.
+// server to know whether an EF command it sent has actually executed on the
+// client, so newserv's proxy unconditionally blocks this command.
 
 struct S_SetShutdownCommand_BB_01EF {
   ptext<char, 0x200> command;
