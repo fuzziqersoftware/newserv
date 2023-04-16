@@ -4,8 +4,6 @@
 
 using namespace std;
 
-
-
 struct TObjectVTable {
   be_uint32_t unused_a1;
   be_uint32_t unused_a2;
@@ -36,7 +34,8 @@ shared_ptr<PSOGCObjectGraph::VTable> PSOGCObjectGraph::parse_vtable_memo(
     StringReader& r, uint32_t addr) {
   try {
     return this->all_vtables.at(addr);
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 
   const auto& vt = r.pget<TObjectVTable>(addr & 0x01FFFFFF);
   auto ret = this->all_vtables.emplace(addr, new VTable()).first->second;
@@ -52,7 +51,8 @@ shared_ptr<PSOGCObjectGraph::Object> PSOGCObjectGraph::parse_object_memo(
     StringReader& r, uint32_t addr) {
   try {
     return this->all_objects.at(addr);
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 
   const auto& obj = r.pget<TObject>(addr & 0x01FFFFFF);
   string type_name = r.pget_cstr(obj.type_name_addr & 0x01FFFFFF);
@@ -79,22 +79,20 @@ void PSOGCObjectGraph::print(FILE* stream) const {
   this->root->print(stream);
 }
 
-
-
 void PSOGCObjectGraph::Object::print(FILE* stream, size_t indent_level) const {
   for (size_t z = 0; z < indent_level; z++) {
     fputc(' ', stream);
     fputc(' ', stream);
   }
   fprintf(stream, "%s +%04hX @ %08" PRIX32 " (VT %08" PRIX32 ": destroy=%08" PRIX32 " update=%08" PRIX32 " render=%08" PRIX32 " render_shadow=%08" PRIX32 ")\n",
-      this->type_name.c_str(),
-      this->flags,
-      this->address,
-      this->vtable->address,
-      this->vtable->destroy_addr,
-      this->vtable->update_addr,
-      this->vtable->render_addr,
-      this->vtable->render_shadow_addr);
+          this->type_name.c_str(),
+          this->flags,
+          this->address,
+          this->vtable->address,
+          this->vtable->destroy_addr,
+          this->vtable->update_addr,
+          this->vtable->render_addr,
+          this->vtable->render_shadow_addr);
   for (const auto& child : this->children) {
     child->print(stream, indent_level + 1);
   }

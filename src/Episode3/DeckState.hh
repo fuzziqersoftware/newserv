@@ -4,12 +4,10 @@
 
 #include <memory>
 
-#include "../Text.hh"
 #include "../PSOEncryption.hh"
+#include "../Text.hh"
 
 namespace Episode3 {
-
-
 
 struct NameEntry {
   parray<char, 0x10> name;
@@ -57,12 +55,12 @@ public:
       uint8_t client_id,
       const parray<CardIDT, 0x1F>& card_ids,
       std::shared_ptr<PSOV2Encryption> random_crypt)
-    : client_id(client_id),
-      draw_index(1),
-      card_ref_base(this->client_id << 8),
-      shuffle_enabled(true),
-      loop_enabled(true),
-      random_crypt(random_crypt) {
+      : client_id(client_id),
+        draw_index(1),
+        card_ref_base(this->client_id << 8),
+        shuffle_enabled(true),
+        loop_enabled(true),
+        random_crypt(random_crypt) {
     for (size_t z = 0; z < card_ids.size(); z++) {
       auto& e = this->entries[z];
       e.card_id = card_ids[z];
@@ -111,7 +109,5 @@ private:
 
   std::shared_ptr<PSOV2Encryption> random_crypt;
 };
-
-
 
 } // namespace Episode3

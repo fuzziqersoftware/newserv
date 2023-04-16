@@ -3,19 +3,17 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <stdexcept>
 #include <phosg/Filesystem.hh>
+#include <stdexcept>
 
 #ifdef HAVE_RESOURCE_FILE
 #include <resource_file/Emulators/PPC32Emulator.hh>
 #endif
 
-#include "Loggers.hh"
 #include "CommandFormats.hh"
+#include "Loggers.hh"
 
 using namespace std;
-
-
 
 bool function_compiler_available() {
 #ifndef HAVE_RESOURCE_FILE
@@ -24,8 +22,6 @@ bool function_compiler_available() {
   return true;
 #endif
 }
-
-
 
 const char* name_for_architecture(CompiledFunctionCode::Architecture arch) {
   switch (arch) {
@@ -38,12 +34,10 @@ const char* name_for_architecture(CompiledFunctionCode::Architecture arch) {
   }
 }
 
-
-
 template <typename FooterT>
 string CompiledFunctionCode::generate_client_command_t(
-      const unordered_map<string, uint32_t>& label_writes,
-      const string& suffix) const {
+    const unordered_map<string, uint32_t>& label_writes,
+    const string& suffix) const {
   FooterT footer;
   footer.num_relocations = this->relocation_deltas.size();
   footer.unused1.clear(0);
@@ -82,8 +76,8 @@ string CompiledFunctionCode::generate_client_command_t(
 }
 
 string CompiledFunctionCode::generate_client_command(
-      const unordered_map<string, uint32_t>& label_writes,
-      const string& suffix) const {
+    const unordered_map<string, uint32_t>& label_writes,
+    const string& suffix) const {
   if (this->arch == Architecture::POWERPC) {
     return this->generate_client_command_t<S_ExecuteCode_Footer_GC_B2>(
         label_writes, suffix);
@@ -98,8 +92,6 @@ string CompiledFunctionCode::generate_client_command(
 bool CompiledFunctionCode::is_big_endian() const {
   return this->arch == Architecture::POWERPC;
 }
-
-
 
 shared_ptr<CompiledFunctionCode> compile_function_code(
     CompiledFunctionCode::Architecture arch,
@@ -159,8 +151,6 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
 #endif
 }
 
-
-
 FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
   if (!function_compiler_available()) {
     function_compiler_log.info("Function compiler is not available");
@@ -216,8 +206,6 @@ vector<MenuItem> FunctionCodeIndex::patch_menu() const {
   }
   return ret;
 }
-
-
 
 DOLFileIndex::DOLFileIndex(const string& directory) {
   if (!function_compiler_available()) {

@@ -1,14 +1,12 @@
 #include "NetworkAddresses.hh"
 
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <errno.h>
 #include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+#include <errno.h>
 #include <ifaddrs.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <memory>
 #include <phosg/Encoding.hh>
@@ -17,19 +15,17 @@
 
 using namespace std;
 
-
-
 uint32_t resolve_address(const char* address) {
-  struct addrinfo *res0;
+  struct addrinfo* res0;
   if (getaddrinfo(address, nullptr, nullptr, &res0)) {
     auto e = string_for_error(errno);
-    throw runtime_error(string_printf("can\'t resolve hostname %s: %s", address,
-        e.c_str()));
+    throw runtime_error(string_printf(
+        "can\'t resolve hostname %s: %s", address, e.c_str()));
   }
 
-  std::unique_ptr<struct addrinfo, void(*)(struct addrinfo*)> res0_unique(
+  std::unique_ptr<struct addrinfo, void (*)(struct addrinfo*)> res0_unique(
       res0, freeaddrinfo);
-  struct addrinfo *res4 = nullptr;
+  struct addrinfo* res4 = nullptr;
   for (struct addrinfo* res = res0; res; res = res->ai_next) {
     if (res->ai_family == AF_INET) {
       res4 = res;
@@ -51,7 +47,7 @@ map<string, uint32_t> get_local_addresses() {
     throw runtime_error(string_printf("failed to get interface addresses: %s", s.c_str()));
   }
 
-  unique_ptr<struct ifaddrs, void(*)(struct ifaddrs*)> ifa(ifa_raw, freeifaddrs);
+  unique_ptr<struct ifaddrs, void (*)(struct ifaddrs*)> ifa(ifa_raw, freeifaddrs);
 
   map<string, uint32_t> ret;
   for (struct ifaddrs* i = ifa.get(); i; i = i->ifa_next) {

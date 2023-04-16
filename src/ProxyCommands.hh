@@ -4,10 +4,8 @@
 
 #include <string>
 
-#include "ServerState.hh"
 #include "ProxyServer.hh"
-
-
+#include "ServerState.hh"
 
 void on_proxy_command(
     std::shared_ptr<ServerState> s,

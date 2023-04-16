@@ -4,8 +4,6 @@
 
 #include <phosg/Encoding.hh>
 
-
-
 struct EthernetHeader {
   uint8_t dest_mac[6];
   uint8_t src_mac[6];
@@ -42,7 +40,7 @@ struct UDPHeader {
 
 struct TCPHeader {
   enum Flag {
-    NS  = 0x0100,
+    NS = 0x0100,
     CWR = 0x0080, // congestion window reduced
     ECE = 0x0040, // ECN capable / congestion experienced
     URG = 0x0020, // urgent pointer used
@@ -62,8 +60,6 @@ struct TCPHeader {
   be_uint16_t checksum;
   be_uint16_t urgent_ptr;
 } __attribute__((packed));
-
-
 
 struct FrameInfo {
   // This is always valid

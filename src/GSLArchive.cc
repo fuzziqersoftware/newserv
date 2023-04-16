@@ -8,8 +8,6 @@
 
 using namespace std;
 
-
-
 template <bool IsBigEndian>
 struct GSLHeaderEntry {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
@@ -38,7 +36,7 @@ void GSLArchive::load_t() {
 }
 
 GSLArchive::GSLArchive(shared_ptr<const string> data, bool big_endian)
-  : data(data) {
+    : data(data) {
   if (big_endian) {
     this->load_t<true>();
   } else {

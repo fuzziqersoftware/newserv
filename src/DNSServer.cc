@@ -1,28 +1,28 @@
 #include "DNSServer.hh"
 
+#include <netinet/in.h>
+#include <poll.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <poll.h>
-#include <netinet/in.h>
 
 #include <phosg/Encoding.hh>
 #include <phosg/Network.hh>
 #include <phosg/Strings.hh>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
 
 using namespace std;
 
-
-
-DNSServer::DNSServer(shared_ptr<struct event_base> base,
-    uint32_t local_connect_address, uint32_t external_connect_address) :
-    base(base), local_connect_address(local_connect_address),
-    external_connect_address(external_connect_address) { }
+DNSServer::DNSServer(
+    shared_ptr<struct event_base> base,
+    uint32_t local_connect_address, uint32_t external_connect_address)
+    : base(base),
+      local_connect_address(local_connect_address),
+      external_connect_address(external_connect_address) {}
 
 DNSServer::~DNSServer() {
   for (const auto& it : this->fd_to_receive_event) {
@@ -43,9 +43,9 @@ void DNSServer::listen(int port) {
 }
 
 void DNSServer::add_socket(int fd) {
-  unique_ptr<struct event, void(*)(struct event*)> e(event_new(this->base.get(),
-        fd, EV_READ | EV_PERSIST, &DNSServer::dispatch_on_receive_message,
-        this), event_free);
+  unique_ptr<struct event, void (*)(struct event*)> e(
+      event_new(this->base.get(), fd, EV_READ | EV_PERSIST, &DNSServer::dispatch_on_receive_message, this),
+      event_free);
   event_add(e.get(), nullptr);
   this->fd_to_receive_event.emplace(fd, move(e));
 }

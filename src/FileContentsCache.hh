@@ -1,14 +1,13 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <functional>
 
 #include <phosg/Time.hh>
 
 using namespace std;
-
 
 class FileContentsCache {
 public:
@@ -92,7 +91,8 @@ public:
       if (this->ttl_usecs && (t - f->load_time < this->ttl_usecs)) {
         return {*reinterpret_cast<const T*>(f->data->data()), f, false};
       }
-    } catch (const out_of_range& e) { }
+    } catch (const out_of_range& e) {
+    }
     T value = generate(name);
     auto ret = this->replace_obj(name, value);
     ret.generate_called = true;

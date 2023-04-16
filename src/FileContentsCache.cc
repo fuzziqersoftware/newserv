@@ -7,15 +7,15 @@
 
 using namespace std;
 
-
-
-FileContentsCache::FileContentsCache(uint64_t ttl_usecs) : ttl_usecs(ttl_usecs) { }
+FileContentsCache::FileContentsCache(uint64_t ttl_usecs) : ttl_usecs(ttl_usecs) {}
 
 FileContentsCache::File::File(
     const string& name,
     string&& data,
     uint64_t load_time)
-  : name(name), data(new string(move(data))), load_time(load_time) { }
+    : name(name),
+      data(new string(move(data))),
+      load_time(load_time) {}
 
 shared_ptr<const FileContentsCache::File> FileContentsCache::replace(
     const string& name, string&& data, uint64_t t) {
@@ -65,7 +65,8 @@ FileContentsCache::GetResult FileContentsCache::get(const std::string& name,
     if (this->ttl_usecs && (t - entry->load_time < this->ttl_usecs)) {
       return {entry, false};
     }
-  } catch (const out_of_range& e) { }
+  } catch (const out_of_range& e) {
+  }
   return {this->replace(name, generate(name)), true};
 }
 

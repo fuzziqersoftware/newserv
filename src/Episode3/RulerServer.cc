@@ -6,8 +6,6 @@ using namespace std;
 
 namespace Episode3 {
 
-
-
 void compute_effective_range(
     parray<uint8_t, 9 * 9>& ret,
     shared_ptr<const DataIndex> data_index,
@@ -189,14 +187,12 @@ bool card_linkage_is_valid(
   return false;
 }
 
-
-
 RulerServer::RulerServer(shared_ptr<Server> server)
-  : w_server(server),
-    team_id_for_client_id(0xFF),
-    error_code1(0),
-    error_code2(0),
-    error_code3(0) { }
+    : w_server(server),
+      team_id_for_client_id(0xFF),
+      error_code1(0),
+      error_code2(0),
+      error_code3(0) {}
 
 shared_ptr<Server> RulerServer::server() {
   auto s = this->w_server.lock();
@@ -318,11 +314,11 @@ bool RulerServer::attack_action_has_rampage_and_not_pierce(
   auto attack_medium = this->get_attack_medium(pa);
 
   if (!this->compute_effective_range_and_target_mode_for_attack(
-        pa, &effective_range_card_id, &effective_target_mode, &orig_card_ref)) {
+          pa, &effective_range_card_id, &effective_target_mode, &orig_card_ref)) {
     return false;
   }
 
-  if ((orig_card_ref != 0xFFFF) && (orig_card_ref != pa.attacker_card_ref) && 
+  if ((orig_card_ref != 0xFFFF) && (orig_card_ref != pa.attacker_card_ref) &&
       !this->check_usability_or_apply_condition_for_card_refs(
           orig_card_ref, pa.attacker_card_ref, card_ref, 0xFF, AttackMedium::INVALID_FF)) {
     return false;
@@ -426,9 +422,9 @@ bool RulerServer::attack_action_has_pierce_and_not_rampage(
     for (; last_cond_index >= 0; last_cond_index--) {
       bool has_rampage = false;
       if (this->card_has_pierce_or_rampage(
-            client_id, ce->def.effects[last_cond_index].type, &has_rampage,
-            pa.attacker_card_ref, pa.action_card_refs[last_action_card_index],
-            last_cond_index, attack_medium)) {
+              client_id, ce->def.effects[last_cond_index].type, &has_rampage,
+              pa.attacker_card_ref, pa.action_card_refs[last_action_card_index],
+              last_cond_index, attack_medium)) {
         return true;
       }
       if (has_rampage) {
@@ -442,10 +438,10 @@ bool RulerServer::attack_action_has_pierce_and_not_rampage(
     for (ssize_t cond_index = 8; cond_index >= 0; cond_index--) {
       bool has_rampage = false;
       if (this->card_has_pierce_or_rampage(
-            client_id, chain->conditions[cond_index].type, &has_rampage,
-            pa.attacker_card_ref, chain->conditions[cond_index].card_ref,
-            chain->conditions[cond_index].card_definition_effect_index,
-            attack_medium)) {
+              client_id, chain->conditions[cond_index].type, &has_rampage,
+              pa.attacker_card_ref, chain->conditions[cond_index].card_ref,
+              chain->conditions[cond_index].card_definition_effect_index,
+              attack_medium)) {
         return true;
       }
       if (has_rampage) {
@@ -456,7 +452,6 @@ bool RulerServer::attack_action_has_pierce_and_not_rampage(
 
   return false;
 }
-
 
 bool RulerServer::card_exists_by_status(const CardShortStatus& stat) const {
   if ((stat.card_flags & 3) || (stat.card_ref == 0xFFFF)) {
@@ -494,10 +489,10 @@ bool RulerServer::card_id_is_boss_sc(uint16_t card_id) {
 
 bool RulerServer::card_id_is_support_tech_or_support_pb(uint16_t card_id) {
   return (card_id == 0x00E1) ||
-         (card_id == 0x00E2) ||
-         (card_id == 0x00E6) ||
-         (card_id == 0x00EB) ||
-         (card_id == 0x00EC);
+      (card_id == 0x00E2) ||
+      (card_id == 0x00E6) ||
+      (card_id == 0x00EB) ||
+      (card_id == 0x00EC);
 }
 
 bool RulerServer::card_ref_can_attack(uint16_t card_ref) {
@@ -537,11 +532,11 @@ bool RulerServer::card_ref_can_attack(uint16_t card_ref) {
   // then the item also cannot attack
   if ((ce->def.type == CardType::ITEM) &&
       (!this->short_statuses[client_id] ||
-       (this->short_statuses[client_id]->at(0).card_ref == 0xFFFF) ||
-        this->find_condition_on_card_ref(this->short_statuses[client_id]->at(0).card_ref, ConditionType::HOLD) ||
-        this->find_condition_on_card_ref(this->short_statuses[client_id]->at(0).card_ref, ConditionType::GUOM) ||
-        this->find_condition_on_card_ref(this->short_statuses[client_id]->at(0).card_ref, ConditionType::PARALYZE) ||
-        this->find_condition_on_card_ref(this->short_statuses[client_id]->at(0).card_ref, ConditionType::FREEZE))) {
+          (this->short_statuses[client_id]->at(0).card_ref == 0xFFFF) ||
+          this->find_condition_on_card_ref(this->short_statuses[client_id]->at(0).card_ref, ConditionType::HOLD) ||
+          this->find_condition_on_card_ref(this->short_statuses[client_id]->at(0).card_ref, ConditionType::GUOM) ||
+          this->find_condition_on_card_ref(this->short_statuses[client_id]->at(0).card_ref, ConditionType::PARALYZE) ||
+          this->find_condition_on_card_ref(this->short_statuses[client_id]->at(0).card_ref, ConditionType::FREEZE))) {
     return false;
   }
 
@@ -589,7 +584,7 @@ bool RulerServer::card_ref_can_move(
         const auto& item_stat = short_statuses->at(z);
         if ((item_stat.card_ref != 0xFFFF) && this->card_exists_by_status(item_stat) &&
             (this->find_condition_on_card_ref(item_stat.card_ref, ConditionType::GUOM) ||
-             this->find_condition_on_card_ref(item_stat.card_ref, ConditionType::IMMOBILE))) {
+                this->find_condition_on_card_ref(item_stat.card_ref, ConditionType::IMMOBILE))) {
           return false;
         }
       }
@@ -951,11 +946,11 @@ bool RulerServer::check_usability_or_condition_apply(
   // positioning/team setup
   if (is_item_usability_check &&
       ((criterion_code == CriterionCode::SAME_TEAM) ||
-       (criterion_code == CriterionCode::SAME_PLAYER) ||
-       (criterion_code == CriterionCode::SAME_TEAM_NOT_SAME_PLAYER) ||
-       (criterion_code == CriterionCode::UNKNOWN_07) ||
-       (criterion_code == CriterionCode::NOT_SC) ||
-       (criterion_code == CriterionCode::SC))) {
+          (criterion_code == CriterionCode::SAME_PLAYER) ||
+          (criterion_code == CriterionCode::SAME_TEAM_NOT_SAME_PLAYER) ||
+          (criterion_code == CriterionCode::UNKNOWN_07) ||
+          (criterion_code == CriterionCode::NOT_SC) ||
+          (criterion_code == CriterionCode::SC))) {
     criterion_code = CriterionCode::NONE;
   }
 
@@ -988,7 +983,7 @@ bool RulerServer::check_usability_or_condition_apply(
     case CriterionCode::SAME_TEAM:
       if ((client_id1 == client_id2) ||
           ((client_id1 != 0xFF) && (client_id2 != 0xFF) &&
-           (this->team_id_for_client_id[client_id1] == this->team_id_for_client_id[client_id2]))) {
+              (this->team_id_for_client_id[client_id1] == this->team_id_for_client_id[client_id2]))) {
         return true;
       }
       break;
@@ -1026,255 +1021,255 @@ bool RulerServer::check_usability_or_condition_apply(
       break;
     case CriterionCode::HUNTER_HUMAN_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0001, // Orland
-        0x0002, // Kranz
-        0x0003, // Ino'lis
-        0x0004, // Sil'fer
-        0x0006, // Kylria
-        0x0111, // Relmitos
-        0x0112, // Viviana
-        0x0115, // Glustar
-        0x02AA, // H-HUmar
-        0x02AB, // H-HUnewearl
-        0x02AE, // H-RAmar
-        0x02AF, // H-RAmarl
-        0x02B2, // H-FOmar
-        0x02B3, // H-FOmarl
-        0x02B4, // H-FOnewm
-        0x02B5, // H-FOnewearl
-        0x02CC, // H-HUmar
-        0x02CD, // H-RAmarl
-        0x02CE, // H-FOmarl
-        0x02CF, // H-HUnewearl
-        0x02D1, // H-RAmarl
-        0x02D5, // H-FOmar
-        0x02D6, // H-FOnewearl
-        0x02D9, // H-FOnewm
+          0x0001, // Orland
+          0x0002, // Kranz
+          0x0003, // Ino'lis
+          0x0004, // Sil'fer
+          0x0006, // Kylria
+          0x0111, // Relmitos
+          0x0112, // Viviana
+          0x0115, // Glustar
+          0x02AA, // H-HUmar
+          0x02AB, // H-HUnewearl
+          0x02AE, // H-RAmar
+          0x02AF, // H-RAmarl
+          0x02B2, // H-FOmar
+          0x02B3, // H-FOmarl
+          0x02B4, // H-FOnewm
+          0x02B5, // H-FOnewearl
+          0x02CC, // H-HUmar
+          0x02CD, // H-RAmarl
+          0x02CE, // H-FOmarl
+          0x02CF, // H-HUnewearl
+          0x02D1, // H-RAmarl
+          0x02D5, // H-FOmar
+          0x02D6, // H-FOnewearl
+          0x02D9, // H-FOnewm
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HU_CLASS_MALE_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0001, // Orland
-        0x0113, // Teifu
-        0x02AA, // H-HUmar
-        0x02AC, // H-HUcast
-        0x02CC, // H-HUmar
-        0x02D7, // H-HUcast
+          0x0001, // Orland
+          0x0113, // Teifu
+          0x02AA, // H-HUmar
+          0x02AC, // H-HUcast
+          0x02CC, // H-HUmar
+          0x02D7, // H-HUcast
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_FEMALE_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0003, // Ino'lis
-        0x0004, // Sil'fer
-        0x0006, // Kylria
-        0x0110, // Saligun
-        0x0112, // Viviana
-        0x0114, // Stella
-        0x02AB, // H-HUnewearl
-        0x02AD, // H-HUcaseal
-        0x02AF, // H-RAmarl
-        0x02B1, // H-RAcaseal
-        0x02B3, // H-FOmarl
-        0x02B5, // H-FOnewearl
-        0x02CE, // H-FOmarl
-        0x02CF, // H-HUnewearl
-        0x02D1, // H-RAmarl
-        0x02D4, // H-HUcaseal
-        0x02D6, // H-FOnewearl
-        0x02D8, // H-RAcaseal
+          0x0003, // Ino'lis
+          0x0004, // Sil'fer
+          0x0006, // Kylria
+          0x0110, // Saligun
+          0x0112, // Viviana
+          0x0114, // Stella
+          0x02AB, // H-HUnewearl
+          0x02AD, // H-HUcaseal
+          0x02AF, // H-RAmarl
+          0x02B1, // H-RAcaseal
+          0x02B3, // H-FOmarl
+          0x02B5, // H-FOnewearl
+          0x02CE, // H-FOmarl
+          0x02CF, // H-HUnewearl
+          0x02D1, // H-RAmarl
+          0x02D4, // H-HUcaseal
+          0x02D6, // H-FOnewearl
+          0x02D8, // H-RAcaseal
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HU_OR_FO_CLASS_HUMAN_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0001, // Orland
-        0x0003, // Ino'lis
-        0x0004, // Sil'fer
-        0x0111, // Relmitos
-        0x0115, // Glustar
-        0x0112, // Viviana
-        0x02AA, // H-HUmar
-        0x02AB, // H-HUnewearl
-        0x02B2, // H-FOmar
-        0x02B3, // H-FOmarl
-        0x02B4, // H-FOnewm
-        0x02B5, // H-FOnewearl
-        0x02CC, // H-HUmar
-        0x02CE, // H-FOmarl
-        0x02CF, // H-HUnewearl
-        0x02D5, // H-FOmar
-        0x02D6, // H-FOnewearl
-        0x02D9, // H-FOnewm
+          0x0001, // Orland
+          0x0003, // Ino'lis
+          0x0004, // Sil'fer
+          0x0111, // Relmitos
+          0x0115, // Glustar
+          0x0112, // Viviana
+          0x02AA, // H-HUmar
+          0x02AB, // H-HUnewearl
+          0x02B2, // H-FOmar
+          0x02B3, // H-FOmarl
+          0x02B4, // H-FOnewm
+          0x02B5, // H-FOnewearl
+          0x02CC, // H-HUmar
+          0x02CE, // H-FOmarl
+          0x02CF, // H-HUnewearl
+          0x02D5, // H-FOmar
+          0x02D6, // H-FOnewearl
+          0x02D9, // H-FOnewm
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HU_CLASS_ANDROID_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0110, // Saligun
-        0x0113, // Teifu
-        0x02AC, // H-HUcast
-        0x02AD, // H-HUcaseal
-        0x02D4, // H-HUcaseal
-        0x02D7, // H-HUcast
+          0x0110, // Saligun
+          0x0113, // Teifu
+          0x02AC, // H-HUcast
+          0x02AD, // H-HUcaseal
+          0x02D4, // H-HUcaseal
+          0x02D7, // H-HUcast
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::UNKNOWN_10: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0001, // Orland
-        0x0003, // Ino'lis
-        0x0110, // Saligun
-        0x0111, // Relmitos
-        0x0113, // Teifu
-        0x02AA, // H-HUmar
-        0x02AC, // H-HUcast
-        0x02AD, // H-HUcaseal
-        0x02B2, // H-FOmar
-        0x02B3, // H-FOmarl
-        0x02CC, // H-HUmar
-        0x02CE, // H-FOmarl
-        0x02D4, // H-HUcaseal
-        0x02D5, // H-FOmar
-        0x02D7, // H-HUcast
+          0x0001, // Orland
+          0x0003, // Ino'lis
+          0x0110, // Saligun
+          0x0111, // Relmitos
+          0x0113, // Teifu
+          0x02AA, // H-HUmar
+          0x02AC, // H-HUcast
+          0x02AD, // H-HUcaseal
+          0x02B2, // H-FOmar
+          0x02B3, // H-FOmarl
+          0x02CC, // H-HUmar
+          0x02CE, // H-FOmarl
+          0x02D4, // H-HUcaseal
+          0x02D5, // H-FOmar
+          0x02D7, // H-HUcast
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::UNKNOWN_11: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0001, // Orland
-        0x0002, // Kranz
-        0x0005, // Guykild
-        0x0113, // Teifu
-        0x02AA, // H-HUmar
-        0x02AC, // H-HUcast
-        0x02AE, // H-RAmar
-        0x02B0, // H-RAcast
-        0x02CC, // H-HUmar
-        0x02CD, // H-RAmarl
-        0x02D0, // H-RAcast
-        0x02D7, // H-HUcast
+          0x0001, // Orland
+          0x0002, // Kranz
+          0x0005, // Guykild
+          0x0113, // Teifu
+          0x02AA, // H-HUmar
+          0x02AC, // H-HUcast
+          0x02AE, // H-RAmar
+          0x02B0, // H-RAcast
+          0x02CC, // H-HUmar
+          0x02CD, // H-RAmarl
+          0x02D0, // H-RAcast
+          0x02D7, // H-HUcast
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HUNEWEARL_CLASS_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0004, // Sil'fer
-        0x02AB, // H-HUnewearl
-        0x02CF, // H-HUnewearl
+          0x0004, // Sil'fer
+          0x02AB, // H-HUnewearl
+          0x02CF, // H-HUnewearl
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_CLASS_MALE_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0002, // Kranz
-        0x0005, // Guykild
-        0x02AE, // H-RAmar
-        0x02B0, // H-RAcast
-        0x02CD, // H-RAmarl
-        0x02D0, // H-RAcast
+          0x0002, // Kranz
+          0x0005, // Guykild
+          0x02AE, // H-RAmar
+          0x02B0, // H-RAcast
+          0x02CD, // H-RAmarl
+          0x02D0, // H-RAcast
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_CLASS_FEMALE_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0006, // Kylria
-        0x0114, // Stella
-        0x02AF, // H-RAmarl
-        0x02B1, // H-RAcaseal
-        0x02D1, // H-RAmarl
-        0x02D2, // D-RAcaseal
+          0x0006, // Kylria
+          0x0114, // Stella
+          0x02AF, // H-RAmarl
+          0x02B1, // H-RAcaseal
+          0x02D1, // H-RAmarl
+          0x02D2, // D-RAcaseal
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_OR_FO_CLASS_FEMALE_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0003, // Ino'lis
-        0x0006, // Kylria
-        0x0112, // Viviana
-        0x0114, // Stella
-        0x02AF, // H-RAmarl
-        0x02B1, // H-RAcaseal
-        0x02B3, // H-FOmarl
-        0x02B5, // H-FOnewearl
-        0x02CE, // H-FOmarl
-        0x02D1, // H-RAmarl
-        0x02D6, // H-FOnewearl
-        0x02D8, // H-RAcaseal
+          0x0003, // Ino'lis
+          0x0006, // Kylria
+          0x0112, // Viviana
+          0x0114, // Stella
+          0x02AF, // H-RAmarl
+          0x02B1, // H-RAcaseal
+          0x02B3, // H-FOmarl
+          0x02B5, // H-FOnewearl
+          0x02CE, // H-FOmarl
+          0x02D1, // H-RAmarl
+          0x02D6, // H-FOnewearl
+          0x02D8, // H-RAcaseal
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HU_OR_RA_CLASS_HUMAN_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0001, // Orland
-        0x0002, // Kranz
-        0x0004, // Sil'fer
-        0x0006, // Kylria
-        0x02AA, // H-HUmar
-        0x02AB, // H-HUnewearl
-        0x02AE, // H-RAmar
-        0x02AF, // H-RAmarl
-        0x02CC, // H-HUmar
-        0x02CD, // H-RAmarl
-        0x02CF, // H-HUnewearl
-        0x02D1, // H-RAmarl
+          0x0001, // Orland
+          0x0002, // Kranz
+          0x0004, // Sil'fer
+          0x0006, // Kylria
+          0x02AA, // H-HUmar
+          0x02AB, // H-HUnewearl
+          0x02AE, // H-RAmar
+          0x02AF, // H-RAmarl
+          0x02CC, // H-HUmar
+          0x02CD, // H-RAmarl
+          0x02CF, // H-HUnewearl
+          0x02D1, // H-RAmarl
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_CLASS_ANDROID_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0005, // Guykild
-        0x0114, // Stella
-        0x02B0, // H-RAcast
-        0x02B1, // H-RAcaseal
-        0x02D0, // H-RAcast
-        0x02D8, // H-RAcaseal
+          0x0005, // Guykild
+          0x0114, // Stella
+          0x02B0, // H-RAcast
+          0x02B1, // H-RAcaseal
+          0x02D0, // H-RAcast
+          0x02D8, // H-RAcaseal
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_FO_CLASS_FEMALE_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0003, // Ino'lis
-        0x0112, // Viviana
-        0x02B3, // H-FOmarl
-        0x02B5, // H-FOnewearl
-        0x02CE, // H-FOmarl
-        0x02D6, // H-FOnewearl
+          0x0003, // Ino'lis
+          0x0112, // Viviana
+          0x02B3, // H-FOmarl
+          0x02B5, // H-FOnewearl
+          0x02CE, // H-FOmarl
+          0x02D6, // H-FOnewearl
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_FEMALE_HUMAN_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0003, // Ino'lis
-        0x0004, // Sil'fer
-        0x0006, // Kylria
-        0x0112, // Viviana
-        0x02AB, // H-HUnewearl
-        0x02AF, // H-RAmarl
-        0x02B3, // H-FOmarl
-        0x02B5, // H-FOnewearl
-        0x02CE, // H-FOmarl
-        0x02CF, // H-HUnewearl
-        0x02D1, // H-RAmarl
-        0x02D6, // H-FOnewearl
+          0x0003, // Ino'lis
+          0x0004, // Sil'fer
+          0x0006, // Kylria
+          0x0112, // Viviana
+          0x02AB, // H-HUnewearl
+          0x02AF, // H-RAmarl
+          0x02B3, // H-FOmarl
+          0x02B5, // H-FOnewearl
+          0x02CE, // H-FOmarl
+          0x02CF, // H-HUnewearl
+          0x02D1, // H-RAmarl
+          0x02D6, // H-FOnewearl
       };
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_ANDROID_SC: {
       static const unordered_set<uint16_t> card_ids = {
-        0x0005, // Guykild
-        0x0110, // Saligun
-        0x0113, // Teifu
-        0x0114, // Stella
-        0x02AC, // H-HUcast
-        0x02AD, // H-HUcaseal
-        0x02B0, // H-RAcast
-        0x02B1, // H-RAcaseal
-        0x02D0, // H-RAcast
-        0x02D4, // H-HUcaseal
-        0x02D7, // H-HUcast
-        0x02D8, // H-RAcaseal
+          0x0005, // Guykild
+          0x0110, // Saligun
+          0x0113, // Teifu
+          0x0114, // Stella
+          0x02AC, // H-HUcast
+          0x02AD, // H-HUcaseal
+          0x02B0, // H-RAcast
+          0x02B1, // H-RAcaseal
+          0x02D0, // H-RAcast
+          0x02D4, // H-HUcaseal
+          0x02D7, // H-HUcast
+          0x02D8, // H-RAcaseal
       };
       return ret && card_ids.count(card_id2);
     }
@@ -1368,7 +1363,7 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
 
   if (((action_type == ActionType::ATTACK) || (action_type == ActionType::INVALID_00)) &&
       (this->find_condition_on_card_ref(pa.attacker_card_ref, ConditionType::BIG_SWING) ||
-       this->find_condition_on_card_ref(sc_card_ref_if_item, ConditionType::BIG_SWING))) {
+          this->find_condition_on_card_ref(sc_card_ref_if_item, ConditionType::BIG_SWING))) {
     cost_bias++;
   }
 
@@ -1435,7 +1430,8 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
     TargetMode* out_effective_target_mode,
     uint16_t* out_orig_card_ref) const {
   size_t z;
-  for (z = 0; (z < 9) && (pa.action_card_refs[z] != 0xFFFF); z++) { }
+  for (z = 0; (z < 9) && (pa.action_card_refs[z] != 0xFFFF); z++) {
+  }
   if (z >= 9) {
     return false;
   }
@@ -1705,7 +1701,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
   if ((short_statuses->at(0).card_ref == 0xFFFF) ||
       !this->card_exists_by_status(short_statuses->at(0)) ||
       !this->check_usability_or_apply_condition_for_card_refs(
-        card_ref, short_statuses->at(0).card_ref, 0xFFFF, 0xFF, AttackMedium::INVALID_FF)) {
+          card_ref, short_statuses->at(0).card_ref, 0xFFFF, 0xFF, AttackMedium::INVALID_FF)) {
     return -0x75;
   }
 
@@ -1764,7 +1760,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
     Location summon_area_loc;
     uint8_t summon_area_size;
     if (!this->get_creature_summon_area(
-          client_id, &summon_area_loc, &summon_area_size)) {
+            client_id, &summon_area_loc, &summon_area_size)) {
       if (team_id != 1) {
         if ((loc->x > 0) && (loc->x < this->map_and_rules->map.width - 1)) {
           if ((loc->y < this->map_and_rules->map.height - summon_cost - 1) &&
@@ -1984,7 +1980,8 @@ shared_ptr<const DataIndex::CardEntry> RulerServer::definition_for_card_id(
 uint32_t RulerServer::get_card_id_with_effective_range(
     uint16_t card_ref, uint16_t card_id_override, TargetMode* out_target_mode) const {
   uint16_t card_id = (card_id_override == 0xFFFF)
-      ? this->card_id_for_card_ref(card_ref) : card_id_override;
+      ? this->card_id_for_card_ref(card_ref)
+      : card_id_override;
 
   if (card_id != 0xFFFF) {
     auto ce = this->definition_for_card_id(card_id);
@@ -2102,7 +2099,7 @@ bool RulerServer::get_move_path_length_and_cost(
   parray<uint8_t, 0x100> visited_map;
   path.end_loc = loc;
   if (!this->check_move_path_and_get_cost(
-        client_id, card_ref, &visited_map, &path, out_cost)) {
+          client_id, card_ref, &visited_map, &path, out_cost)) {
     return false;
   }
 
@@ -2189,9 +2186,9 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
       (attacker_chain->chain.acting_card_ref != attacker_card_ref) ||
       !attacker_ce ||
       ((attacker_ce->def.type != CardType::HUNTERS_SC &&
-       (attacker_ce->def.type != CardType::ARKZ_SC) &&
-       (attacker_ce->def.type != CardType::CREATURE) &&
-       (attacker_ce->def.type != CardType::ITEM)))) {
+          (attacker_ce->def.type != CardType::ARKZ_SC) &&
+          (attacker_ce->def.type != CardType::CREATURE) &&
+          (attacker_ce->def.type != CardType::ITEM)))) {
     this->error_code3 = -0x6F;
     return false;
   }
@@ -2247,7 +2244,7 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
     }
 
     if (!this->check_usability_or_apply_condition_for_card_refs(
-          right_card_ref, attacker_card_ref, 0xFFFF, 0xFF, AttackMedium::INVALID_FF)) {
+            right_card_ref, attacker_card_ref, 0xFFFF, 0xFF, AttackMedium::INVALID_FF)) {
       this->error_code3 = -0x6A;
       return false;
     }
@@ -2377,7 +2374,7 @@ bool RulerServer::is_defense_valid(const ActionState& pa) {
   }
 
   if (!this->defense_card_can_apply_to_attack(
-        pa.action_card_refs[0], pa.target_card_refs[0], pa.original_attacker_card_ref)) {
+          pa.action_card_refs[0], pa.target_card_refs[0], pa.original_attacker_card_ref)) {
     this->error_code3 = -0x61;
     return false;
   }
@@ -2447,10 +2444,10 @@ size_t RulerServer::max_move_distance_for_card_ref(uint32_t card_ref) const {
 }
 
 RulerServer::MovePath::MovePath()
-  : length(-1),
-    remaining_distance(0),
-    num_occupied_tiles(0),
-    cost(0) { }
+    : length(-1),
+      remaining_distance(0),
+      num_occupied_tiles(0),
+      cost(0) {}
 
 void RulerServer::MovePath::add_step(const Location& loc) {
   this->step_locs[++this->length] = loc;
@@ -2617,8 +2614,8 @@ const CardShortStatus* RulerServer::short_status_for_card_ref(uint16_t card_ref)
 
 bool RulerServer::should_allow_attacks_on_current_turn() const {
   return (this->state_flags &&
-          ((this->state_flags->turn_num > 1) ||
-           (this->state_flags->current_team_turn1 != this->state_flags->first_team_turn)));
+      ((this->state_flags->turn_num > 1) ||
+          (this->state_flags->current_team_turn1 != this->state_flags->first_team_turn)));
 }
 
 int32_t RulerServer::verify_deck(
@@ -2675,7 +2672,5 @@ int32_t RulerServer::verify_deck(
 
   return 0;
 }
-
-
 
 } // namespace Episode3

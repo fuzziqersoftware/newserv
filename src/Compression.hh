@@ -2,13 +2,11 @@
 
 #include <stddef.h>
 
-#include <string>
-#include <functional>
 #include <deque>
+#include <functional>
+#include <string>
 
 #include "Text.hh"
-
-
 
 // Use this class if you need to compress from multiple input buffers, or need
 // to compress multiple chunks and don't want to copy their contents

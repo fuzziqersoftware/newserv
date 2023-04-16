@@ -3,13 +3,11 @@
 #include <stdint.h>
 
 #include <memory>
-#include <string>
 #include <phosg/Encoding.hh>
+#include <string>
 
-#include "Text.hh"
 #include "ItemData.hh"
-
-
+#include "Text.hh"
 
 class ItemParameterTable {
 public:

@@ -9,8 +9,6 @@
 
 namespace Episode3 {
 
-
-
 struct MapState {
   le_uint16_t width;
   le_uint16_t height;
@@ -57,7 +55,5 @@ struct OverlayState {
   OverlayState();
   void clear();
 } __attribute__((packed));
-
-
 
 } // namespace Episode3

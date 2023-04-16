@@ -1,9 +1,7 @@
 #pragma once
 
-#include <phosg/Strings.hh>
 #include <phosg/JSON.hh>
-
-
+#include <phosg/Strings.hh>
 
 extern PrefixedLogger ax_messages_log;
 extern PrefixedLogger channel_exceptions_log;

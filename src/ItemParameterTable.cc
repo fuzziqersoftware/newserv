@@ -2,10 +2,8 @@
 
 using namespace std;
 
-
-
 ItemParameterTable::ItemParameterTable(shared_ptr<const string> data)
-  : data(data), r(*data) {
+    : data(data), r(*data) {
   size_t offset_table_offset = this->r.pget_u32l(this->data->size() - 0x10);
   this->offsets = &r.pget<TableOffsets>(offset_table_offset);
 }
@@ -139,8 +137,6 @@ uint8_t ItemParameterTable::get_max_tech_level(uint8_t char_class, uint8_t tech_
   return r.pget_u8(this->offsets->max_tech_level_table + tech_num * 12 + char_class);
 }
 
-
-
 const ItemParameterTable::ItemBase& ItemParameterTable::get_item_definition(
     const ItemData& item) const {
   switch (item.data1[0]) {
@@ -176,8 +172,8 @@ uint8_t ItemParameterTable::get_item_base_stars(const ItemData& item) const {
     return this->get_item_stars(this->get_item_definition(item).id);
   } else if (item.data1[0] == 3) {
     const auto& def = (item.data1[1] == 2)
-        ? this->get_tool(2, item.data1[4])
-        : this->get_tool(item.data1[1], item.data1[2]);
+                          ? this->get_tool(2, item.data1[4])
+                          : this->get_tool(item.data1[1], item.data1[2]);
     return (def.item_flag & 0x80) ? 12 : 0;
   } else {
     return 0;
@@ -224,8 +220,6 @@ bool ItemParameterTable::is_unsealable_item(const ItemData& item) const {
   }
   return false;
 }
-
-
 
 size_t ItemParameterTable::price_for_item(const ItemData& item) const {
   switch (item.data1[0]) {
@@ -281,10 +275,9 @@ size_t ItemParameterTable::price_for_item(const ItemData& item) const {
       const auto& def = this->get_armor_or_shield(item.data1[1], item.data1[2]);
       double power_factor = def.dfp + def.evp + def_bonus + evp_bonus;
       double power_factor_floor = static_cast<int32_t>((power_factor * power_factor) / sale_divisor);
-      return power_factor_floor + (
-          70.0 *
-          static_cast<double>(item.data1[5] + 1) *
-          static_cast<double>(def.required_level + 1));
+      return power_factor_floor + (70.0 *
+                                   static_cast<double>(item.data1[5] + 1) *
+                                   static_cast<double>(def.required_level + 1));
     }
 
     case 2:

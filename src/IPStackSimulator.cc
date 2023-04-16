@@ -1,29 +1,25 @@
 #include "IPStackSimulator.hh"
 
-#include <stdint.h>
-#include <string.h>
-#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
-#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdint.h>
+#include <string.h>
 
-#include <string>
 #include <phosg/Network.hh>
 #include <phosg/Random.hh>
 #include <phosg/Time.hh>
+#include <string>
 
-#include "Loggers.hh"
-#include "IPFrameInfo.hh"
 #include "DNSServer.hh"
+#include "IPFrameInfo.hh"
+#include "Loggers.hh"
 
 using namespace std;
 
-
-
 static const size_t DEFAULT_RESEND_PUSH_USECS = 200000; // 200ms
-
-
 
 // Note: these functions exist because seq nums are allowed to wrap around the
 // 32-bit integer space by design. We have to do the subtraction before the
@@ -45,8 +41,6 @@ static __attribute__((unused)) inline bool seq_num_greater_or_equal(uint32_t a, 
   return (a == b) || seq_num_greater(a, b);
 }
 
-
-
 string IPStackSimulator::str_for_ipv4_netloc(uint32_t addr, uint16_t port) {
   be_uint32_t be_addr = addr;
   char addr_str[INET_ADDRSTRLEN];
@@ -67,14 +61,12 @@ string IPStackSimulator::str_for_tcp_connection(shared_ptr<const IPClient> c,
       fd, key, client_netloc_str.c_str(), server_netloc_str.c_str());
 }
 
-
-
 IPStackSimulator::IPStackSimulator(
     std::shared_ptr<struct event_base> base,
     std::shared_ptr<ServerState> state)
-  : base(base),
-    state(state),
-    pcap_text_log_file(state->ip_stack_debug ? fopen("IPStackSimulator-Log.txt", "wt") : nullptr) {
+    : base(base),
+      state(state),
+      pcap_text_log_file(state->ip_stack_debug ? fopen("IPStackSimulator-Log.txt", "wt") : nullptr) {
   memset(this->host_mac_address_bytes, 0x90, 6);
   memset(this->broadcast_mac_address_bytes, 0xFF, 6);
 }
@@ -84,8 +76,6 @@ IPStackSimulator::~IPStackSimulator() {
     fclose(this->pcap_text_log_file);
   }
 }
-
-
 
 void IPStackSimulator::listen(const std::string& socket_path) {
   this->add_socket(::listen(socket_path, 0, SOMAXCONN));
@@ -102,16 +92,14 @@ void IPStackSimulator::listen(int port) {
 void IPStackSimulator::add_socket(int fd) {
   this->listeners.emplace(
       evconnlistener_new(
-        this->base.get(),
-        IPStackSimulator::dispatch_on_listen_accept,
-        this,
-        LEV_OPT_REUSEABLE,
-        0,
-        fd),
+          this->base.get(),
+          IPStackSimulator::dispatch_on_listen_accept,
+          this,
+          LEV_OPT_REUSEABLE,
+          0,
+          fd),
       evconnlistener_free);
 }
-
-
 
 uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_addr) {
   // Use an address not on the same subnet as the client, so that PSO Plus and
@@ -124,14 +112,11 @@ uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_ad
   }
 }
 
-
-
 IPStackSimulator::IPClient::IPClient(struct bufferevent* bev)
-  : bev(bev, bufferevent_free), ipv4_addr(0) {
+    : bev(bev, bufferevent_free),
+      ipv4_addr(0) {
   memset(this->mac_addr, 0, 6);
 }
-
-
 
 static void flush_and_free_bufferevent(struct bufferevent* bev) {
   bufferevent_flush(bev, EV_READ | EV_WRITE, BEV_FINISHED);
@@ -139,26 +124,24 @@ static void flush_and_free_bufferevent(struct bufferevent* bev) {
 }
 
 IPStackSimulator::IPClient::TCPConnection::TCPConnection()
-  : server_bev(nullptr, flush_and_free_bufferevent),
-    pending_data(evbuffer_new(), evbuffer_free),
-    resend_push_event(nullptr, event_free),
-    awaiting_first_ack(true),
-    server_addr(0),
-    server_port(0),
-    client_port(0),
-    next_client_seq(0),
-    acked_server_seq(0),
-    resend_push_usecs(DEFAULT_RESEND_PUSH_USECS),
-    next_push_max_frame_size(1024),
-    max_frame_size(1024),
-    bytes_received(0),
-    bytes_sent(0) { }
-
-
+    : server_bev(nullptr, flush_and_free_bufferevent),
+      pending_data(evbuffer_new(), evbuffer_free),
+      resend_push_event(nullptr, event_free),
+      awaiting_first_ack(true),
+      server_addr(0),
+      server_port(0),
+      client_port(0),
+      next_client_seq(0),
+      acked_server_seq(0),
+      resend_push_usecs(DEFAULT_RESEND_PUSH_USECS),
+      next_push_max_frame_size(1024),
+      max_frame_size(1024),
+      bytes_received(0),
+      bytes_sent(0) {}
 
 void IPStackSimulator::dispatch_on_listen_accept(
     struct evconnlistener* listener, evutil_socket_t fd,
-    struct sockaddr *address, int socklen, void* ctx) {
+    struct sockaddr* address, int socklen, void* ctx) {
   reinterpret_cast<IPStackSimulator*>(ctx)->on_listen_accept(
       listener, fd, address, socklen);
 }
@@ -168,7 +151,7 @@ void IPStackSimulator::on_listen_accept(struct evconnlistener* listener,
   int listen_fd = evconnlistener_get_fd(listener);
   ip_stack_simulator_log.info("Virtual network fd %d connected via fd %d", fd, listen_fd);
 
-  struct bufferevent *bev = bufferevent_socket_new(this->base.get(), fd,
+  struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   shared_ptr<IPClient> c(new IPClient(bev));
   c->sim = this;
@@ -190,8 +173,6 @@ void IPStackSimulator::on_listen_error(struct evconnlistener* listener) {
       evconnlistener_get_fd(listener), err, evutil_socket_error_to_string(err));
   event_base_loopexit(this->base.get(), nullptr);
 }
-
-
 
 void IPStackSimulator::dispatch_on_client_input(
     struct bufferevent* bev, void* ctx) {
@@ -249,8 +230,6 @@ void IPStackSimulator::on_client_error(struct bufferevent* bev,
     this->bev_to_client.erase(bev);
   }
 }
-
-
 
 void IPStackSimulator::on_client_frame(
     shared_ptr<IPClient> c, const string& frame) {
@@ -310,8 +289,6 @@ void IPStackSimulator::on_client_frame(
   }
 }
 
-
-
 void IPStackSimulator::on_client_arp_frame(
     shared_ptr<IPClient> c, const FrameInfo& fi) {
   if (fi.arp->hwaddr_len != 6 ||
@@ -330,7 +307,7 @@ void IPStackSimulator::on_client_arp_frame(
   }
   if (c->ipv4_addr == 0) {
     c->ipv4_addr = *reinterpret_cast<const be_uint32_t*>(
-      reinterpret_cast<const uint8_t*>(fi.payload) + 6);
+        reinterpret_cast<const uint8_t*>(fi.payload) + 6);
   }
 
   EthernetHeader r_ether;
@@ -381,8 +358,6 @@ void IPStackSimulator::on_client_arp_frame(
     this->log_frame(w.str());
   }
 }
-
-
 
 void IPStackSimulator::on_client_udp_frame(
     shared_ptr<IPClient> c, const FrameInfo& fi) {
@@ -453,20 +428,18 @@ void IPStackSimulator::on_client_udp_frame(
   }
 }
 
-
-
 uint64_t IPStackSimulator::tcp_conn_key_for_connection(
     const IPClient::TCPConnection& conn) {
   return (static_cast<uint64_t>(conn.server_addr) << 32) |
-         (static_cast<uint64_t>(conn.server_port) << 16) |
-         static_cast<uint64_t>(conn.client_port);
+      (static_cast<uint64_t>(conn.server_port) << 16) |
+      static_cast<uint64_t>(conn.client_port);
 }
 
 uint64_t IPStackSimulator::tcp_conn_key_for_client_frame(
     const IPv4Header& ipv4, const TCPHeader& tcp) {
   return (static_cast<uint64_t>(ipv4.dest_addr) << 32) |
-         (static_cast<uint64_t>(tcp.dest_port) << 16) |
-         static_cast<uint64_t>(tcp.src_port);
+      (static_cast<uint64_t>(tcp.dest_port) << 16) |
+      static_cast<uint64_t>(tcp.src_port);
 }
 
 uint64_t IPStackSimulator::tcp_conn_key_for_client_frame(const FrameInfo& fi) {
@@ -476,14 +449,12 @@ uint64_t IPStackSimulator::tcp_conn_key_for_client_frame(const FrameInfo& fi) {
   return IPStackSimulator::tcp_conn_key_for_client_frame(*fi.ipv4, *fi.tcp);
 }
 
-
 void IPStackSimulator::on_client_tcp_frame(
     shared_ptr<IPClient> c, const FrameInfo& fi) {
   ip_stack_simulator_log.info("Virtual network sent TCP frame (seq=%08" PRIX32 ", ack=%08" PRIX32 ")",
       fi.tcp->seq_num.load(), fi.tcp->ack_num.load());
 
-  if (fi.tcp->flags & (TCPHeader::Flag::NS | TCPHeader::Flag::CWR |
-                       TCPHeader::Flag::ECE | TCPHeader::Flag::URG)) {
+  if (fi.tcp->flags & (TCPHeader::Flag::NS | TCPHeader::Flag::CWR | TCPHeader::Flag::ECE | TCPHeader::Flag::URG)) {
     throw runtime_error("unsupported flag in TCP packet");
   }
 
@@ -535,7 +506,6 @@ void IPStackSimulator::on_client_tcp_frame(
           throw runtime_error("invalid TCP option");
       }
     }
-
 
     uint64_t key = this->tcp_conn_key_for_client_frame(fi);
     auto emplace_ret = c->tcp_connections.emplace(key, IPClient::TCPConnection());
@@ -645,17 +615,18 @@ void IPStackSimulator::on_client_tcp_frame(
       c->tcp_connections.erase(key);
       conn_valid = false;
 
-    // Note: The PSH flag isn't required to be set on all packets that contain
-    // data. The PSH flag just means "tell the application that data is
-    // available", so some senders only set the PSH flag on the last frame of a
-    // large segment of data, since the application wouldn't be able to process
-    // the segment until all of it is available. newserv can handle incomplete
-    // commands, so we just ignore the PSH flag and forward any data to the
-    // server immediately.
+      // Note: The PSH flag isn't required to be set on all packets that contain
+      // data. The PSH flag just means "tell the application that data is
+      // available", so some senders only set the PSH flag on the last frame of a
+      // large segment of data, since the application wouldn't be able to process
+      // the segment until all of it is available. newserv can handle incomplete
+      // commands, so we just ignore the PSH flag and forward any data to the
+      // server immediately.
     } else if (fi.payload_size != 0) {
 
       string conn_str = ip_stack_simulator_log.should_log(LogLevel::WARNING)
-          ? this->str_for_tcp_connection(c, *conn) : "";
+          ? this->str_for_tcp_connection(c, *conn)
+          : "";
 
       size_t payload_skip_bytes;
       if (fi.tcp->seq_num == conn->next_client_seq) {
@@ -938,8 +909,6 @@ void IPStackSimulator::on_server_error(
     c->tcp_connections.erase(this->tcp_conn_key_for_connection(conn));
   }
 }
-
-
 
 void IPStackSimulator::log_frame(const string& data) const {
   if (this->pcap_text_log_file) {

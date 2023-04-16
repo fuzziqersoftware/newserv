@@ -8,8 +8,8 @@
 #include <event2/event.h>
 #include <event2/listener.h>
 #include <fcntl.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -27,14 +27,14 @@
 using namespace std;
 using namespace std::placeholders;
 
-
-
 void Server::disconnect_client(shared_ptr<Client> c) {
   if (c->channel.is_virtual_connection) {
-    server_log.info("Client disconnected: C-%" PRIX64 " on virtual connection %p",
+    server_log.info(
+        "Client disconnected: C-%" PRIX64 " on virtual connection %p",
         c->id, c->channel.bev.get());
   } else {
-    server_log.info("Client disconnected: C-%" PRIX64 " on fd %d",
+    server_log.info(
+        "Client disconnected: C-%" PRIX64 " on fd %d",
         c->id, bufferevent_getfd(c->channel.bev.get()));
   }
 
@@ -110,7 +110,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
     return;
   }
 
-  struct bufferevent *bev = bufferevent_socket_new(this->base.get(), fd,
+  struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   shared_ptr<Client> c(new Client(
       bev, listening_socket->version, listening_socket->behavior));
@@ -140,7 +140,8 @@ void Server::connect_client(
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;
 
-  server_log.info("Client connected: C-%" PRIX64 " on virtual connection %p via T-%hu-%s-%s-VI",
+  server_log.info(
+      "Client connected: C-%" PRIX64 " on virtual connection %p via T-%hu-%s-%s-VI",
       c->id,
       bev,
       server_port,
@@ -211,9 +212,9 @@ void Server::on_client_error(Channel& ch, short events) {
 Server::Server(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
-  : base(base),
-    destroy_clients_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &Server::dispatch_destroy_clients, this), event_free),
-    state(state) { }
+    : base(base),
+      destroy_clients_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &Server::dispatch_destroy_clients, this), event_free),
+      state(state) {}
 
 void Server::listen(
     const std::string& addr_str,
@@ -243,12 +244,19 @@ void Server::listen(const std::string& addr_str, int port, GameVersion version, 
   this->listen(addr_str, "", port, version, behavior);
 }
 
-Server::ListeningSocket::ListeningSocket(Server* s, const std::string& addr_str,
-    int fd, GameVersion version, ServerBehavior behavior) :
-    addr_str(addr_str), fd(fd), version(version), behavior(behavior), listener(
-        evconnlistener_new(s->base.get(), Server::dispatch_on_listen_accept, s,
-          LEV_OPT_REUSEABLE, 0, this->fd), evconnlistener_free) {
-  evconnlistener_set_error_cb(this->listener.get(),
+Server::ListeningSocket::ListeningSocket(
+    Server* s, const std::string& addr_str,
+    int fd, GameVersion version, ServerBehavior behavior)
+    : addr_str(addr_str),
+      fd(fd),
+      version(version),
+      behavior(behavior),
+      listener(evconnlistener_new(
+                   s->base.get(), Server::dispatch_on_listen_accept, s,
+                   LEV_OPT_REUSEABLE, 0, this->fd),
+          evconnlistener_free) {
+  evconnlistener_set_error_cb(
+      this->listener.get(),
       Server::dispatch_on_listen_error);
 }
 
@@ -257,7 +265,8 @@ void Server::add_socket(
     int fd,
     GameVersion version,
     ServerBehavior behavior) {
-  this->listening_sockets.emplace(piecewise_construct, forward_as_tuple(fd),
+  this->listening_sockets.emplace(
+      piecewise_construct, forward_as_tuple(fd),
       forward_as_tuple(this, addr_str, fd, version, behavior));
 }
 
@@ -276,10 +285,12 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
   int64_t serial_number_dec = -1;
   try {
     serial_number_dec = stoul(ident, nullptr, 10);
-  } catch (const invalid_argument&) { }
+  } catch (const invalid_argument&) {
+  }
   try {
     serial_number_hex = stoul(ident, nullptr, 16);
-  } catch (const invalid_argument&) { }
+  } catch (const invalid_argument&) {
+  }
   u16string u16name = decode_sjis(ident);
 
   // TODO: It's kind of not great that we do a linear search here, but this is

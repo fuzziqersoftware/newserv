@@ -2,18 +2,14 @@
 
 #include <event2/buffer.h>
 
-#include <stdexcept>
 #include <phosg/Strings.hh>
+#include <stdexcept>
 
 #include "Text.hh"
 
 using namespace std;
 
-
-
 extern bool use_terminal_colors;
-
-
 
 PSOCommandHeader::PSOCommandHeader() {
   this->bb.size = 0;
@@ -144,8 +140,6 @@ void PSOCommandHeader::set_flag(GameVersion version, uint32_t flag) {
   }
 }
 
-
-
 void check_size_v(size_t size, size_t min_size, size_t max_size) {
   if (size < min_size) {
     throw std::runtime_error(string_printf(
@@ -161,8 +155,6 @@ void check_size_v(size_t size, size_t min_size, size_t max_size) {
         max_size, size));
   }
 }
-
-
 
 std::string prepend_command_header(
     GameVersion version,

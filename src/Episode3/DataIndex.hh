@@ -2,19 +2,17 @@
 
 #include <stdint.h>
 
-#include <string>
 #include <map>
-#include <set>
 #include <memory>
-#include <unordered_map>
 #include <phosg/Encoding.hh>
 #include <phosg/JSON.hh>
+#include <set>
+#include <string>
+#include <unordered_map>
 
 #include "../Text.hh"
 
 namespace Episode3 {
-
-
 
 // The comment in Server.hh does not apply to this file (and DataIndex.cc).
 // Except for the Location structure, these structures and functions are not
@@ -22,21 +20,17 @@ namespace Episode3 {
 
 class DataIndex;
 
-
-
 enum BehaviorFlag {
-  SKIP_DECK_VERIFY       = 0x00000001,
-  IGNORE_CARD_COUNTS     = 0x00000002,
-  SKIP_D1_D2_REPLACE     = 0x00000004,
-  DISABLE_TIME_LIMITS    = 0x00000008,
+  SKIP_DECK_VERIFY = 0x00000001,
+  IGNORE_CARD_COUNTS = 0x00000002,
+  SKIP_D1_D2_REPLACE = 0x00000004,
+  DISABLE_TIME_LIMITS = 0x00000008,
   ENABLE_STATUS_MESSAGES = 0x00000010,
-  LOAD_CARD_TEXT         = 0x00000020,
-  ENABLE_RECORDING       = 0x00000040,
-  DISABLE_MASKING        = 0x00000080,
-  DISABLE_INTERFERENCE   = 0x00000100,
+  LOAD_CARD_TEXT = 0x00000020,
+  ENABLE_RECORDING = 0x00000040,
+  DISABLE_MASKING = 0x00000080,
+  DISABLE_INTERFERENCE = 0x00000100,
 };
-
-
 
 enum class StatSwapType : uint8_t {
   NONE = 0,
@@ -99,54 +93,54 @@ enum class CriterionCode : uint8_t {
 };
 
 enum class CardRarity : uint8_t {
-  N1    = 0x01,
-  R1    = 0x02,
-  S     = 0x03,
-  E     = 0x04,
-  N2    = 0x05,
-  N3    = 0x06,
-  N4    = 0x07,
-  R2    = 0x08,
-  R3    = 0x09,
-  R4    = 0x0A,
-  SS    = 0x0B,
-  D1    = 0x0C,
-  D2    = 0x0D,
+  N1 = 0x01,
+  R1 = 0x02,
+  S = 0x03,
+  E = 0x04,
+  N2 = 0x05,
+  N3 = 0x06,
+  N4 = 0x07,
+  R2 = 0x08,
+  R3 = 0x09,
+  R4 = 0x0A,
+  SS = 0x0B,
+  D1 = 0x0C,
+  D2 = 0x0D,
   INVIS = 0x0E,
 };
 
 enum class CardType : uint8_t {
   HUNTERS_SC = 0x00,
-  ARKZ_SC    = 0x01,
-  ITEM       = 0x02,
-  CREATURE   = 0x03,
-  ACTION     = 0x04,
-  ASSIST     = 0x05,
+  ARKZ_SC = 0x01,
+  ITEM = 0x02,
+  CREATURE = 0x03,
+  ACTION = 0x04,
+  ASSIST = 0x05,
   INVALID_FF = 0xFF,
   END_CARD_LIST = 0xFF,
 };
 
 enum class CardClass : uint16_t {
-  HU_SC                      = 0x0000,
-  RA_SC                      = 0x0001,
-  FO_SC                      = 0x0002,
-  NATIVE_CREATURE            = 0x000A,
-  A_BEAST_CREATURE           = 0x000B,
-  MACHINE_CREATURE           = 0x000C,
-  DARK_CREATURE              = 0x000D,
-  GUARD_ITEM                 = 0x0015,
-  MAG_ITEM                   = 0x0017,
-  SWORD_ITEM                 = 0x0018,
-  GUN_ITEM                   = 0x0019,
-  CANE_ITEM                  = 0x001A,
-  ATTACK_ACTION              = 0x001E,
-  DEFENSE_ACTION             = 0x001F,
-  TECH                       = 0x0020,
-  PHOTON_BLAST               = 0x0021,
+  HU_SC = 0x0000,
+  RA_SC = 0x0001,
+  FO_SC = 0x0002,
+  NATIVE_CREATURE = 0x000A,
+  A_BEAST_CREATURE = 0x000B,
+  MACHINE_CREATURE = 0x000C,
+  DARK_CREATURE = 0x000D,
+  GUARD_ITEM = 0x0015,
+  MAG_ITEM = 0x0017,
+  SWORD_ITEM = 0x0018,
+  GUN_ITEM = 0x0019,
+  CANE_ITEM = 0x001A,
+  ATTACK_ACTION = 0x001E,
+  DEFENSE_ACTION = 0x001F,
+  TECH = 0x0020,
+  PHOTON_BLAST = 0x0021,
   CONNECT_ONLY_ATTACK_ACTION = 0x0022,
-  BOSS_ATTACK_ACTION         = 0x0023,
-  BOSS_TECH                  = 0x0024,
-  ASSIST                     = 0x0028,
+  BOSS_ATTACK_ACTION = 0x0023,
+  BOSS_TECH = 0x0024,
+  ASSIST = 0x0028,
 };
 
 bool card_class_is_tech_like(CardClass cc);
@@ -165,216 +159,216 @@ enum class TargetMode : uint8_t {
 };
 
 enum class ConditionType : uint8_t {
-  NONE                 = 0x00,
-  AP_BOOST             = 0x01, // Temporarily increase AP by N
-  RAMPAGE              = 0x02,
-  MULTI_STRIKE         = 0x03, // Duplicate attack N times
-  DAMAGE_MOD_1         = 0x04, // Set attack damage / AP to N after action cards applied (step 1)
-  IMMOBILE             = 0x05, // Give Immobile condition
-  HOLD                 = 0x06, // Give Hold condition
-  UNKNOWN_07           = 0x07,
-  TP_BOOST             = 0x08, // Add N TP temporarily during attack
-  GIVE_DAMAGE          = 0x09, // Cause direct N HP loss
-  GUOM                 = 0x0A, // Give Guom condition
-  PARALYZE             = 0x0B, // Give Paralysis condition
-  UNKNOWN_0C           = 0x0C, // Swap AP and TP temporarily (presumably)
-  A_H_SWAP             = 0x0D, // Swap AP and HP temporarily
-  PIERCE               = 0x0E, // Attack SC directly even if they have items equipped
-  UNKNOWN_0F           = 0x0F,
-  HEAL                 = 0x10, // Increase HP by N
-  RETURN_TO_HAND       = 0x11, // Return card to hand
-  UNKNOWN_12           = 0x12,
-  UNKNOWN_13           = 0x13,
-  ACID                 = 0x14, // Give Acid condition
-  UNKNOWN_15           = 0x15,
-  MIGHTY_KNUCKLE       = 0x16, // Temporarily increase AP by N, and set ATK dice to zero
-  UNIT_BLOW            = 0x17, // Temporarily increase AP by N * number of this card set within phase
-  CURSE                = 0x18, // Give Curse condition
-  COMBO_AP             = 0x19, // Temporarily increase AP by number of this card set within phase
+  NONE = 0x00,
+  AP_BOOST = 0x01, // Temporarily increase AP by N
+  RAMPAGE = 0x02,
+  MULTI_STRIKE = 0x03, // Duplicate attack N times
+  DAMAGE_MOD_1 = 0x04, // Set attack damage / AP to N after action cards applied (step 1)
+  IMMOBILE = 0x05, // Give Immobile condition
+  HOLD = 0x06, // Give Hold condition
+  UNKNOWN_07 = 0x07,
+  TP_BOOST = 0x08, // Add N TP temporarily during attack
+  GIVE_DAMAGE = 0x09, // Cause direct N HP loss
+  GUOM = 0x0A, // Give Guom condition
+  PARALYZE = 0x0B, // Give Paralysis condition
+  UNKNOWN_0C = 0x0C, // Swap AP and TP temporarily (presumably)
+  A_H_SWAP = 0x0D, // Swap AP and HP temporarily
+  PIERCE = 0x0E, // Attack SC directly even if they have items equipped
+  UNKNOWN_0F = 0x0F,
+  HEAL = 0x10, // Increase HP by N
+  RETURN_TO_HAND = 0x11, // Return card to hand
+  UNKNOWN_12 = 0x12,
+  UNKNOWN_13 = 0x13,
+  ACID = 0x14, // Give Acid condition
+  UNKNOWN_15 = 0x15,
+  MIGHTY_KNUCKLE = 0x16, // Temporarily increase AP by N, and set ATK dice to zero
+  UNIT_BLOW = 0x17, // Temporarily increase AP by N * number of this card set within phase
+  CURSE = 0x18, // Give Curse condition
+  COMBO_AP = 0x19, // Temporarily increase AP by number of this card set within phase
   PIERCE_RAMPAGE_BLOCK = 0x1A, // Block attack if Pierce/Rampage
-  ABILITY_TRAP         = 0x1B, // Temporarily disable opponent abilities
-  FREEZE               = 0x1C, // Give Freeze condition
-  ANTI_ABNORMALITY_1   = 0x1D, // Cure all abnormal conditions
-  UNKNOWN_1E           = 0x1E,
-  EXPLOSION            = 0x1F, // Damage all SCs and FCs by number of this same card set * 2
-  UNKNOWN_20           = 0x20,
-  UNKNOWN_21           = 0x21,
-  UNKNOWN_22           = 0x22,
-  RETURN_TO_DECK       = 0x23, // Cancel discard and move to bottom of deck instead
-  AERIAL               = 0x24, // Give Aerial status
-  AP_LOSS              = 0x25, // Make attacker temporarily lose N AP during defense
-  BONUS_FROM_LEADER    = 0x26, // Gain AP equal to the number of cards of type N on the field
-  FREE_MANEUVER        = 0x27, // Enable movement over occupied tiles
-  HASTE                = 0x28, // Multiply all move action costs by expr (which may be zero)
-  CLONE                = 0x29, // Make setting this card free if at least one card of type N is already on the field
-  DEF_DISABLE_BY_COST  = 0x2A, // Disable use of any defense cards costing between (N / 10) and (N % 10) points, inclusive
-  FILIAL               = 0x2B, // Increase controlling SC's HP by N when this card is destroyed
-  SNATCH               = 0x2C, // Steal N EXP during attack
-  HAND_DISRUPTER       = 0x2D, // Discard N cards from hand immediately
-  DROP                 = 0x2E, // Give Drop condition
-  ACTION_DISRUPTER     = 0x2F, // Destroy all action cards used by attacker
-  SET_HP               = 0x30, // Set HP to N
-  NATIVE_SHIELD        = 0x31, // Block attacks from Native creatures
-  A_BEAST_SHIELD       = 0x32, // Block attacks from A.Beast creatures
-  MACHINE_SHIELD       = 0x33, // Block attacks from Machine creatures
-  DARK_SHIELD          = 0x34, // Block attacks from Dark creatures
-  SWORD_SHIELD         = 0x35, // Block attacks from Sword items
-  GUN_SHIELD           = 0x36, // Block attacks from Gun items
-  CANE_SHIELD          = 0x37, // Block attacks from Cane items
-  UNKNOWN_38           = 0x38,
-  UNKNOWN_39           = 0x39,
-  DEFENDER             = 0x3A, // Make attacks go to setter of this card instead of original target
-  SURVIVAL_DECOYS      = 0x3B, // Redirect damage for multi-sided attack
-  GIVE_OR_TAKE_EXP     = 0x3C, // Give N EXP, or take if N is negative
-  UNKNOWN_3D           = 0x3D,
-  DEATH_COMPANION      = 0x3E, // If this card has 1 or 2 HP, set its HP to N
-  EXP_DECOY            = 0x3F, // If defender has EXP, lose EXP instead of getting damage when attacked
-  SET_MV               = 0x40, // Set MV to N
-  GROUP                = 0x41, // Temporarily increase AP by N * number of this card on field, excluding itself
-  BERSERK              = 0x42, // User of this card receives the same damage as target, and isn't helped by target's defense cards
-  GUARD_CREATURE       = 0x43, // Attacks on controlling SC damage this card instead
-  TECH                 = 0x44, // Technique cards cost 1 fewer ATK point
-  BIG_SWING            = 0x45, // Increase all attacking ATK costs by 1
-  UNKNOWN_46           = 0x46,
-  SHIELD_WEAPON        = 0x47, // Limit attacker's choice of target to guard items
-  ATK_DICE_BOOST       = 0x48, // Increase ATK dice roll by 1
-  UNKNOWN_49           = 0x49,
-  MAJOR_PIERCE         = 0x4A, // If SC has over half of max HP, attacks target SC instead of equipped items
-  HEAVY_PIERCE         = 0x4B, // If SC has 3 or more items equipped, attacks target SC instead of equipped items
-  MAJOR_RAMPAGE        = 0x4C, // If SC has over half of max HP, attacks target SC and all equipped items
-  HEAVY_RAMPAGE        = 0x4D, // If SC has 3 or more items equipped, attacks target SC and all equipped items
-  AP_GROWTH            = 0x4E, // Permanently increase AP by N
-  TP_GROWTH            = 0x4F, // Permanently increase TP by N
-  REBORN               = 0x50, // If any card of type N is on the field, this card goes to the hand when destroyed instead of being discarded
-  COPY                 = 0x51, // Temporarily set AP/TP to N percent (or 100% if N is 0) of opponent's values
-  UNKNOWN_52           = 0x52,
-  MISC_GUARDS          = 0x53, // Add N to card's defense value
-  AP_OVERRIDE          = 0x54, // Set AP to N temporarily
-  TP_OVERRIDE          = 0x55, // Set TP to N temporarily
-  RETURN               = 0x56, // Return card to hand on destruction instead of discarding
-  A_T_SWAP_PERM        = 0x57, // Permanently swap AP and TP
-  A_H_SWAP_PERM        = 0x58, // Permanently swap AP and HP
-  SLAYERS_ASSASSINS    = 0x59, // Temporarily increase AP during attack
-  ANTI_ABNORMALITY_2   = 0x5A, // Remove all conditions
-  FIXED_RANGE          = 0x5B, // Use SC's range instead of weapon or attack card ranges
-  ELUDE                = 0x5C, // SC does not lose HP when equipped items are destroyed
-  PARRY                = 0x5D, // Forward attack to a random FC within one tile of original target, excluding attacker and original target
-  BLOCK_ATTACK         = 0x5E, // Completely block attack
-  UNKNOWN_5F           = 0x5F,
-  UNKNOWN_60           = 0x60,
-  COMBO_TP             = 0x61, // Gain TP equal to the number of cards of type N on the field
-  MISC_AP_BONUSES      = 0x62, // Temporarily increase AP by N
-  MISC_TP_BONUSES      = 0x63, // Temporarily increase TP by N
-  UNKNOWN_64           = 0x64,
+  ABILITY_TRAP = 0x1B, // Temporarily disable opponent abilities
+  FREEZE = 0x1C, // Give Freeze condition
+  ANTI_ABNORMALITY_1 = 0x1D, // Cure all abnormal conditions
+  UNKNOWN_1E = 0x1E,
+  EXPLOSION = 0x1F, // Damage all SCs and FCs by number of this same card set * 2
+  UNKNOWN_20 = 0x20,
+  UNKNOWN_21 = 0x21,
+  UNKNOWN_22 = 0x22,
+  RETURN_TO_DECK = 0x23, // Cancel discard and move to bottom of deck instead
+  AERIAL = 0x24, // Give Aerial status
+  AP_LOSS = 0x25, // Make attacker temporarily lose N AP during defense
+  BONUS_FROM_LEADER = 0x26, // Gain AP equal to the number of cards of type N on the field
+  FREE_MANEUVER = 0x27, // Enable movement over occupied tiles
+  HASTE = 0x28, // Multiply all move action costs by expr (which may be zero)
+  CLONE = 0x29, // Make setting this card free if at least one card of type N is already on the field
+  DEF_DISABLE_BY_COST = 0x2A, // Disable use of any defense cards costing between (N / 10) and (N % 10) points, inclusive
+  FILIAL = 0x2B, // Increase controlling SC's HP by N when this card is destroyed
+  SNATCH = 0x2C, // Steal N EXP during attack
+  HAND_DISRUPTER = 0x2D, // Discard N cards from hand immediately
+  DROP = 0x2E, // Give Drop condition
+  ACTION_DISRUPTER = 0x2F, // Destroy all action cards used by attacker
+  SET_HP = 0x30, // Set HP to N
+  NATIVE_SHIELD = 0x31, // Block attacks from Native creatures
+  A_BEAST_SHIELD = 0x32, // Block attacks from A.Beast creatures
+  MACHINE_SHIELD = 0x33, // Block attacks from Machine creatures
+  DARK_SHIELD = 0x34, // Block attacks from Dark creatures
+  SWORD_SHIELD = 0x35, // Block attacks from Sword items
+  GUN_SHIELD = 0x36, // Block attacks from Gun items
+  CANE_SHIELD = 0x37, // Block attacks from Cane items
+  UNKNOWN_38 = 0x38,
+  UNKNOWN_39 = 0x39,
+  DEFENDER = 0x3A, // Make attacks go to setter of this card instead of original target
+  SURVIVAL_DECOYS = 0x3B, // Redirect damage for multi-sided attack
+  GIVE_OR_TAKE_EXP = 0x3C, // Give N EXP, or take if N is negative
+  UNKNOWN_3D = 0x3D,
+  DEATH_COMPANION = 0x3E, // If this card has 1 or 2 HP, set its HP to N
+  EXP_DECOY = 0x3F, // If defender has EXP, lose EXP instead of getting damage when attacked
+  SET_MV = 0x40, // Set MV to N
+  GROUP = 0x41, // Temporarily increase AP by N * number of this card on field, excluding itself
+  BERSERK = 0x42, // User of this card receives the same damage as target, and isn't helped by target's defense cards
+  GUARD_CREATURE = 0x43, // Attacks on controlling SC damage this card instead
+  TECH = 0x44, // Technique cards cost 1 fewer ATK point
+  BIG_SWING = 0x45, // Increase all attacking ATK costs by 1
+  UNKNOWN_46 = 0x46,
+  SHIELD_WEAPON = 0x47, // Limit attacker's choice of target to guard items
+  ATK_DICE_BOOST = 0x48, // Increase ATK dice roll by 1
+  UNKNOWN_49 = 0x49,
+  MAJOR_PIERCE = 0x4A, // If SC has over half of max HP, attacks target SC instead of equipped items
+  HEAVY_PIERCE = 0x4B, // If SC has 3 or more items equipped, attacks target SC instead of equipped items
+  MAJOR_RAMPAGE = 0x4C, // If SC has over half of max HP, attacks target SC and all equipped items
+  HEAVY_RAMPAGE = 0x4D, // If SC has 3 or more items equipped, attacks target SC and all equipped items
+  AP_GROWTH = 0x4E, // Permanently increase AP by N
+  TP_GROWTH = 0x4F, // Permanently increase TP by N
+  REBORN = 0x50, // If any card of type N is on the field, this card goes to the hand when destroyed instead of being discarded
+  COPY = 0x51, // Temporarily set AP/TP to N percent (or 100% if N is 0) of opponent's values
+  UNKNOWN_52 = 0x52,
+  MISC_GUARDS = 0x53, // Add N to card's defense value
+  AP_OVERRIDE = 0x54, // Set AP to N temporarily
+  TP_OVERRIDE = 0x55, // Set TP to N temporarily
+  RETURN = 0x56, // Return card to hand on destruction instead of discarding
+  A_T_SWAP_PERM = 0x57, // Permanently swap AP and TP
+  A_H_SWAP_PERM = 0x58, // Permanently swap AP and HP
+  SLAYERS_ASSASSINS = 0x59, // Temporarily increase AP during attack
+  ANTI_ABNORMALITY_2 = 0x5A, // Remove all conditions
+  FIXED_RANGE = 0x5B, // Use SC's range instead of weapon or attack card ranges
+  ELUDE = 0x5C, // SC does not lose HP when equipped items are destroyed
+  PARRY = 0x5D, // Forward attack to a random FC within one tile of original target, excluding attacker and original target
+  BLOCK_ATTACK = 0x5E, // Completely block attack
+  UNKNOWN_5F = 0x5F,
+  UNKNOWN_60 = 0x60,
+  COMBO_TP = 0x61, // Gain TP equal to the number of cards of type N on the field
+  MISC_AP_BONUSES = 0x62, // Temporarily increase AP by N
+  MISC_TP_BONUSES = 0x63, // Temporarily increase TP by N
+  UNKNOWN_64 = 0x64,
   MISC_DEFENSE_BONUSES = 0x65, // Decrease damage by N
-  MOSTLY_HALFGUARDS    = 0x66, // Reduce damage from incoming attack by N
-  PERIODIC_FIELD       = 0x67, // Swap immunity to tech or physical attacks
-  FC_LIMIT_BY_COUNT    = 0x68, // Change FC limit from 8 ATK points total to 4 FCs total
-  UNKNOWN_69           = 0x69,
-  MV_BONUS             = 0x6A, // Increase MV by N
-  FORWARD_DAMAGE       = 0x6B,
-  WEAK_SPOT_INFLUENCE  = 0x6C, // Temporarily decrease AP by N
-  DAMAGE_MODIFIER_2    = 0x6D, // Set attack damage / AP after action cards applied (step 2)
-  WEAK_HIT_BLOCK       = 0x6E, // Block all attacks of N damage or less
-  AP_SILENCE           = 0x6F, // Temporarily decrease AP of opponent by N
-  TP_SILENCE           = 0x70, // Temporarily decrease TP of opponent by N
-  A_T_SWAP             = 0x71, // Temporarily swap AP and TP
-  HALFGUARD            = 0x72, // Halve damage from attacks that would inflict N or more damage
-  UNKNOWN_73           = 0x73,
-  RAMPAGE_AP_LOSS      = 0x74, // Temporarily reduce AP by N
-  UNKNOWN_75           = 0x75,
-  REFLECT              = 0x76, // Generate reverse attack
-  UNKNOWN_77           = 0x77,
-  ANY                  = 0x78, // Not a real condition; used as a wildcard in search functions
-  UNKNOWN_79           = 0x79,
-  UNKNOWN_7A           = 0x7A,
-  UNKNOWN_7B           = 0x7B,
-  UNKNOWN_7C           = 0x7C,
-  UNKNOWN_7D           = 0x7D,
-  INVALID_FF           = 0xFF,
-  ANY_FF               = 0xFF, // Used as a wildcard in some search functions
+  MOSTLY_HALFGUARDS = 0x66, // Reduce damage from incoming attack by N
+  PERIODIC_FIELD = 0x67, // Swap immunity to tech or physical attacks
+  FC_LIMIT_BY_COUNT = 0x68, // Change FC limit from 8 ATK points total to 4 FCs total
+  UNKNOWN_69 = 0x69,
+  MV_BONUS = 0x6A, // Increase MV by N
+  FORWARD_DAMAGE = 0x6B,
+  WEAK_SPOT_INFLUENCE = 0x6C, // Temporarily decrease AP by N
+  DAMAGE_MODIFIER_2 = 0x6D, // Set attack damage / AP after action cards applied (step 2)
+  WEAK_HIT_BLOCK = 0x6E, // Block all attacks of N damage or less
+  AP_SILENCE = 0x6F, // Temporarily decrease AP of opponent by N
+  TP_SILENCE = 0x70, // Temporarily decrease TP of opponent by N
+  A_T_SWAP = 0x71, // Temporarily swap AP and TP
+  HALFGUARD = 0x72, // Halve damage from attacks that would inflict N or more damage
+  UNKNOWN_73 = 0x73,
+  RAMPAGE_AP_LOSS = 0x74, // Temporarily reduce AP by N
+  UNKNOWN_75 = 0x75,
+  REFLECT = 0x76, // Generate reverse attack
+  UNKNOWN_77 = 0x77,
+  ANY = 0x78, // Not a real condition; used as a wildcard in search functions
+  UNKNOWN_79 = 0x79,
+  UNKNOWN_7A = 0x7A,
+  UNKNOWN_7B = 0x7B,
+  UNKNOWN_7C = 0x7C,
+  UNKNOWN_7D = 0x7D,
+  INVALID_FF = 0xFF,
+  ANY_FF = 0xFF, // Used as a wildcard in some search functions
 };
 
 const char* name_for_condition_type(ConditionType cond_type);
 
 enum class AssistEffect : uint16_t {
-  NONE              = 0x0000,
-  DICE_HALF         = 0x0001,
-  DICE_PLUS_1       = 0x0002,
-  DICE_FEVER        = 0x0003,
-  CARD_RETURN       = 0x0004,
-  LAND_PRICE        = 0x0005,
-  POWERLESS_RAIN    = 0x0006,
-  BRAVE_WIND        = 0x0007,
-  SILENT_COLOSSEUM  = 0x0008,
-  RESISTANCE        = 0x0009,
-  INDEPENDENT       = 0x000A,
-  ASSISTLESS        = 0x000B,
-  ATK_DICE_2        = 0x000C,
-  DEFLATION         = 0x000D,
-  INFLATION         = 0x000E,
-  EXCHANGE          = 0x000F,
-  INFLUENCE         = 0x0010,
-  SKIP_SET          = 0x0011,
-  SKIP_MOVE         = 0x0012,
-  SKIP_ACT          = 0x0013,
-  SKIP_DRAW         = 0x0014,
-  FLY               = 0x0015,
-  NECROMANCER       = 0x0016,
-  PERMISSION        = 0x0017,
-  SHUFFLE_ALL       = 0x0018,
-  LEGACY            = 0x0019,
-  ASSIST_REVERSE    = 0x001A,
-  STAMINA           = 0x001B,
-  AP_ABSORPTION     = 0x001C,
-  HEAVY_FOG         = 0x001D,
-  TRASH_1           = 0x001E,
-  EMPTY_HAND        = 0x001F,
-  HITMAN            = 0x0020,
-  ASSIST_TRASH      = 0x0021,
-  SHUFFLE_GROUP     = 0x0022,
-  ASSIST_VANISH     = 0x0023,
-  CHARITY           = 0x0024,
-  INHERITANCE       = 0x0025,
-  FIX               = 0x0026,
-  MUSCULAR          = 0x0027,
-  CHANGE_BODY       = 0x0028,
-  GOD_WHIM          = 0x0029,
-  GOLD_RUSH         = 0x002A,
-  ASSIST_RETURN     = 0x002B,
-  REQUIEM           = 0x002C,
-  RANSOM            = 0x002D,
-  SIMPLE            = 0x002E,
-  SLOW_TIME         = 0x002F,
-  QUICK_TIME        = 0x0030,
-  TERRITORY         = 0x0031,
-  OLD_TYPE          = 0x0032,
-  FLATLAND          = 0x0033,
-  IMMORTALITY       = 0x0034,
-  SNAIL_PACE        = 0x0035,
-  TECH_FIELD        = 0x0036,
-  FOREST_RAIN       = 0x0037,
-  CAVE_WIND         = 0x0038,
-  MINE_BRIGHTNESS   = 0x0039,
-  RUIN_DARKNESS     = 0x003A,
-  SABER_DANCE       = 0x003B,
-  BULLET_STORM      = 0x003C,
-  CANE_PALACE       = 0x003D,
-  GIANT_GARDEN      = 0x003E,
+  NONE = 0x0000,
+  DICE_HALF = 0x0001,
+  DICE_PLUS_1 = 0x0002,
+  DICE_FEVER = 0x0003,
+  CARD_RETURN = 0x0004,
+  LAND_PRICE = 0x0005,
+  POWERLESS_RAIN = 0x0006,
+  BRAVE_WIND = 0x0007,
+  SILENT_COLOSSEUM = 0x0008,
+  RESISTANCE = 0x0009,
+  INDEPENDENT = 0x000A,
+  ASSISTLESS = 0x000B,
+  ATK_DICE_2 = 0x000C,
+  DEFLATION = 0x000D,
+  INFLATION = 0x000E,
+  EXCHANGE = 0x000F,
+  INFLUENCE = 0x0010,
+  SKIP_SET = 0x0011,
+  SKIP_MOVE = 0x0012,
+  SKIP_ACT = 0x0013,
+  SKIP_DRAW = 0x0014,
+  FLY = 0x0015,
+  NECROMANCER = 0x0016,
+  PERMISSION = 0x0017,
+  SHUFFLE_ALL = 0x0018,
+  LEGACY = 0x0019,
+  ASSIST_REVERSE = 0x001A,
+  STAMINA = 0x001B,
+  AP_ABSORPTION = 0x001C,
+  HEAVY_FOG = 0x001D,
+  TRASH_1 = 0x001E,
+  EMPTY_HAND = 0x001F,
+  HITMAN = 0x0020,
+  ASSIST_TRASH = 0x0021,
+  SHUFFLE_GROUP = 0x0022,
+  ASSIST_VANISH = 0x0023,
+  CHARITY = 0x0024,
+  INHERITANCE = 0x0025,
+  FIX = 0x0026,
+  MUSCULAR = 0x0027,
+  CHANGE_BODY = 0x0028,
+  GOD_WHIM = 0x0029,
+  GOLD_RUSH = 0x002A,
+  ASSIST_RETURN = 0x002B,
+  REQUIEM = 0x002C,
+  RANSOM = 0x002D,
+  SIMPLE = 0x002E,
+  SLOW_TIME = 0x002F,
+  QUICK_TIME = 0x0030,
+  TERRITORY = 0x0031,
+  OLD_TYPE = 0x0032,
+  FLATLAND = 0x0033,
+  IMMORTALITY = 0x0034,
+  SNAIL_PACE = 0x0035,
+  TECH_FIELD = 0x0036,
+  FOREST_RAIN = 0x0037,
+  CAVE_WIND = 0x0038,
+  MINE_BRIGHTNESS = 0x0039,
+  RUIN_DARKNESS = 0x003A,
+  SABER_DANCE = 0x003B,
+  BULLET_STORM = 0x003C,
+  CANE_PALACE = 0x003D,
+  GIANT_GARDEN = 0x003E,
   MARCH_OF_THE_MEEK = 0x003F,
-  SUPPORT           = 0x0040,
-  RICH              = 0x0041,
-  REVERSE_CARD      = 0x0042,
-  VENGEANCE         = 0x0043,
-  SQUEEZE           = 0x0044,
-  HOMESICK          = 0x0045,
-  BOMB              = 0x0046,
-  SKIP_TURN         = 0x0047,
-  BATTLE_ROYALE     = 0x0048,
-  DICE_FEVER_PLUS   = 0x0049,
-  RICH_PLUS         = 0x004A,
-  CHARITY_PLUS      = 0x004B,
-  ANY               = 0x004C, // Unused on cards; used in some search functions
+  SUPPORT = 0x0040,
+  RICH = 0x0041,
+  REVERSE_CARD = 0x0042,
+  VENGEANCE = 0x0043,
+  SQUEEZE = 0x0044,
+  HOMESICK = 0x0045,
+  BOMB = 0x0046,
+  SKIP_TURN = 0x0047,
+  BATTLE_ROYALE = 0x0048,
+  DICE_FEVER_PLUS = 0x0049,
+  RICH_PLUS = 0x004A,
+  CHARITY_PLUS = 0x004B,
+  ANY = 0x004C, // Unused on cards; used in some search functions
 };
 
 enum class BattlePhase : uint8_t {
@@ -412,8 +406,6 @@ enum class RegistrationPhase : uint8_t {
   BATTLE_STARTED = 4,
   INVALID_FF = 0xFF,
 };
-
-
 
 enum class Direction : uint8_t {
   RIGHT = 0,
@@ -711,8 +703,6 @@ struct StateFlags {
   void clear_FF();
 } __attribute__((packed));
 
-
-
 struct MapList {
   be_uint32_t num_maps;
   be_uint32_t unknown_a1; // Always 0?
@@ -875,10 +865,10 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
   /* 59B0 */ parray<be_uint16_t, 0x10> reward_card_ids;
 
-  /* 59D0 */be_uint32_t unknown_a9_a;
-  /* 59D4 */be_uint32_t unknown_a9_b;
-  /* 59D8 */be_uint16_t unknown_a9_c;
-  /* 59DA */be_uint16_t unknown_a9_d;
+  /* 59D0 */ be_uint32_t unknown_a9_a;
+  /* 59D4 */ be_uint32_t unknown_a9_b;
+  /* 59D8 */ be_uint16_t unknown_a9_c;
+  /* 59DA */ be_uint16_t unknown_a9_d;
 
   /* 59DC */ uint8_t unknown_a10;
 
@@ -931,16 +921,12 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   std::string str(const DataIndex* data_index = nullptr) const;
 } __attribute__((packed));
 
-
-
 struct COMDeckDefinition {
   size_t index;
   std::string player_name;
   std::string deck_name;
   parray<le_uint16_t, 0x1F> card_ids;
 };
-
-
 
 class DataIndex {
 public:
@@ -1003,7 +989,5 @@ private:
   std::vector<std::shared_ptr<COMDeckDefinition>> com_decks;
   std::unordered_map<std::string, std::shared_ptr<COMDeckDefinition>> com_decks_by_name;
 };
-
-
 
 } // namespace Episode3

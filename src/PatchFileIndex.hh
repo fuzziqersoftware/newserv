@@ -2,13 +2,11 @@
 
 #include <inttypes.h>
 
+#include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
-#include <map>
 #include <vector>
-#include <memory>
-
-
 
 struct PatchFileIndex {
   explicit PatchFileIndex(const std::string& root_dir);
@@ -42,10 +40,13 @@ struct PatchFileChecksumRequest {
   bool response_received;
 
   explicit PatchFileChecksumRequest(std::shared_ptr<PatchFileIndex::File> file)
-    : file(file), crc32(0), size(0), response_received(false) { }
+      : file(file),
+        crc32(0),
+        size(0),
+        response_received(false) {}
   inline bool needs_update() const {
     return !this->response_received ||
-           (this->crc32 != this->file->crc32) ||
-           (this->size != this->file->size);
+        (this->crc32 != this->file->crc32) ||
+        (this->size != this->file->size);
   }
 };

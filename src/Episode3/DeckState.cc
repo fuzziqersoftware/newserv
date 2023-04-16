@@ -4,8 +4,6 @@ using namespace std;
 
 namespace Episode3 {
 
-
-
 NameEntry::NameEntry() {
   this->clear();
 }
@@ -16,8 +14,6 @@ void NameEntry::clear() {
   this->unused_by_server = 0;
   this->unused = 0;
 }
-
-
 
 DeckEntry::DeckEntry() {
   this->clear();
@@ -32,8 +28,6 @@ void DeckEntry::clear() {
   this->card_ids.clear(0xFFFF);
 }
 
-
-
 uint8_t index_for_card_ref(uint16_t card_ref) {
   return card_ref & 0xFF;
 }
@@ -41,8 +35,6 @@ uint8_t index_for_card_ref(uint16_t card_ref) {
 uint8_t client_id_for_card_ref(uint16_t card_ref) {
   return (card_ref >> 8) & 0xFF;
 }
-
-
 
 uint8_t DeckState::num_drawable_cards() const {
   return this->card_refs.size() - this->draw_index;
@@ -102,8 +94,8 @@ bool DeckState::draw_card_by_ref(uint16_t card_ref) {
     this->entries[index].state = CardState::IN_HAND;
     return true;
 
-  // If the card is still drawable, we need to move it so it's just in front of
-  // the draw index, then immediately draw it
+    // If the card is still drawable, we need to move it so it's just in front of
+    // the draw index, then immediately draw it
   } else if (this->entries[index].state == CardState::DRAWABLE) {
     ssize_t ref_index;
     for (ref_index = this->card_refs.size(); ref_index >= 0; ref_index--) {
@@ -280,7 +272,5 @@ void DeckState::shuffle() {
     }
   }
 }
-
-
 
 } // namespace Episode3

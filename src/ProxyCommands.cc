@@ -8,8 +8,8 @@
 #include <event2/event.h>
 #include <event2/listener.h>
 #include <fcntl.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -26,17 +26,15 @@
 #include <resource_file/Emulators/PPC32Emulator.hh>
 #endif
 
-#include "Loggers.hh"
 #include "ChatCommands.hh"
 #include "Compression.hh"
+#include "Loggers.hh"
 #include "PSOProtocol.hh"
-#include "SendCommands.hh"
 #include "ReceiveCommands.hh"
 #include "ReceiveSubcommands.hh"
+#include "SendCommands.hh"
 
 using namespace std;
-
-
 
 struct HandlerResult {
   enum class Type {
@@ -50,9 +48,13 @@ struct HandlerResult {
   int32_t new_command;
   int64_t new_flag;
 
-  HandlerResult(Type type) : type(type), new_command(-1), new_flag(-1) { }
+  HandlerResult(Type type) : type(type),
+                             new_command(-1),
+                             new_flag(-1) {}
   HandlerResult(Type type, uint16_t new_command, uint32_t new_flag)
-      : type(type), new_command(new_command), new_flag(new_flag) { }
+      : type(type),
+        new_command(new_command),
+        new_flag(new_flag) {}
 };
 
 typedef HandlerResult (*on_command_t)(
@@ -61,8 +63,6 @@ typedef HandlerResult (*on_command_t)(
     uint16_t command,
     uint32_t flag,
     string& data);
-
-
 
 static void forward_command(ProxyServer::LinkedSession& session, bool to_server,
     uint16_t command, uint32_t flag, string& data, bool print_contents = true) {
@@ -85,8 +85,6 @@ static void check_implemented_subcommand(
     }
   }
 }
-
-
 
 // Command handlers. These are called to preprocess or react to specific
 // commands in either direction. The functions have abbreviated names in order
@@ -148,8 +146,7 @@ static HandlerResult C_G_9E(shared_ptr<ServerState>,
     le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
     session.server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
 
-    S_UpdateClientConfig_DC_PC_V3_04 cmd = {{
-        0x00010000, session.license->serial_number, ClientConfig()}};
+    S_UpdateClientConfig_DC_PC_V3_04 cmd = {{0x00010000, session.license->serial_number, ClientConfig()}};
     session.client_channel.send(0x04, 0x00, &cmd, sizeof(cmd));
 
     return HandlerResult::Type::SUPPRESS;
@@ -158,7 +155,6 @@ static HandlerResult C_G_9E(shared_ptr<ServerState>,
     return HandlerResult::Type::FORWARD;
   }
 }
-
 
 static HandlerResult S_G_9A(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
@@ -265,7 +261,7 @@ static HandlerResult S_V123P_02_17(
     return HandlerResult::Type::SUPPRESS;
 
   } else if ((session.version == GameVersion::DC) ||
-             (session.version == GameVersion::PC)) {
+      (session.version == GameVersion::PC)) {
     if (session.newserv_client_config.cfg.flags & Client::Flag::IS_DC_V1) {
       if (command == 0x17) {
         C_LoginV1_DC_PC_V3_90 cmd;
@@ -447,9 +443,9 @@ static HandlerResult S_B_03(shared_ptr<ServerState> s,
 
     return HandlerResult::Type::SUPPRESS;
 
-  // If there's no detector crypt, then the session is new and was linked
-  // immediately at connect time, and an 03 was not yet sent to the client, so
-  // we should forward this one.
+    // If there's no detector crypt, then the session is new and was linked
+    // immediately at connect time, and an 03 was not yet sent to the client, so
+    // we should forward this one.
   } else {
     // Forward the command to the client before setting up the crypts, so the
     // client receives the unencrypted data
@@ -511,12 +507,12 @@ static HandlerResult S_V123_04(shared_ptr<ServerState>,
   // init text instead of the port map init text.
   memcpy(session.remote_client_config_data.data(),
       had_guild_card_number
-        ? "t Lobby Server. Copyright SEGA E"
-        : "t Port Map. Copyright SEGA Enter",
+          ? "t Lobby Server. Copyright SEGA E"
+          : "t Port Map. Copyright SEGA Enter",
       session.remote_client_config_data.bytes());
   memcpy(session.remote_client_config_data.data(), &cmd.cfg,
       min<size_t>(data.size() - offsetof(S_UpdateClientConfig_DC_PC_V3_04, cfg),
-        session.remote_client_config_data.bytes()));
+          session.remote_client_config_data.bytes()));
 
   // If the guild card number was not set, pretend (to the server) that this is
   // the first 04 command the client has received. The client responds with a 96
@@ -912,8 +908,8 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
     // Unmask any masked Episode 3 commands from the server
     if ((session.version == GameVersion::GC) && (data.size() > 8) &&
         ((static_cast<uint8_t>(data[0]) == 0xB3) ||
-         (static_cast<uint8_t>(data[0]) == 0xB4) ||
-         (static_cast<uint8_t>(data[0]) == 0xB5))) {
+            (static_cast<uint8_t>(data[0]) == 0xB4) ||
+            (static_cast<uint8_t>(data[0]) == 0xB5))) {
       const auto& header = check_size_t<G_CardBattleCommandHeader>(
           data, sizeof(G_CardBattleCommandHeader), 0xFFFF);
       if (header.mask_key) {
@@ -951,8 +947,8 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
       }
 
     } else if ((data[0] == 0x60) &&
-               session.next_drop_item.data.data1d[0] &&
-               (session.version != GameVersion::BB)) {
+        session.next_drop_item.data.data1d[0] &&
+        (session.version != GameVersion::BB)) {
       const auto& cmd = check_size_t<G_EnemyDropItemRequest_DC_6x60>(data,
           sizeof(G_EnemyDropItemRequest_DC_6x60),
           sizeof(G_EnemyDropItemRequest_PC_V3_BB_6x60));
@@ -964,13 +960,13 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
       session.next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 
-    // Note: This static_cast is required to make compilers not complain that
-    // the comparison is always false (which even happens in some environments
-    // if we use -0x5E... apparently char is unsigned on some systems, or
-    // std::string's char_type isn't char??)
+      // Note: This static_cast is required to make compilers not complain that
+      // the comparison is always false (which even happens in some environments
+      // if we use -0x5E... apparently char is unsigned on some systems, or
+      // std::string's char_type isn't char??)
     } else if ((static_cast<uint8_t>(data[0]) == 0xA2) &&
-               session.next_drop_item.data.data1d[0] &&
-               (session.version != GameVersion::BB)) {
+        session.next_drop_item.data.data1d[0] &&
+        (session.version != GameVersion::BB)) {
       const auto& cmd = check_size_t<G_BoxItemDropRequest_6xA2>(data);
       session.next_drop_item.data.id = session.next_item_id++;
       send_drop_item(session.server_channel, session.next_drop_item.data,
@@ -981,8 +977,8 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
       return HandlerResult::Type::SUPPRESS;
 
     } else if ((static_cast<uint8_t>(data[0]) == 0xB5) &&
-               (session.version == GameVersion::GC) &&
-               (data.size() > 4)) {
+        (session.version == GameVersion::GC) &&
+        (data.size() > 4)) {
       if (data[4] == 0x1A) {
         return HandlerResult::Type::SUPPRESS;
       } else if (data[4] == 0x36) {
@@ -1586,7 +1582,6 @@ constexpr on_command_t C_DGX_81 = &C_81<SC_SimpleMail_DC_V3_81>;
 constexpr on_command_t C_P_81 = &C_81<SC_SimpleMail_PC_81>;
 constexpr on_command_t C_B_81 = &C_81<SC_SimpleMail_BB_81>;
 
-
 template <typename CmdT>
 void C_6x_movement(ProxyServer::LinkedSession& session, const string& data) {
   const auto& cmd = check_size_t<CmdT>(data);
@@ -1676,10 +1671,9 @@ static HandlerResult C_V123_A0_A1(shared_ptr<ServerState>,
   return HandlerResult::Type::SUPPRESS;
 }
 
-
-
 // [command][version][is_client]
 static on_command_t handlers[0x100][6][2] = {
+    // clang-format off
 // CMD     S-PATCH        C-PATCH    S-DC              C-DC            S-PC           C-PC            S-GC              C-GC            S-XB           C-XB            S-BB          C-BB
 /* 00 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 01 */ {{S_invalid,     nullptr}, {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {S_invalid,    nullptr}},
@@ -1945,6 +1939,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* FE */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* FF */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 // CMD     S-PATCH        C-PATCH    S-DC              C-DC            S-PC           C-PC            S-GC              C-GC            S-XB           C-XB            S-BB          C-BB
+    // clang-format on
 };
 
 static on_command_t get_handler(GameVersion version, bool from_server, uint8_t command) {

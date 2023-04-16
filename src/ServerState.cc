@@ -15,30 +15,28 @@
 
 using namespace std;
 
-
-
 ServerState::ServerState(const char* config_filename, bool is_replay)
-  : config_filename(config_filename),
-    is_replay(is_replay),
-    dns_server_port(0),
-    ip_stack_debug(false),
-    allow_unregistered_users(false),
-    allow_saving(true),
-    item_tracking_enabled(true),
-    episode_3_send_function_call_enabled(false),
-    catch_handler_exceptions(true),
-    ep3_behavior_flags(0),
-    run_shell_behavior(RunShellBehavior::DEFAULT),
-    ep3_card_auction_points(0),
-    ep3_card_auction_min_size(0),
-    ep3_card_auction_max_size(0),
-    next_lobby_id(1),
-    pre_lobby_event(0),
-    ep3_menu_song(-1),
-    local_address(0),
-    external_address(0),
-    proxy_allow_save_files(true),
-    proxy_enable_login_options(false) {
+    : config_filename(config_filename),
+      is_replay(is_replay),
+      dns_server_port(0),
+      ip_stack_debug(false),
+      allow_unregistered_users(false),
+      allow_saving(true),
+      item_tracking_enabled(true),
+      episode_3_send_function_call_enabled(false),
+      catch_handler_exceptions(true),
+      ep3_behavior_flags(0),
+      run_shell_behavior(RunShellBehavior::DEFAULT),
+      ep3_card_auction_points(0),
+      ep3_card_auction_min_size(0),
+      ep3_card_auction_max_size(0),
+      next_lobby_id(1),
+      pre_lobby_event(0),
+      ep3_menu_song(-1),
+      local_address(0),
+      external_address(0),
+      proxy_allow_save_files(true),
+      proxy_enable_login_options(false) {
   vector<shared_ptr<Lobby>> non_v1_only_lobbies;
   vector<shared_ptr<Lobby>> ep3_only_lobbies;
 
@@ -111,7 +109,8 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
         l->add_client(c);
         added_to_lobby = l;
       }
-    } catch (const out_of_range&) { }
+    } catch (const out_of_range&) {
+    }
   }
 
   if (!added_to_lobby.get()) {
@@ -126,7 +125,8 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
         l->add_client(c);
         added_to_lobby = l;
         break;
-      } catch (const out_of_range&) { }
+      } catch (const out_of_range&) {
+      }
     }
   }
 
@@ -181,7 +181,7 @@ bool ServerState::change_client_lobby(
 }
 
 void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
-    shared_ptr<Client> joining_client) {
+                                                shared_ptr<Client> joining_client) {
   for (auto& other_client : l->clients) {
     if (!other_client) {
       continue;
@@ -259,19 +259,21 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
 }
 
 shared_ptr<Client> ServerState::find_client(const std::u16string* identifier,
-    uint64_t serial_number, shared_ptr<Lobby> l) {
+                                            uint64_t serial_number, shared_ptr<Lobby> l) {
 
   if ((serial_number == 0) && identifier) {
     try {
       serial_number = stoull(encode_sjis(*identifier), nullptr, 0);
-    } catch (const exception&) { }
+    } catch (const exception&) {
+    }
   }
 
   // look in the current lobby first
   if (l) {
     try {
       return l->find_client(identifier, serial_number);
-    } catch (const out_of_range&) { }
+    } catch (const out_of_range&) {
+    }
   }
 
   // look in all lobbies if not found
@@ -281,7 +283,8 @@ shared_ptr<Client> ServerState::find_client(const std::u16string* identifier,
     }
     try {
       return other_l->find_client(identifier, serial_number);
-    } catch (const out_of_range&) { }
+    } catch (const out_of_range&) {
+    }
   }
 
   throw out_of_range("client not found");
@@ -305,8 +308,6 @@ uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
     }
   }
 }
-
-
 
 shared_ptr<const vector<MenuItem>> ServerState::information_menu_for_version(GameVersion version) {
   if ((version == GameVersion::DC) || (version == GameVersion::PC)) {
@@ -347,8 +348,6 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_versio
   }
 }
 
-
-
 void ServerState::set_port_configuration(
     const vector<PortConfiguration>& port_configs) {
   this->name_to_port_config.clear();
@@ -383,8 +382,6 @@ void ServerState::set_port_configuration(
   }
 }
 
-
-
 void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   config_log.info("Creating menus");
   const auto& d = config_json->as_dict();
@@ -400,15 +397,15 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
 
   information_menu_v3->emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
-      u"Return to the\nmain menu", 0);
+                                    u"Return to the\nmain menu", 0);
   {
     uint32_t item_id = 0;
     for (const auto& item : d.at("InformationMenuContents")->as_list()) {
       auto& v = item->as_list();
       information_menu_v2->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-          decode_sjis(v.at(1)->as_string()), 0);
+                                        decode_sjis(v.at(1)->as_string()), 0);
       information_menu_v3->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-          decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+                                        decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
       information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
       item_id++;
     }
@@ -418,9 +415,9 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   this->information_contents = information_contents;
 
   auto generate_proxy_destinations_menu = [&](
-      vector<MenuItem>& ret_menu,
-      vector<pair<string, uint16_t>>& ret_pds,
-      const char* key) {
+                                              vector<MenuItem>& ret_menu,
+                                              vector<pair<string, uint16_t>>& ret_pds,
+                                              const char* key) {
     try {
       map<string, shared_ptr<JSONObject>> sorted_jsons;
       for (const auto& it : d.at(key)->as_dict()) {
@@ -431,20 +428,21 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       ret_pds.clear();
 
       ret_menu.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
-          u"Return to the\nmain menu", 0);
+                            u"Return to the\nmain menu", 0);
       ret_menu.emplace_back(ProxyDestinationsMenuItemID::OPTIONS, u"Options",
-          u"Set proxy options", 0);
+                            u"Set proxy options", 0);
 
       uint32_t item_id = 0;
       for (const auto& item : sorted_jsons) {
         const string& netloc_str = item.second->as_string();
         const string& description = "$C7Remote server:\n$C6" + netloc_str;
         ret_menu.emplace_back(item_id, decode_sjis(item.first),
-            decode_sjis(description), 0);
+                              decode_sjis(description), 0);
         ret_pds.emplace_back(parse_netloc(netloc_str));
         item_id++;
       }
-    } catch (const out_of_range&) { }
+    } catch (const out_of_range&) {
+    }
   };
 
   generate_proxy_destinations_menu(
@@ -492,9 +490,9 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   }
 
   this->main_menu.emplace_back(MainMenuItemID::GO_TO_LOBBY, u"Go to lobby",
-      u"Join the lobby", 0);
+                               u"Join the lobby", 0);
   this->main_menu.emplace_back(MainMenuItemID::INFORMATION, u"Information",
-      u"View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+                               u"View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
   uint32_t proxy_destinations_menu_item_flags =
       // DCNTE doesn't support multiple ship select menus without changing
       // servers (via a 19 command) apparently :(
@@ -505,37 +503,38 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       (this->proxy_destinations_xb.empty() ? MenuItem::Flag::INVISIBLE_ON_XB : 0) |
       MenuItem::Flag::INVISIBLE_ON_BB;
   this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
-      u"Connect to another\nserver", proxy_destinations_menu_item_flags);
+                               u"Connect to another\nserver", proxy_destinations_menu_item_flags);
   this->main_menu.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, u"Download quests",
-      u"Download quests", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
+                               u"Download quests", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
   if (!this->is_replay) {
     if (!this->function_code_index->patch_menu_empty()) {
       this->main_menu.emplace_back(MainMenuItemID::PATCHES, u"Patches",
-          u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+                                   u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
     }
     if (!this->dol_file_index->empty()) {
       this->main_menu.emplace_back(MainMenuItemID::PROGRAMS, u"Programs",
-          u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
+                                   u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
     }
   }
   this->main_menu.emplace_back(MainMenuItemID::DISCONNECT, u"Disconnect",
-      u"Disconnect", 0);
+                               u"Disconnect", 0);
   this->main_menu.emplace_back(MainMenuItemID::CLEAR_LICENSE, u"Clear license",
-      u"Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password",
-      MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
+                               u"Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password",
+                               MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
 
   try {
     this->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
   try {
     this->pc_patch_server_message = decode_sjis(d.at("PCPatchServerMessage")->as_string());
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
   try {
     this->bb_patch_server_message = decode_sjis(d.at("BBPatchServerMessage")->as_string());
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 }
-
-
 
 shared_ptr<const string> ServerState::load_bb_file(
     const std::string& patch_index_filename,
@@ -595,8 +594,6 @@ shared_ptr<const string> ServerState::load_bb_file(
   }
 }
 
-
-
 void ServerState::collect_network_addresses() {
   config_log.info("Reading network addresses");
   this->all_addresses = get_local_addresses();
@@ -640,7 +637,8 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
       }
       this->username = user_from_env;
     }
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 
   this->set_port_configuration(parse_port_configuration(d.at("PortConfiguration")));
 
@@ -649,7 +647,7 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
     this->local_address = this->all_addresses.at(local_address_str);
     string addr_str = string_for_address(this->local_address);
     config_log.info("Added local address: %s (%s)", addr_str.c_str(),
-        local_address_str.c_str());
+                    local_address_str.c_str());
   } catch (const out_of_range&) {
     this->local_address = address_for_string(local_address_str.c_str());
     config_log.info("Added local address: %s", local_address_str.c_str());
@@ -661,7 +659,7 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
     this->external_address = this->all_addresses.at(external_address_str);
     string addr_str = string_for_address(this->external_address);
     config_log.info("Added external address: %s (%s)", addr_str.c_str(),
-        external_address_str.c_str());
+                    external_address_str.c_str());
   } catch (const out_of_range&) {
     this->external_address = address_for_string(external_address_str.c_str());
     config_log.info("Added external address: %s", external_address_str.c_str());
@@ -678,10 +676,12 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
     for (const auto& item : d.at("IPStackListen")->as_list()) {
       this->ip_stack_addresses.emplace_back(item->as_string());
     }
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
   try {
     this->ip_stack_debug = d.at("IPStackDebug")->as_bool();
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 
   try {
     this->allow_unregistered_users = d.at("AllowUnregisteredUsers")->as_bool();
@@ -748,14 +748,16 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
       const auto& card_name = it.first;
       const auto& card_cfg_json = it.second->as_list();
       this->ep3_card_auction_pool.emplace(card_name, make_pair(
-          card_cfg_json.at(0)->as_int(), card_cfg_json.at(1)->as_int()));
+                                                         card_cfg_json.at(0)->as_int(), card_cfg_json.at(1)->as_int()));
     }
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 
   shared_ptr<JSONObject> log_levels_json;
   try {
     log_levels_json = d.at("LogLevels");
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
   if (log_levels_json.get()) {
     set_log_levels_from_json(log_levels_json);
   }
@@ -772,10 +774,9 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
 
   try {
     bool run_shell = d.at("RunInteractiveShell")->as_bool();
-    this->run_shell_behavior = run_shell ?
-        ServerState::RunShellBehavior::ALWAYS :
-        ServerState::RunShellBehavior::NEVER;
-  } catch (const out_of_range&) { }
+    this->run_shell_behavior = run_shell ? ServerState::RunShellBehavior::ALWAYS : ServerState::RunShellBehavior::NEVER;
+  } catch (const out_of_range&) {
+  }
 
   try {
     auto v = d.at("LobbyEvent");
@@ -784,11 +785,13 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
     for (const auto& l : this->all_lobbies()) {
       l->event = event;
     }
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 
   try {
     this->ep3_menu_song = d.at("Episode3MenuSong")->as_int();
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 }
 
 void ServerState::load_licenses() {
@@ -860,10 +863,10 @@ void ServerState::load_item_tables() {
   this->tool_random_set.reset(new ToolRandomSet(tool_data));
 
   const char* filenames[4] = {
-    "system/blueburst/WeaponRandomNormal_GC.rel",
-    "system/blueburst/WeaponRandomHard_GC.rel",
-    "system/blueburst/WeaponRandomVeryHard_GC.rel",
-    "system/blueburst/WeaponRandomUltimate_GC.rel",
+      "system/blueburst/WeaponRandomNormal_GC.rel",
+      "system/blueburst/WeaponRandomHard_GC.rel",
+      "system/blueburst/WeaponRandomVeryHard_GC.rel",
+      "system/blueburst/WeaponRandomUltimate_GC.rel",
   };
   for (size_t z = 0; z < 4; z++) {
     shared_ptr<string> weapon_data(new string(load_file(filenames[z])));

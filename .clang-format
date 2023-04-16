@@ -1,0 +1,28 @@
+Standard: c++20
+BasedOnStyle: LLVM
+IndentWidth: 2
+ColumnLimit: 0
+AccessModifierOffset: -2
+NamespaceIndentation: None
+BreakBeforeBraces: Custom
+PointerAlignment: Left
+IndentCaseLabels: true
+PackConstructorInitializers: CurrentLine
+BraceWrapping:
+  AfterEnum: false
+  AfterStruct: false
+  AfterClass: false
+  SplitEmptyFunction: false
+  AfterControlStatement: false
+  AfterNamespace: false
+  AfterFunction: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+AlignTrailingComments: false
+AlignAfterOpenBracket: DontAlign
+AlignOperands: DontAlign
+AlignEscapedNewlines: Left

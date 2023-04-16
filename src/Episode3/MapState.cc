@@ -4,8 +4,6 @@ using namespace std;
 
 namespace Episode3 {
 
-
-
 MapState::MapState() {
   this->clear();
 }
@@ -32,8 +30,6 @@ void MapState::print(FILE* stream) const {
   }
 }
 
-
-
 MapAndRulesState::MapAndRulesState() {
   this->clear();
 }
@@ -54,8 +50,6 @@ void MapAndRulesState::clear() {
   this->unused5 = 0;
 }
 
-
-
 bool MapAndRulesState::loc_is_within_bounds(uint8_t x, uint8_t y) const {
   return (x < this->map.width) && (y < this->map.height);
 }
@@ -75,8 +69,6 @@ void MapAndRulesState::clear_occupied_bit_for_tile(uint8_t x, uint8_t y) {
   this->map.tiles[y][x] &= 0xEF;
 }
 
-
-
 OverlayState::OverlayState() {
   this->clear();
 }
@@ -89,7 +81,5 @@ void OverlayState::clear() {
   this->unused2.clear(0);
   this->unused3.clear(0);
 }
-
-
 
 } // namespace Episode3

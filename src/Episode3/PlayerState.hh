@@ -5,14 +5,12 @@
 #include <memory>
 
 #include "../Text.hh"
-#include "DataIndex.hh"
 #include "Card.hh"
+#include "DataIndex.hh"
 #include "DeckState.hh"
 #include "PlayerStateSubordinates.hh"
 
 namespace Episode3 {
-
-
 
 class ServerBase;
 class Server;
@@ -25,8 +23,7 @@ public:
   std::shared_ptr<const Server> server() const;
 
   bool draw_cards_allowed() const;
-  void apply_assist_card_effect_on_set(
-      std::shared_ptr<PlayerState> setter_ps);
+  void apply_assist_card_effect_on_set(std::shared_ptr<PlayerState> setter_ps);
   void apply_dice_effects();
   uint16_t card_ref_for_hand_index(size_t hand_index) const;
   int16_t compute_attack_or_defense_atk_costs(const ActionState& pa) const;
@@ -187,7 +184,5 @@ public:
   uint8_t unknown_a17;
   PlayerStats stats;
 };
-
-
 
 } // namespace Episode3

@@ -3,13 +3,11 @@
 #include <stdint.h>
 
 #include <memory>
-#include <string>
 #include <random>
+#include <string>
 
-#include "StaticGameData.hh"
 #include "GSLArchive.hh"
-
-
+#include "StaticGameData.hh"
 
 class RareItemSet {
 public:
@@ -51,8 +49,6 @@ public:
 protected:
   RareItemSet() = default;
 };
-
-
 
 class GSLRareItemSet : public RareItemSet {
 public:

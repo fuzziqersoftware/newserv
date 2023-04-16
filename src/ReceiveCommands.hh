@@ -4,8 +4,6 @@
 #include "Client.hh"
 #include "ServerState.hh"
 
-
-
 std::shared_ptr<Lobby> create_game_generic(
     std::shared_ptr<ServerState> s,
     std::shared_ptr<Client> c,

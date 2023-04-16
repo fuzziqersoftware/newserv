@@ -8,8 +8,6 @@
 
 using namespace std;
 
-
-
 string BattleParamsIndex::Entry::str() const {
   string a1str = format_data_string(this->unknown_a1.data(), this->unknown_a1.bytes());
   return string_printf(
@@ -31,18 +29,18 @@ void BattleParamsIndex::Table::print(FILE* stream) const {
   auto print_entry = +[](FILE* stream, const Entry& e) {
     string a1str = format_data_string(e.unknown_a1.data(), e.unknown_a1.bytes());
     fprintf(stream,
-      "%5hu %5hu %5hu %5hu %5hu %5hu %5hu %5hu %s %5" PRIu32 " %5" PRIu32,
-      e.atp.load(),
-      e.psv.load(),
-      e.evp.load(),
-      e.hp.load(),
-      e.dfp.load(),
-      e.ata.load(),
-      e.lck.load(),
-      e.esp.load(),
-      a1str.c_str(),
-      e.experience.load(),
-      e.difficulty.load());
+        "%5hu %5hu %5hu %5hu %5hu %5hu %5hu %5hu %s %5" PRIu32 " %5" PRIu32,
+        e.atp.load(),
+        e.psv.load(),
+        e.evp.load(),
+        e.hp.load(),
+        e.dfp.load(),
+        e.ata.load(),
+        e.lck.load(),
+        e.esp.load(),
+        a1str.c_str(),
+        e.experience.load(),
+        e.difficulty.load());
   };
 
   for (size_t diff = 0; diff < 4; diff++) {
@@ -55,8 +53,6 @@ void BattleParamsIndex::Table::print(FILE* stream) const {
     }
   }
 }
-
-
 
 BattleParamsIndex::BattleParamsIndex(
     shared_ptr<const string> data_on_ep1,
@@ -112,9 +108,7 @@ const BattleParamsIndex::Entry& BattleParamsIndex::get(
   return this->files[!!solo][ep_index].table->difficulty[difficulty][monster_type];
 }
 
-
-
-PSOEnemy::PSOEnemy(uint64_t id) : PSOEnemy(id, 0, 0, 0, 0, "__missing__") { }
+PSOEnemy::PSOEnemy(uint64_t id) : PSOEnemy(id, 0, 0, 0, 0, "__missing__") {}
 
 PSOEnemy::PSOEnemy(
     uint64_t id,
@@ -123,21 +117,19 @@ PSOEnemy::PSOEnemy(
     uint32_t rt_index,
     size_t num_clones,
     const char* type_name)
-  : id(id),
-    source_type(source_type),
-    hit_flags(0),
-    last_hit(0),
-    experience(experience),
-    rt_index(rt_index),
-    num_clones(num_clones),
-    type_name(type_name) { }
+    : id(id),
+      source_type(source_type),
+      hit_flags(0),
+      last_hit(0),
+      experience(experience),
+      rt_index(rt_index),
+      num_clones(num_clones),
+      type_name(type_name) {}
 
 string PSOEnemy::str() const {
   return string_printf("[Enemy E-%" PRIX64 " \"%s\" source_type=%hX hit=%02hhX/%hu exp=%" PRIu32 " rt_index=%" PRIX32 " clones=%zu]",
       this->id, this->type_name, this->source_type, this->hit_flags, this->last_hit, this->experience, this->rt_index, this->num_clones);
 }
-
-
 
 struct EnemyEntry {
   uint32_t base;
@@ -174,11 +166,7 @@ vector<PSOEnemy> parse_map(
     }
   };
 
-  auto create_enemy = [&](
-      const EnemyEntry& e,
-      ssize_t bp_index,
-      uint32_t rt_index,
-      const char* type_name) {
+  auto create_enemy = [&](const EnemyEntry& e, ssize_t bp_index, uint32_t rt_index, const char* type_name) {
     const BattleParamsIndex::Entry& bp_entry = battle_params->get(
         is_solo, episode, difficulty, bp_index);
     enemies.emplace_back(
@@ -423,7 +411,7 @@ vector<PSOEnemy> parse_map(
         create_enemy(e, 0x1F, 6, "Girtablulu");
         break;
       case 0x0114: // Zu and Pazuzu
-        create_enemy(e, 0x0B + (e.skin & 0x01) + (alt_enemies ? 0x14: 0x00),
+        create_enemy(e, 0x0B + (e.skin & 0x01) + (alt_enemies ? 0x14 : 0x00),
             7 + (e.skin & 0x01), "(Pazu)?zu");
         break;
       case 0x0115: // Boota family
@@ -456,8 +444,6 @@ vector<PSOEnemy> parse_map(
 
   return enemies;
 }
-
-
 
 SetDataTable::SetDataTable(shared_ptr<const string> data, bool big_endian) {
   if (big_endian) {
@@ -523,8 +509,6 @@ void SetDataTable::print(FILE* stream) const {
   }
 }
 
-
-
 struct AreaMapFileIndex {
   const char* name_token;
   vector<uint32_t> variation1_values;
@@ -534,127 +518,136 @@ struct AreaMapFileIndex {
       const char* name_token,
       vector<uint32_t> variation1_values,
       vector<uint32_t> variation2_values)
-    : name_token(name_token),
-      variation1_values(variation1_values),
-      variation2_values(variation2_values) { }
+      : name_token(name_token),
+        variation1_values(variation1_values),
+        variation2_values(variation2_values) {}
 };
 
 // These are indexed as [episode][is_solo][area], where episode is 0-2
 static const vector<vector<vector<AreaMapFileIndex>>> map_file_info = {
-  { // Episode 1
-    { // Non-solo
-      {"city00",    {},        {0}},
-      {"forest01",  {},        {0, 1, 2, 3, 4}},
-      {"forest02",  {},        {0, 1, 2, 3, 4}},
-      {"cave01",    {0, 1, 2}, {0, 1}},
-      {"cave02",    {0, 1, 2}, {0, 1}},
-      {"cave03",    {0, 1, 2}, {0, 1}},
-      {"machine01", {0, 1, 2}, {0, 1}},
-      {"machine02", {0, 1, 2}, {0, 1}},
-      {"ancient01", {0, 1, 2}, {0, 1}},
-      {"ancient02", {0, 1, 2}, {0, 1}},
-      {"ancient03", {0, 1, 2}, {0, 1}},
-      {"boss01",    {},        {}},
-      {"boss02",    {},        {}},
-      {"boss03",    {},        {}},
-      {"boss04",    {},        {}},
-      {nullptr,     {},        {}},
+    {
+        // Episode 1
+        {
+            // Non-solo
+            {"city00", {}, {0}},
+            {"forest01", {}, {0, 1, 2, 3, 4}},
+            {"forest02", {}, {0, 1, 2, 3, 4}},
+            {"cave01", {0, 1, 2}, {0, 1}},
+            {"cave02", {0, 1, 2}, {0, 1}},
+            {"cave03", {0, 1, 2}, {0, 1}},
+            {"machine01", {0, 1, 2}, {0, 1}},
+            {"machine02", {0, 1, 2}, {0, 1}},
+            {"ancient01", {0, 1, 2}, {0, 1}},
+            {"ancient02", {0, 1, 2}, {0, 1}},
+            {"ancient03", {0, 1, 2}, {0, 1}},
+            {"boss01", {}, {}},
+            {"boss02", {}, {}},
+            {"boss03", {}, {}},
+            {"boss04", {}, {}},
+            {nullptr, {}, {}},
+        },
+        {
+            // Solo
+            {"city00", {}, {0}},
+            {"forest01", {}, {0, 2, 4}},
+            {"forest02", {}, {0, 3, 4}},
+            {"cave01", {0, 1, 2}, {0}},
+            {"cave02", {0, 1, 2}, {0}},
+            {"cave03", {0, 1, 2}, {0}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+        },
     },
-    { // Solo
-      {"city00",    {},        {0}},
-      {"forest01",  {},        {0, 2, 4}},
-      {"forest02",  {},        {0, 3, 4}},
-      {"cave01",    {0, 1, 2}, {0}},
-      {"cave02",    {0, 1, 2}, {0}},
-      {"cave03",    {0, 1, 2}, {0}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
+    {
+        // Episode 2
+        {
+            // Non-solo
+            {"labo00", {}, {0}},
+            {"ruins01", {0, 1}, {0}},
+            {"ruins02", {0, 1}, {0}},
+            {"space01", {0, 1}, {0}},
+            {"space02", {0, 1}, {0}},
+            {"jungle01", {}, {0, 1, 2}},
+            {"jungle02", {}, {0, 1, 2}},
+            {"jungle03", {}, {0, 1, 2}},
+            {"jungle04", {0, 1}, {0, 1}},
+            {"jungle05", {}, {0, 1, 2}},
+            {"seabed01", {0, 1}, {0, 1}},
+            {"seabed02", {0, 1}, {0, 1}},
+            {"boss05", {}, {}},
+            {"boss06", {}, {}},
+            {"boss07", {}, {}},
+            {"boss08", {}, {}},
+        },
+        {
+            // Solo
+            {"labo00", {}, {0}},
+            {"ruins01", {0, 1}, {0}},
+            {"ruins02", {0, 1}, {0}},
+            {"space01", {0, 1}, {0}},
+            {"space02", {0, 1}, {0}},
+            {"jungle01", {}, {0, 1, 2}},
+            {"jungle02", {}, {0, 1, 2}},
+            {"jungle03", {}, {0, 1, 2}},
+            {"jungle04", {0, 1}, {0, 1}},
+            {"jungle05", {}, {0, 1, 2}},
+            {"seabed01", {0, 1}, {0}},
+            {"seabed02", {0, 1}, {0}},
+            {"boss05", {}, {}},
+            {"boss06", {}, {}},
+            {"boss07", {}, {}},
+            {"boss08", {}, {}},
+        },
     },
-  },
-  { // Episode 2
-    { // Non-solo
-      {"labo00",    {},        {0}},
-      {"ruins01",   {0, 1},    {0}},
-      {"ruins02",   {0, 1},    {0}},
-      {"space01",   {0, 1},    {0}},
-      {"space02",   {0, 1},    {0}},
-      {"jungle01",  {},        {0, 1, 2}},
-      {"jungle02",  {},        {0, 1, 2}},
-      {"jungle03",  {},        {0, 1, 2}},
-      {"jungle04",  {0, 1},    {0, 1}},
-      {"jungle05",  {},        {0, 1, 2}},
-      {"seabed01",  {0, 1},    {0, 1}},
-      {"seabed02",  {0, 1},    {0, 1}},
-      {"boss05",    {},        {}},
-      {"boss06",    {},        {}},
-      {"boss07",    {},        {}},
-      {"boss08",    {},        {}},
+    {
+        // Episode 4
+        {
+            // Non-solo
+            {"city02", {0}, {0}},
+            {"wilds01", {0}, {0, 1, 2}},
+            {"wilds01", {1}, {0, 1, 2}},
+            {"wilds01", {2}, {0, 1, 2}},
+            {"wilds01", {3}, {0, 1, 2}},
+            {"crater01", {0}, {0, 1, 2}},
+            {"desert01", {0, 1, 2}, {0}},
+            {"desert02", {0}, {0, 1, 2}},
+            {"desert03", {0, 1, 2}, {0}},
+            {"boss09", {0}, {0}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+        },
+        {
+            // Solo
+            {"city02", {0}, {0}},
+            {"wilds01", {0}, {0, 1, 2}},
+            {"wilds01", {1}, {0, 1, 2}},
+            {"wilds01", {2}, {0, 1, 2}},
+            {"wilds01", {3}, {0, 1, 2}},
+            {"crater01", {0}, {0, 1, 2}},
+            {"desert01", {0, 1, 2}, {0}},
+            {"desert02", {0}, {0, 1, 2}},
+            {"desert03", {0, 1, 2}, {0}},
+            {"boss09", {0}, {0}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+            {nullptr, {}, {}},
+        },
     },
-    { // Solo
-      {"labo00",    {},        {0}},
-      {"ruins01",   {0, 1},    {0}},
-      {"ruins02",   {0, 1},    {0}},
-      {"space01",   {0, 1},    {0}},
-      {"space02",   {0, 1},    {0}},
-      {"jungle01",  {},        {0, 1, 2}},
-      {"jungle02",  {},        {0, 1, 2}},
-      {"jungle03",  {},        {0, 1, 2}},
-      {"jungle04",  {0, 1},    {0, 1}},
-      {"jungle05",  {},        {0, 1, 2}},
-      {"seabed01",  {0, 1},    {0}},
-      {"seabed02",  {0, 1},    {0}},
-      {"boss05",    {},        {}},
-      {"boss06",    {},        {}},
-      {"boss07",    {},        {}},
-      {"boss08",    {},        {}},
-    },
-  },
-  { // Episode 4
-    { // Non-solo
-      {"city02",    {0},       {0}},
-      {"wilds01",   {0},       {0, 1, 2}},
-      {"wilds01",   {1},       {0, 1, 2}},
-      {"wilds01",   {2},       {0, 1, 2}},
-      {"wilds01",   {3},       {0, 1, 2}},
-      {"crater01",  {0},       {0, 1, 2}},
-      {"desert01",  {0, 1, 2}, {0}},
-      {"desert02",  {0},       {0, 1, 2}},
-      {"desert03",  {0, 1, 2}, {0}},
-      {"boss09",    {0},       {0}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-    },
-    { // Solo
-      {"city02",    {0},       {0}},
-      {"wilds01",   {0},       {0, 1, 2}},
-      {"wilds01",   {1},       {0, 1, 2}},
-      {"wilds01",   {2},       {0, 1, 2}},
-      {"wilds01",   {3},       {0, 1, 2}},
-      {"crater01",  {0},       {0, 1, 2}},
-      {"desert01",  {0, 1, 2}, {0}},
-      {"desert02",  {0},       {0, 1, 2}},
-      {"desert03",  {0, 1, 2}, {0}},
-      {"boss09",    {0},       {0}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-      {nullptr,     {},        {}},
-    },
-  },
 };
 
 const vector<vector<AreaMapFileIndex>>& map_file_info_for_episode(Episode ep) {
@@ -688,10 +681,8 @@ void generate_variations(
       variations[z * 2 + 0] = 0;
       variations[z * 2 + 1] = 0;
     } else {
-      variations[z * 2 + 0] = (a->variation1_values.size() < 2) ? 0 :
-          ((*random)() % a->variation1_values.size());
-      variations[z * 2 + 1] = (a->variation2_values.size() < 2) ? 0 :
-          ((*random)() % a->variation2_values.size());
+      variations[z * 2 + 0] = (a->variation1_values.size() < 2) ? 0 : ((*random)() % a->variation1_values.size());
+      variations[z * 2 + 1] = (a->variation2_values.size() < 2) ? 0 : ((*random)() % a->variation2_values.size());
     }
   }
 }

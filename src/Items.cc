@@ -6,9 +6,7 @@
 
 using namespace std;
 
-
-
-/* these items all need some kind of special handling that hasn't been implemented yet.
+/* These items all need some kind of special handling that hasn't been implemented yet.
 
 030B04 = TP Material (?)
 030C00 = Cell Of MAG 502
@@ -167,7 +165,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
   // used item. On GC and later versions, this does not happen, so we should
   // delete the item here.
   bool should_delete_item = (c->version() != GameVersion::DC) &&
-      (c->version() != GameVersion::PC);
+                            (c->version() != GameVersion::PC);
 
   auto& item = c->game_data.player()->inventory.items[item_index];
   if (item.data.data1w[0] == 0x0203) { // technique disk

@@ -1,13 +1,13 @@
 #pragma once
 
-#include <inttypes.h>
 #include <event2/bufferevent.h>
+#include <inttypes.h>
 
 #include <functional>
 #include <phosg/Strings.hh>
 
-#include "Version.hh"
 #include "PSOEncryption.hh"
+#include "Version.hh"
 
 struct PSOCommandHeaderPC {
   le_uint16_t size;

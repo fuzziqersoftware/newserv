@@ -3,10 +3,9 @@
 #include <event2/event.h>
 
 #include <memory>
-#include <unordered_map>
-#include <string>
 #include <set>
-
+#include <string>
+#include <unordered_map>
 
 class DNSServer {
 public:
@@ -28,7 +27,7 @@ public:
 
 private:
   std::shared_ptr<struct event_base> base;
-  std::unordered_map<int, std::unique_ptr<struct event, void(*)(struct event*)>> fd_to_receive_event;
+  std::unordered_map<int, std::unique_ptr<struct event, void (*)(struct event*)>> fd_to_receive_event;
   uint32_t local_connect_address;
   uint32_t external_connect_address;
 

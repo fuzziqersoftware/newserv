@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include <phosg/Filesystem.hh>
-#include <phosg/Math.hh>
 #include <phosg/JSON.hh>
+#include <phosg/Math.hh>
 #include <phosg/Network.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Tools.hh>
@@ -21,9 +21,9 @@
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
+#include "PSOGCObjectGraph.hh"
 #include "Product.hh"
 #include "ProxyServer.hh"
-#include "PSOGCObjectGraph.hh"
 #include "ReplaySession.hh"
 #include "SaveFileFormats.hh"
 #include "SendCommands.hh"
@@ -35,11 +35,7 @@
 
 using namespace std;
 
-
-
 bool use_terminal_colors = false;
-
-
 
 template <typename T>
 vector<T> parse_int_vector(shared_ptr<const JSONObject> o) {
@@ -49,8 +45,6 @@ vector<T> parse_int_vector(shared_ptr<const JSONObject> o) {
   }
   return ret;
 }
-
-
 
 void drop_privileges(const string& username) {
   if ((getuid() != 0) || (getgid() != 0)) {
@@ -76,10 +70,8 @@ void drop_privileges(const string& username) {
     throw runtime_error(string_printf("can\'t switch to user %d (%s)",
         pw->pw_uid, error.c_str()));
   }
-  config_log.info("Switched to user %s (%d:%d)",  username.c_str(), pw->pw_uid, pw->pw_gid);
+  config_log.info("Switched to user %s (%d:%d)", username.c_str(), pw->pw_uid, pw->pw_gid);
 }
-
-
 
 void print_usage() {
   fputs("\
@@ -191,7 +183,8 @@ A few options apply to multiple modes described above:\n\
       a hex string before encrypting/decoding/etc.\n\
   --config=FILENAME\n\
       Use this file instead of system/config.json.\n\
-", stderr);
+",
+      stderr);
 }
 
 enum class Behavior {
@@ -219,45 +212,47 @@ enum class Behavior {
   REPLAY_LOG,
   CAT_CLIENT,
   GENERATE_PRODUCT,
+  INSPECT_PRODUCT,
   PRODUCT_SPEED_TEST,
 };
 
 static bool behavior_takes_input_filename(Behavior b) {
   return (b == Behavior::COMPRESS_PRS) ||
-         (b == Behavior::DECOMPRESS_PRS) ||
-         (b == Behavior::COMPRESS_BC0) ||
-         (b == Behavior::DECOMPRESS_BC0) ||
-         (b == Behavior::PRS_SIZE) ||
-         (b == Behavior::PRS_DISASSEMBLE) ||
-         (b == Behavior::ENCRYPT_DATA) ||
-         (b == Behavior::DECRYPT_DATA) ||
-         (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
-         (b == Behavior::DECRYPT_GCI_SAVE) ||
-         (b == Behavior::ENCRYPT_GCI_SAVE) ||
-         (b == Behavior::DECODE_QUEST_FILE) ||
-         (b == Behavior::DECODE_SJIS) ||
-         (b == Behavior::FORMAT_ITEMRT_ENTRY) ||
-         (b == Behavior::FORMAT_ITEMRT_REL) ||
-         (b == Behavior::EXTRACT_GSL) ||
-         (b == Behavior::EXTRACT_BML) ||
-         (b == Behavior::PARSE_OBJECT_GRAPH) ||
-         (b == Behavior::REPLAY_LOG) ||
-         (b == Behavior::CAT_CLIENT);
+      (b == Behavior::DECOMPRESS_PRS) ||
+      (b == Behavior::COMPRESS_BC0) ||
+      (b == Behavior::DECOMPRESS_BC0) ||
+      (b == Behavior::PRS_SIZE) ||
+      (b == Behavior::PRS_DISASSEMBLE) ||
+      (b == Behavior::ENCRYPT_DATA) ||
+      (b == Behavior::DECRYPT_DATA) ||
+      (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
+      (b == Behavior::DECRYPT_GCI_SAVE) ||
+      (b == Behavior::ENCRYPT_GCI_SAVE) ||
+      (b == Behavior::DECODE_QUEST_FILE) ||
+      (b == Behavior::DECODE_SJIS) ||
+      (b == Behavior::FORMAT_ITEMRT_ENTRY) ||
+      (b == Behavior::FORMAT_ITEMRT_REL) ||
+      (b == Behavior::EXTRACT_GSL) ||
+      (b == Behavior::EXTRACT_BML) ||
+      (b == Behavior::PARSE_OBJECT_GRAPH) ||
+      (b == Behavior::REPLAY_LOG) ||
+      (b == Behavior::CAT_CLIENT) ||
+      (b == Behavior::INSPECT_PRODUCT);
 }
 
 static bool behavior_takes_output_filename(Behavior b) {
   return (b == Behavior::COMPRESS_PRS) ||
-         (b == Behavior::DECOMPRESS_PRS) ||
-         (b == Behavior::COMPRESS_BC0) ||
-         (b == Behavior::DECOMPRESS_BC0) ||
-         (b == Behavior::ENCRYPT_DATA) ||
-         (b == Behavior::DECRYPT_DATA) ||
-         (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
-         (b == Behavior::DECRYPT_GCI_SAVE) ||
-         (b == Behavior::ENCRYPT_GCI_SAVE) ||
-         (b == Behavior::DECODE_SJIS) ||
-         (b == Behavior::EXTRACT_GSL) ||
-         (b == Behavior::EXTRACT_BML);
+      (b == Behavior::DECOMPRESS_PRS) ||
+      (b == Behavior::COMPRESS_BC0) ||
+      (b == Behavior::DECOMPRESS_BC0) ||
+      (b == Behavior::ENCRYPT_DATA) ||
+      (b == Behavior::DECRYPT_DATA) ||
+      (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
+      (b == Behavior::DECRYPT_GCI_SAVE) ||
+      (b == Behavior::ENCRYPT_GCI_SAVE) ||
+      (b == Behavior::DECODE_SJIS) ||
+      (b == Behavior::EXTRACT_GSL) ||
+      (b == Behavior::EXTRACT_BML);
 }
 
 enum class QuestFileFormat {
@@ -344,7 +339,8 @@ int main(int argc, char** argv) {
         if (!strcmp(argv[x], "help")) {
           print_usage();
           return 0;
-        } if (!strcmp(argv[x], "compress-prs")) {
+        }
+        if (!strcmp(argv[x], "compress-prs")) {
           behavior = Behavior::COMPRESS_PRS;
         } else if (!strcmp(argv[x], "decompress-prs")) {
           behavior = Behavior::DECOMPRESS_PRS;
@@ -400,6 +396,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::EXTRACT_BML;
         } else if (!strcmp(argv[x], "generate-product")) {
           behavior = Behavior::GENERATE_PRODUCT;
+        } else if (!strcmp(argv[x], "inspect-product")) {
+          behavior = Behavior::INSPECT_PRODUCT;
         } else if (!strcmp(argv[x], "product-speed-test")) {
           behavior = Behavior::PRODUCT_SPEED_TEST;
         } else {
@@ -435,9 +433,9 @@ int main(int argc, char** argv) {
     // If the output is to a specified file, write it there
     if (output_filename && strcmp(output_filename, "-")) {
       save_file(output_filename, data, size);
-    // If no output filename is given and an input filename is given, write to
-    // <input-filename>.dec (or an appropriate extension, if it can be
-    // autodetected)
+      // If no output filename is given and an input filename is given, write to
+      // <input-filename>.dec (or an appropriate extension, if it can be
+      // autodetected)
     } else if (!output_filename && input_filename && strcmp(input_filename, "-")) {
       string filename = input_filename;
       if (behavior == Behavior::COMPRESS_PRS) {
@@ -472,11 +470,11 @@ int main(int argc, char** argv) {
         filename += ".dec";
       }
       save_file(filename, data, size);
-    // If stdout is a terminal, use print_data to write the result
+      // If stdout is a terminal, use print_data to write the result
     } else if (isatty(fileno(stdout))) {
       print_data(stdout, data, size);
       fflush(stdout);
-    // If stdout is not a terminal, write the data as-is
+      // If stdout is not a terminal, write the data as-is
     } else {
       fwritex(stdout, data, size);
       fflush(stdout);
@@ -756,7 +754,8 @@ int main(int argc, char** argv) {
           }
         }
         return false;
-      }, 0, 0x100000000, num_threads);
+      },
+          0, 0x100000000, num_threads);
 
       if (seed < 0x100000000) {
         log_info("Found seed %08" PRIX64, seed);
@@ -774,15 +773,15 @@ int main(int argc, char** argv) {
       string output_filename_base = input_filename;
       if (quest_file_type == QuestFileFormat::GCI) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        save_file(output_filename_base + ".dec", Quest::decode_gci(
-            input_filename, num_threads, dec_seed));
+        auto decoded = Quest::decode_gci(input_filename, num_threads, dec_seed);
+        save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == QuestFileFormat::VMS) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        save_file(output_filename_base + ".dec", Quest::decode_vms(
-            input_filename, num_threads, dec_seed));
+        auto decoded = Quest::decode_vms(input_filename, num_threads, dec_seed);
+        save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == QuestFileFormat::DLQ) {
-        save_file(output_filename_base + ".dec", Quest::decode_dlq(
-            input_filename));
+        auto decoded = Quest::decode_dlq(input_filename);
+        save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == QuestFileFormat::QST) {
         auto data = Quest::decode_qst(input_filename);
         save_file(output_filename_base + ".bin", data.first);
@@ -874,7 +873,8 @@ int main(int argc, char** argv) {
 
         uint32_t expanded_probability = RareItemSet::expand_rate(r.probability);
         auto frac = reduce_fraction<uint64_t>(expanded_probability, 0x100000000);
-        return string_printf("(%02hhX => %08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX (%s)",
+        return string_printf(
+            "(%02hhX => %08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX (%s)",
             r.probability, expanded_probability, frac.first, frac.second, r.item_code[0], r.item_code[1], r.item_code[2], name.c_str());
       };
 
@@ -913,7 +913,8 @@ int main(int argc, char** argv) {
 
         uint32_t expanded_probability = RareItemSet::expand_rate(r.probability);
         auto frac = reduce_fraction<uint64_t>(expanded_probability, 0x100000000);
-        return string_printf("(%02hhX => %08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX (%s)",
+        return string_printf(
+            "(%02hhX => %08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX (%s)",
             r.probability, expanded_probability, frac.first, frac.second, r.item_code[0], r.item_code[1], r.item_code[2], name.c_str());
       };
 
@@ -949,9 +950,9 @@ int main(int argc, char** argv) {
       };
 
       static const vector<Episode> episodes = {
-        Episode::EP1,
-        Episode::EP2,
-        Episode::EP4,
+          Episode::EP1,
+          Episode::EP2,
+          Episode::EP4,
       };
       for (Episode episode : episodes) {
         for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
@@ -1006,7 +1007,26 @@ int main(int argc, char** argv) {
 
     case Behavior::GENERATE_PRODUCT: {
       auto product = generate_product(domain, subdomain);
-      fprintf(stderr, "%s\n", product.c_str());
+      fprintf(stdout, "%s\n", product.c_str());
+      break;
+    }
+
+    case Behavior::INSPECT_PRODUCT: {
+      if (!input_filename) {
+        throw invalid_argument("no product given");
+      }
+      size_t num_valid_subdomains = 0;
+      for (uint8_t domain = 0; domain < 3; domain++) {
+        for (uint8_t subdomain = 0; subdomain < 3; subdomain++) {
+          if (product_is_valid_fast(input_filename, domain, subdomain)) {
+            fprintf(stdout, "%s is valid in domain %hhu subdomain %hhu\n", input_filename, domain, subdomain);
+            num_valid_subdomains++;
+          }
+        }
+      }
+      if (num_valid_subdomains == 0) {
+        fprintf(stdout, "%s is not valid in any domain\n", input_filename);
+      }
       break;
     }
 
@@ -1049,7 +1069,8 @@ int main(int argc, char** argv) {
         config_log.info("Starting game server");
         state->game_server.reset(new Server(base, state));
 
-        shared_ptr<FILE> log_f(stdin, +[](FILE*) { });
+        shared_ptr<FILE> log_f(
+            stdin, +[](FILE*) {});
         if (input_filename && strcmp(input_filename, "-")) {
           log_f = fopen_shared(input_filename, "rt");
         }
@@ -1074,14 +1095,14 @@ int main(int argc, char** argv) {
               // destination is supported, and we have to manually specify the
               // destination netloc here.
               if (pc->version == GameVersion::PATCH) {
-                struct sockaddr_storage ss = make_sockaddr_storage(
+                auto [ss, size] = make_sockaddr_storage(
                     state->proxy_destination_patch.first,
-                    state->proxy_destination_patch.second).first;
+                    state->proxy_destination_patch.second);
                 state->proxy_server->listen(pc->port, pc->version, &ss);
               } else if (pc->version == GameVersion::BB) {
-                struct sockaddr_storage ss = make_sockaddr_storage(
+                auto [ss, size] = make_sockaddr_storage(
                     state->proxy_destination_bb.first,
-                    state->proxy_destination_bb.second).first;
+                    state->proxy_destination_bb.second);
                 state->proxy_server->listen(pc->port, pc->version, &ss);
               } else {
                 state->proxy_server->listen(pc->port, pc->version);

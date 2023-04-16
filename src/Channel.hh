@@ -9,8 +9,6 @@
 #include "PSOProtocol.hh"
 #include "Version.hh"
 
-
-
 struct Channel {
   std::unique_ptr<struct bufferevent, void (*)(struct bufferevent*)> bev;
   struct sockaddr_storage local_addr;

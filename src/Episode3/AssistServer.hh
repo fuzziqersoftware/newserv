@@ -6,12 +6,10 @@
 #include <vector>
 
 #include "DataIndex.hh"
-#include "PlayerState.hh"
 #include "DeckState.hh"
+#include "PlayerState.hh"
 
 namespace Episode3 {
-
-
 
 class Server;
 
@@ -54,7 +52,5 @@ public:
   std::shared_ptr<parray<ActionChainWithConds, 9>> set_card_action_chains[4];
   std::shared_ptr<parray<ActionMetadata, 9>> set_card_action_metadatas[4];
 };
-
-
 
 } // namespace Episode3

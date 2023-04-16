@@ -2,14 +2,12 @@
 
 #include <event2/event.h>
 
-#include <stdexcept>
 #include <memory>
-#include <string>
 #include <phosg/Filesystem.hh>
+#include <stdexcept>
+#include <string>
 
 #include "ServerState.hh"
-
-
 
 class Shell {
 public:

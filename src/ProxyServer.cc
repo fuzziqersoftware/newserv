@@ -8,8 +8,8 @@
 #include <event2/event.h>
 #include <event2/listener.h>
 #include <fcntl.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -25,23 +25,21 @@
 
 #include "Loggers.hh"
 #include "PSOProtocol.hh"
-#include "SendCommands.hh"
+#include "ProxyCommands.hh"
 #include "ReceiveCommands.hh"
 #include "ReceiveSubcommands.hh"
-#include "ProxyCommands.hh"
+#include "SendCommands.hh"
 
 using namespace std;
 using namespace std::placeholders;
 
-
-
 ProxyServer::ProxyServer(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
-  : base(base),
-    destroy_sessions_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &ProxyServer::dispatch_destroy_sessions, this), event_free),
-    state(state),
-    next_unlicensed_session_id(0xFF00000000000001) { }
+    : base(base),
+      destroy_sessions_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &ProxyServer::dispatch_destroy_sessions, this), event_free),
+      state(state),
+      next_unlicensed_session_id(0xFF00000000000001) {}
 
 void ProxyServer::listen(uint16_t port, GameVersion version,
     const struct sockaddr_storage* default_destination) {
@@ -55,12 +53,12 @@ ProxyServer::ListeningSocket::ListeningSocket(
     uint16_t port,
     GameVersion version,
     const struct sockaddr_storage* default_destination)
-  : server(server),
-    log(string_printf("[ProxyServer:ListeningSocket:%hu] ", port), proxy_server_log.min_level),
-    port(port),
-    fd(::listen("", port, SOMAXCONN)),
-    listener(nullptr, evconnlistener_free),
-    version(version) {
+    : server(server),
+      log(string_printf("[ProxyServer:ListeningSocket:%hu] ", port), proxy_server_log.min_level),
+      port(port),
+      fd(::listen("", port, SOMAXCONN)),
+      listener(nullptr, evconnlistener_free),
+      version(version) {
   if (!this->fd.is_open()) {
     throw runtime_error("cannot listen on port");
   }
@@ -114,8 +112,6 @@ void ProxyServer::ListeningSocket::on_listen_error() {
   event_base_loopexit(this->server->base.get(), nullptr);
 }
 
-
-
 void ProxyServer::connect_client(struct bufferevent* bev, uint16_t server_port) {
   // Look up the listening socket for the given port, and use that game version.
   // We don't support default-destination proxying for virtual connections (yet)
@@ -135,8 +131,6 @@ void ProxyServer::connect_client(struct bufferevent* bev, uint16_t server_port) 
   this->on_client_connect(bev, server_port, version, nullptr);
 }
 
-
-
 void ProxyServer::on_client_connect(
     struct bufferevent* bev,
     uint16_t listen_port,
@@ -151,8 +145,7 @@ void ProxyServer::on_client_connect(
       this->next_unlicensed_session_id = 0xFF00000000000001;
     }
 
-    auto emplace_ret = this->id_to_session.emplace(session_id, new LinkedSession(
-        this, session_id, listen_port, version, *default_destination));
+    auto emplace_ret = this->id_to_session.emplace(session_id, new LinkedSession(this, session_id, listen_port, version, *default_destination));
     if (!emplace_ret.second) {
       throw logic_error("linked session already exists for unlicensed client");
     }
@@ -162,12 +155,11 @@ void ProxyServer::on_client_connect(
     Channel ch(bev, version, nullptr, nullptr, session.get(), "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN);
     session->resume(move(ch));
 
-  // If no default destination exists, or the client is not a patch client,
-  // create an unlinked session - we'll have to get the destination from the
-  // client's config, which we'll get via a 9E command soon.
+    // If no default destination exists, or the client is not a patch client,
+    // create an unlinked session - we'll have to get the destination from the
+    // client's config, which we'll get via a 9E command soon.
   } else {
-    auto emplace_ret = this->bev_to_unlinked_session.emplace(bev, new UnlinkedSession(
-        this, bev, listen_port, version));
+    auto emplace_ret = this->bev_to_unlinked_session.emplace(bev, new UnlinkedSession(this, bev, listen_port, version));
     if (!emplace_ret.second) {
       throw logic_error("stale unlinked session exists");
     }
@@ -227,26 +219,24 @@ void ProxyServer::on_client_connect(
   }
 }
 
-
-
 ProxyServer::UnlinkedSession::UnlinkedSession(
     ProxyServer* server,
     struct bufferevent* bev,
     uint16_t local_port,
     GameVersion version)
-  : server(server),
-    log(string_printf("[ProxyServer:UnlinkedSession:%p] ", bev), proxy_server_log.min_level),
-    channel(
-      bev,
-      version,
-      ProxyServer::UnlinkedSession::on_input,
-      ProxyServer::UnlinkedSession::on_error,
-      this,
-      string_printf("UnlinkedSession:%p", bev),
-      TerminalFormat::FG_YELLOW,
-      TerminalFormat::FG_GREEN),
-    local_port(local_port),
-    version(version) {
+    : server(server),
+      log(string_printf("[ProxyServer:UnlinkedSession:%p] ", bev), proxy_server_log.min_level),
+      channel(
+          bev,
+          version,
+          ProxyServer::UnlinkedSession::on_input,
+          ProxyServer::UnlinkedSession::on_error,
+          this,
+          string_printf("UnlinkedSession:%p", bev),
+          TerminalFormat::FG_YELLOW,
+          TerminalFormat::FG_GREEN),
+      local_port(local_port),
+      version(version) {
   memset(&this->next_destination, 0, sizeof(this->next_destination));
 }
 
@@ -440,51 +430,50 @@ void ProxyServer::UnlinkedSession::on_error(Channel& ch, short events) {
   }
 }
 
-
-
 ProxyServer::LinkedSession::LinkedSession(
     ProxyServer* server,
     uint64_t id,
     uint16_t local_port,
     GameVersion version)
-  : server(server),
-    id(id),
-    log(string_printf("[ProxyServer:LinkedSession:%08" PRIX64 "] ", this->id), proxy_server_log.min_level),
-    timeout_event(event_new(this->server->base.get(), -1, EV_TIMEOUT,
-        &LinkedSession::dispatch_on_timeout, this), event_free),
-    license(nullptr),
-    client_channel(
-      version,
-      nullptr,
-      nullptr,
-      this,
-      string_printf("LinkedSession:%08" PRIX64 ":client", this->id),
-      TerminalFormat::FG_YELLOW,
-      TerminalFormat::FG_GREEN),
-    server_channel(
-      version,
-      nullptr,
-      nullptr,
-      this,
-      string_printf("LinkedSession:%08" PRIX64 ":server", this->id),
-      TerminalFormat::FG_YELLOW,
-      TerminalFormat::FG_RED),
-    local_port(local_port),
-    disconnect_action(DisconnectAction::LONG_TIMEOUT),
-    remote_ip_crc(0),
-    enable_remote_ip_crc_patch(false),
-    version(version),
-    sub_version(0), // This is set during resume()
-    language(1), // Default = English. This is also set during resume()
-    remote_guild_card_number(-1),
-    next_item_id(0x0F000000),
-    lobby_players(12),
-    lobby_client_id(0),
-    leader_client_id(0),
-    area(0),
-    x(0.0),
-    z(0.0),
-    is_in_game(false) {
+    : server(server),
+      id(id),
+      log(string_printf("[ProxyServer:LinkedSession:%08" PRIX64 "] ", this->id), proxy_server_log.min_level),
+      timeout_event(event_new(this->server->base.get(), -1, EV_TIMEOUT,
+                        &LinkedSession::dispatch_on_timeout, this),
+          event_free),
+      license(nullptr),
+      client_channel(
+          version,
+          nullptr,
+          nullptr,
+          this,
+          string_printf("LinkedSession:%08" PRIX64 ":client", this->id),
+          TerminalFormat::FG_YELLOW,
+          TerminalFormat::FG_GREEN),
+      server_channel(
+          version,
+          nullptr,
+          nullptr,
+          this,
+          string_printf("LinkedSession:%08" PRIX64 ":server", this->id),
+          TerminalFormat::FG_YELLOW,
+          TerminalFormat::FG_RED),
+      local_port(local_port),
+      disconnect_action(DisconnectAction::LONG_TIMEOUT),
+      remote_ip_crc(0),
+      enable_remote_ip_crc_patch(false),
+      version(version),
+      sub_version(0), // This is set during resume()
+      language(1), // Default = English. This is also set during resume()
+      remote_guild_card_number(-1),
+      next_item_id(0x0F000000),
+      lobby_players(12),
+      lobby_client_id(0),
+      leader_client_id(0),
+      area(0),
+      x(0.0),
+      z(0.0),
+      is_in_game(false) {
   this->last_switch_enabled_command.header.subcommand = 0;
   memset(this->prev_server_command_bytes, 0, sizeof(this->prev_server_command_bytes));
 }
@@ -495,7 +484,7 @@ ProxyServer::LinkedSession::LinkedSession(
     GameVersion version,
     shared_ptr<const License> license,
     const ClientConfigBB& newserv_client_config)
-  : LinkedSession(server, license->serial_number, local_port, version) {
+    : LinkedSession(server, license->serial_number, local_port, version) {
   this->license = license;
   this->newserv_client_config = newserv_client_config;
   memset(&this->next_destination, 0, sizeof(this->next_destination));
@@ -511,7 +500,7 @@ ProxyServer::LinkedSession::LinkedSession(
     GameVersion version,
     std::shared_ptr<const License> license,
     const struct sockaddr_storage& next_destination)
-  : LinkedSession(server, license->serial_number, local_port, version) {
+    : LinkedSession(server, license->serial_number, local_port, version) {
   this->license = license;
   this->next_destination = next_destination;
 }
@@ -522,7 +511,7 @@ ProxyServer::LinkedSession::LinkedSession(
     uint16_t local_port,
     GameVersion version,
     const struct sockaddr_storage& destination)
-  : LinkedSession(server, id, local_port, version) {
+    : LinkedSession(server, id, local_port, version) {
   this->next_destination = destination;
 }
 
@@ -594,7 +583,7 @@ void ProxyServer::LinkedSession::connect() {
   this->server_channel.set_bufferevent(bufferevent_socket_new(
       this->server->base.get(), -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS));
   if (bufferevent_socket_connect(this->server_channel.bev.get(),
-      reinterpret_cast<const sockaddr*>(dest_sin), sizeof(*dest_sin)) != 0) {
+          reinterpret_cast<const sockaddr*>(dest_sin), sizeof(*dest_sin)) != 0) {
     throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
   }
 
@@ -606,34 +595,26 @@ void ProxyServer::LinkedSession::connect() {
   event_del(this->timeout_event.get());
 }
 
-
-
 ProxyServer::LinkedSession::SavingFile::SavingFile(
     const string& basename,
     const string& output_filename,
     uint32_t remaining_bytes)
-  : basename(basename),
-    output_filename(output_filename),
-    remaining_bytes(remaining_bytes) {
+    : basename(basename),
+      output_filename(output_filename),
+      remaining_bytes(remaining_bytes) {
   if (!this->output_filename.empty()) {
     this->f = fopen_unique(this->output_filename, "wb");
   }
 }
-
-
 
 void ProxyServer::LinkedSession::dispatch_on_timeout(
     evutil_socket_t, short, void* ctx) {
   reinterpret_cast<LinkedSession*>(ctx)->on_timeout();
 }
 
-
-
 void ProxyServer::LinkedSession::on_timeout() {
   this->server->delete_session(this->id);
 }
-
-
 
 void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
   auto* session = reinterpret_cast<LinkedSession*>(ch.context_obj);
@@ -643,11 +624,9 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
     session->log.info("%s channel connected", is_server_stream ? "Server" : "Client");
 
     if (is_server_stream && (session->options.override_lobby_event >= 0) &&
-        (
-          ((session->version == GameVersion::GC) && !(session->newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) ||
-          (session->version == GameVersion::XB) ||
-          (session->version == GameVersion::BB)
-        )) {
+        (((session->version == GameVersion::GC) && !(session->newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) ||
+            (session->version == GameVersion::XB) ||
+            (session->version == GameVersion::BB))) {
       session->client_channel.send(0xDA, session->options.override_lobby_event);
     }
   }
@@ -702,15 +681,11 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
 
   string encoded_name = encode_sjis(this->server->state->name);
   if (this->is_in_game) {
-    send_ship_info(this->client_channel, decode_sjis(string_printf(
-        "You cannot return\nto $C6%s$C7\nwhile in a game.\n\n%s",
-        encoded_name.c_str(), error_message ? error_message : "")));
+    send_ship_info(this->client_channel, decode_sjis(string_printf("You cannot return\nto $C6%s$C7\nwhile in a game.\n\n%s", encoded_name.c_str(), error_message ? error_message : "")));
     this->disconnect();
 
   } else {
-    send_ship_info(this->client_channel, decode_sjis(string_printf(
-        "You\'ve returned to\n\tC6%s$C7\n\n%s", encoded_name.c_str(),
-        error_message ? error_message : "")));
+    send_ship_info(this->client_channel, decode_sjis(string_printf("You\'ve returned to\n\tC6%s$C7\n\n%s", encoded_name.c_str(), error_message ? error_message : "")));
 
     // Restore newserv_client_config, so the login server gets the client flags
     S_UpdateClientConfig_DC_PC_V3_04 update_client_config_cmd;
@@ -722,8 +697,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(
         this->version));
 
-    S_Reconnect_19 reconnect_cmd = {{
-        0, this->server->state->name_to_port_config.at(port_name)->port, 0}};
+    S_Reconnect_19 reconnect_cmd = {{0, this->server->state->name_to_port_config.at(port_name)->port, 0}};
 
     // If the client is on a virtual connection, we can use any address
     // here and they should be able to connect back to the game server. If
@@ -780,8 +754,6 @@ void ProxyServer::LinkedSession::disconnect() {
 bool ProxyServer::LinkedSession::is_connected() const {
   return (this->server_channel.connected() && this->client_channel.connected());
 }
-
-
 
 void ProxyServer::LinkedSession::on_input(Channel& ch, uint16_t command, uint32_t flag, std::string& data) {
   auto* session = reinterpret_cast<LinkedSession*>(ch.context_obj);

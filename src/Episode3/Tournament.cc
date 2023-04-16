@@ -9,14 +9,14 @@ using namespace std;
 
 namespace Episode3 {
 
-
-
 Tournament::PlayerEntry::PlayerEntry(uint32_t serial_number)
-  : serial_number(serial_number), com_deck() { }
+    : serial_number(serial_number),
+      com_deck() {}
 
 Tournament::PlayerEntry::PlayerEntry(
     shared_ptr<const COMDeckDefinition> com_deck)
-  : serial_number(0), com_deck(com_deck) { }
+    : serial_number(0),
+      com_deck(com_deck) {}
 
 bool Tournament::PlayerEntry::is_com() const {
   return (this->com_deck != nullptr);
@@ -26,17 +26,15 @@ bool Tournament::PlayerEntry::is_human() const {
   return (this->serial_number != 0);
 }
 
-
-
 Tournament::Team::Team(
     shared_ptr<Tournament> tournament, size_t index, size_t max_players)
-  : tournament(tournament),
-    index(index),
-    max_players(max_players),
-    name(""),
-    password(""),
-    num_rounds_cleared(0),
-    is_active(true) { }
+    : tournament(tournament),
+      index(index),
+      max_players(max_players),
+      name(""),
+      password(""),
+      num_rounds_cleared(0),
+      is_active(true) {}
 
 string Tournament::Team::str() const {
   size_t num_human_players = 0;
@@ -133,8 +131,8 @@ bool Tournament::Team::unregister_player(uint32_t serial_number) {
         }
       }
 
-    // If the tournament has not started yet, just remove the player from the
-    // team
+      // If the tournament has not started yet, just remove the player from the
+      // team
     } else {
       if (!tournament->all_player_serial_numbers.erase(serial_number)) {
         throw logic_error("player removed from team but not from tournament");
@@ -173,17 +171,15 @@ size_t Tournament::Team::num_com_players() const {
   return ret;
 }
 
-
-
 Tournament::Match::Match(
     shared_ptr<Tournament> tournament,
     shared_ptr<Match> preceding_a,
     shared_ptr<Match> preceding_b)
-  : tournament(tournament),
-    preceding_a(preceding_a),
-    preceding_b(preceding_b),
-    winner_team(nullptr),
-    round_num(0) {
+    : tournament(tournament),
+      preceding_a(preceding_a),
+      preceding_b(preceding_b),
+      winner_team(nullptr),
+      round_num(0) {
   if (this->preceding_a->round_num != this->preceding_b->round_num) {
     throw logic_error("preceding matches have different round numbers");
   }
@@ -193,11 +189,11 @@ Tournament::Match::Match(
 Tournament::Match::Match(
     shared_ptr<Tournament> tournament,
     shared_ptr<Team> winner_team)
-  : tournament(tournament),
-    preceding_a(nullptr),
-    preceding_b(nullptr),
-    winner_team(winner_team),
-    round_num(0) { }
+    : tournament(tournament),
+      preceding_a(nullptr),
+      preceding_b(nullptr),
+      winner_team(winner_team),
+      round_num(0) {}
 
 string Tournament::Match::str() const {
   string winner_str = this->winner_team ? this->winner_team->str() : "(none)";
@@ -216,7 +212,8 @@ bool Tournament::Match::resolve_if_no_human_players() {
       !this->preceding_a->winner_team->has_any_human_players() &&
       !this->preceding_b->winner_team->has_any_human_players()) {
     this->set_winner_team((random_object<uint8_t>() & 1)
-        ? this->preceding_b->winner_team : this->preceding_a->winner_team);
+            ? this->preceding_b->winner_team
+            : this->preceding_a->winner_team);
     return true;
   } else {
     return false;
@@ -282,8 +279,6 @@ shared_ptr<Tournament::Team> Tournament::Match::opponent_team_for_team(
   }
 }
 
-
-
 Tournament::Tournament(
     shared_ptr<const DataIndex> data_index,
     uint8_t number,
@@ -292,15 +287,15 @@ Tournament::Tournament(
     const Rules& rules,
     size_t num_teams,
     bool is_2v2)
-  : log(string_printf("[Tournament/%02hhX] ", number)),
-    data_index(data_index),
-    number(number),
-    name(name),
-    map(map),
-    rules(rules),
-    num_teams(num_teams),
-    is_2v2(is_2v2),
-    current_state(State::REGISTRATION) {
+    : log(string_printf("[Tournament/%02hhX] ", number)),
+      data_index(data_index),
+      number(number),
+      name(name),
+      map(map),
+      rules(rules),
+      num_teams(num_teams),
+      is_2v2(is_2v2),
+      current_state(State::REGISTRATION) {
   if (this->num_teams < 4) {
     throw invalid_argument("team count must be 4 or more");
   }
@@ -316,11 +311,11 @@ Tournament::Tournament(
     std::shared_ptr<const DataIndex> data_index,
     uint8_t number,
     std::shared_ptr<const JSONObject> json)
-  : log(string_printf("[Tournament/%02hhX] ", number)),
-    data_index(data_index),
-    source_json(json),
-    number(number),
-    current_state(State::REGISTRATION) { }
+    : log(string_printf("[Tournament/%02hhX] ", number)),
+      data_index(data_index),
+      source_json(json),
+      number(number),
+      current_state(State::REGISTRATION) {}
 
 void Tournament::init() {
   vector<size_t> team_index_to_rounds_cleared;
@@ -414,10 +409,8 @@ void Tournament::init() {
       if (!match->preceding_a->winner_team || !match->preceding_b->winner_team) {
         throw logic_error("preceding matches are not resolved");
       }
-      size_t& a_rounds_cleared = team_index_to_rounds_cleared[
-          match->preceding_a->winner_team->index];
-      size_t& b_rounds_cleared = team_index_to_rounds_cleared[
-          match->preceding_b->winner_team->index];
+      size_t& a_rounds_cleared = team_index_to_rounds_cleared[match->preceding_a->winner_team->index];
+      size_t& b_rounds_cleared = team_index_to_rounds_cleared[match->preceding_b->winner_team->index];
       if (a_rounds_cleared && b_rounds_cleared) {
         throw runtime_error("both teams won the same match");
       }
@@ -469,8 +462,7 @@ std::shared_ptr<JSONObject> Tournament::json() const {
   dict.emplace("map_number", make_json_int(this->map->map.map_number));
   dict.emplace("rules", this->rules.json());
   dict.emplace("is_2v2", make_json_bool(this->is_2v2));
-  dict.emplace("is_registration_complete", make_json_bool(
-      this->current_state != State::REGISTRATION));
+  dict.emplace("is_registration_complete", make_json_bool(this->current_state != State::REGISTRATION));
 
   vector<shared_ptr<JSONObject>> teams_list;
   for (auto team : this->teams) {
@@ -661,13 +653,12 @@ void Tournament::print_bracket(FILE* stream) const {
   }
 }
 
-
-
 TournamentIndex::TournamentIndex(
     shared_ptr<const DataIndex> data_index,
     const string& state_filename,
     bool skip_load_state)
-  : data_index(data_index), state_filename(state_filename) {
+    : data_index(data_index),
+      state_filename(state_filename) {
   if (this->state_filename.empty() || skip_load_state) {
     return;
   }
@@ -767,7 +758,5 @@ shared_ptr<Tournament::Team> TournamentIndex::team_for_serial_number(
   }
   return nullptr;
 }
-
-
 
 } // namespace Episode3

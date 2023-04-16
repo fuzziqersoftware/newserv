@@ -8,8 +8,6 @@
 
 using namespace std;
 
-
-
 template <bool IsBigEndian>
 struct BMLHeader {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
@@ -54,13 +52,12 @@ void BMLArchive::load_t() {
     size_t gvm_offset = offset;
     offset = (offset + entry.compressed_gvm_size + 0x1F) & (~0x1F);
 
-    this->entries.emplace(entry.filename, Entry{
-        data_offset, entry.compressed_size, gvm_offset, entry.compressed_gvm_size});
+    this->entries.emplace(entry.filename, Entry{data_offset, entry.compressed_size, gvm_offset, entry.compressed_gvm_size});
   }
 }
 
 BMLArchive::BMLArchive(shared_ptr<const string> data, bool big_endian)
-  : data(data) {
+    : data(data) {
   if (big_endian) {
     this->load_t<true>();
   } else {

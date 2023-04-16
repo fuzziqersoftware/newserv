@@ -1,14 +1,12 @@
 #include <stdint.h>
 
-#include <phosg/Strings.hh>
 #include <phosg/Random.hh>
+#include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
 #include "PSOEncryption.hh"
 
 using namespace std;
-
-
 
 static const uint32_t primes1[] = {
     0x65, 0x67, 0x6B, 0x6D, 0x71, 0x7F, 0x83, 0x89, 0x8B, 0x95, 0x97, 0x9D,
@@ -1124,8 +1122,6 @@ static bool check_prime3(uint64_t prime3) {
   }
   return primes3_set[offset];
 }
-
-
 
 static char replace_char_forward(char ch) {
   if (ch >= '0' && ch <= '9') {

@@ -1,17 +1,15 @@
 #include "Text.hh"
 
 #include <stdarg.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include <vector>
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
+#include <vector>
 
 using namespace std;
-
-
 
 int char16ncmp(const char16_t* s1, const char16_t* s2, size_t count) {
   size_t x;
@@ -29,8 +27,6 @@ int char16ncmp(const char16_t* s1, const char16_t* s2, size_t count) {
   }
   return 0;
 }
-
-
 
 static vector<char16_t> unicode_to_sjis_table_data;
 static vector<char16_t> sjis_to_unicode_table_data;
@@ -68,8 +64,6 @@ static const vector<char16_t>& unicode_to_sjis_table() {
   }
   return unicode_to_sjis_table_data;
 }
-
-
 
 std::string encode_sjis(const char16_t* src, size_t src_count) {
   const auto& table = unicode_to_sjis_table();

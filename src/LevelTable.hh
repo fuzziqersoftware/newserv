@@ -3,10 +3,8 @@
 #include <stdint.h>
 
 #include <memory>
-#include <string>
 #include <phosg/Encoding.hh>
-
-
+#include <string>
 
 struct PlayerStats {
   le_uint16_t atp;

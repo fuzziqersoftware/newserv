@@ -9,21 +9,19 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Client.hh"
+#include "CommonItemSet.hh"
 #include "Episode3/DataIndex.hh"
 #include "Episode3/Tournament.hh"
-#include "Client.hh"
 #include "FunctionCompiler.hh"
 #include "GSLArchive.hh"
+#include "ItemParameterTable.hh"
 #include "Items.hh"
 #include "LevelTable.hh"
 #include "License.hh"
 #include "Lobby.hh"
 #include "Menu.hh"
 #include "Quest.hh"
-#include "CommonItemSet.hh"
-#include "ItemParameterTable.hh"
-
-
 
 // Forward declarations due to reference cycles
 class ProxyServer;
@@ -121,7 +119,6 @@ struct ServerState {
 
   std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<Server> game_server;
-  std::shared_ptr<FileContentsCache> client_options_cache;
 
   ServerState(const char* config_filename, bool is_replay);
 
@@ -143,9 +140,9 @@ struct ServerState {
   void remove_lobby(uint32_t lobby_id);
 
   std::shared_ptr<Client> find_client(
-    const std::u16string* identifier = nullptr,
-    uint64_t serial_number = 0,
-    std::shared_ptr<Lobby> l = nullptr);
+      const std::u16string* identifier = nullptr,
+      uint64_t serial_number = 0,
+      std::shared_ptr<Lobby> l = nullptr);
 
   uint32_t connect_address_for_client(std::shared_ptr<Client> c);
 
@@ -154,7 +151,7 @@ struct ServerState {
   const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations_for_version(GameVersion version);
 
   void set_port_configuration(
-    const std::vector<PortConfiguration>& port_configs);
+      const std::vector<PortConfiguration>& port_configs);
 
   std::shared_ptr<const std::string> load_bb_file(
       const std::string& patch_index_filename,

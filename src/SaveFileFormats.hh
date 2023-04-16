@@ -2,17 +2,15 @@
 
 #include <stdint.h>
 
-#include <string>
 #include <phosg/Encoding.hh>
 #include <phosg/Hash.hh>
-#include <phosg/Strings.hh>
 #include <phosg/Random.hh>
+#include <phosg/Strings.hh>
+#include <string>
 
 #include "PSOEncryption.hh"
-#include "Text.hh"
 #include "Player.hh"
-
-
+#include "Text.hh"
 
 struct ShuffleTables {
   uint8_t forward_table[0x100];
@@ -24,8 +22,6 @@ struct ShuffleTables {
 
   void shuffle(void* vdest, const void* vsrc, size_t size, bool reverse) const;
 };
-
-
 
 struct PSOGCIFileHeader {
   // Every PSOGC save file begins with a PSOGCIFileHeader. The first 0x40 bytes
@@ -277,8 +273,6 @@ struct PSOGCGuildCardFile {
   /* E28C */
 } __attribute__((packed));
 
-
-
 template <bool IsBigEndian>
 std::string decrypt_gci_or_vms_v2_data_section(
     const void* data_section, size_t size, uint32_t round1_seed) {
@@ -356,8 +350,6 @@ std::string encrypt_gci_fixed_size_file_data_section(
   return encrypt_gci_or_vms_v2_data_section<true>(
       &encrypted, sizeof(StructT), round1_seed);
 }
-
-
 
 uint32_t compute_psogc_timestamp(
     uint16_t year,

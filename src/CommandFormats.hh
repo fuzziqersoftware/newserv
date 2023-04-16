@@ -1,17 +1,17 @@
 #pragma once
 
-#include <string>
-#include <stdexcept>
-#include <phosg/Strings.hh>
 #include <phosg/Encoding.hh>
+#include <phosg/Strings.hh>
+#include <stdexcept>
+#include <string>
 
-#include "PSOProtocol.hh"
-#include "Text.hh"
-#include "Player.hh"
 #include "Episode3/DataIndex.hh"
 #include "Episode3/DeckState.hh"
 #include "Episode3/MapState.hh"
 #include "Episode3/PlayerStateSubordinates.hh"
+#include "PSOProtocol.hh"
+#include "Player.hh"
+#include "Text.hh"
 
 #define __packed__ __attribute__((packed))
 
@@ -44,8 +44,6 @@
 
 // Structures are sorted by command number. Long BB commands are placed in order
 // according to their low byte; for example, command 01EB is in position as EB.
-
-
 
 // Text escape codes
 
@@ -85,8 +83,6 @@
 // - - $r: Right arrow
 // - - $u: Up arrow
 
-
-
 // This is the format of newserv's security data, which we call the client
 // config. This data is opaque to the client, so this structure is not
 // technically part of the PSO protocol. Because it is opaque to the client, we
@@ -123,8 +119,6 @@ struct ClientConfigBB {
   uint8_t bb_player_index;
   parray<uint8_t, 0x06> unused;
 } __packed__;
-
-
 
 // Patch server commands
 
@@ -309,7 +303,8 @@ struct S_Reconnect {
   le_uint16_t unused = 0;
 } __packed__;
 
-struct S_Reconnect_Patch_14 : S_Reconnect<be_uint16_t> { } __packed__;
+struct S_Reconnect_Patch_14 : S_Reconnect<be_uint16_t> {
+} __packed__;
 
 // 15 (S->C): Login failure
 // No arguments
@@ -317,8 +312,6 @@ struct S_Reconnect_Patch_14 : S_Reconnect<be_uint16_t> { } __packed__;
 // disconnects.
 
 // No commands beyond 15 are valid on the patch server.
-
-
 
 // Game server commands
 
@@ -482,8 +475,10 @@ struct S_UpdateClientConfig {
   ClientConfigT cfg;
 } __packed__;
 
-struct S_UpdateClientConfig_DC_PC_V3_04 : S_UpdateClientConfig<ClientConfig> { } __packed__;
-struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> { } __packed__;
+struct S_UpdateClientConfig_DC_PC_V3_04 : S_UpdateClientConfig<ClientConfig> {
+} __packed__;
+struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> {
+} __packed__;
 
 // 05: Disconnect
 // No arguments
@@ -534,8 +529,10 @@ struct S_MenuEntry {
   le_uint16_t flags = 0x0F04; // Should be this value, apparently
   ptext<CharT, EntryLength> text;
 } __packed__;
-struct S_MenuEntry_PC_BB_07_1F : S_MenuEntry<char16_t, 0x11> { } __packed__;
-struct S_MenuEntry_DC_V3_07_1F : S_MenuEntry<char, 0x12> { } __packed__;
+struct S_MenuEntry_PC_BB_07_1F : S_MenuEntry<char16_t, 0x11> {
+} __packed__;
+struct S_MenuEntry_DC_V3_07_1F : S_MenuEntry<char, 0x12> {
+} __packed__;
 
 // 08 (C->S): Request game list
 // No arguments
@@ -569,8 +566,10 @@ struct S_GameMenuEntry {
   // 20 = Is challenge mode
   uint8_t flags = 0;
 } __packed__;
-struct S_GameMenuEntry_PC_BB_08 : S_GameMenuEntry<char16_t> { } __packed__;
-struct S_GameMenuEntry_DC_V3_08_Ep3_E6 : S_GameMenuEntry<char> { } __packed__;
+struct S_GameMenuEntry_PC_BB_08 : S_GameMenuEntry<char16_t> {
+} __packed__;
+struct S_GameMenuEntry_DC_V3_08_Ep3_E6 : S_GameMenuEntry<char> {
+} __packed__;
 
 // 09 (C->S): Menu item info request
 // Server will respond with an 11 command, or an A3 or A5 if the specified menu
@@ -660,16 +659,20 @@ struct C_MenuSelection_10_Flag01 {
   C_MenuSelection_10_Flag00 basic_cmd;
   ptext<CharT, 0x10> unknown_a1;
 } __packed__;
-struct C_MenuSelection_DC_V3_10_Flag01 : C_MenuSelection_10_Flag01<char> { } __packed__;
-struct C_MenuSelection_PC_BB_10_Flag01 : C_MenuSelection_10_Flag01<char16_t> { } __packed__;
+struct C_MenuSelection_DC_V3_10_Flag01 : C_MenuSelection_10_Flag01<char> {
+} __packed__;
+struct C_MenuSelection_PC_BB_10_Flag01 : C_MenuSelection_10_Flag01<char16_t> {
+} __packed__;
 
 template <typename CharT>
 struct C_MenuSelection_10_Flag02 {
   C_MenuSelection_10_Flag00 basic_cmd;
   ptext<CharT, 0x10> password;
 } __packed__;
-struct C_MenuSelection_DC_V3_10_Flag02 : C_MenuSelection_10_Flag02<char> { } __packed__;
-struct C_MenuSelection_PC_BB_10_Flag02 : C_MenuSelection_10_Flag02<char16_t> { } __packed__;
+struct C_MenuSelection_DC_V3_10_Flag02 : C_MenuSelection_10_Flag02<char> {
+} __packed__;
+struct C_MenuSelection_PC_BB_10_Flag02 : C_MenuSelection_10_Flag02<char16_t> {
+} __packed__;
 
 template <typename CharT>
 struct C_MenuSelection_10_Flag03 {
@@ -677,8 +680,10 @@ struct C_MenuSelection_10_Flag03 {
   ptext<CharT, 0x10> unknown_a1;
   ptext<CharT, 0x10> password;
 } __packed__;
-struct C_MenuSelection_DC_V3_10_Flag03 : C_MenuSelection_10_Flag03<char> { } __packed__;
-struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<char16_t> { } __packed__;
+struct C_MenuSelection_DC_V3_10_Flag03 : C_MenuSelection_10_Flag03<char> {
+} __packed__;
+struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<char16_t> {
+} __packed__;
 
 // 11 (S->C): Ship info
 // Same format as 01 command. The text appears in a small box in the lower-left
@@ -748,7 +753,8 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 // Note: PSO XB seems to ignore the address field, which makes sense given its
 // networking architecture.
 
-struct S_Reconnect_19 : S_Reconnect<le_uint16_t> { } __packed__;
+struct S_Reconnect_19 : S_Reconnect<le_uint16_t> {
+} __packed__;
 
 // Because PSO PC and some versions of PSO DC/GC use the same port but different
 // protocols, we use a specially-crafted 19 command to send them to two
@@ -915,11 +921,14 @@ struct S_GuildCardSearchResult {
   SC_MeetUserExtension<CharT> extension;
 } __packed__;
 struct S_GuildCardSearchResult_PC_41
-    : S_GuildCardSearchResult<PSOCommandHeaderPC, char16_t> { } __packed__;
+    : S_GuildCardSearchResult<PSOCommandHeaderPC, char16_t> {
+} __packed__;
 struct S_GuildCardSearchResult_DC_V3_41
-    : S_GuildCardSearchResult<PSOCommandHeaderDCV3, char> { } __packed__;
+    : S_GuildCardSearchResult<PSOCommandHeaderDCV3, char> {
+} __packed__;
 struct S_GuildCardSearchResult_BB_41
-    : S_GuildCardSearchResult<PSOCommandHeaderBB, char16_t> { } __packed__;
+    : S_GuildCardSearchResult<PSOCommandHeaderBB, char16_t> {
+} __packed__;
 
 // 42: Invalid command
 // 43: Invalid command
@@ -1084,8 +1093,10 @@ struct S_JoinGame {
   uint8_t unused3 = 0;
 } __packed__;
 
-struct S_JoinGame_PC_64 : S_JoinGame<PlayerLobbyDataPC, PlayerDispDataDCPCV3> { } __packed__;
-struct S_JoinGame_DC_GC_64 : S_JoinGame<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3> { } __packed__;
+struct S_JoinGame_PC_64 : S_JoinGame<PlayerLobbyDataPC, PlayerDispDataDCPCV3> {
+} __packed__;
+struct S_JoinGame_DC_GC_64 : S_JoinGame<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3> {
+} __packed__;
 
 struct S_JoinGame_GC_Ep3_64 : S_JoinGame_DC_GC_64 {
   // This field is only present if the game (and client) is Episode 3. Similarly
@@ -1101,7 +1112,8 @@ struct S_JoinGame_XB_64 : S_JoinGame<PlayerLobbyDataXB, PlayerDispDataDCPCV3> {
   parray<le_uint32_t, 6> unknown_a1;
 } __packed__;
 
-struct S_JoinGame_BB_64 : S_JoinGame<PlayerLobbyDataBB, PlayerDispDataBB> { } __packed__;
+struct S_JoinGame_BB_64 : S_JoinGame<PlayerLobbyDataBB, PlayerDispDataBB> {
+} __packed__;
 
 // 65 (S->C): Add player to game
 // When a player joins an existing game, the joining player receives a 64
@@ -1134,11 +1146,14 @@ struct S_JoinLobby {
   }
 } __packed__;
 struct S_JoinLobby_PC_65_67_68
-    : S_JoinLobby<PlayerLobbyDataPC, PlayerDispDataDCPCV3> { } __packed__;
+    : S_JoinLobby<PlayerLobbyDataPC, PlayerDispDataDCPCV3> {
+} __packed__;
 struct S_JoinLobby_DC_GC_65_67_68_Ep3_EB
-    : S_JoinLobby<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3> { } __packed__;
+    : S_JoinLobby<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3> {
+} __packed__;
 struct S_JoinLobby_BB_65_67_68
-    : S_JoinLobby<PlayerLobbyDataBB, PlayerDispDataBB> { } __packed__;
+    : S_JoinLobby<PlayerLobbyDataBB, PlayerDispDataBB> {
+} __packed__;
 
 struct S_JoinLobby_XB_65_67_68 {
   uint8_t client_id = 0;
@@ -1161,8 +1176,7 @@ struct S_JoinLobby_XB_65_67_68 {
   parray<Entry, 12> entries;
 
   static inline size_t size(size_t used_entries) {
-    return offsetof(S_JoinLobby_XB_65_67_68, entries)
-        + used_entries * sizeof(Entry);
+    return offsetof(S_JoinLobby_XB_65_67_68, entries) + used_entries * sizeof(Entry);
   }
 } __packed__;
 
@@ -1267,8 +1281,10 @@ struct SC_SimpleMail_81 {
   ptext<CharT, 0x200> text;
 } __packed__;
 
-struct SC_SimpleMail_PC_81 : SC_SimpleMail_81<char16_t> { } __packed__;
-struct SC_SimpleMail_DC_V3_81 : SC_SimpleMail_81<char> { } __packed__;
+struct SC_SimpleMail_PC_81 : SC_SimpleMail_81<char16_t> {
+} __packed__;
+struct SC_SimpleMail_DC_V3_81 : SC_SimpleMail_81<char> {
+} __packed__;
 
 struct SC_SimpleMail_BB_81 {
   le_uint32_t player_tag = 0x00010000;
@@ -1694,7 +1710,7 @@ struct C_Login_GC_9E : C_Login_DC_PC_GC_9D {
   union ClientConfigFields {
     ClientConfig cfg;
     parray<uint8_t, 0x20> data;
-    ClientConfigFields() : data() { }
+    ClientConfigFields() : data() {}
   } __packed__ client_config;
 } __packed__;
 struct C_LoginExtended_GC_9E : C_Login_GC_9E {
@@ -1774,10 +1790,14 @@ struct S_QuestMenuEntry {
   ptext<CharT, 0x20> name;
   ptext<CharT, ShortDescLength> short_description;
 } __packed__;
-struct S_QuestMenuEntry_PC_A2_A4 : S_QuestMenuEntry<char16_t, 0x70> { } __packed__;
-struct S_QuestMenuEntry_DC_GC_A2_A4 : S_QuestMenuEntry<char, 0x70> { } __packed__;
-struct S_QuestMenuEntry_XB_A2_A4 : S_QuestMenuEntry<char, 0x80> { } __packed__;
-struct S_QuestMenuEntry_BB_A2_A4 : S_QuestMenuEntry<char16_t, 0x7A> { } __packed__;
+struct S_QuestMenuEntry_PC_A2_A4 : S_QuestMenuEntry<char16_t, 0x70> {
+} __packed__;
+struct S_QuestMenuEntry_DC_GC_A2_A4 : S_QuestMenuEntry<char, 0x70> {
+} __packed__;
+struct S_QuestMenuEntry_XB_A2_A4 : S_QuestMenuEntry<char, 0x80> {
+} __packed__;
+struct S_QuestMenuEntry_BB_A2_A4 : S_QuestMenuEntry<char16_t, 0x7A> {
+} __packed__;
 
 // A3 (S->C): Quest information
 // Same format as 1A/D5 command (plain text)
@@ -1948,8 +1968,10 @@ struct S_ExecuteCode_Footer_B2 {
   parray<U32T, 3> unused2;
 } __packed__;
 
-struct S_ExecuteCode_Footer_GC_B2 : S_ExecuteCode_Footer_B2<true> { } __packed__;
-struct S_ExecuteCode_Footer_DC_PC_XB_BB_B2 : S_ExecuteCode_Footer_B2<false> { } __packed__;
+struct S_ExecuteCode_Footer_GC_B2 : S_ExecuteCode_Footer_B2<true> {
+} __packed__;
+struct S_ExecuteCode_Footer_DC_PC_XB_BB_B2 : S_ExecuteCode_Footer_B2<false> {
+} __packed__;
 
 // B3 (C->S): Execute code and/or checksum memory result
 // Not used on versions that don't support the B2 command (see above).
@@ -2138,9 +2160,12 @@ struct S_ChoiceSearchEntry {
   ItemIDT category_id = 0;
   ptext<CharT, 0x1C> text;
 } __packed__;
-struct S_ChoiceSearchEntry_DC_C0 : S_ChoiceSearchEntry<le_uint32_t, char> { } __packed__;
-struct S_ChoiceSearchEntry_V3_C0 : S_ChoiceSearchEntry<le_uint16_t, char> { } __packed__;
-struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<le_uint16_t, char16_t> { } __packed__;
+struct S_ChoiceSearchEntry_DC_C0 : S_ChoiceSearchEntry<le_uint32_t, char> {
+} __packed__;
+struct S_ChoiceSearchEntry_V3_C0 : S_ChoiceSearchEntry<le_uint16_t, char> {
+} __packed__;
+struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<le_uint16_t, char16_t> {
+} __packed__;
 
 // Top-level categories are things like "Level", "Class", etc.
 // Choices for each top-level category immediately follow the category, so
@@ -2175,8 +2200,10 @@ struct C_CreateGame {
   // players; if set to 1, it's v2-only.
   uint8_t episode = 0; // 1-4 on V3+ (3 on Episode 3); unused on DC/PC
 } __packed__;
-struct C_CreateGame_DC_V3_0C_C1_Ep3_EC : C_CreateGame<char> { } __packed__;
-struct C_CreateGame_PC_C1 : C_CreateGame<char16_t> { } __packed__;
+struct C_CreateGame_DC_V3_0C_C1_Ep3_EC : C_CreateGame<char> {
+} __packed__;
+struct C_CreateGame_PC_C1 : C_CreateGame<char16_t> {
+} __packed__;
 
 struct C_CreateGame_BB_C1 : C_CreateGame<char16_t> {
   uint8_t solo_mode = 0;
@@ -2187,8 +2214,10 @@ struct C_CreateGame_BB_C1 : C_CreateGame<char16_t> {
 // Server does not respond.
 // The ChoiceSearchConfig structure is defined in Player.hh.
 
-struct C_ChoiceSearchSelections_DC_C2_C3 : ChoiceSearchConfig<le_uint32_t> { } __packed__;
-struct C_ChoiceSearchSelections_PC_V3_BB_C2_C3 : ChoiceSearchConfig<le_uint16_t> { } __packed__;
+struct C_ChoiceSearchSelections_DC_C2_C3 : ChoiceSearchConfig<le_uint32_t> {
+} __packed__;
+struct C_ChoiceSearchSelections_PC_V3_BB_C2_C3 : ChoiceSearchConfig<le_uint16_t> {
+} __packed__;
 
 // C3 (C->S): Execute choice search (DCv2 and later versions)
 // Same format as C2. The disabled field is unused.
@@ -2235,8 +2264,10 @@ struct C_SetBlockedSenders_C6 {
   parray<le_uint32_t, Count> blocked_senders;
 } __packed__;
 
-struct C_SetBlockedSenders_V3_C6 : C_SetBlockedSenders_C6<30> { } __packed__;
-struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> { } __packed__;
+struct C_SetBlockedSenders_V3_C6 : C_SetBlockedSenders_C6<30> {
+} __packed__;
+struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> {
+} __packed__;
 
 // C7 (C->S): Enable simple mail auto-reply (V3/BB)
 // Same format as 1A/D5 command (plain text).
@@ -2402,8 +2433,10 @@ struct S_InfoBoardEntry_D8 {
   ptext<CharT, 0x10> name;
   ptext<CharT, 0xAC> message;
 } __packed__;
-struct S_InfoBoardEntry_BB_D8 : S_InfoBoardEntry_D8<char16_t> { } __packed__;
-struct S_InfoBoardEntry_V3_D8 : S_InfoBoardEntry_D8<char> { } __packed__;
+struct S_InfoBoardEntry_BB_D8 : S_InfoBoardEntry_D8<char16_t> {
+} __packed__;
+struct S_InfoBoardEntry_V3_D8 : S_InfoBoardEntry_D8<char> {
+} __packed__;
 
 // D9 (C->S): Write info board (V3/BB)
 // Contents are plain text, like 1A/D5.
@@ -3187,8 +3220,6 @@ struct S_SetShutdownCommand_BB_01EF {
 // FE: Invalid command
 // FF: Invalid command
 
-
-
 // Now, the game subcommands (used in commands 60, 62, 6C, 6D, C9, and CB).
 // These are laid out similarly as above. These structs start with G_ to
 // indicate that they are (usually) bidirectional, and are (usually) generated
@@ -3211,8 +3242,6 @@ struct S_SetShutdownCommand_BB_01EF {
 // If any subcommand or group thereof is longer than 0x400 bytes, the 6C or 6D
 // commands must be used. The 60 and 62 commands exhibit undefined behavior if
 // this limit is exceeded.
-
-
 
 // These common structures are used my many subcommands.
 struct G_ClientIDHeader {
@@ -3241,8 +3270,6 @@ struct G_ExtendedHeader {
   HeaderT basic_header;
   le_uint32_t size = 0;
 } __packed__;
-
-
 
 // 6x00: Invalid subcommand
 // 6x01: Invalid subcommand
@@ -3295,8 +3322,10 @@ struct G_SendGuildCard_DC_PC_V3 {
 struct G_SendGuildCard_DC_6x06 : G_SendGuildCard_DC_PC_V3<char, 0x11> {
   parray<uint8_t, 3> unused3;
 } __packed__;
-struct G_SendGuildCard_PC_6x06 : G_SendGuildCard_DC_PC_V3<char16_t, 0x24> { } __packed__;
-struct G_SendGuildCard_V3_6x06 : G_SendGuildCard_DC_PC_V3<char, 0x24> { } __packed__;
+struct G_SendGuildCard_PC_6x06 : G_SendGuildCard_DC_PC_V3<char16_t, 0x24> {
+} __packed__;
+struct G_SendGuildCard_V3_6x06 : G_SendGuildCard_DC_PC_V3<char, 0x24> {
+} __packed__;
 
 struct G_SendGuildCard_BB_6x06 {
   G_UnusedHeader header;
@@ -5051,8 +5080,6 @@ struct G_EnemyKilled_6xC8 {
 // 6xFD: Invalid subcommand
 // 6xFE: Invalid subcommand
 // 6xFF: Invalid subcommand
-
-
 
 // Now, the Episode 3 CARD battle subsubcommands (used in commands 6xB3, 6xB4,
 // and 6xB5). Note that even though there's no overlap in the subsubcommand

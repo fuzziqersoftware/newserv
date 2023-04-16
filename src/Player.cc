@@ -4,20 +4,18 @@
 #include <string.h>
 #include <wchar.h>
 
-#include <stdexcept>
 #include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
+#include <stdexcept>
 
-#include "ItemData.hh"
 #include "FileContentsCache.hh"
+#include "ItemData.hh"
 #include "Loggers.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 #include "Version.hh"
 
 using namespace std;
-
-
 
 // Originally there was going to be a language-based header, but then I decided
 // against it. These strings were already in use for that parser, so I didn't
@@ -27,38 +25,40 @@ static const string PLAYER_FILE_SIGNATURE =
 static const string ACCOUNT_FILE_SIGNATURE =
     "newserv account file format; 7 sections present; sequential;";
 
-
-
 static FileContentsCache player_files_cache(300 * 1000 * 1000);
 
-
-
 PlayerStats::PlayerStats() noexcept
-  : atp(0), mst(0), evp(0), hp(0), dfp(0), ata(0), lck(0) { }
+    : atp(0),
+      mst(0),
+      evp(0),
+      hp(0),
+      dfp(0),
+      ata(0),
+      lck(0) {}
 
 PlayerDispDataDCPCV3::PlayerDispDataDCPCV3() noexcept
-  : level(0),
-    experience(0),
-    meseta(0),
-    unknown_a2(0),
-    name_color(0),
-    extra_model(0),
-    name_color_checksum(0),
-    section_id(0),
-    char_class(0),
-    v2_flags(0),
-    version(0),
-    v1_flags(0),
-    costume(0),
-    skin(0),
-    face(0),
-    head(0),
-    hair(0),
-    hair_r(0),
-    hair_g(0),
-    hair_b(0),
-    proportion_x(0),
-    proportion_y(0) { }
+    : level(0),
+      experience(0),
+      meseta(0),
+      unknown_a2(0),
+      name_color(0),
+      extra_model(0),
+      name_color_checksum(0),
+      section_id(0),
+      char_class(0),
+      v2_flags(0),
+      version(0),
+      v1_flags(0),
+      costume(0),
+      skin(0),
+      face(0),
+      head(0),
+      hair(0),
+      hair_r(0),
+      hair_g(0),
+      hair_b(0),
+      proportion_x(0),
+      proportion_y(0) {}
 
 void PlayerDispDataDCPCV3::enforce_v2_limits() {
   // V1/V2 have fewer classes, so we'll substitute some here
@@ -119,31 +119,29 @@ PlayerDispDataBB PlayerDispDataDCPCV3::to_bb() const {
   return bb;
 }
 
-
-
 PlayerDispDataBB::PlayerDispDataBB() noexcept
-  : level(0),
-    experience(0),
-    meseta(0),
-    unknown_a2(0),
-    name_color(0),
-    extra_model(0),
-    name_color_checksum(0),
-    section_id(0),
-    char_class(0),
-    v2_flags(0),
-    version(0),
-    v1_flags(0),
-    costume(0),
-    skin(0),
-    face(0),
-    head(0),
-    hair(0),
-    hair_r(0),
-    hair_g(0),
-    hair_b(0),
-    proportion_x(0),
-    proportion_y(0) { }
+    : level(0),
+      experience(0),
+      meseta(0),
+      unknown_a2(0),
+      name_color(0),
+      extra_model(0),
+      name_color_checksum(0),
+      section_id(0),
+      char_class(0),
+      v2_flags(0),
+      version(0),
+      v1_flags(0),
+      costume(0),
+      skin(0),
+      face(0),
+      head(0),
+      hair(0),
+      hair_r(0),
+      hair_g(0),
+      hair_b(0),
+      proportion_x(0),
+      proportion_y(0) {}
 
 PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3() const {
   PlayerDispDataDCPCV3 ret;
@@ -263,48 +261,44 @@ void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
   this->name = pre.name;
 }
 
-
-
 PlayerDispDataBBPreview::PlayerDispDataBBPreview() noexcept
-  : experience(0),
-    level(0),
-    unknown_a2(0),
-    name_color(0),
-    extra_model(0),
-    name_color_checksum(0),
-    section_id(0),
-    char_class(0),
-    v2_flags(0),
-    version(0),
-    v1_flags(0),
-    costume(0),
-    skin(0),
-    face(0),
-    head(0),
-    hair(0),
-    hair_r(0),
-    hair_g(0),
-    hair_b(0),
-    proportion_x(0),
-    proportion_y(0),
-    play_time(0) { }
-
-
+    : experience(0),
+      level(0),
+      unknown_a2(0),
+      name_color(0),
+      extra_model(0),
+      name_color_checksum(0),
+      section_id(0),
+      char_class(0),
+      v2_flags(0),
+      version(0),
+      v1_flags(0),
+      costume(0),
+      skin(0),
+      face(0),
+      head(0),
+      hair(0),
+      hair_r(0),
+      hair_g(0),
+      hair_b(0),
+      proportion_x(0),
+      proportion_y(0),
+      play_time(0) {}
 
 GuildCardV3::GuildCardV3() noexcept
-  : player_tag(0),
-    guild_card_number(0),
-    present(0),
-    language(0),
-    section_id(0),
-    char_class(0) { }
+    : player_tag(0),
+      guild_card_number(0),
+      present(0),
+      language(0),
+      section_id(0),
+      char_class(0) {}
 
 GuildCardBB::GuildCardBB() noexcept
-  : guild_card_number(0),
-    present(0),
-    language(0),
-    section_id(0),
-    char_class(0) { }
+    : guild_card_number(0),
+      present(0),
+      language(0),
+      section_id(0),
+      char_class(0) {}
 
 void GuildCardBB::clear() {
   this->guild_card_number = 0;
@@ -326,8 +320,6 @@ uint32_t GuildCardFileBB::checksum() const {
   return crc32(this, sizeof(*this));
 }
 
-
-
 void PlayerBank::load(const string& filename) {
   *this = player_files_cache.get_obj_or_load<PlayerBank>(filename).obj;
   for (uint32_t x = 0; x < this->num_items; x++) {
@@ -342,16 +334,14 @@ void PlayerBank::save(const string& filename, bool save_to_filesystem) const {
   }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 
 ClientGameData::ClientGameData()
-  : last_play_time_update(0),
-    guild_card_number(0),
-    should_update_play_time(false),
-    bb_player_index(0),
-    should_save(true) { }
+    : last_play_time_update(0),
+      guild_card_number(0),
+      should_update_play_time(false),
+      bb_player_index(0),
+      should_save(true) {}
 
 ClientGameData::~ClientGameData() {
   if (!this->bb_username.empty()) {
@@ -461,7 +451,8 @@ void ClientGameData::load_account_data() {
     player_files_cache.delete_key(filename);
     data.reset(new SavedAccountDataBB(
         player_files_cache.get_obj_or_load<SavedAccountDataBB>(
-          "system/players/default.nsa").obj));
+                              "system/players/default.nsa")
+            .obj));
     if (data->signature != ACCOUNT_FILE_SIGNATURE) {
       throw runtime_error("default account data header is incorrect");
     }
@@ -592,8 +583,6 @@ PlayerBB ClientGameData::export_player_bb() {
   return ret;
 }
 
-
-
 void PlayerLobbyDataPC::clear() {
   this->player_tag = 0;
   this->guild_card = 0;
@@ -638,7 +627,6 @@ void PlayerLobbyDataBB::clear() {
   this->unknown_a2 = 0;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 
 PlayerInventoryItem::PlayerInventoryItem() {
@@ -646,7 +634,9 @@ PlayerInventoryItem::PlayerInventoryItem() {
 }
 
 PlayerInventoryItem::PlayerInventoryItem(const PlayerBankItem& src)
-  : present(1), flags(0), data(src.data) { }
+    : present(1),
+      flags(0),
+      data(src.data) {}
 
 void PlayerInventoryItem::clear() {
   this->present = 0x00000000;
@@ -659,9 +649,9 @@ PlayerBankItem::PlayerBankItem() {
 }
 
 PlayerBankItem::PlayerBankItem(const PlayerInventoryItem& src)
-  : data(src.data),
-    amount(this->data.stack_size()),
-    show_flags(1) { }
+    : data(src.data),
+      amount(this->data.stack_size()),
+      show_flags(1) {}
 
 void PlayerBankItem::clear() {
   this->data.clear();
@@ -669,15 +659,11 @@ void PlayerBankItem::clear() {
   this->show_flags = 0;
 }
 
-
-
 PlayerInventory::PlayerInventory()
-  : num_items(0),
-    hp_materials_used(0),
-    tp_materials_used(0),
-    language(0) { }
-
-
+    : num_items(0),
+      hp_materials_used(0),
+      tp_materials_used(0),
+      language(0) {}
 
 // TODO: Eliminate duplication between this function and the parallel function
 // in PlayerBank

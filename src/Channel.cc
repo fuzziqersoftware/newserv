@@ -1,9 +1,9 @@
 #include "Channel.hh"
 
+#include <errno.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/event.h>
-#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -15,18 +15,12 @@
 
 using namespace std;
 
-
-
 extern bool use_terminal_colors;
-
-
 
 static void flush_and_free_bufferevent(struct bufferevent* bev) {
   bufferevent_flush(bev, EV_READ | EV_WRITE, BEV_FINISHED);
   bufferevent_free(bev);
 }
-
-
 
 Channel::Channel(
     GameVersion version,
@@ -36,14 +30,14 @@ Channel::Channel(
     const string& name,
     TerminalFormat terminal_send_color,
     TerminalFormat terminal_recv_color)
-  : bev(nullptr, flush_and_free_bufferevent),
-    version(version),
-    name(name),
-    terminal_send_color(terminal_send_color),
-    terminal_recv_color(terminal_recv_color),
-    on_command_received(on_command_received),
-    on_error(on_error),
-    context_obj(context_obj) {
+    : bev(nullptr, flush_and_free_bufferevent),
+      version(version),
+      name(name),
+      terminal_send_color(terminal_send_color),
+      terminal_recv_color(terminal_recv_color),
+      on_command_received(on_command_received),
+      on_error(on_error),
+      context_obj(context_obj) {
 }
 
 Channel::Channel(
@@ -55,14 +49,14 @@ Channel::Channel(
     const string& name,
     TerminalFormat terminal_send_color,
     TerminalFormat terminal_recv_color)
-  : bev(nullptr, flush_and_free_bufferevent),
-    version(version),
-    name(name),
-    terminal_send_color(terminal_send_color),
-    terminal_recv_color(terminal_recv_color),
-    on_command_received(on_command_received),
-    on_error(on_error),
-    context_obj(context_obj) {
+    : bev(nullptr, flush_and_free_bufferevent),
+      version(version),
+      name(name),
+      terminal_send_color(terminal_send_color),
+      terminal_recv_color(terminal_recv_color),
+      on_command_received(on_command_received),
+      on_error(on_error),
+      context_obj(context_obj) {
   this->set_bufferevent(bev);
 }
 
@@ -114,8 +108,6 @@ void Channel::set_bufferevent(struct bufferevent* bev) {
   }
 }
 
-
-
 void Channel::disconnect() {
   if (this->bev.get()) {
     // If the output buffer is not empty, move the bufferevent into the draining
@@ -157,15 +149,12 @@ void Channel::disconnect() {
   this->crypt_out.reset();
 }
 
-
-
 Channel::Message Channel::recv(bool print_contents) {
   struct evbuffer* buf = bufferevent_get_input(this->bev.get());
 
   size_t header_size = (this->version == GameVersion::BB) ? 8 : 4;
   PSOCommandHeader header;
-  if (evbuffer_copyout(buf, &header, header_size)
-      < static_cast<ssize_t>(header_size)) {
+  if (evbuffer_copyout(buf, &header, header_size) < static_cast<ssize_t>(header_size)) {
     throw out_of_range("no command available");
   }
 
@@ -179,7 +168,8 @@ Channel::Message Channel::recv(bool print_contents) {
   // is not reflected in the size field. This logic does not occur if encryption
   // is not yet enabled.
   size_t command_physical_size = (this->crypt_in.get() && (version == GameVersion::BB))
-      ? ((command_logical_size + 7) & ~7) : command_logical_size;
+      ? ((command_logical_size + 7) & ~7)
+      : command_logical_size;
   if (evbuffer_get_length(buf) < command_physical_size) {
     throw out_of_range("no command available");
   }
@@ -190,8 +180,7 @@ Channel::Message Channel::recv(bool print_contents) {
   // consistent state.
 
   string header_data(header_size, '\0');
-  if (evbuffer_remove(buf, header_data.data(), header_data.size())
-      < static_cast<ssize_t>(header_data.size())) {
+  if (evbuffer_remove(buf, header_data.data(), header_data.size()) < static_cast<ssize_t>(header_data.size())) {
     throw logic_error("enough bytes available, but could not remove them");
   }
   if (this->crypt_in.get()) {
@@ -199,8 +188,7 @@ Channel::Message Channel::recv(bool print_contents) {
   }
 
   string command_data(command_physical_size - header_size, '\0');
-  if (evbuffer_remove(buf, command_data.data(), command_data.size())
-      < static_cast<ssize_t>(command_data.size())) {
+  if (evbuffer_remove(buf, command_data.data(), command_data.size()) < static_cast<ssize_t>(command_data.size())) {
     throw logic_error("enough bytes available, but could not remove them");
   }
 
@@ -222,12 +210,14 @@ Channel::Message Channel::recv(bool print_contents) {
     }
 
     if (version == GameVersion::BB) {
-      command_data_log.info("Received from %s (version=BB command=%04hX flag=%08" PRIX32 ")",
+      command_data_log.info(
+          "Received from %s (version=BB command=%04hX flag=%08" PRIX32 ")",
           this->name.c_str(),
           header.command(this->version),
           header.flag(this->version));
     } else {
-      command_data_log.info("Received from %s (version=%s command=%02hX flag=%02" PRIX32 ")",
+      command_data_log.info(
+          "Received from %s (version=%s command=%02hX flag=%02" PRIX32 ")",
           this->name.c_str(),
           name_for_version(this->version),
           header.command(this->version),
@@ -245,9 +235,9 @@ Channel::Message Channel::recv(bool print_contents) {
   }
 
   return {
-    .command = header.command(this->version),
-    .flag = header.flag(this->version),
-    .data = move(command_data),
+      .command = header.command(this->version),
+      .flag = header.flag(this->version),
+      .data = move(command_data),
   };
 }
 
@@ -375,8 +365,6 @@ void Channel::send(const void* data, size_t size, bool print_contents) {
 void Channel::send(const string& data, bool print_contents) {
   return this->send(data.data(), data.size(), print_contents);
 }
-
-
 
 void Channel::dispatch_on_input(struct bufferevent*, void* ctx) {
   Channel* ch = reinterpret_cast<Channel*>(ctx);

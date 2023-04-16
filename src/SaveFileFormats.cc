@@ -1,11 +1,9 @@
 #include "SaveFileFormats.hh"
 
-#include <string>
 #include <stdexcept>
+#include <string>
 
 using namespace std;
-
-
 
 ShuffleTables::ShuffleTables(PSOV2Encryption& crypt) {
   for (size_t x = 0; x < 0x100; x++) {
@@ -48,8 +46,6 @@ void ShuffleTables::shuffle(void* vdest, const void* vsrc, size_t size, bool rev
   memcpy(&dest[size & 0xFFFFFF00], &src[size & 0xFFFFFF00], size & 0xFF);
 }
 
-
-
 bool PSOGCIFileHeader::checksum_correct() const {
   uint32_t cs = crc32(&this->game_name, this->game_name.bytes());
   cs = crc32(&this->embedded_seed, sizeof(this->embedded_seed), cs);
@@ -87,8 +83,6 @@ bool PSOGCIFileHeader::is_ep12() const {
 bool PSOGCIFileHeader::is_ep3() const {
   return (this->game_id[2] == 'S');
 }
-
-
 
 uint32_t compute_psogc_timestamp(
     uint16_t year,

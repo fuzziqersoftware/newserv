@@ -3,29 +3,23 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <stdexcept>
-#include <string>
 #include <phosg/Encoding.hh>
 #include <phosg/Strings.hh>
+#include <stdexcept>
+#include <string>
 
 using namespace std;
 
-
-
 // TODO: fix style in this file, especially in psobb functions
-
-
 
 // Most ciphers used by PSO are symmetric; alias decrypt to encrypt by default
 void PSOEncryption::decrypt(void* data, size_t size, bool advance) {
   this->encrypt(data, size, advance);
 }
 
-
-
 PSOLFGEncryption::PSOLFGEncryption(
     uint32_t seed, size_t stream_length, size_t end_offset)
-  : stream(stream_length, 0), offset(0), end_offset(end_offset), seed(seed) { }
+    : stream(stream_length, 0), offset(0), end_offset(end_offset), seed(seed) {}
 
 uint32_t PSOLFGEncryption::next(bool advance) {
   if (this->offset == this->end_offset) {
@@ -109,10 +103,8 @@ void PSOLFGEncryption::encrypt_both_endian(
   }
 }
 
-
-
 PSOV2Encryption::PSOV2Encryption(uint32_t seed)
-  : PSOLFGEncryption(seed, this->STREAM_LENGTH + 1, this->STREAM_LENGTH) {
+    : PSOLFGEncryption(seed, this->STREAM_LENGTH + 1, this->STREAM_LENGTH) {
   uint32_t esi, ebx, edi, eax, edx, var1;
   esi = 1;
   ebx = this->seed;
@@ -163,10 +155,8 @@ PSOEncryption::Type PSOV2Encryption::type() const {
   return Type::V2;
 }
 
-
-
 PSOV3Encryption::PSOV3Encryption(uint32_t seed)
-  : PSOLFGEncryption(seed, this->STREAM_LENGTH, this->STREAM_LENGTH) {
+    : PSOLFGEncryption(seed, this->STREAM_LENGTH, this->STREAM_LENGTH) {
   uint32_t x, y, basekey, source1, source2, source3;
   basekey = 0;
 
@@ -219,11 +209,9 @@ PSOEncryption::Type PSOV3Encryption::type() const {
   return Type::V3;
 }
 
-
-
 PSOBBEncryption::PSOBBEncryption(
     const KeyFile& key, const void* original_seed, size_t seed_size)
-  : state(key) {
+    : state(key) {
   this->apply_seed(original_seed, seed_size);
 }
 
@@ -238,14 +226,14 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
       for (size_t y = 0; y < 4; y += 2) {
         dwords[x] ^= this->state.initial_keys.as32[y];
         dwords[x + 1] ^= ((this->state.private_keys.as32[dwords[x] >> 24] +
-                         this->state.private_keys.as32[((dwords[x] >> 16) & 0xFF) + 0x100]) ^
-                        this->state.private_keys.as32[((dwords[x] >> 8) & 0xFF) + 0x200]) +
-                       this->state.private_keys.as32[(dwords[x] & 0xFF) + 0x300];
+                           this->state.private_keys.as32[((dwords[x] >> 16) & 0xFF) + 0x100]) ^
+                          this->state.private_keys.as32[((dwords[x] >> 8) & 0xFF) + 0x200]) +
+                         this->state.private_keys.as32[(dwords[x] & 0xFF) + 0x300];
         dwords[x + 1] ^= this->state.initial_keys.as32[y + 1];
         dwords[x] ^= ((this->state.private_keys.as32[dwords[x + 1] >> 24] +
-                     this->state.private_keys.as32[(dwords[x + 1] >> 16 & 0xFF) + 0x100]) ^
-                    this->state.private_keys.as32[(dwords[x + 1] >> 8 & 0xFF) + 0x200]) +
-                   this->state.private_keys.as32[(dwords[x + 1] & 0xFF) + 0x300];
+                       this->state.private_keys.as32[(dwords[x + 1] >> 16 & 0xFF) + 0x100]) ^
+                      this->state.private_keys.as32[(dwords[x + 1] >> 8 & 0xFF) + 0x200]) +
+                     this->state.private_keys.as32[(dwords[x + 1] & 0xFF) + 0x300];
       }
       dwords[x] ^= this->state.initial_keys.as32[4];
       dwords[x + 1] ^= this->state.initial_keys.as32[5];
@@ -335,14 +323,14 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size, bool advance) {
       for (size_t y = 4; y > 0; y -= 2) {
         dwords[x] = dwords[x] ^ this->state.initial_keys.as32[y + 1];
         dwords[x + 1] ^= ((this->state.private_keys.as32[dwords[x] >> 24] +
-                             this->state.private_keys.as32[((dwords[x] >> 16) & 0xFF) + 0x100]) ^
-                            this->state.private_keys.as32[((dwords[x] >> 8) & 0xFF) + 0x200]) +
-                           this->state.private_keys.as32[(dwords[x] & 0xFF) + 0x300];
+                           this->state.private_keys.as32[((dwords[x] >> 16) & 0xFF) + 0x100]) ^
+                          this->state.private_keys.as32[((dwords[x] >> 8) & 0xFF) + 0x200]) +
+                         this->state.private_keys.as32[(dwords[x] & 0xFF) + 0x300];
         dwords[x + 1] ^= this->state.initial_keys.as32[y];
         dwords[x] ^= ((this->state.private_keys.as32[dwords[x + 1] >> 24] +
-                         this->state.private_keys.as32[((dwords[x + 1] >> 16) & 0xFF) + 0x100]) ^
-                        this->state.private_keys.as32[((dwords[x + 1] >> 8) & 0xFF) + 0x200]) +
-                       this->state.private_keys.as32[(dwords[x + 1] & 0xFF) + 0x300];
+                       this->state.private_keys.as32[((dwords[x + 1] >> 16) & 0xFF) + 0x100]) ^
+                      this->state.private_keys.as32[((dwords[x + 1] >> 8) & 0xFF) + 0x200]) +
+                     this->state.private_keys.as32[(dwords[x + 1] & 0xFF) + 0x300];
       }
       dwords[x] ^= this->state.initial_keys.as32[1];
       dwords[x + 1] ^= this->state.initial_keys.as32[0];
@@ -432,7 +420,8 @@ void PSOBBEncryption::tfs1_scramble(uint32_t* out1, uint32_t* out2) const {
     b ^= (((this->state.private_keys.as32[a >> 24] +
             this->state.private_keys.as32[((a >> 16) & 0xFF) + 0x100]) ^
            this->state.private_keys.as32[((a >> 8) & 0xFF) + 0x200]) +
-          this->state.private_keys.as32[(a & 0xFF) + 0x300]) ^ this->state.initial_keys.as32[x + 1];
+          this->state.private_keys.as32[(a & 0xFF) + 0x300]) ^
+         this->state.initial_keys.as32[x + 1];
     a ^= ((this->state.private_keys.as32[b >> 24] +
            this->state.private_keys.as32[((b >> 16) & 0xFF) + 0x100]) ^
           this->state.private_keys.as32[((b >> 8) & 0xFF) + 0x200]) +
@@ -608,7 +597,7 @@ void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
         esi = this->state.initial_keys.as32[17];
         esi = esi ^ eax;
         this->state.initial_keys.as32[(edi / 4)] = esi;
-        this->state.initial_keys.as32[(edi / 4)+1] = ecx;
+        this->state.initial_keys.as32[(edi / 4) + 1] = ecx;
         edi = edi + 8;
       }
 
@@ -695,13 +684,11 @@ void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
   }
 }
 
-
-
 PSOV2OrV3DetectorEncryption::PSOV2OrV3DetectorEncryption(
     uint32_t key,
     const std::unordered_set<uint32_t>& v2_matches,
     const std::unordered_set<uint32_t>& v3_matches)
-  : key(key), v2_matches(v2_matches), v3_matches(v3_matches) { }
+    : key(key), v2_matches(v2_matches), v3_matches(v3_matches) {}
 
 void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size, bool advance) {
   if (!this->active_crypt) {
@@ -745,11 +732,9 @@ PSOEncryption::Type PSOV2OrV3DetectorEncryption::type() const {
   return this->active_crypt->type();
 }
 
-
-
 PSOV2OrV3ImitatorEncryption::PSOV2OrV3ImitatorEncryption(
     uint32_t key, std::shared_ptr<PSOV2OrV3DetectorEncryption> detector_crypt)
-  : key(key), detector_crypt(detector_crypt) { }
+    : key(key), detector_crypt(detector_crypt) {}
 
 void PSOV2OrV3ImitatorEncryption::encrypt(void* data, size_t size, bool advance) {
   if (!this->active_crypt) {
@@ -772,16 +757,14 @@ PSOEncryption::Type PSOV2OrV3ImitatorEncryption::type() const {
   return this->active_crypt->type();
 }
 
-
-
 PSOBBMultiKeyDetectorEncryption::PSOBBMultiKeyDetectorEncryption(
     const vector<shared_ptr<const PSOBBEncryption::KeyFile>>& possible_keys,
     const unordered_set<string>& expected_first_data,
     const void* seed,
     size_t seed_size)
-  : possible_keys(possible_keys),
-    expected_first_data(expected_first_data),
-    seed(reinterpret_cast<const char*>(seed), seed_size) { }
+    : possible_keys(possible_keys),
+      expected_first_data(expected_first_data),
+      seed(reinterpret_cast<const char*>(seed), seed_size) {}
 
 void PSOBBMultiKeyDetectorEncryption::encrypt(void* data, size_t size, bool advance) {
   if (!this->active_crypt.get()) {
@@ -819,16 +802,14 @@ PSOEncryption::Type PSOBBMultiKeyDetectorEncryption::type() const {
   return Type::BB;
 }
 
-
-
 PSOBBMultiKeyImitatorEncryption::PSOBBMultiKeyImitatorEncryption(
     shared_ptr<const PSOBBMultiKeyDetectorEncryption> detector_crypt,
     const void* seed,
     size_t seed_size,
     bool jsd1_use_detector_seed)
-  : detector_crypt(detector_crypt),
-    seed(reinterpret_cast<const char*>(seed), seed_size),
-    jsd1_use_detector_seed(jsd1_use_detector_seed) { }
+    : detector_crypt(detector_crypt),
+      seed(reinterpret_cast<const char*>(seed), seed_size),
+      jsd1_use_detector_seed(jsd1_use_detector_seed) {}
 
 void PSOBBMultiKeyImitatorEncryption::encrypt(void* data, size_t size, bool advance) {
   this->ensure_crypt()->encrypt(data, size, advance);
@@ -863,8 +844,6 @@ shared_ptr<PSOBBEncryption> PSOBBMultiKeyImitatorEncryption::ensure_crypt() {
   return this->active_crypt;
 }
 
-
-
 JSD0Encryption::JSD0Encryption(const void* seed, size_t seed_size) : key(0) {
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(seed);
   for (size_t z = 0; z < seed_size; z++) {
@@ -891,8 +870,6 @@ void JSD0Encryption::encrypt(void* data, size_t size, bool) {
 PSOEncryption::Type JSD0Encryption::type() const {
   return Type::JSD0;
 }
-
-
 
 void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis) {
   uint8_t* bytes = reinterpret_cast<uint8_t*>(data);

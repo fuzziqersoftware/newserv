@@ -8,8 +8,6 @@
 #include <string>
 #include <unordered_map>
 
-
-
 class GSLArchive {
 public:
   GSLArchive(std::shared_ptr<const std::string> data, bool big_endian);

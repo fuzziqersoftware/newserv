@@ -4,9 +4,9 @@
 
 #include <memory>
 
-#include "../Text.hh"
-#include "../CommandFormats.hh"
 #include "../Channel.hh"
+#include "../CommandFormats.hh"
+#include "../Text.hh"
 #include "AssistServer.hh"
 #include "CardSpecial.hh"
 #include "MapState.hh"
@@ -17,8 +17,6 @@ struct Lobby;
 
 namespace Episode3 {
 
-
-
 /**
  * This implementation of Episode 3 battles (contained in all files in the
  * src/Episode3 directory, except for DataIndex.hh/cc) is derived from Sega's
@@ -27,7 +25,7 @@ namespace Episode3 {
  * in these files map very closely to how their server implementation was
  * written; notable differences (due to necessary environment differences or bug
  * fixes) are described in the comments therein.
- * 
+ *
  * Some debugging functions have been added which are not part of the original
  * implementation. Notably, this applies to functions like debug message senders
  * and loggers and all str() functions.
@@ -54,8 +52,6 @@ namespace Episode3 {
 // - - - - - - - - Everything within DataIndex
 
 class Server;
-
-
 
 class ServerBase : public std::enable_shared_from_this<ServerBase> {
 public:
@@ -122,13 +118,10 @@ public:
 
   void send_commands_for_joining_spectator(Channel& ch) const;
 
-  __attribute__((format(printf, 2, 3)))
-  void log_debug(const char* fmt, ...) const;
+  __attribute__((format(printf, 2, 3))) void log_debug(const char* fmt, ...) const;
 
-  __attribute__((format(printf, 2, 3)))
-  void send_debug_message_printf(const char* fmt, ...) const;
-  __attribute__((format(printf, 2, 3)))
-  void send_info_message_printf(const char* fmt, ...) const; 
+  __attribute__((format(printf, 2, 3))) void send_debug_message_printf(const char* fmt, ...) const;
+  __attribute__((format(printf, 2, 3))) void send_info_message_printf(const char* fmt, ...) const;
   void send_debug_command_received_message(
       uint8_t client_id, uint8_t subsubcommand, const char* description) const;
   void send_debug_command_received_message(
@@ -241,6 +234,7 @@ public:
 
   std::vector<std::shared_ptr<Card>> const_cast_set_cards_v(
       const std::vector<std::shared_ptr<const Card>>& cards);
+
 private:
   typedef void (Server::*handler_t)(const std::string&);
   static const std::unordered_map<uint8_t, handler_t> subcommand_handlers;
@@ -300,7 +294,5 @@ public:
   mutable uint32_t num_6xB4x06_commands_sent;
   mutable uint32_t prev_num_6xB4x06_commands_sent;
 };
-
-
 
 } // namespace Episode3

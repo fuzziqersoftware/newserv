@@ -4,22 +4,21 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <phosg/Strings.hh>
 #include <phosg/Random.hh>
+#include <phosg/Strings.hh>
 
 #include "ReceiveCommands.hh"
-#include "ServerState.hh"
 #include "SendCommands.hh"
+#include "ServerState.hh"
 #include "StaticGameData.hh"
 
 using namespace std;
 
-
-
 ServerShell::ServerShell(
     shared_ptr<struct event_base> base,
     shared_ptr<ServerState> state)
-  : Shell(base), state(state) { }
+    : Shell(base),
+      state(state) {}
 
 void ServerShell::print_prompt() {
   fwritex(stdout, Shell::PROMPT);
@@ -254,9 +253,7 @@ same as the client\'s serial number). For example, to send a ping to the proxy\n
 session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
 ");
 
-
-
-  // SERVER COMMANDS
+    // SERVER COMMANDS
 
   } else if (command_name == "reload") {
     auto types = split(command_args, ' ');
@@ -577,9 +574,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
       fprintf(stderr, "no such tournament exists\n");
     }
 
-
-
-  // PROXY COMMANDS
+    // PROXY COMMANDS
 
   } else if ((command_name == "sc") || (command_name == "ss")) {
     string data = parse_data_string(command_args, nullptr, ParseDataFlags::ALLOW_FILES);
@@ -591,7 +586,8 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
     shared_ptr<ProxyServer::LinkedSession> proxy_session;
     try {
       proxy_session = this->get_proxy_session(session_name);
-    } catch (const exception&) { }
+    } catch (const exception&) {
+    }
 
     if (proxy_session.get()) {
       if (command_name[1] == 's') {
@@ -707,9 +703,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
     } else {
       session->options.override_lobby_event = event_for_name(command_args);
       if ((session->version != GameVersion::DC) &&
-          (session->version != GameVersion::PC) && (
-          !((session->version == GameVersion::GC) &&
-            (session->newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)))) {
+          (session->version != GameVersion::PC) && (!((session->version == GameVersion::GC) && (session->newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)))) {
         session->client_channel.send(0xDA, session->options.override_lobby_event);
       }
     }

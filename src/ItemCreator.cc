@@ -5,8 +5,6 @@
 
 using namespace std;
 
-
-
 ItemCreator::ItemCreator(
     shared_ptr<const CommonItemSet> common_item_set,
     shared_ptr<const RareItemSet> rare_item_set,
@@ -20,27 +18,25 @@ ItemCreator::ItemCreator(
     uint8_t section_id,
     uint32_t random_seed,
     shared_ptr<const Restrictions> restrictions)
-  : log("[ItemCreator] "),
-    episode(episode),
-    mode(mode),
-    difficulty(difficulty),
-    section_id(section_id),
-    common_item_set(common_item_set),
-    rare_item_set(rare_item_set),
-    armor_random_set(armor_random_set),
-    tool_random_set(tool_random_set),
-    weapon_random_set(weapon_random_set),
-    item_parameter_table(item_parameter_table),
-    pt(&this->common_item_set->get_table(
-        this->episode, this->mode, this->difficulty, this->section_id)),
-    rt(&this->rare_item_set->get_table(
-        this->episode, this->mode, this->difficulty, this->section_id)),
-    restrictions(restrictions),
-    random_crypt(random_seed) {
+    : log("[ItemCreator] "),
+      episode(episode),
+      mode(mode),
+      difficulty(difficulty),
+      section_id(section_id),
+      common_item_set(common_item_set),
+      rare_item_set(rare_item_set),
+      armor_random_set(armor_random_set),
+      tool_random_set(tool_random_set),
+      weapon_random_set(weapon_random_set),
+      item_parameter_table(item_parameter_table),
+      pt(&this->common_item_set->get_table(
+          this->episode, this->mode, this->difficulty, this->section_id)),
+      rt(&this->rare_item_set->get_table(
+          this->episode, this->mode, this->difficulty, this->section_id)),
+      restrictions(restrictions),
+      random_crypt(random_seed) {
   print_data(stderr, this->pt, sizeof(*this->pt));
 }
-
-
 
 bool ItemCreator::are_rare_drops_allowed() const {
   // Note: The client has an additional check here, which appears to be a subtle
@@ -74,23 +70,23 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
         throw logic_error("this should be impossible");
       case Episode::EP2: {
         static const vector<uint8_t> area_subs = {
-          0x01, // 13 (VR Temple Alpha)
-          0x02, // 14 (VR Temple Beta)
-          0x03, // 15 (VR Spaceship Alpha)
-          0x04, // 16 (VR Spaceship Beta)
-          0x08, // 17 (Central Control Area)
-          0x05, // 18 (Jungle North)
-          0x06, // 19 (Jungle South)
-          0x07, // 1A (Mountain)
-          0x08, // 1B (Seaside)
-          0x09, // 1C (Seabed Upper)
-          0x0A, // 1D (Seabed Lower)
-          0x09, // 1E (Gal Gryphon)
-          0x0A, // 1F (Olga Flow)
-          0x03, // 20 (Barba Ray)
-          0x05, // 21 (Gol Dragon)
-          0x08, // 22 (Seaside Night)
-          0x0A, // 23 (Tower)
+            0x01, // 13 (VR Temple Alpha)
+            0x02, // 14 (VR Temple Beta)
+            0x03, // 15 (VR Spaceship Alpha)
+            0x04, // 16 (VR Spaceship Beta)
+            0x08, // 17 (Central Control Area)
+            0x05, // 18 (Jungle North)
+            0x06, // 19 (Jungle South)
+            0x07, // 1A (Mountain)
+            0x08, // 1B (Seaside)
+            0x09, // 1C (Seabed Upper)
+            0x0A, // 1D (Seabed Lower)
+            0x09, // 1E (Gal Gryphon)
+            0x0A, // 1F (Olga Flow)
+            0x03, // 20 (Barba Ray)
+            0x05, // 21 (Gol Dragon)
+            0x08, // 22 (Seaside Night)
+            0x0A, // 23 (Tower)
         };
         if ((area >= 0x13) && (area < 0x24)) {
           return area_subs.at(area - 0x13);
@@ -108,8 +104,6 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
     return this->item_drop_sub->override_area;
   }
 }
-
-
 
 ItemData ItemCreator::on_box_item_drop(uint8_t area) {
   return this->on_box_item_drop_with_norm_area(normalize_area_number(area) - 1);
@@ -174,8 +168,10 @@ ItemData ItemCreator::on_monster_item_drop_with_norm_area(
 
   ItemData item = this->check_rare_spec_and_create_rare_enemy_item(enemy_type);
   if (item.empty()) {
-    uint32_t item_class_determinant = this->should_allow_meseta_drops()
-        ? this->rand_int(3) : (this->rand_int(2) + 1);
+    uint32_t item_class_determinant =
+        this->should_allow_meseta_drops()
+            ? this->rand_int(3)
+            : (this->rand_int(2) + 1);
 
     uint32_t item_class;
     switch (item_class_determinant) {
@@ -193,7 +189,7 @@ ItemData ItemCreator::on_monster_item_drop_with_norm_area(
     }
 
     this->log.info("Rare drop not chosen; item class determinant is %" PRIu32 "; item class is %" PRIu32,
-        item_class_determinant, item_class);
+                   item_class_determinant, item_class);
 
     switch (item_class) {
       case 0: // Weapon
@@ -214,7 +210,8 @@ ItemData ItemCreator::on_monster_item_drop_with_norm_area(
       case 5: // Meseta
         item.data1[0] = 0x04;
         item.data2d = this->choose_meseta_amount(
-            this->pt->enemy_meseta_ranges, enemy_type) & 0xFFFF;
+                          this->pt->enemy_meseta_ranges, enemy_type) &
+                      0xFFFF;
         break;
       default:
         return item;
@@ -245,8 +242,6 @@ ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(
   }
   return item;
 }
-
-
 
 uint32_t ItemCreator::rand_int(uint64_t max) {
   return this->random_crypt.next() % max;
@@ -348,7 +343,7 @@ void ItemCreator::generate_rare_weapon_bonuses(
     // item.data1[z + 7] by 5 and multiplies it by 5 again if bonus_type is 5
     // (Hit). Why this is done is unclear, because item.data1[z + 7] must
     // already be a multiple of 5.
-  } 
+  }
 
   this->deduplicate_weapon_bonuses(item);
 }
@@ -403,8 +398,6 @@ void ItemCreator::set_item_unidentified_flag_if_challenge(ItemData& item) const 
   }
 }
 
-
-
 void ItemCreator::set_tool_item_amount_to_1(ItemData& item) const {
   if (item.data1[0] == 0x03) {
     item.set_tool_item_amount(1);
@@ -418,8 +411,6 @@ void ItemCreator::clear_tool_item_if_invalid(ItemData& item) {
   }
 }
 
-
-
 void ItemCreator::clear_item_if_restricted(ItemData& item) const {
   if (this->item_parameter_table->is_item_rare(item) && !this->are_rare_drops_allowed()) {
     this->log.info("Restricted: item is rare, but rares not allowed");
@@ -432,9 +423,8 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
     // Note: PSO GC doesn't check for 0x61 or 0x62 here since those items
     // (HP/Resurrection and TP/Resurrection) only exist on BB.
     if (item.data1[0] == 1) {
-      if ((item.data1[1] == 3) && (
-           ((item.data1[2] >= 0x33) && (item.data1[2] <= 0x38)) ||
-           (item.data1[2] == 0x61) || (item.data1[2] == 0x62))) {
+      if ((item.data1[1] == 3) && (((item.data1[2] >= 0x33) && (item.data1[2] <= 0x38)) ||
+                                   (item.data1[2] == 0x61) || (item.data1[2] == 0x62))) {
         this->log.info("Restricted: restore items not allowed in Challenge mode");
         item.clear();
       }
@@ -486,7 +476,7 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
               break;
             case Restrictions::TechDiskMode::LIMIT_LEVEL:
               this->log.info("Restricted: tech disk level limited to %hhu",
-                  static_cast<uint8_t>(this->restrictions->max_tech_disk_level + 1));
+                             static_cast<uint8_t>(this->restrictions->max_tech_disk_level + 1));
               if (this->restrictions->max_tech_disk_level == 0) {
                 item.data1[2] = 0;
               } else {
@@ -512,8 +502,6 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
     }
   }
 }
-
-
 
 void ItemCreator::generate_common_item_variances(
     uint32_t norm_area, ItemData& item) {
@@ -543,7 +531,8 @@ void ItemCreator::generate_common_item_variances(
       break;
     case 4:
       item.data2d = this->choose_meseta_amount(
-          this->pt->box_meseta_ranges, norm_area) & 0xFFFF;
+                        this->pt->box_meseta_ranges, norm_area) &
+                    0xFFFF;
       break;
     default:
       // Note: The original code does the following here:
@@ -590,8 +579,6 @@ void ItemCreator::generate_common_armor_slot_count(ItemData& item) {
       this->pt->armor_slot_count_prob_table);
 }
 
-
-
 void ItemCreator::generate_common_tool_variances(
     uint32_t area_norm, ItemData& item) {
   item.clear();
@@ -633,16 +620,12 @@ void ItemCreator::generate_common_tool_type(
   item.data1[2] = data.second;
 }
 
-
-
 void ItemCreator::generate_common_mag_variances(ItemData& item) const {
   if (item.data1[0] == 0x02) {
     item.data1[1] = 0x00;
     item.assign_mag_stats(ItemMagStats());
   }
 }
-
-
 
 void ItemCreator::generate_common_weapon_variances(
     uint8_t area_norm, ItemData& item) {
@@ -730,8 +713,6 @@ uint8_t ItemCreator::choose_weapon_special(uint8_t det) {
   return 0;
 }
 
-
-
 void ItemCreator::generate_unit_weights_tables() {
   // Note: This part of the function was originally in a different function,
   // since it had another callsite. Unlike the original code, we generate these
@@ -817,11 +798,9 @@ void ItemCreator::generate_common_unit_variances(uint8_t det, ItemData& item) {
   }
 }
 
-
-
 // Returns a weighted random result, indicating the chosen position in the
 // weighted table.
-// 
+//
 // For example, an input table of 40 40 40 40 would be equally likely to return
 // 0, 1, 2, or 3. An input table of 40 40 80 would return 2 50% of the time, and
 // 0 or 1 each 25% of the time.
@@ -857,10 +836,8 @@ template <typename IntT, size_t X, size_t Y>
 IntT ItemCreator::get_rand_from_weighted_tables_2d_vertical(
     const parray<parray<IntT, X>, Y>& tables, size_t offset) {
   return ItemCreator::get_rand_from_weighted_tables<IntT>(tables[0].data(),
-      offset, Y, X);
+                                                          offset, Y, X);
 }
-
-
 
 // Note: There are clearly better ways of doing this, but this implementation
 // closely follows what the original code in the client does.
@@ -869,7 +846,7 @@ struct ProbabilityTable {
   ItemT items[MaxCount];
   size_t count;
 
-  ProbabilityTable() : count(0) { }
+  ProbabilityTable() : count(0) {}
 
   void push(ItemT item) {
     if (this->count == MaxCount) {
@@ -999,7 +976,7 @@ void ItemCreator::generate_armor_shop_armors(
   }
   pt.shuffle(this->random_crypt);
 
-  for (size_t items_generated = 0; items_generated < num_items; ) {
+  for (size_t items_generated = 0; items_generated < num_items;) {
     ItemData item;
     item.data1[0] = 1;
     item.data1[1] = 1;
@@ -1044,7 +1021,7 @@ void ItemCreator::generate_armor_shop_shields(
   }
   pt.shuffle(this->random_crypt);
 
-  for (size_t items_generated = 0; items_generated < num_items; ) {
+  for (size_t items_generated = 0; items_generated < num_items;) {
     ItemData item;
     item.data1[0] = 1;
     item.data1[1] = 2;
@@ -1072,7 +1049,7 @@ void ItemCreator::generate_armor_shop_units(
     return; // num_items = 0
   } else if (player_level < 26) {
     num_items = 3;
-  } else  if (player_level < 43) {
+  } else if (player_level < 43) {
     num_items = 5;
   } else {
     num_items = 6;
@@ -1088,7 +1065,7 @@ void ItemCreator::generate_armor_shop_units(
   }
   pt.shuffle(this->random_crypt);
 
-  for (size_t items_generated = 0; items_generated < num_items; ) {
+  for (size_t items_generated = 0; items_generated < num_items;) {
     ItemData item;
     item.data1[0] = 1;
     item.data1[1] = 3;
@@ -1099,8 +1076,6 @@ void ItemCreator::generate_armor_shop_units(
     }
   }
 }
-
-
 
 vector<ItemData> ItemCreator::generate_tool_shop_contents(size_t player_level) {
   vector<ItemData> shop;
@@ -1126,22 +1101,22 @@ size_t ItemCreator::get_table_index_for_tool_shop(size_t player_level) {
 }
 
 static const vector<pair<uint8_t, uint8_t>> tool_item_defs({
-  {0x00, 0x00},
-  {0x00, 0x01},
-  {0x00, 0x02},
-  {0x01, 0x00},
-  {0x01, 0x01},
-  {0x01, 0x02},
-  {0x06, 0x00},
-  {0x06, 0x01},
-  {0x03, 0x00},
-  {0x04, 0x00},
-  {0x05, 0x00},
-  {0x07, 0x00},
-  {0x08, 0x00},
-  {0x09, 0x00},
-  {0x0A, 0x00},
-  {0xFF, 0xFF},
+    {0x00, 0x00},
+    {0x00, 0x01},
+    {0x00, 0x02},
+    {0x01, 0x00},
+    {0x01, 0x01},
+    {0x01, 0x02},
+    {0x06, 0x00},
+    {0x06, 0x01},
+    {0x03, 0x00},
+    {0x04, 0x00},
+    {0x05, 0x00},
+    {0x07, 0x00},
+    {0x08, 0x00},
+    {0x09, 0x00},
+    {0x0A, 0x00},
+    {0xFF, 0xFF},
 });
 
 void ItemCreator::generate_common_tool_shop_recovery_items(
@@ -1288,8 +1263,6 @@ void ItemCreator::choose_tech_disk_level_for_tool_shop(
   }
 }
 
-
-
 vector<ItemData> ItemCreator::generate_weapon_shop_contents(size_t player_level) {
   size_t num_items;
   if (player_level < 11) {
@@ -1350,8 +1323,16 @@ vector<ItemData> ItemCreator::generate_weapon_shop_contents(size_t player_level)
     uint8_t which = pt.pop();
     if (which == 0x39) {
       static const vector<pair<uint8_t, uint8_t>> defs({
-        {0x28, 0x00}, {0x2A, 0x00}, {0x2B, 0x00}, {0x35, 0x00}, {0x52, 0x00},
-        {0x48, 0x00}, {0x64, 0x00}, {0x59, 0x00}, {0x8A, 0x00}, {0x99, 0x00}, 
+          {0x28, 0x00},
+          {0x2A, 0x00},
+          {0x2B, 0x00},
+          {0x35, 0x00},
+          {0x52, 0x00},
+          {0x48, 0x00},
+          {0x64, 0x00},
+          {0x59, 0x00},
+          {0x8A, 0x00},
+          {0x99, 0x00},
       });
       const auto& def = defs.at(this->section_id);
       item.data1[0] = 0;
@@ -1360,8 +1341,16 @@ vector<ItemData> ItemCreator::generate_weapon_shop_contents(size_t player_level)
 
     } else if (which == 0x3A) {
       static const vector<pair<uint8_t, uint8_t>> defs({
-        {0x99, 0x00}, {0x64, 0x00}, {0x8A, 0x00}, {0x28, 0x00}, {0x59, 0x00},
-        {0x2B, 0x00}, {0x52, 0x00}, {0x2A, 0x00}, {0x48, 0x00}, {0x35, 0x00},
+          {0x99, 0x00},
+          {0x64, 0x00},
+          {0x8A, 0x00},
+          {0x28, 0x00},
+          {0x59, 0x00},
+          {0x2B, 0x00},
+          {0x52, 0x00},
+          {0x2A, 0x00},
+          {0x48, 0x00},
+          {0x35, 0x00},
       });
       const auto& def = defs.at(this->section_id);
       item.data1[0] = 0;
@@ -1370,21 +1359,78 @@ vector<ItemData> ItemCreator::generate_weapon_shop_contents(size_t player_level)
 
     } else {
       static const vector<pair<uint8_t, uint8_t>> defs({
-        {0x01, 0x00}, {0x01, 0x01}, {0x01, 0x02}, {0x01, 0x03}, {0x01, 0x04},
-        {0x03, 0x00}, {0x03, 0x01}, {0x03, 0x02}, {0x03, 0x03}, {0x03, 0x04},
-        {0x02, 0x00}, {0x02, 0x01}, {0x02, 0x02}, {0x02, 0x03}, {0x02, 0x04},
-        {0x05, 0x00}, {0x05, 0x01}, {0x05, 0x02}, {0x05, 0x03}, {0x05, 0x04},
-        {0x04, 0x00}, {0x04, 0x01}, {0x04, 0x02}, {0x04, 0x03}, {0x04, 0x04},
-        {0x06, 0x00}, {0x06, 0x01}, {0x06, 0x02}, {0x06, 0x03}, {0x06, 0x04},
-        {0x07, 0x00}, {0x07, 0x01}, {0x07, 0x02}, {0x07, 0x03}, {0x07, 0x04},
-        {0x08, 0x00}, {0x08, 0x01}, {0x08, 0x02}, {0x08, 0x03}, {0x08, 0x04},
-        {0x09, 0x00}, {0x09, 0x01}, {0x09, 0x02}, {0x09, 0x03}, {0x09, 0x04},
-        {0x0A, 0x00}, {0x0A, 0x01}, {0x0A, 0x02}, {0x0A, 0x03}, {0x0B, 0x00},
-        {0x0B, 0x01}, {0x0B, 0x02}, {0x0B, 0x03}, {0x0C, 0x00}, {0x0C, 0x01},
-        {0x0C, 0x02}, {0x0C, 0x03}, {0xFF, 0xFF}, {0xFF, 0xFF}, {0x01, 0x05},
-        {0x02, 0x05}, {0x06, 0x05}, {0x08, 0x05}, {0x0A, 0x04}, {0x0C, 0x04},
-        {0x0B, 0x04}, {0x01, 0x06}, {0x03, 0x05}, {0x07, 0x05}, {0x0A, 0x05},
-        {0x0C, 0x05}, {0x0B, 0x05}, 
+          {0x01, 0x00},
+          {0x01, 0x01},
+          {0x01, 0x02},
+          {0x01, 0x03},
+          {0x01, 0x04},
+          {0x03, 0x00},
+          {0x03, 0x01},
+          {0x03, 0x02},
+          {0x03, 0x03},
+          {0x03, 0x04},
+          {0x02, 0x00},
+          {0x02, 0x01},
+          {0x02, 0x02},
+          {0x02, 0x03},
+          {0x02, 0x04},
+          {0x05, 0x00},
+          {0x05, 0x01},
+          {0x05, 0x02},
+          {0x05, 0x03},
+          {0x05, 0x04},
+          {0x04, 0x00},
+          {0x04, 0x01},
+          {0x04, 0x02},
+          {0x04, 0x03},
+          {0x04, 0x04},
+          {0x06, 0x00},
+          {0x06, 0x01},
+          {0x06, 0x02},
+          {0x06, 0x03},
+          {0x06, 0x04},
+          {0x07, 0x00},
+          {0x07, 0x01},
+          {0x07, 0x02},
+          {0x07, 0x03},
+          {0x07, 0x04},
+          {0x08, 0x00},
+          {0x08, 0x01},
+          {0x08, 0x02},
+          {0x08, 0x03},
+          {0x08, 0x04},
+          {0x09, 0x00},
+          {0x09, 0x01},
+          {0x09, 0x02},
+          {0x09, 0x03},
+          {0x09, 0x04},
+          {0x0A, 0x00},
+          {0x0A, 0x01},
+          {0x0A, 0x02},
+          {0x0A, 0x03},
+          {0x0B, 0x00},
+          {0x0B, 0x01},
+          {0x0B, 0x02},
+          {0x0B, 0x03},
+          {0x0C, 0x00},
+          {0x0C, 0x01},
+          {0x0C, 0x02},
+          {0x0C, 0x03},
+          {0xFF, 0xFF},
+          {0xFF, 0xFF},
+          {0x01, 0x05},
+          {0x02, 0x05},
+          {0x06, 0x05},
+          {0x08, 0x05},
+          {0x0A, 0x04},
+          {0x0C, 0x04},
+          {0x0B, 0x04},
+          {0x01, 0x06},
+          {0x03, 0x05},
+          {0x07, 0x05},
+          {0x0A, 0x05},
+          {0x0C, 0x05},
+          {0x0B, 0x05},
       });
       const auto& def = defs.at(which);
       item.data1[0] = 0;
@@ -1431,8 +1477,8 @@ void ItemCreator::generate_weapon_shop_item_grind(
   uint8_t favored_weapon = favored_weapon_by_section_id.at(this->section_id);
   bool is_favored = (favored_weapon != 0xFF) && (item.data1[1] == favored_weapon);
   const auto* range = is_favored
-      ? this->weapon_random_set->get_favored_grind_range(table_index)
-      : this->weapon_random_set->get_standard_grind_range(table_index);
+                          ? this->weapon_random_set->get_favored_grind_range(table_index)
+                          : this->weapon_random_set->get_standard_grind_range(table_index);
 
   const auto& weapon_def = this->item_parameter_table->get_weapon(
       item.data1[1], item.data1[2]);
@@ -1491,8 +1537,26 @@ void ItemCreator::generate_weapon_shop_item_special(
 }
 
 static const array<int8_t, 20> bonus_values = {
-  -50, -45, -40, -35, -30, -25, -20, -15, -10, -5,
-  5, 10, 15, 20, 25, 30, 35, 40, 45, 50,
+    -50,
+    -45,
+    -40,
+    -35,
+    -30,
+    -25,
+    -20,
+    -15,
+    -10,
+    -5,
+    5,
+    10,
+    15,
+    20,
+    25,
+    30,
+    35,
+    40,
+    45,
+    50,
 };
 
 void ItemCreator::generate_weapon_shop_item_bonus1(

@@ -8,8 +8,8 @@
 #include <event2/event.h>
 #include <event2/listener.h>
 #include <fcntl.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -24,29 +24,27 @@
 
 #include "Loggers.hh"
 #include "PSOProtocol.hh"
-#include "SendCommands.hh"
+#include "ProxyCommands.hh"
 #include "ReceiveCommands.hh"
 #include "ReceiveSubcommands.hh"
-#include "ProxyCommands.hh"
+#include "SendCommands.hh"
 
 using namespace std;
-
-
 
 CatSession::CatSession(
     shared_ptr<struct event_base> base,
     const struct sockaddr_storage& remote,
     GameVersion version,
     shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file)
-  : Shell(base),
-    log("[CatSession] ", proxy_server_log.min_level),
-    channel(
-      version,
-      CatSession::dispatch_on_channel_input,
-      CatSession::dispatch_on_channel_error,
-      this,
-      "CatSession"),
-    bb_key_file(bb_key_file) {
+    : Shell(base),
+      log("[CatSession] ", proxy_server_log.min_level),
+      channel(
+          version,
+          CatSession::dispatch_on_channel_input,
+          CatSession::dispatch_on_channel_error,
+          this,
+          "CatSession"),
+      bb_key_file(bb_key_file) {
   if (remote.ss_family != AF_INET) {
     throw runtime_error("remote is not AF_INET");
   }
@@ -62,7 +60,7 @@ CatSession::CatSession(
   this->channel.set_bufferevent(bev);
 
   if (bufferevent_socket_connect(this->channel.bev.get(),
-      reinterpret_cast<const sockaddr*>(&remote), sizeof(struct sockaddr_in)) != 0) {
+          reinterpret_cast<const sockaddr*>(&remote), sizeof(struct sockaddr_in)) != 0) {
     throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
   }
 }
@@ -133,7 +131,7 @@ void CatSession::on_channel_error(short events) {
   }
 }
 
-void CatSession::print_prompt() { }
+void CatSession::print_prompt() {}
 
 void CatSession::execute_command(const std::string& command) {
   string full_cmd = parse_data_string(command, nullptr, ParseDataFlags::ALLOW_FILES);

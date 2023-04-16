@@ -3,20 +3,18 @@
 #include <event2/event.h>
 
 #include <deque>
-#include <map>
-#include <unordered_map>
-#include <unordered_set>
 #include <functional>
-#include <vector>
-#include <string>
+#include <map>
 #include <memory>
 #include <phosg/Filesystem.hh>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include "PSOEncryption.hh"
 #include "PSOProtocol.hh"
 #include "ServerState.hh"
-
-
 
 class ProxyServer {
 public:
@@ -38,7 +36,7 @@ public:
     uint64_t id;
     PrefixedLogger log;
 
-    std::unique_ptr<struct event, void(*)(struct event*)> timeout_event;
+    std::unique_ptr<struct event, void (*)(struct event*)> timeout_event;
 
     std::shared_ptr<const License> license;
 
@@ -80,7 +78,9 @@ public:
       std::string name;
       uint8_t section_id;
       uint8_t char_class;
-      LobbyPlayer() : guild_card_number(0), section_id(0), char_class(0) { }
+      LobbyPlayer() : guild_card_number(0),
+                      section_id(0),
+                      char_class(0) {}
     };
     std::vector<LobbyPlayer> lobby_players;
     size_t lobby_client_id;
@@ -163,10 +163,10 @@ public:
   std::shared_ptr<LinkedSession> get_session();
   std::shared_ptr<LinkedSession> get_session_by_name(const std::string& name);
   std::shared_ptr<LinkedSession> create_licensed_session(
-    std::shared_ptr<const License> l,
-    uint16_t local_port,
-    GameVersion version,
-    const ClientConfigBB& newserv_client_config);
+      std::shared_ptr<const License> l,
+      uint16_t local_port,
+      GameVersion version,
+      const ClientConfigBB& newserv_client_config);
   void delete_session(uint64_t id);
   void delete_session(struct bufferevent* bev);
 
@@ -179,7 +179,7 @@ private:
     PrefixedLogger log;
     uint16_t port;
     scoped_fd fd;
-    std::unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)> listener;
+    std::unique_ptr<struct evconnlistener, void (*)(struct evconnlistener*)> listener;
     GameVersion version;
     struct sockaddr_storage default_destination;
 
@@ -190,7 +190,7 @@ private:
         const struct sockaddr_storage* default_destination);
 
     static void dispatch_on_listen_accept(struct evconnlistener* listener,
-        evutil_socket_t fd, struct sockaddr *address, int socklen, void* ctx);
+        evutil_socket_t fd, struct sockaddr* address, int socklen, void* ctx);
     static void dispatch_on_listen_error(struct evconnlistener* listener, void* ctx);
     void on_listen_accept(int fd);
     void on_listen_error();

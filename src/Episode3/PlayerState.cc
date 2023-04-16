@@ -6,40 +6,38 @@ using namespace std;
 
 namespace Episode3 {
 
-
-
 PlayerState::PlayerState(uint8_t client_id, shared_ptr<Server> server)
-  : w_server(server),
-    client_id(client_id),
-    num_mulligans_allowed(1),
-    sc_card_type(CardType::HUNTERS_SC),
-    team_id(0xFF),
-    atk_points(0),
-    def_points(0),
-    atk_points2(0),
-    atk_points2_max(6),
-    atk_bonuses(0),
-    def_bonuses(0),
-    dice_results(0),
-    unknown_a4(2),
-    dice_max(6),
-    total_set_cards_cost(0),
-    sc_card_id(0xFFFF),
-    sc_card_ref(0xFFFF),
-    card_refs(0xFFFF),
-    discard_log_card_refs(0xFFFF),
-    discard_log_reasons(0),
-    assist_remaining_turns(0),
-    assist_card_set_number(0),
-    set_assist_card_id(0xFFFF),
-    god_whim_can_use_hidden_cards(false),
-    unknown_a14(0),
-    assist_flags(0),
-    assist_delay_turns(0),
-    start_facing_direction(Direction::RIGHT),
-    num_destroyed_fcs(0),
-    unknown_a16(0),
-    unknown_a17(0) { }
+    : w_server(server),
+      client_id(client_id),
+      num_mulligans_allowed(1),
+      sc_card_type(CardType::HUNTERS_SC),
+      team_id(0xFF),
+      atk_points(0),
+      def_points(0),
+      atk_points2(0),
+      atk_points2_max(6),
+      atk_bonuses(0),
+      def_bonuses(0),
+      dice_results(0),
+      unknown_a4(2),
+      dice_max(6),
+      total_set_cards_cost(0),
+      sc_card_id(0xFFFF),
+      sc_card_ref(0xFFFF),
+      card_refs(0xFFFF),
+      discard_log_card_refs(0xFFFF),
+      discard_log_reasons(0),
+      assist_remaining_turns(0),
+      assist_card_set_number(0),
+      set_assist_card_id(0xFFFF),
+      god_whim_can_use_hidden_cards(false),
+      unknown_a14(0),
+      assist_flags(0),
+      assist_delay_turns(0),
+      start_facing_direction(Direction::RIGHT),
+      num_destroyed_fcs(0),
+      unknown_a16(0),
+      unknown_a17(0) {}
 
 void PlayerState::init() {
   if (this->server()->player_states[this->client_id].get() != this) {
@@ -1411,7 +1409,8 @@ void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(
   cmd.state.sc_card_ref = this->sc_card_ref;
   cmd.state.assist_card_ref2 = this->card_refs[6];
   cmd.state.assist_card_set_number = (this->card_refs[6] == 0xFFFF)
-      ? 0 : this->assist_card_set_number;
+      ? 0
+      : this->assist_card_set_number;
   cmd.state.assist_card_id = this->set_assist_card_id;
   cmd.state.assist_remaining_turns = this->assist_remaining_turns;
   cmd.state.assist_delay_turns = this->assist_delay_turns;
@@ -1829,7 +1828,5 @@ void PlayerState::compute_team_dice_boost_after_draw_phase() {
   this->server()->team_dice_boost[current_team_turn] = clamp<int16_t>(dice_boost, 0, 8);
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 }
-
-
 
 } // namespace Episode3

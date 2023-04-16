@@ -8,26 +8,22 @@
 
 using namespace std;
 
-
-
 const std::string Shell::PROMPT("newserv> ");
 
-
-
-Shell::exit_shell::exit_shell() : runtime_error("shell exited") { }
-
-
+Shell::exit_shell::exit_shell() : runtime_error("shell exited") {}
 
 Shell::Shell(std::shared_ptr<struct event_base> base)
-  : base(base),
-    read_event(event_new(this->base.get(), 0, EV_READ | EV_PERSIST,
-      &Shell::dispatch_read_stdin, this), event_free),
-    prompt_event(event_new(this->base.get(), 0, EV_TIMEOUT,
-      &Shell::dispatch_print_prompt, this), event_free) {
+    : base(base),
+      read_event(
+          event_new(this->base.get(), 0, EV_READ | EV_PERSIST, &Shell::dispatch_read_stdin, this),
+          event_free),
+      prompt_event(
+          event_new(this->base.get(), 0, EV_TIMEOUT, &Shell::dispatch_print_prompt, this),
+          event_free) {
   event_add(this->read_event.get(), nullptr);
 
   // Schedule an event to print the prompt as soon as the event loop starts
-  // running. we do this so the prompt appears after any initialization
+  // running. We do this so the prompt appears after any initialization
   // messages that come after starting the shell
   struct timeval tv = {0, 0};
   event_add(this->prompt_event.get(), &tv);
@@ -40,7 +36,7 @@ void Shell::dispatch_print_prompt(evutil_socket_t, short, void* ctx) {
 }
 
 void Shell::print_prompt() {
-  // default behavior: no prompt
+  // Default behavior: no prompt
 }
 
 void Shell::dispatch_read_stdin(evutil_socket_t, short, void* ctx) {
@@ -54,7 +50,8 @@ void Shell::read_stdin() {
     short fd_events = 0;
     try {
       fd_events = poll_result.at(0);
-    } catch (const out_of_range&) { }
+    } catch (const out_of_range&) {
+    }
 
     if (!(fd_events & POLLIN)) {
       break;

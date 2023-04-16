@@ -2,21 +2,19 @@
 
 #include <event2/event.h>
 
-#include <map>
-#include <unordered_map>
-#include <unordered_set>
 #include <functional>
-#include <vector>
-#include <string>
+#include <map>
 #include <memory>
 #include <phosg/Filesystem.hh>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include "PSOEncryption.hh"
 #include "PSOProtocol.hh"
 #include "ServerState.hh"
 #include "Shell.hh"
-
-
 
 class CatSession : public Shell {
 public:

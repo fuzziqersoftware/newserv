@@ -1,9 +1,9 @@
 #include "Compression.hh"
 
 #include <errno.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 
 #include <phosg/Strings.hh>
@@ -12,16 +12,14 @@
 
 using namespace std;
 
-
-
 PRSCompressor::PRSCompressor(function<void(size_t, size_t)> progress_fn)
-  : progress_fn(progress_fn),
-    closed(false),
-    control_byte_offset(0),
-    pending_control_bits(0),
-    input_bytes(0),
-    compression_offset(0),
-    reverse_log_index(0x100) {
+    : progress_fn(progress_fn),
+      closed(false),
+      control_byte_offset(0),
+      pending_control_bits(0),
+      input_bytes(0),
+      compression_offset(0),
+      reverse_log_index(0x100) {
   this->output.put_u8(0);
 }
 
@@ -65,8 +63,8 @@ void PRSCompressor::advance() {
     size_t match_size = 0;
     size_t match_loop_bytes = this->compression_offset - match_offset;
     while ((match_size < 0x100) &&
-           (this->compression_offset + match_size < this->input_bytes) &&
-           (this->reverse_log[(match_offset + (match_size % match_loop_bytes)) & 0x1FFF] == this->forward_log[(this->compression_offset + match_size) & 0xFF])) {
+        (this->compression_offset + match_size < this->input_bytes) &&
+        (this->reverse_log[(match_offset + (match_size % match_loop_bytes)) & 0x1FFF] == this->forward_log[(this->compression_offset + match_size) & 0xFF])) {
       match_size++;
     }
 
@@ -204,8 +202,6 @@ void PRSCompressor::flush_control() {
   }
 }
 
-
-
 string prs_compress(
     const void* vdata, size_t size, function<void(size_t, size_t)> progress_fn) {
   PRSCompressor prs(progress_fn);
@@ -218,11 +214,10 @@ string prs_compress(
   return prs_compress(data.data(), data.size(), progress_fn);
 }
 
-
-
 class ControlStreamReader {
 public:
-  ControlStreamReader(StringReader& r) : r(r), bits(0x0000) { }
+  ControlStreamReader(StringReader& r) : r(r),
+                                         bits(0x0000) {}
 
   bool read() {
     if (!(this->bits & 0x0100)) {
@@ -306,7 +301,7 @@ string prs_decompress(const void* data, size_t size, size_t max_output_size) {
         // from another byte in the data stream)
         count = (a & 7) ? ((a & 7) + 2) : (r.get_u8() + 1);
 
-      // Control 00 = short backreference
+        // Control 00 = short backreference
       } else {
         // Count comes from 2 bits in the control stream instead of from the
         // data stream (and 2 is added). Importantly, the control stream bits
@@ -388,8 +383,6 @@ size_t prs_decompress_size(const string& data, size_t max_output_size) {
   return prs_decompress_size(data.data(), data.size(), max_output_size);
 }
 
-
-
 void prs_disassemble(FILE* stream, const void* data, size_t size) {
   size_t output_bytes = 0;
   StringReader r(data, size);
@@ -438,8 +431,6 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
 void prs_disassemble(FILE* stream, const std::string& data) {
   return prs_disassemble(stream, data.data(), data.size());
 }
-
-
 
 // BC0 is a compression algorithm fairly similar to PRS, but with a simpler set
 // of commands. Like PRS, there is a control stream, indicating when to copy a
@@ -637,8 +628,8 @@ string bc0_decompress(const string& data) {
         memo_offset = (memo_offset + 1) & 0x0FFF;
       }
 
-    // Control bit 1 means to write a byte directly from the input to the
-    // output. As above, the byte is also written to the memo.
+      // Control bit 1 means to write a byte directly from the input to the
+      // output. As above, the byte is also written to the memo.
     } else {
       uint8_t v = r.get_u8();
       w.put_u8(v);

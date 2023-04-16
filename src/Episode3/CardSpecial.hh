@@ -9,8 +9,6 @@
 
 namespace Episode3 {
 
-
-
 struct InterferenceProbabilityEntry {
   uint16_t card_id;
   uint8_t attack_probability;
@@ -21,8 +19,6 @@ const InterferenceProbabilityEntry* get_interference_probability_entry(
     uint16_t row_card_id,
     uint16_t column_card_id,
     bool is_attack);
-
-
 
 class CardSpecial {
 public:
@@ -224,7 +220,7 @@ public:
       int16_t ap,
       int16_t tp);
   const char* get_next_expr_token(
-      const char *expr, ExpressionTokenType* out_type, int32_t* out_value) const;
+      const char* expr, ExpressionTokenType* out_type, int32_t* out_value) const;
   std::vector<std::shared_ptr<const Card>> get_targeted_cards_for_condition(
       uint16_t card_ref,
       uint8_t def_effect_index,
@@ -340,7 +336,5 @@ private:
   ActionState action_state;
   uint16_t unknown_a2;
 };
-
-
 
 } // namespace Episode3

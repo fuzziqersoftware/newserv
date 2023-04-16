@@ -2,10 +2,8 @@
 
 #include <inttypes.h>
 
-#include <vector>
 #include <string>
-
-
+#include <vector>
 
 enum class GameVersion {
   PATCH = 0,

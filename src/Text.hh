@@ -4,12 +4,10 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <string>
-#include <stdexcept>
 #include <phosg/Encoding.hh>
 #include <phosg/Strings.hh>
-
-
+#include <stdexcept>
+#include <string>
 
 // (1a) Conversion functions
 
@@ -49,14 +47,16 @@ inline const std::u16string& decode_sjis(const std::u16string& s) { return s; }
 template <typename T>
 size_t text_strlen_t(const T* s) {
   size_t ret = 0;
-  for (; s[ret] != 0; ret++) { }
+  for (; s[ret] != 0; ret++) {
+  }
   return ret;
 }
 
 template <typename T>
 size_t text_strnlen_t(const T* s, size_t count) {
   size_t ret = 0;
-  for (; (ret < count) && (s[ret] != 0); ret++) { }
+  for (; (ret < count) && (s[ret] != 0); ret++) {
+  }
   return ret;
 }
 
@@ -112,8 +112,6 @@ size_t text_strnzcpy_t(T* dest, const T* src, size_t count) {
   dest[x++] = 0;
   return x;
 }
-
-
 
 // (2) Type conversion functions
 
@@ -183,8 +181,6 @@ inline size_t text_strnzcpy_t<char16_t>(
   return text_strnzcpy_t(dest, src, count);
 }
 
-
-
 // (3) Packed text objects for use in protocol structs
 
 template <typename ItemT, size_t Count>
@@ -203,7 +199,7 @@ struct parray {
     this->clear(nullptr);
   }
   template <typename ArgT = ItemT, std::enable_if_t<!std::is_arithmetic<ArgT>::value && !std::is_pointer<ArgT>::value, bool> = true>
-  parray() { }
+  parray() {}
 
   parray(const parray& other) {
     this->operator=(other);
@@ -358,7 +354,6 @@ struct parray {
   }
 } __attribute__((packed));
 
-
 // TODO: It appears that these actually do not have to be null-terminated in PSO
 // commands some of the time. As an example, creating a game with a name with
 // the maximum length results in a C1 command with no null byte between the game
@@ -370,7 +365,7 @@ struct ptext : parray<CharT, Count> {
   ptext() {
     this->clear(0);
   }
-  ptext(const ptext& other) : parray<CharT, Count>(other) { }
+  ptext(const ptext& other) : parray<CharT, Count>(other) {}
   ptext(ptext&& s) = delete;
 
   template <typename OtherCharT>
@@ -495,8 +490,6 @@ struct ptext : parray<CharT, Count> {
     return (this->items[0] == 0);
   }
 } __attribute__((packed));
-
-
 
 // (4) Markers and character replacement
 

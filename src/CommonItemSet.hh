@@ -6,7 +6,6 @@
 #include "StaticGameData.hh"
 #include "Text.hh"
 
-
 class CommonItemSet {
 public:
   template <typename IntT>
@@ -247,8 +246,6 @@ public:
 private:
   GSLArchive gsl;
 };
-
-
 
 class RELFileSet {
 public:

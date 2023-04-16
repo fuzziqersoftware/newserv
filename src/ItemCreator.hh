@@ -3,12 +3,10 @@
 #include <memory>
 
 #include "CommonItemSet.hh"
-#include "RareItemSet.hh"
 #include "ItemParameterTable.hh"
-#include "StaticGameData.hh"
 #include "PSOEncryption.hh"
-
-
+#include "RareItemSet.hh"
+#include "StaticGameData.hh"
 
 struct ItemDropSub {
   uint8_t override_area;
@@ -137,7 +135,7 @@ private:
   void generate_common_mag_variances(ItemData& item) const;
   void generate_common_weapon_variances(uint8_t area_norm, ItemData& item);
   void generate_common_weapon_grind(ItemData& item,
-      uint8_t offset_within_subtype_range);
+                                    uint8_t offset_within_subtype_range);
   void generate_common_weapon_bonuses(ItemData& item, uint8_t area_norm);
   void generate_common_weapon_special(ItemData& item, uint8_t area_norm);
   uint8_t choose_weapon_special(uint8_t det);

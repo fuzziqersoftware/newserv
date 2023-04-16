@@ -8,14 +8,12 @@
 
 using namespace std;
 
-
-
-const vector<string> version_to_login_port_name({
-    "bb-patch", "console-login", "pc-login", "console-login", "console-login", "bb-init"});
-const vector<string> version_to_lobby_port_name({
-    "bb-patch", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"});
-const vector<string> version_to_proxy_port_name({
-    "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"});
+const vector<string> version_to_login_port_name = {
+    "bb-patch", "console-login", "pc-login", "console-login", "console-login", "bb-init"};
+const vector<string> version_to_lobby_port_name = {
+    "bb-patch", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"};
+const vector<string> version_to_proxy_port_name = {
+    "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"};
 
 uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
   switch (sub_version) {
@@ -40,8 +38,8 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
 
     // TODO: Which other sub_versions of DC v1 and v2 exist?
     case 0x20: // DCNTE
-      // In the case of DCNTE, the IS_TRIAL_EDITION flag is already set when we
-      // get here, so the remaining flags are the same as DCv1
+               // In the case of DCNTE, the IS_TRIAL_EDITION flag is already set when we
+               // get here, so the remaining flags are the same as DCv1
     case 0x21: // DCv1 US
       return Client::Flag::IS_DC_V1 |
              Client::Flag::NO_D6 |
@@ -118,7 +116,7 @@ GameVersion version_for_name(const char* name) {
   } else if (!strcasecmp(name, "XB") || !strcasecmp(name, "Xbox")) {
     return GameVersion::XB;
   } else if (!strcasecmp(name, "BB") || !strcasecmp(name, "BlueBurst") ||
-      !strcasecmp(name, "Blue Burst")) {
+             !strcasecmp(name, "Blue Burst")) {
     return GameVersion::BB;
   } else if (!strcasecmp(name, "Patch")) {
     return GameVersion::PATCH;

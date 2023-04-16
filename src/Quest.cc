@@ -2,25 +2,23 @@
 
 #include <algorithm>
 #include <mutex>
-#include <string>
-#include <unordered_map>
-#include <phosg/Filesystem.hh>
 #include <phosg/Encoding.hh>
+#include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Tools.hh>
+#include <string>
+#include <unordered_map>
 
-#include "Loggers.hh"
-#include "SaveFileFormats.hh"
 #include "CommandFormats.hh"
 #include "Compression.hh"
+#include "Loggers.hh"
 #include "PSOEncryption.hh"
+#include "SaveFileFormats.hh"
 #include "Text.hh"
 
 using namespace std;
-
-
 
 // GCI decoding logic
 
@@ -38,8 +36,10 @@ struct PSOMemCardDLQFileEncryptedHeader {
   // Data follows here.
 } __attribute__((packed));
 
-struct PSOVMSDLQFileEncryptedHeader : PSOMemCardDLQFileEncryptedHeader<false> { } __attribute__((packed));
-struct PSOGCIDLQFileEncryptedHeader : PSOMemCardDLQFileEncryptedHeader<true> { } __attribute__((packed));
+struct PSOVMSDLQFileEncryptedHeader : PSOMemCardDLQFileEncryptedHeader<false> {
+} __attribute__((packed));
+struct PSOGCIDLQFileEncryptedHeader : PSOMemCardDLQFileEncryptedHeader<true> {
+} __attribute__((packed));
 
 template <bool IsBigEndian>
 string decrypt_gci_or_vms_v2_download_quest_data_section(
@@ -78,9 +78,7 @@ string decrypt_gci_or_vms_v2_download_quest_data_section(
   // Unlike the above rounds, round 3 is always little-endian (it corresponds to
   // the round of encryption done on the server before sending the file to the
   // client in the first place)
-  PSOV2Encryption(header->round3_seed).decrypt(
-      decrypted.data() + sizeof(HeaderT),
-      decrypted.size() - sizeof(HeaderT));
+  PSOV2Encryption(header->round3_seed).decrypt(decrypted.data() + sizeof(HeaderT), decrypted.size() - sizeof(HeaderT));
   decrypted.resize(orig_size);
 
   // Some download quest GCI files have decompressed_size fields that are 8
@@ -136,7 +134,8 @@ string find_seed_and_decrypt_gci_or_vms_v2_download_quest_data_section(
     } catch (const runtime_error&) {
       return false;
     }
-  }, 0, 0x100000000, num_threads);
+  },
+      0, 0x100000000, num_threads);
 
   if (!result.empty() && (result_seed < 0x100000000)) {
     static_game_data_log.info("Found seed %08" PRIX64, result_seed);
@@ -145,8 +144,6 @@ string find_seed_and_decrypt_gci_or_vms_v2_download_quest_data_section(
     throw runtime_error("no seed found");
   }
 }
-
-
 
 struct PSOVMSFileHeader {
   ptext<char, 0x10> short_desc; // "PSO/DOWNLOAD    " or "PSOV2/DOWNLOAD  "
@@ -187,19 +184,15 @@ struct PSOVMSFileHeader {
   }
 } __attribute__((packed));
 
-
-
 struct PSODownloadQuestHeader {
   le_uint32_t size;
   le_uint32_t encryption_seed;
 } __attribute__((packed));
 
-
-
 bool category_is_mode(QuestCategory category) {
   return (category == QuestCategory::BATTLE) ||
-         (category == QuestCategory::CHALLENGE) ||
-         (category == QuestCategory::EPISODE_3);
+      (category == QuestCategory::CHALLENGE) ||
+      (category == QuestCategory::EPISODE_3);
 }
 
 const char* name_for_category(QuestCategory category) {
@@ -236,8 +229,6 @@ const char* name_for_category(QuestCategory category) {
       return "Unknown";
   }
 }
-
-
 
 struct PSOQuestHeaderDC { // Same format for DC v1 and v2, thankfully
   uint32_t start_offset;
@@ -297,18 +288,16 @@ struct PSOQuestHeaderBB {
   ptext<char16_t, 0x120> long_description;
 } __attribute__((packed));
 
-
-
 Quest::Quest(const string& bin_filename)
-  : internal_id(-1),
-    menu_item_id(0),
-    category(QuestCategory::UNKNOWN),
-    episode(Episode::NONE),
-    is_dcv1(false),
-    joinable(false),
-    file_format(FileFormat::BIN_DAT),
-    has_mnm_extension(false),
-    is_dlq_encoded(false) {
+    : internal_id(-1),
+      menu_item_id(0),
+      category(QuestCategory::UNKNOWN),
+      episode(Episode::NONE),
+      is_dcv1(false),
+      joinable(false),
+      file_format(FileFormat::BIN_DAT),
+      has_mnm_extension(false),
+      is_dlq_encoded(false) {
 
   if (ends_with(bin_filename, ".bin.gci") || ends_with(bin_filename, ".mnm.gci")) {
     this->file_format = FileFormat::BIN_DAT_GCI;
@@ -383,30 +372,30 @@ Quest::Quest(const string& bin_filename)
   // Get the category from the second token if needed
   if (this->category == QuestCategory::UNKNOWN) {
     static const unordered_map<string, QuestCategory> name_to_category({
-      {"ret", QuestCategory::RETRIEVAL},
-      {"ext", QuestCategory::EXTERMINATION},
-      {"evt", QuestCategory::EVENT},
-      {"shp", QuestCategory::SHOP},
-      {"vr",  QuestCategory::VR},
-      {"twr", QuestCategory::TOWER},
-      // Note: This will be overwritten later for Episode 2 & 4 quests - we
-      // haven't parsed the episode number from the quest script yet
-      {"gov", QuestCategory::GOVERNMENT_EPISODE_1},
-      {"dl",  QuestCategory::DOWNLOAD},
-      {"1p",  QuestCategory::SOLO},
+        {"ret", QuestCategory::RETRIEVAL},
+        {"ext", QuestCategory::EXTERMINATION},
+        {"evt", QuestCategory::EVENT},
+        {"shp", QuestCategory::SHOP},
+        {"vr", QuestCategory::VR},
+        {"twr", QuestCategory::TOWER},
+        // Note: This will be overwritten later for Episode 2 & 4 quests - we
+        // haven't parsed the episode number from the quest script yet
+        {"gov", QuestCategory::GOVERNMENT_EPISODE_1},
+        {"dl", QuestCategory::DOWNLOAD},
+        {"1p", QuestCategory::SOLO},
     });
     this->category = name_to_category.at(tokens[1]);
     tokens.erase(tokens.begin() + 1);
   }
 
   static const unordered_map<string, GameVersion> name_to_version({
-    {"d1",  GameVersion::DC},
-    {"dc",  GameVersion::DC},
-    {"pc",  GameVersion::PC},
-    {"gc",  GameVersion::GC},
-    {"gc3", GameVersion::GC},
-    {"xb",  GameVersion::XB},
-    {"bb",  GameVersion::BB},
+      {"d1", GameVersion::DC},
+      {"dc", GameVersion::DC},
+      {"pc", GameVersion::PC},
+      {"gc", GameVersion::GC},
+      {"gc3", GameVersion::GC},
+      {"xb", GameVersion::XB},
+      {"bb", GameVersion::BB},
   });
   this->version = name_to_version.at(tokens[1]);
 
@@ -705,7 +694,8 @@ string Quest::decode_vms(
   const void* data_section = r.getv(header.data_size);
   try {
     return decrypt_vms_v1_data_section(data_section, header.data_size);
-  } catch (const exception& e) { }
+  } catch (const exception& e) {
+  }
 
   if (known_seed >= 0) {
     return decrypt_gci_or_vms_v2_download_quest_data_section<false>(
@@ -973,8 +963,6 @@ string Quest::export_qst(GameVersion version) const {
   return move(w.str());
 }
 
-
-
 QuestIndex::QuestIndex(const string& directory) : directory(directory) {
   auto filename_set = list_directory(this->directory);
   vector<string> filenames(filename_set.begin(), filename_set.end());
@@ -1004,7 +992,8 @@ QuestIndex::QuestIndex(const string& directory) : directory(directory) {
         q->menu_item_id = next_menu_item_id++;
         string ascii_name = encode_sjis(q->name);
         if (!this->version_menu_item_id_to_quest.emplace(
-            make_pair(q->version, q->menu_item_id), q).second) {
+                                                    make_pair(q->version, q->menu_item_id), q)
+                 .second) {
           throw logic_error("duplicate quest menu item id");
         }
         static_game_data_log.info("Indexed quest %s (%s => %s-%" PRId64 " (%" PRIu32 "), %s, %s, joinable=%s, dcv1=%s)",
@@ -1049,8 +1038,6 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(
 
   return ret;
 }
-
-
 
 static string create_download_quest_file(const string& compressed_data,
     size_t decompressed_size, uint32_t encryption_seed = 0) {

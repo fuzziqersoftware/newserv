@@ -5,12 +5,10 @@
 
 #include <event2/event.h>
 
-#include "Shell.hh"
 #include "ProxyServer.hh"
+#include "Shell.hh"
 
 #define SHELL_PROMPT "newserv> "
-
-
 
 class ServerShell : public Shell {
 public:

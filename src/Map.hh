@@ -11,15 +11,13 @@
 #include "StaticGameData.hh"
 #include "Text.hh"
 
-
-
 class BattleParamsIndex {
 public:
   struct Entry {
     le_uint16_t atp; // attack power
     le_uint16_t psv; // perseverance (intelligence?)
     le_uint16_t evp; // evasion
-    le_uint16_t hp;  // hit points
+    le_uint16_t hp; // hit points
     le_uint16_t dfp; // defense
     le_uint16_t ata; // accuracy
     le_uint16_t lck; // luck
@@ -58,8 +56,6 @@ private:
   LoadedFile files[2][3];
 };
 
-
-
 struct PSOEnemy {
   uint64_t id;
   uint16_t source_type;
@@ -90,8 +86,6 @@ std::vector<PSOEnemy> parse_map(
     std::shared_ptr<const std::string> data,
     bool alt_enemies);
 
-
-
 // TODO: This class is currently unused. It would be nice if we could use this
 // to generate variations and link to the corresponding map filenames, but it
 // seems that SetDataTable.rel files link to map filenames that don't actually
@@ -120,8 +114,6 @@ private:
   // area_id is cumulative per episode, so Ep2 starts at area_id=18.
   std::vector<std::vector<std::vector<SetEntry>>> entries;
 };
-
-
 
 void generate_variations(
     parray<le_uint32_t, 0x20>& variations,

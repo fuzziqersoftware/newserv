@@ -1,11 +1,9 @@
 #pragma once
 
-#include <string>
 #include <phosg/Encoding.hh>
+#include <string>
 
 #include "Text.hh"
-
-
 
 constexpr uint32_t MESETA_IDENTIFIER = 0x00040000;
 
@@ -21,15 +19,15 @@ struct ItemMagStats {
   uint8_t color;
 
   ItemMagStats()
-    : iq(0),
-      synchro(40),
-      def(500),
-      pow(0),
-      dex(0),
-      mind(0),
-      flags(0),
-      photon_blasts(0),
-      color(14) { }
+      : iq(0),
+        synchro(40),
+        def(500),
+        pow(0),
+        dex(0),
+        mind(0),
+        flags(0),
+        photon_blasts(0),
+        color(14) {}
 
   inline uint16_t def_level() const {
     return this->def / 100;

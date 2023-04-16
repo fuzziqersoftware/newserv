@@ -4,13 +4,11 @@
 
 #include <memory>
 
-#include "../Text.hh"
 #include "../CommandFormats.hh"
+#include "../Text.hh"
 #include "DataIndex.hh"
 
 namespace Episode3 {
-
-
 
 class ServerBase;
 class Server;
@@ -125,7 +123,5 @@ public:
   std::weak_ptr<Card> w_destroyer_sc_card;
   int16_t current_defense_power;
 };
-
-
 
 } // namespace Episode3

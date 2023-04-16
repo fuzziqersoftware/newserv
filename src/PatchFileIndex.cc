@@ -4,19 +4,19 @@
 #include <string.h>
 
 #include <functional>
-#include <stdexcept>
 #include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
 #include <phosg/Strings.hh>
+#include <stdexcept>
 
 #include "Loggers.hh"
 
 using namespace std;
 
-
-
 PatchFileIndex::File::File(PatchFileIndex* index)
-  : index(index), crc32(0), size(0) { }
+    : index(index),
+      crc32(0),
+      size(0) {}
 
 std::shared_ptr<const std::string> PatchFileIndex::File::load_data() {
   if (!this->loaded_data) {
@@ -29,10 +29,8 @@ std::shared_ptr<const std::string> PatchFileIndex::File::load_data() {
   return this->loaded_data;
 }
 
-
-
 PatchFileIndex::PatchFileIndex(const string& root_dir)
-  : root_dir(root_dir) {
+    : root_dir(root_dir) {
 
   string metadata_cache_filename = root_dir + "/.metadata-cache.json";
   shared_ptr<JSONObject> metadata_cache_json;
@@ -113,10 +111,10 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
             chunk_crcs_item.emplace_back(make_json_int(chunk_crc));
           }
           vector<shared_ptr<JSONObject>> new_cache_item({
-            make_json_int(f->size),
-            make_json_int(st.st_mtime),
-            make_json_int(f->crc32),
-            make_json_list(move(chunk_crcs_item)),
+              make_json_int(f->size),
+              make_json_int(st.st_mtime),
+              make_json_int(f->crc32),
+              make_json_list(move(chunk_crcs_item)),
           });
           new_metadata_cache_json->as_dict().emplace(
               relative_item_path, make_json_list(move(new_cache_item)));
@@ -132,10 +130,12 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
         this->files_by_patch_order.emplace_back(f);
         this->files_by_name.emplace(relative_item_path, f);
         if (compute_crc32s_message.empty()) {
-          patch_index_log.info("Added file %s (%" PRIu32 " bytes; %zu chunks; %08" PRIX32 " from cache)",
+          patch_index_log.info(
+              "Added file %s (%" PRIu32 " bytes; %zu chunks; %08" PRIX32 " from cache)",
               full_item_path.c_str(), f->size, f->chunk_crcs.size(), f->crc32);
         } else {
-          patch_index_log.info("Added file %s (%" PRIu32 " bytes; %zu chunks; %08" PRIX32 " [%s])",
+          patch_index_log.info(
+              "Added file %s (%" PRIu32 " bytes; %zu chunks; %08" PRIX32 " [%s])",
               full_item_path.c_str(), f->size, f->chunk_crcs.size(), f->crc32, compute_crc32s_message.c_str());
         }
       }

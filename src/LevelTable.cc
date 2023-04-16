@@ -8,8 +8,6 @@
 
 using namespace std;
 
-
-
 LevelTable::LevelTable(shared_ptr<const string> data, bool compressed) {
   if (compressed) {
     this->data.reset(new string(prs_decompress(*data)));
@@ -30,8 +28,8 @@ const PlayerStats& LevelTable::base_stats_for_class(uint8_t char_class) const {
   return this->table->base_stats[char_class];
 }
 
-const LevelTable::LevelStats& LevelTable::stats_for_level(uint8_t char_class,
-    uint8_t level) const {
+const LevelTable::LevelStats& LevelTable::stats_for_level(
+    uint8_t char_class, uint8_t level) const {
   if (char_class >= 12) {
     throw invalid_argument("invalid character class");
   }

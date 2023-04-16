@@ -7,8 +7,6 @@
 #include "FileContentsCache.hh"
 #include "Player.hh"
 
-
-
 enum class Episode {
   NONE = 0,
   EP1 = 1,
@@ -31,8 +29,6 @@ enum class GameMode {
 
 const char* name_for_mode(GameMode mode);
 const char* abbreviation_for_mode(GameMode mode);
-
-
 
 size_t max_stack_size_for_item(uint8_t data0, uint8_t data1);
 

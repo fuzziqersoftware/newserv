@@ -4,13 +4,11 @@
 #include <stddef.h>
 
 #include <memory>
+#include <phosg/Encoding.hh>
 #include <string>
 #include <vector>
-#include <phosg/Encoding.hh>
 
 #include "Text.hh" // for parray
-
-
 
 class PSOEncryption {
 public:
@@ -38,8 +36,6 @@ public:
 protected:
   PSOEncryption() = default;
 };
-
-
 
 class PSOLFGEncryption : public PSOEncryption {
 public:
@@ -91,8 +87,6 @@ protected:
   static constexpr size_t STREAM_LENGTH = 521;
 };
 
-
-
 class PSOBBEncryption : public PSOEncryption {
 public:
   enum Subtype : uint8_t {
@@ -109,14 +103,14 @@ public:
       uint8_t jsd1_stream_offset;
       parray<uint8_t, 0x48> as8;
       parray<le_uint32_t, 0x12> as32;
-      InitialKeys() : as32() { }
-      InitialKeys(const InitialKeys& other) : as32(other.as32) { }
+      InitialKeys() : as32() {}
+      InitialKeys(const InitialKeys& other) : as32(other.as32) {}
     } __attribute__((packed));
     union PrivateKeys {
       parray<uint8_t, 0x1000> as8;
       parray<le_uint32_t, 0x400> as32;
-      PrivateKeys() : as32() { }
-      PrivateKeys(const PrivateKeys& other) : as32(other.as32) { }
+      PrivateKeys() : as32() {}
+      PrivateKeys(const PrivateKeys& other) : as32(other.as32) {}
     } __attribute__((packed));
     InitialKeys initial_keys;
     PrivateKeys private_keys;
@@ -136,9 +130,6 @@ protected:
   void tfs1_scramble(uint32_t* out1, uint32_t* out2) const;
   void apply_seed(const void* original_seed, size_t seed_size);
 };
-
-
-
 
 // The following classes provide support for automatically detecting which type
 // of encryption a client is using based on their initial response to the server
@@ -175,8 +166,6 @@ protected:
   std::shared_ptr<const PSOV2OrV3DetectorEncryption> detector_crypt;
   std::shared_ptr<PSOEncryption> active_crypt;
 };
-
-
 
 // The following classes provide support for multiple PSOBB private keys, and
 // the ability to automatically detect which key the client is using based on
@@ -232,8 +221,6 @@ protected:
   bool jsd1_use_detector_seed;
 };
 
-
-
 class JSD0Encryption : public PSOEncryption {
 public:
   JSD0Encryption(const void* seed, size_t seed_size);
@@ -246,7 +233,5 @@ public:
 private:
   uint8_t key;
 };
-
-
 
 void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis);

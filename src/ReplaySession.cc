@@ -5,19 +5,17 @@
 #include <phosg/Time.hh>
 
 #include "Loggers.hh"
-#include "Shell.hh"
 #include "Server.hh"
+#include "Shell.hh"
 
 using namespace std;
 
-
-
 ReplaySession::Event::Event(Type type, uint64_t client_id, size_t line_num)
-  : type(type),
-    client_id(client_id),
-    allow_size_disparity(false),
-    complete(false),
-    line_num(line_num) { }
+    : type(type),
+      client_id(client_id),
+      allow_size_disparity(false),
+      complete(false),
+      line_num(line_num) {}
 
 string ReplaySession::Event::str() const {
   string ret;
@@ -40,26 +38,22 @@ string ReplaySession::Event::str() const {
   return ret;
 }
 
-
-
 ReplaySession::Client::Client(
     ReplaySession* session, uint64_t id, uint16_t port, GameVersion version)
-  : id(id),
-    port(port),
-    version(version),
-    channel(
-      this->version,
-      &ReplaySession::dispatch_on_command_received,
-      &ReplaySession::dispatch_on_error,
-      session,
-      string_printf("R-%" PRIX64, this->id)) { }
+    : id(id),
+      port(port),
+      version(version),
+      channel(
+          this->version,
+          &ReplaySession::dispatch_on_command_received,
+          &ReplaySession::dispatch_on_error,
+          session,
+          string_printf("R-%" PRIX64, this->id)) {}
 
 string ReplaySession::Client::str() const {
   return string_printf("Client[%" PRIu64 ", T-%hu, %s]",
       this->id, this->port, name_for_version(this->version));
 }
-
-
 
 shared_ptr<ReplaySession::Event> ReplaySession::create_event(
     Event::Type type, shared_ptr<Client> c, size_t line_num) {
@@ -242,10 +236,12 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
       uint8_t command;
       if (version == GameVersion::PC) {
         command = check_size_t<PSOCommandHeaderPC>(
-            ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF).command;
+            ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF)
+                      .command;
       } else { // V3
         command = check_size_t<PSOCommandHeaderDCV3>(
-            ev->data, sizeof(PSOCommandHeaderDCV3), 0xFFFF).command;
+            ev->data, sizeof(PSOCommandHeaderDCV3), 0xFFFF)
+                      .command;
       }
       switch (command) {
         case 0x02:
@@ -335,7 +331,8 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
     }
     case GameVersion::BB: {
       uint16_t command = check_size_t<PSOCommandHeaderBB>(
-            ev->data, sizeof(PSOCommandHeaderBB), 0xFFFF).command;
+          ev->data, sizeof(PSOCommandHeaderBB), 0xFFFF)
+                             .command;
       switch (command) {
         case 0x0003: {
           auto& mask = check_size_t<S_ServerInitDefault_BB_03_9B>(
@@ -380,14 +377,14 @@ ReplaySession::ReplaySession(
     shared_ptr<ServerState> state,
     const string& required_access_key,
     const string& required_password)
-  : state(state),
-    required_access_key(required_access_key),
-    required_password(required_password),
-    base(base),
-    commands_sent(0),
-    bytes_sent(0),
-    commands_received(0),
-    bytes_received(0) {
+    : state(state),
+      required_access_key(required_access_key),
+      required_password(required_password),
+      base(base),
+      commands_sent(0),
+      bytes_sent(0),
+      commands_received(0),
+      bytes_received(0) {
   shared_ptr<Event> parsing_command = nullptr;
 
   size_t line_num = 0;
@@ -419,7 +416,7 @@ ReplaySession::ReplaySession(
         if (parsing_command->type == Event::Type::RECEIVE) {
           this->apply_default_mask(parsing_command);
         } else if (parsing_command->type == Event::Type::SEND) {
-            this->check_for_password(parsing_command);
+          this->check_for_password(parsing_command);
         }
         parsing_command = nullptr;
       }

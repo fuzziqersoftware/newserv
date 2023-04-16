@@ -4,18 +4,16 @@
 #include <stddef.h>
 
 #include <array>
-#include <string>
-#include <vector>
-#include <utility>
 #include <phosg/Encoding.hh>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include "LevelTable.hh"
-#include "ItemData.hh"
-#include "Version.hh"
-#include "Text.hh"
 #include "Episode3/DataIndex.hh"
-
-
+#include "ItemData.hh"
+#include "LevelTable.hh"
+#include "Text.hh"
+#include "Version.hh"
 
 struct PlayerBankItem;
 
@@ -67,8 +65,6 @@ struct PlayerBank { // 0x12C8 bytes
   size_t find_item(uint32_t item_id);
 } __attribute__((packed));
 
-
-
 struct PendingItemTrade {
   uint8_t other_client_id;
   bool confirmed; // true if client has sent a D2 command
@@ -80,8 +76,6 @@ struct PendingCardTrade {
   bool confirmed; // true if client has sent an EE D2 command
   std::vector<std::pair<uint32_t, uint32_t>> card_to_count;
 };
-
-
 
 struct PlayerDispDataBB;
 
@@ -192,14 +186,12 @@ struct PlayerDispDataBB {
 
   PlayerDispDataBB() noexcept;
 
-  inline void enforce_v2_limits() { }
+  inline void enforce_v2_limits() {}
   PlayerDispDataDCPCV3 to_dcpcv3() const;
   PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);
   void apply_dressing_room(const PlayerDispDataBBPreview&);
 } __attribute__((packed));
-
-
 
 // TODO: Is this the same for XB as it is for GC? (This struct is based on the
 // GC format)
@@ -212,7 +204,7 @@ struct GuildCardV3 {
   /* 8D */ uint8_t language;
   /* 8E */ uint8_t section_id;
   /* 8F */ uint8_t char_class;
-  /* 90 */ 
+  /* 90 */
 
   GuildCardV3() noexcept;
 } __attribute__((packed));
@@ -252,20 +244,18 @@ struct GuildCardFileBB {
 } __attribute__((packed));
 
 struct KeyAndTeamConfigBB {
-  parray<uint8_t, 0x0114> unknown_a1;      // 0000
-  parray<uint8_t, 0x016C> key_config;      // 0114
+  parray<uint8_t, 0x0114> unknown_a1; // 0000
+  parray<uint8_t, 0x016C> key_config; // 0114
   parray<uint8_t, 0x0038> joystick_config; // 0280
-  le_uint32_t guild_card_number;           // 02B8
-  le_uint32_t team_id;                     // 02BC
-  le_uint64_t team_info;                   // 02C0
-  le_uint16_t team_privilege_level;        // 02C8
-  le_uint16_t reserved;                    // 02CA
-  ptext<char16_t, 0x0010> team_name;       // 02CC
-  parray<uint8_t, 0x0800> team_flag;       // 02EC
-  le_uint32_t team_rewards;                // 0AEC
+  le_uint32_t guild_card_number; // 02B8
+  le_uint32_t team_id; // 02BC
+  le_uint64_t team_info; // 02C0
+  le_uint16_t team_privilege_level; // 02C8
+  le_uint16_t reserved; // 02CA
+  ptext<char16_t, 0x0010> team_name; // 02CC
+  parray<uint8_t, 0x0800> team_flag; // 02EC
+  le_uint32_t team_rewards; // 0AEC
 } __attribute__((packed));
-
-
 
 struct PlayerLobbyDataPC {
   le_uint32_t player_tag = 0;
@@ -328,8 +318,6 @@ struct PlayerLobbyDataBB {
   void clear();
 } __attribute__((packed));
 
-
-
 struct PlayerChallengeDataV3 {
   le_uint32_t client_id;
   struct {
@@ -365,8 +353,6 @@ struct PlayerChallengeDataBB {
   parray<uint8_t, 0x158> unknown_a1;
 } __attribute__((packed));
 
-
-
 template <typename ItemIDT>
 struct ChoiceSearchConfig {
   // 0 = enabled, 1 = disabled. Unused for command C3
@@ -377,8 +363,6 @@ struct ChoiceSearchConfig {
   } __attribute__((packed));
   parray<Entry, 5> entries;
 } __attribute__((packed));
-
-
 
 struct PSOPlayerDataDCPC { // For command 61
   PlayerInventory inventory;
@@ -423,45 +407,43 @@ struct PSOPlayerDataBB { // For command 61
 } __attribute__((packed));
 
 struct PlayerBB { // Used in 00E7 command
-  PlayerInventory inventory;                    // 0000-034C; player
-  PlayerDispDataBB disp;                        // 034C-04DC; player
-  parray<uint8_t, 0x0010> unknown;              // 04DC-04EC; not saved
-  le_uint32_t option_flags;                     // 04EC-04F0; account
-  parray<uint8_t, 0x0208> quest_data1;          // 04F0-06F8; player
-  PlayerBank bank;                              // 06F8-19C0; player
-  le_uint32_t guild_card_number;                // 19C0-19C4; player
-  ptext<char16_t, 0x18> name;                   // 19C4-19F4; player
-  ptext<char16_t, 0x10> team_name;              // 19F4-1A14; player
+  PlayerInventory inventory; // 0000-034C; player
+  PlayerDispDataBB disp; // 034C-04DC; player
+  parray<uint8_t, 0x0010> unknown; // 04DC-04EC; not saved
+  le_uint32_t option_flags; // 04EC-04F0; account
+  parray<uint8_t, 0x0208> quest_data1; // 04F0-06F8; player
+  PlayerBank bank; // 06F8-19C0; player
+  le_uint32_t guild_card_number; // 19C0-19C4; player
+  ptext<char16_t, 0x18> name; // 19C4-19F4; player
+  ptext<char16_t, 0x10> team_name; // 19F4-1A14; player
   ptext<char16_t, 0x58> guild_card_description; // 1A14-1AC4; player
-  uint8_t reserved1;                            // 1AC4-1AC5; player
-  uint8_t reserved2;                            // 1AC5-1AC6; player
-  uint8_t section_id;                           // 1AC6-1AC7; player
-  uint8_t char_class;                           // 1AC7-1AC8; player
-  le_uint32_t unknown3;                         // 1AC8-1ACC; not saved
-  parray<uint8_t, 0x04E0> symbol_chats;         // 1ACC-1FAC; account
-  parray<uint8_t, 0x0A40> shortcuts;            // 1FAC-29EC; account
-  ptext<char16_t, 0x00AC> auto_reply;           // 29EC-2B44; player
-  ptext<char16_t, 0x00AC> info_board;           // 2B44-2C9C; player
-  parray<uint8_t, 0x001C> unknown5;             // 2C9C-2CB8; not saved
-  parray<uint8_t, 0x0140> challenge_data;       // 2CB8-2DF8; player
-  parray<uint8_t, 0x0028> tech_menu_config;     // 2DF8-2E20; player
-  parray<uint8_t, 0x002C> unknown6;             // 2E20-2E4C; not saved
-  parray<uint8_t, 0x0058> quest_data2;          // 2E4C-2EA4; player
-  KeyAndTeamConfigBB key_config;                // 2EA4-3994; account
+  uint8_t reserved1; // 1AC4-1AC5; player
+  uint8_t reserved2; // 1AC5-1AC6; player
+  uint8_t section_id; // 1AC6-1AC7; player
+  uint8_t char_class; // 1AC7-1AC8; player
+  le_uint32_t unknown3; // 1AC8-1ACC; not saved
+  parray<uint8_t, 0x04E0> symbol_chats; // 1ACC-1FAC; account
+  parray<uint8_t, 0x0A40> shortcuts; // 1FAC-29EC; account
+  ptext<char16_t, 0x00AC> auto_reply; // 29EC-2B44; player
+  ptext<char16_t, 0x00AC> info_board; // 2B44-2C9C; player
+  parray<uint8_t, 0x001C> unknown5; // 2C9C-2CB8; not saved
+  parray<uint8_t, 0x0140> challenge_data; // 2CB8-2DF8; player
+  parray<uint8_t, 0x0028> tech_menu_config; // 2DF8-2E20; player
+  parray<uint8_t, 0x002C> unknown6; // 2E20-2E4C; not saved
+  parray<uint8_t, 0x0058> quest_data2; // 2E4C-2EA4; player
+  KeyAndTeamConfigBB key_config; // 2EA4-3994; account
 } __attribute__((packed));
 
-
-
 struct SavedPlayerDataBB { // .nsc file format
-  ptext<char, 0x40>       signature;
+  ptext<char, 0x40> signature;
   PlayerDispDataBBPreview preview;
   ptext<char16_t, 0x00AC> auto_reply;
-  PlayerBank              bank;
+  PlayerBank bank;
   parray<uint8_t, 0x0140> challenge_data;
-  PlayerDispDataBB        disp;
+  PlayerDispDataBB disp;
   ptext<char16_t, 0x0058> guild_card_description;
   ptext<char16_t, 0x00AC> info_board;
-  PlayerInventory         inventory;
+  PlayerInventory inventory;
   parray<uint8_t, 0x0208> quest_data1;
   parray<uint8_t, 0x0058> quest_data2;
   parray<uint8_t, 0x0028> tech_menu_config;
@@ -478,18 +460,16 @@ enum AccountFlag {
 };
 
 struct SavedAccountDataBB { // .nsa file format
-  ptext<char, 0x40>           signature;
+  ptext<char, 0x40> signature;
   parray<le_uint32_t, 0x001E> blocked_senders;
-  GuildCardFileBB             guild_cards;
-  KeyAndTeamConfigBB          key_config;
-  le_uint32_t                 newserv_flags;
-  le_uint32_t                 option_flags;
-  parray<uint8_t, 0x0A40>     shortcuts;
-  parray<uint8_t, 0x04E0>     symbol_chats;
-  ptext<char16_t, 0x0010>     team_name;
+  GuildCardFileBB guild_cards;
+  KeyAndTeamConfigBB key_config;
+  le_uint32_t newserv_flags;
+  le_uint32_t option_flags;
+  parray<uint8_t, 0x0A40> shortcuts;
+  parray<uint8_t, 0x04E0> symbol_chats;
+  ptext<char16_t, 0x0010> team_name;
 } __attribute__((packed));
-
-
 
 class ClientGameData {
 private:
@@ -547,11 +527,7 @@ public:
   PlayerBB export_player_bb();
 };
 
-
-
 uint32_t compute_guild_card_checksum(const void* data, size_t size);
-
-
 
 template <typename DestT, typename SrcT = DestT>
 DestT convert_player_disp_data(const SrcT&) {

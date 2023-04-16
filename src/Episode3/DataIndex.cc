@@ -8,17 +8,15 @@
 #include <phosg/Random.hh>
 #include <phosg/Time.hh>
 
-#include "../Loggers.hh"
 #include "../Compression.hh"
+#include "../Loggers.hh"
 #include "../PSOEncryption.hh"
-#include "../Text.hh"
 #include "../Quest.hh"
+#include "../Text.hh"
 
 using namespace std;
 
 namespace Episode3 {
-
-
 
 const char* name_for_attack_medium(AttackMedium medium) {
   switch (medium) {
@@ -37,12 +35,13 @@ const char* name_for_attack_medium(AttackMedium medium) {
   }
 }
 
-
-
-Location::Location() : Location(0, 0) { }
-Location::Location(uint8_t x, uint8_t y) : Location(x, y, Direction::RIGHT) { }
+Location::Location() : Location(0, 0) {}
+Location::Location(uint8_t x, uint8_t y) : Location(x, y, Direction::RIGHT) {}
 Location::Location(uint8_t x, uint8_t y, Direction direction)
-  : x(x), y(y), direction(direction), unused(0) { }
+    : x(x),
+      y(y),
+      direction(direction),
+      unused(0) {}
 
 bool Location::operator==(const Location& other) const {
   return (this->x == other.x) &&
@@ -56,7 +55,7 @@ bool Location::operator!=(const Location& other) const {
 
 std::string Location::str() const {
   return string_printf("Location[x=%hhu, y=%hhu, dir=%s, u=%hhu]",
-      this->x, this->y, name_for_direction(this->direction), this->unused);
+                       this->x, this->y, name_for_direction(this->direction), this->unused);
 }
 
 void Location::clear() {
@@ -72,8 +71,6 @@ void Location::clear_FF() {
   this->direction = Direction::INVALID_FF;
   this->unused = 0xFF;
 }
-
-
 
 Direction turn_left(Direction d) {
   switch (d) {
@@ -137,65 +134,61 @@ const char* name_for_direction(Direction d) {
   }
 }
 
-
-
 bool card_class_is_tech_like(CardClass cc) {
   return (cc == CardClass::TECH) ||
          (cc == CardClass::PHOTON_BLAST) ||
          (cc == CardClass::BOSS_TECH);
 }
 
-
-
 static const vector<const char*> name_for_card_type({
-  "HunterSC",
-  "ArkzSC",
-  "Item",
-  "Creature",
-  "Action",
-  "Assist",
+    "HunterSC",
+    "ArkzSC",
+    "Item",
+    "Creature",
+    "Action",
+    "Assist",
 });
 
 static const unordered_map<string, const char*> description_for_expr_token({
-  {"f",   "Number of FCs controlled by current SC"},
-  {"d",   "Die roll"},
-  {"ap",  "Attacker effective AP"},
-  {"tp",  "Attacker effective TP"},
-  {"hp",  "Current HP"},
-  {"mhp", "Maximum HP"},
-  {"dm",  "Physical damage"},
-  {"tdm", "Technique damage"},
-  {"tf",  "Number of SC\'s destroyed FCs"},
-  {"ac",  "Remaining ATK points"},
-  {"php", "Maximum HP"},
-  {"dc",  "Die roll"},
-  {"cs",  "Card set cost"},
-  {"a",   "Number of FCs on all teams"},
-  {"kap", "Action cards AP"},
-  {"ktp", "Action cards TP"},
-  {"dn",  "Unknown: dn"},
-  {"hf",  "Number of item or creature cards in hand"},
-  {"df",  "Number of destroyed ally FCs (including SC\'s own)"},
-  {"ff",  "Number of ally FCs (including SC\'s own)"},
-  {"ef",  "Number of enemy FCs"},
-  {"bi",  "Number of Native FCs on either team"},
-  {"ab",  "Number of A.Beast FCs on either team"},
-  {"mc",  "Number of Machine FCs on either team"},
-  {"dk",  "Number of Dark FCs on either team"},
-  {"sa",  "Number of Sword-type items on either team"},
-  {"gn",  "Number of Gun-type items on either team"},
-  {"wd",  "Number of Cane-type items on either team"},
-  {"tt",  "Physical damage"},
-  {"lv",  "Dice boost"},
-  {"adm", "SC attack damage"},
-  {"ddm", "Defending damage"},
-  {"sat", "Number of Sword-type items on SC\'s team"},
-  {"edm", "Defending damage"}, // TODO: How is this different from ddm?
-  {"ldm", "Unknown: ldm"}, // Unused
-  {"rdm", "Defending damage"}, // TODO: How is this different from ddm/edm?
-  {"fdm", "Final damage (after defense)"},
-  {"ndm", "Unknown: ndm"}, // Unused
-  {"ehp", "Attacker HP"},
+    {"f", "Number of FCs controlled by current SC"},
+    {"d", "Die roll"},
+    {"ap", "Attacker effective AP"},
+    {"tp", "Attacker effective TP"},
+    {"hp", "Current HP"},
+    {"mhp", "Maximum HP"},
+    {"dm", "Physical damage"},
+    {"tdm", "Technique damage"},
+    {"tf", "Number of SC\'s destroyed FCs"},
+    {"ac", "Remaining ATK points"},
+    {"php", "Maximum HP"},
+    {"dc", "Die roll"},
+    {"cs", "Card set cost"},
+    {"a", "Number of FCs on all teams"},
+    {"kap", "Action cards AP"},
+    {"ktp", "Action cards TP"},
+    {"dn", "Unknown: dn"},
+    {"hf", "Number of item or creature cards in hand"},
+    {"df", "Number of destroyed ally FCs (including SC\'s own)"},
+    {"ff", "Number of ally FCs (including SC\'s own)"},
+    {"ef", "Number of enemy FCs"},
+    {"bi", "Number of Native FCs on either team"},
+    {"ab", "Number of A.Beast FCs on either team"},
+    {"mc", "Number of Machine FCs on either team"},
+    {"dk", "Number of Dark FCs on either team"},
+    {"sa", "Number of Sword-type items on either team"},
+    {"gn", "Number of Gun-type items on either team"},
+    {"wd", "Number of Cane-type items on either team"},
+    {"tt", "Physical damage"},
+    {"lv", "Dice boost"},
+    {"adm", "SC attack damage"},
+    {"ddm", "Defending damage"},
+    {"sat", "Number of Sword-type items on SC\'s team"},
+    {"edm", "Defending damage"}, // TODO: How is this different from ddm?
+    {"ldm", "Unknown: ldm"}, // Unused
+    {"rdm", "Defending damage"}, // TODO: How is this different from ddm/edm?
+    {"fdm", "Final damage (after defense)"},
+    {"ndm", "Unknown: ndm"}, // Unused
+    {"ehp", "Attacker HP"},
 });
 
 // Arguments are encoded as 3-character null-terminated strings (why?!), and are
@@ -224,82 +217,82 @@ static const unordered_map<string, const char*> description_for_expr_token({
 // tXX = lasts XX turns, or activate after XX turns
 
 static const vector<const char*> description_for_n_condition({
-  /* n00 */ "Always true",
-  /* n01 */ "Card is Hunters-side SC",
-  /* n02 */ "Destroyed with a single attack",
-  /* n03 */ "Technique or PB action card was used",
-  /* n04 */ "Attack has Pierce",
-  /* n05 */ "Attack has Rampage",
-  /* n06 */ "Native attribute",
-  /* n07 */ "A.Beast attribute",
-  /* n08 */ "Machine attribute",
-  /* n09 */ "Dark attribute",
-  /* n10 */ "Sword-type item",
-  /* n11 */ "Gun-type item",
-  /* n12 */ "Cane-type item",
-  /* n13 */ "Guard item or MAG",
-  /* n14 */ "Story Character",
-  /* n15 */ "Attacker does not use action cards",
-  /* n16 */ "Aerial attribute",
-  /* n17 */ "Same AP as opponent",
-  /* n18 */ "Any target is an SC",
-  /* n19 */ "Has Paralyzed condition",
-  /* n20 */ "Has Frozen condition",
-  /* n21 */ "???", // TODO: This appears related to Pierce/Rampage
-  /* n22 */ "???", // TODO: This appears related to Pierce/Rampage
+    /* n00 */ "Always true",
+    /* n01 */ "Card is Hunters-side SC",
+    /* n02 */ "Destroyed with a single attack",
+    /* n03 */ "Technique or PB action card was used",
+    /* n04 */ "Attack has Pierce",
+    /* n05 */ "Attack has Rampage",
+    /* n06 */ "Native attribute",
+    /* n07 */ "A.Beast attribute",
+    /* n08 */ "Machine attribute",
+    /* n09 */ "Dark attribute",
+    /* n10 */ "Sword-type item",
+    /* n11 */ "Gun-type item",
+    /* n12 */ "Cane-type item",
+    /* n13 */ "Guard item or MAG",
+    /* n14 */ "Story Character",
+    /* n15 */ "Attacker does not use action cards",
+    /* n16 */ "Aerial attribute",
+    /* n17 */ "Same AP as opponent",
+    /* n18 */ "Any target is an SC",
+    /* n19 */ "Has Paralyzed condition",
+    /* n20 */ "Has Frozen condition",
+    /* n21 */ "???", // TODO: This appears related to Pierce/Rampage
+    /* n22 */ "???", // TODO: This appears related to Pierce/Rampage
 });
 
 static const vector<const char*> description_for_p_target({
-  /* p00 */ "Unknown: p00", // Unused; probably invalid
-  /* p01 */ "SC / FC who set the card",
-  /* p02 */ "Attacking SC / FC",
-  /* p03 */ "Unknown: p03", // Unused
-  /* p04 */ "Unknown: p04", // Unused
-  /* p05 */ "SC / FC who set the card", // Identical to p01
-  /* p06 */ "??? (TODO)",
-  /* p07 */ "??? (TODO; Weakness)",
-  /* p08 */ "FC\'s owner SC",
-  /* p09 */ "Unknown: p09", // Unused
-  /* p10 */ "All ally FCs",
-  /* p11 */ "All ally FCs", // TODO: how is this different from p10?
-  /* p12 */ "All non-aerial FCs on both teams",
-  /* p13 */ "All FCs on both teams that are Frozen",
-  /* p14 */ "All FCs on both teams that have <= 3 HP",
-  /* p15 */ "All FCs except SCs", // TODO: used during attacks only?
-  /* p16 */ "All FCs except SCs", // TODO: used during attacks only? how is this different from p15?
-  /* p17 */ "This card",
-  /* p18 */ "SC who equipped this card",
-  /* p19 */ "Unknown: p19", // Unused
-  /* p20 */ "Unknown: p20", // Unused
-  /* p21 */ "Unknown: p21", // Unused
-  /* p22 */ "All characters (SCs & FCs) including this card", // TODO: But why does Shifta apply only to allies then?
-  /* p23 */ "All characters (SCs & FCs) except this card",
-  /* p24 */ "All FCs on both teams that have Paralysis",
-  /* p25 */ "Unknown: p25", // Unused
-  /* p26 */ "Unknown: p26", // Unused
-  /* p27 */ "Unknown: p27", // Unused
-  /* p28 */ "Unknown: p28", // Unused
-  /* p29 */ "Unknown: p29", // Unused
-  /* p30 */ "Unknown: p30", // Unused
-  /* p31 */ "Unknown: p31", // Unused
-  /* p32 */ "Unknown: p32", // Unused
-  /* p33 */ "Unknown: p33", // Unused
-  /* p34 */ "Unknown: p34", // Unused
-  /* p35 */ "All characters (SCs & FCs) within range", // Used for Explosion effect
-  /* p36 */ "All ally SCs within range, but not the caster", // Resta
-  /* p37 */ "All FCs or all opponent FCs (TODO)", // TODO: when to use which selector? is a3 involved here somehow?
-  /* p38 */ "All allies except items within range (and not this card)",
-  /* p39 */ "All FCs that cost 4 or more points",
-  /* p40 */ "All FCs that cost 3 or fewer points",
-  /* p41 */ "Unknown: p41", // Unused
-  /* p42 */ "Attacker during defense phase", // Only used by TP Defense
-  /* p43 */ "Owner SC of defending FC during attack",
-  /* p44 */ "SC\'s own creature FCs within range",
-  /* p45 */ "Both attacker and defender", // Used for Snatch, which moves EXP from one to the other
-  /* p46 */ "All SCs & FCs one space left or right of this card",
-  /* p47 */ "FC\'s owner Boss SC", // Only used for Gibbles+ which explicitly mentions Boss SC, so it looks like this is p08 but for bosses
-  /* p48 */ "Everything within range, including this card\'s user", // Madness
-  /* p49 */ "All ally FCs within range except this card",
+    /* p00 */ "Unknown: p00", // Unused; probably invalid
+    /* p01 */ "SC / FC who set the card",
+    /* p02 */ "Attacking SC / FC",
+    /* p03 */ "Unknown: p03", // Unused
+    /* p04 */ "Unknown: p04", // Unused
+    /* p05 */ "SC / FC who set the card", // Identical to p01
+    /* p06 */ "??? (TODO)",
+    /* p07 */ "??? (TODO; Weakness)",
+    /* p08 */ "FC\'s owner SC",
+    /* p09 */ "Unknown: p09", // Unused
+    /* p10 */ "All ally FCs",
+    /* p11 */ "All ally FCs", // TODO: how is this different from p10?
+    /* p12 */ "All non-aerial FCs on both teams",
+    /* p13 */ "All FCs on both teams that are Frozen",
+    /* p14 */ "All FCs on both teams that have <= 3 HP",
+    /* p15 */ "All FCs except SCs", // TODO: used during attacks only?
+    /* p16 */ "All FCs except SCs", // TODO: used during attacks only? how is this different from p15?
+    /* p17 */ "This card",
+    /* p18 */ "SC who equipped this card",
+    /* p19 */ "Unknown: p19", // Unused
+    /* p20 */ "Unknown: p20", // Unused
+    /* p21 */ "Unknown: p21", // Unused
+    /* p22 */ "All characters (SCs & FCs) including this card", // TODO: But why does Shifta apply only to allies then?
+    /* p23 */ "All characters (SCs & FCs) except this card",
+    /* p24 */ "All FCs on both teams that have Paralysis",
+    /* p25 */ "Unknown: p25", // Unused
+    /* p26 */ "Unknown: p26", // Unused
+    /* p27 */ "Unknown: p27", // Unused
+    /* p28 */ "Unknown: p28", // Unused
+    /* p29 */ "Unknown: p29", // Unused
+    /* p30 */ "Unknown: p30", // Unused
+    /* p31 */ "Unknown: p31", // Unused
+    /* p32 */ "Unknown: p32", // Unused
+    /* p33 */ "Unknown: p33", // Unused
+    /* p34 */ "Unknown: p34", // Unused
+    /* p35 */ "All characters (SCs & FCs) within range", // Used for Explosion effect
+    /* p36 */ "All ally SCs within range, but not the caster", // Resta
+    /* p37 */ "All FCs or all opponent FCs (TODO)", // TODO: when to use which selector? is a3 involved here somehow?
+    /* p38 */ "All allies except items within range (and not this card)",
+    /* p39 */ "All FCs that cost 4 or more points",
+    /* p40 */ "All FCs that cost 3 or fewer points",
+    /* p41 */ "Unknown: p41", // Unused
+    /* p42 */ "Attacker during defense phase", // Only used by TP Defense
+    /* p43 */ "Owner SC of defending FC during attack",
+    /* p44 */ "SC\'s own creature FCs within range",
+    /* p45 */ "Both attacker and defender", // Used for Snatch, which moves EXP from one to the other
+    /* p46 */ "All SCs & FCs one space left or right of this card",
+    /* p47 */ "FC\'s owner Boss SC", // Only used for Gibbles+ which explicitly mentions Boss SC, so it looks like this is p08 but for bosses
+    /* p48 */ "Everything within range, including this card\'s user", // Madness
+    /* p49 */ "All ally FCs within range except this card",
 });
 
 struct ConditionDescription {
@@ -309,132 +302,132 @@ struct ConditionDescription {
 };
 
 static const vector<ConditionDescription> description_for_condition_type({
-  /* 0x00 */ {false, "NONE",                 nullptr},
-  /* 0x01 */ {true,  "AP_BOOST",             "Temporarily increase AP by N"},
-  /* 0x02 */ {false, "RAMPAGE",              "Rampage"},
-  /* 0x03 */ {true,  "MULTI_STRIKE",         "Duplicate attack N times"},
-  /* 0x04 */ {true,  "DAMAGE_MOD_1",         "Set attack damage / AP to N after action cards applied (step 1)"},
-  /* 0x05 */ {false, "IMMOBILE",             "Give Immobile condition"},
-  /* 0x06 */ {false, "HOLD",                 "Give Hold condition"},
-  /* 0x07 */ {false, "UNKNOWN_07",           nullptr},
-  /* 0x08 */ {true,  "TP_BOOST",             "Add N TP temporarily during attack"},
-  /* 0x09 */ {true,  "GIVE_DAMAGE",          "Cause direct N HP loss"},
-  /* 0x0A */ {false, "GUOM",                 "Give Guom condition"},
-  /* 0x0B */ {false, "PARALYZE",             "Give Paralysis condition"},
-  /* 0x0C */ {false, "UNKNOWN_0C",           nullptr},
-  /* 0x0D */ {false, "A_H_SWAP",             "Swap AP and HP temporarily"},
-  /* 0x0E */ {false, "PIERCE",               "Attack SC directly even if they have items equipped"},
-  /* 0x0F */ {false, "UNKNOWN_0F",           nullptr},
-  /* 0x10 */ {true,  "HEAL",                 "Increase HP by N"},
-  /* 0x11 */ {false, "RETURN_TO_HAND",       "Return card to hand"},
-  /* 0x12 */ {false, "UNKNOWN_12",           nullptr},
-  /* 0x13 */ {false, "UNKNOWN_13",           nullptr},
-  /* 0x14 */ {false, "ACID",                 "Give Acid condition"},
-  /* 0x15 */ {false, "UNKNOWN_15",           nullptr},
-  /* 0x16 */ {true,  "MIGHTY_KNUCKLE",       "Temporarily increase AP by N, and set ATK dice to zero"},
-  /* 0x17 */ {true,  "UNIT_BLOW",            "Temporarily increase AP by N * number of this card set within phase"},
-  /* 0x18 */ {false, "CURSE",                "Give Curse condition"},
-  /* 0x19 */ {false, "COMBO_AP",             "Temporarily increase AP by number of this card set within phase"},
-  /* 0x1A */ {false, "PIERCE_RAMPAGE_BLOCK", "Block attack if Pierce/Rampage (?)"},
-  /* 0x1B */ {false, "ABILITY_TRAP",         "Temporarily disable opponent abilities"},
-  /* 0x1C */ {false, "FREEZE",               "Give Freeze condition"},
-  /* 0x1D */ {false, "ANTI_ABNORMALITY_1",   "Cure all conditions"},
-  /* 0x1E */ {false, "UNKNOWN_1E",           nullptr},
-  /* 0x1F */ {false, "EXPLOSION",            "Damage all SCs and FCs by number of this same card set * 2"},
-  /* 0x20 */ {false, "UNKNOWN_20",           nullptr},
-  /* 0x21 */ {false, "UNKNOWN_21",           nullptr},
-  /* 0x22 */ {false, "UNKNOWN_22",           nullptr},
-  /* 0x23 */ {false, "RETURN_TO_DECK",       "Cancel discard and move to bottom of deck instead"},
-  /* 0x24 */ {false, "AERIAL",               "Give Aerial status"},
-  /* 0x25 */ {true,  "AP_LOSS",              "Make attacker temporarily lose N AP during defense"},
-  /* 0x26 */ {true,  "BONUS_FROM_LEADER",    "Gain AP equal to the number of cards of type N on the field"},
-  /* 0x27 */ {false, "FREE_MANEUVER",        "Enable movement over occupied tiles"},
-  /* 0x28 */ {false, "HASTE",                "Make move actions free"},
-  /* 0x29 */ {true,  "CLONE",                "Make setting this card free if at least one card of type N is already on the field"},
-  /* 0x2A */ {true,  "DEF_DISABLE_BY_COST",  "Disable use of any defense cards costing between (N / 10) and (N % 10) points, inclusive"},
-  /* 0x2B */ {true,  "FILIAL",               "Increase controlling SC\'s HP by N when this card is destroyed"},
-  /* 0x2C */ {true,  "SNATCH",               "Steal N EXP during attack"},
-  /* 0x2D */ {true,  "HAND_DISRUPTER",       "Discard N cards from hand immediately"},
-  /* 0x2E */ {false, "DROP",                 "Give Drop condition"},
-  /* 0x2F */ {false, "ACTION_DISRUPTER",     "Destroy all action cards used by attacker"},
-  /* 0x30 */ {true,  "SET_HP",               "Set HP to N"},
-  /* 0x31 */ {false, "NATIVE_SHIELD",        "Block attacks from Native creatures"},
-  /* 0x32 */ {false, "A_BEAST_SHIELD",       "Block attacks from A.Beast creatures"},
-  /* 0x33 */ {false, "MACHINE_SHIELD",       "Block attacks from Machine creatures"},
-  /* 0x34 */ {false, "DARK_SHIELD",          "Block attacks from Dark creatures"},
-  /* 0x35 */ {false, "SWORD_SHIELD",         "Block attacks from Sword items"},
-  /* 0x36 */ {false, "GUN_SHIELD",           "Block attacks from Gun items"},
-  /* 0x37 */ {false, "CANE_SHIELD",          "Block attacks from Cane items"},
-  /* 0x38 */ {false, "UNKNOWN_38",           nullptr},
-  /* 0x39 */ {false, "UNKNOWN_39",           nullptr},
-  /* 0x3A */ {false, "DEFENDER",             "Make attacks go to setter of this card instead of original target"},
-  /* 0x3B */ {false, "SURVIVAL_DECOYS",      "Redirect damage for multi-sided attack"},
-  /* 0x3C */ {true,  "GIVE_OR_TAKE_EXP",     "Give N EXP, or take if N is negative"},
-  /* 0x3D */ {false, "UNKNOWN_3D",           nullptr},
-  /* 0x3E */ {false, "DEATH_COMPANION",      "If this card has 1 or 2 HP, set its HP to N"},
-  /* 0x3F */ {true,  "EXP_DECOY",            "If defender has EXP, lose EXP instead of getting damage when attacked"},
-  /* 0x40 */ {true,  "SET_MV",               "Set MV to N"},
-  /* 0x41 */ {true,  "GROUP",                "Temporarily increase AP by N * number of this card on field, excluding itself"},
-  /* 0x42 */ {false, "BERSERK",              "User of this card receives the same damage as target, and isn\'t helped by target\'s defense cards"},
-  /* 0x43 */ {false, "GUARD_CREATURE",       "Attacks on controlling SC damage this card instead"},
-  /* 0x44 */ {false, "TECH",                 "Technique cards cost 1 fewer ATK point"},
-  /* 0x45 */ {false, "BIG_SWING",            "Increase all attacking ATK costs by 1"},
-  /* 0x46 */ {false, "UNKNOWN_46",           nullptr},
-  /* 0x47 */ {false, "SHIELD_WEAPON",        "Limit attacker\'s choice of target to guard items"},
-  /* 0x48 */ {false, "ATK_DICE_BOOST",       "Increase ATK dice roll by 1"},
-  /* 0x49 */ {false, "UNKNOWN_49",           nullptr},
-  /* 0x4A */ {false, "MAJOR_PIERCE",         "If SC has over half of max HP, attacks target SC instead of equipped items"},
-  /* 0x4B */ {false, "HEAVY_PIERCE",         "If SC has 3 or more items equipped, attacks target SC instead of equipped items"},
-  /* 0x4C */ {false, "MAJOR_RAMPAGE",        "If SC has over half of max HP, attacks target SC and all equipped items"},
-  /* 0x4D */ {false, "HEAVY_RAMPAGE",        "If SC has 3 or more items equipped, attacks target SC and all equipped items"},
-  /* 0x4E */ {true,  "AP_GROWTH",            "Permanently increase AP by N"},
-  /* 0x4F */ {true,  "TP_GROWTH",            "Permanently increase TP by N"},
-  /* 0x50 */ {true,  "REBORN",               "If any card of type N is on the field, this card goes to the hand when destroyed instead of being discarded"},
-  /* 0x51 */ {true,  "COPY",                 "Temporarily set AP/TP to N percent (or 100% if N is 0) of opponent\'s values"},
-  /* 0x52 */ {false, "UNKNOWN_52",           nullptr},
-  /* 0x53 */ {true,  "MISC_GUARDS",          "Add N to card\'s defense value"},
-  /* 0x54 */ {true,  "AP_OVERRIDE",          "Set AP to N temporarily"},
-  /* 0x55 */ {true,  "TP_OVERRIDE",          "Set TP to N temporarily"},
-  /* 0x56 */ {false, "RETURN",               "Return card to hand on destruction instead of discarding"},
-  /* 0x57 */ {false, "A_T_SWAP_PERM",        "Permanently swap AP and TP"},
-  /* 0x58 */ {false, "A_H_SWAP_PERM",        "Permanently swap AP and HP"},
-  /* 0x59 */ {true,  "SLAYERS_ASSASSINS",    "Temporarily increase AP during attack"},
-  /* 0x5A */ {false, "ANTI_ABNORMALITY_2",   "Remove all conditions"},
-  /* 0x5B */ {false, "FIXED_RANGE",          "Use SC\'s range instead of weapon or attack card ranges"},
-  /* 0x5C */ {false, "ELUDE",                "SC does not lose HP when equipped items are destroyed"},
-  /* 0x5D */ {false, "PARRY",                "Forward attack to a random FC within one tile of original target, excluding attacker and original target"},
-  /* 0x5E */ {false, "BLOCK_ATTACK",         "Completely block attack"},
-  /* 0x5F */ {false, "UNKNOWN_5F",           nullptr},
-  /* 0x60 */ {false, "UNKNOWN_60",           nullptr},
-  /* 0x61 */ {true,  "COMBO_TP",             "Gain TP equal to the number of cards of type N on the field"},
-  /* 0x62 */ {true,  "MISC_AP_BONUSES",      "Temporarily increase AP by N"},
-  /* 0x63 */ {true,  "MISC_TP_BONUSES",      "Temporarily increase TP by N"},
-  /* 0x64 */ {false, "UNKNOWN_64",           nullptr},
-  /* 0x65 */ {true,  "MISC_DEFENSE_BONUSES", "Decrease damage by N"},
-  /* 0x66 */ {true,  "MOSTLY_HALFGUARDS",    "Reduce damage from incoming attack by N"},
-  /* 0x67 */ {false, "PERIODIC_FIELD",       "Swap immunity to tech or physical attacks"},
-  /* 0x68 */ {false, "FC_LIMIT_BY_COUNT",    "Change FC limit from 8 ATK points total to 4 FCs total"},
-  /* 0x69 */ {false, "UNKNOWN_69",           nullptr},
-  /* 0x6A */ {true,  "MV_BONUS",             "Increase MV by N"},
-  /* 0x6B */ {true,  "FORWARD_DAMAGE",       "Give N damage back to attacker during defense (?) (TODO)"},
-  /* 0x6C */ {true,  "WEAK_SPOT_INFLUENCE",  "Temporarily decrease AP by N"},
-  /* 0x6D */ {true,  "DAMAGE_MODIFIER_2",    "Set attack damage / AP after action cards applied (step 2)"},
-  /* 0x6E */ {true,  "WEAK_HIT_BLOCK",       "Block all attacks of N damage or less"},
-  /* 0x6F */ {true,  "AP_SILENCE",           "Temporarily decrease AP of opponent by N"},
-  /* 0x70 */ {true,  "TP_SILENCE",           "Temporarily decrease TP of opponent by N"},
-  /* 0x71 */ {false, "A_T_SWAP",             "Temporarily swap AP and TP"},
-  /* 0x72 */ {true,  "HALFGUARD",            "Halve damage from attacks that would inflict N or more damage"},
-  /* 0x73 */ {false, "UNKNOWN_73",           nullptr},
-  /* 0x74 */ {true,  "RAMPAGE_AP_LOSS",      "Temporarily reduce AP by N"},
-  /* 0x75 */ {false, "UNKNOWN_75",           nullptr},
-  /* 0x76 */ {false, "REFLECT",              "Generate reverse attack"},
-  /* 0x77 */ {false, "UNKNOWN_77",           nullptr},
-  /* 0x78 */ {false, "ANY",                  nullptr}, // Treated as "any condition" in find functions
-  /* 0x79 */ {false, "UNKNOWN_79",           nullptr},
-  /* 0x7A */ {false, "UNKNOWN_7A",           nullptr},
-  /* 0x7B */ {false, "UNKNOWN_7B",           nullptr},
-  /* 0x7C */ {false, "UNKNOWN_7C",           nullptr},
-  /* 0x7D */ {false, "UNKNOWN_7D",           nullptr},
+    /* 0x00 */ {false, "NONE", nullptr},
+    /* 0x01 */ {true, "AP_BOOST", "Temporarily increase AP by N"},
+    /* 0x02 */ {false, "RAMPAGE", "Rampage"},
+    /* 0x03 */ {true, "MULTI_STRIKE", "Duplicate attack N times"},
+    /* 0x04 */ {true, "DAMAGE_MOD_1", "Set attack damage / AP to N after action cards applied (step 1)"},
+    /* 0x05 */ {false, "IMMOBILE", "Give Immobile condition"},
+    /* 0x06 */ {false, "HOLD", "Give Hold condition"},
+    /* 0x07 */ {false, "UNKNOWN_07", nullptr},
+    /* 0x08 */ {true, "TP_BOOST", "Add N TP temporarily during attack"},
+    /* 0x09 */ {true, "GIVE_DAMAGE", "Cause direct N HP loss"},
+    /* 0x0A */ {false, "GUOM", "Give Guom condition"},
+    /* 0x0B */ {false, "PARALYZE", "Give Paralysis condition"},
+    /* 0x0C */ {false, "UNKNOWN_0C", nullptr},
+    /* 0x0D */ {false, "A_H_SWAP", "Swap AP and HP temporarily"},
+    /* 0x0E */ {false, "PIERCE", "Attack SC directly even if they have items equipped"},
+    /* 0x0F */ {false, "UNKNOWN_0F", nullptr},
+    /* 0x10 */ {true, "HEAL", "Increase HP by N"},
+    /* 0x11 */ {false, "RETURN_TO_HAND", "Return card to hand"},
+    /* 0x12 */ {false, "UNKNOWN_12", nullptr},
+    /* 0x13 */ {false, "UNKNOWN_13", nullptr},
+    /* 0x14 */ {false, "ACID", "Give Acid condition"},
+    /* 0x15 */ {false, "UNKNOWN_15", nullptr},
+    /* 0x16 */ {true, "MIGHTY_KNUCKLE", "Temporarily increase AP by N, and set ATK dice to zero"},
+    /* 0x17 */ {true, "UNIT_BLOW", "Temporarily increase AP by N * number of this card set within phase"},
+    /* 0x18 */ {false, "CURSE", "Give Curse condition"},
+    /* 0x19 */ {false, "COMBO_AP", "Temporarily increase AP by number of this card set within phase"},
+    /* 0x1A */ {false, "PIERCE_RAMPAGE_BLOCK", "Block attack if Pierce/Rampage (?)"},
+    /* 0x1B */ {false, "ABILITY_TRAP", "Temporarily disable opponent abilities"},
+    /* 0x1C */ {false, "FREEZE", "Give Freeze condition"},
+    /* 0x1D */ {false, "ANTI_ABNORMALITY_1", "Cure all conditions"},
+    /* 0x1E */ {false, "UNKNOWN_1E", nullptr},
+    /* 0x1F */ {false, "EXPLOSION", "Damage all SCs and FCs by number of this same card set * 2"},
+    /* 0x20 */ {false, "UNKNOWN_20", nullptr},
+    /* 0x21 */ {false, "UNKNOWN_21", nullptr},
+    /* 0x22 */ {false, "UNKNOWN_22", nullptr},
+    /* 0x23 */ {false, "RETURN_TO_DECK", "Cancel discard and move to bottom of deck instead"},
+    /* 0x24 */ {false, "AERIAL", "Give Aerial status"},
+    /* 0x25 */ {true, "AP_LOSS", "Make attacker temporarily lose N AP during defense"},
+    /* 0x26 */ {true, "BONUS_FROM_LEADER", "Gain AP equal to the number of cards of type N on the field"},
+    /* 0x27 */ {false, "FREE_MANEUVER", "Enable movement over occupied tiles"},
+    /* 0x28 */ {false, "HASTE", "Make move actions free"},
+    /* 0x29 */ {true, "CLONE", "Make setting this card free if at least one card of type N is already on the field"},
+    /* 0x2A */ {true, "DEF_DISABLE_BY_COST", "Disable use of any defense cards costing between (N / 10) and (N % 10) points, inclusive"},
+    /* 0x2B */ {true, "FILIAL", "Increase controlling SC\'s HP by N when this card is destroyed"},
+    /* 0x2C */ {true, "SNATCH", "Steal N EXP during attack"},
+    /* 0x2D */ {true, "HAND_DISRUPTER", "Discard N cards from hand immediately"},
+    /* 0x2E */ {false, "DROP", "Give Drop condition"},
+    /* 0x2F */ {false, "ACTION_DISRUPTER", "Destroy all action cards used by attacker"},
+    /* 0x30 */ {true, "SET_HP", "Set HP to N"},
+    /* 0x31 */ {false, "NATIVE_SHIELD", "Block attacks from Native creatures"},
+    /* 0x32 */ {false, "A_BEAST_SHIELD", "Block attacks from A.Beast creatures"},
+    /* 0x33 */ {false, "MACHINE_SHIELD", "Block attacks from Machine creatures"},
+    /* 0x34 */ {false, "DARK_SHIELD", "Block attacks from Dark creatures"},
+    /* 0x35 */ {false, "SWORD_SHIELD", "Block attacks from Sword items"},
+    /* 0x36 */ {false, "GUN_SHIELD", "Block attacks from Gun items"},
+    /* 0x37 */ {false, "CANE_SHIELD", "Block attacks from Cane items"},
+    /* 0x38 */ {false, "UNKNOWN_38", nullptr},
+    /* 0x39 */ {false, "UNKNOWN_39", nullptr},
+    /* 0x3A */ {false, "DEFENDER", "Make attacks go to setter of this card instead of original target"},
+    /* 0x3B */ {false, "SURVIVAL_DECOYS", "Redirect damage for multi-sided attack"},
+    /* 0x3C */ {true, "GIVE_OR_TAKE_EXP", "Give N EXP, or take if N is negative"},
+    /* 0x3D */ {false, "UNKNOWN_3D", nullptr},
+    /* 0x3E */ {false, "DEATH_COMPANION", "If this card has 1 or 2 HP, set its HP to N"},
+    /* 0x3F */ {true, "EXP_DECOY", "If defender has EXP, lose EXP instead of getting damage when attacked"},
+    /* 0x40 */ {true, "SET_MV", "Set MV to N"},
+    /* 0x41 */ {true, "GROUP", "Temporarily increase AP by N * number of this card on field, excluding itself"},
+    /* 0x42 */ {false, "BERSERK", "User of this card receives the same damage as target, and isn\'t helped by target\'s defense cards"},
+    /* 0x43 */ {false, "GUARD_CREATURE", "Attacks on controlling SC damage this card instead"},
+    /* 0x44 */ {false, "TECH", "Technique cards cost 1 fewer ATK point"},
+    /* 0x45 */ {false, "BIG_SWING", "Increase all attacking ATK costs by 1"},
+    /* 0x46 */ {false, "UNKNOWN_46", nullptr},
+    /* 0x47 */ {false, "SHIELD_WEAPON", "Limit attacker\'s choice of target to guard items"},
+    /* 0x48 */ {false, "ATK_DICE_BOOST", "Increase ATK dice roll by 1"},
+    /* 0x49 */ {false, "UNKNOWN_49", nullptr},
+    /* 0x4A */ {false, "MAJOR_PIERCE", "If SC has over half of max HP, attacks target SC instead of equipped items"},
+    /* 0x4B */ {false, "HEAVY_PIERCE", "If SC has 3 or more items equipped, attacks target SC instead of equipped items"},
+    /* 0x4C */ {false, "MAJOR_RAMPAGE", "If SC has over half of max HP, attacks target SC and all equipped items"},
+    /* 0x4D */ {false, "HEAVY_RAMPAGE", "If SC has 3 or more items equipped, attacks target SC and all equipped items"},
+    /* 0x4E */ {true, "AP_GROWTH", "Permanently increase AP by N"},
+    /* 0x4F */ {true, "TP_GROWTH", "Permanently increase TP by N"},
+    /* 0x50 */ {true, "REBORN", "If any card of type N is on the field, this card goes to the hand when destroyed instead of being discarded"},
+    /* 0x51 */ {true, "COPY", "Temporarily set AP/TP to N percent (or 100% if N is 0) of opponent\'s values"},
+    /* 0x52 */ {false, "UNKNOWN_52", nullptr},
+    /* 0x53 */ {true, "MISC_GUARDS", "Add N to card\'s defense value"},
+    /* 0x54 */ {true, "AP_OVERRIDE", "Set AP to N temporarily"},
+    /* 0x55 */ {true, "TP_OVERRIDE", "Set TP to N temporarily"},
+    /* 0x56 */ {false, "RETURN", "Return card to hand on destruction instead of discarding"},
+    /* 0x57 */ {false, "A_T_SWAP_PERM", "Permanently swap AP and TP"},
+    /* 0x58 */ {false, "A_H_SWAP_PERM", "Permanently swap AP and HP"},
+    /* 0x59 */ {true, "SLAYERS_ASSASSINS", "Temporarily increase AP during attack"},
+    /* 0x5A */ {false, "ANTI_ABNORMALITY_2", "Remove all conditions"},
+    /* 0x5B */ {false, "FIXED_RANGE", "Use SC\'s range instead of weapon or attack card ranges"},
+    /* 0x5C */ {false, "ELUDE", "SC does not lose HP when equipped items are destroyed"},
+    /* 0x5D */ {false, "PARRY", "Forward attack to a random FC within one tile of original target, excluding attacker and original target"},
+    /* 0x5E */ {false, "BLOCK_ATTACK", "Completely block attack"},
+    /* 0x5F */ {false, "UNKNOWN_5F", nullptr},
+    /* 0x60 */ {false, "UNKNOWN_60", nullptr},
+    /* 0x61 */ {true, "COMBO_TP", "Gain TP equal to the number of cards of type N on the field"},
+    /* 0x62 */ {true, "MISC_AP_BONUSES", "Temporarily increase AP by N"},
+    /* 0x63 */ {true, "MISC_TP_BONUSES", "Temporarily increase TP by N"},
+    /* 0x64 */ {false, "UNKNOWN_64", nullptr},
+    /* 0x65 */ {true, "MISC_DEFENSE_BONUSES", "Decrease damage by N"},
+    /* 0x66 */ {true, "MOSTLY_HALFGUARDS", "Reduce damage from incoming attack by N"},
+    /* 0x67 */ {false, "PERIODIC_FIELD", "Swap immunity to tech or physical attacks"},
+    /* 0x68 */ {false, "FC_LIMIT_BY_COUNT", "Change FC limit from 8 ATK points total to 4 FCs total"},
+    /* 0x69 */ {false, "UNKNOWN_69", nullptr},
+    /* 0x6A */ {true, "MV_BONUS", "Increase MV by N"},
+    /* 0x6B */ {true, "FORWARD_DAMAGE", "Give N damage back to attacker during defense (?) (TODO)"},
+    /* 0x6C */ {true, "WEAK_SPOT_INFLUENCE", "Temporarily decrease AP by N"},
+    /* 0x6D */ {true, "DAMAGE_MODIFIER_2", "Set attack damage / AP after action cards applied (step 2)"},
+    /* 0x6E */ {true, "WEAK_HIT_BLOCK", "Block all attacks of N damage or less"},
+    /* 0x6F */ {true, "AP_SILENCE", "Temporarily decrease AP of opponent by N"},
+    /* 0x70 */ {true, "TP_SILENCE", "Temporarily decrease TP of opponent by N"},
+    /* 0x71 */ {false, "A_T_SWAP", "Temporarily swap AP and TP"},
+    /* 0x72 */ {true, "HALFGUARD", "Halve damage from attacks that would inflict N or more damage"},
+    /* 0x73 */ {false, "UNKNOWN_73", nullptr},
+    /* 0x74 */ {true, "RAMPAGE_AP_LOSS", "Temporarily reduce AP by N"},
+    /* 0x75 */ {false, "UNKNOWN_75", nullptr},
+    /* 0x76 */ {false, "REFLECT", "Generate reverse attack"},
+    /* 0x77 */ {false, "UNKNOWN_77", nullptr},
+    /* 0x78 */ {false, "ANY", nullptr}, // Treated as "any condition" in find functions
+    /* 0x79 */ {false, "UNKNOWN_79", nullptr},
+    /* 0x7A */ {false, "UNKNOWN_7A", nullptr},
+    /* 0x7B */ {false, "UNKNOWN_7B", nullptr},
+    /* 0x7C */ {false, "UNKNOWN_7C", nullptr},
+    /* 0x7D */ {false, "UNKNOWN_7D", nullptr},
 });
 
 const char* name_for_condition_type(ConditionType cond_type) {
@@ -444,8 +437,6 @@ const char* name_for_condition_type(ConditionType cond_type) {
     return "__INVALID__";
   }
 }
-
-
 
 const char* name_for_action_subphase(ActionSubphase subphase) {
   switch (subphase) {
@@ -459,8 +450,6 @@ const char* name_for_action_subphase(ActionSubphase subphase) {
       return "__INVALID__";
   }
 }
-
-
 
 void CardDefinition::Stat::decode_code() {
   this->type = static_cast<Type>(this->code / 1000);
@@ -511,8 +500,6 @@ string CardDefinition::Stat::str() const {
       return string_printf("[%02hhX %02hhX]", this->type, this->stat);
   }
 }
-
-
 
 bool CardDefinition::Effect::is_empty() const {
   return (this->effect_num == 0 &&
@@ -588,7 +575,8 @@ string CardDefinition::Effect::str() const {
       cmd_str += ':';
       cmd_str += name;
     }
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 
   string expr_str = this->expr;
   if (!expr_str.empty()) {
@@ -599,11 +587,9 @@ string CardDefinition::Effect::str() const {
   string arg2str = this->str_for_arg(this->arg2);
   string arg3str = this->str_for_arg(this->arg3);
   return string_printf("(cmd=%s%s, when=%02hhX, arg1=%s, arg2=%s, arg3=%s, cond=%02hhX, a2=%02hhX)",
-      cmd_str.c_str(), expr_str.c_str(), this->when, arg1str.data(),
-      arg2str.data(), arg3str.data(), static_cast<uint8_t>(this->apply_criterion), this->unknown_a2);
+                       cmd_str.c_str(), expr_str.c_str(), this->when, arg1str.data(),
+                       arg2str.data(), arg3str.data(), static_cast<uint8_t>(this->apply_criterion), this->unknown_a2);
 }
-
-
 
 bool CardDefinition::is_sc() const {
   return (this->type == CardType::HUNTERS_SC) || (this->type == CardType::ARKZ_SC);
@@ -614,8 +600,7 @@ bool CardDefinition::is_fc() const {
 }
 
 bool CardDefinition::is_named_android_sc() const {
-  static const unordered_set<uint16_t> TARGET_IDS({
-      0x0005, 0x0007, 0x0110, 0x0113, 0x0114, 0x0117, 0x011B, 0x011F});
+  static const unordered_set<uint16_t> TARGET_IDS({0x0005, 0x0007, 0x0110, 0x0113, 0x0114, 0x0117, 0x011B, 0x011F});
   return TARGET_IDS.count(this->card_id);
 }
 
@@ -635,8 +620,6 @@ bool CardDefinition::any_top_color_matches(const CardDefinition& other) const {
 CardClass CardDefinition::card_class() const {
   return static_cast<CardClass>(this->be_card_class.load());
 }
-
-
 
 void CardDefinition::decode_range() {
   // If the cell representing the FC is nonzero, the card has a range from a
@@ -695,20 +678,20 @@ void CardDefinition::decode_range() {
 
 string name_for_rarity(CardRarity rarity) {
   static const vector<const char*> names({
-    "N1",
-    "R1",
-    "S",
-    "E",
-    "N2",
-    "N3",
-    "N4",
-    "R2",
-    "R3",
-    "R4",
-    "SS",
-    "D1",
-    "D2",
-    "INVIS",
+      "N1",
+      "R1",
+      "S",
+      "E",
+      "N2",
+      "N3",
+      "N4",
+      "R2",
+      "R3",
+      "R4",
+      "SS",
+      "D1",
+      "D2",
+      "INVIS",
   });
   try {
     return names.at(static_cast<uint8_t>(rarity) - 1);
@@ -719,16 +702,16 @@ string name_for_rarity(CardRarity rarity) {
 
 string name_for_target_mode(TargetMode target_mode) {
   static const vector<const char*> names({
-    "NONE",
-    "SINGLE",
-    "MULTI",
-    "SELF",
-    "TEAM",
-    "ALL",
-    "MULTI-ALLY",
-    "ALL-ALLY",
-    "ALL-ATTACK",
-    "OWN-FCS",
+      "NONE",
+      "SINGLE",
+      "MULTI",
+      "SELF",
+      "TEAM",
+      "ALL",
+      "MULTI-ALLY",
+      "ALL-ALLY",
+      "ALL-ATTACK",
+      "OWN-FCS",
   });
   try {
     return names.at(static_cast<uint8_t>(target_mode));
@@ -837,8 +820,6 @@ string CardDefinition::str() const {
       effects_str.c_str());
 }
 
-
-
 Rules::Rules() {
   this->clear();
 }
@@ -920,7 +901,7 @@ string Rules::str() const {
       break;
     default:
       tokens.emplace_back(string_printf("hp_type=(%02hhX)",
-          static_cast<uint8_t>(this->hp_type)));
+                                        static_cast<uint8_t>(this->hp_type)));
       break;
   }
 
@@ -938,7 +919,7 @@ string Rules::str() const {
       break;
     default:
       tokens.emplace_back(string_printf("dice_exchange=(%02hhX)",
-          static_cast<uint8_t>(this->dice_exchange_mode)));
+                                        static_cast<uint8_t>(this->dice_exchange_mode)));
       break;
   }
   tokens.emplace_back(string_printf("dice_boost=%s", this->disable_dice_boost ? "DISABLED" : "ENABLED"));
@@ -961,7 +942,7 @@ string Rules::str() const {
       break;
     default:
       tokens.emplace_back(string_printf("allowed_cards=(%02hhX)",
-          static_cast<uint8_t>(this->allowed_cards)));
+                                        static_cast<uint8_t>(this->allowed_cards)));
       break;
   }
   tokens.emplace_back(string_printf("assist_cards=%s", this->no_assist_cards ? "DISALLOWED" : "ALLOWED"));
@@ -973,8 +954,6 @@ string Rules::str() const {
 
   return "Rules[" + join(tokens, ", ") + "]";
 }
-
-
 
 StateFlags::StateFlags() {
   this->clear();
@@ -1028,8 +1007,6 @@ void StateFlags::clear_FF() {
   this->client_sc_card_types.clear(CardType::INVALID_FF);
 }
 
-
-
 string MapDefinition::str(const DataIndex* data_index) const {
   deque<string> lines;
   auto add_map = [&](const parray<parray<uint8_t, 0x10>, 0x10>& tiles) {
@@ -1043,13 +1020,14 @@ string MapDefinition::str(const DataIndex* data_index) const {
   };
 
   lines.emplace_back(string_printf("Map %08" PRIX32 ": %hhux%hhu",
-      this->map_number.load(), this->width, this->height));
+                                   this->map_number.load(), this->width, this->height));
   lines.emplace_back(string_printf("  a1=%08" PRIX32, this->unknown_a1.load()));
   lines.emplace_back(string_printf("  environment_number=%02hhX", this->environment_number));
   lines.emplace_back(string_printf("  num_alt_maps=%02hhX", this->num_alt_maps));
   lines.emplace_back("  tiles:");
   add_map(this->map_tiles);
-  lines.emplace_back(string_printf("  start_tile_definitions=[1p=%02hhX 2p=%02hhX,%02hhX 3p=%02hhX,%02hhX,%02hhX], [1p=%02hhX 2p=%02hhX,%02hhX 3p=%02hhX,%02hhX,%02hhX]",
+  lines.emplace_back(string_printf(
+      "  start_tile_definitions=[1p=%02hhX 2p=%02hhX,%02hhX 3p=%02hhX,%02hhX,%02hhX], [1p=%02hhX 2p=%02hhX,%02hhX 3p=%02hhX,%02hhX,%02hhX]",
       this->start_tile_definitions[0][0], this->start_tile_definitions[0][1],
       this->start_tile_definitions[0][2], this->start_tile_definitions[0][3],
       this->start_tile_definitions[0][4], this->start_tile_definitions[0][5],
@@ -1062,7 +1040,8 @@ string MapDefinition::str(const DataIndex* data_index) const {
       add_map(this->alt_maps1[w][z]);
     }
     for (size_t w = 0; w < 2; w++) {
-      lines.emplace_back(string_printf("  alt tiles a3 %zu/%zu=%g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g", z, w,
+      lines.emplace_back(string_printf(
+          "  alt tiles a3 %zu/%zu=%g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g", z, w,
           this->alt_maps_unknown_a3[w][z][0x00].load(), this->alt_maps_unknown_a3[w][z][0x01].load(),
           this->alt_maps_unknown_a3[w][z][0x02].load(), this->alt_maps_unknown_a3[w][z][0x03].load(),
           this->alt_maps_unknown_a3[w][z][0x04].load(), this->alt_maps_unknown_a3[w][z][0x05].load(),
@@ -1076,7 +1055,8 @@ string MapDefinition::str(const DataIndex* data_index) const {
   }
   for (size_t w = 0; w < 3; w++) {
     for (size_t z = 0; z < 0x24; z += 3) {
-      lines.emplace_back(string_printf("  a4[%zu][0x%02zX:0x%02zX]=%g %g %g", w, z, z + 3,
+      lines.emplace_back(string_printf(
+          "  a4[%zu][0x%02zX:0x%02zX]=%g %g %g", w, z, z + 3,
           this->unknown_a4[w][z + 0].load(),
           this->unknown_a4[w][z + 1].load(),
           this->unknown_a4[w][z + 2].load()));
@@ -1085,16 +1065,19 @@ string MapDefinition::str(const DataIndex* data_index) const {
   lines.emplace_back("  modification tiles:");
   add_map(this->modification_tiles);
   for (size_t z = 0; z < 0x70; z += 0x10) {
-    lines.emplace_back(string_printf("  a5[0x%02zX:0x%02zX]=%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX", z, z + 0x10,
+    lines.emplace_back(string_printf(
+        "  a5[0x%02zX:0x%02zX]=%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX", z, z + 0x10,
         this->unknown_a5[z + 0x00], this->unknown_a5[z + 0x01], this->unknown_a5[z + 0x02], this->unknown_a5[z + 0x03],
         this->unknown_a5[z + 0x04], this->unknown_a5[z + 0x05], this->unknown_a5[z + 0x06], this->unknown_a5[z + 0x07],
         this->unknown_a5[z + 0x08], this->unknown_a5[z + 0x09], this->unknown_a5[z + 0x0A], this->unknown_a5[z + 0x0B],
         this->unknown_a5[z + 0x0C], this->unknown_a5[z + 0x0D], this->unknown_a5[z + 0x0E], this->unknown_a5[z + 0x0F]));
   }
-  lines.emplace_back(string_printf("  a5[0x70:0x74]=%02hhX %02hhX %02hhX %02hhX",
+  lines.emplace_back(string_printf(
+      "  a5[0x70:0x74]=%02hhX %02hhX %02hhX %02hhX",
       this->unknown_a5[0x70], this->unknown_a5[0x71], this->unknown_a5[0x72], this->unknown_a5[0x73]));
   lines.emplace_back("  default_rules: " + this->default_rules.str());
-  lines.emplace_back(string_printf("  a6=%02hhX %02hhX %02hhX %02hhX",
+  lines.emplace_back(string_printf(
+      "  a6=%02hhX %02hhX %02hhX %02hhX",
       this->unknown_a6[0], this->unknown_a6[1], this->unknown_a6[2], this->unknown_a6[3]));
   lines.emplace_back("  name: " + string(this->name));
   lines.emplace_back("  location_name: " + string(this->location_name));
@@ -1103,21 +1086,25 @@ string MapDefinition::str(const DataIndex* data_index) const {
   lines.emplace_back(string_printf("  map_xy: %hu %hu", this->map_x.load(), this->map_y.load()));
   for (size_t z = 0; z < 3; z++) {
     lines.emplace_back(string_printf("  npc_chars[%zu]:", z));
-    lines.emplace_back(string_printf("    a1=%04hX %04hX",
+    lines.emplace_back(string_printf(
+        "    a1=%04hX %04hX",
         this->npc_chars[z].unknown_a1[0].load(), this->npc_chars[z].unknown_a1[1].load()));
-    lines.emplace_back(string_printf("    a2=%02hX %02hX %02hX %02hX",
+    lines.emplace_back(string_printf(
+        "    a2=%02hX %02hX %02hX %02hX",
         this->npc_chars[z].unknown_a2[0], this->npc_chars[z].unknown_a2[1],
         this->npc_chars[z].unknown_a2[2], this->npc_chars[z].unknown_a2[3]));
     lines.emplace_back("    name: " + string(this->npc_chars[z].name));
     for (size_t w = 0; w < 0x78; w += 0x08) {
-      lines.emplace_back(string_printf("    a3[0x%02zX:0x%02zX]=%04hX %04hX %04hX %04hX %04hX %04hX %04hX %04hX",
+      lines.emplace_back(string_printf(
+          "    a3[0x%02zX:0x%02zX]=%04hX %04hX %04hX %04hX %04hX %04hX %04hX %04hX",
           w, w + 0x08,
           this->npc_chars[z].unknown_a3[w + 0x00].load(), this->npc_chars[z].unknown_a3[w + 0x01].load(),
           this->npc_chars[z].unknown_a3[w + 0x02].load(), this->npc_chars[z].unknown_a3[w + 0x03].load(),
           this->npc_chars[z].unknown_a3[w + 0x04].load(), this->npc_chars[z].unknown_a3[w + 0x05].load(),
           this->npc_chars[z].unknown_a3[w + 0x06].load(), this->npc_chars[z].unknown_a3[w + 0x07].load()));
     }
-    lines.emplace_back(string_printf("    a3[0x78:0x7E]=%04hX %04hX %04hX %04hX %04hX %04hX",
+    lines.emplace_back(string_printf(
+        "    a3[0x78:0x7E]=%04hX %04hX %04hX %04hX %04hX %04hX",
         this->npc_chars[z].unknown_a3[0x78].load(), this->npc_chars[z].unknown_a3[0x79].load(),
         this->npc_chars[z].unknown_a3[0x7A].load(), this->npc_chars[z].unknown_a3[0x7B].load(),
         this->npc_chars[z].unknown_a3[0x7C].load(), this->npc_chars[z].unknown_a3[0x7D].load()));
@@ -1129,7 +1116,8 @@ string MapDefinition::str(const DataIndex* data_index) const {
       if (data_index) {
         try {
           entry = data_index->definition_for_card_id(card_id);
-        } catch (const out_of_range&) { }
+        } catch (const out_of_range&) {
+        }
       }
       if (entry) {
         string name = entry->def.en_name;
@@ -1152,7 +1140,7 @@ string MapDefinition::str(const DataIndex* data_index) const {
   }
   lines.emplace_back("  a7a=" + format_data_string(this->unknown_a7_a.data(), this->unknown_a7_a.bytes()));
   lines.emplace_back(string_printf("  a7b=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "]",
-      this->unknown_a7_b[0].load(), this->unknown_a7_b[1].load(), this->unknown_a7_b[2].load()));
+                                   this->unknown_a7_b[0].load(), this->unknown_a7_b[1].load(), this->unknown_a7_b[2].load()));
   if (this->before_message[0]) {
     lines.emplace_back("  before_message: " + string(this->before_message));
   }
@@ -1168,7 +1156,8 @@ string MapDefinition::str(const DataIndex* data_index) const {
     if (data_index) {
       try {
         entry = data_index->definition_for_card_id(card_id);
-      } catch (const out_of_range&) { }
+      } catch (const out_of_range&) {
+      }
     }
     if (entry) {
       string name = entry->def.en_name;
@@ -1178,35 +1167,35 @@ string MapDefinition::str(const DataIndex* data_index) const {
     }
   }
   lines.emplace_back(string_printf("  a9=[%08" PRIX32 " %08" PRIX32 " %04hX %04hX]",
-      this->unknown_a9_a.load(), this->unknown_a9_b.load(), this->unknown_a9_c.load(), this->unknown_a9_d.load()));
+                                   this->unknown_a9_a.load(), this->unknown_a9_b.load(), this->unknown_a9_c.load(), this->unknown_a9_d.load()));
   lines.emplace_back(string_printf("  a10=%02hhX", this->unknown_a10));
   lines.emplace_back(string_printf("  cyber_block_type=%02hhX", this->cyber_block_type));
   lines.emplace_back(string_printf("  a11=%02hhX%02hhX", this->unknown_a11[0], this->unknown_a11[1]));
   static const array<const char*, 0x18> sc_card_entry_names = {
-    "00 (Guykild; 0005)",
-    "01 (Kylria; 0006)",
-    "02 (Saligun; 0110)",
-    "03 (Relmitos; 0111)",
-    "04 (Kranz; 0002)",
-    "05 (Sil'fer; 0004)",
-    "06 (Ino'lis; 0003)",
-    "07 (Viviana; 0112)",
-    "08 (Teifu; 0113)",
-    "09 (Orland; 0001)",
-    "0A (Stella; 0114)",
-    "0B (Glustar; 0115)",
-    "0C (Hyze; 0117)",
-    "0D (Rufina; 0118)",
-    "0E (Peko; 0119)",
-    "0F (Creinu; 011A)",
-    "10 (Reiz; 011B)",
-    "11 (Lura; 0007)",
-    "12 (Break; 0008)",
-    "13 (Rio; 011C)",
-    "14 (Endu; 0116)",
-    "15 (Memoru; 011D)",
-    "16 (K.C.; 011E)",
-    "17 (Ohgun; 011F)",
+      "00 (Guykild; 0005)",
+      "01 (Kylria; 0006)",
+      "02 (Saligun; 0110)",
+      "03 (Relmitos; 0111)",
+      "04 (Kranz; 0002)",
+      "05 (Sil'fer; 0004)",
+      "06 (Ino'lis; 0003)",
+      "07 (Viviana; 0112)",
+      "08 (Teifu; 0113)",
+      "09 (Orland; 0001)",
+      "0A (Stella; 0114)",
+      "0B (Glustar; 0115)",
+      "0C (Hyze; 0117)",
+      "0D (Rufina; 0118)",
+      "0E (Peko; 0119)",
+      "0F (Creinu; 011A)",
+      "10 (Reiz; 011B)",
+      "11 (Lura; 0007)",
+      "12 (Break; 0008)",
+      "13 (Rio; 011C)",
+      "14 (Endu; 0116)",
+      "15 (Memoru; 011D)",
+      "16 (K.C.; 011E)",
+      "17 (Ohgun; 011F)",
   };
   string unavailable_sc_cards = "  unavailable_sc_cards=[";
   for (size_t z = 0; z < 0x18; z++) {
@@ -1338,10 +1327,8 @@ bool Rules::check_and_reset_invalid_fields() {
   return ret;
 }
 
-
-
 DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
-  : behavior_flags(behavior_flags) {
+    : behavior_flags(behavior_flags) {
 
   unordered_map<uint32_t, vector<string>> card_tags;
   unordered_map<uint32_t, string> card_text;
@@ -1487,10 +1474,12 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
       if (this->behavior_flags & BehaviorFlag::LOAD_CARD_TEXT) {
         try {
           entry->text = move(card_text.at(defs[x].card_id));
-        } catch (const out_of_range&) { }
+        } catch (const out_of_range&) {
+        }
         try {
           entry->debug_tags = move(card_tags.at(defs[x].card_id));
-        } catch (const out_of_range&) { }
+        } catch (const out_of_range&) {
+        }
       }
     }
 
@@ -1533,13 +1522,13 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
           this->maps_by_name.emplace(entry->map.name, entry);
           string name = entry->map.name;
           static_game_data_log.info("Indexed Episode 3 %s %s (%08" PRIX32 "; %s)",
-              is_quest ? "online quest" : "free battle map",
-              filename.c_str(), entry->map.map_number.load(), name.c_str());
+                                    is_quest ? "online quest" : "free battle map",
+                                    filename.c_str(), entry->map.map_number.load(), name.c_str());
         }
 
       } catch (const exception& e) {
         static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
-            filename.c_str(), e.what());
+                                     filename.c_str(), e.what());
       }
     }
   };
@@ -1567,10 +1556,12 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
 }
 
 DataIndex::MapEntry::MapEntry(const MapDefinition& map, bool is_quest)
-  : map(map), is_quest(is_quest) { }
+    : map(map),
+      is_quest(is_quest) {}
 
 DataIndex::MapEntry::MapEntry(const string& compressed, bool is_quest)
-  : is_quest(is_quest), compressed_data(compressed) {
+    : is_quest(is_quest),
+      compressed_data(compressed) {
   string decompressed = prs_decompress(this->compressed_data);
   if (decompressed.size() != sizeof(MapDefinition)) {
     throw runtime_error(string_printf(
@@ -1673,7 +1664,7 @@ const string& DataIndex::get_compressed_map_list() const {
     }
     size_t decompressed_size = sizeof(header) + entries_w.size() + strings_w.size();
     static_game_data_log.info("Generated Episode 3 compressed map list (0x%zX -> 0x%zX bytes)",
-        decompressed_size, this->compressed_map_list.size());
+                              decompressed_size, this->compressed_map_list.size());
   }
   return this->compressed_map_list;
 }
@@ -1711,8 +1702,6 @@ shared_ptr<const COMDeckDefinition> DataIndex::random_com_deck() const {
   return this->com_decks[random_object<size_t>() % this->com_decks.size()];
 }
 
-
-
 void PlayerConfig::decrypt() {
   if (!this->is_encrypted) {
     return;
@@ -1739,7 +1728,5 @@ void PlayerConfig::encrypt(uint8_t basis) {
   this->is_encrypted = 1;
   this->basis = basis;
 }
-
-
 
 } // namespace Episode3

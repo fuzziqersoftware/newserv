@@ -9,8 +9,6 @@
 #include <unordered_map>
 #include <vector>
 
-
-
 struct PSOGCObjectGraph {
   PSOGCObjectGraph(const std::string& memory_data, uint32_t root_address);
 

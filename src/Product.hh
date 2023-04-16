@@ -4,8 +4,6 @@
 
 #include <string>
 
-
-
 bool product_is_valid(
     const std::string& s, uint8_t domain, uint8_t subdomain = 0xFF);
 bool product_is_valid_fast(

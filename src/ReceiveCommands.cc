@@ -16,8 +16,8 @@
 #include "FileContentsCache.hh"
 #include "ItemCreator.hh"
 #include "Loggers.hh"
-#include "ProxyServer.hh"
 #include "PSOProtocol.hh"
+#include "ProxyServer.hh"
 #include "ReceiveSubcommands.hh"
 #include "SendCommands.hh"
 #include "StaticGameData.hh"
@@ -25,68 +25,64 @@
 
 using namespace std;
 
-
-
 const char* BATTLE_TABLE_DISCONNECT_HOOK_NAME = "battle_table_state";
 const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME = "quest_barrier";
 const char* CARD_AUCTION_DISCONNECT_HOOK_NAME = "card_auction";
 const char* ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME = "add_next_game_client";
 
-
-
 vector<MenuItem> quest_categories_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::RETRIEVAL), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::EXTERMINATION), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::EVENT), u"Events", u"$E$C6Quests that are part\nof an event", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::SHOP), u"Shops", u"$E$C6Quests that contain\nshops", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
-  MenuItem(static_cast<uint32_t>(QuestCategory::TOWER), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
+    MenuItem(static_cast<uint32_t>(QuestCategory::RETRIEVAL), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::EXTERMINATION), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::EVENT), u"Events", u"$E$C6Quests that are part\nof an event", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::SHOP), u"Shops", u"$E$C6Quests that contain\nshops", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
+    MenuItem(static_cast<uint32_t>(QuestCategory::TOWER), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
 });
 
 vector<MenuItem> quest_battle_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::BATTLE), u"Battle", u"$E$C6Battle mode rule\nsets", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::BATTLE), u"Battle", u"$E$C6Battle mode rule\nsets", 0),
 });
 
 vector<MenuItem> quest_challenge_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::CHALLENGE), u"Challenge", u"$E$C6Challenge mode\nquests", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::CHALLENGE), u"Challenge", u"$E$C6Challenge mode\nquests", 0),
 });
 
 vector<MenuItem> quest_solo_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::SOLO), u"Solo Quests", u"$E$C6Quests that require\na single player", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::SOLO), u"Solo Quests", u"$E$C6Quests that require\na single player", 0),
 });
 
 vector<MenuItem> quest_government_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::GOVERNMENT_EPISODE_1), u"Hero in Red",u"$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::GOVERNMENT_EPISODE_2), u"The Military's Hero",u"$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::GOVERNMENT_EPISODE_4), u"The Meteor Impact Incident", u"$E$C6Quests that follow\nthe Episode 4\nstoryline", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::GOVERNMENT_EPISODE_1), u"Hero in Red", u"$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::GOVERNMENT_EPISODE_2), u"The Military's Hero", u"$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::GOVERNMENT_EPISODE_4), u"The Meteor Impact Incident", u"$E$C6Quests that follow\nthe Episode 4\nstoryline", 0),
 });
 
 vector<MenuItem> quest_download_menu({
-  MenuItem(static_cast<uint32_t>(QuestCategory::RETRIEVAL), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::EXTERMINATION), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::EVENT), u"Events", u"$E$C6Quests that are part\nof an event", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::SHOP), u"Shops", u"$E$C6Quests that contain\nshops", 0),
-  MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
-  MenuItem(static_cast<uint32_t>(QuestCategory::TOWER), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
-  MenuItem(static_cast<uint32_t>(QuestCategory::DOWNLOAD), u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::RETRIEVAL), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::EXTERMINATION), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::EVENT), u"Events", u"$E$C6Quests that are part\nof an event", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::SHOP), u"Shops", u"$E$C6Quests that contain\nshops", 0),
+    MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
+    MenuItem(static_cast<uint32_t>(QuestCategory::TOWER), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
+    MenuItem(static_cast<uint32_t>(QuestCategory::DOWNLOAD), u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
 });
 
 static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descriptions({
-  {ProxyOptionsMenuItemID::GO_BACK, u"Return to the\nproxy menu"},
-  {ProxyOptionsMenuItemID::CHAT_COMMANDS, u"Enable chat\ncommands"},
-  {ProxyOptionsMenuItemID::CHAT_FILTER, u"Enable escape\nsequences in\nchat messages\nand info board"},
-  {ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, u"Show a message\nwhen other players\njoin or leave"},
-  {ProxyOptionsMenuItemID::INFINITE_HP, u"Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills"},
-  {ProxyOptionsMenuItemID::INFINITE_TP, u"Enable automatic TP\nrestoration when\nyou cast any\ntechnique"},
-  {ProxyOptionsMenuItemID::SWITCH_ASSIST, u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially"},
-  {ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, u"Fix Meseta value\nat 1,000,000"},
-  {ProxyOptionsMenuItemID::BLOCK_EVENTS, u"Disable seasonal\nevents in the lobby\nand in games"},
-  {ProxyOptionsMenuItemID::BLOCK_PATCHES, u"Disable patches sent\nby the remote server"},
-  {ProxyOptionsMenuItemID::SAVE_FILES, u"Save local copies of\nfiles from the\nremote server\n(quests, etc.)"},
-  {ProxyOptionsMenuItemID::RED_NAME, u"Set your name\ncolor to red"},
-  {ProxyOptionsMenuItemID::BLANK_NAME, u"Suppress your\ncharacter name\nduring login"},
-  {ProxyOptionsMenuItemID::SUPPRESS_LOGIN, u"Use an alternate\nlogin sequence"},
-  {ProxyOptionsMenuItemID::SKIP_CARD, u"Use an alternate\nvalue for your initial\nGuild Card"},
+    {ProxyOptionsMenuItemID::GO_BACK, u"Return to the\nproxy menu"},
+    {ProxyOptionsMenuItemID::CHAT_COMMANDS, u"Enable chat\ncommands"},
+    {ProxyOptionsMenuItemID::CHAT_FILTER, u"Enable escape\nsequences in\nchat messages\nand info board"},
+    {ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, u"Show a message\nwhen other players\njoin or leave"},
+    {ProxyOptionsMenuItemID::INFINITE_HP, u"Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills"},
+    {ProxyOptionsMenuItemID::INFINITE_TP, u"Enable automatic TP\nrestoration when\nyou cast any\ntechnique"},
+    {ProxyOptionsMenuItemID::SWITCH_ASSIST, u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially"},
+    {ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, u"Fix Meseta value\nat 1,000,000"},
+    {ProxyOptionsMenuItemID::BLOCK_EVENTS, u"Disable seasonal\nevents in the lobby\nand in games"},
+    {ProxyOptionsMenuItemID::BLOCK_PATCHES, u"Disable patches sent\nby the remote server"},
+    {ProxyOptionsMenuItemID::SAVE_FILES, u"Save local copies of\nfiles from the\nremote server\n(quests, etc.)"},
+    {ProxyOptionsMenuItemID::RED_NAME, u"Set your name\ncolor to red"},
+    {ProxyOptionsMenuItemID::BLANK_NAME, u"Suppress your\ncharacter name\nduring login"},
+    {ProxyOptionsMenuItemID::SUPPRESS_LOGIN, u"Use an alternate\nlogin sequence"},
+    {ProxyOptionsMenuItemID::SKIP_CARD, u"Use an alternate\nvalue for your initial\nGuild Card"},
 });
 
 static vector<MenuItem> proxy_options_menu_for_client(
@@ -130,12 +126,10 @@ static vector<MenuItem> proxy_options_menu_for_client(
   return ret;
 }
 
-
-
 static void send_client_to_lobby_server(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   const auto& port_name = version_to_lobby_port_name.at(static_cast<size_t>(c->version()));
   send_reconnect(c, s->connect_address_for_client(c),
-      s->name_to_port_config.at(port_name)->port);
+                 s->name_to_port_config.at(port_name)->port);
 }
 
 static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Client> c) {
@@ -157,7 +151,7 @@ static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Cl
 
 static void send_proxy_destinations_menu(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
-      s->proxy_destinations_menu_for_version(c->version()));
+            s->proxy_destinations_menu_for_version(c->version()));
 }
 
 static bool send_enable_send_function_call_if_applicable(
@@ -173,8 +167,6 @@ static bool send_enable_send_function_call_if_applicable(
   }
   return false;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -205,7 +197,7 @@ void on_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
 
     default:
       c->log.error("Unimplemented behavior: %" PRId64,
-          static_cast<int64_t>(c->server_behavior));
+                   static_cast<int64_t>(c->server_behavior));
   }
 }
 
@@ -264,8 +256,6 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   }
 }
 
-
-
 void on_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   // If the client was in a lobby, remove them and notify the other clients
   if (c->lobby_id) {
@@ -278,8 +268,6 @@ void on_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   // Note: The client's GameData destructor should save their player data
   // shortly after this point
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -298,7 +286,7 @@ static void set_console_client_flags(
 }
 
 static void on_DB_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_VerifyLicense_V3_DB>(data);
 
   if (c->channel.crypt_in->type() == PSOEncryption::Type::V2) {
@@ -309,7 +297,7 @@ static void on_DB_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
     auto l = s->license_manager->verify_gc(serial_number, cmd.access_key,
-        cmd.password);
+                                           cmd.password);
     c->set_license(l);
     send_command(c, 0x9A, 0x02);
 
@@ -330,7 +318,7 @@ static void on_DB_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
       return;
     } else {
       auto l = LicenseManager::create_license_gc(serial_number, cmd.access_key,
-          cmd.password, true);
+                                                 cmd.password, true);
       s->license_manager->add(l);
       c->set_license(l);
       send_command(c, 0x9A, 0x02);
@@ -339,7 +327,7 @@ static void on_DB_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_88_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                        uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Login_DCNTE_88>(data);
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
@@ -371,9 +359,9 @@ static void on_88_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_8B_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                        uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data,
-      sizeof(C_Login_DCNTE_8B), sizeof(C_LoginExtended_DCNTE_8B));
+                                                   sizeof(C_Login_DCNTE_8B), sizeof(C_LoginExtended_DCNTE_8B));
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
   c->flags |= Client::Flag::IS_DC_V1 | Client::Flag::IS_TRIAL_EDITION;
@@ -416,7 +404,7 @@ static void on_8B_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_90_DC(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_LoginV1_DC_PC_V3_90>(data);
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
@@ -448,15 +436,15 @@ static void on_90_DC(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_92_DC(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   check_size_t<C_RegisterV1_DC_92>(data);
   send_command(c, 0x92, 0x01);
 }
 
 static void on_93_DC(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_LoginV1_DC_93>(data,
-      sizeof(C_LoginV1_DC_93), sizeof(C_LoginExtendedV1_DC_93));
+                                                  sizeof(C_LoginV1_DC_93), sizeof(C_LoginExtendedV1_DC_93));
   set_console_client_flags(c, cmd.sub_version);
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
@@ -496,7 +484,7 @@ static void on_93_DC(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_9A(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Login_DC_PC_V3_9A>(data);
   set_console_client_flags(c, cmd.sub_version);
 
@@ -552,7 +540,7 @@ static void on_9A(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_9C(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Register_DC_PC_V3_9C>(data);
 
   c->flags |= flags_for_version(c->version(), cmd.sub_version);
@@ -567,7 +555,7 @@ static void on_9C(shared_ptr<ServerState> s, shared_ptr<Client> c,
         break;
       case GameVersion::GC:
         l = s->license_manager->verify_gc(serial_number, cmd.access_key,
-            cmd.password);
+                                          cmd.password);
         break;
       case GameVersion::XB:
         throw runtime_error("xbox licenses are not implemented");
@@ -594,11 +582,11 @@ static void on_9C(shared_ptr<ServerState> s, shared_ptr<Client> c,
         case GameVersion::DC:
         case GameVersion::PC:
           l = LicenseManager::create_license_pc(serial_number, cmd.access_key,
-              true);
+                                                true);
           break;
         case GameVersion::GC:
           l = LicenseManager::create_license_gc(serial_number, cmd.access_key,
-              cmd.password, true);
+                                                cmd.password, true);
           break;
         case GameVersion::XB:
           throw runtime_error("xbox licenses are not implemented");
@@ -614,11 +602,11 @@ static void on_9C(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_9D_9E(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string& data) {
+                     uint16_t command, uint32_t, const string& data) {
   const C_Login_DC_PC_GC_9D* base_cmd;
   if (command == 0x9D) {
     base_cmd = &check_size_t<C_Login_DC_PC_GC_9D>(data,
-        sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_PC_9D));
+                                                  sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_PC_9D));
     if (base_cmd->is_extended) {
       if (c->version() == GameVersion::PC) {
         const auto& cmd = check_size_t<C_LoginExtended_PC_9D>(data);
@@ -637,7 +625,7 @@ static void on_9D_9E(shared_ptr<ServerState> s, shared_ptr<Client> c,
     // GC and XB send different amounts of data in this command. This is how
     // newserv determines if a V3 client is GC or XB.
     const auto& cmd = check_size_t<C_Login_GC_9E>(data,
-        sizeof(C_Login_GC_9E), sizeof(C_LoginExtended_XB_9E));
+                                                  sizeof(C_Login_GC_9E), sizeof(C_LoginExtended_XB_9E));
     switch (data.size()) {
       case sizeof(C_Login_GC_9E):
       case sizeof(C_LoginExtended_GC_9E):
@@ -738,9 +726,9 @@ static void on_9D_9E(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_93_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Login_BB_93>(data,
-      sizeof(C_Login_BB_93) - 8, sizeof(C_Login_BB_93));
+                                                sizeof(C_Login_BB_93) - 8, sizeof(C_Login_BB_93));
 
   bool is_old_format;
   if (data.size() == sizeof(C_Login_BB_93) - 8) {
@@ -801,7 +789,7 @@ static void on_93_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case ClientStateBB::INITIAL_LOGIN:
       // On first login, send the client to the data server port
       send_reconnect(c, s->connect_address_for_client(c),
-          s->name_to_port_config.at("bb-data1")->port);
+                     s->name_to_port_config.at("bb-data1")->port);
       break;
 
     case ClientStateBB::DOWNLOAD_DATA:
@@ -824,7 +812,7 @@ static void on_93_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_9F_V3(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   if (c->version() == GameVersion::BB) {
     const auto& cfg = check_size_t<ClientConfigBB>(data);
     c->import_config(cfg);
@@ -835,13 +823,13 @@ static void on_9F_V3(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 static void on_96(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   check_size_t<C_CharSaveInfo_DCv2_PC_V3_BB_96>(data);
   send_server_time(c);
 }
 
 static void on_B1(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   send_server_time(c);
   // The B1 command is sent in response to a 97 command, which is normally part
@@ -860,10 +848,8 @@ static void on_B1(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-
-
 static void on_BA_Ep3(shared_ptr<ServerState>,
-    shared_ptr<Client> c, uint16_t command, uint32_t, const string& data) {
+                      shared_ptr<Client> c, uint16_t command, uint32_t, const string& data) {
   const auto& in_cmd = check_size_t<C_Meseta_GC_Ep3_BA>(data);
 
   S_Meseta_GC_Ep3_BA out_cmd = {1000000, 1000000, in_cmd.request_token};
@@ -1139,7 +1125,7 @@ static void on_ep3_battle_table_state_updated(
 }
 
 static void on_E4_Ep3(shared_ptr<ServerState> s,
-    shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) {
+                      shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) {
   const auto& cmd = check_size_t<C_CardBattleTableState_GC_Ep3_E4>(data);
   auto l = s->find_lobby(c->lobby_id);
 
@@ -1181,7 +1167,7 @@ static void on_E4_Ep3(shared_ptr<ServerState> s,
 }
 
 static void on_E5_Ep3(shared_ptr<ServerState> s,
-    shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) {
+                      shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) {
   check_size_t<S_CardBattleTableConfirmation_GC_Ep3_E5>(data);
   auto l = s->find_lobby(c->lobby_id);
   if (l->is_game() || !l->is_ep3()) {
@@ -1201,7 +1187,7 @@ static void on_E5_Ep3(shared_ptr<ServerState> s,
 }
 
 static void on_DC_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t flag, const string& data) {
+                      uint16_t, uint32_t flag, const string& data) {
   check_size_v(data.size(), 0);
 
   shared_ptr<Lobby> l;
@@ -1265,7 +1251,7 @@ static void on_tournament_bracket_updated(
 }
 
 static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                      uint16_t, uint32_t, const string& data) {
   shared_ptr<Lobby> l;
   try {
     l = s->find_lobby(c->lobby_id);
@@ -1318,8 +1304,8 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
           lobby_data.player_tag = 0x00010000;
           lobby_data.guild_card = existing_c->license->serial_number;
           l->battle_record->add_player(lobby_data,
-              existing_c->game_data.player()->inventory,
-              existing_c->game_data.player()->disp.to_dcpcv3());
+                                       existing_c->game_data.player()->inventory,
+                                       existing_c->game_data.player()->disp.to_dcpcv3());
         }
       }
       if (l->prev_battle_record) {
@@ -1352,7 +1338,7 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_E2_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t flag, const string&) {
+                      uint16_t, uint32_t flag, const string&) {
   switch (flag) {
     case 0x00: // Request tournament list
       send_ep3_tournament_list(s, c, false);
@@ -1396,11 +1382,11 @@ static void on_E2_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_D6_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   if (c->flags & Client::Flag::IN_INFORMATION_MENU) {
     send_menu(c, u"Information", MenuID::INFORMATION,
-        *s->information_menu_for_version(c->version()));
+              *s->information_menu_for_version(c->version()));
   } else if (c->flags & Client::Flag::AT_WELCOME_MESSAGE) {
     send_enable_send_function_call_if_applicable(s, c);
     c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
@@ -1410,7 +1396,7 @@ static void on_D6_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_MenuItemInfoRequest_09>(data);
 
   switch (cmd.menu_id) {
@@ -1530,22 +1516,22 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
             auto name = encode_sjis(player->disp.name);
             if (game->is_ep3()) {
               info += string_printf("%zu: $C6%s$C7 L%" PRIu32 "\n",
-                  x + 1, name.c_str(), player->disp.level + 1);
+                                    x + 1, name.c_str(), player->disp.level + 1);
             } else {
               info += string_printf("%zu: $C6%s$C7 %s L%" PRIu32 "\n",
-                  x + 1, name.c_str(),
-                  abbreviation_for_char_class(player->disp.char_class),
-                  player->disp.level + 1);
+                                    x + 1, name.c_str(),
+                                    abbreviation_for_char_class(player->disp.char_class),
+                                    player->disp.level + 1);
             }
           }
         }
 
         string secid_str = name_for_section_id(game->section_id);
         info += string_printf("%s %c %s %s\n",
-            abbreviation_for_episode(game->episode),
-            abbreviation_for_difficulty(game->difficulty),
-            abbreviation_for_mode(game->mode),
-            secid_str.c_str());
+                              abbreviation_for_episode(game->episode),
+                              abbreviation_for_difficulty(game->difficulty),
+                              abbreviation_for_mode(game->mode),
+                              secid_str.c_str());
 
         bool cheats_enabled = game->flags & Lobby::Flag::CHEATS_ENABLED;
         bool locked = !game->password.empty();
@@ -1628,17 +1614,17 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
             message = "(No registrant)";
           } else if (team->max_players == 1) {
             message = string_printf("$C6%s$C7\n%zu %s",
-                team->name.c_str(),
-                team->num_rounds_cleared,
-                team->num_rounds_cleared == 1 ? "win" : "wins");
+                                    team->name.c_str(),
+                                    team->num_rounds_cleared,
+                                    team->num_rounds_cleared == 1 ? "win" : "wins");
           } else {
             message = string_printf("$C6%s$C7\n%zuH/%zuC\n%zu %s\n%s",
-                team->name.c_str(),
-                team->num_human_players(),
-                team->num_com_players(),
-                team->num_rounds_cleared,
-                team->num_rounds_cleared == 1 ? "win" : "wins",
-                team->password.empty() ? "" : "Locked");
+                                    team->name.c_str(),
+                                    team->num_human_players(),
+                                    team->num_com_players(),
+                                    team->num_rounds_cleared,
+                                    team->num_rounds_cleared == 1 ? "win" : "wins",
+                                    team->password.empty() ? "" : "Locked");
           }
           send_ship_info(c, decode_sjis(message));
         } else {
@@ -1657,7 +1643,7 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   bool uses_unicode = ((c->version() == GameVersion::PC) || (c->version() == GameVersion::BB));
 
   uint32_t menu_id;
@@ -1714,7 +1700,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
         case MainMenuItemID::INFORMATION:
           send_menu(c, u"Information", MenuID::INFORMATION,
-              *s->information_menu_for_version(c->version()));
+                    *s->information_menu_for_version(c->version()));
           c->flags |= Client::Flag::IN_INFORMATION_MENU;
           break;
 
@@ -1832,7 +1818,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           c->options.zero_remote_guild_card = !c->options.zero_remote_guild_card;
         resend_proxy_options_menu:
           send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
-              proxy_options_menu_for_client(s, c));
+                    proxy_options_menu_for_client(s, c));
           break;
         default:
           send_message_box(c, u"Incorrect menu item ID.");
@@ -1847,13 +1833,14 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
       } else if (item_id == ProxyDestinationsMenuItemID::OPTIONS) {
         send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
-            proxy_options_menu_for_client(s, c));
+                  proxy_options_menu_for_client(s, c));
 
       } else {
         const pair<string, uint16_t>* dest = nullptr;
         try {
           dest = &s->proxy_destinations_for_version(c->version()).at(item_id);
-        } catch (const out_of_range&) { }
+        } catch (const out_of_range&) {
+        }
 
         if (!dest) {
           send_message_box(c, u"$C6No such destination exists.");
@@ -1947,8 +1934,8 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
       shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
       auto quests = s->quest_index->filter(c->version(),
-          c->flags & Client::Flag::IS_DC_V1,
-          static_cast<QuestCategory>(item_id & 0xFF));
+                                           c->flags & Client::Flag::IS_DC_V1,
+                                           static_cast<QuestCategory>(item_id & 0xFF));
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
@@ -2004,9 +1991,9 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           }
 
           send_open_quest_file(l->clients[x], bin_basename + ".bin",
-              bin_basename, bin_contents, QuestFileType::ONLINE);
+                               bin_basename, bin_contents, QuestFileType::ONLINE);
           send_open_quest_file(l->clients[x], dat_basename + ".dat",
-              dat_basename, dat_contents, QuestFileType::ONLINE);
+                               dat_basename, dat_contents, QuestFileType::ONLINE);
 
           // There is no such thing as command AC on PSO V2 - quests just start
           // immediately when they're done downloading. (This is also the case
@@ -2033,10 +2020,10 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           q = q->create_download_quest();
         }
         send_open_quest_file(c, quest_name, bin_basename, q->bin_contents(),
-            is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
+                             is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
         if (dat_contents) {
           send_open_quest_file(c, quest_name, dat_basename, q->dat_contents(),
-              is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
+                               is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
         }
       }
       break;
@@ -2086,7 +2073,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
       auto tourn = s->ep3_tournament_index->get_tournament(item_id);
       if (tourn) {
         send_ep3_tournament_entry_list(c, tourn,
-            (menu_id == MenuID::TOURNAMENTS_FOR_SPEC));
+                                       (menu_id == MenuID::TOURNAMENTS_FOR_SPEC));
       }
       break;
     }
@@ -2120,7 +2107,8 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
 After registration ends, start your matches by\n\
 standing at the rightmost 4-player Battle Table\n\
 in the lobby along with your partner (if any) and\n\
-opponent(s).", tourn->get_name().c_str());
+opponent(s).",
+                                           tourn->get_name().c_str());
             send_ep3_timed_message_box(c->channel, 240, message.c_str());
 
             s->ep3_tournament_index->save();
@@ -2145,7 +2133,7 @@ opponent(s).", tourn->get_name().c_str());
 }
 
 static void on_84(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_LobbySelection_84>(data);
 
   if (cmd.menu_id != MenuID::LOBBY) {
@@ -2159,8 +2147,8 @@ static void on_84(shared_ptr<ServerState> s, shared_ptr<Client> c,
     c->preferred_lobby_id = cmd.item_id;
     s->add_client_to_available_lobby(c);
 
-  // If the client already is in a lobby, then they're using the lobby
-  // teleporter; add them to the lobby they requested or send a failure message.
+    // If the client already is in a lobby, then they're using the lobby
+    // teleporter; add them to the lobby they requested or send a failure message.
   } else {
     shared_ptr<Lobby> new_lobby;
     try {
@@ -2182,20 +2170,20 @@ static void on_84(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_08_E6(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string& data) {
+                     uint16_t command, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   send_game_menu(c, s, (command == 0xE6), false);
 }
 
 static void on_1F(shared_ptr<ServerState> s,
-    shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
+                  shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   send_menu(c, u"Information", MenuID::INFORMATION,
-      *s->information_menu_for_version(c->version()), true);
+            *s->information_menu_for_version(c->version()), true);
 }
 
 static void on_A0(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string&) {
+                  uint16_t, uint32_t, const string&) {
   // The client sends data in this command, but none of it is important. We
   // intentionally don't call check_size here, but just ignore the data.
 
@@ -2216,17 +2204,17 @@ static void on_A0(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(c->version()));
 
   send_reconnect(c, s->connect_address_for_client(c),
-      s->name_to_port_config.at(port_name)->port);
+                 s->name_to_port_config.at(port_name)->port);
 }
 
 static void on_A1(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, const string& data) {
+                  uint16_t command, uint32_t flag, const string& data) {
   // newserv doesn't have blocks; treat block change the same as ship change
   on_A0(s, c, command, flag, data);
 }
 
 static void on_8E_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, const string& data) {
+                        uint16_t command, uint32_t flag, const string& data) {
   if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
     on_A0(s, c, command, flag, data);
   } else {
@@ -2235,7 +2223,7 @@ static void on_8E_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_8F_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, const string& data) {
+                        uint16_t command, uint32_t flag, const string& data) {
   if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
     on_A1(s, c, command, flag, data);
   } else {
@@ -2243,10 +2231,8 @@ static void on_8F_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-
-
 static void send_dol_file_chunk(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint32_t start_addr) {
+                                uint32_t start_addr) {
   size_t offset = start_addr - c->dol_base_addr;
   if (offset >= c->loading_dol_file->data.size()) {
     throw logic_error("DOL file offset beyond end of data");
@@ -2261,12 +2247,12 @@ static void send_dol_file_chunk(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   size_t progress_percent = ((offset + bytes_to_send) * 100) / c->loading_dol_file->data.size();
   string info = string_printf("Loading $C6%s$C7\n%zu%%%% complete",
-      c->loading_dol_file->name.c_str(), progress_percent);
+                              c->loading_dol_file->name.c_str(), progress_percent);
   send_ship_info(c, decode_sjis(info));
 }
 
 static void on_B3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t flag, const string& data) {
+                  uint16_t, uint32_t flag, const string& data) {
   const auto& cmd = check_size_t<C_ExecuteCodeResult_B3>(data);
   if (flag == 0) {
     return;
@@ -2293,10 +2279,8 @@ static void on_B3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-
-
 static void on_A2(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t flag, const string& data) {
+                  uint16_t, uint32_t flag, const string& data) {
   check_size_v(data.size(), 0);
 
   if (!s->quest_index) {
@@ -2343,7 +2327,7 @@ static void on_A2(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_AC_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                        uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
 
   // If this client is NOT loading, they should not send an AC. Sending an AC to
@@ -2385,7 +2369,7 @@ static void on_AC_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_AA(shared_ptr<ServerState> s,
-    shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
+                  shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_UpdateQuestStatistics_V3_BB_AA>(data);
 
   if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
@@ -2407,7 +2391,7 @@ static void on_AA(shared_ptr<ServerState> s,
 }
 
 static void on_D7_GC(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   string filename(data);
   strip_trailing_zeroes(filename);
 
@@ -2441,27 +2425,25 @@ static void send_file_chunk(
 }
 
 static void on_44_A6_V3_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string& data) {
+                           uint16_t command, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_OpenFileConfirmation_44_A6>(data);
   send_file_chunk(c, cmd.filename, 0, (command == 0xA6));
 }
 
 static void on_13_A7_V3_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, const string& data) {
+                           uint16_t command, uint32_t flag, const string& data) {
   const auto& cmd = check_size_t<C_WriteFileConfirmation_V3_BB_13_A7>(data);
   send_file_chunk(c, cmd.filename, flag + 1, (command == 0xA7));
 }
 
-
-
 static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, const string& data) {
+                     uint16_t command, uint32_t flag, const string& data) {
 
   switch (c->version()) {
     case GameVersion::DC:
     case GameVersion::PC: {
       const auto& pd = check_size_t<PSOPlayerDataDCPC>(data,
-          sizeof(PSOPlayerDataDCPC), 0xFFFF);
+                                                       sizeof(PSOPlayerDataDCPC), 0xFFFF);
       c->game_data.import_player(pd);
       break;
     }
@@ -2477,14 +2459,14 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
         pd = reinterpret_cast<const PSOPlayerDataV3*>(pd3);
       } else {
         pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3),
-            sizeof(PSOPlayerDataV3) + c->game_data.player()->auto_reply.bytes());
+                                            sizeof(PSOPlayerDataV3) + c->game_data.player()->auto_reply.bytes());
       }
       c->game_data.import_player(*pd);
       break;
     }
     case GameVersion::BB: {
       const auto& pd = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB),
-          sizeof(PSOPlayerDataBB) + c->game_data.player()->auto_reply.bytes());
+                                                     sizeof(PSOPlayerDataBB) + c->game_data.player()->auto_reply.bytes());
       c->game_data.import_player(pd);
       break;
     }
@@ -2496,7 +2478,7 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (player) {
     string name_str = remove_language_marker(encode_sjis(player->disp.name));
     c->channel.name = string_printf("C-%" PRIX64 " (%s)",
-        c->id, name_str.c_str());
+                                    c->id, name_str.c_str());
   }
 
   // 98 should only be sent when leaving a game, and we should leave the client
@@ -2523,9 +2505,9 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
       if (!failure) {
         send_text_message_printf(c,
-            "$C6BB player data saved\nas player %hhu for user\n%s",
-            static_cast<uint8_t>(c->pending_bb_save_player_index + 1),
-            c->pending_bb_save_username.c_str());
+                                 "$C6BB player data saved\nas player %hhu for user\n%s",
+                                 static_cast<uint8_t>(c->pending_bb_save_player_index + 1),
+                                 c->pending_bb_save_username.c_str());
       }
 
       c->game_data.bb_username = prev_bb_username;
@@ -2542,10 +2524,8 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-
-
 static void on_6x_C9_CB(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, const string& data) {
+                        uint16_t command, uint32_t flag, const string& data) {
   check_size_v(data.size(), 4, 0xFFFF);
 
   auto l = s->find_lobby(c->lobby_id);
@@ -2556,10 +2536,8 @@ static void on_6x_C9_CB(shared_ptr<ServerState> s, shared_ptr<Client> c,
   on_subcommand(s, l, c, command, flag, data);
 }
 
-
-
 static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    const u16string& text) {
+                            const u16string& text) {
 
   if (text.empty()) {
     return;
@@ -2600,8 +2578,8 @@ static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
       continue;
     }
     send_chat_message(l->clients[x], c->license->serial_number,
-        c->game_data.player()->disp.name.data(), processed_text.c_str(),
-        private_flags);
+                      c->game_data.player()->disp.name.data(), processed_text.c_str(),
+                      private_flags);
   }
 
   if (l->battle_record && l->battle_record->battle_in_progress()) {
@@ -2614,7 +2592,7 @@ static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_06_PC_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                        uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
   u16string text(cmd.text.pcbb, (data.size() - sizeof(C_Chat_06)) / sizeof(char16_t));
   strip_trailing_zeroes(text);
@@ -2622,16 +2600,14 @@ static void on_06_PC_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_06_DC_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                        uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
   u16string decoded_s = decode_sjis(cmd.text.dcv3, data.size() - sizeof(C_Chat_06));
   on_chat_generic(s, c, decoded_s);
 }
 
-
-
 static void on_00E0_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                       uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   send_team_and_key_config_bb(c);
   c->game_data.account()->newserv_flags &= ~AccountFlag::IN_DRESSING_ROOM;
@@ -2639,7 +2615,7 @@ static void on_00E0_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 static void on_00E3_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                       uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_PlayerPreviewRequest_BB_E3>(data);
 
   if (c->bb_game_state == ClientStateBB::CHOOSE_PLAYER) {
@@ -2670,7 +2646,7 @@ static void on_00E3_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 static void on_00E8_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string& data) {
+                       uint16_t command, uint32_t, const string& data) {
   constexpr size_t max_count = sizeof(GuildCardFileBB::entries) / sizeof(GuildCardEntryBB);
   constexpr size_t max_blocked = sizeof(GuildCardFileBB::blocked) / sizeof(GuildCardBB);
   switch (command) {
@@ -2678,7 +2654,7 @@ static void on_00E8_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
       const auto& cmd = check_size_t<C_GuildCardChecksum_01E8>(data);
       uint32_t checksum = c->game_data.account()->guild_cards.checksum();
       c->log.info("(Guild card file) Server checksum = %08" PRIX32 ", client checksum = %08" PRIX32,
-          checksum, cmd.checksum.load());
+                  checksum, cmd.checksum.load());
       S_GuildCardChecksumResponse_BB_02E8 response = {
           (cmd.checksum != checksum), 0};
       send_command_t(c, 0x02E8, 0x00000000, response);
@@ -2696,7 +2672,7 @@ static void on_00E8_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
           gcf.entries[z].data = new_gc;
           gcf.entries[z].unknown_a1.clear(0);
           c->log.info("Added guild card %" PRIu32 " at position %zu",
-              new_gc.guild_card_number.load(), z);
+                      new_gc.guild_card_number.load(), z);
           break;
         }
       }
@@ -2708,7 +2684,7 @@ static void on_00E8_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
       for (size_t z = 0; z < max_count; z++) {
         if (gcf.entries[z].data.guild_card_number == cmd.guild_card_number) {
           c->log.info("Deleted guild card %" PRIu32 " at position %zu",
-              cmd.guild_card_number.load(), z);
+                      cmd.guild_card_number.load(), z);
           for (z = 0; z < max_count - 1; z++) {
             gcf.entries[z] = gcf.entries[z + 1];
           }
@@ -2725,7 +2701,7 @@ static void on_00E8_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
         if (gcf.entries[z].data.guild_card_number == new_gc.guild_card_number) {
           gcf.entries[z].data = new_gc;
           c->log.info("Updated guild card %" PRIu32 " at position %zu",
-              new_gc.guild_card_number.load(), z);
+                      new_gc.guild_card_number.load(), z);
         }
       }
       break;
@@ -2737,7 +2713,7 @@ static void on_00E8_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
         if (!gcf.blocked[z].present) {
           gcf.blocked[z] = new_gc;
           c->log.info("Added blocked guild card %" PRIu32 " at position %zu",
-              new_gc.guild_card_number.load(), z);
+                      new_gc.guild_card_number.load(), z);
           // Note: The client also sends a C6 command, so we don't have to
           // manually sync the actual blocked senders list here
           break;
@@ -2751,7 +2727,7 @@ static void on_00E8_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
       for (size_t z = 0; z < max_blocked; z++) {
         if (gcf.blocked[z].guild_card_number == cmd.guild_card_number) {
           c->log.info("Deleted blocked guild card %" PRIu32 " at position %zu",
-              cmd.guild_card_number.load(), z);
+                      cmd.guild_card_number.load(), z);
           for (z = 0; z < max_blocked - 1; z++) {
             gcf.blocked[z] = gcf.blocked[z + 1];
           }
@@ -2770,7 +2746,7 @@ static void on_00E8_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
         if (gcf.entries[z].data.guild_card_number == cmd.guild_card_number) {
           gcf.entries[z].comment = cmd.comment;
           c->log.info("Updated comment on guild card %" PRIu32 " at position %zu",
-              cmd.guild_card_number.load(), z);
+                      cmd.guild_card_number.load(), z);
           break;
         }
       }
@@ -2800,7 +2776,7 @@ static void on_00E8_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
       }
       gcf.entries[index] = moved_gc;
       c->log.info("Moved guild card %" PRIu32 " to position %zu",
-            cmd.guild_card_number.load(), index);
+                  cmd.guild_card_number.load(), index);
       break;
     }
     default:
@@ -2809,7 +2785,7 @@ static void on_00E8_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 static void on_DC_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_GuildCardDataRequest_BB_03DC>(data);
   if (cmd.cont) {
     send_guild_card_chunk_bb(c, cmd.chunk_index);
@@ -2817,7 +2793,7 @@ static void on_DC_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 static void on_xxEB_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, const string& data) {
+                       uint16_t command, uint32_t flag, const string& data) {
   check_size_v(data.size(), 0);
 
   if (command == 0x04EB) {
@@ -2830,7 +2806,7 @@ static void on_xxEB_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 static void on_00EC_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                       uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_LeaveCharacterSelect_BB_00EC>(data);
   if (cmd.reason == 2) {
     c->game_data.account()->newserv_flags |= AccountFlag::IN_DRESSING_ROOM;
@@ -2842,7 +2818,7 @@ static void on_00EC_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 static void on_00E5_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                       uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<SC_PlayerPreview_CreateCharacter_BB_00E5>(data);
 
   if (!c->license) {
@@ -2892,7 +2868,7 @@ static void on_00E5_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_xxED_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string& data) {
+                       uint16_t command, uint32_t, const string& data) {
   const auto* cmd = reinterpret_cast<const C_UpdateAccountData_BB_ED*>(data.data());
 
   switch (command) {
@@ -2930,7 +2906,7 @@ static void on_xxED_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 static void on_00E7_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                       uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<PlayerBB>(data);
 
   // We only trust the player's quest data and challenge data.
@@ -2940,18 +2916,16 @@ static void on_00E7_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 static void on_00E2_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                       uint16_t, uint32_t, const string& data) {
   // Some clients have only a uint32_t at the end for team rewards
   auto& cmd = check_size_t<KeyAndTeamConfigBB>(data,
-      sizeof(KeyAndTeamConfigBB) - 4, sizeof(KeyAndTeamConfigBB));
+                                               sizeof(KeyAndTeamConfigBB) - 4, sizeof(KeyAndTeamConfigBB));
   c->game_data.account()->key_config = cmd;
   // TODO: We should probably send a response here, but I don't know which one!
 }
 
-
-
 static void on_89(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t flag, const string& data) {
+                  uint16_t, uint32_t flag, const string& data) {
   check_size_v(data.size(), 0);
 
   c->lobby_arrow_color = flag;
@@ -2962,23 +2936,24 @@ static void on_89(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_40(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_GuildCardSearch_40>(data);
   try {
     auto result = s->find_client(nullptr, cmd.target_guild_card_number);
     auto result_lobby = s->find_lobby(result->lobby_id);
     send_card_search_result(s, c, result, result_lobby);
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 }
 
 static void on_C0(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string&) {
+                  uint16_t, uint32_t, const string&) {
   // TODO: Implement choice search.
   send_text_message(c, u"$C6Choice Search is\nnot supported");
 }
 
 static void on_81(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   u16string message;
   uint32_t to_guild_card_number;
   switch (c->version()) {
@@ -3009,7 +2984,8 @@ static void on_81(shared_ptr<ServerState> s, shared_ptr<Client> c,
   shared_ptr<Client> target;
   try {
     target = s->find_client(nullptr, to_guild_card_number);
-  } catch (const out_of_range&) { }
+  } catch (const out_of_range&) {
+  }
 
   if (!target) {
     // TODO: We should store pending messages for accounts somewhere, and send
@@ -3029,8 +3005,8 @@ static void on_81(shared_ptr<ServerState> s, shared_ptr<Client> c,
     // forward the message in this case.
     if (!target->game_data.player()->auto_reply.empty()) {
       send_simple_mail(c, target->license->serial_number,
-          target->game_data.player()->disp.name,
-          target->game_data.player()->auto_reply);
+                       target->game_data.player()->disp.name,
+                       target->game_data.player()->auto_reply);
     }
 
     // Forward the message
@@ -3042,17 +3018,15 @@ static void on_81(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-
-
 static void on_D8(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   send_info_board(c, s->find_lobby(c->lobby_id));
 }
 
 template <typename CharT>
 void on_D9_t(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+             uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0, c->game_data.player()->info_board.size() * sizeof(CharT));
   c->game_data.player()->info_board.assign(
       reinterpret_cast<const CharT*>(data.data()),
@@ -3060,17 +3034,17 @@ void on_D9_t(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 void on_D9_a(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t cmd, uint32_t flag, const string& data) {
+             uint16_t cmd, uint32_t flag, const string& data) {
   on_D9_t<char>(s, c, cmd, flag, data);
 }
 void on_D9_w(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t cmd, uint32_t flag, const string& data) {
+             uint16_t cmd, uint32_t flag, const string& data) {
   on_D9_t<char16_t>(s, c, cmd, flag, data);
 }
 
 template <typename CharT>
 void on_C7_t(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+             uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0, c->game_data.player()->auto_reply.size() * sizeof(CharT));
   c->game_data.player()->auto_reply.assign(
       reinterpret_cast<const CharT*>(data.data()),
@@ -3078,22 +3052,22 @@ void on_C7_t(shared_ptr<ServerState>, shared_ptr<Client> c,
 }
 
 void on_C7_a(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t cmd, uint32_t flag, const string& data) {
+             uint16_t cmd, uint32_t flag, const string& data) {
   on_C7_t<char>(s, c, cmd, flag, data);
 }
 void on_C7_w(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t cmd, uint32_t flag, const string& data) {
+             uint16_t cmd, uint32_t flag, const string& data) {
   on_C7_t<char16_t>(s, c, cmd, flag, data);
 }
 
 static void on_C8(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   c->game_data.player()->auto_reply.clear(0);
 }
 
 static void on_C6(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   if (c->version() == GameVersion::BB) {
     const auto& cmd = check_size_t<C_SetBlockedSenders_BB_C6>(data);
     c->game_data.account()->blocked_senders = cmd.blocked_senders;
@@ -3102,8 +3076,6 @@ static void on_C6(shared_ptr<ServerState>, shared_ptr<Client> c,
     c->game_data.account()->blocked_senders = cmd.blocked_senders;
   }
 }
-
-
 
 shared_ptr<Lobby> create_game_generic(
     shared_ptr<ServerState> s,
@@ -3178,12 +3150,13 @@ shared_ptr<Lobby> create_game_generic(
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
   game->flags = flags |
-      Lobby::Flag::GAME |
-      (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0);
+                Lobby::Flag::GAME |
+                (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0);
   game->password = password;
   game->version = c->version();
   game->section_id = c->options.override_section_id >= 0
-      ? c->options.override_section_id : c->game_data.player()->disp.section_id;
+                         ? c->options.override_section_id
+                         : c->game_data.player()->disp.section_id;
   game->episode = episode;
   game->mode = mode;
   game->difficulty = difficulty;
@@ -3237,7 +3210,7 @@ shared_ptr<Lobby> create_game_generic(
 
     for (size_t area = 0; area < 0x10; area++) {
       c->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
-          area, game->variations[area * 2].load(), game->variations[area * 2 + 1].load());
+                  area, game->variations[area * 2].load(), game->variations[area * 2 + 1].load());
       auto filenames = map_filenames_for_variation(
           game->episode,
           is_solo,
@@ -3265,7 +3238,7 @@ shared_ptr<Lobby> create_game_generic(
               area_enemies.begin(),
               area_enemies.end());
           c->log.info("[Map/%zu] Loaded %s (%zu entries)",
-              area, filename.c_str(), area_enemies.size());
+                      area, filename.c_str(), area_enemies.size());
           for (size_t z = 0; z < area_enemies.size(); z++) {
             string e_str = area_enemies[z].str();
             static_game_data_log.info("(Entry %zX) %s", z, e_str.c_str());
@@ -3287,7 +3260,7 @@ shared_ptr<Lobby> create_game_generic(
 }
 
 static void on_C1_PC(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_CreateGame_PC_C1>(data);
 
   uint32_t flags = Lobby::Flag::NON_V1_ONLY;
@@ -3306,7 +3279,7 @@ static void on_C1_PC(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string& data) {
+                           uint16_t command, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
 
   // Only allow E7/EC from Ep3 clients
@@ -3368,7 +3341,7 @@ static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_C1_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_CreateGame_BB_C1>(data);
 
   uint32_t flags = Lobby::Flag::NON_V1_ONLY;
@@ -3407,7 +3380,7 @@ static void on_C1_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_8A(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   if ((c->version() == GameVersion::DC) && (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
     const auto& cmd = check_size_t<C_ConnectionInfo_DCNTE_8A>(data);
     set_console_client_flags(c, cmd.sub_version);
@@ -3424,7 +3397,7 @@ static void on_8A(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                  uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
 
   auto l = s->find_lobby(c->lobby_id);
@@ -3450,16 +3423,13 @@ static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
     watched_lobby->ep3_server_base->server->send_commands_for_joining_spectator(c->channel);
   }
 
-
   // If there are more players to bring in, try to do so
   c->disconnect_hooks.erase(ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME);
   add_next_game_client(s, l);
 }
 
-
-
 static void on_D0_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                        uint16_t, uint32_t, const string& data) {
   auto& cmd = check_size_t<SC_TradeItems_D0_D3>(data);
 
   if (c->game_data.pending_item_trade) {
@@ -3499,7 +3469,7 @@ static void on_D0_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_D2_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                        uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
 
   if (!c->game_data.pending_item_trade) {
@@ -3530,7 +3500,7 @@ static void on_D2_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_D4_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                        uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
 
   // Annoyingly, if the other client disconnects at a certain point during the
@@ -3560,10 +3530,8 @@ static void on_D4_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_command(target_c, 0xD4, 0x00);
 }
 
-
-
 static void on_EE_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t flag, const string& data) {
+                      uint16_t, uint32_t flag, const string& data) {
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
     throw runtime_error("non-Ep3 client sent card trade command");
   }
@@ -3666,7 +3634,7 @@ static void on_EE_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_EF_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                      uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
 
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
@@ -3687,10 +3655,8 @@ static void on_EF_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_card_auction_if_all_clients_ready(s, l);
 }
 
-
-
 static void on_xxEA_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t command, uint32_t, const string&) {
+                       uint16_t command, uint32_t, const string&) {
 
   // TODO: Implement teams. This command has a very large number of subcommands
   // (up to 20EA!).
@@ -3703,10 +3669,8 @@ static void on_xxEA_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
   }
 }
 
-
-
 static void on_02_P(shared_ptr<ServerState>, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                    uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   send_command(c, 0x04, 0x00); // This requests the user's login information
 }
@@ -3743,7 +3707,7 @@ static void change_to_directory_patch(
 }
 
 static void on_04_P(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t, uint32_t, const string& data) {
+                    uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Login_Patch_04>(data);
 
   try {
@@ -3773,13 +3737,13 @@ static void on_04_P(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // On BB we can use colors and newlines should be \n; on PC we can't use
   // colors, the text is auto-word-wrapped, and newlines should be \r\n.
   const u16string& message = (c->flags & Client::Flag::IS_BB_PATCH)
-      ? s->bb_patch_server_message : s->pc_patch_server_message;
+                                 ? s->bb_patch_server_message
+                                 : s->pc_patch_server_message;
   if (!message.empty()) {
     send_message_box(c, message.c_str());
   }
 
-  auto index = (c->flags & Client::Flag::IS_BB_PATCH) ?
-      s->bb_patch_file_index : s->pc_patch_file_index;
+  auto index = (c->flags & Client::Flag::IS_BB_PATCH) ? s->bb_patch_file_index : s->pc_patch_file_index;
   if (index.get()) {
     send_command(c, 0x0B, 0x00); // Start patch session; go to root directory
 
@@ -3810,7 +3774,7 @@ static void on_04_P(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 static void on_0F_P(shared_ptr<ServerState>,
-    shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
+                    shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
   auto& cmd = check_size_t<C_FileInformation_Patch_0F>(data);
   auto& req = c->patch_file_checksum_requests.at(cmd.request_id);
   req.crc32 = cmd.checksum;
@@ -3819,7 +3783,7 @@ static void on_0F_P(shared_ptr<ServerState>,
 }
 
 static void on_10_P(shared_ptr<ServerState>,
-    shared_ptr<Client> c, uint16_t, uint32_t, const string&) {
+                    shared_ptr<Client> c, uint16_t, uint32_t, const string&) {
 
   S_StartFileDownloads_Patch_11 start_cmd = {0, 0};
   for (const auto& req : c->patch_file_checksum_requests) {
@@ -3828,7 +3792,7 @@ static void on_10_P(shared_ptr<ServerState>,
     }
     if (req.needs_update()) {
       c->log.info("File %s needs update (CRC: %08" PRIX32 "/%08" PRIX32 ", size: %" PRIu32 "/%" PRIu32 ")",
-          req.file->name.c_str(), req.file->crc32, req.crc32, req.file->size, req.size);
+                  req.file->name.c_str(), req.file->crc32, req.crc32, req.file->size, req.size);
       start_cmd.total_bytes += req.file->size;
       start_cmd.num_files++;
     } else {
@@ -3851,27 +3815,24 @@ static void on_10_P(shared_ptr<ServerState>,
   send_command(c, 0x12, 0x00);
 }
 
-
-
 static void on_ignored(shared_ptr<ServerState>, shared_ptr<Client>,
-    uint16_t, uint32_t, const string&) { }
+                       uint16_t, uint32_t, const string&) {}
 
 static void on_unimplemented_command(shared_ptr<ServerState>,
-    shared_ptr<Client> c, uint16_t command, uint32_t flag, const string& data) {
+                                     shared_ptr<Client> c, uint16_t command, uint32_t flag, const string& data) {
   c->log.warning("Unknown command: size=%04zX command=%04hX flag=%08" PRIX32,
-      data.size(), command, flag);
+                 data.size(), command, flag);
   throw invalid_argument("unimplemented command");
 }
 
-
-
 typedef void (*on_command_t)(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, const string& data);
+                             uint16_t command, uint32_t flag, const string& data);
 
 // Command handler table, indexed by command number and game version. Null
 // entries in this table cause on_unimplemented_command to be called, which
 // disconnects the client.
 static on_command_t handlers[0x100][6] = {
+    // clang-format off
   //        PATCH    DC              PC           GC              XB              BB
   /* 00 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 01 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
@@ -4137,6 +4098,7 @@ static on_command_t handlers[0x100][6] = {
   /* FE */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* FF */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   //        PATCH    DC              PC           GC              XB              BB
+    // clang-format on
 };
 
 static void check_unlicensed_command(GameVersion version, uint8_t command) {
@@ -4181,7 +4143,7 @@ static void check_unlicensed_command(GameVersion version, uint8_t command) {
 }
 
 void on_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint16_t command, uint32_t flag, const string& data) {
+                uint16_t command, uint32_t flag, const string& data) {
   string encoded_name;
   auto player = c->game_data.player(false);
   if (player) {
@@ -4205,26 +4167,26 @@ void on_command(shared_ptr<ServerState> s, shared_ptr<Client> c,
 }
 
 void on_command_with_header(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    string& data) {
+                            string& data) {
   switch (c->version()) {
     case GameVersion::DC:
     case GameVersion::GC:
     case GameVersion::XB: {
       auto& header = check_size_t<PSOCommandHeaderDCV3>(data,
-          sizeof(PSOCommandHeaderDCV3), 0xFFFF);
+                                                        sizeof(PSOCommandHeaderDCV3), 0xFFFF);
       on_command(s, c, header.command, header.flag, data.substr(sizeof(header)));
       break;
     }
     case GameVersion::PC:
     case GameVersion::PATCH: {
       auto& header = check_size_t<PSOCommandHeaderPC>(data,
-          sizeof(PSOCommandHeaderPC), 0xFFFF);
+                                                      sizeof(PSOCommandHeaderPC), 0xFFFF);
       on_command(s, c, header.command, header.flag, data.substr(sizeof(header)));
       break;
     }
     case GameVersion::BB: {
       auto& header = check_size_t<PSOCommandHeaderBB>(data,
-          sizeof(PSOCommandHeaderBB), 0xFFFF);
+                                                      sizeof(PSOCommandHeaderBB), 0xFFFF);
       on_command(s, c, header.command, header.flag, data.substr(sizeof(header)));
       break;
     }

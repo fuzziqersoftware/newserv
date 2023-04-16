@@ -7,8 +7,6 @@
 
 using namespace std;
 
-
-
 uint32_t RareItemSet::expand_rate(uint8_t pc) {
   int8_t shift = ((pc >> 3) & 0x1F) - 4;
   if (shift < 0) {
@@ -21,10 +19,8 @@ bool RareItemSet::sample(mt19937& random, uint8_t pc) {
   return (random() < RareItemSet::expand_rate(pc));
 }
 
-
-
 GSLRareItemSet::GSLRareItemSet(shared_ptr<const string> data, bool is_big_endian)
-  : gsl(data, is_big_endian) { }
+    : gsl(data, is_big_endian) {}
 
 const GSLRareItemSet::Table& GSLRareItemSet::get_table(
     Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const {
@@ -40,18 +36,16 @@ const GSLRareItemSet::Table& GSLRareItemSet::get_table(
   }
 
   string filename = string_printf("ItemRT%s%s%c%1d.rel",
-      ((mode == GameMode::CHALLENGE) ? "c" : ""),
-      ((episode == Episode::EP2) ? "l" : ""),
-      tolower(abbreviation_for_difficulty(difficulty)), // One of "nhvu"
-      secid);
+                                  ((mode == GameMode::CHALLENGE) ? "c" : ""),
+                                  ((episode == Episode::EP2) ? "l" : ""),
+                                  tolower(abbreviation_for_difficulty(difficulty)), // One of "nhvu"
+                                  secid);
   auto entry = this->gsl.get(filename);
   if (entry.second < sizeof(Table)) {
     throw runtime_error(string_printf("table %s is too small", filename.c_str()));
   }
   return *reinterpret_cast<const Table*>(entry.first);
 }
-
-
 
 RELRareItemSet::RELRareItemSet(shared_ptr<const string> data) : data(data) {
   if (this->data->size() != sizeof(Table) * 10 * 4 * 3) {

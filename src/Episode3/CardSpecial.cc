@@ -6,8 +6,6 @@ using namespace std;
 
 namespace Episode3 {
 
-
-
 CardSpecial::DiceRoll::DiceRoll() {
   this->clear();
 }
@@ -19,8 +17,6 @@ void CardSpecial::DiceRoll::clear() {
   this->value_used_in_expr = 0;
   this->unknown_a5 = 0xFFFF;
 }
-
-
 
 CardSpecial::AttackEnvStats::AttackEnvStats() {
   this->clear();
@@ -73,10 +69,9 @@ uint32_t CardSpecial::AttackEnvStats::at(size_t offset) const {
   return reinterpret_cast<const parray<uint32_t, count>*>(this)->at(offset);
 }
 
-
-
 CardSpecial::CardSpecial(shared_ptr<Server> server)
-  : w_server(server), unknown_a2(0) { }
+    : w_server(server),
+      unknown_a2(0) {}
 
 shared_ptr<Server> CardSpecial::server() {
   auto s = this->w_server.lock();
@@ -109,11 +104,11 @@ void CardSpecial::adjust_attack_damage_due_to_conditions(
     }
 
     if (!this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
-          cond.card_ref,
-          target_card->get_card_ref(),
-          attacker_card_ref,
-          cond.card_definition_effect_index,
-          attack_medium)) {
+            cond.card_ref,
+            target_card->get_card_ref(),
+            attacker_card_ref,
+            cond.card_definition_effect_index,
+            attack_medium)) {
       continue;
     }
 
@@ -411,7 +406,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(
         if (hp != ap) {
           this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, hp - ap, 0, 0);
           this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x20, ap - hp, 0, 0);
-          card->set_current_hp(ap,1,1);
+          card->set_current_hp(ap, 1, 1);
           card->ap = hp;
           this->destroy_card_if_hp_zero(card, cond_card_ref);
         }
@@ -501,7 +496,7 @@ bool CardSpecial::card_has_condition_with_ref(
     uint16_t match_card_ref) const {
   size_t z = 0;
   while ((z < 9) &&
-         ((card->action_chain.conditions[z].type != cond_type) ||
+      ((card->action_chain.conditions[z].type != cond_type) ||
           (card->action_chain.conditions[z].card_ref == card_ref))) {
     z++;
   }
@@ -532,7 +527,7 @@ void CardSpecial::compute_attack_ap(
       : AttackMedium::UNKNOWN;
   uint16_t target_card_ref = target_card->get_card_ref();
 
-  auto check_card = [&](shared_ptr<Card> card) -> void{
+  auto check_card = [&](shared_ptr<Card> card) -> void {
     if (!card || (card->card_flags & 3)) {
       return;
     }
@@ -541,19 +536,19 @@ void CardSpecial::compute_attack_ap(
       if (cond.type == ConditionType::NONE ||
           this->card_ref_has_ability_trap(cond) ||
           !this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
-            card->action_chain.conditions[cond_index].card_ref,
-            target_card->get_card_ref(),
-            attacker_card_ref,
-            card->action_chain.conditions[cond_index].card_definition_effect_index,
-            attacker_sc_attack_medium)) {
+              card->action_chain.conditions[cond_index].card_ref,
+              target_card->get_card_ref(),
+              attacker_card_ref,
+              card->action_chain.conditions[cond_index].card_definition_effect_index,
+              attacker_sc_attack_medium)) {
         continue;
       }
 
       auto cond_type = card->action_chain.conditions[cond_index].type;
       if (((cond_type == ConditionType::UNKNOWN_5F) &&
-           (target_card_ref == card->action_chain.conditions[cond_index].condition_giver_card_ref)) ||
+              (target_card_ref == card->action_chain.conditions[cond_index].condition_giver_card_ref)) ||
           ((cond_type == ConditionType::UNKNOWN_60) &&
-           (target_card_ref == card->action_chain.conditions[cond_index].card_ref))) {
+              (target_card_ref == card->action_chain.conditions[cond_index].card_ref))) {
         *out_value = card->action_chain.conditions[cond_index].value8;
       }
     }
@@ -570,7 +565,7 @@ void CardSpecial::compute_attack_ap(
   }
 
   if (attacker_card &&
-      attacker_card->get_attack_condition_value(ConditionType::UNKNOWN_7D, 0xFFFF,0xFF,0xFFFF, nullptr)) {
+      attacker_card->get_attack_condition_value(ConditionType::UNKNOWN_7D, 0xFFFF, 0xFF, 0xFFFF, nullptr)) {
     *out_value = *out_value * 1.5f;
   }
   if (target_card &&
@@ -611,7 +606,8 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   ast.total_num_set_cards = ps_num_set_cards;
 
   uint8_t target_card_team_id = target_card
-      ? target_card->player_state()->get_team_id() : 0xFF;
+      ? target_card->player_state()->get_team_id()
+      : 0xFF;
 
   size_t target_team_num_set_cards = 0;
   size_t condition_giver_team_num_set_cards = 0;
@@ -629,19 +625,26 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   ast.condition_giver_team_num_set_cards = condition_giver_team_num_set_cards;
 
   ast.num_native_creatures = this->get_all_set_cards_by_team_and_class(
-      CardClass::NATIVE_CREATURE, 0xFF, true).size();
+                                     CardClass::NATIVE_CREATURE, 0xFF, true)
+                                 .size();
   ast.num_a_beast_creatures = this->get_all_set_cards_by_team_and_class(
-      CardClass::A_BEAST_CREATURE, 0xFF, true).size();
+                                      CardClass::A_BEAST_CREATURE, 0xFF, true)
+                                  .size();
   ast.num_machine_creatures = this->get_all_set_cards_by_team_and_class(
-      CardClass::MACHINE_CREATURE, 0xFF, true).size();
+                                      CardClass::MACHINE_CREATURE, 0xFF, true)
+                                  .size();
   ast.num_dark_creatures = this->get_all_set_cards_by_team_and_class(
-      CardClass::DARK_CREATURE, 0xFF, true).size();
+                                   CardClass::DARK_CREATURE, 0xFF, true)
+                               .size();
   ast.num_sword_type_items = this->get_all_set_cards_by_team_and_class(
-      CardClass::SWORD_ITEM, 0xFF, true).size();
+                                     CardClass::SWORD_ITEM, 0xFF, true)
+                                 .size();
   ast.num_gun_type_items = this->get_all_set_cards_by_team_and_class(
-      CardClass::GUN_ITEM, 0xFF, true).size();
+                                   CardClass::GUN_ITEM, 0xFF, true)
+                               .size();
   ast.num_cane_type_items = this->get_all_set_cards_by_team_and_class(
-      CardClass::CANE_ITEM, 0xFF, true).size();
+                                    CardClass::CANE_ITEM, 0xFF, true)
+                                .size();
   ast.num_sword_type_items_on_team = card
       ? this->get_all_set_cards_by_team_and_class(CardClass::SWORD_ITEM, card->get_team_id(), true).size()
       : 0;
@@ -672,11 +675,14 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   ast.team_dice_boost = card ? this->server()->team_dice_boost[card->get_team_id()] : 0;
 
   ast.effective_ap_if_not_tech = (!attacker_card || (attacker_card->action_chain.chain.attack_medium == AttackMedium::TECH))
-      ? 0 : attacker_card->action_chain.chain.damage;
+      ? 0
+      : attacker_card->action_chain.chain.damage;
   ast.effective_ap_if_not_tech2 = (!attacker_card || (attacker_card->action_chain.chain.attack_medium == AttackMedium::TECH))
-      ? 0 : attacker_card->action_chain.chain.damage;
+      ? 0
+      : attacker_card->action_chain.chain.damage;
   ast.effective_ap_if_not_physical = (!attacker_card || (attacker_card->action_chain.chain.attack_medium == AttackMedium::PHYSICAL))
-      ? 0 : attacker_card->action_chain.chain.damage;
+      ? 0
+      : attacker_card->action_chain.chain.damage;
   ast.sc_effective_ap = attacker_card ? attacker_card->action_chain.chain.damage : 0;
   ast.attack_bonus = card->action_metadata.attack_bonus;
   ast.last_attack_preliminary_damage = card->last_attack_preliminary_damage;
@@ -707,7 +713,8 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   // original code.
   for (z = 0;
        ((target_card_ref != pa.attacker_card_ref) && (z < 9) && (pa.action_card_refs[z] != 0xFFFF));
-       z++) { }
+       z++) {
+  }
   ast.action_cards_ap = 0;
   ast.action_cards_tp = 0;
   for (; (z < 9) && (pa.action_card_refs[z] != 0xFFFF); z++) {
@@ -789,11 +796,11 @@ shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
         continue;
       }
       if (!this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
-            target_card->action_chain.conditions[x].card_ref,
-            target_card->get_card_ref(),
-            attacker_card_ref,
-            target_card->action_chain.conditions[x].card_definition_effect_index,
-            attack_medium)) {
+              target_card->action_chain.conditions[x].card_ref,
+              target_card->get_card_ref(),
+              attacker_card_ref,
+              target_card->action_chain.conditions[x].card_definition_effect_index,
+              attack_medium)) {
         continue;
       }
       if (target_card->action_chain.conditions[x].type != ConditionType::PARRY) {
@@ -871,11 +878,11 @@ shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
           continue;
         }
         if (!this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
-              other_set_card->action_chain.conditions[z].card_ref,
-              other_set_card->get_card_ref(),
-              attacker_card_ref,
-              other_set_card->action_chain.conditions[z].card_definition_effect_index,
-              attack_medium)) {
+                other_set_card->action_chain.conditions[z].card_ref,
+                other_set_card->get_card_ref(),
+                attacker_card_ref,
+                other_set_card->action_chain.conditions[z].card_definition_effect_index,
+                attack_medium)) {
           continue;
         }
 
@@ -896,9 +903,9 @@ shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
                 (unknown_p4 != 0) &&
                 (target_card_ref == other_set_card->action_chain.conditions[z].condition_giver_card_ref)) {
               candidate_cards.emplace_back(other_set_card);
-              if (unknown_p11 &&(def_effect_index != 0xFF) && (set_card_ref != 0xFFFF) &&
+              if (unknown_p11 && (def_effect_index != 0xFF) && (set_card_ref != 0xFFFF) &&
                   !this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
-                    set_card_ref, sc_card_ref, other_set_card->get_card_ref(), def_effect_index, attack_medium)) {
+                      set_card_ref, sc_card_ref, other_set_card->get_card_ref(), def_effect_index, attack_medium)) {
                 *unknown_p11 = 1;
               }
             }
@@ -950,11 +957,11 @@ shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
           continue;
         }
         if (!this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
-              cond.card_ref,
-              other_sc->get_card_ref(),
-              attacker_card_ref,
-              cond.card_definition_effect_index,
-              attack_medium)) {
+                cond.card_ref,
+                other_sc->get_card_ref(),
+                attacker_card_ref,
+                cond.card_definition_effect_index,
+                attack_medium)) {
           continue;
         }
 
@@ -977,7 +984,7 @@ shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
               candidate_cards.emplace_back(other_sc);
               if (unknown_p11 && (def_effect_index != 0xFF) && (set_card_ref != 0xFFFF) &&
                   !this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
-                    set_card_ref, sc_card_ref, other_sc->get_card_ref(), def_effect_index, attack_medium)) {
+                      set_card_ref, sc_card_ref, other_sc->get_card_ref(), def_effect_index, attack_medium)) {
                 *unknown_p11 = 1;
               }
             }
@@ -1262,7 +1269,7 @@ bool CardSpecial::evaluate_effect_arg2_condition(
 
   auto set_card = this->server()->card_for_set_card_ref(set_card_ref);
   bool set_card_has_ability_trap = (set_card &&
-     (this->card_has_condition_with_ref(set_card, ConditionType::ABILITY_TRAP, 0xFFFF, 0xFFFF)));
+      (this->card_has_condition_with_ref(set_card, ConditionType::ABILITY_TRAP, 0xFFFF, 0xFFFF)));
 
   switch (arg2_text[0]) {
     case 'C':
@@ -1392,15 +1399,15 @@ bool CardSpecial::evaluate_effect_arg2_condition(
         case 13: {
           auto ce = card->get_definition();
           return ((ce->def.card_class() == CardClass::GUARD_ITEM) ||
-                  (ce->def.card_class() == CardClass::MAG_ITEM) ||
-                  this->server()->ruler_server->find_condition_on_card_ref(
-                    card->get_card_ref(), ConditionType::GUARD_CREATURE, 0, 0, 0));
+              (ce->def.card_class() == CardClass::MAG_ITEM) ||
+              this->server()->ruler_server->find_condition_on_card_ref(
+                  card->get_card_ref(), ConditionType::GUARD_CREATURE, 0, 0, 0));
         }
         case 14:
           return card->get_definition()->def.is_sc();
         case 15:
           return ((card->action_chain.chain.attack_action_card_ref_count == 0) &&
-                  (card->action_metadata.defense_card_ref_count == 0));
+              (card->action_metadata.defense_card_ref_count == 0));
         case 16:
           return this->server()->ruler_server->card_ref_is_aerial(card->get_card_ref());
         case 17: {
@@ -1462,14 +1469,14 @@ bool CardSpecial::evaluate_effect_arg2_condition(
         }
       }
       return (this->find_condition_with_parameters(
-          card, ConditionType::ANY, set_card_ref, ((v % 10) == 0) ? 0xFF : (v % 10)) != nullptr);
+                  card, ConditionType::ANY, set_card_ref, ((v % 10) == 0) ? 0xFF : (v % 10)) != nullptr);
     }
     case 'r':
       return !set_card_has_ability_trap && (random_percent < atoi(arg2_text + 1));
     case 's': {
       auto ce = card->get_definition();
       return ((ce->def.self_cost >= arg2_text[1] - '0') &&
-              (ce->def.self_cost <= arg2_text[2] - '0'));
+          (ce->def.self_cost <= arg2_text[2] - '0'));
     }
     case 't': {
       auto set_card = this->server()->card_for_set_card_ref(set_card_ref);
@@ -1597,8 +1604,8 @@ bool CardSpecial::execute_effect(
 
   if ((card->card_flags & 3) ||
       (card->action_metadata.check_flag(0x10) &&
-       (cond.card_ref != card->get_card_ref()) &&
-       (cond.condition_giver_card_ref != card->get_card_ref()))) {
+          (cond.card_ref != card->get_card_ref()) &&
+          (cond.condition_giver_card_ref != card->get_card_ref()))) {
     unknown_p7 = unknown_p7 & 0xFFFFFFFB;
   }
   if (unknown_p7 == 0) {
@@ -1887,8 +1894,7 @@ bool CardSpecial::execute_effect(
 
     case ConditionType::BONUS_FROM_LEADER:
       if (unknown_p7 & 1) {
-        clamped_unknown_p5 = this->count_cards_with_card_id_set_by_player_except_card_ref(expr_value, 0xFFFF)
-            + (card->action_chain).chain.ap_effect_bonus;
+        clamped_unknown_p5 = this->count_cards_with_card_id_set_by_player_except_card_ref(expr_value, 0xFFFF) + (card->action_chain).chain.ap_effect_bonus;
         (card->action_chain).chain.ap_effect_bonus = clamp<int16_t>(clamped_unknown_p5, -99, 99);
       }
       return true;
@@ -2069,9 +2075,9 @@ bool CardSpecial::execute_effect(
           auto sc_card = this->server()->card_for_set_card_ref(card_ref);
           if (sc_card && (sc_card->get_current_hp() > 0)) {
             if (this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
-                  cond.card_ref, cond.condition_giver_card_ref,
-                  sc_card->get_card_ref(), cond.card_definition_effect_index,
-                  attack_medium)) {
+                    cond.card_ref, cond.condition_giver_card_ref,
+                    sc_card->get_card_ref(), cond.card_definition_effect_index,
+                    attack_medium)) {
               this->send_6xB4x06_for_stat_delta(sc_card, attacker_card_ref, 0x20, -sc_card->get_current_hp(), 0, 1);
               sc_card->set_current_hp(0);
               this->destroy_card_if_hp_zero(sc_card, attacker_card_ref);
@@ -2288,11 +2294,11 @@ bool CardSpecial::execute_effect(
           auto set_card = this->server()->card_for_set_card_ref(card_ref);
           if (set_card && (set_card->get_current_hp() > 0)) {
             if (this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
-                  cond.card_ref,
-                  cond.condition_giver_card_ref,
-                  set_card->get_card_ref(),
-                  cond.card_definition_effect_index,
-                  attack_medium)) {
+                    cond.card_ref,
+                    cond.condition_giver_card_ref,
+                    set_card->get_card_ref(),
+                    cond.card_definition_effect_index,
+                    attack_medium)) {
               this->send_6xB4x06_for_stat_delta(
                   set_card, attacker_card_ref, 0x20, -set_card->get_current_hp(), 0, 1);
               set_card->set_current_hp(0);
@@ -2391,7 +2397,7 @@ void CardSpecial::get_effective_ap_tp(
 }
 
 const char* CardSpecial::get_next_expr_token(
-    const char *expr, ExpressionTokenType* out_type, int32_t* out_value) const {
+    const char* expr, ExpressionTokenType* out_type, int32_t* out_value) const {
   switch (*expr) {
     case '\0':
       *out_type = ExpressionTokenType::SPACE;
@@ -2427,11 +2433,11 @@ const char* CardSpecial::get_next_expr_token(
     *out_type = ExpressionTokenType::SPACE;
     *out_value = 0x27;
 
-    static const vector<const char*> tokens({
+    static const vector<const char*> tokens = {
         "f", "d", "ap", "tp", "hp", "mhp", "dm", "tdm", "tf", "ac", "php",
         "dc", "cs", "a", "kap", "ktp", "dn", "hf", "df", "ff", "ef", "bi",
         "ab", "mc", "dk", "sa", "gn", "wd", "tt", "lv", "adm", "ddm", "sat",
-        "edm", "ldm", "rdm", "fdm", "ndm", "ehp"});
+        "edm", "ldm", "rdm", "fdm", "ndm", "ehp"};
     for (size_t z = 0; z < tokens.size(); z++) {
       if (token_buf == tokens[z]) {
         *out_type = ExpressionTokenType::REFERENCE;
@@ -2467,7 +2473,8 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
   }
 
   auto card2 = this->server()->card_for_set_card_ref((as.attacker_card_ref == 0xFFFF)
-      ? as.original_attacker_card_ref : as.attacker_card_ref);
+          ? as.original_attacker_card_ref
+          : as.attacker_card_ref);
 
   Location card1_loc;
   if (!card1) {
@@ -2526,7 +2533,8 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       break;
     case 4:
       size_t z;
-      for (z = 0; (z < 9) && (as.action_card_refs[z] != 0xFFFF) && (as.action_card_refs[z] != card_ref); z++) { }
+      for (z = 0; (z < 9) && (as.action_card_refs[z] != 0xFFFF) && (as.action_card_refs[z] != card_ref); z++) {
+      }
       for (; (z < 9) && (as.action_card_refs[z] != 0xFFFF); z++) {
         auto result_card = this->server()->card_for_set_card_ref(as.action_card_refs[z]);
         if (result_card) {
@@ -2971,7 +2979,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
           for (size_t set_index = 0; set_index < 8; set_index++) {
             auto result_card = ps->get_set_card(set_index);
             if (result_card && (card1 != result_card) &&
-               (result_card->get_definition()->def.type == CardType::ITEM)) {
+                (result_card->get_definition()->def.type == CardType::ITEM)) {
               bool should_add = true;
               for (auto c : ret) {
                 if (c == result_card) {
@@ -2992,7 +3000,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     vector<shared_ptr<const Card>> filtered_ret;
     for (auto c : ret) {
       if (this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
-            card_ref, setter_card_ref, c->get_card_ref(), def_effect_index, attack_medium)) {
+              card_ref, setter_card_ref, c->get_card_ref(), def_effect_index, attack_medium)) {
         filtered_ret.emplace_back(c);
       }
     }
@@ -3176,8 +3184,8 @@ bool CardSpecial::should_cancel_condition_due_to_anti_abnormality(
   }
   if ((card->card_flags & 3) ||
       (card->action_metadata.check_flag(0x10) &&
-       (card->get_card_ref() != target_card_ref) &&
-       (card->get_card_ref() != sc_card_ref))) {
+          (card->get_card_ref() != target_card_ref) &&
+          (card->get_card_ref() != sc_card_ref))) {
     return true;
   }
   auto ce = card->get_definition();
@@ -3519,15 +3527,15 @@ void CardSpecial::unknown_8024C2B0(
     bool all_targets_matched = false;
     if (!targeted_cards.empty() &&
         ((card_effect.type == ConditionType::UNKNOWN_64) ||
-         (card_effect.type == ConditionType::MISC_DEFENSE_BONUSES) ||
-         (card_effect.type == ConditionType::MOSTLY_HALFGUARDS))) {
+            (card_effect.type == ConditionType::MISC_DEFENSE_BONUSES) ||
+            (card_effect.type == ConditionType::MOSTLY_HALFGUARDS))) {
       size_t count = 0;
       for (size_t z = 0; z < targeted_cards.size(); z++) {
         dice_roll.value_used_in_expr = false;
         string arg2_text = card_effect.arg2;
         if (this->evaluate_effect_arg2_condition(
-              as, targeted_cards[z], arg2_text.c_str(), dice_roll,
-              set_card_ref, sc_card_ref, random_percent, when)) {
+                as, targeted_cards[z], arg2_text.c_str(), dice_roll,
+                set_card_ref, sc_card_ref, random_percent, when)) {
           count++;
         }
         if (dice_roll.value_used_in_expr) {
@@ -3554,7 +3562,7 @@ void CardSpecial::unknown_8024C2B0(
       string arg2_str = card_effect.arg2;
       if (all_targets_matched ||
           this->evaluate_effect_arg2_condition(
-            as, targeted_cards[z], arg2_str.c_str(), dice_roll, set_card_ref, sc_card_ref, random_percent, when)) {
+              as, targeted_cards[z], arg2_str.c_str(), dice_roll, set_card_ref, sc_card_ref, random_percent, when)) {
         auto env_stats = this->compute_attack_env_stats(
             as, targeted_cards[z], dice_roll, set_card_ref, sc_card_ref);
         string expr_str = card_effect.expr;
@@ -3577,8 +3585,7 @@ void CardSpecial::unknown_8024C2B0(
         }
 
         ssize_t applied_cond_index = -1;
-        if ((unknown_v1 == 0) && !this->should_cancel_condition_due_to_anti_abnormality(
-              card_effect, target_card, dice_cmd.effect.target_card_ref, sc_card_ref)) {
+        if ((unknown_v1 == 0) && !this->should_cancel_condition_due_to_anti_abnormality(card_effect, target_card, dice_cmd.effect.target_card_ref, sc_card_ref)) {
           applied_cond_index = target_card->apply_abnormal_condition(
               card_effect, def_effect_index, dice_cmd.effect.target_card_ref, sc_card_ref, value, dice_roll.value, random_percent);
           // This debug_print call is in the original code.
@@ -3713,152 +3720,152 @@ const InterferenceProbabilityEntry* get_interference_probability_entry(
     uint16_t column_card_id,
     bool is_attack) {
   static const InterferenceProbabilityEntry entries[] = {
-    {0x0004, 0xFF, 0xFF},
-    {0x0002, 0x04, 0x00},
-    {0x0002, 0x00, 0x0F},
-    {0x0003, 0x03, 0x00},
-    {0x0003, 0x00, 0x0A},
-    {0x0006, 0x01, 0x00},
-    {0x0006, 0x00, 0x05},
-    {0x0111, 0x01, 0x00},
-    {0x0111, 0x00, 0x05},
-    {0x0001, 0x03, 0x00},
-    {0x0001, 0x00, 0x0A},
-    {0x0002, 0xFF, 0xFF},
-    {0x0004, 0x04, 0x00},
-    {0x0004, 0x00, 0x0F},
-    {0x0003, 0x06, 0x00},
-    {0x0003, 0x00, 0x14},
-    {0x0006, 0x04, 0x00},
-    {0x0006, 0x00, 0x0F},
-    {0x0003, 0xFF, 0xFF},
-    {0x0004, 0x04, 0x00},
-    {0x0004, 0x00, 0x0F},
-    {0x0002, 0x04, 0x00},
-    {0x0002, 0x00, 0x0F},
-    {0x0006, 0xFF, 0xFF},
-    {0x0002, 0x06, 0x00},
-    {0x0002, 0x00, 0x14},
-    {0x0111, 0xFF, 0xFF},
-    {0x0004, 0x01, 0x00},
-    {0x0004, 0x00, 0x05},
-    {0x0001, 0x06, 0x00},
-    {0x0001, 0x00, 0x14},
-    {0x0001, 0xFF, 0xFF},
-    {0x0111, 0x04, 0x00},
-    {0x0111, 0x00, 0x0F},
-    {0x0112, 0xFF, 0xFF},
-    {0x0113, 0x06, 0x00},
-    {0x0113, 0x00, 0x14},
-    {0x0110, 0x06, 0x00},
-    {0x0110, 0x00, 0x14},
-    {0x0114, 0x01, 0x00},
-    {0x0114, 0x00, 0x05},
-    {0x011D, 0x02, 0x00},
-    {0x011D, 0x00, 0x07},
-    {0x0113, 0xFF, 0xFF},
-    {0x0003, 0x03, 0x00},
-    {0x0003, 0x00, 0x0A},
-    {0x0112, 0x03, 0x00},
-    {0x0112, 0x00, 0x0A},
-    {0x0110, 0xFF, 0xFF},
-    {0x0005, 0x03, 0x00},
-    {0x0005, 0x00, 0x0A},
-    {0x0112, 0x04, 0x00},
-    {0x0112, 0x00, 0x0F},
-    {0x0005, 0xFF, 0xFF},
-    {0x0110, 0x03, 0x00},
-    {0x0110, 0x00, 0x0A},
-    {0x0114, 0xFF, 0xFF},
-    {0x0005, 0x03, 0x00},
-    {0x0005, 0x00, 0x0A},
-    {0x0110, 0x01, 0x00},
-    {0x0110, 0x00, 0x05},
-    {0x0115, 0x06, 0x00},
-    {0x0115, 0x00, 0x14},
-    {0x0115, 0xFF, 0xFF},
-    {0x0004, 0x01, 0x00},
-    {0x0004, 0x00, 0x05},
-    {0x0003, 0x01, 0x00},
-    {0x0003, 0x00, 0x05},
-    {0x0006, 0x01, 0x00},
-    {0x0006, 0x00, 0x05},
-    {0x0112, 0x01, 0x00},
-    {0x0112, 0x00, 0x05},
-    {0x0110, 0x01, 0x00},
-    {0x0110, 0x00, 0x05},
-    {0x0114, 0x04, 0x00},
-    {0x0114, 0x00, 0x0F},
-    {0x0008, 0xFF, 0xFF},
-    {0x0007, 0x06, 0x00},
-    {0x0007, 0x00, 0x14},
-    {0x0116, 0x01, 0x00},
-    {0x0116, 0x00, 0x05},
-    {0x011E, 0x03, 0x00},
-    {0x011E, 0x00, 0x0A},
-    {0x0118, 0x06, 0x00},
-    {0x0118, 0x00, 0x14},
-    {0x0007, 0xFF, 0xFF},
-    {0x0008, 0x06, 0x00},
-    {0x0008, 0x00, 0x14},
-    {0x0118, 0x01, 0x00},
-    {0x0118, 0x00, 0x05},
-    {0x011B, 0x03, 0x00},
-    {0x011B, 0x00, 0x0A},
-    {0x0116, 0xFF, 0xFF},
-    {0x0008, 0x01, 0x00},
-    {0x0008, 0x00, 0x05},
-    {0x011C, 0x03, 0x00},
-    {0x011C, 0x00, 0x0A},
-    {0x011A, 0xFF, 0xFF},
-    {0x0119, 0x04, 0x00},
-    {0x0119, 0x00, 0x0F},
-    {0x011D, 0x04, 0x00},
-    {0x011D, 0x00, 0x0F},
-    {0x0119, 0xFF, 0xFF},
-    {0x011A, 0x04, 0x00},
-    {0x011A, 0x00, 0x0F},
-    {0x011D, 0x04, 0x00},
-    {0x011D, 0x00, 0x0F},
-    {0x011D, 0xFF, 0xFF},
-    {0x0119, 0x04, 0x00},
-    {0x0119, 0x00, 0x0F},
-    {0x011A, 0x04, 0x00},
-    {0x011A, 0x00, 0x0F},
-    {0x0112, 0x01, 0x00},
-    {0x0112, 0x00, 0x07},
-    {0x011E, 0xFF, 0xFF},
-    {0x0008, 0x03, 0x00},
-    {0x0008, 0x00, 0x0A},
-    {0x0118, 0x06, 0x00},
-    {0x0118, 0x00, 0x14},
-    {0x011C, 0xFF, 0xFF},
-    {0x0116, 0x04, 0x00},
-    {0x0116, 0x00, 0x0F},
-    {0x011E, 0x01, 0x00},
-    {0x011E, 0x00, 0x05},
-    {0x0118, 0xFF, 0xFF},
-    {0x011E, 0x06, 0x00},
-    {0x011E, 0x00, 0x14},
-    {0x011B, 0xFF, 0xFF},
-    {0x0007, 0x03, 0x00},
-    {0x0007, 0x00, 0x0A},
-    {0x0117, 0x03, 0x00},
-    {0x0117, 0x00, 0x0A},
-    {0x011F, 0x06, 0x00},
-    {0x011F, 0x00, 0x14},
-    {0x0117, 0xFF, 0xFF},
-    {0x011F, 0x03, 0x00},
-    {0x011F, 0x00, 0x0A},
-    {0x011B, 0x04, 0x00},
-    {0x011B, 0x00, 0x0F},
-    {0x011F, 0xFF, 0xFF},
-    {0x0007, 0x01, 0x00},
-    {0x0007, 0x00, 0x05},
-    {0x011B, 0x06, 0x00},
-    {0x011B, 0x00, 0x14},
-    {0x0117, 0x04, 0x00},
-    {0x0117, 0x00, 0x0F},
+      {0x0004, 0xFF, 0xFF},
+      {0x0002, 0x04, 0x00},
+      {0x0002, 0x00, 0x0F},
+      {0x0003, 0x03, 0x00},
+      {0x0003, 0x00, 0x0A},
+      {0x0006, 0x01, 0x00},
+      {0x0006, 0x00, 0x05},
+      {0x0111, 0x01, 0x00},
+      {0x0111, 0x00, 0x05},
+      {0x0001, 0x03, 0x00},
+      {0x0001, 0x00, 0x0A},
+      {0x0002, 0xFF, 0xFF},
+      {0x0004, 0x04, 0x00},
+      {0x0004, 0x00, 0x0F},
+      {0x0003, 0x06, 0x00},
+      {0x0003, 0x00, 0x14},
+      {0x0006, 0x04, 0x00},
+      {0x0006, 0x00, 0x0F},
+      {0x0003, 0xFF, 0xFF},
+      {0x0004, 0x04, 0x00},
+      {0x0004, 0x00, 0x0F},
+      {0x0002, 0x04, 0x00},
+      {0x0002, 0x00, 0x0F},
+      {0x0006, 0xFF, 0xFF},
+      {0x0002, 0x06, 0x00},
+      {0x0002, 0x00, 0x14},
+      {0x0111, 0xFF, 0xFF},
+      {0x0004, 0x01, 0x00},
+      {0x0004, 0x00, 0x05},
+      {0x0001, 0x06, 0x00},
+      {0x0001, 0x00, 0x14},
+      {0x0001, 0xFF, 0xFF},
+      {0x0111, 0x04, 0x00},
+      {0x0111, 0x00, 0x0F},
+      {0x0112, 0xFF, 0xFF},
+      {0x0113, 0x06, 0x00},
+      {0x0113, 0x00, 0x14},
+      {0x0110, 0x06, 0x00},
+      {0x0110, 0x00, 0x14},
+      {0x0114, 0x01, 0x00},
+      {0x0114, 0x00, 0x05},
+      {0x011D, 0x02, 0x00},
+      {0x011D, 0x00, 0x07},
+      {0x0113, 0xFF, 0xFF},
+      {0x0003, 0x03, 0x00},
+      {0x0003, 0x00, 0x0A},
+      {0x0112, 0x03, 0x00},
+      {0x0112, 0x00, 0x0A},
+      {0x0110, 0xFF, 0xFF},
+      {0x0005, 0x03, 0x00},
+      {0x0005, 0x00, 0x0A},
+      {0x0112, 0x04, 0x00},
+      {0x0112, 0x00, 0x0F},
+      {0x0005, 0xFF, 0xFF},
+      {0x0110, 0x03, 0x00},
+      {0x0110, 0x00, 0x0A},
+      {0x0114, 0xFF, 0xFF},
+      {0x0005, 0x03, 0x00},
+      {0x0005, 0x00, 0x0A},
+      {0x0110, 0x01, 0x00},
+      {0x0110, 0x00, 0x05},
+      {0x0115, 0x06, 0x00},
+      {0x0115, 0x00, 0x14},
+      {0x0115, 0xFF, 0xFF},
+      {0x0004, 0x01, 0x00},
+      {0x0004, 0x00, 0x05},
+      {0x0003, 0x01, 0x00},
+      {0x0003, 0x00, 0x05},
+      {0x0006, 0x01, 0x00},
+      {0x0006, 0x00, 0x05},
+      {0x0112, 0x01, 0x00},
+      {0x0112, 0x00, 0x05},
+      {0x0110, 0x01, 0x00},
+      {0x0110, 0x00, 0x05},
+      {0x0114, 0x04, 0x00},
+      {0x0114, 0x00, 0x0F},
+      {0x0008, 0xFF, 0xFF},
+      {0x0007, 0x06, 0x00},
+      {0x0007, 0x00, 0x14},
+      {0x0116, 0x01, 0x00},
+      {0x0116, 0x00, 0x05},
+      {0x011E, 0x03, 0x00},
+      {0x011E, 0x00, 0x0A},
+      {0x0118, 0x06, 0x00},
+      {0x0118, 0x00, 0x14},
+      {0x0007, 0xFF, 0xFF},
+      {0x0008, 0x06, 0x00},
+      {0x0008, 0x00, 0x14},
+      {0x0118, 0x01, 0x00},
+      {0x0118, 0x00, 0x05},
+      {0x011B, 0x03, 0x00},
+      {0x011B, 0x00, 0x0A},
+      {0x0116, 0xFF, 0xFF},
+      {0x0008, 0x01, 0x00},
+      {0x0008, 0x00, 0x05},
+      {0x011C, 0x03, 0x00},
+      {0x011C, 0x00, 0x0A},
+      {0x011A, 0xFF, 0xFF},
+      {0x0119, 0x04, 0x00},
+      {0x0119, 0x00, 0x0F},
+      {0x011D, 0x04, 0x00},
+      {0x011D, 0x00, 0x0F},
+      {0x0119, 0xFF, 0xFF},
+      {0x011A, 0x04, 0x00},
+      {0x011A, 0x00, 0x0F},
+      {0x011D, 0x04, 0x00},
+      {0x011D, 0x00, 0x0F},
+      {0x011D, 0xFF, 0xFF},
+      {0x0119, 0x04, 0x00},
+      {0x0119, 0x00, 0x0F},
+      {0x011A, 0x04, 0x00},
+      {0x011A, 0x00, 0x0F},
+      {0x0112, 0x01, 0x00},
+      {0x0112, 0x00, 0x07},
+      {0x011E, 0xFF, 0xFF},
+      {0x0008, 0x03, 0x00},
+      {0x0008, 0x00, 0x0A},
+      {0x0118, 0x06, 0x00},
+      {0x0118, 0x00, 0x14},
+      {0x011C, 0xFF, 0xFF},
+      {0x0116, 0x04, 0x00},
+      {0x0116, 0x00, 0x0F},
+      {0x011E, 0x01, 0x00},
+      {0x011E, 0x00, 0x05},
+      {0x0118, 0xFF, 0xFF},
+      {0x011E, 0x06, 0x00},
+      {0x011E, 0x00, 0x14},
+      {0x011B, 0xFF, 0xFF},
+      {0x0007, 0x03, 0x00},
+      {0x0007, 0x00, 0x0A},
+      {0x0117, 0x03, 0x00},
+      {0x0117, 0x00, 0x0A},
+      {0x011F, 0x06, 0x00},
+      {0x011F, 0x00, 0x14},
+      {0x0117, 0xFF, 0xFF},
+      {0x011F, 0x03, 0x00},
+      {0x011F, 0x00, 0x0A},
+      {0x011B, 0x04, 0x00},
+      {0x011B, 0x00, 0x0F},
+      {0x011F, 0xFF, 0xFF},
+      {0x0007, 0x01, 0x00},
+      {0x0007, 0x00, 0x05},
+      {0x011B, 0x06, 0x00},
+      {0x011B, 0x00, 0x14},
+      {0x0117, 0x04, 0x00},
+      {0x0117, 0x00, 0x0F},
   };
   constexpr size_t num_entries = sizeof(entries) / sizeof(entries[0]);
 
@@ -4525,7 +4532,5 @@ vector<shared_ptr<const Card>> CardSpecial::find_all_sc_cards_of_class(
   }
   return ret;
 }
-
-
 
 } // namespace Episode3

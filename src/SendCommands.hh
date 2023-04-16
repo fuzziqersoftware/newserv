@@ -1,23 +1,21 @@
 #pragma once
 
 #include <inttypes.h>
-#include <stddef.h>
 #include <stdarg.h>
+#include <stddef.h>
 
 #include <memory>
 #include <phosg/Strings.hh>
 #include <unordered_set>
 
 #include "Client.hh"
-#include "Lobby.hh"
-#include "Server.hh"
-#include "Menu.hh"
-#include "Quest.hh"
-#include "Text.hh"
 #include "CommandFormats.hh"
 #include "FunctionCompiler.hh"
-
-
+#include "Lobby.hh"
+#include "Menu.hh"
+#include "Quest.hh"
+#include "Server.hh"
+#include "Text.hh"
 
 extern const std::unordered_set<uint32_t> v2_crypt_initial_client_commands;
 extern const std::unordered_set<uint32_t> v3_crypt_initial_client_commands;
@@ -112,8 +110,6 @@ void send_command_t_vt(std::shared_ptr<TargetT> c, uint16_t command,
 }
 
 void send_command_with_header(Channel& c, const void* data, size_t size);
-
-
 
 enum SendServerInitFlag {
   IS_INITIAL_CONNECTION = 0x01,

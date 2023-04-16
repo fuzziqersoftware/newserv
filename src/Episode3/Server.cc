@@ -1,7 +1,7 @@
 #include "Server.hh"
 
-#include <phosg/Time.hh>
 #include <phosg/Random.hh>
+#include <phosg/Time.hh>
 
 #include "../SendCommands.hh"
 
@@ -9,14 +9,10 @@ using namespace std;
 
 namespace Episode3 {
 
-
-
-// These strings in the original implementation did not contain the semicolons
-// (or anything after them).
+// This is (obviously) not the original string. The original string is:
+// "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
 static const char* VERSION_SIGNATURE =
     "newserv Ep3 based on [V1][FINAL2.0] 03/09/13 15:30 by K.Toya";
-
-
 
 ServerBase::PresenceEntry::PresenceEntry() {
   this->clear();
@@ -28,19 +24,17 @@ void ServerBase::PresenceEntry::clear() {
   this->is_cpu_player = 0;
 }
 
-
-
 ServerBase::ServerBase(
     shared_ptr<Lobby> lobby,
     shared_ptr<const DataIndex> data_index,
     uint32_t random_seed,
     shared_ptr<const DataIndex::MapEntry> map_if_tournament)
-  : lobby(lobby),
-    data_index(data_index),
-    log(lobby->log.prefix + "[Ep3::Server] "),
-    random_seed(random_seed),
-    is_tournament(!!map_if_tournament),
-    last_chosen_map(map_if_tournament) { }
+    : lobby(lobby),
+      data_index(data_index),
+      log(lobby->log.prefix + "[Ep3::Server] "),
+      random_seed(random_seed),
+      is_tournament(!!map_if_tournament),
+      last_chosen_map(map_if_tournament) {}
 
 void ServerBase::init() {
   this->reset();
@@ -65,46 +59,44 @@ void ServerBase::recreate_server() {
   this->server->init();
 }
 
-
-
 Server::Server(shared_ptr<ServerBase> base)
-  : w_base(base),
-    battle_finished(false),
-    battle_in_progress(false),
-    round_num(1),
-    battle_phase(BattlePhase::INVALID_00),
-    first_team_turn(0xFF),
-    current_team_turn1(0xFF),
-    setup_phase(SetupPhase::REGISTRATION),
-    registration_phase(RegistrationPhase::AWAITING_NUM_PLAYERS),
-    action_subphase(ActionSubphase::ATTACK),
-    current_team_turn2(0xFF),
-    num_pending_attacks(0),
-    client_done_enqueuing_attacks(false),
-    player_ready_to_end_phase(false),
-    unknown_a10(0),
-    overall_time_expired(false),
-    battle_start_usecs(0),
-    should_copy_prev_states_to_current_states(0),
-    card_special(nullptr),
-    clients_done_in_mulligan_phase(false),
-    num_pending_attacks_with_cards(0),
-    unknown_a14(0),
-    unknown_a15(0),
-    defense_list_ended_for_client(false),
-    next_assist_card_set_number(1),
-    team_exp(0),
-    team_dice_boost(0),
-    team_client_count(0),
-    team_num_ally_fcs_destroyed(0),
-    team_num_cards_destroyed(0),
-    hard_reset_flag(false),
-    tournament_flag(base->is_tournament ? 1 : 0),
-    num_trap_tiles_of_type(0),
-    chosen_trap_tile_index_of_type(0),
-    has_done_pb(0),
-    num_6xB4x06_commands_sent(0),
-    prev_num_6xB4x06_commands_sent(0) { }
+    : w_base(base),
+      battle_finished(false),
+      battle_in_progress(false),
+      round_num(1),
+      battle_phase(BattlePhase::INVALID_00),
+      first_team_turn(0xFF),
+      current_team_turn1(0xFF),
+      setup_phase(SetupPhase::REGISTRATION),
+      registration_phase(RegistrationPhase::AWAITING_NUM_PLAYERS),
+      action_subphase(ActionSubphase::ATTACK),
+      current_team_turn2(0xFF),
+      num_pending_attacks(0),
+      client_done_enqueuing_attacks(false),
+      player_ready_to_end_phase(false),
+      unknown_a10(0),
+      overall_time_expired(false),
+      battle_start_usecs(0),
+      should_copy_prev_states_to_current_states(0),
+      card_special(nullptr),
+      clients_done_in_mulligan_phase(false),
+      num_pending_attacks_with_cards(0),
+      unknown_a14(0),
+      unknown_a15(0),
+      defense_list_ended_for_client(false),
+      next_assist_card_set_number(1),
+      team_exp(0),
+      team_dice_boost(0),
+      team_client_count(0),
+      team_num_ally_fcs_destroyed(0),
+      team_num_cards_destroyed(0),
+      hard_reset_flag(false),
+      tournament_flag(base->is_tournament ? 1 : 0),
+      num_trap_tiles_of_type(0),
+      chosen_trap_tile_index_of_type(0),
+      has_done_pb(0),
+      num_6xB4x06_commands_sent(0),
+      prev_num_6xB4x06_commands_sent(0) {}
 
 void Server::init() {
   this->card_special.reset(new CardSpecial(this->shared_from_this()));
@@ -262,8 +254,7 @@ void Server::send_commands_for_joining_spectator(Channel& c) const {
   }
 }
 
-__attribute__((format(printf, 2, 3)))
-void Server::log_debug(const char* fmt, ...) const {
+__attribute__((format(printf, 2, 3))) void Server::log_debug(const char* fmt, ...) const {
   auto l = this->base()->lobby.lock();
   if (l && (this->base()->data_index->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
     va_list va;
@@ -273,8 +264,7 @@ void Server::log_debug(const char* fmt, ...) const {
   }
 }
 
-__attribute__((format(printf, 2, 3)))
-void Server::send_debug_message_printf(const char* fmt, ...) const {
+__attribute__((format(printf, 2, 3))) void Server::send_debug_message_printf(const char* fmt, ...) const {
   auto l = this->base()->lobby.lock();
   if (l && (this->base()->data_index->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
     va_list va;
@@ -286,8 +276,7 @@ void Server::send_debug_message_printf(const char* fmt, ...) const {
   }
 }
 
-__attribute__((format(printf, 2, 3)))
-void Server::send_info_message_printf(const char* fmt, ...) const {
+__attribute__((format(printf, 2, 3))) void Server::send_info_message_printf(const char* fmt, ...) const {
   auto l = this->base()->lobby.lock();
   if (l) {
     va_list va;
@@ -539,7 +528,8 @@ void Server::check_for_destroyed_cards_and_send_6xB4x05_6xB4x02() {
 
 bool Server::check_presence_entry(uint8_t client_id) const {
   return (client_id < 4)
-      ? this->base()->presence_entries[client_id].player_present : false;
+      ? this->base()->presence_entries[client_id].player_present
+      : false;
 }
 
 void Server::clear_player_flags_after_dice_phase() {
@@ -1220,7 +1210,6 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id) {
   }
 }
 
-
 void Server::set_phase_after() {
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->player_states[client_id];
@@ -1513,29 +1502,29 @@ bool Server::update_registration_phase() {
 }
 
 const unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers({
-  {0x0B, &Server::handle_6xB3x0B_mulligan_hand},
-  {0x0C, &Server::handle_6xB3x0C_end_mulligan_phase},
-  {0x0D, &Server::handle_6xB3x0D_end_non_action_phase},
-  {0x0E, &Server::handle_6xB3x0E_discard_card_from_hand},
-  {0x0F, &Server::handle_6xB3x0F_set_card_from_hand},
-  {0x10, &Server::handle_6xB3x10_move_fc_to_location},
-  {0x11, &Server::handle_6xB3x11_enqueue_attack_or_defense},
-  {0x12, &Server::handle_6xB3x12_end_attack_list},
-  {0x13, &Server::handle_6xB3x13_update_map_during_setup},
-  {0x14, &Server::handle_6xB3x14_update_deck_during_setup},
-  {0x15, &Server::handle_6xB3x15_unused_hard_reset_server_state},
-  {0x1B, &Server::handle_6xB3x1B_update_player_name},
-  {0x1D, &Server::handle_6xB3x1D_start_battle},
-  {0x21, &Server::handle_6xB3x21_end_battle},
-  {0x28, &Server::handle_6xB3x28_end_defense_list},
-  {0x2B, &Server::handle_6xB3x2B_ignored},
-  {0x34, &Server::handle_6xB3x34_subtract_ally_atk_points},
-  {0x37, &Server::handle_6xB3x37_client_ready_to_advance_from_starter_roll_phase},
-  {0x3A, &Server::handle_6xB3x3A_ignored},
-  {0x40, &Server::handle_6xB3x40_map_list_request},
-  {0x41, &Server::handle_6xB3x41_map_request},
-  {0x48, &Server::handle_6xB3x48_end_turn},
-  {0x49, &Server::handle_6xB3x49_card_counts},
+    {0x0B, &Server::handle_6xB3x0B_mulligan_hand},
+    {0x0C, &Server::handle_6xB3x0C_end_mulligan_phase},
+    {0x0D, &Server::handle_6xB3x0D_end_non_action_phase},
+    {0x0E, &Server::handle_6xB3x0E_discard_card_from_hand},
+    {0x0F, &Server::handle_6xB3x0F_set_card_from_hand},
+    {0x10, &Server::handle_6xB3x10_move_fc_to_location},
+    {0x11, &Server::handle_6xB3x11_enqueue_attack_or_defense},
+    {0x12, &Server::handle_6xB3x12_end_attack_list},
+    {0x13, &Server::handle_6xB3x13_update_map_during_setup},
+    {0x14, &Server::handle_6xB3x14_update_deck_during_setup},
+    {0x15, &Server::handle_6xB3x15_unused_hard_reset_server_state},
+    {0x1B, &Server::handle_6xB3x1B_update_player_name},
+    {0x1D, &Server::handle_6xB3x1D_start_battle},
+    {0x21, &Server::handle_6xB3x21_end_battle},
+    {0x28, &Server::handle_6xB3x28_end_defense_list},
+    {0x2B, &Server::handle_6xB3x2B_ignored},
+    {0x34, &Server::handle_6xB3x34_subtract_ally_atk_points},
+    {0x37, &Server::handle_6xB3x37_client_ready_to_advance_from_starter_roll_phase},
+    {0x3A, &Server::handle_6xB3x3A_ignored},
+    {0x40, &Server::handle_6xB3x40_map_list_request},
+    {0x41, &Server::handle_6xB3x41_map_request},
+    {0x48, &Server::handle_6xB3x48_end_turn},
+    {0x49, &Server::handle_6xB3x49_card_counts},
 });
 
 void Server::on_server_data_input(const string& data) {
@@ -2025,7 +2014,7 @@ void Server::handle_6xB3x28_end_defense_list(const string& data) {
   this->send(out_cmd_fin);
 }
 
-void Server::handle_6xB3x2B_ignored(const string&) { }
+void Server::handle_6xB3x2B_ignored(const string&) {}
 
 void Server::handle_6xB3x34_subtract_ally_atk_points(const string& data) {
   const auto& in_cmd = check_size_t<G_PhotonBlastRequest_GC_Ep3_6xB3x34_CAx34>(data);
@@ -2131,7 +2120,7 @@ void Server::handle_6xB3x37_client_ready_to_advance_from_starter_roll_phase(cons
   }
 }
 
-void Server::handle_6xB3x3A_ignored(const string&) { }
+void Server::handle_6xB3x3A_ignored(const string&) {}
 
 void Server::handle_6xB3x40_map_list_request(const string& data) {
   const auto& in_cmd = check_size_t<G_MapListRequest_GC_Ep3_6xB3x40_CAx40>(data);
@@ -2379,7 +2368,7 @@ void Server::unknown_8023EEF4() {
     if (!this->attack_cards[this->unknown_a14]->action_chain.check_flag(0x40)) {
       this->card_special->unknown_8024945C(this->attack_cards[this->unknown_a14], as);
     }
-    this->attack_cards[this->unknown_a14]->compute_action_chain_results(1,0);
+    this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
     this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
     if (!this->attack_cards[this->unknown_a14]->action_chain.check_flag(0x40)) {
       this->card_special->unknown_8024966C(this->attack_cards[this->unknown_a14], &as);
@@ -2653,7 +2642,6 @@ void Server::send_6xB4x05() {
   this->send(cmd);
 }
 
-
 void Server::send_6xB4x02_for_all_players_if_needed(bool always_send) {
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
@@ -2679,7 +2667,5 @@ G_SetTrapTileLocations_GC_Ep3_6xB4x50 Server::prepare_6xB4x50_trap_tile_location
 void Server::send_6xB4x50_trap_tile_locations() const {
   this->send(this->prepare_6xB4x50_trap_tile_locations());
 }
-
-
 
 } // namespace Episode3

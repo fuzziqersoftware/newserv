@@ -9,8 +9,6 @@ using namespace std;
 
 namespace Episode3 {
 
-
-
 BattleRecord::Event::Event(StringReader& r) {
   this->type = r.get<Event::Type>();
   this->timestamp = r.get_u64l();
@@ -74,19 +72,17 @@ void BattleRecord::Event::serialize(StringWriter& w) const {
   }
 }
 
-
-
 BattleRecord::BattleRecord(uint32_t behavior_flags)
-  : is_writable(true),
-    behavior_flags(behavior_flags),
-    battle_start_timestamp(0),
-    battle_end_timestamp(0) { }
+    : is_writable(true),
+      behavior_flags(behavior_flags),
+      battle_start_timestamp(0),
+      battle_end_timestamp(0) {}
 
 BattleRecord::BattleRecord(const string& data)
-  : is_writable(false),
-    behavior_flags(0),
-    battle_start_timestamp(0),
-    battle_end_timestamp(0) {
+    : is_writable(false),
+      behavior_flags(0),
+      battle_start_timestamp(0),
+      battle_end_timestamp(0) {
   StringReader r(data);
   uint64_t signature = r.get_u64l();
   if (signature != this->SIGNATURE) {
@@ -127,7 +123,6 @@ const BattleRecord::Event* BattleRecord::get_first_event() const {
   }
   return &this->events.front();
 }
-
 
 void BattleRecord::add_player(
     const PlayerLobbyDataDCGC& lobby_data,
@@ -279,16 +274,14 @@ void BattleRecord::set_battle_end_timestamp() {
   this->battle_end_timestamp = now();
 }
 
-
-
 BattleRecordPlayer::BattleRecordPlayer(
     shared_ptr<const BattleRecord> rec,
     shared_ptr<struct event_base> base)
-  : record(rec),
-    event_it(this->record->events.begin()),
-    play_start_timestamp(0),
-    base(base),
-    next_command_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &BattleRecordPlayer::dispatch_schedule_events, this), event_free) { }
+    : record(rec),
+      event_it(this->record->events.begin()),
+      play_start_timestamp(0),
+      base(base),
+      next_command_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &BattleRecordPlayer::dispatch_schedule_events, this), event_free) {}
 
 shared_ptr<const BattleRecord> BattleRecordPlayer::get_record() const {
   return this->record;
@@ -376,7 +369,5 @@ void BattleRecordPlayer::schedule_events() {
     }
   }
 }
-
-
 
 } // namespace Episode3

@@ -1,36 +1,34 @@
 #include "Card.hh"
 
-#include "Server.hh"
 #include "../CommandFormats.hh"
+#include "Server.hh"
 
 using namespace std;
 
 namespace Episode3 {
-
-
 
 Card::Card(
     uint16_t card_id,
     uint16_t card_ref,
     uint16_t client_id,
     shared_ptr<Server> server)
-  : w_server(server),
-    w_player_state(server->get_player_state(client_id)),
-    client_id(client_id),
-    card_id(card_id),
-    card_ref(card_ref),
-    card_flags(0),
-    loc(0, 0, Direction::RIGHT),
-    facing_direction(Direction::INVALID_FF),
-    action_chain(),
-    action_metadata(),
-    num_ally_fcs_destroyed_at_set_time(0),
-    num_cards_destroyed_by_team_at_set_time(0),
-    unknown_a9(1),
-    last_attack_preliminary_damage(0),
-    last_attack_final_damage(0),
-    num_destroyed_ally_fcs(0),
-    current_defense_power(0) { }
+    : w_server(server),
+      w_player_state(server->get_player_state(client_id)),
+      client_id(client_id),
+      card_id(card_id),
+      card_ref(card_ref),
+      card_flags(0),
+      loc(0, 0, Direction::RIGHT),
+      facing_direction(Direction::INVALID_FF),
+      action_chain(),
+      action_metadata(),
+      num_ally_fcs_destroyed_at_set_time(0),
+      num_cards_destroyed_by_team_at_set_time(0),
+      unknown_a9(1),
+      last_attack_preliminary_damage(0),
+      last_attack_final_damage(0),
+      num_destroyed_ally_fcs(0),
+      current_defense_power(0) {}
 
 void Card::init() {
   this->clear_action_chain_and_metadata_and_most_flags();
@@ -117,7 +115,7 @@ ssize_t Card::apply_abnormal_condition(
       existing_cond_index = z;
       if (eff.type == ConditionType::MV_BONUS ||
           ((cond.card_definition_effect_index == def_effect_index) &&
-           (cond.card_ref == target_card_ref))) {
+              (cond.card_ref == target_card_ref))) {
         break;
       }
     } else {
@@ -215,8 +213,8 @@ void Card::apply_ap_adjust_assists_to_attack(
 
 bool Card::card_type_is_sc_or_creature() const {
   return (this->def_entry->def.type == CardType::HUNTERS_SC) ||
-         (this->def_entry->def.type == CardType::ARKZ_SC) ||
-         (this->def_entry->def.type == CardType::CREATURE);
+      (this->def_entry->def.type == CardType::ARKZ_SC) ||
+      (this->def_entry->def.type == CardType::CREATURE);
 }
 
 bool Card::check_card_flag(uint32_t flags) const {
@@ -253,7 +251,6 @@ void Card::commit_attack(
   if (this->action_metadata.check_flag(0x10)) {
     effective_damage = 0;
   }
-
 
   auto attacker_ps = attacker_card->player_state();
   attacker_ps->stats.damage_given += effective_damage;
@@ -406,13 +403,13 @@ int32_t Card::error_code_for_move_to_location(const Location& loc) const {
     return -0x60;
   }
   if (!this->server()->ruler_server->card_ref_can_move(
-        this->client_id, this->card_ref, 1)) {
+          this->client_id, this->card_ref, 1)) {
     return -0x7B;
   }
   // Note: The original code passes non-null pointers here but ignores the
   // values written to them; we use nulls since the behavior should be the same.
   if (!this->server()->ruler_server->get_move_path_length_and_cost(
-        this->client_id, this->card_ref, loc, nullptr, nullptr)) {
+          this->client_id, this->card_ref, loc, nullptr, nullptr)) {
     return -0x79;
   }
   return 0;
@@ -556,7 +553,7 @@ int32_t Card::move_to_location(const Location& loc) {
   uint32_t path_cost;
   uint32_t path_length;
   if (!this->server()->ruler_server->get_move_path_length_and_cost(
-        this->client_id, this->card_ref, loc, &path_length, &path_cost)) {
+          this->client_id, this->card_ref, loc, &path_length, &path_cost)) {
     return -0x79;
   }
 
@@ -597,7 +594,6 @@ void Card::propagate_shared_hp_if_needed() {
     }
   }
 }
-
 
 void Card::send_6xB4x4E_4C_4D_if_needed(bool always_send) {
   ssize_t index = -1;
@@ -940,11 +936,11 @@ void Card::unknown_80237F98(bool require_condition_20_or_21) {
     if (this->action_chain.conditions[z].type != ConditionType::NONE) {
       if (!require_condition_20_or_21 ||
           this->server()->card_special->condition_has_when_20_or_21(
-            this->action_chain.conditions[z])) {
+              this->action_chain.conditions[z])) {
         ActionState as;
         auto& cond = this->action_chain.conditions[z];
         if (!this->server()->card_special->is_card_targeted_by_condition(
-              cond, as, this->shared_from_this())) {
+                cond, as, this->shared_from_this())) {
           this->server()->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(
               cond, this->shared_from_this());
           should_send_updates = true;
@@ -1236,7 +1232,5 @@ void Card::unknown_80237734() {
   }
   this->send_6xB4x4E_4C_4D_if_needed();
 }
-
-
 
 } // namespace Episode3

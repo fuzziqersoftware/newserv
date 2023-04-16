@@ -1,13 +1,13 @@
 #pragma once
 
-#include <stdint.h>
 #include <event2/event.h>
+#include <stdint.h>
 
 #include <deque>
 #include <memory>
+#include <phosg/Strings.hh>
 #include <string>
 #include <variant>
-#include <phosg/Strings.hh>
 
 #include "../Player.hh"
 
@@ -16,8 +16,6 @@ struct Lobby;
 namespace Episode3 {
 
 // The comment in Server.hh does not apply to this file (and BattleRecord.cc).
-
-
 
 class BattleRecord {
 public:
@@ -117,8 +115,5 @@ private:
   std::weak_ptr<Lobby> lobby;
   std::shared_ptr<struct event> next_command_ev;
 };
-
-
-
 
 } // namespace Episode3

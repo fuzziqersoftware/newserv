@@ -10,8 +10,6 @@
 #include "StaticGameData.hh"
 #include "Version.hh"
 
-
-
 enum class QuestCategory {
   UNKNOWN = -1,
   RETRIEVAL = 0,
@@ -32,8 +30,6 @@ enum class QuestCategory {
 
 bool category_is_mode(QuestCategory category);
 const char* name_for_category(QuestCategory category);
-
-
 
 class Quest {
 public:
@@ -107,5 +103,5 @@ struct QuestIndex {
   std::shared_ptr<const Quest> get(GameVersion version, uint32_t id) const;
   std::shared_ptr<const std::string> get_gba(const std::string& name) const;
   std::vector<std::shared_ptr<const Quest>> filter(GameVersion version,
-    bool is_dcv1, QuestCategory category) const;
+      bool is_dcv1, QuestCategory category) const;
 };

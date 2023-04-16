@@ -10,27 +10,25 @@
 
 using namespace std;
 
-
-
 Lobby::Lobby(uint32_t id)
-  : log(string_printf("[Lobby/%" PRIX32 "] ", id), lobby_log.min_level),
-    lobby_id(id),
-    min_level(0),
-    max_level(0xFFFFFFFF),
-    next_game_item_id(0x00810000),
-    version(GameVersion::GC),
-    section_id(0),
-    episode(Episode::NONE),
-    mode(GameMode::NORMAL),
-    difficulty(0),
-    random_seed(random_object<uint32_t>()),
-    random(new mt19937(this->random_seed)),
-    event(0),
-    block(0),
-    type(0),
-    leader_id(0),
-    max_clients(12),
-    flags(0) {
+    : log(string_printf("[Lobby/%" PRIX32 "] ", id), lobby_log.min_level),
+      lobby_id(id),
+      min_level(0),
+      max_level(0xFFFFFFFF),
+      next_game_item_id(0x00810000),
+      version(GameVersion::GC),
+      section_id(0),
+      episode(Episode::NONE),
+      mode(GameMode::NORMAL),
+      difficulty(0),
+      random_seed(random_object<uint32_t>()),
+      random(new mt19937(this->random_seed)),
+      event(0),
+      block(0),
+      type(0),
+      leader_id(0),
+      max_clients(12),
+      flags(0) {
   for (size_t x = 0; x < 12; x++) {
     this->next_item_id[x] = 0x00010000 + 0x00200000 * x;
   }
@@ -135,7 +133,8 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     lobby_data.player_tag = 0x00010000;
     lobby_data.guild_card = c->license->serial_number;
     lobby_data.name = encode_sjis(c->game_data.player()->disp.name);
-    this->battle_record->add_player(lobby_data,
+    this->battle_record->add_player(
+        lobby_data,
         c->game_data.player()->inventory,
         c->game_data.player()->disp.to_dcpcv3());
   }
@@ -215,10 +214,8 @@ void Lobby::move_client_to_lobby(
   dest_lobby->add_client(c, required_client_id);
 }
 
-
-
 shared_ptr<Client> Lobby::find_client(const u16string* identifier,
-    uint64_t serial_number) {
+                                      uint64_t serial_number) {
   for (size_t x = 0; x < this->max_clients; x++) {
     if (!this->clients[x]) {
       continue;
@@ -235,8 +232,6 @@ shared_ptr<Client> Lobby::find_client(const u16string* identifier,
   throw out_of_range("client not found");
 }
 
-
-
 uint8_t Lobby::game_event_for_lobby_event(uint8_t lobby_event) {
   if (lobby_event > 7) {
     return 0;
@@ -249,8 +244,6 @@ uint8_t Lobby::game_event_for_lobby_event(uint8_t lobby_event) {
   }
   return lobby_event;
 }
-
-
 
 void Lobby::add_item(const PlayerInventoryItem& item, uint8_t area, float x, float z) {
   auto& fi = this->item_id_to_floor_item[item.data.id];

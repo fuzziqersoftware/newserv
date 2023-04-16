@@ -2,15 +2,13 @@
 
 #include <event2/event.h>
 
+#include <memory>
+#include <string>
 #include <unordered_set>
 #include <vector>
-#include <string>
-#include <memory>
 
 #include "Client.hh"
 #include "ServerState.hh"
-
-
 
 class Server {
 public:
@@ -44,7 +42,7 @@ private:
     int fd;
     GameVersion version;
     ServerBehavior behavior;
-    std::unique_ptr<struct evconnlistener, void(*)(struct evconnlistener*)> listener;
+    std::unique_ptr<struct evconnlistener, void (*)(struct evconnlistener*)> listener;
 
     ListeningSocket(
         Server* s,
@@ -64,13 +62,13 @@ private:
   void destroy_clients();
 
   static void dispatch_on_listen_accept(struct evconnlistener* listener,
-      evutil_socket_t fd, struct sockaddr *address, int socklen, void* ctx);
+      evutil_socket_t fd, struct sockaddr* address, int socklen, void* ctx);
   static void dispatch_on_listen_error(struct evconnlistener* listener, void* ctx);
 
   void disconnect_client(std::shared_ptr<Client> c);
 
   void on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd,
-      struct sockaddr *address, int socklen);
+      struct sockaddr* address, int socklen);
   void on_listen_error(struct evconnlistener* listener);
 
   static void on_client_input(Channel& ch, uint16_t command, uint32_t flag, std::string& data);

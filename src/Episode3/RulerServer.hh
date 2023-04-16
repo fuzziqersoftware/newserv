@@ -4,14 +4,12 @@
 
 #include <memory>
 
-#include "DataIndex.hh"
-#include "PlayerState.hh"
-#include "DeckState.hh"
 #include "AssistServer.hh"
+#include "DataIndex.hh"
+#include "DeckState.hh"
+#include "PlayerState.hh"
 
 namespace Episode3 {
-
-
 
 class Server;
 
@@ -226,7 +224,5 @@ public:
   int32_t error_code2;
   int32_t error_code3;
 };
-
-
 
 } // namespace Episode3

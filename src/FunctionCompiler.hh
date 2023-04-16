@@ -2,19 +2,15 @@
 
 #include <inttypes.h>
 
+#include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
-#include <map>
 #include <vector>
-#include <memory>
 
 #include "Menu.hh"
 
-
-
 bool function_compiler_available();
-
-
 
 // TODO: Support x86 and SH4 function calls in the future. Currently we only
 // support PPC32 because I haven't written an appropriate x86 assembler yet.
@@ -39,8 +35,8 @@ struct CompiledFunctionCode {
 
   template <typename FooterT>
   std::string generate_client_command_t(
-        const std::unordered_map<std::string, uint32_t>& label_writes,
-        const std::string& suffix) const;
+      const std::unordered_map<std::string, uint32_t>& label_writes,
+      const std::string& suffix) const;
   std::string generate_client_command(
       const std::unordered_map<std::string, uint32_t>& label_writes = {},
       const std::string& suffix = "") const;
@@ -53,8 +49,6 @@ std::shared_ptr<CompiledFunctionCode> compile_function_code(
     const std::string& directory,
     const std::string& name,
     const std::string& text);
-
-
 
 struct FunctionCodeIndex {
   FunctionCodeIndex() = default;
@@ -71,8 +65,6 @@ struct FunctionCodeIndex {
     return this->name_to_patch_function.empty();
   }
 };
-
-
 
 struct DOLFileIndex {
   struct DOLFile {

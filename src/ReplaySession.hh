@@ -9,10 +9,8 @@
 #include <string>
 
 #include "Channel.hh"
-#include "Version.hh"
 #include "ServerState.hh"
-
-
+#include "Version.hh"
 
 class ReplaySession {
 public:

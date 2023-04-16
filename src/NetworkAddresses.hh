@@ -6,8 +6,6 @@
 #include <map>
 #include <string>
 
-
-
 // PSO is IPv4-only, so we just treat addresses as uint32_t everywhere because
 // it's easier
 

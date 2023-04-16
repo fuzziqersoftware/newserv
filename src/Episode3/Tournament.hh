@@ -1,14 +1,14 @@
 #pragma once
 
-#include <stdint.h>
 #include <event2/event.h>
+#include <stdint.h>
 
 #include <memory>
-#include <vector>
-#include <unordered_set>
-#include <string>
 #include <phosg/JSON.hh>
 #include <phosg/Strings.hh>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 #include "../Player.hh"
 
@@ -17,8 +17,6 @@ struct Lobby;
 namespace Episode3 {
 
 // The comment in Server.hh does not apply to this file (and Tournament.cc).
-
-
 
 class Tournament : public std::enable_shared_from_this<Tournament> {
 public:
@@ -172,11 +170,11 @@ public:
   std::vector<std::shared_ptr<Tournament>> all_tournaments() const;
 
   std::shared_ptr<Tournament> create_tournament(
-    const std::string& name,
-    std::shared_ptr<const DataIndex::MapEntry> map,
-    const Rules& rules,
-    size_t num_teams,
-    bool is_2v2);
+      const std::string& name,
+      std::shared_ptr<const DataIndex::MapEntry> map,
+      const Rules& rules,
+      size_t num_teams,
+      bool is_2v2);
   void delete_tournament(uint8_t number);
   std::shared_ptr<Tournament> get_tournament(uint8_t number) const;
   std::shared_ptr<Tournament> get_tournament(const std::string& name) const;
@@ -189,7 +187,5 @@ private:
   std::string state_filename;
   std::shared_ptr<Tournament> tournaments[0x20];
 };
-
-
 
 } // namespace Episode3

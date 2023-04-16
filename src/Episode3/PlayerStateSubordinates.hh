@@ -9,8 +9,6 @@
 
 namespace Episode3 {
 
-
-
 class ServerBase;
 class Server;
 class Card;
@@ -269,13 +267,9 @@ struct PlayerStats {
   static const char* name_for_rank(uint8_t rank);
 } __attribute__((packed));
 
-
-
 std::vector<uint16_t> get_card_refs_within_range(
     const parray<uint8_t, 9 * 9>& range,
     const Location& loc,
     const parray<CardShortStatus, 0x10>& short_statuses);
-
-
 
 } // namespace Episode3

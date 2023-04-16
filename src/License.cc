@@ -5,14 +5,12 @@
 #include <phosg/Filesystem.hh>
 #include <phosg/Time.hh>
 
-#include "Loggers.hh"
 #include "License.hh"
+#include "Loggers.hh"
 
 using namespace std;
 
-
-
-License::License() : serial_number(0), privileges(0), ban_end_time(0) { }
+License::License() : serial_number(0), privileges(0), ban_end_time(0) {}
 
 string License::str() const {
   string ret = string_printf("License(serial_number=%" PRIu32, this->serial_number);
@@ -39,12 +37,10 @@ string License::str() const {
   return ret + ")";
 }
 
-
-
-LicenseManager::LicenseManager() : filename(""), autosave(false) { }
+LicenseManager::LicenseManager() : filename(""), autosave(false) {}
 
 LicenseManager::LicenseManager(const string& filename)
-  : filename(filename), autosave(true) {
+    : filename(filename), autosave(true) {
   try {
     auto licenses = load_vector_file<License>(this->filename);
     for (const auto& read_license : licenses) {
@@ -62,7 +58,7 @@ LicenseManager::LicenseManager(const string& filename)
 
   } catch (const cannot_open_file&) {
     license_log.warning("File %s does not exist; no licenses are registered",
-        this->filename.c_str());
+                        this->filename.c_str());
   }
 }
 
@@ -84,7 +80,7 @@ void LicenseManager::set_autosave(bool autosave) {
 }
 
 shared_ptr<const License> LicenseManager::verify_pc(uint32_t serial_number,
-    const string& access_key) const {
+                                                    const string& access_key) const {
   try {
     auto& license = this->serial_number_to_license.at(serial_number);
     if (!license->access_key.eq_n(access_key, 8)) {
@@ -101,7 +97,7 @@ shared_ptr<const License> LicenseManager::verify_pc(uint32_t serial_number,
 }
 
 shared_ptr<const License> LicenseManager::verify_gc(uint32_t serial_number,
-    const string& access_key) const {
+                                                    const string& access_key) const {
   try {
     auto& license = this->serial_number_to_license.at(serial_number);
     if (!license->access_key.eq_n(access_key, 12)) {
@@ -117,7 +113,7 @@ shared_ptr<const License> LicenseManager::verify_gc(uint32_t serial_number,
 }
 
 shared_ptr<const License> LicenseManager::verify_gc(uint32_t serial_number,
-    const string& access_key, const string& password) const {
+                                                    const string& access_key, const string& password) const {
   try {
     auto& license = this->serial_number_to_license.at(serial_number);
     if (!license->access_key.eq_n(access_key, 12)) {
@@ -136,7 +132,7 @@ shared_ptr<const License> LicenseManager::verify_gc(uint32_t serial_number,
 }
 
 shared_ptr<const License> LicenseManager::verify_bb(const string& username,
-    const string& password) const {
+                                                    const string& password) const {
   try {
     auto& license = this->bb_username_to_license.at(username);
     if (license->bb_password != password) {
@@ -199,8 +195,6 @@ vector<License> LicenseManager::snapshot() const {
   }
   return ret;
 }
-
-
 
 shared_ptr<License> LicenseManager::create_license_pc(
     uint32_t serial_number, const string& access_key, bool temporary) {
