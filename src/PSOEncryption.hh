@@ -114,7 +114,12 @@ public:
     } __attribute__((packed));
     InitialKeys initial_keys;
     PrivateKeys private_keys;
-    Subtype subtype;
+    // This field only really needs to be one byte, but annoyingly, some
+    // compilers pad this structure to a longer alignment, presumably because
+    // the unions above contain structures with 32-bit alignment. To prevent
+    // this structure's size from not matching the .nsk files' sizes, we use
+    // an unnecessarily large size for this field.
+    le_uint64_t subtype;
   } __attribute__((packed));
 
   PSOBBEncryption(const KeyFile& key, const void* seed, size_t seed_size);
