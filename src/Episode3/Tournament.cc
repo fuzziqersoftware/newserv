@@ -691,7 +691,7 @@ void TournamentIndex::save() const {
     }
   }
   auto json = make_json_list(move(list));
-  save_file(this->state_filename, json->format());
+  save_file(this->state_filename, json->serialize(JSONObject::SerializeOption::FORMAT));
 }
 
 vector<shared_ptr<Tournament>> TournamentIndex::all_tournaments() const {
