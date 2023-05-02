@@ -990,7 +990,7 @@ void PlayerState::replace_all_set_assists_with_random_assists() {
         card_id = ALL_ASSIST_CARD_IDS[index];
         if (!this->god_whim_can_use_hidden_cards) {
           auto ce = this->server()->definition_for_card_id(card_id);
-          if (!ce || ce->def.hide_in_deck_edit) {
+          if (!ce || ce->def.cannot_drop) {
             continue;
           }
         }

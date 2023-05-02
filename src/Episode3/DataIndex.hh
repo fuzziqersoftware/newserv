@@ -495,19 +495,26 @@ struct CardDefinition {
   uint8_t cannot_move; // 0 for SC and creature cards; 1 for everything else
   uint8_t cannot_attack; // 1 for shields, mags, defense actions, and assist cards
   uint8_t unused3;
-  uint8_t hide_in_deck_edit; // 0 = player can use this card (appears in deck edit)
+  // If cannot_drop is 0, this card can't appear in post-battle rewards. A
+  // value of 0 here also prevents the card from being used as a God Whim
+  // random assist.
+  uint8_t cannot_drop;
   CriterionCode usable_criterion;
   CardRarity rarity;
   be_uint16_t unknown_a2;
-  be_uint16_t be_card_class; // Used for checking attributes (e.g. item types)
-  // These two fields seem to always contain the same value, and are always 0
-  // for non-assist cards and nonzero for assists. Each assist card has a unique
-  // value here and no effects, which makes it look like this is how assist
-  // effects are implemented. There seems to be some 1k-modulation going on here
-  // too; most cards are in the range 101-174 but a few have e.g. 1150, 2141. A
-  // few pairs of cards have the same effect, which makes it look like some
-  // other fields are also involved in determining their effects (see e.g. Skip
-  // Draw / Skip Move, Dice Fever / Dice Fever +, Reverse Card / Rich +).
+  // The card class is used for checking attributes (e.g. item types). It's
+  // stored big-endian here, so there's a helper function (card_class()) that
+  // returns a usable CardClass enum value.
+  be_uint16_t be_card_class;
+  // The two fields of this array seem to always contain the same value, and
+  // are always 0 for non-assist cards and nonzero for assists. Each assist
+  // card has a unique value here and no effects, though the server ignores
+  // these values - assist effects are hardcoded based on the card ID instead.
+  // There seems to be some 1k-modulation going on here; most cards have values
+  // here in the range 101-174 but a few have e.g. 1150, 2141. A few pairs of
+  // cards have the same effect, so this cannot be used by the server anyway to
+  // determine assist cards' effects (see e.g. Skip Draw / Skip Move, Dice
+  // Fever / Dice Fever +, Reverse Card / Rich +).
   parray<be_uint16_t, 2> assist_effect;
   // Drop rates are decimal-encoded with the following fields:
   // - rate % 10 (that is, the lowest decimal place) specifies the required game
@@ -524,7 +531,7 @@ struct CardDefinition {
   // - type is SC_HUNTERS or SC_ARKZ
   // - unknown_a3 is 0x23 or 0x24
   // - rarity is E, D1, D2, or INVIS
-  // - hide_in_deck_edit is 1 (specifically 1; other nonzero values here don't
+  // - cannot_drop is 1 (specifically 1; other nonzero values here don't
   //   prevent the card from appearing in post-battle draws)
   parray<be_uint16_t, 2> drop_rates;
   ptext<char, 0x14> en_name;

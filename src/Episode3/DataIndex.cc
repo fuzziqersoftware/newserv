@@ -45,9 +45,9 @@ Location::Location(uint8_t x, uint8_t y, Direction direction)
 
 bool Location::operator==(const Location& other) const {
   return (this->x == other.x) &&
-         (this->y == other.y) &&
-         (this->direction == other.direction) &&
-         (this->unused == other.unused);
+      (this->y == other.y) &&
+      (this->direction == other.direction) &&
+      (this->unused == other.unused);
 }
 bool Location::operator!=(const Location& other) const {
   return !this->operator==(other);
@@ -55,7 +55,7 @@ bool Location::operator!=(const Location& other) const {
 
 std::string Location::str() const {
   return string_printf("Location[x=%hhu, y=%hhu, dir=%s, u=%hhu]",
-                       this->x, this->y, name_for_direction(this->direction), this->unused);
+      this->x, this->y, name_for_direction(this->direction), this->unused);
 }
 
 void Location::clear() {
@@ -136,8 +136,8 @@ const char* name_for_direction(Direction d) {
 
 bool card_class_is_tech_like(CardClass cc) {
   return (cc == CardClass::TECH) ||
-         (cc == CardClass::PHOTON_BLAST) ||
-         (cc == CardClass::BOSS_TECH);
+      (cc == CardClass::PHOTON_BLAST) ||
+      (cc == CardClass::BOSS_TECH);
 }
 
 static const vector<const char*> name_for_card_type({
@@ -503,14 +503,14 @@ string CardDefinition::Stat::str() const {
 
 bool CardDefinition::Effect::is_empty() const {
   return (this->effect_num == 0 &&
-          this->type == ConditionType::NONE &&
-          this->expr.is_filled_with(0) &&
-          this->when == 0 &&
-          this->arg1.is_filled_with(0) &&
-          this->arg2.is_filled_with(0) &&
-          this->arg3.is_filled_with(0) &&
-          this->apply_criterion == CriterionCode::NONE &&
-          this->unknown_a2 == 0);
+      this->type == ConditionType::NONE &&
+      this->expr.is_filled_with(0) &&
+      this->when == 0 &&
+      this->arg1.is_filled_with(0) &&
+      this->arg2.is_filled_with(0) &&
+      this->arg3.is_filled_with(0) &&
+      this->apply_criterion == CriterionCode::NONE &&
+      this->unknown_a2 == 0);
 }
 
 string CardDefinition::Effect::str_for_arg(const string& arg) {
@@ -587,8 +587,8 @@ string CardDefinition::Effect::str() const {
   string arg2str = this->str_for_arg(this->arg2);
   string arg3str = this->str_for_arg(this->arg3);
   return string_printf("(cmd=%s%s, when=%02hhX, arg1=%s, arg2=%s, arg3=%s, cond=%02hhX, a2=%02hhX)",
-                       cmd_str.c_str(), expr_str.c_str(), this->when, arg1str.data(),
-                       arg2str.data(), arg3str.data(), static_cast<uint8_t>(this->apply_criterion), this->unknown_a2);
+      cmd_str.c_str(), expr_str.c_str(), this->when, arg1str.data(),
+      arg2str.data(), arg3str.data(), static_cast<uint8_t>(this->apply_criterion), this->unknown_a2);
 }
 
 bool CardDefinition::is_sc() const {
@@ -788,7 +788,7 @@ string CardDefinition::str() const {
   return string_printf(
       "[Card: %04" PRIX32 " name=%s type=%s usable_condition=%02hhX rare=%s "
       "cost=%hhX+%hhX target=%s range=%s assist_turns=%s cannot_move=%s "
-      "cannot_attack=%s hidden=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s "
+      "cannot_attack=%s cannot_drop=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s "
       "top=%s a2=%04hX class=%04hX assist_effect=[%hu, %hu] "
       "drop_rates=[%hu, %hu] effects=[%s]]",
       this->card_id.load(),
@@ -803,7 +803,7 @@ string CardDefinition::str() const {
       assist_turns_str.c_str(),
       this->cannot_move ? "true" : "false",
       this->cannot_attack ? "true" : "false",
-      this->hide_in_deck_edit ? "true" : "false",
+      this->cannot_drop ? "true" : "false",
       hp_str.c_str(),
       ap_str.c_str(),
       tp_str.c_str(),
@@ -901,7 +901,7 @@ string Rules::str() const {
       break;
     default:
       tokens.emplace_back(string_printf("hp_type=(%02hhX)",
-                                        static_cast<uint8_t>(this->hp_type)));
+          static_cast<uint8_t>(this->hp_type)));
       break;
   }
 
@@ -919,7 +919,7 @@ string Rules::str() const {
       break;
     default:
       tokens.emplace_back(string_printf("dice_exchange=(%02hhX)",
-                                        static_cast<uint8_t>(this->dice_exchange_mode)));
+          static_cast<uint8_t>(this->dice_exchange_mode)));
       break;
   }
   tokens.emplace_back(string_printf("dice_boost=%s", this->disable_dice_boost ? "DISABLED" : "ENABLED"));
@@ -942,7 +942,7 @@ string Rules::str() const {
       break;
     default:
       tokens.emplace_back(string_printf("allowed_cards=(%02hhX)",
-                                        static_cast<uint8_t>(this->allowed_cards)));
+          static_cast<uint8_t>(this->allowed_cards)));
       break;
   }
   tokens.emplace_back(string_printf("assist_cards=%s", this->no_assist_cards ? "DISALLOWED" : "ALLOWED"));
@@ -961,17 +961,17 @@ StateFlags::StateFlags() {
 
 bool StateFlags::operator==(const StateFlags& other) const {
   return (this->turn_num == other.turn_num) &&
-         (this->battle_phase == other.battle_phase) &&
-         (this->current_team_turn1 == other.current_team_turn1) &&
-         (this->current_team_turn2 == other.current_team_turn2) &&
-         (this->action_subphase == other.action_subphase) &&
-         (this->setup_phase == other.setup_phase) &&
-         (this->registration_phase == other.registration_phase) &&
-         (this->team_exp == other.team_exp) &&
-         (this->team_dice_boost == other.team_dice_boost) &&
-         (this->first_team_turn == other.first_team_turn) &&
-         (this->tournament_flag == other.tournament_flag) &&
-         (this->client_sc_card_types == other.client_sc_card_types);
+      (this->battle_phase == other.battle_phase) &&
+      (this->current_team_turn1 == other.current_team_turn1) &&
+      (this->current_team_turn2 == other.current_team_turn2) &&
+      (this->action_subphase == other.action_subphase) &&
+      (this->setup_phase == other.setup_phase) &&
+      (this->registration_phase == other.registration_phase) &&
+      (this->team_exp == other.team_exp) &&
+      (this->team_dice_boost == other.team_dice_boost) &&
+      (this->first_team_turn == other.first_team_turn) &&
+      (this->tournament_flag == other.tournament_flag) &&
+      (this->client_sc_card_types == other.client_sc_card_types);
 }
 bool StateFlags::operator!=(const StateFlags& other) const {
   return !this->operator==(other);
@@ -1020,7 +1020,7 @@ string MapDefinition::str(const DataIndex* data_index) const {
   };
 
   lines.emplace_back(string_printf("Map %08" PRIX32 ": %hhux%hhu",
-                                   this->map_number.load(), this->width, this->height));
+      this->map_number.load(), this->width, this->height));
   lines.emplace_back(string_printf("  a1=%08" PRIX32, this->unknown_a1.load()));
   lines.emplace_back(string_printf("  environment_number=%02hhX", this->environment_number));
   lines.emplace_back(string_printf("  num_alt_maps=%02hhX", this->num_alt_maps));
@@ -1140,7 +1140,7 @@ string MapDefinition::str(const DataIndex* data_index) const {
   }
   lines.emplace_back("  a7a=" + format_data_string(this->unknown_a7_a.data(), this->unknown_a7_a.bytes()));
   lines.emplace_back(string_printf("  a7b=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "]",
-                                   this->unknown_a7_b[0].load(), this->unknown_a7_b[1].load(), this->unknown_a7_b[2].load()));
+      this->unknown_a7_b[0].load(), this->unknown_a7_b[1].load(), this->unknown_a7_b[2].load()));
   if (this->before_message[0]) {
     lines.emplace_back("  before_message: " + string(this->before_message));
   }
@@ -1167,7 +1167,7 @@ string MapDefinition::str(const DataIndex* data_index) const {
     }
   }
   lines.emplace_back(string_printf("  a9=[%08" PRIX32 " %08" PRIX32 " %04hX %04hX]",
-                                   this->unknown_a9_a.load(), this->unknown_a9_b.load(), this->unknown_a9_c.load(), this->unknown_a9_d.load()));
+      this->unknown_a9_a.load(), this->unknown_a9_b.load(), this->unknown_a9_c.load(), this->unknown_a9_d.load()));
   lines.emplace_back(string_printf("  a10=%02hhX", this->unknown_a10));
   lines.emplace_back(string_printf("  cyber_block_type=%02hhX", this->cyber_block_type));
   lines.emplace_back(string_printf("  a11=%02hhX%02hhX", this->unknown_a11[0], this->unknown_a11[1]));
@@ -1522,13 +1522,13 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
           this->maps_by_name.emplace(entry->map.name, entry);
           string name = entry->map.name;
           static_game_data_log.info("Indexed Episode 3 %s %s (%08" PRIX32 "; %s)",
-                                    is_quest ? "online quest" : "free battle map",
-                                    filename.c_str(), entry->map.map_number.load(), name.c_str());
+              is_quest ? "online quest" : "free battle map",
+              filename.c_str(), entry->map.map_number.load(), name.c_str());
         }
 
       } catch (const exception& e) {
         static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
-                                     filename.c_str(), e.what());
+            filename.c_str(), e.what());
       }
     }
   };
@@ -1664,7 +1664,7 @@ const string& DataIndex::get_compressed_map_list() const {
     }
     size_t decompressed_size = sizeof(header) + entries_w.size() + strings_w.size();
     static_game_data_log.info("Generated Episode 3 compressed map list (0x%zX -> 0x%zX bytes)",
-                              decompressed_size, this->compressed_map_list.size());
+        decompressed_size, this->compressed_map_list.size());
   }
   return this->compressed_map_list;
 }
