@@ -170,8 +170,8 @@ ItemData ItemCreator::on_monster_item_drop_with_norm_area(
   if (item.empty()) {
     uint32_t item_class_determinant =
         this->should_allow_meseta_drops()
-            ? this->rand_int(3)
-            : (this->rand_int(2) + 1);
+        ? this->rand_int(3)
+        : (this->rand_int(2) + 1);
 
     uint32_t item_class;
     switch (item_class_determinant) {
@@ -189,7 +189,7 @@ ItemData ItemCreator::on_monster_item_drop_with_norm_area(
     }
 
     this->log.info("Rare drop not chosen; item class determinant is %" PRIu32 "; item class is %" PRIu32,
-                   item_class_determinant, item_class);
+        item_class_determinant, item_class);
 
     switch (item_class) {
       case 0: // Weapon
@@ -211,7 +211,7 @@ ItemData ItemCreator::on_monster_item_drop_with_norm_area(
         item.data1[0] = 0x04;
         item.data2d = this->choose_meseta_amount(
                           this->pt->enemy_meseta_ranges, enemy_type) &
-                      0xFFFF;
+            0xFFFF;
         break;
       default:
         return item;
@@ -423,8 +423,7 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
     // Note: PSO GC doesn't check for 0x61 or 0x62 here since those items
     // (HP/Resurrection and TP/Resurrection) only exist on BB.
     if (item.data1[0] == 1) {
-      if ((item.data1[1] == 3) && (((item.data1[2] >= 0x33) && (item.data1[2] <= 0x38)) ||
-                                   (item.data1[2] == 0x61) || (item.data1[2] == 0x62))) {
+      if ((item.data1[1] == 3) && (((item.data1[2] >= 0x33) && (item.data1[2] <= 0x38)) || (item.data1[2] == 0x61) || (item.data1[2] == 0x62))) {
         this->log.info("Restricted: restore items not allowed in Challenge mode");
         item.clear();
       }
@@ -476,7 +475,7 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
               break;
             case Restrictions::TechDiskMode::LIMIT_LEVEL:
               this->log.info("Restricted: tech disk level limited to %hhu",
-                             static_cast<uint8_t>(this->restrictions->max_tech_disk_level + 1));
+                  static_cast<uint8_t>(this->restrictions->max_tech_disk_level + 1));
               if (this->restrictions->max_tech_disk_level == 0) {
                 item.data1[2] = 0;
               } else {
@@ -532,7 +531,7 @@ void ItemCreator::generate_common_item_variances(
     case 4:
       item.data2d = this->choose_meseta_amount(
                         this->pt->box_meseta_ranges, norm_area) &
-                    0xFFFF;
+          0xFFFF;
       break;
     default:
       // Note: The original code does the following here:
@@ -836,7 +835,7 @@ template <typename IntT, size_t X, size_t Y>
 IntT ItemCreator::get_rand_from_weighted_tables_2d_vertical(
     const parray<parray<IntT, X>, Y>& tables, size_t offset) {
   return ItemCreator::get_rand_from_weighted_tables<IntT>(tables[0].data(),
-                                                          offset, Y, X);
+      offset, Y, X);
 }
 
 // Note: There are clearly better ways of doing this, but this implementation
@@ -1477,8 +1476,8 @@ void ItemCreator::generate_weapon_shop_item_grind(
   uint8_t favored_weapon = favored_weapon_by_section_id.at(this->section_id);
   bool is_favored = (favored_weapon != 0xFF) && (item.data1[1] == favored_weapon);
   const auto* range = is_favored
-                          ? this->weapon_random_set->get_favored_grind_range(table_index)
-                          : this->weapon_random_set->get_standard_grind_range(table_index);
+      ? this->weapon_random_set->get_favored_grind_range(table_index)
+      : this->weapon_random_set->get_standard_grind_range(table_index);
 
   const auto& weapon_def = this->item_parameter_table->get_weapon(
       item.data1[1], item.data1[2]);

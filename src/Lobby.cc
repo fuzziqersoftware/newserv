@@ -214,8 +214,8 @@ void Lobby::move_client_to_lobby(
   dest_lobby->add_client(c, required_client_id);
 }
 
-shared_ptr<Client> Lobby::find_client(const u16string* identifier,
-                                      uint64_t serial_number) {
+shared_ptr<Client> Lobby::find_client(
+    const u16string* identifier, uint64_t serial_number) {
   for (size_t x = 0; x < this->max_clients; x++) {
     if (!this->clients[x]) {
       continue;

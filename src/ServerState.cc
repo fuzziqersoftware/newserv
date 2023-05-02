@@ -181,7 +181,7 @@ bool ServerState::change_client_lobby(
 }
 
 void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
-                                                shared_ptr<Client> joining_client) {
+    shared_ptr<Client> joining_client) {
   for (auto& other_client : l->clients) {
     if (!other_client) {
       continue;
@@ -259,7 +259,7 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
 }
 
 shared_ptr<Client> ServerState::find_client(const std::u16string* identifier,
-                                            uint64_t serial_number, shared_ptr<Lobby> l) {
+    uint64_t serial_number, shared_ptr<Lobby> l) {
 
   if ((serial_number == 0) && identifier) {
     try {
@@ -397,15 +397,15 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
 
   information_menu_v3->emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
-                                    u"Return to the\nmain menu", 0);
+      u"Return to the\nmain menu", 0);
   {
     uint32_t item_id = 0;
     for (const auto& item : d.at("InformationMenuContents")->as_list()) {
       auto& v = item->as_list();
       information_menu_v2->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-                                        decode_sjis(v.at(1)->as_string()), 0);
+          decode_sjis(v.at(1)->as_string()), 0);
       information_menu_v3->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-                                        decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+          decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
       information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
       item_id++;
     }
@@ -428,16 +428,16 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       ret_pds.clear();
 
       ret_menu.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
-                            u"Return to the\nmain menu", 0);
+          u"Return to the\nmain menu", 0);
       ret_menu.emplace_back(ProxyDestinationsMenuItemID::OPTIONS, u"Options",
-                            u"Set proxy options", 0);
+          u"Set proxy options", 0);
 
       uint32_t item_id = 0;
       for (const auto& item : sorted_jsons) {
         const string& netloc_str = item.second->as_string();
         const string& description = "$C7Remote server:\n$C6" + netloc_str;
         ret_menu.emplace_back(item_id, decode_sjis(item.first),
-                              decode_sjis(description), 0);
+            decode_sjis(description), 0);
         ret_pds.emplace_back(parse_netloc(netloc_str));
         item_id++;
       }
@@ -490,9 +490,9 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   }
 
   this->main_menu.emplace_back(MainMenuItemID::GO_TO_LOBBY, u"Go to lobby",
-                               u"Join the lobby", 0);
+      u"Join the lobby", 0);
   this->main_menu.emplace_back(MainMenuItemID::INFORMATION, u"Information",
-                               u"View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+      u"View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
   uint32_t proxy_destinations_menu_item_flags =
       // DCNTE doesn't support multiple ship select menus without changing
       // servers (via a 19 command) apparently :(
@@ -503,24 +503,24 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       (this->proxy_destinations_xb.empty() ? MenuItem::Flag::INVISIBLE_ON_XB : 0) |
       MenuItem::Flag::INVISIBLE_ON_BB;
   this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
-                               u"Connect to another\nserver", proxy_destinations_menu_item_flags);
+      u"Connect to another\nserver", proxy_destinations_menu_item_flags);
   this->main_menu.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, u"Download quests",
-                               u"Download quests", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
+      u"Download quests", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
   if (!this->is_replay) {
     if (!this->function_code_index->patch_menu_empty()) {
       this->main_menu.emplace_back(MainMenuItemID::PATCHES, u"Patches",
-                                   u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+          u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
     }
     if (!this->dol_file_index->empty()) {
       this->main_menu.emplace_back(MainMenuItemID::PROGRAMS, u"Programs",
-                                   u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
+          u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
     }
   }
   this->main_menu.emplace_back(MainMenuItemID::DISCONNECT, u"Disconnect",
-                               u"Disconnect", 0);
+      u"Disconnect", 0);
   this->main_menu.emplace_back(MainMenuItemID::CLEAR_LICENSE, u"Clear license",
-                               u"Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password",
-                               MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
+      u"Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password",
+      MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
 
   try {
     this->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());
@@ -647,7 +647,7 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
     this->local_address = this->all_addresses.at(local_address_str);
     string addr_str = string_for_address(this->local_address);
     config_log.info("Added local address: %s (%s)", addr_str.c_str(),
-                    local_address_str.c_str());
+        local_address_str.c_str());
   } catch (const out_of_range&) {
     this->local_address = address_for_string(local_address_str.c_str());
     config_log.info("Added local address: %s", local_address_str.c_str());
@@ -659,7 +659,7 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
     this->external_address = this->all_addresses.at(external_address_str);
     string addr_str = string_for_address(this->external_address);
     config_log.info("Added external address: %s (%s)", addr_str.c_str(),
-                    external_address_str.c_str());
+        external_address_str.c_str());
   } catch (const out_of_range&) {
     this->external_address = address_for_string(external_address_str.c_str());
     config_log.info("Added external address: %s", external_address_str.c_str());
@@ -747,8 +747,7 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
     for (const auto& it : d.at("CardAuctionPool")->as_dict()) {
       const auto& card_name = it.first;
       const auto& card_cfg_json = it.second->as_list();
-      this->ep3_card_auction_pool.emplace(card_name, make_pair(
-                                                         card_cfg_json.at(0)->as_int(), card_cfg_json.at(1)->as_int()));
+      this->ep3_card_auction_pool.emplace(card_name, make_pair(card_cfg_json.at(0)->as_int(), card_cfg_json.at(1)->as_int()));
     }
   } catch (const out_of_range&) {
   }
