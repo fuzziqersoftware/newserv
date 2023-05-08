@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include <algorithm>
 #include <phosg/Encoding.hh>
 #include <phosg/Hash.hh>
 #include <phosg/Random.hh>
@@ -275,12 +276,17 @@ struct PSOGCGuildCardFile {
 
 template <bool IsBigEndian>
 std::string decrypt_gci_or_vms_v2_data_section(
-    const void* data_section, size_t size, uint32_t round1_seed) {
+    const void* data_section, size_t size, uint32_t round1_seed, size_t max_decrypt_bytes = 0) {
+  if (max_decrypt_bytes == 0) {
+    max_decrypt_bytes = size;
+  } else {
+    max_decrypt_bytes = std::min<size_t>(max_decrypt_bytes, size);
+  }
 
-  std::string decrypted(size, '\0');
+  std::string decrypted(max_decrypt_bytes, '\0');
   PSOV2Encryption shuf_crypt(round1_seed);
   ShuffleTables shuf(shuf_crypt);
-  shuf.shuffle(decrypted.data(), data_section, size, true);
+  shuf.shuffle(decrypted.data(), data_section, max_decrypt_bytes, true);
 
   size_t orig_size = decrypted.size();
   decrypted.resize((decrypted.size() + 3) & (~3));
@@ -311,7 +317,11 @@ std::string encrypt_gci_or_vms_v2_data_section(
 
 template <typename StructT>
 StructT decrypt_gci_fixed_size_file_data_section(
-    const void* data_section, size_t size, uint32_t round1_seed) {
+    const void* data_section,
+    size_t size,
+    uint32_t round1_seed,
+    bool skip_checksum = false,
+    uint64_t override_round2_seed = 0xFFFFFFFFFFFFFFFF) {
   std::string decrypted = decrypt_gci_or_vms_v2_data_section<true>(
       data_section, size, round1_seed);
 
@@ -320,21 +330,30 @@ StructT decrypt_gci_fixed_size_file_data_section(
   }
   StructT ret = *reinterpret_cast<const StructT*>(decrypted.data());
 
-  PSOV2Encryption round2_crypt(ret.round2_seed);
+  PSOV2Encryption round2_crypt(override_round2_seed < 0x100000000 ? override_round2_seed : ret.round2_seed.load());
   round2_crypt.encrypt_big_endian(&ret, offsetof(StructT, round2_seed));
 
-  uint32_t expected_crc = ret.checksum;
-  ret.checksum = 0;
-  uint32_t actual_crc = crc32(&ret, sizeof(ret));
-  ret.checksum = expected_crc;
-  if (expected_crc != actual_crc) {
-    throw std::runtime_error(string_printf(
-        "incorrect decrypted data section checksum: expected %08" PRIX32 "; received %08" PRIX32,
-        expected_crc, actual_crc));
+  if (!skip_checksum) {
+    uint32_t expected_crc = ret.checksum;
+    ret.checksum = 0;
+    uint32_t actual_crc = crc32(&ret, sizeof(ret));
+    ret.checksum = expected_crc;
+    if (expected_crc != actual_crc) {
+      throw std::runtime_error(string_printf(
+          "incorrect decrypted data section checksum: expected %08" PRIX32 "; received %08" PRIX32,
+          expected_crc, actual_crc));
+    }
   }
 
   return ret;
 }
+
+std::string decrypt_gci_fixed_size_file_data_section_for_salvage(
+    const void* data_section,
+    size_t size,
+    uint32_t round1_seed,
+    uint64_t round2_seed,
+    size_t max_decrypt_bytes);
 
 template <typename StructT>
 std::string encrypt_gci_fixed_size_file_data_section(

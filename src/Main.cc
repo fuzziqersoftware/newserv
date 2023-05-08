@@ -124,6 +124,10 @@ The actions are:\n\
     checksum is also recomputed and stored in the encrypted file. CRYPT-OPTION\n\
     is required; it can be either --sys=SYSTEM-FILENAME or --seed=ROUND1-SEED\n\
     (specified in hex).\n\
+  salvage-gci INPUT-FILENAME [--round2] [CRYPT-OPTION] [--bytes=SIZE]\n\
+    Attempt to find either the round-1 or round-2 decryption seed for a\n\
+    corrupted GCI file. If --round2 is given, then CRYPT-OPTION must be given\n\
+    (and should specify either a valid system file or the round1 seed).\n\
   find-decryption-seed <OPTIONS...>\n\
     Perform a brute-force search for a decryption seed of the given data. The\n\
     ciphertext is specified with the --encrypted=DATA option and the expected\n\
@@ -205,6 +209,7 @@ enum class Behavior {
   ENCRYPT_GCI_SAVE,
   DECRYPT_GCI_SAVE,
   FIND_DECRYPTION_SEED,
+  SALVAGE_GCI,
   DECODE_QUEST_FILE,
   DECODE_SJIS,
   EXTRACT_GSL,
@@ -232,6 +237,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::DECRYPT_DATA) ||
       (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
+      (b == Behavior::SALVAGE_GCI) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DECODE_QUEST_FILE) ||
       (b == Behavior::DECODE_SJIS) ||
@@ -279,7 +285,13 @@ int main(int argc, char** argv) {
   bool big_endian = false;
   bool skip_little_endian = false;
   bool skip_big_endian = false;
+  bool round2 = false;
+  bool skip_checksum = false;
+  uint64_t override_round2_seed = 0xFFFFFFFFFFFFFFFF;
+  size_t offset = 0;
+  size_t stride = 1;
   size_t num_threads = 0;
+  size_t bytes = 0;
   const char* find_decryption_seed_ciphertext = nullptr;
   vector<const char*> find_decryption_seed_plaintexts;
   const char* input_filename = nullptr;
@@ -309,8 +321,20 @@ int main(int argc, char** argv) {
       cli_version = GameVersion::XB;
     } else if (!strcmp(argv[x], "--bb")) {
       cli_version = GameVersion::BB;
+    } else if (!strcmp(argv[x], "--round2")) {
+      round2 = true;
+    } else if (!strncmp(argv[x], "--bytes=", 8)) {
+      bytes = strtoull(&argv[x][8], nullptr, 0);
+    } else if (!strncmp(argv[x], "--offset=", 9)) {
+      offset = strtoull(&argv[x][9], nullptr, 0);
+    } else if (!strncmp(argv[x], "--stride=", 9)) {
+      stride = strtoull(&argv[x][9], nullptr, 0);
+    } else if (!strcmp(argv[x], "--skip-checksum")) {
+      skip_checksum = true;
     } else if (!strncmp(argv[x], "--seed=", 7)) {
       seed = &argv[x][7];
+    } else if (!strncmp(argv[x], "--round2-seed=", 14)) {
+      override_round2_seed = strtoull(&argv[x][14], nullptr, 16);
     } else if (!strncmp(argv[x], "--key=", 6)) {
       key_file_name = &argv[x][6];
     } else if (!strncmp(argv[x], "--sys=", 6)) {
@@ -370,6 +394,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::ENCRYPT_GCI_SAVE;
         } else if (!strcmp(argv[x], "find-decryption-seed")) {
           behavior = Behavior::FIND_DECRYPTION_SEED;
+        } else if (!strcmp(argv[x], "salvage-gci")) {
+          behavior = Behavior::SALVAGE_GCI;
         } else if (!strcmp(argv[x], "decode-sjis")) {
           behavior = Behavior::DECODE_SJIS;
         } else if (!strcmp(argv[x], "decode-gci")) {
@@ -661,7 +687,7 @@ int main(int argc, char** argv) {
         if (is_decrypt) {
           const void* data_section = r.getv(header.data_size);
           auto decrypted = decrypt_gci_fixed_size_file_data_section<StructT>(
-              data_section, header.data_size, round1_seed);
+              data_section, header.data_size, round1_seed, skip_checksum, override_round2_seed);
           *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
         } else {
           const auto& s = r.get<StructT>();
@@ -696,6 +722,101 @@ int main(int argc, char** argv) {
       }
 
       write_output_data(data.data(), data.size());
+
+      break;
+    }
+
+    case Behavior::SALVAGE_GCI: {
+      uint64_t likely_round1_seed = 0xFFFFFFFFFFFFFFFF;
+      if (system_filename) {
+        try {
+          string system_data = load_file(system_filename);
+          StringReader r(system_data);
+          const auto& header = r.get<PSOGCIFileHeader>();
+          header.check();
+          const auto& system = r.get<PSOGCSystemFile>();
+          likely_round1_seed = system.creation_timestamp;
+          log_info("System file appears to be in order; round1 seed is %08" PRIX64, likely_round1_seed);
+        } catch (const exception& e) {
+          log_warning("Cannot parse system file (%s); ignoring it", e.what());
+        }
+      } else if (!seed.empty()) {
+        likely_round1_seed = stoul(seed, nullptr, 16);
+        log_info("Specified round1 seed is %08" PRIX64, likely_round1_seed);
+      }
+
+      if (round2 && likely_round1_seed > 0x100000000) {
+        throw invalid_argument("cannot find round2 seed without known round1 seed");
+      }
+
+      auto data = read_input_data();
+      StringReader r(data);
+      const auto& header = r.get<PSOGCIFileHeader>();
+      header.check();
+
+      const void* data_section = r.getv(header.data_size);
+
+      auto process_file = [&]<typename StructT>() {
+        vector<multimap<size_t, uint32_t>> top_seeds_by_thread(
+            num_threads ? num_threads : thread::hardware_concurrency());
+        parallel_range<uint64_t>(
+            [&](uint64_t seed, size_t thread_num) -> bool {
+              size_t zero_count;
+              if (round2) {
+                string decrypted = decrypt_gci_fixed_size_file_data_section_for_salvage(
+                    data_section, header.data_size, likely_round1_seed, seed, bytes);
+                zero_count = count_zeroes(
+                    decrypted.data() + offset,
+                    decrypted.size() - offset,
+                    stride);
+              } else {
+                auto decrypted = decrypt_gci_fixed_size_file_data_section<StructT>(
+                    data_section,
+                    header.data_size,
+                    seed,
+                    true);
+                zero_count = count_zeroes(
+                    reinterpret_cast<const uint8_t*>(&decrypted) + offset,
+                    sizeof(decrypted) - offset,
+                    stride);
+              }
+              auto& top_seeds = top_seeds_by_thread[thread_num];
+              if (top_seeds.size() < 10 || (zero_count >= top_seeds.begin()->second)) {
+                top_seeds.emplace(zero_count, seed);
+                if (top_seeds.size() > 10) {
+                  top_seeds.erase(top_seeds.begin());
+                }
+              }
+              return false;
+            },
+            0,
+            0x100000000,
+            num_threads);
+
+        multimap<size_t, uint32_t> top_seeds;
+        for (const auto& thread_top_seeds : top_seeds_by_thread) {
+          for (const auto& it : thread_top_seeds) {
+            top_seeds.emplace(it.first, it.second);
+          }
+        }
+        for (const auto& it : top_seeds) {
+          const char* sys_seed_str = (!round2 && (it.second == likely_round1_seed))
+              ? " (this is the seed from the system file)"
+              : "";
+          log_info("Round %c seed %08" PRIX32 " resulted in %zu zero bytes%s",
+              round2 ? '2' : '1', it.second, it.first, sys_seed_str);
+        }
+      };
+
+      if (header.data_size == sizeof(PSOGCGuildCardFile)) {
+        process_file.template operator()<PSOGCGuildCardFile>();
+      } else if (header.is_ep12() && (header.data_size == sizeof(PSOGCCharacterFile))) {
+        process_file.template operator()<PSOGCCharacterFile>();
+      } else if (header.is_ep3() && (header.data_size == sizeof(PSOGCEp3CharacterFile))) {
+        process_file.template operator()<PSOGCEp3CharacterFile>();
+      } else {
+        throw runtime_error("unrecognized save type");
+      }
 
       break;
     }

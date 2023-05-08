@@ -70,8 +70,7 @@ void PSOGCIFileHeader::check() const {
   if (this->game_id[1] != 'P') {
     throw runtime_error("GCI file is not for Phantasy Star Online");
   }
-  if ((this->game_id[1] != 'P') ||
-      ((this->game_id[2] != 'S') && (this->game_id[2] != 'O'))) {
+  if ((this->game_id[2] != 'S') && (this->game_id[2] != 'O')) {
     throw runtime_error("GCI file is not for Phantasy Star Online");
   }
 }
@@ -100,4 +99,19 @@ uint32_t compute_psogc_timestamp(
   }
   uint32_t res_day = (day - 1) + year_start_day + month_start_day[month - 1];
   return second + (minute + (hour + (res_day * 24)) * 60) * 60;
+}
+
+string decrypt_gci_fixed_size_file_data_section_for_salvage(
+    const void* data_section,
+    size_t size,
+    uint32_t round1_seed,
+    uint64_t round2_seed,
+    size_t max_decrypt_bytes) {
+  string decrypted = decrypt_gci_or_vms_v2_data_section<true>(
+      data_section, size, round1_seed, max_decrypt_bytes);
+
+  PSOV2Encryption round2_crypt(round2_seed);
+  round2_crypt.encrypt_big_endian(decrypted.data(), decrypted.size());
+
+  return decrypted;
 }
