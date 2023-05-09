@@ -164,6 +164,10 @@ The actions are:\n\
   show-ep3-data\n\
     Print the Episode 3 maps and card definitions from the system/ep3 directory\n\
     in a (sort of) human-readable format.\n\
+  describe-item DATA\n\
+    Print the name of the item given by DATA (in hex). DATA must not contain\n\
+    spaces. If DATA is 20 bytes, newserv assumes it contains an unused item ID\n\
+    field; if it is fewer bytes, up to 16 bytes are used.\n\
   replay-log [INPUT-FILENAME] [OPTIONS...]\n\
     Replay a terminal log as if it were a client session. input-filename may be\n\
     specified for this option. This is used for regression testing, to make\n\
@@ -208,6 +212,7 @@ enum class Behavior {
   FORMAT_ITEMRT_ENTRY,
   FORMAT_ITEMRT_REL,
   SHOW_EP3_DATA,
+  DESCRIBE_ITEM,
   PARSE_OBJECT_GRAPH,
   REPLAY_LOG,
   CAT_CLIENT,
@@ -234,6 +239,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::FORMAT_ITEMRT_REL) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
+      (b == Behavior::DESCRIBE_ITEM) ||
       (b == Behavior::PARSE_OBJECT_GRAPH) ||
       (b == Behavior::REPLAY_LOG) ||
       (b == Behavior::CAT_CLIENT) ||
@@ -386,6 +392,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::FORMAT_ITEMRT_REL;
         } else if (!strcmp(argv[x], "show-ep3-data")) {
           behavior = Behavior::SHOW_EP3_DATA;
+        } else if (!strcmp(argv[x], "describe-item")) {
+          behavior = Behavior::DESCRIBE_ITEM;
         } else if (!strcmp(argv[x], "parse-object-graph")) {
           behavior = Behavior::PARSE_OBJECT_GRAPH;
         } else if (!strcmp(argv[x], "replay-log")) {
@@ -961,6 +969,24 @@ int main(int argc, char** argv) {
           }
         }
       }
+      break;
+    }
+
+    case Behavior::DESCRIBE_ITEM: {
+      string data = parse_data_string(input_filename);
+
+      ItemData item;
+      if (data.size() == sizeof(ItemData)) {
+        memcpy(&item, data.data(), data.size());
+      } else {
+        memcpy(&item.data1[0], data.data(), min<size_t>(sizeof(item.data1), data.size()));
+        if (data.size() > sizeof(item.data1)) {
+          memcpy(&item.data2[0], data.data() + sizeof(item.data1), min<size_t>(sizeof(item.data2), data.size() - sizeof(item.data1)));
+        }
+      }
+
+      string desc = item.name(false);
+      log_info("Item: %s", desc.c_str());
       break;
     }
 
