@@ -365,14 +365,17 @@ For GC clients, you'll have to use newserv's built-in DNS server or set up your 
 
 newserv has many CLI options, which can be used to access functionality other than the game and proxy server. Run `newserv help` to see these options and how to use them. The non-server things newserv can do are:
 
-* Compress or decompress data in the PRS and BC0 formats
-* Compute the decompressed size of compressed PRS data without decompressing it
-* Encrypt or decrypt data using any PSO version's network encryption scheme
-* Encrypt or decrypt data using Episode 3's trivial scheme
-* Encrypt or decrypt PSO GC save data (.gci files)
-* Run a brute-force search for a decryption seed
-* Decode Shift-JIS text to UTF-16
-* Convert quests in .gci, .vms, .dlq, or .qst format to .bin/.dat format
-* Extract the contents of a .gsl archive
-* Connect to another PSO server and pretend to be a client
-* Format Episode 3 game data in a human-readable manner
+* Compress or decompress data in the PRS and BC0 formats (`compress-prs`, `compress-bc0`, `decompress-prs`, `decompress-bc0`)
+* Compute the decompressed size of compressed PRS data without decompressing it (`prs-size`)
+* Encrypt or decrypt data using any PSO version's network encryption scheme (`encrypt-data`, `decrypt-data`)
+* Encrypt or decrypt data using Episode 3's trivial scheme (`decrypt-trivial-data`)
+* Encrypt or decrypt PSO GC save data (.gci files) (`encrypt-gci-save`, `decrypt-gci-save`)
+* Find the likely round1 or round2 seed for a corrupt save file (`salvage-gci`)
+* Run a brute-force search for a decryption seed (`find-decryption-seed`)
+* Decode Shift-JIS text to UTF-16 (`decode-sjis`)
+* Convert quests in .gci, .vms, .dlq, or .qst format to .bin/.dat format (`decode-gci`, `decode-vms`, `decode-dlq`, `decode-qst`)
+* Connect to another PSO server and pretend to be a client (`cat-client`)
+* Format Episode 3 game data in a human-readable manner (`show-ep3-data`)
+* Render a human-readable description of item data (`describe-item`)
+* Replay a session log for testing (`replay-log`)
+* Extract the contents of a .gsl or .bml archive (`extract-gsl`, `extract-bml`)
