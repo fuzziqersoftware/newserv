@@ -75,6 +75,9 @@ struct Client {
     ENCRYPTED_SEND_FUNCTION_CALL = 0x00000800,
     // Client supports send_function_call but does not actually run the code
     SEND_FUNCTION_CALL_CHECKSUM_ONLY = 0x00001000,
+    // Client supports send_function_call but doesn't clear its caches properly
+    // before calling the function (so we need to patch it)
+    SEND_FUNCTION_CALL_NEEDS_CACHE_PATCH = 0x00020000,
     // Client is vulnerable to a buffer overflow that we can use to enable
     // send_function_call
     USE_OVERFLOW_FOR_SEND_FUNCTION_CALL = 0x00008000,

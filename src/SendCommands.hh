@@ -139,14 +139,16 @@ void send_function_call(
     const std::unordered_map<std::string, uint32_t>& label_writes = {},
     const std::string& suffix = "",
     uint32_t checksum_addr = 0,
-    uint32_t checksum_size = 0);
+    uint32_t checksum_size = 0,
+    uint32_t override_relocations_offset = 0);
 void send_function_call(
     std::shared_ptr<Client> c,
     std::shared_ptr<CompiledFunctionCode> code,
     const std::unordered_map<std::string, uint32_t>& label_writes = {},
     const std::string& suffix = "",
     uint32_t checksum_addr = 0,
-    uint32_t checksum_size = 0);
+    uint32_t checksum_size = 0,
+    uint32_t override_relocations_offset = 0);
 
 void send_reconnect(std::shared_ptr<Client> c, uint32_t address, uint16_t port);
 void send_pc_console_split_reconnect(

@@ -15,7 +15,7 @@ const vector<string> version_to_lobby_port_name = {
 const vector<string> version_to_proxy_port_name = {
     "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"};
 
-uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
+uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
   switch (sub_version) {
     case -1: // Initial check (before sub_version recognition)
       switch (version) {
@@ -26,13 +26,13 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
           return 0;
         case GameVersion::PC:
           return Client::Flag::NO_D6 |
-                 Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
+              Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
         case GameVersion::PATCH:
           return Client::Flag::NO_D6 |
-                 Client::Flag::NO_SEND_FUNCTION_CALL;
+              Client::Flag::NO_SEND_FUNCTION_CALL;
         case GameVersion::BB:
           return Client::Flag::NO_D6 |
-                 Client::Flag::SAVE_ENABLED;
+              Client::Flag::SAVE_ENABLED;
       }
       break;
 
@@ -42,47 +42,49 @@ uint16_t flags_for_version(GameVersion version, int64_t sub_version) {
                // get here, so the remaining flags are the same as DCv1
     case 0x21: // DCv1 US
       return Client::Flag::IS_DC_V1 |
-             Client::Flag::NO_D6 |
-             Client::Flag::NO_SEND_FUNCTION_CALL;
+          Client::Flag::NO_D6 |
+          Client::Flag::NO_SEND_FUNCTION_CALL;
 
     case 0x26: // DCv2 US
       return Client::Flag::NO_D6;
 
     case 0x29: // PC
       return Client::Flag::NO_D6 |
-             Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
+          Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
 
     case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
     case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
     case 0x34: // GC Ep1&2 JP v1.03
-      return 0;
+      return ((version == GameVersion::GC) && function_compiler_available())
+          ? Client::Flag::SEND_FUNCTION_CALL_NEEDS_CACHE_PATCH
+          : 0;
     case 0x32: // GC Ep1&2 EU 50Hz
     case 0x33: // GC Ep1&2 EU 60Hz
       return Client::Flag::NO_D6_AFTER_LOBBY;
     case 0x35: // GC Ep1&2 JP v1.04 (Plus)
       return Client::Flag::NO_D6_AFTER_LOBBY |
-             Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
+          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
     case 0x36: // GC Ep1&2 US v1.02 (Plus)
     case 0x39: // GC Ep1&2 JP v1.05 (Plus)
       return Client::Flag::NO_D6_AFTER_LOBBY |
-             Client::Flag::NO_SEND_FUNCTION_CALL;
+          Client::Flag::NO_SEND_FUNCTION_CALL;
 
     case 0x40: // GC Ep3 trial
       return Client::Flag::NO_D6_AFTER_LOBBY |
-             Client::Flag::IS_EPISODE_3 |
-             Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
+          Client::Flag::IS_EPISODE_3 |
+          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
     case 0x42: // GC Ep3 JP
       return Client::Flag::NO_D6_AFTER_LOBBY |
-             Client::Flag::IS_EPISODE_3 |
-             Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
+          Client::Flag::IS_EPISODE_3 |
+          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
     case 0x41: // GC Ep3 US
       return Client::Flag::NO_D6_AFTER_LOBBY |
-             Client::Flag::IS_EPISODE_3 |
-             Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL;
+          Client::Flag::IS_EPISODE_3 |
+          Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL;
     case 0x43: // GC Ep3 EU
       return Client::Flag::NO_D6_AFTER_LOBBY |
-             Client::Flag::IS_EPISODE_3 |
-             Client::Flag::NO_SEND_FUNCTION_CALL;
+          Client::Flag::IS_EPISODE_3 |
+          Client::Flag::NO_SEND_FUNCTION_CALL;
   }
   throw runtime_error("unknown sub_version");
 }
@@ -116,7 +118,7 @@ GameVersion version_for_name(const char* name) {
   } else if (!strcasecmp(name, "XB") || !strcasecmp(name, "Xbox")) {
     return GameVersion::XB;
   } else if (!strcasecmp(name, "BB") || !strcasecmp(name, "BlueBurst") ||
-             !strcasecmp(name, "Blue Burst")) {
+      !strcasecmp(name, "Blue Burst")) {
     return GameVersion::BB;
   } else if (!strcasecmp(name, "Patch")) {
     return GameVersion::PATCH;

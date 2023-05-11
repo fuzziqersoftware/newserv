@@ -11,6 +11,7 @@
 #include "Menu.hh"
 
 bool function_compiler_available();
+void set_function_compiler_available(bool is_available);
 
 // TODO: Support x86 and SH4 function calls in the future. Currently we only
 // support PPC32 because I haven't written an appropriate x86 assembler yet.
@@ -36,10 +37,12 @@ struct CompiledFunctionCode {
   template <typename FooterT>
   std::string generate_client_command_t(
       const std::unordered_map<std::string, uint32_t>& label_writes,
-      const std::string& suffix) const;
+      const std::string& suffix,
+      uint32_t override_relocations_offset = 0) const;
   std::string generate_client_command(
       const std::unordered_map<std::string, uint32_t>& label_writes = {},
-      const std::string& suffix = "") const;
+      const std::string& suffix = "",
+      uint32_t override_relocations_offset = 0) const;
 };
 
 const char* name_for_architecture(CompiledFunctionCode::Architecture arch);

@@ -15,12 +15,18 @@
 
 using namespace std;
 
+static bool is_function_compiler_available = true;
+
 bool function_compiler_available() {
 #ifndef HAVE_RESOURCE_FILE
   return false;
 #else
-  return true;
+  return is_function_compiler_available;
 #endif
+}
+
+void set_function_compiler_available(bool is_available) {
+  is_function_compiler_available = is_available;
 }
 
 const char* name_for_architecture(CompiledFunctionCode::Architecture arch) {
@@ -37,7 +43,8 @@ const char* name_for_architecture(CompiledFunctionCode::Architecture arch) {
 template <typename FooterT>
 string CompiledFunctionCode::generate_client_command_t(
     const unordered_map<string, uint32_t>& label_writes,
-    const string& suffix) const {
+    const string& suffix,
+    uint32_t override_relocations_offset) const {
   FooterT footer;
   footer.num_relocations = this->relocation_deltas.size();
   footer.unused1.clear(0);
@@ -63,12 +70,15 @@ string CompiledFunctionCode::generate_client_command_t(
     w.put_u8(0);
   }
 
-  footer.relocations_offset = w.size();
-  for (uint16_t delta : this->relocation_deltas) {
-    w.put<typename FooterT::U16T>(delta);
-  }
-  if (this->relocation_deltas.size() & 1) {
-    w.put_u16(0);
+  if (override_relocations_offset) {
+    footer.relocations_offset = override_relocations_offset;
+  } else {
+    for (uint16_t delta : this->relocation_deltas) {
+      w.put<typename FooterT::U16T>(delta);
+    }
+    if (this->relocation_deltas.size() & 1) {
+      w.put_u16(0);
+    }
   }
 
   w.put(footer);
@@ -77,13 +87,14 @@ string CompiledFunctionCode::generate_client_command_t(
 
 string CompiledFunctionCode::generate_client_command(
     const unordered_map<string, uint32_t>& label_writes,
-    const string& suffix) const {
+    const string& suffix,
+    uint32_t override_relocations_offset) const {
   if (this->arch == Architecture::POWERPC) {
     return this->generate_client_command_t<S_ExecuteCode_Footer_GC_B2>(
-        label_writes, suffix);
+        label_writes, suffix, override_relocations_offset);
   } else if ((this->arch == Architecture::X86) || (this->arch == Architecture::SH4)) {
     return this->generate_client_command_t<S_ExecuteCode_Footer_DC_PC_XB_BB_B2>(
-        label_writes, suffix);
+        label_writes, suffix, override_relocations_offset);
   } else {
     throw logic_error("invalid architecture");
   }

@@ -1194,6 +1194,10 @@ int main(int argc, char** argv) {
         use_terminal_colors = true;
       }
 
+      if (is_replay) {
+        set_function_compiler_available(false);
+      }
+
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
       shared_ptr<ServerState> state(new ServerState(config_filename, is_replay));
 

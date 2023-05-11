@@ -58,12 +58,12 @@ const unordered_set<string> bb_crypt_initial_client_commands({
 });
 
 void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
-                  const void* data, size_t size) {
+    const void* data, size_t size) {
   c->channel.send(command, flag, data, size);
 }
 
 void send_command_excluding_client(shared_ptr<Lobby> l, shared_ptr<Client> c,
-                                   uint16_t command, uint32_t flag, const void* data, size_t size) {
+    uint16_t command, uint32_t flag, const void* data, size_t size) {
   for (auto& client : l->clients) {
     if (!client || (client == c)) {
       continue;
@@ -73,7 +73,7 @@ void send_command_excluding_client(shared_ptr<Lobby> l, shared_ptr<Client> c,
 }
 
 void send_command_if_not_loading(shared_ptr<Lobby> l,
-                                 uint16_t command, uint32_t flag, const void* data, size_t size) {
+    uint16_t command, uint32_t flag, const void* data, size_t size) {
   for (auto& client : l->clients) {
     if (!client || (client->flags & Client::Flag::LOADING)) {
       continue;
@@ -83,12 +83,12 @@ void send_command_if_not_loading(shared_ptr<Lobby> l,
 }
 
 void send_command(shared_ptr<Lobby> l, uint16_t command, uint32_t flag,
-                  const void* data, size_t size) {
+    const void* data, size_t size) {
   send_command_excluding_client(l, nullptr, command, flag, data, size);
 }
 
 void send_command(shared_ptr<ServerState> s, uint16_t command, uint32_t flag,
-                  const void* data, size_t size) {
+    const void* data, size_t size) {
   for (auto& l : s->all_lobbies()) {
     send_command(l, command, flag, data, size);
   }
@@ -132,8 +132,8 @@ prepare_server_init_contents_console(
   bool initial_connection = (flags & SendServerInitFlag::IS_INITIAL_CONNECTION);
   S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xB4> cmd;
   cmd.basic_cmd.copyright = initial_connection
-                                ? dc_port_map_copyright
-                                : dc_lobby_server_copyright;
+      ? dc_port_map_copyright
+      : dc_lobby_server_copyright;
   cmd.basic_cmd.server_key = server_key;
   cmd.basic_cmd.client_key = client_key;
   cmd.after_message = anti_copyright;
@@ -184,7 +184,7 @@ prepare_server_init_contents_bb(
 }
 
 void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-                         uint8_t flags) {
+    uint8_t flags) {
   bool use_secondary_message = (flags & SendServerInitFlag::USE_SECONDARY_MESSAGE);
   parray<uint8_t, 0x30> server_key;
   parray<uint8_t, 0x30> client_key;
@@ -316,7 +316,8 @@ void send_function_call(
     const unordered_map<string, uint32_t>& label_writes,
     const string& suffix,
     uint32_t checksum_addr,
-    uint32_t checksum_size) {
+    uint32_t checksum_size,
+    uint32_t override_relocations_offset) {
   return send_function_call(
       c->channel,
       c->flags,
@@ -324,7 +325,8 @@ void send_function_call(
       label_writes,
       suffix,
       checksum_addr,
-      checksum_size);
+      checksum_size,
+      override_relocations_offset);
 }
 
 void send_function_call(
@@ -334,7 +336,8 @@ void send_function_call(
     const unordered_map<string, uint32_t>& label_writes,
     const string& suffix,
     uint32_t checksum_addr,
-    uint32_t checksum_size) {
+    uint32_t checksum_size,
+    uint32_t override_relocations_offset) {
   if (client_flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
     throw logic_error("client does not support function calls");
   }
@@ -345,7 +348,7 @@ void send_function_call(
   string data;
   uint32_t index = 0;
   if (code.get()) {
-    data = code->generate_client_command(label_writes, suffix);
+    data = code->generate_client_command(label_writes, suffix, override_relocations_offset);
     index = code->index;
 
     if (client_flags & Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL) {
@@ -393,7 +396,7 @@ void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
 }
 
 void send_pc_console_split_reconnect(shared_ptr<Client> c, uint32_t address,
-                                     uint16_t pc_port, uint16_t console_port) {
+    uint16_t pc_port, uint16_t console_port) {
   S_ReconnectSplit_19 cmd;
   cmd.pc_address = address;
   cmd.pc_port = pc_port;
@@ -421,7 +424,7 @@ void send_team_and_key_config_bb(shared_ptr<Client> c) {
 }
 
 void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
-                            const PlayerDispDataBBPreview* preview) {
+    const PlayerDispDataBBPreview* preview) {
 
   if (!preview) {
     // no player exists
@@ -586,7 +589,7 @@ void send_patch_file(shared_ptr<Client> c, shared_ptr<PatchFileIndex::File> f) {
 // message functions
 
 void send_text(Channel& ch, StringWriter& w, uint16_t command,
-               const u16string& text, bool should_add_color) {
+    const u16string& text, bool should_add_color) {
   if ((ch.version == GameVersion::DC) ||
       (ch.version == GameVersion::GC) ||
       (ch.version == GameVersion::XB)) {
@@ -617,7 +620,7 @@ void send_text(Channel& ch, uint16_t command, const u16string& text, bool should
 }
 
 void send_header_text(Channel& ch, uint16_t command,
-                      uint32_t guild_card_number, const u16string& text, bool should_add_color) {
+    uint32_t guild_card_number, const u16string& text, bool should_add_color) {
   StringWriter w;
   w.put(SC_TextHeader_01_06_11_B0_EE({0, guild_card_number}));
   send_text(ch, w, command, text, should_add_color);
@@ -660,7 +663,7 @@ void send_lobby_name(shared_ptr<Client> c, const u16string& text) {
 }
 
 void send_quest_info(shared_ptr<Client> c, const u16string& text,
-                     bool is_download_quest) {
+    bool is_download_quest) {
   send_text(c->channel, is_download_quest ? 0xA5 : 0xA3, text, true);
 }
 
@@ -750,12 +753,12 @@ void send_chat_message(Channel& ch, const u16string& text, char private_flags) {
 }
 
 void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
-                       const u16string& prepared_data) {
+    const u16string& prepared_data) {
   send_header_text(c->channel, 0x06, from_guild_card_number, prepared_data, false);
 }
 
 void send_chat_message(shared_ptr<Lobby> l, uint32_t from_guild_card_number,
-                       const u16string& prepared_data) {
+    const u16string& prepared_data) {
   for (auto c : l->clients) {
     if (c) {
       send_header_text(c->channel, 0x06, from_guild_card_number, prepared_data, false);
@@ -764,7 +767,7 @@ void send_chat_message(shared_ptr<Lobby> l, uint32_t from_guild_card_number,
 }
 
 void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
-                       const u16string& from_name, const u16string& text, char private_flags) {
+    const u16string& from_name, const u16string& text, char private_flags) {
   auto data = prepare_chat_message(c->version(), from_name, text, private_flags);
   send_chat_message(c, from_guild_card_number, data);
 }
@@ -800,7 +803,7 @@ void send_simple_mail_bb(
 }
 
 void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number,
-                      const u16string& from_name, const u16string& text) {
+    const u16string& from_name, const u16string& text) {
   switch (c->version()) {
     case GameVersion::DC:
     case GameVersion::GC:
@@ -872,13 +875,13 @@ void send_card_search_result_t(
   if (result_lobby->is_game()) {
     string encoded_lobby_name = encode_sjis(result_lobby->name);
     location_string = string_printf("%s,BLOCK01,%s",
-                                    encoded_lobby_name.c_str(), encoded_server_name.c_str());
+        encoded_lobby_name.c_str(), encoded_server_name.c_str());
   } else if (result_lobby->is_ep3()) {
     location_string = string_printf("BLOCK01-C%02" PRIu32 ",BLOCK01,%s",
-                                    result_lobby->lobby_id - 15, encoded_server_name.c_str());
+        result_lobby->lobby_id - 15, encoded_server_name.c_str());
   } else {
     location_string = string_printf("BLOCK01-%02" PRIu32 ",BLOCK01,%s",
-                                    result_lobby->lobby_id, encoded_server_name.c_str());
+        result_lobby->lobby_id, encoded_server_name.c_str());
   }
   cmd.location_string = location_string;
   cmd.extension.lobby_refs[0].menu_id = MenuID::LOBBY;
@@ -971,7 +974,7 @@ void send_guild_card(
     send_guild_card_dc_pc_v3_t<G_SendGuildCard_PC_6x06>(
         ch, guild_card_number, name, description, section_id, char_class);
   } else if ((ch.version == GameVersion::GC) ||
-             (ch.version == GameVersion::XB)) {
+      (ch.version == GameVersion::XB)) {
     send_guild_card_dc_pc_v3_t<G_SendGuildCard_V3_6x06>(
         ch, guild_card_number, name, description, section_id, char_class);
   } else if (ch.version == GameVersion::BB) {
@@ -1067,7 +1070,7 @@ void send_menu_t(
 }
 
 void send_menu(shared_ptr<Client> c, const u16string& menu_name,
-               uint32_t menu_id, const vector<MenuItem>& items, bool is_info_menu) {
+    uint32_t menu_id, const vector<MenuItem>& items, bool is_info_menu) {
   if (c->version() == GameVersion::PC ||
       c->version() == GameVersion::PATCH ||
       c->version() == GameVersion::BB) {
@@ -1223,7 +1226,7 @@ void send_quest_menu_t(
 }
 
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
-                     const vector<shared_ptr<const Quest>>& quests, bool is_download_menu) {
+    const vector<shared_ptr<const Quest>>& quests, bool is_download_menu) {
   switch (c->version()) {
     case GameVersion::PC:
       send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, quests, is_download_menu);
@@ -1244,7 +1247,7 @@ void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
 }
 
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
-                     const vector<MenuItem>& items, bool is_download_menu) {
+    const vector<MenuItem>& items, bool is_download_menu) {
   switch (c->version()) {
     case GameVersion::PC:
       send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, items, is_download_menu);
@@ -1468,7 +1471,7 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
 template <typename LobbyDataT, typename DispDataT>
 void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
-                       shared_ptr<Client> joining_client = nullptr) {
+    shared_ptr<Client> joining_client = nullptr) {
   uint8_t command;
   if (l->is_game()) {
     if (joining_client) {
@@ -1586,7 +1589,7 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 }
 
 void send_player_join_notification(shared_ptr<Client> c,
-                                   shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
+    shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
   switch (c->version()) {
     case GameVersion::PC:
       send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3>(c, l, joining_client);
@@ -1638,7 +1641,7 @@ void send_get_player_info(shared_ptr<Client> c) {
 // Trade window
 
 void send_execute_item_trade(shared_ptr<Client> c,
-                             const vector<ItemData>& items) {
+    const vector<ItemData>& items) {
   SC_TradeItems_D0_D3 cmd;
   if (items.size() > sizeof(cmd.items) / sizeof(cmd.items[0])) {
     throw logic_error("too many items in execute trade command");
@@ -1652,7 +1655,7 @@ void send_execute_item_trade(shared_ptr<Client> c,
 }
 
 void send_execute_card_trade(shared_ptr<Client> c,
-                             const vector<pair<uint32_t, uint32_t>>& card_to_count) {
+    const vector<pair<uint32_t, uint32_t>>& card_to_count) {
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
     throw logic_error("cannot send trade cards command to non-Ep3 client");
   }
@@ -1727,7 +1730,7 @@ static vector<G_UpdatePlayerStat_6x9A> generate_stats_change_subcommands(
 }
 
 void send_player_stats_change(shared_ptr<Lobby> l, shared_ptr<Client> c,
-                              PlayerStatsChange stat, uint32_t amount) {
+    PlayerStatsChange stat, uint32_t amount) {
   auto subs = generate_stats_change_subcommands(c->lobby_client_id, stat, amount);
   send_command_vt(l, (subs.size() > 0x400 / sizeof(G_UpdatePlayerStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
@@ -1753,7 +1756,7 @@ void send_ep3_change_music(Channel& ch, uint32_t song) {
 }
 
 void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c,
-                                bool visible) {
+    bool visible) {
   uint8_t subcmd = visible ? 0x23 : 0x22;
   uint16_t client_id = c->lobby_client_id;
   G_SetPlayerVisibility_6x22_6x23 cmd = {{subcmd, 0x01, client_id}};
@@ -1764,35 +1767,35 @@ void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c,
 // BB game commands
 
 void send_drop_item(Channel& ch, const ItemData& item,
-                    bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
+    bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
   G_DropItem_PC_V3_BB_6x5F cmd = {
       {{0x5F, 0x0B, 0x0000}, area, from_enemy, request_id, x, z, 0, 0, item}, 0};
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
-                    bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
+    bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
   G_DropItem_PC_V3_BB_6x5F cmd = {
       {{0x5F, 0x0B, 0x0000}, area, from_enemy, request_id, x, z, 0, 0, item}, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
 void send_drop_stacked_item(Channel& ch, const ItemData& item,
-                            uint8_t area, float x, float z) {
+    uint8_t area, float x, float z) {
   G_DropStackedItem_PC_V3_BB_6x5D cmd = {
       {{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
-                            uint8_t area, float x, float z) {
+    uint8_t area, float x, float z) {
   G_DropStackedItem_PC_V3_BB_6x5D cmd = {
       {{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
 void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
-                       uint32_t item_id, uint8_t area) {
+    uint32_t item_id, uint8_t area) {
   uint16_t client_id = c->lobby_client_id;
   G_PickUpItem_6x59 cmd = {
       {0x59, 0x03, client_id}, client_id, area, item_id};
@@ -1802,7 +1805,7 @@ void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
 // Creates an item in a player's inventory (used for withdrawing items from the
 // bank)
 void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
-                                const ItemData& item) {
+    const ItemData& item) {
   uint16_t client_id = c->lobby_client_id;
   G_CreateInventoryItem_BB_6xBE cmd = {{0xBE, 0x07, client_id}, item, 0};
   send_command_t(l, 0x60, 0x00, cmd);
@@ -1810,7 +1813,7 @@ void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
 
 // destroys an item
 void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
-                       uint32_t item_id, uint32_t amount) {
+    uint32_t item_id, uint32_t amount) {
   uint16_t client_id = c->lobby_client_id;
   G_DeleteInventoryItem_6x29 cmd = {{0x29, 0x03, client_id}, item_id, amount};
   send_command_t(l, 0x60, 0x00, cmd);
@@ -1819,7 +1822,7 @@ void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
 // sends the player their bank data
 void send_bank(shared_ptr<Client> c) {
   vector<PlayerBankItem> items(c->game_data.player()->bank.items,
-                               &c->game_data.player()->bank.items[c->game_data.player()->bank.num_items]);
+      &c->game_data.player()->bank.items[c->game_data.player()->bank.num_items]);
 
   uint32_t checksum = random_object<uint32_t>();
   G_BankContentsHeader_BB_6xBC cmd = {
@@ -1878,7 +1881,7 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 
 // gives a player EXP
 void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
-                          uint32_t amount) {
+    uint32_t amount) {
   uint16_t client_id = c->lobby_client_id;
   G_GiveExperience_BB_6xBF cmd = {
       {0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, client_id}, amount};
@@ -1993,8 +1996,8 @@ void send_ep3_tournament_list(
     }
     auto& entry = cmd.entries[z];
     entry.menu_id = is_for_spectator_team_create
-                        ? MenuID::TOURNAMENTS_FOR_SPEC
-                        : MenuID::TOURNAMENTS;
+        ? MenuID::TOURNAMENTS_FOR_SPEC
+        : MenuID::TOURNAMENTS;
     entry.item_id = tourn->get_number();
     // TODO: What does it mean for a tournament to be locked? Should we support
     // that?
@@ -2004,8 +2007,8 @@ void send_ep3_tournament_list(
     // as long as the winners of the preceding matches have been determined.
     entry.state =
         (tourn->get_state() == Episode3::Tournament::State::REGISTRATION)
-            ? 0x00
-            : 0x05;
+        ? 0x00
+        : 0x05;
     // TODO: Fill in cmd.start_time here when we implement scheduled starts.
     entry.name = tourn->get_name();
     const auto& teams = tourn->all_teams();
@@ -2178,8 +2181,8 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       flag = 0x04;
 
     } else if (primary_lobby &&
-               primary_lobby->ep3_server_base &&
-               primary_lobby->ep3_server_base->server->get_setup_phase() != Episode3::SetupPhase::REGISTRATION) {
+        primary_lobby->ep3_server_base &&
+        primary_lobby->ep3_server_base->server->get_setup_phase() != Episode3::SetupPhase::REGISTRATION) {
       cmd.rules = primary_lobby->ep3_server_base->map_and_rules1->rules;
       flag = 0x01;
 
@@ -2275,8 +2278,8 @@ void send_ep3_tournament_match_result(
 
   G_TournamentMatchResult_GC_Ep3_6xB4x51 cmd;
   cmd.match_description = (match == tourn->get_final_match())
-                              ? string_printf("(%s) Final match", tourn->get_name().c_str())
-                              : string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num);
+      ? string_printf("(%s) Final match", tourn->get_name().c_str())
+      : string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num);
   cmd.names_entries[0].team_name = match->preceding_a->winner_team->name;
   write_player_names(cmd.names_entries[0], match->preceding_a->winner_team);
   cmd.names_entries[1].team_name = match->preceding_b->winner_team->name;
@@ -2393,7 +2396,7 @@ void send_quest_file_chunk(
 }
 
 void send_open_quest_file(shared_ptr<Client> c, const string& quest_name,
-                          const string& basename, shared_ptr<const string> contents, QuestFileType type) {
+    const string& basename, shared_ptr<const string> contents, QuestFileType type) {
 
   switch (c->version()) {
     case GameVersion::DC:
@@ -2423,7 +2426,7 @@ void send_open_quest_file(shared_ptr<Client> c, const string& quest_name,
         chunk_bytes = 0x400;
       }
       send_quest_file_chunk(c, basename.c_str(), offset / 0x400,
-                            contents->data() + offset, chunk_bytes, (type != QuestFileType::ONLINE));
+          contents->data() + offset, chunk_bytes, (type != QuestFileType::ONLINE));
     }
   } else {
     c->sending_files.emplace(basename, contents);
@@ -2494,7 +2497,7 @@ void send_card_auction_if_all_clients_ready(
     num_cards = s->ep3_card_auction_min_size;
   } else {
     num_cards = s->ep3_card_auction_min_size +
-                (random_object<uint16_t>() % (s->ep3_card_auction_max_size - s->ep3_card_auction_min_size + 1));
+        (random_object<uint16_t>() % (s->ep3_card_auction_max_size - s->ep3_card_auction_min_size + 1));
   }
   num_cards = min<uint16_t>(num_cards, 0x14);
 
@@ -2534,7 +2537,7 @@ void send_server_time(shared_ptr<Client> c) {
 
   string time_str(128, 0);
   size_t len = strftime(time_str.data(), time_str.size(),
-                        "%Y:%m:%d: %H:%M:%S.000", &t_parsed);
+      "%Y:%m:%d: %H:%M:%S.000", &t_parsed);
   if (len == 0) {
     throw runtime_error("format_time buffer too short");
   }

@@ -156,7 +156,8 @@ static void send_proxy_destinations_menu(shared_ptr<ServerState> s, shared_ptr<C
 
 static bool send_enable_send_function_call_if_applicable(
     shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  if (c->flags & Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL) {
+  if (function_compiler_available() &&
+      (c->flags & Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL)) {
     if (s->episode_3_send_function_call_enabled) {
       send_quest_buffer_overflow(s, c);
     } else {
@@ -229,6 +230,15 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       send_ep3_rank_update(c);
     } else if (s->pre_lobby_event) {
       send_change_event(c, s->pre_lobby_event);
+    }
+
+    if (function_compiler_available() && (c->flags & Client::Flag::SEND_FUNCTION_CALL_NEEDS_CACHE_PATCH)) {
+      send_function_call(
+          c, s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0, 0, 0x7F2634EC);
+      send_function_call(
+          c, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
+      c->flags &= ~Client::Flag::SEND_FUNCTION_CALL_NEEDS_CACHE_PATCH;
+      send_update_client_config(c);
     }
 
     if (s->welcome_message.empty() ||
