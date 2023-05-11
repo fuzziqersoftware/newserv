@@ -1098,7 +1098,7 @@ int main(int argc, char** argv) {
 
       ItemData item;
       if (data.size() == sizeof(ItemData)) {
-        memcpy(&item, data.data(), data.size());
+        item = *reinterpret_cast<const ItemData*>(data.data());
       } else {
         memcpy(&item.data1[0], data.data(), min<size_t>(sizeof(item.data1), data.size()));
         if (data.size() > sizeof(item.data1)) {
