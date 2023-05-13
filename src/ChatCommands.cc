@@ -297,6 +297,9 @@ static void server_command_exit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   if (l->is_game()) {
     if (c->flags & Client::Flag::IS_EPISODE_3) {
       c->channel.send(0xED, 0x00);
+    } else if (l->flags & (Lobby::Flag::QUEST_IN_PROGRESS | Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
+      G_UnusedHeader cmd = {0x73, 0x01, 0x0000};
+      c->channel.send(0x60, 0x00, cmd);
     } else {
       send_text_message(c, u"$C6You must return to\nthe lobby first");
     }
@@ -318,6 +321,9 @@ static void proxy_command_exit(shared_ptr<ServerState>,
   if (session.is_in_game) {
     if (session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3) {
       session.client_channel.send(0xED, 0x00);
+    } else if (session.is_in_quest) {
+      G_UnusedHeader cmd = {0x73, 0x01, 0x0000};
+      session.client_channel.send(0x60, 0x00, cmd);
     } else {
       send_text_message(session.client_channel, u"$C6You must return to\nthe lobby first");
     }

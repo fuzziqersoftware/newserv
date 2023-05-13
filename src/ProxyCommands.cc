@@ -1281,6 +1281,7 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ServerState>,
   if (command == 0x67) {
     session.clear_lobby_players(12);
     session.is_in_game = false;
+    session.is_in_quest = false;
     session.area = 0x0F;
 
     // This command can cause the client to no longer send D6 responses when
@@ -1360,6 +1361,7 @@ static HandlerResult S_64(shared_ptr<ServerState>,
   session.clear_lobby_players(4);
   session.area = 0;
   session.is_in_game = true;
+  session.is_in_quest = false;
 
   bool modified = false;
 
@@ -1412,6 +1414,7 @@ static HandlerResult S_E8(shared_ptr<ServerState>,
   session.clear_lobby_players(12);
   session.area = 0;
   session.is_in_game = true;
+  session.is_in_quest = false;
 
   bool modified = false;
 
@@ -1457,6 +1460,16 @@ static HandlerResult S_E8(shared_ptr<ServerState>,
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
+static HandlerResult S_AC(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  if (!session.is_in_game) {
+    return HandlerResult::Type::SUPPRESS;
+  } else {
+    session.is_in_quest = true;
+    return HandlerResult::Type::FORWARD;
+  }
+}
+
 static HandlerResult S_66_69_E9(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<S_LeaveLobby_66_69_Ep3_E9>(data);
@@ -1481,6 +1494,7 @@ static HandlerResult C_98(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t command, uint32_t flag, string& data) {
   session.area = 0x0F;
   session.is_in_game = false;
+  session.is_in_quest = false;
   if (session.version == GameVersion::GC ||
       session.version == GameVersion::XB ||
       session.version == GameVersion::BB) {
@@ -1852,7 +1866,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* A9 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* AA */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* AB */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
-/* AC */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* AC */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_AC,             nullptr},      {S_AC,          nullptr},      {S_AC,         nullptr}},
 /* AD */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* AE */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* AF */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},

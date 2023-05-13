@@ -473,7 +473,8 @@ ProxyServer::LinkedSession::LinkedSession(
       area(0),
       x(0.0),
       z(0.0),
-      is_in_game(false) {
+      is_in_game(false),
+      is_in_quest(false) {
   this->last_switch_enabled_command.header.subcommand = 0;
   memset(this->prev_server_command_bytes, 0, sizeof(this->prev_server_command_bytes));
 }

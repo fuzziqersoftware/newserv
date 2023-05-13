@@ -89,6 +89,7 @@ public:
     float x;
     float z;
     bool is_in_game;
+    bool is_in_quest;
 
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
 
