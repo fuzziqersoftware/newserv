@@ -14,7 +14,7 @@ FileContentsCache::File::File(
     string&& data,
     uint64_t load_time)
     : name(name),
-      data(new string(move(data))),
+      data(new string(std::move(data))),
       load_time(load_time) {}
 
 shared_ptr<const FileContentsCache::File> FileContentsCache::replace(
@@ -22,7 +22,7 @@ shared_ptr<const FileContentsCache::File> FileContentsCache::replace(
   if (t == 0) {
     t = now();
   }
-  shared_ptr<File> new_file(new File(name, move(data), t));
+  shared_ptr<File> new_file(new File(name, std::move(data), t));
   auto emplace_ret = this->name_to_file.emplace(name, new_file);
   if (!emplace_ret.second) {
     emplace_ret.first->second = new_file;
@@ -33,7 +33,7 @@ shared_ptr<const FileContentsCache::File> FileContentsCache::replace(
 shared_ptr<const FileContentsCache::File> FileContentsCache::replace(
     const string& name, const void* data, size_t size, uint64_t t) {
   string s(reinterpret_cast<const char*>(data), size);
-  return this->replace(name, move(s), t);
+  return this->replace(name, std::move(s), t);
 }
 
 FileContentsCache::GetResult FileContentsCache::get_or_load(const std::string& name) {

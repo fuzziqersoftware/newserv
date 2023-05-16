@@ -628,7 +628,7 @@ static HandlerResult S_B2(shared_ptr<ServerState>,
         while (!r.eof()) {
           w.put_u32b(r.get_u32b() ^ crypt.next());
         }
-        decrypted_data = move(w.str());
+        decrypted_data = std::move(w.str());
       } else {
         decrypted_data = r.read(r.remaining());
         crypt.decrypt(decrypted_data.data(), decrypted_data.size());
@@ -1096,7 +1096,7 @@ static HandlerResult S_44_A6(shared_ptr<ServerState>,
 
   ProxyServer::LinkedSession::SavingFile sf(
       cmd.filename, output_filename, cmd.file_size);
-  session.saving_files.emplace(cmd.filename, move(sf));
+  session.saving_files.emplace(cmd.filename, std::move(sf));
   if (session.options.save_files) {
     session.log.info("Opened file %s", output_filename.c_str());
   } else {

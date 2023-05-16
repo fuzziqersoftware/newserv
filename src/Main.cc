@@ -838,7 +838,7 @@ int main(int argc, char** argv) {
           throw logic_error("plaintext and mask are not the same size");
         }
         max_plaintext_size = max<size_t>(max_plaintext_size, data.size());
-        plaintexts.emplace_back(move(data), move(mask));
+        plaintexts.emplace_back(std::move(data), std::move(mask));
       }
       string ciphertext = parse_data_string(find_decryption_seed_ciphertext, nullptr, ParseDataFlags::ALLOW_FILES);
 
@@ -937,7 +937,7 @@ int main(int argc, char** argv) {
       }
 
       string data = read_input_data();
-      shared_ptr<string> data_shared(new string(move(data)));
+      shared_ptr<string> data_shared(new string(std::move(data)));
 
       if (behavior == Behavior::EXTRACT_GSL) {
         GSLArchive arch(data_shared, big_endian);

@@ -1065,7 +1065,7 @@ static bool start_ep3_battle_table_game_if_ready(
     if (!all_clients_accepted) {
       return false;
     }
-    game_clients = move(table_clients);
+    game_clients = std::move(table_clients);
   }
 
   // If there are no clients, do nothing (this happens when the last player
@@ -2597,7 +2597,7 @@ static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
         c->version(), c->game_data.player()->disp.name.data(),
         processed_text.c_str(), private_flags);
     string prepared_message_sjis = encode_sjis(prepared_message);
-    l->battle_record->add_chat_message(c->license->serial_number, move(prepared_message_sjis));
+    l->battle_record->add_chat_message(c->license->serial_number, std::move(prepared_message_sjis));
   }
 }
 

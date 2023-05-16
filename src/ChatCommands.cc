@@ -132,7 +132,7 @@ static void server_command_lobby_info(shared_ptr<ServerState>, shared_ptr<Lobby>
         }
       }
     }
-    lines.emplace_back(move(slots_str));
+    lines.emplace_back(std::move(slots_str));
   }
 
   send_text_message(c, decode_sjis(join(lines, "\n")));

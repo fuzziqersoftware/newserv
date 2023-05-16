@@ -258,7 +258,7 @@ PlayerInventoryItem Lobby::remove_item(uint32_t item_id) {
   if (item_it == this->item_id_to_floor_item.end()) {
     throw out_of_range("item not present");
   }
-  PlayerInventoryItem ret = move(item_it->second.inv_item);
+  PlayerInventoryItem ret = std::move(item_it->second.inv_item);
   this->item_id_to_floor_item.erase(item_it);
   return ret;
 }

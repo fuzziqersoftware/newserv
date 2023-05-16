@@ -380,9 +380,9 @@ void Tournament::init() {
           current_round_matches[z + 1]);
       current_round_matches[z]->following = m;
       current_round_matches[z + 1]->following = m;
-      next_round_matches.emplace_back(move(m));
+      next_round_matches.emplace_back(std::move(m));
     }
-    current_round_matches = move(next_round_matches);
+    current_round_matches = std::move(next_round_matches);
   }
   this->final_match = current_round_matches.at(0);
 
@@ -476,14 +476,14 @@ std::shared_ptr<JSONObject> Tournament::json() const {
         player_jsons_list.emplace_back(make_json_str(player.com_deck->deck_name));
       }
     }
-    team_dict.emplace("player_specs", make_json_list(move(player_jsons_list)));
+    team_dict.emplace("player_specs", make_json_list(std::move(player_jsons_list)));
     team_dict.emplace("name", make_json_str(team->name));
     team_dict.emplace("password", make_json_str(team->password));
     team_dict.emplace("num_rounds_cleared", make_json_int(team->num_rounds_cleared));
-    teams_list.emplace_back(new JSONObject(move(team_dict)));
+    teams_list.emplace_back(new JSONObject(std::move(team_dict)));
   }
-  dict.emplace("teams", make_json_list(move(teams_list)));
-  return shared_ptr<JSONObject>(new JSONObject(move(dict)));
+  dict.emplace("teams", make_json_list(std::move(teams_list)));
+  return shared_ptr<JSONObject>(new JSONObject(std::move(dict)));
 }
 
 std::shared_ptr<const DataIndex> Tournament::get_data_index() const {
@@ -690,7 +690,7 @@ void TournamentIndex::save() const {
       list.emplace_back(make_json_null());
     }
   }
-  auto json = make_json_list(move(list));
+  auto json = make_json_list(std::move(list));
   save_file(this->state_filename, json->serialize(JSONObject::SerializeOption::FORMAT));
 }
 

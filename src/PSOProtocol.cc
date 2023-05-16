@@ -207,5 +207,5 @@ std::string prepend_command_header(
       throw logic_error("unimplemented game version in prepend_command_header");
   }
   ret.write(data);
-  return move(ret.str());
+  return std::move(ret.str());
 }

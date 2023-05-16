@@ -47,7 +47,7 @@ void DNSServer::add_socket(int fd) {
       event_new(this->base.get(), fd, EV_READ | EV_PERSIST, &DNSServer::dispatch_on_receive_message, this),
       event_free);
   event_add(e.get(), nullptr);
-  this->fd_to_receive_event.emplace(fd, move(e));
+  this->fd_to_receive_event.emplace(fd, std::move(e));
 }
 
 void DNSServer::dispatch_on_receive_message(evutil_socket_t fd,

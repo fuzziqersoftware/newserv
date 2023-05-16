@@ -206,7 +206,7 @@ string prs_compress(
     const void* vdata, size_t size, function<void(size_t, size_t)> progress_fn) {
   PRSCompressor prs(progress_fn);
   prs.add(vdata, size);
-  return move(prs.close());
+  return std::move(prs.close());
 }
 
 string prs_compress(
@@ -328,7 +328,7 @@ string prs_decompress(const void* data, size_t size, size_t max_output_size) {
     }
   }
 
-  return move(w.str());
+  return std::move(w.str());
 }
 
 string prs_decompress(const string& data, size_t max_output_size) {
@@ -562,7 +562,7 @@ string bc0_compress(
     w.str().resize(w.str().size() - 1);
   }
 
-  return move(w.str());
+  return std::move(w.str());
 }
 
 // The BC0 decompression implementation in PSO GC is vulnerable to overflow
@@ -638,5 +638,5 @@ string bc0_decompress(const string& data) {
     }
   }
 
-  return move(w.str());
+  return std::move(w.str());
 }

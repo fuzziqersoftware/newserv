@@ -114,10 +114,10 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
               make_json_int(f->size),
               make_json_int(st.st_mtime),
               make_json_int(f->crc32),
-              make_json_list(move(chunk_crcs_item)),
+              make_json_list(std::move(chunk_crcs_item)),
           });
           new_metadata_cache_json->as_dict().emplace(
-              relative_item_path, make_json_list(move(new_cache_item)));
+              relative_item_path, make_json_list(std::move(new_cache_item)));
           should_write_metadata_cache = true;
 
         } else {

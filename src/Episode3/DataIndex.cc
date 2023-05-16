@@ -856,7 +856,7 @@ shared_ptr<JSONObject> Rules::json() const {
   dict.emplace("disable_dialogue", make_json_int(this->disable_dialogue));
   dict.emplace("dice_exchange_mode", make_json_int(static_cast<uint8_t>(this->dice_exchange_mode)));
   dict.emplace("disable_dice_boost", make_json_int(this->disable_dice_boost));
-  return shared_ptr<JSONObject>(new JSONObject(move(dict)));
+  return shared_ptr<JSONObject>(new JSONObject(std::move(dict)));
 }
 
 void Rules::set_defaults() {
@@ -1015,7 +1015,7 @@ string MapDefinition::str(const DataIndex* data_index) const {
       for (size_t x = 0; x < 0x10; x++) {
         line += string_printf(" %02hhX", tiles[y][x]);
       }
-      lines.emplace_back(move(line));
+      lines.emplace_back(std::move(line));
     }
   };
 
@@ -1212,7 +1212,7 @@ string MapDefinition::str(const DataIndex* data_index) const {
     }
   }
   unavailable_sc_cards += ']';
-  lines.emplace_back(move(unavailable_sc_cards));
+  lines.emplace_back(std::move(unavailable_sc_cards));
   for (size_t z = 0; z < 4; z++) {
     string player_type;
     switch (this->entry_states[z].player_type) {
@@ -1403,14 +1403,14 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
             for (size_t offset = tag.find("  "); offset != string::npos; offset = tag.find("  ")) {
               tag = tag.substr(0, offset) + tag.substr(offset + 1);
             }
-            tags.emplace_back(move(tag));
+            tags.emplace_back(std::move(tag));
           }
         }
 
-        if (!card_text.emplace(card_id, move(orig_text)).second) {
+        if (!card_text.emplace(card_id, std::move(orig_text)).second) {
           throw runtime_error("duplicate card text id");
         }
-        if (!card_tags.emplace(card_id, move(tags)).second) {
+        if (!card_tags.emplace(card_id, std::move(tags)).second) {
           throw logic_error("duplicate card tags id");
         }
 
@@ -1473,11 +1473,11 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
 
       if (this->behavior_flags & BehaviorFlag::LOAD_CARD_TEXT) {
         try {
-          entry->text = move(card_text.at(defs[x].card_id));
+          entry->text = std::move(card_text.at(defs[x].card_id));
         } catch (const out_of_range&) {
         }
         try {
-          entry->debug_tags = move(card_tags.at(defs[x].card_id));
+          entry->debug_tags = std::move(card_tags.at(defs[x].card_id));
         } catch (const out_of_range&) {
         }
       }
@@ -1658,7 +1658,7 @@ const string& DataIndex::get_compressed_map_list() const {
     StringWriter compressed_w;
     compressed_w.put_u32b(prs.input_size());
     compressed_w.write(prs.close());
-    this->compressed_map_list = move(compressed_w.str());
+    this->compressed_map_list = std::move(compressed_w.str());
     if (this->compressed_map_list.size() > 0x7BEC) {
       throw runtime_error("Episode 3 compressed map list is too large");
     }

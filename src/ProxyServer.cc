@@ -153,7 +153,7 @@ void ProxyServer::on_client_connect(
     session->log.info("Opened linked session");
 
     Channel ch(bev, version, nullptr, nullptr, session.get(), "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN);
-    session->resume(move(ch));
+    session->resume(std::move(ch));
 
     // If no default destination exists, or the client is not a patch client,
     // create an unlinked session - we'll have to get the destination from the
@@ -329,7 +329,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         session->server->state->license_manager->add(l);
         license = l;
       }
-      login_command_bb = move(data);
+      login_command_bb = std::move(data);
 
     } else {
       throw logic_error("unsupported unlinked session version");
@@ -392,12 +392,12 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         try {
           if (session->version == GameVersion::BB) {
             linked_session->resume(
-                move(session->channel),
+                std::move(session->channel),
                 session->detector_crypt,
-                move(login_command_bb));
+                std::move(login_command_bb));
           } else {
             linked_session->resume(
-                move(session->channel),
+                std::move(session->channel),
                 session->detector_crypt,
                 sub_version,
                 language,
@@ -527,22 +527,22 @@ void ProxyServer::LinkedSession::resume(
   this->language = language;
   this->character_name = character_name;
   this->hardware_id = hardware_id;
-  this->resume_inner(move(client_channel), detector_crypt);
+  this->resume_inner(std::move(client_channel), detector_crypt);
 }
 
 void ProxyServer::LinkedSession::resume(
     Channel&& client_channel,
     shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
     string&& login_command_bb) {
-  this->login_command_bb = move(login_command_bb);
-  this->resume_inner(move(client_channel), detector_crypt);
+  this->login_command_bb = std::move(login_command_bb);
+  this->resume_inner(std::move(client_channel), detector_crypt);
 }
 
 void ProxyServer::LinkedSession::resume(Channel&& client_channel) {
   this->sub_version = 0;
   this->language = 1;
   this->character_name.clear();
-  this->resume_inner(move(client_channel), nullptr);
+  this->resume_inner(std::move(client_channel), nullptr);
 }
 
 void ProxyServer::LinkedSession::resume_inner(
@@ -556,7 +556,7 @@ void ProxyServer::LinkedSession::resume_inner(
   }
 
   this->client_channel.replace_with(
-      move(client_channel),
+      std::move(client_channel),
       ProxyServer::LinkedSession::on_input,
       ProxyServer::LinkedSession::on_error,
       this,
@@ -826,7 +826,7 @@ void ProxyServer::delete_session(struct bufferevent* bev) {
     throw logic_error("unlinked session exists but is not registered");
   }
   it->second->log.info("Closing session");
-  this->unlinked_sessions_to_destroy.emplace(move(it->second));
+  this->unlinked_sessions_to_destroy.emplace(std::move(it->second));
   this->bev_to_unlinked_session.erase(it);
 
   auto tv = usecs_to_timeval(0);

@@ -82,7 +82,7 @@ string CompiledFunctionCode::generate_client_command_t(
   }
 
   w.put(footer);
-  return move(w.str());
+  return std::move(w.str());
 }
 
 string CompiledFunctionCode::generate_client_command(
@@ -125,8 +125,8 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
 
   if (arch == CompiledFunctionCode::Architecture::POWERPC) {
     auto assembled = PPC32Emulator::assemble(text, {directory});
-    ret->code = move(assembled.code);
-    ret->label_offsets = move(assembled.label_offsets);
+    ret->code = std::move(assembled.code);
+    ret->label_offsets = std::move(assembled.label_offsets);
   } else if (arch == CompiledFunctionCode::Architecture::X86) {
     throw runtime_error("x86 assembler is not implemented");
   }

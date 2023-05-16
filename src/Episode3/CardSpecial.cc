@@ -3871,7 +3871,6 @@ const InterferenceProbabilityEntry* get_interference_probability_entry(
 
   const InterferenceProbabilityEntry* ret_entry = nullptr;
   int16_t current_max = -1;
-  size_t logical_index = 0;
   uint16_t current_row_card_id = 0xFFFF;
   for (size_t z = 0; z < num_entries; z++) {
     const auto& entry = entries[z];
@@ -3885,7 +3884,6 @@ const InterferenceProbabilityEntry* get_interference_probability_entry(
           current_max = v;
         }
       }
-      logical_index++;
     } else {
       current_row_card_id = current_column_card_id;
     }

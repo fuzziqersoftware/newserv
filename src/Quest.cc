@@ -129,7 +129,7 @@ string find_seed_and_decrypt_gci_or_vms_v2_download_quest_data_section(
       string ret = decrypt_gci_or_vms_v2_download_quest_data_section<IsBigEndian>(
           data_section, size, seed);
       lock_guard<mutex> g(result_lock);
-      result = move(ret);
+      result = std::move(ret);
       return true;
     } catch (const runtime_error&) {
       return false;
@@ -551,8 +551,8 @@ shared_ptr<const string> Quest::bin_contents() const {
         break;
       case FileFormat::QST: {
         auto result = this->decode_qst(this->file_basename + ".qst");
-        this->bin_contents_ptr.reset(new string(move(result.first)));
-        this->dat_contents_ptr.reset(new string(move(result.second)));
+        this->bin_contents_ptr.reset(new string(std::move(result.first)));
+        this->dat_contents_ptr.reset(new string(std::move(result.second)));
         break;
       }
       default:
@@ -585,8 +585,8 @@ shared_ptr<const string> Quest::dat_contents() const {
         break;
       case FileFormat::QST: {
         auto result = this->decode_qst(this->file_basename + ".qst");
-        this->bin_contents_ptr.reset(new string(move(result.first)));
-        this->dat_contents_ptr.reset(new string(move(result.second)));
+        this->bin_contents_ptr.reset(new string(std::move(result.first)));
+        this->dat_contents_ptr.reset(new string(std::move(result.second)));
         break;
       }
       default:
@@ -960,7 +960,7 @@ string Quest::export_qst(GameVersion version) const {
       throw logic_error("invalid game version");
   }
 
-  return move(w.str());
+  return std::move(w.str());
 }
 
 QuestIndex::QuestIndex(const string& directory) : directory(directory) {

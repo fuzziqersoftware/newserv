@@ -237,7 +237,7 @@ Channel::Message Channel::recv(bool print_contents) {
   return {
       .command = header.command(this->version),
       .flag = header.flag(this->version),
-      .data = move(command_data),
+      .data = std::move(command_data),
   };
 }
 

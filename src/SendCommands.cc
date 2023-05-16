@@ -377,7 +377,7 @@ void send_function_call(
       }
 
       w.write(data);
-      data = move(w.str());
+      data = std::move(w.str());
     }
   }
 

@@ -609,7 +609,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
         if (clients.size() > 1) {
           throw runtime_error("multiple clients found");
         }
-        c = move(clients[0]);
+        c = std::move(clients[0]);
       }
 
       if (c) {

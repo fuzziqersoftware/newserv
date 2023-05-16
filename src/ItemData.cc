@@ -1444,7 +1444,7 @@ string ItemData::name(bool include_color_codes) const {
         }
         token += pb_names[x];
       }
-      ret_tokens.emplace_back(move(token));
+      ret_tokens.emplace_back(std::move(token));
 
       static const vector<const char*> mag_colors({
           /* 00 */ "red",

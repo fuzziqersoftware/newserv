@@ -225,7 +225,7 @@ string Server::prepare_6xB6x41_map_definition(
   uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_GC_Ep3_6xB6x41) + 3) & (~3);
   w.put<G_MapData_GC_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, map->map.map_number.load(), compressed.size(), 0});
   w.write(compressed);
-  return move(w.str());
+  return std::move(w.str());
 }
 
 void Server::send_commands_for_joining_spectator(Channel& c) const {
@@ -2146,7 +2146,7 @@ void Server::handle_6xB3x40_map_list_request(const string& data) {
 
   if (l->battle_record && l->battle_record->writable()) {
     l->battle_record->add_command(
-        BattleRecord::Event::Type::BATTLE_COMMAND, move(w.str()));
+        BattleRecord::Event::Type::BATTLE_COMMAND, std::move(w.str()));
   }
 }
 
@@ -2170,7 +2170,7 @@ void Server::handle_6xB3x41_map_request(const string& data) {
 
   if (l->battle_record && l->battle_record->writable()) {
     l->battle_record->add_command(
-        BattleRecord::Event::Type::BATTLE_COMMAND, move(out_cmd));
+        BattleRecord::Event::Type::BATTLE_COMMAND, std::move(out_cmd));
   }
 }
 

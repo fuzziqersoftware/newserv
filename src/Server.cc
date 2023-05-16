@@ -52,7 +52,7 @@ void Server::disconnect_client(shared_ptr<Client> c) {
   // move it to another set, which we'll clear in an immediately-enqueued
   // callback after the current event. This will also call the client's
   // disconnect hooks (if any).
-  this->clients_to_destroy.insert(move(c));
+  this->clients_to_destroy.insert(std::move(c));
   this->enqueue_destroy_clients();
 }
 
@@ -73,7 +73,7 @@ void Server::destroy_clients() {
     // Note: It's important to move the disconnect hooks out of the client here
     // because the hooks could modify c->disconnect_hooks while it's being
     // iterated here, which would invalidate these iterators.
-    unordered_map<string, function<void()>> hooks = move(c->disconnect_hooks);
+    unordered_map<string, function<void()>> hooks = std::move(c->disconnect_hooks);
     for (auto h_it : hooks) {
       try {
         h_it.second();
@@ -299,30 +299,30 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
   for (const auto& it : this->channel_to_client) {
     auto c = it.second;
     if (c->license && c->license->serial_number == serial_number_dec) {
-      results.emplace_back(move(c));
+      results.emplace_back(std::move(c));
       continue;
     }
     if (c->license && c->license->serial_number == serial_number_hex) {
-      results.emplace_back(move(c));
+      results.emplace_back(std::move(c));
       continue;
     }
     if (c->license && c->license->username == ident) {
-      results.emplace_back(move(c));
+      results.emplace_back(std::move(c));
       continue;
     }
 
     auto p = c->game_data.player(false);
     if (p && p->disp.name == u16name) {
-      results.emplace_back(move(c));
+      results.emplace_back(std::move(c));
       continue;
     }
 
     if (c->channel.name == ident) {
-      results.emplace_back(move(c));
+      results.emplace_back(std::move(c));
       continue;
     }
     if (starts_with(c->channel.name, ident + " ")) {
-      results.emplace_back(move(c));
+      results.emplace_back(std::move(c));
       continue;
     }
   }

@@ -106,7 +106,7 @@ string BattleRecord::serialize() const {
   for (const auto& ev : this->events) {
     ev.serialize(w);
   }
-  return move(w.str());
+  return std::move(w.str());
 }
 
 bool BattleRecord::writable() const {
@@ -170,7 +170,7 @@ void BattleRecord::add_command(Event::Type type, string&& data) {
   Event& ev = this->events.emplace_back();
   ev.type = type;
   ev.timestamp = now();
-  ev.data = move(data);
+  ev.data = std::move(data);
 }
 
 void BattleRecord::add_chat_message(
@@ -182,7 +182,7 @@ void BattleRecord::add_chat_message(
   ev.type = Event::Type::CHAT_MESSAGE;
   ev.timestamp = now();
   ev.guild_card_number = guild_card_number;
-  ev.data = move(data);
+  ev.data = std::move(data);
 }
 
 bool BattleRecord::is_map_definition_event(const Event& ev) {
@@ -248,7 +248,7 @@ void BattleRecord::set_battle_start_timestamp() {
       initial_ev.players.emplace_back(players[z]);
     }
   }
-  new_events.emplace_back(move(initial_ev));
+  new_events.emplace_back(std::move(initial_ev));
 
   // Skip all events before the last map definition event, and only retain
   // battle commands between then and now (since these battle commands will all
@@ -264,10 +264,10 @@ void BattleRecord::set_battle_start_timestamp() {
   }
   for (; it != this->events.end(); it++) {
     if (it->type == Event::Type::BATTLE_COMMAND) {
-      new_events.emplace_back(move(*it));
+      new_events.emplace_back(std::move(*it));
     }
   }
-  this->events = move(new_events);
+  this->events = std::move(new_events);
 }
 
 void BattleRecord::set_battle_end_timestamp() {

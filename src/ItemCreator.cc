@@ -991,7 +991,7 @@ void ItemCreator::generate_armor_shop_armors(
 
     this->generate_common_armor_slot_count(item);
     if (this->shop_does_not_contain_duplicate_armor(shop, item)) {
-      shop.emplace_back(move(item));
+      shop.emplace_back(std::move(item));
       items_generated++;
     }
   }
@@ -1035,7 +1035,7 @@ void ItemCreator::generate_armor_shop_shields(
     }
 
     if (this->shop_does_not_contain_duplicate_item_by_primary_identifier(shop, item)) {
-      shop.emplace_back(move(item));
+      shop.emplace_back(std::move(item));
       items_generated++;
     }
   }
@@ -1070,7 +1070,7 @@ void ItemCreator::generate_armor_shop_units(
     item.data1[1] = 3;
     item.data1[2] = pt.pop();
     if (this->shop_does_not_contain_duplicate_item_by_primary_identifier(shop, item)) {
-      shop.emplace_back(move(item));
+      shop.emplace_back(std::move(item));
       items_generated++;
     }
   }
@@ -1181,7 +1181,7 @@ void ItemCreator::generate_rare_tool_shop_recovery_items(
       item.data1[1] = tool_item_defs[type].first;
       item.data1[2] = tool_item_defs[type].second;
       if (this->shop_does_not_contain_duplicate_item_by_primary_identifier(shop, item)) {
-        shop.emplace_back(move(item));
+        shop.emplace_back(std::move(item));
         items_generated++;
       }
     }
@@ -1225,7 +1225,7 @@ void ItemCreator::generate_tool_shop_tech_disks(
     this->choose_tech_disk_level_for_tool_shop(
         item, player_level, tech_num_index);
     if (this->shop_does_not_contain_duplicate_tech_disk(shop, item)) {
-      shop.emplace_back(move(item));
+      shop.emplace_back(std::move(item));
       items_generated++;
     }
   }
@@ -1445,7 +1445,7 @@ vector<ItemData> ItemCreator::generate_weapon_shop_contents(size_t player_level)
     item.data1[11] = 0;
 
     if (this->shop_does_not_contain_duplicate_or_too_many_similar_weapons(shop, item)) {
-      shop.emplace_back(move(item));
+      shop.emplace_back(std::move(item));
     }
   }
 
