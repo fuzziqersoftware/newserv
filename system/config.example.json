@@ -1,5 +1,9 @@
 {
-  // Configuration file for newserv. This file is standard JSON with comments.
+  // Configuration file for newserv.
+
+  // This file is standard JSON with C-style comments. Some other extensions to
+  // the JSON standard are also  supported; for example, integers may be
+  // specified in hexadecimal using the 0x prefix.
 
   // Server's name (maximum 16 characters). This appears in the upper-right
   // corner of the screen while in lobbies.
@@ -268,9 +272,7 @@
   // 0x00000008 => Disable overall and per-phase battle time limits, regardless
   //               of the values chosen during battle rules setup
   // 0x00000010 => Enable debug messages in Episode 3 games and battles
-  // 0x00000020 => Load card text as well as card definitions (has no behavioral
-  //               effects in games; this flag exists to be used internally when
-  //               the --show-ep3-data option is given)
+  // 0x00000020 => This flag is used internally and has no effect on battles
   // 0x00000040 => Enable battle recording (after a battle, players can save the
   //               recording with the $saverec <filename> command)
   // 0x00000080 => Disable command masking during battles
@@ -279,15 +281,18 @@
   "Episode3BehaviorFlags": 0x00000002,
 
   // Episode 3 card auction configuration. CardAuctionPoints specifies how many
-  // points each player gets when they join an auction (may be anywhere from 0
-  // to 65535, but a somewhat-low number is generally good). CardAuctionSize
-  // specifies how many cards will be present in each auction; if this is a
-  // list, then the number of cards is random in the specified range. Finally,
-  // CardAuctionContents is a dictionary specifying the relative frequencies and
-  // costs of each card in the auction pool. Relative frequencies are 64-bit
-  // integers, but should generally be less than 0x0100000000000000 to avoid
-  // excessive bias. There is no fixed summation bound for relative frequencies.
-  // Cards are always drawn (with replacement) from the same distribution.
+  // points each player gets when they join an auction (this may be anywhere
+  // from 0 to 65535, but a somewhat-low number is generally good).
+  // CardAuctionSize specifies how many cards will be present in each auction;
+  // this can be an integer if auctions should always have the same number of
+  // cards, or it can be a list of [min count, max count] and the server will
+  // choose a random number of cards in that range for each auction.
+  // CardAuctionContents is a dictionary specifying the relative frequencies
+  // and costs of each card in the auction pool. Relative frequencies are
+  // 64-bit integers, but should generally be less than 0x0100000000000000 to
+  // avoid excessive bias. All relative frequencies must sum to a number less
+  // than 0x10000000000000000 (the limit of an unsigned 64-bit integer). Cards
+  // are drawn (with replacement) from the distribution specified here.
   "CardAuctionPoints": 30,
   "CardAuctionSize": [2, 4],
   "CardAuctionPool": {
@@ -304,11 +309,6 @@
   // enable Episode 3 patches by default; it only does so if this option is on.
   // "EnableEpisode3SendFunctionCall": true,
 
-  // Whether to enable certain exception handling. Disabling this is generally
-  // only useful for debugging newserv itself, and it should usually be left on
-  // (which is the default behavior).
-  "CatchHandlerExceptions": true,
-
   // By default, the server keeps track of items in all games, even for versions
   // other than Blue Burst. This enables use of the $what command, as well as
   // protection against item duplication cheats (the cheater is disconnected
@@ -316,4 +316,10 @@
   // be turned off here. This option has no effect on Blue Burst games - item
   // tracking is always enabled for them.
   "EnableItemTracking": true,
+
+  // Whether to enable certain exception handling. Disabling this causes
+  // newserv to abort when any client causes an exception, which is generally
+  // only useful for debugging newserv itself. This setting should usually be
+  // left on (which is the default behavior).
+  "CatchHandlerExceptions": true,
 }

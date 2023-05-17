@@ -175,15 +175,14 @@ All quests, including those originally in GCI or DLQ format, are treated as onli
 
 ### Episode 3 features
 
-The following Episode 3 features work:
+The following Episode 3 features work well:
+* CARD battles. Not every combination of abilities has been tested yet, so if you find a feature or card ability that doesn't work like it's supposed to, please make a GitHub issue and describe the situation (the attacking card(s), defending card(s), and ability or condition that didn't work).
+* Tournaments. (But they don't work like Sega's tournaments did - see below)
 * Downloading quests.
-* Creating and joining games.
 * Trading cards.
 * Participating in card auctions. (The auction contents must be configured in config.json.)
-* Tournaments. (See below)
 
 The following Episode 3 features are implemented, but are only partially tested:
-* CARD battles. Almost everything works, but there may be minor behavioral bugs. If you find a feature or card ability that doesn't work, please make a GitHub issue and describe the situation (including the attacking card(s), defending card(s), and ability or condition that didn't work).
 * Spectator teams. There is a known issue that prevents viewing battles unless you're in the spectator team when the battle begins, and spectating clients sometimes crash for an unknown reason.
 * Battle replays also sometimes cause the client to crash during the replay. Using the $playrec command is therefore not recommended.
 
