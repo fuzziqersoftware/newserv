@@ -244,6 +244,7 @@ static void server_command_auction(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   check_privileges(c, Privilege::DEBUG);
   if (l->is_game() && l->is_ep3()) {
     G_InitiateCardAuction_GC_Ep3_6xB5x42 cmd;
+    cmd.header.sender_client_id = c->lobby_client_id;
     send_command_t(l, 0xC9, 0x00, cmd);
   }
 }
@@ -251,6 +252,7 @@ static void server_command_auction(shared_ptr<ServerState>, shared_ptr<Lobby> l,
 static void proxy_command_auction(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, const std::u16string&) {
   G_InitiateCardAuction_GC_Ep3_6xB5x42 cmd;
+  cmd.header.sender_client_id = session.lobby_client_id;
   session.client_channel.send(0xC9, 0x00, &cmd, sizeof(cmd));
   session.server_channel.send(0xC9, 0x00, &cmd, sizeof(cmd));
 }
