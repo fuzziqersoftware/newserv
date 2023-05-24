@@ -2299,6 +2299,12 @@ void send_ep3_tournament_match_result(
     set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
   }
   send_command_t(l, 0xC9, 0x00, cmd);
+
+  if (tourn->get_data_index()->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
+    send_text_message_printf(l, "$C5TOURN/%02hhX/%zu WIN %c",
+        tourn->get_number(), match->round_num,
+        match->winner_team == match->preceding_a->winner_team ? 'A' : 'B');
+  }
 }
 
 void send_ep3_update_spectator_count(shared_ptr<Lobby> l) {

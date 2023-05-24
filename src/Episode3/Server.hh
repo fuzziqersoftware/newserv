@@ -242,6 +242,8 @@ private:
   std::weak_ptr<ServerBase> w_base;
 
 public:
+  bool tournament_match_result_sent; // Not part of original implementation
+
   uint32_t battle_finished;
   uint32_t battle_in_progress;
   uint32_t round_num;

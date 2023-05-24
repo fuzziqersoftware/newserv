@@ -61,6 +61,7 @@ void ServerBase::recreate_server() {
 
 Server::Server(shared_ptr<ServerBase> base)
     : w_base(base),
+      tournament_match_result_sent(false),
       battle_finished(false),
       battle_in_progress(false),
       round_num(1),
