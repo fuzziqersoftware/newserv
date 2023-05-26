@@ -123,7 +123,7 @@ foreach(TestCase IN ITEMS ${TestCases})
   add_test(
       NAME ${TestCase}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMAND ${CMAKE_BINARY_DIR}/newserv replay-log ${TestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json --require-password=password --require-access-key=111111111111)
+      COMMAND ${CMAKE_BINARY_DIR}/newserv replay-log ${TestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json --require-password=11111111 --require-access-key=111111111111)
 endforeach()
 
 add_test(
