@@ -59,6 +59,7 @@ reloc0:
   .offsetof start
 
 start:
+  mflr    r12
   bl      get_block_ptr
   mr      r6, r3        # r6 = address of dest_addr label
 

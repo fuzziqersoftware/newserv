@@ -227,7 +227,7 @@ shared_ptr<const Menu> FunctionCodeIndex::patch_menu(uint32_t specific_version) 
   auto suffix = string_printf("-%08" PRIX32, specific_version);
 
   shared_ptr<Menu> ret(new Menu(MenuID::PATCHES, u"Patches"));
-  ret->items.emplace_back(PatchesMenuItemID::GO_BACK, u"Go back", u"", 0);
+  ret->items.emplace_back(PatchesMenuItemID::GO_BACK, u"Go back", u"Return to the\nmain menu", 0);
   for (const auto& it : this->name_and_specific_version_to_patch_function) {
     const auto& fn = it.second;
     if (!fn->hide_from_patches_menu && ends_with(it.first, suffix)) {
@@ -259,7 +259,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
 
   shared_ptr<Menu> menu(new Menu(MenuID::PROGRAMS, u"Programs"));
   this->menu = menu;
-  menu->items.emplace_back(ProgramsMenuItemID::GO_BACK, u"Go back", u"", 0);
+  menu->items.emplace_back(ProgramsMenuItemID::GO_BACK, u"Go back", u"Return to the\nmain menu", 0);
 
   uint32_t next_menu_item_id = 0;
   for (const auto& filename : list_directory(directory)) {

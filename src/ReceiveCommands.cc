@@ -1733,6 +1733,13 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           break;
 
         case MainMenuItemID::PROGRAMS:
+          if (!function_compiler_available()) {
+            throw runtime_error("function compiler not available");
+          }
+          if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
+            throw runtime_error("client does not support send_function_call");
+          }
+          send_cache_patch_if_needed(s, c);
           send_menu(c, s->dol_file_index->menu);
           break;
 
@@ -2243,7 +2250,11 @@ static void send_dol_file_chunk(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (offset >= c->loading_dol_file->data.size()) {
     throw logic_error("DOL file offset beyond end of data");
   }
-  size_t bytes_to_send = min<size_t>(0x7800, c->loading_dol_file->data.size() - offset);
+  // Note: The protocol allows commands to be up to 0x7C00 bytes in size, but
+  // sending large B2 commands can cause the client to crash or softlock. To
+  // avoid this, we limit the payload to 4KB, which results in a B2 command
+  // 0x10D0 bytes in size.
+  size_t bytes_to_send = min<size_t>(0x1000, c->loading_dol_file->data.size() - offset);
   string data_to_send = c->loading_dol_file->data.substr(offset, bytes_to_send);
 
   auto fn = s->function_code_index->name_to_function.at("WriteMemory");
@@ -2252,8 +2263,7 @@ static void send_dol_file_chunk(shared_ptr<ServerState> s, shared_ptr<Client> c,
   send_function_call(c, fn, label_writes, data_to_send);
 
   size_t progress_percent = ((offset + bytes_to_send) * 100) / c->loading_dol_file->data.size();
-  string info = string_printf("Loading $C6%s$C7\n%zu%%%% complete",
-      c->loading_dol_file->name.c_str(), progress_percent);
+  string info = string_printf("%zu%%%%", progress_percent);
   send_ship_info(c, decode_sjis(info));
 }
 

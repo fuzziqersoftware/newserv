@@ -8,7 +8,6 @@ reloc0:
   .offsetof start
 
 start:
-
 disable_interrupts:
   mfmsr   r3
   rlwinm  r3, r3, 0, 17, 15
@@ -21,7 +20,7 @@ get_current_addr:
   mflr    r31
   # TODO: It'd be nice to be able to use an expression for the immediate value
   # here - something like (dol_base_ptr - start), for example
-  subi    r31, r31, 0x38  # r31 = base of data to copy to low memory (start label)
+  subi    r31, r31, 0x10  # r31 = base of data to copy to low memory (start label)
 
   # If this code is not running from low memory (80001800-80003000), then copy
   # it there and branch to it
@@ -54,7 +53,7 @@ copy_code_to_low_memory__again:
 
 
 run_dol:
-  lwz     r30, [r31 + 0x38]  # r30 = DOL base ptr
+  lwz     r30, [r31 + 0x10]  # r30 = DOL base ptr
 
   # DOL files are very simple: they have up to 7 text sections, up to 11 data
   # sections, and a BSS section and an entrypoint. No imports or other fancy

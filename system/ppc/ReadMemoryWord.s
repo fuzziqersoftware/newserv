@@ -8,6 +8,7 @@ reloc0:
   .offsetof start
 
 start:
+  mflr   r12
   bl     read
 address:
   .zero
