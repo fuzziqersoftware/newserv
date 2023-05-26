@@ -1061,6 +1061,9 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
     if (item.flags & MenuItem::Flag::REQUIRES_SAVE_DISABLED) {
       is_visible &= !(c->flags & Client::Flag::SAVE_ENABLED);
     }
+    if (item.flags & MenuItem::Flag::INVISIBLE_IN_INFO_MENU) {
+      is_visible &= !is_info_menu;
+    }
 
     if (is_visible) {
       auto& e = entries.emplace_back();

@@ -391,9 +391,9 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
 
   information_menu_v2->items.emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
-      u"Return to the\nmain menu", 0);
+      u"Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
   information_menu_v3->items.emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
-      u"Return to the\nmain menu", 0);
+      u"Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
   {
     uint32_t item_id = 0;
     for (const auto& item : d.at("InformationMenuContents")->as_list()) {

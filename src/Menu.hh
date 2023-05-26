@@ -94,6 +94,7 @@ struct MenuItem {
     REQUIRES_MESSAGE_BOXES = 0x080,
     REQUIRES_SEND_FUNCTION_CALL = 0x100,
     REQUIRES_SAVE_DISABLED = 0x200,
+    INVISIBLE_IN_INFO_MENU = 0x400,
   };
 
   uint32_t item_id;
