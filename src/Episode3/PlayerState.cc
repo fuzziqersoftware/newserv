@@ -1263,6 +1263,7 @@ bool PlayerState::set_card_from_hand(
   this->server()->send_6xB4x05();
 
   G_Unknown_GC_Ep3_6xB4x4A cmd;
+  cmd.card_refs.clear(0xFFFF);
   cmd.card_refs[0] = card_ref;
   cmd.client_id = this->client_id;
   cmd.entry_count = 1;
@@ -1580,6 +1581,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
 
   if (action_type == ActionType::ATTACK) {
     G_Unknown_GC_Ep3_6xB4x4A cmd;
+    cmd.card_refs.clear(0xFFFF);
     cmd.client_id = this->client_id;
     cmd.round_num = this->server()->get_round_num();
     cmd.entry_count = 0;
@@ -1618,6 +1620,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
 
   } else if (action_type == ActionType::DEFENSE) {
     G_Unknown_GC_Ep3_6xB4x4A cmd;
+    cmd.card_refs.clear(0xFFFF);
     cmd.client_id = this->client_id;
     cmd.round_num = this->server()->get_round_num();
     for (size_t z = 0; (z < 4 * 9) && (pa.target_card_refs[z] != 0xFFFF); z++) {
