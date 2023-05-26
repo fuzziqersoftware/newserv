@@ -2,11 +2,26 @@
 # serve DOL files to GameCube clients.
 
 # This is also the file I've chosen to document how to write code for newserv's
-# functions subsystem. The code implemented in this file writes a
-# variable-length block of data to a specified address in the client's memory.
-# Note that WriteMemory is a general function that uses many of the subsystem's
-# features. If you're writing a patch (not a general function), you cannot use
-# the suffix or label_offsets features that are described here.
+# functions subsystem. There are three kinds of functions: includes, patches,
+# and general functions. This file, WriteMemory, is a general function. It
+# writes a variable-length block of data to a specified address in the client's
+# memory.
+
+# Includes are snippets of code that are intended to be used as part of other
+# functions and patches. These files' names end with .inc.s. These can be used
+# with the .include directive; there is an example of this in the code below.
+
+# Patches are functions that are available to run upon client request. They can
+# be made available in the Patches menu or via the $patch command. In general,
+# patches should be named like PATCHNAME.VXLS.patch.s, where V, X, L, and S
+# denote which specific game version the patch is for. Specifically:
+#   V should be 3 for PSO GameCube
+#   X should be O for Episodes 1 & 2, and S for Episode 3
+#   L should be E, J, or P for USA, Japanese, or Europe
+#   S should be 0, 1, 2, etc. for the disc version (0 = v1.00, 1 = v1.01, etc.)
+# If a label named hide_from_patches_menu is present anywhere in the code, the
+# patch is only usable via the $patch command and does not appear in the Patches
+# menu.
 
 # For example, to use this function to write the bytes 38 00 00 05 to the
 # address 8010521C, send_function_call could be called like this:
@@ -20,13 +35,16 @@
 #       label_writes,  // Variables to pass in to the function's code
 #       suffix);  // Data to append after the code (not all functions use this)
 # The meanings of label_writes and suffix are described in the comments below.
+# Note that there is no way to specify label_writes or suffix for patches
+# requested by the client, so those features should only be used in general
+# functions.
 
 # A label newserv_index_XX tells newserv what value to use in the flag field
 # when sending the B2 command. This is needed if the server needs to do
 # something when the B3 response is received. For GameCube functions, if
 # specified, the index must be in the range 01-FF. The DOL loading
 # functionality, which this function is a part of, uses indexes E0, E1, and E2,
-# but this function can also be used for other purposes.
+# but the WriteMemory function can also be used for other purposes.
 newserv_index_E1:
 
 # The entry_ptr label is required for all functions. It should point to a
@@ -41,14 +59,6 @@ reloc0:
   .offsetof start
 
 start:
-  # A .include directive essentially pastes in the code from the referenced
-  # file. Here, we use the code from the file InitClearCaches.inc.s.
-  # PSO GC doesn't properly clear the data and instruction caches when it
-  # executes functions, so we use this include in all functions to do so. Since
-  # all functions do this, this makes it safe to use more than one function in
-  # each client's session.
-  .include InitClearCaches
-
   bl      get_block_ptr
   mr      r6, r3        # r6 = address of dest_addr label
 
@@ -67,6 +77,8 @@ copy_block__again:
   # Flush the data cache and clear the instruction cache at the written region
   lwz     r3, [r6]      # r3 = dest ptr
   lwz     r4, [r6 + 4]  # r4 = size
+  # A .include directive essentially pastes in the code from the referenced
+  # file. Here, we use the code from the file FlushCachedCode.inc.s.
   .include FlushCachedCode
 
   # Return the address after the last byte written. The value returned in r3

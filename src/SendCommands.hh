@@ -132,6 +132,8 @@ void send_update_client_config(std::shared_ptr<Client> c);
 
 void send_quest_buffer_overflow(
     std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
+void send_cache_patch_if_needed(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
+uint32_t send_cache_patch_if_needed(std::shared_ptr<ServerState> s, Channel& c, uint32_t flags);
 void send_function_call(
     Channel& ch,
     uint64_t client_flags,
@@ -245,8 +247,7 @@ void send_guild_card(
     uint8_t section_id,
     uint8_t char_class);
 void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source);
-void send_menu(std::shared_ptr<Client> c, const std::u16string& menu_name,
-    uint32_t menu_id, const std::vector<MenuItem>& items, bool is_info_menu = false);
+void send_menu(std::shared_ptr<Client> c, std::shared_ptr<const Menu> menu, bool is_info_menu = false);
 void send_game_menu(
     std::shared_ptr<Client> c,
     std::shared_ptr<ServerState> s,

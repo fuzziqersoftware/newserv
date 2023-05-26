@@ -28,9 +28,11 @@ struct CompiledFunctionCode {
   std::unordered_map<std::string, uint32_t> label_offsets;
   uint32_t entrypoint_offset_offset;
   std::string name;
+  std::string patch_name; // Blank if not a patch
   uint32_t index; // 0 = unused (not registered in index_to_function)
   uint32_t menu_item_id;
   bool hide_from_patches_menu;
+  uint32_t specific_version;
 
   bool is_big_endian() const;
 
@@ -59,14 +61,12 @@ struct FunctionCodeIndex {
 
   std::unordered_map<std::string, std::shared_ptr<CompiledFunctionCode>> name_to_function;
   std::unordered_map<uint32_t, std::shared_ptr<CompiledFunctionCode>> index_to_function;
-  std::unordered_map<uint32_t, std::shared_ptr<CompiledFunctionCode>> menu_item_id_to_patch_function;
+  std::unordered_map<uint64_t, std::shared_ptr<CompiledFunctionCode>> menu_item_id_and_specific_version_to_patch_function;
+  // Key here is e.g. "PATCHNAME-SPECIFICVERSION", with the latter in hex
+  std::map<std::string, std::shared_ptr<CompiledFunctionCode>> name_and_specific_version_to_patch_function;
 
-  std::map<std::string, std::shared_ptr<CompiledFunctionCode>> name_to_patch_function;
-
-  std::vector<MenuItem> patch_menu() const;
-  inline bool patch_menu_empty() const {
-    return this->name_to_patch_function.empty();
-  }
+  std::shared_ptr<const Menu> patch_menu(uint32_t specific_version) const;
+  bool patch_menu_empty(uint32_t specific_version) const;
 };
 
 struct DOLFileIndex {
@@ -78,11 +78,11 @@ struct DOLFileIndex {
 
   std::vector<std::shared_ptr<DOLFile>> item_id_to_file;
   std::map<std::string, std::shared_ptr<DOLFile>> name_to_file;
+  std::shared_ptr<const Menu> menu;
 
   DOLFileIndex() = default;
   explicit DOLFileIndex(const std::string& directory);
 
-  std::vector<MenuItem> menu() const;
   inline bool empty() const {
     return this->name_to_file.empty() && this->item_id_to_file.empty();
   }

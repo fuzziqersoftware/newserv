@@ -2,7 +2,9 @@
 
 #include <stdint.h>
 
+#include <functional>
 #include <string>
+#include <vector>
 
 // Note: These aren't enums because neither enum nor enum class does what we
 // want. Specifically, we need GO_BACK to be valid in multiple enums (and enums
@@ -59,17 +61,18 @@ constexpr uint32_t GO_BACK = 0xAAFFFFAA;
 constexpr uint32_t CHAT_COMMANDS = 0xAA0000AA;
 constexpr uint32_t CHAT_FILTER = 0xAA1111AA;
 constexpr uint32_t PLAYER_NOTIFICATIONS = 0xAA2222AA;
-constexpr uint32_t INFINITE_HP = 0xAA3333AA;
-constexpr uint32_t INFINITE_TP = 0xAA4444AA;
-constexpr uint32_t SWITCH_ASSIST = 0xAA5555AA;
-constexpr uint32_t BLOCK_EVENTS = 0xAA6666AA;
-constexpr uint32_t BLOCK_PATCHES = 0xAA7777AA;
-constexpr uint32_t SAVE_FILES = 0xAA8888AA;
-constexpr uint32_t RED_NAME = 0xAA9999AA;
-constexpr uint32_t BLANK_NAME = 0xAAAAAAAA;
-constexpr uint32_t SUPPRESS_LOGIN = 0xAABBBBAA;
-constexpr uint32_t SKIP_CARD = 0xAACCCCAA;
-constexpr uint32_t EP3_INFINITE_MESETA = 0xAADDDDAA;
+constexpr uint32_t BLOCK_PINGS = 0xAA3333AA;
+constexpr uint32_t INFINITE_HP = 0xAA4444AA;
+constexpr uint32_t INFINITE_TP = 0xAA5555AA;
+constexpr uint32_t SWITCH_ASSIST = 0xAA6666AA;
+constexpr uint32_t BLOCK_EVENTS = 0xAA7777AA;
+constexpr uint32_t BLOCK_PATCHES = 0xAA8888AA;
+constexpr uint32_t SAVE_FILES = 0xAA9999AA;
+constexpr uint32_t RED_NAME = 0xAAAAAAAA;
+constexpr uint32_t BLANK_NAME = 0xAABBBBAA;
+constexpr uint32_t SUPPRESS_LOGIN = 0xAACCCCAA;
+constexpr uint32_t SKIP_CARD = 0xAADDDDAA;
+constexpr uint32_t EP3_INFINITE_MESETA = 0xAAEEEEAA;
 } // namespace ProxyOptionsMenuItemID
 
 struct MenuItem {
@@ -96,8 +99,20 @@ struct MenuItem {
   uint32_t item_id;
   std::u16string name;
   std::u16string description;
+  std::function<std::u16string()> get_description;
   uint32_t flags;
 
   MenuItem(uint32_t item_id, const std::u16string& name,
       const std::u16string& description, uint32_t flags);
+  MenuItem(uint32_t item_id, const std::u16string& name,
+      std::function<std::u16string()> get_description, uint32_t flags);
+};
+
+struct Menu {
+  uint32_t menu_id;
+  std::u16string name;
+  std::vector<MenuItem> items;
+
+  Menu() = delete;
+  Menu(uint32_t menu_id, const std::u16string& name);
 };

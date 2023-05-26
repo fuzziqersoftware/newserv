@@ -120,6 +120,23 @@ static HandlerResult C_05(shared_ptr<ServerState>,
   return HandlerResult::Type::FORWARD;
 }
 
+static HandlerResult C_1D(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  return session.options.suppress_client_pings
+      ? HandlerResult::Type::SUPPRESS
+      : HandlerResult::Type::FORWARD;
+}
+
+static HandlerResult S_1D(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
+  if (session.options.suppress_client_pings) {
+    session.server_channel.send(0x1D);
+    return HandlerResult::Type::SUPPRESS;
+  } else {
+    return HandlerResult::Type::FORWARD;
+  }
+}
+
 static HandlerResult S_97(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string&) {
   // If the client has already received a 97 command, block this one and
@@ -706,20 +723,27 @@ static HandlerResult S_B2(shared_ptr<ServerState>,
     session.server_channel.send(0xB3, flag, &cmd, sizeof(cmd));
     return HandlerResult::Type::SUPPRESS;
   } else {
-    session.should_forward_function_call_return_queue.emplace_back(true);
+    session.function_call_return_handler_queue.emplace_back(nullptr);
     return HandlerResult::Type::FORWARD;
   }
 }
 
 static HandlerResult C_B3(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string&) {
-  if (session.should_forward_function_call_return_queue.empty()) {
+    ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
+  auto cmd = check_size_t<C_ExecuteCodeResult_B3>(data);
+  if (session.function_call_return_handler_queue.empty()) {
     session.log.warning("Received function call result with empty result queue");
     return HandlerResult::Type::FORWARD;
   }
-  bool should_forward = session.should_forward_function_call_return_queue.front();
-  session.should_forward_function_call_return_queue.pop_front();
-  return should_forward ? HandlerResult::Type::FORWARD : HandlerResult::Type::SUPPRESS;
+
+  auto handler = std::move(session.function_call_return_handler_queue.front());
+  session.function_call_return_handler_queue.pop_front();
+  if (handler != nullptr) {
+    handler(cmd.return_value, cmd.checksum);
+    return HandlerResult::Type::SUPPRESS;
+  } else {
+    return HandlerResult::Type::FORWARD;
+  }
 }
 
 static HandlerResult S_B_E7(shared_ptr<ServerState>,
@@ -1718,7 +1742,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* 1A */ {{S_invalid,     nullptr}, {nullptr,          nullptr},      {nullptr,       nullptr},      {S_V3_1A_D5,       nullptr},      {S_V3_1A_D5,    nullptr},      {nullptr,      nullptr}},
 /* 1B */ {{S_invalid,     nullptr}, {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {S_invalid,    nullptr}},
 /* 1C */ {{S_invalid,     nullptr}, {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {S_invalid,    nullptr}},
-/* 1D */ {{S_invalid,     nullptr}, {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
+/* 1D */ {{S_invalid,     nullptr}, {S_1D,             C_1D},         {S_1D,          C_1D},         {S_1D,             C_1D},         {S_1D,          C_1D},         {S_1D,         C_1D}},
 /* 1E */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 1F */ {{S_invalid,     nullptr}, {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
 // CMD     S-PATCH        C-PATCH    S-DC              C-DC            S-PC           C-PC            S-GC              C-GC            S-XB           C-XB            S-BB          C-BB

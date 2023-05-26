@@ -8,7 +8,6 @@ reloc0:
   .offsetof start
 
 start:
-  .include InitClearCaches
 
 disable_interrupts:
   mfmsr   r3

@@ -33,6 +33,7 @@ ClientOptions::ClientOptions()
       enable_chat_commands(true),
       enable_chat_filter(true),
       enable_player_notifications(false),
+      suppress_client_pings(false),
       suppress_remote_login(false),
       zero_remote_guild_card(false),
       ep3_infinite_meseta(false),
@@ -45,9 +46,10 @@ Client::Client(
     GameVersion version,
     ServerBehavior server_behavior)
     : id(next_id++),
-      log("", client_log.min_level),
+      log(string_printf("[C-%" PRIX64 "] ", this->id), client_log.min_level),
       bb_game_state(0),
       flags(flags_for_version(version, -1)),
+      specific_version(default_specific_version_for_version(version, -1)),
       channel(bev, version, nullptr, nullptr, this, string_printf("C-%" PRIX64, this->id), TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
       server_behavior(server_behavior),
       should_disconnect(false),
@@ -81,6 +83,8 @@ Client::Client(
     struct timeval tv = usecs_to_timeval(60000000); // 1 minute
     event_add(this->save_game_data_event.get(), &tv);
   }
+
+  this->log.info("Created");
 }
 
 Client::~Client() {
@@ -90,6 +94,8 @@ Client::~Client() {
       this->log.warning("  %s", it.first.c_str());
     }
   }
+
+  this->log.info("Deleted");
 }
 
 void Client::set_license(shared_ptr<const License> l) {
@@ -104,6 +110,7 @@ ClientConfig Client::export_config() const {
   ClientConfig cc;
   cc.magic = CLIENT_CONFIG_MAGIC;
   cc.flags = this->flags;
+  cc.specific_version = this->specific_version;
   cc.proxy_destination_address = this->proxy_destination_address;
   cc.proxy_destination_port = this->proxy_destination_port;
   cc.unused.clear(0xFF);
@@ -124,6 +131,7 @@ void Client::import_config(const ClientConfig& cc) {
     throw invalid_argument("invalid client config");
   }
   this->flags = cc.flags;
+  this->specific_version = cc.specific_version;
   this->proxy_destination_address = cc.proxy_destination_address;
   this->proxy_destination_port = cc.proxy_destination_port;
 }

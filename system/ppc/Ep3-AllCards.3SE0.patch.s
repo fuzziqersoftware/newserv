@@ -14,8 +14,6 @@ reloc0:
   .offsetof start
 
 start:
-  .include InitClearCaches
-
   .include Episode3USAOnly
 
   stwu   [r1 - 0x20], r1

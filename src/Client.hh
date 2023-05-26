@@ -35,6 +35,7 @@ struct ClientOptions {
   bool enable_chat_commands;
   bool enable_chat_filter;
   bool enable_player_notifications;
+  bool suppress_client_pings;
   bool suppress_remote_login;
   bool zero_remote_guild_card;
   bool ep3_infinite_meseta;
@@ -75,9 +76,9 @@ struct Client {
     ENCRYPTED_SEND_FUNCTION_CALL = 0x00000800,
     // Client supports send_function_call but does not actually run the code
     SEND_FUNCTION_CALL_CHECKSUM_ONLY = 0x00001000,
-    // Client supports send_function_call but doesn't clear its caches properly
-    // before calling the function (so we need to patch it)
-    SEND_FUNCTION_CALL_NEEDS_CACHE_PATCH = 0x00020000,
+    // Client supports send_function_call and clears its caches properly before
+    // calling the function (so we don't need to patch it)
+    SEND_FUNCTION_CALL_NO_CACHE_PATCH = 0x00020000,
     // Client is vulnerable to a buffer overflow that we can use to enable
     // send_function_call
     USE_OVERFLOW_FOR_SEND_FUNCTION_CALL = 0x00008000,
@@ -111,6 +112,7 @@ struct Client {
   // all of that space.
   uint8_t bb_game_state;
   uint32_t flags;
+  uint32_t specific_version;
 
   // Network
   Channel channel;
@@ -141,6 +143,7 @@ struct Client {
   uint16_t card_battle_table_seat_number;
   uint16_t card_battle_table_seat_state;
   std::weak_ptr<Episode3::Tournament::Team> ep3_tournament_team;
+  std::shared_ptr<const Menu> last_menu_sent;
 
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give
@@ -148,6 +151,7 @@ struct Client {
   bool can_chat;
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;
+  std::function<void()> on_version_detect_response;
 
   // File loading state
   uint32_t dol_base_addr;

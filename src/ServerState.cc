@@ -309,7 +309,7 @@ uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
   }
 }
 
-shared_ptr<const vector<MenuItem>> ServerState::information_menu_for_version(GameVersion version) {
+std::shared_ptr<const Menu> ServerState::information_menu_for_version(GameVersion version) {
   if ((version == GameVersion::DC) || (version == GameVersion::PC)) {
     return this->information_menu_v2;
   } else if ((version == GameVersion::GC) || (version == GameVersion::XB)) {
@@ -318,7 +318,7 @@ shared_ptr<const vector<MenuItem>> ServerState::information_menu_for_version(Gam
   throw out_of_range("no information menu exists for this version");
 }
 
-const vector<MenuItem>& ServerState::proxy_destinations_menu_for_version(GameVersion version) {
+shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(GameVersion version) {
   switch (version) {
     case GameVersion::DC:
       return this->proxy_destinations_menu_dc;
@@ -386,25 +386,21 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   config_log.info("Creating menus");
   const auto& d = config_json->as_dict();
 
-  this->main_menu.clear();
-  this->proxy_destinations_menu_dc.clear();
-  this->proxy_destinations_menu_pc.clear();
-  this->proxy_destinations_menu_gc.clear();
-  this->proxy_destinations_menu_xb.clear();
-
-  shared_ptr<vector<MenuItem>> information_menu_v2(new vector<MenuItem>());
-  shared_ptr<vector<MenuItem>> information_menu_v3(new vector<MenuItem>());
+  shared_ptr<Menu> information_menu_v2(new Menu(MenuID::INFORMATION, u"Information"));
+  shared_ptr<Menu> information_menu_v3(new Menu(MenuID::INFORMATION, u"Information"));
   shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
 
-  information_menu_v3->emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
+  information_menu_v2->items.emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
+      u"Return to the\nmain menu", 0);
+  information_menu_v3->items.emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
       u"Return to the\nmain menu", 0);
   {
     uint32_t item_id = 0;
     for (const auto& item : d.at("InformationMenuContents")->as_list()) {
       auto& v = item->as_list();
-      information_menu_v2->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
+      information_menu_v2->items.emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
           decode_sjis(v.at(1)->as_string()), 0);
-      information_menu_v3->emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
+      information_menu_v3->items.emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
           decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
       information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
       item_id++;
@@ -414,53 +410,43 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
   this->information_menu_v3 = information_menu_v3;
   this->information_contents = information_contents;
 
-  auto generate_proxy_destinations_menu = [&](
-                                              vector<MenuItem>& ret_menu,
-                                              vector<pair<string, uint16_t>>& ret_pds,
-                                              const char* key) {
+  auto generate_proxy_destinations_menu = [&](vector<pair<string, uint16_t>>& ret_pds, const char* key) -> shared_ptr<const Menu> {
+    shared_ptr<Menu> ret(new Menu(MenuID::PROXY_DESTINATIONS, u"Proxy server"));
+    ret_pds.clear();
+
     try {
       map<string, shared_ptr<JSONObject>> sorted_jsons;
       for (const auto& it : d.at(key)->as_dict()) {
         sorted_jsons.emplace(it.first, it.second);
       }
 
-      ret_menu.clear();
-      ret_pds.clear();
-
-      ret_menu.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
+      ret->items.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
           u"Return to the\nmain menu", 0);
-      ret_menu.emplace_back(ProxyDestinationsMenuItemID::OPTIONS, u"Options",
-          u"Set proxy options", 0);
+      ret->items.emplace_back(ProxyDestinationsMenuItemID::OPTIONS, u"Options",
+          u"Set proxy session\noptions", 0);
 
       uint32_t item_id = 0;
       for (const auto& item : sorted_jsons) {
         const string& netloc_str = item.second->as_string();
         const string& description = "$C7Remote server:\n$C6" + netloc_str;
-        ret_menu.emplace_back(item_id, decode_sjis(item.first),
+        ret->items.emplace_back(item_id, decode_sjis(item.first),
             decode_sjis(description), 0);
         ret_pds.emplace_back(parse_netloc(netloc_str));
         item_id++;
       }
     } catch (const out_of_range&) {
     }
+    return ret;
   };
 
-  generate_proxy_destinations_menu(
-      this->proxy_destinations_menu_dc,
-      this->proxy_destinations_dc,
-      "ProxyDestinations-DC");
-  generate_proxy_destinations_menu(
-      this->proxy_destinations_menu_pc,
-      this->proxy_destinations_pc,
-      "ProxyDestinations-PC");
-  generate_proxy_destinations_menu(
-      this->proxy_destinations_menu_gc,
-      this->proxy_destinations_gc,
-      "ProxyDestinations-GC");
-  generate_proxy_destinations_menu(
-      this->proxy_destinations_menu_xb,
-      this->proxy_destinations_xb,
-      "ProxyDestinations-XB");
+  this->proxy_destinations_menu_dc = generate_proxy_destinations_menu(
+      this->proxy_destinations_dc, "ProxyDestinations-DC");
+  this->proxy_destinations_menu_pc = generate_proxy_destinations_menu(
+      this->proxy_destinations_pc, "ProxyDestinations-PC");
+  this->proxy_destinations_menu_gc = generate_proxy_destinations_menu(
+      this->proxy_destinations_gc, "ProxyDestinations-GC");
+  this->proxy_destinations_menu_xb = generate_proxy_destinations_menu(
+      this->proxy_destinations_xb, "ProxyDestinations-XB");
 
   try {
     const string& netloc_str = d.at("ProxyDestination-Patch")->as_string();
@@ -488,39 +474,6 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
     this->proxy_destination_bb.first = "";
     this->proxy_destination_bb.second = 0;
   }
-
-  this->main_menu.emplace_back(MainMenuItemID::GO_TO_LOBBY, u"Go to lobby",
-      u"Join the lobby", 0);
-  this->main_menu.emplace_back(MainMenuItemID::INFORMATION, u"Information",
-      u"View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
-  uint32_t proxy_destinations_menu_item_flags =
-      // DCNTE doesn't support multiple ship select menus without changing
-      // servers (via a 19 command) apparently :(
-      MenuItem::Flag::INVISIBLE_ON_DCNTE |
-      (this->proxy_destinations_dc.empty() ? MenuItem::Flag::INVISIBLE_ON_DC : 0) |
-      (this->proxy_destinations_pc.empty() ? MenuItem::Flag::INVISIBLE_ON_PC : 0) |
-      (this->proxy_destinations_gc.empty() ? MenuItem::Flag::INVISIBLE_ON_GC : 0) |
-      (this->proxy_destinations_xb.empty() ? MenuItem::Flag::INVISIBLE_ON_XB : 0) |
-      MenuItem::Flag::INVISIBLE_ON_BB;
-  this->main_menu.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
-      u"Connect to another\nserver", proxy_destinations_menu_item_flags);
-  this->main_menu.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, u"Download quests",
-      u"Download quests", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
-  if (!this->is_replay) {
-    if (!this->function_code_index->patch_menu_empty()) {
-      this->main_menu.emplace_back(MainMenuItemID::PATCHES, u"Patches",
-          u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
-    }
-    if (!this->dol_file_index->empty()) {
-      this->main_menu.emplace_back(MainMenuItemID::PROGRAMS, u"Programs",
-          u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
-    }
-  }
-  this->main_menu.emplace_back(MainMenuItemID::DISCONNECT, u"Disconnect",
-      u"Disconnect", 0);
-  this->main_menu.emplace_back(MainMenuItemID::CLEAR_LICENSE, u"Clear license",
-      u"Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password",
-      MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
 
   try {
     this->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());

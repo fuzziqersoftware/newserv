@@ -176,6 +176,20 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
     bool is_patch = ends_with(filename, ".patch.s");
     string name = filename.substr(0, filename.size() - (is_patch ? 8 : 2));
 
+    // Check for specific_version token
+    uint32_t specific_version = 0;
+    string patch_name = name;
+    if (is_patch &&
+        (filename.size() >= 13) &&
+        (filename[filename.size() - 13] == '.') &&
+        isdigit(filename[filename.size() - 12]) &&
+        (filename[filename.size() - 11] == 'O' || filename[filename.size() - 11] == 'S') &&
+        (filename[filename.size() - 10] == 'E' || filename[filename.size() - 10] == 'J' || filename[filename.size() - 10] == 'P') &&
+        isdigit(filename[filename.size() - 9])) {
+      specific_version = 0x33000000 | (filename[filename.size() - 11] << 16) | (filename[filename.size() - 10] << 8) | filename[filename.size() - 9];
+      patch_name = filename.substr(0, filename.size() - 13);
+    }
+
     try {
       string path = directory + "/" + filename;
       string text = load_file(path);
@@ -187,15 +201,19 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
               "duplicate function index: %08" PRIX32, code->index));
         }
       }
+      code->specific_version = specific_version;
+      code->patch_name = patch_name;
       this->name_to_function.emplace(name, code);
       if (is_patch) {
         code->menu_item_id = next_menu_item_id++;
-        this->menu_item_id_to_patch_function.emplace(code->menu_item_id, code);
-        this->name_to_patch_function.emplace(name, code);
+        this->menu_item_id_and_specific_version_to_patch_function.emplace(
+            static_cast<uint64_t>(code->menu_item_id) << 32 | specific_version, code);
+        this->name_and_specific_version_to_patch_function.emplace(
+            string_printf("%s-%08" PRIX32, patch_name.c_str(), specific_version), code);
       }
 
       string index_prefix = code->index ? string_printf("%02X => ", code->index) : "";
-      string patch_prefix = is_patch ? string_printf("[%08" PRIX32 "] ", code->menu_item_id) : "";
+      string patch_prefix = is_patch ? string_printf("[%08" PRIX32 "/%08" PRIX32 "] ", code->menu_item_id, code->specific_version) : "";
       function_compiler_log.info("Compiled function %s%s%s (%s)",
           index_prefix.c_str(), patch_prefix.c_str(), name.c_str(), name_for_architecture(code->arch));
 
@@ -205,17 +223,28 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
   }
 }
 
-vector<MenuItem> FunctionCodeIndex::patch_menu() const {
-  vector<MenuItem> ret;
-  ret.emplace_back(PatchesMenuItemID::GO_BACK, u"Go back", u"", 0);
-  for (const auto& it : this->name_to_patch_function) {
+shared_ptr<const Menu> FunctionCodeIndex::patch_menu(uint32_t specific_version) const {
+  auto suffix = string_printf("-%08" PRIX32, specific_version);
+
+  shared_ptr<Menu> ret(new Menu(MenuID::PATCHES, u"Patches"));
+  ret->items.emplace_back(PatchesMenuItemID::GO_BACK, u"Go back", u"", 0);
+  for (const auto& it : this->name_and_specific_version_to_patch_function) {
     const auto& fn = it.second;
-    if (!fn->hide_from_patches_menu) {
-      ret.emplace_back(fn->menu_item_id, decode_sjis(fn->name), u"",
+    if (!fn->hide_from_patches_menu && ends_with(it.first, suffix)) {
+      ret->items.emplace_back(fn->menu_item_id, decode_sjis(fn->patch_name), u"",
           MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
     }
   }
   return ret;
+}
+
+bool FunctionCodeIndex::patch_menu_empty(uint32_t specific_version) const {
+  for (const auto& it : this->menu_item_id_and_specific_version_to_patch_function) {
+    if ((it.first & 0xFF000000) == (specific_version & 0xFF000000)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 DOLFileIndex::DOLFileIndex(const string& directory) {
@@ -227,6 +256,10 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
     function_compiler_log.info("DOL file directory is missing");
     return;
   }
+
+  shared_ptr<Menu> menu(new Menu(MenuID::PROGRAMS, u"Programs"));
+  this->menu = menu;
+  menu->items.emplace_back(ProgramsMenuItemID::GO_BACK, u"Go back", u"", 0);
 
   uint32_t next_menu_item_id = 0;
   for (const auto& filename : list_directory(directory)) {
@@ -245,20 +278,15 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
 
       this->name_to_file.emplace(dol->name, dol);
       this->item_id_to_file.emplace_back(dol);
+
+      string size_str = format_size(dol->data.size());
+      string description = string_printf("$C6%s$C7\n%s", dol->name.c_str(), size_str.c_str());
+      menu->items.emplace_back(dol->menu_item_id, decode_sjis(dol->name),
+          decode_sjis(description), MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
       function_compiler_log.info("Loaded DOL file %s", filename.c_str());
 
     } catch (const exception& e) {
       function_compiler_log.warning("Failed to load DOL file %s: %s", filename.c_str(), e.what());
     }
   }
-}
-
-vector<MenuItem> DOLFileIndex::menu() const {
-  vector<MenuItem> ret;
-  ret.emplace_back(ProgramsMenuItemID::GO_BACK, u"Go back", u"", 0);
-  for (const auto& dol : this->item_id_to_file) {
-    ret.emplace_back(dol->menu_item_id, decode_sjis(dol->name), u"",
-        MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
-  }
-  return ret;
 }

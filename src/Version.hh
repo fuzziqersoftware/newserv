@@ -7,11 +7,11 @@
 
 enum class GameVersion {
   PATCH = 0,
-  DC,
-  PC,
-  GC,
-  XB,
-  BB,
+  DC = 1,
+  PC = 2,
+  GC = 3,
+  XB = 4,
+  BB = 5,
 };
 
 enum class ServerBehavior {
@@ -34,3 +34,5 @@ GameVersion version_for_name(const char* name);
 
 const char* name_for_server_behavior(ServerBehavior behavior);
 ServerBehavior server_behavior_for_name(const char* name);
+
+uint32_t default_specific_version_for_version(GameVersion version, int64_t sub_version);

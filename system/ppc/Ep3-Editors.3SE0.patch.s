@@ -19,11 +19,6 @@ reloc0:
   .offsetof start
 
 start:
-  # Note: We don't actually need this for Episode 3, since all Episode 3
-  # versions correctly clear the caches before running code from a B2 command.
-  # But we leave it in to be consistent with patches for Episodes 1&2.
-  .include InitClearCaches
-
   .include Episode3USAOnly
 
   stwu   [r1 - 0x20], r1

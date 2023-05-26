@@ -67,60 +67,58 @@ vector<MenuItem> quest_download_menu({
     MenuItem(static_cast<uint32_t>(QuestCategory::DOWNLOAD), u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
 });
 
-static const unordered_map<uint32_t, const char16_t*> proxy_options_menu_descriptions({
-    {ProxyOptionsMenuItemID::GO_BACK, u"Return to the\nproxy menu"},
-    {ProxyOptionsMenuItemID::CHAT_COMMANDS, u"Enable chat\ncommands"},
-    {ProxyOptionsMenuItemID::CHAT_FILTER, u"Enable escape\nsequences in\nchat messages\nand info board"},
-    {ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, u"Show a message\nwhen other players\njoin or leave"},
-    {ProxyOptionsMenuItemID::INFINITE_HP, u"Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills"},
-    {ProxyOptionsMenuItemID::INFINITE_TP, u"Enable automatic TP\nrestoration when\nyou cast any\ntechnique"},
-    {ProxyOptionsMenuItemID::SWITCH_ASSIST, u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially"},
-    {ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, u"Fix Meseta value\nat 1,000,000"},
-    {ProxyOptionsMenuItemID::BLOCK_EVENTS, u"Disable seasonal\nevents in the lobby\nand in games"},
-    {ProxyOptionsMenuItemID::BLOCK_PATCHES, u"Disable patches sent\nby the remote server"},
-    {ProxyOptionsMenuItemID::SAVE_FILES, u"Save local copies of\nfiles from the\nremote server\n(quests, etc.)"},
-    {ProxyOptionsMenuItemID::RED_NAME, u"Set your name\ncolor to red"},
-    {ProxyOptionsMenuItemID::BLANK_NAME, u"Suppress your\ncharacter name\nduring login"},
-    {ProxyOptionsMenuItemID::SUPPRESS_LOGIN, u"Use an alternate\nlogin sequence"},
-    {ProxyOptionsMenuItemID::SKIP_CARD, u"Use an alternate\nvalue for your initial\nGuild Card"},
-});
-
-static vector<MenuItem> proxy_options_menu_for_client(
+static shared_ptr<const Menu> proxy_options_menu_for_client(
     shared_ptr<ServerState> s, shared_ptr<const Client> c) {
-  vector<MenuItem> ret;
+  shared_ptr<Menu> ret(new Menu(MenuID::PROXY_OPTIONS, u"Proxy options"));
   // Note: The descriptions are instead in the map above, because this menu is
   // dynamically created every time it's sent to the client. This is just one
   // way in which the menu abstraction is currently insufficient (there is a
   // TODO about this in README.md).
-  ret.emplace_back(ProxyOptionsMenuItemID::GO_BACK, u"Go back", u"", 0);
+  ret->items.emplace_back(ProxyOptionsMenuItemID::GO_BACK, u"Go back", u"Return to the\nProxy Server menu", 0);
 
-  auto add_option = [&](uint32_t item_id, bool is_enabled, const char16_t* text) -> void {
+  auto add_option = [&](uint32_t item_id, bool is_enabled, const char16_t* text, const char16_t* description) -> void {
     u16string option = is_enabled ? u"* " : u"- ";
     option += text;
-    ret.emplace_back(item_id, option, u"", 0);
+    ret->items.emplace_back(item_id, option, description, 0);
   };
 
-  add_option(ProxyOptionsMenuItemID::CHAT_COMMANDS, c->options.enable_chat_commands, u"Chat commands");
-  add_option(ProxyOptionsMenuItemID::CHAT_FILTER, c->options.enable_chat_filter, u"Chat filter");
-  add_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, c->options.enable_player_notifications, u"Player notifs");
+  add_option(ProxyOptionsMenuItemID::CHAT_COMMANDS, c->options.enable_chat_commands,
+      u"Chat commands", u"Enable chat\ncommands");
+  add_option(ProxyOptionsMenuItemID::CHAT_FILTER, c->options.enable_chat_filter,
+      u"Chat filter", u"Enable escape\nsequences in\nchat messages\nand info board");
+  add_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, c->options.enable_player_notifications,
+      u"Player notifs", u"Show a message\nwhen other players\njoin or leave");
+  add_option(ProxyOptionsMenuItemID::BLOCK_PINGS, c->options.suppress_client_pings,
+      u"Block pings", u"Block ping commands\nsent by the client");
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
-    add_option(ProxyOptionsMenuItemID::INFINITE_HP, c->options.infinite_hp, u"Infinite HP");
-    add_option(ProxyOptionsMenuItemID::INFINITE_TP, c->options.infinite_tp, u"Infinite TP");
-    add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, c->options.switch_assist, u"Switch assist");
+    add_option(ProxyOptionsMenuItemID::INFINITE_HP, c->options.infinite_hp,
+        u"Infinite HP", u"Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
+    add_option(ProxyOptionsMenuItemID::INFINITE_TP, c->options.infinite_tp,
+        u"Infinite TP", u"Enable automatic TP\nrestoration when\nyou cast any\ntechnique");
+    add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, c->options.switch_assist,
+        u"Switch assist", u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
   } else {
     // Note: Thie option's text is the maximum possible length for any menu item
-    add_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, c->options.ep3_infinite_meseta, u"Infinite Meseta");
+    add_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, c->options.ep3_infinite_meseta,
+        u"Infinite Meseta", u"Fix Meseta value\nat 1,000,000");
   }
-  add_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->options.override_lobby_event >= 0), u"Block events");
-  add_option(ProxyOptionsMenuItemID::BLOCK_PATCHES, (c->options.function_call_return_value >= 0), u"Block patches");
+  add_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->options.override_lobby_event >= 0),
+      u"Block events", u"Disable seasonal\nevents in the lobby\nand in games");
+  add_option(ProxyOptionsMenuItemID::BLOCK_PATCHES, (c->options.function_call_return_value >= 0),
+      u"Block patches", u"Disable patches sent\nby the remote server");
   if (s->proxy_allow_save_files) {
-    add_option(ProxyOptionsMenuItemID::SAVE_FILES, c->options.save_files, u"Save files");
+    add_option(ProxyOptionsMenuItemID::SAVE_FILES, c->options.save_files,
+        u"Save files", u"Save local copies of\nfiles from the\nremote server\n(quests, etc.)");
   }
   if (s->proxy_enable_login_options) {
-    add_option(ProxyOptionsMenuItemID::RED_NAME, c->options.red_name, u"Red name");
-    add_option(ProxyOptionsMenuItemID::BLANK_NAME, c->options.blank_name, u"Blank name");
-    add_option(ProxyOptionsMenuItemID::SUPPRESS_LOGIN, c->options.suppress_remote_login, u"Skip login");
-    add_option(ProxyOptionsMenuItemID::SKIP_CARD, c->options.zero_remote_guild_card, u"Skip card");
+    add_option(ProxyOptionsMenuItemID::RED_NAME, c->options.red_name,
+        u"Red name", u"Set your name\ncolor to red");
+    add_option(ProxyOptionsMenuItemID::BLANK_NAME, c->options.blank_name,
+        u"Blank name", u"Suppress your\ncharacter name\nduring login");
+    add_option(ProxyOptionsMenuItemID::SUPPRESS_LOGIN, c->options.suppress_remote_login,
+        u"Skip login", u"Use an alternate\nlogin sequence");
+    add_option(ProxyOptionsMenuItemID::SKIP_CARD, c->options.zero_remote_guild_card,
+        u"Skip card", u"Use an alternate\nvalue for your initial\nGuild Card");
   }
 
   return ret;
@@ -150,8 +148,7 @@ static void send_client_to_proxy_server(shared_ptr<ServerState> s, shared_ptr<Cl
 }
 
 static void send_proxy_destinations_menu(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  send_menu(c, u"Proxy server", MenuID::PROXY_DESTINATIONS,
-      s->proxy_destinations_menu_for_version(c->version()));
+  send_menu(c, s->proxy_destinations_menu_for_version(c->version()));
 }
 
 static bool send_enable_send_function_call_if_applicable(
@@ -203,7 +200,72 @@ void on_connect(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c) {
 }
 
 static void send_main_menu(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  send_menu(c, s->name.c_str(), MenuID::MAIN, s->main_menu);
+  shared_ptr<Menu> main_menu(new Menu(MenuID::MAIN, s->name));
+
+  main_menu->items.emplace_back(
+      MainMenuItemID::GO_TO_LOBBY, u"Go to lobby",
+      [s, wc = weak_ptr<Client>(c)]() -> u16string {
+        auto c = wc.lock();
+        if (!c) {
+          return u"";
+        }
+
+        size_t num_players = 0;
+        size_t num_games = 0;
+        size_t num_compatible_games = 0;
+        for (const auto& it : s->id_to_lobby) {
+          const auto& l = it.second;
+          if (l->is_game()) {
+            num_games++;
+            if (l->version == c->version() &&
+                (!l->is_ep3() == !(c->flags & Client::Flag::IS_EPISODE_3))) {
+              num_compatible_games++;
+            }
+          }
+          for (const auto& c : l->clients) {
+            if (c) {
+              num_players++;
+            }
+          }
+        }
+        string info = string_printf(
+            "$C6%zu$C7 players online\n$C6%zu$C7 games\n$C6%zu$C7 compatible games",
+            num_players, num_games, num_compatible_games);
+        return decode_sjis(info);
+      },
+      0);
+  main_menu->items.emplace_back(MainMenuItemID::INFORMATION, u"Information",
+      u"View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+  uint32_t proxy_destinations_menu_item_flags =
+      // DCNTE doesn't support multiple ship select menus without changing
+      // servers (via a 19 command) apparently :(
+      MenuItem::Flag::INVISIBLE_ON_DCNTE |
+      (s->proxy_destinations_dc.empty() ? MenuItem::Flag::INVISIBLE_ON_DC : 0) |
+      (s->proxy_destinations_pc.empty() ? MenuItem::Flag::INVISIBLE_ON_PC : 0) |
+      (s->proxy_destinations_gc.empty() ? MenuItem::Flag::INVISIBLE_ON_GC : 0) |
+      (s->proxy_destinations_xb.empty() ? MenuItem::Flag::INVISIBLE_ON_XB : 0) |
+      MenuItem::Flag::INVISIBLE_ON_BB;
+  main_menu->items.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, u"Proxy server",
+      u"Connect to another\nserver", proxy_destinations_menu_item_flags);
+  main_menu->items.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, u"Download quests",
+      u"Download quests", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
+  if (!s->is_replay) {
+    if (!s->function_code_index->patch_menu_empty(c->specific_version)) {
+      main_menu->items.emplace_back(MainMenuItemID::PATCHES, u"Patches",
+          u"Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+    }
+    if (!s->dol_file_index->empty()) {
+      main_menu->items.emplace_back(MainMenuItemID::PROGRAMS, u"Programs",
+          u"Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
+    }
+  }
+  main_menu->items.emplace_back(MainMenuItemID::DISCONNECT, u"Disconnect",
+      u"Disconnect", 0);
+  main_menu->items.emplace_back(MainMenuItemID::CLEAR_LICENSE, u"Clear license",
+      u"Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password",
+      MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
+
+  send_menu(c, main_menu);
 }
 
 void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
@@ -230,15 +292,6 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       send_ep3_rank_update(c);
     } else if (s->pre_lobby_event) {
       send_change_event(c, s->pre_lobby_event);
-    }
-
-    if (function_compiler_available() && (c->flags & Client::Flag::SEND_FUNCTION_CALL_NEEDS_CACHE_PATCH)) {
-      send_function_call(
-          c, s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0, 0, 0x7F2634EC);
-      send_function_call(
-          c, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
-      c->flags &= ~Client::Flag::SEND_FUNCTION_CALL_NEEDS_CACHE_PATCH;
-      send_update_client_config(c);
     }
 
     if (s->welcome_message.empty() ||
@@ -293,6 +346,9 @@ static void set_console_client_flags(
     }
   }
   c->flags |= flags_for_version(c->version(), sub_version);
+  if (c->specific_version == default_specific_version_for_version(c->version(), -1)) {
+    c->specific_version = default_specific_version_for_version(c->version(), sub_version);
+  }
 }
 
 static void on_DB_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -552,8 +608,7 @@ static void on_9A(shared_ptr<ServerState> s, shared_ptr<Client> c,
 static void on_9C(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_Register_DC_PC_V3_9C>(data);
-
-  c->flags |= flags_for_version(c->version(), cmd.sub_version);
+  set_console_client_flags(c, cmd.sub_version);
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
@@ -1398,8 +1453,7 @@ static void on_D6_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
   if (c->flags & Client::Flag::IN_INFORMATION_MENU) {
-    send_menu(c, u"Information", MenuID::INFORMATION,
-        *s->information_menu_for_version(c->version()));
+    send_menu(c, s->information_menu_for_version(c->version()));
   } else if (c->flags & Client::Flag::AT_WELCOME_MESSAGE) {
     send_enable_send_function_call_if_applicable(s, c);
     c->flags &= ~Client::Flag::AT_WELCOME_MESSAGE;
@@ -1413,95 +1467,22 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& cmd = check_size_t<C_MenuItemInfoRequest_09>(data);
 
   switch (cmd.menu_id) {
-    case MenuID::MAIN:
-      if (cmd.item_id == MainMenuItemID::GO_TO_LOBBY) {
-        size_t num_players = 0;
-        size_t num_games = 0;
-        size_t num_compatible_games = 0;
-        for (const auto& it : s->id_to_lobby) {
-          const auto& l = it.second;
-          if (l->is_game()) {
-            num_games++;
-            if (l->version == c->version() &&
-                (!l->is_ep3() == !(c->flags & Client::Flag::IS_EPISODE_3))) {
-              num_compatible_games++;
-            }
-          }
-          for (const auto& c : l->clients) {
-            if (c) {
-              num_players++;
-            }
-          }
-        }
-        string info = string_printf(
-            "$C6%zu$C7 players online\n$C6%zu$C7 games\n$C6%zu$C7 compatible games",
-            num_players, num_games, num_compatible_games);
-        send_ship_info(c, decode_sjis(info));
-      } else {
-        for (const auto& item : s->main_menu) {
-          if (item.item_id == cmd.item_id) {
-            send_ship_info(c, item.description);
-          }
-        }
-      }
-      break;
-
-    case MenuID::INFORMATION:
-      if (cmd.item_id == InformationMenuItemID::GO_BACK) {
-        send_ship_info(c, u"Return to the\nmain menu.");
-      } else {
-        try {
-          // We use item_id + 1 here because "go back" is the first item
-          send_ship_info(c, s->information_menu_for_version(c->version())->at(cmd.item_id + 1).description.c_str());
-        } catch (const out_of_range&) {
-          send_ship_info(c, u"$C4Missing information\nmenu item");
-        }
-      }
-      break;
-
-    case MenuID::PROXY_DESTINATIONS:
-      if (cmd.item_id == ProxyDestinationsMenuItemID::GO_BACK) {
-        send_ship_info(c, u"Return to the\nmain menu");
-      } else if (cmd.item_id == ProxyDestinationsMenuItemID::OPTIONS) {
-        send_ship_info(c, u"Set proxy session\noptions");
-      } else {
-        try {
-          const auto& menu = s->proxy_destinations_menu_for_version(c->version());
-          // We use item_id + 2 here because "go back" and "options" are the
-          // first items
-          send_ship_info(c, menu.at(cmd.item_id + 2).description.c_str());
-        } catch (const out_of_range&) {
-          send_ship_info(c, u"$C4Missing proxy\ndestination");
-        }
-      }
-      break;
-
-    case MenuID::PROXY_OPTIONS:
-      try {
-        const auto* description = proxy_options_menu_descriptions.at(cmd.item_id);
-        send_ship_info(c, description);
-      } catch (const out_of_range&) {
-        send_ship_info(c, u"$C4Missing proxy\noption");
-      }
-      break;
-
     case MenuID::QUEST_FILTER:
       // Don't send anything here. The quest filter menu already has short
       // descriptions included with the entries, which the client shows in the
       // usual location on the screen.
       break;
-
     case MenuID::QUEST: {
       if (!s->quest_index) {
         send_quest_info(c, u"$C6Quests are not available.", !c->lobby_id);
-        break;
+      } else {
+        auto q = s->quest_index->get(c->version(), cmd.item_id);
+        if (!q) {
+          send_quest_info(c, u"$C4Quest does not\nexist.", !c->lobby_id);
+        } else {
+          send_quest_info(c, q->long_description.c_str(), !c->lobby_id);
+        }
       }
-      auto q = s->quest_index->get(c->version(), cmd.item_id);
-      if (!q) {
-        send_quest_info(c, u"$C4Quest does not\nexist.", !c->lobby_id);
-        break;
-      }
-      send_quest_info(c, q->long_description.c_str(), !c->lobby_id);
       break;
     }
 
@@ -1576,27 +1557,6 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
         send_ship_info(c, decode_sjis(info));
       }
-      break;
-    }
-
-    case MenuID::PATCHES:
-      // TODO: Find a way to provide descriptions for patches.
-      break;
-
-    case MenuID::PROGRAMS: {
-      if (cmd.item_id == ProgramsMenuItemID::GO_BACK) {
-        send_ship_info(c, u"Return to the\nmain menu.");
-      } else {
-        try {
-          auto dol = s->dol_file_index->item_id_to_file.at(cmd.item_id);
-          string size_str = format_size(dol->data.size());
-          string info = string_printf("$C6%s$C7\n%s", dol->name.c_str(), size_str.c_str());
-          send_ship_info(c, decode_sjis(info));
-        } catch (const out_of_range&) {
-          send_ship_info(c, u"Incorrect program ID.");
-        }
-      }
-      break;
     }
 
     case MenuID::TOURNAMENTS_FOR_SPEC:
@@ -1611,6 +1571,7 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
       break;
     }
+
     case MenuID::TOURNAMENT_ENTRIES: {
       if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
         send_ship_info(c, u"Incorrect menu ID");
@@ -1650,7 +1611,21 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
 
     default:
-      send_ship_info(c, u"Incorrect menu ID");
+      if (!c->last_menu_sent || c->last_menu_sent->menu_id != cmd.menu_id) {
+        send_ship_info(c, u"Incorrect menu ID");
+      } else {
+        for (const auto& item : c->last_menu_sent->items) {
+          if (item.item_id == cmd.item_id) {
+            if (item.get_description != nullptr) {
+              send_ship_info(c, item.get_description());
+            } else {
+              send_ship_info(c, item.description);
+            }
+            return;
+          }
+        }
+        send_ship_info(c, u"$C4Incorrect menu\nitem ID");
+      }
       break;
   }
 }
@@ -1712,8 +1687,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         }
 
         case MainMenuItemID::INFORMATION:
-          send_menu(c, u"Information", MenuID::INFORMATION,
-              *s->information_menu_for_version(c->version()));
+          send_menu(c, s->information_menu_for_version(c->version()));
           c->flags |= Client::Flag::IN_INFORMATION_MENU;
           break;
 
@@ -1737,11 +1711,29 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           break;
 
         case MainMenuItemID::PATCHES:
-          send_menu(c, u"Patches", MenuID::PATCHES, s->function_code_index->patch_menu());
+          if (!function_compiler_available()) {
+            throw runtime_error("function compiler not available");
+          }
+          if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
+            throw runtime_error("client does not support send_function_call");
+          }
+          send_cache_patch_if_needed(s, c);
+          if (c->version() == GameVersion::GC &&
+              c->specific_version == default_specific_version_for_version(GameVersion::GC, -1)) {
+            send_function_call(c, s->function_code_index->name_to_function.at("VersionDetect"));
+            c->on_version_detect_response = [s, wc = weak_ptr<Client>(c)]() {
+              auto c = wc.lock();
+              if (c) {
+                send_menu(c, s->function_code_index->patch_menu(c->specific_version));
+              }
+            };
+          } else {
+            send_menu(c, s->function_code_index->patch_menu(c->specific_version));
+          }
           break;
 
         case MainMenuItemID::PROGRAMS:
-          send_menu(c, u"Programs", MenuID::PROGRAMS, s->dol_file_index->menu());
+          send_menu(c, s->dol_file_index->menu);
           break;
 
         case MainMenuItemID::DISCONNECT:
@@ -1789,6 +1781,9 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         case ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS:
           c->options.enable_player_notifications = !c->options.enable_player_notifications;
           goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::BLOCK_PINGS:
+          c->options.suppress_client_pings = !c->options.suppress_client_pings;
+          goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::INFINITE_HP:
           c->options.infinite_hp = !c->options.infinite_hp;
           goto resend_proxy_options_menu;
@@ -1830,8 +1825,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         case ProxyOptionsMenuItemID::SKIP_CARD:
           c->options.zero_remote_guild_card = !c->options.zero_remote_guild_card;
         resend_proxy_options_menu:
-          send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
-              proxy_options_menu_for_client(s, c));
+          send_menu(c, proxy_options_menu_for_client(s, c));
           break;
         default:
           send_message_box(c, u"Incorrect menu item ID.");
@@ -1845,8 +1839,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_main_menu(s, c);
 
       } else if (item_id == ProxyDestinationsMenuItemID::OPTIONS) {
-        send_menu(c, s->name.c_str(), MenuID::PROXY_OPTIONS,
-            proxy_options_menu_for_client(s, c));
+        send_menu(c, proxy_options_menu_for_client(s, c));
 
       } else {
         const pair<string, uint16_t>* dest = nullptr;
@@ -2051,9 +2044,10 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           throw runtime_error("client does not support send_function_call");
         }
 
+        uint64_t key = (static_cast<uint64_t>(item_id) << 32) | c->specific_version;
         send_function_call(
-            c, s->function_code_index->menu_item_id_to_patch_function.at(item_id));
-        send_menu(c, u"Patches", MenuID::PATCHES, s->function_code_index->patch_menu());
+            c, s->function_code_index->menu_item_id_and_specific_version_to_patch_function.at(key));
+        send_menu(c, s->function_code_index->patch_menu(c->specific_version));
       }
       break;
 
@@ -2191,8 +2185,7 @@ static void on_08_E6(shared_ptr<ServerState> s, shared_ptr<Client> c,
 static void on_1F(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
-  send_menu(c, u"Information", MenuID::INFORMATION,
-      *s->information_menu_for_version(c->version()), true);
+  send_menu(c, s->information_menu_for_version(c->version()), true);
 }
 
 static void on_A0(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -2272,7 +2265,17 @@ static void on_B3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 
   auto called_fn = s->function_code_index->index_to_function.at(flag);
-  if (c->loading_dol_file.get()) {
+  if (called_fn->name == "VersionDetect") {
+    // This is sent the first time the client chooses Patches from the main
+    // menu, so send the Patches menu when we get the response here
+    c->specific_version = cmd.return_value;
+    c->log.info("Version detected as %08" PRIX32, c->specific_version);
+    if (c->on_version_detect_response) {
+      c->on_version_detect_response();
+      c->on_version_detect_response = nullptr;
+    }
+
+  } else if (c->loading_dol_file.get()) {
     if (called_fn->name == "ReadMemoryWord") {
       c->dol_base_addr = (cmd.return_value - c->loading_dol_file->data.size()) & (~3);
       send_dol_file_chunk(s, c, c->dol_base_addr);

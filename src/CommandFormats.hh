@@ -108,9 +108,10 @@ enum ClientStateBB : uint8_t {
 struct ClientConfig {
   uint64_t magic;
   uint32_t flags;
+  uint32_t specific_version;
   uint32_t proxy_destination_address;
   uint16_t proxy_destination_port;
-  parray<uint8_t, 0x0E> unused;
+  parray<uint8_t, 0x0A> unused;
 } __packed__;
 
 struct ClientConfigBB {

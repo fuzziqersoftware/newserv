@@ -20,19 +20,23 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
     case -1: // Initial check (before sub_version recognition)
       switch (version) {
         case GameVersion::DC:
-          return Client::Flag::NO_D6;
+          return Client::Flag::NO_D6 |
+              Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
         case GameVersion::GC:
-        case GameVersion::XB:
           return 0;
+        case GameVersion::XB:
+          return Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
         case GameVersion::PC:
           return Client::Flag::NO_D6 |
-              Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
+              Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY |
+              Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
         case GameVersion::PATCH:
           return Client::Flag::NO_D6 |
               Client::Flag::NO_SEND_FUNCTION_CALL;
         case GameVersion::BB:
           return Client::Flag::NO_D6 |
-              Client::Flag::SAVE_ENABLED;
+              Client::Flag::SAVE_ENABLED |
+              Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
       }
       break;
 
@@ -46,18 +50,18 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
           Client::Flag::NO_SEND_FUNCTION_CALL;
 
     case 0x26: // DCv2 US
-      return Client::Flag::NO_D6;
+      return Client::Flag::NO_D6 |
+          Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
 
     case 0x29: // PC
       return Client::Flag::NO_D6 |
-          Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY;
+          Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY |
+          Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
 
     case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
     case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
     case 0x34: // GC Ep1&2 JP v1.03
-      return ((version == GameVersion::GC) && function_compiler_available())
-          ? Client::Flag::SEND_FUNCTION_CALL_NEEDS_CACHE_PATCH
-          : 0;
+      return 0;
     case 0x32: // GC Ep1&2 EU 50Hz
     case 0x33: // GC Ep1&2 EU 60Hz
       return Client::Flag::NO_D6_AFTER_LOBBY;
@@ -80,7 +84,8 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
     case 0x41: // GC Ep3 US
       return Client::Flag::NO_D6_AFTER_LOBBY |
           Client::Flag::IS_EPISODE_3 |
-          Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL;
+          Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL |
+          Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
     case 0x43: // GC Ep3 EU
       return Client::Flag::NO_D6_AFTER_LOBBY |
           Client::Flag::IS_EPISODE_3 |
@@ -165,5 +170,39 @@ ServerBehavior server_behavior_for_name(const char* name) {
     return ServerBehavior::PROXY_SERVER;
   } else {
     throw invalid_argument("incorrect server behavior name");
+  }
+}
+
+uint32_t default_specific_version_for_version(GameVersion version, int64_t sub_version) {
+  uint32_t base_specific_version = (static_cast<uint32_t>(version) + '0') << 24;
+  if (version == GameVersion::GC) {
+    // For versions that don't support send_function_call by default, we need
+    // to set the specific_version based on sub_version. Fortunately, all
+    // versions that share sub_version values also support send_function_call,
+    // so for those versions we get the specific_version later by sending the
+    // VersionDetect call.
+    switch (sub_version) {
+      case 0x36: // GC Ep1&2 US v1.02 (Plus)
+        return 0x334F4532; // 3OE2
+      case 0x39: // GC Ep1&2 JP v1.05 (Plus)
+        return 0x334F4A35; // 3OJ5
+      case 0x41: // GC Ep3 US
+        return 0x33534530; // 3SE0
+      case 0x43: // GC Ep3 EU
+        return 0x33535030; // 3SP0
+      case -1: // Initial check (before sub_version recognition)
+      case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
+      case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
+      case 0x32: // GC Ep1&2 EU 50Hz
+      case 0x33: // GC Ep1&2 EU 60Hz
+      case 0x34: // GC Ep1&2 JP v1.03
+      case 0x35: // GC Ep1&2 JP v1.04 (Plus)
+      case 0x40: // GC Ep3 trial
+      case 0x42: // GC Ep3 JP
+      default:
+        return base_specific_version;
+    }
+  } else {
+    return base_specific_version;
   }
 }

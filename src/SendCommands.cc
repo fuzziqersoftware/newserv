@@ -310,6 +310,17 @@ void send_quest_buffer_overflow(
   send_command_t(c, 0xA7, 0x00, cmd);
 }
 
+void send_cache_patch_if_needed(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  if (!(c->flags & Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH)) {
+    send_function_call(
+        c, s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0, 0, 0x7F2634EC);
+    send_function_call(
+        c, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
+    c->flags |= Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
+    send_update_client_config(c);
+  }
+}
+
 void send_function_call(
     shared_ptr<Client> c,
     shared_ptr<CompiledFunctionCode> code,
@@ -1004,23 +1015,17 @@ void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
 // menus
 
 template <typename EntryT>
-void send_menu_t(
-    shared_ptr<Client> c,
-    const u16string& menu_name,
-    uint32_t menu_id,
-    const vector<MenuItem>& items,
-    bool is_info_menu) {
-
+void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info_menu) {
   vector<EntryT> entries;
   {
     auto& e = entries.emplace_back();
-    e.menu_id = menu_id;
+    e.menu_id = menu->menu_id;
     e.item_id = 0xFFFFFFFF;
     e.flags = 0x0004;
-    e.text = menu_name;
+    e.text = menu->name;
   }
 
-  for (const auto& item : items) {
+  for (const auto& item : menu->items) {
     bool is_visible = true;
     switch (c->version()) {
       case GameVersion::DC:
@@ -1059,7 +1064,7 @@ void send_menu_t(
 
     if (is_visible) {
       auto& e = entries.emplace_back();
-      e.menu_id = menu_id;
+      e.menu_id = menu->menu_id;
       e.item_id = item.item_id;
       e.flags = (c->version() == GameVersion::BB) ? 0x0004 : 0x0F04;
       e.text = item.name;
@@ -1067,16 +1072,16 @@ void send_menu_t(
   }
 
   send_command_vt(c, is_info_menu ? 0x1F : 0x07, entries.size() - 1, entries);
+  c->last_menu_sent = menu;
 }
 
-void send_menu(shared_ptr<Client> c, const u16string& menu_name,
-    uint32_t menu_id, const vector<MenuItem>& items, bool is_info_menu) {
+void send_menu(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info_menu) {
   if (c->version() == GameVersion::PC ||
       c->version() == GameVersion::PATCH ||
       c->version() == GameVersion::BB) {
-    send_menu_t<S_MenuEntry_PC_BB_07_1F>(c, menu_name, menu_id, items, is_info_menu);
+    send_menu_t<S_MenuEntry_PC_BB_07_1F>(c, menu, is_info_menu);
   } else {
-    send_menu_t<S_MenuEntry_DC_V3_07_1F>(c, menu_name, menu_id, items, is_info_menu);
+    send_menu_t<S_MenuEntry_DC_V3_07_1F>(c, menu, is_info_menu);
   }
 }
 

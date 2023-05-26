@@ -8,8 +8,6 @@ reloc0:
   .offsetof start
 
 start:
-  .include InitClearCaches
-
   bl     read
 address:
   .zero

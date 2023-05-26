@@ -68,7 +68,8 @@ public:
     int64_t remote_guild_card_number;
     parray<uint8_t, 0x20> remote_client_config_data;
     ClientConfigBB newserv_client_config;
-    std::deque<bool> should_forward_function_call_return_queue;
+    // A null handler in here means to forward the response to the remote server
+    std::deque<std::function<void(uint32_t return_value, uint32_t checksum)>> function_call_return_handler_queue;
     G_SwitchStateChanged_6x05 last_switch_enabled_command;
     PlayerInventoryItem next_drop_item;
     uint32_t next_item_id;

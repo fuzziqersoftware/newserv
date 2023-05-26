@@ -259,26 +259,74 @@ static void proxy_command_auction(shared_ptr<ServerState>,
 
 static void server_command_patch(shared_ptr<ServerState> s, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string& args) {
-  std::shared_ptr<CompiledFunctionCode> fn;
-  try {
-    fn = s->function_code_index->name_to_function.at(encode_sjis(args));
-    send_function_call(c, fn);
-  } catch (const out_of_range&) {
-    send_text_message(c, u"Invalid patch name");
+  string basename = encode_sjis(args);
+  auto send_call = [s, basename, wc = weak_ptr<Client>(c)]() {
+    auto c = wc.lock();
+    if (!c) {
+      return;
+    }
+    try {
+      auto fn = s->function_code_index->name_and_specific_version_to_patch_function.at(
+          string_printf("%s-%08" PRIX32, basename.c_str(), c->specific_version));
+      send_function_call(c, fn);
+    } catch (const out_of_range&) {
+      send_text_message(c, u"Invalid patch name");
+    }
+  };
+
+  send_cache_patch_if_needed(s, c);
+  if (c->version() == GameVersion::GC &&
+      c->specific_version == default_specific_version_for_version(GameVersion::GC, -1)) {
+    send_function_call(c, s->function_code_index->name_to_function.at("VersionDetect"));
+    c->on_version_detect_response = send_call;
+  } else {
+    send_call();
   }
 }
 
+static void empty_patch_return_handler(uint32_t, uint32_t) {}
+
 static void proxy_command_patch(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, const std::u16string& args) {
-  std::shared_ptr<CompiledFunctionCode> fn;
-  try {
-    fn = s->function_code_index->name_to_function.at(encode_sjis(args));
+
+  string basename = encode_sjis(args);
+  auto send_call = [s, basename, &session](uint32_t specific_version, uint32_t) {
+    try {
+      if (session.newserv_client_config.cfg.specific_version != specific_version) {
+        session.newserv_client_config.cfg.specific_version = specific_version;
+        session.log.info("Version detected as %08" PRIX32, session.newserv_client_config.cfg.specific_version);
+      }
+      auto fn = s->function_code_index->name_and_specific_version_to_patch_function.at(
+          string_printf("%s-%08" PRIX32, basename.c_str(), session.newserv_client_config.cfg.specific_version));
+      send_function_call(
+          session.client_channel, session.newserv_client_config.cfg.flags, fn);
+      // Don't forward the patch response to the server
+      session.function_call_return_handler_queue.emplace_back(empty_patch_return_handler);
+    } catch (const out_of_range&) {
+      send_text_message(session.client_channel, u"Invalid patch name");
+    }
+  };
+
+  // This mirrors the implementation in send_cache_patch_if_needed
+  if (!(session.newserv_client_config.cfg.flags & Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH)) {
     send_function_call(
-        session.client_channel, session.newserv_client_config.cfg.flags, fn);
-    // Don't forward the patch response to the server
-    session.should_forward_function_call_return_queue.emplace_back(false);
-  } catch (const out_of_range&) {
-    send_text_message(session.client_channel, u"Invalid patch name");
+        session.client_channel, session.newserv_client_config.cfg.flags, s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0, 0, 0x7F2634EC);
+    send_function_call(
+        session.client_channel, session.newserv_client_config.cfg.flags, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
+    session.function_call_return_handler_queue.emplace_back(empty_patch_return_handler);
+    session.function_call_return_handler_queue.emplace_back(empty_patch_return_handler);
+    session.newserv_client_config.cfg.flags |= Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
+  }
+
+  if (session.version == GameVersion::GC &&
+      session.newserv_client_config.cfg.specific_version == default_specific_version_for_version(GameVersion::GC, -1)) {
+    send_function_call(
+        session.client_channel,
+        session.newserv_client_config.cfg.flags,
+        s->function_code_index->name_to_function.at("VersionDetect"));
+    session.function_call_return_handler_queue.emplace_back(send_call);
+  } else {
+    send_call(session.newserv_client_config.cfg.specific_version, 0);
   }
 }
 
