@@ -98,7 +98,12 @@ The actions are:\n\
   decompress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   compress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decompress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Compress or decompress data using the PRS or BC0 algorithms.\n\
+    Compress or decompress data using the PRS or BC0 algorithms. When\n\
+    compressing with PRS, the --compression-level=N option (default 1)\n\
+    specifies how aggressive the compressor should be in searching for literal\n\
+    sequences. A higher value generally means slower compression and a smaller\n\
+    output size. If 0 is given, the data is PRS-encoded but not actually\n\
+    compressed, resulting in valid PRS data which is larger than the input.\n\
   prs-size [INPUT-FILENAME]\n\
     Compute the decompressed size of the PRS-compressed input data, but don\'t\n\
     write the decompressed data anywhere.\n\
@@ -292,6 +297,7 @@ int main(int argc, char** argv) {
   size_t stride = 1;
   size_t num_threads = 0;
   size_t bytes = 0;
+  size_t prs_compression_level = 1;
   const char* find_decryption_seed_ciphertext = nullptr;
   vector<const char*> find_decryption_seed_plaintexts;
   const char* input_filename = nullptr;
@@ -321,6 +327,8 @@ int main(int argc, char** argv) {
       cli_version = GameVersion::XB;
     } else if (!strcmp(argv[x], "--bb")) {
       cli_version = GameVersion::BB;
+    } else if (!strncmp(argv[x], "--compression-level=", 20)) {
+      prs_compression_level = strtoull(&argv[x][20], nullptr, 0);
     } else if (!strcmp(argv[x], "--round2")) {
       round2 = true;
     } else if (!strncmp(argv[x], "--bytes=", 8)) {
@@ -531,7 +539,7 @@ int main(int argc, char** argv) {
 
       uint64_t start = now();
       if (behavior == Behavior::COMPRESS_PRS) {
-        data = prs_compress(data, progress_fn);
+        data = prs_compress(data, prs_compression_level, progress_fn);
       } else if (behavior == Behavior::DECOMPRESS_PRS) {
         data = prs_decompress(data);
       } else if (behavior == Behavior::COMPRESS_BC0) {

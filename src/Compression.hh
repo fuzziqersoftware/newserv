@@ -15,7 +15,7 @@ class PRSCompressor {
 public:
   // To use this class, instantiate it, then call .add() one or more times, then
   // call .close() and use the returned string as the compressed result.
-  PRSCompressor(std::function<void(size_t, size_t)> progress_fn = nullptr);
+  explicit PRSCompressor(size_t compression_level = 1, std::function<void(size_t, size_t)> progress_fn = nullptr);
   ~PRSCompressor() = default;
 
   // Adds more input data to be compressed, which logically comes after all
@@ -34,11 +34,79 @@ public:
   }
 
 private:
+  template <size_t Size>
+  struct WrappedLog {
+    parray<uint8_t, Size> data;
+
+    WrappedLog() : data(0) {}
+    ~WrappedLog() = default;
+
+    inline uint8_t at(size_t offset) const {
+      return this->data[offset % this->data.size()];
+    }
+    inline uint8_t& at(size_t offset) {
+      return this->data[offset % this->data.size()];
+    }
+  };
+
+  template <size_t Size>
+  struct IndexedLog : WrappedLog<Size> {
+    size_t offset;
+    size_t size;
+    std::array<std::deque<size_t>, 0x100> index;
+
+    IndexedLog()
+        : WrappedLog<Size>(),
+          offset(0),
+          size(0) {}
+    ~IndexedLog() = default;
+
+    inline size_t end_offset() const {
+      return this->offset + this->size;
+    }
+
+    void push_back(uint8_t v) {
+      if (this->size == Size) {
+        this->pop_front();
+      }
+      size_t write_offset = this->offset + this->size;
+      this->at(write_offset) = v;
+      this->index[v].push_back(write_offset);
+      this->size++;
+    }
+    uint8_t pop_back() {
+      if (!this->size) {
+        throw std::logic_error("pop_back called on empty IndexedLog");
+      }
+      this->size--;
+      size_t offset = this->offset + this->size;
+      uint8_t v = this->at(offset);
+      this->index[v].pop_back();
+      return v;
+    }
+    uint8_t pop_front() {
+      uint8_t v = this->at(this->offset);
+      this->index[v].pop_front();
+      this->offset++;
+      this->size--;
+      return v;
+    }
+    const std::deque<size_t>& find(uint8_t v) {
+      return this->index[v];
+    }
+  };
+
   void add_byte(uint8_t v);
   void advance();
+  void move_forward_data_to_reverse_log(size_t size);
+  void advance_literal();
+  void advance_short_copy(ssize_t offset, size_t size);
+  void advance_long_copy(ssize_t offset, size_t size);
+  void advance_extended_copy(ssize_t offset, size_t size);
   void write_control(bool z);
   void flush_control();
 
+  size_t compression_level;
   std::function<void(size_t, size_t)> progress_fn;
   bool closed;
 
@@ -46,10 +114,8 @@ private:
   uint16_t pending_control_bits;
 
   size_t input_bytes;
-  parray<uint8_t, 0x100> forward_log;
-  size_t compression_offset;
-  parray<uint8_t, 0x2000> reverse_log;
-  std::vector<std::deque<size_t>> reverse_log_index;
+  WrappedLog<0x101> forward_log;
+  IndexedLog<0x2000> reverse_log;
 
   StringWriter output;
 };
@@ -57,8 +123,15 @@ private:
 // Compresses data from a single input buffer using PRS and returns the
 // compressed result. This is a shortcut for constructing a PRSCompressor,
 // calling .add() once, and calling .close().
-std::string prs_compress(const void* vdata, size_t size, std::function<void(size_t, size_t)> progress_fn = nullptr);
-std::string prs_compress(const std::string& data, std::function<void(size_t, size_t)> progress_fn = nullptr);
+std::string prs_compress(
+    const void* vdata,
+    size_t size,
+    size_t compression_level = 1,
+    std::function<void(size_t, size_t)> progress_fn = nullptr);
+std::string prs_compress(
+    const std::string& data,
+    size_t compression_level = 1,
+    std::function<void(size_t, size_t)> progress_fn = nullptr);
 
 // Decompresses PRS-compressed data.
 std::string prs_decompress(const void* data, size_t size, size_t max_output_size = 0);

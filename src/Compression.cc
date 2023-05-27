@@ -12,14 +12,14 @@
 
 using namespace std;
 
-PRSCompressor::PRSCompressor(function<void(size_t, size_t)> progress_fn)
-    : progress_fn(progress_fn),
+PRSCompressor::PRSCompressor(
+    size_t compression_level, function<void(size_t, size_t)> progress_fn)
+    : compression_level(compression_level),
+      progress_fn(progress_fn),
       closed(false),
       control_byte_offset(0),
       pending_control_bits(0),
-      input_bytes(0),
-      compression_offset(0),
-      reverse_log_index(0x100) {
+      input_bytes(0) {
   this->output.put_u8(0);
 }
 
@@ -39,10 +39,10 @@ void PRSCompressor::add(const string& data) {
 }
 
 void PRSCompressor::add_byte(uint8_t v) {
-  if (this->compression_offset + 0x100 <= this->input_bytes) {
+  if (this->reverse_log.end_offset() + this->forward_log.data.size() <= this->input_bytes) {
     this->advance();
   }
-  this->forward_log[this->input_bytes & 0xFF] = v;
+  this->forward_log.at(this->input_bytes) = v;
   this->input_bytes++;
 }
 
@@ -50,116 +50,130 @@ void PRSCompressor::advance() {
   // Search for a match in the decompressed data history
   size_t best_match_size = 0;
   size_t best_match_offset = 0;
-
-  uint8_t first_v = this->forward_log[this->compression_offset & 0xFF];
-  const auto& start_offsets = this->reverse_log_index[first_v];
-
-  for (auto it = start_offsets.begin(); (it != start_offsets.end()) && (best_match_size < 0x100); it++) {
-    size_t match_offset = *it;
-    if (match_offset == this->compression_offset - 0x2000) {
-      continue;
+  size_t best_match_literals = 0;
+  for (size_t num_literals = 0; num_literals < this->compression_level; num_literals++) {
+    for (size_t z = 0; z < num_literals; z++) {
+      this->reverse_log.push_back(this->forward_log.at(this->reverse_log.end_offset()));
     }
 
-    size_t match_size = 0;
-    size_t match_loop_bytes = this->compression_offset - match_offset;
-    while ((match_size < 0x100) &&
-        (this->compression_offset + match_size < this->input_bytes) &&
-        (this->reverse_log[(match_offset + (match_size % match_loop_bytes)) & 0x1FFF] == this->forward_log[(this->compression_offset + match_size) & 0xFF])) {
-      match_size++;
-    }
+    size_t compression_offset = reverse_log.end_offset();
+    uint8_t first_v = this->forward_log.at(compression_offset);
+    const auto& start_offsets = this->reverse_log.find(first_v);
 
-    // If there are multiple matches of the longest length, use the latest one,
-    // since it's more likely that it can be expressed as a short copy instead
-    // of a long copy.
-    if (match_size >= best_match_size) {
-      best_match_offset = match_offset;
-      best_match_size = match_size;
+    for (auto it = start_offsets.begin(); (it != start_offsets.end()) && (best_match_size < 0x100); it++) {
+      size_t match_offset = *it;
+      if (match_offset + 0x2000 <= compression_offset) {
+        continue;
+      }
+
+      size_t match_size = 0;
+      size_t match_loop_bytes = compression_offset - match_offset;
+      while ((match_size < 0x100) &&
+          (compression_offset + match_size < this->input_bytes) &&
+          (this->reverse_log.at(match_offset + (match_size % match_loop_bytes)) == this->forward_log.at(compression_offset + match_size))) {
+        match_size++;
+      }
+
+      // If there are multiple matches of the longest length, use the latest one,
+      // since it's more likely that it can be expressed as a short copy instead
+      // of a long copy.
+      if (match_size >= (best_match_size + best_match_literals)) {
+        best_match_offset = match_offset;
+        best_match_size = match_size;
+        best_match_literals = num_literals;
+      }
+    }
+    for (size_t z = 0; z < num_literals; z++) {
+      this->reverse_log.pop_back();
     }
   }
 
-  // If there is a suitable match, write a backreference
-  bool should_write_literal = false;
-  size_t advance_bytes = 0;
-  ssize_t backreference_offset = best_match_offset - this->compression_offset;
+  // If the best match has literals preceding it, write those literals
+  for (size_t z = 0; z < best_match_literals; z++) {
+    this->advance_literal();
+  }
+
+  // If there is a suitable match, write a backreference; otherwise, write a
+  // literal. The backreference should be encoded:
+  // - As a short copy if offset in [-0x100, -1] and size in [2, 5]
+  // - As a long copy if offset in [-0x1FFF, -1] and size in [3, 9]
+  // - As an extended copy if offset in [-0x1FFF, -1] and size in [10, 0x100]
+  // Technically an extended copy can be used for sizes 1-9 as well, but if
+  // size is 1 or 2, writing literals is better (since it uses fewer data
+  // bytes and control bits), and a long copy can cover sizes 3-9 (and also
+  // uses fewer data bytes and control bits).
+  ssize_t backreference_offset = best_match_offset - this->reverse_log.end_offset();
   if (best_match_size < 2) {
-    should_write_literal = true;
+    // The match is too small; a literal would use fewer bits
+    this->advance_literal();
+
+  } else if ((backreference_offset >= -0x100) && (best_match_size <= 5)) {
+    this->advance_short_copy(backreference_offset, best_match_size);
+
+  } else if (best_match_size < 3) {
+    // We can't use a long copy for size 2, and it's not worth it to use an
+    // extended copy for this either (as noted above), so write a literal
+    this->advance_literal();
+
+  } else if ((backreference_offset >= -0x1FFF) && (best_match_size <= 9)) {
+    this->advance_long_copy(backreference_offset, best_match_size);
+
+  } else if ((backreference_offset >= -0x1FFF) && (best_match_size <= 0x100)) {
+    this->advance_extended_copy(backreference_offset, best_match_size);
 
   } else {
-    // The backreference should be encoded:
-    // - As a short copy if offset in [-0x100, -1] and size in [2, 5]
-    // - As a long copy if offset in [-0x1FFF, -1] and size in [3, 9]
-    // - As an extended copy if offset in [-0x1FFF, -1] and size in [10, 0x100]
-    // Technically an extended copy can be used for sizes 1-9 as well, but if
-    // size is 1 or 2, writing literals is better (since it uses fewer data
-    // bytes and control bits), and a long copy can cover sizes 3-9 (and also
-    // uses fewer data bytes and control bits).
+    throw logic_error("invalid best match");
+  }
+}
 
-    if ((backreference_offset >= -0x100) && (best_match_size <= 5)) {
-      // Write short copy
-      uint8_t size = best_match_size - 2;
-      this->write_control(false);
-      this->write_control(false);
-      this->write_control(size & 2);
-      this->write_control(size & 1);
-      this->output.put_u8(backreference_offset & 0xFF);
-      advance_bytes = best_match_size;
-
-    } else if (best_match_size < 3) {
-      // Can't use a long copy for size 2, and it's not worth it to use extended
-      // copy for this either (as noted above)
-      should_write_literal = true;
-
-    } else if ((backreference_offset >= -0x1FFF) && (best_match_size <= 9)) {
-      // Write long copy
-      this->write_control(false);
-      this->write_control(true);
-      uint16_t a = (backreference_offset << 3) | (best_match_size - 2);
-      this->output.put_u8(a & 0xFF);
-      this->output.put_u8(a >> 8);
-      advance_bytes = best_match_size;
-
-    } else if ((backreference_offset >= -0x1FFF) && (best_match_size <= 0x100)) {
-      // Write extended copy
-      this->write_control(false);
-      this->write_control(true);
-      uint16_t a = (backreference_offset << 3);
-      this->output.put_u8(a & 0xFF);
-      this->output.put_u8(a >> 8);
-      this->output.put_u8(best_match_size - 1);
-      advance_bytes = best_match_size;
-
-    } else {
-      throw logic_error("invalid best match");
+void PRSCompressor::move_forward_data_to_reverse_log(size_t size) {
+  for (; size > 0; size--) {
+    this->reverse_log.push_back(this->forward_log.at(this->reverse_log.end_offset()));
+    if (this->progress_fn && ((this->reverse_log.end_offset() & 0xFFF) == 0)) {
+      this->progress_fn(this->reverse_log.end_offset(), this->output.size());
     }
   }
+}
 
-  if (should_write_literal) {
-    this->write_control(true);
-    this->output.put_u8(this->forward_log[this->compression_offset & 0xFF]);
-    advance_bytes = 1;
-  }
+void PRSCompressor::advance_literal() {
+  this->write_control(true);
+  this->output.put_u8(this->forward_log.at(this->reverse_log.end_offset()));
+  this->move_forward_data_to_reverse_log(1);
+}
 
-  for (size_t z = 0; z < advance_bytes; z++) {
-    if ((this->compression_offset & 0x1000) && this->progress_fn) {
-      this->progress_fn(this->compression_offset, this->output.size());
-    }
-    size_t reverse_log_offset = this->compression_offset & 0x1FFF;
-    uint8_t existing_v = this->reverse_log[reverse_log_offset];
-    uint8_t new_v = this->forward_log[this->compression_offset & 0xFF];
+void PRSCompressor::advance_short_copy(ssize_t offset, size_t size) {
+  uint8_t encoded_size = size - 2;
+  this->write_control(false);
+  this->write_control(false);
+  this->write_control(encoded_size & 2);
+  this->write_control(encoded_size & 1);
+  this->output.put_u8(offset & 0xFF);
+  this->move_forward_data_to_reverse_log(size);
+}
 
-    if (this->compression_offset & (~0x1FFF)) {
-      this->reverse_log_index[existing_v].pop_front();
-    }
-    this->reverse_log[reverse_log_offset] = new_v;
-    this->reverse_log_index[new_v].emplace_back(this->compression_offset);
-    this->compression_offset++;
-  }
+void PRSCompressor::advance_long_copy(ssize_t offset, size_t size) {
+  this->write_control(false);
+  this->write_control(true);
+  uint16_t a = (offset << 3) | (size - 2);
+  this->output.put_u8(a & 0xFF);
+  this->output.put_u8(a >> 8);
+  this->move_forward_data_to_reverse_log(size);
+}
+
+void PRSCompressor::advance_extended_copy(ssize_t offset, size_t size) {
+  this->write_control(false);
+  this->write_control(true);
+  uint16_t a = (offset << 3);
+  this->output.put_u8(a & 0xFF);
+  this->output.put_u8(a >> 8);
+  this->output.put_u8(size - 1);
+  this->move_forward_data_to_reverse_log(size);
 }
 
 string& PRSCompressor::close() {
   if (!this->closed) {
     // Advance until all input is consumed
-    while (this->compression_offset < this->input_bytes) {
+    while (this->reverse_log.end_offset() < this->input_bytes) {
       this->advance();
     }
     // Write stop command
@@ -203,15 +217,20 @@ void PRSCompressor::flush_control() {
 }
 
 string prs_compress(
-    const void* vdata, size_t size, function<void(size_t, size_t)> progress_fn) {
-  PRSCompressor prs(progress_fn);
+    const void* vdata,
+    size_t size,
+    size_t compression_level,
+    function<void(size_t, size_t)> progress_fn) {
+  PRSCompressor prs(compression_level, progress_fn);
   prs.add(vdata, size);
   return std::move(prs.close());
 }
 
 string prs_compress(
-    const string& data, function<void(size_t, size_t)> progress_fn) {
-  return prs_compress(data.data(), data.size(), progress_fn);
+    const string& data,
+    size_t compression_level,
+    function<void(size_t, size_t)> progress_fn) {
+  return prs_compress(data.data(), data.size(), compression_level, progress_fn);
 }
 
 class ControlStreamReader {
@@ -226,6 +245,14 @@ public:
     }
     bool ret = this->bits & 1;
     this->bits >>= 1;
+    return ret;
+  }
+
+  uint8_t buffered_bits() const {
+    uint16_t z = this->bits;
+    uint8_t ret = 0;
+    for (; z & 0x0100; z >>= 1, ret++) {
+    }
     return ret;
   }
 
@@ -391,8 +418,10 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
 
   while (!r.eof()) {
     size_t r_offset = r.where();
+    uint8_t buffered_bits = cr.buffered_bits();
+    size_t input_bits = 8 * r_offset + (buffered_bits ? (8 - buffered_bits) : 0);
     if (cr.read()) {
-      fprintf(stream, "[%zX => %zX] literal %02hhX\n", r_offset, output_bytes, r.get_u8());
+      fprintf(stream, "[%zX / %zX => %zX] literal %02hhX\n", r_offset, input_bits, output_bytes, r.get_u8());
       output_bytes++;
 
     } else {
@@ -405,7 +434,7 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
         a |= (r.get_u8() << 8);
         offset = (a >> 3) | (~0x1FFF);
         if (offset == ~0x1FFF) {
-          fprintf(stream, "[%zX => %zX] end\n", r_offset, output_bytes);
+          fprintf(stream, "[%zX / %zX => %zX] end\n", r_offset, input_bits, output_bytes);
           break;
         }
         count = (a & 7) ? ((a & 7) + 2) : (r.get_u8() + 1);
@@ -417,8 +446,8 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
       }
 
       size_t read_offset = output_bytes + offset;
-      fprintf(stream, "[%zX => %zX] %s copy -%zX (from %zX) %zX\n",
-          r_offset, output_bytes, is_long_copy ? "long" : "short",
+      fprintf(stream, "[%zX / %zX => %zX] %s copy -%zX (from %zX) %zX\n",
+          r_offset, input_bits, output_bytes, is_long_copy ? "long" : "short",
           -offset, read_offset, count);
 
       if (read_offset >= output_bytes) {
