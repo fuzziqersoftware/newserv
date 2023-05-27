@@ -1557,6 +1557,7 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
         send_ship_info(c, decode_sjis(info));
       }
+      break;
     }
 
     case MenuID::TOURNAMENTS_FOR_SPEC:
