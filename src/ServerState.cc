@@ -24,6 +24,7 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       allow_saving(true),
       item_tracking_enabled(true),
       episode_3_send_function_call_enabled(false),
+      enable_dol_compression(false),
       catch_handler_exceptions(true),
       ep3_behavior_flags(0),
       run_shell_behavior(RunShellBehavior::DEFAULT),
@@ -655,6 +656,12 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
   }
 
   try {
+    this->enable_dol_compression = d.at("CompressDOLFiles")->as_bool();
+  } catch (const out_of_range&) {
+    this->enable_dol_compression = false;
+  }
+
+  try {
     this->catch_handler_exceptions = d.at("CatchHandlerExceptions")->as_bool();
   } catch (const out_of_range&) {
     this->catch_handler_exceptions = true;
@@ -860,5 +867,5 @@ void ServerState::compile_functions() {
 
 void ServerState::load_dol_files() {
   config_log.info("Loading DOL files");
-  this->dol_file_index.reset(new DOLFileIndex("system/dol"));
+  this->dol_file_index.reset(new DOLFileIndex("system/dol", this->enable_dol_compression));
 }

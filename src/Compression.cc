@@ -216,8 +216,9 @@ string prs_compress(
 
 class ControlStreamReader {
 public:
-  ControlStreamReader(StringReader& r) : r(r),
-                                         bits(0x0000) {}
+  ControlStreamReader(StringReader& r)
+      : r(r),
+        bits(0x0000) {}
 
   bool read() {
     if (!(this->bits & 0x0100)) {

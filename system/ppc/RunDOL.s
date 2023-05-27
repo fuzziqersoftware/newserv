@@ -53,8 +53,25 @@ copy_code_to_low_memory__again:
 
 
 run_dol:
-  lwz     r30, [r31 + 0x10]  # r30 = DOL base ptr
+  lwz     r30, [r31 + 0x10]  # r30 = data base ptr
 
+  # Decompress the file first. If the compressed size is zero, then skip this
+  # step (the file is not compressed). The header consists of two fields:
+  # compressed size followed by decompressed size.
+  lwz     r6, [r30]
+  cmplwi  r6, 0
+  beq     run_dol__not_compressed
+  lwz     r5, [r30 + 4]
+  addi    r4, r30, 8  # Compressed data immediately follows the 2 header fields
+  sub     r3, r30, r5  # Decompress to immediately before the compressed data
+  mr      r30, r3  # Save DOL header pointer for after decompression
+  bl      prs_decompress
+  b       run_dol__decompressed
+
+run_dol__not_compressed:
+  addi    r30, r30, 8
+
+run_dol__decompressed:
   # DOL files are very simple: they have up to 7 text sections, up to 11 data
   # sections, and a BSS section and an entrypoint. No imports or other fancy
   # things to do - we just have to move a bunch of bytes around.
@@ -116,6 +133,11 @@ run_dol__go_to_entrypoint:
 flush_cached_code_writes:
   .include FlushCachedCode
   blr
+
+
+
+prs_decompress:
+  .include PRSDecompress
 
 
 

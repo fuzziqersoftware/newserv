@@ -76,12 +76,13 @@ struct DOLFileIndex {
     std::string data;
   };
 
+  bool files_compressed;
   std::vector<std::shared_ptr<DOLFile>> item_id_to_file;
   std::map<std::string, std::shared_ptr<DOLFile>> name_to_file;
   std::shared_ptr<const Menu> menu;
 
   DOLFileIndex() = default;
-  explicit DOLFileIndex(const std::string& directory);
+  DOLFileIndex(const std::string& directory, bool compress);
 
   inline bool empty() const {
     return this->name_to_file.empty() && this->item_id_to_file.empty();

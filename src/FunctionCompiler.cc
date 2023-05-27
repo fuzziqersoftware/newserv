@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <phosg/Filesystem.hh>
+#include <phosg/Time.hh>
 #include <stdexcept>
 
 #ifdef HAVE_RESOURCE_FILE
@@ -11,6 +12,7 @@
 #endif
 
 #include "CommandFormats.hh"
+#include "Compression.hh"
 #include "Loggers.hh"
 
 using namespace std;
@@ -247,7 +249,8 @@ bool FunctionCodeIndex::patch_menu_empty(uint32_t specific_version) const {
   return true;
 }
 
-DOLFileIndex::DOLFileIndex(const string& directory) {
+DOLFileIndex::DOLFileIndex(const string& directory, bool compress)
+    : files_compressed(compress) {
   if (!function_compiler_available()) {
     function_compiler_log.info("Function compiler is not available");
     return;
@@ -274,16 +277,63 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
       dol->name = name;
 
       string path = directory + "/" + filename;
-      dol->data = load_file(path);
+      string file_data = load_file(path);
+
+      string description;
+      if (this->files_compressed) {
+        uint64_t start = now();
+        string compressed = prs_compress(file_data);
+        StringWriter w;
+        if (compressed.size() >= file_data.size()) {
+          w.put_u32b(0);
+          w.put_u32b(file_data.size());
+          w.write(file_data);
+        } else {
+          w.put_u32b(compressed.size());
+          w.put_u32b(file_data.size());
+          w.write(compressed);
+        }
+        while (w.size() & 3) {
+          w.put_u8(0);
+        }
+        dol->data = std::move(w.str());
+        uint64_t diff = now() - start;
+
+        string orig_size_str = format_size(file_data.size());
+        string compressed_size_str = format_size(dol->data.size());
+        string time_str = format_duration(diff);
+
+        if (compressed.size() >= file_data.size()) {
+          function_compiler_log.info("Loaded and compressed DOL file %s (%s -> %s, %s) (inefficient compression; using uncompressed version)",
+              dol->name.c_str(), orig_size_str.c_str(), compressed_size_str.c_str(), time_str.c_str());
+          description = string_printf("$C6%s$C7\n%s", dol->name.c_str(), orig_size_str.c_str());
+        } else {
+          function_compiler_log.info("Loaded and compressed DOL file %s (%s -> %s, %s)",
+              dol->name.c_str(), orig_size_str.c_str(), compressed_size_str.c_str(), time_str.c_str());
+          description = string_printf("$C6%s$C7\n%s\n%s (orig)", dol->name.c_str(), compressed_size_str.c_str(), orig_size_str.c_str());
+        }
+
+      } else {
+        StringWriter w;
+        w.put_u32b(0);
+        w.put_u32b(file_data.size());
+        w.write(file_data);
+        while (w.size() & 3) {
+          w.put_u8(0);
+        }
+        dol->data = std::move(w.str());
+
+        string orig_size_str = format_size(dol->data.size());
+        function_compiler_log.info("Loaded DOL file %s (%s)", filename.c_str(), orig_size_str.c_str());
+
+        description = string_printf("$C6%s$C7\n%s", dol->name.c_str(), orig_size_str.c_str());
+      }
 
       this->name_to_file.emplace(dol->name, dol);
       this->item_id_to_file.emplace_back(dol);
 
-      string size_str = format_size(dol->data.size());
-      string description = string_printf("$C6%s$C7\n%s", dol->name.c_str(), size_str.c_str());
       menu->items.emplace_back(dol->menu_item_id, decode_sjis(dol->name),
           decode_sjis(description), MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
-      function_compiler_log.info("Loaded DOL file %s", filename.c_str());
 
     } catch (const exception& e) {
       function_compiler_log.warning("Failed to load DOL file %s: %s", filename.c_str(), e.what());
