@@ -1,10 +1,14 @@
 # This function returns the game version, with values more specific than can be
-# detected by the sub_version field in various login commands.
+# detected by the sub_version field in the various login commands (e.g. 9D/9E).
 
-# The returned value has the format 03GGRRVV, where:
-#   G = game (Ox4F (O) = Episodes 1&2, 0x53 (S) = Episode 3)
-#   R = region (0x45 (E), 0x4A (J), 0x50 (P))
-#   V = minor version (0 = 1.00, 1 = 1.01, 2 = 1.02, etc.)
+# The returned value has the format SSGGRRVV, where:
+#   S = 33 (which represents PSO GC)
+#   G = game (4F (O) = Episodes 1&2, 53 (S) = Episode 3)
+#   R = region (45 (E), 4A (J), or 50 (P))
+#   V = minor version | 30 (30 = 1.00, 31 = 1.01, 32 = 1.02, etc.)
+# This results in a 4-character ASCII-printable version code which encodes all
+# of the above information. This value is called specific_version in the places
+# where it's used by the server.
 
 newserv_index_E3:
 

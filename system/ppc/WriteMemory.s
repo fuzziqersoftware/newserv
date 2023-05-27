@@ -12,16 +12,20 @@
 # with the .include directive; there is an example of this in the code below.
 
 # Patches are functions that are available to run upon client request. They can
-# be made available in the Patches menu or via the $patch command. In general,
-# patches should be named like PATCHNAME.VXLS.patch.s, where V, X, L, and S
+# be made available in the Patches menu or via the $patch command. If a label
+# named hide_from_patches_menu is present anywhere in the code, the patch is
+# only usable via the $patch command and does not appear in the Patches menu.
+# Patches should be named like PATCHNAME.VXLS.patch.s, where V, X, L, and S
 # denote which specific game version the patch is for. Specifically:
 #   V should be 3 for PSO GameCube
 #   X should be O for Episodes 1 & 2, and S for Episode 3
 #   L should be E, J, or P for USA, Japanese, or Europe
 #   S should be 0, 1, 2, etc. for the disc version (0 = v1.00, 1 = v1.01, etc.)
-# If a label named hide_from_patches_menu is present anywhere in the code, the
-# patch is only usable via the $patch command and does not appear in the Patches
-# menu.
+# (For the curious, these four-character version codes directly match the
+# values returned by the VersionDetect function - see VersionDetect.s.) For
+# example, the patch that gives the player a VIP card in Episode 3 USA is in
+# the file VIPCard.3SE0.patch.s. (If there were a Japanese version of that
+# patch, it would be in VIPCard.3SJ0.patch.s.)
 
 # For example, to use this function to write the bytes 38 00 00 05 to the
 # address 8010521C, send_function_call could be called like this:
