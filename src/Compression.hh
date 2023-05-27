@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 
+#include <array>
 #include <deque>
 #include <functional>
 #include <string>
