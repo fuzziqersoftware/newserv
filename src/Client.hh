@@ -58,6 +58,11 @@ struct Client {
     // that version is similar enough to the release version of Episode 3 that
     // newserv does not have to change its behavior at all.
     IS_TRIAL_EDITION = 0x00002000,
+    // A 90 01 command has been sent (which proto will send a 93 in response to,
+    // and actual DCv1 will send a 92)
+    CHECKED_FOR_DC_V1_PROTOTYPE = 0x00080000,
+    // Client is DC v1 prototype
+    IS_DC_V1_PROTOTYPE = 0x00040000,
     // Client is DC v1
     IS_DC_V1 = 0x00000010,
     // For patch server clients, client is Blue Burst rather than PC

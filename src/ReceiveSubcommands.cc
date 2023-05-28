@@ -1618,12 +1618,17 @@ void on_subcommand(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   if (data.empty()) {
     throw runtime_error("game command is empty");
   }
-  uint8_t which = static_cast<uint8_t>(data[0]);
-  auto fn = subcommand_handlers[which];
-  if (fn) {
-    fn(s, l, c, command, flag, data);
+  if (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE))) {
+    // TODO: We should convert these to non-trial formats and vice versa
+    forward_subcommand(l, c, command, flag, std::move(data));
   } else {
-    on_unimplemented(s, l, c, command, flag, data);
+    uint8_t which = static_cast<uint8_t>(data[0]);
+    auto fn = subcommand_handlers[which];
+    if (fn) {
+      fn(s, l, c, command, flag, data);
+    } else {
+      on_unimplemented(s, l, c, command, flag, data);
+    }
   }
 }
 

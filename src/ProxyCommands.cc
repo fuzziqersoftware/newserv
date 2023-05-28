@@ -1323,8 +1323,8 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ServerState>,
   bool modified = false;
 
   size_t num_replacements = 0;
-  session.lobby_client_id = cmd.client_id;
-  update_leader_id(session, cmd.leader_id);
+  session.lobby_client_id = cmd.lobby_flags.client_id;
+  update_leader_id(session, cmd.lobby_flags.leader_id);
   for (size_t x = 0; x < flag; x++) {
     size_t index = cmd.entries[x].lobby_data.client_id;
     if (index >= session.lobby_players.size()) {
@@ -1354,11 +1354,11 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ServerState>,
   }
 
   if (session.options.override_lobby_event >= 0) {
-    cmd.event = session.options.override_lobby_event;
+    cmd.lobby_flags.event = session.options.override_lobby_event;
     modified = true;
   }
   if (session.options.override_lobby_number >= 0) {
-    cmd.lobby_number = session.options.override_lobby_number;
+    cmd.lobby_flags.lobby_number = session.options.override_lobby_number;
     modified = true;
   }
 

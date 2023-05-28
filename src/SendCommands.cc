@@ -27,6 +27,7 @@ const unordered_set<uint32_t> v2_crypt_initial_client_commands({
     0x00260088, // (17) DCNTE license check
     0x00B0008B, // (02) DCNTE login
     0x0114008B, // (02) DCNTE extended login
+    0x00260090, // (17) DCv1 prototype and JP license check
     0x00280090, // (17) DCv1 license check
     0x00B00093, // (02) DCv1 login
     0x01140093, // (02) DCv1 extended login
@@ -1477,6 +1478,33 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   send_command(c, 0x64, player_count, data);
 }
 
+void send_join_game_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+  if (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
+    throw runtime_error("DC NTE players cannot join spectator teams");
+  }
+
+  S_JoinGame_DCNTE_64 cmd;
+  cmd.client_id = c->lobby_client_id;
+  cmd.leader_id = l->leader_id;
+  cmd.disable_udp = 0x01;
+  cmd.variations = l->variations;
+
+  size_t player_count = 0;
+  for (size_t x = 0; x < 4; x++) {
+    if (l->clients[x]) {
+      cmd.lobby_data[x].player_tag = 0x00010000;
+      cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
+      cmd.lobby_data[x].client_id = l->clients[x]->lobby_client_id;
+      cmd.lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
+      player_count++;
+    } else {
+      cmd.lobby_data[x].clear();
+    }
+  }
+
+  send_command_t(c, 0x64, player_count, cmd);
+}
+
 template <typename LobbyDataT, typename DispDataT>
 void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     shared_ptr<Client> joining_client = nullptr) {
@@ -1510,16 +1538,16 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     }
   }
 
-  S_JoinLobby<LobbyDataT, DispDataT> cmd;
-  cmd.client_id = c->lobby_client_id;
-  cmd.leader_id = l->leader_id;
-  cmd.disable_udp = 0x01;
-  cmd.lobby_number = lobby_type;
-  cmd.block_number = l->block;
-  cmd.unknown_a1 = 0;
-  cmd.event = l->event;
-  cmd.unknown_a2 = 0;
-  cmd.unused = 0;
+  S_JoinLobby<LobbyFlags, LobbyDataT, DispDataT> cmd;
+  cmd.lobby_flags.client_id = c->lobby_client_id;
+  cmd.lobby_flags.leader_id = l->leader_id;
+  cmd.lobby_flags.disable_udp = 0x01;
+  cmd.lobby_flags.lobby_number = lobby_type;
+  cmd.lobby_flags.block_number = l->block;
+  cmd.lobby_flags.unknown_a1 = 0;
+  cmd.lobby_flags.event = l->event;
+  cmd.lobby_flags.unknown_a2 = 0;
+  cmd.lobby_flags.unused = 0;
 
   vector<shared_ptr<Client>> lobby_clients;
   if (joining_client) {
@@ -1549,6 +1577,50 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
 }
 
+void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
+    shared_ptr<Client> joining_client = nullptr) {
+  uint8_t command;
+  if (l->is_game()) {
+    if (joining_client) {
+      command = 0x65;
+    } else {
+      throw logic_error("send_join_lobby_dc_nte should not be used for primary game join command");
+    }
+  } else {
+    command = joining_client ? 0x68 : 0x67;
+  }
+
+  S_JoinLobby_DCNTE_65_67_68 cmd;
+  cmd.lobby_flags.client_id = c->lobby_client_id;
+  cmd.lobby_flags.leader_id = l->leader_id;
+  cmd.lobby_flags.disable_udp = 0x01;
+
+  vector<shared_ptr<Client>> lobby_clients;
+  if (joining_client) {
+    lobby_clients.emplace_back(joining_client);
+  } else {
+    for (auto lc : l->clients) {
+      if (lc) {
+        lobby_clients.emplace_back(lc);
+      }
+    }
+  }
+
+  size_t used_entries = 0;
+  for (const auto& lc : lobby_clients) {
+    auto& e = cmd.entries[used_entries++];
+    e.lobby_data.player_tag = 0x00010000;
+    e.lobby_data.guild_card = lc->license->serial_number;
+    e.lobby_data.client_id = lc->lobby_client_id;
+    e.lobby_data.name = lc->game_data.player()->disp.name;
+    e.inventory = lc->game_data.player()->inventory;
+    e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lc->game_data.player()->disp);
+    e.disp.enforce_v2_limits();
+  }
+
+  send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
+}
+
 void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (l->is_game()) {
     switch (c->version()) {
@@ -1556,6 +1628,11 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         send_join_game_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3>(c, l);
         break;
       case GameVersion::DC:
+        if (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
+          send_join_game_dc_nte(c, l);
+          break;
+        }
+        [[fallthrough]];
       case GameVersion::GC:
         send_join_game_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>(c, l);
         break;
@@ -1574,6 +1651,11 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3>(c, l);
         break;
       case GameVersion::DC:
+        if (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
+          send_join_lobby_dc_nte(c, l);
+          break;
+        }
+        [[fallthrough]];
       case GameVersion::GC:
         send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>(c, l);
         break;
@@ -1603,6 +1685,11 @@ void send_player_join_notification(shared_ptr<Client> c,
       send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3>(c, l, joining_client);
       break;
     case GameVersion::DC:
+      if (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
+        send_join_lobby_dc_nte(c, l, joining_client);
+        break;
+      }
+      [[fallthrough]];
     case GameVersion::GC:
       send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>(c, l, joining_client);
       break;

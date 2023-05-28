@@ -149,7 +149,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
       } else if (header.command == 0x04) {
         check_ak(check_size_t<C_LegacyLogin_PC_V3_04>(cmd_data, cmd_size).access_key);
       } else if (header.command == 0x90) {
-        check_ak(check_size_t<C_LoginV1_DC_PC_V3_90>(cmd_data, cmd_size).access_key);
+        check_ak(check_size_t<C_LoginV1_DC_PC_V3_90>(cmd_data, cmd_size, sizeof(C_LoginV1_DC_PC_V3_90), 0xFFFF).access_key);
       } else if (header.command == 0x93) {
         const auto& cmd = check_size_t<C_LoginV1_DC_93>(cmd_data, cmd_size,
             sizeof(C_LoginV1_DC_93), sizeof(C_LoginExtendedV1_DC_93));

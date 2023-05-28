@@ -471,7 +471,7 @@ static void on_8B_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_90_DC(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_LoginV1_DC_PC_V3_90>(data);
+  const auto& cmd = check_size_t<C_LoginV1_DC_PC_V3_90>(data, sizeof(C_LoginV1_DC_PC_V3_90), 0xFFFF);
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
   c->flags |= Client::Flag::IS_DC_V1;
@@ -504,6 +504,10 @@ static void on_90_DC(shared_ptr<ServerState> s, shared_ptr<Client> c,
 static void on_92_DC(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   check_size_t<C_RegisterV1_DC_92>(data);
+  // It appears that in response to 90 01, the DCv1 prototype sends 93 rather
+  // than 92, so we use the presence of a 92 command to determine that the
+  // client is actually DCv1 and not the prototype.
+  c->flags = (c->flags & ~Client::Flag::IS_DC_V1_PROTOTYPE) | Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE;
   send_command(c, 0x92, 0x01);
 }
 
@@ -546,7 +550,18 @@ static void on_93_DC(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
   send_update_client_config(c);
 
-  on_login_complete(s, c);
+  // The first time we receive a 93 from a DC client, we set this flag and send
+  // a 92. The IS_DC_V1_PROTOTYPE flag will be removed if the client sends a 92
+  // command (which it seems the prototype never does). This is why we always
+  // respond with 90 01 here - that's the only case where actual DCv1 sends a
+  // 92 command. The IS_DC_V1_PROTOTYPE flag will be removed if the client does
+  // indeed send a 92.
+  if (!(c->flags & Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE)) {
+    send_command(c, 0x90, 0x01);
+    c->flags |= (Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE | Client::Flag::IS_DC_V1_PROTOTYPE);
+  } else {
+    on_login_complete(s, c);
+  }
 }
 
 static void on_9A(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -1673,9 +1688,10 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           c->should_send_to_lobby_server = true;
           if (!(c->flags & Client::Flag::SAVE_ENABLED)) {
             c->flags |= Client::Flag::SAVE_ENABLED;
-            // DC NTE crashes if it receives a 97 command, so we instead do the
-            // redirect immediately
-            if ((c->version() == GameVersion::DC) && (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+            // DC NTE and the v1 prototype crash if they receive a 97 command,
+            // so we instead do the redirect immediately
+            if ((c->version() == GameVersion::DC) &&
+                (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE))) {
               send_client_to_lobby_server(s, c);
             } else {
               send_command(c, 0x97, 0x01);
@@ -3223,7 +3239,7 @@ shared_ptr<Lobby> create_game_generic(
   bool is_solo = (game->mode == GameMode::SOLO);
 
   // Generate the map variations
-  if (game->is_ep3()) {
+  if (game->is_ep3() || (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)))) {
     game->variations.clear(0);
   } else {
     generate_variations(game->variations, game->random, game->episode, is_solo);
@@ -3307,60 +3323,72 @@ static void on_C1_PC(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
 
-  // Only allow E7/EC from Ep3 clients
-  bool client_is_ep3 = !!(c->flags & Client::Flag::IS_EPISODE_3);
-  if (((command & 0xF0) == 0xE0) != client_is_ep3) {
-    throw runtime_error("invalid command");
-  }
+  shared_ptr<Lobby> game;
+  if (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE))) {
+    const auto& cmd = check_size_t<C_CreateGame_DCNTE<char>>(data);
+    u16string name = decode_sjis(cmd.name);
+    u16string password = decode_sjis(cmd.password);
+    game = create_game_generic(
+        s, c, name.c_str(), password.c_str(), Episode::EP1, GameMode::NORMAL, 0, 0);
 
-  Episode episode = Episode::NONE;
-  uint32_t flags = 0;
-  if (c->version() == GameVersion::DC) {
-    if (cmd.episode) {
+  } else {
+    const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
+
+    // Only allow E7/EC from Ep3 clients
+    bool client_is_ep3 = !!(c->flags & Client::Flag::IS_EPISODE_3);
+    if (((command & 0xF0) == 0xE0) != client_is_ep3) {
+      throw runtime_error("invalid command");
+    }
+
+    Episode episode = Episode::NONE;
+    uint32_t flags = 0;
+    if (c->version() == GameVersion::DC) {
+      if (cmd.episode) {
+        flags |= Lobby::Flag::NON_V1_ONLY;
+      }
+      episode = Episode::EP1;
+    } else if (client_is_ep3) {
       flags |= Lobby::Flag::NON_V1_ONLY;
+      episode = Episode::EP3;
+    } else { // XB/GC non-Ep3
+      flags |= Lobby::Flag::NON_V1_ONLY;
+      episode = cmd.episode == 2 ? Episode::EP2 : Episode::EP1;
     }
-    episode = Episode::EP1;
-  } else if (client_is_ep3) {
-    flags |= Lobby::Flag::NON_V1_ONLY;
-    episode = Episode::EP3;
-  } else { // XB/GC non-Ep3
-    flags |= Lobby::Flag::NON_V1_ONLY;
-    episode = cmd.episode == 2 ? Episode::EP2 : Episode::EP1;
+
+    u16string name = decode_sjis(cmd.name);
+    u16string password = decode_sjis(cmd.password);
+
+    GameMode mode = GameMode::NORMAL;
+    if (cmd.battle_mode) {
+      mode = GameMode::BATTLE;
+    }
+    if (cmd.challenge_mode) {
+      if (client_is_ep3) {
+        flags |= Lobby::Flag::SPECTATORS_FORBIDDEN;
+      } else {
+        mode = GameMode::CHALLENGE;
+      }
+    }
+
+    shared_ptr<Lobby> watched_lobby;
+    if (command == 0xE7) {
+      if (cmd.menu_id != MenuID::GAME) {
+        throw runtime_error("incorrect menu ID");
+      }
+      watched_lobby = s->find_lobby(cmd.item_id);
+      if (watched_lobby->flags & Lobby::Flag::SPECTATORS_FORBIDDEN) {
+        send_lobby_message_box(c, u"$C6This game does not\nallow spectators");
+        return;
+      }
+      flags |= Lobby::Flag::IS_SPECTATOR_TEAM;
+    }
+
+    game = create_game_generic(
+        s, c, name.c_str(), password.c_str(), episode, mode, cmd.difficulty,
+        flags, watched_lobby);
   }
 
-  u16string name = decode_sjis(cmd.name);
-  u16string password = decode_sjis(cmd.password);
-
-  GameMode mode = GameMode::NORMAL;
-  if (cmd.battle_mode) {
-    mode = GameMode::BATTLE;
-  }
-  if (cmd.challenge_mode) {
-    if (client_is_ep3) {
-      flags |= Lobby::Flag::SPECTATORS_FORBIDDEN;
-    } else {
-      mode = GameMode::CHALLENGE;
-    }
-  }
-
-  shared_ptr<Lobby> watched_lobby;
-  if (command == 0xE7) {
-    if (cmd.menu_id != MenuID::GAME) {
-      throw runtime_error("incorrect menu ID");
-    }
-    watched_lobby = s->find_lobby(cmd.item_id);
-    if (watched_lobby->flags & Lobby::Flag::SPECTATORS_FORBIDDEN) {
-      send_lobby_message_box(c, u"$C6This game does not\nallow spectators");
-      return;
-    }
-    flags |= Lobby::Flag::IS_SPECTATOR_TEAM;
-  }
-
-  auto game = create_game_generic(
-      s, c, name.c_str(), password.c_str(), episode, mode, cmd.difficulty,
-      flags, watched_lobby);
   if (game) {
     s->change_client_lobby(c, game);
     c->flags |= Client::Flag::LOADING;

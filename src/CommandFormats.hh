@@ -1149,6 +1149,15 @@ struct S_JoinGame {
   uint8_t unused3 = 0;
 } __packed__;
 
+struct S_JoinGame_DCNTE_64 {
+  uint8_t client_id;
+  uint8_t leader_id;
+  uint8_t disable_udp;
+  uint8_t unused;
+  parray<le_uint32_t, 0x20> variations;
+  parray<PlayerLobbyDataDCGC, 4> lobby_data;
+} __packed__;
+
 struct S_JoinGame_PC_64 : S_JoinGame<PlayerLobbyDataPC, PlayerDispDataDCPCV3> {
 } __packed__;
 struct S_JoinGame_DC_GC_64 : S_JoinGame<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3> {
@@ -1177,9 +1186,14 @@ struct S_JoinGame_BB_64 : S_JoinGame<PlayerLobbyDataBB, PlayerDispDataBB> {
 // command (described above), and the players already in the game receive a 65
 // command containing only the joining player's data.
 
-// Header flag = entry count (always 1 for 65 and 68; up to 0x0C for 67)
-template <typename LobbyDataT, typename DispDataT>
-struct S_JoinLobby {
+struct LobbyFlags_DCNTE {
+  uint8_t client_id = 0;
+  uint8_t leader_id = 0;
+  uint8_t disable_udp = 1;
+  uint8_t unused = 0;
+} __packed__;
+
+struct LobbyFlags {
   uint8_t client_id = 0;
   uint8_t leader_id = 0;
   uint8_t disable_udp = 1;
@@ -1189,6 +1203,12 @@ struct S_JoinLobby {
   uint8_t event = 0;
   uint8_t unknown_a2 = 0;
   le_uint32_t unused = 0;
+} __packed__;
+
+// Header flag = entry count (always 1 for 65 and 68; up to 0x0C for 67)
+template <typename LobbyFlagsT, typename LobbyDataT, typename DispDataT>
+struct S_JoinLobby {
+  LobbyFlagsT lobby_flags;
   struct Entry {
     LobbyDataT lobby_data;
     PlayerInventory inventory;
@@ -1202,26 +1222,22 @@ struct S_JoinLobby {
     return offsetof(S_JoinLobby, entries) + used_entries * sizeof(Entry);
   }
 } __packed__;
+
+struct S_JoinLobby_DCNTE_65_67_68
+    : S_JoinLobby<LobbyFlags_DCNTE, PlayerLobbyDataDCGC, PlayerDispDataDCPCV3> {
+} __packed__;
 struct S_JoinLobby_PC_65_67_68
-    : S_JoinLobby<PlayerLobbyDataPC, PlayerDispDataDCPCV3> {
+    : S_JoinLobby<LobbyFlags, PlayerLobbyDataPC, PlayerDispDataDCPCV3> {
 } __packed__;
 struct S_JoinLobby_DC_GC_65_67_68_Ep3_EB
-    : S_JoinLobby<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3> {
+    : S_JoinLobby<LobbyFlags, PlayerLobbyDataDCGC, PlayerDispDataDCPCV3> {
 } __packed__;
 struct S_JoinLobby_BB_65_67_68
-    : S_JoinLobby<PlayerLobbyDataBB, PlayerDispDataBB> {
+    : S_JoinLobby<LobbyFlags, PlayerLobbyDataBB, PlayerDispDataBB> {
 } __packed__;
 
 struct S_JoinLobby_XB_65_67_68 {
-  uint8_t client_id = 0;
-  uint8_t leader_id = 0;
-  uint8_t disable_udp = 1;
-  uint8_t lobby_number = 0;
-  uint8_t block_number = 0;
-  uint8_t unknown_a1 = 0;
-  uint8_t event = 0;
-  uint8_t unknown_a2 = 0;
-  parray<uint8_t, 4> unknown_a3;
+  LobbyFlags lobby_flags;
   parray<le_uint32_t, 6> unknown_a4;
   struct Entry {
     PlayerLobbyDataXB lobby_data;
@@ -1516,7 +1532,10 @@ struct C_LoginExtended_DCNTE_8B : C_Login_DCNTE_8B {
 struct C_LoginV1_DC_PC_V3_90 {
   ptext<char, 0x11> serial_number;
   ptext<char, 0x11> access_key;
-  parray<uint8_t, 2> unused;
+  // Note: There is a bug in the Japanese and prototype versions of DCv1 that
+  // cause the client to send this command despite its size not being a
+  // multiple of 4. This is fixed in later versions, so we handle both cases in
+  // the receive handler.
 } __packed__;
 
 // 90 (S->C): License verification result (V3)
@@ -2280,13 +2299,17 @@ struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<le_uint16_t, char16_t>
 // Internal name: SndCreateGame
 
 template <typename CharT>
-struct C_CreateGame {
+struct C_CreateGame_DCNTE {
   // menu_id and item_id are only used for the E7 (create spectator team) form
   // of this command
   le_uint32_t menu_id;
   le_uint32_t item_id;
   ptext<CharT, 0x10> name;
   ptext<CharT, 0x10> password;
+} __packed__;
+
+template <typename CharT>
+struct C_CreateGame : C_CreateGame_DCNTE<CharT> {
   uint8_t difficulty = 0; // 0-3 (always 0 on Episode 3)
   uint8_t battle_mode = 0; // 0 or 1 (always 0 on Episode 3)
   // Note: Episode 3 uses the challenge mode flag for view battle permissions.
