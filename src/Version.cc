@@ -71,7 +71,8 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
       return Client::Flag::NO_D6_AFTER_LOBBY;
     case 0x35: // GC Ep1&2 JP v1.04 (Plus)
       return Client::Flag::NO_D6_AFTER_LOBBY |
-          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
+          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL |
+          Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
     case 0x36: // GC Ep1&2 US v1.02 (Plus)
     case 0x39: // GC Ep1&2 JP v1.05 (Plus)
       return Client::Flag::NO_D6_AFTER_LOBBY |
@@ -80,11 +81,13 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
     case 0x40: // GC Ep3 trial
       return Client::Flag::NO_D6_AFTER_LOBBY |
           Client::Flag::IS_EPISODE_3 |
-          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
+          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL |
+          Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
     case 0x42: // GC Ep3 JP
       return Client::Flag::NO_D6_AFTER_LOBBY |
           Client::Flag::IS_EPISODE_3 |
-          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL;
+          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL |
+          Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
     case 0x41: // GC Ep3 US
       return Client::Flag::NO_D6_AFTER_LOBBY |
           Client::Flag::IS_EPISODE_3 |

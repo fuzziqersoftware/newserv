@@ -602,7 +602,7 @@ struct PlayerConfig {
   // 0x2F0 bytes long. They presumably did this because of the checksum logic.
   /* 0158 */ parray<uint8_t, 1000> card_counts;
   // These appear to be an attempt at checksumming the card counts array, but
-  // the algorithm don't cover the entire array and instead reads from later
+  // the algorithm doesn't cover the entire array and instead reads from later
   // parts of this structure. This appears to be due to a copy/paste error in
   // the original code. The algorithm sums card_counts [0] through [19] and puts
   // the result in card_count_checksums[0], then sums card counts [50] through
