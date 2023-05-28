@@ -97,12 +97,20 @@ void ServerShell::execute_command(const string& command) {
 General commands:\n\
   help\n\
     You\'re reading it now.\n\
-\n\
-Server commands:\n\
   exit (or ctrl+d)\n\
     Shut down the server.\n\
-  reload <item> ...\n\
-    Reload various parts of the server configuration. <item> can be:\n\
+  on SESSION COMMAND [ARGS...]\n\
+    Run a command on a specific game server client or proxy server session.\n\
+    Without this prefix, commands that affect a single client or session will\n\
+    work only if there's exactly one connected client or open session. SESSION\n\
+    may be a client ID (e.g. C-3), a player name, a license serial number, or\n\
+    a BB account username. For proxy commands, SESSION should be the session\n\
+    ID, which generally is the same as the player\'s serial number and appears\n\
+    after \"LinkedSession:\" in the log output.\n\
+\n\
+Server commands:\n\
+  reload ITEM [ITEM...]\n\
+    Reload various parts of the server configuration. ITEMs can be:\n\
       licenses - reload the license index file\n\
       patches - reindex the PC and BB patch directories\n\
       battle-params - reload the enemy stats files\n\
@@ -119,7 +127,7 @@ Server commands:\n\
     the battle parameters, so if these are changed without restarting, clients\n\
     may see (for example) EXP messages inconsistent with the amounts of EXP\n\
     actually received.\n\
-  add-license <parameters>\n\
+  add-license PARAMETERS...\n\
     Add a license to the server. <parameters> is some subset of the following:\n\
       bb-username=<username> (BB username)\n\
       bb-password=<password> (BB password)\n\
@@ -127,31 +135,31 @@ Server commands:\n\
       access-key=<access-key> (DC/GC/PC access key)\n\
       serial=<serial-number> (decimal serial number; required for all licenses)\n\
       privileges=<privilege-mask> (can be normal, mod, admin, root, or numeric)\n\
-  update-license <serial-number> <parameters>\n\
+  update-license SERIAL-NUMBER PARAMETERS...\n\
     Update an existing license. <serial-number> specifies which license to\n\
     update. The options in <parameters> are the same as for the add-license\n\
     command.\n\
-  delete-license <serial-number>\n\
+  delete-license SERIAL-NUMBER\n\
     Delete a license from the server.\n\
   list-licenses\n\
     List all licenses registered on the server.\n\
-  set-allow-unregistered-users <true/false>\n\
+  set-allow-unregistered-users on|off\n\
     Enable or disable allowing unregistered users on the server. Disabling this\n\
     does not disconnect unregistered users who are already connected.\n\
-  set-event <event>\n\
+  set-event EVENT\n\
     Set the event in all lobbies, and in the main menu before joining a lobby.\n\
-    <event> can be none, xmas, val, easter, hallo, sonic, newyear, summer,\n\
-    white, wedding, fall, s-spring, s-summer, or spring.\n\
-  set-ep3-menu-song <song-num>\n\
+    EVENT can be none, xmas, val, easter, hallo, sonic, newyear, summer, white,\n\
+    wedding, fall, s-spring, s-summer, or spring.\n\
+  set-ep3-menu-song SONG-NUM\n\
     Set the song that plays in the main menu for Episode III clients. If an\n\
     event is also set, the event's visuals appear but this song still plays.\n\
-    Song IDs are 0 through 51; the default song is -1.\n\
-  announce <message>\n\
+    Song numbers are 0 through 51; the default song is -1.\n\
+  announce MESSAGE\n\
     Send an announcement message to all players.\n\
-  create-tournament \"Tournament Name\" \"Map Name\" <num-teams> [options...]\n\
-    Create an Episode 3 tournament. The quotes are required around the\n\
-    tournament and map names, unless the names contain no spaces.\n\
-    Rules options:\n\
+  create-tournament TOURNAMENT-NAME MAP-NAME NUM-TEAMS [OPTIONS...]\n\
+    Create an Episode 3 tournament. Quotes are required around the tournament\n\
+    and map names, unless the names contain no spaces.\n\
+    OPTIONS may include:\n\
       2v2: Set team size to 2 players (default is 1 without this option)\n\
       dice=MIN-MAX: Set minimum and maximum dice rolls\n\
       overall-time-limit=N: Set battle time limit (in multiples of 5 minutes)\n\
@@ -165,92 +173,85 @@ Server commands:\n\
       dialogue=ON/OFF: Enable/disable dialogue\n\
       dice-exchange=ATK/DEF/NONE: Set dice exchange mode\n\
       dice-boost=ON/OFF: Enable/disable dice boost\n\
-  delete-tournament \"Tournament Name\"\n\
-    Delete a tournament. The quotes are required unless the tournament name\n\
-    contains no spaces.\n\
+  delete-tournament TOURNAMENT-NAME\n\
+    Delete a tournament. Quotes are required around the tournament name unless\n\
+    the name contains no spaces.\n\
   list-tournaments\n\
     List the names and numbers of all existing tournaments.\n\
-  start-tournament \"Tournament Name\"\n\
-    End registration for a tournament and allow matches to begin. The quotes\n\
-    are required unless the tournament name contains no spaces.\n\
-  tournament-state \"Tournament Name\"\n\
-    Show the current state of a tournament. The quotes are required unless the\n\
-    tournament name contains no spaces.\n\
+  start-tournament TOURNAMENT-NAME\n\
+    End registration for a tournament and allow matches to begin. Quotes are\n\
+    required around the tournament name unless the name contains no spaces.\n\
+  tournament-state TOURNAMENT-NAME\n\
+    Show the current state of a tournament. Quotes are required around the\n\
+    tournament name unless the name contains no spaces.\n\
 \n\
-Proxy commands:\n\
-  sc <data>\n\
+Proxy session commands:\n\
+  sc DATA\n\
     Send a command to the client. This command also can be used to send data to\n\
     a client on the game server.\n\
-  ss <data>\n\
+  ss DATA\n\
     Send a command to the server.\n\
   show-slots\n\
     Show the player names, Guild Card numbers, and client IDs of all players in\n\
     the current lobby or game.\n\
-  chat <text>\n\
+  c TEXT\n\
+  chat TEXT\n\
     Send a chat message to the server.\n\
-  dchat <data>\n\
+  dchat DATA\n\
     Send a chat message to the server with arbitrary data in it.\n\
-  info-board <text>\n\
+  info-board TEXT\n\
     Set your info board contents. This will affect the current session only,\n\
     and will not be saved for future sessions.\n\
-  info-board-data <data>\n\
+  info-board-data DATA\n\
     Set your info board contents with arbitrary data. Like the above, affects\n\
     the current session only.\n\
-  marker <color-id>\n\
+  marker COLOR-ID\n\
     Change your lobby marker color.\n\
-  warp <area-id>\n\
+  warp AREA-ID\n\
     Send yourself to a specific area.\n\
-  set-override-section-id [section-id]\n\
+  set-override-section-id [SECTION-ID]\n\
     Override the section ID for games you create or join. This affects the\n\
     active drop chart if you are the leader of the game and the server doesn't\n\
     override drops entirely. If no argument is given, clears the override.\n\
-  set-override-event [event]\n\
+  set-override-event [EVENT]\n\
     Override the lobby event for all lobbies and games you join. This applies\n\
     only to you; other players do not see this override.  If no argument is\n\
     given, clears the override.\n\
-  set-override-lobby-number [number]\n\
+  set-override-lobby-number [NUMBER]\n\
     Override the lobby type for all lobbies you join. This applies only to you;\n\
     other players do not see this override. If no argument is given, clears the\n\
     override.\n\
-  set-chat-filter <on|off>\n\
+  set-chat-filter on|off\n\
     Enable or disable chat filtering (enabled by default). Chat filtering\n\
     applies newserv\'s standard character replacements to chat messages; for\n\
     example, $ becomes a tab character and # becomes a newline.\n\
-  set-infinite-hp <on|off>\n\
-  set-infinite-tp <on|off>\n\
+  set-infinite-hp on|off\n\
+  set-infinite-tp on|off\n\
     Enable or disable infinite HP or TP. When infinite HP is enabled, attacks\n\
     that would kill you in one hit will still do so.\n\
-  set-switch-assist <on|off>\n\
-    Enable or disable switch assist. When switch assist is on, the proxy will\n\
-    remember the last \"enable switch\" command that you send, and will send it\n\
-    to you and the server when you step on another switch. Using this, you can\n\
-    unlock any doors that require two players to stand on switches by touching\n\
-    both switches yourself. With this, all online maps can be completed solo.\n\
-  set-save-files <on|off>\n\
+  set-switch-assist on|off\n\
+    Enable or disable switch assist. When switch assist is on, the server will\n\
+    remember the last \"enable switch\" command that you sent, and will send it\n\
+    back to you (and to the remote server, if you\'re in a proxy session) when\n\
+    you step on another switch. Using this, you can unlock some doors that\n\
+    require two players to stand on switches by touching both switches\n\
+    yourself.\n\
+  set-save-files on|off\n\
     Enable or disable saving of game files (disabled by default). When this is\n\
     on, any file that the remote server sends to the client will be saved to\n\
     the current directory. This includes data like quests, Episode 3 card\n\
     definitions, and GBA games.\n\
-  set-block-function-calls [return-value]\n\
+  set-block-function-calls [RETURN-VALUE]\n\
     Enable blocking of function calls from the server. When enabled, the proxy\n\
     responds as if the function was called (with the given return value), but\n\
     does not send the code to the client. To stop blocking function calls, omit\n\
     the return value.\n\
-  create-item <data>\n\
+  create-item DATA\n\
     Create an item as if the client had run the $item command.\n\
-  set-next-item <data>\n\
+  set-next-item DATA\n\
     Set the next item to be dropped.\n\
   close-idle-sessions\n\
-    Closes all sessions that don\'t have a client and server connected.\n\
-\n\
-If there are multiple clients connected, or multiple proxy sessions open, many\n\
-of the above commands will fail since they can\'t determine which session should\n\
-be affected. To specify a session, prefix the command with `on <ident>`. For\n\
-game server sessions, <ident> may be the client\'s ID (e.g. C-3), player name,\n\
-license serial number (specified in hex or in decimal), or BB account username.\n\
-For proxy sessions, <ident> may only be the session ID (which is generally the\n\
-same as the client\'s serial number). For example, to send a ping to the proxy\n\
-session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
+    Close all proxy sessions that don\'t have a client and server connected.\n\
 ");
 
     // SERVER COMMANDS
@@ -421,13 +422,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
     }
 
   } else if (command_name == "set-allow-unregistered-users") {
-    if (command_args == "true") {
-      this->state->allow_unregistered_users = true;
-    } else if (command_args == "false") {
-      this->state->allow_unregistered_users = false;
-    } else {
-      throw invalid_argument("argument must be true or false");
-    }
+    set_boolean(&this->state->allow_unregistered_users, command_args);
     fprintf(stderr, "unregistered users are now %s\n",
         this->state->allow_unregistered_users ? "allowed" : "disallowed");
 
@@ -637,7 +632,7 @@ session with ID 17205AE4, run the command `on 17205AE4 sc 1D 00 04 00`.\n\
       }
     }
 
-  } else if ((command_name == "chat") || (command_name == "dchat")) {
+  } else if ((command_name == "c") || (command_name == "chat") || (command_name == "dchat")) {
     auto session = this->get_proxy_session(session_name);
     bool is_dchat = (command_name == "dchat");
 
