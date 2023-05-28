@@ -48,6 +48,10 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
       return Client::Flag::IS_DC_V1 |
           Client::Flag::NO_D6 |
           Client::Flag::NO_SEND_FUNCTION_CALL;
+    case 0x23: // DCv1 EU?
+      return Client::Flag::IS_DC_V1 |
+          Client::Flag::NO_D6 |
+          Client::Flag::NO_SEND_FUNCTION_CALL;
 
     case 0x26: // DCv2 US
       return Client::Flag::NO_D6 |
@@ -91,7 +95,7 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
           Client::Flag::IS_EPISODE_3 |
           Client::Flag::NO_SEND_FUNCTION_CALL;
   }
-  throw runtime_error("unknown sub_version");
+  throw runtime_error(string_printf("unknown sub_version %" PRIX64, sub_version));
 }
 
 const char* name_for_version(GameVersion version) {
