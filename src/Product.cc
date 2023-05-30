@@ -1,3 +1,5 @@
+#include "Product.hh"
+
 #include <stdint.h>
 
 #include <phosg/Random.hh>
@@ -1123,6 +1125,18 @@ static bool check_prime3(uint64_t prime3) {
   return primes3_set[offset];
 }
 
+static char replace_nybble_forward(uint8_t v) {
+  static const uint8_t values[16] = {
+      0x5, 0xA, 0x7, 0x6, 0xD, 0x2, 0xC, 0x1, 0xF, 0x0, 0x8, 0xB, 0x3, 0xE, 0x9, 0x4};
+  return values[v & 0x0F];
+}
+
+static char replace_nybble_reverse(uint8_t v) {
+  static const uint8_t values[16] = {
+      0x9, 0x7, 0x5, 0xC, 0xF, 0x0, 0x3, 0x2, 0xA, 0xE, 0x1, 0xB, 0x6, 0x4, 0xD, 0x8};
+  return values[v & 0x0F];
+}
+
 static char replace_char_forward(char ch) {
   if (ch >= '0' && ch <= '9') {
     return "5A76D2C1F0"[ch - '0'];
@@ -1165,6 +1179,28 @@ static uint64_t decode_product_str(const string& s) {
   return product;
 }
 
+static uint32_t decode_product_int(uint32_t v) {
+  return (replace_nybble_forward(v >> 28) << 28) |
+      (replace_nybble_forward(v >> 24) << 24) |
+      (replace_nybble_forward(v >> 20) << 20) |
+      (replace_nybble_forward(v >> 16) << 16) |
+      (replace_nybble_forward(v >> 12) << 12) |
+      (replace_nybble_forward(v >> 8) << 8) |
+      (replace_nybble_forward(v >> 4) << 4) |
+      (replace_nybble_forward(v));
+}
+
+static uint32_t encode_product_int(uint32_t v) {
+  return (replace_nybble_reverse(v >> 28) << 28) |
+      (replace_nybble_reverse(v >> 24) << 24) |
+      (replace_nybble_reverse(v >> 20) << 20) |
+      (replace_nybble_reverse(v >> 16) << 16) |
+      (replace_nybble_reverse(v >> 12) << 12) |
+      (replace_nybble_reverse(v >> 8) << 8) |
+      (replace_nybble_reverse(v >> 4) << 4) |
+      (replace_nybble_reverse(v));
+}
+
 static pair<size_t, size_t> compute_offset1_and_limit1(
     uint8_t domain, uint8_t subdomain) {
   if (domain > 2) {
@@ -1202,12 +1238,7 @@ bool product_is_valid(const string& s, uint8_t domain, uint8_t subdomain) {
   return false;
 }
 
-bool product_is_valid_fast(const string& s, uint8_t domain, uint8_t subdomain) {
-  uint64_t product = decode_product_str(s);
-  if (product == INVALID_PRODUCT) {
-    return false;
-  }
-
+bool decoded_product_is_valid_fast(uint32_t product, uint8_t domain, uint8_t subdomain) {
   auto [offset1_start, limit1] = compute_offset1_and_limit1(domain, subdomain);
   if (limit1 == 0) {
     return false;
@@ -1231,6 +1262,18 @@ bool product_is_valid_fast(const string& s, uint8_t domain, uint8_t subdomain) {
     }
   }
   return false;
+}
+
+bool product_is_valid_fast(const string& s, uint8_t domain, uint8_t subdomain) {
+  uint64_t product = decode_product_str(s);
+  if (product == INVALID_PRODUCT) {
+    return false;
+  }
+  return decoded_product_is_valid_fast(product, domain, subdomain);
+}
+
+bool product_is_valid_fast(uint32_t product, uint8_t domain, uint8_t subdomain) {
+  return decoded_product_is_valid_fast(decode_product_int(product), domain, subdomain);
 }
 
 string generate_product(uint8_t domain, uint8_t subdomain) {
@@ -1262,6 +1305,55 @@ string generate_product(uint8_t domain, uint8_t subdomain) {
   return ret;
 }
 
+unordered_map<uint32_t, string> generate_all_products(uint8_t domain, uint8_t subdomain) {
+  vector<uint8_t> domains;
+  if (domain == 0xFF) {
+    domains.emplace_back(0x00);
+    domains.emplace_back(0x01);
+    domains.emplace_back(0x02);
+  } else {
+    domains.emplace_back(domain);
+  }
+
+  vector<uint8_t> subdomains;
+  if (subdomain == 0xFF) {
+    subdomains.emplace_back(0x00);
+    subdomains.emplace_back(0x01);
+    subdomains.emplace_back(0x02);
+  } else {
+    subdomains.emplace_back(subdomain);
+  }
+
+  unordered_map<uint32_t, string> ret;
+  for (uint8_t domain : domains) {
+    size_t offset1, limit1;
+    if (domain == 0) {
+      offset1 = 0x00;
+      limit1 = 0x03;
+    } else if (domain == 1) {
+      offset1 = 0x1E;
+      limit1 = 0x21;
+    } else if (domain == 2) {
+      offset1 = 0x3C;
+      limit1 = 0x3F;
+    } else {
+      throw runtime_error("invalid domain");
+    }
+
+    for (uint8_t subdomain : subdomains) {
+      size_t index1 = offset1 + (subdomain % (limit1 - offset1));
+      for (size_t index2 = 0; index2 < sizeof(primes2) / sizeof(primes2[0]); index2++) {
+        for (size_t index3 = 0; index3 < sizeof(primes3) / sizeof(primes3[0]); index3++) {
+          uint32_t value = primes1[index1] * primes2[index2] * primes3[index3];
+          ret[encode_product_int(value)].push_back(((domain << 2) & 3) | (subdomain & 3));
+        }
+        fprintf(stderr, "... domain=%hhu subdomain=%hhu index2=%zu products=%zu (0x%zX)\n", domain, subdomain, index2, ret.size(), ret.size());
+      }
+    }
+  }
+  return ret;
+}
+
 void product_speed_test(uint64_t seed) {
   uint32_t effective_seed = (seed & 0xFFFFFFFF00000000) ? random_object<uint32_t>() : seed;
   fprintf(stderr, "Product speed test with seed=%08" PRIX32 "\n", effective_seed);
@@ -1275,7 +1367,7 @@ void product_speed_test(uint64_t seed) {
 
     uint64_t start = now();
     bool is_valid_fast = product_is_valid_fast(s, 1, 0xFF);
-    time_fast = now() - start;
+    time_fast += now() - start;
 
     start = now();
     bool is_valid_slow = product_is_valid(s, 1, 0xFF);

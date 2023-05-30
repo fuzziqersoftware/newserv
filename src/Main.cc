@@ -227,6 +227,7 @@ enum class Behavior {
   REPLAY_LOG,
   CAT_CLIENT,
   GENERATE_PRODUCT,
+  GENERATE_ALL_PRODUCTS,
   INSPECT_PRODUCT,
   PRODUCT_SPEED_TEST,
 };
@@ -438,6 +439,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::EXTRACT_BML;
         } else if (!strcmp(argv[x], "generate-product")) {
           behavior = Behavior::GENERATE_PRODUCT;
+        } else if (!strcmp(argv[x], "generate-all-products")) {
+          behavior = Behavior::GENERATE_ALL_PRODUCTS;
         } else if (!strcmp(argv[x], "inspect-product")) {
           behavior = Behavior::INSPECT_PRODUCT;
         } else if (!strcmp(argv[x], "product-speed-test")) {
@@ -1163,6 +1166,42 @@ int main(int argc, char** argv) {
     case Behavior::GENERATE_PRODUCT: {
       auto product = generate_product(domain, subdomain);
       fprintf(stdout, "%s\n", product.c_str());
+      break;
+    }
+
+    case Behavior::GENERATE_ALL_PRODUCTS: {
+      auto products = generate_all_products();
+      fprintf(stdout, "%zu (0x%zX) products found\n", products.size(), products.size());
+      for (const auto& it : products) {
+        fprintf(stdout, "Valid product: %08" PRIX32, it.first);
+        for (uint8_t where : it.second) {
+          fprintf(stdout, " (domain=%hhu, subdomain=%hhu)",
+              static_cast<uint8_t>((where >> 2) & 3),
+              static_cast<uint8_t>(where & 3));
+        }
+        fputc('\n', stdout);
+      }
+
+      atomic<uint64_t> num_valid_products = 0;
+      mutex output_lock;
+      auto thread_fn = [&](uint64_t product, size_t) -> bool {
+        for (uint8_t domain = 0; domain < 3; domain++) {
+          for (uint8_t subdomain = 0; subdomain < 3; subdomain++) {
+            if (product_is_valid_fast(product, domain, subdomain)) {
+              num_valid_products++;
+              lock_guard g(output_lock);
+              fprintf(stdout, "Valid product: %08" PRIX64 " (domain=%hhu, subdomain=%hhu)\n", product, domain, subdomain);
+            }
+          }
+        }
+        return false;
+      };
+      auto progress_fn = [&](uint64_t, uint64_t, uint64_t current_value, uint64_t) -> void {
+        uint64_t num_found = num_valid_products.load();
+        fprintf(stderr, "... %08" PRIX64 " %" PRId64 " (0x%" PRIX64 ") found\r",
+            current_value, num_found, num_found);
+      };
+      parallel_range<uint64_t>(thread_fn, 0, 0x100000000, num_threads, progress_fn);
       break;
     }
 
