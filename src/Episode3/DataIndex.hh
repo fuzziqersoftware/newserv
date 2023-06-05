@@ -6,6 +6,7 @@
 #include <memory>
 #include <phosg/Encoding.hh>
 #include <phosg/JSON.hh>
+#include <phosg/Tools.hh>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -640,11 +641,17 @@ enum class HPType : uint8_t {
   COMMON_HP = 2,
 };
 
+HPType hp_type_for_name(const char* name);
+const char* name_for_hp_type(HPType hp_type);
+
 enum class DiceExchangeMode : uint8_t {
   HIGH_ATK = 0,
   HIGH_DEF = 1,
   NONE = 2,
 };
+
+DiceExchangeMode dice_exchange_mode_for_name(const char* name);
+const char* name_for_dice_exchange_mode(DiceExchangeMode dice_exchange_mode);
 
 enum class AllowedCards : uint8_t {
   ALL = 0,
@@ -652,6 +659,9 @@ enum class AllowedCards : uint8_t {
   N_R_ONLY = 2,
   N_R_S_ONLY = 3,
 };
+
+AllowedCards allowed_cards_for_name(const char* name);
+const char* name_for_allowed_cards(AllowedCards allowed_cards);
 
 struct Rules {
   // When this structure is used in a map/quest definition, FF in any of these

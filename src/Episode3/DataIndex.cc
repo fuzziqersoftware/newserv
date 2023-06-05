@@ -820,42 +820,150 @@ string CardDefinition::str() const {
       effects_str.c_str());
 }
 
+HPType hp_type_for_name(const char* name) {
+  if (!strcmp(name, "DEFEAT_PLAYER")) {
+    return HPType::DEFEAT_PLAYER;
+  } else if (!strcmp(name, "DEFEAT_TEAM")) {
+    return HPType::DEFEAT_TEAM;
+  } else if (!strcmp(name, "COMMON_HP")) {
+    return HPType::COMMON_HP;
+  } else {
+    throw out_of_range("invalid HP type name");
+  }
+}
+const char* name_for_hp_type(HPType hp_type) {
+  switch (hp_type) {
+    case HPType::DEFEAT_PLAYER:
+      return "DEFEAT_PLAYER";
+    case HPType::DEFEAT_TEAM:
+      return "DEFEAT_TEAM";
+    case HPType::COMMON_HP:
+      return "COMMON_HP";
+    default:
+      throw out_of_range("invalid HP type");
+  }
+}
+
+DiceExchangeMode dice_exchange_mode_for_name(const char* name) {
+  if (!strcmp(name, "HIGH_ATK")) {
+    return DiceExchangeMode::HIGH_ATK;
+  } else if (!strcmp(name, "HIGH_DEF")) {
+    return DiceExchangeMode::HIGH_DEF;
+  } else if (!strcmp(name, "NONE")) {
+    return DiceExchangeMode::NONE;
+  } else {
+    throw out_of_range("invalid dice exchange mode name");
+  }
+}
+const char* name_for_dice_exchange_mode(DiceExchangeMode dice_exchange_mode) {
+  switch (dice_exchange_mode) {
+    case DiceExchangeMode::HIGH_ATK:
+      return "HIGH_ATK";
+    case DiceExchangeMode::HIGH_DEF:
+      return "HIGH_DEF";
+    case DiceExchangeMode::NONE:
+      return "NONE";
+    default:
+      throw out_of_range("invalid dice exchange mode");
+  }
+}
+
+AllowedCards allowed_cards_for_name(const char* name) {
+  if (!strcmp(name, "ALL")) {
+    return AllowedCards::ALL;
+  } else if (!strcmp(name, "N_ONLY")) {
+    return AllowedCards::N_ONLY;
+  } else if (!strcmp(name, "N_R_ONLY")) {
+    return AllowedCards::N_R_ONLY;
+  } else if (!strcmp(name, "N_R_S_ONLY")) {
+    return AllowedCards::N_R_S_ONLY;
+  } else {
+    throw out_of_range("invalid allowed cards name");
+  }
+}
+const char* name_for_allowed_cards(AllowedCards allowed_cards) {
+  switch (allowed_cards) {
+    case AllowedCards::ALL:
+      return "ALL";
+    case AllowedCards::N_ONLY:
+      return "N_ONLY";
+    case AllowedCards::N_R_ONLY:
+      return "N_R_ONLY";
+    case AllowedCards::N_R_S_ONLY:
+      return "N_R_S_ONLY";
+    default:
+      throw out_of_range("invalid allowed cards");
+  }
+}
+
 Rules::Rules() {
   this->clear();
 }
 
+template <typename IntT>
+void get_json_optional_int(const JSONObject::dict_type& dict, IntT& result, const char* key) {
+  try {
+    auto value_json = dict.at(key);
+    if (value_json->is_int()) {
+      result = value_json->as_int();
+    } else if (value_json->is_bool()) {
+      result = value_json->as_bool() ? 1 : 0;
+    } else {
+      throw runtime_error("int-valued field is not int or bool");
+    }
+  } catch (const out_of_range&) {
+  }
+};
+
+template <typename EnumT>
+void get_json_optional_enum(const JSONObject::dict_type& dict, EnumT& result, const char* key, EnumT (*parse_str)(const char*)) {
+  try {
+    auto value_json = dict.at(key);
+    if (value_json->is_string()) {
+      result = parse_str(value_json->as_string().c_str());
+    } else if (value_json->is_int()) {
+      result = static_cast<EnumT>(value_json->as_int());
+    } else {
+      throw runtime_error("enum-valued field is not int or string");
+    }
+  } catch (const out_of_range&) {
+  }
+};
+
 Rules::Rules(shared_ptr<const JSONObject> json) {
+  this->clear();
+
   auto dict = json->as_dict();
-  this->overall_time_limit = dict.at("overall_time_limit")->as_int();
-  this->phase_time_limit = dict.at("phase_time_limit")->as_int();
-  this->allowed_cards = static_cast<AllowedCards>(dict.at("allowed_cards")->as_int());
-  this->min_dice = dict.at("min_dice")->as_int();
-  this->max_dice = dict.at("max_dice")->as_int();
-  this->disable_deck_shuffle = dict.at("disable_deck_shuffle")->as_int();
-  this->disable_deck_loop = dict.at("disable_deck_loop")->as_int();
-  this->char_hp = dict.at("char_hp")->as_int();
-  this->hp_type = static_cast<HPType>(dict.at("hp_type")->as_int());
-  this->no_assist_cards = dict.at("no_assist_cards")->as_int();
-  this->disable_dialogue = dict.at("disable_dialogue")->as_int();
-  this->dice_exchange_mode = static_cast<DiceExchangeMode>(dict.at("dice_exchange_mode")->as_int());
-  this->disable_dice_boost = dict.at("disable_dice_boost")->as_int();
+  get_json_optional_int(dict, this->overall_time_limit, "overall_time_limit");
+  get_json_optional_int(dict, this->phase_time_limit, "phase_time_limit");
+  get_json_optional_enum(dict, this->allowed_cards, "allowed_cards", allowed_cards_for_name);
+  get_json_optional_int(dict, this->min_dice, "min_dice");
+  get_json_optional_int(dict, this->max_dice, "max_dice");
+  get_json_optional_int(dict, this->disable_deck_shuffle, "disable_deck_shuffle");
+  get_json_optional_int(dict, this->disable_deck_loop, "disable_deck_loop");
+  get_json_optional_int(dict, this->char_hp, "char_hp");
+  get_json_optional_enum(dict, this->hp_type, "hp_type", hp_type_for_name);
+  get_json_optional_int(dict, this->no_assist_cards, "no_assist_cards");
+  get_json_optional_int(dict, this->disable_dialogue, "disable_dialogue");
+  get_json_optional_enum(dict, this->dice_exchange_mode, "dice_exchange_mode", dice_exchange_mode_for_name);
+  get_json_optional_int(dict, this->disable_dice_boost, "disable_dice_boost");
 }
 
 shared_ptr<JSONObject> Rules::json() const {
   unordered_map<string, shared_ptr<JSONObject>> dict;
   dict.emplace("overall_time_limit", make_json_int(this->overall_time_limit));
   dict.emplace("phase_time_limit", make_json_int(this->phase_time_limit));
-  dict.emplace("allowed_cards", make_json_int(static_cast<uint8_t>(this->allowed_cards)));
+  dict.emplace("allowed_cards", make_json_str(name_for_allowed_cards(this->allowed_cards)));
   dict.emplace("min_dice", make_json_int(this->min_dice));
   dict.emplace("max_dice", make_json_int(this->max_dice));
-  dict.emplace("disable_deck_shuffle", make_json_int(this->disable_deck_shuffle));
-  dict.emplace("disable_deck_loop", make_json_int(this->disable_deck_loop));
+  dict.emplace("disable_deck_shuffle", make_json_bool(this->disable_deck_shuffle));
+  dict.emplace("disable_deck_loop", make_json_bool(this->disable_deck_loop));
   dict.emplace("char_hp", make_json_int(this->char_hp));
-  dict.emplace("hp_type", make_json_int(static_cast<uint8_t>(this->hp_type)));
-  dict.emplace("no_assist_cards", make_json_int(this->no_assist_cards));
-  dict.emplace("disable_dialogue", make_json_int(this->disable_dialogue));
-  dict.emplace("dice_exchange_mode", make_json_int(static_cast<uint8_t>(this->dice_exchange_mode)));
-  dict.emplace("disable_dice_boost", make_json_int(this->disable_dice_boost));
+  dict.emplace("hp_type", make_json_str(name_for_hp_type(this->hp_type)));
+  dict.emplace("no_assist_cards", make_json_bool(this->no_assist_cards));
+  dict.emplace("disable_dialogue", make_json_bool(this->disable_dialogue));
+  dict.emplace("dice_exchange_mode", make_json_str(name_for_dice_exchange_mode(this->dice_exchange_mode)));
+  dict.emplace("disable_dice_boost", make_json_bool(this->disable_dice_boost));
   return shared_ptr<JSONObject>(new JSONObject(std::move(dict)));
 }
 
