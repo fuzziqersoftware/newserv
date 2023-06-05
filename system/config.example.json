@@ -312,7 +312,7 @@
   // If this setting is enabled, newserv will compress DOL files at startup
   // time. This makes startup time slower but makes clients' loading time much
   // faster.
-  "CompressDOLFiles": true,
+  "CompressDOLFiles": false,
 
   // By default, the server keeps track of items in all games, even for versions
   // other than Blue Burst. This enables use of the $what command, as well as
