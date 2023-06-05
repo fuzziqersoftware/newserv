@@ -164,7 +164,7 @@ activate_chosen_editor:
   #   TODO: It's not apparent what this editor does, or if it even survives to
   #   the update/render phase. Further research is needed here.
 
-  lwz    r4, [r29 + 0x38] # TCCScenarioDebug (movie/cutscene tests)
+  # lwz    r4, [r29 + 0x38] # TCCScenarioDebug (movie/cutscene tests)
   #   This editor exists only in Episode 3 - it is neither in PSOPC nor PSOX.
   #   Nothing appears immediately after activating this debugger because the
   #   default page is blank. Use C-left and C-right to change major pages; use
