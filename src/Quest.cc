@@ -201,6 +201,8 @@ const char* name_for_category(QuestCategory category) {
       return "Retrieval";
     case QuestCategory::EXTERMINATION:
       return "Extermination";
+    case QuestCategory::EXTERMINATION2:
+        return "Extermination 2";
     case QuestCategory::EVENT:
       return "Event";
     case QuestCategory::SHOP:
@@ -374,6 +376,7 @@ Quest::Quest(const string& bin_filename)
     static const unordered_map<string, QuestCategory> name_to_category({
         {"ret", QuestCategory::RETRIEVAL},
         {"ext", QuestCategory::EXTERMINATION},
+        {"ext2", QuestCategory::EXTERMINATION2},
         {"evt", QuestCategory::EVENT},
         {"shp", QuestCategory::SHOP},
         {"vr", QuestCategory::VR},

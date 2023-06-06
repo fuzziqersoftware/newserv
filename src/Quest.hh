@@ -14,6 +14,7 @@ enum class QuestCategory {
   UNKNOWN = -1,
   RETRIEVAL = 0,
   EXTERMINATION,
+  EXTERMINATION2,
   EVENT,
   SHOP,
   VR,
