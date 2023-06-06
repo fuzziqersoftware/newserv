@@ -376,7 +376,7 @@ Quest::Quest(const string& bin_filename)
     static const unordered_map<string, QuestCategory> name_to_category({
         {"ret", QuestCategory::RETRIEVAL},
         {"ext", QuestCategory::EXTERMINATION},
-        {"ext2", QuestCategory::EXTERMINATION2},
+        {"ex2", QuestCategory::EXTERMINATION2},
         {"evt", QuestCategory::EVENT},
         {"shp", QuestCategory::SHOP},
         {"vr", QuestCategory::VR},
