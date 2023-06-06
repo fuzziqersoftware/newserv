@@ -70,12 +70,6 @@ static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
   }
 }
 
-static void check_cheats_enabled(shared_ptr<Lobby> l) {
-  if (!(l->flags & Lobby::Flag::CHEATS_ENABLED)) {
-    throw precondition_failed(u"$C6This command can\nonly be used in\ncheat mode.");
-  }
-}
-
 static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
   if (l->leader_id != c->lobby_client_id) {
     throw precondition_failed(u"$C6This command can\nonly be used by\nthe game leader.");
@@ -965,7 +959,6 @@ static void server_command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 static void server_command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
 
   uint32_t area = stoul(encode_sjis(args), nullptr, 0);
   if (c->area == area) {
@@ -979,8 +972,30 @@ static void server_command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     send_text_message_printf(c, "$C6Area numbers must\nbe %zu or less.", limit);
     return;
   }
+  
+  G_InterLevelWarp_6x94 cmd = { {0x94, 0x02, 0}, area, {} };
+  send_command_t(l, 0x62, c->lobby_client_id, cmd);
+}
 
-  send_warp(c, area);
+static void server_command_warpme(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string& args) {
+    check_is_game(l, true);
+
+    uint32_t area = stoul(encode_sjis(args), nullptr, 0);
+    if (c->area == area) {
+        return;
+    }
+
+    size_t limit = area_limit_for_episode(l->episode);
+    if (limit == 0) {
+        return;
+    }
+    else if (area > limit) {
+        send_text_message_printf(c, "$C6Area numbers must\nbe %zu or less.", limit);
+        return;
+    }
+
+    send_warp(c, area);
 }
 
 static void proxy_command_warp(shared_ptr<ServerState>,
@@ -998,7 +1013,6 @@ static void proxy_command_warp(shared_ptr<ServerState>,
 static void server_command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
 
   size_t limit = area_limit_for_episode(l->episode);
   if (limit == 0) {
@@ -1074,7 +1088,6 @@ static void proxy_command_song(shared_ptr<ServerState>,
 static void server_command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
 
   c->options.infinite_hp = !c->options.infinite_hp;
   send_text_message_printf(c, "$C6Infinite HP %s",
@@ -1091,7 +1104,6 @@ static void proxy_command_infinite_hp(shared_ptr<ServerState>,
 static void server_command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
 
   c->options.infinite_tp = !c->options.infinite_tp;
   send_text_message_printf(c, "$C6Infinite TP %s",
@@ -1108,7 +1120,6 @@ static void proxy_command_infinite_tp(shared_ptr<ServerState>,
 static void server_command_switch_assist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
 
   c->options.switch_assist = !c->options.switch_assist;
   send_text_message_printf(c, "$C6Switch assist %s",
@@ -1148,7 +1159,6 @@ static void server_command_questburst(shared_ptr<ServerState>, shared_ptr<Lobby>
 static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
 
   string data = parse_data_string(encode_sjis(args));
   if (data.size() < 2) {
@@ -1283,6 +1293,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$swa", {server_command_switch_assist, proxy_command_switch_assist, u"Usage:\nswa"}},
     {u"$type", {server_command_lobby_type, nullptr, u"Usage:\ntype <name>"}},
     {u"$warp", {server_command_warp, proxy_command_warp, u"Usage:\nwarp <area-number>"}},
+    {u"$warpme", {server_command_warpme, nullptr, u"Usage:\nwarp <area-number>"}},
     {u"$what", {server_command_what, nullptr, u"Usage:\nwhat"}},
     {u"$lower", {server_command_lower_hp, nullptr, u"Usage:\nLowers HP to 3"}},
     {u"$lobby", {server_command_questburst, nullptr, u"Usage:\nExit quest to lobby"}},
