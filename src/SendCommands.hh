@@ -275,6 +275,7 @@ void send_execute_card_trade(std::shared_ptr<Client> c,
 void send_arrow_update(std::shared_ptr<Lobby> l);
 void send_resume_game(std::shared_ptr<Lobby> l,
     std::shared_ptr<Client> ready_client);
+void send_leave_quest(std::shared_ptr<Client>c);
 
 enum PlayerStatsChange {
   SUBTRACT_HP = 0,

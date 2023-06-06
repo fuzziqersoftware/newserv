@@ -1805,6 +1805,12 @@ void send_resume_game(shared_ptr<Lobby> l, shared_ptr<Client> ready_client) {
   send_command_excluding_client(l, ready_client, 0x60, 0x00, &data, sizeof(be_uint32_t));
 }
 
+// player leaves quest
+void send_leave_quest(shared_ptr<Client> c) {
+    static const be_uint32_t data = 0x73020000;
+    send_command(c, 0x60, 0x00, &data, sizeof(be_uint32_t));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Game/cheat commands
 
