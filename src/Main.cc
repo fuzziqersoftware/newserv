@@ -12,7 +12,7 @@
 #include <set>
 #include <thread>
 #include <unordered_map>
-
+#include <mutex>
 #include "BMLArchive.hh"
 #include "CatSession.hh"
 #include "Compression.hh"

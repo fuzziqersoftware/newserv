@@ -1122,6 +1122,17 @@ static void proxy_command_switch_assist(shared_ptr<ServerState>,
       session.options.switch_assist ? "enabled" : "disabled");
 }
 
+static void server_command_lower_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string&) {
+    check_is_game(l, true);
+    if (!l->is_game()) {
+        send_text_message(c, u"Cannot use command in\nlobby.");
+    }
+    send_player_stats_change(l, c, PlayerStatsChange::SUBTRACT_HP, 2550);
+    send_player_stats_change(l, c, PlayerStatsChange::ADD_HP, 3);
+    send_text_message(c, u"Lowered Client HP.");
+}
+
 static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
@@ -1261,6 +1272,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$type", {server_command_lobby_type, nullptr, u"Usage:\ntype <name>"}},
     {u"$warp", {server_command_warp, proxy_command_warp, u"Usage:\nwarp <area-number>"}},
     {u"$what", {server_command_what, nullptr, u"Usage:\nwhat"}},
+    {u"$lower", {server_command_lower_hp, nullptr, u"Usage:\nLowers HP to 3"}},
 });
 
 struct SplitCommand {
