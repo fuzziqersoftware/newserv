@@ -1928,10 +1928,10 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because a\nbattle is already\nin progress.");
         break;
       }
-      if (game->any_client_loading()) {
-        send_lobby_message_box(c, u"$C6You cannot join this\ngame because\nanother player is\ncurrently loading.\nTry again soon.");
-        break;
-      }
+      //if (game->any_client_loading()) {
+      //  send_lobby_message_box(c, u"$C6You cannot join this\ngame because\nanother player is\ncurrently loading.\nTry again soon."); Multi join related
+      //  break;
+      //}
       if (game->mode == GameMode::SOLO) {
         send_lobby_message_box(c, u"$C6You cannot join this\n game because it is\na Solo Mode game.");
         break;

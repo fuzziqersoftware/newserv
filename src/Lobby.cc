@@ -52,7 +52,7 @@ bool Lobby::any_client_loading() const {
     if (!this->clients[x].get()) {
       continue;
     }
-    if (this->clients[x]->flags & (Client::Flag::LOADING | Client::Flag::LOADING_QUEST)) {
+    if (this->clients[x]->flags & (Client::Flag::LOADING | Client::Flag::LOADING_QUEST)) { //Multijoin?
       return true;
     }
   }
@@ -212,6 +212,7 @@ void Lobby::move_client_to_lobby(
 
   this->remove_client(c);
   dest_lobby->add_client(c, required_client_id);
+  send_resume_game(dest_lobby, c); //Cancel joining screen
 }
 
 shared_ptr<Client> Lobby::find_client(
