@@ -130,10 +130,12 @@ void send_server_init(
     uint8_t flags);
 void send_update_client_config(std::shared_ptr<Client> c);
 
+void empty_function_call_response_handler(uint32_t, uint32_t);
+
 void send_quest_buffer_overflow(
     std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
-void send_cache_patch_if_needed(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
-uint32_t send_cache_patch_if_needed(std::shared_ptr<ServerState> s, Channel& c, uint32_t flags);
+void prepare_client_for_patches(
+    std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, std::function<void()> on_complete);
 void send_function_call(
     Channel& ch,
     uint64_t client_flags,

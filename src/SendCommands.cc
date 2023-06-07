@@ -311,14 +311,48 @@ void send_quest_buffer_overflow(
   send_command_t(c, 0xA7, 0x00, cmd);
 }
 
-void send_cache_patch_if_needed(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+void empty_function_call_response_handler(uint32_t, uint32_t) {}
+
+void prepare_client_for_patches(shared_ptr<ServerState> s, shared_ptr<Client> c, std::function<void()> on_complete) {
+  auto send_version_detect = [s, wc = weak_ptr<Client>(c), on_complete]() -> void {
+    auto c = wc.lock();
+    if (!c) {
+      return;
+    }
+    if (c->version() == GameVersion::GC &&
+        c->specific_version == default_specific_version_for_version(GameVersion::GC, -1)) {
+      send_function_call(c, s->function_code_index->name_to_function.at("VersionDetect"));
+      c->function_call_response_queue.emplace_back([s, c, on_complete](uint32_t specific_version, uint32_t) -> void {
+        c->specific_version = specific_version;
+        c->log.info("Version detected as %08" PRIX32, c->specific_version);
+        on_complete();
+      });
+    } else {
+      on_complete();
+    }
+  };
+
   if (!(c->flags & Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH)) {
-    send_function_call(
-        c, s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0, 0, 0x7F2634EC);
-    send_function_call(
-        c, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
-    c->flags |= Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
-    send_update_client_config(c);
+    send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0, 0, 0x7F2734EC);
+    c->function_call_response_queue.emplace_back([s, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t) -> void {
+      auto c = wc.lock();
+      if (!c) {
+        return;
+      }
+      send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
+      c->function_call_response_queue.emplace_back([s, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t) -> void {
+        auto c = wc.lock();
+        if (!c) {
+          return;
+        }
+        c->log.info("Client cache behavior patched");
+        c->flags |= Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
+        send_update_client_config(c);
+        send_version_detect();
+      });
+    });
+  } else {
+    send_version_detect();
   }
 }
 

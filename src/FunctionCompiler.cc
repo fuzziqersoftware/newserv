@@ -72,6 +72,13 @@ string CompiledFunctionCode::generate_client_command_t(
     w.put_u8(0);
   }
 
+  footer.relocations_offset = w.size();
+
+  // Always write at least 4 bytes even if there are no relocations
+  if (this->relocation_deltas.empty()) {
+    w.put_u32(0);
+  }
+
   if (override_relocations_offset) {
     footer.relocations_offset = override_relocations_offset;
   } else {
