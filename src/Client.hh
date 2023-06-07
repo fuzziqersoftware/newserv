@@ -156,7 +156,7 @@ struct Client {
   bool can_chat;
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;
-  std::function<void()> on_version_detect_response;
+  std::deque<std::function<void(uint32_t, uint32_t)>> function_call_response_queue;
 
   // File loading state
   uint32_t dol_base_addr;

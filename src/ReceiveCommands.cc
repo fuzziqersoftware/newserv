@@ -1734,19 +1734,9 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
             throw runtime_error("client does not support send_function_call");
           }
-          send_cache_patch_if_needed(s, c);
-          if (c->version() == GameVersion::GC &&
-              c->specific_version == default_specific_version_for_version(GameVersion::GC, -1)) {
-            send_function_call(c, s->function_code_index->name_to_function.at("VersionDetect"));
-            c->on_version_detect_response = [s, wc = weak_ptr<Client>(c)]() {
-              auto c = wc.lock();
-              if (c) {
-                send_menu(c, s->function_code_index->patch_menu(c->specific_version));
-              }
-            };
-          } else {
+          prepare_client_for_patches(s, c, [s, c]() -> void {
             send_menu(c, s->function_code_index->patch_menu(c->specific_version));
-          }
+          });
           break;
 
         case MainMenuItemID::PROGRAMS:
@@ -1756,8 +1746,9 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
             throw runtime_error("client does not support send_function_call");
           }
-          send_cache_patch_if_needed(s, c);
-          send_menu(c, s->dol_file_index->menu);
+          prepare_client_for_patches(s, c, [s, c]() -> void {
+            send_menu(c, s->dol_file_index->menu);
+          });
           break;
 
         case MainMenuItemID::DISCONNECT:
@@ -2071,6 +2062,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         uint64_t key = (static_cast<uint64_t>(item_id) << 32) | c->specific_version;
         send_function_call(
             c, s->function_code_index->menu_item_id_and_specific_version_to_patch_function.at(key));
+        c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
         send_menu(c, s->function_code_index->patch_menu(c->specific_version));
       }
       break;
@@ -2287,22 +2279,13 @@ static void send_dol_file_chunk(shared_ptr<ServerState> s, shared_ptr<Client> c,
 static void on_B3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t flag, const string& data) {
   const auto& cmd = check_size_t<C_ExecuteCodeResult_B3>(data);
-  if (flag == 0) {
-    return;
-  }
 
-  auto called_fn = s->function_code_index->index_to_function.at(flag);
-  if (called_fn->name == "VersionDetect") {
-    // This is sent the first time the client chooses Patches from the main
-    // menu, so send the Patches menu when we get the response here
-    c->specific_version = cmd.return_value;
-    c->log.info("Version detected as %08" PRIX32, c->specific_version);
-    if (c->on_version_detect_response) {
-      c->on_version_detect_response();
-      c->on_version_detect_response = nullptr;
-    }
-
+  if (!c->function_call_response_queue.empty()) {
+    auto& handler = c->function_call_response_queue.front();
+    handler(cmd.return_value, cmd.checksum);
+    c->function_call_response_queue.pop_front();
   } else if (c->loading_dol_file.get()) {
+    auto called_fn = s->function_code_index->index_to_function.at(flag);
     if (called_fn->name == "ReadMemoryWord") {
       c->dol_base_addr = (cmd.return_value - c->loading_dol_file->data.size()) & (~3);
       send_dol_file_chunk(s, c, c->dol_base_addr);
@@ -2318,7 +2301,11 @@ static void on_B3(shared_ptr<ServerState> s, shared_ptr<Client> c,
       } else {
         send_dol_file_chunk(s, c, cmd.return_value);
       }
+    } else {
+      throw logic_error("unknown function called during DOL loading");
     }
+  } else {
+    throw runtime_error("function call response queue is empty, and no program is being sent");
   }
 }
 
