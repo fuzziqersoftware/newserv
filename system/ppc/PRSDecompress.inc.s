@@ -1,3 +1,11 @@
+# This code decompresses PRS-compressed data.
+# Arguments:
+#   r3 = destination pointer for decompressed data
+#   r4 = source pointer for compressed data
+#   r5 = destination buffer size
+#   r6 = source data size
+# Returns: number of bytes written to output buffer, or -1 on error
+# Overwrites: r3, r4, r5, r6, r7, r8, r9, r10, r11, r12
 prs_decompress__start:
   # r3 = dest ptr (used as write ptr)
   subi    r3, r3, 1
