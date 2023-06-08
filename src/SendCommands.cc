@@ -1681,6 +1681,21 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l,
         [[fallthrough]];
       case GameVersion::GC:
         send_join_game_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>(c, l);
+        try {
+            prepare_client_for_patches(fci, c, [fci, c]() -> void {
+                auto slowgibs = fci->get_patch("SlowGibblesFix", c->specific_version);
+                send_function_call(c, slowgibs);
+                c->function_call_response_queue.emplace_back(
+                    [c](uint32_t, uint32_t) -> void {
+                        c->log.info("applied gibbles patch");
+                    });
+                });
+        }
+        catch (const exception& e) {
+            fprintf(stderr, "no slow gibbles patch for version %08" PRIX32 ": %s",
+                    c->specific_version,
+                    e.what());
+        }
         break;
       case GameVersion::XB:
         send_join_game_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3>(c, l);
