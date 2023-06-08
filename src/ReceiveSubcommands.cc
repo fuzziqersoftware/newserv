@@ -989,7 +989,7 @@ static bool drop_item(
   return true;
 }
 
-static void on_enemy_drop_item_request(shared_ptr<ServerState>s,
+static void on_enemy_drop_item_request(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!l->is_game()) {

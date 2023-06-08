@@ -1127,13 +1127,11 @@ static void server_command_drop(shared_ptr<ServerState>s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
     check_is_game(l, true);
     check_is_leader(l, c);
-    if (s->drops_enabled == true)
-    {
+    if (s->drops_enabled == true) {
         send_text_message(c, u"Drops disabled.");
         s->drops_enabled = false;
     }
-    else
-    {
+    else {
         send_text_message(c, u"Drops enabled.");
         s->drops_enabled = true;
     }
