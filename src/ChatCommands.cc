@@ -1123,6 +1123,22 @@ static void proxy_command_switch_assist(shared_ptr<ServerState>,
       session.options.switch_assist ? "enabled" : "disabled");
 }
 
+static void server_command_drop(shared_ptr<ServerState>s, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string&) {
+    check_is_game(l, true);
+    check_is_leader(l, c);
+    if (s->drops_enabled == true)
+    {
+        send_text_message(c, u"Drops disabled.");
+        s->drops_enabled = false;
+    }
+    else
+    {
+        send_text_message(c, u"Drops enabled.");
+        s->drops_enabled = true;
+    }
+}
+
 static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
@@ -1262,6 +1278,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$type", {server_command_lobby_type, nullptr, u"Usage:\ntype <name>"}},
     {u"$warp", {server_command_warp, proxy_command_warp, u"Usage:\nwarp <area-number>"}},
     {u"$what", {server_command_what, nullptr, u"Usage:\nwhat"}},
+    {u"$drop", {server_command_drop, nullptr, u"Usage:\nToggles drops"}},
 });
 
 struct SplitCommand {
