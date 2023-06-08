@@ -257,6 +257,13 @@ bool FunctionCodeIndex::patch_menu_empty(uint32_t specific_version) const {
   return true;
 }
 
+shared_ptr<CompiledFunctionCode> FunctionCodeIndex::get_patch(
+    string name,
+    uint32_t specific_version) const {
+  string patch_name = string_printf("%s-%08" PRIX32, name.c_str(), specific_version);
+  return this->name_and_specific_version_to_patch_function.at(patch_name);
+}
+
 DOLFileIndex::DOLFileIndex(const string& directory, bool compress)
     : files_compressed(compress) {
   if (!function_compiler_available()) {
