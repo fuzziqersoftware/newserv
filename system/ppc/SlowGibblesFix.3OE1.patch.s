@@ -6,7 +6,7 @@ start:
     mflr r7
     lis r3, 0x804D
     ori r3, r3, 0xE278
-    li r4, 0x3f33
+    lis r4, 0x3f33
     ori r4, r4, 0x3333
     stw [r3], r4
     mtlr r7
