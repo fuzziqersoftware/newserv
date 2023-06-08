@@ -421,6 +421,15 @@ Proxy session commands:\n\
       fprintf(stderr, "%s\n", s.c_str());
     }
 
+  } else if (command_name == "list-functions") {
+    for (const auto& f : this->state->function_code_index->name_to_function) {
+        fprintf(stderr, "%s\n", f.first.c_str());
+    }
+
+    for (const auto& f : this->state->function_code_index->name_and_specific_version_to_patch_function) {
+        fprintf(stderr, "%s\n", f.first.c_str());
+    }
+
   } else if (command_name == "set-allow-unregistered-users") {
     set_boolean(&this->state->allow_unregistered_users, command_args);
     fprintf(stderr, "unregistered users are now %s\n",
