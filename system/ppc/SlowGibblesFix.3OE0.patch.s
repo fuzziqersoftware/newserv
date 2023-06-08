@@ -4,10 +4,10 @@ reloc0:
 
 start:
     mflr r7
-    lis r1, 0x804D
-    ori r1, r1, 0xDD98
-    li r2, 0x3f33
-    ori r2, r2, 0x3333
-    stw [r1], r2
+    lis r3, 0x804D
+    ori r3, r3, 0xDD98
+    li r4, 0x3f33
+    ori r4, r4, 0x3333
+    stw [r3], r4
     mtlr r7
     blr
