@@ -313,16 +313,17 @@ void send_quest_buffer_overflow(
 
 void empty_function_call_response_handler(uint32_t, uint32_t) {}
 
-void prepare_client_for_patches(shared_ptr<ServerState> s, shared_ptr<Client> c, std::function<void()> on_complete) {
-  auto send_version_detect = [s, wc = weak_ptr<Client>(c), on_complete]() -> void {
+void prepare_client_for_patches(shared_ptr<const FunctionCodeIndex> fci, shared_ptr<Client> c,
+    std::function<void()> on_complete) {
+  auto send_version_detect = [fci, wc = weak_ptr<Client>(c), on_complete]() -> void {
     auto c = wc.lock();
     if (!c) {
       return;
     }
     if (c->version() == GameVersion::GC &&
         c->specific_version == default_specific_version_for_version(GameVersion::GC, -1)) {
-      send_function_call(c, s->function_code_index->name_to_function.at("VersionDetect"));
-      c->function_call_response_queue.emplace_back([s, c, on_complete](uint32_t specific_version, uint32_t) -> void {
+      send_function_call(c, fci->name_to_function.at("VersionDetect"));
+      c->function_call_response_queue.emplace_back([c, on_complete](uint32_t specific_version, uint32_t) -> void {
         c->specific_version = specific_version;
         c->log.info("Version detected as %08" PRIX32, c->specific_version);
         on_complete();
@@ -333,8 +334,8 @@ void prepare_client_for_patches(shared_ptr<ServerState> s, shared_ptr<Client> c,
   };
 
   if (!(c->flags & Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH)) {
-    send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0x80000000, 8, 0x7F2734EC);
-    c->function_call_response_queue.emplace_back([s, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t header_checksum) -> void {
+    send_function_call(c, fci->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0x80000000, 8, 0x7F2734EC);
+    c->function_call_response_queue.emplace_back([fci, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t header_checksum) -> void {
       auto c = wc.lock();
       if (!c) {
         return;
@@ -345,8 +346,8 @@ void prepare_client_for_patches(shared_ptr<ServerState> s, shared_ptr<Client> c,
       } catch (const out_of_range&) {
         c->log.info("Could not detect specific version from header checksum %08" PRIX32, header_checksum);
       }
-      send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
-      c->function_call_response_queue.emplace_back([s, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t) -> void {
+      send_function_call(c, fci->name_to_function.at("CacheClearFix-Phase2"));
+      c->function_call_response_queue.emplace_back([fci, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t) -> void {
         auto c = wc.lock();
         if (!c) {
           return;
@@ -1665,7 +1666,8 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
 }
 
-void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l,
+    shared_ptr<const FunctionCodeIndex> fci) {
   if (l->is_game()) {
     switch (c->version()) {
       case GameVersion::PC:

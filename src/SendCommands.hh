@@ -135,7 +135,7 @@ void empty_function_call_response_handler(uint32_t, uint32_t);
 void send_quest_buffer_overflow(
     std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
 void prepare_client_for_patches(
-    std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, std::function<void()> on_complete);
+    std::shared_ptr<const FunctionCodeIndex> s, std::shared_ptr<Client> c, std::function<void()> on_complete);
 void send_function_call(
     Channel& ch,
     uint64_t client_flags,
@@ -261,7 +261,7 @@ void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
     std::shared_ptr<const QuestCategoryIndex> category_index, uint8_t flags);
 void send_lobby_list(std::shared_ptr<Client> c, std::shared_ptr<ServerState> s);
 
-void send_join_lobby(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
+void send_join_lobby(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l, std::shared_ptr<const FunctionCodeIndex> fci);
 void send_player_join_notification(std::shared_ptr<Client> c,
     std::shared_ptr<Lobby> l, std::shared_ptr<Client> joining_client);
 void send_player_leave_notification(std::shared_ptr<Lobby> l,
