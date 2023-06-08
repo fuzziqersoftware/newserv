@@ -23,6 +23,7 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       allow_unregistered_users(false),
       allow_saving(true),
       item_tracking_enabled(true),
+      drops_enabled(true),
       episode_3_send_function_call_enabled(false),
       enable_dol_compression(false),
       catch_handler_exceptions(true),
@@ -647,6 +648,13 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
     this->item_tracking_enabled = d.at("EnableItemTracking")->as_bool();
   } catch (const out_of_range&) {
     this->item_tracking_enabled = true;
+  }
+
+  try {
+      this->drops_enabled = d.at("EnableDrops")->as_bool();
+  }
+  catch (const out_of_range&) {
+      this->drops_enabled = true;
   }
 
   try {
