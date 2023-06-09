@@ -333,11 +333,17 @@ void prepare_client_for_patches(shared_ptr<ServerState> s, shared_ptr<Client> c,
   };
 
   if (!(c->flags & Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH)) {
-    send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0, 0, 0x7F2734EC);
-    c->function_call_response_queue.emplace_back([s, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t) -> void {
+    send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0x80000000, 8, 0x7F2734EC);
+    c->function_call_response_queue.emplace_back([s, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t header_checksum) -> void {
       auto c = wc.lock();
       if (!c) {
         return;
+      }
+      try {
+        c->specific_version = specific_version_for_gc_header_checksum(header_checksum);
+        c->log.info("Version detected as %08" PRIX32 " from header checksum %08" PRIX32, c->specific_version, header_checksum);
+      } catch (const out_of_range&) {
+        c->log.info("Could not detect specific version from header checksum %08" PRIX32, header_checksum);
       }
       send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
       c->function_call_response_queue.emplace_back([s, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t) -> void {

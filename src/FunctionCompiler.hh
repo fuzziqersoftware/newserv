@@ -88,3 +88,5 @@ struct DOLFileIndex {
     return this->name_to_file.empty() && this->item_id_to_file.empty();
   }
 };
+
+uint32_t specific_version_for_gc_header_checksum(uint32_t header_checksum);
