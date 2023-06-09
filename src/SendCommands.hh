@@ -258,7 +258,7 @@ void send_game_menu(
 void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
     const std::vector<std::shared_ptr<const Quest>>& quests, bool is_download_menu);
 void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
-    const std::vector<MenuItem>& items, bool is_download_menu);
+    std::shared_ptr<const QuestCategoryIndex> category_index, uint8_t flags);
 void send_lobby_list(std::shared_ptr<Client> c, std::shared_ptr<ServerState> s);
 
 void send_join_lobby(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);

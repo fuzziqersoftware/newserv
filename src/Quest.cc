@@ -20,6 +20,47 @@
 
 using namespace std;
 
+QuestCategoryIndex::Category::Category(uint32_t category_id, std::shared_ptr<const JSONObject> json)
+    : category_id(category_id) {
+  const auto& l = json->as_list();
+  this->flags = l.at(0)->as_int();
+  this->type = l.at(1)->as_string().at(0);
+  this->short_token = l.at(2)->as_string();
+  this->name = decode_sjis(l.at(3)->as_string());
+  this->description = decode_sjis(l.at(4)->as_string());
+}
+
+bool QuestCategoryIndex::Category::matches_flags(uint8_t request) const {
+  // If the request is for v1 or v2 (hence it has the HIDE_ON_PRE_V3 flag set)
+  // and the category also has that flag set, it never matches
+  if (request & this->flags & Flag::HIDE_ON_PRE_V3) {
+    return false;
+  }
+  return request & this->flags;
+}
+
+QuestCategoryIndex::QuestCategoryIndex(std::shared_ptr<const JSONObject> json) {
+  uint32_t next_category_id = 1;
+  for (const auto& it : json->as_list()) {
+    this->categories.emplace_back(next_category_id++, it);
+  }
+}
+
+const QuestCategoryIndex::Category& QuestCategoryIndex::find(char type, const std::string& short_token) const {
+  // Technically we should index these and do a map lookup, but there will
+  // probably always only be a small constant number of them
+  for (const auto& it : this->categories) {
+    if (it.type == type && it.short_token == short_token) {
+      return it;
+    }
+  }
+  throw out_of_range(string_printf("no category with type %c and short_token %s", type, short_token.c_str()));
+}
+
+const QuestCategoryIndex::Category& QuestCategoryIndex::at(uint32_t category_id) const {
+  return this->categories.at(category_id - 1);
+}
+
 // GCI decoding logic
 
 template <bool IsBigEndian>
@@ -189,47 +230,6 @@ struct PSODownloadQuestHeader {
   le_uint32_t encryption_seed;
 } __attribute__((packed));
 
-bool category_is_mode(QuestCategory category) {
-  return (category == QuestCategory::BATTLE) ||
-      (category == QuestCategory::CHALLENGE) ||
-      (category == QuestCategory::EPISODE_3);
-}
-
-const char* name_for_category(QuestCategory category) {
-  switch (category) {
-    case QuestCategory::RETRIEVAL:
-      return "Retrieval";
-    case QuestCategory::EXTERMINATION:
-      return "Extermination";
-    case QuestCategory::EVENT:
-      return "Event";
-    case QuestCategory::SHOP:
-      return "Shop";
-    case QuestCategory::VR:
-      return "VR";
-    case QuestCategory::TOWER:
-      return "Tower";
-    case QuestCategory::GOVERNMENT_EPISODE_1:
-      return "GovernmentEp1";
-    case QuestCategory::GOVERNMENT_EPISODE_2:
-      return "GovernmentEp2";
-    case QuestCategory::GOVERNMENT_EPISODE_4:
-      return "GovernmentEp4";
-    case QuestCategory::DOWNLOAD:
-      return "Download";
-    case QuestCategory::BATTLE:
-      return "Battle";
-    case QuestCategory::CHALLENGE:
-      return "Challenge";
-    case QuestCategory::SOLO:
-      return "Solo";
-    case QuestCategory::EPISODE_3:
-      return "Episode3";
-    default:
-      return "Unknown";
-  }
-}
-
 struct PSOQuestHeaderDC { // Same format for DC v1 and v2, thankfully
   uint32_t start_offset;
   uint32_t unknown_offset1;
@@ -288,10 +288,10 @@ struct PSOQuestHeaderBB {
   ptext<char16_t, 0x120> long_description;
 } __attribute__((packed));
 
-Quest::Quest(const string& bin_filename)
+Quest::Quest(const string& bin_filename, shared_ptr<const QuestCategoryIndex> category_index)
     : internal_id(-1),
       menu_item_id(0),
-      category(QuestCategory::UNKNOWN),
+      category_id(0),
       episode(Episode::NONE),
       is_dcv1(false),
       joinable(false),
@@ -345,49 +345,23 @@ Quest::Quest(const string& bin_filename)
     throw invalid_argument("empty filename");
   }
 
-  if (basename[0] == 'b') {
-    this->category = QuestCategory::BATTLE;
-  } else if (basename[0] == 'c') {
-    this->category = QuestCategory::CHALLENGE;
-  } else if (basename[0] == 'e') {
-    this->category = QuestCategory::EPISODE_3;
-  } else if (basename[0] != 'q') {
-    throw invalid_argument("filename does not indicate mode");
-  }
-
-  if (this->category != QuestCategory::EPISODE_3 && this->has_mnm_extension) {
-    throw invalid_argument("non-Ep3 quest has .mnm extension");
-  }
-
-  // If the quest category is still unknown, expect 3 tokens (one of them will
-  // tell us the category)
   vector<string> tokens = split(basename, '-');
-  if (tokens.size() != (2 + (this->category == QuestCategory::UNKNOWN))) {
+
+  string category_token;
+  if (tokens.size() == 3) {
+    category_token = std::move(tokens[1]);
+    tokens.erase(tokens.begin() + 1);
+  } else if (tokens.size() != 2) {
     throw invalid_argument("incorrect filename format");
   }
+
+  auto& category = category_index->find(basename[0], category_token);
+  this->category_id = category.category_id;
 
   // Parse the number out of the first token
   this->internal_id = strtoull(tokens[0].c_str() + 1, nullptr, 10);
 
-  // Get the category from the second token if needed
-  if (this->category == QuestCategory::UNKNOWN) {
-    static const unordered_map<string, QuestCategory> name_to_category({
-        {"ret", QuestCategory::RETRIEVAL},
-        {"ext", QuestCategory::EXTERMINATION},
-        {"evt", QuestCategory::EVENT},
-        {"shp", QuestCategory::SHOP},
-        {"vr", QuestCategory::VR},
-        {"twr", QuestCategory::TOWER},
-        // Note: This will be overwritten later for Episode 2 & 4 quests - we
-        // haven't parsed the episode number from the quest script yet
-        {"gov", QuestCategory::GOVERNMENT_EPISODE_1},
-        {"dl", QuestCategory::DOWNLOAD},
-        {"1p", QuestCategory::SOLO},
-    });
-    this->category = name_to_category.at(tokens[1]);
-    tokens.erase(tokens.begin() + 1);
-  }
-
+  // Get the version from the second (or previously third) token
   static const unordered_map<string, GameVersion> name_to_version({
       {"d1", GameVersion::DC},
       {"dc", GameVersion::DC},
@@ -439,7 +413,7 @@ Quest::Quest(const string& bin_filename)
 
     case GameVersion::XB:
     case GameVersion::GC: {
-      if (this->category == QuestCategory::EPISODE_3) {
+      if (category.flags & QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD) {
         if (bin_decompressed.size() != sizeof(Episode3::MapDefinition)) {
           throw invalid_argument("file is incorrect size");
         }
@@ -485,20 +459,15 @@ Quest::Quest(const string& bin_filename)
       this->name = header->name;
       this->short_description = header->short_description;
       this->long_description = header->long_description;
-      if (this->category == QuestCategory::GOVERNMENT_EPISODE_1) {
-        if (this->episode == Episode::EP2) {
-          this->category = QuestCategory::GOVERNMENT_EPISODE_2;
-        } else if (this->episode == Episode::EP4) {
-          this->category = QuestCategory::GOVERNMENT_EPISODE_4;
-        } else if (this->episode != Episode::EP1) {
-          throw invalid_argument("government quest has invalid episode number");
-        }
-      }
       break;
     }
 
     default:
       throw logic_error("invalid quest game version");
+  }
+
+  if (this->has_mnm_extension && this->episode != Episode::EP3) {
+    throw runtime_error("non-Episode 3 quest has .mnm extension");
   }
 }
 
@@ -511,7 +480,7 @@ static string basename_for_filename(const string& filename) {
 }
 
 string Quest::bin_filename() const {
-  if (this->category == QuestCategory::EPISODE_3) {
+  if (this->episode == Episode::EP3) {
     return string_printf("m%06" PRId64 "p_e.bin", this->internal_id);
   } else {
     return basename_for_filename(this->file_basename + ".bin");
@@ -519,7 +488,7 @@ string Quest::bin_filename() const {
 }
 
 string Quest::dat_filename() const {
-  if (this->category == QuestCategory::EPISODE_3) {
+  if (this->episode == Episode::EP3) {
     throw logic_error("Episode 3 quests do not have .dat files");
   } else {
     return basename_for_filename(this->file_basename + ".dat");
@@ -563,7 +532,7 @@ shared_ptr<const string> Quest::bin_contents() const {
 }
 
 shared_ptr<const string> Quest::dat_contents() const {
-  if (this->category == QuestCategory::EPISODE_3) {
+  if (this->episode == Episode::EP3) {
     throw logic_error("Episode 3 quests do not have .dat files");
   }
   if (!this->dat_contents_ptr) {
@@ -916,12 +885,15 @@ void add_write_file_commands(
 }
 
 string Quest::export_qst(GameVersion version) const {
-  if (this->category == QuestCategory::EPISODE_3) {
-    throw runtime_error("Episode 3 quests cannot be encoded in QST format");
+  bool is_ep3 = this->episode == Episode::EP3;
+  if (is_ep3 && !this->is_dlq_encoded) {
+    throw runtime_error("Episode 3 quests can only be encoded in download QST format");
   }
 
   StringWriter w;
 
+  // Some tools expect both open file commands at the beginning, hence this
+  // unfortunate abstraction-breaking.
   switch (version) {
     case GameVersion::DC:
       add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, *this, true);
@@ -942,11 +914,15 @@ string Quest::export_qst(GameVersion version) const {
     case GameVersion::GC:
     case GameVersion::XB:
       add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, true);
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, false);
+      if (!is_ep3) {
+        add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, false);
+      }
       add_write_file_commands<PSOCommandHeaderDCV3>(
           w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(
-          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      if (!is_ep3) {
+        add_write_file_commands<PSOCommandHeaderDCV3>(
+            w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      }
       break;
     case GameVersion::BB:
       add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, *this, true);
@@ -963,12 +939,14 @@ string Quest::export_qst(GameVersion version) const {
   return std::move(w.str());
 }
 
-QuestIndex::QuestIndex(const string& directory) : directory(directory) {
-  auto filename_set = list_directory(this->directory);
-  vector<string> filenames(filename_set.begin(), filename_set.end());
-  sort(filenames.begin(), filenames.end());
+QuestIndex::QuestIndex(
+    const string& directory,
+    std::shared_ptr<const QuestCategoryIndex> category_index)
+    : directory(directory),
+      category_index(category_index) {
+
   uint32_t next_menu_item_id = 1;
-  for (const auto& filename : filenames) {
+  for (const auto& filename : list_directory_sorted(this->directory)) {
     string full_path = this->directory + "/" + filename;
 
     if (ends_with(filename, ".gba")) {
@@ -988,26 +966,26 @@ QuestIndex::QuestIndex(const string& directory) : directory(directory) {
         ends_with(filename, ".mnm.dlq") ||
         ends_with(filename, ".qst")) {
       try {
-        shared_ptr<Quest> q(new Quest(full_path));
+        shared_ptr<Quest> q(new Quest(full_path, this->category_index));
         q->menu_item_id = next_menu_item_id++;
         string ascii_name = encode_sjis(q->name);
-        if (!this->version_menu_item_id_to_quest.emplace(
-                                                    make_pair(q->version, q->menu_item_id), q)
-                 .second) {
+        if (!this->version_menu_item_id_to_quest.emplace(make_pair(q->version, q->menu_item_id), q).second) {
           throw logic_error("duplicate quest menu item id");
         }
-        static_game_data_log.info("Indexed quest %s (%s => %s-%" PRId64 " (%" PRIu32 "), %s, %s, joinable=%s, dcv1=%s)",
+        auto category_name = encode_sjis(this->category_index->at(q->category_id).name);
+        static_game_data_log.info("Indexed quest %s (%s => %s-%" PRId64 " (%" PRIu32 "), %s, %s (%" PRIu32 "), joinable=%s, dcv1=%s)",
             ascii_name.c_str(),
             filename.c_str(),
             name_for_version(q->version),
             q->internal_id,
             q->menu_item_id,
-            name_for_category(q->category),
             name_for_episode(q->episode),
+            category_name.c_str(),
+            q->category_id,
             q->joinable ? "true" : "false",
             q->is_dcv1 ? "true" : "false");
       } catch (const exception& e) {
-        static_game_data_log.warning("Failed to parse quest file %s (%s)", filename.c_str(), e.what());
+        static_game_data_log.warning("Failed to index quest file %s (%s)", filename.c_str(), e.what());
       }
     }
   }
@@ -1023,14 +1001,14 @@ shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
 }
 
 vector<shared_ptr<const Quest>> QuestIndex::filter(
-    GameVersion version, bool is_dcv1, QuestCategory category) const {
+    GameVersion version, bool is_dcv1, uint32_t category_id) const {
   auto it = this->version_menu_item_id_to_quest.lower_bound(make_pair(version, 0));
   auto end_it = this->version_menu_item_id_to_quest.upper_bound(make_pair(version, 0xFFFFFFFF));
 
   vector<shared_ptr<const Quest>> ret;
   for (; it != end_it; it++) {
     shared_ptr<const Quest> q = it->second;
-    if ((q->is_dcv1 != is_dcv1) || (q->category != category)) {
+    if ((q->is_dcv1 != is_dcv1) || (q->category_id != category_id)) {
       continue;
     }
     ret.emplace_back(q);
@@ -1076,7 +1054,7 @@ shared_ptr<Quest> Quest::create_download_quest() const {
 
   // This function should not be used for Episode 3 quests (they should be sent
   // to the client as-is, without any encryption or other preprocessing)
-  if (this->category == QuestCategory::EPISODE_3) {
+  if (this->episode == Episode::EP3) {
     throw logic_error("Episode 3 quests cannot be converted to download quests");
   }
 

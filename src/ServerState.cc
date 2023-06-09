@@ -751,6 +751,13 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
     this->ep3_menu_song = d.at("Episode3MenuSong")->as_int();
   } catch (const out_of_range&) {
   }
+
+  try {
+    this->quest_category_index.reset(new QuestCategoryIndex(d.at("QuestCategories")));
+  } catch (const exception& e) {
+    throw runtime_error(string_printf(
+        "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
+  }
 }
 
 void ServerState::load_licenses() {
@@ -857,7 +864,7 @@ void ServerState::load_ep3_data() {
 
 void ServerState::load_quest_index() {
   config_log.info("Collecting quest metadata");
-  this->quest_index.reset(new QuestIndex("system/quests"));
+  this->quest_index.reset(new QuestIndex("system/quests", this->quest_category_index));
 }
 
 void ServerState::compile_functions() {

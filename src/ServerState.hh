@@ -65,6 +65,7 @@ struct ServerState {
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
   std::shared_ptr<const DOLFileIndex> dol_file_index;
   std::shared_ptr<const Episode3::DataIndex> ep3_data_index;
+  std::shared_ptr<const QuestCategoryIndex> quest_category_index;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamsIndex> battle_params;

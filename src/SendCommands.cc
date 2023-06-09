@@ -1254,15 +1254,19 @@ template <typename EntryT>
 void send_quest_menu_t(
     shared_ptr<Client> c,
     uint32_t menu_id,
-    const vector<MenuItem>& items,
-    bool is_download_menu) {
+    shared_ptr<const QuestCategoryIndex> category_index,
+    uint8_t flags) {
+  bool is_download_menu = flags & (QuestCategoryIndex::Category::Flag::DOWNLOAD | QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD);
   vector<EntryT> entries;
-  for (const auto& item : items) {
+  for (const auto& category : category_index->categories) {
+    if (!category.matches_flags(flags)) {
+      continue;
+    }
     auto& e = entries.emplace_back();
     e.menu_id = menu_id;
-    e.item_id = item.item_id;
-    e.name = item.name;
-    e.short_description = item.description;
+    e.item_id = category.category_id;
+    e.name = category.name;
+    e.short_description = category.description;
     add_color_inplace(e.short_description);
   }
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
@@ -1290,20 +1294,20 @@ void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
 }
 
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
-    const vector<MenuItem>& items, bool is_download_menu) {
+    shared_ptr<const QuestCategoryIndex> category_index, uint8_t flags) {
   switch (c->version()) {
     case GameVersion::PC:
-      send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, items, is_download_menu);
+      send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, category_index, flags);
       break;
     case GameVersion::DC:
     case GameVersion::GC:
-      send_quest_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_id, items, is_download_menu);
+      send_quest_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_id, category_index, flags);
       break;
     case GameVersion::XB:
-      send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, items, is_download_menu);
+      send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, category_index, flags);
       break;
     case GameVersion::BB:
-      send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, items, is_download_menu);
+      send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, category_index, flags);
       break;
     default:
       throw logic_error("unimplemented versioned command");

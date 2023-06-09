@@ -30,43 +30,6 @@ const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME = "quest_barrier";
 const char* CARD_AUCTION_DISCONNECT_HOOK_NAME = "card_auction";
 const char* ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME = "add_next_game_client";
 
-vector<MenuItem> quest_categories_menu({
-    MenuItem(static_cast<uint32_t>(QuestCategory::RETRIEVAL), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
-    MenuItem(static_cast<uint32_t>(QuestCategory::EXTERMINATION), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
-    MenuItem(static_cast<uint32_t>(QuestCategory::EVENT), u"Events", u"$E$C6Quests that are part\nof an event", 0),
-    MenuItem(static_cast<uint32_t>(QuestCategory::SHOP), u"Shops", u"$E$C6Quests that contain\nshops", 0),
-    MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
-    MenuItem(static_cast<uint32_t>(QuestCategory::TOWER), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
-});
-
-vector<MenuItem> quest_battle_menu({
-    MenuItem(static_cast<uint32_t>(QuestCategory::BATTLE), u"Battle", u"$E$C6Battle mode rule\nsets", 0),
-});
-
-vector<MenuItem> quest_challenge_menu({
-    MenuItem(static_cast<uint32_t>(QuestCategory::CHALLENGE), u"Challenge", u"$E$C6Challenge mode\nquests", 0),
-});
-
-vector<MenuItem> quest_solo_menu({
-    MenuItem(static_cast<uint32_t>(QuestCategory::SOLO), u"Solo Quests", u"$E$C6Quests that require\na single player", 0),
-});
-
-vector<MenuItem> quest_government_menu({
-    MenuItem(static_cast<uint32_t>(QuestCategory::GOVERNMENT_EPISODE_1), u"Hero in Red", u"$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline", 0),
-    MenuItem(static_cast<uint32_t>(QuestCategory::GOVERNMENT_EPISODE_2), u"The Military's Hero", u"$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline", 0),
-    MenuItem(static_cast<uint32_t>(QuestCategory::GOVERNMENT_EPISODE_4), u"The Meteor Impact Incident", u"$E$C6Quests that follow\nthe Episode 4\nstoryline", 0),
-});
-
-vector<MenuItem> quest_download_menu({
-    MenuItem(static_cast<uint32_t>(QuestCategory::RETRIEVAL), u"Retrieval", u"$E$C6Quests that involve\nretrieving an object", 0),
-    MenuItem(static_cast<uint32_t>(QuestCategory::EXTERMINATION), u"Extermination", u"$E$C6Quests that involve\ndestroying all\nmonsters", 0),
-    MenuItem(static_cast<uint32_t>(QuestCategory::EVENT), u"Events", u"$E$C6Quests that are part\nof an event", 0),
-    MenuItem(static_cast<uint32_t>(QuestCategory::SHOP), u"Shops", u"$E$C6Quests that contain\nshops", 0),
-    MenuItem(static_cast<uint32_t>(QuestCategory::VR), u"Virtual Reality", u"$E$C6Quests that are\ndone in a simulator", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
-    MenuItem(static_cast<uint32_t>(QuestCategory::TOWER), u"Control Tower", u"$E$C6Quests that take\nplace at the Control\nTower", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC),
-    MenuItem(static_cast<uint32_t>(QuestCategory::DOWNLOAD), u"Download", u"$E$C6Quests to download\nto your Memory Card", 0),
-});
-
 static shared_ptr<const Menu> proxy_options_menu_for_client(
     shared_ptr<ServerState> s, shared_ptr<const Client> c) {
   shared_ptr<Menu> ret(new Menu(MenuID::PROXY_OPTIONS, u"Proxy options"));
@@ -1714,16 +1677,25 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
         case MainMenuItemID::DOWNLOAD_QUESTS:
           if (c->flags & Client::Flag::IS_EPISODE_3) {
-            shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
-            auto quests = s->quest_index->filter(
-                c->version(), c->flags & Client::Flag::IS_DC_V1, QuestCategory::EPISODE_3);
             // Episode 3 has only download quests, not online quests, so this is
             // always the download quest menu. (Episode 3 does actually have
             // online quests, but they're served via a server data request
             // instead of the file download paradigm that other versions use.)
+            vector<shared_ptr<const Quest>> quests;
+            for (const auto& category : s->quest_category_index->categories) {
+              if (category.flags & QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD) {
+                quests = s->quest_index->filter(
+                    c->version(), c->flags & Client::Flag::IS_DC_V1, category.category_id);
+                break;
+              }
+            }
             send_quest_menu(c, MenuID::QUEST, quests, true);
           } else {
-            send_quest_menu(c, MenuID::QUEST_FILTER, quest_download_menu, true);
+            uint8_t flags = QuestCategoryIndex::Category::Flag::DOWNLOAD;
+            if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
+              flags |= QuestCategoryIndex::Category::Flag::HIDE_ON_PRE_V3;
+            }
+            send_quest_menu(c, MenuID::QUEST_FILTER, s->quest_category_index, flags);
           }
           break;
 
@@ -1954,9 +1926,8 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         break;
       }
       shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
-      auto quests = s->quest_index->filter(c->version(),
-          c->flags & Client::Flag::IS_DC_V1,
-          static_cast<QuestCategory>(item_id & 0xFF));
+      auto quests = s->quest_index->filter(
+          c->version(), c->flags & Client::Flag::IS_DC_V1, item_id);
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
@@ -2330,29 +2301,33 @@ static void on_A2(shared_ptr<ServerState> s, shared_ptr<Client> c,
     send_lobby_message_box(c, u"$C6Episode 3 does not\nprovide online quests\nvia this interface.");
 
   } else {
-    vector<MenuItem>* menu = nullptr;
+
+    uint8_t flags = (c->version() == GameVersion::DC || c->version() == GameVersion::PC)
+        ? QuestCategoryIndex::Category::Flag::HIDE_ON_PRE_V3
+        : 0;
+
     if ((c->version() == GameVersion::BB) && flag) {
-      menu = &quest_government_menu;
+      flags |= QuestCategoryIndex::Category::Flag::GOVERNMENT;
     } else {
       switch (l->mode) {
         case GameMode::NORMAL:
-          menu = &quest_categories_menu;
+          flags |= QuestCategoryIndex::Category::Flag::NORMAL;
           break;
         case GameMode::BATTLE:
-          menu = &quest_battle_menu;
+          flags |= QuestCategoryIndex::Category::Flag::BATTLE;
           break;
         case GameMode::CHALLENGE:
-          menu = &quest_challenge_menu;
+          flags |= QuestCategoryIndex::Category::Flag::CHALLENGE;
           break;
         case GameMode::SOLO:
-          menu = &quest_solo_menu;
+          flags |= QuestCategoryIndex::Category::Flag::SOLO;
           break;
         default:
           throw logic_error("invalid game mode");
       }
     }
 
-    send_quest_menu(c, MenuID::QUEST_FILTER, *menu, false);
+    send_quest_menu(c, MenuID::QUEST_FILTER, s->quest_category_index, flags);
   }
 }
 
