@@ -1322,7 +1322,7 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     }
     auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : nullptr;
     l->ep3_server_base = make_shared<Episode3::ServerBase>(
-        l, s->ep3_data_index, l->random_seed, tourn ? tourn->get_map() : nullptr);
+        l, s->ep3_data_index, l->random_crypt, tourn ? tourn->get_map() : nullptr);
     l->ep3_server_base->init();
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
@@ -1331,7 +1331,6 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_text_message_printf(l->clients[z], "Your client ID: $C6%zu", z);
         }
       }
-      send_text_message_printf(l, "State seed: $C6%08" PRIX32, l->random_seed);
     }
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_RECORDING) {
@@ -3167,8 +3166,8 @@ shared_ptr<Lobby> create_game_generic(
   game->difficulty = difficulty;
   if (c->options.override_random_seed >= 0) {
     game->random_seed = c->options.override_random_seed;
-    game->random->seed(game->random_seed);
   }
+  game->random_crypt.reset(new PSOV2Encryption(game->random_seed));
   if (battle_player) {
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
@@ -3204,7 +3203,7 @@ shared_ptr<Lobby> create_game_generic(
   if (game->is_ep3() || (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)))) {
     game->variations.clear(0);
   } else {
-    generate_variations(game->variations, game->random, game->episode, is_solo);
+    generate_variations(game->variations, game->random_crypt, game->episode, is_solo);
   }
 
   if (game->version == GameVersion::BB) {

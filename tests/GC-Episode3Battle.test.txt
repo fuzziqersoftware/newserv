@@ -3372,10 +3372,6 @@ I 48349 2023-05-26 15:59:20 - [Commands] Sending to C-4 (Tali) (version=GC comma
 0010 | 20 63 6C 69 65 6E 74 20 49 44 3A 20 09 43 36 30 |  client ID:  C60
 0020 | 00 00 00 00                                     |
 I 48349 2023-05-26 15:59:20 - [Commands] Sending to C-4 (Tali) (version=GC command=B0 flag=00)
-0000 | B0 00 28 00 00 00 00 00 00 00 00 00 53 74 61 74 |   (         Stat
-0010 | 65 20 73 65 65 64 3A 20 09 43 36 34 34 34 34 34 | e seed:  C644444
-0020 | 34 34 34 00 00 00 00 00                         | 444
-I 48349 2023-05-26 15:59:20 - [Commands] Sending to C-4 (Tali) (version=GC command=B0 flag=00)
 0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 36 52 |   $          C6R
 0010 | 65 63 6F 72 64 69 6E 67 20 65 6E 61 62 6C 65 64 | ecording enabled
 0020 | 00 00 00 00                                     |
@@ -25142,10 +25138,6 @@ I 48349 2023-05-26 16:04:46 - [Commands] Sending to C-4 (Tali) (version=GC comma
 0000 | B0 00 24 00 00 00 00 00 00 00 00 00 59 6F 75 72 |   $         Your
 0010 | 20 63 6C 69 65 6E 74 20 49 44 3A 20 09 43 36 30 |  client ID:  C60
 0020 | 00 00 00 00                                     |
-I 48349 2023-05-26 16:04:46 - [Commands] Sending to C-4 (Tali) (version=GC command=B0 flag=00)
-0000 | B0 00 28 00 00 00 00 00 00 00 00 00 53 74 61 74 |   (         Stat
-0010 | 65 20 73 65 65 64 3A 20 09 43 36 34 34 34 34 34 | e seed:  C644444
-0020 | 34 34 34 00 00 00 00 00                         | 444
 I 48349 2023-05-26 16:04:46 - [Commands] Sending to C-4 (Tali) (version=GC command=B0 flag=00)
 0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 36 52 |   $          C6R
 0010 | 65 63 6F 72 64 69 6E 67 20 63 6F 6D 70 6C 65 74 | ecording complet
