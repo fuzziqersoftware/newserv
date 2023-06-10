@@ -3159,7 +3159,7 @@ shared_ptr<Lobby> create_game_generic(
   game->flags = flags |
       Lobby::Flag::GAME | 
       (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0) |
-      (drops_enabled ? Lobby::Flag::DROPS_ENABLED : 0 );
+      (drops_enabled ? Lobby::Flag::DROPS_ENABLED : 0);
   game->password = password;
   game->version = c->version();
   game->section_id = c->options.override_section_id >= 0
