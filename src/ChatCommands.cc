@@ -1123,18 +1123,13 @@ static void proxy_command_switch_assist(shared_ptr<ServerState>,
       session.options.switch_assist ? "enabled" : "disabled");
 }
 
-static void server_command_drop(shared_ptr<ServerState>s, shared_ptr<Lobby> l,
+static void server_command_drop(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
     check_is_game(l, true);
     check_is_leader(l, c);
-    if (s->drops_enabled == true) {
-        send_text_message(c, u"Drops disabled.");
-        s->drops_enabled = false;
-    }
-    else {
-        send_text_message(c, u"Drops enabled.");
-        s->drops_enabled = true;
-    }
+    l->flags ^= Lobby::Flag::DROPS_ENABLED;
+    send_text_message_printf(l, "Drops %s",
+    (l->flags & Lobby::Flag::DROPS_ENABLED) ? "enabled" : "disabled");
 }
 
 static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,

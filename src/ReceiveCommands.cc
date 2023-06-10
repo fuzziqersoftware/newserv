@@ -3150,12 +3150,16 @@ shared_ptr<Lobby> create_game_generic(
   bool item_tracking_enabled =
       (c->version() == GameVersion::BB) ||
       (s->item_tracking_enabled && (mode == GameMode::NORMAL || mode == GameMode::SOLO));
+  
+  bool drops_enabled =
+      (s->drops_enabled && (mode == GameMode::NORMAL));
 
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
   game->flags = flags |
-      Lobby::Flag::GAME |
-      (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0);
+      Lobby::Flag::GAME | 
+      (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0) |
+      (drops_enabled ? Lobby::Flag::DROPS_ENABLED : 0 );
   game->password = password;
   game->version = c->version();
   game->section_id = c->options.override_section_id >= 0
