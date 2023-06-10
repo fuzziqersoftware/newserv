@@ -1104,10 +1104,25 @@ static HandlerResult S_44_A6(shared_ptr<ServerState>,
 
   string filename = cmd.filename;
   string output_filename;
+  bool is_download = (command == 0xA6);
   if (session.options.save_files) {
-    output_filename = string_printf("%s.%s.%" PRIu64,
-        filename.c_str(),
-        (command == 0xA6) ? "download" : "online", now());
+    size_t extension_offset = filename.rfind('.');
+    string basename, extension;
+    if (extension_offset != string::npos) {
+      basename = filename.substr(0, extension_offset);
+      extension = filename.substr(extension_offset);
+      if (extension == ".bin" && (session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3)) {
+        extension += ".mnm";
+      }
+    } else {
+      basename = filename;
+    }
+    output_filename = string_printf("%s.%s.%" PRIu64 "%s",
+        basename.c_str(),
+        is_download ? "download" : "online",
+        now(),
+        extension.c_str());
+
     for (size_t x = 0; x < output_filename.size(); x++) {
       if (output_filename[x] < 0x20 || output_filename[x] > 0x7E || output_filename[x] == '/') {
         output_filename[x] = '_';
@@ -1118,11 +1133,13 @@ static HandlerResult S_44_A6(shared_ptr<ServerState>,
     }
   }
 
+  // Episode 3 download quests aren't DLQ-encoded
+  bool decode_dlq = is_download && !(session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3);
   ProxyServer::LinkedSession::SavingFile sf(
-      cmd.filename, output_filename, cmd.file_size);
+      cmd.filename, output_filename, cmd.file_size, decode_dlq);
   session.saving_files.emplace(cmd.filename, std::move(sf));
   if (session.options.save_files) {
-    session.log.info("Opened file %s", output_filename.c_str());
+    session.log.info("Saving %s from server to %s", filename.c_str(), output_filename.c_str());
   } else {
     session.log.info("Tracking file %s", filename.c_str());
   }
@@ -1158,15 +1175,16 @@ static HandlerResult S_13_A7(shared_ptr<ServerState>,
     modified = true;
   }
 
-  if (sf->f.get()) {
-    session.log.info("Writing %" PRIu32 " bytes to %s",
-        cmd.data_size.load(), sf->output_filename.c_str());
-    fwritex(sf->f.get(), cmd.data.data(), cmd.data_size);
+  if (!sf->output_filename.empty()) {
+    session.log.info("Adding %" PRIu32 " bytes to %s => %s",
+        cmd.data_size.load(), sf->basename.c_str(), sf->output_filename.c_str());
+    sf->blocks.emplace_back(reinterpret_cast<const char*>(cmd.data.data()), cmd.data_size);
   }
   sf->remaining_bytes -= cmd.data_size;
 
   if (sf->remaining_bytes == 0) {
-    session.log.info("Closing file %s", sf->output_filename.c_str());
+    session.log.info("Writing file %s => %s", sf->basename.c_str(), sf->output_filename.c_str());
+    sf->write();
     session.saving_files.erase(cmd.filename);
   }
 

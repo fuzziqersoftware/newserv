@@ -262,11 +262,12 @@ There are many options available when starting a proxy session. All options are 
 * **Block events**: disables holiday events sent by the remote server.
 * **Block patches**: prevents any B2 (patch) commands from reaching the client.
 * **Save files**: saves copies of several kinds of files when they're sent by the remote server. The files are written to the current directory (which is usually the directory containing the system/ directory). These kinds of files can be saved:
-    * Online quests and download quests (saved as .bin/.dat files; for download quests, you may need to manually rename them to .bin.dlq/.dat.dlq to use them with newserv)
+    * Online quests and download quests (saved as .bin/.dat files)
     * GBA games (saved as .gba files)
     * Patches (saved as .bin files, and disassembled into PowerPC assembly if newserv is built with patch support)
     * Player data from BB sessions (saved as .bin files, which are not the same format as .nsc files)
     * Episode 3 online quests and maps (saved as .mnmd files)
+    * Episode 3 download quests (saved as .mnm files)
     * Episode 3 card definitions (saved as .mnr files)
     * Episode 3 media updates (saved as .gvm, .bml, or .bin files)
 

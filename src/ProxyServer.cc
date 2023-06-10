@@ -599,13 +599,19 @@ void ProxyServer::LinkedSession::connect() {
 ProxyServer::LinkedSession::SavingFile::SavingFile(
     const string& basename,
     const string& output_filename,
-    uint32_t remaining_bytes)
+    size_t remaining_bytes,
+    bool is_download)
     : basename(basename),
       output_filename(output_filename),
-      remaining_bytes(remaining_bytes) {
-  if (!this->output_filename.empty()) {
-    this->f = fopen_unique(this->output_filename, "wb");
+      is_download(is_download),
+      remaining_bytes(remaining_bytes) {}
+
+void ProxyServer::LinkedSession::SavingFile::write() const {
+  string data = join(this->blocks);
+  if (is_download && (ends_with(this->basename, ".bin") || ends_with(this->basename, ".dat"))) {
+    data = Quest::decode_dlq_data(data);
   }
+  save_file(this->output_filename, data);
 }
 
 void ProxyServer::LinkedSession::dispatch_on_timeout(

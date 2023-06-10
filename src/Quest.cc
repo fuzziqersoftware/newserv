@@ -507,19 +507,19 @@ shared_ptr<const string> Quest::bin_contents() const {
             this->file_basename + (this->has_mnm_extension ? ".mnmd" : ".bind")))));
         break;
       case FileFormat::BIN_DAT_GCI:
-        this->bin_contents_ptr.reset(new string(this->decode_gci(
+        this->bin_contents_ptr.reset(new string(this->decode_gci_file(
             this->file_basename + (this->has_mnm_extension ? ".mnm.gci" : ".bin.gci"))));
         break;
       case FileFormat::BIN_DAT_VMS:
-        this->bin_contents_ptr.reset(new string(this->decode_vms(
+        this->bin_contents_ptr.reset(new string(this->decode_vms_file(
             this->file_basename + (this->has_mnm_extension ? ".mnm.vms" : ".bin.vms"))));
         break;
       case FileFormat::BIN_DAT_DLQ:
-        this->bin_contents_ptr.reset(new string(this->decode_dlq(
+        this->bin_contents_ptr.reset(new string(this->decode_dlq_file(
             this->file_basename + (this->has_mnm_extension ? ".mnm.dlq" : ".bin.dlq"))));
         break;
       case FileFormat::QST: {
-        auto result = this->decode_qst(this->file_basename + ".qst");
+        auto result = this->decode_qst_file(this->file_basename + ".qst");
         this->bin_contents_ptr.reset(new string(std::move(result.first)));
         this->dat_contents_ptr.reset(new string(std::move(result.second)));
         break;
@@ -544,16 +544,16 @@ shared_ptr<const string> Quest::dat_contents() const {
         this->dat_contents_ptr.reset(new string(prs_compress(load_file(this->file_basename + ".datd"))));
         break;
       case FileFormat::BIN_DAT_GCI:
-        this->dat_contents_ptr.reset(new string(this->decode_gci(this->file_basename + ".dat.gci")));
+        this->dat_contents_ptr.reset(new string(this->decode_gci_file(this->file_basename + ".dat.gci")));
         break;
       case FileFormat::BIN_DAT_VMS:
-        this->dat_contents_ptr.reset(new string(this->decode_vms(this->file_basename + ".dat.vms")));
+        this->dat_contents_ptr.reset(new string(this->decode_vms_file(this->file_basename + ".dat.vms")));
         break;
       case FileFormat::BIN_DAT_DLQ:
-        this->dat_contents_ptr.reset(new string(this->decode_dlq(this->file_basename + ".dat.dlq")));
+        this->dat_contents_ptr.reset(new string(this->decode_dlq_file(this->file_basename + ".dat.dlq")));
         break;
       case FileFormat::QST: {
-        auto result = this->decode_qst(this->file_basename + ".qst");
+        auto result = this->decode_qst_file(this->file_basename + ".qst");
         this->bin_contents_ptr.reset(new string(std::move(result.first)));
         this->dat_contents_ptr.reset(new string(std::move(result.second)));
         break;
@@ -565,7 +565,7 @@ shared_ptr<const string> Quest::dat_contents() const {
   return this->dat_contents_ptr;
 }
 
-string Quest::decode_gci(
+string Quest::decode_gci_file(
     const string& filename, ssize_t find_seed_num_threads, int64_t known_seed) {
   string data = load_file(filename);
 
@@ -649,7 +649,7 @@ string Quest::decode_gci(
   }
 }
 
-string Quest::decode_vms(
+string Quest::decode_vms_file(
     const string& filename, ssize_t find_seed_num_threads, int64_t known_seed) {
   string data = load_file(filename);
 
@@ -682,32 +682,32 @@ string Quest::decode_vms(
   }
 }
 
-string Quest::decode_dlq(const string& filename) {
-  uint32_t decompressed_size;
-  uint32_t key;
-  string data;
-  {
-    auto f = fopen_unique(filename, "rb");
-    decompressed_size = freadx<le_uint32_t>(f.get());
-    key = freadx<le_uint32_t>(f.get());
-    data = read_all(f.get());
-  }
+string Quest::decode_dlq_data(const string& data) {
+  StringReader r(data);
+  uint32_t decompressed_size = r.get_u32l();
+  uint32_t key = r.get_u32l();
 
   // The compressed data size does not need to be a multiple of 4, but the V2
   // encryption (which is used for all download quests, even in V3) requires the
   // data size to be a multiple of 4. We'll just temporarily stick a few bytes
   // on the end, then throw them away later if needed.
+  string decrypted = r.read(r.remaining());
   PSOV2Encryption encr(key);
   size_t original_size = data.size();
-  data.resize((data.size() + 3) & (~3));
-  encr.decrypt(data);
-  data.resize(original_size);
+  decrypted.resize((decrypted.size() + 3) & (~3));
+  encr.decrypt(decrypted);
+  decrypted.resize(original_size);
 
-  if (prs_decompress_size(data) != decompressed_size) {
+  if (prs_decompress_size(decrypted) != decompressed_size) {
     throw runtime_error("decompressed size does not match size in header");
   }
 
-  return data;
+  return decrypted;
+}
+
+string Quest::decode_dlq_file(const string& filename) {
+  auto f = fopen_unique(filename, "rb");
+  return Quest::decode_dlq_data(read_all(f.get()));
 }
 
 template <typename HeaderT, typename OpenFileT>
@@ -814,14 +814,14 @@ static pair<string, string> decode_qst_t(FILE* f) {
   }
 
   if (subformat == Quest::FileFormat::BIN_DAT_DLQ) {
-    bin_contents = Quest::decode_dlq(bin_contents);
-    dat_contents = Quest::decode_dlq(dat_contents);
+    bin_contents = Quest::decode_dlq_file(bin_contents);
+    dat_contents = Quest::decode_dlq_file(dat_contents);
   }
 
   return make_pair(bin_contents, dat_contents);
 }
 
-pair<string, string> Quest::decode_qst(const string& filename) {
+pair<string, string> Quest::decode_qst_file(const string& filename) {
   auto f = fopen_unique(filename, "rb");
 
   // QST files start with an open file command, but the format differs depending

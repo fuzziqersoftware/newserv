@@ -97,13 +97,17 @@ public:
     struct SavingFile {
       std::string basename;
       std::string output_filename;
-      uint32_t remaining_bytes;
-      std::unique_ptr<FILE, std::function<void(FILE*)>> f;
+      bool is_download;
+      size_t remaining_bytes;
+      std::deque<std::string> blocks;
 
       SavingFile(
           const std::string& basename,
           const std::string& output_filename,
-          uint32_t remaining_bytes);
+          size_t remaining_bytes,
+          bool is_download);
+
+      void write() const;
     };
     std::unordered_map<std::string, SavingFile> saving_files;
 
