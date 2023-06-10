@@ -61,7 +61,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(
     add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, c->options.switch_assist,
         u"Switch assist", u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
   } else {
-    // Note: Thie option's text is the maximum possible length for any menu item
+    // Note: This option's text is the maximum possible length for any menu item
     add_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, c->options.ep3_infinite_meseta,
         u"Infinite Meseta", u"Fix Meseta value\nat 1,000,000");
   }

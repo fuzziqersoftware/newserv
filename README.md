@@ -250,6 +250,26 @@ To use the proxy for PSO BB, set the ProxyDestination-BB entry in config.json. I
 
 When you're on PSO DC, PC, or GC and are connected to a remote server through newserv's proxy, choosing the Change Ship or Change Block action from the lobby counter will send you back to newserv's main menu instead of the remote server's ship or block select menu. You can go back to the server you were just on by choosing it from the proxy server menu again.
 
+There are many options available when starting a proxy session. All options are off by default unless otherwise noted. The options are:
+* **Chat commands**: enables chat commands in the proxy session (on by default).
+* **Chat filter**: enables escape sequences in chat messages and info board (on by default).
+* **Player notifications**: shows a message when any player joins or leaves the game or lobby you're in.
+* **Block pings**: blocks automatic pings sent by the client, and responds to ping commands from the server automatically. This works around a bug in Sylverant's login server.
+* **Infinite HP**: automatically heals you whenever you get hit. An attack that kills you in one hit will still kill you, however.
+* **Infinite TP**: automatically restores your TP whenever you use any technique.
+* **Switch assist**: attempts to unlock doors that require two players in a one-player game.
+* **Infinite Meseta** (Episode 3 only): gives you 1,000,000 Meseta, regardless of the value sent by the remote server.
+* **Block events**: disables holiday events sent by the remote server.
+* **Block patches**: prevents any B2 (patch) commands from reaching the client.
+* **Save files**: saves copies of several kinds of files when they're sent by the remote server. The files are written to the current directory (which is usually the directory containing the system/ directory). These kinds of files can be saved:
+    * Online quests and download quests (saved as .bin/.dat files; for download quests, you may need to manually rename them to .bin.dlq/.dat.dlq to use them with newserv)
+    * GBA games (saved as .gba files)
+    * Patches (saved as .bin files, and disassembled into PowerPC assembly if newserv is built with patch support)
+    * Player data from BB sessions (saved as .bin files, which are not the same format as .nsc files)
+    * Episode 3 online quests and maps (saved as .mnmd files)
+    * Episode 3 card definitions (saved as .mnr files)
+    * Episode 3 media updates (saved as .gvm, .bml, or .bin files)
+
 The remote server will probably try to assign you a Guild Card number that doesn't match the one you have on newserv. On PSO DC, PC and GC, the proxy server rewrites the commands in transit to make it look like the remote server assigned you the same Guild Card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the Guild Card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you first connect to the remote server, and you can retrieve it in lobbies or during games with the $li command.
 
 Some chat commands (see below) have the same basic function on the proxy server but have different effects or conditions. In addition, there are some server shell commands that affect clients on the proxy (run `help` in the shell to see what they are). If there's only one proxy session open, the shell's proxy commands will affect that session. Otherwise, you'll have to specify which session to affect with the `on` prefix - to send a chat message in LinkedSession:17205AE4, for example, you would run `on 17205AE4 chat ...`.
