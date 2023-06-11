@@ -963,8 +963,8 @@ static void server_command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 ////////////////////////////////////////////////////////////////////////////////
 // Cheat commands
 
-static void server_command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const std::u16string& args) {
+static void server_command_warp(
+    shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args, bool is_warpall) {
   check_is_game(l, true);
   check_cheats_enabled(l);
 
@@ -981,19 +981,45 @@ static void server_command_warp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     return;
   }
 
-  send_warp(c, area);
+  if (is_warpall) {
+    send_warp(l, area, false);
+  } else {
+    send_warp(c, area, true);
+  }
 }
 
-static void proxy_command_warp(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, const std::u16string& args) {
+static void server_command_warpme(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string& args) {
+  server_command_warp(l, c, args, false);
+}
+
+static void server_command_warpall(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string& args) {
+  server_command_warp(l, c, args, true);
+}
+
+static void proxy_command_warp(
+    ProxyServer::LinkedSession& session, const std::u16string& args, bool is_warpall) {
   if (!session.is_in_game) {
     send_text_message(session.client_channel, u"$C6You must be in a\ngame to use this\ncommand");
     return;
   }
   uint32_t area = stoul(encode_sjis(args), nullptr, 0);
-  // TODO: Add limit check here like in the server command implementation
-  send_warp(session.client_channel, session.lobby_client_id, area);
+  send_warp(session.client_channel, session.lobby_client_id, area, !is_warpall);
+  if (is_warpall) {
+    send_warp(session.server_channel, session.lobby_client_id, area, false);
+  }
   session.area = area;
+}
+
+static void proxy_command_warpme(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  proxy_command_warp(session, args, false);
+}
+
+static void proxy_command_warpall(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  proxy_command_warp(session, args, true);
 }
 
 static void server_command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
@@ -1005,7 +1031,7 @@ static void server_command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   if (limit == 0) {
     return;
   }
-  send_warp(c, (c->area + 1) % limit);
+  send_warp(c, (c->area + 1) % limit, true);
 }
 
 static void proxy_command_next(shared_ptr<ServerState>,
@@ -1016,7 +1042,7 @@ static void proxy_command_next(shared_ptr<ServerState>,
   }
 
   session.area++;
-  send_warp(session.client_channel, session.lobby_client_id, session.area);
+  send_warp(session.client_channel, session.lobby_client_id, session.area, true);
 }
 
 static void server_command_what(shared_ptr<ServerState>, shared_ptr<Lobby> l,
@@ -1225,52 +1251,50 @@ typedef void (*proxy_handler_t)(shared_ptr<ServerState>,
 struct ChatCommandDefinition {
   server_handler_t server_handler;
   proxy_handler_t proxy_handler;
-  u16string usage;
 };
 
 static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
-    // TODO: implement command_help and actually use the usage strings here
-    {u"$allevent", {server_command_lobby_event_all, nullptr, u"Usage:\nallevent <name/ID>"}},
-    {u"$ann", {server_command_announce, nullptr, u"Usage:\nann <message>"}},
-    {u"$arrow", {server_command_arrow, proxy_command_arrow, u"Usage:\narrow <color>"}},
-    {u"$auction", {server_command_auction, proxy_command_auction, u"Usage:\nauction"}},
-    {u"$ax", {server_command_ax, nullptr, u"Usage:\nax <message>"}},
-    {u"$ban", {server_command_ban, nullptr, u"Usage:\nban <name-or-number>"}},
-    // TODO: implement this on proxy server
-    {u"$bbchar", {server_command_convert_char_to_bb, nullptr, u"Usage:\nbbchar <user> <pass> <1-4>"}},
-    {u"$cheat", {server_command_cheat, nullptr, u"Usage:\ncheat"}},
-    {u"$debug", {server_command_debug, nullptr, u"Usage:\ndebug"}},
-    {u"$edit", {server_command_edit, nullptr, u"Usage:\nedit <stat> <value>"}},
-    {u"$event", {server_command_lobby_event, proxy_command_lobby_event, u"Usage:\nevent <name>"}},
-    {u"$exit", {server_command_exit, proxy_command_exit, u"Usage:\nexit"}},
-    {u"$gc", {server_command_get_self_card, proxy_command_get_player_card, u"Usage:\ngc"}},
-    {u"$infhp", {server_command_infinite_hp, proxy_command_infinite_hp, u"Usage:\ninfhp"}},
-    {u"$inftp", {server_command_infinite_tp, proxy_command_infinite_tp, u"Usage:\ninftp"}},
-    {u"$item", {server_command_item, proxy_command_item, u"Usage:\nitem <item-code>"}},
-    {u"$i", {server_command_item, proxy_command_item, u"Usage:\ni <item-code>"}},
-    {u"$kick", {server_command_kick, nullptr, u"Usage:\nkick <name-or-number>"}},
-    {u"$li", {server_command_lobby_info, proxy_command_lobby_info, u"Usage:\nli"}},
-    {u"$maxlevel", {server_command_max_level, nullptr, u"Usage:\nmax_level <level>"}},
-    {u"$minlevel", {server_command_min_level, nullptr, u"Usage:\nmin_level <level>"}},
-    {u"$next", {server_command_next, proxy_command_next, u"Usage:\nnext"}},
-    {u"$password", {server_command_password, nullptr, u"Usage:\nlock [password]\nomit password to\nunlock game"}},
-    {u"$patch", {server_command_patch, proxy_command_patch, u"Usage:\npatch <name>"}},
-    {u"$persist", {server_command_persist, nullptr, u"Usage:\npersist"}},
-    {u"$playrec", {server_command_playrec, nullptr, u"Usage:\nplayrec <filename>"}},
-    {u"$rand", {server_command_rand, proxy_command_rand, u"Usage:\nrand [hex seed]\nomit seed to revert\nto default"}},
-    {u"$saverec", {server_command_saverec, nullptr, u"Usage:\nsaverec <filename>"}},
-    {u"$sc", {server_command_send_client, proxy_command_send_client, u"Usage:\nsc <data>"}},
-    {u"$secid", {server_command_secid, proxy_command_secid, u"Usage:\nsecid [section ID]\nomit section ID to\nrevert to normal"}},
-    {u"$silence", {server_command_silence, nullptr, u"Usage:\nsilence <name-or-number>"}},
-    // TODO: implement this on proxy server
-    {u"$song", {server_command_song, proxy_command_song, u"Usage:\nsong <song-number>"}},
-    {u"$spec", {server_command_spec, nullptr, u"Usage:\nspec"}},
-    {u"$ss", {nullptr, proxy_command_send_server, u"Usage:\nss <data>"}},
-    {u"$swa", {server_command_switch_assist, proxy_command_switch_assist, u"Usage:\nswa"}},
-    {u"$type", {server_command_lobby_type, nullptr, u"Usage:\ntype <name>"}},
-    {u"$warp", {server_command_warp, proxy_command_warp, u"Usage:\nwarp <area-number>"}},
-    {u"$what", {server_command_what, nullptr, u"Usage:\nwhat"}},
-    {u"$drop", {server_command_drop, nullptr, u"Usage:\nToggles drops"}},
+    {u"$allevent", {server_command_lobby_event_all, nullptr}},
+    {u"$ann", {server_command_announce, nullptr}},
+    {u"$arrow", {server_command_arrow, proxy_command_arrow}},
+    {u"$auction", {server_command_auction, proxy_command_auction}},
+    {u"$ax", {server_command_ax, nullptr}},
+    {u"$ban", {server_command_ban, nullptr}},
+    {u"$bbchar", {server_command_convert_char_to_bb, nullptr}},
+    {u"$cheat", {server_command_cheat, nullptr}},
+    {u"$debug", {server_command_debug, nullptr}},
+    {u"$drop", {server_command_drop, nullptr}},
+    {u"$edit", {server_command_edit, nullptr}},
+    {u"$event", {server_command_lobby_event, proxy_command_lobby_event}},
+    {u"$exit", {server_command_exit, proxy_command_exit}},
+    {u"$gc", {server_command_get_self_card, proxy_command_get_player_card}},
+    {u"$infhp", {server_command_infinite_hp, proxy_command_infinite_hp}},
+    {u"$inftp", {server_command_infinite_tp, proxy_command_infinite_tp}},
+    {u"$item", {server_command_item, proxy_command_item}},
+    {u"$i", {server_command_item, proxy_command_item}},
+    {u"$kick", {server_command_kick, nullptr}},
+    {u"$li", {server_command_lobby_info, proxy_command_lobby_info}},
+    {u"$maxlevel", {server_command_max_level, nullptr}},
+    {u"$minlevel", {server_command_min_level, nullptr}},
+    {u"$next", {server_command_next, proxy_command_next}},
+    {u"$password", {server_command_password, nullptr}},
+    {u"$patch", {server_command_patch, proxy_command_patch}},
+    {u"$persist", {server_command_persist, nullptr}},
+    {u"$playrec", {server_command_playrec, nullptr}},
+    {u"$rand", {server_command_rand, proxy_command_rand}},
+    {u"$saverec", {server_command_saverec, nullptr}},
+    {u"$sc", {server_command_send_client, proxy_command_send_client}},
+    {u"$secid", {server_command_secid, proxy_command_secid}},
+    {u"$silence", {server_command_silence, nullptr}},
+    {u"$song", {server_command_song, proxy_command_song}},
+    {u"$spec", {server_command_spec, nullptr}},
+    {u"$ss", {nullptr, proxy_command_send_server}},
+    {u"$swa", {server_command_switch_assist, proxy_command_switch_assist}},
+    {u"$type", {server_command_lobby_type, nullptr}},
+    {u"$warp", {server_command_warpme, proxy_command_warpme}},
+    {u"$warpme", {server_command_warpme, proxy_command_warpme}},
+    {u"$warpall", {server_command_warpall, proxy_command_warpall}},
+    {u"$what", {server_command_what, nullptr}},
 });
 
 struct SplitCommand {

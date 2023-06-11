@@ -290,8 +290,9 @@ void send_player_stats_change(std::shared_ptr<Lobby> l, std::shared_ptr<Client> 
     PlayerStatsChange stat, uint32_t amount);
 void send_player_stats_change(
     Channel& ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount);
-void send_warp(Channel& ch, uint8_t client_id, uint32_t area);
-void send_warp(std::shared_ptr<Client> c, uint32_t area);
+void send_warp(Channel& ch, uint8_t client_id, uint32_t area, bool is_private);
+void send_warp(std::shared_ptr<Client> c, uint32_t area, bool is_private);
+void send_warp(std::shared_ptr<Lobby> l, uint32_t area, bool is_private);
 
 void send_ep3_change_music(Channel& ch, uint32_t song);
 void send_set_player_visibility(std::shared_ptr<Lobby> l,

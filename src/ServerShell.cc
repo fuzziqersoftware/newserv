@@ -208,7 +208,10 @@ Proxy session commands:\n\
   marker COLOR-ID\n\
     Change your lobby marker color.\n\
   warp AREA-ID\n\
+  warpme AREA-ID\n\
     Send yourself to a specific area.\n\
+  warpall AREA-ID\n\
+    Send everyone to a specific area.\n\
   set-override-section-id [SECTION-ID]\n\
     Override the section ID for games you create or join. This affects the\n\
     active drop chart if you are the leader of the game and the server doesn't\n\
@@ -662,12 +665,18 @@ Proxy session commands:\n\
     auto session = this->get_proxy_session(session_name);
     session->server_channel.send(0x89, stoul(command_args));
 
-  } else if (command_name == "warp") {
+  } else if ((command_name == "warp") || (command_name == "warpme")) {
     auto session = this->get_proxy_session(session_name);
 
     uint8_t area = stoul(command_args);
-    send_warp(session->client_channel, session->lobby_client_id, area);
-    send_warp(session->server_channel, session->lobby_client_id, area);
+    send_warp(session->client_channel, session->lobby_client_id, area, true);
+
+  } else if (command_name == "warpall") {
+    auto session = this->get_proxy_session(session_name);
+
+    uint8_t area = stoul(command_args);
+    send_warp(session->client_channel, session->lobby_client_id, area, false);
+    send_warp(session->server_channel, session->lobby_client_id, area, false);
 
   } else if ((command_name == "info-board") || (command_name == "info-board-data")) {
     auto session = this->get_proxy_session(session_name);

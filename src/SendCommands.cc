@@ -1879,14 +1879,22 @@ void send_player_stats_change(Channel& ch, uint16_t client_id, PlayerStatsChange
   send_command_vt(ch, (subs.size() > 0x400 / sizeof(G_UpdatePlayerStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
-void send_warp(Channel& ch, uint8_t client_id, uint32_t area) {
+void send_warp(Channel& ch, uint8_t client_id, uint32_t area, bool is_private) {
   G_InterLevelWarp_6x94 cmd = {{0x94, 0x02, 0}, area, {}};
-  ch.send(0x62, client_id, &cmd, sizeof(cmd));
+  ch.send(is_private ? 0x62 : 0x60, client_id, &cmd, sizeof(cmd));
 }
 
-void send_warp(shared_ptr<Client> c, uint32_t area) {
-  send_warp(c->channel, c->lobby_client_id, area);
+void send_warp(shared_ptr<Client> c, uint32_t area, bool is_private) {
+  send_warp(c->channel, c->lobby_client_id, area, is_private);
   c->area = area;
+}
+
+void send_warp(shared_ptr<Lobby> l, uint32_t area, bool is_private) {
+  for (const auto& c : l->clients) {
+    if (c) {
+      send_warp(c, area, is_private);
+    }
+  }
 }
 
 void send_ep3_change_music(Channel& ch, uint32_t song) {
