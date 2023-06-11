@@ -3151,8 +3151,10 @@ shared_ptr<Lobby> create_game_generic(
       (c->version() == GameVersion::BB) ||
       (s->item_tracking_enabled && (mode == GameMode::NORMAL || mode == GameMode::SOLO));
   
+  // only disable drops if the config flag is set and are playing regualr multi-mode.
+  // drops are still enabled for battle and challenge modes.
   bool drops_enabled =
-      (s->drops_enabled && (mode == GameMode::NORMAL));
+      (s->drops_enabled || (mode != GameMode::NORMAL));
 
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
