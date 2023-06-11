@@ -7,6 +7,7 @@
 #include <phosg/Strings.hh>
 
 #include "Client.hh"
+#include "Compression.hh"
 #include "Items.hh"
 #include "Lobby.hh"
 #include "Loggers.hh"
@@ -166,6 +167,22 @@ static void on_forward_check_game(shared_ptr<ServerState>,
   if (!l->is_game()) {
     return;
   }
+  forward_subcommand(l, c, command, flag, data);
+}
+
+static void on_forward_sync_game_state(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  if (!l->is_game() || !l->any_client_loading()) {
+    return;
+  }
+
+  const auto& cmd = check_size_sc<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(
+      data, sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E), 0xFFFF);
+  if (cmd.compressed_size > data.size() - sizeof(cmd)) {
+    throw runtime_error("compressed end offset is beyond end of command");
+  }
+
   forward_subcommand(l, c, command, flag, data);
 }
 
@@ -1462,10 +1479,10 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 68 */ on_forward_check_size_game, // Telepipe/Ryuker
     /* 69 */ on_forward_check_size_game,
     /* 6A */ on_forward_check_size_game,
-    /* 6B */ on_forward_check_game_loading,
-    /* 6C */ on_forward_check_game_loading,
-    /* 6D */ on_forward_check_game_loading,
-    /* 6E */ on_forward_check_game_loading,
+    /* 6B */ on_forward_sync_game_state,
+    /* 6C */ on_forward_sync_game_state,
+    /* 6D */ on_forward_sync_game_state,
+    /* 6E */ on_forward_sync_game_state,
     /* 6F */ on_forward_check_game_loading,
     /* 70 */ on_forward_check_game_loading,
     /* 71 */ on_forward_check_game_loading,
