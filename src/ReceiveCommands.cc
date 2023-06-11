@@ -1705,7 +1705,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
             throw runtime_error("client does not support send_function_call");
           }
-          prepare_client_for_patches(s, c, [s, c]() -> void {
+          prepare_client_for_patches(s->function_code_index, c, [s, c]() -> void {
             send_menu(c, s->function_code_index->patch_menu(c->specific_version));
           });
           break;
@@ -1717,7 +1717,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           if (c->flags & Client::Flag::NO_SEND_FUNCTION_CALL) {
             throw runtime_error("client does not support send_function_call");
           }
-          prepare_client_for_patches(s, c, [s, c]() -> void {
+          prepare_client_for_patches(s->function_code_index, c, [s, c]() -> void {
             send_menu(c, s->dol_file_index->menu);
           });
           break;

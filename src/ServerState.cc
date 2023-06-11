@@ -188,7 +188,7 @@ void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
     if (!other_client) {
       continue;
     } else if (other_client == joining_client) {
-      send_join_lobby(joining_client, l);
+      send_join_lobby(joining_client, l, this->function_code_index);
     } else {
       send_player_join_notification(other_client, l, joining_client);
     }
