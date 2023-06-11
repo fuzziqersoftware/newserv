@@ -361,6 +361,11 @@
   // be turned off here. This option has no effect on Blue Burst games - item
   // tracking is always enabled for them.
   "EnableItemTracking": true,
+  
+  // Enable or disable drops by default in non-BB games (drops are always
+  // enabled in BB games). The leader can toggle drops in each game with the
+  // $drop command.
+  "EnableDrops": true,
 
   // Whether to enable certain exception handling. Disabling this causes
   // newserv to abort when any client causes an exception, which is generally

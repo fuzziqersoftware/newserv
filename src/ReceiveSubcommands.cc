@@ -963,7 +963,11 @@ static bool drop_item(
   // If the game is not BB, forward the request to the leader instead of
   // generating the item drop command
   if (l->version != GameVersion::BB) {
-    return false;
+    if (!(l->flags & Lobby::Flag::DROPS_ENABLED)) {
+      return true; // don't forward request to leader if drops are disabled
+    } else {
+      return false; // do the normal thing where we ask the leader for a drop
+    }
   }
 
   // If the game is BB, run the rare + common drop logic
@@ -978,7 +982,6 @@ static bool drop_item(
   } else {
     item.data = l->item_creator->on_box_item_drop(area);
   }
-
   item.data.id = l->generate_item_id(0xFF);
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
