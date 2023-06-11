@@ -52,7 +52,7 @@ With that said, I offer no guarantees on how or when this project will advance. 
 Current known issues / missing features / things to do:
 - Implement the rest of PSOBB. Major areas of work:
     - Find any remaining mismatches in enemy IDs / experience (Episode 1 is mostly fixed now, except for Dark Falz)
-    - Replace enemy list with quest layout when loading a quest
+    - Replace enemy list, game episode, etc. with quest data when loading a quest
     - Implement all remaining player_use_item cases (there are many!)
     - Handle mag feeding and evolution properly
     - Implement trade window
