@@ -960,25 +960,23 @@ static bool drop_item(
     float z,
     uint16_t request_id) {
 
-  PlayerInventoryItem item;
+  // If the game is not BB, forward the request to the leader instead of
+  // generating the item drop command
+  if (l->version != GameVersion::BB) {
+    return false;
+  }
 
   // If the game is BB, run the rare + common drop logic
-  if (l->version == GameVersion::BB) {
-    if (!l->item_creator.get()) {
-      throw runtime_error("received box drop subcommand without item creator present");
-    }
+  PlayerInventoryItem item;
+  if (!l->item_creator.get()) {
+    throw runtime_error("received box drop subcommand without item creator present");
+  }
 
-    if (enemy_id >= 0) {
-      item.data = l->item_creator->on_monster_item_drop(
-          l->enemies.at(enemy_id).rt_index, area);
-    } else {
-      item.data = l->item_creator->on_box_item_drop(area);
-    }
-
-    // If the game is not BB, forward the request to the leader instead of
-    // generating the item drop command
+  if (enemy_id >= 0) {
+    item.data = l->item_creator->on_monster_item_drop(
+        l->enemies.at(enemy_id).rt_index, area);
   } else {
-    return false;
+    item.data = l->item_creator->on_box_item_drop(area);
   }
 
   item.data.id = l->generate_item_id(0xFF);
