@@ -362,7 +362,9 @@
   // tracking is always enabled for them.
   "EnableItemTracking": true,
   
-  // Disable/Enable drops.
+  // Enable or disable drops by default in non-BB games (drops are always
+  // enabled in BB games). The leader can toggle drops in each game with the
+  // $drop command.
   "EnableDrops": true,
 
   // Whether to enable certain exception handling. Disabling this causes
