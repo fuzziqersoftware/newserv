@@ -10,27 +10,38 @@
 #include "StaticGameData.hh"
 #include "Version.hh"
 
-enum class QuestCategory {
-  UNKNOWN = -1,
-  RETRIEVAL = 0,
-  EXTERMINATION,
-  EXTERMINATION2,
-  EVENT,
-  SHOP,
-  VR,
-  TOWER,
-  GOVERNMENT_EPISODE_1,
-  GOVERNMENT_EPISODE_2,
-  GOVERNMENT_EPISODE_4,
-  DOWNLOAD,
-  BATTLE,
-  CHALLENGE,
-  SOLO,
-  EPISODE_3,
-};
+struct QuestCategoryIndex {
+  struct Category {
+    enum Flag {
+      NORMAL = 0x01,
+      BATTLE = 0x02,
+      CHALLENGE = 0x04,
+      SOLO = 0x08,
+      GOVERNMENT = 0x10,
+      DOWNLOAD = 0x20,
+      EP3_DOWNLOAD = 0x40,
+      HIDE_ON_PRE_V3 = 0x80,
+    };
 
-bool category_is_mode(QuestCategory category);
-const char* name_for_category(QuestCategory category);
+    uint32_t category_id;
+    uint8_t flags;
+    char type;
+    std::string short_token;
+    std::u16string name;
+    std::u16string description;
+
+    explicit Category(uint32_t category_id, std::shared_ptr<const JSONObject> json);
+
+    bool matches_flags(uint8_t request) const;
+  };
+
+  std::vector<Category> categories;
+
+  explicit QuestCategoryIndex(std::shared_ptr<const JSONObject> json);
+
+  const Category& find(char type, const std::string& short_token) const;
+  const Category& at(uint32_t category_id) const;
+};
 
 class Quest {
 public:
@@ -44,7 +55,7 @@ public:
   };
   int64_t internal_id;
   uint32_t menu_item_id;
-  QuestCategory category;
+  uint32_t category_id;
   Episode episode;
   bool is_dcv1;
   bool joinable;
@@ -57,7 +68,7 @@ public:
   std::u16string short_description;
   std::u16string long_description;
 
-  Quest(const std::string& file_basename);
+  Quest(const std::string& file_basename, std::shared_ptr<const QuestCategoryIndex> category_index);
   Quest(const Quest&) = default;
   Quest(Quest&&) = default;
   Quest& operator=(const Quest&) = default;
@@ -71,16 +82,17 @@ public:
 
   std::shared_ptr<Quest> create_download_quest() const;
 
-  static std::string decode_gci(
+  static std::string decode_gci_file(
       const std::string& filename,
       ssize_t find_seed_num_threads = -1,
       int64_t known_seed = -1);
-  static std::string decode_vms(
+  static std::string decode_vms_file(
       const std::string& filename,
       ssize_t find_seed_num_threads = -1,
       int64_t known_seed = -1);
-  static std::string decode_dlq(const std::string& filename);
-  static std::pair<std::string, std::string> decode_qst(const std::string& filename);
+  static std::string decode_dlq_file(const std::string& filename);
+  static std::string decode_dlq_data(const std::string& filename);
+  static std::pair<std::string, std::string> decode_qst_file(const std::string& filename);
 
   std::string export_qst(GameVersion version) const;
 
@@ -92,6 +104,7 @@ private:
 
 struct QuestIndex {
   std::string directory;
+  std::shared_ptr<const QuestCategoryIndex> category_index;
 
   std::map<std::pair<GameVersion, uint64_t>, std::shared_ptr<Quest>> version_menu_item_id_to_quest;
 
@@ -99,10 +112,10 @@ struct QuestIndex {
 
   std::map<std::string, std::shared_ptr<std::string>> gba_file_contents;
 
-  QuestIndex(const std::string& directory);
+  QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index);
 
   std::shared_ptr<const Quest> get(GameVersion version, uint32_t id) const;
   std::shared_ptr<const std::string> get_gba(const std::string& name) const;
   std::vector<std::shared_ptr<const Quest>> filter(GameVersion version,
-      bool is_dcv1, QuestCategory category) const;
+      bool is_dcv1, uint32_t category_id) const;
 };

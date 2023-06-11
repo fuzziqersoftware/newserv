@@ -27,12 +27,12 @@ void ServerBase::PresenceEntry::clear() {
 ServerBase::ServerBase(
     shared_ptr<Lobby> lobby,
     shared_ptr<const DataIndex> data_index,
-    uint32_t random_seed,
+    shared_ptr<PSOLFGEncryption> random_crypt,
     shared_ptr<const DataIndex::MapEntry> map_if_tournament)
     : lobby(lobby),
       data_index(data_index),
       log(lobby->log.prefix + "[Ep3::Server] "),
-      random_seed(random_seed),
+      random_crypt(random_crypt),
       is_tournament(!!map_if_tournament),
       last_chosen_map(map_if_tournament) {}
 
@@ -75,6 +75,7 @@ Server::Server(shared_ptr<ServerBase> base)
       num_pending_attacks(0),
       client_done_enqueuing_attacks(false),
       player_ready_to_end_phase(false),
+      random_crypt(base->random_crypt),
       unknown_a10(0),
       overall_time_expired(false),
       battle_start_usecs(0),
@@ -102,9 +103,12 @@ Server::Server(shared_ptr<ServerBase> base)
 void Server::init() {
   this->card_special.reset(new CardSpecial(this->shared_from_this()));
 
-  // The default PSOV2Encryption constructor in the original implementation just
-  // uses 0 as the seed. We'll replace this object later when the battle starts.
-  this->random_crypt.reset(new PSOV2Encryption(0));
+  // Note: The original implementation calls the default PSOV2Encryption
+  // constructor for random_crypt, which just uses 0 as the seed. It then
+  // re-seeds the generator later. We instead expect the caller to provide a
+  // seeded generator, and we don't re-seed it at all.
+  // this->random_crypt.reset(new PSOV2Encryption(0));
+
   this->state_flags.reset(new StateFlags());
 
   this->clear_player_flags_after_dice_phase();
@@ -213,8 +217,7 @@ void Server::send_6xB4x46() const {
   G_ServerVersionStrings_GC_Ep3_6xB4x46 cmd46;
   cmd46.version_signature = VERSION_SIGNATURE;
   cmd46.date_str1 = format_time(this->base()->data_index->card_definitions_mtime() * 1000000);
-  cmd46.date_str2 = string_printf("Lobby/%08" PRIX32 " random %08" PRIX32,
-      l->lobby_id, l->random_seed);
+  cmd46.date_str2 = string_printf("Lobby/%08" PRIX32, l->lobby_id);
   this->send(cmd46);
 }
 
@@ -1171,8 +1174,8 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id) {
         // TODO: It'd be nice to do this in a constant-randomness way, but I'm
         // lazy, and this matches Sega's original implementation. The less-lazy
         // way to do it would be to roll three dice: one in the range [1, N],
-        // one in the range [3, N], and on in the range [1, 2] to decide whether
-        // to swap the first two results.
+        // one in the range [3, N], and one in the range [1, 2] to decide
+        // whether to swap the first two results.
         for (size_t z = 0; z < 200; z++) {
           ps->roll_main_dice();
           if ((ps->get_atk_points() >= 3) || (ps->get_def_points() >= 3)) {
@@ -1302,9 +1305,9 @@ void Server::set_player_deck_valid(uint8_t client_id) {
 
 void Server::setup_and_start_battle() {
   this->setup_phase = SetupPhase::STARTER_ROLLS;
-  // Note: The original implementation uses time() as the random seed; we use a
-  // user-settable value in order to support replays and deterministic testing
-  this->random_crypt.reset(new PSOV2Encryption(this->base()->random_seed));
+
+  // Note: This is where original implementation re-seeds random_crypt (it uses
+  // time() as the seed value).
 
   for (size_t z = 0; z < 4; z++) {
     if (!this->check_presence_entry(z)) {

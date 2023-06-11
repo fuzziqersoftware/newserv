@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "PSOEncryption.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 
@@ -117,7 +118,7 @@ private:
 
 void generate_variations(
     parray<le_uint32_t, 0x20>& variations,
-    std::shared_ptr<std::mt19937> random,
+    std::shared_ptr<PSOLFGEncryption> random,
     Episode episode,
     bool is_solo);
 std::vector<std::string> map_filenames_for_variation(

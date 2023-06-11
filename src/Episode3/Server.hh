@@ -58,7 +58,7 @@ public:
   ServerBase(
       std::shared_ptr<Lobby> lobby,
       std::shared_ptr<const DataIndex> data_index,
-      uint32_t random_seed,
+      std::shared_ptr<PSOLFGEncryption> random_crypt,
       std::shared_ptr<const DataIndex::MapEntry> map_if_tournament);
   void init();
   void reset();
@@ -75,7 +75,7 @@ public:
   std::weak_ptr<Lobby> lobby;
   std::shared_ptr<const DataIndex> data_index;
   PrefixedLogger log;
-  uint32_t random_seed;
+  std::shared_ptr<PSOLFGEncryption> random_crypt;
   bool is_tournament;
   std::shared_ptr<const DataIndex::MapEntry> last_chosen_map;
 
@@ -258,7 +258,7 @@ public:
   uint32_t num_pending_attacks;
   parray<uint8_t, 4> client_done_enqueuing_attacks;
   parray<uint8_t, 4> player_ready_to_end_phase;
-  std::shared_ptr<PSOV2Encryption> random_crypt;
+  std::shared_ptr<PSOLFGEncryption> random_crypt;
   uint32_t unknown_a10;
   uint32_t overall_time_expired;
   // Note: In the original implementation, this is a uint32_t and is measured in

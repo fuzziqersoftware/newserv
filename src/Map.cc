@@ -4,6 +4,7 @@
 #include <phosg/Strings.hh>
 
 #include "Loggers.hh"
+#include "PSOEncryption.hh"
 #include "StaticGameData.hh"
 
 using namespace std;
@@ -665,7 +666,7 @@ const vector<vector<AreaMapFileIndex>>& map_file_info_for_episode(Episode ep) {
 
 void generate_variations(
     parray<le_uint32_t, 0x20>& variations,
-    shared_ptr<mt19937> random,
+    shared_ptr<PSOLFGEncryption> random_crypt,
     Episode episode,
     bool is_solo) {
   const auto& ep_index = map_file_info_for_episode(episode);
@@ -681,8 +682,8 @@ void generate_variations(
       variations[z * 2 + 0] = 0;
       variations[z * 2 + 1] = 0;
     } else {
-      variations[z * 2 + 0] = (a->variation1_values.size() < 2) ? 0 : ((*random)() % a->variation1_values.size());
-      variations[z * 2 + 1] = (a->variation2_values.size() < 2) ? 0 : ((*random)() % a->variation2_values.size());
+      variations[z * 2 + 0] = (a->variation1_values.size() < 2) ? 0 : (random_crypt->next() % a->variation1_values.size());
+      variations[z * 2 + 1] = (a->variation2_values.size() < 2) ? 0 : (random_crypt->next() % a->variation2_values.size());
     }
   }
 }

@@ -303,6 +303,46 @@
     "Megid":     [700, 6],
   },
 
+  // Quest category configuration. See README.md for information on how quest
+  // files should be named. This list specifies the quest category names and
+  // descriptions. (We don't use a map here because the category order
+  // specified here is the order that appears in the quest menu.)
+  "QuestCategories": [
+    // Each entry is [type, token, flags, category_name, description].
+    // These fields are:
+    //   flags: a bit field containing the following:
+    //       0x01 - appears in normal mode
+    //       0x02 - appears in battle mode
+    //       0x04 - appears in challenge mode
+    //       0x08 - appears in solo mode (BB)
+    //       0x10 - appears at government counter (BB)
+    //       0x20 - appears in download quest menu
+    //       0x40 - appears in Episode 3 download quest menu
+    //       0x80 - hidden on pre-V3 versions (DC, PC)
+    //   type: the character that newserv expects at the beginning of the quest
+    //       filename, generally one of b, c, e, or q.
+    //   short_token: the token newserv expects to see in quest filenames after
+    //       the quest number.
+    //   category_name: what appears in the quest menu on the client.
+    //   description: what appears in the category description window (may
+    //       contain color escape codes like $C6).
+    [0x21, "q", "ret", "Retrieval", "$E$C6Quests that involve\nretrieving an object"],
+    [0x21, "q", "ext", "Extermination", "$E$C6Quests that involve\ndestroying all\nmonsters"],
+    [0x21, "q", "evt", "Events", "$E$C6Quests that are part\nof an event"],
+    [0x21, "q", "shp", "Shops", "$E$C6Quests that contain\nshops"],
+    [0xA1, "q", "vr", "Virtual Reality", "$E$C6Quests that are\ndone in a simulator"],
+    [0xA1, "q", "twr", "Control Tower", "$E$C6Quests that take\nplace at the Control\nTower"],
+    [0x02, "b", "", "Battle", "$E$C6Battle mode rule\nsets"],
+    [0x04, "c", "", "Challenge (Episode 1)", "$E$C6Challenge mode\nquests in Episode 1"],
+    [0x84, "d", "", "Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2"],
+    [0x08, "q", "1p", "Solo", "$E$C6Quests that require\na single player"],
+    [0x10, "q", "gv1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],
+    [0x10, "q", "gv2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
+    [0x10, "q", "gv4", "The Meteor Impact Incident", "$E$C6Quests that follow\nthe Episode 4\nstoryline"],
+    [0x20, "q", "dl", "Download", "$E$C6Quests to download\nto your Memory Card"],
+    [0x40, "e", "", "Download", "$E$C6Quests to download\nto your Memory Card"],
+  ],
+
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on
   // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't

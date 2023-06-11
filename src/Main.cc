@@ -913,17 +913,17 @@ int main(int argc, char** argv) {
       string output_filename_base = input_filename;
       if (quest_file_type == QuestFileFormat::GCI) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        auto decoded = Quest::decode_gci(input_filename, num_threads, dec_seed);
+        auto decoded = Quest::decode_gci_file(input_filename, num_threads, dec_seed);
         save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == QuestFileFormat::VMS) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        auto decoded = Quest::decode_vms(input_filename, num_threads, dec_seed);
+        auto decoded = Quest::decode_vms_file(input_filename, num_threads, dec_seed);
         save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == QuestFileFormat::DLQ) {
-        auto decoded = Quest::decode_dlq(input_filename);
+        auto decoded = Quest::decode_dlq_file(input_filename);
         save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == QuestFileFormat::QST) {
-        auto data = Quest::decode_qst(input_filename);
+        auto data = Quest::decode_qst_file(input_filename);
         save_file(output_filename_base + ".bin", data.first);
         save_file(output_filename_base + ".dat", data.second);
       } else {

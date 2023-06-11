@@ -29,42 +29,13 @@ patch_end:
     lwz      r5, [r4 - 4]
     sub      r5, r5, r3
 
-    # At this point:
-    # r4 = address of patch label
-    # r5 = patch size in bytes
-    # r7 = saved LR
-
-    # Find a spot in the interrupt handlers with enough memory for the patch
     lis      r3, 0x8000
-    ori      r3, r3, 0x0200
-    sub      r3, r3, r5
-
-check_location:
-    rlwinm   r0, r5, 30, 2, 31
-    mtctr    r0  # ctr = patch size in words
-    subi     r8, r3, 4
-check_location_next_word:
-    lwzu     r0, [r8 + 4]
-    cmpwi    r0, 0
-    beq      check_location_word_ok
-    addi     r3, r3, 0x0100
-    rlwinm   r0, r3, 0, 16, 31
-    cmpwi    r0, 0x1800
-    blt      check_location
-    # No suitable location was found - return null
-    li       r3, 0
-    mtlr     r7
-    blr
-
-check_location_word_ok:
-    bdnz     check_location_next_word
-
-location_ok:
+    ori      r3, r3, 0x01BC
     mr       r6, r3
-    # Now:
-    # r3 = destination location
-    # r4 = patch src data
-    # r5 = patch size in bytes
+    # At this point:
+    # r3 = destination location (overwritten by CopyCode)
+    # r4 = patch src data (overwritten by CopyCode)
+    # r5 = patch size in bytes (overwritten by CopyCode)
     # r6 = destination location
     # r7 = saved LR
     .include CopyCode

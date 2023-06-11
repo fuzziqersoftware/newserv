@@ -72,7 +72,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::u16string name;
   // This seed is also sent to the client for rare enemy generation
   uint32_t random_seed;
-  std::shared_ptr<std::mt19937> random;
+  std::shared_ptr<PSOLFGEncryption> random_crypt;
   std::shared_ptr<ItemCreator> item_creator;
 
   // Ep3 stuff

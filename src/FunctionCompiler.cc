@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <phosg/Filesystem.hh>
+#include <phosg/Hash.hh>
 #include <phosg/Time.hh>
 #include <stdexcept>
 
@@ -346,4 +347,35 @@ DOLFileIndex::DOLFileIndex(const string& directory, bool compress)
       function_compiler_log.warning("Failed to load DOL file %s: %s", filename.c_str(), e.what());
     }
   }
+}
+
+uint32_t specific_version_for_gc_header_checksum(uint32_t header_checksum) {
+  static unordered_map<uint32_t, uint32_t> checksum_to_specific_version;
+  if (checksum_to_specific_version.empty()) {
+    struct {
+      char system_code = 'G';
+      char game_code1 = 'P';
+      char game_code2;
+      char region_code;
+      char developer_code1 = '8';
+      char developer_code2 = 'P';
+      uint8_t disc_number = 0;
+      uint8_t version_code;
+    } __attribute__((packed)) data;
+    for (const char* game_code2 = "OS"; *game_code2; game_code2++) {
+      data.game_code2 = *game_code2;
+      for (const char* region_code = "JEP"; *region_code; region_code++) {
+        data.region_code = *region_code;
+        for (uint8_t version_code = 0; version_code < 8; version_code++) {
+          data.version_code = version_code;
+          uint32_t checksum = crc32(&data, sizeof(data));
+          uint32_t specific_version = 0x33000030 | (*game_code2 << 16) | (*region_code << 8) | version_code;
+          if (!checksum_to_specific_version.emplace(checksum, specific_version).second) {
+            throw logic_error("multiple specific_versions have same header checksum");
+          }
+        }
+      }
+    }
+  }
+  return checksum_to_specific_version.at(header_checksum);
 }

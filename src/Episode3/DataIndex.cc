@@ -1618,9 +1618,9 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
         } else if (ends_with(filename, ".mnm") || ends_with(filename, ".bin")) {
           entry.reset(new MapEntry(load_file(dir + "/" + filename), is_quest));
         } else if (ends_with(filename, ".gci")) {
-          entry.reset(new MapEntry(Quest::decode_gci(dir + "/" + filename), is_quest));
+          entry.reset(new MapEntry(Quest::decode_gci_file(dir + "/" + filename), is_quest));
         } else if (ends_with(filename, ".dlq")) {
-          entry.reset(new MapEntry(Quest::decode_dlq(dir + "/" + filename), is_quest));
+          entry.reset(new MapEntry(Quest::decode_dlq_file(dir + "/" + filename), is_quest));
         }
 
         if (entry.get()) {
