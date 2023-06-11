@@ -54,6 +54,7 @@ struct ServerState {
   bool allow_unregistered_users;
   bool allow_saving;
   bool item_tracking_enabled;
+  bool drops_enabled;
   bool episode_3_send_function_call_enabled;
   bool enable_dol_compression;
   bool catch_handler_exceptions;
@@ -65,6 +66,7 @@ struct ServerState {
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
   std::shared_ptr<const DOLFileIndex> dol_file_index;
   std::shared_ptr<const Episode3::DataIndex> ep3_data_index;
+  std::shared_ptr<const QuestCategoryIndex> quest_category_index;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamsIndex> battle_params;

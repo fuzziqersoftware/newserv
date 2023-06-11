@@ -602,7 +602,11 @@ string bc0_compress(
 // output pointer to any arbitrary address.
 
 string bc0_decompress(const string& data) {
-  StringReader r(data);
+  return bc0_decompress(data.data(), data.size());
+}
+
+string bc0_decompress(const void* data, size_t size) {
+  StringReader r(data, size);
   StringWriter w;
 
   // Unlike PRS, BC0 uses a memo which "rolls over" every 0x1000 bytes. The
@@ -621,7 +625,7 @@ string bc0_decompress(const string& data) {
 
   // The low byte of this value contains the control stream data; the high bits
   // specify which low bits are valid. When the last 1 is shifted out of the
-  // high bit, we need to read a new control stream byte to get the next set of
+  // high byte, we need to read a new control stream byte to get the next set of
   // control bits.
   uint16_t control_stream_bits = 0x0000;
 

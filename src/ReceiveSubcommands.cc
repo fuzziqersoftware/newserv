@@ -7,6 +7,7 @@
 #include <phosg/Strings.hh>
 
 #include "Client.hh"
+#include "Compression.hh"
 #include "Items.hh"
 #include "Lobby.hh"
 #include "Loggers.hh"
@@ -166,6 +167,22 @@ static void on_forward_check_game(shared_ptr<ServerState>,
   if (!l->is_game()) {
     return;
   }
+  forward_subcommand(l, c, command, flag, data);
+}
+
+static void on_forward_sync_game_state(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const string& data) {
+  if (!l->is_game() || !l->any_client_loading()) {
+    return;
+  }
+
+  const auto& cmd = check_size_sc<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(
+      data, sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E), 0xFFFF);
+  if (cmd.compressed_size > data.size() - sizeof(cmd)) {
+    throw runtime_error("compressed end offset is beyond end of command");
+  }
+
   forward_subcommand(l, c, command, flag, data);
 }
 
@@ -943,27 +960,28 @@ static bool drop_item(
     float z,
     uint16_t request_id) {
 
-  PlayerInventoryItem item;
-
-  // If the game is BB, run the rare + common drop logic
-  if (l->version == GameVersion::BB) {
-    if (!l->item_creator.get()) {
-      throw runtime_error("received box drop subcommand without item creator present");
-    }
-
-    if (enemy_id >= 0) {
-      item.data = l->item_creator->on_monster_item_drop(
-          l->enemies.at(enemy_id).rt_index, area);
+  // If the game is not BB, forward the request to the leader instead of
+  // generating the item drop command
+  if (l->version != GameVersion::BB) {
+    if (!(l->flags & Lobby::Flag::DROPS_ENABLED)) {
+      return true; // don't forward request to leader if drops are disabled
     } else {
-      item.data = l->item_creator->on_box_item_drop(area);
+      return false; // do the normal thing where we ask the leader for a drop
     }
-
-    // If the game is not BB, forward the request to the leader instead of
-    // generating the item drop command
-  } else {
-    return false;
   }
 
+  // If the game is BB, run the rare + common drop logic
+  PlayerInventoryItem item;
+  if (!l->item_creator.get()) {
+    throw runtime_error("received box drop subcommand without item creator present");
+  }
+
+  if (enemy_id >= 0) {
+    item.data = l->item_creator->on_monster_item_drop(
+        l->enemies.at(enemy_id).rt_index, area);
+  } else {
+    item.data = l->item_creator->on_box_item_drop(area);
+  }
   item.data.id = l->generate_item_id(0xFF);
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
@@ -1462,10 +1480,10 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 68 */ on_forward_check_size_game, // Telepipe/Ryuker
     /* 69 */ on_forward_check_size_game,
     /* 6A */ on_forward_check_size_game,
-    /* 6B */ on_forward_check_game_loading,
-    /* 6C */ on_forward_check_game_loading,
-    /* 6D */ on_forward_check_game_loading,
-    /* 6E */ on_forward_check_game_loading,
+    /* 6B */ on_forward_sync_game_state,
+    /* 6C */ on_forward_sync_game_state,
+    /* 6D */ on_forward_sync_game_state,
+    /* 6E */ on_forward_sync_game_state,
     /* 6F */ on_forward_check_game_loading,
     /* 70 */ on_forward_check_game_loading,
     /* 71 */ on_forward_check_game_loading,

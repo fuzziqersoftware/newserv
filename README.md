@@ -133,13 +133,15 @@ To use newserv in other ways (e.g. for translating data), see the end of this do
 
 newserv automatically finds quests in the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's "save files" option, just put them in that directory and name them appropriately.
 
-Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle quests should be named like `b###-VERSION.EXT`, challenge quests should be named like `c###-VERSION.EXT`, and Episode 3 download quests should be named like `e###-gc3.EXT`. The fields in each filename are:
+Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle quests should be named like `b###-VERSION.EXT`, challenge quests should be named like `c###-VERSION.EXT` for Episode 1 or `d###-VERSION.EXT` for Episode 2, and Episode 3 download quests should be named like `e###-gc3.EXT`. The fields in each filename are:
 - `###`: quest number (this doesn't really matter; it should just be unique across the PSO version)
-- `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gov = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
+- `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gv1/gv2/gv4 = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
 - `VERSION`: d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
 - `EXT`: file extension (see table below)
 
 For example, the GameCube version of Lost HEAT SWORD is in two files named `q058-ret-gc.bin` and `q058-ret-gc.dat`. newserv knows these files are quests because they're in the system/quests/ directory, it knows they're for PSO GC because the filenames contain `-gc`, and it puts them in the Retrieval category because the filenames contain `-ret`.
+
+The type identifiers (`b`, `c`, `d`, `e`, or `q`) and categories are configurable. See QuestCategories in config.example.json for more information on how to make new categories or edit the existing categories.
 
 There are multiple PSO quest formats out there; newserv supports all of them. It can also decode any known format to standard .bin/.dat format. Specifically:
 
@@ -247,6 +249,27 @@ To use the proxy for PSO DC, PC, or GC, add an entry to the corresponding ProxyD
 To use the proxy for PSO BB, set the ProxyDestination-BB entry in config.json. If this option is set, it essentially disables the game server for all PSO BB clients - all clients will be proxied to the specified destination instead. Unfortunately, because PSO BB uses a different set of handlers for the data server phase and character selection, there's no in-game way to present the player with a list of options, like there is on PSO PC and PSO GC.
 
 When you're on PSO DC, PC, or GC and are connected to a remote server through newserv's proxy, choosing the Change Ship or Change Block action from the lobby counter will send you back to newserv's main menu instead of the remote server's ship or block select menu. You can go back to the server you were just on by choosing it from the proxy server menu again.
+
+There are many options available when starting a proxy session. All options are off by default unless otherwise noted. The options are:
+* **Chat commands**: enables chat commands in the proxy session (on by default).
+* **Chat filter**: enables escape sequences in chat messages and info board (on by default).
+* **Player notifications**: shows a message when any player joins or leaves the game or lobby you're in.
+* **Block pings**: blocks automatic pings sent by the client, and responds to ping commands from the server automatically. This works around a bug in Sylverant's login server.
+* **Infinite HP**: automatically heals you whenever you get hit. An attack that kills you in one hit will still kill you, however.
+* **Infinite TP**: automatically restores your TP whenever you use any technique.
+* **Switch assist**: attempts to unlock doors that require two players in a one-player game.
+* **Infinite Meseta** (Episode 3 only): gives you 1,000,000 Meseta, regardless of the value sent by the remote server.
+* **Block events**: disables holiday events sent by the remote server.
+* **Block patches**: prevents any B2 (patch) commands from reaching the client.
+* **Save files**: saves copies of several kinds of files when they're sent by the remote server. The files are written to the current directory (which is usually the directory containing the system/ directory). These kinds of files can be saved:
+    * Online quests and download quests (saved as .bin/.dat files)
+    * GBA games (saved as .gba files)
+    * Patches (saved as .bin files, and disassembled into PowerPC assembly if newserv is built with patch support)
+    * Player data from BB sessions (saved as .bin files, which are not the same format as .nsc files)
+    * Episode 3 online quests and maps (saved as .mnmd files)
+    * Episode 3 download quests (saved as .mnm files)
+    * Episode 3 card definitions (saved as .mnr files)
+    * Episode 3 media updates (saved as .gvm, .bml, or .bin files)
 
 The remote server will probably try to assign you a Guild Card number that doesn't match the one you have on newserv. On PSO DC, PC and GC, the proxy server rewrites the commands in transit to make it look like the remote server assigned you the same Guild Card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the Guild Card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you first connect to the remote server, and you can retrieve it in lobbies or during games with the $li command.
 

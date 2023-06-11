@@ -4256,16 +4256,79 @@ struct G_Unknown_6x6A {
 } __packed__;
 
 // 6x6B: Sync enemy state (used while loading into game; same header format as 6E)
-// 6x6C: Sync object state (used while loading into game; same header format as 6E)
-// 6x6D: Sync item state (used while loading into game; same header format as 6E)
-// 6x6E: Sync flag state (used while loading into game)
 
 struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
   G_ExtendedHeader<G_UnusedHeader> header;
-  le_uint32_t subcommand_size;
   le_uint32_t decompressed_size;
   le_uint32_t compressed_size; // Must be <= subcommand_size - 0x10
-  // BC0-compressed data follows here (use bc0_decompress from Compression.hh)
+  uint8_t data[0]; // BC0-compressed data follows here (see bc0_decompress)
+} __packed__;
+
+// Decompressed format is a list of these
+struct G_SyncEnemyState_6x6B_Entry_Decompressed {
+  le_uint32_t unknown_a1; // Possibly some kind of flags
+  // enemy_index is not the same as enemy_id, unfortunately - the enemy_id sent
+  // in the 6x76 command when an enemy is killed does not match enemy_index
+  le_uint16_t enemy_index; // FFFF = enemy is dead
+  le_uint16_t damage_taken;
+  uint8_t unknown_a4;
+  uint8_t unknown_a5;
+  uint8_t unknown_a6;
+  uint8_t unknown_a7;
+} __packed__;
+
+// 6x6C: Sync object state (used while loading into game; same header format as 6E)
+// Compressed format is the same as 6x6B.
+
+// Decompressed format is a list of these
+struct G_SyncObjectState_6x6C_Entry_Decompressed {
+  le_uint16_t flags;
+  le_uint16_t object_index;
+} __packed__;
+
+// 6x6D: Sync item state (used while loading into game; same header format as 6E)
+// Compressed format is the same as 6x6B.
+
+struct G_SyncItemState_6x6D_Decompressed {
+  // Note: 16 vs. 15 is not a bug here - there really is an extra field in the
+  // total drop count vs. the floor item count. Despite this, Pioneer 2 or Lab
+  // (area 0) isn't included in total_items_dropped_per_area (so Forest 1 is [0]
+  // in that array) but it is included in floor_item_count_per_area (so Forest 1
+  // is [1] there).
+  parray<le_uint16_t, 16> total_items_dropped_per_area;
+  // Only [0]-[3] in this array are ever actually used in normal gameplay, but
+  // the client fills in all 12 of these with reasonable values.
+  parray<le_uint32_t, 12> next_item_id_per_player;
+  parray<le_uint32_t, 15> floor_item_count_per_area;
+  struct FloorItem {
+    le_uint16_t area;
+    le_uint16_t unknown_a1;
+    le_float x;
+    le_float z;
+    le_uint16_t unknown_a2;
+    // The drop number is scoped to the area and increments by 1 each time an
+    // item is dropped. The last item dropped in each area has drop_number equal
+    // to total_items_dropped_per_area[area - 1] - 1.
+    le_uint16_t drop_number;
+    ItemData data;
+  } __packed__;
+  // Variable-length field follows:
+  // FloorItem items[sum(floor_item_count_per_area)];
+} __packed__;
+
+// 6x6E: Sync flag state (used while loading into game)
+// Compressed format is the same as 6x6B.
+
+struct G_SyncFlagState_6x6E_Decompressed {
+  // The three unknowns here are the sizes (in bytes) of three fields
+  // immediately following this structure. It is currently unknown what these
+  // fields represent. The three unknown fields always sum to the size field.
+  le_uint16_t size;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint16_t unknown_a3;
+  // Three variable-length fields follow here. They are in the same order as the
+  // unknown fields above.
 } __packed__;
 
 // 6x6F: Unknown (used while loading into game)
@@ -4278,10 +4341,8 @@ struct G_Unknown_6x6F {
 // 6x70: Sync player disp data and inventory (used while loading into game)
 // Annoyingly, they didn't use the same format as the 65/67/68 commands here,
 // and instead rearranged a bunch of things.
-// TODO: Some missing fields should be easy to find in the future (e.g. when the
-// sending player doesn't have 0 meseta, for example)
 
-struct G_Unknown_6x70 {
+struct G_SyncPlayerDispAndInventory_6x70 {
   G_ExtendedHeader<G_UnusedHeader> header;
   // Offsets in this struct are relative to the overall command header
   /* 000C */ parray<le_uint16_t, 2> unknown_a1;
@@ -5101,7 +5162,7 @@ struct G_BankAction_BB_6xBD {
 } __packed__;
 
 // 6xBE: Sound chat (Episode 3; not Trial Edition)
-// This appears to be the only subcommand ever sent with the CB command.
+// This is the only subcommand ever sent with the CB command.
 
 struct G_SoundChat_GC_Ep3_6xBE {
   G_UnusedHeader header;

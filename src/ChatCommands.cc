@@ -1157,6 +1157,14 @@ static void server_command_questburst(shared_ptr<ServerState>, shared_ptr<Lobby>
     }
 }
 
+static void server_command_drop(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+    shared_ptr<Client> c, const std::u16string&) {
+  check_is_game(l, true);
+  check_is_leader(l, c);
+  l->flags ^= Lobby::Flag::DROPS_ENABLED;
+  send_text_message_printf(l, "Drops %s", (l->flags & Lobby::Flag::DROPS_ENABLED) ? "enabled" : "disabled");
+}
+
 static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
@@ -1298,6 +1306,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$what", {server_command_what, nullptr, u"Usage:\nwhat"}},
     {u"$lower", {server_command_lower_hp, nullptr, u"Usage:\nLowers HP to 3"}},
     {u"$lobby", {server_command_questburst, nullptr, u"Usage:\nExit quest to lobby"}},
+    {u"$drop", {server_command_drop, nullptr, u"Usage:\nToggles drops"}},
 });
 
 struct SplitCommand {
