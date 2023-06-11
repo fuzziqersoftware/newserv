@@ -963,7 +963,11 @@ static bool drop_item(
   // If the game is not BB, forward the request to the leader instead of
   // generating the item drop command
   if (l->version != GameVersion::BB) {
-    return false;
+    if (!(l->flags & Lobby::Flag::DROPS_ENABLED)) {
+      return true; // don't forward request to leader if drops are disabled
+    } else {
+      return false; // do the normal thing where we ask the leader for a drop
+    }
   }
 
   // If the game is BB, run the rare + common drop logic
