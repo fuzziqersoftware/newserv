@@ -651,10 +651,9 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
   }
 
   try {
-      this->drops_enabled = d.at("EnableDrops")->as_bool();
-  }
-  catch (const out_of_range&) {
-      this->drops_enabled = true;
+    this->drops_enabled = d.at("EnableDrops")->as_bool();
+  } catch (const out_of_range&) {
+    this->drops_enabled = true;
   }
 
   try {

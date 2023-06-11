@@ -1125,11 +1125,10 @@ static void proxy_command_switch_assist(shared_ptr<ServerState>,
 
 static void server_command_drop(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
-    check_is_game(l, true);
-    check_is_leader(l, c);
-    l->flags ^= Lobby::Flag::DROPS_ENABLED;
-    send_text_message_printf(l, "Drops %s",
-    (l->flags & Lobby::Flag::DROPS_ENABLED) ? "enabled" : "disabled");
+  check_is_game(l, true);
+  check_is_leader(l, c);
+  l->flags ^= Lobby::Flag::DROPS_ENABLED;
+  send_text_message_printf(l, "Drops %s", (l->flags & Lobby::Flag::DROPS_ENABLED) ? "enabled" : "disabled");
 }
 
 static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
