@@ -16,7 +16,6 @@
 #include "FunctionCompiler.hh"
 #include "GSLArchive.hh"
 #include "ItemParameterTable.hh"
-#include "Items.hh"
 #include "LevelTable.hh"
 #include "License.hh"
 #include "Lobby.hh"
@@ -83,6 +82,7 @@ struct ServerState {
   std::shared_ptr<const ToolRandomSet> tool_random_set;
   std::array<std::shared_ptr<const WeaponRandomSet>, 4> weapon_random_sets;
   std::shared_ptr<const ItemParameterTable> item_parameter_table;
+  std::shared_ptr<const MagEvolutionTable> mag_evolution_table;
 
   std::shared_ptr<Episode3::TournamentIndex> ep3_tournament_index;
 

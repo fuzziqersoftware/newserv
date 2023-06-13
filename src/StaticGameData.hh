@@ -62,6 +62,13 @@ uint8_t npc_for_name(const std::u16string& name);
 
 const char* name_for_char_class(uint8_t cls);
 const char* abbreviation_for_char_class(uint8_t cls);
+bool char_class_is_male(uint8_t cls);
+bool char_class_is_human(uint8_t cls);
+bool char_class_is_newman(uint8_t cls);
+bool char_class_is_android(uint8_t cls);
+bool char_class_is_hunter(uint8_t cls);
+bool char_class_is_ranger(uint8_t cls);
+bool char_class_is_force(uint8_t cls);
 
 const char* name_for_difficulty(uint8_t difficulty);
 char abbreviation_for_difficulty(uint8_t difficulty);

@@ -2,15 +2,22 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <memory>
 #include <phosg/Encoding.hh>
 #include <string>
+#include <vector>
 
 #include "ItemData.hh"
 #include "Text.hh"
 
 class ItemParameterTable {
 public:
+  struct CountAndOffset {
+    le_uint32_t count;
+    le_uint32_t offset;
+  } __attribute__((packed));
+
   struct ItemBase {
     le_uint32_t id;
     le_uint16_t type;
@@ -104,12 +111,12 @@ public:
   } __attribute__((packed));
 
   struct MagFeedResult {
-    int8_t defense;
-    int8_t power;
-    int8_t dexterity;
+    int8_t def;
+    int8_t pow;
+    int8_t dex;
     int8_t mind;
     int8_t iq;
-    int8_t sync;
+    int8_t synchro;
     parray<uint8_t, 2> unused;
   } __attribute__((packed));
 
@@ -117,8 +124,8 @@ public:
     parray<MagFeedResult, 11> results;
   } __attribute__((packed));
 
-  struct MagFeedResultsTable {
-    parray<MagFeedResultsList, 8> table;
+  struct MagFeedResultsListOffsets {
+    parray<le_uint32_t, 8> offsets; // Offsets of MagFeedResultsList structs
   } __attribute__((packed));
 
   struct ItemStarValue {
@@ -146,7 +153,7 @@ public:
     parray<uint8_t, 3> used_item;
     parray<uint8_t, 3> equipped_item;
     parray<uint8_t, 3> result_item;
-    uint8_t maglevel;
+    uint8_t mag_level;
     uint8_t grind;
     uint8_t level;
     uint8_t char_class;
@@ -190,24 +197,19 @@ public:
     /* 1C / 0E194 */ le_uint32_t weapon_range_table; // -> ???
     /* 20 / 0F5A8 */ le_uint32_t weapon_sale_divisor_table; // -> [float](0xED)
     /* 24 / 0F83C */ le_uint32_t sale_divisor_table; // -> NonWeaponSaleDivisors
-    /* 28 / 1502C */ le_uint32_t mag_feed_table; // -> [offset -> MagFeedResultsList](8)
+    /* 28 / 1502C */ le_uint32_t mag_feed_table; // -> MagFeedResultsTable
     /* 2C / 0FB0C */ le_uint32_t star_value_table; // -> [uint8_t] (indexed by .id from weapon, armor, etc.)
     /* 30 / 0FE3C */ le_uint32_t special_data_table; // -> [Special]
     /* 34 / 0FEE0 */ le_uint32_t weapon_effect_table; // -> [16-byte structs]
     /* 38 / 1275C */ le_uint32_t stat_boost_table; // -> [StatBoost]
     /* 3C / 11C80 */ le_uint32_t shield_effect_table; // -> [8-byte structs]
     /* 40 / 12894 */ le_uint32_t max_tech_level_table; // -> MaxTechniqueLevels
-    /* 44 / 14FF4 */ le_uint32_t combination_table; // -> [{count, offset -> [ItemCombination]}]
+    /* 44 / 14FF4 */ le_uint32_t combination_table; // -> {count, offset -> [ItemCombination]}
     /* 48 / 12754 */ le_uint32_t unknown_a1;
     /* 4C / 14278 */ le_uint32_t tech_boost_table; // -> [TechniqueBoost] (always 0x2C of them? from counts struct?)
-    /* 50 / 15014 */ le_uint32_t unwrap_table; // -> {count, offset -> [{count, offset -> [4-byte structs]}]}
+    /* 50 / 15014 */ le_uint32_t unwrap_table; // -> {count, offset -> [{count, offset -> [EventItem]}]}
     /* 54 / 1501C */ le_uint32_t unsealable_table; // -> {count, offset -> [UnsealableItem]}
     /* 58 / 15024 */ le_uint32_t ranged_special_table; // -> {count, offset -> [4-byte structs]}
-  } __attribute__((packed));
-
-  struct CountAndOffset {
-    le_uint32_t count;
-    le_uint32_t offset;
   } __attribute__((packed));
 
   ItemParameterTable(std::shared_ptr<const std::string> data);
@@ -230,8 +232,43 @@ public:
   uint8_t get_item_adjusted_stars(const ItemData& item) const;
   bool is_item_rare(const ItemData& item) const;
   bool is_unsealable_item(const ItemData& param_1) const;
+  const ItemCombination& get_item_combination(const ItemData& used_item, const ItemData& equipped_item) const;
+  const std::vector<ItemCombination>& get_all_combinations_for_used_item(const ItemData& used_item) const;
+  const std::map<uint32_t, std::vector<ItemCombination>>& get_all_item_combinations() const;
+  std::pair<const EventItem*, size_t> get_event_items(uint8_t event_number) const;
 
   size_t price_for_item(const ItemData& item) const;
+
+private:
+  std::shared_ptr<const std::string> data;
+  StringReader r;
+  const TableOffsets* offsets;
+
+  // Key is used_item. We can't index on (used_item, equipped_item) because
+  // equipped_item may contain wildcards, and the matching order matters.
+  void populate_item_combination_index() const;
+  mutable std::map<uint32_t, std::vector<ItemCombination>> item_combination_index;
+};
+
+class MagEvolutionTable {
+public:
+  struct TableOffsets {
+    /* 00 / 0400 */ le_uint32_t unknown_a1; // -> [offset -> (0xC-byte struct)[0x53], offset -> (same as first offset)]
+    /* 04 / 0408 */ le_uint32_t unknown_a2; // -> (2-byte struct, or single word)[0x53]
+    /* 08 / 04AE */ le_uint32_t unknown_a3; // -> (0xA8 bytes; possibly (8-byte struct)[0x15])
+    /* 0C / 0556 */ le_uint32_t unknown_a4; // -> (uint8_t)[0x53]
+    /* 10 / 05AC */ le_uint32_t unknown_a5; // -> (float)[0x48]
+    /* 14 / 06CC */ le_uint32_t evolution_number; // -> (uint8_t)[0x53]
+  } __attribute__((packed));
+
+  struct EvolutionNumberTable {
+    parray<uint8_t, 0x53> values;
+  } __attribute__((packed));
+
+  MagEvolutionTable(std::shared_ptr<const std::string> data);
+  ~MagEvolutionTable() = default;
+
+  uint8_t get_evolution_number(uint8_t data1_1) const;
 
 private:
   std::shared_ptr<const std::string> data;

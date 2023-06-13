@@ -76,6 +76,17 @@ size_t ItemData::max_stack_size() const {
   return max_stack_size_for_item(this->data1[0], this->data1[1]);
 }
 
+bool ItemData::is_common_consumable(uint32_t primary_identifier) {
+  if (primary_identifier == 0x030200) {
+    return false;
+  }
+  return (primary_identifier >= 0x030000) && (primary_identifier < 0x030A00);
+}
+
+bool ItemData::is_common_consumable() const {
+  return this->is_common_consumable(this->primary_identifier());
+}
+
 void ItemData::assign_mag_stats(const ItemMagStats& mag) {
   // this->data1[0] and [1] unchanged
   this->data1[2] = mag.level();
@@ -95,6 +106,114 @@ void ItemData::clear_mag_stats() {
   if (this->data1[0] == 2) {
     this->data1[1] = '\0';
     this->assign_mag_stats(ItemMagStats());
+  }
+}
+
+uint16_t ItemData::compute_mag_level() const {
+  return (this->data1w[2] / 100) +
+      (this->data1w[3] / 100) +
+      (this->data1w[4] / 100) +
+      (this->data1w[5] / 100);
+}
+
+uint16_t ItemData::compute_mag_strength_flags() const {
+  uint16_t pow = this->data1w[3] / 100;
+  uint16_t dex = this->data1w[4] / 100;
+  uint16_t mind = this->data1w[5] / 100;
+
+  uint16_t ret = 0;
+  if ((dex < pow) && (mind < pow)) {
+    ret = 0x008;
+  }
+  if ((pow < dex) && (mind < dex)) {
+    ret |= 0x010;
+  }
+  if ((dex < mind) && (pow < mind)) {
+    ret |= 0x020;
+  }
+
+  uint16_t highest = max<uint16_t>(dex, max<uint16_t>(pow, mind));
+  if ((pow == highest) + (dex == highest) + (mind == highest) > 1) {
+    ret |= 0x100;
+  }
+  return ret;
+}
+
+uint8_t ItemData::mag_photon_blast_for_slot(uint8_t slot) const {
+  uint8_t flags = this->data2[2];
+  uint8_t pb_nums = this->data1[3];
+
+  if (slot == 0) { // Center
+    return (flags & 1) ? (pb_nums & 0x07) : 0xFF;
+
+  } else if (slot == 1) { // Right
+    return (flags & 2) ? ((pb_nums & 0x38) >> 3) : 0xFF;
+
+  } else if (slot == 2) { // Left
+    if (!(flags & 4)) {
+      return 0xFF;
+    }
+
+    uint8_t used_pbs[6] = {0, 0, 0, 0, 0, 0};
+    used_pbs[pb_nums & 0x07] = '\x01';
+    used_pbs[(pb_nums & 0x38) >> 3] = '\x01';
+    uint8_t left_pb_num = (pb_nums & 0xC0) >> 6;
+    for (size_t z = 0; z < 6; z++) {
+      if (!used_pbs[z]) {
+        if (!left_pb_num) {
+          return z;
+        }
+        left_pb_num--;
+      }
+    }
+    throw logic_error("failed to find unused photon blast number");
+
+  } else {
+    throw logic_error("invalid slot index");
+  }
+}
+
+bool ItemData::mag_has_photon_blast_in_any_slot(uint8_t pb_num) const {
+  if (pb_num < 6) {
+    for (size_t slot = 0; slot < 3; slot++) {
+      if (this->mag_photon_blast_for_slot(slot) == pb_num) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void ItemData::add_mag_photon_blast(uint8_t pb_num) {
+  if (pb_num >= 6) {
+    return;
+  }
+  if (this->mag_has_photon_blast_in_any_slot(pb_num)) {
+    return;
+  }
+
+  uint8_t& flags = this->data2[2];
+  uint8_t& pb_nums = this->data1[3];
+
+  if (!(flags & 1)) { // Center
+    pb_nums |= pb_num;
+    flags |= 1;
+  } else if (!(flags & 2)) { // Right
+    pb_nums |= (pb_num << 3);
+    flags |= 2;
+  } else if (!(flags & 4)) {
+    uint8_t orig_pb_num = pb_num;
+    if (this->mag_photon_blast_for_slot(0) < orig_pb_num) {
+      pb_num--;
+    }
+    if (this->mag_photon_blast_for_slot(1) < orig_pb_num) {
+      pb_num--;
+    }
+    if (pb_num >= 4) {
+      throw runtime_error("left photon blast number is too high");
+      pb_nums |= (pb_num << 6);
+    }
+    flags |= 4;
   }
 }
 
@@ -1245,6 +1364,15 @@ const unordered_map<uint32_t, ItemNameInfo> name_info_for_primary_identifier({
     {0x031903, "Team Points 10000"},
 });
 
+string ItemData::hex() const {
+  return string_printf("%02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX (%08" PRIX32 ") %02hhX%02hhX%02hhX%02hhX",
+      this->data1[0], this->data1[1], this->data1[2], this->data1[3],
+      this->data1[4], this->data1[5], this->data1[6], this->data1[7],
+      this->data1[8], this->data1[9], this->data1[10], this->data1[11],
+      this->id.load(),
+      this->data2[0], this->data2[1], this->data2[2], this->data2[3]);
+}
+
 string ItemData::name(bool include_color_codes) const {
   if (this->data1[0] == 0x04) {
     return string_printf("%s%" PRIu32 " Meseta",
@@ -1271,7 +1399,7 @@ string ItemData::name(bool include_color_codes) const {
     }
   }
   // Mags can be wrapped as well
-  if ((this->data1[0] == 0x02) && (this->data2[1] & 0x40)) {
+  if ((this->data1[0] == 0x02) && (this->data2[2] & 0x40)) {
     ret_tokens.emplace_back("Wrapped");
   }
 
@@ -1391,48 +1519,26 @@ string ItemData::name(bool include_color_codes) const {
     ret_tokens.emplace_back(string_printf("%d/%d/%d/%d",
         this->data1w[2] / 100, this->data1w[3] / 100,
         this->data1w[4] / 100, this->data1w[5] / 100));
-    ret_tokens.emplace_back(string_printf("%hhu%%", this->data2[3]));
-    ret_tokens.emplace_back(string_printf("%hhuIQ", this->data2[2]));
+    ret_tokens.emplace_back(string_printf("%hhu%%", this->data2[0]));
+    ret_tokens.emplace_back(string_printf("%hhuIQ", this->data2[1]));
 
-    uint8_t flags = this->data2[1];
+    uint8_t flags = this->data2[2];
     if (flags & 7) {
       static const vector<const char*> pb_shortnames = {
           "F", "E", "G", "P", "L", "M&Y", "MG", "GR"};
 
       const char* pb_names[3] = {nullptr, nullptr, nullptr};
-      uint8_t center_pb = (flags & 2) ? (this->data1[3] & 7) : 0xFF;
-      uint8_t right_pb = (flags & 1) ? ((this->data1[3] >> 3) & 7) : 0xFF;
-      uint8_t left_pb = (flags & 4) ? ((this->data1[3] >> 6) & 3) : 0xFF;
+      uint8_t left_pb = this->mag_photon_blast_for_slot(2);
+      uint8_t center_pb = this->mag_photon_blast_for_slot(0);
+      uint8_t right_pb = this->mag_photon_blast_for_slot(1);
+      if (left_pb != 0xFF) {
+        pb_names[0] = pb_shortnames[left_pb];
+      }
       if (center_pb != 0xFF) {
         pb_names[1] = pb_shortnames[center_pb];
       }
       if (right_pb != 0xFF) {
         pb_names[2] = pb_shortnames[right_pb];
-      }
-      if (left_pb != 0xFF) {
-        // There are only two bits for the left PB (as opposed to 3 for the
-        // center and right PBs). This works because PBs can't be duplicated;
-        // there are 6 valid PBs for each slot, but the center and right slots
-        // are used first, leaving 4 valid options for the left slot. To encode
-        // this in two bits, the game takes the list of all PBs, removes the
-        // center and right PBs from the list, and the left PB is then used as
-        // an index into this modified list to determine the actual left PB.
-        // Here, we don't construct a temporary list and instead just skip the
-        // center and right PB values with a loop.
-        uint8_t actual_left_pb = 0;
-        for (;;) {
-          if ((actual_left_pb == center_pb) || (actual_left_pb == right_pb)) {
-            actual_left_pb++;
-            continue;
-          }
-          if (left_pb > 0) {
-            actual_left_pb++;
-            left_pb--;
-            continue;
-          }
-          break;
-        }
-        pb_names[0] = pb_shortnames[actual_left_pb];
       }
 
       string token = "PB:";
@@ -1469,9 +1575,9 @@ string ItemData::name(bool include_color_codes) const {
           /* 12 */ "costume color",
       });
       try {
-        ret_tokens.emplace_back(string_printf("(%s)", mag_colors.at(this->data2[0])));
+        ret_tokens.emplace_back(string_printf("(%s)", mag_colors.at(this->data2[3])));
       } catch (const out_of_range&) {
-        ret_tokens.emplace_back(string_printf("(!CL:%02hhX)", this->data2[0]));
+        ret_tokens.emplace_back(string_printf("(!CL:%02hhX)", this->data2[3]));
       }
     }
 

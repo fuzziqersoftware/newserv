@@ -832,13 +832,76 @@ PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
   return ret;
 }
 
-size_t PlayerInventory::find_item(uint32_t item_id) {
+size_t PlayerInventory::find_item(uint32_t item_id) const {
   for (size_t x = 0; x < this->num_items; x++) {
     if (this->items[x].data.id == item_id) {
       return x;
     }
   }
   throw out_of_range("item not present");
+}
+
+size_t PlayerInventory::find_equipped_weapon() const {
+  ssize_t ret = -1;
+  for (size_t y = 0; y < this->num_items; y++) {
+    if (!(this->items[y].flags & 0x00000008)) {
+      continue;
+    }
+    if (this->items[y].data.data1[0] != 0) {
+      continue;
+    }
+    if (ret < 0) {
+      ret = y;
+    } else {
+      throw runtime_error("multiple weapons are equipped");
+    }
+  }
+  if (ret < 0) {
+    throw runtime_error("no weapon is equipped");
+  }
+  return ret;
+}
+
+size_t PlayerInventory::find_equipped_armor() const {
+  ssize_t ret = -1;
+  for (size_t y = 0; y < this->num_items; y++) {
+    if (!(this->items[y].flags & 0x00000008)) {
+      continue;
+    }
+    if (this->items[y].data.data1[0] != 1 || this->items[y].data.data1[1] != 1) {
+      continue;
+    }
+    if (ret < 0) {
+      ret = y;
+    } else {
+      throw runtime_error("multiple armors are equipped");
+    }
+  }
+  if (ret < 0) {
+    throw runtime_error("no armor is equipped");
+  }
+  return ret;
+}
+
+size_t PlayerInventory::find_equipped_mag() const {
+  ssize_t ret = -1;
+  for (size_t y = 0; y < this->num_items; y++) {
+    if (!(this->items[y].flags & 0x00000008)) {
+      continue;
+    }
+    if (this->items[y].data.data1[0] != 2) {
+      continue;
+    }
+    if (ret < 0) {
+      ret = y;
+    } else {
+      throw runtime_error("multiple mags are equipped");
+    }
+  }
+  if (ret < 0) {
+    throw runtime_error("no mag is equipped");
+  }
+  return ret;
 }
 
 size_t PlayerBank::find_item(uint32_t item_id) {
@@ -856,7 +919,7 @@ void SavedPlayerDataBB::print_inventory(FILE* stream) const {
   for (size_t x = 0; x < this->inventory.num_items; x++) {
     const auto& item = this->inventory.items[x];
     auto name = item.data.name(false);
-    fprintf(stream, "[PlayerInventory]   %zu (%08" PRIX32 "): %06" PRIX32 " (%s)\n",
-        x, item.data.id.load(), item.data.primary_identifier(), name.c_str());
+    auto hex = item.data.hex();
+    fprintf(stream, "[PlayerInventory]   %zu: %s (%s)\n", x, hex.c_str(), name.c_str());
   }
 }

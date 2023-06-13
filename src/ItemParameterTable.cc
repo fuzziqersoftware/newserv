@@ -3,7 +3,8 @@
 using namespace std;
 
 ItemParameterTable::ItemParameterTable(shared_ptr<const string> data)
-    : data(data), r(*data) {
+    : data(data),
+      r(*data) {
   size_t offset_table_offset = this->r.pget_u32l(this->data->size() - 0x10);
   this->offsets = &r.pget<TableOffsets>(offset_table_offset);
 }
@@ -111,6 +112,19 @@ float ItemParameterTable::get_sale_divisor(uint8_t data1_0, uint8_t data1_1) con
   return 0.0f;
 }
 
+const ItemParameterTable::MagFeedResult& ItemParameterTable::get_mag_feed_result(
+    uint8_t table_index, uint8_t item_index) const {
+  if (table_index >= 8) {
+    throw runtime_error("invalid mag feed table index");
+  }
+  if (item_index >= 11) {
+    throw runtime_error("invalid mag feed item index");
+  }
+  const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets>(this->offsets->mag_feed_table);
+  const auto& results = this->r.pget<MagFeedResultsList>(table_offsets.offsets[table_index]);
+  return results.results[item_index];
+}
+
 uint8_t ItemParameterTable::get_item_stars(uint16_t slot) const {
   if ((slot >= 0xB1) && (slot < 0x437)) {
     return this->r.pget_u8(this->offsets->star_value_table + slot - 0xB1);
@@ -172,8 +186,8 @@ uint8_t ItemParameterTable::get_item_base_stars(const ItemData& item) const {
     return this->get_item_stars(this->get_item_definition(item).id);
   } else if (item.data1[0] == 3) {
     const auto& def = (item.data1[1] == 2)
-                          ? this->get_tool(2, item.data1[4])
-                          : this->get_tool(item.data1[1], item.data1[2]);
+        ? this->get_tool(2, item.data1[4])
+        : this->get_tool(item.data1[1], item.data1[2]);
     return (def.item_flag & 0x80) ? 12 : 0;
   } else {
     return 0;
@@ -219,6 +233,59 @@ bool ItemParameterTable::is_unsealable_item(const ItemData& item) const {
     }
   }
   return false;
+}
+
+void ItemParameterTable::populate_item_combination_index() const {
+  if (!this->item_combination_index.empty()) {
+    return;
+  }
+
+  const auto& co = this->r.pget<CountAndOffset>(this->offsets->combination_table);
+  const auto* defs = &this->r.pget<ItemCombination>(
+      co.offset, co.count * sizeof(ItemCombination));
+  for (size_t z = 0; z < co.count; z++) {
+    const auto& def = defs[z];
+    uint32_t key = (def.used_item[0] << 16) | (def.used_item[1] << 8) | def.used_item[2];
+    this->item_combination_index[key].emplace_back(def);
+  }
+}
+
+const ItemParameterTable::ItemCombination& ItemParameterTable::get_item_combination(
+    const ItemData& used_item, const ItemData& equipped_item) const {
+  for (const auto& def : this->get_all_combinations_for_used_item(used_item)) {
+    if ((def.equipped_item[0] == 0xFF || def.equipped_item[0] == equipped_item.data1[0]) &&
+        (def.equipped_item[1] == 0xFF || def.equipped_item[1] == equipped_item.data1[1]) &&
+        (def.equipped_item[2] == 0xFF || def.equipped_item[2] == equipped_item.data1[2])) {
+      return def;
+    }
+  }
+  throw out_of_range("no item combination applies");
+}
+
+const std::vector<ItemParameterTable::ItemCombination>& ItemParameterTable::get_all_combinations_for_used_item(
+    const ItemData& used_item) const {
+  try {
+    uint32_t key = (used_item.data1[0] << 16) | (used_item.data1[1] << 8) | used_item.data1[2];
+    return this->get_all_item_combinations().at(key);
+  } catch (const out_of_range&) {
+    static const vector<ItemCombination> ret;
+    return ret;
+  }
+}
+
+const std::map<uint32_t, std::vector<ItemParameterTable::ItemCombination>>& ItemParameterTable::get_all_item_combinations() const {
+  this->populate_item_combination_index();
+  return this->item_combination_index;
+}
+
+std::pair<const ItemParameterTable::EventItem*, size_t> ItemParameterTable::get_event_items(uint8_t event_number) const {
+  const auto& co = this->r.pget<CountAndOffset>(this->offsets->unwrap_table);
+  if (event_number >= co.count) {
+    throw runtime_error("invalid event number");
+  }
+  const auto& event_co = this->r.pget<CountAndOffset>(co.offset + sizeof(CountAndOffset) * event_number);
+  const auto* defs = &this->r.pget<EventItem>(event_co.offset, event_co.count * sizeof(ItemCombination));
+  return make_pair(defs, event_co.count);
 }
 
 size_t ItemParameterTable::price_for_item(const ItemData& item) const {
@@ -275,9 +342,7 @@ size_t ItemParameterTable::price_for_item(const ItemData& item) const {
       const auto& def = this->get_armor_or_shield(item.data1[1], item.data1[2]);
       double power_factor = def.dfp + def.evp + def_bonus + evp_bonus;
       double power_factor_floor = static_cast<int32_t>((power_factor * power_factor) / sale_divisor);
-      return power_factor_floor + (70.0 *
-                                   static_cast<double>(item.data1[5] + 1) *
-                                   static_cast<double>(def.required_level + 1));
+      return power_factor_floor + (70.0 * static_cast<double>(item.data1[5] + 1) * static_cast<double>(def.required_level + 1));
     }
 
     case 2:
@@ -295,4 +360,16 @@ size_t ItemParameterTable::price_for_item(const ItemData& item) const {
       throw runtime_error("invalid item");
   }
   throw logic_error("this should be impossible");
+}
+
+MagEvolutionTable::MagEvolutionTable(shared_ptr<const string> data)
+    : data(data),
+      r(*data) {
+  size_t offset_table_offset = this->r.pget_u32l(this->data->size() - 0x10);
+  this->offsets = &r.pget<TableOffsets>(offset_table_offset);
+}
+
+uint8_t MagEvolutionTable::get_evolution_number(uint8_t data1_1) const {
+  const auto& table = this->r.pget<EvolutionNumberTable>(this->offsets->evolution_number);
+  return table.values[data1_1];
 }

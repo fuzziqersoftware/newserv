@@ -788,8 +788,12 @@ static void on_equip_unequip_item(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data);
 }
 
-static void on_use_item(shared_ptr<ServerState>,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+static void on_use_item(
+    shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l,
+    shared_ptr<Client> c,
+    uint8_t command,
+    uint8_t flag,
     const string& data) {
   const auto& cmd = check_size_sc<G_UseItem_6x27>(data);
 
@@ -807,13 +811,64 @@ static void on_use_item(shared_ptr<ServerState>,
       name = item.name(false);
       colored_name = item.name(true);
     }
-    player_use_item(c, index);
+    player_use_item(s, c, index);
 
     l->log.info("Player used item %hu:%08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
       send_text_message_printf(c, "$C5Items: use %08" PRIX32 "\n%s",
           cmd.item_id.load(), colored_name.c_str());
+    }
+    c->game_data.player()->print_inventory(stderr);
+  }
+
+  forward_subcommand(l, c, command, flag, data);
+}
+
+static void on_feed_mag(
+    shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l,
+    shared_ptr<Client> c,
+    uint8_t command,
+    uint8_t flag,
+    const string& data) {
+  const auto& cmd = check_size_sc<G_FeedMAG_6x28>(data);
+
+  if (cmd.header.client_id != c->lobby_client_id) {
+    return;
+  }
+
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    size_t mag_index = c->game_data.player()->inventory.find_item(cmd.mag_item_id);
+    size_t fed_index = c->game_data.player()->inventory.find_item(cmd.fed_item_id);
+    string mag_name, mag_colored_name, fed_name, fed_colored_name;
+    {
+      // Note: We do this weird scoping thing because player_use_item will
+      // likely delete the item, which will break the reference here.
+      const auto& fed_item = c->game_data.player()->inventory.items[fed_index].data;
+      fed_name = fed_item.name(false);
+      fed_colored_name = fed_item.name(true);
+      const auto& mag_item = c->game_data.player()->inventory.items[mag_index].data;
+      mag_name = mag_item.name(false);
+      mag_colored_name = mag_item.name(true);
+    }
+    player_feed_mag(s, c, mag_index, fed_index);
+
+    // On BB, the player only sends a 6x28; on other versions, the player sends
+    // a 6x29 immediately after to destroy the fed item. So on BB, we should
+    // remove the fed item here, but on other versions, we allow the following
+    // 6x29 command to do that.
+    if (l->version == GameVersion::BB) {
+      c->game_data.player()->remove_item(cmd.fed_item_id, 1, false);
+    }
+
+    l->log.info("Player fed item %hu:%08" PRIX32 " (%s) to mag %hu:%08" PRIX32 " (%s)",
+        cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
+        cmd.header.client_id.load(), cmd.mag_item_id.load(), mag_name.c_str());
+    if (c->options.debug) {
+      send_text_message_printf(c, "$C5Items: feed %08" PRIX32 "\n%s\n...to %08" PRIX32 "\n%s",
+          cmd.fed_item_id.load(), fed_colored_name.c_str(),
+          cmd.mag_item_id.load(), mag_colored_name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
   }
@@ -1413,7 +1468,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 25 */ on_equip_unequip_item, // Equip item
     /* 26 */ on_equip_unequip_item, // Unequip item
     /* 27 */ on_use_item,
-    /* 28 */ on_forward_check_size_game, // Feed MAG
+    /* 28 */ on_feed_mag, // Feed MAG
     /* 29 */ on_destroy_inventory_item, // Delete item (via bank deposit / sale / feeding MAG)
     /* 2A */ on_player_drop_item,
     /* 2B */ on_create_inventory_item, // Create inventory item (e.g. from tekker or bank withdrawal)

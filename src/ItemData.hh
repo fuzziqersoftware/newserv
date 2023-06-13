@@ -68,6 +68,7 @@ struct ItemData { // 0x14 bytes
 
   void clear();
 
+  std::string hex() const;
   std::string name(bool include_color_codes) const;
   uint32_t primary_identifier() const;
 
@@ -75,8 +76,16 @@ struct ItemData { // 0x14 bytes
   size_t stack_size() const;
   size_t max_stack_size() const;
 
+  static bool is_common_consumable(uint32_t primary_identifier);
+  bool is_common_consumable() const;
+
   void assign_mag_stats(const ItemMagStats& mag);
   void clear_mag_stats();
+  uint16_t compute_mag_level() const;
+  uint16_t compute_mag_strength_flags() const;
+  uint8_t mag_photon_blast_for_slot(uint8_t slot) const;
+  bool mag_has_photon_blast_in_any_slot(uint8_t pb_num) const;
+  void add_mag_photon_blast(uint8_t pb_num);
 
   void set_sealed_item_kill_count(uint16_t v);
   uint8_t get_tool_item_amount() const;

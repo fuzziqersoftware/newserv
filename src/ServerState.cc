@@ -862,9 +862,14 @@ void ServerState::load_item_tables() {
   }
 
   config_log.info("Loading item definition table");
-  shared_ptr<string> data(new string(prs_decompress(load_file(
+  shared_ptr<string> pmt_data(new string(prs_decompress(load_file(
       "system/blueburst/ItemPMT.prs"))));
-  this->item_parameter_table.reset(new ItemParameterTable(data));
+  this->item_parameter_table.reset(new ItemParameterTable(pmt_data));
+
+  config_log.info("Loading mag evolution table");
+  shared_ptr<string> mag_data(new string(prs_decompress(load_file(
+      "system/blueburst/ItemMagEdit.prs"))));
+  this->mag_evolution_table.reset(new MagEvolutionTable(mag_data));
 }
 
 void ServerState::load_ep3_data() {

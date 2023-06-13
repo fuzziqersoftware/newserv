@@ -271,7 +271,7 @@ struct parray {
     if (offset + SubCount > Count) {
       throw std::out_of_range("sub-array out of range");
     }
-    return *reinterpret_cast<parray<ItemT, SubCount>*>(&this->items[offset]);
+    return *reinterpret_cast<const parray<ItemT, SubCount>*>(&this->items[offset]);
   }
 
   void assign_range(const ItemT* new_items, size_t count = Count, size_t start_offset = 0) {

@@ -46,7 +46,11 @@ struct PlayerInventory { // 0x34C bytes
 
   PlayerInventory();
 
-  size_t find_item(uint32_t item_id);
+  size_t find_item(uint32_t item_id) const;
+
+  size_t find_equipped_weapon() const;
+  size_t find_equipped_armor() const;
+  size_t find_equipped_mag() const;
 } __attribute__((packed));
 
 struct PlayerBank { // 0x12C8 bytes

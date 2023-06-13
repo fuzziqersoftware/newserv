@@ -377,6 +377,59 @@ const char* abbreviation_for_char_class(uint8_t cls) {
   }
 }
 
+enum ClassFlag {
+  MALE = 0x01,
+  HUMAN = 0x02,
+  NEWMAN = 0x04,
+  ANDROID = 0x08,
+  HUNTER = 0x10,
+  RANGER = 0x20,
+  FORCE = 0x40,
+};
+
+static array<uint8_t, 12> class_flags = {
+    ClassFlag::HUNTER | ClassFlag::HUMAN | ClassFlag::MALE, // HUmar
+    ClassFlag::HUNTER | ClassFlag::NEWMAN, // HUnewearl
+    ClassFlag::HUNTER | ClassFlag::ANDROID | ClassFlag::MALE, // HUcast
+    ClassFlag::RANGER | ClassFlag::HUMAN | ClassFlag::MALE, // RAmar
+    ClassFlag::RANGER | ClassFlag::ANDROID | ClassFlag::MALE, // RAcast
+    ClassFlag::RANGER | ClassFlag::ANDROID, // RAcaseal
+    ClassFlag::FORCE | ClassFlag::HUMAN, // FOmarl
+    ClassFlag::FORCE | ClassFlag::NEWMAN | ClassFlag::MALE, // FOnewm
+    ClassFlag::FORCE | ClassFlag::NEWMAN, // FOnewearl
+    ClassFlag::HUNTER | ClassFlag::ANDROID, // HUcaseal
+    ClassFlag::FORCE | ClassFlag::HUMAN | ClassFlag::MALE, // FOmar
+    ClassFlag::RANGER | ClassFlag::HUMAN, // RAmarl
+};
+
+bool char_class_is_male(uint8_t cls) {
+  return class_flags.at(cls) & ClassFlag::MALE;
+}
+
+bool char_class_is_human(uint8_t cls) {
+  return class_flags.at(cls) & ClassFlag::HUMAN;
+}
+
+bool char_class_is_newman(uint8_t cls) {
+  return class_flags.at(cls) & ClassFlag::NEWMAN;
+}
+
+bool char_class_is_android(uint8_t cls) {
+  return class_flags.at(cls) & ClassFlag::ANDROID;
+}
+
+bool char_class_is_hunter(uint8_t cls) {
+  return class_flags.at(cls) & ClassFlag::HUNTER;
+}
+
+bool char_class_is_ranger(uint8_t cls) {
+  return class_flags.at(cls) & ClassFlag::RANGER;
+}
+
+bool char_class_is_force(uint8_t cls) {
+  return class_flags.at(cls) & ClassFlag::FORCE;
+}
+
 const char* name_for_difficulty(uint8_t difficulty) {
   static const array<const char*, 4> names = {
       "Normal",
