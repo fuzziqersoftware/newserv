@@ -354,6 +354,7 @@ static void server_command_exit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     } else if (l->flags & (Lobby::Flag::QUEST_IN_PROGRESS | Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
       G_UnusedHeader cmd = {0x73, 0x01, 0x0000};
       c->channel.send(0x60, 0x00, cmd);
+      c->area = 0;
     } else {
       send_text_message(c, u"$C6You must return to\nthe lobby first");
     }
