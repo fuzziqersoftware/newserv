@@ -29,6 +29,7 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       catch_handler_exceptions(true),
       ep3_behavior_flags(0),
       run_shell_behavior(RunShellBehavior::DEFAULT),
+      cheat_mode_behavior(CheatModeBehavior::OFF_BY_DEFAULT),
       ep3_card_auction_points(0),
       ep3_card_auction_min_size(0),
       ep3_card_auction_max_size(0),
@@ -741,6 +742,20 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
   try {
     bool run_shell = d.at("RunInteractiveShell")->as_bool();
     this->run_shell_behavior = run_shell ? ServerState::RunShellBehavior::ALWAYS : ServerState::RunShellBehavior::NEVER;
+  } catch (const out_of_range&) {
+  }
+
+  try {
+    const string& behavior = d.at("CheatModeBehavior")->as_string();
+    if (behavior == "Off") {
+      this->cheat_mode_behavior = CheatModeBehavior::OFF;
+    } else if (behavior == "OffByDefault") {
+      this->cheat_mode_behavior = CheatModeBehavior::OFF_BY_DEFAULT;
+    } else if (behavior == "OnByDefault") {
+      this->cheat_mode_behavior = CheatModeBehavior::ON_BY_DEFAULT;
+    } else {
+      throw runtime_error("invalid value for CheatModeBehavior");
+    }
   } catch (const out_of_range&) {
   }
 

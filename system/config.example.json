@@ -343,6 +343,15 @@
     [0x40, "e", "", "Download", "$E$C6Quests to download\nto your Memory Card"],
   ],
 
+  // Cheat mode behavior. There are three values:
+  //   "Off": Cheat mode is disabled on the entire server. This also disables
+  //       cheat commands on the proxy server.
+  //   "OffByDefault": Cheat mode is disabled on the entire server, but can be
+  //       enabled in each game and proxy session.
+  //   "OnByDefault": Cheat mode is enabled on the entire server, but can be
+  //       disabled in each game and proxy session.
+  "CheatModeBehavior": "OnByDefault",
+
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on
   // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't
@@ -361,7 +370,7 @@
   // be turned off here. This option has no effect on Blue Burst games - item
   // tracking is always enabled for them.
   "EnableItemTracking": true,
-  
+
   // Enable or disable drops by default in non-BB games (drops are always
   // enabled in BB games). The leader can toggle drops in each game with the
   // $drop command.

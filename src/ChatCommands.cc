@@ -70,8 +70,11 @@ static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
   }
 }
 
-static void check_cheats_enabled(shared_ptr<Lobby> l) {
-  if (!(l->flags & Lobby::Flag::CHEATS_ENABLED)) {
+static void check_cheats_enabled(shared_ptr<ServerState> s, shared_ptr<Lobby> l = nullptr) {
+  if (s->cheat_mode_behavior == ServerState::CheatModeBehavior::OFF) {
+    throw precondition_failed(u"$C6Cheats are disabled.");
+  }
+  if (l && !(l->flags & Lobby::Flag::CHEATS_ENABLED)) {
     throw precondition_failed(u"$C6This command can\nonly be used in\ncheat mode.");
   }
 }
@@ -438,16 +441,21 @@ static void proxy_command_send_server(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 // Lobby commands
 
-static void server_command_cheat(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_cheat(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_is_leader(l, c);
+
+  if (s->cheat_mode_behavior == ServerState::CheatModeBehavior::OFF) {
+    send_text_message(c, u"$C6Cheat mode cannot\nbe enabled on this\nserver");
+    return;
+  }
 
   l->flags ^= Lobby::Flag::CHEATS_ENABLED;
   send_text_message_printf(l, "Cheat mode %s",
       (l->flags & Lobby::Flag::CHEATS_ENABLED) ? "enabled" : "disabled");
 
-  // if cheat mode was disabled, turn off all the cheat features that were on
+  // If cheat mode was disabled, turn off all the cheat features that were on
   if (!(l->flags & Lobby::Flag::CHEATS_ENABLED)) {
     for (size_t x = 0; x < l->max_clients; x++) {
       auto c = l->clients[x];
@@ -964,9 +972,9 @@ static void server_command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
 // Cheat commands
 
 static void server_command_warp(
-    shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args, bool is_warpall) {
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args, bool is_warpall) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
+  check_cheats_enabled(s, l);
 
   uint32_t area = stoul(encode_sjis(args), nullptr, 0);
   if (c->area == area) {
@@ -988,18 +996,19 @@ static void server_command_warp(
   }
 }
 
-static void server_command_warpme(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const std::u16string& args) {
-  server_command_warp(l, c, args, false);
+static void server_command_warpme(
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args) {
+  server_command_warp(s, l, c, args, false);
 }
 
-static void server_command_warpall(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const std::u16string& args) {
-  server_command_warp(l, c, args, true);
+static void server_command_warpall(
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args) {
+  server_command_warp(s, l, c, args, true);
 }
 
 static void proxy_command_warp(
-    ProxyServer::LinkedSession& session, const std::u16string& args, bool is_warpall) {
+    shared_ptr<ServerState> s, ProxyServer::LinkedSession& session, const std::u16string& args, bool is_warpall) {
+  check_cheats_enabled(s);
   if (!session.is_in_game) {
     send_text_message(session.client_channel, u"$C6You must be in a\ngame to use this\ncommand");
     return;
@@ -1012,20 +1021,20 @@ static void proxy_command_warp(
   session.area = area;
 }
 
-static void proxy_command_warpme(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, const std::u16string& args) {
-  proxy_command_warp(session, args, false);
+static void proxy_command_warpme(
+    shared_ptr<ServerState> s, ProxyServer::LinkedSession& session, const std::u16string& args) {
+  proxy_command_warp(s, session, args, false);
 }
 
-static void proxy_command_warpall(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, const std::u16string& args) {
-  proxy_command_warp(session, args, true);
+static void proxy_command_warpall(
+    shared_ptr<ServerState> s, ProxyServer::LinkedSession& session, const std::u16string& args) {
+  proxy_command_warp(s, session, args, true);
 }
 
-static void server_command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_next(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
+  check_cheats_enabled(s, l);
 
   size_t limit = area_limit_for_episode(l->episode);
   if (limit == 0) {
@@ -1034,8 +1043,9 @@ static void server_command_next(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_warp(c, (c->area + 1) % limit, true);
 }
 
-static void proxy_command_next(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, const std::u16string&) {
+static void proxy_command_next(
+    shared_ptr<ServerState> s, ProxyServer::LinkedSession& session, const std::u16string&) {
+  check_cheats_enabled(s);
   if (!session.is_in_game) {
     send_text_message(session.client_channel, u"$C6You must be in a\ngame to use this\ncommand");
     return;
@@ -1098,52 +1108,55 @@ static void proxy_command_song(shared_ptr<ServerState>,
   send_ep3_change_music(session.client_channel, song);
 }
 
-static void server_command_infinite_hp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const std::u16string&) {
+static void server_command_infinite_hp(
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
+  check_cheats_enabled(s, l);
 
   c->options.infinite_hp = !c->options.infinite_hp;
   send_text_message_printf(c, "$C6Infinite HP %s",
       c->options.infinite_hp ? "enabled" : "disabled");
 }
 
-static void proxy_command_infinite_hp(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, const std::u16string&) {
+static void proxy_command_infinite_hp(
+    shared_ptr<ServerState> s, ProxyServer::LinkedSession& session, const std::u16string&) {
+  check_cheats_enabled(s);
   session.options.infinite_hp = !session.options.infinite_hp;
   send_text_message_printf(session.client_channel, "$C6Infinite HP %s",
       session.options.infinite_hp ? "enabled" : "disabled");
 }
 
-static void server_command_infinite_tp(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const std::u16string&) {
+static void server_command_infinite_tp(
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
+  check_cheats_enabled(s, l);
 
   c->options.infinite_tp = !c->options.infinite_tp;
   send_text_message_printf(c, "$C6Infinite TP %s",
       c->options.infinite_tp ? "enabled" : "disabled");
 }
 
-static void proxy_command_infinite_tp(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, const std::u16string&) {
+static void proxy_command_infinite_tp(
+    shared_ptr<ServerState> s, ProxyServer::LinkedSession& session, const std::u16string&) {
+  check_cheats_enabled(s);
   session.options.infinite_tp = !session.options.infinite_tp;
   send_text_message_printf(session.client_channel, "$C6Infinite TP %s",
       session.options.infinite_tp ? "enabled" : "disabled");
 }
 
-static void server_command_switch_assist(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const std::u16string&) {
+static void server_command_switch_assist(
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
+  check_cheats_enabled(s, l);
 
   c->options.switch_assist = !c->options.switch_assist;
   send_text_message_printf(c, "$C6Switch assist %s",
       c->options.switch_assist ? "enabled" : "disabled");
 }
 
-static void proxy_command_switch_assist(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, const std::u16string&) {
+static void proxy_command_switch_assist(
+    shared_ptr<ServerState> s, ProxyServer::LinkedSession& session, const std::u16string&) {
+  check_cheats_enabled(s);
   session.options.switch_assist = !session.options.switch_assist;
   send_text_message_printf(session.client_channel, "$C6Switch assist %s",
       session.options.switch_assist ? "enabled" : "disabled");
@@ -1157,10 +1170,10 @@ static void server_command_drop(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_text_message_printf(l, "Drops %s", (l->flags & Lobby::Flag::DROPS_ENABLED) ? "enabled" : "disabled");
 }
 
-static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
-    shared_ptr<Client> c, const std::u16string& args) {
+static void server_command_item(
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, true);
-  check_cheats_enabled(l);
+  check_cheats_enabled(s, l);
 
   string data = parse_data_string(encode_sjis(args));
   if (data.size() < 2) {
@@ -1188,8 +1201,9 @@ static void server_command_item(shared_ptr<ServerState>, shared_ptr<Lobby> l,
   send_text_message(c, u"$C7Item created:\n" + decode_sjis(name));
 }
 
-static void proxy_command_item(shared_ptr<ServerState>,
-    ProxyServer::LinkedSession& session, const std::u16string& args) {
+static void proxy_command_item(
+    shared_ptr<ServerState> s, ProxyServer::LinkedSession& session, const std::u16string& args) {
+  check_cheats_enabled(s);
   if (session.version == GameVersion::BB) {
     send_text_message(session.client_channel,
         u"$C6This command cannot\nbe used on the proxy\nserver in BB games");

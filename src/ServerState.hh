@@ -40,6 +40,11 @@ struct ServerState {
     ALWAYS,
     NEVER,
   };
+  enum class CheatModeBehavior {
+    OFF = 0,
+    OFF_BY_DEFAULT,
+    ON_BY_DEFAULT,
+  };
 
   std::string config_filename;
   bool is_replay;
@@ -60,6 +65,7 @@ struct ServerState {
   bool catch_handler_exceptions;
   uint32_t ep3_behavior_flags;
   RunShellBehavior run_shell_behavior;
+  CheatModeBehavior cheat_mode_behavior;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;

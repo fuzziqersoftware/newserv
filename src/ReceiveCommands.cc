@@ -53,17 +53,19 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(
       u"Player notifs", u"Show a message\nwhen other players\njoin or leave");
   add_option(ProxyOptionsMenuItemID::BLOCK_PINGS, c->options.suppress_client_pings,
       u"Block pings", u"Block ping commands\nsent by the client");
-  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
-    add_option(ProxyOptionsMenuItemID::INFINITE_HP, c->options.infinite_hp,
-        u"Infinite HP", u"Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
-    add_option(ProxyOptionsMenuItemID::INFINITE_TP, c->options.infinite_tp,
-        u"Infinite TP", u"Enable automatic TP\nrestoration when\nyou cast any\ntechnique");
-    add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, c->options.switch_assist,
-        u"Switch assist", u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
-  } else {
-    // Note: This option's text is the maximum possible length for any menu item
-    add_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, c->options.ep3_infinite_meseta,
-        u"Infinite Meseta", u"Fix Meseta value\nat 1,000,000");
+  if (s->cheat_mode_behavior != ServerState::CheatModeBehavior::OFF) {
+    if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+      add_option(ProxyOptionsMenuItemID::INFINITE_HP, c->options.infinite_hp,
+          u"Infinite HP", u"Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
+      add_option(ProxyOptionsMenuItemID::INFINITE_TP, c->options.infinite_tp,
+          u"Infinite TP", u"Enable automatic TP\nrestoration when\nyou cast any\ntechnique");
+      add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, c->options.switch_assist,
+          u"Switch assist", u"Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
+    } else {
+      // Note: This option's text is the maximum possible length for any menu item
+      add_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, c->options.ep3_infinite_meseta,
+          u"Infinite Meseta", u"Fix Meseta value\nat 1,000,000");
+    }
   }
   add_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->options.override_lobby_event >= 0),
       u"Block events", u"Disable seasonal\nevents in the lobby\nand in games");
@@ -3150,7 +3152,7 @@ shared_ptr<Lobby> create_game_generic(
   bool item_tracking_enabled =
       (c->version() == GameVersion::BB) ||
       (s->item_tracking_enabled && (mode == GameMode::NORMAL || mode == GameMode::SOLO));
-  
+
   // only disable drops if the config flag is set and are playing regualr multi-mode.
   // drops are still enabled for battle and challenge modes.
   bool drops_enabled =
@@ -3159,9 +3161,10 @@ shared_ptr<Lobby> create_game_generic(
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
   game->flags = flags |
-      Lobby::Flag::GAME | 
+      Lobby::Flag::GAME |
       (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0) |
-      (drops_enabled ? Lobby::Flag::DROPS_ENABLED : 0);
+      (drops_enabled ? Lobby::Flag::DROPS_ENABLED : 0) |
+      ((s->cheat_mode_behavior == ServerState::CheatModeBehavior::ON_BY_DEFAULT) ? Lobby::Flag::CHEATS_ENABLED : 0);
   game->password = password;
   game->version = c->version();
   game->section_id = c->options.override_section_id >= 0
