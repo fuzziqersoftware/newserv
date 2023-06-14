@@ -4283,6 +4283,7 @@ struct G_SyncEnemyState_6x6B_Entry_Decompressed {
 
 // Decompressed format is a list of these
 struct G_SyncObjectState_6x6C_Entry_Decompressed {
+  // TODO: Verify this format on DC and PC. It appears correct for GC and BB.
   le_uint16_t flags;
   le_uint16_t object_index;
 } __packed__;
@@ -4322,6 +4323,7 @@ struct G_SyncItemState_6x6D_Decompressed {
 // Compressed format is the same as 6x6B.
 
 struct G_SyncFlagState_6x6E_Decompressed {
+  // TODO: Verify this format on DC and PC. It appears correct for GC and BB.
   // The three unknowns here are the sizes (in bytes) of three fields
   // immediately following this structure. It is currently unknown what these
   // fields represent. The three unknown fields always sum to the size field.

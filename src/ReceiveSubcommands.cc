@@ -183,6 +183,13 @@ static void on_forward_sync_game_state(shared_ptr<ServerState>,
     throw runtime_error("compressed end offset is beyond end of command");
   }
 
+  if (c->options.debug) {
+    string decompressed = bc0_decompress(cmd.data, cmd.compressed_size);
+    c->log.info("Decompressed sync data (%" PRIX32 " -> %zX bytes; expected %" PRIX32 "):",
+        cmd.compressed_size.load(), decompressed.size(), cmd.decompressed_size.load());
+    print_data(stderr, decompressed);
+  }
+
   forward_subcommand(l, c, command, flag, data);
 }
 
@@ -495,7 +502,7 @@ static void on_player_drop_item(shared_ptr<ServerState>,
         cmd.area.load(), cmd.x.load(), cmd.z.load());
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: drop %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5DROP %08" PRIX32 "\n%s",
           cmd.item_id.load(), name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
@@ -531,7 +538,7 @@ static void on_create_inventory_item(shared_ptr<ServerState>,
         cmd.header.client_id.load(), cmd.item.id.load(), name.c_str());
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: create %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5CREATE %08" PRIX32 "\n%s",
           cmd.item.id.load(), name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
@@ -569,7 +576,7 @@ static void on_drop_partial_stack(shared_ptr<ServerState>,
         cmd.area.load(), cmd.x.load(), cmd.z.load());
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: split %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5SPLIT %08" PRIX32 "\n%s",
           item.data.id.load(), name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
@@ -614,7 +621,7 @@ static void on_drop_partial_stack_bb(shared_ptr<ServerState>,
         cmd.area.load(), cmd.x.load(), cmd.z.load());
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: split/BB %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5SPLIT/BB %08" PRIX32 "\n%s",
           cmd.item_id.load(), name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
@@ -650,7 +657,7 @@ static void on_buy_shop_item(shared_ptr<ServerState>,
         cmd.header.client_id.load(), item.data.id.load(), name.c_str());
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: buy %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5BUY %08" PRIX32 "\n%s",
           item.data.id.load(), name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
@@ -684,7 +691,7 @@ static void on_box_or_enemy_item_drop(shared_ptr<ServerState>,
         item.data.id.load(), name.c_str(), cmd.area, cmd.x.load(), cmd.z.load());
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: drop %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5DROP %08" PRIX32 "\n%s",
           item.data.id.load(), name.c_str());
     }
   }
@@ -719,7 +726,7 @@ static void on_pick_up_item(shared_ptr<ServerState>,
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: pick %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5PICK %08" PRIX32 "\n%s",
           cmd.item_id.load(), name.c_str());
     }
     effective_c->game_data.player()->print_inventory(stderr);
@@ -751,7 +758,7 @@ static void on_pick_up_item_request(shared_ptr<ServerState>,
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: pick/BB %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5PICK/BB %08" PRIX32 "\n%s",
           cmd.item_id.load(), name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
@@ -816,7 +823,7 @@ static void on_use_item(
     l->log.info("Player used item %hu:%08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
-      send_text_message_printf(c, "$C5Items: use %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5USE %08" PRIX32 "\n%s",
           cmd.item_id.load(), colored_name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
@@ -866,7 +873,7 @@ static void on_feed_mag(
         cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
         cmd.header.client_id.load(), cmd.mag_item_id.load(), mag_name.c_str());
     if (c->options.debug) {
-      send_text_message_printf(c, "$C5Items: feed %08" PRIX32 "\n%s\n...to %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5FEED %08" PRIX32 "\n%s\n...TO %08" PRIX32 "\n%s",
           cmd.fed_item_id.load(), fed_colored_name.c_str(),
           cmd.mag_item_id.load(), mag_colored_name.c_str());
     }
@@ -1249,7 +1256,7 @@ static void on_destroy_inventory_item(shared_ptr<ServerState>,
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: destroy %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5DESTROY %08" PRIX32 "\n%s",
           cmd.item_id.load(), name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
@@ -1271,7 +1278,7 @@ static void on_destroy_ground_item(shared_ptr<ServerState>,
         name.c_str());
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: destroy/ground %08" PRIX32 "\n%s",
+      send_text_message_printf(c, "$C5DESTROY/GND %08" PRIX32 "\n%s",
           cmd.item_id.load(), name.c_str());
     }
     forward_subcommand(l, c, command, flag, data);
@@ -1360,7 +1367,7 @@ static void on_sell_item_at_shop_bb(shared_ptr<ServerState> s,
     c->game_data.player()->print_inventory(stderr);
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: destroy/sale %08" PRIX32 "\n+%zu Meseta\n%s",
+      send_text_message_printf(c, "$C5DESTROY/SELL %08" PRIX32 "\n+%zu Meseta\n%s",
           cmd.item_id.load(), price, name.c_str());
     }
 
@@ -1401,7 +1408,7 @@ static void on_buy_shop_item_bb(shared_ptr<ServerState>,
     c->game_data.player()->print_inventory(stderr);
     if (c->options.debug) {
       string name = item.data.name(true);
-      send_text_message_printf(c, "$C5Items: create/purchase %08" PRIX32 "\n-%zu Meseta\n%s",
+      send_text_message_printf(c, "$C5CREATE/BUY %08" PRIX32 "\n-%zu Meseta\n%s",
           cmd.inventory_item_id.load(), price, name.c_str());
     }
   }
