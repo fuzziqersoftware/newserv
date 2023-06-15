@@ -96,7 +96,7 @@ newserv supports several versions of PSO. Specifically:
 1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add support for. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
 2. *newserv's implementations of these versions are based on disassembly of the client executables and have never been tested.*
 3. *Some basic features are not implemented in Blue Burst games, so the games are not very playable. A lot of work has to be done to get BB games to a playable state.*
-4. *Support for PSO Dreamcast Trial Edition and the December 2000 prototype is somewhat incomplete and probably never will be complete. These versions are rather unstable and seem to crash often, but it's not obvious whether it's because they're prototypes or because newserv sends data they can't hendle.*
+4. *Support for PSO Dreamcast Trial Edition and the December 2000 prototype is somewhat incomplete and probably never will be complete. These versions are rather unstable and seem to crash often, but it's not obvious whether it's because they're prototypes or because newserv sends data they can't handle.*
 
 ## Setup
 

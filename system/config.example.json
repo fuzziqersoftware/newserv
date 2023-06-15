@@ -2,8 +2,10 @@
   // Configuration file for newserv.
 
   // This file is standard JSON with C-style comments. Some other extensions to
-  // the JSON standard are also  supported; for example, integers may be
-  // specified in hexadecimal using the 0x prefix.
+  // the JSON standard are also supported; for example, integers may be
+  // specified in hexadecimal using the 0x prefix. If you use a text editor that
+  // auto-formats JSON on save, it may be confused by this file's format. Make
+  // sure it doesn't automatically turn hex integers into strings, for example.
 
   // Server's name (maximum 16 characters). This appears in the upper-right
   // corner of the screen while in lobbies.
@@ -264,21 +266,21 @@
   // Episode 3 battle behavior flags. When set to zero, battles behave as they
   // did on the original Sega servers. Combinations of behaviors can be enabled
   // by bitwise-OR'ing together the following values:
-  // 0x00000001 => Disable deck verification entirely
-  // 0x00000002 => Disable owned card count check during deck verification (this
-  //               enables the use of the non-saveable Have All Cards Action
-  //               Replay code, but retains all the other validity checks)
-  // 0x00000004 => Allow cards with the D1 and D2 ranks to be used in battle
-  // 0x00000008 => Disable overall and per-phase battle time limits, regardless
-  //               of the values chosen during battle rules setup
-  // 0x00000010 => Enable debug messages in Episode 3 games and battles
-  // 0x00000020 => This flag is used internally and has no effect on battles
-  // 0x00000040 => Enable battle recording (after a battle, players can save the
-  //               recording with the $saverec <filename> command)
-  // 0x00000080 => Disable command masking during battles
-  // 0x00000100 => Disable interference (COMs randomly coming to each other's
-  //               rescue)
-  "Episode3BehaviorFlags": 0x00000002,
+  // 0x0001 => Disable deck verification entirely
+  // 0x0002 => Disable owned card count check during deck verification (this
+  //           enables the use of the non-saveable Have All Cards Action Replay
+  //           code, but retains all the other validity checks)
+  // 0x0004 => Allow cards with the D1 and D2 ranks to be used in battle
+  // 0x0008 => Disable overall and per-phase battle time limits, regardless of
+  //           the values chosen during battle rules setup
+  // 0x0010 => Enable debug messages in Episode 3 games and battles
+  // 0x0020 => This flag is used internally and has no effect on battles
+  // 0x0040 => Enable battle recording (after a battle, players can save the
+  //           recording with the $saverec <filename> command)
+  // 0x0080 => Disable command masking during battles
+  // 0x0100 => Disable interference (COMs randomly coming to each other's
+  //           rescue)
+  "Episode3BehaviorFlags": 0x0002,
 
   // Episode 3 card auction configuration. CardAuctionPoints specifies how many
   // points each player gets when they join an auction (this may be anywhere
@@ -291,8 +293,9 @@
   // and costs of each card in the auction pool. Relative frequencies are
   // 64-bit integers, but should generally be less than 0x0100000000000000 to
   // avoid excessive bias. All relative frequencies must sum to a number less
-  // than 0x10000000000000000 (the limit of an unsigned 64-bit integer). Cards
-  // are drawn (with replacement) from the distribution specified here.
+  // than 0x10000000000000000 (the limit of an unsigned 64-bit integer). When
+  // players enter an auction, the auctioned cards are drawn with replacement
+  // from the distribution specified here.
   "CardAuctionPoints": 30,
   "CardAuctionSize": [2, 4],
   "CardAuctionPool": {
@@ -344,12 +347,15 @@
   ],
 
   // Cheat mode behavior. There are three values:
-  //   "Off": Cheat mode is disabled on the entire server. This also disables
-  //       cheat commands on the proxy server.
+  //   "Off": Cheat mode is disabled on the entire server. Cheat mode cannot be
+  //       enabled in games, and the $cheat command does nothing. This also
+  //       disables cheat options on the proxy server.
   //   "OffByDefault": Cheat mode is disabled on the entire server, but can be
-  //       enabled in each game and proxy session.
+  //       enabled in each game with the $cheat command. Cheat options are
+  //       available on the proxy server.
   //   "OnByDefault": Cheat mode is enabled on the entire server, but can be
-  //       disabled in each game and proxy session.
+  //       disabled in each game with the $cheat command. Cheat options are
+  //       available on the proxy server.
   "CheatModeBehavior": "OnByDefault",
 
   // Whether to enable patches on Episode 3 USA. This functionality depends on
