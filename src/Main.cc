@@ -118,11 +118,12 @@ The actions are:\n\
     For non-BB ciphers, the --big-endian option applies the cipher masks as\n\
     big-endian instead of little-endian, which is necessary for some GameCube\n\
     file formats.\n\
-  decrypt-trivial-data [--seed=SEED] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Decrypt (or encrypt; the algorithm is symmetric) data using the Episode 3\n\
-    trivial algorithm. If SEED is given, it should be specified as one hex\n\
-    byte. If SEED is not given, newserv will try all possible seeds and return\n\
-    the one that results in the greatest number of zero bytes in the output.\n\
+  encrypt-trivial-data [--seed=BASIS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  decrypt-trivial-data [--seed=BASIS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Encrypt or decrypt data using the Episode 3 trivial algorithm. If BASIS is\n\
+    given, it should be specified as one hex byte. If BASIS is not given,\n\
+    newserv will try all possible values and return the one that results in the\n\
+    greatest number of zero bytes in the output.\n\
   encrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
   decrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
     Encrypt or decrypt a character or Guild Card file. If encrypting, the\n\
@@ -210,6 +211,7 @@ enum class Behavior {
   PRS_DISASSEMBLE,
   ENCRYPT_DATA,
   DECRYPT_DATA,
+  ENCRYPT_TRIVIAL_DATA,
   DECRYPT_TRIVIAL_DATA,
   ENCRYPT_GCI_SAVE,
   DECRYPT_GCI_SAVE,
@@ -241,6 +243,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::PRS_DISASSEMBLE) ||
       (b == Behavior::ENCRYPT_DATA) ||
       (b == Behavior::DECRYPT_DATA) ||
+      (b == Behavior::ENCRYPT_TRIVIAL_DATA) ||
       (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::SALVAGE_GCI) ||
@@ -265,6 +268,7 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::DECOMPRESS_BC0) ||
       (b == Behavior::ENCRYPT_DATA) ||
       (b == Behavior::DECRYPT_DATA) ||
+      (b == Behavior::ENCRYPT_TRIVIAL_DATA) ||
       (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
@@ -395,6 +399,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::ENCRYPT_DATA;
         } else if (!strcmp(argv[x], "decrypt-data")) {
           behavior = Behavior::DECRYPT_DATA;
+        } else if (!strcmp(argv[x], "encrypt-trivial-data")) {
+          behavior = Behavior::ENCRYPT_TRIVIAL_DATA;
         } else if (!strcmp(argv[x], "decrypt-trivial-data")) {
           behavior = Behavior::DECRYPT_TRIVIAL_DATA;
         } else if (!strcmp(argv[x], "decrypt-gci-save")) {
@@ -637,6 +643,7 @@ int main(int argc, char** argv) {
       break;
     }
 
+    case Behavior::ENCRYPT_TRIVIAL_DATA:
     case Behavior::DECRYPT_TRIVIAL_DATA: {
       string data = read_input_data();
       uint8_t basis;
@@ -657,7 +664,8 @@ int main(int argc, char** argv) {
             best_seed_score = score;
           }
         }
-        fprintf(stderr, "Basis appears to be %02hhX\n", best_seed);
+        fprintf(stderr, "Basis appears to be %02hhX (%zu zero bytes in output)\n",
+            best_seed, best_seed_score);
         basis = best_seed;
       } else {
         basis = stoul(seed, nullptr, 16);

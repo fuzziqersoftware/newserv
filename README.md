@@ -387,7 +387,7 @@ newserv has many CLI options, which can be used to access functionality other th
 * Compress or decompress data in the PRS and BC0 formats (`compress-prs`, `compress-bc0`, `decompress-prs`, `decompress-bc0`)
 * Compute the decompressed size of compressed PRS data without decompressing it (`prs-size`)
 * Encrypt or decrypt data using any PSO version's network encryption scheme (`encrypt-data`, `decrypt-data`)
-* Encrypt or decrypt data using Episode 3's trivial scheme (`decrypt-trivial-data`)
+* Encrypt or decrypt data using Episode 3's trivial scheme (`encrypt-trivial-data`, `decrypt-trivial-data`)
 * Encrypt or decrypt PSO GC save data (.gci files) (`encrypt-gci-save`, `decrypt-gci-save`)
 * Find the likely round1 or round2 seed for a corrupt save file (`salvage-gci`)
 * Run a brute-force search for a decryption seed (`find-decryption-seed`)
