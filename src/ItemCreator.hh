@@ -67,6 +67,7 @@ public:
 
   ItemData on_monster_item_drop(uint32_t enemy_type, uint8_t area);
   ItemData on_box_item_drop(uint8_t area);
+  ItemData on_specialized_box_item_drop(uint32_t def0, uint32_t def1, uint32_t def2);
 
   std::vector<ItemData> generate_armor_shop_contents(size_t player_level);
   std::vector<ItemData> generate_tool_shop_contents(size_t player_level);
@@ -135,7 +136,7 @@ private:
   void generate_common_mag_variances(ItemData& item) const;
   void generate_common_weapon_variances(uint8_t area_norm, ItemData& item);
   void generate_common_weapon_grind(ItemData& item,
-                                    uint8_t offset_within_subtype_range);
+      uint8_t offset_within_subtype_range);
   void generate_common_weapon_bonuses(ItemData& item, uint8_t area_norm);
   void generate_common_weapon_special(ItemData& item, uint8_t area_norm);
   uint8_t choose_weapon_special(uint8_t det);

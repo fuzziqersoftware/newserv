@@ -1014,120 +1014,133 @@ static void on_sort_inventory_bb(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 // EXP/Drop Item commands
 
-static bool drop_item(
-    std::shared_ptr<Lobby> l,
-    int64_t enemy_id,
-    uint8_t area,
-    float x,
-    float z,
-    uint16_t request_id) {
-
-  // If the game is not BB, forward the request to the leader instead of
-  // generating the item drop command
-  if (l->version != GameVersion::BB) {
-    if (!(l->flags & Lobby::Flag::DROPS_ENABLED)) {
-      return true; // don't forward request to leader if drops are disabled
-    } else {
-      return false; // do the normal thing where we ask the leader for a drop
-    }
+static void on_entity_drop_item_request(
+    shared_ptr<ServerState>, shared_ptr<Lobby> l, shared_ptr<Client> c,
+    uint8_t command, uint8_t flag, const string& data) {
+  if (!l->is_game()) {
+    return;
   }
 
-  // If the game is BB, run the rare + common drop logic
+  // If the game is not BB, forward the request to the leader (if drops are
+  // enabled, or just ignore it) instead of generating the item drop command
+  if (l->version != GameVersion::BB) {
+    if (l->flags & Lobby::Flag::DROPS_ENABLED) {
+      forward_subcommand(l, c, command, flag, data);
+    }
+    return;
+  }
+
+  G_SpecializableItemDropRequest_6xA2 cmd;
+  if (data.size() == sizeof(G_SpecializableItemDropRequest_6xA2)) {
+    cmd = check_size_sc<G_SpecializableItemDropRequest_6xA2>(data);
+  } else {
+    const auto& in_cmd = check_size_sc<G_StandardDropItemRequest_DC_6x60>(
+        data, sizeof(G_StandardDropItemRequest_DC_6x60), 0xFFFF);
+    cmd.entity_id = in_cmd.entity_id;
+    cmd.area = in_cmd.area;
+    cmd.rt_index = in_cmd.rt_index;
+    cmd.x = in_cmd.x;
+    cmd.z = in_cmd.z;
+    cmd.ignore_def = true;
+  }
+
   PlayerInventoryItem item;
   if (!l->item_creator.get()) {
     throw runtime_error("received box drop subcommand without item creator present");
   }
 
-  if (enemy_id >= 0) {
-    item.data = l->item_creator->on_monster_item_drop(
-        l->enemies.at(enemy_id).rt_index, area);
+  if (cmd.rt_index == 0x30) {
+    if (cmd.ignore_def) {
+      item.data = l->item_creator->on_box_item_drop(cmd.area);
+    } else {
+      item.data = l->item_creator->on_specialized_box_item_drop(
+          cmd.def[0], cmd.def[1], cmd.def[2]);
+    }
   } else {
-    item.data = l->item_creator->on_box_item_drop(area);
+    uint32_t expected_rt_index = l->enemies.at(cmd.entity_id).rt_index;
+    if (cmd.rt_index != l->enemies.at(cmd.entity_id).rt_index) {
+      c->log.warning("rt_index %02hhX does not match entity\'s expected index %02" PRIX32,
+          cmd.rt_index, expected_rt_index);
+    }
+    item.data = l->item_creator->on_monster_item_drop(expected_rt_index, cmd.area);
   }
   item.data.id = l->generate_item_id(0xFF);
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
-    l->add_item(item, area, x, z);
+    l->add_item(item, cmd.area, cmd.x, cmd.z);
   }
-  send_drop_item(l, item.data, (enemy_id >= 0), area, x, z, request_id);
-  return true;
+  send_drop_item(l, item.data, cmd.rt_index != 0x30, cmd.area, cmd.x, cmd.z, cmd.entity_id);
 }
 
-static void on_enemy_drop_item_request(shared_ptr<ServerState>,
+static void on_set_quest_flag(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const string& data) {
   if (!l->is_game()) {
     return;
   }
 
-  const auto& cmd = check_size_sc<G_EnemyDropItemRequest_DC_6x60>(data,
-      sizeof(G_EnemyDropItemRequest_DC_6x60),
-      sizeof(G_EnemyDropItemRequest_PC_V3_BB_6x60));
-  if (!drop_item(l, cmd.enemy_id, cmd.area, cmd.x, cmd.z, cmd.enemy_id)) {
-    forward_subcommand(l, c, command, flag, data);
-  }
-}
-
-static void on_box_drop_item_request(shared_ptr<ServerState>,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const string& data) {
-  if (!l->is_game()) {
-    return;
-  }
-
-  const auto& cmd = check_size_sc<G_BoxItemDropRequest_6xA2>(data);
-  if (!drop_item(l, -1, cmd.area, cmd.x, cmd.z, cmd.request_id)) {
-    forward_subcommand(l, c, command, flag, data);
-  }
-}
-
-static void on_phase_setup(shared_ptr<ServerState>,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const string& data) {
+  uint16_t flag_index, difficulty, action;
   if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
-    forward_subcommand(l, c, command, flag, data);
-    return;
+    const auto& cmd = check_size_sc<G_SetQuestFlag_DC_PC_6x75>(data);
+    flag_index = cmd.flag;
+    action = cmd.action;
+    difficulty = l->difficulty;
+  } else {
+    const auto& cmd = check_size_sc<G_SetQuestFlag_V3_BB_6x75>(data);
+    flag_index = cmd.basic_cmd.flag;
+    action = cmd.basic_cmd.action;
+    difficulty = cmd.difficulty;
   }
 
-  const auto& cmd = check_size_sc<G_PhaseSetup_V3_BB_6x75>(data);
-  if (!l->is_game()) {
+  if (flag_index >= 0x400) {
     return;
   }
+  // The client explicitly checks for both 0 and 1 - any other value means no
+  // operation is performed.
+  size_t bit_index = (l->difficulty << 10) + flag_index;
+  size_t byte_index = bit_index >> 3;
+  uint8_t mask = 0x80 >> (bit_index & 7);
+  if (action == 0) {
+    c->game_data.player()->quest_data1[byte_index] |= mask;
+  } else if (action == 1) {
+    c->game_data.player()->quest_data1[byte_index] &= (~mask);
+  }
+
   forward_subcommand(l, c, command, flag, data);
 
-  bool should_send_boss_drop_req = false;
-  bool is_ep2 = (l->episode == Episode::EP2);
-  if (cmd.difficulty == l->difficulty) {
+  if (c->version() == GameVersion::GC) {
+    bool should_send_boss_drop_req = false;
+    bool is_ep2 = (l->episode == Episode::EP2);
     if ((l->episode == Episode::EP1) && (c->area == 0x0E)) {
       // On Normal, Dark Falz does not have a third phase, so send the drop
       // request after the end of the second phase. On all other difficulty
       // levels, send it after the third phase.
-      if (((l->difficulty == 0) && (cmd.basic_cmd.phase == 0x00000035)) ||
-          ((l->difficulty != 0) && (cmd.basic_cmd.phase == 0x00000037))) {
+      if (((l->difficulty == 0) && (flag_index == 0x0035)) ||
+          ((l->difficulty != 0) && (flag_index == 0x0037))) {
         should_send_boss_drop_req = true;
       }
-    } else if (is_ep2 && (cmd.basic_cmd.phase == 0x00000057) && (c->area == 0x0D)) {
+    } else if (is_ep2 && (flag_index == 0x0057) && (c->area == 0x0D)) {
       should_send_boss_drop_req = true;
     }
-  }
 
-  if (should_send_boss_drop_req) {
-    auto c = l->clients.at(l->leader_id);
-    if (c) {
-      G_EnemyDropItemRequest_PC_V3_BB_6x60 req = {
-          {
-              {0x60, 0x06, 0x0000},
-              static_cast<uint8_t>(c->area),
-              static_cast<uint8_t>(is_ep2 ? 0x4E : 0x2F),
-              0x0B4F,
-              is_ep2 ? -9999.0f : 10160.58984375f,
-              0.0f,
-              2,
-              0,
-          },
-          0xE0AEDC01,
-      };
-      send_command_t(c, 0x62, l->leader_id, req);
+    if (should_send_boss_drop_req) {
+      auto c = l->clients.at(l->leader_id);
+      if (c) {
+        G_StandardDropItemRequest_PC_V3_BB_6x60 req = {
+            {
+                {0x60, 0x06, 0x0000},
+                static_cast<uint8_t>(c->area),
+                static_cast<uint8_t>(is_ep2 ? 0x4E : 0x2F),
+                0x0B4F,
+                is_ep2 ? -9999.0f : 10160.58984375f,
+                0.0f,
+                2,
+                0,
+            },
+            0xE0AEDC01,
+        };
+        send_command_t(c, 0x62, l->leader_id, req);
+      }
     }
   }
 }
@@ -1435,262 +1448,262 @@ typedef void (*subcommand_handler_t)(shared_ptr<ServerState> s,
     const string& data);
 
 subcommand_handler_t subcommand_handlers[0x100] = {
-    /* 00 */ on_invalid,
-    /* 01 */ nullptr,
-    /* 02 */ nullptr,
-    /* 03 */ nullptr,
-    /* 04 */ nullptr,
-    /* 05 */ on_switch_state_changed,
-    /* 06 */ on_send_guild_card,
-    /* 07 */ on_symbol_chat,
-    /* 08 */ nullptr,
-    /* 09 */ nullptr,
-    /* 0A */ on_enemy_hit,
-    /* 0B */ on_forward_check_size_game,
-    /* 0C */ on_forward_check_size_game, // Add condition (poison/slow/etc.)
-    /* 0D */ on_forward_check_size_game, // Remove condition (poison/slow/etc.)
-    /* 0E */ nullptr,
-    /* 0F */ nullptr,
-    /* 10 */ nullptr,
-    /* 11 */ nullptr,
-    /* 12 */ on_forward_check_size_game, // Dragon actions
-    /* 13 */ on_forward_check_size_game, // De Rol Le actions
-    /* 14 */ on_forward_check_size_game,
-    /* 15 */ on_forward_check_size_game, // Vol Opt actions
-    /* 16 */ on_forward_check_size_game, // Vol Opt actions
-    /* 17 */ on_forward_check_size_game,
-    /* 18 */ on_forward_check_size_game,
-    /* 19 */ on_forward_check_size_game, // Dark Falz actions
-    /* 1A */ nullptr,
-    /* 1B */ nullptr,
-    /* 1C */ on_forward_check_size_game,
-    /* 1D */ nullptr,
-    /* 1E */ nullptr,
-    /* 1F */ on_forward_check_size,
-    /* 20 */ on_forward_check_size,
-    /* 21 */ on_change_area, // Inter-level warp
-    /* 22 */ on_forward_check_size_client, // Set player visibility
-    /* 23 */ on_set_player_visibility, // Set player visibility
-    /* 24 */ on_forward_check_size_game,
-    /* 25 */ on_equip_unequip_item, // Equip item
-    /* 26 */ on_equip_unequip_item, // Unequip item
-    /* 27 */ on_use_item,
-    /* 28 */ on_feed_mag, // Feed MAG
-    /* 29 */ on_destroy_inventory_item, // Delete item (via bank deposit / sale / feeding MAG)
-    /* 2A */ on_player_drop_item,
-    /* 2B */ on_create_inventory_item, // Create inventory item (e.g. from tekker or bank withdrawal)
-    /* 2C */ on_forward_check_size, // Talk to NPC
-    /* 2D */ on_forward_check_size, // Done talking to NPC
-    /* 2E */ nullptr,
-    /* 2F */ on_hit_by_enemy,
-    /* 30 */ on_forward_check_size_game, // Level up
-    /* 31 */ on_forward_check_size_game, // Medical center
-    /* 32 */ on_forward_check_size_game, // Medical center
-    /* 33 */ on_forward_check_size_game, // Moon atomizer/Reverser
-    /* 34 */ nullptr,
-    /* 35 */ nullptr,
-    /* 36 */ on_forward_check_game,
-    /* 37 */ on_forward_check_size_game, // Photon blast
-    /* 38 */ nullptr,
-    /* 39 */ on_forward_check_size_game, // Photon blast ready
-    /* 3A */ on_forward_check_size_game,
-    /* 3B */ on_forward_check_size,
-    /* 3C */ nullptr,
-    /* 3D */ nullptr,
-    /* 3E */ on_movement<G_StopAtPosition_6x3E>, // Stop moving
-    /* 3F */ on_movement<G_SetPosition_6x3F>, // Set position (e.g. when materializing after warp)
-    /* 40 */ on_movement<G_WalkToPosition_6x40>, // Walk
-    /* 41 */ nullptr,
-    /* 42 */ on_movement<G_RunToPosition_6x42>, // Run
-    /* 43 */ on_forward_check_size_client,
-    /* 44 */ on_forward_check_size_client,
-    /* 45 */ on_forward_check_size_client,
-    /* 46 */ on_attack_finished,
-    /* 47 */ on_cast_technique,
-    /* 48 */ on_cast_technique_finished,
-    /* 49 */ on_subtract_pb_energy,
-    /* 4A */ on_forward_check_size_client,
-    /* 4B */ on_hit_by_enemy,
-    /* 4C */ on_hit_by_enemy,
-    /* 4D */ on_forward_check_size_client,
-    /* 4E */ on_forward_check_size_client,
-    /* 4F */ on_forward_check_size_client,
-    /* 50 */ on_forward_check_size_client,
-    /* 51 */ nullptr,
-    /* 52 */ on_forward_check_size, // Toggle shop/bank interaction
-    /* 53 */ on_forward_check_size_game,
-    /* 54 */ nullptr,
-    /* 55 */ on_forward_check_size_client, // Intra-map warp
-    /* 56 */ on_forward_check_size_client,
-    /* 57 */ on_forward_check_size_client,
-    /* 58 */ on_forward_check_size_client, // Begin playing emote
-    /* 59 */ on_pick_up_item, // Item picked up
-    /* 5A */ on_pick_up_item_request, // Request to pick up item
-    /* 5B */ nullptr,
-    /* 5C */ nullptr,
-    /* 5D */ on_drop_partial_stack, // Drop meseta or stacked item
-    /* 5E */ on_buy_shop_item, // Buy item at shop
-    /* 5F */ on_box_or_enemy_item_drop, // Drop item from box/enemy
-    /* 60 */ on_enemy_drop_item_request, // Request for item drop (handled by the server on BB)
-    /* 61 */ on_forward_check_size_game, // Feed mag
-    /* 62 */ nullptr,
-    /* 63 */ on_destroy_ground_item, // Destroy an item on the ground (used when too many items have been dropped)
-    /* 64 */ nullptr,
-    /* 65 */ nullptr,
-    /* 66 */ on_forward_check_size_game, // Use star atomizer
-    /* 67 */ on_forward_check_size_game, // Create enemy set
-    /* 68 */ on_forward_check_size_game, // Telepipe/Ryuker
-    /* 69 */ on_forward_check_size_game,
-    /* 6A */ on_forward_check_size_game,
-    /* 6B */ on_forward_sync_game_state,
-    /* 6C */ on_forward_sync_game_state,
-    /* 6D */ on_forward_sync_game_state,
-    /* 6E */ on_forward_sync_game_state,
-    /* 6F */ on_forward_check_game_loading,
-    /* 70 */ on_forward_check_game_loading,
-    /* 71 */ on_forward_check_game_loading,
-    /* 72 */ on_forward_check_game_loading,
-    /* 73 */ on_invalid,
-    /* 74 */ on_word_select,
-    /* 75 */ on_phase_setup,
-    /* 76 */ on_forward_check_size_game, // Enemy killed
-    /* 77 */ on_forward_check_size_game, // Sync quest data
-    /* 78 */ nullptr,
-    /* 79 */ on_forward_check_size, // Lobby 14/15 soccer game
-    /* 7A */ nullptr,
-    /* 7B */ nullptr,
-    /* 7C */ on_forward_check_size_game,
-    /* 7D */ on_forward_check_size_game,
-    /* 7E */ nullptr,
-    /* 7F */ nullptr,
-    /* 80 */ on_forward_check_size_game, // Trigger trap
-    /* 81 */ nullptr,
-    /* 82 */ nullptr,
-    /* 83 */ on_forward_check_size_game, // Place trap
-    /* 84 */ on_forward_check_size_game,
-    /* 85 */ on_forward_check_size_game,
-    /* 86 */ on_forward_check_size_game, // Hit destructible wall
-    /* 87 */ on_forward_check_size_game, // Shrink character
-    /* 88 */ on_forward_check_size_game,
-    /* 89 */ on_forward_check_size_game,
-    /* 8A */ on_forward_check_size_game,
-    /* 8B */ nullptr,
-    /* 8C */ nullptr,
-    /* 8D */ on_forward_check_size_client,
-    /* 8E */ nullptr,
-    /* 8F */ nullptr,
-    /* 90 */ nullptr,
-    /* 91 */ on_forward_check_size_game,
-    /* 92 */ nullptr,
-    /* 93 */ on_forward_check_size_game, // Timed switch activated
-    /* 94 */ on_forward_check_size_game, // Warp (the $warp chat command is implemented using this)
-    /* 95 */ nullptr,
-    /* 96 */ nullptr,
-    /* 97 */ nullptr,
-    /* 98 */ nullptr,
-    /* 99 */ nullptr,
-    /* 9A */ on_forward_check_size_game, // Update player stat ($infhp/$inftp are implemented using this command)
-    /* 9B */ nullptr,
-    /* 9C */ on_forward_check_size_game,
-    /* 9D */ nullptr,
-    /* 9E */ nullptr,
-    /* 9F */ on_forward_check_size_game, // Gal Gryphon actions
-    /* A0 */ on_forward_check_size_game, // Gal Gryphon actions
-    /* A1 */ on_forward_check_size_game, // Part of revive process. Occurs right after revive command, function unclear.
-    /* A2 */ on_box_drop_item_request, // Request for item drop from box (handled by server on BB)
-    /* A3 */ on_forward_check_size_game, // Episode 2 boss actions
-    /* A4 */ on_forward_check_size_game, // Olga Flow phase 1 actions
-    /* A5 */ on_forward_check_size_game, // Olga Flow phase 2 actions
-    /* A6 */ on_forward_check_size, // Trade proposal
-    /* A7 */ nullptr,
-    /* A8 */ on_forward_check_size_game, // Gol Dragon actions
-    /* A9 */ on_forward_check_size_game, // Barba Ray actions
-    /* AA */ on_forward_check_size_game, // Episode 2 boss actions
-    /* AB */ on_forward_check_size_client, // Create lobby chair
-    /* AC */ nullptr,
-    /* AD */ on_forward_check_size_game, // Olga Flow phase 2 subordinate boss actions
-    /* AE */ on_forward_check_size_client,
-    /* AF */ on_forward_check_size_client, // Turn in lobby chair
-    /* B0 */ on_forward_check_size_client, // Move in lobby chair
-    /* B1 */ nullptr,
-    /* B2 */ nullptr,
-    /* B3 */ on_ep3_battle_subs,
-    /* B4 */ on_ep3_battle_subs,
-    /* B5 */ on_open_shop_bb_or_ep3_battle_subs, // BB shop request
-    /* B6 */ nullptr, // BB shop contents (server->client only)
-    /* B7 */ on_buy_shop_item_bb,
-    /* B8 */ on_identify_item_bb,
-    /* B9 */ nullptr,
-    /* BA */ on_accept_identify_item_bb,
-    /* BB */ on_open_bank_bb_or_card_trade_counter_ep3,
-    /* BC */ on_forward_check_size_ep3_game, // BB bank contents (server->client only), Ep3 card trade sequence
-    /* BD */ on_bank_action_bb,
-    /* BE */ on_forward_check_size, // BB create inventory item (server->client only), Ep3 sound chat
-    /* BF */ on_forward_check_size_ep3_lobby, // Ep3 change music, also BB give EXP (BB usage is server->client only)
-    /* C0 */ on_sell_item_at_shop_bb,
-    /* C1 */ nullptr,
-    /* C2 */ nullptr,
-    /* C3 */ on_drop_partial_stack_bb, // Split stacked item - not sent if entire stack is dropped
-    /* C4 */ on_sort_inventory_bb,
-    /* C5 */ on_medical_center_bb,
-    /* C6 */ nullptr,
-    /* C7 */ nullptr,
-    /* C8 */ on_enemy_killed,
-    /* C9 */ nullptr,
-    /* CA */ nullptr,
-    /* CB */ nullptr,
-    /* CC */ nullptr,
-    /* CD */ nullptr,
-    /* CE */ nullptr,
-    /* CF */ on_forward_check_size_game,
-    /* D0 */ nullptr,
-    /* D1 */ nullptr,
-    /* D2 */ nullptr,
-    /* D3 */ nullptr,
-    /* D4 */ nullptr,
-    /* D5 */ nullptr,
-    /* D6 */ nullptr,
-    /* D7 */ nullptr,
-    /* D8 */ nullptr,
-    /* D9 */ nullptr,
-    /* DA */ nullptr,
-    /* DB */ nullptr,
-    /* DC */ nullptr,
-    /* DD */ nullptr,
-    /* DE */ nullptr,
-    /* DF */ nullptr,
-    /* E0 */ nullptr,
-    /* E1 */ nullptr,
-    /* E2 */ nullptr,
-    /* E3 */ nullptr,
-    /* E4 */ nullptr,
-    /* E5 */ nullptr,
-    /* E6 */ nullptr,
-    /* E7 */ nullptr,
-    /* E8 */ nullptr,
-    /* E9 */ nullptr,
-    /* EA */ nullptr,
-    /* EB */ nullptr,
-    /* EC */ nullptr,
-    /* ED */ nullptr,
-    /* EE */ nullptr,
-    /* EF */ nullptr,
-    /* F0 */ nullptr,
-    /* F1 */ nullptr,
-    /* F2 */ nullptr,
-    /* F3 */ nullptr,
-    /* F4 */ nullptr,
-    /* F5 */ nullptr,
-    /* F6 */ nullptr,
-    /* F7 */ nullptr,
-    /* F8 */ nullptr,
-    /* F9 */ nullptr,
-    /* FA */ nullptr,
-    /* FB */ nullptr,
-    /* FC */ nullptr,
-    /* FD */ nullptr,
-    /* FE */ nullptr,
-    /* FF */ nullptr,
+    /* 6x00 */ on_invalid,
+    /* 6x01 */ nullptr,
+    /* 6x02 */ nullptr,
+    /* 6x03 */ nullptr,
+    /* 6x04 */ nullptr,
+    /* 6x05 */ on_switch_state_changed,
+    /* 6x06 */ on_send_guild_card,
+    /* 6x07 */ on_symbol_chat,
+    /* 6x08 */ nullptr,
+    /* 6x09 */ nullptr,
+    /* 6x0A */ on_enemy_hit,
+    /* 6x0B */ on_forward_check_size_game,
+    /* 6x0C */ on_forward_check_size_game,
+    /* 6x0D */ on_forward_check_size_game,
+    /* 6x0E */ nullptr,
+    /* 6x0F */ nullptr,
+    /* 6x10 */ nullptr,
+    /* 6x11 */ nullptr,
+    /* 6x12 */ on_forward_check_size_game,
+    /* 6x13 */ on_forward_check_size_game,
+    /* 6x14 */ on_forward_check_size_game,
+    /* 6x15 */ on_forward_check_size_game,
+    /* 6x16 */ on_forward_check_size_game,
+    /* 6x17 */ on_forward_check_size_game,
+    /* 6x18 */ on_forward_check_size_game,
+    /* 6x19 */ on_forward_check_size_game,
+    /* 6x1A */ nullptr,
+    /* 6x1B */ nullptr,
+    /* 6x1C */ on_forward_check_size_game,
+    /* 6x1D */ nullptr,
+    /* 6x1E */ nullptr,
+    /* 6x1F */ on_change_area<G_SetPlayerArea_6x1F>,
+    /* 6x20 */ on_movement_with_area<G_SetPosition_6x20>,
+    /* 6x21 */ on_change_area<G_InterLevelWarp_6x21>,
+    /* 6x22 */ on_forward_check_size_client,
+    /* 6x23 */ on_set_player_visibility,
+    /* 6x24 */ on_forward_check_size_game,
+    /* 6x25 */ on_equip_unequip_item,
+    /* 6x26 */ on_equip_unequip_item,
+    /* 6x27 */ on_use_item,
+    /* 6x28 */ on_feed_mag,
+    /* 6x29 */ on_destroy_inventory_item,
+    /* 6x2A */ on_player_drop_item,
+    /* 6x2B */ on_create_inventory_item,
+    /* 6x2C */ on_forward_check_size,
+    /* 6x2D */ on_forward_check_size,
+    /* 6x2E */ nullptr,
+    /* 6x2F */ on_hit_by_enemy,
+    /* 6x30 */ on_forward_check_size_game,
+    /* 6x31 */ on_forward_check_size_game,
+    /* 6x32 */ on_forward_check_size_game,
+    /* 6x33 */ on_forward_check_size_game,
+    /* 6x34 */ nullptr,
+    /* 6x35 */ nullptr,
+    /* 6x36 */ on_forward_check_game,
+    /* 6x37 */ on_forward_check_size_game,
+    /* 6x38 */ nullptr,
+    /* 6x39 */ on_forward_check_size_game,
+    /* 6x3A */ on_forward_check_size_game,
+    /* 6x3B */ on_forward_check_size,
+    /* 6x3C */ nullptr,
+    /* 6x3D */ nullptr,
+    /* 6x3E */ on_movement_with_area<G_StopAtPosition_6x3E>,
+    /* 6x3F */ on_movement_with_area<G_SetPosition_6x3F>,
+    /* 6x40 */ on_movement<G_WalkToPosition_6x40>,
+    /* 6x41 */ nullptr,
+    /* 6x42 */ on_movement<G_RunToPosition_6x42>,
+    /* 6x43 */ on_forward_check_size_client,
+    /* 6x44 */ on_forward_check_size_client,
+    /* 6x45 */ on_forward_check_size_client,
+    /* 6x46 */ on_attack_finished,
+    /* 6x47 */ on_cast_technique,
+    /* 6x48 */ on_cast_technique_finished,
+    /* 6x49 */ on_subtract_pb_energy,
+    /* 6x4A */ on_forward_check_size_client,
+    /* 6x4B */ on_hit_by_enemy,
+    /* 6x4C */ on_hit_by_enemy,
+    /* 6x4D */ on_player_died,
+    /* 6x4E */ on_forward_check_size_client,
+    /* 6x4F */ on_forward_check_size_client,
+    /* 6x50 */ on_forward_check_size_client,
+    /* 6x51 */ nullptr,
+    /* 6x52 */ on_forward_check_size,
+    /* 6x53 */ on_forward_check_size_game,
+    /* 6x54 */ nullptr,
+    /* 6x55 */ on_forward_check_size_client,
+    /* 6x56 */ on_forward_check_size_client,
+    /* 6x57 */ on_forward_check_size_client,
+    /* 6x58 */ on_forward_check_size_client,
+    /* 6x59 */ on_pick_up_item,
+    /* 6x5A */ on_pick_up_item_request,
+    /* 6x5B */ nullptr,
+    /* 6x5C */ nullptr,
+    /* 6x5D */ on_drop_partial_stack,
+    /* 6x5E */ on_buy_shop_item,
+    /* 6x5F */ on_box_or_enemy_item_drop,
+    /* 6x60 */ on_entity_drop_item_request,
+    /* 6x61 */ on_forward_check_size_game,
+    /* 6x62 */ nullptr,
+    /* 6x63 */ on_destroy_ground_item,
+    /* 6x64 */ nullptr,
+    /* 6x65 */ nullptr,
+    /* 6x66 */ on_forward_check_size_game,
+    /* 6x67 */ on_forward_check_size_game,
+    /* 6x68 */ on_forward_check_size_game,
+    /* 6x69 */ on_forward_check_size_game,
+    /* 6x6A */ on_forward_check_size_game,
+    /* 6x6B */ on_forward_sync_game_state,
+    /* 6x6C */ on_forward_sync_game_state,
+    /* 6x6D */ on_forward_sync_game_state,
+    /* 6x6E */ on_forward_sync_game_state,
+    /* 6x6F */ on_forward_check_game_loading,
+    /* 6x70 */ on_forward_check_game_loading,
+    /* 6x71 */ on_forward_check_game_loading,
+    /* 6x72 */ on_forward_check_game_loading,
+    /* 6x73 */ on_invalid,
+    /* 6x74 */ on_word_select,
+    /* 6x75 */ on_set_quest_flag,
+    /* 6x76 */ on_forward_check_size_game,
+    /* 6x77 */ on_forward_check_size_game,
+    /* 6x78 */ nullptr,
+    /* 6x79 */ on_forward_check_size,
+    /* 6x7A */ nullptr,
+    /* 6x7B */ nullptr,
+    /* 6x7C */ on_forward_check_size_game,
+    /* 6x7D */ on_forward_check_size_game,
+    /* 6x7E */ nullptr,
+    /* 6x7F */ nullptr,
+    /* 6x80 */ on_forward_check_size_game,
+    /* 6x81 */ nullptr,
+    /* 6x82 */ nullptr,
+    /* 6x83 */ on_forward_check_size_game,
+    /* 6x84 */ on_forward_check_size_game,
+    /* 6x85 */ on_forward_check_size_game,
+    /* 6x86 */ on_forward_check_size_game,
+    /* 6x87 */ on_forward_check_size_game,
+    /* 6x88 */ on_forward_check_size_game,
+    /* 6x89 */ on_forward_check_size_game,
+    /* 6x8A */ on_forward_check_size_game,
+    /* 6x8B */ nullptr,
+    /* 6x8C */ nullptr,
+    /* 6x8D */ on_forward_check_size_client,
+    /* 6x8E */ nullptr,
+    /* 6x8F */ nullptr,
+    /* 6x90 */ nullptr,
+    /* 6x91 */ on_forward_check_size_game,
+    /* 6x92 */ nullptr,
+    /* 6x93 */ on_forward_check_size_game,
+    /* 6x94 */ on_forward_check_size_game,
+    /* 6x95 */ nullptr,
+    /* 6x96 */ nullptr,
+    /* 6x97 */ nullptr,
+    /* 6x98 */ nullptr,
+    /* 6x99 */ nullptr,
+    /* 6x9A */ on_forward_check_size_game,
+    /* 6x9B */ nullptr,
+    /* 6x9C */ on_forward_check_size_game,
+    /* 6x9D */ nullptr,
+    /* 6x9E */ nullptr,
+    /* 6x9F */ on_forward_check_size_game,
+    /* 6xA0 */ on_forward_check_size_game,
+    /* 6xA1 */ on_forward_check_size_game,
+    /* 6xA2 */ on_entity_drop_item_request,
+    /* 6xA3 */ on_forward_check_size_game,
+    /* 6xA4 */ on_forward_check_size_game,
+    /* 6xA5 */ on_forward_check_size_game,
+    /* 6xA6 */ on_forward_check_size,
+    /* 6xA7 */ nullptr,
+    /* 6xA8 */ on_forward_check_size_game,
+    /* 6xA9 */ on_forward_check_size_game,
+    /* 6xAA */ on_forward_check_size_game,
+    /* 6xAB */ on_forward_check_size_client,
+    /* 6xAC */ nullptr,
+    /* 6xAD */ on_forward_check_size_game,
+    /* 6xAE */ on_forward_check_size_client,
+    /* 6xAF */ on_forward_check_size_client,
+    /* 6xB0 */ on_forward_check_size_client,
+    /* 6xB1 */ nullptr,
+    /* 6xB2 */ nullptr,
+    /* 6xB3 */ on_ep3_battle_subs,
+    /* 6xB4 */ on_ep3_battle_subs,
+    /* 6xB5 */ on_open_shop_bb_or_ep3_battle_subs,
+    /* 6xB6 */ nullptr,
+    /* 6xB7 */ on_buy_shop_item_bb,
+    /* 6xB8 */ on_identify_item_bb,
+    /* 6xB9 */ nullptr,
+    /* 6xBA */ on_accept_identify_item_bb,
+    /* 6xBB */ on_open_bank_bb_or_card_trade_counter_ep3,
+    /* 6xBC */ on_forward_check_size_ep3_game,
+    /* 6xBD */ on_bank_action_bb,
+    /* 6xBE */ on_ep3_sound_chat,
+    /* 6xBF */ on_forward_check_size_ep3_lobby,
+    /* 6xC0 */ on_sell_item_at_shop_bb,
+    /* 6xC1 */ nullptr,
+    /* 6xC2 */ nullptr,
+    /* 6xC3 */ on_drop_partial_stack_bb,
+    /* 6xC4 */ on_sort_inventory_bb,
+    /* 6xC5 */ on_medical_center_bb,
+    /* 6xC6 */ nullptr,
+    /* 6xC7 */ on_charge_attack_bb,
+    /* 6xC8 */ on_enemy_killed_bb,
+    /* 6xC9 */ nullptr,
+    /* 6xCA */ nullptr,
+    /* 6xCB */ nullptr,
+    /* 6xCC */ nullptr,
+    /* 6xCD */ nullptr,
+    /* 6xCE */ nullptr,
+    /* 6xCF */ on_forward_check_size_game,
+    /* 6xD0 */ nullptr,
+    /* 6xD1 */ nullptr,
+    /* 6xD2 */ nullptr,
+    /* 6xD3 */ nullptr,
+    /* 6xD4 */ nullptr,
+    /* 6xD5 */ nullptr,
+    /* 6xD6 */ nullptr,
+    /* 6xD7 */ nullptr,
+    /* 6xD8 */ nullptr,
+    /* 6xD9 */ nullptr,
+    /* 6xDA */ nullptr,
+    /* 6xDB */ nullptr,
+    /* 6xDC */ nullptr,
+    /* 6xDD */ nullptr,
+    /* 6xDE */ nullptr,
+    /* 6xDF */ nullptr,
+    /* 6xE0 */ nullptr,
+    /* 6xE1 */ nullptr,
+    /* 6xE2 */ nullptr,
+    /* 6xE3 */ nullptr,
+    /* 6xE4 */ nullptr,
+    /* 6xE5 */ nullptr,
+    /* 6xE6 */ nullptr,
+    /* 6xE7 */ nullptr,
+    /* 6xE8 */ nullptr,
+    /* 6xE9 */ nullptr,
+    /* 6xEA */ nullptr,
+    /* 6xEB */ nullptr,
+    /* 6xEC */ nullptr,
+    /* 6xED */ nullptr,
+    /* 6xEE */ nullptr,
+    /* 6xEF */ nullptr,
+    /* 6xF0 */ nullptr,
+    /* 6xF1 */ nullptr,
+    /* 6xF2 */ nullptr,
+    /* 6xF3 */ nullptr,
+    /* 6xF4 */ nullptr,
+    /* 6xF5 */ nullptr,
+    /* 6xF6 */ nullptr,
+    /* 6xF7 */ nullptr,
+    /* 6xF8 */ nullptr,
+    /* 6xF9 */ nullptr,
+    /* 6xFA */ nullptr,
+    /* 6xFB */ nullptr,
+    /* 6xFC */ nullptr,
+    /* 6xFD */ nullptr,
+    /* 6xFE */ nullptr,
+    /* 6xFF */ nullptr,
 };
 
 void on_subcommand(shared_ptr<ServerState> s, shared_ptr<Lobby> l,

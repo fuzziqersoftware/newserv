@@ -1650,3 +1650,43 @@ void ItemCreator::generate_weapon_shop_item_bonus2(
         this->rand_int(range->max + 1), range->min));
   }
 }
+
+ItemData ItemCreator::on_specialized_box_item_drop(uint32_t def0, uint32_t def1, uint32_t def2) {
+  ItemData item;
+  item.data1[0] = (def0 >> 0x18) & 0x0F;
+  item.data1[1] = (def0 >> 0x10) + ((item.data1[0] == 0x00) || (item.data1[0] == 0x01));
+  item.data1[2] = def0 >> 8;
+
+  switch (item.data1[0]) {
+    case 0x00:
+      item.data1[3] = (def1 >> 0x18) & 0xFF;
+      item.data1[4] = def0 & 0xFF;
+      item.data1[6] = (def1 >> 8) & 0xFF;
+      item.data1[7] = def1 & 0xFF;
+      item.data1[8] = (def2 >> 0x18) & 0xFF;
+      item.data1[9] = (def2 >> 0x10) & 0xFF;
+      item.data1[10] = (def2 >> 8) & 0xFF;
+      item.data1[11] = def2 & 0xFF;
+      break;
+    case 0x01:
+      item.data1[3] = (def1 >> 0x18) & 0xFF;
+      item.data1[4] = (def1 >> 0x10) & 0xFF;
+      item.data1[5] = def0 & 0xFF;
+      break;
+    case 0x02:
+      item.assign_mag_stats(ItemMagStats());
+      break;
+    case 0x03:
+      if (item.data1[1] == 0x02) {
+        item.data1[4] = def0 & 0xFF;
+      }
+      item.set_tool_item_amount(1);
+      break;
+    case 0x04:
+      item.data2d = ((def1 >> 0x10) & 0xFFFF) * 10;
+      break;
+
+    default:
+      throw runtime_error("invalid item class");
+  }
+}
