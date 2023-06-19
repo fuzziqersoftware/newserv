@@ -241,9 +241,6 @@ void player_feed_mag(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, 
   const auto& mag_def = s->item_parameter_table->get_mag(mag_item.data.data1[1]);
   const auto& feed_result = s->item_parameter_table->get_mag_feed_result(mag_def.feed_table, result_index);
 
-  fprintf(stderr, "[feed-mag] table = %hu, index = %zu\n", mag_def.feed_table.load(), result_index);
-  print_data(stderr, &feed_result, sizeof(feed_result));
-
   auto update_stat = +[](ItemData& data, size_t which, int8_t delta) -> void {
     uint16_t existing_stat = data.data1w[which] % 100;
     if ((delta > 0) || ((delta < 0) && (-delta < existing_stat))) {
@@ -258,31 +255,17 @@ void player_feed_mag(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, 
     }
   };
 
-  auto print_mag_item = [&](const char* step) -> void {
-    auto hex = mag_item.data.hex();
-    fprintf(stderr, "[feed-mag] step: %s\n[feed-mag] %s\n", step, hex.c_str());
-  };
-
-  print_mag_item("pre");
   update_stat(mag_item.data, 2, feed_result.def);
-  print_mag_item("update-def");
   update_stat(mag_item.data, 3, feed_result.pow);
-  print_mag_item("update-pow");
   update_stat(mag_item.data, 4, feed_result.dex);
-  print_mag_item("update-dex");
   update_stat(mag_item.data, 5, feed_result.mind);
-  print_mag_item("update-mind");
   mag_item.data.data2[0] = clamp<ssize_t>(static_cast<ssize_t>(mag_item.data.data2[0]) + feed_result.synchro, 0, 120);
-  print_mag_item("update-synchro");
   mag_item.data.data2[1] = clamp<ssize_t>(static_cast<ssize_t>(mag_item.data.data2[1]) + feed_result.iq, 0, 200);
-  print_mag_item("update-iq");
 
   uint8_t mag_level = mag_item.data.compute_mag_level();
   mag_item.data.data1[2] = mag_level;
-  print_mag_item("compute-level");
   uint8_t evolution_number = s->mag_evolution_table->get_evolution_number(mag_item.data.data1[1]);
   uint8_t mag_number = mag_item.data.data1[1];
-  fprintf(stderr, "[feed-mag] evo_num = %02hhX, mag_num = %02hhX\n", evolution_number, mag_number);
 
   // Note: Sega really did just hardcode all these rules into the client. There
   // is no data file describing these evolutions, unfortunately.
@@ -461,13 +444,9 @@ void player_feed_mag(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, 
     }
   }
 
-  print_mag_item("evolution-check");
-
   // If the mag has evolved, add its new photon blast
   if (mag_number != mag_item.data.data1[1]) {
     const auto& new_mag_def = s->item_parameter_table->get_mag(mag_item.data.data1[1]);
     mag_item.data.add_mag_photon_blast(new_mag_def.photon_blast);
   }
-
-  print_mag_item("add-pb");
 }
