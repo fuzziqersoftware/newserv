@@ -857,7 +857,7 @@ size_t PlayerInventory::find_equipped_weapon() const {
     }
   }
   if (ret < 0) {
-    throw runtime_error("no weapon is equipped");
+    throw out_of_range("no weapon is equipped");
   }
   return ret;
 }
@@ -878,7 +878,7 @@ size_t PlayerInventory::find_equipped_armor() const {
     }
   }
   if (ret < 0) {
-    throw runtime_error("no armor is equipped");
+    throw out_of_range("no armor is equipped");
   }
   return ret;
 }
@@ -899,7 +899,7 @@ size_t PlayerInventory::find_equipped_mag() const {
     }
   }
   if (ret < 0) {
-    throw runtime_error("no mag is equipped");
+    throw out_of_range("no mag is equipped");
   }
   return ret;
 }
