@@ -57,7 +57,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     float z;
     uint8_t area;
   };
-  std::vector<PSOEnemy> enemies;
+  std::shared_ptr<Map> map;
   std::array<uint32_t, 12> next_item_id;
   uint32_t next_game_item_id;
   std::unordered_map<uint32_t, FloorItem> item_id_to_floor_item;

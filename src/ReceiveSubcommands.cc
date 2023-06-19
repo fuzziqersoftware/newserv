@@ -1122,91 +1122,122 @@ static void on_set_quest_flag(shared_ptr<ServerState>,
   }
 }
 
-// enemy hit by player
 static void on_enemy_hit(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const string& data) {
+    const void* data, size_t size) {
   if (l->version == GameVersion::BB) {
-    const auto& cmd = check_size_sc<G_EnemyHitByPlayer_6x0A>(data);
+    const auto& cmd = check_size_t<G_EnemyHitByPlayer_6x0A>(data, size);
 
     if (!l->is_game()) {
       return;
     }
-    if (cmd.enemy_id >= l->enemies.size()) {
+    if (c->lobby_client_id > 3) {
+      throw logic_error("client ID is above 3");
+    }
+    if (!l->map) {
+      throw runtime_error("game does not have a map loaded");
+    }
+    if (cmd.enemy_id >= l->map->enemies.size()) {
       return;
     }
 
-    if (l->enemies[cmd.enemy_id].hit_flags & 0x80) {
+    auto& enemy = l->map->enemies[cmd.enemy_id];
+    if (enemy.flags & Map::Enemy::Flag::DEFEATED) {
       return;
     }
-    l->enemies[cmd.enemy_id].hit_flags |= (1 << c->lobby_client_id);
-    l->enemies[cmd.enemy_id].last_hit = c->lobby_client_id;
+    enemy.flags |= (Map::Enemy::Flag::HIT_BY_PLAYER0 << c->lobby_client_id);
+    enemy.last_hit_by_client_id = c->lobby_client_id;
   }
 
-  forward_subcommand(l, c, command, flag, data);
+  forward_subcommand(l, c, command, flag, data, size);
 }
 
-static void on_enemy_killed(shared_ptr<ServerState> s,
+static void on_charge_attack_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
-    const string& data) {
-  forward_subcommand(l, c, command, flag, data);
+    const void* data, size_t size) {
+  if (l->version != GameVersion::BB) {
+    throw runtime_error("BB-only command sent in non-BB game");
+  }
 
-  if (l->version == GameVersion::BB) {
-    const auto& cmd = check_size_sc<G_EnemyKilled_6xC8>(data);
+  forward_subcommand(l, c, command, flag, data, size);
 
-    if (!l->is_game()) {
-      throw runtime_error("client should not kill enemies outside of games");
+  const auto& cmd = check_size_t<G_ChargeAttack_BB_6xC7>(data, size);
+  auto& disp = c->game_data.player()->disp;
+  if (cmd.meseta_amount > disp.meseta) {
+    disp.meseta = 0;
+  } else {
+    disp.meseta -= cmd.meseta_amount;
+  }
+}
+
+static void on_enemy_killed_bb(shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const void* data, size_t size) {
+  if (l->version != GameVersion::BB) {
+    throw runtime_error("BB-only command sent in non-BB game");
+  }
+
+  forward_subcommand(l, c, command, flag, data, size);
+
+  const auto& cmd = check_size_t<G_EnemyKilled_BB_6xC8>(data, size);
+
+  if (!l->is_game()) {
+    throw runtime_error("client should not kill enemies outside of games");
+  }
+  if (!l->map) {
+    throw runtime_error("game does not have a map loaded");
+  }
+  if (cmd.enemy_id >= l->map->enemies.size()) {
+    send_text_message(c, u"$C6Missing enemy killed");
+    return;
+  }
+
+  auto& e = l->map->enemies[cmd.enemy_id];
+  string e_str = e.str();
+  c->log.info("Enemy killed: entry %hu => %s", cmd.enemy_id.load(), e_str.c_str());
+  if (e.flags & Map::Enemy::Flag::DEFEATED) {
+    if (c->options.debug) {
+      send_text_message_printf(c, "$C5E-%hX (already defeated)", cmd.enemy_id.load());
     }
-    if (cmd.enemy_id >= l->enemies.size()) {
-      send_text_message(c, u"$C6Missing enemy killed");
-      return;
+    return;
+  }
+
+  uint32_t experience = 0xFFFFFFFF;
+  try {
+    experience = s->battle_params->get(l->mode == GameMode::SOLO, l->episode, l->difficulty, e.type).experience;
+  } catch (const exception& e) {
+    if (c->options.debug) {
+      send_text_message_printf(c, "$C5E-%hX (missing definition)\n%s", cmd.enemy_id.load(), e.what());
+    } else {
+      send_text_message_printf(c, "$C4Unknown enemy type killed:\n%s", e.what());
+    }
+  }
+
+  e.flags |= Map::Enemy::Flag::DEFEATED;
+  for (size_t x = 0; x < l->max_clients; x++) {
+    if (!((e.flags >> x) & 1)) {
+      continue; // Player did not hit this enemy
     }
 
-    auto& e = l->enemies[cmd.enemy_id];
-    string e_str = e.str();
-    c->log.info("Enemy killed: entry %hu => %s", cmd.enemy_id.load(), e_str.c_str());
-    if (e.hit_flags & 0x80) {
-      if (c->options.debug) {
-        send_text_message_printf(c, "$C5E-%hX (already dead)", cmd.enemy_id.load());
-      }
-      return; // Enemy is already dead
+    auto other_c = l->clients[x];
+    if (!other_c) {
+      continue; // No player
     }
-    if (e.experience == 0xFFFFFFFF) {
-      if (c->options.debug) {
-        send_text_message_printf(c, "$C5E-%hX (missing definition)", cmd.enemy_id.load());
-      } else {
-        send_text_message(c, u"$C6Unknown enemy type killed");
-      }
-      return;
+    if (other_c->game_data.player()->disp.level >= 199) {
+      continue; // Player is level 200 or higher
     }
 
-    e.hit_flags |= 0x80;
-    for (size_t x = 0; x < l->max_clients; x++) {
-      if (!((e.hit_flags >> x) & 1)) {
-        continue; // Player did not hit this enemy
-      }
-
-      auto other_c = l->clients[x];
-      if (!other_c) {
-        continue; // No player
-      }
-      if (other_c->game_data.player()->disp.level >= 199) {
-        continue; // Player is level 200 or higher
-      }
-
+    if (experience != 0xFFFFFFFF) {
       // Killer gets full experience, others get 77%
-      uint32_t exp;
-      if (e.last_hit == other_c->lobby_client_id) {
-        exp = e.experience;
-      } else {
-        exp = ((e.experience * 77) / 100);
-      }
+      uint32_t player_exp = (e.last_hit_by_client_id == other_c->lobby_client_id)
+          ? experience
+          : ((experience * 77) / 100);
 
-      other_c->game_data.player()->disp.experience += exp;
-      send_give_experience(l, other_c, exp);
+      other_c->game_data.player()->disp.experience += player_exp;
+      send_give_experience(l, other_c, player_exp);
       if (other_c->options.debug) {
         send_text_message_printf(other_c, "$C5+%" PRIu32 " E-%hX (%s)",
-            exp, cmd.enemy_id.load(), e.type_name);
+            player_exp, cmd.enemy_id.load(), name_for_enum(e.type));
       }
 
       bool leveled_up = false;

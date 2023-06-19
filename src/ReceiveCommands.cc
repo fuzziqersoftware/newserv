@@ -3215,6 +3215,7 @@ shared_ptr<Lobby> create_game_generic(
     }
     game->next_game_item_id = 0x00810000;
 
+    game->map.reset(new Map());
     for (size_t area = 0; area < 0x10; area++) {
       c->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
           area, game->variations[area * 2].load(), game->variations[area * 2 + 1].load());
@@ -3233,21 +3234,13 @@ shared_ptr<Lobby> create_game_generic(
       for (const string& filename : filenames) {
         try {
           auto map_data = s->load_bb_file(filename, "", "map/" + filename);
-          std::vector<PSOEnemy> area_enemies = parse_map(
-              s->battle_params,
-              is_solo,
-              game->episode,
-              game->difficulty,
-              map_data,
-              false);
-          game->enemies.insert(
-              game->enemies.end(),
-              area_enemies.begin(),
-              area_enemies.end());
+          size_t start_offset = game->map->enemies.size();
+          game->map->add_enemies_from_map_data(game->episode, game->difficulty, game->event, map_data);
+          size_t entries_loaded = game->map->enemies.size() - start_offset;
           c->log.info("[Map/%zu] Loaded %s (%zu entries)",
-              area, filename.c_str(), area_enemies.size());
-          for (size_t z = 0; z < area_enemies.size(); z++) {
-            string e_str = area_enemies[z].str();
+              area, filename.c_str(), entries_loaded);
+          for (size_t z = start_offset; z < game->map->enemies.size(); z++) {
+            string e_str = game->map->enemies[z].str();
             static_game_data_log.info("(Entry %zX) %s", z, e_str.c_str());
           }
           any_map_loaded = true;
@@ -3261,7 +3254,7 @@ shared_ptr<Lobby> create_game_generic(
       }
     }
 
-    c->log.info("Loaded maps contain %zu entries overall", game->enemies.size());
+    c->log.info("Loaded maps contain %zu entries overall", game->map->enemies.size());
   }
   return game;
 }
