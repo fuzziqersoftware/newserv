@@ -96,7 +96,7 @@ struct ItemData { // 0x14 bytes
   } __attribute__((packed));
 
   ItemData();
-  explicit ItemData(const std::string& orig_description);
+  explicit ItemData(const std::string& orig_description, bool skip_special = false);
   ItemData(const ItemData& other);
   ItemData& operator=(const ItemData& other);
 

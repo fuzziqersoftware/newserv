@@ -1409,7 +1409,7 @@ const unordered_map<uint32_t, ItemNameInfo> name_info_for_primary_identifier({
     {0x031903, "Team Points 10000"},
 });
 
-ItemData::ItemData(const string& orig_description) {
+ItemData::ItemData(const string& orig_description, bool skip_special) {
   this->data1d.clear(0);
   this->id = 0xFFFFFFFF;
   this->data2d = 0;
@@ -1444,16 +1444,18 @@ ItemData::ItemData(const string& orig_description) {
   }
 
   uint8_t weapon_special = 0;
-  for (const auto& it : name_for_weapon_special) {
-    if (!it.second) {
-      continue;
-    }
-    string prefix = tolower(it.second);
-    prefix += ' ';
-    if (starts_with(desc, prefix)) {
-      weapon_special = it.first;
-      desc = desc.substr(prefix.size());
-      break;
+  if (!skip_special) {
+    for (const auto& it : name_for_weapon_special) {
+      if (!it.second) {
+        continue;
+      }
+      string prefix = tolower(it.second);
+      prefix += ' ';
+      if (starts_with(desc, prefix)) {
+        weapon_special = it.first;
+        desc = desc.substr(prefix.size());
+        break;
+      }
     }
   }
 
@@ -1865,20 +1867,29 @@ ItemData item_for_string(const string& desc) {
   try {
     return ItemData(desc);
   } catch (const exception&) {
-    string data = parse_data_string(desc);
-    if (data.size() < 2) {
-      throw runtime_error("item code too short");
-    }
-    if (data.size() > 16) {
-      throw runtime_error("item code too long");
-    }
-    ItemData ret;
-    if (data.size() <= 12) {
-      memcpy(ret.data1.data(), data.data(), data.size());
-    } else {
-      memcpy(ret.data1.data(), data.data(), 12);
-      memcpy(ret.data2.data(), data.data() + 12, data.size() - 12);
-    }
-    return ret;
   }
+  try {
+    return ItemData(desc, true);
+  } catch (const exception&) {
+  }
+
+  string data = parse_data_string(desc);
+  if (data.size() < 2) {
+    throw runtime_error("item code too short");
+  }
+  if (data[0] > 4) {
+    throw runtime_error("invalid item class");
+  }
+  if (data.size() > 16) {
+    throw runtime_error("item code too long");
+  }
+
+  ItemData ret;
+  if (data.size() <= 12) {
+    memcpy(ret.data1.data(), data.data(), data.size());
+  } else {
+    memcpy(ret.data1.data(), data.data(), 12);
+    memcpy(ret.data2.data(), data.data() + 12, data.size() - 12);
+  }
+  return ret;
 }
