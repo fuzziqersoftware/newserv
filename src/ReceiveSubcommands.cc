@@ -205,6 +205,26 @@ static void on_forward_check_size_ep3_game(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 // Ep3 subcommands
 
+static void on_ep3_sound_chat(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const void* data, size_t size) {
+  // Unlike the 6x and C9 commands, subcommands sent with the CB command are
+  // forwarded from spectator teams to the primary team. The client only uses this
+  // behavior for the 6xBE command (sound chat), and newserv enforces this rule.
+  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+    throw runtime_error("non-Episode 3 client sent sound chat command");
+  }
+
+  if ((command == 0xCB) && (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM)) {
+    auto watched_lobby = l->watched_lobby.lock();
+    if (watched_lobby) {
+      forward_subcommand(watched_lobby, c, command, flag, data, size);
+    }
+  }
+
+  forward_subcommand(l, c, command, flag, data, size);
+}
+
 static void on_ep3_battle_subs(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* orig_data, size_t size) {
