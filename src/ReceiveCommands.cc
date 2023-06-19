@@ -391,8 +391,7 @@ static void on_88_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_8B_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data,
-      sizeof(C_Login_DCNTE_8B), sizeof(C_LoginExtended_DCNTE_8B));
+  const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
   c->flags |= Client::Flag::IS_DC_V1 | Client::Flag::IS_TRIAL_EDITION;
@@ -436,7 +435,7 @@ static void on_8B_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_90_DC(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_LoginV1_DC_PC_V3_90>(data, sizeof(C_LoginV1_DC_PC_V3_90), 0xFFFF);
+  const auto& cmd = check_size_t<C_LoginV1_DC_PC_V3_90>(data, 0xFFFF);
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
   c->flags |= Client::Flag::IS_DC_V1;
@@ -478,8 +477,7 @@ static void on_92_DC(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 static void on_93_DC(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_LoginV1_DC_93>(data,
-      sizeof(C_LoginV1_DC_93), sizeof(C_LoginExtendedV1_DC_93));
+  const auto& cmd = check_size_t<C_LoginV1_DC_93>(data, sizeof(C_LoginExtendedV1_DC_93));
   set_console_client_flags(c, cmd.sub_version);
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
@@ -650,8 +648,7 @@ static void on_9D_9E(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) {
   const C_Login_DC_PC_GC_9D* base_cmd;
   if (command == 0x9D) {
-    base_cmd = &check_size_t<C_Login_DC_PC_GC_9D>(data,
-        sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_PC_9D));
+    base_cmd = &check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_PC_9D));
     if (base_cmd->is_extended) {
       if (c->version() == GameVersion::PC) {
         const auto& cmd = check_size_t<C_LoginExtended_PC_9D>(data);
@@ -669,8 +666,7 @@ static void on_9D_9E(shared_ptr<ServerState> s, shared_ptr<Client> c,
   } else if (command == 0x9E) {
     // GC and XB send different amounts of data in this command. This is how
     // newserv determines if a V3 client is GC or XB.
-    const auto& cmd = check_size_t<C_Login_GC_9E>(data,
-        sizeof(C_Login_GC_9E), sizeof(C_LoginExtended_XB_9E));
+    const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_XB_9E));
     switch (data.size()) {
       case sizeof(C_Login_GC_9E):
       case sizeof(C_LoginExtended_GC_9E):
@@ -1310,8 +1306,7 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     throw runtime_error("Episode 3 server data request sent outside of Episode 3 game");
   }
 
-  const auto& header = check_size_t<G_CardServerDataCommandHeader>(
-      data, sizeof(G_CardServerDataCommandHeader), 0xFFFF);
+  const auto& header = check_size_t<G_CardServerDataCommandHeader>(data, 0xFFFF);
   if (header.subcommand != 0xB3) {
     throw runtime_error("unknown Episode 3 server data request");
   }
@@ -2448,8 +2443,7 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
   switch (c->version()) {
     case GameVersion::DC:
     case GameVersion::PC: {
-      const auto& pd = check_size_t<PSOPlayerDataDCPC>(data,
-          sizeof(PSOPlayerDataDCPC), 0xFFFF);
+      const auto& pd = check_size_t<PSOPlayerDataDCPC>(data, 0xFFFF);
       c->game_data.import_player(pd);
       break;
     }
@@ -2464,14 +2458,14 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
         c->game_data.ep3_config.reset(new Episode3::PlayerConfig(pd3->ep3_config));
         pd = reinterpret_cast<const PSOPlayerDataV3*>(pd3);
       } else {
-        pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3),
+        pd = &check_size_t<PSOPlayerDataV3>(data,
             sizeof(PSOPlayerDataV3) + c->game_data.player()->auto_reply.bytes());
       }
       c->game_data.import_player(*pd);
       break;
     }
     case GameVersion::BB: {
-      const auto& pd = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB),
+      const auto& pd = check_size_t<PSOPlayerDataBB>(data,
           sizeof(PSOPlayerDataBB) + c->game_data.player()->auto_reply.bytes());
       c->game_data.import_player(pd);
       break;
@@ -2599,7 +2593,7 @@ static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_06_PC_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
+  const auto& cmd = check_size_t<C_Chat_06>(data, 0xFFFF);
   u16string text(cmd.text.pcbb, (data.size() - sizeof(C_Chat_06)) / sizeof(char16_t));
   strip_trailing_zeroes(text);
   on_chat_generic(s, c, text);
@@ -2607,7 +2601,7 @@ static void on_06_PC_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_06_DC_V3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
+  const auto& cmd = check_size_t<C_Chat_06>(data, 0xFFFF);
   u16string decoded_s = decode_sjis(cmd.text.dcv3, data.size() - sizeof(C_Chat_06));
   on_chat_generic(s, c, decoded_s);
 }
@@ -4197,21 +4191,18 @@ void on_command_with_header(shared_ptr<ServerState> s, shared_ptr<Client> c,
     case GameVersion::DC:
     case GameVersion::GC:
     case GameVersion::XB: {
-      auto& header = check_size_t<PSOCommandHeaderDCV3>(data,
-          sizeof(PSOCommandHeaderDCV3), 0xFFFF);
+      auto& header = check_size_t<PSOCommandHeaderDCV3>(data, 0xFFFF);
       on_command(s, c, header.command, header.flag, data.substr(sizeof(header)));
       break;
     }
     case GameVersion::PC:
     case GameVersion::PATCH: {
-      auto& header = check_size_t<PSOCommandHeaderPC>(data,
-          sizeof(PSOCommandHeaderPC), 0xFFFF);
+      auto& header = check_size_t<PSOCommandHeaderPC>(data, 0xFFFF);
       on_command(s, c, header.command, header.flag, data.substr(sizeof(header)));
       break;
     }
     case GameVersion::BB: {
-      auto& header = check_size_t<PSOCommandHeaderBB>(data,
-          sizeof(PSOCommandHeaderBB), 0xFFFF);
+      auto& header = check_size_t<PSOCommandHeaderBB>(data, 0xFFFF);
       on_command(s, c, header.command, header.flag, data.substr(sizeof(header)));
       break;
     }

@@ -224,8 +224,7 @@ static HandlerResult S_V123P_02_17(
 
   // Most servers don't include after_message or have a shorter
   // after_message than newserv does, so don't require it
-  const auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data,
-      sizeof(S_ServerInitDefault_DC_PC_V3_02_17_91_9B), 0xFFFF);
+  const auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data, 0xFFFF);
 
   if (!session.license) {
     session.log.info("No license in linked session");
@@ -431,8 +430,7 @@ static HandlerResult S_B_03(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   // Most servers don't include after_message or have a shorter after_message
   // than newserv does, so don't require it
-  const auto& cmd = check_size_t<S_ServerInitDefault_BB_03_9B>(data,
-      sizeof(S_ServerInitDefault_BB_03_9B), 0xFFFF);
+  const auto& cmd = check_size_t<S_ServerInitDefault_BB_03_9B>(data, 0xFFFF);
 
   // If the session has a detector crypt, then it was resumed from an unlinked
   // session, during which we already sent an 03 command.
@@ -545,8 +543,7 @@ static HandlerResult S_V123_04(shared_ptr<ServerState>,
 static HandlerResult S_V123_06(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (session.license) {
-    auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0_EE>(data,
-        sizeof(SC_TextHeader_01_06_11_B0_EE), 0xFFFF);
+    auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0_EE>(data, 0xFFFF);
     if (cmd.guild_card_number == session.remote_guild_card_number) {
       cmd.guild_card_number = session.license->serial_number;
       return HandlerResult::Type::MODIFIED;
@@ -604,8 +601,8 @@ static HandlerResult S_88(shared_ptr<ServerState>,
   bool modified = false;
   if (session.license) {
     size_t expected_size = sizeof(S_ArrowUpdateEntry_88) * flag;
-    auto* entries = &check_size_t<S_ArrowUpdateEntry_88>(data,
-        expected_size, expected_size);
+    auto* entries = &check_size_t<S_ArrowUpdateEntry_88>(
+        data, expected_size, expected_size);
     for (size_t x = 0; x < flag; x++) {
       if (entries[x].guild_card_number == session.remote_guild_card_number) {
         entries[x].guild_card_number = session.license->serial_number;
@@ -626,7 +623,7 @@ static HandlerResult S_B1(shared_ptr<ServerState>,
 
 static HandlerResult S_B2(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string& data) {
-  const auto& cmd = check_size_t<S_ExecuteCode_B2>(data, sizeof(S_ExecuteCode_B2), 0xFFFF);
+  const auto& cmd = check_size_t<S_ExecuteCode_B2>(data, 0xFFFF);
 
   if (cmd.code_size && session.options.save_files) {
     uint64_t filename_timestamp = now();
@@ -843,7 +840,7 @@ static HandlerResult S_19_P_14(shared_ptr<ServerState>,
   } else {
     // This weird maximum size is here to properly handle the version-split
     // command that some servers (including newserv) use on port 9100
-    auto& cmd = check_size_t<S_Reconnect_19>(data, sizeof(S_Reconnect_19), 0xFFFF);
+    auto& cmd = check_size_t<S_Reconnect_19>(data, 0xFFFF);
     sin->sin_addr.s_addr = cmd.address.load_raw(); // Already big-endian
     sin->sin_port = htons(cmd.port);
   }
@@ -869,7 +866,7 @@ static HandlerResult S_19_P_14(shared_ptr<ServerState>,
     if (sin->sin_family != AF_INET) {
       throw logic_error("existing connection is not ipv4");
     }
-    auto& cmd = check_size_t<S_Reconnect_19>(data, sizeof(S_Reconnect_19), 0xFFFF);
+    auto& cmd = check_size_t<S_Reconnect_19>(data, 0xFFFF);
     cmd.address.store_raw(sin->sin_addr.s_addr);
     cmd.port = ntohs(sin->sin_port);
     return HandlerResult::Type::MODIFIED;
@@ -906,11 +903,9 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
   if (session.options.save_files) {
     if ((session.version == GameVersion::GC) && (data.size() >= 0x14)) {
       if (static_cast<uint8_t>(data[0]) == 0xB6) {
-        const auto& header = check_size_t<G_MapSubsubcommand_GC_Ep3_6xB6>(
-            data, sizeof(G_MapSubsubcommand_GC_Ep3_6xB6), 0xFFFF);
+        const auto& header = check_size_t<G_MapSubsubcommand_GC_Ep3_6xB6>(data, 0xFFFF);
         if (header.subsubcommand == 0x00000041) {
-          const auto& cmd = check_size_t<G_MapData_GC_Ep3_6xB6x41>(
-              data, sizeof(G_MapData_GC_Ep3_6xB6x41), 0xFFFF);
+          const auto& cmd = check_size_t<G_MapData_GC_Ep3_6xB6x41>(data, 0xFFFF);
           string filename = string_printf("map%08" PRIX32 ".%" PRIu64 ".mnmd",
               cmd.map_number.load(), now());
           string map_data = prs_decompress(
@@ -934,8 +929,7 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
         ((static_cast<uint8_t>(data[0]) == 0xB3) ||
             (static_cast<uint8_t>(data[0]) == 0xB4) ||
             (static_cast<uint8_t>(data[0]) == 0xB5))) {
-      const auto& header = check_size_t<G_CardBattleCommandHeader>(
-          data, sizeof(G_CardBattleCommandHeader), 0xFFFF);
+      const auto& header = check_size_t<G_CardBattleCommandHeader>(data, 0xFFFF);
       if (header.mask_key) {
         set_mask_for_ep3_game_command(data.data(), data.size(), 0);
         modified = true;
@@ -944,7 +938,7 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
 
     if (data[0] == 0x46) {
       const auto& cmd = check_size_t<G_AttackFinished_6x46>(data,
-          offsetof(G_AttackFinished_6x46, entries),
+          offsetof(G_AttackFinished_6x46, targets),
           sizeof(G_AttackFinished_6x46));
       size_t allowed_count = min<size_t>(cmd.header.size - 2, 11);
       if (cmd.count > allowed_count) {
@@ -973,14 +967,13 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
     } else if ((data[0] == 0x60) &&
         session.next_drop_item.data.data1d[0] &&
         (session.version != GameVersion::BB)) {
-      const auto& cmd = check_size_t<G_EnemyDropItemRequest_DC_6x60>(data,
-          sizeof(G_EnemyDropItemRequest_DC_6x60),
-          sizeof(G_EnemyDropItemRequest_PC_V3_BB_6x60));
+      const auto& cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(
+          data, sizeof(G_StandardDropItemRequest_PC_V3_BB_6x60));
       session.next_drop_item.data.id = session.next_item_id++;
       send_drop_item(session.server_channel, session.next_drop_item.data,
-          true, cmd.area, cmd.x, cmd.z, cmd.enemy_id);
+          true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
       send_drop_item(session.client_channel, session.next_drop_item.data,
-          true, cmd.area, cmd.x, cmd.z, cmd.enemy_id);
+          true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
       session.next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 
@@ -991,12 +984,12 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
     } else if ((static_cast<uint8_t>(data[0]) == 0xA2) &&
         session.next_drop_item.data.data1d[0] &&
         (session.version != GameVersion::BB)) {
-      const auto& cmd = check_size_t<G_BoxItemDropRequest_6xA2>(data);
+      const auto& cmd = check_size_t<G_SpecializableItemDropRequest_6xA2>(data);
       session.next_drop_item.data.id = session.next_item_id++;
       send_drop_item(session.server_channel, session.next_drop_item.data,
-          false, cmd.area, cmd.x, cmd.z, cmd.request_id);
+          false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
       send_drop_item(session.client_channel, session.next_drop_item.data,
-          false, cmd.area, cmd.x, cmd.z, cmd.request_id);
+          false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
       session.next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 
@@ -1024,7 +1017,7 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
   // return MODIFIED if so.
 
   if (session.version == GameVersion::BB) {
-    auto& pd = check_size_t<PSOPlayerDataBB>(data, sizeof(PSOPlayerDataBB), 0xFFFF);
+    auto& pd = check_size_t<PSOPlayerDataBB>(data, 0xFFFF);
     if (session.options.enable_chat_filter) {
       add_color_inplace(pd.info_board.data(), pd.info_board.size());
     }
@@ -1055,7 +1048,7 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
       }
       pd = reinterpret_cast<PSOPlayerDataV3*>(&ep3_pd);
     } else {
-      pd = &check_size_t<PSOPlayerDataV3>(data, sizeof(PSOPlayerDataV3), 0xFFFF);
+      pd = &check_size_t<PSOPlayerDataV3>(data, 0xFFFF);
     }
     if (session.options.enable_chat_filter) {
       add_color_inplace(pd->info_board.data(), pd->info_board.size());
@@ -1242,8 +1235,7 @@ static HandlerResult S_G_B9(shared_ptr<ServerState>,
 
   if (session.options.save_files) {
     try {
-      const auto& header = check_size_t<S_UpdateMediaHeader_GC_Ep3_B9>(data,
-          sizeof(S_UpdateMediaHeader_GC_Ep3_B9), 0xFFFF);
+      const auto& header = check_size_t<S_UpdateMediaHeader_GC_Ep3_B9>(data, 0xFFFF);
 
       if (data.size() - sizeof(header) < header.size) {
         throw runtime_error("Media data size extends beyond end of command; not saving file");
@@ -1394,7 +1386,7 @@ static HandlerResult S_64(shared_ptr<ServerState>,
   CmdT* cmd;
   S_JoinGame_GC_Ep3_64* cmd_ep3 = nullptr;
   if (session.sub_version >= 0x40) {
-    cmd = &check_size_t<CmdT>(data, sizeof(S_JoinGame_GC_Ep3_64), sizeof(S_JoinGame_GC_Ep3_64));
+    cmd = &check_size_t<CmdT>(data, sizeof(S_JoinGame_GC_Ep3_64));
     cmd_ep3 = &check_size_t<S_JoinGame_GC_Ep3_64>(data);
   } else {
     cmd = &check_size_t<CmdT>(data);
@@ -1549,7 +1541,7 @@ static HandlerResult C_98(shared_ptr<ServerState> s,
 static HandlerResult C_06(shared_ptr<ServerState> s,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t, string& data) {
   if (data.size() >= 12) {
-    const auto& cmd = check_size_t<C_Chat_06>(data, sizeof(C_Chat_06), 0xFFFF);
+    const auto& cmd = check_size_t<C_Chat_06>(data, 0xFFFF);
 
     u16string text;
     uint8_t private_flags = 0;
@@ -1668,6 +1660,8 @@ static HandlerResult C_6x(shared_ptr<ServerState> s,
       if (session.options.infinite_hp) {
         send_player_stats_change(session.client_channel,
             session.lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
+        send_player_stats_change(session.server_channel,
+            session.lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
       }
     } else if (data[0] == 0x3E) {
       C_6x_movement<G_StopAtPosition_6x3E>(session, data);
@@ -1680,6 +1674,8 @@ static HandlerResult C_6x(shared_ptr<ServerState> s,
     } else if (data[0] == 0x48) {
       if (session.options.infinite_tp) {
         send_player_stats_change(session.client_channel,
+            session.lobby_client_id, PlayerStatsChange::ADD_TP, 255);
+        send_player_stats_change(session.server_channel,
             session.lobby_client_id, PlayerStatsChange::ADD_TP, 255);
       }
     }

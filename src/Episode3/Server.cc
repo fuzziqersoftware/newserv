@@ -1532,8 +1532,7 @@ const unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers({
 });
 
 void Server::on_server_data_input(const string& data) {
-  auto header = check_size_t<G_CardBattleCommandHeader>(
-      data, sizeof(G_CardBattleCommandHeader), 0xFFFF);
+  auto header = check_size_t<G_CardBattleCommandHeader>(data, 0xFFFF);
   if (header.size * 4 < data.size()) {
     throw runtime_error("command is incomplete");
   }

@@ -75,8 +75,7 @@ void CatSession::on_channel_input(
     uint16_t command, uint32_t flag, std::string& data) {
   if (this->channel.version != GameVersion::BB) {
     if (command == 0x02 || command == 0x17 || command == 0x91 || command == 0x9B) {
-      const auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data,
-          sizeof(S_ServerInitDefault_DC_PC_V3_02_17_91_9B), 0xFFFF);
+      const auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data, 0xFFFF);
       if ((this->channel.version == GameVersion::GC) ||
           (this->channel.version == GameVersion::XB)) {
         this->channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
@@ -95,8 +94,7 @@ void CatSession::on_channel_input(
       if (!this->bb_key_file) {
         throw runtime_error("BB encryption requires a key file");
       }
-      const auto& cmd = check_size_t<S_ServerInitDefault_BB_03_9B>(data,
-          sizeof(S_ServerInitDefault_BB_03_9B), 0xFFFF);
+      const auto& cmd = check_size_t<S_ServerInitDefault_BB_03_9B>(data, 0xFFFF);
       this->channel.crypt_in.reset(new PSOBBEncryption(*this->bb_key_file, &cmd.server_key[0], sizeof(cmd.server_key)));
       this->channel.crypt_out.reset(new PSOBBEncryption(*this->bb_key_file, &cmd.client_key[0], sizeof(cmd.client_key)));
       this->log.info("Enabled BB encryption");

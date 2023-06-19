@@ -49,12 +49,12 @@ union PSOCommandHeader {
 
 // This function is used in a lot of places to check received command sizes and
 // cast them to the appropriate type
-template <typename T>
-const T& check_size_t(
-    const void* data,
+template <typename RetT, typename PtrT>
+RetT& check_size_generic(
+    PtrT data,
     size_t size,
-    size_t min_size = sizeof(T),
-    size_t max_size = sizeof(T)) {
+    size_t min_size,
+    size_t max_size) {
   if (size < min_size) {
     throw std::runtime_error(string_printf(
         "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
@@ -65,39 +65,59 @@ const T& check_size_t(
         "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
         max_size, size));
   }
-  return *reinterpret_cast<const T*>(data);
+  return *reinterpret_cast<RetT*>(data);
+}
+
+template <typename T>
+const T& check_size_t(const std::string& data, size_t min_size, size_t max_size) {
+  return check_size_generic<const T, const void*>(data.data(), data.size(), min_size, max_size);
 }
 template <typename T>
-const T& check_size_t(
-    const std::string& data,
-    size_t min_size = sizeof(T),
-    size_t max_size = sizeof(T)) {
-  return check_size_t<T>(data.data(), data.size(), min_size, max_size);
+const T& check_size_t(const std::string& data, size_t max_size) {
+  return check_size_generic<const T, const void*>(data.data(), data.size(), sizeof(T), max_size);
 }
 template <typename T>
-T& check_size_t(
-    void* data,
-    size_t size,
-    size_t min_size = sizeof(T),
-    size_t max_size = sizeof(T)) {
-  if (size < min_size) {
-    throw std::runtime_error(string_printf(
-        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
-        min_size, size));
-  }
-  if (size > max_size) {
-    throw std::runtime_error(string_printf(
-        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
-        max_size, size));
-  }
-  return *reinterpret_cast<T*>(data);
+const T& check_size_t(const std::string& data) {
+  return check_size_generic<const T, const void*>(data.data(), data.size(), sizeof(T), sizeof(T));
+}
+
+template <typename T>
+T& check_size_t(std::string& data, size_t min_size, size_t max_size) {
+  return check_size_generic<T, void*>(data.data(), data.size(), min_size, max_size);
 }
 template <typename T>
-T& check_size_t(
-    std::string& data,
-    size_t min_size = sizeof(T),
-    size_t max_size = sizeof(T)) {
-  return check_size_t<T>(data.data(), data.size(), min_size, max_size);
+T& check_size_t(std::string& data, size_t max_size) {
+  return check_size_generic<T, void*>(data.data(), data.size(), sizeof(T), max_size);
+}
+template <typename T>
+T& check_size_t(std::string& data) {
+  return check_size_generic<T, void*>(data.data(), data.size(), sizeof(T), sizeof(T));
+}
+
+template <typename T>
+const T& check_size_t(const void* data, size_t size, size_t min_size, size_t max_size) {
+  return check_size_generic<const T, const void*>(data, size, min_size, max_size);
+}
+template <typename T>
+const T& check_size_t(const void* data, size_t size, size_t max_size) {
+  return check_size_generic<const T, const void*>(data, size, sizeof(T), max_size);
+}
+template <typename T>
+const T& check_size_t(const void* data, size_t size) {
+  return check_size_generic<const T, const void*>(data, size, sizeof(T), sizeof(T));
+}
+
+template <typename T>
+T& check_size_t(void* data, size_t size, size_t min_size, size_t max_size) {
+  return check_size_generic<T, void*>(data, size, min_size, max_size);
+}
+template <typename T>
+T& check_size_t(void* data, size_t size, size_t max_size) {
+  return check_size_generic<T, void*>(data, size, sizeof(T), max_size);
+}
+template <typename T>
+T& check_size_t(void* data, size_t size) {
+  return check_size_generic<T, void*>(data, size, sizeof(T), sizeof(T));
 }
 
 void check_size_v(size_t size, size_t min_size, size_t max_size = 0);

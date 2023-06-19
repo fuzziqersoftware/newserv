@@ -107,16 +107,14 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
 
   switch (version) {
     case GameVersion::PATCH: {
-      const auto& header = check_size_t<PSOCommandHeaderPC>(
-          ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF);
+      const auto& header = check_size_t<PSOCommandHeaderPC>(ev->data, 0xFFFF);
       if (header.command == 0x04) {
         check_either(check_size_t<C_Login_Patch_04>(cmd_data, cmd_size).password);
       }
       break;
     }
     case GameVersion::PC: {
-      const auto& header = check_size_t<PSOCommandHeaderPC>(
-          ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF);
+      const auto& header = check_size_t<PSOCommandHeaderPC>(ev->data, 0xFFFF);
       if (header.command == 0x03) {
         check_ak(check_size_t<C_LegacyLogin_PC_V3_03>(cmd_data, cmd_size).access_key2);
       } else if (header.command == 0x04) {
@@ -131,8 +129,8 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
         check_ak(cmd.access_key);
         check_pw(cmd.password);
       } else if (header.command == 0x9D) {
-        const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(cmd_data, cmd_size,
-            sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_PC_9D));
+        const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(
+            cmd_data, cmd_size, sizeof(C_LoginExtended_PC_9D));
         check_ak(cmd.v1_access_key);
         check_ak(cmd.access_key);
         check_ak(cmd.access_key2);
@@ -142,17 +140,16 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
     case GameVersion::DC:
     case GameVersion::GC:
     case GameVersion::XB: {
-      const auto& header = check_size_t<PSOCommandHeaderDCV3>(
-          ev->data, sizeof(PSOCommandHeaderDCV3), 0xFFFF);
+      const auto& header = check_size_t<PSOCommandHeaderDCV3>(ev->data, 0xFFFF);
       if (header.command == 0x03) {
         check_ak(check_size_t<C_LegacyLogin_PC_V3_03>(cmd_data, cmd_size).access_key2);
       } else if (header.command == 0x04) {
         check_ak(check_size_t<C_LegacyLogin_PC_V3_04>(cmd_data, cmd_size).access_key);
       } else if (header.command == 0x90) {
-        check_ak(check_size_t<C_LoginV1_DC_PC_V3_90>(cmd_data, cmd_size, sizeof(C_LoginV1_DC_PC_V3_90), 0xFFFF).access_key);
+        check_ak(check_size_t<C_LoginV1_DC_PC_V3_90>(cmd_data, cmd_size, 0xFFFF).access_key);
       } else if (header.command == 0x93) {
-        const auto& cmd = check_size_t<C_LoginV1_DC_93>(cmd_data, cmd_size,
-            sizeof(C_LoginV1_DC_93), sizeof(C_LoginExtendedV1_DC_93));
+        const auto& cmd = check_size_t<C_LoginV1_DC_93>(
+            cmd_data, cmd_size, sizeof(C_LoginExtendedV1_DC_93));
         check_ak(cmd.access_key);
       } else if (header.command == 0x9A) {
         const auto& cmd = check_size_t<C_Login_DC_PC_V3_9A>(cmd_data, cmd_size);
@@ -164,20 +161,20 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
         check_ak(cmd.access_key);
         check_pw(cmd.password);
       } else if (header.command == 0x9D) {
-        const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(cmd_data, cmd_size,
-            sizeof(C_Login_DC_PC_GC_9D), sizeof(C_LoginExtended_DC_GC_9D));
+        const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(
+            cmd_data, cmd_size, sizeof(C_LoginExtended_DC_GC_9D));
         check_ak(cmd.v1_access_key);
         check_ak(cmd.access_key);
         check_ak(cmd.access_key2);
       } else if (header.command == 0x9E) {
         if (version == GameVersion::GC) {
-          const auto& cmd = check_size_t<C_Login_GC_9E>(cmd_data, cmd_size,
-              sizeof(C_Login_GC_9E), sizeof(C_LoginExtended_GC_9E));
+          const auto& cmd = check_size_t<C_Login_GC_9E>(
+              cmd_data, cmd_size, sizeof(C_LoginExtended_GC_9E));
           check_ak(cmd.access_key);
           check_ak(cmd.access_key2);
         } else { // XB
-          const auto& cmd = check_size_t<C_Login_XB_9E>(cmd_data, cmd_size,
-              sizeof(C_Login_XB_9E), sizeof(C_LoginExtended_XB_9E));
+          const auto& cmd = check_size_t<C_Login_XB_9E>(
+              cmd_data, cmd_size, sizeof(C_LoginExtended_XB_9E));
           check_ak(cmd.access_key);
           check_ak(cmd.access_key2);
         }
@@ -190,8 +187,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
       break;
     }
     case GameVersion::BB: {
-      const auto& header = check_size_t<PSOCommandHeaderBB>(
-          ev->data, sizeof(PSOCommandHeaderBB), 0xFFFF);
+      const auto& header = check_size_t<PSOCommandHeaderBB>(ev->data, 0xFFFF);
       if (header.command == 0x04) {
         check_pw(check_size_t<C_LegacyLogin_BB_04>(cmd_data, cmd_size).password);
       } else if (header.command == 0x93) {
@@ -220,8 +216,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
 
   switch (version) {
     case GameVersion::PATCH: {
-      const auto& header = check_size_t<PSOCommandHeaderPC>(
-          ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF);
+      const auto& header = check_size_t<PSOCommandHeaderPC>(ev->data, 0xFFFF);
       if (header.command == 0x02) {
         auto& cmd_mask = check_size_t<S_ServerInit_Patch_02>(mask_data, mask_size);
         cmd_mask.server_key = 0;
@@ -235,13 +230,9 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
     case GameVersion::XB: {
       uint8_t command;
       if (version == GameVersion::PC) {
-        command = check_size_t<PSOCommandHeaderPC>(
-            ev->data, sizeof(PSOCommandHeaderPC), 0xFFFF)
-                      .command;
+        command = check_size_t<PSOCommandHeaderPC>(ev->data, 0xFFFF).command;
       } else { // V3
-        command = check_size_t<PSOCommandHeaderDCV3>(
-            ev->data, sizeof(PSOCommandHeaderDCV3), 0xFFFF)
-                      .command;
+        command = check_size_t<PSOCommandHeaderDCV3>(ev->data, 0xFFFF).command;
       }
       switch (command) {
         case 0x02:
@@ -249,7 +240,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         case 0x91:
         case 0x9B: {
           auto& mask = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(
-              mask_data, mask_size, sizeof(S_ServerInitDefault_DC_PC_V3_02_17_91_9B), 0xFFFF);
+              mask_data, mask_size, 0xFFFF);
           mask.server_key = 0;
           mask.client_key = 0;
           break;
@@ -284,8 +275,8 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             mask.variations.clear(0);
             mask.rare_seed = 0;
           } else { // V3
-            auto& mask = check_size_t<S_JoinGame_DC_GC_64>(mask_data, mask_size,
-                sizeof(S_JoinGame_DC_GC_64), sizeof(S_JoinGame_GC_Ep3_64));
+            auto& mask = check_size_t<S_JoinGame_DC_GC_64>(
+                mask_data, mask_size, sizeof(S_JoinGame_GC_Ep3_64));
             mask.variations.clear(0);
             mask.rare_seed = 0;
           }
@@ -309,13 +300,11 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         }
         case 0x6C: {
           if (version == GameVersion::GC && mask_size >= 0x14) {
-            const auto& cmd = check_size_t<G_MapList_GC_Ep3_6xB6x40>(
-                cmd_data, cmd_size, sizeof(G_MapList_GC_Ep3_6xB6x40), 0xFFFF);
+            const auto& cmd = check_size_t<G_MapList_GC_Ep3_6xB6x40>(cmd_data, cmd_size, 0xFFFF);
             if ((cmd.header.header.basic_header.subcommand == 0xB6) &&
                 (cmd.header.subsubcommand == 0x40)) {
-              check_size_t<PSOCommandHeaderDCV3>(ev->mask, sizeof(PSOCommandHeaderDCV3), 0xFFFF).size = 0;
-              auto& mask = check_size_t<G_MapList_GC_Ep3_6xB6x40>(
-                  mask_data, mask_size, sizeof(G_MapList_GC_Ep3_6xB6x40), 0xFFFF);
+              check_size_t<PSOCommandHeaderDCV3>(ev->mask, 0xFFFF).size = 0;
+              auto& mask = check_size_t<G_MapList_GC_Ep3_6xB6x40>(mask_data, mask_size, 0xFFFF);
               mask.header.header.size = 0;
               mask.compressed_data_size = 0;
               ev->allow_size_disparity = true;
@@ -330,13 +319,10 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
       break;
     }
     case GameVersion::BB: {
-      uint16_t command = check_size_t<PSOCommandHeaderBB>(
-          ev->data, sizeof(PSOCommandHeaderBB), 0xFFFF)
-                             .command;
+      uint16_t command = check_size_t<PSOCommandHeaderBB>(ev->data, 0xFFFF).command;
       switch (command) {
         case 0x0003: {
-          auto& mask = check_size_t<S_ServerInitDefault_BB_03_9B>(
-              mask_data, mask_size, sizeof(S_ServerInitDefault_BB_03_9B), 0xFFFF);
+          auto& mask = check_size_t<S_ServerInitDefault_BB_03_9B>(mask_data, mask_size, 0xFFFF);
           mask.server_key.clear(0);
           mask.client_key.clear(0);
           break;
@@ -675,8 +661,7 @@ void ReplaySession::on_command_received(
     case GameVersion::GC:
     case GameVersion::XB:
       if (command == 0x02 || command == 0x17 || command == 0x91 || command == 0x9B) {
-        auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data,
-            sizeof(S_ServerInitDefault_DC_PC_V3_02_17_91_9B), 0xFFFF);
+        auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data, 0xFFFF);
         if ((c->version == GameVersion::DC) || (c->version == GameVersion::PC)) {
           c->channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
           c->channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
@@ -688,8 +673,7 @@ void ReplaySession::on_command_received(
       break;
     case GameVersion::BB:
       if (command == 0x03 || command == 0x9B) {
-        auto& cmd = check_size_t<S_ServerInitDefault_BB_03_9B>(data,
-            sizeof(S_ServerInitDefault_BB_03_9B), 0xFFFF);
+        auto& cmd = check_size_t<S_ServerInitDefault_BB_03_9B>(data, 0xFFFF);
         // TODO: At some point it may matter which BB private key file we use.
         // Don't just blindly use the first one here.
         c->channel.crypt_in.reset(new PSOBBEncryption(

@@ -187,11 +187,9 @@ void BattleRecord::add_chat_message(
 
 bool BattleRecord::is_map_definition_event(const Event& ev) {
   if (ev.type == Event::Type::BATTLE_COMMAND) {
-    auto& header = check_size_t<G_CardBattleCommandHeader>(
-        ev.data, sizeof(G_CardBattleCommandHeader), 0xFFFF);
+    auto& header = check_size_t<G_CardBattleCommandHeader>(ev.data, 0xFFFF);
     if (header.subcommand == 0xB6) {
-      auto& header = check_size_t<G_MapSubsubcommand_GC_Ep3_6xB6>(
-          ev.data, sizeof(G_MapSubsubcommand_GC_Ep3_6xB6), 0xFFFF);
+      auto& header = check_size_t<G_MapSubsubcommand_GC_Ep3_6xB6>(ev.data, 0xFFFF);
       if (header.subsubcommand == 0x41) {
         return true;
       }
