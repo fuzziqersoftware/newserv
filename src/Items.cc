@@ -74,14 +74,9 @@ void player_use_item(shared_ptr<ServerState> s, shared_ptr<Client> c, size_t ite
     }
     armor.data.data1[5]++;
 
-  } else if ((item.data.data1[0] == 0x02) && (item.data.data2[2] & 0x40)) {
-    // Unwrap mag present
-    item.data.data2[2] &= 0xBF;
-    should_delete_item = false;
-
-  } else if ((item.data.data1[0] != 0x02) && (item.data.data1[4] & 0x40)) {
-    // Unwrap non-mag present
-    item.data.data1[4] &= 0xBF;
+  } else if (item.data.is_wrapped()) {
+    // Unwrap present
+    item.data.unwrap();
     should_delete_item = false;
 
   } else if (item_identifier == 0x003300) {

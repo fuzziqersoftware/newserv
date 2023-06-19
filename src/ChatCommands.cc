@@ -1176,24 +1176,9 @@ static void server_command_item(
   check_is_game(l, true);
   check_cheats_enabled(s, l);
 
-  string data = parse_data_string(encode_sjis(args));
-  if (data.size() < 2) {
-    send_text_message(c, u"$C6Item codes must be\n2 bytes or more");
-    return;
-  }
-  if (data.size() > 16) {
-    send_text_message(c, u"$C6Item codes must be\n16 bytes or fewer");
-    return;
-  }
-
   PlayerInventoryItem item;
+  item.data = item_for_string(encode_sjis(args));
   item.data.id = l->generate_item_id(c->lobby_client_id);
-  if (data.size() <= 12) {
-    memcpy(item.data.data1.data(), data.data(), data.size());
-  } else {
-    memcpy(item.data.data1.data(), data.data(), 12);
-    memcpy(item.data.data2.data(), data.data() + 12, data.size() - 12);
-  }
 
   l->add_item(item, c->area, c->x, c->z);
   send_drop_stacked_item(l, item.data, c->area, c->x, c->z);
@@ -1223,24 +1208,9 @@ static void proxy_command_item(
 
   bool set_drop = (!args.empty() && (args[0] == u'!'));
 
-  string data = parse_data_string(encode_sjis(args));
-  if (data.size() < 2) {
-    send_text_message(session.client_channel, u"$C6Item codes must be\n2 bytes or more");
-    return;
-  }
-  if (data.size() > 16) {
-    send_text_message(session.client_channel, u"$C6Item codes must be\n16 bytes or fewer");
-    return;
-  }
-
   PlayerInventoryItem item;
+  item.data = item_for_string(encode_sjis(set_drop ? args.substr(1) : args));
   item.data.id = random_object<uint32_t>();
-  if (data.size() <= 12) {
-    memcpy(item.data.data1.data(), data.data(), data.size());
-  } else {
-    memcpy(item.data.data1.data(), data.data(), 12);
-    memcpy(item.data.data2.data(), data.data() + 12, data.size() - 12);
-  }
 
   if (set_drop) {
     session.next_drop_item = item;

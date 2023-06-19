@@ -4,6 +4,8 @@
 
 using namespace std;
 
+static string S_RANK_NAME_CHARACTERS("\0ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_", 0x20);
+
 ItemData::ItemData() {
   this->clear();
 }
@@ -50,14 +52,51 @@ uint32_t ItemData::primary_identifier() const {
   // The game treats any item starting with 04 as Meseta, and ignores the rest
   // of data1 (the value is in data2)
   if (this->data1[0] == 0x04) {
-    return 0x00040000;
+    return 0x040000;
   }
   if (this->data1[0] == 0x03 && this->data1[1] == 0x02) {
-    return 0x00030200; // Tech disk (data1[2] is level, so omit it)
+    return 0x030200; // Tech disk (data1[2] is level, so omit it)
   } else if (this->data1[0] == 0x02) {
-    return 0x00020000 | (this->data1[1] << 8); // Mag
+    return 0x020000 | (this->data1[1] << 8); // Mag
   } else {
     return (this->data1[0] << 16) | (this->data1[1] << 8) | this->data1[2];
+  }
+}
+
+bool ItemData::is_wrapped() const {
+  switch (this->data1[0]) {
+    case 0:
+    case 1:
+      return this->data1[4] & 0x40;
+    case 2:
+      return this->data2[2] & 0x40;
+    case 3:
+      return !this->is_stackable() && (this->data1[3] & 0x40);
+    case 4:
+      return false;
+    default:
+      throw runtime_error("invalid item data");
+  }
+}
+
+void ItemData::unwrap() {
+  switch (this->data1[0]) {
+    case 0:
+    case 1:
+      this->data1[4] &= 0xBF;
+      break;
+    case 2:
+      this->data2[2] &= 0xBF;
+      break;
+    case 3:
+      if (!this->is_stackable()) {
+        this->data1[3] &= 0xBF;
+      }
+      break;
+    case 4:
+      break;
+    default:
+      throw runtime_error("invalid item data");
   }
 }
 
@@ -1364,6 +1403,236 @@ const unordered_map<uint32_t, ItemNameInfo> name_info_for_primary_identifier({
     {0x031903, "Team Points 10000"},
 });
 
+ItemData::ItemData(const string& orig_description) {
+  this->data1d.clear(0);
+  this->id = 0xFFFFFFFF;
+  this->data2d = 0;
+
+  string desc = tolower(orig_description);
+  if (ends_with(desc, " meseta")) {
+    this->data1[0] = 0x04;
+    this->data2d = stol(desc, nullptr, 10);
+    return;
+  }
+
+  if (starts_with(desc, "disk:")) {
+    auto tokens = split(desc, ' ');
+    if (tokens.size() != 2) {
+      throw runtime_error("invalid tech disk name");
+    }
+    if (!starts_with(tokens[0], "disk:") || !starts_with(tokens[1], "lv.")) {
+      throw runtime_error("invalid tech disk format");
+    }
+    uint8_t tech = technique_for_name(tokens[0].substr(5));
+    uint8_t level = stoul(tokens[1].substr(3), nullptr, 10);
+    this->data1[0] = 0x03;
+    this->data1[1] = 0x02;
+    this->data1[2] = level;
+    this->data1[4] = tech;
+    return;
+  }
+
+  bool is_wrapped = starts_with(desc, "wrapped ");
+  if (is_wrapped) {
+    desc = desc.substr(8);
+  }
+
+  uint8_t weapon_special = 0;
+  for (const auto& it : name_for_weapon_special) {
+    if (!it.second) {
+      continue;
+    }
+    string prefix = tolower(it.second);
+    prefix += ' ';
+    if (starts_with(desc, prefix)) {
+      weapon_special = it.first;
+      desc = desc.substr(prefix.size());
+      break;
+    }
+  }
+
+  static map<string, uint32_t> primary_identifier_for_name;
+  if (primary_identifier_for_name.empty()) {
+    for (const auto& it : name_info_for_primary_identifier) {
+      primary_identifier_for_name.emplace(tolower(it.second.name), it.first);
+    }
+  }
+  auto name_it = primary_identifier_for_name.lower_bound(desc);
+  // Look up to 3 places before the lower bound. We have to do this to catch
+  // cases like Sange vs. Sange & Yasha - if the input is like "Sange 0/...",
+  // then we'll see Sange & Yasha first, which we should skip.
+  size_t lookback = 0;
+  while (lookback < 4) {
+    if (name_it != primary_identifier_for_name.end() &&
+        desc.starts_with(name_it->first)) {
+      break;
+    } else if (name_it == primary_identifier_for_name.begin()) {
+      throw runtime_error("no such item");
+    } else {
+      name_it--;
+      lookback++;
+    }
+  }
+  if (lookback >= 4) {
+    throw runtime_error("item not found");
+  }
+
+  desc = desc.substr(name_it->first.size());
+  if (starts_with(desc, " ")) {
+    desc = desc.substr(1);
+  }
+
+  uint32_t primary_identifier = name_it->second;
+  this->data1[0] = (primary_identifier >> 16) & 0xFF;
+  this->data1[1] = (primary_identifier >> 8) & 0xFF;
+  this->data1[2] = primary_identifier & 0xFF;
+
+  if (this->data1[0] == 0x00) {
+    // Weapons: add special, grind and percentages (or name, if S-rank)
+    this->data1[4] = weapon_special | (is_wrapped ? 0x40 : 0x00);
+
+    auto tokens = split(desc, ' ');
+    for (auto& token : tokens) {
+      if (token.empty()) {
+        continue;
+      }
+      if (starts_with(token, "+")) {
+        token = token.substr(1);
+        this->data1[3] = stoul(token, nullptr, 10);
+
+      } else if (this->is_s_rank_weapon()) {
+        if (token.size() > 8) {
+          throw runtime_error("s-rank name too long");
+        }
+
+        uint8_t char_indexes[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+        for (size_t z = 0; z < token.size(); z++) {
+          char ch = toupper(token[z]);
+          size_t pos = S_RANK_NAME_CHARACTERS.find(ch);
+          if (pos == string::npos) {
+            throw runtime_error(string_printf("s-rank name contains invalid character %02hhX (%c)", ch, ch));
+          }
+          char_indexes[z] = pos;
+        }
+
+        this->data1w[3] = (char_indexes[1] & 0x1F) | ((char_indexes[0] & 0x1F) << 5);
+        this->data1w[4] = (char_indexes[4] & 0x1F) | ((char_indexes[3] & 0x1F) << 5) | ((char_indexes[2] & 0x1F) << 10);
+        this->data1w[5] = (char_indexes[7] & 0x1F) | ((char_indexes[6] & 0x1F) << 5) | ((char_indexes[5] & 0x1F) << 10);
+
+      } else {
+        auto p_tokens = split(token, '/');
+        if (p_tokens.size() > 5) {
+          throw runtime_error("invalid bonuses token");
+        }
+        uint8_t bonus_index = 0;
+        for (size_t z = 0; z < p_tokens.size(); z++) {
+          int8_t bonus_value = stol(p_tokens[z], nullptr, 10);
+          if (bonus_value == 0) {
+            continue;
+          }
+          if (bonus_index >= 3) {
+            throw runtime_error("weapon has too many bonuses");
+          }
+          this->data1[6 + (2 * bonus_index)] = z + 1;
+          this->data1[7 + (2 * bonus_index)] = static_cast<uint8_t>(bonus_value);
+          bonus_index++;
+        }
+      }
+    }
+
+  } else if (this->data1[0] == 0x01) {
+    if (this->data1[1] == 0x03) { // Unit
+      static const unordered_map<string, uint16_t> modifiers({
+          {"--", 0xFFFC},
+          {"-", 0xFFFE},
+          {"", 0x0000},
+          {"+", 0x0002},
+          {"++", 0x0004},
+      });
+      uint16_t modifier = modifiers.at(desc);
+      this->data1[7] = modifier & 0xFF;
+      this->data1[8] = (modifier >> 8) & 0xFF;
+
+    } else { // Armor/shield
+      for (const auto& token : split(desc, ' ')) {
+        if (token.empty()) {
+          continue;
+        } else if (!starts_with(token, "+")) {
+          throw runtime_error("invalid armor/shield modifier");
+        }
+        if (ends_with(token, "def")) {
+          this->data1w[3] = static_cast<uint16_t>(stol(token.substr(1, token.size() - 4), nullptr, 10));
+        } else if (ends_with(token, "evp")) {
+          this->data1w[4] = static_cast<uint16_t>(stol(token.substr(1, token.size() - 4), nullptr, 10));
+        } else {
+          this->data1[5] = stoul(token.substr(1), nullptr, 10);
+        }
+      }
+    }
+
+    if (is_wrapped) {
+      this->data1[4] |= 0x40;
+    }
+
+  } else if (this->data1[0] == 0x02) {
+    for (const auto& token : split(desc, ' ')) {
+      if (starts_with(token, "pb:")) { // Photon blasts
+        auto pb_tokens = split(token.substr(3), ',');
+        if (pb_tokens.size() > 3) {
+          throw runtime_error("too many photon blasts specified");
+        }
+        static const unordered_map<string, uint8_t> name_to_pb_num({
+            {"f", 0},
+            {"e", 1},
+            {"g", 2},
+            {"p", 3},
+            {"l", 4},
+            {"m&y", 5},
+        });
+        for (const auto& pb_token : pb_tokens) {
+          this->add_mag_photon_blast(name_to_pb_num.at(pb_token));
+        }
+      } else if (ends_with(token, "%")) { // Synchro
+        this->data2[0] = stoul(token.substr(0, token.size() - 1), nullptr, 10);
+      } else if (ends_with(token, "iq")) { // IQ
+        this->data2[1] = stoul(token.substr(0, token.size() - 2), nullptr, 10);
+      } else if (!token.empty() && isdigit(token[0])) { // Stats
+        auto s_tokens = split(token, '/');
+        if (s_tokens.size() != 4) {
+          throw runtime_error("incorrect stat count");
+        }
+        this->data1w[2] = stoul(s_tokens[0], nullptr, 10);
+        this->data1w[3] = stoul(s_tokens[1], nullptr, 10);
+        this->data1w[4] = stoul(s_tokens[2], nullptr, 10);
+        this->data1w[5] = stoul(s_tokens[3], nullptr, 10);
+      } else { // Color
+        this->data2[3] = mag_color_for_name.at(token);
+      }
+    }
+
+    if (is_wrapped) {
+      this->data2[2] |= 0x40;
+    }
+
+  } else if (this->data1[0] == 0x03) {
+    if (this->max_stack_size() > 1) {
+      if (starts_with(desc, "x")) {
+        this->data1[5] = stoul(desc.substr(1), nullptr, 10);
+      } else {
+        this->data1[5] = 1;
+      }
+    } else if (!desc.empty()) {
+      throw runtime_error("item cannot be stacked");
+    }
+
+    if (is_wrapped) {
+      this->data1[3] |= 0x40;
+    }
+  } else {
+    throw logic_error("invalid item class");
+  }
+}
+
 string ItemData::hex() const {
   return string_printf("%02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX (%08" PRIX32 ") %02hhX%02hhX%02hhX%02hhX",
       this->data1[0], this->data1[1], this->data1[2], this->data1[3],
@@ -1402,6 +1671,10 @@ string ItemData::name(bool include_color_codes) const {
   if ((this->data1[0] == 0x02) && (this->data2[2] & 0x40)) {
     ret_tokens.emplace_back("Wrapped");
   }
+  // And tools can be wrapped if they aren't stackable
+  if ((this->data1[0] == 0x03) && !this->is_stackable() && (this->data1[3] & 0x40)) {
+    ret_tokens.emplace_back("Wrapped");
+  }
 
   // Add the item name. Technique disks are special because the level is part of
   // the primary identifier, so we manually generate the name instead of looking
@@ -1434,7 +1707,7 @@ string ItemData::name(bool include_color_codes) const {
       ret_tokens.emplace_back(string_printf("+%hhu", this->data1[3]));
     }
 
-    if (this->is_s_rank_weapon() && (this->data1[6] & 0x18)) {
+    if (this->is_s_rank_weapon()) {
       // S-rank (has name instead of percent bonuses)
       uint8_t char_indexes[8] = {
           static_cast<uint8_t>((this->data1w[3] >> 5) & 0x1F),
@@ -1446,11 +1719,10 @@ string ItemData::name(bool include_color_codes) const {
           static_cast<uint8_t>((this->data1w[5] >> 5) & 0x1F),
           static_cast<uint8_t>(this->data1w[5] & 0x1F),
       };
-      const char* translation_table = "\0ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
 
       string name;
       for (size_t x = 0; x < 8; x++) {
-        char ch = translation_table[char_indexes[x]];
+        char ch = S_RANK_NAME_CHARACTERS[char_indexes[x]];
         if (ch == 0) {
           break;
         }
@@ -1552,33 +1824,12 @@ string ItemData::name(bool include_color_codes) const {
         token += pb_names[x];
       }
       ret_tokens.emplace_back(std::move(token));
+    }
 
-      static const vector<const char*> mag_colors({
-          /* 00 */ "red",
-          /* 01 */ "blue",
-          /* 02 */ "yellow",
-          /* 03 */ "green",
-          /* 04 */ "purple",
-          /* 05 */ "black",
-          /* 06 */ "white",
-          /* 07 */ "cyan",
-          /* 08 */ "brown",
-          /* 09 */ "orange",
-          /* 0A */ "light blue",
-          /* 0B */ "olive",
-          /* 0C */ "light cyan",
-          /* 0D */ "dark purple",
-          /* 0E */ "grey",
-          /* 0F */ "light grey",
-          /* 10 */ "pink",
-          /* 11 */ "dark cyan",
-          /* 12 */ "costume color",
-      });
-      try {
-        ret_tokens.emplace_back(string_printf("(%s)", mag_colors.at(this->data2[3])));
-      } catch (const out_of_range&) {
-        ret_tokens.emplace_back(string_printf("(!CL:%02hhX)", this->data2[3]));
-      }
+    try {
+      ret_tokens.emplace_back(string_printf("(%s)", name_for_mag_color.at(this->data2[3])));
+    } catch (const out_of_range&) {
+      ret_tokens.emplace_back(string_printf("(!CL:%02hhX)", this->data2[3]));
     }
 
     // For tools, add the amount (if applicable)
@@ -1600,6 +1851,28 @@ string ItemData::name(bool include_color_codes) const {
       return "$C7" + ret;
     }
   } else {
+    return ret;
+  }
+}
+
+ItemData item_for_string(const string& desc) {
+  try {
+    return ItemData(desc);
+  } catch (const exception&) {
+    string data = parse_data_string(desc);
+    if (data.size() < 2) {
+      throw runtime_error("item code too short");
+    }
+    if (data.size() > 16) {
+      throw runtime_error("item code too long");
+    }
+    ItemData ret;
+    if (data.size() <= 12) {
+      memcpy(ret.data1.data(), data.data(), data.size());
+    } else {
+      memcpy(ret.data1.data(), data.data(), 12);
+      memcpy(ret.data2.data(), data.data() + 12, data.size() - 12);
+    }
     return ret;
   }
 }

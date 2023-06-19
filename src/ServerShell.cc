@@ -761,22 +761,9 @@ Proxy session commands:\n\
       throw runtime_error("proxy session is not game leader");
     }
 
-    string data = parse_data_string(command_args, nullptr, ParseDataFlags::ALLOW_FILES);
-    if (data.size() < 2) {
-      throw runtime_error("data too short");
-    }
-    if (data.size() > 16) {
-      throw runtime_error("data too long");
-    }
-
     PlayerInventoryItem item;
+    item.data = item_for_string(command_args);
     item.data.id = random_object<uint32_t>();
-    if (data.size() <= 12) {
-      memcpy(item.data.data1.data(), data.data(), data.size());
-    } else {
-      memcpy(item.data.data1.data(), data.data(), 12);
-      memcpy(item.data.data2.data(), data.data() + 12, data.size() - 12);
-    }
 
     if (command_name == "set-next-item") {
       session->next_drop_item = item;

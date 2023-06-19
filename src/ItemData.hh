@@ -47,6 +47,38 @@ struct ItemMagStats {
 };
 
 struct ItemData { // 0x14 bytes
+  // QUICK ITEM FORMAT REFERENCE
+  //           data1/0  data1/4  data1/8  data2
+  //   Weapon: 00ZZZZGG SS00AABB AABBAABB 00000000
+  //   Armor:  0101ZZ00 FFTTDDDD EEEE0000 00000000
+  //   Shield: 0102ZZ00 FFTTDDDD EEEE0000 00000000
+  //   Unit:   0103ZZ00 FF0000RR RR000000 00000000
+  //   Mag:    02ZZLLWW HHHHIIII JJJJKKKK YYQQPPVV
+  //   Tool:   03ZZZZFF 00CC0000 00000000 00000000
+  //   Meseta: 04000000 00000000 00000000 MMMMMMMM
+  // A = attribute type (for S-ranks, custom name)
+  // B = attribute amount (for S-ranks, custom name)
+  // C = stack size (for tools)
+  // D = DEF bonus
+  // E = EVP bonus
+  // F = flags (40=present; for tools, unused if item is stackable)
+  // G = weapon grind
+  // H = mag DEF
+  // I = mag POW
+  // J = mag DEX
+  // K = mag MIND
+  // L = mag level
+  // M = meseta amount
+  // P = mag flags (40=present, 04=has left pb, 02=has right pb, 01=has center pb)
+  // Q = mag IQ
+  // R = unit modifier (little-endian)
+  // S = weapon flags (80=unidentified, 40=present) and special (low 6 bits)
+  // T = slot count
+  // V = mag color
+  // W = photon blasts
+  // Y = mag synchro
+  // Z = item ID
+
   union {
     parray<uint8_t, 12> data1;
     parray<le_uint16_t, 6> data1w;
@@ -60,6 +92,7 @@ struct ItemData { // 0x14 bytes
   } __attribute__((packed));
 
   ItemData();
+  explicit ItemData(const std::string& orig_description);
   ItemData(const ItemData& other);
   ItemData& operator=(const ItemData& other);
 
@@ -71,6 +104,9 @@ struct ItemData { // 0x14 bytes
   std::string hex() const;
   std::string name(bool include_color_codes) const;
   uint32_t primary_identifier() const;
+
+  bool is_wrapped() const;
+  void unwrap();
 
   bool is_stackable() const;
   size_t stack_size() const;
@@ -104,3 +140,5 @@ struct ItemData { // 0x14 bytes
 
   static bool compare_for_sort(const ItemData& a, const ItemData& b);
 } __attribute__((packed));
+
+ItemData item_for_string(const std::string& desc);

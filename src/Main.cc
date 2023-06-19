@@ -225,6 +225,7 @@ enum class Behavior {
   FORMAT_ITEMRT_REL,
   SHOW_EP3_DATA,
   DESCRIBE_ITEM,
+  ENCODE_ITEM,
   PARSE_OBJECT_GRAPH,
   REPLAY_LOG,
   CAT_CLIENT,
@@ -255,6 +256,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
       (b == Behavior::DESCRIBE_ITEM) ||
+      (b == Behavior::ENCODE_ITEM) ||
       (b == Behavior::PARSE_OBJECT_GRAPH) ||
       (b == Behavior::REPLAY_LOG) ||
       (b == Behavior::CAT_CLIENT) ||
@@ -435,6 +437,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::SHOW_EP3_DATA;
         } else if (!strcmp(argv[x], "describe-item")) {
           behavior = Behavior::DESCRIBE_ITEM;
+        } else if (!strcmp(argv[x], "encode-item")) {
+          behavior = Behavior::ENCODE_ITEM;
         } else if (!strcmp(argv[x], "parse-object-graph")) {
           behavior = Behavior::PARSE_OBJECT_GRAPH;
         } else if (!strcmp(argv[x], "replay-log")) {
@@ -1127,6 +1131,18 @@ int main(int argc, char** argv) {
 
       string desc = item.name(false);
       log_info("Item: %s", desc.c_str());
+      break;
+    }
+
+    case Behavior::ENCODE_ITEM: {
+      ItemData item(input_filename);
+      string desc = item.name(false);
+      log_info("Data: %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+          item.data1[0], item.data1[1], item.data1[2], item.data1[3],
+          item.data1[4], item.data1[5], item.data1[6], item.data1[7],
+          item.data1[8], item.data1[9], item.data1[10], item.data1[11],
+          item.data2[0], item.data2[1], item.data2[2], item.data2[3]);
+      log_info("Description: %s", desc.c_str());
       break;
     }
 
