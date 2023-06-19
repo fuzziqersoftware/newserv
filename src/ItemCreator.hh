@@ -86,7 +86,6 @@ private:
   std::shared_ptr<const WeaponRandomSet> weapon_random_set;
   std::shared_ptr<const ItemParameterTable> item_parameter_table;
   const CommonItemSet::Table<true>* pt;
-  const RareItemSet::Table* rt;
   std::shared_ptr<const Restrictions> restrictions;
 
   std::shared_ptr<ItemDropSub> item_drop_sub;
@@ -116,8 +115,7 @@ private:
 
   ItemData check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_type);
   ItemData check_rare_specs_and_create_rare_box_item(uint8_t area_norm);
-  ItemData check_rate_and_create_rare_item(
-      const RareItemSet::Table::Drop& drop);
+  ItemData check_rate_and_create_rare_item(const RareItemSet::ExpandedDrop& drop);
 
   void generate_rare_weapon_bonuses(ItemData& item, uint32_t random_sample);
   void deduplicate_weapon_bonuses(ItemData& item) const;

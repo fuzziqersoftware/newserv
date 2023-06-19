@@ -1030,9 +1030,13 @@ static void on_entity_drop_item_request(
           cmd.def[0], cmd.def[1], cmd.def[2]);
     }
   } else {
-    uint32_t expected_rt_index = l->enemies.at(cmd.entity_id).rt_index;
-    if (cmd.rt_index != l->enemies.at(cmd.entity_id).rt_index) {
-      c->log.warning("rt_index %02hhX does not match entity\'s expected index %02" PRIX32,
+    if (!l->map) {
+      throw runtime_error("game does not have a map loaded");
+    }
+    const auto& enemy = l->map->enemies.at(cmd.entity_id);
+    uint32_t expected_rt_index = rare_table_index_for_enemy_type(enemy.type);
+    if (cmd.rt_index != expected_rt_index) {
+      c->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
           cmd.rt_index, expected_rt_index);
     }
     item.data = l->item_creator->on_monster_item_drop(expected_rt_index, cmd.area);

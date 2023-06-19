@@ -31,8 +31,6 @@ ItemCreator::ItemCreator(
       item_parameter_table(item_parameter_table),
       pt(&this->common_item_set->get_table(
           this->episode, this->mode, this->difficulty, this->section_id)),
-      rt(&this->rare_item_set->get_table(
-          this->episode, this->mode, this->difficulty, this->section_id)),
       restrictions(restrictions),
       random_crypt(random_seed) {
   print_data(stderr, this->pt, sizeof(*this->pt));
@@ -232,13 +230,17 @@ ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(
     return item;
   }
 
-  for (size_t z = 0; z < this->rt->box_count; z++) {
-    if (area_norm + 1 == this->rt->box_areas[z]) {
-      item = this->check_rate_and_create_rare_item(this->rt->box_rares[z]);
-      if (!item.empty()) {
-        break;
-      }
+  auto rare_specs = this->rare_item_set->get_box_specs(
+      this->mode, this->episode, this->difficulty, this->section_id, area_norm + 1);
+  for (const auto& spec : rare_specs) {
+    item = this->check_rate_and_create_rare_item(spec);
+    if (!item.empty()) {
+      this->log.info("Box spec %08" PRIX32 " => %02hhX%02hhX%02hhX produced an item",
+          spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
+      break;
     }
+    this->log.info("Box spec %08" PRIX32 " => %02hhX%02hhX%02hhX did not produce",
+        spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
   }
   return item;
 }
@@ -275,24 +277,38 @@ bool ItemCreator::should_allow_meseta_drops() const {
 
 ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(
     uint32_t enemy_type) {
+  ItemData item;
   if (this->are_rare_drops_allowed() &&
       (enemy_type > 0) && (enemy_type < 0x58)) {
-    return this->check_rate_and_create_rare_item(
-        this->rt->monster_rares[enemy_type]);
-  } else {
-    return ItemData();
+    // Note: In the original implementation, enemies can only have one possible
+    // rare drop. In our implementation, they can have multiple rare drops if
+    // JSONRareItemSet is used (the other RareItemSet implementations never
+    // return multiple drops for an enemy type).
+    auto rare_specs = this->rare_item_set->get_enemy_specs(
+        this->mode, this->episode, this->difficulty, this->section_id, enemy_type);
+    for (const auto& spec : rare_specs) {
+      item = this->check_rate_and_create_rare_item(spec);
+      if (!item.empty()) {
+        this->log.info("Enemy spec %08" PRIX32 " => %02hhX%02hhX%02hhX did not produce",
+            spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
+        break;
+      }
+      this->log.info("Enemy spec %08" PRIX32 " => %02hhX%02hhX%02hhX did not produce",
+          spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
+    }
   }
+  return item;
 }
 
 ItemData ItemCreator::check_rate_and_create_rare_item(
-    const RareItemSet::Table::Drop& drop) {
+    const RareItemSet::ExpandedDrop& drop) {
   if (drop.probability == 0) {
     return ItemData();
   }
 
   // Note: The original code uses 0xFFFFFFFF as the maximum here. We use
   // 0x100000000 instead, which makes all rare items SLIGHTLY more rare.
-  if (this->rand_int(0x100000000) >= this->rare_item_set->expand_rate(drop.probability)) {
+  if (this->rand_int(0x100000000) >= drop.probability) {
     return ItemData();
   }
 
@@ -1689,4 +1705,6 @@ ItemData ItemCreator::on_specialized_box_item_drop(uint32_t def0, uint32_t def1,
     default:
       throw runtime_error("invalid item class");
   }
+
+  return item;
 }

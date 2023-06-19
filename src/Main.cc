@@ -221,7 +221,6 @@ enum class Behavior {
   DECODE_SJIS,
   EXTRACT_GSL,
   EXTRACT_BML,
-  FORMAT_ITEMRT_ENTRY,
   FORMAT_ITEMRT_REL,
   SHOW_EP3_DATA,
   DESCRIBE_ITEM,
@@ -251,7 +250,6 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DECODE_QUEST_FILE) ||
       (b == Behavior::DECODE_SJIS) ||
-      (b == Behavior::FORMAT_ITEMRT_ENTRY) ||
       (b == Behavior::FORMAT_ITEMRT_REL) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
@@ -429,8 +427,6 @@ int main(int argc, char** argv) {
           quest_file_type = QuestFileFormat::QST;
         } else if (!strcmp(argv[x], "cat-client")) {
           behavior = Behavior::CAT_CLIENT;
-        } else if (!strcmp(argv[x], "format-itemrt-entry")) {
-          behavior = Behavior::FORMAT_ITEMRT_ENTRY;
         } else if (!strcmp(argv[x], "format-itemrt-rel")) {
           behavior = Behavior::FORMAT_ITEMRT_REL;
         } else if (!strcmp(argv[x], "show-ep3-data")) {
@@ -1009,70 +1005,24 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::FORMAT_ITEMRT_ENTRY: {
-      string data = read_input_data();
-      if (data.size() < sizeof(RareItemSet::Table)) {
-        throw runtime_error("input data too small");
-      }
-      const auto& table = *reinterpret_cast<const RareItemSet::Table*>(data.data());
-
-      auto format_drop = +[](const RareItemSet::Table::Drop& r) -> string {
-        ItemData item;
-        item.data1[0] = r.item_code[0];
-        item.data1[1] = r.item_code[1];
-        item.data1[2] = r.item_code[2];
-        string name = item.name(false);
-
-        uint32_t expanded_probability = RareItemSet::expand_rate(r.probability);
-        auto frac = reduce_fraction<uint64_t>(expanded_probability, 0x100000000);
-        return string_printf(
-            "(%02hhX => %08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX (%s)",
-            r.probability, expanded_probability, frac.first, frac.second, r.item_code[0], r.item_code[1], r.item_code[2], name.c_str());
-      };
-
-      fprintf(stdout, "Monster rares:\n");
-      for (size_t z = 0; z < 0x65; z++) {
-        const auto& r = table.monster_rares[z];
-        if (r.item_code[0] == 0 && r.item_code[1] == 0 && r.item_code[2] == 0) {
-          continue;
-        }
-        string s = format_drop(r);
-        fprintf(stdout, "  %02zX: %s\n", z, s.c_str());
-      }
-
-      fprintf(stdout, "Box rares:\n");
-      for (size_t z = 0; z < 0x1E; z++) {
-        const auto& r = table.box_rares[z];
-        if (r.item_code[0] == 0 && r.item_code[1] == 0 && r.item_code[2] == 0) {
-          continue;
-        }
-        string s = format_drop(r);
-        fprintf(stdout, "  %02zX: area %02hhX %s\n", z, table.box_areas[z], s.c_str());
-      }
-      break;
-    }
-
     case Behavior::FORMAT_ITEMRT_REL: {
       shared_ptr<string> data(new string(read_input_data()));
       RELRareItemSet rs(data);
 
-      auto format_drop = +[](const RareItemSet::Table::Drop& r) -> string {
+      auto format_drop = +[](const RareItemSet::ExpandedDrop& r) -> string {
         ItemData item;
         item.data1[0] = r.item_code[0];
         item.data1[1] = r.item_code[1];
         item.data1[2] = r.item_code[2];
         string name = item.name(false);
 
-        uint32_t expanded_probability = RareItemSet::expand_rate(r.probability);
-        auto frac = reduce_fraction<uint64_t>(expanded_probability, 0x100000000);
+        auto frac = reduce_fraction<uint64_t>(r.probability, 0x100000000);
         return string_printf(
-            "(%02hhX => %08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX (%s)",
-            r.probability, expanded_probability, frac.first, frac.second, r.item_code[0], r.item_code[1], r.item_code[2], name.c_str());
+            "(%08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX (%s)",
+            r.probability, frac.first, frac.second, r.item_code[0], r.item_code[1], r.item_code[2], name.c_str());
       };
 
       auto print_collection = [&](GameMode mode, Episode episode, uint8_t difficulty, uint8_t section_id) -> void {
-        const auto& table = rs.get_table(episode, mode, difficulty, section_id);
-
         string secid_name = name_for_section_id(section_id);
         fprintf(stdout, "%s %s %s %s\n",
             name_for_mode(mode),
@@ -1082,22 +1032,18 @@ int main(int argc, char** argv) {
 
         fprintf(stdout, "  Monster rares:\n");
         for (size_t z = 0; z < 0x65; z++) {
-          const auto& r = table.monster_rares[z];
-          if (r.item_code[0] == 0 && r.item_code[1] == 0 && r.item_code[2] == 0) {
-            continue;
+          for (const auto& spec : rs.get_enemy_specs(mode, episode, difficulty, section_id, z)) {
+            string s = format_drop(spec);
+            fprintf(stdout, "    %02zX: %s\n", z, s.c_str());
           }
-          string s = format_drop(r);
-          fprintf(stdout, "    %02zX: %s\n", z, s.c_str());
         }
 
         fprintf(stdout, "  Box rares:\n");
-        for (size_t z = 0; z < 0x1E; z++) {
-          const auto& r = table.box_rares[z];
-          if (r.item_code[0] == 0 && r.item_code[1] == 0 && r.item_code[2] == 0) {
-            continue;
+        for (size_t area = 0; area < 0x12; area++) {
+          for (const auto& spec : rs.get_box_specs(mode, episode, difficulty, section_id, area)) {
+            string s = format_drop(spec);
+            fprintf(stdout, "    (area %02zX) %s\n", area, s.c_str());
           }
-          string s = format_drop(r);
-          fprintf(stdout, "    %02zX: area %02hhX %s\n", z, table.box_areas[z], s.c_str());
         }
       };
 
