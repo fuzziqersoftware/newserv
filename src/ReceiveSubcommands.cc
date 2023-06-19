@@ -1714,21 +1714,42 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xFF */ nullptr,
 };
 
-void on_subcommand(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
+void on_subcommand_multi(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     shared_ptr<Client> c, uint8_t command, uint8_t flag, const string& data) {
   if (data.empty()) {
     throw runtime_error("game command is empty");
   }
   if (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE))) {
     // TODO: We should convert these to non-trial formats and vice versa
-    forward_subcommand(l, c, command, flag, std::move(data));
+    forward_subcommand(l, c, command, flag, data.data(), data.size());
   } else {
-    uint8_t which = static_cast<uint8_t>(data[0]);
-    auto fn = subcommand_handlers[which];
-    if (fn) {
-      fn(s, l, c, command, flag, data);
-    } else {
-      on_unimplemented(s, l, c, command, flag, data);
+    StringReader r(data);
+    while (!r.eof()) {
+      size_t size;
+      const auto& header = r.get<G_UnusedHeader>(false);
+      if (header.size != 0) {
+        size = header.size << 2;
+      } else {
+        const auto& ext_header = r.get<G_ExtendedHeader<G_UnusedHeader>>(false);
+        size = ext_header.size;
+        if (size < 8) {
+          throw runtime_error("extended subcommand header has size < 8");
+        }
+        if (size & 3) {
+          throw runtime_error("extended subcommand size is not a multiple of 4");
+        }
+      }
+      if (size == 0) {
+        throw runtime_error("invalid subcommand size");
+      }
+      const void* data = r.getv(size);
+
+      auto fn = subcommand_handlers[header.subcommand];
+      if (fn) {
+        fn(s, l, c, command, flag, data, size);
+      } else {
+        on_unimplemented(s, l, c, command, flag, data, size);
+      }
     }
   }
 }

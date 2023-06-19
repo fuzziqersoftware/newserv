@@ -2533,7 +2533,7 @@ static void on_6x_C9_CB(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
-  on_subcommand(s, l, c, command, flag, data);
+  on_subcommand_multi(s, l, c, command, flag, data);
 }
 
 static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
