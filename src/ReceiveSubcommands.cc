@@ -131,7 +131,7 @@ static void on_forward_check_game(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data, size);
 }
 
-static void on_forward_sync_game_state(shared_ptr<ServerState>,
+static void on_forward_sync_joining_player_state(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
   if (!l->is_game() || !l->any_client_loading()) {
@@ -151,6 +151,137 @@ static void on_forward_sync_game_state(shared_ptr<ServerState>,
   }
 
   forward_subcommand(l, c, command, flag, data, size);
+}
+
+static void on_sync_joining_player_item_state(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const void* data, size_t size) {
+  if (!l->is_game() || !l->any_client_loading()) {
+    return;
+  }
+
+  // I'm lazy and this should never happen (this command should always be
+  // private to the joining player)
+  if (!command_is_private(command)) {
+    throw runtime_error("6x70 sent via public command");
+  }
+
+  // For non-V3 versions, just forward the data verbatim. For V3, we need to
+  // byteswap mags' data2 fields if exactly one of the sender and recipient are
+  // PSO GC
+  bool sender_is_gc = (c->version() == GameVersion::GC);
+  if (!sender_is_gc && (c->version() != GameVersion::XB)) {
+    forward_subcommand(l, c, command, flag, data, size);
+
+  } else {
+    if (flag >= l->max_clients) {
+      return;
+    }
+    auto target = l->clients[flag];
+    if (!target) {
+      return;
+    }
+    bool target_is_gc = (target->version() == GameVersion::GC);
+
+    if (target_is_gc == sender_is_gc) {
+      send_command(target, command, flag, data, size);
+
+    } else {
+      const auto& cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
+      if (cmd.compressed_size > size - sizeof(cmd)) {
+        throw runtime_error("compressed end offset is beyond end of command");
+      }
+
+      string decompressed = bc0_decompress(cmd.data, cmd.compressed_size);
+      if (c->options.debug) {
+        c->log.info("Decompressed item sync data (%" PRIX32 " -> %zX bytes; expected %" PRIX32 "):",
+            cmd.compressed_size.load(), decompressed.size(), cmd.decompressed_size.load());
+        print_data(stderr, decompressed);
+      }
+
+      if (decompressed.size() < sizeof(G_SyncItemState_6x6D_Decompressed)) {
+        throw runtime_error(string_printf(
+            "decompressed 6x6D data (0x%zX bytes) is too short for header (0x%zX bytes)",
+            decompressed.size(), sizeof(G_SyncItemState_6x6D_Decompressed)));
+      }
+      auto* decompressed_cmd = reinterpret_cast<G_SyncItemState_6x6D_Decompressed*>(decompressed.data());
+
+      size_t num_floor_items = 0;
+      for (size_t z = 0; z < decompressed_cmd->floor_item_count_per_area.size(); z++) {
+        num_floor_items += decompressed_cmd->floor_item_count_per_area[z];
+      }
+
+      size_t required_size = sizeof(G_SyncItemState_6x6D_Decompressed) + num_floor_items * sizeof(G_SyncItemState_6x6D_Decompressed::FloorItem);
+      if (decompressed.size() < required_size) {
+        throw runtime_error(string_printf(
+            "decompressed 6x6D data (0x%zX bytes) is too short for all items (0x%zX bytes)",
+            decompressed.size(), required_size));
+      }
+
+      for (size_t z = 0; z < num_floor_items; z++) {
+        decompressed_cmd->items[z].item_data.bswap_data2_if_mag();
+      }
+
+      string out_compressed_data = bc0_compress(decompressed);
+
+      G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E out_cmd;
+      out_cmd.header.basic_header.subcommand = 0x6D;
+      out_cmd.header.basic_header.size = 0x00;
+      out_cmd.header.basic_header.unused = 0x0000;
+      out_cmd.header.size = ((out_compressed_data.size() + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E)) + 3) & (~3);
+      out_cmd.decompressed_size = decompressed.size();
+      out_cmd.compressed_size = out_compressed_data.size();
+
+      // TODO: It'd be nice to not copy the data so many times here.
+      StringWriter out_w;
+      out_w.put<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(out_cmd);
+      out_w.write(out_compressed_data);
+
+      send_command(target, command, flag, out_w.str());
+    }
+  }
+}
+
+static void on_sync_joining_player_disp_and_inventory(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const void* data, size_t size) {
+  if (!l->is_game() || !l->any_client_loading()) {
+    return;
+  }
+
+  // I'm lazy and this should never happen (this command should always be
+  // private to the joining player)
+  if (!command_is_private(command)) {
+    throw runtime_error("6x70 sent via public command");
+  }
+
+  // For non-V3 versions, just forward the data verbatim. For V3, we need to
+  // byteswap mags' data2 fields if exactly one of the sender and recipient are
+  // PSO GC
+  bool sender_is_gc = (c->version() == GameVersion::GC);
+  if (!sender_is_gc && (c->version() != GameVersion::XB)) {
+    forward_subcommand(l, c, command, flag, data, size);
+
+  } else {
+    if (flag >= l->max_clients) {
+      return;
+    }
+    auto target = l->clients[flag];
+    if (!target) {
+      return;
+    }
+    bool target_is_gc = (target->version() == GameVersion::GC);
+
+    if (target_is_gc == sender_is_gc) {
+      send_command(target, command, flag, data, size);
+    } else {
+      auto out_cmd = check_size_t<G_SyncPlayerDispAndInventory_V3_6x70>(data, size);
+      for (size_t z = 0; z < 30; z++) {
+        out_cmd.inventory.items[z].data.bswap_data2_if_mag();
+      }
+      send_command_t(target, command, flag, out_cmd);
+    }
+  }
 }
 
 static void on_forward_check_game_loading(shared_ptr<ServerState>,
@@ -527,11 +658,32 @@ static void on_player_drop_item(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data, size);
 }
 
-static void on_create_inventory_item(shared_ptr<ServerState>,
+template <typename CmdT>
+void forward_subcommand_with_mag_bswap_t(
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& cmd) {
+  // I'm lazy and this should never happen for item commands (since all players
+  // need to stay in sync)
+  if (command_is_private(command)) {
+    throw runtime_error("6x2B sent via private command");
+  }
+
+  for (auto& other_c : l->clients) {
+    if (!other_c || other_c == c) {
+      continue;
+    }
+    CmdT out_cmd = cmd;
+    if ((c->version() == GameVersion::GC) != (other_c->version() == GameVersion::GC)) {
+      out_cmd.item_data.bswap_data2_if_mag();
+    }
+    send_command_t(other_c, command, flag, out_cmd);
+  }
+}
+
+template <typename CmdT>
+static void on_create_inventory_item_t(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_CreateInventoryItem_DC_6x2B>(
-      data, size, sizeof(G_CreateInventoryItem_PC_V3_BB_6x2B));
+  const auto& cmd = check_size_t<CmdT>(data, size);
 
   if ((cmd.header.client_id != c->lobby_client_id)) {
     return;
@@ -546,28 +698,43 @@ static void on_create_inventory_item(shared_ptr<ServerState>,
     PlayerInventoryItem item;
     item.present = 1;
     item.flags = 0;
-    item.data = cmd.item;
+    item.data = cmd.item_data;
+    if (c->version() == GameVersion::GC) {
+      item.data.bswap_data2_if_mag();
+    }
     c->game_data.player()->add_item(item);
 
     auto name = item.data.name(false);
     l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)",
-        cmd.header.client_id.load(), cmd.item.id.load(), name.c_str());
+        cmd.header.client_id.load(), cmd.item_data.id.load(), name.c_str());
     if (c->options.debug) {
       string name = item.data.name(true);
       send_text_message_printf(c, "$C5CREATE %08" PRIX32 "\n%s",
-          cmd.item.id.load(), name.c_str());
+          cmd.item_data.id.load(), name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
   }
 
-  forward_subcommand(l, c, command, flag, data, size);
+  forward_subcommand_with_mag_bswap_t(l, c, command, flag, cmd);
 }
 
-static void on_drop_partial_stack(shared_ptr<ServerState>,
+static void on_create_inventory_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_DropStackedItem_DC_6x5D>(
-      data, size, sizeof(G_DropStackedItem_PC_V3_BB_6x5D));
+  if (size == sizeof(G_CreateInventoryItem_PC_V3_BB_6x2B)) {
+    on_create_inventory_item_t<G_CreateInventoryItem_PC_V3_BB_6x2B>(s, l, c, command, flag, data, size);
+  } else if (size == sizeof(G_CreateInventoryItem_DC_6x2B)) {
+    on_create_inventory_item_t<G_CreateInventoryItem_DC_6x2B>(s, l, c, command, flag, data, size);
+  } else {
+    throw runtime_error("invalid size for 6x2B command");
+  }
+}
+
+template <typename CmdT>
+static void on_drop_partial_stack_t(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const void* data, size_t size) {
+  const auto& cmd = check_size_t<CmdT>(data, size);
 
   // TODO: Should we check the client ID here too?
   if (!l->is_game()) {
@@ -583,7 +750,10 @@ static void on_drop_partial_stack(shared_ptr<ServerState>,
     PlayerInventoryItem item;
     item.present = 1;
     item.flags = 0;
-    item.data = cmd.data;
+    item.data = cmd.item_data;
+    if (c->version() == GameVersion::GC) {
+      item.data.bswap_data2_if_mag();
+    }
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
     auto name = item.data.name(false);
@@ -598,7 +768,19 @@ static void on_drop_partial_stack(shared_ptr<ServerState>,
     c->game_data.player()->print_inventory(stderr);
   }
 
-  forward_subcommand(l, c, command, flag, data, size);
+  forward_subcommand_with_mag_bswap_t(l, c, command, flag, cmd);
+}
+
+static void on_drop_partial_stack(shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const void* data, size_t size) {
+  if (size == sizeof(G_DropStackedItem_PC_V3_BB_6x5D)) {
+    on_drop_partial_stack_t<G_DropStackedItem_PC_V3_BB_6x5D>(s, l, c, command, flag, data, size);
+  } else if (size == sizeof(G_DropStackedItem_DC_6x5D)) {
+    on_drop_partial_stack_t<G_DropStackedItem_DC_6x5D>(s, l, c, command, flag, data, size);
+  } else {
+    throw runtime_error("invalid size for 6x5D command");
+  }
 }
 
 static void on_drop_partial_stack_bb(shared_ptr<ServerState>,
@@ -665,7 +847,10 @@ static void on_buy_shop_item(shared_ptr<ServerState>,
     PlayerInventoryItem item;
     item.present = 1;
     item.flags = 0;
-    item.data = cmd.item;
+    item.data = cmd.item_data;
+    if (c->version() == GameVersion::GC) {
+      item.data.bswap_data2_if_mag();
+    }
     c->game_data.player()->add_item(item);
 
     auto name = item.data.name(false);
@@ -679,14 +864,14 @@ static void on_buy_shop_item(shared_ptr<ServerState>,
     c->game_data.player()->print_inventory(stderr);
   }
 
-  forward_subcommand(l, c, command, flag, data, size);
+  forward_subcommand_with_mag_bswap_t(l, c, command, flag, cmd);
 }
 
-static void on_box_or_enemy_item_drop(shared_ptr<ServerState>,
+template <typename CmdT>
+static void on_box_or_enemy_item_drop_t(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_DropItem_DC_6x5F>(
-      data, size, sizeof(G_DropItem_PC_V3_BB_6x5F));
+  const auto& cmd = check_size_t<CmdT>(data, size);
 
   if (!l->is_game() || (c->lobby_client_id != l->leader_id)) {
     return;
@@ -699,7 +884,10 @@ static void on_box_or_enemy_item_drop(shared_ptr<ServerState>,
     PlayerInventoryItem item;
     item.present = 1;
     item.flags = 0;
-    item.data = cmd.data;
+    item.data = cmd.item_data;
+    if (c->version() == GameVersion::GC) {
+      item.data.bswap_data2_if_mag();
+    }
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
     auto name = item.data.name(false);
@@ -712,7 +900,19 @@ static void on_box_or_enemy_item_drop(shared_ptr<ServerState>,
     }
   }
 
-  forward_subcommand(l, c, command, flag, data, size);
+  forward_subcommand_with_mag_bswap_t(l, c, command, flag, cmd);
+}
+
+static void on_box_or_enemy_item_drop(shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const void* data, size_t size) {
+  if (size == sizeof(G_DropItem_DC_6x5F)) {
+    on_box_or_enemy_item_drop_t<G_DropItem_DC_6x5F>(s, l, c, command, flag, data, size);
+  } else if (size == sizeof(G_DropItem_PC_V3_BB_6x5F)) {
+    on_box_or_enemy_item_drop_t<G_DropItem_PC_V3_BB_6x5F>(s, l, c, command, flag, data, size);
+  } else {
+    throw runtime_error("invalid size for 6x5F command");
+  }
 }
 
 static void on_pick_up_item(shared_ptr<ServerState>,
@@ -1375,7 +1575,7 @@ static void on_identify_item_bb(shared_ptr<ServerState>,
     res.header.subcommand = 0xB9;
     res.header.size = sizeof(res) / 4;
     res.header.client_id = c->lobby_client_id;
-    res.item = c->game_data.identify_result.data;
+    res.item_data = c->game_data.identify_result.data;
     send_command_t(l, 0x60, 0x00, res);
 
   } else {
@@ -1606,12 +1806,12 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x68 */ on_forward_check_size_game,
     /* 6x69 */ on_forward_check_size_game,
     /* 6x6A */ on_forward_check_size_game,
-    /* 6x6B */ on_forward_sync_game_state,
-    /* 6x6C */ on_forward_sync_game_state,
-    /* 6x6D */ on_forward_sync_game_state,
-    /* 6x6E */ on_forward_sync_game_state,
+    /* 6x6B */ on_forward_sync_joining_player_state,
+    /* 6x6C */ on_forward_sync_joining_player_state,
+    /* 6x6D */ on_sync_joining_player_item_state,
+    /* 6x6E */ on_forward_sync_joining_player_state,
     /* 6x6F */ on_forward_check_game_loading,
-    /* 6x70 */ on_forward_check_game_loading,
+    /* 6x70 */ on_sync_joining_player_disp_and_inventory,
     /* 6x71 */ on_forward_check_game_loading,
     /* 6x72 */ on_forward_check_game_loading,
     /* 6x73 */ on_invalid,

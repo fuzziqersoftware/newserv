@@ -522,10 +522,15 @@ void ClientGameData::import_player(const PSOPlayerDataDCPC& pd) {
   // auto_reply = pd.auto_reply;
 }
 
-void ClientGameData::import_player(const PSOPlayerDataV3& gc) {
+void ClientGameData::import_player(const PSOPlayerDataV3& gc, bool is_gc) {
   auto account = this->account();
   auto player = this->player();
   player->inventory = gc.inventory;
+  if (is_gc) {
+    for (size_t z = 0; z < 30; z++) {
+      player->inventory.items[z].data.bswap_data2_if_mag();
+    }
+  }
   player->disp = gc.disp.to_bb();
   player->info_board = gc.info_board;
   account->blocked_senders = gc.blocked_senders;

@@ -2461,7 +2461,7 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
         pd = &check_size_t<PSOPlayerDataV3>(data,
             sizeof(PSOPlayerDataV3) + c->game_data.player()->auto_reply.bytes());
       }
-      c->game_data.import_player(*pd);
+      c->game_data.import_player(*pd, c->version() == GameVersion::GC);
       break;
     }
     case GameVersion::BB: {
@@ -3442,7 +3442,7 @@ static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_D0_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  auto& cmd = check_size_t<SC_TradeItems_D0_D3>(data);
+  const auto& cmd = check_size_t<SC_TradeItems_D0_D3>(data);
 
   if (c->game_data.pending_item_trade) {
     throw runtime_error("player started a trade when one is already pending");
@@ -3463,7 +3463,10 @@ static void on_D0_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
   c->game_data.pending_item_trade.reset(new PendingItemTrade());
   c->game_data.pending_item_trade->other_client_id = cmd.target_client_id;
   for (size_t x = 0; x < cmd.item_count; x++) {
-    c->game_data.pending_item_trade->items.emplace_back(cmd.items[x]);
+    auto& item = c->game_data.pending_item_trade->items.emplace_back(cmd.item_datas[x]);
+    if (c->version() == GameVersion::GC) {
+      item.bswap_data2_if_mag();
+    }
   }
 
   // If the other player has a pending trade as well, assume this is the second

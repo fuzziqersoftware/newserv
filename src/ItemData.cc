@@ -41,6 +41,12 @@ void ItemData::clear() {
   this->data2d = 0;
 }
 
+void ItemData::bswap_data2_if_mag() {
+  if (this->data1[0] == 0x02) {
+    this->data2d = bswap32(this->data2d);
+  }
+}
+
 bool ItemData::empty() const {
   return (this->data1d[0] == 0) &&
       (this->data1d[1] == 0) &&

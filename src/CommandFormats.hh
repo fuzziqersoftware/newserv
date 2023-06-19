@@ -2483,7 +2483,7 @@ struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
   // Note: PSO GC sends uninitialized data in the unused entries of this
   // command. newserv parses and regenerates the item data when sending D3,
   // which effectively erases the uninitialized data.
-  parray<ItemData, 0x20> items;
+  parray<ItemData, 0x20> item_datas;
 } __packed__;
 
 // D1 (S->C): Advance trade state (V3/BB)
@@ -3750,11 +3750,10 @@ struct G_DropItem_6x2A {
 
 struct G_CreateInventoryItem_DC_6x2B {
   G_ClientIDHeader header;
-  ItemData item;
+  ItemData item_data;
 } __packed__;
 
-struct G_CreateInventoryItem_PC_V3_BB_6x2B {
-  G_CreateInventoryItem_DC_6x2B basic_cmd;
+struct G_CreateInventoryItem_PC_V3_BB_6x2B : G_CreateInventoryItem_DC_6x2B {
   uint8_t unused1;
   uint8_t unknown_a2;
   le_uint16_t unused2;
@@ -4123,11 +4122,10 @@ struct G_DropStackedItem_DC_6x5D {
   le_uint16_t unused2;
   le_float x;
   le_float z;
-  ItemData data;
+  ItemData item_data;
 } __packed__;
 
-struct G_DropStackedItem_PC_V3_BB_6x5D {
-  G_DropStackedItem_DC_6x5D basic_cmd;
+struct G_DropStackedItem_PC_V3_BB_6x5D : G_DropStackedItem_DC_6x5D {
   le_uint32_t unused3;
 } __packed__;
 
@@ -4135,7 +4133,7 @@ struct G_DropStackedItem_PC_V3_BB_6x5D {
 
 struct G_BuyShopItem_6x5E {
   G_ClientIDHeader header;
-  ItemData item;
+  ItemData item_data;
 } __packed__;
 
 // 6x5F: Drop item from box/enemy
@@ -4149,11 +4147,10 @@ struct G_DropItem_DC_6x5F {
   le_float z;
   le_uint16_t unknown_a1;
   le_uint16_t unknown_a2;
-  ItemData data;
+  ItemData item_data;
 } __packed__;
 
-struct G_DropItem_PC_V3_BB_6x5F {
-  G_DropItem_DC_6x5F basic_cmd;
+struct G_DropItem_PC_V3_BB_6x5F : G_DropItem_DC_6x5F {
   le_uint32_t unused3;
 } __packed__;
 
@@ -4307,10 +4304,9 @@ struct G_SyncItemState_6x6D_Decompressed {
     // item is dropped. The last item dropped in each area has drop_number equal
     // to total_items_dropped_per_area[area - 1] - 1.
     le_uint16_t drop_number;
-    ItemData data;
+    ItemData item_data;
   } __packed__;
-  // Variable-length field follows:
-  // FloorItem items[sum(floor_item_count_per_area)];
+  FloorItem items[0]; // sum(floor_item_count_per_area) of them, actually
 } __packed__;
 
 // 6x6E: Sync flag state (used while loading into game)
@@ -4340,7 +4336,7 @@ struct G_Unknown_6x6F {
 // Annoyingly, they didn't use the same format as the 65/67/68 commands here,
 // and instead rearranged a bunch of things.
 
-struct G_SyncPlayerDispAndInventory_6x70 {
+struct G_SyncPlayerDispAndInventory_V3_6x70 {
   G_ExtendedHeader<G_UnusedHeader> header;
   // Offsets in this struct are relative to the overall command header
   /* 000C */ parray<le_uint16_t, 2> unknown_a1;
@@ -5025,7 +5021,7 @@ struct G_ShopContents_BB_6xB6 {
   uint8_t num_items;
   le_uint16_t unused;
   // Note: data2d of these entries should be the price
-  ItemData entries[20];
+  ItemData item_datas[20];
 } __packed__;
 
 // 6xB7: Alias for 6xB3 (Episode 3 Trial Edition)
@@ -5062,7 +5058,7 @@ struct G_AcceptItemIdentification_BB_6xB8 {
 
 struct G_IdentifyResult_BB_6xB9 {
   G_ClientIDHeader header;
-  ItemData item;
+  ItemData item_data;
 } __packed__;
 
 // 6xBA: Sync card trade state (Episode 3)
@@ -5165,7 +5161,7 @@ struct G_SoundChat_GC_Ep3_6xBE {
 
 struct G_CreateInventoryItem_BB_6xBE {
   G_ClientIDHeader header;
-  ItemData item;
+  ItemData item_data;
   le_uint32_t unused;
 } __packed__;
 
@@ -5344,7 +5340,7 @@ struct G_SetEXPMultiplier_BB_6xDD {
 
 struct G_Unknown_BB_6xE3 {
   G_ClientIDHeader header;
-  ItemData unknown_a1;
+  ItemData item_data;
 } __packed__;
 
 // 6xE4: Invalid subcommand

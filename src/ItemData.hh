@@ -78,6 +78,10 @@ struct ItemData { // 0x14 bytes
   // W = photon blasts
   // Y = mag synchro
   // Z = item ID
+  // Note: PSO GC erroneously byteswaps data2 even when the item is a mag. This
+  // makes it incompatible with little-endian versions of PSO (i.e. all other
+  // versions). We manually byteswap data2 upon receipt and immediately before
+  // sending where needed.
 
   union {
     parray<uint8_t, 12> data1;
@@ -100,6 +104,8 @@ struct ItemData { // 0x14 bytes
   bool operator!=(const ItemData& other) const;
 
   void clear();
+
+  void bswap_data2_if_mag();
 
   std::string hex() const;
   std::string name(bool include_color_codes) const;

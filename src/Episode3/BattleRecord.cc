@@ -314,7 +314,7 @@ void BattleRecordPlayer::schedule_events() {
 
     if (this->event_it == this->record->events.end()) {
       if (relative_ts >= this->record->battle_end_timestamp) {
-        // If the record is complete and the end timestamp has been reached, so
+        // If the record is complete and the end timestamp has been reached,
         // send exit commands to all players in the lobby, and don't reschedule
         // the event (it will be deleted along with the Player when the lobby is
         // destroyed, when the last client leaves)

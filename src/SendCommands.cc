@@ -1374,23 +1374,31 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   if (watched_lobby) {
     // Live spectating
     for (size_t z = 0; z < 4; z++) {
-      if (watched_lobby->clients[z]) {
-        cmd.players[z].lobby_data.player_tag = 0x00010000;
-        cmd.players[z].lobby_data.guild_card = watched_lobby->clients[z]->license->serial_number;
-        cmd.players[z].lobby_data.client_id = watched_lobby->clients[z]->lobby_client_id;
-        cmd.players[z].lobby_data.name = watched_lobby->clients[z]->game_data.player()->disp.name;
-        remove_language_marker_inplace(cmd.players[z].lobby_data.name);
-        cmd.players[z].inventory = watched_lobby->clients[z]->game_data.player()->inventory;
-        cmd.players[z].disp = watched_lobby->clients[z]->game_data.player()->disp.to_dcpcv3();
-        remove_language_marker_inplace(cmd.players[z].disp.name);
-        cmd.entries[z].player_tag = 0x00010000;
-        cmd.entries[z].guild_card_number = watched_lobby->clients[z]->license->serial_number;
-        cmd.entries[z].name = watched_lobby->clients[z]->game_data.player()->disp.name;
-        remove_language_marker_inplace(cmd.entries[z].name);
-        cmd.entries[z].present = 1;
-        cmd.entries[z].level = watched_lobby->clients[z]->game_data.player()->disp.level.load();
-        player_count++;
+      if (!watched_lobby->clients[z]) {
+        continue;
       }
+      auto& p = cmd.players[z];
+      p.lobby_data.player_tag = 0x00010000;
+      p.lobby_data.guild_card = watched_lobby->clients[z]->license->serial_number;
+      p.lobby_data.client_id = watched_lobby->clients[z]->lobby_client_id;
+      p.lobby_data.name = watched_lobby->clients[z]->game_data.player()->disp.name;
+      remove_language_marker_inplace(p.lobby_data.name);
+      p.inventory = watched_lobby->clients[z]->game_data.player()->inventory;
+      for (size_t y = 0; y < 30; y++) {
+        p.inventory.items[y].data.bswap_data2_if_mag();
+      }
+      p.disp = watched_lobby->clients[z]->game_data.player()->disp.to_dcpcv3();
+      remove_language_marker_inplace(p.disp.name);
+
+      auto& e = cmd.entries[z];
+      e.player_tag = 0x00010000;
+      e.guild_card_number = watched_lobby->clients[z]->license->serial_number;
+      e.name = watched_lobby->clients[z]->game_data.player()->disp.name;
+      remove_language_marker_inplace(e.name);
+      e.present = 1;
+      e.level = watched_lobby->clients[z]->game_data.player()->disp.level.load();
+
+      player_count++;
     }
 
   } else if (l->battle_player) {
@@ -1410,6 +1418,9 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       cmd.players[client_id].lobby_data = entry.lobby_data;
       remove_language_marker_inplace(cmd.players[client_id].lobby_data.name);
       cmd.players[client_id].inventory = entry.inventory;
+      for (size_t z = 0; z < 30; z++) {
+        cmd.players[client_id].inventory.items[z].data.bswap_data2_if_mag();
+      }
       cmd.players[client_id].disp = entry.disp;
       remove_language_marker_inplace(cmd.players[client_id].disp.name);
       cmd.entries[client_id].player_tag = 0x00010000;
@@ -1481,6 +1492,9 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       cmd->lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
       if (cmd_ep3) {
         cmd_ep3->players_ep3[x].inventory = l->clients[x]->game_data.player()->inventory;
+        for (size_t z = 0; z < 30; z++) {
+          cmd_ep3->players_ep3[x].inventory.items[z].data.bswap_data2_if_mag();
+        }
         cmd_ep3->players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(
             l->clients[x]->game_data.player()->disp);
       }
@@ -1612,6 +1626,11 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.client_id = lc->lobby_client_id;
     e.lobby_data.name = lc->game_data.player()->disp.name;
     e.inventory = lc->game_data.player()->inventory;
+    if (c->version() == GameVersion::GC) {
+      for (size_t z = 0; z < 30; z++) {
+        e.inventory.items[z].data.bswap_data2_if_mag();
+      }
+    }
     e.disp = convert_player_disp_data<DispDataT>(lc->game_data.player()->disp);
     if ((c->version() == GameVersion::PC) || (c->version() == GameVersion::DC)) {
       e.disp.enforce_v2_limits();
@@ -1782,13 +1801,16 @@ void send_get_player_info(shared_ptr<Client> c) {
 void send_execute_item_trade(shared_ptr<Client> c,
     const vector<ItemData>& items) {
   SC_TradeItems_D0_D3 cmd;
-  if (items.size() > sizeof(cmd.items) / sizeof(cmd.items[0])) {
+  if (items.size() > cmd.item_datas.size()) {
     throw logic_error("too many items in execute trade command");
   }
   cmd.target_client_id = c->lobby_client_id;
   cmd.item_count = items.size();
   for (size_t x = 0; x < items.size(); x++) {
-    cmd.items[x] = items[x];
+    cmd.item_datas[x] = items[x];
+    if (c->version() == GameVersion::GC) {
+      cmd.item_datas[x].bswap_data2_if_mag();
+    }
   }
   send_command_t(c, 0xD3, 0x00, cmd);
 }
@@ -1914,31 +1936,43 @@ void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c,
 // BB game commands
 
 void send_drop_item(Channel& ch, const ItemData& item,
-    bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
+    bool from_enemy, uint8_t area, float x, float z, uint16_t entity_id) {
   G_DropItem_PC_V3_BB_6x5F cmd = {
-      {{0x5F, 0x0B, 0x0000}, area, from_enemy, request_id, x, z, 0, 0, item}, 0};
+      {{0x5F, 0x0B, 0x0000}, area, from_enemy, entity_id, x, z, 0, 0, item}, 0};
+  if (ch.version == GameVersion::GC) {
+    cmd.item_data.bswap_data2_if_mag();
+  }
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
-    bool from_enemy, uint8_t area, float x, float z, uint16_t request_id) {
-  G_DropItem_PC_V3_BB_6x5F cmd = {
-      {{0x5F, 0x0B, 0x0000}, area, from_enemy, request_id, x, z, 0, 0, item}, 0};
-  send_command_t(l, 0x60, 0x00, cmd);
+    bool from_enemy, uint8_t area, float x, float z, uint16_t entity_id) {
+  for (auto& c : l->clients) {
+    if (!c) {
+      continue;
+    }
+    send_drop_item(c->channel, item, from_enemy, area, x, z, entity_id);
+  }
 }
 
 void send_drop_stacked_item(Channel& ch, const ItemData& item,
     uint8_t area, float x, float z) {
   G_DropStackedItem_PC_V3_BB_6x5D cmd = {
       {{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
+  if (ch.version == GameVersion::GC) {
+    cmd.item_data.bswap_data2_if_mag();
+  }
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
     uint8_t area, float x, float z) {
-  G_DropStackedItem_PC_V3_BB_6x5D cmd = {
-      {{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
-  send_command_t(l, 0x60, 0x00, cmd);
+  for (auto& c : l->clients) {
+    if (!c) {
+      continue;
+    }
+    send_drop_stacked_item(c->channel, item, area, x, z);
+  }
 }
 
 void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
@@ -1949,16 +1983,16 @@ void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-// Creates an item in a player's inventory (used for withdrawing items from the
-// bank)
 void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     const ItemData& item) {
+  if (c->version() != GameVersion::BB) {
+    throw logic_error("6xBE can only be sent to BB clients");
+  }
   uint16_t client_id = c->lobby_client_id;
   G_CreateInventoryItem_BB_6xBE cmd = {{0xBE, 0x07, client_id}, item, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-// destroys an item
 void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t item_id, uint32_t amount) {
   uint16_t client_id = c->lobby_client_id;
@@ -1966,8 +2000,11 @@ void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-// sends the player their bank data
 void send_bank(shared_ptr<Client> c) {
+  if (c->version() != GameVersion::BB) {
+    throw logic_error("6xBC can only be sent to BB clients");
+  }
+
   vector<PlayerBankItem> items(c->game_data.player()->bank.items,
       &c->game_data.player()->bank.items[c->game_data.player()->bank.num_items]);
 
@@ -1981,8 +2018,11 @@ void send_bank(shared_ptr<Client> c) {
   send_command_t_vt(c, 0x6C, 0x00, cmd, items);
 }
 
-// sends the player a shop's contents
 void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
+  if (c->version() != GameVersion::BB) {
+    throw logic_error("6xB6 can only be sent to BB clients");
+  }
+
   const auto& contents = c->game_data.shop_contents.at(shop_type);
 
   G_ShopContents_BB_6xB6 cmd = {
@@ -1993,10 +2033,10 @@ void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
       {},
   };
   for (size_t x = 0; x < contents.size(); x++) {
-    cmd.entries[x] = contents[x];
+    cmd.item_datas[x] = contents[x];
   }
 
-  send_command(c, 0x60, 0x00, &cmd, sizeof(cmd) - sizeof(cmd.entries[0]) * (20 - contents.size()));
+  send_command(c, 0x60, 0x00, &cmd, sizeof(cmd) - sizeof(cmd.item_datas[0]) * (20 - contents.size()));
 }
 
 // notifies players about a level up
@@ -2029,6 +2069,10 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 // gives a player EXP
 void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t amount) {
+  if (c->version() != GameVersion::BB) {
+    throw logic_error("6xBF can only be sent to BB clients");
+  }
+
   uint16_t client_id = c->lobby_client_id;
   G_GiveExperience_BB_6xBF cmd = {
       {0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, client_id}, amount};

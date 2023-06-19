@@ -524,7 +524,7 @@ public:
   void save_player_data();
 
   void import_player(const PSOPlayerDataDCPC& pd);
-  void import_player(const PSOPlayerDataV3& pd);
+  void import_player(const PSOPlayerDataV3& pd, bool is_gc);
   void import_player(const PSOPlayerDataBB& pd);
   // Note: this function is not const because it can cause player and account
   // data to be loaded
