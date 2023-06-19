@@ -40,75 +40,77 @@ find_package(resource_file QUIET)
 # Executable definition
 
 add_executable(newserv
-  src/BMLArchive.cc
-  src/CatSession.cc
-  src/Channel.cc
-  src/ChatCommands.cc
-  src/Client.cc
-  src/CommonItemSet.cc
-  src/Compression.cc
-  src/DNSServer.cc
-  src/Episode3/AssistServer.cc
-  src/Episode3/BattleRecord.cc
-  src/Episode3/Card.cc
-  src/Episode3/CardSpecial.cc
-  src/Episode3/DataIndex.cc
-  src/Episode3/DeckState.cc
-  src/Episode3/MapState.cc
-  src/Episode3/PlayerState.cc
-  src/Episode3/PlayerStateSubordinates.cc
-  src/Episode3/RulerServer.cc
-  src/Episode3/Server.cc
-  src/Episode3/Tournament.cc
-  src/FileContentsCache.cc
-  src/FunctionCompiler.cc
-  src/GSLArchive.cc
-  src/IPFrameInfo.cc
-  src/IPStackSimulator.cc
-  src/ItemCreator.cc
-  src/ItemData.cc
-  src/ItemParameterTable.cc
-  src/Items.cc
-  src/LevelTable.cc
-  src/License.cc
-  src/Lobby.cc
-  src/Loggers.cc
-  src/Main.cc
-  src/Map.cc
-  src/Menu.cc
-  src/NetworkAddresses.cc
-  src/PatchFileIndex.cc
-  src/Player.cc
-  src/Product.cc
-  src/ProxyCommands.cc
-  src/ProxyServer.cc
-  src/PSOEncryption.cc
-  src/PSOGCObjectGraph.cc
-  src/PSOProtocol.cc
-  src/Quest.cc
-  src/RareItemSet.cc
-  src/ReceiveCommands.cc
-  src/ReceiveSubcommands.cc
-  src/ReplaySession.cc
-  src/SaveFileFormats.cc
-  src/SendCommands.cc
-  src/Server.cc
-  src/ServerShell.cc
-  src/ServerState.cc
-  src/Shell.cc
-  src/StaticGameData.cc
-  src/Text.cc
-  src/Version.cc
+    src/BattleParamsIndex.cc
+    src/BMLArchive.cc
+    src/CatSession.cc
+    src/Channel.cc
+    src/ChatCommands.cc
+    src/Client.cc
+    src/CommonItemSet.cc
+    src/Compression.cc
+    src/DNSServer.cc
+    src/EnemyType.cc
+    src/Episode3/AssistServer.cc
+    src/Episode3/BattleRecord.cc
+    src/Episode3/Card.cc
+    src/Episode3/CardSpecial.cc
+    src/Episode3/DataIndex.cc
+    src/Episode3/DeckState.cc
+    src/Episode3/MapState.cc
+    src/Episode3/PlayerState.cc
+    src/Episode3/PlayerStateSubordinates.cc
+    src/Episode3/RulerServer.cc
+    src/Episode3/Server.cc
+    src/Episode3/Tournament.cc
+    src/FileContentsCache.cc
+    src/FunctionCompiler.cc
+    src/GSLArchive.cc
+    src/IPFrameInfo.cc
+    src/IPStackSimulator.cc
+    src/ItemCreator.cc
+    src/ItemData.cc
+    src/ItemParameterTable.cc
+    src/Items.cc
+    src/LevelTable.cc
+    src/License.cc
+    src/Lobby.cc
+    src/Loggers.cc
+    src/Main.cc
+    src/Map.cc
+    src/Menu.cc
+    src/NetworkAddresses.cc
+    src/PatchFileIndex.cc
+    src/Player.cc
+    src/Product.cc
+    src/ProxyCommands.cc
+    src/ProxyServer.cc
+    src/PSOEncryption.cc
+    src/PSOGCObjectGraph.cc
+    src/PSOProtocol.cc
+    src/Quest.cc
+    src/RareItemSet.cc
+    src/ReceiveCommands.cc
+    src/ReceiveSubcommands.cc
+    src/ReplaySession.cc
+    src/SaveFileFormats.cc
+    src/SendCommands.cc
+    src/Server.cc
+    src/ServerShell.cc
+    src/ServerState.cc
+    src/Shell.cc
+    src/StaticGameData.cc
+    src/Text.cc
+    src/Version.cc
 )
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR})
 target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} pthread)
 
 if(resource_file_FOUND)
-  target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)
-  target_link_libraries(newserv resource_file)
-  message(STATUS "libresource_file found; enabling patch support")
+    target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)
+    target_link_libraries(newserv resource_file)
+    message(STATUS "libresource_file found; enabling patch support")
 else()
-  message(WARNING "libresource_file not found; disabling patch support")
+    message(WARNING "libresource_file not found; disabling patch support")
 endif()
 
 
@@ -120,10 +122,10 @@ enable_testing()
 file(GLOB TestCases ${CMAKE_SOURCE_DIR}/tests/*.test.txt)
 
 foreach(TestCase IN ITEMS ${TestCases})
-  add_test(
-      NAME ${TestCase}
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMAND ${CMAKE_BINARY_DIR}/newserv replay-log ${TestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json --require-password=11111111 --require-access-key=111111111111)
+    add_test(
+        NAME ${TestCase}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMAND ${CMAKE_BINARY_DIR}/newserv replay-log ${TestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json --require-password=11111111 --require-access-key=111111111111)
 endforeach()
 
 add_test(
