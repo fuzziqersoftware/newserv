@@ -3255,6 +3255,8 @@ shared_ptr<Lobby> create_game_generic(
     }
 
     c->log.info("Loaded maps contain %zu entries overall", game->map->enemies.size());
+
+    // TODO (R1): Assign rare monsters
   }
   return game;
 }
@@ -3426,6 +3428,8 @@ static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (c->version() == GameVersion::BB) {
     send_get_player_info(c);
   }
+
+  // TODO (R1): If the game is BB and in a joinable quest, send the quest immediately. If the game is BB and not in a joinable quest, send the rare monster config (DE)
 
   // Handle initial commands for spectator teams
   auto watched_lobby = l->watched_lobby.lock();
