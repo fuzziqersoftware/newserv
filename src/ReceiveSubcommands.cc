@@ -342,6 +342,7 @@ static void on_set_player_visibility(shared_ptr<ServerState>,
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands used by cheat mechanisms
 
+template <typename CmdT>
 static void on_change_area(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
@@ -353,7 +354,29 @@ static void on_change_area(shared_ptr<ServerState>,
   forward_subcommand(l, c, command, flag, data, size);
 }
 
-// when a player is hit by an enemy, heal them if infinite HP is enabled
+// When a player dies, decrease their mag's synchro
+static void on_player_died(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
+    const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
+  if (!l->is_game() || (cmd.client_id != c->lobby_client_id)) {
+    return;
+  }
+
+  if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
+    try {
+      auto& inventory = c->game_data.player()->inventory;
+      size_t mag_index = inventory.find_equipped_mag();
+      auto& data = inventory.items[mag_index].data;
+      data.data2[0] = max<int8_t>(static_cast<int8_t>(data.data2[0] - 5), 0);
+    } catch (const out_of_range&) {
+    }
+  }
+
+  forward_subcommand(l, c, command, flag, data, size);
+}
+
+// When a player is hit by an enemy, heal them if infinite HP is enabled
 static void on_hit_by_enemy(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
