@@ -15,8 +15,6 @@
 
 struct Map {
   struct Enemy {
-    static uint64_t next_enemy_id;
-
     enum Flag {
       HIT_BY_PLAYER0 = 0x01,
       HIT_BY_PLAYER1 = 0x02,
@@ -25,7 +23,6 @@ struct Map {
       DEFEATED = 0x10,
       ITEM_DROPPED = 0x20,
     };
-    uint64_t id;
     EnemyType type;
     uint8_t flags;
     uint8_t last_hit_by_client_id;

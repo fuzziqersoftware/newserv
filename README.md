@@ -51,7 +51,8 @@ With that said, I offer no guarantees on how or when this project will advance. 
 
 Current known issues / missing features / things to do:
 - Implement the rest of PSOBB. Major areas of work:
-    - Find any remaining mismatches in enemy IDs / experience (Episode 1 is mostly fixed now, except for Dark Falz)
+    - Find any remaining mismatches in enemy IDs / experience
+    - Sale prices for non-rare weapons with specials are computed incorrectly when buying/selling at shops
     - Replace enemy list, game episode, etc. with quest data when loading a quest
     - Implement trade window
     - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on other versions).

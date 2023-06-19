@@ -1237,10 +1237,10 @@ static void on_enemy_killed_bb(shared_ptr<ServerState> s,
 
   auto& e = l->map->enemies[cmd.enemy_id];
   string e_str = e.str();
-  c->log.info("Enemy killed: entry %hu => %s", cmd.enemy_id.load(), e_str.c_str());
+  c->log.info("Enemy killed: E-%hX => %s", cmd.enemy_id.load(), e_str.c_str());
   if (e.flags & Map::Enemy::Flag::DEFEATED) {
     if (c->options.debug) {
-      send_text_message_printf(c, "$C5E-%hX (already defeated)", cmd.enemy_id.load());
+      send_text_message_printf(c, "$C5E-%hX __DEFEATED__", cmd.enemy_id.load());
     }
     return;
   }
@@ -1250,7 +1250,7 @@ static void on_enemy_killed_bb(shared_ptr<ServerState> s,
     experience = s->battle_params->get(l->mode == GameMode::SOLO, l->episode, l->difficulty, e.type).experience;
   } catch (const exception& e) {
     if (c->options.debug) {
-      send_text_message_printf(c, "$C5E-%hX (missing definition)\n%s", cmd.enemy_id.load(), e.what());
+      send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_id.load(), e.what());
     } else {
       send_text_message_printf(c, "$C4Unknown enemy type killed:\n%s", e.what());
     }
@@ -1279,7 +1279,7 @@ static void on_enemy_killed_bb(shared_ptr<ServerState> s,
       other_c->game_data.player()->disp.experience += player_exp;
       send_give_experience(l, other_c, player_exp);
       if (other_c->options.debug) {
-        send_text_message_printf(other_c, "$C5+%" PRIu32 " E-%hX (%s)",
+        send_text_message_printf(other_c, "$C5+%" PRIu32 " E-%hX %s",
             player_exp, cmd.enemy_id.load(), name_for_enum(e.type));
       }
 

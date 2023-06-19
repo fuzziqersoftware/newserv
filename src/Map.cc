@@ -9,25 +9,23 @@
 
 using namespace std;
 
-uint64_t Map::Enemy::next_enemy_id = 1;
-
 Map::Enemy::Enemy(EnemyType type)
-    : id(Map::Enemy::next_enemy_id++),
-      type(type),
+    : type(type),
       flags(0),
       last_hit_by_client_id(0) {}
 
 string Map::Enemy::str() const {
-  return string_printf("[Map::Enemy E-%" PRIX64 " type=%s flags=%02hhX last_hit_by_client_id=%hu]",
-      this->id, name_for_enum(this->type), this->flags, this->last_hit_by_client_id);
+  return string_printf("[Map::Enemy %s flags=%02hhX last_hit_by_client_id=%hu]",
+      name_for_enum(this->type), this->flags, this->last_hit_by_client_id);
 }
 
 struct EnemyEntry {
-  /* 00 */ le_uint32_t base;
-  /* 04 */ le_uint16_t unknown_a1;
+  /* 00 */ le_uint16_t base_type;
+  /* 02 */ le_uint16_t unknown_a0; // Overwritten by client at load time
+  /* 04 */ le_uint16_t enemy_index; // Overwritten by client at load time
   /* 06 */ le_uint16_t num_clones;
   /* 08 */ le_uint16_t area;
-  /* 0A */ le_uint16_t unknown_a2;
+  /* 0A */ le_uint16_t entity_id; // == enemy_index + 0x1000
   /* 0C */ le_uint16_t section;
   /* 0E */ le_uint16_t wave_number;
   /* 10 */ le_uint32_t wave_number2;
@@ -47,9 +45,9 @@ struct EnemyEntry {
   /* 48 */
 
   string str() const {
-    return string_printf("EnemyEntry(base=%" PRIX32 ", a1=%hX, num_clones=%hX, area=%hX, a2=%hX, section=%hX, wave_number=%hX, wave_number2=%" PRIX32 ", x=%g, y=%g, z=%g, x_angle=%" PRIX32 ", y_angle=%" PRIX32 ", z_angle=%" PRIX32 ", a3=%" PRIX32 ", a4=%" PRIX32 ", a5=%" PRIX32 ", a6=%" PRIX32 ", a7=%" PRIX32 ", skin=%" PRIX32 ", a8=%" PRIX32 ")",
-        this->base.load(), this->unknown_a1.load(), this->num_clones.load(), this->area.load(),
-        this->unknown_a2.load(), this->section.load(), this->wave_number.load(),
+    return string_printf("EnemyEntry(base_type=%hX, a0=%hX, enemy_index=%hX, num_clones=%hX, area=%hX, entity_id=%hX, section=%hX, wave_number=%hX, wave_number2=%" PRIX32 ", x=%g, y=%g, z=%g, x_angle=%" PRIX32 ", y_angle=%" PRIX32 ", z_angle=%" PRIX32 ", a3=%" PRIX32 ", a4=%" PRIX32 ", a5=%" PRIX32 ", a6=%" PRIX32 ", a7=%" PRIX32 ", skin=%" PRIX32 ", a8=%" PRIX32 ")",
+        this->base_type.load(), this->unknown_a0.load(), this->enemy_index.load(), this->num_clones.load(), this->area.load(),
+        this->entity_id.load(), this->section.load(), this->wave_number.load(),
         this->wave_number2.load(), this->x.load(), this->y.load(), this->z.load(), this->x_angle.load(),
         this->y_angle.load(), this->z_angle.load(), this->unknown_a3.load(), this->unknown_a4.load(),
         this->unknown_a5.load(), this->unknown_a6.load(), this->unknown_a7.load(), this->skin.load(),
@@ -58,7 +56,7 @@ struct EnemyEntry {
 } __attribute__((packed));
 
 struct ObjectEntry {
-  /* 00 */ le_uint16_t type;
+  /* 00 */ le_uint16_t base_type;
   /* 02 */ le_uint16_t unknown_a1;
   /* 04 */ le_uint32_t unknown_a2;
   /* 08 */ le_uint16_t id;
@@ -81,8 +79,8 @@ struct ObjectEntry {
   /* 44 */
 
   string str() const {
-    return string_printf("ObjectEntry(type=%hX, a1=%hX, a2=%" PRIX32 ", id=%hX, group=%hX, section=%hX, a3=%hX, x=%g, y=%g, z=%g, x_angle=%" PRIX32 ", y_angle=%" PRIX32 ", z_angle=%" PRIX32 ", a3=%" PRIX32 ", a4=%" PRIX32 ", a5=%" PRIX32 ", a6=%" PRIX32 ", a7=%" PRIX32 ", a8=%" PRIX32 ", a9=%" PRIX32 ")",
-        this->type.load(), this->unknown_a1.load(), this->unknown_a2.load(), this->id.load(), this->group.load(),
+    return string_printf("ObjectEntry(base_type=%hX, a1=%hX, a2=%" PRIX32 ", id=%hX, group=%hX, section=%hX, a3=%hX, x=%g, y=%g, z=%g, x_angle=%" PRIX32 ", y_angle=%" PRIX32 ", z_angle=%" PRIX32 ", a3=%" PRIX32 ", a4=%" PRIX32 ", a5=%" PRIX32 ", a6=%" PRIX32 ", a7=%" PRIX32 ", a8=%" PRIX32 ", a9=%" PRIX32 ")",
+        this->base_type.load(), this->unknown_a1.load(), this->unknown_a2.load(), this->id.load(), this->group.load(),
         this->section.load(), this->unknown_a3.load(), this->x.load(), this->y.load(), this->z.load(), this->x_angle.load(),
         this->y_angle.load(), this->z_angle.load(), this->unknown_a3.load(), this->unknown_a4.load(),
         this->unknown_a5.load(), this->unknown_a6.load(), this->unknown_a7.load(), this->unknown_a8.load(),
@@ -103,16 +101,13 @@ void Map::add_enemies_from_map_data(
     throw runtime_error("data size is not a multiple of entry size");
   }
 
-  auto create_clones = [&](size_t count) {
-    for (; count > 0; count--) {
-      this->enemies.emplace_back(EnemyType::NONE);
-    }
-  };
-
   for (size_t y = 0; y < entry_count; y++) {
     const auto& e = map[y];
 
-    switch (e.base) {
+    string hex = format_data_string(&e, sizeof(e));
+    fprintf(stderr, "[%04zX] %s\n", y, hex.c_str());
+
+    switch (e.base_type) {
       case 0x40:
         enemies.emplace_back((e.skin & 0x01) ? EnemyType::HILDEBLUE : EnemyType::HILDEBEAR);
         break;
@@ -123,18 +118,22 @@ void Map::add_enemies_from_map_data(
             enemies.emplace_back(is_rare ? EnemyType::AL_RAPPY : EnemyType::RAG_RAPPY);
             break;
           case Episode::EP2:
-            switch (event) {
-              case 0x01:
-                enemies.emplace_back(EnemyType::SAINT_RAPPY);
-                break;
-              case 0x04:
-                enemies.emplace_back(EnemyType::EGG_RAPPY);
-                break;
-              case 0x05:
-                enemies.emplace_back(EnemyType::HALLO_RAPPY);
-                break;
-              default:
-                enemies.emplace_back(EnemyType::LOVE_RAPPY);
+            if (is_rare) {
+              switch (event) {
+                case 0x01:
+                  enemies.emplace_back(EnemyType::SAINT_RAPPY);
+                  break;
+                case 0x04:
+                  enemies.emplace_back(EnemyType::EGG_RAPPY);
+                  break;
+                case 0x05:
+                  enemies.emplace_back(EnemyType::HALLO_RAPPY);
+                  break;
+                default:
+                  enemies.emplace_back(EnemyType::LOVE_RAPPY);
+              }
+            } else {
+              enemies.emplace_back(EnemyType::RAG_RAPPY);
             }
             break;
           case Episode::EP4:
@@ -149,14 +148,15 @@ void Map::add_enemies_from_map_data(
         }
         break;
       }
-      case 0x42:
+      case 0x42: {
         enemies.emplace_back(EnemyType::MONEST);
-        for (size_t x = 0; x < e.num_clones; x++) {
-          enemies.emplace_back((x < 30) ? EnemyType::MOTHMANT : EnemyType::UNKNOWN);
+        for (size_t x = 0; x < 30; x++) {
+          enemies.emplace_back(EnemyType::MOTHMANT);
         }
         break;
+      }
       case 0x43: {
-        enemies.emplace_back((e.unknown_a4 & 0x800000) ? EnemyType::BARBAROUS_WOLF : EnemyType::SAVAGE_WOLF);
+        enemies.emplace_back(e.unknown_a4 ? EnemyType::BARBAROUS_WOLF : EnemyType::SAVAGE_WOLF);
         break;
       }
       case 0x44:
@@ -170,7 +170,7 @@ void Map::add_enemies_from_map_data(
         if ((episode == Episode::EP2) && (e.area > 0x0F)) {
           enemies.emplace_back(EnemyType::DEL_LILY);
         } else {
-          enemies.emplace_back((e.unknown_a4 & 0x800000) ? EnemyType::NAR_LILY : EnemyType::POISON_LILY);
+          enemies.emplace_back((e.skin & 1) ? EnemyType::NAR_LILY : EnemyType::POISON_LILY);
         }
         break;
       case 0x62:
@@ -182,9 +182,9 @@ void Map::add_enemies_from_map_data(
         break;
       }
       case 0x64: {
-        bool is_common = ((e.unknown_a4 & 0x800000) ? true : false);
+        bool is_rare = (e.skin & 1);
         for (size_t x = 0; x < 5; x++) { // Main slime + 4 clones
-          enemies.emplace_back(is_common ? EnemyType::POFUILLY_SLIME : EnemyType::POUILLY_SLIME);
+          enemies.emplace_back(is_rare ? EnemyType::POFUILLY_SLIME : EnemyType::POUILLY_SLIME);
         }
         break;
       }
@@ -199,19 +199,21 @@ void Map::add_enemies_from_map_data(
       case 0x81:
         enemies.emplace_back(EnemyType::GARANZ);
         break;
-      case 0x82:
-        enemies.emplace_back((e.unknown_a4 & 0x800000) ? EnemyType::SINOW_GOLD : EnemyType::SINOW_BEAT);
-        if (e.num_clones == 0) {
-          create_clones(4);
+      case 0x82: {
+        EnemyType type = e.unknown_a4 ? EnemyType::SINOW_GOLD : EnemyType::SINOW_BEAT;
+        size_t count = (e.num_clones == 0) ? 5 : (e.num_clones + 1);
+        for (size_t z = 0; z < count; z++) {
+          enemies.emplace_back(type);
         }
         break;
+      }
       case 0x83:
         enemies.emplace_back(EnemyType::CANADINE);
         break;
       case 0x84:
         enemies.emplace_back(EnemyType::CANANE);
         for (size_t x = 0; x < 8; x++) {
-          enemies.emplace_back(EnemyType::CANADINE);
+          enemies.emplace_back(EnemyType::CANADINE_GROUP);
         }
         break;
       case 0x85:
@@ -222,7 +224,8 @@ void Map::add_enemies_from_map_data(
         break;
       case 0xA1:
         enemies.emplace_back(EnemyType::CHAOS_SORCERER);
-        create_clones(2);
+        enemies.emplace_back(EnemyType::BEE_R);
+        enemies.emplace_back(EnemyType::BEE_L);
         break;
       case 0xA2:
         enemies.emplace_back(EnemyType::DARK_GUNNER);
@@ -261,9 +264,27 @@ void Map::add_enemies_from_map_data(
         break;
       case 0xC1:
         enemies.emplace_back(EnemyType::DE_ROL_LE);
+        for (size_t z = 0; z < 0x0A; z++) {
+          enemies.emplace_back(EnemyType::DE_ROL_LE_BODY);
+        }
+        for (size_t z = 0; z < 0x09; z++) {
+          enemies.emplace_back(EnemyType::DE_ROL_LE_MINE);
+        }
         break;
       case 0xC2:
         enemies.emplace_back(EnemyType::VOL_OPT_1);
+        for (size_t z = 0; z < 6; z++) {
+          enemies.emplace_back(EnemyType::VOL_OPT_PILLAR);
+        }
+        for (size_t z = 0; z < 24; z++) {
+          enemies.emplace_back(EnemyType::VOL_OPT_MONITOR);
+        }
+        for (size_t z = 0; z < 2; z++) {
+          enemies.emplace_back(EnemyType::NONE);
+        }
+        enemies.emplace_back(EnemyType::VOL_OPT_AMP);
+        enemies.emplace_back(EnemyType::VOL_OPT_CORE);
+        enemies.emplace_back(EnemyType::NONE);
         break;
       case 0xC5:
         enemies.emplace_back(EnemyType::VOL_OPT_2);
@@ -274,26 +295,36 @@ void Map::add_enemies_from_map_data(
         } else {
           enemies.emplace_back(EnemyType::DARK_FALZ_2);
         }
-        for (size_t x = 0; x < 510; x++) {
+        for (size_t x = 0; x < 0x1FD; x++) {
           enemies.emplace_back(difficulty == 3 ? EnemyType::DARVANT_ULTIMATE : EnemyType::DARVANT);
         }
+        enemies.emplace_back(EnemyType::DARK_FALZ_3);
+        enemies.emplace_back(EnemyType::DARK_FALZ_2);
+        enemies.emplace_back(EnemyType::DARK_FALZ_1);
         break;
       case 0xCA:
-        enemies.emplace_back(EnemyType::OLGA_FLOW_2);
-        create_clones(0x200);
+        for (size_t z = 0; z < 0x201; z++) {
+          enemies.emplace_back(EnemyType::OLGA_FLOW_2);
+        }
         break;
       case 0xCB:
         enemies.emplace_back(EnemyType::BARBA_RAY);
-        create_clones(0x2F);
+        for (size_t z = 0; z < 0x2F; z++) {
+          enemies.emplace_back(EnemyType::PIG_RAY);
+        }
         break;
       case 0xCC:
-        enemies.emplace_back(EnemyType::GOL_DRAGON);
-        create_clones(5);
+        for (size_t z = 0; z < 6; z++) {
+          enemies.emplace_back(EnemyType::GOL_DRAGON);
+        }
         break;
-      case 0xD4:
-        enemies.emplace_back((e.unknown_a4 & 0x800000) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL);
-        create_clones(4);
+      case 0xD4: {
+        EnemyType type = (e.skin & 1) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL;
+        for (size_t z = 0; z < 5; z++) {
+          enemies.emplace_back(type);
+        }
         break;
+      }
       case 0xD5:
         enemies.emplace_back((e.skin & 0x01) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
         break;
@@ -337,7 +368,9 @@ void Map::add_enemies_from_map_data(
       case 0xE0:
         if ((episode == Episode::EP2) && (e.area > 0x0F)) {
           enemies.emplace_back(EnemyType::EPSILON);
-          create_clones(4);
+          for (size_t z = 0; z < 4; z++) {
+            enemies.emplace_back(EnemyType::EPSIGUARD);
+          }
         } else {
           enemies.emplace_back((e.skin & 0x01) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
         }
@@ -350,9 +383,9 @@ void Map::add_enemies_from_map_data(
         break;
       case 0x0111:
         if (e.area > 0x05) {
-          enemies.emplace_back((e.unknown_a4 & 0x800000) ? EnemyType::YOWIE_ALT : EnemyType::SATELLITE_LIZARD_ALT);
+          enemies.emplace_back(e.unknown_a4 ? EnemyType::YOWIE_ALT : EnemyType::SATELLITE_LIZARD_ALT);
         } else {
-          enemies.emplace_back((e.unknown_a4 & 0x800000) ? EnemyType::YOWIE : EnemyType::SATELLITE_LIZARD);
+          enemies.emplace_back(e.unknown_a4 ? EnemyType::YOWIE : EnemyType::SATELLITE_LIZARD);
         }
         break;
       case 0x0112:
@@ -363,9 +396,9 @@ void Map::add_enemies_from_map_data(
         break;
       case 0x0114:
         if (e.area > 0x05) {
-          enemies.emplace_back((e.unknown_a4 & 0x800000) ? EnemyType::PAZUZU_ALT : EnemyType::ZU_ALT);
+          enemies.emplace_back((e.skin & 1) ? EnemyType::PAZUZU_ALT : EnemyType::ZU_ALT);
         } else {
-          enemies.emplace_back((e.unknown_a4 & 0x800000) ? EnemyType::PAZUZU : EnemyType::ZU);
+          enemies.emplace_back((e.skin & 1) ? EnemyType::PAZUZU : EnemyType::ZU);
         }
         break;
       case 0x0115:
@@ -384,20 +417,21 @@ void Map::add_enemies_from_map_data(
         break;
       }
       case 0x0119: // Saint-Million, Shambertin, Kondrieu
-        if (e.unknown_a4 & 0x800000) {
+        if (e.unknown_a4) {
           enemies.emplace_back(EnemyType::KONDRIEU);
         } else {
           enemies.emplace_back((e.skin & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILLION);
         }
         break;
       default:
-        enemies.emplace_back(EnemyType::UNKNOWN);
+        for (size_t z = 0; z < e.num_clones + 1; z++) {
+          enemies.emplace_back(EnemyType::UNKNOWN);
+        }
         static_game_data_log.warning(
-            "(Entry %zu, offset %zX in file) Unknown enemy type %08" PRIX32 " %08" PRIX32,
-            y, y * sizeof(EnemyEntry), e.base.load(), e.skin.load());
+            "(Entry %zu, offset %zX in file) Unknown enemy type %04hX",
+            y, y * sizeof(EnemyEntry), e.base_type.load());
         break;
     }
-    create_clones(e.num_clones);
   }
 }
 

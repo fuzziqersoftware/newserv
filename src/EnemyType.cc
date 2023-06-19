@@ -26,6 +26,10 @@ const char* name_for_enum<EnemyType>(EnemyType type) {
       return "BARBA_RAY";
     case EnemyType::BARBAROUS_WOLF:
       return "BARBAROUS_WOLF";
+    case EnemyType::BEE_L:
+      return "BEE_L";
+    case EnemyType::BEE_R:
+      return "BEE_R";
     case EnemyType::BOOMA:
       return "BOOMA";
     case EnemyType::BOOTA:
@@ -58,6 +62,10 @@ const char* name_for_enum<EnemyType>(EnemyType type) {
       return "DARVANT";
     case EnemyType::DE_ROL_LE:
       return "DE_ROL_LE";
+    case EnemyType::DE_ROL_LE_BODY:
+      return "DE_ROL_LE_BODY";
+    case EnemyType::DE_ROL_LE_MINE:
+      return "DE_ROL_LE_MINE";
     case EnemyType::DEATH_GUNNER:
       return "DEATH_GUNNER";
     case EnemyType::DEL_LILY:
@@ -90,6 +98,8 @@ const char* name_for_enum<EnemyType>(EnemyType type) {
       return "DUBWITCH";
     case EnemyType::EGG_RAPPY:
       return "EGG_RAPPY";
+    case EnemyType::EPSIGUARD:
+      return "EPSIGUARD";
     case EnemyType::EPSILON:
       return "EPSILON";
     case EnemyType::EVIL_SHARK:
@@ -178,6 +188,8 @@ const char* name_for_enum<EnemyType>(EnemyType type) {
       return "PAZUZU";
     case EnemyType::PAZUZU_ALT:
       return "PAZUZU_ALT";
+    case EnemyType::PIG_RAY:
+      return "PIG_RAY";
     case EnemyType::POFUILLY_SLIME:
       return "POFUILLY_SLIME";
     case EnemyType::POUILLY_SLIME:
@@ -228,6 +240,14 @@ const char* name_for_enum<EnemyType>(EnemyType type) {
       return "VOL_OPT_1";
     case EnemyType::VOL_OPT_2:
       return "VOL_OPT_2";
+    case EnemyType::VOL_OPT_AMP:
+      return "VOL_OPT_AMP";
+    case EnemyType::VOL_OPT_CORE:
+      return "VOL_OPT_CORE";
+    case EnemyType::VOL_OPT_MONITOR:
+      return "VOL_OPT_MONITOR";
+    case EnemyType::VOL_OPT_PILLAR:
+      return "VOL_OPT_PILLAR";
     case EnemyType::YOWIE:
       return "YOWIE";
     case EnemyType::YOWIE_ALT:
@@ -255,6 +275,8 @@ EnemyType enum_for_name<EnemyType>(const char* name) {
       {"BA_BOOTA", EnemyType::BA_BOOTA},
       {"BARBA_RAY", EnemyType::BARBA_RAY},
       {"BARBAROUS_WOLF", EnemyType::BARBAROUS_WOLF},
+      {"BEE_L", EnemyType::BEE_L},
+      {"BEE_R", EnemyType::BEE_R},
       {"BOOMA", EnemyType::BOOMA},
       {"BOOTA", EnemyType::BOOTA},
       {"BULCLAW", EnemyType::BULCLAW},
@@ -272,6 +294,8 @@ EnemyType enum_for_name<EnemyType>(const char* name) {
       {"DARVANT", EnemyType::DARVANT},
       {"DARVANT_ULTIMATE", EnemyType::DARVANT_ULTIMATE},
       {"DE_ROL_LE", EnemyType::DE_ROL_LE},
+      {"DE_ROL_LE_BODY", EnemyType::DE_ROL_LE_BODY},
+      {"DE_ROL_LE_MINE", EnemyType::DE_ROL_LE_MINE},
       {"DEATH_GUNNER", EnemyType::DEATH_GUNNER},
       {"DEL_LILY", EnemyType::DEL_LILY},
       {"DEL_RAPPY", EnemyType::DEL_RAPPY},
@@ -288,6 +312,7 @@ EnemyType enum_for_name<EnemyType>(const char* name) {
       {"DUBCHIC", EnemyType::DUBCHIC},
       {"DUBWITCH", EnemyType::DUBWITCH},
       {"EGG_RAPPY", EnemyType::EGG_RAPPY},
+      {"EPSIGUARD", EnemyType::EPSIGUARD},
       {"EPSILON", EnemyType::EPSILON},
       {"EVIL_SHARK", EnemyType::EVIL_SHARK},
       {"GAEL", EnemyType::GAEL},
@@ -332,6 +357,7 @@ EnemyType enum_for_name<EnemyType>(const char* name) {
       {"PAN_ARMS", EnemyType::PAN_ARMS},
       {"PAZUZU", EnemyType::PAZUZU},
       {"PAZUZU_ALT", EnemyType::PAZUZU_ALT},
+      {"PIG_RAY", EnemyType::PIG_RAY},
       {"POFUILLY_SLIME", EnemyType::POFUILLY_SLIME},
       {"POUILLY_SLIME", EnemyType::POUILLY_SLIME},
       {"POISON_LILY", EnemyType::POISON_LILY},
@@ -357,6 +383,10 @@ EnemyType enum_for_name<EnemyType>(const char* name) {
       {"UL_GIBBON", EnemyType::UL_GIBBON},
       {"VOL_OPT_1", EnemyType::VOL_OPT_1},
       {"VOL_OPT_2", EnemyType::VOL_OPT_2},
+      {"VOL_OPT_AMP", EnemyType::VOL_OPT_AMP},
+      {"VOL_OPT_CORE", EnemyType::VOL_OPT_CORE},
+      {"VOL_OPT_MONITOR", EnemyType::VOL_OPT_MONITOR},
+      {"VOL_OPT_PILLAR", EnemyType::VOL_OPT_PILLAR},
       {"YOWIE", EnemyType::YOWIE},
       {"YOWIE_ALT", EnemyType::YOWIE_ALT},
       {"ZE_BOOTA", EnemyType::ZE_BOOTA},
@@ -399,8 +429,6 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
           return 0x0E;
         case EnemyType::DE_ROL_LE:
           return 0x0F;
-        case EnemyType::DEATH_GUNNER:
-          throw runtime_error("DEATH_GUNNER entry is not specified");
         case EnemyType::DRAGON:
           return 0x12;
         case EnemyType::SINOW_GOLD:
@@ -413,8 +441,6 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
           return 0x1A;
         case EnemyType::DUBCHIC:
           return 0x1B;
-        case EnemyType::DUBWITCH:
-          throw runtime_error("no battle params for DUBWITCH");
         case EnemyType::GILLCHIC:
           return 0x1C;
         case EnemyType::GARANZ:
@@ -425,8 +451,6 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
           return 0x1F;
         case EnemyType::CLAW:
           return 0x20;
-        case EnemyType::VOL_OPT_1:
-          throw runtime_error("no battle params for VOL_OPT_1");
         case EnemyType::VOL_OPT_2:
           return 0x25;
         case EnemyType::POUILLY_SLIME:
@@ -476,7 +500,7 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::SO_DIMENIAN:
           return 0x55;
         default:
-          throw runtime_error("incorrect enemy type for Episode 1");
+          throw runtime_error(string_printf("%s does not have battle parameters in Episode 1", name_for_enum(enemy_type)));
       }
       break;
     case Episode::EP2:
@@ -520,8 +544,6 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
           return 0x1A;
         case EnemyType::DUBCHIC:
           return 0x1B;
-        case EnemyType::DUBWITCH:
-          throw runtime_error("no battle params for DUBWITCH");
         case EnemyType::GILLCHIC:
           return 0x1C;
         case EnemyType::GARANZ:
@@ -593,7 +615,7 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::SO_DIMENIAN:
           return 0x55;
         default:
-          throw runtime_error("incorrect enemy type for Episode 2");
+          throw runtime_error(string_printf("%s does not have battle parameters in Episode 2", name_for_enum(enemy_type)));
       }
       break;
     case Episode::EP4:
@@ -651,7 +673,7 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::KONDRIEU:
           return 0x22;
         default:
-          throw runtime_error("incorrect enemy type for Episode 4");
+          throw runtime_error(string_printf("%s does not have battle parameters in Episode 4", name_for_enum(enemy_type)));
       }
       break;
     default:
@@ -691,21 +713,14 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
       return 0x26;
     case EnemyType::DARK_BELRA:
       return 0x25;
-    case EnemyType::DARK_FALZ_1:
-      throw runtime_error("DARK_FALZ_1 does not have a rare table entry");
     case EnemyType::DARK_FALZ_2:
       return 0x2F;
     case EnemyType::DARK_FALZ_3:
       return 0x2F;
     case EnemyType::DARK_GUNNER:
       return 0x22;
-    case EnemyType::DARVANT:
-    case EnemyType::DARVANT_ULTIMATE:
-      throw runtime_error("DARVANT and DARVANT_ULTIMATE do not have rare table entries");
     case EnemyType::DE_ROL_LE:
       return 0x2D;
-    case EnemyType::DEATH_GUNNER:
-      throw runtime_error("DEATH_GUNNER does not have a rare table entry");
     case EnemyType::DEL_LILY:
       return 0x53;
     case EnemyType::DEL_RAPPY:
@@ -731,16 +746,12 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
       return 0x2C;
     case EnemyType::DUBCHIC:
       return 0x18;
-    case EnemyType::DUBWITCH:
-      throw runtime_error("DUBWITCH does not have a rare table entry");
     case EnemyType::EGG_RAPPY:
       return 0x51;
     case EnemyType::EPSILON:
       return 0x54;
     case EnemyType::EVIL_SHARK:
       return 0x10;
-    case EnemyType::GAEL:
-      throw runtime_error("GAEL does not have a rare table entry");
     case EnemyType::GAL_GRYPHON:
       return 0x4D;
     case EnemyType::GARANZ:
@@ -811,8 +822,6 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
       return 0x0F;
     case EnemyType::NAR_LILY:
       return 0x0E;
-    case EnemyType::OLGA_FLOW_1:
-      throw runtime_error("OLGA_FLOW_1 does not have a rare table entry");
     case EnemyType::OLGA_FLOW_2:
       return 0x4E;
     case EnemyType::PAL_SHARK:
@@ -866,8 +875,6 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
       return 0x2B;
     case EnemyType::UL_GIBBON:
       return 0x3B;
-    case EnemyType::VOL_OPT_1:
-      throw runtime_error("VOL_OPT_1 does not have a rare table entry");
     case EnemyType::VOL_OPT_2:
       return 0x2E;
     case EnemyType::YOWIE:
@@ -881,6 +888,6 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::ZU_ALT:
       return 0x08;
     default:
-      throw logic_error("invalid enemy type");
+      throw runtime_error(string_printf("%s does not have a rare table entry", name_for_enum(enemy_type)));
   }
 }

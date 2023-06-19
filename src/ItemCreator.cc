@@ -235,11 +235,11 @@ ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(
   for (const auto& spec : rare_specs) {
     item = this->check_rate_and_create_rare_item(spec);
     if (!item.empty()) {
-      this->log.info("Box spec %08" PRIX32 " => %02hhX%02hhX%02hhX produced an item",
+      this->log.info("Box spec %08" PRIX32 " produced item %02hhX%02hhX%02hhX",
           spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
       break;
     }
-    this->log.info("Box spec %08" PRIX32 " => %02hhX%02hhX%02hhX did not produce",
+    this->log.info("Box spec %08" PRIX32 " did not produce item %02hhX%02hhX%02hhX",
         spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
   }
   return item;
@@ -289,11 +289,11 @@ ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(
     for (const auto& spec : rare_specs) {
       item = this->check_rate_and_create_rare_item(spec);
       if (!item.empty()) {
-        this->log.info("Enemy spec %08" PRIX32 " => %02hhX%02hhX%02hhX did not produce",
+        this->log.info("Enemy spec %08" PRIX32 " produced item %02hhX%02hhX%02hhX",
             spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
         break;
       }
-      this->log.info("Enemy spec %08" PRIX32 " => %02hhX%02hhX%02hhX did not produce",
+      this->log.info("Enemy spec %08" PRIX32 " did not produce item %02hhX%02hhX%02hhX",
           spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
     }
   }
