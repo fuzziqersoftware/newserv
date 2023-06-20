@@ -163,11 +163,11 @@ static void on_sync_joining_player_item_state(shared_ptr<ServerState>,
   // I'm lazy and this should never happen (this command should always be
   // private to the joining player)
   if (!command_is_private(command)) {
-    throw runtime_error("6x70 sent via public command");
+    throw runtime_error("6x6D sent via public command");
   }
 
   // For non-V3 versions, just forward the data verbatim. For V3, we need to
-  // byteswap mags' data2 fields if exactly one of the sender and recipient are
+  // byteswap mags' data2 fields if exactly one of the sender and recipient is
   // PSO GC
   bool sender_is_gc = (c->version() == GameVersion::GC);
   if (!sender_is_gc && (c->version() != GameVersion::XB)) {
