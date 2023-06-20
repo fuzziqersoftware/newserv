@@ -4935,12 +4935,6 @@ struct G_Unknown_6xB2 {
 // where Y = 3, 4, 5, or 6, and ZZ is any byte. The formats of these
 // subsubcommands are described at the end of this file.
 
-// Unlike all other 6x subcommands, the 6xB3 subcommand is sent to the server in
-// a CA command instead of a 6x, C9, or CB command. (For this reason, we refer
-// to 6xB3xZZ commands as CAxZZ commands as well.) The server is expected to
-// reply to CA commands instead of forwarding them. The logic for doing so is
-// primarily implemented in Episode3/Server.cc and the surrounding classes.
-
 // The common format for CARD battle subcommand headers is:
 struct G_CardBattleCommandHeader {
   uint8_t subcommand = 0x00;
@@ -4957,10 +4951,16 @@ struct G_CardBattleCommandHeader {
   uint8_t unused2 = 0x00;
 } __packed__;
 
-// The 6xB3 subcommand has a longer header, which is common to all CAx
-// subcommands.
+// Unlike all other 6x subcommands, the 6xB3 subcommand is sent to the server in
+// a CA command instead of a 6x, C9, or CB command. (For this reason, we refer
+// to 6xB3xZZ commands as CAxZZ commands as well.) The server is expected to
+// reply to CA commands instead of forwarding them. The logic for doing so is
+// primarily implemented in Episode3/Server.cc and the surrounding classes.
+
+// The 6xB3 subcommand has a longer header than 6xB4 and 6xB5. This header is
+// common to all 6xB3x (CAx) subcommands.
 struct G_CardServerDataCommandHeader {
-  uint8_t subcommand = 0x00;
+  uint8_t subcommand = 0xB3;
   uint8_t size = 0x00;
   le_uint16_t unused1 = 0x0000;
   uint8_t subsubcommand = 0x00; // See 6xBx subcommand table (after this table)
@@ -4972,8 +4972,10 @@ struct G_CardServerDataCommandHeader {
 } __packed__;
 
 // 6xB4: Unknown (XBOX)
+
 // 6xB4: CARD battle server response (Episode 3) - see 6xB3 (above)
 // 6xB5: CARD battle client command (Episode 3) - see 6xB3 (above)
+
 // 6xB5: BB shop request (handled by the server)
 
 struct G_ShopContentsRequest_BB_6xB5 {
