@@ -92,6 +92,8 @@ struct Client {
     LOADING = 0x00000020,
     // Client is loading a quest
     LOADING_QUEST = 0x00000040,
+    // Client is loading a joinable quest that has already started
+    LOADING_RUNNING_QUEST = 0x00100000,
     // Client is waiting to join an Episode 3 card auction
     AWAITING_CARD_AUCTION = 0x00010000,
     // Client is in the information menu (login server only)

@@ -2331,41 +2331,43 @@ static void on_AC_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
 
-  // If this client is NOT loading, they should not send an AC. Sending an AC to
-  // a client that isn't waiting to start a quest will crash the client, so we
-  // have to be careful not to do so.
-  if (!(c->flags & Client::Flag::LOADING_QUEST)) {
-    return;
-  }
-  c->flags &= ~Client::Flag::LOADING_QUEST;
-
   auto l = s->find_lobby(c->lobby_id);
-  if (!l->quest.get()) {
-    return;
-  }
 
-  if (send_quest_barrier_if_all_clients_ready(l) &&
-      (l->version == GameVersion::BB)) {
-    // TODO: We should replace the game enemies list here. It'll look something
-    // like this (but the dat format may be different from the existing loader):
-    // try {
-    //   auto dat_data = prs_decompress(l->quest->dat_contents());
-    //   game->enemies = parse_map(
-    //       s->battle_params,
-    //       l->flags & Lobby::Flag::SOLO_MODE,
-    //       l->episode,
-    //       l->difficulty,
-    //       dat_data,
-    //       false);
-    //   c->log.info("Replaced enemies list with quest layout (%zu entries)",
-    //       l->enemies.size());
-    //   for (size_t z = 0; z < l->enemies.size(); z++) {
-    //     string e_str = l->enemies[z].str();
-    //     l->log.info("(Entry %zX) %s", z, e_str.c_str());
-    //   }
-    // } catch (const exception& e) {
-    //   c->log.info("Failed to load quest layout: %s", e.what());
-    // }
+  if (c->flags & Client::Flag::LOADING_RUNNING_QUEST) {
+    c->flags &= ~Client::Flag::LOADING_RUNNING_QUEST;
+    if (l->version != GameVersion::BB) {
+      throw logic_error("joinable quest started on non-BB version");
+    }
+
+    auto leader_c = l->clients.at(l->leader_id);
+    if (!leader_c) {
+      throw logic_error("lobby leader is missing");
+    }
+
+    send_command(c, 0xAC, 0x00);
+    send_command(leader_c, 0xDD, c->lobby_client_id);
+
+  } else if (c->flags & Client::Flag::LOADING_QUEST) {
+    c->flags &= ~Client::Flag::LOADING_QUEST;
+
+    if (!l->quest.get()) {
+      return;
+    }
+
+    if (send_quest_barrier_if_all_clients_ready(l) &&
+        (l->version == GameVersion::BB) &&
+        l->map &&
+        l->quest) {
+      auto dat_contents = prs_decompress(*l->quest->dat_contents());
+      l->map->clear();
+      l->map->add_enemies_from_quest_data(l->episode, l->difficulty, l->event, dat_contents.data(), dat_contents.size());
+      c->log.info("Replaced enemies list with quest layout (%zu entries)",
+          l->map->enemies.size());
+      for (size_t z = 0; z < l->map->enemies.size(); z++) {
+        string e_str = l->map->enemies[z].str();
+        l->log.info("(Entry %zX) %s", z, e_str.c_str());
+      }
+    }
   }
 }
 
@@ -3427,9 +3429,24 @@ static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
   // unexpectedly (that is, only equipped items are included).
   if (c->version() == GameVersion::BB) {
     send_get_player_info(c);
-  }
+    if (l->flags & Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) {
+      if (!l->quest) {
+        throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest");
+      }
+      string bin_basename = l->quest->bin_filename();
+      shared_ptr<const string> bin_contents = l->quest->bin_contents();
+      string dat_basename = l->quest->dat_filename();
+      shared_ptr<const string> dat_contents = l->quest->dat_contents();
 
-  // TODO (R1): If the game is BB and in a joinable quest, send the quest immediately. If the game is BB and not in a joinable quest, send the rare monster config (DE)
+      send_open_quest_file(c, bin_basename + ".bin",
+          bin_basename, bin_contents, QuestFileType::ONLINE);
+      send_open_quest_file(c, dat_basename + ".dat",
+          dat_basename, dat_contents, QuestFileType::ONLINE);
+      c->flags |= Client::Flag::LOADING_RUNNING_QUEST;
+    } else if (l->map) {
+      send_rare_enemy_index_list(c, l->map->rare_enemy_indexes);
+    }
+  }
 
   // Handle initial commands for spectator teams
   auto watched_lobby = l->watched_lobby.lock();
