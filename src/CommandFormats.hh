@@ -3106,67 +3106,145 @@ struct C_CreateTeam_BB_01EA {
   ptext<char16_t, 0x10> name;
 } __packed__;
 
+// 02EA (S->C): Unknown
+// This command behaves exactly like 1FEA.
+
 // 03EA (C->S): Add team member
 
 struct C_AddOrRemoveTeamMember_BB_03EA_05EA {
   le_uint32_t guild_card_number = 0;
 } __packed__;
 
+// 04EA (S->C): Unknown
+// No arguments except header.flag.
+
 // 05EA (C->S): Remove team member
 // Same format as 03EA.
 
-// 07EA (C->S): Team chat
+// 06EA (S->C): Delete team?
+// This command behaves exactly like 10EA.
+
+// 07EA: Team chat
+
+struct SC_TeamChat_BB_07EA {
+  parray<char16_t, 0x20> sender_name;
+  // It seems there are no real limits on the message length, other than the
+  // overall command length limit of 0x7C00 bytes.
+  char16_t message[0];
+} __packed__;
 
 // 08EA (C->S): Team admin
 // No arguments
+
+// 09EA (S->C): Unknown
+
+struct S_Unknown_BB_09EA {
+  le_uint32_t entry_count;
+  parray<uint8_t, 4> unknown_a2;
+  struct Entry {
+    // This is displayed as "<%04d> %s" % (value, message)
+    le_uint32_t value;
+    le_uint32_t color; // 0x10 or 0x20 = green, 0x30 = blue, 0x40 = red, anything else = white
+    le_uint32_t unknown_a1;
+    parray<char16_t, 0x10> message;
+  } __packed__;
+  Entry entries[0]; // [entry_count] actually
+} __packed__;
+
+// 0CEA (S->C): Unknown
+
+struct S_Unknown_BB_0CEA {
+  parray<uint8_t, 0x20> unknown_a1;
+  char16_t unknown_a2[0];
+} __packed__;
 
 // 0DEA (C->S): Unknown
 // No arguments
 
 // 0EEA (S->C): Unknown
 
+struct S_Unknown_BB_0EEA {
+  parray<uint8_t, 0x10> unused;
+  char16_t unknown_a2[0];
+} __packed__;
+
+// 0EEA (S->C): Unknown
+
 // 0FEA (C->S): Set team flag
+// The client also accepts this command but completely ignores it.
 
 struct C_SetTeamFlag_BB_0FEA {
   parray<uint8_t, 0x800> data;
 } __packed__;
 
 // 10EA: Delete team
-// No arguments
+// No arguments except header.flag
 
-// 11EA (C->S): Promote team member
+// 11EA: Promote team member
+// The format below is used only when the client sends this command; when the
+// server sends it, only header.flag is used.
 // TODO: header.flag is used for this command. Figure out what it's for.
 
 struct C_PromoteTeamMember_BB_11EA {
   le_uint32_t unknown_a1 = 0;
 } __packed__;
 
-// 12EA (S->C): Unknown
+// 12EA (S->C): Team membership information
+// If the client is not in a team, all fields except guild_card_number should
+// be zero.
+
+struct S_TeamMembershipInformation_BB_12EA {
+  le_uint32_t unknown_a1 = 0; // Command is ignored unless this is 0
+  le_uint32_t guild_card_number;
+  le_uint32_t team_id;
+  le_uint32_t unknown_a4;
+  le_uint32_t privilege_level;
+  le_uint32_t unknown_a6;
+  parray<char16_t, 0x10> team_name;
+} __packed__;
 
 // 13EA: Unknown
-// No arguments
+// header.flag specifies the number of entries.
+
+struct S_Unknown_BB_13EA_15EA_Entry {
+  le_uint32_t guild_card_number;
+  le_uint32_t team_id;
+  le_uint32_t unknown_a3;
+  le_uint32_t unknown_a4;
+  le_uint32_t privilege_level;
+  parray<char16_t, 0x10> team_name;
+  le_uint32_t guild_card_number2;
+  le_uint32_t lobby_client_id;
+  parray<char16_t, 0x10> player_name;
+  parray<uint8_t, 0x800> team_flag;
+} __packed__;
 
 // 14EA (C->S): Unknown
 // No arguments. Client always sends 1 in the header.flag field.
 
 // 15EA (S->C): Unknown
+// header.flag specifies the number of entries. The entry format appears to be
+// the same as for the 13EA command.
+
+// 16EA (S->C): Unknown
+// No arguments except header.flag.
 
 // 18EA: Membership information
 // No arguments (C->S)
-// TODO: Document S->C format
 
 // 19EA: Privilege list
 // No arguments (C->S)
-// TODO: Document S->C format
 
 // 1AEA: Unknown
-// 1CEA (C->S): Ranking information
 
 // 1BEA (C->S): Unknown
 // header.flag is used, but no other arguments
 
-// 1CEA (C->S): Unknown
-// No arguments
+// 1CEA: Ranking information
+// No arguments when sent by the client.
+
+// 1DEA (S->C): Unknown
+// No arguments except header.flag.
 
 // 1EEA (C->S): Unknown
 // header.flag is used, but it's unknown what the value means.
@@ -3175,7 +3253,11 @@ struct C_Unknown_BB_1EEA {
   ptext<char16_t, 0x10> unknown_a1;
 } __packed__;
 
-// 20EA (C->S): Unknown
+// 1FEA (S->C): Unknown
+// header.flag must be in the range [0, 6]. If it isn't, the command is ignored.
+// No other arguments.
+
+// 20EA: Unknown
 // header.flag is used, but no other arguments
 
 // EB (S->C): Add player to spectator team (Episode 3)
