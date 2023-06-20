@@ -1584,7 +1584,9 @@ ItemData::ItemData(const string& orig_description, bool skip_special) {
 
   } else if (this->data1[0] == 0x02) {
     for (const auto& token : split(desc, ' ')) {
-      if (starts_with(token, "pb:")) { // Photon blasts
+      if (token.empty()) {
+        continue;
+      } else if (starts_with(token, "pb:")) { // Photon blasts
         auto pb_tokens = split(token.substr(3), ',');
         if (pb_tokens.size() > 3) {
           throw runtime_error("too many photon blasts specified");
