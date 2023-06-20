@@ -1514,7 +1514,7 @@ void on_meseta_reward_request_bb(shared_ptr<ServerState>,
     } else {
       p->disp.meseta += cmd.amount;
     }
-  } else {
+  } else if (cmd.amount > 0) {
     PlayerInventoryItem item;
     item.data.data1[0] = 0x04;
     item.data.data2d = cmd.amount.load();
