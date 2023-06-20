@@ -468,6 +468,9 @@ void prs_disassemble(FILE* stream, const std::string& data) {
 // PRS, there is only one type of backreference. Also, there is no stop opcode;
 // the decompressor simply stops when there are no more input bytes to read.
 
+// TODO: bc0_compress produces slightly larger output than Sega's compressor.
+// Reverse-engineer their implementation and fix this.
+
 string bc0_compress(
     const string& data, function<void(size_t, size_t)> progress_fn) {
   StringReader r(data);
@@ -475,17 +478,17 @@ string bc0_compress(
 
   parray<uint8_t, 0x1000> memo;
   uint16_t memo_offset = 0x0FEE;
+  size_t memo_bytes_written = 0;
   vector<deque<size_t>> memo_index(0x100);
   auto write_memo = [&](uint8_t new_v) -> void {
     uint8_t existing_v = memo[memo_offset];
-    if (existing_v != new_v) {
-      if (!memo_index[existing_v].empty()) {
-        memo_index[existing_v].pop_front();
-      }
-      memo[memo_offset] = new_v;
-      memo_index[new_v].emplace_back(memo_offset);
+    if ((memo_bytes_written >= 0x1000) && !memo_index[existing_v].empty()) {
+      memo_index[existing_v].pop_front();
     }
+    memo[memo_offset] = new_v;
+    memo_index[new_v].emplace_back(memo_offset);
     memo_offset = (memo_offset + 1) & 0xFFF;
+    memo_bytes_written++;
   };
 
   size_t next_control_byte_offset = w.size();
