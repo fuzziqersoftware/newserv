@@ -5253,7 +5253,7 @@ struct G_EnemyKilled_BB_6xC8 {
 
 struct G_MesetaRewardRequest_BB_6xC9 {
   G_UnusedHeader header;
-  le_uint32_t amount;
+  le_int32_t amount;
 } __packed__;
 
 // 6xCA: Item reward from quest (BB; handled by server)

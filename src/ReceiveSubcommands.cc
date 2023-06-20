@@ -1509,7 +1509,7 @@ void on_meseta_reward_request_bb(shared_ptr<ServerState>,
 
   auto p = c->game_data.player();
   if (cmd.amount < 0) {
-    if (-cmd.amount > p->disp.meseta) {
+    if (-cmd.amount > static_cast<int32_t>(p->disp.meseta.load())) {
       p->disp.meseta = 0;
     } else {
       p->disp.meseta += cmd.amount;
@@ -1517,7 +1517,7 @@ void on_meseta_reward_request_bb(shared_ptr<ServerState>,
   } else {
     PlayerInventoryItem item;
     item.data.data1[0] = 0x04;
-    item.data.data2d = cmd.amount;
+    item.data.data2d = cmd.amount.load();
     item.data.id = l->generate_item_id(0xFF);
     c->game_data.player()->add_item(item);
     send_create_inventory_item(l, c, item.data);
