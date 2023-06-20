@@ -25,7 +25,7 @@ struct EnemyEntry {
   /* 00 */ le_uint16_t base_type;
   /* 02 */ le_uint16_t unknown_a0; // Overwritten by client at load time
   /* 04 */ le_uint16_t enemy_index; // Overwritten by client at load time
-  /* 06 */ le_uint16_t num_clones;
+  /* 06 */ le_uint16_t num_children;
   /* 08 */ le_uint16_t area;
   /* 0A */ le_uint16_t entity_id; // == enemy_index + 0x1000
   /* 0C */ le_uint16_t section;
@@ -47,8 +47,8 @@ struct EnemyEntry {
   /* 48 */
 
   string str() const {
-    return string_printf("EnemyEntry(base_type=%hX, a0=%hX, enemy_index=%hX, num_clones=%hX, area=%hX, entity_id=%hX, section=%hX, wave_number=%hX, wave_number2=%" PRIX32 ", x=%g, y=%g, z=%g, x_angle=%" PRIX32 ", y_angle=%" PRIX32 ", z_angle=%" PRIX32 ", a3=%" PRIX32 ", a4=%" PRIX32 ", a5=%" PRIX32 ", a6=%" PRIX32 ", a7=%" PRIX32 ", skin=%" PRIX32 ", a8=%" PRIX32 ")",
-        this->base_type.load(), this->unknown_a0.load(), this->enemy_index.load(), this->num_clones.load(), this->area.load(),
+    return string_printf("EnemyEntry(base_type=%hX, a0=%hX, enemy_index=%hX, num_children=%hX, area=%hX, entity_id=%hX, section=%hX, wave_number=%hX, wave_number2=%" PRIX32 ", x=%g, y=%g, z=%g, x_angle=%" PRIX32 ", y_angle=%" PRIX32 ", z_angle=%" PRIX32 ", a3=%" PRIX32 ", a4=%" PRIX32 ", a5=%" PRIX32 ", a6=%" PRIX32 ", a7=%" PRIX32 ", skin=%" PRIX32 ", a8=%" PRIX32 ")",
+        this->base_type.load(), this->unknown_a0.load(), this->enemy_index.load(), this->num_children.load(), this->area.load(),
         this->entity_id.load(), this->section.load(), this->wave_number.load(),
         this->wave_number2.load(), this->x.load(), this->y.load(), this->z.load(), this->x_angle.load(),
         this->y_angle.load(), this->z_angle.load(), this->unknown_a3.load(), this->unknown_a4.load(),
@@ -238,7 +238,7 @@ void Map::add_enemies_from_map_data(
         break;
       case 0x82: {
         EnemyType type = e.unknown_a4 ? EnemyType::SINOW_GOLD : EnemyType::SINOW_BEAT;
-        size_t count = (e.num_clones == 0) ? 5 : (e.num_clones + 1);
+        size_t count = (e.num_children == 0) ? 5 : (e.num_children + 1);
         for (size_t z = 0; z < count; z++) {
           this->enemies.emplace_back(type);
         }
@@ -398,7 +398,7 @@ void Map::add_enemies_from_map_data(
         break;
       case 0xDF:
         this->enemies.emplace_back(EnemyType::RECOBOX);
-        for (size_t x = 0; x < e.num_clones; x++) {
+        for (size_t x = 0; x < e.num_children; x++) {
           this->enemies.emplace_back(EnemyType::RECON);
         }
         break;
@@ -469,7 +469,7 @@ void Map::add_enemies_from_map_data(
         break;
       }
       default:
-        for (size_t z = 0; z < e.num_clones + 1; z++) {
+        for (size_t z = 0; z < static_cast<size_t>(e.num_children + 1); z++) {
           this->enemies.emplace_back(EnemyType::UNKNOWN);
         }
         static_game_data_log.warning(
