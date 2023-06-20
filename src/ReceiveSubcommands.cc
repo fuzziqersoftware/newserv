@@ -1502,6 +1502,40 @@ static void on_enemy_killed_bb(shared_ptr<ServerState> s,
   }
 }
 
+void on_meseta_reward_request_bb(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
+    const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_MesetaRewardRequest_BB_6xC9>(data, size);
+
+  auto p = c->game_data.player();
+  if (cmd.amount < 0) {
+    if (-cmd.amount > p->disp.meseta) {
+      p->disp.meseta = 0;
+    } else {
+      p->disp.meseta += cmd.amount;
+    }
+  } else {
+    PlayerInventoryItem item;
+    item.data.data1[0] = 0x04;
+    item.data.data2d = cmd.amount;
+    item.data.id = l->generate_item_id(0xFF);
+    c->game_data.player()->add_item(item);
+    send_create_inventory_item(l, c, item.data);
+  }
+}
+
+void on_item_reward_request_bb(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
+    const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_ItemRewardRequest_BB_6xCA>(data, size);
+
+  PlayerInventoryItem item;
+  item.data = cmd.item_data;
+  item.data.id = l->generate_item_id(0xFF);
+  c->game_data.player()->add_item(item);
+  send_create_inventory_item(l, c, item.data);
+}
+
 static void on_destroy_inventory_item(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
@@ -1900,8 +1934,8 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xC6 */ nullptr,
     /* 6xC7 */ on_charge_attack_bb,
     /* 6xC8 */ on_enemy_killed_bb,
-    /* 6xC9 */ nullptr,
-    /* 6xCA */ nullptr,
+    /* 6xC9 */ on_meseta_reward_request_bb,
+    /* 6xCA */ on_item_reward_request_bb,
     /* 6xCB */ nullptr,
     /* 6xCC */ nullptr,
     /* 6xCD */ nullptr,

@@ -5247,8 +5247,19 @@ struct G_EnemyKilled_BB_6xC8 {
   le_uint32_t unused;
 } __packed__;
 
-// 6xC9: Meseta reward from quest (BB; handled by server)
+// 6xC9: Request meseta reward from quest (BB; handled by server)
+
+struct G_MesetaRewardRequest_BB_6xC9 {
+  G_UnusedHeader header;
+  le_uint32_t amount;
+} __packed__;
+
 // 6xCA: Item reward from quest (BB; handled by server)
+
+struct G_ItemRewardRequest_BB_6xCA {
+  G_UnusedHeader header;
+  ItemData item_data;
+} __packed__;
 
 // 6xCB: Request to transfer item (BB)
 
