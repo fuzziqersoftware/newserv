@@ -232,6 +232,10 @@ static void on_sync_joining_player_item_state(shared_ptr<ServerState>,
       out_cmd.decompressed_size = decompressed.size();
       out_cmd.compressed_size = out_compressed_data.size();
 
+      if (c->options.debug) {
+        c->log.info("Byteswapped and recompressed item sync data (%zX bytes)", out_compressed_data.size());
+      }
+
       // TODO: It'd be nice to not copy the data so many times here.
       StringWriter out_w;
       out_w.put<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(out_cmd);
