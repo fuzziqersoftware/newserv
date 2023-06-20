@@ -3237,7 +3237,8 @@ shared_ptr<Lobby> create_game_generic(
         try {
           auto map_data = s->load_bb_file(filename, "", "map/" + filename);
           size_t start_offset = game->map->enemies.size();
-          game->map->add_enemies_from_map_data(game->episode, game->difficulty, game->event, map_data);
+          game->map->add_enemies_from_map_data(
+              game->episode, game->difficulty, game->event, map_data->data(), map_data->size());
           size_t entries_loaded = game->map->enemies.size() - start_offset;
           c->log.info("[Map/%zu] Loaded %s (%zu entries)",
               area, filename.c_str(), entries_loaded);
@@ -3256,9 +3257,8 @@ shared_ptr<Lobby> create_game_generic(
       }
     }
 
-    c->log.info("Loaded maps contain %zu entries overall", game->map->enemies.size());
-
-    // TODO (R1): Assign rare monsters
+    c->log.info("Loaded maps contain %zu entries overall (%zu as rares)",
+        game->map->enemies.size(), game->map->rare_enemy_indexes.size());
   }
   return game;
 }

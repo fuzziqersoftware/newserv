@@ -2066,7 +2066,6 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-// gives a player EXP
 void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
     uint32_t amount) {
   if (c->version() != GameVersion::BB) {
@@ -2077,6 +2076,18 @@ void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
   G_GiveExperience_BB_6xBF cmd = {
       {0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, client_id}, amount};
   send_command_t(l, 0x60, 0x00, cmd);
+}
+
+void send_rare_enemy_index_list(shared_ptr<Client> c, const vector<size_t>& indexes) {
+  S_RareMonsterList_BB_DE cmd;
+  if (indexes.size() > cmd.enemy_ids.size()) {
+    throw runtime_error("too many rare enemies");
+  }
+  for (size_t z = 0; z < indexes.size(); z++) {
+    cmd.enemy_ids[z] = indexes[z];
+  }
+  cmd.enemy_ids.clear_after(indexes.size(), 0xFFFF);
+  send_command_t(c, 0xDE, 0x00, cmd);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -14,6 +14,17 @@
 #include "Text.hh"
 
 struct Map {
+  struct RareEnemyRates {
+    uint32_t hildeblue; // HILDEBEAR -> HILDEBLUE
+    uint32_t rappy; // RAG_RAPPY -> {AL_RAPPY or seasonal rappies}; SAND_RAPPY -> DEL_RAPPY
+    uint32_t nar_lily; // POISON_LILY -> NAR_LILY
+    uint32_t pouilly_slime; // POFUILLY_SLIME -> POUILLY_SLIME
+    uint32_t merissa_aa; // MERISSA_A -> MERISSA_AA
+    uint32_t pazuzu; // ZU -> PAZUZU (and _ALT variants)
+    uint32_t dorphon_eclair; // DORPHON -> DORPHON_ECLAIR
+    uint32_t kondrieu; // {SAINT_MILLION, SHAMBERTIN} -> KONDRIEU
+  };
+
   struct Enemy {
     enum Flag {
       HIT_BY_PLAYER0 = 0x01,
@@ -33,13 +44,22 @@ struct Map {
   } __attribute__((packed));
 
   std::vector<Enemy> enemies;
+  std::vector<size_t> rare_enemy_indexes;
 
   void clear();
   void add_enemies_from_map_data(
       Episode episode,
       uint8_t difficulty,
       uint8_t event,
-      std::shared_ptr<const std::string> data);
+      const void* data,
+      size_t size,
+      const RareEnemyRates* rare_rates = nullptr);
+  void add_enemies_from_quest_data(
+      Episode episode,
+      uint8_t difficulty,
+      uint8_t event,
+      const void* data,
+      size_t size);
 };
 
 // TODO: This class is currently unused. It would be nice if we could use this
