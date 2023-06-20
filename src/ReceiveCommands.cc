@@ -12,6 +12,7 @@
 #include <phosg/Time.hh>
 
 #include "ChatCommands.hh"
+#include "Compression.hh"
 #include "Episode3/Tournament.hh"
 #include "FileContentsCache.hh"
 #include "ItemCreator.hh"
@@ -1973,6 +1974,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           l->flags |= Lobby::Flag::QUEST_IN_PROGRESS;
         }
         l->quest = q;
+        l->episode = q->episode;
         for (size_t x = 0; x < l->max_clients; x++) {
           if (!l->clients[x]) {
             continue;

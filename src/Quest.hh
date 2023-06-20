@@ -45,6 +45,13 @@ struct QuestCategoryIndex {
 
 class Quest {
 public:
+  struct DATSectionHeader {
+    le_uint32_t type; // 1 = objects, 2 = enemies. There are other types too
+    le_uint32_t section_size; // Includes this header
+    le_uint32_t area;
+    le_uint32_t data_size;
+  } __attribute__((packed));
+
   enum class FileFormat {
     BIN_DAT = 0,
     BIN_DAT_UNCOMPRESSED,

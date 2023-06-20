@@ -480,6 +480,32 @@ void Map::add_enemies_from_map_data(
   }
 }
 
+void Map::add_enemies_from_quest_data(
+    Episode episode,
+    uint8_t difficulty,
+    uint8_t event,
+    const void* data,
+    size_t size) {
+  StringReader r(data, size);
+  while (!r.eof()) {
+    const auto& header = r.get<Quest::DATSectionHeader>();
+    if (header.type == 0 && header.section_size == 0) {
+      break;
+    }
+    if (header.section_size < sizeof(header)) {
+      throw runtime_error(string_printf("quest layout has invalid section header at offset 0x%zX", r.where() - sizeof(header)));
+    }
+    if (header.type == 2) {
+      if (header.data_size % sizeof(EnemyEntry)) {
+        throw runtime_error("quest layout enemy section size is not a multiple of enemy entry size");
+      }
+      this->add_enemies_from_map_data(episode, difficulty, event, r.getv(header.data_size), header.data_size);
+    } else {
+      r.skip(header.section_size - sizeof(header));
+    }
+  }
+}
+
 SetDataTable::SetDataTable(shared_ptr<const string> data, bool big_endian) {
   if (big_endian) {
     this->load_table_t<true>(data);
