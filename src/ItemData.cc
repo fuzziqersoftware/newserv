@@ -1646,7 +1646,11 @@ ItemData::ItemData(const string& orig_description, bool skip_special) {
     }
 
     if (is_wrapped) {
-      this->data1[3] |= 0x40;
+      if (this->is_stackable()) {
+        throw runtime_error("stackable items cannot be wrapped");
+      } else {
+        this->data1[3] |= 0x40;
+      }
     }
   } else {
     throw logic_error("invalid item class");
@@ -1687,12 +1691,12 @@ string ItemData::name(bool include_color_codes) const {
       }
     }
   }
-  // Mags can be wrapped as well
-  if ((this->data1[0] == 0x02) && (this->data2[2] & 0x40)) {
-    ret_tokens.emplace_back("Wrapped");
-  }
-  // And tools can be wrapped if they aren't stackable
-  if ((this->data1[0] == 0x03) && !this->is_stackable() && (this->data1[3] & 0x40)) {
+  // Armors, shields, and units (0x01) can be wrapped, as can mags (0x02) and
+  // non-stackable tools (0x03). However, each of these item classes has its
+  // flags in a different location.
+  if (((this->data1[1] == 0x01) && (this->data1[4] & 0x40)) ||
+      ((this->data1[0] == 0x02) && (this->data2[2] & 0x40)) ||
+      ((this->data1[0] == 0x03) && !this->is_stackable() && (this->data1[3] & 0x40))) {
     ret_tokens.emplace_back("Wrapped");
   }
 
