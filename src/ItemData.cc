@@ -1611,10 +1611,21 @@ ItemData::ItemData(const string& orig_description, bool skip_special) {
         if (s_tokens.size() != 4) {
           throw runtime_error("incorrect stat count");
         }
-        this->data1w[2] = stoul(s_tokens[0], nullptr, 10);
-        this->data1w[3] = stoul(s_tokens[1], nullptr, 10);
-        this->data1w[4] = stoul(s_tokens[2], nullptr, 10);
-        this->data1w[5] = stoul(s_tokens[3], nullptr, 10);
+        for (size_t z = 0; z < 4; z++) {
+          auto n_tokens = split(s_tokens[z], '.');
+          if (n_tokens.size() == 0 || n_tokens.size() > 2) {
+            throw logic_error("incorrect stats argument format");
+          } else if ((n_tokens.size() == 1) || (n_tokens[1].size() == 0)) {
+            this->data1w[z + 2] = stoul(n_tokens[0], nullptr, 10) * 100;
+          } else if (n_tokens[1].size() == 1) {
+            this->data1w[z + 2] = stoul(n_tokens[0], nullptr, 10) * 100 + stoul(n_tokens[1], nullptr, 10) * 10;
+          } else if (n_tokens[1].size() == 2) {
+            this->data1w[z + 2] = stoul(n_tokens[0], nullptr, 10) * 100 + stoul(n_tokens[1], nullptr, 10);
+          } else {
+            throw runtime_error("incorrect stat format");
+          }
+        }
+        this->data1[2] = this->compute_mag_level();
       } else { // Color
         this->data2[3] = mag_color_for_name.at(token);
       }
@@ -1623,7 +1634,6 @@ ItemData::ItemData(const string& orig_description, bool skip_special) {
     if (is_wrapped) {
       this->data2[2] |= 0x40;
     }
-
   } else if (this->data1[0] == 0x03) {
     if (this->max_stack_size() > 1) {
       if (starts_with(desc, "x")) {
@@ -1798,9 +1808,22 @@ string ItemData::name(bool include_color_codes) const {
   } else if (this->data1[0] == 0x02) {
     ret_tokens.emplace_back(string_printf("LV%hhu", this->data1[2]));
 
-    ret_tokens.emplace_back(string_printf("%d/%d/%d/%d",
-        this->data1w[2] / 100, this->data1w[3] / 100,
-        this->data1w[4] / 100, this->data1w[5] / 100));
+    uint16_t def = this->data1w[2];
+    uint16_t pow = this->data1w[3];
+    uint16_t dex = this->data1w[4];
+    uint16_t mind = this->data1w[5];
+    auto format_stat = +[](uint16_t stat) -> string {
+      uint16_t level = stat / 100;
+      uint8_t partial = stat % 100;
+      if (partial == 0) {
+        return string_printf("%hu", level);
+      } else if (partial % 10 == 0) {
+        return string_printf("%hu.%hhu", level, static_cast<uint8_t>(partial / 10));
+      } else {
+        return string_printf("%hu.%02hhu", level, partial);
+      }
+    };
+    ret_tokens.emplace_back(format_stat(def) + "/" + format_stat(pow) + "/" + format_stat(dex) + "/" + format_stat(mind));
     ret_tokens.emplace_back(string_printf("%hhu%%", this->data2[0]));
     ret_tokens.emplace_back(string_printf("%hhuIQ", this->data2[1]));
 
