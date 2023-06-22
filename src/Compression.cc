@@ -7,6 +7,7 @@
 #include <sys/types.h>
 
 #include <phosg/Strings.hh>
+#include <set>
 
 #include "Text.hh"
 
@@ -471,131 +472,159 @@ void prs_disassemble(FILE* stream, const std::string& data) {
 // TODO: bc0_compress produces slightly larger output than Sega's compressor.
 // Reverse-engineer their implementation and fix this.
 
-string bc0_compress(
-    const string& data, function<void(size_t, size_t)> progress_fn) {
-  StringReader r(data);
+template <size_t MaxDataBytesPerControlBit>
+struct LZSSInterleavedWriter {
   StringWriter w;
+  parray<uint8_t, (MaxDataBytesPerControlBit * 8) + 1> buf;
+  size_t buf_offset;
+  uint8_t next_control_bit;
 
-  parray<uint8_t, 0x1000> memo;
-  uint16_t memo_offset = 0x0FEE;
-  size_t memo_bytes_written = 0;
-  vector<deque<size_t>> memo_index(0x100);
-  auto write_memo = [&](uint8_t new_v) -> void {
-    uint8_t existing_v = memo[memo_offset];
-    if ((memo_bytes_written >= 0x1000) && !memo_index[existing_v].empty()) {
-      memo_index[existing_v].pop_front();
+  LZSSInterleavedWriter()
+      : buf(0),
+        buf_offset(1),
+        next_control_bit(1) {}
+
+  void flush_if_ready() {
+    if (this->next_control_bit == 0) {
+      this->w.write(this->buf.data(), this->buf_offset);
+      this->buf[0] = 0;
+      this->buf_offset = 1;
+      this->next_control_bit = 1;
     }
-    memo[memo_offset] = new_v;
-    memo_index[new_v].emplace_back(memo_offset);
-    memo_offset = (memo_offset + 1) & 0xFFF;
-    memo_bytes_written++;
+  }
+
+  std::string&& close() {
+    if (this->buf_offset > 1 || this->next_control_bit != 1) {
+      this->w.write(this->buf.data(), this->buf_offset);
+    }
+    return std::move(this->w.str());
+  }
+
+  void write_control(bool v) {
+    if (this->next_control_bit == 0) {
+      throw logic_error("write_control called with no space to write");
+    }
+    if (v) {
+      this->buf[0] |= this->next_control_bit;
+    }
+    this->next_control_bit <<= 1;
+  }
+  void write_data(uint8_t v) {
+    this->buf[this->buf_offset++] = v;
+  }
+  size_t size() const {
+    return this->w.size() + this->buf_offset;
+  }
+};
+
+string bc0_compress(const string& data, function<void(size_t, size_t)> progress_fn) {
+  return bc0_compress(data.data(), data.size(), progress_fn);
+}
+
+string bc0_compress(const void* in_data_v, size_t in_size, function<void(size_t, size_t)> progress_fn) {
+  const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
+
+  LZSSInterleavedWriter<2> w;
+  size_t read_offset = 0;
+
+  // The data structure we want is a binaary-searchable set of all strings
+  // starting at all possible offsets within the sliding window, and we need
+  // to be able to search lexicographically but insert and delete by offset.
+  // A std::map<std::string, size_t> would accomplish this, but would be
+  // horrendously inefficient: we'd have to copy strings far too much. We can
+  // solve this by instead storing the offset of each string as keys in a set
+  // and using a custom comparator to treat them as references to binary
+  // strings within the data.
+  auto set_comparator = [&](size_t a, size_t b) -> bool {
+    size_t max_length = min<size_t>(0x12, in_size - max<size_t>(a, b));
+    size_t end_a = a + max_length;
+    for (; a < end_a; a++, b++) {
+      uint8_t data_a = static_cast<uint8_t>(in_data[a]);
+      uint8_t data_b = static_cast<uint8_t>(in_data[b]);
+      if (data_a < data_b) {
+        return true; // a comes before b lexicographically
+      } else if (data_a > data_b) {
+        return false; // a comes after b lexicographically
+      }
+    }
+    return a < b; // Maximum-length match; order them by offset
+  };
+  multiset<size_t, function<bool(size_t, size_t)>> window_index(set_comparator);
+
+  auto get_match_length = [&](size_t a, size_t b) -> size_t {
+    size_t ret = 0;
+    while ((ret < 0x12) && (a + ret < in_size) && (b + ret < in_size) &&
+        (in_data[a + ret] == in_data[b + ret])) {
+      ret++;
+    }
+    return ret;
   };
 
-  size_t next_control_byte_offset = w.size();
-  w.put_u8(0);
-  uint16_t pending_control_bits = 0x0000;
-
-  parray<uint8_t, 18> match_buf;
-  while (!r.eof()) {
-    if ((r.where() & 0x1000) && progress_fn) {
-      progress_fn(r.where(), w.size());
+  size_t last_progress_fn_call_offset = 0;
+  while (read_offset < in_size) {
+    if (progress_fn && ((last_progress_fn_call_offset & ~0xFFF) != (read_offset & ~0xFFF))) {
+      last_progress_fn_call_offset = read_offset;
+      progress_fn(read_offset, w.size());
     }
 
-    // Search in the memo for the longest string matching the upcoming data, of
-    // size 3-18 bytes
-    size_t best_match_offset = 0;
-    size_t best_match_size = 0;
-    size_t max_match_size = min<size_t>(r.remaining(), 18);
-    const uint8_t* match_buf = &r.get<uint8_t>(false, max_match_size);
-
-    for (size_t match_size = 3; match_size <= max_match_size; match_size++) {
-      for (size_t offset : memo_index[match_buf[0]]) {
-        // Forbid matches that span the memo boundary - during decompression,
-        // the client will be overwriting its memo while reading from it and
-        // will likely generate incorrect data
-        // TODO: We can actually support this (and it will improve compression),
-        // but we have to set a loop boundary like we have in prs_compress and
-        // I'm lazy.
-        size_t start_memo_offset = offset;
-        size_t end_memo_offset = (offset + match_size) & 0xFFF;
-        if (end_memo_offset < start_memo_offset) {
-          if ((memo_offset < end_memo_offset) || (memo_offset > start_memo_offset)) {
-            continue;
-          }
-        } else {
-          if ((memo_offset > start_memo_offset) && (memo_offset < end_memo_offset)) {
-            continue;
-          }
-        }
-
-        // Note: We don't have to explicitly forbid matches that span the
-        // uninitialized part of the memo (during the first 0x12 bytes) because
-        // the preceding check will catch those too (and there can't be any
-        // start offsets in the memo index within that region anyway).
-
-        bool match_found = true;
-        for (size_t z = 0; z < match_size; z++) {
-          if (match_buf[z] != memo[(offset + z) & 0xFFF]) {
-            match_found = false;
-            break;
-          }
-        }
-        // If a match was found at this size, don't bother looking for other
-        // matches of the same size
-        if (match_found) {
-          best_match_size = match_size;
-          best_match_offset = offset;
-          break;
-        }
+    // Find the best match from the index. It's unlikely that we'll get an
+    // exact match, so check the entry before the lower_bound result too.
+    size_t match_offset = SIZE_T_MAX;
+    size_t match_size = 0;
+    // string hex_search_data = format_data_string(data.substr(read_offset, 0x12));
+    // fprintf(stderr, "[%zX] match SEARCH %s\n", read_offset, hex_search_data.c_str());
+    auto match_it = window_index.lower_bound(read_offset);
+    if (match_it != window_index.end()) {
+      match_offset = *match_it;
+      match_size = get_match_length(read_offset, match_offset);
+      // fprintf(stderr, "[%zX] match AFTER %zX %zX\n", read_offset, match_offset, match_size);
+    }
+    if (match_it != window_index.begin()) {
+      match_it--;
+      size_t before_match_offset = *match_it;
+      size_t before_match_size = get_match_length(read_offset, before_match_offset);
+      // fprintf(stderr, "[%zX] match BEFORE %zX %zX\n", read_offset, before_match_offset, before_match_size);
+      if (before_match_size > match_size) {
+        match_offset = before_match_offset;
+        match_size = before_match_size;
       }
-      // If no matches were found at the current size, don't bother looking for
-      // longer matches
-      if (best_match_size < match_size) {
-        break;
-      }
+    }
+    // fprintf(stderr, "[%zX] match OVERALL %zX %zX\n", read_offset, match_offset, match_size);
+
+    if (match_size < 3) {
+      match_size = 1;
     }
 
     // Write a backreference if a match was found; otherwise, write a literal
-    if (best_match_size >= 3) {
-      pending_control_bits = (pending_control_bits >> 1) | 0x8000;
-      w.put_u8(best_match_offset & 0xFF); // a1
-      w.put_u8(((best_match_offset >> 4) & 0xF0) | (best_match_size - 3)); // a2
-      for (size_t z = 0; z < best_match_size; z++) {
-        write_memo(r.get_u8());
-      }
+    if (match_size >= 3) {
+      w.write_control(false);
+      size_t memo_offset = match_offset - 0x12;
+      w.write_data(memo_offset & 0xFF);
+      w.write_data(((memo_offset >> 4) & 0xF0) | (match_size - 3));
+      // fprintf(stderr, "[%zX] backreference %03zX %zX\n", read_offset, memo_offset, match_size);
     } else {
-      pending_control_bits = (pending_control_bits >> 1) | 0x8080;
-      uint8_t v = r.get_u8();
-      w.put_u8(v);
-      write_memo(v);
+      w.write_control(true);
+      w.write_data(in_data[read_offset]);
+      // fprintf(stderr, "[%zX] literal %02hhX\n", read_offset, data[read_offset]);
     }
+    w.flush_if_ready();
 
-    // Write the control byte to the output if needed, and reserve space for the
-    // next one
-    if (pending_control_bits & 0x0100) {
-      w.pput_u8(next_control_byte_offset, pending_control_bits & 0xFF);
-      next_control_byte_offset = w.size();
-      w.put_u8(0);
-      pending_control_bits = 0x0000;
+    // Update the index and advance read_offset
+    for (size_t z = 0; z < match_size; z++, read_offset++) {
+      if (read_offset >= 0x1000) {
+        window_index.erase(read_offset - 0x1000);
+      }
+      window_index.emplace(read_offset);
+      // fprintf(stderr, "[%zX] Index state updated (%zX):\n", read_offset, window_index.size());
+      // for (size_t it : window_index) {
+      //   string index_data = data.substr(it, 0x12);
+      //   string hex_data = format_data_string(index_data);
+      //   fprintf(stderr, "[%zX]   %05zX => %s\n", read_offset, it, hex_data.c_str());
+      // }
     }
   }
 
-  // Write the final control byte to the output if needed. If not needed, then
-  // there should be an empty reserved space at the end; delete it since none of
-  // its bits will be used.
-  if (pending_control_bits & 0xFF00) {
-    while (!(pending_control_bits & 0x0100)) {
-      pending_control_bits >>= 1;
-    }
-    w.pput_u8(next_control_byte_offset, pending_control_bits & 0xFF);
-  } else {
-    if (next_control_byte_offset != w.size() - 1) {
-      throw logic_error("data written without control bits");
-    }
-    w.str().resize(w.str().size() - 1);
-  }
-
-  return std::move(w.str());
+  return std::move(w.close());
 }
 
 // The BC0 decompression implementation in PSO GC is vulnerable to overflow
@@ -676,4 +705,43 @@ string bc0_decompress(const void* data, size_t size) {
   }
 
   return std::move(w.str());
+}
+
+void bc0_disassemble(FILE* stream, const string& data) {
+  bc0_disassemble(stream, data.data(), data.size());
+}
+
+void bc0_disassemble(FILE* stream, const void* data, size_t size) {
+  StringReader r(data, size);
+  uint16_t control_stream_bits = 0x0000;
+
+  size_t output_bytes = 0;
+  while (!r.eof()) {
+    // size_t opcode_offset = r.where();
+
+    control_stream_bits >>= 1;
+    if ((control_stream_bits & 0x100) == 0) {
+      control_stream_bits = 0xFF00 | r.get_u8();
+      if (r.eof()) {
+        break;
+      }
+    }
+
+    if ((control_stream_bits & 1) == 0) {
+      uint8_t a1 = r.get_u8();
+      if (r.eof()) {
+        break;
+      }
+      (void)a1;
+      uint8_t a2 = r.get_u8();
+      size_t count = (a2 & 0x0F) + 3;
+      // size_t backreference_offset = a1 | ((a2 << 4) & 0xF00);
+      fprintf(stream, "[%zX] backreference %02zX\n", output_bytes, count);
+      output_bytes += count;
+
+    } else {
+      fprintf(stream, "[%zX] literal %02hhX\n", output_bytes, r.get_u8());
+      output_bytes++;
+    }
+  }
 }

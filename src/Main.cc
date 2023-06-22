@@ -208,7 +208,8 @@ enum class Behavior {
   COMPRESS_BC0,
   DECOMPRESS_BC0,
   PRS_SIZE,
-  PRS_DISASSEMBLE,
+  DISASSEMBLE_PRS,
+  DISASSEMBLE_BC0,
   ENCRYPT_DATA,
   DECRYPT_DATA,
   ENCRYPT_TRIVIAL_DATA,
@@ -240,7 +241,8 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::COMPRESS_BC0) ||
       (b == Behavior::DECOMPRESS_BC0) ||
       (b == Behavior::PRS_SIZE) ||
-      (b == Behavior::PRS_DISASSEMBLE) ||
+      (b == Behavior::DISASSEMBLE_PRS) ||
+      (b == Behavior::DISASSEMBLE_BC0) ||
       (b == Behavior::ENCRYPT_DATA) ||
       (b == Behavior::DECRYPT_DATA) ||
       (b == Behavior::ENCRYPT_TRIVIAL_DATA) ||
@@ -394,7 +396,9 @@ int main(int argc, char** argv) {
         } else if (!strcmp(argv[x], "prs-size")) {
           behavior = Behavior::PRS_SIZE;
         } else if (!strcmp(argv[x], "disassemble-prs")) {
-          behavior = Behavior::PRS_DISASSEMBLE;
+          behavior = Behavior::DISASSEMBLE_PRS;
+        } else if (!strcmp(argv[x], "disassemble-bc0")) {
+          behavior = Behavior::DISASSEMBLE_BC0;
         } else if (!strcmp(argv[x], "encrypt-data")) {
           behavior = Behavior::ENCRYPT_DATA;
         } else if (!strcmp(argv[x], "decrypt-data")) {
@@ -580,8 +584,12 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::PRS_DISASSEMBLE: {
+    case Behavior::DISASSEMBLE_PRS: {
       prs_disassemble(stdout, read_input_data());
+      break;
+    }
+    case Behavior::DISASSEMBLE_BC0: {
+      bc0_disassemble(stdout, read_input_data());
       break;
     }
 

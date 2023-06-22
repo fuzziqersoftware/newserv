@@ -149,5 +149,8 @@ void prs_disassemble(FILE* stream, const std::string& data);
 
 // Compresses and decompresses data using the BC0 algorithm.
 std::string bc0_compress(const std::string& data, std::function<void(size_t, size_t)> progress_fn = nullptr);
+std::string bc0_compress(const void* in_data_v, size_t in_size, std::function<void(size_t, size_t)> progress_fn = nullptr);
 std::string bc0_decompress(const std::string& data);
 std::string bc0_decompress(const void* data, size_t size);
+void bc0_disassemble(FILE* stream, const std::string& data);
+void bc0_disassemble(FILE* stream, const void* data, size_t size);
