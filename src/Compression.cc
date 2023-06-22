@@ -13,6 +13,162 @@
 
 using namespace std;
 
+template <>
+const char* name_for_enum<PRSCompressOptimalPhase>(PRSCompressOptimalPhase v) {
+  switch (v) {
+    case PRSCompressOptimalPhase::INDEX_SHORT_COPIES:
+      return "INDEX_SHORT_COPIES";
+    case PRSCompressOptimalPhase::INDEX_LONG_COPIES:
+      return "INDEX_LONG_COPIES";
+    case PRSCompressOptimalPhase::INDEX_EXTENDED_COPIES:
+      return "INDEX_EXTENDED_COPIES";
+    case PRSCompressOptimalPhase::CONSTRUCT_PATHS:
+      return "CONSTRUCT_PATHS";
+    case PRSCompressOptimalPhase::BACKTRACE_OPTIMAL_PATH:
+      return "BACKTRACE_OPTIMAL_PATH";
+    case PRSCompressOptimalPhase::GENERATE_RESULT:
+      return "GENERATE_RESULT";
+    default:
+      return "__UNKNOWN__";
+  }
+}
+
+template <>
+const char* name_for_enum<BC0CompressOptimalPhase>(BC0CompressOptimalPhase v) {
+  switch (v) {
+    case BC0CompressOptimalPhase::INDEX:
+      return "INDEX";
+    case BC0CompressOptimalPhase::CONSTRUCT_PATHS:
+      return "CONSTRUCT_PATHS";
+    case BC0CompressOptimalPhase::BACKTRACE_OPTIMAL_PATH:
+      return "BACKTRACE_OPTIMAL_PATH";
+    case BC0CompressOptimalPhase::GENERATE_RESULT:
+      return "GENERATE_RESULT";
+    default:
+      return "__UNKNOWN__";
+  }
+}
+
+template <size_t WindowLength, size_t MaxMatchLength, bool UseLatestBestMatch = false, size_t DebugLength = 0>
+struct WindowIndex {
+  const uint8_t* data;
+  size_t size;
+  size_t offset;
+  multiset<size_t, function<bool(size_t, size_t)>> index;
+
+  WindowIndex(const void* data, size_t size)
+      : data(reinterpret_cast<const uint8_t*>(data)),
+        size(size),
+        offset(0),
+        index(bind(&WindowIndex::set_comparator, this, placeholders::_1, placeholders::_2)) {}
+
+  void advance() {
+    if (this->offset >= WindowLength) {
+      this->index.erase(this->offset - WindowLength);
+    }
+    this->index.emplace(this->offset);
+    this->offset++;
+    if (DebugLength) {
+      this->print_state();
+    }
+  }
+
+  size_t get_match_length(size_t match_offset) const {
+    size_t match_iter = match_offset;
+    size_t offset_iter = this->offset;
+    while ((match_iter < match_offset + MaxMatchLength) &&
+        (match_iter < this->size) &&
+        (offset_iter < this->size) &&
+        (this->data[match_iter] == this->data[offset_iter])) {
+      match_iter++;
+      offset_iter++;
+    }
+    return match_iter - match_offset;
+  };
+
+  // The data structure we want is a binary-searchable set of all strings
+  // starting at all possible offsets within the sliding window, and we need
+  // to be able to search lexicographically but insert and delete by offset.
+  // A std::map<std::string, size_t> would accomplish this, but would be
+  // horrendously inefficient: we'd have to copy strings far too much. We can
+  // solve this by instead storing the offset of each string as keys in a set
+  // and using a custom comparator to treat them as references to binary
+  // strings within the data.
+  bool set_comparator(size_t a, size_t b) const {
+    size_t max_length = min<size_t>(MaxMatchLength, this->size - max<size_t>(a, b));
+    size_t end_a = a + max_length;
+    for (; a < end_a; a++, b++) {
+      uint8_t data_a = static_cast<uint8_t>(this->data[a]);
+      uint8_t data_b = static_cast<uint8_t>(this->data[b]);
+      if (data_a < data_b) {
+        return true; // a comes before b lexicographically
+      } else if (data_a > data_b) {
+        return false; // a comes after b lexicographically
+      }
+    }
+    return a < b; // Maximum-length match; order them by offset
+  };
+
+  pair<size_t, size_t> get_best_match() const {
+    // Find the best match from the index. It's unlikely that we'll get an
+    // exact match, so check the entry before the upper_bound result too.
+    // Note: We use upper_bound rather than lower_bound because in PRS, a
+    // backreference can be encoded with fewer bits if it's close to the
+    // decompression offset, and this makes us pick the latest match by
+    // default.
+    if (DebugLength) {
+      string hex_str = format_data_string(&this->data[this->offset], min<size_t>(this->size - this->offset, DebugLength));
+      fprintf(stderr, "[%05zX] match SEARCH %s\n", this->offset, hex_str.c_str());
+    }
+    size_t match_offset = 0;
+    size_t match_size = 0;
+    auto start_it = this->index.upper_bound(this->offset);
+    for (auto it = start_it; it != this->index.end(); it++) {
+      size_t new_match_offset = *it;
+      size_t new_match_size = this->get_match_length(new_match_offset);
+      if (DebugLength) {
+        fprintf(stderr, "[%05zX] match BEFORE %zX %zX\n", this->offset, new_match_offset, new_match_size);
+      }
+      if ((new_match_size > match_size) || (new_match_size == match_size && new_match_offset > match_offset)) {
+        match_offset = new_match_offset;
+        match_size = new_match_size;
+      } else if (!UseLatestBestMatch || (new_match_size < match_size)) {
+        // In PRS, using the latest of a set of equivalent matches may be
+        // advantageous because it may be possible to encode it with fewer bits.
+        // All backreferences are the same length in BC0, so this doesn't apply.
+        break;
+      }
+    }
+    for (auto it = start_it; it != this->index.begin();) {
+      it--;
+      size_t new_match_offset = *it;
+      size_t new_match_size = this->get_match_length(new_match_offset);
+      if (DebugLength) {
+        fprintf(stderr, "[%05zX] match BEFORE %zX %zX\n", this->offset, new_match_offset, new_match_size);
+      }
+      if ((new_match_size > match_size) || (new_match_size == match_size && new_match_offset > match_offset)) {
+        match_offset = new_match_offset;
+        match_size = new_match_size;
+      } else if (!UseLatestBestMatch || (new_match_size < match_size)) {
+        break;
+      }
+    }
+    if (DebugLength) {
+      fprintf(stderr, "[%05zX] match OVERALL %zX %zX\n", this->offset, match_offset, match_size);
+    }
+    return make_pair(match_offset, match_size);
+  }
+
+  void print_state() const {
+    fprintf(stderr, "[%05zX] Window<0x%zX, 0x%zX> at 0x%zX contains 0x%zX entries:\n",
+        this->offset, WindowLength, MaxMatchLength, this->offset, this->index.size());
+    for (size_t z : this->index) {
+      string hex_str = format_data_string(&this->data[z], min<size_t>(this->size - z, DebugLength));
+      fprintf(stderr, "[%05zX]   %05zX => %s\n", this->offset, z, hex_str.c_str());
+    }
+  }
+};
+
 template <size_t MaxDataBytesPerControlBit>
 struct LZSSInterleavedWriter {
   StringWriter w;
@@ -51,16 +207,302 @@ struct LZSSInterleavedWriter {
     }
     this->next_control_bit <<= 1;
   }
+
   void write_data(uint8_t v) {
     this->buf[this->buf_offset++] = v;
   }
+
   size_t size() const {
     return this->w.size() + this->buf_offset;
   }
 };
 
+class ControlStreamReader {
+public:
+  ControlStreamReader(StringReader& r)
+      : r(r),
+        bits(0x0000) {}
+
+  bool read() {
+    if (!(this->bits & 0x0100)) {
+      this->bits = 0xFF00 | this->r.get_u8();
+    }
+    bool ret = this->bits & 1;
+    this->bits >>= 1;
+    return ret;
+  }
+
+  uint8_t buffered_bits() const {
+    uint16_t z = this->bits;
+    uint8_t ret = 0;
+    for (; z & 0x0100; z >>= 1, ret++) {
+    }
+    return ret;
+  }
+
+private:
+  StringReader& r;
+  uint16_t bits;
+};
+
+struct PRSPathNode {
+  enum class CommandType {
+    NONE = 0,
+    LITERAL,
+    SHORT_COPY,
+    LONG_COPY,
+    EXTENDED_COPY,
+  };
+
+  int16_t short_copy_offset = 0;
+  uint8_t max_short_copy_size = 0;
+  int16_t long_copy_offset = 0;
+  uint8_t max_long_copy_size = 0;
+  int16_t extended_copy_offset = 0;
+  uint16_t max_extended_copy_size = 0;
+
+  // Pathfinding state
+  size_t from_offset = 0;
+  CommandType from_command_type = CommandType::NONE;
+  size_t bits_used = static_cast<size_t>(-1);
+
+  // Stream generation state
+  size_t to_offset = 0;
+
+  std::string str() const {
+    const char* command_type_name;
+    switch (this->from_command_type) {
+      case CommandType::NONE:
+        command_type_name = "NONE";
+        break;
+      case CommandType::LITERAL:
+        command_type_name = "LITERAL";
+        break;
+      case CommandType::SHORT_COPY:
+        command_type_name = "SHORT_COPY";
+        break;
+      case CommandType::LONG_COPY:
+        command_type_name = "LONG_COPY";
+        break;
+      case CommandType::EXTENDED_COPY:
+        command_type_name = "EXTENDED_COPY";
+        break;
+      default:
+        command_type_name = "__UNKNOWN__";
+    }
+    return string_printf("[Node short=%hX %hhX long=%hX %hhX ext=%hX %hX from=%zX %s bits=%zX to=%zX]",
+        this->short_copy_offset, this->max_short_copy_size,
+        this->long_copy_offset, this->max_long_copy_size, this->extended_copy_offset, this->max_extended_copy_size,
+        this->from_offset, command_type_name, this->bits_used, this->to_offset);
+  }
+};
+
+string prs_compress_optimal(
+    const void* in_data_v, size_t in_size, function<void(PRSCompressOptimalPhase, size_t, size_t)> progress_fn) {
+  const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
+
+  vector<PRSPathNode> nodes;
+  nodes.resize(in_size + 1);
+  nodes[0].bits_used = 18; // Stop command: 2 control bits and 2 data bytes
+
+  // Populate all possible short copies
+  {
+    WindowIndex<0x100, 5, true> window(in_data_v, in_size);
+    while (window.offset < in_size) {
+      if ((window.offset & 0xFFF) == 0) {
+        progress_fn(PRSCompressOptimalPhase::INDEX_SHORT_COPIES, window.offset, 0);
+      }
+      auto& node = nodes[window.offset];
+      auto match = window.get_best_match();
+      if (match.second >= 2) {
+        node.short_copy_offset = match.first - window.offset;
+        node.max_short_copy_size = match.second;
+      }
+      window.advance();
+    }
+  }
+
+  // Populate all possible long copies
+  {
+    WindowIndex<0x1FFF, 9, true> window(in_data_v, in_size);
+    while (window.offset < in_size) {
+      if ((window.offset & 0xFFF) == 0) {
+        progress_fn(PRSCompressOptimalPhase::INDEX_LONG_COPIES, window.offset, 0);
+      }
+      auto& node = nodes[window.offset];
+      auto match = window.get_best_match();
+      if (match.second >= 3) {
+        node.long_copy_offset = match.first - window.offset;
+        node.max_long_copy_size = match.second;
+      }
+      window.advance();
+    }
+  }
+
+  // Populate all possible extended copies
+  {
+    WindowIndex<0x1FFF, 0x100, true> window(in_data_v, in_size);
+    while (window.offset < in_size) {
+      if ((window.offset & 0xFFF) == 0) {
+        progress_fn(PRSCompressOptimalPhase::INDEX_EXTENDED_COPIES, window.offset, 0);
+      }
+      auto& node = nodes[window.offset];
+      auto match = window.get_best_match();
+      if (match.second >= 1) {
+        node.extended_copy_offset = match.first - window.offset;
+        node.max_extended_copy_size = match.second;
+      }
+      window.advance();
+    }
+  }
+
+  // For each node, populate the literal value, and the best ways to get to the
+  // following nodes
+  for (size_t z = 0; z < in_size; z++) {
+    if ((z & 0xFFF) == 0) {
+      progress_fn(PRSCompressOptimalPhase::CONSTRUCT_PATHS, z, 0);
+    }
+
+    auto& node = nodes[z];
+
+    // Literal: 1 control bit + 1 data byte
+    size_t bits_used = node.bits_used + 9;
+    {
+      auto& next_node = nodes[z + 1];
+      if (next_node.bits_used > bits_used) {
+        next_node.from_offset = z;
+        next_node.from_command_type = PRSPathNode::CommandType::LITERAL;
+        next_node.bits_used = bits_used;
+      }
+    }
+
+    // Short copy: 4 control bits + 1 data byte
+    bits_used = node.bits_used + 12;
+    for (size_t x = 2; x <= node.max_short_copy_size; x++) {
+      auto& next_node = nodes[z + x];
+      if (next_node.bits_used > bits_used) {
+        next_node.from_offset = z;
+        next_node.from_command_type = PRSPathNode::CommandType::SHORT_COPY;
+        next_node.bits_used = bits_used;
+      }
+    }
+
+    // Long copy: 2 control bits + 2 data bytes
+    bits_used = node.bits_used + 18;
+    for (size_t x = 3; x <= node.max_long_copy_size; x++) {
+      auto& next_node = nodes[z + x];
+      if (next_node.bits_used > bits_used) {
+        next_node.from_offset = z;
+        next_node.from_command_type = PRSPathNode::CommandType::LONG_COPY;
+        next_node.bits_used = bits_used;
+      }
+    }
+
+    // Extended copy: 2 control bits + 3 data bytes
+    bits_used = node.bits_used + 26;
+    for (size_t x = 1; x <= node.max_extended_copy_size; x++) {
+      auto& next_node = nodes[z + x];
+      if (next_node.bits_used > bits_used) {
+        next_node.from_offset = z;
+        next_node.from_command_type = PRSPathNode::CommandType::EXTENDED_COPY;
+        next_node.bits_used = bits_used;
+      }
+    }
+  }
+
+  // Find the shortest path from the last node to the first node
+  size_t last_progress_fn_call = static_cast<size_t>(-1);
+  for (size_t z = in_size; z > 0;) {
+    if ((z & ~0xFFF) != (last_progress_fn_call & ~0xFFF)) {
+      last_progress_fn_call = z;
+      progress_fn(PRSCompressOptimalPhase::BACKTRACE_OPTIMAL_PATH, z, 0);
+    }
+    size_t from_offset = nodes[z].from_offset;
+    nodes[from_offset].to_offset = z;
+    z = from_offset;
+  }
+
+  // Produce the PRS command stream from the shortest path
+  LZSSInterleavedWriter<3> w;
+  last_progress_fn_call = static_cast<size_t>(-1);
+  for (size_t offset = 0; offset < in_size;) {
+    if ((offset & ~0xFFF) != (last_progress_fn_call & ~0xFFF)) {
+      last_progress_fn_call = offset;
+      progress_fn(PRSCompressOptimalPhase::GENERATE_RESULT, offset, w.size());
+    }
+
+    const auto& node = nodes[offset];
+    const auto& next_node = nodes[node.to_offset];
+
+    size_t copy_size = node.to_offset - offset;
+    switch (next_node.from_command_type) {
+      case PRSPathNode::CommandType::LITERAL:
+        if (copy_size != 1) {
+          throw logic_error("incorrect size for LITERAL copy type");
+        }
+        w.write_control(true);
+        w.write_data(in_data[offset]);
+        break;
+      case PRSPathNode::CommandType::SHORT_COPY: {
+        if (copy_size < 2 || copy_size > 5) {
+          throw logic_error("incorrect size for SHORT_COPY copy type");
+        }
+        uint8_t encoded_size = copy_size - 2;
+        w.write_control(false);
+        w.flush_if_ready();
+        w.write_control(false);
+        w.flush_if_ready();
+        w.write_control(encoded_size & 2);
+        w.flush_if_ready();
+        w.write_control(encoded_size & 1);
+        w.write_data(node.short_copy_offset & 0xFF);
+        break;
+      }
+      case PRSPathNode::CommandType::LONG_COPY: {
+        if (copy_size < 2 || copy_size > 9) {
+          throw logic_error("incorrect size for LONG_COPY copy type");
+        }
+        w.write_control(false);
+        w.flush_if_ready();
+        w.write_control(true);
+        uint16_t a = (node.long_copy_offset << 3) | (copy_size - 2);
+        w.write_data(a & 0xFF);
+        w.write_data(a >> 8);
+        break;
+      }
+      case PRSPathNode::CommandType::EXTENDED_COPY: {
+        if (copy_size < 1 || copy_size > 0x100) {
+          throw logic_error("incorrect size for EXTENDED_COPY copy type");
+        }
+        w.write_control(false);
+        w.flush_if_ready();
+        w.write_control(true);
+        uint16_t a = (node.extended_copy_offset << 3);
+        w.write_data(a & 0xFF);
+        w.write_data(a >> 8);
+        w.write_data(copy_size - 1);
+        break;
+      }
+      default:
+        throw logic_error("invalid copy type in shortest path");
+    }
+    w.flush_if_ready();
+
+    offset = node.to_offset;
+  }
+
+  // Write stop command
+  w.write_control(false);
+  w.flush_if_ready();
+  w.write_control(true);
+  w.write_data(0);
+  w.write_data(0);
+
+  return std::move(w.close());
+}
+
 PRSCompressor::PRSCompressor(
-    size_t compression_level, function<void(size_t, size_t)> progress_fn)
+    ssize_t compression_level, function<void(size_t, size_t)> progress_fn)
     : compression_level(compression_level),
       progress_fn(progress_fn),
       closed(false),
@@ -98,8 +540,8 @@ void PRSCompressor::advance() {
   size_t best_match_size = 0;
   size_t best_match_offset = 0;
   size_t best_match_literals = 0;
-  for (size_t num_literals = 0; num_literals < this->compression_level; num_literals++) {
-    for (size_t z = 0; z < num_literals; z++) {
+  for (ssize_t num_literals = 0; num_literals <= this->compression_level; num_literals++) {
+    for (size_t z = 0; z < static_cast<size_t>(num_literals); z++) {
       this->reverse_log.push_back(this->forward_log.at(this->reverse_log.end_offset()));
     }
 
@@ -130,7 +572,7 @@ void PRSCompressor::advance() {
         best_match_literals = num_literals;
       }
     }
-    for (size_t z = 0; z < num_literals; z++) {
+    for (size_t z = 0; z < static_cast<size_t>(num_literals); z++) {
       this->reverse_log.pop_back();
     }
   }
@@ -266,7 +708,7 @@ void PRSCompressor::flush_control() {
 string prs_compress(
     const void* vdata,
     size_t size,
-    size_t compression_level,
+    ssize_t compression_level,
     function<void(size_t, size_t)> progress_fn) {
   PRSCompressor prs(compression_level, progress_fn);
   prs.add(vdata, size);
@@ -275,38 +717,107 @@ string prs_compress(
 
 string prs_compress(
     const string& data,
-    size_t compression_level,
+    ssize_t compression_level,
     function<void(size_t, size_t)> progress_fn) {
   return prs_compress(data.data(), data.size(), compression_level, progress_fn);
 }
 
-class ControlStreamReader {
-public:
-  ControlStreamReader(StringReader& r)
-      : r(r),
-        bits(0x0000) {}
+string prs_compress(const void* in_data_v, size_t in_size, function<void(size_t, size_t)> progress_fn) {
+  const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
-  bool read() {
-    if (!(this->bits & 0x0100)) {
-      this->bits = 0xFF00 | this->r.get_u8();
+  LZSSInterleavedWriter<3> w;
+  WindowIndex<0x1FFF, 0x100, true> window(in_data_v, in_size);
+
+  size_t last_progress_fn_call_offset = 0;
+  while (window.offset < in_size) {
+    if (progress_fn && ((last_progress_fn_call_offset & ~0xFFF) != (window.offset & ~0xFFF))) {
+      last_progress_fn_call_offset = window.offset;
+      progress_fn(window.offset, w.size());
     }
-    bool ret = this->bits & 1;
-    this->bits >>= 1;
-    return ret;
+
+    auto match = window.get_best_match();
+
+    // Look ahead by 1 literal to see if there's a significantly better match.
+    window.advance();
+    auto advanced_match = window.get_best_match();
+    if (advanced_match.second > match.second + 1) {
+      match.second = 1;
+    }
+
+    // If there is a suitable match, write a backreference; otherwise, write a
+    // literal. The backreference should be encoded:
+    // - As a short copy if offset in [-0x100, -1] and size in [2, 5]
+    // - As a long copy if offset in [-0x1FFF, -1] and size in [3, 9]
+    // - As an extended copy if offset in [-0x1FFF, -1] and size in [10, 0x100]
+    // Technically an extended copy can be used for sizes 1-9 as well, but if
+    // size is 1 or 2, writing literals is better (since it uses fewer data
+    // bytes and control bits), and a long copy can cover sizes 3-9 (and also
+    // uses fewer data bytes and control bits).
+    ssize_t backreference_offset = match.first - (window.offset - 1);
+    if (match.second < 2) {
+      // The match is too small; a literal would use fewer bits
+      w.write_control(true);
+      w.write_data(in_data[window.offset - 1]);
+      match.second = 1;
+
+    } else if ((backreference_offset >= -0x100) && (match.second <= 5)) {
+      uint8_t encoded_size = match.second - 2;
+      w.write_control(false);
+      w.flush_if_ready();
+      w.write_control(false);
+      w.flush_if_ready();
+      w.write_control(encoded_size & 2);
+      w.flush_if_ready();
+      w.write_control(encoded_size & 1);
+      w.write_data(backreference_offset & 0xFF);
+
+    } else if (match.second < 3) {
+      // We can't use a long copy for size 2, and it's not worth it to use an
+      // extended copy for this either (as noted above), so write a literal
+      w.write_control(true);
+      w.write_data(in_data[window.offset - 1]);
+      match.second = 1;
+
+    } else if ((backreference_offset >= -0x1FFF) && (match.second <= 9)) {
+      w.write_control(false);
+      w.flush_if_ready();
+      w.write_control(true);
+      uint16_t a = (backreference_offset << 3) | (match.second - 2);
+      w.write_data(a & 0xFF);
+      w.write_data(a >> 8);
+
+    } else if ((backreference_offset >= -0x1FFF) && (match.second <= 0x100)) {
+      w.write_control(false);
+      w.flush_if_ready();
+      w.write_control(true);
+      uint16_t a = (backreference_offset << 3);
+      w.write_data(a & 0xFF);
+      w.write_data(a >> 8);
+      w.write_data(match.second - 1);
+
+    } else {
+      throw logic_error("invalid best match");
+    }
+    w.flush_if_ready();
+
+    for (size_t z = 1; z < match.second; z++) {
+      window.advance();
+    }
   }
 
-  uint8_t buffered_bits() const {
-    uint16_t z = this->bits;
-    uint8_t ret = 0;
-    for (; z & 0x0100; z >>= 1, ret++) {
-    }
-    return ret;
-  }
+  // Write stop command
+  w.write_control(false);
+  w.flush_if_ready();
+  w.write_control(true);
+  w.write_data(0);
+  w.write_data(0);
 
-private:
-  StringReader& r;
-  uint16_t bits;
-};
+  return std::move(w.close());
+}
+
+string prs_compress(const string& data, function<void(size_t, size_t)> progress_fn) {
+  return prs_compress(data.data(), data.size(), progress_fn);
+}
 
 string prs_decompress(const void* data, size_t size, size_t max_output_size) {
   // PRS is an LZ77-based compression algorithm. Compressed data is split into
@@ -464,38 +975,40 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
   ControlStreamReader cr(r);
 
   while (!r.eof()) {
-    size_t r_offset = r.where();
-    uint8_t buffered_bits = cr.buffered_bits();
-    size_t input_bits = 8 * r_offset + (buffered_bits ? (8 - buffered_bits) : 0);
     if (cr.read()) {
-      fprintf(stream, "[%zX / %zX => %zX] literal %02hhX\n", r_offset, input_bits, output_bytes, r.get_u8());
+      fprintf(stream, "[%zX] literal %02hhX\n", output_bytes, r.get_u8());
       output_bytes++;
 
     } else {
       ssize_t offset;
       size_t count;
+      const char* copy_type;
 
-      bool is_long_copy = cr.read();
-      if (is_long_copy) {
+      if (cr.read()) {
         uint16_t a = r.get_u8();
         a |= (r.get_u8() << 8);
         offset = (a >> 3) | (~0x1FFF);
         if (offset == ~0x1FFF) {
-          fprintf(stream, "[%zX / %zX => %zX] end\n", r_offset, input_bits, output_bytes);
+          fprintf(stream, "[%zX] end\n", output_bytes);
           break;
         }
-        count = (a & 7) ? ((a & 7) + 2) : (r.get_u8() + 1);
+        if (a & 7) {
+          copy_type = "long";
+          count = (a & 7) + 2;
+        } else {
+          copy_type = "extended";
+          count = r.get_u8() + 1;
+        }
 
       } else {
+        copy_type = "short";
         count = cr.read() << 1;
         count = (count | cr.read()) + 2;
         offset = r.get_u8() | (~0xFF);
       }
 
       size_t read_offset = output_bytes + offset;
-      fprintf(stream, "[%zX / %zX => %zX] %s copy -%zX (from %zX) %zX\n",
-          r_offset, input_bits, output_bytes, is_long_copy ? "long" : "short",
-          -offset, read_offset, count);
+      fprintf(stream, "[%zX] %s copy %zX\n", output_bytes, copy_type, count);
 
       if (read_offset >= output_bytes) {
         throw runtime_error("backreference offset beyond beginning of output");
@@ -515,6 +1028,118 @@ void prs_disassemble(FILE* stream, const std::string& data) {
 // PRS, there is only one type of backreference. Also, there is no stop opcode;
 // the decompressor simply stops when there are no more input bytes to read.
 
+struct BC0PathNode {
+  uint16_t memo_offset = 0;
+  uint8_t max_copy_size = 0;
+
+  // Pathfinding state
+  size_t from_offset = 0;
+  size_t bits_used = static_cast<size_t>(-1);
+
+  // Stream generation state
+  size_t to_offset = 0;
+
+  std::string str() const {
+    return string_printf("[Node ref=%04hX %hhX from=%zX bits=%zX to=%zX]",
+        this->memo_offset, this->max_copy_size,
+        this->from_offset, this->bits_used, this->to_offset);
+  }
+};
+
+string bc0_compress_optimal(
+    const void* in_data_v, size_t in_size, function<void(BC0CompressOptimalPhase, size_t, size_t)> progress_fn) {
+  const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
+
+  vector<BC0PathNode> nodes;
+  nodes.resize(in_size + 1);
+  nodes[0].bits_used = 0;
+
+  // Populate all possible backreferences
+  {
+    WindowIndex<0x1000, 0x12> window(in_data_v, in_size);
+    while (window.offset < in_size) {
+      if ((window.offset & 0xFFF) == 0) {
+        progress_fn(BC0CompressOptimalPhase::INDEX, window.offset, 0);
+      }
+      auto& node = nodes[window.offset];
+      auto match = window.get_best_match();
+      if (match.second >= 3) {
+        node.memo_offset = (match.first - 0x12) & 0xFFF;
+        node.max_copy_size = match.second;
+      }
+      window.advance();
+    }
+  }
+
+  // For each node, populate the literal value, and the best ways to get to the
+  // following nodes
+  for (size_t z = 0; z < in_size; z++) {
+    if ((z & 0xFFF) == 0) {
+      progress_fn(BC0CompressOptimalPhase::CONSTRUCT_PATHS, z, 0);
+    }
+
+    auto& node = nodes[z];
+
+    // Literal: 1 control bit + 1 data byte
+    size_t bits_used = node.bits_used + 9;
+    {
+      auto& next_node = nodes[z + 1];
+      if (next_node.bits_used > bits_used) {
+        next_node.from_offset = z;
+        next_node.bits_used = bits_used;
+      }
+    }
+
+    // Backreference: 1 control bit + 2 data bytes
+    bits_used = node.bits_used + 17;
+    for (size_t x = 3; x <= node.max_copy_size; x++) {
+      auto& next_node = nodes[z + x];
+      if (next_node.bits_used > bits_used) {
+        next_node.from_offset = z;
+        next_node.bits_used = bits_used;
+      }
+    }
+  }
+
+  // Find the shortest path from the last node to the first node
+  size_t last_progress_fn_call = static_cast<size_t>(-1);
+  for (size_t z = in_size; z > 0;) {
+    if ((z & ~0xFFF) != (last_progress_fn_call & ~0xFFF)) {
+      last_progress_fn_call = z;
+      progress_fn(BC0CompressOptimalPhase::BACKTRACE_OPTIMAL_PATH, z, 0);
+    }
+    size_t from_offset = nodes[z].from_offset;
+    nodes[from_offset].to_offset = z;
+    z = from_offset;
+  }
+
+  // Produce the BC0 command stream from the shortest path
+  LZSSInterleavedWriter<3> w;
+  last_progress_fn_call = static_cast<size_t>(-1);
+  for (size_t offset = 0; offset < in_size;) {
+    if ((offset & ~0xFFF) != (last_progress_fn_call & ~0xFFF)) {
+      last_progress_fn_call = offset;
+      progress_fn(BC0CompressOptimalPhase::GENERATE_RESULT, offset, w.size());
+    }
+
+    const auto& node = nodes[offset];
+    size_t copy_size = node.to_offset - offset;
+    if (copy_size >= 3 && copy_size <= 0x12) {
+      w.write_control(false);
+      w.write_data(node.memo_offset & 0xFF);
+      w.write_data(((node.memo_offset >> 4) & 0xF0) | (copy_size - 3));
+    } else if (copy_size == 1) {
+      w.write_control(true);
+      w.write_data(in_data[offset]);
+    }
+    w.flush_if_ready();
+
+    offset = node.to_offset;
+  }
+
+  return std::move(w.close());
+}
+
 string bc0_compress(const string& data, function<void(size_t, size_t)> progress_fn) {
   return bc0_compress(data.data(), data.size(), progress_fn);
 }
@@ -523,103 +1148,48 @@ string bc0_compress(const void* in_data_v, size_t in_size, function<void(size_t,
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   LZSSInterleavedWriter<2> w;
-  size_t read_offset = 0;
-
-  // The data structure we want is a binaary-searchable set of all strings
-  // starting at all possible offsets within the sliding window, and we need
-  // to be able to search lexicographically but insert and delete by offset.
-  // A std::map<std::string, size_t> would accomplish this, but would be
-  // horrendously inefficient: we'd have to copy strings far too much. We can
-  // solve this by instead storing the offset of each string as keys in a set
-  // and using a custom comparator to treat them as references to binary
-  // strings within the data.
-  auto set_comparator = [&](size_t a, size_t b) -> bool {
-    size_t max_length = min<size_t>(0x12, in_size - max<size_t>(a, b));
-    size_t end_a = a + max_length;
-    for (; a < end_a; a++, b++) {
-      uint8_t data_a = static_cast<uint8_t>(in_data[a]);
-      uint8_t data_b = static_cast<uint8_t>(in_data[b]);
-      if (data_a < data_b) {
-        return true; // a comes before b lexicographically
-      } else if (data_a > data_b) {
-        return false; // a comes after b lexicographically
-      }
-    }
-    return a < b; // Maximum-length match; order them by offset
-  };
-  multiset<size_t, function<bool(size_t, size_t)>> window_index(set_comparator);
-
-  auto get_match_length = [&](size_t a, size_t b) -> size_t {
-    size_t ret = 0;
-    while ((ret < 0x12) && (a + ret < in_size) && (b + ret < in_size) &&
-        (in_data[a + ret] == in_data[b + ret])) {
-      ret++;
-    }
-    return ret;
-  };
+  WindowIndex<0x1000, 0x12> window(in_data_v, in_size);
 
   size_t last_progress_fn_call_offset = 0;
-  while (read_offset < in_size) {
-    if (progress_fn && ((last_progress_fn_call_offset & ~0xFFF) != (read_offset & ~0xFFF))) {
-      last_progress_fn_call_offset = read_offset;
-      progress_fn(read_offset, w.size());
+  while (window.offset < in_size) {
+    if (progress_fn && ((last_progress_fn_call_offset & ~0xFFF) != (window.offset & ~0xFFF))) {
+      last_progress_fn_call_offset = window.offset;
+      progress_fn(window.offset, w.size());
     }
 
-    // Find the best match from the index. It's unlikely that we'll get an
-    // exact match, so check the entry before the lower_bound result too.
-    size_t match_offset = 0;
-    size_t match_size = 0;
-    // string hex_search_data = format_data_string(data.substr(read_offset, 0x12));
-    // fprintf(stderr, "[%zX] match SEARCH %s\n", read_offset, hex_search_data.c_str());
-    auto match_it = window_index.lower_bound(read_offset);
-    if (match_it != window_index.end()) {
-      match_offset = *match_it;
-      match_size = get_match_length(read_offset, match_offset);
-      // fprintf(stderr, "[%zX] match AFTER %zX %zX\n", read_offset, match_offset, match_size);
-    }
-    if (match_it != window_index.begin()) {
-      match_it--;
-      size_t before_match_offset = *match_it;
-      size_t before_match_size = get_match_length(read_offset, before_match_offset);
-      // fprintf(stderr, "[%zX] match BEFORE %zX %zX\n", read_offset, before_match_offset, before_match_size);
-      if (before_match_size > match_size) {
-        match_offset = before_match_offset;
-        match_size = before_match_size;
-      }
-    }
-    // fprintf(stderr, "[%zX] match OVERALL %zX %zX\n", read_offset, match_offset, match_size);
-
-    if (match_size < 3) {
-      match_size = 1;
+    auto match = window.get_best_match();
+    if (match.second < 3) {
+      match.second = 1;
     }
 
     // Write a backreference if a match was found; otherwise, write a literal
-    if (match_size >= 3) {
+    if (match.second >= 3) {
       w.write_control(false);
-      size_t memo_offset = match_offset - 0x12;
+      size_t memo_offset = match.first - 0x12;
       w.write_data(memo_offset & 0xFF);
-      w.write_data(((memo_offset >> 4) & 0xF0) | (match_size - 3));
-      // fprintf(stderr, "[%zX] backreference %03zX %zX\n", read_offset, memo_offset, match_size);
+      w.write_data(((memo_offset >> 4) & 0xF0) | (match.second - 3));
     } else {
       w.write_control(true);
-      w.write_data(in_data[read_offset]);
-      // fprintf(stderr, "[%zX] literal %02hhX\n", read_offset, data[read_offset]);
+      w.write_data(in_data[window.offset]);
     }
     w.flush_if_ready();
 
-    // Update the index and advance read_offset
-    for (size_t z = 0; z < match_size; z++, read_offset++) {
-      if (read_offset >= 0x1000) {
-        window_index.erase(read_offset - 0x1000);
-      }
-      window_index.emplace(read_offset);
-      // fprintf(stderr, "[%zX] Index state updated (%zX):\n", read_offset, window_index.size());
-      // for (size_t it : window_index) {
-      //   string index_data = data.substr(it, 0x12);
-      //   string hex_data = format_data_string(index_data);
-      //   fprintf(stderr, "[%zX]   %05zX => %s\n", read_offset, it, hex_data.c_str());
-      // }
+    for (size_t z = 0; z < match.second; z++) {
+      window.advance();
     }
+  }
+
+  return std::move(w.close());
+}
+
+string bc0_encode(const void* in_data_v, size_t in_size) {
+  const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
+
+  LZSSInterleavedWriter<1> w;
+  for (size_t z = 0; z < in_size; z++) {
+    w.write_control(true);
+    w.write_data(in_data[z]);
+    w.flush_if_ready();
   }
 
   return std::move(w.close());

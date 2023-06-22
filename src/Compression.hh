@@ -5,18 +5,56 @@
 #include <array>
 #include <deque>
 #include <functional>
+#include <phosg/Tools.hh>
 #include <string>
 
 #include "Text.hh"
 
+enum class PRSCompressOptimalPhase {
+  INDEX_SHORT_COPIES = 0,
+  INDEX_LONG_COPIES,
+  INDEX_EXTENDED_COPIES,
+  CONSTRUCT_PATHS,
+  BACKTRACE_OPTIMAL_PATH,
+  GENERATE_RESULT,
+};
+
+template <>
+const char* name_for_enum<PRSCompressOptimalPhase>(PRSCompressOptimalPhase v);
+
+enum class BC0CompressOptimalPhase {
+  INDEX = 0,
+  CONSTRUCT_PATHS,
+  BACKTRACE_OPTIMAL_PATH,
+  GENERATE_RESULT,
+};
+
+template <>
+const char* name_for_enum<BC0CompressOptimalPhase>(BC0CompressOptimalPhase v);
+
+////////////////////////////////////////////////////////////////////////////////
+// PRS compression
+////////////////////////////////////////////////////////////////////////////////
+
 // Use this class if you need to compress from multiple input buffers, or need
 // to compress multiple chunks and don't want to copy their contents
-// unnecessarily. (For most common use cases, use prs_compress (below) instead.)
+// unnecessarily. (For most common use cases, use prs_compress, below, instead.)
+// To use this class, instantiate it, then call .add() one or more times, then
+// call .close() and use the returned string as the compressed result.
 class PRSCompressor {
 public:
-  // To use this class, instantiate it, then call .add() one or more times, then
-  // call .close() and use the returned string as the compressed result.
-  explicit PRSCompressor(size_t compression_level = 1, std::function<void(size_t, size_t)> progress_fn = nullptr);
+  // compression_level specifies how aggressively to search for alternate paths:
+  //   -1: Don't perform any compression at all, but produce output that can be
+  //       understood by prs_decompress. The output will be about 9/8 the size
+  //       of the input.
+  //   0:  Greedily search for the longest backreference at every point. Don't
+  //       consider any alternate paths. Generally offers a good balance between
+  //       speed and output size.
+  //   1:  Consider two paths at each point when a backreference is found: using
+  //       the backreference or ignoring it.
+  //   2+: Consider further chains of paths at each point. Using values 2 or
+  //       greater for compression_level generally yields diminishing returns.
+  explicit PRSCompressor(ssize_t compression_level = 0, std::function<void(size_t, size_t)> progress_fn = nullptr);
   ~PRSCompressor() = default;
 
   // Adds more input data to be compressed, which logically comes after all
@@ -107,7 +145,7 @@ private:
   void write_control(bool z);
   void flush_control();
 
-  size_t compression_level;
+  ssize_t compression_level;
   std::function<void(size_t, size_t)> progress_fn;
   bool closed;
 
@@ -121,18 +159,26 @@ private:
   StringWriter output;
 };
 
-// Compresses data from a single input buffer using PRS and returns the
-// compressed result. This is a shortcut for constructing a PRSCompressor,
-// calling .add() once, and calling .close().
+// These functions use PRSCompressor to compress a buffer of data. This is
+// essentially a shortcut for constructing a PRSCompressor, calling .add() on
+// it once, then calling .close().
 std::string prs_compress(
     const void* vdata,
     size_t size,
-    size_t compression_level = 1,
+    ssize_t compression_level = 0,
     std::function<void(size_t, size_t)> progress_fn = nullptr);
 std::string prs_compress(
     const std::string& data,
-    size_t compression_level = 1,
+    ssize_t compression_level = 0,
     std::function<void(size_t, size_t)> progress_fn = nullptr);
+
+// Compresses data using PRS to the smallest possible output size. This function
+// is slow, but produces results even significantly smaller than Sega's original
+// compressor.
+std::string prs_compress_optimal(
+    const void* vdata,
+    size_t size,
+    std::function<void(PRSCompressOptimalPhase, size_t, size_t)> progress_fn = nullptr);
 
 // Decompresses PRS-compressed data.
 std::string prs_decompress(const void* data, size_t size, size_t max_output_size = 0);
@@ -147,10 +193,26 @@ size_t prs_decompress_size(const std::string& data, size_t max_output_size = 0);
 void prs_disassemble(FILE* stream, const void* data, size_t size);
 void prs_disassemble(FILE* stream, const std::string& data);
 
-// Compresses and decompresses data using the BC0 algorithm.
+////////////////////////////////////////////////////////////////////////////////
+// BC0 compression
+////////////////////////////////////////////////////////////////////////////////
+
+// Compresses data using the BC0 algorithm.
+std::string bc0_compress_optimal(
+    const void* in_data_v,
+    size_t in_size,
+    std::function<void(BC0CompressOptimalPhase, size_t, size_t)> progress_fn = nullptr);
 std::string bc0_compress(const std::string& data, std::function<void(size_t, size_t)> progress_fn = nullptr);
 std::string bc0_compress(const void* in_data_v, size_t in_size, std::function<void(size_t, size_t)> progress_fn = nullptr);
+
+// Encodes data in a BC0-compatible format without compression (similar to using
+// compression_level=-1 with prs_compress).
+std::string bc0_encode(const void* in_data_v, size_t in_size);
+
+// Decompresses BC0-compressed data.
 std::string bc0_decompress(const std::string& data);
 std::string bc0_decompress(const void* data, size_t size);
+
+// Prints the command stream from a BC0-compressed buffer.
 void bc0_disassemble(FILE* stream, const std::string& data);
 void bc0_disassemble(FILE* stream, const void* data, size_t size);

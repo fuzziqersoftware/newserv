@@ -304,7 +304,8 @@ int main(int argc, char** argv) {
   size_t stride = 1;
   size_t num_threads = 0;
   size_t bytes = 0;
-  size_t prs_compression_level = 1;
+  ssize_t compression_level = 0;
+  bool compress_optimal = false;
   const char* find_decryption_seed_ciphertext = nullptr;
   vector<const char*> find_decryption_seed_plaintexts;
   const char* input_filename = nullptr;
@@ -335,7 +336,9 @@ int main(int argc, char** argv) {
     } else if (!strcmp(argv[x], "--bb")) {
       cli_version = GameVersion::BB;
     } else if (!strncmp(argv[x], "--compression-level=", 20)) {
-      prs_compression_level = strtoull(&argv[x][20], nullptr, 0);
+      compression_level = strtoll(&argv[x][20], nullptr, 0);
+    } else if (!strcmp(argv[x], "--optimal")) {
+      compress_optimal = true;
     } else if (!strcmp(argv[x], "--round2")) {
       round2 = true;
     } else if (!strncmp(argv[x], "--bytes=", 8)) {
@@ -549,14 +552,31 @@ int main(int argc, char** argv) {
         fprintf(stderr, "... %zu/%zu (%g%%) => %zu (%g%%)    \r",
             input_progress, input_bytes, progress, output_progress, size_ratio);
       };
+      auto optimal_progress_fn = [&](auto phase, size_t input_progress, size_t output_progress) -> void {
+        const char* phase_name = name_for_enum(phase);
+        float progress = static_cast<float>(input_progress * 100) / input_bytes;
+        float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
+        fprintf(stderr, "... [%s] %zu/%zu (%g%%) => %zu (%g%%)    \r",
+            phase_name, input_progress, input_bytes, progress, output_progress, size_ratio);
+      };
 
       uint64_t start = now();
       if (behavior == Behavior::COMPRESS_PRS) {
-        data = prs_compress(data, prs_compression_level, progress_fn);
+        if (compress_optimal) {
+          data = prs_compress_optimal(data.data(), data.size(), optimal_progress_fn);
+        } else {
+          data = prs_compress(data, compression_level, progress_fn);
+        }
       } else if (behavior == Behavior::DECOMPRESS_PRS) {
         data = prs_decompress(data);
       } else if (behavior == Behavior::COMPRESS_BC0) {
-        data = bc0_compress(data, progress_fn);
+        if (compress_optimal) {
+          data = bc0_compress_optimal(data.data(), data.size(), optimal_progress_fn);
+        } else if (compression_level < 0) {
+          data = bc0_encode(data.data(), data.size());
+        } else {
+          data = bc0_compress(data, progress_fn);
+        }
       } else if (behavior == Behavior::DECOMPRESS_BC0) {
         data = bc0_decompress(data);
       } else {
