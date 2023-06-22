@@ -13,6 +13,52 @@
 
 using namespace std;
 
+template <size_t MaxDataBytesPerControlBit>
+struct LZSSInterleavedWriter {
+  StringWriter w;
+  size_t buf_offset;
+  uint8_t next_control_bit;
+  uint8_t buf[(MaxDataBytesPerControlBit * 8) + 1];
+
+  LZSSInterleavedWriter()
+      : buf_offset(1),
+        next_control_bit(1) {
+    this->buf[0] = 0;
+  }
+
+  void flush_if_ready() {
+    if (this->next_control_bit == 0) {
+      this->w.write(this->buf, this->buf_offset);
+      this->buf[0] = 0;
+      this->buf_offset = 1;
+      this->next_control_bit = 1;
+    }
+  }
+
+  std::string&& close() {
+    if (this->buf_offset > 1 || this->next_control_bit != 1) {
+      this->w.write(this->buf, this->buf_offset);
+    }
+    return std::move(this->w.str());
+  }
+
+  void write_control(bool v) {
+    if (this->next_control_bit == 0) {
+      throw logic_error("write_control called with no space to write");
+    }
+    if (v) {
+      this->buf[0] |= this->next_control_bit;
+    }
+    this->next_control_bit <<= 1;
+  }
+  void write_data(uint8_t v) {
+    this->buf[this->buf_offset++] = v;
+  }
+  size_t size() const {
+    return this->w.size() + this->buf_offset;
+  }
+};
+
 PRSCompressor::PRSCompressor(
     size_t compression_level, function<void(size_t, size_t)> progress_fn)
     : compression_level(compression_level),
@@ -469,54 +515,6 @@ void prs_disassemble(FILE* stream, const std::string& data) {
 // PRS, there is only one type of backreference. Also, there is no stop opcode;
 // the decompressor simply stops when there are no more input bytes to read.
 
-// TODO: bc0_compress produces slightly larger output than Sega's compressor.
-// Reverse-engineer their implementation and fix this.
-
-template <size_t MaxDataBytesPerControlBit>
-struct LZSSInterleavedWriter {
-  StringWriter w;
-  parray<uint8_t, (MaxDataBytesPerControlBit * 8) + 1> buf;
-  size_t buf_offset;
-  uint8_t next_control_bit;
-
-  LZSSInterleavedWriter()
-      : buf(0),
-        buf_offset(1),
-        next_control_bit(1) {}
-
-  void flush_if_ready() {
-    if (this->next_control_bit == 0) {
-      this->w.write(this->buf.data(), this->buf_offset);
-      this->buf[0] = 0;
-      this->buf_offset = 1;
-      this->next_control_bit = 1;
-    }
-  }
-
-  std::string&& close() {
-    if (this->buf_offset > 1 || this->next_control_bit != 1) {
-      this->w.write(this->buf.data(), this->buf_offset);
-    }
-    return std::move(this->w.str());
-  }
-
-  void write_control(bool v) {
-    if (this->next_control_bit == 0) {
-      throw logic_error("write_control called with no space to write");
-    }
-    if (v) {
-      this->buf[0] |= this->next_control_bit;
-    }
-    this->next_control_bit <<= 1;
-  }
-  void write_data(uint8_t v) {
-    this->buf[this->buf_offset++] = v;
-  }
-  size_t size() const {
-    return this->w.size() + this->buf_offset;
-  }
-};
-
 string bc0_compress(const string& data, function<void(size_t, size_t)> progress_fn) {
   return bc0_compress(data.data(), data.size(), progress_fn);
 }
@@ -569,7 +567,7 @@ string bc0_compress(const void* in_data_v, size_t in_size, function<void(size_t,
 
     // Find the best match from the index. It's unlikely that we'll get an
     // exact match, so check the entry before the lower_bound result too.
-    size_t match_offset = SIZE_T_MAX;
+    size_t match_offset = 0;
     size_t match_size = 0;
     // string hex_search_data = format_data_string(data.substr(read_offset, 0x12));
     // fprintf(stderr, "[%zX] match SEARCH %s\n", read_offset, hex_search_data.c_str());
