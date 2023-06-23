@@ -1100,9 +1100,6 @@ string bc0_compress(const void* in_data_v, size_t in_size, function<void(size_t,
     }
 
     auto match = window.get_best_match();
-    if (match.second < 3) {
-      match.second = 1;
-    }
 
     // Write a backreference if a match was found; otherwise, write a literal
     if (match.second >= 3) {
@@ -1113,6 +1110,7 @@ string bc0_compress(const void* in_data_v, size_t in_size, function<void(size_t,
     } else {
       w.write_control(true);
       w.write_data(in_data[window.offset]);
+      match.second = 1;
     }
     w.flush_if_ready();
 
