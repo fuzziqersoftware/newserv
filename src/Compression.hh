@@ -172,8 +172,17 @@ std::string prs_compress(
     ssize_t compression_level = 0,
     std::function<void(size_t, size_t)> progress_fn = nullptr);
 
+// A faster form of prs_compress that doesn't have a tunable compression level.
+std::string prs_compress_indexed(
+    const void* vdata,
+    size_t size,
+    std::function<void(size_t, size_t)> progress_fn = nullptr);
+std::string prs_compress_indexed(
+    const std::string& data,
+    std::function<void(size_t, size_t)> progress_fn = nullptr);
+
 // Compresses data using PRS to the smallest possible output size. This function
-// is slow, but produces results even significantly smaller than Sega's original
+// is slow, but produces results significantly smaller than even Sega's original
 // compressor.
 std::string prs_compress_optimal(
     const void* vdata,
@@ -197,7 +206,8 @@ void prs_disassemble(FILE* stream, const std::string& data);
 // BC0 compression
 ////////////////////////////////////////////////////////////////////////////////
 
-// Compresses data using the BC0 algorithm.
+// Compresses data using the BC0 algorithm. Like with PRS, the optimal variant
+// is slow, but produces the smallest possible output.
 std::string bc0_compress_optimal(
     const void* in_data_v,
     size_t in_size,

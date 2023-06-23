@@ -49,12 +49,12 @@ const char* name_for_enum<BC0CompressOptimalPhase>(BC0CompressOptimalPhase v) {
   }
 }
 
-template <size_t WindowLength, size_t MaxMatchLength, bool UseLatestBestMatch = false, size_t DebugLength = 0>
+template <size_t WindowLength, size_t MaxMatchLength, bool UseLatestBestMatch = false>
 struct WindowIndex {
   const uint8_t* data;
   size_t size;
   size_t offset;
-  multiset<size_t, function<bool(size_t, size_t)>> index;
+  set<size_t, function<bool(size_t, size_t)>> index;
 
   WindowIndex(const void* data, size_t size)
       : data(reinterpret_cast<const uint8_t*>(data)),
@@ -68,9 +68,6 @@ struct WindowIndex {
     }
     this->index.emplace(this->offset);
     this->offset++;
-    if (DebugLength) {
-      this->print_state();
-    }
   }
 
   size_t get_match_length(size_t match_offset) const {
@@ -116,19 +113,12 @@ struct WindowIndex {
     // backreference can be encoded with fewer bits if it's close to the
     // decompression offset, and this makes us pick the latest match by
     // default.
-    if (DebugLength) {
-      string hex_str = format_data_string(&this->data[this->offset], min<size_t>(this->size - this->offset, DebugLength));
-      fprintf(stderr, "[%05zX] match SEARCH %s\n", this->offset, hex_str.c_str());
-    }
     size_t match_offset = 0;
     size_t match_size = 0;
     auto start_it = this->index.upper_bound(this->offset);
     for (auto it = start_it; it != this->index.end(); it++) {
       size_t new_match_offset = *it;
       size_t new_match_size = this->get_match_length(new_match_offset);
-      if (DebugLength) {
-        fprintf(stderr, "[%05zX] match BEFORE %zX %zX\n", this->offset, new_match_offset, new_match_size);
-      }
       if ((new_match_size > match_size) || (new_match_size == match_size && new_match_offset > match_offset)) {
         match_offset = new_match_offset;
         match_size = new_match_size;
@@ -143,9 +133,6 @@ struct WindowIndex {
       it--;
       size_t new_match_offset = *it;
       size_t new_match_size = this->get_match_length(new_match_offset);
-      if (DebugLength) {
-        fprintf(stderr, "[%05zX] match BEFORE %zX %zX\n", this->offset, new_match_offset, new_match_size);
-      }
       if ((new_match_size > match_size) || (new_match_size == match_size && new_match_offset > match_offset)) {
         match_offset = new_match_offset;
         match_size = new_match_size;
@@ -153,19 +140,7 @@ struct WindowIndex {
         break;
       }
     }
-    if (DebugLength) {
-      fprintf(stderr, "[%05zX] match OVERALL %zX %zX\n", this->offset, match_offset, match_size);
-    }
     return make_pair(match_offset, match_size);
-  }
-
-  void print_state() const {
-    fprintf(stderr, "[%05zX] Window<0x%zX, 0x%zX> at 0x%zX contains 0x%zX entries:\n",
-        this->offset, WindowLength, MaxMatchLength, this->offset, this->index.size());
-    for (size_t z : this->index) {
-      string hex_str = format_data_string(&this->data[z], min<size_t>(this->size - z, DebugLength));
-      fprintf(stderr, "[%05zX]   %05zX => %s\n", this->offset, z, hex_str.c_str());
-    }
   }
 };
 
@@ -267,33 +242,6 @@ struct PRSPathNode {
 
   // Stream generation state
   size_t to_offset = 0;
-
-  std::string str() const {
-    const char* command_type_name;
-    switch (this->from_command_type) {
-      case CommandType::NONE:
-        command_type_name = "NONE";
-        break;
-      case CommandType::LITERAL:
-        command_type_name = "LITERAL";
-        break;
-      case CommandType::SHORT_COPY:
-        command_type_name = "SHORT_COPY";
-        break;
-      case CommandType::LONG_COPY:
-        command_type_name = "LONG_COPY";
-        break;
-      case CommandType::EXTENDED_COPY:
-        command_type_name = "EXTENDED_COPY";
-        break;
-      default:
-        command_type_name = "__UNKNOWN__";
-    }
-    return string_printf("[Node short=%hX %hhX long=%hX %hhX ext=%hX %hX from=%zX %s bits=%zX to=%zX]",
-        this->short_copy_offset, this->max_short_copy_size,
-        this->long_copy_offset, this->max_long_copy_size, this->extended_copy_offset, this->max_extended_copy_size,
-        this->from_offset, command_type_name, this->bits_used, this->to_offset);
-  }
 };
 
 string prs_compress_optimal(
@@ -721,7 +669,8 @@ string prs_compress(
   return prs_compress(data.data(), data.size(), compression_level, progress_fn);
 }
 
-string prs_compress(const void* in_data_v, size_t in_size, function<void(size_t, size_t)> progress_fn) {
+string prs_compress_indexed(
+    const void* in_data_v, size_t in_size, function<void(size_t, size_t)> progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   LZSSInterleavedWriter w;
@@ -814,8 +763,8 @@ string prs_compress(const void* in_data_v, size_t in_size, function<void(size_t,
   return std::move(w.close());
 }
 
-string prs_compress(const string& data, function<void(size_t, size_t)> progress_fn) {
-  return prs_compress(data.data(), data.size(), progress_fn);
+string prs_compress_indexed(const string& data, function<void(size_t, size_t)> progress_fn) {
+  return prs_compress_indexed(data.data(), data.size(), progress_fn);
 }
 
 string prs_decompress(const void* data, size_t size, size_t max_output_size) {
@@ -1037,12 +986,6 @@ struct BC0PathNode {
 
   // Stream generation state
   size_t to_offset = 0;
-
-  std::string str() const {
-    return string_printf("[Node ref=%04hX %hhX from=%zX bits=%zX to=%zX]",
-        this->memo_offset, this->max_copy_size,
-        this->from_offset, this->bits_used, this->to_offset);
-  }
 };
 
 string bc0_compress_optimal(
