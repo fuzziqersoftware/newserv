@@ -169,12 +169,11 @@ struct WindowIndex {
   }
 };
 
-template <size_t MaxDataBytesPerControlBit>
 struct LZSSInterleavedWriter {
   StringWriter w;
   size_t buf_offset;
   uint8_t next_control_bit;
-  uint8_t buf[(MaxDataBytesPerControlBit * 8) + 1];
+  uint8_t buf[0x19];
 
   LZSSInterleavedWriter()
       : buf_offset(1),
@@ -423,7 +422,7 @@ string prs_compress_optimal(
   }
 
   // Produce the PRS command stream from the shortest path
-  LZSSInterleavedWriter<3> w;
+  LZSSInterleavedWriter w;
   last_progress_fn_call = static_cast<size_t>(-1);
   for (size_t offset = 0; offset < in_size;) {
     if ((offset & ~0xFFF) != (last_progress_fn_call & ~0xFFF)) {
@@ -725,7 +724,7 @@ string prs_compress(
 string prs_compress(const void* in_data_v, size_t in_size, function<void(size_t, size_t)> progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
-  LZSSInterleavedWriter<3> w;
+  LZSSInterleavedWriter w;
   WindowIndex<0x1FFF, 0x100, true> window(in_data_v, in_size);
 
   size_t last_progress_fn_call_offset = 0;
@@ -1114,7 +1113,7 @@ string bc0_compress_optimal(
   }
 
   // Produce the BC0 command stream from the shortest path
-  LZSSInterleavedWriter<3> w;
+  LZSSInterleavedWriter w;
   last_progress_fn_call = static_cast<size_t>(-1);
   for (size_t offset = 0; offset < in_size;) {
     if ((offset & ~0xFFF) != (last_progress_fn_call & ~0xFFF)) {
@@ -1147,7 +1146,7 @@ string bc0_compress(const string& data, function<void(size_t, size_t)> progress_
 string bc0_compress(const void* in_data_v, size_t in_size, function<void(size_t, size_t)> progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
-  LZSSInterleavedWriter<2> w;
+  LZSSInterleavedWriter w;
   WindowIndex<0x1000, 0x12> window(in_data_v, in_size);
 
   size_t last_progress_fn_call_offset = 0;
@@ -1185,7 +1184,7 @@ string bc0_compress(const void* in_data_v, size_t in_size, function<void(size_t,
 string bc0_encode(const void* in_data_v, size_t in_size) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
-  LZSSInterleavedWriter<1> w;
+  LZSSInterleavedWriter w;
   for (size_t z = 0; z < in_size; z++) {
     w.write_control(true);
     w.write_data(in_data[z]);
