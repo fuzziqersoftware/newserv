@@ -3417,6 +3417,9 @@ static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
   c->flags &= (~Client::Flag::LOADING);
 
   send_resume_game(l, c);
+  if (l->version == GameVersion::BB) {
+    send_set_exp_multiplier(l);
+  }
   send_server_time(c);
   // Only get player info again on BB, since on other versions the returned info
   // only includes items that would be saved if the client disconnects

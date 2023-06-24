@@ -1447,7 +1447,7 @@ static void on_enemy_killed_bb(shared_ptr<ServerState> s,
 
   uint32_t experience = 0xFFFFFFFF;
   try {
-    experience = s->battle_params->get(l->mode == GameMode::SOLO, l->episode, l->difficulty, e.type).experience;
+    experience = s->battle_params->get(l->mode == GameMode::SOLO, l->episode, l->difficulty, e.type).experience * l->exp_multiplier;
   } catch (const exception& e) {
     if (c->options.debug) {
       send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_id.load(), e.what());
@@ -1472,9 +1472,8 @@ static void on_enemy_killed_bb(shared_ptr<ServerState> s,
 
     if (experience != 0xFFFFFFFF) {
       // Killer gets full experience, others get 77%
-      uint32_t player_exp = (e.last_hit_by_client_id == other_c->lobby_client_id)
-          ? experience
-          : ((experience * 77) / 100);
+      bool is_killer = (e.last_hit_by_client_id == other_c->lobby_client_id);
+      uint32_t player_exp = is_killer ? experience : ((experience * 77) / 100);
 
       other_c->game_data.player()->disp.experience += player_exp;
       send_give_experience(l, other_c, player_exp);
@@ -1498,6 +1497,8 @@ static void on_enemy_killed_bb(shared_ptr<ServerState> s,
       if (leveled_up) {
         send_level_up(l, other_c);
       }
+
+      // TODO: Update kill counts on unsealable items
     }
   }
 }

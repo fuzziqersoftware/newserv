@@ -322,6 +322,7 @@ void send_shop(std::shared_ptr<Client> c, uint8_t shop_type);
 void send_level_up(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c);
 void send_give_experience(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
     uint32_t amount);
+void send_set_exp_multiplier(std::shared_ptr<Lobby> l);
 void send_rare_enemy_index_list(std::shared_ptr<Client> c, const std::vector<size_t>& indexes);
 void send_ep3_card_list_update(
     std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);

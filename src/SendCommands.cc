@@ -2082,10 +2082,20 @@ void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
   if (c->version() != GameVersion::BB) {
     throw logic_error("6xBF can only be sent to BB clients");
   }
-
   uint16_t client_id = c->lobby_client_id;
   G_GiveExperience_BB_6xBF cmd = {
       {0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, client_id}, amount};
+  send_command_t(l, 0x60, 0x00, cmd);
+}
+
+void send_set_exp_multiplier(std::shared_ptr<Lobby> l) {
+  if (l->version != GameVersion::BB) {
+    throw logic_error("6xDD can only be sent to BB clients");
+  }
+  if (!l->is_game()) {
+    throw logic_error("6xDD can only be sent in games (not in lobbies)");
+  }
+  G_SetEXPMultiplier_BB_6xDD cmd = {{0xBF, sizeof(G_SetEXPMultiplier_BB_6xDD) / 4, l->exp_multiplier}};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 

@@ -21,6 +21,7 @@ Lobby::Lobby(uint32_t id)
       episode(Episode::NONE),
       mode(GameMode::NORMAL),
       difficulty(0),
+      exp_multiplier(1),
       random_seed(random_object<uint32_t>()),
       event(0),
       block(0),

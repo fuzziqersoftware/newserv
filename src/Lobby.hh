@@ -69,6 +69,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   Episode episode;
   GameMode mode;
   uint8_t difficulty; // 0-3
+  uint16_t exp_multiplier;
   std::u16string password;
   std::u16string name;
   // This seed is also sent to the client for rare enemy generation
