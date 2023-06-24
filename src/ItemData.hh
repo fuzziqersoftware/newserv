@@ -129,6 +129,7 @@ struct ItemData { // 0x14 bytes
   bool mag_has_photon_blast_in_any_slot(uint8_t pb_num) const;
   void add_mag_photon_blast(uint8_t pb_num);
 
+  uint16_t get_sealed_item_kill_count() const;
   void set_sealed_item_kill_count(uint16_t v);
   uint8_t get_tool_item_amount() const;
   void set_tool_item_amount(uint8_t amount);

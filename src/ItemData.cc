@@ -262,9 +262,17 @@ void ItemData::add_mag_photon_blast(uint8_t pb_num) {
   }
 }
 
+uint16_t ItemData::get_sealed_item_kill_count() const {
+  return ((this->data1[10] << 8) | this->data1[11]) & 0x7FFF;
+}
+
 void ItemData::set_sealed_item_kill_count(uint16_t v) {
-  this->data1[10] = (v >> 8) | 0x80;
-  this->data1[11] = v;
+  if (v > 0x7FFF) {
+    this->data1w[5] = 0xFFFF;
+  } else {
+    this->data1[10] = (v >> 8) | 0x80;
+    this->data1[11] = v;
+  }
 }
 
 uint8_t ItemData::get_tool_item_amount() const {

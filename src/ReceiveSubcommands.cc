@@ -1497,8 +1497,16 @@ static void on_enemy_killed_bb(shared_ptr<ServerState> s,
       if (leveled_up) {
         send_level_up(l, other_c);
       }
+    }
+  }
 
-      // TODO: Update kill counts on unsealable items
+  // Update kill counts on unsealable items
+  auto& inventory = c->game_data.player()->inventory;
+  for (size_t z = 0; z < inventory.num_items; z++) {
+    auto& item = inventory.items[z];
+    if ((item.flags & 0x08) &&
+        s->item_parameter_table->is_unsealable_item(item.data)) {
+      item.data.set_sealed_item_kill_count(item.data.get_sealed_item_kill_count() + 1);
     }
   }
 }
