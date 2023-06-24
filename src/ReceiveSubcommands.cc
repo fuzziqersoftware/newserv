@@ -1413,6 +1413,64 @@ static void on_charge_attack_bb(shared_ptr<ServerState>,
   }
 }
 
+static void add_player_exp(shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<Client> c, uint32_t exp) {
+  c->game_data.player()->disp.experience += exp;
+  send_give_experience(l, c, exp);
+
+  bool leveled_up = false;
+  do {
+    const auto& level = s->level_table->stats_for_level(
+        c->game_data.player()->disp.char_class, c->game_data.player()->disp.level + 1);
+    if (c->game_data.player()->disp.experience >= level.experience) {
+      leveled_up = true;
+      level.apply(c->game_data.player()->disp.stats);
+      c->game_data.player()->disp.level++;
+    } else {
+      break;
+    }
+  } while (c->game_data.player()->disp.level < 199);
+  if (leveled_up) {
+    send_level_up(l, c);
+  }
+}
+
+static void on_steal_exp_bb(shared_ptr<ServerState> s,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t,
+    const void* data, size_t size) {
+  if (l->version != GameVersion::BB) {
+    throw runtime_error("BB-only command sent in non-BB game");
+  }
+  if (!l->map) {
+    throw runtime_error("map not loaded");
+  }
+
+  const auto& cmd = check_size_t<G_StealEXP_BB_6xC6>(data, size);
+
+  const auto& enemy = l->map->enemies.at(cmd.enemy_id);
+  const auto& inventory = c->game_data.player()->inventory;
+  const auto& weapon = inventory.items[inventory.find_equipped_weapon()];
+
+  uint8_t special = 0;
+  if (((weapon.data.data1[1] < 0x0A) && (weapon.data.data1[2] < 0x05)) ||
+      ((weapon.data.data1[1] < 0x0D) && (weapon.data.data1[2] < 0x04))) {
+    special = weapon.data.data1[4] & 0x3F;
+  } else {
+    special = s->item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]).special;
+  }
+
+  if (special >= 0x09 && special <= 0x0B) {
+    // Master's = 8, Lord's = 10, King's = 12
+    uint32_t percent = 8 + ((special - 9) << 1) + (char_class_is_android(c->game_data.player()->disp.char_class) ? 30 : 0);
+    uint32_t enemy_exp = s->battle_params->get(l->mode == GameMode::SOLO, l->episode, l->difficulty, enemy.type).experience;
+    uint32_t stolen_exp = min<uint32_t>((enemy_exp * percent) / 100, 80);
+    if (c->options.debug) {
+      send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
+          stolen_exp, cmd.enemy_id.load(), name_for_enum(enemy.type));
+    }
+    add_player_exp(s, l, c, stolen_exp);
+  }
+}
+
 static void on_enemy_killed_bb(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
@@ -1474,29 +1532,11 @@ static void on_enemy_killed_bb(shared_ptr<ServerState> s,
       // Killer gets full experience, others get 77%
       bool is_killer = (e.last_hit_by_client_id == other_c->lobby_client_id);
       uint32_t player_exp = is_killer ? experience : ((experience * 77) / 100);
-
-      other_c->game_data.player()->disp.experience += player_exp;
-      send_give_experience(l, other_c, player_exp);
-      if (other_c->options.debug) {
-        send_text_message_printf(other_c, "$C5+%" PRIu32 " E-%hX %s",
+      if (c->options.debug) {
+        send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
             player_exp, cmd.enemy_id.load(), name_for_enum(e.type));
       }
-
-      bool leveled_up = false;
-      do {
-        const auto& level = s->level_table->stats_for_level(
-            other_c->game_data.player()->disp.char_class, other_c->game_data.player()->disp.level + 1);
-        if (other_c->game_data.player()->disp.experience >= level.experience) {
-          leveled_up = true;
-          level.apply(other_c->game_data.player()->disp.stats);
-          other_c->game_data.player()->disp.level++;
-        } else {
-          break;
-        }
-      } while (other_c->game_data.player()->disp.level < 199);
-      if (leveled_up) {
-        send_level_up(l, other_c);
-      }
+      add_player_exp(s, l, c, player_exp);
     }
   }
 
@@ -1933,7 +1973,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xC3 */ on_drop_partial_stack_bb,
     /* 6xC4 */ on_sort_inventory_bb,
     /* 6xC5 */ on_medical_center_bb,
-    /* 6xC6 */ nullptr,
+    /* 6xC6 */ on_steal_exp_bb,
     /* 6xC7 */ on_charge_attack_bb,
     /* 6xC8 */ on_enemy_killed_bb,
     /* 6xC9 */ on_meseta_reward_request_bb,

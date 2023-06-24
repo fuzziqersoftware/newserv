@@ -871,24 +871,31 @@ struct SC_GameCardCheck_BB_0022 {
 // Command 0122 uses a 4-byte challenge sent in the header.flag field instead.
 // This version of the command has no other arguments.
 
-// 23 (S->C): Unknown (BB)
-// header.flag is used, but the command has no other arguments.
+// 23 (S->C): Momoka Item Exchange result (BB)
+// Sent in response to a 6xD9 command from the client.
+// header.flag indicates if an item was exchanged: 0 means success, 1 means
+// failure.
 
-// 24 (S->C): Unknown (BB)
+// 24 (S->C): Good Luck result (BB)
+// Sent in response to a 6xDE command from the client.
+// header.flag indicates whether the client had any Secret Lottery Tickets in
+// their inventory (and hence could participate): 0 means success, 1 means
+// failure.
 
-struct S_Unknown_BB_24 {
+struct S_GoodLuckResult_BB_24 {
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
-  parray<le_uint32_t, 8> values;
+  parray<le_uint32_t, 8> unknown_a3;
 } __packed__;
 
-// 25 (S->C): Unknown (BB)
+// 25 (S->C): Gallon's Plan result (BB)
+// Sent in response to a 6xE1 command from the client.
 
 struct S_Unknown_BB_25 {
   le_uint16_t unknown_a1 = 0;
   uint8_t offset1 = 0;
-  uint8_t value1 = 0;
   uint8_t offset2 = 0;
+  uint8_t value1 = 0;
   uint8_t value2 = 0;
   le_uint16_t unused = 0;
 } __packed__;
@@ -5299,18 +5306,21 @@ struct G_SplitStackedItem_BB_6xC3 {
 
 struct G_SortInventory_BB_6xC4 {
   G_UnusedHeader header;
-  le_uint32_t item_ids[30];
+  parray<le_uint32_t, 30> item_ids;
 } __packed__;
 
 // 6xC5: Medical center used (BB)
+
+struct G_MedicalCenterUsed_BB_6xC5 {
+  G_ClientIDHeader header;
+} __packed__;
 
 // 6xC6: Steal experience (BB)
 
 struct G_StealEXP_BB_6xC6 {
   G_ClientIDHeader header;
-  uint8_t unknown_a1;
-  uint8_t unknown_a2;
   le_uint16_t enemy_id;
+  le_uint16_t unknown_a1;
 } __packed__;
 
 // 6xC7: Charge attack (BB)
@@ -5328,7 +5338,8 @@ struct G_EnemyKilled_BB_6xC8 {
   G_EnemyIDHeader header;
   le_uint16_t enemy_id;
   le_uint16_t killer_client_id;
-  le_uint32_t unused;
+  uint8_t unknown_a1;
+  parray<uint8_t, 3> unused;
 } __packed__;
 
 // 6xC9: Request meseta reward from quest (BB; handled by server)
@@ -5338,7 +5349,7 @@ struct G_MesetaRewardRequest_BB_6xC9 {
   le_int32_t amount;
 } __packed__;
 
-// 6xCA: Item reward from quest (BB; handled by server)
+// 6xCA: Request item reward from quest (BB; handled by server)
 
 struct G_ItemRewardRequest_BB_6xCA {
   G_UnusedHeader header;
@@ -5351,6 +5362,7 @@ struct G_ItemTransferRequest_BB_6xCB {
   G_ClientIDHeader header;
   le_uint32_t unknown_a1;
   le_uint32_t unknown_a2;
+  le_uint32_t unknown_a3;
 } __packed__;
 
 // 6xCC: Exchange item for team points (BB)
@@ -5362,15 +5374,34 @@ struct G_ExchangeItemForTeamPoints_BB_6xCC {
 } __packed__;
 
 // 6xCD: Transfer master (BB)
-// Same format as 6xC1
-
 // 6xCE: Accept master transfer (BB)
 // Same format as 6xC1
 
 // 6xCF: Restart battle (BB)
 
+struct G_RestartBattle_BB_6xCF {
+  G_UnusedHeader header;
+  parray<le_uint32_t, 11> unknown_a1;
+  le_uint32_t unknown_a2;
+} __packed__;
+
 // 6xD0: Battle mode level up (BB; handled by server)
+
+struct G_BattleModeLevelUp_BB_6xD0 {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1;
+} __packed__;
+
 // 6xD1: Challenge mode grave (BB; handled by server)
+
+struct G_ChallengeModeGrave_BB_6xD1 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint32_t unknown_a3;
+  le_uint32_t unknown_a4;
+  le_uint32_t unknown_a5;
+} __packed__;
 
 // 6xD2: Set quest data 2 (BB)
 // Writes 4 bytes to the 32-bit field specified by index.
@@ -5390,15 +5421,71 @@ struct G_Unknown_BB_6xD4 {
   le_uint16_t action; // Must be in [0, 4]
   uint8_t unknown_a1; // Must be in [0, 15]
   uint8_t unused;
-  // THe format is not fully known; there are likely more fields here.
 } __packed__;
 
 // 6xD5: Exchange item in quest (BB; handled by server)
+
+struct G_ExchangeItemInQuest_BB_6xD5 {
+  G_ClientIDHeader header;
+  ItemData unknown_a1; // Only data1[0]-[2] are used
+  ItemData unknown_a2; // Only data1[0]-[2] are used
+  le_uint16_t unknown_a3;
+  le_uint16_t unknown_a4;
+} __packed__;
+
 // 6xD6: Wrap item (BB; handled by server)
+
+struct G_WrapItem_BB_6xD6 {
+  G_ClientIDHeader header;
+  ItemData item_data;
+  uint8_t unknown_a1;
+  parray<uint8_t, 3> unused;
+} __packed__;
+
 // 6xD7: Paganini Photon Drop exchange (BB; handled by server)
+
+struct G_PaganiniPhotonDropExchange_BB_6xD7 {
+  G_ClientIDHeader header;
+  ItemData unknown_a1; // Only data1[0]-[2] are used
+  le_uint16_t request_id;
+  le_uint16_t unknown_a3;
+} __packed__;
+
 // 6xD8: Add S-rank weapon special (BB; handled by server)
+
+struct G_AddSRankWeaponSpecial_BB_6xD8 {
+  G_ClientIDHeader header;
+  ItemData unknown_a1; // Only data1[0]-[2] are used
+  le_uint32_t unknown_a2;
+  le_uint32_t unknown_a3;
+  le_uint16_t unknown_a4;
+  le_uint16_t unknown_a5;
+} __packed__;
+
 // 6xD9: Momoka item exchange (BB; handled by server)
+
+struct G_MomokaItemExchange_BB_6xD9 {
+  G_ClientIDHeader header;
+  ItemData unknown_a1;
+  ItemData unknown_a2;
+  le_uint32_t unknown_a3;
+  le_uint32_t unknown_a4;
+  le_uint16_t unknown_a5;
+  le_uint16_t unknown_a6;
+} __packed__;
+
 // 6xDA: Upgrade weapon attribute (BB; handled by server)
+
+struct G_UpgradeWeaponAttribute_BB_6xDA {
+  G_ClientIDHeader header;
+  ItemData unknown_a1; // Only data1[0]-[2] are used
+  le_uint32_t item_id;
+  le_uint32_t attribute;
+  le_uint32_t unknown_a4; // 0 or 1
+  le_uint32_t unknown_a5;
+  le_uint16_t request_id;
+  le_uint16_t unknown_a7;
+} __packed__;
 
 // 6xDB: Exchange item in quest (BB)
 
@@ -5426,10 +5513,45 @@ struct G_SetEXPMultiplier_BB_6xDD {
 } __packed__;
 
 // 6xDE: Good Luck quest (BB; handled by server)
+
+struct G_GoodLuckQuestActions_BB_6xDE {
+  G_ClientIDHeader header;
+  uint8_t unknown_a1;
+  uint8_t unknown_a2;
+  le_uint16_t unknown_a3;
+} __packed__;
+
 // 6xDF: Black Paper's Deal Photon Drop exchange (BB; handled by server)
+
+struct G_BlackPaperDealPhotonDropExchange_BB_6xE0 {
+  G_ClientIDHeader header;
+} __packed__;
+
 // 6xE0: Black Paper's Deal rewards (BB; handled by server)
+
+struct G_BlackPaperDealRewards_BB_6xE0 {
+  G_ClientIDHeader header;
+  parray<uint8_t, 12> unknown_a1; // TODO: There might be uint16_ts and uint32_ts in here.
+} __packed__;
+
 // 6xE1: Gallon's Plan quest (BB; handled by server)
+
+struct G_GallonsPlanQuestActions_BB_6xE1 {
+  G_ClientIDHeader header;
+  uint8_t unknown_a1;
+  uint8_t unknown_a2;
+  uint8_t unknown_a3;
+  uint8_t unused;
+  le_uint16_t unknown_a4;
+  le_uint16_t unknown_a5;
+} __packed__;
+
 // 6xE2: Coren actions (BB)
+
+struct G_CorenActions_BB_6xE2 {
+  G_ClientIDHeader header;
+  parray<uint8_t, 12> unknown_a1; // TODO: There might be uint16_ts and uint32_ts in here.
+} __packed__;
 
 // 6xE3: Unknown (BB)
 
