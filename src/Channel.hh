@@ -78,7 +78,9 @@ struct Channel {
   Message recv(bool print_contents = true);
 
   // Sends a message with an automatically-constructed header.
-  void send(uint16_t cmd, uint32_t flag = 0, const void* data = nullptr, size_t size = 0, bool print_contents = true);
+  void send(uint16_t cmd, uint32_t flag = 0, bool print_contents = true);
+  void send(uint16_t cmd, uint32_t flag, const void* data, size_t size, bool print_contents = true);
+  void send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<const void*, size_t>> blocks, bool print_contents = true);
   void send(uint16_t cmd, uint32_t flag, const std::string& data, bool print_contents = true);
   template <typename CmdT>
   void send(uint16_t cmd, uint32_t flag, const CmdT& data) {

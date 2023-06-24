@@ -241,11 +241,19 @@ Channel::Message Channel::recv(bool print_contents) {
   };
 }
 
-void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
-    bool print_contents) {
+void Channel::send(uint16_t cmd, uint32_t flag, bool print_contents) {
+  this->send(cmd, flag, nullptr, 0, print_contents);
+}
+
+void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<const void*, size_t>> blocks, bool print_contents) {
   if (!this->connected()) {
     channel_exceptions_log.warning("Attempted to send command on closed channel; dropping data");
     return;
+  }
+
+  size_t size = 0;
+  for (const auto& b : blocks) {
+    size += b.second;
   }
 
   string send_data;
@@ -317,10 +325,11 @@ void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
     throw runtime_error("outbound command too large");
   }
 
-  if (send_data.size() < send_data_size) {
-    send_data.append(reinterpret_cast<const char*>(data), size);
-    send_data.resize(send_data_size, '\0');
+  send_data.reserve(send_data_size);
+  for (const auto& b : blocks) {
+    send_data.append(reinterpret_cast<const char*>(b.first), b.second);
   }
+  send_data.resize(send_data_size, '\0');
 
   if (print_contents && (this->terminal_send_color != TerminalFormat::END)) {
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
@@ -345,6 +354,11 @@ void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size,
 
   struct evbuffer* buf = bufferevent_get_output(this->bev.get());
   evbuffer_add(buf, send_data.data(), send_data.size());
+}
+
+void Channel::send(
+    uint16_t cmd, uint32_t flag, const void* data, size_t size, bool print_contents) {
+  this->send(cmd, flag, {make_pair(data, size)}, print_contents);
 }
 
 void Channel::send(uint16_t cmd, uint32_t flag, const string& data, bool print_contents) {

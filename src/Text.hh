@@ -354,12 +354,6 @@ struct parray {
   }
 } __attribute__((packed));
 
-// TODO: It appears that these actually do not have to be null-terminated in PSO
-// commands some of the time. As an example, creating a game with a name with
-// the maximum length results in a C1 command with no null byte between the game
-// name and the password. We should be able to handle this by making ptexts not
-// required to be null-terminated in storage - this will still be safe if we
-// limit all operations by Count.
 template <typename CharT, size_t Count>
 struct ptext : parray<CharT, Count> {
   ptext() {

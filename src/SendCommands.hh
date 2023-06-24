@@ -33,6 +33,9 @@ extern const std::unordered_set<std::string> bb_crypt_initial_client_commands;
 //   data in the calling function is changed from string to void*).
 
 void send_command(std::shared_ptr<Client> c, uint16_t command,
+    uint32_t flag, const std::vector<std::pair<const void*, size_t>>& blocks);
+
+void send_command(std::shared_ptr<Client> c, uint16_t command,
     uint32_t flag, const void* data, size_t size);
 
 inline void send_command(std::shared_ptr<Client> c, uint16_t command,
@@ -313,6 +316,7 @@ void send_create_inventory_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client
     const ItemData& item);
 void send_destroy_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
     uint32_t item_id, uint32_t amount);
+void send_item_identify_result(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c);
 void send_bank(std::shared_ptr<Client> c);
 void send_shop(std::shared_ptr<Client> c, uint8_t shop_type);
 void send_level_up(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c);

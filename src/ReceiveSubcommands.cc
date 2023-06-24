@@ -236,12 +236,10 @@ static void on_sync_joining_player_item_state(shared_ptr<ServerState>,
         c->log.info("Byteswapped and recompressed item sync data (%zX bytes)", out_compressed_data.size());
       }
 
-      // TODO: It'd be nice to not copy the data so many times here.
-      StringWriter out_w;
-      out_w.put<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(out_cmd);
-      out_w.write(out_compressed_data);
-
-      send_command(target, command, flag, out_w.str());
+      vector<pair<const void*, size_t>> blocks;
+      blocks.emplace_back(make_pair(&out_cmd, sizeof(out_cmd)));
+      blocks.emplace_back(make_pair(out_compressed_data.data(), out_compressed_data.size()));
+      send_command(target, command, flag, blocks);
     }
   }
 }
@@ -1010,8 +1008,6 @@ static void on_equip_unequip_item(shared_ptr<ServerState>,
     throw logic_error("item tracking not enabled in BB game");
   }
 
-  // TODO: Should we forward this command on BB? The old version of newserv
-  // didn't, but that seems wrong.
   forward_subcommand(l, c, command, flag, data, size);
 }
 
@@ -1607,14 +1603,7 @@ static void on_identify_item_bb(shared_ptr<ServerState>,
     c->game_data.player()->disp.meseta -= 100;
     c->game_data.identify_result = c->game_data.player()->inventory.items[x];
     c->game_data.identify_result.data.data1[4] &= 0x7F;
-
-    // TODO: move this into a SendCommands.cc function
-    G_IdentifyResult_BB_6xB9 res;
-    res.header.subcommand = 0xB9;
-    res.header.size = sizeof(res) / 4;
-    res.header.client_id = c->lobby_client_id;
-    res.item_data = c->game_data.identify_result.data;
-    send_command_t(l, 0x60, 0x00, res);
+    send_item_identify_result(l, c);
 
   } else {
     forward_subcommand(l, c, command, flag, data, size);

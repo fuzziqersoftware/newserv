@@ -58,6 +58,11 @@ const unordered_set<string> bb_crypt_initial_client_commands({
     string("\xDC\x00\xDB\x00\x00\x00\x00\x00", 8),
 });
 
+void send_command(std::shared_ptr<Client> c, uint16_t command,
+    uint32_t flag, const std::vector<std::pair<const void*, size_t>>& blocks) {
+  c->channel.send(command, flag, blocks);
+}
+
 void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
     const void* data, size_t size) {
   c->channel.send(command, flag, data, size);
@@ -617,20 +622,14 @@ void send_patch_file(shared_ptr<Client> c, shared_ptr<PatchFileIndex::File> f) {
   send_command_t(c, 0x06, 0x00, open_cmd);
 
   for (size_t x = 0; x < f->chunk_crcs.size(); x++) {
-    // TODO: The use of StringWriter here is... unfortunate. Write a version of
-    // Channel::send that takes iovecs or something to avoid these dumb massive
-    // string copies.
-    StringWriter w;
     auto data = f->load_data();
     size_t chunk_size = min<uint32_t>(f->size - (x * 0x4000), 0x4000);
-    S_WriteFileHeader_Patch_07 write_cmd_header = {
-        x, f->chunk_crcs[x], chunk_size};
-    w.put(write_cmd_header);
-    w.write(data->data() + (x * 0x4000), chunk_size);
-    while (w.size() & 7) {
-      w.put_u8(0);
-    }
-    send_command(c, 0x07, 0x00, w.str());
+
+    vector<pair<const void*, size_t>> blocks;
+    S_WriteFileHeader_Patch_07 cmd_header = {x, f->chunk_crcs[x], chunk_size};
+    blocks.emplace_back(&cmd_header, sizeof(cmd_header));
+    blocks.emplace_back(data->data() + (x * 0x4000), chunk_size);
+    send_command(c, 0x07, 0x00, blocks);
   }
 
   S_CloseCurrentFile_Patch_08 close_cmd = {0};
@@ -2000,6 +1999,18 @@ void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
+void send_item_identify_result(shared_ptr<Lobby> l, shared_ptr<Client> c) {
+  if (c->version() != GameVersion::BB) {
+    throw logic_error("cannot send item identify result to non-BB client");
+  }
+  G_IdentifyResult_BB_6xB9 res;
+  res.header.subcommand = 0xB9;
+  res.header.size = sizeof(res) / 4;
+  res.header.client_id = c->lobby_client_id;
+  res.item_data = c->game_data.identify_result.data;
+  send_command_t(l, 0x60, 0x00, res);
+}
+
 void send_bank(shared_ptr<Client> c) {
   if (c->version() != GameVersion::BB) {
     throw logic_error("6xBC can only be sent to BB clients");
@@ -2522,7 +2533,7 @@ void send_ep3_update_spectator_count(shared_ptr<Lobby> l) {
   // this function just to check a behavior flag)
 
   // Note: We can't use send_command_t(l, ...) here because that would send the
-  // same command to l and to all wather lobbies. The commands should have
+  // same command to l and to all watcher lobbies. The commands should have
   // different values depending on who's in each watcher lobby, so we have to
   // manually send to each client here.
   for (auto c : l->clients) {

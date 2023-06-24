@@ -716,8 +716,6 @@ int main(int argc, char** argv) {
       } else if (!seed.empty()) {
         round1_seed = stoul(seed, nullptr, 16);
       } else {
-        // TODO: We can support brute-forcing character file encryption, but I'm
-        // lazy and this would probably not be useful for anyone.
         throw runtime_error("either --sys or --seed must be given");
       }
 

@@ -34,10 +34,6 @@ const char* ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME = "add_next_game_client";
 static shared_ptr<const Menu> proxy_options_menu_for_client(
     shared_ptr<ServerState> s, shared_ptr<const Client> c) {
   shared_ptr<Menu> ret(new Menu(MenuID::PROXY_OPTIONS, u"Proxy options"));
-  // Note: The descriptions are instead in the map above, because this menu is
-  // dynamically created every time it's sent to the client. This is just one
-  // way in which the menu abstraction is currently insufficient (there is a
-  // TODO about this in README.md).
   ret->items.emplace_back(ProxyOptionsMenuItemID::GO_BACK, u"Go back", u"Return to the\nProxy Server menu", 0);
 
   auto add_option = [&](uint32_t item_id, bool is_enabled, const char16_t* text, const char16_t* description) -> void {
@@ -290,9 +286,6 @@ void on_disconnect(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   if (c->lobby_id) {
     s->remove_client_from_lobby(c);
   }
-
-  // TODO: Track play time somewhere for BB players
-  // c->game_data.player()->disp.play_time += ((now() - c->play_time_begin) / 1000000);
 
   // Note: The client's GameData destructor should save their player data
   // shortly after this point
@@ -2925,7 +2918,6 @@ static void on_00E2_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
   auto& cmd = check_size_t<KeyAndTeamConfigBB>(data,
       sizeof(KeyAndTeamConfigBB) - 4, sizeof(KeyAndTeamConfigBB));
   c->game_data.account()->key_config = cmd;
-  // TODO: We should probably send a response here, but I don't know which one!
 }
 
 static void on_89(shared_ptr<ServerState> s, shared_ptr<Client> c,

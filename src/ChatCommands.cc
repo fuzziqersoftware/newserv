@@ -815,13 +815,11 @@ static void server_command_edit(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   s->send_lobby_join_notifications(l, c);
 }
 
-// TODO: implement this
-// TODO: make sure the bank name is filesystem-safe
+// TODO: implement this (and make sure the bank name is filesystem-safe)
 /* static void server_command_change_bank(shared_ptr<ServerState>, shared_ptr<Lobby>,
     shared_ptr<Client> c, const std::u16string&) {
   check_version(c, GameVersion::BB);
-
-  TODO
+  ...
 } */
 
 // TODO: This can be implemented on the proxy server too.
@@ -960,8 +958,6 @@ static void server_command_ban(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
     usecs *= 60 * 60 * 24 * 365;
   }
 
-  // TODO: put the length of time in this message. or don't; presumably the
-  // person deserved it
   s->license_manager->ban_until(target->license->serial_number, now() + usecs);
   send_message_box(target, u"$C6You were banned by a moderator.");
   target->should_disconnect = true;

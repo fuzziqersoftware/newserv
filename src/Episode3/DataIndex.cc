@@ -1717,8 +1717,6 @@ uint64_t DataIndex::card_definitions_mtime() const {
 
 const string& DataIndex::get_compressed_map_list() const {
   if (this->compressed_map_list.empty()) {
-    // TODO: Write a version of prs_compress that takes iovecs (or something
-    // similar) so we can eliminate all this string copying here.
     StringWriter entries_w;
     StringWriter strings_w;
 
