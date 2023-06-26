@@ -5386,10 +5386,12 @@ struct G_RestartBattle_BB_6xCF {
 } __packed__;
 
 // 6xD0: Battle mode level up (BB; handled by server)
+// Requests the client to be leveled up by num_levels levels. The server should
+// respond with a 6x30 command.
 
 struct G_BattleModeLevelUp_BB_6xD0 {
   G_ClientIDHeader header;
-  le_uint32_t unknown_a1;
+  le_uint32_t num_levels;
 } __packed__;
 
 // 6xD1: Challenge mode grave (BB; handled by server)
