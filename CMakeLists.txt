@@ -88,6 +88,7 @@ add_executable(newserv
     src/PSOGCObjectGraph.cc
     src/PSOProtocol.cc
     src/Quest.cc
+    src/QuestScript.cc
     src/RareItemSet.cc
     src/ReceiveCommands.cc
     src/ReceiveSubcommands.cc

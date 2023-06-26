@@ -394,6 +394,7 @@ newserv has many CLI options, which can be used to access functionality other th
 * Run a brute-force search for a decryption seed (`find-decryption-seed`)
 * Decode Shift-JIS text to UTF-16 (`decode-sjis`)
 * Convert quests in .gci, .vms, .dlq, or .qst format to .bin/.dat format (`decode-gci`, `decode-vms`, `decode-dlq`, `decode-qst`)
+* Disassemble quest scripts (`disassemble-bin`)
 * Connect to another PSO server and pretend to be a client (`cat-client`)
 * Format Episode 3 game data in a human-readable manner (`show-ep3-data`)
 * Render a human-readable description of item data (`describe-item`)

@@ -1956,33 +1956,30 @@ struct S_QuestMenuEntry_BB_A2_A4 : S_QuestMenuEntry<char16_t, 0x7A> {
 // probably all other private servers) ignores it.
 // Curiously, PSO GC sends uninitialized data in header.flag.
 
-// AA (C->S): Update quest statistics (V3/BB)
-// This command is used in Maximum Attack 2, but its format is unlikely to be
-// specific to that quest. The structure here represents the only instance I've
-// seen so far.
+// AA (C->S): Send quest statistic (V3/BB)
+// This command is generated when an opcode F92E is executed in a quest.
 // The server should respond with an AB command.
 // This command is likely never sent by PSO GC Episodes 1&2 Trial Edition,
 // because the following command (AB) is definitely not valid on that version.
 
-struct C_UpdateQuestStatistics_V3_BB_AA {
-  le_uint16_t quest_internal_id = 0;
+struct C_SendQuestStatistic_V3_BB_AA {
+  le_uint16_t stat_id1 = 0;
   le_uint16_t unused = 0;
-  le_uint16_t request_token = 0;
-  le_uint16_t unknown_a1 = 0;
-  le_uint32_t unknown_a2 = 0;
-  le_uint32_t kill_count = 0;
-  le_uint32_t time_taken = 0; // in seconds
-  parray<le_uint32_t, 5> unknown_a3;
+  le_uint16_t function_id1 = 0;
+  le_uint16_t function_id2 = 0;
+  parray<le_uint32_t, 8> params;
 } __packed__;
 
-// AB (S->C): Confirm update quest statistics (V3/BB)
+// AB (S->C): Confirm quest statistic (V3/BB)
 // This command is not valid on PSO GC Episodes 1&2 Trial Edition.
+// Upon receipt, the client starts a quest thread running the given function.
+// Probably this is supposed to be one of the function IDs previously sent in
+// the AA command, but the client does not check for this. The server can
+// presumably use this command to call any function at any time during a quest.
 
-struct S_ConfirmUpdateQuestStatistics_V3_BB_AB {
-  le_uint16_t unknown_a1 = 0; // 0
-  be_uint16_t unknown_a2 = 0; // Probably actually unused
-  le_uint16_t request_token = 0; // Should match token sent in AA command
-  le_uint16_t unknown_a3 = 0; // Schtserv always sends 0xBFFF here
+struct S_ConfirmQuestStatistic_V3_BB_AB {
+  le_uint16_t function_id;
+  parray<uint8_t, 2> unused;
 } __packed__;
 
 // AC: Quest barrier (V3/BB)
@@ -4538,6 +4535,7 @@ struct G_EnemyKilled_6x76 {
 } __packed__;
 
 // 6x77: Sync quest data
+// This is sent by the client when an opcode D9 is executed within a quest.
 
 struct G_SyncQuestData_6x77 {
   G_UnusedHeader header;
@@ -5426,6 +5424,7 @@ struct G_Unknown_BB_6xD4 {
 } __packed__;
 
 // 6xD5: Exchange item in quest (BB; handled by server)
+// The client sends this when it executes an F953 quest opcode.
 
 struct G_ExchangeItemInQuest_BB_6xD5 {
   G_ClientIDHeader header;
@@ -5445,6 +5444,7 @@ struct G_WrapItem_BB_6xD6 {
 } __packed__;
 
 // 6xD7: Paganini Photon Drop exchange (BB; handled by server)
+// The client sends this when it executes an F955 quest opcode.
 
 struct G_PaganiniPhotonDropExchange_BB_6xD7 {
   G_ClientIDHeader header;
@@ -5454,6 +5454,7 @@ struct G_PaganiniPhotonDropExchange_BB_6xD7 {
 } __packed__;
 
 // 6xD8: Add S-rank weapon special (BB; handled by server)
+// The client sends this when it executes an F956 quest opcode.
 
 struct G_AddSRankWeaponSpecial_BB_6xD8 {
   G_ClientIDHeader header;
@@ -5465,6 +5466,7 @@ struct G_AddSRankWeaponSpecial_BB_6xD8 {
 } __packed__;
 
 // 6xD9: Momoka item exchange (BB; handled by server)
+// The client sends this when it executes an F95B quest opcode.
 
 struct G_MomokaItemExchange_BB_6xD9 {
   G_ClientIDHeader header;
@@ -5477,6 +5479,7 @@ struct G_MomokaItemExchange_BB_6xD9 {
 } __packed__;
 
 // 6xDA: Upgrade weapon attribute (BB; handled by server)
+// The client sends this when it executes an F957 or F957 quest opcode.
 
 struct G_UpgradeWeaponAttribute_BB_6xDA {
   G_ClientIDHeader header;
@@ -5515,6 +5518,7 @@ struct G_SetEXPMultiplier_BB_6xDD {
 } __packed__;
 
 // 6xDE: Good Luck quest (BB; handled by server)
+// The client sends this when it executes an F95C quest opcode.
 
 struct G_GoodLuckQuestActions_BB_6xDE {
   G_ClientIDHeader header;
@@ -5524,12 +5528,14 @@ struct G_GoodLuckQuestActions_BB_6xDE {
 } __packed__;
 
 // 6xDF: Black Paper's Deal Photon Drop exchange (BB; handled by server)
+// The client sends this when it executes an F95D quest opcode.
 
 struct G_BlackPaperDealPhotonDropExchange_BB_6xE0 {
   G_ClientIDHeader header;
 } __packed__;
 
 // 6xE0: Black Paper's Deal rewards (BB; handled by server)
+// The client sends this when it executes an F95E quest opcode.
 
 struct G_BlackPaperDealRewards_BB_6xE0 {
   G_ClientIDHeader header;
@@ -5537,6 +5543,7 @@ struct G_BlackPaperDealRewards_BB_6xE0 {
 } __packed__;
 
 // 6xE1: Gallon's Plan quest (BB; handled by server)
+// The client sends this when it executes an F95F quest opcode.
 
 struct G_GallonsPlanQuestActions_BB_6xE1 {
   G_ClientIDHeader header;
@@ -5549,6 +5556,7 @@ struct G_GallonsPlanQuestActions_BB_6xE1 {
 } __packed__;
 
 // 6xE2: Coren actions (BB)
+// The client sends this when it executes an F960 quest opcode.
 
 struct G_CorenActions_BB_6xE2 {
   G_ClientIDHeader header;

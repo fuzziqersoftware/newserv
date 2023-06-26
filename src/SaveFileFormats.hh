@@ -78,7 +78,7 @@ struct PSOGCSystemFile {
   /* 0008 */ be_uint32_t unknown_a3; // Default 1728000 (== 60 * 60 * 24 * 20)
   /* 000C */ be_uint16_t udp_behavior; // 0 = auto, 1 = on, 2 = off
   /* 000E */ be_uint16_t surround_sound_enabled;
-  /* 0010 */ parray<uint8_t, 0x100> unknown_a6;
+  /* 0010 */ parray<uint8_t, 0x100> event_flags; // Can be set by quest opcode D8 or E8
   /* 0110 */ parray<uint8_t, 8> unknown_a7;
   // This timestamp is the number of seconds since 12:00AM on 1 January 2000.
   // This field is also used as the round1 seed for encrypting the character and

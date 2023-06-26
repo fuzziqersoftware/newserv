@@ -24,6 +24,8 @@
 #include "PSOGCObjectGraph.hh"
 #include "Product.hh"
 #include "ProxyServer.hh"
+#include "Quest.hh"
+#include "QuestScript.hh"
 #include "ReplaySession.hh"
 #include "SaveFileFormats.hh"
 #include "SendCommands.hh"
@@ -163,6 +165,9 @@ The actions are:\n\
     GCI or VMS file, use the --seed=SEED option and give the serial number (as\n\
     a hex-encoded 32-bit integer). If you don\'t know the serial number,\n\
     newserv will find it via a brute-force search, which will take a long time.\n\
+  disassemble-bin [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Disassemble the input quest script (.bin file) into a text representation\n\
+    of the commands and metadata it contains.\n\
   cat-client ADDR:PORT\n\
     Connect to the given server and simulate a PSO client. newserv will then\n\
     print all the received commands to stdout, and forward any commands typed\n\
@@ -219,6 +224,7 @@ enum class Behavior {
   FIND_DECRYPTION_SEED,
   SALVAGE_GCI,
   DECODE_QUEST_FILE,
+  DISASSEMBLE_QUEST_SCRIPT,
   DECODE_SJIS,
   EXTRACT_GSL,
   EXTRACT_BML,
@@ -251,6 +257,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::SALVAGE_GCI) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DECODE_QUEST_FILE) ||
+      (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
       (b == Behavior::DECODE_SJIS) ||
       (b == Behavior::FORMAT_ITEMRT_REL) ||
       (b == Behavior::EXTRACT_GSL) ||
@@ -274,22 +281,17 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
+      (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
       (b == Behavior::DECODE_SJIS) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML);
 }
 
-enum class QuestFileFormat {
-  GCI = 0,
-  VMS,
-  DLQ,
-  QST,
-};
-
 int main(int argc, char** argv) {
   Behavior behavior = Behavior::RUN_SERVER;
   GameVersion cli_version = GameVersion::GC;
-  QuestFileFormat quest_file_type = QuestFileFormat::GCI;
+  bool is_dcv1 = false;
+  Quest::FileFormat quest_file_type = Quest::FileFormat::BIN_DAT_GCI;
   string seed;
   string key_file_name;
   const char* config_filename = "system/config.json";
@@ -325,16 +327,25 @@ int main(int argc, char** argv) {
       num_threads = strtoull(&argv[x][10], nullptr, 0);
     } else if (!strcmp(argv[x], "--patch")) {
       cli_version = GameVersion::PATCH;
+      is_dcv1 = false;
     } else if (!strcmp(argv[x], "--dc")) {
       cli_version = GameVersion::DC;
+      is_dcv1 = false;
+    } else if (!strcmp(argv[x], "--dcv1")) {
+      cli_version = GameVersion::DC;
+      is_dcv1 = true;
     } else if (!strcmp(argv[x], "--pc")) {
       cli_version = GameVersion::PC;
+      is_dcv1 = false;
     } else if (!strcmp(argv[x], "--gc")) {
       cli_version = GameVersion::GC;
+      is_dcv1 = false;
     } else if (!strcmp(argv[x], "--xb")) {
       cli_version = GameVersion::XB;
+      is_dcv1 = false;
     } else if (!strcmp(argv[x], "--bb")) {
       cli_version = GameVersion::BB;
+      is_dcv1 = false;
     } else if (!strncmp(argv[x], "--compression-level=", 20)) {
       compression_level = strtoll(&argv[x][20], nullptr, 0);
     } else if (!strcmp(argv[x], "--optimal")) {
@@ -422,16 +433,18 @@ int main(int argc, char** argv) {
           behavior = Behavior::DECODE_SJIS;
         } else if (!strcmp(argv[x], "decode-gci")) {
           behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = QuestFileFormat::GCI;
+          quest_file_type = Quest::FileFormat::BIN_DAT_GCI;
         } else if (!strcmp(argv[x], "decode-vms")) {
           behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = QuestFileFormat::VMS;
+          quest_file_type = Quest::FileFormat::BIN_DAT_VMS;
         } else if (!strcmp(argv[x], "decode-dlq")) {
           behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = QuestFileFormat::DLQ;
+          quest_file_type = Quest::FileFormat::BIN_DAT_DLQ;
         } else if (!strcmp(argv[x], "decode-qst")) {
           behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = QuestFileFormat::QST;
+          quest_file_type = Quest::FileFormat::QST;
+        } else if (!strcmp(argv[x], "disassemble-bin")) {
+          behavior = Behavior::DISASSEMBLE_QUEST_SCRIPT;
         } else if (!strcmp(argv[x], "cat-client")) {
           behavior = Behavior::CAT_CLIENT;
         } else if (!strcmp(argv[x], "format-itemrt-rel")) {
@@ -488,13 +501,14 @@ int main(int argc, char** argv) {
   };
 
   auto write_output_data = [&](const void* data, size_t size) {
-    // If the output is to a specified file, write it there
     if (output_filename && strcmp(output_filename, "-")) {
+      // If the output is to a specified file, write it there
       save_file(output_filename, data, size);
+
+    } else if (!output_filename && input_filename && strcmp(input_filename, "-")) {
       // If no output filename is given and an input filename is given, write to
       // <input-filename>.dec (or an appropriate extension, if it can be
       // autodetected)
-    } else if (!output_filename && input_filename && strcmp(input_filename, "-")) {
       string filename = input_filename;
       if (behavior == Behavior::COMPRESS_PRS) {
         if (ends_with(filename, ".bind") ||
@@ -524,16 +538,21 @@ int main(int argc, char** argv) {
         } else {
           filename += ".dec";
         }
+      } else if (behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) {
+        filename += ".txt";
       } else {
         filename += ".dec";
       }
       save_file(filename, data, size);
-      // If stdout is a terminal, use print_data to write the result
-    } else if (isatty(fileno(stdout))) {
+
+    } else if (isatty(fileno(stdout)) && (behavior != Behavior::DISASSEMBLE_QUEST_SCRIPT)) {
+      // If stdout is a terminal and the data is not known to be text, use
+      // print_data to write the result
       print_data(stdout, data, size);
       fflush(stdout);
-      // If stdout is not a terminal, write the data as-is
+
     } else {
+      // If stdout is not a terminal, write the data as-is
       fwritex(stdout, data, size);
       fflush(stdout);
     }
@@ -945,24 +964,35 @@ int main(int argc, char** argv) {
       }
 
       string output_filename_base = input_filename;
-      if (quest_file_type == QuestFileFormat::GCI) {
+      if (quest_file_type == Quest::FileFormat::BIN_DAT_GCI) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
         auto decoded = Quest::decode_gci_file(input_filename, num_threads, dec_seed);
         save_file(output_filename_base + ".dec", decoded);
-      } else if (quest_file_type == QuestFileFormat::VMS) {
+      } else if (quest_file_type == Quest::FileFormat::BIN_DAT_VMS) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
         auto decoded = Quest::decode_vms_file(input_filename, num_threads, dec_seed);
         save_file(output_filename_base + ".dec", decoded);
-      } else if (quest_file_type == QuestFileFormat::DLQ) {
+      } else if (quest_file_type == Quest::FileFormat::BIN_DAT_DLQ) {
         auto decoded = Quest::decode_dlq_file(input_filename);
         save_file(output_filename_base + ".dec", decoded);
-      } else if (quest_file_type == QuestFileFormat::QST) {
+      } else if (quest_file_type == Quest::FileFormat::QST) {
         auto data = Quest::decode_qst_file(input_filename);
         save_file(output_filename_base + ".bin", data.first);
         save_file(output_filename_base + ".dat", data.second);
       } else {
         throw logic_error("invalid quest file format");
       }
+      break;
+    }
+
+    case Behavior::DISASSEMBLE_QUEST_SCRIPT: {
+      if (!input_filename || !strcmp(input_filename, "-")) {
+        throw invalid_argument("an input filename is required");
+      }
+
+      auto data = prs_decompress(read_input_data());
+      string result = disassemble_quest_script(data.data(), data.size(), cli_version, is_dcv1);
+      write_output_data(result.data(), result.size());
       break;
     }
 

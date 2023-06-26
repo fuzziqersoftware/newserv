@@ -15,6 +15,7 @@
 #include "Compression.hh"
 #include "Loggers.hh"
 #include "PSOEncryption.hh"
+#include "QuestScript.hh"
 #include "SaveFileFormats.hh"
 #include "Text.hh"
 
@@ -228,64 +229,6 @@ struct PSOVMSFileHeader {
 struct PSODownloadQuestHeader {
   le_uint32_t size;
   le_uint32_t encryption_seed;
-} __attribute__((packed));
-
-struct PSOQuestHeaderDC { // Same format for DC v1 and v2, thankfully
-  uint32_t start_offset;
-  uint32_t unknown_offset1;
-  uint32_t size;
-  uint32_t unused;
-  uint8_t is_download;
-  uint8_t unknown1;
-  uint16_t quest_number; // 0xFFFF for challenge quests
-  ptext<char, 0x20> name;
-  ptext<char, 0x80> short_description;
-  ptext<char, 0x120> long_description;
-} __attribute__((packed));
-
-struct PSOQuestHeaderPC {
-  uint32_t start_offset;
-  uint32_t unknown_offset1;
-  uint32_t size;
-  uint32_t unused;
-  uint8_t is_download;
-  uint8_t unknown1;
-  uint16_t quest_number; // 0xFFFF for challenge quests
-  ptext<char16_t, 0x20> name;
-  ptext<char16_t, 0x80> short_description;
-  ptext<char16_t, 0x120> long_description;
-} __attribute__((packed));
-
-// TODO: Is the XB quest header format the same as on GC? If not, make a
-// separate struct; if so, rename this struct to V3.
-struct PSOQuestHeaderGC {
-  uint32_t start_offset;
-  uint32_t unknown_offset1;
-  uint32_t size;
-  uint32_t unused;
-  uint8_t is_download;
-  uint8_t unknown1;
-  uint8_t quest_number;
-  uint8_t episode; // 1 = Ep2. Apparently some quests have 0xFF here, which means ep1 (?)
-  ptext<char, 0x20> name;
-  ptext<char, 0x80> short_description;
-  ptext<char, 0x120> long_description;
-} __attribute__((packed));
-
-struct PSOQuestHeaderBB {
-  uint32_t start_offset;
-  uint32_t unknown_offset1;
-  uint32_t size;
-  uint32_t unused;
-  uint16_t quest_number; // 0xFFFF for challenge quests
-  uint16_t unused2;
-  uint8_t episode; // 0 = Ep1, 1 = Ep2, 2 = Ep4
-  uint8_t max_players;
-  uint8_t joinable_in_progress;
-  uint8_t unknown;
-  ptext<char16_t, 0x20> name;
-  ptext<char16_t, 0x80> short_description;
-  ptext<char16_t, 0x120> long_description;
 } __attribute__((packed));
 
 Quest::Quest(const string& bin_filename, shared_ptr<const QuestCategoryIndex> category_index)

@@ -2368,23 +2368,20 @@ static void on_AC_V3_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_AA(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<C_UpdateQuestStatistics_V3_BB_AA>(data);
+  const auto& cmd = check_size_t<C_SendQuestStatistic_V3_BB_AA>(data);
 
   if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
     throw runtime_error("trial edition client sent update quest stats command");
   }
 
   auto l = s->find_lobby(c->lobby_id);
-  if (!l || !l->is_game() || !l->quest.get() ||
-      (l->quest->internal_id != cmd.quest_internal_id)) {
+  if (!l || !l->is_game() || !l->quest.get()) {
     return;
   }
 
-  S_ConfirmUpdateQuestStatistics_V3_BB_AB response;
-  response.unknown_a1 = 0x0000;
-  response.unknown_a2 = 0x0000;
-  response.request_token = cmd.request_token;
-  response.unknown_a3 = 0xBFFF;
+  // TODO: Send the right value here. (When should we send function_id2?)
+  S_ConfirmQuestStatistic_V3_BB_AB response;
+  response.function_id = cmd.function_id1;
   send_command_t(c, 0xAB, 0x00, response);
 }
 
