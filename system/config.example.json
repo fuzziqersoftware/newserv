@@ -2,20 +2,24 @@
   // Configuration file for newserv.
 
   // This file is standard JSON with C-style comments. Some other extensions to
-  // the JSON standard are also supported; for example, integers may be
-  // specified in hexadecimal using the 0x prefix. If you use a text editor that
-  // auto-formats JSON on save, it may be confused by this file's format. Make
-  // sure it doesn't automatically turn hex integers into strings, for example.
+  // the JSON standard are also supported; notably, integers may be specified in
+  // hexadecimal using the 0x prefix. If you use a text editor that auto-formats
+  // JSON on save, it may be confused by this file's format. Make sure it
+  // doesn't automatically turn hex integers into strings, for example.
 
   // Server's name (maximum 16 characters). This appears in the upper-right
   // corner of the screen while in lobbies.
   "ServerName": "newserv",
 
-  // Address to connect local clients to (IP address or interface name)
+  // Address to connect local clients to (IP address or interface name). This
+  // is the address that newserv will expect clients on the same network as the
+  // server to conenct to.
   "LocalAddress": "en0",
-  // Address to connect external clients to (IP address or interface name). If
-  // you're running newserv behind a NAT, this should be your router's
-  // public-facing address.
+  // Address to connect external clients to (IP address or interface name). This
+  // is the address that newserv will expect clients not on the same network as
+  // the server to connect to. If you're running newserv behind a NAT (this
+  // applies to most home networks), this should be your router's public-facing
+  // IP address.
   "ExternalAddress": "10.0.1.5",
 
   // Port to listen for DNS queries on. To disable the DNS server, comment this
@@ -80,7 +84,7 @@
     // - If you have any DC, GC, or XB clients connecting to the server, the
     //   console-lobby port must be defined. The version for this port should be
     //   "gc", even though DC and XB clients can connect to it (newserv will
-    //   automatically detect the correct game version).
+    //   automatically detect the correct game version for each client).
     // - If you have any PC clients connecting to the server, the pc-lobby port
     //   must be defined.
     // - If you have any BB clients connecting to the server, the bb-lobby,
@@ -117,8 +121,9 @@
   "IPStackListen": [],
 
   // Other servers to support proxying to. If this is empty for any game
-  // version, the proxy server is disabled for that version. Entries are like
-  // "name": "address:port"; the names are used in the proxy server menu.
+  // version, the proxy server is disabled for that version. Entries in these
+  // dictionaries should be of the form "name": "address:port"; the names are
+  // used in the proxy server menu.
   "ProxyDestinations-DC": {},
   "ProxyDestinations-PC": {},
   "ProxyDestinations-GC": {},
