@@ -1025,11 +1025,11 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
       pd.disp.name = " ";
       modified = true;
     }
-    if (session.options.red_name && pd.disp.name_color != 0xFFFF0000) {
-      pd.disp.name_color = 0xFFFF0000;
+    if (session.options.red_name && pd.disp.visual.name_color != 0xFFFF0000) {
+      pd.disp.visual.name_color = 0xFFFF0000;
       modified = true;
-    } else if (session.options.blank_name && pd.disp.name_color != 0x00000000) {
-      pd.disp.name_color = 0x00000000;
+    } else if (session.options.blank_name && pd.disp.visual.name_color != 0x00000000) {
+      pd.disp.visual.name_color = 0x00000000;
       modified = true;
     }
 
@@ -1054,14 +1054,14 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
       add_color_inplace(pd->info_board.data(), pd->info_board.size());
     }
     if (session.options.blank_name) {
-      pd->disp.name = " ";
+      pd->disp.visual.name = " ";
       modified = true;
     }
-    if (session.options.red_name && pd->disp.name_color != 0xFFFF0000) {
-      pd->disp.name_color = 0xFFFF0000;
+    if (session.options.red_name && pd->disp.visual.name_color != 0xFFFF0000) {
+      pd->disp.visual.name_color = 0xFFFF0000;
       modified = true;
-    } else if (session.options.blank_name && pd->disp.name_color != 0x00000000) {
-      pd->disp.name_color = 0x00000000;
+    } else if (session.options.blank_name && pd->disp.visual.name_color != 0x00000000) {
+      pd->disp.visual.name_color = 0x00000000;
       modified = true;
     }
   }
@@ -1340,7 +1340,7 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ServerState>,
     if (index >= session.lobby_players.size()) {
       session.log.warning("Ignoring invalid player index %zu at position %zu", index, x);
     } else {
-      string name = encode_sjis(cmd.entries[x].disp.name);
+      string name = encode_sjis(cmd.entries[x].disp.visual.name);
 
       if (session.license && (cmd.entries[x].lobby_data.guild_card == session.remote_guild_card_number)) {
         cmd.entries[x].lobby_data.guild_card = session.license->serial_number;
@@ -1353,8 +1353,8 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ServerState>,
       auto& p = session.lobby_players[index];
       p.guild_card_number = cmd.entries[x].lobby_data.guild_card;
       p.name = name;
-      p.section_id = cmd.entries[x].disp.section_id;
-      p.char_class = cmd.entries[x].disp.char_class;
+      p.section_id = cmd.entries[x].disp.visual.section_id;
+      p.char_class = cmd.entries[x].disp.visual.char_class;
       session.log.info("Added lobby player: (%zu) %" PRIu32 " %s",
           index, p.guild_card_number, p.name.c_str());
     }
@@ -1409,10 +1409,10 @@ static HandlerResult S_64(shared_ptr<ServerState>,
     auto& p = session.lobby_players[x];
     p.guild_card_number = cmd->lobby_data[x].guild_card;
     if (cmd_ep3) {
-      ptext<char, 0x10> name = cmd_ep3->players_ep3[x].disp.name;
+      ptext<char, 0x10> name = cmd_ep3->players_ep3[x].disp.visual.name;
       p.name = name;
-      p.section_id = cmd_ep3->players_ep3[x].disp.section_id;
-      p.char_class = cmd_ep3->players_ep3[x].disp.char_class;
+      p.section_id = cmd_ep3->players_ep3[x].disp.visual.section_id;
+      p.char_class = cmd_ep3->players_ep3[x].disp.visual.char_class;
     } else {
       p.name.clear();
     }
@@ -1470,10 +1470,10 @@ static HandlerResult S_E8(shared_ptr<ServerState>,
 
     auto& p = session.lobby_players[x];
     p.guild_card_number = player_entry.lobby_data.guild_card;
-    ptext<char, 0x10> name = player_entry.disp.name;
+    ptext<char, 0x10> name = player_entry.disp.visual.name;
     p.name = name;
-    p.section_id = player_entry.disp.section_id;
-    p.char_class = player_entry.disp.char_class;
+    p.section_id = player_entry.disp.visual.section_id;
+    p.char_class = player_entry.disp.visual.char_class;
     session.log.info("Added lobby player: (%zu) %" PRIu32 " %s",
         x, p.guild_card_number, p.name.c_str());
   }

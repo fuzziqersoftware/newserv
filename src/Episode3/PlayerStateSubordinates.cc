@@ -688,11 +688,11 @@ void HandAndEquipState::clear_FF() {
   this->unused2.clear(0xFF);
 }
 
-PlayerStats::PlayerStats() {
+PlayerBattleStats::PlayerBattleStats() {
   this->clear();
 }
 
-void PlayerStats::clear() {
+void PlayerBattleStats::clear() {
   this->damage_given = 0;
   this->damage_taken = 0;
   this->num_opponent_cards_destroyed = 0;
@@ -715,7 +715,7 @@ void PlayerStats::clear() {
   this->unused = 0;
 }
 
-float PlayerStats::score(size_t num_rounds) const {
+float PlayerBattleStats::score(size_t num_rounds) const {
   // Note: This formula doesn't match the formula on PSO-World, which is:
   //     35
   //   + (Attack Damage - Damage Taken)
@@ -730,11 +730,11 @@ float PlayerStats::score(size_t num_rounds) const {
   return 38.0f + 0.8f * this->action_card_negated_damage - 2.3f * num_rounds - 1.8f * this->sc_damage_taken + 3.0f * this->max_attack_combo_size + (this->damage_given - this->damage_taken);
 }
 
-uint8_t PlayerStats::rank(size_t num_rounds) const {
+uint8_t PlayerBattleStats::rank(size_t num_rounds) const {
   return this->rank_for_score(this->score(num_rounds));
 }
 
-const char* PlayerStats::rank_name(size_t num_rounds) const {
+const char* PlayerBattleStats::rank_name(size_t num_rounds) const {
   return this->name_for_rank(this->rank_for_score(this->score(num_rounds)));
 }
 
@@ -744,7 +744,7 @@ static const float RANK_THRESHOLDS[RANK_THRESHOLD_COUNT] = {
 static const char* RANK_NAMES[RANK_THRESHOLD_COUNT + 1] = {
     "E", "D", "D+", "C", "C+", "B", "B+", "A", "A+", "S"};
 
-uint8_t PlayerStats::rank_for_score(float score) {
+uint8_t PlayerBattleStats::rank_for_score(float score) {
   size_t rank = 0;
   while (rank < RANK_THRESHOLD_COUNT && RANK_THRESHOLDS[rank] <= score) {
     rank++;
@@ -752,7 +752,7 @@ uint8_t PlayerStats::rank_for_score(float score) {
   return rank;
 }
 
-const char* PlayerStats::name_for_rank(uint8_t rank) {
+const char* PlayerBattleStats::name_for_rank(uint8_t rank) {
   if (rank >= RANK_THRESHOLD_COUNT + 1) {
     throw invalid_argument("invalid rank");
   }

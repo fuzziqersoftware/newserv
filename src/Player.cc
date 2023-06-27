@@ -27,7 +27,7 @@ static const string ACCOUNT_FILE_SIGNATURE =
 
 static FileContentsCache player_files_cache(300 * 1000 * 1000);
 
-PlayerStats::PlayerStats() noexcept
+CharacterStats::CharacterStats() noexcept
     : atp(0),
       mst(0),
       evp(0),
@@ -36,11 +36,13 @@ PlayerStats::PlayerStats() noexcept
       ata(0),
       lck(0) {}
 
-PlayerDispDataDCPCV3::PlayerDispDataDCPCV3() noexcept
+PlayerStats::PlayerStats() noexcept
     : level(0),
       experience(0),
-      meseta(0),
-      unknown_a2(0),
+      meseta(0) {}
+
+PlayerVisualConfig::PlayerVisualConfig() noexcept
+    : unknown_a2(0),
       name_color(0),
       extra_model(0),
       name_color_checksum(0),
@@ -62,121 +64,43 @@ PlayerDispDataDCPCV3::PlayerDispDataDCPCV3() noexcept
 
 void PlayerDispDataDCPCV3::enforce_v2_limits() {
   // V1/V2 have fewer classes, so we'll substitute some here
-  if (this->char_class == 11) {
-    this->char_class = 0; // FOmar -> HUmar
-  } else if (this->char_class == 10) {
-    this->char_class = 1; // RAmarl -> HUnewearl
-  } else if (this->char_class == 9) {
-    this->char_class = 5; // HUcaseal -> RAcaseal
+  if (this->visual.char_class == 11) {
+    this->visual.char_class = 0; // FOmar -> HUmar
+  } else if (this->visual.char_class == 10) {
+    this->visual.char_class = 1; // RAmarl -> HUnewearl
+  } else if (this->visual.char_class == 9) {
+    this->visual.char_class = 5; // HUcaseal -> RAcaseal
   }
 
   // If the player is somehow still not a valid class, make them appear as the
   // "ninja" NPC
-  if (this->char_class > 8) {
-    this->extra_model = 0;
-    this->v2_flags |= 2;
+  if (this->visual.char_class > 8) {
+    this->visual.extra_model = 0;
+    this->visual.v2_flags |= 2;
   }
-  this->version = 2;
+  this->visual.version = 2;
 }
 
 PlayerDispDataBB PlayerDispDataDCPCV3::to_bb() const {
   PlayerDispDataBB bb;
-  bb.stats.atp = this->stats.atp;
-  bb.stats.mst = this->stats.mst;
-  bb.stats.evp = this->stats.evp;
-  bb.stats.hp = this->stats.hp;
-  bb.stats.dfp = this->stats.dfp;
-  bb.stats.ata = this->stats.ata;
-  bb.stats.lck = this->stats.lck;
-  bb.unknown_a1 = this->unknown_a1;
-  bb.level = this->level;
-  bb.experience = this->experience;
-  bb.meseta = this->meseta;
-  bb.guild_card = "         0";
-  bb.unknown_a2 = this->unknown_a2;
-  bb.name_color = this->name_color;
-  bb.extra_model = this->extra_model;
-  bb.unused = this->unused;
-  bb.name_color_checksum = this->name_color_checksum;
-  bb.section_id = this->section_id;
-  bb.char_class = this->char_class;
-  bb.v2_flags = this->v2_flags;
-  bb.version = this->version;
-  bb.v1_flags = this->v1_flags;
-  bb.costume = this->costume;
-  bb.skin = this->skin;
-  bb.face = this->face;
-  bb.head = this->head;
-  bb.hair = this->hair;
-  bb.hair_r = this->hair_r;
-  bb.hair_g = this->hair_g;
-  bb.hair_b = this->hair_b;
-  bb.proportion_x = this->proportion_x;
-  bb.proportion_y = this->proportion_y;
-  bb.name = add_language_marker(this->name, 'J');
+  bb.stats = this->stats;
+  bb.visual = this->visual;
+  bb.visual.name = "         0";
+  bb.name = add_language_marker(this->visual.name, 'J');
   bb.config = this->config;
   bb.technique_levels = this->technique_levels;
   return bb;
 }
 
 PlayerDispDataBB::PlayerDispDataBB() noexcept
-    : level(0),
-      experience(0),
-      meseta(0),
-      unknown_a2(0),
-      name_color(0),
-      extra_model(0),
-      name_color_checksum(0),
-      section_id(0),
-      char_class(0),
-      v2_flags(0),
-      version(0),
-      v1_flags(0),
-      costume(0),
-      skin(0),
-      face(0),
-      head(0),
-      hair(0),
-      hair_r(0),
-      hair_g(0),
-      hair_b(0),
-      proportion_x(0),
-      proportion_y(0) {}
+    : play_time(0),
+      unknown_a3(0) {}
 
 PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3() const {
   PlayerDispDataDCPCV3 ret;
-  ret.stats.atp = this->stats.atp;
-  ret.stats.mst = this->stats.mst;
-  ret.stats.evp = this->stats.evp;
-  ret.stats.hp = this->stats.hp;
-  ret.stats.dfp = this->stats.dfp;
-  ret.stats.ata = this->stats.ata;
-  ret.stats.lck = this->stats.lck;
-  ret.unknown_a1 = this->unknown_a1;
-  ret.level = this->level;
-  ret.experience = this->experience;
-  ret.meseta = this->meseta;
-  ret.unknown_a2 = this->unknown_a2;
-  ret.name_color = this->name_color;
-  ret.extra_model = this->extra_model;
-  ret.unused = this->unused;
-  ret.name_color_checksum = this->name_color_checksum;
-  ret.section_id = this->section_id;
-  ret.char_class = this->char_class;
-  ret.v2_flags = this->v2_flags;
-  ret.version = this->version;
-  ret.v1_flags = this->v1_flags;
-  ret.costume = this->costume;
-  ret.skin = this->skin;
-  ret.face = this->face;
-  ret.head = this->head;
-  ret.hair = this->hair;
-  ret.hair_r = this->hair_r;
-  ret.hair_g = this->hair_g;
-  ret.hair_b = this->hair_b;
-  ret.proportion_x = this->proportion_x;
-  ret.proportion_y = this->proportion_y;
-  ret.name = remove_language_marker(this->name);
+  ret.stats = this->stats;
+  ret.visual = this->visual;
+  ret.visual.name = remove_language_marker(this->name);
   ret.config = this->config;
   ret.technique_levels = this->technique_levels;
   return ret;
@@ -184,105 +108,46 @@ PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3() const {
 
 PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
   PlayerDispDataBBPreview pre;
-  pre.level = this->level;
-  pre.experience = this->experience;
-  pre.guild_card = this->guild_card;
-  pre.unknown_a2 = this->unknown_a2;
-  pre.name_color = this->name_color;
-  pre.extra_model = this->extra_model;
-  pre.unused = this->unused;
-  pre.name_color_checksum = this->name_color_checksum;
-  pre.section_id = this->section_id;
-  pre.char_class = this->char_class;
-  pre.v2_flags = this->v2_flags;
-  pre.version = this->version;
-  pre.v1_flags = this->v1_flags;
-  pre.costume = this->costume;
-  pre.skin = this->skin;
-  pre.face = this->face;
-  pre.head = this->head;
-  pre.hair = this->hair;
-  pre.hair_r = this->hair_r;
-  pre.hair_g = this->hair_g;
-  pre.hair_b = this->hair_b;
-  pre.proportion_x = this->proportion_x;
-  pre.proportion_y = this->proportion_y;
+  pre.level = this->stats.level;
+  pre.experience = this->stats.experience;
+  pre.visual = this->visual;
   pre.name = this->name;
   pre.play_time = this->play_time;
   return pre;
 }
 
 void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
-  this->level = pre.level;
-  this->experience = pre.experience;
-  this->guild_card = pre.guild_card;
-  this->unknown_a2 = pre.unknown_a2;
-  this->name_color = pre.name_color;
-  this->extra_model = pre.extra_model;
-  this->unused = pre.unused;
-  this->name_color_checksum = pre.name_color_checksum;
-  this->section_id = pre.section_id;
-  this->char_class = pre.char_class;
-  this->v2_flags = pre.v2_flags;
-  this->version = pre.version;
-  this->v1_flags = pre.v1_flags;
-  this->costume = pre.costume;
-  this->skin = pre.skin;
-  this->face = pre.face;
-  this->head = pre.head;
-  this->hair = pre.hair;
-  this->hair_r = pre.hair_r;
-  this->hair_g = pre.hair_g;
-  this->hair_b = pre.hair_b;
-  this->proportion_x = pre.proportion_x;
-  this->proportion_y = pre.proportion_y;
+  this->stats.level = pre.level;
+  this->stats.experience = pre.experience;
+  this->visual = pre.visual;
   this->name = pre.name;
 }
 
 void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
-  this->name_color = pre.name_color;
-  this->extra_model = pre.extra_model;
-  this->name_color_checksum = pre.name_color_checksum;
-  this->section_id = pre.section_id;
-  this->char_class = pre.char_class;
-  this->v2_flags = pre.v2_flags;
-  this->version = pre.version;
-  this->v1_flags = pre.v1_flags;
-  this->costume = pre.costume;
-  this->skin = pre.skin;
-  this->face = pre.face;
-  this->head = pre.head;
-  this->hair = pre.hair;
-  this->hair_r = pre.hair_r;
-  this->hair_g = pre.hair_g;
-  this->hair_b = pre.hair_b;
-  this->proportion_x = pre.proportion_x;
-  this->proportion_y = pre.proportion_y;
+  this->visual.name_color = pre.visual.name_color;
+  this->visual.extra_model = pre.visual.extra_model;
+  this->visual.name_color_checksum = pre.visual.name_color_checksum;
+  this->visual.section_id = pre.visual.section_id;
+  this->visual.char_class = pre.visual.char_class;
+  this->visual.v2_flags = pre.visual.v2_flags;
+  this->visual.version = pre.visual.version;
+  this->visual.v1_flags = pre.visual.v1_flags;
+  this->visual.costume = pre.visual.costume;
+  this->visual.skin = pre.visual.skin;
+  this->visual.face = pre.visual.face;
+  this->visual.head = pre.visual.head;
+  this->visual.hair = pre.visual.hair;
+  this->visual.hair_r = pre.visual.hair_r;
+  this->visual.hair_g = pre.visual.hair_g;
+  this->visual.hair_b = pre.visual.hair_b;
+  this->visual.proportion_x = pre.visual.proportion_x;
+  this->visual.proportion_y = pre.visual.proportion_y;
   this->name = pre.name;
 }
 
 PlayerDispDataBBPreview::PlayerDispDataBBPreview() noexcept
     : experience(0),
       level(0),
-      unknown_a2(0),
-      name_color(0),
-      extra_model(0),
-      name_color_checksum(0),
-      section_id(0),
-      char_class(0),
-      v2_flags(0),
-      version(0),
-      v1_flags(0),
-      costume(0),
-      skin(0),
-      face(0),
-      head(0),
-      hair(0),
-      hair_r(0),
-      hair_g(0),
-      hair_b(0),
-      proportion_x(0),
-      proportion_y(0),
       play_time(0) {}
 
 GuildCardV3::GuildCardV3() noexcept
@@ -416,14 +281,14 @@ void ClientGameData::create_player(
     const PlayerDispDataBBPreview& preview,
     shared_ptr<const LevelTable> level_table) {
   shared_ptr<SavedPlayerDataBB> data(new SavedPlayerDataBB(
-      load_object_file<SavedPlayerDataBB>(player_template_filename(preview.char_class))));
+      load_object_file<SavedPlayerDataBB>(player_template_filename(preview.visual.char_class))));
   if (data->signature != PLAYER_FILE_SIGNATURE) {
     throw runtime_error("player data header is incorrect");
   }
 
   try {
     data->disp.apply_preview(preview);
-    data->disp.stats = level_table->base_stats_for_class(data->disp.char_class);
+    data->disp.stats.char_stats = level_table->base_stats_for_class(data->disp.visual.char_class);
   } catch (const exception& e) {
     throw runtime_error(string_printf("template application failed: %s", e.what()));
   }
@@ -572,8 +437,8 @@ PlayerBB ClientGameData::export_player_bb() {
   ret.guild_card_description = player->guild_card_description;
   ret.reserved1 = 0;
   ret.reserved2 = 0;
-  ret.section_id = player->disp.section_id;
-  ret.char_class = player->disp.char_class;
+  ret.section_id = player->disp.visual.section_id;
+  ret.char_class = player->disp.visual.char_class;
   ret.unknown3 = 0;
   ret.symbol_chats = account->symbol_chats;
   ret.shortcuts = account->shortcuts;
@@ -678,9 +543,9 @@ void SavedPlayerDataBB::add_item(const PlayerInventoryItem& item) {
   // Annoyingly, meseta is in the disp data, not in the inventory struct. If the
   // item is meseta, we have to modify disp instead.
   if (pid == MESETA_IDENTIFIER) {
-    this->disp.meseta += item.data.data2d;
-    if (this->disp.meseta > 999999) {
-      this->disp.meseta = 999999;
+    this->disp.stats.meseta += item.data.data2d;
+    if (this->disp.stats.meseta > 999999) {
+      this->disp.stats.meseta = 999999;
     }
     return;
   }
@@ -762,10 +627,10 @@ PlayerInventoryItem SavedPlayerDataBB::remove_item(
   // If we're removing meseta (signaled by an invalid item ID), then create a
   // meseta item.
   if (item_id == 0xFFFFFFFF) {
-    if (amount <= this->disp.meseta) {
-      this->disp.meseta -= amount;
+    if (amount <= this->disp.stats.meseta) {
+      this->disp.stats.meseta -= amount;
     } else if (allow_meseta_overdraft) {
-      this->disp.meseta = 0;
+      this->disp.stats.meseta = 0;
     } else {
       throw out_of_range("player does not have enough meseta");
     }
@@ -919,7 +784,7 @@ size_t PlayerBank::find_item(uint32_t item_id) {
 }
 
 void SavedPlayerDataBB::print_inventory(FILE* stream) const {
-  fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", this->disp.meseta.load());
+  fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", this->disp.stats.meseta.load());
   fprintf(stream, "[PlayerInventory] %hhu items\n", this->inventory.num_items);
   for (size_t x = 0; x < this->inventory.num_items; x++) {
     const auto& item = this->inventory.items[x];

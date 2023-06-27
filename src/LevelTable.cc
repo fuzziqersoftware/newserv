@@ -21,7 +21,7 @@ LevelTable::LevelTable(shared_ptr<const string> data, bool compressed) {
   this->table = reinterpret_cast<const Table*>(this->data->data());
 }
 
-const PlayerStats& LevelTable::base_stats_for_class(uint8_t char_class) const {
+const CharacterStats& LevelTable::base_stats_for_class(uint8_t char_class) const {
   if (char_class >= 12) {
     throw out_of_range("invalid character class");
   }
@@ -39,7 +39,7 @@ const LevelTable::LevelStats& LevelTable::stats_for_level(
   return this->table->levels[char_class][level];
 }
 
-void LevelTable::LevelStats::apply(PlayerStats& ps) const {
+void LevelTable::LevelStats::apply(CharacterStats& ps) const {
   ps.ata += this->ata;
   ps.atp += this->atp;
   ps.dfp += this->dfp;

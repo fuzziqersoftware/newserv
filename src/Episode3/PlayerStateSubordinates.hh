@@ -234,7 +234,7 @@ struct HandAndEquipState {
   std::string str() const;
 } __attribute__((packed));
 
-struct PlayerStats {
+struct PlayerBattleStats {
   le_uint16_t damage_given;
   le_uint16_t damage_taken;
   le_uint16_t num_opponent_cards_destroyed;
@@ -256,7 +256,7 @@ struct PlayerStats {
   le_uint16_t action_card_negated_damage;
   le_uint16_t unused;
 
-  PlayerStats();
+  PlayerBattleStats();
   void clear();
 
   float score(size_t num_rounds) const;

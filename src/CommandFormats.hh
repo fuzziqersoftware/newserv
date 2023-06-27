@@ -4444,36 +4444,8 @@ struct G_SyncPlayerDispAndInventory_V3_6x70 {
   /* 00B8 */ le_uint32_t unknown_a10;
   /* 00BC */ le_uint32_t unknown_a11;
   /* 00C0 */ parray<uint8_t, 0x14> technique_levels; // Last byte is uninitialized
-  /* 00D4 */ struct {
-    parray<uint8_t, 0x10> name;
-    uint64_t unknown_a2; // Same as unknown_a2 in PlayerDispDataDCPCV3, presumably
-    le_uint32_t name_color;
-    uint8_t extra_model;
-    parray<uint8_t, 0x0F> unused;
-    le_uint32_t name_color_checksum;
-    uint8_t section_id;
-    uint8_t char_class;
-    uint8_t v2_flags;
-    uint8_t version;
-    le_uint32_t v1_flags;
-    le_uint16_t costume;
-    le_uint16_t skin;
-    le_uint16_t face;
-    le_uint16_t head;
-    le_uint16_t hair;
-    le_uint16_t hair_r;
-    le_uint16_t hair_g;
-    le_uint16_t hair_b;
-    le_uint32_t proportion_x;
-    le_uint32_t proportion_y;
-  } __packed__ disp_part2;
-  /* 0124 */ struct {
-    PlayerStats stats;
-    parray<uint8_t, 0x0A> unknown_a1;
-    le_uint32_t level;
-    le_uint32_t experience;
-    le_uint32_t meseta;
-  } __packed__ disp_part1;
+  /* 00D4 */ PlayerVisualConfig visual;
+  /* 0124 */ PlayerStats stats;
   /* 0148 */ struct {
     le_uint32_t num_items;
     // Entries >= num_items in this array contain uninitialized data (usually
@@ -6110,7 +6082,7 @@ struct G_CardCountsRequest_GC_Ep3_6xB5x38 {
 
 struct G_UpdateAllPlayerStatistics_GC_Ep3_6xB4x39 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_UpdateAllPlayerStatistics_GC_Ep3_6xB4x39) / 4, 0, 0x39, 0, 0, 0};
-  parray<Episode3::PlayerStats, 4> stats;
+  parray<Episode3::PlayerBattleStats, 4> stats;
 } __packed__;
 
 // 6xB3x3A / CAx3A: Unknown

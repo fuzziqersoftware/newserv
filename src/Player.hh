@@ -83,41 +83,56 @@ struct PendingCardTrade {
 
 struct PlayerDispDataBB;
 
-struct PlayerDispDataDCPCV3 { // 0xD0 bytes
-  PlayerStats stats;
-  parray<uint8_t, 0x0A> unknown_a1;
-  le_uint32_t level;
-  le_uint32_t experience;
-  le_uint32_t meseta;
-  ptext<char, 0x10> name;
-  uint64_t unknown_a2;
-  le_uint32_t name_color;
-  uint8_t extra_model;
-  parray<uint8_t, 0x0F> unused;
-  le_uint32_t name_color_checksum;
-  uint8_t section_id;
-  uint8_t char_class;
-  uint8_t v2_flags;
-  uint8_t version;
-  le_uint32_t v1_flags;
-  le_uint16_t costume;
-  le_uint16_t skin;
-  le_uint16_t face;
-  le_uint16_t head;
-  le_uint16_t hair;
-  le_uint16_t hair_r;
-  le_uint16_t hair_g;
-  le_uint16_t hair_b;
-  le_float proportion_x;
-  le_float proportion_y;
-  parray<uint8_t, 0x48> config;
-  parray<uint8_t, 0x14> technique_levels;
+struct PlayerStats {
+  /* 00 */ CharacterStats char_stats;
+  /* 0E */ parray<uint8_t, 0x0A> unknown_a1;
+  /* 18 */ le_uint32_t level;
+  /* 1C */ le_uint32_t experience;
+  /* 20 */ le_uint32_t meseta;
+  /* 24 */
+
+  PlayerStats() noexcept;
+} __attribute__((packed));
+
+struct PlayerVisualConfig {
+  /* 00 */ ptext<char, 0x10> name;
+  /* 10 */ uint64_t unknown_a2;
+  /* 18 */ le_uint32_t name_color;
+  /* 1C */ uint8_t extra_model;
+  /* 1D */ parray<uint8_t, 0x0F> unused;
+  /* 2C */ le_uint32_t name_color_checksum;
+  /* 30 */ uint8_t section_id;
+  /* 31 */ uint8_t char_class;
+  /* 32 */ uint8_t v2_flags;
+  /* 33 */ uint8_t version;
+  /* 34 */ le_uint32_t v1_flags;
+  /* 38 */ le_uint16_t costume;
+  /* 3A */ le_uint16_t skin;
+  /* 3C */ le_uint16_t face;
+  /* 3E */ le_uint16_t head;
+  /* 40 */ le_uint16_t hair;
+  /* 42 */ le_uint16_t hair_r;
+  /* 44 */ le_uint16_t hair_g;
+  /* 46 */ le_uint16_t hair_b;
+  /* 48 */ le_float proportion_x;
+  /* 4C */ le_float proportion_y;
+  /* 50 */
+
+  PlayerVisualConfig() noexcept;
+} __attribute__((packed));
+
+struct PlayerDispDataDCPCV3 {
+  /* 00 */ PlayerStats stats;
+  /* 24 */ PlayerVisualConfig visual;
+  /* 74 */ parray<uint8_t, 0x48> config;
+  /* BC */ parray<uint8_t, 0x14> technique_levels;
+  /* D0 */
 
   // Note: This struct has a default constructor because it's used in a command
   // that has a fixed-size array. If we didn't define this constructor, the
   // trivial fields in that array's members would be uninitialized, and we could
   // send uninitialized memory to the client.
-  PlayerDispDataDCPCV3() noexcept;
+  PlayerDispDataDCPCV3() noexcept = default;
 
   void enforce_v2_limits();
   PlayerDispDataBB to_bb() const;
@@ -127,27 +142,9 @@ struct PlayerDispDataDCPCV3 { // 0xD0 bytes
 struct PlayerDispDataBBPreview {
   le_uint32_t experience;
   le_uint32_t level;
-  ptext<char, 0x10> guild_card;
-  uint64_t unknown_a2;
-  le_uint32_t name_color;
-  uint8_t extra_model;
-  parray<uint8_t, 0x0F> unused;
-  le_uint32_t name_color_checksum;
-  uint8_t section_id;
-  uint8_t char_class;
-  uint8_t v2_flags;
-  uint8_t version;
-  le_uint32_t v1_flags;
-  le_uint16_t costume;
-  le_uint16_t skin;
-  le_uint16_t face;
-  le_uint16_t head;
-  le_uint16_t hair;
-  le_uint16_t hair_r;
-  le_uint16_t hair_g;
-  le_uint16_t hair_b;
-  le_float proportion_x;
-  le_float proportion_y;
+  // The name field in this structure is used for the player's Guild Card
+  // number, apparently (possibly because it's a char array and this is BB)
+  PlayerVisualConfig visual;
   ptext<char16_t, 0x10> name;
   uint32_t play_time;
 
@@ -157,31 +154,7 @@ struct PlayerDispDataBBPreview {
 // BB player appearance and stats data
 struct PlayerDispDataBB {
   PlayerStats stats;
-  parray<uint8_t, 0x0A> unknown_a1;
-  le_uint32_t level;
-  le_uint32_t experience;
-  le_uint32_t meseta;
-  ptext<char, 0x10> guild_card;
-  uint64_t unknown_a2;
-  le_uint32_t name_color; // ARGB8888
-  uint8_t extra_model;
-  parray<uint8_t, 0x0F> unused;
-  le_uint32_t name_color_checksum;
-  uint8_t section_id;
-  uint8_t char_class;
-  uint8_t v2_flags;
-  uint8_t version;
-  le_uint32_t v1_flags;
-  le_uint16_t costume;
-  le_uint16_t skin;
-  le_uint16_t face;
-  le_uint16_t head;
-  le_uint16_t hair;
-  le_uint16_t hair_r;
-  le_uint16_t hair_g;
-  le_uint16_t hair_b;
-  le_float proportion_x;
-  le_float proportion_y;
+  PlayerVisualConfig visual;
   ptext<char16_t, 0x0C> name;
   le_uint32_t play_time;
   uint32_t unknown_a3;

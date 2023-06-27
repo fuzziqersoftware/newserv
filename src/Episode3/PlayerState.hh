@@ -182,7 +182,7 @@ public:
   uint32_t num_destroyed_fcs;
   uint8_t unknown_a16;
   uint8_t unknown_a17;
-  PlayerStats stats;
+  PlayerBattleStats stats;
 };
 
 } // namespace Episode3

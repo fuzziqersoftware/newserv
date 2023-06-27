@@ -6,7 +6,7 @@
 #include <phosg/Encoding.hh>
 #include <string>
 
-struct PlayerStats {
+struct CharacterStats {
   le_uint16_t atp;
   le_uint16_t mst;
   le_uint16_t evp;
@@ -15,7 +15,7 @@ struct PlayerStats {
   le_uint16_t ata;
   le_uint16_t lck;
 
-  PlayerStats() noexcept;
+  CharacterStats() noexcept;
 } __attribute__((packed));
 
 class LevelTable { // from PlyLevelTbl.prs
@@ -31,18 +31,18 @@ public:
     uint8_t tp;
     le_uint32_t experience;
 
-    void apply(PlayerStats& ps) const;
+    void apply(CharacterStats& ps) const;
   } __attribute__((packed));
 
   struct Table {
-    PlayerStats base_stats[12];
+    CharacterStats base_stats[12];
     le_uint32_t unknown[12];
     LevelStats levels[12][200];
   } __attribute__((packed));
 
   LevelTable(std::shared_ptr<const std::string> data, bool compressed);
 
-  const PlayerStats& base_stats_for_class(uint8_t char_class) const;
+  const CharacterStats& base_stats_for_class(uint8_t char_class) const;
   const LevelStats& stats_for_level(uint8_t char_class, uint8_t level) const;
 
 private:

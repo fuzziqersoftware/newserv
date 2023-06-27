@@ -1044,8 +1044,8 @@ void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
   uint32_t guild_card_number = source->license->serial_number;
   u16string name = source->game_data.player()->disp.name;
   u16string description = source->game_data.player()->guild_card_description;
-  uint8_t section_id = source->game_data.player()->disp.section_id;
-  uint8_t char_class = source->game_data.player()->disp.char_class;
+  uint8_t section_id = source->game_data.player()->disp.visual.section_id;
+  uint8_t char_class = source->game_data.player()->disp.visual.char_class;
 
   send_guild_card(
       c->channel, guild_card_number, name, u"", description, section_id, char_class);
@@ -1387,7 +1387,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
         p.inventory.items[y].data.bswap_data2_if_mag();
       }
       p.disp = watched_lobby->clients[z]->game_data.player()->disp.to_dcpcv3();
-      remove_language_marker_inplace(p.disp.name);
+      remove_language_marker_inplace(p.disp.visual.name);
 
       auto& e = cmd.entries[z];
       e.player_tag = 0x00010000;
@@ -1395,7 +1395,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       e.name = watched_lobby->clients[z]->game_data.player()->disp.name;
       remove_language_marker_inplace(e.name);
       e.present = 1;
-      e.level = watched_lobby->clients[z]->game_data.player()->disp.level.load();
+      e.level = watched_lobby->clients[z]->game_data.player()->disp.stats.level.load();
 
       player_count++;
     }
@@ -1421,13 +1421,13 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
         cmd.players[client_id].inventory.items[z].data.bswap_data2_if_mag();
       }
       cmd.players[client_id].disp = entry.disp;
-      remove_language_marker_inplace(cmd.players[client_id].disp.name);
+      remove_language_marker_inplace(cmd.players[client_id].disp.visual.name);
       cmd.entries[client_id].player_tag = 0x00010000;
       cmd.entries[client_id].guild_card_number = entry.lobby_data.guild_card;
-      cmd.entries[client_id].name = entry.disp.name;
+      cmd.entries[client_id].name = entry.disp.visual.name;
       remove_language_marker_inplace(cmd.entries[client_id].name);
       cmd.entries[client_id].present = 1;
-      cmd.entries[client_id].level = entry.disp.level.load();
+      cmd.entries[client_id].level = entry.disp.stats.level.load();
       player_count++;
     }
 
@@ -1444,13 +1444,13 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       remove_language_marker_inplace(cmd.spectator_players[z - 4].lobby_data.name);
       cmd.spectator_players[z - 4].inventory = l->clients[z]->game_data.player()->inventory;
       cmd.spectator_players[z - 4].disp = l->clients[z]->game_data.player()->disp.to_dcpcv3();
-      remove_language_marker_inplace(cmd.spectator_players[z - 4].disp.name);
+      remove_language_marker_inplace(cmd.spectator_players[z - 4].disp.visual.name);
       cmd.entries[z].player_tag = 0x00010000;
       cmd.entries[z].guild_card_number = l->clients[z]->license->serial_number;
       cmd.entries[z].name = l->clients[z]->game_data.player()->disp.name;
       remove_language_marker_inplace(cmd.entries[z].name);
       cmd.entries[z].present = 1;
-      cmd.entries[z].level = l->clients[z]->game_data.player()->disp.level.load();
+      cmd.entries[z].level = l->clients[z]->game_data.player()->disp.stats.level.load();
       player_count++;
     }
   }
@@ -2052,7 +2052,7 @@ void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
 
 // notifies players about a level up
 void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
-  PlayerStats stats = c->game_data.player()->disp.stats;
+  CharacterStats stats = c->game_data.player()->disp.stats.char_stats;
 
   for (size_t x = 0; x < c->game_data.player()->inventory.num_items; x++) {
     if ((c->game_data.player()->inventory.items[x].flags & 0x08) &&
@@ -2072,7 +2072,7 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
       stats.hp,
       stats.dfp,
       stats.ata,
-      c->game_data.player()->disp.level.load(),
+      c->game_data.player()->disp.stats.level.load(),
       0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
@@ -2304,8 +2304,8 @@ string ep3_description_for_client(shared_ptr<Client> c) {
   auto player = c->game_data.player();
   return string_printf(
       "%s CLv%" PRIu32 " %c",
-      name_for_char_class(player->disp.char_class),
-      player->disp.level + 1,
+      name_for_char_class(player->disp.visual.char_class),
+      player->disp.stats.level + 1,
       char_for_language_code(player->inventory.language));
 }
 

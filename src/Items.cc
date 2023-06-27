@@ -22,7 +22,7 @@ void player_use_item(shared_ptr<ServerState> s, shared_ptr<Client> c, size_t ite
     // Nothing to do (it should be deleted)
 
   } else if (item_identifier == 0x030200) { // Technique disk
-    uint8_t max_level = s->item_parameter_table->get_max_tech_level(player->disp.char_class, item.data.data1[4]);
+    uint8_t max_level = s->item_parameter_table->get_max_tech_level(player->disp.visual.char_class, item.data.data1[4]);
     if (item.data.data1[2] > max_level) {
       throw runtime_error("technique level too high");
     }
@@ -43,13 +43,13 @@ void player_use_item(shared_ptr<ServerState> s, shared_ptr<Client> c, size_t ite
   } else if ((item_identifier & 0xFFFF00) == 0x030B00) { // Material
     switch (item.data.data1[2]) {
       case 0: // Power Material
-        c->game_data.player()->disp.stats.atp += 2;
+        c->game_data.player()->disp.stats.char_stats.atp += 2;
         break;
       case 1: // Mind Material
-        c->game_data.player()->disp.stats.mst += 2;
+        c->game_data.player()->disp.stats.char_stats.mst += 2;
         break;
       case 2: // Evade Material
-        c->game_data.player()->disp.stats.evp += 2;
+        c->game_data.player()->disp.stats.char_stats.evp += 2;
         break;
       case 3: // HP Material
         c->game_data.player()->inventory.hp_materials_used += 2;
@@ -58,10 +58,10 @@ void player_use_item(shared_ptr<ServerState> s, shared_ptr<Client> c, size_t ite
         c->game_data.player()->inventory.tp_materials_used += 2;
         break;
       case 5: // Def Material
-        c->game_data.player()->disp.stats.dfp += 2;
+        c->game_data.player()->disp.stats.char_stats.dfp += 2;
         break;
       case 6: // Luck Material
-        c->game_data.player()->disp.stats.lck += 2;
+        c->game_data.player()->disp.stats.char_stats.lck += 2;
         break;
       default:
         throw invalid_argument("unknown material used");
@@ -102,12 +102,12 @@ void player_use_item(shared_ptr<ServerState> s, shared_ptr<Client> c, size_t ite
   } else if (item_identifier == 0x030C00) {
     // Cell of MAG 502
     auto& mag = player->inventory.items[player->inventory.find_equipped_mag()];
-    mag.data.data1[1] = (player->disp.section_id & 1) ? 0x1D : 0x21;
+    mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x1D : 0x21;
 
   } else if (item_identifier == 0x030C01) {
     // Cell of MAG 213
     auto& mag = player->inventory.items[player->inventory.find_equipped_mag()];
-    mag.data.data1[1] = (player->disp.section_id & 1) ? 0x27 : 0x22;
+    mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x27 : 0x22;
 
   } else if (item_identifier == 0x030C02) {
     // Parts of RoboChao
@@ -169,7 +169,7 @@ void player_use_item(shared_ptr<ServerState> s, shared_ptr<Client> c, size_t ite
       try {
         const auto& combo = s->item_parameter_table->get_item_combination(
             item.data, inv_item.data);
-        if (combo.char_class != 0xFF && combo.char_class != player->disp.char_class) {
+        if (combo.char_class != 0xFF && combo.char_class != player->disp.visual.char_class) {
           throw runtime_error("item combination requires specific char_class");
         }
         if (combo.mag_level != 0xFF) {
@@ -188,7 +188,7 @@ void player_use_item(shared_ptr<ServerState> s, shared_ptr<Client> c, size_t ite
             throw runtime_error("item combination applies with grind requirement, but equipped weapon grind is too low");
           }
         }
-        if (combo.level != 0xFF && player->disp.level + 1 < combo.level) {
+        if (combo.level != 0xFF && player->disp.stats.level + 1 < combo.level) {
           throw runtime_error("item combination applies with level requirement, but player level is too low");
         }
         // If we get here, then the combo applies
@@ -275,7 +275,7 @@ void player_feed_mag(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, 
 
   } else if (mag_level < 35) { // Level 10 evolution
     if (evolution_number < 1) {
-      switch (player->disp.char_class) {
+      switch (player->disp.visual.char_class) {
         case 0: // HUmar
         case 1: // HUnewearl
         case 2: // HUcast
@@ -333,17 +333,17 @@ void player_feed_mag(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, 
     if (evolution_number < 4) {
 
       if (mag_level >= 100) {
-        uint8_t section_id_group = player->disp.section_id % 3;
+        uint8_t section_id_group = player->disp.visual.section_id % 3;
         uint16_t def = mag_item.data.data1w[2] / 100;
         uint16_t pow = mag_item.data.data1w[3] / 100;
         uint16_t dex = mag_item.data.data1w[4] / 100;
         uint16_t mind = mag_item.data.data1w[5] / 100;
-        bool is_male = char_class_is_male(player->disp.char_class);
+        bool is_male = char_class_is_male(player->disp.visual.char_class);
         size_t table_index = (is_male ? 0 : 1) + section_id_group * 2;
 
-        bool is_hunter = char_class_is_hunter(player->disp.char_class);
-        bool is_ranger = char_class_is_ranger(player->disp.char_class);
-        bool is_force = char_class_is_force(player->disp.char_class);
+        bool is_hunter = char_class_is_hunter(player->disp.visual.char_class);
+        bool is_ranger = char_class_is_ranger(player->disp.visual.char_class);
+        bool is_force = char_class_is_force(player->disp.visual.char_class);
         if (is_force) {
           table_index += 12;
         } else if (is_ranger) {
@@ -378,45 +378,45 @@ void player_feed_mag(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, 
         uint16_t dex = mag_item.data.data1w[4] / 100;
         uint16_t mind = mag_item.data.data1w[5] / 100;
 
-        bool is_hunter = char_class_is_hunter(player->disp.char_class);
-        bool is_ranger = char_class_is_ranger(player->disp.char_class);
-        bool is_force = char_class_is_force(player->disp.char_class);
+        bool is_hunter = char_class_is_hunter(player->disp.visual.char_class);
+        bool is_ranger = char_class_is_ranger(player->disp.visual.char_class);
+        bool is_force = char_class_is_force(player->disp.visual.char_class);
         if (is_hunter + is_ranger + is_force != 1) {
           throw logic_error("char class is not exactly one of the top-level classes");
         }
 
         if (is_hunter) {
           if (flags & 0x108) {
-            mag_item.data.data1[1] = (player->disp.section_id & 1)
+            mag_item.data.data1[1] = (player->disp.visual.section_id & 1)
                 ? ((dex < mind) ? 0x08 : 0x06)
                 : ((dex < mind) ? 0x0C : 0x05);
           } else if (flags & 0x010) {
-            mag_item.data.data1[1] = (player->disp.section_id & 1)
+            mag_item.data.data1[1] = (player->disp.visual.section_id & 1)
                 ? ((mind < pow) ? 0x12 : 0x10)
                 : ((mind < pow) ? 0x17 : 0x13);
           } else if (flags & 0x020) {
-            mag_item.data.data1[1] = (player->disp.section_id & 1)
+            mag_item.data.data1[1] = (player->disp.visual.section_id & 1)
                 ? ((pow < dex) ? 0x16 : 0x24)
                 : ((pow < dex) ? 0x07 : 0x1E);
           }
         } else if (is_ranger) {
           if (flags & 0x110) {
-            mag_item.data.data1[1] = (player->disp.section_id & 1)
+            mag_item.data.data1[1] = (player->disp.visual.section_id & 1)
                 ? ((mind < pow) ? 0x0A : 0x05)
                 : ((mind < pow) ? 0x0C : 0x06);
           } else if (flags & 0x008) {
-            mag_item.data.data1[1] = (player->disp.section_id & 1)
+            mag_item.data.data1[1] = (player->disp.visual.section_id & 1)
                 ? ((dex < mind) ? 0x0A : 0x26)
                 : ((dex < mind) ? 0x0C : 0x06);
           } else if (flags & 0x020) {
-            mag_item.data.data1[1] = (player->disp.section_id & 1)
+            mag_item.data.data1[1] = (player->disp.visual.section_id & 1)
                 ? ((pow < dex) ? 0x18 : 0x1E)
                 : ((pow < dex) ? 0x08 : 0x05);
           }
         } else if (is_force) {
           if (flags & 0x120) {
             if (def < 45) {
-              mag_item.data.data1[1] = (player->disp.section_id & 1)
+              mag_item.data.data1[1] = (player->disp.visual.section_id & 1)
                   ? ((pow < dex) ? 0x17 : 0x09)
                   : ((pow < dex) ? 0x1E : 0x1C);
             } else {
@@ -424,7 +424,7 @@ void player_feed_mag(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, 
             }
           } else if (flags & 0x008) {
             if (def < 45) {
-              mag_item.data.data1[1] = (player->disp.section_id & 1)
+              mag_item.data.data1[1] = (player->disp.visual.section_id & 1)
                   ? ((dex < mind) ? 0x1C : 0x20)
                   : ((dex < mind) ? 0x1F : 0x25);
             } else {
@@ -432,7 +432,7 @@ void player_feed_mag(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, 
             }
           } else if (flags & 0x010) {
             if (def < 45) {
-              mag_item.data.data1[1] = (player->disp.section_id & 1)
+              mag_item.data.data1[1] = (player->disp.visual.section_id & 1)
                   ? ((mind < pow) ? 0x12 : 0x0C)
                   : ((mind < pow) ? 0x15 : 0x11);
             } else {

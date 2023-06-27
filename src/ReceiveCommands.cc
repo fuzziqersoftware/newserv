@@ -1478,12 +1478,12 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
             auto name = encode_sjis(player->disp.name);
             if (game->is_ep3()) {
               info += string_printf("%zu: $C6%s$C7 L%" PRIu32 "\n",
-                  x + 1, name.c_str(), player->disp.level + 1);
+                  x + 1, name.c_str(), player->disp.stats.level + 1);
             } else {
               info += string_printf("%zu: $C6%s$C7 %s L%" PRIu32 "\n",
                   x + 1, name.c_str(),
-                  abbreviation_for_char_class(player->disp.char_class),
-                  player->disp.level + 1);
+                  abbreviation_for_char_class(player->disp.visual.char_class),
+                  player->disp.stats.level + 1);
             }
           }
         }
@@ -1893,11 +1893,11 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           send_lobby_message_box(c, u"$C6Incorrect password.");
           break;
         }
-        if (c->game_data.player()->disp.level < game->min_level) {
+        if (c->game_data.player()->disp.stats.level < game->min_level) {
           send_lobby_message_box(c, u"$C6Your level is too\nlow to join this\ngame.");
           break;
         }
-        if (c->game_data.player()->disp.level > game->max_level) {
+        if (c->game_data.player()->disp.stats.level > game->max_level) {
           send_lobby_message_box(c, u"$C6Your level is too\nhigh to join this\ngame.");
           break;
         }
@@ -3125,7 +3125,7 @@ shared_ptr<Lobby> create_game_generic(
   }
 
   if (!(c->license->privileges & Privilege::FREE_JOIN_GAMES) &&
-      (min_level > c->game_data.player()->disp.level)) {
+      (min_level > c->game_data.player()->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might
     // actually encounter while playing the game normally
     send_lobby_message_box(c, u"Your level is too\nlow for this\ndifficulty");
@@ -3156,7 +3156,7 @@ shared_ptr<Lobby> create_game_generic(
   game->version = c->version();
   game->section_id = c->options.override_section_id >= 0
       ? c->options.override_section_id
-      : c->game_data.player()->disp.section_id;
+      : c->game_data.player()->disp.visual.section_id;
   game->episode = episode;
   game->mode = mode;
   game->difficulty = difficulty;

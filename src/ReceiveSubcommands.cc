@@ -1115,7 +1115,7 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<ServerState> s,
         throw logic_error("item creator missing from BB game");
       }
 
-      size_t level = c->game_data.player()->disp.level + 1;
+      size_t level = c->game_data.player()->disp.stats.level + 1;
       switch (cmd.shop_type) {
         case 0:
           c->game_data.shop_contents[0] = l->item_creator->generate_tool_shop_contents(level);
@@ -1163,14 +1163,14 @@ static void on_bank_action_bb(shared_ptr<ServerState>,
 
     if (cmd.action == 0) { // deposit
       if (cmd.item_id == 0xFFFFFFFF) { // meseta
-        if (cmd.meseta_amount > c->game_data.player()->disp.meseta) {
+        if (cmd.meseta_amount > c->game_data.player()->disp.stats.meseta) {
           return;
         }
         if ((c->game_data.player()->bank.meseta + cmd.meseta_amount) > 999999) {
           return;
         }
         c->game_data.player()->bank.meseta += cmd.meseta_amount;
-        c->game_data.player()->disp.meseta -= cmd.meseta_amount;
+        c->game_data.player()->disp.stats.meseta -= cmd.meseta_amount;
       } else { // item
         auto item = c->game_data.player()->remove_item(
             cmd.item_id, cmd.item_amount, c->version() != GameVersion::BB);
@@ -1182,11 +1182,11 @@ static void on_bank_action_bb(shared_ptr<ServerState>,
         if (cmd.meseta_amount > c->game_data.player()->bank.meseta) {
           return;
         }
-        if ((c->game_data.player()->disp.meseta + cmd.meseta_amount) > 999999) {
+        if ((c->game_data.player()->disp.stats.meseta + cmd.meseta_amount) > 999999) {
           return;
         }
         c->game_data.player()->bank.meseta -= cmd.meseta_amount;
-        c->game_data.player()->disp.meseta += cmd.meseta_amount;
+        c->game_data.player()->disp.stats.meseta += cmd.meseta_amount;
       } else { // item
         auto bank_item = c->game_data.player()->bank.remove_item(cmd.item_id, cmd.item_amount);
         PlayerInventoryItem item = bank_item;
@@ -1406,29 +1406,29 @@ static void on_charge_attack_bb(shared_ptr<ServerState>,
 
   const auto& cmd = check_size_t<G_ChargeAttack_BB_6xC7>(data, size);
   auto& disp = c->game_data.player()->disp;
-  if (cmd.meseta_amount > disp.meseta) {
-    disp.meseta = 0;
+  if (cmd.meseta_amount > disp.stats.meseta) {
+    disp.stats.meseta = 0;
   } else {
-    disp.meseta -= cmd.meseta_amount;
+    disp.stats.meseta -= cmd.meseta_amount;
   }
 }
 
 static void add_player_exp(shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<Client> c, uint32_t exp) {
-  c->game_data.player()->disp.experience += exp;
+  c->game_data.player()->disp.stats.experience += exp;
   send_give_experience(l, c, exp);
 
   bool leveled_up = false;
   do {
     const auto& level = s->level_table->stats_for_level(
-        c->game_data.player()->disp.char_class, c->game_data.player()->disp.level + 1);
-    if (c->game_data.player()->disp.experience >= level.experience) {
+        c->game_data.player()->disp.visual.char_class, c->game_data.player()->disp.stats.level + 1);
+    if (c->game_data.player()->disp.stats.experience >= level.experience) {
       leveled_up = true;
-      level.apply(c->game_data.player()->disp.stats);
-      c->game_data.player()->disp.level++;
+      level.apply(c->game_data.player()->disp.stats.char_stats);
+      c->game_data.player()->disp.stats.level++;
     } else {
       break;
     }
-  } while (c->game_data.player()->disp.level < 199);
+  } while (c->game_data.player()->disp.stats.level < 199);
   if (leveled_up) {
     send_level_up(l, c);
   }
@@ -1460,7 +1460,7 @@ static void on_steal_exp_bb(shared_ptr<ServerState> s,
 
   if (special >= 0x09 && special <= 0x0B) {
     // Master's = 8, Lord's = 10, King's = 12
-    uint32_t percent = 8 + ((special - 9) << 1) + (char_class_is_android(c->game_data.player()->disp.char_class) ? 30 : 0);
+    uint32_t percent = 8 + ((special - 9) << 1) + (char_class_is_android(c->game_data.player()->disp.visual.char_class) ? 30 : 0);
     uint32_t enemy_exp = s->battle_params->get(l->mode == GameMode::SOLO, l->episode, l->difficulty, enemy.type).experience;
     uint32_t stolen_exp = min<uint32_t>((enemy_exp * percent) / 100, 80);
     if (c->options.debug) {
@@ -1524,7 +1524,7 @@ static void on_enemy_killed_bb(shared_ptr<ServerState> s,
     if (!other_c) {
       continue; // No player
     }
-    if (other_c->game_data.player()->disp.level >= 199) {
+    if (other_c->game_data.player()->disp.stats.level >= 199) {
       continue; // Player is level 200 or higher
     }
 
@@ -1558,10 +1558,10 @@ void on_meseta_reward_request_bb(shared_ptr<ServerState>,
 
   auto p = c->game_data.player();
   if (cmd.amount < 0) {
-    if (-cmd.amount > static_cast<int32_t>(p->disp.meseta.load())) {
-      p->disp.meseta = 0;
+    if (-cmd.amount > static_cast<int32_t>(p->disp.stats.meseta.load())) {
+      p->disp.stats.meseta = 0;
     } else {
-      p->disp.meseta += cmd.amount;
+      p->disp.stats.meseta += cmd.amount;
     }
   } else if (cmd.amount > 0) {
     PlayerInventoryItem item;
@@ -1649,7 +1649,7 @@ static void on_identify_item_bb(shared_ptr<ServerState>,
       return; // only weapons can be identified
     }
 
-    c->game_data.player()->disp.meseta -= 100;
+    c->game_data.player()->disp.stats.meseta -= 100;
     c->game_data.identify_result = c->game_data.player()->inventory.items[x];
     c->game_data.identify_result.data.data1[4] &= 0x7F;
     send_item_identify_result(l, c);
@@ -1698,8 +1698,8 @@ static void on_sell_item_at_shop_bb(shared_ptr<ServerState> s,
     auto item = c->game_data.player()->remove_item(
         cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
     size_t price = (s->item_parameter_table->price_for_item(item.data) >> 3) * cmd.amount;
-    c->game_data.player()->disp.meseta = min<uint32_t>(
-        c->game_data.player()->disp.meseta + price, 999999);
+    c->game_data.player()->disp.stats.meseta = min<uint32_t>(
+        c->game_data.player()->disp.stats.meseta + price, 999999);
 
     auto name = item.data.name(false);
     l->log.info("Inventory item %hu:%08" PRIX32 " destroyed via sale (%s)",
@@ -1733,10 +1733,10 @@ static void on_buy_shop_item_bb(shared_ptr<ServerState>,
 
     size_t price = item.data.data2d * cmd.amount;
     item.data.data2d = 0;
-    if (c->game_data.player()->disp.meseta < price) {
+    if (c->game_data.player()->disp.stats.meseta < price) {
       throw runtime_error("player does not have enough money");
     }
-    c->game_data.player()->disp.meseta -= price;
+    c->game_data.player()->disp.stats.meseta -= price;
 
     item.data.id = cmd.inventory_item_id;
     c->game_data.player()->add_item(item);
@@ -1758,10 +1758,10 @@ static void on_medical_center_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const void*, size_t) {
 
   if (l->version == GameVersion::BB) {
-    if (c->game_data.player()->disp.meseta < 10) {
+    if (c->game_data.player()->disp.stats.meseta < 10) {
       throw runtime_error("insufficient funds");
     }
-    c->game_data.player()->disp.meseta -= 10;
+    c->game_data.player()->disp.stats.meseta -= 10;
   }
 }
 
