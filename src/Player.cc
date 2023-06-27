@@ -27,15 +27,6 @@ static const string ACCOUNT_FILE_SIGNATURE =
 
 static FileContentsCache player_files_cache(300 * 1000 * 1000);
 
-CharacterStats::CharacterStats() noexcept
-    : atp(0),
-      mst(0),
-      evp(0),
-      hp(0),
-      dfp(0),
-      ata(0),
-      lck(0) {}
-
 PlayerStats::PlayerStats() noexcept
     : level(0),
       experience(0),

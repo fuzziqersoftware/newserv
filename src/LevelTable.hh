@@ -7,15 +7,13 @@
 #include <string>
 
 struct CharacterStats {
-  le_uint16_t atp;
-  le_uint16_t mst;
-  le_uint16_t evp;
-  le_uint16_t hp;
-  le_uint16_t dfp;
-  le_uint16_t ata;
-  le_uint16_t lck;
-
-  CharacterStats() noexcept;
+  le_uint16_t atp = 0;
+  le_uint16_t mst = 0;
+  le_uint16_t evp = 0;
+  le_uint16_t hp = 0;
+  le_uint16_t dfp = 0;
+  le_uint16_t ata = 0;
+  le_uint16_t lck = 0;
 } __attribute__((packed));
 
 class LevelTable { // from PlyLevelTbl.prs
