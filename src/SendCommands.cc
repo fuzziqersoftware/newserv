@@ -1459,7 +1459,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   send_command_t(c, 0xE8, player_count, cmd);
 }
 
-template <typename LobbyDataT, typename DispDataT>
+template <typename LobbyDataT>
 void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
     send_join_spectator_team(c, l);
@@ -1467,17 +1467,17 @@ void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   }
 
   bool is_ep3 = l->is_ep3();
-  string data(is_ep3 ? sizeof(S_JoinGame_GC_Ep3_64) : sizeof(S_JoinGame<LobbyDataT, DispDataT>), '\0');
+  string data(is_ep3 ? sizeof(S_JoinGame_GC_Ep3_64) : sizeof(S_JoinGame<LobbyDataT>), '\0');
 
   // TODO: This is a terrible way to handle the different Ep3 format within the
   // template. Find a way to make this cleaner.
-  auto* cmd = reinterpret_cast<S_JoinGame<LobbyDataT, DispDataT>*>(data.data());
+  auto* cmd = reinterpret_cast<S_JoinGame<LobbyDataT>*>(data.data());
   S_JoinGame_GC_Ep3_64* cmd_ep3 = nullptr;
   if (is_ep3) {
     cmd_ep3 = reinterpret_cast<S_JoinGame_GC_Ep3_64*>(data.data());
     new (cmd_ep3) S_JoinGame_GC_Ep3_64();
   } else {
-    new (cmd) S_JoinGame<LobbyDataT, DispDataT>();
+    new (cmd) S_JoinGame<LobbyDataT>();
   }
 
   cmd->variations = l->variations;
@@ -1687,7 +1687,7 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (l->is_game()) {
     switch (c->version()) {
       case GameVersion::PC:
-        send_join_game_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3>(c, l);
+        send_join_game_t<PlayerLobbyDataPC>(c, l);
         break;
       case GameVersion::DC:
         if (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
@@ -1696,13 +1696,13 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         }
         [[fallthrough]];
       case GameVersion::GC:
-        send_join_game_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>(c, l);
+        send_join_game_t<PlayerLobbyDataDCGC>(c, l);
         break;
       case GameVersion::XB:
-        send_join_game_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3>(c, l);
+        send_join_game_t<PlayerLobbyDataXB>(c, l);
         break;
       case GameVersion::BB:
-        send_join_game_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l);
+        send_join_game_t<PlayerLobbyDataBB>(c, l);
         break;
       default:
         throw logic_error("unimplemented versioned command");

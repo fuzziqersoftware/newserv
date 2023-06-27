@@ -1124,7 +1124,7 @@ struct C_OpenFileConfirmation_44_A6 {
 // command number RcvStartGame2 might have been.
 
 // Header flag = entry count
-template <typename LobbyDataT, typename DispDataT>
+template <typename LobbyDataT>
 struct S_JoinGame {
   // Note: It seems Sega servers sent uninitialized memory in the variations
   // field when sending this command to start an Episode 3 tournament game. This
@@ -1164,9 +1164,9 @@ struct S_JoinGame_DCNTE_64 {
   parray<PlayerLobbyDataDCGC, 4> lobby_data;
 } __packed__;
 
-struct S_JoinGame_PC_64 : S_JoinGame<PlayerLobbyDataPC, PlayerDispDataDCPCV3> {
+struct S_JoinGame_PC_64 : S_JoinGame<PlayerLobbyDataPC> {
 } __packed__;
-struct S_JoinGame_DC_GC_64 : S_JoinGame<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3> {
+struct S_JoinGame_DC_GC_64 : S_JoinGame<PlayerLobbyDataDCGC> {
 } __packed__;
 
 struct S_JoinGame_GC_Ep3_64 : S_JoinGame_DC_GC_64 {
@@ -1179,11 +1179,11 @@ struct S_JoinGame_GC_Ep3_64 : S_JoinGame_DC_GC_64 {
   } __packed__ players_ep3[4];
 } __packed__;
 
-struct S_JoinGame_XB_64 : S_JoinGame<PlayerLobbyDataXB, PlayerDispDataDCPCV3> {
+struct S_JoinGame_XB_64 : S_JoinGame<PlayerLobbyDataXB> {
   parray<le_uint32_t, 6> unknown_a1;
 } __packed__;
 
-struct S_JoinGame_BB_64 : S_JoinGame<PlayerLobbyDataBB, PlayerDispDataBB> {
+struct S_JoinGame_BB_64 : S_JoinGame<PlayerLobbyDataBB> {
 } __packed__;
 
 // 65 (S->C): Add player to game
