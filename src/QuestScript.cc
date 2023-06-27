@@ -12,6 +12,19 @@
 
 using namespace std;
 
+static string dasm_u16string(const char16_t* data, size_t size) {
+  try {
+    return format_data_string(encode_sjis(data, size));
+  } catch (const runtime_error& e) {
+    return "/* undecodable */ " + format_data_string(data, size * sizeof(char16_t));
+  }
+}
+
+template <size_t Size>
+static string dasm_u16string(const parray<char16_t, Size>& data) {
+  return dasm_u16string(data.data(), data.size());
+}
+
 struct QuestScriptOpcodeDefinition {
   struct Argument {
     enum class Type {
@@ -30,7 +43,7 @@ struct QuestScriptOpcodeDefinition {
     };
 
     Type type;
-    size_t count = 0;
+    size_t count;
     const char* name;
 
     Argument(Type type, size_t count = 0, const char* name = nullptr)
@@ -47,12 +60,17 @@ struct QuestScriptOpcodeDefinition {
     NUM_VERSIONS,
   };
 
+  enum Flag {
+    PRESERVE_ARG_STACK = 0x01,
+  };
+
   uint16_t opcode;
   const char* name;
   std::vector<Argument> imm_args;
   std::vector<Argument> stack_args;
   Version first_version;
   Version last_version;
+  uint8_t flags;
 
   QuestScriptOpcodeDefinition(
       uint16_t opcode,
@@ -60,13 +78,15 @@ struct QuestScriptOpcodeDefinition {
       std::vector<Argument> imm_args,
       std::vector<Argument> stack_args,
       Version first_version,
-      Version last_version)
+      Version last_version,
+      uint8_t flags = 0)
       : opcode(opcode),
         name(name),
         imm_args(imm_args),
         stack_args(stack_args),
         first_version(first_version),
-        last_version(last_version) {}
+        last_version(last_version),
+        flags(flags) {}
 };
 
 static constexpr auto V1 = QuestScriptOpcodeDefinition::Version::V1;
@@ -86,6 +106,7 @@ static constexpr auto INT16 = QuestScriptOpcodeDefinition::Argument::Type::INT16
 static constexpr auto INT32 = QuestScriptOpcodeDefinition::Argument::Type::INT32;
 static constexpr auto FLOAT32 = QuestScriptOpcodeDefinition::Argument::Type::FLOAT32;
 static constexpr auto CSTRING = QuestScriptOpcodeDefinition::Argument::Type::CSTRING;
+static constexpr uint8_t PRESERVE_ARG_STACK = QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK;
 
 static const QuestScriptOpcodeDefinition::Argument CLIENT_ID(INT32, 0, "client_id");
 static const QuestScriptOpcodeDefinition::Argument ITEM_ID(INT32, 0, "item_id");
@@ -162,13 +183,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x0043, "stack_pop", {REG}, {}, V3, V4},
     {0x0044, "stack_pushm", {REG, INT32}, {}, V3, V4},
     {0x0045, "stack_popm", {REG, INT32}, {}, V3, V4},
-    {0x0048, "arg_pushr", {REG}, {}, V3, V4},
-    {0x0049, "arg_pushl", {INT32}, {}, V3, V4},
-    {0x004A, "arg_pushb", {INT8}, {}, V3, V4},
-    {0x004B, "arg_pushw", {INT16}, {}, V3, V4},
-    {0x004C, "arg_pusha", {REG}, {}, V3, V4},
-    {0x004D, "arg_pusho", {FUNCTION16}, {}, V3, V4},
-    {0x004E, "arg_pushs", {CSTRING}, {}, V3, V4},
+    {0x0048, "arg_pushr", {REG}, {}, V3, V4, PRESERVE_ARG_STACK},
+    {0x0049, "arg_pushl", {INT32}, {}, V3, V4, PRESERVE_ARG_STACK},
+    {0x004A, "arg_pushb", {INT8}, {}, V3, V4, PRESERVE_ARG_STACK},
+    {0x004B, "arg_pushw", {INT16}, {}, V3, V4, PRESERVE_ARG_STACK},
+    {0x004C, "arg_pusha", {REG}, {}, V3, V4, PRESERVE_ARG_STACK},
+    {0x004D, "arg_pusho", {FUNCTION16}, {}, V3, V4, PRESERVE_ARG_STACK},
+    {0x004E, "arg_pushs", {CSTRING}, {}, V3, V4, PRESERVE_ARG_STACK},
     {0x0050, "message", {INT32, CSTRING}, {}, V1, V2},
     {0x0050, "message", {}, {INT32, CSTRING}, V3, V4},
     {0x0051, "list", {REG, CSTRING}, {}, V1, V2},
@@ -450,16 +471,16 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF83E, "delete_area_title", {}, {INT32}, V3, V4},
     {0xF840, "load_npc_data", {}, {}, V2, V4},
     {0xF841, "get_npc_data", {DATA_LABEL}, {}, V2, V4},
-    {0xF848, "give_damage_score", {REG}, {}, V2, V4},
-    {0xF849, "take_damage_score", {REG}, {}, V2, V4},
-    {0xF84A, nullptr, {REG}, {}, V2, V4},
-    {0xF84B, nullptr, {REG}, {}, V2, V4},
-    {0xF84C, "kill_score", {REG}, {}, V2, V4},
-    {0xF84D, "death_score", {REG}, {}, V2, V4},
-    {0xF84E, nullptr, {REG}, {}, V2, V4},
-    {0xF84F, "enemy_death_score", {REG}, {}, V2, V4},
-    {0xF850, "meseta_score", {REG}, {}, V2, V4},
-    {0xF851, nullptr, {REG}, {}, V2, V4},
+    {0xF848, "give_damage_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF849, "take_damage_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF84A, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF84B, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF84C, "kill_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF84D, "death_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF84E, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF84F, "enemy_death_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF850, "meseta_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF851, nullptr, {{REG_SET_FIXED, 2}}, {}, V2, V4},
     {0xF852, nullptr, {INT32}, {}, V2, V2},
     {0xF852, nullptr, {}, {INT32}, V3, V4},
     {0xF853, "reverse_warps", {}, {}, V2, V4},
@@ -522,7 +543,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF87D, nullptr, {REG}, {}, V2, V4},
     {0xF87E, nullptr, {REG}, {}, V2, V4},
     {0xF87F, "read_guildcard_flag", {REG, REG}, {}, V2, V4},
-    {0xF880, nullptr, {REG}, {}, V2, V4},
+    {0xF880, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4},
     {0xF881, "get_pl_name", {REG}, {}, V2, V4},
     {0xF882, "get_pl_job", {REG}, {}, V2, V4},
     {0xF883, nullptr, {REG, REG}, {}, V2, V4},
@@ -804,9 +825,9 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
       if (header.is_download) {
         lines.emplace_back(string_printf(".is_download_quest"));
       }
-      lines.emplace_back(".name " + format_data_string(encode_sjis(header.name)));
-      lines.emplace_back(".short_desc " + format_data_string(encode_sjis(header.short_description)));
-      lines.emplace_back(".long_desc " + format_data_string(encode_sjis(header.long_description)));
+      lines.emplace_back(".name " + dasm_u16string(header.name));
+      lines.emplace_back(".short_desc " + dasm_u16string(header.short_description));
+      lines.emplace_back(".long_desc " + dasm_u16string(header.long_description));
       break;
     }
     case GameVersion::GC:
@@ -837,9 +858,9 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
       if (header.joinable_in_progress) {
         lines.emplace_back(".joinable_in_progress");
       }
-      lines.emplace_back(".name " + format_data_string(encode_sjis(header.name)));
-      lines.emplace_back(".short_desc " + format_data_string(encode_sjis(header.short_description)));
-      lines.emplace_back(".long_desc " + format_data_string(encode_sjis(header.long_description)));
+      lines.emplace_back(".name " + dasm_u16string(header.name));
+      lines.emplace_back(".short_desc " + dasm_u16string(header.short_description));
+      lines.emplace_back(".long_desc " + dasm_u16string(header.long_description));
       break;
     }
     default:
@@ -851,7 +872,11 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
   vector<le_uint32_t> function_table;
   StringReader function_table_r = r.sub(function_table_offset);
   while (!function_table_r.eof()) {
-    function_table.emplace_back(function_table_r.get_u32l());
+    try {
+      function_table.emplace_back(function_table_r.get_u32l());
+    } catch (const out_of_range&) {
+      function_table_r.skip(function_table_r.remaining());
+    }
   }
 
   map<size_t, string> dasm_lines;
@@ -862,110 +887,110 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
   StringReader cmd_r = r.sub(code_offset, function_table_offset - code_offset);
   while (!cmd_r.eof()) {
     size_t opcode_start_offset = cmd_r.where();
-
-    uint16_t opcode = cmd_r.get_u8();
-    if ((opcode & 0xFE) == 0xF8) {
-      opcode = (opcode << 8) | cmd_r.get_u8();
-    }
-
-    const QuestScriptOpcodeDefinition* def = nullptr;
-    try {
-      def = opcodes.at(opcode);
-    } catch (const out_of_range&) {
-    }
-
     string dasm_line;
-    if (def == nullptr) {
-      dasm_line = string_printf(".unknown %04hX", opcode);
-    } else {
-      dasm_line = def->name ? def->name : string_printf("[%04hX]", opcode);
-      if (!def->imm_args.empty()) {
-        dasm_line.resize(0x20, ' ');
-        bool is_first_arg = true;
-        for (const auto& arg : def->imm_args) {
-          using Type = QuestScriptOpcodeDefinition::Argument::Type;
-          string dasm_arg;
-          switch (arg.type) {
-            case Type::FUNCTION16:
-            case Type::FUNCTION32: {
-              uint32_t function_id = (arg.type == Type::FUNCTION32) ? cmd_r.get_u32l() : cmd_r.get_u16l();
-              if (function_id >= function_table.size()) {
-                dasm_arg = string_printf("function%04" PRIX32 " /* invalid */", function_id);
-              } else {
-                uint32_t label_offset = function_table.at(function_id);
-                dasm_arg = string_printf("function%04" PRIX32 " /* %04" PRIX32 " */", function_id, label_offset);
-              }
-              break;
-            }
-            case Type::FUNCTION16_SET: {
-              uint8_t num_functions = cmd_r.get_u8();
-              for (size_t z = 0; z < num_functions; z++) {
-                dasm_arg += (dasm_arg.empty() ? "(" : ",");
-                uint32_t function_id = cmd_r.get_u16l();
+    try {
+      uint16_t opcode = cmd_r.get_u8();
+      if ((opcode & 0xFE) == 0xF8) {
+        opcode = (opcode << 8) | cmd_r.get_u8();
+      }
+
+      const QuestScriptOpcodeDefinition* def = nullptr;
+      try {
+        def = opcodes.at(opcode);
+      } catch (const out_of_range&) {
+      }
+
+      if (def == nullptr) {
+        dasm_line = string_printf(".unknown %04hX", opcode);
+      } else {
+        dasm_line = def->name ? def->name : string_printf("[%04hX]", opcode);
+        if (!def->imm_args.empty()) {
+          dasm_line.resize(0x20, ' ');
+          bool is_first_arg = true;
+          for (const auto& arg : def->imm_args) {
+            using Type = QuestScriptOpcodeDefinition::Argument::Type;
+            string dasm_arg;
+            switch (arg.type) {
+              case Type::FUNCTION16:
+              case Type::FUNCTION32:
+              case Type::DATA_LABEL: {
+                uint32_t function_id = (arg.type == Type::FUNCTION32) ? cmd_r.get_u32l() : cmd_r.get_u16l();
                 if (function_id >= function_table.size()) {
-                  dasm_arg += string_printf("function%04" PRIX32 " /* invalid */", function_id);
+                  dasm_arg = string_printf("function%04" PRIX32 " /* invalid */", function_id);
                 } else {
                   uint32_t label_offset = function_table.at(function_id);
-                  dasm_arg += string_printf("function%04" PRIX32 " /* %04" PRIX32 " */", function_id, label_offset);
+                  dasm_arg = string_printf("function%04" PRIX32 " /* %04" PRIX32 " */", function_id, label_offset);
                 }
+                break;
               }
-              dasm_arg += ")";
-              break;
-            }
-            case Type::REG:
-              dasm_arg = string_printf("r%hhu", cmd_r.get_u8());
-              break;
-            case Type::REG_SET: {
-              uint8_t num_regs = cmd_r.get_u8();
-              for (size_t z = 0; z < num_regs; z++) {
-                dasm_arg += string_printf("%cr%hhu", (dasm_arg.empty() ? '(' : ','), cmd_r.get_u8());
-              }
-              dasm_arg += ")";
-              break;
-            }
-            case Type::REG_SET_FIXED: {
-              uint8_t first_reg = cmd_r.get_u8();
-              dasm_arg = string_printf("r%hhu-r%hhu", first_reg, static_cast<uint8_t>(first_reg + arg.count - 1));
-              break;
-            }
-            case Type::INT8:
-              dasm_arg = string_printf("0x%02hhX", cmd_r.get_u8());
-              break;
-            case Type::INT16:
-              dasm_arg = string_printf("0x%04hX", cmd_r.get_u16l());
-              break;
-            case Type::INT32:
-              dasm_arg = string_printf("0x%08" PRIX32, cmd_r.get_u32l());
-              break;
-            case Type::FLOAT32:
-              dasm_arg = string_printf("%g", cmd_r.get_f32l());
-              break;
-            case Type::CSTRING:
-              if (use_wstrs) {
-                u16string s;
-                for (char16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
-                  s.push_back(ch);
+              case Type::FUNCTION16_SET: {
+                uint8_t num_functions = cmd_r.get_u8();
+                for (size_t z = 0; z < num_functions; z++) {
+                  dasm_arg += (dasm_arg.empty() ? "(" : ",");
+                  uint32_t function_id = cmd_r.get_u16l();
+                  if (function_id >= function_table.size()) {
+                    dasm_arg += string_printf("function%04" PRIX32 " /* invalid */", function_id);
+                  } else {
+                    uint32_t label_offset = function_table.at(function_id);
+                    dasm_arg += string_printf("function%04" PRIX32 " /* %04" PRIX32 " */", function_id, label_offset);
+                  }
                 }
-                try {
-                  dasm_arg = format_data_string(encode_sjis(s));
-                } catch (const runtime_error& e) {
-                  dasm_arg = "/* undecodable */ " + format_data_string(s.data(), s.size() * sizeof(char16_t));
-                }
-              } else {
-                dasm_arg = format_data_string(cmd_r.get_cstr());
+                dasm_arg += ")";
+                break;
               }
-              break;
-            default:
-              throw logic_error("invalid argument type");
+              case Type::REG:
+                dasm_arg = string_printf("r%hhu", cmd_r.get_u8());
+                break;
+              case Type::REG_SET: {
+                uint8_t num_regs = cmd_r.get_u8();
+                for (size_t z = 0; z < num_regs; z++) {
+                  dasm_arg += string_printf("%cr%hhu", (dasm_arg.empty() ? '(' : ','), cmd_r.get_u8());
+                }
+                dasm_arg += ")";
+                break;
+              }
+              case Type::REG_SET_FIXED: {
+                uint8_t first_reg = cmd_r.get_u8();
+                dasm_arg = string_printf("r%hhu-r%hhu", first_reg, static_cast<uint8_t>(first_reg + arg.count - 1));
+                break;
+              }
+              case Type::INT8:
+                dasm_arg = string_printf("0x%02hhX", cmd_r.get_u8());
+                break;
+              case Type::INT16:
+                dasm_arg = string_printf("0x%04hX", cmd_r.get_u16l());
+                break;
+              case Type::INT32:
+                dasm_arg = string_printf("0x%08" PRIX32, cmd_r.get_u32l());
+                break;
+              case Type::FLOAT32:
+                dasm_arg = string_printf("%g", cmd_r.get_f32l());
+                break;
+              case Type::CSTRING:
+                if (use_wstrs) {
+                  u16string s;
+                  for (char16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
+                    s.push_back(ch);
+                  }
+                  dasm_arg = dasm_u16string(s.data(), s.size());
+                } else {
+                  dasm_arg = format_data_string(cmd_r.get_cstr());
+                }
+                break;
+              default:
+                throw logic_error("invalid argument type");
+            }
+            if (!is_first_arg) {
+              dasm_line += ", ";
+            } else {
+              is_first_arg = false;
+            }
+            dasm_line += dasm_arg;
           }
-          if (!is_first_arg) {
-            dasm_line += ", ";
-          } else {
-            is_first_arg = false;
-          }
-          dasm_line += dasm_arg;
         }
       }
+    } catch (const exception& e) {
+      dasm_line = string_printf(".failed (%s)", e.what());
     }
 
     string hex_data = format_data_string(cmd_r.preadx(opcode_start_offset, cmd_r.where() - opcode_start_offset), nullptr, FormatDataFlags::HEX_ONLY);
