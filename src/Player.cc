@@ -79,7 +79,7 @@ PlayerDispDataBB PlayerDispDataDCPCV3::to_bb() const {
   bb.visual.name = "         0";
   bb.name = add_language_marker(this->visual.name, 'J');
   bb.config = this->config;
-  bb.technique_levels = this->technique_levels;
+  bb.technique_levels = this->v1_technique_levels;
   return bb;
 }
 
@@ -93,7 +93,7 @@ PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3() const {
   ret.visual = this->visual;
   ret.visual.name = remove_language_marker(this->name);
   ret.config = this->config;
-  ret.technique_levels = this->technique_levels;
+  ret.v1_technique_levels = this->technique_levels;
   return ret;
 }
 
@@ -496,11 +496,15 @@ PlayerInventoryItem::PlayerInventoryItem() {
 
 PlayerInventoryItem::PlayerInventoryItem(const PlayerBankItem& src)
     : present(1),
+      extension_data1(0),
+      extension_data2(0),
       flags(0),
       data(src.data) {}
 
 void PlayerInventoryItem::clear() {
-  this->present = 0x00000000;
+  this->present = 0x0000;
+  this->extension_data1 = 0x00;
+  this->extension_data2 = 0x00;
   this->flags = 0x00000000;
   this->data.clear();
 }
