@@ -1438,7 +1438,7 @@ ItemData::ItemData(const string& orig_description, bool skip_special) {
       throw runtime_error("invalid tech disk format");
     }
     uint8_t tech = technique_for_name(tokens[0].substr(5));
-    uint8_t level = stoul(tokens[1].substr(3), nullptr, 10);
+    uint8_t level = stoul(tokens[1].substr(3), nullptr, 10) - 1;
     this->data1[0] = 0x03;
     this->data1[1] = 0x02;
     this->data1[2] = level;
