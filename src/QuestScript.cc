@@ -935,7 +935,11 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
                     dasm_arg += string_printf("function%04" PRIX32 " /* %04" PRIX32 " */", function_id, label_offset);
                   }
                 }
-                dasm_arg += ")";
+                if (dasm_arg.empty()) {
+                  dasm_arg = "()";
+                } else {
+                  dasm_arg += ")";
+                }
                 break;
               }
               case Type::REG:
@@ -946,7 +950,11 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
                 for (size_t z = 0; z < num_regs; z++) {
                   dasm_arg += string_printf("%cr%hhu", (dasm_arg.empty() ? '(' : ','), cmd_r.get_u8());
                 }
-                dasm_arg += ")";
+                if (dasm_arg.empty()) {
+                  dasm_arg = "()";
+                } else {
+                  dasm_arg += ")";
+                }
                 break;
               }
               case Type::REG_SET_FIXED: {
