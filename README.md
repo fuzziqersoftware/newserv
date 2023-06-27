@@ -58,8 +58,8 @@ Current known issues / missing features / things to do:
     - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on other versions).
 - There is a function that encodes QST files, but there's no corresponding CLI option.
 - Figure out what controls BML file data segment alignment.
+- Extension data in inventories is not handled properly.
 - PSOX is not tested at all.
-    - Deal with item.data2d byteswapping done by the GC client, including in the 6x6D command.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
 - Implement private and overflow lobbies.
 - Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
