@@ -1154,12 +1154,11 @@ string bc0_decompress(const void* data, size_t size) {
   // so the first output byte corresponds to position 0xFEE on the first memo
   // page. Backreferences refer to offsets based on the start of memo pages; for
   // example, if the current output offset is 0x1234, a backreference with
-  // offset 0x123 refers to the byte that was written at offset 0x1112 (because
-  // that byte is at offset 0x112 in the memo, because the memo rolls over every
+  // offset 0x123 refers to the byte that was written at offset 0x1111 (because
+  // that byte is at offset 0x111 in the memo, because the memo rolls over every
   // 0x1000 bytes and the first memo byte was 0x12 bytes before the beginning of
   // the next page). The memo is initially zeroed from 0 to 0xFEE; it seems PSO
-  // GC doesn't initialize the last 0x12 bytes of the first memo page. For this
-  // reason, we avoid generating backreferences that refer to those bytes.
+  // GC doesn't initialize the last 0x12 bytes of the first memo page.
   parray<uint8_t, 0x1000> memo;
   uint16_t memo_offset = 0x0FEE;
 
