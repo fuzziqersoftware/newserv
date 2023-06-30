@@ -207,9 +207,7 @@ ItemData ItemCreator::on_monster_item_drop_with_norm_area(
         break;
       case 5: // Meseta
         item.data1[0] = 0x04;
-        item.data2d = this->choose_meseta_amount(
-                          this->pt->enemy_meseta_ranges, enemy_type) &
-            0xFFFF;
+        item.data2d = this->choose_meseta_amount(this->pt->enemy_meseta_ranges, enemy_type) & 0xFFFF;
         break;
       default:
         return item;
