@@ -98,10 +98,12 @@ The actions are:\n\
     You\'re reading it now.\n\
   compress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decompress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  compress-pr2 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  decompress-pr2 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   compress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decompress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Compress or decompress data using the PRS or BC0 algorithms. When\n\
-    compressing with PRS, the --compression-level=N option (default 1)\n\
+    Compress or decompress data using the PRS, PR2, or BC0 algorithms. When\n\
+    compressing with PRS or PR2, the --compression-level=N option (default 1)\n\
     specifies how aggressive the compressor should be in searching for literal\n\
     sequences. A higher value generally means slower compression and a smaller\n\
     output size. If 0 is given, the data is PRS-encoded but not actually\n\
@@ -210,6 +212,8 @@ enum class Behavior {
   RUN_SERVER = 0,
   COMPRESS_PRS,
   DECOMPRESS_PRS,
+  COMPRESS_PR2,
+  DECOMPRESS_PR2,
   COMPRESS_BC0,
   DECOMPRESS_BC0,
   PRS_SIZE,
@@ -244,6 +248,8 @@ enum class Behavior {
 static bool behavior_takes_input_filename(Behavior b) {
   return (b == Behavior::COMPRESS_PRS) ||
       (b == Behavior::DECOMPRESS_PRS) ||
+      (b == Behavior::COMPRESS_PR2) ||
+      (b == Behavior::DECOMPRESS_PR2) ||
       (b == Behavior::COMPRESS_BC0) ||
       (b == Behavior::DECOMPRESS_BC0) ||
       (b == Behavior::PRS_SIZE) ||
@@ -273,6 +279,8 @@ static bool behavior_takes_input_filename(Behavior b) {
 static bool behavior_takes_output_filename(Behavior b) {
   return (b == Behavior::COMPRESS_PRS) ||
       (b == Behavior::DECOMPRESS_PRS) ||
+      (b == Behavior::COMPRESS_PR2) ||
+      (b == Behavior::DECOMPRESS_PR2) ||
       (b == Behavior::COMPRESS_BC0) ||
       (b == Behavior::DECOMPRESS_BC0) ||
       (b == Behavior::ENCRYPT_DATA) ||
@@ -403,6 +411,10 @@ int main(int argc, char** argv) {
           behavior = Behavior::COMPRESS_PRS;
         } else if (!strcmp(argv[x], "decompress-prs")) {
           behavior = Behavior::DECOMPRESS_PRS;
+        } else if (!strcmp(argv[x], "compress-pr2")) {
+          behavior = Behavior::COMPRESS_PR2;
+        } else if (!strcmp(argv[x], "decompress-pr2")) {
+          behavior = Behavior::DECOMPRESS_PR2;
         } else if (!strcmp(argv[x], "compress-bc0")) {
           behavior = Behavior::COMPRESS_BC0;
         } else if (!strcmp(argv[x], "decompress-bc0")) {
@@ -561,9 +573,25 @@ int main(int argc, char** argv) {
   switch (behavior) {
     case Behavior::COMPRESS_PRS:
     case Behavior::DECOMPRESS_PRS:
+    case Behavior::COMPRESS_PR2:
+    case Behavior::DECOMPRESS_PR2:
     case Behavior::COMPRESS_BC0:
     case Behavior::DECOMPRESS_BC0: {
       string data = read_input_data();
+
+      size_t pr2_expected_size = 0;
+      if (behavior == Behavior::DECOMPRESS_PR2) {
+        if (data.size() < 8) {
+          throw runtime_error("not enough data for PR2 header");
+        }
+        data.resize((data.size() + 3) & (~3));
+        StringReader r(data);
+        pr2_expected_size = r.get_u32l();
+        PSOV2Encryption crypt(r.get_u32l());
+        crypt.decrypt(data.data() + 8, data.size() - 8);
+        data = data.substr(8);
+      }
+
       size_t input_bytes = data.size();
       auto progress_fn = [&](size_t input_progress, size_t output_progress) -> void {
         float progress = static_cast<float>(input_progress * 100) / input_bytes;
@@ -580,13 +608,13 @@ int main(int argc, char** argv) {
       };
 
       uint64_t start = now();
-      if (behavior == Behavior::COMPRESS_PRS) {
+      if ((behavior == Behavior::COMPRESS_PRS) || (behavior == Behavior::COMPRESS_PR2)) {
         if (compress_optimal) {
           data = prs_compress_optimal(data.data(), data.size(), optimal_progress_fn);
         } else {
           data = prs_compress(data, compression_level, progress_fn);
         }
-      } else if (behavior == Behavior::DECOMPRESS_PRS) {
+      } else if ((behavior == Behavior::DECOMPRESS_PRS) || (behavior == Behavior::DECOMPRESS_PR2)) {
         data = prs_decompress(data);
       } else if (behavior == Behavior::COMPRESS_BC0) {
         if (compress_optimal) {
@@ -609,6 +637,22 @@ int main(int argc, char** argv) {
       string bytes_per_sec_str = format_size(bytes_per_sec);
       log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output (%g%%) in %s (%s / sec)",
           input_bytes, input_bytes, data.size(), data.size(), size_ratio, time_str.c_str(), bytes_per_sec_str.c_str());
+
+      if ((behavior == Behavior::DECOMPRESS_PR2) && (data.size() != pr2_expected_size)) {
+        log_warning("Result data size (%zu bytes) does not match expected size from PR2 header (%zu bytes)", data.size(), pr2_expected_size);
+      } else if (behavior == Behavior::COMPRESS_PR2) {
+        uint32_t pr2_seed = seed.empty() ? random_object<uint32_t>() : stoul(seed, nullptr, 16);
+        size_t orig_size = data.size();
+        data.resize((data.size() + 3) & (~3));
+        PSOV2Encryption crypt(pr2_seed);
+        crypt.encrypt(data.data(), data.size());
+        data.resize(orig_size);
+        StringWriter w;
+        w.put_u32l(input_bytes);
+        w.put_u32l(pr2_seed);
+        w.write(data);
+        data = std::move(w.str());
+      }
 
       write_output_data(data.data(), data.size());
       break;
