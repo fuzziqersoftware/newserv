@@ -4,18 +4,6 @@
 
 using namespace std;
 
-size_t area_limit_for_episode(Episode ep) {
-  switch (ep) {
-    case Episode::EP1:
-    case Episode::EP2:
-      return 17;
-    case Episode::EP4:
-      return 10;
-    default:
-      return 0;
-  }
-}
-
 bool episode_has_arpg_semantics(Episode ep) {
   return (ep == Episode::EP1) || (ep == Episode::EP2) || (ep == Episode::EP4);
 }
@@ -647,4 +635,85 @@ uint8_t drop_area_for_name(const std::string& name) {
       {"saintmillion", 9},
   });
   return areas.at(tolower(name));
+}
+
+static const array<const char*, 0x12> ep1_area_names = {
+    "Pioneer2",
+    "Forest1",
+    "Forest2",
+    "Caves1",
+    "Caves2",
+    "Caves3",
+    "Mines1",
+    "Mines2",
+    "Ruins1",
+    "Ruins2",
+    "Ruins3",
+    "Dragon",
+    "DeRolLe",
+    "VolOpt",
+    "DarkFalz",
+    "Lobby",
+    "Battle1",
+    "Battle2",
+};
+
+static const array<const char*, 0x12> ep2_area_names = {
+    "Pioneer2",
+    "TempleAlpha",
+    "TempleBeta",
+    "SpaceshipAlpha",
+    "CentralControlArea",
+    "JungleNorth",
+    "JungleSouth",
+    "Mountain",
+    "Seaside",
+    "SeabedUpper",
+    "SeabedLower",
+    "GalGryphon",
+    "OlgaFlow",
+    "BarbaRay",
+    "GolDragon",
+    "SeasideNight",
+    "Tower",
+};
+
+static const array<const char*, 0x0B> ep4_area_names = {
+    "Pioneer2",
+    "CraterEast",
+    "CraterWest",
+    "CraterSouth",
+    "CraterNorth",
+    "CraterInterior",
+    "Desert1",
+    "Desert2",
+    "Desert3",
+    "SaintMillion",
+    "Purgatory",
+};
+
+size_t area_limit_for_episode(Episode ep) {
+  switch (ep) {
+    case Episode::EP1:
+      return ep1_area_names.size() - 1;
+    case Episode::EP2:
+      return ep2_area_names.size() - 1;
+    case Episode::EP4:
+      return ep4_area_names.size() - 1;
+    default:
+      return 0;
+  }
+}
+
+const char* name_for_area(Episode episode, uint8_t area) {
+  switch (episode) {
+    case Episode::EP1:
+      return ep1_area_names.at(area);
+    case Episode::EP2:
+      return ep2_area_names.at(area);
+    case Episode::EP4:
+      return ep4_area_names.at(area);
+    default:
+      throw logic_error("invalid episode for drop area");
+  }
 }

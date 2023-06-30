@@ -132,6 +132,7 @@ enum class EnemyType {
   ZOL_GIBBON,
   ZU,
   ZU_ALT,
+  MAX_ENEMY_TYPE,
 };
 
 template <>

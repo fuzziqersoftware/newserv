@@ -79,3 +79,6 @@ extern const std::vector<const char*> name_for_mag_color;
 extern const std::unordered_map<std::string, uint8_t> mag_color_for_name;
 
 uint8_t drop_area_for_name(const std::string& name);
+
+size_t area_limit_for_episode(Episode ep);
+const char* name_for_area(Episode episode, uint8_t drop_area);

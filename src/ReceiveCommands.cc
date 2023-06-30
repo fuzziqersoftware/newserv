@@ -3178,7 +3178,7 @@ shared_ptr<Lobby> create_game_generic(
         s->weapon_random_sets.at(game->difficulty),
         s->item_parameter_table,
         game->episode,
-        game->mode,
+        (game->mode == GameMode::SOLO) ? GameMode::NORMAL : game->mode,
         game->difficulty,
         game->section_id,
         game->random_seed));

@@ -830,9 +830,16 @@ void ServerState::load_level_table() {
 }
 
 void ServerState::load_item_tables() {
-  config_log.info("Loading rare item table");
-  this->rare_item_set.reset(new RELRareItemSet(
-      this->load_bb_file("ItemRT.rel")));
+  try {
+    config_log.info("Loading JSON rare item table");
+    auto json = JSONObject::parse(load_file("system/blueburst/rare-table.json"));
+    this->rare_item_set.reset(new JSONRareItemSet(json));
+  } catch (const exception& e) {
+    config_log.info("Failed to load JSON rare item table: %s", e.what());
+    config_log.info("Loading REL rare item table");
+    this->rare_item_set.reset(new RELRareItemSet(
+        this->load_bb_file("ItemRT.rel")));
+  }
 
   // Note: These files don't exist in BB, so we use the GC versions of them
   // instead. This doesn't include Episode 4 of course, so we use Episode 1

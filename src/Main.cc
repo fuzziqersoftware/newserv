@@ -232,7 +232,8 @@ enum class Behavior {
   DECODE_SJIS,
   EXTRACT_GSL,
   EXTRACT_BML,
-  FORMAT_ITEMRT_REL,
+  FORMAT_RARE_ITEM_SET,
+  CONVERT_ITEMRT_REL_TO_JSON,
   SHOW_EP3_DATA,
   DESCRIBE_ITEM,
   ENCODE_ITEM,
@@ -265,7 +266,8 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::DECODE_QUEST_FILE) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
       (b == Behavior::DECODE_SJIS) ||
-      (b == Behavior::FORMAT_ITEMRT_REL) ||
+      (b == Behavior::FORMAT_RARE_ITEM_SET) ||
+      (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
       (b == Behavior::DESCRIBE_ITEM) ||
@@ -290,6 +292,7 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
+      (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
       (b == Behavior::DECODE_SJIS) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML);
@@ -316,6 +319,7 @@ int main(int argc, char** argv) {
   size_t bytes = 0;
   ssize_t compression_level = 0;
   bool compress_optimal = false;
+  bool json = false;
   const char* find_decryption_seed_ciphertext = nullptr;
   vector<const char*> find_decryption_seed_plaintexts;
   const char* input_filename = nullptr;
@@ -392,6 +396,8 @@ int main(int argc, char** argv) {
       skip_little_endian = true;
     } else if (!strcmp(argv[x], "--skip-big-endian")) {
       skip_big_endian = true;
+    } else if (!strcmp(argv[x], "--json")) {
+      json = true;
     } else if (!strncmp(argv[x], "--require-password=", 19)) {
       replay_required_password = &argv[x][19];
     } else if (!strncmp(argv[x], "--require-access-key=", 21)) {
@@ -459,8 +465,10 @@ int main(int argc, char** argv) {
           behavior = Behavior::DISASSEMBLE_QUEST_SCRIPT;
         } else if (!strcmp(argv[x], "cat-client")) {
           behavior = Behavior::CAT_CLIENT;
-        } else if (!strcmp(argv[x], "format-itemrt-rel")) {
-          behavior = Behavior::FORMAT_ITEMRT_REL;
+        } else if (!strcmp(argv[x], "format-rare-item-set")) {
+          behavior = Behavior::FORMAT_RARE_ITEM_SET;
+        } else if (!strcmp(argv[x], "convert-itemrt-rel-to-json")) {
+          behavior = Behavior::CONVERT_ITEMRT_REL_TO_JSON;
         } else if (!strcmp(argv[x], "show-ep3-data")) {
           behavior = Behavior::SHOW_EP3_DATA;
         } else if (!strcmp(argv[x], "describe-item")) {
@@ -552,12 +560,16 @@ int main(int argc, char** argv) {
         }
       } else if (behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) {
         filename += ".txt";
+      } else if (behavior == Behavior::CONVERT_ITEMRT_REL_TO_JSON) {
+        filename += ".json";
       } else {
         filename += ".dec";
       }
       save_file(filename, data, size);
 
-    } else if (isatty(fileno(stdout)) && (behavior != Behavior::DISASSEMBLE_QUEST_SCRIPT)) {
+    } else if (isatty(fileno(stdout)) &&
+        (behavior != Behavior::DISASSEMBLE_QUEST_SCRIPT) &&
+        (behavior != Behavior::CONVERT_ITEMRT_REL_TO_JSON)) {
       // If stdout is a terminal and the data is not known to be text, use
       // print_data to write the result
       print_data(stdout, data, size);
@@ -1105,9 +1117,14 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::FORMAT_ITEMRT_REL: {
+    case Behavior::FORMAT_RARE_ITEM_SET: {
       shared_ptr<string> data(new string(read_input_data()));
-      RELRareItemSet rs(data);
+      shared_ptr<RareItemSet> rs;
+      if (json) {
+        rs.reset(new JSONRareItemSet(JSONObject::parse(read_input_data())));
+      } else {
+        rs.reset(new RELRareItemSet(data));
+      }
 
       auto format_drop = +[](const RareItemSet::ExpandedDrop& r) -> string {
         ItemData item;
@@ -1132,7 +1149,7 @@ int main(int argc, char** argv) {
 
         fprintf(stdout, "  Monster rares:\n");
         for (size_t z = 0; z < 0x65; z++) {
-          for (const auto& spec : rs.get_enemy_specs(mode, episode, difficulty, section_id, z)) {
+          for (const auto& spec : rs->get_enemy_specs(mode, episode, difficulty, section_id, z)) {
             string s = format_drop(spec);
             fprintf(stdout, "    %02zX: %s\n", z, s.c_str());
           }
@@ -1140,7 +1157,7 @@ int main(int argc, char** argv) {
 
         fprintf(stdout, "  Box rares:\n");
         for (size_t area = 0; area < 0x12; area++) {
-          for (const auto& spec : rs.get_box_specs(mode, episode, difficulty, section_id, area)) {
+          for (const auto& spec : rs->get_box_specs(mode, episode, difficulty, section_id, area)) {
             string s = format_drop(spec);
             fprintf(stdout, "    (area %02zX) %s\n", area, s.c_str());
           }
@@ -1159,6 +1176,109 @@ int main(int argc, char** argv) {
           }
         }
       }
+
+      break;
+    }
+
+    case Behavior::CONVERT_ITEMRT_REL_TO_JSON: {
+      shared_ptr<string> data(new string(read_input_data()));
+      RELRareItemSet rs(data);
+
+      // Compute the mapping of {rt_index: EnemyType}
+      vector<vector<EnemyType>> rt_index_to_enemy_type;
+      for (size_t z = 0; z < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); z++) {
+        EnemyType t = static_cast<EnemyType>(z);
+        try {
+          uint8_t rt_index = rare_table_index_for_enemy_type(t);
+          if (rt_index >= rt_index_to_enemy_type.size()) {
+            rt_index_to_enemy_type.resize(rt_index + 1);
+          }
+          rt_index_to_enemy_type[rt_index].emplace_back(t);
+        } catch (const exception&) {
+        }
+      }
+
+      JSONObject::dict_type episodes_dict;
+      static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+      for (Episode episode : episodes) {
+        JSONObject::dict_type difficulty_dict;
+        for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+          JSONObject::dict_type section_id_dict;
+          for (uint8_t section_id = 0; section_id < 10; section_id++) {
+            JSONObject::dict_type collection_dict;
+
+            for (size_t rt_index = 0; rt_index < rt_index_to_enemy_type.size(); rt_index++) {
+              const auto& enemy_types = rt_index_to_enemy_type[rt_index];
+              if (enemy_types.empty()) {
+                continue;
+              }
+
+              for (const auto& spec : rs.get_enemy_specs(GameMode::NORMAL, episode, difficulty, section_id, rt_index)) {
+                JSONObject::list_type spec_list;
+
+                auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
+                spec_list.emplace_back(make_json_str(string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second)));
+
+                ItemData item;
+                item.data1[0] = spec.item_code[0];
+                item.data1[1] = spec.item_code[1];
+                item.data1[2] = spec.item_code[2];
+                spec_list.emplace_back(make_json_str(item.name(false)));
+
+                JSONObject::list_type specs_list;
+                specs_list.emplace_back(make_json_list(std::move(spec_list)));
+                auto specs_json = make_json_list(std::move(specs_list));
+                for (const auto& enemy_type : enemy_types) {
+                  collection_dict.emplace(name_for_enum(enemy_type), specs_json);
+                }
+              }
+            }
+
+            for (size_t area = 0; area < 0x12; area++) {
+              JSONObject::list_type area_list;
+
+              for (const auto& spec : rs.get_box_specs(GameMode::NORMAL, episode, difficulty, section_id, area)) {
+                JSONObject::list_type spec_list;
+
+                auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
+                spec_list.emplace_back(make_json_str(string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second)));
+
+                ItemData item;
+                item.data1[0] = spec.item_code[0];
+                item.data1[1] = spec.item_code[1];
+                item.data1[2] = spec.item_code[2];
+                spec_list.emplace_back(make_json_str(item.name(false)));
+
+                area_list.emplace_back(make_json_list(std::move(spec_list)));
+              }
+
+              if (!area_list.empty()) {
+                collection_dict.emplace(
+                    string_printf("Box-%s", name_for_area(episode, area)),
+                    make_json_list(std::move(area_list)));
+              }
+            }
+
+            section_id_dict.emplace(name_for_section_id(section_id), make_json_dict(std::move(collection_dict)));
+          }
+          difficulty_dict.emplace(name_for_difficulty(difficulty), make_json_dict(std::move(section_id_dict)));
+        }
+        episodes_dict.emplace(name_for_episode(episode), make_json_dict(std::move(difficulty_dict)));
+      }
+
+      JSONObject::dict_type root_dict;
+      root_dict.emplace("Normal", make_json_dict(std::move(episodes_dict)));
+      auto root_json = make_json_dict(std::move(root_dict));
+      string json_data = root_json->serialize(
+          JSONObject::SerializeOption::FORMAT |
+          JSONObject::SerializeOption::HEX_INTEGERS |
+          JSONObject::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(json_data.data(), json_data.size());
+
+      // {"Normal": {"Episode1": {"Ultimate": {"Viridia": {"GRASS_ASSASSIN": [...], "Box-Ruins2": [...]}}}}}
+      // ["1/32", "Slicer of Assassin"]
+      // [0xE0000000, 0x031000]
+
       break;
     }
 
