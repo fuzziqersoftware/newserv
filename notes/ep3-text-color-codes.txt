@@ -1,0 +1,127 @@
+
+0457EE18 437F0000  CG_color_r_phase1
+0457EE20 00000000  CG_color_g_phase1
+0457EE10 00000000  CG_color_b_phase1
+0457EE1C 00000000  CG_color_r_phase2
+0457EE24 437F0000  CG_color_g_phase2
+0457EE14 00000000  CG_color_b_phase2
+
+437F0000 == 255.0f
+
+
+
+
+
+(Ep3 USA) Change color of pulsing orange text (e.g. card ability names)
+0457EE18 RRRRRRRR  // Phase 1 (long) red component as 32-bit float (0.0-255.0)
+0457EE20 GGGGGGGG  // Phase 1 (long) green component as 32-bit float (0.0-255.0)
+0457EE10 BBBBBBBB  // Phase 1 (long) blue component as 32-bit float (0.0-255.0)
+0457EE1C RRRRRRRR  // Phase 2 (short) red component as 32-bit float (0.0-255.0)
+0457EE24 GGGGGGGG  // Phase 2 (short) green component as 32-bit float (0.0-255.0)
+0457EE14 BBBBBBBB  // Phase 2 (short) blue component as 32-bit float (0.0-255.0)
+
+(Ep3 USA) Change color of pulsing orange text to be random every frame
+04155D78 7CA802A6
+04155D7C 7C661B78
+04155D80 481EF8B1
+04155D84 7C671B78
+04155D88 481EF8A9
+04155D8C 50677822
+04155D90 64E7FF00
+04155D94 90E60024
+04155D98 7CA803A6
+04155D9C 4E800020
+
+
+
+color codes in info board
+
+patch 800F2E80 48253CC9     bl         strlen
+./m68kdasm --assemble-ppc32 --ppc32 --start-address=800F2E80
+bl      [8000029C]
+040F2E80 4BF0D41D  bl        -0x000F2BE4 /* 8000029C */
+
+patch/preserve 800f0274 38810008 addi       param_2,r1,0x8
+./m68kdasm --assemble-ppc32 --ppc32 --start-address=800F0274
+bl      [80000298]
+040F0274 4BF10025  bl        -0x000EFFDC /* 80000298 */
+
+patch/preserve 800efc58 38810008 addi       r4,r1,0x8
+./m68kdasm --assemble-ppc32 --ppc32 --start-address=800EFC58
+bl      [80000298]
+040EFC58 4BF10641  bl        -0x000EF9C0 /* 80000298 */
+
+./m68kdasm --assemble-ppc32 --ppc32 --start-address=80000298
+entry_from_send_61_and_send_98:
+addi    r4, r1, 8
+entry_from_send_D8:
+subi    r6, r3, 1
+again:
+lbzu    r5, [r6 + 1]
+cmplwi  r5, 0x24
+bne     skip_char
+li      r0, 0x09
+stb     [r6], r0
+skip_char:
+cmplwi  r5, 0
+bne     again
+sub     r3, r6, r3
+blr
+04000298 38810008  addi      r4, r1, 0x0008
+0400029C 38C3FFFF  subi      r6, r3, 0x0001
+040002A0 8CA60001  lbzu      r5, [r6 + 0x0001]
+040002A4 28050024  cmplwi    r5, 36
+040002A8 4082000C  bne       +0x0000000C /* 800002B4 */
+040002AC 38000009  li        r0, 0x0009
+040002B0 98060000  stb       [r6], r0
+040002B4 28050000  cmplwi    r5, 0
+040002B8 4082FFE8  bne       -0x00000018 /* 800002A0 */
+040002BC 7C633050  subf      r3, r3, r6
+040002C0 4E800020  blr
+
+
+
+Ep1&2 v1.01 version of the above code
+
+send_D9
+./m68kdasm --assemble-ppc32 --ppc32 --start-address=801DA398
+bl  [800002D4]
+041DA398 4BE25F3D  bl        -0x001DA0C4 /* 800002D4 */
+
+send_61
+./m68kdasm --assemble-ppc32 --ppc32 --start-address=801DC2AC
+bl  [800002D0]
+041DC2AC 4BE24025  bl        -0x001DBFDC /* 800002D0 */
+
+send_98
+./m68kdasm --assemble-ppc32 --ppc32 --start-address=801DC144
+bl  [800002D0]
+041DC144 4BE2418D  bl        -0x001DBE74 /* 800002D0 */
+
+./m68kdasm --assemble-ppc32 --ppc32 --start-address=800002D0
+entry_from_send_61_and_send_98:
+addi    r4, r1, 8
+entry_from_send_D8:
+subi    r6, r3, 1
+again:
+lbzu    r5, [r6 + 1]
+cmplwi  r5, 0x24
+bne     skip_char
+li      r0, 0x09
+stb     [r6], r0
+skip_char:
+cmplwi  r5, 0
+bne     again
+sub     r3, r6, r3
+blr
+040002D0 38810008  addi      r4, r1, 0x0008
+040002D4 38C3FFFF  subi      r6, r3, 0x0001
+040002D8 8CA60001  lbzu      r5, [r6 + 0x0001]
+040002DC 28050024  cmplwi    r5, 36
+040002E0 4082000C  bne       +0x0000000C /* 800002EC */
+040002E4 38000009  li        r0, 0x0009
+040002E8 98060000  stb       [r6], r0
+040002EC 28050000  cmplwi    r5, 0
+040002F0 4082FFE8  bne       -0x00000018 /* 800002D8 */
+040002F4 7C633050  subf      r3, r3, r6
+040002F8 4E800020  blr

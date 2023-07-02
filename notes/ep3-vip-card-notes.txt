@@ -1,0 +1,29 @@
+N1, N2, N3, N4 => use 8041F800 table
+R1, R2, R3, R4 => use 8041F8A0 table
+
+
+(Episode 3 USA) Able to find VIP cards offline (but still very rare)
+042C0B20 4800000C
+
+
+P(activate) is the probability that any transformation is attempted at all
+P(f/success) defines the probability range: so the actual probability is a
+  uniform random number between P(activate) and P(activate) * P(f/success)
+count  P(activate)  P(f/success)  P(vip)
+0-4    0.0          0.0           0.0
+5-10   0.01923077   0.55          0.005
+11-16  0.021276595  0.6           0.0045454544
+17-24  0.023809524  0.7           0.004347826
+25-32  0.027027028  0.7           0.004
+33-40  0.03125      0.8           0.0038461538
+41-52  0.037037037  0.8           0.0035714286
+53-99  0.05         0.9           0.0033333334
+
+0-4    0.0          0.0           0.0
+5-10   0.020408163  0.55          0.005
+11-16  0.022727273  0.6           0.004761905
+17-24  0.025641026  0.7           0.0045454544
+25-32  0.029411765  0.7           0.005
+33-40  0.03448276   0.7           0.005
+41-52  0.041666668  0.8           0.0045454544
+53-99  0.05263158   0.9           0.004347826

@@ -1,0 +1,45 @@
+Ep3 card text corrections (from THG Discord):
+- AP Absorption: Does not block Tech attacks, instead they deal 2 extra damage.
+- Assault: Adds 5 AP minus the number of FCs on your field, not in your deck.
+- Assist Return: If this replaces an Assist card that was not in its owner's own Assist slot, that card gets re-played in to that slot.
+- Barble: His "Unfilial" ability does 3 damage, not 1.
+- Berdysh: Equip requirements are Hunter and Humanoid, not either one.
+- Black King Bar: "Machine Influence" doesn't need the opponent to be an attacker.
+- Blade Dance: "Insanity" doesn't exist. Has "Steady Damage".
+- Combo/Explosion: Adds +(# of Combo cards played in phase squared) AP, but the effect only applies once per attacker.
+- EGM: "Timed EXP Sacrifice" gives 9 EXP, not 6.
+- Fix: Sets all FC attacks to 2 damage, not FC attackers to 2 AP.
+- Flatland: Allows summoning in any space on the board, not summoning for free.
+- Ghost Blast: Damage added is 1/3 death count, not 1x.
+- Gibbles +: Curse' sets MV to 1 for 6 turns, not permanently.
+- Govulmer: His "AP Silence" reduces AP by 3, not to 0.
+- Guil Shark: +2 damage per Guil for the "Group" ability, not +1.
+- Gulgus: His "Copy" ability gives full AP and TP, not 1/2.
+- Holy Ray: Doesn't have the "Enemy Bonus" ability.
+- Kaladbolg: "Attack AC Unable" was a lie.
+- Lock on 3: Also has the ability "DEF Cost 4 Disable".
+- Mighty Knuckle: Adds 1.5x points spent as damage, not those points +1.
+- Migium: Gains TP from it's "Combo" ability, not AP.
+- Orland: "Sword AP Count" looks at your team, not the whole field.
+- Pofuilly Slime: His "Copy" ability gives 1/2 AP and TP, not full.
+- Rainbow Baton: Correctly reads as Tech OK.
+- Red Slicer: "Native Influence" doesn't need the opponent to be an attacker.
+- Rufina: She doubles the AP of action cards used, not her own.
+- Unit Blow: Adds +3 AP per Unit Blow played in the entire Combat Phase, but the effect only applies once per attacker.
+
+List of changes Sega made to Ep3 cards online (from THG Discord):
+- Rebalanced Vanilla Cards (E rank is gone, so some cards nerfed b/c they aren’t locked to 1x)
+- Meteor Cudgel: [Cost]5 ---> [Cost]4
+- Frozen Shooter: Frozen Target now only freezes self for 2 Turns, on a 20% chance.
+- Snow Queen: Frozen Target now only freezes self for 2 Turns, on a 25% chance.
+- Hand Break: Hand Disruptor added (old card description is now accurate)
+- Rush: [Cost]6 [AP]+0 ---> [Cost]4 [AP]+1
+- Explosion: [Cost]5 ---> [Cost]4
+- Resta: Range changed to Anti’s range (hits all ally SCs and FCs)
+- Dice Half: [Cost]5 ---> [Cost]4
+- Resistance: [Cost]5 ---> [Cost]4
+- Independant: [Cost]4 ---> [Cost]3
+- Dreamaga: [Cost]1 ---> [Cost]2
+- Dengeki: [Cost]1 ---> [Cost]2
+- EGM: [Cost]1 ---> [Cost]2
+- Beat: [AP]+5 ---> [AP]+4

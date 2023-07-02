@@ -1,0 +1,157 @@
+(Ep1&2 USA) Unlock all songs in BGM test
+(Note: sadly, there are no secret/unused ones)
+04368960 38600001
+04368964 4E800020
+
+(Ep1&2 USA v1.01) Play lobby (and event) music on Pioneer 2 also
+0417E0F0 60000000
+
+(Ep3 USA) Play lobby (and event) music in Morgue also
+040B7028 60000000
+
+(Ep3 USA) Skip white logo screens during startup
+0409D774 38000007
+(Episodes 1&2 USA v1.01) Skip white logo screens during startup
+0413F190 38000007
+
+(Ep3 USA) Skip agreement prompts before online game
+041B50C8 38000003
+(Episodes 1&2 USA v1.01) Skip agreement prompt before online game
+04327D80 38000003
+
+(Ep3 USA) Disable rate limit for pressing A during loading screens
+042F9B30 38000000
+
+(Ep3 USA) Auto-press A as fast as possible during loading screens
+042F9AC0 60000000
+
+(Ep3 USA) Use 16:9 aspect ratio
+04383DC8 4BC87F99
+0400BD60 C042DED0
+0400BD64 EC5D00B2
+0400BD68 4E800020
+
+(Ep3 USA) Disable darkening effect during battle details mode
+042F951C 4E800020
+
+(Ep3 USA) Unlock all COM decks
+042CA908 38600001
+
+(Ep3 USA) Enable all lobby counter options in non-CARD lobbies
+04096A8C 480000C0
+04096B4C 38800007
+04096BFC 4BFFFF2C
+
+(Ep3 USA) Change HUD color mask
+0438CA8C 3C00RRGG
+0438CA90 6000BBAA
+
+(Ep3 USA) Disable lobby event music (but keep the visuals)
+040B705C 38000000
+
+(Ep3 USA) Enable unused fourth Pinz's Shop choice
+043101C0 38800004
+04310238 2C1D0004
+04487E8C 000000C8
+
+(Ep3 USA) Change color of pulsing orange text (e.g. card ability names)
+0457EE18 RRRRRRRR  // Phase 1 (long) red component as 32-bit float (0.0-255.0)
+0457EE20 GGGGGGGG  // Phase 1 (long) green component as 32-bit float (0.0-255.0)
+0457EE10 BBBBBBBB  // Phase 1 (long) blue component as 32-bit float (0.0-255.0)
+0457EE1C RRRRRRRR  // Phase 2 (short) red component as 32-bit float (0.0-255.0)
+0457EE24 GGGGGGGG  // Phase 2 (short) green component as 32-bit float (0.0-255.0)
+0457EE14 BBBBBBBB  // Phase 2 (short) blue component as 32-bit float (0.0-255.0)
+
+(Ep3 USA) Change color of pulsing orange text to be random every frame
+04155D78 7CA802A6
+04155D7C 7C661B78
+04155D80 481EF8B1
+04155D84 7C671B78
+04155D88 481EF8A9
+04155D8C 50677822
+04155D90 64E7FF00
+04155D94 90E60024
+04155D98 7CA803A6
+04155D9C 4E800020
+
+(Ep3 USA) Enable color and symbol codes in info board text
+(Use codes like e.g. $CG to change text colors, as described in CommandFormats.hh)
+040F2E80 4BF0D41D
+040F0274 4BF10025
+040EFC58 4BF10641
+04000298 38810008
+0400029C 38C3FFFF
+040002A0 8CA60001
+040002A4 28050024
+040002A8 4082000C
+040002AC 38000009
+040002B0 98060000
+040002B4 28050000
+040002B8 4082FFE8
+040002BC 7C633050
+040002C0 4E800020
+
+(Ep3 USA) Unlock all offline free battle maps
+042CAA00 38600001
+(This unlocks ALL maps, including a bunch of maps with garbage names that crash if you try to play them)
+
+(Ep3 USA) Talk to auction counter offline to get all cards
+042F5D18 4BD160E8
+0400BE00 9421FFE0
+0400BE04 7C0802A6
+0400BE08 90010024
+0400BE0C 93E10010
+0400BE10 93C10014
+0400BE14 93A10018
+0400BE18 9381001C
+0400BE1C 3C60802A
+0400BE20 60631BAC
+0400BE24 7C6903A6
+0400BE28 38600000
+0400BE2C 4E800421
+0400BE30 7C7F1B78
+0400BE34 3C60802A
+0400BE38 606315BC
+0400BE3C 7C6903A6
+0400BE40 7FE3FB78
+0400BE44 4E800421
+0400BE48 3F80802A
+0400BE4C 639C17AC
+0400BE50 3BC00001
+0400BE54 3BA00063
+0400BE58 7FE3FB78
+0400BE5C 7FC4F378
+0400BE60 7F8903A6
+0400BE64 4E800421
+0400BE68 3BBDFFFF
+0400BE6C 281D0000
+0400BE70 4082FFE8
+0400BE74 3BDE0001
+0400BE78 281E02F0
+0400BE7C 4081FFD8
+0400BE80 3C60802A
+0400BE84 6063160C
+0400BE88 7C6903A6
+0400BE8C 7FE3FB78
+0400BE90 4E800421
+0400BE94 83E10010
+0400BE98 83C10014
+0400BE9C 83A10018
+0400BEA0 8381001C
+0400BEA4 80010024
+0400BEA8 38210020
+0400BEAC 7C0803A6
+0400BEB0 482E9FC0
+
+(Episodes 1&2 USA v1.01) Press L for enemy debug; enable various other debug messages
+040FD9D8 38600001  # Various enemy debug messages
+00153E53 00000001  # Poison fog debug 1
+00153E4B 00000001  # Poison fog debug 2
+040FDA18 60000000  # TObjRoomId
+025CB6AA 00000000
+4A588EA0 00000040
+025CB6AA 00000001
+TODO: Figure out more debug message conditionals (vars/functions) and add them here
+
+(Episode 3 USA) Able to find VIP cards offline (but they're still rare)
+042C0B20 4800000C
