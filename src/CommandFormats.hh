@@ -3732,9 +3732,9 @@ struct G_Unknown_6x1B {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x1C: Unknown (supported; game only; not valid on Episode 3)
+// 6x1C: Destroy NPC
 
-struct G_Unknown_6x1C {
+struct G_DestroyNPC_6x1C {
   G_ClientIDHeader header;
 } __packed__;
 
@@ -4314,14 +4314,14 @@ struct G_CreateTelepipe_6x68 {
   le_uint32_t unused3;
 } __packed__;
 
-// 6x69: Create NPC
+// 6x69: NPC control
 
-struct G_CreateNPC_6x69 {
+struct G_NPCControl_6x69 {
   G_UnusedHeader header;
-  le_uint16_t client_id2;
-  le_uint16_t unknown_a1;
-  le_uint16_t what; // 0-3; logic is very different for each value
-  le_uint16_t unknown_a2;
+  le_uint16_t npc_client_id;
+  le_uint16_t unknown_a1; // 1 if command == 0 or 3, unused otherwise
+  le_uint16_t command; // 0 = create follower NPC, 1 = stop acting, 2 = start acting, 3 = create attacker NPC
+  le_uint16_t unknown_a2; // Specifies which NPC to create if command == 0 or 3, unused otherwise
 } __packed__;
 
 // 6x6A: Use boss warp (not valid on Episode 3)
