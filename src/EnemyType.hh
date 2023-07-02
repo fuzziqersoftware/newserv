@@ -140,5 +140,6 @@ const char* name_for_enum<EnemyType>(EnemyType type);
 template <>
 EnemyType enum_for_name<EnemyType>(const char* name);
 
+bool enemy_type_valid_for_episode(Episode episode, EnemyType enemy_type);
 uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type);
 uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type);

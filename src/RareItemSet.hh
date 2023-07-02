@@ -49,13 +49,13 @@ public:
     /* 0274 */ parray<be_uint32_t, 3> unknown_a5;
     /* 0280 */
 
-    std::vector<ExpandedDrop> get_enemy_specs(uint8_t enemy_type) const;
+    std::vector<ExpandedDrop> get_enemy_specs(uint8_t rt_index) const;
     std::vector<ExpandedDrop> get_box_specs(uint8_t area) const;
   } __attribute__((packed));
 
   virtual ~RareItemSet() = default;
 
-  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t enemy_type) const = 0;
+  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const = 0;
   virtual std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const = 0;
 
 protected:
@@ -68,7 +68,7 @@ class GSLRareItemSet : public RareItemSet {
 public:
   GSLRareItemSet(std::shared_ptr<const std::string> data, bool is_big_endian);
   virtual ~GSLRareItemSet() = default;
-  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t enemy_type) const;
+  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
   virtual std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
 
 private:
@@ -81,7 +81,7 @@ class RELRareItemSet : public RareItemSet {
 public:
   RELRareItemSet(std::shared_ptr<const std::string> data);
   virtual ~RELRareItemSet() = default;
-  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t enemy_type) const;
+  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
   virtual std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
 
 private:
@@ -95,12 +95,12 @@ public:
   JSONRareItemSet(std::shared_ptr<const JSONObject> json);
   virtual ~JSONRareItemSet() = default;
 
-  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t enemy_type) const;
+  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
   virtual std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
 
 private:
   struct SpecCollection {
-    std::vector<std::vector<ExpandedDrop>> enemy_type_to_specs;
+    std::vector<std::vector<ExpandedDrop>> rt_index_to_specs;
     std::vector<std::vector<ExpandedDrop>> box_area_to_specs;
   };
 

@@ -1149,9 +1149,24 @@ int main(int argc, char** argv) {
 
         fprintf(stdout, "  Monster rares:\n");
         for (size_t z = 0; z < 0x65; z++) {
+          string enemy_types;
+          for (size_t w = 0; w < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); w++) {
+            auto enemy_type = static_cast<EnemyType>(w);
+            try {
+              if (rare_table_index_for_enemy_type(enemy_type) == z &&
+                  enemy_type_valid_for_episode(episode, enemy_type)) {
+                enemy_types += name_for_enum(enemy_type);
+                enemy_types += ",";
+              }
+            } catch (const exception&) {
+            }
+          }
+          if (!enemy_types.empty()) {
+            enemy_types.resize(enemy_types.size() - 1);
+          }
           for (const auto& spec : rs->get_enemy_specs(mode, episode, difficulty, section_id, z)) {
             string s = format_drop(spec);
-            fprintf(stdout, "    %02zX: %s\n", z, s.c_str());
+            fprintf(stdout, "    %02zX: %s (%s)\n", z, s.c_str(), enemy_types.c_str());
           }
         }
 
@@ -1184,23 +1199,34 @@ int main(int argc, char** argv) {
       shared_ptr<string> data(new string(read_input_data()));
       RELRareItemSet rs(data);
 
-      // Compute the mapping of {rt_index: EnemyType}
-      vector<vector<EnemyType>> rt_index_to_enemy_type;
-      for (size_t z = 0; z < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); z++) {
-        EnemyType t = static_cast<EnemyType>(z);
-        try {
-          uint8_t rt_index = rare_table_index_for_enemy_type(t);
-          if (rt_index >= rt_index_to_enemy_type.size()) {
-            rt_index_to_enemy_type.resize(rt_index + 1);
+      // Compute the mapping of {rt_index: EnemyType} for each episode
+      const auto& generate_table = +[](Episode episode) -> vector<vector<EnemyType>> {
+        vector<vector<EnemyType>> ret;
+        for (size_t z = 0; z < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); z++) {
+          EnemyType t = static_cast<EnemyType>(z);
+          try {
+            uint8_t rt_index = rare_table_index_for_enemy_type(t);
+            if (enemy_type_valid_for_episode(episode, t)) {
+              if (rt_index >= ret.size()) {
+                ret.resize(rt_index + 1);
+              }
+              ret[rt_index].emplace_back(t);
+            }
+          } catch (const exception&) {
           }
-          rt_index_to_enemy_type[rt_index].emplace_back(t);
-        } catch (const exception&) {
         }
-      }
+        return ret;
+      };
 
       JSONObject::dict_type episodes_dict;
-      static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-      for (Episode episode : episodes) {
+      static const array<pair<Episode, vector<vector<EnemyType>>>, 3> episodes = {
+          make_pair(Episode::EP1, generate_table(Episode::EP1)),
+          make_pair(Episode::EP2, generate_table(Episode::EP2)),
+          make_pair(Episode::EP4, generate_table(Episode::EP4)),
+      };
+      for (const auto& episode_it : episodes) {
+        Episode episode = episode_it.first;
+        const auto& rt_index_to_enemy_type = episode_it.second;
         JSONObject::dict_type difficulty_dict;
         for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
           JSONObject::dict_type section_id_dict;
@@ -1214,22 +1240,24 @@ int main(int argc, char** argv) {
               }
 
               for (const auto& spec : rs.get_enemy_specs(GameMode::NORMAL, episode, difficulty, section_id, rt_index)) {
+                uint32_t primary_identifier = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
+                if (primary_identifier == 0) {
+                  continue;
+                }
+
                 JSONObject::list_type spec_list;
 
                 auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
                 spec_list.emplace_back(make_json_str(string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second)));
-
-                ItemData item;
-                item.data1[0] = spec.item_code[0];
-                item.data1[1] = spec.item_code[1];
-                item.data1[2] = spec.item_code[2];
-                spec_list.emplace_back(make_json_str(item.name(false)));
+                spec_list.emplace_back(make_json_int(primary_identifier));
 
                 JSONObject::list_type specs_list;
                 specs_list.emplace_back(make_json_list(std::move(spec_list)));
                 auto specs_json = make_json_list(std::move(specs_list));
                 for (const auto& enemy_type : enemy_types) {
-                  collection_dict.emplace(name_for_enum(enemy_type), specs_json);
+                  if (enemy_type_valid_for_episode(episode, enemy_type)) {
+                    collection_dict.emplace(name_for_enum(enemy_type), specs_json);
+                  }
                 }
               }
             }
@@ -1238,16 +1266,16 @@ int main(int argc, char** argv) {
               JSONObject::list_type area_list;
 
               for (const auto& spec : rs.get_box_specs(GameMode::NORMAL, episode, difficulty, section_id, area)) {
+                uint32_t primary_identifier = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
+                if (primary_identifier == 0) {
+                  continue;
+                }
+
                 JSONObject::list_type spec_list;
 
                 auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
                 spec_list.emplace_back(make_json_str(string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second)));
-
-                ItemData item;
-                item.data1[0] = spec.item_code[0];
-                item.data1[1] = spec.item_code[1];
-                item.data1[2] = spec.item_code[2];
-                spec_list.emplace_back(make_json_str(item.name(false)));
+                spec_list.emplace_back(make_json_int(primary_identifier));
 
                 area_list.emplace_back(make_json_list(std::move(spec_list)));
               }
@@ -1259,11 +1287,13 @@ int main(int argc, char** argv) {
               }
             }
 
-            section_id_dict.emplace(name_for_section_id(section_id), make_json_dict(std::move(collection_dict)));
+            if (!collection_dict.empty()) {
+              section_id_dict.emplace(name_for_section_id(section_id), make_json_dict(std::move(collection_dict)));
+            }
           }
-          difficulty_dict.emplace(name_for_difficulty(difficulty), make_json_dict(std::move(section_id_dict)));
+          difficulty_dict.emplace(token_name_for_difficulty(difficulty), make_json_dict(std::move(section_id_dict)));
         }
-        episodes_dict.emplace(name_for_episode(episode), make_json_dict(std::move(difficulty_dict)));
+        episodes_dict.emplace(token_name_for_episode(episode), make_json_dict(std::move(difficulty_dict)));
       }
 
       JSONObject::dict_type root_dict;
@@ -1274,10 +1304,6 @@ int main(int argc, char** argv) {
           JSONObject::SerializeOption::HEX_INTEGERS |
           JSONObject::SerializeOption::SORT_DICT_KEYS);
       write_output_data(json_data.data(), json_data.size());
-
-      // {"Normal": {"Episode1": {"Ultimate": {"Viridia": {"GRASS_ASSASSIN": [...], "Box-Ruins2": [...]}}}}}
-      // ["1/32", "Slicer of Assassin"]
-      // [0xE0000000, 0x031000]
 
       break;
     }

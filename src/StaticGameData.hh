@@ -15,9 +15,9 @@ enum class Episode {
   EP4 = 4,
 };
 
-size_t area_limit_for_episode(Episode ep);
 bool episode_has_arpg_semantics(Episode ep);
 const char* name_for_episode(Episode ep);
+const char* token_name_for_episode(Episode ep);
 const char* abbreviation_for_episode(Episode ep);
 
 enum class GameMode {
@@ -71,6 +71,7 @@ bool char_class_is_ranger(uint8_t cls);
 bool char_class_is_force(uint8_t cls);
 
 const char* name_for_difficulty(uint8_t difficulty);
+const char* token_name_for_difficulty(uint8_t difficulty);
 char abbreviation_for_difficulty(uint8_t difficulty);
 
 char char_for_language_code(uint8_t language);
@@ -78,7 +79,6 @@ char char_for_language_code(uint8_t language);
 extern const std::vector<const char*> name_for_mag_color;
 extern const std::unordered_map<std::string, uint8_t> mag_color_for_name;
 
-uint8_t drop_area_for_name(const std::string& name);
-
 size_t area_limit_for_episode(Episode ep);
-const char* name_for_area(Episode episode, uint8_t drop_area);
+uint8_t area_for_name(const std::string& name);
+const char* name_for_area(Episode episode, uint8_t area);

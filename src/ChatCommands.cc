@@ -1173,7 +1173,7 @@ static void server_command_item(
   check_cheats_enabled(s, l);
 
   PlayerInventoryItem item;
-  item.data = item_for_string(encode_sjis(args));
+  item.data = ItemData(encode_sjis(args));
   item.data.id = l->generate_item_id(c->lobby_client_id);
 
   l->add_item(item, c->area, c->x, c->z);
@@ -1205,7 +1205,7 @@ static void proxy_command_item(
   bool set_drop = (!args.empty() && (args[0] == u'!'));
 
   PlayerInventoryItem item;
-  item.data = item_for_string(encode_sjis(set_drop ? args.substr(1) : args));
+  item.data = ItemData(encode_sjis(set_drop ? args.substr(1) : args));
   item.data.id = random_object<uint32_t>();
 
   if (set_drop) {

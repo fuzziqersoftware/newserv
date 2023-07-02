@@ -16,6 +16,38 @@ ItemData::ItemData(const ItemData& other) {
   this->data2d = other.data2d;
 }
 
+ItemData::ItemData(const string& desc) {
+  try {
+    this->parse(desc, false);
+    return;
+  } catch (const exception&) {
+  }
+  try {
+    this->parse(desc, true);
+    return;
+  } catch (const exception&) {
+  }
+
+  string data = parse_data_string(desc);
+  if (data.size() < 2) {
+    throw runtime_error("item code too short");
+  }
+  if (data[0] > 4) {
+    throw runtime_error("invalid item class");
+  }
+  if (data.size() > 16) {
+    throw runtime_error("item code too long");
+  }
+
+  ItemData ret;
+  if (data.size() <= 12) {
+    memcpy(this->data1.data(), data.data(), data.size());
+  } else {
+    memcpy(this->data1.data(), data.data(), 12);
+    memcpy(this->data2.data(), data.data() + 12, data.size() - 12);
+  }
+}
+
 ItemData& ItemData::operator=(const ItemData& other) {
   this->data1d = other.data1d;
   this->id = other.id;
@@ -1417,7 +1449,7 @@ const unordered_map<uint32_t, ItemNameInfo> name_info_for_primary_identifier({
     {0x031903, "Team Points 10000"},
 });
 
-ItemData::ItemData(const string& orig_description, bool skip_special) {
+void ItemData::parse(const string& orig_description, bool skip_special) {
   this->data1d.clear(0);
   this->id = 0xFFFFFFFF;
   this->data2d = 0;
@@ -1490,7 +1522,7 @@ ItemData::ItemData(const string& orig_description, bool skip_special) {
     }
   }
   if (lookback >= 4) {
-    throw runtime_error("item not found");
+    throw runtime_error("item not found: " + desc);
   }
 
   desc = desc.substr(name_it->first.size());
@@ -1898,35 +1930,4 @@ string ItemData::name(bool include_color_codes) const {
   } else {
     return ret;
   }
-}
-
-ItemData item_for_string(const string& desc) {
-  try {
-    return ItemData(desc);
-  } catch (const exception&) {
-  }
-  try {
-    return ItemData(desc, true);
-  } catch (const exception&) {
-  }
-
-  string data = parse_data_string(desc);
-  if (data.size() < 2) {
-    throw runtime_error("item code too short");
-  }
-  if (data[0] > 4) {
-    throw runtime_error("invalid item class");
-  }
-  if (data.size() > 16) {
-    throw runtime_error("item code too long");
-  }
-
-  ItemData ret;
-  if (data.size() <= 12) {
-    memcpy(ret.data1.data(), data.data(), data.size());
-  } else {
-    memcpy(ret.data1.data(), data.data(), 12);
-    memcpy(ret.data2.data(), data.data() + 12, data.size() - 12);
-  }
-  return ret;
 }

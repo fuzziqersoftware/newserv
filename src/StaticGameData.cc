@@ -25,6 +25,21 @@ const char* name_for_episode(Episode ep) {
   }
 }
 
+const char* token_name_for_episode(Episode ep) {
+  switch (ep) {
+    case Episode::EP1:
+      return "Episode1";
+    case Episode::EP2:
+      return "Episode2";
+    case Episode::EP3:
+      return "Episode3";
+    case Episode::EP4:
+      return "Episode4";
+    default:
+      throw logic_error("invalid episode");
+  }
+}
+
 const char* abbreviation_for_episode(Episode ep) {
   switch (ep) {
     case Episode::NONE:
@@ -420,11 +435,17 @@ bool char_class_is_force(uint8_t cls) {
 
 const char* name_for_difficulty(uint8_t difficulty) {
   static const array<const char*, 4> names = {
-      "Normal",
-      "Hard",
-      "Very Hard",
-      "Ultimate",
-  };
+      "Normal", "Hard", "Very Hard", "Ultimate"};
+  try {
+    return names.at(difficulty);
+  } catch (const out_of_range&) {
+    return "Unknown";
+  }
+}
+
+const char* token_name_for_difficulty(uint8_t difficulty) {
+  static const array<const char*, 4> names = {
+      "Normal", "Hard", "VeryHard", "Ultimate"};
   try {
     return names.at(difficulty);
   } catch (const out_of_range&) {
@@ -578,61 +599,91 @@ const unordered_map<string, uint8_t> mag_color_for_name({
     {"costume-color", 0x12},
 });
 
-uint8_t drop_area_for_name(const std::string& name) {
+uint8_t area_for_name(const std::string& name) {
   static const unordered_map<string, uint8_t> areas({
-      {"forest1", 0},
-      {"forest2", 1},
-      {"dragon", 2},
-      {"caves1", 2},
-      {"cave1", 2},
-      {"caves2", 3},
-      {"cave2", 3},
-      {"caves3", 4},
-      {"cave3", 4},
-      {"derolle", 5},
-      {"mines1", 5},
-      {"mine1", 5},
-      {"mines2", 6},
-      {"mine2", 6},
-      {"volopt", 7},
-      {"ruins1", 7},
-      {"ruin1", 7},
-      {"ruins2", 8},
-      {"ruin2", 8},
-      {"ruins3", 9},
-      {"ruin3", 9},
-      {"darkfalz", 9},
+      {"pioneer2", 0x00},
+      {"p2", 0x00},
+      {"forest1", 0x01},
+      {"f1", 0x01},
+      {"forest2", 0x02},
+      {"f2", 0x02},
+      {"caves1", 0x03},
+      {"cave1", 0x03},
+      {"c1", 0x03},
+      {"caves2", 0x04},
+      {"cave2", 0x04},
+      {"c2", 0x04},
+      {"caves3", 0x05},
+      {"cave3", 0x05},
+      {"c3", 0x05},
+      {"mines1", 0x06},
+      {"mine1", 0x06},
+      {"m1", 0x06},
+      {"mines2", 0x07},
+      {"mine2", 0x07},
+      {"m2", 0x07},
+      {"ruins1", 0x08},
+      {"ruin1", 0x08},
+      {"r1", 0x08},
+      {"ruins2", 0x09},
+      {"ruin2", 0x09},
+      {"r2", 0x09},
+      {"ruins3", 0x0A},
+      {"ruin3", 0x0A},
+      {"r3", 0x0A},
+      {"dragon", 0x0B},
+      {"derolle", 0x0C},
+      {"volopt", 0x0D},
+      {"darkfalz", 0x0E},
+      {"lobby", 0x0F},
+      {"battle1", 0x10},
+      {"battle2", 0x11},
 
-      {"vrtemplealpha", 0},
-      {"vrtemplebeta", 1},
-      {"barbaray", 2},
-      {"vrspaceshipalpha", 2},
-      {"vrspaceshipbeta", 3},
-      {"goldragon", 5},
-      {"centralcontrolarea", 4},
-      {"cca", 4},
-      {"jungleareanorth", 5},
-      {"junglenorth", 5},
-      {"jungleareaeast", 5},
-      {"jungleeast", 5},
-      {"mountain", 6},
-      {"seaside", 7},
-      {"galgryphon", 8},
-      {"seabedupper", 8},
-      {"seabedlower", 9},
-      {"olgaflow", 9},
-      {"seasidenight", 7},
-      {"tower", 9},
+      {"pioneer2", 0x00},
+      {"p2", 0x00},
+      {"vrtemplealpha", 0x01},
+      {"templealpha", 0x01},
+      {"vrtemplebeta", 0x02},
+      {"templebeta", 0x02},
+      {"vrspaceshipalpha", 0x03},
+      {"spaceshipalpha", 0x03},
+      {"vrspaceshipbeta", 0x04},
+      {"spaceshipbeta", 0x04},
+      {"centralcontrolarea", 0x05},
+      {"cca", 0x05},
+      {"junglenorth", 0x06},
+      {"jungleeast", 0x07},
+      {"mountain", 0x08},
+      {"seaside", 0x09},
+      {"seabedupper", 0x0A},
+      {"seabedlower", 0x0B},
+      {"galgryphon", 0x0C},
+      {"olgaflow", 0x0D},
+      {"barbaray", 0x0E},
+      {"goldragon", 0x0F},
+      {"seasidenight", 0x10},
+      {"tower", 0x11},
 
-      {"cratereast", 2},
-      {"craterwest", 3},
-      {"cratersouth", 4},
-      {"craternorth", 5},
-      {"craterinterior", 6},
-      {"subdesert1", 7},
-      {"subdesert2", 8},
-      {"subdesert3", 9},
-      {"saintmillion", 9},
+      {"pioneer2", 0x00},
+      {"p2", 0x00},
+      {"cratereast", 0x01},
+      {"ce", 0x01},
+      {"craterwest", 0x02},
+      {"cw", 0x02},
+      {"cratersouth", 0x03},
+      {"cs", 0x03},
+      {"craternorth", 0x04},
+      {"cn", 0x04},
+      {"craterinterior", 0x05},
+      {"ci", 0x05},
+      {"desert1", 0x06},
+      {"d1", 0x06},
+      {"desert2", 0x07},
+      {"d2", 0x07},
+      {"desert3", 0x08},
+      {"d3", 0x08},
+      {"saintmillion", 0x09},
+      {"purgatory", 0x0A},
   });
   return areas.at(tolower(name));
 }
@@ -660,12 +711,13 @@ static const array<const char*, 0x12> ep1_area_names = {
 
 static const array<const char*, 0x12> ep2_area_names = {
     "Pioneer2",
-    "TempleAlpha",
-    "TempleBeta",
-    "SpaceshipAlpha",
+    "VRTempleAlpha",
+    "VRTempleBeta",
+    "VRSpaceshipAlpha",
+    "VRSpaceshipBeta",
     "CentralControlArea",
     "JungleNorth",
-    "JungleSouth",
+    "JungleEast",
     "Mountain",
     "Seaside",
     "SeabedUpper",

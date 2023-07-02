@@ -29,12 +29,12 @@ RareItemSet::ExpandedDrop::ExpandedDrop(const PackedDrop& d)
   this->item_code[2] = d.item_code[2];
 }
 
-std::vector<RareItemSet::ExpandedDrop> GSLRareItemSet::Table::get_enemy_specs(uint8_t enemy_type) const {
+std::vector<RareItemSet::ExpandedDrop> GSLRareItemSet::Table::get_enemy_specs(uint8_t rt_index) const {
   vector<ExpandedDrop> ret;
-  if (this->monster_rares[enemy_type].item_code[0] != 0 ||
-      this->monster_rares[enemy_type].item_code[1] != 0 ||
-      this->monster_rares[enemy_type].item_code[2] != 0) {
-    ret.emplace_back(this->monster_rares[enemy_type]);
+  if (this->monster_rares[rt_index].item_code[0] != 0 ||
+      this->monster_rares[rt_index].item_code[1] != 0 ||
+      this->monster_rares[rt_index].item_code[2] != 0) {
+    ret.emplace_back(this->monster_rares[rt_index]);
   }
   return ret;
 }
@@ -115,8 +115,8 @@ GSLRareItemSet::GSLRareItemSet(shared_ptr<const string> data, bool is_big_endian
 }
 
 std::vector<RareItemSet::ExpandedDrop> GSLRareItemSet::get_enemy_specs(
-    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t enemy_type) const {
-  return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_enemy_specs(enemy_type);
+    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const {
+  return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_enemy_specs(rt_index);
 }
 
 std::vector<RareItemSet::ExpandedDrop> GSLRareItemSet::get_box_specs(
@@ -131,8 +131,8 @@ RELRareItemSet::RELRareItemSet(shared_ptr<const string> data) : data(data) {
 }
 
 std::vector<RareItemSet::ExpandedDrop> RELRareItemSet::get_enemy_specs(
-    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t enemy_type) const {
-  return this->get_table(mode, episode, difficulty, secid).get_enemy_specs(enemy_type);
+    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const {
+  return this->get_table(mode, episode, difficulty, secid).get_enemy_specs(rt_index);
 }
 
 std::vector<RareItemSet::ExpandedDrop> RELRareItemSet::get_box_specs(
@@ -193,24 +193,24 @@ JSONRareItemSet::JSONRareItemSet(std::shared_ptr<const JSONObject> json) {
           for (const auto& item_it : section_id_it.second->as_dict()) {
             vector<ExpandedDrop>* target;
             if (starts_with(item_it.first, "Box-")) {
-              uint8_t area = drop_area_for_name(item_it.first.substr(4));
+              uint8_t area = area_for_name(item_it.first.substr(4));
               if (collection.box_area_to_specs.size() <= area) {
                 collection.box_area_to_specs.resize(area + 1);
               }
               target = &collection.box_area_to_specs[area];
             } else {
-              size_t index = static_cast<size_t>(enum_for_name<EnemyType>(item_it.first.c_str()));
-              if (collection.enemy_type_to_specs.size() <= index) {
-                collection.enemy_type_to_specs.resize(index + 1);
+              size_t index = rare_table_index_for_enemy_type(enum_for_name<EnemyType>(item_it.first.c_str()));
+              if (collection.rt_index_to_specs.size() <= index) {
+                collection.rt_index_to_specs.resize(index + 1);
               }
-              target = &collection.enemy_type_to_specs[index];
+              target = &collection.rt_index_to_specs[index];
             }
 
             for (const auto& spec_json : item_it.second->as_list()) {
               auto& spec_list = spec_json->as_list();
               auto& d = target->emplace_back();
 
-              auto prob_desc = spec_list.at(1);
+              auto prob_desc = spec_list.at(0);
               if (prob_desc->is_int()) {
                 d.probability = spec_list.at(0)->as_int();
               } else if (prob_desc->is_string()) {
@@ -250,9 +250,9 @@ JSONRareItemSet::JSONRareItemSet(std::shared_ptr<const JSONObject> json) {
 }
 
 std::vector<RareItemSet::ExpandedDrop> JSONRareItemSet::get_enemy_specs(
-    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t enemy_type) const {
+    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const {
   try {
-    return this->collections.at(this->key_for_params(mode, episode, difficulty, secid)).enemy_type_to_specs.at(enemy_type);
+    return this->collections.at(this->key_for_params(mode, episode, difficulty, secid)).rt_index_to_specs.at(rt_index);
   } catch (const out_of_range&) {
     static const std::vector<ExpandedDrop> empty_vector;
     return empty_vector;

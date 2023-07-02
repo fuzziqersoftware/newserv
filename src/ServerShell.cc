@@ -762,7 +762,7 @@ Proxy session commands:\n\
     }
 
     PlayerInventoryItem item;
-    item.data = item_for_string(command_args);
+    item.data = ItemData(command_args);
     item.data.id = random_object<uint32_t>();
 
     if (command_name == "set-next-item") {

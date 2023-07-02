@@ -96,9 +96,11 @@ struct ItemData { // 0x14 bytes
   } __attribute__((packed));
 
   ItemData();
-  explicit ItemData(const std::string& orig_description, bool skip_special = false);
+  explicit ItemData(const std::string& orig_description);
   ItemData(const ItemData& other);
   ItemData& operator=(const ItemData& other);
+
+  void parse(const std::string& desc, bool skip_specials);
 
   bool operator==(const ItemData& other) const;
   bool operator!=(const ItemData& other) const;
@@ -147,5 +149,3 @@ struct ItemData { // 0x14 bytes
 
   static bool compare_for_sort(const ItemData& a, const ItemData& b);
 } __attribute__((packed));
-
-ItemData item_for_string(const std::string& desc);
