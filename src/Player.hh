@@ -112,7 +112,9 @@ struct PlayerDispDataBB;
 
 struct PlayerStats {
   /* 00 */ CharacterStats char_stats;
-  /* 0E */ parray<uint8_t, 0x0A> unknown_a1;
+  /* 0E */ le_uint16_t unknown_a1;
+  /* 10 */ le_float unknown_a2;
+  /* 14 */ le_float unknown_a3;
   /* 18 */ le_uint32_t level;
   /* 1C */ le_uint32_t experience;
   /* 20 */ le_uint32_t meseta;
@@ -123,11 +125,11 @@ struct PlayerStats {
 
 struct PlayerVisualConfig {
   /* 00 */ ptext<char, 0x10> name;
-  /* 10 */ uint64_t unknown_a2;
-  /* 18 */ le_uint32_t name_color;
+  /* 10 */ le_uint64_t unknown_a2; // Note: This is probably not actually a 64-bit int.
+  /* 18 */ le_uint32_t name_color; // RGBA
   /* 1C */ uint8_t extra_model;
   /* 1D */ parray<uint8_t, 0x0F> unused;
-  /* 2C */ le_uint32_t name_color_checksum;
+  /* 2C */ le_uint32_t unknown_a3;
   /* 30 */ uint8_t section_id;
   /* 31 */ uint8_t char_class;
   /* 32 */ uint8_t v2_flags;

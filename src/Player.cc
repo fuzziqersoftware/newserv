@@ -36,7 +36,7 @@ PlayerVisualConfig::PlayerVisualConfig() noexcept
     : unknown_a2(0),
       name_color(0),
       extra_model(0),
-      name_color_checksum(0),
+      unknown_a3(0),
       section_id(0),
       char_class(0),
       v2_flags(0),
@@ -117,7 +117,7 @@ void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
 void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
   this->visual.name_color = pre.visual.name_color;
   this->visual.extra_model = pre.visual.extra_model;
-  this->visual.name_color_checksum = pre.visual.name_color_checksum;
+  this->visual.unknown_a3 = pre.visual.unknown_a3;
   this->visual.section_id = pre.visual.section_id;
   this->visual.char_class = pre.visual.char_class;
   this->visual.v2_flags = pre.visual.v2_flags;

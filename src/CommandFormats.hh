@@ -3582,32 +3582,34 @@ struct G_SendGuildCard_BB_6x06 {
 
 // 6x07: Symbol chat
 
-struct G_SymbolChat_6x07 {
-  G_UnusedHeader header;
+struct SymbolChat {
   // TODO: How does this format differ across PSO versions? The GC version
   // treats some fields as unexpectedly large values (for example, face_spec
   // through unused2 are byteswapped as an le_uint32_t), so we should verify
   // that the order of these fields is the same on other versions.
-  le_uint32_t client_id;
-  // Bits: SSSCCCFF (S = sound, C = face color, F = face shape)
-  uint8_t face_spec;
-  // Bits: 000000DM (D = capture, M = mute sound)
-  uint8_t flags;
-  le_uint16_t unused;
-  struct CornerObject {
-    uint8_t type; // FF = no object in this slot
-    // Bits: 000VHCCC (V = reverse vertical, H = reverse horizontal, C = color)
-    uint8_t flags_color;
-  } __packed__;
-  parray<CornerObject, 4> corner_objects; // In reading order; top-left is first
+  // Bits: ----------------------DMSSSCCCFF
+  //   S = sound, C = face color, F = face shape, D = capture, M = mute sound
+  /* 00 */ le_uint32_t spec;
+  // Corner objects are specified in reading order ([0] is the top-left one).
+  // Bits (each entry): ---VHCCCZZZZZZZZ
+  //   V = reverse vertical, H = reverse horizontal, C = color, Z = object
+  // If Z is all 1 bits (0xFF), no corner object is rendered.
+  /* 04 */ parray<le_uint16_t, 4> corner_objects;
   struct FacePart {
     uint8_t type; // FF = no part in this slot
     uint8_t x;
     uint8_t y;
-    // Bits: 000000VH (V = reverse vertical, H = reverse horizontal)
+    // Bits: ------VH (V = reverse vertical, H = reverse horizontal)
     uint8_t flags;
   } __packed__;
-  parray<FacePart, 12> face_parts;
+  /* 0C */ parray<FacePart, 12> face_parts;
+  /* 3C */
+} __packed__;
+
+struct G_SymbolChat_6x07 {
+  G_UnusedHeader header;
+  le_uint32_t client_id;
+  SymbolChat data;
 } __packed__;
 
 // 6x08: Invalid subcommand
