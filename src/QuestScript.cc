@@ -559,7 +559,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF824, "set_cmode_diff", {INT32}, {}, V2, V2},
     {0xF824, "set_cmode_diff", {}, {INT32}, V3, V4},
     {0xF825, "exp_multiplication", {{REG_SET_FIXED, 3}}, {}, V2, V4},
-    {0xF826, nullptr, {REG}, {}, V2, V4}, // TODO (DX) - Challenge-related
+    {0xF826, "if_player_alive_cm", {REG}, {}, V2, V4},
     {0xF827, "get_user_is_dead", {REG}, {}, V2, V4},
     {0xF828, "go_floor", {REG, REG}, {}, V2, V4},
     {0xF829, "get_num_kills", {REG, REG}, {}, V2, V4},
@@ -585,16 +585,16 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF841, "get_npc_data", {{LABEL16, Arg::DataType::PLAYER_VISUAL_CONFIG, "visual_config"}}, {}, V2, V4},
     {0xF848, "give_damage_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
     {0xF849, "take_damage_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
-    {0xF84A, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4}, // TODO (DX) - computation is regsA[0] + (regsA[1] / regsA[2])
-    {0xF84B, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4}, // TODO (DX) - computation is regsA[0] + (regsA[1] / regsA[2])
+    {0xF84A, "enemy_give_score", {{REG_SET_FIXED, 3}}, {}, V2, V4}, // Actual value used is regsA[0] + (regsA[1] / regsA[2])
+    {0xF84B, "enemy_take_score", {{REG_SET_FIXED, 3}}, {}, V2, V4}, // Actual value used is regsA[0] + (regsA[1] / regsA[2])
     {0xF84C, "kill_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
     {0xF84D, "death_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
-    {0xF84E, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4}, // TODO (DX) - computation is regsA[0] + (regsA[1] / regsA[2])
+    {0xF84E, "enemy_kill_score", {{REG_SET_FIXED, 3}}, {}, V2, V4}, // Actual value used is regsA[0] + (regsA[1] / regsA[2])
     {0xF84F, "enemy_death_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
     {0xF850, "meseta_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
     {0xF851, "ba_set_trap_count", {{REG_SET_FIXED, 2}}, {}, V2, V4}, // regsA is [trap_type, trap_count]
-    {0xF852, nullptr, {INT32}, {}, V2, V2}, // TODO (DX) - battle rules. Value should be 0 or 1
-    {0xF852, nullptr, {}, {INT32}, V3, V4}, // TODO (DX)
+    {0xF852, "ba_set_target", {INT32}, {}, V2, V2},
+    {0xF852, "ba_set_target", {}, {INT32}, V3, V4},
     {0xF853, "reverse_warps", {}, {}, V2, V4},
     {0xF854, "unreverse_warps", {}, {}, V2, V4},
     {0xF855, "set_ult_map", {}, {}, V2, V4},
@@ -610,10 +610,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF85C, "qexit2", {INT32}, {}, V2, V4},
     {0xF85D, "set_allow_item_flags", {INT32}, {}, V2, V2}, // Same as on v3
     {0xF85D, "set_allow_item_flags", {}, {INT32}, V3, V4}, // 0 = allow normal item usage (undoes all of the following), 1 = disallow weapons, 2 = disallow armors, 3 = disallow shields, 4 = disallow units, 5 = disallow mags, 6 = disallow tools
-    {0xF85E, nullptr, {INT32}, {}, V2, V2}, // TODO (DX) - battle rules. Value should be 0 or 1
-    {0xF85E, nullptr, {}, {INT32}, V3, V4}, // TODO (DX)
-    {0xF85F, nullptr, {INT32}, {}, V2, V2}, // TODO (DX) - battle rules. Does nothing unless F85E was executed with value 1. Value should be in the range [0, 99]
-    {0xF85F, nullptr, {}, {INT32}, V3, V4}, // TODO (DX)
+    {0xF85E, "ba_enable_sonar", {INT32}, {}, V2, V2},
+    {0xF85E, "ba_enable_sonar", {}, {INT32}, V3, V4},
+    {0xF85F, "ba_use_sonar", {INT32}, {}, V2, V2},
+    {0xF85F, "ba_use_sonar", {}, {INT32}, V3, V4},
     {0xF860, "clear_score_announce", {}, {}, V2, V4},
     {0xF861, "set_score_announce", {INT32}, {}, V2, V2},
     {0xF861, "set_score_announce", {}, {INT32}, V3, V4},
@@ -880,7 +880,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF957, "bb_exchange_pd_special", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xDA
     {0xF958, "bb_exchange_pd_percent", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xDA
     {0xF959, "bb_set_ep4_boss_can_escape", {}, {INT32}, V4, V4},
-    {0xF95A, nullptr, {REG}, {}, V4, V4}, // TODO (DX) - related to Episode 4 boss
+    {0xF95A, "bb_is_ep4_boss_dying", {REG}, {}, V4, V4},
     {0xF95B, "bb_send_6xD9", {}, {INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xD9
     {0xF95C, "bb_exchange_slt", {}, {INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xDE
     {0xF95D, "bb_exchange_pc", {}, {}, V4, V4}, // Sends 6xDF
@@ -1432,7 +1432,6 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
 
     // Print data interpretations of the label (if any)
     if (l->has_data_type(Arg::DataType::DATA)) {
-      // TODO: We should produce a print_data-like view here
       lines.emplace_back(string_printf("  // As raw data (0x%zX bytes)", size));
       lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
     }
