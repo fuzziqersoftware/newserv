@@ -30,7 +30,7 @@ static string dasm_u16string(const parray<char16_t, Size>& data) {
 }
 
 struct ResistData {
-  le_uint16_t unknown_a0;
+  le_int16_t evp_bonus;
   le_uint16_t unknown_a1;
   le_uint16_t unknown_a2;
   le_uint16_t unknown_a3;
@@ -40,17 +40,17 @@ struct ResistData {
   le_uint32_t unknown_a7;
   le_uint32_t unknown_a8;
   le_uint32_t unknown_a9;
-  le_uint32_t unknown_a10;
+  le_int32_t dfp_bonus;
 } __attribute__((packed));
 
 struct AttackData {
-  le_uint16_t unknown_a1;
-  le_uint16_t unknown_a2;
+  le_int16_t unknown_a1;
+  le_int16_t unknown_a2;
   le_uint16_t unknown_a3;
   le_uint16_t unknown_a4;
   le_float unknown_a5;
   le_uint32_t unknown_a6;
-  le_uint32_t unknown_a7;
+  le_float unknown_a7;
   le_uint16_t unknown_a8;
   le_uint16_t unknown_a9;
   le_uint16_t unknown_a10;
@@ -398,7 +398,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00BA, "set_qt_exit", {SCRIPT32}, {}, V1, V2},
     {0x00BA, "set_qt_exit", {SCRIPT16}, {}, V3, V4},
     {0x00BB, "clr_qt_exit", {}, {}, V1, V4},
-    {0x00BC, "nop_BC", {CSTRING}, {}, V1, V4}, // Does nothing
+    {0x00BC, "nop_BC", {CSTRING}, {}, V1, V4},
     {0x00C0, "particle", {{REG32_SET_FIXED, 5}, INT32}, {}, V1, V2},
     {0x00C0, "particle", {{REG_SET_FIXED, 5}}, {}, V3, V4},
     {0x00C1, "npc_text", {INT32, CSTRING}, {}, V1, V2},
@@ -468,7 +468,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00F1, "leti_fixed_camera", {{REG32_SET_FIXED, 6}}, {}, V2, V2},
     {0x00F1, "leti_fixed_camera", {{REG_SET_FIXED, 6}}, {}, V3, V4},
     {0x00F2, "default_camera_pos1", {}, {}, V2, V4},
-    {0xF800, nullptr, {}, {}, V2, V2}, // Same as 50, but uses fixed arguments - possibly a Japanese debug string?
+    {0xF800, "debug_F800", {}, {}, V2, V2}, // Same as 50, but uses fixed arguments - with a Japanese string that Google Translate translates as "I'm frugal!!"
     {0xF801, "set_chat_callback", {{REG32_SET_FIXED, 5}, CSTRING}, {}, V2, V2},
     {0xF801, "set_chat_callback", {}, {{REG_SET_FIXED, 5}, CSTRING}, V3, V4},
     {0xF808, "get_difficulty_level2", {REG}, {}, V2, V4},
@@ -494,8 +494,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF815, "ba_set_item", {}, {INT32}, V3, V4},
     {0xF816, "ba_set_trapmenu", {INT32}, {}, V2, V2},
     {0xF816, "ba_set_trapmenu", {}, {INT32}, V3, V4},
-    {0xF817, nullptr, {INT32}, {}, V2, V2},
-    {0xF817, nullptr, {}, {INT32}, V3, V4},
+    {0xF817, "ba_set_unused_F817", {INT32}, {}, V2, V2}, // This appears to be unused - it's copied into the main battle rules struct, but then the field appears never to be read
+    {0xF817, "ba_set_unused_F817", {}, {INT32}, V3, V4},
     {0xF818, "ba_set_respawn", {INT32}, {}, V2, V2},
     {0xF818, "ba_set_respawn", {}, {INT32}, V3, V4},
     {0xF819, "ba_set_char", {INT32}, {}, V2, V2},
@@ -512,14 +512,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF81E, "ba_set_meseta", {}, {INT32}, V3, V4},
     {0xF820, "cmode_stage", {INT32}, {}, V2, V2},
     {0xF820, "cmode_stage", {}, {INT32}, V3, V4},
-    {0xF821, "nop_F821", {{REG_SET_FIXED, 9}}, {}, V2, V4}, // TODO (PC, BB) // regsA[3-8] specify first 6 bytes of an ItemData. On V3, this opcode consumes an item ID, but does nothing else.
-    {0xF822, "nop_F822", {REG}, {}, V2, V4}, // TODO (PC, BB) // On V3, this opcode does nothing.
+    {0xF821, "nop_F821", {{REG_SET_FIXED, 9}}, {}, V2, V4}, // regsA[3-8] specify first 6 bytes of an ItemData. This opcode consumes an item ID, but does nothing else.
+    {0xF822, "nop_F822", {REG}, {}, V2, V4},
     {0xF823, "set_cmode_char_template", {INT32}, {}, V2, V2},
     {0xF823, "set_cmode_char_template", {}, {INT32}, V3, V4},
     {0xF824, "set_cmode_diff", {INT32}, {}, V2, V2},
     {0xF824, "set_cmode_diff", {}, {INT32}, V3, V4},
     {0xF825, "exp_multiplication", {{REG_SET_FIXED, 3}}, {}, V2, V4},
-    {0xF826, nullptr, {REG}, {}, V2, V4},
+    {0xF826, nullptr, {REG}, {}, V2, V4}, // TODO (DX) - Challenge-related
     {0xF827, "get_user_is_dead", {REG}, {}, V2, V4},
     {0xF828, "go_floor", {REG, REG}, {}, V2, V4},
     {0xF829, "get_num_kills", {REG, REG}, {}, V2, V4},
@@ -537,24 +537,24 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF83A, "set_shrink_cam1", {{REG_SET_FIXED, 4}}, {}, V2, V4},
     {0xF83B, "set_shrink_cam2", {{REG_SET_FIXED, 4}}, {}, V2, V4},
     {0xF83C, "display_clock2", {REG}, {}, V2, V4},
-    {0xF83D, nullptr, {INT32}, {}, V2, V2},
-    {0xF83D, nullptr, {}, {INT32}, V3, V4},
+    {0xF83D, "set_area_total", {INT32}, {}, V2, V2},
+    {0xF83D, "set_area_total", {}, {INT32}, V3, V4},
     {0xF83E, "delete_area_title", {INT32}, {}, V2, V2},
     {0xF83E, "delete_area_title", {}, {INT32}, V3, V4},
     {0xF840, "load_npc_data", {}, {}, V2, V4},
     {0xF841, "get_npc_data", {{LABEL16, Arg::DataType::PLAYER_VISUAL_CONFIG, "visual_config"}}, {}, V2, V4},
     {0xF848, "give_damage_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
     {0xF849, "take_damage_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
-    {0xF84A, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4},
-    {0xF84B, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF84A, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4}, // TODO (DX) - computation is regsA[0] + (regsA[1] / regsA[2])
+    {0xF84B, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4}, // TODO (DX) - computation is regsA[0] + (regsA[1] / regsA[2])
     {0xF84C, "kill_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
     {0xF84D, "death_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
-    {0xF84E, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF84E, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4}, // TODO (DX) - computation is regsA[0] + (regsA[1] / regsA[2])
     {0xF84F, "enemy_death_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
     {0xF850, "meseta_score", {{REG_SET_FIXED, 3}}, {}, V2, V4},
-    {0xF851, nullptr, {{REG_SET_FIXED, 2}}, {}, V2, V4},
-    {0xF852, nullptr, {INT32}, {}, V2, V2},
-    {0xF852, nullptr, {}, {INT32}, V3, V4},
+    {0xF851, "ba_set_trap_count", {{REG_SET_FIXED, 2}}, {}, V2, V4}, // regsA is [trap_type, trap_count]
+    {0xF852, nullptr, {INT32}, {}, V2, V2}, // TODO (DX) - battle rules. Value should be 0 or 1
+    {0xF852, nullptr, {}, {INT32}, V3, V4}, // TODO (DX)
     {0xF853, "reverse_warps", {}, {}, V2, V4},
     {0xF854, "unreverse_warps", {}, {}, V2, V4},
     {0xF855, "set_ult_map", {}, {}, V2, V4},
@@ -570,10 +570,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF85C, "qexit2", {INT32}, {}, V2, V4},
     {0xF85D, "set_allow_item_flags", {INT32}, {}, V2, V2}, // Same as on v3
     {0xF85D, "set_allow_item_flags", {}, {INT32}, V3, V4}, // 0 = allow normal item usage (undoes all of the following), 1 = disallow weapons, 2 = disallow armors, 3 = disallow shields, 4 = disallow units, 5 = disallow mags, 6 = disallow tools
-    {0xF85E, nullptr, {INT32}, {}, V2, V2},
-    {0xF85E, nullptr, {}, {INT32}, V3, V4},
-    {0xF85F, nullptr, {INT32}, {}, V2, V2},
-    {0xF85F, nullptr, {}, {INT32}, V3, V4},
+    {0xF85E, nullptr, {INT32}, {}, V2, V2}, // TODO (DX) - battle rules. Value should be 0 or 1
+    {0xF85E, nullptr, {}, {INT32}, V3, V4}, // TODO (DX)
+    {0xF85F, nullptr, {INT32}, {}, V2, V2}, // TODO (DX) - battle rules. Does nothing unless F85E was executed with value 1. Value should be in the range [0, 99]
+    {0xF85F, nullptr, {}, {INT32}, V3, V4}, // TODO (DX)
     {0xF860, "clear_score_announce", {}, {}, V2, V4},
     {0xF861, "set_score_announce", {INT32}, {}, V2, V2},
     {0xF861, "set_score_announce", {}, {INT32}, V3, V4},
@@ -602,8 +602,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF872, "ba_set_time_limit", {INT32}, {}, V2, V2},
     {0xF872, "ba_set_time_limit", {}, {INT32}, V3, V4},
     {0xF873, "dark_falz_is_dead", {REG}, {}, V2, V4},
-    {0xF874, nullptr, {INT32, CSTRING}, {}, V2, V2},
-    {0xF874, nullptr, {}, {INT32, CSTRING}, V3, V4},
+    {0xF874, nullptr, {INT32, CSTRING}, {}, V2, V2}, // TODO (DX) - Similar to A0, but does something with the two strings in non-4P challenge mode
+    {0xF874, nullptr, {}, {INT32, CSTRING}, V3, V4}, // TODO (DX)
     {0xF875, "enable_stealth_suit_effect", {REG}, {}, V2, V4},
     {0xF876, "disable_stealth_suit_effect", {REG}, {}, V2, V4},
     {0xF877, "enable_techs", {REG}, {}, V2, V4},
@@ -615,7 +615,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF87D, "kill_player", {REG}, {}, V2, V4},
     {0xF87E, "get_serial_number", {REG}, {}, V2, V4}, // Returns 0 on BB
     {0xF87F, "get_eventflag", {REG, REG}, {}, V2, V4},
-    {0xF880, nullptr, {{REG_SET_FIXED, 3}}, {}, V2, V4},
+    {0xF880, "set_trap_damage", {{REG_SET_FIXED, 3}}, {}, V2, V4}, // Normally trap damage is (700.0 * area_factor[area] * 2.0 * (0.01 * level + 0.1)); this overrides that computation. The value is specified with integer and fractional parts split up: the actual value is regsA[0] + (regsA[1] / regsA[2]).
     {0xF881, "get_pl_name", {REG}, {}, V2, V4},
     {0xF882, "get_pl_job", {REG}, {}, V2, V4},
     {0xF883, "get_player_proximity", {{REG_SET_FIXED, 2}, REG}, {}, V2, V4},
@@ -632,7 +632,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF88B, "send_mail", {}, {REG, CSTRING}, V3, V4},
     {0xF88C, "get_game_version", {REG}, {}, V2, V4}, // Returns 2 on DCv2/PC, 3 on GC, 4 on BB
     {0xF88D, "chl_set_timerecord", {REG}, {}, V2, V3},
-    {0xF88D, "chl_set_timerecord", {REG, REG}, {}, V4, V4}, // TODO: regB might actually be INT8
+    {0xF88D, "chl_set_timerecord", {REG, REG}, {}, V4, V4},
     {0xF88E, "chl_get_timerecord", {REG}, {}, V2, V4},
     {0xF88F, "set_cmode_grave_rates", {{REG_SET_FIXED, 20}}, {}, V2, V4},
     {0xF890, "clear_mainwarp_all", {}, {}, V2, V4},
@@ -650,8 +650,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF89B, "reset_map", {}, {}, V2, V4},
     {0xF89C, "disp_chl_retry_menu", {REG}, {}, V2, V4},
     {0xF89D, "chl_reverser", {}, {}, V2, V4},
-    {0xF89E, nullptr, {INT32}, {}, V2, V2},
-    {0xF89E, nullptr, {}, {INT32}, V3, V4},
+    {0xF89E, "ba_forbid_scape_dolls", {INT32}, {}, V2, V2},
+    {0xF89E, "ba_forbid_scape_dolls", {}, {INT32}, V3, V4},
     {0xF89F, "player_recovery", {REG}, {}, V2, V4}, // regA = client ID
     {0xF8A0, "disable_bosswarp_option", {}, {}, V2, V4},
     {0xF8A1, "enable_bosswarp_option", {}, {}, V2, V4},
@@ -659,11 +659,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8A3, "load_serial_number_to_flag_buf", {}, {}, V2, V4}, // Loads 0 on BB
     {0xF8A4, "write_flag_buf_to_event_flags", {REG}, {}, V2, V4},
     {0xF8A5, "set_chat_callback_no_filter", {{REG_SET_FIXED, 5}}, {}, V2, V4},
-    {0xF8A6, "set_symbol_chat_collision", {{REG_SET_FIXED, 10}}, {}, V2, V4}, // TODO
+    {0xF8A6, "set_symbol_chat_collision", {{REG_SET_FIXED, 10}}, {}, V2, V4},
     {0xF8A7, "set_shrink_size", {REG, {REG_SET_FIXED, 3}}, {}, V2, V4},
     {0xF8A8, "death_tech_lvl_up2", {INT32}, {}, V2, V2},
     {0xF8A8, "death_tech_lvl_up2", {}, {INT32}, V3, V4},
-    {0xF8A9, "volopt_is_dead", {REG}, {}, V2, V4},
+    {0xF8A9, "vol_opt_is_dead", {REG}, {}, V2, V4},
     {0xF8AA, "is_there_grave_message", {REG}, {}, V2, V4},
     {0xF8AB, "get_ba_record", {{REG_SET_FIXED, 7}}, {}, V2, V4},
     {0xF8AC, "get_cmode_prize_rank", {REG}, {}, V2, V4},
@@ -682,25 +682,31 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8B4, "write2", {}, {INT32, REG}, V3, V4},
     {0xF8B5, "write4", {REG, REG}, {}, V2, V2},
     {0xF8B5, "write4", {}, {INT32, REG}, V3, V4},
-    {0xF8B6, "get_legit_flags", {REG}, {}, V2, V2}, // Only works on DC - crashes on all other versions
-    {0xF8B7, nullptr, {REG}, {}, V2, V4}, // Appears to be timing-related; regA is expected to be in [60, 3600]
+    {0xF8B6, "check_for_hacking", {REG}, {}, V2, V2}, // Returns a bitmask of 5 different types of detectable hacking. But it only works on DCv2 - it crashes on all other versions.
+    {0xF8B7, nullptr, {REG}, {}, V2, V4}, // TODO (DX) - Challenge mode. Appears to be timing-related; regA is expected to be in [60, 3600]. Encodes the value with some strange masking key, even though it's never sent over the network and is only decoded locally.
     {0xF8B8, "disable_retry_menu", {}, {}, V2, V4},
     {0xF8B9, "chl_recovery", {}, {}, V2, V4},
     {0xF8BA, "load_guild_card_file_creation_time_to_flag_buf", {}, {}, V2, V4},
     {0xF8BB, "write_flag_buf_to_event_flags2", {REG}, {}, V2, V4},
     {0xF8BC, "set_episode", {INT32}, {}, V3, V4},
-    {0xF8C0, "file_dl_req", {}, {INT32, CSTRING}, V3, V4},
-    {0xF8C1, "get_dl_status", {REG}, {}, V3, V4},
-    {0xF8C2, "gba_unknown4", {}, {}, V3, V4},
-    {0xF8C3, "get_gba_state", {REG}, {}, V3, V4},
-    {0xF8C4, "congrats_msg_multi_cm", {REG}, {}, V3, V4},
-    {0xF8C5, "stage_end_multi_cm", {REG}, {}, V3, V4},
+    {0xF8C0, "file_dl_req", {}, {INT32, CSTRING}, V3, V3},
+    {0xF8C0, "nop_F8C0", {}, {INT32, CSTRING}, V4, V4},
+    {0xF8C1, "get_dl_status", {REG}, {}, V3, V3},
+    {0xF8C1, "nop_F8C1", {REG}, {}, V4, V4},
+    {0xF8C2, nullptr, {}, {}, V3, V3}, // TODO (DX) - related to GBA functionality
+    {0xF8C2, "nop_F8C2", {}, {}, V4, V4},
+    {0xF8C3, "get_gba_state", {REG}, {}, V3, V3},
+    {0xF8C3, "nop_F8C3", {REG}, {}, V4, V4},
+    {0xF8C4, "congrats_msg_multi_cm", {REG}, {}, V3, V3},
+    {0xF8C4, "nop_F8C4", {REG}, {}, V4, V4},
+    {0xF8C5, "stage_end_multi_cm", {REG}, {}, V3, V3},
+    {0xF8C5, "nop_F8C5", {REG}, {}, V4, V4},
     {0xF8C6, "qexit", {}, {}, V3, V4},
     {0xF8C7, "use_animation", {REG, REG}, {}, V3, V4},
     {0xF8C8, "stop_animation", {REG}, {}, V3, V4},
     {0xF8C9, "run_to_coord", {{REG_SET_FIXED, 4}, REG}, {}, V3, V4},
     {0xF8CA, "set_slot_invincible", {REG, REG}, {}, V3, V4},
-    {0xF8CB, nullptr, {REG}, {}, V3, V4},
+    {0xF8CB, "clear_slot_invincible", {REG}, {}, V3, V4},
     {0xF8CC, "set_slot_poison", {REG}, {}, V3, V4},
     {0xF8CD, "set_slot_paralyze", {REG}, {}, V3, V4},
     {0xF8CE, "set_slot_shock", {REG}, {}, V3, V4},
@@ -739,7 +745,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8EF, "nop_F8EF", {}, {}, V3, V4},
     {0xF8F0, "turn_off_bgm_p2", {}, {}, V3, V4},
     {0xF8F1, "turn_on_bgm_p2", {}, {}, V3, V4},
-    {0xF8F2, nullptr, {}, {INT32, FLOAT32, FLOAT32, INT32, {REG_SET_FIXED, 4}, DATA16}, V3, V4},
+    {0xF8F2, nullptr, {}, {INT32, FLOAT32, FLOAT32, INT32, {REG_SET_FIXED, 4}, DATA16}, V3, V4}, // TODO (DX)
     {0xF8F3, "particle2", {}, {{REG_SET_FIXED, 3}, INT32, FLOAT32}, V3, V4},
     {0xF901, "dec2float", {REG, REG}, {}, V3, V4},
     {0xF902, "float2dec", {REG, REG}, {}, V3, V4},
@@ -778,26 +784,32 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF926, "write_global_flag", {}, {INT32, INT32}, V3, V4},
     {0xF927, "item_detect_bank2", {{REG_SET_FIXED, 4}, REG}, {}, V3, V4},
     {0xF928, "floor_player_detect", {{REG_SET_FIXED, 4}}, {}, V3, V4},
-    {0xF929, "read_disk_file", {}, {CSTRING}, V3, V4},
+    {0xF929, "read_disk_file", {}, {CSTRING}, V3, V3},
+    {0xF929, "nop_F929", {}, {CSTRING}, V4, V4},
     {0xF92A, "open_pack_select", {}, {}, V3, V4},
     {0xF92B, "item_select", {REG}, {}, V3, V4},
     {0xF92C, "get_item_id", {REG}, {}, V3, V4},
     {0xF92D, "color_change", {}, {INT32, INT32, INT32, INT32, INT32}, V3, V4},
     {0xF92E, "send_statistic", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V3, V4},
-    {0xF92F, nullptr, {}, {INT32, INT32}, V3, V4},
+    {0xF92F, nullptr, {}, {INT32, INT32}, V3, V3}, // TODO (DX) - related to GBA functionality
+    {0xF92F, "nop_F92F", {}, {INT32, INT32}, V4, V4},
     {0xF930, "chat_box", {}, {FLOAT32, FLOAT32, FLOAT32, FLOAT32, INT32, CSTRING}, V3, V4},
     {0xF931, "chat_bubble", {}, {INT32, CSTRING}, V3, V4},
     {0xF932, "set_episode2", {REG}, {}, V3, V4},
-    {0xF933, nullptr, {{REG_SET_FIXED, 7}}, {}, V3, V4}, // regsA[1-6] form an ItemData's data1[0-5]
+    {0xF933, "item_create_multi_cm", {{REG_SET_FIXED, 7}}, {}, V3, V3}, // regsA[1-6] form an ItemData's data1[0-5]
+    {0xF933, "nop_F933", {{REG_SET_FIXED, 7}}, {}, V4, V4},
     {0xF934, "scroll_text", {}, {FLOAT32, FLOAT32, FLOAT32, FLOAT32, INT32, FLOAT32, REG, CSTRING}, V3, V4},
-    {0xF935, "gba_create_dl_graph", {}, {}, V3, V4},
-    {0xF936, "gba_destroy_dl_graph", {}, {}, V3, V4},
-    {0xF937, "gba_update_dl_graph", {}, {}, V3, V4},
+    {0xF935, "gba_create_dl_graph", {}, {}, V3, V3},
+    {0xF935, "nop_F935", {}, {}, V4, V4},
+    {0xF936, "gba_destroy_dl_graph", {}, {}, V3, V3},
+    {0xF936, "nop_F936", {}, {}, V4, V4},
+    {0xF937, "gba_update_dl_graph", {}, {}, V3, V3},
+    {0xF937, "nop_F937", {}, {}, V4, V4},
     {0xF938, "add_damage_to", {}, {INT32, FLOAT32}, V3, V4},
     {0xF939, "item_delete3", {}, {INT32}, V3, V4},
     {0xF93A, "get_item_info", {}, {ITEM_ID, {REG_SET_FIXED, 12}}, V3, V4}, // regsB are item.data1
     {0xF93B, "item_packing1", {}, {ITEM_ID}, V3, V4},
-    {0xF93C, "item_packing2", {}, {ITEM_ID, INT32}, V3, V4},
+    {0xF93C, "item_packing2", {}, {ITEM_ID, INT32}, V3, V4}, // Sends 6xD6 on BB
     {0xF93D, "get_lang_setting", {}, {REG}, V3, V4},
     {0xF93E, "prepare_statistic", {}, {INT32, INT32, INT32}, V3, V4},
     {0xF93F, "keyword_detect", {}, {}, V3, V4},
@@ -812,30 +824,30 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF948, "tan", {}, {REG, INT32}, V3, V4},
     {0xF949, "atan2_int", {}, {REG, FLOAT32, FLOAT32}, V3, V4},
     {0xF94A, "olga_flow_is_dead", {REG}, {}, V3, V4},
-    {0xF94B, "particle3", {{REG_SET_FIXED, 4}}, {}, V3, V4},
-    {0xF94C, "particle3_id", {{REG_SET_FIXED, 4}}, {}, V3, V4},
-    {0xF94D, "give_or_take_card", {{REG_SET_FIXED, 2}}, {}, V3, V3}, // regsA[0] is card_id; card is added if regsA[1] >= 0, otherwise it's removed
+    {0xF94B, "particle_effect_nc", {{REG_SET_FIXED, 4}}, {}, V3, V4},
+    {0xF94C, "player_effect_nc", {{REG_SET_FIXED, 4}}, {}, V3, V4},
+    {0xF94D, "give_or_take_card", {{REG_SET_FIXED, 2}}, {}, V3, V3}, // Ep3 only; regsA[0] is card_id; card is given if regsA[1] >= 0, otherwise it's taken
     {0xF94D, "nop_F94D", {}, {}, V4, V4},
     {0xF94E, "nop_F94E", {}, {}, V4, V4},
     {0xF94F, "nop_F94F", {}, {}, V4, V4},
     {0xF950, "bb_p2_menu", {}, {INT32}, V4, V4},
     {0xF951, "bb_map_designate", {INT8, INT8, INT8, INT8, INT8}, {}, V4, V4},
     {0xF952, "bb_get_number_in_pack", {REG}, {}, V4, V4},
-    {0xF953, "bb_swap_item", {}, {INT32, INT32, INT32, INT32, INT32, INT32, SCRIPT16, SCRIPT16}, V4, V4},
+    {0xF953, "bb_swap_item", {}, {INT32, INT32, INT32, INT32, INT32, INT32, SCRIPT16, SCRIPT16}, V4, V4}, // Sends 6xD5
     {0xF954, "bb_check_wrap", {}, {INT32, REG}, V4, V4},
-    {0xF955, "bb_exchange_pd_item", {}, {INT32, INT32, INT32, INT32, INT32}, V4, V4},
-    {0xF956, "bb_exchange_pd_srank", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4},
-    {0xF957, "bb_exchange_pd_special", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4},
-    {0xF958, "bb_exchange_pd_percent", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4},
+    {0xF955, "bb_exchange_pd_item", {}, {INT32, INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xD7
+    {0xF956, "bb_exchange_pd_srank", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xD8
+    {0xF957, "bb_exchange_pd_special", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xDA
+    {0xF958, "bb_exchange_pd_percent", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xDA
     {0xF959, "bb_set_ep4_boss_can_escape", {}, {INT32}, V4, V4},
-    {0xF95A, nullptr, {REG}, {}, V4, V4},
-    {0xF95B, nullptr, {}, {INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4},
-    {0xF95C, "bb_exchange_slt", {}, {INT32, INT32, INT32, INT32}, V4, V4},
-    {0xF95D, "bb_exchange_pc", {}, {}, V4, V4},
-    {0xF95E, "bb_box_create_bp", {}, {INT32, INT32, INT32}, V4, V4},
-    {0xF95F, "bb_exchange_pt", {}, {INT32, INT32, INT32, INT32, INT32}, V4, V4},
-    {0xF960, nullptr, {}, {INT32}, V4, V4},
-    {0xF961, nullptr, {REG}, {}, V4, V4},
+    {0xF95A, nullptr, {REG}, {}, V4, V4}, // TODO (DX) - related to Episode 4 boss
+    {0xF95B, "bb_send_6xD9", {}, {INT32, INT32, INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xD9
+    {0xF95C, "bb_exchange_slt", {}, {INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xDE
+    {0xF95D, "bb_exchange_pc", {}, {}, V4, V4}, // Sends 6xDF
+    {0xF95E, "bb_box_create_bp", {}, {INT32, INT32, INT32}, V4, V4}, // Sends 6xE0
+    {0xF95F, "bb_exchange_pt", {}, {INT32, INT32, INT32, INT32, INT32}, V4, V4}, // Sends 6xE1
+    {0xF960, "bb_send_6xE2", {}, {INT32}, V4, V4}, // Sends 6xE2
+    {0xF961, "bb_get_6xE3_status", {REG}, {}, V4, V4}, // Returns 0 if 6xE3 hasn't been received, 1 if the received item is valid, 2 if the received item is invalid
 };
 
 static const unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>&
@@ -1222,7 +1234,7 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
     });
     print_as_struct.template operator()<Arg::DataType::RESIST_DATA, ResistData>([&](const ResistData& resist) -> void {
       lines.emplace_back("  // As ResistData");
-      lines.emplace_back(string_printf("  a0           %04hX /* %hu */", resist.unknown_a0.load(), resist.unknown_a0.load()));
+      lines.emplace_back(string_printf("  evp_bonus    %04hX /* %hu */", resist.evp_bonus.load(), resist.evp_bonus.load()));
       lines.emplace_back(string_printf("  a1           %04hX /* %hu */", resist.unknown_a1.load(), resist.unknown_a1.load()));
       lines.emplace_back(string_printf("  a2           %04hX /* %hu */", resist.unknown_a2.load(), resist.unknown_a2.load()));
       lines.emplace_back(string_printf("  a3           %04hX /* %hu */", resist.unknown_a3.load(), resist.unknown_a3.load()));
@@ -1232,17 +1244,17 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
       lines.emplace_back(string_printf("  a7           %08" PRIX32 " /* %" PRIu32 " */", resist.unknown_a7.load(), resist.unknown_a7.load()));
       lines.emplace_back(string_printf("  a8           %08" PRIX32 " /* %" PRIu32 " */", resist.unknown_a8.load(), resist.unknown_a8.load()));
       lines.emplace_back(string_printf("  a9           %08" PRIX32 " /* %" PRIu32 " */", resist.unknown_a9.load(), resist.unknown_a9.load()));
-      lines.emplace_back(string_printf("  a10          %08" PRIX32 " /* %" PRIu32 " */", resist.unknown_a10.load(), resist.unknown_a10.load()));
+      lines.emplace_back(string_printf("  dfp_bonus    %08" PRIX32 " /* %" PRIu32 " */", resist.dfp_bonus.load(), resist.dfp_bonus.load()));
     });
     print_as_struct.template operator()<Arg::DataType::ATTACK_DATA, AttackData>([&](const AttackData& attack) -> void {
       lines.emplace_back("  // As AttackData");
-      lines.emplace_back(string_printf("  a1           %04hX /* %hu */", attack.unknown_a1.load(), attack.unknown_a1.load()));
-      lines.emplace_back(string_printf("  a2           %04hX /* %hu */", attack.unknown_a2.load(), attack.unknown_a2.load()));
+      lines.emplace_back(string_printf("  a1           %04hX /* %hd */", attack.unknown_a1.load(), attack.unknown_a1.load()));
+      lines.emplace_back(string_printf("  a2           %04hX /* %hd */", attack.unknown_a2.load(), attack.unknown_a2.load()));
       lines.emplace_back(string_printf("  a3           %04hX /* %hu */", attack.unknown_a3.load(), attack.unknown_a3.load()));
       lines.emplace_back(string_printf("  a4           %04hX /* %hu */", attack.unknown_a4.load(), attack.unknown_a4.load()));
       lines.emplace_back(string_printf("  a5           %08" PRIX32 " /* %g */", attack.unknown_a5.load_raw(), attack.unknown_a5.load()));
       lines.emplace_back(string_printf("  a6           %08" PRIX32 " /* %" PRIu32 " */", attack.unknown_a6.load(), attack.unknown_a6.load()));
-      lines.emplace_back(string_printf("  a7           %08" PRIX32 " /* %" PRIu32 " */", attack.unknown_a7.load(), attack.unknown_a7.load()));
+      lines.emplace_back(string_printf("  a7           %08" PRIX32 " /* %g */", attack.unknown_a7.load_raw(), attack.unknown_a7.load()));
       lines.emplace_back(string_printf("  a8           %04hX /* %hu */", attack.unknown_a8.load(), attack.unknown_a8.load()));
       lines.emplace_back(string_printf("  a9           %04hX /* %hu */", attack.unknown_a9.load(), attack.unknown_a9.load()));
       lines.emplace_back(string_printf("  a10          %04hX /* %hu */", attack.unknown_a10.load(), attack.unknown_a10.load()));

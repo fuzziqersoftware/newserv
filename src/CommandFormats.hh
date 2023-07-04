@@ -4619,7 +4619,7 @@ struct G_Unknown_6x82 {
 
 struct G_PlaceTrap_6x83 {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1;
+  le_uint16_t trap_type;
   le_uint16_t unknown_a2;
 } __packed__;
 
@@ -5453,7 +5453,7 @@ struct G_MomokaItemExchange_BB_6xD9 {
 } __packed__;
 
 // 6xDA: Upgrade weapon attribute (BB; handled by server)
-// The client sends this when it executes an F957 or F957 quest opcode.
+// The client sends this when it executes an F957 or F958 quest opcode.
 
 struct G_UpgradeWeaponAttribute_BB_6xDA {
   G_ClientIDHeader header;
@@ -5537,9 +5537,9 @@ struct G_CorenActions_BB_6xE2 {
   parray<uint8_t, 12> unknown_a1; // TODO: There might be uint16_ts and uint32_ts in here.
 } __packed__;
 
-// 6xE3: Unknown (BB)
+// 6xE3: Coren actions result (BB)
 
-struct G_Unknown_BB_6xE3 {
+struct G_CorenActionsResult_BB_6xE3 {
   G_ClientIDHeader header;
   ItemData item_data;
 } __packed__;
