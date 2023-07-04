@@ -318,6 +318,7 @@ int main(int argc, char** argv) {
   size_t num_threads = 0;
   size_t bytes = 0;
   ssize_t compression_level = 0;
+  bool expect_decompressed = false;
   bool compress_optimal = false;
   bool json = false;
   const char* find_decryption_seed_ciphertext = nullptr;
@@ -362,6 +363,8 @@ int main(int argc, char** argv) {
       compression_level = strtoll(&argv[x][20], nullptr, 0);
     } else if (!strcmp(argv[x], "--optimal")) {
       compress_optimal = true;
+    } else if (!strcmp(argv[x], "--decompressed")) {
+      expect_decompressed = true;
     } else if (!strcmp(argv[x], "--round2")) {
       round2 = true;
     } else if (!strncmp(argv[x], "--bytes=", 8)) {
@@ -1046,7 +1049,10 @@ int main(int argc, char** argv) {
         throw invalid_argument("an input filename is required");
       }
 
-      auto data = prs_decompress(read_input_data());
+      string data = read_input_data();
+      if (!expect_decompressed) {
+        data = prs_decompress(data);
+      }
       string result = disassemble_quest_script(data.data(), data.size(), cli_version, is_dcv1);
       write_output_data(result.data(), result.size());
       break;
