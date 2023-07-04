@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include <array>
+#include <bit>
 #include <deque>
 #include <map>
 #include <phosg/Strings.hh>
@@ -1198,7 +1199,7 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
                 case Type::FLOAT32: {
                   float v = cmd_r.get_f32l();
                   if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
-                    arg_stack_values.emplace_back(ArgStackValue::Type::INT, *reinterpret_cast<const uint32_t*>(&v));
+                    arg_stack_values.emplace_back(ArgStackValue::Type::INT, bit_cast<uint32_t>(v));
                   }
                   dasm_arg = string_printf("%g", v);
                   break;
@@ -1320,7 +1321,7 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
                         dasm_arg = string_printf("(float)r%" PRIu32, arg_value.as_int);
                         break;
                       case ArgStackValue::Type::INT:
-                        dasm_arg = string_printf("%g", *reinterpret_cast<const float*>(&arg_value.as_int));
+                        dasm_arg = string_printf("%g", bit_cast<float>(arg_value.as_int));
                         break;
                       default:
                         dasm_arg = "/* invalid-type */";
