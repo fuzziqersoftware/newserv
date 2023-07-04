@@ -411,7 +411,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x009A, "cine_enable", {}, {}, V1, V4},
     {0x009B, "cine_disable", {}, {}, V1, V4},
     {0x00A0, "nop_A0_debug", {INT32, CSTRING}, {}, V1, V2}, // argA appears unused; game will softlock unless argB contains exactly 2 messages
-    {0x00A0, "nop_A0_debug", {}, {INT32, CSTRING}, V3, V4}, // argA appears unused; game will softlock unless argB contains exactly 2 messages
+    {0x00A0, "nop_A0_debug", {}, {INT32, CSTRING}, V3, V4},
     {0x00A1, "set_qt_failure", {SCRIPT32}, {}, V1, V2},
     {0x00A1, "set_qt_failure", {SCRIPT16}, {}, V3, V4},
     {0x00A2, "set_qt_success", {SCRIPT32}, {}, V1, V2},
@@ -427,14 +427,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00B0, "pl_add_meseta", {}, {CLIENT_ID, INT32}, V3, V4},
     {0x00B1, "thread_stg", {SCRIPT16}, {}, V1, V4},
     {0x00B2, "del_obj_param", {REG}, {}, V1, V4},
-    {0x00B3, "item_create", {{REG_SET_FIXED, 3}, REG}, {}, V1, V4}, // Creates an item; regsA holds item data1, regB receives item ID
-    {0x00B4, "item_create2", {{REG_SET_FIXED, 12}, REG}, {}, V1, V4}, // Like item_create but input regs each specify 1 byte
+    {0x00B3, "item_create", {{REG_SET_FIXED, 3}, REG}, {}, V1, V4}, // Creates an item; regsA holds item data1[0-2], regB receives item ID
+    {0x00B4, "item_create2", {{REG_SET_FIXED, 12}, REG}, {}, V1, V4}, // Like item_create but input regs each specify 1 byte (and can specify all of data1)
     {0x00B5, "item_delete", {REG, {REG_SET_FIXED, 12}}, {}, V1, V4},
     {0x00B6, "item_delete2", {{REG_SET_FIXED, 3}, {REG_SET_FIXED, 12}}, {}, V1, V4},
     {0x00B7, "item_check", {{REG_SET_FIXED, 3}, REG}, {}, V1, V4},
     {0x00B8, "setevt", {INT32}, {}, V1, V2},
     {0x00B8, "setevt", {}, {INT32}, V3, V4},
-    {0x00B9, "get_difficulty_level_v1", {REG}, {}, V1, V4}, // Only returns 0-2, even in Ultimate
+    {0x00B9, "get_difficulty_level_v1", {REG}, {}, V1, V4}, // Only returns 0-2, even in Ultimate (which results in 2 as well)
     {0x00BA, "set_qt_exit", {SCRIPT32}, {}, V1, V2},
     {0x00BA, "set_qt_exit", {SCRIPT16}, {}, V3, V4},
     {0x00BB, "clr_qt_exit", {}, {}, V1, V4},
@@ -477,8 +477,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00DA, "set_returnhunter", {}, {}, V1, V4},
     {0x00DB, "set_returncity", {}, {}, V1, V4},
     {0x00DC, "load_pvr", {}, {}, V1, V4},
-    {0x00DD, "load_midi", {}, {}, V1, V4}, // Seems incomplete on V3 - has some similar codepaths as load_pvr, but the main function seems to do nothing
-    {0x00DE, "item_detect_bank", {{REG_SET_FIXED, 6}, REG}, {}, V1, V4}, // regsA specifies the first 6 bytes of an ItemData
+    {0x00DD, "load_midi", {}, {}, V1, V4}, // Seems incomplete on V3 and BB - has some similar codepaths as load_pvr, but the function that actually process the data seems to do nothing
+    {0x00DE, "item_detect_bank", {{REG_SET_FIXED, 6}, REG}, {}, V1, V4}, // regsA specifies the first 6 bytes of an ItemData (data1[0-5])
     {0x00DF, "npc_param", {{REG32_SET_FIXED, 14}, INT32}, {}, V1, V2},
     {0x00DF, "npc_param", {{REG_SET_FIXED, 14}, INT32}, {}, V3, V4},
     {0x00E0, "pad_dragon", {}, {}, V1, V4},
@@ -534,7 +534,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF815, "ba_set_item", {}, {INT32}, V3, V4},
     {0xF816, "ba_set_trapmenu", {INT32}, {}, V2, V2},
     {0xF816, "ba_set_trapmenu", {}, {INT32}, V3, V4},
-    {0xF817, "ba_set_unused_F817", {INT32}, {}, V2, V2}, // This appears to be unused - it's copied into the main battle rules struct, but then the field appears never to be read
+    {0xF817, "ba_set_unused_F817", {INT32}, {}, V2, V2}, // This appears to be unused - the value is copied into the main battle rules struct, but then the field appears never to be read
     {0xF817, "ba_set_unused_F817", {}, {INT32}, V3, V4},
     {0xF818, "ba_set_respawn", {INT32}, {}, V2, V2},
     {0xF818, "ba_set_respawn", {}, {INT32}, V3, V4},
