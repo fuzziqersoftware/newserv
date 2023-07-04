@@ -767,7 +767,7 @@ string prs_compress_indexed(const string& data, function<void(size_t, size_t)> p
   return prs_compress_indexed(data.data(), data.size(), progress_fn);
 }
 
-string prs_decompress(const void* data, size_t size, size_t max_output_size) {
+PRSDecompressResult prs_decompress_with_meta(const void* data, size_t size, size_t max_output_size) {
   // PRS is an LZ77-based compression algorithm. Compressed data is split into
   // two streams: a control stream and a data stream. The control stream is read
   // one bit at a time, and the data stream is read one byte at a time. The
@@ -862,11 +862,21 @@ string prs_decompress(const void* data, size_t size, size_t max_output_size) {
     }
   }
 
-  return std::move(w.str());
+  return {std::move(w.str()), r.where()};
+}
+
+PRSDecompressResult prs_decompress_with_meta(const string& data, size_t max_output_size) {
+  return prs_decompress_with_meta(data.data(), data.size(), max_output_size);
+}
+
+string prs_decompress(const void* data, size_t size, size_t max_output_size) {
+  auto ret = prs_decompress_with_meta(data, size, max_output_size);
+  return std::move(ret.data);
 }
 
 string prs_decompress(const string& data, size_t max_output_size) {
-  return prs_decompress(data.data(), data.size(), max_output_size);
+  auto ret = prs_decompress_with_meta(data.data(), data.size(), max_output_size);
+  return std::move(ret.data);
 }
 
 size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size) {

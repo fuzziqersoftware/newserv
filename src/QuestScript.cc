@@ -16,6 +16,29 @@
 
 using namespace std;
 
+static string format_and_indent_data(const void* data, size_t size, uint64_t start_address) {
+  struct iovec iov;
+  iov.iov_base = const_cast<void*>(data);
+  iov.iov_len = size;
+
+  string ret = "  ";
+  format_data(
+      [&ret](const void* vdata, size_t size) -> void {
+        const char* data = reinterpret_cast<const char*>(vdata);
+        for (size_t z = 0; z < size; z++) {
+          if (data[z] == '\n') {
+            ret += "\n  ";
+          } else {
+            ret.push_back(data[z]);
+          }
+        }
+      },
+      &iov, 1, start_address, nullptr, 0, PrintDataFlags::PRINT_ASCII);
+
+  strip_trailing_whitespace(ret);
+  return ret;
+}
+
 static string dasm_u16string(const char16_t* data, size_t size) {
   try {
     return format_data_string(encode_sjis(data, size));
@@ -67,6 +90,10 @@ struct MovementData {
   parray<le_float, 6> unknown_a2;
 } __attribute__((packed));
 
+struct UnknownF8F2Entry {
+  parray<le_float, 4> unknown_a1;
+} __attribute__((packed));
+
 struct QuestScriptOpcodeDefinition {
   struct Argument {
     enum class Type {
@@ -95,6 +122,7 @@ struct QuestScriptOpcodeDefinition {
       ATTACK_DATA,
       MOVEMENT_DATA,
       IMAGE_DATA,
+      UNKNOWN_F8F2_DATA,
     };
 
     Type type;
@@ -258,7 +286,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x004A, "arg_pushb", {INT8}, {}, V3, V4, PRESERVE_ARG_STACK}, // Pushes imm to the args list
     {0x004B, "arg_pushw", {INT16}, {}, V3, V4, PRESERVE_ARG_STACK}, // Pushes imm to the args list
     {0x004C, "arg_pusha", {REG}, {}, V3, V4, PRESERVE_ARG_STACK}, // Pushes memory address of regA to the args list
-    {0x004D, "arg_pusho", {SCRIPT16}, {}, V3, V4, PRESERVE_ARG_STACK}, // Pushes function_table[fn_id] to the args list
+    {0x004D, "arg_pusho", {LABEL16}, {}, V3, V4, PRESERVE_ARG_STACK}, // Pushes function_table[fn_id] to the args list
     {0x004E, "arg_pushs", {CSTRING}, {}, V3, V4, PRESERVE_ARG_STACK}, // Pushes memory address of str to the args list
     {0x0050, "message", {INT32, CSTRING}, {}, V1, V2}, // Creates a dialogue with object/NPC N starting with message str
     {0x0050, "message", {}, {INT32, CSTRING}, V3, V4}, // Creates a dialogue with object/NPC N starting with message str
@@ -745,7 +773,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8EF, "nop_F8EF", {}, {}, V3, V4},
     {0xF8F0, "turn_off_bgm_p2", {}, {}, V3, V4},
     {0xF8F1, "turn_on_bgm_p2", {}, {}, V3, V4},
-    {0xF8F2, nullptr, {}, {INT32, FLOAT32, FLOAT32, INT32, {REG_SET_FIXED, 4}, DATA16}, V3, V4}, // TODO (DX)
+    {0xF8F2, nullptr, {}, {INT32, FLOAT32, FLOAT32, INT32, {REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::UNKNOWN_F8F2_DATA}}, V3, V4}, // TODO (DX)
     {0xF8F3, "particle2", {}, {{REG_SET_FIXED, 3}, INT32, FLOAT32}, V3, V4},
     {0xF901, "dec2float", {REG, REG}, {}, V3, V4},
     {0xF902, "float2dec", {REG, REG}, {}, V3, V4},
@@ -798,7 +826,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF932, "set_episode2", {REG}, {}, V3, V4},
     {0xF933, "item_create_multi_cm", {{REG_SET_FIXED, 7}}, {}, V3, V3}, // regsA[1-6] form an ItemData's data1[0-5]
     {0xF933, "nop_F933", {{REG_SET_FIXED, 7}}, {}, V4, V4},
-    {0xF934, "scroll_text", {}, {FLOAT32, FLOAT32, FLOAT32, FLOAT32, INT32, FLOAT32, REG, CSTRING}, V3, V4},
+    {0xF934, "scroll_text", {}, {INT32, INT32, INT32, INT32, INT32, FLOAT32, REG, CSTRING}, V3, V4},
     {0xF935, "gba_create_dl_graph", {}, {}, V3, V3},
     {0xF935, "nop_F935", {}, {}, V4, V4},
     {0xF936, "gba_destroy_dl_graph", {}, {}, V3, V3},
@@ -1004,15 +1032,42 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
           next_offset(next_offset) {}
   };
 
+  struct ArgStackValue {
+    enum class Type {
+      REG,
+      REG_PTR,
+      LABEL,
+      INT,
+      CSTRING,
+    };
+    Type type;
+    uint32_t as_int;
+    std::string as_string;
+
+    ArgStackValue(Type type, uint32_t value) {
+      this->type = type;
+      this->as_int = value;
+    }
+    ArgStackValue(const std::string& value) {
+      this->type = Type::CSTRING;
+      this->as_string = value;
+    }
+  };
+
   map<size_t, DisassemblyLine> dasm_lines;
   set<size_t> pending_dasm_start_offsets;
-  pending_dasm_start_offsets.emplace(function_table.at(0)->offset);
+  for (const auto& l : function_table) {
+    if (l->offset < cmd_r.size()) {
+      pending_dasm_start_offsets.emplace(l->offset);
+    }
+  }
 
   while (!pending_dasm_start_offsets.empty()) {
     auto dasm_start_offset_it = pending_dasm_start_offsets.begin();
     cmd_r.go(*dasm_start_offset_it);
     pending_dasm_start_offsets.erase(dasm_start_offset_it);
 
+    vector<ArgStackValue> arg_stack_values;
     while (!cmd_r.eof() && !dasm_lines.count(cmd_r.where())) {
       size_t opcode_start_offset = cmd_r.where();
       string dasm_line;
@@ -1041,12 +1096,15 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
               switch (arg.type) {
                 case Type::LABEL16:
                 case Type::LABEL32: {
-                  uint32_t function_id = (arg.type == Type::LABEL32) ? cmd_r.get_u32l() : cmd_r.get_u16l();
-                  if (function_id >= function_table.size()) {
-                    dasm_arg = string_printf("label%04" PRIX32 " /* invalid */", function_id);
+                  uint32_t label_id = (arg.type == Type::LABEL32) ? cmd_r.get_u32l() : cmd_r.get_u16l();
+                  if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                    arg_stack_values.emplace_back(ArgStackValue::Type::LABEL, label_id);
+                  }
+                  if (label_id >= function_table.size()) {
+                    dasm_arg = string_printf("label%04" PRIX32 " /* invalid */", label_id);
                   } else {
-                    auto& l = function_table.at(function_id);
-                    dasm_arg = string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", function_id, l->offset);
+                    auto& l = function_table.at(label_id);
+                    dasm_arg = string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", label_id, l->offset);
                     l->references.emplace(opcode_start_offset);
                     l->add_data_type(arg.data_type);
                     if (arg.data_type == Arg::DataType::SCRIPT) {
@@ -1056,15 +1114,18 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
                   break;
                 }
                 case Type::LABEL16_SET: {
+                  if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                    throw logic_error("LABEL16_SET cannot be pushed to arg stack");
+                  }
                   uint8_t num_functions = cmd_r.get_u8();
                   for (size_t z = 0; z < num_functions; z++) {
-                    dasm_arg += (dasm_arg.empty() ? "(" : ",");
-                    uint32_t function_id = cmd_r.get_u16l();
-                    if (function_id >= function_table.size()) {
-                      dasm_arg += string_printf("function%04" PRIX32 " /* invalid */", function_id);
+                    dasm_arg += (dasm_arg.empty() ? "(" : ", ");
+                    uint32_t label_id = cmd_r.get_u16l();
+                    if (label_id >= function_table.size()) {
+                      dasm_arg += string_printf("function%04" PRIX32 " /* invalid */", label_id);
                     } else {
-                      auto& l = function_table.at(function_id);
-                      dasm_arg = string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", function_id, l->offset);
+                      auto& l = function_table.at(label_id);
+                      dasm_arg += string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", label_id, l->offset);
                       l->references.emplace(opcode_start_offset);
                       l->add_data_type(arg.data_type);
                       if (arg.data_type == Arg::DataType::SCRIPT) {
@@ -1079,13 +1140,21 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
                   }
                   break;
                 }
-                case Type::REG:
-                  dasm_arg = string_printf("r%hhu", cmd_r.get_u8());
+                case Type::REG: {
+                  uint8_t reg = cmd_r.get_u8();
+                  if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                    arg_stack_values.emplace_back((def->opcode == 0x004C) ? ArgStackValue::Type::REG_PTR : ArgStackValue::Type::REG, reg);
+                  }
+                  dasm_arg = string_printf("r%hhu", reg);
                   break;
+                }
                 case Type::REG_SET: {
+                  if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                    throw logic_error("REG_SET cannot be pushed to arg stack");
+                  }
                   uint8_t num_regs = cmd_r.get_u8();
                   for (size_t z = 0; z < num_regs; z++) {
-                    dasm_arg += string_printf("%cr%hhu", (dasm_arg.empty() ? '(' : ','), cmd_r.get_u8());
+                    dasm_arg += string_printf("%sr%hhu", (dasm_arg.empty() ? "(" : ", "), cmd_r.get_u8());
                   }
                   if (dasm_arg.empty()) {
                     dasm_arg = "()";
@@ -1096,30 +1165,60 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
                 }
                 case Type::REG_SET_FIXED: {
                   uint8_t first_reg = cmd_r.get_u8();
+                  if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                    throw logic_error("REG_SET_FIXED cannot be pushed to arg stack");
+                  }
                   dasm_arg = string_printf("r%hhu-r%hhu", first_reg, static_cast<uint8_t>(first_reg + arg.count - 1));
                   break;
                 }
-                case Type::INT8:
-                  dasm_arg = string_printf("0x%02hhX", cmd_r.get_u8());
+                case Type::INT8: {
+                  uint8_t v = cmd_r.get_u8();
+                  if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                    arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
+                  }
+                  dasm_arg = string_printf("0x%02hhX", v);
                   break;
-                case Type::INT16:
-                  dasm_arg = string_printf("0x%04hX", cmd_r.get_u16l());
+                }
+                case Type::INT16: {
+                  uint16_t v = cmd_r.get_u16l();
+                  if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                    arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
+                  }
+                  dasm_arg = string_printf("0x%04hX", v);
                   break;
-                case Type::INT32:
-                  dasm_arg = string_printf("0x%08" PRIX32, cmd_r.get_u32l());
+                }
+                case Type::INT32: {
+                  uint32_t v = cmd_r.get_u32l();
+                  if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                    arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
+                  }
+                  dasm_arg = string_printf("0x%08" PRIX32, v);
                   break;
-                case Type::FLOAT32:
-                  dasm_arg = string_printf("%g", cmd_r.get_f32l());
+                }
+                case Type::FLOAT32: {
+                  float v = cmd_r.get_f32l();
+                  if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                    arg_stack_values.emplace_back(ArgStackValue::Type::INT, *reinterpret_cast<const uint32_t*>(&v));
+                  }
+                  dasm_arg = string_printf("%g", v);
                   break;
+                }
                 case Type::CSTRING:
                   if (use_wstrs) {
                     u16string s;
                     for (char16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
                       s.push_back(ch);
                     }
+                    if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                      arg_stack_values.emplace_back(encode_sjis(s));
+                    }
                     dasm_arg = dasm_u16string(s.data(), s.size());
                   } else {
-                    dasm_arg = format_data_string(cmd_r.get_cstr());
+                    string s = cmd_r.get_cstr();
+                    if (def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK) {
+                      arg_stack_values.emplace_back(s);
+                    }
+                    dasm_arg = format_data_string(s);
                   }
                   break;
                 default:
@@ -1132,6 +1231,126 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
               }
               dasm_line += dasm_arg;
             }
+          }
+
+          if (!def->stack_args.empty()) {
+            if (!def->imm_args.empty()) {
+              throw logic_error("opcode has both imm_args and stack_args");
+            }
+            dasm_line.resize(0x20, ' ');
+            dasm_line += "... ";
+
+            if (def->stack_args.size() != arg_stack_values.size()) {
+              dasm_line += string_printf("/* matching error: expected %zu arguments, received %zu arguments */",
+                  def->stack_args.size(), arg_stack_values.size());
+            } else {
+              bool is_first_arg = true;
+              for (size_t z = 0; z < def->stack_args.size(); z++) {
+                const auto& arg_def = def->stack_args[z];
+                const auto& arg_value = arg_stack_values[z];
+
+                string dasm_arg;
+                switch (arg_def.type) {
+                  case Arg::Type::LABEL16:
+                  case Arg::Type::LABEL32:
+                    switch (arg_value.type) {
+                      case ArgStackValue::Type::REG:
+                        dasm_arg = string_printf("r%" PRIu32 "/* warning: cannot determine label data type */", arg_value.as_int);
+                        break;
+                      case ArgStackValue::Type::LABEL:
+                      case ArgStackValue::Type::INT:
+                        dasm_arg = string_printf("label%04" PRIX32, arg_value.as_int);
+                        try {
+                          auto l = function_table.at(arg_value.as_int);
+                          l->add_data_type(arg_def.data_type);
+                          l->references.emplace(opcode_start_offset);
+                        } catch (const out_of_range&) {
+                        }
+                        break;
+                      default:
+                        dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::REG:
+                  case Arg::Type::REG32:
+                    switch (arg_value.type) {
+                      case ArgStackValue::Type::REG:
+                        dasm_arg = string_printf("regs[r%" PRIu32 "]", arg_value.as_int);
+                        break;
+                      case ArgStackValue::Type::INT:
+                        dasm_arg = string_printf("r%" PRIu32, arg_value.as_int);
+                        break;
+                      default:
+                        dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::REG_SET_FIXED:
+                  case Arg::Type::REG32_SET_FIXED:
+                    switch (arg_value.type) {
+                      case ArgStackValue::Type::REG:
+                        dasm_arg = string_printf("regs[r%" PRIu32 "]-regs[r%" PRIu32 "+%hhu]", arg_value.as_int, arg_value.as_int, static_cast<uint8_t>(arg_def.count - 1));
+                        break;
+                      case ArgStackValue::Type::INT:
+                        dasm_arg = string_printf("r%" PRIu32 "-r%hhu", arg_value.as_int, static_cast<uint8_t>(arg_value.as_int + arg_def.count - 1));
+                        break;
+                      default:
+                        dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::INT8:
+                  case Arg::Type::INT16:
+                  case Arg::Type::INT32:
+                    switch (arg_value.type) {
+                      case ArgStackValue::Type::REG:
+                        dasm_arg = string_printf("r%" PRIu32, arg_value.as_int);
+                        break;
+                      case ArgStackValue::Type::REG_PTR:
+                        dasm_arg = string_printf("&r%" PRIu32, arg_value.as_int);
+                        break;
+                      case ArgStackValue::Type::INT:
+                        dasm_arg = string_printf("0x%" PRIX32 " /* %" PRIu32 " */", arg_value.as_int, arg_value.as_int);
+                        break;
+                      default:
+                        dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::FLOAT32:
+                    switch (arg_value.type) {
+                      case ArgStackValue::Type::REG:
+                        dasm_arg = string_printf("(float)r%" PRIu32, arg_value.as_int);
+                        break;
+                      case ArgStackValue::Type::INT:
+                        dasm_arg = string_printf("%g", *reinterpret_cast<const float*>(&arg_value.as_int));
+                        break;
+                      default:
+                        dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::CSTRING:
+                    if (arg_value.type == ArgStackValue::Type::CSTRING) {
+                      dasm_arg = format_data_string(arg_value.as_string);
+                    } else {
+                      dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::LABEL16_SET:
+                  case Arg::Type::REG_SET:
+                  default:
+                    throw logic_error("set-type arg found on arg stack");
+                }
+
+                if (!is_first_arg) {
+                  dasm_line += ", ";
+                } else {
+                  is_first_arg = false;
+                }
+                dasm_line += dasm_arg;
+              }
+            }
+          }
+
+          if (!(def->flags & QuestScriptOpcodeDefinition::Flag::PRESERVE_ARG_STACK)) {
+            arg_stack_values.clear();
           }
         }
       } catch (const exception& e) {
@@ -1157,6 +1376,13 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
   while (label_it != offset_to_label.end()) {
     auto l = label_it->second;
     label_it++;
+    size_t size = ((label_it == offset_to_label.end()) ? cmd_r.size() : label_it->second->offset) - l->offset;
+    if (size > 0) {
+      lines.emplace_back();
+    }
+    if (l->function_id == 0) {
+      lines.emplace_back("start:");
+    }
     lines.emplace_back(string_printf("label%04" PRIX32 ":", l->function_id));
     if (l->references.size() == 1) {
       lines.emplace_back(string_printf("  // Referenced by instruction at %04zX", *l->references.begin()));
@@ -1169,28 +1395,34 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
       lines.emplace_back("  // Referenced by instructions at " + join(tokens, ", "));
     }
 
-    size_t size = ((label_it == offset_to_label.end()) ? cmd_r.size() : label_it->second->offset) - l->offset;
-
     auto print_as_struct = [&]<Arg::DataType data_type, typename StructT>(function<void(const StructT&)> print_fn) {
       if (l->has_data_type(data_type)) {
         if (size >= sizeof(StructT)) {
           print_fn(cmd_r.pget<StructT>(l->offset));
           if (size > sizeof(StructT)) {
+            size_t struct_end_offset = l->offset + sizeof(StructT);
             size_t remaining_size = size - sizeof(StructT);
-            lines.emplace_back("  (after)      " + format_data_string(cmd_r.pgetv(l->offset + sizeof(StructT), remaining_size), remaining_size));
+            lines.emplace_back("  // Extra data after structure");
+            lines.emplace_back(format_and_indent_data(cmd_r.pgetv(struct_end_offset, remaining_size), remaining_size, struct_end_offset));
           }
         } else {
           lines.emplace_back(string_printf("  // As raw data (0x%zX bytes; too small for referenced type)", size));
-          lines.emplace_back("  " + format_data_string(cmd_r.pgetv(l->offset, size), size));
+          lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
         }
       }
     };
+
+    if (l->type_flags == 0) {
+      lines.emplace_back(string_printf("  // Could not determine data type; disassembling as code and raw data"));
+      l->add_data_type(Arg::DataType::SCRIPT);
+      l->add_data_type(Arg::DataType::DATA);
+    }
 
     // Print data interpretations of the label (if any)
     if (l->has_data_type(Arg::DataType::DATA)) {
       // TODO: We should produce a print_data-like view here
       lines.emplace_back(string_printf("  // As raw data (0x%zX bytes)", size));
-      lines.emplace_back(format_data_string(cmd_r.pgetv(l->offset, size), size));
+      lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
     }
     print_as_struct.template operator()<Arg::DataType::PLAYER_VISUAL_CONFIG, PlayerVisualConfig>([&](const PlayerVisualConfig& visual) -> void {
       lines.emplace_back("  // As PlayerVisualConfig");
@@ -1277,11 +1509,30 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
       }
     });
     if (l->has_data_type(Arg::DataType::IMAGE_DATA)) {
-      string data = cmd_r.pread(l->offset, size);
-      string decompressed = prs_decompress(data);
-      lines.emplace_back(string_printf("  // As decompressed image data (0x%zX bytes)", decompressed.size()));
-      // TODO: Use format_data here, sigh
-      lines.emplace_back("  " + format_data_string(decompressed));
+      const void* data = cmd_r.pgetv(l->offset, size);
+      auto decompressed = prs_decompress_with_meta(data, size);
+      lines.emplace_back(string_printf("  // As decompressed image data (0x%zX bytes)", decompressed.data.size()));
+      lines.emplace_back(format_and_indent_data(decompressed.data.data(), decompressed.data.size(), 0));
+      if (decompressed.input_bytes_used < size) {
+        size_t compressed_end_offset = l->offset + decompressed.input_bytes_used;
+        size_t remaining_size = size - decompressed.input_bytes_used;
+        lines.emplace_back("  // Extra data after compressed data");
+        lines.emplace_back(format_and_indent_data(cmd_r.pgetv(compressed_end_offset, remaining_size), remaining_size, compressed_end_offset));
+      }
+    }
+    if (l->has_data_type(Arg::DataType::UNKNOWN_F8F2_DATA)) {
+      StringReader r = cmd_r.sub(l->offset, size);
+      lines.emplace_back("  // As F8F2 entries");
+      while (r.remaining() >= sizeof(UnknownF8F2Entry)) {
+        const auto& e = r.get<UnknownF8F2Entry>();
+        lines.emplace_back(string_printf("  entry        %g, %g, %g, %g", e.unknown_a1[0].load(), e.unknown_a1[1].load(), e.unknown_a1[2].load(), e.unknown_a1[3].load()));
+      }
+      if (r.remaining() > 0) {
+        size_t struct_end_offset = l->offset + r.where();
+        size_t remaining_size = r.remaining();
+        lines.emplace_back("  // Extra data after structures");
+        lines.emplace_back(format_and_indent_data(r.getv(remaining_size), remaining_size, struct_end_offset));
+      }
     }
     if (l->has_data_type(Arg::DataType::SCRIPT)) {
       for (size_t z = l->offset; z < l->offset + size;) {

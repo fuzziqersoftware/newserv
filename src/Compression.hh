@@ -190,6 +190,12 @@ std::string prs_compress_optimal(
     std::function<void(PRSCompressOptimalPhase, size_t, size_t)> progress_fn = nullptr);
 
 // Decompresses PRS-compressed data.
+struct PRSDecompressResult {
+  std::string data;
+  size_t input_bytes_used;
+};
+PRSDecompressResult prs_decompress_with_meta(const void* data, size_t size, size_t max_output_size = 0);
+PRSDecompressResult prs_decompress_with_meta(const std::string& data, size_t max_output_size = 0);
 std::string prs_decompress(const void* data, size_t size, size_t max_output_size = 0);
 std::string prs_decompress(const std::string& data, size_t max_output_size = 0);
 
