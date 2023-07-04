@@ -833,7 +833,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF92E, "send_statistic", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V3, V4},
     {0xF92F, nullptr, {}, {INT32, INT32}, V3, V3}, // TODO (DX) - related to GBA functionality
     {0xF92F, "nop_F92F", {}, {INT32, INT32}, V4, V4},
-    {0xF930, "chat_box", {}, {FLOAT32, FLOAT32, FLOAT32, FLOAT32, INT32, CSTRING}, V3, V4},
+    {0xF930, "chat_box", {}, {INT32, INT32, INT32, INT32, INT32, CSTRING}, V3, V4},
     {0xF931, "chat_bubble", {}, {INT32, CSTRING}, V3, V4},
     {0xF932, "set_episode2", {REG}, {}, V3, V4},
     {0xF933, "item_create_multi_cm", {{REG_SET_FIXED, 7}}, {}, V3, V3}, // regsA[1-6] form an ItemData's data1[0-5]
@@ -845,7 +845,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF936, "nop_F936", {}, {}, V4, V4},
     {0xF937, "gba_update_dl_graph", {}, {}, V3, V3},
     {0xF937, "nop_F937", {}, {}, V4, V4},
-    {0xF938, "add_damage_to", {}, {INT32, FLOAT32}, V3, V4},
+    {0xF938, "add_damage_to", {}, {INT32, INT32}, V3, V4},
     {0xF939, "item_delete3", {}, {INT32}, V3, V4},
     {0xF93A, "get_item_info", {}, {ITEM_ID, {REG_SET_FIXED, 12}}, V3, V4}, // regsB are item.data1
     {0xF93B, "item_packing1", {}, {ITEM_ID}, V3, V4},
