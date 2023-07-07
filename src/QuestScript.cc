@@ -128,6 +128,7 @@ struct QuestScriptOpcodeDefinition {
       NONE = 0,
       SCRIPT,
       DATA,
+      CSTRING,
       PLAYER_STATS,
       PLAYER_VISUAL_CONFIG,
       RESIST_DATA,
@@ -217,6 +218,7 @@ static const Arg SCRIPT16(LABEL16, Arg::DataType::SCRIPT);
 static const Arg SCRIPT16_SET(LABEL16_SET, Arg::DataType::SCRIPT);
 static const Arg SCRIPT32(LABEL32, Arg::DataType::SCRIPT);
 static const Arg DATA16(LABEL16, Arg::DataType::DATA);
+static const Arg CSTRING_LABEL16(LABEL16, Arg::DataType::CSTRING);
 
 static const Arg CLIENT_ID(INT32, 0, "client_id");
 static const Arg ITEM_ID(INT32, 0, "item_id");
@@ -763,7 +765,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8D9, "set_motion_blur", {}, {}, V3, V4},
     {0xF8DA, "set_screen_bw", {}, {}, V3, V4},
     {0xF8DB, "get_vector_from_path", {}, {INT32, FLOAT32, FLOAT32, INT32, {REG_SET_FIXED, 4}, SCRIPT16}, V3, V4},
-    {0xF8DC, "npc_action_string", {REG, REG, DATA16}, {}, V3, V4},
+    {0xF8DC, "npc_action_string", {REG, REG, CSTRING_LABEL16}, {}, V3, V4},
     {0xF8DD, "get_pad_cond", {REG, REG}, {}, V3, V4},
     {0xF8DE, "get_button_cond", {REG, REG}, {}, V3, V4},
     {0xF8DF, "freeze_enemies", {}, {}, V3, V4},
@@ -1434,6 +1436,20 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
     if (l->has_data_type(Arg::DataType::DATA)) {
       lines.emplace_back(string_printf("  // As raw data (0x%zX bytes)", size));
       lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
+    }
+    if (l->has_data_type(Arg::DataType::CSTRING)) {
+      lines.emplace_back(string_printf("  // As C string (0x%zX bytes)", size));
+      string data;
+      if (use_wstrs) {
+        u16string wdata(reinterpret_cast<const char16_t*>(cmd_r.pgetv(l->offset, size)), size >> 1);
+        strip_trailing_zeroes(wdata);
+        data = encode_sjis(wdata);
+      } else {
+        data = cmd_r.pread(l->offset, size);
+        strip_trailing_zeroes(data);
+      }
+      string formatted = format_data_string(data);
+      lines.emplace_back(string_printf("  %04" PRIX32 "  %s", l->offset, formatted.c_str()));
     }
     print_as_struct.template operator()<Arg::DataType::PLAYER_VISUAL_CONFIG, PlayerVisualConfig>([&](const PlayerVisualConfig& visual) -> void {
       lines.emplace_back("  // As PlayerVisualConfig");
