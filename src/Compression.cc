@@ -14,35 +14,15 @@
 using namespace std;
 
 template <>
-const char* name_for_enum<PRSCompressOptimalPhase>(PRSCompressOptimalPhase v) {
+const char* name_for_enum<CompressPhase>(CompressPhase v) {
   switch (v) {
-    case PRSCompressOptimalPhase::INDEX_SHORT_COPIES:
-      return "INDEX_SHORT_COPIES";
-    case PRSCompressOptimalPhase::INDEX_LONG_COPIES:
-      return "INDEX_LONG_COPIES";
-    case PRSCompressOptimalPhase::INDEX_EXTENDED_COPIES:
-      return "INDEX_EXTENDED_COPIES";
-    case PRSCompressOptimalPhase::CONSTRUCT_PATHS:
-      return "CONSTRUCT_PATHS";
-    case PRSCompressOptimalPhase::BACKTRACE_OPTIMAL_PATH:
-      return "BACKTRACE_OPTIMAL_PATH";
-    case PRSCompressOptimalPhase::GENERATE_RESULT:
-      return "GENERATE_RESULT";
-    default:
-      return "__UNKNOWN__";
-  }
-}
-
-template <>
-const char* name_for_enum<BC0CompressOptimalPhase>(BC0CompressOptimalPhase v) {
-  switch (v) {
-    case BC0CompressOptimalPhase::INDEX:
+    case CompressPhase::INDEX:
       return "INDEX";
-    case BC0CompressOptimalPhase::CONSTRUCT_PATHS:
+    case CompressPhase::CONSTRUCT_PATHS:
       return "CONSTRUCT_PATHS";
-    case BC0CompressOptimalPhase::BACKTRACE_OPTIMAL_PATH:
+    case CompressPhase::BACKTRACE_OPTIMAL_PATH:
       return "BACKTRACE_OPTIMAL_PATH";
-    case BC0CompressOptimalPhase::GENERATE_RESULT:
+    case CompressPhase::GENERATE_RESULT:
       return "GENERATE_RESULT";
     default:
       return "__UNKNOWN__";
@@ -245,19 +225,23 @@ struct PRSPathNode {
 };
 
 string prs_compress_optimal(
-    const void* in_data_v, size_t in_size, function<void(PRSCompressOptimalPhase, size_t, size_t)> progress_fn) {
+    const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   vector<PRSPathNode> nodes;
   nodes.resize(in_size + 1);
   nodes[0].bits_used = 18; // Stop command: 2 control bits and 2 data bytes
 
+  size_t copy_progress_max = 3 * in_size;
+  atomic<size_t> copy_progress;
+
   // Populate all possible short copies
-  {
+  std::thread short_window_thread([&]() -> void {
     WindowIndex<0x100, 5, true> window(in_data_v, in_size);
     while (window.offset < in_size) {
-      if ((window.offset & 0xFFF) == 0) {
-        progress_fn(PRSCompressOptimalPhase::INDEX_SHORT_COPIES, window.offset, 0);
+      if ((window.offset & 0xFFF) == 0 && progress_fn) {
+        size_t progress = copy_progress.fetch_add(0x1000) + 0x1000;
+        progress_fn(CompressPhase::INDEX, progress, copy_progress_max, 0);
       }
       auto& node = nodes[window.offset];
       auto match = window.get_best_match();
@@ -267,14 +251,15 @@ string prs_compress_optimal(
       }
       window.advance();
     }
-  }
+  });
 
   // Populate all possible long copies
-  {
+  std::thread long_window_thread([&]() -> void {
     WindowIndex<0x1FFF, 9, true> window(in_data_v, in_size);
     while (window.offset < in_size) {
-      if ((window.offset & 0xFFF) == 0) {
-        progress_fn(PRSCompressOptimalPhase::INDEX_LONG_COPIES, window.offset, 0);
+      if ((window.offset & 0xFFF) == 0 && progress_fn) {
+        size_t progress = copy_progress.fetch_add(0x1000) + 0x1000;
+        progress_fn(CompressPhase::INDEX, progress, copy_progress_max, 0);
       }
       auto& node = nodes[window.offset];
       auto match = window.get_best_match();
@@ -284,14 +269,15 @@ string prs_compress_optimal(
       }
       window.advance();
     }
-  }
+  });
 
   // Populate all possible extended copies
-  {
+  std::thread extended_window_thread([&]() -> void {
     WindowIndex<0x1FFF, 0x100, true> window(in_data_v, in_size);
     while (window.offset < in_size) {
-      if ((window.offset & 0xFFF) == 0) {
-        progress_fn(PRSCompressOptimalPhase::INDEX_EXTENDED_COPIES, window.offset, 0);
+      if ((window.offset & 0xFFF) == 0 && progress_fn) {
+        size_t progress = copy_progress.fetch_add(0x1000) + 0x1000;
+        progress_fn(CompressPhase::INDEX, progress, copy_progress_max, 0);
       }
       auto& node = nodes[window.offset];
       auto match = window.get_best_match();
@@ -301,13 +287,17 @@ string prs_compress_optimal(
       }
       window.advance();
     }
-  }
+  });
+
+  short_window_thread.join();
+  long_window_thread.join();
+  extended_window_thread.join();
 
   // For each node, populate the literal value, and the best ways to get to the
   // following nodes
   for (size_t z = 0; z < in_size; z++) {
     if ((z & 0xFFF) == 0) {
-      progress_fn(PRSCompressOptimalPhase::CONSTRUCT_PATHS, z, 0);
+      progress_fn(CompressPhase::CONSTRUCT_PATHS, z, in_size, 0);
     }
 
     auto& node = nodes[z];
@@ -362,7 +352,9 @@ string prs_compress_optimal(
   for (size_t z = in_size; z > 0;) {
     if ((z & ~0xFFF) != (last_progress_fn_call & ~0xFFF)) {
       last_progress_fn_call = z;
-      progress_fn(PRSCompressOptimalPhase::BACKTRACE_OPTIMAL_PATH, z, 0);
+      if (progress_fn) {
+        progress_fn(CompressPhase::BACKTRACE_OPTIMAL_PATH, z, in_size, 0);
+      }
     }
     size_t from_offset = nodes[z].from_offset;
     nodes[from_offset].to_offset = z;
@@ -375,7 +367,9 @@ string prs_compress_optimal(
   for (size_t offset = 0; offset < in_size;) {
     if ((offset & ~0xFFF) != (last_progress_fn_call & ~0xFFF)) {
       last_progress_fn_call = offset;
-      progress_fn(PRSCompressOptimalPhase::GENERATE_RESULT, offset, w.size());
+      if (progress_fn) {
+        progress_fn(CompressPhase::GENERATE_RESULT, offset, in_size, w.size());
+      }
     }
 
     const auto& node = nodes[offset];
@@ -449,7 +443,7 @@ string prs_compress_optimal(
 }
 
 PRSCompressor::PRSCompressor(
-    ssize_t compression_level, function<void(size_t, size_t)> progress_fn)
+    ssize_t compression_level, ProgressCallback progress_fn)
     : compression_level(compression_level),
       progress_fn(progress_fn),
       closed(false),
@@ -566,7 +560,7 @@ void PRSCompressor::move_forward_data_to_reverse_log(size_t size) {
   for (; size > 0; size--) {
     this->reverse_log.push_back(this->forward_log.at(this->reverse_log.end_offset()));
     if (this->progress_fn && ((this->reverse_log.end_offset() & 0xFFF) == 0)) {
-      this->progress_fn(this->reverse_log.end_offset(), this->output.size());
+      this->progress_fn(CompressPhase::GENERATE_RESULT, this->reverse_log.end_offset(), this->input_bytes, this->output.size());
     }
   }
 }
@@ -656,7 +650,7 @@ string prs_compress(
     const void* vdata,
     size_t size,
     ssize_t compression_level,
-    function<void(size_t, size_t)> progress_fn) {
+    ProgressCallback progress_fn) {
   PRSCompressor prs(compression_level, progress_fn);
   prs.add(vdata, size);
   return std::move(prs.close());
@@ -665,12 +659,12 @@ string prs_compress(
 string prs_compress(
     const string& data,
     ssize_t compression_level,
-    function<void(size_t, size_t)> progress_fn) {
+    ProgressCallback progress_fn) {
   return prs_compress(data.data(), data.size(), compression_level, progress_fn);
 }
 
 string prs_compress_indexed(
-    const void* in_data_v, size_t in_size, function<void(size_t, size_t)> progress_fn) {
+    const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   LZSSInterleavedWriter w;
@@ -680,7 +674,7 @@ string prs_compress_indexed(
   while (window.offset < in_size) {
     if (progress_fn && ((last_progress_fn_call_offset & ~0xFFF) != (window.offset & ~0xFFF))) {
       last_progress_fn_call_offset = window.offset;
-      progress_fn(window.offset, w.size());
+      progress_fn(CompressPhase::GENERATE_RESULT, window.offset, in_size, w.size());
     }
 
     auto match = window.get_best_match();
@@ -763,7 +757,7 @@ string prs_compress_indexed(
   return std::move(w.close());
 }
 
-string prs_compress_indexed(const string& data, function<void(size_t, size_t)> progress_fn) {
+string prs_compress_indexed(const string& data, ProgressCallback progress_fn) {
   return prs_compress_indexed(data.data(), data.size(), progress_fn);
 }
 
@@ -999,7 +993,7 @@ struct BC0PathNode {
 };
 
 string bc0_compress_optimal(
-    const void* in_data_v, size_t in_size, function<void(BC0CompressOptimalPhase, size_t, size_t)> progress_fn) {
+    const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   vector<BC0PathNode> nodes;
@@ -1010,8 +1004,8 @@ string bc0_compress_optimal(
   {
     WindowIndex<0x1000, 0x12> window(in_data_v, in_size);
     while (window.offset < in_size) {
-      if ((window.offset & 0xFFF) == 0) {
-        progress_fn(BC0CompressOptimalPhase::INDEX, window.offset, 0);
+      if ((window.offset & 0xFFF) == 0 && progress_fn) {
+        progress_fn(CompressPhase::INDEX, window.offset, in_size, 0);
       }
       auto& node = nodes[window.offset];
       auto match = window.get_best_match();
@@ -1026,8 +1020,8 @@ string bc0_compress_optimal(
   // For each node, populate the literal value, and the best ways to get to the
   // following nodes
   for (size_t z = 0; z < in_size; z++) {
-    if ((z & 0xFFF) == 0) {
-      progress_fn(BC0CompressOptimalPhase::CONSTRUCT_PATHS, z, 0);
+    if ((z & 0xFFF) == 0 && progress_fn) {
+      progress_fn(CompressPhase::CONSTRUCT_PATHS, z, in_size, 0);
     }
 
     auto& node = nodes[z];
@@ -1058,7 +1052,9 @@ string bc0_compress_optimal(
   for (size_t z = in_size; z > 0;) {
     if ((z & ~0xFFF) != (last_progress_fn_call & ~0xFFF)) {
       last_progress_fn_call = z;
-      progress_fn(BC0CompressOptimalPhase::BACKTRACE_OPTIMAL_PATH, z, 0);
+      if (progress_fn) {
+        progress_fn(CompressPhase::BACKTRACE_OPTIMAL_PATH, z, in_size, 0);
+      }
     }
     size_t from_offset = nodes[z].from_offset;
     nodes[from_offset].to_offset = z;
@@ -1071,7 +1067,9 @@ string bc0_compress_optimal(
   for (size_t offset = 0; offset < in_size;) {
     if ((offset & ~0xFFF) != (last_progress_fn_call & ~0xFFF)) {
       last_progress_fn_call = offset;
-      progress_fn(BC0CompressOptimalPhase::GENERATE_RESULT, offset, w.size());
+      if (progress_fn) {
+        progress_fn(CompressPhase::GENERATE_RESULT, offset, in_size, w.size());
+      }
     }
 
     const auto& node = nodes[offset];
@@ -1092,11 +1090,11 @@ string bc0_compress_optimal(
   return std::move(w.close());
 }
 
-string bc0_compress(const string& data, function<void(size_t, size_t)> progress_fn) {
+string bc0_compress(const string& data, ProgressCallback progress_fn) {
   return bc0_compress(data.data(), data.size(), progress_fn);
 }
 
-string bc0_compress(const void* in_data_v, size_t in_size, function<void(size_t, size_t)> progress_fn) {
+string bc0_compress(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   LZSSInterleavedWriter w;
@@ -1106,7 +1104,7 @@ string bc0_compress(const void* in_data_v, size_t in_size, function<void(size_t,
   while (window.offset < in_size) {
     if (progress_fn && ((last_progress_fn_call_offset & ~0xFFF) != (window.offset & ~0xFFF))) {
       last_progress_fn_call_offset = window.offset;
-      progress_fn(window.offset, w.size());
+      progress_fn(CompressPhase::GENERATE_RESULT, window.offset, in_size, w.size());
     }
 
     auto match = window.get_best_match();

@@ -10,19 +10,7 @@
 
 #include "Text.hh"
 
-enum class PRSCompressOptimalPhase {
-  INDEX_SHORT_COPIES = 0,
-  INDEX_LONG_COPIES,
-  INDEX_EXTENDED_COPIES,
-  CONSTRUCT_PATHS,
-  BACKTRACE_OPTIMAL_PATH,
-  GENERATE_RESULT,
-};
-
-template <>
-const char* name_for_enum<PRSCompressOptimalPhase>(PRSCompressOptimalPhase v);
-
-enum class BC0CompressOptimalPhase {
+enum class CompressPhase {
   INDEX = 0,
   CONSTRUCT_PATHS,
   BACKTRACE_OPTIMAL_PATH,
@@ -30,7 +18,9 @@ enum class BC0CompressOptimalPhase {
 };
 
 template <>
-const char* name_for_enum<BC0CompressOptimalPhase>(BC0CompressOptimalPhase v);
+const char* name_for_enum<CompressPhase>(CompressPhase v);
+
+typedef std::function<void(CompressPhase phase, size_t input_progress, size_t input_size, size_t output_size)> ProgressCallback;
 
 ////////////////////////////////////////////////////////////////////////////////
 // PRS compression
@@ -54,7 +44,7 @@ public:
   //       the backreference or ignoring it.
   //   2+: Consider further chains of paths at each point. Using values 2 or
   //       greater for compression_level generally yields diminishing returns.
-  explicit PRSCompressor(ssize_t compression_level = 0, std::function<void(size_t, size_t)> progress_fn = nullptr);
+  explicit PRSCompressor(ssize_t compression_level = 0, ProgressCallback progress_fn = nullptr);
   ~PRSCompressor() = default;
 
   // Adds more input data to be compressed, which logically comes after all
@@ -146,7 +136,7 @@ private:
   void flush_control();
 
   ssize_t compression_level;
-  std::function<void(size_t, size_t)> progress_fn;
+  ProgressCallback progress_fn;
   bool closed;
 
   size_t control_byte_offset;
@@ -166,20 +156,20 @@ std::string prs_compress(
     const void* vdata,
     size_t size,
     ssize_t compression_level = 0,
-    std::function<void(size_t, size_t)> progress_fn = nullptr);
+    ProgressCallback progress_fn = nullptr);
 std::string prs_compress(
     const std::string& data,
     ssize_t compression_level = 0,
-    std::function<void(size_t, size_t)> progress_fn = nullptr);
+    ProgressCallback progress_fn = nullptr);
 
 // A faster form of prs_compress that doesn't have a tunable compression level.
 std::string prs_compress_indexed(
     const void* vdata,
     size_t size,
-    std::function<void(size_t, size_t)> progress_fn = nullptr);
+    ProgressCallback progress_fn = nullptr);
 std::string prs_compress_indexed(
     const std::string& data,
-    std::function<void(size_t, size_t)> progress_fn = nullptr);
+    ProgressCallback progress_fn = nullptr);
 
 // Compresses data using PRS to the smallest possible output size. This function
 // is slow, but produces results significantly smaller than even Sega's original
@@ -187,7 +177,7 @@ std::string prs_compress_indexed(
 std::string prs_compress_optimal(
     const void* vdata,
     size_t size,
-    std::function<void(PRSCompressOptimalPhase, size_t, size_t)> progress_fn = nullptr);
+    ProgressCallback progress_fn = nullptr);
 
 // Decompresses PRS-compressed data.
 struct PRSDecompressResult {
@@ -217,9 +207,9 @@ void prs_disassemble(FILE* stream, const std::string& data);
 std::string bc0_compress_optimal(
     const void* in_data_v,
     size_t in_size,
-    std::function<void(BC0CompressOptimalPhase, size_t, size_t)> progress_fn = nullptr);
-std::string bc0_compress(const std::string& data, std::function<void(size_t, size_t)> progress_fn = nullptr);
-std::string bc0_compress(const void* in_data_v, size_t in_size, std::function<void(size_t, size_t)> progress_fn = nullptr);
+    ProgressCallback progress_fn = nullptr);
+std::string bc0_compress(const std::string& data, ProgressCallback progress_fn = nullptr);
+std::string bc0_compress(const void* in_data_v, size_t in_size, ProgressCallback progress_fn = nullptr);
 
 // Encodes data in a BC0-compatible format without compression (similar to using
 // compression_level=-1 with prs_compress).

@@ -608,13 +608,13 @@ int main(int argc, char** argv) {
       }
 
       size_t input_bytes = data.size();
-      auto progress_fn = [&](size_t input_progress, size_t output_progress) -> void {
+      auto progress_fn = [&](auto, size_t input_progress, size_t, size_t output_progress) -> void {
         float progress = static_cast<float>(input_progress * 100) / input_bytes;
         float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
         fprintf(stderr, "... %zu/%zu (%g%%) => %zu (%g%%)    \r",
             input_progress, input_bytes, progress, output_progress, size_ratio);
       };
-      auto optimal_progress_fn = [&](auto phase, size_t input_progress, size_t output_progress) -> void {
+      auto optimal_progress_fn = [&](auto phase, size_t input_progress, size_t input_bytes, size_t output_progress) -> void {
         const char* phase_name = name_for_enum(phase);
         float progress = static_cast<float>(input_progress * 100) / input_bytes;
         float size_ratio = static_cast<float>(output_progress * 100) / input_progress;

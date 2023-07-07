@@ -891,7 +891,7 @@ struct S_GoodLuckResult_BB_24 {
 // 25 (S->C): Gallon's Plan result (BB)
 // Sent in response to a 6xE1 command from the client.
 
-struct S_Unknown_BB_25 {
+struct S_GallonPlanResult_BB_25 {
   le_uint16_t unknown_a1 = 0;
   uint8_t offset1 = 0;
   uint8_t offset2 = 0;
@@ -4033,14 +4033,14 @@ struct G_AttackFinished_6x46 {
 struct G_CastTechnique_6x47 {
   G_ClientIDHeader header;
   uint8_t technique_number;
-  uint8_t unused;
+  uint8_t unused; // Must not be negative
   // Note: The level here isn't the actual tech level that was cast, if the
-  // level is > 15. In that case, a 6x8D is sent first, which contains the
-  // additional level which is added to this level at cast time. They probably
-  // did this for legacy reasons when dealing with v1/v2 compatibility, and
-  // never cleaned it up.
+  // actual level is > 15. In that case, a 6x8D is sent first, which contains
+  // the additional level which is added to this level at cast time. They
+  // probably did this for legacy reasons when dealing with v1/v2
+  // compatibility, and never cleaned it up.
   uint8_t level;
-  uint8_t target_count;
+  uint8_t target_count; // Must be in [0, 10]
   struct TargetEntry {
     le_uint16_t client_id;
     le_uint16_t unknown_a2;
@@ -4687,7 +4687,7 @@ struct G_Unknown_6x8A {
 
 // 6x8D: Set technique level override
 // This command is sent immediately before 6x47 if the technique level is above
-// 15. Presumably this was done for some backward-compatibility reason.
+// 15. Presumably this was done for compatibility between v1 and v2.
 
 struct G_SetTechniqueLevelOverride_6x8D {
   G_ClientIDHeader header;
