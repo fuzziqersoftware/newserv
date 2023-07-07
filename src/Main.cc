@@ -780,6 +780,9 @@ int main(int argc, char** argv) {
 
     case Behavior::ENCRYPT_TRIVIAL_DATA:
     case Behavior::DECRYPT_TRIVIAL_DATA: {
+      if (seed.empty() && behavior == Behavior::ENCRYPT_TRIVIAL_DATA) {
+        throw logic_error("--seed is required when encrypting data");
+      }
       string data = read_input_data();
       uint8_t basis;
       if (seed.empty()) {
