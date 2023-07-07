@@ -1426,9 +1426,8 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
     };
 
     if (l->type_flags == 0) {
-      lines.emplace_back(string_printf("  // Could not determine data type; disassembling as code and raw data"));
+      lines.emplace_back(string_printf("  // Could not determine data type; disassembling as code"));
       l->add_data_type(Arg::DataType::SCRIPT);
-      l->add_data_type(Arg::DataType::DATA);
     }
 
     // Print data interpretations of the label (if any)
