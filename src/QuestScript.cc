@@ -1381,8 +1381,7 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
       dasm_lines.emplace(
           opcode_start_offset,
           DisassemblyLine(
-              string_printf("  %04zX (+%04zX)  %s  %s", opcode_start_offset, opcode_start_offset + code_offset, hex_data.c_str(), dasm_line.c_str()),
-              cmd_r.where()));
+              string_printf("  %04zX  %s  %s", opcode_start_offset, hex_data.c_str(), dasm_line.c_str()), cmd_r.where()));
     }
   }
 
@@ -1454,85 +1453,87 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
     print_as_struct.template operator()<Arg::DataType::PLAYER_VISUAL_CONFIG, PlayerVisualConfig>([&](const PlayerVisualConfig& visual) -> void {
       lines.emplace_back("  // As PlayerVisualConfig");
       string name = format_data_string(visual.name);
-      lines.emplace_back(string_printf("  name         %s", name.c_str()));
-      lines.emplace_back(string_printf("  name_color   %08" PRIX32, visual.name_color.load()));
-      lines.emplace_back(string_printf("  a2           %016" PRIX64, visual.unknown_a2.load()));
-      lines.emplace_back(string_printf("  extra_model  %02hhX", visual.extra_model));
+      lines.emplace_back(string_printf("  %04zX  name         %s", l->offset + offsetof(PlayerVisualConfig, name), name.c_str()));
+      lines.emplace_back(string_printf("  %04zX  name_color   %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color.load()));
+      lines.emplace_back(string_printf("  %04zX  a2           %016" PRIX64, l->offset + offsetof(PlayerVisualConfig, unknown_a2), visual.unknown_a2.load()));
+      lines.emplace_back(string_printf("  %04zX  extra_model  %02hhX", l->offset + offsetof(PlayerVisualConfig, extra_model), visual.extra_model));
       string unused = format_data_string(visual.unused.data(), visual.unused.bytes());
-      lines.emplace_back("  unused       " + unused);
-      lines.emplace_back(string_printf("  a3           %08" PRIX32, visual.unknown_a3.load()));
+      lines.emplace_back(string_printf("  %04zX  unused       %s", l->offset + offsetof(PlayerVisualConfig, unused), unused.c_str()));
+      lines.emplace_back(string_printf("  %04zX  a3           %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, unknown_a3), visual.unknown_a3.load()));
       string secid_name = name_for_section_id(visual.section_id);
-      lines.emplace_back(string_printf("  section_id   %02hhX (%s)", visual.section_id, secid_name.c_str()));
-      lines.emplace_back(string_printf("  char_class   %02hhX (%s)", visual.char_class, name_for_char_class(visual.char_class)));
-      lines.emplace_back(string_printf("  v2_flags     %02hhX", visual.v2_flags));
-      lines.emplace_back(string_printf("  version      %02hhX", visual.version));
-      lines.emplace_back(string_printf("  v1_flags     %08" PRIX32, visual.v1_flags.load()));
-      lines.emplace_back(string_printf("  costume      %04hX", visual.costume.load()));
-      lines.emplace_back(string_printf("  skin         %04hX", visual.skin.load()));
-      lines.emplace_back(string_printf("  face         %04hX", visual.face.load()));
-      lines.emplace_back(string_printf("  head         %04hX", visual.head.load()));
-      lines.emplace_back(string_printf("  hair         %04hX", visual.hair.load()));
-      lines.emplace_back(string_printf("  hair_color   %04hX, %04hX, %04hX", visual.hair_r.load(), visual.hair_g.load(), visual.hair_b.load()));
-      lines.emplace_back(string_printf("  proportion   %g, %g", visual.proportion_x.load(), visual.proportion_y.load()));
+      lines.emplace_back(string_printf("  %04zX  section_id   %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, section_id), visual.section_id, secid_name.c_str()));
+      lines.emplace_back(string_printf("  %04zX  char_class   %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, char_class), visual.char_class, name_for_char_class(visual.char_class)));
+      lines.emplace_back(string_printf("  %04zX  v2_flags     %02hhX", l->offset + offsetof(PlayerVisualConfig, v2_flags), visual.v2_flags));
+      lines.emplace_back(string_printf("  %04zX  version      %02hhX", l->offset + offsetof(PlayerVisualConfig, version), visual.version));
+      lines.emplace_back(string_printf("  %04zX  v1_flags     %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, v1_flags), visual.v1_flags.load()));
+      lines.emplace_back(string_printf("  %04zX  costume      %04hX", l->offset + offsetof(PlayerVisualConfig, costume), visual.costume.load()));
+      lines.emplace_back(string_printf("  %04zX  skin         %04hX", l->offset + offsetof(PlayerVisualConfig, skin), visual.skin.load()));
+      lines.emplace_back(string_printf("  %04zX  face         %04hX", l->offset + offsetof(PlayerVisualConfig, face), visual.face.load()));
+      lines.emplace_back(string_printf("  %04zX  head         %04hX", l->offset + offsetof(PlayerVisualConfig, head), visual.head.load()));
+      lines.emplace_back(string_printf("  %04zX  hair         %04hX", l->offset + offsetof(PlayerVisualConfig, hair), visual.hair.load()));
+      lines.emplace_back(string_printf("  %04zX  hair_color   %04hX, %04hX, %04hX", l->offset + offsetof(PlayerVisualConfig, hair_r), visual.hair_r.load(), visual.hair_g.load(), visual.hair_b.load()));
+      lines.emplace_back(string_printf("  %04zX  proportion   %g, %g", l->offset + offsetof(PlayerVisualConfig, proportion_x), visual.proportion_x.load(), visual.proportion_y.load()));
     });
     print_as_struct.template operator()<Arg::DataType::PLAYER_STATS, PlayerStats>([&](const PlayerStats& stats) -> void {
       lines.emplace_back("  // As PlayerStats");
-      lines.emplace_back(string_printf("  atp          %04hX /* %hu */", stats.char_stats.atp.load(), stats.char_stats.atp.load()));
-      lines.emplace_back(string_printf("  mst          %04hX /* %hu */", stats.char_stats.mst.load(), stats.char_stats.mst.load()));
-      lines.emplace_back(string_printf("  evp          %04hX /* %hu */", stats.char_stats.evp.load(), stats.char_stats.evp.load()));
-      lines.emplace_back(string_printf("  hp           %04hX /* %hu */", stats.char_stats.hp.load(), stats.char_stats.hp.load()));
-      lines.emplace_back(string_printf("  dfp          %04hX /* %hu */", stats.char_stats.dfp.load(), stats.char_stats.dfp.load()));
-      lines.emplace_back(string_printf("  ata          %04hX /* %hu */", stats.char_stats.ata.load(), stats.char_stats.ata.load()));
-      lines.emplace_back(string_printf("  lck          %04hX /* %hu */", stats.char_stats.lck.load(), stats.char_stats.lck.load()));
-      lines.emplace_back(string_printf("  a1           %04hX /* %hu */", stats.unknown_a1.load(), stats.unknown_a1.load()));
-      lines.emplace_back(string_printf("  a2           %08" PRIX32 " /* %g */", stats.unknown_a2.load_raw(), stats.unknown_a2.load()));
-      lines.emplace_back(string_printf("  a3           %08" PRIX32 " /* %g */", stats.unknown_a3.load_raw(), stats.unknown_a3.load()));
-      lines.emplace_back(string_printf("  level        %08" PRIX32 " /* level %" PRIu32 " */", stats.level.load(), stats.level.load() + 1));
-      lines.emplace_back(string_printf("  experience   %08" PRIX32 " /* %" PRIu32 " */", stats.experience.load(), stats.experience.load()));
-      lines.emplace_back(string_printf("  meseta       %08" PRIX32 " /* %" PRIu32 " */", stats.meseta.load(), stats.meseta.load()));
+      lines.emplace_back(string_printf("  %04zX  atp          %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.atp), stats.char_stats.atp.load(), stats.char_stats.atp.load()));
+      lines.emplace_back(string_printf("  %04zX  mst          %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.mst), stats.char_stats.mst.load(), stats.char_stats.mst.load()));
+      lines.emplace_back(string_printf("  %04zX  evp          %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.evp), stats.char_stats.evp.load(), stats.char_stats.evp.load()));
+      lines.emplace_back(string_printf("  %04zX  hp           %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.hp), stats.char_stats.hp.load(), stats.char_stats.hp.load()));
+      lines.emplace_back(string_printf("  %04zX  dfp          %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.dfp), stats.char_stats.dfp.load(), stats.char_stats.dfp.load()));
+      lines.emplace_back(string_printf("  %04zX  ata          %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata.load(), stats.char_stats.ata.load()));
+      lines.emplace_back(string_printf("  %04zX  lck          %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck.load(), stats.char_stats.lck.load()));
+      lines.emplace_back(string_printf("  %04zX  a1           %04hX /* %hu */", l->offset + offsetof(PlayerStats, unknown_a1), stats.unknown_a1.load(), stats.unknown_a1.load()));
+      lines.emplace_back(string_printf("  %04zX  a2           %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, unknown_a2), stats.unknown_a2.load_raw(), stats.unknown_a2.load()));
+      lines.emplace_back(string_printf("  %04zX  a3           %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, unknown_a3), stats.unknown_a3.load_raw(), stats.unknown_a3.load()));
+      lines.emplace_back(string_printf("  %04zX  level        %08" PRIX32 " /* level %" PRIu32 " */", l->offset + offsetof(PlayerStats, level), stats.level.load(), stats.level.load() + 1));
+      lines.emplace_back(string_printf("  %04zX  experience   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(PlayerStats, experience), stats.experience.load(), stats.experience.load()));
+      lines.emplace_back(string_printf("  %04zX  meseta       %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(PlayerStats, meseta), stats.meseta.load(), stats.meseta.load()));
     });
     print_as_struct.template operator()<Arg::DataType::RESIST_DATA, ResistData>([&](const ResistData& resist) -> void {
       lines.emplace_back("  // As ResistData");
-      lines.emplace_back(string_printf("  evp_bonus    %04hX /* %hu */", resist.evp_bonus.load(), resist.evp_bonus.load()));
-      lines.emplace_back(string_printf("  a1           %04hX /* %hu */", resist.unknown_a1.load(), resist.unknown_a1.load()));
-      lines.emplace_back(string_printf("  a2           %04hX /* %hu */", resist.unknown_a2.load(), resist.unknown_a2.load()));
-      lines.emplace_back(string_printf("  a3           %04hX /* %hu */", resist.unknown_a3.load(), resist.unknown_a3.load()));
-      lines.emplace_back(string_printf("  a4           %04hX /* %hu */", resist.unknown_a4.load(), resist.unknown_a4.load()));
-      lines.emplace_back(string_printf("  a5           %04hX /* %hu */", resist.unknown_a5.load(), resist.unknown_a5.load()));
-      lines.emplace_back(string_printf("  a6           %08" PRIX32 " /* %" PRIu32 " */", resist.unknown_a6.load(), resist.unknown_a6.load()));
-      lines.emplace_back(string_printf("  a7           %08" PRIX32 " /* %" PRIu32 " */", resist.unknown_a7.load(), resist.unknown_a7.load()));
-      lines.emplace_back(string_printf("  a8           %08" PRIX32 " /* %" PRIu32 " */", resist.unknown_a8.load(), resist.unknown_a8.load()));
-      lines.emplace_back(string_printf("  a9           %08" PRIX32 " /* %" PRIu32 " */", resist.unknown_a9.load(), resist.unknown_a9.load()));
-      lines.emplace_back(string_printf("  dfp_bonus    %08" PRIX32 " /* %" PRIu32 " */", resist.dfp_bonus.load(), resist.dfp_bonus.load()));
+      lines.emplace_back(string_printf("  %04zX  evp_bonus    %04hX /* %hu */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus.load(), resist.evp_bonus.load()));
+      lines.emplace_back(string_printf("  %04zX  a1           %04hX /* %hu */", l->offset + offsetof(ResistData, unknown_a1), resist.unknown_a1.load(), resist.unknown_a1.load()));
+      lines.emplace_back(string_printf("  %04zX  a2           %04hX /* %hu */", l->offset + offsetof(ResistData, unknown_a2), resist.unknown_a2.load(), resist.unknown_a2.load()));
+      lines.emplace_back(string_printf("  %04zX  a3           %04hX /* %hu */", l->offset + offsetof(ResistData, unknown_a3), resist.unknown_a3.load(), resist.unknown_a3.load()));
+      lines.emplace_back(string_printf("  %04zX  a4           %04hX /* %hu */", l->offset + offsetof(ResistData, unknown_a4), resist.unknown_a4.load(), resist.unknown_a4.load()));
+      lines.emplace_back(string_printf("  %04zX  a5           %04hX /* %hu */", l->offset + offsetof(ResistData, unknown_a5), resist.unknown_a5.load(), resist.unknown_a5.load()));
+      lines.emplace_back(string_printf("  %04zX  a6           %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a6), resist.unknown_a6.load(), resist.unknown_a6.load()));
+      lines.emplace_back(string_printf("  %04zX  a7           %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a7), resist.unknown_a7.load(), resist.unknown_a7.load()));
+      lines.emplace_back(string_printf("  %04zX  a8           %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a8), resist.unknown_a8.load(), resist.unknown_a8.load()));
+      lines.emplace_back(string_printf("  %04zX  a9           %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a9), resist.unknown_a9.load(), resist.unknown_a9.load()));
+      lines.emplace_back(string_printf("  %04zX  dfp_bonus    %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, dfp_bonus), resist.dfp_bonus.load(), resist.dfp_bonus.load()));
     });
     print_as_struct.template operator()<Arg::DataType::ATTACK_DATA, AttackData>([&](const AttackData& attack) -> void {
       lines.emplace_back("  // As AttackData");
-      lines.emplace_back(string_printf("  a1           %04hX /* %hd */", attack.unknown_a1.load(), attack.unknown_a1.load()));
-      lines.emplace_back(string_printf("  a2           %04hX /* %hd */", attack.unknown_a2.load(), attack.unknown_a2.load()));
-      lines.emplace_back(string_printf("  a3           %04hX /* %hu */", attack.unknown_a3.load(), attack.unknown_a3.load()));
-      lines.emplace_back(string_printf("  a4           %04hX /* %hu */", attack.unknown_a4.load(), attack.unknown_a4.load()));
-      lines.emplace_back(string_printf("  a5           %08" PRIX32 " /* %g */", attack.unknown_a5.load_raw(), attack.unknown_a5.load()));
-      lines.emplace_back(string_printf("  a6           %08" PRIX32 " /* %" PRIu32 " */", attack.unknown_a6.load(), attack.unknown_a6.load()));
-      lines.emplace_back(string_printf("  a7           %08" PRIX32 " /* %g */", attack.unknown_a7.load_raw(), attack.unknown_a7.load()));
-      lines.emplace_back(string_printf("  a8           %04hX /* %hu */", attack.unknown_a8.load(), attack.unknown_a8.load()));
-      lines.emplace_back(string_printf("  a9           %04hX /* %hu */", attack.unknown_a9.load(), attack.unknown_a9.load()));
-      lines.emplace_back(string_printf("  a10          %04hX /* %hu */", attack.unknown_a10.load(), attack.unknown_a10.load()));
-      lines.emplace_back(string_printf("  a11          %04hX /* %hu */", attack.unknown_a11.load(), attack.unknown_a11.load()));
-      lines.emplace_back(string_printf("  a12          %08" PRIX32 " /* %" PRIu32 " */", attack.unknown_a12.load(), attack.unknown_a12.load()));
-      lines.emplace_back(string_printf("  a13          %08" PRIX32 " /* %" PRIu32 " */", attack.unknown_a13.load(), attack.unknown_a13.load()));
-      lines.emplace_back(string_printf("  a14          %08" PRIX32 " /* %" PRIu32 " */", attack.unknown_a14.load(), attack.unknown_a14.load()));
-      lines.emplace_back(string_printf("  a15          %08" PRIX32 " /* %" PRIu32 " */", attack.unknown_a15.load(), attack.unknown_a15.load()));
-      lines.emplace_back(string_printf("  a16          %08" PRIX32 " /* %" PRIu32 " */", attack.unknown_a16.load(), attack.unknown_a16.load()));
+      lines.emplace_back(string_printf("  %04zX  a1           %04hX /* %hd */", l->offset + offsetof(AttackData, unknown_a1), attack.unknown_a1.load(), attack.unknown_a1.load()));
+      lines.emplace_back(string_printf("  %04zX  a2           %04hX /* %hd */", l->offset + offsetof(AttackData, unknown_a2), attack.unknown_a2.load(), attack.unknown_a2.load()));
+      lines.emplace_back(string_printf("  %04zX  a3           %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a3), attack.unknown_a3.load(), attack.unknown_a3.load()));
+      lines.emplace_back(string_printf("  %04zX  a4           %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4.load(), attack.unknown_a4.load()));
+      lines.emplace_back(string_printf("  %04zX  a5           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, unknown_a5), attack.unknown_a5.load_raw(), attack.unknown_a5.load()));
+      lines.emplace_back(string_printf("  %04zX  a6           %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a6), attack.unknown_a6.load(), attack.unknown_a6.load()));
+      lines.emplace_back(string_printf("  %04zX  a7           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, unknown_a7), attack.unknown_a7.load_raw(), attack.unknown_a7.load()));
+      lines.emplace_back(string_printf("  %04zX  a8           %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8.load(), attack.unknown_a8.load()));
+      lines.emplace_back(string_printf("  %04zX  a9           %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9.load(), attack.unknown_a9.load()));
+      lines.emplace_back(string_printf("  %04zX  a10          %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a10), attack.unknown_a10.load(), attack.unknown_a10.load()));
+      lines.emplace_back(string_printf("  %04zX  a11          %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a11), attack.unknown_a11.load(), attack.unknown_a11.load()));
+      lines.emplace_back(string_printf("  %04zX  a12          %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a12), attack.unknown_a12.load(), attack.unknown_a12.load()));
+      lines.emplace_back(string_printf("  %04zX  a13          %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a13), attack.unknown_a13.load(), attack.unknown_a13.load()));
+      lines.emplace_back(string_printf("  %04zX  a14          %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a14), attack.unknown_a14.load(), attack.unknown_a14.load()));
+      lines.emplace_back(string_printf("  %04zX  a15          %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a15), attack.unknown_a15.load(), attack.unknown_a15.load()));
+      lines.emplace_back(string_printf("  %04zX  a16          %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a16), attack.unknown_a16.load(), attack.unknown_a16.load()));
     });
     print_as_struct.template operator()<Arg::DataType::MOVEMENT_DATA, MovementData>([&](const MovementData& movement) -> void {
       lines.emplace_back("  // As MovementData");
       for (size_t z = 0; z < 6; z++) {
-        lines.emplace_back(string_printf("  a1[%zu]        %08" PRIX32 " /* %g */",
-            z, movement.unknown_a1[z].load_raw(), movement.unknown_a1[z].load()));
+        size_t offset = l->offset + z * sizeof(movement.unknown_a1[0]);
+        lines.emplace_back(string_printf("  %04zX  a1[%zu]        %08" PRIX32 " /* %g */",
+            offset, z, movement.unknown_a1[z].load_raw(), movement.unknown_a1[z].load()));
       }
       for (size_t z = 0; z < 6; z++) {
-        lines.emplace_back(string_printf("  a2[%zu]        %08" PRIX32 " /* %g */",
-            z, movement.unknown_a2[z].load_raw(), movement.unknown_a2[z].load()));
+        size_t offset = l->offset + sizeof(movement.unknown_a1) + z * sizeof(movement.unknown_a2[0]);
+        lines.emplace_back(string_printf("  %04zX  a2[%zu]        %08" PRIX32 " /* %g */",
+            offset, z, movement.unknown_a2[z].load_raw(), movement.unknown_a2[z].load()));
       }
     });
     if (l->has_data_type(Arg::DataType::IMAGE_DATA)) {
@@ -1551,8 +1552,9 @@ std::string disassemble_quest_script(const void* data, size_t size, GameVersion 
       StringReader r = cmd_r.sub(l->offset, size);
       lines.emplace_back("  // As F8F2 entries");
       while (r.remaining() >= sizeof(UnknownF8F2Entry)) {
+        size_t offset = r.where() + cmd_r.where();
         const auto& e = r.get<UnknownF8F2Entry>();
-        lines.emplace_back(string_printf("  entry        %g, %g, %g, %g", e.unknown_a1[0].load(), e.unknown_a1[1].load(), e.unknown_a1[2].load(), e.unknown_a1[3].load()));
+        lines.emplace_back(string_printf("  %04zX  entry        %g, %g, %g, %g", offset, e.unknown_a1[0].load(), e.unknown_a1[1].load(), e.unknown_a1[2].load(), e.unknown_a1[3].load()));
       }
       if (r.remaining() > 0) {
         size_t struct_end_offset = l->offset + r.where();
