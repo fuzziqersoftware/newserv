@@ -89,28 +89,42 @@ When ACTION is given, newserv will do things other than running the server.\n\
 Some actions accept input and/or output filenames; see the descriptions below\n\
 for details. If INPUT-FILENAME is missing or is '-', newserv reads from stdin.\n\
 If OUTPUT-FILENAME is missing and the input is not from stdin, newserv writes\n\
-the output to INPUT-FILENAME.dec; if OUTPUT-FILENAME is '-', newserv writes the\n\
-output to stdout. If stdout is a terminal, data written there is formatted in a\n\
-hex/ASCII view; otherwise, raw (binary) data is written there.\n\
+the output to INPUT-FILENAME.dec or a similarly-named file; if OUTPUT-FILENAME\n\
+is '-', newserv writes the output to stdout. If stdout is a terminal and the\n\
+output is not text, the data written to stdout is formatted in a hex/ASCII\n\
+view; in any other case, the raw output is written to stdout, which (for most\n\
+actions) may include arbitrary binary data.\n\
 \n\
 The actions are:\n\
   help\n\
     You\'re reading it now.\n\
   compress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-  decompress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   compress-pr2 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-  decompress-pr2 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   compress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Compress data using the PRS, PR2, or BC0 algorithms. By default, the\n\
+    heuristic-based compressor is used, which gives a good balance between\n\
+    memory usage, CPU usage, and output size. For PRS and PR2, this compressor\n\
+    can be tuned with the --compression-level=N option, which specifies how\n\
+    aggressive the compressor should be in searching for literal sequences. The\n\
+    default level is 0; a higher value generally means slower compression and a\n\
+    smaller output size. If the compression level is -1, the input data is\n\
+    encoded in a PRS-compatible format but not actually compressed, resulting\n\
+    in valid PRS data which is about 9/8 the size of the input.\n\
+    There is also a compressor which produces the absolute smallest output\n\
+    size, but uses much more memory and CPU time. To use this compressor, use\n\
+    the --optimal option.\n\
+  decompress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  decompress-pr2 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decompress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Compress or decompress data using the PRS, PR2, or BC0 algorithms. When\n\
-    compressing with PRS or PR2, the --compression-level=N option (default 1)\n\
-    specifies how aggressive the compressor should be in searching for literal\n\
-    sequences. A higher value generally means slower compression and a smaller\n\
-    output size. If 0 is given, the data is PRS-encoded but not actually\n\
-    compressed, resulting in valid PRS data which is larger than the input.\n\
+    Decompress data compressed using the PRS, PR2, or BC0 algorithms.\n\
   prs-size [INPUT-FILENAME]\n\
     Compute the decompressed size of the PRS-compressed input data, but don\'t\n\
     write the decompressed data anywhere.\n\
+  disassemble-prs [INPUT-FILENAME]\n\
+  disassemble-bc0 [INPUT-FILENAME]\n\
+    Write a textual representation of the commands contained in a PRS or BC0\n\
+    command stream. The output is written to stdout. This is mainly useful for\n\
+    debugging the compressors and decompressors themselves.\n\
   encrypt-data [INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS...]]\n\
   decrypt-data [INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS...]]\n\
     Encrypt or decrypt data using PSO\'s standard network protocol encryption.\n\
@@ -122,23 +136,26 @@ The actions are:\n\
     For non-BB ciphers, the --big-endian option applies the cipher masks as\n\
     big-endian instead of little-endian, which is necessary for some GameCube\n\
     file formats.\n\
-  encrypt-trivial-data [--seed=BASIS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  encrypt-trivial-data --seed=BASIS [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decrypt-trivial-data [--seed=BASIS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Encrypt or decrypt data using the Episode 3 trivial algorithm. If BASIS is\n\
-    given, it should be specified as one hex byte. If BASIS is not given,\n\
-    newserv will try all possible values and return the one that results in the\n\
-    greatest number of zero bytes in the output.\n\
+    Encrypt or decrypt data using the Episode 3 trivial algorithm. When\n\
+    encrypting, --seed=BASIS is required; BASIS should be a single byte\n\
+    specified in hexadecimal. When decrypting, BASIS should be specified the\n\
+    same way, but if it is not given, newserv will try all possible basis\n\
+    values and return the one that results in the greatest number of zero bytes\n\
+    in the output.\n\
   encrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
   decrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
-    Encrypt or decrypt a character or Guild Card file. If encrypting, the\n\
-    checksum is also recomputed and stored in the encrypted file. CRYPT-OPTION\n\
-    is required; it can be either --sys=SYSTEM-FILENAME or --seed=ROUND1-SEED\n\
-    (specified in hex).\n\
+    Encrypt or decrypt a character or Guild Card file in GCI format. If\n\
+    encrypting, the checksum is also recomputed and stored in the encrypted\n\
+    file. CRYPT-OPTION is required; it can be either --sys=SYSTEM-FILENAME\n\
+    (specifying the name of the corresponding PSO_SYSTEM .gci file) or\n\
+    --seed=ROUND1-SEED (specified as a 32-bit hexadecimal number).\n\
   salvage-gci INPUT-FILENAME [--round2] [CRYPT-OPTION] [--bytes=SIZE]\n\
     Attempt to find either the round-1 or round-2 decryption seed for a\n\
     corrupted GCI file. If --round2 is given, then CRYPT-OPTION must be given\n\
     (and should specify either a valid system file or the round1 seed).\n\
-  find-decryption-seed <OPTIONS...>\n\
+  find-decryption-seed OPTIONS...\n\
     Perform a brute-force search for a decryption seed of the given data. The\n\
     ciphertext is specified with the --encrypted=DATA option and the expected\n\
     plaintext is specified with the --decrypted=DATA option. The plaintext may\n\
@@ -146,7 +163,7 @@ The actions are:\n\
     operator), but overall it must be the same length as the ciphertext. By\n\
     default, this option uses PSO V3 encryption, but this can be overridden\n\
     with --pc. (BB encryption seeds are too long to be searched for with this\n\
-    function.) By default, the number of worker threads is equal the the number\n\
+    function.) By default, the number of worker threads is equal to the number\n\
     of CPU cores in the system, but this can be overridden with the\n\
     --threads=NUM-THREADS option.\n\
   decode-sjis [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
@@ -167,7 +184,7 @@ The actions are:\n\
     GCI or VMS file, use the --seed=SEED option and give the serial number (as\n\
     a hex-encoded 32-bit integer). If you don\'t know the serial number,\n\
     newserv will find it via a brute-force search, which will take a long time.\n\
-  disassemble-bin [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  disassemble-quest-script [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Disassemble the input quest script (.bin file) into a text representation\n\
     of the commands and metadata it contains.\n\
   cat-client ADDR:PORT\n\
@@ -185,6 +202,10 @@ The actions are:\n\
     Print the name of the item given by DATA (in hex). DATA must not contain\n\
     spaces. If DATA is 20 bytes, newserv assumes it contains an unused item ID\n\
     field; if it is fewer bytes, up to 16 bytes are used.\n\
+  encode-item DESCRIPTION\n\
+    Encode the description of an item into its corresponding ItemData (hex)\n\
+    representation. If DESCRIPTION contains spaces, it must be quoted, such as\n\
+    \"L&K14 COMBAT +10 0/10/15/0/35\".\n\
   replay-log [INPUT-FILENAME] [OPTIONS...]\n\
     Replay a terminal log as if it were a client session. input-filename may be\n\
     specified for this option. This is used for regression testing, to make\n\
@@ -197,6 +218,14 @@ The actions are:\n\
     is treated as a prefix which is prepended to the filename of each file\n\
     contained in the archive. If --big-endian is given, the archive header is\n\
     read in GameCube format; otherwise it is read in PC/BB format.\n\
+  format-rare-item-set [--json] [INPUT-FILENAME]\n\
+    Print the contents of a rare item table in a human-readable format. If\n\
+    --json is given, the input is parsed as a JSON rare item set (see\n\
+    system/blueburst/rare-table.json for an example of this format). If --json\n\
+    is not given, the input is parsed as a REL rare item set.\n\
+  convert-itemrt-rel-to-json [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Convert a REL rare table to a JSON rare item set. The resulting JSON has\n\
+    the same structure as system/blueburst/rare-table.json.\n\
 \n\
 A few options apply to multiple modes described above:\n\
   --parse-data\n\
@@ -464,7 +493,7 @@ int main(int argc, char** argv) {
         } else if (!strcmp(argv[x], "decode-qst")) {
           behavior = Behavior::DECODE_QUEST_FILE;
           quest_file_type = Quest::FileFormat::QST;
-        } else if (!strcmp(argv[x], "disassemble-bin")) {
+        } else if (!strcmp(argv[x], "disassemble-quest-script")) {
           behavior = Behavior::DISASSEMBLE_QUEST_SCRIPT;
         } else if (!strcmp(argv[x], "cat-client")) {
           behavior = Behavior::CAT_CLIENT;
