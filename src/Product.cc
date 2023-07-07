@@ -1215,7 +1215,7 @@ static pair<size_t, size_t> compute_offset1_and_limit1(
   }
 }
 
-bool product_is_valid(const string& s, uint8_t domain, uint8_t subdomain) {
+bool product_is_valid_slow(const string& s, uint8_t domain, uint8_t subdomain) {
   uint64_t product = decode_product_str(s);
   if (product == INVALID_PRODUCT) {
     return false;
@@ -1370,7 +1370,7 @@ void product_speed_test(uint64_t seed) {
     time_fast += now() - start;
 
     start = now();
-    bool is_valid_slow = product_is_valid(s, 1, 0xFF);
+    bool is_valid_slow = product_is_valid_slow(s, 1, 0xFF);
     time_slow += now() - start;
 
     if (((z & 0xF) == 0) || is_valid_slow || is_valid_fast) {
@@ -1383,5 +1383,6 @@ void product_speed_test(uint64_t seed) {
 
   fprintf(stderr, "Total time (slow): %" PRId64 " usecs (%" PRIu64 " per product)\n", time_slow, time_slow / count);
   fprintf(stderr, "Total time (fast): %" PRId64 " usecs (%" PRIu64 " per product)\n", time_fast, time_fast / count);
+  fprintf(stderr, "Fast vs. slow speedup: %zux\n", static_cast<size_t>(time_slow / time_fast));
   fprintf(stderr, "Disagreements: %zu\n", num_disagreements);
 }
