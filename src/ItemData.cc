@@ -16,16 +16,22 @@ ItemData::ItemData(const ItemData& other) {
   this->data2d = other.data2d;
 }
 
-ItemData::ItemData(const string& desc) {
+ItemData::ItemData(const string& desc, bool allow_raw_data) {
+  this->clear();
   try {
     this->parse(desc, false);
     return;
   } catch (const exception&) {
+    this->clear();
   }
   try {
     this->parse(desc, true);
     return;
   } catch (const exception&) {
+    if (!allow_raw_data) {
+      throw;
+    }
+    this->clear();
   }
 
   string data = parse_data_string(desc);

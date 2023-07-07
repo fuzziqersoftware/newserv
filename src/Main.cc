@@ -1333,7 +1333,7 @@ int main(int argc, char** argv) {
     }
 
     case Behavior::ENCODE_ITEM: {
-      ItemData item(input_filename);
+      ItemData item(input_filename, false);
       string desc = item.name(false);
       log_info("Data: %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item.data1[0], item.data1[1], item.data1[2], item.data1[3],
