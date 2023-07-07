@@ -729,13 +729,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8BA, "load_guild_card_file_creation_time_to_flag_buf", {}, {}, V2, V4},
     {0xF8BB, "write_flag_buf_to_event_flags2", {REG}, {}, V2, V4},
     {0xF8BC, "set_episode", {INT32}, {}, V3, V4},
-    {0xF8C0, "file_dl_req", {}, {INT32, CSTRING}, V3, V3},
+    {0xF8C0, "file_dl_req", {}, {INT32, CSTRING}, V3, V3}, // Sends D7
     {0xF8C0, "nop_F8C0", {}, {INT32, CSTRING}, V4, V4},
     {0xF8C1, "get_dl_status", {REG}, {}, V3, V3},
     {0xF8C1, "nop_F8C1", {REG}, {}, V4, V4},
-    {0xF8C2, nullptr, {}, {}, V3, V3}, // TODO (DX) - related to GBA functionality
+    {0xF8C2, "prepare_gba_rom_from_download", {}, {}, V3, V3}, // Prepares to load a GBA ROM from a previous file_dl_req opcode
     {0xF8C2, "nop_F8C2", {}, {}, V4, V4},
-    {0xF8C3, "get_gba_state", {REG}, {}, V3, V3},
+    {0xF8C3, "update_gba_state", {REG}, {}, V3, V3}, // One of F8C2 or F929 must be called before calling this, then this should be called repeatedly until it succeeds or fails. Return values are: 0 = not started, 1 = failed, 2 = timed out, 3 = in progress, 4 = complete
     {0xF8C3, "nop_F8C3", {REG}, {}, V4, V4},
     {0xF8C4, "congrats_msg_multi_cm", {REG}, {}, V3, V3},
     {0xF8C4, "nop_F8C4", {REG}, {}, V4, V4},
@@ -824,14 +824,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF926, "write_global_flag", {}, {INT32, INT32}, V3, V4},
     {0xF927, "item_detect_bank2", {{REG_SET_FIXED, 4}, REG}, {}, V3, V4},
     {0xF928, "floor_player_detect", {{REG_SET_FIXED, 4}}, {}, V3, V4},
-    {0xF929, "read_disk_file", {}, {CSTRING}, V3, V3},
+    {0xF929, "prepare_gba_rom_from_disk", {}, {CSTRING}, V3, V3}, // Prepares to load a GBA ROM from a local GSL file
     {0xF929, "nop_F929", {}, {CSTRING}, V4, V4},
     {0xF92A, "open_pack_select", {}, {}, V3, V4},
     {0xF92B, "item_select", {REG}, {}, V3, V4},
     {0xF92C, "get_item_id", {REG}, {}, V3, V4},
     {0xF92D, "color_change", {}, {INT32, INT32, INT32, INT32, INT32}, V3, V4},
     {0xF92E, "send_statistic", {}, {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, V3, V4},
-    {0xF92F, nullptr, {}, {INT32, INT32}, V3, V3}, // TODO (DX) - related to GBA functionality
+    {0xF92F, "gba_write_identifiers", {}, {INT32, INT32}, V3, V3}, // argA is ignored. If argB is 1, the game writes {system_file->creation_timestamp, current_time + rand(0, 100)} (8 bytes in total) to offset 0x2C0 in the GBA ROM data before sending it. current_time is in seconds since 1 January 2000.
     {0xF92F, "nop_F92F", {}, {INT32, INT32}, V4, V4},
     {0xF930, "chat_box", {}, {INT32, INT32, INT32, INT32, INT32, CSTRING}, V3, V4},
     {0xF931, "chat_bubble", {}, {INT32, CSTRING}, V3, V4},
@@ -839,11 +839,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF933, "item_create_multi_cm", {{REG_SET_FIXED, 7}}, {}, V3, V3}, // regsA[1-6] form an ItemData's data1[0-5]
     {0xF933, "nop_F933", {{REG_SET_FIXED, 7}}, {}, V4, V4},
     {0xF934, "scroll_text", {}, {INT32, INT32, INT32, INT32, INT32, FLOAT32, REG, CSTRING}, V3, V4},
-    {0xF935, "gba_create_dl_graph", {}, {}, V3, V3},
+    {0xF935, "gba_create_dl_graph", {}, {}, V3, V3}, // Creates the download progress bar (same as the quest download progress bar)
     {0xF935, "nop_F935", {}, {}, V4, V4},
-    {0xF936, "gba_destroy_dl_graph", {}, {}, V3, V3},
+    {0xF936, "gba_destroy_dl_graph", {}, {}, V3, V3}, // Destroys the download progress bar
     {0xF936, "nop_F936", {}, {}, V4, V4},
-    {0xF937, "gba_update_dl_graph", {}, {}, V3, V3},
+    {0xF937, "gba_update_dl_graph", {}, {}, V3, V3}, // Updates the download progress bar
     {0xF937, "nop_F937", {}, {}, V4, V4},
     {0xF938, "add_damage_to", {}, {INT32, INT32}, V3, V4},
     {0xF939, "item_delete3", {}, {INT32}, V3, V4},
