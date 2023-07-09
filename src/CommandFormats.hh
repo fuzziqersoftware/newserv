@@ -1098,6 +1098,101 @@ struct C_OpenFileConfirmation_44_A6 {
 // the client crashes! Essentially, it reflects the saved state of the player's
 // character rather than the live state.
 
+struct PlayerRecordsEntry_DC {
+  /* 00 */ le_uint32_t client_id;
+  /* 04 */ PlayerRecordsDC_Challenge challenge;
+  /* A4 */ PlayerRecords_Battle<false> battle;
+  /* BC */
+} __packed__;
+
+struct PlayerRecordsEntry_PC {
+  /* 00 */ le_uint32_t client_id;
+  /* 04 */ PlayerRecordsPC_Challenge challenge;
+  /* DC */ PlayerRecords_Battle<false> battle;
+  /* F4 */
+} __packed__;
+
+struct PlayerRecordsEntry_V3 {
+  /* 0000 */ le_uint32_t client_id;
+  /* 0004 */ PlayerRecordsV3_Challenge<false> challenge;
+  /* 0104 */ PlayerRecords_Battle<false> battle;
+  /* 011C */
+} __packed__;
+
+struct PlayerRecordsEntry_BB {
+  /* 0000 */ le_uint32_t client_id;
+  /* 0004 */ PlayerRecordsBB_Challenge challenge;
+  /* 0144 */ PlayerRecords_Battle<false> battle;
+  /* 015C */
+} __packed__;
+
+struct C_CharacterData_DCv1_61_98 {
+  /* 0000 */ PlayerInventory inventory;
+  /* 034C */ PlayerDispDataDCPCV3 disp;
+  /* 041C */
+} __attribute__((packed));
+
+struct C_CharacterData_DCv2_61_98 {
+  /* 0000 */ PlayerInventory inventory;
+  /* 034C */ PlayerDispDataDCPCV3 disp;
+  /* 041C */ PlayerRecordsEntry_DC records;
+  /* 04D8 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 04F0 */
+} __attribute__((packed));
+
+struct C_CharacterData_PC_61_98 {
+  /* 0000 */ PlayerInventory inventory;
+  /* 034C */ PlayerDispDataDCPCV3 disp;
+  /* 041C */ PlayerRecordsEntry_PC records;
+  /* 0510 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 0528 */ parray<le_uint32_t, 0x1E> blocked_senders;
+  /* 05A0 */ le_uint32_t auto_reply_enabled;
+  // The auto-reply message can be up to 0x200 characters. If it's shorter than
+  // that, the client truncates the command after the first null value (rounded
+  // up to the next 4-byte boundary).
+  /* 05A4 */ char16_t auto_reply[0];
+} __attribute__((packed));
+
+struct C_CharacterData_V3_61_98 {
+  /* 0000 */ PlayerInventory inventory;
+  /* 034C */ PlayerDispDataDCPCV3 disp;
+  /* 041C */ PlayerRecordsEntry_V3 records;
+  /* 0538 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 0550 */ ptext<char, 0xAC> info_board;
+  /* 05FC */ parray<le_uint32_t, 0x1E> blocked_senders;
+  /* 0674 */ le_uint32_t auto_reply_enabled;
+  // The auto-reply message can be up to 0x200 bytes. If it's shorter than that,
+  // the client truncates the command after the first zero byte (rounded up to
+  // the next 4-byte boundary).
+  /* 0678 */ char auto_reply[0];
+} __attribute__((packed));
+
+struct C_CharacterData_GC_Ep3_61_98 {
+  /* 0000 */ PlayerInventory inventory;
+  /* 034C */ PlayerDispDataDCPCV3 disp;
+  /* 041C */ PlayerRecordsEntry_V3 records;
+  /* 0538 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 0550 */ ptext<char, 0xAC> info_board;
+  /* 05FC */ parray<le_uint32_t, 0x1E> blocked_senders;
+  /* 0674 */ le_uint32_t auto_reply_enabled;
+  /* 0678 */ ptext<char, 0xAC> auto_reply;
+  /* 0724 */ Episode3::PlayerConfig ep3_config;
+  /* 2A74 */
+} __attribute__((packed));
+
+struct C_CharacterData_BB_61_98 {
+  /* 0000 */ PlayerInventory inventory;
+  /* 034C */ PlayerDispDataBB disp;
+  /* 04DC */ PlayerRecordsEntry_BB records;
+  /* 0638 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 0650 */ ptext<char16_t, 0xAC> info_board;
+  /* 07A8 */ parray<le_uint32_t, 0x1E> blocked_senders;
+  /* 0820 */ le_uint32_t auto_reply_enabled;
+  // Like on V3, the client truncates the command if the auto reply message is
+  // shorter than 0x200 bytes.
+  /* 082C */ char16_t auto_reply[0];
+} __attribute__((packed));
+
 // 62: Target command
 // Internal name: SndPsoData2
 // When a client sends this command, the server should forward it to the player
@@ -2370,17 +2465,12 @@ struct S_ChoiceSearchResultEntry_V3_C4 {
   parray<uint8_t, 0x58> unused2;
 } __packed__;
 
-// C5 (S->C): Challenge rank update (DCv2 and later versions)
+// C5 (S->C): Player records update (DCv2 and later versions)
 // Internal name: RcvChallengeData
-// header.flag = entry count
+// Command is a list of PlayerRecordsEntry structures; header.flag specifies
+// the entry count.
 // The server sends this command when a player joins a lobby to update the
 // challenge mode records of all the present players.
-// Entry format is PlayerChallengeDataV3 or PlayerChallengeDataBB.
-// newserv currently doesn't send this command at all because the V3 and
-// BB formats aren't fully documented.
-// TODO: Figure out where the text is in those formats, write appropriate
-// conversion functions, and implement the command. Don't forget to overwrite
-// the client_id field in each entry before sending.
 
 // C6 (C->S): Set blocked senders list (V3/BB)
 // The command always contains the same number of entries, even if the entries
@@ -2974,9 +3064,34 @@ struct C_CreateSpectatorTeam_GC_Ep3_E7 {
 // E7 (S->C): Unknown (Episode 3)
 // Same format as E2 command.
 
-// E7: Save or load full player data (BB)
-// See export_bb_player_data() in Player.cc for format.
+// E7: Save or load full character data (BB)
 // TODO: Verify full breakdown from send_E7 in BB disassembly.
+
+struct SC_SyncCharacterSaveFile_BB_00E7 {
+  /* 0000 */ PlayerInventory inventory; // From player data
+  /* 034C */ PlayerDispDataBB disp; // From player data
+  /* 04DC */ le_uint32_t unknown_a1;
+  /* 04E0 */ le_uint32_t creation_timestamp;
+  /* 04E4 */ le_uint32_t signature; // == 0xA205B064 (see SaveFileFormats.hh)
+  /* 04E8 */ le_uint32_t play_time_seconds;
+  /* 04EC */ le_uint32_t option_flags; // account
+  /* 04F0 */ parray<uint8_t, 0x0208> quest_data1; // player
+  /* 06F8 */ PlayerBank bank; // player
+  /* 19C0 */ GuildCardBB guild_card;
+  /* 1AC8 */ le_uint32_t unknown_a3;
+  /* 1ACC */ parray<uint8_t, 0x04E0> symbol_chats; // account
+  /* 1FAC */ parray<uint8_t, 0x0A40> shortcuts; // account
+  /* 29EC */ ptext<char16_t, 0x00AC> auto_reply; // player
+  /* 2B44 */ ptext<char16_t, 0x00AC> info_board; // player
+  /* 2C9C */ PlayerRecords_Battle<false> battle_records;
+  /* 2CB4 */ parray<uint8_t, 4> unknown_a4;
+  /* 2CB8 */ PlayerRecordsBB_Challenge challenge_records;
+  /* 2DF8 */ parray<uint8_t, 0x0028> tech_menu_config; // player
+  /* 2E20 */ parray<uint8_t, 0x002C> unknown_a6;
+  /* 2E4C */ parray<uint8_t, 0x0058> quest_data2; // player
+  /* 2EA4 */ KeyAndTeamConfigBB key_config; // account
+  /* 3994 */
+} __attribute__((packed));
 
 // E8 (S->C): Join spectator team (Episode 3)
 // header.flag = player count (including spectators)

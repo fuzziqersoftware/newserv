@@ -144,6 +144,9 @@ The actions are:\n\
     same way, but if it is not given, newserv will try all possible basis\n\
     values and return the one that results in the greatest number of zero bytes\n\
     in the output.\n\
+  encrypt-challenge-data [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  decrypt-challenge-data [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Encrypt or decrypt data using the challenge mode trivial algorithm.\n\
   encrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
   decrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
     Encrypt or decrypt a character or Guild Card file in GCI format. If\n\
@@ -252,6 +255,8 @@ enum class Behavior {
   DECRYPT_DATA,
   ENCRYPT_TRIVIAL_DATA,
   DECRYPT_TRIVIAL_DATA,
+  ENCRYPT_CHALLENGE_DATA,
+  DECRYPT_CHALLENGE_DATA,
   ENCRYPT_GCI_SAVE,
   DECRYPT_GCI_SAVE,
   FIND_DECRYPTION_SEED,
@@ -289,6 +294,8 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::DECRYPT_DATA) ||
       (b == Behavior::ENCRYPT_TRIVIAL_DATA) ||
       (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
+      (b == Behavior::ENCRYPT_CHALLENGE_DATA) ||
+      (b == Behavior::DECRYPT_CHALLENGE_DATA) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::SALVAGE_GCI) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
@@ -318,6 +325,8 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::DECRYPT_DATA) ||
       (b == Behavior::ENCRYPT_TRIVIAL_DATA) ||
       (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
+      (b == Behavior::ENCRYPT_CHALLENGE_DATA) ||
+      (b == Behavior::DECRYPT_CHALLENGE_DATA) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
@@ -471,6 +480,10 @@ int main(int argc, char** argv) {
           behavior = Behavior::ENCRYPT_TRIVIAL_DATA;
         } else if (!strcmp(argv[x], "decrypt-trivial-data")) {
           behavior = Behavior::DECRYPT_TRIVIAL_DATA;
+        } else if (!strcmp(argv[x], "encrypt-challenge-data")) {
+          behavior = Behavior::ENCRYPT_CHALLENGE_DATA;
+        } else if (!strcmp(argv[x], "decrypt-challenge-data")) {
+          behavior = Behavior::DECRYPT_CHALLENGE_DATA;
         } else if (!strcmp(argv[x], "decrypt-gci-save")) {
           behavior = Behavior::DECRYPT_GCI_SAVE;
         } else if (!strcmp(argv[x], "encrypt-gci-save")) {
@@ -810,6 +823,17 @@ int main(int argc, char** argv) {
       }
       decrypt_trivial_gci_data(data.data(), data.size(), basis);
       write_output_data(data.data(), data.size());
+      break;
+    }
+
+    case Behavior::ENCRYPT_CHALLENGE_DATA:
+    case Behavior::DECRYPT_CHALLENGE_DATA: {
+      string data = read_input_data();
+      const uint8_t* u8data = reinterpret_cast<const uint8_t*>(data.data());
+      string result = (behavior == Behavior::DECRYPT_CHALLENGE_DATA)
+          ? decrypt_challenge_rank_text(u8data, data.size())
+          : encrypt_challenge_rank_text(u8data, data.size());
+      write_output_data(result.data(), result.size());
       break;
     }
 

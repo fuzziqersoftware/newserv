@@ -2435,33 +2435,88 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) {
 
   switch (c->version()) {
-    case GameVersion::DC:
+    case GameVersion::DC: {
+      if (c->flags & Client::Flag::IS_DC_V1) {
+        const auto& pd = check_size_t<C_CharacterData_DCv1_61_98>(data);
+        auto player = c->game_data.player();
+        player->inventory = pd.inventory;
+        player->disp = pd.disp.to_bb();
+      } else {
+        const auto& pd = check_size_t<C_CharacterData_DCv2_61_98>(data, 0xFFFF);
+        auto player = c->game_data.player();
+        player->inventory = pd.inventory;
+        player->disp = pd.disp.to_bb();
+        // TODO: Parse pd.records and send C5 at an appropriate time
+        // TODO: Parse choice search config
+      }
+      break;
+    }
     case GameVersion::PC: {
-      const auto& pd = check_size_t<PSOPlayerDataDCPC>(data, 0xFFFF);
-      c->game_data.import_player(pd);
+      const auto& pd = check_size_t<C_CharacterData_PC_61_98>(data, 0xFFFF);
+      auto player = c->game_data.player();
+      auto account = c->game_data.account();
+      player->inventory = pd.inventory;
+      player->disp = pd.disp.to_bb();
+      // TODO: Parse pd.records and send C5 at an appropriate time
+      // TODO: Parse choice search config
+      account->blocked_senders = pd.blocked_senders;
+      if (pd.auto_reply_enabled) {
+        player->auto_reply = pd.auto_reply;
+      } else {
+        player->auto_reply.clear(0);
+      }
       break;
     }
     case GameVersion::GC:
     case GameVersion::XB: {
-      const PSOPlayerDataV3* pd;
+      const C_CharacterData_V3_61_98* cmd;
       if (flag == 4) { // Episode 3
         if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
           throw runtime_error("non-Episode 3 client sent Episode 3 player data");
         }
-        const auto* pd3 = &check_size_t<PSOPlayerDataGCEp3>(data);
+        const auto* pd3 = &check_size_t<C_CharacterData_GC_Ep3_61_98>(data);
         c->game_data.ep3_config.reset(new Episode3::PlayerConfig(pd3->ep3_config));
-        pd = reinterpret_cast<const PSOPlayerDataV3*>(pd3);
+        cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(pd3);
       } else {
-        pd = &check_size_t<PSOPlayerDataV3>(data,
-            sizeof(PSOPlayerDataV3) + c->game_data.player()->auto_reply.bytes());
+        cmd = &check_size_t<C_CharacterData_V3_61_98>(data, 0xFFFF);
       }
-      c->game_data.import_player(*pd, c->version() == GameVersion::GC);
+
+      auto account = c->game_data.account();
+      auto player = c->game_data.player();
+      player->inventory = cmd->inventory;
+      if (c->version() == GameVersion::GC) {
+        for (size_t z = 0; z < 30; z++) {
+          player->inventory.items[z].data.bswap_data2_if_mag();
+        }
+      }
+      player->disp = cmd->disp.to_bb();
+      // TODO: Parse cmd->records and send C5 at an appropriate time
+      // TODO: Parse choice search config
+      player->info_board = cmd->info_board;
+      account->blocked_senders = cmd->blocked_senders;
+      if (cmd->auto_reply_enabled) {
+        player->auto_reply = cmd->auto_reply;
+      } else {
+        player->auto_reply.clear(0);
+      }
+
       break;
     }
     case GameVersion::BB: {
-      const auto& pd = check_size_t<PSOPlayerDataBB>(data,
-          sizeof(PSOPlayerDataBB) + c->game_data.player()->auto_reply.bytes());
-      c->game_data.import_player(pd);
+      const auto& cmd = check_size_t<C_CharacterData_BB_61_98>(data, 0xFFFF);
+      auto account = c->game_data.account();
+      auto player = c->game_data.player();
+      // Note: we don't copy the inventory and disp here because we already have
+      // them (we sent the player data to the client in the first place)
+      // TODO: Parse pd.records and send C5 at an appropriate time
+      // TODO: Parse choice search config
+      player->info_board = cmd.info_board;
+      account->blocked_senders = cmd.blocked_senders;
+      if (cmd.auto_reply_enabled) {
+        player->auto_reply = cmd.auto_reply;
+      } else {
+        player->auto_reply.clear(0);
+      }
       break;
     }
     default:
@@ -2901,10 +2956,14 @@ static void on_xxED_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
 
 static void on_00E7_BB(shared_ptr<ServerState>, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  const auto& cmd = check_size_t<PlayerBB>(data);
+  const auto& cmd = check_size_t<SC_SyncCharacterSaveFile_BB_00E7>(data);
 
   // We only trust the player's quest data and challenge data.
-  c->game_data.player()->challenge_data = cmd.challenge_data;
+  // TODO: In the future, we shouldn't even need to trust these fields. We
+  // should instead verify our copy of the player against what the client sent,
+  // and alert on anything that's out of sync.
+  // TODO: In the future, we should save battle records here too.
+  c->game_data.player()->challenge_records = cmd.challenge_records;
   c->game_data.player()->quest_data1 = cmd.quest_data1;
   c->game_data.player()->quest_data2 = cmd.quest_data2;
 }

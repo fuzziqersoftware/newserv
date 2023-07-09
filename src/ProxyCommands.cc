@@ -1017,7 +1017,7 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
   // return MODIFIED if so.
 
   if (session.version == GameVersion::BB) {
-    auto& pd = check_size_t<PSOPlayerDataBB>(data, 0xFFFF);
+    auto& pd = check_size_t<C_CharacterData_BB_61_98>(data, 0xFFFF);
     if (session.options.enable_chat_filter) {
       add_color_inplace(pd.info_board.data(), pd.info_board.size());
     }
@@ -1034,9 +1034,9 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     }
 
   } else {
-    PSOPlayerDataV3* pd;
+    C_CharacterData_V3_61_98* pd;
     if (flag == 4) { // Episode 3
-      auto& ep3_pd = check_size_t<PSOPlayerDataGCEp3>(data);
+      auto& ep3_pd = check_size_t<C_CharacterData_GC_Ep3_61_98>(data);
       if (ep3_pd.ep3_config.is_encrypted) {
         decrypt_trivial_gci_data(
             &ep3_pd.ep3_config.card_counts,
@@ -1046,9 +1046,9 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
         ep3_pd.ep3_config.basis = 0;
         modified = true;
       }
-      pd = reinterpret_cast<PSOPlayerDataV3*>(&ep3_pd);
+      pd = reinterpret_cast<C_CharacterData_V3_61_98*>(&ep3_pd);
     } else {
-      pd = &check_size_t<PSOPlayerDataV3>(data, 0xFFFF);
+      pd = &check_size_t<C_CharacterData_V3_61_98>(data, 0xFFFF);
     }
     if (session.options.enable_chat_filter) {
       add_color_inplace(pd->info_board.data(), pd->info_board.size());

@@ -125,14 +125,17 @@ struct PSOGCSaveFileChatShortcutEntry {
 struct PSOGCCharacterFile {
   /* 00000 */ be_uint32_t checksum;
   struct Character {
-    /* 0000 */ PlayerInventory inventory;
-    /* 034C */ PlayerDispDataDCPCV3 disp;
-    /* 041C */ be_uint32_t unknown_a1;
-    /* 0420 */ be_uint32_t creation_timestamp;
+    // This structure is internally split into two by the game. The offsets here
+    // are relative to the start of this structure (first column), and relative
+    // to the start of the second internal structure (second column).
+    /* 0000:---- */ PlayerInventory inventory;
+    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 041C:0000 */ be_uint32_t unknown_a1;
+    /* 0420:0004 */ be_uint32_t creation_timestamp;
     // The signature field holds the value 0xA205B064, which is 2718281828 in
     // decimal - approximately e * 10^9. It's unknown why Sega chose this value.
-    /* 0424 */ be_uint32_t signature;
-    /* 0428 */ be_uint32_t play_time_seconds;
+    /* 0424:0008 */ be_uint32_t signature;
+    /* 0428:000C */ be_uint32_t play_time_seconds;
     // This field is a collection of several flags and small values. The known
     // fields are:
     //   ------zA BCDEFG-- HHHIIIJJ KLMNOPQR
@@ -151,19 +154,21 @@ struct PSOGCCharacterFile {
     //   P = Cursor position (0 = saved; 1 = non-saved)
     //   Q = Button config (0 = normal; 1 = L/R reversed)
     //   R = Map direction (0 = non-fixed; 1 = fixed)
-    /* 042C */ be_uint32_t option_flags;
-    /* 0430 */ be_uint32_t save_count;
-    /* 0434 */ parray<uint8_t, 0x230> unknown_a4;
-    /* 0664 */ PlayerBank bank;
-    /* 192C */ GuildCardV3 guild_card;
-    /* 19BC */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
-    /* 1DDC */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
-    /* 246C */ ptext<char, 0xAC> auto_reply;
-    /* 2518 */ ptext<char, 0xAC> info_board;
-    /* 25C4 */ parray<uint8_t, 0x11C> unknown_a5;
-    /* 26E0 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
-    /* 2708 */ parray<uint8_t, 0x90> unknown_a6;
-    /* 2798 */
+    /* 042C:0010 */ be_uint32_t option_flags;
+    /* 0430:0014 */ be_uint32_t save_count;
+    /* 0434:0018 */ parray<uint8_t, 0x230> unknown_a4;
+    /* 0664:0248 */ PlayerBank bank;
+    /* 192C:1510 */ GuildCardV3 guild_card;
+    /* 19BC:15A0 */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
+    /* 1DDC:19C0 */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
+    /* 246C:2050 */ ptext<char, 0xAC> auto_reply;
+    /* 2518:20FC */ ptext<char, 0xAC> info_board;
+    /* 25C4:21A8 */ PlayerRecords_Battle<true> battle_records;
+    /* 25DC:21C0 */ parray<uint8_t, 4> unknown_a2;
+    /* 25E0:21C4 */ PlayerRecordsV3_Challenge<true> challenge_records;
+    /* 26E0:22C4 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
+    /* 2708:22EC */ parray<uint8_t, 0x90> unknown_a6;
+    /* 2798:237C */
   } __attribute__((packed));
   /* 00004 */ parray<Character, 7> characters;
   /* 1152C */ ptext<char, 0x10> serial_number; // As %08X (not decimal)

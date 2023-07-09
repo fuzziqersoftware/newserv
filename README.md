@@ -64,7 +64,9 @@ Current known issues / missing features / things to do:
 - Implement private and overflow lobbies.
 - Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
 - Encapsulate BB server-side random state and make replays deterministic.
-- Make a looser form of item tracking that can be used on non-BB versions when quests replace player inventories, like in battle and challenge modes.
+- Implement character and inventory replacement for battle and challenge modes.
+- Implement the C5 (battle/challenge records) command.
+- Implement choice search.
 - Episode 3 bugs
     - Fix behavior when joining a spectator team after the beginning of a battle.
     - Disconnecting during a match turns you into a COM if there are other humans in the match, even if the match is part of a tournament. This may be incorrect behavior for tournaments.

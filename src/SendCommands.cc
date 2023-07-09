@@ -606,7 +606,43 @@ void send_approve_player_choice_bb(shared_ptr<Client> c) {
 }
 
 void send_complete_player_bb(shared_ptr<Client> c) {
-  send_command_t(c, 0x00E7, 0x00000000, c->game_data.export_player_bb());
+  auto account = c->game_data.account();
+  auto player = c->game_data.player();
+
+  SC_SyncCharacterSaveFile_BB_00E7 cmd;
+  cmd.inventory = player->inventory;
+  cmd.disp = player->disp;
+  cmd.unknown_a1 = 0;
+  cmd.creation_timestamp = 0;
+  cmd.signature = 0xA205B064;
+  cmd.play_time_seconds = 0; // TODO: Can we just use the same value as in disp?
+  cmd.option_flags = account->option_flags;
+  cmd.quest_data1 = player->quest_data1;
+  cmd.bank = player->bank;
+  cmd.guild_card.guild_card_number = c->game_data.guild_card_number;
+  cmd.guild_card.name = player->disp.name;
+  cmd.guild_card.team_name = account->team_name;
+  cmd.guild_card.description = player->guild_card_description;
+  cmd.guild_card.present = 1;
+  cmd.guild_card.language = cmd.inventory.language;
+  cmd.guild_card.section_id = player->disp.visual.section_id;
+  cmd.guild_card.char_class = player->disp.visual.char_class;
+  cmd.unknown_a3 = 0;
+  cmd.symbol_chats = account->symbol_chats;
+  cmd.shortcuts = account->shortcuts;
+  cmd.auto_reply = player->auto_reply;
+  cmd.info_board = player->info_board;
+  cmd.battle_records.place_counts.clear(0);
+  cmd.battle_records.disconnect_count = 0;
+  cmd.battle_records.unknown_a1.clear(0);
+  cmd.unknown_a4 = 0;
+  cmd.challenge_records = player->challenge_records;
+  cmd.tech_menu_config = player->tech_menu_config;
+  cmd.unknown_a6.clear(0);
+  cmd.quest_data2 = player->quest_data2;
+  cmd.key_config = account->key_config;
+
+  send_command_t(c, 0x00E7, 0x00000000, cmd);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

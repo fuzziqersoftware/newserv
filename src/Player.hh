@@ -182,13 +182,14 @@ struct PlayerDispDataBBPreview {
 
 // BB player appearance and stats data
 struct PlayerDispDataBB {
-  PlayerStats stats;
-  PlayerVisualConfig visual;
-  ptext<char16_t, 0x0C> name;
-  le_uint32_t play_time;
-  uint32_t unknown_a3;
-  parray<uint8_t, 0xE8> config;
-  parray<uint8_t, 0x14> technique_levels;
+  /* 0000 */ PlayerStats stats;
+  /* 0024 */ PlayerVisualConfig visual;
+  /* 0074 */ ptext<char16_t, 0x0C> name;
+  /* 008C */ le_uint32_t play_time;
+  /* 0090 */ uint32_t unknown_a3;
+  /* 0094 */ parray<uint8_t, 0xE8> config;
+  /* 017C */ parray<uint8_t, 0x14> technique_levels;
+  /* 0190 */
 
   PlayerDispDataBB() noexcept;
 
@@ -217,14 +218,15 @@ struct GuildCardV3 {
 
 // BB guild card format
 struct GuildCardBB {
-  le_uint32_t guild_card_number;
-  ptext<char16_t, 0x18> name;
-  ptext<char16_t, 0x10> team_name;
-  ptext<char16_t, 0x58> description;
-  uint8_t present; // should be 1 if guild card entry exists
-  uint8_t language;
-  uint8_t section_id;
-  uint8_t char_class;
+  /* 0000 */ le_uint32_t guild_card_number;
+  /* 0004 */ ptext<char16_t, 0x18> name;
+  /* 0034 */ ptext<char16_t, 0x10> team_name;
+  /* 0054 */ ptext<char16_t, 0x58> description;
+  /* 0104 */ uint8_t present; // should be 1 if guild card entry exists
+  /* 0105 */ uint8_t language;
+  /* 0106 */ uint8_t section_id;
+  /* 0107 */ uint8_t char_class;
+  /* 0108 */
 
   GuildCardBB() noexcept;
   void clear();
@@ -324,39 +326,84 @@ struct PlayerLobbyDataBB {
   void clear();
 } __attribute__((packed));
 
-struct PlayerChallengeDataV3 {
-  le_uint32_t client_id;
-  struct {
-    le_uint16_t unknown_a1;
-    parray<uint8_t, 2> unknown_a2; // Possibly unused
-    parray<le_uint32_t, 0x17> unknown_a3;
-    struct {
-      parray<uint8_t, 4> unknown_a1;
-      le_uint16_t unknown_a2;
-      parray<uint8_t, 2> unknown_a3;
-      parray<le_uint32_t, 5> unknown_a4;
-      parray<uint8_t, 0x34> unknown_a5;
-    } __attribute__((packed)) unknown_a4; // 0x50 bytes
-    struct {
-      parray<uint8_t, 4> unknown_a1;
-      parray<le_uint32_t, 3> unknown_a2;
-    } __attribute__((packed)) unknown_a5; // 0x10 bytes
-    struct UnknownPair {
-      le_uint32_t unknown_a1;
-      le_uint32_t unknown_a2;
-    } __attribute__((packed));
-    parray<UnknownPair, 3> unknown_a6; // 0x18 bytes
-    parray<uint8_t, 0x28> unknown_a7;
-  } __attribute__((packed)) unknown_a1; // 0x100 bytes
-  // On Episode 3, unknown_a2[0] is win count, [1] is loss count, and [4] is
-  // disconnect count
-  parray<le_uint16_t, 8> unknown_a2;
-  parray<le_uint32_t, 2> unknown_a3;
-} __attribute__((packed)); // 0x11C bytes
+template <bool IsWideChar>
+struct PlayerRecordsDCPC_Challenge {
+  using CharT = typename std::conditional<IsWideChar, char16_t, char>::type;
+  using CharBinT = typename std::conditional<IsWideChar, le_uint16_t, uint8_t>::type;
 
-struct PlayerChallengeDataBB {
-  le_uint32_t client_id;
-  parray<uint8_t, 0x158> unknown_a1;
+  /* 00 */ le_uint16_t title_color;
+  /* 02 */ parray<uint8_t, 2> unknown_a0;
+  /* 04 */ parray<CharBinT, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
+  /* 10 */ parray<uint8_t, 0x24> unknown_a1; // TODO: This might be online or offline times
+  /* 34 */ le_uint16_t unknown_a2;
+  /* 36 */ le_uint16_t grave_deaths;
+  /* 38 */ parray<le_uint32_t, 5> grave_coords_time;
+  /* 4C */ ptext<CharT, 0x14> grave_team;
+  /* 60 */ ptext<CharT, 0x18> grave_message;
+  /* 78 */ parray<le_uint32_t, 9> times_ep1; // TODO: This might be offline times
+  /* 9C */ parray<uint8_t, 4> unknown_a3;
+  /* A0 */
+} __attribute__((packed));
+
+struct PlayerRecordsDC_Challenge : PlayerRecordsDCPC_Challenge<false> {
+} __attribute__((packed));
+struct PlayerRecordsPC_Challenge : PlayerRecordsDCPC_Challenge<true> {
+} __attribute__((packed));
+
+template <bool IsBigEndian>
+struct PlayerRecordsV3_Challenge {
+  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
+  // Offsets are (1) relative to start of C5 entry, and (2) relative to start
+  // of save file structure
+  /* 0000:001C */ U16T title_color; // XRGB1555
+  /* 0002:001E */ parray<uint8_t, 2> unknown_a2; // Probably actually unused
+  /* 0004:0020 */ parray<U32T, 9> times_ep1_online;
+  /* 0028:0044 */ parray<U32T, 5> times_ep2_online;
+  /* 003C:0058 */ parray<U32T, 9> times_ep1_offline;
+  /* 0060:007C */ parray<uint8_t, 4> unknown_a3;
+  /* 0064:0080 */ U16T grave_deaths;
+  /* 0066:0082 */ parray<uint8_t, 2> unknown_a4; // Probably actually unused
+  /* 0068:0084 */ parray<U32T, 5> grave_coords_time;
+  /* 007C:0098 */ ptext<char, 0x14> grave_team;
+  /* 0090:00AC */ ptext<char, 0x20> grave_message;
+  /* 00B0:00CC */ parray<uint8_t, 4> unknown_a5;
+  /* 00B4:00D0 */ parray<U32T, 9> unknown_a6;
+  /* 00D8:00F4 */ parray<uint8_t, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
+  /* 00E4:0100 */ parray<uint8_t, 0x1C> unknown_a7;
+  /* 0100:011C */
+} __attribute__((packed));
+
+struct PlayerRecordsBB_Challenge {
+  // TODO: Figure out the rest of this structure. Probably it's very similar to
+  // the V3 structure, but it's a bit larger due to various text fields.
+  /* 0000 */ le_uint16_t title_color; // XRGB1555
+  /* 0002 */ parray<uint8_t, 2> unknown_a2; // Probably actually unused
+  /* 0004 */ parray<le_uint32_t, 9> times_ep1;
+  /* 0028 */ parray<le_uint32_t, 5> times_ep2;
+  /* 003C */ parray<le_uint32_t, 9> times_ep1_offline;
+  /* 0060 */ parray<uint8_t, 4> unknown_a3;
+  /* 0064 */ le_uint16_t grave_deaths;
+  /* 0066 */ parray<uint8_t, 2> unknown_a4; // Probably actually unused
+  /* 0068 */ parray<le_uint32_t, 5> grave_coords_time;
+  /* 007C */ ptext<char16_t, 0x14> grave_team;
+  /* 00A4 */ ptext<char16_t, 0x20> grave_message;
+  /* 00E4 */ parray<uint8_t, 4> unknown_a5;
+  /* 00E8 */ parray<le_uint32_t, 9> unknown_a6;
+  /* 010C */ parray<le_uint16_t, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
+  /* 0124 */ parray<uint8_t, 0x1C> unknown_a7;
+  /* 0140 */
+} __attribute__((packed));
+
+template <bool IsBigEndian>
+struct PlayerRecords_Battle {
+  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+  // On Episode 3, battle_place_counts[0] is win count and [1] is loss count
+  /* 00 */ parray<U16T, 4> place_counts;
+  /* 08 */ U16T disconnect_count;
+  /* 0A */ parray<uint8_t, 0x0E> unknown_a1;
+  /* 18 */
 } __attribute__((packed));
 
 template <typename ItemIDT>
@@ -370,82 +417,12 @@ struct ChoiceSearchConfig {
   parray<Entry, 5> entries;
 } __attribute__((packed));
 
-struct PSOPlayerDataDCPC { // For command 61
-  PlayerInventory inventory;
-  PlayerDispDataDCPCV3 disp;
-} __attribute__((packed));
-
-struct PSOPlayerDataV3 { // For command 61
-  PlayerInventory inventory;
-  PlayerDispDataDCPCV3 disp;
-  PlayerChallengeDataV3 challenge_data;
-  ChoiceSearchConfig<le_uint16_t> choice_search_config;
-  ptext<char, 0xAC> info_board;
-  parray<le_uint32_t, 0x1E> blocked_senders;
-  le_uint32_t auto_reply_enabled;
-  // The auto-reply message can be up to 0x200 bytes. If it's shorter than that,
-  // the client truncates the command after the first zero byte (rounded up to
-  // the next 4-byte boundary).
-  char auto_reply[0];
-} __attribute__((packed));
-
-struct PSOPlayerDataGCEp3 { // For command 61
-  PlayerInventory inventory;
-  PlayerDispDataDCPCV3 disp;
-  PlayerChallengeDataV3 challenge_data;
-  ChoiceSearchConfig<le_uint16_t> choice_search_config;
-  ptext<char, 0xAC> info_board;
-  parray<le_uint32_t, 0x1E> blocked_senders;
-  le_uint32_t auto_reply_enabled;
-  ptext<char, 0xAC> auto_reply;
-  Episode3::PlayerConfig ep3_config;
-} __attribute__((packed));
-
-struct PSOPlayerDataBB { // For command 61
-  PlayerInventory inventory;
-  PlayerDispDataBB disp;
-  PlayerChallengeDataBB challenge_data;
-  ChoiceSearchConfig<le_uint16_t> choice_search_config;
-  ptext<char16_t, 0xAC> info_board;
-  parray<le_uint32_t, 0x1E> blocked_senders;
-  le_uint32_t auto_reply_enabled;
-  char16_t auto_reply[0];
-} __attribute__((packed));
-
-struct PlayerBB { // Used in 00E7 command
-  PlayerInventory inventory; // 0000-034C; player
-  PlayerDispDataBB disp; // 034C-04DC; player
-  parray<uint8_t, 0x0010> unknown; // 04DC-04EC; not saved
-  le_uint32_t option_flags; // 04EC-04F0; account
-  parray<uint8_t, 0x0208> quest_data1; // 04F0-06F8; player
-  PlayerBank bank; // 06F8-19C0; player
-  le_uint32_t guild_card_number; // 19C0-19C4; player
-  ptext<char16_t, 0x18> name; // 19C4-19F4; player
-  ptext<char16_t, 0x10> team_name; // 19F4-1A14; player
-  ptext<char16_t, 0x58> guild_card_description; // 1A14-1AC4; player
-  uint8_t reserved1; // 1AC4-1AC5; player
-  uint8_t reserved2; // 1AC5-1AC6; player
-  uint8_t section_id; // 1AC6-1AC7; player
-  uint8_t char_class; // 1AC7-1AC8; player
-  le_uint32_t unknown3; // 1AC8-1ACC; not saved
-  parray<uint8_t, 0x04E0> symbol_chats; // 1ACC-1FAC; account
-  parray<uint8_t, 0x0A40> shortcuts; // 1FAC-29EC; account
-  ptext<char16_t, 0x00AC> auto_reply; // 29EC-2B44; player
-  ptext<char16_t, 0x00AC> info_board; // 2B44-2C9C; player
-  parray<uint8_t, 0x001C> unknown5; // 2C9C-2CB8; not saved
-  parray<uint8_t, 0x0140> challenge_data; // 2CB8-2DF8; player
-  parray<uint8_t, 0x0028> tech_menu_config; // 2DF8-2E20; player
-  parray<uint8_t, 0x002C> unknown6; // 2E20-2E4C; not saved
-  parray<uint8_t, 0x0058> quest_data2; // 2E4C-2EA4; player
-  KeyAndTeamConfigBB key_config; // 2EA4-3994; account
-} __attribute__((packed));
-
 struct SavedPlayerDataBB { // .nsc file format
   ptext<char, 0x40> signature;
   PlayerDispDataBBPreview preview;
   ptext<char16_t, 0x00AC> auto_reply;
   PlayerBank bank;
-  parray<uint8_t, 0x0140> challenge_data;
+  PlayerRecordsBB_Challenge challenge_records;
   PlayerDispDataBB disp;
   ptext<char16_t, 0x0058> guild_card_description;
   ptext<char16_t, 0x00AC> info_board;
@@ -453,6 +430,9 @@ struct SavedPlayerDataBB { // .nsc file format
   parray<uint8_t, 0x0208> quest_data1;
   parray<uint8_t, 0x0058> quest_data2;
   parray<uint8_t, 0x0028> tech_menu_config;
+  // TODO: We don't save battle records in this structure, which is wrong.
+  // Make a new save file format that doesn't have the super-long signature,
+  // and also can save battle records.
 
   void add_item(const PlayerInventoryItem& item);
   PlayerInventoryItem remove_item(
@@ -524,13 +504,6 @@ public:
   void load_player_data();
   // Note: This function is not const because it updates the player's play time.
   void save_player_data();
-
-  void import_player(const PSOPlayerDataDCPC& pd);
-  void import_player(const PSOPlayerDataV3& pd, bool is_gc);
-  void import_player(const PSOPlayerDataBB& pd);
-  // Note: this function is not const because it can cause player and account
-  // data to be loaded
-  PlayerBB export_player_bb();
 };
 
 uint32_t compute_guild_card_checksum(const void* data, size_t size);

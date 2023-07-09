@@ -644,8 +644,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF872, "ba_set_time_limit", {INT32}, {}, V2, V2},
     {0xF872, "ba_set_time_limit", {}, {INT32}, V3, V4},
     {0xF873, "dark_falz_is_dead", {REG}, {}, V2, V4},
-    {0xF874, nullptr, {INT32, CSTRING}, {}, V2, V2}, // TODO (DX) - Similar to A0, but does something with the two strings in non-4P challenge mode
-    {0xF874, nullptr, {}, {INT32, CSTRING}, V3, V4}, // TODO (DX)
+    {0xF874, "set_cmode_rank_override", {INT32, CSTRING}, {}, V2, V2}, // argA is an XRGB8888 color, argB is two strings separated by \t or \n: the rank text to check for, and the rank text that should replace it if found
+    {0xF874, "set_cmode_rank_override", {}, {INT32, CSTRING}, V3, V4},
     {0xF875, "enable_stealth_suit_effect", {REG}, {}, V2, V4},
     {0xF876, "disable_stealth_suit_effect", {REG}, {}, V2, V4},
     {0xF877, "enable_techs", {REG}, {}, V2, V4},

@@ -240,3 +240,8 @@ private:
 };
 
 void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis);
+
+std::string decrypt_challenge_rank_text(const uint8_t* data, size_t size);
+std::string encrypt_challenge_rank_text(const uint8_t* data, size_t size);
+std::u16string decrypt_challenge_rank_text(const le_uint16_t* data, size_t size);
+std::u16string encrypt_challenge_rank_text(const le_uint16_t* data, size_t size);
