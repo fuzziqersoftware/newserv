@@ -74,7 +74,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(
   }
   if (s->proxy_enable_login_options) {
     add_option(ProxyOptionsMenuItemID::RED_NAME, c->options.red_name,
-        u"Red name", u"Set your name\ncolor to red");
+        u"Red name", u"Set the colors\nof your name and\nChallenge Mode\nrank to red");
     add_option(ProxyOptionsMenuItemID::BLANK_NAME, c->options.blank_name,
         u"Blank name", u"Suppress your\ncharacter name\nduring login");
     add_option(ProxyOptionsMenuItemID::SUPPRESS_LOGIN, c->options.suppress_remote_login,
@@ -2446,7 +2446,8 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
         auto player = c->game_data.player();
         player->inventory = pd.inventory;
         player->disp = pd.disp.to_bb();
-        // TODO: Parse pd.records and send C5 at an appropriate time
+        player->battle_records = pd.records.battle;
+        player->challenge_records = pd.records.challenge;
         // TODO: Parse choice search config
       }
       break;
@@ -2457,7 +2458,8 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
       auto account = c->game_data.account();
       player->inventory = pd.inventory;
       player->disp = pd.disp.to_bb();
-      // TODO: Parse pd.records and send C5 at an appropriate time
+      player->battle_records = pd.records.battle;
+      player->challenge_records = pd.records.challenge;
       // TODO: Parse choice search config
       account->blocked_senders = pd.blocked_senders;
       if (pd.auto_reply_enabled) {
@@ -2490,7 +2492,8 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
         }
       }
       player->disp = cmd->disp.to_bb();
-      // TODO: Parse cmd->records and send C5 at an appropriate time
+      player->battle_records = cmd->records.battle;
+      player->challenge_records = cmd->records.challenge;
       // TODO: Parse choice search config
       player->info_board = cmd->info_board;
       account->blocked_senders = cmd->blocked_senders;
@@ -2499,7 +2502,6 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
       } else {
         player->auto_reply.clear(0);
       }
-
       break;
     }
     case GameVersion::BB: {
@@ -2508,7 +2510,8 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
       auto player = c->game_data.player();
       // Note: we don't copy the inventory and disp here because we already have
       // them (we sent the player data to the client in the first place)
-      // TODO: Parse pd.records and send C5 at an appropriate time
+      player->battle_records = cmd.records.battle;
+      player->challenge_records = cmd.records.challenge;
       // TODO: Parse choice search config
       player->info_board = cmd.info_board;
       account->blocked_senders = cmd.blocked_senders;

@@ -264,6 +264,7 @@ void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
     std::shared_ptr<const QuestCategoryIndex> category_index, uint8_t flags);
 void send_lobby_list(std::shared_ptr<Client> c, std::shared_ptr<ServerState> s);
 
+void send_player_records(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l, std::shared_ptr<Client> joining_client = nullptr);
 void send_join_lobby(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
 void send_player_join_notification(std::shared_ptr<Client> c,
     std::shared_ptr<Lobby> l, std::shared_ptr<Client> joining_client);

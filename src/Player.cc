@@ -11,6 +11,7 @@
 #include "FileContentsCache.hh"
 #include "ItemData.hh"
 #include "Loggers.hh"
+#include "PSOEncryption.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 #include "Version.hh"
@@ -18,10 +19,8 @@
 using namespace std;
 
 // Originally there was going to be a language-based header, but then I decided
-// against it. These strings were already in use for that parser, so I didn't
-// bother changing them.
-static const string PLAYER_FILE_SIGNATURE =
-    "newserv player file format; 10 sections present; sequential;";
+// against it. This string was already in use for that parser, so I didn't
+// bother changing it.
 static const string ACCOUNT_FILE_SIGNATURE =
     "newserv account file format; 7 sections present; sequential;";
 
@@ -226,7 +225,6 @@ shared_ptr<SavedPlayerDataBB> ClientGameData::player(bool should_load) {
   if (!this->player_data.get() && should_load) {
     if (this->bb_username.empty()) {
       this->player_data.reset(new SavedPlayerDataBB());
-      this->player_data->signature = PLAYER_FILE_SIGNATURE;
     } else {
       this->load_player_data();
     }
@@ -273,9 +271,7 @@ void ClientGameData::create_player(
     shared_ptr<const LevelTable> level_table) {
   shared_ptr<SavedPlayerDataBB> data(new SavedPlayerDataBB(
       load_object_file<SavedPlayerDataBB>(player_template_filename(preview.visual.char_class))));
-  if (data->signature != PLAYER_FILE_SIGNATURE) {
-    throw runtime_error("player data header is incorrect");
-  }
+  data->update_to_latest_version();
 
   try {
     data->disp.apply_preview(preview);
@@ -335,13 +331,15 @@ void ClientGameData::save_account_data() const {
 void ClientGameData::load_player_data() {
   this->last_play_time_update = now();
   string filename = this->player_data_filename();
-  shared_ptr<SavedPlayerDataBB> data(new SavedPlayerDataBB(
+  this->player_data.reset(new SavedPlayerDataBB(
       player_files_cache.get_obj_or_load<SavedPlayerDataBB>(filename).obj));
-  if (data->signature != PLAYER_FILE_SIGNATURE) {
+  try {
+    this->player_data->update_to_latest_version();
+  } catch (const exception&) {
+    this->player_data.reset();
     player_files_cache.delete_key(filename);
-    throw runtime_error("player data header is incorrect");
+    throw;
   }
-  this->player_data = data;
   player_data_log.info("Loaded player data file %s", filename.c_str());
 }
 
@@ -412,7 +410,108 @@ void PlayerLobbyDataBB::clear() {
   this->unknown_a2 = 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsDC_Challenge& rec)
+    : title_color(rec.title_color),
+      unknown_u0(rec.unknown_u0),
+      times_ep1_online(rec.times_ep1_online),
+      times_ep2_online(0),
+      times_ep1_offline(0),
+      unknown_g3(rec.unknown_g3),
+      grave_deaths(rec.grave_deaths),
+      unknown_u4(0),
+      grave_coords_time(rec.grave_coords_time),
+      grave_team(rec.grave_team),
+      grave_message(rec.grave_message),
+      unknown_m5(0),
+      unknown_t6(0),
+      rank_title(encrypt_challenge_rank_text(decode_sjis(decrypt_challenge_rank_text(rec.rank_title)))),
+      unknown_l7(0) {}
+
+PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsPC_Challenge& rec)
+    : title_color(rec.title_color),
+      unknown_u0(rec.unknown_u0),
+      times_ep1_online(rec.times_ep1_online),
+      times_ep2_online(0),
+      times_ep1_offline(0),
+      unknown_g3(rec.unknown_g3),
+      grave_deaths(rec.grave_deaths),
+      unknown_u4(0),
+      grave_coords_time(rec.grave_coords_time),
+      grave_team(rec.grave_team),
+      grave_message(rec.grave_message),
+      unknown_m5(0),
+      unknown_t6(0),
+      rank_title(rec.rank_title),
+      unknown_l7(0) {}
+
+PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsV3_Challenge<false>& rec)
+    : title_color(rec.title_color),
+      unknown_u0(rec.unknown_u0),
+      times_ep1_online(rec.times_ep1_online),
+      times_ep2_online(rec.times_ep2_online),
+      times_ep1_offline(rec.times_ep1_offline),
+      unknown_g3(rec.unknown_g3),
+      grave_deaths(rec.grave_deaths),
+      unknown_u4(rec.unknown_u4),
+      grave_coords_time(rec.grave_coords_time),
+      grave_team(rec.grave_team),
+      grave_message(rec.grave_message),
+      unknown_m5(rec.unknown_m5),
+      unknown_t6(rec.unknown_t6),
+      rank_title(encrypt_challenge_rank_text(decode_sjis(decrypt_challenge_rank_text(rec.rank_title)))),
+      unknown_l7(rec.unknown_l7) {}
+
+PlayerRecordsBB_Challenge::operator PlayerRecordsDC_Challenge() const {
+  PlayerRecordsDC_Challenge ret;
+  ret.title_color = this->title_color;
+  ret.unknown_u0 = this->unknown_u0;
+  ret.rank_title = encrypt_challenge_rank_text(encode_sjis(decrypt_challenge_rank_text(this->rank_title)));
+  ret.times_ep1_online = this->times_ep1_online;
+  ret.unknown_g3 = 0;
+  ret.grave_deaths = this->grave_deaths;
+  ret.grave_coords_time = this->grave_coords_time;
+  ret.grave_team = this->grave_team;
+  ret.grave_message = this->grave_message;
+  ret.times_ep1_offline = this->times_ep1_offline;
+  ret.unknown_l4.clear(0);
+  return ret;
+}
+
+PlayerRecordsBB_Challenge::operator PlayerRecordsPC_Challenge() const {
+  PlayerRecordsPC_Challenge ret;
+  ret.title_color = this->title_color;
+  ret.unknown_u0 = this->unknown_u0;
+  ret.rank_title = this->rank_title;
+  ret.times_ep1_online = this->times_ep1_online;
+  ret.unknown_g3 = 0;
+  ret.grave_deaths = this->grave_deaths;
+  ret.grave_coords_time = this->grave_coords_time;
+  ret.grave_team = this->grave_team;
+  ret.grave_message = this->grave_message;
+  ret.times_ep1_offline = this->times_ep1_offline;
+  ret.unknown_l4.clear(0);
+  return ret;
+}
+
+PlayerRecordsBB_Challenge::operator PlayerRecordsV3_Challenge<false>() const {
+  PlayerRecordsV3_Challenge<false> ret;
+  ret.title_color = this->title_color;
+  ret.unknown_u0 = this->unknown_u0;
+  ret.times_ep1_online = this->times_ep1_online;
+  ret.times_ep2_online = this->times_ep2_online;
+  ret.times_ep1_offline = this->times_ep1_offline;
+  ret.unknown_g3 = this->unknown_g3;
+  ret.grave_deaths = this->grave_deaths;
+  ret.unknown_u4 = this->unknown_u4;
+  ret.grave_coords_time = this->grave_coords_time;
+  ret.grave_team = this->grave_team;
+  ret.grave_message = this->grave_message;
+  ret.unknown_m5 = this->unknown_m5;
+  ret.unknown_t6 = this->unknown_t6;
+  ret.rank_title = encrypt_challenge_rank_text(encode_sjis(decrypt_challenge_rank_text(this->rank_title)));
+  ret.unknown_l7 = this->unknown_l7;
+  return ret;
+}
 
 PlayerInventoryItem::PlayerInventoryItem() {
   this->clear();
@@ -453,6 +552,18 @@ PlayerInventory::PlayerInventory()
       hp_materials_used(0),
       tp_materials_used(0),
       language(0) {}
+
+void SavedPlayerDataBB::update_to_latest_version() {
+  if (this->signature == PLAYER_FILE_SIGNATURE_V0) {
+    this->signature = PLAYER_FILE_SIGNATURE_V1;
+    this->unused.clear();
+    this->battle_records.place_counts.clear(0);
+    this->battle_records.disconnect_count = 0;
+    this->battle_records.unknown_a1.clear(0);
+  } else if (this->signature != PLAYER_FILE_SIGNATURE_V1) {
+    throw runtime_error("player data has incorrect signature");
+  }
+}
 
 // TODO: Eliminate duplication between this function and the parallel function
 // in PlayerBank

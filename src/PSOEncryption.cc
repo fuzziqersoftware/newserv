@@ -887,13 +887,13 @@ void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis) {
 }
 
 template <typename StringT, bool IsEncrypt>
-StringT crypt_challenge_rank_text(const void* src, size_t size) {
-  if (size == 0) {
+StringT crypt_challenge_rank_text(const void* src, size_t count) {
+  if (count == 0) {
     return StringT();
   }
 
   StringT ret;
-  StringReader r(src, size);
+  StringReader r(src, count * sizeof(typename StringT::value_type));
   typename StringT::value_type prev = 0;
   while (!r.eof()) {
     typename StringT::value_type ch = r.get<typename StringT::value_type>();
@@ -903,7 +903,7 @@ StringT crypt_challenge_rank_text(const void* src, size_t size) {
     if (ret.empty()) {
       ret.push_back(ch ^ 0x7F);
     } else {
-      ret.push_back(IsEncrypt ? ((ch - prev) ^ 0x7F) : ((ch ^ 0x7F) + ret.back()));
+      ret.push_back((IsEncrypt ? ((ch - prev) ^ 0x7F) : ((ch ^ 0x7F) + ret.back())) & 0xFF);
     }
     prev = ch;
   }
@@ -911,18 +911,34 @@ StringT crypt_challenge_rank_text(const void* src, size_t size) {
   return ret;
 }
 
-string encrypt_challenge_rank_text(const uint8_t* src, size_t size) {
-  return crypt_challenge_rank_text<string, true>(src, size);
+string encrypt_challenge_rank_text(const char* src, size_t count) {
+  return crypt_challenge_rank_text<string, true>(src, count);
 }
 
-string decrypt_challenge_rank_text(const uint8_t* src, size_t size) {
-  return crypt_challenge_rank_text<string, false>(src, size);
+string decrypt_challenge_rank_text(const char* src, size_t count) {
+  return crypt_challenge_rank_text<string, false>(src, count);
 }
 
-u16string encrypt_challenge_rank_text(const char16_t* src, size_t size) {
-  return crypt_challenge_rank_text<u16string, true>(src, size);
+u16string encrypt_challenge_rank_text(const char16_t* src, size_t count) {
+  return crypt_challenge_rank_text<u16string, true>(src, count);
 }
 
-u16string decrypt_challenge_rank_text(const char16_t* src, size_t size) {
-  return crypt_challenge_rank_text<u16string, false>(src, size);
+u16string decrypt_challenge_rank_text(const char16_t* src, size_t count) {
+  return crypt_challenge_rank_text<u16string, false>(src, count);
+}
+
+std::string decrypt_challenge_rank_text(const std::string& data) {
+  return decrypt_challenge_rank_text(data.data(), data.size());
+}
+
+std::string encrypt_challenge_rank_text(const std::string& data) {
+  return encrypt_challenge_rank_text(data.data(), data.size());
+}
+
+std::u16string decrypt_challenge_rank_text(const std::u16string& data) {
+  return decrypt_challenge_rank_text(data.data(), data.size());
+}
+
+std::u16string encrypt_challenge_rank_text(const std::u16string& data) {
+  return encrypt_challenge_rank_text(data.data(), data.size());
 }

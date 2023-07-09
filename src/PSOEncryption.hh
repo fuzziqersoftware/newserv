@@ -241,7 +241,31 @@ private:
 
 void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis);
 
-std::string decrypt_challenge_rank_text(const uint8_t* data, size_t size);
-std::string encrypt_challenge_rank_text(const uint8_t* data, size_t size);
-std::u16string decrypt_challenge_rank_text(const le_uint16_t* data, size_t size);
-std::u16string encrypt_challenge_rank_text(const le_uint16_t* data, size_t size);
+std::string decrypt_challenge_rank_text(const char* data, size_t count);
+std::string decrypt_challenge_rank_text(const std::string& data);
+std::string encrypt_challenge_rank_text(const char* data, size_t count);
+std::string encrypt_challenge_rank_text(const std::string& data);
+std::u16string decrypt_challenge_rank_text(const char16_t* data, size_t count);
+std::u16string decrypt_challenge_rank_text(const std::u16string& data);
+std::u16string encrypt_challenge_rank_text(const char16_t* data, size_t count);
+std::u16string encrypt_challenge_rank_text(const std::u16string& data);
+
+template <size_t Size>
+std::string decrypt_challenge_rank_text(const ptext<char, Size>& data) {
+  return decrypt_challenge_rank_text(data.data(), data.size());
+}
+
+template <size_t Size>
+std::u16string decrypt_challenge_rank_text(const ptext<char16_t, Size>& data) {
+  return decrypt_challenge_rank_text(data.data(), data.size());
+}
+
+template <size_t Size>
+std::string encrypt_challenge_rank_text(const ptext<char, Size>& data) {
+  return encrypt_challenge_rank_text(data.data(), data.size());
+}
+
+template <size_t Size>
+std::u16string encrypt_challenge_rank_text(const ptext<char16_t, Size>& data) {
+  return encrypt_challenge_rank_text(data.data(), data.size());
+}

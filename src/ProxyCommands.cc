@@ -1027,6 +1027,7 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     }
     if (session.options.red_name && pd.disp.visual.name_color != 0xFFFF0000) {
       pd.disp.visual.name_color = 0xFFFF0000;
+      pd.records.challenge.title_color = 0x7C00;
       modified = true;
     } else if (session.options.blank_name && pd.disp.visual.name_color != 0x00000000) {
       pd.disp.visual.name_color = 0x00000000;
@@ -1059,6 +1060,7 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     }
     if (session.options.red_name && pd->disp.visual.name_color != 0xFFFF0000) {
       pd->disp.visual.name_color = 0xFFFF0000;
+      pd->records.challenge.title_color = 0x7C00;
       modified = true;
     } else if (session.options.blank_name && pd->disp.visual.name_color != 0x00000000) {
       pd->disp.visual.name_color = 0x00000000;

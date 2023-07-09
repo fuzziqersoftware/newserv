@@ -632,10 +632,8 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   cmd.shortcuts = account->shortcuts;
   cmd.auto_reply = player->auto_reply;
   cmd.info_board = player->info_board;
-  cmd.battle_records.place_counts.clear(0);
-  cmd.battle_records.disconnect_count = 0;
-  cmd.battle_records.unknown_a1.clear(0);
-  cmd.unknown_a4 = 0;
+  cmd.battle_records = player->battle_records;
+  cmd.unknown_a4.clear(0);
   cmd.challenge_records = player->challenge_records;
   cmd.tech_menu_config = player->tech_menu_config;
   cmd.unknown_a6.clear(0);
@@ -1383,6 +1381,30 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
 ////////////////////////////////////////////////////////////////////////////////
 // lobby joining
 
+template <typename EntryT>
+void send_player_records(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
+  vector<EntryT> entries;
+  auto add_client = [&](shared_ptr<Client> lc) -> void {
+    auto lp = lc->game_data.player();
+    auto& e = entries.emplace_back();
+    e.client_id = lc->lobby_client_id;
+    e.challenge = lp->challenge_records;
+    e.battle = lp->battle_records;
+  };
+
+  if (joining_client) {
+    add_client(joining_client);
+  } else {
+    entries.reserve(12);
+    for (auto lc : l->clients) {
+      if (lc) {
+        add_client(lc);
+      }
+    }
+  }
+  send_command_vt(c->channel, 0xC5, entries.size(), entries);
+}
+
 static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
     throw runtime_error("lobby is not Episode 3");
@@ -1598,7 +1620,7 @@ void send_join_game_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   send_command_t(c, 0x64, player_count, cmd);
 }
 
-template <typename LobbyDataT, typename DispDataT>
+template <typename LobbyDataT, typename DispDataT, typename RecordsT>
 void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     shared_ptr<Client> joining_client = nullptr) {
   uint8_t command;
@@ -1610,6 +1632,10 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     }
   } else {
     command = joining_client ? 0x68 : 0x67;
+  }
+
+  if ((c->version() != GameVersion::DC) || !(c->flags & Client::Flag::IS_DC_V1)) {
+    send_player_records<RecordsT>(c, l, joining_client);
   }
 
   uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
@@ -1745,23 +1771,24 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     }
   } else {
     switch (c->version()) {
-      case GameVersion::PC:
-        send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3>(c, l);
-        break;
       case GameVersion::DC:
         if (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
           send_join_lobby_dc_nte(c, l);
-          break;
+        } else {
+          send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC>(c, l);
         }
-        [[fallthrough]];
+        break;
+      case GameVersion::PC:
+        send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC>(c, l);
+        break;
       case GameVersion::GC:
-        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>(c, l);
+        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l);
         break;
       case GameVersion::XB:
-        send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3>(c, l);
+        send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l);
         break;
       case GameVersion::BB:
-        send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l);
+        send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB>(c, l);
         break;
       default:
         throw logic_error("unimplemented versioned command");
@@ -1779,23 +1806,24 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 void send_player_join_notification(shared_ptr<Client> c,
     shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
   switch (c->version()) {
-    case GameVersion::PC:
-      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3>(c, l, joining_client);
-      break;
     case GameVersion::DC:
       if (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
         send_join_lobby_dc_nte(c, l, joining_client);
-        break;
+      } else {
+        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC>(c, l, joining_client);
       }
-      [[fallthrough]];
+      break;
+    case GameVersion::PC:
+      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC>(c, l, joining_client);
+      break;
     case GameVersion::GC:
-      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l, joining_client);
       break;
     case GameVersion::XB:
-      send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l, joining_client);
       break;
     case GameVersion::BB:
-      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB>(c, l, joining_client);
       break;
     default:
       throw logic_error("unimplemented versioned command");

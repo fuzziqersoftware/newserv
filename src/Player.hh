@@ -167,15 +167,15 @@ struct PlayerDispDataDCPCV3 {
   PlayerDispDataBB to_bb() const;
 } __attribute__((packed));
 
-// BB player preview format
 struct PlayerDispDataBBPreview {
-  le_uint32_t experience;
-  le_uint32_t level;
+  /* 00 */ le_uint32_t experience;
+  /* 04 */ le_uint32_t level;
   // The name field in this structure is used for the player's Guild Card
   // number, apparently (possibly because it's a char array and this is BB)
-  PlayerVisualConfig visual;
-  ptext<char16_t, 0x10> name;
-  uint32_t play_time;
+  /* 08 */ PlayerVisualConfig visual;
+  /* 58 */ ptext<char16_t, 0x10> name;
+  /* 78 */ uint32_t play_time;
+  /* 7C */
 
   PlayerDispDataBBPreview() noexcept;
 } __attribute__((packed));
@@ -329,24 +329,24 @@ struct PlayerLobbyDataBB {
 template <bool IsWideChar>
 struct PlayerRecordsDCPC_Challenge {
   using CharT = typename std::conditional<IsWideChar, char16_t, char>::type;
-  using CharBinT = typename std::conditional<IsWideChar, le_uint16_t, uint8_t>::type;
 
-  /* 00 */ le_uint16_t title_color;
-  /* 02 */ parray<uint8_t, 2> unknown_a0;
-  /* 04 */ parray<CharBinT, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
-  /* 10 */ parray<uint8_t, 0x24> unknown_a1; // TODO: This might be online or offline times
-  /* 34 */ le_uint16_t unknown_a2;
-  /* 36 */ le_uint16_t grave_deaths;
+  /* 00 */ le_uint16_t title_color = 0x7FFF;
+  /* 02 */ parray<uint8_t, 2> unknown_u0;
+  /* 04 */ ptext<CharT, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
+  /* 10 */ parray<le_uint32_t, 9> times_ep1_online; // TODO: This might be offline times
+  /* 34 */ le_uint16_t unknown_g3 = 0;
+  /* 36 */ le_uint16_t grave_deaths = 0;
   /* 38 */ parray<le_uint32_t, 5> grave_coords_time;
   /* 4C */ ptext<CharT, 0x14> grave_team;
   /* 60 */ ptext<CharT, 0x18> grave_message;
-  /* 78 */ parray<le_uint32_t, 9> times_ep1; // TODO: This might be offline times
-  /* 9C */ parray<uint8_t, 4> unknown_a3;
+  /* 78 */ parray<le_uint32_t, 9> times_ep1_offline; // TODO: This might be online times
+  /* 9C */ parray<uint8_t, 4> unknown_l4;
   /* A0 */
 } __attribute__((packed));
 
 struct PlayerRecordsDC_Challenge : PlayerRecordsDCPC_Challenge<false> {
 } __attribute__((packed));
+
 struct PlayerRecordsPC_Challenge : PlayerRecordsDCPC_Challenge<true> {
 } __attribute__((packed));
 
@@ -357,43 +357,53 @@ struct PlayerRecordsV3_Challenge {
 
   // Offsets are (1) relative to start of C5 entry, and (2) relative to start
   // of save file structure
-  /* 0000:001C */ U16T title_color; // XRGB1555
-  /* 0002:001E */ parray<uint8_t, 2> unknown_a2; // Probably actually unused
+  /* 0000:001C */ U16T title_color = 0x7FFF; // XRGB1555
+  /* 0002:001E */ parray<uint8_t, 2> unknown_u0;
   /* 0004:0020 */ parray<U32T, 9> times_ep1_online;
   /* 0028:0044 */ parray<U32T, 5> times_ep2_online;
   /* 003C:0058 */ parray<U32T, 9> times_ep1_offline;
-  /* 0060:007C */ parray<uint8_t, 4> unknown_a3;
-  /* 0064:0080 */ U16T grave_deaths;
-  /* 0066:0082 */ parray<uint8_t, 2> unknown_a4; // Probably actually unused
+  /* 0060:007C */ parray<uint8_t, 4> unknown_g3;
+  /* 0064:0080 */ U16T grave_deaths = 0;
+  /* 0066:0082 */ parray<uint8_t, 2> unknown_u4;
   /* 0068:0084 */ parray<U32T, 5> grave_coords_time;
   /* 007C:0098 */ ptext<char, 0x14> grave_team;
   /* 0090:00AC */ ptext<char, 0x20> grave_message;
-  /* 00B0:00CC */ parray<uint8_t, 4> unknown_a5;
-  /* 00B4:00D0 */ parray<U32T, 9> unknown_a6;
-  /* 00D8:00F4 */ parray<uint8_t, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
-  /* 00E4:0100 */ parray<uint8_t, 0x1C> unknown_a7;
+  /* 00B0:00CC */ parray<uint8_t, 4> unknown_m5;
+  /* 00B4:00D0 */ parray<U32T, 9> unknown_t6;
+  /* 00D8:00F4 */ ptext<char, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
+  /* 00E4:0100 */ parray<uint8_t, 0x1C> unknown_l7;
   /* 0100:011C */
 } __attribute__((packed));
 
 struct PlayerRecordsBB_Challenge {
-  // TODO: Figure out the rest of this structure. Probably it's very similar to
-  // the V3 structure, but it's a bit larger due to various text fields.
-  /* 0000 */ le_uint16_t title_color; // XRGB1555
-  /* 0002 */ parray<uint8_t, 2> unknown_a2; // Probably actually unused
-  /* 0004 */ parray<le_uint32_t, 9> times_ep1;
-  /* 0028 */ parray<le_uint32_t, 5> times_ep2;
+  /* 0000 */ le_uint16_t title_color = 0x7FFF; // XRGB1555
+  /* 0002 */ parray<uint8_t, 2> unknown_u0;
+  /* 0004 */ parray<le_uint32_t, 9> times_ep1_online;
+  /* 0028 */ parray<le_uint32_t, 5> times_ep2_online;
   /* 003C */ parray<le_uint32_t, 9> times_ep1_offline;
-  /* 0060 */ parray<uint8_t, 4> unknown_a3;
-  /* 0064 */ le_uint16_t grave_deaths;
-  /* 0066 */ parray<uint8_t, 2> unknown_a4; // Probably actually unused
+  /* 0060 */ parray<uint8_t, 4> unknown_g3;
+  /* 0064 */ le_uint16_t grave_deaths = 0;
+  /* 0066 */ parray<uint8_t, 2> unknown_u4;
   /* 0068 */ parray<le_uint32_t, 5> grave_coords_time;
   /* 007C */ ptext<char16_t, 0x14> grave_team;
   /* 00A4 */ ptext<char16_t, 0x20> grave_message;
-  /* 00E4 */ parray<uint8_t, 4> unknown_a5;
-  /* 00E8 */ parray<le_uint32_t, 9> unknown_a6;
-  /* 010C */ parray<le_uint16_t, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
-  /* 0124 */ parray<uint8_t, 0x1C> unknown_a7;
+  /* 00E4 */ parray<uint8_t, 4> unknown_m5;
+  /* 00E8 */ parray<le_uint32_t, 9> unknown_t6;
+  /* 010C */ ptext<char16_t, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
+  /* 0124 */ parray<uint8_t, 0x1C> unknown_l7;
   /* 0140 */
+
+  PlayerRecordsBB_Challenge() = default;
+  PlayerRecordsBB_Challenge(const PlayerRecordsBB_Challenge& other) = default;
+  PlayerRecordsBB_Challenge& operator=(const PlayerRecordsBB_Challenge& other) = default;
+
+  PlayerRecordsBB_Challenge(const PlayerRecordsDC_Challenge& rec);
+  PlayerRecordsBB_Challenge(const PlayerRecordsPC_Challenge& rec);
+  PlayerRecordsBB_Challenge(const PlayerRecordsV3_Challenge<false>& rec);
+
+  operator PlayerRecordsDC_Challenge() const;
+  operator PlayerRecordsPC_Challenge() const;
+  operator PlayerRecordsV3_Challenge<false>() const;
 } __attribute__((packed));
 
 template <bool IsBigEndian>
@@ -417,22 +427,27 @@ struct ChoiceSearchConfig {
   parray<Entry, 5> entries;
 } __attribute__((packed));
 
+constexpr uint64_t PLAYER_FILE_SIGNATURE_V0 = 0x6E65777365727620;
+constexpr uint64_t PLAYER_FILE_SIGNATURE_V1 = 0xA904332D5CEF0296;
+
 struct SavedPlayerDataBB { // .nsc file format
-  ptext<char, 0x40> signature;
-  PlayerDispDataBBPreview preview;
-  ptext<char16_t, 0x00AC> auto_reply;
-  PlayerBank bank;
-  PlayerRecordsBB_Challenge challenge_records;
-  PlayerDispDataBB disp;
-  ptext<char16_t, 0x0058> guild_card_description;
-  ptext<char16_t, 0x00AC> info_board;
-  PlayerInventory inventory;
-  parray<uint8_t, 0x0208> quest_data1;
-  parray<uint8_t, 0x0058> quest_data2;
-  parray<uint8_t, 0x0028> tech_menu_config;
-  // TODO: We don't save battle records in this structure, which is wrong.
-  // Make a new save file format that doesn't have the super-long signature,
-  // and also can save battle records.
+  /* 0000 */ be_uint64_t signature = PLAYER_FILE_SIGNATURE_V1;
+  /* 0008 */ parray<uint8_t, 0x20> unused;
+  /* 0028 */ PlayerRecords_Battle<false> battle_records;
+  /* 0040 */ PlayerDispDataBBPreview preview;
+  /* 00BC */ ptext<char16_t, 0x00AC> auto_reply;
+  /* 0214 */ PlayerBank bank;
+  /* 14DC */ PlayerRecordsBB_Challenge challenge_records;
+  /* 161C */ PlayerDispDataBB disp;
+  /* 17AC */ ptext<char16_t, 0x0058> guild_card_description;
+  /* 185C */ ptext<char16_t, 0x00AC> info_board;
+  /* 19B4 */ PlayerInventory inventory;
+  /* 1D00 */ parray<uint8_t, 0x0208> quest_data1;
+  /* 1F08 */ parray<uint8_t, 0x0058> quest_data2;
+  /* 1F60 */ parray<uint8_t, 0x0028> tech_menu_config;
+  /* 1F88 */
+
+  void update_to_latest_version();
 
   void add_item(const PlayerInventoryItem& item);
   PlayerInventoryItem remove_item(

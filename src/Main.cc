@@ -829,10 +829,9 @@ int main(int argc, char** argv) {
     case Behavior::ENCRYPT_CHALLENGE_DATA:
     case Behavior::DECRYPT_CHALLENGE_DATA: {
       string data = read_input_data();
-      const uint8_t* u8data = reinterpret_cast<const uint8_t*>(data.data());
       string result = (behavior == Behavior::DECRYPT_CHALLENGE_DATA)
-          ? decrypt_challenge_rank_text(u8data, data.size())
-          : encrypt_challenge_rank_text(u8data, data.size());
+          ? decrypt_challenge_rank_text(data)
+          : encrypt_challenge_rank_text(data);
       write_output_data(result.data(), result.size());
       break;
     }
