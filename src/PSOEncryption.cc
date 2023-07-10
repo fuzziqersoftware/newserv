@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <phosg/Encoding.hh>
+#include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <stdexcept>
 #include <string>
@@ -884,6 +885,38 @@ void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis) {
     key = (key * 5) + 1;
     bytes[z] ^= key;
   }
+}
+
+static uint8_t count_one_bits(uint16_t v) {
+  uint8_t ret = 0;
+  while (v) {
+    v &= (v - 1);
+    ret++;
+  }
+  return ret;
+}
+
+uint32_t encrypt_challenge_time(uint16_t value) {
+  vector<uint8_t> available_bits({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+
+  uint16_t mask = 0;
+  uint8_t num_one_bits = (random_object<uint8_t>() % 9) + 4; // Range [4, 12]
+  for (; num_one_bits; num_one_bits--) {
+    uint8_t index = random_object<uint8_t>() % available_bits.size();
+    auto it = available_bits.begin() + index;
+    mask |= (1 << *it);
+    available_bits.erase(it);
+  }
+
+  return (mask << 16) | (value ^ mask);
+}
+
+uint16_t decrypt_challenge_time(uint32_t value) {
+  uint16_t mask = (value >> 0x10);
+  uint8_t mask_one_bits = count_one_bits(mask);
+  return ((mask_one_bits < 4) || (mask_one_bits > 12))
+      ? 0xFFFF
+      : ((mask ^ value) & 0xFFFF);
 }
 
 template <typename StringT, bool IsEncrypt>

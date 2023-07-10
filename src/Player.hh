@@ -333,13 +333,13 @@ struct PlayerRecordsDCPC_Challenge {
   /* 00 */ le_uint16_t title_color = 0x7FFF;
   /* 02 */ parray<uint8_t, 2> unknown_u0;
   /* 04 */ ptext<CharT, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
-  /* 10 */ parray<le_uint32_t, 9> times_ep1_online; // TODO: This might be offline times
+  /* 10 */ parray<le_uint32_t, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time. TODO: This might be offline times
   /* 34 */ le_uint16_t unknown_g3 = 0;
   /* 36 */ le_uint16_t grave_deaths = 0;
   /* 38 */ parray<le_uint32_t, 5> grave_coords_time;
   /* 4C */ ptext<CharT, 0x14> grave_team;
   /* 60 */ ptext<CharT, 0x18> grave_message;
-  /* 78 */ parray<le_uint32_t, 9> times_ep1_offline; // TODO: This might be online times
+  /* 78 */ parray<le_uint32_t, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time. TODO: This might be online times
   /* 9C */ parray<uint8_t, 4> unknown_l4;
   /* A0 */
 } __attribute__((packed));
@@ -359,9 +359,9 @@ struct PlayerRecordsV3_Challenge {
   // of save file structure
   /* 0000:001C */ U16T title_color = 0x7FFF; // XRGB1555
   /* 0002:001E */ parray<uint8_t, 2> unknown_u0;
-  /* 0004:0020 */ parray<U32T, 9> times_ep1_online;
-  /* 0028:0044 */ parray<U32T, 5> times_ep2_online;
-  /* 003C:0058 */ parray<U32T, 9> times_ep1_offline;
+  /* 0004:0020 */ parray<U32T, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time
+  /* 0028:0044 */ parray<U32T, 5> times_ep2_online; // Encrypted; see decrypt_challenge_time
+  /* 003C:0058 */ parray<U32T, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time
   /* 0060:007C */ parray<uint8_t, 4> unknown_g3;
   /* 0064:0080 */ U16T grave_deaths = 0;
   /* 0066:0082 */ parray<uint8_t, 2> unknown_u4;
@@ -378,9 +378,9 @@ struct PlayerRecordsV3_Challenge {
 struct PlayerRecordsBB_Challenge {
   /* 0000 */ le_uint16_t title_color = 0x7FFF; // XRGB1555
   /* 0002 */ parray<uint8_t, 2> unknown_u0;
-  /* 0004 */ parray<le_uint32_t, 9> times_ep1_online;
-  /* 0028 */ parray<le_uint32_t, 5> times_ep2_online;
-  /* 003C */ parray<le_uint32_t, 9> times_ep1_offline;
+  /* 0004 */ parray<le_uint32_t, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time
+  /* 0028 */ parray<le_uint32_t, 5> times_ep2_online; // Encrypted; see decrypt_challenge_time
+  /* 003C */ parray<le_uint32_t, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time
   /* 0060 */ parray<uint8_t, 4> unknown_g3;
   /* 0064 */ le_uint16_t grave_deaths = 0;
   /* 0066 */ parray<uint8_t, 2> unknown_u4;

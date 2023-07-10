@@ -241,6 +241,9 @@ private:
 
 void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis);
 
+uint32_t encrypt_challenge_time(uint16_t value);
+uint16_t decrypt_challenge_time(uint32_t value);
+
 std::string decrypt_challenge_rank_text(const char* data, size_t count);
 std::string decrypt_challenge_rank_text(const std::string& data);
 std::string encrypt_challenge_rank_text(const char* data, size_t count);
