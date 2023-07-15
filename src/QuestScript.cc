@@ -737,7 +737,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8C1, "nop_F8C1", {REG}, {}, V4, V4},
     {0xF8C2, "prepare_gba_rom_from_download", {}, {}, V3, V3}, // Prepares to load a GBA ROM from a previous file_dl_req opcode
     {0xF8C2, "nop_F8C2", {}, {}, V4, V4},
-    {0xF8C3, "update_gba_state", {REG}, {}, V3, V3}, // One of F8C2 or F929 must be called before calling this, then this should be called repeatedly until it succeeds or fails. Return values are: 0 = not started, 1 = failed, 2 = timed out, 3 = in progress, 4 = complete
+    {0xF8C3, "start_or_update_gba_joyboot", {REG}, {}, V3, V3}, // One of F8C2 or F929 must be called before calling this, then this should be called repeatedly until it succeeds or fails. Return values are: 0 = not started, 1 = failed, 2 = timed out, 3 = in progress, 4 = complete
     {0xF8C3, "nop_F8C3", {REG}, {}, V4, V4},
     {0xF8C4, "congrats_msg_multi_cm", {REG}, {}, V3, V3},
     {0xF8C4, "nop_F8C4", {REG}, {}, V4, V4},
