@@ -7,6 +7,18 @@
 #include "Text.hh"
 #include "Version.hh"
 
+enum class QuestScriptVersion {
+  DC_NTE = 0,
+  DC_V1 = 1,
+  DC_V2 = 2,
+  PC_V2 = 3,
+  GC_NTE = 4,
+  GC_V3 = 5,
+  XB_V3 = 6,
+  GC_EP3 = 7,
+  BB_V4 = 8,
+};
+
 struct PSOQuestHeaderDC { // Same format for DC v1 and v2
   le_uint32_t code_offset;
   le_uint32_t function_table_offset;
@@ -65,4 +77,4 @@ struct PSOQuestHeaderBB {
   ptext<char16_t, 0x120> long_description;
 } __attribute__((packed));
 
-std::string disassemble_quest_script(const void* data, size_t size, GameVersion version, bool is_dcv1);
+std::string disassemble_quest_script(const void* data, size_t size, QuestScriptVersion version);

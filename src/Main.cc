@@ -189,7 +189,9 @@ The actions are:\n\
     newserv will find it via a brute-force search, which will take a long time.\n\
   disassemble-quest-script [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Disassemble the input quest script (.bin file) into a text representation\n\
-    of the commands and metadata it contains.\n\
+    of the commands and metadata it contains. Specify the quest\'s game version\n\
+    with one of the --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --gc-ep3,\n\
+    --xb, or --bb options.\n\
   cat-client ADDR:PORT\n\
     Connect to the given server and simulate a PSO client. newserv will then\n\
     print all the received commands to stdout, and forward any commands typed\n\
@@ -339,7 +341,7 @@ static bool behavior_takes_output_filename(Behavior b) {
 int main(int argc, char** argv) {
   Behavior behavior = Behavior::RUN_SERVER;
   GameVersion cli_version = GameVersion::GC;
-  bool is_dcv1 = false;
+  QuestScriptVersion cli_quest_version = QuestScriptVersion::GC_V3;
   Quest::FileFormat quest_file_type = Quest::FileFormat::BIN_DAT_GCI;
   string seed;
   string key_file_name;
@@ -378,25 +380,34 @@ int main(int argc, char** argv) {
       num_threads = strtoull(&argv[x][10], nullptr, 0);
     } else if (!strcmp(argv[x], "--patch")) {
       cli_version = GameVersion::PATCH;
-      is_dcv1 = false;
-    } else if (!strcmp(argv[x], "--dc")) {
+      cli_quest_version = QuestScriptVersion::PC_V2;
+    } else if (!strcmp(argv[x], "--dc-nte")) {
       cli_version = GameVersion::DC;
-      is_dcv1 = false;
-    } else if (!strcmp(argv[x], "--dcv1")) {
+      cli_quest_version = QuestScriptVersion::DC_NTE;
+    } else if (!strcmp(argv[x], "--dc-v1")) {
       cli_version = GameVersion::DC;
-      is_dcv1 = true;
+      cli_quest_version = QuestScriptVersion::DC_V1;
+    } else if (!strcmp(argv[x], "--dc-v2") || !strcmp(argv[x], "--dc")) {
+      cli_version = GameVersion::DC;
+      cli_quest_version = QuestScriptVersion::DC_V2;
     } else if (!strcmp(argv[x], "--pc")) {
       cli_version = GameVersion::PC;
-      is_dcv1 = false;
+      cli_quest_version = QuestScriptVersion::PC_V2;
     } else if (!strcmp(argv[x], "--gc")) {
       cli_version = GameVersion::GC;
-      is_dcv1 = false;
+      cli_quest_version = QuestScriptVersion::GC_V3;
+    } else if (!strcmp(argv[x], "--gc-nte")) {
+      cli_version = GameVersion::GC;
+      cli_quest_version = QuestScriptVersion::GC_NTE;
+    } else if (!strcmp(argv[x], "--gc-ep3")) {
+      cli_version = GameVersion::GC;
+      cli_quest_version = QuestScriptVersion::GC_EP3;
     } else if (!strcmp(argv[x], "--xb")) {
       cli_version = GameVersion::XB;
-      is_dcv1 = false;
+      cli_quest_version = QuestScriptVersion::XB_V3;
     } else if (!strcmp(argv[x], "--bb")) {
       cli_version = GameVersion::BB;
-      is_dcv1 = false;
+      cli_quest_version = QuestScriptVersion::BB_V4;
     } else if (!strncmp(argv[x], "--compression-level=", 20)) {
       compression_level = strtoll(&argv[x][20], nullptr, 0);
     } else if (!strcmp(argv[x], "--optimal")) {
@@ -1108,7 +1119,7 @@ int main(int argc, char** argv) {
       if (!expect_decompressed) {
         data = prs_decompress(data);
       }
-      string result = disassemble_quest_script(data.data(), data.size(), cli_version, is_dcv1);
+      string result = disassemble_quest_script(data.data(), data.size(), cli_quest_version);
       write_output_data(result.data(), result.size());
       break;
     }
