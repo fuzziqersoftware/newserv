@@ -720,6 +720,14 @@ Proxy session commands:\n\
       session->options.override_lobby_number = lobby_type_for_name(command_args);
     }
 
+  } else if (command_name == "set-challenge-rank-title") {
+    auto session = this->get_proxy_session(session_name);
+    session->challenge_rank_title_override = command_args;
+
+  } else if (command_name == "set-challenge-rank-color") {
+    auto session = this->get_proxy_session(session_name);
+    session->challenge_rank_color_override = stoul(command_args, nullptr, 16);
+
   } else if (command_name == "set-chat-filter") {
     auto session = this->get_proxy_session(session_name);
     set_boolean(&session->options.enable_chat_filter, command_args);

@@ -65,6 +65,8 @@ public:
     std::string login_command_bb;
 
     ClientOptions options;
+    uint32_t challenge_rank_color_override;
+    std::string challenge_rank_title_override;
     int64_t remote_guild_card_number;
     parray<uint8_t, 0x20> remote_client_config_data;
     ClientConfigBB newserv_client_config;

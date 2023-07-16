@@ -36,6 +36,10 @@
 
 using namespace std;
 
+static constexpr uint16_t encode_xrgb1555(uint32_t xrgb8888) {
+  return ((xrgb8888 >> 9) & 0x7C00) | ((xrgb8888 >> 6) & 0x03E0) | ((xrgb8888 >> 3) & 0x001F);
+}
+
 struct HandlerResult {
   enum class Type {
     FORWARD = 0,
@@ -1033,6 +1037,10 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
       pd.disp.visual.name_color = 0x00000000;
       modified = true;
     }
+    if (!session.challenge_rank_title_override.empty()) {
+      pd.records.challenge.title_color = encode_xrgb1555(session.challenge_rank_color_override);
+      pd.records.challenge.rank_title = encrypt_challenge_rank_text(session.challenge_rank_title_override);
+    }
 
   } else {
     C_CharacterData_V3_61_98* pd;
@@ -1065,6 +1073,10 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     } else if (session.options.blank_name && pd->disp.visual.name_color != 0x00000000) {
       pd->disp.visual.name_color = 0x00000000;
       modified = true;
+    }
+    if (!session.challenge_rank_title_override.empty()) {
+      pd->records.challenge.title_color = encode_xrgb1555(session.challenge_rank_color_override);
+      pd->records.challenge.rank_title = encrypt_challenge_rank_text(session.challenge_rank_title_override);
     }
   }
 
