@@ -5089,7 +5089,7 @@ struct G_MoveLobbyChair_6xB0 {
 } __packed__;
 
 // 6xB1: Unknown (not valid on pre-V3 or GC Trial Edition)
-// This subcommand is completely ignored (at least, by PSO GC).
+// This subcommand is completely ignored (at least, by PSO V3).
 
 // 6xB2: Unknown (not valid on pre-V3 or GC Trial Edition)
 // TODO: It appears this command is sent when the snapshot file is written on
@@ -5103,7 +5103,7 @@ struct G_Unknown_6xB2 {
   le_uint32_t unknown_a3; // PSO GC puts 0x00051720 (333600) here
 } __packed__;
 
-// 6xB3: Unknown (XBOX)
+// 6xB3: Unknown (XBOX; voice chat)
 
 // 6xB3: CARD battle server data request (Episode 3)
 
@@ -5147,7 +5147,7 @@ struct G_CardServerDataCommandHeader {
   be_uint32_t context_token;
 } __packed__;
 
-// 6xB4: Unknown (XBOX)
+// 6xB4: Unknown (XBOX; voice chat)
 
 // 6xB4: CARD battle server response (Episode 3) - see 6xB3 (above)
 // 6xB5: CARD battle client command (Episode 3) - see 6xB3 (above)
