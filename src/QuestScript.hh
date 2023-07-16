@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include <phosg/Encoding.hh>
+#include <phosg/Tools.hh>
 
 #include "Text.hh"
 #include "Version.hh"
@@ -18,6 +19,9 @@ enum class QuestScriptVersion {
   GC_EP3 = 7,
   BB_V4 = 8,
 };
+
+template <>
+const char* name_for_enum<QuestScriptVersion>(QuestScriptVersion v);
 
 struct PSOQuestHeaderDC { // Same format for DC v1 and v2
   le_uint32_t code_offset;

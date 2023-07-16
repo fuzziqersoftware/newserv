@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "QuestScript.hh"
 #include "StaticGameData.hh"
-#include "Version.hh"
 
 struct QuestCategoryIndex {
   struct Category {
@@ -64,9 +64,8 @@ public:
   uint32_t menu_item_id;
   uint32_t category_id;
   Episode episode;
-  bool is_dcv1;
   bool joinable;
-  GameVersion version;
+  QuestScriptVersion version;
   std::string file_basename; // we append -<version>.<bin/dat> when reading
   FileFormat file_format;
   bool has_mnm_extension;
@@ -101,7 +100,7 @@ public:
   static std::string decode_dlq_data(const std::string& filename);
   static std::pair<std::string, std::string> decode_qst_file(const std::string& filename);
 
-  std::string export_qst(GameVersion version) const;
+  std::string export_qst() const;
 
 private:
   // these are populated when requested
@@ -113,7 +112,7 @@ struct QuestIndex {
   std::string directory;
   std::shared_ptr<const QuestCategoryIndex> category_index;
 
-  std::map<std::pair<GameVersion, uint64_t>, std::shared_ptr<Quest>> version_menu_item_id_to_quest;
+  std::map<std::pair<QuestScriptVersion, uint64_t>, std::shared_ptr<Quest>> version_menu_item_id_to_quest;
 
   std::map<std::string, std::vector<std::shared_ptr<Quest>>> category_to_quests;
 
@@ -121,8 +120,8 @@ struct QuestIndex {
 
   QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index);
 
-  std::shared_ptr<const Quest> get(GameVersion version, uint32_t id) const;
+  std::shared_ptr<const Quest> get(QuestScriptVersion version, uint32_t id) const;
   std::shared_ptr<const std::string> get_gba(const std::string& name) const;
-  std::vector<std::shared_ptr<const Quest>> filter(GameVersion version,
-      bool is_dcv1, uint32_t category_id) const;
+  std::vector<std::shared_ptr<const Quest>> filter(
+      QuestScriptVersion version, uint32_t category_id) const;
 };

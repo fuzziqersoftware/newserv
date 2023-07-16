@@ -236,7 +236,6 @@ Quest::Quest(const string& bin_filename, shared_ptr<const QuestCategoryIndex> ca
       menu_item_id(0),
       category_id(0),
       episode(Episode::NONE),
-      is_dcv1(false),
       joinable(false),
       file_format(FileFormat::BIN_DAT),
       has_mnm_extension(false),
@@ -278,12 +277,6 @@ Quest::Quest(const string& bin_filename, shared_ptr<const QuestCategoryIndex> ca
     }
   }
 
-  // Quest filenames are like:
-  // b###-VV.bin for battle mode
-  // c###-VV.bin for challenge mode
-  // e###-gc3.mnm (or .bin) for episode 3
-  // q###-CAT-VV.bin for normal quests
-
   if (basename.empty()) {
     throw invalid_argument("empty filename");
   }
@@ -305,14 +298,16 @@ Quest::Quest(const string& bin_filename, shared_ptr<const QuestCategoryIndex> ca
   this->internal_id = strtoull(tokens[0].c_str() + 1, nullptr, 10);
 
   // Get the version from the second (or previously third) token
-  static const unordered_map<string, GameVersion> name_to_version({
-      {"d1", GameVersion::DC},
-      {"dc", GameVersion::DC},
-      {"pc", GameVersion::PC},
-      {"gc", GameVersion::GC},
-      {"gc3", GameVersion::GC},
-      {"xb", GameVersion::XB},
-      {"bb", GameVersion::BB},
+  static const unordered_map<string, QuestScriptVersion> name_to_version({
+      {"dn", QuestScriptVersion::DC_NTE},
+      {"d1", QuestScriptVersion::DC_V1},
+      {"dc", QuestScriptVersion::DC_V2},
+      {"pc", QuestScriptVersion::PC_V2},
+      {"gcn", QuestScriptVersion::GC_NTE},
+      {"gc", QuestScriptVersion::GC_V3},
+      {"gc3", QuestScriptVersion::GC_EP3},
+      {"xb", QuestScriptVersion::XB_V3},
+      {"bb", QuestScriptVersion::BB_V4},
   });
   this->version = name_to_version.at(tokens[1]);
 
@@ -323,11 +318,9 @@ Quest::Quest(const string& bin_filename, shared_ptr<const QuestCategoryIndex> ca
   auto bin_decompressed = prs_decompress(*bin_compressed);
 
   switch (this->version) {
-    case GameVersion::PATCH:
-      throw invalid_argument("patch server quests are not valid");
-      break;
-
-    case GameVersion::DC: {
+    case QuestScriptVersion::DC_NTE:
+    case QuestScriptVersion::DC_V1:
+    case QuestScriptVersion::DC_V2: {
       if (bin_decompressed.size() < sizeof(PSOQuestHeaderDC)) {
         throw invalid_argument("file is too small for header");
       }
@@ -337,11 +330,10 @@ Quest::Quest(const string& bin_filename, shared_ptr<const QuestCategoryIndex> ca
       this->name = decode_sjis(header->name);
       this->short_description = decode_sjis(header->short_description);
       this->long_description = decode_sjis(header->long_description);
-      this->is_dcv1 = (tokens[1] == "d1");
       break;
     }
 
-    case GameVersion::PC: {
+    case QuestScriptVersion::PC_V2: {
       if (bin_decompressed.size() < sizeof(PSOQuestHeaderPC)) {
         throw invalid_argument("file is too small for header");
       }
@@ -354,33 +346,42 @@ Quest::Quest(const string& bin_filename, shared_ptr<const QuestCategoryIndex> ca
       break;
     }
 
-    case GameVersion::XB:
-    case GameVersion::GC: {
-      if (category.flags & QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD) {
-        if (bin_decompressed.size() != sizeof(Episode3::MapDefinition)) {
-          throw invalid_argument("file is incorrect size");
-        }
-        auto* header = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
-        this->joinable = false;
-        this->episode = Episode::EP3;
-        this->name = decode_sjis(header->name);
-        this->short_description = decode_sjis(header->quest_name);
-        this->long_description = decode_sjis(header->description);
-      } else {
-        if (bin_decompressed.size() < sizeof(PSOQuestHeaderGC)) {
-          throw invalid_argument("file is too small for header");
-        }
-        auto* header = reinterpret_cast<const PSOQuestHeaderGC*>(bin_decompressed.data());
-        this->joinable = false;
-        this->episode = (header->episode == 1) ? Episode::EP2 : Episode::EP1;
-        this->name = decode_sjis(header->name);
-        this->short_description = decode_sjis(header->short_description);
-        this->long_description = decode_sjis(header->long_description);
+    case QuestScriptVersion::GC_EP3: {
+      // Note: This codepath handles Episode 3 download quests, which are not
+      // the same as Episode 3 quest scripts. The latter are only used offline
+      // in story mode, but can be disassembled with disassemble_quest_script.
+      // It's unfortunate that the QuestScriptVersion::GC_EP3 value is used
+      // here for Episode 3 download quests (maps) and there for offline story
+      // mode scripts, but it's probably not worth refactoring this logic, at
+      // least right now.
+      if (bin_decompressed.size() != sizeof(Episode3::MapDefinition)) {
+        throw invalid_argument("file is incorrect size");
       }
+      auto* header = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
+      this->joinable = false;
+      this->episode = Episode::EP3;
+      this->name = decode_sjis(header->name);
+      this->short_description = decode_sjis(header->quest_name);
+      this->long_description = decode_sjis(header->description);
       break;
     }
 
-    case GameVersion::BB: {
+    case QuestScriptVersion::XB_V3:
+    case QuestScriptVersion::GC_NTE:
+    case QuestScriptVersion::GC_V3: {
+      if (bin_decompressed.size() < sizeof(PSOQuestHeaderGC)) {
+        throw invalid_argument("file is too small for header");
+      }
+      auto* header = reinterpret_cast<const PSOQuestHeaderGC*>(bin_decompressed.data());
+      this->joinable = false;
+      this->episode = (header->episode == 1) ? Episode::EP2 : Episode::EP1;
+      this->name = decode_sjis(header->name);
+      this->short_description = decode_sjis(header->short_description);
+      this->long_description = decode_sjis(header->long_description);
+      break;
+    }
+
+    case QuestScriptVersion::BB_V4: {
       if (bin_decompressed.size() < sizeof(PSOQuestHeaderBB)) {
         throw invalid_argument("file is too small for header");
       }
@@ -827,7 +828,7 @@ void add_write_file_commands(
   }
 }
 
-string Quest::export_qst(GameVersion version) const {
+string Quest::export_qst() const {
   bool is_ep3 = this->episode == Episode::EP3;
   if (is_ep3 && !this->is_dlq_encoded) {
     throw runtime_error("Episode 3 quests can only be encoded in download QST format");
@@ -837,8 +838,10 @@ string Quest::export_qst(GameVersion version) const {
 
   // Some tools expect both open file commands at the beginning, hence this
   // unfortunate abstraction-breaking.
-  switch (version) {
-    case GameVersion::DC:
+  switch (this->version) {
+    case QuestScriptVersion::DC_NTE:
+    case QuestScriptVersion::DC_V1:
+    case QuestScriptVersion::DC_V2:
       add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, *this, true);
       add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, *this, false);
       add_write_file_commands<PSOCommandHeaderDCV3>(
@@ -846,7 +849,7 @@ string Quest::export_qst(GameVersion version) const {
       add_write_file_commands<PSOCommandHeaderDCV3>(
           w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
       break;
-    case GameVersion::PC:
+    case QuestScriptVersion::PC_V2:
       add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_V3_44_A6>(w, *this, true);
       add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_V3_44_A6>(w, *this, false);
       add_write_file_commands<PSOCommandHeaderPC>(
@@ -854,20 +857,22 @@ string Quest::export_qst(GameVersion version) const {
       add_write_file_commands<PSOCommandHeaderPC>(
           w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
       break;
-    case GameVersion::GC:
-    case GameVersion::XB:
+    case QuestScriptVersion::GC_NTE:
+    case QuestScriptVersion::GC_V3:
+    case QuestScriptVersion::XB_V3:
       add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, true);
-      if (!is_ep3) {
-        add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, false);
-      }
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, false);
       add_write_file_commands<PSOCommandHeaderDCV3>(
           w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
-      if (!is_ep3) {
-        add_write_file_commands<PSOCommandHeaderDCV3>(
-            w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
-      }
+      add_write_file_commands<PSOCommandHeaderDCV3>(
+          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
       break;
-    case GameVersion::BB:
+    case QuestScriptVersion::GC_EP3:
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, true);
+      add_write_file_commands<PSOCommandHeaderDCV3>(
+          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
+      break;
+    case QuestScriptVersion::BB_V4:
       add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, *this, true);
       add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, *this, false);
       add_write_file_commands<PSOCommandHeaderBB>(
@@ -916,17 +921,16 @@ QuestIndex::QuestIndex(
           throw logic_error("duplicate quest menu item id");
         }
         auto category_name = encode_sjis(this->category_index->at(q->category_id).name);
-        static_game_data_log.info("Indexed quest %s (%s => %s-%" PRId64 " (%" PRIu32 "), %s, %s (%" PRIu32 "), joinable=%s, dcv1=%s)",
+        static_game_data_log.info("Indexed quest %s (%s => %s-%" PRId64 " (%" PRIu32 "), %s, %s (%" PRIu32 "), joinable=%s)",
             ascii_name.c_str(),
             filename.c_str(),
-            name_for_version(q->version),
+            name_for_enum(q->version),
             q->internal_id,
             q->menu_item_id,
             name_for_episode(q->episode),
             category_name.c_str(),
             q->category_id,
-            q->joinable ? "true" : "false",
-            q->is_dcv1 ? "true" : "false");
+            q->joinable ? "true" : "false");
       } catch (const exception& e) {
         static_game_data_log.warning("Failed to index quest file %s (%s)", filename.c_str(), e.what());
       }
@@ -934,8 +938,8 @@ QuestIndex::QuestIndex(
   }
 }
 
-shared_ptr<const Quest> QuestIndex::get(GameVersion version,
-    uint32_t menu_item_id) const {
+shared_ptr<const Quest> QuestIndex::get(
+    QuestScriptVersion version, uint32_t menu_item_id) const {
   return this->version_menu_item_id_to_quest.at(make_pair(version, menu_item_id));
 }
 
@@ -944,17 +948,15 @@ shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
 }
 
 vector<shared_ptr<const Quest>> QuestIndex::filter(
-    GameVersion version, bool is_dcv1, uint32_t category_id) const {
+    QuestScriptVersion version, uint32_t category_id) const {
   auto it = this->version_menu_item_id_to_quest.lower_bound(make_pair(version, 0));
   auto end_it = this->version_menu_item_id_to_quest.upper_bound(make_pair(version, 0xFFFFFFFF));
 
   vector<shared_ptr<const Quest>> ret;
   for (; it != end_it; it++) {
-    shared_ptr<const Quest> q = it->second;
-    if ((q->is_dcv1 != is_dcv1) || (q->category_id != category_id)) {
-      continue;
+    if (it->second->category_id == category_id) {
+      ret.emplace_back(it->second);
     }
-    ret.emplace_back(q);
   }
 
   return ret;
@@ -997,7 +999,7 @@ shared_ptr<Quest> Quest::create_download_quest() const {
 
   // This function should not be used for Episode 3 quests (they should be sent
   // to the client as-is, without any encryption or other preprocessing)
-  if (this->episode == Episode::EP3) {
+  if (this->episode == Episode::EP3 || this->version == QuestScriptVersion::GC_EP3) {
     throw logic_error("Episode 3 quests cannot be converted to download quests");
   }
 
@@ -1005,27 +1007,32 @@ shared_ptr<Quest> Quest::create_download_quest() const {
 
   void* data_ptr = decompressed_bin.data();
   switch (this->version) {
-    case GameVersion::DC:
+    case QuestScriptVersion::DC_NTE:
+    case QuestScriptVersion::DC_V1:
+    case QuestScriptVersion::DC_V2:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderDC)) {
         throw runtime_error("bin file is too small for header");
       }
       reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
       break;
-    case GameVersion::PC:
+    case QuestScriptVersion::PC_V2:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderPC)) {
         throw runtime_error("bin file is too small for header");
       }
       reinterpret_cast<PSOQuestHeaderPC*>(data_ptr)->is_download = 0x01;
       break;
-    case GameVersion::XB:
-    case GameVersion::GC:
+    case QuestScriptVersion::GC_NTE:
+    case QuestScriptVersion::GC_V3:
+    case QuestScriptVersion::XB_V3:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderGC)) {
         throw runtime_error("bin file is too small for header");
       }
       reinterpret_cast<PSOQuestHeaderGC*>(data_ptr)->is_download = 0x01;
       break;
-    case GameVersion::BB:
+    case QuestScriptVersion::BB_V4:
       throw invalid_argument("PSOBB does not support download quests");
+    case QuestScriptVersion::GC_EP3:
+      throw logic_error("Episode 3 quests cannot be converted to download quests");
     default:
       throw invalid_argument("unknown game version");
   }

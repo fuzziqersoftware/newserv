@@ -1444,7 +1444,7 @@ static void on_09(shared_ptr<ServerState> s, shared_ptr<Client> c,
       if (!s->quest_index) {
         send_quest_info(c, u"$C6Quests are not available.", !c->lobby_id);
       } else {
-        auto q = s->quest_index->get(c->version(), cmd.item_id);
+        auto q = s->quest_index->get(c->quest_version(), cmd.item_id);
         if (!q) {
           send_quest_info(c, u"$C4Quest does not\nexist.", !c->lobby_id);
         } else {
@@ -1674,8 +1674,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
             vector<shared_ptr<const Quest>> quests;
             for (const auto& category : s->quest_category_index->categories) {
               if (category.flags & QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD) {
-                quests = s->quest_index->filter(
-                    c->version(), c->flags & Client::Flag::IS_DC_V1, category.category_id);
+                quests = s->quest_index->filter(c->quest_version(), category.category_id);
                 break;
               }
             }
@@ -1916,8 +1915,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         break;
       }
       shared_ptr<Lobby> l = c->lobby_id ? s->find_lobby(c->lobby_id) : nullptr;
-      auto quests = s->quest_index->filter(
-          c->version(), c->flags & Client::Flag::IS_DC_V1, item_id);
+      auto quests = s->quest_index->filter(c->quest_version(), item_id);
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
@@ -1930,7 +1928,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_lobby_message_box(c, u"$C6Quests are not available.");
         break;
       }
-      auto q = s->quest_index->get(c->version(), item_id);
+      auto q = s->quest_index->get(c->quest_version(), item_id);
       if (!q) {
         send_lobby_message_box(c, u"$C6Quest does not exist.");
         break;

@@ -134,7 +134,7 @@ newserv automatically finds quests in the system/quests/ directory. To install y
 Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle quests should be named like `b###-VERSION.EXT`, challenge quests should be named like `c###-VERSION.EXT` for Episode 1 or `d###-VERSION.EXT` for Episode 2, and Episode 3 download quests should be named like `e###-gc3.EXT`. The fields in each filename are:
 - `###`: quest number (this doesn't really matter; it should just be unique across the PSO version)
 - `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gv1/gv2/gv4 = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
-- `VERSION`: d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, bb = Blue Burst
+- `VERSION`: dn = Dreamcast NTE, d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gcn = GameCube Trial Edition, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, xb = Xbox, bb = Blue Burst
 - `EXT`: file extension (see table below)
 
 For example, the GameCube version of Lost HEAT SWORD is in two files named `q058-ret-gc.bin` and `q058-ret-gc.dat`. newserv knows these files are quests because they're in the system/quests/ directory, it knows they're for PSO GC because the filenames contain `-gc`, and it puts them in the Retrieval category because the filenames contain `-ret`.

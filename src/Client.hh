@@ -15,6 +15,7 @@
 #include "PSOProtocol.hh"
 #include "PatchFileIndex.hh"
 #include "Player.hh"
+#include "QuestScript.hh"
 #include "Text.hh"
 
 extern const uint64_t CLIENT_CONFIG_MAGIC;
@@ -171,6 +172,7 @@ struct Client {
   inline GameVersion version() const {
     return this->channel.version;
   }
+  QuestScriptVersion quest_version() const;
 
   void set_license(std::shared_ptr<const License> l);
 

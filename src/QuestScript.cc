@@ -18,6 +18,32 @@
 
 using namespace std;
 
+template <>
+const char* name_for_enum<QuestScriptVersion>(QuestScriptVersion v) {
+  switch (v) {
+    case QuestScriptVersion::DC_NTE:
+      return "DC_NTE";
+    case QuestScriptVersion::DC_V1:
+      return "DC_V1";
+    case QuestScriptVersion::DC_V2:
+      return "DC_V2";
+    case QuestScriptVersion::PC_V2:
+      return "PC_V2";
+    case QuestScriptVersion::GC_NTE:
+      return "GC_NTE";
+    case QuestScriptVersion::GC_V3:
+      return "GC_V3";
+    case QuestScriptVersion::XB_V3:
+      return "XB_V3";
+    case QuestScriptVersion::GC_EP3:
+      return "GC_EP3";
+    case QuestScriptVersion::BB_V4:
+      return "BB_V4";
+    default:
+      return "__UNKNOWN__";
+  }
+}
+
 // bit_cast isn't in the standard place on macOS (it is apparently implicitly
 // included by resource_dasm, but newserv can be built without resource_dasm)
 // and I'm too lazy to go find the right header to include

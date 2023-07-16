@@ -98,6 +98,35 @@ Client::~Client() {
   this->log.info("Deleted");
 }
 
+QuestScriptVersion Client::quest_version() const {
+  switch (this->version()) {
+    case GameVersion::DC:
+      if (this->flags & Flag::IS_TRIAL_EDITION) {
+        return QuestScriptVersion::DC_NTE;
+      } else if (this->flags & Flag::IS_DC_V1) {
+        return QuestScriptVersion::DC_V1;
+      } else {
+        return QuestScriptVersion::DC_V2;
+      }
+    case GameVersion::PC:
+      return QuestScriptVersion::PC_V2;
+    case GameVersion::GC:
+      if (this->flags & Flag::IS_TRIAL_EDITION) {
+        return QuestScriptVersion::GC_NTE;
+      } else if (this->flags & Flag::IS_EPISODE_3) {
+        return QuestScriptVersion::GC_EP3;
+      } else {
+        return QuestScriptVersion::GC_V3;
+      }
+    case GameVersion::XB:
+      return QuestScriptVersion::XB_V3;
+    case GameVersion::BB:
+      return QuestScriptVersion::BB_V4;
+    default:
+      throw logic_error("client\'s game version does not have a quest version");
+  }
+}
+
 void Client::set_license(shared_ptr<const License> l) {
   this->license = l;
   this->game_data.guild_card_number = this->license->serial_number;
