@@ -1155,7 +1155,8 @@ static HandlerResult S_44_A6(shared_ptr<ServerState>,
 }
 
 constexpr on_command_t S_D_44_A6 = &S_44_A6<S_OpenFile_DC_44_A6>;
-constexpr on_command_t S_PGX_44_A6 = &S_44_A6<S_OpenFile_PC_V3_44_A6>;
+constexpr on_command_t S_PG_44_A6 = &S_44_A6<S_OpenFile_PC_GC_44_A6>;
+constexpr on_command_t S_X_44_A6 = &S_44_A6<S_OpenFile_XB_44_A6>;
 constexpr on_command_t S_B_44_A6 = &S_44_A6<S_OpenFile_BB_44_A6>;
 
 static HandlerResult S_13_A7(shared_ptr<ServerState>,
@@ -1811,7 +1812,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* 41 */ {{S_invalid,     nullptr}, {S_DGX_41,         nullptr},      {S_P_41,        nullptr},      {S_DGX_41,         nullptr},      {S_DGX_41,      nullptr},      {S_B_41,       nullptr}},
 /* 42 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 43 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
-/* 44 */ {{S_invalid,     nullptr}, {S_D_44_A6,        nullptr},      {S_PGX_44_A6,   nullptr},      {S_PGX_44_A6,      nullptr},      {S_PGX_44_A6,   nullptr},      {S_B_44_A6,    nullptr}},
+/* 44 */ {{S_invalid,     nullptr}, {S_D_44_A6,        nullptr},      {S_PG_44_A6,    nullptr},      {S_PG_44_A6,       nullptr},      {S_X_44_A6,     nullptr},      {S_B_44_A6,    nullptr}},
 /* 45 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 46 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 47 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
@@ -1912,7 +1913,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* A3 */ {{S_invalid,     nullptr}, {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
 /* A4 */ {{S_invalid,     nullptr}, {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
 /* A5 */ {{S_invalid,     nullptr}, {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
-/* A6 */ {{S_invalid,     nullptr}, {S_D_44_A6,        nullptr},      {S_PGX_44_A6,   nullptr},      {S_PGX_44_A6,      nullptr},      {S_PGX_44_A6,   nullptr},      {S_B_44_A6,    nullptr}},
+/* A6 */ {{S_invalid,     nullptr}, {S_D_44_A6,        nullptr},      {S_PG_44_A6,    nullptr},      {S_PG_44_A6,       nullptr},      {S_X_44_A6,     nullptr},      {S_B_44_A6,    nullptr}},
 /* A7 */ {{S_invalid,     nullptr}, {S_13_A7,          nullptr},      {S_13_A7,       nullptr},      {S_13_A7,          nullptr},      {S_13_A7,       nullptr},      {S_13_A7,      nullptr}},
 /* A8 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* A9 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},

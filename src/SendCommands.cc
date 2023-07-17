@@ -303,7 +303,7 @@ void send_quest_buffer_overflow(
   }
 
   static const string filename = "m999999p_e.bin";
-  send_quest_open_file_t<S_OpenFile_PC_V3_44_A6>(
+  send_quest_open_file_t<S_OpenFile_PC_GC_44_A6>(
       c, "BufferOverflow", filename, 0x18, QuestFileType::EPISODE_3);
 
   S_WriteFile_13_A7 cmd;
@@ -2698,8 +2698,11 @@ void send_open_quest_file(shared_ptr<Client> c, const string& quest_name,
       break;
     case GameVersion::PC:
     case GameVersion::GC:
+      send_quest_open_file_t<S_OpenFile_PC_GC_44_A6>(
+          c, quest_name, basename, contents->size(), type);
+      break;
     case GameVersion::XB:
-      send_quest_open_file_t<S_OpenFile_PC_V3_44_A6>(
+      send_quest_open_file_t<S_OpenFile_XB_44_A6>(
           c, quest_name, basename, contents->size(), type);
       break;
     case GameVersion::BB:

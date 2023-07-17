@@ -779,9 +779,11 @@ pair<string, string> Quest::decode_qst_file(const string& filename) {
   if (signature == 0x58004400 || signature == 0x5800A600) {
     return decode_qst_t<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(f.get());
   } else if ((signature & 0xFFFFFF00) == 0x3C004400 || (signature & 0xFFFFFF00) == 0x3C00A600) {
-    return decode_qst_t<PSOCommandHeaderPC, S_OpenFile_PC_V3_44_A6>(f.get());
+    return decode_qst_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(f.get());
   } else if ((signature & 0xFF00FFFF) == 0x44003C00 || (signature & 0xFF00FFFF) == 0xA6003C00) {
-    return decode_qst_t<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(f.get());
+    return decode_qst_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(f.get());
+  } else if ((signature & 0xFF00FFFF) == 0x44005400 || (signature & 0xFF00FFFF) == 0xA6005400) {
+    return decode_qst_t<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(f.get());
   } else {
     throw runtime_error("invalid qst file format");
   }
@@ -800,8 +802,7 @@ void add_command_header(
 template <typename HeaderT, typename CmdT>
 void add_open_file_command(StringWriter& w, const Quest& q, bool is_bin) {
   add_command_header<HeaderT>(
-      w, q.is_dlq_encoded ? 0xA6 : 0x44, q.internal_id,
-      sizeof(S_OpenFile_DC_44_A6));
+      w, q.is_dlq_encoded ? 0xA6 : 0x44, q.internal_id, sizeof(CmdT));
   CmdT cmd;
   cmd.name = "PSO/" + encode_sjis(q.name);
   cmd.filename = q.file_basename + (is_bin ? ".bin" : ".dat");
@@ -850,8 +851,8 @@ string Quest::export_qst() const {
           w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
       break;
     case QuestScriptVersion::PC_V2:
-      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_V3_44_A6>(w, *this, true);
-      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_V3_44_A6>(w, *this, false);
+      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, *this, true);
+      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, *this, false);
       add_write_file_commands<PSOCommandHeaderPC>(
           w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
       add_write_file_commands<PSOCommandHeaderPC>(
@@ -859,18 +860,25 @@ string Quest::export_qst() const {
       break;
     case QuestScriptVersion::GC_NTE:
     case QuestScriptVersion::GC_V3:
-    case QuestScriptVersion::XB_V3:
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, true);
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, false);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, *this, true);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, *this, false);
       add_write_file_commands<PSOCommandHeaderDCV3>(
           w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
       add_write_file_commands<PSOCommandHeaderDCV3>(
           w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
       break;
     case QuestScriptVersion::GC_EP3:
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_V3_44_A6>(w, *this, true);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, *this, true);
       add_write_file_commands<PSOCommandHeaderDCV3>(
           w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
+      break;
+    case QuestScriptVersion::XB_V3:
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, *this, true);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, *this, false);
+      add_write_file_commands<PSOCommandHeaderDCV3>(
+          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(
+          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
       break;
     case QuestScriptVersion::BB_V4:
       add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, *this, true);

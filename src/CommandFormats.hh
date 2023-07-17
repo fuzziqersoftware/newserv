@@ -1015,7 +1015,7 @@ struct S_OpenFile_DC_44_A6 {
   le_uint32_t file_size = 0;
 } __packed__;
 
-struct S_OpenFile_PC_V3_44_A6 {
+struct S_OpenFile_PC_GC_44_A6 {
   ptext<char, 0x22> name; // Should begin with "PSO/"
   le_uint16_t type = 0;
   ptext<char, 0x10> filename;
@@ -1025,7 +1025,7 @@ struct S_OpenFile_PC_V3_44_A6 {
 // Curiously, PSO XB expects an extra 0x18 bytes at the end of this command, but
 // those extra bytes are unused, and the client does not fail if they're
 // omitted.
-struct S_OpenFile_XB_44_A6 : S_OpenFile_PC_V3_44_A6 {
+struct S_OpenFile_XB_44_A6 : S_OpenFile_PC_GC_44_A6 {
   parray<uint8_t, 0x18> unused2;
 } __packed__;
 
