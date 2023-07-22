@@ -74,7 +74,7 @@ public:
   std::u16string short_description;
   std::u16string long_description;
 
-  Quest(const std::string& file_basename, std::shared_ptr<const QuestCategoryIndex> category_index);
+  Quest(const std::string& file_basename, QuestScriptVersion version, std::shared_ptr<const QuestCategoryIndex> category_index);
   Quest(const Quest&) = default;
   Quest(Quest&&) = default;
   Quest& operator=(const Quest&) = default;
@@ -86,6 +86,8 @@ public:
   std::shared_ptr<const std::string> bin_contents() const;
   std::shared_ptr<const std::string> dat_contents() const;
 
+  static std::string encode_download_quest_file(
+      const std::string& compressed_data, size_t decompressed_size = 0, uint32_t encryption_seed = 0);
   std::shared_ptr<Quest> create_download_quest() const;
 
   static std::string decode_gci_file(
@@ -100,7 +102,14 @@ public:
   static std::string decode_dlq_data(const std::string& filename);
   static std::pair<std::string, std::string> decode_qst_file(const std::string& filename);
 
-  std::string export_qst() const;
+  static std::string encode_qst(
+      const std::string& bin_data,
+      const std::string& dat_data,
+      const std::u16string& name,
+      const std::string& file_basename,
+      QuestScriptVersion version,
+      bool is_dlq_encoded);
+  std::string encode_qst() const;
 
 private:
   // these are populated when requested

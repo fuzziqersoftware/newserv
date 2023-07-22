@@ -18,6 +18,7 @@ enum class QuestScriptVersion {
   XB_V3 = 6,
   GC_EP3 = 7,
   BB_V4 = 8,
+  UNKNOWN = 15,
 };
 
 template <>

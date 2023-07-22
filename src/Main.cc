@@ -187,6 +187,11 @@ The actions are:\n\
     GCI or VMS file, use the --seed=SEED option and give the serial number (as\n\
     a hex-encoded 32-bit integer). If you don\'t know the serial number,\n\
     newserv will find it via a brute-force search, which will take a long time.\n\
+  encode-qst INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS...]\n\
+    Encode the input quest file (in .bin/.dat format) into a .qst file. If\n\
+    --download is given, generates a download .qst instead of an online .qst.\n\
+    Specify the quest\'s game version with one of the --dc-nte, --dc-v1,\n\
+    --dc-v2, --pc, --gc-nte, --gc, --gc-ep3, --xb, or --bb options.\n\
   disassemble-quest-script [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Disassemble the input quest script (.bin file) into a text representation\n\
     of the commands and metadata it contains. Specify the quest\'s game version\n\
@@ -264,6 +269,7 @@ enum class Behavior {
   FIND_DECRYPTION_SEED,
   SALVAGE_GCI,
   DECODE_QUEST_FILE,
+  ENCODE_QST,
   DISASSEMBLE_QUEST_SCRIPT,
   DECODE_SJIS,
   EXTRACT_GSL,
@@ -302,6 +308,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::SALVAGE_GCI) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DECODE_QUEST_FILE) ||
+      (b == Behavior::ENCODE_QST) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
       (b == Behavior::DECODE_SJIS) ||
       (b == Behavior::FORMAT_RARE_ITEM_SET) ||
@@ -331,6 +338,7 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::DECRYPT_CHALLENGE_DATA) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
+      (b == Behavior::ENCODE_QST) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
       (b == Behavior::DECODE_SJIS) ||
@@ -361,6 +369,7 @@ int main(int argc, char** argv) {
   bool expect_decompressed = false;
   bool compress_optimal = false;
   bool json = false;
+  bool download = false;
   const char* find_decryption_seed_ciphertext = nullptr;
   vector<const char*> find_decryption_seed_plaintexts;
   const char* input_filename = nullptr;
@@ -378,6 +387,8 @@ int main(int argc, char** argv) {
       return 0;
     } else if (!strncmp(argv[x], "--threads=", 10)) {
       num_threads = strtoull(&argv[x][10], nullptr, 0);
+    } else if (!strcmp(argv[x], "--download")) {
+      download = true;
     } else if (!strcmp(argv[x], "--patch")) {
       cli_version = GameVersion::PATCH;
       cli_quest_version = QuestScriptVersion::PC_V2;
@@ -517,6 +528,8 @@ int main(int argc, char** argv) {
         } else if (!strcmp(argv[x], "decode-qst")) {
           behavior = Behavior::DECODE_QUEST_FILE;
           quest_file_type = Quest::FileFormat::QST;
+        } else if (!strcmp(argv[x], "encode-qst")) {
+          behavior = Behavior::ENCODE_QST;
         } else if (!strcmp(argv[x], "disassemble-quest-script")) {
           behavior = Behavior::DISASSEMBLE_QUEST_SCRIPT;
         } else if (!strcmp(argv[x], "cat-client")) {
@@ -1107,6 +1120,21 @@ int main(int argc, char** argv) {
       } else {
         throw logic_error("invalid quest file format");
       }
+      break;
+    }
+
+    case Behavior::ENCODE_QST: {
+      if (!input_filename || !strcmp(input_filename, "-")) {
+        throw invalid_argument("an input filename is required");
+      }
+
+      shared_ptr<Quest> q(new Quest(input_filename, cli_quest_version, nullptr));
+      if (download) {
+        q = q->create_download_quest();
+      }
+      string qst_data = q->encode_qst();
+
+      write_output_data(qst_data.data(), qst_data.size());
       break;
     }
 

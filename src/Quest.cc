@@ -231,12 +231,13 @@ struct PSODownloadQuestHeader {
   le_uint32_t encryption_seed;
 } __attribute__((packed));
 
-Quest::Quest(const string& bin_filename, shared_ptr<const QuestCategoryIndex> category_index)
+Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<const QuestCategoryIndex> category_index)
     : internal_id(-1),
       menu_item_id(0),
       category_id(0),
       episode(Episode::NONE),
       joinable(false),
+      version(version),
       file_format(FileFormat::BIN_DAT),
       has_mnm_extension(false),
       is_dlq_encoded(false) {
@@ -281,35 +282,41 @@ Quest::Quest(const string& bin_filename, shared_ptr<const QuestCategoryIndex> ca
     throw invalid_argument("empty filename");
   }
 
-  vector<string> tokens = split(basename, '-');
+  if ((version == QuestScriptVersion::UNKNOWN) || category_index) {
+    vector<string> tokens = split(basename, '-');
 
-  string category_token;
-  if (tokens.size() == 3) {
-    category_token = std::move(tokens[1]);
-    tokens.erase(tokens.begin() + 1);
-  } else if (tokens.size() != 2) {
-    throw invalid_argument("incorrect filename format");
+    string category_token;
+    if (tokens.size() == 3) {
+      category_token = std::move(tokens[1]);
+      tokens.erase(tokens.begin() + 1);
+    } else if (tokens.size() != 2) {
+      throw invalid_argument("incorrect filename format");
+    }
+
+    if (category_index) {
+      auto& category = category_index->find(basename[0], category_token);
+      this->category_id = category.category_id;
+    } else {
+      this->category_id = 0;
+    }
+
+    // Parse the number out of the first token
+    this->internal_id = strtoull(tokens[0].c_str() + 1, nullptr, 10);
+
+    // Get the version from the second (or previously third) token
+    static const unordered_map<string, QuestScriptVersion> name_to_version({
+        {"dn", QuestScriptVersion::DC_NTE},
+        {"d1", QuestScriptVersion::DC_V1},
+        {"dc", QuestScriptVersion::DC_V2},
+        {"pc", QuestScriptVersion::PC_V2},
+        {"gcn", QuestScriptVersion::GC_NTE},
+        {"gc", QuestScriptVersion::GC_V3},
+        {"gc3", QuestScriptVersion::GC_EP3},
+        {"xb", QuestScriptVersion::XB_V3},
+        {"bb", QuestScriptVersion::BB_V4},
+    });
+    this->version = name_to_version.at(tokens[1]);
   }
-
-  auto& category = category_index->find(basename[0], category_token);
-  this->category_id = category.category_id;
-
-  // Parse the number out of the first token
-  this->internal_id = strtoull(tokens[0].c_str() + 1, nullptr, 10);
-
-  // Get the version from the second (or previously third) token
-  static const unordered_map<string, QuestScriptVersion> name_to_version({
-      {"dn", QuestScriptVersion::DC_NTE},
-      {"d1", QuestScriptVersion::DC_V1},
-      {"dc", QuestScriptVersion::DC_V2},
-      {"pc", QuestScriptVersion::PC_V2},
-      {"gcn", QuestScriptVersion::GC_NTE},
-      {"gc", QuestScriptVersion::GC_V3},
-      {"gc3", QuestScriptVersion::GC_EP3},
-      {"xb", QuestScriptVersion::XB_V3},
-      {"bb", QuestScriptVersion::BB_V4},
-  });
-  this->version = name_to_version.at(tokens[1]);
 
   // The rest of the information needs to be fetched from the .bin file's
   // contents
@@ -800,12 +807,11 @@ void add_command_header(
 }
 
 template <typename HeaderT, typename CmdT>
-void add_open_file_command(StringWriter& w, const Quest& q, bool is_bin) {
-  add_command_header<HeaderT>(
-      w, q.is_dlq_encoded ? 0xA6 : 0x44, q.internal_id, sizeof(CmdT));
+void add_open_file_command(StringWriter& w, const std::u16string& name, const std::string& filename, bool is_download) {
+  add_command_header<HeaderT>(w, is_download ? 0xA6 : 0x44, 0x00, sizeof(CmdT));
   CmdT cmd;
-  cmd.name = "PSO/" + encode_sjis(q.name);
-  cmd.filename = q.file_basename + (is_bin ? ".bin" : ".dat");
+  cmd.name = "PSO/" + encode_sjis(name);
+  cmd.filename = filename;
   cmd.type = 0;
   // TODO: It'd be nice to have something like w.emplace(...) to avoid copying
   // the command structs into the StringWriter.
@@ -817,10 +823,10 @@ void add_write_file_commands(
     StringWriter& w,
     const string& filename,
     const string& data,
-    bool is_dlq_encoded) {
+    bool is_download) {
   for (size_t z = 0; z < data.size(); z += 0x400) {
     size_t chunk_size = min<size_t>(data.size() - z, 0x400);
-    add_command_header<HeaderT>(w, is_dlq_encoded ? 0xA7 : 0x13, z >> 10, sizeof(S_WriteFile_13_A7));
+    add_command_header<HeaderT>(w, is_download ? 0xA7 : 0x13, z >> 10, sizeof(S_WriteFile_13_A7));
     S_WriteFile_13_A7 cmd;
     cmd.filename = filename;
     memcpy(cmd.data.data(), &data[z], chunk_size);
@@ -829,70 +835,73 @@ void add_write_file_commands(
   }
 }
 
-string Quest::export_qst() const {
-  bool is_ep3 = this->episode == Episode::EP3;
-  if (is_ep3 && !this->is_dlq_encoded) {
-    throw runtime_error("Episode 3 quests can only be encoded in download QST format");
-  }
-
+string Quest::encode_qst(
+    const string& bin_data,
+    const string& dat_data,
+    const u16string& name,
+    const string& file_basename,
+    QuestScriptVersion version,
+    bool is_dlq_encoded) {
   StringWriter w;
+
+  string bin_filename = file_basename + ".bin";
+  string dat_filename = file_basename + ".dat";
 
   // Some tools expect both open file commands at the beginning, hence this
   // unfortunate abstraction-breaking.
-  switch (this->version) {
+  switch (version) {
     case QuestScriptVersion::DC_NTE:
     case QuestScriptVersion::DC_V1:
     case QuestScriptVersion::DC_V2:
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, *this, true);
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, *this, false);
-      add_write_file_commands<PSOCommandHeaderDCV3>(
-          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(
-          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, bin_filename, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, dat_filename, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded);
       break;
     case QuestScriptVersion::PC_V2:
-      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, *this, true);
-      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, *this, false);
-      add_write_file_commands<PSOCommandHeaderPC>(
-          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderPC>(
-          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, dat_filename, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderPC>(w, bin_filename, bin_data, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderPC>(w, dat_filename, dat_data, is_dlq_encoded);
       break;
     case QuestScriptVersion::GC_NTE:
     case QuestScriptVersion::GC_V3:
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, *this, true);
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, *this, false);
-      add_write_file_commands<PSOCommandHeaderDCV3>(
-          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(
-          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, dat_filename, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded);
       break;
     case QuestScriptVersion::GC_EP3:
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, *this, true);
-      add_write_file_commands<PSOCommandHeaderDCV3>(
-          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded);
       break;
     case QuestScriptVersion::XB_V3:
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, *this, true);
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, *this, false);
-      add_write_file_commands<PSOCommandHeaderDCV3>(
-          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(
-          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, bin_filename, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, dat_filename, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded);
       break;
     case QuestScriptVersion::BB_V4:
-      add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, *this, true);
-      add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, *this, false);
-      add_write_file_commands<PSOCommandHeaderBB>(
-          w, this->file_basename + ".bin", *this->bin_contents(), this->is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderBB>(
-          w, this->file_basename + ".dat", *this->dat_contents(), this->is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, bin_filename, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, dat_filename, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderBB>(w, bin_filename, bin_data, is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderBB>(w, dat_filename, dat_data, is_dlq_encoded);
       break;
     default:
       throw logic_error("invalid game version");
   }
 
   return std::move(w.str());
+}
+
+string Quest::encode_qst() const {
+  return this->encode_qst(
+      *this->bin_contents(),
+      *this->dat_contents(),
+      this->name,
+      basename(this->file_basename),
+      this->version,
+      this->is_dlq_encoded);
 }
 
 QuestIndex::QuestIndex(
@@ -922,7 +931,7 @@ QuestIndex::QuestIndex(
         ends_with(filename, ".mnm.dlq") ||
         ends_with(filename, ".qst")) {
       try {
-        shared_ptr<Quest> q(new Quest(full_path, this->category_index));
+        shared_ptr<Quest> q(new Quest(full_path, QuestScriptVersion::UNKNOWN, this->category_index));
         q->menu_item_id = next_menu_item_id++;
         string ascii_name = encode_sjis(q->name);
         if (!this->version_menu_item_id_to_quest.emplace(make_pair(q->version, q->menu_item_id), q).second) {
@@ -970,14 +979,17 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(
   return ret;
 }
 
-static string create_download_quest_file(const string& compressed_data,
-    size_t decompressed_size, uint32_t encryption_seed = 0) {
+string Quest::encode_download_quest_file(
+    const string& compressed_data, size_t decompressed_size, uint32_t encryption_seed) {
   // Download quest files are like normal (PRS-compressed) quest files, but they
   // are encrypted with PSO V2 encryption (even on V3 / PSO GC), and a small
   // header (PSODownloadQuestHeader) is prepended to the encrypted data.
 
   if (encryption_seed == 0) {
     encryption_seed = random_object<uint32_t>();
+  }
+  if (decompressed_size == 0) {
+    decompressed_size = prs_decompress_size(compressed_data);
   }
 
   string data(8, '\0');
@@ -1050,10 +1062,9 @@ shared_ptr<Quest> Quest::create_download_quest() const {
   // Return a new Quest object with appropriately-processed .bin and .dat file
   // contents
   shared_ptr<Quest> dlq(new Quest(*this));
-  dlq->bin_contents_ptr.reset(new string(create_download_quest_file(
+  dlq->bin_contents_ptr.reset(new string(this->encode_download_quest_file(
       compressed_bin, decompressed_bin.size())));
-  dlq->dat_contents_ptr.reset(new string(create_download_quest_file(
-      *this->dat_contents(), prs_decompress_size(*this->dat_contents()))));
+  dlq->dat_contents_ptr.reset(new string(this->encode_download_quest_file(*this->dat_contents())));
   dlq->is_dlq_encoded = true;
   return dlq;
 }
