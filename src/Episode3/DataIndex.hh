@@ -422,10 +422,11 @@ Direction turn_around(Direction d);
 const char* name_for_direction(Direction d);
 
 struct Location {
-  uint8_t x;
-  uint8_t y;
-  Direction direction;
-  uint8_t unused;
+  /* 00 */ uint8_t x;
+  /* 01 */ uint8_t y;
+  /* 02 */ Direction direction;
+  /* 03 */ uint8_t unused;
+  /* 04 */
 
   Location();
   Location(uint8_t x, uint8_t y);
@@ -452,61 +453,63 @@ struct CardDefinition {
       MINUS_UNKNOWN = 7,
       EQUALS_UNKNOWN = 8,
     };
-    be_uint16_t code;
-    Type type;
-    int8_t stat;
+    /* 00 */ be_uint16_t code;
+    /* 02 */ Type type;
+    /* 03 */ int8_t stat;
+    /* 04 */
 
     void decode_code();
     std::string str() const;
   } __attribute__((packed));
 
   struct Effect {
-    uint8_t effect_num;
-    ConditionType type;
-    ptext<char, 0x0F> expr; // May be blank if the condition type doesn't use it
-    uint8_t when;
-    ptext<char, 4> arg1;
-    ptext<char, 4> arg2;
-    ptext<char, 4> arg3;
-    CriterionCode apply_criterion;
-    uint8_t unknown_a2;
+    /* 00 */ uint8_t effect_num;
+    /* 01 */ ConditionType type;
+    /* 02 */ ptext<char, 0x0F> expr; // May be blank if the condition type doesn't use it
+    /* 11 */ uint8_t when;
+    /* 12 */ ptext<char, 4> arg1;
+    /* 16 */ ptext<char, 4> arg2;
+    /* 1A */ ptext<char, 4> arg3;
+    /* 1E */ CriterionCode apply_criterion;
+    /* 1F */ uint8_t unknown_a2;
+    /* 20 */
 
     bool is_empty() const;
     static std::string str_for_arg(const std::string& arg);
     std::string str() const;
   } __attribute__((packed));
 
-  be_uint32_t card_id;
-  parray<uint8_t, 0x40> jp_name;
-  CardType type; // If <0 (signed), then this is the end of the card list
-  uint8_t self_cost; // ATK dice points required
-  uint8_t ally_cost; // ATK points from allies required; PBs use this
-  uint8_t unused1;
-  Stat hp;
-  Stat ap;
-  Stat tp;
-  Stat mv;
-  parray<uint8_t, 8> left_colors;
-  parray<uint8_t, 8> right_colors;
-  parray<uint8_t, 8> top_colors;
-  parray<be_uint32_t, 6> range;
-  be_uint32_t unused2;
-  TargetMode target_mode;
-  uint8_t assist_turns; // 90 (dec) = once, 99 (dec) = forever
-  uint8_t cannot_move; // 0 for SC and creature cards; 1 for everything else
-  uint8_t cannot_attack; // 1 for shields, mags, defense actions, and assist cards
-  uint8_t unused3;
+  /* 0000 */ be_uint32_t card_id;
+  /* 0004 */ parray<uint8_t, 0x40> jp_name;
+  /* 0044 */ CardType type; // If <0 (signed), then this is the end of the card list
+  /* 0045 */ uint8_t self_cost; // ATK dice points required
+  /* 0046 */ uint8_t ally_cost; // ATK points from allies required; PBs use this
+  /* 0047 */ uint8_t unused1;
+  /* 0048 */ Stat hp;
+  /* 004C */ Stat ap;
+  /* 0050 */ Stat tp;
+  /* 0054 */ Stat mv;
+  /* 0058 */ parray<uint8_t, 8> left_colors;
+  /* 0060 */ parray<uint8_t, 8> right_colors;
+  /* 0068 */ parray<uint8_t, 8> top_colors;
+  /* 0070 */ parray<be_uint32_t, 6> range;
+  /* 0088 */ be_uint32_t unused2;
+  /* 008C */ TargetMode target_mode;
+  /* 008D */ uint8_t assist_turns; // 90 (dec) = once, 99 (dec) = forever
+  /* 008E */ uint8_t cannot_move; // 0 for SC and creature cards; 1 for everything else
+  /* 008F */ uint8_t cannot_attack; // 1 for shields, mags, defense actions, and assist cards
+  /* 0090 */ uint8_t unused3;
   // If cannot_drop is 0, this card can't appear in post-battle rewards. A
   // value of 0 here also prevents the card from being used as a God Whim
   // random assist.
-  uint8_t cannot_drop;
-  CriterionCode usable_criterion;
-  CardRarity rarity;
-  be_uint16_t unknown_a2;
+  /* 0091 */ uint8_t cannot_drop;
+  /* 0092 */ CriterionCode usable_criterion;
+  /* 0093 */ CardRarity rarity;
+  /* 0094 */ be_uint16_t unknown_a2;
   // The card class is used for checking attributes (e.g. item types). It's
   // stored big-endian here, so there's a helper function (card_class()) that
   // returns a usable CardClass enum value.
-  be_uint16_t be_card_class;
+  /* 0096 */ be_uint16_t be_card_class;
   // The two fields of this array seem to always contain the same value, and
   // are always 0 for non-assist cards and nonzero for assists. Each assist
   // card has a unique value here and no effects, though the server ignores
@@ -516,7 +519,7 @@ struct CardDefinition {
   // cards have the same effect, so this cannot be used by the server anyway to
   // determine assist cards' effects (see e.g. Skip Draw / Skip Move, Dice
   // Fever / Dice Fever +, Reverse Card / Rich +).
-  parray<be_uint16_t, 2> assist_effect;
+  /* 0098 */ parray<be_uint16_t, 2> assist_effect;
   // Drop rates are decimal-encoded with the following fields:
   // - rate % 10 (that is, the lowest decimal place) specifies the required game
   //   mode. 0 means any mode, 1 means offline only, 2 means 1P free-battle, 3
@@ -534,12 +537,13 @@ struct CardDefinition {
   // - rarity is E, D1, D2, or INVIS
   // - cannot_drop is 1 (specifically 1; other nonzero values here don't
   //   prevent the card from appearing in post-battle draws)
-  parray<be_uint16_t, 2> drop_rates;
-  ptext<char, 0x14> en_name;
-  ptext<char, 0x0B> jp_short_name;
-  ptext<char, 0x08> en_short_name;
-  Effect effects[3];
-  uint8_t unused4;
+  /* 009C */ parray<be_uint16_t, 2> drop_rates;
+  /* 00A0 */ ptext<char, 0x14> en_name;
+  /* 00B4 */ ptext<char, 0x0B> jp_short_name;
+  /* 00BF */ ptext<char, 0x08> en_short_name;
+  /* 00C7 */ Effect effects[3];
+  /* 0127 */ uint8_t unused4;
+  /* 0128 */
 
   bool is_sc() const;
   bool is_fc() const;
@@ -552,34 +556,36 @@ struct CardDefinition {
 } __attribute__((packed)); // 0x128 bytes in total
 
 struct CardDefinitionsFooter {
-  be_uint32_t num_cards1;
-  be_uint32_t unknown_a1;
-  be_uint32_t num_cards2;
-  be_uint32_t unknown_a2[11];
-  be_uint32_t unknown_offset_a3;
-  be_uint32_t unknown_a4[3];
-  be_uint32_t footer_offset;
-  be_uint32_t unknown_a5[3];
+  /* 00 */ be_uint32_t num_cards1;
+  /* 04 */ be_uint32_t cards_offset; // == 0
+  /* 08 */ be_uint32_t num_cards2;
+  /* 0C */ parray<be_uint32_t, 11> unknown_a2;
+  /* 38 */ be_uint32_t unknown_offset_a3;
+  /* 3C */ be_uint32_t unknown_a4[3];
+  /* 48 */ be_uint32_t footer_offset;
+  /* 4C */ be_uint32_t unknown_a5[3];
+  /* 58 */
 } __attribute__((packed));
 
 struct DeckDefinition {
-  ptext<char, 0x10> name;
-  be_uint32_t client_id; // 0-3
+  /* 00 */ ptext<char, 0x10> name;
+  /* 10 */ be_uint32_t client_id; // 0-3
   // List of card IDs. The card count is the number of nonzero entries here
   // before a zero entry (or 50 if no entries are nonzero). The first card ID is
   // the SC card, which the game implicitly subtracts from the limit - so a
   // valid deck should actually have 31 cards in it.
-  parray<le_uint16_t, 50> card_ids;
-  be_uint32_t unknown_a1;
+  /* 14 */ parray<le_uint16_t, 50> card_ids;
+  /* 78 */ be_uint32_t unknown_a1;
   // Last modification time
-  le_uint16_t year;
-  uint8_t month;
-  uint8_t day;
-  uint8_t hour;
-  uint8_t minute;
-  uint8_t second;
-  uint8_t unknown_a2;
-} __attribute__((packed)); // 0x84 bytes in total
+  /* 7C */ le_uint16_t year;
+  /* 7E */ uint8_t month;
+  /* 7F */ uint8_t day;
+  /* 80 */ uint8_t hour;
+  /* 81 */ uint8_t minute;
+  /* 82 */ uint8_t second;
+  /* 83 */ uint8_t unknown_a2;
+  /* 84 */
+} __attribute__((packed));
 
 struct PlayerConfig {
   // TODO: Fill in the unknown fields here by looking around callsites of
@@ -667,23 +673,21 @@ struct Rules {
   // When this structure is used in a map/quest definition, FF in any of these
   // fields means the user is allowed to override it. Any non-FF fields are
   // fixed for the map/quest and cannot be overridden.
-  uint8_t overall_time_limit; // In increments of 5 minutes; 0 = unlimited
-  uint8_t phase_time_limit; // In seconds; 0 = unlimited
-  AllowedCards allowed_cards;
-  uint8_t min_dice; // 0 = default (1)
-  // 4
-  uint8_t max_dice; // 0 = default (6)
-  uint8_t disable_deck_shuffle; // 0 = shuffle on, 1 = off
-  uint8_t disable_deck_loop; // 0 = loop on, 1 = off
-  uint8_t char_hp;
-  // 8
-  HPType hp_type;
-  uint8_t no_assist_cards; // 1 = assist cards disallowed
-  uint8_t disable_dialogue; // 0 = dialogue on, 1 = dialogue off
-  DiceExchangeMode dice_exchange_mode;
-  // C
-  uint8_t disable_dice_boost; // 0 = dice boost on, 1 = off
-  parray<uint8_t, 3> unused;
+  /* 00 */ uint8_t overall_time_limit; // In increments of 5 mins; 0 = unlimited
+  /* 01 */ uint8_t phase_time_limit; // In seconds; 0 = unlimited
+  /* 02 */ AllowedCards allowed_cards;
+  /* 03 */ uint8_t min_dice; // 0 = default (1)
+  /* 04 */ uint8_t max_dice; // 0 = default (6)
+  /* 05 */ uint8_t disable_deck_shuffle; // 0 = shuffle on, 1 = off
+  /* 06 */ uint8_t disable_deck_loop; // 0 = loop on, 1 = off
+  /* 07 */ uint8_t char_hp;
+  /* 08 */ HPType hp_type;
+  /* 09 */ uint8_t no_assist_cards; // 1 = assist cards disallowed
+  /* 0A */ uint8_t disable_dialogue; // 0 = dialogue on, 1 = dialogue off
+  /* 0B */ DiceExchangeMode dice_exchange_mode;
+  /* 0C */ uint8_t disable_dice_boost; // 0 = dice boost on, 1 = off
+  /* 0D */ parray<uint8_t, 3> unused;
+  /* 10 */
 
   Rules();
   explicit Rules(std::shared_ptr<const JSONObject> json);
@@ -700,18 +704,19 @@ struct Rules {
 } __attribute__((packed));
 
 struct StateFlags {
-  le_uint16_t turn_num;
-  BattlePhase battle_phase;
-  uint8_t current_team_turn1;
-  uint8_t current_team_turn2;
-  ActionSubphase action_subphase;
-  SetupPhase setup_phase;
-  RegistrationPhase registration_phase;
-  parray<le_uint32_t, 2> team_exp;
-  parray<uint8_t, 2> team_dice_boost;
-  uint8_t first_team_turn;
-  uint8_t tournament_flag;
-  parray<CardType, 4> client_sc_card_types;
+  /* 00 */ le_uint16_t turn_num;
+  /* 02 */ BattlePhase battle_phase;
+  /* 03 */ uint8_t current_team_turn1;
+  /* 04 */ uint8_t current_team_turn2;
+  /* 05 */ ActionSubphase action_subphase;
+  /* 06 */ SetupPhase setup_phase;
+  /* 07 */ RegistrationPhase registration_phase;
+  /* 08 */ parray<le_uint32_t, 2> team_exp;
+  /* 10 */ parray<uint8_t, 2> team_dice_boost;
+  /* 12 */ uint8_t first_team_turn;
+  /* 13 */ uint8_t tournament_flag;
+  /* 14 */ parray<CardType, 4> client_sc_card_types;
+  /* 18 */
 
   StateFlags();
   bool operator==(const StateFlags& other) const;
@@ -726,25 +731,26 @@ struct MapList {
   be_uint32_t strings_offset; // From after total_size field (add 0x10 to this value)
   be_uint32_t total_size; // Including header, entries, and strings
 
-  struct Entry { // Should be 0x220 bytes in total
-    be_uint16_t map_x;
-    be_uint16_t map_y;
-    be_uint16_t environment_number;
-    be_uint16_t map_number;
+  struct Entry {
+    /* 0000 */ be_uint16_t map_x;
+    /* 0002 */ be_uint16_t map_y;
+    /* 0004 */ be_uint16_t environment_number;
+    /* 0006 */ be_uint16_t map_number;
     // Text offsets are from the beginning of the strings block after all map
     // entries (that is, add strings_offset to them to get the string offset)
-    be_uint32_t name_offset;
-    be_uint32_t location_name_offset;
-    be_uint32_t quest_name_offset;
-    be_uint32_t description_offset;
-    be_uint16_t width;
-    be_uint16_t height;
-    parray<parray<uint8_t, 0x10>, 0x10> map_tiles;
-    parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
+    /* 0008 */ be_uint32_t name_offset;
+    /* 000C */ be_uint32_t location_name_offset;
+    /* 0010 */ be_uint32_t quest_name_offset;
+    /* 0014 */ be_uint32_t description_offset;
+    /* 0018 */ be_uint16_t width;
+    /* 001A */ be_uint16_t height;
+    /* 001C */ parray<parray<uint8_t, 0x10>, 0x10> map_tiles;
+    /* 011C */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
     // This appears to be 0xFF for free battle maps, and 0 for quests.
     // TODO: Figure out what this field's meaning actually is
-    uint8_t unknown_a1;
-    parray<uint8_t, 3> unused;
+    /* 021C */ uint8_t unknown_a1;
+    /* 021D */ parray<uint8_t, 3> unused;
+    /* 0220 */
   } __attribute__((packed));
 
   // Variable-length fields:
@@ -849,35 +855,38 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 1FE6 */ be_uint16_t map_y;
 
   struct NPCDeck {
-    ptext<char, 0x18> name;
-    parray<be_uint16_t, 0x20> card_ids; // Last one appears to always be FFFF
+    /* 00 */ ptext<char, 0x18> name;
+    /* 18 */ parray<be_uint16_t, 0x20> card_ids; // Last one appears to always be FFFF
+    /* 58 */
   } __attribute__((packed));
   /* 1FE8 */ NPCDeck npc_decks[3]; // Unused if name[0] == 0
   struct NPCCharacter {
-    parray<be_uint16_t, 2> unknown_a1;
-    parray<uint8_t, 4> unknown_a2;
-    ptext<char, 0x10> name;
-    parray<be_uint16_t, 0x7E> unknown_a3;
+    /* 0000 */ parray<be_uint16_t, 2> unknown_a1;
+    /* 0004 */ parray<uint8_t, 4> unknown_a2;
+    /* 0008 */ ptext<char, 0x10> name;
+    /* 0018 */ parray<be_uint16_t, 0x7E> unknown_a3;
+    /* 0114 */
   } __attribute__((packed));
   /* 20F0 */ NPCCharacter npc_chars[3]; // Unused if name[0] == 0
 
   /* 242C */ parray<uint8_t, 8> unknown_a7_a; // Always FF?
   /* 2434 */ parray<be_uint32_t, 3> unknown_a7_b; // Always FF?
 
-  // before_message appears before the battle; after_message appears after the
-  // battle. In free battle and online mode, before_message is ignored, but
-  // after_message still appears after the battle if it's not blank.
+  // In story mode, before_message appears before the battle if it's not blank;
+  // in free battle and online mode, before_message is ignored. after_message
+  // appears after the battle if it's not blank in all modes.
   /* 2440 */ ptext<char, 0x190> before_message;
   /* 25D0 */ ptext<char, 0x190> after_message;
-  // dispatch_message is appears right before the player chooses a deck. Usually
-  // it contains something like "You can only dispatch <character>" or is blank.
+  // dispatch_message appears right before the player chooses a deck if it's not
+  // blank. Usually it says something like "You can only dispatch <character>".
   /* 2760 */ ptext<char, 0x190> dispatch_message;
 
   struct DialogueSet {
-    be_uint16_t unknown_a1;
-    be_uint16_t unknown_a2; // Always 0x0064 if valid, 0xFFFF if unused?
-    ptext<char, 0x40> strings[4];
-  } __attribute__((packed)); // Total size: 0x104 bytes
+    /* 0000 */ be_uint16_t unknown_a1;
+    /* 0002 */ be_uint16_t unknown_a2; // Always 0x0064 if valid, 0xFFFF if unused?
+    /* 0004 */ ptext<char, 0x40> strings[4];
+    /* 0104 */
+  } __attribute__((packed));
   /* 28F0 */ DialogueSet dialogue_sets[3][0x10]; // Up to 0x10 per valid NPC
 
   /* 59B0 */ parray<be_uint16_t, 0x10> reward_card_ids;
