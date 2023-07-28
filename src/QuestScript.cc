@@ -768,9 +768,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8C0, "nop_F8C0", {}, {INT32, CSTRING}, F_V4},
     {0xF8C1, "get_dl_status", {REG}, {}, F_V3},
     {0xF8C1, "nop_F8C1", {REG}, {}, F_V4},
-    {0xF8C2, "prepare_gba_rom_from_download", {}, {}, F_V3}, // Prepares to load a GBA ROM from a previous file_dl_req opcode
-    {0xF8C2, "nop_F8C2", {}, {}, F_V4},
-    {0xF8C3, "start_or_update_gba_joyboot", {REG}, {}, F_V3}, // One of F8C2 or F929 must be called before calling this, then this should be called repeatedly until it succeeds or fails. Return values are: 0 = not started, 1 = failed, 2 = timed out, 3 = in progress, 4 = complete
+    {0xF8C2, "prepare_gba_rom_from_download", {}, {}, F_GC_V3 | F_GC_EP3}, // Prepares to load a GBA ROM from a previous file_dl_req opcode
+    {0xF8C2, "nop_F8C2", {}, {}, F_XB_V3 | F_V4},
+    {0xF8C3, "start_or_update_gba_joyboot", {REG}, {}, F_GC_V3 | F_GC_EP3}, // One of F8C2 or F929 must be called before calling this, then this should be called repeatedly until it succeeds or fails. Return values are: 0 = not started, 1 = failed, 2 = timed out, 3 = in progress, 4 = complete
+    {0xF8C3, "return_0_F8C3", {REG}, {}, F_XB_V3},
     {0xF8C3, "nop_F8C3", {REG}, {}, F_V4},
     {0xF8C4, "congrats_msg_multi_cm", {REG}, {}, F_V3},
     {0xF8C4, "nop_F8C4", {REG}, {}, F_V4},
@@ -874,15 +875,15 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF933, "item_create_multi_cm", {{REG_SET_FIXED, 7}}, {}, F_V3}, // regsA[1-6] form an ItemData's data1[0-5]
     {0xF933, "nop_F933", {{REG_SET_FIXED, 7}}, {}, F_V4},
     {0xF934, "scroll_text", {}, {INT32, INT32, INT32, INT32, INT32, FLOAT32, REG, CSTRING}, F_V3_V4},
-    {0xF935, "gba_create_dl_graph", {}, {}, F_V3}, // Creates the download progress bar (same as the quest download progress bar)
-    {0xF935, "nop_F935", {}, {}, F_V4},
-    {0xF936, "gba_destroy_dl_graph", {}, {}, F_V3}, // Destroys the download progress bar
-    {0xF936, "nop_F936", {}, {}, F_V4},
-    {0xF937, "gba_update_dl_graph", {}, {}, F_V3}, // Updates the download progress bar
-    {0xF937, "nop_F937", {}, {}, F_V4},
+    {0xF935, "gba_create_dl_graph", {}, {}, F_GC_V3 | F_GC_EP3}, // Creates the GBA loading progress bar (same as the quest download progress bar)
+    {0xF935, "nop_F935", {}, {}, F_XB_V3 | F_V4},
+    {0xF936, "gba_destroy_dl_graph", {}, {}, F_GC_V3 | F_GC_EP3}, // Destroys the GBA loading progress bar
+    {0xF936, "nop_F936", {}, {}, F_XB_V3 | F_V4},
+    {0xF937, "gba_update_dl_graph", {}, {}, F_GC_V3 | F_GC_EP3}, // Updates the GBA loading progress bar
+    {0xF937, "nop_F937", {}, {}, F_XB_V3 | F_V4},
     {0xF938, "add_damage_to", {}, {INT32, INT32}, F_V3_V4},
     {0xF939, "item_delete3", {}, {INT32}, F_V3_V4},
-    {0xF93A, "get_item_info", {}, {ITEM_ID, {REG_SET_FIXED, 12}}, F_V3_V4}, // regsB are item.data1
+    {0xF93A, "get_item_info", {}, {ITEM_ID, {REG_SET_FIXED, 12}}, F_V3_V4}, // regsB are item.data1 (1 byte each)
     {0xF93B, "item_packing1", {}, {ITEM_ID}, F_V3_V4},
     {0xF93C, "item_packing2", {}, {ITEM_ID, INT32}, F_V3_V4}, // Sends 6xD6 on BB
     {0xF93D, "get_lang_setting", {}, {REG}, F_V3_V4},
