@@ -533,7 +533,7 @@ struct CardDefinition {
   // The drop rates are completely ignored if any of the following are true
   // (which means the card can never be found in a normal post-battle draw):
   // - type is SC_HUNTERS or SC_ARKZ
-  // - unknown_a3 is 0x23 or 0x24
+  // - card_class is BOSS_ATTACK_ACTION (0x23) or BOSS_TECH (0x24)
   // - rarity is E, D1, D2, or INVIS
   // - cannot_drop is 1 (specifically 1; other nonzero values here don't
   //   prevent the card from appearing in post-battle draws)
