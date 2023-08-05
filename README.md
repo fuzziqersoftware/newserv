@@ -399,7 +399,7 @@ newserv has many CLI options, which can be used to access functionality other th
 * Convert quests in .gci, .vms, .dlq, or .qst format to .bin/.dat format (`decode-gci`, `decode-vms`, `decode-dlq`, `decode-qst`)
 * Convert quests in .bin/.dat to .qst format (`encode-qst`)
 * Disassemble quest scripts (`disassemble-quest-script`)
-* Format Episode 3 game data in a human-readable manner (`show-ep3-data`)
+* Format Episode 3 game data in a human-readable manner (`show-ep3-maps`, `show-ep3-cards`)
 * Convert item data to a human-readable description, or vice versa (`describe-item`, `encode-item`)
 * Connect to another PSO server and pretend to be a client (`cat-client`)
 * Replay a session log for testing (`replay-log`)

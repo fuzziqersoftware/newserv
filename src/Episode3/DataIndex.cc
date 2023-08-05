@@ -18,6 +18,99 @@ using namespace std;
 
 namespace Episode3 {
 
+const char* name_for_link_color(uint8_t color) {
+  switch (color) {
+    case 1:
+      return "blue"; // HP halver
+    case 2:
+      return "red"; // Physical attacks
+    case 3:
+      return "yellow"; // Techniques
+    case 4:
+      return "brown"; // Leukon Knight
+    case 5:
+      return "orange"; // Penetrate/confuse
+    case 6:
+      return "purple"; // Instant death
+    case 7:
+      return "white"; // Castor
+    case 8:
+      return "gray"; // Pollux
+    case 9:
+      return "green"; // Status effects
+    default:
+      throw invalid_argument("unknown color");
+  }
+}
+
+const char* name_for_card_type(CardType type) {
+  switch (type) {
+    case CardType::HUNTERS_SC:
+      return "HUNTERS_SC";
+    case CardType::ARKZ_SC:
+      return "ARKZ_SC";
+    case CardType::ITEM:
+      return "ITEM";
+    case CardType::CREATURE:
+      return "CREATURE";
+    case CardType::ACTION:
+      return "ACTION";
+    case CardType::ASSIST:
+      return "ASSIST";
+    case CardType::INVALID_FF:
+      return "INVALID_FF";
+    default:
+      throw invalid_argument("invalid card type");
+  }
+}
+
+const char* name_for_card_class(CardClass cc) {
+  switch (cc) {
+    case CardClass::HU_SC:
+      return "HU_SC";
+    case CardClass::RA_SC:
+      return "RA_SC";
+    case CardClass::FO_SC:
+      return "FO_SC";
+    case CardClass::NATIVE_CREATURE:
+      return "NATIVE_CREATURE";
+    case CardClass::A_BEAST_CREATURE:
+      return "A_BEAST_CREATURE";
+    case CardClass::MACHINE_CREATURE:
+      return "MACHINE_CREATURE";
+    case CardClass::DARK_CREATURE:
+      return "DARK_CREATURE";
+    case CardClass::GUARD_ITEM:
+      return "GUARD_ITEM";
+    case CardClass::MAG_ITEM:
+      return "MAG_ITEM";
+    case CardClass::SWORD_ITEM:
+      return "SWORD_ITEM";
+    case CardClass::GUN_ITEM:
+      return "GUN_ITEM";
+    case CardClass::CANE_ITEM:
+      return "CANE_ITEM";
+    case CardClass::ATTACK_ACTION:
+      return "ATTACK_ACTION";
+    case CardClass::DEFENSE_ACTION:
+      return "DEFENSE_ACTION";
+    case CardClass::TECH:
+      return "TECH";
+    case CardClass::PHOTON_BLAST:
+      return "PHOTON_BLAST";
+    case CardClass::CONNECT_ONLY_ATTACK_ACTION:
+      return "CONNECT_ONLY_ATTACK_ACTION";
+    case CardClass::BOSS_ATTACK_ACTION:
+      return "BOSS_ATTACK_ACTION";
+    case CardClass::BOSS_TECH:
+      return "BOSS_TECH";
+    case CardClass::ASSIST:
+      return "ASSIST";
+    default:
+      throw invalid_argument("invalid card class");
+  }
+}
+
 const char* name_for_attack_medium(AttackMedium medium) {
   switch (medium) {
     case AttackMedium::UNKNOWN:
@@ -32,6 +125,83 @@ const char* name_for_attack_medium(AttackMedium medium) {
       return "INVALID_FF";
     default:
       return "__INVALID__";
+  }
+}
+
+const char* name_for_criterion_code(CriterionCode code) {
+  switch (code) {
+    case CriterionCode::NONE:
+      return "NONE";
+    case CriterionCode::HU_CLASS_SC:
+      return "HU_CLASS_SC";
+    case CriterionCode::RA_CLASS_SC:
+      return "RA_CLASS_SC";
+    case CriterionCode::FO_CLASS_SC:
+      return "FO_CLASS_SC";
+    case CriterionCode::SAME_TEAM:
+      return "SAME_TEAM";
+    case CriterionCode::SAME_PLAYER:
+      return "SAME_PLAYER";
+    case CriterionCode::SAME_TEAM_NOT_SAME_PLAYER:
+      return "SAME_TEAM_NOT_SAME_PLAYER";
+    case CriterionCode::UNKNOWN_07:
+      return "UNKNOWN_07";
+    case CriterionCode::NOT_SC:
+      return "NOT_SC";
+    case CriterionCode::SC:
+      return "SC";
+    case CriterionCode::HU_OR_RA_CLASS_SC:
+      return "HU_OR_RA_CLASS_SC";
+    case CriterionCode::HUNTER_HUMAN_SC:
+      return "HUNTER_HUMAN_SC";
+    case CriterionCode::HUNTER_HU_CLASS_MALE_SC:
+      return "HUNTER_HU_CLASS_MALE_SC";
+    case CriterionCode::HUNTER_FEMALE_SC:
+      return "HUNTER_FEMALE_SC";
+    case CriterionCode::HUNTER_HU_OR_FO_CLASS_HUMAN_SC:
+      return "HUNTER_HU_OR_FO_CLASS_HUMAN_SC";
+    case CriterionCode::HUNTER_HU_CLASS_ANDROID_SC:
+      return "HUNTER_HU_CLASS_ANDROID_SC";
+    case CriterionCode::UNKNOWN_10:
+      return "UNKNOWN_10";
+    case CriterionCode::UNKNOWN_11:
+      return "UNKNOWN_11";
+    case CriterionCode::HUNTER_HUNEWEARL_CLASS_SC:
+      return "HUNTER_HUNEWEARL_CLASS_SC";
+    case CriterionCode::HUNTER_RA_CLASS_MALE_SC:
+      return "HUNTER_RA_CLASS_MALE_SC";
+    case CriterionCode::HUNTER_RA_CLASS_FEMALE_SC:
+      return "HUNTER_RA_CLASS_FEMALE_SC";
+    case CriterionCode::HUNTER_RA_OR_FO_CLASS_FEMALE_SC:
+      return "HUNTER_RA_OR_FO_CLASS_FEMALE_SC";
+    case CriterionCode::HUNTER_HU_OR_RA_CLASS_HUMAN_SC:
+      return "HUNTER_HU_OR_RA_CLASS_HUMAN_SC";
+    case CriterionCode::HUNTER_RA_CLASS_ANDROID_SC:
+      return "HUNTER_RA_CLASS_ANDROID_SC";
+    case CriterionCode::HUNTER_FO_CLASS_FEMALE_SC:
+      return "HUNTER_FO_CLASS_FEMALE_SC";
+    case CriterionCode::HUNTER_FEMALE_HUMAN_SC:
+      return "HUNTER_FEMALE_HUMAN_SC";
+    case CriterionCode::HUNTER_ANDROID_SC:
+      return "HUNTER_ANDROID_SC";
+    case CriterionCode::HU_OR_FO_CLASS_SC:
+      return "HU_OR_FO_CLASS_SC";
+    case CriterionCode::RA_OR_FO_CLASS_SC:
+      return "RA_OR_FO_CLASS_SC";
+    case CriterionCode::PHYSICAL_OR_UNKNOWN_ATTACK_MEDIUM:
+      return "PHYSICAL_OR_UNKNOWN_ATTACK_MEDIUM";
+    case CriterionCode::TECH_OR_UNKNOWN_ATTACK_MEDIUM:
+      return "TECH_OR_UNKNOWN_ATTACK_MEDIUM";
+    case CriterionCode::PHYSICAL_OR_TECH_OR_UNKNOWN_ATTACK_MEDIUM:
+      return "PHYSICAL_OR_TECH_OR_UNKNOWN_ATTACK_MEDIUM";
+    case CriterionCode::UNKNOWN_20:
+      return "UNKNOWN_20";
+    case CriterionCode::UNKNOWN_21:
+      return "UNKNOWN_21";
+    case CriterionCode::UNKNOWN_22:
+      return "UNKNOWN_22";
+    default:
+      throw invalid_argument("invalid criterion code");
   }
 }
 
@@ -139,15 +309,6 @@ bool card_class_is_tech_like(CardClass cc) {
       (cc == CardClass::PHOTON_BLAST) ||
       (cc == CardClass::BOSS_TECH);
 }
-
-static const vector<const char*> name_for_card_type({
-    "HunterSC",
-    "ArkzSC",
-    "Item",
-    "Creature",
-    "Action",
-    "Assist",
-});
 
 static const unordered_map<string, const char*> description_for_expr_token({
     {"f", "Number of FCs controlled by current SC"},
@@ -724,7 +885,14 @@ string string_for_colors(const parray<uint8_t, 8>& colors) {
   string ret;
   for (size_t x = 0; x < 8; x++) {
     if (colors[x]) {
-      ret += '0' + colors[x];
+      if (!ret.empty()) {
+        ret += ",";
+      }
+      try {
+        ret += name_for_link_color(colors[x]);
+      } catch (const invalid_argument) {
+        ret += string_printf("%02hhX", colors[x]);
+      }
     }
   }
   if (ret.empty()) {
@@ -757,16 +925,27 @@ string string_for_range(const parray<be_uint32_t, 6>& range) {
   return ret;
 }
 
-string CardDefinition::str() const {
+string CardDefinition::str(bool single_line) const {
   string type_str;
   try {
-    type_str = name_for_card_type.at(static_cast<uint8_t>(this->type));
-  } catch (const out_of_range&) {
+    type_str = name_for_card_type(this->type);
+  } catch (const invalid_argument&) {
     type_str = string_printf("%02hhX", static_cast<uint8_t>(this->type));
+  }
+  string criterion_str;
+  try {
+    criterion_str = name_for_criterion_code(this->usable_criterion);
+  } catch (const invalid_argument&) {
+    criterion_str = string_printf("%02hhX", static_cast<uint8_t>(this->usable_criterion));
+  }
+  string card_class_str;
+  try {
+    card_class_str = name_for_card_class(this->card_class());
+  } catch (const invalid_argument&) {
+    card_class_str = string_printf("%04hX", this->be_card_class.load());
   }
   string rarity_str = name_for_rarity(this->rarity);
   string target_mode_str = name_for_target_mode(this->target_mode);
-  string range_str = string_for_range(this->range);
   string assist_turns_str = string_for_assist_turns(this->assist_turns);
   string hp_str = this->hp.str();
   string ap_str = this->ap.str();
@@ -780,44 +959,115 @@ string CardDefinition::str() const {
     if (this->effects[x].is_empty()) {
       continue;
     }
-    if (!effects_str.empty()) {
+    if (!single_line) {
+      effects_str += "\n    ";
+    } else if (!effects_str.empty()) {
       effects_str += ", ";
     }
     effects_str += this->effects[x].str();
   }
-  return string_printf(
-      "[Card: %04" PRIX32 " name=%s type=%s usable_condition=%02hhX rare=%s "
-      "cost=%hhX+%hhX target=%s range=%s assist_turns=%s cannot_move=%s "
-      "cannot_attack=%s cannot_drop=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s "
-      "top=%s a2=%04hX class=%04hX assist_effect=[%hu, %hu] "
-      "drop_rates=[%hu, %hu] effects=[%s]]",
-      this->card_id.load(),
-      this->en_name.data(),
-      type_str.c_str(),
-      static_cast<uint8_t>(this->usable_criterion),
-      rarity_str.c_str(),
-      this->self_cost,
-      this->ally_cost,
-      target_mode_str.c_str(),
-      range_str.c_str(),
-      assist_turns_str.c_str(),
-      this->cannot_move ? "true" : "false",
-      this->cannot_attack ? "true" : "false",
-      this->cannot_drop ? "true" : "false",
-      hp_str.c_str(),
-      ap_str.c_str(),
-      tp_str.c_str(),
-      mv_str.c_str(),
-      left_str.c_str(),
-      right_str.c_str(),
-      top_str.c_str(),
-      this->unknown_a2.load(),
-      this->be_card_class.load(),
-      this->assist_effect[0].load(),
-      this->assist_effect[1].load(),
-      this->drop_rates[0].load(),
-      this->drop_rates[1].load(),
-      effects_str.c_str());
+  if (!single_line && effects_str.empty()) {
+    effects_str = " (none)";
+  }
+
+  if (single_line) {
+    string range_str = string_for_range(this->range);
+    return string_printf(
+        "[Card: %04" PRIX32 " name=%s type=%s usable_condition=%s rare=%s "
+        "cost=%hhX+%hhX target=%s range=%s assist_turns=%s cannot_move=%s "
+        "cannot_attack=%s cannot_drop=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s "
+        "top=%s a2=%04hX class=%s assist_effect=[%hu, %hu] "
+        "drop_rates=[%hu, %hu] effects=[%s]]",
+        this->card_id.load(),
+        this->en_name.data(),
+        type_str.c_str(),
+        criterion_str.c_str(),
+        rarity_str.c_str(),
+        this->self_cost,
+        this->ally_cost,
+        target_mode_str.c_str(),
+        range_str.c_str(),
+        assist_turns_str.c_str(),
+        this->cannot_move ? "true" : "false",
+        this->cannot_attack ? "true" : "false",
+        this->cannot_drop ? "true" : "false",
+        hp_str.c_str(),
+        ap_str.c_str(),
+        tp_str.c_str(),
+        mv_str.c_str(),
+        left_str.c_str(),
+        right_str.c_str(),
+        top_str.c_str(),
+        this->unknown_a2.load(),
+        card_class_str.c_str(),
+        this->assist_effect[0].load(),
+        this->assist_effect[1].load(),
+        this->drop_rates[0].load(),
+        this->drop_rates[1].load(),
+        effects_str.c_str());
+
+  } else { // Not single-line
+    string range_str;
+    if (this->range[0] == 0x000FFFFF) {
+      range_str = " (entire field)";
+    } else {
+      for (size_t x = 0; x < 6; x++) {
+        range_str += "\n    ";
+        for (size_t z = 0; z < 5; z++) {
+          bool is_included = ((this->range[x] >> (16 - (z * 4))) & 0xF);
+          if (x == 4 && z == 2) {
+            range_str += is_included ? "@" : "#";
+          } else {
+            range_str += is_included ? "*" : "-";
+          }
+        }
+      }
+    }
+    return string_printf(
+        "\
+Card: %04" PRIX32 " \"%s\"\n\
+  Type: %s, class: %s\n\
+  Usability condition: %s\n\
+  Rarity: %s\n\
+  Cost: %hhX (self) + %hhX (ally)\n\
+  Target mode: %s\n\
+  Range:%s\n\
+  Assist turns: %s\n\
+  Capabilities: %s move, %s attack\n\
+  HP: %s, AP: %s, TP: %s, MV: %s\n\
+  Left colors: %s; right colors: %s; top colors: %s\n\
+  Unknown a2: %04hX\n\
+  Assist effect: [%hu, %hu]\n\
+  Drop rates: [%hu, %hu] (%s drop)\n\
+  Effects:%s",
+        this->card_id.load(),
+        this->en_name.data(),
+        type_str.c_str(),
+        card_class_str.c_str(),
+        criterion_str.c_str(),
+        rarity_str.c_str(),
+        this->self_cost,
+        this->ally_cost,
+        target_mode_str.c_str(),
+        range_str.c_str(),
+        assist_turns_str.c_str(),
+        this->cannot_move ? "cannot" : "can",
+        this->cannot_attack ? "cannot" : "can",
+        hp_str.c_str(),
+        ap_str.c_str(),
+        tp_str.c_str(),
+        mv_str.c_str(),
+        left_str.c_str(),
+        right_str.c_str(),
+        top_str.c_str(),
+        this->unknown_a2.load(),
+        this->assist_effect[0].load(),
+        this->assist_effect[1].load(),
+        this->drop_rates[0].load(),
+        this->drop_rates[1].load(),
+        this->cannot_drop ? "cannot" : "can",
+        effects_str.c_str());
+  }
 }
 
 HPType hp_type_for_name(const char* name) {
@@ -1514,6 +1764,7 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
             tags.emplace_back(std::move(tag));
           }
         }
+        strip_leading_whitespace(orig_text);
 
         if (!card_text.emplace(card_id, std::move(orig_text)).second) {
           throw runtime_error("duplicate card text id");

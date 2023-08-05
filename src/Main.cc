@@ -205,9 +205,12 @@ The actions are:\n\
     --gc, and --bb options can be used to select the command format and\n\
     encryption. If --bb is used, the --key=KEY-NAME option is also required (as\n\
     in decrypt-data above).\n\
-  show-ep3-data\n\
-    Print the Episode 3 maps and card definitions from the system/ep3 directory\n\
-    in a (sort of) human-readable format.\n\
+  show-ep3-maps\n\
+    Print the Episode 3 maps from the system/ep3 directory in a (sort of)\n\
+    human-readable format.\n\
+  show-ep3-cards\n\
+    Print the Episode 3 card definitions from the system/ep3 directory in a\n\
+    human-readable format.\n\
   describe-item DATA\n\
     Print the name of the item given by DATA (in hex). DATA must not contain\n\
     spaces. If DATA is 20 bytes, newserv assumes it contains an unused item ID\n\
@@ -276,7 +279,8 @@ enum class Behavior {
   EXTRACT_BML,
   FORMAT_RARE_ITEM_SET,
   CONVERT_ITEMRT_REL_TO_JSON,
-  SHOW_EP3_DATA,
+  SHOW_EP3_MAPS,
+  SHOW_EP3_CARDS,
   DESCRIBE_ITEM,
   ENCODE_ITEM,
   PARSE_OBJECT_GRAPH,
@@ -378,7 +382,6 @@ int main(int argc, char** argv) {
   const char* replay_required_access_key = "";
   const char* replay_required_password = "";
   uint32_t root_object_address = 0;
-  uint16_t ep3_card_id = 0xFFFF;
   uint8_t domain = 1;
   uint8_t subdomain = 0xFF;
   for (int x = 1; x < argc; x++) {
@@ -538,8 +541,10 @@ int main(int argc, char** argv) {
           behavior = Behavior::FORMAT_RARE_ITEM_SET;
         } else if (!strcmp(argv[x], "convert-itemrt-rel-to-json")) {
           behavior = Behavior::CONVERT_ITEMRT_REL_TO_JSON;
-        } else if (!strcmp(argv[x], "show-ep3-data")) {
-          behavior = Behavior::SHOW_EP3_DATA;
+        } else if (!strcmp(argv[x], "show-ep3-maps")) {
+          behavior = Behavior::SHOW_EP3_MAPS;
+        } else if (!strcmp(argv[x], "show-ep3-cards")) {
+          behavior = Behavior::SHOW_EP3_CARDS;
         } else if (!strcmp(argv[x], "describe-item")) {
           behavior = Behavior::DESCRIBE_ITEM;
         } else if (!strcmp(argv[x], "encode-item")) {
@@ -1438,11 +1443,12 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::SHOW_EP3_DATA: {
+    case Behavior::SHOW_EP3_MAPS:
+    case Behavior::SHOW_EP3_CARDS: {
       config_log.info("Collecting Episode 3 data");
       Episode3::DataIndex index("system/ep3", Episode3::BehaviorFlag::LOAD_CARD_TEXT);
 
-      if (ep3_card_id == 0xFFFF) {
+      if (behavior == Behavior::SHOW_EP3_MAPS) {
         auto map_ids = index.all_map_ids();
         log_info("%zu maps", map_ids.size());
         for (uint32_t map_id : map_ids) {
@@ -1451,22 +1457,16 @@ int main(int argc, char** argv) {
           fprintf(stdout, "%s\n", s.c_str());
         }
 
+      } else {
         auto card_ids = index.all_card_ids();
         log_info("%zu card definitions", card_ids.size());
         for (uint32_t card_id : card_ids) {
           auto entry = index.definition_for_card_id(card_id);
-          string s = entry->def.str();
+          string s = entry->def.str(false);
           string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
-          string text = entry->text.empty() ? "(No text available)" : entry->text;
-          fprintf(stdout, "%s\nTags: %s\n%s\n\n", s.c_str(), tags.c_str(), text.c_str());
+          string text = entry->text.empty() ? "(No text available)" : str_replace_all(entry->text, "\n", "\n    ");
+          fprintf(stdout, "%s\n  Tags: %s\n  Text:\n    %s\n\n", s.c_str(), tags.c_str(), text.c_str());
         }
-
-      } else {
-        auto entry = index.definition_for_card_id(ep3_card_id);
-        string s = entry->def.str();
-        string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
-        string text = entry->text.empty() ? "(No text available)" : entry->text;
-        fprintf(stdout, "%s\nTags: %s\n%s\n", s.c_str(), tags.c_str(), text.c_str());
       }
 
       break;

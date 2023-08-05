@@ -21,6 +21,8 @@ namespace Episode3 {
 
 class DataIndex;
 
+const char* name_for_link_color(uint8_t color);
+
 enum BehaviorFlag {
   SKIP_DECK_VERIFY = 0x00000001,
   IGNORE_CARD_COUNTS = 0x00000002,
@@ -93,6 +95,8 @@ enum class CriterionCode : uint8_t {
   UNKNOWN_22 = 0x22,
 };
 
+const char* name_for_criterion_code(CriterionCode code);
+
 enum class CardRarity : uint8_t {
   N1 = 0x01,
   R1 = 0x02,
@@ -121,6 +125,8 @@ enum class CardType : uint8_t {
   END_CARD_LIST = 0xFF,
 };
 
+const char* name_for_card_type(CardType type);
+
 enum class CardClass : uint16_t {
   HU_SC = 0x0000,
   RA_SC = 0x0001,
@@ -144,6 +150,7 @@ enum class CardClass : uint16_t {
   ASSIST = 0x0028,
 };
 
+const char* name_for_card_class(CardClass cc);
 bool card_class_is_tech_like(CardClass cc);
 
 enum class TargetMode : uint8_t {
@@ -552,7 +559,7 @@ struct CardDefinition {
   CardClass card_class() const;
 
   void decode_range();
-  std::string str() const;
+  std::string str(bool single_line = true) const;
 } __attribute__((packed)); // 0x128 bytes in total
 
 struct CardDefinitionsFooter {
