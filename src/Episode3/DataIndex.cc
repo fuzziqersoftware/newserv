@@ -890,7 +890,7 @@ string string_for_colors(const parray<uint8_t, 8>& colors) {
       }
       try {
         ret += name_for_link_color(colors[x]);
-      } catch (const invalid_argument) {
+      } catch (const invalid_argument&) {
         ret += string_printf("%02hhX", colors[x]);
       }
     }
