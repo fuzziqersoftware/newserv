@@ -233,13 +233,13 @@ string prs_compress_optimal(
   nodes[0].bits_used = 18; // Stop command: 2 control bits and 2 data bytes
 
   size_t copy_progress_max = 3 * in_size;
-  atomic<size_t> copy_progress;
+  atomic<size_t> copy_progress = 0;
 
   // Populate all possible short copies
   std::thread short_window_thread([&]() -> void {
     WindowIndex<0x100, 5, true> window(in_data_v, in_size);
     while (window.offset < in_size) {
-      if ((window.offset & 0xFFF) == 0 && progress_fn) {
+      if (window.offset && (window.offset & 0xFFF) == 0 && progress_fn) {
         size_t progress = copy_progress.fetch_add(0x1000) + 0x1000;
         progress_fn(CompressPhase::INDEX, progress, copy_progress_max, 0);
       }
@@ -257,7 +257,7 @@ string prs_compress_optimal(
   std::thread long_window_thread([&]() -> void {
     WindowIndex<0x1FFF, 9, true> window(in_data_v, in_size);
     while (window.offset < in_size) {
-      if ((window.offset & 0xFFF) == 0 && progress_fn) {
+      if (window.offset && (window.offset & 0xFFF) == 0 && progress_fn) {
         size_t progress = copy_progress.fetch_add(0x1000) + 0x1000;
         progress_fn(CompressPhase::INDEX, progress, copy_progress_max, 0);
       }
@@ -275,7 +275,7 @@ string prs_compress_optimal(
   std::thread extended_window_thread([&]() -> void {
     WindowIndex<0x1FFF, 0x100, true> window(in_data_v, in_size);
     while (window.offset < in_size) {
-      if ((window.offset & 0xFFF) == 0 && progress_fn) {
+      if (window.offset && (window.offset & 0xFFF) == 0 && progress_fn) {
         size_t progress = copy_progress.fetch_add(0x1000) + 0x1000;
         progress_fn(CompressPhase::INDEX, progress, copy_progress_max, 0);
       }

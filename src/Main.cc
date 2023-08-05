@@ -117,6 +117,9 @@ The actions are:\n\
   decompress-pr2 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decompress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Decompress data compressed using the PRS, PR2, or BC0 algorithms.\n\
+  recompress-prs-optimal [INPUT-AND-OUTPUT-FILENAME]\n\
+    Recompress the input PRS file optimally, overwriting it with the optimally-\n\
+    compressed result.\n\
   prs-size [INPUT-FILENAME]\n\
     Compute the decompressed size of the PRS-compressed input data, but don\'t\n\
     write the decompressed data anywhere.\n\
@@ -254,6 +257,7 @@ enum class Behavior {
   RUN_SERVER = 0,
   COMPRESS_PRS,
   DECOMPRESS_PRS,
+  RECOMPRESS_PRS_OPTIMAL,
   COMPRESS_PR2,
   DECOMPRESS_PR2,
   COMPRESS_BC0,
@@ -295,6 +299,7 @@ enum class Behavior {
 static bool behavior_takes_input_filename(Behavior b) {
   return (b == Behavior::COMPRESS_PRS) ||
       (b == Behavior::DECOMPRESS_PRS) ||
+      (b == Behavior::RECOMPRESS_PRS_OPTIMAL) ||
       (b == Behavior::COMPRESS_PR2) ||
       (b == Behavior::DECOMPRESS_PR2) ||
       (b == Behavior::COMPRESS_BC0) ||
@@ -483,6 +488,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::COMPRESS_PRS;
         } else if (!strcmp(argv[x], "decompress-prs")) {
           behavior = Behavior::DECOMPRESS_PRS;
+        } else if (!strcmp(argv[x], "recompress-prs-optimal")) {
+          behavior = Behavior::RECOMPRESS_PRS_OPTIMAL;
         } else if (!strcmp(argv[x], "compress-pr2")) {
           behavior = Behavior::COMPRESS_PR2;
         } else if (!strcmp(argv[x], "decompress-pr2")) {
@@ -741,6 +748,34 @@ int main(int argc, char** argv) {
       }
 
       write_output_data(data.data(), data.size());
+      break;
+    }
+
+    case Behavior::RECOMPRESS_PRS_OPTIMAL: {
+      string input_data = read_input_data();
+      string decompressed_data = prs_decompress(input_data);
+
+      auto progress_fn = [&](auto phase, size_t input_progress, size_t input_bytes, size_t output_progress) -> void {
+        const char* phase_name = name_for_enum(phase);
+        float progress = static_cast<float>(input_progress * 100) / decompressed_data.size();
+        float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
+        fprintf(stderr, "... [%s] %zu/%zu (%g%%) => %zu (%g%%)    \r",
+            phase_name, input_progress, input_bytes, progress, output_progress, size_ratio);
+      };
+
+      uint64_t start = now();
+      string output_data = prs_compress_optimal(decompressed_data.data(), decompressed_data.size(), progress_fn);
+      uint64_t end = now();
+      string time_str = format_duration(end - start);
+
+      float output_size_ratio = static_cast<float>(output_data.size() * 100) / decompressed_data.size();
+      float input_size_ratio = static_cast<float>(input_data.size() * 100) / decompressed_data.size();
+      ssize_t size_difference = output_data.size() - input_data.size();
+      log_info("%zu (0x%zX) bytes input (%g%%) => %zu (0x%zX) bytes decompressed => %zu (0x%zX) bytes output (%g%%; %+zd bytes)",
+          input_data.size(), input_data.size(), input_size_ratio, decompressed_data.size(), decompressed_data.size(), output_data.size(), output_data.size(), output_size_ratio, size_difference);
+
+      output_filename = input_filename;
+      write_output_data(output_data.data(), output_data.size());
       break;
     }
 
