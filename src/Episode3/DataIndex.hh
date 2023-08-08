@@ -109,9 +109,13 @@ enum class CardRarity : uint8_t {
   R3 = 0x09,
   R4 = 0x0A,
   SS = 0x0B,
+  // Cards with the D1 or D2 ranks are considered never usable by the player,
+  // and are automatically removed from player decks before battle and when
+  // loading the deckbuilder. Cards with the D1 rank appear in the deckbuilder
+  // but are grayed out (and cannot be added to decks); cards with the D2 rank
+  // don't appear in the deckbuilder at all.
   D1 = 0x0C,
   D2 = 0x0D,
-  INVIS = 0x0E,
 };
 
 enum class CardType : uint8_t {
