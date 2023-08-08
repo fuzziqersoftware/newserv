@@ -5244,7 +5244,7 @@ struct G_IdentifyResult_BB_6xB9 {
 
 struct G_SyncCardTradeState_GC_Ep3_6xBA {
   G_ClientIDHeader header;
-  le_uint16_t what; // Low byte must be < 9; this indexes into a jump table
+  le_uint16_t what; // Low byte must be < 9; this indexes into a handler table
   le_uint16_t unknown_a2;
   le_uint32_t unknown_a3;
   le_uint32_t unknown_a4;

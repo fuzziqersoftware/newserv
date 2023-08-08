@@ -838,22 +838,8 @@ void CardDefinition::decode_range() {
 }
 
 string name_for_rarity(CardRarity rarity) {
-  static const vector<const char*> names({
-      "N1",
-      "R1",
-      "S",
-      "E",
-      "N2",
-      "N3",
-      "N4",
-      "R2",
-      "R3",
-      "R4",
-      "SS",
-      "D1",
-      "D2",
-      "INVIS",
-  });
+  static const vector<const char*> names(
+      {"N1", "R1", "S", "E", "N2", "N3", "N4", "R2", "R3", "R4", "SS", "D1", "D2"});
   try {
     return names.at(static_cast<uint8_t>(rarity) - 1);
   } catch (const out_of_range&) {
