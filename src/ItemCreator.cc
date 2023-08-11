@@ -1494,12 +1494,10 @@ void ItemCreator::generate_weapon_shop_item_special(
       pt.push(e.value);
     }
   }
-  pt.shuffle(this->random_crypt);
 
-  // TODO: mode should be an enum class, but I'm too lazy to make the types work
-  // out in the intermediate structures (WeightTableEntry and ProbabilityTable)
-  uint8_t mode = pt.pop();
-  switch (mode) {
+  // Note: The original code shuffles pt and then pops a single value from it.
+  // For simplicity, we just sample a single value (and don't pop it) instead.
+  switch (pt.sample(this->random_crypt)) {
     case 0:
       item.data1[4] = 0;
       break;
@@ -1569,9 +1567,10 @@ void ItemCreator::generate_weapon_shop_item_bonus1(
       pt.push(e.value);
     }
   }
-  pt.shuffle(this->random_crypt);
 
-  item.data1[6] = pt.pop();
+  // Note: The original code shuffles pt and then pops a single value from it.
+  // For simplicity, we just sample a single value (and don't pop it) instead.
+  item.data1[6] = pt.sample(this->random_crypt);
   if (item.data1[6] == 0) {
     item.data1[7] = 0;
 
