@@ -3,8 +3,52 @@
 #include <phosg/Encoding.hh>
 
 #include "GSLArchive.hh"
+#include "PSOEncryption.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
+
+// Note: There are clearly better ways of doing this, but this implementation
+// closely follows what the original code in the client does.
+template <typename ItemT, size_t MaxCount>
+struct ProbabilityTable {
+  ItemT items[MaxCount];
+  size_t count;
+
+  ProbabilityTable() : count(0) {}
+
+  void push(ItemT item) {
+    if (this->count == MaxCount) {
+      throw runtime_error("push to full probability table");
+    }
+    this->items[this->count++] = item;
+  }
+
+  ItemT pop() {
+    if (this->count == 0) {
+      throw runtime_error("pop from empty probability table");
+    }
+    return this->items[--this->count];
+  }
+
+  void shuffle(PSOLFGEncryption& random_crypt) {
+    for (size_t z = 1; z < this->count; z++) {
+      size_t other_z = random_crypt.next() % (z + 1);
+      ItemT t = this->items[z];
+      this->items[z] = this->items[other_z];
+      this->items[other_z] = t;
+    }
+  }
+
+  ItemT sample(PSOLFGEncryption& random_crypt) const {
+    if (this->count == 0) {
+      throw runtime_error("pop from empty probability table");
+    } else if (this->count == 1) {
+      return this->items[0];
+    } else {
+      return this->items[random_crypt.next() % this->count];
+    }
+  }
+};
 
 class CommonItemSet {
 public:

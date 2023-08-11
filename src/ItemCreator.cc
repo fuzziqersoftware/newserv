@@ -32,9 +32,7 @@ ItemCreator::ItemCreator(
       pt(&this->common_item_set->get_table(
           this->episode, this->mode, this->difficulty, this->section_id)),
       restrictions(restrictions),
-      random_crypt(random_seed) {
-  print_data(stderr, this->pt, sizeof(*this->pt));
-}
+      random_crypt(random_seed) {}
 
 bool ItemCreator::are_rare_drops_allowed() const {
   // Note: The client has an additional check here, which appears to be a subtle
@@ -851,39 +849,6 @@ IntT ItemCreator::get_rand_from_weighted_tables_2d_vertical(
   return ItemCreator::get_rand_from_weighted_tables<IntT>(tables[0].data(),
       offset, Y, X);
 }
-
-// Note: There are clearly better ways of doing this, but this implementation
-// closely follows what the original code in the client does.
-template <typename ItemT, size_t MaxCount>
-struct ProbabilityTable {
-  ItemT items[MaxCount];
-  size_t count;
-
-  ProbabilityTable() : count(0) {}
-
-  void push(ItemT item) {
-    if (this->count == MaxCount) {
-      throw runtime_error("push to full probability table");
-    }
-    this->items[this->count++] = item;
-  }
-
-  ItemT pop() {
-    if (this->count == 0) {
-      throw runtime_error("pop from empty probability table");
-    }
-    return this->items[--this->count];
-  }
-
-  void shuffle(PSOLFGEncryption& random_crypt) {
-    for (size_t z = 1; z < this->count; z++) {
-      size_t other_z = random_crypt.next() % (z + 1);
-      ItemT t = this->items[z];
-      this->items[z] = this->items[other_z];
-      this->items[other_z] = t;
-    }
-  }
-};
 
 vector<ItemData> ItemCreator::generate_armor_shop_contents(size_t player_level) {
   vector<ItemData> shop;

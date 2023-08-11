@@ -844,19 +844,22 @@ void ServerState::load_item_tables() {
   // Note: These files don't exist in BB, so we use the GC versions of them
   // instead. This doesn't include Episode 4 of course, so we use Episode 1
   // parameters for Episode 4 implicitly.
-  config_log.info("Loading common item tables");
+  config_log.info("Loading common item table");
   shared_ptr<string> pt_data(new string(load_file(
       "system/blueburst/ItemPT_GC.gsl")));
   this->common_item_set.reset(new CommonItemSet(pt_data));
 
+  config_log.info("Loading armor table");
   shared_ptr<string> armor_data(new string(load_file(
       "system/blueburst/ArmorRandom_GC.rel")));
   this->armor_random_set.reset(new ArmorRandomSet(armor_data));
 
+  config_log.info("Loading tool table");
   shared_ptr<string> tool_data(new string(load_file(
       "system/blueburst/ToolRandom_GC.rel")));
   this->tool_random_set.reset(new ToolRandomSet(tool_data));
 
+  config_log.info("Loading weapon tables");
   const char* filenames[4] = {
       "system/blueburst/WeaponRandomNormal_GC.rel",
       "system/blueburst/WeaponRandomHard_GC.rel",

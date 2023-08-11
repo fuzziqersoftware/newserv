@@ -1646,7 +1646,7 @@ static void on_identify_item_bb(shared_ptr<ServerState>,
 
     size_t x = c->game_data.player()->inventory.find_item(cmd.item_id);
     if (c->game_data.player()->inventory.items[x].data.data1[0] != 0) {
-      return; // only weapons can be identified
+      return; // Only weapons can be identified
     }
 
     c->game_data.player()->disp.stats.meseta -= 100;

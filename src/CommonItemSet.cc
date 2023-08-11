@@ -30,9 +30,9 @@ RELFileSet::RELFileSet(std::shared_ptr<const std::string> data)
 ArmorRandomSet::ArmorRandomSet(std::shared_ptr<const std::string> data)
     : RELFileSet(data) {
   // For some reason the footer tables are doubly indirect in this file
-  uint32_t specs_offset_offset = r.pget_u32b(data->size() - 0x10);
-  uint32_t specs_offset = r.pget_u32b(specs_offset_offset);
-  this->tables = &r.pget<parray<TableSpec, 3>>(specs_offset);
+  uint32_t specs_offset_offset = this->r.pget_u32b(data->size() - 0x10);
+  uint32_t specs_offset = this->r.pget_u32b(specs_offset_offset);
+  this->tables = &this->r.pget<parray<TableSpec, 3>>(specs_offset);
 }
 
 std::pair<const ArmorRandomSet::WeightTableEntry8*, size_t>
