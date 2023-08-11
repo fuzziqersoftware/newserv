@@ -1689,7 +1689,6 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
     const auto& prob_table = this->tekker_adjustment_set->get_special_upgrade_prob_table(section_id, favored);
     uint8_t delta_index = prob_table.sample(this->random_crypt);
     int8_t delta = delta_table.at(delta_index);
-    fprintf(stderr, "Special: delta_index=%hhu delta=%hhd\n", delta_index, delta);
     // Note: The original code checks specifically for -1 and +1 here, but the
     // data files only include delta_indexes 4, 5, and 6 (which correspond to -1,
     // 0, and 1) anyway, so we just check for positive and negative numbers
@@ -1721,7 +1720,6 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
     const auto& prob_table = this->tekker_adjustment_set->get_grind_delta_prob_table(section_id, favored);
     uint8_t delta_index = prob_table.sample(this->random_crypt);
     int8_t delta = delta_table.at(delta_index);
-    fprintf(stderr, "Grind: delta_index=%hhu delta=%hhd\n", delta_index, delta);
     int16_t new_grind = static_cast<int16_t>(item.data1[3]) + static_cast<int16_t>(delta);
     item.data1[3] = clamp<int16_t>(new_grind, 0, weapon_def.max_grind);
     luck += this->tekker_adjustment_set->get_luck_for_grind_delta(delta_index);
@@ -1734,7 +1732,6 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
     // bonuses.
     uint8_t delta_index = prob_table.sample(this->random_crypt);
     int8_t delta = delta_table.at(delta_index);
-    fprintf(stderr, "Bonus: delta_index=%hhu delta=%hhd\n", delta_index, delta);
     // Note: The original code doesn't check if there's actually a bonus in each
     // slot before incrementing the values. Presumably there's a check later
     // that will clear any invalid bonuses, but we don't have such a check, so
