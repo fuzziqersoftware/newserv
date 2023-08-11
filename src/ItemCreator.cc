@@ -5,12 +5,16 @@
 
 using namespace std;
 
+static const array<uint8_t, 10> favored_weapon_by_section_id = {
+    0x09, 0x07, 0x02, 0x04, 0x08, 0x0A, 0xFF, 0x03, 0xFF, 0x05};
+
 ItemCreator::ItemCreator(
     shared_ptr<const CommonItemSet> common_item_set,
     shared_ptr<const RareItemSet> rare_item_set,
     shared_ptr<const ArmorRandomSet> armor_random_set,
     shared_ptr<const ToolRandomSet> tool_random_set,
     shared_ptr<const WeaponRandomSet> weapon_random_set,
+    shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set,
     shared_ptr<const ItemParameterTable> item_parameter_table,
     Episode episode,
     GameMode mode,
@@ -28,6 +32,7 @@ ItemCreator::ItemCreator(
       armor_random_set(armor_random_set),
       tool_random_set(tool_random_set),
       weapon_random_set(weapon_random_set),
+      tekker_adjustment_set(tekker_adjustment_set),
       item_parameter_table(item_parameter_table),
       pt(&this->common_item_set->get_table(
           this->episode, this->mode, this->difficulty, this->section_id)),
@@ -1449,9 +1454,6 @@ void ItemCreator::generate_weapon_shop_item_grind(
     table_index = 5;
   }
 
-  static const array<uint8_t, 10> favored_weapon_by_section_id = {
-      0x09, 0x07, 0x02, 0x04, 0x08, 0x0A, 0xFF, 0x03, 0xFF, 0x05};
-
   uint8_t favored_weapon = favored_weapon_by_section_id.at(this->section_id);
   bool is_favored = (favored_weapon != 0xFF) && (item.data1[1] == favored_weapon);
   const auto* range = is_favored
@@ -1669,4 +1671,81 @@ ItemData ItemCreator::on_specialized_box_item_drop(uint32_t def0, uint32_t def1,
   }
 
   return item;
+}
+
+ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
+  if (item.data1[0] != 0) {
+    throw runtime_error("tekker deltas can only be applied to weapons");
+  }
+
+  static const array<int8_t, 11> delta_table = {
+      -10, -5, -3, -2, -1, 0, 1, 2, 3, 5, 10};
+
+  bool favored = item.data1[1] == favored_weapon_by_section_id[section_id];
+  ssize_t luck = 0;
+
+  // Adjust the weapon's special
+  {
+    const auto& prob_table = this->tekker_adjustment_set->get_special_upgrade_prob_table(section_id, favored);
+    uint8_t delta_index = prob_table.sample(this->random_crypt);
+    int8_t delta = delta_table.at(delta_index);
+    fprintf(stderr, "Special: delta_index=%hhu delta=%hhd\n", delta_index, delta);
+    // Note: The original code checks specifically for -1 and +1 here, but the
+    // data files only include delta_indexes 4, 5, and 6 (which correspond to -1,
+    // 0, and 1) anyway, so we just check for positive and negative numbers
+    // instead. When using the original JudgeItem.rel file, the behavior should
+    // be the same, but this feels more correct.
+    try {
+      uint8_t new_special;
+      if (delta < 0) {
+        new_special = item.data1[4] - 1;
+      } else if (delta > 0) {
+        new_special = item.data1[4] + 1;
+      } else {
+        new_special = item.data1[4];
+      }
+      if ((new_special != item.data1[4]) &&
+          (this->item_parameter_table->get_special(item.data1[4]).type ==
+              this->item_parameter_table->get_special(new_special).type)) {
+        item.data1[4] = new_special;
+      }
+    } catch (const runtime_error&) {
+      // Invalid special number passed to get_special; just ignore it
+    }
+    luck += this->tekker_adjustment_set->get_luck_for_special_upgrade(delta_index);
+  }
+
+  // Adjust the weapon's grind if it's not rare
+  if (!this->item_parameter_table->is_item_rare(item)) {
+    const auto& weapon_def = this->item_parameter_table->get_weapon(item.data1[1], item.data1[2]);
+    const auto& prob_table = this->tekker_adjustment_set->get_grind_delta_prob_table(section_id, favored);
+    uint8_t delta_index = prob_table.sample(this->random_crypt);
+    int8_t delta = delta_table.at(delta_index);
+    fprintf(stderr, "Grind: delta_index=%hhu delta=%hhd\n", delta_index, delta);
+    int16_t new_grind = static_cast<int16_t>(item.data1[3]) + static_cast<int16_t>(delta);
+    item.data1[3] = clamp<int16_t>(new_grind, 0, weapon_def.max_grind);
+    luck += this->tekker_adjustment_set->get_luck_for_grind_delta(delta_index);
+  }
+
+  // Adjust the weapon's bonuses
+  {
+    const auto& prob_table = this->tekker_adjustment_set->get_bonus_delta_prob_table(section_id, favored);
+    // Note: The original code really does use the same delta for all three
+    // bonuses.
+    uint8_t delta_index = prob_table.sample(this->random_crypt);
+    int8_t delta = delta_table.at(delta_index);
+    fprintf(stderr, "Bonus: delta_index=%hhu delta=%hhd\n", delta_index, delta);
+    // Note: The original code doesn't check if there's actually a bonus in each
+    // slot before incrementing the values. Presumably there's a check later
+    // that will clear any invalid bonuses, but we don't have such a check, so
+    // we need to check here if each bonus is actually present.
+    for (size_t z = 6; z <= 10; z += 2) {
+      if (item.data1[z] >= 1 && item.data1[z] <= 5) {
+        item.data1[z + 1] = min<int8_t>(item.data1[z + 1] + delta, 100);
+      }
+    }
+    luck += this->tekker_adjustment_set->get_luck_for_bonus_delta(delta_index);
+  }
+
+  return luck;
 }

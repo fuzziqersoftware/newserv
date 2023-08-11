@@ -129,3 +129,82 @@ WeaponRandomSet::get_favored_grind_range(size_t index) const {
   return &this->r.pget<RangeTableEntry>(
       this->offsets->favored_grind_range_table + sizeof(RangeTableEntry) * index);
 }
+
+TekkerAdjustmentSet::TekkerAdjustmentSet(std::shared_ptr<const std::string> data)
+    : data(data),
+      r(*data) {
+  this->offsets = &this->r.pget<Offsets>(this->r.pget_u32b(this->r.size() - 0x10));
+}
+
+const ProbabilityTable<uint8_t, 100>& TekkerAdjustmentSet::get_table(
+    std::array<ProbabilityTable<uint8_t, 100>, 10>& tables_default,
+    std::array<ProbabilityTable<uint8_t, 100>, 10>& tables_favored,
+    uint32_t offset_and_count_offset,
+    bool favored,
+    uint8_t section_id) const {
+  if (section_id >= 10) {
+    throw runtime_error("invalid section ID");
+  }
+  ProbabilityTable<uint8_t, 100>& table = favored ? tables_favored[section_id] : tables_default[section_id];
+  if (table.count == 0) {
+    uint32_t offset = r.pget_u32b(offset_and_count_offset);
+    uint32_t count_per_section_id = r.pget_u32b(offset_and_count_offset + 4);
+    auto* entries = &r.pget<DeltaProbabilityEntry>(offset, sizeof(DeltaProbabilityEntry) * count_per_section_id * 10);
+    for (size_t z = count_per_section_id * section_id; z < count_per_section_id * (section_id + 1); z++) {
+      size_t count = favored ? entries[z].count_favored : entries[z].count_default;
+      for (size_t w = 0; w < count; w++) {
+        table.push(entries[z].delta_index);
+      }
+    }
+  }
+  return table;
+}
+
+const ProbabilityTable<uint8_t, 100>& TekkerAdjustmentSet::get_special_upgrade_prob_table(uint8_t section_id, bool favored) const {
+  return this->get_table(
+      this->special_upgrade_prob_tables_default,
+      this->special_upgrade_prob_tables_favored,
+      this->offsets->special_upgrade_prob_table_offset,
+      favored, section_id);
+}
+
+const ProbabilityTable<uint8_t, 100>& TekkerAdjustmentSet::get_grind_delta_prob_table(uint8_t section_id, bool favored) const {
+  return this->get_table(
+      this->grind_delta_prob_tables_default,
+      this->grind_delta_prob_tables_favored,
+      this->offsets->grind_delta_prob_table_offset,
+      favored, section_id);
+}
+
+const ProbabilityTable<uint8_t, 100>& TekkerAdjustmentSet::get_bonus_delta_prob_table(uint8_t section_id, bool favored) const {
+  return this->get_table(
+      this->bonus_delta_prob_tables_default,
+      this->bonus_delta_prob_tables_favored,
+      this->offsets->bonus_delta_prob_table_offset,
+      favored, section_id);
+}
+
+int8_t TekkerAdjustmentSet::get_luck(uint32_t start_offset, uint8_t delta_index) const {
+  StringReader sub_r = r.sub(start_offset);
+  while (!sub_r.eof()) {
+    const auto& entry = sub_r.get<LuckTableEntry>();
+    if (entry.delta_index == 0xFF) {
+      return 0;
+    } else if (entry.delta_index == delta_index) {
+      return entry.luck;
+    }
+  }
+  return 0;
+}
+
+int8_t TekkerAdjustmentSet::get_luck_for_special_upgrade(uint8_t delta_index) const {
+  return this->get_luck(this->offsets->special_upgrade_luck_table_offset, delta_index);
+}
+
+int8_t TekkerAdjustmentSet::get_luck_for_grind_delta(uint8_t delta_index) const {
+  return this->get_luck(this->offsets->grind_delta_luck_table_offset, delta_index);
+}
+
+int8_t TekkerAdjustmentSet::get_luck_for_bonus_delta(uint8_t delta_index) const {
+  return this->get_luck(this->offsets->bonus_delta_luck_offset, delta_index);
+}

@@ -1643,15 +1643,21 @@ static void on_identify_item_bb(shared_ptr<ServerState>,
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
       throw logic_error("item tracking not enabled in BB game");
     }
+    if (!l->item_creator.get()) {
+      throw logic_error("received item identify subcommand without item creator present");
+    }
 
     size_t x = c->game_data.player()->inventory.find_item(cmd.item_id);
     if (c->game_data.player()->inventory.items[x].data.data1[0] != 0) {
       return; // Only weapons can be identified
     }
 
-    c->game_data.player()->disp.stats.meseta -= 100;
+    auto p = c->game_data.player();
+    p->disp.stats.meseta -= 100;
     c->game_data.identify_result = c->game_data.player()->inventory.items[x];
     c->game_data.identify_result.data.data1[4] &= 0x7F;
+    l->item_creator->apply_tekker_deltas(
+        c->game_data.identify_result.data, p->disp.visual.section_id);
     send_item_identify_result(l, c);
 
   } else {

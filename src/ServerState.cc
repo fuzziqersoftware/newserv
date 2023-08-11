@@ -871,6 +871,11 @@ void ServerState::load_item_tables() {
     this->weapon_random_sets[z].reset(new WeaponRandomSet(weapon_data));
   }
 
+  config_log.info("Loading tekker adjustment table");
+  shared_ptr<string> tekker_data(new string(load_file(
+      "system/blueburst/JudgeItem_GC.rel")));
+  this->tekker_adjustment_set.reset(new TekkerAdjustmentSet(tekker_data));
+
   config_log.info("Loading item definition table");
   shared_ptr<string> pmt_data(new string(prs_decompress(load_file(
       "system/blueburst/ItemPMT.prs"))));

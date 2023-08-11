@@ -56,6 +56,7 @@ public:
       std::shared_ptr<const ArmorRandomSet> armor_random_set,
       std::shared_ptr<const ToolRandomSet> tool_random_set,
       std::shared_ptr<const WeaponRandomSet> weapon_random_set,
+      std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set,
       std::shared_ptr<const ItemParameterTable> item_parameter_table,
       Episode episode,
       GameMode mode,
@@ -73,6 +74,10 @@ public:
   std::vector<ItemData> generate_tool_shop_contents(size_t player_level);
   std::vector<ItemData> generate_weapon_shop_contents(size_t player_level);
 
+  // This function adjusts the item in-place, and returns the luck value.
+  // See the comments in TekkerAdjustmentSet for what this value means.
+  ssize_t apply_tekker_deltas(ItemData& item, uint8_t section_id);
+
 private:
   PrefixedLogger log;
   Episode episode;
@@ -84,6 +89,7 @@ private:
   std::shared_ptr<const ArmorRandomSet> armor_random_set;
   std::shared_ptr<const ToolRandomSet> tool_random_set;
   std::shared_ptr<const WeaponRandomSet> weapon_random_set;
+  std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::shared_ptr<const ItemParameterTable> item_parameter_table;
   const CommonItemSet::Table<true>* pt;
   std::shared_ptr<const Restrictions> restrictions;

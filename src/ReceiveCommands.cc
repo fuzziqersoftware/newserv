@@ -3236,6 +3236,7 @@ shared_ptr<Lobby> create_game_generic(
         s->armor_random_set,
         s->tool_random_set,
         s->weapon_random_sets.at(game->difficulty),
+        s->tekker_adjustment_set,
         s->item_parameter_table,
         game->episode,
         (game->mode == GameMode::SOLO) ? GameMode::NORMAL : game->mode,

@@ -396,3 +396,153 @@ private:
 
   const Offsets* offsets;
 };
+
+class TekkerAdjustmentSet {
+public:
+  // This class parses and accesses data from JudgeItem.rel
+  TekkerAdjustmentSet(std::shared_ptr<const std::string> data);
+
+  const ProbabilityTable<uint8_t, 100>& get_special_upgrade_prob_table(uint8_t section_id, bool favored) const;
+  const ProbabilityTable<uint8_t, 100>& get_grind_delta_prob_table(uint8_t section_id, bool favored) const;
+  const ProbabilityTable<uint8_t, 100>& get_bonus_delta_prob_table(uint8_t section_id, bool favored) const;
+  int8_t get_luck_for_special_upgrade(uint8_t delta_index) const;
+  int8_t get_luck_for_grind_delta(uint8_t delta_index) const;
+  int8_t get_luck_for_bonus_delta(uint8_t delta_index) const;
+
+private:
+  const ProbabilityTable<uint8_t, 100>& get_table(
+      std::array<ProbabilityTable<uint8_t, 100>, 10>& tables_default,
+      std::array<ProbabilityTable<uint8_t, 100>, 10>& tables_favored,
+      uint32_t offset_and_count_offset,
+      bool favored,
+      uint8_t section_id) const;
+  int8_t get_luck(uint32_t start_offset, uint8_t delta_index) const;
+
+  std::shared_ptr<const string> data;
+  StringReader r;
+
+  struct DeltaProbabilityEntry {
+    uint8_t delta_index;
+    uint8_t count_default;
+    uint8_t count_favored;
+  } __attribute__((packed));
+  struct LuckTableEntry {
+    uint8_t delta_index;
+    int8_t luck;
+  } __attribute__((packed));
+
+  struct Offsets {
+    // Each section ID's favored weapon class has different probabilities than
+    // those used for all other weapons. The tables are labeled with (D) for the
+    // default values and (F) for the favored-class values.
+
+    // Note that the favored bonuses for Redria are all zero; these values are
+    // unused because Redria does not have a favored weapon type. Curiously,
+    // Yellowboze also does not have a favored weapon type, but the values for
+    // Yellowboze are not all zero.
+
+    // This table specifies how likely a special is to be upgraded or
+    // downgraded by one level.
+    // In PSO GC, the special upgrade table is:
+    //   Viridia    => (D) +1=10%, 0=60%, -1=30%
+    //   Viridia    => (F) +1=25%, 0=50%, -1=25%
+    //   Greennill  => (D) +1=25%, 0=65%, -1=10%
+    //   Greennill  => (F) +1=40%, 0=55%, -1=5%
+    //   Skyly      => (D) +1=15%, 0=70%, -1=15%
+    //   Skyly      => (F) +1=30%, 0=60%, -1=10%
+    //   Bluefull   => (D) +1=10%, 0=60%, -1=30%
+    //   Bluefull   => (F) +1=25%, 0=50%, -1=25%
+    //   Purplenum  => (D) +1=25%, 0=65%, -1=10%
+    //   Purplenum  => (F) +1=40%, 0=55%, -1=5%
+    //   Pinkal     => (D) +1=15%, 0=70%, -1=15%
+    //   Pinkal     => (F) +1=30%, 0=60%, -1=10%
+    //   Redria     => (D) +1=20%, 0=60%, -1=20%
+    //   Redria     => (F) +1=0%,  0=0%,  -1=0%
+    //   Oran       => (D) +1=15%, 0=70%, -1=15%
+    //   Oran       => (F) +1=30%, 0=60%, -1=10%
+    //   Yellowboze => (D) +1=25%, 0=65%, -1=10%
+    //   Yellowboze => (F) +1=40%, 0=55%, -1=5%
+    //   Whitill    => (D) +1=10%, 0=60%, -1=30%
+    //   Whitill    => (F) +1=25%, 0=50%, -1=25%
+    be_uint32_t special_upgrade_prob_table_offset; // [{c, o -> (DeltaProbabilityEntry)[10][c]})
+
+    // This table specifies how likely a weapon's grind is to be upgraded or
+    // downgraded, and by how much. The final grind value is clamped to the
+    // range between 0 and the weapon's maximum grind from ItemPMT, inclusive.
+    // In PSO GC, the grind delta table is:
+    //   Viridia    => (D) +3=3%,  +2=7%,  +1=13%, 0=60%, -1=10%, -2=7%,  -3=0%
+    //   Viridia    => (F) +3=5%,  +2=13%, +1=25%, 0=50%, -1=7%,  -2=0%,  -3=0%
+    //   Greennill  => (D) +3=0%,  +2=5%,  +1=10%, 0=70%, -1=10%, -2=5%,  -3=0%
+    //   Greennill  => (F) +3=3%,  +2=7%,  +1=20%, 0=60%, -1=10%, -2=0%,  -3=0%
+    //   Skyly      => (D) +3=0%,  +2=7%,  +1=10%, 0=60%, -1=13%, -2=7%,  -3=3%
+    //   Skyly      => (F) +3=3%,  +2=12%, +1=20%, 0=50%, -1=10%, -2=5%,  -3=0%
+    //   Bluefull   => (D) +3=3%,  +2=7%,  +1=13%, 0=60%, -1=10%, -2=7%,  -3=0%
+    //   Bluefull   => (F) +3=5%,  +2=13%, +1=25%, 0=50%, -1=7%,  -2=0%,  -3=0%
+    //   Purplenum  => (D) +3=0%,  +2=5%,  +1=10%, 0=70%, -1=10%, -2=5%,  -3=0%
+    //   Purplenum  => (F) +3=3%,  +2=7%,  +1=20%, 0=60%, -1=10%, -2=0%,  -3=0%
+    //   Pinkal     => (D) +3=0%,  +2=7%,  +1=10%, 0=60%, -1=13%, -2=7%,  -3=3%
+    //   Pinkal     => (F) +3=3%,  +2=12%, +1=20%, 0=50%, -1=10%, -2=5%,  -3=0%
+    //   Redria     => (D) +3=0%,  +2=7%,  +1=10%, 0=60%, -1=13%, -2=7%,  -3=3%
+    //   Redria     => (F) +3=0%,  +2=0%,  +1=0%,  0=0%,  -1=0%,  -2=0%,  -3=0%
+    //   Oran       => (D) +3=0%,  +2=7%,  +1=10%, 0=60%, -1=13%, -2=7%,  -3=3%
+    //   Oran       => (F) +3=3%,  +2=12%, +1=20%, 0=50%, -1=10%, -2=5%,  -3=0%
+    //   Yellowboze => (D) +3=0%,  +2=5%,  +1=10%, 0=70%, -1=10%, -2=5%,  -3=0%
+    //   Yellowboze => (F) +3=3%,  +2=7%,  +1=20%, 0=60%, -1=10%, -2=0%,  -3=0%
+    //   Whitill    => (D) +3=3%,  +2=7%,  +1=13%, 0=60%, -1=10%, -2=7%,  -3=0%
+    //   Whitill    => (F) +3=5%,  +2=13%, +1=25%, 0=50%, -1=7%,  -2=0%,  -3=0%
+    be_uint32_t grind_delta_prob_table_offset; // [{c, o -> (DeltaProbabilityEntry)[10][c]})
+
+    // This table specifies how likely a weapon's bonuses are to be upgraded
+    // or downgraded, and by how much. The final bonuses are capped above at
+    // 100, but there is no lower limit (so negative results are possible).
+    // In PSO GC, the bonus delta table is:
+    //   Viridia    => (D) +10=5%,  +5=15%, 0=60%, -5=15%, -10=5%
+    //   Viridia    => (F) +10=8%,  +5=20%, 0=60%, -5=10%, -10=2%
+    //   Greennill  => (D) +10=5%,  +5=10%, 0=50%, -5=25%, -10=10%
+    //   Greennill  => (F) +10=8%,  +5=15%, 0=50%, -5=20%, -10=7%
+    //   Skyly      => (D) +10=10%, +5=25%, 0=50%, -5=10%, -10=5%
+    //   Skyly      => (F) +10=13%, +5=30%, 0=50%, -5=5%,  -10=2%
+    //   Bluefull   => (D) +10=5%,  +5=15%, 0=60%, -5=15%, -10=5%
+    //   Bluefull   => (F) +10=8%,  +5=20%, 0=60%, -5=10%, -10=2%
+    //   Purplenum  => (D) +10=5%,  +5=10%, 0=50%, -5=25%, -10=10%
+    //   Purplenum  => (F) +10=8%,  +5=15%, 0=50%, -5=20%, -10=7%
+    //   Pinkal     => (D) +10=10%, +5=25%, 0=50%, -5=10%, -10=5%
+    //   Pinkal     => (F) +10=13%, +5=30%, 0=50%, -5=5%,  -10=2%
+    //   Redria     => (D) +10=10%, +5=25%, 0=50%, -5=10%, -10=5%
+    //   Redria     => (F) +10=0%,  +5=0%,  0=0%,  -5=0%,  -10=0%
+    //   Oran       => (D) +10=10%, +5=25%, 0=50%, -5=10%, -10=5%
+    //   Oran       => (F) +10=13%, +5=30%, 0=50%, -5=5%,  -10=2%
+    //   Yellowboze => (D) +10=5%,  +5=10%, 0=50%, -5=25%, -10=10%
+    //   Yellowboze => (F) +10=8%,  +5=15%, 0=50%, -5=20%, -10=7%
+    //   Whitill    => (D) +10=5%,  +5=15%, 0=60%, -5=15%, -10=5%
+    //   Whitill    => (F) +10=8%,  +5=20%, 0=60%, -5=10%, -10=2%
+    be_uint32_t bonus_delta_prob_table_offset; // [{c, o -> (DeltaProbabilityEntry)[10][c]})
+
+    // There is a secondary computation done during weapon adjustment that
+    // appears to determine how "good" the resulting weapon is compared to its
+    // original state. If the result of this computation is positive, the game
+    // plays a jingle when the tekker result is accepted. These tables describe
+    // how much each delta affects this value, which we call luck.
+
+    // In PSO GC, the special upgrade luck table is:
+    //   +1 => +20, 0 => 0, -1 => -20
+    be_uint32_t special_upgrade_luck_table_offset; // LuckTableEntry[...]; ending with FF FF
+
+    // In PSO GC, the grind delta luck table is:
+    //   +3 => +10, +2 => +5, +1 => +3, 0 => 0, -1 => -3, -2 => -5, -3 => -10
+    be_uint32_t grind_delta_luck_table_offset; // LuckTableEntry[...]; ending with FF FF
+
+    // In PSO GC, the bonus delta luck table is:
+    //   +10 => +15, +5 => +8, 0 => 0, -5 => -8, -10 => -15
+    be_uint32_t bonus_delta_luck_offset; // LuckTableEntry[...]; ending with FF FF
+  } __attribute__((packed));
+
+  const Offsets* offsets;
+
+  mutable std::array<ProbabilityTable<uint8_t, 100>, 10> special_upgrade_prob_tables_default;
+  mutable std::array<ProbabilityTable<uint8_t, 100>, 10> special_upgrade_prob_tables_favored;
+  mutable std::array<ProbabilityTable<uint8_t, 100>, 10> grind_delta_prob_tables_default;
+  mutable std::array<ProbabilityTable<uint8_t, 100>, 10> grind_delta_prob_tables_favored;
+  mutable std::array<ProbabilityTable<uint8_t, 100>, 10> bonus_delta_prob_tables_default;
+  mutable std::array<ProbabilityTable<uint8_t, 100>, 10> bonus_delta_prob_tables_favored;
+};
