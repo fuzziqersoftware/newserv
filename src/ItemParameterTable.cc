@@ -141,6 +141,14 @@ uint8_t ItemParameterTable::get_special_stars(uint8_t det) const {
   return this->get_item_stars(det + 0x0256);
 }
 
+const ItemParameterTable::Special& ItemParameterTable::get_special(uint8_t special) const {
+  special &= 0x3F;
+  if (special >= 0x29) {
+    throw runtime_error("invalid special index");
+  }
+  return this->r.pget<Special>(this->offsets->special_data_table + sizeof(Special) * special);
+}
+
 uint8_t ItemParameterTable::get_max_tech_level(uint8_t char_class, uint8_t tech_num) const {
   if (char_class >= 12) {
     throw runtime_error("invalid character class");
