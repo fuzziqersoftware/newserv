@@ -1636,7 +1636,7 @@ static void on_identify_item_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
   if (l->version == GameVersion::BB) {
-    const auto& cmd = check_size_t<G_AcceptItemIdentification_BB_6xB8>(data, size);
+    const auto& cmd = check_size_t<G_IdentifyItemRequest_6xB8>(data, size);
     if (!l->is_game()) {
       return;
     }

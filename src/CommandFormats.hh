@@ -5221,9 +5221,9 @@ struct G_BuyShopItem_BB_6xB7 {
 // This command behaves exactly the same as 6xB4. This alias exists only in
 // Episode 3 Trial Edition; it was removed in the final release.
 
-// 6xB8: BB accept tekker result (handled by the server)
+// 6xB8: BB identify item request (via tekker) (handled by the server)
 
-struct G_AcceptItemIdentification_BB_6xB8 {
+struct G_IdentifyItemRequest_6xB8 {
   G_UnusedHeader header;
   le_uint32_t item_id;
 } __packed__;
