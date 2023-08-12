@@ -160,9 +160,12 @@ activate_chosen_editor:
   #   1 & 2.
 
   # lwz    r4, [r29 + 0x34] # TEffIndirectEditor (no visible effects)
-  #   This editor is missing in PSO PC, but is present in PSOX.
-  #   TODO: It's not apparent what this editor does, or if it even survives to
-  #   the update/render phase. Further research is needed here.
+  # li     r0, 1
+  # stw    [r4 + 0x38], r0
+  #   This editor is missing in PSO PC, but is present in PSOX. It appears to be
+  #   used for testing texture overlay effects, but it doesn't work properly in
+  #   Episode 3 - none of the effects appear to do anything. All three lines
+  #   above must be uncommented for it to load.
 
   # lwz    r4, [r29 + 0x38] # TCCScenarioDebug (movie/cutscene tests)
   #   This editor exists only in Episode 3 - it is neither in PSOPC nor PSOX.
