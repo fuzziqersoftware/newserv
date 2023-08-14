@@ -507,7 +507,7 @@ bool Card::get_attack_condition_value(
       cond_type, card_ref, def_effect_index, value, out_value);
 }
 
-shared_ptr<const DataIndex::CardEntry> Card::get_definition() const {
+shared_ptr<const CardIndex::CardEntry> Card::get_definition() const {
   return this->def_entry;
 }
 

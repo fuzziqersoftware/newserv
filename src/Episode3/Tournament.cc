@@ -280,15 +280,17 @@ shared_ptr<Tournament::Team> Tournament::Match::opponent_team_for_team(
 }
 
 Tournament::Tournament(
-    shared_ptr<const DataIndex> data_index,
+    shared_ptr<const MapIndex> map_index,
+    shared_ptr<const COMDeckIndex> com_deck_index,
     uint8_t number,
     const string& name,
-    shared_ptr<const DataIndex::MapEntry> map,
+    shared_ptr<const MapIndex::MapEntry> map,
     const Rules& rules,
     size_t num_teams,
     bool is_2v2)
     : log(string_printf("[Tournament/%02hhX] ", number)),
-      data_index(data_index),
+      map_index(map_index),
+      com_deck_index(com_deck_index),
       number(number),
       name(name),
       map(map),
@@ -308,11 +310,13 @@ Tournament::Tournament(
 }
 
 Tournament::Tournament(
-    std::shared_ptr<const DataIndex> data_index,
+    shared_ptr<const MapIndex> map_index,
+    shared_ptr<const COMDeckIndex> com_deck_index,
     uint8_t number,
     std::shared_ptr<const JSONObject> json)
     : log(string_printf("[Tournament/%02hhX] ", number)),
-      data_index(data_index),
+      map_index(map_index),
+      com_deck_index(com_deck_index),
       source_json(json),
       number(number),
       current_state(State::REGISTRATION) {}
@@ -324,7 +328,7 @@ void Tournament::init() {
   if (this->source_json) {
     auto& dict = this->source_json->as_dict();
     this->name = dict.at("name")->as_string();
-    this->map = this->data_index->definition_for_map_number(dict.at("map_number")->as_int());
+    this->map = this->map_index->definition_for_number(dict.at("map_number")->as_int());
     this->rules = Rules(dict.at("rules"));
     this->is_2v2 = dict.at("is_2v2")->as_bool();
     is_registration_complete = dict.at("is_registration_complete")->as_bool();
@@ -344,8 +348,7 @@ void Tournament::init() {
           team->players.emplace_back(serial_number);
           this->all_player_serial_numbers.emplace(serial_number);
         } else {
-          team->players.emplace_back(this->data_index->com_deck(
-              player_json->as_string()));
+          team->players.emplace_back(this->com_deck_index->deck_for_name(player_json->as_string()));
         }
       }
     }
@@ -486,10 +489,6 @@ std::shared_ptr<JSONObject> Tournament::json() const {
   return shared_ptr<JSONObject>(new JSONObject(std::move(dict)));
 }
 
-std::shared_ptr<const DataIndex> Tournament::get_data_index() const {
-  return this->data_index;
-}
-
 uint8_t Tournament::get_number() const {
   return this->number;
 }
@@ -498,7 +497,7 @@ const string& Tournament::get_name() const {
   return this->name;
 }
 
-shared_ptr<const DataIndex::MapEntry> Tournament::get_map() const {
+shared_ptr<const MapIndex::MapEntry> Tournament::get_map() const {
   return this->map;
 }
 
@@ -593,13 +592,13 @@ void Tournament::start() {
         throw logic_error("non-human player on team before tournament start");
       }
     }
-    if (this->data_index->num_com_decks() < t->max_players - t->players.size()) {
+    if (this->com_deck_index->num_decks() < t->max_players - t->players.size()) {
       throw runtime_error("not enough COM decks to complete team");
     }
     // TODO: Don't allow duplicate COM decks, nor duplicate COM SCs on the same
     // team
     while (t->players.size() < t->max_players) {
-      t->players.emplace_back(this->data_index->random_com_deck());
+      t->players.emplace_back(this->com_deck_index->random_deck());
     }
   }
 
@@ -654,10 +653,12 @@ void Tournament::print_bracket(FILE* stream) const {
 }
 
 TournamentIndex::TournamentIndex(
-    shared_ptr<const DataIndex> data_index,
+    shared_ptr<const MapIndex> map_index,
+    shared_ptr<const COMDeckIndex> com_deck_index,
     const string& state_filename,
     bool skip_load_state)
-    : data_index(data_index),
+    : map_index(map_index),
+      com_deck_index(com_deck_index),
       state_filename(state_filename) {
   if (this->state_filename.empty() || skip_load_state) {
     return;
@@ -671,7 +672,7 @@ TournamentIndex::TournamentIndex(
   }
   for (size_t z = 0; z < 0x20; z++) {
     if (!list.at(z)->is_null()) {
-      this->tournaments[z].reset(new Tournament(this->data_index, z, list[z]));
+      this->tournaments[z].reset(new Tournament(this->map_index, this->com_deck_index, z, list[z]));
       this->tournaments[z]->init();
     }
   }
@@ -706,7 +707,7 @@ vector<shared_ptr<Tournament>> TournamentIndex::all_tournaments() const {
 
 shared_ptr<Tournament> TournamentIndex::create_tournament(
     const string& name,
-    shared_ptr<const DataIndex::MapEntry> map,
+    shared_ptr<const MapIndex::MapEntry> map,
     const Rules& rules,
     size_t num_teams,
     bool is_2v2) {
@@ -722,7 +723,7 @@ shared_ptr<Tournament> TournamentIndex::create_tournament(
   }
 
   auto t = make_shared<Tournament>(
-      this->data_index, number, name, map, rules, num_teams, is_2v2);
+      this->map_index, this->com_deck_index, number, name, map, rules, num_teams, is_2v2);
   t->init();
   this->tournaments[number] = t;
   return t;

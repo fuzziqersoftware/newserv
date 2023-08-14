@@ -11,7 +11,7 @@
 
 #include "Client.hh"
 #include "CommonItemSet.hh"
-#include "Episode3/DataIndex.hh"
+#include "Episode3/DataIndexes.hh"
 #include "Episode3/Tournament.hh"
 #include "FunctionCompiler.hh"
 #include "GSLArchive.hh"
@@ -70,7 +70,10 @@ struct ServerState {
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
   std::shared_ptr<const DOLFileIndex> dol_file_index;
-  std::shared_ptr<const Episode3::DataIndex> ep3_data_index;
+  std::shared_ptr<const Episode3::CardIndex> ep3_card_index;
+  std::shared_ptr<const Episode3::CardIndex> ep3_card_index_trial;
+  std::shared_ptr<const Episode3::MapIndex> ep3_map_index;
+  std::shared_ptr<const Episode3::COMDeckIndex> ep3_com_deck_index;
   std::shared_ptr<const QuestCategoryIndex> quest_category_index;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table;

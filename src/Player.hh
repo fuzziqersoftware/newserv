@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "Episode3/DataIndex.hh"
+#include "Episode3/DataIndexes.hh"
 #include "ItemData.hh"
 #include "LevelTable.hh"
 #include "Text.hh"

@@ -2180,7 +2180,9 @@ void send_rare_enemy_index_list(shared_ptr<Client> c, const vector<size_t>& inde
 
 void send_ep3_card_list_update(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   if (!(c->flags & Client::Flag::HAS_EP3_CARD_DEFS)) {
-    const auto& data = s->ep3_data_index->get_compressed_card_definitions();
+    const auto& data = (c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)
+        ? s->ep3_card_index_trial->get_compressed_definitions()
+        : s->ep3_card_index->get_compressed_definitions();
 
     StringWriter w;
     w.put_u32l(data.size());
@@ -2486,6 +2488,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 }
 
 void send_ep3_set_tournament_player_decks(
+    shared_ptr<ServerState> s,
     shared_ptr<Lobby> l,
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament::Match> match) {
@@ -2532,7 +2535,7 @@ void send_ep3_set_tournament_player_decks(
   add_entries_for_team(match->preceding_a->winner_team, 0);
   add_entries_for_team(match->preceding_b->winner_team, 2);
 
-  if (!(tourn->get_data_index()->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+  if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
     uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
     set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
   }
@@ -2543,7 +2546,7 @@ void send_ep3_set_tournament_player_decks(
 }
 
 void send_ep3_tournament_match_result(
-    shared_ptr<Lobby> l, shared_ptr<const Episode3::Tournament::Match> match) {
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<const Episode3::Tournament::Match> match) {
   auto tourn = match->tournament.lock();
   if (!tourn) {
     return;
@@ -2585,13 +2588,13 @@ void send_ep3_tournament_match_result(
   // the player 1000000 and never charge for anything.
   cmd.meseta_amount = 100;
   cmd.meseta_reward_text = "You got %s meseta!";
-  if (!(tourn->get_data_index()->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+  if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
     uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
     set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
   }
   send_command_t(l, 0xC9, 0x00, cmd);
 
-  if (tourn->get_data_index()->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
+  if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
     send_text_message_printf(l, "$C5TOURN/%02hhX/%zu WIN %c",
         tourn->get_number(), match->round_num,
         match->winner_team == match->preceding_a->winner_team ? 'A' : 'B');
@@ -2806,6 +2809,10 @@ void send_card_auction_if_all_clients_ready(
     distribution_size += it.second.first;
   }
 
+  auto card_index = (l->flags & Lobby::Flag::IS_EP3_TRIAL)
+      ? s->ep3_card_index_trial
+      : s->ep3_card_index;
+
   S_StartCardAuction_GC_Ep3_EF cmd;
   cmd.points_available = s->ep3_card_auction_points;
   for (size_t z = 0; z < num_cards; z++) {
@@ -2814,7 +2821,7 @@ void send_card_auction_if_all_clients_ready(
       if (v >= it.second.first) {
         v -= it.second.first;
       } else {
-        cmd.entries[z].card_id = s->ep3_data_index->definition_for_card_name(it.first)->def.card_id.load();
+        cmd.entries[z].card_id = card_index->definition_for_name(it.first)->def.card_id.load();
         cmd.entries[z].min_price = it.second.second;
         break;
       }

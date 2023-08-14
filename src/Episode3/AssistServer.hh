@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "DataIndex.hh"
+#include "DataIndexes.hh"
 #include "DeckState.hh"
 #include "PlayerState.hh"
 
@@ -24,7 +24,7 @@ public:
   std::shared_ptr<const Server> server() const;
 
   uint16_t card_id_for_card_ref(uint16_t card_ref) const;
-  std::shared_ptr<const DataIndex::CardEntry> definition_for_card_id(uint16_t card_id) const;
+  std::shared_ptr<const CardIndex::CardEntry> definition_for_card_id(uint16_t card_id) const;
 
   uint32_t compute_num_assist_effects_for_client(uint16_t client_id);
   uint32_t compute_num_assist_effects_for_team(uint32_t team_id);
@@ -40,11 +40,11 @@ private:
 
 public:
   parray<AssistEffect, 4> assist_effects;
-  std::shared_ptr<const DataIndex::CardEntry> assist_card_defs[4];
+  std::shared_ptr<const CardIndex::CardEntry> assist_card_defs[4];
   uint32_t num_assist_cards_set;
   parray<uint8_t, 4> client_ids_with_assists;
   parray<AssistEffect, 4> active_assist_effects;
-  std::shared_ptr<const DataIndex::CardEntry> active_assist_card_defs[4];
+  std::shared_ptr<const CardIndex::CardEntry> active_assist_card_defs[4];
   uint32_t num_active_assists;
   std::shared_ptr<HandAndEquipState> hand_and_equip_states[4];
   std::shared_ptr<parray<CardShortStatus, 0x10>> card_short_statuses[4];

@@ -279,7 +279,6 @@
   // 0x0008 => Disable overall and per-phase battle time limits, regardless of
   //           the values chosen during battle rules setup
   // 0x0010 => Enable debug messages in Episode 3 games and battles
-  // 0x0020 => This flag is used internally and has no effect on battles
   // 0x0040 => Enable battle recording (after a battle, players can save the
   //           recording with the $saverec <filename> command)
   // 0x0080 => Disable command masking during battles

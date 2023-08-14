@@ -380,7 +380,7 @@ static void on_ep3_battle_subs(shared_ptr<ServerState> s,
     }
   }
 
-  if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+  if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
     uint8_t mask_key = 0;
     while (!mask_key) {
       mask_key = random_object<uint8_t>();

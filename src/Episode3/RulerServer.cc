@@ -8,7 +8,7 @@ namespace Episode3 {
 
 void compute_effective_range(
     parray<uint8_t, 9 * 9>& ret,
-    shared_ptr<const DataIndex> data_index,
+    shared_ptr<const CardIndex> card_index,
     uint16_t card_id,
     const Location& loc,
     shared_ptr<const MapAndRulesState> map_and_rules) {
@@ -19,9 +19,9 @@ void compute_effective_range(
     // Heavy Fog: one tile directly in front
     range_def[3] = 0x00000100;
   } else {
-    shared_ptr<const DataIndex::CardEntry> ce;
+    shared_ptr<const CardIndex::CardEntry> ce;
     try {
-      ce = data_index->definition_for_card_id(card_id);
+      ce = card_index->definition_for_id(card_id);
     } catch (const out_of_range&) {
       return;
     }
@@ -126,9 +126,9 @@ void compute_effective_range(
 }
 
 bool card_linkage_is_valid(
-    shared_ptr<const DataIndex::CardEntry> right_ce,
-    shared_ptr<const DataIndex::CardEntry> left_ce,
-    shared_ptr<const DataIndex::CardEntry> sc_ce,
+    shared_ptr<const CardIndex::CardEntry> right_ce,
+    shared_ptr<const CardIndex::CardEntry> left_ce,
+    shared_ptr<const CardIndex::CardEntry> sc_ce,
     bool has_permission_effect) {
   if (!right_ce) {
     return false;
@@ -1613,7 +1613,7 @@ bool RulerServer::defense_card_matches_any_attack_card_top_color(
   return false;
 }
 
-shared_ptr<const DataIndex::CardEntry> RulerServer::definition_for_card_ref(uint16_t card_ref) const {
+shared_ptr<const CardIndex::CardEntry> RulerServer::definition_for_card_ref(uint16_t card_ref) const {
   uint16_t card_id = this->card_id_for_card_ref(card_ref);
   if (card_id == 0xFFFF) {
     return nullptr;
@@ -1972,8 +1972,7 @@ uint16_t RulerServer::get_ally_sc_card_ref(uint16_t card_ref) const {
   return 0xFFFF;
 }
 
-shared_ptr<const DataIndex::CardEntry> RulerServer::definition_for_card_id(
-    uint32_t card_id) const {
+shared_ptr<const CardIndex::CardEntry> RulerServer::definition_for_card_id(uint32_t card_id) const {
   return this->server()->definition_for_card_id(card_id);
 }
 

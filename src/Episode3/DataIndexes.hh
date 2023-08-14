@@ -15,21 +15,22 @@
 
 namespace Episode3 {
 
-// The comment in Server.hh does not apply to this file (and DataIndex.cc).
+// The comment in Server.hh does not apply to this file (and DataIndexes.cc).
 // Except for the Location structure, these structures and functions are not
 // based on Sega's original implementation.
 
-class DataIndex;
+class CardIndex;
+class MapIndex;
+class COMDeckIndex;
 
 const char* name_for_link_color(uint8_t color);
 
-enum BehaviorFlag {
+enum BehaviorFlag : uint32_t {
   SKIP_DECK_VERIFY = 0x00000001,
   IGNORE_CARD_COUNTS = 0x00000002,
   SKIP_D1_D2_REPLACE = 0x00000004,
   DISABLE_TIME_LIMITS = 0x00000008,
   ENABLE_STATUS_MESSAGES = 0x00000010,
-  LOAD_CARD_TEXT = 0x00000020,
   ENABLE_RECORDING = 0x00000040,
   DISABLE_MASKING = 0x00000080,
   DISABLE_INTERFERENCE = 0x00000100,
@@ -952,10 +953,9 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     uint8_t deck_type;
   } __attribute__((packed));
   /* 5A10 */ parray<EntryState, 4> entry_states;
-
   /* 5A18 */
 
-  std::string str(const DataIndex* data_index = nullptr) const;
+  std::string str(const CardIndex* card_index = nullptr) const;
 } __attribute__((packed));
 
 struct COMDeckDefinition {
@@ -965,15 +965,32 @@ struct COMDeckDefinition {
   parray<le_uint16_t, 0x1F> card_ids;
 };
 
-class DataIndex {
+class CardIndex {
 public:
-  DataIndex(const std::string& directory, uint32_t behavior_flags);
+  CardIndex(const std::string& filename, const std::string& decompressed_filename, const std::string& text_filename = "");
 
   struct CardEntry {
     CardDefinition def;
     std::string text;
     std::vector<std::string> debug_tags; // Empty unless debug == true
   };
+
+  const std::string& get_compressed_definitions() const;
+  std::shared_ptr<const CardEntry> definition_for_id(uint32_t id) const;
+  std::shared_ptr<const CardEntry> definition_for_name(const std::string& name) const;
+  std::set<uint32_t> all_ids() const;
+  uint64_t definitions_mtime() const;
+
+private:
+  std::string compressed_card_definitions;
+  std::unordered_map<uint32_t, std::shared_ptr<CardEntry>> card_definitions;
+  std::unordered_map<std::string, std::shared_ptr<CardEntry>> card_definitions_by_name;
+  uint64_t mtime_for_card_definitions;
+};
+
+class MapIndex {
+public:
+  MapIndex(const std::string& directory);
 
   class MapEntry {
   public:
@@ -989,42 +1006,33 @@ public:
     mutable std::string compressed_data;
   };
 
-  const std::string& get_compressed_card_definitions() const;
-  std::shared_ptr<const CardEntry> definition_for_card_id(uint32_t id) const;
-  std::shared_ptr<const CardEntry> definition_for_card_name(
-      const std::string& name) const;
-  std::set<uint32_t> all_card_ids() const;
-  uint64_t card_definitions_mtime() const;
-
-  const std::string& get_compressed_map_list() const;
-  std::shared_ptr<const MapEntry> definition_for_map_number(uint32_t id) const;
-  std::shared_ptr<const MapEntry> definition_for_map_name(
-      const std::string& name) const;
-  std::set<uint32_t> all_map_ids() const;
-
-  size_t num_com_decks() const;
-  std::shared_ptr<const COMDeckDefinition> com_deck(size_t which) const;
-  std::shared_ptr<const COMDeckDefinition> com_deck(const std::string& name) const;
-  std::shared_ptr<const COMDeckDefinition> random_com_deck() const;
-
-  const uint32_t behavior_flags;
+  const std::string& get_compressed_list() const;
+  std::shared_ptr<const MapEntry> definition_for_number(uint32_t id) const;
+  std::shared_ptr<const MapEntry> definition_for_name(const std::string& name) const;
+  std::set<uint32_t> all_numbers() const;
 
 private:
-  std::string compressed_card_definitions;
-  std::unordered_map<uint32_t, std::shared_ptr<CardEntry>> card_definitions;
-  std::unordered_map<std::string, std::shared_ptr<CardEntry>> card_definitions_by_name;
-  uint64_t mtime_for_card_definitions;
-
   // The compressed map list is generated on demand from the maps map below.
-  // It's marked mutable because the logical consistency of the DataIndex object
+  // It's marked mutable because the logical consistency of the MapIndex object
   // is not violated from the caller's perspective even if we don't generate the
   // compressed map list at load time.
   mutable std::string compressed_map_list;
   std::map<uint32_t, std::shared_ptr<MapEntry>> maps;
   std::unordered_map<std::string, std::shared_ptr<MapEntry>> maps_by_name;
+};
 
-  std::vector<std::shared_ptr<COMDeckDefinition>> com_decks;
-  std::unordered_map<std::string, std::shared_ptr<COMDeckDefinition>> com_decks_by_name;
+class COMDeckIndex {
+public:
+  COMDeckIndex(const std::string& filename);
+
+  size_t num_decks() const;
+  std::shared_ptr<const COMDeckDefinition> deck_for_index(size_t which) const;
+  std::shared_ptr<const COMDeckDefinition> deck_for_name(const std::string& name) const;
+  std::shared_ptr<const COMDeckDefinition> random_deck() const;
+
+private:
+  std::vector<std::shared_ptr<COMDeckDefinition>> decks;
+  std::unordered_map<std::string, std::shared_ptr<COMDeckDefinition>> decks_by_name;
 };
 
 } // namespace Episode3

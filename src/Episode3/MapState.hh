@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "../Text.hh"
-#include "DataIndex.hh"
+#include "DataIndexes.hh"
 
 namespace Episode3 {
 

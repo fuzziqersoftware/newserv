@@ -1,4 +1,4 @@
-#include "DataIndex.hh"
+#include "DataIndexes.hh"
 
 #include <stdint.h>
 
@@ -1056,6 +1056,33 @@ Card: %04" PRIX32 " \"%s\"\n\
   }
 }
 
+void PlayerConfig::decrypt() {
+  if (!this->is_encrypted) {
+    return;
+  }
+  decrypt_trivial_gci_data(
+      &this->card_counts,
+      offsetof(PlayerConfig, decks) - offsetof(PlayerConfig, card_counts),
+      this->basis);
+  this->is_encrypted = 0;
+  this->basis = 0;
+}
+
+void PlayerConfig::encrypt(uint8_t basis) {
+  if (this->is_encrypted) {
+    if (this->basis == basis) {
+      return;
+    }
+    this->decrypt();
+  }
+  decrypt_trivial_gci_data(
+      &this->card_counts,
+      offsetof(PlayerConfig, decks) - offsetof(PlayerConfig, card_counts),
+      basis);
+  this->is_encrypted = 1;
+  this->basis = basis;
+}
+
 HPType hp_type_for_name(const char* name) {
   if (!strcmp(name, "DEFEAT_PLAYER")) {
     return HPType::DEFEAT_PLAYER;
@@ -1351,7 +1378,7 @@ void StateFlags::clear_FF() {
   this->client_sc_card_types.clear(CardType::INVALID_FF);
 }
 
-string MapDefinition::str(const DataIndex* data_index) const {
+string MapDefinition::str(const CardIndex* card_index) const {
   deque<string> lines;
   auto add_map = [&](const parray<parray<uint8_t, 0x10>, 0x10>& tiles) {
     for (size_t y = 0; y < 0x10; y++) {
@@ -1456,10 +1483,10 @@ string MapDefinition::str(const DataIndex* data_index) const {
     lines.emplace_back("    name: " + string(this->npc_decks[z].name));
     for (size_t w = 0; w < 0x20; w++) {
       uint16_t card_id = this->npc_decks[z].card_ids[w];
-      shared_ptr<const DataIndex::CardEntry> entry;
-      if (data_index) {
+      shared_ptr<const CardIndex::CardEntry> entry;
+      if (card_index) {
         try {
-          entry = data_index->definition_for_card_id(card_id);
+          entry = card_index->definition_for_id(card_id);
         } catch (const out_of_range&) {
         }
       }
@@ -1496,10 +1523,10 @@ string MapDefinition::str(const DataIndex* data_index) const {
   }
   for (size_t z = 0; z < 0x10; z++) {
     uint16_t card_id = this->reward_card_ids[z];
-    shared_ptr<const DataIndex::CardEntry> entry;
-    if (data_index) {
+    shared_ptr<const CardIndex::CardEntry> entry;
+    if (card_index) {
       try {
-        entry = data_index->definition_for_card_id(card_id);
+        entry = card_index->definition_for_id(card_id);
       } catch (const out_of_range&) {
       }
     }
@@ -1671,14 +1698,12 @@ bool Rules::check_and_reset_invalid_fields() {
   return ret;
 }
 
-DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
-    : behavior_flags(behavior_flags) {
-
+CardIndex::CardIndex(const string& filename, const string& decompressed_filename, const string& text_filename) {
   unordered_map<uint32_t, vector<string>> card_tags;
   unordered_map<uint32_t, string> card_text;
-  if (this->behavior_flags & BehaviorFlag::LOAD_CARD_TEXT) {
+  if (!text_filename.empty()) {
     try {
-      string data = prs_decompress(load_file(directory + "/card-text.mnr"));
+      string data = prs_decompress(load_file(text_filename));
       StringReader r(data);
 
       while (!r.eof()) {
@@ -1769,20 +1794,20 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
 
   try {
     string decompressed_data;
-    if (isfile(directory + "/card-definitions.mnrd")) {
-      this->mtime_for_card_definitions = stat(directory + "/card-definitions.mnrd").st_mtime;
-      decompressed_data = load_file(directory + "/card-definitions.mnrd");
+    this->mtime_for_card_definitions = stat(filename).st_mtime;
+    try {
+      decompressed_data = load_file(decompressed_filename);
       this->compressed_card_definitions.clear();
-    } else {
-      this->mtime_for_card_definitions = stat(directory + "/card-definitions.mnr").st_mtime;
-      this->compressed_card_definitions = load_file(directory + "/card-definitions.mnr");
+    } catch (const cannot_open_file&) {
+      this->compressed_card_definitions = load_file(filename);
       decompressed_data = prs_decompress(this->compressed_card_definitions);
     }
     if (decompressed_data.size() > 0x36EC0) {
       throw runtime_error("decompressed card list data is too long");
     }
 
-    // There's a footer after the card definitions, but we ignore it
+    // There's a footer after the card definitions (it's a standard-format REL
+    // file), but we ignore it
     if (decompressed_data.size() % sizeof(CardDefinition) != sizeof(CardDefinitionsFooter)) {
       throw runtime_error(string_printf(
           "decompressed card update file size %zX is not aligned with card definition size %zX (%zX extra bytes)",
@@ -1792,10 +1817,9 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
     size_t max_cards = decompressed_data.size() / sizeof(CardDefinition);
     for (size_t x = 0; x < max_cards; x++) {
       // The last card entry has the build date and some other metadata (and
-      // isn't a real card, obviously), so skip it. Seems like the card ID is
-      // always a large number that won't fit in a uint16_t, so we use that to
-      // determine if the entry is a real card or not.
-      if (defs[x].card_id & 0xFFFF0000) {
+      // isn't a real card, obviously), so skip it. The game detects this by
+      // checking for a negative value in type, which we also do here.
+      if (static_cast<int8_t>(defs[x].type) < 0) {
         continue;
       }
 
@@ -1816,7 +1840,7 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
       entry->def.mv.decode_code();
       entry->def.decode_range();
 
-      if (this->behavior_flags & BehaviorFlag::LOAD_CARD_TEXT) {
+      if (!text_filename.empty()) {
         try {
           entry->text = std::move(card_text.at(defs[x].card_id));
         } catch (const out_of_range&) {
@@ -1836,6 +1860,25 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
           "Compressed card definitions (%zu bytes -> %zu bytes) in %" PRIu64 "ms",
           decompressed_data.size(), this->compressed_card_definitions.size(), diff);
     }
+
+    if (this->compressed_card_definitions.size() > 0x7BF8) {
+      // Try to reduce the compressed size by clearing out text
+      static_game_data_log.info("Compressed card list data is too long; removing text");
+      for (size_t x = 0; x < max_cards; x++) {
+        if (static_cast<int8_t>(defs[x].type) < 0) {
+          continue;
+        }
+        defs[x].jp_name.clear();
+      }
+      uint64_t start = now();
+      this->compressed_card_definitions = prs_compress(decompressed_data);
+      uint64_t diff = now() - start;
+      static_game_data_log.info(
+          "Compressed card definitions (%zu bytes -> %zu bytes) in %" PRIu64 "ms",
+          decompressed_data.size(), this->compressed_card_definitions.size(), diff);
+      print_data(stderr, this->compressed_card_definitions);
+    }
+
     if (this->compressed_card_definitions.size() > 0x7BF8) {
       throw runtime_error("compressed card list data is too long");
     }
@@ -1844,7 +1887,36 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
   } catch (const exception& e) {
     static_game_data_log.warning("Failed to load Episode 3 card update: %s", e.what());
   }
+}
 
+const string& CardIndex::get_compressed_definitions() const {
+  if (this->compressed_card_definitions.empty()) {
+    throw runtime_error("card definitions are not available");
+  }
+  return this->compressed_card_definitions;
+}
+
+shared_ptr<const CardIndex::CardEntry> CardIndex::definition_for_id(uint32_t id) const {
+  return this->card_definitions.at(id);
+}
+
+shared_ptr<const CardIndex::CardEntry> CardIndex::definition_for_name(const string& name) const {
+  return this->card_definitions_by_name.at(name);
+}
+
+set<uint32_t> CardIndex::all_ids() const {
+  set<uint32_t> ret;
+  for (const auto& it : this->card_definitions) {
+    ret.emplace(it.first);
+  }
+  return ret;
+}
+
+uint64_t CardIndex::definitions_mtime() const {
+  return this->mtime_for_card_definitions;
+}
+
+MapIndex::MapIndex(const string& directory) {
   auto add_maps_from_dir = [&](const string& dir, bool is_quest) -> void {
     for (const auto& filename : list_directory(dir)) {
       try {
@@ -1879,32 +1951,13 @@ DataIndex::DataIndex(const string& directory, uint32_t behavior_flags)
   };
   add_maps_from_dir(directory + "/maps-free", false);
   add_maps_from_dir(directory + "/maps-quest", true);
-
-  try {
-    auto json = JSONObject::parse(load_file(directory + "/com-decks.json"));
-    for (const auto& def_json : json->as_list()) {
-      auto& def = this->com_decks.emplace_back(new COMDeckDefinition());
-      def->index = this->com_decks.size() - 1;
-      def->player_name = def_json->at(0)->as_string();
-      def->deck_name = def_json->at(1)->as_string();
-      auto card_ids_json = def_json->at(2)->as_list();
-      for (size_t z = 0; z < 0x1F; z++) {
-        def->card_ids[z] = card_ids_json.at(z)->as_int();
-      }
-      if (!this->com_decks_by_name.emplace(def->deck_name, def).second) {
-        throw runtime_error("duplicate COM deck name: " + def->deck_name);
-      }
-    }
-  } catch (const exception& e) {
-    static_game_data_log.warning("Failed to load Episode 3 COM decks: %s", e.what());
-  }
 }
 
-DataIndex::MapEntry::MapEntry(const MapDefinition& map, bool is_quest)
+MapIndex::MapEntry::MapEntry(const MapDefinition& map, bool is_quest)
     : map(map),
       is_quest(is_quest) {}
 
-DataIndex::MapEntry::MapEntry(const string& compressed, bool is_quest)
+MapIndex::MapEntry::MapEntry(const string& compressed, bool is_quest)
     : is_quest(is_quest),
       compressed_data(compressed) {
   string decompressed = prs_decompress(this->compressed_data);
@@ -1916,43 +1969,14 @@ DataIndex::MapEntry::MapEntry(const string& compressed, bool is_quest)
   this->map = *reinterpret_cast<const MapDefinition*>(decompressed.data());
 }
 
-string DataIndex::MapEntry::compressed() const {
+string MapIndex::MapEntry::compressed() const {
   if (this->compressed_data.empty()) {
     this->compressed_data = prs_compress(&this->map, sizeof(this->map));
   }
   return this->compressed_data;
 }
 
-const string& DataIndex::get_compressed_card_definitions() const {
-  if (this->compressed_card_definitions.empty()) {
-    throw runtime_error("card definitions are not available");
-  }
-  return this->compressed_card_definitions;
-}
-
-shared_ptr<const DataIndex::CardEntry> DataIndex::definition_for_card_id(
-    uint32_t id) const {
-  return this->card_definitions.at(id);
-}
-
-shared_ptr<const DataIndex::CardEntry> DataIndex::definition_for_card_name(
-    const string& name) const {
-  return this->card_definitions_by_name.at(name);
-}
-
-set<uint32_t> DataIndex::all_card_ids() const {
-  set<uint32_t> ret;
-  for (const auto& it : this->card_definitions) {
-    ret.emplace(it.first);
-  }
-  return ret;
-}
-
-uint64_t DataIndex::card_definitions_mtime() const {
-  return this->mtime_for_card_definitions;
-}
-
-const string& DataIndex::get_compressed_map_list() const {
+const string& MapIndex::get_compressed_list() const {
   if (this->compressed_map_list.empty()) {
     StringWriter entries_w;
     StringWriter strings_w;
@@ -2012,16 +2036,15 @@ const string& DataIndex::get_compressed_map_list() const {
   return this->compressed_map_list;
 }
 
-shared_ptr<const DataIndex::MapEntry> DataIndex::definition_for_map_number(uint32_t id) const {
+shared_ptr<const MapIndex::MapEntry> MapIndex::definition_for_number(uint32_t id) const {
   return this->maps.at(id);
 }
 
-shared_ptr<const DataIndex::MapEntry> DataIndex::definition_for_map_name(
-    const string& name) const {
+shared_ptr<const MapIndex::MapEntry> MapIndex::definition_for_name(const string& name) const {
   return this->maps_by_name.at(name);
 }
 
-set<uint32_t> DataIndex::all_map_ids() const {
+set<uint32_t> MapIndex::all_numbers() const {
   set<uint32_t> ret;
   for (const auto& it : this->maps) {
     ret.emplace(it.first);
@@ -2029,47 +2052,41 @@ set<uint32_t> DataIndex::all_map_ids() const {
   return ret;
 }
 
-size_t DataIndex::num_com_decks() const {
-  return this->com_decks.size();
-}
-
-shared_ptr<const COMDeckDefinition> DataIndex::com_deck(size_t which) const {
-  return this->com_decks.at(which);
-}
-
-shared_ptr<const COMDeckDefinition> DataIndex::com_deck(const string& which) const {
-  return this->com_decks_by_name.at(which);
-}
-
-shared_ptr<const COMDeckDefinition> DataIndex::random_com_deck() const {
-  return this->com_decks[random_object<size_t>() % this->com_decks.size()];
-}
-
-void PlayerConfig::decrypt() {
-  if (!this->is_encrypted) {
-    return;
-  }
-  decrypt_trivial_gci_data(
-      &this->card_counts,
-      offsetof(PlayerConfig, decks) - offsetof(PlayerConfig, card_counts),
-      this->basis);
-  this->is_encrypted = 0;
-  this->basis = 0;
-}
-
-void PlayerConfig::encrypt(uint8_t basis) {
-  if (this->is_encrypted) {
-    if (this->basis == basis) {
-      return;
+COMDeckIndex::COMDeckIndex(const string& filename) {
+  try {
+    auto json = JSONObject::parse(load_file(filename));
+    for (const auto& def_json : json->as_list()) {
+      auto& def = this->decks.emplace_back(new COMDeckDefinition());
+      def->index = this->decks.size() - 1;
+      def->player_name = def_json->at(0)->as_string();
+      def->deck_name = def_json->at(1)->as_string();
+      auto card_ids_json = def_json->at(2)->as_list();
+      for (size_t z = 0; z < 0x1F; z++) {
+        def->card_ids[z] = card_ids_json.at(z)->as_int();
+      }
+      if (!this->decks_by_name.emplace(def->deck_name, def).second) {
+        throw runtime_error("duplicate COM deck name: " + def->deck_name);
+      }
     }
-    this->decrypt();
+  } catch (const exception& e) {
+    static_game_data_log.warning("Failed to load Episode 3 COM decks: %s", e.what());
   }
-  decrypt_trivial_gci_data(
-      &this->card_counts,
-      offsetof(PlayerConfig, decks) - offsetof(PlayerConfig, card_counts),
-      basis);
-  this->is_encrypted = 1;
-  this->basis = basis;
+}
+
+size_t COMDeckIndex::num_decks() const {
+  return this->decks.size();
+}
+
+shared_ptr<const COMDeckDefinition> COMDeckIndex::deck_for_index(size_t which) const {
+  return this->decks.at(which);
+}
+
+shared_ptr<const COMDeckDefinition> COMDeckIndex::deck_for_name(const string& which) const {
+  return this->decks_by_name.at(which);
+}
+
+shared_ptr<const COMDeckDefinition> COMDeckIndex::random_deck() const {
+  return this->decks[random_object<size_t>() % this->decks.size()];
 }
 
 } // namespace Episode3

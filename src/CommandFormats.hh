@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "Episode3/DataIndex.hh"
+#include "Episode3/DataIndexes.hh"
 #include "Episode3/DeckState.hh"
 #include "Episode3/MapState.hh"
 #include "Episode3/PlayerStateSubordinates.hh"
@@ -5178,8 +5178,8 @@ struct G_MapList_GC_Ep3_6xB6x40 {
   le_uint16_t compressed_data_size;
   le_uint16_t unused;
   // PRS-compressed map list data follows here. newserv generates this from the
-  // map index at startup time; see the MapList struct in Episode3/DataIndex.hh
-  // and Episode3::DataIndex::get_compressed_map_list for details on the format.
+  // map index at startup; see the MapList struct in Episode3/DataIndexes.hh
+  // and Episode3::MapIndex::get_compressed_map_list for details on the format.
 } __packed__;
 
 struct G_MapData_GC_Ep3_6xB6x41 {

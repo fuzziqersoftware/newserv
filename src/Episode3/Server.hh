@@ -19,7 +19,7 @@ namespace Episode3 {
 
 /**
  * This implementation of Episode 3 battles (contained in all files in the
- * src/Episode3 directory, except for DataIndex.hh/cc) is derived from Sega's
+ * src/Episode3 directory, except for DataIndexes.hh/cc) is derived from Sega's
  * original server implementation, reverse-engineered from the Episode 3 client
  * executable. The control flow, function breakdown, and structure definitions
  * in these files map very closely to how their server implementation was
@@ -49,7 +49,7 @@ namespace Episode3 {
 // - - - - - - - DeckState
 // - - - - - - - HandAndEquipState
 // - - - - - - - MapAndRulesState / OverlayState
-// - - - - - - - - Everything within DataIndex
+// - - - - - - - - Everything within DataIndexes
 
 class Server;
 
@@ -57,9 +57,11 @@ class ServerBase : public std::enable_shared_from_this<ServerBase> {
 public:
   ServerBase(
       std::shared_ptr<Lobby> lobby,
-      std::shared_ptr<const DataIndex> data_index,
+      std::shared_ptr<const CardIndex> card_index,
+      std::shared_ptr<const MapIndex> map_index,
+      uint32_t behavior_flags,
       std::shared_ptr<PSOLFGEncryption> random_crypt,
-      std::shared_ptr<const DataIndex::MapEntry> map_if_tournament);
+      std::shared_ptr<const MapIndex::MapEntry> map_if_tournament);
   void init();
   void reset();
   void recreate_server();
@@ -73,11 +75,13 @@ public:
   } __attribute__((packed));
 
   std::weak_ptr<Lobby> lobby;
-  std::shared_ptr<const DataIndex> data_index;
+  std::shared_ptr<const CardIndex> card_index;
+  std::shared_ptr<const MapIndex> map_index;
+  uint32_t behavior_flags;
   PrefixedLogger log;
   std::shared_ptr<PSOLFGEncryption> random_crypt;
   bool is_tournament;
-  std::shared_ptr<const DataIndex::MapEntry> last_chosen_map;
+  std::shared_ptr<const MapIndex::MapEntry> last_chosen_map;
 
   std::shared_ptr<MapAndRulesState> map_and_rules1;
   std::shared_ptr<MapAndRulesState> map_and_rules2;
@@ -135,7 +139,7 @@ public:
   bool advance_battle_phase();
   void action_phase_after();
   void draw_phase_before();
-  std::shared_ptr<const DataIndex::CardEntry> definition_for_card_ref(uint16_t card_ref) const;
+  std::shared_ptr<const CardIndex::CardEntry> definition_for_card_ref(uint16_t card_ref) const;
   std::shared_ptr<Card> card_for_set_card_ref(uint16_t card_ref);
   std::shared_ptr<const Card> card_for_set_card_ref(uint16_t card_ref) const;
   uint16_t card_id_for_card_ref(uint16_t card_ref) const;
@@ -147,7 +151,7 @@ public:
   void compute_all_map_occupied_bits();
   void compute_team_dice_boost(uint8_t team_id);
   void copy_player_states_to_prev_states();
-  std::shared_ptr<const DataIndex::CardEntry> definition_for_card_id(uint16_t card_id) const;
+  std::shared_ptr<const CardIndex::CardEntry> definition_for_card_id(uint16_t card_id) const;
   void destroy_cards_with_zero_hp();
   void determine_first_team_turn();
   void dice_phase_after();
@@ -229,7 +233,7 @@ public:
   G_UpdateDecks_GC_Ep3_6xB4x07 prepare_6xB4x07_decks_update() const;
   G_SetPlayerNames_GC_Ep3_6xB4x1C prepare_6xB4x1C_names_update() const;
   static std::string prepare_6xB6x41_map_definition(
-      std::shared_ptr<const DataIndex::MapEntry> map);
+      std::shared_ptr<const MapIndex::MapEntry> map);
   G_SetTrapTileLocations_GC_Ep3_6xB4x50 prepare_6xB4x50_trap_tile_locations() const;
 
   std::vector<std::shared_ptr<Card>> const_cast_set_cards_v(

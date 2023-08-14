@@ -92,15 +92,17 @@ public:
   };
 
   Tournament(
-      std::shared_ptr<const DataIndex> data_index,
+      std::shared_ptr<const MapIndex> map_index,
+      std::shared_ptr<const COMDeckIndex> com_deck_index,
       uint8_t number,
       const std::string& name,
-      std::shared_ptr<const DataIndex::MapEntry> map,
+      std::shared_ptr<const MapIndex::MapEntry> map,
       const Rules& rules,
       size_t num_teams,
       bool is_2v2);
   Tournament(
-      std::shared_ptr<const DataIndex> data_index,
+      std::shared_ptr<const MapIndex> map_index,
+      std::shared_ptr<const COMDeckIndex> com_deck_index,
       uint8_t number,
       std::shared_ptr<const JSONObject> json);
   ~Tournament() = default;
@@ -108,10 +110,9 @@ public:
 
   std::shared_ptr<JSONObject> json() const;
 
-  std::shared_ptr<const DataIndex> get_data_index() const;
   uint8_t get_number() const;
   const std::string& get_name() const;
-  std::shared_ptr<const DataIndex::MapEntry> get_map() const;
+  std::shared_ptr<const MapIndex::MapEntry> get_map() const;
   const Rules& get_rules() const;
   bool get_is_2v2() const;
   State get_state() const;
@@ -131,11 +132,12 @@ public:
 private:
   PrefixedLogger log;
 
-  std::shared_ptr<const DataIndex> data_index;
+  std::shared_ptr<const MapIndex> map_index;
+  std::shared_ptr<const COMDeckIndex> com_deck_index;
   std::shared_ptr<const JSONObject> source_json;
   uint8_t number;
   std::string name;
-  std::shared_ptr<const DataIndex::MapEntry> map;
+  std::shared_ptr<const MapIndex::MapEntry> map;
   Rules rules;
   size_t num_teams;
   bool is_2v2;
@@ -160,7 +162,8 @@ private:
 class TournamentIndex {
 public:
   explicit TournamentIndex(
-      std::shared_ptr<const DataIndex> data_index,
+      std::shared_ptr<const MapIndex> map_index,
+      std::shared_ptr<const COMDeckIndex> com_deck_index,
       const std::string& state_filename,
       bool skip_load_state = false);
   ~TournamentIndex() = default;
@@ -171,7 +174,7 @@ public:
 
   std::shared_ptr<Tournament> create_tournament(
       const std::string& name,
-      std::shared_ptr<const DataIndex::MapEntry> map,
+      std::shared_ptr<const MapIndex::MapEntry> map,
       const Rules& rules,
       size_t num_teams,
       bool is_2v2);
@@ -183,7 +186,8 @@ public:
       uint32_t serial_number) const;
 
 private:
-  std::shared_ptr<const DataIndex> data_index;
+  std::shared_ptr<const MapIndex> map_index;
+  std::shared_ptr<const COMDeckIndex> com_deck_index;
   std::string state_filename;
   std::shared_ptr<Tournament> tournaments[0x20];
 };

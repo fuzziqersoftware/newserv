@@ -888,19 +888,24 @@ void ServerState::load_item_tables() {
 }
 
 void ServerState::load_ep3_data() {
-  config_log.info("Collecting Episode 3 data");
-  this->ep3_data_index.reset(new Episode3::DataIndex(
-      "system/ep3", this->ep3_behavior_flags));
+  config_log.info("Collecting Episode 3 maps");
+  this->ep3_map_index.reset(new Episode3::MapIndex("system/ep3"));
+  config_log.info("Loading Episode 3 card definitions");
+  this->ep3_card_index.reset(new Episode3::CardIndex("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr"));
+  config_log.info("Loading Episode 3 trial card definitions");
+  this->ep3_card_index_trial.reset(new Episode3::CardIndex("system/ep3/card-definitions-trial.mnr", "system/ep3/card-definitions-trial.mnrd", "system/ep3/card-text-trial.mnr"));
+  config_log.info("Loading Episode 3 COM decks");
+  this->ep3_com_deck_index.reset(new Episode3::COMDeckIndex("system/ep3/com-decks.json"));
 
   const string& tournament_state_filename = "system/ep3/tournament-state.json";
   try {
     this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
-        this->ep3_data_index, tournament_state_filename));
+        this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename));
     config_log.info("Loaded Episode 3 tournament state");
   } catch (const exception& e) {
     config_log.warning("Cannot load Episode 3 tournament state: %s", e.what());
     this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
-        this->ep3_data_index, tournament_state_filename, true));
+        this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename, true));
   }
 }
 

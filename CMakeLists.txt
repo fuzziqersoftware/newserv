@@ -54,7 +54,7 @@ add_executable(newserv
     src/Episode3/BattleRecord.cc
     src/Episode3/Card.cc
     src/Episode3/CardSpecial.cc
-    src/Episode3/DataIndex.cc
+    src/Episode3/DataIndexes.cc
     src/Episode3/DeckState.cc
     src/Episode3/MapState.cc
     src/Episode3/PlayerState.cc

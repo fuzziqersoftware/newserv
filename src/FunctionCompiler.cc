@@ -195,7 +195,7 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
         isdigit(filename[filename.size() - 12]) &&
         (filename[filename.size() - 11] == 'O' || filename[filename.size() - 11] == 'S') &&
         (filename[filename.size() - 10] == 'E' || filename[filename.size() - 10] == 'J' || filename[filename.size() - 10] == 'P') &&
-        isdigit(filename[filename.size() - 9])) {
+        (isdigit(filename[filename.size() - 9]) || filename[filename.size() - 9] == 'T')) {
       specific_version = 0x33000000 | (filename[filename.size() - 11] << 16) | (filename[filename.size() - 10] << 8) | filename[filename.size() - 9];
       patch_name = filename.substr(0, filename.size() - 13);
     }
@@ -374,6 +374,18 @@ uint32_t specific_version_for_gc_header_checksum(uint32_t header_checksum) {
             throw logic_error("multiple specific_versions have same header checksum");
           }
         }
+      }
+      {
+        // Generate entries for Trial Editions
+        data.region_code = 'J';
+        data.system_code = 'D';
+        data.version_code = 0;
+        uint32_t checksum = crc32(&data, sizeof(data));
+        uint32_t specific_version = 0x33004A54 | (*game_code2 << 16);
+        if (!checksum_to_specific_version.emplace(checksum, specific_version).second) {
+          throw logic_error("multiple specific_versions have same header checksum");
+        }
+        data.system_code = 'G';
       }
     }
   }

@@ -1478,32 +1478,33 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::SHOW_EP3_MAPS:
     case Behavior::SHOW_EP3_CARDS: {
-      config_log.info("Collecting Episode 3 data");
-      Episode3::DataIndex index("system/ep3", Episode3::BehaviorFlag::LOAD_CARD_TEXT);
+      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr");
 
-      if (behavior == Behavior::SHOW_EP3_MAPS) {
-        auto map_ids = index.all_map_ids();
-        log_info("%zu maps", map_ids.size());
-        for (uint32_t map_id : map_ids) {
-          auto map = index.definition_for_map_number(map_id);
-          string s = map->map.str(&index);
-          fprintf(stdout, "%s\n", s.c_str());
-        }
-
-      } else {
-        auto card_ids = index.all_card_ids();
-        log_info("%zu card definitions", card_ids.size());
-        for (uint32_t card_id : card_ids) {
-          auto entry = index.definition_for_card_id(card_id);
-          string s = entry->def.str(false);
-          string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
-          string text = entry->text.empty() ? "(No text available)" : str_replace_all(entry->text, "\n", "\n    ");
-          fprintf(stdout, "%s\n  Tags: %s\n  Text:\n    %s\n\n", s.c_str(), tags.c_str(), text.c_str());
-        }
+      auto card_ids = card_index.all_ids();
+      log_info("%zu card definitions", card_ids.size());
+      for (uint32_t card_id : card_ids) {
+        auto entry = card_index.definition_for_id(card_id);
+        string s = entry->def.str(false);
+        string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
+        string text = entry->text.empty() ? "(No text available)" : str_replace_all(entry->text, "\n", "\n    ");
+        fprintf(stdout, "%s\n  Tags: %s\n  Text:\n    %s\n\n", s.c_str(), tags.c_str(), text.c_str());
       }
+      break;
+    }
 
+    case Behavior::SHOW_EP3_MAPS: {
+      config_log.info("Collecting Episode 3 data");
+      Episode3::MapIndex map_index("system/ep3");
+      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr");
+
+      auto map_ids = map_index.all_numbers();
+      log_info("%zu maps", map_ids.size());
+      for (uint32_t map_id : map_ids) {
+        auto map = map_index.definition_for_number(map_id);
+        string s = map->map.str(&card_index);
+        fprintf(stdout, "%s\n", s.c_str());
+      }
       break;
     }
 

@@ -87,7 +87,6 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
       return Client::Flag::NO_D6_AFTER_LOBBY |
           Client::Flag::IS_EPISODE_3 |
           Client::Flag::IS_EP3_TRIAL_EDITION |
-          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL |
           Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
     case 0x42: // GC Ep3 JP
       return Client::Flag::NO_D6_AFTER_LOBBY |

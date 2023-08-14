@@ -303,7 +303,7 @@ static void set_console_client_flags(
       c->log.info("Game version changed to DC");
     } else if (c->version() == GameVersion::GC) {
       c->flags |= Client::Flag::IS_GC_TRIAL_EDITION;
-      c->log.info("Trial edition flag set");
+      c->log.info("GC Trial Edition flag set");
     }
   }
   c->flags |= flags_for_version(c->version(), sub_version);
@@ -930,7 +930,7 @@ static bool add_next_game_client(
     state_cmd.state.first_team_turn = 0xFF;
     state_cmd.state.tournament_flag = 0x01;
     state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
-    if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+    if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
       uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
       set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
     }
@@ -958,7 +958,7 @@ static bool add_next_game_client(
     ex_cmd.lose_entries[z].threshold = lose_entries[z].first;
     ex_cmd.lose_entries[z].value = lose_entries[z].second;
   }
-  if (!(s->ep3_data_index->behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+  if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
     uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
     set_mask_for_ep3_game_command(&ex_cmd, sizeof(ex_cmd), mask_key);
   }
@@ -1239,7 +1239,7 @@ static void on_DC_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     if (l->tournament_match) {
       auto tourn = l->tournament_match->tournament.lock();
       if (tourn) {
-        send_ep3_set_tournament_player_decks(l, c, l->tournament_match);
+        send_ep3_set_tournament_player_decks(s, l, c, l->tournament_match);
         string data = Episode3::Server::prepare_6xB6x41_map_definition(
             tourn->get_map());
         c->channel.send(0x6C, 0x00, data);
@@ -1312,8 +1312,14 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
       l->log.info("Recreating Episode 3 server state");
     }
     auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : nullptr;
+    bool is_trial = (l->flags & Lobby::Flag::IS_EP3_TRIAL);
     l->ep3_server_base = make_shared<Episode3::ServerBase>(
-        l, s->ep3_data_index, l->random_crypt, tourn ? tourn->get_map() : nullptr);
+        l,
+        is_trial ? s->ep3_card_index_trial : s->ep3_card_index,
+        s->ep3_map_index,
+        s->ep3_behavior_flags,
+        l->random_crypt,
+        tourn ? tourn->get_map() : nullptr);
     l->ep3_server_base->init();
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
@@ -1366,7 +1372,7 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     } else {
       throw logic_error("invalid winner team id");
     }
-    send_ep3_tournament_match_result(l, l->tournament_match);
+    send_ep3_tournament_match_result(s, l, l->tournament_match);
 
     on_tournament_bracket_updated(s, tourn);
     l->ep3_server_base->server->tournament_match_result_sent = true;
@@ -1866,6 +1872,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
       }
       if ((game->version != c->version()) ||
           (!game->is_ep3() != !(c->flags & Client::Flag::IS_EPISODE_3)) ||
+          (!(game->flags & Lobby::Flag::IS_EP3_TRIAL) != !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) ||
           ((game->flags & Lobby::Flag::NON_V1_ONLY) && (c->flags & Client::Flag::IS_DC_V1))) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
         break;
@@ -2138,6 +2145,11 @@ static void on_84(shared_ptr<ServerState> s, shared_ptr<Client> c,
       new_lobby = s->find_lobby(cmd.item_id);
     } catch (const out_of_range&) {
       send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The lobby does not\nexist.");
+      return;
+    }
+
+    if (new_lobby->is_game()) {
+      send_lobby_message_box(c, u"$C6Can't change lobby\n\n$C7The specified lobby\nis a game.");
       return;
     }
 
@@ -3203,10 +3215,11 @@ shared_ptr<Lobby> create_game_generic(
       (c->version() == GameVersion::BB) ||
       (s->item_tracking_enabled && (mode == GameMode::NORMAL || mode == GameMode::SOLO));
 
-  // only disable drops if the config flag is set and are playing regualr multi-mode.
-  // drops are still enabled for battle and challenge modes.
-  bool drops_enabled =
-      (s->drops_enabled || (mode != GameMode::NORMAL));
+  // Only disable drops if the config flag is set and are playing regular
+  // multi-mode. Drops are still enabled for battle and challenge modes.
+  bool drops_enabled = (s->drops_enabled || (mode != GameMode::NORMAL));
+
+  bool is_ep3_trial = (c->version() == GameVersion::GC) && (c->flags & Client::Flag::IS_EPISODE_3) && (c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
 
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
@@ -3214,6 +3227,7 @@ shared_ptr<Lobby> create_game_generic(
       Lobby::Flag::GAME |
       (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0) |
       (drops_enabled ? Lobby::Flag::DROPS_ENABLED : 0) |
+      (is_ep3_trial ? Lobby::Flag::IS_EP3_TRIAL : 0) |
       ((s->cheat_mode_behavior == ServerState::CheatModeBehavior::ON_BY_DEFAULT) ? Lobby::Flag::CHEATS_ENABLED : 0);
   game->password = password;
   game->version = c->version();

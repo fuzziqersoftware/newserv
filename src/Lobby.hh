@@ -37,6 +37,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     SPECTATORS_FORBIDDEN = 0x00004000,
     START_BATTLE_PLAYER_IMMEDIATELY = 0x00008000,
     DROPS_ENABLED = 0x00010000, // Does not affect BB
+    IS_EP3_TRIAL = 0x00020000,
 
     // Flags used only for lobbies
     PUBLIC = 0x01000000,

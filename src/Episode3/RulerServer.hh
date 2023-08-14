@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "AssistServer.hh"
-#include "DataIndex.hh"
+#include "DataIndexes.hh"
 #include "DeckState.hh"
 #include "PlayerState.hh"
 
@@ -15,15 +15,15 @@ class Server;
 
 void compute_effective_range(
     parray<uint8_t, 9 * 9>& ret,
-    std::shared_ptr<const DataIndex> data_index,
+    std::shared_ptr<const CardIndex> card_index,
     uint16_t card_id,
     const Location& loc,
     std::shared_ptr<const MapAndRulesState> map_and_rules);
 
 bool card_linkage_is_valid(
-    std::shared_ptr<const DataIndex::CardEntry> right_def,
-    std::shared_ptr<const DataIndex::CardEntry> left_def,
-    std::shared_ptr<const DataIndex::CardEntry> sc_def,
+    std::shared_ptr<const CardIndex::CardEntry> right_def,
+    std::shared_ptr<const CardIndex::CardEntry> left_def,
+    std::shared_ptr<const CardIndex::CardEntry> sc_def,
     bool has_permission_effect);
 
 class RulerServer {
@@ -130,7 +130,7 @@ public:
       uint16_t attacker_sc_card_ref) const;
   bool defense_card_matches_any_attack_card_top_color(
       const ActionState& pa) const;
-  std::shared_ptr<const DataIndex::CardEntry> definition_for_card_ref(uint16_t card_ref) const;
+  std::shared_ptr<const CardIndex::CardEntry> definition_for_card_ref(uint16_t card_ref) const;
   int32_t error_code_for_client_setting_card(
       uint8_t client_id,
       uint16_t card_ref,
@@ -156,7 +156,7 @@ public:
       size_t num_occupied_tiles,
       size_t num_vacant_tiles) const;
   uint16_t get_ally_sc_card_ref(uint16_t card_ref) const;
-  std::shared_ptr<const DataIndex::CardEntry> definition_for_card_id(
+  std::shared_ptr<const CardIndex::CardEntry> definition_for_card_id(
       uint32_t card_id) const;
   uint32_t get_card_id_with_effective_range(
       uint16_t card_ref, uint16_t card_id_override, TargetMode* out_target_mode) const;

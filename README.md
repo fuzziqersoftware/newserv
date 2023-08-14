@@ -68,6 +68,7 @@ Current known issues / missing features / things to do:
 - Implement the C5 (battle/challenge records) command.
 - Implement choice search.
 - Episode 3 bugs
+    - Trial Edition can't select maps in battle setup. Fix this.
     - Fix behavior when joining a spectator team after the beginning of a battle.
     - Disconnecting during a match turns you into a COM if there are other humans in the match, even if the match is part of a tournament. This may be incorrect behavior for tournaments.
     - Disconnecting during a tournament when there are no other humans in the match simply cancels the match (so it can be replayed) instead of forfeiting, which is almost certainly incorrect behavior. (Then again, no one likes losing tournaments to COMs...)
@@ -89,7 +90,7 @@ newserv supports several versions of PSO. Specifically:
 | GC Ep1&2 Trial | Untested (2) | Untested (2) | Untested (2) | Untested (2) |
 | GC Ep1&2       | Yes          | Yes          | Yes          | Yes          |
 | GC Ep1&2 Plus  | Yes          | Yes          | Yes          | Yes          |
-| GC Ep3 Trial   | Yes          | Yes          | Yes          | Yes          |
+| GC Ep3 Trial   | Yes          | Yes          | Partial (5)  | Yes          |
 | GC Ep3         | Yes          | Yes          | Yes          | Yes          |
 | XBOX Ep1&2     | Untested (2) | Untested (2) | Untested (2) | Untested (2) |
 | BB (vanilla)   | Yes          | Yes          | Yes (3)      | Yes          |
@@ -100,6 +101,7 @@ newserv supports several versions of PSO. Specifically:
 2. *newserv's implementations of these versions are based on disassembly of the client executables and have never been tested.*
 3. *BB games are mostly playable, but there are still some unimplemented features (for example, some quests that use rare commands may not work). Please submit a GitHub issue if you find something that doesn't work.*
 4. *Support for PSO Dreamcast Trial Edition and the December 2000 prototype is somewhat incomplete and probably never will be complete. These versions are rather unstable and seem to crash often, but it's not obvious whether it's because they're prototypes or because newserv sends data they can't handle.*
+5. *Creating a game works, but choosing a map during battle setup causes the Trial Edition client to crash. This is likely due to the trial version's map format being slightly different from the final version's map format.*
 
 ## Setup
 
@@ -201,7 +203,7 @@ Episode 3 state and game data is stored in the system/ep3 directory. The files i
 * maps-free/ and maps-quest/: Online free battle and quest maps (.mnm/.bin/.mnmd/.bind files). Free battle and quest files have exactly the same format; the only difference between the files in these directories is which section of the menu they will appear in on the client.
 * tournament-state.json: State of all active tournaments. This file is automatically written when any tournament changes state for any reason (e.g. a tournament is created/started/deleted or a match is resolved).
 
-There is no public editor for Episode 3 maps and quests, but the format is described fairly thoroughly in src/Episode3/DataIndex.hh (see the MapDefinition structure). You'll need to use `newserv decompress-prs ...` to decompress .bin or .mnm files before editing them, but you don't need to compress the files again to use them - just put the .bind or .mnmd file in the maps directory and newserv will make it available.
+There is no public editor for Episode 3 maps and quests, but the format is described fairly thoroughly in src/Episode3/DataIndexes.hh (see the MapDefinition structure). You'll need to use `newserv decompress-prs ...` to decompress .bin or .mnm files before editing them, but you don't need to compress the files again to use them - just put the .bind or .mnmd file in the maps directory and newserv will make it available.
 
 Like quests, Episode 3 card definitions, maps, and quests are cached in memory. If you've changed any of these files, you can run `reload ep3` in the interactive shell to make the changes take effect without restarting the server.
 

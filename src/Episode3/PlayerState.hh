@@ -6,7 +6,7 @@
 
 #include "../Text.hh"
 #include "Card.hh"
-#include "DataIndex.hh"
+#include "DataIndexes.hh"
 #include "DeckState.hh"
 #include "PlayerStateSubordinates.hh"
 

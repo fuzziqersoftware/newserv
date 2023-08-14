@@ -6,7 +6,7 @@
 
 #include "../CommandFormats.hh"
 #include "../Text.hh"
-#include "DataIndex.hh"
+#include "DataIndexes.hh"
 
 namespace Episode3 {
 
@@ -58,7 +58,7 @@ public:
       uint8_t def_effect_index,
       uint16_t value,
       uint16_t* out_value) const;
-  std::shared_ptr<const DataIndex::CardEntry> get_definition() const;
+  std::shared_ptr<const CardIndex::CardEntry> get_definition() const;
   uint16_t get_card_ref() const;
   uint8_t get_client_id() const;
   uint8_t get_current_hp() const;
@@ -99,12 +99,12 @@ private:
 public:
   int16_t max_hp;
   int16_t current_hp;
-  std::shared_ptr<const DataIndex::CardEntry> def_entry;
+  std::shared_ptr<const CardIndex::CardEntry> def_entry;
   uint8_t client_id;
   uint16_t card_id;
   uint16_t card_ref;
   uint16_t sc_card_ref;
-  std::shared_ptr<const DataIndex::CardEntry> sc_def_entry;
+  std::shared_ptr<const CardIndex::CardEntry> sc_def_entry;
   CardType sc_card_type;
   uint8_t team_id;
   uint32_t card_flags;

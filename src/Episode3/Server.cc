@@ -26,11 +26,15 @@ void ServerBase::PresenceEntry::clear() {
 
 ServerBase::ServerBase(
     shared_ptr<Lobby> lobby,
-    shared_ptr<const DataIndex> data_index,
+    shared_ptr<const CardIndex> card_index,
+    shared_ptr<const MapIndex> map_index,
+    uint32_t behavior_flags,
     shared_ptr<PSOLFGEncryption> random_crypt,
-    shared_ptr<const DataIndex::MapEntry> map_if_tournament)
+    shared_ptr<const MapIndex::MapEntry> map_if_tournament)
     : lobby(lobby),
-      data_index(data_index),
+      card_index(card_index),
+      map_index(map_index),
+      behavior_flags(behavior_flags),
       log(lobby->log.prefix + "[Ep3::Server] "),
       random_crypt(random_crypt),
       is_tournament(!!map_if_tournament),
@@ -182,7 +186,7 @@ void Server::send(const void* data, size_t size) const {
   }
 
   string masked_data;
-  if (!(this->base()->data_index->behavior_flags & BehaviorFlag::DISABLE_MASKING)) {
+  if (!(this->base()->behavior_flags & BehaviorFlag::DISABLE_MASKING)) {
     if (size >= 8) {
       masked_data.assign(reinterpret_cast<const char*>(data), size);
       uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
@@ -216,13 +220,12 @@ void Server::send_6xB4x46() const {
 
   G_ServerVersionStrings_GC_Ep3_6xB4x46 cmd46;
   cmd46.version_signature = VERSION_SIGNATURE;
-  cmd46.date_str1 = format_time(this->base()->data_index->card_definitions_mtime() * 1000000);
+  cmd46.date_str1 = format_time(this->base()->card_index->definitions_mtime() * 1000000);
   cmd46.date_str2 = string_printf("Lobby/%08" PRIX32, l->lobby_id);
   this->send(cmd46);
 }
 
-string Server::prepare_6xB6x41_map_definition(
-    shared_ptr<const DataIndex::MapEntry> map) {
+string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::MapEntry> map) {
   const auto& compressed = map->compressed();
 
   StringWriter w;
@@ -260,7 +263,7 @@ void Server::send_commands_for_joining_spectator(Channel& c) const {
 
 __attribute__((format(printf, 2, 3))) void Server::log_debug(const char* fmt, ...) const {
   auto l = this->base()->lobby.lock();
-  if (l && (this->base()->data_index->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
+  if (l && (this->base()->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
     va_list va;
     va_start(va, fmt);
     this->base()->log.info_v(fmt, va);
@@ -270,7 +273,7 @@ __attribute__((format(printf, 2, 3))) void Server::log_debug(const char* fmt, ..
 
 __attribute__((format(printf, 2, 3))) void Server::send_debug_message_printf(const char* fmt, ...) const {
   auto l = this->base()->lobby.lock();
-  if (l && (this->base()->data_index->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
+  if (l && (this->base()->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
     va_list va;
     va_start(va, fmt);
     std::string buf = string_vprintf(fmt, va);
@@ -367,10 +370,9 @@ void Server::draw_phase_before() {
   }
 }
 
-shared_ptr<const DataIndex::CardEntry> Server::definition_for_card_ref(uint16_t card_ref) const {
+shared_ptr<const CardIndex::CardEntry> Server::definition_for_card_ref(uint16_t card_ref) const {
   try {
-    return this->base()->data_index->definition_for_card_id(
-        this->card_id_for_card_ref(card_ref));
+    return this->base()->card_index->definition_for_id(this->card_id_for_card_ref(card_ref));
   } catch (const out_of_range&) {
     return nullptr;
   }
@@ -581,9 +583,9 @@ void Server::copy_player_states_to_prev_states() {
   }
 }
 
-shared_ptr<const DataIndex::CardEntry> Server::definition_for_card_id(uint16_t card_id) const {
+shared_ptr<const CardIndex::CardEntry> Server::definition_for_card_id(uint16_t card_id) const {
   try {
-    return this->base()->data_index->definition_for_card_id(card_id);
+    return this->base()->card_index->definition_for_id(card_id);
   } catch (const out_of_range&) {
     return nullptr;
   }
@@ -1839,7 +1841,7 @@ void Server::handle_6xB3x13_update_map_during_setup(const string& data) {
     *b->map_and_rules1 = in_cmd.map_and_rules_state;
     *b->map_and_rules2 = in_cmd.map_and_rules_state;
     b->overlay_state = in_cmd.overlay_state;
-    if (b->data_index->behavior_flags & BehaviorFlag::DISABLE_TIME_LIMITS) {
+    if (b->behavior_flags & BehaviorFlag::DISABLE_TIME_LIMITS) {
       b->map_and_rules1->rules.overall_time_limit = 0;
       b->map_and_rules1->rules.phase_time_limit = 0;
       b->map_and_rules2->rules.overall_time_limit = 0;
@@ -1869,9 +1871,9 @@ void Server::handle_6xB3x14_update_deck_during_setup(const string& data) {
       }
       DeckEntry entry = in_cmd.entry;
       int32_t verify_error = 0;
-      if (!(this->base()->data_index->behavior_flags & BehaviorFlag::SKIP_DECK_VERIFY)) {
+      if (!(this->base()->behavior_flags & BehaviorFlag::SKIP_DECK_VERIFY)) {
         // Note: Sega's original implementation doesn't use the card counts here
-        if (this->base()->data_index->behavior_flags & BehaviorFlag::IGNORE_CARD_COUNTS) {
+        if (this->base()->behavior_flags & BehaviorFlag::IGNORE_CARD_COUNTS) {
           verify_error = this->ruler_server->verify_deck(entry.card_ids);
         } else {
           verify_error = this->ruler_server->verify_deck(entry.card_ids,
@@ -1881,7 +1883,7 @@ void Server::handle_6xB3x14_update_deck_during_setup(const string& data) {
       if (verify_error) {
         throw runtime_error(string_printf("invalid deck: -0x%" PRIX32, verify_error));
       }
-      if (!(this->base()->data_index->behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
+      if (!(this->base()->behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rarity_cards_with_Attack(entry.card_ids);
       }
       *this->base()->deck_entries[in_cmd.client_id] = in_cmd.entry;
@@ -2135,7 +2137,7 @@ void Server::handle_6xB3x40_map_list_request(const string& data) {
     throw runtime_error("lobby is deleted");
   }
 
-  const auto& list_data = this->base()->data_index->get_compressed_map_list();
+  const auto& list_data = this->base()->map_index->get_compressed_list();
 
   StringWriter w;
   uint32_t subcommand_size = (list_data.size() + sizeof(G_MapList_GC_Ep3_6xB6x40) + 3) & (~3);
@@ -2164,7 +2166,7 @@ void Server::handle_6xB3x41_map_request(const string& data) {
     throw runtime_error("lobby is deleted");
   }
 
-  base->last_chosen_map = base->data_index->definition_for_map_number(cmd.map_number);
+  base->last_chosen_map = base->map_index->definition_for_number(cmd.map_number);
   auto out_cmd = this->prepare_6xB6x41_map_definition(base->last_chosen_map);
   send_command(l, 0x6C, 0x00, out_cmd);
   for (auto watcher_l : l->watcher_lobbies) {

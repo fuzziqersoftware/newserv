@@ -133,7 +133,7 @@ uint16_t AssistServer::card_id_for_card_ref(uint16_t card_ref) const {
   return this->server()->card_id_for_card_ref(card_ref);
 }
 
-shared_ptr<const DataIndex::CardEntry> AssistServer::definition_for_card_id(
+shared_ptr<const CardIndex::CardEntry> AssistServer::definition_for_card_id(
     uint16_t card_id) const {
   return this->server()->definition_for_card_id(card_id);
 }

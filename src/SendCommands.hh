@@ -352,10 +352,12 @@ void send_ep3_tournament_info(
     std::shared_ptr<Client> c,
     std::shared_ptr<const Episode3::Tournament> t);
 void send_ep3_set_tournament_player_decks(
+    std::shared_ptr<ServerState> s,
     std::shared_ptr<Lobby> l,
     std::shared_ptr<Client> c,
     std::shared_ptr<const Episode3::Tournament::Match> match);
 void send_ep3_tournament_match_result(
+    std::shared_ptr<ServerState> s,
     std::shared_ptr<Lobby> l,
     std::shared_ptr<const Episode3::Tournament::Match> match);
 
