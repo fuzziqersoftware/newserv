@@ -2044,7 +2044,7 @@ void on_subcommand_multi(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
   if (data.empty()) {
     throw runtime_error("game command is empty");
   }
-  if (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE))) {
+  if (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_DC_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE))) {
     // TODO: We should convert these to non-trial formats and vice versa
     forward_subcommand(l, c, command, flag, data.data(), data.size());
   } else {

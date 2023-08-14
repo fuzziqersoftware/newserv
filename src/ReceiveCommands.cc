@@ -235,7 +235,7 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
     auto team = s->ep3_tournament_index->team_for_serial_number(c->license->serial_number);
     auto tourn = team ? team->tournament.lock() : nullptr;
     c->ep3_tournament_team = team;
-    if (!(c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+    if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
       send_ep3_confirm_tournament_entry(s, c, tourn);
     }
   }
@@ -302,7 +302,7 @@ static void set_console_client_flags(
       c->channel.version = GameVersion::DC;
       c->log.info("Game version changed to DC");
     } else if (c->version() == GameVersion::GC) {
-      c->flags |= Client::Flag::IS_TRIAL_EDITION;
+      c->flags |= Client::Flag::IS_GC_TRIAL_EDITION;
       c->log.info("Trial edition flag set");
     }
   }
@@ -358,7 +358,7 @@ static void on_88_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& cmd = check_size_t<C_Login_DCNTE_88>(data);
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
-  c->flags |= Client::Flag::IS_DC_V1 | Client::Flag::IS_TRIAL_EDITION;
+  c->flags |= Client::Flag::IS_DC_V1 | Client::Flag::IS_DC_TRIAL_EDITION;
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
@@ -390,7 +390,7 @@ static void on_8B_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
   const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
-  c->flags |= Client::Flag::IS_DC_V1 | Client::Flag::IS_TRIAL_EDITION;
+  c->flags |= Client::Flag::IS_DC_V1 | Client::Flag::IS_DC_TRIAL_EDITION;
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
@@ -1261,7 +1261,7 @@ static void on_tournament_bracket_updated(
           !c->license ||
           !serial_numbers.count(c->license->serial_number) ||
           c->ep3_tournament_team.expired() ||
-          (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+          (c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
         continue;
       }
       send_ep3_confirm_tournament_entry(s, c, tourn);
@@ -1644,7 +1644,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
             // DC NTE and the v1 prototype crash if they receive a 97 command,
             // so we instead do the redirect immediately
             if ((c->version() == GameVersion::DC) &&
-                (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE))) {
+                (c->flags & (Client::Flag::IS_DC_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE))) {
               send_client_to_lobby_server(s, c);
             } else {
               send_command(c, 0x97, 0x01);
@@ -1830,7 +1830,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         } else {
           // Clear Check Tactics menu so client won't see newserv tournament
           // state while logically on another server
-          if ((c->flags & Client::Flag::IS_EPISODE_3) && !(c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+          if ((c->flags & Client::Flag::IS_EPISODE_3) && !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
             send_ep3_confirm_tournament_entry(s, c, nullptr);
           }
 
@@ -1984,7 +1984,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
           // check/clear it later.
           if ((l->clients[x]->version() != GameVersion::DC) &&
               (l->clients[x]->version() != GameVersion::PC) &&
-              !(l->clients[x]->flags & Client::Flag::IS_TRIAL_EDITION)) {
+              !(l->clients[x]->flags & Client::Flag::IS_GC_TRIAL_EDITION)) {
             l->clients[x]->flags |= Client::Flag::LOADING_QUEST;
             l->clients[x]->disconnect_hooks.emplace(QUEST_BARRIER_DISCONNECT_HOOK_NAME, [l]() -> void {
               send_quest_barrier_if_all_clients_ready(l);
@@ -2197,7 +2197,7 @@ static void on_A1(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_8E_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) {
-  if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+  if (c->flags & Client::Flag::IS_DC_TRIAL_EDITION) {
     on_A0(s, c, command, flag, data);
   } else {
     throw runtime_error("non-DCNTE client sent 8E");
@@ -2206,7 +2206,7 @@ static void on_8E_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_8F_DCNTE(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t flag, const string& data) {
-  if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+  if (c->flags & Client::Flag::IS_DC_TRIAL_EDITION) {
     on_A1(s, c, command, flag, data);
   } else {
     throw runtime_error("non-DCNTE client sent 8F");
@@ -2368,7 +2368,10 @@ static void on_AA(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
   const auto& cmd = check_size_t<C_SendQuestStatistic_V3_BB_AA>(data);
 
-  if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+  if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
+    throw runtime_error("pre-V3 client sent update quest stats command");
+  }
+  if (c->flags & Client::Flag::IS_GC_TRIAL_EDITION) {
     throw runtime_error("trial edition client sent update quest stats command");
   }
 
@@ -3257,7 +3260,7 @@ shared_ptr<Lobby> create_game_generic(
   bool is_solo = (game->mode == GameMode::SOLO);
 
   // Generate the map variations
-  if (game->is_ep3() || (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)))) {
+  if (game->is_ep3() || (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_DC_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)))) {
     game->variations.clear(0);
   } else {
     generate_variations(game->variations, game->random_crypt, game->episode, is_solo);
@@ -3338,7 +3341,7 @@ static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t command, uint32_t, const string& data) {
 
   shared_ptr<Lobby> game;
-  if (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE))) {
+  if (c->version() == GameVersion::DC && (c->flags & (Client::Flag::IS_DC_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE))) {
     const auto& cmd = check_size_t<C_CreateGame_DCNTE<char>>(data);
     u16string name = decode_sjis(cmd.name);
     u16string password = decode_sjis(cmd.password);
@@ -3449,7 +3452,7 @@ static void on_C1_BB(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_8A(shared_ptr<ServerState> s, shared_ptr<Client> c,
     uint16_t, uint32_t, const string& data) {
-  if ((c->version() == GameVersion::DC) && (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+  if ((c->version() == GameVersion::DC) && (c->flags & Client::Flag::IS_DC_TRIAL_EDITION)) {
     const auto& cmd = check_size_t<C_ConnectionInfo_DCNTE_8A>(data);
     set_console_client_flags(c, cmd.sub_version);
     send_command(c, 0x8A, 0x01);

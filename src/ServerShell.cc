@@ -707,7 +707,7 @@ Proxy session commands:\n\
     } else {
       session->options.override_lobby_event = event_for_name(command_args);
       if ((session->version != GameVersion::DC) &&
-          (session->version != GameVersion::PC) && (!((session->version == GameVersion::GC) && (session->newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)))) {
+          (session->version != GameVersion::PC) && (!((session->version == GameVersion::GC) && (session->newserv_client_config.cfg.flags & Client::Flag::IS_GC_TRIAL_EDITION)))) {
         session->client_channel.send(0xDA, session->options.override_lobby_event);
       }
     }

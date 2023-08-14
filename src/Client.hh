@@ -49,16 +49,9 @@ struct ClientOptions {
 
 struct Client {
   enum Flag {
-    // This flag has two meanings. If set on a client with GameVersion::DC, then
-    // IS_DC_V1 is also set. In this case, the client is DC Network Trial
-    // Edition, which uses several commands that no other version uses. If this
-    // flag is set without IS_DC_V1, then the client is GC Episodes 1 & 2 Trial
-    // Edition, and therefore uses V2 encryption instead of V3 encryption, and
-    // doesn't support some commands.
-    // Note that this flag is NOT set for Episode 3 Trial Edition clients, since
-    // that version is similar enough to the release version of Episode 3 that
-    // newserv does not have to change its behavior at all.
-    IS_TRIAL_EDITION = 0x00002000,
+    // Client is DC Network Trial Edition, which is missing a lot of features
+    // and uses some different command numbers than any other version
+    IS_DC_TRIAL_EDITION = 0x00002000,
     // A 90 01 command has been sent (which proto will send a 93 in response to,
     // and actual DCv1 will send a 92)
     CHECKED_FOR_DC_V1_PROTOTYPE = 0x00080000,
@@ -66,6 +59,14 @@ struct Client {
     IS_DC_V1_PROTOTYPE = 0x00040000,
     // Client is DC v1
     IS_DC_V1 = 0x00000010,
+    // Client is GC Episodes 1&2 Trial Edition, which is much more like PC than
+    // actual GC Episodes 1&2 - it uses PC encryption and is missing most of the
+    // features added in Episodes 1&2
+    IS_GC_TRIAL_EDITION = 0x00200000,
+    // Client is GC Episode 3 Trial Edition, which is fairly close to the final
+    // Episode 3 build, but is missing a few commands that we'll have to avoid
+    // sending
+    IS_EP3_TRIAL_EDITION = 0x00400000,
     // For patch server clients, client is Blue Burst rather than PC
     IS_BB_PATCH = 0x00000001,
     // After joining a lobby, client will no longer send D6 commands when they
@@ -107,6 +108,8 @@ struct Client {
     // Client has received newserv's Episode 3 card definitions, so don't send
     // them again
     HAS_EP3_CARD_DEFS = 0x00004000,
+
+    UNUSED_FLAG_BITS = 0xFF800000,
   };
 
   uint64_t id;

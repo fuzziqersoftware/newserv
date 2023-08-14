@@ -101,7 +101,7 @@ Client::~Client() {
 QuestScriptVersion Client::quest_version() const {
   switch (this->version()) {
     case GameVersion::DC:
-      if (this->flags & Flag::IS_TRIAL_EDITION) {
+      if (this->flags & Flag::IS_DC_TRIAL_EDITION) {
         return QuestScriptVersion::DC_NTE;
       } else if (this->flags & Flag::IS_DC_V1) {
         return QuestScriptVersion::DC_V1;
@@ -111,7 +111,7 @@ QuestScriptVersion Client::quest_version() const {
     case GameVersion::PC:
       return QuestScriptVersion::PC_V2;
     case GameVersion::GC:
-      if (this->flags & Flag::IS_TRIAL_EDITION) {
+      if (this->flags & Flag::IS_GC_TRIAL_EDITION) {
         return QuestScriptVersion::GC_NTE;
       } else if (this->flags & Flag::IS_EPISODE_3) {
         return QuestScriptVersion::GC_EP3;

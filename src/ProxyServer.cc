@@ -628,7 +628,7 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
     session->log.info("%s channel connected", is_server_stream ? "Server" : "Client");
 
     if (is_server_stream && (session->options.override_lobby_event >= 0) &&
-        (((session->version == GameVersion::GC) && !(session->newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) ||
+        (((session->version == GameVersion::GC) && !(session->newserv_client_config.cfg.flags & Client::Flag::IS_GC_TRIAL_EDITION)) ||
             (session->version == GameVersion::XB) ||
             (session->version == GameVersion::BB))) {
       session->client_channel.send(0xDA, session->options.override_lobby_event);

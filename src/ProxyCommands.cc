@@ -891,8 +891,9 @@ static HandlerResult S_V3_1A_D5(shared_ptr<ServerState>,
 
 static HandlerResult S_V3_BB_DA(shared_ptr<ServerState>,
     ProxyServer::LinkedSession& session, uint16_t, uint32_t flag, string&) {
+  // This command is supported on all V3 versions except Ep1&2 Trial
   if ((session.version == GameVersion::GC) &&
-      (session.newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) {
+      (session.newserv_client_config.cfg.flags & Client::Flag::IS_GC_TRIAL_EDITION)) {
     return HandlerResult::Type::SUPPRESS;
   } else if ((session.options.override_lobby_event >= 0) &&
       (static_cast<int16_t>(flag) != session.options.override_lobby_event)) {

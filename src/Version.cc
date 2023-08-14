@@ -42,9 +42,9 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
 
     // TODO: Which other sub_versions of DC v1 and v2 exist?
     case 0x20: // DCNTE
-               // In the case of DCNTE, the IS_TRIAL_EDITION flag is already set when we
-               // get here, so the remaining flags are the same as DCv1
     case 0x21: // DCv1 US
+      // In the case of DCNTE, the IS_DC_TRIAL_EDITION flag is already set when
+      // we get here, so the remaining flags are the same as DCv1
       return Client::Flag::IS_DC_V1 |
           Client::Flag::NO_D6 |
           Client::Flag::NO_SEND_FUNCTION_CALL;
@@ -65,6 +65,9 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
     case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
     case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
     case 0x34: // GC Ep1&2 JP v1.03
+      // In the case of GC Trial Edition, the IS_GC_TRIAL_EDITION flag is
+      // already set when we get here (because the client has used V2 encryption
+      // instead of V3)
       return 0;
     case 0x32: // GC Ep1&2 EU 50Hz
     case 0x33: // GC Ep1&2 EU 60Hz
@@ -79,8 +82,11 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
           Client::Flag::NO_SEND_FUNCTION_CALL;
 
     case 0x40: // GC Ep3 trial
+      // TODO: Is this sub_version used for any other Ep3 versions? Is the final
+      // JP release really 42 and not 40?
       return Client::Flag::NO_D6_AFTER_LOBBY |
           Client::Flag::IS_EPISODE_3 |
+          Client::Flag::IS_EP3_TRIAL_EDITION |
           Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL |
           Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
     case 0x42: // GC Ep3 JP

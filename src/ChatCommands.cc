@@ -495,7 +495,8 @@ static void proxy_command_lobby_event(shared_ptr<ServerState>,
       send_text_message(session.client_channel, u"$C6No such lobby event.");
     } else {
       session.options.override_lobby_event = new_event;
-      if ((session.version == GameVersion::GC && !(session.newserv_client_config.cfg.flags & Client::Flag::IS_TRIAL_EDITION)) ||
+      // This command is supported on all V3 versions except Ep1&2 Trial
+      if ((session.version == GameVersion::GC && !(session.newserv_client_config.cfg.flags & Client::Flag::IS_GC_TRIAL_EDITION)) ||
           (session.version == GameVersion::XB) ||
           (session.version == GameVersion::BB)) {
         session.client_channel.send(0xDA, session.options.override_lobby_event);

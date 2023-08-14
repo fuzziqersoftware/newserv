@@ -1104,7 +1104,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
     switch (c->version()) {
       case GameVersion::DC:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DC);
-        if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+        if (c->flags & Client::Flag::IS_DC_TRIAL_EDITION) {
           is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DCNTE);
         }
         break;
@@ -1113,7 +1113,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
         break;
       case GameVersion::GC:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC);
-        if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+        if (c->flags & Client::Flag::IS_GC_TRIAL_EDITION) {
           is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC_TRIAL_EDITION);
         }
         break;
@@ -1752,7 +1752,7 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         send_join_game_t<PlayerLobbyDataPC>(c, l);
         break;
       case GameVersion::DC:
-        if (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
+        if (c->flags & (Client::Flag::IS_DC_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
           send_join_game_dc_nte(c, l);
           break;
         }
@@ -1772,7 +1772,7 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   } else {
     switch (c->version()) {
       case GameVersion::DC:
-        if (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
+        if (c->flags & (Client::Flag::IS_DC_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
           send_join_lobby_dc_nte(c, l);
         } else {
           send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC>(c, l);
@@ -1807,7 +1807,7 @@ void send_player_join_notification(shared_ptr<Client> c,
     shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
   switch (c->version()) {
     case GameVersion::DC:
-      if (c->flags & (Client::Flag::IS_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
+      if (c->flags & (Client::Flag::IS_DC_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
         send_join_lobby_dc_nte(c, l, joining_client);
       } else {
         send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC>(c, l, joining_client);
@@ -1851,7 +1851,7 @@ void send_self_leave_notification(shared_ptr<Client> c) {
 
 void send_get_player_info(shared_ptr<Client> c) {
   if ((c->version() == GameVersion::DC) &&
-      (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+      (c->flags & Client::Flag::IS_DC_TRIAL_EDITION)) {
     send_command(c, 0x8D, 0x00);
   } else {
     send_command(c, 0x95, 0x00);
@@ -2254,7 +2254,7 @@ void send_ep3_confirm_tournament_entry(
     shared_ptr<ServerState> s,
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn) {
-  if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+  if (c->flags & Client::Flag::IS_EP3_TRIAL_EDITION) {
     throw runtime_error("cannot send tournament entry command to Episode 3 Trial Edition client");
   }
 
@@ -2850,7 +2850,7 @@ void send_change_event(shared_ptr<Client> c, uint8_t new_event) {
   // This command isn't supported on versions before V3, nor on Trial Edition.
   if ((c->version() == GameVersion::DC) ||
       (c->version() == GameVersion::PC) ||
-      (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+      (c->flags & Client::Flag::IS_GC_TRIAL_EDITION)) {
     return;
   }
   send_command(c, 0xDA, new_event);
