@@ -235,7 +235,9 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
     auto team = s->ep3_tournament_index->team_for_serial_number(c->license->serial_number);
     auto tourn = team ? team->tournament.lock() : nullptr;
     c->ep3_tournament_team = team;
-    send_ep3_confirm_tournament_entry(s, c, tourn);
+    if (!(c->flags & Client::Flag::IS_TRIAL_EDITION)) {
+      send_ep3_confirm_tournament_entry(s, c, tourn);
+    }
   }
 
   // On the BB data server, this function is called only on the last connection
@@ -1255,13 +1257,11 @@ static void on_tournament_bracket_updated(
 
   for (const auto& l : s->all_lobbies()) {
     for (const auto& c : l->clients) {
-      if (!c) {
-        continue;
-      }
-      if (!c->license || !serial_numbers.count(c->license->serial_number)) {
-        continue;
-      }
-      if (c->ep3_tournament_team.expired()) {
+      if (!c ||
+          !c->license ||
+          !serial_numbers.count(c->license->serial_number) ||
+          c->ep3_tournament_team.expired() ||
+          (c->flags & Client::Flag::IS_TRIAL_EDITION)) {
         continue;
       }
       send_ep3_confirm_tournament_entry(s, c, tourn);
@@ -1830,7 +1830,7 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         } else {
           // Clear Check Tactics menu so client won't see newserv tournament
           // state while logically on another server
-          if (c->flags & Client::Flag::IS_EPISODE_3) {
+          if ((c->flags & Client::Flag::IS_EPISODE_3) && !(c->flags & Client::Flag::IS_TRIAL_EDITION)) {
             send_ep3_confirm_tournament_entry(s, c, nullptr);
           }
 

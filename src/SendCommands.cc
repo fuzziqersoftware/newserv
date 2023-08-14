@@ -2254,6 +2254,10 @@ void send_ep3_confirm_tournament_entry(
     shared_ptr<ServerState> s,
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn) {
+  if (c->flags & Client::Flag::IS_TRIAL_EDITION) {
+    throw runtime_error("cannot send tournament entry command to Episode 3 Trial Edition client");
+  }
+
   S_ConfirmTournamentEntry_GC_Ep3_CC cmd;
   if (tourn) {
     cmd.tournament_name = tourn->get_name();
