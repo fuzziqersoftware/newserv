@@ -120,7 +120,7 @@ public:
   }
   void send(const void* data, size_t size) const;
 
-  void send_commands_for_joining_spectator(Channel& ch) const;
+  void send_commands_for_joining_spectator(Channel& ch, bool is_trial) const;
 
   __attribute__((format(printf, 2, 3))) void log_debug(const char* fmt, ...) const;
 
@@ -233,7 +233,7 @@ public:
   G_UpdateDecks_GC_Ep3_6xB4x07 prepare_6xB4x07_decks_update() const;
   G_SetPlayerNames_GC_Ep3_6xB4x1C prepare_6xB4x1C_names_update() const;
   static std::string prepare_6xB6x41_map_definition(
-      std::shared_ptr<const MapIndex::MapEntry> map);
+      std::shared_ptr<const MapIndex::MapEntry> map, bool is_trial);
   G_SetTrapTileLocations_GC_Ep3_6xB4x50 prepare_6xB4x50_trap_tile_locations() const;
 
   std::vector<std::shared_ptr<Card>> const_cast_set_cards_v(

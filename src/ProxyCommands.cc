@@ -916,9 +916,9 @@ static HandlerResult S_6x(shared_ptr<ServerState>,
           string map_data = prs_decompress(
               data.data() + sizeof(cmd), data.size() - sizeof(cmd));
           save_file(filename, map_data);
-          if (map_data.size() != sizeof(Episode3::MapDefinition)) {
-            session.log.warning("Wrote %zu bytes to %s (expected %zu bytes; the file may be invalid)",
-                map_data.size(), filename.c_str(), sizeof(Episode3::MapDefinition));
+          if (map_data.size() != sizeof(Episode3::MapDefinition) && map_data.size() != sizeof(Episode3::MapDefinitionTrial)) {
+            session.log.warning("Wrote %zu bytes to %s (expected %zu or %zu bytes; the file may be invalid)",
+                map_data.size(), filename.c_str(), sizeof(Episode3::MapDefinitionTrial), sizeof(Episode3::MapDefinition));
           } else {
             session.log.info("Wrote %zu bytes to %s", map_data.size(), filename.c_str());
           }

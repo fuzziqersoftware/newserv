@@ -68,7 +68,6 @@ Current known issues / missing features / things to do:
 - Implement the C5 (battle/challenge records) command.
 - Implement choice search.
 - Episode 3 bugs
-    - Trial Edition can't select maps in battle setup. Fix this.
     - Fix behavior when joining a spectator team after the beginning of a battle.
     - Disconnecting during a match turns you into a COM if there are other humans in the match, even if the match is part of a tournament. This may be incorrect behavior for tournaments.
     - Disconnecting during a tournament when there are no other humans in the match simply cancels the match (so it can be replayed) instead of forfeiting, which is almost certainly incorrect behavior. (Then again, no one likes losing tournaments to COMs...)
@@ -101,7 +100,7 @@ newserv supports several versions of PSO. Specifically:
 2. *newserv's implementations of these versions are based on disassembly of the client executables and have never been tested.*
 3. *BB games are mostly playable, but there are still some unimplemented features (for example, some quests that use rare commands may not work). Please submit a GitHub issue if you find something that doesn't work.*
 4. *Support for PSO Dreamcast Trial Edition and the December 2000 prototype is somewhat incomplete and probably never will be complete. These versions are rather unstable and seem to crash often, but it's not obvious whether it's because they're prototypes or because newserv sends data they can't handle.*
-5. *Creating a game works, but choosing a map during battle setup causes the Trial Edition client to crash. This is likely due to the trial version's map format being slightly different from the final version's map format.*
+5. *Creating a game works and battle setup behaves mostly normally, but starting a battle doesn't work.*
 
 ## Setup
 

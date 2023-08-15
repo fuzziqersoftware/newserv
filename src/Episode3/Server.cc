@@ -225,8 +225,9 @@ void Server::send_6xB4x46() const {
   this->send(cmd46);
 }
 
-string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::MapEntry> map) {
-  const auto& compressed = map->compressed();
+string Server::prepare_6xB6x41_map_definition(
+    shared_ptr<const MapIndex::MapEntry> map, bool is_trial) {
+  const auto& compressed = map->compressed(is_trial);
 
   StringWriter w;
   uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_GC_Ep3_6xB6x41) + 3) & (~3);
@@ -235,7 +236,7 @@ string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::MapEntr
   return std::move(w.str());
 }
 
-void Server::send_commands_for_joining_spectator(Channel& c) const {
+void Server::send_commands_for_joining_spectator(Channel& c, bool is_trial) const {
   bool should_send_state = true;
   if (this->setup_phase == SetupPhase::REGISTRATION) {
     // If registration is still in progress, we only need to send the map data
@@ -248,7 +249,7 @@ void Server::send_commands_for_joining_spectator(Channel& c) const {
 
   auto map = this->base()->last_chosen_map;
   if (map) {
-    string data = this->prepare_6xB6x41_map_definition(map);
+    string data = this->prepare_6xB6x41_map_definition(map, is_trial);
     c.send(0x6C, 0x00, data);
   }
 
@@ -2167,7 +2168,8 @@ void Server::handle_6xB3x41_map_request(const string& data) {
   }
 
   base->last_chosen_map = base->map_index->definition_for_number(cmd.map_number);
-  auto out_cmd = this->prepare_6xB6x41_map_definition(base->last_chosen_map);
+  auto out_cmd = this->prepare_6xB6x41_map_definition(
+      base->last_chosen_map, l->flags & Lobby::Flag::IS_EP3_TRIAL);
   send_command(l, 0x6C, 0x00, out_cmd);
   for (auto watcher_l : l->watcher_lobbies) {
     send_command_if_not_loading(watcher_l, 0x6C, 0x00, out_cmd);

@@ -1630,6 +1630,50 @@ string MapDefinition::str(const CardIndex* card_index) const {
   return join(lines, "\n");
 }
 
+MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
+    : unknown_a1(map.unknown_a1),
+      map_number(map.map_number),
+      width(map.width),
+      height(map.height),
+      environment_number(map.environment_number),
+      num_alt_maps(map.num_alt_maps),
+      map_tiles(map.map_tiles),
+      start_tile_definitions(map.start_tile_definitions),
+      alt_maps1(map.alt_maps1),
+      alt_maps_unknown_a3(map.alt_maps_unknown_a3),
+      unknown_a4(map.unknown_a4),
+      modification_tiles(map.modification_tiles),
+      unknown_a5(map.unknown_a5),
+      default_rules(map.default_rules),
+      unknown_a6(map.unknown_a6),
+      name(map.name),
+      location_name(map.location_name),
+      quest_name(map.quest_name),
+      description(map.description),
+      map_x(map.map_x),
+      map_y(map.map_y),
+      npc_decks(map.npc_decks),
+      npc_chars(map.npc_chars),
+      unknown_a7_a(map.unknown_a7_a),
+      unknown_a7_b(map.unknown_a7_b),
+      before_message(map.before_message),
+      after_message(map.after_message),
+      dispatch_message(map.dispatch_message),
+      dialogue_sets(),
+      reward_card_ids(map.reward_card_ids),
+      unknown_a9_a(map.unknown_a9_a),
+      unknown_a9_b(map.unknown_a9_b),
+      unknown_a9_c(map.unknown_a9_c),
+      unknown_a9_d(map.unknown_a9_d),
+      unknown_a10(map.unknown_a10),
+      cyber_block_type(map.cyber_block_type),
+      unknown_a11(map.unknown_a11),
+      unknown_t12(0xFF) {
+  for (size_t z = 0; z < this->dialogue_sets.size(); z++) {
+    this->dialogue_sets[z] = map.dialogue_sets[z].sub<8>(0);
+  }
+}
+
 bool Rules::check_invalid_fields() const {
   Rules t = *this;
   return t.check_and_reset_invalid_fields();
@@ -1969,11 +2013,19 @@ MapIndex::MapEntry::MapEntry(const string& compressed, bool is_quest)
   this->map = *reinterpret_cast<const MapDefinition*>(decompressed.data());
 }
 
-string MapIndex::MapEntry::compressed() const {
-  if (this->compressed_data.empty()) {
-    this->compressed_data = prs_compress(&this->map, sizeof(this->map));
+const string& MapIndex::MapEntry::compressed(bool is_trial) const {
+  if (is_trial) {
+    if (this->compressed_trial_data.empty()) {
+      MapDefinitionTrial mdt(this->map);
+      this->compressed_trial_data = prs_compress(&mdt, sizeof(mdt));
+    }
+    return this->compressed_trial_data;
+  } else {
+    if (this->compressed_data.empty()) {
+      this->compressed_data = prs_compress(&this->map, sizeof(this->map));
+    }
+    return this->compressed_data;
   }
-  return this->compressed_data;
 }
 
 const string& MapIndex::get_compressed_list() const {

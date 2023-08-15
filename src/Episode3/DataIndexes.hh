@@ -553,7 +553,7 @@ struct CardDefinition {
   /* 00A0 */ ptext<char, 0x14> en_name;
   /* 00B4 */ ptext<char, 0x0B> jp_short_name;
   /* 00BF */ ptext<char, 0x08> en_short_name;
-  /* 00C7 */ Effect effects[3];
+  /* 00C7 */ parray<Effect, 3> effects;
   /* 0127 */ uint8_t unused4;
   /* 0128 */
 
@@ -573,9 +573,9 @@ struct CardDefinitionsFooter {
   /* 08 */ be_uint32_t num_cards2;
   /* 0C */ parray<be_uint32_t, 11> unknown_a2;
   /* 38 */ be_uint32_t unknown_offset_a3;
-  /* 3C */ be_uint32_t unknown_a4[3];
+  /* 3C */ parray<be_uint32_t, 3> unknown_a4;
   /* 48 */ be_uint32_t footer_offset;
-  /* 4C */ be_uint32_t unknown_a5[3];
+  /* 4C */ parray<be_uint32_t, 3> unknown_a5;
   /* 58 */
 } __attribute__((packed));
 
@@ -700,6 +700,12 @@ struct Rules {
   /* 0C */ uint8_t disable_dice_boost; // 0 = dice boost on, 1 = off
   /* 0D */ parray<uint8_t, 3> unused;
   /* 10 */
+
+  // Annoyingly, this structure is a different size in Episode 3 Trial Edition.
+  // This means that many command formats, as well as the map format, are
+  // different, and the existing Server implementation can't serve Trial Edition
+  // clients. It'd be nice to support Trial Edition battles, but that would
+  // likely be more work than it's worth.
 
   Rules();
   explicit Rules(std::shared_ptr<const JSONObject> json);
@@ -838,9 +844,9 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // - If the team has 3 players, bytes [3] through [5] are used.
   /* 010C */ parray<parray<uint8_t, 6>, 2> start_tile_definitions;
 
-  /* 0118 */ parray<parray<uint8_t, 0x10>, 0x10> alt_maps1[2][0x0A];
-  /* 1518 */ parray<be_float, 0x12> alt_maps_unknown_a3[2][0x0A];
-  /* 1AB8 */ parray<be_float, 0x24> unknown_a4[3];
+  /* 0118 */ parray<parray<parray<parray<uint8_t, 0x10>, 0x10>, 0x0A>, 2> alt_maps1;
+  /* 1518 */ parray<parray<parray<be_float, 0x12>, 0x0A>, 2> alt_maps_unknown_a3;
+  /* 1AB8 */ parray<parray<be_float, 0x24>, 3> unknown_a4;
 
   // In the modification_tiles array, the values are:
   // 10 = blocked by rock (as if the corresponding map_tiles value was 00)
@@ -871,7 +877,8 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 18 */ parray<be_uint16_t, 0x20> card_ids; // Last one appears to always be FFFF
     /* 58 */
   } __attribute__((packed));
-  /* 1FE8 */ NPCDeck npc_decks[3]; // Unused if name[0] == 0
+  /* 1FE8 */ parray<NPCDeck, 3> npc_decks; // Unused if name[0] == 0
+
   struct NPCCharacter {
     /* 0000 */ parray<be_uint16_t, 2> unknown_a1;
     /* 0004 */ parray<uint8_t, 4> unknown_a2;
@@ -879,7 +886,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 0018 */ parray<be_uint16_t, 0x7E> unknown_a3;
     /* 0114 */
   } __attribute__((packed));
-  /* 20F0 */ NPCCharacter npc_chars[3]; // Unused if name[0] == 0
+  /* 20F0 */ parray<NPCCharacter, 3> npc_chars; // Unused if name[0] == 0
 
   /* 242C */ parray<uint8_t, 8> unknown_a7_a; // Always FF?
   /* 2434 */ parray<be_uint32_t, 3> unknown_a7_b; // Always FF?
@@ -896,10 +903,10 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   struct DialogueSet {
     /* 0000 */ be_uint16_t unknown_a1;
     /* 0002 */ be_uint16_t unknown_a2; // Always 0x0064 if valid, 0xFFFF if unused?
-    /* 0004 */ ptext<char, 0x40> strings[4];
+    /* 0004 */ parray<ptext<char, 0x40>, 4> strings;
     /* 0104 */
   } __attribute__((packed));
-  /* 28F0 */ DialogueSet dialogue_sets[3][0x10]; // Up to 0x10 per valid NPC
+  /* 28F0 */ parray<parray<DialogueSet, 0x10>, 3> dialogue_sets; // Up to 0x10 per valid NPC
 
   /* 59B0 */ parray<be_uint16_t, 0x10> reward_card_ids;
 
@@ -958,6 +965,55 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   std::string str(const CardIndex* card_index = nullptr) const;
 } __attribute__((packed));
 
+struct MapDefinitionTrial {
+  // This is the format of Episode 3 Trial Edition maps. See the comments in
+  // MapDefinition for what each field means.
+
+  /* 0000 */ be_uint32_t unknown_a1;
+  /* 0004 */ be_uint32_t map_number;
+  /* 0008 */ uint8_t width;
+  /* 0009 */ uint8_t height;
+  /* 000A */ uint8_t environment_number;
+  /* 000B */ uint8_t num_alt_maps;
+  /* 000C */ parray<parray<uint8_t, 0x10>, 0x10> map_tiles;
+  /* 010C */ parray<parray<uint8_t, 6>, 2> start_tile_definitions;
+  /* 0118 */ parray<parray<parray<parray<uint8_t, 0x10>, 0x10>, 0x0A>, 2> alt_maps1;
+  /* 1518 */ parray<parray<parray<be_float, 0x12>, 0x0A>, 2> alt_maps_unknown_a3;
+  /* 1AB8 */ parray<parray<be_float, 0x24>, 3> unknown_a4;
+  /* 1C68 */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
+  /* 1D68 */ parray<uint8_t, 0x6C> unknown_a5;
+  /* 1DD4 */ Rules default_rules;
+  /* 1DE4 */ parray<uint8_t, 4> unknown_a6;
+  /* 1DE8 */ ptext<char, 0x14> name;
+  /* 1DFC */ ptext<char, 0x14> location_name;
+  /* 1E10 */ ptext<char, 0x3C> quest_name;
+  /* 1E4C */ ptext<char, 0x190> description;
+  /* 1FDC */ be_uint16_t map_x;
+  /* 1FDE */ be_uint16_t map_y;
+  /* 1FE0 */ parray<MapDefinition::NPCDeck, 3> npc_decks;
+  /* 20E8 */ parray<MapDefinition::NPCCharacter, 3> npc_chars;
+  /* 2424 */ parray<uint8_t, 8> unknown_a7_a;
+  /* 242C */ parray<be_uint32_t, 3> unknown_a7_b;
+  /* 2438 */ ptext<char, 0x190> before_message;
+  /* 25C8 */ ptext<char, 0x190> after_message;
+  /* 2758 */ ptext<char, 0x190> dispatch_message;
+  /* 28E8 */ parray<parray<MapDefinition::DialogueSet, 8>, 3> dialogue_sets;
+  /* 4148 */ parray<be_uint16_t, 0x10> reward_card_ids;
+  /* 4168 */ be_uint32_t unknown_a9_a;
+  /* 416C */ be_uint32_t unknown_a9_b;
+  /* 4170 */ be_uint16_t unknown_a9_c;
+  /* 4172 */ be_uint16_t unknown_a9_d;
+  /* 4174 */ uint8_t unknown_a10;
+  /* 4175 */ uint8_t cyber_block_type;
+  /* 4176 */ parray<uint8_t, 2> unknown_a11;
+  // TODO: This field may contain some version of unavailable_sc_cards and/or
+  // entry_states from MapDefinition, but the format isn't the same
+  /* 4178 */ parray<uint8_t, 0x28> unknown_t12;
+  /* 41A0 */
+
+  MapDefinitionTrial(const MapDefinition& map);
+} __attribute__((packed));
+
 struct COMDeckDefinition {
   size_t index;
   std::string player_name;
@@ -1000,10 +1056,11 @@ public:
     MapEntry(const MapDefinition& map, bool is_quest);
     MapEntry(const std::string& compressed_data, bool is_quest);
 
-    std::string compressed() const;
+    const std::string& compressed(bool is_trial) const;
 
   private:
     mutable std::string compressed_data;
+    mutable std::string compressed_trial_data;
   };
 
   const std::string& get_compressed_list() const;

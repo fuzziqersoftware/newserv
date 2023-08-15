@@ -1241,7 +1241,7 @@ static void on_DC_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
       if (tourn) {
         send_ep3_set_tournament_player_decks(s, l, c, l->tournament_match);
         string data = Episode3::Server::prepare_6xB6x41_map_definition(
-            tourn->get_map());
+            tourn->get_map(), l->flags & Lobby::Flag::IS_EP3_TRIAL);
         c->channel.send(0x6C, 0x00, data);
       }
     }
@@ -3525,7 +3525,8 @@ static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (l->battle_player && (l->flags & Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY)) {
     l->battle_player->start();
   } else if (watched_lobby && watched_lobby->ep3_server_base) {
-    watched_lobby->ep3_server_base->server->send_commands_for_joining_spectator(c->channel);
+    watched_lobby->ep3_server_base->server->send_commands_for_joining_spectator(
+        c->channel, c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
   }
 
   // If there are more players to bring in, try to do so
