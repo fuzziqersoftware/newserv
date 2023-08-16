@@ -1282,8 +1282,6 @@ vector<ItemData> ItemCreator::generate_weapon_shop_contents(size_t player_level)
       table_index = 2;
     } else if (player_level < 61) {
       table_index = 3;
-    } else if (player_level < 101) {
-      table_index = 4;
     } else {
       table_index = 4;
     }
