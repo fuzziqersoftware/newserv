@@ -452,6 +452,8 @@ struct SavedPlayerDataBB { // .nsc file format
   void add_item(const PlayerInventoryItem& item);
   PlayerInventoryItem remove_item(
       uint32_t item_id, uint32_t amount, bool allow_meseta_overdraft);
+  void add_meseta(uint32_t amount);
+  void remove_meseta(uint32_t amount, bool allow_overdraft);
 
   void print_inventory(FILE* stream) const;
 } __attribute__((packed));

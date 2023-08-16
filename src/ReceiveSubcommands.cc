@@ -833,7 +833,7 @@ static void on_drop_partial_stack_bb(shared_ptr<ServerState>,
   }
 }
 
-static void on_buy_shop_item(shared_ptr<ServerState>,
+static void on_buy_shop_item(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
   const auto& cmd = check_size_t<G_BuyShopItem_6x5E>(data, size);
@@ -853,17 +853,21 @@ static void on_buy_shop_item(shared_ptr<ServerState>,
     if (c->version() == GameVersion::GC) {
       item.data.bswap_data2_if_mag();
     }
-    c->game_data.player()->add_item(item);
 
+    auto p = c->game_data.player();
+    p->add_item(item);
+
+    size_t price = s->item_parameter_table->price_for_item(item.data);
     auto name = item.data.name(false);
-    l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop",
-        cmd.header.client_id.load(), item.data.id.load(), name.c_str());
+    l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop (%zu Meseta)",
+        cmd.header.client_id.load(), item.data.id.load(), name.c_str(), price);
     if (c->options.debug) {
       string name = item.data.name(true);
       send_text_message_printf(c, "$C5BUY %08" PRIX32 "\n%s",
           item.data.id.load(), name.c_str());
     }
-    c->game_data.player()->print_inventory(stderr);
+    p->remove_meseta(price, c->version() != GameVersion::BB);
+    p->print_inventory(stderr);
   }
 
   forward_subcommand_with_mag_bswap_t(l, c, command, flag, cmd);
@@ -1701,15 +1705,14 @@ static void on_sell_item_at_shop_bb(shared_ptr<ServerState> s,
       throw logic_error("item tracking not enabled in BB game");
     }
 
-    auto item = c->game_data.player()->remove_item(
-        cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
+    auto p = c->game_data.player();
+    auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
     size_t price = (s->item_parameter_table->price_for_item(item.data) >> 3) * cmd.amount;
-    c->game_data.player()->disp.stats.meseta = min<uint32_t>(
-        c->game_data.player()->disp.stats.meseta + price, 999999);
+    p->add_meseta(price);
 
     auto name = item.data.name(false);
-    l->log.info("Inventory item %hu:%08" PRIX32 " destroyed via sale (%s)",
-        c->lobby_client_id, cmd.item_id.load(), name.c_str());
+    l->log.info("Inventory item %hu:%08" PRIX32 " (%s) destroyed via sale (%zu Meseta)",
+        c->lobby_client_id, cmd.item_id.load(), name.c_str(), price);
     c->game_data.player()->print_inventory(stderr);
     if (c->options.debug) {
       string name = item.data.name(true);
@@ -1739,19 +1742,17 @@ static void on_buy_shop_item_bb(shared_ptr<ServerState>,
 
     size_t price = item.data.data2d * cmd.amount;
     item.data.data2d = 0;
-    if (c->game_data.player()->disp.stats.meseta < price) {
-      throw runtime_error("player does not have enough money");
-    }
-    c->game_data.player()->disp.stats.meseta -= price;
+    auto p = c->game_data.player();
+    p->remove_meseta(price, false);
 
     item.data.id = cmd.inventory_item_id;
-    c->game_data.player()->add_item(item);
+    p->add_item(item);
     send_create_inventory_item(l, c, item.data);
 
     auto name = item.data.name(false);
     l->log.info("Inventory item %hu:%08" PRIX32 " created via purchase (%s) for %zu meseta",
         c->lobby_client_id, cmd.inventory_item_id.load(), name.c_str(), price);
-    c->game_data.player()->print_inventory(stderr);
+    p->print_inventory(stderr);
     if (c->options.debug) {
       string name = item.data.name(true);
       send_text_message_printf(c, "$C5CREATE/BUY %08" PRIX32 "\n-%zu Meseta\n%s",
@@ -1762,20 +1763,13 @@ static void on_buy_shop_item_bb(shared_ptr<ServerState>,
 
 static void on_medical_center_bb(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const void*, size_t) {
-
   if (l->version == GameVersion::BB) {
-    if (c->game_data.player()->disp.stats.meseta < 10) {
-      throw runtime_error("insufficient funds");
-    }
-    c->game_data.player()->disp.stats.meseta -= 10;
+    c->game_data.player()->remove_meseta(10, false);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Subcommands are described by four fields: the minimum size and maximum size (in DWORDs),
-// the handler function, and flags that tell when to allow the command. See command-input-subs.h
-// for more information on flags. The maximum size is not enforced if it's zero.
 typedef void (*subcommand_handler_t)(shared_ptr<ServerState> s,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size);

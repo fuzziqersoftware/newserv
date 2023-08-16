@@ -573,10 +573,7 @@ void SavedPlayerDataBB::add_item(const PlayerInventoryItem& item) {
   // Annoyingly, meseta is in the disp data, not in the inventory struct. If the
   // item is meseta, we have to modify disp instead.
   if (pid == MESETA_IDENTIFIER) {
-    this->disp.stats.meseta += item.data.data2d;
-    if (this->disp.stats.meseta > 999999) {
-      this->disp.stats.meseta = 999999;
-    }
+    this->add_meseta(item.data.data2d);
     return;
   }
 
@@ -657,13 +654,7 @@ PlayerInventoryItem SavedPlayerDataBB::remove_item(
   // If we're removing meseta (signaled by an invalid item ID), then create a
   // meseta item.
   if (item_id == 0xFFFFFFFF) {
-    if (amount <= this->disp.stats.meseta) {
-      this->disp.stats.meseta -= amount;
-    } else if (allow_meseta_overdraft) {
-      this->disp.stats.meseta = 0;
-    } else {
-      throw out_of_range("player does not have enough meseta");
-    }
+    this->remove_meseta(amount, allow_meseta_overdraft);
     ret.data.data1[0] = 0x04;
     ret.data.data2d = amount;
     return ret;
@@ -695,6 +686,20 @@ PlayerInventoryItem SavedPlayerDataBB::remove_item(
   }
   this->inventory.items[this->inventory.num_items] = PlayerInventoryItem();
   return ret;
+}
+
+void SavedPlayerDataBB::add_meseta(uint32_t amount) {
+  this->disp.stats.meseta = min<size_t>(static_cast<size_t>(this->disp.stats.meseta) + amount, 999999);
+}
+
+void SavedPlayerDataBB::remove_meseta(uint32_t amount, bool allow_overdraft) {
+  if (amount <= this->disp.stats.meseta) {
+    this->disp.stats.meseta -= amount;
+  } else if (allow_overdraft) {
+    this->disp.stats.meseta = 0;
+  } else {
+    throw out_of_range("player does not have enough meseta");
+  }
 }
 
 PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {

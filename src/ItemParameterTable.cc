@@ -327,7 +327,7 @@ size_t ItemParameterTable::price_for_item(const ItemData& item) const {
       size_t special_stars = this->get_special_stars(item.data1[4]);
       double special_stars_factor = 1000.0 * special_stars * special_stars;
 
-      return special_stars_factor + (atp_factor * (bonus_factor / 100.0));
+      return special_stars_factor + ((atp_factor * bonus_factor) / 100.0);
     }
 
     case 1: {
