@@ -394,6 +394,7 @@ newserv has many CLI options, which can be used to access functionality other th
 * Encrypt or decrypt data using Episode 3's trivial scheme (`encrypt-trivial-data`, `decrypt-trivial-data`)
 * Encrypt or decrypt data using the Challenge Mode text algorithm (`encrypt-challenge-data`, `decrypt-challenge-data`)
 * Encrypt or decrypt PSO GC save data (.gci files) (`encrypt-gci-save`, `decrypt-gci-save`)
+* Convert a PSO GC or Episode 3 snapshot file to a BMP image (`decode-gci-snapshot`)
 * Find the likely round1 or round2 seed for a corrupt save file (`salvage-gci`)
 * Run a brute-force search for a decryption seed (`find-decryption-seed`)
 * Decode Shift-JIS text to UTF-16 (`decode-sjis`)

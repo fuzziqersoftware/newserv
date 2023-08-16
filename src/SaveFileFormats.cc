@@ -115,3 +115,42 @@ string decrypt_gci_fixed_size_file_data_section_for_salvage(
 
   return decrypted;
 }
+
+bool PSOGCSnapshotFile::checksum_correct() const {
+  uint32_t crc = crc32("\0\0\0\0", 4);
+  crc = crc32(&this->width, sizeof(*this) - sizeof(this->checksum), crc);
+  return (crc == this->checksum);
+}
+
+static uint32_t decode_rgb565(uint16_t c) {
+  // Input:                    rrrrrggg gggbbbbb
+  // Output: rrrrrrrr gggggggg bbbbbbbb aaaaaaaa
+  return ((c << 16) & 0xF8000000) | ((c << 11) & 0x07000000) | // R
+      ((c << 13) & 0x00FC0000) | ((c << 7) & 0x00030000) | // G
+      ((c << 11) & 0x0000F800) | ((c << 6) & 0x00000700) | // B
+      0x000000FF; // A
+}
+
+Image PSOGCSnapshotFile::decode_image() const {
+  if (this->width != 256) {
+    throw runtime_error("width is incorrect");
+  }
+  if (this->height != 192) {
+    throw runtime_error("height is incorrect");
+  }
+
+  // 4x4 blocks of pixels
+  Image ret(this->width, this->height, false);
+  size_t offset = 0;
+  for (size_t y = 0; y < this->height; y += 4) {
+    for (size_t x = 0; x < this->width; x += 4) {
+      for (size_t yy = 0; yy < 4; yy++) {
+        for (size_t xx = 0; xx < 4; xx++) {
+          uint32_t color = decode_rgb565(this->pixels[offset++]);
+          ret.write_pixel(x + xx, y + yy, color);
+        }
+      }
+    }
+  }
+  return ret;
+}

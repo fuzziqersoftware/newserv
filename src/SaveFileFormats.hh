@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <phosg/Encoding.hh>
 #include <phosg/Hash.hh>
+#include <phosg/Image.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <string>
@@ -277,6 +278,23 @@ struct PSOGCGuildCardFile {
   /* E284 */ be_uint32_t creation_timestamp;
   /* E288 */ be_uint32_t round2_seed;
   /* E28C */
+} __attribute__((packed));
+
+struct PSOGCSnapshotFile {
+  /* 00000 */ be_uint32_t checksum;
+  /* 00004 */ be_uint16_t width;
+  /* 00006 */ be_uint16_t height;
+  /* 00008 */ parray<be_uint16_t, 0xC000> pixels;
+  /* 18008 */ uint8_t unknown_a1; // Always 0x18?
+  /* 18009 */ uint8_t unknown_a2;
+  /* 1800A */ be_int16_t max_players;
+  /* 1800C */ parray<be_uint32_t, 12> players_present;
+  /* 1803C */ parray<be_uint32_t, 12> player_levels;
+  /* 1806C */ parray<ptext<char, 0x18>, 12> player_names;
+  /* 1818C */
+
+  bool checksum_correct() const;
+  Image decode_image() const;
 } __attribute__((packed));
 
 template <bool IsBigEndian>

@@ -273,6 +273,7 @@ enum class Behavior {
   DECRYPT_CHALLENGE_DATA,
   ENCRYPT_GCI_SAVE,
   DECRYPT_GCI_SAVE,
+  DECODE_GCI_SNAPSHOT,
   FIND_DECRYPTION_SEED,
   SALVAGE_GCI,
   DECODE_QUEST_FILE,
@@ -314,6 +315,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::ENCRYPT_CHALLENGE_DATA) ||
       (b == Behavior::DECRYPT_CHALLENGE_DATA) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
+      (b == Behavior::DECODE_GCI_SNAPSHOT) ||
       (b == Behavior::SALVAGE_GCI) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DECODE_QUEST_FILE) ||
@@ -347,6 +349,7 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::DECRYPT_CHALLENGE_DATA) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
+      (b == Behavior::DECODE_GCI_SNAPSHOT) ||
       (b == Behavior::ENCODE_QST) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
@@ -520,6 +523,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::DECRYPT_GCI_SAVE;
         } else if (!strcmp(argv[x], "encrypt-gci-save")) {
           behavior = Behavior::ENCRYPT_GCI_SAVE;
+        } else if (!strcmp(argv[x], "decode-gci-snapshot")) {
+          behavior = Behavior::DECODE_GCI_SNAPSHOT;
         } else if (!strcmp(argv[x], "find-decryption-seed")) {
           behavior = Behavior::FIND_DECRYPTION_SEED;
         } else if (!strcmp(argv[x], "salvage-gci")) {
@@ -639,6 +644,8 @@ int main(int argc, char** argv) {
         } else {
           filename += ".dec";
         }
+      } else if (behavior == Behavior::DECODE_GCI_SNAPSHOT) {
+        filename += ".bmp";
       } else if (behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) {
         filename += ".txt";
       } else if (behavior == Behavior::CONVERT_ITEMRT_REL_TO_JSON) {
@@ -965,6 +972,26 @@ int main(int argc, char** argv) {
 
       write_output_data(data.data(), data.size());
 
+      break;
+    }
+
+    case Behavior::DECODE_GCI_SNAPSHOT: {
+      auto data = read_input_data();
+      StringReader r(data);
+      const auto& header = r.get<PSOGCIFileHeader>();
+      try {
+        header.check();
+      } catch (const exception& e) {
+        log_warning("File header failed validation (%s)", e.what());
+      }
+      const auto& file = r.get<PSOGCSnapshotFile>();
+      if (!file.checksum_correct()) {
+        log_warning("File internal checksum is incorrect");
+      }
+
+      auto img = file.decode_image();
+      string saved = img.save(Image::Format::WINDOWS_BITMAP);
+      write_output_data(saved.data(), saved.size());
       break;
     }
 
