@@ -1224,6 +1224,41 @@ static void proxy_command_item(
   }
 }
 
+static void server_command_enable_ep3_battle_debug_menu(
+    shared_ptr<ServerState>, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args) {
+  if (!c->options.debug) {
+    send_text_message(l, u"$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
+    return;
+  }
+
+  check_is_game(l, true);
+  check_is_ep3(c, true);
+  if (l->episode != Episode::EP3) {
+    throw logic_error("non-Ep3 client in Ep3 game");
+  }
+  auto base = l->ep3_server_base;
+  if (!base) {
+    send_text_message(l, u"$C6Episode 3 server\nis not initialized");
+    return;
+  }
+  auto server = base->server;
+  if (!server) {
+    send_text_message(l, u"$C6Episode 3 server\nis not initialized");
+    return;
+  }
+
+  if (!args.empty()) {
+    server->override_environment_number = stoul(encode_sjis(args), nullptr, 16);
+    send_text_message_printf(l, "$C6Override environment\nnumber set to %02hhX", server->override_environment_number);
+  } else if (server->override_environment_number == 0xFF) {
+    server->override_environment_number = 0x1A;
+    send_text_message(l, u"$C6Battle setup debug\nmenu enabled");
+  } else {
+    server->override_environment_number = 0xFF;
+    send_text_message(l, u"$C6Battle setup debug\nmenu disabled");
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef void (*server_handler_t)(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
@@ -1256,6 +1291,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$i", {server_command_item, proxy_command_item}},
     {u"$kick", {server_command_kick, nullptr}},
     {u"$li", {server_command_lobby_info, proxy_command_lobby_info}},
+    {u"$ep3battledebug", {server_command_enable_ep3_battle_debug_menu, nullptr}},
     {u"$maxlevel", {server_command_max_level, nullptr}},
     {u"$minlevel", {server_command_min_level, nullptr}},
     {u"$next", {server_command_next, proxy_command_next}},

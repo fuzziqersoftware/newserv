@@ -66,6 +66,7 @@ void ServerBase::recreate_server() {
 Server::Server(shared_ptr<ServerBase> base)
     : w_base(base),
       tournament_match_result_sent(false),
+      override_environment_number(0xFF),
       battle_finished(false),
       battle_in_progress(false),
       round_num(1),
@@ -1841,6 +1842,11 @@ void Server::handle_6xB3x13_update_map_during_setup(const string& data) {
       (this->registration_phase != RegistrationPhase::BATTLE_STARTED)) {
     *b->map_and_rules1 = in_cmd.map_and_rules_state;
     *b->map_and_rules2 = in_cmd.map_and_rules_state;
+    if (this->override_environment_number != 0xFF) {
+      b->map_and_rules1->environment_number = this->override_environment_number;
+      b->map_and_rules2->environment_number = this->override_environment_number;
+      this->override_environment_number = 0xFF;
+    }
     b->overlay_state = in_cmd.overlay_state;
     if (b->behavior_flags & BehaviorFlag::DISABLE_TIME_LIMITS) {
       b->map_and_rules1->rules.overall_time_limit = 0;

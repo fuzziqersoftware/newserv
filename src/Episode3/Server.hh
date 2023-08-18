@@ -247,6 +247,7 @@ private:
 
 public:
   bool tournament_match_result_sent; // Not part of original implementation
+  uint8_t override_environment_number; // Not part of original implementation
 
   uint32_t battle_finished;
   uint32_t battle_in_progress;

@@ -25,7 +25,7 @@ struct MapAndRulesState {
   MapState map;
   uint8_t num_players;
   uint8_t unused1;
-  uint8_t unused_by_server;
+  uint8_t environment_number;
   uint8_t num_players_per_team;
   uint8_t num_team0_players;
   uint8_t unused2;

@@ -794,27 +794,38 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // - The color of the battle tile outlines (probably)
   // - The preview image to show in the upper-left corner in the map select menu
   // The environment numbers are:
-  // 00 - Unguis Lapis
-  // 01 - Nebula Montana (1)
-  // 02 - Lupus Silva (1)
-  // 03 - Lupus Silva (2)
-  // 04 - Molae Venti
-  // 05 - Nebula Montana (2)
-  // 06 - Tener Sinus
-  // 07 - Mortis Fons
-  // 08 - Morgue (destroyed)
-  // 09 - Tower of Caelum
-  // 0A = ??? (referred to as "^mapname"; crashes)
-  // 0B = Cyber
-  // 0C = Morgue (not destroyed)
-  // 0D = (Castor/Pollux map)
-  // 0E - Dolor Odor
-  // 0F = Ravum Aedes Sacra
-  // 10 - (Amplum Umbla map)
-  // 11 - Via Tubus
-  // 12 = Morgue (same as 08?)
-  // 13 = ??? (crashes)
-  // Environment numbers beyond 13 are not used in any known quests or maps.
+  // 00 = Unguis Lapis ("BONE")
+  // 01 = Nebula Montana 1 ("ALPINE")
+  // 02 = Lupus Silva 1 ("FOREST 2-1")
+  // 03 = Lupus Silva 2 ("FOREST 2-2")
+  // 04 = Molae Venti ("WINDMILL")
+  // 05 = Nebula Montana 2 ("ALPINE 2")
+  // 06 = Tener Sinus ("COAST")
+  // 07 = Mortis Fons ("GEYSER")
+  // 08 = Morgue (destroyed) ("BROKEN MORGUE")
+  // 09 = Tower of Caelum ("TOWER")
+  // 0A = ??? (crashes) ("MAPMAN")
+  // 0B = Cyber ("CYBER")
+  // 0C = Morgue (not destroyed) ("BOSS")
+  // 0D = (Castor/Pollux map) ("REAL BOSS")
+  // 0E = Dolor Odor ("STOMACH")
+  // 0F = Ravum Aedes Sacra ("SACRAMENT")
+  // 10 = (Amplum Umbla map) ("RUIN")
+  // 11 = Via Tubus ("METRO")
+  // 12 = Morgue ("NORMAL MORGUE")
+  // Environment numbers above 12 are replaced with 0B (Cyber) if specified in
+  // a map definition. The following environment numbers are used internally by
+  // the game for various functions, but cannot be specified in MapDefinitions:
+  // 13 = TCardDemo (sends CAx14 and CAx13, then softlocks at black screen)
+  // 14 = crashes
+  // 15 = crashes
+  // 16 = Battle results screen
+  // 17 = Game Over screen (if used online, client disconnects without saving)
+  // 18 = Episode 3 staff roll
+  // 19 = View Battle waiting room
+  // 1A = TCard00_Select (debug battle setup menu)
+  // 1B = nothing (softlocks at black screen)
+  // TCard00_Select is accessible on newserv with the $ep3battledebug command.
   /* 000A */ uint8_t environment_number;
 
   // All alt_maps fields (including the floats) past num_alt_maps are filled in

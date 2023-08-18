@@ -38,7 +38,7 @@ void MapAndRulesState::clear() {
   this->map.clear();
   this->num_players = 0;
   this->unused1 = 0;
-  this->unused_by_server = 0;
+  this->environment_number = 0;
   this->num_players_per_team = 0;
   this->num_team0_players = 0;
   this->unused2 = 0;
