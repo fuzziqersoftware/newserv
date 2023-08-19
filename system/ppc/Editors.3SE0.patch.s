@@ -95,9 +95,7 @@ activate_chosen_editor:
   #   This editor is very similar to TGroupEnemySetEditor (see below).
 
   # lwz    r4, [r29 + 0x04] # TGroupEnemySetEditor
-  #   TODO: This editor crashes on update. It sort of works if you ignore
-  #   invalid memory accesses in Dolphin, but this is not a good solution.
-  #   Figure out if this is an Ep3-specific issue and fix it if possible.
+  #   This editor only works in a game; it crashes if loaded in the lobby.
   #   Use the D-pad to choose a value; hold X and use the D-pad to modify the
   #   selected value. Hold R to use the menu on the right.
 
@@ -159,7 +157,7 @@ activate_chosen_editor:
   #   this debugger doesn't do anything. It's likely more functional in Episodes
   #   1 & 2.
 
-  # lwz    r4, [r29 + 0x34] # TEffIndirectEditor (no visible effects)
+  # lwz    r4, [r29 + 0x34] # TEffIndirectEditor
   # li     r0, 1
   # stw    [r4 + 0x38], r0
   #   This editor is missing in PSO PC, but is present in PSOX. It appears to be
