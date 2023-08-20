@@ -81,14 +81,14 @@ uint32_t flags_for_version(GameVersion version, int64_t sub_version) {
       return Client::Flag::NO_D6_AFTER_LOBBY |
           Client::Flag::NO_SEND_FUNCTION_CALL;
 
-    case 0x40: // GC Ep3 trial
-      // TODO: Is this sub_version used for any other Ep3 versions? Is the final
-      // JP release really 42 and not 40?
+    case 0x40: // GC Ep3 JP and Trial Edition
+      // sub_version can't be used to tell JP final and Trial Edition apart; we
+      // instead look at header.flag in the 61 command.
       return Client::Flag::NO_D6_AFTER_LOBBY |
           Client::Flag::IS_EPISODE_3 |
-          Client::Flag::IS_EP3_TRIAL_EDITION |
+          Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL |
           Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH;
-    case 0x42: // GC Ep3 JP
+    case 0x42: // Also GC Ep3 JP?
       return Client::Flag::NO_D6_AFTER_LOBBY |
           Client::Flag::IS_EPISODE_3 |
           Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL |

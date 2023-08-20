@@ -68,6 +68,7 @@ Current known issues / missing features / things to do:
 - Implement the C5 (battle/challenge records) command.
 - Implement choice search.
 - Episode 3 bugs
+    - Re-record the Episode 3 battle replay test.
     - Fix behavior when joining a spectator team after the beginning of a battle.
     - Disconnecting during a match turns you into a COM if there are other humans in the match, even if the match is part of a tournament. This may be incorrect behavior for tournaments.
     - Disconnecting during a tournament when there are no other humans in the match simply cancels the match (so it can be replayed) instead of forfeiting, which is almost certainly incorrect behavior. (Then again, no one likes losing tournaments to COMs...)
