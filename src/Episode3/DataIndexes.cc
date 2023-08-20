@@ -640,7 +640,7 @@ void CardDefinition::Stat::decode_code() {
 string CardDefinition::Stat::str() const {
   switch (this->type) {
     case Type::BLANK:
-      return "";
+      return "(blank)";
     case Type::STAT:
       return string_printf("%hhd", this->stat);
     case Type::PLUS_STAT:

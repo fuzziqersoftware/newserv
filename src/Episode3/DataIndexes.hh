@@ -951,6 +951,17 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   //   0009 => Orland   (0001)      0015 => Memoru (011D)
   //   000A => Stella   (0114)      0016 => K.C.   (011E)
   //   000B => Glustar  (0115)      0017 => Ohgun  (011F)
+  // These values normally can't be used by the player, but are recognized
+  // internally by the game:
+  //   0018 => HERO_1 (02AA)        0021 => DARK_4     (02B3)
+  //   0019 => HERO_2 (02AB)        0022 => DARK_5     (02B4)
+  //   001A => HERO_3 (02AC)        0023 => DARK_6     (02B5)
+  //   001B => HERO_4 (02AD)        0024 => LEUKON     (029B)
+  //   001C => HERO_5 (02AE)        0025 => CASTOR     (029C)
+  //   001D => HERO_6 (02AF)        0026 => POLLUX     (029D)
+  //   001E => DARK_1 (02B0)        0027 => AMPLUM     (029E)
+  //   001F => DARK_2 (02B1)        0028 => CASTOR_USR (02BE)
+  //   0020 => DARK_3 (02B2)        0029 => POLLUX_USR (02BF)
   // Unused entries in this array should be set to FFFF.
   /* 59E0 */ parray<be_uint16_t, 0x18> unavailable_sc_cards;
 
