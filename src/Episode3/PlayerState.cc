@@ -553,6 +553,8 @@ void PlayerState::discard_and_redraw_hand() {
   G_Unknown_GC_Ep3_6xB4x2C cmd;
   cmd.change_type = 3;
   cmd.client_id = this->client_id;
+  cmd.card_refs.clear(0xFFFF);
+  cmd.unknown_a2.clear(0xFFFFFFFF);
   this->server()->send(cmd);
 
   this->deck_state->restart();
@@ -641,6 +643,8 @@ bool PlayerState::do_mulligan() {
   G_Unknown_GC_Ep3_6xB4x2C cmd;
   cmd.change_type = 3;
   cmd.client_id = this->client_id;
+  cmd.card_refs.clear(0xFFFF);
+  cmd.unknown_a2.clear(0xFFFFFFFF);
   this->server()->send(cmd);
 
   this->deck_state->do_mulligan();

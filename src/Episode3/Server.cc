@@ -970,12 +970,14 @@ void Server::move_phase_after() {
             (abs(sc_card->loc.y - trap_y) < 2) &&
             ps->replace_assist_card_by_id(trap_card_id)) {
           G_Unknown_GC_Ep3_6xB4x2C cmd;
-          cmd.client_id = client_id;
           cmd.change_type = 0x01;
-          cmd.loc.direction = static_cast<Direction>(trap_type);
+          cmd.client_id = client_id;
+          cmd.card_refs.clear(0xFFFF);
           cmd.loc.x = trap_x;
           cmd.loc.y = trap_y;
+          cmd.loc.direction = static_cast<Direction>(trap_type);
           cmd.unknown_a2[0] = trap_card_id;
+          cmd.unknown_a2[1] = 0xFFFFFFFF;
           this->send(cmd);
         }
       }

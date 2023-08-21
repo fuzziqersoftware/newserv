@@ -337,7 +337,7 @@ bool RulerServer::attack_action_has_rampage_and_not_pierce(
           break;
         }
       }
-      for (; cond_index >= 0; cond_index--) {
+      for (cond_index--; cond_index >= 0; cond_index--) {
         bool has_rampage = this->check_pierce_and_rampage(
             card_ref,
             ce->def.effects[cond_index].type,

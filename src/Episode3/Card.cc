@@ -572,7 +572,9 @@ int32_t Card::move_to_location(const Location& loc) {
         this->loc.x = this->server()->warp_positions[warp_type][warp_end ^ 1][0];
         this->loc.y = this->server()->warp_positions[warp_type][warp_end ^ 1][1];
         cmd.change_type = 0;
+        cmd.card_refs.clear(0xFFFF);
         cmd.card_refs[0] = this->card_ref;
+        cmd.unknown_a2.clear(0xFFFFFFFF);
         this->server()->send(cmd);
         return 0;
       }
