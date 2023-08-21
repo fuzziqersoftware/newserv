@@ -273,7 +273,7 @@ DOLFileIndex::DOLFileIndex(const string& directory, bool compress)
   menu->items.emplace_back(ProgramsMenuItemID::GO_BACK, u"Go back", u"Return to the\nmain menu", 0);
 
   uint32_t next_menu_item_id = 0;
-  for (const auto& filename : list_directory(directory)) {
+  for (const auto& filename : list_directory_sorted(directory)) {
     if (!ends_with(filename, ".dol")) {
       continue;
     }

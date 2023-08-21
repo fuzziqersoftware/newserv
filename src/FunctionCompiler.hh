@@ -78,7 +78,7 @@ struct DOLFileIndex {
 
   bool files_compressed;
   std::vector<std::shared_ptr<DOLFile>> item_id_to_file;
-  std::map<std::string, std::shared_ptr<DOLFile>> name_to_file;
+  std::unordered_map<std::string, std::shared_ptr<DOLFile>> name_to_file;
   std::shared_ptr<const Menu> menu;
 
   DOLFileIndex() = default;
