@@ -686,9 +686,13 @@ int main(int argc, char** argv) {
         }
         data.resize((data.size() + 3) & (~3));
         StringReader r(data);
-        pr2_expected_size = r.get_u32l();
-        PSOV2Encryption crypt(r.get_u32l());
-        crypt.decrypt(data.data() + 8, data.size() - 8);
+        pr2_expected_size = big_endian ? r.get_u32b() : r.get_u32l();
+        PSOV2Encryption crypt(big_endian ? r.get_u32b() : r.get_u32l());
+        if (big_endian) {
+          crypt.encrypt_big_endian(data.data() + 8, data.size() - 8);
+        } else {
+          crypt.decrypt(data.data() + 8, data.size() - 8);
+        }
         data = data.substr(8);
       }
 
@@ -745,11 +749,20 @@ int main(int argc, char** argv) {
         size_t orig_size = data.size();
         data.resize((data.size() + 3) & (~3));
         PSOV2Encryption crypt(pr2_seed);
-        crypt.encrypt(data.data(), data.size());
+        if (big_endian) {
+          crypt.encrypt_big_endian(data.data(), data.size());
+        } else {
+          crypt.encrypt(data.data(), data.size());
+        }
         data.resize(orig_size);
         StringWriter w;
-        w.put_u32l(input_bytes);
-        w.put_u32l(pr2_seed);
+        if (big_endian) {
+          w.put_u32b(input_bytes);
+          w.put_u32b(pr2_seed);
+        } else {
+          w.put_u32l(input_bytes);
+          w.put_u32l(pr2_seed);
+        }
         w.write(data);
         data = std::move(w.str());
       }
