@@ -1228,8 +1228,10 @@ int main(int argc, char** argv) {
 
     case Behavior::EXTRACT_GSL:
     case Behavior::EXTRACT_BML: {
+      string output_prefix;
       if (!output_filename) {
-        output_filename = "";
+        output_prefix = input_filename;
+        output_prefix.push_back('_');
       } else if (!strcmp(output_filename, "-")) {
         throw invalid_argument("output prefix cannot be stdout");
       }
@@ -1241,7 +1243,7 @@ int main(int argc, char** argv) {
         GSLArchive arch(data_shared, big_endian);
         for (const auto& entry_it : arch.all_entries()) {
           auto e = arch.get(entry_it.first);
-          string out_file = output_filename + entry_it.first;
+          string out_file = output_prefix + entry_it.first;
           save_file(out_file.c_str(), e.first, e.second);
           fprintf(stderr, "... %s\n", out_file.c_str());
         }
@@ -1251,7 +1253,7 @@ int main(int argc, char** argv) {
           {
             auto e = arch.get(entry_it.first);
             string data = prs_decompress(e.first, e.second);
-            string out_file = output_filename + entry_it.first;
+            string out_file = output_prefix + entry_it.first;
             save_file(out_file, data);
             fprintf(stderr, "... %s\n", out_file.c_str());
           }
@@ -1259,7 +1261,7 @@ int main(int argc, char** argv) {
           auto gvm_e = arch.get_gvm(entry_it.first);
           if (gvm_e.second) {
             string data = prs_decompress(gvm_e.first, gvm_e.second);
-            string out_file = output_filename + entry_it.first + ".gvm";
+            string out_file = output_prefix + entry_it.first + ".gvm";
             save_file(out_file, data);
             fprintf(stderr, "... %s\n", out_file.c_str());
           }
