@@ -29,7 +29,7 @@ const char* name_for_enum<CompressPhase>(CompressPhase v) {
   }
 }
 
-template <size_t WindowLength, size_t MaxMatchLength, bool UseLatestBestMatch = false>
+template <size_t WindowLength, size_t MaxMatchLength>
 struct WindowIndex {
   const uint8_t* data;
   size_t size;
@@ -95,29 +95,22 @@ struct WindowIndex {
     // default.
     size_t match_offset = 0;
     size_t match_size = 0;
-    auto start_it = this->index.upper_bound(this->offset);
-    for (auto it = start_it; it != this->index.end(); it++) {
+    auto it = this->index.upper_bound(this->offset);
+    if (it != this->index.end()) {
       size_t new_match_offset = *it;
       size_t new_match_size = this->get_match_length(new_match_offset);
       if ((new_match_size > match_size) || (new_match_size == match_size && new_match_offset > match_offset)) {
         match_offset = new_match_offset;
         match_size = new_match_size;
-      } else if (!UseLatestBestMatch || (new_match_size < match_size)) {
-        // In PRS, using the latest of a set of equivalent matches may be
-        // advantageous because it may be possible to encode it with fewer bits.
-        // All backreferences are the same length in BC0, so this doesn't apply.
-        break;
       }
     }
-    for (auto it = start_it; it != this->index.begin();) {
+    if (it != this->index.begin()) {
       it--;
       size_t new_match_offset = *it;
       size_t new_match_size = this->get_match_length(new_match_offset);
       if ((new_match_size > match_size) || (new_match_size == match_size && new_match_offset > match_offset)) {
         match_offset = new_match_offset;
         match_size = new_match_size;
-      } else if (!UseLatestBestMatch || (new_match_size < match_size)) {
-        break;
       }
     }
     return make_pair(match_offset, match_size);
@@ -668,82 +661,122 @@ string prs_compress_indexed(
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   LZSSInterleavedWriter w;
-  WindowIndex<0x1FFF, 0x100, true> window(in_data_v, in_size);
+  WindowIndex<0x100, 5> w_short(in_data_v, in_size);
+  WindowIndex<0x1FFF, 9> w_long(in_data_v, in_size);
+  WindowIndex<0x1FFF, 0x100> w_extended(in_data_v, in_size);
 
   size_t last_progress_fn_call_offset = 0;
-  while (window.offset < in_size) {
-    if (progress_fn && ((last_progress_fn_call_offset & ~0xFFF) != (window.offset & ~0xFFF))) {
-      last_progress_fn_call_offset = window.offset;
-      progress_fn(CompressPhase::GENERATE_RESULT, window.offset, in_size, w.size());
+  while (w_short.offset < in_size) {
+    if (progress_fn && ((last_progress_fn_call_offset & ~0xFFF) != (w_short.offset & ~0xFFF))) {
+      last_progress_fn_call_offset = w_short.offset;
+      progress_fn(CompressPhase::GENERATE_RESULT, w_short.offset, in_size, w.size());
     }
 
-    auto match = window.get_best_match();
+    auto m_short = w_short.get_best_match();
+    auto m_long = w_long.get_best_match();
+    auto m_extended = w_extended.get_best_match();
 
-    // Look ahead by 1 literal to see if there's a significantly better match.
-    window.advance();
-    auto advanced_match = window.get_best_match();
-    if (advanced_match.second > match.second + 1) {
-      match.second = 1;
-    }
-
-    // If there is a suitable match, write a backreference; otherwise, write a
-    // literal. The backreference should be encoded:
-    // - As a short copy if offset in [-0x100, -1] and size in [2, 5]
-    // - As a long copy if offset in [-0x1FFF, -1] and size in [3, 9]
-    // - As an extended copy if offset in [-0x1FFF, -1] and size in [10, 0x100]
-    // Technically an extended copy can be used for sizes 1-9 as well, but if
-    // size is 1 or 2, writing literals is better (since it uses fewer data
-    // bytes and control bits), and a long copy can cover sizes 3-9 (and also
-    // uses fewer data bytes and control bits).
-    ssize_t backreference_offset = match.first - (window.offset - 1);
-    if (match.second < 2) {
-      // The match is too small; a literal would use fewer bits
-      w.write_control(true);
-      w.write_data(in_data[window.offset - 1]);
-      match.second = 1;
-
-    } else if ((backreference_offset >= -0x100) && (match.second <= 5)) {
-      uint8_t encoded_size = match.second - 2;
-      w.write_control(false);
-      w.flush_if_ready();
-      w.write_control(false);
-      w.flush_if_ready();
-      w.write_control(encoded_size & 2);
-      w.flush_if_ready();
-      w.write_control(encoded_size & 1);
-      w.write_data(backreference_offset & 0xFF);
-
-    } else if (match.second < 3) {
-      // We can't use a long copy for size 2, and it's not worth it to use an
-      // extended copy for this either (as noted above), so write a literal
-      w.write_control(true);
-      w.write_data(in_data[window.offset - 1]);
-      match.second = 1;
-
-    } else if ((backreference_offset >= -0x1FFF) && (match.second <= 9)) {
-      w.write_control(false);
-      w.flush_if_ready();
-      w.write_control(true);
-      uint16_t a = (backreference_offset << 3) | (match.second - 2);
-      w.write_data(a & 0xFF);
-      w.write_data(a >> 8);
-
-    } else if ((backreference_offset >= -0x1FFF) && (match.second <= 0x100)) {
-      w.write_control(false);
-      w.flush_if_ready();
-      w.write_control(true);
-      uint16_t a = (backreference_offset << 3);
-      w.write_data(a & 0xFF);
-      w.write_data(a >> 8);
-      w.write_data(match.second - 1);
-
+    // Write the match that achieves the best ratio of output bytes to
+    // compressed bits used. To do this without floating-point math, we multiply
+    // the output byte count for each type of command by 468 / (command_bits),
+    // since 468 is the least common multiple of the number of bits for each
+    // command type. The command type with the highest score is the one we'll
+    // use, breaking ties by choosing the shorter command type. Note that the
+    // size of any copy type can be zero if no match was found; if no matches
+    // were found at all, then we can always write a literal.
+    size_t score_literal = 52;
+    size_t score_short = m_short.second * 39;
+    size_t score_long = m_long.second * 26;
+    size_t score_extended = m_extended.second * 18;
+    PRSPathNode::CommandType command_type = PRSPathNode::CommandType::NONE;
+    if (score_literal < score_short) {
+      if (score_short < score_long) {
+        if (score_long < score_extended) {
+          command_type = PRSPathNode::CommandType::EXTENDED_COPY;
+        } else {
+          command_type = PRSPathNode::CommandType::LONG_COPY;
+        }
+      } else {
+        if (score_short < score_extended) {
+          command_type = PRSPathNode::CommandType::EXTENDED_COPY;
+        } else {
+          command_type = PRSPathNode::CommandType::SHORT_COPY;
+        }
+      }
     } else {
-      throw logic_error("invalid best match");
+      if (score_literal < score_long) {
+        if (score_long < score_extended) {
+          command_type = PRSPathNode::CommandType::EXTENDED_COPY;
+        } else {
+          command_type = PRSPathNode::CommandType::LONG_COPY;
+        }
+      } else {
+        if (score_literal < score_extended) {
+          command_type = PRSPathNode::CommandType::EXTENDED_COPY;
+        } else {
+          command_type = PRSPathNode::CommandType::LITERAL;
+        }
+      }
+    }
+
+    size_t bytes_consumed = 0;
+    switch (command_type) {
+      case PRSPathNode::CommandType::LITERAL:
+        w.write_control(true);
+        w.write_data(in_data[w_short.offset]);
+        bytes_consumed = 1;
+        break;
+      case PRSPathNode::CommandType::SHORT_COPY: {
+        ssize_t backreference_offset = m_short.first - w_short.offset;
+        uint8_t encoded_size = m_short.second - 2;
+        w.write_control(false);
+        w.flush_if_ready();
+        w.write_control(false);
+        w.flush_if_ready();
+        w.write_control(encoded_size & 2);
+        w.flush_if_ready();
+        w.write_control(encoded_size & 1);
+        w.write_data(backreference_offset & 0xFF);
+        bytes_consumed = m_short.second;
+        break;
+      }
+      case PRSPathNode::CommandType::LONG_COPY: {
+        ssize_t backreference_offset = m_long.first - w_long.offset;
+        w.write_control(false);
+        w.flush_if_ready();
+        w.write_control(true);
+        uint16_t a = (backreference_offset << 3) | (m_long.second - 2);
+        w.write_data(a & 0xFF);
+        w.write_data(a >> 8);
+        bytes_consumed = m_long.second;
+        break;
+      }
+      case PRSPathNode::CommandType::EXTENDED_COPY: {
+        ssize_t backreference_offset = m_extended.first - w_extended.offset;
+        w.write_control(false);
+        w.flush_if_ready();
+        w.write_control(true);
+        uint16_t a = (backreference_offset << 3);
+        w.write_data(a & 0xFF);
+        w.write_data(a >> 8);
+        w.write_data(m_extended.second - 1);
+        bytes_consumed = m_extended.second;
+        break;
+      }
+      case PRSPathNode::CommandType::NONE:
+      default:
+        throw logic_error("invalid command type");
     }
     w.flush_if_ready();
 
-    for (size_t z = 1; z < match.second; z++) {
-      window.advance();
+    if (bytes_consumed == 0) {
+      throw logic_error("no input data was consumed");
+    }
+
+    for (size_t z = 0; z < bytes_consumed; z++) {
+      w_short.advance();
+      w_long.advance();
+      w_extended.advance();
     }
   }
 
