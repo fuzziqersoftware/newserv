@@ -257,8 +257,7 @@ bool FunctionCodeIndex::patch_menu_empty(uint32_t specific_version) const {
   return true;
 }
 
-DOLFileIndex::DOLFileIndex(const string& directory, bool compress)
-    : files_compressed(compress) {
+DOLFileIndex::DOLFileIndex(const string& directory) {
   if (!function_compiler_available()) {
     function_compiler_log.info("Function compiler is not available");
     return;
@@ -274,10 +273,12 @@ DOLFileIndex::DOLFileIndex(const string& directory, bool compress)
 
   uint32_t next_menu_item_id = 0;
   for (const auto& filename : list_directory_sorted(directory)) {
-    if (!ends_with(filename, ".dol")) {
+    bool is_dol = ends_with(filename, ".dol");
+    bool is_compressed_dol = ends_with(filename, ".dol.prs");
+    if (!is_dol && !is_compressed_dol) {
       continue;
     }
-    string name = filename.substr(0, filename.size() - 4);
+    string name = filename.substr(0, filename.size() - (is_compressed_dol ? 8 : 4));
 
     try {
       shared_ptr<DOLFile> dol(new DOLFile());
@@ -288,38 +289,24 @@ DOLFileIndex::DOLFileIndex(const string& directory, bool compress)
       string file_data = load_file(path);
 
       string description;
-      if (this->files_compressed) {
-        uint64_t start = now();
-        string compressed = prs_compress(file_data);
+      if (is_compressed_dol) {
+        size_t decompressed_size = prs_decompress_size(file_data);
+
         StringWriter w;
-        if (compressed.size() >= file_data.size()) {
-          w.put_u32b(0);
-          w.put_u32b(file_data.size());
-          w.write(file_data);
-        } else {
-          w.put_u32b(compressed.size());
-          w.put_u32b(file_data.size());
-          w.write(compressed);
-        }
+        w.put_u32b(file_data.size());
+        w.put_u32b(decompressed_size);
+        w.write(file_data);
         while (w.size() & 3) {
           w.put_u8(0);
         }
         dol->data = std::move(w.str());
-        uint64_t diff = now() - start;
 
-        string orig_size_str = format_size(file_data.size());
-        string compressed_size_str = format_size(dol->data.size());
-        string time_str = format_duration(diff);
-
-        if (compressed.size() >= file_data.size()) {
-          function_compiler_log.info("Loaded and compressed DOL file %s (%s -> %s, %s) (inefficient compression; using uncompressed version)",
-              dol->name.c_str(), orig_size_str.c_str(), compressed_size_str.c_str(), time_str.c_str());
-          description = string_printf("$C6%s$C7\n%s", dol->name.c_str(), orig_size_str.c_str());
-        } else {
-          function_compiler_log.info("Loaded and compressed DOL file %s (%s -> %s, %s)",
-              dol->name.c_str(), orig_size_str.c_str(), compressed_size_str.c_str(), time_str.c_str());
-          description = string_printf("$C6%s$C7\n%s\n%s (orig)", dol->name.c_str(), compressed_size_str.c_str(), orig_size_str.c_str());
-        }
+        string compressed_size_str = format_size(file_data.size());
+        string decompressed_size_str = format_size(decompressed_size);
+        function_compiler_log.info("Loaded compressed DOL file %s (%s -> %s)",
+            dol->name.c_str(), compressed_size_str.c_str(), decompressed_size_str.c_str());
+        description = string_printf("$C6%s$C7\n%s\n%s (orig)",
+            dol->name.c_str(), compressed_size_str.c_str(), decompressed_size_str.c_str());
 
       } else {
         StringWriter w;
@@ -331,10 +318,9 @@ DOLFileIndex::DOLFileIndex(const string& directory, bool compress)
         }
         dol->data = std::move(w.str());
 
-        string orig_size_str = format_size(dol->data.size());
-        function_compiler_log.info("Loaded DOL file %s (%s)", filename.c_str(), orig_size_str.c_str());
-
-        description = string_printf("$C6%s$C7\n%s", dol->name.c_str(), orig_size_str.c_str());
+        string size_str = format_size(dol->data.size());
+        function_compiler_log.info("Loaded DOL file %s (%s)", filename.c_str(), size_str.c_str());
+        description = string_printf("$C6%s$C7\n%s", dol->name.c_str(), size_str.c_str());
       }
 
       this->name_to_file.emplace(dol->name, dol);

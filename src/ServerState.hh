@@ -60,7 +60,6 @@ struct ServerState {
   bool item_tracking_enabled;
   bool drops_enabled;
   bool episode_3_send_function_call_enabled;
-  bool enable_dol_compression;
   bool catch_handler_exceptions;
   uint32_t ep3_behavior_flags;
   RunShellBehavior run_shell_behavior;
