@@ -7,13 +7,27 @@
   // JSON on save, it may be confused by this file's format. Make sure it
   // doesn't automatically turn hex integers into strings, for example.
 
+  // If you're just setting up a newserv instance for your personal use, you
+  // probably only need to change LocalAddress. Set LocalAddress to your
+  // machine's local IPv4 address (usually something like 10.0.x.x or
+  // 192.168.x.x). In PSO's network configuration, set the DNS server address to
+  // the same address you entered in LocalAddress in this file.
+
+  // If you also want people to be able to conenct to your newserv instance from
+  // the Internet, you'll need to set ExternalAddress to your public-facing IPv4
+  // address (you can find this by visiting e.g. whatismyip.com). You'll also
+  // need to set up port forwarding on your router for all the TCP ports listed
+  // in PortConfiguration (9000, 9001, etc.), as well as UDP port 53. Players
+  // from outside your network can then connect to your server by entering your
+  // public address as their DNS server address in PSO's network configuration.
+
   // Server's name (maximum 16 characters). This appears in the upper-right
   // corner of the screen while in lobbies.
   "ServerName": "newserv",
 
   // Address to connect local clients to (IP address or interface name). This
   // is the address that newserv will expect clients on the same network as the
-  // server to conenct to.
+  // server to connect to.
   "LocalAddress": "en0",
   // Address to connect external clients to (IP address or interface name). This
   // is the address that newserv will expect clients not on the same network as
@@ -71,7 +85,7 @@
     // PSOBB, but not for the patch server; this means you unfortunately can't
     // support both Schthack and Ephinea PSOBB clients at the same time. This
     // may be fixed in the future using a similar technique as the
-    // split_reconnect behavior, but this isn't implemented yet.
+    // pc_console_detect behavior, but this isn't implemented yet.
     // "bb-patch3":     [13000, "patch", "patch_server_bb"],
     // "bb-init3":      [14000, "bb",    "data_server_bb"],
 
@@ -293,13 +307,13 @@
   // this can be an integer if auctions should always have the same number of
   // cards, or it can be a list of [min count, max count] and the server will
   // choose a random number of cards in that range for each auction.
-  // CardAuctionContents is a dictionary specifying the relative frequencies
-  // and costs of each card in the auction pool. Relative frequencies are
-  // 64-bit integers, but should generally be less than 0x0100000000000000 to
-  // avoid excessive bias. All relative frequencies must sum to a number less
-  // than 0x10000000000000000 (the limit of an unsigned 64-bit integer). When
-  // players enter an auction, the auctioned cards are drawn with replacement
-  // from the distribution specified here.
+  // CardAuctionPool is a dictionary specifying the relative frequencies and
+  // costs of each card in the auction pool. Relative frequencies are 64-bit
+  // integers, but should generally be less than 0x0100000000000000 to avoid
+  // excessive bias. All relative frequencies must sum to a number less than
+  // 0x10000000000000000 (the limit of an unsigned 64-bit integer). When players
+  // enter an auction, the auctioned cards are drawn with replacement from the
+  // distribution specified here.
   "CardAuctionPoints": 30,
   "CardAuctionSize": [2, 4],
   "CardAuctionPool": {
@@ -315,7 +329,7 @@
   // descriptions. (We don't use a map here because the category order
   // specified here is the order that appears in the quest menu.)
   "QuestCategories": [
-    // Each entry is [type, token, flags, category_name, description].
+    // Each entry is [flags, type, token, category_name, description].
     // These fields are:
     //   flags: a bit field containing the following:
     //       0x01 - appears in normal mode
@@ -327,7 +341,7 @@
     //       0x40 - appears in Episode 3 download quest menu
     //       0x80 - hidden on pre-V3 versions (DC, PC)
     //   type: the character that newserv expects at the beginning of the quest
-    //       filename, generally one of b, c, e, or q.
+    //       filename, generally one of b, c, d, e, or q.
     //   short_token: the token newserv expects to see in quest filenames after
     //       the quest number.
     //   category_name: what appears in the quest menu on the client.
@@ -365,7 +379,7 @@
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on
   // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't
-  // enable Episode 3 patches by default; it only does so if this option is on.
+  // enable Episode 3 USA patches by default; it only does if this option is on.
   // "EnableEpisode3SendFunctionCall": true,
 
   // By default, the server keeps track of items in all games, even for versions
