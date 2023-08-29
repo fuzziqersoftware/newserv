@@ -92,7 +92,13 @@ struct ServerState {
   uint16_t ep3_card_auction_points;
   uint16_t ep3_card_auction_min_size;
   uint16_t ep3_card_auction_max_size;
-  std::unordered_map<std::string, std::pair<uint64_t, uint16_t>> ep3_card_auction_pool;
+  struct CardAuctionPoolEntry {
+    uint64_t probability;
+    uint16_t card_id;
+    uint16_t min_price;
+    std::string card_name;
+  };
+  std::vector<CardAuctionPoolEntry> ep3_card_auction_pool;
 
   std::shared_ptr<LicenseManager> license_manager;
 

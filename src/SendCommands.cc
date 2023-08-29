@@ -2805,8 +2805,8 @@ void send_card_auction_if_all_clients_ready(
   num_cards = min<uint16_t>(num_cards, 0x14);
 
   uint64_t distribution_size = 0;
-  for (const auto& it : s->ep3_card_auction_pool) {
-    distribution_size += it.second.first;
+  for (const auto& e : s->ep3_card_auction_pool) {
+    distribution_size += e.probability;
   }
 
   auto card_index = (l->flags & Lobby::Flag::IS_EP3_TRIAL)
@@ -2817,12 +2817,12 @@ void send_card_auction_if_all_clients_ready(
   cmd.points_available = s->ep3_card_auction_points;
   for (size_t z = 0; z < num_cards; z++) {
     uint64_t v = random_object<uint64_t>() % distribution_size;
-    for (const auto& it : s->ep3_card_auction_pool) {
-      if (v >= it.second.first) {
-        v -= it.second.first;
+    for (const auto& e : s->ep3_card_auction_pool) {
+      if (v >= e.probability) {
+        v -= e.probability;
       } else {
-        cmd.entries[z].card_id = card_index->definition_for_name(it.first)->def.card_id.load();
-        cmd.entries[z].min_price = it.second.second;
+        cmd.entries[z].card_id = e.card_id;
+        cmd.entries[z].min_price = e.min_price;
         break;
       }
     }

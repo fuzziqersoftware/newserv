@@ -640,13 +640,13 @@ void ServerState::parse_config(const JSON& json) {
     this->ep3_card_auction_max_size = 0;
   }
 
-  try {
-    for (const auto& it : json.at("CardAuctionPool").as_dict()) {
-      const auto& card_name = it.first;
-      const auto& card_cfg_json = it.second.as_list();
-      this->ep3_card_auction_pool.emplace(card_name, make_pair(card_cfg_json.at(0), card_cfg_json.at(1)));
-    }
-  } catch (const out_of_range&) {
+  for (const auto& it : json.at("CardAuctionPool").as_dict()) {
+    this->ep3_card_auction_pool.emplace_back(
+        CardAuctionPoolEntry{
+            .probability = it.second.at(0),
+            .card_id = 0,
+            .min_price = it.second.at(1),
+            .card_name = it.first});
   }
 
   set_log_levels_from_json(json.get("LogLevels", JSON::dict_type()));
@@ -829,7 +829,14 @@ void ServerState::load_ep3_data() {
   }
 
   config_log.info("Resolving Episode 3 card auction pool");
-  TODO;
+  for (auto& e : this->ep3_card_auction_pool) {
+    try {
+      const auto& card = this->ep3_card_index->definition_for_name(e.card_name);
+      e.card_id = card->def.card_id;
+    } catch (const out_of_range&) {
+      throw runtime_error(string_printf("Ep3 card \"%s\" does not exist", e.card_name.c_str()));
+    }
+  }
 }
 
 void ServerState::load_quest_index() {
