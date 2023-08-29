@@ -163,58 +163,58 @@
   // Specify which kinds of logging you want to be enabled. This allows you to
   // make the terminal more or less noisy when players are connected, so you can
   // see only the log messages you care about. The log levels are, in decreasing
-  // order of verbosity, "debug", "info", "warning", "error", and "disabled".
+  // order of verbosity, "DEBUG", "INFO", "WARNING", "ERROR", and "DISABLED".
   "LogLevels": {
     // AX messages are messages sent to the terminal with the $ax command.
-    "AXMessages": "info",
+    "AXMessages": "INFO",
     // Channel exceptions are messages about clients disconnecting unexpectedly,
     // or other unexpected network-level events.
-    "ChannelExceptions": "info",
+    "ChannelExceptions": "INFO",
     // Client messages describe events that are specific to a single client's
     // connection or game state.
-    "Clients": "info",
+    "Clients": "INFO",
     // Command data messages show the raw data for all commands sent and
     // received, on both the game server and proxy server. If stderr is a
     // terminal, these messages are colored as well; green is for commands sent
     // by the client, yellow is for commands sent by newserv, and red is for
-    // commands sent by the remote server (for proxy server sessions).
-    "CommandData": "info",
+    // commands sent by the remote server (in proxy server sessions).
+    "CommandData": "INFO",
     // Config messages describe server-wide events, and generally only occur
     // during the startup procedure.
-    "Config": "info",
+    "Config": "INFO",
     // DNS server messages describe erroneous queries that the DNS server does
     // not respond to. Normal DNS queries do not generate any log messages.
-    "DNSServer": "info",
+    "DNSServer": "INFO",
     // Function compiler messages describe PowerPC function call assembly
     // events, which generally only occur during startup.
-    "FunctionCompiler": "info",
+    "FunctionCompiler": "INFO",
     // IP stack simulator messages describe clients connecting and disconnecting
     // via the IP stack interface, and errors that occur at the simulated
     // network level within the simulator. This log is fairly verbose at the
     // info level, so by default we suppress those messages.
-    "IPStackSimulator": "warning",
+    "IPStackSimulator": "WARNING",
     // License manager messages describe the creation of new license files.
-    "LicenseManager": "info",
+    "LicenseManager": "INFO",
     // Lobby messages describe creation and deletion of lobbies and games, as
     // well as item tracking events within games.
-    "Lobbies": "info",
+    "Lobbies": "INFO",
     // Patch file index messages describe finding and preloading the patch files
     // available for download to BB and PC clients.
-    "PatchFileIndex": "info",
+    "PatchFileIndex": "INFO",
     // Player data messages describe the loading and saving of player and
     // account data files.
-    "PlayerData": "info",
+    "PlayerData": "INFO",
     // Proxy server messages describe clients connecting and disconnecting from
     // the proxy server, as well as events that occur in each session.
-    "ProxyServer": "info",
+    "ProxyServer": "INFO",
     // Replay messages are generated when replaying a session log (usually
     // during functional testing).
-    "Replay": "info",
+    "Replay": "INFO",
     // Game server messages describe clients connecting and disconnecting from
     // the game server.
-    "GameServer": "info",
+    "GameServer": "INFO",
     // Static game data messages describe the loading of any kind of game data.
-    "StaticGameData": "info",
+    "StaticGameData": "INFO",
   },
 
   // By default, the server only allows users who are registered in the license
@@ -315,13 +315,32 @@
   // enter an auction, the auctioned cards are drawn with replacement from the
   // distribution specified here.
   "CardAuctionPoints": 30,
-  "CardAuctionSize": [2, 4],
+  "CardAuctionSize": [6, 8],
   "CardAuctionPool": {
     // "CardName": [RelativeFrequency, MinPrice]
-    "Red Sword": [500, 8],
-    "Hildeblue": [400, 10],
-    "Grants":    [300, 15],
-    "Megid":     [700, 6],
+    "Beat+":           [500, 4],
+    "Berserk+":	       [800, 7],
+    "Biboo":           [500, 6],
+    "Chaos Bringer":   [900, 3],
+    "Charity+":        [800, 4],
+    "Counter+":        [800, 9],
+    "Dark Flow":       [600, 11],
+    "Dolmolm":         [500, 8],
+    "Egg Rappy":       [800, 2],
+    "Epsilon":         [300, 7],
+    "Gather+":         [800, 8],
+    "Gibbles+":        [700, 6],
+    "Grants":          [200, 4],
+    "Hallo Rappy+":    [800, 3],
+    "Heart of Poumn":  [600, 5],
+    "Heaven Punisher": [500, 6],
+    "Lavis Cannon":    [400, 7],
+    "Piety":           [800, 5],
+    "Rag Rappy+":      [800, 2],
+    "Rich+":           [700, 2],
+    "Snail Pace":      [900, 3],
+    "Striker of Chao": [500, 5],
+    "Thread+":         [800, 8],
   },
 
   // Quest category configuration. See README.md for information on how quest

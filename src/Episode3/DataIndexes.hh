@@ -7,6 +7,7 @@
 #include <phosg/Encoding.hh>
 #include <phosg/JSON.hh>
 #include <phosg/Tools.hh>
+#include <phosg/Types.hh>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -659,17 +660,11 @@ enum class HPType : uint8_t {
   COMMON_HP = 2,
 };
 
-HPType hp_type_for_name(const char* name);
-const char* name_for_hp_type(HPType hp_type);
-
 enum class DiceExchangeMode : uint8_t {
   HIGH_ATK = 0,
   HIGH_DEF = 1,
   NONE = 2,
 };
-
-DiceExchangeMode dice_exchange_mode_for_name(const char* name);
-const char* name_for_dice_exchange_mode(DiceExchangeMode dice_exchange_mode);
 
 enum class AllowedCards : uint8_t {
   ALL = 0,
@@ -677,9 +672,6 @@ enum class AllowedCards : uint8_t {
   N_R_ONLY = 2,
   N_R_S_ONLY = 3,
 };
-
-AllowedCards allowed_cards_for_name(const char* name);
-const char* name_for_allowed_cards(AllowedCards allowed_cards);
 
 struct Rules {
   // When this structure is used in a map/quest definition, FF in any of these
@@ -708,8 +700,8 @@ struct Rules {
   // likely be more work than it's worth.
 
   Rules();
-  explicit Rules(std::shared_ptr<const JSONObject> json);
-  std::shared_ptr<JSONObject> json() const;
+  explicit Rules(const JSON& json);
+  JSON json() const;
   bool operator==(const Rules& other) const;
   bool operator!=(const Rules& other) const;
   void clear();
@@ -1115,3 +1107,17 @@ private:
 };
 
 } // namespace Episode3
+
+// TODO: Figure out how to declare these inside the Episode3 namespace.
+template <>
+Episode3::HPType enum_for_name<Episode3::HPType>(const char* name);
+template <>
+const char* name_for_enum<Episode3::HPType>(Episode3::HPType hp_type);
+template <>
+Episode3::DiceExchangeMode enum_for_name<Episode3::DiceExchangeMode>(const char* name);
+template <>
+const char* name_for_enum<Episode3::DiceExchangeMode>(Episode3::DiceExchangeMode dice_exchange_mode);
+template <>
+Episode3::AllowedCards enum_for_name<Episode3::AllowedCards>(const char* name);
+template <>
+const char* name_for_enum<Episode3::AllowedCards>(Episode3::AllowedCards allowed_cards);

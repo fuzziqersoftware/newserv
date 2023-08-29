@@ -30,14 +30,14 @@ struct QuestCategoryIndex {
     std::u16string name;
     std::u16string description;
 
-    explicit Category(uint32_t category_id, std::shared_ptr<const JSONObject> json);
+    explicit Category(uint32_t category_id, const JSON& json);
 
     bool matches_flags(uint8_t request) const;
   };
 
   std::vector<Category> categories;
 
-  explicit QuestCategoryIndex(std::shared_ptr<const JSONObject> json);
+  explicit QuestCategoryIndex(const JSON& json);
 
   const Category& find(char type, const std::string& short_token) const;
   const Category& at(uint32_t category_id) const;

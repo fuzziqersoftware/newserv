@@ -155,3 +155,22 @@ TODO: Figure out more debug message conditionals (vars/functions) and add them h
 
 (Episode 3 USA) Able to find VIP cards offline (but they're still rare)
 042C0B20 4800000C
+
+(Ep3 USA) Hold L when starting battle to enter debug menu
+042C5460 4BD3AF78
+040003D8 3C60804A
+040003DC 60630518
+040003E0 3C800002
+040003E4 480C9F35
+040003E8 2C030000
+040003EC 4082000C
+040003F0 8801001A
+040003F4 48000008
+040003F8 3800001A
+040003FC 482C5068
+
+(Ep3 USA) Dressing room always accessible
+041A16FC 38600001
+
+(Ep3 USA) Replace Options menu with debug menu
+04149E70 38600019

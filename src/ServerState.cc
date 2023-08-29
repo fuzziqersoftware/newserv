@@ -384,9 +384,8 @@ void ServerState::set_port_configuration(
   }
 }
 
-void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
+void ServerState::create_menus(const JSON& json) {
   config_log.info("Creating menus");
-  const auto& d = config_json->as_dict();
 
   shared_ptr<Menu> information_menu_v2(new Menu(MenuID::INFORMATION, u"Information"));
   shared_ptr<Menu> information_menu_v3(new Menu(MenuID::INFORMATION, u"Information"));
@@ -398,13 +397,12 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       u"Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
   {
     uint32_t item_id = 0;
-    for (const auto& item : d.at("InformationMenuContents")->as_list()) {
-      auto& v = item->as_list();
-      information_menu_v2->items.emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-          decode_sjis(v.at(1)->as_string()), 0);
-      information_menu_v3->items.emplace_back(item_id, decode_sjis(v.at(0)->as_string()),
-          decode_sjis(v.at(1)->as_string()), MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
-      information_contents->emplace_back(decode_sjis(v.at(2)->as_string()));
+    for (const auto& item : json.at("InformationMenuContents").as_list()) {
+      u16string name = decode_sjis(item.at(0));
+      u16string short_desc = decode_sjis(item.at(1));
+      information_menu_v2->items.emplace_back(item_id, name, short_desc, 0);
+      information_menu_v3->items.emplace_back(item_id, name, short_desc, MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+      information_contents->emplace_back(decode_sjis(item.at(2)));
       item_id++;
     }
   }
@@ -417,8 +415,8 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
     ret_pds.clear();
 
     try {
-      map<string, shared_ptr<JSONObject>> sorted_jsons;
-      for (const auto& it : d.at(key)->as_dict()) {
+      map<string, const JSON&> sorted_jsons;
+      for (const auto& it : json.at(key).as_dict()) {
         sorted_jsons.emplace(it.first, it.second);
       }
 
@@ -429,10 +427,9 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
 
       uint32_t item_id = 0;
       for (const auto& item : sorted_jsons) {
-        const string& netloc_str = item.second->as_string();
+        const string& netloc_str = item.second;
         const string& description = "$C7Remote server:\n$C6" + netloc_str;
-        ret->items.emplace_back(item_id, decode_sjis(item.first),
-            decode_sjis(description), 0);
+        ret->items.emplace_back(item_id, decode_sjis(item.first), decode_sjis(description), 0);
         ret_pds.emplace_back(parse_netloc(netloc_str));
         item_id++;
       }
@@ -451,7 +448,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
       this->proxy_destinations_xb, "ProxyDestinations-XB");
 
   try {
-    const string& netloc_str = d.at("ProxyDestination-Patch")->as_string();
+    const string& netloc_str = json.at("ProxyDestination-Patch");
     this->proxy_destination_patch = parse_netloc(netloc_str);
     config_log.info("Patch server proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
@@ -464,7 +461,7 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
     this->proxy_destination_patch.second = 0;
   }
   try {
-    const string& netloc_str = d.at("ProxyDestination-BB")->as_string();
+    const string& netloc_str = json.at("ProxyDestination-BB");
     this->proxy_destination_bb = parse_netloc(netloc_str);
     config_log.info("BB proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
@@ -477,18 +474,9 @@ void ServerState::create_menus(shared_ptr<const JSONObject> config_json) {
     this->proxy_destination_bb.second = 0;
   }
 
-  try {
-    this->welcome_message = decode_sjis(d.at("WelcomeMessage")->as_string());
-  } catch (const out_of_range&) {
-  }
-  try {
-    this->pc_patch_server_message = decode_sjis(d.at("PCPatchServerMessage")->as_string());
-  } catch (const out_of_range&) {
-  }
-  try {
-    this->bb_patch_server_message = decode_sjis(d.at("BBPatchServerMessage")->as_string());
-  } catch (const out_of_range&) {
-  }
+  this->welcome_message = decode_sjis(json.get("WelcomeMessage", ""));
+  this->pc_patch_server_message = decode_sjis(json.get("PCPatchServerMessage", ""));
+  this->bb_patch_server_message = decode_sjis(json.get("BBPatchServerMessage", ""));
 }
 
 shared_ptr<const string> ServerState::load_bb_file(
@@ -558,33 +546,31 @@ void ServerState::collect_network_addresses() {
   }
 }
 
-shared_ptr<JSONObject> ServerState::load_config() const {
+JSON ServerState::load_config() const {
   config_log.info("Loading configuration");
-  return JSONObject::parse(load_file(this->config_filename));
+  return JSON::parse(load_file(this->config_filename));
 }
 
-static vector<PortConfiguration> parse_port_configuration(
-    shared_ptr<const JSONObject> json) {
+static vector<PortConfiguration> parse_port_configuration(const JSON& json) {
   vector<PortConfiguration> ret;
-  for (const auto& item_json_it : json->as_dict()) {
-    auto item_list = item_json_it.second->as_list();
+  for (const auto& item_json_it : json.as_dict()) {
+    auto item_list = item_json_it.second.as_list();
     PortConfiguration& pc = ret.emplace_back();
     pc.name = item_json_it.first;
-    pc.port = item_list[0]->as_int();
-    pc.version = version_for_name(item_list[1]->as_string().c_str());
-    pc.behavior = server_behavior_for_name(item_list[2]->as_string().c_str());
+    pc.port = item_list[0];
+    pc.version = version_for_name(item_list[1].as_string().c_str());
+    pc.behavior = server_behavior_for_name(item_list[2].as_string().c_str());
   }
   return ret;
 }
 
-void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
+void ServerState::parse_config(const JSON& json) {
   config_log.info("Parsing configuration");
-  const auto& d = config_json->as_dict();
 
-  this->name = decode_sjis(d.at("ServerName")->as_string());
+  this->name = decode_sjis(json.at("ServerName").as_string());
 
   try {
-    this->username = d.at("User")->as_string();
+    this->username = json.at("User").as_string();
     if (this->username == "$SUDO_USER") {
       const char* user_from_env = getenv("SUDO_USER");
       if (!user_from_env) {
@@ -595,9 +581,9 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
   } catch (const out_of_range&) {
   }
 
-  this->set_port_configuration(parse_port_configuration(d.at("PortConfiguration")));
+  this->set_port_configuration(parse_port_configuration(json.at("PortConfiguration")));
 
-  auto local_address_str = d.at("LocalAddress")->as_string();
+  auto local_address_str = json.at("LocalAddress").as_string();
   try {
     this->local_address = this->all_addresses.at(local_address_str);
     string addr_str = string_for_address(this->local_address);
@@ -609,7 +595,7 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
   }
   this->all_addresses.emplace("<local>", this->local_address);
 
-  auto external_address_str = d.at("ExternalAddress")->as_string();
+  auto external_address_str = json.at("ExternalAddress").as_string();
   try {
     this->external_address = this->all_addresses.at(external_address_str);
     string addr_str = string_for_address(this->external_address);
@@ -621,83 +607,33 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
   }
   this->all_addresses.emplace("<external>", this->external_address);
 
-  try {
-    this->dns_server_port = d.at("DNSServerPort")->as_int();
-  } catch (const out_of_range&) {
-    this->dns_server_port = 0;
-  }
+  this->dns_server_port = json.get("DNSServerPort", this->dns_server_port);
 
   try {
-    for (const auto& item : d.at("IPStackListen")->as_list()) {
-      this->ip_stack_addresses.emplace_back(item->as_string());
+    for (const auto& item : json.at("IPStackListen").as_list()) {
+      this->ip_stack_addresses.emplace_back(item.as_string());
     }
   } catch (const out_of_range&) {
   }
-  try {
-    this->ip_stack_debug = d.at("IPStackDebug")->as_bool();
-  } catch (const out_of_range&) {
-  }
+  this->ip_stack_debug = json.get("IPStackDebug", this->ip_stack_debug);
+  this->allow_unregistered_users = json.get("AllowUnregisteredUsers", this->allow_unregistered_users);
+  this->item_tracking_enabled = json.get("EnableItemTracking", this->item_tracking_enabled);
+  this->drops_enabled = json.get("EnableDrops", this->drops_enabled);
+  this->episode_3_send_function_call_enabled = json.get("EnableEpisode3SendFunctionCall", this->episode_3_send_function_call_enabled);
+  this->catch_handler_exceptions = json.get("CatchHandlerExceptions", this->catch_handler_exceptions);
+  this->proxy_allow_save_files = json.get("ProxyAllowSaveFiles", this->proxy_allow_save_files);
+  this->proxy_enable_login_options = json.get("ProxyEnableLoginOptions", this->proxy_enable_login_options);
+  this->ep3_behavior_flags = json.get("Episode3BehaviorFlags", this->ep3_behavior_flags);
+  this->ep3_card_auction_points = json.get("CardAuctionPoints", this->ep3_card_auction_points);
 
   try {
-    this->allow_unregistered_users = d.at("AllowUnregisteredUsers")->as_bool();
-  } catch (const out_of_range&) {
-    this->allow_unregistered_users = true;
-  }
-
-  try {
-    this->item_tracking_enabled = d.at("EnableItemTracking")->as_bool();
-  } catch (const out_of_range&) {
-    this->item_tracking_enabled = true;
-  }
-
-  try {
-    this->drops_enabled = d.at("EnableDrops")->as_bool();
-  } catch (const out_of_range&) {
-    this->drops_enabled = true;
-  }
-
-  try {
-    this->episode_3_send_function_call_enabled = d.at("EnableEpisode3SendFunctionCall")->as_bool();
-  } catch (const out_of_range&) {
-    this->episode_3_send_function_call_enabled = false;
-  }
-
-  try {
-    this->catch_handler_exceptions = d.at("CatchHandlerExceptions")->as_bool();
-  } catch (const out_of_range&) {
-    this->catch_handler_exceptions = true;
-  }
-
-  try {
-    this->proxy_allow_save_files = d.at("ProxyAllowSaveFiles")->as_bool();
-  } catch (const out_of_range&) {
-    this->proxy_allow_save_files = true;
-  }
-  try {
-    this->proxy_enable_login_options = d.at("ProxyEnableLoginOptions")->as_bool();
-  } catch (const out_of_range&) {
-    this->proxy_enable_login_options = false;
-  }
-
-  try {
-    this->ep3_behavior_flags = d.at("Episode3BehaviorFlags")->as_int();
-  } catch (const out_of_range&) {
-    this->ep3_behavior_flags = 0;
-  }
-
-  try {
-    this->ep3_card_auction_points = d.at("CardAuctionPoints")->as_int();
-  } catch (const out_of_range&) {
-    this->ep3_card_auction_points = 0;
-  }
-  try {
-    auto i = d.at("CardAuctionSize");
-    if (i->is_int()) {
-      this->ep3_card_auction_min_size = i->as_int();
+    const auto& i = json.at("CardAuctionSize");
+    if (i.is_int()) {
+      this->ep3_card_auction_min_size = i;
       this->ep3_card_auction_max_size = this->ep3_card_auction_min_size;
     } else {
-      this->ep3_card_auction_min_size = i->as_list().at(0)->as_int();
-      this->ep3_card_auction_max_size = i->as_list().at(1)->as_int();
+      this->ep3_card_auction_min_size = i.at(0);
+      this->ep3_card_auction_max_size = i.at(1);
     }
   } catch (const out_of_range&) {
     this->ep3_card_auction_min_size = 0;
@@ -705,22 +641,15 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
   }
 
   try {
-    for (const auto& it : d.at("CardAuctionPool")->as_dict()) {
+    for (const auto& it : json.at("CardAuctionPool").as_dict()) {
       const auto& card_name = it.first;
-      const auto& card_cfg_json = it.second->as_list();
-      this->ep3_card_auction_pool.emplace(card_name, make_pair(card_cfg_json.at(0)->as_int(), card_cfg_json.at(1)->as_int()));
+      const auto& card_cfg_json = it.second.as_list();
+      this->ep3_card_auction_pool.emplace(card_name, make_pair(card_cfg_json.at(0), card_cfg_json.at(1)));
     }
   } catch (const out_of_range&) {
   }
 
-  shared_ptr<JSONObject> log_levels_json;
-  try {
-    log_levels_json = d.at("LogLevels");
-  } catch (const out_of_range&) {
-  }
-  if (log_levels_json.get()) {
-    set_log_levels_from_json(log_levels_json);
-  }
+  set_log_levels_from_json(json.get("LogLevels", JSON::dict_type()));
 
   for (const string& filename : list_directory("system/blueburst/keys")) {
     if (!ends_with(filename, ".nsk")) {
@@ -733,13 +662,14 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
   config_log.info("%zu Blue Burst key file(s) loaded", this->bb_private_keys.size());
 
   try {
-    bool run_shell = d.at("RunInteractiveShell")->as_bool();
-    this->run_shell_behavior = run_shell ? ServerState::RunShellBehavior::ALWAYS : ServerState::RunShellBehavior::NEVER;
+    this->run_shell_behavior = json.at("RunInteractiveShell").as_bool()
+        ? ServerState::RunShellBehavior::ALWAYS
+        : ServerState::RunShellBehavior::NEVER;
   } catch (const out_of_range&) {
   }
 
   try {
-    const string& behavior = d.at("CheatModeBehavior")->as_string();
+    const string& behavior = json.at("CheatModeBehavior").as_string();
     if (behavior == "Off") {
       this->cheat_mode_behavior = CheatModeBehavior::OFF;
     } else if (behavior == "OffByDefault") {
@@ -753,8 +683,8 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
   }
 
   try {
-    auto v = d.at("LobbyEvent");
-    uint8_t event = v->is_int() ? v->as_int() : event_for_name(v->as_string());
+    auto v = json.at("LobbyEvent");
+    uint8_t event = v.is_int() ? v.as_int() : event_for_name(v.as_string());
     this->pre_lobby_event = event;
     for (const auto& l : this->all_lobbies()) {
       l->event = event;
@@ -762,13 +692,10 @@ void ServerState::parse_config(shared_ptr<const JSONObject> config_json) {
   } catch (const out_of_range&) {
   }
 
-  try {
-    this->ep3_menu_song = d.at("Episode3MenuSong")->as_int();
-  } catch (const out_of_range&) {
-  }
+  this->ep3_menu_song = json.get("Episode3MenuSong", this->ep3_menu_song);
 
   try {
-    this->quest_category_index.reset(new QuestCategoryIndex(d.at("QuestCategories")));
+    this->quest_category_index.reset(new QuestCategoryIndex(json.at("QuestCategories")));
   } catch (const exception& e) {
     throw runtime_error(string_printf(
         "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
@@ -825,7 +752,7 @@ void ServerState::load_level_table() {
 void ServerState::load_item_tables() {
   try {
     config_log.info("Loading JSON rare item table");
-    auto json = JSONObject::parse(load_file("system/blueburst/rare-table.json"));
+    auto json = JSON::parse(load_file("system/blueburst/rare-table.json"));
     this->rare_item_set.reset(new JSONRareItemSet(json));
   } catch (const exception& e) {
     config_log.info("Failed to load JSON rare item table: %s", e.what());
@@ -900,6 +827,9 @@ void ServerState::load_ep3_data() {
     this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
         this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename, true));
   }
+
+  config_log.info("Resolving Episode 3 card auction pool");
+  TODO;
 }
 
 void ServerState::load_quest_index() {

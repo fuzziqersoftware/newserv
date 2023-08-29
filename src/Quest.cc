@@ -21,14 +21,13 @@
 
 using namespace std;
 
-QuestCategoryIndex::Category::Category(uint32_t category_id, std::shared_ptr<const JSONObject> json)
+QuestCategoryIndex::Category::Category(uint32_t category_id, const JSON& json)
     : category_id(category_id) {
-  const auto& l = json->as_list();
-  this->flags = l.at(0)->as_int();
-  this->type = l.at(1)->as_string().at(0);
-  this->short_token = l.at(2)->as_string();
-  this->name = decode_sjis(l.at(3)->as_string());
-  this->description = decode_sjis(l.at(4)->as_string());
+  this->flags = json.at(0);
+  this->type = json.at(1).as_string().at(0);
+  this->short_token = json.at(2).as_string();
+  this->name = decode_sjis(json.at(3));
+  this->description = decode_sjis(json.at(4));
 }
 
 bool QuestCategoryIndex::Category::matches_flags(uint8_t request) const {
@@ -40,9 +39,9 @@ bool QuestCategoryIndex::Category::matches_flags(uint8_t request) const {
   return request & this->flags;
 }
 
-QuestCategoryIndex::QuestCategoryIndex(std::shared_ptr<const JSONObject> json) {
+QuestCategoryIndex::QuestCategoryIndex(const JSON& json) {
   uint32_t next_category_id = 1;
-  for (const auto& it : json->as_list()) {
+  for (const auto& it : json.as_list()) {
     this->categories.emplace_back(next_category_id++, it);
   }
 }

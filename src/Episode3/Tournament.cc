@@ -313,7 +313,7 @@ Tournament::Tournament(
     shared_ptr<const MapIndex> map_index,
     shared_ptr<const COMDeckIndex> com_deck_index,
     uint8_t number,
-    std::shared_ptr<const JSONObject> json)
+    const JSON& json)
     : log(string_printf("[Tournament/%02hhX] ", number)),
       map_index(map_index),
       com_deck_index(com_deck_index),
@@ -326,35 +326,32 @@ void Tournament::init() {
 
   bool is_registration_complete;
   if (this->source_json) {
-    auto& dict = this->source_json->as_dict();
-    this->name = dict.at("name")->as_string();
-    this->map = this->map_index->definition_for_number(dict.at("map_number")->as_int());
-    this->rules = Rules(dict.at("rules"));
-    this->is_2v2 = dict.at("is_2v2")->as_bool();
-    is_registration_complete = dict.at("is_registration_complete")->as_bool();
+    this->name = this->source_json.at("name").as_string();
+    this->map = this->map_index->definition_for_number(this->source_json.at("map_number"));
+    this->rules = Rules(this->source_json.at("rules"));
+    this->is_2v2 = this->source_json.at("is_2v2");
+    is_registration_complete = this->source_json.at("is_registration_complete");
 
-    for (const auto& team_json : dict.at("teams")->as_list()) {
-      auto& team_dict = team_json->as_dict();
+    for (const auto& team_json : this->source_json.at("teams").as_list()) {
       auto& team = this->teams.emplace_back(new Team(
           this->shared_from_this(),
           this->teams.size(),
-          team_dict.at("max_players")->as_int()));
-      team->name = team_dict.at("name")->as_string();
-      team->password = team_dict.at("password")->as_string();
-      team_index_to_rounds_cleared.emplace_back(team_dict.at("num_rounds_cleared")->as_int());
-      for (const auto& player_json : team_dict.at("player_specs")->as_list()) {
-        if (player_json->is_int()) {
-          uint32_t serial_number = player_json->as_int();
-          team->players.emplace_back(serial_number);
-          this->all_player_serial_numbers.emplace(serial_number);
+          team_json.at("max_players")));
+      team->name = team_json.at("name").as_string();
+      team->password = team_json.at("password").as_string();
+      team_index_to_rounds_cleared.emplace_back(team_json.at("num_rounds_cleared"));
+      for (const auto& player_json : team_json.at("player_specs").as_list()) {
+        if (player_json.is_int()) {
+          team->players.emplace_back(player_json);
+          this->all_player_serial_numbers.emplace(player_json);
         } else {
-          team->players.emplace_back(this->com_deck_index->deck_for_name(player_json->as_string()));
+          team->players.emplace_back(this->com_deck_index->deck_for_name(player_json));
         }
       }
     }
     this->num_teams = this->teams.size();
 
-    this->source_json.reset();
+    this->source_json = nullptr;
 
   } else {
     // Create empty teams
@@ -459,34 +456,33 @@ void Tournament::init() {
   }
 }
 
-std::shared_ptr<JSONObject> Tournament::json() const {
-  unordered_map<string, shared_ptr<JSONObject>> dict;
-  dict.emplace("name", make_json_str(this->name));
-  dict.emplace("map_number", make_json_int(this->map->map.map_number));
-  dict.emplace("rules", this->rules.json());
-  dict.emplace("is_2v2", make_json_bool(this->is_2v2));
-  dict.emplace("is_registration_complete", make_json_bool(this->current_state != State::REGISTRATION));
-
-  vector<shared_ptr<JSONObject>> teams_list;
+JSON Tournament::json() const {
+  auto teams_list = JSON::list();
   for (auto team : this->teams) {
-    unordered_map<string, shared_ptr<JSONObject>> team_dict;
-    team_dict.emplace("max_players", make_json_int(team->max_players));
-    vector<shared_ptr<JSONObject>> player_jsons_list;
+    auto players_list = JSON::list();
     for (const auto& player : team->players) {
       if (player.is_human()) {
-        player_jsons_list.emplace_back(make_json_int(player.serial_number));
+        players_list.emplace_back(player.serial_number);
       } else {
-        player_jsons_list.emplace_back(make_json_str(player.com_deck->deck_name));
+        players_list.emplace_back(player.com_deck->deck_name);
       }
     }
-    team_dict.emplace("player_specs", make_json_list(std::move(player_jsons_list)));
-    team_dict.emplace("name", make_json_str(team->name));
-    team_dict.emplace("password", make_json_str(team->password));
-    team_dict.emplace("num_rounds_cleared", make_json_int(team->num_rounds_cleared));
-    teams_list.emplace_back(new JSONObject(std::move(team_dict)));
+    teams_list.emplace_back(JSON::dict({
+        {"max_players", team->max_players},
+        {"player_specs", std::move(players_list)},
+        {"name", team->name},
+        {"password", team->password},
+        {"num_rounds_cleared", team->num_rounds_cleared},
+    }));
   }
-  dict.emplace("teams", make_json_list(std::move(teams_list)));
-  return shared_ptr<JSONObject>(new JSONObject(std::move(dict)));
+  return JSON::dict({
+      {"name", this->name},
+      {"map_number", this->map->map.map_number.load()},
+      {"rules", this->rules.json()},
+      {"is_2v2", this->is_2v2},
+      {"is_registration_complete", (this->current_state != State::REGISTRATION)},
+      {"teams", std::move(teams_list)},
+  });
 }
 
 uint8_t Tournament::get_number() const {
@@ -664,15 +660,13 @@ TournamentIndex::TournamentIndex(
     return;
   }
 
-  auto json = JSONObject::parse(load_file(this->state_filename));
-
-  auto& list = json->as_list();
-  if (list.size() != 0x20) {
+  auto json = JSON::parse(load_file(this->state_filename));
+  if (json.size() != 0x20) {
     throw runtime_error("tournament JSON list length is incorrect");
   }
   for (size_t z = 0; z < 0x20; z++) {
-    if (!list.at(z)->is_null()) {
-      this->tournaments[z].reset(new Tournament(this->map_index, this->com_deck_index, z, list[z]));
+    if (!json.at(z).is_null()) {
+      this->tournaments[z].reset(new Tournament(this->map_index, this->com_deck_index, z, json.at(z)));
       this->tournaments[z]->init();
     }
   }
@@ -683,16 +677,15 @@ void TournamentIndex::save() const {
     return;
   }
 
-  vector<shared_ptr<JSONObject>> list;
+  auto list = JSON::list();
   for (size_t z = 0; z < 0x20; z++) {
     if (this->tournaments[z]) {
       list.emplace_back(this->tournaments[z]->json());
     } else {
-      list.emplace_back(make_json_null());
+      list.emplace_back(nullptr);
     }
   }
-  auto json = make_json_list(std::move(list));
-  save_file(this->state_filename, json->serialize(JSONObject::SerializeOption::FORMAT));
+  save_file(this->state_filename, list.serialize(JSON::SerializeOption::FORMAT));
 }
 
 vector<shared_ptr<Tournament>> TournamentIndex::all_tournaments() const {

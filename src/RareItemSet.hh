@@ -92,7 +92,7 @@ private:
 
 class JSONRareItemSet : public RareItemSet {
 public:
-  JSONRareItemSet(std::shared_ptr<const JSONObject> json);
+  explicit JSONRareItemSet(const JSON& json);
   virtual ~JSONRareItemSet() = default;
 
   virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;

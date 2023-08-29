@@ -21,26 +21,16 @@ PrefixedLogger replay_log("[ReplaySession] ", LogLevel::USE_DEFAULT);
 PrefixedLogger server_log("[Server] ", LogLevel::USE_DEFAULT);
 PrefixedLogger static_game_data_log("[StaticGameData] ", LogLevel::USE_DEFAULT);
 
-static LogLevel log_level_for_name(const string& name) {
-  static const unordered_map<string, LogLevel> levels({
-      {"debug", LogLevel::DEBUG},
-      {"info", LogLevel::INFO},
-      {"warning", LogLevel::WARNING},
-      {"error", LogLevel::ERROR},
-      {"disabled", LogLevel::DISABLED},
-  });
-  return levels.at(tolower(name));
-}
-
 static void set_log_level_from_json(
-    PrefixedLogger& log, shared_ptr<JSONObject> d, const char* json_key) {
+    PrefixedLogger& log, const JSON& d, const char* json_key) {
   try {
-    log.min_level = log_level_for_name(d->at(json_key)->as_string());
-  } catch (const JSONObject::key_error&) {
+    string name = toupper(d.at(json_key).as_string());
+    log.min_level = enum_for_name<LogLevel>(name.c_str());
+  } catch (const out_of_range&) {
   }
 }
 
-void set_log_levels_from_json(shared_ptr<JSONObject> json) {
+void set_log_levels_from_json(const JSON& json) {
   set_log_level_from_json(ax_messages_log, json, "AXMessages");
   set_log_level_from_json(channel_exceptions_log, json, "ChannelExceptions");
   set_log_level_from_json(client_log, json, "Clients");

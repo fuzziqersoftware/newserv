@@ -20,4 +20,4 @@ extern PrefixedLogger replay_log;
 extern PrefixedLogger server_log;
 extern PrefixedLogger static_game_data_log;
 
-void set_log_levels_from_json(std::shared_ptr<JSONObject> json);
+void set_log_levels_from_json(const JSON& json);

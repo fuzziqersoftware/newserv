@@ -33,20 +33,20 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
     : root_dir(root_dir) {
 
   string metadata_cache_filename = root_dir + "/.metadata-cache.json";
-  shared_ptr<JSONObject> metadata_cache_json;
+  JSON metadata_cache_json;
   try {
     string metadata_text = load_file(metadata_cache_filename);
-    metadata_cache_json = JSONObject::parse(metadata_text);
+    metadata_cache_json = JSON::parse(metadata_text);
     patch_index_log.info("Loaded patch metadata cache from %s", metadata_cache_filename.c_str());
   } catch (const exception& e) {
-    metadata_cache_json = make_json_dict({});
+    metadata_cache_json = JSON::dict();
     patch_index_log.warning("Cannot load patch metadata cache from %s: %s", metadata_cache_filename.c_str(), e.what());
   }
 
   // Assuming it's rare for patch files to change, we skip writing the metadata
   // cache if no files were changed at all (which should usually be the case)
   bool should_write_metadata_cache = false;
-  shared_ptr<JSONObject> new_metadata_cache_json = make_json_dict({});
+  JSON new_metadata_cache_json = JSON::dict();
 
   vector<string> path_directories;
   function<void(const string&)> collect_dir = [&](const string& dir) -> void {
@@ -75,12 +75,12 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
         f->name = item;
 
         string compute_crc32s_message; // If not empty, should compute crc32s
-        shared_ptr<JSONObject> cache_item_json;
+        JSON cache_item_json;
         try {
-          cache_item_json = metadata_cache_json->at(relative_item_path);
-          auto cache_item = metadata_cache_json->at(relative_item_path)->as_list();
-          uint64_t cached_size = cache_item.at(0)->as_int();
-          uint64_t cached_mtime = cache_item.at(1)->as_int();
+          cache_item_json = metadata_cache_json.at(relative_item_path);
+          auto cache_item = metadata_cache_json.at(relative_item_path).as_list();
+          uint64_t cached_size = cache_item.at(0);
+          uint64_t cached_mtime = cache_item.at(1);
           if (static_cast<uint64_t>(st.st_mtime) != cached_mtime) {
             throw runtime_error("file has been modified");
           }
@@ -88,9 +88,9 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
             throw runtime_error("file size has changed");
           }
           f->size = cached_size;
-          f->crc32 = cache_item.at(2)->as_int();
-          for (const auto& chunk_crc32_json : cache_item.at(3)->as_list()) {
-            f->chunk_crcs.emplace_back(chunk_crc32_json->as_int());
+          f->crc32 = cache_item.at(2);
+          for (const auto& chunk_crc32_json : cache_item.at(3).as_list()) {
+            f->chunk_crcs.emplace_back(chunk_crc32_json.as_int());
           }
 
         } catch (const exception& e) {
@@ -106,25 +106,19 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
           }
 
           // File was modified or cache item was missing; make a new cache item
-          vector<shared_ptr<JSONObject>> chunk_crcs_item;
+          vector<JSON> chunk_crcs_item;
           for (uint32_t chunk_crc : f->chunk_crcs) {
-            chunk_crcs_item.emplace_back(make_json_int(chunk_crc));
+            chunk_crcs_item.emplace_back(chunk_crc);
           }
-          vector<shared_ptr<JSONObject>> new_cache_item({
-              make_json_int(f->size),
-              make_json_int(st.st_mtime),
-              make_json_int(f->crc32),
-              make_json_list(std::move(chunk_crcs_item)),
-          });
-          new_metadata_cache_json->as_dict().emplace(
-              relative_item_path, make_json_list(std::move(new_cache_item)));
+          new_metadata_cache_json.as_dict().emplace(
+              relative_item_path, JSON::list({f->size, st.st_mtime, f->crc32, std::move(chunk_crcs_item)}));
           should_write_metadata_cache = true;
 
         } else {
           // File was not modified and cache item was valid; just use the
           // existing cache item
-          new_metadata_cache_json->as_dict().emplace(
-              relative_item_path, cache_item_json);
+          new_metadata_cache_json.as_dict().emplace(
+              relative_item_path, std::move(cache_item_json));
         }
 
         this->files_by_patch_order.emplace_back(f);
@@ -148,7 +142,7 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
 
   if (should_write_metadata_cache) {
     try {
-      save_file(metadata_cache_filename, new_metadata_cache_json->serialize());
+      save_file(metadata_cache_filename, new_metadata_cache_json.serialize());
       patch_index_log.info("Saved patch metadata cache to %s", metadata_cache_filename.c_str());
     } catch (const exception& e) {
       patch_index_log.warning("Cannot save patch metadata cache to %s: %s", metadata_cache_filename.c_str(), e.what());

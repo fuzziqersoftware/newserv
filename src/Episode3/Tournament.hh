@@ -104,11 +104,11 @@ public:
       std::shared_ptr<const MapIndex> map_index,
       std::shared_ptr<const COMDeckIndex> com_deck_index,
       uint8_t number,
-      std::shared_ptr<const JSONObject> json);
+      const JSON& json);
   ~Tournament() = default;
   void init();
 
-  std::shared_ptr<JSONObject> json() const;
+  JSON json() const;
 
   uint8_t get_number() const;
   const std::string& get_name() const;
@@ -134,7 +134,7 @@ private:
 
   std::shared_ptr<const MapIndex> map_index;
   std::shared_ptr<const COMDeckIndex> com_deck_index;
-  std::shared_ptr<const JSONObject> source_json;
+  JSON source_json;
   uint8_t number;
   std::string name;
   std::shared_ptr<const MapIndex::MapEntry> map;

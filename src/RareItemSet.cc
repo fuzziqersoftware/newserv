@@ -170,27 +170,27 @@ const RELRareItemSet::Table& RELRareItemSet::get_table(
   return tables[(ep_index * 10 * 4) + (difficulty * 10) + secid];
 }
 
-JSONRareItemSet::JSONRareItemSet(std::shared_ptr<const JSONObject> json) {
-  for (const auto& mode_it : json->as_dict()) {
+JSONRareItemSet::JSONRareItemSet(const JSON& json) {
+  for (const auto& mode_it : json.as_dict()) {
     static const unordered_map<string, GameMode> mode_keys(
         {{"Normal", GameMode::NORMAL}, {"Battle", GameMode::BATTLE}, {"Challenge", GameMode::CHALLENGE}, {"Solo", GameMode::SOLO}});
     GameMode mode = mode_keys.at(mode_it.first);
 
-    for (const auto& episode_it : mode_it.second->as_dict()) {
+    for (const auto& episode_it : mode_it.second.as_dict()) {
       static const unordered_map<string, Episode> episode_keys(
           {{"Episode1", Episode::EP1}, {"Episode2", Episode::EP2}, {"Episode4", Episode::EP4}});
       Episode episode = episode_keys.at(episode_it.first);
 
-      for (const auto& difficulty_it : episode_it.second->as_dict()) {
+      for (const auto& difficulty_it : episode_it.second.as_dict()) {
         static const unordered_map<string, uint8_t> difficulty_keys(
             {{"Normal", 0}, {"Hard", 1}, {"VeryHard", 2}, {"Ultimate", 3}});
         uint8_t difficulty = difficulty_keys.at(difficulty_it.first);
 
-        for (const auto& section_id_it : difficulty_it.second->as_dict()) {
+        for (const auto& section_id_it : difficulty_it.second.as_dict()) {
           uint8_t section_id = section_id_for_name(section_id_it.first);
 
           auto& collection = this->collections[this->key_for_params(mode, episode, difficulty, section_id)];
-          for (const auto& item_it : section_id_it.second->as_dict()) {
+          for (const auto& item_it : section_id_it.second.as_dict()) {
             vector<ExpandedDrop>* target;
             if (starts_with(item_it.first, "Box-")) {
               uint8_t area = area_for_name(item_it.first.substr(4));
@@ -206,15 +206,15 @@ JSONRareItemSet::JSONRareItemSet(std::shared_ptr<const JSONObject> json) {
               target = &collection.rt_index_to_specs[index];
             }
 
-            for (const auto& spec_json : item_it.second->as_list()) {
-              auto& spec_list = spec_json->as_list();
+            for (const auto& spec_json : item_it.second.as_list()) {
+              auto& spec_list = spec_json.as_list();
               auto& d = target->emplace_back();
 
               auto prob_desc = spec_list.at(0);
-              if (prob_desc->is_int()) {
-                d.probability = spec_list.at(0)->as_int();
-              } else if (prob_desc->is_string()) {
-                auto tokens = split(prob_desc->as_string(), '/');
+              if (prob_desc.is_int()) {
+                d.probability = prob_desc;
+              } else if (prob_desc.is_string()) {
+                auto tokens = split(prob_desc, '/');
                 if (tokens.size() != 2) {
                   throw runtime_error("invalid probability specification");
                 }
@@ -228,13 +228,13 @@ JSONRareItemSet::JSONRareItemSet(std::shared_ptr<const JSONObject> json) {
               }
 
               auto item_desc = spec_list.at(1);
-              if (item_desc->is_int()) {
-                uint32_t item_code = spec_list.at(1)->as_int();
+              if (item_desc.is_int()) {
+                uint32_t item_code = item_desc;
                 d.item_code[0] = (item_code >> 16) & 0xFF;
                 d.item_code[1] = (item_code >> 8) & 0xFF;
                 d.item_code[2] = item_code & 0xFF;
-              } else if (item_desc->is_string()) {
-                ItemData data(item_desc->as_string());
+              } else if (item_desc.is_string()) {
+                ItemData data(item_desc.as_string());
                 d.item_code[0] = data.data1[0];
                 d.item_code[1] = data.data1[1];
                 d.item_code[2] = data.data1[2];

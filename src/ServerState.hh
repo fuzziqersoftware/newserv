@@ -169,9 +169,9 @@ struct ServerState {
       const std::string& gsl_filename = "",
       const std::string& bb_directory_filename = "") const;
 
-  std::shared_ptr<JSONObject> load_config() const;
+  JSON load_config() const;
   void collect_network_addresses();
-  void parse_config(std::shared_ptr<const JSONObject> config_json);
+  void parse_config(const JSON& config_json);
   void load_licenses();
   void load_patch_indexes();
   void load_battle_params();
@@ -181,5 +181,5 @@ struct ServerState {
   void load_quest_index();
   void compile_functions();
   void load_dol_files();
-  void create_menus(std::shared_ptr<const JSONObject> config_json);
+  void create_menus(const JSON& config_json);
 };
