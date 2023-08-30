@@ -123,7 +123,7 @@ After building newserv or downloading a release, do this to set it up and use it
 1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
 2. If you plan to play PSO Blue Burst on newserv, set up the patch directory. See the "Client patch directories" section below.
 3. Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
-4. Use the interactive shell to add a license. Run `help` in the shell to see how to do this.
+4. If you set AllowUnregisteredUsers to false in config.json, use the interactive shell to add your license. Run `help` in the shell to see how to do this.
 5. Set your client's network settings appropriately and start an online game. See the "Connecting local clients" or "Connecting remote clients" section to see how to get your game client to connect.
 
 To use newserv in other ways (e.g. for translating data), see the end of this document.
