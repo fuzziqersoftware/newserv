@@ -1089,39 +1089,37 @@ Rules::Rules() {
 
 Rules::Rules(const JSON& json) {
   this->clear();
-
-  auto dict = json.as_dict();
-  this->overall_time_limit = json.get("overall_time_limit", this->overall_time_limit);
-  this->phase_time_limit = json.get("phase_time_limit", this->phase_time_limit);
+  this->overall_time_limit = json.get_int("overall_time_limit", this->overall_time_limit);
+  this->phase_time_limit = json.get_int("phase_time_limit", this->phase_time_limit);
   this->allowed_cards = json.get_enum("allowed_cards", this->allowed_cards);
-  this->min_dice = json.get("min_dice", this->min_dice);
-  this->max_dice = json.get("max_dice", this->max_dice);
-  this->disable_deck_shuffle = json.get("disable_deck_shuffle", this->disable_deck_shuffle);
-  this->disable_deck_loop = json.get("disable_deck_loop", this->disable_deck_loop);
-  this->char_hp = json.get("char_hp", this->char_hp);
+  this->min_dice = json.get_int("min_dice", this->min_dice);
+  this->max_dice = json.get_int("max_dice", this->max_dice);
+  this->disable_deck_shuffle = json.get_bool("disable_deck_shuffle", this->disable_deck_shuffle);
+  this->disable_deck_loop = json.get_bool("disable_deck_loop", this->disable_deck_loop);
+  this->char_hp = json.get_int("char_hp", this->char_hp);
   this->hp_type = json.get_enum("hp_type", this->hp_type);
-  this->no_assist_cards = json.get("no_assist_cards", this->no_assist_cards);
-  this->disable_dialogue = json.get("disable_dialogue", this->disable_dialogue);
+  this->no_assist_cards = json.get_bool("no_assist_cards", this->no_assist_cards);
+  this->disable_dialogue = json.get_bool("disable_dialogue", this->disable_dialogue);
   this->dice_exchange_mode = json.get_enum("dice_exchange_mode", this->dice_exchange_mode);
-  this->disable_dice_boost = json.get("disable_dice_boost", this->disable_dice_boost);
+  this->disable_dice_boost = json.get_bool("disable_dice_boost", this->disable_dice_boost);
 }
 
 JSON Rules::json() const {
-  unordered_map<string, JSON> dict;
-  dict.emplace("overall_time_limit", this->overall_time_limit);
-  dict.emplace("phase_time_limit", this->phase_time_limit);
-  dict.emplace("allowed_cards", name_for_enum(this->allowed_cards));
-  dict.emplace("min_dice", this->min_dice);
-  dict.emplace("max_dice", this->max_dice);
-  dict.emplace("disable_deck_shuffle", this->disable_deck_shuffle);
-  dict.emplace("disable_deck_loop", this->disable_deck_loop);
-  dict.emplace("char_hp", this->char_hp);
-  dict.emplace("hp_type", name_for_enum(this->hp_type));
-  dict.emplace("no_assist_cards", this->no_assist_cards);
-  dict.emplace("disable_dialogue", this->disable_dialogue);
-  dict.emplace("dice_exchange_mode", name_for_enum(this->dice_exchange_mode));
-  dict.emplace("disable_dice_boost", this->disable_dice_boost);
-  return JSON(std::move(dict));
+  return JSON::dict({
+      {"overall_time_limit", this->overall_time_limit},
+      {"phase_time_limit", this->phase_time_limit},
+      {"allowed_cards", name_for_enum(this->allowed_cards)},
+      {"min_dice", this->min_dice},
+      {"max_dice", this->max_dice},
+      {"disable_deck_shuffle", this->disable_deck_shuffle},
+      {"disable_deck_loop", this->disable_deck_loop},
+      {"char_hp", this->char_hp},
+      {"hp_type", name_for_enum(this->hp_type)},
+      {"no_assist_cards", this->no_assist_cards},
+      {"disable_dialogue", this->disable_dialogue},
+      {"dice_exchange_mode", name_for_enum(this->dice_exchange_mode)},
+      {"disable_dice_boost", this->disable_dice_boost},
+  });
 }
 
 void Rules::set_defaults() {
@@ -2004,9 +2002,9 @@ COMDeckIndex::COMDeckIndex(const string& filename) {
     for (const auto& def_json : json.as_list()) {
       auto& def = this->decks.emplace_back(new COMDeckDefinition());
       def->index = this->decks.size() - 1;
-      def->player_name = def_json.at(0).as_string();
-      def->deck_name = def_json.at(1).as_string();
-      auto card_ids_json = def_json.at(2);
+      def->player_name = def_json->at(0).as_string();
+      def->deck_name = def_json->at(1).as_string();
+      auto card_ids_json = def_json->at(2);
       for (size_t z = 0; z < 0x1F; z++) {
         def->card_ids[z] = card_ids_json.at(z).as_int();
       }

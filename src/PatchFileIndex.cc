@@ -78,9 +78,8 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
         JSON cache_item_json;
         try {
           cache_item_json = metadata_cache_json.at(relative_item_path);
-          auto cache_item = metadata_cache_json.at(relative_item_path).as_list();
-          uint64_t cached_size = cache_item.at(0);
-          uint64_t cached_mtime = cache_item.at(1);
+          uint64_t cached_size = cache_item_json.get_int(0);
+          uint64_t cached_mtime = cache_item_json.get_int(1);
           if (static_cast<uint64_t>(st.st_mtime) != cached_mtime) {
             throw runtime_error("file has been modified");
           }
@@ -88,9 +87,9 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
             throw runtime_error("file size has changed");
           }
           f->size = cached_size;
-          f->crc32 = cache_item.at(2);
-          for (const auto& chunk_crc32_json : cache_item.at(3).as_list()) {
-            f->chunk_crcs.emplace_back(chunk_crc32_json.as_int());
+          f->crc32 = cache_item_json.get_int(2);
+          for (const auto& chunk_crc32_json : cache_item_json.get_list(3)) {
+            f->chunk_crcs.emplace_back(chunk_crc32_json->as_int());
           }
 
         } catch (const exception& e) {
@@ -106,18 +105,18 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
           }
 
           // File was modified or cache item was missing; make a new cache item
-          vector<JSON> chunk_crcs_item;
+          auto chunk_crcs_item = JSON::list();
           for (uint32_t chunk_crc : f->chunk_crcs) {
             chunk_crcs_item.emplace_back(chunk_crc);
           }
-          new_metadata_cache_json.as_dict().emplace(
+          new_metadata_cache_json.emplace(
               relative_item_path, JSON::list({f->size, st.st_mtime, f->crc32, std::move(chunk_crcs_item)}));
           should_write_metadata_cache = true;
 
         } else {
           // File was not modified and cache item was valid; just use the
           // existing cache item
-          new_metadata_cache_json.as_dict().emplace(
+          new_metadata_cache_json.emplace(
               relative_item_path, std::move(cache_item_json));
         }
 

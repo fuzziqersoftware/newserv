@@ -43,7 +43,7 @@ template <typename T>
 vector<T> parse_int_vector(const JSON& o) {
   vector<T> ret;
   for (const auto& x : o.as_list()) {
-    ret.emplace_back(x.as_int());
+    ret.emplace_back(x->as_int());
   }
   return ret;
 }
@@ -1400,7 +1400,7 @@ int main(int argc, char** argv) {
         return ret;
       };
 
-      JSON::dict_type episodes_dict;
+      auto episodes_dict = JSON::dict();
       static const array<pair<Episode, vector<vector<EnemyType>>>, 3> episodes = {
           make_pair(Episode::EP1, generate_table(Episode::EP1)),
           make_pair(Episode::EP2, generate_table(Episode::EP2)),
@@ -1409,11 +1409,11 @@ int main(int argc, char** argv) {
       for (const auto& episode_it : episodes) {
         Episode episode = episode_it.first;
         const auto& rt_index_to_enemy_type = episode_it.second;
-        JSON::dict_type difficulty_dict;
+        auto difficulty_dict = JSON::dict();
         for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
-          JSON::dict_type section_id_dict;
+          auto section_id_dict = JSON::dict();
           for (uint8_t section_id = 0; section_id < 10; section_id++) {
-            JSON::dict_type collection_dict;
+            auto collection_dict = JSON::dict();
 
             for (size_t rt_index = 0; rt_index < rt_index_to_enemy_type.size(); rt_index++) {
               const auto& enemy_types = rt_index_to_enemy_type[rt_index];
@@ -1428,18 +1428,17 @@ int main(int argc, char** argv) {
                 }
 
                 auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
-                JSON::list_type specs_list;
-                JSON specs_json = {JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), primary_identifier})};
+                auto specs_json = JSON::list({JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), primary_identifier})});
                 for (const auto& enemy_type : enemy_types) {
                   if (enemy_type_valid_for_episode(episode, enemy_type)) {
-                    collection_dict.emplace(name_for_enum(enemy_type), specs_json);
+                    collection_dict.emplace(name_for_enum(enemy_type), std::move(specs_json));
                   }
                 }
               }
             }
 
             for (size_t area = 0; area < 0x12; area++) {
-              JSON::list_type area_list;
+              auto area_list = JSON::list();
 
               for (const auto& spec : rs.get_box_specs(GameMode::NORMAL, episode, difficulty, section_id, area)) {
                 uint32_t primary_identifier = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
@@ -1466,9 +1465,7 @@ int main(int argc, char** argv) {
         episodes_dict.emplace(token_name_for_episode(episode), std::move(difficulty_dict));
       }
 
-      JSON::dict_type root_dict;
-      root_dict.emplace("Normal", std::move(episodes_dict));
-      JSON root_json = std::move(root_dict);
+      auto root_json = JSON::dict({{"Normal", std::move(episodes_dict)}});
       string json_data = root_json.serialize(
           JSON::SerializeOption::FORMAT |
           JSON::SerializeOption::HEX_INTEGERS |

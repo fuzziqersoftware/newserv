@@ -398,11 +398,11 @@ void ServerState::create_menus(const JSON& json) {
   {
     uint32_t item_id = 0;
     for (const auto& item : json.at("InformationMenuContents").as_list()) {
-      u16string name = decode_sjis(item.at(0));
-      u16string short_desc = decode_sjis(item.at(1));
+      u16string name = decode_sjis(item->get_string(0));
+      u16string short_desc = decode_sjis(item->get_string(1));
       information_menu_v2->items.emplace_back(item_id, name, short_desc, 0);
       information_menu_v3->items.emplace_back(item_id, name, short_desc, MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
-      information_contents->emplace_back(decode_sjis(item.at(2)));
+      information_contents->emplace_back(decode_sjis(item->get_string(2)));
       item_id++;
     }
   }
@@ -417,7 +417,7 @@ void ServerState::create_menus(const JSON& json) {
     try {
       map<string, const JSON&> sorted_jsons;
       for (const auto& it : json.at(key).as_dict()) {
-        sorted_jsons.emplace(it.first, it.second);
+        sorted_jsons.emplace(it.first, *it.second);
       }
 
       ret->items.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
@@ -427,7 +427,7 @@ void ServerState::create_menus(const JSON& json) {
 
       uint32_t item_id = 0;
       for (const auto& item : sorted_jsons) {
-        const string& netloc_str = item.second;
+        const string& netloc_str = item.second.as_string();
         const string& description = "$C7Remote server:\n$C6" + netloc_str;
         ret->items.emplace_back(item_id, decode_sjis(item.first), decode_sjis(description), 0);
         ret_pds.emplace_back(parse_netloc(netloc_str));
@@ -448,7 +448,7 @@ void ServerState::create_menus(const JSON& json) {
       this->proxy_destinations_xb, "ProxyDestinations-XB");
 
   try {
-    const string& netloc_str = json.at("ProxyDestination-Patch");
+    const string& netloc_str = json.get_string("ProxyDestination-Patch");
     this->proxy_destination_patch = parse_netloc(netloc_str);
     config_log.info("Patch server proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
@@ -461,7 +461,7 @@ void ServerState::create_menus(const JSON& json) {
     this->proxy_destination_patch.second = 0;
   }
   try {
-    const string& netloc_str = json.at("ProxyDestination-BB");
+    const string& netloc_str = json.get_string("ProxyDestination-BB");
     this->proxy_destination_bb = parse_netloc(netloc_str);
     config_log.info("BB proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
@@ -474,9 +474,9 @@ void ServerState::create_menus(const JSON& json) {
     this->proxy_destination_bb.second = 0;
   }
 
-  this->welcome_message = decode_sjis(json.get("WelcomeMessage", ""));
-  this->pc_patch_server_message = decode_sjis(json.get("PCPatchServerMessage", ""));
-  this->bb_patch_server_message = decode_sjis(json.get("BBPatchServerMessage", ""));
+  this->welcome_message = decode_sjis(json.get_string("WelcomeMessage", ""));
+  this->pc_patch_server_message = decode_sjis(json.get_string("PCPatchServerMessage", ""));
+  this->bb_patch_server_message = decode_sjis(json.get_string("BBPatchServerMessage", ""));
 }
 
 shared_ptr<const string> ServerState::load_bb_file(
@@ -554,12 +554,12 @@ JSON ServerState::load_config() const {
 static vector<PortConfiguration> parse_port_configuration(const JSON& json) {
   vector<PortConfiguration> ret;
   for (const auto& item_json_it : json.as_dict()) {
-    auto item_list = item_json_it.second.as_list();
+    const auto& item_list = item_json_it.second;
     PortConfiguration& pc = ret.emplace_back();
     pc.name = item_json_it.first;
-    pc.port = item_list[0];
-    pc.version = version_for_name(item_list[1].as_string().c_str());
-    pc.behavior = server_behavior_for_name(item_list[2].as_string().c_str());
+    pc.port = item_list->at(0).as_int();
+    pc.version = version_for_name(item_list->at(1).as_string().c_str());
+    pc.behavior = server_behavior_for_name(item_list->at(2).as_string().c_str());
   }
   return ret;
 }
@@ -607,33 +607,34 @@ void ServerState::parse_config(const JSON& json) {
   }
   this->all_addresses.emplace("<external>", this->external_address);
 
-  this->dns_server_port = json.get("DNSServerPort", this->dns_server_port);
+  this->dns_server_port = json.get_int("DNSServerPort", this->dns_server_port);
 
   try {
     for (const auto& item : json.at("IPStackListen").as_list()) {
-      this->ip_stack_addresses.emplace_back(item.as_string());
+      this->ip_stack_addresses.emplace_back(item->as_string());
     }
   } catch (const out_of_range&) {
   }
-  this->ip_stack_debug = json.get("IPStackDebug", this->ip_stack_debug);
-  this->allow_unregistered_users = json.get("AllowUnregisteredUsers", this->allow_unregistered_users);
-  this->item_tracking_enabled = json.get("EnableItemTracking", this->item_tracking_enabled);
-  this->drops_enabled = json.get("EnableDrops", this->drops_enabled);
-  this->episode_3_send_function_call_enabled = json.get("EnableEpisode3SendFunctionCall", this->episode_3_send_function_call_enabled);
-  this->catch_handler_exceptions = json.get("CatchHandlerExceptions", this->catch_handler_exceptions);
-  this->proxy_allow_save_files = json.get("ProxyAllowSaveFiles", this->proxy_allow_save_files);
-  this->proxy_enable_login_options = json.get("ProxyEnableLoginOptions", this->proxy_enable_login_options);
-  this->ep3_behavior_flags = json.get("Episode3BehaviorFlags", this->ep3_behavior_flags);
-  this->ep3_card_auction_points = json.get("CardAuctionPoints", this->ep3_card_auction_points);
+  this->ip_stack_debug = json.get_bool("IPStackDebug", this->ip_stack_debug);
+  this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
+  this->item_tracking_enabled = json.get_bool("EnableItemTracking", this->item_tracking_enabled);
+  this->drops_enabled = json.get_bool("EnableDrops", this->drops_enabled);
+  this->episode_3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", this->episode_3_send_function_call_enabled);
+  this->catch_handler_exceptions = json.get_bool("CatchHandlerExceptions", this->catch_handler_exceptions);
+  this->ep3_infinite_meseta = json.get_bool("Episode3InfiniteMeseta", this->ep3_infinite_meseta);
+  this->proxy_allow_save_files = json.get_bool("ProxyAllowSaveFiles", this->proxy_allow_save_files);
+  this->proxy_enable_login_options = json.get_bool("ProxyEnableLoginOptions", this->proxy_enable_login_options);
+  this->ep3_behavior_flags = json.get_int("Episode3BehaviorFlags", this->ep3_behavior_flags);
+  this->ep3_card_auction_points = json.get_int("CardAuctionPoints", this->ep3_card_auction_points);
 
   try {
     const auto& i = json.at("CardAuctionSize");
     if (i.is_int()) {
-      this->ep3_card_auction_min_size = i;
+      this->ep3_card_auction_min_size = i.as_int();
       this->ep3_card_auction_max_size = this->ep3_card_auction_min_size;
     } else {
-      this->ep3_card_auction_min_size = i.at(0);
-      this->ep3_card_auction_max_size = i.at(1);
+      this->ep3_card_auction_min_size = i.at(0).as_int();
+      this->ep3_card_auction_max_size = i.at(1).as_int();
     }
   } catch (const out_of_range&) {
     this->ep3_card_auction_min_size = 0;
@@ -643,13 +644,13 @@ void ServerState::parse_config(const JSON& json) {
   for (const auto& it : json.at("CardAuctionPool").as_dict()) {
     this->ep3_card_auction_pool.emplace_back(
         CardAuctionPoolEntry{
-            .probability = it.second.at(0),
+            .probability = static_cast<uint64_t>(it.second->at(0).as_int()),
             .card_id = 0,
-            .min_price = it.second.at(1),
+            .min_price = static_cast<uint16_t>(it.second->at(1).as_int()),
             .card_name = it.first});
   }
 
-  set_log_levels_from_json(json.get("LogLevels", JSON::dict_type()));
+  set_log_levels_from_json(json.get("LogLevels", JSON::dict()));
 
   for (const string& filename : list_directory("system/blueburst/keys")) {
     if (!ends_with(filename, ".nsk")) {
@@ -692,7 +693,7 @@ void ServerState::parse_config(const JSON& json) {
   } catch (const out_of_range&) {
   }
 
-  this->ep3_menu_song = json.get("Episode3MenuSong", this->ep3_menu_song);
+  this->ep3_menu_song = json.get_int("Episode3MenuSong", this->ep3_menu_song);
 
   try {
     this->quest_category_index.reset(new QuestCategoryIndex(json.at("QuestCategories")));

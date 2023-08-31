@@ -23,11 +23,11 @@ using namespace std;
 
 QuestCategoryIndex::Category::Category(uint32_t category_id, const JSON& json)
     : category_id(category_id) {
-  this->flags = json.at(0);
-  this->type = json.at(1).as_string().at(0);
-  this->short_token = json.at(2).as_string();
-  this->name = decode_sjis(json.at(3));
-  this->description = decode_sjis(json.at(4));
+  this->flags = json.get_int(0);
+  this->type = json.get_string(1).at(0);
+  this->short_token = json.get_string(2);
+  this->name = decode_sjis(json.get_string(3));
+  this->description = decode_sjis(json.get_string(4));
 }
 
 bool QuestCategoryIndex::Category::matches_flags(uint8_t request) const {
@@ -42,7 +42,7 @@ bool QuestCategoryIndex::Category::matches_flags(uint8_t request) const {
 QuestCategoryIndex::QuestCategoryIndex(const JSON& json) {
   uint32_t next_category_id = 1;
   for (const auto& it : json.as_list()) {
-    this->categories.emplace_back(next_category_id++, it);
+    this->categories.emplace_back(next_category_id++, *it);
   }
 }
 

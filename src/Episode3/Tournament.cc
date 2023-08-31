@@ -325,27 +325,27 @@ void Tournament::init() {
   vector<size_t> team_index_to_rounds_cleared;
 
   bool is_registration_complete;
-  if (this->source_json) {
-    this->name = this->source_json.at("name").as_string();
-    this->map = this->map_index->definition_for_number(this->source_json.at("map_number"));
+  if (!this->source_json.is_null()) {
+    this->name = this->source_json.get_string("name");
+    this->map = this->map_index->definition_for_number(this->source_json.get_int("map_number"));
     this->rules = Rules(this->source_json.at("rules"));
-    this->is_2v2 = this->source_json.at("is_2v2");
-    is_registration_complete = this->source_json.at("is_registration_complete");
+    this->is_2v2 = this->source_json.get_bool("is_2v2");
+    is_registration_complete = this->source_json.get_bool("is_registration_complete");
 
-    for (const auto& team_json : this->source_json.at("teams").as_list()) {
+    for (const auto& team_json : this->source_json.get_list("teams")) {
       auto& team = this->teams.emplace_back(new Team(
           this->shared_from_this(),
           this->teams.size(),
-          team_json.at("max_players")));
-      team->name = team_json.at("name").as_string();
-      team->password = team_json.at("password").as_string();
-      team_index_to_rounds_cleared.emplace_back(team_json.at("num_rounds_cleared"));
-      for (const auto& player_json : team_json.at("player_specs").as_list()) {
-        if (player_json.is_int()) {
-          team->players.emplace_back(player_json);
-          this->all_player_serial_numbers.emplace(player_json);
+          team_json->get_int("max_players")));
+      team->name = team_json->get_string("name");
+      team->password = team_json->get_string("password");
+      team_index_to_rounds_cleared.emplace_back(team_json->get_int("num_rounds_cleared"));
+      for (const auto& player_json : team_json->get_list("player_specs")) {
+        if (player_json->is_int()) {
+          team->players.emplace_back(player_json->as_int());
+          this->all_player_serial_numbers.emplace(player_json->as_int());
         } else {
-          team->players.emplace_back(this->com_deck_index->deck_for_name(player_json));
+          team->players.emplace_back(this->com_deck_index->deck_for_name(player_json->as_string()));
         }
       }
     }
