@@ -1769,6 +1769,7 @@ CardIndex::CardIndex(const string& filename, const string& decompressed_filename
       // unindexed (they can still be looked up by ID, of course)
       string name = entry->def.en_name;
       this->card_definitions_by_name.emplace(name, entry);
+      this->card_definitions_by_name_normalized.emplace(this->normalize_card_name(name), entry);
 
       entry->def.hp.decode_code();
       entry->def.ap.decode_code();
@@ -1840,6 +1841,10 @@ shared_ptr<const CardIndex::CardEntry> CardIndex::definition_for_name(const stri
   return this->card_definitions_by_name.at(name);
 }
 
+shared_ptr<const CardIndex::CardEntry> CardIndex::definition_for_name_normalized(const string& name) const {
+  return this->card_definitions_by_name_normalized.at(this->normalize_card_name(name));
+}
+
 set<uint32_t> CardIndex::all_ids() const {
   set<uint32_t> ret;
   for (const auto& it : this->card_definitions) {
@@ -1850,6 +1855,17 @@ set<uint32_t> CardIndex::all_ids() const {
 
 uint64_t CardIndex::definitions_mtime() const {
   return this->mtime_for_card_definitions;
+}
+
+string CardIndex::normalize_card_name(const string& name) {
+  string ret;
+  for (char ch : name) {
+    if (ch == ' ') {
+      continue;
+    }
+    ret.push_back(tolower(ch));
+  }
+  return ret;
 }
 
 MapIndex::MapIndex(const string& directory) {

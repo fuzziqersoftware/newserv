@@ -833,7 +833,7 @@ void ServerState::load_ep3_data() {
   config_log.info("Resolving Episode 3 card auction pool");
   for (auto& e : this->ep3_card_auction_pool) {
     try {
-      const auto& card = this->ep3_card_index->definition_for_name(e.card_name);
+      const auto& card = this->ep3_card_index->definition_for_name_normalized(e.card_name);
       e.card_id = card->def.card_id;
     } catch (const out_of_range&) {
       throw runtime_error(string_printf("Ep3 card \"%s\" does not exist", e.card_name.c_str()));

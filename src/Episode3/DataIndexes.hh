@@ -1048,13 +1048,17 @@ public:
   const std::string& get_compressed_definitions() const;
   std::shared_ptr<const CardEntry> definition_for_id(uint32_t id) const;
   std::shared_ptr<const CardEntry> definition_for_name(const std::string& name) const;
+  std::shared_ptr<const CardEntry> definition_for_name_normalized(const std::string& name) const;
   std::set<uint32_t> all_ids() const;
   uint64_t definitions_mtime() const;
 
 private:
+  static std::string normalize_card_name(const std::string& name);
+
   std::string compressed_card_definitions;
   std::unordered_map<uint32_t, std::shared_ptr<CardEntry>> card_definitions;
   std::unordered_map<std::string, std::shared_ptr<CardEntry>> card_definitions_by_name;
+  std::unordered_map<std::string, std::shared_ptr<CardEntry>> card_definitions_by_name_normalized;
   uint64_t mtime_for_card_definitions;
 };
 
