@@ -1799,20 +1799,20 @@ CardIndex::CardIndex(const string& filename, const string& decompressed_filename
 
     if (this->compressed_card_definitions.size() > 0x7BF8) {
       // Try to reduce the compressed size by clearing out text
-      static_game_data_log.info("Compressed card list data is too long; removing text");
+      static_game_data_log.info("Compressed card list data is too long (0x%zX bytes); removing text", this->compressed_card_definitions.size());
       for (size_t x = 0; x < max_cards; x++) {
         if (static_cast<int8_t>(defs[x].type) < 0) {
           continue;
         }
         defs[x].jp_name.clear();
+        defs[x].jp_short_name.clear();
       }
       uint64_t start = now();
-      this->compressed_card_definitions = prs_compress(decompressed_data);
+      this->compressed_card_definitions = prs_compress_optimal(decompressed_data.data(), decompressed_data.size());
       uint64_t diff = now() - start;
       static_game_data_log.info(
-          "Compressed card definitions (%zu bytes -> %zu bytes) in %" PRIu64 "ms",
+          "Compressed card definitions (0x%zX bytes -> 0x%zX bytes) in %" PRIu64 "ms",
           decompressed_data.size(), this->compressed_card_definitions.size(), diff);
-      print_data(stderr, this->compressed_card_definitions);
     }
 
     if (this->compressed_card_definitions.size() > 0x7BF8) {

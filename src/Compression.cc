@@ -289,7 +289,7 @@ string prs_compress_optimal(
   // For each node, populate the literal value, and the best ways to get to the
   // following nodes
   for (size_t z = 0; z < in_size; z++) {
-    if ((z & 0xFFF) == 0) {
+    if ((z & 0xFFF) == 0 && progress_fn) {
       progress_fn(CompressPhase::CONSTRUCT_PATHS, z, in_size, 0);
     }
 
