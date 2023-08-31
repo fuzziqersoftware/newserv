@@ -332,7 +332,7 @@ void send_ep3_media_update(
     uint32_t type,
     uint32_t which,
     const std::string& compressed_data);
-void send_ep3_rank_update(std::shared_ptr<Client> c);
+void send_ep3_rank_update(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
 void send_ep3_card_battle_table_state(std::shared_ptr<Lobby> l, uint16_t table_number);
 void send_ep3_set_context_token(std::shared_ptr<Client> c, uint32_t context_token);
 

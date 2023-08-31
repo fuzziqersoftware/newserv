@@ -249,8 +249,10 @@ void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
       } else if (s->pre_lobby_event) {
         send_change_event(c, s->pre_lobby_event);
       }
-      send_ep3_rank_update(c);
+
+      send_ep3_rank_update(s, c);
       send_get_player_info(c);
+
     } else if (s->pre_lobby_event) {
       send_change_event(c, s->pre_lobby_event);
     }

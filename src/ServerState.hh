@@ -61,6 +61,7 @@ struct ServerState {
   bool drops_enabled;
   bool episode_3_send_function_call_enabled;
   bool catch_handler_exceptions;
+  bool ep3_infinite_meseta;
   uint32_t ep3_behavior_flags;
   RunShellBehavior run_shell_behavior;
   CheatModeBehavior cheat_mode_behavior;

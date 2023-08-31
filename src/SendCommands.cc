@@ -2209,9 +2209,9 @@ void send_ep3_media_update(
   send_command(c, 0xB9, 0x00, w.str());
 }
 
-void send_ep3_rank_update(shared_ptr<Client> c) {
-  S_RankUpdate_GC_Ep3_B7 cmd = {
-      0, "\0\0\0\0\0\0\0\0\0\0\0", 1000000, 1000000, 0xFFFFFFFF};
+void send_ep3_rank_update(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  uint32_t meseta = s->ep3_infinite_meseta ? 1000000 : 0;
+  S_RankUpdate_GC_Ep3_B7 cmd = {0, "\0\0\0\0\0\0\0\0\0\0\0", meseta, meseta, 0xFFFFFFFF};
   send_command_t(c, 0xB7, 0x00, cmd);
 }
 

@@ -283,6 +283,13 @@
   // they are at the newserv main menu. If set, this value must be an integer.
   // "Episode3MenuSong": 0,
 
+  // Episode Meseta behavior. If enabled (which is the default), all players
+  // have infinite Meseta, which effectively makes jukebox songs and Pinz's Shop
+  // free. If disabled, all players have no Meseta, which makes these features
+  // inaccessible. Proper Meseta behavior will be implemented at some point in
+  // the future.
+  "Episode3InfiniteMeseta": true,
+
   // Episode 3 battle behavior flags. When set to zero, battles behave as they
   // did on the original Sega servers. Combinations of behaviors can be enabled
   // by bitwise-OR'ing together the following values:

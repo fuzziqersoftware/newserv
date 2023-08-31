@@ -26,6 +26,7 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       drops_enabled(true),
       episode_3_send_function_call_enabled(false),
       catch_handler_exceptions(true),
+      ep3_infinite_meseta(true),
       ep3_behavior_flags(0),
       run_shell_behavior(RunShellBehavior::DEFAULT),
       cheat_mode_behavior(CheatModeBehavior::OFF_BY_DEFAULT),
