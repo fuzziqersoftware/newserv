@@ -2508,7 +2508,7 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
         send_ep3_card_list_update(s, c);
         auto team = c->ep3_tournament_team.lock();
         auto tourn = team ? team->tournament.lock() : nullptr;
-        if (tourn && !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
+        if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
           send_ep3_confirm_tournament_entry(s, c, tourn);
         }
       }
