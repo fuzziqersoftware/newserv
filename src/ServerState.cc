@@ -642,7 +642,7 @@ void ServerState::parse_config(const JSON& json) {
     this->ep3_card_auction_max_size = 0;
   }
 
-  for (const auto& it : json.at("CardAuctionPool").as_dict()) {
+  for (const auto& it : json.get("CardAuctionPool", JSON::dict()).as_dict()) {
     this->ep3_card_auction_pool.emplace_back(
         CardAuctionPoolEntry{
             .probability = static_cast<uint64_t>(it.second->at(0).as_int()),
