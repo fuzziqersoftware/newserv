@@ -480,9 +480,6 @@ static void on_change_area(shared_ptr<ServerState>,
     shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag,
     const void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
-  if (!l->is_game()) {
-    return;
-  }
   c->area = cmd.area;
   forward_subcommand(l, c, command, flag, data, size);
 }
