@@ -6393,7 +6393,7 @@ struct G_ServerVersionStrings_GC_Ep3_6xB4x46 {
 struct G_Unknown_GC_Ep3_6xB5x47 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x47) / 4, 0, 0x47, 0, 0, 0};
   // Note: This command uses header_b1, which must be < 12.
-  le_uint32_t unknown_a1 = 0;
+  le_uint32_t clv = 0;
 } __packed__;
 
 // 6xB3x48 / CAx48: End turn

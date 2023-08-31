@@ -174,3 +174,6 @@ TODO: Figure out more debug message conditionals (vars/functions) and add them h
 
 (Ep3 USA) Replace Options menu with debug menu
 04149E70 38600019
+
+(Ep3 USA) Jukebox is free
+0430D1DC 48000024

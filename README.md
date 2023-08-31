@@ -192,7 +192,7 @@ Tournaments work differently than they did on Sega's servers. Tournaments can be
 
 These tournament semantics mean that there can be multiple matches in the same tournament in play simultaneously, and not all matches in a round must be complete before the next round can begin - only the matches preceding each individual match must be complete for that match to be playable.
 
-Because newserv gives all players 1000000 meseta, there is no reward for winning a tournament. This may change in the future.
+Because newserv gives all players 1000000 meseta by default, there is no reward for winning a tournament. This may change in the future.
 
 Episode 3 state and game data is stored in the system/ep3 directory. The files in there are:
 * card-definitions.mnr: Compressed card definition list, sent to Episode 3 clients at connect time. Card stats and abilities can be changed by editing this file.

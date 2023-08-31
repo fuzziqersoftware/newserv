@@ -884,11 +884,12 @@ static void on_B1(shared_ptr<ServerState> s, shared_ptr<Client> c,
   }
 }
 
-static void on_BA_Ep3(shared_ptr<ServerState>,
+static void on_BA_Ep3(shared_ptr<ServerState> s,
     shared_ptr<Client> c, uint16_t command, uint32_t, const string& data) {
   const auto& in_cmd = check_size_t<C_Meseta_GC_Ep3_BA>(data);
 
-  S_Meseta_GC_Ep3_BA out_cmd = {1000000, 1000000, in_cmd.request_token};
+  uint32_t meseta = s->ep3_infinite_meseta ? 1000000 : 0;
+  S_Meseta_GC_Ep3_BA out_cmd = {meseta, meseta, in_cmd.request_token};
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
