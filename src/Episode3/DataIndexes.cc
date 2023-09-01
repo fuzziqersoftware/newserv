@@ -911,6 +911,57 @@ string string_for_range(const parray<be_uint32_t, 6>& range) {
   return ret;
 }
 
+string string_for_drop_rate(uint16_t drop_rate) {
+  vector<string> tokens;
+  switch (drop_rate % 10) {
+    case 0:
+      tokens.emplace_back("mode=ANY");
+      break;
+    case 1:
+      tokens.emplace_back("mode=OFFLINE_STORY");
+      break;
+    case 2:
+      tokens.emplace_back("mode=OFFLINE_FREE_BATTLE");
+      break;
+    case 3:
+      tokens.emplace_back("mode=OFFLINE_FREE_BATTLE_PVP");
+      break;
+    case 4:
+      tokens.emplace_back("mode=ONLINE");
+      break;
+    case 5:
+      tokens.emplace_back("mode=TOURNAMENT");
+      break;
+    case 6:
+      tokens.emplace_back("mode=FORBIDDEN");
+      break;
+    default:
+      tokens.emplace_back("mode=__UNKNOWN__");
+  }
+  uint8_t environment_number = (drop_rate / 10) % 100;
+  if (environment_number) {
+    tokens.emplace_back(string_printf("environment_number=%02hhX", static_cast<uint8_t>(environment_number - 1)));
+  } else {
+    tokens.emplace_back("environment_number=ANY");
+  }
+  tokens.emplace_back(string_printf("rarity_class=%hhu", static_cast<uint8_t>((drop_rate / 1000) % 10)));
+  switch ((drop_rate / 10000) % 10) {
+    case 0:
+      tokens.emplace_back("deck_type=ANY");
+      break;
+    case 1:
+      tokens.emplace_back("deck_type=HUNTERS");
+      break;
+    case 2:
+      tokens.emplace_back("deck_type=ARKZ");
+      break;
+    default:
+      tokens.emplace_back("deck_type=__UNKNOWN__");
+  }
+  string description = join(tokens, ", ");
+  return string_printf("[%hu: %s]", drop_rate, description.c_str());
+}
+
 string CardDefinition::str(bool single_line) const {
   string type_str;
   try {
@@ -956,6 +1007,9 @@ string CardDefinition::str(bool single_line) const {
     effects_str = " (none)";
   }
 
+  string drop0_str = string_for_drop_rate(this->drop_rates[0]);
+  string drop1_str = string_for_drop_rate(this->drop_rates[1]);
+
   if (single_line) {
     string range_str = string_for_range(this->range);
     return string_printf(
@@ -963,7 +1017,7 @@ string CardDefinition::str(bool single_line) const {
         "cost=%hhX+%hhX target=%s range=%s assist_turns=%s cannot_move=%s "
         "cannot_attack=%s cannot_drop=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s "
         "top=%s a2=%04hX class=%s assist_effect=[%hu, %hu] "
-        "drop_rates=[%hu, %hu] effects=[%s]]",
+        "drop_rates=[%s, %s] effects=[%s]]",
         this->card_id.load(),
         this->en_name.data(),
         type_str.c_str(),
@@ -988,8 +1042,8 @@ string CardDefinition::str(bool single_line) const {
         card_class_str.c_str(),
         this->assist_effect[0].load(),
         this->assist_effect[1].load(),
-        this->drop_rates[0].load(),
-        this->drop_rates[1].load(),
+        drop0_str.c_str(),
+        drop1_str.c_str(),
         effects_str.c_str());
 
   } else { // Not single-line
@@ -1024,7 +1078,7 @@ Card: %04" PRIX32 " \"%s\"\n\
   Left colors: %s; right colors: %s; top colors: %s\n\
   Unknown a2: %04hX\n\
   Assist effect: [%hu, %hu]\n\
-  Drop rates: [%hu, %hu] (%s drop)\n\
+  Drop rates: [%s, %s] (%s drop)\n\
   Effects:%s",
         this->card_id.load(),
         this->en_name.data(),
@@ -1049,8 +1103,8 @@ Card: %04" PRIX32 " \"%s\"\n\
         this->unknown_a2.load(),
         this->assist_effect[0].load(),
         this->assist_effect[1].load(),
-        this->drop_rates[0].load(),
-        this->drop_rates[1].load(),
+        drop0_str.c_str(),
+        drop1_str.c_str(),
         this->cannot_drop ? "cannot" : "can",
         effects_str.c_str());
   }
@@ -1429,8 +1483,9 @@ string MapDefinition::str(const CardIndex* card_index) const {
       lines.emplace_back(string_printf("  reward_cards[%02zu]: %04hX", z, card_id));
     }
   }
-  lines.emplace_back(string_printf("  a9=[%08" PRIX32 " %08" PRIX32 " %04hX %04hX]",
-      this->unknown_a9_a.load(), this->unknown_a9_b.load(), this->unknown_a9_c.load(), this->unknown_a9_d.load()));
+  lines.emplace_back(string_printf("  level_overrides=[win=%" PRId32 ", loss=%" PRId32 "]",
+      this->win_level_override.load(), this->loss_level_override.load()));
+  lines.emplace_back(string_printf("  a9=[%04hX %04hX]", this->unknown_a9_c.load(), this->unknown_a9_d.load()));
   lines.emplace_back(string_printf("  a10=%02hhX", this->unknown_a10));
   lines.emplace_back(string_printf("  cyber_block_type=%02hhX", this->cyber_block_type));
   lines.emplace_back(string_printf("  a11=%02hhX%02hhX", this->unknown_a11[0], this->unknown_a11[1]));
@@ -1553,8 +1608,8 @@ MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
       dispatch_message(map.dispatch_message),
       dialogue_sets(),
       reward_card_ids(map.reward_card_ids),
-      unknown_a9_a(map.unknown_a9_a),
-      unknown_a9_b(map.unknown_a9_b),
+      win_level_override(map.win_level_override),
+      loss_level_override(map.loss_level_override),
       unknown_a9_c(map.unknown_a9_c),
       unknown_a9_d(map.unknown_a9_d),
       unknown_a10(map.unknown_a10),

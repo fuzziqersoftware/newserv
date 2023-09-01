@@ -523,6 +523,7 @@ struct CardDefinition {
   // stored big-endian here, so there's a helper function (card_class()) that
   // returns a usable CardClass enum value.
   /* 0096 */ be_uint16_t be_card_class;
+
   // The two fields of this array seem to always contain the same value, and
   // are always 0 for non-assist cards and nonzero for assists. Each assist
   // card has a unique value here and no effects, though the server ignores
@@ -533,16 +534,69 @@ struct CardDefinition {
   // determine assist cards' effects (see e.g. Skip Draw / Skip Move, Dice
   // Fever / Dice Fever +, Reverse Card / Rich +).
   /* 0098 */ parray<be_uint16_t, 2> assist_effect;
+
   // Drop rates are decimal-encoded with the following fields:
   // - rate % 10 (that is, the lowest decimal place) specifies the required game
-  //   mode. 0 means any mode, 1 means offline only, 2 means 1P free-battle, 3
-  //   means 2P+ free battle, 4 means story mode.
+  //   mode. 0 means any mode, 1 means offline story mode, 2 means 1P free
+  //   battle, 3 means 2P+ free battle (specifically, PvP - two humans vs. two
+  //   COMs counts as 1P free battle), 4 means online mode, 5 means tournament.
+  //   Some cards have this field set to 6, which isn't a valid game mode; it
+  //   seems Sega used this as a way to make sure the drop rate never applies.
   // - (rate / 10) % 100 (that is, the tens and hundreds decimal places) specify
-  //   something else, but it's not clear what exactly.
-  // - rate / 1000 (the thousands decimal place) specifies the level class
-  //   required to get this drop.
-  // - rate / 10000 (the ten-thousands decimal place) must be either 0, 1, or 2,
-  //   but it's not clear yet what each value means.
+  //   the environment number + 1. For example, if this field contains 5, then
+  //   this drop only applies if the battle took place at Molae Venti
+  //   (environment number 4). If this field is zero, the drop applies
+  //   regardless of where the battle took place.
+  // - rate / 1000 (the thousands decimal place) specifies the rarity class.
+  //   This can be any number in the range [0, 9], and affects how likely the
+  //   card is to appear based on the player's level. See below for details.
+  // - rate / 10000 (the ten-thousands decimal place) specifies if the drop rate
+  //   applies only if the player used a Hunters deck (1), only if they used an
+  //   Arkz deck (2), or if they used any deck (0).
+  // When determining which cards to drop, the game first checks the drop rate
+  // fields on all cards. For each drop rate that applies, the game adds the
+  // card ID into an appropriate bucket based on the rarity class. (If both drop
+  // rates for a card apply, the card ID is added twice.) The player's level
+  // class is then computed according to the following table:
+  //              1    2    3      4      5      6      7      8      9    10
+  //     CLvOff  1-2  3-4  5-9   10-14  15-19  20-25  26-29  30-39  40-49  50+
+  //     CLvOn   1-2  3-4  5-10  11-16  17-23  24-32  33-39  40-49  50-99  100+
+  // For the purposes of this computation, the player's level is used by default
+  // (CLvOn or CLvOff), but the map may override it - see win_level_override and
+  // loss_level_override in MapDefinition. This specifies which row in the
+  // following tables will be used.
+  // Finally, cards are chosen from the buckets with a weighted distribution
+  // according to these tables (row is player's level class, column is card's
+  // rarity class):
+  // Offline
+  //            1       2       3       4       5       6       7      8   9 10
+  // 1  =>   8000    2000      50
+  // 2  =>   6000    3500     500      50
+  // 3  =>   4500    3500    1500     400     100
+  // 4  =>   3000    3000    2500    1000     450      50
+  // 5  =>   2000    2600    2750    2000     500     100      50
+  // 6  =>   1900    2200    2500    2100     830     350     100     20
+  // 7  =>   1900    2000    2000    2000    1000     500     500    100
+  // 8  => 160000  160000  190000  190000  130000  100000   50000  19999   1
+  // 9  => 120000  120000  150000  160000  150000  150000  100000  49989  10  1
+  // 10 => 120000  120000  130000  150000  160000  150000  100000  69965  30  5
+  // Online
+  //            1       2       3       4       5       6     7     8  9 10
+  // 1  =>   8000    2000      50
+  // 2  =>   6000    3500     500      20
+  // 3  =>   4500    4000    1500     200
+  // 4  =>   3500    3500    2300     700      20
+  // 5  =>   2700    2800    2500    1500     500      10
+  // 6  =>   2300    2300    2300    1900     900     300     1
+  // 7  =>   1995    2100    2100    2100    1000     700     5
+  // 8  =>   1789    2100    2100    2100    1100     800    10     1
+  // 9  =>  14620   20000   21000   22000   13000    9000   300    80
+  // 10 => 133997  190000  200000  200000  150000  120000  5000  1000  2  1
+  // These values are all relative to other values in the same row. For example,
+  // if your character is in level class 1, you'll get cards of rarity class 1
+  // about 80% of the time, cards of rarity class 2 about 20% of the time, and
+  // cards of rarity class 3 about 0.5% of the time. (The actual probabilities
+  // are 8000/10050, 2000/10050, and 50/10050.)
   // The drop rates are completely ignored if any of the following are true
   // (which means the card can never be found in a normal post-battle draw):
   // - type is SC_HUNTERS or SC_ARKZ
@@ -551,6 +605,7 @@ struct CardDefinition {
   // - cannot_drop is 1 (specifically 1; other nonzero values here don't
   //   prevent the card from appearing in post-battle draws)
   /* 009C */ parray<be_uint16_t, 2> drop_rates;
+
   /* 00A0 */ ptext<char, 0x14> en_name;
   /* 00B4 */ ptext<char, 0x0B> jp_short_name;
   /* 00BF */ ptext<char, 0x08> en_short_name;
@@ -913,8 +968,12 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
   /* 59B0 */ parray<be_uint16_t, 0x10> reward_card_ids;
 
-  /* 59D0 */ be_uint32_t unknown_a9_a;
-  /* 59D4 */ be_uint32_t unknown_a9_b;
+  // These fields appear to be used for the purpose of determining cards to drop
+  // after the battle is complete. If either is negative, the player's actual
+  // CLv is used instead.
+  /* 59D0 */ be_int32_t win_level_override;
+  /* 59D4 */ be_int32_t loss_level_override;
+
   /* 59D8 */ be_uint16_t unknown_a9_c;
   /* 59DA */ be_uint16_t unknown_a9_d;
 
@@ -1013,8 +1072,8 @@ struct MapDefinitionTrial {
   /* 2758 */ ptext<char, 0x190> dispatch_message;
   /* 28E8 */ parray<parray<MapDefinition::DialogueSet, 8>, 3> dialogue_sets;
   /* 4148 */ parray<be_uint16_t, 0x10> reward_card_ids;
-  /* 4168 */ be_uint32_t unknown_a9_a;
-  /* 416C */ be_uint32_t unknown_a9_b;
+  /* 4168 */ be_uint32_t win_level_override;
+  /* 416C */ be_uint32_t loss_level_override;
   /* 4170 */ be_uint16_t unknown_a9_c;
   /* 4172 */ be_uint16_t unknown_a9_d;
   /* 4174 */ uint8_t unknown_a10;
