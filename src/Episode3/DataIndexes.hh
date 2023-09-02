@@ -630,9 +630,11 @@ struct CardDefinitionsFooter {
   /* 00 */ be_uint32_t num_cards1;
   /* 04 */ be_uint32_t cards_offset; // == 0
   /* 08 */ be_uint32_t num_cards2;
-  /* 0C */ parray<be_uint32_t, 11> unknown_a2;
-  /* 38 */ be_uint32_t unknown_offset_a3;
-  /* 3C */ parray<be_uint32_t, 3> unknown_a4;
+  /* 0C */ parray<be_uint32_t, 3> unknown_a2;
+  /* 18 */ parray<be_uint16_t, 0x10> relocations;
+  /* 38 */ be_uint32_t relocations_offset;
+  /* 3C */ be_uint32_t num_relocations;
+  /* 40 */ parray<be_uint32_t, 2> unknown_a4;
   /* 48 */ be_uint32_t footer_offset;
   /* 4C */ parray<be_uint32_t, 3> unknown_a5;
   /* 58 */
