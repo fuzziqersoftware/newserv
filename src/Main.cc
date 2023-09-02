@@ -382,6 +382,7 @@ int main(int argc, char** argv) {
   bool compress_optimal = false;
   bool json = false;
   bool download = false;
+  bool one_line = false;
   const char* find_decryption_seed_ciphertext = nullptr;
   vector<const char*> find_decryption_seed_plaintexts;
   const char* input_filename = nullptr;
@@ -398,6 +399,8 @@ int main(int argc, char** argv) {
       return 0;
     } else if (!strncmp(argv[x], "--threads=", 10)) {
       num_threads = strtoull(&argv[x][10], nullptr, 0);
+    } else if (!strcmp(argv[x], "--one-line")) {
+      one_line = true;
     } else if (!strcmp(argv[x], "--download")) {
       download = true;
     } else if (!strcmp(argv[x], "--patch")) {
@@ -1512,10 +1515,14 @@ int main(int argc, char** argv) {
       log_info("%zu card definitions", card_ids.size());
       for (uint32_t card_id : card_ids) {
         auto entry = card_index.definition_for_id(card_id);
-        string s = entry->def.str(false);
-        string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
-        string text = entry->text.empty() ? "(No text available)" : str_replace_all(entry->text, "\n", "\n    ");
-        fprintf(stdout, "%s\n  Tags: %s\n  Text:\n    %s\n\n", s.c_str(), tags.c_str(), text.c_str());
+        string s = entry->def.str(one_line);
+        if (one_line) {
+          fprintf(stdout, "%s\n", s.c_str());
+        } else {
+          string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
+          string text = entry->text.empty() ? "(No text available)" : str_replace_all(entry->text, "\n", "\n    ");
+          fprintf(stdout, "%s\n  Tags: %s\n  Text:\n    %s\n\n", s.c_str(), tags.c_str(), text.c_str());
+        }
       }
       break;
     }

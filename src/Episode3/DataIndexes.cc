@@ -729,7 +729,7 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
 
 string CardDefinition::Effect::str() const {
   uint8_t type = static_cast<uint8_t>(this->type);
-  string cmd_str = string_printf("(%hhu) %02hhX", this->effect_num, type);
+  string cmd_str = string_printf("%02hhX", type);
   try {
     const char* name = description_for_condition_type.at(type).name;
     if (name) {
@@ -747,8 +747,8 @@ string CardDefinition::Effect::str() const {
   string arg1str = this->str_for_arg(this->arg1);
   string arg2str = this->str_for_arg(this->arg2);
   string arg3str = this->str_for_arg(this->arg3);
-  return string_printf("(cmd=%s%s, when=%02hhX, arg1=%s, arg2=%s, arg3=%s, cond=%02hhX, a2=%02hhX)",
-      cmd_str.c_str(), expr_str.c_str(), this->when, arg1str.data(),
+  return string_printf("((%hhu) cmd=%s%s, when=%02hhX, arg1=%s, arg2=%s, arg3=%s, cond=%02hhX, a2=%02hhX)",
+      this->effect_num, cmd_str.c_str(), expr_str.c_str(), this->when, arg1str.data(),
       arg2str.data(), arg3str.data(), static_cast<uint8_t>(this->apply_criterion), this->unknown_a2);
 }
 
@@ -962,6 +962,36 @@ string string_for_drop_rate(uint16_t drop_rate) {
   return string_printf("[%hu: %s]", drop_rate, description.c_str());
 }
 
+static const char* short_name_for_assist_ai_param_target(uint8_t target) {
+  switch (target) {
+    case 0:
+      return "ANY";
+    case 1:
+      return "SELF";
+    case 2:
+      return "SELF_OR_ALLY";
+    case 3:
+      return "ENEMY";
+    default:
+      return "__UNKNOWN__";
+  }
+}
+
+static const char* name_for_assist_ai_param_target(uint8_t target) {
+  switch (target) {
+    case 0:
+      return "any player";
+    case 1:
+      return "self";
+    case 2:
+      return "self or ally";
+    case 3:
+      return "enemy player";
+    default:
+      return "__UNKNOWN__";
+  }
+}
+
 string CardDefinition::str(bool single_line) const {
   string type_str;
   try {
@@ -1010,21 +1040,28 @@ string CardDefinition::str(bool single_line) const {
   string drop0_str = string_for_drop_rate(this->drop_rates[0]);
   string drop1_str = string_for_drop_rate(this->drop_rates[1]);
 
+  string cost_str = string_printf("%hhX", this->self_cost);
+  if (this->ally_cost) {
+    if (single_line) {
+      cost_str += string_printf("+%hhX", this->ally_cost);
+    } else {
+      cost_str += string_printf(" (self) + %hhX (ally)", this->ally_cost);
+    }
+  }
+
   if (single_line) {
     string range_str = string_for_range(this->range);
     return string_printf(
         "[Card: %04" PRIX32 " name=%s type=%s usable_condition=%s rare=%s "
-        "cost=%hhX+%hhX target=%s range=%s assist_turns=%s cannot_move=%s "
+        "cost=%s target=%s range=%s assist_turns=%s cannot_move=%s "
         "cannot_attack=%s cannot_drop=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s "
-        "top=%s a2=%04hX class=%s assist_effect=[%hu, %hu] "
-        "drop_rates=[%s, %s] effects=[%s]]",
+        "top=%s class=%s assist_ai_params=[target=%s priority=%hhu effect=%hhu] drop_rates=[%s, %s] effects=[%s]]",
         this->card_id.load(),
         this->en_name.data(),
         type_str.c_str(),
         criterion_str.c_str(),
         rarity_str.c_str(),
-        this->self_cost,
-        this->ally_cost,
+        cost_str.c_str(),
         target_mode_str.c_str(),
         range_str.c_str(),
         assist_turns_str.c_str(),
@@ -1038,10 +1075,10 @@ string CardDefinition::str(bool single_line) const {
         left_str.c_str(),
         right_str.c_str(),
         top_str.c_str(),
-        this->unknown_a2.load(),
         card_class_str.c_str(),
-        this->assist_effect[0].load(),
-        this->assist_effect[1].load(),
+        short_name_for_assist_ai_param_target((this->assist_ai_params / 1000) % 10),
+        static_cast<uint8_t>((this->assist_ai_params / 100) % 10),
+        static_cast<uint8_t>(this->assist_ai_params % 100),
         drop0_str.c_str(),
         drop1_str.c_str(),
         effects_str.c_str());
@@ -1069,15 +1106,14 @@ Card: %04" PRIX32 " \"%s\"\n\
   Type: %s, class: %s\n\
   Usability condition: %s\n\
   Rarity: %s\n\
-  Cost: %hhX (self) + %hhX (ally)\n\
+  Cost: %s\n\
   Target mode: %s\n\
   Range:%s\n\
   Assist turns: %s\n\
   Capabilities: %s move, %s attack\n\
   HP: %s, AP: %s, TP: %s, MV: %s\n\
   Left colors: %s; right colors: %s; top colors: %s\n\
-  Unknown a2: %04hX\n\
-  Assist effect: [%hu, %hu]\n\
+  Assist AI parameters: [target %s, priority %hu, effect %hu]\n\
   Drop rates: [%s, %s] (%s drop)\n\
   Effects:%s",
         this->card_id.load(),
@@ -1086,8 +1122,7 @@ Card: %04" PRIX32 " \"%s\"\n\
         card_class_str.c_str(),
         criterion_str.c_str(),
         rarity_str.c_str(),
-        this->self_cost,
-        this->ally_cost,
+        cost_str.c_str(),
         target_mode_str.c_str(),
         range_str.c_str(),
         assist_turns_str.c_str(),
@@ -1100,9 +1135,9 @@ Card: %04" PRIX32 " \"%s\"\n\
         left_str.c_str(),
         right_str.c_str(),
         top_str.c_str(),
-        this->unknown_a2.load(),
-        this->assist_effect[0].load(),
-        this->assist_effect[1].load(),
+        name_for_assist_ai_param_target((this->assist_ai_params / 1000) % 10),
+        static_cast<uint8_t>((this->assist_ai_params / 100) % 10),
+        static_cast<uint8_t>(this->assist_ai_params % 100),
         drop0_str.c_str(),
         drop1_str.c_str(),
         this->cannot_drop ? "cannot" : "can",
