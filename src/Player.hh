@@ -357,20 +357,32 @@ struct PlayerRecordsV3_Challenge {
 
   // Offsets are (1) relative to start of C5 entry, and (2) relative to start
   // of save file structure
-  /* 0000:001C */ U16T title_color = 0x7FFF; // XRGB1555
-  /* 0002:001E */ parray<uint8_t, 2> unknown_u0;
-  /* 0004:0020 */ parray<U32T, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time
-  /* 0028:0044 */ parray<U32T, 5> times_ep2_online; // Encrypted; see decrypt_challenge_time
-  /* 003C:0058 */ parray<U32T, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time
-  /* 0060:007C */ parray<uint8_t, 4> unknown_g3;
-  /* 0064:0080 */ U16T grave_deaths = 0;
-  /* 0066:0082 */ parray<uint8_t, 2> unknown_u4;
-  /* 0068:0084 */ parray<U32T, 5> grave_coords_time;
-  /* 007C:0098 */ ptext<char, 0x14> grave_team;
-  /* 0090:00AC */ ptext<char, 0x20> grave_message;
-  /* 00B0:00CC */ parray<uint8_t, 4> unknown_m5;
-  /* 00B4:00D0 */ parray<U32T, 9> unknown_t6;
-  /* 00D8:00F4 */ ptext<char, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
+  struct Stats {
+    /* 00:1C */ U16T title_color = 0x7FFF; // XRGB1555
+    /* 02:1E */ parray<uint8_t, 2> unknown_u0;
+    /* 04:20 */ parray<U32T, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time
+    /* 28:44 */ parray<U32T, 5> times_ep2_online; // Encrypted; see decrypt_challenge_time
+    /* 3C:58 */ parray<U32T, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time
+    /* 60:7C */ parray<uint8_t, 4> unknown_g3;
+    /* 64:80 */ U16T grave_deaths = 0;
+    /* 66:82 */ parray<uint8_t, 2> unknown_u4;
+    /* 68:84 */ parray<U32T, 5> grave_coords_time;
+    /* 7C:98 */ ptext<char, 0x14> grave_team;
+    /* 90:AC */ ptext<char, 0x20> grave_message;
+    /* B0:CC */ parray<uint8_t, 4> unknown_m5;
+    /* B4:D0 */ parray<U32T, 9> unknown_t6;
+    /* D8:F4 */
+  } __attribute__((packed));
+  /* 0000:001C */ Stats stats;
+  // On Episode 3, there are special cases that apply to this field - if the
+  // text ends with certain strings (after decrypt_challenge_rank_text), the
+  // player will have particle effects emanate from their character in the
+  // lobby every 2 seconds. These effects are:
+  //   Ends with ":GOD" => blue circle
+  //   Ends with ":KING" => white particles
+  //   Ends with ":LORD" => rising yellow sparkles
+  //   Ends with ":CHAMP" => green circle
+  /* 00D8:00F4 */ ptext<char, 0x0C> rank_title;
   /* 00E4:0100 */ parray<uint8_t, 0x1C> unknown_l7;
   /* 0100:011C */
 } __attribute__((packed));
@@ -409,10 +421,11 @@ struct PlayerRecordsBB_Challenge {
 template <bool IsBigEndian>
 struct PlayerRecords_Battle {
   using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-  // On Episode 3, battle_place_counts[0] is win count and [1] is loss count
+  // On Episode 3, place_counts[0] is win count and [1] is loss count
   /* 00 */ parray<U16T, 4> place_counts;
   /* 08 */ U16T disconnect_count;
-  /* 0A */ parray<uint8_t, 0x0E> unknown_a1;
+  /* 0A */ parray<uint16_t, 3> unknown_a1;
+  /* 10 */ parray<uint32_t, 2> unknown_a2;
   /* 18 */
 } __attribute__((packed));
 

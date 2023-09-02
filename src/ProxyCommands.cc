@@ -1069,14 +1069,14 @@ static HandlerResult C_GXB_61(shared_ptr<ServerState>,
     }
     if (session.options.red_name && pd->disp.visual.name_color != 0xFFFF0000) {
       pd->disp.visual.name_color = 0xFFFF0000;
-      pd->records.challenge.title_color = 0x7C00;
+      pd->records.challenge.stats.title_color = 0x7C00;
       modified = true;
     } else if (session.options.blank_name && pd->disp.visual.name_color != 0x00000000) {
       pd->disp.visual.name_color = 0x00000000;
       modified = true;
     }
     if (!session.challenge_rank_title_override.empty()) {
-      pd->records.challenge.title_color = encode_xrgb1555(session.challenge_rank_color_override);
+      pd->records.challenge.stats.title_color = encode_xrgb1555(session.challenge_rank_color_override);
       pd->records.challenge.rank_title = encrypt_challenge_rank_text(session.challenge_rank_title_override);
     }
   }

@@ -212,12 +212,10 @@ struct PSOGCEp3CharacterFile {
     /* 0D7C:0960 */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
     /* 140C:0FF0 */ ptext<char, 0xAC> auto_reply;
     /* 14B8:109C */ ptext<char, 0xAC> info_board;
-    /* 1564:1148 */ be_uint16_t win_count;
-    /* 1566:114A */ be_uint16_t lose_count;
-    /* 1568:114C */ parray<be_uint16_t, 5> unknown_a8;
-    /* 1572:1156 */ parray<uint8_t, 2> unused;
-    /* 1574:1158 */ parray<be_uint32_t, 2> unknown_a9;
-    /* 157C:1160 */ parray<uint8_t, 0xDC> unknown_a10;
+    // In this struct, place_counts[0] is win_count and [1] is loss_count
+    /* 1564:1148 */ PlayerRecords_Battle<true> battle_records;
+    /* 157C:1160 */ parray<uint8_t, 4> unknown_a10;
+    /* 1580:1164 */ PlayerRecordsV3_Challenge<true>::Stats challenge_record_stats;
     /* 1658:123C */ Episode3::PlayerConfig ep3_config;
     /* 39A8:358C */ be_uint32_t unknown_a11;
     /* 39AC:3590 */ be_uint32_t unknown_a12;
@@ -226,7 +224,7 @@ struct PSOGCEp3CharacterFile {
   } __attribute__((packed));
   /* 00004 */ parray<Character, 7> characters;
   /* 193F0 */ ptext<char, 0x10> serial_number; // As %08X (not decimal)
-  /* 19400 */ ptext<char, 0x10> access_key;
+  /* 19400 */ ptext<char, 0x10> access_key; // As 12 ASCII characters (decimal)
   /* 19410 */ ptext<char, 0x10> password;
   // In Episode 3, this field still exists, but is unused since BGM test was
   // removed from the options menu in favor of the jukebox. The jukebox is

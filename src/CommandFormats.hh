@@ -2204,8 +2204,11 @@ struct C_ExecuteCodeResult_B3 {
 // B7 (S->C): Rank update (Episode 3)
 
 struct S_RankUpdate_GC_Ep3_B7 {
+  // If rank is not zero, the client sets its rank text to "<rank>:<rank_text>",
+  // truncated to 11 characters. If rank is zero, the client uses rank_text
+  // without modifying it.
   le_uint32_t rank = 0;
-  ptext<char, 0x0C> rank_text;
+  ptext<char, 0x0C> rank_text; // Encrypted (with encrypt_challenge_rank_text)
   le_uint32_t meseta = 0;
   le_uint32_t max_meseta = 0;
   le_uint32_t unlocked_jukebox_songs = 0xFFFFFFFF;

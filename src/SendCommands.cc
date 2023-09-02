@@ -1382,7 +1382,7 @@ void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
 // lobby joining
 
 template <typename EntryT>
-void send_player_records(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
+void send_player_records_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
   vector<EntryT> entries;
   auto add_client = [&](shared_ptr<Client> lc) -> void {
     auto lp = lc->game_data.player();
@@ -1635,7 +1635,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
   }
 
   if ((c->version() != GameVersion::DC) || !(c->flags & Client::Flag::IS_DC_V1)) {
-    send_player_records<RecordsT>(c, l, joining_client);
+    send_player_records_t<RecordsT>(c, l, joining_client);
   }
 
   uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;

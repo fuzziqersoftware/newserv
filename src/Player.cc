@@ -445,19 +445,19 @@ PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsPC_Chall
       unknown_l7(0) {}
 
 PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsV3_Challenge<false>& rec)
-    : title_color(rec.title_color),
-      unknown_u0(rec.unknown_u0),
-      times_ep1_online(rec.times_ep1_online),
-      times_ep2_online(rec.times_ep2_online),
-      times_ep1_offline(rec.times_ep1_offline),
-      unknown_g3(rec.unknown_g3),
-      grave_deaths(rec.grave_deaths),
-      unknown_u4(rec.unknown_u4),
-      grave_coords_time(rec.grave_coords_time),
-      grave_team(rec.grave_team),
-      grave_message(rec.grave_message),
-      unknown_m5(rec.unknown_m5),
-      unknown_t6(rec.unknown_t6),
+    : title_color(rec.stats.title_color),
+      unknown_u0(rec.stats.unknown_u0),
+      times_ep1_online(rec.stats.times_ep1_online),
+      times_ep2_online(rec.stats.times_ep2_online),
+      times_ep1_offline(rec.stats.times_ep1_offline),
+      unknown_g3(rec.stats.unknown_g3),
+      grave_deaths(rec.stats.grave_deaths),
+      unknown_u4(rec.stats.unknown_u4),
+      grave_coords_time(rec.stats.grave_coords_time),
+      grave_team(rec.stats.grave_team),
+      grave_message(rec.stats.grave_message),
+      unknown_m5(rec.stats.unknown_m5),
+      unknown_t6(rec.stats.unknown_t6),
       rank_title(encrypt_challenge_rank_text(decode_sjis(decrypt_challenge_rank_text(rec.rank_title)))),
       unknown_l7(rec.unknown_l7) {}
 
@@ -495,19 +495,19 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsPC_Challenge() const {
 
 PlayerRecordsBB_Challenge::operator PlayerRecordsV3_Challenge<false>() const {
   PlayerRecordsV3_Challenge<false> ret;
-  ret.title_color = this->title_color;
-  ret.unknown_u0 = this->unknown_u0;
-  ret.times_ep1_online = this->times_ep1_online;
-  ret.times_ep2_online = this->times_ep2_online;
-  ret.times_ep1_offline = this->times_ep1_offline;
-  ret.unknown_g3 = this->unknown_g3;
-  ret.grave_deaths = this->grave_deaths;
-  ret.unknown_u4 = this->unknown_u4;
-  ret.grave_coords_time = this->grave_coords_time;
-  ret.grave_team = this->grave_team;
-  ret.grave_message = this->grave_message;
-  ret.unknown_m5 = this->unknown_m5;
-  ret.unknown_t6 = this->unknown_t6;
+  ret.stats.title_color = this->title_color;
+  ret.stats.unknown_u0 = this->unknown_u0;
+  ret.stats.times_ep1_online = this->times_ep1_online;
+  ret.stats.times_ep2_online = this->times_ep2_online;
+  ret.stats.times_ep1_offline = this->times_ep1_offline;
+  ret.stats.unknown_g3 = this->unknown_g3;
+  ret.stats.grave_deaths = this->grave_deaths;
+  ret.stats.unknown_u4 = this->unknown_u4;
+  ret.stats.grave_coords_time = this->grave_coords_time;
+  ret.stats.grave_team = this->grave_team;
+  ret.stats.grave_message = this->grave_message;
+  ret.stats.unknown_m5 = this->unknown_m5;
+  ret.stats.unknown_t6 = this->unknown_t6;
   ret.rank_title = encrypt_challenge_rank_text(encode_sjis(decrypt_challenge_rank_text(this->rank_title)));
   ret.unknown_l7 = this->unknown_l7;
   return ret;
