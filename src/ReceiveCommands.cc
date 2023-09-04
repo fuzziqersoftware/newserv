@@ -2095,9 +2095,9 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
             string message = string_printf("$C7You are registered in $C6%s$C7.\n\
 \n\
 After registration ends, start your matches by\n\
-standing at the rightmost 4-player Battle Table\n\
-in the lobby along with your partner (if any) and\n\
-opponent(s).",
+standing at the 4-player Battle Table near the\n\
+lobby warp in the lobby along with your partner\n\
+(if any) and opponent(s).",
                 tourn->get_name().c_str());
             send_ep3_timed_message_box(c->channel, 240, message.c_str());
 
