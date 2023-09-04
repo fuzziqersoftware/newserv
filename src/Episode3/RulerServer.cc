@@ -1709,6 +1709,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
   for (size_t z = 1; z < 7; z++) {
     if (short_statuses->at(z).card_ref == card_ref) {
       card_in_hand = true;
+      break;
     }
   }
   if (!card_in_hand) {
@@ -2043,12 +2044,12 @@ bool RulerServer::get_creature_summon_area(
   loc.direction = static_cast<Direction>(
       (this->map_and_rules->start_facing_directions >> ((client_id & 0x0F) << 2)) & 0x000F);
   switch (loc.direction) {
-    case Direction::LEFT:
+    case Direction::RIGHT:
       loc.x = 1;
       loc.y = 0;
       region_size = this->map_and_rules->map.width - 3;
       break;
-    case Direction::RIGHT:
+    case Direction::LEFT:
       loc.x = this->map_and_rules->map.width - 2;
       loc.y = 0;
       region_size = this->map_and_rules->map.width - 3;
