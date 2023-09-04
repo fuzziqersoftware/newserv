@@ -76,7 +76,7 @@ PlayerDispDataBB PlayerDispDataDCPCV3::to_bb() const {
   bb.stats = this->stats;
   bb.visual = this->visual;
   bb.visual.name = "         0";
-  bb.name = add_language_marker(this->visual.name, 'J');
+  bb.name = this->visual.name;
   bb.config = this->config;
   bb.technique_levels = this->v1_technique_levels;
   return bb;
@@ -90,7 +90,7 @@ PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3() const {
   PlayerDispDataDCPCV3 ret;
   ret.stats = this->stats;
   ret.visual = this->visual;
-  ret.visual.name = remove_language_marker(this->name);
+  ret.visual.name = this->name;
   ret.config = this->config;
   ret.v1_technique_levels = this->technique_levels;
   return ret;
