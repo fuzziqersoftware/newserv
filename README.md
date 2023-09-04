@@ -308,9 +308,10 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$maxlevel <level>`: Sets the maximum level for players to join the current game. (This only applies when joining; if a player joins and then levels up past this level during the game, they are not kicked out, but won't be able to rejoin if they leave.)
     * `$minlevel <level>`: Sets the minimum level for players to join the current game.
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
-    * `$spec`: Toggles the allow spectators flag. If any players are spectating when this flag is disabled, they will be sent back to the lobby.
-    * `$saverec <name>`: Save the recording of the last Episode 3 battle.
-    * `$playrec <name>`: Play a battle recording. This command creates a spectator team and replays the specified battle log within it. There is a known issue which causes spectators to crash in some cases, so use of this command is currently not recommended.
+    * `$spec`: Toggles the allow spectators flag for Episode 3 games. If any players are spectating when this flag is disabled, they will be sent back to the lobby.
+    * `$surrender`: Causes your team to immediately lose the current battle. (Episode 3 only)
+    * `$saverec <name>`: Saves the recording of the last Episode 3 battle.
+    * `$playrec <name>`: Plays a battle recording. This command creates a spectator team and replays the specified battle log within it. There is a known issue which causes spectators to crash in some cases, so use of this command is currently not recommended.
 
 * Cheat mode commands
     * `$cheat`: Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. By default, cheat mode is off in new games but can be enabled; there is an option in config.json that allows you to disable cheat mode entirely, or set it to on by default in new games.

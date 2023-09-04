@@ -524,6 +524,21 @@ bool Server::check_for_battle_end() {
   return ret;
 }
 
+void Server::force_battle_result(uint8_t specified_client_id, bool set_winner) {
+  auto specified_ps = this->player_states[specified_client_id];
+  for (size_t z = 0; z < 4; z++) {
+    auto ps = this->player_states[z];
+    if (ps) {
+      ps->assist_flags &= 0xFFFFB7FB;
+      if ((ps->get_team_id() == specified_ps->get_team_id()) == set_winner) {
+        ps->assist_flags |= 4;
+      }
+      ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed(true);
+    }
+  }
+  this->set_battle_ended();
+}
+
 void Server::check_for_destroyed_cards_and_send_6xB4x05_6xB4x02() {
   for (size_t z = 0; z < 4; z++) {
     if (this->player_states[z]) {
@@ -706,15 +721,15 @@ void Server::draw_phase_after() {
     }
 
     if (this->overall_time_expired || (this->round_num >= 1000)) {
-      bool unknown_v1 = true;
+      bool no_winner_specified = true;
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
         if (ps && (ps->assist_flags & 4)) {
-          unknown_v1 = false;
+          no_winner_specified = false;
           break;
         }
       }
-      if (unknown_v1) {
+      if (no_winner_specified) {
         this->compute_losing_team_id_and_add_winner_flags(0);
       }
       this->round_num--;

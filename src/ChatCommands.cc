@@ -1259,6 +1259,32 @@ static void server_command_enable_ep3_battle_debug_menu(
   }
 }
 
+static void server_command_surrender(
+    shared_ptr<ServerState>, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string&) {
+  check_is_game(l, true);
+  check_is_ep3(c, true);
+  if (l->episode != Episode::EP3) {
+    throw logic_error("non-Ep3 client in Ep3 game");
+  }
+  auto base = l->ep3_server_base;
+  if (!base) {
+    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
+    return;
+  }
+  auto server = base->server;
+  if (!server) {
+    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
+    return;
+  }
+  if (server->setup_phase != Episode3::SetupPhase::MAIN_BATTLE) {
+    send_text_message(c, u"$C6Battle has not\nyet started");
+    return;
+  }
+  string name = encode_sjis(c->game_data.player()->disp.name);
+  send_text_message_printf(l, "$C6%s has\nsurrendered", name.c_str());
+  server->force_battle_result(c->lobby_client_id, false);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef void (*server_handler_t)(shared_ptr<ServerState> s, shared_ptr<Lobby> l,
@@ -1307,6 +1333,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$song", {server_command_song, proxy_command_song}},
     {u"$spec", {server_command_spec, nullptr}},
     {u"$ss", {nullptr, proxy_command_send_server}},
+    {u"$surrender", {server_command_surrender, nullptr}},
     {u"$swa", {server_command_switch_assist, proxy_command_switch_assist}},
     {u"$type", {server_command_lobby_type, nullptr}},
     {u"$warp", {server_command_warpme, proxy_command_warpme}},
