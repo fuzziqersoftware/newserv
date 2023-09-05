@@ -103,7 +103,7 @@ public:
 
     // This table specifies how many areas each weapon subtype appears in. For
     // example, if Sword (subtype 02, which is index 1 in this table and the
-    // table above) has a subtype base of -2 and a subtype area lneght of 4,
+    // table above) has a subtype base of -2 and a subtype area length of 4,
     // then Sword items can be found when area - 1 is 2, 3, 4, or 5 (Cave 1
     // through Mine 1), and Gigush (the next sword subtype) can be found in Mine
     // 1 through Ruins 3.

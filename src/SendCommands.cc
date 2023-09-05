@@ -1638,16 +1638,18 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     send_player_records_t<RecordsT>(c, l, joining_client);
   }
 
-  uint8_t lobby_type = (l->type > 14) ? (l->block - 1) : l->type;
+  uint8_t lobby_type = (c->options.override_lobby_number >= 0)
+      ? c->options.override_lobby_number
+      : l->block - 1;
   // Allow non-canonical lobby types on GC. They may work on other versions too,
   // but I haven't verified which values don't crash on each version.
   if (c->version() == GameVersion::GC) {
     if (c->flags & Client::Flag::IS_EPISODE_3) {
-      if ((l->type > 0x14) && (l->type < 0xE9)) {
+      if ((lobby_type > 0x14) && (lobby_type < 0xE9)) {
         lobby_type = l->block - 1;
       }
     } else {
-      if ((l->type > 0x11) && (l->type != 0x67) && (l->type != 0xD4) && (l->type < 0xFC)) {
+      if ((lobby_type > 0x11) && (lobby_type != 0x67) && (lobby_type != 0xD4) && (lobby_type < 0xFC)) {
         lobby_type = l->block - 1;
       }
     }

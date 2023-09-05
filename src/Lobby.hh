@@ -100,7 +100,6 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // Lobby stuff
   uint8_t event;
   uint8_t block;
-  uint8_t type; // number to give to PSO for the lobby number
   uint8_t leader_id;
   uint8_t max_clients;
   uint32_t flags;

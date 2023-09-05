@@ -153,13 +153,13 @@ const unordered_map<uint8_t, string> lobby_type_to_name({
     {0xF1, "windpower"},
     {0xF2, "overview"},
     {0xF3, "seaside"},
-    {0xF4, "some?"},
+    {0xF4, "fons"},
     {0xF5, "dmorgue"},
     {0xF6, "caelum"},
-    {0xF8, "digital"},
+    {0xF8, "cyber"},
     {0xF9, "boss1"},
     {0xFA, "boss2"},
-    {0xFB, "boss3"},
+    {0xFB, "dolor"},
     {0xFC, "dragon"},
     {0xFD, "derolle"},
     {0xFE, "volopt"},
@@ -186,14 +186,14 @@ const unordered_map<string, uint8_t> name_to_lobby_type({
     {"windpower", 0xF1},
     {"overview", 0xF2},
     {"seaside", 0xF3},
-    {"some?", 0xF4},
+    {"fons", 0xF4},
     {"dmorgue", 0xF5},
     {"caelum", 0xF6},
-    {"digital", 0xF8},
+    {"cyber", 0xF8},
     {"boss1", 0xF9},
     {"boss2", 0xFA},
-    {"boss3", 0xFB},
-    {"knight", 0xFC},
+    {"dolor", 0xFB},
+    {"ravum", 0xFC},
     {"sky", 0xFE},
     {"morgue", 0xFF},
 });
@@ -289,8 +289,8 @@ uint8_t lobby_type_for_name(const string& name) {
   } catch (const out_of_range&) {
   }
   try {
-    uint64_t x = stoul(name);
-    if (x < lobby_type_to_name.size()) {
+    uint64_t x = stoul(name, nullptr, 0);
+    if (lobby_type_to_name.count(x)) {
       return x;
     }
   } catch (const invalid_argument&) {

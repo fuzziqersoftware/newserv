@@ -55,7 +55,6 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
         Lobby::Flag::PERSISTENT |
         (is_non_v1_only ? Lobby::Flag::NON_V1_ONLY : 0);
     l->block = x + 1;
-    l->type = x;
     l->name = lobby_name;
     l->max_clients = 12;
     if (is_ep3_only) {

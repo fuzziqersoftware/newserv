@@ -26,9 +26,9 @@ struct ClientOptions {
   bool infinite_hp;
   bool infinite_tp;
   bool debug;
-  int16_t override_section_id;
-  int16_t override_lobby_event;
-  int16_t override_lobby_number;
+  int16_t override_section_id; // -1 = no override
+  int16_t override_lobby_event; // -1 = no override
+  int16_t override_lobby_number; // -1 = no override
   int64_t override_random_seed;
 
   // Options used only on proxy server

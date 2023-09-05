@@ -25,7 +25,6 @@ Lobby::Lobby(uint32_t id)
       random_seed(random_object<uint32_t>()),
       event(0),
       block(0),
-      type(0),
       leader_id(0),
       max_clients(12),
       flags(0) {

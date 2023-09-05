@@ -528,24 +528,28 @@ static void server_command_lobby_event_all(shared_ptr<ServerState> s, shared_ptr
 static void server_command_lobby_type(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string& args) {
   check_is_game(l, false);
-  check_privileges(c, Privilege::CHANGE_EVENT);
 
-  uint8_t new_type = lobby_type_for_name(args);
+  uint8_t new_type = args.empty() ? 0 : lobby_type_for_name(args);
   if (new_type == 0x80) {
-    send_text_message(c, u"$C6No such lobby type.");
+    send_text_message(c, u"$C6No such lobby type");
     return;
   }
 
-  l->type = new_type;
-  if (l->type < (l->is_ep3() ? 20 : 15)) {
-    l->type = l->block - 1;
+  uint8_t max_standard_type = ((c->flags & Client::Flag::IS_EPISODE_3) ? 20 : 15);
+  c->options.override_lobby_number = (new_type < max_standard_type) ? -1 : new_type;
+  send_join_lobby(c, l);
+}
+
+static void proxy_command_lobby_type(shared_ptr<ServerState>,
+    ProxyServer::LinkedSession& session, const std::u16string& args) {
+  uint8_t new_type = args.empty() ? 0 : lobby_type_for_name(args);
+  if (new_type == 0x80) {
+    send_text_message(session.client_channel, u"$C6No such lobby type");
+    return;
   }
 
-  for (size_t x = 0; x < l->max_clients; x++) {
-    if (l->clients[x]) {
-      send_join_lobby(l->clients[x], l);
-    }
-  }
+  uint8_t max_standard_type = ((session.newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3) ? 20 : 15);
+  session.options.override_lobby_number = (new_type < max_standard_type) ? -1 : new_type;
 }
 
 static void server_command_saverec(shared_ptr<ServerState>, shared_ptr<Lobby> l,
@@ -1317,6 +1321,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$i", {server_command_item, proxy_command_item}},
     {u"$kick", {server_command_kick, nullptr}},
     {u"$li", {server_command_lobby_info, proxy_command_lobby_info}},
+    {u"$ln", {server_command_lobby_type, proxy_command_lobby_type}},
     {u"$ep3battledebug", {server_command_enable_ep3_battle_debug_menu, nullptr}},
     {u"$maxlevel", {server_command_max_level, nullptr}},
     {u"$minlevel", {server_command_min_level, nullptr}},
@@ -1335,7 +1340,6 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$ss", {nullptr, proxy_command_send_server}},
     {u"$surrender", {server_command_surrender, nullptr}},
     {u"$swa", {server_command_switch_assist, proxy_command_switch_assist}},
-    {u"$type", {server_command_lobby_type, nullptr}},
     {u"$warp", {server_command_warpme, proxy_command_warpme}},
     {u"$warpme", {server_command_warpme, proxy_command_warpme}},
     {u"$warpall", {server_command_warpall, proxy_command_warpall}},

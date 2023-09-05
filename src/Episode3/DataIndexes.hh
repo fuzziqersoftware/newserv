@@ -862,7 +862,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // 0D = (Castor/Pollux map) ("REAL BOSS")
   // 0E = Dolor Odor ("STOMACH")
   // 0F = Ravum Aedes Sacra ("SACRAMENT")
-  // 10 = (Amplum Umbla map) ("RUIN")
+  // 10 = (Amplum Umbra map) ("RUIN")
   // 11 = Via Tubus ("METRO")
   // 12 = Morgue ("NORMAL MORGUE")
   // Environment numbers above 12 are replaced with 0B (Cyber) if specified in
