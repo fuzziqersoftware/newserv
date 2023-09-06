@@ -35,7 +35,7 @@ ServerBase::ServerBase(
       card_index(card_index),
       map_index(map_index),
       behavior_flags(behavior_flags),
-      log(lobby->log.prefix + "[Ep3::Server] "),
+      log(lobby->log.prefix + "[Ep3::Server] ", lobby->log.min_level),
       random_crypt(random_crypt),
       is_tournament(!!map_if_tournament),
       last_chosen_map(map_if_tournament) {}

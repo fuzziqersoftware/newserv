@@ -1537,6 +1537,8 @@ int32_t CardSpecial::evaluate_effect_expr(
     const AttackEnvStats& ast,
     const char* expr,
     DiceRoll& dice_roll) const {
+  this->debug_log("evaluate_effect_expr(ast, expr=\"%s\", dice_roll=(client_id=%02hhX, a2=%02hhX, value=%02hhX, value_used_in_expr=%s, a5=%04hX))", expr, dice_roll.client_id, dice_roll.unknown_a2, dice_roll.value, dice_roll.value_used_in_expr ? "true" : "false", dice_roll.unknown_a5);
+
   // Note: This implementation is not based on the original code because the
   // original code was hard to follow - it used a look-behind approach with lots
   // of local variables instead of the look-ahead approach that this
@@ -1566,6 +1568,7 @@ int32_t CardSpecial::evaluate_effect_expr(
   // Operators are evaluated left-to-right - there are no operator precedence
   // rules
   int32_t value = 0;
+  this->debug_log("evaluate_effect_expr: value=%" PRId32 " (start)", value);
   for (size_t token_index = 0; token_index < tokens.size(); token_index++) {
     auto token_type = tokens[token_index].first;
     int32_t token_value = tokens[token_index].second;
@@ -1574,6 +1577,7 @@ int32_t CardSpecial::evaluate_effect_expr(
     }
     if (token_type == ExpressionTokenType::NUMBER) {
       value = token_value;
+      this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=NUMBER, token_value=%" PRId32 ")", value, token_value);
     } else {
       if (token_index >= tokens.size() - 1) {
         throw runtime_error("no token on right side of binary operator");
@@ -1586,19 +1590,24 @@ int32_t CardSpecial::evaluate_effect_expr(
       }
       switch (token_type) {
         case ExpressionTokenType::ROUND_DIVIDE:
-          value = lround(value / right_value);
+          value = lround(static_cast<double>(value) / right_value);
+          this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=ROUND_DIVIDE, right_token_value=%" PRId32 ")", value, right_value);
           break;
         case ExpressionTokenType::SUBTRACT:
           value -= right_value;
+          this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=SUBTRACT, right_token_value=%" PRId32 ")", value, right_value);
           break;
         case ExpressionTokenType::ADD:
           value += right_value;
+          this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=ADD, right_token_value=%" PRId32 ")", value, right_value);
           break;
         case ExpressionTokenType::MULTIPLY:
           value *= right_value;
+          this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=MULTIPLY, right_token_value=%" PRId32 ")", value, right_value);
           break;
         case ExpressionTokenType::FLOOR_DIVIDE:
           value = floor(value / right_value);
+          this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=FLOOR_DIVIDE, right_token_value=%" PRId32 ")", value, right_value);
           break;
         default:
           throw logic_error("invalid binary operator");
@@ -1606,6 +1615,7 @@ int32_t CardSpecial::evaluate_effect_expr(
     }
   }
 
+  this->debug_log("evaluate_effect_expr: value=%" PRId32 " (result)", value);
   return value;
 }
 
@@ -1615,8 +1625,12 @@ bool CardSpecial::execute_effect(
     int16_t expr_value,
     int16_t unknown_p5,
     ConditionType cond_type,
-    uint unknown_p7,
+    uint32_t unknown_p7,
     uint16_t attacker_card_ref) {
+  {
+    string cond_str = cond.str();
+    this->debug_log("execute_effect(cond=%s, card=%04hX, expr_value=%hd, unknown_p5=%hd, cond_type=%s, unknown_p7=%" PRIu32 ", attacker_card_ref=%04hX)", cond_str.c_str(), ref_for_card(card), expr_value, unknown_p5, name_for_condition_type(cond_type), unknown_p7, attacker_card_ref);
+  }
   int16_t clamped_expr_value = clamp<int16_t>(expr_value, -99, 99);
   int16_t clamped_unknown_p5 = clamp<int16_t>(unknown_p5, -99, 99);
 

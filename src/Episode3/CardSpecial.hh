@@ -196,7 +196,7 @@ public:
       int16_t expr_value,
       int16_t unknown_p5,
       ConditionType cond_type,
-      uint unknown_p7,
+      uint32_t unknown_p7,
       uint16_t attacker_card_ref);
   const Condition* find_condition_with_parameters(
       std::shared_ptr<const Card> card,

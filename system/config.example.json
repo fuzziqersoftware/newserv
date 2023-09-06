@@ -196,7 +196,8 @@
     // License manager messages describe the creation of new license files.
     "LicenseManager": "INFO",
     // Lobby messages describe creation and deletion of lobbies and games, as
-    // well as item tracking events within games.
+    // well as item tracking events within games. On Episode 3, debug messages
+    // during battles go to this stream as well; use "DEBUG" here to see them.
     "Lobbies": "INFO",
     // Patch file index messages describe finding and preloading the patch files
     // available for download to BB and PC clients.
