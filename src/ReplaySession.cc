@@ -513,7 +513,7 @@ void ReplaySession::update_timeout_event() {
         event_new(this->base.get(), -1, EV_TIMEOUT, this->dispatch_on_timeout, this),
         event_free);
   }
-  struct timeval tv = usecs_to_timeval(3000000);
+  struct timeval tv = usecs_to_timeval(10000000);
   event_add(this->timeout_ev.get(), &tv);
 }
 
