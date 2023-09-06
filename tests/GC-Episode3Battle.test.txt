@@ -5242,6 +5242,13 @@ I 30034 2023-08-20 20:27:24 - [Commands] Sending to C-2 (Tali) (version=GC comma
 0010 | 2F 43 41 78 31 44 20 53 54 41 52 54 20 42 41 54 | /CAx1D START BAT
 0020 | 54 4C 45 00 00 00 00 00                         | TLE
 I 30034 2023-08-20 20:27:24 - [Commands] Sending to C-2 (Tali) (version=GC command=C9 flag=00)
+0000 | C9 00 5C 00 B4 16 00 00 4B 00 00 00 32 00 64 00 |   \     K   2 d
+0010 | 1E 00 50 00 0F 00 46 00 0A 00 37 00 07 00 2D 00 |   P   F   7   -
+0020 | 04 00 23 00 01 00 19 00 FF FF 14 00 F7 FF 0F 00 |   #
+0030 | 00 00 0A 00 01 00 00 00 FE FF 00 00 FD FF 00 00 |
+0040 | FC FF 00 00 FB FF 00 00 FA FF 00 00 F9 FF 00 00 |
+0050 | F6 FF F6 FF E2 FF F6 FF 00 00 F1 FF             |
+I 30034 2023-08-20 20:27:24 - [Commands] Sending to C-2 (Tali) (version=GC command=C9 flag=00)
 0000 | C9 00 64 00 B4 18 00 00 02 00 00 00 00 00 00 00 |   d
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00 1D 00 16 00 |
 0020 | 01 00 1E 00 0A 00 FF FF FF FF FF FF FF FF FF FF |

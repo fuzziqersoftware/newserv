@@ -308,6 +308,36 @@
   //           rescue)
   "Episode3BehaviorFlags": 0x0002,
 
+  // Episode 3 EX result values. This allows you to set the amount of EX players
+  // will get for winning or losing online matches. Each set of numbers is a
+  // list of thresholds; the first number in each pair is the level difference
+  // threshold and the second is the amount of EX. The game scans each list for
+  // the entry whose threshold value is less than or equal to the level
+  // difference. For example, if player A's CLv is 70 and player B's CLv is 55,
+  // and the lists are set up like this:
+  //   "Win": [[30, 40], [20, 30], [10, 20], ...],
+  //   "Lose": [[0, 0], [-10, -5], [-20, -10], ...],
+  // ...then player A would get 20 EX for defeating player B (since the
+  // difference between their CLvs is 15, so the first two Win entries don't
+  // apply), and player B would lose 10 EX for losing to player A (again, since
+  // the first two Lose entries don't apply). If none of the thresholds apply,
+  // then the last entry's value is used regardless of its threshold. All lists
+  // here must contain 10 [threshold, value] pairs.
+  "Episode3EXResultValues": {
+    "Default": {
+      "Win": [[50, 100], [30, 80], [15, 70], [10, 55], [7, 45], [4, 35], [1, 25], [-1, 20], [-9, 15], [0, 10]],
+      "Lose": [[1, 0], [-2, 0], [-3, 0], [-4, 0], [-5, 0], [-6, 0], [-7, 0], [-10, -10], [-30, -10], [0, -15]],
+    },
+    "Tournament": {
+      "Win": [[60, 70], [40, 50], [25, 45], [20, 40], [13, 35], [8, 30], [5, 25], [2, 20], [-1, 15], [0, 10]],
+      "Lose": [[1, 0], [-1, 0], [-3, 0], [-5, 0], [-7, 0], [-10, 0], [-12, 0], [-15, 0], [-18, 0], [0, 0]],
+    },
+    "TournamentFinalMatch": {
+      "Win": [[40, 100], [25, 95], [20, 85], [15, 75], [10, 65], [8, 60], [5, 50], [2, 40], [-1, 30], [0, 20]],
+      "Lose": [[1, -5], [-1, -10], [-3, -15], [-7, -20], [-15, -20], [-20, -25], [-30, -30], [-40, -30], [-50, -34], [0, -40]],
+    },
+  },
+
   // Episode 3 card auction configuration. CardAuctionPoints specifies how many
   // points each player gets when they join an auction (this may be anywhere
   // from 0 to 65535, but a somewhat-low number is generally good).

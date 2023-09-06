@@ -893,8 +893,7 @@ static void on_BA_Ep3(shared_ptr<ServerState> s,
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
-static bool add_next_game_client(
-    shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
+static bool add_next_game_client(shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
   auto it = l->clients_to_add.begin();
   if (it == l->clients_to_add.end()) {
     return false;
@@ -936,33 +935,6 @@ static bool add_next_game_client(
     }
     send_command_t(c, 0xC9, 0x00, state_cmd);
   }
-
-  // For the final match, use higher EX values.
-  // TODO: What was the behavior on Sega's servers? We only have logs
-  // of two different threshold sets (which are implemented here).
-  static const std::pair<uint16_t, uint16_t> non_final_win_entries[10] = {
-      {60, 70}, {40, 50}, {25, 45}, {20, 40}, {13, 35}, {8, 30}, {5, 25}, {2, 20}, {-1, 15}, {0, 10}};
-  static const std::pair<uint16_t, uint16_t> non_final_lose_entries[10] = {
-      {1, 0}, {-1, 0}, {-3, 0}, {-5, 0}, {-7, 0}, {-10, 0}, {-12, 0}, {-15, 0}, {-18, 0}, {0, 0}};
-  static const std::pair<uint16_t, uint16_t> final_win_entries[10] = {
-      {40, 100}, {25, 95}, {20, 85}, {15, 75}, {10, 65}, {8, 60}, {5, 50}, {2, 40}, {-1, 30}, {0, 20}};
-  static const std::pair<uint16_t, uint16_t> final_lose_entries[10] = {
-      {1, -5}, {-1, -10}, {-3, -15}, {-7, -20}, {-15, -20}, {-20, -25}, {-30, -30}, {-40, -30}, {-50, -34}, {0, -40}};
-  G_SetEXResultValues_GC_Ep3_6xB4x4B ex_cmd;
-  bool is_final_match = (tourn && (l->tournament_match == tourn->get_final_match()));
-  const auto& win_entries = is_final_match ? final_win_entries : non_final_win_entries;
-  const auto& lose_entries = is_final_match ? final_lose_entries : non_final_lose_entries;
-  for (size_t z = 0; z < 10; z++) {
-    ex_cmd.win_entries[z].threshold = win_entries[z].first;
-    ex_cmd.win_entries[z].value = win_entries[z].second;
-    ex_cmd.lose_entries[z].threshold = lose_entries[z].first;
-    ex_cmd.lose_entries[z].value = lose_entries[z].second;
-  }
-  if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-    uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
-    set_mask_for_ep3_game_command(&ex_cmd, sizeof(ex_cmd), mask_key);
-  }
-  send_command_t(c, 0xC9, 0x00, ex_cmd);
 
   s->change_client_lobby(c, l, true, target_client_id);
   c->flags |= Client::Flag::LOADING;
@@ -1114,6 +1086,9 @@ static bool start_ep3_battle_table_game_if_ready(
     return false;
   }
   game->tournament_match = tourn_match;
+  game->ep3_ex_result_values = (tourn_match && tourn && tourn->get_final_match() == tourn_match)
+      ? s->ep3_tournament_final_round_ex_values
+      : s->ep3_tournament_ex_values;
   game->clients_to_add.clear();
   for (const auto& it : game_clients) {
     game->clients_to_add.emplace(it.first, it.second);
@@ -3435,6 +3410,9 @@ static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
     game = create_game_generic(
         s, c, name.c_str(), password.c_str(), episode, mode, cmd.difficulty,
         flags, watched_lobby);
+    if (game->episode == Episode::EP3) {
+      game->ep3_ex_result_values = s->ep3_default_ex_values;
+    }
   }
 
   if (game) {

@@ -1978,6 +1978,13 @@ void Server::handle_6xB3x1D_start_battle(const string& data) {
       if (l->battle_record) {
         l->battle_record->set_battle_start_timestamp();
       }
+
+      // Note: Sega's implementation doesn't set EX results values here; they
+      // did it at game join time instead. We do it here for code simplicity.
+      if (l->ep3_ex_result_values) {
+        this->send(*l->ep3_ex_result_values);
+      }
+
       this->setup_and_start_battle();
       this->battle_in_progress = true;
     }

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "Client.hh"
+#include "CommandFormats.hh"
 #include "Episode3/BattleRecord.hh"
 #include "Episode3/Server.hh"
 #include "ItemCreator.hh"
@@ -96,6 +97,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::shared_ptr<Episode3::BattleRecord> prev_battle_record; // Only used in primary games
   std::shared_ptr<Episode3::BattleRecordPlayer> battle_player; // Only used in replay games
   std::shared_ptr<Episode3::Tournament::Match> tournament_match;
+  std::shared_ptr<const G_SetEXResultValues_GC_Ep3_6xB4x4B> ep3_ex_result_values;
 
   // Lobby stuff
   uint8_t event;

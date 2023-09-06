@@ -650,6 +650,35 @@ void ServerState::parse_config(const JSON& json) {
             .card_name = it.first});
   }
 
+  {
+    auto parse_ep3_ex_result_cmd = [&](const JSON& src) -> shared_ptr<G_SetEXResultValues_GC_Ep3_6xB4x4B> {
+      shared_ptr<G_SetEXResultValues_GC_Ep3_6xB4x4B> ret(new G_SetEXResultValues_GC_Ep3_6xB4x4B());
+      const auto& win_json = src.at("Win");
+      for (size_t z = 0; z < min<size_t>(win_json.size(), 10); z++) {
+        ret->win_entries[z].threshold = win_json.at(z).at(0).as_int();
+        ret->win_entries[z].value = win_json.at(z).at(1).as_int();
+      }
+      const auto& lose_json = src.at("Lose");
+      for (size_t z = 0; z < min<size_t>(lose_json.size(), 10); z++) {
+        ret->lose_entries[z].threshold = lose_json.at(z).at(0).as_int();
+        ret->lose_entries[z].value = lose_json.at(z).at(1).as_int();
+      }
+      return ret;
+    };
+    const auto& categories_json = json.at("Episode3EXResultValues");
+    this->ep3_default_ex_values = parse_ep3_ex_result_cmd(categories_json.at("Default"));
+    try {
+      this->ep3_tournament_ex_values = parse_ep3_ex_result_cmd(categories_json.at("Tournament"));
+    } catch (const out_of_range&) {
+      this->ep3_tournament_ex_values = this->ep3_default_ex_values;
+    }
+    try {
+      this->ep3_tournament_ex_values = parse_ep3_ex_result_cmd(categories_json.at("TournamentFinalMatch"));
+    } catch (const out_of_range&) {
+      this->ep3_tournament_final_round_ex_values = this->ep3_tournament_ex_values;
+    }
+  }
+
   set_log_levels_from_json(json.get("LogLevels", JSON::dict()));
 
   for (const string& filename : list_directory("system/blueburst/keys")) {
