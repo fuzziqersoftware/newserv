@@ -661,10 +661,10 @@ TournamentIndex::TournamentIndex(
   }
 
   auto json = JSON::parse(load_file(this->state_filename));
-  if (json.size() != 0x20) {
+  if (json.size() > 0x20) {
     throw runtime_error("tournament JSON list length is incorrect");
   }
-  for (size_t z = 0; z < 0x20; z++) {
+  for (size_t z = 0; z < min<size_t>(json.size(), 0x20); z++) {
     if (!json.at(z).is_null()) {
       this->tournaments[z].reset(new Tournament(this->map_index, this->com_deck_index, z, json.at(z)));
       this->tournaments[z]->init();
