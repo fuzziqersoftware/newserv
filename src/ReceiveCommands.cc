@@ -28,7 +28,6 @@ using namespace std;
 
 const char* BATTLE_TABLE_DISCONNECT_HOOK_NAME = "battle_table_state";
 const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME = "quest_barrier";
-const char* CARD_AUCTION_DISCONNECT_HOOK_NAME = "card_auction";
 const char* ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME = "add_next_game_client";
 
 static shared_ptr<const Menu> proxy_options_menu_for_client(
@@ -3743,21 +3742,14 @@ static void on_EF_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
   check_size_v(data.size(), 0);
 
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
-    throw runtime_error("non-Ep3 client sent card auction join command");
+    throw runtime_error("non-Ep3 client sent card auction request");
   }
   auto l = s->find_lobby(c->lobby_id);
   if (!l->is_game() || !l->is_ep3()) {
-    throw runtime_error("client sent card auction join command outside of Ep3 game");
+    throw runtime_error("client sent card auction request outside of Ep3 game");
   }
 
-  if (c->flags & Client::Flag::AWAITING_CARD_AUCTION) {
-    return;
-  }
-  c->flags |= Client::Flag::AWAITING_CARD_AUCTION;
-  c->disconnect_hooks.emplace(CARD_AUCTION_DISCONNECT_HOOK_NAME, [s, l]() -> void {
-    send_card_auction_if_all_clients_ready(s, l);
-  });
-  send_card_auction_if_all_clients_ready(s, l);
+  send_ep3_card_auction(s, l);
 }
 
 static void on_xxEA_BB(shared_ptr<ServerState>, shared_ptr<Client> c,

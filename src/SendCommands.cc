@@ -21,7 +21,6 @@
 using namespace std;
 
 extern const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME;
-extern const char* CARD_AUCTION_DISCONNECT_HOOK_NAME;
 
 const unordered_set<uint32_t> v2_crypt_initial_client_commands({
     0x00260088, // (17) DCNTE license check
@@ -2769,28 +2768,7 @@ bool send_quest_barrier_if_all_clients_ready(shared_ptr<Lobby> l) {
   return true;
 }
 
-void send_card_auction_if_all_clients_ready(
-    shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
-  // Check if any client is still not ready
-  size_t x;
-  for (x = 0; x < l->max_clients; x++) {
-    if (!l->clients[x]) {
-      continue;
-    }
-    if (!(l->clients[x]->flags & Client::Flag::AWAITING_CARD_AUCTION)) {
-      break;
-    }
-  }
-  if (x != l->max_clients) {
-    return;
-  }
-
-  for (x = 0; x < l->max_clients; x++) {
-    if (l->clients[x]) {
-      l->clients[x]->flags &= ~Client::Flag::AWAITING_CARD_AUCTION;
-    }
-  }
-
+void send_ep3_card_auction(shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
   if ((s->ep3_card_auction_points == 0) ||
       (s->ep3_card_auction_min_size == 0) ||
       (s->ep3_card_auction_max_size == 0)) {
@@ -2830,13 +2808,8 @@ void send_card_auction_if_all_clients_ready(
     }
   }
   send_command_t(l, 0xEF, num_cards, cmd);
-
-  for (auto c : l->clients) {
-    if (c) {
-      c->disconnect_hooks.erase(CARD_AUCTION_DISCONNECT_HOOK_NAME);
-    }
-  }
 }
+
 void send_server_time(shared_ptr<Client> c) {
   uint64_t t = now();
 

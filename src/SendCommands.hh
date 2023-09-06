@@ -369,6 +369,8 @@ void send_ep3_game_details(
 
 void send_ep3_update_spectator_count(std::shared_ptr<Lobby> l);
 
+void send_ep3_card_auction(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l);
+
 // Pass mask_key = 0 to unmask the command
 void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key);
 
@@ -393,9 +395,6 @@ void send_quest_file_chunk(
     size_t size,
     bool is_download_quest);
 bool send_quest_barrier_if_all_clients_ready(std::shared_ptr<Lobby> l);
-
-void send_card_auction_if_all_clients_ready(
-    std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l);
 
 void send_server_time(std::shared_ptr<Client> c);
 

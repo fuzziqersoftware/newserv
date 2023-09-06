@@ -3495,9 +3495,9 @@ struct S_CardTradeComplete_GC_Ep3_EE_FlagD4 {
 // scrolls to the left.
 
 // EF (C->S): Join card auction (Episode 3)
-// This command should be treated like AC (quest barrier); that is, when all
-// players in the same game have sent an EF command, the server should send an
-// EF back to them all at the same time to start the auction.
+// When a card auction is ready to begin, the leader sends this command to
+// request the card list. The server then sends an EF command to all players
+// to start the auction.
 
 // EF (S->C): Start card auction (Episode 3)
 
