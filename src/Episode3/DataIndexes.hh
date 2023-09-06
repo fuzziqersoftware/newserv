@@ -971,22 +971,22 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   } __attribute__((packed));
   /* 28F0 */ parray<parray<DialogueSet, 0x10>, 3> dialogue_sets; // Up to 0x10 per valid NPC
 
+  // These card IDs are always given to the player when they win a battle on
+  // this map. Unused entries should be set to FFFF.
   /* 59B0 */ parray<be_uint16_t, 0x10> reward_card_ids;
 
-  // These fields appear to be used for the purpose of determining cards to drop
-  // after the battle is complete. If either is negative, the player's actual
-  // CLv is used instead.
+  // These fields appear to be used for the purpose of determining which cards
+  // to drop after the battle is complete. If either is negative, the player's
+  // actual CLv is used instead.
   /* 59D0 */ be_int32_t win_level_override;
   /* 59D4 */ be_int32_t loss_level_override;
 
   /* 59D8 */ be_uint16_t unknown_a9_c;
   /* 59DA */ be_uint16_t unknown_a9_d;
-
   /* 59DC */ uint8_t unknown_a10;
 
-  // This field determines the type of block to be used in the Cyber
-  // environment. There are 10 block types (0-9); if this value is >= 10, it is
-  // treated as 0.
+  // This field determines block graphics to be used in the Cyber environment.
+  // There are 10 block types (0-9); if this value is > 9, type 0 is used.
   /* 59DD */ uint8_t cyber_block_type;
 
   /* 59DE */ parray<uint8_t, 2> unknown_a11;
