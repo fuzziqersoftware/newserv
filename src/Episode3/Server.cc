@@ -560,7 +560,7 @@ void Server::clear_player_flags_after_dice_phase() {
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (ps) {
-      ps->assist_flags = ps->assist_flags & 0xFFFFDFFE;
+      ps->assist_flags &= 0xFFFFDFFE;
       ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     }
   }
@@ -1203,7 +1203,7 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id) {
             break;
           }
         }
-        ps->assist_flags = ps->assist_flags & 0xFFFF7FFF;
+        ps->assist_flags &= 0xFFFF7FFF;
       }
       ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     }

@@ -418,9 +418,9 @@ static const vector<const char*> description_for_p_target({
     /* p11 */ "All ally FCs", // TODO: how is this different from p10?
     /* p12 */ "All non-aerial FCs on both teams",
     /* p13 */ "All FCs on both teams that are Frozen",
-    /* p14 */ "All FCs on both teams that have <= 3 HP",
-    /* p15 */ "All FCs except SCs", // TODO: used during attacks only?
-    /* p16 */ "All FCs except SCs", // TODO: used during attacks only? how is this different from p15?
+    /* p14 */ "All FCs on both teams with <= 3 HP",
+    /* p15 */ "All FCs on both teams",
+    /* p16 */ "All FCs on both teams with >= 8 HP",
     /* p17 */ "This card",
     /* p18 */ "SC who equipped this card",
     /* p19 */ "Unknown: p19", // Unused

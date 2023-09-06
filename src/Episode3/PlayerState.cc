@@ -1777,11 +1777,11 @@ void PlayerState::roll_main_dice() {
   if (!should_exchange) {
     this->atk_points = (short)(char)this->dice_results[0];
     this->def_points = (short)(char)this->dice_results[1];
-    this->assist_flags = this->assist_flags & 0xFFFFFFFD;
+    this->assist_flags &= 0xFFFFFFFD;
   } else {
     this->atk_points = (short)(char)this->dice_results[1];
     this->def_points = (short)(char)this->dice_results[0];
-    this->assist_flags = this->assist_flags | 2;
+    this->assist_flags |= 2;
   }
 
   this->atk_points = this->atk_points + this->server()->card_special->client_has_atk_dice_boost_condition(this->client_id);

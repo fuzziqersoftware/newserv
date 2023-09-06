@@ -6,6 +6,25 @@ using namespace std;
 
 namespace Episode3 {
 
+static uint16_t ref_for_card(shared_ptr<const Card> card) {
+  if (card) {
+    return card->get_card_ref();
+  } else {
+    return 0xFFFF;
+  }
+}
+
+static string refs_str_for_cards_vector(const vector<shared_ptr<const Card>>& cards) {
+  string ret;
+  for (const auto& card : cards) {
+    if (!ret.empty()) {
+      ret += ", ";
+    }
+    ret += string_printf("%04hX", ref_for_card(card));
+  }
+  return ret;
+}
+
 CardSpecial::DiceRoll::DiceRoll() {
   this->clear();
 }
@@ -87,6 +106,14 @@ shared_ptr<const Server> CardSpecial::server() const {
     throw runtime_error("server is deleted");
   }
   return s;
+}
+
+ATTR_PRINTF(2, 3)
+void CardSpecial::debug_log(const char* fmt, ...) const {
+  va_list va;
+  va_start(va, fmt);
+  this->server()->base()->log.debug_v(fmt, va);
+  va_end(va);
 }
 
 void CardSpecial::adjust_attack_damage_due_to_conditions(
@@ -252,8 +279,8 @@ bool CardSpecial::apply_defense_condition(
     if ((when == 2) && (defender_cond->type == ConditionType::GUOM) && (flags & 4)) {
       CardShortStatus stat = defender_card->get_short_status();
       if (stat.card_flags & 4) {
-        this->server()->base()->log.debug("(when=2) @%04hX clearing GUOM from @%04hX",
-            attacker_card_ref, defender_card->get_card_ref());
+        this->debug_log("(when=2) @%04hX clearing GUOM from @%04hX",
+            attacker_card_ref, ref_for_card(defender_card));
         G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
         cmd.effect.flags = 0x04;
         cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(attacker_card_ref, 0x0E);
@@ -273,8 +300,7 @@ bool CardSpecial::apply_defense_condition(
         (defender_cond->type == ConditionType::ACID)) {
       int16_t hp = defender_card->get_current_hp();
       if (hp > 0) {
-        this->server()->base()->log.debug("(when=2) @%04hX has ACID; removing 1 HP",
-            defender_cond->card_ref.load());
+        this->debug_log("(when=2) @%04hX has ACID; removing 1 HP", defender_cond->card_ref.load());
         this->send_6xB4x06_for_stat_delta(
             defender_card, defender_cond->card_ref, 0x20, -1, 0, 1);
         defender_card->set_current_hp(hp - 1);
@@ -2464,6 +2490,8 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     const ActionState& as,
     int16_t p_target_type,
     bool apply_usability_filters) const {
+  this->debug_log("get_targeted_cards_for_condition(card_ref=%04hX, def_effect_index=%02hhX, setter_card_ref=%04hX, as, p_target_type=%hd, apply_usability_filters=%s)", card_ref, def_effect_index, setter_card_ref, p_target_type, apply_usability_filters ? "true" : "false");
+
   vector<shared_ptr<const Card>> ret;
 
   uint8_t client_id = client_id_for_card_ref(card_ref);
@@ -2471,10 +2499,12 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
   if (!card1) {
     card1 = this->server()->card_for_set_card_ref(setter_card_ref);
   }
+  this->debug_log("get_targeted_cards_for_condition: card1=%04hX", ref_for_card(card1));
 
   auto card2 = this->server()->card_for_set_card_ref((as.attacker_card_ref == 0xFFFF)
           ? as.original_attacker_card_ref
           : as.attacker_card_ref);
+  this->debug_log("get_targeted_cards_for_condition: card2=%04hX", ref_for_card(card2));
 
   Location card1_loc;
   if (!card1) {
@@ -2483,11 +2513,15 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     card1_loc.direction = Direction::RIGHT;
   } else {
     this->get_card1_loc_with_card2_opposite_direction(&card1_loc, card1, card2);
+
+    string card1_loc_str = card1_loc.str();
+    this->debug_log("get_targeted_cards_for_condition: card1_loc=%s", card1_loc_str.c_str());
   }
 
   AttackMedium attack_medium = card2
       ? card2->action_chain.chain.attack_medium
       : AttackMedium::UNKNOWN;
+  this->debug_log("get_targeted_cards_for_condition: attack_medium=%s", name_for_attack_medium(attack_medium));
 
   auto add_card_refs = [&](const vector<uint16_t>& result_card_refs) -> void {
     for (uint16_t result_card_ref : result_card_refs) {
@@ -2503,7 +2537,10 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     case 5: {
       auto result_card = this->server()->card_for_set_card_ref(setter_card_ref);
       if (result_card) {
+        this->debug_log("get_targeted_cards_for_condition: (p01/p05) result_card=%04hX", ref_for_card(result_card));
         ret.emplace_back(result_card);
+      } else {
+        this->debug_log("get_targeted_cards_for_condition: (p01/p05) result_card=null");
       }
       break;
     }
@@ -2595,10 +2632,15 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       ret = this->get_all_set_cards();
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 16:
+    case 16: {
       ret = this->find_cards_in_hp_range(8, 1000);
+      string range_refs_str = refs_str_for_cards_vector(ret);
+      this->debug_log("get_targeted_cards_for_condition: (p16) candidate cards = [%s]", range_refs_str.c_str());
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
+      range_refs_str = refs_str_for_cards_vector(ret);
+      this->debug_log("get_targeted_cards_for_condition: (p16) filtered cards = [%s]", range_refs_str.c_str());
       break;
+    }
     case 17: {
       auto result_card = this->server()->card_for_set_card_ref(card_ref);
       if (result_card) {
@@ -3002,6 +3044,9 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       if (this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
               card_ref, setter_card_ref, c->get_card_ref(), def_effect_index, attack_medium)) {
         filtered_ret.emplace_back(c);
+        this->debug_log("get_targeted_cards_for_condition: usability filter: kept card %04hX", ref_for_card(c));
+      } else {
+        this->debug_log("get_targeted_cards_for_condition: usability filter: removed card %04hX", ref_for_card(c));
       }
     }
     return filtered_ret;
@@ -3517,7 +3562,7 @@ void CardSpecial::unknown_8024C2B0(
     {
       string as_s = as.str();
       string eff_s = card_effect.str();
-      this->server()->base()->log.debug("(when=%" PRIu32 ") set=@%04hX sc=@%04hX as=%s att=@%04hX eff=%s",
+      this->debug_log("(when=%" PRIu32 ") set=@%04hX sc=@%04hX as=%s att=@%04hX eff=%s",
           when, set_card_ref, sc_card_ref, as_s.c_str(), as_attacker_card_ref, eff_s.c_str());
     }
 

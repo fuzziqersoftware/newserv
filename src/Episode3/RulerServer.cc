@@ -922,25 +922,31 @@ bool RulerServer::check_usability_or_condition_apply(
     attack_medium = AttackMedium::UNKNOWN;
   }
 
+  this->server()->base()->log.debug("check_usability_or_condition_apply(client_id1=%02hhX, card_id1=%04hX, client_id2=%02hhX, card_id2=%04hX, card_id3=%04hX, def_effect_index=%02hhX, is_item_usability_check=%s, attack_medium=%s)", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", name_for_attack_medium(attack_medium));
+
   auto ce1 = this->definition_for_card_id(card_id1);
   auto ce2 = this->definition_for_card_id(card_id2);
   auto ce3 = this->definition_for_card_id(card_id3);
   if (!ce1) {
+    this->server()->base()->log.debug("check_usability_or_condition_apply: ce1 missing");
     return false;
   }
   if ((ce1->def.type == CardType::ITEM) && this->card_id_is_boss_sc(card_id2)) {
+    this->server()->base()->log.debug("check_usability_or_condition_apply: ce1 is item and card_id2 is boss sc");
     return false;
   }
 
   CriterionCode criterion_code;
-  if (def_effect_index & 0xFF) {
+  if (def_effect_index == 0xFF) {
     criterion_code = ce1->def.usable_criterion;
   } else {
     if (def_effect_index > 2) {
+      this->server()->base()->log.debug("check_usability_or_condition_apply: invalid def_effect_index");
       return false;
     }
     criterion_code = ce1->def.effects[def_effect_index].apply_criterion;
   }
+  this->server()->base()->log.debug("check_usability_or_condition_apply: criterion_code=%s", name_for_criterion_code(criterion_code));
 
   // For item usability checks, prevent criteria that depend on player
   // positioning/team setup
@@ -951,6 +957,7 @@ bool RulerServer::check_usability_or_condition_apply(
           (criterion_code == CriterionCode::UNKNOWN_07) ||
           (criterion_code == CriterionCode::NOT_SC) ||
           (criterion_code == CriterionCode::SC))) {
+    this->server()->base()->log.debug("check_usability_or_condition_apply: criterion is forbidden");
     criterion_code = CriterionCode::NONE;
   }
 
@@ -1000,9 +1007,12 @@ bool RulerServer::check_usability_or_condition_apply(
       break;
     case CriterionCode::UNKNOWN_07:
       // Like NOT_SC, but for ce3 instead of ce2
+      this->server()->base()->log.debug("check_usability_or_condition_apply: UNKNOWN_07: ce3 type is %s", ce3 ? name_for_card_type(ce3->def.type) : "missing");
       if (ce3 && (ce3->def.type != CardType::HUNTERS_SC) && (ce3->def.type != CardType::ARKZ_SC)) {
+        this->server()->base()->log.debug("check_usability_or_condition_apply: UNKNOWN_07: returned %s", ret ? "true" : "false");
         return ret;
       }
+      this->server()->base()->log.debug("check_usability_or_condition_apply: UNKNOWN_07: did not pass");
       break;
     case CriterionCode::NOT_SC:
       if (ce2 && (ce2->def.type != CardType::HUNTERS_SC) && (ce2->def.type != CardType::ARKZ_SC)) {
@@ -1323,6 +1333,7 @@ bool RulerServer::check_usability_or_condition_apply(
       }
   }
 
+  this->server()->base()->log.debug("check_usability_or_condition_apply: default return (false)");
   return false;
 }
 
