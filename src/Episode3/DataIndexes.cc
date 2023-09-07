@@ -1200,14 +1200,14 @@ JSON Rules::json() const {
       {"allowed_cards", name_for_enum(this->allowed_cards)},
       {"min_dice", this->min_dice},
       {"max_dice", this->max_dice},
-      {"disable_deck_shuffle", this->disable_deck_shuffle},
-      {"disable_deck_loop", this->disable_deck_loop},
+      {"disable_deck_shuffle", static_cast<bool>(this->disable_deck_shuffle)},
+      {"disable_deck_loop", static_cast<bool>(this->disable_deck_loop)},
       {"char_hp", this->char_hp},
       {"hp_type", name_for_enum(this->hp_type)},
-      {"no_assist_cards", this->no_assist_cards},
-      {"disable_dialogue", this->disable_dialogue},
+      {"no_assist_cards", static_cast<bool>(this->no_assist_cards)},
+      {"disable_dialogue", static_cast<bool>(this->disable_dialogue)},
       {"dice_exchange_mode", name_for_enum(this->dice_exchange_mode)},
-      {"disable_dice_boost", this->disable_dice_boost},
+      {"disable_dice_boost", static_cast<bool>(this->disable_dice_boost)},
   });
 }
 

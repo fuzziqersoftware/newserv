@@ -660,7 +660,12 @@ TournamentIndex::TournamentIndex(
     return;
   }
 
-  auto json = JSON::parse(load_file(this->state_filename));
+  JSON json;
+  try {
+    json = JSON::parse(load_file(this->state_filename));
+  } catch (const cannot_open_file&) {
+    json = JSON::list();
+  }
   if (json.size() > 0x20) {
     throw runtime_error("tournament JSON list length is incorrect");
   }

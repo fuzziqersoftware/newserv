@@ -848,15 +848,9 @@ void ServerState::load_ep3_data() {
   this->ep3_com_deck_index.reset(new Episode3::COMDeckIndex("system/ep3/com-decks.json"));
 
   const string& tournament_state_filename = "system/ep3/tournament-state.json";
-  try {
-    this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
-        this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename));
-    config_log.info("Loaded Episode 3 tournament state");
-  } catch (const exception& e) {
-    config_log.warning("Cannot load Episode 3 tournament state: %s", e.what());
-    this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
-        this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename, true));
-  }
+  this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
+      this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename));
+  config_log.info("Loaded Episode 3 tournament state");
 
   config_log.info("Resolving Episode 3 card auction pool");
   for (auto& e : this->ep3_card_auction_pool) {
