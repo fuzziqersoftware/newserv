@@ -25,6 +25,11 @@
 (Ep3 USA) Auto-press A as fast as possible during loading screens
 042F9AC0 60000000
 
+(Ep3 USA) Change color of loading screens
+(Replace AA, RR, GG, BB appropriately)
+042FA704 3CC0AARR
+042FA708 60C6GGBB
+
 (Ep3 USA) Use 16:9 aspect ratio
 04383DC8 4BC87F99
 0400BD60 C042DED0
