@@ -106,8 +106,11 @@ struct Client {
     // Client has received newserv's Episode 3 card definitions, so don't send
     // them again
     HAS_EP3_CARD_DEFS = 0x00004000,
+    // Client has received newserv's Episode 3 media updates, so don't send them
+    // again
+    HAS_EP3_MEDIA_UPDATES = 0x00800000,
 
-    UNUSED_FLAG_BITS = 0xFF800000,
+    UNUSED_FLAG_BITS = 0xFF010000,
   };
 
   uint64_t id;

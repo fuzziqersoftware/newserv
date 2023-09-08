@@ -2190,9 +2190,6 @@ void send_ep3_card_list_update(shared_ptr<ServerState> s, shared_ptr<Client> c) 
     w.write(data);
 
     send_command(c, 0xB8, 0x00, w.str());
-
-    c->flags |= Client::Flag::HAS_EP3_CARD_DEFS;
-    send_update_client_config(c);
   }
 }
 

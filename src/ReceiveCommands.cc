@@ -2479,15 +2479,27 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
       // update and the current tournament entry depend on this flag, we have
       // to delay sending them until now, instead of sending them during the
       // login sequence.
-      if ((c->flags & Client::Flag::IS_EPISODE_3) && !(c->flags & Client::Flag::HAS_EP3_CARD_DEFS)) {
-        send_ep3_card_list_update(s, c);
-        for (const auto& banner : s->ep3_lobby_banners) {
-          send_ep3_media_update(c, banner.type, banner.which, banner.data);
+      if (c->flags & Client::Flag::IS_EPISODE_3) {
+        bool flags_changed = false;
+        if (!(c->flags & Client::Flag::HAS_EP3_CARD_DEFS)) {
+          send_ep3_card_list_update(s, c);
+          auto team = c->ep3_tournament_team.lock();
+          auto tourn = team ? team->tournament.lock() : nullptr;
+          if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
+            send_ep3_confirm_tournament_entry(s, c, tourn);
+          }
+          c->flags |= Client::Flag::HAS_EP3_CARD_DEFS;
+          flags_changed = true;
         }
-        auto team = c->ep3_tournament_team.lock();
-        auto tourn = team ? team->tournament.lock() : nullptr;
-        if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
-          send_ep3_confirm_tournament_entry(s, c, tourn);
+        if (!(c->flags & Client::Flag::HAS_EP3_MEDIA_UPDATES)) {
+          for (const auto& banner : s->ep3_lobby_banners) {
+            send_ep3_media_update(c, banner.type, banner.which, banner.data);
+            c->flags |= Client::Flag::HAS_EP3_MEDIA_UPDATES;
+            flags_changed = true;
+          }
+        }
+        if (flags_changed) {
+          send_update_client_config(c);
         }
       }
 

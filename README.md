@@ -185,6 +185,7 @@ The following Episode 3 features work well:
 * Participating in card auctions. (The auction contents must be configured in config.json.)
 
 The following Episode 3 features are implemented, but are only partially tested:
+* Decorations in lobbies. Currently only images are supported; the game also supports loading custom 3D models in lobbies, but newserv does not implement this (yet).
 * Spectator teams. There is a known issue that prevents viewing battles unless you're in the spectator team when the battle begins, and spectating clients sometimes crash for an unknown reason.
 * Battle replays also sometimes cause the client to crash during the replay. Using the $playrec command is therefore not recommended.
 
