@@ -25,6 +25,11 @@
 (Ep3 USA) Auto-press A as fast as possible during loading screens
 042F9AC0 60000000
 
+(Ep3 USA) Replace loading screen A button sounds with random sounds
+042F9B20 4804BB11
+042F9B24 64630005
+042F9B28 38800000
+
 (Ep3 USA) Change color of loading screens
 (Replace AA, RR, GG, BB appropriately)
 042FA704 3CC0AARR
@@ -182,3 +187,21 @@ TODO: Figure out more debug message conditionals (vars/functions) and add them h
 
 (Ep3 USA) Jukebox is free
 0430D1DC 48000024
+
+(Ep3 USA) Use own character in battle (online only)
+041FFAB0 4800001C
+042A54D8 4BD5B0F9
+04200A34 4BDFFB9D
+041FFA9C 4BE00B35
+040005D0 38600000
+040005D4 3CA08049
+040005D8 80A54160
+040005DC 2805000F
+040005E0 41820008
+040005E4 481E8E24
+040005E8 80ADA448
+040005EC 7C042800
+040005F0 41820008
+040005F4 481E8E14
+040005F8 38600001
+040005FC 4E800020
