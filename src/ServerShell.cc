@@ -287,6 +287,9 @@ Proxy session commands:\n\
         auto config_json = this->state->load_config();
         this->state->load_dol_files();
         this->state->create_menus(config_json);
+      } else if (type == "config") {
+        auto config_json = this->state->load_config();
+        this->state->create_menus(config_json);
       } else {
         throw invalid_argument("incorrect data type");
       }
