@@ -56,7 +56,6 @@ Current known issues / missing features / things to do:
     - Replace enemy list, game episode, etc. with quest data when loading a quest
     - Implement trade window
     - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on other versions).
-- There is a function that encodes QST files, but there's no corresponding CLI option.
 - Figure out what controls BML file data segment alignment.
 - Extension data in inventories is not handled properly.
 - PSOX is not tested at all.
@@ -65,7 +64,6 @@ Current known issues / missing features / things to do:
 - Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
 - Encapsulate BB server-side random state and make replays deterministic.
 - Implement character and inventory replacement for battle and challenge modes.
-- Implement the C5 (battle/challenge records) command.
 - Implement choice search.
 - Episode 3 bugs
     - Fix behavior when joining a spectator team after the beginning of a battle.
