@@ -65,6 +65,7 @@ add_executable(newserv
     src/FileContentsCache.cc
     src/FunctionCompiler.cc
     src/GSLArchive.cc
+    src/GVMEncoder.cc
     src/IPFrameInfo.cc
     src/IPStackSimulator.cc
     src/ItemCreator.cc

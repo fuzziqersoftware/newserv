@@ -2481,6 +2481,9 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
       // login sequence.
       if ((c->flags & Client::Flag::IS_EPISODE_3) && !(c->flags & Client::Flag::HAS_EP3_CARD_DEFS)) {
         send_ep3_card_list_update(s, c);
+        for (const auto& banner : s->ep3_lobby_banners) {
+          send_ep3_media_update(c, banner.type, banner.which, banner.data);
+        }
         auto team = c->ep3_tournament_team.lock();
         auto tourn = team ? team->tournament.lock() : nullptr;
         if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {

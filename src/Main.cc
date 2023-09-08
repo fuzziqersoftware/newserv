@@ -18,6 +18,7 @@
 #include "Compression.hh"
 #include "DNSServer.hh"
 #include "GSLArchive.hh"
+#include "GVMEncoder.hh"
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
@@ -274,6 +275,7 @@ enum class Behavior {
   ENCRYPT_GCI_SAVE,
   DECRYPT_GCI_SAVE,
   DECODE_GCI_SNAPSHOT,
+  ENCODE_GVM,
   FIND_DECRYPTION_SEED,
   SALVAGE_GCI,
   DECODE_QUEST_FILE,
@@ -316,6 +318,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::DECRYPT_CHALLENGE_DATA) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::DECODE_GCI_SNAPSHOT) ||
+      (b == Behavior::ENCODE_GVM) ||
       (b == Behavior::SALVAGE_GCI) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DECODE_QUEST_FILE) ||
@@ -350,6 +353,7 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DECODE_GCI_SNAPSHOT) ||
+      (b == Behavior::ENCODE_GVM) ||
       (b == Behavior::ENCODE_QST) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
@@ -528,6 +532,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::ENCRYPT_GCI_SAVE;
         } else if (!strcmp(argv[x], "decode-gci-snapshot")) {
           behavior = Behavior::DECODE_GCI_SNAPSHOT;
+        } else if (!strcmp(argv[x], "encode-gvm")) {
+          behavior = Behavior::ENCODE_GVM;
         } else if (!strcmp(argv[x], "find-decryption-seed")) {
           behavior = Behavior::FIND_DECRYPTION_SEED;
         } else if (!strcmp(argv[x], "salvage-gci")) {
@@ -649,6 +655,8 @@ int main(int argc, char** argv) {
         }
       } else if (behavior == Behavior::DECODE_GCI_SNAPSHOT) {
         filename += ".bmp";
+      } else if (behavior == Behavior::ENCODE_GVM) {
+        filename += ".gvm";
       } else if (behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) {
         filename += ".txt";
       } else if (behavior == Behavior::CONVERT_ITEMRT_REL_TO_JSON) {
@@ -1008,6 +1016,18 @@ int main(int argc, char** argv) {
       auto img = file.decode_image();
       string saved = img.save(Image::Format::WINDOWS_BITMAP);
       write_output_data(saved.data(), saved.size());
+      break;
+    }
+
+    case Behavior::ENCODE_GVM: {
+      Image img;
+      if (input_filename && strcmp(input_filename, "-")) {
+        img = Image(input_filename);
+      } else {
+        img = Image(stdin);
+      }
+      string encoded = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565);
+      write_output_data(encoded.data(), encoded.size());
       break;
     }
 

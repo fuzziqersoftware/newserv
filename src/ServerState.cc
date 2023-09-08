@@ -3,10 +3,12 @@
 #include <string.h>
 
 #include <memory>
+#include <phosg/Image.hh>
 #include <phosg/Network.hh>
 
 #include "Compression.hh"
 #include "FileContentsCache.hh"
+#include "GVMEncoder.hh"
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
@@ -648,6 +650,23 @@ void ServerState::parse_config(const JSON& json) {
             .card_id = 0,
             .min_price = static_cast<uint16_t>(it.second->at(1).as_int()),
             .card_name = it.first});
+  }
+
+  for (const auto& it : json.get("Episode3LobbyBanners", JSON::list()).as_list()) {
+    Image img("system/ep3/banners/" + it->at(2).as_string());
+    string gvm = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565);
+    if (gvm.size() > 0x37000) {
+      throw runtime_error(string_printf("banner %s is too large (0x%zX bytes; maximum size is 0x37000 bytes)", it->at(2).as_string().c_str(), gvm.size()));
+    }
+    string compressed = prs_compress_optimal(gvm.data(), gvm.size());
+    if (compressed.size() > 0x3800) {
+      throw runtime_error(string_printf("banner %s cannot be compressed small enough (0x%zX bytes; maximum size is 0x3800 bytes compressed)", it->at(2).as_string().c_str(), compressed.size()));
+    }
+    config_log.info("Loaded Episode 3 lobby banner %s (0x%zX -> 0x%zX bytes)", it->at(2).as_string().c_str(), gvm.size(), compressed.size());
+    this->ep3_lobby_banners.emplace_back(
+        Ep3LobbyBannerEntry{.type = static_cast<uint32_t>(it->at(0).as_int()),
+            .which = static_cast<uint32_t>(it->at(1).as_int()),
+            .data = std::move(compressed)});
   }
 
   {

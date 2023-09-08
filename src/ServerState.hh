@@ -103,6 +103,12 @@ struct ServerState {
     std::string card_name;
   };
   std::vector<CardAuctionPoolEntry> ep3_card_auction_pool;
+  struct Ep3LobbyBannerEntry {
+    uint32_t type = 1;
+    uint32_t which; // See B9 documentation in CommandFormats.hh
+    std::string data;
+  };
+  std::vector<Ep3LobbyBannerEntry> ep3_lobby_banners;
 
   std::shared_ptr<LicenseManager> license_manager;
 
