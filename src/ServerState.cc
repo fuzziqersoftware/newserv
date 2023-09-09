@@ -85,13 +85,15 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
   // Load all the necessary data
   auto config = this->load_config();
   this->collect_network_addresses();
-  this->parse_config(config);
+  this->parse_config(config, false);
+  this->load_bb_private_keys();
   this->load_licenses();
   this->load_patch_indexes();
   this->load_battle_params();
   this->load_level_table();
   this->load_item_tables();
   this->load_ep3_data();
+  this->resolve_ep3_card_auction_pool();
   this->load_quest_index();
   this->compile_functions();
   this->load_dol_files();
@@ -566,24 +568,33 @@ static vector<PortConfiguration> parse_port_configuration(const JSON& json) {
   return ret;
 }
 
-void ServerState::parse_config(const JSON& json) {
+void ServerState::parse_config(const JSON& json, bool is_reload) {
   config_log.info("Parsing configuration");
 
   this->name = decode_sjis(json.at("ServerName").as_string());
 
-  try {
-    this->username = json.at("User").as_string();
-    if (this->username == "$SUDO_USER") {
-      const char* user_from_env = getenv("SUDO_USER");
-      if (!user_from_env) {
-        throw runtime_error("configuration specifies $SUDO_USER, but variable is not defined");
+  if (!is_reload) {
+    try {
+      this->username = json.at("User").as_string();
+      if (this->username == "$SUDO_USER") {
+        const char* user_from_env = getenv("SUDO_USER");
+        if (!user_from_env) {
+          throw runtime_error("configuration specifies $SUDO_USER, but variable is not defined");
+        }
+        this->username = user_from_env;
       }
-      this->username = user_from_env;
+    } catch (const out_of_range&) {
     }
-  } catch (const out_of_range&) {
-  }
 
-  this->set_port_configuration(parse_port_configuration(json.at("PortConfiguration")));
+    this->set_port_configuration(parse_port_configuration(json.at("PortConfiguration")));
+    this->dns_server_port = json.get_int("DNSServerPort", this->dns_server_port);
+    try {
+      for (const auto& item : json.at("IPStackListen").as_list()) {
+        this->ip_stack_addresses.emplace_back(item->as_string());
+      }
+    } catch (const out_of_range&) {
+    }
+  }
 
   auto local_address_str = json.at("LocalAddress").as_string();
   try {
@@ -595,6 +606,7 @@ void ServerState::parse_config(const JSON& json) {
     this->local_address = address_for_string(local_address_str.c_str());
     config_log.info("Added local address: %s", local_address_str.c_str());
   }
+  this->all_addresses.erase("<local>");
   this->all_addresses.emplace("<local>", this->local_address);
 
   auto external_address_str = json.at("ExternalAddress").as_string();
@@ -607,16 +619,9 @@ void ServerState::parse_config(const JSON& json) {
     this->external_address = address_for_string(external_address_str.c_str());
     config_log.info("Added external address: %s", external_address_str.c_str());
   }
+  this->all_addresses.erase("<external>");
   this->all_addresses.emplace("<external>", this->external_address);
 
-  this->dns_server_port = json.get_int("DNSServerPort", this->dns_server_port);
-
-  try {
-    for (const auto& item : json.at("IPStackListen").as_list()) {
-      this->ip_stack_addresses.emplace_back(item->as_string());
-    }
-  } catch (const out_of_range&) {
-  }
   this->ip_stack_debug = json.get_bool("IPStackDebug", this->ip_stack_debug);
   this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
   this->item_tracking_enabled = json.get_bool("EnableItemTracking", this->item_tracking_enabled);
@@ -702,21 +707,13 @@ void ServerState::parse_config(const JSON& json) {
 
   set_log_levels_from_json(json.get("LogLevels", JSON::dict()));
 
-  for (const string& filename : list_directory("system/blueburst/keys")) {
-    if (!ends_with(filename, ".nsk")) {
-      continue;
+  if (!is_reload) {
+    try {
+      this->run_shell_behavior = json.at("RunInteractiveShell").as_bool()
+          ? ServerState::RunShellBehavior::ALWAYS
+          : ServerState::RunShellBehavior::NEVER;
+    } catch (const out_of_range&) {
     }
-    this->bb_private_keys.emplace_back(new PSOBBEncryption::KeyFile(
-        load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
-    config_log.info("Loaded Blue Burst key file: %s", filename.c_str());
-  }
-  config_log.info("%zu Blue Burst key file(s) loaded", this->bb_private_keys.size());
-
-  try {
-    this->run_shell_behavior = json.at("RunInteractiveShell").as_bool()
-        ? ServerState::RunShellBehavior::ALWAYS
-        : ServerState::RunShellBehavior::NEVER;
-  } catch (const out_of_range&) {
   }
 
   try {
@@ -745,12 +742,26 @@ void ServerState::parse_config(const JSON& json) {
 
   this->ep3_menu_song = json.get_int("Episode3MenuSong", this->ep3_menu_song);
 
-  try {
-    this->quest_category_index.reset(new QuestCategoryIndex(json.at("QuestCategories")));
-  } catch (const exception& e) {
-    throw runtime_error(string_printf(
-        "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
+  if (!is_reload) {
+    try {
+      this->quest_category_index.reset(new QuestCategoryIndex(json.at("QuestCategories")));
+    } catch (const exception& e) {
+      throw runtime_error(string_printf(
+          "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
+    }
   }
+}
+
+void ServerState::load_bb_private_keys() {
+  for (const string& filename : list_directory("system/blueburst/keys")) {
+    if (!ends_with(filename, ".nsk")) {
+      continue;
+    }
+    this->bb_private_keys.emplace_back(new PSOBBEncryption::KeyFile(
+        load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
+    config_log.info("Loaded Blue Burst key file: %s", filename.c_str());
+  }
+  config_log.info("%zu Blue Burst key file(s) loaded", this->bb_private_keys.size());
 }
 
 void ServerState::load_licenses() {
@@ -872,7 +883,9 @@ void ServerState::load_ep3_data() {
   this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
       this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename));
   config_log.info("Loaded Episode 3 tournament state");
+}
 
+void ServerState::resolve_ep3_card_auction_pool() {
   config_log.info("Resolving Episode 3 card auction pool");
   for (auto& e : this->ep3_card_auction_pool) {
     try {

@@ -120,7 +120,7 @@ Server commands:\n\
       quests - reindex all quests\n\
       functions - recompile all client-side functions\n\
       dol-files - reindex all DOL files\n\
-      config - reload some fields from config.json\n\
+      config - reload most fields from config.json\n\
     Reloading will not affect items that are in use; for example, if an Episode\n\
     3 battle is in progress, it will continue to use the previous map and card\n\
     definitions. Similarly, BB clients are not forced to disconnect or reload\n\
@@ -287,6 +287,10 @@ Proxy session commands:\n\
         auto config_json = this->state->load_config();
         this->state->load_dol_files();
         this->state->create_menus(config_json);
+      } else if (type == "config") {
+        auto config_json = this->state->load_config();
+        this->state->parse_config(config_json, true);
+        this->state->resolve_ep3_card_auction_pool();
       } else {
         throw invalid_argument("incorrect data type");
       }

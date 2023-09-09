@@ -187,13 +187,15 @@ struct ServerState {
 
   JSON load_config() const;
   void collect_network_addresses();
-  void parse_config(const JSON& config_json);
+  void parse_config(const JSON& config_json, bool is_reload);
+  void load_bb_private_keys();
   void load_licenses();
   void load_patch_indexes();
   void load_battle_params();
   void load_level_table();
   void load_item_tables();
   void load_ep3_data();
+  void resolve_ep3_card_auction_pool();
   void load_quest_index();
   void compile_functions();
   void load_dol_files();
