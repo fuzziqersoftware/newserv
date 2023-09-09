@@ -14,7 +14,8 @@ static uint16_t ref_for_card(shared_ptr<const Card> card) {
   }
 }
 
-static string refs_str_for_cards_vector(const vector<shared_ptr<const Card>>& cards) {
+template <typename T>
+static string refs_str_for_cards_vector(const vector<shared_ptr<T>>& cards) {
   string ret;
   for (const auto& card : cards) {
     if (!ret.empty()) {
@@ -106,14 +107,6 @@ shared_ptr<const Server> CardSpecial::server() const {
     throw runtime_error("server is deleted");
   }
   return s;
-}
-
-ATTR_PRINTF(2, 3)
-void CardSpecial::debug_log(const char* fmt, ...) const {
-  va_list va;
-  va_start(va, fmt);
-  this->server()->base()->log.debug_v(fmt, va);
-  va_end(va);
 }
 
 void CardSpecial::adjust_attack_damage_due_to_conditions(
@@ -279,8 +272,6 @@ bool CardSpecial::apply_defense_condition(
     if ((when == 2) && (defender_cond->type == ConditionType::GUOM) && (flags & 4)) {
       CardShortStatus stat = defender_card->get_short_status();
       if (stat.card_flags & 4) {
-        this->debug_log("(when=2) @%04hX clearing GUOM from @%04hX",
-            attacker_card_ref, ref_for_card(defender_card));
         G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
         cmd.effect.flags = 0x04;
         cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(attacker_card_ref, 0x0E);
@@ -300,7 +291,6 @@ bool CardSpecial::apply_defense_condition(
         (defender_cond->type == ConditionType::ACID)) {
       int16_t hp = defender_card->get_current_hp();
       if (hp > 0) {
-        this->debug_log("(when=2) @%04hX has ACID; removing 1 HP", defender_cond->card_ref.load());
         this->send_6xB4x06_for_stat_delta(
             defender_card, defender_cond->card_ref, 0x20, -1, 0, 1);
         defender_card->set_current_hp(hp - 1);
@@ -1537,7 +1527,8 @@ int32_t CardSpecial::evaluate_effect_expr(
     const AttackEnvStats& ast,
     const char* expr,
     DiceRoll& dice_roll) const {
-  this->debug_log("evaluate_effect_expr(ast, expr=\"%s\", dice_roll=(client_id=%02hhX, a2=%02hhX, value=%02hhX, value_used_in_expr=%s, a5=%04hX))", expr, dice_roll.client_id, dice_roll.unknown_a2, dice_roll.value, dice_roll.value_used_in_expr ? "true" : "false", dice_roll.unknown_a5);
+  auto log = this->server()->base()->log.sub("evaluate_effect_expr: ");
+  log.debug("ast, expr=\"%s\", dice_roll=(client_id=%02hhX, a2=%02hhX, value=%02hhX, value_used_in_expr=%s, a5=%04hX)", expr, dice_roll.client_id, dice_roll.unknown_a2, dice_roll.value, dice_roll.value_used_in_expr ? "true" : "false", dice_roll.unknown_a5);
 
   // Note: This implementation is not based on the original code because the
   // original code was hard to follow - it used a look-behind approach with lots
@@ -1568,7 +1559,7 @@ int32_t CardSpecial::evaluate_effect_expr(
   // Operators are evaluated left-to-right - there are no operator precedence
   // rules
   int32_t value = 0;
-  this->debug_log("evaluate_effect_expr: value=%" PRId32 " (start)", value);
+  log.debug("value=%" PRId32 " (start)", value);
   for (size_t token_index = 0; token_index < tokens.size(); token_index++) {
     auto token_type = tokens[token_index].first;
     int32_t token_value = tokens[token_index].second;
@@ -1577,7 +1568,7 @@ int32_t CardSpecial::evaluate_effect_expr(
     }
     if (token_type == ExpressionTokenType::NUMBER) {
       value = token_value;
-      this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=NUMBER, token_value=%" PRId32 ")", value, token_value);
+      log.debug("value=%" PRId32 " (token_type=NUMBER, token_value=%" PRId32 ")", value, token_value);
     } else {
       if (token_index >= tokens.size() - 1) {
         throw runtime_error("no token on right side of binary operator");
@@ -1591,23 +1582,23 @@ int32_t CardSpecial::evaluate_effect_expr(
       switch (token_type) {
         case ExpressionTokenType::ROUND_DIVIDE:
           value = lround(static_cast<double>(value) / right_value);
-          this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=ROUND_DIVIDE, right_token_value=%" PRId32 ")", value, right_value);
+          log.debug("value=%" PRId32 " (token_type=ROUND_DIVIDE, right_token_value=%" PRId32 ")", value, right_value);
           break;
         case ExpressionTokenType::SUBTRACT:
           value -= right_value;
-          this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=SUBTRACT, right_token_value=%" PRId32 ")", value, right_value);
+          log.debug("value=%" PRId32 " (token_type=SUBTRACT, right_token_value=%" PRId32 ")", value, right_value);
           break;
         case ExpressionTokenType::ADD:
           value += right_value;
-          this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=ADD, right_token_value=%" PRId32 ")", value, right_value);
+          log.debug("value=%" PRId32 " (token_type=ADD, right_token_value=%" PRId32 ")", value, right_value);
           break;
         case ExpressionTokenType::MULTIPLY:
           value *= right_value;
-          this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=MULTIPLY, right_token_value=%" PRId32 ")", value, right_value);
+          log.debug("value=%" PRId32 " (token_type=MULTIPLY, right_token_value=%" PRId32 ")", value, right_value);
           break;
         case ExpressionTokenType::FLOOR_DIVIDE:
           value = floor(value / right_value);
-          this->debug_log("evaluate_effect_expr: value=%" PRId32 " (token_type=FLOOR_DIVIDE, right_token_value=%" PRId32 ")", value, right_value);
+          log.debug("value=%" PRId32 " (token_type=FLOOR_DIVIDE, right_token_value=%" PRId32 ")", value, right_value);
           break;
         default:
           throw logic_error("invalid binary operator");
@@ -1615,7 +1606,7 @@ int32_t CardSpecial::evaluate_effect_expr(
     }
   }
 
-  this->debug_log("evaluate_effect_expr: value=%" PRId32 " (result)", value);
+  log.debug("value=%" PRId32 " (result)", value);
   return value;
 }
 
@@ -1627,9 +1618,10 @@ bool CardSpecial::execute_effect(
     ConditionType cond_type,
     uint32_t unknown_p7,
     uint16_t attacker_card_ref) {
+  auto log = this->server()->base()->log.sub("execute_effect: ");
   {
     string cond_str = cond.str();
-    this->debug_log("execute_effect(cond=%s, card=%04hX, expr_value=%hd, unknown_p5=%hd, cond_type=%s, unknown_p7=%" PRIu32 ", attacker_card_ref=%04hX)", cond_str.c_str(), ref_for_card(card), expr_value, unknown_p5, name_for_condition_type(cond_type), unknown_p7, attacker_card_ref);
+    log.debug("cond=%s, card=%04hX, expr_value=%hd, unknown_p5=%hd, cond_type=%s, unknown_p7=%" PRIu32 ", attacker_card_ref=%04hX", cond_str.c_str(), ref_for_card(card), expr_value, unknown_p5, name_for_condition_type(cond_type), unknown_p7, attacker_card_ref);
   }
   int16_t clamped_expr_value = clamp<int16_t>(expr_value, -99, 99);
   int16_t clamped_unknown_p5 = clamp<int16_t>(unknown_p5, -99, 99);
@@ -2504,7 +2496,8 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     const ActionState& as,
     int16_t p_target_type,
     bool apply_usability_filters) const {
-  this->debug_log("get_targeted_cards_for_condition(card_ref=%04hX, def_effect_index=%02hhX, setter_card_ref=%04hX, as, p_target_type=%hd, apply_usability_filters=%s)", card_ref, def_effect_index, setter_card_ref, p_target_type, apply_usability_filters ? "true" : "false");
+  auto log = this->server()->base()->log.sub("get_targeted_cards_for_condition: ");
+  log.debug("card_ref=%04hX, def_effect_index=%02hhX, setter_card_ref=%04hX, as, p_target_type=%hd, apply_usability_filters=%s", card_ref, def_effect_index, setter_card_ref, p_target_type, apply_usability_filters ? "true" : "false");
 
   vector<shared_ptr<const Card>> ret;
 
@@ -2513,12 +2506,12 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
   if (!card1) {
     card1 = this->server()->card_for_set_card_ref(setter_card_ref);
   }
-  this->debug_log("get_targeted_cards_for_condition: card1=%04hX", ref_for_card(card1));
+  log.debug("card1=%04hX", ref_for_card(card1));
 
   auto card2 = this->server()->card_for_set_card_ref((as.attacker_card_ref == 0xFFFF)
           ? as.original_attacker_card_ref
           : as.attacker_card_ref);
-  this->debug_log("get_targeted_cards_for_condition: card2=%04hX", ref_for_card(card2));
+  log.debug("card2=%04hX", ref_for_card(card2));
 
   Location card1_loc;
   if (!card1) {
@@ -2529,13 +2522,13 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     this->get_card1_loc_with_card2_opposite_direction(&card1_loc, card1, card2);
 
     string card1_loc_str = card1_loc.str();
-    this->debug_log("get_targeted_cards_for_condition: card1_loc=%s", card1_loc_str.c_str());
+    log.debug("card1_loc=%s", card1_loc_str.c_str());
   }
 
   AttackMedium attack_medium = card2
       ? card2->action_chain.chain.attack_medium
       : AttackMedium::UNKNOWN;
-  this->debug_log("get_targeted_cards_for_condition: attack_medium=%s", name_for_attack_medium(attack_medium));
+  log.debug("attack_medium=%s", name_for_attack_medium(attack_medium));
 
   auto add_card_refs = [&](const vector<uint16_t>& result_card_refs) -> void {
     for (uint16_t result_card_ref : result_card_refs) {
@@ -2551,10 +2544,10 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     case 5: {
       auto result_card = this->server()->card_for_set_card_ref(setter_card_ref);
       if (result_card) {
-        this->debug_log("get_targeted_cards_for_condition: (p01/p05) result_card=%04hX", ref_for_card(result_card));
+        log.debug("(p01/p05) result_card=%04hX", ref_for_card(result_card));
         ret.emplace_back(result_card);
       } else {
-        this->debug_log("get_targeted_cards_for_condition: (p01/p05) result_card=null");
+        log.debug("(p01/p05) result_card=null");
       }
       break;
     }
@@ -2649,10 +2642,10 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     case 16: {
       ret = this->find_cards_in_hp_range(8, 1000);
       string range_refs_str = refs_str_for_cards_vector(ret);
-      this->debug_log("get_targeted_cards_for_condition: (p16) candidate cards = [%s]", range_refs_str.c_str());
+      log.debug("(p16) candidate cards = [%s]", range_refs_str.c_str());
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       range_refs_str = refs_str_for_cards_vector(ret);
-      this->debug_log("get_targeted_cards_for_condition: (p16) filtered cards = [%s]", range_refs_str.c_str());
+      log.debug("(p16) filtered cards = [%s]", range_refs_str.c_str());
       break;
     }
     case 17: {
@@ -2703,26 +2696,39 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         }
       }
       break;
-    case 23:
+    case 23: {
+      auto log23 = log.sub("(p23) ");
       if (card1) {
         auto def = this->server()->definition_for_card_ref(card_ref);
         auto ps = card1->player_state();
         if (def && ps) {
           // TODO: Again with the Gifoie hardcoding...
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x00D9, card2);
+          log23.debug("effective range card ID is %04hX", range_card_id);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->base()->card_index, range_card_id, card1_loc, this->server()->base()->map_and_rules1);
+          compute_effective_range(range, this->server()->base()->card_index, range_card_id, card1_loc, this->server()->base()->map_and_rules1, &log23);
           auto result_card_refs = ps->get_all_cards_within_range(range, card1_loc, 0xFF);
+          log23.debug("%zu result card refs", result_card_refs.size());
           for (uint16_t result_card_ref : result_card_refs) {
+            auto result_log = log23.subf("(result ref %04hX) ", result_card_ref);
             auto result_card = this->server()->card_for_set_card_ref(result_card_ref);
-            if (result_card &&
-                (result_card->get_definition()->def.type != CardType::ITEM)) {
+            if (!result_card) {
+              result_log.debug("result card not found");
+            } else if (result_card->get_definition()->def.type == CardType::ITEM) {
+              result_log.debug("result card is item");
+            } else {
+              result_log.debug("result card found and is not item");
               ret.emplace_back(result_card);
             }
           }
+        } else {
+          log23.debug("def or ps is missing");
         }
+      } else {
+        log23.debug("card1 is missing");
       }
       break;
+    }
     case 24:
       ret = this->find_cards_by_condition_inc_exc(ConditionType::PARALYZE);
       break;
@@ -3058,9 +3064,9 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       if (this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
               card_ref, setter_card_ref, c->get_card_ref(), def_effect_index, attack_medium)) {
         filtered_ret.emplace_back(c);
-        this->debug_log("get_targeted_cards_for_condition: usability filter: kept card %04hX", ref_for_card(c));
+        log.debug("usability filter: kept card %04hX", ref_for_card(c));
       } else {
-        this->debug_log("get_targeted_cards_for_condition: usability filter: removed card %04hX", ref_for_card(c));
+        log.debug("usability filter: removed card %04hX", ref_for_card(c));
       }
     }
     return filtered_ret;
@@ -3524,9 +3530,17 @@ void CardSpecial::unknown_8024C2B0(
     uint16_t sc_card_ref,
     bool apply_defense_condition_to_all_cards,
     uint16_t apply_defense_condition_to_card_ref) {
+  auto debug_log = this->server()->base()->log.sub("unknown_8024C2B0: ");
+  {
+    string as_str = as.str();
+    debug_log.debug("when=%02" PRIX32 ", set_card_ref=%04hX, as=%s, sc_card_ref=%04hX, apply_defense_condition_to_all_cards=%s, apply_defense_condition_to_card_ref=%04hX",
+        when, set_card_ref, as_str.c_str(), sc_card_ref, apply_defense_condition_to_all_cards ? "true" : "false", apply_defense_condition_to_card_ref);
+  }
+
   set_card_ref = this->send_6xB4x06_if_card_ref_invalid(set_card_ref, 1);
   auto ce = this->server()->definition_for_card_ref(set_card_ref);
   if (!ce) {
+    debug_log.debug("ce missing");
     return;
   }
 
@@ -3567,27 +3581,30 @@ void CardSpecial::unknown_8024C2B0(
   dice_roll.unknown_a2 = 3;
   dice_roll.value_used_in_expr = false;
 
+  debug_log.debug("inputs: dice_roll=%02hhX, random_percent=%hhu, unknown_v1=%s", dice_roll.value, random_percent, unknown_v1 ? "true" : "false");
+
   for (size_t def_effect_index = 0; (def_effect_index < 3) && !unknown_v1 && (ce->def.effects[def_effect_index].type != ConditionType::NONE); def_effect_index++) {
+    auto effect_log = debug_log.sub(string_printf("(effect:%zu) ", def_effect_index));
     const auto& card_effect = ce->def.effects[def_effect_index];
+    string card_effect_str = card_effect.str();
+    effect_log.debug("effect: %s", card_effect_str.c_str());
     if (card_effect.when != when) {
+      effect_log.debug("does not apply (effect.when=%02hhX, when=%02" PRIX32 ")", card_effect.when, when);
       continue;
     }
 
-    {
-      string as_s = as.str();
-      string eff_s = card_effect.str();
-      this->debug_log("(when=%" PRIu32 ") set=@%04hX sc=@%04hX as=%s att=@%04hX eff=%s",
-          when, set_card_ref, sc_card_ref, as_s.c_str(), as_attacker_card_ref, eff_s.c_str());
-    }
-
     int16_t arg3_value = atoi(&card_effect.arg3[1]);
+    effect_log.debug("arg3_value=%hd", arg3_value);
     auto targeted_cards = this->get_targeted_cards_for_condition(
         set_card_ref, def_effect_index, sc_card_ref, as, arg3_value, 1);
+    string refs_str = refs_str_for_cards_vector(targeted_cards);
+    effect_log.debug("targeted_cards=[%s]", refs_str.c_str());
     bool all_targets_matched = false;
     if (!targeted_cards.empty() &&
         ((card_effect.type == ConditionType::UNKNOWN_64) ||
             (card_effect.type == ConditionType::MISC_DEFENSE_BONUSES) ||
             (card_effect.type == ConditionType::MOSTLY_HALFGUARDS))) {
+      effect_log.debug("special targeting applies");
       size_t count = 0;
       for (size_t z = 0; z < targeted_cards.size(); z++) {
         dice_roll.value_used_in_expr = false;
@@ -3614,18 +3631,24 @@ void CardSpecial::unknown_8024C2B0(
       } else {
         targeted_cards.clear();
       }
+    } else {
+      effect_log.debug("special targeting does not apply");
     }
 
     for (size_t z = 0; z < targeted_cards.size(); z++) {
+      auto target_log = effect_log.sub(string_printf("(target:%04hX) ", targeted_cards[z]->get_card_ref()));
       dice_roll.value_used_in_expr = false;
       string arg2_str = card_effect.arg2;
+      target_log.debug("arg2_str = %s", arg2_str.c_str());
       if (all_targets_matched ||
           this->evaluate_effect_arg2_condition(
               as, targeted_cards[z], arg2_str.c_str(), dice_roll, set_card_ref, sc_card_ref, random_percent, when)) {
+        target_log.debug("arg2 condition passed");
         auto env_stats = this->compute_attack_env_stats(
             as, targeted_cards[z], dice_roll, set_card_ref, sc_card_ref);
         string expr_str = card_effect.expr;
         int16_t value = this->evaluate_effect_expr(env_stats, expr_str.c_str(), dice_roll);
+        target_log.debug("expr = %s, value = %hd", expr_str.c_str(), value);
 
         uint32_t unknown_v1 = 0;
         auto target_card = this->compute_replaced_target_based_on_conditions(
@@ -3641,12 +3664,16 @@ void CardSpecial::unknown_8024C2B0(
             sc_card_ref);
         if (!target_card) {
           target_card = targeted_cards[z];
+          target_log.debug("target card (not replaced) = %04hX", target_card->get_card_ref());
+        } else {
+          target_log.debug("target card (replaced) = %04hX", target_card->get_card_ref());
         }
 
         ssize_t applied_cond_index = -1;
         if ((unknown_v1 == 0) && !this->should_cancel_condition_due_to_anti_abnormality(card_effect, target_card, dice_cmd.effect.target_card_ref, sc_card_ref)) {
           applied_cond_index = target_card->apply_abnormal_condition(
               card_effect, def_effect_index, dice_cmd.effect.target_card_ref, sc_card_ref, value, dice_roll.value, random_percent);
+          target_log.debug("applied abnormal condition");
           // This debug_print call is in the original code.
           // this->debug_print(when, 4, &env_stats, "!set_abnormal..", target_card, card_effect.type);
         }
@@ -3668,8 +3695,11 @@ void CardSpecial::unknown_8024C2B0(
             (apply_defense_condition_to_all_cards || (apply_defense_condition_to_card_ref == targeted_cards[z]->get_card_ref()))) {
           this->apply_defense_condition(
               when, &target_card->action_chain.conditions[applied_cond_index], applied_cond_index, as, target_card, 4, 1);
+          target_log.debug("applied defense condition");
         }
         target_card->send_6xB4x4E_4C_4D_if_needed(0);
+      } else {
+        target_log.debug("arg2 condition failed");
       }
       if (dice_roll.value_used_in_expr) {
         any_expr_used_dice_roll = true;

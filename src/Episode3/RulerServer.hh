@@ -18,7 +18,8 @@ void compute_effective_range(
     std::shared_ptr<const CardIndex> card_index,
     uint16_t card_id,
     const Location& loc,
-    std::shared_ptr<const MapAndRulesState> map_and_rules);
+    std::shared_ptr<const MapAndRulesState> map_and_rules,
+    PrefixedLogger* log = nullptr);
 
 bool card_linkage_is_valid(
     std::shared_ptr<const CardIndex::CardEntry> right_def,

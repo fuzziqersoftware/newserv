@@ -751,13 +751,17 @@ vector<uint16_t> PlayerState::get_all_cards_within_range(
     const parray<uint8_t, 9 * 9>& range,
     const Location& loc,
     uint8_t target_team_id) const {
+  auto log = this->server()->base()->log.sub("get_all_cards_within_range: ");
+  string loc_str = loc.str();
+  log.debug("loc=%s, target_team_id=%02hhX", loc_str.c_str(), target_team_id);
+
   vector<uint16_t> ret;
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto other_ps = this->server()->player_states[client_id];
     if (other_ps &&
         ((target_team_id == 0xFF) || (target_team_id == other_ps->get_team_id()))) {
-      ret = get_card_refs_within_range(
-          range, loc, *other_ps->card_short_statuses);
+      auto card_refs = get_card_refs_within_range(range, loc, *other_ps->card_short_statuses, &log);
+      ret.insert(ret.end(), card_refs.begin(), card_refs.end());
     }
   }
   return ret;

@@ -11,7 +11,14 @@ void compute_effective_range(
     shared_ptr<const CardIndex> card_index,
     uint16_t card_id,
     const Location& loc,
-    shared_ptr<const MapAndRulesState> map_and_rules) {
+    shared_ptr<const MapAndRulesState> map_and_rules,
+    PrefixedLogger* log) {
+  if (log && log->should_log(LogLevel::DEBUG)) {
+    string loc_str = loc.str();
+    log->debug("compute_effective_range: card_id=%04hX, loc=%s", card_id, loc_str.c_str());
+    log->debug("compute_effective_range: map_and_rules->map:");
+    map_and_rules->map.print(stderr);
+  }
   ret.clear(0);
 
   parray<uint32_t, 6> range_def;
@@ -29,10 +36,16 @@ void compute_effective_range(
       range_def[z] = ce->def.range[z];
     }
   }
+  if (log) {
+    log->debug("compute_effective_range: range_def: %05" PRIX32 " %05" PRIX32 " %05" PRIX32 " %05" PRIX32 " %05" PRIX32 " %05" PRIX32, range_def[0], range_def[1], range_def[2], range_def[3], range_def[4], range_def[5]);
+  }
 
   if (range_def[0] == 0x000FFFFF) {
     // Entire field
     ret.clear(2);
+    if (log) {
+      log->debug("compute_effective_range: entire field (2)");
+    }
     return;
   }
 
@@ -46,82 +59,54 @@ void compute_effective_range(
       row >>= 4;
     }
   }
+  if (log) {
+    for (size_t y = 0; y < 9; y++) {
+      log->debug("compute_effective_range: decoded_range: %hhX %hhX %hhX %hhX %hhX %hhX %hhX %hhX %hhX",
+          decoded_range[y * 9 + 0], decoded_range[y * 9 + 1], decoded_range[y * 9 + 2], decoded_range[y * 9 + 3], decoded_range[y * 9 + 4], decoded_range[y * 9 + 5], decoded_range[y * 9 + 6], decoded_range[y * 9 + 7], decoded_range[y * 9 + 8]);
+    }
+  }
 
-  switch (loc.direction) {
-    case Direction::LEFT:
-      for (int16_t y = 0; y < 9; y++) {
-        int16_t map_y = loc.y + y - 4;
-        if (!map_and_rules || ((map_y >= 0) && (map_y < map_and_rules->map.height))) {
-          for (int16_t x = 0; x < 9; x++) {
-            int16_t map_x = loc.x + x - 4;
-            if (!map_and_rules || ((map_x >= 0) && (map_x < map_and_rules->map.width))) {
-              ret[y * 9 + x] = decoded_range[(8 - x) * 9 + y];
-            } else {
+  for (int16_t y = 0; y < 9; y++) {
+    int16_t map_y = y + loc.y - 4;
+    if (!map_and_rules || ((map_y >= 0) && (map_y < map_and_rules->map.height))) {
+      for (int16_t x = 0; x < 9; x++) {
+        int16_t map_x = x + loc.x - 4;
+        if (!map_and_rules || ((map_x >= 0) && (map_x < map_and_rules->map.width))) {
+          int16_t up_x, up_y;
+          switch (loc.direction) {
+            case Direction::LEFT:
+              up_x = y;
+              up_y = 9 - x - 1;
               break;
-            }
+            case Direction::RIGHT:
+              up_x = 9 - y - 1;
+              up_y = x;
+              break;
+            case Direction::UP:
+              up_x = x;
+              up_y = y;
+              break;
+            case Direction::DOWN:
+              up_x = 9 - x - 1;
+              up_y = 9 - y - 1;
+              break;
+            default:
+              throw logic_error("invalid direction");
           }
-        } else {
-          break;
+          ret[y * 9 + x] = decoded_range[up_y * 9 + up_x];
+          if (log) {
+            log->debug("compute_effective_range: x=%hd y=%hd up_x=%hd up_y=%hd v=%hhX", x, y, up_x, up_y, ret[y * 9 + x]);
+          }
         }
       }
-      break;
+    }
+  }
 
-    case Direction::RIGHT:
-      for (int16_t y = 0; y < 9; y++) {
-        int16_t map_y = loc.y + y - 4;
-        if (!map_and_rules || ((map_y >= 0) && (map_y < map_and_rules->map.height))) {
-          for (int16_t x = 0; x < 9; x++) {
-            int16_t map_x = loc.x + x - 4;
-            if (!map_and_rules || ((map_x >= 0) && (map_x < map_and_rules->map.width))) {
-              ret[y * 9 + x] = decoded_range[((x * 9) - y) + 8];
-            } else {
-              break;
-            }
-          }
-        } else {
-          break;
-        }
-      }
-      break;
-
-    case Direction::UP:
-      for (int16_t y = 0; y < 9; y++) {
-        int16_t map_y = loc.y + y - 4;
-        if (!map_and_rules || ((map_y >= 0) && (map_y < map_and_rules->map.height))) {
-          for (int16_t x = 0; x < 9; x++) {
-            int16_t map_x = loc.x + x - 4;
-            if (!map_and_rules || ((map_x >= 0) && (map_x < map_and_rules->map.width))) {
-              ret[y * 9 + x] = decoded_range[y * 9 + x];
-            } else {
-              break;
-            }
-          }
-        } else {
-          break;
-        }
-      }
-      break;
-
-    case Direction::DOWN:
-      for (int16_t y = 0; y < 9; y++) {
-        int16_t map_y = loc.y + y - 4;
-        if (!map_and_rules || ((map_y >= 0) && (map_y < map_and_rules->map.height))) {
-          for (int16_t x = 0; x < 9; x++) {
-            int16_t map_y = loc.x + x - 4;
-            if (!map_and_rules || ((map_y >= 0) && (map_y < map_and_rules->map.width))) {
-              ret[y * 9 + x] = decoded_range[((8 - y) * 9 - x) + 8];
-            } else {
-              break;
-            }
-          }
-        } else {
-          break;
-        }
-      }
-      break;
-
-    default:
-      break;
+  if (log) {
+    for (size_t y = 0; y < 9; y++) {
+      log->debug("compute_effective_range: ret: %hhX %hhX %hhX %hhX %hhX %hhX %hhX %hhX %hhX",
+          ret[y * 9 + 0], ret[y * 9 + 1], ret[y * 9 + 2], ret[y * 9 + 3], ret[y * 9 + 4], ret[y * 9 + 5], ret[y * 9 + 6], ret[y * 9 + 7], ret[y * 9 + 8]);
+    }
   }
 }
 

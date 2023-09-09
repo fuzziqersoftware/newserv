@@ -759,38 +759,74 @@ const char* PlayerBattleStats::name_for_rank(uint8_t rank) {
   return RANK_NAMES[rank];
 }
 
-bool is_card_within_range(
+static bool is_card_within_range(
     const parray<uint8_t, 9 * 9>& range,
     const Location& anchor_loc,
-    const CardShortStatus& ss) {
+    const CardShortStatus& ss,
+    PrefixedLogger* log) {
   if (ss.card_ref == 0xFFFF) {
+    if (log) {
+      log->debug("is_card_within_range: (false) ss.card_ref missing");
+    }
     return false;
   }
   if (range[0] == 2) {
+    if (log) {
+      log->debug("is_card_within_range: (true) range is entire field");
+    }
     return true;
   }
 
   if ((ss.loc.x < anchor_loc.x - 4) || (ss.loc.x > anchor_loc.x + 4)) {
+    if (log) {
+      log->debug("is_card_within_range: (false) outside x range (ss.loc.x=%hhu, anchor_loc.x=%hhu)", ss.loc.x, anchor_loc.x);
+    }
     return false;
   }
   if ((ss.loc.y < anchor_loc.y - 4) || (ss.loc.y > anchor_loc.y + 4)) {
+    if (log) {
+      log->debug("is_card_within_range: (false) outside y range (ss.loc.y=%hhu, anchor_loc.y=%hhu)", ss.loc.y, anchor_loc.y);
+    }
     return false;
   }
-  return (range[(ss.loc.x - anchor_loc.x) + ((ss.loc.y - anchor_loc.y) + 4) * 9 + 4] != 0);
+
+  uint8_t y_index = (ss.loc.y - anchor_loc.y) + 4;
+  uint8_t x_index = (ss.loc.x - anchor_loc.x) + 4;
+  bool ret = (range[y_index * 9 + x_index] != 0);
+  if (log) {
+    log->debug("is_card_within_range: (%s) (ss.loc=(%hhu,%hhu), anchor_loc=(%hhu,%hhu), indexes=(%hhu,%hhu))",
+        ret ? "true" : "false", ss.loc.x, ss.loc.y, anchor_loc.x, anchor_loc.y, x_index, y_index);
+  }
+  return ret;
 }
 
 vector<uint16_t> get_card_refs_within_range(
     const parray<uint8_t, 9 * 9>& range,
     const Location& loc,
-    const parray<CardShortStatus, 0x10>& short_statuses) {
+    const parray<CardShortStatus, 0x10>& short_statuses,
+    PrefixedLogger* log) {
   vector<uint16_t> ret;
-  if (is_card_within_range(range, loc, short_statuses[0])) {
+  if (is_card_within_range(range, loc, short_statuses[0], log)) {
+    if (log) {
+      log->debug("get_card_refs_within_range: sc card %04hX within range", short_statuses[0].card_ref.load());
+    }
     ret.emplace_back(short_statuses[0].card_ref);
+  } else {
+    if (log) {
+      log->debug("get_card_refs_within_range: sc card %04hX not within range", short_statuses[0].card_ref.load());
+    }
   }
   for (size_t card_index = 7; card_index < 15; card_index++) {
     const auto& ss = short_statuses[card_index];
-    if (is_card_within_range(range, loc, ss)) {
+    if (is_card_within_range(range, loc, ss, log)) {
+      if (log) {
+        log->debug("get_card_refs_within_range: card %04hX within range", ss.card_ref.load());
+      }
       ret.emplace_back(ss.card_ref);
+    } else {
+      if (log) {
+        log->debug("get_card_refs_within_range: card %04hX not within range", ss.card_ref.load());
+      }
     }
   }
   return ret;

@@ -270,6 +270,7 @@ struct PlayerBattleStats {
 std::vector<uint16_t> get_card_refs_within_range(
     const parray<uint8_t, 9 * 9>& range,
     const Location& loc,
-    const parray<CardShortStatus, 0x10>& short_statuses);
+    const parray<CardShortStatus, 0x10>& short_statuses,
+    PrefixedLogger* log = nullptr);
 
 } // namespace Episode3

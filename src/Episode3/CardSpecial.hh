@@ -95,8 +95,6 @@ public:
   std::shared_ptr<Server> server();
   std::shared_ptr<const Server> server() const;
 
-  void debug_log(const char* fmt, ...) const ATTR_PRINTF(2, 3);
-
   void adjust_attack_damage_due_to_conditions(
       std::shared_ptr<const Card> target_card, int16_t* inout_damage, uint16_t attacker_card_ref);
   void adjust_dice_boost_if_team_has_condition_52(
