@@ -72,8 +72,7 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     // battle, forward everything to watcher lobbies.
     if (size &&
         (watcher_subcommands.count(*reinterpret_cast<const uint8_t*>(data) ||
-            (l->ep3_server_base &&
-                l->ep3_server_base->server->setup_phase != Episode3::SetupPhase::REGISTRATION)))) {
+            (l->ep3_server && l->ep3_server->setup_phase != Episode3::SetupPhase::REGISTRATION)))) {
       for (const auto& watcher_lobby : l->watcher_lobbies) {
         forward_subcommand(watcher_lobby, c, command, flag, data, size);
       }

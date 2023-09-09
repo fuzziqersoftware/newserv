@@ -273,4 +273,46 @@ void DeckState::shuffle() {
   }
 }
 
+static const char* name_for_card_state(DeckState::CardState st) {
+  switch (st) {
+    case DeckState::CardState::DRAWABLE:
+      return "DRAWABLE";
+    case DeckState::CardState::STORY_CHARACTER:
+      return "STORY_CHARACTER";
+    case DeckState::CardState::IN_HAND:
+      return "IN_HAND";
+    case DeckState::CardState::IN_PLAY:
+      return "IN_PLAY";
+    case DeckState::CardState::DISCARDED:
+      return "DISCARDED";
+    case DeckState::CardState::INVALID:
+      return "INVALID";
+    default:
+      return "__UNKNOWN__";
+  }
+}
+
+void DeckState::print(FILE* stream, std::shared_ptr<const CardIndex> card_index) const {
+  fprintf(stream, "DeckState: client_id=%hhu draw_index=%hhu card_ref_base=%04hX shuffle=%s loop=%s\n",
+      this->client_id, this->draw_index, this->card_ref_base, this->shuffle_enabled ? "true" : "false", this->loop_enabled ? "true" : "false");
+  for (size_t z = 0; z < 31; z++) {
+    const auto& e = this->entries[z];
+    shared_ptr<const CardIndex::CardEntry> ce;
+    if (card_index) {
+      try {
+        ce = card_index->definition_for_id(e.card_id);
+      } catch (const out_of_range&) {
+      }
+    }
+    if (ce) {
+      string name = ce->def.en_name;
+      fprintf(stream, "  (%02zu) index=%02hhX ref=%04hX card_id=%04hX \"%s\" %s\n",
+          z, e.deck_index, this->card_refs[z], e.card_id, name.c_str(), name_for_card_state(e.state));
+    } else {
+      fprintf(stream, "  (%02zu) index=%02hhX ref=%04hX card_id=%04hX %s\n",
+          z, e.deck_index, this->card_refs[z], e.card_id, name_for_card_state(e.state));
+    }
+  }
+}
+
 } // namespace Episode3

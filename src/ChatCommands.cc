@@ -1240,25 +1240,19 @@ static void server_command_enable_ep3_battle_debug_menu(
   if (l->episode != Episode::EP3) {
     throw logic_error("non-Ep3 client in Ep3 game");
   }
-  auto base = l->ep3_server_base;
-  if (!base) {
-    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
-    return;
-  }
-  auto server = base->server;
-  if (!server) {
+  if (!l->ep3_server) {
     send_text_message(c, u"$C6Episode 3 server\nis not initialized");
     return;
   }
 
   if (!args.empty()) {
-    server->override_environment_number = stoul(encode_sjis(args), nullptr, 16);
-    send_text_message_printf(l, "$C6Override environment\nnumber set to %02hhX", server->override_environment_number);
-  } else if (server->override_environment_number == 0xFF) {
-    server->override_environment_number = 0x1A;
+    l->ep3_server->override_environment_number = stoul(encode_sjis(args), nullptr, 16);
+    send_text_message_printf(l, "$C6Override environment\nnumber set to %02hhX", l->ep3_server->override_environment_number);
+  } else if (l->ep3_server->override_environment_number == 0xFF) {
+    l->ep3_server->override_environment_number = 0x1A;
     send_text_message(l, u"$C6Battle setup debug\nmenu enabled");
   } else {
-    server->override_environment_number = 0xFF;
+    l->ep3_server->override_environment_number = 0xFF;
     send_text_message(l, u"$C6Battle setup debug\nmenu disabled");
   }
 }
@@ -1271,23 +1265,17 @@ static void server_command_ep3_infinite_time(
   if (l->episode != Episode::EP3) {
     throw logic_error("non-Ep3 client in Ep3 game");
   }
-  auto base = l->ep3_server_base;
-  if (!base) {
+  if (!l->ep3_server) {
     send_text_message(c, u"$C6Episode 3 server\nis not initialized");
     return;
   }
-  auto server = base->server;
-  if (!server) {
-    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
-    return;
-  }
-  if (server->setup_phase != Episode3::SetupPhase::REGISTRATION) {
+  if (l->ep3_server->setup_phase != Episode3::SetupPhase::REGISTRATION) {
     send_text_message(c, u"$C6Battle is already\nin progress");
     return;
   }
 
-  base->behavior_flags ^= Episode3::BehaviorFlag::DISABLE_TIME_LIMITS;
-  bool infinite_time_enabled = (base->behavior_flags & Episode3::BehaviorFlag::DISABLE_TIME_LIMITS);
+  l->ep3_server->behavior_flags ^= Episode3::BehaviorFlag::DISABLE_TIME_LIMITS;
+  bool infinite_time_enabled = (l->ep3_server->behavior_flags & Episode3::BehaviorFlag::DISABLE_TIME_LIMITS);
   send_text_message(l, infinite_time_enabled ? u"$C6Infinite time enabled" : u"$C6Infinite time disabled");
 }
 
@@ -1298,23 +1286,17 @@ static void server_command_surrender(
   if (l->episode != Episode::EP3) {
     throw logic_error("non-Ep3 client in Ep3 game");
   }
-  auto base = l->ep3_server_base;
-  if (!base) {
+  if (!l->ep3_server) {
     send_text_message(c, u"$C6Episode 3 server\nis not initialized");
     return;
   }
-  auto server = base->server;
-  if (!server) {
-    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
-    return;
-  }
-  if (server->setup_phase != Episode3::SetupPhase::MAIN_BATTLE) {
+  if (l->ep3_server->setup_phase != Episode3::SetupPhase::MAIN_BATTLE) {
     send_text_message(c, u"$C6Battle has not\nyet started");
     return;
   }
   string name = encode_sjis(c->game_data.player()->disp.name);
   send_text_message_printf(l, "$C6%s has\nsurrendered", name.c_str());
-  server->force_battle_result(c->lobby_client_id, false);
+  l->ep3_server->force_battle_result(c->lobby_client_id, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

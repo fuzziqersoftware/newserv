@@ -90,7 +90,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // Types 2 and 3 may be distinguished by the presence of the battle_record
   // field - in replay games, it will be present; in watcher games it will be
   // absent.
-  std::shared_ptr<Episode3::ServerBase> ep3_server_base; // Only used in primary games
+  std::shared_ptr<Episode3::Server> ep3_server; // Only used in primary games
   std::weak_ptr<Lobby> watched_lobby; // Only used in watcher games
   std::unordered_set<shared_ptr<Lobby>> watcher_lobbies; // Only used in primary games
   std::shared_ptr<Episode3::BattleRecord> battle_record; // Not used in watcher games

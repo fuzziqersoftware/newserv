@@ -32,75 +32,39 @@ namespace Episode3 {
  *
  * There are likely undiscovered bugs in this code, some originally written by
  * Sega, but more written by me as I manually transcribed and updated this code.
+ *
+ * Class ownership levels (classes may only contain weak_ptrs, not shared_ptrs,
+ * to classes at the same or higher level):
+ * - Server
+ * - - RulerServer
+ * - - - AssistServer
+ * - - - CardSpecial
+ * - - - - StateFlags
+ * - - - - DeckEntry
+ * - - - - PlayerState
+ * - - - - - Card
+ * - - - - - - CardShortStatus
+ * - - - - - - DeckState
+ * - - - - - - HandAndEquipState
+ * - - - - - - MapAndRulesState / OverlayState
+ * - - - - - - - Everything within DataIndexes
  */
 
-// Class ownership levels (classes may only contain weak_ptrs, not shared_ptrs,
-// to classes at the same or higher level):
-// - ServerBase
-// - - Server
-// - - - RulerServer
-// - - - - AssistServer
-// - - - - CardSpecial
-// - - - - - StateFlags
-// - - - - - DeckEntry
-// - - - - - PlayerState
-// - - - - - - Card
-// - - - - - - - CardShortStatus
-// - - - - - - - DeckState
-// - - - - - - - HandAndEquipState
-// - - - - - - - MapAndRulesState / OverlayState
-// - - - - - - - - Everything within DataIndexes
-
-class Server;
-
-class ServerBase : public std::enable_shared_from_this<ServerBase> {
+class Server : public std::enable_shared_from_this<Server> {
+  // In the original code, there is a TCardServerBase class and a TCardServer
+  // class, with the former containing some basic parts of the game state and
+  // a pointer to the latter. It seems these two classes exist (instead of one
+  // big class) so that the force reset command could be implemented; however,
+  // it appears that that command is never sent by the client, so we combine
+  // the two classes into one in our implementation.
 public:
-  ServerBase(
-      std::shared_ptr<Lobby> lobby,
+  Server(std::shared_ptr<Lobby> lobby,
       std::shared_ptr<const CardIndex> card_index,
       std::shared_ptr<const MapIndex> map_index,
       uint32_t behavior_flags,
       std::shared_ptr<PSOLFGEncryption> random_crypt,
       std::shared_ptr<const MapIndex::MapEntry> map_if_tournament);
   void init();
-  void reset();
-  void recreate_server();
-
-  struct PresenceEntry {
-    uint8_t player_present;
-    uint8_t deck_valid;
-    uint8_t is_cpu_player;
-    PresenceEntry();
-    void clear();
-  } __attribute__((packed));
-
-  std::weak_ptr<Lobby> lobby;
-  std::shared_ptr<const CardIndex> card_index;
-  std::shared_ptr<const MapIndex> map_index;
-  uint32_t behavior_flags;
-  PrefixedLogger log;
-  std::shared_ptr<PSOLFGEncryption> random_crypt;
-  bool is_tournament;
-  std::shared_ptr<const MapIndex::MapEntry> last_chosen_map;
-
-  std::shared_ptr<MapAndRulesState> map_and_rules1;
-  std::shared_ptr<MapAndRulesState> map_and_rules2;
-  std::shared_ptr<DeckEntry> deck_entries[4];
-  std::shared_ptr<Server> server;
-  parray<PresenceEntry, 4> presence_entries;
-  uint8_t num_clients_present;
-  parray<NameEntry, 4> name_entries;
-  parray<uint8_t, 4> name_entries_valid;
-  OverlayState overlay_state;
-  parray<parray<uint8_t, 0x2F0>, 4> client_card_counts;
-};
-
-class Server : public std::enable_shared_from_this<Server> {
-public:
-  explicit Server(std::shared_ptr<ServerBase> base);
-  void init();
-  std::shared_ptr<ServerBase> base();
-  std::shared_ptr<const ServerBase> base() const;
 
   int8_t get_winner_team_id() const;
 
@@ -121,8 +85,6 @@ public:
   void send(const void* data, size_t size) const;
 
   void send_commands_for_joining_spectator(Channel& ch, bool is_trial) const;
-
-  __attribute__((format(printf, 2, 3))) void log_debug(const char* fmt, ...) const;
 
   __attribute__((format(printf, 2, 3))) void send_debug_message_printf(const char* fmt, ...) const;
   __attribute__((format(printf, 2, 3))) void send_info_message_printf(const char* fmt, ...) const;
@@ -244,12 +206,38 @@ private:
   typedef void (Server::*handler_t)(const std::string&);
   static const std::unordered_map<uint8_t, handler_t> subcommand_handlers;
 
-  std::weak_ptr<ServerBase> w_base;
-
 public:
-  bool tournament_match_result_sent; // Not part of original implementation
-  uint8_t override_environment_number; // Not part of original implementation
+  // These fields are not part of the original implementation
+  std::weak_ptr<Lobby> lobby;
+  std::shared_ptr<const CardIndex> card_index;
+  std::shared_ptr<const MapIndex> map_index;
+  uint32_t behavior_flags;
+  PrefixedLogger log;
+  std::shared_ptr<PSOLFGEncryption> random_crypt;
+  std::shared_ptr<const MapIndex::MapEntry> last_chosen_map;
+  bool is_tournament;
+  bool tournament_match_result_sent;
+  uint8_t override_environment_number;
 
+  // These fields were originally contained in the TCardServerBase object
+  struct PresenceEntry {
+    uint8_t player_present;
+    uint8_t deck_valid;
+    uint8_t is_cpu_player;
+    PresenceEntry();
+    void clear();
+  } __attribute__((packed));
+  std::shared_ptr<MapAndRulesState> map_and_rules1;
+  std::shared_ptr<MapAndRulesState> map_and_rules2;
+  std::shared_ptr<DeckEntry> deck_entries[4];
+  parray<PresenceEntry, 4> presence_entries;
+  uint8_t num_clients_present;
+  parray<NameEntry, 4> name_entries;
+  parray<uint8_t, 4> name_entries_valid;
+  OverlayState overlay_state;
+  parray<parray<uint8_t, 0x2F0>, 4> client_card_counts;
+
+  // These fields were originally contained in the TCardServer object
   uint32_t battle_finished;
   uint32_t battle_in_progress;
   uint32_t round_num;
@@ -264,7 +252,6 @@ public:
   uint32_t num_pending_attacks;
   parray<uint8_t, 4> client_done_enqueuing_attacks;
   parray<uint8_t, 4> player_ready_to_end_phase;
-  std::shared_ptr<PSOLFGEncryption> random_crypt;
   uint32_t unknown_a10;
   uint32_t overall_time_expired;
   // Note: In the original implementation, this is a uint32_t and is measured in
@@ -292,7 +279,6 @@ public:
   parray<uint32_t, 2> team_num_ally_fcs_destroyed;
   parray<uint32_t, 2> team_num_cards_destroyed;
   uint32_t hard_reset_flag;
-  uint8_t tournament_flag;
   parray<uint8_t, 5> num_trap_tiles_of_type;
   parray<uint8_t, 5> chosen_trap_tile_index_of_type;
   parray<parray<parray<uint8_t, 2>, 8>, 5> trap_tile_locs;

@@ -6,6 +6,7 @@
 
 #include "../PSOEncryption.hh"
 #include "../Text.hh"
+#include "DataIndexes.hh"
 
 namespace Episode3 {
 
@@ -92,6 +93,8 @@ public:
   void restart();
   void shuffle();
   void do_mulligan();
+
+  void print(FILE* stream, std::shared_ptr<const CardIndex> card_index = nullptr) const;
 
 private:
   struct CardEntry {

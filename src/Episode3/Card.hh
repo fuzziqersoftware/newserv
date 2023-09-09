@@ -10,7 +10,6 @@
 
 namespace Episode3 {
 
-class ServerBase;
 class Server;
 class PlayerState;
 

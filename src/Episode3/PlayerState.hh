@@ -12,7 +12,6 @@
 
 namespace Episode3 {
 
-class ServerBase;
 class Server;
 
 class PlayerState : public std::enable_shared_from_this<PlayerState> {

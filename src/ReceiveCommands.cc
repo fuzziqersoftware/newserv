@@ -1279,22 +1279,22 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     throw runtime_error("unknown Episode 3 server data request");
   }
 
-  if (!l->ep3_server_base || l->ep3_server_base->server->battle_finished) {
-    if (!l->ep3_server_base) {
+  if (!l->ep3_server || l->ep3_server->battle_finished) {
+    if (!l->ep3_server) {
       l->log.info("Creating Episode 3 server state");
     } else {
       l->log.info("Recreating Episode 3 server state");
     }
     auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : nullptr;
     bool is_trial = (l->flags & Lobby::Flag::IS_EP3_TRIAL);
-    l->ep3_server_base = make_shared<Episode3::ServerBase>(
+    l->ep3_server = make_shared<Episode3::Server>(
         l,
         is_trial ? s->ep3_card_index_trial : s->ep3_card_index,
         s->ep3_map_index,
         s->ep3_behavior_flags,
         l->random_crypt,
         tourn ? tourn->get_map() : nullptr);
-    l->ep3_server_base->init();
+    l->ep3_server->init();
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
       for (size_t z = 0; z < l->max_clients; z++) {
@@ -1327,11 +1327,11 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
       send_text_message(l, u"$C6Recording enabled");
     }
   }
-  l->ep3_server_base->server->on_server_data_input(data);
+  l->ep3_server->on_server_data_input(data);
   if (l->tournament_match &&
-      l->ep3_server_base->server->setup_phase == Episode3::SetupPhase::BATTLE_ENDED &&
-      !l->ep3_server_base->server->tournament_match_result_sent) {
-    int8_t winner_team_id = l->ep3_server_base->server->get_winner_team_id();
+      l->ep3_server->setup_phase == Episode3::SetupPhase::BATTLE_ENDED &&
+      !l->ep3_server->tournament_match_result_sent) {
+    int8_t winner_team_id = l->ep3_server->get_winner_team_id();
     if (winner_team_id == -1) {
       throw runtime_error("match complete, but winner team not specified");
     }
@@ -1349,7 +1349,7 @@ static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
     send_ep3_tournament_match_result(s, l, l->tournament_match);
 
     on_tournament_bracket_updated(s, tourn);
-    l->ep3_server_base->server->tournament_match_result_sent = true;
+    l->ep3_server->tournament_match_result_sent = true;
   }
 }
 
@@ -3534,8 +3534,8 @@ static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
   auto watched_lobby = l->watched_lobby.lock();
   if (l->battle_player && (l->flags & Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY)) {
     l->battle_player->start();
-  } else if (watched_lobby && watched_lobby->ep3_server_base) {
-    watched_lobby->ep3_server_base->server->send_commands_for_joining_spectator(
+  } else if (watched_lobby && watched_lobby->ep3_server) {
+    watched_lobby->ep3_server->send_commands_for_joining_spectator(
         c->channel, c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
   }
 
