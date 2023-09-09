@@ -2026,12 +2026,31 @@ const string& MapIndex::MapEntry::compressed(bool is_trial) const {
   }
 }
 
-const string& MapIndex::get_compressed_list() const {
-  if (this->compressed_map_list.empty()) {
+const string& MapIndex::get_compressed_list(size_t num_players) const {
+  if (num_players == 0) {
+    throw runtime_error("cannot generate map list for no players");
+  }
+  if (num_players > 4) {
+    throw logic_error("player count is too high in map list generation");
+  }
+  string& compressed_map_list = this->compressed_map_lists.at(num_players - 1);
+  if (compressed_map_list.empty()) {
     StringWriter entries_w;
     StringWriter strings_w;
 
+    size_t num_maps = 0;
     for (const auto& map_it : this->maps) {
+      size_t map_num_players = 0;
+      for (size_t z = 0; z < 4; z++) {
+        uint8_t player_type = map_it.second->map.entry_states[z].player_type;
+        if (player_type == 0x00 || player_type == 0x01 || player_type == 0xFF) {
+          map_num_players++;
+        }
+      }
+      if (map_num_players < num_players) {
+        continue;
+      }
+
       MapList::Entry e;
       const auto& map = map_it.second->map;
       e.map_x = map.map_x;
@@ -2059,10 +2078,11 @@ const string& MapIndex::get_compressed_list() const {
       e.unknown_a1 = map_it.second->is_quest ? 0x00 : 0xFF;
 
       entries_w.put(e);
+      num_maps++;
     }
 
     MapList header;
-    header.num_maps = this->maps.size();
+    header.num_maps = num_maps;
     header.unknown_a1 = 0;
     header.strings_offset = entries_w.size();
     header.total_size = sizeof(MapList) + entries_w.size() + strings_w.size();
@@ -2075,15 +2095,15 @@ const string& MapIndex::get_compressed_list() const {
     StringWriter compressed_w;
     compressed_w.put_u32b(prs.input_size());
     compressed_w.write(prs.close());
-    this->compressed_map_list = std::move(compressed_w.str());
-    if (this->compressed_map_list.size() > 0x7BEC) {
-      throw runtime_error("Episode 3 compressed map list is too large");
+    compressed_map_list = std::move(compressed_w.str());
+    if (compressed_map_list.size() > 0x7BEC) {
+      throw runtime_error(string_printf("compressed map list for %zu players is too large (0x%zX bytes)", num_players, compressed_map_list.size()));
     }
     size_t decompressed_size = sizeof(header) + entries_w.size() + strings_w.size();
-    static_game_data_log.info("Generated Episode 3 compressed map list (0x%zX -> 0x%zX bytes)",
-        decompressed_size, this->compressed_map_list.size());
+    static_game_data_log.info("Generated Episode 3 compressed map list for %zu player(s) (%zu maps; 0x%zX -> 0x%zX bytes)",
+        num_players, num_maps, decompressed_size, compressed_map_list.size());
   }
-  return this->compressed_map_list;
+  return compressed_map_list;
 }
 
 shared_ptr<const MapIndex::MapEntry> MapIndex::definition_for_number(uint32_t id) const {

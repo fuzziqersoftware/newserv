@@ -1145,17 +1145,14 @@ public:
     mutable std::string compressed_trial_data;
   };
 
-  const std::string& get_compressed_list() const;
+  const std::string& get_compressed_list(size_t num_players) const;
   std::shared_ptr<const MapEntry> definition_for_number(uint32_t id) const;
   std::shared_ptr<const MapEntry> definition_for_name(const std::string& name) const;
   std::set<uint32_t> all_numbers() const;
 
 private:
-  // The compressed map list is generated on demand from the maps map below.
-  // It's marked mutable because the logical consistency of the MapIndex object
-  // is not violated from the caller's perspective even if we don't generate the
-  // compressed map list at load time.
-  mutable std::string compressed_map_list;
+  // The compressed map lists are generated on demand from the maps map below
+  mutable std::array<std::string, 4> compressed_map_lists;
   std::map<uint32_t, std::shared_ptr<MapEntry>> maps;
   std::unordered_map<std::string, std::shared_ptr<MapEntry>> maps_by_name;
 };

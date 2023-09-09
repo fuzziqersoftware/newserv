@@ -2168,7 +2168,7 @@ void Server::handle_6xB3x40_map_list_request(const string& data) {
     throw runtime_error("lobby is deleted");
   }
 
-  const auto& list_data = this->base()->map_index->get_compressed_list();
+  const auto& list_data = this->base()->map_index->get_compressed_list(l->count_clients());
 
   StringWriter w;
   uint32_t subcommand_size = (list_data.size() + sizeof(G_MapList_GC_Ep3_6xB6x40) + 3) & (~3);
