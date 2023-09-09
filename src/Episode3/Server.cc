@@ -137,7 +137,7 @@ int8_t Server::get_winner_team_id() const {
       continue;
     }
     if (team_win_flag_counts[z] != team_player_counts[z]) {
-      throw logic_error("only some players on team 0 have won");
+      throw logic_error("only some players on team have won");
     }
     return z;
   }
@@ -997,9 +997,7 @@ void Server::action_phase_before() {
 
 G_SetPlayerNames_GC_Ep3_6xB4x1C Server::prepare_6xB4x1C_names_update() const {
   G_SetPlayerNames_GC_Ep3_6xB4x1C cmd;
-  for (size_t z = 0; z < 4; z++) {
-    cmd.entries[z] = this->name_entries[z];
-  }
+  cmd.entries = this->name_entries;
   return cmd;
 }
 
@@ -1545,6 +1543,9 @@ void Server::handle_CAx0B_mulligan_hand(const string& data) {
   const auto& in_cmd = check_size_t<G_RedrawInitialHand_GC_Ep3_6xB3x0B_CAx0B>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "REDRAW");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::HAND_REDRAW_OPTION) {
@@ -1573,6 +1574,9 @@ void Server::handle_CAx0C_end_mulligan_phase(const string& data) {
   const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_GC_Ep3_6xB3x0C_CAx0C>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 2");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   int32_t error_code = 0;
   if ((this->setup_phase != SetupPhase::HAND_REDRAW_OPTION) &&
@@ -1625,6 +1629,9 @@ void Server::handle_CAx0D_end_non_action_phase(const string& data) {
   const auto& in_cmd = check_size_t<G_EndNonAttackPhase_GC_Ep3_6xB3x0D_CAx0D>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END PHASE");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd_ack;
   out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
@@ -1643,6 +1650,9 @@ void Server::handle_CAx0E_discard_card_from_hand(const string& data) {
   const auto& in_cmd = check_size_t<G_DiscardCardFromHand_GC_Ep3_6xB3x0E_CAx0E>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "DISCARD");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::MAIN_BATTLE) {
@@ -1679,6 +1689,9 @@ void Server::handle_CAx0F_set_card_from_hand(const string& data) {
   const auto& in_cmd = check_size_t<G_SetCardFromHand_GC_Ep3_6xB3x0F_CAx0F>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SET FC");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::MAIN_BATTLE) {
@@ -1718,6 +1731,9 @@ void Server::handle_CAx10_move_fc_to_location(const string& data) {
   const auto& in_cmd = check_size_t<G_MoveFieldCharacter_GC_Ep3_6xB3x10_CAx10>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "MOVE");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::MAIN_BATTLE) {
@@ -1753,6 +1769,9 @@ void Server::handle_CAx11_enqueue_attack_or_defense(const string& data) {
   const auto& in_cmd = check_size_t<G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "ENQUEUE ACT");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::MAIN_BATTLE) {
@@ -1786,6 +1805,9 @@ void Server::handle_CAx12_end_attack_list(const string& data) {
   const auto& in_cmd = check_size_t<G_EndAttackList_GC_Ep3_6xB3x12_CAx12>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END ATK LIST");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   int32_t error_code = 0;
   if (this->setup_phase != SetupPhase::MAIN_BATTLE) {
@@ -1840,6 +1862,9 @@ void Server::handle_CAx14_update_deck_during_setup(const string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerDeck_GC_Ep3_6xB3x14_CAx14>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "UPDATE DECK");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   if (!this->battle_in_progress) {
     if ((this->setup_phase == SetupPhase::REGISTRATION) &&
@@ -1894,6 +1919,9 @@ void Server::handle_CAx1B_update_player_name(const string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerName_GC_Ep3_6xB3x1B_CAx1B>(data);
   this->send_debug_command_received_message(
       in_cmd.entry.client_id, in_cmd.header.subsubcommand, "UPDATE NAME");
+  if (in_cmd.entry.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   if (!this->is_registration_complete() && (in_cmd.entry.client_id < 4)) {
     this->name_entries[in_cmd.entry.client_id] = in_cmd.entry;
@@ -1959,6 +1987,9 @@ void Server::handle_CAx28_end_defense_list(const string& data) {
   const auto& in_cmd = check_size_t<G_EndDefenseList_GC_Ep3_6xB3x28_CAx28>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END DEF LIST");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   G_ActionResult_GC_Ep3_6xB4x1E out_cmd_ack;
   out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
@@ -2088,6 +2119,9 @@ void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(const 
   const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37_CAx37>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 1");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   auto ps = this->player_states[in_cmd.client_id];
   if (ps) {
@@ -2168,6 +2202,9 @@ void Server::handle_CAx48_end_turn(const string& data) {
   const auto& in_cmd = check_size_t<G_EndTurn_GC_Ep3_6xB3x48_CAx48>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END TURN");
+  if (in_cmd.client_id >= 4) {
+    throw runtime_error("invalid client ID");
+  }
 
   auto ps = this->get_player_state(in_cmd.client_id);
   if (ps && ps->draw_cards_allowed()) {
