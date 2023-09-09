@@ -2458,7 +2458,7 @@ const char* CardSpecial::get_next_expr_token(
 
   if ((*expr >= 'a') && (*expr <= 'z')) {
     string token_buf;
-    for (; ('a' <= *expr) && (*expr < 'z'); expr++) {
+    for (; (*expr >= 'a') && (*expr <= 'z'); expr++) {
       token_buf.push_back(*expr);
     }
 
@@ -3368,7 +3368,7 @@ void CardSpecial::update_condition_orders(shared_ptr<Card> card) {
   bool modified = true;
   while (modified) {
     modified = false;
-    for (size_t index_offset = 0; index_offset < cond_indexes.size() - 1; index_offset++) {
+    for (size_t index_offset = 0; (index_offset + 1) < cond_indexes.size(); index_offset++) {
       size_t this_index = cond_indexes[index_offset];
       size_t next_index = cond_indexes[index_offset + 1];
       uint8_t this_cond_order = card->action_chain.conditions[this_index].order;

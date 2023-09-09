@@ -1710,7 +1710,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     cmd.entry_count = 1;
     s->send(cmd);
   }
-  for (size_t z = 0; (z < 4 * 9) && (pa.action_card_refs[z] != 0xFFFF); z++) {
+  for (size_t z = 0; (z < pa.action_card_refs.size()) && (pa.action_card_refs[z] != 0xFFFF); z++) {
     this->discard_ref_from_hand(pa.action_card_refs[z]);
   }
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
