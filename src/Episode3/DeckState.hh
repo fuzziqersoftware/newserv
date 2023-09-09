@@ -14,7 +14,7 @@ struct NameEntry {
   parray<char, 0x10> name;
   uint8_t client_id;
   uint8_t present;
-  uint8_t unused_by_server;
+  uint8_t is_cpu_player;
   uint8_t unused;
 
   NameEntry();

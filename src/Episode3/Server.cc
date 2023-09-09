@@ -1928,6 +1928,19 @@ void Server::handle_CAx1B_update_player_name(const string& data) {
     this->name_entries_valid[in_cmd.entry.client_id] = false;
   }
 
+  // Note: This check is not part of the original code. This replaces a
+  // disconnecting player with a CPU if the battle is in progress.
+  auto l = this->lobby.lock();
+  if (l && !l->clients[in_cmd.entry.client_id]) {
+    this->name_entries[in_cmd.entry.client_id].is_cpu_player = 1;
+    this->presence_entries[in_cmd.entry.client_id].is_cpu_player = 1;
+    auto ps = this->player_states[in_cmd.entry.client_id];
+    if (ps && ps->hand_and_equip && !ps->hand_and_equip->is_cpu_player) {
+      ps->hand_and_equip->is_cpu_player = 1;
+      this->send_6xB4x02_for_all_players_if_needed();
+    }
+  }
+
   G_SetPlayerNames_GC_Ep3_6xB4x1C out_cmd;
   for (size_t z = 0; z < 4; z++) {
     out_cmd.entries[z] = this->name_entries[z];

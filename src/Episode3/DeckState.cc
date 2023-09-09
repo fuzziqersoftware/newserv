@@ -11,7 +11,7 @@ NameEntry::NameEntry() {
 void NameEntry::clear() {
   this->client_id = 0xFF;
   this->present = 0;
-  this->unused_by_server = 0;
+  this->is_cpu_player = 0;
   this->unused = 0;
 }
 
