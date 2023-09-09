@@ -1008,14 +1008,14 @@ bool RulerServer::check_usability_or_condition_apply(
     case CriterionCode::UNKNOWN_07:
       // Like NOT_SC, but for ce3 instead of ce2
       this->server()->base()->log.debug("check_usability_or_condition_apply: UNKNOWN_07: ce3 type is %s", ce3 ? name_for_card_type(ce3->def.type) : "missing");
-      if (ce3 && (ce3->def.type != CardType::HUNTERS_SC) && (ce3->def.type != CardType::ARKZ_SC)) {
+      if (!ce3 || ((ce3->def.type != CardType::HUNTERS_SC) && (ce3->def.type != CardType::ARKZ_SC))) {
         this->server()->base()->log.debug("check_usability_or_condition_apply: UNKNOWN_07: returned %s", ret ? "true" : "false");
         return ret;
       }
       this->server()->base()->log.debug("check_usability_or_condition_apply: UNKNOWN_07: did not pass");
       break;
     case CriterionCode::NOT_SC:
-      if (ce2 && (ce2->def.type != CardType::HUNTERS_SC) && (ce2->def.type != CardType::ARKZ_SC)) {
+      if (!ce2 || ((ce2->def.type != CardType::HUNTERS_SC) && (ce2->def.type != CardType::ARKZ_SC))) {
         return ret;
       }
       break;

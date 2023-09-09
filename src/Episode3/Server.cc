@@ -1610,7 +1610,7 @@ void Server::handle_6xB3x0B_mulligan_hand(const string& data) {
   out_cmd.error_code = error_code;
   this->send(out_cmd);
 
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
 void Server::handle_6xB3x0C_end_mulligan_phase(const string& data) {
@@ -1662,7 +1662,7 @@ void Server::handle_6xB3x0C_end_mulligan_phase(const string& data) {
   out_cmd_fin.error_code = error_code;
   this->send(out_cmd_fin);
 
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd_fin.error_code);
 }
 
 void Server::handle_6xB3x0D_end_non_action_phase(const string& data) {
@@ -1716,7 +1716,7 @@ void Server::handle_6xB3x0E_discard_card_from_hand(const string& data) {
   out_cmd.error_code = error_code;
   this->send(out_cmd);
 
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
 void Server::handle_6xB3x0F_set_card_from_hand(const string& data) {
@@ -1755,7 +1755,7 @@ void Server::handle_6xB3x0F_set_card_from_hand(const string& data) {
   out_cmd.error_code = this->ruler_server->error_code1;
   this->send(out_cmd);
 
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
 void Server::handle_6xB3x10_move_fc_to_location(const string& data) {
@@ -1790,7 +1790,7 @@ void Server::handle_6xB3x10_move_fc_to_location(const string& data) {
   out_cmd.error_code = this->ruler_server->error_code2;
   this->send(out_cmd);
 
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
 void Server::handle_6xB3x11_enqueue_attack_or_defense(const string& data) {
@@ -1823,7 +1823,7 @@ void Server::handle_6xB3x11_enqueue_attack_or_defense(const string& data) {
   out_cmd.error_code = this->ruler_server->error_code3;
   this->send(out_cmd);
 
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
 void Server::handle_6xB3x12_end_attack_list(const string& data) {
