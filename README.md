@@ -308,9 +308,12 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$maxlevel <level>`: Sets the maximum level for players to join the current game. (This only applies when joining; if a player joins and then levels up past this level during the game, they are not kicked out, but won't be able to rejoin if they leave.)
     * `$minlevel <level>`: Sets the minimum level for players to join the current game.
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
+
+* Episode 3 commands (game server only)
     * `$spec`: Toggles the allow spectators flag for Episode 3 games. If any players are spectating when this flag is disabled, they will be sent back to the lobby.
-    * `$surrender`: Causes your team to immediately lose the current battle. (Episode 3 only)
-    * `$saverec <name>`: Saves the recording of the last Episode 3 battle.
+    * `$inftime`: Toggles infinite-time mode. Must be used before starting a battle. If infinite-time mode is enabled, the overall and per-phase time limits will be disabled regardless of the values chosen during battle setup. After completing a battle, infinite-time mode is reset to the server's default value (which can be set in Episode3BehaviorFlags in config.json).
+    * `$surrender`: Causes your team to immediately lose the current battle.
+    * `$saverec <name>`: Saves the recording of the last battle.
     * `$playrec <name>`: Plays a battle recording. This command creates a spectator team and replays the specified battle log within it. There is a known issue which causes spectators to crash in some cases, so use of this command is currently not recommended.
 
 * Cheat mode commands

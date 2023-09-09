@@ -1242,12 +1242,12 @@ static void server_command_enable_ep3_battle_debug_menu(
   }
   auto base = l->ep3_server_base;
   if (!base) {
-    send_text_message(l, u"$C6Episode 3 server\nis not initialized");
+    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
     return;
   }
   auto server = base->server;
   if (!server) {
-    send_text_message(l, u"$C6Episode 3 server\nis not initialized");
+    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
     return;
   }
 
@@ -1261,6 +1261,34 @@ static void server_command_enable_ep3_battle_debug_menu(
     server->override_environment_number = 0xFF;
     send_text_message(l, u"$C6Battle setup debug\nmenu disabled");
   }
+}
+
+static void server_command_ep3_infinite_time(
+    shared_ptr<ServerState>, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string&) {
+  check_is_game(l, true);
+  check_is_ep3(c, true);
+  check_is_leader(l, c);
+  if (l->episode != Episode::EP3) {
+    throw logic_error("non-Ep3 client in Ep3 game");
+  }
+  auto base = l->ep3_server_base;
+  if (!base) {
+    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
+    return;
+  }
+  auto server = base->server;
+  if (!server) {
+    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
+    return;
+  }
+  if (server->setup_phase != Episode3::SetupPhase::REGISTRATION) {
+    send_text_message(c, u"$C6Battle is already\nin progress");
+    return;
+  }
+
+  base->behavior_flags ^= Episode3::BehaviorFlag::DISABLE_TIME_LIMITS;
+  bool infinite_time_enabled = (base->behavior_flags & Episode3::BehaviorFlag::DISABLE_TIME_LIMITS);
+  send_text_message(l, infinite_time_enabled ? u"$C6Infinite time enabled" : u"$C6Infinite time disabled");
 }
 
 static void server_command_surrender(
@@ -1316,6 +1344,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$exit", {server_command_exit, proxy_command_exit}},
     {u"$gc", {server_command_get_self_card, proxy_command_get_player_card}},
     {u"$infhp", {server_command_infinite_hp, proxy_command_infinite_hp}},
+    {u"$inftime", {server_command_ep3_infinite_time, nullptr}},
     {u"$inftp", {server_command_infinite_tp, proxy_command_infinite_tp}},
     {u"$item", {server_command_item, proxy_command_item}},
     {u"$i", {server_command_item, proxy_command_item}},
