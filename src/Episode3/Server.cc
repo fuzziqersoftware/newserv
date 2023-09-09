@@ -1527,29 +1527,29 @@ bool Server::update_registration_phase() {
 }
 
 const unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers({
-    {0x0B, &Server::handle_6xB3x0B_mulligan_hand},
-    {0x0C, &Server::handle_6xB3x0C_end_mulligan_phase},
-    {0x0D, &Server::handle_6xB3x0D_end_non_action_phase},
-    {0x0E, &Server::handle_6xB3x0E_discard_card_from_hand},
-    {0x0F, &Server::handle_6xB3x0F_set_card_from_hand},
-    {0x10, &Server::handle_6xB3x10_move_fc_to_location},
-    {0x11, &Server::handle_6xB3x11_enqueue_attack_or_defense},
-    {0x12, &Server::handle_6xB3x12_end_attack_list},
-    {0x13, &Server::handle_6xB3x13_update_map_during_setup},
-    {0x14, &Server::handle_6xB3x14_update_deck_during_setup},
-    {0x15, &Server::handle_6xB3x15_unused_hard_reset_server_state},
-    {0x1B, &Server::handle_6xB3x1B_update_player_name},
-    {0x1D, &Server::handle_6xB3x1D_start_battle},
-    {0x21, &Server::handle_6xB3x21_end_battle},
-    {0x28, &Server::handle_6xB3x28_end_defense_list},
-    {0x2B, &Server::handle_6xB3x2B_ignored},
-    {0x34, &Server::handle_6xB3x34_subtract_ally_atk_points},
-    {0x37, &Server::handle_6xB3x37_client_ready_to_advance_from_starter_roll_phase},
-    {0x3A, &Server::handle_6xB3x3A_ignored},
-    {0x40, &Server::handle_6xB3x40_map_list_request},
-    {0x41, &Server::handle_6xB3x41_map_request},
-    {0x48, &Server::handle_6xB3x48_end_turn},
-    {0x49, &Server::handle_6xB3x49_card_counts},
+    {0x0B, &Server::handle_CAx0B_mulligan_hand},
+    {0x0C, &Server::handle_CAx0C_end_mulligan_phase},
+    {0x0D, &Server::handle_CAx0D_end_non_action_phase},
+    {0x0E, &Server::handle_CAx0E_discard_card_from_hand},
+    {0x0F, &Server::handle_CAx0F_set_card_from_hand},
+    {0x10, &Server::handle_CAx10_move_fc_to_location},
+    {0x11, &Server::handle_CAx11_enqueue_attack_or_defense},
+    {0x12, &Server::handle_CAx12_end_attack_list},
+    {0x13, &Server::handle_CAx13_update_map_during_setup},
+    {0x14, &Server::handle_CAx14_update_deck_during_setup},
+    {0x15, &Server::handle_CAx15_unused_hard_reset_server_state},
+    {0x1B, &Server::handle_CAx1B_update_player_name},
+    {0x1D, &Server::handle_CAx1D_start_battle},
+    {0x21, &Server::handle_CAx21_end_battle},
+    {0x28, &Server::handle_CAx28_end_defense_list},
+    {0x2B, &Server::handle_CAx2B_ignored},
+    {0x34, &Server::handle_CAx34_subtract_ally_atk_points},
+    {0x37, &Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase},
+    {0x3A, &Server::handle_CAx3A_ignored},
+    {0x40, &Server::handle_CAx40_map_list_request},
+    {0x41, &Server::handle_CAx41_map_request},
+    {0x48, &Server::handle_CAx48_end_turn},
+    {0x49, &Server::handle_CAx49_card_counts},
 });
 
 void Server::on_server_data_input(const string& data) {
@@ -1585,7 +1585,7 @@ void Server::on_server_data_input(const string& data) {
   }
 }
 
-void Server::handle_6xB3x0B_mulligan_hand(const string& data) {
+void Server::handle_CAx0B_mulligan_hand(const string& data) {
   const auto& in_cmd = check_size_t<G_RedrawInitialHand_GC_Ep3_6xB3x0B_CAx0B>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "REDRAW");
@@ -1613,7 +1613,7 @@ void Server::handle_6xB3x0B_mulligan_hand(const string& data) {
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
-void Server::handle_6xB3x0C_end_mulligan_phase(const string& data) {
+void Server::handle_CAx0C_end_mulligan_phase(const string& data) {
   const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_GC_Ep3_6xB3x0C_CAx0C>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 2");
@@ -1665,7 +1665,7 @@ void Server::handle_6xB3x0C_end_mulligan_phase(const string& data) {
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd_fin.error_code);
 }
 
-void Server::handle_6xB3x0D_end_non_action_phase(const string& data) {
+void Server::handle_CAx0D_end_non_action_phase(const string& data) {
   const auto& in_cmd = check_size_t<G_EndNonAttackPhase_GC_Ep3_6xB3x0D_CAx0D>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END PHASE");
@@ -1683,7 +1683,7 @@ void Server::handle_6xB3x0D_end_non_action_phase(const string& data) {
   this->send(out_cmd_fin);
 }
 
-void Server::handle_6xB3x0E_discard_card_from_hand(const string& data) {
+void Server::handle_CAx0E_discard_card_from_hand(const string& data) {
   const auto& in_cmd = check_size_t<G_DiscardCardFromHand_GC_Ep3_6xB3x0E_CAx0E>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "DISCARD");
@@ -1719,7 +1719,7 @@ void Server::handle_6xB3x0E_discard_card_from_hand(const string& data) {
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
-void Server::handle_6xB3x0F_set_card_from_hand(const string& data) {
+void Server::handle_CAx0F_set_card_from_hand(const string& data) {
   const auto& in_cmd = check_size_t<G_SetCardFromHand_GC_Ep3_6xB3x0F_CAx0F>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SET FC");
@@ -1758,7 +1758,7 @@ void Server::handle_6xB3x0F_set_card_from_hand(const string& data) {
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
-void Server::handle_6xB3x10_move_fc_to_location(const string& data) {
+void Server::handle_CAx10_move_fc_to_location(const string& data) {
   const auto& in_cmd = check_size_t<G_MoveFieldCharacter_GC_Ep3_6xB3x10_CAx10>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "MOVE");
@@ -1793,7 +1793,7 @@ void Server::handle_6xB3x10_move_fc_to_location(const string& data) {
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
-void Server::handle_6xB3x11_enqueue_attack_or_defense(const string& data) {
+void Server::handle_CAx11_enqueue_attack_or_defense(const string& data) {
   const auto& in_cmd = check_size_t<G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "ENQUEUE ACT");
@@ -1826,7 +1826,7 @@ void Server::handle_6xB3x11_enqueue_attack_or_defense(const string& data) {
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
-void Server::handle_6xB3x12_end_attack_list(const string& data) {
+void Server::handle_CAx12_end_attack_list(const string& data) {
   const auto& in_cmd = check_size_t<G_EndAttackList_GC_Ep3_6xB3x12_CAx12>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END ATK LIST");
@@ -1846,7 +1846,7 @@ void Server::handle_6xB3x12_end_attack_list(const string& data) {
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
-void Server::handle_6xB3x13_update_map_during_setup(const string& data) {
+void Server::handle_CAx13_update_map_during_setup(const string& data) {
   const auto& in_cmd = check_size_t<G_SetMapState_GC_Ep3_6xB3x13_CAx13>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "UPDATE MAP");
@@ -1881,7 +1881,7 @@ void Server::handle_6xB3x13_update_map_during_setup(const string& data) {
   }
 }
 
-void Server::handle_6xB3x14_update_deck_during_setup(const string& data) {
+void Server::handle_CAx14_update_deck_during_setup(const string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerDeck_GC_Ep3_6xB3x14_CAx14>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "UPDATE DECK");
@@ -1928,14 +1928,14 @@ void Server::handle_6xB3x14_update_deck_during_setup(const string& data) {
   }
 }
 
-void Server::handle_6xB3x15_unused_hard_reset_server_state(const string& data) {
+void Server::handle_CAx15_unused_hard_reset_server_state(const string& data) {
   const auto& in_cmd = check_size_t<G_HardResetServerState_GC_Ep3_6xB3x15_CAx15>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "HARD RESET");
   this->hard_reset_flag = true;
 }
 
-void Server::handle_6xB3x1B_update_player_name(const string& data) {
+void Server::handle_CAx1B_update_player_name(const string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerName_GC_Ep3_6xB3x1B_CAx1B>(data);
   this->send_debug_command_received_message(
       in_cmd.entry.client_id, in_cmd.header.subsubcommand, "UPDATE NAME");
@@ -1952,7 +1952,7 @@ void Server::handle_6xB3x1B_update_player_name(const string& data) {
   this->send(out_cmd);
 }
 
-void Server::handle_6xB3x1D_start_battle(const string& data) {
+void Server::handle_CAx1D_start_battle(const string& data) {
   const auto& in_cmd = check_size_t<G_StartBattle_GC_Ep3_6xB3x1D_CAx1D>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "START BATTLE");
@@ -1991,7 +1991,7 @@ void Server::handle_6xB3x1D_start_battle(const string& data) {
   }
 }
 
-void Server::handle_6xB3x21_end_battle(const string& data) {
+void Server::handle_CAx21_end_battle(const string& data) {
   const auto& in_cmd = check_size_t<G_EndBattle_GC_Ep3_6xB3x21_CAx21>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "END BATTLE");
@@ -2000,7 +2000,7 @@ void Server::handle_6xB3x21_end_battle(const string& data) {
   }
 }
 
-void Server::handle_6xB3x28_end_defense_list(const string& data) {
+void Server::handle_CAx28_end_defense_list(const string& data) {
   const auto& in_cmd = check_size_t<G_EndDefenseList_GC_Ep3_6xB3x28_CAx28>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END DEF LIST");
@@ -2050,9 +2050,9 @@ void Server::handle_6xB3x28_end_defense_list(const string& data) {
   this->send(out_cmd_fin);
 }
 
-void Server::handle_6xB3x2B_ignored(const string&) {}
+void Server::handle_CAx2B_ignored(const string&) {}
 
-void Server::handle_6xB3x34_subtract_ally_atk_points(const string& data) {
+void Server::handle_CAx34_subtract_ally_atk_points(const string& data) {
   const auto& in_cmd = check_size_t<G_PhotonBlastRequest_GC_Ep3_6xB3x34_CAx34>(data);
 
   uint8_t card_ref_client_id = client_id_for_card_ref(in_cmd.card_ref);
@@ -2129,7 +2129,7 @@ void Server::handle_6xB3x34_subtract_ally_atk_points(const string& data) {
   }
 }
 
-void Server::handle_6xB3x37_client_ready_to_advance_from_starter_roll_phase(const string& data) {
+void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(const string& data) {
   const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37_CAx37>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 1");
@@ -2156,9 +2156,9 @@ void Server::handle_6xB3x37_client_ready_to_advance_from_starter_roll_phase(cons
   }
 }
 
-void Server::handle_6xB3x3A_ignored(const string&) {}
+void Server::handle_CAx3A_ignored(const string&) {}
 
-void Server::handle_6xB3x40_map_list_request(const string& data) {
+void Server::handle_CAx40_map_list_request(const string& data) {
   const auto& in_cmd = check_size_t<G_MapListRequest_GC_Ep3_6xB3x40_CAx40>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "MAP LIST");
@@ -2186,7 +2186,7 @@ void Server::handle_6xB3x40_map_list_request(const string& data) {
   }
 }
 
-void Server::handle_6xB3x41_map_request(const string& data) {
+void Server::handle_CAx41_map_request(const string& data) {
   const auto& cmd = check_size_t<G_MapDataRequest_GC_Ep3_6xB3x41_CAx41>(data);
   this->send_debug_command_received_message(
       cmd.header.subsubcommand, "MAP DATA");
@@ -2211,7 +2211,7 @@ void Server::handle_6xB3x41_map_request(const string& data) {
   }
 }
 
-void Server::handle_6xB3x48_end_turn(const string& data) {
+void Server::handle_CAx48_end_turn(const string& data) {
   const auto& in_cmd = check_size_t<G_EndTurn_GC_Ep3_6xB3x48_CAx48>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END TURN");
@@ -2226,7 +2226,7 @@ void Server::handle_6xB3x48_end_turn(const string& data) {
   this->send(out_cmd);
 }
 
-void Server::handle_6xB3x49_card_counts(const string& data) {
+void Server::handle_CAx49_card_counts(const string& data) {
   const auto& in_cmd = check_size_t<G_CardCounts_GC_Ep3_6xB3x49_CAx49>(data);
   this->send_debug_command_received_message(
       in_cmd.header.sender_client_id, in_cmd.header.subsubcommand, "CARD COUNTS");
