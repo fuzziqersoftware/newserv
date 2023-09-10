@@ -119,7 +119,7 @@ int8_t Server::get_winner_team_id() const {
     }
     uint8_t team_id = ps->get_team_id();
     team_player_counts[team_id]++;
-    if (ps->assist_flags & 4) {
+    if (ps->assist_flags & AssistFlag::HAS_WON_BATTLE) {
       team_win_flag_counts[team_id]++;
     }
   }
@@ -428,16 +428,18 @@ bool Server::check_for_battle_end() {
         for (size_t client_id = 0; client_id < 4; client_id++) {
           auto ps = this->player_states[client_id];
           if (ps) {
-            ps->assist_flags &= 0xFFFFB7FB;
+            ps->assist_flags &= ~(AssistFlag::HAS_WON_BATTLE |
+                AssistFlag::WINNER_DECIDED_BY_DEFEAT |
+                AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
             if (teams_defeated[ps->get_team_id()] == 0) {
-              ps->assist_flags |= 4;
+              ps->assist_flags |= AssistFlag::HAS_WON_BATTLE;
             }
           }
         }
       }
     } else { // Both teams defeated?? I guess this is technically possible
       ret = true;
-      this->compute_losing_team_id_and_add_winner_flags(0x4000);
+      this->compute_losing_team_id_and_add_winner_flags(AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
     }
 
   } else { // Not DEFEAT_TEAM
@@ -459,16 +461,18 @@ bool Server::check_for_battle_end() {
         for (size_t client_id = 0; client_id < 4; client_id++) {
           auto ps = this->player_states[client_id];
           if (ps) {
-            ps->assist_flags &= 0xFFFFB7FB;
+            ps->assist_flags &= ~(AssistFlag::HAS_WON_BATTLE |
+                AssistFlag::WINNER_DECIDED_BY_DEFEAT |
+                AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
             if (!teams_alive[ps->get_team_id()]) {
-              ps->assist_flags |= 4;
+              ps->assist_flags |= AssistFlag::HAS_WON_BATTLE;
             }
           }
         }
       }
     } else {
       ret = true;
-      this->compute_losing_team_id_and_add_winner_flags(0x4000);
+      this->compute_losing_team_id_and_add_winner_flags(AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
     }
   }
 
@@ -483,9 +487,11 @@ void Server::force_battle_result(uint8_t specified_client_id, bool set_winner) {
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (ps) {
-      ps->assist_flags &= 0xFFFFB7FB;
+      ps->assist_flags &= ~(AssistFlag::HAS_WON_BATTLE |
+          AssistFlag::WINNER_DECIDED_BY_DEFEAT |
+          AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
       if ((ps->get_team_id() == specified_ps->get_team_id()) == set_winner) {
-        ps->assist_flags |= 4;
+        ps->assist_flags |= AssistFlag::HAS_WON_BATTLE;
       }
       ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed(true);
     }
@@ -514,7 +520,7 @@ void Server::clear_player_flags_after_dice_phase() {
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (ps) {
-      ps->assist_flags &= 0xFFFFDFFE;
+      ps->assist_flags &= ~(AssistFlag::READY_TO_END_PHASE | AssistFlag::READY_TO_END_ACTION_PHASE);
       ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     }
   }
@@ -678,7 +684,7 @@ void Server::draw_phase_after() {
       bool no_winner_specified = true;
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
-        if (ps && (ps->assist_flags & 4)) {
+        if (ps && (ps->assist_flags & AssistFlag::HAS_WON_BATTLE)) {
           no_winner_specified = false;
           break;
         }
@@ -745,7 +751,7 @@ void Server::end_attack_list_for_client(uint8_t client_id) {
     for (size_t z = 0; z < 4; z++) {
       auto other_ps = this->player_states[z];
       if (other_ps) {
-        other_ps->assist_flags &= 0xFFFFDFFF;
+        other_ps->assist_flags &= (~AssistFlag::READY_TO_END_ACTION_PHASE);
         other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
       }
     }
@@ -753,7 +759,7 @@ void Server::end_attack_list_for_client(uint8_t client_id) {
     this->client_done_enqueuing_attacks.clear(false);
 
   } else {
-    ps->assist_flags |= 0x2000;
+    ps->assist_flags |= AssistFlag::READY_TO_END_ACTION_PHASE;
     ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
   }
 }
@@ -1134,14 +1140,14 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id) {
   auto ps = this->player_states[client_id];
   if (ps && (this->current_team_turn1 == ps->get_team_id()) &&
       (this->setup_phase == SetupPhase::MAIN_BATTLE)) {
-    ps->assist_flags |= 1;
+    ps->assist_flags |= AssistFlag::READY_TO_END_PHASE;
     ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     if (this->battle_phase == BattlePhase::DICE) {
-      if (!(ps->assist_flags & 0x8000) || this->map_and_rules->rules.disable_dice_boost) {
-        ps->assist_flags &= 0xFFFF7FFF;
+      if (!(ps->assist_flags & AssistFlag::ELIGIBLE_FOR_DICE_BOOST) || this->map_and_rules->rules.disable_dice_boost) {
+        ps->assist_flags &= (~AssistFlag::ELIGIBLE_FOR_DICE_BOOST);
         ps->roll_main_dice();
         if ((ps->get_atk_points() < 3) && (ps->get_def_points() < 3)) {
-          ps->assist_flags |= 0x8000;
+          ps->assist_flags |= AssistFlag::ELIGIBLE_FOR_DICE_BOOST;
         }
       } else {
         // TODO: It'd be nice to do this in a constant-randomness way, but I'm
@@ -1155,7 +1161,7 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id) {
             break;
           }
         }
-        ps->assist_flags &= 0xFFFF7FFF;
+        ps->assist_flags &= (~AssistFlag::ELIGIBLE_FOR_DICE_BOOST);
       }
       ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     }
@@ -1586,7 +1592,7 @@ void Server::handle_CAx0C_end_mulligan_phase(const string& data) {
     } else {
       this->clients_done_in_mulligan_phase[in_cmd.client_id] = true;
       auto ps = this->player_states[in_cmd.client_id];
-      ps->assist_flags |= 1;
+      ps->assist_flags |= AssistFlag::READY_TO_END_PHASE;
       ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 
       bool all_clients_ready = true;
@@ -1656,7 +1662,7 @@ void Server::handle_CAx0E_discard_card_from_hand(const string& data) {
     auto ps = this->player_states[in_cmd.client_id];
     if (!ps) {
       error_code = -0x72;
-    } else if (!(ps->assist_flags & 0x80)) {
+    } else if (!(ps->assist_flags & AssistFlag::IS_SKIPPING_TURN)) {
       error_code = ps->discard_ref_from_hand(in_cmd.card_ref) ? 0 : 1;
       ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     } else {
@@ -2021,7 +2027,7 @@ void Server::handle_CAx28_end_defense_list(const string& data) {
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
       if (ps) {
-        ps->assist_flags &= 0xFFFFDFFF;
+        ps->assist_flags &= (~AssistFlag::READY_TO_END_ACTION_PHASE);
         ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
       }
     }
@@ -2029,7 +2035,7 @@ void Server::handle_CAx28_end_defense_list(const string& data) {
     this->unknown_a10 = 1;
   } else {
     auto ps = this->player_states[in_cmd.client_id];
-    ps->assist_flags |= 0x2000;
+    ps->assist_flags |= AssistFlag::READY_TO_END_ACTION_PHASE;
     ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
   }
   if (this->unknown_a10 != 0) {
@@ -2132,14 +2138,14 @@ void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(const 
 
   auto ps = this->player_states[in_cmd.client_id];
   if (ps) {
-    ps->assist_flags |= 8;
+    ps->assist_flags |= AssistFlag::READY_TO_END_STARTER_ROLL_PHASE;
     ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
   }
   if (this->setup_phase == SetupPhase::STARTER_ROLLS) {
     bool all_clients_ready = true;
     for (size_t z = 0; z < 4; z++) {
       auto other_ps = this->player_states[z];
-      if (other_ps && !(other_ps->assist_flags & 8)) {
+      if (other_ps && !(other_ps->assist_flags & AssistFlag::READY_TO_END_STARTER_ROLL_PHASE)) {
         all_clients_ready = false;
         break;
       }
@@ -2239,11 +2245,13 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (ps) {
-      ps->assist_flags &= 0xFFFFB7FB;
+      ps->assist_flags &= ~(AssistFlag::HAS_WON_BATTLE |
+          AssistFlag::WINNER_DECIDED_BY_DEFEAT |
+          AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
     }
   }
 
-  uint32_t flags_to_add = flags | 0x804;
+  uint32_t flags_to_add = flags | AssistFlag::HAS_WON_BATTLE | AssistFlag::WINNER_DECIDED_BY_DEFEAT;
 
   // First, check which team has more dead SCs
   int8_t losing_team_id = -1;
@@ -2341,7 +2349,7 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
         losing_team_id = 1;
       }
     }
-    flags_to_add = flags | 0x1004;
+    flags_to_add = flags | AssistFlag::HAS_WON_BATTLE | AssistFlag::WINNER_DECIDED_BY_RANDOM;
   }
 
   for (size_t z = 0; z < 4; z++) {

@@ -14,6 +14,27 @@ namespace Episode3 {
 
 class Server;
 
+enum AssistFlag {
+  // clang-format off
+  READY_TO_END_PHASE                   = 0x0001,
+  DICE_WERE_EXCHANGED                  = 0x0002,
+  HAS_WON_BATTLE                       = 0x0004,
+  READY_TO_END_STARTER_ROLL_PHASE      = 0x0008,
+  FIXED_RANGE                          = 0x0010,
+  SUMMONING_IS_FREE                    = 0x0020,
+  LIMIT_MOVE_TO_1                      = 0x0040,
+  IS_SKIPPING_TURN                     = 0x0080,
+  IMMORTAL                             = 0x0100,
+  SAME_CARD_BANNED                     = 0x0200,
+  CANNOT_SET_FIELD_CHARACTERS          = 0x0400,
+  WINNER_DECIDED_BY_DEFEAT             = 0x0800,
+  WINNER_DECIDED_BY_RANDOM             = 0x1000,
+  READY_TO_END_ACTION_PHASE            = 0x2000,
+  BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT = 0x4000,
+  ELIGIBLE_FOR_DICE_BOOST              = 0x8000,
+  // clang-format on
+};
+
 class PlayerState : public std::enable_shared_from_this<PlayerState> {
 public:
   PlayerState(uint8_t client_id, std::shared_ptr<Server> server);

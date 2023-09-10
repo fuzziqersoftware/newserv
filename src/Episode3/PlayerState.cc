@@ -135,19 +135,19 @@ shared_ptr<const Server> PlayerState::server() const {
 }
 
 bool PlayerState::draw_cards_allowed() const {
-  if (!(this->assist_flags & 0x80)) {
-    auto s = this->server();
-    size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(this->client_id);
-    for (size_t z = 0; z < num_assists; z++) {
-      auto eff = s->assist_server->get_active_assist_by_index(z);
-      if (eff == AssistEffect::SKIP_DRAW) {
-        return false;
-      }
-    }
-    return true;
-  } else {
+  if (this->assist_flags & AssistFlag::IS_SKIPPING_TURN) {
     return false;
   }
+
+  auto s = this->server();
+  size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(this->client_id);
+  for (size_t z = 0; z < num_assists; z++) {
+    auto eff = s->assist_server->get_active_assist_by_index(z);
+    if (eff == AssistEffect::SKIP_DRAW) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void PlayerState::apply_assist_card_effect_on_set(
@@ -1188,27 +1188,33 @@ void PlayerState::send_set_card_updates(bool always_send) {
 void PlayerState::set_assist_flags_from_assist_effects() {
   auto s = this->server();
 
-  this->assist_flags &= 0xFFFFF88F;
+  this->assist_flags &= ~(
+      AssistFlag::FIXED_RANGE |
+      AssistFlag::SUMMONING_IS_FREE |
+      AssistFlag::LIMIT_MOVE_TO_1 |
+      AssistFlag::IMMORTAL |
+      AssistFlag::SAME_CARD_BANNED |
+      AssistFlag::CANNOT_SET_FIELD_CHARACTERS);
   size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(this->client_id);
   for (size_t z = 0; z < num_assists; z++) {
     switch (s->assist_server->get_active_assist_by_index(z)) {
       case AssistEffect::SIMPLE:
-        this->assist_flags |= 0x10;
+        this->assist_flags |= AssistFlag::FIXED_RANGE;
         break;
       case AssistEffect::TERRITORY:
-        this->assist_flags |= 0x200;
+        this->assist_flags |= AssistFlag::SAME_CARD_BANNED;
         break;
       case AssistEffect::OLD_TYPE:
-        this->assist_flags |= 0x400;
+        this->assist_flags |= AssistFlag::CANNOT_SET_FIELD_CHARACTERS;
         break;
       case AssistEffect::FLATLAND:
-        this->assist_flags |= 0x20;
+        this->assist_flags |= AssistFlag::SUMMONING_IS_FREE;
         break;
       case AssistEffect::IMMORTALITY:
-        this->assist_flags |= 0x100;
+        this->assist_flags |= AssistFlag::IMMORTAL;
         break;
       case AssistEffect::SNAIL_PACE:
-        this->assist_flags |= 0x40;
+        this->assist_flags |= AssistFlag::LIMIT_MOVE_TO_1;
         break;
       default:
         break;
@@ -1622,7 +1628,7 @@ void PlayerState::handle_before_turn_assist_effects() {
           this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
           break;
         case AssistEffect::SKIP_TURN:
-          this->assist_flags |= 0x80;
+          this->assist_flags |= AssistFlag::IS_SKIPPING_TURN;
           this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
           break;
         default:
@@ -1744,7 +1750,10 @@ void PlayerState::unknown_8023C174() {
     this->def_bonuses = 0;
     this->roll_dice(2);
   }
-  this->assist_flags &= 0x9804;
+  this->assist_flags &= (AssistFlag::HAS_WON_BATTLE |
+      AssistFlag::WINNER_DECIDED_BY_DEFEAT |
+      AssistFlag::WINNER_DECIDED_BY_RANDOM |
+      AssistFlag::ELIGIBLE_FOR_DICE_BOOST);
   this->set_assist_flags_from_assist_effects();
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed(0);
   this->send_set_card_updates(0);
@@ -1849,11 +1858,11 @@ void PlayerState::roll_main_dice() {
   if (!should_exchange) {
     this->atk_points = (short)(char)this->dice_results[0];
     this->def_points = (short)(char)this->dice_results[1];
-    this->assist_flags &= 0xFFFFFFFD;
+    this->assist_flags &= (~AssistFlag::DICE_WERE_EXCHANGED);
   } else {
     this->atk_points = (short)(char)this->dice_results[1];
     this->def_points = (short)(char)this->dice_results[0];
-    this->assist_flags |= 2;
+    this->assist_flags |= AssistFlag::DICE_WERE_EXCHANGED;
   }
 
   this->atk_points = this->atk_points + s->card_special->client_has_atk_dice_boost_condition(this->client_id);

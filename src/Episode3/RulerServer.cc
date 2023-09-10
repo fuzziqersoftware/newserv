@@ -587,7 +587,7 @@ bool RulerServer::card_ref_can_move(
     return false;
   }
 
-  if ((this->hand_and_equip_states[client_id]->assist_flags & 0x80)) {
+  if ((this->hand_and_equip_states[client_id]->assist_flags & AssistFlag::IS_SKIPPING_TURN)) {
     return false;
   }
 
@@ -670,7 +670,7 @@ bool RulerServer::card_ref_or_any_set_card_has_condition_46(
   }
 
   uint8_t client_id = client_id_for_card_ref(card_ref);
-  if (this->hand_and_equip_states[client_id]->assist_flags & 0x100) {
+  if (this->hand_and_equip_states[client_id]->assist_flags & AssistFlag::IMMORTAL) {
     auto ce = this->definition_for_card_id(card_id);
     if (!ce) {
       return false;
@@ -1632,7 +1632,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
     return -0x7D;
   }
 
-  if (hes->assist_flags & 0x80) {
+  if (hes->assist_flags & AssistFlag::IS_SKIPPING_TURN) {
     return -0x76;
   }
 
@@ -1641,7 +1641,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
   }
 
   uint16_t card_id = this->card_id_for_card_ref(card_ref);
-  if ((hes->assist_flags & 0x200) && (card_id != 0xFFFF)) {
+  if ((hes->assist_flags & AssistFlag::SAME_CARD_BANNED) && (card_id != 0xFFFF)) {
     for (size_t other_client_id = 0; other_client_id < 4; other_client_id++) {
       auto other_hes = this->hand_and_equip_states[other_client_id];
       if (!other_hes) {
@@ -1683,7 +1683,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
       return -0x75;
     }
 
-  } else if (hes->assist_flags & 0x400) { // Item or creature
+  } else if (hes->assist_flags & AssistFlag::CANNOT_SET_FIELD_CHARACTERS) { // Item or creature
     return -0x76;
   }
 
@@ -2156,7 +2156,7 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
   }
 
   if (this->hand_and_equip_states[client_id] &&
-      (this->hand_and_equip_states[client_id]->assist_flags & 0x80)) {
+      (this->hand_and_equip_states[client_id]->assist_flags & AssistFlag::IS_SKIPPING_TURN)) {
     this->error_code3 = -0x70;
     return false;
   }
@@ -2284,7 +2284,7 @@ bool RulerServer::is_attack_or_defense_valid(const ActionState& pa) {
     return false;
   }
 
-  if (hes->assist_flags & 0x80) {
+  if (hes->assist_flags & AssistFlag::IS_SKIPPING_TURN) {
     this->error_code3 = -0x70;
     return false;
   }
@@ -2351,7 +2351,7 @@ bool RulerServer::is_defense_valid(const ActionState& pa) {
   }
 
   if (this->hand_and_equip_states[pa.client_id] &&
-      (this->hand_and_equip_states[pa.client_id]->assist_flags & 0x80)) {
+      (this->hand_and_equip_states[pa.client_id]->assist_flags & AssistFlag::IS_SKIPPING_TURN)) {
     this->error_code3 = -0x64;
     return false;
   }

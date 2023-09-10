@@ -396,7 +396,7 @@ void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
 }
 
 int32_t Card::error_code_for_move_to_location(const Location& loc) const {
-  if (this->player_state()->assist_flags & 0x80) {
+  if (this->player_state()->assist_flags & AssistFlag::IS_SKIPPING_TURN) {
     return -0x76;
   }
   if (this->card_flags & 2) {
