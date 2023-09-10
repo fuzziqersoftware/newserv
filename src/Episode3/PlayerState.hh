@@ -14,7 +14,11 @@ namespace Episode3 {
 
 class Server;
 
-enum AssistFlag {
+enum AssistFlag : uint32_t {
+  // Note: This enum is a uint32_t even though only 16 bits are used because
+  // the corresponding field in the protocol is a 32-bit field. There may also
+  // be bits used only by the client which are not documented here.
+
   // clang-format off
   READY_TO_END_PHASE                   = 0x0001,
   DICE_WERE_EXCHANGED                  = 0x0002,
