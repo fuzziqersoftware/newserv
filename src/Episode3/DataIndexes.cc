@@ -144,28 +144,28 @@ const char* name_for_criterion_code(CriterionCode code) {
       return "SAME_PLAYER";
     case CriterionCode::SAME_TEAM_NOT_SAME_PLAYER:
       return "SAME_TEAM_NOT_SAME_PLAYER";
-    case CriterionCode::UNKNOWN_07:
-      return "UNKNOWN_07";
+    case CriterionCode::FC:
+      return "FC";
     case CriterionCode::NOT_SC:
       return "NOT_SC";
     case CriterionCode::SC:
       return "SC";
     case CriterionCode::HU_OR_RA_CLASS_SC:
       return "HU_OR_RA_CLASS_SC";
-    case CriterionCode::HUNTER_HUMAN_SC:
-      return "HUNTER_HUMAN_SC";
+    case CriterionCode::HUNTER_NON_ANDROID_SC:
+      return "HUNTER_NON_ANDROID_SC";
     case CriterionCode::HUNTER_HU_CLASS_MALE_SC:
       return "HUNTER_HU_CLASS_MALE_SC";
     case CriterionCode::HUNTER_FEMALE_SC:
       return "HUNTER_FEMALE_SC";
-    case CriterionCode::HUNTER_HU_OR_FO_CLASS_HUMAN_SC:
-      return "HUNTER_HU_OR_FO_CLASS_HUMAN_SC";
+    case CriterionCode::HUNTER_NON_RA_CLASS_HUMAN_SC:
+      return "HUNTER_NON_RA_CLASS_HUMAN_SC";
     case CriterionCode::HUNTER_HU_CLASS_ANDROID_SC:
       return "HUNTER_HU_CLASS_ANDROID_SC";
-    case CriterionCode::UNKNOWN_10:
-      return "UNKNOWN_10";
-    case CriterionCode::UNKNOWN_11:
-      return "UNKNOWN_11";
+    case CriterionCode::HUNTER_NON_RA_CLASS_NON_NEWMAN_SC:
+      return "HUNTER_NON_RA_CLASS_NON_NEWMAN_SC";
+    case CriterionCode::HUNTER_NON_NEWMAN_NON_FORCE_MALE_SC:
+      return "HUNTER_NON_NEWMAN_NON_FORCE_MALE_SC";
     case CriterionCode::HUNTER_HUNEWEARL_CLASS_SC:
       return "HUNTER_HUNEWEARL_CLASS_SC";
     case CriterionCode::HUNTER_RA_CLASS_MALE_SC:
@@ -180,8 +180,8 @@ const char* name_for_criterion_code(CriterionCode code) {
       return "HUNTER_RA_CLASS_ANDROID_SC";
     case CriterionCode::HUNTER_FO_CLASS_FEMALE_SC:
       return "HUNTER_FO_CLASS_FEMALE_SC";
-    case CriterionCode::HUNTER_FEMALE_HUMAN_SC:
-      return "HUNTER_FEMALE_HUMAN_SC";
+    case CriterionCode::HUNTER_HUMAN_FEMALE_SC:
+      return "HUNTER_HUMAN_FEMALE_SC";
     case CriterionCode::HUNTER_ANDROID_SC:
       return "HUNTER_ANDROID_SC";
     case CriterionCode::HU_OR_FO_CLASS_SC:
@@ -194,12 +194,12 @@ const char* name_for_criterion_code(CriterionCode code) {
       return "TECH_OR_UNKNOWN_ATTACK_MEDIUM";
     case CriterionCode::PHYSICAL_OR_TECH_OR_UNKNOWN_ATTACK_MEDIUM:
       return "PHYSICAL_OR_TECH_OR_UNKNOWN_ATTACK_MEDIUM";
-    case CriterionCode::UNKNOWN_20:
-      return "UNKNOWN_20";
-    case CriterionCode::UNKNOWN_21:
-      return "UNKNOWN_21";
-    case CriterionCode::UNKNOWN_22:
-      return "UNKNOWN_22";
+    case CriterionCode::NON_PHYSICAL_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC:
+      return "NON_PHYSICAL_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC";
+    case CriterionCode::NON_PHYSICAL_NON_TECH_ATTACK_MEDIUM_NON_SC:
+      return "NON_PHYSICAL_NON_TECH_ATTACK_MEDIUM_NON_SC";
+    case CriterionCode::NON_PHYSICAL_NON_TECH_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC:
+      return "NON_PHYSICAL_NON_TECH_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC";
     default:
       throw invalid_argument("invalid criterion code");
   }
@@ -470,21 +470,21 @@ static const vector<ConditionDescription> description_for_condition_type({
     /* 0x04 */ {true, "DAMAGE_MOD_1", "Set attack damage / AP to N after action cards applied (step 1)"},
     /* 0x05 */ {false, "IMMOBILE", "Give Immobile condition"},
     /* 0x06 */ {false, "HOLD", "Give Hold condition"},
-    /* 0x07 */ {false, "UNKNOWN_07", nullptr},
+    /* 0x07 */ {false, "CANNOT_DEFEND", "Cannot defend"},
     /* 0x08 */ {true, "TP_BOOST", "Add N TP temporarily during attack"},
     /* 0x09 */ {true, "GIVE_DAMAGE", "Cause direct N HP loss"},
     /* 0x0A */ {false, "GUOM", "Give Guom condition"},
     /* 0x0B */ {false, "PARALYZE", "Give Paralysis condition"},
-    /* 0x0C */ {false, "UNKNOWN_0C", nullptr},
+    /* 0x0C */ {false, "A_T_SWAP_0C", "Swap AP and TP temporarily"},
     /* 0x0D */ {false, "A_H_SWAP", "Swap AP and HP temporarily"},
     /* 0x0E */ {false, "PIERCE", "Attack SC directly even if they have items equipped"},
-    /* 0x0F */ {false, "UNKNOWN_0F", nullptr},
+    /* 0x0F */ {false, "UNUSED_0F", nullptr},
     /* 0x10 */ {true, "HEAL", "Increase HP by N"},
     /* 0x11 */ {false, "RETURN_TO_HAND", "Return card to hand"},
-    /* 0x12 */ {false, "UNKNOWN_12", nullptr},
+    /* 0x12 */ {false, "SET_MV_COST_TO_0", "Movement costs nothing"},
     /* 0x13 */ {false, "UNKNOWN_13", nullptr},
     /* 0x14 */ {false, "ACID", "Give Acid condition"},
-    /* 0x15 */ {false, "UNKNOWN_15", nullptr},
+    /* 0x15 */ {false, "ADD_1_TO_MV_COST", "Add 1 to move costs"},
     /* 0x16 */ {true, "MIGHTY_KNUCKLE", "Temporarily increase AP by N, and set ATK dice to zero"},
     /* 0x17 */ {true, "UNIT_BLOW", "Temporarily increase AP by N * number of this card set within phase"},
     /* 0x18 */ {false, "CURSE", "Give Curse condition"},
@@ -503,7 +503,7 @@ static const vector<ConditionDescription> description_for_condition_type({
     /* 0x25 */ {true, "AP_LOSS", "Make attacker temporarily lose N AP during defense"},
     /* 0x26 */ {true, "BONUS_FROM_LEADER", "Gain AP equal to the number of cards of type N on the field"},
     /* 0x27 */ {false, "FREE_MANEUVER", "Enable movement over occupied tiles"},
-    /* 0x28 */ {false, "HASTE", "Make move actions free"},
+    /* 0x28 */ {false, "SCALE_MV_COST", "Multiply movement costs by a factor"},
     /* 0x29 */ {true, "CLONE", "Make setting this card free if at least one card of type N is already on the field"},
     /* 0x2A */ {true, "DEF_DISABLE_BY_COST", "Disable use of any defense cards costing between (N / 10) and (N % 10) points, inclusive"},
     /* 0x2B */ {true, "FILIAL", "Increase controlling SC\'s HP by N when this card is destroyed"},

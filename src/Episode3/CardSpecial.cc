@@ -405,7 +405,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(
   cond.clear();
 
   switch (cond_type) {
-    case ConditionType::UNKNOWN_0C:
+    case ConditionType::A_T_SWAP_0C:
       if (cond_flags & 2) {
         int16_t ap = clamp<int16_t>(card->ap, -99, 99);
         int16_t tp = clamp<int16_t>(card->tp, -99, 99);
@@ -1653,15 +1653,15 @@ bool CardSpecial::execute_effect(
     case ConditionType::RAMPAGE:
     case ConditionType::IMMOBILE:
     case ConditionType::HOLD:
-    case ConditionType::UNKNOWN_07:
+    case ConditionType::CANNOT_DEFEND:
     case ConditionType::GUOM:
     case ConditionType::PARALYZE:
     case ConditionType::PIERCE:
-    case ConditionType::UNKNOWN_0F:
-    case ConditionType::UNKNOWN_12:
+    case ConditionType::UNUSED_0F:
+    case ConditionType::SET_MV_COST_TO_0:
     case ConditionType::UNKNOWN_13:
     case ConditionType::ACID:
-    case ConditionType::UNKNOWN_15:
+    case ConditionType::ADD_1_TO_MV_COST:
     case ConditionType::ABILITY_TRAP:
     case ConditionType::FREEZE:
     case ConditionType::MAJOR_PIERCE:
@@ -1719,7 +1719,7 @@ bool CardSpecial::execute_effect(
       }
       return true;
 
-    case ConditionType::UNKNOWN_0C:
+    case ConditionType::A_T_SWAP_0C:
     case ConditionType::A_T_SWAP_PERM:
       if (unknown_p7 & 4) {
         int16_t ap = clamp<int16_t>(card->ap, -99, 99);
@@ -1845,12 +1845,12 @@ bool CardSpecial::execute_effect(
           auto& cond = card->action_chain.conditions[z];
           if ((cond.type == ConditionType::IMMOBILE) ||
               (cond.type == ConditionType::HOLD) ||
-              (cond.type == ConditionType::UNKNOWN_07) ||
+              (cond.type == ConditionType::CANNOT_DEFEND) ||
               (cond.type == ConditionType::GUOM) ||
               (cond.type == ConditionType::PARALYZE) ||
               (cond.type == ConditionType::UNKNOWN_13) ||
               (cond.type == ConditionType::ACID) ||
-              (cond.type == ConditionType::UNKNOWN_15) ||
+              (cond.type == ConditionType::ADD_1_TO_MV_COST) ||
               (cond.type == ConditionType::CURSE) ||
               (cond.type == ConditionType::PIERCE_RAMPAGE_BLOCK) ||
               (cond.type == ConditionType::FREEZE) ||

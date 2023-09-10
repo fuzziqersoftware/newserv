@@ -941,7 +941,7 @@ bool RulerServer::check_usability_or_condition_apply(
       ((criterion_code == CriterionCode::SAME_TEAM) ||
           (criterion_code == CriterionCode::SAME_PLAYER) ||
           (criterion_code == CriterionCode::SAME_TEAM_NOT_SAME_PLAYER) ||
-          (criterion_code == CriterionCode::UNKNOWN_07) ||
+          (criterion_code == CriterionCode::FC) ||
           (criterion_code == CriterionCode::NOT_SC) ||
           (criterion_code == CriterionCode::SC))) {
     log.debug("check_usability_or_condition_apply: criterion is forbidden");
@@ -992,14 +992,10 @@ bool RulerServer::check_usability_or_condition_apply(
         return true;
       }
       break;
-    case CriterionCode::UNKNOWN_07:
-      // Like NOT_SC, but for ce3 instead of ce2
-      log.debug("check_usability_or_condition_apply: UNKNOWN_07: ce3 type is %s", ce3 ? name_for_card_type(ce3->def.type) : "missing");
+    case CriterionCode::FC:
       if (!ce3 || ((ce3->def.type != CardType::HUNTERS_SC) && (ce3->def.type != CardType::ARKZ_SC))) {
-        log.debug("check_usability_or_condition_apply: UNKNOWN_07: returned %s", ret ? "true" : "false");
         return ret;
       }
-      log.debug("check_usability_or_condition_apply: UNKNOWN_07: did not pass");
       break;
     case CriterionCode::NOT_SC:
       if (!ce2 || ((ce2->def.type != CardType::HUNTERS_SC) && (ce2->def.type != CardType::ARKZ_SC))) {
@@ -1016,7 +1012,7 @@ bool RulerServer::check_usability_or_condition_apply(
         return ret;
       }
       break;
-    case CriterionCode::HUNTER_HUMAN_SC: {
+    case CriterionCode::HUNTER_NON_ANDROID_SC: {
       static const unordered_set<uint16_t> card_ids = {
           0x0001, // Orland
           0x0002, // Kranz
@@ -1070,6 +1066,7 @@ bool RulerServer::check_usability_or_condition_apply(
           0x02B1, // H-RAcaseal
           0x02B3, // H-FOmarl
           0x02B5, // H-FOnewearl
+          // Note: Seems like 0x02CD (H-RAmarl) should be here, but she isn't.
           0x02CE, // H-FOmarl
           0x02CF, // H-HUnewearl
           0x02D1, // H-RAmarl
@@ -1079,7 +1076,7 @@ bool RulerServer::check_usability_or_condition_apply(
       };
       return ret && card_ids.count(card_id2);
     }
-    case CriterionCode::HUNTER_HU_OR_FO_CLASS_HUMAN_SC: {
+    case CriterionCode::HUNTER_NON_RA_CLASS_HUMAN_SC: {
       static const unordered_set<uint16_t> card_ids = {
           0x0001, // Orland
           0x0003, // Ino'lis
@@ -1113,7 +1110,7 @@ bool RulerServer::check_usability_or_condition_apply(
       };
       return ret && card_ids.count(card_id2);
     }
-    case CriterionCode::UNKNOWN_10: {
+    case CriterionCode::HUNTER_NON_RA_CLASS_NON_NEWMAN_SC: {
       static const unordered_set<uint16_t> card_ids = {
           0x0001, // Orland
           0x0003, // Ino'lis
@@ -1133,7 +1130,7 @@ bool RulerServer::check_usability_or_condition_apply(
       };
       return ret && card_ids.count(card_id2);
     }
-    case CriterionCode::UNKNOWN_11: {
+    case CriterionCode::HUNTER_NON_NEWMAN_NON_FORCE_MALE_SC: {
       static const unordered_set<uint16_t> card_ids = {
           0x0001, // Orland
           0x0002, // Kranz
@@ -1144,6 +1141,7 @@ bool RulerServer::check_usability_or_condition_apply(
           0x02AE, // H-RAmar
           0x02B0, // H-RAcast
           0x02CC, // H-HUmar
+          // Seems like H-RAmarl shouldn't be here, but she is.
           0x02CD, // H-RAmarl
           0x02D0, // H-RAcast
           0x02D7, // H-HUcast
@@ -1236,7 +1234,7 @@ bool RulerServer::check_usability_or_condition_apply(
       };
       return ret && card_ids.count(card_id2);
     }
-    case CriterionCode::HUNTER_FEMALE_HUMAN_SC: {
+    case CriterionCode::HUNTER_HUMAN_FEMALE_SC: {
       static const unordered_set<uint16_t> card_ids = {
           0x0003, // Ino'lis
           0x0004, // Sil'fer
@@ -1295,7 +1293,7 @@ bool RulerServer::check_usability_or_condition_apply(
         return ret;
       }
       break;
-    case CriterionCode::UNKNOWN_20:
+    case CriterionCode::NON_PHYSICAL_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC:
       if ((attack_medium != AttackMedium::PHYSICAL) && (attack_medium != AttackMedium::UNKNOWN)) {
         return false;
       }
@@ -1303,7 +1301,7 @@ bool RulerServer::check_usability_or_condition_apply(
         return ret;
       }
       break;
-    case CriterionCode::UNKNOWN_21:
+    case CriterionCode::NON_PHYSICAL_NON_TECH_ATTACK_MEDIUM_NON_SC:
       if ((attack_medium != AttackMedium::PHYSICAL) && (attack_medium != AttackMedium::TECH)) {
         return false;
       }
@@ -1311,7 +1309,7 @@ bool RulerServer::check_usability_or_condition_apply(
         return ret;
       }
       break;
-    case CriterionCode::UNKNOWN_22:
+    case CriterionCode::NON_PHYSICAL_NON_TECH_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC:
       if ((attack_medium != AttackMedium::UNKNOWN) && (attack_medium != AttackMedium::PHYSICAL) && (attack_medium != AttackMedium::TECH)) {
         return false;
       }
@@ -1354,8 +1352,8 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
     sc_card_ref_if_item = this->short_statuses[client_id]->at(0).card_ref;
   }
 
-  if (this->find_condition_on_card_ref(pa.attacker_card_ref, ConditionType::UNKNOWN_15) ||
-      this->find_condition_on_card_ref(sc_card_ref_if_item, ConditionType::UNKNOWN_15)) {
+  if (this->find_condition_on_card_ref(pa.attacker_card_ref, ConditionType::ADD_1_TO_MV_COST) ||
+      this->find_condition_on_card_ref(sc_card_ref_if_item, ConditionType::ADD_1_TO_MV_COST)) {
     cost_bias = 1;
   }
 
@@ -2119,11 +2117,11 @@ ssize_t RulerServer::get_path_cost(
     ssize_t cost_penalty) const {
   for (size_t x = 0; x < 9; x++) {
     const auto& cond = chain.conditions[x];
-    if (cond.type == ConditionType::UNKNOWN_12) {
+    if (cond.type == ConditionType::SET_MV_COST_TO_0) {
       path_length = 0;
-    } else if (cond.type == ConditionType::UNKNOWN_15) {
+    } else if (cond.type == ConditionType::ADD_1_TO_MV_COST) {
       path_length++;
-    } else if (cond.type == ConditionType::HASTE) {
+    } else if (cond.type == ConditionType::SCALE_MV_COST) {
       path_length *= cond.value;
     }
   }
@@ -2386,7 +2384,7 @@ bool RulerServer::is_defense_valid(const ActionState& pa) {
   }
 
   if (this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::HOLD) ||
-      this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::UNKNOWN_07)) {
+      this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::CANNOT_DEFEND)) {
     this->error_code3 = -0x63;
     return false;
   }
