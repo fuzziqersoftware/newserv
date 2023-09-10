@@ -24,7 +24,7 @@ struct NameEntry {
 struct DeckEntry {
   ptext<char, 0x10> name;
   le_uint32_t team_id;
-  parray<le_uint16_t, 0x1F> card_ids;
+  parray<le_uint16_t, 31> card_ids;
   // If the following flag is not set to 3, then the God Whim assist effect can
   // use cards that are hidden from the player during deck building. The client
   // always sets this to 3, and it's not clear why this even exists.

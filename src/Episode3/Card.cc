@@ -49,7 +49,7 @@ void Card::init() {
   this->max_hp = this->def_entry->def.hp.stat;
   this->current_hp = this->def_entry->def.hp.stat;
   if (this->sc_card_ref == this->card_ref) {
-    int16_t rules_char_hp = this->server()->map_and_rules1->rules.char_hp;
+    int16_t rules_char_hp = this->server()->map_and_rules->rules.char_hp;
     int16_t base_char_hp = (rules_char_hp == 0) ? 15 : rules_char_hp;
     int16_t hp = clamp<int16_t>(base_char_hp + this->def_entry->def.hp.stat, 1, 99);
     this->max_hp = hp;
@@ -358,7 +358,7 @@ void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
         }
       }
 
-      if ((this->server()->map_and_rules1->rules.hp_type == HPType::DEFEAT_TEAM) &&
+      if ((this->server()->map_and_rules->rules.hp_type == HPType::DEFEAT_TEAM) &&
           (this->player_state()->get_sc_card().get() == this)) {
         for (size_t set_index = 0; set_index < 8; set_index++) {
           auto card = this->player_state()->get_set_card(set_index);
@@ -585,7 +585,7 @@ int32_t Card::move_to_location(const Location& loc) {
 }
 
 void Card::propagate_shared_hp_if_needed() {
-  if ((this->server()->map_and_rules1->rules.hp_type == HPType::COMMON_HP) &&
+  if ((this->server()->map_and_rules->rules.hp_type == HPType::COMMON_HP) &&
       ((this->def_entry->def.type == CardType::HUNTERS_SC) || (this->def_entry->def.type == CardType::ARKZ_SC))) {
     for (size_t other_client_id = 0; other_client_id < 4; other_client_id++) {
       auto other_ps = this->server()->player_states[other_client_id];

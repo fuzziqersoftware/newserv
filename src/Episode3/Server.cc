@@ -69,7 +69,6 @@ Server::Server(shared_ptr<Lobby> lobby,
       team_client_count(0),
       team_num_ally_fcs_destroyed(0),
       team_num_cards_destroyed(0),
-      hard_reset_flag(false),
       num_trap_tiles_of_type(0),
       chosen_trap_tile_index_of_type(0),
       has_done_pb(0),
@@ -77,8 +76,7 @@ Server::Server(shared_ptr<Lobby> lobby,
       prev_num_6xB4x06_commands_sent(0) {}
 
 void Server::init() {
-  this->map_and_rules1.reset(new MapAndRulesState());
-  this->map_and_rules2.reset(new MapAndRulesState());
+  this->map_and_rules.reset(new MapAndRulesState());
   this->num_clients_present = 0;
   this->overlay_state.clear();
   for (size_t z = 0; z < 4; z++) {
@@ -104,7 +102,7 @@ void Server::init() {
 
   this->assist_server.reset(new AssistServer(this->shared_from_this()));
   this->ruler_server.reset(new RulerServer(this->shared_from_this()));
-  this->ruler_server->link_objects(this->map_and_rules1, this->state_flags, this->assist_server);
+  this->ruler_server->link_objects(this->map_and_rules, this->state_flags, this->assist_server);
 
   this->send_6xB4x46();
 }
@@ -411,7 +409,7 @@ bool Server::card_ref_is_empty_or_has_valid_card_id(uint16_t card_ref) const {
 
 bool Server::check_for_battle_end() {
   bool ret = false;
-  if (this->map_and_rules1->rules.hp_type == HPType::DEFEAT_TEAM) {
+  if (this->map_and_rules->rules.hp_type == HPType::DEFEAT_TEAM) {
     bool teams_defeated[2] = {true, true};
     for (size_t client_id = 0; client_id < 4; client_id++) {
       auto ps = this->player_states[client_id];
@@ -525,7 +523,7 @@ void Server::clear_player_flags_after_dice_phase() {
 void Server::compute_all_map_occupied_bits() {
   for (size_t y = 0; y < 0x10; y++) {
     for (size_t x = 0; x < 0x10; x++) {
-      this->map_and_rules1->clear_occupied_bit_for_tile(x, y);
+      this->map_and_rules->clear_occupied_bit_for_tile(x, y);
     }
   }
   for (size_t z = 0; z < 4; z++) {
@@ -584,8 +582,8 @@ void Server::destroy_cards_with_zero_hp() {
 }
 
 void Server::determine_first_team_turn() {
-  this->team_client_count[0] = this->map_and_rules1->num_team0_players;
-  this->team_client_count[1] = this->map_and_rules1->num_players - this->team_client_count[0];
+  this->team_client_count[0] = this->map_and_rules->num_team0_players;
+  this->team_client_count[1] = this->map_and_rules->num_players - this->team_client_count[0];
   this->first_team_turn = 0xFF;
   while (this->first_team_turn == 0xFF) {
     uint8_t results[2] = {0, 0};
@@ -665,11 +663,11 @@ void Server::draw_phase_after() {
   this->round_num++;
 
   if (this->current_team_turn1 == this->first_team_turn) {
-    if (this->map_and_rules1->rules.overall_time_limit > 0) {
+    if (this->map_and_rules->rules.overall_time_limit > 0) {
       // Battle time limits are specified in increments of 5 minutes.
       // Note: This part is not based on the original code because the timing
       // facilities used are different.
-      uint64_t limit_5mins = this->map_and_rules1->rules.overall_time_limit;
+      uint64_t limit_5mins = this->map_and_rules->rules.overall_time_limit;
       uint64_t end_usecs = this->battle_start_usecs + (limit_5mins * 300 * 1000 * 1000);
       if (now() >= end_usecs) {
         this->overall_time_expired = true;
@@ -1081,7 +1079,7 @@ void Server::send_all_state_updates() {
   this->send(this->prepare_6xB4x07_decks_update());
 
   G_UpdateMap_GC_Ep3_6xB4x05 cmd;
-  cmd.state = *this->map_and_rules1;
+  cmd.state = *this->map_and_rules;
   this->send(cmd);
 
   this->send_6xB4x02_for_all_players_if_needed();
@@ -1139,7 +1137,7 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id) {
     ps->assist_flags |= 1;
     ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     if (this->battle_phase == BattlePhase::DICE) {
-      if (!(ps->assist_flags & 0x8000) || this->map_and_rules1->rules.disable_dice_boost) {
+      if (!(ps->assist_flags & 0x8000) || this->map_and_rules->rules.disable_dice_boost) {
         ps->assist_flags &= 0xFFFF7FFF;
         ps->roll_main_dice();
         if ((ps->get_atk_points() < 3) && (ps->get_def_points() < 3)) {
@@ -1219,8 +1217,8 @@ void Server::set_phase_after() {
       switch (this->assist_server->get_active_assist_by_index(z)) {
         case AssistEffect::SHUFFLE_ALL:
         case AssistEffect::SHUFFLE_GROUP:
-          if (!this->map_and_rules1->rules.disable_deck_shuffle &&
-              !this->map_and_rules1->rules.disable_deck_loop) {
+          if (!this->map_and_rules->rules.disable_deck_shuffle &&
+              !this->map_and_rules->rules.disable_deck_loop) {
             ps->discard_and_redraw_hand();
           }
           break;
@@ -1293,7 +1291,7 @@ void Server::setup_and_start_battle() {
     }
   }
 
-  if (this->map_and_rules1->rules.hp_type == HPType::COMMON_HP) {
+  if (this->map_and_rules->rules.hp_type == HPType::COMMON_HP) {
     int16_t team_hp[2] = {99, 99};
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
@@ -1321,7 +1319,7 @@ void Server::setup_and_start_battle() {
     }
   }
 
-  this->map_and_rules1->start_facing_directions = 0;
+  this->map_and_rules->start_facing_directions = 0;
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (ps) {
@@ -1334,8 +1332,8 @@ void Server::setup_and_start_battle() {
 
   for (size_t y = 0; y < 0x10; y++) {
     for (size_t x = 0; x < 0x10; x++) {
-      if (this->map_and_rules1->map.tiles[y][x] > 1) {
-        this->map_and_rules1->map.tiles[y][x] = 1;
+      if (this->map_and_rules->map.tiles[y][x] > 1) {
+        this->map_and_rules->map.tiles[y][x] = 1;
       }
     }
   }
@@ -1361,7 +1359,7 @@ void Server::setup_and_start_battle() {
           this->warp_positions[tile_subtype][1][1] = y;
         }
       } else if ((tile_type == 0x10) || (tile_type == 0x20) || (tile_type == 0x50)) {
-        this->map_and_rules1->map.tiles[y][x] = 0;
+        this->map_and_rules->map.tiles[y][x] = 0;
       }
     }
   }
@@ -1404,7 +1402,7 @@ void Server::setup_and_start_battle() {
   this->send_6xB4x50_trap_tile_locations();
 
   G_UpdateMap_GC_Ep3_6xB4x05 cmd05;
-  cmd05.state = *this->map_and_rules1;
+  cmd05.state = *this->map_and_rules;
   cmd05.unknown_a1 = 1;
   this->send(cmd05);
 
@@ -1450,13 +1448,13 @@ bool Server::update_registration_phase() {
     return false;
   }
 
-  if (this->map_and_rules1->num_players == 0) {
+  if (this->map_and_rules->num_players == 0) {
     this->registration_phase = RegistrationPhase::AWAITING_NUM_PLAYERS;
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     return false;
   }
 
-  if (this->map_and_rules1->num_players != this->num_clients_present) {
+  if (this->map_and_rules->num_players != this->num_clients_present) {
     this->registration_phase = RegistrationPhase::AWAITING_PLAYERS;
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     return false;
@@ -1469,7 +1467,7 @@ bool Server::update_registration_phase() {
     }
   }
 
-  if (num_team0_registered_players != this->map_and_rules1->num_team0_players) {
+  if (num_team0_registered_players != this->map_and_rules->num_team0_players) {
     this->registration_phase = RegistrationPhase::AWAITING_DECKS;
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     return false;
@@ -1526,17 +1524,6 @@ void Server::on_server_data_input(const string& data) {
   set_mask_for_ep3_game_command(unmasked_data.data(), unmasked_data.size(), 0);
 
   (this->*handler)(unmasked_data);
-
-  if (this->hard_reset_flag) {
-    // In the original implementation, this command recreates the server object.
-    // This is possible because the dispatch function is not part of the server
-    // object in the original implementation; however, in our implementation, it
-    // is, so we don't support this. The original implementation did this:
-    // this->base()->recreate_server(); // Destroys *this, which we can't do here
-    // root_card_server = this->server;
-    // this->unknown_8023DC84();
-    throw runtime_error("hard reset command received");
-  }
 }
 
 void Server::handle_CAx0B_mulligan_hand(const string& data) {
@@ -1831,28 +1818,24 @@ void Server::handle_CAx13_update_map_during_setup(const string& data) {
 
   if (!this->battle_in_progress &&
       (this->setup_phase == SetupPhase::REGISTRATION) &&
-      (this->map_and_rules1->num_players == 0) &&
+      (this->map_and_rules->num_players == 0) &&
       (this->registration_phase != RegistrationPhase::REGISTERED) &&
       (this->registration_phase != RegistrationPhase::BATTLE_STARTED)) {
-    *this->map_and_rules1 = in_cmd.map_and_rules_state;
-    *this->map_and_rules2 = in_cmd.map_and_rules_state;
+    *this->map_and_rules = in_cmd.map_and_rules_state;
     if (this->override_environment_number != 0xFF) {
-      this->map_and_rules1->environment_number = this->override_environment_number;
-      this->map_and_rules2->environment_number = this->override_environment_number;
+      this->map_and_rules->environment_number = this->override_environment_number;
       this->override_environment_number = 0xFF;
     }
     this->overlay_state = in_cmd.overlay_state;
     if (this->behavior_flags & BehaviorFlag::DISABLE_TIME_LIMITS) {
-      this->map_and_rules1->rules.overall_time_limit = 0;
-      this->map_and_rules1->rules.phase_time_limit = 0;
-      this->map_and_rules2->rules.overall_time_limit = 0;
-      this->map_and_rules2->rules.phase_time_limit = 0;
+      this->map_and_rules->rules.overall_time_limit = 0;
+      this->map_and_rules->rules.phase_time_limit = 0;
     }
-    if (this->map_and_rules1->rules.check_invalid_fields()) {
-      this->map_and_rules1->rules.check_and_reset_invalid_fields();
+    if (this->map_and_rules->rules.check_invalid_fields()) {
+      this->map_and_rules->rules.check_and_reset_invalid_fields();
     }
-    if (this->map_and_rules1->num_players_per_team == 0) {
-      this->map_and_rules1->num_players_per_team = this->map_and_rules1->num_players >> 1;
+    if (this->map_and_rules->num_players_per_team == 0) {
+      this->map_and_rules->num_players_per_team = this->map_and_rules->num_players >> 1;
     }
     this->update_registration_phase();
   }
@@ -1912,7 +1895,18 @@ void Server::handle_CAx15_unused_hard_reset_server_state(const string& data) {
   const auto& in_cmd = check_size_t<G_HardResetServerState_GC_Ep3_6xB3x15_CAx15>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "HARD RESET");
-  this->hard_reset_flag = true;
+
+  // In the original implementation, this command recreates the server object.
+  // This is possible because the dispatch function is not part of the server
+  // object in the original implementation; however, in our implementation, it
+  // is, so we don't support this. The original implementation did this:
+  //   this->base()->recreate_server(); // Destroys *this, which we can't do
+  //   root_card_server = this->server;
+  //   *this->map_and_rules = *this->initial_map_and_rules;
+  //   this->send_all_state_updates();
+  //   this->update_registration_phase();
+  //   this->setup_and_start_battle();
+  throw runtime_error("hard reset command received");
 }
 
 void Server::handle_CAx1B_update_player_name(const string& data) {
@@ -1958,7 +1952,7 @@ void Server::handle_CAx1D_start_battle(const string& data) {
       G_RejectBattleStartRequest_GC_Ep3_6xB4x53 out_cmd;
       out_cmd.setup_phase = this->setup_phase;
       out_cmd.registration_phase = this->registration_phase;
-      out_cmd.state = *this->map_and_rules1;
+      out_cmd.state = *this->map_and_rules;
       this->send(out_cmd);
 
       for (size_t z = 0; z < 4; z++) {
@@ -2678,7 +2672,7 @@ void Server::send_6xB4x39() const {
 void Server::send_6xB4x05() {
   this->compute_all_map_occupied_bits();
   G_UpdateMap_GC_Ep3_6xB4x05 cmd;
-  cmd.state = *this->map_and_rules1;
+  cmd.state = *this->map_and_rules;
   this->send(cmd);
 }
 

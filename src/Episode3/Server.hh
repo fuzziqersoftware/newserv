@@ -227,8 +227,7 @@ public:
     PresenceEntry();
     void clear();
   } __attribute__((packed));
-  std::shared_ptr<MapAndRulesState> map_and_rules1;
-  std::shared_ptr<MapAndRulesState> map_and_rules2;
+  std::shared_ptr<MapAndRulesState> map_and_rules;
   std::shared_ptr<DeckEntry> deck_entries[4];
   parray<PresenceEntry, 4> presence_entries;
   uint8_t num_clients_present;
@@ -278,7 +277,6 @@ public:
   parray<uint32_t, 2> team_client_count;
   parray<uint32_t, 2> team_num_ally_fcs_destroyed;
   parray<uint32_t, 2> team_num_cards_destroyed;
-  uint32_t hard_reset_flag;
   parray<uint8_t, 5> num_trap_tiles_of_type;
   parray<uint8_t, 5> chosen_trap_tile_index_of_type;
   parray<parray<parray<uint8_t, 2>, 8>, 5> trap_tile_locs;

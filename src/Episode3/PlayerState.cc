@@ -52,10 +52,10 @@ void PlayerState::init() {
       this->client_id,
       s->deck_entries[client_id]->card_ids,
       s->random_crypt));
-  if (s->map_and_rules1->rules.disable_deck_shuffle) {
+  if (s->map_and_rules->rules.disable_deck_shuffle) {
     this->deck_state->disable_shuffle();
   }
-  if (s->map_and_rules1->rules.disable_deck_loop) {
+  if (s->map_and_rules->rules.disable_deck_loop) {
     this->deck_state->disable_loop();
   }
 
@@ -756,7 +756,7 @@ int32_t PlayerState::error_code_for_client_setting_card(
         return -0x7E;
       }
       if ((ce->def.type == CardType::CREATURE) &&
-          !s->map_and_rules1->tile_is_vacant(loc->x, loc->y)) {
+          !s->map_and_rules->tile_is_vacant(loc->x, loc->y)) {
         return -0x7A;
       }
       return 0;
@@ -1328,7 +1328,7 @@ bool PlayerState::set_card_from_hand(
 void PlayerState::set_initial_location() {
   auto s = this->server();
 
-  auto mr = s->map_and_rules1;
+  auto mr = s->map_and_rules;
 
   uint8_t num_team_players;
   if (this->team_id == 0) {
@@ -1384,7 +1384,7 @@ void PlayerState::set_map_occupied_bit_for_card_on_warp_tile(
     for (size_t warp_end = 0; warp_end < 2; warp_end++) {
       if ((s->warp_positions[warp_type][warp_end][0] == card->loc.x) &&
           (s->warp_positions[warp_type][warp_end][1] == card->loc.y)) {
-        s->map_and_rules1->set_occupied_bit_for_tile(
+        s->map_and_rules->set_occupied_bit_for_tile(
             s->warp_positions[warp_type][warp_end ^ 1][0],
             s->warp_positions[warp_type][warp_end ^ 1][1]);
       }
@@ -1396,7 +1396,7 @@ void PlayerState::set_map_occupied_bits_for_sc_and_creatures() {
   auto s = this->server();
 
   if (this->sc_card && !(this->sc_card->card_flags & 2)) {
-    s->map_and_rules1->set_occupied_bit_for_tile(
+    s->map_and_rules->set_occupied_bit_for_tile(
         this->sc_card->loc.x, this->sc_card->loc.y);
     this->set_map_occupied_bit_for_card_on_warp_tile(this->sc_card);
   }
@@ -1405,7 +1405,7 @@ void PlayerState::set_map_occupied_bits_for_sc_and_creatures() {
     for (size_t set_index = 0; set_index < 8; set_index++) {
       auto card = this->set_cards[set_index];
       if (card) {
-        s->map_and_rules1->set_occupied_bit_for_tile(
+        s->map_and_rules->set_occupied_bit_for_tile(
             card->loc.x, card->loc.y);
         this->set_map_occupied_bit_for_card_on_warp_tile(card);
       }
@@ -1809,7 +1809,7 @@ void PlayerState::apply_main_die_assist_effects(uint8_t* die_value) const {
 
 void PlayerState::roll_main_dice() {
   auto s = this->server();
-  const auto& rules = s->map_and_rules1->rules;
+  const auto& rules = s->map_and_rules->rules;
 
   uint8_t min_dice = rules.min_dice;
   uint8_t max_dice = rules.max_dice;

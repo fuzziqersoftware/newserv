@@ -2474,7 +2474,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     } else if (primary_lobby &&
         primary_lobby->ep3_server &&
         primary_lobby->ep3_server->get_setup_phase() != Episode3::SetupPhase::REGISTRATION) {
-      cmd.rules = primary_lobby->ep3_server->map_and_rules1->rules;
+      cmd.rules = primary_lobby->ep3_server->map_and_rules->rules;
       flag = 0x01;
 
     } else {
