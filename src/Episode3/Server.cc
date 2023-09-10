@@ -1851,9 +1851,6 @@ void Server::handle_CAx14_update_deck_during_setup(const string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerDeck_GC_Ep3_6xB3x14_CAx14>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "UPDATE DECK");
-  if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
-  }
 
   if (!this->battle_in_progress) {
     if ((this->setup_phase == SetupPhase::REGISTRATION) &&
@@ -1919,9 +1916,6 @@ void Server::handle_CAx1B_update_player_name(const string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerName_GC_Ep3_6xB3x1B_CAx1B>(data);
   this->send_debug_command_received_message(
       in_cmd.entry.client_id, in_cmd.header.subsubcommand, "UPDATE NAME");
-  if (in_cmd.entry.client_id >= 4) {
-    throw runtime_error("invalid client ID");
-  }
 
   if (!this->is_registration_complete() && (in_cmd.entry.client_id < 4)) {
     this->name_entries[in_cmd.entry.client_id] = in_cmd.entry;
