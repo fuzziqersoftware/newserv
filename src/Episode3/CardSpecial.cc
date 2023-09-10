@@ -3686,16 +3686,25 @@ void CardSpecial::unknown_8024C2B0(
           cmd.effect.value = (target_card->action_chain).conditions[applied_cond_index].remaining_turns;
           cmd.effect.operation = static_cast<int8_t>(card_effect.type);
           this->server()->send(cmd);
-        }
 
-        if (dice_roll.value_used_in_expr) {
-          target_card->action_chain.conditions[applied_cond_index].flags |= 1;
-        }
-        if ((applied_cond_index >= 0) &&
-            (apply_defense_condition_to_all_cards || (apply_defense_condition_to_card_ref == targeted_cards[z]->get_card_ref()))) {
-          this->apply_defense_condition(
-              when, &target_card->action_chain.conditions[applied_cond_index], applied_cond_index, as, target_card, 4, 1);
-          target_log.debug("applied defense condition");
+          // Note: The original code has this check outside of the if
+          // (applied_cond_index >= 0) block, but this is a bug since
+          // applied_cond_index can be negative. In Sega's implementation, this
+          // bug probably does nothing in any reasonable scenario, since the
+          // target card refs array immediately precedes the conditions array,
+          // and the target card refs array is excessively long, so OR'ing a
+          // value that is amost certainly already 0xFFFF with 1 would do
+          // nothing. In our implementation, however, we bounds-check
+          // everything, so we've moved this check inside the relevant if block.
+          if (dice_roll.value_used_in_expr) {
+            target_card->action_chain.conditions[applied_cond_index].flags |= 1;
+          }
+
+          if (apply_defense_condition_to_all_cards || (apply_defense_condition_to_card_ref == targeted_cards[z]->get_card_ref())) {
+            this->apply_defense_condition(
+                when, &target_card->action_chain.conditions[applied_cond_index], applied_cond_index, as, target_card, 4, 1);
+            target_log.debug("applied defense condition");
+          }
         }
         target_card->send_6xB4x4E_4C_4D_if_needed(0);
       } else {
