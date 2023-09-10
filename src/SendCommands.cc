@@ -1619,7 +1619,7 @@ void send_join_game_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   send_command_t(c, 0x64, player_count, cmd);
 }
 
-template <typename LobbyDataT, typename DispDataT, typename RecordsT>
+template <typename LobbyDataT, typename DispDataT, typename RecordsT, bool UseLanguageMarkerInName>
 void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     shared_ptr<Client> joining_client = nullptr) {
   uint8_t command;
@@ -1687,6 +1687,10 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.guild_card = lc->license->serial_number;
     e.lobby_data.client_id = lc->lobby_client_id;
     e.lobby_data.name = lc->game_data.player()->disp.name;
+    remove_language_marker_inplace(e.lobby_data.name);
+    if (UseLanguageMarkerInName) {
+      add_language_marker_inplace(e.lobby_data.name, 'J');
+    }
     e.inventory = lc->game_data.player()->inventory;
     if (c->version() == GameVersion::GC) {
       for (size_t z = 0; z < 30; z++) {
@@ -1776,20 +1780,20 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         if (c->flags & (Client::Flag::IS_DC_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
           send_join_lobby_dc_nte(c, l);
         } else {
-          send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC>(c, l);
+          send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC, false>(c, l);
         }
         break;
       case GameVersion::PC:
-        send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC>(c, l);
+        send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC, false>(c, l);
         break;
       case GameVersion::GC:
-        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l);
+        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l);
         break;
       case GameVersion::XB:
-        send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l);
+        send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l);
         break;
       case GameVersion::BB:
-        send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB>(c, l);
+        send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB, true>(c, l);
         break;
       default:
         throw logic_error("unimplemented versioned command");
@@ -1811,20 +1815,20 @@ void send_player_join_notification(shared_ptr<Client> c,
       if (c->flags & (Client::Flag::IS_DC_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
         send_join_lobby_dc_nte(c, l, joining_client);
       } else {
-        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC>(c, l, joining_client);
+        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC, false>(c, l, joining_client);
       }
       break;
     case GameVersion::PC:
-      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC, false>(c, l, joining_client);
       break;
     case GameVersion::GC:
-      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l, joining_client);
       break;
     case GameVersion::XB:
-      send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l, joining_client);
       break;
     case GameVersion::BB:
-      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB, true>(c, l, joining_client);
       break;
     default:
       throw logic_error("unimplemented versioned command");

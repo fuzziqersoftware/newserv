@@ -91,6 +91,7 @@ PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3() const {
   ret.stats = this->stats;
   ret.visual = this->visual;
   ret.visual.name = this->name;
+  remove_language_marker_inplace(ret.visual.name);
   ret.config = this->config;
   ret.v1_technique_levels = this->technique_levels;
   return ret;

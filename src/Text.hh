@@ -515,6 +515,22 @@ std::basic_string<CharT> add_language_marker(
   return ret;
 }
 
+template <typename CharT, size_t Count>
+void add_language_marker_inplace(ptext<CharT, Count>& s, char16_t marker) {
+  static_assert(Count >= 2, "cannot use add_language_marker_inplace on ptext with fewer than 2 characters");
+
+  if ((s.items[0] == '\t') && (s.items[1] != 'C')) {
+    return;
+  }
+
+  size_t end_offset = std::min<size_t>(s.len() + 2, Count);
+  for (size_t z = end_offset; z > 2; z--) {
+    s[z - 1] = s[z - 3];
+  }
+  s[0] = '\t';
+  s[1] = marker;
+}
+
 template <typename CharT>
 const CharT* remove_language_marker(const CharT* s) {
   if ((s[0] != '\t') || (s[1] == 'C')) {
