@@ -59,18 +59,21 @@ Current known issues / missing features / things to do:
     - Fix some edge cases on the BB proxy server (e.g. make sure Change Ship does the right thing, which is not the same as what it should do on other versions).
 - Extension data in inventories is not handled properly.
 - PSOX is not tested at all.
-- Implement server-side drops on non_BB game versions.
+- Implement server-side drops on non-BB game versions.
 - Find a way to silence audio in RunDOL.s. Some old DOLs don't reset audio systems at load time and it's annoying to hear the crash buzz when the GC hasn't actually crashed.
 - Implement private and overflow lobbies.
 - Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well. (For 60/62 specifically, perhaps transform them to 6C/6D if needed.)
 - Encapsulate BB server-side random state and make replays deterministic.
 - Implement character and inventory replacement for battle and challenge modes.
 - Implement choice search.
-- Episode 3 bugs
+- Write a simple status API.
+- Implement per-game logging.
+- Episode 3
     - Fix behavior when joining a spectator team after the beginning of a battle.
     - Disconnecting during a match turns you into a COM if there are other humans in the match, even if the match is part of a tournament. This may be incorrect behavior for tournaments.
     - Disconnecting during a tournament when there are no other humans in the match simply cancels the match (so it can be replayed) instead of forfeiting, which is almost certainly incorrect behavior. (Then again, no one likes losing tournaments to COMs...)
     - Tournament deck restrictions aren't enforced when populating COMs at tournament start time. This can cause weird behavior if, for example, a COM deck contains assist cards and the tournament rules forbid them.
+    - Implement 3v1 battles.
 - Code style
     - Add default values in all command structures (like we use for Episode 3 battle commands).
 
