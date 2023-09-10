@@ -369,9 +369,11 @@ If you have PSO Plus or Episode III, it won't want to connect to a server on the
 
 #### PSO GC on Dolphin
 
-If you have BBA support via a tap interface or via the HLE/built-in interface, you may be able to just set the DNS server address (as you would on a real GameCube, above) and it may work.
+If you're using the HLE BBA type, set the BBA's DNS server address to newserv's IP address and it should work. (If newserv is on the same machine as Dolphin, try your local IP address or 127.0.0.1.) In PSO, use the example values below in PSO's network configuration.
 
-If you're using a version of Dolphin with tapserver support, you can make it connect to a newserv instance running on the same machine via the tapserver interface. You do not need to install or run tapserver, and this works for all PSO versions without any of the dual-interface trickery described above. To do this:
+If you're using the TAP BBA type, you'll have to set PSO's network settings appropriately for your tap interface. Set the DNS server address in PSO's network settings to newserv's IP address.
+
+If you're using a version of Dolphin with tapserver support, you can make it connect to a newserv instance running on the same machine via the tapserver interface. You do not need to install or run tapserver. To do this:
 1. Set Dolphin's BBA type to tapserver (Config -> GameCube -> SP1).
 2. Enable newserv's IP stack simulator according to the comments in config.json and start newserv.
 3. In PSO, you have to configure the network settings manually (DHCP doesn't work), but the actual values don't matter as long as they're valid IP addresses. Example values:
