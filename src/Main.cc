@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <string.h>
 
+#include <mutex>
 #include <phosg/Filesystem.hh>
 #include <phosg/JSON.hh>
 #include <phosg/Math.hh>

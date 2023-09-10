@@ -68,10 +68,7 @@ map<string, uint32_t> get_local_addresses() {
 
 bool is_local_address(uint32_t addr) {
   uint8_t net = (addr >> 24) & 0xFF;
-  if ((net != 127) && (net != 172) && (net != 10) && (net != 192)) {
-    return false;
-  }
-  return true;
+  return ((net == 127) || (net == 172) || (net == 10) || (net == 192));
 }
 
 bool is_local_address(const sockaddr_storage& daddr) {
