@@ -87,8 +87,9 @@ public:
 
     AttackEnvStats();
     void clear();
+    void print(FILE* stream) const;
 
-    uint32_t at(size_t offset) const;
+    uint32_t at(size_t index) const;
   } __attribute__((packed));
 
   CardSpecial(std::shared_ptr<Server> server);

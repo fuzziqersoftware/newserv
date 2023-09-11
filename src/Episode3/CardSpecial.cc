@@ -83,10 +83,51 @@ void CardSpecial::AttackEnvStats::clear() {
   this->last_attack_damage_count = 0;
   this->target_current_hp = 0;
 }
+uint32_t CardSpecial::AttackEnvStats::at(size_t index) const {
+  static_assert(sizeof(parray<uint32_t, 39>) == sizeof(AttackEnvStats), "CardSpecial::AttackEnvStats does not have exactly 39 entries");
+  return reinterpret_cast<const parray<uint32_t, 39>*>(this)->at(index);
+}
 
-uint32_t CardSpecial::AttackEnvStats::at(size_t offset) const {
-  constexpr size_t count = sizeof(*this) / sizeof(uint32_t);
-  return reinterpret_cast<const parray<uint32_t, count>*>(this)->at(offset);
+void CardSpecial::AttackEnvStats::print(FILE* stream) const {
+  fprintf(stream, "(a)   total_num_set_cards                = %" PRIu32 "\n", this->total_num_set_cards);
+  fprintf(stream, "(ab)  num_a_beast_creatures              = %" PRIu32 "\n", this->num_a_beast_creatures);
+  fprintf(stream, "(ac)  player_num_atk_points              = %" PRIu32 "\n", this->player_num_atk_points);
+  fprintf(stream, "(adm) sc_effective_ap                    = %" PRIu32 "\n", this->sc_effective_ap);
+  fprintf(stream, "(ap)  effective_ap                       = %" PRIu32 "\n", this->effective_ap);
+  fprintf(stream, "(bi)  num_native_creatures               = %" PRIu32 "\n", this->num_native_creatures);
+  fprintf(stream, "(cs)  card_cost                          = %" PRIu32 "\n", this->card_cost);
+  fprintf(stream, "(d)   dice_roll_value1                   = %" PRIu32 "\n", this->dice_roll_value1);
+  fprintf(stream, "(dc)  dice_roll_value2                   = %" PRIu32 "\n", this->dice_roll_value2);
+  fprintf(stream, "(ddm) attack_bonus                       = %" PRIu32 "\n", this->attack_bonus);
+  fprintf(stream, "(df)  num_destroyed_ally_fcs             = %" PRIu32 "\n", this->num_destroyed_ally_fcs);
+  fprintf(stream, "(dk)  num_dark_creatures                 = %" PRIu32 "\n", this->num_dark_creatures);
+  fprintf(stream, "(dm)  effective_ap_if_not_tech           = %" PRIu32 "\n", this->effective_ap_if_not_tech);
+  fprintf(stream, "(dn)  unknown_a1                         = %" PRIu32 "\n", this->unknown_a1);
+  fprintf(stream, "(edm) target_attack_bonus                = %" PRIu32 "\n", this->target_attack_bonus);
+  fprintf(stream, "(ef)  condition_giver_team_num_set_cards = %" PRIu32 "\n", this->condition_giver_team_num_set_cards);
+  fprintf(stream, "(ehp) target_current_hp                  = %" PRIu32 "\n", this->target_current_hp);
+  fprintf(stream, "(f)   num_set_cards                      = %" PRIu32 "\n", this->num_set_cards);
+  fprintf(stream, "(fdm) total_last_attack_damage           = %" PRIu32 "\n", this->total_last_attack_damage);
+  fprintf(stream, "(ff)  target_team_num_set_cards          = %" PRIu32 "\n", this->target_team_num_set_cards);
+  fprintf(stream, "(gn)  num_gun_type_items                 = %" PRIu32 "\n", this->num_gun_type_items);
+  fprintf(stream, "(hf)  num_item_or_creature_cards_in_hand = %" PRIu32 "\n", this->num_item_or_creature_cards_in_hand);
+  fprintf(stream, "(hp)  current_hp                         = %" PRIu32 "\n", this->current_hp);
+  fprintf(stream, "(kap) action_cards_ap                    = %" PRIu32 "\n", this->action_cards_ap);
+  fprintf(stream, "(ktp) action_cards_tp                    = %" PRIu32 "\n", this->action_cards_tp);
+  fprintf(stream, "(ldm) last_attack_preliminary_damage     = %" PRIu32 "\n", this->last_attack_preliminary_damage);
+  fprintf(stream, "(lv)  team_dice_boost                    = %" PRIu32 "\n", this->team_dice_boost);
+  fprintf(stream, "(mc)  num_machine_creatures              = %" PRIu32 "\n", this->num_machine_creatures);
+  fprintf(stream, "(mhp) max_hp                             = %" PRIu32 "\n", this->max_hp);
+  fprintf(stream, "(ndm) last_attack_damage_count           = %" PRIu32 "\n", this->last_attack_damage_count);
+  fprintf(stream, "(php) defined_max_hp                     = %" PRIu32 "\n", this->defined_max_hp);
+  fprintf(stream, "(rdm) last_attack_damage                 = %" PRIu32 "\n", this->last_attack_damage);
+  fprintf(stream, "(sa)  num_sword_type_items               = %" PRIu32 "\n", this->num_sword_type_items);
+  fprintf(stream, "(sat) num_sword_type_items_on_team       = %" PRIu32 "\n", this->num_sword_type_items_on_team);
+  fprintf(stream, "(tdm) effective_ap_if_not_physical       = %" PRIu32 "\n", this->effective_ap_if_not_physical);
+  fprintf(stream, "(tf)  player_num_destroyed_fcs           = %" PRIu32 "\n", this->player_num_destroyed_fcs);
+  fprintf(stream, "(tp)  effective_tp                       = %" PRIu32 "\n", this->effective_tp);
+  fprintf(stream, "(tt)  effective_ap_if_not_tech2          = %" PRIu32 "\n", this->effective_ap_if_not_tech2);
+  fprintf(stream, "(wd)  num_cane_type_items                = %" PRIu32 "\n", this->num_cane_type_items);
 }
 
 CardSpecial::CardSpecial(shared_ptr<Server> server)
@@ -704,8 +745,8 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   ast.last_attack_preliminary_damage = card->last_attack_preliminary_damage;
   ast.last_attack_damage = card->last_attack_final_damage;
 
-  int32_t total_last_attack_damage;
-  size_t last_attack_damage_count;
+  int32_t total_last_attack_damage = 0;
+  size_t last_attack_damage_count = 0;
   this->sum_last_attack_damage(nullptr, &total_last_attack_damage, &last_attack_damage_count);
   ast.total_last_attack_damage = total_last_attack_damage;
   ast.last_attack_damage_count = last_attack_damage_count;
@@ -1528,7 +1569,10 @@ int32_t CardSpecial::evaluate_effect_expr(
     const char* expr,
     DiceRoll& dice_roll) const {
   auto log = this->server()->log.sub("evaluate_effect_expr: ");
-  log.debug("ast, expr=\"%s\", dice_roll=(client_id=%02hhX, a2=%02hhX, value=%02hhX, value_used_in_expr=%s, a5=%04hX)", expr, dice_roll.client_id, dice_roll.unknown_a2, dice_roll.value, dice_roll.value_used_in_expr ? "true" : "false", dice_roll.unknown_a5);
+  if (log.min_level == LogLevel::DEBUG) {
+    log.debug("ast, expr=\"%s\", dice_roll=(client_id=%02hhX, a2=%02hhX, value=%02hhX, value_used_in_expr=%s, a5=%04hX)", expr, dice_roll.client_id, dice_roll.unknown_a2, dice_roll.value, dice_roll.value_used_in_expr ? "true" : "false", dice_roll.unknown_a5);
+    ast.print(stderr);
+  }
 
   // Note: This implementation is not based on the original code because the
   // original code was hard to follow - it used a look-behind approach with lots
@@ -1752,6 +1796,7 @@ bool CardSpecial::execute_effect(
       if (unknown_p7 & 4) {
         int16_t hp = clamp<int16_t>(card->get_current_hp(), -99, 99);
         int16_t new_hp = clamp<int16_t>(hp + positive_expr_value, -99, 99);
+        log.debug("HEAL: hp=%hd, positive_expr_value=%hd, new_hp=%hd", hp, positive_expr_value, new_hp);
         this->send_6xB4x06_for_stat_delta(card, attacker_card_ref, 0x20, new_hp - hp, 1, 1);
         if (new_hp != hp) {
           card->set_current_hp(new_hp);
@@ -2948,7 +2993,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       break;
     }
     case 45:
-      this->sum_last_attack_damage(&ret, 0, 0);
+      this->sum_last_attack_damage(&ret, nullptr, nullptr);
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
     case 46:
