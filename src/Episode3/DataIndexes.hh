@@ -985,13 +985,11 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 59D8 */ be_uint16_t unknown_a9_c;
   /* 59DA */ be_uint16_t unknown_a9_d;
 
-  // map_category appears to specify where in the menu the map should appear in
-  // offline mode. (In online mode, this is ignored, and the map's location in
-  // the menu is determined by the corresponding field in the compressed map
-  // list instead.) If this is FF, the map appears in the Free Battle section;
-  // if it's a small positive number (usually 0 or 2), the map appears in the
-  // Quest section instead. It's not known if this controls anything else; the
-  // values 0, 1, and 2 appear to all do the same thing here.
+  // map_category specifies where in the menu the map should appear in the maps
+  // menu. If this is FF, the map appears in the Free Battle section; if it's a
+  // small number (usually 0 or 2), the map appears in the Quest section
+  // instead. It's not known if this controls anything else; the values 0, 1,
+  // and 2 appear to all do the same thing here.
   /* 59DC */ uint8_t map_category;
 
   // This field determines block graphics to be used in the Cyber environment.
