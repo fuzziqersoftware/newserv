@@ -803,6 +803,8 @@ struct MapList {
   be_uint32_t total_size; // Including header, entries, and strings
 
   struct Entry {
+    // The fields in this structure have the same meanings as the corresponding
+    // fields in MapDefinition.
     /* 0000 */ be_uint16_t map_x;
     /* 0002 */ be_uint16_t map_y;
     /* 0004 */ be_uint16_t environment_number;
@@ -817,9 +819,7 @@ struct MapList {
     /* 001A */ be_uint16_t height;
     /* 001C */ parray<parray<uint8_t, 0x10>, 0x10> map_tiles;
     /* 011C */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
-    // This appears to be 0xFF for free battle maps, and 0 for quests.
-    // TODO: Figure out what this field's meaning actually is
-    /* 021C */ uint8_t unknown_a1;
+    /* 021C */ uint8_t map_category;
     /* 021D */ parray<uint8_t, 3> unused;
     /* 0220 */
   } __attribute__((packed));
@@ -984,7 +984,15 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
   /* 59D8 */ be_uint16_t unknown_a9_c;
   /* 59DA */ be_uint16_t unknown_a9_d;
-  /* 59DC */ uint8_t unknown_a10;
+
+  // map_category appears to specify where in the menu the map should appear in
+  // offline mode. (In online mode, this is ignored, and the map's location in
+  // the menu is determined by the corresponding field in the compressed map
+  // list instead.) If this is FF, the map appears in the Free Battle section;
+  // if it's a small positive number (usually 0 or 2), the map appears in the
+  // Quest section instead. It's not known if this controls anything else; the
+  // values 0, 1, and 2 appear to all do the same thing here.
+  /* 59DC */ uint8_t map_category;
 
   // This field determines block graphics to be used in the Cyber environment.
   // There are 10 block types (0-9); if this value is > 9, type 0 is used.
@@ -1082,7 +1090,7 @@ struct MapDefinitionTrial {
   /* 416C */ be_uint32_t loss_level_override;
   /* 4170 */ be_uint16_t unknown_a9_c;
   /* 4172 */ be_uint16_t unknown_a9_d;
-  /* 4174 */ uint8_t unknown_a10;
+  /* 4174 */ uint8_t map_category;
   /* 4175 */ uint8_t cyber_block_type;
   /* 4176 */ parray<uint8_t, 2> unknown_a11;
   // TODO: This field may contain some version of unavailable_sc_cards and/or

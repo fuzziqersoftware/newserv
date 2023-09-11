@@ -1521,7 +1521,7 @@ string MapDefinition::str(const CardIndex* card_index) const {
   lines.emplace_back(string_printf("  level_overrides=[win=%" PRId32 ", loss=%" PRId32 "]",
       this->win_level_override.load(), this->loss_level_override.load()));
   lines.emplace_back(string_printf("  a9=[%04hX %04hX]", this->unknown_a9_c.load(), this->unknown_a9_d.load()));
-  lines.emplace_back(string_printf("  a10=%02hhX", this->unknown_a10));
+  lines.emplace_back(string_printf("  map_category=%02hhX", this->map_category));
   lines.emplace_back(string_printf("  cyber_block_type=%02hhX", this->cyber_block_type));
   lines.emplace_back(string_printf("  a11=%02hhX%02hhX", this->unknown_a11[0], this->unknown_a11[1]));
   static const array<const char*, 0x18> sc_card_entry_names = {
@@ -1647,7 +1647,7 @@ MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
       loss_level_override(map.loss_level_override),
       unknown_a9_c(map.unknown_a9_c),
       unknown_a9_d(map.unknown_a9_d),
-      unknown_a10(map.unknown_a10),
+      map_category(map.map_category),
       cyber_block_type(map.cyber_block_type),
       unknown_a11(map.unknown_a11),
       unknown_t12(0xFF) {
@@ -2075,7 +2075,7 @@ const string& MapIndex::get_compressed_list(size_t num_players) const {
       strings_w.write(map.description.data(), map.description.len());
       strings_w.put_u8(0);
 
-      e.unknown_a1 = map_it.second->is_quest ? 0x00 : 0xFF;
+      e.map_category = map_it.second->is_quest ? 0x00 : 0xFF;
 
       entries_w.put(e);
       num_maps++;
