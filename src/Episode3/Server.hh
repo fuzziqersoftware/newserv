@@ -64,7 +64,24 @@ public:
       uint32_t behavior_flags,
       std::shared_ptr<PSOLFGEncryption> random_crypt,
       std::shared_ptr<const MapIndex::MapEntry> map_if_tournament);
+  ~Server() noexcept(false);
   void init();
+
+  class StackLogger : public PrefixedLogger {
+  public:
+    StackLogger(const Server* s, const std::string& prefix);
+    StackLogger(const Server* s, const std::string& prefix, LogLevel min_level);
+    StackLogger(const StackLogger&) = delete;
+    StackLogger(StackLogger&&);
+    StackLogger& operator=(const StackLogger&) = delete;
+    StackLogger& operator=(StackLogger&&);
+    ~StackLogger() noexcept(false);
+
+  private:
+    const Server* server;
+  };
+  StackLogger log_stack(const std::string& prefix) const;
+  const StackLogger& log() const;
 
   int8_t get_winner_team_id() const;
 
@@ -212,12 +229,12 @@ public:
   std::shared_ptr<const CardIndex> card_index;
   std::shared_ptr<const MapIndex> map_index;
   uint32_t behavior_flags;
-  PrefixedLogger log;
   std::shared_ptr<PSOLFGEncryption> random_crypt;
   std::shared_ptr<const MapIndex::MapEntry> last_chosen_map;
   bool is_tournament;
   bool tournament_match_result_sent;
   uint8_t override_environment_number;
+  mutable std::deque<StackLogger*> logger_stack;
 
   // These fields were originally contained in the TCardServerBase object
   struct PresenceEntry {

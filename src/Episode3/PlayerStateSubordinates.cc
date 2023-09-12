@@ -477,7 +477,7 @@ void ActionChainWithConds::set_action_subphase_from_card(
   this->chain.action_subphase = card->server()->get_current_action_subphase();
 }
 
-bool ActionChainWithConds::unknown_8024DEC4() const {
+bool ActionChainWithConds::can_apply_attack() const {
   return this->check_flag(4) ? false : (this->chain.target_card_ref_count != 0);
 }
 
@@ -609,7 +609,7 @@ std::string HandAndEquipState::str() const {
       "assist_flags=%08" PRIX32 ", hand_refs=%s, "
       "assist_ref=@%04hX, set_refs=%s, sc_ref=@%04hX, "
       "hand_refs2=%s, set_refs2=%s, assist_ref2=@%04hX, "
-      "assist_set_num=%hu, assist_card_id=%04hX, "
+      "assist_set_num=%hu, assist_card_id=#%04hX, "
       "assist_turns=%hhu, assit_dely=%hhu, atk_bonus=%hhu, "
       "def_bonus=%hhu, u2=[%hhu, %hhu]]",
       this->dice_results[0],
@@ -808,24 +808,24 @@ vector<uint16_t> get_card_refs_within_range(
   vector<uint16_t> ret;
   if (is_card_within_range(range, loc, short_statuses[0], log)) {
     if (log) {
-      log->debug("get_card_refs_within_range: sc card %04hX within range", short_statuses[0].card_ref.load());
+      log->debug("get_card_refs_within_range: sc card @%04hX within range", short_statuses[0].card_ref.load());
     }
     ret.emplace_back(short_statuses[0].card_ref);
   } else {
     if (log) {
-      log->debug("get_card_refs_within_range: sc card %04hX not within range", short_statuses[0].card_ref.load());
+      log->debug("get_card_refs_within_range: sc card @%04hX not within range", short_statuses[0].card_ref.load());
     }
   }
   for (size_t card_index = 7; card_index < 15; card_index++) {
     const auto& ss = short_statuses[card_index];
     if (is_card_within_range(range, loc, ss, log)) {
       if (log) {
-        log->debug("get_card_refs_within_range: card %04hX within range", ss.card_ref.load());
+        log->debug("get_card_refs_within_range: card @%04hX within range", ss.card_ref.load());
       }
       ret.emplace_back(ss.card_ref);
     } else {
       if (log) {
-        log->debug("get_card_refs_within_range: card %04hX not within range", ss.card_ref.load());
+        log->debug("get_card_refs_within_range: card @%04hX not within range", ss.card_ref.load());
       }
     }
   }

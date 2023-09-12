@@ -34,7 +34,6 @@ Server::Server(shared_ptr<Lobby> lobby,
       card_index(card_index),
       map_index(map_index),
       behavior_flags(behavior_flags),
-      log(lobby->log.prefix + "[Ep3::Server] ", lobby->log.min_level),
       random_crypt(random_crypt),
       last_chosen_map(map_if_tournament),
       is_tournament(!!map_if_tournament),
@@ -73,7 +72,16 @@ Server::Server(shared_ptr<Lobby> lobby,
       chosen_trap_tile_index_of_type(0),
       has_done_pb(0),
       num_6xB4x06_commands_sent(0),
-      prev_num_6xB4x06_commands_sent(0) {}
+      prev_num_6xB4x06_commands_sent(0) {
+  new StackLogger(this, lobby->log.prefix + "[Ep3::Server] ", lobby->log.min_level);
+}
+
+Server::~Server() noexcept(false) {
+  if (this->logger_stack.size() != 1) {
+    throw logic_error(string_printf("incorrect logger stack size: expected 1, received %zu", this->logger_stack.size()));
+  }
+  delete this->logger_stack.back();
+}
 
 void Server::init() {
   this->map_and_rules.reset(new MapAndRulesState());
@@ -105,6 +113,52 @@ void Server::init() {
   this->ruler_server->link_objects(this->map_and_rules, this->state_flags, this->assist_server);
 
   this->send_6xB4x46();
+}
+
+Server::StackLogger::StackLogger(const Server* s, const std::string& prefix)
+    : PrefixedLogger(s->logger_stack.back()->prefix + prefix, s->logger_stack.back()->min_level),
+      server(s) {
+  s->logger_stack.push_back(this);
+}
+
+Server::StackLogger::StackLogger(const Server* s, const std::string& prefix, LogLevel min_level)
+    : PrefixedLogger(prefix, min_level),
+      server(s) {
+  s->logger_stack.push_back(this);
+}
+
+Server::StackLogger::StackLogger(StackLogger&& other)
+    : PrefixedLogger(std::move(other)),
+      server(other.server) {
+  if (this->server->logger_stack.back() != &other) {
+    throw logic_error("cannot move StackLogger unless it is the last one");
+  }
+  this->server->logger_stack.back() = this;
+}
+
+Server::StackLogger& Server::StackLogger::operator=(StackLogger&& other) {
+  this->PrefixedLogger::operator=(std::move(other));
+  this->server = other.server;
+  if (this->server->logger_stack.back() != &other) {
+    throw logic_error("cannot move StackLogger unless it is the last one");
+  }
+  this->server->logger_stack.back() = this;
+  return *this;
+}
+
+Server::StackLogger::~StackLogger() noexcept(false) {
+  if (this->server->logger_stack.back() != this) {
+    throw logic_error("incorrect logger stack unwind order");
+  }
+  this->server->logger_stack.pop_back();
+}
+
+Server::StackLogger Server::log_stack(const std::string& prefix) const {
+  return StackLogger(this, prefix);
+}
+
+const Server::StackLogger& Server::log() const {
+  return *this->logger_stack.back();
 }
 
 int8_t Server::get_winner_team_id() const {
@@ -251,12 +305,12 @@ __attribute__((format(printf, 2, 3))) void Server::send_info_message_printf(cons
 
 void Server::send_debug_command_received_message(
     uint8_t client_id, uint8_t subsubcommand, const char* description) const {
-  this->log.debug("%hhu/CAx%02hhX %s", client_id, subsubcommand, description);
+  this->log().debug("%hhu/CAx%02hhX %s", client_id, subsubcommand, description);
   this->send_debug_message_printf("$C5%hhu/CAx%02hhX %s", client_id, subsubcommand, description);
 }
 
 void Server::send_debug_command_received_message(uint8_t subsubcommand, const char* description) const {
-  this->log.debug("*/CAx%02hhX %s", subsubcommand, description);
+  this->log().debug("*/CAx%02hhX %s", subsubcommand, description);
   this->send_debug_message_printf("$C5*/CAx%02hhX %s", subsubcommand, description);
 }
 
@@ -2372,7 +2426,9 @@ uint32_t Server::send_6xB4x06_if_card_ref_invalid(
 }
 
 void Server::unknown_8023EEF4() {
+  auto log = this->log_stack("unknown_8023EEF4: ");
   if (this->unknown_a14 >= 0x20) {
+    log.debug("unknown_a14 too large (0x%" PRIX32 ")", this->unknown_a14);
     return;
   }
 
@@ -2380,15 +2436,26 @@ void Server::unknown_8023EEF4() {
     auto card = this->attack_cards[this->unknown_a14];
     if (this->get_current_team_turn() == card->get_team_id()) {
       ActionState as = this->pending_attacks_with_cards[this->unknown_a14];
+      log.debug("card @%04hX #%04hX can attack", card->get_card_ref(), card->get_card_id());
+      string as_str = as.str();
+      log.debug("as: %s", as_str.c_str());
       this->replace_targets_due_to_destruction_or_conditions(&as);
+      as_str = as.str();
+      log.debug("as after target replacement: %s", as_str.c_str());
       if (this->any_target_exists_for_attack(as)) {
+        log.debug("as is valid");
         break;
+      } else {
+        log.debug("as is not valid");
       }
+    } else {
+      log.debug("card @%04hX #%04hX cannot attack (wrong turn)", card->get_card_ref(), card->get_card_id());
     }
     this->unknown_a14++;
   }
 
   if (this->unknown_a14 < this->num_pending_attacks_with_cards) {
+    log.debug("a14 (%" PRIu32 ") < num_pending_attacks_with_cards (%" PRIu32 ")", this->unknown_a14, this->num_pending_attacks_with_cards);
     this->defense_list_ended_for_client.clear(false);
 
     G_SetActionState_GC_Ep3_6xB4x29 cmd;
@@ -2619,8 +2686,10 @@ void Server::unknown_8023EE48() {
 }
 
 void Server::unknown_8023EE80() {
+  auto log = this->log_stack("unknown_8023EE80: ");
   if (this->unknown_a14 < this->num_pending_attacks_with_cards) {
-    this->attack_cards[this->unknown_a14]->unknown_80237734();
+    log.debug("applying first attack result");
+    this->attack_cards[this->unknown_a14]->apply_attack_result();
     this->unknown_a14++;
   }
   this->check_for_battle_end();
@@ -2630,17 +2699,20 @@ void Server::unknown_8023EE80() {
 }
 
 void Server::unknown_802402F4() {
+  auto log = this->log_stack("unknown_802402F4: ");
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->player_states[client_id];
     if (ps && (this->current_team_turn2 == ps->get_team_id())) {
       auto card = ps->get_sc_card();
       if (card) {
-        card->compute_action_chain_results(1, 0);
+        log.debug("SC card has action chain");
+        card->compute_action_chain_results(true, false);
       }
       for (size_t set_index = 0; set_index < 8; set_index++) {
         card = ps->get_set_card(set_index);
         if (card) {
-          card->compute_action_chain_results(1, 0);
+          log.debug("set card %zu has action chain", set_index);
+          card->compute_action_chain_results(true, false);
         }
       }
     }

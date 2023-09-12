@@ -15,7 +15,7 @@ void compute_effective_range(
     PrefixedLogger* log) {
   if (log && log->should_log(LogLevel::DEBUG)) {
     string loc_str = loc.str();
-    log->debug("compute_effective_range: card_id=%04hX, loc=%s", card_id, loc_str.c_str());
+    log->debug("compute_effective_range: card_id=#%04hX, loc=%s", card_id, loc_str.c_str());
     log->debug("compute_effective_range: map_and_rules->map:");
     map_and_rules->map.print(stderr);
   }
@@ -903,23 +903,21 @@ bool RulerServer::check_usability_or_condition_apply(
     uint8_t def_effect_index,
     bool is_item_usability_check,
     AttackMedium attack_medium) const {
-  auto log = this->server()->log.sub("check_usability_or_condition_apply: ");
+  auto log = this->server()->log_stack(string_printf("check_usability_or_condition_apply(%02hhX, #%04hX, %02hhX, #%04hX, #%04hX, %02hhX, %s, %s): ", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", name_for_attack_medium(attack_medium)));
 
   if (static_cast<uint8_t>(attack_medium) & 0x80) {
     attack_medium = AttackMedium::UNKNOWN;
   }
 
-  log.debug("check_usability_or_condition_apply(client_id1=%02hhX, card_id1=%04hX, client_id2=%02hhX, card_id2=%04hX, card_id3=%04hX, def_effect_index=%02hhX, is_item_usability_check=%s, attack_medium=%s)", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", name_for_attack_medium(attack_medium));
-
   auto ce1 = this->definition_for_card_id(card_id1);
   auto ce2 = this->definition_for_card_id(card_id2);
   auto ce3 = this->definition_for_card_id(card_id3);
   if (!ce1) {
-    log.debug("check_usability_or_condition_apply: ce1 missing");
+    log.debug("ce1 missing");
     return false;
   }
   if ((ce1->def.type == CardType::ITEM) && this->card_id_is_boss_sc(card_id2)) {
-    log.debug("check_usability_or_condition_apply: ce1 is item and card_id2 is boss sc");
+    log.debug("ce1 is item and card_id2 is boss sc");
     return false;
   }
 
@@ -928,12 +926,12 @@ bool RulerServer::check_usability_or_condition_apply(
     criterion_code = ce1->def.usable_criterion;
   } else {
     if (def_effect_index > 2) {
-      log.debug("check_usability_or_condition_apply: invalid def_effect_index");
+      log.debug("invalid def_effect_index");
       return false;
     }
     criterion_code = ce1->def.effects[def_effect_index].apply_criterion;
   }
-  log.debug("check_usability_or_condition_apply: criterion_code=%s", name_for_criterion_code(criterion_code));
+  log.debug("criterion_code=%s", name_for_criterion_code(criterion_code));
 
   // For item usability checks, prevent criteria that depend on player
   // positioning/team setup
@@ -944,7 +942,7 @@ bool RulerServer::check_usability_or_condition_apply(
           (criterion_code == CriterionCode::FC) ||
           (criterion_code == CriterionCode::NOT_SC) ||
           (criterion_code == CriterionCode::SC))) {
-    log.debug("check_usability_or_condition_apply: criterion is forbidden");
+    log.debug("criterion is forbidden");
     criterion_code = CriterionCode::NONE;
   }
 
@@ -1318,7 +1316,7 @@ bool RulerServer::check_usability_or_condition_apply(
       }
   }
 
-  log.debug("check_usability_or_condition_apply: default return (false)");
+  log.debug("default return (false)");
   return false;
 }
 

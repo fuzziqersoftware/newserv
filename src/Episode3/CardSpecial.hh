@@ -276,8 +276,8 @@ public:
       std::shared_ptr<const Card> attacker_card,
       std::shared_ptr<Card> target_card,
       int16_t* inout_unknown_p4);
-  void unknown_8024C2B0(
-      uint32_t when,
+  void evaluate_and_apply_effects(
+      uint8_t when,
       uint16_t set_card_ref,
       const ActionState& as,
       uint16_t sc_card_ref,

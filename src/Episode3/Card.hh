@@ -59,6 +59,7 @@ public:
       uint16_t* out_value) const;
   std::shared_ptr<const CardIndex::CardEntry> get_definition() const;
   uint16_t get_card_ref() const;
+  uint16_t get_card_id() const;
   uint8_t get_client_id() const;
   uint8_t get_current_hp() const;
   uint8_t get_max_hp() const;
@@ -89,7 +90,7 @@ public:
   bool is_guard_item() const;
   bool unknown_80236554(std::shared_ptr<Card> other_card, const ActionState* as);
   void unknown_802362D8(std::shared_ptr<Card> other_card);
-  void unknown_80237734();
+  void apply_attack_result();
 
 private:
   std::weak_ptr<Server> w_server;

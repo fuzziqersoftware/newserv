@@ -778,7 +778,7 @@ vector<uint16_t> PlayerState::get_all_cards_within_range(
     uint8_t target_team_id) const {
   auto s = this->server();
 
-  auto log = s->log.sub("get_all_cards_within_range: ");
+  auto log = this->server()->log_stack("get_all_cards_within_range: ");
   string loc_str = loc.str();
   log.debug("loc=%s, target_team_id=%02hhX", loc_str.c_str(), target_team_id);
 

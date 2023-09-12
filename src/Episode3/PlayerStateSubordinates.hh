@@ -159,7 +159,7 @@ struct ActionChainWithConds {
       uint16_t* out_value) const;
 
   void set_action_subphase_from_card(std::shared_ptr<const Card> card);
-  bool unknown_8024DEC4() const;
+  bool can_apply_attack() const;
 
   std::string str() const;
 } __attribute__((packed));
