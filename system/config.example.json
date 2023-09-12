@@ -307,6 +307,7 @@
   // 0x0080 => Disable command masking during battles
   // 0x0100 => Disable interference (COMs randomly coming to each other's
   //           rescue)
+  // 0x0200 => Allow interference even when neither player is a COM
   "Episode3BehaviorFlags": 0x0002,
 
   // Episode 3 EX result values. This allows you to set the amount of EX players

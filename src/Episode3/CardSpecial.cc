@@ -3564,7 +3564,7 @@ void CardSpecial::check_for_defense_interference(
   }
 
   auto ally_hes = this->server()->ruler_server->get_hand_and_equip_state_for_client_id(target_ally_client_id);
-  if (!ally_hes || !ally_hes->is_cpu_player) {
+  if (!ally_hes || (!(this->server()->behavior_flags & BehaviorFlag::ALLOW_NON_COM_INTERFERENCE) && !ally_hes->is_cpu_player)) {
     return;
   }
 
@@ -4558,7 +4558,7 @@ void CardSpecial::check_for_attack_interference(shared_ptr<Card> unknown_p2) {
   }
 
   auto ally_hes = this->server()->ruler_server->get_hand_and_equip_state_for_client_id(ally_client_id);
-  if (!ally_hes || !ally_hes->is_cpu_player) {
+  if (!ally_hes || (!(this->server()->behavior_flags & BehaviorFlag::ALLOW_NON_COM_INTERFERENCE) && !ally_hes->is_cpu_player)) {
     return;
   }
 
