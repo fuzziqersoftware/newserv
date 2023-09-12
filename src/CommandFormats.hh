@@ -2331,7 +2331,7 @@ struct S_Meseta_GC_Ep3_BA {
 // This command is not valid on Episode 3 Trial Edition. Because of this, it
 // must have been added fairly late in development, but it seems to be unused,
 // perhaps because the E1/E3 commands are generally more useful... but the E1/E3
-// commands exist in the Trial Edition! So why was this added? Was it just never
+// commands exist in Trial Edition! So why was this added? Was it just never
 // finished? We may never know...
 // header.flag is the number of valid match entries.
 
@@ -2346,7 +2346,7 @@ struct S_TournamentMatchInformation_GC_Ep3_BB {
   le_uint16_t num_teams = 0;
   le_uint16_t unknown_a3 = 0; // Probably actually unused
   struct MatchEntry {
-    parray<char, 0x20> name;
+    ptext<char, 0x20> name;
     uint8_t locked = 0;
     uint8_t count = 0;
     uint8_t max_count = 0;
