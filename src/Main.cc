@@ -1542,6 +1542,7 @@ int main(int argc, char** argv) {
         } else {
           string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
           string text = entry->text.empty() ? "(No text available)" : str_replace_all(entry->text, "\n", "\n    ");
+          strip_trailing_whitespace(text);
           fprintf(stdout, "%s\n  Tags: %s\n  Text:\n    %s\n\n", s.c_str(), tags.c_str(), text.c_str());
         }
       }
