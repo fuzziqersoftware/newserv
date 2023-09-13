@@ -3424,7 +3424,7 @@ static void on_0C_C1_E7_EC(shared_ptr<ServerState> s, shared_ptr<Client> c,
     game = create_game_generic(
         s, c, name.c_str(), password.c_str(), episode, mode, cmd.difficulty,
         flags, watched_lobby);
-    if (game->episode == Episode::EP3) {
+    if (game && (game->episode == Episode::EP3)) {
       game->ep3_ex_result_values = s->ep3_default_ex_values;
     }
   }
