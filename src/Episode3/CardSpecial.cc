@@ -3074,15 +3074,14 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
           for (uint16_t result_card_ref : result_card_refs) {
             auto result_card = this->server()->card_for_set_card_ref(result_card_ref);
             if (result_card) {
-              auto def = result_card->get_definition();
-              if (ce->def.type == CardType::HUNTERS_SC) {
+              auto result_ce = result_card->get_definition();
+              if (result_ce->def.type == CardType::HUNTERS_SC) {
                 bool should_add = true;
                 for (uint16_t other_result_card_ref : result_card_refs) {
-                  if (other_result_card_ref != result_card_ref) {
-                    if (client_id_for_card_ref(other_result_card_ref) == client_id_for_card_ref(result_card_ref)) {
-                      should_add = false;
-                      break;
-                    }
+                  if ((other_result_card_ref != result_card_ref) &&
+                      (client_id_for_card_ref(other_result_card_ref) == client_id_for_card_ref(result_card_ref))) {
+                    should_add = false;
+                    break;
                   }
                 }
                 if (should_add) {
@@ -3094,9 +3093,9 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
             }
           }
         }
-        auto result_card = this->server()->card_for_set_card_ref(setter_card_ref);
-        if (result_card) {
-          ret.emplace_back(result_card);
+        auto setter_card = this->server()->card_for_set_card_ref(setter_card_ref);
+        if (setter_card) {
+          ret.emplace_back(setter_card);
         }
       }
       break;
