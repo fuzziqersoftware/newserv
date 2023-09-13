@@ -780,11 +780,11 @@ vector<string> map_filenames_for_variation(
 
   vector<string> ret;
   if (is_solo) {
-    // Try both _offe.dat and e_s.dat suffixes
+    // Try both _offe.dat and e_s.dat suffixes first before falling back to
+    // non-solo version
     ret.emplace_back(filename + "_offe.dat");
     ret.emplace_back(filename + "e_s.dat");
-  } else {
-    ret.emplace_back(filename + "e.dat");
   }
+  ret.emplace_back(filename + "e.dat");
   return ret;
 }
