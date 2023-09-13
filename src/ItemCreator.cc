@@ -111,8 +111,7 @@ ItemData ItemCreator::on_box_item_drop(uint8_t area) {
 }
 
 ItemData ItemCreator::on_monster_item_drop(uint32_t enemy_type, uint8_t area) {
-  return this->on_monster_item_drop_with_norm_area(
-      enemy_type, normalize_area_number(area) - 1);
+  return this->on_monster_item_drop_with_norm_area(enemy_type, normalize_area_number(area) - 1);
 }
 
 ItemData ItemCreator::on_box_item_drop_with_norm_area(uint8_t area_norm) {
@@ -152,10 +151,9 @@ ItemData ItemCreator::on_box_item_drop_with_norm_area(uint8_t area_norm) {
   return item;
 }
 
-ItemData ItemCreator::on_monster_item_drop_with_norm_area(
-    uint32_t enemy_type, uint8_t norm_area) {
+ItemData ItemCreator::on_monster_item_drop_with_norm_area(uint32_t enemy_type, uint8_t norm_area) {
   if (enemy_type > 0x58) {
-    this->log.info("Invalid enemy type: %" PRIX32, enemy_type);
+    this->log.warning("Invalid enemy type: %" PRIX32, enemy_type);
     return ItemData();
   }
   this->log.info("Enemy type: %" PRIX32, enemy_type);
@@ -224,8 +222,7 @@ ItemData ItemCreator::on_monster_item_drop_with_norm_area(
   return item;
 }
 
-ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(
-    uint8_t area_norm) {
+ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(uint8_t area_norm) {
   ItemData item;
   if (!this->are_rare_drops_allowed()) {
     return item;
@@ -276,11 +273,9 @@ bool ItemCreator::should_allow_meseta_drops() const {
   return (this->mode != GameMode::CHALLENGE);
 }
 
-ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(
-    uint32_t enemy_type) {
+ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_type) {
   ItemData item;
-  if (this->are_rare_drops_allowed() &&
-      (enemy_type > 0) && (enemy_type < 0x58)) {
+  if (this->are_rare_drops_allowed() && (enemy_type > 0) && (enemy_type < 0x58)) {
     // Note: In the original implementation, enemies can only have one possible
     // rare drop. In our implementation, they can have multiple rare drops if
     // JSONRareItemSet is used (the other RareItemSet implementations never
@@ -441,12 +436,14 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
     // (HP/Resurrection and TP/Resurrection) only exist on BB.
     if (item.data1[0] == 1) {
       if ((item.data1[1] == 3) && (((item.data1[2] >= 0x33) && (item.data1[2] <= 0x38)) || (item.data1[2] == 0x61) || (item.data1[2] == 0x62))) {
-        this->log.info("Restricted: restore items not allowed in Challenge mode");
+        this->log.info("Restricted: restore units not allowed in Challenge mode");
         item.clear();
+        return;
       }
     } else if (item.data1[0] == 4) {
       this->log.info("Restricted: meseta not allowed in Challenge mode");
       item.clear();
+      return;
     }
   }
 
@@ -519,8 +516,7 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
   }
 }
 
-void ItemCreator::generate_common_item_variances(
-    uint32_t norm_area, ItemData& item) {
+void ItemCreator::generate_common_item_variances(uint32_t norm_area, ItemData& item) {
   switch (item.data1[0]) {
     case 0:
       this->generate_common_weapon_variances(norm_area, item);
@@ -529,14 +525,12 @@ void ItemCreator::generate_common_item_variances(
       if (item.data1[1] == 3) {
         float f1 = 1.0 + this->pt->unit_maxes[norm_area];
         float f2 = this->rand_float_0_1_from_crypt();
-        this->generate_common_unit_variances(
-            static_cast<uint32_t>(f1 * f2) & 0xFF, item);
+        this->generate_common_unit_variances(static_cast<uint32_t>(f1 * f2) & 0xFF, item);
         if (item.data1[2] == 0xFF) {
           item.clear();
         }
       } else {
-        this->generate_common_armor_or_shield_type_and_variances(
-            norm_area, item);
+        this->generate_common_armor_or_shield_type_and_variances(norm_area, item);
       }
       break;
     case 2:
@@ -546,9 +540,7 @@ void ItemCreator::generate_common_item_variances(
       this->generate_common_tool_variances(norm_area, item);
       break;
     case 4:
-      item.data2d = this->choose_meseta_amount(
-                        this->pt->box_meseta_ranges, norm_area) &
-          0xFFFF;
+      item.data2d = this->choose_meseta_amount(this->pt->box_meseta_ranges, norm_area) & 0xFFFF;
       break;
     default:
       // Note: The original code does the following here:
@@ -584,19 +576,16 @@ void ItemCreator::generate_common_armor_slots_and_bonuses(ItemData& item) {
     this->generate_common_armor_slot_count(item);
   }
 
-  const auto& def = this->item_parameter_table->get_armor_or_shield(
-      item.data1[1], item.data1[2]);
+  const auto& def = this->item_parameter_table->get_armor_or_shield(item.data1[1], item.data1[2]);
   item.set_armor_or_shield_defense_bonus(def.dfp_range * this->rand_float_0_1_from_crypt());
   item.set_common_armor_evasion_bonus(def.evp_range * this->rand_float_0_1_from_crypt());
 }
 
 void ItemCreator::generate_common_armor_slot_count(ItemData& item) {
-  item.data1[5] = this->get_rand_from_weighted_tables_1d(
-      this->pt->armor_slot_count_prob_table);
+  item.data1[5] = this->get_rand_from_weighted_tables_1d(this->pt->armor_slot_count_prob_table);
 }
 
-void ItemCreator::generate_common_tool_variances(
-    uint32_t area_norm, ItemData& item) {
+void ItemCreator::generate_common_tool_variances(uint32_t area_norm, ItemData& item) {
   item.clear();
 
   uint8_t tool_class = this->get_rand_from_weighted_tables_2d_vertical(
@@ -615,8 +604,7 @@ void ItemCreator::generate_common_tool_variances(
   this->set_tool_item_amount_to_1(item);
 }
 
-uint8_t ItemCreator::generate_tech_disk_level(
-    uint32_t tech_num, uint32_t area_norm) {
+uint8_t ItemCreator::generate_tech_disk_level(uint32_t tech_num, uint32_t area_norm) {
   uint8_t min = this->pt->technique_level_ranges[tech_num][area_norm].min;
   uint8_t max = this->pt->technique_level_ranges[tech_num][area_norm].max;
 
@@ -628,8 +616,7 @@ uint8_t ItemCreator::generate_tech_disk_level(
   return min;
 }
 
-void ItemCreator::generate_common_tool_type(
-    uint8_t tool_class, ItemData& item) const {
+void ItemCreator::generate_common_tool_type(uint8_t tool_class, ItemData& item) const {
   auto data = this->item_parameter_table->find_tool_by_class(tool_class);
   item.data1[0] = 0x03;
   item.data1[1] = data.first;
@@ -643,8 +630,7 @@ void ItemCreator::generate_common_mag_variances(ItemData& item) const {
   }
 }
 
-void ItemCreator::generate_common_weapon_variances(
-    uint8_t area_norm, ItemData& item) {
+void ItemCreator::generate_common_weapon_variances(uint8_t area_norm, ItemData& item) {
   item.clear();
   item.data1[0] = 0x00;
 
@@ -843,8 +829,7 @@ IntT ItemCreator::get_rand_from_weighted_tables(
 }
 
 template <typename IntT, size_t X>
-IntT ItemCreator::get_rand_from_weighted_tables_1d(
-    const parray<IntT, X>& tables) {
+IntT ItemCreator::get_rand_from_weighted_tables_1d(const parray<IntT, X>& tables) {
   return ItemCreator::get_rand_from_weighted_tables<IntT>(tables.data(), 0, X, 1);
 }
 
@@ -981,8 +966,7 @@ void ItemCreator::generate_armor_shop_armors(
   }
 }
 
-void ItemCreator::generate_armor_shop_shields(
-    vector<ItemData>& shop, size_t player_level) {
+void ItemCreator::generate_armor_shop_shields(vector<ItemData>& shop, size_t player_level) {
   size_t num_items;
   if (player_level < 11) {
     num_items = 4;
@@ -1025,8 +1009,7 @@ void ItemCreator::generate_armor_shop_shields(
   }
 }
 
-void ItemCreator::generate_armor_shop_units(
-    vector<ItemData>& shop, size_t player_level) {
+void ItemCreator::generate_armor_shop_units(vector<ItemData>& shop, size_t player_level) {
   size_t num_items;
   if (player_level < 11) {
     return; // num_items = 0
@@ -1172,8 +1155,7 @@ void ItemCreator::generate_rare_tool_shop_recovery_items(
   }
 }
 
-void ItemCreator::generate_tool_shop_tech_disks(
-    vector<ItemData>& shop, size_t player_level) {
+void ItemCreator::generate_tool_shop_tech_disks(vector<ItemData>& shop, size_t player_level) {
   size_t num_items;
   if (player_level < 11) {
     num_items = 4;
@@ -1206,8 +1188,7 @@ void ItemCreator::generate_tool_shop_tech_disks(
     item.data1[0] = 3;
     item.data1[1] = 2;
     item.data1[4] = tech_num_map.at(tech_num_index);
-    this->choose_tech_disk_level_for_tool_shop(
-        item, player_level, tech_num_index);
+    this->choose_tech_disk_level_for_tool_shop(item, player_level, tech_num_index);
     if (this->shop_does_not_contain_duplicate_tech_disk(shop, item)) {
       shop.emplace_back(std::move(item));
       items_generated++;
@@ -1435,8 +1416,7 @@ vector<ItemData> ItemCreator::generate_weapon_shop_contents(size_t player_level)
   return shop;
 }
 
-void ItemCreator::generate_weapon_shop_item_grind(
-    ItemData& item, size_t player_level) {
+void ItemCreator::generate_weapon_shop_item_grind(ItemData& item, size_t player_level) {
   size_t table_index;
   if (player_level < 4) {
     table_index = 0;
@@ -1464,8 +1444,7 @@ void ItemCreator::generate_weapon_shop_item_grind(
       this->rand_int(range->max + 1), range->min, weapon_def.max_grind);
 }
 
-void ItemCreator::generate_weapon_shop_item_special(
-    ItemData& item, size_t player_level) {
+void ItemCreator::generate_weapon_shop_item_special(ItemData& item, size_t player_level) {
   ProbabilityTable<uint8_t, 100> pt;
 
   size_t table_index;
@@ -1513,27 +1492,7 @@ void ItemCreator::generate_weapon_shop_item_special(
 }
 
 static const array<int8_t, 20> bonus_values = {
-    -50,
-    -45,
-    -40,
-    -35,
-    -30,
-    -25,
-    -20,
-    -15,
-    -10,
-    -5,
-    5,
-    10,
-    15,
-    20,
-    25,
-    30,
-    35,
-    40,
-    45,
-    50,
-};
+    -50, -45, -40, -35, -30, -25, -20, -15, -10, -5, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50};
 
 void ItemCreator::generate_weapon_shop_item_bonus1(
     ItemData& item, size_t player_level) {
@@ -1558,8 +1517,7 @@ void ItemCreator::generate_weapon_shop_item_bonus1(
     table_index = 8;
   }
 
-  const auto* type_table = this->weapon_random_set->get_bonus_type_table(
-      0, table_index);
+  const auto* type_table = this->weapon_random_set->get_bonus_type_table(0, table_index);
   ProbabilityTable<uint8_t, 100> pt;
   for (size_t z = 0; z < type_table->size(); z++) {
     const auto& e = type_table->at(z);
@@ -1581,8 +1539,7 @@ void ItemCreator::generate_weapon_shop_item_bonus1(
   }
 }
 
-void ItemCreator::generate_weapon_shop_item_bonus2(
-    ItemData& item, size_t player_level) {
+void ItemCreator::generate_weapon_shop_item_bonus2(ItemData& item, size_t player_level) {
   size_t table_index;
   if (player_level < 6) {
     table_index = 0;
@@ -1604,8 +1561,7 @@ void ItemCreator::generate_weapon_shop_item_bonus2(
     table_index = 8;
   }
 
-  const auto* type_table = this->weapon_random_set->get_bonus_type_table(
-      1, table_index);
+  const auto* type_table = this->weapon_random_set->get_bonus_type_table(1, table_index);
   ProbabilityTable<uint8_t, 100> pt;
   for (size_t z = 0; z < type_table->size(); z++) {
     const auto& e = type_table->at(z);
@@ -1676,8 +1632,7 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
     throw runtime_error("tekker deltas can only be applied to weapons");
   }
 
-  static const array<int8_t, 11> delta_table = {
-      -10, -5, -3, -2, -1, 0, 1, 2, 3, 5, 10};
+  static const array<int8_t, 11> delta_table = {-10, -5, -3, -2, -1, 0, 1, 2, 3, 5, 10};
 
   bool favored = item.data1[1] == favored_weapon_by_section_id[section_id];
   ssize_t luck = 0;
