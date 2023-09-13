@@ -1279,6 +1279,28 @@ static void server_command_ep3_infinite_time(
   send_text_message(l, infinite_time_enabled ? u"$C6Infinite time enabled" : u"$C6Infinite time disabled");
 }
 
+static void server_command_ep3_unset_field_character(
+    shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string& args) {
+  check_is_game(l, true);
+  check_is_ep3(c, true);
+  check_cheats_enabled(s, l);
+
+  if (l->episode != Episode::EP3) {
+    throw logic_error("non-Ep3 client in Ep3 game");
+  }
+  if (!l->ep3_server) {
+    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
+    return;
+  }
+  if (l->ep3_server->setup_phase != Episode3::SetupPhase::MAIN_BATTLE) {
+    send_text_message(c, u"$C6Battle has not\nyet begun");
+    return;
+  }
+
+  size_t index = stoull(encode_sjis(args)) - 1;
+  l->ep3_server->force_destroy_field_character(c->lobby_client_id, index);
+}
+
 static void server_command_surrender(
     shared_ptr<ServerState>, shared_ptr<Lobby> l, shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
@@ -1351,6 +1373,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$ss", {nullptr, proxy_command_send_server}},
     {u"$surrender", {server_command_surrender, nullptr}},
     {u"$swa", {server_command_switch_assist, proxy_command_switch_assist}},
+    {u"$unset", {server_command_ep3_unset_field_character, nullptr}},
     {u"$warp", {server_command_warpme, proxy_command_warpme}},
     {u"$warpme", {server_command_warpme, proxy_command_warpme}},
     {u"$warpall", {server_command_warpall, proxy_command_warpall}},

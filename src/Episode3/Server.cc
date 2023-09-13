@@ -536,6 +536,31 @@ bool Server::check_for_battle_end() {
   return ret;
 }
 
+void Server::force_destroy_field_character(uint8_t client_id, size_t visible_index) {
+  auto ps = this->player_states[client_id];
+
+  // TODO: Is it possible for there to be gaps in the set cards array? If not,
+  // we could just do a direct array lookup here instead of this loop
+  shared_ptr<Card> set_card = nullptr;
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    if (!ps->set_cards[set_index]) {
+      continue;
+    }
+    if (visible_index == 0) {
+      set_card = ps->set_cards[set_index];
+      break;
+    } else {
+      visible_index--;
+    }
+  }
+
+  if (set_card) {
+    set_card->card_flags |= 2;
+    this->check_for_destroyed_cards_and_send_6xB4x05_6xB4x02();
+    this->check_for_battle_end();
+  }
+}
+
 void Server::force_battle_result(uint8_t specified_client_id, bool set_winner) {
   auto specified_ps = this->player_states[specified_client_id];
   for (size_t z = 0; z < 4; z++) {

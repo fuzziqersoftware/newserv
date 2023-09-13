@@ -100,8 +100,10 @@ public:
     this->send(&cmd, cmd.header.size * 4);
   }
   void send(const void* data, size_t size) const;
-
   void send_commands_for_joining_spectator(Channel& ch, bool is_trial) const;
+
+  void force_battle_result(uint8_t surrendered_client_id, bool set_winner);
+  void force_destroy_field_character(uint8_t client_id, size_t set_index);
 
   __attribute__((format(printf, 2, 3))) void send_debug_message_printf(const char* fmt, ...) const;
   __attribute__((format(printf, 2, 3))) void send_info_message_printf(const char* fmt, ...) const;
@@ -124,7 +126,6 @@ public:
   uint16_t card_id_for_card_ref(uint16_t card_ref) const;
   bool card_ref_is_empty_or_has_valid_card_id(uint16_t card_ref) const;
   bool check_for_battle_end();
-  void force_battle_result(uint8_t surrendered_client_id, bool set_winner);
   void check_for_destroyed_cards_and_send_6xB4x05_6xB4x02();
   bool check_presence_entry(uint8_t client_id) const;
   void clear_player_flags_after_dice_phase();
