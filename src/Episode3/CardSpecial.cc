@@ -2620,8 +2620,8 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
   };
 
   switch (p_target_type) {
-    case 1:
-    case 5: {
+    case 1: // p01
+    case 5: { // p05
       auto result_card = this->server()->card_for_set_card_ref(setter_card_ref);
       if (result_card) {
         log.debug("(p01/p05) result_card=@%04hX", ref_for_card(result_card));
@@ -2631,7 +2631,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       }
       break;
     }
-    case 2:
+    case 2: // p02
       if (as.original_attacker_card_ref == 0xFFFF) {
         for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
           auto result_card = this->server()->card_for_set_card_ref(as.target_card_refs[z]);
@@ -2643,7 +2643,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         ret.emplace_back(card2);
       }
       break;
-    case 3:
+    case 3: // p03
       if (card1) {
         auto ce = this->server()->definition_for_card_ref(card_ref);
         auto ps = card1->player_state();
@@ -2655,7 +2655,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         }
       }
       break;
-    case 4:
+    case 4: // p04
       size_t z;
       for (z = 0; (z < 9) && (as.action_card_refs[z] != 0xFFFF) && (as.action_card_refs[z] != card_ref); z++) {
       }
@@ -2666,24 +2666,24 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         }
       }
       break;
-    case 6:
+    case 6: // p06
       ret = this->get_attacker_card_and_sc_if_item(as);
       break;
-    case 7: {
+    case 7: { // p07
       auto card = this->get_attacker_card(as);
       if (card) {
         ret.emplace_back(card);
       }
       break;
     }
-    case 8: {
+    case 8: { // p08
       auto card = this->sc_card_for_client_id(client_id);
       if (card) {
         ret.emplace_back(card);
       }
       break;
     }
-    case 9:
+    case 9: // p09
       if (card1) {
         auto ce = this->server()->definition_for_card_ref(card_ref);
         auto ps = card1->player_state();
@@ -2695,31 +2695,31 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         }
       }
       break;
-    case 10:
+    case 10: // p10
       ret = this->find_all_cards_on_same_or_other_team(client_id, true);
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 11:
+    case 11: // p11
       ret = this->find_all_set_cards_on_client_team(client_id);
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 12:
+    case 12: // p12
       ret = this->find_all_cards_by_aerial_attribute(false);
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 13:
+    case 13: // p13
       ret = this->find_cards_by_condition_inc_exc(ConditionType::FREEZE);
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 14:
+    case 14: // p14
       ret = this->find_cards_in_hp_range(-1000, 3);
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 15:
+    case 15: // p15
       ret = this->get_all_set_cards();
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 16: {
+    case 16: { // p16
       ret = this->find_cards_in_hp_range(8, 1000);
       string range_refs_str = refs_str_for_cards_vector(ret);
       log.debug("(p16) candidate cards = [%s]", range_refs_str.c_str());
@@ -2728,30 +2728,30 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       log.debug("(p16) filtered cards = [%s]", range_refs_str.c_str());
       break;
     }
-    case 17: {
+    case 17: { // p17
       auto result_card = this->server()->card_for_set_card_ref(card_ref);
       if (result_card) {
         ret.emplace_back(result_card);
       }
       break;
     }
-    case 18: {
+    case 18: { // p18
       auto card = this->sc_card_for_client_id(client_id);
       if (card) {
         ret.emplace_back(card);
       }
       break;
     }
-    case 19:
+    case 19: // p19
       ret = this->find_all_sc_cards_of_class(CardClass::HU_SC);
       break;
-    case 20:
+    case 20: // p20
       ret = this->find_all_sc_cards_of_class(CardClass::RA_SC);
       break;
-    case 21:
+    case 21: // p21
       ret = this->find_all_sc_cards_of_class(CardClass::FO_SC);
       break;
-    case 22:
+    case 22: // p22
       if (card1) {
         auto def = this->server()->definition_for_card_ref(card_ref);
         auto ps = card1->player_state();
@@ -2776,7 +2776,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         }
       }
       break;
-    case 23: {
+    case 23: { // p23
       auto log23 = log.sub("(p23) ");
       if (card1) {
         auto def = this->server()->definition_for_card_ref(card_ref);
@@ -2809,37 +2809,37 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       }
       break;
     }
-    case 24:
+    case 24: // p24
       ret = this->find_cards_by_condition_inc_exc(ConditionType::PARALYZE);
       break;
-    case 25:
+    case 25: // p25
       ret = this->find_all_cards_by_aerial_attribute(true);
       break;
-    case 26:
+    case 26: // p26
       ret = this->find_cards_damaged_by_at_least(1);
       break;
-    case 27:
+    case 27: // p27
       ret = this->get_all_set_cards_by_team_and_class(CardClass::NATIVE_CREATURE, 0xFF, false);
       break;
-    case 28:
+    case 28: // p28
       ret = this->get_all_set_cards_by_team_and_class(CardClass::A_BEAST_CREATURE, 0xFF, false);
       break;
-    case 29:
+    case 29: // p29
       ret = this->get_all_set_cards_by_team_and_class(CardClass::MACHINE_CREATURE, 0xFF, false);
       break;
-    case 30:
+    case 30: // p30
       ret = this->get_all_set_cards_by_team_and_class(CardClass::DARK_CREATURE, 0xFF, false);
       break;
-    case 31:
+    case 31: // p31
       ret = this->get_all_set_cards_by_team_and_class(CardClass::SWORD_ITEM, 0xFF, false);
       break;
-    case 32:
+    case 32: // p32
       ret = this->get_all_set_cards_by_team_and_class(CardClass::GUN_ITEM, 0xFF, false);
       break;
-    case 33:
+    case 33: // p33
       ret = this->get_all_set_cards_by_team_and_class(CardClass::CANE_ITEM, 0xFF, false);
       break;
-    case 34:
+    case 34: // p34
       if (as.original_attacker_card_ref == 0xFFFF) {
         for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
           auto result_card = this->server()->card_for_set_card_ref(as.target_card_refs[z]);
@@ -2855,7 +2855,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         ret.emplace_back(card2);
       }
       break;
-    case 35:
+    case 35: // p35
       if (card1) {
         auto def = this->server()->definition_for_card_ref(card_ref);
         auto ps = card1->player_state();
@@ -2889,7 +2889,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         }
       }
       break;
-    case 36:
+    case 36: // p36
       if (as.original_attacker_card_ref == 0xFFFF) {
         for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
           auto result_card = this->server()->card_for_set_card_ref(as.target_card_refs[z]);
@@ -2905,11 +2905,11 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         ret.emplace_back(card2);
       }
       break;
-    case 37:
+    case 37: // p37
       ret = this->find_all_cards_on_same_or_other_team(client_id, false);
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 38:
+    case 38: // p38
       if (card1) {
         auto def = this->server()->definition_for_card_ref(card_ref);
         auto ps = card1->player_state();
@@ -2930,15 +2930,15 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         }
       }
       break;
-    case 39:
+    case 39: // p39
       ret = this->find_all_set_cards_with_cost_in_range(4, 99);
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 40:
+    case 40: // p40
       ret = this->find_all_set_cards_with_cost_in_range(0, 3);
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 41: {
+    case 41: { // p41
       auto ps = card1->player_state();
       if (card1 && ps) {
         // TODO: Sigh. Gifoie again.
@@ -2975,7 +2975,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       }
       break;
     }
-    case 42: {
+    case 42: { // p42
       auto check_card = [&](shared_ptr<const Card> result_card) -> void {
         if (result_card) {
           ret.emplace_back(result_card);
@@ -2998,7 +2998,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       }
       break;
     }
-    case 43:
+    case 43: // p43
       for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
         auto result_card = this->server()->card_for_set_card_ref(as.target_card_refs[z]);
         if (!result_card) {
@@ -3014,7 +3014,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         }
       }
       break;
-    case 44: {
+    case 44: { // p44
       auto ps = this->server()->get_player_state(client_id);
       if (ps) {
         for (size_t z = 0; z < 8; z++) {
@@ -3027,11 +3027,11 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       }
       break;
     }
-    case 45:
+    case 45: // p45
       this->sum_last_attack_damage(&ret, nullptr, nullptr);
       ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
       break;
-    case 46:
+    case 46: // p46
       if (card1) {
         auto def = this->server()->definition_for_card_ref(card_ref);
         auto ps = card1->player_state();
@@ -3051,7 +3051,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         }
       }
       break;
-    case 47: {
+    case 47: { // p47
       uint8_t client_id = client_id_for_card_ref(as.original_attacker_card_ref);
       if (client_id != 0xFF) {
         auto card = this->sc_card_for_client_id(client_id);
@@ -3061,7 +3061,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       }
       break;
     }
-    case 48:
+    case 48: // p48
       if (card1) {
         auto ce = this->server()->definition_for_card_ref(card_ref);
         auto ps = card1->player_state();
@@ -3099,7 +3099,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         }
       }
       break;
-    case 49:
+    case 49: // p49
       if (card1) {
         auto ps = card1->player_state();
         if (ps) {
