@@ -112,12 +112,12 @@ struct PlayerDispDataBB;
 
 struct PlayerStats {
   /* 00 */ CharacterStats char_stats;
-  /* 0E */ le_uint16_t unknown_a1;
-  /* 10 */ le_float unknown_a2;
-  /* 14 */ le_float unknown_a3;
-  /* 18 */ le_uint32_t level;
-  /* 1C */ le_uint32_t experience;
-  /* 20 */ le_uint32_t meseta;
+  /* 0E */ le_uint16_t unknown_a1 = 0;
+  /* 10 */ le_float unknown_a2 = 0.0;
+  /* 14 */ le_float unknown_a3 = 0.0;
+  /* 18 */ le_uint32_t level = 0;
+  /* 1C */ le_uint32_t experience = 0;
+  /* 20 */ le_uint32_t meseta = 0;
   /* 24 */
 
   PlayerStats() noexcept;
@@ -125,26 +125,26 @@ struct PlayerStats {
 
 struct PlayerVisualConfig {
   /* 00 */ ptext<char, 0x10> name;
-  /* 10 */ le_uint64_t unknown_a2; // Note: This is probably not actually a 64-bit int.
-  /* 18 */ le_uint32_t name_color; // RGBA
-  /* 1C */ uint8_t extra_model;
+  /* 10 */ le_uint64_t unknown_a2 = 0; // Note: This is probably not actually a 64-bit int.
+  /* 18 */ le_uint32_t name_color = 0xFFFFFFFF; // RGBA
+  /* 1C */ uint8_t extra_model = 0;
   /* 1D */ parray<uint8_t, 0x0F> unused;
-  /* 2C */ le_uint32_t unknown_a3;
-  /* 30 */ uint8_t section_id;
-  /* 31 */ uint8_t char_class;
-  /* 32 */ uint8_t v2_flags;
-  /* 33 */ uint8_t version;
-  /* 34 */ le_uint32_t v1_flags;
-  /* 38 */ le_uint16_t costume;
-  /* 3A */ le_uint16_t skin;
-  /* 3C */ le_uint16_t face;
-  /* 3E */ le_uint16_t head;
-  /* 40 */ le_uint16_t hair;
-  /* 42 */ le_uint16_t hair_r;
-  /* 44 */ le_uint16_t hair_g;
-  /* 46 */ le_uint16_t hair_b;
-  /* 48 */ le_float proportion_x;
-  /* 4C */ le_float proportion_y;
+  /* 2C */ le_uint32_t unknown_a3 = 0;
+  /* 30 */ uint8_t section_id = 0;
+  /* 31 */ uint8_t char_class = 0;
+  /* 32 */ uint8_t v2_flags = 0;
+  /* 33 */ uint8_t version = 0;
+  /* 34 */ le_uint32_t v1_flags = 0;
+  /* 38 */ le_uint16_t costume = 0;
+  /* 3A */ le_uint16_t skin = 0;
+  /* 3C */ le_uint16_t face = 0;
+  /* 3E */ le_uint16_t head = 0;
+  /* 40 */ le_uint16_t hair = 0;
+  /* 42 */ le_uint16_t hair_r = 0;
+  /* 44 */ le_uint16_t hair_g = 0;
+  /* 46 */ le_uint16_t hair_b = 0;
+  /* 48 */ le_float proportion_x = 0.0;
+  /* 4C */ le_float proportion_y = 0.0;
   /* 50 */
 
   PlayerVisualConfig() noexcept;

@@ -3099,46 +3099,51 @@ struct SC_SyncCharacterSaveFile_BB_00E7 {
 
 // E8 (S->C): Join spectator team (Episode 3)
 // header.flag = player count (including spectators)
+// The client will crash if leader_id == client_id. Presumably one of the
+// primary game's players should be the leader (this is what newserv does).
 
 struct S_JoinSpectatorTeam_GC_Ep3_E8 {
-  parray<le_uint32_t, 0x20> variations; // 04-84; unused
+  /* 0004 */ parray<le_uint32_t, 0x20> variations; // unused
   struct PlayerEntry {
-    PlayerLobbyDataDCGC lobby_data; // 0x20 bytes
-    PlayerInventory inventory; // 0x34C bytes
-    PlayerDispDataDCPCV3 disp; // 0xD0 bytes
-  } __packed__; // 0x43C bytes
-  parray<PlayerEntry, 4> players; // 84-1174
-  uint8_t client_id = 0;
-  uint8_t leader_id = 0;
-  uint8_t disable_udp = 1;
-  uint8_t difficulty = 0;
-  uint8_t battle_mode = 0;
-  uint8_t event = 0;
-  uint8_t section_id = 0;
-  uint8_t challenge_mode = 0;
-  le_uint32_t rare_seed = 0;
-  uint8_t episode = 0;
-  uint8_t unused2 = 1;
-  uint8_t solo_mode = 0;
-  uint8_t unused3 = 0;
+    /* 0000 */ PlayerLobbyDataDCGC lobby_data;
+    /* 0020 */ PlayerInventory inventory;
+    /* 036C */ PlayerDispDataDCPCV3 disp;
+    /* 043C */
+  } __packed__;
+  /* 0084 */ parray<PlayerEntry, 4> players;
+  /* 1174 */ uint8_t client_id = 0;
+  /* 1175 */ uint8_t leader_id = 0;
+  /* 1176 */ uint8_t disable_udp = 1;
+  /* 1177 */ uint8_t difficulty = 0;
+  /* 1178 */ uint8_t battle_mode = 0;
+  /* 1179 */ uint8_t event = 0;
+  /* 117A */ uint8_t section_id = 0;
+  /* 117B */ uint8_t challenge_mode = 0;
+  /* 117C */ le_uint32_t rare_seed = 0;
+  /* 1180 */ uint8_t episode = 0;
+  /* 1181 */ uint8_t unused2 = 1;
+  /* 1182 */ uint8_t solo_mode = 0;
+  /* 1183 */ uint8_t unused3 = 0;
   struct SpectatorEntry {
-    le_uint32_t player_tag = 0;
-    le_uint32_t guild_card_number = 0;
-    ptext<char, 0x20> name;
-    uint8_t present = 0;
-    uint8_t unknown_a3 = 0;
-    le_uint16_t level = 0;
-    parray<le_uint32_t, 2> unknown_a5;
-    parray<le_uint16_t, 2> unknown_a6;
-  } __packed__; // 0x38 bytes
+    /* 00 */ le_uint32_t player_tag = 0;
+    /* 04 */ le_uint32_t guild_card_number = 0;
+    /* 08 */ ptext<char, 0x20> name;
+    /* 28 */ uint8_t present = 0;
+    /* 29 */ uint8_t unknown_a3 = 0;
+    /* 2A */ le_uint16_t level = 0;
+    /* 2C */ parray<le_uint32_t, 2> unknown_a5;
+    /* 34 */ parray<le_uint16_t, 2> unknown_a6;
+    /* 38 */
+  } __packed__;
   // Somewhat misleadingly, this array also includes the players actually in the
   // battle - they appear in the first positions. Presumably the first 4 are
   // always for battlers, and the last 8 are always for spectators.
-  parray<SpectatorEntry, 12> entries; // 1184-1424
-  ptext<char, 0x20> spectator_team_name;
+  /* 1184 */ parray<SpectatorEntry, 12> entries;
+  /* 1424 */ ptext<char, 0x20> spectator_team_name;
   // This field doesn't appear to be actually used by the game, but some servers
-  // send it anyway (and the game presumably ignores it)
-  parray<PlayerEntry, 8> spectator_players;
+  // send it anyway (and the game ignores it)
+  /* 1444 */ parray<PlayerEntry, 8> spectator_players;
+  /* 3624 */
 } __packed__;
 
 // E8 (C->S): Guild card commands (BB)

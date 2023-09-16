@@ -593,8 +593,12 @@ static void server_command_playrec(shared_ptr<ServerState> s, shared_ptr<Lobby> 
     shared_ptr<Episode3::BattleRecord> record(new Episode3::BattleRecord(data));
     shared_ptr<Episode3::BattleRecordPlayer> battle_player(
         new Episode3::BattleRecordPlayer(record, s->game_server->get_base()));
-    create_game_generic(s, c, args.c_str(), u"", Episode::EP3, GameMode::NORMAL,
+    auto game = create_game_generic(s, c, args.c_str(), u"", Episode::EP3, GameMode::NORMAL,
         0, flags, nullptr, battle_player);
+    if (game) {
+      s->change_client_lobby(c, game);
+      c->flags |= Client::Flag::LOADING;
+    }
   }
 }
 

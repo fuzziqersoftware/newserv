@@ -1419,7 +1419,6 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
 
   cmd.variations.clear(0);
   cmd.client_id = c->lobby_client_id;
-  cmd.leader_id = l->leader_id;
   cmd.event = l->event;
   cmd.section_id = l->section_id;
   cmd.rare_seed = l->random_seed;
@@ -1428,6 +1427,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   uint8_t player_count = 0;
   auto watched_lobby = l->watched_lobby.lock();
   if (watched_lobby) {
+    cmd.leader_id = watched_lobby->leader_id;
     // Live spectating
     for (size_t z = 0; z < 4; z++) {
       if (!watched_lobby->clients[z]) {
@@ -1466,6 +1466,10 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
     if (ev->type != Episode3::BattleRecord::Event::Type::SET_INITIAL_PLAYERS) {
       throw runtime_error("battle record does not begin with set players event");
     }
+    if (ev->players.empty()) {
+      throw runtime_error("battle record contains no players");
+    }
+    cmd.leader_id = ev->players[0].lobby_data.client_id;
     for (const auto& entry : ev->players) {
       uint8_t client_id = entry.lobby_data.client_id;
       if (client_id >= 4) {
