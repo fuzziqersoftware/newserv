@@ -230,10 +230,6 @@ static void send_main_menu(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 }
 
 void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  if (c->flags & Client::Flag::IS_EPISODE_3) {
-    s->ep3_tournament_index->link_client(s, c);
-  }
-
   // On the BB data server, this function is called only on the last connection
   // (when we should send the ship select menu).
   if ((c->server_behavior == ServerBehavior::LOGIN_SERVER) ||
@@ -2460,11 +2456,6 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
         bool flags_changed = false;
         if (!(c->flags & Client::Flag::HAS_EP3_CARD_DEFS)) {
           send_ep3_card_list_update(s, c);
-          auto team = c->ep3_tournament_team.lock();
-          auto tourn = team ? team->tournament.lock() : nullptr;
-          if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
-            send_ep3_confirm_tournament_entry(s, c, tourn);
-          }
           c->flags |= Client::Flag::HAS_EP3_CARD_DEFS;
           flags_changed = true;
         }
@@ -2475,6 +2466,7 @@ static void on_61_98(shared_ptr<ServerState> s, shared_ptr<Client> c,
             flags_changed = true;
           }
         }
+        s->ep3_tournament_index->link_client(s, c);
         if (flags_changed) {
           send_update_client_config(c);
         }
