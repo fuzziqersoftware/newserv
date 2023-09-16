@@ -84,7 +84,7 @@ public:
         std::shared_ptr<Team> winner_team);
     std::string str() const;
 
-    bool resolve_if_no_human_players();
+    bool resolve_if_skippable();
     void on_winner_team_set();
     void set_winner_team(std::shared_ptr<Team> team);
     void set_winner_team_without_triggers(std::shared_ptr<Team> team);
@@ -99,7 +99,8 @@ public:
       std::shared_ptr<const MapIndex::MapEntry> map,
       const Rules& rules,
       size_t num_teams,
-      bool is_2v2);
+      bool is_2v2,
+      bool has_com_teams);
   Tournament(
       std::shared_ptr<const MapIndex> map_index,
       std::shared_ptr<const COMDeckIndex> com_deck_index,
@@ -110,15 +111,34 @@ public:
 
   JSON json() const;
 
-  uint8_t get_number() const;
-  const std::string& get_name() const;
-  std::shared_ptr<const MapIndex::MapEntry> get_map() const;
-  const Rules& get_rules() const;
-  bool get_is_2v2() const;
-  State get_state() const;
+  inline uint8_t get_number() const {
+    return this->number;
+  }
+  inline const std::string& get_name() const {
+    return this->name;
+  }
+  inline std::shared_ptr<const MapIndex::MapEntry> get_map() const {
+    return this->map;
+  }
+  inline const Rules& get_rules() const {
+    return this->rules;
+  }
+  inline bool get_is_2v2() const {
+    return this->is_2v2;
+  }
+  inline bool get_has_com_teams() const {
+    return this->has_com_teams;
+  }
+  inline State get_state() const {
+    return this->current_state;
+  }
+  inline const std::vector<std::shared_ptr<Team>>& all_teams() const {
+    return this->teams;
+  }
+  std::shared_ptr<Team> get_team(size_t index) const {
+    return this->teams.at(index);
+  }
 
-  const std::vector<std::shared_ptr<Team>>& all_teams() const;
-  std::shared_ptr<Team> get_team(size_t index) const;
   std::shared_ptr<Team> get_winner_team() const;
   std::shared_ptr<Match> next_match_for_team(std::shared_ptr<Team> team) const;
   std::shared_ptr<Match> get_final_match() const;
@@ -141,6 +161,7 @@ private:
   Rules rules;
   size_t num_teams;
   bool is_2v2;
+  bool has_com_teams;
   State current_state;
 
   std::set<uint32_t> all_player_serial_numbers;
@@ -177,7 +198,8 @@ public:
       std::shared_ptr<const MapIndex::MapEntry> map,
       const Rules& rules,
       size_t num_teams,
-      bool is_2v2);
+      bool is_2v2,
+      bool has_com_teams);
   void delete_tournament(uint8_t number);
   std::shared_ptr<Tournament> get_tournament(uint8_t number) const;
   std::shared_ptr<Tournament> get_tournament(const std::string& name) const;

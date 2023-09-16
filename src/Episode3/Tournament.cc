@@ -200,24 +200,32 @@ string Tournament::Match::str() const {
   return string_printf("[Match round=%zu winner=%s]", this->round_num, winner_str.c_str());
 }
 
-bool Tournament::Match::resolve_if_no_human_players() {
+bool Tournament::Match::resolve_if_skippable() {
   if (this->winner_team) {
     return true;
   }
-  // If both matches before this one are resolved and neither winner team has
-  // any humans on it, skip this match entirely and just make one team advance
-  // arbitrarily
-  if (this->preceding_a->winner_team &&
-      this->preceding_b->winner_team &&
-      !this->preceding_a->winner_team->has_any_human_players() &&
-      !this->preceding_b->winner_team->has_any_human_players()) {
-    this->set_winner_team((random_object<uint8_t>() & 1)
-            ? this->preceding_b->winner_team
-            : this->preceding_a->winner_team);
-    return true;
-  } else {
+
+  auto winner_a = this->preceding_a->winner_team;
+  auto winner_b = this->preceding_b->winner_team;
+
+  // If at least one match before this is not resolved, don't resolve this one
+  if (!winner_a || !winner_b) {
     return false;
   }
+  // If one of the preceding winner teams is empty, make the other the winner
+  if (winner_a->players.empty() != winner_b->players.empty()) {
+    this->set_winner_team(winner_a->players.empty() ? winner_b : winner_a);
+    return true;
+  }
+  // If neither preceding winner team has any humans on it, skip this match
+  // entirely and just make one team advance arbitrarily (note that this also
+  // handles the case where both preceding winner teams are empty)
+  if (!winner_a->has_any_human_players() && !winner_b->has_any_human_players()) {
+    this->set_winner_team((random_object<uint8_t>() & 1) ? winner_b : winner_a);
+    return true;
+  }
+
+  return false;
 }
 
 void Tournament::Match::on_winner_team_set() {
@@ -231,7 +239,7 @@ void Tournament::Match::on_winner_team_set() {
   // Resolve the following match if possible (this skips CPU-only matches). If
   // the following match can't be resolved, mark it pending.
   auto following = this->following.lock();
-  if (following && !following->resolve_if_no_human_players()) {
+  if (following && !following->resolve_if_skippable()) {
     tournament->pending_matches.emplace(following);
   }
 
@@ -287,7 +295,8 @@ Tournament::Tournament(
     shared_ptr<const MapIndex::MapEntry> map,
     const Rules& rules,
     size_t num_teams,
-    bool is_2v2)
+    bool is_2v2,
+    bool has_com_teams)
     : log(string_printf("[Tournament/%02hhX] ", number)),
       map_index(map_index),
       com_deck_index(com_deck_index),
@@ -297,6 +306,7 @@ Tournament::Tournament(
       rules(rules),
       num_teams(num_teams),
       is_2v2(is_2v2),
+      has_com_teams(has_com_teams),
       current_state(State::REGISTRATION) {
   if (this->num_teams < 4) {
     throw invalid_argument("team count must be 4 or more");
@@ -330,6 +340,7 @@ void Tournament::init() {
     this->map = this->map_index->definition_for_number(this->source_json.get_int("map_number"));
     this->rules = Rules(this->source_json.at("rules"));
     this->is_2v2 = this->source_json.get_bool("is_2v2");
+    this->has_com_teams = this->source_json.get_bool("has_com_teams", true);
     is_registration_complete = this->source_json.get_bool("is_registration_complete");
 
     for (const auto& team_json : this->source_json.get_list("teams")) {
@@ -480,41 +491,10 @@ JSON Tournament::json() const {
       {"map_number", this->map->map.map_number.load()},
       {"rules", this->rules.json()},
       {"is_2v2", this->is_2v2},
+      {"has_com_teams", this->has_com_teams},
       {"is_registration_complete", (this->current_state != State::REGISTRATION)},
       {"teams", std::move(teams_list)},
   });
-}
-
-uint8_t Tournament::get_number() const {
-  return this->number;
-}
-
-const string& Tournament::get_name() const {
-  return this->name;
-}
-
-shared_ptr<const MapIndex::MapEntry> Tournament::get_map() const {
-  return this->map;
-}
-
-const Rules& Tournament::get_rules() const {
-  return this->rules;
-}
-
-bool Tournament::get_is_2v2() const {
-  return this->is_2v2;
-}
-
-Tournament::State Tournament::get_state() const {
-  return this->current_state;
-}
-
-const vector<shared_ptr<Tournament::Team>>& Tournament::all_teams() const {
-  return this->teams;
-}
-
-shared_ptr<Tournament::Team> Tournament::get_team(size_t index) const {
-  return this->teams.at(index);
 }
 
 shared_ptr<Tournament::Team> Tournament::get_winner_team() const {
@@ -574,14 +554,30 @@ void Tournament::start() {
     throw runtime_error("tournament has already started");
   }
 
+  // If there aren't enough entrants (1 if has_com_teams is false, else 2),
+  // don't allow the tournament to start (because it would enter the COMPLETE
+  // state immediately)
+  size_t num_human_teams = 0;
+  for (size_t z = 0; z < this->zero_round_matches.size(); z++) {
+    if (this->zero_round_matches[z]->winner_team->has_any_human_players()) {
+      num_human_teams++;
+    }
+  }
+  fprintf(stderr, "num_human_teams: %zu\n", num_human_teams);
+  fprintf(stderr, "has_com_teams: %s\n", this->has_com_teams ? "true" : "false");
+  if (num_human_teams < (this->has_com_teams ? 1 : 2)) {
+    throw runtime_error("not enough registrants to start tournament");
+  }
+
   this->current_state = State::IN_PROGRESS;
 
-  // Assign names to COM teams, and assign COM decks to all empty slots
+  // Assign names to COM teams, and assign COM decks to all empty slots unless
+  // has_com_teams is false
   for (size_t z = 0; z < this->zero_round_matches.size(); z++) {
     auto m = this->zero_round_matches[z];
     auto t = m->winner_team;
     if (t->name.empty()) {
-      t->name = string_printf("COM:%zu", z);
+      t->name = this->has_com_teams ? string_printf("COM:%zu", z) : "(no entrant)";
     }
     for (const auto& player : t->players) {
       if (player.is_com()) {
@@ -591,14 +587,18 @@ void Tournament::start() {
     if (this->com_deck_index->num_decks() < t->max_players - t->players.size()) {
       throw runtime_error("not enough COM decks to complete team");
     }
-    // TODO: Don't allow duplicate COM decks, nor duplicate COM SCs on the same
-    // team
-    while (t->players.size() < t->max_players) {
-      t->players.emplace_back(this->com_deck_index->random_deck());
+    // If we allow all-COM teams, or this is a 2v2 tournament and the team has
+    // only one human on it, add a COM
+    if (this->has_com_teams || !t->players.empty()) {
+      // TODO: Don't allow duplicate COM decks, nor duplicate COM SCs on the
+      // same team
+      while (t->players.size() < t->max_players) {
+        t->players.emplace_back(this->com_deck_index->random_deck());
+      }
     }
   }
 
-  // Resolve all possible CPU-only matches
+  // Resolve all possible skippable matches
   for (auto m : this->zero_round_matches) {
     m->on_winner_team_set();
   }
@@ -666,6 +666,7 @@ TournamentIndex::TournamentIndex(
   } catch (const cannot_open_file&) {
     json = JSON::list();
   }
+
   if (json.size() > 0x20) {
     throw runtime_error("tournament JSON list length is incorrect");
   }
@@ -708,7 +709,8 @@ shared_ptr<Tournament> TournamentIndex::create_tournament(
     shared_ptr<const MapIndex::MapEntry> map,
     const Rules& rules,
     size_t num_teams,
-    bool is_2v2) {
+    bool is_2v2,
+    bool has_com_teams) {
   // Find an unused tournament number
   uint8_t number;
   for (number = 0; number < 0x20; number++) {
@@ -721,7 +723,7 @@ shared_ptr<Tournament> TournamentIndex::create_tournament(
   }
 
   auto t = make_shared<Tournament>(
-      this->map_index, this->com_deck_index, number, name, map, rules, num_teams, is_2v2);
+      this->map_index, this->com_deck_index, number, name, map, rules, num_teams, is_2v2, has_com_teams);
   t->init();
   this->tournaments[number] = t;
   return t;

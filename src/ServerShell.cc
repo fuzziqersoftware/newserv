@@ -161,6 +161,7 @@ Server commands:\n\
     and map names, unless the names contain no spaces.\n\
     OPTIONS may include:\n\
       2v2: Set team size to 2 players (default is 1 without this option)\n\
+      no-coms: Don\'t add any COM teams to the tournament bracket\n\
       dice=MIN-MAX: Set minimum and maximum dice rolls\n\
       overall-time-limit=N: Set battle time limit (in multiples of 5 minutes)\n\
       phase-time-limit=N: Set phase time limit (in seconds)\n\
@@ -460,12 +461,15 @@ Proxy session commands:\n\
     Episode3::Rules rules;
     rules.set_defaults();
     bool is_2v2 = false;
+    bool has_com_teams = true;
     if (!command_args.empty()) {
       auto tokens = split(command_args, ' ');
       for (auto& token : tokens) {
         token = tolower(token);
         if (token == "2v2") {
           is_2v2 = true;
+        } else if (token == "no-coms") {
+          has_com_teams = false;
         } else if (starts_with(token, "dice=")) {
           auto subtokens = split(token.substr(5), '-');
           if (subtokens.size() != 2) {
@@ -535,7 +539,7 @@ Proxy session commands:\n\
       fprintf(stderr, "warning: some rules were invalid and reset to defaults\n");
     }
     auto tourn = this->state->ep3_tournament_index->create_tournament(
-        name, map, rules, num_teams, is_2v2);
+        name, map, rules, num_teams, is_2v2, has_com_teams);
     this->state->ep3_tournament_index->save();
     fprintf(stderr, "created tournament %02hhX\n", tourn->get_number());
 
