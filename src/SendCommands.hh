@@ -366,10 +366,9 @@ void send_ep3_tournament_details(
     std::shared_ptr<const Episode3::Tournament> t);
 void send_ep3_game_details(
     std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
-
 void send_ep3_update_spectator_count(std::shared_ptr<Lobby> l);
-
 void send_ep3_card_auction(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l);
+void send_ep3_disband_watcher_lobbies(std::shared_ptr<Lobby> primary_l);
 
 // Pass mask_key = 0 to unmask the command
 void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key);

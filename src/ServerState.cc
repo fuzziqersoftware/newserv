@@ -250,14 +250,7 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
     }
     l->watched_lobby.reset();
   } else {
-    // Tell all players in all spectator teams to go back to the lobby
-    for (auto watcher_l : l->watcher_lobbies) {
-      if (!watcher_l->is_ep3()) {
-        throw logic_error("spectator team is not an Episode 3 lobby");
-      }
-      l->log.info("Disbanding watcher lobby %" PRIX32, watcher_l->lobby_id);
-      send_command(watcher_l, 0xED, 0x00);
-    }
+    send_ep3_disband_watcher_lobbies(l);
   }
 
   l->log.info("Deleted lobby");

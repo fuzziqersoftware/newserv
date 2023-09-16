@@ -2066,6 +2066,12 @@ void Server::handle_CAx21_end_battle(const string& data) {
       in_cmd.header.subsubcommand, "END BATTLE");
   if (this->setup_phase == SetupPhase::BATTLE_ENDED) {
     this->battle_finished = true;
+
+    // This logic isn't part of the original implementation.
+    auto l = this->lobby.lock();
+    if (l) {
+      send_ep3_disband_watcher_lobbies(l);
+    }
   }
 }
 

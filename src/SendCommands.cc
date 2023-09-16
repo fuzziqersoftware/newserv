@@ -2811,6 +2811,16 @@ void send_ep3_card_auction(shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
   send_command_t(l, 0xEF, num_cards, cmd);
 }
 
+void send_ep3_disband_watcher_lobbies(shared_ptr<Lobby> primary_l) {
+  for (auto watcher_l : primary_l->watcher_lobbies) {
+    if (!watcher_l->is_ep3()) {
+      throw logic_error("spectator team is not an Episode 3 lobby");
+    }
+    primary_l->log.info("Disbanding watcher lobby %" PRIX32, watcher_l->lobby_id);
+    send_command(watcher_l, 0xED, 0x00);
+  }
+}
+
 void send_server_time(shared_ptr<Client> c) {
   uint64_t t = now();
 
