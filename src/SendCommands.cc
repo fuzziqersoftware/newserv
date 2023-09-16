@@ -2258,6 +2258,8 @@ void send_ep3_confirm_tournament_entry(
     shared_ptr<ServerState> s,
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn) {
+  // WARNING: s is permitted to be null if tourn is null
+
   if (c->flags & Client::Flag::IS_EP3_TRIAL_EDITION) {
     throw runtime_error("cannot send tournament entry command to Episode 3 Trial Edition client");
   }
@@ -2326,7 +2328,7 @@ void send_ep3_tournament_entry_list(
     shared_ptr<const Episode3::Tournament> tourn,
     bool is_for_spectator_team_create) {
   S_TournamentEntryList_GC_Ep3_E2 cmd;
-  cmd.players_per_team = tourn->get_is_2v2() ? 2 : 1;
+  cmd.players_per_team = (tourn->get_flags() & Episode3::Tournament::Flag::IS_2V2) ? 2 : 1;
   size_t z = 0;
   for (const auto& team : tourn->all_teams()) {
     if (z >= 0x20) {
@@ -2366,7 +2368,7 @@ void send_ep3_tournament_details(
     cmd.bracket_entries[z].team_name = teams[z]->name;
   }
   cmd.num_bracket_entries = teams.size();
-  cmd.players_per_team = tourn->get_is_2v2() ? 2 : 1;
+  cmd.players_per_team = (tourn->get_flags() & Episode3::Tournament::Flag::IS_2V2) ? 2 : 1;
   send_command_t(c, 0xE3, 0x02, cmd);
 }
 
@@ -2409,7 +2411,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       entry.team_name = teams[z]->name;
     }
     cmd.num_bracket_entries = teams.size();
-    cmd.players_per_team = tourn->get_is_2v2() ? 2 : 1;
+    cmd.players_per_team = (tourn->get_flags() & Episode3::Tournament::Flag::IS_2V2) ? 2 : 1;
 
     if (primary_lobby) {
       auto serial_number_to_client = primary_lobby->clients_by_serial_number();

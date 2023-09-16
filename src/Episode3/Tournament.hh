@@ -22,6 +22,12 @@ namespace Episode3 {
 
 class Tournament : public std::enable_shared_from_this<Tournament> {
 public:
+  enum Flag : uint8_t {
+    IS_2V2 = 0x01,
+    HAS_COM_TEAMS = 0x02,
+    SHUFFLE_ENTRIES = 0x04,
+    RESIZE_ON_START = 0x08,
+  };
   enum class State {
     REGISTRATION = 0,
     IN_PROGRESS,
@@ -104,8 +110,7 @@ public:
       std::shared_ptr<const MapIndex::MapEntry> map,
       const Rules& rules,
       size_t num_teams,
-      bool is_2v2,
-      bool has_com_teams);
+      uint8_t flags);
   Tournament(
       std::shared_ptr<const MapIndex> map_index,
       std::shared_ptr<const COMDeckIndex> com_deck_index,
@@ -124,11 +129,8 @@ public:
   inline const Rules& get_rules() const {
     return this->rules;
   }
-  inline bool get_is_2v2() const {
-    return this->is_2v2;
-  }
-  inline bool get_has_com_teams() const {
-    return this->has_com_teams;
+  inline uint8_t get_flags() const {
+    return this->flags;
   }
   inline State get_state() const {
     return this->current_state;
@@ -155,10 +157,13 @@ public:
   void start();
 
   void send_all_state_updates(std::shared_ptr<ServerState> s) const;
+  void send_all_state_updates_on_deletion() const;
 
   void print_bracket(FILE* stream) const;
 
 private:
+  void create_bracket_matches();
+
   PrefixedLogger log;
 
   std::shared_ptr<const MapIndex> map_index;
@@ -168,8 +173,7 @@ private:
   std::shared_ptr<const MapIndex::MapEntry> map;
   Rules rules;
   size_t num_teams;
-  bool is_2v2;
-  bool has_com_teams;
+  uint8_t flags;
   State current_state;
   uint32_t menu_item_id;
 
@@ -223,8 +227,7 @@ public:
       std::shared_ptr<const MapIndex::MapEntry> map,
       const Rules& rules,
       size_t num_teams,
-      bool is_2v2,
-      bool has_com_teams);
+      uint8_t flags);
   bool delete_tournament(const std::string& name);
 
   std::shared_ptr<Tournament::Team> team_for_serial_number(uint32_t serial_number) const;

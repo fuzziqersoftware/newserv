@@ -297,8 +297,7 @@ Tournament::Tournament(
     shared_ptr<const MapIndex::MapEntry> map,
     const Rules& rules,
     size_t num_teams,
-    bool is_2v2,
-    bool has_com_teams)
+    uint8_t flags)
     : log(string_printf("[Tournament/%s] ", name.c_str())),
       map_index(map_index),
       com_deck_index(com_deck_index),
@@ -306,8 +305,7 @@ Tournament::Tournament(
       map(map),
       rules(rules),
       num_teams(num_teams),
-      is_2v2(is_2v2),
-      has_com_teams(has_com_teams),
+      flags(flags),
       current_state(State::REGISTRATION),
       menu_item_id(0xFFFFFFFF) {
   if (this->num_teams < 4) {
@@ -339,8 +337,10 @@ void Tournament::init() {
     this->name = this->source_json.get_string("name");
     this->map = this->map_index->definition_for_number(this->source_json.get_int("map_number"));
     this->rules = Rules(this->source_json.at("rules"));
-    this->is_2v2 = this->source_json.get_bool("is_2v2");
-    this->has_com_teams = this->source_json.get_bool("has_com_teams", true);
+    this->flags = this->source_json.get_int("flags", 0x02);
+    if (this->source_json.get_bool("is_2v2", false)) {
+      this->flags |= Flag::IS_2V2;
+    }
     is_registration_complete = this->source_json.get_bool("is_registration_complete");
 
     for (const auto& team_json : this->source_json.get_list("teams")) {
@@ -368,40 +368,18 @@ void Tournament::init() {
     // Create empty teams
     while (this->teams.size() < this->num_teams) {
       auto t = make_shared<Team>(
-          this->shared_from_this(), this->teams.size(), this->is_2v2 ? 2 : 1);
+          this->shared_from_this(), this->teams.size(), (this->flags & Flag::IS_2V2) ? 2 : 1);
       this->teams.emplace_back(t);
     }
     is_registration_complete = false;
   }
 
-  // Create the match structure
-  while (this->zero_round_matches.size() < this->num_teams) {
-    this->zero_round_matches.emplace_back(make_shared<Match>(
-        this->shared_from_this(), this->teams[this->zero_round_matches.size()]));
-  }
-
   // Compute the match state from the teams' states
   if (is_registration_complete) {
     this->current_state = State::IN_PROGRESS;
+    this->create_bracket_matches();
 
-    // Create the bracket matches
-    vector<shared_ptr<Match>> current_round_matches = this->zero_round_matches;
-    while (current_round_matches.size() > 1) {
-      vector<shared_ptr<Match>> next_round_matches;
-      for (size_t z = 0; z < current_round_matches.size(); z += 2) {
-        auto m = make_shared<Match>(
-            this->shared_from_this(),
-            current_round_matches[z],
-            current_round_matches[z + 1]);
-        current_round_matches[z]->following = m;
-        current_round_matches[z + 1]->following = m;
-        next_round_matches.emplace_back(std::move(m));
-      }
-      current_round_matches = std::move(next_round_matches);
-    }
-    this->final_match = current_round_matches.at(0);
-
-    // Start with all first-round matches in the match queue
+    // Start with all zero-round matches in the match queue
     unordered_set<shared_ptr<Match>> match_queue;
     for (auto match : this->zero_round_matches) {
       match_queue.emplace(match->following.lock());
@@ -457,14 +435,45 @@ void Tournament::init() {
     }
 
   } else {
-    // Make all the zero round matches pending (this is needed so that start()
-    // will auto-resolve all-CPU matches in the first round)
-    for (auto m : this->zero_round_matches) {
-      this->pending_matches.emplace(m);
-    }
-
     this->current_state = State::REGISTRATION;
   }
+}
+
+void Tournament::create_bracket_matches() {
+  if (this->teams.size() < 4) {
+    throw logic_error("tournaments must have at least 4 teams");
+  }
+  if (this->teams.size() > 32) {
+    throw logic_error("tournaments must have at most 32 teams");
+  }
+  if (this->teams.size() & (this->teams.size() - 1)) {
+    throw logic_error("tournaments team count is not a power of 2");
+  }
+
+  // Create the zero-round matches and make them all pending
+  this->zero_round_matches.clear();
+  for (const auto& team : this->teams) {
+    auto m = make_shared<Match>(this->shared_from_this(), team);
+    this->zero_round_matches.emplace_back(m);
+    this->pending_matches.emplace(m);
+  }
+
+  // Create the bracket matches
+  vector<shared_ptr<Match>> current_round_matches = this->zero_round_matches;
+  while (current_round_matches.size() > 1) {
+    vector<shared_ptr<Match>> next_round_matches;
+    for (size_t z = 0; z < current_round_matches.size(); z += 2) {
+      auto m = make_shared<Match>(
+          this->shared_from_this(),
+          current_round_matches[z],
+          current_round_matches[z + 1]);
+      current_round_matches[z]->following = m;
+      current_round_matches[z + 1]->following = m;
+      next_round_matches.emplace_back(std::move(m));
+    }
+    current_round_matches = std::move(next_round_matches);
+  }
+  this->final_match = current_round_matches.at(0);
 }
 
 JSON Tournament::json() const {
@@ -490,8 +499,7 @@ JSON Tournament::json() const {
       {"name", this->name},
       {"map_number", this->map->map.map_number.load()},
       {"rules", this->rules.json()},
-      {"is_2v2", this->is_2v2},
-      {"has_com_teams", this->has_com_teams},
+      {"flags", this->flags},
       {"is_registration_complete", (this->current_state != State::REGISTRATION)},
       {"teams", std::move(teams_list)},
   });
@@ -557,22 +565,67 @@ void Tournament::start() {
     throw runtime_error("tournament has already started");
   }
 
+  bool has_com_teams = (this->flags & Flag::HAS_COM_TEAMS);
+
   // If there aren't enough entrants (1 if has_com_teams is false, else 2),
   // don't allow the tournament to start (because it would enter the COMPLETE
   // state immediately)
   size_t num_human_teams = 0;
-  for (size_t z = 0; z < this->zero_round_matches.size(); z++) {
-    if (this->zero_round_matches[z]->winner_team->has_any_human_players()) {
+  for (size_t z = 0; z < this->teams.size(); z++) {
+    if (this->teams[z]->has_any_human_players()) {
       num_human_teams++;
     }
   }
-  fprintf(stderr, "num_human_teams: %zu\n", num_human_teams);
-  fprintf(stderr, "has_com_teams: %s\n", this->has_com_teams ? "true" : "false");
-  if (num_human_teams < (this->has_com_teams ? 1 : 2)) {
+  if (num_human_teams < (has_com_teams ? 1 : 2)) {
     throw runtime_error("not enough registrants to start tournament");
   }
 
+  if ((this->flags & Flag::SHUFFLE_ENTRIES) && (this->flags & Flag::RESIZE_ON_START)) {
+    // If both of these flags are set, pack the human teams into the lowest part
+    // of the teams list so we can resize the tournament to the smallest
+    // possible size. This is OK since we're going to shuffle them later anyway
+    size_t r_offset = 0, w_offset = 0;
+    for (; r_offset < this->teams.size(); r_offset++) {
+      if (this->teams[r_offset]->has_any_human_players()) {
+        if (r_offset != w_offset) {
+          this->teams[r_offset].swap(this->teams[w_offset]);
+        }
+        w_offset++;
+      }
+    }
+  }
+
+  if (this->flags & Flag::RESIZE_ON_START) {
+    // Resize the tournament by repeatedly deleting the second half of it, until
+    // the second half contains human players or the tournament size is 4
+    while (this->teams.size() > 4) {
+      size_t z;
+      for (z = this->teams.size() >> 1; z < this->teams.size(); z++) {
+        if (this->teams[z]->has_any_human_players()) {
+          break;
+        }
+      }
+      if (z == this->teams.size()) {
+        this->teams.resize(this->teams.size() >> 1);
+      } else {
+        break;
+      }
+    }
+    this->num_teams = this->teams.size();
+  }
+
+  if (this->flags & Flag::SHUFFLE_ENTRIES) {
+    // Shuffle all the tournament entries
+    for (size_t z = this->teams.size(); z > 0; z--) {
+      size_t index = random_object<uint32_t>() % z;
+      if (index != z - 1) {
+        this->teams[z - 1].swap(this->teams[index]);
+      }
+    }
+  }
+
   this->current_state = State::IN_PROGRESS;
+  this->create_bracket_matches();
 
   // Assign names to COM teams, and assign COM decks to all empty slots unless
   // has_com_teams is false
@@ -580,7 +633,7 @@ void Tournament::start() {
     auto m = this->zero_round_matches[z];
     auto t = m->winner_team;
     if (t->name.empty()) {
-      t->name = this->has_com_teams ? string_printf("COM:%zu", z) : "(no entrant)";
+      t->name = has_com_teams ? string_printf("COM:%zu", z) : "(no entrant)";
     }
     for (const auto& player : t->players) {
       if (player.is_com()) {
@@ -592,7 +645,7 @@ void Tournament::start() {
     }
     // If we allow all-COM teams, or this is a 2v2 tournament and the team has
     // only one human on it, add a COM
-    if (this->has_com_teams || !t->players.empty()) {
+    if (has_com_teams || !t->players.empty()) {
       // TODO: Don't allow duplicate COM decks, nor duplicate COM SCs on the
       // same team
       while (t->players.size() < t->max_players) {
@@ -624,6 +677,20 @@ void Tournament::send_all_state_updates(shared_ptr<ServerState> s) const {
   }
 }
 
+void Tournament::send_all_state_updates_on_deletion() const {
+  for (const auto& team : this->teams) {
+    for (const auto& player : team->players) {
+      auto c = player.client.lock();
+      if (c &&
+          (c->flags & Client::Flag::IS_EPISODE_3) &&
+          !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION) &&
+          (c->ep3_tournament_team.lock() == team)) {
+        send_ep3_confirm_tournament_entry(nullptr, c, nullptr);
+      }
+    }
+  }
+}
+
 void Tournament::print_bracket(FILE* stream) const {
   function<void(shared_ptr<Match>, size_t)> print_match = [&](shared_ptr<Match> m, size_t indent_level) -> void {
     for (size_t z = 0; z < indent_level; z++) {
@@ -644,7 +711,10 @@ void Tournament::print_bracket(FILE* stream) const {
   fprintf(stream, "  Map: %08" PRIX32 " (%s)\n", this->map->map.map_number.load(), map_name.c_str());
   string rules_str = this->rules.str();
   fprintf(stream, "  Rules: %s\n", rules_str.c_str());
-  fprintf(stream, "  Structure: %s, %zu entries\n", this->is_2v2 ? "2v2" : "1v1", this->num_teams);
+  fprintf(stream, "  Structure: %s, %zu entries\n", (this->flags & Flag::IS_2V2) ? "2v2" : "1v1", this->num_teams);
+  fprintf(stream, "  COM teams: %s\n", (this->flags & Flag::HAS_COM_TEAMS) ? "allowed" : "forbidden");
+  fprintf(stream, "  Shuffle entries: %s\n", (this->flags & Flag::SHUFFLE_ENTRIES) ? "yes" : "no");
+  fprintf(stream, "  Resize on start: %s\n", (this->flags & Flag::RESIZE_ON_START) ? "yes" : "no");
   switch (this->current_state) {
     case State::REGISTRATION:
       fprintf(stream, "  State: REGISTRATION\n");
@@ -663,10 +733,18 @@ void Tournament::print_bracket(FILE* stream) const {
     fprintf(stream, "  Standings:\n");
     print_match(this->final_match, 2);
   }
-  fprintf(stream, "  Pending matches:\n");
-  for (const auto& match : this->pending_matches) {
-    string match_str = match->str();
-    fprintf(stream, "    %s\n", match_str.c_str());
+  if (this->current_state == State::REGISTRATION) {
+    fprintf(stream, "  Teams:\n");
+    for (const auto& team : this->teams) {
+      string team_str = team->str();
+      fprintf(stream, "    %s\n", team_str.c_str());
+    }
+  } else {
+    fprintf(stream, "  Pending matches:\n");
+    for (const auto& match : this->pending_matches) {
+      string match_str = match->str();
+      fprintf(stream, "    %s\n", match_str.c_str());
+    }
   }
 }
 
@@ -733,7 +811,7 @@ void TournamentIndex::save() const {
   for (const auto& it : this->name_to_tournament) {
     json.emplace(it.second->get_name(), it.second->json());
   }
-  save_file(this->state_filename, json.serialize(JSON::SerializeOption::FORMAT));
+  save_file(this->state_filename, json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS));
 }
 
 shared_ptr<Tournament> TournamentIndex::create_tournament(
@@ -741,14 +819,13 @@ shared_ptr<Tournament> TournamentIndex::create_tournament(
     shared_ptr<const MapIndex::MapEntry> map,
     const Rules& rules,
     size_t num_teams,
-    bool is_2v2,
-    bool has_com_teams) {
+    uint8_t flags) {
   if (this->name_to_tournament.size() >= 0x20) {
     throw runtime_error("there can be at most 32 tournaments at a time");
   }
 
   auto t = make_shared<Tournament>(
-      this->map_index, this->com_deck_index, name, map, rules, num_teams, is_2v2, has_com_teams);
+      this->map_index, this->com_deck_index, name, map, rules, num_teams, flags);
   t->init();
   this->name_to_tournament.emplace(t->get_name(), t);
 
@@ -780,6 +857,7 @@ bool TournamentIndex::delete_tournament(const string& name) {
       it->second->set_menu_item_id(0xFFFFFFFF);
     }
   }
+  it->second->send_all_state_updates_on_deletion();
   this->name_to_tournament.erase(it);
   this->save();
   return true;

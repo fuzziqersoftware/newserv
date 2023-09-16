@@ -162,6 +162,9 @@ Server commands:\n\
     OPTIONS may include:\n\
       2v2: Set team size to 2 players (default is 1 without this option)\n\
       no-coms: Don\'t add any COM teams to the tournament bracket\n\
+      shuffle: Shuffle entries when starting the tournament\n\
+      resize: If the tournament is less than half full when it starts, reduce\n\
+          the number of rounds to fit the existing entries\n\
       dice=MIN-MAX: Set minimum and maximum dice rolls\n\
       overall-time-limit=N: Set battle time limit (in multiples of 5 minutes)\n\
       phase-time-limit=N: Set phase time limit (in seconds)\n\
@@ -460,16 +463,19 @@ Proxy session commands:\n\
     uint32_t num_teams = stoul(get_quoted_string(command_args), nullptr, 0);
     Episode3::Rules rules;
     rules.set_defaults();
-    bool is_2v2 = false;
-    bool has_com_teams = true;
+    uint8_t flags = Episode3::Tournament::Flag::HAS_COM_TEAMS;
     if (!command_args.empty()) {
       auto tokens = split(command_args, ' ');
       for (auto& token : tokens) {
         token = tolower(token);
         if (token == "2v2") {
-          is_2v2 = true;
+          flags |= Episode3::Tournament::Flag::IS_2V2;
         } else if (token == "no-coms") {
-          has_com_teams = false;
+          flags &= (~Episode3::Tournament::Flag::HAS_COM_TEAMS);
+        } else if (token == "shuffle") {
+          flags |= Episode3::Tournament::Flag::SHUFFLE_ENTRIES;
+        } else if (token == "resize") {
+          flags |= Episode3::Tournament::Flag::RESIZE_ON_START;
         } else if (starts_with(token, "dice=")) {
           auto subtokens = split(token.substr(5), '-');
           if (subtokens.size() != 2) {
@@ -539,7 +545,7 @@ Proxy session commands:\n\
       fprintf(stderr, "warning: some rules were invalid and reset to defaults\n");
     }
     auto tourn = this->state->ep3_tournament_index->create_tournament(
-        name, map, rules, num_teams, is_2v2, has_com_teams);
+        name, map, rules, num_teams, flags);
     fprintf(stderr, "created tournament \"%s\"\n", tourn->get_name().c_str());
 
   } else if (command_name == "delete-tournament") {
