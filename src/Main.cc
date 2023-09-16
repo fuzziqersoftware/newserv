@@ -1655,6 +1655,7 @@ int main(int argc, char** argv) {
 
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
       shared_ptr<ServerState> state(new ServerState(config_filename, is_replay));
+      state->init();
 
       shared_ptr<DNSServer> dns_server;
       if (state->dns_server_port && (behavior != Behavior::REPLAY_LOG)) {

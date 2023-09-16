@@ -33,7 +33,7 @@ struct PortConfiguration {
   ServerBehavior behavior;
 };
 
-struct ServerState {
+struct ServerState : public std::enable_shared_from_this<ServerState> {
   enum class RunShellBehavior {
     DEFAULT = 0,
     ALWAYS,
@@ -129,6 +129,7 @@ struct ServerState {
   std::u16string pc_patch_server_message;
   std::u16string bb_patch_server_message;
 
+  std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_v1;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_non_v1;
@@ -148,6 +149,11 @@ struct ServerState {
   std::shared_ptr<Server> game_server;
 
   ServerState(const char* config_filename, bool is_replay);
+  ServerState(const ServerState&) = delete;
+  ServerState(ServerState&&) = delete;
+  ServerState& operator=(const ServerState&) = delete;
+  ServerState& operator=(ServerState&&) = delete;
+  void init();
 
   void add_client_to_available_lobby(std::shared_ptr<Client> c);
   void remove_client_from_lobby(std::shared_ptr<Client> c);

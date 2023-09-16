@@ -10,8 +10,11 @@ using namespace std;
 namespace Episode3 {
 
 Tournament::PlayerEntry::PlayerEntry(uint32_t serial_number)
-    : serial_number(serial_number),
-      com_deck() {}
+    : serial_number(serial_number) {}
+
+Tournament::PlayerEntry::PlayerEntry(shared_ptr<Client> c)
+    : serial_number(c->license->serial_number),
+      client(c) {}
 
 Tournament::PlayerEntry::PlayerEntry(
     shared_ptr<const COMDeckDefinition> com_deck)
@@ -57,7 +60,7 @@ string Tournament::Team::str() const {
 }
 
 void Tournament::Team::register_player(
-    uint32_t serial_number,
+    shared_ptr<Client> c,
     const string& team_name,
     const string& password) {
   if (this->players.size() >= this->max_players) {
@@ -72,17 +75,17 @@ void Tournament::Team::register_player(
   if (!tournament) {
     throw runtime_error("tournament has been deleted");
   }
-  if (!tournament->all_player_serial_numbers.emplace(serial_number).second) {
+  if (!tournament->all_player_serial_numbers.emplace(c->license->serial_number).second) {
     throw runtime_error("player already registered in same tournament");
   }
 
   for (const auto& player : this->players) {
-    if (player.is_human() && (player.serial_number == serial_number)) {
+    if (player.is_human() && (player.serial_number == c->license->serial_number)) {
       throw logic_error("player already registered in team but not in tournament");
     }
   }
 
-  this->players.emplace_back(serial_number);
+  this->players.emplace_back(c);
 
   if (this->name.empty()) {
     this->name = team_name;
@@ -290,24 +293,23 @@ shared_ptr<Tournament::Team> Tournament::Match::opponent_team_for_team(
 Tournament::Tournament(
     shared_ptr<const MapIndex> map_index,
     shared_ptr<const COMDeckIndex> com_deck_index,
-    uint8_t number,
     const string& name,
     shared_ptr<const MapIndex::MapEntry> map,
     const Rules& rules,
     size_t num_teams,
     bool is_2v2,
     bool has_com_teams)
-    : log(string_printf("[Tournament/%02hhX] ", number)),
+    : log(string_printf("[Tournament/%s] ", name.c_str())),
       map_index(map_index),
       com_deck_index(com_deck_index),
-      number(number),
       name(name),
       map(map),
       rules(rules),
       num_teams(num_teams),
       is_2v2(is_2v2),
       has_com_teams(has_com_teams),
-      current_state(State::REGISTRATION) {
+      current_state(State::REGISTRATION),
+      menu_item_id(0xFFFFFFFF) {
   if (this->num_teams < 4) {
     throw invalid_argument("team count must be 4 or more");
   }
@@ -322,13 +324,11 @@ Tournament::Tournament(
 Tournament::Tournament(
     shared_ptr<const MapIndex> map_index,
     shared_ptr<const COMDeckIndex> com_deck_index,
-    uint8_t number,
     const JSON& json)
-    : log(string_printf("[Tournament/%02hhX] ", number)),
+    : log(string_printf("[Tournament/%s] ", json.get_string("name").c_str())),
       map_index(map_index),
       com_deck_index(com_deck_index),
       source_json(json),
-      number(number),
       current_state(State::REGISTRATION) {}
 
 void Tournament::init() {
@@ -380,26 +380,26 @@ void Tournament::init() {
         this->shared_from_this(), this->teams[this->zero_round_matches.size()]));
   }
 
-  // Create the bracket matches
-  vector<shared_ptr<Match>> current_round_matches = this->zero_round_matches;
-  while (current_round_matches.size() > 1) {
-    vector<shared_ptr<Match>> next_round_matches;
-    for (size_t z = 0; z < current_round_matches.size(); z += 2) {
-      auto m = make_shared<Match>(
-          this->shared_from_this(),
-          current_round_matches[z],
-          current_round_matches[z + 1]);
-      current_round_matches[z]->following = m;
-      current_round_matches[z + 1]->following = m;
-      next_round_matches.emplace_back(std::move(m));
-    }
-    current_round_matches = std::move(next_round_matches);
-  }
-  this->final_match = current_round_matches.at(0);
-
   // Compute the match state from the teams' states
   if (is_registration_complete) {
     this->current_state = State::IN_PROGRESS;
+
+    // Create the bracket matches
+    vector<shared_ptr<Match>> current_round_matches = this->zero_round_matches;
+    while (current_round_matches.size() > 1) {
+      vector<shared_ptr<Match>> next_round_matches;
+      for (size_t z = 0; z < current_round_matches.size(); z += 2) {
+        auto m = make_shared<Match>(
+            this->shared_from_this(),
+            current_round_matches[z],
+            current_round_matches[z + 1]);
+        current_round_matches[z]->following = m;
+        current_round_matches[z + 1]->following = m;
+        next_round_matches.emplace_back(std::move(m));
+      }
+      current_round_matches = std::move(next_round_matches);
+    }
+    this->final_match = current_round_matches.at(0);
 
     // Start with all first-round matches in the match queue
     unordered_set<shared_ptr<Match>> match_queue;
@@ -500,6 +500,9 @@ JSON Tournament::json() const {
 shared_ptr<Tournament::Team> Tournament::get_winner_team() const {
   if (this->current_state != State::COMPLETE) {
     return nullptr;
+  }
+  if (!this->final_match) {
+    throw logic_error("tournament is complete but final match is missing");
   }
   if (!this->final_match->winner_team) {
     throw logic_error("tournament is complete but winner is not set");
@@ -604,6 +607,23 @@ void Tournament::start() {
   }
 }
 
+void Tournament::send_all_state_updates(shared_ptr<ServerState> s) const {
+  for (const auto& team : this->teams) {
+    for (const auto& player : team->players) {
+      auto c = player.client.lock();
+      // Note: The last check here is to make sure the client is still linked
+      // with this instance of the tournament - an intervening shell command
+      // `reload ep3` could have changed the client's linkage
+      if (c &&
+          (c->flags & Client::Flag::IS_EPISODE_3) &&
+          !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION) &&
+          (c->ep3_tournament_team.lock() == team)) {
+        send_ep3_confirm_tournament_entry(s, c, this->shared_from_this());
+      }
+    }
+  }
+}
+
 void Tournament::print_bracket(FILE* stream) const {
   function<void(shared_ptr<Match>, size_t)> print_match = [&](shared_ptr<Match> m, size_t indent_level) -> void {
     for (size_t z = 0; z < indent_level; z++) {
@@ -619,7 +639,7 @@ void Tournament::print_bracket(FILE* stream) const {
       print_match(m->preceding_b, indent_level + 1);
     }
   };
-  fprintf(stream, "Tournament %02hhX: %s\n", this->number, this->name.c_str());
+  fprintf(stream, "Tournament \"%s\"\n", this->name.c_str());
   string map_name = this->map->map.name;
   fprintf(stream, "  Map: %08" PRIX32 " (%s)\n", this->map->map.map_number.load(), map_name.c_str());
   string rules_str = this->rules.str();
@@ -639,8 +659,10 @@ void Tournament::print_bracket(FILE* stream) const {
       fprintf(stream, "  State: UNKNOWN\n");
       break;
   }
-  fprintf(stream, "  Standings:\n");
-  print_match(this->final_match, 2);
+  if (this->final_match) {
+    fprintf(stream, "  Standings:\n");
+    print_match(this->final_match, 2);
+  }
   fprintf(stream, "  Pending matches:\n");
   for (const auto& match : this->pending_matches) {
     string match_str = match->str();
@@ -667,14 +689,38 @@ TournamentIndex::TournamentIndex(
     json = JSON::list();
   }
 
-  if (json.size() > 0x20) {
-    throw runtime_error("tournament JSON list length is incorrect");
-  }
-  for (size_t z = 0; z < min<size_t>(json.size(), 0x20); z++) {
-    if (!json.at(z).is_null()) {
-      this->tournaments[z].reset(new Tournament(this->map_index, this->com_deck_index, z, json.at(z)));
-      this->tournaments[z]->init();
+  if (json.is_list()) {
+    if (json.size() > 0x20) {
+      throw runtime_error("tournament JSON list length is incorrect");
     }
+    for (size_t z = 0; z < min<size_t>(json.size(), 0x20); z++) {
+      if (!json.at(z).is_null()) {
+        shared_ptr<Tournament> tourn(new Tournament(this->map_index, this->com_deck_index, json.at(z)));
+        tourn->init();
+        if (!this->name_to_tournament.emplace(tourn->get_name(), tourn).second) {
+          throw runtime_error("multiple tournaments have the same name: " + tourn->get_name());
+        }
+        tourn->set_menu_item_id(this->menu_item_id_to_tournament.size());
+        this->menu_item_id_to_tournament.emplace_back(tourn);
+      }
+    }
+  } else if (json.is_dict()) {
+    if (json.size() > 0x20) {
+      throw runtime_error("tournament JSON dict length is incorrect");
+    }
+    for (const auto& it : json.as_dict()) {
+      shared_ptr<Tournament> tourn(new Tournament(this->map_index, this->com_deck_index, *it.second));
+      tourn->init();
+      if (!this->name_to_tournament.emplace(tourn->get_name(), tourn).second) {
+        // This is logic_error instead of runtime_error because JSON dicts are
+        // supposed to already have unique keys
+        throw logic_error("multiple tournaments have the same name: " + tourn->get_name());
+      }
+      tourn->set_menu_item_id(this->menu_item_id_to_tournament.size());
+      this->menu_item_id_to_tournament.emplace_back(tourn);
+    }
+  } else {
+    throw runtime_error("tournament state root JSON is not a list or dict");
   }
 }
 
@@ -683,25 +729,11 @@ void TournamentIndex::save() const {
     return;
   }
 
-  auto list = JSON::list();
-  for (size_t z = 0; z < 0x20; z++) {
-    if (this->tournaments[z]) {
-      list.emplace_back(this->tournaments[z]->json());
-    } else {
-      list.emplace_back(nullptr);
-    }
+  auto json = JSON::dict();
+  for (const auto& it : this->name_to_tournament) {
+    json.emplace(it.second->get_name(), it.second->json());
   }
-  save_file(this->state_filename, list.serialize(JSON::SerializeOption::FORMAT));
-}
-
-vector<shared_ptr<Tournament>> TournamentIndex::all_tournaments() const {
-  vector<shared_ptr<Tournament>> ret;
-  for (size_t z = 0; z < 0x20; z++) {
-    if (this->tournaments[z]) {
-      ret.emplace_back(this->tournaments[z]);
-    }
-  }
-  return ret;
+  save_file(this->state_filename, json.serialize(JSON::SerializeOption::FORMAT));
 }
 
 shared_ptr<Tournament> TournamentIndex::create_tournament(
@@ -711,53 +743,90 @@ shared_ptr<Tournament> TournamentIndex::create_tournament(
     size_t num_teams,
     bool is_2v2,
     bool has_com_teams) {
-  // Find an unused tournament number
-  uint8_t number;
-  for (number = 0; number < 0x20; number++) {
-    if (!this->tournaments[number]) {
-      break;
-    }
-  }
-  if (number >= 0x20) {
-    throw runtime_error("all tournament slots are full");
+  if (this->name_to_tournament.size() >= 0x20) {
+    throw runtime_error("there can be at most 32 tournaments at a time");
   }
 
   auto t = make_shared<Tournament>(
-      this->map_index, this->com_deck_index, number, name, map, rules, num_teams, is_2v2, has_com_teams);
+      this->map_index, this->com_deck_index, name, map, rules, num_teams, is_2v2, has_com_teams);
   t->init();
-  this->tournaments[number] = t;
+  this->name_to_tournament.emplace(t->get_name(), t);
+
+  size_t z;
+  for (z = 0; z < this->menu_item_id_to_tournament.size(); z++) {
+    if (!this->menu_item_id_to_tournament[z]) {
+      t->set_menu_item_id(z);
+      this->menu_item_id_to_tournament[z] = t;
+      break;
+    }
+  }
+  if (z == this->menu_item_id_to_tournament.size()) {
+    t->set_menu_item_id(this->menu_item_id_to_tournament.size());
+    this->menu_item_id_to_tournament.emplace_back(t);
+  }
+
+  this->save();
   return t;
 }
 
-void TournamentIndex::delete_tournament(uint8_t number) {
-  this->tournaments[number].reset();
-}
-
-shared_ptr<Tournament> TournamentIndex::get_tournament(uint8_t number) const {
-  return this->tournaments[number];
-}
-
-shared_ptr<Tournament> TournamentIndex::get_tournament(const string& name) const {
-  for (size_t z = 0; z < 0x20; z++) {
-    if (this->tournaments[z] && (this->tournaments[z]->get_name() == name)) {
-      return this->tournaments[z];
+bool TournamentIndex::delete_tournament(const string& name) {
+  auto it = this->name_to_tournament.find(name);
+  if (it == this->name_to_tournament.end()) {
+    return false;
+  }
+  for (size_t z = 0; z < this->menu_item_id_to_tournament.size(); z++) {
+    if (this->menu_item_id_to_tournament[z] == it->second) {
+      this->menu_item_id_to_tournament[z] = nullptr;
+      it->second->set_menu_item_id(0xFFFFFFFF);
     }
   }
-  return nullptr;
+  this->name_to_tournament.erase(it);
+  this->save();
+  return true;
 }
 
-shared_ptr<Tournament::Team> TournamentIndex::team_for_serial_number(
-    uint32_t serial_number) const {
-  for (size_t z = 0; z < 0x20; z++) {
-    if (!this->tournaments[z]) {
-      continue;
-    }
-    auto team = this->tournaments[z]->team_for_serial_number(serial_number);
+shared_ptr<Tournament::Team> TournamentIndex::team_for_serial_number(uint32_t serial_number) const {
+  for (const auto& it : this->name_to_tournament) {
+    const auto& tourn = it.second;
+    auto team = tourn->team_for_serial_number(serial_number);
     if (team) {
       return team;
     }
   }
   return nullptr;
+}
+
+void TournamentIndex::link_client(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+    return;
+  }
+
+  auto team = this->team_for_serial_number(c->license->serial_number);
+  auto tourn = team ? team->tournament.lock() : nullptr;
+  if (team && tourn) {
+    for (auto& player : team->players) {
+      if (player.serial_number == c->license->serial_number) {
+        c->ep3_tournament_team = team;
+        player.client = c;
+        if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
+          send_ep3_confirm_tournament_entry(s, c, tourn);
+        }
+        return;
+      }
+    }
+    throw logic_error("tournament team found for player, but player not found on team");
+  } else {
+    c->ep3_tournament_team.reset();
+    if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
+      send_ep3_confirm_tournament_entry(s, c, nullptr);
+    }
+  }
+}
+
+void TournamentIndex::link_all_clients(std::shared_ptr<ServerState> s) {
+  for (const auto& c_it : s->channel_to_client) {
+    this->link_client(s, c_it.second);
+  }
 }
 
 } // namespace Episode3

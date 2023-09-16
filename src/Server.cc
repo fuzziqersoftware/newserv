@@ -38,7 +38,7 @@ void Server::disconnect_client(shared_ptr<Client> c) {
         c->id, bufferevent_getfd(c->channel.bev.get()));
   }
 
-  this->channel_to_client.erase(&c->channel);
+  this->state->channel_to_client.erase(&c->channel);
   c->channel.disconnect();
 
   try {
@@ -118,7 +118,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;
-  this->channel_to_client.emplace(&c->channel, c);
+  this->state->channel_to_client.emplace(&c->channel, c);
 
   server_log.info("Client connected: C-%" PRIX64 " on fd %d via %d (%s)",
       c->id, fd, listen_fd, listening_socket->addr_str.c_str());
@@ -148,7 +148,7 @@ void Server::connect_client(
       name_for_version(version),
       name_for_server_behavior(initial_state));
 
-  this->channel_to_client.emplace(&c->channel, c);
+  this->state->channel_to_client.emplace(&c->channel, c);
 
   // Manually set the remote address, since the bufferevent has no fd and the
   // Channel constructor can't figure out the virtual remote address
@@ -174,7 +174,7 @@ void Server::on_listen_error(struct evconnlistener* listener) {
 
 void Server::on_client_input(Channel& ch, uint16_t command, uint32_t flag, std::string& data) {
   Server* server = reinterpret_cast<Server*>(ch.context_obj);
-  shared_ptr<Client> c = server->channel_to_client.at(&ch);
+  shared_ptr<Client> c = server->state->channel_to_client.at(&ch);
 
   if (c->should_disconnect) {
     server->disconnect_client(c);
@@ -197,7 +197,7 @@ void Server::on_client_input(Channel& ch, uint16_t command, uint32_t flag, std::
 
 void Server::on_client_error(Channel& ch, short events) {
   Server* server = reinterpret_cast<Server*>(ch.context_obj);
-  shared_ptr<Client> c = server->channel_to_client.at(&ch);
+  shared_ptr<Client> c = server->state->channel_to_client.at(&ch);
 
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
@@ -271,13 +271,13 @@ void Server::add_socket(
 }
 
 shared_ptr<Client> Server::get_client() const {
-  if (this->channel_to_client.empty()) {
+  if (this->state->channel_to_client.empty()) {
     throw runtime_error("no clients on game server");
   }
-  if (this->channel_to_client.size() > 1) {
+  if (this->state->channel_to_client.size() > 1) {
     throw runtime_error("multiple clients on game server");
   }
-  return this->channel_to_client.begin()->second;
+  return this->state->channel_to_client.begin()->second;
 }
 
 vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident) const {
@@ -296,7 +296,7 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
   // TODO: It's kind of not great that we do a linear search here, but this is
   // only used in the shell, so it should be pretty rare.
   vector<shared_ptr<Client>> results;
-  for (const auto& it : this->channel_to_client) {
+  for (const auto& it : this->state->channel_to_client) {
     auto c = it.second;
     if (c->license && c->license->serial_number == serial_number_dec) {
       results.emplace_back(std::move(c));

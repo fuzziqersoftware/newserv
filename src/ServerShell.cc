@@ -182,7 +182,7 @@ Server commands:\n\
   start-tournament TOURNAMENT-NAME\n\
     End registration for a tournament and allow matches to begin. Quotes are\n\
     required around the tournament name unless the name contains no spaces.\n\
-  tournament-state TOURNAMENT-NAME\n\
+  describe-tournament TOURNAMENT-NAME\n\
     Show the current state of a tournament. Quotes are required around the\n\
     tournament name unless the name contains no spaces.\n\
 \n\
@@ -540,23 +540,19 @@ Proxy session commands:\n\
     }
     auto tourn = this->state->ep3_tournament_index->create_tournament(
         name, map, rules, num_teams, is_2v2, has_com_teams);
-    this->state->ep3_tournament_index->save();
-    fprintf(stderr, "created tournament %02hhX\n", tourn->get_number());
+    fprintf(stderr, "created tournament \"%s\"\n", tourn->get_name().c_str());
 
   } else if (command_name == "delete-tournament") {
     string name = get_quoted_string(command_args);
-    auto tourn = this->state->ep3_tournament_index->get_tournament(name);
-    if (tourn) {
-      this->state->ep3_tournament_index->delete_tournament(tourn->get_number());
-      this->state->ep3_tournament_index->save();
+    if (this->state->ep3_tournament_index->delete_tournament(name)) {
       fprintf(stderr, "tournament deleted\n");
     } else {
       fprintf(stderr, "no such tournament exists\n");
     }
 
   } else if (command_name == "list-tournaments") {
-    for (const auto& tourn : this->state->ep3_tournament_index->all_tournaments()) {
-      fprintf(stderr, "  %s\n", tourn->get_name().c_str());
+    for (const auto& it : this->state->ep3_tournament_index->all_tournaments()) {
+      fprintf(stderr, "  %s\n", it.second->get_name().c_str());
     }
 
   } else if (command_name == "start-tournament") {
@@ -565,13 +561,14 @@ Proxy session commands:\n\
     if (tourn) {
       tourn->start();
       this->state->ep3_tournament_index->save();
+      tourn->send_all_state_updates(this->state);
       send_ep3_text_message_printf(this->state, "$C7The tournament\n$C6%s$C7\nhas begun", tourn->get_name().c_str());
       fprintf(stderr, "tournament started\n");
     } else {
       fprintf(stderr, "no such tournament exists\n");
     }
 
-  } else if (command_name == "tournament-status") {
+  } else if (command_name == "describe-tournament") {
     string name = get_quoted_string(command_args);
     auto tourn = this->state->ep3_tournament_index->get_tournament(name);
     if (tourn) {

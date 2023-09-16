@@ -231,9 +231,7 @@ static void send_main_menu(shared_ptr<ServerState> s, shared_ptr<Client> c) {
 
 void on_login_complete(shared_ptr<ServerState> s, shared_ptr<Client> c) {
   if (c->flags & Client::Flag::IS_EPISODE_3) {
-    auto team = s->ep3_tournament_index->team_for_serial_number(c->license->serial_number);
-    auto tourn = team ? team->tournament.lock() : nullptr;
-    c->ep3_tournament_team = team;
+    s->ep3_tournament_index->link_client(s, c);
   }
 
   // On the BB data server, this function is called only on the last connection
@@ -1227,25 +1225,7 @@ static void on_DC_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
 
 static void on_tournament_bracket_updated(
     shared_ptr<ServerState> s, shared_ptr<const Episode3::Tournament> tourn) {
-  const auto& serial_numbers = tourn->get_all_player_serial_numbers();
-
-  for (const auto& l : s->all_lobbies()) {
-    for (const auto& c : l->clients) {
-      if (!c ||
-          !c->license ||
-          !serial_numbers.count(c->license->serial_number) ||
-          c->ep3_tournament_team.expired() ||
-          (c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
-        continue;
-      }
-      send_ep3_confirm_tournament_entry(s, c, tourn);
-    }
-  }
-
-  if (tourn && (tourn->get_state() == Episode3::Tournament::State::COMPLETE)) {
-    s->ep3_tournament_index->delete_tournament(tourn->get_number());
-  }
-
+  tourn->send_all_state_updates(s);
   if (tourn->get_state() == Episode3::Tournament::State::COMPLETE) {
     auto team = tourn->get_winner_team();
     if (!team->has_any_human_players()) {
@@ -1253,10 +1233,10 @@ static void on_tournament_bracket_updated(
     } else {
       send_ep3_text_message_printf(s, "$C6%s$C7\nwon the tournament\n$C6%s", team->name.c_str(), tourn->get_name().c_str());
     }
-    s->ep3_tournament_index->delete_tournament(tourn->get_number());
+    s->ep3_tournament_index->delete_tournament(tourn->get_name());
+  } else {
+    s->ep3_tournament_index->save();
   }
-
-  s->ep3_tournament_index->save();
 }
 
 static void on_CA_Ep3(shared_ptr<ServerState> s, shared_ptr<Client> c,
@@ -2060,12 +2040,9 @@ static void on_10(shared_ptr<ServerState> s, shared_ptr<Client> c,
         auto team = tourn->get_team(team_index);
         if (team) {
           try {
-            team->register_player(
-                c->license->serial_number,
-                encode_sjis(team_name),
-                encode_sjis(password));
+            team->register_player(c, encode_sjis(team_name), encode_sjis(password));
             c->ep3_tournament_team = team;
-            send_ep3_confirm_tournament_entry(s, c, tourn);
+            tourn->send_all_state_updates(s);
             string message = string_printf("$C7You are registered in $C6%s$C7.\n\
 \n\
 After registration ends, start your matches by\n\

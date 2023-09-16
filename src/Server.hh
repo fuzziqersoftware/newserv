@@ -52,7 +52,6 @@ private:
         ServerBehavior behavior);
   };
   std::unordered_map<int, ListeningSocket> listening_sockets;
-  std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
   std::unordered_set<std::shared_ptr<Client>> clients_to_destroy;
 
   std::shared_ptr<ServerState> state;

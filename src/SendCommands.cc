@@ -2285,7 +2285,8 @@ void send_ep3_tournament_list(
     bool is_for_spectator_team_create) {
   S_TournamentList_GC_Ep3_E0 cmd;
   size_t z = 0;
-  for (const auto& tourn : s->ep3_tournament_index->all_tournaments()) {
+  for (const auto& it : s->ep3_tournament_index->all_tournaments()) {
+    const auto& tourn = it.second;
     if (z >= 0x20) {
       throw logic_error("more than 32 tournaments exist");
     }
@@ -2293,7 +2294,7 @@ void send_ep3_tournament_list(
     entry.menu_id = is_for_spectator_team_create
         ? MenuID::TOURNAMENTS_FOR_SPEC
         : MenuID::TOURNAMENTS;
-    entry.item_id = tourn->get_number();
+    entry.item_id = tourn->get_menu_item_id();
     // TODO: What does it mean for a tournament to be locked? Should we support
     // that?
     // TODO: Write appropriate round text (1st, 2nd, 3rd) here. This is
@@ -2333,7 +2334,7 @@ void send_ep3_tournament_entry_list(
     }
     auto& entry = cmd.entries[z];
     entry.menu_id = MenuID::TOURNAMENT_ENTRIES;
-    entry.item_id = (tourn->get_number() << 16) | z;
+    entry.item_id = (tourn->get_menu_item_id() << 16) | z;
     entry.unknown_a2 = team->num_rounds_cleared;
     entry.locked = team->password.empty() ? 0 : 1;
     if (tourn->get_state() != Episode3::Tournament::State::REGISTRATION) {
@@ -2597,8 +2598,8 @@ void send_ep3_tournament_match_result(
   send_command_t(l, 0xC9, 0x00, cmd);
 
   if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
-    send_text_message_printf(l, "$C5TOURN/%02hhX/%zu WIN %c",
-        tourn->get_number(), match->round_num,
+    send_text_message_printf(l, "$C5TOURN/%" PRIX32 "/%zu WIN %c",
+        tourn->get_menu_item_id(), match->round_num,
         match->winner_team == match->preceding_a->winner_team ? 'A' : 'B');
   }
 }

@@ -41,7 +41,9 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       local_address(0),
       external_address(0),
       proxy_allow_save_files(true),
-      proxy_enable_login_options(false) {
+      proxy_enable_login_options(false) {}
+
+void ServerState::init() {
   vector<shared_ptr<Lobby>> non_v1_only_lobbies;
   vector<shared_ptr<Lobby>> ep3_only_lobbies;
 
@@ -875,6 +877,7 @@ void ServerState::load_ep3_data() {
   const string& tournament_state_filename = "system/ep3/tournament-state.json";
   this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
       this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename));
+  this->ep3_tournament_index->link_all_clients(this->shared_from_this());
   config_log.info("Loaded Episode 3 tournament state");
 }
 

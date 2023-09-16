@@ -13,6 +13,8 @@
 #include "../Player.hh"
 
 struct Lobby;
+struct Client;
+struct ServerState;
 
 namespace Episode3 {
 
@@ -32,7 +34,11 @@ public:
     uint32_t serial_number;
     std::shared_ptr<const COMDeckDefinition> com_deck;
 
+    // client is valid if serial_number is nonzero and the client is connected
+    std::weak_ptr<Client> client;
+
     explicit PlayerEntry(uint32_t serial_number);
+    explicit PlayerEntry(std::shared_ptr<Client> c);
     explicit PlayerEntry(std::shared_ptr<const COMDeckDefinition> com_deck);
 
     bool is_com() const;
@@ -57,7 +63,7 @@ public:
     std::string str() const;
 
     void register_player(
-        uint32_t serial_number,
+        std::shared_ptr<Client> c,
         const std::string& team_name,
         const std::string& password);
     bool unregister_player(uint32_t serial_number);
@@ -94,7 +100,6 @@ public:
   Tournament(
       std::shared_ptr<const MapIndex> map_index,
       std::shared_ptr<const COMDeckIndex> com_deck_index,
-      uint8_t number,
       const std::string& name,
       std::shared_ptr<const MapIndex::MapEntry> map,
       const Rules& rules,
@@ -104,16 +109,12 @@ public:
   Tournament(
       std::shared_ptr<const MapIndex> map_index,
       std::shared_ptr<const COMDeckIndex> com_deck_index,
-      uint8_t number,
       const JSON& json);
   ~Tournament() = default;
   void init();
 
   JSON json() const;
 
-  inline uint8_t get_number() const {
-    return this->number;
-  }
   inline const std::string& get_name() const {
     return this->name;
   }
@@ -135,8 +136,14 @@ public:
   inline const std::vector<std::shared_ptr<Team>>& all_teams() const {
     return this->teams;
   }
-  std::shared_ptr<Team> get_team(size_t index) const {
+  inline std::shared_ptr<Team> get_team(size_t index) const {
     return this->teams.at(index);
+  }
+  inline uint32_t get_menu_item_id() const {
+    return this->menu_item_id;
+  }
+  inline void set_menu_item_id(uint32_t menu_item_id) {
+    this->menu_item_id = menu_item_id;
   }
 
   std::shared_ptr<Team> get_winner_team() const;
@@ -147,6 +154,8 @@ public:
 
   void start();
 
+  void send_all_state_updates(std::shared_ptr<ServerState> s) const;
+
   void print_bracket(FILE* stream) const;
 
 private:
@@ -155,7 +164,6 @@ private:
   std::shared_ptr<const MapIndex> map_index;
   std::shared_ptr<const COMDeckIndex> com_deck_index;
   JSON source_json;
-  uint8_t number;
   std::string name;
   std::shared_ptr<const MapIndex::MapEntry> map;
   Rules rules;
@@ -163,6 +171,7 @@ private:
   bool is_2v2;
   bool has_com_teams;
   State current_state;
+  uint32_t menu_item_id;
 
   std::set<uint32_t> all_player_serial_numbers;
   std::unordered_set<std::shared_ptr<Match>> pending_matches;
@@ -191,7 +200,23 @@ public:
 
   void save() const;
 
-  std::vector<std::shared_ptr<Tournament>> all_tournaments() const;
+  inline const std::unordered_map<std::string, std::shared_ptr<Tournament>>& all_tournaments() const {
+    return this->name_to_tournament;
+  }
+  inline std::shared_ptr<Tournament> get_tournament(uint32_t menu_item_id) const {
+    try {
+      return this->menu_item_id_to_tournament.at(menu_item_id);
+    } catch (const std::out_of_range&) {
+      return nullptr;
+    }
+  }
+  inline std::shared_ptr<Tournament> get_tournament(const std::string& name) const {
+    try {
+      return this->name_to_tournament.at(name);
+    } catch (const std::out_of_range&) {
+      return nullptr;
+    }
+  }
 
   std::shared_ptr<Tournament> create_tournament(
       const std::string& name,
@@ -200,18 +225,19 @@ public:
       size_t num_teams,
       bool is_2v2,
       bool has_com_teams);
-  void delete_tournament(uint8_t number);
-  std::shared_ptr<Tournament> get_tournament(uint8_t number) const;
-  std::shared_ptr<Tournament> get_tournament(const std::string& name) const;
+  bool delete_tournament(const std::string& name);
 
-  std::shared_ptr<Tournament::Team> team_for_serial_number(
-      uint32_t serial_number) const;
+  std::shared_ptr<Tournament::Team> team_for_serial_number(uint32_t serial_number) const;
+
+  void link_client(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
+  void link_all_clients(std::shared_ptr<ServerState> s);
 
 private:
   std::shared_ptr<const MapIndex> map_index;
   std::shared_ptr<const COMDeckIndex> com_deck_index;
   std::string state_filename;
-  std::shared_ptr<Tournament> tournaments[0x20];
+  std::unordered_map<std::string, std::shared_ptr<Tournament>> name_to_tournament;
+  std::vector<std::shared_ptr<Tournament>> menu_item_id_to_tournament;
 };
 
 } // namespace Episode3
