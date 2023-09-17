@@ -16,10 +16,12 @@
 
 ## Episode 3
 
-- Fix behavior when joining a spectator team after the beginning of a battle
-- Figure out why spectators crash during replays sometimes
 - Make disconnecting during a tournament match cause you to forfeit the match
 - Enforce tournament deck restrictions (e.g. rarity checks, No Assist option) when populating COMs at tournament start time
+- Spectator teams
+    - Fix behavior when joining a spectator team after the beginning of a battle
+    - Figure out why spectators crash during replays sometimes
+    - Spectator teams sometimes stop receiving commands during live battles?
 
 ## PSOBB
 
