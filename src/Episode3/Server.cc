@@ -273,8 +273,15 @@ void Server::send_commands_for_joining_spectator(Channel& c, bool is_trial) cons
   if (should_send_state) {
     c.send(0xC9, 0x00, this->prepare_6xB4x07_decks_update());
     c.send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
-    G_Unknown_GC_Ep3_6xB4x3B cmd_3B;
-    c.send(0xC9, 0x00, &cmd_3B, sizeof(cmd_3B));
+    {
+      G_UpdateMap_GC_Ep3_6xB4x05 cmd_05;
+      cmd_05.state = *this->map_and_rules;
+      this->send(cmd_05);
+    }
+    {
+      G_LoadCurrentEnvironment_GC_Ep3_6xB4x05 cmd_3B;
+      c.send(0xC9, 0x00, &cmd_3B, sizeof(cmd_3B));
+    }
     c.send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
   }
 }
