@@ -201,6 +201,8 @@ Proxy session commands:\n\
   c TEXT\n\
   chat TEXT\n\
     Send a chat message to the server.\n\
+  wchat DATA\n\
+    Send a chat message with private_flags on Episode 3.\n\
   dchat DATA\n\
     Send a chat message to the server with arbitrary data in it.\n\
   info-board TEXT\n\
@@ -671,6 +673,21 @@ Proxy session commands:\n\
       data.resize((data.size() + 3) & (~3));
       session->server_channel.send(0x06, 0x00, data);
     }
+
+  } else if ((command_name == "wc") || (command_name == "wchat")) {
+    auto session = this->get_proxy_session(session_name);
+    if ((session->version != GameVersion::GC) ||
+        !(session->newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3)) {
+      throw runtime_error("wchat can only be used on Episode 3");
+    }
+    string data(8, '\0');
+    data.push_back('\x40'); // private_flags: visible to all
+    data.push_back('\x09');
+    data.push_back('E');
+    data += command_args;
+    data.push_back('\0');
+    data.resize((data.size() + 3) & (~3));
+    session->server_channel.send(0x06, 0x00, data);
 
   } else if (command_name == "marker") {
     auto session = this->get_proxy_session(session_name);
