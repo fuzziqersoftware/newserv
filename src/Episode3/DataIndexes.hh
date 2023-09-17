@@ -120,6 +120,10 @@ enum class CardRarity : uint8_t {
   // don't appear in the deckbuilder at all.
   D1 = 0x0C,
   D2 = 0x0D,
+  // The D3 rank is only referenced in the function that determines whether or
+  // not a card can appear in post-battle draws. Having the D3 rank prevents the
+  // card from appearing (as do the E, D1, and D2 ranks).
+  D3 = 0x0E,
 };
 
 enum class CardType : uint8_t {
@@ -558,6 +562,7 @@ struct CardDefinition {
   // - rate / 10000 (the ten-thousands decimal place) specifies if the drop rate
   //   applies only if the player used a Hunters deck (1), only if they used an
   //   Arkz deck (2), or if they used any deck (0).
+  //
   // When determining which cards to drop, the game first checks the drop rate
   // fields on all cards. For each drop rate that applies, the game adds the
   // card ID into an appropriate bucket based on the rarity class. (If both drop
@@ -570,7 +575,8 @@ struct CardDefinition {
   // (CLvOn or CLvOff), but the map may override it - see win_level_override and
   // loss_level_override in MapDefinition. This specifies which row in the
   // following tables will be used.
-  // Finally, cards are chosen from the buckets with a weighted distribution
+  //
+  // Cards are then chosen from the buckets with a weighted distribution
   // according to these tables (row is player's level class, column is card's
   // rarity class):
   // Offline:
@@ -602,8 +608,29 @@ struct CardDefinition {
   // about 80% of the time, cards of rarity class 1 about 20% of the time, and
   // cards of rarity class 2 about 0.5% of the time. (The actual probabilities
   // are 8000/10050, 2000/10050, and 50/10050.)
-  // The drop rates for a card are completely ignored if any of the following
-  // are true (which means it can never be found in a normal post-battle draw):
+  //
+  // When choosing the contents of the four card packs after a battle, the game
+  // first chooses how many cards to give the player based on the end-of-battle
+  // rank (9 for S, 8 for A+/A, 7 for B+/B, 6 for C+/C, 5 for D+/D/E, 2 if the
+  // player lost). It then decides the number of "restricted" cards; if the
+  // player is getting 6 or more cards, there are 2 restricted cards per pack,
+  // otherwise there is only one. The restricted cards are required to be a
+  // certain type in each pack except the black pack:
+  // - In the blue pack, the restricted cards must be creature cards.
+  // - In the red pack, the restricted cards must be item cards.
+  // - In the green pack, the restricted cards must be action cards.
+  // For example, if you get a B+ rank after winning a battle and pick the green
+  // pack, you will always get at least two action cards.
+  //
+  // The game then samples N card IDs from the appropriate buckets (where N is
+  // the number chosen above), but for the first 1 or 2 cards, it applies the
+  // restriction described above and re-draws if the card is the wrong type.
+  // After sampling the N card IDs, it shuffles them and presents them to the
+  // player.
+  //
+  // Finally, the drop rates for a card are completely ignored if any of the
+  // following are true (which means it can never be found in a normal
+  // post-battle draw):
   // - type is SC_HUNTERS or SC_ARKZ
   // - card_class is BOSS_ATTACK_ACTION (0x23) or BOSS_TECH (0x24)
   // - rarity is E, D1, or D2
