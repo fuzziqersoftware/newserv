@@ -271,18 +271,33 @@ void Server::send_commands_for_joining_spectator(Channel& c, bool is_trial) cons
   }
 
   if (should_send_state) {
-    c.send(0xC9, 0x00, this->prepare_6xB4x07_decks_update());
-    c.send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
+    c.send(0xC9, 0x00, this->prepare_6xB4x03());
+    for (uint8_t client_id = 0; client_id < 4; client_id++) {
+      auto ps = this->player_states[client_id];
+      if (ps) {
+        c.send(0xC9, 0x00, ps->prepare_6xB4x02());
+        c.send(0xC9, 0x00, ps->prepare_6xB4x04());
+      }
+    }
     {
       G_UpdateMap_GC_Ep3_6xB4x05 cmd_05;
       cmd_05.state = *this->map_and_rules;
       this->send(cmd_05);
     }
+    // TODO: Sega does something like this; do we have to do this too?
+    // for (uint8_t client_id = 0; client_id < 4; client_id++) {
+    //   (send 6xB4x4E, 6xB4x4C, 6xB4x4D for each set card)
+    //   (send 6xB4x4F for client_id)
+    // }
+    c.send(0xC9, 0x00, this->prepare_6xB4x07_decks_update());
+    // TODO: Sega sends 6xB4x05 here again; why? Is that necessary? They also
+    // send 6xB4x02 again for each player after that (but not 6xB4x04)
+    c.send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
+    c.send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
     {
       G_LoadCurrentEnvironment_GC_Ep3_6xB4x05 cmd_3B;
       c.send(0xC9, 0x00, &cmd_3B, sizeof(cmd_3B));
     }
-    c.send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
   }
 }
 
@@ -1503,8 +1518,7 @@ void Server::setup_and_start_battle() {
   this->send_6xB4x46();
 }
 
-void Server::update_battle_state_flags_and_send_6xB4x03_if_needed(
-    bool always_send) {
+G_SetStateFlags_GC_Ep3_6xB4x03 Server::prepare_6xB4x03() const {
   G_SetStateFlags_GC_Ep3_6xB4x03 cmd;
   cmd.state.turn_num = this->round_num;
   cmd.state.battle_phase = this->battle_phase;
@@ -1527,6 +1541,11 @@ void Server::update_battle_state_flags_and_send_6xB4x03_if_needed(
       cmd.state.client_sc_card_types[z] = ps->get_sc_card_type();
     }
   }
+  return cmd;
+}
+
+void Server::update_battle_state_flags_and_send_6xB4x03_if_needed(bool always_send) {
+  G_SetStateFlags_GC_Ep3_6xB4x03 cmd = this->prepare_6xB4x03();
   if (always_send || (*this->state_flags != cmd.state)) {
     *this->state_flags = cmd.state;
     this->send(cmd);

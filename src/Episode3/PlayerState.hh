@@ -122,9 +122,11 @@ public:
   bool subtract_or_check_atk_or_def_points_for_action(
       const ActionState& pa, bool deduct_points);
   void subtract_atk_points(uint8_t cost);
+  G_UpdateHand_GC_Ep3_6xB4x02 prepare_6xB4x02() const;
   void update_hand_and_equip_state_and_send_6xB4x02_if_needed(
       bool always_send = false);
   void set_random_assist_card_from_hand_for_free();
+  G_UpdateShortStatuses_GC_Ep3_6xB4x04 prepare_6xB4x04() const;
   void send_6xB4x04_if_needed(bool always_send = false);
   std::vector<uint16_t> get_card_refs_within_range_from_all_players(
       const parray<uint8_t, 9 * 9>& range,

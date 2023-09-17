@@ -166,6 +166,7 @@ public:
   void move_phase_before();
   void set_player_deck_valid(uint8_t client_id);
   void setup_and_start_battle();
+  G_SetStateFlags_GC_Ep3_6xB4x03 prepare_6xB4x03() const;
   void update_battle_state_flags_and_send_6xB4x03_if_needed(
       bool always_send = false);
   bool update_registration_phase();

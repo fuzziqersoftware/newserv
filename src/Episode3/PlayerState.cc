@@ -1451,10 +1451,7 @@ void PlayerState::subtract_atk_points(uint8_t cost) {
   this->atk_points2 = min<uint8_t>(this->atk_points, this->atk_points2_max);
 }
 
-void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(
-    bool always_send) {
-  auto s = this->server();
-
+G_UpdateHand_GC_Ep3_6xB4x02 PlayerState::prepare_6xB4x02() const {
   G_UpdateHand_GC_Ep3_6xB4x02 cmd;
   cmd.client_id = this->client_id;
   cmd.state.dice_results = this->dice_results;
@@ -1463,7 +1460,7 @@ void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(
   cmd.state.atk_points2 = this->atk_points2;
   cmd.state.unknown_a1 = this->unknown_a14;
   cmd.state.total_set_cards_cost = this->total_set_cards_cost;
-  cmd.state.is_cpu_player = s->presence_entries[this->client_id].is_cpu_player;
+  cmd.state.is_cpu_player = this->server()->presence_entries[this->client_id].is_cpu_player;
   cmd.state.assist_flags = this->assist_flags;
   for (size_t z = 0; z < 6; z++) {
     cmd.state.hand_card_refs[z] = this->card_refs[z];
@@ -1484,9 +1481,15 @@ void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(
   cmd.state.assist_delay_turns = this->assist_delay_turns;
   cmd.state.atk_bonuses = this->atk_bonuses;
   cmd.state.def_bonuses = this->def_bonuses;
+  return cmd;
+}
+
+void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(
+    bool always_send) {
+  auto cmd = this->prepare_6xB4x02();
   if (always_send || memcmp(&this->hand_and_equip, &cmd.state, sizeof(this->hand_and_equip))) {
     *this->hand_and_equip = cmd.state;
-    s->send(cmd);
+    this->server()->send(cmd);
   }
   this->send_6xB4x04_if_needed(always_send);
 }
@@ -1512,9 +1515,7 @@ void PlayerState::set_random_assist_card_from_hand_for_free() {
   }
 }
 
-void PlayerState::send_6xB4x04_if_needed(bool always_send) {
-  auto s = this->server();
-
+G_UpdateShortStatuses_GC_Ep3_6xB4x04 PlayerState::prepare_6xB4x04() const {
   G_UpdateShortStatuses_GC_Ep3_6xB4x04 cmd;
   cmd.client_id = this->client_id;
   // Note: The original code calls memset to clear all the short status structs
@@ -1550,8 +1551,13 @@ void PlayerState::send_6xB4x04_if_needed(bool always_send) {
   }
 
   cmd.card_statuses[15].card_ref = this->card_refs[6];
+  return cmd;
+}
 
+void PlayerState::send_6xB4x04_if_needed(bool always_send) {
+  auto cmd = this->prepare_6xB4x04();
   if (always_send || (cmd.card_statuses != *this->card_short_statuses)) {
+    auto s = this->server();
     *this->card_short_statuses = cmd.card_statuses;
     if (!s->get_should_copy_prev_states_to_current_states()) {
       s->send(cmd);
