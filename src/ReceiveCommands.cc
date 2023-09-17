@@ -3504,6 +3504,7 @@ static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
   if (l->battle_player && (l->flags & Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY)) {
     l->battle_player->start();
   } else if (watched_lobby && watched_lobby->ep3_server) {
+    send_ep3_update_spectator_count(watched_lobby);
     watched_lobby->ep3_server->send_commands_for_joining_spectator(
         c->channel, c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
   }
