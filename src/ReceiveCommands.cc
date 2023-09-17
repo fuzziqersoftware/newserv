@@ -3505,8 +3505,10 @@ static void on_6F(shared_ptr<ServerState> s, shared_ptr<Client> c,
     l->battle_player->start();
   } else if (watched_lobby && watched_lobby->ep3_server) {
     send_ep3_update_spectator_count(watched_lobby);
-    watched_lobby->ep3_server->send_commands_for_joining_spectator(
-        c->channel, c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
+    if (!watched_lobby->ep3_server->battle_finished) {
+      watched_lobby->ep3_server->send_commands_for_joining_spectator(
+          c->channel, c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
+    }
   }
 
   // If there are more players to bring in, try to do so
