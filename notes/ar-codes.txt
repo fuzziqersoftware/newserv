@@ -182,6 +182,14 @@ TODO: Figure out more debug message conditionals (vars/functions) and add them h
 (Ep3 USA) Dressing room always accessible
 041A16FC 38600001
 
+(Ep3 USA) Full dressing room v1 (can't change your class, but you start with your existing appearance)
+0418EB5C 60000000
+(ported from Ralf's Ep1&2 code)
+
+(Ep3 USA) Full dressing room v2 (can change your class, but you start with the default appearance)
+04186ECC 4BFFFFD8
+(ported from Ralf's Ep1&2 code)
+
 (Ep3 USA) Replace Options menu with debug menu
 04149E70 38600019
 
