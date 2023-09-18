@@ -1019,12 +1019,12 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   } __attribute__((packed));
   /* 20F0 */ parray<AIParams, 3> npc_ai_params; // Unused if name[0] == 0
 
-  /* 242C */ parray<uint8_t, 8> unknown_a7; // Always FF?
+  /* 242C */ parray<uint8_t, 8> unknown_a7;
 
-  // This array specifies which set of AI parameters to use from aiprm.dat. If
-  // it's -1, then the corresponding NPC's AI parameters are defined in the
-  // AIParams structure above. The names of the AI parameter sets defined in
-  // aiprm.dat are:
+  // This array specifies which set of predefined AI parameters (in aiprm.dat)
+  // to use for each NPC. If a value in this array is -1 (FFFFFFFF), then the
+  // corresponding NPC's AI parameters are defined in the AIParams structure
+  // above. The names of the AI parameter sets defined in aiprm.dat are:
   // 00 => Sample_Hunter    10 => Endu
   // 01 => Glustar          11 => Heiz
   // 02 => Guykild          12 => KC
@@ -1041,6 +1041,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // 0D => Sample_Dark      1D => Sample_Dark
   // 0E => Break
   // 0F => Creinu
+  // Presumably 0A is meant to be Stella, and they forgot to change the name.
   /* 2434 */ parray<be_int32_t, 3> npc_ai_params_entry_index;
 
   // In story mode, before_message appears before the battle if it's not blank;

@@ -1240,69 +1240,124 @@ void Rules::clear() {
 string Rules::str() const {
   vector<string> tokens;
 
-  tokens.emplace_back(string_printf("char_hp=%hhu", this->char_hp));
+  if (this->char_hp == 0xFF) {
+    tokens.emplace_back("char_hp=(open)");
+  } else {
+    tokens.emplace_back(string_printf("char_hp=%hhu", this->char_hp));
+  }
+
   switch (this->hp_type) {
     case HPType::DEFEAT_PLAYER:
-      tokens.emplace_back("hp_type=DEFEAT_PLAYER");
+      tokens.emplace_back("hp_type=defeat-player");
       break;
     case HPType::DEFEAT_TEAM:
-      tokens.emplace_back("hp_type=DEFEAT_TEAM");
+      tokens.emplace_back("hp_type=defeat-team");
       break;
     case HPType::COMMON_HP:
-      tokens.emplace_back("hp_type=COMMON_HP");
+      tokens.emplace_back("hp_type=common-hp");
       break;
     default:
-      tokens.emplace_back(string_printf("hp_type=(%02hhX)",
-          static_cast<uint8_t>(this->hp_type)));
+      if (static_cast<uint8_t>(this->hp_type) == 0xFF) {
+        tokens.emplace_back("hp_type=(open)");
+      } else {
+        tokens.emplace_back(string_printf("hp_type=(%02hhX)",
+            static_cast<uint8_t>(this->hp_type)));
+      }
       break;
   }
 
-  tokens.emplace_back(string_printf("min_dice=%hhu", this->min_dice));
-  tokens.emplace_back(string_printf("max_dice=%hhu", this->max_dice));
+  if (this->min_dice == 0xFF) {
+    tokens.emplace_back("min_dice=(open)");
+  } else if (this->min_dice == 0x00) {
+    tokens.emplace_back("min_dice=1 (default)");
+  } else {
+    tokens.emplace_back(string_printf("min_dice=%hhu", this->min_dice));
+  }
+  if (this->max_dice == 0xFF) {
+    tokens.emplace_back("max_dice=(open)");
+  } else if (this->max_dice == 0x00) {
+    tokens.emplace_back("max_dice=6 (default)");
+  } else {
+    tokens.emplace_back(string_printf("max_dice=%hhu", this->max_dice));
+  }
+
   switch (this->dice_exchange_mode) {
     case DiceExchangeMode::HIGH_ATK:
-      tokens.emplace_back("dice_exchange=HIGH_ATK");
+      tokens.emplace_back("dice_exchange=high-atk");
       break;
     case DiceExchangeMode::HIGH_DEF:
-      tokens.emplace_back("dice_exchange=HIGH_DEF");
+      tokens.emplace_back("dice_exchange=high-def");
       break;
     case DiceExchangeMode::NONE:
-      tokens.emplace_back("dice_exchange=NONE");
+      tokens.emplace_back("dice_exchange=none");
       break;
     default:
-      tokens.emplace_back(string_printf("dice_exchange=(%02hhX)",
-          static_cast<uint8_t>(this->dice_exchange_mode)));
+      if (static_cast<uint8_t>(this->dice_exchange_mode) == 0xFF) {
+        tokens.emplace_back("dice_exchange=(open)");
+      } else {
+        tokens.emplace_back(string_printf("dice_exchange=(%02hhX)",
+            static_cast<uint8_t>(this->dice_exchange_mode)));
+      }
       break;
   }
-  tokens.emplace_back(string_printf("dice_boost=%s", this->disable_dice_boost ? "DISABLED" : "ENABLED"));
 
-  tokens.emplace_back(string_printf("deck_shuffle=%s", this->disable_deck_shuffle ? "DISABLED" : "ENABLED"));
-  tokens.emplace_back(string_printf("deck_loop=%s", this->disable_deck_loop ? "DISABLED" : "ENABLED"));
+  auto str_for_disable_bool = +[](uint8_t v) -> string {
+    switch (v) {
+      case 0x00:
+        return "on";
+      case 0x01:
+        return "off";
+      case 0xFF:
+        return "(open)";
+      default:
+        return string_printf("(%02hhX)", v);
+    }
+  };
+
+  tokens.emplace_back("dice_boost=" + str_for_disable_bool(this->disable_dice_boost));
+  tokens.emplace_back("deck_shuffle=" + str_for_disable_bool(this->disable_deck_shuffle));
+  tokens.emplace_back("deck_loop=" + str_for_disable_bool(this->disable_deck_loop));
 
   switch (this->allowed_cards) {
     case AllowedCards::ALL:
-      tokens.emplace_back("allowed_cards=ALL");
+      tokens.emplace_back("allowed_cards=all");
       break;
     case AllowedCards::N_ONLY:
-      tokens.emplace_back("allowed_cards=N_ONLY");
+      tokens.emplace_back("allowed_cards=n-only");
       break;
     case AllowedCards::N_R_ONLY:
-      tokens.emplace_back("allowed_cards=N_R_ONLY");
+      tokens.emplace_back("allowed_cards=n-r-only");
       break;
     case AllowedCards::N_R_S_ONLY:
-      tokens.emplace_back("allowed_cards=N_R_S_ONLY");
+      tokens.emplace_back("allowed_cards=n-r-s-only");
       break;
     default:
-      tokens.emplace_back(string_printf("allowed_cards=(%02hhX)",
-          static_cast<uint8_t>(this->allowed_cards)));
+      if (static_cast<uint8_t>(this->allowed_cards) == 0xFF) {
+        tokens.emplace_back("allowed_cards=(open)");
+      } else {
+        tokens.emplace_back(string_printf("allowed_cards=(%02hhX)",
+            static_cast<uint8_t>(this->allowed_cards)));
+      }
       break;
   }
-  tokens.emplace_back(string_printf("assist_cards=%s", this->no_assist_cards ? "DISALLOWED" : "ALLOWED"));
+  tokens.emplace_back("allow_assist_cards=" + str_for_disable_bool(this->no_assist_cards));
 
-  tokens.emplace_back(string_printf("time_limit=%zumin", static_cast<size_t>(this->overall_time_limit * 5)));
-  tokens.emplace_back(string_printf("phase_time_limit=%hhusec", this->phase_time_limit));
+  if (this->overall_time_limit == 0xFF) {
+    tokens.emplace_back("overall_time_limit=(open)");
+  } else if (this->overall_time_limit) {
+    tokens.emplace_back(string_printf("overall_time_limit=%zumin", static_cast<size_t>(this->overall_time_limit * 5)));
+  } else {
+    tokens.emplace_back("overall_time_limit=(infinite)");
+  }
+  if (this->phase_time_limit == 0xFF) {
+    tokens.emplace_back("phase_time_limit=(open)");
+  } else if (this->phase_time_limit) {
+    tokens.emplace_back(string_printf("phase_time_limit=%hhusec", this->phase_time_limit));
+  } else {
+    tokens.emplace_back("phase_time_limit=(infinite)");
+  }
 
-  tokens.emplace_back(string_printf("dialogue=%s", this->disable_dialogue ? "DISABLED" : "ENABLED"));
+  tokens.emplace_back("dialogue=" + str_for_disable_bool(this->disable_dialogue));
 
   return "Rules[" + join(tokens, ", ") + "]";
 }
