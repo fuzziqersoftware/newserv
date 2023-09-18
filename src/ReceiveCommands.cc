@@ -2577,8 +2577,8 @@ static void on_6x_C9_CB(shared_ptr<ServerState> s, shared_ptr<Client> c,
   on_subcommand_multi(s, l, c, command, flag, data);
 }
 
-static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    const u16string& text) {
+static void on_chat_generic(
+    shared_ptr<ServerState> s, shared_ptr<Client> c, const u16string& text) {
 
   if (text.empty()) {
     return;
@@ -2614,13 +2614,20 @@ static void on_chat_generic(shared_ptr<ServerState> s, shared_ptr<Client> c,
     return;
   }
 
+  u16string from_name = c->game_data.player()->disp.name;
   for (size_t x = 0; x < l->max_clients; x++) {
-    if (!l->clients[x]) {
-      continue;
+    if (l->clients[x]) {
+      send_chat_message(l->clients[x], c->license->serial_number,
+          from_name, processed_text.c_str(), private_flags);
     }
-    send_chat_message(l->clients[x], c->license->serial_number,
-        c->game_data.player()->disp.name.data(), processed_text.c_str(),
-        private_flags);
+  }
+  for (const auto& watcher_l : l->watcher_lobbies) {
+    for (size_t x = 0; x < watcher_l->max_clients; x++) {
+      if (watcher_l->clients[x]) {
+        send_chat_message(watcher_l->clients[x], c->license->serial_number,
+            from_name, processed_text.c_str(), private_flags);
+      }
+    }
   }
 
   if (l->battle_record && l->battle_record->battle_in_progress()) {

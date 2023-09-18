@@ -31,12 +31,18 @@ static const unordered_set<uint8_t> watcher_subcommands({
     0x07, // Symbol chat
     0x74, // Word select
     0xBD, // Word select during battle (with private_flags)
+    0xBE, // Sound chat
 });
 
-static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void forward_subcommand(
+    shared_ptr<Lobby> l,
+    shared_ptr<Client> c,
+    uint8_t command,
+    uint8_t flag,
+    const void* data,
+    size_t size) {
 
-  // if the command is an Ep3-only command, make sure an Ep3 client sent it
+  // If the command is an Ep3-only command, make sure an Ep3 client sent it
   bool command_is_ep3 = (command & 0xF0) == 0xC0;
   if (command_is_ep3 && !(c->flags & Client::Flag::IS_EPISODE_3)) {
     return;
@@ -48,9 +54,6 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     }
     auto target = l->clients[flag];
     if (!target) {
-      return;
-    }
-    if (command_is_ep3 && !(target->flags & Client::Flag::IS_EPISODE_3)) {
       return;
     }
     send_command(target, command, flag, data, size);
@@ -69,10 +72,13 @@ static void forward_subcommand(shared_ptr<Lobby> l, shared_ptr<Client> c,
     }
 
     // Before battle, forward only chat commands to watcher lobbies; during
-    // battle, forward everything to watcher lobbies.
-    if (size &&
-        (watcher_subcommands.count(*reinterpret_cast<const uint8_t*>(data) ||
-            (l->ep3_server && l->ep3_server->setup_phase != Episode3::SetupPhase::REGISTRATION)))) {
+    // battle, forward everything to watcher lobbies. (This is necessary because
+    // if we forward everything before battle, the blocking menu subcommands
+    // cause the battle setup menu to appear in the spectator room, which looks
+    // weird and is generally undesirable.)
+    uint8_t subcommand = size ? *reinterpret_cast<const uint8_t*>(data) : 0x00;
+    if ((l->ep3_server && (l->ep3_server->setup_phase != Episode3::SetupPhase::REGISTRATION)) ||
+        watcher_subcommands.count(subcommand)) {
       for (const auto& watcher_lobby : l->watcher_lobbies) {
         forward_subcommand(watcher_lobby, c, command, flag, data, size);
       }
@@ -1148,8 +1154,8 @@ static void on_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<ServerState>,
   }
 }
 
-static void on_bank_action_bb(shared_ptr<ServerState>,
-    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_ep3_private_word_select_bb_bank_action(shared_ptr<ServerState>,
+    shared_ptr<Lobby> l, shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   if (l->version == GameVersion::BB) {
     const auto& cmd = check_size_t<G_BankAction_BB_6xBD>(data, size);
 
@@ -1195,6 +1201,9 @@ static void on_bank_action_bb(shared_ptr<ServerState>,
         send_create_inventory_item(l, c, item.data);
       }
     }
+
+  } else if ((c->version() == GameVersion::GC) && (c->flags & Client::Flag::IS_EPISODE_3)) {
+    forward_subcommand(l, c, command, flag, data, size);
   }
 }
 
@@ -1960,7 +1969,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xBA */ on_accept_identify_item_bb,
     /* 6xBB */ on_open_bank_bb_or_card_trade_counter_ep3,
     /* 6xBC */ on_forward_check_size_ep3_game,
-    /* 6xBD */ on_bank_action_bb,
+    /* 6xBD */ on_ep3_private_word_select_bb_bank_action,
     /* 6xBE */ on_ep3_sound_chat,
     /* 6xBF */ on_forward_check_size_ep3_lobby,
     /* 6xC0 */ on_sell_item_at_shop_bb,
