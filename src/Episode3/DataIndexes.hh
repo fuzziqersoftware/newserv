@@ -864,7 +864,7 @@ struct CompressedMapHeader { // .mnm file format
 } __attribute__((packed));
 
 struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
-  /* 0000 */ be_uint32_t unknown_a1;
+  /* 0000 */ be_uint32_t unknown_a1; // Should be 0x00000100
   /* 0004 */ be_uint32_t map_number; // Must be unique across all maps
   /* 0008 */ uint8_t width;
   /* 0009 */ uint8_t height;
@@ -909,10 +909,8 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // TCard00_Select is accessible on newserv with the $ep3battledebug command.
   /* 000A */ uint8_t environment_number;
 
-  // All alt_maps fields (including the floats) past num_alt_maps are filled in
-  // with FF. For example, if num_alt_maps == 8, the last two fields in each
-  // alt_maps array are filled with FF.
-  /* 000B */ uint8_t num_alt_maps; // TODO: What are the alt maps for?
+  // This field specifies how many of the camera_zone_maps are used.
+  /* 000B */ uint8_t num_camera_zones;
 
   // In the map_tiles array, the values are usually:
   // 00 = not a valid tile (blocked)
@@ -936,9 +934,44 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // - If the team has 3 players, bytes [3] through [5] are used.
   /* 010C */ parray<parray<uint8_t, 6>, 2> start_tile_definitions;
 
-  /* 0118 */ parray<parray<parray<parray<uint8_t, 0x10>, 0x10>, 0x0A>, 2> alt_maps1;
-  /* 1518 */ parray<parray<parray<be_float, 0x12>, 0x0A>, 2> alt_maps_unknown_a3;
-  /* 1AB8 */ parray<parray<be_float, 0x24>, 3> unknown_a4;
+  struct CameraSpec {
+    parray<be_float, 9> unknown_a1;
+    be_float camera_x;
+    be_float camera_y;
+    be_float camera_z;
+    // It appears that the camera always aligns its +Y raster axis with +Y in
+    // the virtual world. If the focus point is directly beneath the camera
+    // point, the logic for deciding which direction should be "up" from the
+    // camera's perspective can get confused and jitter back and forth as the
+    // camera moves into position.
+    be_float focus_x;
+    be_float focus_y;
+    be_float focus_z;
+    parray<be_float, 3> unknown_a2;
+
+    std::string str() const;
+  } __attribute__((packed));
+
+  // This array specifies the camera zone maps. A camera zone map is a subset of
+  // the main map (specified in map_tiles). Tiles that are part of each camera
+  // zone are 1 in these arrays; all other tiles are 0. The game evaluates each
+  // camera zone in order; if all SCs and FCs are within a particular camera
+  // zone, then the corresponding camera location is used as the default camera
+  // location. If the player doesn't move the camera with the C stick, then the
+  // camera zones are evaluated continuously during the battle, and the camera
+  // will move to focus on the part of the field where the SCs/FCs are. (Or,
+  // more accurately, where the corresponding entry in camera_zone_specs says
+  // to focus.) camera_zone_maps is indexed as [team_id][camera_zone_num][x][y];
+  // camera_zone_specs is indexed as [team_id][camera_zone_num]. Unused entries
+  // (beyond num_camera_zones) in both arrays should be filled with FF bytes.
+  /* 0118 */ parray<parray<parray<parray<uint8_t, 0x10>, 0x10>, 10>, 2> camera_zone_maps;
+  /* 1518 */ parray<parray<CameraSpec, 10>, 2> camera_zone_specs;
+  // These camera specs are used in the Move phase, when the player has chosen
+  // an SC or FC to move, or when the player presses Start/Z. Normally these are
+  // defined such that the camera is placed high above the map, giving an
+  // overhead view of the entire playfield. This is indexed as [???][team_id]
+  // (it is not yet known what the major index represents).
+  /* 1AB8 */ parray<parray<CameraSpec, 2>, 3> overview_specs;
 
   // In the modification_tiles array, the values are:
   // 10 = blocked by rock (as if the corresponding map_tiles value was 00)
@@ -971,17 +1004,26 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   } __attribute__((packed));
   /* 1FE8 */ parray<NPCDeck, 3> npc_decks; // Unused if name[0] == 0
 
-  struct NPCCharacter {
+  // These are almost (but not quite) the same format as the entries in
+  // aiprm.dat. Unlike in that file, the name field is relevant here (and is
+  // shown to the player).
+  struct AIParams {
     /* 0000 */ parray<be_uint16_t, 2> unknown_a1;
-    /* 0004 */ parray<uint8_t, 4> unknown_a2;
+    /* 0004 */ uint8_t is_arkz;
+    /* 0005 */ parray<uint8_t, 3> unknown_a2;
     /* 0008 */ ptext<char, 0x10> name;
-    /* 0018 */ parray<be_uint16_t, 0x7E> unknown_a3;
+    // TODO: Figure out exactly how these are used and document here.
+    /* 0018 */ parray<be_uint16_t, 0x7E> params;
     /* 0114 */
   } __attribute__((packed));
-  /* 20F0 */ parray<NPCCharacter, 3> npc_chars; // Unused if name[0] == 0
+  /* 20F0 */ parray<AIParams, 3> npc_ai_params; // Unused if name[0] == 0
 
-  /* 242C */ parray<uint8_t, 8> unknown_a7_a; // Always FF?
-  /* 2434 */ parray<be_uint32_t, 3> unknown_a7_b; // Always FF?
+  /* 242C */ parray<uint8_t, 8> unknown_a7; // Always FF?
+
+  // This array specifies which set of AI parameters to use from aiprm.dat. If
+  // it's -1, then the corresponding NPC's AI parameters are defined in the
+  // NPCCharacter structure above.
+  /* 2434 */ parray<be_int32_t, 3> npc_ai_params_entry_index;
 
   // In story mode, before_message appears before the battle if it's not blank;
   // in free battle and online mode, before_message is ignored. after_message
@@ -1010,14 +1052,16 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 59D0 */ be_int32_t win_level_override;
   /* 59D4 */ be_int32_t loss_level_override;
 
-  /* 59D8 */ be_uint16_t unknown_a9_c;
-  /* 59DA */ be_uint16_t unknown_a9_d;
+  // These fields specify where the battlefield should appear relative to the
+  // center of the environment. THe size of one tile on the field is 25 units
+  // in these fields.
+  /* 59D8 */ be_int16_t field_offset_x;
+  /* 59DA */ be_int16_t field_offset_y;
 
-  // map_category specifies where in the menu the map should appear in the maps
-  // menu. If this is FF, the map appears in the Free Battle section; if it's a
-  // small number (usually 0 or 2), the map appears in the Quest section
-  // instead. It's not known if this controls anything else; the values 0, 1,
-  // and 2 appear to all do the same thing here.
+  // map_category specifies where the map should appear in the maps menu. If
+  // this is 0, 1, or 2, the map appears in the Quest section; otherwise, it
+  // appears in the Free Battle section instead. It's not known if this controls
+  // anything else.
   /* 59DC */ uint8_t map_category;
 
   // This field determines block graphics to be used in the Cyber environment.
@@ -1087,12 +1131,12 @@ struct MapDefinitionTrial {
   /* 0008 */ uint8_t width;
   /* 0009 */ uint8_t height;
   /* 000A */ uint8_t environment_number;
-  /* 000B */ uint8_t num_alt_maps;
+  /* 000B */ uint8_t num_camera_zones;
   /* 000C */ parray<parray<uint8_t, 0x10>, 0x10> map_tiles;
   /* 010C */ parray<parray<uint8_t, 6>, 2> start_tile_definitions;
-  /* 0118 */ parray<parray<parray<parray<uint8_t, 0x10>, 0x10>, 0x0A>, 2> alt_maps1;
-  /* 1518 */ parray<parray<parray<be_float, 0x12>, 0x0A>, 2> alt_maps_unknown_a3;
-  /* 1AB8 */ parray<parray<be_float, 0x24>, 3> unknown_a4;
+  /* 0118 */ parray<parray<parray<parray<uint8_t, 0x10>, 0x10>, 10>, 2> camera_zone_maps;
+  /* 1518 */ parray<parray<MapDefinition::CameraSpec, 10>, 2> camera_zone_specs;
+  /* 1AB8 */ parray<parray<MapDefinition::CameraSpec, 2>, 3> overview_specs;
   /* 1C68 */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
   /* 1D68 */ parray<uint8_t, 0x6C> unknown_a5;
   /* 1DD4 */ Rules default_rules;
@@ -1104,18 +1148,18 @@ struct MapDefinitionTrial {
   /* 1FDC */ be_uint16_t map_x;
   /* 1FDE */ be_uint16_t map_y;
   /* 1FE0 */ parray<MapDefinition::NPCDeck, 3> npc_decks;
-  /* 20E8 */ parray<MapDefinition::NPCCharacter, 3> npc_chars;
-  /* 2424 */ parray<uint8_t, 8> unknown_a7_a;
-  /* 242C */ parray<be_uint32_t, 3> unknown_a7_b;
+  /* 20E8 */ parray<MapDefinition::AIParams, 3> npc_ai_params;
+  /* 2424 */ parray<uint8_t, 8> unknown_a7;
+  /* 242C */ parray<be_int32_t, 3> npc_ai_params_entry_index;
   /* 2438 */ ptext<char, 0x190> before_message;
   /* 25C8 */ ptext<char, 0x190> after_message;
   /* 2758 */ ptext<char, 0x190> dispatch_message;
   /* 28E8 */ parray<parray<MapDefinition::DialogueSet, 8>, 3> dialogue_sets;
   /* 4148 */ parray<be_uint16_t, 0x10> reward_card_ids;
-  /* 4168 */ be_uint32_t win_level_override;
-  /* 416C */ be_uint32_t loss_level_override;
-  /* 4170 */ be_uint16_t unknown_a9_c;
-  /* 4172 */ be_uint16_t unknown_a9_d;
+  /* 4168 */ be_int32_t win_level_override;
+  /* 416C */ be_int32_t loss_level_override;
+  /* 4170 */ be_int16_t field_offset_x;
+  /* 4172 */ be_int16_t field_offset_y;
   /* 4174 */ uint8_t map_category;
   /* 4175 */ uint8_t cyber_block_type;
   /* 4176 */ parray<uint8_t, 2> unknown_a11;
