@@ -680,13 +680,17 @@ static void server_command_password(shared_ptr<ServerState>, shared_ptr<Lobby> l
   }
 }
 
-static void server_command_spec(shared_ptr<ServerState>, shared_ptr<Lobby> l,
+static void server_command_toggle_spectator_flag(shared_ptr<ServerState>, shared_ptr<Lobby> l,
     shared_ptr<Client> c, const std::u16string&) {
   check_is_game(l, true);
   check_is_leader(l, c);
   check_is_ep3(c, true);
   if (!l->is_ep3()) {
     throw logic_error("Episode 3 client in non-Episode 3 game");
+  }
+
+  if (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
+    send_text_message(c, u"$C6This command cannot\nbe used in a spectator\nteam");
   }
 
   if (l->flags & Lobby::Flag::SPECTATORS_FORBIDDEN) {
@@ -1373,7 +1377,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$secid", {server_command_secid, proxy_command_secid}},
     {u"$silence", {server_command_silence, nullptr}},
     {u"$song", {server_command_song, proxy_command_song}},
-    {u"$spec", {server_command_spec, nullptr}},
+    {u"$spec", {server_command_toggle_spectator_flag, nullptr}},
     {u"$ss", {nullptr, proxy_command_send_server}},
     {u"$surrender", {server_command_surrender, nullptr}},
     {u"$swa", {server_command_switch_assist, proxy_command_switch_assist}},
