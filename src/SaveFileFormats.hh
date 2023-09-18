@@ -282,6 +282,8 @@ struct PSOGCSnapshotFile {
   /* 00000 */ be_uint32_t checksum;
   /* 00004 */ be_uint16_t width;
   /* 00006 */ be_uint16_t height;
+  // Pixels are stored as 4x4 blocks of RGB565 values. See the implementation
+  // of decode_image for details.
   /* 00008 */ parray<be_uint16_t, 0xC000> pixels;
   /* 18008 */ uint8_t unknown_a1; // Always 0x18?
   /* 18009 */ uint8_t unknown_a2;

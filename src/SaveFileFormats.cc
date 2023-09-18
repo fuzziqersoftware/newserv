@@ -123,8 +123,8 @@ bool PSOGCSnapshotFile::checksum_correct() const {
 }
 
 static uint32_t decode_rgb565(uint16_t c) {
-  // Input:                    rrrrrggg gggbbbbb
-  // Output: rrrrrrrr gggggggg bbbbbbbb aaaaaaaa
+  // Input bits:                    rrrrrggg gggbbbbb
+  // Output bits: rrrrrrrr gggggggg bbbbbbbb aaaaaaaa
   return ((c << 16) & 0xF8000000) | ((c << 11) & 0x07000000) | // R
       ((c << 13) & 0x00FC0000) | ((c << 7) & 0x00030000) | // G
       ((c << 11) & 0x0000F800) | ((c << 6) & 0x00000700) | // B
