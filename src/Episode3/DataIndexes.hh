@@ -1005,8 +1005,9 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 1FE8 */ parray<NPCDeck, 3> npc_decks; // Unused if name[0] == 0
 
   // These are almost (but not quite) the same format as the entries in
-  // aiprm.dat. Unlike in that file, the name field is relevant here (and is
-  // shown to the player).
+  // aiprm.dat. These entries are only used if the corresponding NPC exists
+  // (if .name[0] is not 0) and if the corresponding entry in the
+  // npc_ai_params_entry_index is -1.
   struct AIParams {
     /* 0000 */ parray<be_uint16_t, 2> unknown_a1;
     /* 0004 */ uint8_t is_arkz;
@@ -1022,7 +1023,24 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
   // This array specifies which set of AI parameters to use from aiprm.dat. If
   // it's -1, then the corresponding NPC's AI parameters are defined in the
-  // NPCCharacter structure above.
+  // AIParams structure above. The names of the AI parameter sets defined in
+  // aiprm.dat are:
+  // 00 => Sample_Hunter    10 => Endu
+  // 01 => Glustar          11 => Heiz
+  // 02 => Guykild          12 => KC
+  // 03 => Inolis           13 => Lura
+  // 04 => Kilia            14 => memoru
+  // 05 => Kranz            15 => Ohgun
+  // 06 => Orland           16 => Peko
+  // 07 => Relmitos         17 => Reiz
+  // 08 => Saligun          18 => Rio
+  // 09 => Silfer           19 => Rufina
+  // 0A => Sample_Hunter    1A => LKnight
+  // 0B => Teifu            1B => Boss_Castor
+  // 0C => Viviana          1C => Boss_Pollux
+  // 0D => Sample_Dark      1D => Sample_Dark
+  // 0E => Break
+  // 0F => Creinu
   /* 2434 */ parray<be_int32_t, 3> npc_ai_params_entry_index;
 
   // In story mode, before_message appears before the battle if it's not blank;
@@ -1052,9 +1070,9 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 59D0 */ be_int32_t win_level_override;
   /* 59D4 */ be_int32_t loss_level_override;
 
-  // These fields specify where the battlefield should appear relative to the
-  // center of the environment. THe size of one tile on the field is 25 units
-  // in these fields.
+  // The field offsets specify where the battlefield should appear relative to
+  // the center of the environment. The size of one tile on the field is 25
+  // units in these fields.
   /* 59D8 */ be_int16_t field_offset_x;
   /* 59DA */ be_int16_t field_offset_y;
 
