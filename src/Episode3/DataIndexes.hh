@@ -935,19 +935,20 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 010C */ parray<parray<uint8_t, 6>, 2> start_tile_definitions;
 
   struct CameraSpec {
-    parray<be_float, 9> unknown_a1;
-    be_float camera_x;
-    be_float camera_y;
-    be_float camera_z;
+    /* 00 */ parray<be_float, 9> unknown_a1;
+    /* 24 */ be_float camera_x;
+    /* 28 */ be_float camera_y;
+    /* 2C */ be_float camera_z;
     // It appears that the camera always aligns its +Y raster axis with +Y in
     // the virtual world. If the focus point is directly beneath the camera
     // point, the logic for deciding which direction should be "up" from the
     // camera's perspective can get confused and jitter back and forth as the
     // camera moves into position.
-    be_float focus_x;
-    be_float focus_y;
-    be_float focus_z;
-    parray<be_float, 3> unknown_a2;
+    /* 30 */ be_float focus_x;
+    /* 34 */ be_float focus_y;
+    /* 38 */ be_float focus_z;
+    /* 3C */ parray<be_float, 3> unknown_a2;
+    /* 48 */
 
     std::string str() const;
   } __attribute__((packed));
