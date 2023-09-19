@@ -13,6 +13,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "../PlayerSubordinates.hh"
 #include "../Text.hh"
 
 namespace Episode3 {
@@ -761,10 +762,7 @@ struct PlayerConfig {
   // This visual config is copied to the player's main visual config when the
   // player's name or proportions have changed, or when certain buttons on the
   // controller (L, R, X, Y) are held at game start time.
-  // This field's type is incorrect because Player.hh depends on this file, so
-  // we cannot #include "Player.hh" to use the PlayerVisualConfig struct here.
-  // TODO: Break the dependency cycle and use the correct type here.
-  /* 2274 */ parray<uint8_t, 0x50> backup_visual;
+  /* 2274 */ PlayerVisualConfig backup_visual;
   /* 22C4 */ parray<uint8_t, 0x8C> unknown_a14;
   /* 2350 */
 
