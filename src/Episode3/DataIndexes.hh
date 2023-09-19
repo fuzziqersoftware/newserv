@@ -719,9 +719,26 @@ struct PlayerConfig {
   // intended to use 20 as the stride instead of 50, which would have exactly
   // covered the entire card_counts array.
   /* 0540 */ parray<be_uint16_t, 50> card_count_checksums;
-  // Yes, these are actually 64-bit integers. They include card IDs and some
-  // other data, encoded in a way I don't fully understand yet.
-  /* 05A4 */ parray<be_uint64_t, 0x1C2> unknown_a5;
+  // These 64-bit integers encode information about when rare cards (those with
+  // ranks S, SS, E, or D2) were obtained. Each integer contains the following
+  // fields:
+  //   ???????? PPPPPPPP PPPPVVVV VVVVVVVV VVVVVVVV VVVVVVVV VVVVVVVV VVVVVVVV
+  // The meaning of the high byte is unknown, but it is not used by the decoding
+  // function. P is a prime number between 1009 (0x3F1) and 2039 (0x7F7),
+  // inclusive. V is a 44-bit integer that, when modulated by P, yields the card
+  // ID (that is, V % P == card_id). When a non-rare card is obtained or lost,
+  // the game just increments or decrements the value in the card_counts array
+  // above, but when a rare card is obtained or lost, the game adds or removes a
+  // token in rare_tokens and recomputes the count for that card by scanning and
+  // decoding all rare tokens. It then writes that count to card_counts.
+  // This seems to be an anti-cheating measure specifically targeted at memory
+  // editing - the server could verify that the count in card_counts is correct
+  // for rare cards by counting the valid tokens in this array. (Sega seemed
+  // fairly concerned with memory editing in general in this game, since the
+  // card counts array is encrypted in memory most of the time, and they went
+  // out of their way to ensure the game uses an area of memory that almost no
+  // other game uses, which is also used by the Action Replay.)
+  /* 05A4 */ parray<be_uint64_t, 0x1C2> rare_tokens;
   /* 13B4 */ parray<uint8_t, 0x80> unknown_a7;
   /* 1434 */ parray<DeckDefinition, 25> decks;
   /* 2118 */ parray<uint8_t, 0x08> unknown_a8;
@@ -732,11 +749,23 @@ struct PlayerConfig {
     /* 04 */ ptext<char, 0x18> player_name;
   } __attribute__((packed));
   // TODO: What do these player references mean? When are entries added to or
-  // removed from this list?
-  /* 2128 */ parray<PlayerReference, 9> unknown_a9;
-  /* 2224 */ parray<uint8_t, 0x50> unknown_a10;
-  /* 2274 */ ptext<char, 0x10> name;
-  /* 2284 */ parray<uint8_t, 0xCC> unknown_a11;
+  // removed from this list? It appears to happen sometime during processing of
+  // the 6xB4x05 on the client, but the exact conditions aren't yet clear.
+  /* 2128 */ parray<PlayerReference, 10> unknown_a9;
+  /* 2240 */ parray<uint8_t, 0x28> unknown_a10;
+  // TODO: These three fields are timestamps, but it's not clear what they're
+  // used for.
+  /* 2268 */ be_uint32_t unknown_t1;
+  /* 226C */ be_uint32_t unknown_t2;
+  /* 2270 */ be_uint32_t unknown_t3;
+  // This visual config is copied to the player's main visual config when the
+  // player's name or proportions have changed, or when certain buttons on the
+  // controller (L, R, X, Y) are held at game start time.
+  // This field's type is incorrect because Player.hh depends on this file, so
+  // we cannot #include "Player.hh" to use the PlayerVisualConfig struct here.
+  // TODO: Break the dependency cycle and use the correct type here.
+  /* 2274 */ parray<uint8_t, 0x50> backup_visual;
+  /* 22C4 */ parray<uint8_t, 0x8C> unknown_a14;
   /* 2350 */
 
   void decrypt();
