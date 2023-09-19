@@ -691,26 +691,32 @@ struct DeckDefinition {
 } __attribute__((packed));
 
 struct PlayerConfig {
-  // TODO: Fill in the unknown fields here by looking around callsites of
-  // get_player_data_segment
-  /* 0000 */ ptext<char, 12> rank_text; // From B7 command
-  /* 000C */ parray<uint8_t, 0x1C> unknown_a1;
-  /* 0028 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
-  /* 0050 */ parray<be_uint32_t, 10> choice_search_config;
-  /* 0078 */ parray<be_uint32_t, 0x30> scenario_progress;
-  /* 0138 */ be_uint16_t unknown_a2;
-  /* 013A */ be_uint16_t unknown_a3;
-  /* 013C */ parray<uint8_t, 0x18> unknown_a4;
-  /* 0154 */ uint8_t is_encrypted;
-  /* 0155 */ uint8_t basis;
-  /* 0156 */ parray<uint8_t, 2> unused;
+  // The game splits this internally into two structures. The first column of
+  // offsets is relative to the start of the first structure; the second column
+  // is relative to the start of the second structure.
+  /* 0000:---- */ ptext<char, 12> rank_text; // From B7 command
+  /* 000C:---- */ parray<uint8_t, 0x1C> unknown_a1;
+  /* 0028:---- */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
+  /* 0050:---- */ parray<be_uint32_t, 10> choice_search_config;
+  /* 0078:---- */ parray<be_uint32_t, 0x30> scenario_progress;
+  // place_counts[0] and [1] from this field are added to the player's win and
+  // loss count respectively when they're shown in the status menu. However,
+  // these values start at 0 and never seem to be modified. Perhaps in an
+  // earlier version, this was the offline records structure, but they later
+  // decided to just count online and offline records together in the main
+  // records structure and didn't remove the codepath that reads from this.
+  /* 0138:---- */ PlayerRecords_Battle<true> unused_offline_records;
+  /* 0150:---- */ parray<uint8_t, 4> unknown_a4;
+  /* 0154:0000 */ uint8_t is_encrypted;
+  /* 0155:0001 */ uint8_t basis;
+  /* 0156:0002 */ parray<uint8_t, 2> unused;
   // The following fields (here through the beginning of decks) are encrypted
   // using the trivial algorithm, with the basis specified above, if
   // is_encrypted is equal to 1.
   // It appears the card counts field in this structure is actually 1000 (0x3E8)
   // bytes long, even though in every other place the counts array appears it's
   // 0x2F0 bytes long. They presumably did this because of the checksum logic.
-  /* 0158 */ parray<uint8_t, 1000> card_counts;
+  /* 0158:0004 */ parray<uint8_t, 1000> card_counts;
   // These appear to be an attempt at checksumming the card counts array, but
   // the algorithm doesn't cover the entire array and instead reads from later
   // parts of this structure. This appears to be due to a copy/paste error in
@@ -719,7 +725,7 @@ struct PlayerConfig {
   // [69] and puts the result in card_count_checksums[1], etc. Presumably they
   // intended to use 20 as the stride instead of 50, which would have exactly
   // covered the entire card_counts array.
-  /* 0540 */ parray<be_uint16_t, 50> card_count_checksums;
+  /* 0540:03EC */ parray<be_uint16_t, 50> card_count_checksums;
   // These 64-bit integers encode information about when rare cards (those with
   // ranks S, SS, E, or D2) were obtained. Each integer contains the following
   // fields:
@@ -739,12 +745,12 @@ struct PlayerConfig {
   // card counts array is encrypted in memory most of the time, and they went
   // out of their way to ensure the game uses an area of memory that almost no
   // other game uses, which is also used by the Action Replay.)
-  /* 05A4 */ parray<be_uint64_t, 0x1C2> rare_tokens;
-  /* 13B4 */ parray<uint8_t, 0x80> unknown_a7;
-  /* 1434 */ parray<DeckDefinition, 25> decks;
-  /* 2118 */ parray<uint8_t, 0x08> unknown_a8;
-  /* 2120 */ be_uint32_t offline_clv_exp; // CLvOff = this / 100
-  /* 2124 */ be_uint32_t online_clv_exp; // CLvOn = this / 100
+  /* 05A4:0450 */ parray<be_uint64_t, 0x1C2> rare_tokens;
+  /* 13B4:1260 */ parray<uint8_t, 0x80> unknown_a7;
+  /* 1434:12E0 */ parray<DeckDefinition, 25> decks;
+  /* 2118:1FC4 */ parray<uint8_t, 0x08> unknown_a8;
+  /* 2120:1FCC */ be_uint32_t offline_clv_exp; // CLvOff = this / 100
+  /* 2124:1FD0 */ be_uint32_t online_clv_exp; // CLvOn = this / 100
   struct PlayerReference {
     /* 00 */ be_uint32_t guild_card_number;
     /* 04 */ ptext<char, 0x18> player_name;
@@ -752,19 +758,19 @@ struct PlayerConfig {
   // TODO: What do these player references mean? When are entries added to or
   // removed from this list? It appears to happen sometime during processing of
   // the 6xB4x05 on the client, but the exact conditions aren't yet clear.
-  /* 2128 */ parray<PlayerReference, 10> unknown_a9;
-  /* 2240 */ parray<uint8_t, 0x28> unknown_a10;
+  /* 2128:1FD4 */ parray<PlayerReference, 10> unknown_a9;
+  /* 2240:20EC */ parray<uint8_t, 0x28> unknown_a10;
   // TODO: These three fields are timestamps, but it's not clear what they're
   // used for.
-  /* 2268 */ be_uint32_t unknown_t1;
-  /* 226C */ be_uint32_t unknown_t2;
-  /* 2270 */ be_uint32_t unknown_t3;
+  /* 2268:2114 */ be_uint32_t unknown_t1;
+  /* 226C:2118 */ be_uint32_t unknown_t2;
+  /* 2270:211C */ be_uint32_t unknown_t3;
   // This visual config is copied to the player's main visual config when the
   // player's name or proportions have changed, or when certain buttons on the
   // controller (L, R, X, Y) are held at game start time.
-  /* 2274 */ PlayerVisualConfig backup_visual;
-  /* 22C4 */ parray<uint8_t, 0x8C> unknown_a14;
-  /* 2350 */
+  /* 2274:2120 */ PlayerVisualConfig backup_visual;
+  /* 22C4:2170 */ parray<uint8_t, 0x8C> unknown_a14;
+  /* 2350:21FC */
 
   void decrypt();
   void encrypt(uint8_t basis);
