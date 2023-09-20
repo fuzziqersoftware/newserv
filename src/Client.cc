@@ -73,12 +73,12 @@ Client::Client(
           event_free),
       send_ping_event(
           event_new(
-              bufferevent_get_base(bev), -1, EV_TIMEOUT | EV_PERSIST,
+              bufferevent_get_base(bev), -1, EV_TIMEOUT,
               &Client::dispatch_send_ping, this),
           event_free),
       idle_timeout_event(
           event_new(
-              bufferevent_get_base(bev), -1, EV_TIMEOUT | EV_PERSIST,
+              bufferevent_get_base(bev), -1, EV_TIMEOUT,
               &Client::dispatch_idle_timeout, this),
           event_free),
       card_battle_table_number(-1),
