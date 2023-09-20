@@ -234,7 +234,11 @@ void Client::send_ping() {
   this->log.info("Sending ping command");
   // The game doesn't use this timestamp; we only use it for debugging purposes
   be_uint64_t timestamp = now();
-  this->channel.send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
+  try {
+    this->channel.send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
+  } catch (const exception& e) {
+    this->log.info("Failed to send ping: %s", e.what());
+  }
 }
 
 void Client::dispatch_idle_timeout(evutil_socket_t, short, void* ctx) {
