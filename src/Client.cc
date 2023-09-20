@@ -245,7 +245,8 @@ void Client::idle_timeout() {
   this->log.info("Idle timeout expired");
   auto s = this->server.lock();
   if (s) {
-    s->disconnect_client(this->shared_from_this());
+    auto c = this->shared_from_this();
+    s->disconnect_client(c);
   } else {
     this->log.info("Server is deleted; cannot disconnect client");
   }
