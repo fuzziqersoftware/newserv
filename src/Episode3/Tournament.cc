@@ -660,7 +660,7 @@ void Tournament::start() {
   }
 }
 
-void Tournament::send_all_state_updates(shared_ptr<ServerState> s) const {
+void Tournament::send_all_state_updates() const {
   for (const auto& team : this->teams) {
     for (const auto& player : team->players) {
       auto c = player.client.lock();
@@ -671,7 +671,7 @@ void Tournament::send_all_state_updates(shared_ptr<ServerState> s) const {
           (c->flags & Client::Flag::IS_EPISODE_3) &&
           !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION) &&
           (c->ep3_tournament_team.lock() == team)) {
-        send_ep3_confirm_tournament_entry(s, c, this->shared_from_this());
+        send_ep3_confirm_tournament_entry(c, this->shared_from_this());
       }
     }
   }
@@ -685,7 +685,7 @@ void Tournament::send_all_state_updates_on_deletion() const {
           (c->flags & Client::Flag::IS_EPISODE_3) &&
           !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION) &&
           (c->ep3_tournament_team.lock() == team)) {
-        send_ep3_confirm_tournament_entry(nullptr, c, nullptr);
+        send_ep3_confirm_tournament_entry(c, nullptr);
       }
     }
   }
@@ -874,7 +874,7 @@ shared_ptr<Tournament::Team> TournamentIndex::team_for_serial_number(uint32_t se
   return nullptr;
 }
 
-void TournamentIndex::link_client(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+void TournamentIndex::link_client(shared_ptr<Client> c) {
   if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
     return;
   }
@@ -887,7 +887,7 @@ void TournamentIndex::link_client(shared_ptr<ServerState> s, shared_ptr<Client> 
         c->ep3_tournament_team = team;
         player.client = c;
         if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
-          send_ep3_confirm_tournament_entry(s, c, tourn);
+          send_ep3_confirm_tournament_entry(c, tourn);
         }
         return;
       }
@@ -896,14 +896,14 @@ void TournamentIndex::link_client(shared_ptr<ServerState> s, shared_ptr<Client> 
   } else {
     c->ep3_tournament_team.reset();
     if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
-      send_ep3_confirm_tournament_entry(s, c, nullptr);
+      send_ep3_confirm_tournament_entry(c, nullptr);
     }
   }
 }
 
 void TournamentIndex::link_all_clients(std::shared_ptr<ServerState> s) {
   for (const auto& c_it : s->channel_to_client) {
-    this->link_client(s, c_it.second);
+    this->link_client(c_it.second);
   }
 }
 

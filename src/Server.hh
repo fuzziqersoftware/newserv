@@ -10,7 +10,7 @@
 #include "Client.hh"
 #include "ServerState.hh"
 
-class Server {
+class Server : public std::enable_shared_from_this<Server> {
 public:
   Server() = delete;
   Server(const Server&) = delete;
@@ -27,11 +27,16 @@ public:
   void connect_client(struct bufferevent* bev, uint32_t address,
       uint16_t client_port, uint16_t server_port,
       GameVersion version, ServerBehavior initial_state);
+  void disconnect_client(std::shared_ptr<Client> c);
 
   std::shared_ptr<Client> get_client() const;
   std::vector<std::shared_ptr<Client>> get_clients_by_identifier(
       const std::string& ident) const;
   std::shared_ptr<struct event_base> get_base() const;
+
+  inline std::shared_ptr<ServerState> get_state() const {
+    return this->state;
+  }
 
 private:
   std::shared_ptr<struct event_base> base;
@@ -63,8 +68,6 @@ private:
   static void dispatch_on_listen_accept(struct evconnlistener* listener,
       evutil_socket_t fd, struct sockaddr* address, int socklen, void* ctx);
   static void dispatch_on_listen_error(struct evconnlistener* listener, void* ctx);
-
-  void disconnect_client(std::shared_ptr<Client> c);
 
   void on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd,
       struct sockaddr* address, int socklen);

@@ -188,8 +188,7 @@ prepare_server_init_contents_bb(
   return cmd;
 }
 
-void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
-    uint8_t flags) {
+void send_server_init_bb(shared_ptr<Client> c, uint8_t flags) {
   bool use_secondary_message = (flags & SendServerInitFlag::USE_SECONDARY_MESSAGE);
   parray<uint8_t, 0x30> server_key;
   parray<uint8_t, 0x30> client_key;
@@ -201,7 +200,7 @@ void send_server_init_bb(shared_ptr<ServerState> s, shared_ptr<Client> c,
   static const string primary_expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
   static const string secondary_expected_first_data("\xDC\x00\xDB\x00\x00\x00\x00\x00", 8);
   shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt(new PSOBBMultiKeyDetectorEncryption(
-      s->bb_private_keys,
+      c->require_server_state()->bb_private_keys,
       bb_crypt_initial_client_commands,
       cmd.basic_cmd.client_key.data(),
       sizeof(cmd.basic_cmd.client_key)));
@@ -225,8 +224,7 @@ void send_server_init_patch(shared_ptr<Client> c) {
   c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
 }
 
-void send_server_init(
-    shared_ptr<ServerState> s, shared_ptr<Client> c, uint8_t flags) {
+void send_server_init(shared_ptr<Client> c, uint8_t flags) {
   switch (c->version()) {
     case GameVersion::DC:
     case GameVersion::PC:
@@ -238,7 +236,7 @@ void send_server_init(
       send_server_init_patch(c);
       break;
     case GameVersion::BB:
-      send_server_init_bb(s, c, flags);
+      send_server_init_bb(c, flags);
       break;
     default:
       throw logic_error("unimplemented versioned command");
@@ -291,12 +289,11 @@ void send_quest_open_file_t(
   send_command_t(c, command_num, 0x00, cmd);
 }
 
-void send_quest_buffer_overflow(
-    shared_ptr<ServerState> s, shared_ptr<Client> c) {
+void send_quest_buffer_overflow(shared_ptr<Client> c) {
   // PSO Episode 3 USA doesn't natively support the B2 command, but we can add
   // it back to the game with some tricky commands. For details on how this
   // works, see system/ppc/Episode3USAQuestBufferOverflow.s.
-  auto fn = s->function_code_index->name_to_function.at("Episode3USAQuestBufferOverflow");
+  auto fn = c->require_server_state()->function_code_index->name_to_function.at("Episode3USAQuestBufferOverflow");
   if (fn->code.size() > 0x400) {
     throw runtime_error("Episode 3 buffer overflow code must be a single segment");
   }
@@ -317,7 +314,9 @@ void send_quest_buffer_overflow(
 
 void empty_function_call_response_handler(uint32_t, uint32_t) {}
 
-void prepare_client_for_patches(shared_ptr<ServerState> s, shared_ptr<Client> c, std::function<void()> on_complete) {
+void prepare_client_for_patches(shared_ptr<Client> c, std::function<void()> on_complete) {
+  auto s = c->require_server_state();
+
   auto send_version_detect = [s, wc = weak_ptr<Client>(c), on_complete]() -> void {
     auto c = wc.lock();
     if (!c) {
@@ -326,7 +325,11 @@ void prepare_client_for_patches(shared_ptr<ServerState> s, shared_ptr<Client> c,
     if (c->version() == GameVersion::GC &&
         c->specific_version == default_specific_version_for_version(GameVersion::GC, -1)) {
       send_function_call(c, s->function_code_index->name_to_function.at("VersionDetect"));
-      c->function_call_response_queue.emplace_back([s, c, on_complete](uint32_t specific_version, uint32_t) -> void {
+      c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c), on_complete](uint32_t specific_version, uint32_t) -> void {
+        auto c = wc.lock();
+        if (!c) {
+          return;
+        }
         c->specific_version = specific_version;
         c->log.info("Version detected as %08" PRIX32, c->specific_version);
         on_complete();
@@ -911,8 +914,9 @@ void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number,
 // info board
 
 template <typename CharT>
-void send_info_board_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+void send_info_board_t(shared_ptr<Client> c) {
   vector<S_InfoBoardEntry_D8<CharT>> entries;
+  auto l = c->require_lobby();
   for (const auto& c : l->clients) {
     if (!c.get()) {
       continue;
@@ -925,22 +929,22 @@ void send_info_board_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   send_command_vt(c, 0xD8, entries.size(), entries);
 }
 
-void send_info_board(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+void send_info_board(shared_ptr<Client> c) {
   if (c->version() == GameVersion::PC ||
       c->version() == GameVersion::PATCH ||
       c->version() == GameVersion::BB) {
-    send_info_board_t<char16_t>(c, l);
+    send_info_board_t<char16_t>(c);
   } else {
-    send_info_board_t<char>(c, l);
+    send_info_board_t<char>(c);
   }
 }
 
 template <typename CommandHeaderT, typename CharT>
 void send_card_search_result_t(
-    shared_ptr<ServerState> s,
     shared_ptr<Client> c,
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
+  auto s = c->require_server_state();
   const auto& port_name = version_to_lobby_port_name.at(static_cast<size_t>(c->version()));
 
   S_GuildCardSearchResult<CommandHeaderT, CharT> cmd;
@@ -969,28 +973,24 @@ void send_card_search_result_t(
   }
   cmd.location_string = location_string;
   cmd.extension.lobby_refs[0].menu_id = MenuID::LOBBY;
-  cmd.extension.lobby_refs[0].item_id = result->lobby_id;
+  cmd.extension.lobby_refs[0].item_id = result_lobby->lobby_id;
   cmd.extension.player_name = result->game_data.player()->disp.name;
 
   send_command_t(c, 0x41, 0x00, cmd);
 }
 
 void send_card_search_result(
-    shared_ptr<ServerState> s,
     shared_ptr<Client> c,
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
   if ((c->version() == GameVersion::DC) ||
       (c->version() == GameVersion::GC) ||
       (c->version() == GameVersion::XB)) {
-    send_card_search_result_t<PSOCommandHeaderDCV3, char>(
-        s, c, result, result_lobby);
+    send_card_search_result_t<PSOCommandHeaderDCV3, char>(c, result, result_lobby);
   } else if (c->version() == GameVersion::PC) {
-    send_card_search_result_t<PSOCommandHeaderPC, char16_t>(
-        s, c, result, result_lobby);
+    send_card_search_result_t<PSOCommandHeaderPC, char16_t>(c, result, result_lobby);
   } else if (c->version() == GameVersion::BB) {
-    send_card_search_result_t<PSOCommandHeaderBB, char16_t>(
-        s, c, result, result_lobby);
+    send_card_search_result_t<PSOCommandHeaderBB, char16_t>(c, result, result_lobby);
   } else {
     throw logic_error("unimplemented versioned command");
   }
@@ -1164,9 +1164,10 @@ void send_menu(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info_m
 template <typename CharT>
 void send_game_menu_t(
     shared_ptr<Client> c,
-    shared_ptr<ServerState> s,
     bool is_spectator_team_list,
     bool show_tournaments_only) {
+  auto s = c->require_server_state();
+
   vector<S_GameMenuEntry<CharT>> entries;
   {
     auto& e = entries.emplace_back();
@@ -1258,15 +1259,14 @@ void send_game_menu_t(
 
 void send_game_menu(
     shared_ptr<Client> c,
-    shared_ptr<ServerState> s,
     bool is_spectator_team_list,
     bool show_tournaments_only) {
   if ((c->version() == GameVersion::DC) ||
       (c->version() == GameVersion::GC) ||
       (c->version() == GameVersion::XB)) {
-    send_game_menu_t<char>(c, s, is_spectator_team_list, show_tournaments_only);
+    send_game_menu_t<char>(c, is_spectator_team_list, show_tournaments_only);
   } else {
-    send_game_menu_t<char16_t>(c, s, is_spectator_team_list, show_tournaments_only);
+    send_game_menu_t<char16_t>(c, is_spectator_team_list, show_tournaments_only);
   }
 }
 
@@ -1352,11 +1352,12 @@ void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
   }
 }
 
-void send_lobby_list(shared_ptr<Client> c, shared_ptr<ServerState> s) {
+void send_lobby_list(shared_ptr<Client> c) {
   // This command appears to be deprecated, as PSO expects it to be exactly how
   // this server sends it, and does not react if it's different, except by
   // changing the lobby IDs.
 
+  auto s = c->require_server_state();
   vector<S_LobbyListEntry_83> entries;
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
     if (!(l->flags & Lobby::Flag::DEFAULT)) {
@@ -1962,8 +1963,8 @@ static vector<G_UpdatePlayerStat_6x9A> generate_stats_change_subcommands(
   return subs;
 }
 
-void send_player_stats_change(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    PlayerStatsChange stat, uint32_t amount) {
+void send_player_stats_change(shared_ptr<Client> c, PlayerStatsChange stat, uint32_t amount) {
+  auto l = c->require_lobby();
   auto subs = generate_stats_change_subcommands(c->lobby_client_id, stat, amount);
   send_command_vt(l, (subs.size() > 0x400 / sizeof(G_UpdatePlayerStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
@@ -2047,16 +2048,15 @@ void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
   }
 }
 
-void send_pick_up_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    uint32_t item_id, uint8_t area) {
+void send_pick_up_item(shared_ptr<Client> c, uint32_t item_id, uint8_t area) {
+  auto l = c->require_lobby();
   uint16_t client_id = c->lobby_client_id;
-  G_PickUpItem_6x59 cmd = {
-      {0x59, 0x03, client_id}, client_id, area, item_id};
+  G_PickUpItem_6x59 cmd = {{0x59, 0x03, client_id}, client_id, area, item_id};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    const ItemData& item) {
+void send_create_inventory_item(shared_ptr<Client> c, const ItemData& item) {
+  auto l = c->require_lobby();
   if (c->version() != GameVersion::BB) {
     throw logic_error("6xBE can only be sent to BB clients");
   }
@@ -2065,14 +2065,15 @@ void send_create_inventory_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-void send_destroy_item(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    uint32_t item_id, uint32_t amount) {
+void send_destroy_item(shared_ptr<Client> c, uint32_t item_id, uint32_t amount) {
+  auto l = c->require_lobby();
   uint16_t client_id = c->lobby_client_id;
   G_DeleteInventoryItem_6x29 cmd = {{0x29, 0x03, client_id}, item_id, amount};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-void send_item_identify_result(shared_ptr<Lobby> l, shared_ptr<Client> c) {
+void send_item_identify_result(shared_ptr<Client> c) {
+  auto l = c->require_lobby();
   if (c->version() != GameVersion::BB) {
     throw logic_error("cannot send item identify result to non-BB client");
   }
@@ -2124,7 +2125,8 @@ void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
 }
 
 // notifies players about a level up
-void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
+void send_level_up(shared_ptr<Client> c) {
+  auto l = c->require_lobby();
   CharacterStats stats = c->game_data.player()->disp.stats.char_stats;
 
   for (size_t x = 0; x < c->game_data.player()->inventory.num_items; x++) {
@@ -2150,8 +2152,8 @@ void send_level_up(shared_ptr<Lobby> l, shared_ptr<Client> c) {
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-void send_give_experience(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    uint32_t amount) {
+void send_give_experience(shared_ptr<Client> c, uint32_t amount) {
+  auto l = c->require_lobby();
   if (c->version() != GameVersion::BB) {
     throw logic_error("6xBF can only be sent to BB clients");
   }
@@ -2187,8 +2189,9 @@ void send_rare_enemy_index_list(shared_ptr<Client> c, const vector<size_t>& inde
 ////////////////////////////////////////////////////////////////////////////////
 // ep3 only commands
 
-void send_ep3_card_list_update(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+void send_ep3_card_list_update(shared_ptr<Client> c) {
   if (!(c->flags & Client::Flag::HAS_EP3_CARD_DEFS)) {
+    auto s = c->require_server_state();
     const auto& data = (c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)
         ? s->ep3_card_index_trial->get_compressed_definitions()
         : s->ep3_card_index->get_compressed_definitions();
@@ -2215,7 +2218,8 @@ void send_ep3_media_update(
   send_command(c, 0xB9, 0x00, w.str());
 }
 
-void send_ep3_rank_update(shared_ptr<ServerState> s, shared_ptr<Client> c) {
+void send_ep3_rank_update(shared_ptr<Client> c) {
+  auto s = c->require_server_state();
   uint32_t meseta = s->ep3_infinite_meseta ? 1000000 : 0;
   S_RankUpdate_GC_Ep3_B7 cmd = {0, "\0\0\0\0\0\0\0\0\0\0\0", meseta, meseta, 0xFFFFFFFF};
   send_command_t(c, 0xB7, 0x00, cmd);
@@ -2259,17 +2263,15 @@ void send_ep3_set_context_token(shared_ptr<Client> c, uint32_t context_token) {
 }
 
 void send_ep3_confirm_tournament_entry(
-    shared_ptr<ServerState> s,
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn) {
-  // WARNING: s is permitted to be null if tourn is null
-
   if (c->flags & Client::Flag::IS_EP3_TRIAL_EDITION) {
     throw runtime_error("cannot send tournament entry command to Episode 3 Trial Edition client");
   }
 
   S_ConfirmTournamentEntry_GC_Ep3_CC cmd;
   if (tourn) {
+    auto s = c->require_server_state();
     cmd.tournament_name = tourn->get_name();
     cmd.server_name = encode_sjis(s->name);
     // TODO: Fill this in appropriately when we support scheduled start times
@@ -2286,9 +2288,10 @@ void send_ep3_confirm_tournament_entry(
 }
 
 void send_ep3_tournament_list(
-    shared_ptr<ServerState> s,
     shared_ptr<Client> c,
     bool is_for_spectator_team_create) {
+  auto s = c->require_server_state();
+
   S_TournamentList_GC_Ep3_E0 cmd;
   size_t z = 0;
   for (const auto& it : s->ep3_tournament_index->all_tournaments()) {
@@ -2496,11 +2499,11 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   }
 }
 
-void send_ep3_set_tournament_player_decks(
-    shared_ptr<ServerState> s,
-    shared_ptr<Lobby> l,
-    shared_ptr<Client> c,
-    shared_ptr<const Episode3::Tournament::Match> match) {
+void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
+  auto s = c->require_server_state();
+  auto l = c->require_lobby();
+
+  auto& match = l->tournament_match;
   auto tourn = match->tournament.lock();
   if (!tourn) {
     throw runtime_error("tournament is deleted");
@@ -2554,8 +2557,9 @@ void send_ep3_set_tournament_player_decks(
   // TODO: Handle disconnection during the match (the other team should win)
 }
 
-void send_ep3_tournament_match_result(
-    shared_ptr<ServerState> s, shared_ptr<Lobby> l, shared_ptr<const Episode3::Tournament::Match> match) {
+void send_ep3_tournament_match_result(shared_ptr<Lobby> l) {
+  auto s = l->require_server_state();
+  auto& match = l->tournament_match;
   auto tourn = match->tournament.lock();
   if (!tourn) {
     return;
@@ -2776,7 +2780,8 @@ bool send_quest_barrier_if_all_clients_ready(shared_ptr<Lobby> l) {
   return true;
 }
 
-void send_ep3_card_auction(shared_ptr<ServerState> s, shared_ptr<Lobby> l) {
+void send_ep3_card_auction(shared_ptr<Lobby> l) {
+  auto s = l->require_server_state();
   if ((s->ep3_card_auction_points == 0) ||
       (s->ep3_card_auction_min_size == 0) ||
       (s->ep3_card_auction_max_size == 0)) {

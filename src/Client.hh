@@ -20,6 +20,9 @@
 
 extern const uint64_t CLIENT_CONFIG_MAGIC;
 
+class Server;
+struct Lobby;
+
 struct ClientOptions {
   // Options used on both game and proxy server
   bool switch_assist;
@@ -47,7 +50,7 @@ struct ClientOptions {
   ClientOptions();
 };
 
-struct Client {
+struct Client : public std::enable_shared_from_this<Client> {
   enum Flag {
     // Client is DC Network Trial Edition, which is missing a lot of features
     // and uses some different command numbers than any other version
@@ -113,6 +116,8 @@ struct Client {
     UNUSED_FLAG_BITS = 0xFF010000,
   };
 
+  std::weak_ptr<Server> server;
+  std::weak_ptr<ServerState> server_state;
   uint64_t id;
   PrefixedLogger log;
 
@@ -144,13 +149,15 @@ struct Client {
   ClientOptions options;
   float x;
   float z;
-  uint32_t area; // which area is the client in?
-  uint32_t lobby_id; // which lobby is this person in?
-  uint8_t lobby_client_id; // which client number is this person?
-  uint8_t lobby_arrow_color; // lobby arrow color ID
+  uint32_t area;
+  std::weak_ptr<Lobby> lobby;
+  uint8_t lobby_client_id;
+  uint8_t lobby_arrow_color;
   int64_t preferred_lobby_id; // <0 = no preference
   ClientGameData game_data;
   std::unique_ptr<struct event, void (*)(struct event*)> save_game_data_event;
+  std::unique_ptr<struct event, void (*)(struct event*)> send_ping_event;
+  std::unique_ptr<struct event, void (*)(struct event*)> idle_timeout_event;
   int16_t card_battle_table_number;
   uint16_t card_battle_table_seat_number;
   uint16_t card_battle_table_seat_state;
@@ -170,8 +177,14 @@ struct Client {
   std::shared_ptr<DOLFileIndex::DOLFile> loading_dol_file;
   std::unordered_map<std::string, std::shared_ptr<const std::string>> sending_files;
 
-  Client(struct bufferevent* bev, GameVersion version, ServerBehavior server_behavior);
+  Client(
+      shared_ptr<Server> server,
+      struct bufferevent* bev,
+      GameVersion version,
+      ServerBehavior server_behavior);
   ~Client();
+
+  void reschedule_ping_and_timeout_events();
 
   inline GameVersion version() const {
     return this->channel.version;
@@ -180,6 +193,9 @@ struct Client {
 
   void set_license(std::shared_ptr<const License> l);
 
+  std::shared_ptr<ServerState> require_server_state() const;
+  std::shared_ptr<Lobby> require_lobby() const;
+
   ClientConfig export_config() const;
   ClientConfigBB export_config_bb() const;
   void import_config(const ClientConfig& cc);
@@ -187,4 +203,8 @@ struct Client {
 
   static void dispatch_save_game_data(evutil_socket_t, short, void* ctx);
   void save_game_data();
+  static void dispatch_send_ping(evutil_socket_t, short, void* ctx);
+  void send_ping();
+  static void dispatch_idle_timeout(evutil_socket_t, short, void* ctx);
+  void idle_timeout();
 };

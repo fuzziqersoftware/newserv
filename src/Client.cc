@@ -12,6 +12,7 @@
 #include <phosg/Time.hh>
 
 #include "Loggers.hh"
+#include "Server.hh"
 #include "Version.hh"
 
 using namespace std;
@@ -42,10 +43,12 @@ ClientOptions::ClientOptions()
       function_call_return_value(-1) {}
 
 Client::Client(
+    shared_ptr<Server> server,
     struct bufferevent* bev,
     GameVersion version,
     ServerBehavior server_behavior)
-    : id(next_id++),
+    : server(server),
+      id(next_id++),
       log(string_printf("[C-%" PRIX64 "] ", this->id), client_log.min_level),
       bb_game_state(0),
       flags(flags_for_version(version, -1)),
@@ -60,7 +63,6 @@ Client::Client(
       x(0.0f),
       z(0.0f),
       area(0),
-      lobby_id(0),
       lobby_client_id(0),
       lobby_arrow_color(0),
       preferred_lobby_id(-1),
@@ -68,6 +70,16 @@ Client::Client(
           event_new(
               bufferevent_get_base(bev), -1, EV_TIMEOUT | EV_PERSIST,
               &Client::dispatch_save_game_data, this),
+          event_free),
+      send_ping_event(
+          event_new(
+              bufferevent_get_base(bev), -1, EV_TIMEOUT | EV_PERSIST,
+              &Client::dispatch_send_ping, this),
+          event_free),
+      idle_timeout_event(
+          event_new(
+              bufferevent_get_base(bev), -1, EV_TIMEOUT | EV_PERSIST,
+              &Client::dispatch_idle_timeout, this),
           event_free),
       card_battle_table_number(-1),
       card_battle_table_seat_number(0),
@@ -83,6 +95,7 @@ Client::Client(
     struct timeval tv = usecs_to_timeval(60000000); // 1 minute
     event_add(this->save_game_data_event.get(), &tv);
   }
+  this->reschedule_ping_and_timeout_events();
 
   this->log.info("Created");
 }
@@ -96,6 +109,13 @@ Client::~Client() {
   }
 
   this->log.info("Deleted");
+}
+
+void Client::reschedule_ping_and_timeout_events() {
+  struct timeval ping_tv = usecs_to_timeval(30000000); // 30 seconds
+  event_add(this->send_ping_event.get(), &ping_tv);
+  struct timeval idle_tv = usecs_to_timeval(60000000); // 1 minute
+  event_add(this->idle_timeout_event.get(), &idle_tv);
 }
 
 QuestScriptVersion Client::quest_version() const {
@@ -133,6 +153,22 @@ void Client::set_license(shared_ptr<const License> l) {
   if (this->version() == GameVersion::BB) {
     this->game_data.bb_username = this->license->username;
   }
+}
+
+shared_ptr<ServerState> Client::require_server_state() const {
+  auto server = this->server.lock();
+  if (!server) {
+    throw logic_error("server is deleted");
+  }
+  return server->get_state();
+}
+
+shared_ptr<Lobby> Client::require_lobby() const {
+  auto l = this->lobby.lock();
+  if (!l) {
+    throw runtime_error("client not in any lobby");
+  }
+  return l;
 }
 
 ClientConfig Client::export_config() const {
@@ -184,5 +220,33 @@ void Client::save_game_data() {
   }
   if (this->game_data.player(false)) {
     this->game_data.save_player_data();
+  }
+}
+
+void Client::dispatch_send_ping(evutil_socket_t, short, void* ctx) {
+  reinterpret_cast<Client*>(ctx)->send_ping();
+}
+
+void Client::send_ping() {
+  if (this->version() == GameVersion::PATCH) {
+    throw logic_error("send_ping called for patch client");
+  }
+  this->log.info("Sending ping command");
+  // The game doesn't use this timestamp; we only use it for debugging purposes
+  be_uint64_t timestamp = now();
+  this->channel.send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
+}
+
+void Client::dispatch_idle_timeout(evutil_socket_t, short, void* ctx) {
+  reinterpret_cast<Client*>(ctx)->idle_timeout();
+}
+
+void Client::idle_timeout() {
+  this->log.info("Idle timeout expired");
+  auto s = this->server.lock();
+  if (s) {
+    s->disconnect_client(this->shared_from_this());
+  } else {
+    this->log.info("Server is deleted; cannot disconnect client");
   }
 }

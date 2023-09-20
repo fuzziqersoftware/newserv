@@ -8,6 +8,7 @@
   // 3. Unregistered users are allowed. This enables the tests to run on other
   //    machines, which won't have the same license file.
   "ServerName": "Alexandria",
+  "CatchHandlerExceptions": false,
 
   "LocalAddress": "en0",
   "ExternalAddress": "en0",

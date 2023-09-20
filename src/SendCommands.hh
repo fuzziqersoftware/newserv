@@ -127,18 +127,13 @@ prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
     const parray<uint8_t, 0x30>& client_key,
     uint8_t flags);
-void send_server_init(
-    std::shared_ptr<ServerState> s,
-    std::shared_ptr<Client> c,
-    uint8_t flags);
+void send_server_init(std::shared_ptr<Client> c, uint8_t flags);
 void send_update_client_config(std::shared_ptr<Client> c);
 
 void empty_function_call_response_handler(uint32_t, uint32_t);
 
-void send_quest_buffer_overflow(
-    std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
-void prepare_client_for_patches(
-    std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, std::function<void()> on_complete);
+void send_quest_buffer_overflow(std::shared_ptr<Client> c);
+void prepare_client_for_patches(std::shared_ptr<Client> c, std::function<void()> on_complete);
 void send_function_call(
     Channel& ch,
     uint64_t client_flags,
@@ -190,7 +185,7 @@ void send_ship_info(Channel& ch, const std::u16string& text);
 void send_text_message(Channel& ch, const std::u16string& text);
 void send_text_message(std::shared_ptr<Client> c, const std::u16string& text);
 void send_text_message(std::shared_ptr<Lobby> l, const std::u16string& text);
-void send_text_message(std::shared_ptr<ServerState> l, const std::u16string& text);
+void send_text_message(std::shared_ptr<ServerState> s, const std::u16string& text);
 
 std::u16string prepare_chat_message(
     GameVersion version,
@@ -235,10 +230,9 @@ __attribute__((format(printf, 2, 3))) void send_text_message_printf(
 __attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(
     std::shared_ptr<ServerState> s, const char* format, ...);
 
-void send_info_board(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
+void send_info_board(std::shared_ptr<Client> c);
 
 void send_card_search_result(
-    std::shared_ptr<ServerState> s,
     std::shared_ptr<Client> c,
     std::shared_ptr<Client> result,
     std::shared_ptr<Lobby> result_lobby);
@@ -255,32 +249,26 @@ void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source);
 void send_menu(std::shared_ptr<Client> c, std::shared_ptr<const Menu> menu, bool is_info_menu = false);
 void send_game_menu(
     std::shared_ptr<Client> c,
-    std::shared_ptr<ServerState> s,
     bool is_spectator_team_list,
     bool is_tournament_game_list);
 void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
     const std::vector<std::shared_ptr<const Quest>>& quests, bool is_download_menu);
 void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
     std::shared_ptr<const QuestCategoryIndex> category_index, uint8_t flags);
-void send_lobby_list(std::shared_ptr<Client> c, std::shared_ptr<ServerState> s);
+void send_lobby_list(std::shared_ptr<Client> c);
 
 void send_player_records(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l, std::shared_ptr<Client> joining_client = nullptr);
 void send_join_lobby(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
-void send_player_join_notification(std::shared_ptr<Client> c,
-    std::shared_ptr<Lobby> l, std::shared_ptr<Client> joining_client);
-void send_player_leave_notification(std::shared_ptr<Lobby> l,
-    uint8_t leaving_client_id);
+void send_player_join_notification(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l, std::shared_ptr<Client> joining_client);
+void send_player_leave_notification(std::shared_ptr<Lobby> l, uint8_t leaving_client_id);
 void send_self_leave_notification(std::shared_ptr<Client> c);
 void send_get_player_info(std::shared_ptr<Client> c);
 
-void send_execute_item_trade(std::shared_ptr<Client> c,
-    const std::vector<ItemData>& items);
-void send_execute_card_trade(std::shared_ptr<Client> c,
-    const std::vector<std::pair<uint32_t, uint32_t>>& card_to_count);
+void send_execute_item_trade(std::shared_ptr<Client> c, const std::vector<ItemData>& items);
+void send_execute_card_trade(std::shared_ptr<Client> c, const std::vector<std::pair<uint32_t, uint32_t>>& card_to_count);
 
 void send_arrow_update(std::shared_ptr<Lobby> l);
-void send_resume_game(std::shared_ptr<Lobby> l,
-    std::shared_ptr<Client> ready_client);
+void send_resume_game(std::shared_ptr<Lobby> l, std::shared_ptr<Client> ready_client);
 
 enum PlayerStatsChange {
   SUBTRACT_HP = 0,
@@ -290,8 +278,7 @@ enum PlayerStatsChange {
   ADD_TP = 4,
 };
 
-void send_player_stats_change(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
-    PlayerStatsChange stat, uint32_t amount);
+void send_player_stats_change(std::shared_ptr<Client> c, PlayerStatsChange stat, uint32_t amount);
 void send_player_stats_change(
     Channel& ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount);
 void send_warp(Channel& ch, uint8_t client_id, uint32_t area, bool is_private);
@@ -299,9 +286,8 @@ void send_warp(std::shared_ptr<Client> c, uint32_t area, bool is_private);
 void send_warp(std::shared_ptr<Lobby> l, uint32_t area, bool is_private);
 
 void send_ep3_change_music(Channel& ch, uint32_t song);
-void send_set_player_visibility(std::shared_ptr<Lobby> l,
-    std::shared_ptr<Client> c, bool visible);
-void send_revive_player(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c);
+void send_set_player_visibility(std::shared_ptr<Client> c, bool visible);
+void send_revive_player(std::shared_ptr<Client> c);
 
 void send_drop_item(Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id);
@@ -311,37 +297,30 @@ void send_drop_stacked_item(Channel& ch, const ItemData& item,
     uint8_t area, float x, float z);
 void send_drop_stacked_item(std::shared_ptr<Lobby> l, const ItemData& item,
     uint8_t area, float x, float z);
-void send_pick_up_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c, uint32_t id,
-    uint8_t area);
-void send_create_inventory_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
-    const ItemData& item);
-void send_destroy_item(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
-    uint32_t item_id, uint32_t amount);
-void send_item_identify_result(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c);
+void send_pick_up_item(std::shared_ptr<Client> c, uint32_t id, uint8_t area);
+void send_create_inventory_item(std::shared_ptr<Client> c, const ItemData& item);
+void send_destroy_item(std::shared_ptr<Client> c, uint32_t item_id, uint32_t amount);
+void send_item_identify_result(std::shared_ptr<Client> c);
 void send_bank(std::shared_ptr<Client> c);
 void send_shop(std::shared_ptr<Client> c, uint8_t shop_type);
-void send_level_up(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c);
-void send_give_experience(std::shared_ptr<Lobby> l, std::shared_ptr<Client> c,
-    uint32_t amount);
+void send_level_up(std::shared_ptr<Client> c);
+void send_give_experience(std::shared_ptr<Client> c, uint32_t amount);
 void send_set_exp_multiplier(std::shared_ptr<Lobby> l);
 void send_rare_enemy_index_list(std::shared_ptr<Client> c, const std::vector<size_t>& indexes);
-void send_ep3_card_list_update(
-    std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
+void send_ep3_card_list_update(std::shared_ptr<Client> c);
 void send_ep3_media_update(
     std::shared_ptr<Client> c,
     uint32_t type,
     uint32_t which,
     const std::string& compressed_data);
-void send_ep3_rank_update(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
+void send_ep3_rank_update(std::shared_ptr<Client> c);
 void send_ep3_card_battle_table_state(std::shared_ptr<Lobby> l, uint16_t table_number);
 void send_ep3_set_context_token(std::shared_ptr<Client> c, uint32_t context_token);
 
 void send_ep3_confirm_tournament_entry(
-    std::shared_ptr<ServerState> s,
     std::shared_ptr<Client> c,
     std::shared_ptr<const Episode3::Tournament> t);
 void send_ep3_tournament_list(
-    std::shared_ptr<ServerState> s,
     std::shared_ptr<Client> c,
     bool is_for_spectator_team_create);
 void send_ep3_tournament_entry_list(
@@ -351,15 +330,8 @@ void send_ep3_tournament_entry_list(
 void send_ep3_tournament_info(
     std::shared_ptr<Client> c,
     std::shared_ptr<const Episode3::Tournament> t);
-void send_ep3_set_tournament_player_decks(
-    std::shared_ptr<ServerState> s,
-    std::shared_ptr<Lobby> l,
-    std::shared_ptr<Client> c,
-    std::shared_ptr<const Episode3::Tournament::Match> match);
-void send_ep3_tournament_match_result(
-    std::shared_ptr<ServerState> s,
-    std::shared_ptr<Lobby> l,
-    std::shared_ptr<const Episode3::Tournament::Match> match);
+void send_ep3_set_tournament_player_decks(std::shared_ptr<Client> c);
+void send_ep3_tournament_match_result(std::shared_ptr<Lobby> l);
 
 void send_ep3_tournament_details(
     std::shared_ptr<Client> c,
@@ -367,7 +339,7 @@ void send_ep3_tournament_details(
 void send_ep3_game_details(
     std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
 void send_ep3_update_spectator_count(std::shared_ptr<Lobby> l);
-void send_ep3_card_auction(std::shared_ptr<ServerState> s, std::shared_ptr<Lobby> l);
+void send_ep3_card_auction(std::shared_ptr<Lobby> l);
 void send_ep3_disband_watcher_lobbies(std::shared_ptr<Lobby> primary_l);
 
 // Pass mask_key = 0 to unmask the command

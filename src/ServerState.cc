@@ -113,7 +113,7 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   if (c->preferred_lobby_id >= 0) {
     try {
       auto l = this->find_lobby(c->preferred_lobby_id);
-      if (!l->is_game() && (l->flags & Lobby::Flag::PUBLIC)) {
+      if (l && !l->is_game() && (l->flags & Lobby::Flag::PUBLIC)) {
         l->add_client(c);
         added_to_lobby = l;
       }
@@ -148,12 +148,14 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
 }
 
 void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
-  auto l = this->id_to_lobby.at(c->lobby_id);
-  l->remove_client(c);
-  if (!(l->flags & Lobby::Flag::PERSISTENT) && (l->count_clients() == 0)) {
-    this->remove_lobby(l->lobby_id);
-  } else {
-    send_player_leave_notification(l, c->lobby_client_id);
+  auto l = c->lobby.lock();
+  if (l) {
+    l->remove_client(c);
+    if (!(l->flags & Lobby::Flag::PERSISTENT) && (l->count_clients() == 0)) {
+      this->remove_lobby(l->lobby_id);
+    } else {
+      send_player_leave_notification(l, c->lobby_client_id);
+    }
   }
 }
 
@@ -164,7 +166,7 @@ bool ServerState::change_client_lobby(
     ssize_t required_client_id) {
   uint8_t old_lobby_client_id = c->lobby_client_id;
 
-  shared_ptr<Lobby> current_lobby = this->find_lobby(c->lobby_id);
+  auto current_lobby = c->lobby.lock();
   try {
     if (current_lobby) {
       current_lobby->move_client_to_lobby(new_lobby, c, required_client_id);
@@ -210,7 +212,11 @@ void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
 }
 
 shared_ptr<Lobby> ServerState::find_lobby(uint32_t lobby_id) {
-  return this->id_to_lobby.at(lobby_id);
+  try {
+    return this->id_to_lobby.at(lobby_id);
+  } catch (const out_of_range&) {
+    return nullptr;
+  }
 }
 
 vector<shared_ptr<Lobby>> ServerState::all_lobbies() {
@@ -225,7 +231,7 @@ shared_ptr<Lobby> ServerState::create_lobby() {
   while (this->id_to_lobby.count(this->next_lobby_id)) {
     this->next_lobby_id++;
   }
-  shared_ptr<Lobby> l(new Lobby(this->next_lobby_id++));
+  shared_ptr<Lobby> l(new Lobby(this->shared_from_this(), this->next_lobby_id++));
   this->id_to_lobby.emplace(l->lobby_id, l);
   l->log.info("Created lobby");
   return l;

@@ -8,7 +8,9 @@
 
 using namespace std;
 
-void player_use_item(shared_ptr<ServerState> s, shared_ptr<Client> c, size_t item_index) {
+void player_use_item(shared_ptr<Client> c, size_t item_index) {
+  auto s = c->require_server_state();
+
   // On PC (and presumably DC), the client sends a 6x29 after this to delete the
   // used item. On GC and later versions, this does not happen, so we should
   // delete the item here.
@@ -152,8 +154,10 @@ void player_use_item(shared_ptr<ServerState> s, shared_ptr<Client> c, size_t ite
         item.data.data1.clear_after(3);
         should_delete_item = false;
 
-        auto l = s->find_lobby(c->lobby_id);
-        send_create_inventory_item(l, c, item.data);
+        auto l = c->lobby.lock();
+        if (l) {
+          send_create_inventory_item(c, item.data);
+        }
         break;
       }
     }
@@ -218,7 +222,7 @@ void player_use_item(shared_ptr<ServerState> s, shared_ptr<Client> c, size_t ite
   }
 }
 
-void player_feed_mag(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, size_t mag_item_index, size_t fed_item_index) {
+void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fed_item_index) {
   static const unordered_map<uint32_t, size_t> result_index_for_fed_item({
       {0x030000, 0}, // Monomate
       {0x030001, 1}, // Dimate
@@ -233,6 +237,7 @@ void player_feed_mag(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c, 
       {0x030500, 10}, // Star Atomizer
   });
 
+  auto s = c->require_server_state();
   auto player = c->game_data.player();
   auto& fed_item = player->inventory.items[fed_item_index];
   auto& mag_item = player->inventory.items[mag_item_index];

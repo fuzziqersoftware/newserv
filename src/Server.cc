@@ -42,7 +42,7 @@ void Server::disconnect_client(shared_ptr<Client> c) {
   c->channel.disconnect();
 
   try {
-    on_disconnect(this->state, c);
+    on_disconnect(c);
   } catch (const exception& e) {
     server_log.warning("Error during client disconnect cleanup: %s", e.what());
   }
@@ -91,13 +91,13 @@ void Server::dispatch_on_listen_accept(
       socklen);
 }
 
-void Server::dispatch_on_listen_error(struct evconnlistener* listener,
-    void* ctx) {
+void Server::dispatch_on_listen_error(
+    struct evconnlistener* listener, void* ctx) {
   reinterpret_cast<Server*>(ctx)->on_listen_error(listener);
 }
 
-void Server::on_listen_accept(struct evconnlistener* listener,
-    evutil_socket_t fd, struct sockaddr*, int) {
+void Server::on_listen_accept(
+    struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr*, int) {
 
   int listen_fd = evconnlistener_get_fd(listener);
   ListeningSocket* listening_socket;
@@ -113,7 +113,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
   struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   shared_ptr<Client> c(new Client(
-      bev, listening_socket->version, listening_socket->behavior));
+      this->shared_from_this(), bev, listening_socket->version, listening_socket->behavior));
   c->game_data.should_save = this->state->allow_saving;
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
@@ -124,7 +124,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
       c->id, fd, listen_fd, listening_socket->addr_str.c_str());
 
   try {
-    on_connect(this->state, c);
+    on_connect(c);
   } catch (const exception& e) {
     server_log.warning("Error during client initialization: %s", e.what());
     this->disconnect_client(c);
@@ -134,7 +134,7 @@ void Server::on_listen_accept(struct evconnlistener* listener,
 void Server::connect_client(
     struct bufferevent* bev, uint32_t address, uint16_t client_port,
     uint16_t server_port, GameVersion version, ServerBehavior initial_state) {
-  shared_ptr<Client> c(new Client(bev, version, initial_state));
+  shared_ptr<Client> c(new Client(this->shared_from_this(), bev, version, initial_state));
   c->game_data.should_save = this->state->allow_saving;
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
@@ -158,7 +158,7 @@ void Server::connect_client(
   remote_sin->sin_port = htons(client_port);
 
   try {
-    on_connect(this->state, c);
+    on_connect(c);
   } catch (const exception& e) {
     server_log.error("Error during client initialization: %s", e.what());
     this->disconnect_client(c);
@@ -181,13 +181,13 @@ void Server::on_client_input(Channel& ch, uint16_t command, uint32_t flag, std::
   } else {
     if (server->state->catch_handler_exceptions) {
       try {
-        on_command(server->state, c, command, flag, data);
+        on_command(c, command, flag, data);
       } catch (const exception& e) {
         server_log.warning("Error processing client command: %s", e.what());
         c->should_disconnect = true;
       }
     } else {
-      on_command(server->state, c, command, flag, data);
+      on_command(c, command, flag, data);
     }
     if (c->should_disconnect) {
       server->disconnect_client(c);

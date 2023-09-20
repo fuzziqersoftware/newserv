@@ -156,7 +156,7 @@ public:
 
   void start();
 
-  void send_all_state_updates(std::shared_ptr<ServerState> s) const;
+  void send_all_state_updates() const;
   void send_all_state_updates_on_deletion() const;
 
   void print_bracket(FILE* stream) const;
@@ -232,7 +232,7 @@ public:
 
   std::shared_ptr<Tournament::Team> team_for_serial_number(uint32_t serial_number) const;
 
-  void link_client(std::shared_ptr<ServerState> s, std::shared_ptr<Client> c);
+  void link_client(std::shared_ptr<Client> c);
   void link_all_clients(std::shared_ptr<ServerState> s);
 
 private:

@@ -22,6 +22,8 @@
 #include "StaticGameData.hh"
 #include "Text.hh"
 
+struct ServerState;
+
 struct Lobby : public std::enable_shared_from_this<Lobby> {
   enum Flag {
     GAME = 0x00000001,
@@ -45,6 +47,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     DEFAULT = 0x02000000,
   };
 
+  std::weak_ptr<ServerState> server_state;
   PrefixedLogger log;
 
   uint32_t lobby_id;
@@ -110,7 +113,13 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // Keys in this map are client_id
   std::unordered_map<size_t, std::weak_ptr<Client>> clients_to_add;
 
-  explicit Lobby(uint32_t id);
+  Lobby(std::shared_ptr<ServerState> s, uint32_t id);
+  Lobby(const Lobby&) = delete;
+  Lobby(Lobby&&) = delete;
+  Lobby& operator=(const Lobby&) = delete;
+  Lobby& operator=(Lobby&&) = delete;
+
+  std::shared_ptr<ServerState> require_server_state() const;
 
   inline bool is_game() const {
     return this->flags & Flag::GAME;

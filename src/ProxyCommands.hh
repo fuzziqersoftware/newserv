@@ -8,8 +8,7 @@
 #include "ServerState.hh"
 
 void on_proxy_command(
-    std::shared_ptr<ServerState> s,
-    ProxyServer::LinkedSession& session,
+    shared_ptr<ProxyServer::LinkedSession> ses,
     bool from_server,
     uint16_t command,
     uint32_t flag,

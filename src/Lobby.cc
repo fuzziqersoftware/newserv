@@ -10,8 +10,9 @@
 
 using namespace std;
 
-Lobby::Lobby(uint32_t id)
-    : log(string_printf("[Lobby/%" PRIX32 "] ", id), lobby_log.min_level),
+Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
+    : server_state(s),
+      log(string_printf("[Lobby/%" PRIX32 "] ", id), lobby_log.min_level),
       lobby_id(id),
       min_level(0),
       max_level(0xFFFFFFFF),
@@ -31,6 +32,14 @@ Lobby::Lobby(uint32_t id)
   for (size_t x = 0; x < 12; x++) {
     this->next_item_id[x] = 0x00010000 + 0x00200000 * x;
   }
+}
+
+shared_ptr<ServerState> Lobby::require_server_state() const {
+  auto s = this->server_state.lock();
+  if (!s) {
+    throw logic_error("server is deleted");
+  }
+  return s;
 }
 
 void Lobby::reassign_leader_on_client_departure(size_t leaving_client_index) {
@@ -102,7 +111,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   }
 
   c->lobby_client_id = index;
-  c->lobby_id = this->lobby_id;
+  c->lobby = this->weak_from_this();
 
   // If there's no one else in the lobby, set the leader id as well
   size_t leader_index;
@@ -162,11 +171,14 @@ void Lobby::remove_client(shared_ptr<Client> c) {
 
   this->clients[c->lobby_client_id] = nullptr;
 
-  // Unassign the client's lobby if it matches the current lobby's id (it may
-  // not match if the client was already added to another lobby - this can
-  // happen during the lobby change procedure)
-  if (c->lobby_id == this->lobby_id) {
-    c->lobby_id = 0;
+  // Unassign the client's lobby if it matches the current lobby (it may not
+  // match if the client was already added to another lobby - this can happen
+  // during the lobby change procedure)
+  {
+    auto c_lobby = c->lobby.lock();
+    if (c_lobby.get() == this) {
+      c->lobby.reset();
+    }
   }
 
   this->reassign_leader_on_client_departure(c->lobby_client_id);

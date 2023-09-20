@@ -569,7 +569,7 @@ Proxy session commands:\n\
     if (tourn) {
       tourn->start();
       this->state->ep3_tournament_index->save();
-      tourn->send_all_state_updates(this->state);
+      tourn->send_all_state_updates();
       send_ep3_text_message_printf(this->state, "$C7The tournament\n$C6%s$C7\nhas begun", tourn->get_name().c_str());
       fprintf(stderr, "tournament started\n");
     } else {
@@ -625,7 +625,7 @@ Proxy session commands:\n\
 
       if (c) {
         if (command_name[1] == 's') {
-          on_command_with_header(this->state, c, data);
+          on_command_with_header(c, data);
         } else {
           send_command_with_header(c->channel, data.data(), data.size());
         }
