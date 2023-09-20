@@ -154,6 +154,7 @@ All quests, including those originally in GCI or DLQ format, are treated as onli
 
 The following Episode 3 features work well:
 * CARD battles. Not every combination of abilities has been tested yet, so if you find a feature or card ability that doesn't work like it's supposed to, please make a GitHub issue and describe the situation (the attacking card(s), defending card(s), and ability or condition that didn't work).
+* Spectator teams.
 * Tournaments. (But they don't work like Sega's tournaments did - see below)
 * Downloading quests.
 * Trading cards.
@@ -161,7 +162,6 @@ The following Episode 3 features work well:
 
 The following Episode 3 features are implemented, but are only partially tested:
 * Decorations in lobbies. Currently only images are supported; the game also supports loading custom 3D models in lobbies, but newserv does not implement this (yet).
-* Spectator teams. There is a known issue that prevents viewing battles unless you're in the spectator team when the battle begins, and spectating clients sometimes crash for an unknown reason.
 * Battle replays also sometimes cause the client to crash during the replay. Using the $playrec command is therefore not recommended.
 
 Tournaments work differently than they did on Sega's servers. Tournaments can be created with the `create-tournament` shell command, which enables players to register for them. (Use `help` to see all the arguments - there are many!) The `start-tournament` shell command starts the tournament (and prevents further registrations), but this doesn't schedule any matches. Instead, players who are ready to play their next match can all stand at the 4-player battle table near the lobby warp in the same CARD lobby, and the tournament match will start automatically.
@@ -287,6 +287,7 @@ Some commands only work on the game server and not on the proxy server. The chat
 * Episode 3 commands (game server only)
     * `$spec`: Toggles the allow spectators flag for Episode 3 games. If any players are spectating when this flag is disabled, they will be sent back to the lobby.
     * `$inftime`: Toggles infinite-time mode. Must be used before starting a battle. If infinite-time mode is enabled, the overall and per-phase time limits will be disabled regardless of the values chosen during battle setup. After completing a battle, infinite-time mode is reset to the server's default value (which can be set in Episode3BehaviorFlags in config.json).
+    * `$stat <what>`: Shows a statistic about your player or team in the current battle. `<what>` can be `duration`, `fcs-destroyed`, `cards-destroyed`, `damage-given`, `damage-taken`, `opp-cards-destroyed`, `own-cards-destroyed`, `move-distance`, `cards-set`, `fcs-set`, `attack-actions-set`, `techs-set`, `assists-set`, `defenses-self`, `defenses-ally`, `cards-drawn`, `max-attack-damage`, `max-combo`, `attacks-given`, `attacks-taken`, `sc-damage`, `damage-defended`, or `rank`.
     * `$surrender`: Causes your team to immediately lose the current battle.
     * `$saverec <name>`: Saves the recording of the last battle.
     * `$playrec <name>`: Plays a battle recording. This command creates a spectator team and replays the specified battle log within it. There is a known issue which causes spectators to crash in some cases, so use of this command is currently not recommended.

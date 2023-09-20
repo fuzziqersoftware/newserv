@@ -1326,6 +1326,90 @@ static void server_command_surrender(shared_ptr<Client> c, const std::u16string&
   l->ep3_server->force_battle_result(c->lobby_client_id, false);
 }
 
+static void server_command_get_ep3_battle_stat(shared_ptr<Client> c, const std::u16string& args) {
+  auto l = c->require_lobby();
+  check_is_game(l, true);
+  check_is_ep3(c, true);
+  if (l->episode != Episode::EP3) {
+    throw logic_error("non-Ep3 client in Ep3 game");
+  }
+  if (!l->ep3_server) {
+    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
+    return;
+  }
+  if (l->ep3_server->setup_phase != Episode3::SetupPhase::MAIN_BATTLE) {
+    send_text_message(c, u"$C6Battle has not\nyet started");
+    return;
+  }
+  if (c->lobby_client_id >= 4) {
+    throw logic_error("client ID is too large");
+  }
+  auto ps = l->ep3_server->player_states[c->lobby_client_id];
+  if (!ps) {
+    send_text_message(c, u"$C6Player is missing");
+    return;
+  }
+  uint8_t team_id = ps->get_team_id();
+  if (team_id > 1) {
+    throw logic_error("team ID is incorrect");
+  }
+
+  string what = encode_sjis(args);
+  if (what == "rank") {
+    float score = ps->stats.score(l->ep3_server->get_round_num());
+    uint8_t rank = ps->stats.rank_for_score(score);
+    const char* rank_name = ps->stats.name_for_rank(rank);
+    send_text_message_printf(c, "$C7Score: %g\nRank: %hhu (%s)", score, rank, rank_name);
+  } else if (what == "duration") {
+    string s = format_duration(now() - l->ep3_server->battle_start_usecs);
+    send_text_message_printf(c, "$C7Duration: %s", s.c_str());
+  } else if (what == "fcs-destroyed") {
+    send_text_message_printf(c, "$C7Team FCs destroyed:\n%" PRIu32, l->ep3_server->team_num_ally_fcs_destroyed[team_id]);
+  } else if (what == "cards-destroyed") {
+    send_text_message_printf(c, "$C7Team cards destroyed:\n%" PRIu32, l->ep3_server->team_num_cards_destroyed[team_id]);
+  } else if (what == "damage-given") {
+    send_text_message_printf(c, "$C7Damage given: %hu", ps->stats.damage_given.load());
+  } else if (what == "damage-taken") {
+    send_text_message_printf(c, "$C7Damage taken: %hu", ps->stats.damage_taken.load());
+  } else if (what == "opp-cards-destroyed") {
+    send_text_message_printf(c, "$C7Opp. cards destroyed:\n%hu", ps->stats.num_opponent_cards_destroyed.load());
+  } else if (what == "own-cards-destroyed") {
+    send_text_message_printf(c, "$C7Own cards destroyed:\n%hu", ps->stats.num_owned_cards_destroyed.load());
+  } else if (what == "move-distance") {
+    send_text_message_printf(c, "$C7Move distance: %hu", ps->stats.total_move_distance.load());
+  } else if (what == "cards-set") {
+    send_text_message_printf(c, "$C7Cards set: %hu", ps->stats.num_cards_set.load());
+  } else if (what == "fcs-set") {
+    send_text_message_printf(c, "$C7FC cards set: %hu", ps->stats.num_item_or_creature_cards_set.load());
+  } else if (what == "attack-actions-set") {
+    send_text_message_printf(c, "$C7Attack actions set:\n%hu", ps->stats.num_attack_actions_set.load());
+  } else if (what == "techs-set") {
+    send_text_message_printf(c, "$C7Techs set: %hu", ps->stats.num_tech_cards_set.load());
+  } else if (what == "assists-set") {
+    send_text_message_printf(c, "$C7Assists set: %hu", ps->stats.num_assist_cards_set.load());
+  } else if (what == "defenses-self") {
+    send_text_message_printf(c, "$C7Defenses on self:\n%hu", ps->stats.defense_actions_set_on_self.load());
+  } else if (what == "defenses-ally") {
+    send_text_message_printf(c, "$C7Defenses on ally:\n%hu", ps->stats.defense_actions_set_on_ally.load());
+  } else if (what == "cards-drawn") {
+    send_text_message_printf(c, "$C7Cards drawn: %hu", ps->stats.num_cards_drawn.load());
+  } else if (what == "max-attack-damage") {
+    send_text_message_printf(c, "$C7Maximum attack damage:\n%hu", ps->stats.max_attack_damage.load());
+  } else if (what == "max-combo") {
+    send_text_message_printf(c, "$C7Longest combo: %hu", ps->stats.max_attack_combo_size.load());
+  } else if (what == "attacks-given") {
+    send_text_message_printf(c, "$C7Attacks given: %hu", ps->stats.num_attacks_given.load());
+  } else if (what == "attacks-taken") {
+    send_text_message_printf(c, "$C7Attacks taken: %hu", ps->stats.num_attacks_taken.load());
+  } else if (what == "sc-damage") {
+    send_text_message_printf(c, "$C7SC damage taken: %hu", ps->stats.sc_damage_taken.load());
+  } else if (what == "damage-defended") {
+    send_text_message_printf(c, "$C7Damage defended: %hu", ps->stats.action_card_negated_damage.load());
+  } else {
+    send_text_message(c, u"$C6Unknown statistic");
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef void (*server_handler_t)(shared_ptr<Client> c, const std::u16string& args);
@@ -1374,6 +1458,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$song", {server_command_song, proxy_command_song}},
     {u"$spec", {server_command_toggle_spectator_flag, nullptr}},
     {u"$ss", {nullptr, proxy_command_send_server}},
+    {u"$stat", {server_command_get_ep3_battle_stat, nullptr}},
     {u"$surrender", {server_command_surrender, nullptr}},
     {u"$swa", {server_command_switch_assist, proxy_command_switch_assist}},
     {u"$unset", {server_command_ep3_unset_field_character, nullptr}},
