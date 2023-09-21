@@ -228,16 +228,15 @@ void Client::dispatch_send_ping(evutil_socket_t, short, void* ctx) {
 }
 
 void Client::send_ping() {
-  if (this->version() == GameVersion::PATCH) {
-    throw logic_error("send_ping called for patch client");
-  }
-  this->log.info("Sending ping command");
-  // The game doesn't use this timestamp; we only use it for debugging purposes
-  be_uint64_t timestamp = now();
-  try {
-    this->channel.send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
-  } catch (const exception& e) {
-    this->log.info("Failed to send ping: %s", e.what());
+  if (this->version() != GameVersion::PATCH) {
+    this->log.info("Sending ping command");
+    // The game doesn't use this timestamp; we only use it for debugging purposes
+    be_uint64_t timestamp = now();
+    try {
+      this->channel.send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
+    } catch (const exception& e) {
+      this->log.info("Failed to send ping: %s", e.what());
+    }
   }
 }
 
