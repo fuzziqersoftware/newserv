@@ -1481,20 +1481,24 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       if (client_id >= 4) {
         throw runtime_error("invalid client id in battle record");
       }
-      cmd.players[client_id].lobby_data = entry.lobby_data;
-      remove_language_marker_inplace(cmd.players[client_id].lobby_data.name);
-      cmd.players[client_id].inventory = entry.inventory;
+      auto& p = cmd.players[client_id];
+      auto& e = cmd.entries[client_id];
+      p.lobby_data = entry.lobby_data;
+      remove_language_marker_inplace(p.lobby_data.name);
+      p.inventory = entry.inventory;
       for (size_t z = 0; z < 30; z++) {
-        cmd.players[client_id].inventory.items[z].data.bswap_data2_if_mag();
+        p.inventory.items[z].data.bswap_data2_if_mag();
       }
-      cmd.players[client_id].disp = entry.disp;
-      remove_language_marker_inplace(cmd.players[client_id].disp.visual.name);
-      cmd.entries[client_id].player_tag = 0x00010000;
-      cmd.entries[client_id].guild_card_number = entry.lobby_data.guild_card;
-      cmd.entries[client_id].name = entry.disp.visual.name;
-      remove_language_marker_inplace(cmd.entries[client_id].name);
-      cmd.entries[client_id].present = 1;
-      cmd.entries[client_id].level = entry.disp.stats.level.load();
+      p.disp = entry.disp;
+      remove_language_marker_inplace(p.disp.visual.name);
+      e.player_tag = 0x00010000;
+      e.guild_card_number = entry.lobby_data.guild_card;
+      e.name = entry.disp.visual.name;
+      remove_language_marker_inplace(e.name);
+      e.present = 1;
+      e.level = entry.disp.stats.level.load();
+      e.unknown_a5.clear(0);
+      e.unknown_a6.clear(0);
       player_count++;
     }
 
@@ -1503,21 +1507,25 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   }
 
   for (size_t z = 4; z < 12; z++) {
+    auto& p = cmd.spectator_players[z - 4];
+    auto& e = cmd.entries[z];
+    e.unknown_a5.clear(0);
+    e.unknown_a6.clear(0);
     if (l->clients[z]) {
-      cmd.spectator_players[z - 4].lobby_data.player_tag = 0x00010000;
-      cmd.spectator_players[z - 4].lobby_data.guild_card = l->clients[z]->license->serial_number;
-      cmd.spectator_players[z - 4].lobby_data.client_id = l->clients[z]->lobby_client_id;
-      cmd.spectator_players[z - 4].lobby_data.name = l->clients[z]->game_data.player()->disp.name;
-      remove_language_marker_inplace(cmd.spectator_players[z - 4].lobby_data.name);
-      cmd.spectator_players[z - 4].inventory = l->clients[z]->game_data.player()->inventory;
-      cmd.spectator_players[z - 4].disp = l->clients[z]->game_data.player()->disp.to_dcpcv3();
-      remove_language_marker_inplace(cmd.spectator_players[z - 4].disp.visual.name);
-      cmd.entries[z].player_tag = 0x00010000;
-      cmd.entries[z].guild_card_number = l->clients[z]->license->serial_number;
-      cmd.entries[z].name = l->clients[z]->game_data.player()->disp.name;
-      remove_language_marker_inplace(cmd.entries[z].name);
-      cmd.entries[z].present = 1;
-      cmd.entries[z].level = l->clients[z]->game_data.player()->disp.stats.level.load();
+      p.lobby_data.player_tag = 0x00010000;
+      p.lobby_data.guild_card = l->clients[z]->license->serial_number;
+      p.lobby_data.client_id = l->clients[z]->lobby_client_id;
+      p.lobby_data.name = l->clients[z]->game_data.player()->disp.name;
+      remove_language_marker_inplace(p.lobby_data.name);
+      p.inventory = l->clients[z]->game_data.player()->inventory;
+      p.disp = l->clients[z]->game_data.player()->disp.to_dcpcv3();
+      remove_language_marker_inplace(p.disp.visual.name);
+      e.player_tag = 0x00010000;
+      e.guild_card_number = l->clients[z]->license->serial_number;
+      e.name = l->clients[z]->game_data.player()->disp.name;
+      remove_language_marker_inplace(e.name);
+      e.present = 1;
+      e.level = l->clients[z]->game_data.player()->disp.stats.level.load();
       player_count++;
     }
   }
