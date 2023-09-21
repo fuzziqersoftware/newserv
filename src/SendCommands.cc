@@ -1431,29 +1431,34 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
     cmd.leader_id = watched_lobby->leader_id;
     // Live spectating
     for (size_t z = 0; z < 4; z++) {
-      if (!watched_lobby->clients[z]) {
+      auto& wc = watched_lobby->clients[z];
+      if (!wc) {
         continue;
       }
       auto& p = cmd.players[z];
       p.lobby_data.player_tag = 0x00010000;
-      p.lobby_data.guild_card = watched_lobby->clients[z]->license->serial_number;
-      p.lobby_data.client_id = watched_lobby->clients[z]->lobby_client_id;
-      p.lobby_data.name = watched_lobby->clients[z]->game_data.player()->disp.name;
+      p.lobby_data.guild_card = wc->license->serial_number;
+      p.lobby_data.client_id = wc->lobby_client_id;
+      p.lobby_data.name = wc->game_data.player()->disp.name;
       remove_language_marker_inplace(p.lobby_data.name);
-      p.inventory = watched_lobby->clients[z]->game_data.player()->inventory;
+      p.inventory = wc->game_data.player()->inventory;
       for (size_t y = 0; y < 30; y++) {
         p.inventory.items[y].data.bswap_data2_if_mag();
       }
-      p.disp = watched_lobby->clients[z]->game_data.player()->disp.to_dcpcv3();
+      p.disp = wc->game_data.player()->disp.to_dcpcv3();
       remove_language_marker_inplace(p.disp.visual.name);
 
       auto& e = cmd.entries[z];
       e.player_tag = 0x00010000;
-      e.guild_card_number = watched_lobby->clients[z]->license->serial_number;
-      e.name = watched_lobby->clients[z]->game_data.player()->disp.name;
+      e.guild_card_number = wc->license->serial_number;
+      e.name = wc->game_data.player()->disp.name;
       remove_language_marker_inplace(e.name);
       e.present = 1;
-      e.level = watched_lobby->clients[z]->game_data.player()->disp.stats.level.load();
+      e.level = wc->game_data.ep3_config
+          ? (wc->game_data.ep3_config->online_clv_exp / 100)
+          : wc->game_data.player()->disp.stats.level.load();
+      e.unknown_a5.clear(0);
+      e.unknown_a6.clear(0);
 
       player_count++;
     }

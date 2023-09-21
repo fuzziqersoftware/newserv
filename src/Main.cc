@@ -393,8 +393,7 @@ int main(int argc, char** argv) {
   const char* input_filename = nullptr;
   const char* output_filename = nullptr;
   const char* system_filename = nullptr;
-  const char* replay_required_access_key = "";
-  const char* replay_required_password = "";
+  bool replay_require_basic_credentials = false;
   uint32_t root_object_address = 0;
   uint8_t domain = 1;
   uint8_t subdomain = 0xFF;
@@ -480,10 +479,8 @@ int main(int argc, char** argv) {
       skip_big_endian = true;
     } else if (!strcmp(argv[x], "--json")) {
       json = true;
-    } else if (!strncmp(argv[x], "--require-password=", 19)) {
-      replay_required_password = &argv[x][19];
-    } else if (!strncmp(argv[x], "--require-access-key=", 21)) {
-      replay_required_access_key = &argv[x][21];
+    } else if (!strcmp(argv[x], "--require-basic-credentials")) {
+      replay_require_basic_credentials = true;
     } else if (!strncmp(argv[x], "--root-addr=", 12)) {
       root_object_address = strtoul(&argv[x][12], nullptr, 16);
     } else if (!strncmp(argv[x], "--config=", 9)) {
@@ -1683,7 +1680,7 @@ int main(int argc, char** argv) {
         }
 
         replay_session.reset(new ReplaySession(
-            base, log_f.get(), state, replay_required_access_key, replay_required_password));
+            base, log_f.get(), state, replay_require_basic_credentials));
         replay_session->start();
 
       } else if (behavior == Behavior::RUN_SERVER) {
@@ -1764,6 +1761,14 @@ int main(int argc, char** argv) {
 
       config_log.info("Ready");
       event_base_dispatch(base.get());
+      if (replay_session) {
+        // If in a replay session, run the event loop for a bit longer to make
+        // sure the server doesn't send anything unexpected after the end of
+        // the session.
+        auto tv = usecs_to_timeval(500000);
+        event_base_loopexit(base.get(), &tv);
+        event_base_dispatch(base.get());
+      }
 
       config_log.info("Normal shutdown");
       state->proxy_server.reset(); // Break reference cycle

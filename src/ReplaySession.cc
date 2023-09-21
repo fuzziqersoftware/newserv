@@ -70,26 +70,30 @@ shared_ptr<ReplaySession::Event> ReplaySession::create_event(
   return event;
 }
 
+static bool string_is_basic(const string& data) {
+  if (data.empty()) {
+    return true;
+  }
+  char ch = data[0];
+  for (size_t z = 1; z < data.size(); z++) {
+    if ((data[z] != ch) && (data[z] != 0)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
   auto version = this->clients.at(ev->client_id)->version;
 
   auto check_pw = [&](const string& pw) {
-    if (!this->required_password.empty() && !pw.empty() && (pw != this->required_password)) {
+    if (this->require_basic_credentials && !string_is_basic(pw)) {
       print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
       throw runtime_error(string_printf("(ev-line %zu) sent password is incorrect", ev->line_num));
     }
   };
   auto check_ak = [&](const string& ak) {
-    if (this->required_access_key.empty() || ak.empty()) {
-      return;
-    }
-    string ref_access_key;
-    if (version == GameVersion::DC || version == GameVersion::PC || version == GameVersion::PATCH) {
-      ref_access_key = this->required_access_key.substr(0, 8);
-    } else {
-      ref_access_key = this->required_access_key;
-    }
-    if (ak != ref_access_key) {
+    if (this->require_basic_credentials && !ak.empty() && !string_is_basic(ak)) {
       print_data(stderr, ev->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
       throw runtime_error(string_printf("(ev-line %zu) sent access key is incorrect", ev->line_num));
     }
@@ -245,7 +249,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           mask.client_key = 0;
           break;
         }
-        case 0x19: {
+        case 0x19:
           if (mask_size == sizeof(S_ReconnectSplit_19)) {
             auto& mask = check_size_t<S_ReconnectSplit_19>(mask_data, mask_size);
             mask.pc_address = 0;
@@ -255,8 +259,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             mask.address = 0;
           }
           break;
-        }
-        case 0x41: {
+        case 0x41:
           if (version == GameVersion::PC) {
             auto& mask = check_size_t<S_GuildCardSearchResult_PC_41>(mask_data, mask_size);
             mask.reconnect_command.address = 0;
@@ -268,8 +271,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             mask.reconnect_command.address = 0;
           }
           break;
-        }
-        case 0x64: {
+        case 0x64:
           if (version == GameVersion::PC) {
             auto& mask = check_size_t<S_JoinGame_PC_64>(mask_data, mask_size);
             mask.variations.clear(0);
@@ -281,14 +283,18 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             mask.rare_seed = 0;
           }
           break;
-        }
-        case 0xB1: {
+        case 0xE8:
+          if (version == GameVersion::GC) {
+            auto& mask = check_size_t<S_JoinSpectatorTeam_GC_Ep3_E8>(mask_data, mask_size);
+            mask.rare_seed = 0;
+          }
+          break;
+        case 0xB1:
           for (size_t x = 4; x < ev->mask.size(); x++) {
             ev->mask[x] = 0;
           }
           break;
-        }
-        case 0xC9: {
+        case 0xC9:
           if (mask_size == 0xCC) {
             auto& mask = check_size_t<G_ServerVersionStrings_GC_Ep3_6xB4x46>(
                 mask_data, mask_size);
@@ -297,8 +303,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             mask.date_str2.clear(0);
           }
           break;
-        }
-        case 0x6C: {
+        case 0x6C:
           if (version == GameVersion::GC && mask_size >= 0x14) {
             const auto& cmd = check_size_t<G_MapList_GC_Ep3_6xB6x40>(cmd_data, cmd_size, 0xFFFF);
             if ((cmd.header.header.basic_header.subcommand == 0xB6) &&
@@ -314,7 +319,6 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             }
           }
           break;
-        }
       }
       break;
     }
@@ -361,11 +365,9 @@ ReplaySession::ReplaySession(
     shared_ptr<struct event_base> base,
     FILE* input_log,
     shared_ptr<ServerState> state,
-    const string& required_access_key,
-    const string& required_password)
+    bool require_basic_credentials)
     : state(state),
-      required_access_key(required_access_key),
-      required_password(required_password),
+      require_basic_credentials(require_basic_credentials),
       base(base),
       commands_sent(0),
       bytes_sent(0),

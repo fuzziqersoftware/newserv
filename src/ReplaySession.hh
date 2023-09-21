@@ -18,8 +18,7 @@ public:
       std::shared_ptr<struct event_base> base,
       FILE* input_log,
       std::shared_ptr<ServerState> state,
-      const std::string& required_access_key = "",
-      const std::string& required_password = "");
+      bool require_basic_credentials);
   ReplaySession(const ReplaySession&) = delete;
   ReplaySession(ReplaySession&&) = delete;
   ReplaySession& operator=(const ReplaySession&) = delete;
@@ -65,8 +64,7 @@ private:
   };
 
   std::shared_ptr<ServerState> state;
-  std::string required_access_key;
-  std::string required_password;
+  bool require_basic_credentials;
 
   std::unordered_map<uint64_t, std::shared_ptr<Client>> clients;
   std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
