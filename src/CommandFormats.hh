@@ -6224,8 +6224,8 @@ struct G_Unknown_GC_Ep3_6xB3x3A_CAx3A {
 // battle. A 6xB4x05 and 6xB6x41 command shouldhave been sent before this, to
 // set the map state that should appear for the new spectator.
 
-struct G_LoadCurrentEnvironment_GC_Ep3_6xB4x05 {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_LoadCurrentEnvironment_GC_Ep3_6xB4x05) / 4, 0, 0x3B, 0, 0, 0};
+struct G_LoadCurrentEnvironment_GC_Ep3_6xB4x3B {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_LoadCurrentEnvironment_GC_Ep3_6xB4x3B) / 4, 0, 0x3B, 0, 0, 0};
   parray<uint8_t, 4> unused;
 } __packed__;
 

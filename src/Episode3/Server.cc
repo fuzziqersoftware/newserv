@@ -295,7 +295,7 @@ void Server::send_commands_for_joining_spectator(Channel& c, bool is_trial) cons
     c.send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
     c.send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
     {
-      G_LoadCurrentEnvironment_GC_Ep3_6xB4x05 cmd_3B;
+      G_LoadCurrentEnvironment_GC_Ep3_6xB4x3B cmd_3B;
       c.send(0xC9, 0x00, &cmd_3B, sizeof(cmd_3B));
     }
   }

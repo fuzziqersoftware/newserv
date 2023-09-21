@@ -995,7 +995,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // camera zones are evaluated continuously during the battle, and the camera
   // will move to focus on the part of the field where the SCs/FCs are. (Or,
   // more accurately, where the corresponding entry in camera_zone_specs says
-  // to focus.) camera_zone_maps is indexed as [team_id][camera_zone_num][x][y];
+  // to focus.) camera_zone_maps is indexed as [team_id][camera_zone_num][y][x];
   // camera_zone_specs is indexed as [team_id][camera_zone_num]. Unused entries
   // (beyond num_camera_zones) in both arrays should be filled with FF bytes.
   /* 0118 */ parray<parray<parray<parray<uint8_t, 0x10>, 0x10>, 10>, 2> camera_zone_maps;
@@ -1099,9 +1099,8 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // this map. Unused entries should be set to FFFF.
   /* 59B0 */ parray<be_uint16_t, 0x10> reward_card_ids;
 
-  // These fields appear to be used for the purpose of determining which cards
-  // to drop after the battle is complete. If either is negative, the player's
-  // actual CLv is used instead.
+  // These fields are used when determining which cards to drop after the battle
+  // is complete. If either is negative, the player's CLv is used instead.
   /* 59D0 */ be_int32_t win_level_override;
   /* 59D4 */ be_int32_t loss_level_override;
 
@@ -1114,7 +1113,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // map_category specifies where the map should appear in the maps menu. If
   // this is 0, 1, or 2, the map appears in the Quest section; otherwise, it
   // appears in the Free Battle section instead. It's not known if this controls
-  // anything else.
+  // anything else, or what the difference is in behavior between 0, 1, and 2.
   /* 59DC */ uint8_t map_category;
 
   // This field determines block graphics to be used in the Cyber environment.
