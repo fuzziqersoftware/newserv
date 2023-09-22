@@ -630,9 +630,67 @@ struct CardDefinition {
   // After sampling the N card IDs, it shuffles them and presents them to the
   // player.
   //
-  // Finally, the drop rates for a card are completely ignored if any of the
-  // following are true (which means it can never be found in a normal
-  // post-battle draw):
+  // There is one more effect to consider after cards are chosen: cards may
+  // randomly transform into VIP cards or into stronger (and rarer) cards. The
+  // chance of each of these occurring is based on the rarity of that card that
+  // may transform, and the number of copies of that card which the player
+  // already has. In the below table, P(activate) is the probability that any
+  // transformation is attempted at all; if this check passes, the player sees
+  // the glow effect and "The change will occur..." text. P(vip) is the
+  // probability that the card becomes a VIP card, after the glow effect plays.
+  // P(rare) is the probability of the card becoming a rarer card after the glow
+  // effect. Therefore, the final probability that a card will transform into a
+  // VIP card is P(activate) * P(vip), and the final probability of transforming
+  // into a rarer card is P(activate) * P(rare).
+  //        ====== Card rarities N4-N1 ======  ====== Card rarities R4-R1 ======
+  // Count  P(activate)  P(rare)  P(vip)       P(activate)  P(rare)  P(vip)
+  //  0-4   0%            0%      0%           0%            0%      0%
+  //  5-10  1.923077%    55%      0.5%         2.0408163%   55%      0.5%
+  // 11-16  2.1276595%   60%      0.45454544%  2.2727273%   60%      0.4761905%
+  // 17-24  2.3809524%   70%      0.4347826%   2.5641026%   70%      0.45454544%
+  // 25-32  2.7027028%   70%      0.4%         2.9411765%   70%      0.5%
+  // 33-40  3.125%       80%      0.38461538%  3.448276%    70%      0.5%
+  // 41-52  3.7037037%   80%      0.35714286%  4.1666668%   80%      0.45454544%
+  // 53-99  5%           90%      0.33333334%  5.263158%    90%      0.4347826%
+  //
+  // If a transformation occurs, the card transforms to a card of a different
+  // rarity. First, the game consults the following table to determine the
+  // rarity of the resulting card (original card's rarity on the left, new
+  // card's rarity across the top):
+  //        N4   N3   N2   N1   R4   R3   R2   R1    S   SS
+  // N4 =>            60   30   10
+  // N3 =>                 60   30   10
+  // N2 =>                      60   30   10
+  // N1 =>                      30   55   10    5
+  // R4 =>                      10   50   35    5
+  // R3 =>                           20   50   28    1
+  // R2 =>                                30   60    5
+  // R1 =>                                    900  100    1
+  // For example, when an N2 card transforms, there is a 60% chance to become
+  // R4, a 30% chance to become R3, and a 10% chance to become R2. When an R1
+  // card transforms, there is a 900/1001 chance of becoming another R1, a
+  // 100/1001 chance of becoming an S, and a 1/1001 chance of becoming an SS.
+  //
+  // Once a rarity is chosen, the game puts all possible cards into buckets
+  // based on how many of that card the player already has, then chooses a
+  // random card out of bucket 0, then bucket 1, etc. all the way up to bucket
+  // 49 (or 2 if the final rarity is S or SS). The first drawn card that is the
+  // final rarity is the card that the original card transforms into. Notably,
+  // this logic means that cards are more likely to transform into cards that
+  // the player doesn't already have, or only has few copies of. Also notably,
+  // it is impossible for a card to transform into another card that the player
+  // already has 50 or more copies of, or an S or SS card that the player
+  // already has 3 copies of.
+  //
+  // One curiosity about the above procedure is that the buckets can only hold
+  // 400 cards each for the N ranks, 300 each for the R ranks, and 100 each for
+  // S and SS. It is possible for one bucket to overflow into the next, or to
+  // overflow out of bounds and cause memory corruption, if there are (for
+  // example) more than 400 cards that have ranks N1-N4, and the player has 99
+  // of all of them.
+  //
+  // Finally, this card can never drop (the drop rates are completely ignored),
+  // and no card can transform into this card, if any of the following are true:
   // - type is SC_HUNTERS or SC_ARKZ
   // - card_class is BOSS_ATTACK_ACTION (0x23) or BOSS_TECH (0x24)
   // - rarity is E, D1, or D2
