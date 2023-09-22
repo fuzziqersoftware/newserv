@@ -546,6 +546,17 @@ struct CardDefinition {
   /* 0098 */ be_uint16_t assist_ai_params;
   /* 009A */ be_uint16_t unused5;
 
+  // The card drop rates control how likely the card is to appear in a standard
+  // post-battle random draw. How this works is fairly complex and is explained
+  // below in detail. Before any of that logic, this card can never drop and no
+  // card can transform into this card if any of the following are true:
+  // - type is SC_HUNTERS or SC_ARKZ
+  // - card_class is BOSS_ATTACK_ACTION (0x23) or BOSS_TECH (0x24)
+  // - rarity is E, D1, or D2
+  // - cannot_drop is 1 (specifically 1; other nonzero values here don't
+  //   prevent the card from appearing in post-battle draws)
+  // If none of these conditions apply, the logic below is used.
+  //
   // Drop rates are integers which encode the following data:
   // - rate % 10 (that is, the lowest decimal place) specifies the required game
   //   mode. 0 means any mode, 1 means offline story mode, 2 means 1P free
@@ -689,13 +700,8 @@ struct CardDefinition {
   // example) more than 400 cards that have ranks N1-N4, and the player has 99
   // of all of them.
   //
-  // Finally, this card can never drop (the drop rates are completely ignored),
-  // and no card can transform into this card, if any of the following are true:
-  // - type is SC_HUNTERS or SC_ARKZ
-  // - card_class is BOSS_ATTACK_ACTION (0x23) or BOSS_TECH (0x24)
-  // - rarity is E, D1, or D2
-  // - cannot_drop is 1 (specifically 1; other nonzero values here don't
-  //   prevent the card from appearing in post-battle draws)
+  // Remember the drop rates mentioned way back in the second paragraph of this
+  // enormous comment? That's what this array stores.
   /* 009C */ parray<be_uint16_t, 2> drop_rates;
 
   /* 00A0 */ ptext<char, 0x14> en_name;
