@@ -190,15 +190,18 @@ struct parray {
   parray(ItemT v) {
     this->clear(v);
   }
-  template <typename ArgT = ItemT, std::enable_if_t<std::is_arithmetic<ArgT>::value, bool> = true>
+  template <typename ArgT = ItemT>
+    requires(std::is_arithmetic_v<ArgT> || is_converted_endian_sc_v<ArgT>)
   parray() {
     this->clear(0);
   }
-  template <typename ArgT = ItemT, std::enable_if_t<std::is_pointer<ArgT>::value, bool> = true>
+  template <typename ArgT = ItemT>
+    requires std::is_pointer_v<ArgT>
   parray() {
     this->clear(nullptr);
   }
-  template <typename ArgT = ItemT, std::enable_if_t<!std::is_arithmetic<ArgT>::value && !std::is_pointer<ArgT>::value, bool> = true>
+  template <typename ArgT = ItemT>
+    requires(!std::is_arithmetic_v<ArgT> && !std::is_pointer_v<ArgT> && !is_converted_endian_sc_v<ArgT>)
   parray() {}
 
   parray(const parray& other) {

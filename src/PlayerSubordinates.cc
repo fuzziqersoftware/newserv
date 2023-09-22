@@ -17,32 +17,6 @@
 
 FileContentsCache player_files_cache(300 * 1000 * 1000);
 
-PlayerStats::PlayerStats() noexcept
-    : level(0),
-      experience(0),
-      meseta(0) {}
-
-PlayerVisualConfig::PlayerVisualConfig() noexcept
-    : unknown_a2(0),
-      name_color(0),
-      extra_model(0),
-      unknown_a3(0),
-      section_id(0),
-      char_class(0),
-      v2_flags(0),
-      version(0),
-      v1_flags(0),
-      costume(0),
-      skin(0),
-      face(0),
-      head(0),
-      hair(0),
-      hair_r(0),
-      hair_g(0),
-      hair_b(0),
-      proportion_x(0),
-      proportion_y(0) {}
-
 void PlayerDispDataDCPCV3::enforce_v2_limits() {
   // V1/V2 have fewer classes, so we'll substitute some here
   if (this->visual.char_class == 11) {
@@ -72,10 +46,6 @@ PlayerDispDataBB PlayerDispDataDCPCV3::to_bb() const {
   bb.technique_levels = this->v1_technique_levels;
   return bb;
 }
-
-PlayerDispDataBB::PlayerDispDataBB() noexcept
-    : play_time(0),
-      unknown_a3(0) {}
 
 PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3() const {
   PlayerDispDataDCPCV3 ret;
@@ -126,26 +96,6 @@ void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
   this->visual.proportion_y = pre.visual.proportion_y;
   this->name = pre.name;
 }
-
-PlayerDispDataBBPreview::PlayerDispDataBBPreview() noexcept
-    : experience(0),
-      level(0),
-      play_time(0) {}
-
-GuildCardV3::GuildCardV3() noexcept
-    : player_tag(0),
-      guild_card_number(0),
-      present(0),
-      language(0),
-      section_id(0),
-      char_class(0) {}
-
-GuildCardBB::GuildCardBB() noexcept
-    : guild_card_number(0),
-      present(0),
-      language(0),
-      section_id(0),
-      char_class(0) {}
 
 void GuildCardBB::clear() {
   this->guild_card_number = 0;

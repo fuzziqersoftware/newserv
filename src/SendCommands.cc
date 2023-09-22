@@ -1457,8 +1457,6 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       e.level = wc->game_data.ep3_config
           ? (wc->game_data.ep3_config->online_clv_exp / 100)
           : wc->game_data.player()->disp.stats.level.load();
-      e.unknown_a5.clear(0);
-      e.unknown_a6.clear(0);
 
       player_count++;
     }
@@ -1497,8 +1495,6 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       remove_language_marker_inplace(e.name);
       e.present = 1;
       e.level = entry.disp.stats.level.load();
-      e.unknown_a5.clear(0);
-      e.unknown_a6.clear(0);
       player_count++;
     }
 
@@ -1507,11 +1503,9 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   }
 
   for (size_t z = 4; z < 12; z++) {
-    auto& p = cmd.spectator_players[z - 4];
-    auto& e = cmd.entries[z];
-    e.unknown_a5.clear(0);
-    e.unknown_a6.clear(0);
     if (l->clients[z]) {
+      auto& p = cmd.spectator_players[z - 4];
+      auto& e = cmd.entries[z];
       p.lobby_data.player_tag = 0x00010000;
       p.lobby_data.guild_card = l->clients[z]->license->serial_number;
       p.lobby_data.client_id = l->clients[z]->lobby_client_id;

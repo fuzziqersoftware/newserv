@@ -108,14 +108,12 @@ struct PlayerStats {
   /* 1C */ le_uint32_t experience = 0;
   /* 20 */ le_uint32_t meseta = 0;
   /* 24 */
-
-  PlayerStats() noexcept;
 } __attribute__((packed));
 
 struct PlayerVisualConfig {
   /* 00 */ ptext<char, 0x10> name;
   /* 10 */ le_uint64_t unknown_a2 = 0; // Note: This is probably not actually a 64-bit int.
-  /* 18 */ le_uint32_t name_color = 0xFFFFFFFF; // RGBA
+  /* 18 */ le_uint32_t name_color = 0x00000000; // RGBA
   /* 1C */ uint8_t extra_model = 0;
   /* 1D */ parray<uint8_t, 0x0F> unused;
   /* 2C */ le_uint32_t unknown_a3 = 0;
@@ -135,8 +133,6 @@ struct PlayerVisualConfig {
   /* 48 */ le_float proportion_x = 0.0;
   /* 4C */ le_float proportion_y = 0.0;
   /* 50 */
-
-  PlayerVisualConfig() noexcept;
 } __attribute__((packed));
 
 struct PlayerDispDataDCPCV3 {
@@ -145,28 +141,19 @@ struct PlayerDispDataDCPCV3 {
   /* 74 */ parray<uint8_t, 0x48> config;
   /* BC */ parray<uint8_t, 0x14> v1_technique_levels;
   /* D0 */
-
-  // Note: This struct has a default constructor because it's used in a command
-  // that has a fixed-size array. If we didn't define this constructor, the
-  // trivial fields in that array's members would be uninitialized, and we could
-  // send uninitialized memory to the client.
-  PlayerDispDataDCPCV3() noexcept = default;
-
   void enforce_v2_limits();
   PlayerDispDataBB to_bb() const;
 } __attribute__((packed));
 
 struct PlayerDispDataBBPreview {
-  /* 00 */ le_uint32_t experience;
-  /* 04 */ le_uint32_t level;
+  /* 00 */ le_uint32_t experience = 0;
+  /* 04 */ le_uint32_t level = 0;
   // The name field in this structure is used for the player's Guild Card
   // number, apparently (possibly because it's a char array and this is BB)
   /* 08 */ PlayerVisualConfig visual;
   /* 58 */ ptext<char16_t, 0x10> name;
-  /* 78 */ uint32_t play_time;
+  /* 78 */ uint32_t play_time = 0;
   /* 7C */
-
-  PlayerDispDataBBPreview() noexcept;
 } __attribute__((packed));
 
 // BB player appearance and stats data
@@ -174,13 +161,11 @@ struct PlayerDispDataBB {
   /* 0000 */ PlayerStats stats;
   /* 0024 */ PlayerVisualConfig visual;
   /* 0074 */ ptext<char16_t, 0x0C> name;
-  /* 008C */ le_uint32_t play_time;
-  /* 0090 */ uint32_t unknown_a3;
+  /* 008C */ le_uint32_t play_time = 0;
+  /* 0090 */ uint32_t unknown_a3 = 0;
   /* 0094 */ parray<uint8_t, 0xE8> config;
   /* 017C */ parray<uint8_t, 0x14> technique_levels;
   /* 0190 */
-
-  PlayerDispDataBB() noexcept;
 
   inline void enforce_v2_limits() {}
   PlayerDispDataDCPCV3 to_dcpcv3() const;
@@ -192,32 +177,29 @@ struct PlayerDispDataBB {
 // TODO: Is this the same for XB as it is for GC? (This struct is based on the
 // GC format)
 struct GuildCardV3 {
-  /* 00 */ le_uint32_t player_tag;
-  /* 04 */ le_uint32_t guild_card_number;
+  /* 00 */ le_uint32_t player_tag = 0;
+  /* 04 */ le_uint32_t guild_card_number = 0;
   /* 08 */ ptext<char, 0x18> name;
   /* 20 */ ptext<char, 0x6C> description;
-  /* 8C */ uint8_t present; // should be 1
-  /* 8D */ uint8_t language;
-  /* 8E */ uint8_t section_id;
-  /* 8F */ uint8_t char_class;
+  /* 8C */ uint8_t present = 0;
+  /* 8D */ uint8_t language = 0;
+  /* 8E */ uint8_t section_id = 0;
+  /* 8F */ uint8_t char_class = 0;
   /* 90 */
-
-  GuildCardV3() noexcept;
 } __attribute__((packed));
 
 // BB guild card format
 struct GuildCardBB {
-  /* 0000 */ le_uint32_t guild_card_number;
+  /* 0000 */ le_uint32_t guild_card_number = 0;
   /* 0004 */ ptext<char16_t, 0x18> name;
   /* 0034 */ ptext<char16_t, 0x10> team_name;
   /* 0054 */ ptext<char16_t, 0x58> description;
-  /* 0104 */ uint8_t present; // should be 1 if guild card entry exists
-  /* 0105 */ uint8_t language;
-  /* 0106 */ uint8_t section_id;
-  /* 0107 */ uint8_t char_class;
+  /* 0104 */ uint8_t present = 0;
+  /* 0105 */ uint8_t language = 0;
+  /* 0106 */ uint8_t section_id = 0;
+  /* 0107 */ uint8_t char_class = 0;
   /* 0108 */
 
-  GuildCardBB() noexcept;
   void clear();
 } __attribute__((packed));
 
@@ -244,14 +226,14 @@ struct KeyAndTeamConfigBB {
   parray<uint8_t, 0x0114> unknown_a1; // 0000
   parray<uint8_t, 0x016C> key_config; // 0114
   parray<uint8_t, 0x0038> joystick_config; // 0280
-  le_uint32_t guild_card_number; // 02B8
-  le_uint32_t team_id; // 02BC
-  le_uint64_t team_info; // 02C0
-  le_uint16_t team_privilege_level; // 02C8
-  le_uint16_t reserved; // 02CA
+  le_uint32_t guild_card_number = 0; // 02B8
+  le_uint32_t team_id = 0; // 02BC
+  le_uint64_t team_info = 0; // 02C0
+  le_uint16_t team_privilege_level = 0; // 02C8
+  le_uint16_t reserved = 0; // 02CA
   ptext<char16_t, 0x0010> team_name; // 02CC
   parray<uint8_t, 0x0800> team_flag; // 02EC
-  le_uint32_t team_rewards; // 0AEC
+  le_uint32_t team_rewards = 0; // 0AEC
 } __attribute__((packed));
 
 struct PlayerLobbyDataPC {
@@ -412,7 +394,7 @@ struct PlayerRecords_Battle {
   using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
   // On Episode 3, place_counts[0] is win count and [1] is loss count
   /* 00 */ parray<U16T, 4> place_counts;
-  /* 08 */ U16T disconnect_count;
+  /* 08 */ U16T disconnect_count = 0;
   /* 0A */ parray<uint16_t, 3> unknown_a1;
   /* 10 */ parray<uint32_t, 2> unknown_a2;
   /* 18 */
@@ -428,8 +410,6 @@ struct ChoiceSearchConfig {
   } __attribute__((packed));
   parray<Entry, 5> entries;
 } __attribute__((packed));
-
-uint32_t compute_guild_card_checksum(const void* data, size_t size);
 
 template <typename DestT, typename SrcT = DestT>
 DestT convert_player_disp_data(const SrcT&) {
