@@ -113,7 +113,10 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   if (c->preferred_lobby_id >= 0) {
     try {
       auto l = this->find_lobby(c->preferred_lobby_id);
-      if (l && !l->is_game() && (l->flags & Lobby::Flag::PUBLIC)) {
+      if (l &&
+          !l->is_game() &&
+          (l->flags & Lobby::Flag::PUBLIC) &&
+          ((c->flags & Client::Flag::IS_EPISODE_3) || (l->episode != Episode::EP3))) {
         l->add_client(c);
         added_to_lobby = l;
       }
