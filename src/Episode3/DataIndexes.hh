@@ -114,16 +114,17 @@ enum class CardRarity : uint8_t {
   R3 = 0x09,
   R4 = 0x0A,
   SS = 0x0B,
-  // Cards with the D1 or D2 ranks are considered never usable by the player,
+  // Cards with the D1 or D2 rarities are considered never usable by the player,
   // and are automatically removed from player decks before battle and when
-  // loading the deckbuilder. Cards with the D1 rank appear in the deckbuilder
-  // but are grayed out (and cannot be added to decks); cards with the D2 rank
+  // loading the deckbuilder. Cards with the D1 rarity appear in the deckbuilder
+  // but are grayed out (and cannot be added to decks); cards with the D2 rarity
   // don't appear in the deckbuilder at all.
   D1 = 0x0C,
   D2 = 0x0D,
-  // The D3 rank is only referenced in the function that determines whether or
-  // not a card can appear in post-battle draws. Having the D3 rank prevents the
-  // card from appearing (as do the E, D1, and D2 ranks).
+  // The D3 rarity is referenced in a few places, including the function that
+  // determines whether or not a card can appear in post-battle draws, and the
+  // function that determines whether a card should appear in the deckbuilder.
+  // In these cases, it prevents the card from appearing.
   D3 = 0x0E,
 };
 
