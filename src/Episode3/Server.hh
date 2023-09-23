@@ -12,6 +12,7 @@
 #include "MapState.hh"
 #include "PlayerState.hh"
 #include "RulerServer.hh"
+#include "Tournament.hh"
 
 struct Lobby;
 
@@ -63,7 +64,7 @@ public:
       std::shared_ptr<const MapIndex> map_index,
       uint32_t behavior_flags,
       std::shared_ptr<PSOLFGEncryption> random_crypt,
-      std::shared_ptr<const MapIndex::MapEntry> map_if_tournament);
+      std::shared_ptr<const Tournament> tournament);
   ~Server() noexcept(false);
   void init();
 
@@ -233,7 +234,7 @@ public:
   uint32_t behavior_flags;
   std::shared_ptr<PSOLFGEncryption> random_crypt;
   std::shared_ptr<const MapIndex::MapEntry> last_chosen_map;
-  bool is_tournament;
+  std::shared_ptr<const Tournament> tournament;
   bool tournament_match_result_sent;
   uint8_t override_environment_number;
   mutable std::deque<StackLogger*> logger_stack;

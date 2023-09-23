@@ -1275,7 +1275,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, const string& da
         s->ep3_map_index,
         s->ep3_behavior_flags,
         l->random_crypt,
-        tourn ? tourn->get_map() : nullptr);
+        tourn);
     l->ep3_server->init();
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {

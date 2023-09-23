@@ -29,14 +29,14 @@ Server::Server(shared_ptr<Lobby> lobby,
     shared_ptr<const MapIndex> map_index,
     uint32_t behavior_flags,
     shared_ptr<PSOLFGEncryption> random_crypt,
-    shared_ptr<const MapIndex::MapEntry> map_if_tournament)
+    shared_ptr<const Tournament> tournament)
     : lobby(lobby),
       card_index(card_index),
       map_index(map_index),
       behavior_flags(behavior_flags),
       random_crypt(random_crypt),
-      last_chosen_map(map_if_tournament),
-      is_tournament(!!map_if_tournament),
+      last_chosen_map(tournament ? tournament->get_map() : nullptr),
+      tournament(tournament),
       tournament_match_result_sent(false),
       override_environment_number(0xFF),
       battle_finished(false),
@@ -1532,7 +1532,7 @@ G_SetStateFlags_GC_Ep3_6xB4x03 Server::prepare_6xB4x03() const {
   cmd.state.team_dice_boost[0] = this->team_dice_boost[0];
   cmd.state.team_dice_boost[1] = this->team_dice_boost[1];
   cmd.state.first_team_turn = this->first_team_turn;
-  cmd.state.tournament_flag = this->is_tournament ? 1 : 0;
+  cmd.state.tournament_flag = this->tournament ? 1 : 0;
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (!ps) {
@@ -1938,6 +1938,12 @@ void Server::handle_CAx13_update_map_during_setup(const string& data) {
     uint8_t def_dice_range = this->map_and_rules->rules.def_dice_range;
     *this->map_and_rules = in_cmd.map_and_rules_state;
     this->map_and_rules->rules.def_dice_range = def_dice_range;
+
+    // If this match is part of a tournament, ignore the rules sent by the
+    // client and use the tournament rules instead.
+    if (this->tournament) {
+      this->map_and_rules->rules = this->tournament->get_rules();
+    }
 
     if (this->override_environment_number != 0xFF) {
       this->map_and_rules->environment_number = this->override_environment_number;
