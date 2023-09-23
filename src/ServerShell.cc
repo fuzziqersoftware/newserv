@@ -484,7 +484,7 @@ Proxy session commands:\n\
             throw runtime_error("dice option must be of the form dice=X-Y");
           }
           rules.min_dice = stoul(subtokens[0]);
-          rules.max_dice = stoul(subtokens[0]);
+          rules.max_dice = stoul(subtokens[1]);
         } else if (starts_with(token, "overall-time-limit=")) {
           uint32_t limit = stoul(token.substr(19));
           if (limit > 600) {
