@@ -464,12 +464,15 @@ void Tournament::create_bracket_matches() {
     throw logic_error("tournaments team count is not a power of 2");
   }
 
-  // Create the zero-round matches and make them all pending
+  // Create the zero-round matches, and make them all pending if registration
+  // is still open
   this->zero_round_matches.clear();
   for (const auto& team : this->teams) {
     auto m = make_shared<Match>(this->shared_from_this(), team);
     this->zero_round_matches.emplace_back(m);
-    this->pending_matches.emplace(m);
+    if (this->current_state == State::REGISTRATION) {
+      this->pending_matches.emplace(m);
+    }
   }
 
   // Create the bracket matches
