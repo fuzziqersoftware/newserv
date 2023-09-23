@@ -844,7 +844,9 @@ shared_ptr<Tournament> TournamentIndex::create_tournament(
   auto t = make_shared<Tournament>(
       this->map_index, this->com_deck_index, name, map, rules, num_teams, flags);
   t->init();
-  this->name_to_tournament.emplace(t->get_name(), t);
+  if (!this->name_to_tournament.emplace(t->get_name(), t).second) {
+    throw runtime_error("a tournament with the same name already exists");
+  }
 
   size_t z;
   for (z = 0; z < this->menu_item_id_to_tournament.size(); z++) {
