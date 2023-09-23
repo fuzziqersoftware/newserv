@@ -250,6 +250,20 @@ void Tournament::Match::on_winner_team_set() {
   if (tournament->pending_matches.empty()) {
     tournament->current_state = Tournament::State::COMPLETE;
   }
+
+  // Unlink the losing team's players (if any) - this allows them to enter
+  // another tournament before this tournament has ended
+  if (this->preceding_a && this->preceding_b) {
+    auto losing_team = (this->winner_team == this->preceding_a->winner_team)
+        ? this->preceding_b->winner_team
+        : this->preceding_a->winner_team;
+    for (auto& player : losing_team->players) {
+      auto c = player.client.lock();
+      if (c) {
+        c->ep3_tournament_team.reset();
+      }
+    }
+  }
 }
 
 void Tournament::Match::set_winner_team_without_triggers(shared_ptr<Team> team) {
@@ -881,7 +895,7 @@ void TournamentIndex::link_client(shared_ptr<Client> c) {
 
   auto team = this->team_for_serial_number(c->license->serial_number);
   auto tourn = team ? team->tournament.lock() : nullptr;
-  if (team && tourn) {
+  if (team && team->is_active && tourn) {
     for (auto& player : team->players) {
       if (player.serial_number == c->license->serial_number) {
         c->ep3_tournament_team = team;
