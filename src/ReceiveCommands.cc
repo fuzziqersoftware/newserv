@@ -953,13 +953,12 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
   return true;
 }
 
-static bool start_ep3_battle_table_game_if_ready(
-    shared_ptr<Lobby> l, int16_t table_number, int16_t tournament_table_number) {
+static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t table_number) {
   if (table_number < 0) {
     // Negative numbers are supposed to mean the client is not seated at a
     // table, so it's an error for this function to be called with a negative
     // table number
-    throw logic_error("negative table number");
+    throw runtime_error("negative table number");
   }
 
   // Figure out which clients are at this table. If any client has declined, we
@@ -972,7 +971,7 @@ static bool start_ep3_battle_table_game_if_ready(
       continue;
     }
     if (c->card_battle_table_seat_number >= 4) {
-      throw logic_error("invalid seat number");
+      throw runtime_error("invalid seat number");
     }
     // Apparently this can actually happen; just prevent them from starting a
     // battle if multiple players are in the same seat
@@ -992,18 +991,16 @@ static bool start_ep3_battle_table_game_if_ready(
 
   // Figure out if this is a tournament match setup
   unordered_set<shared_ptr<Episode3::Tournament::Match>> tourn_matches;
-  if (table_number == tournament_table_number) {
-    for (const auto& it : table_clients) {
-      auto team = it.second->ep3_tournament_team.lock();
-      auto tourn = team ? team->tournament.lock() : nullptr;
-      auto match = tourn ? tourn->next_match_for_team(team) : nullptr;
-      // Note: We intentionally don't check for null here. This is to handle the
-      // case where a tournament-registered player steps into a seat at a table
-      // where a non-tournament-registered player is already present - we should
-      // NOT start any match until the non-tournament-registered player leaves,
-      // or they both accept (and we start a non-tournament match).
-      tourn_matches.emplace(match);
-    }
+  for (const auto& it : table_clients) {
+    auto team = it.second->ep3_tournament_team.lock();
+    auto tourn = team ? team->tournament.lock() : nullptr;
+    auto match = tourn ? tourn->next_match_for_team(team) : nullptr;
+    // Note: We intentionally don't check for null here. This is to handle the
+    // case where a tournament-registered player steps into a seat at a table
+    // where a non-tournament-registered player is already present - we should
+    // NOT start any match until the non-tournament-registered player leaves,
+    // or they both accept (and we start a non-tournament match).
+    tourn_matches.emplace(match);
   }
 
   // Get the tournament. Invariant: both tourn_match and tourn are null, or
@@ -1140,7 +1137,7 @@ static bool start_ep3_battle_table_game_if_ready(
 
 static void on_ep3_battle_table_state_updated(shared_ptr<Lobby> l, int16_t table_number) {
   send_ep3_card_battle_table_state(l, table_number);
-  start_ep3_battle_table_game_if_ready(l, table_number, 2);
+  start_ep3_battle_table_game_if_ready(l, table_number);
 }
 
 static void on_E4_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) {
@@ -2056,10 +2053,9 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
             tourn->send_all_state_updates();
             string message = string_printf("$C7You are registered in $C6%s$C7.\n\
 \n\
-After registration ends, start your matches by\n\
-standing at the 4-player Battle Table near the\n\
-lobby warp in the lobby along with your partner\n\
-(if any) and opponent(s).",
+After the tournament begins, start your matches\n\
+by standing at any Battle Table along with your\n\
+partner (if any) and opponent(s).",
                 tourn->get_name().c_str());
             send_ep3_timed_message_box(c->channel, 240, message.c_str());
 
