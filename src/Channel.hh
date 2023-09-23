@@ -75,22 +75,23 @@ struct Channel {
   void disconnect();
 
   // Receives a message. Throws std::out_of_range if no messages are available.
-  Message recv(bool print_contents = true);
+  Message recv();
 
   // Sends a message with an automatically-constructed header.
-  void send(uint16_t cmd, uint32_t flag = 0, bool print_contents = true);
-  void send(uint16_t cmd, uint32_t flag, const void* data, size_t size, bool print_contents = true);
-  void send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<const void*, size_t>> blocks, bool print_contents = true);
-  void send(uint16_t cmd, uint32_t flag, const std::string& data, bool print_contents = true);
+  void send(uint16_t cmd, uint32_t flag = 0, bool silent = false);
+  void send(uint16_t cmd, uint32_t flag, const void* data, size_t size, bool silent = false);
+  void send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<const void*, size_t>> blocks, bool silent = false);
+  void send(uint16_t cmd, uint32_t flag, const std::string& data, bool silent = false);
   template <typename CmdT>
-  void send(uint16_t cmd, uint32_t flag, const CmdT& data) {
-    this->send(cmd, flag, &data, sizeof(data));
+    requires(!std::is_pointer_v<CmdT>)
+  void send(uint16_t cmd, uint32_t flag, const CmdT& data, bool silent = false) {
+    this->send(cmd, flag, &data, sizeof(data), silent);
   }
 
   // Sends a message with a pre-existing header (as the first few bytes in the
   // data)
-  void send(const void* data = nullptr, size_t size = 0, bool print_contents = true);
-  void send(const std::string& data, bool print_contents = true);
+  void send(const void* data, size_t size, bool silent = false);
+  void send(const std::string& data, bool silent = false);
 
 private:
   static void dispatch_on_input(struct bufferevent*, void* ctx);

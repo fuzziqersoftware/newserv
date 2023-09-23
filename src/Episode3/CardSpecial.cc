@@ -1878,7 +1878,8 @@ bool CardSpecial::execute_effect(
     case ConditionType::UNIT_BLOW:
       if (unknown_p7 & 1) {
         int16_t count = clamp<int16_t>(this->count_action_cards_with_condition_for_all_current_attacks(ConditionType::UNIT_BLOW, 0xFFFF), -99, 99);
-        card->action_chain.chain.ap_effect_bonus = clamp<int16_t>(card->action_chain.chain.ap_effect_bonus + count * positive_expr_value, -99, 99);
+        card->action_chain.chain.ap_effect_bonus = clamp<int16_t>(
+            card->action_chain.chain.ap_effect_bonus + count * positive_expr_value, -99, 99);
       }
       return false;
 

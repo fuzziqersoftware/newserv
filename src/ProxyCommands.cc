@@ -74,7 +74,7 @@ static void forward_command(shared_ptr<ProxyServer::LinkedSession> ses, bool to_
   if (!ch.connected()) {
     proxy_server_log.warning("No endpoint is present; dropping command");
   } else {
-    ch.send(command, flag, data, print_contents);
+    ch.send(command, flag, data, !print_contents);
   }
 }
 

@@ -149,7 +149,7 @@ void Channel::disconnect() {
   this->crypt_out.reset();
 }
 
-Channel::Message Channel::recv(bool print_contents) {
+Channel::Message Channel::recv() {
   struct evbuffer* buf = bufferevent_get_input(this->bev.get());
 
   size_t header_size = (this->version == GameVersion::BB) ? 8 : 4;
@@ -204,7 +204,7 @@ Channel::Message Channel::recv(bool print_contents) {
   }
   command_data.resize(command_logical_size - header_size);
 
-  if (print_contents && (this->terminal_recv_color != TerminalFormat::END)) {
+  if (command_data_log.should_log(LogLevel::INFO) && (this->terminal_recv_color != TerminalFormat::END)) {
     if (use_terminal_colors && this->terminal_recv_color != TerminalFormat::NORMAL) {
       print_color_escape(stderr, this->terminal_recv_color, TerminalFormat::BOLD, TerminalFormat::END);
     }
@@ -241,11 +241,11 @@ Channel::Message Channel::recv(bool print_contents) {
   };
 }
 
-void Channel::send(uint16_t cmd, uint32_t flag, bool print_contents) {
-  this->send(cmd, flag, nullptr, 0, print_contents);
+void Channel::send(uint16_t cmd, uint32_t flag, bool silent) {
+  this->send(cmd, flag, nullptr, 0, silent);
 }
 
-void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<const void*, size_t>> blocks, bool print_contents) {
+void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<const void*, size_t>> blocks, bool silent) {
   if (!this->connected()) {
     channel_exceptions_log.warning("Attempted to send command on closed channel; dropping data");
     return;
@@ -331,7 +331,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
   }
   send_data.resize(send_data_size, '\0');
 
-  if (print_contents && (this->terminal_send_color != TerminalFormat::END)) {
+  if (!silent && (command_data_log.should_log(LogLevel::INFO)) && (this->terminal_send_color != TerminalFormat::END)) {
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
       print_color_escape(stderr, TerminalFormat::FG_YELLOW, TerminalFormat::BOLD, TerminalFormat::END);
     }
@@ -356,16 +356,15 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
   evbuffer_add(buf, send_data.data(), send_data.size());
 }
 
-void Channel::send(
-    uint16_t cmd, uint32_t flag, const void* data, size_t size, bool print_contents) {
-  this->send(cmd, flag, {make_pair(data, size)}, print_contents);
+void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size, bool silent) {
+  this->send(cmd, flag, {make_pair(data, size)}, silent);
 }
 
-void Channel::send(uint16_t cmd, uint32_t flag, const string& data, bool print_contents) {
-  this->send(cmd, flag, data.data(), data.size(), print_contents);
+void Channel::send(uint16_t cmd, uint32_t flag, const string& data, bool silent) {
+  this->send(cmd, flag, data.data(), data.size(), silent);
 }
 
-void Channel::send(const void* data, size_t size, bool print_contents) {
+void Channel::send(const void* data, size_t size, bool silent) {
   size_t header_size = (this->version == GameVersion::BB) ? 8 : 4;
   const auto* header = reinterpret_cast<const PSOCommandHeader*>(data);
   this->send(
@@ -373,11 +372,11 @@ void Channel::send(const void* data, size_t size, bool print_contents) {
       header->flag(this->version),
       reinterpret_cast<const uint8_t*>(data) + header_size,
       size - header_size,
-      print_contents);
+      silent);
 }
 
-void Channel::send(const string& data, bool print_contents) {
-  return this->send(data.data(), data.size(), print_contents);
+void Channel::send(const string& data, bool silent) {
+  return this->send(data.data(), data.size(), silent);
 }
 
 void Channel::dispatch_on_input(struct bufferevent*, void* ctx) {
