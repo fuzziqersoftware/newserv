@@ -1280,6 +1280,54 @@ static void server_command_ep3_infinite_time(shared_ptr<Client> c, const std::u1
   send_text_message(l, infinite_time_enabled ? u"$C6Infinite time enabled" : u"$C6Infinite time disabled");
 }
 
+static void server_command_ep3_set_def_dice_range(shared_ptr<Client> c, const std::u16string& args) {
+  auto l = c->require_lobby();
+  check_is_game(l, true);
+  check_is_ep3(c, true);
+  check_is_leader(l, c);
+
+  if (l->episode != Episode::EP3) {
+    throw logic_error("non-Ep3 client in Ep3 game");
+  }
+  if (!l->ep3_server) {
+    send_text_message(c, u"$C6Episode 3 server\nis not initialized");
+    return;
+  }
+  if (l->ep3_server->setup_phase != Episode3::SetupPhase::REGISTRATION) {
+    send_text_message(c, u"$C6Battle is already\nin progress");
+    return;
+  }
+
+  if (args.empty()) {
+    l->ep3_server->map_and_rules->rules.def_dice_range = 0;
+    send_text_message_printf(l, "$C6DEF dice range\nset to default");
+  } else {
+    uint8_t min_dice, max_dice;
+    auto tokens = split(encode_sjis(args), '-');
+    if (tokens.size() == 1) {
+      min_dice = stoul(tokens[0]);
+      max_dice = min_dice;
+    } else if (tokens.size() == 2) {
+      min_dice = stoul(tokens[0]);
+      max_dice = stoul(tokens[1]);
+    } else {
+      send_text_message(c, u"$C6Specify DEF dice\nrange as MIN-MAX");
+      return;
+    }
+    if (min_dice == 0 || min_dice > 9 || max_dice == 0 || max_dice > 9) {
+      send_text_message(c, u"$C6DEF dice must be\nin range 1-9");
+      return;
+    }
+    if (min_dice > max_dice) {
+      uint8_t t = min_dice;
+      min_dice = max_dice;
+      max_dice = t;
+    }
+    l->ep3_server->map_and_rules->rules.def_dice_range = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
+    send_text_message_printf(l, "$C6DEF dice range\nset to %hhu-%hhu", min_dice, max_dice);
+  }
+}
+
 static void server_command_ep3_unset_field_character(shared_ptr<Client> c, const std::u16string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -1429,6 +1477,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$bbchar", {server_command_convert_char_to_bb, nullptr}},
     {u"$cheat", {server_command_cheat, nullptr}},
     {u"$debug", {server_command_debug, nullptr}},
+    {u"$defrange", {server_command_ep3_set_def_dice_range, nullptr}},
     {u"$drop", {server_command_drop, nullptr}},
     {u"$edit", {server_command_edit, nullptr}},
     {u"$event", {server_command_lobby_event, proxy_command_lobby_event}},

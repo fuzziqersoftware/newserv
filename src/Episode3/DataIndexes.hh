@@ -864,20 +864,24 @@ struct Rules {
   // When this structure is used in a map/quest definition, FF in any of these
   // fields means the user is allowed to override it. Any non-FF fields are
   // fixed for the map/quest and cannot be overridden.
-  /* 00 */ uint8_t overall_time_limit; // In increments of 5 mins; 0 = unlimited
-  /* 01 */ uint8_t phase_time_limit; // In seconds; 0 = unlimited
-  /* 02 */ AllowedCards allowed_cards;
-  /* 03 */ uint8_t min_dice; // 0 = default (1)
-  /* 04 */ uint8_t max_dice; // 0 = default (6)
-  /* 05 */ uint8_t disable_deck_shuffle; // 0 = shuffle on, 1 = off
-  /* 06 */ uint8_t disable_deck_loop; // 0 = loop on, 1 = off
-  /* 07 */ uint8_t char_hp;
-  /* 08 */ HPType hp_type;
-  /* 09 */ uint8_t no_assist_cards; // 1 = assist cards disallowed
-  /* 0A */ uint8_t disable_dialogue; // 0 = dialogue on, 1 = dialogue off
-  /* 0B */ DiceExchangeMode dice_exchange_mode;
-  /* 0C */ uint8_t disable_dice_boost; // 0 = dice boost on, 1 = off
-  /* 0D */ parray<uint8_t, 3> unused;
+  /* 00 */ uint8_t overall_time_limit = 0; // In increments of 5 mins; 0 = unlimited
+  /* 01 */ uint8_t phase_time_limit = 0; // In seconds; 0 = unlimited
+  /* 02 */ AllowedCards allowed_cards = AllowedCards::ALL;
+  /* 03 */ uint8_t min_dice = 1; // 0 = default (1)
+  /* 04 */ uint8_t max_dice = 6; // 0 = default (6)
+  /* 05 */ uint8_t disable_deck_shuffle = 0; // 0 = shuffle on, 1 = off
+  /* 06 */ uint8_t disable_deck_loop = 0; // 0 = loop on, 1 = off
+  /* 07 */ uint8_t char_hp = 15;
+  /* 08 */ HPType hp_type = HPType::DEFEAT_PLAYER;
+  /* 09 */ uint8_t no_assist_cards = 0; // 1 = assist cards disallowed
+  /* 0A */ uint8_t disable_dialogue = 0; // 0 = dialogue on, 1 = dialogue off
+  /* 0B */ DiceExchangeMode dice_exchange_mode = DiceExchangeMode::HIGH_ATK;
+  /* 0C */ uint8_t disable_dice_boost = 0; // 0 = dice boost on, 1 = off
+  // NOTE: The following fields are unused in PSO's implementation, but newserv
+  // uses them to implement extended rules.
+  /* 0D */ uint8_t def_dice_range = 0; // High 4 bits = min, low 4 = max
+  /* 0E */ uint8_t unused1 = 0;
+  /* 0F */ uint8_t unused2 = 0;
   /* 10 */
 
   // Annoyingly, this structure is a different size in Episode 3 Trial Edition.
@@ -886,7 +890,7 @@ struct Rules {
   // clients. It'd be nice to support Trial Edition battles, but that would
   // likely be more work than it's worth.
 
-  Rules();
+  Rules() = default;
   explicit Rules(const JSON& json);
   JSON json() const;
   bool operator==(const Rules& other) const;
@@ -896,6 +900,9 @@ struct Rules {
 
   bool check_invalid_fields() const;
   bool check_and_reset_invalid_fields();
+
+  uint8_t min_def_dice() const;
+  uint8_t max_def_dice() const;
 
   std::string str() const;
 } __attribute__((packed));

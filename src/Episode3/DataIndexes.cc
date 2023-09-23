@@ -1172,10 +1172,6 @@ void PlayerConfig::encrypt(uint8_t basis) {
   this->basis = basis;
 }
 
-Rules::Rules() {
-  this->clear();
-}
-
 Rules::Rules(const JSON& json) {
   this->clear();
   this->overall_time_limit = json.get_int("overall_time_limit", this->overall_time_limit);
@@ -1191,6 +1187,9 @@ Rules::Rules(const JSON& json) {
   this->disable_dialogue = json.get_bool("disable_dialogue", this->disable_dialogue);
   this->dice_exchange_mode = json.get_enum("dice_exchange_mode", this->dice_exchange_mode);
   this->disable_dice_boost = json.get_bool("disable_dice_boost", this->disable_dice_boost);
+  uint8_t min_def_dice = json.get_int("min_def_dice", (this->def_dice_range >> 4) & 0x0F);
+  uint8_t max_def_dice = json.get_int("max_def_dice", this->def_dice_range & 0x0F);
+  this->def_dice_range = ((min_def_dice << 4) & 0xF0) | (max_def_dice & 0x0F);
 }
 
 JSON Rules::json() const {
@@ -1208,6 +1207,8 @@ JSON Rules::json() const {
       {"disable_dialogue", static_cast<bool>(this->disable_dialogue)},
       {"dice_exchange_mode", name_for_enum(this->dice_exchange_mode)},
       {"disable_dice_boost", static_cast<bool>(this->disable_dice_boost)},
+      {"min_def_dice", ((this->def_dice_range >> 4) & 0x0F)},
+      {"max_def_dice", (this->def_dice_range & 0x0F)},
   });
 }
 
@@ -1234,7 +1235,9 @@ void Rules::clear() {
   this->disable_dialogue = 0;
   this->dice_exchange_mode = DiceExchangeMode::HIGH_ATK;
   this->disable_dice_boost = 0;
-  this->unused.clear(0);
+  this->def_dice_range = 0;
+  this->unused1 = 0;
+  this->unused2 = 0;
 }
 
 string Rules::str() const {
@@ -1279,6 +1282,17 @@ string Rules::str() const {
     tokens.emplace_back("max_dice=6 (default)");
   } else {
     tokens.emplace_back(string_printf("max_dice=%hhu", this->max_dice));
+  }
+
+  if (this->min_def_dice() == 0) {
+    tokens.emplace_back("min_def_dice=(default)");
+  } else {
+    tokens.emplace_back(string_printf("min_def_dice=%hhu", this->min_def_dice()));
+  }
+  if (this->max_def_dice() == 0) {
+    tokens.emplace_back("max_def_dice=(default)");
+  } else {
+    tokens.emplace_back(string_printf("max_def_dice=%hhu", this->max_def_dice()));
   }
 
   switch (this->dice_exchange_mode) {
@@ -1743,6 +1757,23 @@ bool Rules::check_and_reset_invalid_fields() {
     this->max_dice = t;
     ret = true;
   }
+  uint8_t min_def_dice = this->min_def_dice();
+  uint8_t max_def_dice = this->max_def_dice();
+  if (min_def_dice > 9) {
+    min_def_dice = 0;
+    ret = true;
+  }
+  if (max_def_dice > 9) {
+    max_def_dice = 0;
+    ret = true;
+  }
+  if ((min_def_dice != 0) && (max_def_dice != 0) && (max_def_dice < min_def_dice)) {
+    uint8_t t = min_def_dice;
+    min_def_dice = max_def_dice;
+    max_def_dice = t;
+    ret = true;
+  }
+  this->def_dice_range = ((min_def_dice << 4) & 0xF0) | (max_def_dice & 0x0F);
   if (this->disable_deck_shuffle > 1) {
     this->disable_deck_shuffle = 0;
     ret = true;
@@ -1776,6 +1807,14 @@ bool Rules::check_and_reset_invalid_fields() {
     ret = true;
   }
   return ret;
+}
+
+uint8_t Rules::min_def_dice() const {
+  return (this->def_dice_range >> 4) & 0x0F;
+}
+
+uint8_t Rules::max_def_dice() const {
+  return this->def_dice_range & 0x0F;
 }
 
 CardIndex::CardIndex(const string& filename, const string& decompressed_filename, const string& text_filename) {

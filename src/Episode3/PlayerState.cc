@@ -1826,32 +1826,44 @@ void PlayerState::roll_main_dice() {
   auto s = this->server();
   const auto& rules = s->map_and_rules->rules;
 
-  uint8_t min_dice = rules.min_dice;
-  uint8_t max_dice = rules.max_dice;
-  if (min_dice == 0) {
-    min_dice = 1;
+  uint8_t min_atk_dice = rules.min_dice;
+  uint8_t max_atk_dice = rules.max_dice;
+  if (min_atk_dice == 0) {
+    min_atk_dice = 1;
   }
-  if (max_dice == 0) {
-    max_dice = 6;
+  if (max_atk_dice == 0) {
+    max_atk_dice = 6;
   }
-
-  if (max_dice < min_dice) {
-    uint8_t t = max_dice;
-    max_dice = min_dice;
-    min_dice = t;
+  if (max_atk_dice < min_atk_dice) {
+    uint8_t t = max_atk_dice;
+    max_atk_dice = min_atk_dice;
+    min_atk_dice = t;
   }
-
-  uint8_t dice_range_width = (max_dice - min_dice) + 1;
-  if (dice_range_width < 2) {
-    this->dice_results[0] = min_dice;
-    this->dice_results[1] = min_dice;
-    this->atk_points = min_dice;
-    this->def_points = min_dice;
+  uint8_t atk_dice_range_width = (max_atk_dice - min_atk_dice) + 1;
+  if (atk_dice_range_width < 2) {
+    this->dice_results[0] = min_atk_dice;
   } else {
-    this->dice_results[0] = min_dice + s->get_random(dice_range_width);
-    this->dice_results[1] = min_dice + s->get_random(dice_range_width);
-    this->atk_points = this->dice_results[0];
-    this->def_points = this->dice_results[1];
+    this->dice_results[0] = min_atk_dice + s->get_random(atk_dice_range_width);
+  }
+
+  uint8_t min_def_dice = rules.min_def_dice() ? rules.min_def_dice() : rules.min_dice;
+  uint8_t max_def_dice = rules.max_def_dice() ? rules.max_def_dice() : rules.max_dice;
+  if (min_def_dice == 0) {
+    min_def_dice = 1;
+  }
+  if (max_def_dice == 0) {
+    max_def_dice = 6;
+  }
+  if (max_def_dice < min_def_dice) {
+    uint8_t t = max_def_dice;
+    max_def_dice = min_def_dice;
+    min_def_dice = t;
+  }
+  uint8_t def_dice_range_width = (max_def_dice - min_def_dice) + 1;
+  if (def_dice_range_width < 2) {
+    this->dice_results[1] = min_def_dice;
+  } else {
+    this->dice_results[1] = min_def_dice + s->get_random(def_dice_range_width);
   }
 
   bool should_exchange = false;
@@ -1862,12 +1874,12 @@ void PlayerState::roll_main_dice() {
   }
 
   if (!should_exchange) {
-    this->atk_points = (short)(char)this->dice_results[0];
-    this->def_points = (short)(char)this->dice_results[1];
+    this->atk_points = this->dice_results[0];
+    this->def_points = this->dice_results[1];
     this->assist_flags &= (~AssistFlag::DICE_WERE_EXCHANGED);
   } else {
-    this->atk_points = (short)(char)this->dice_results[1];
-    this->def_points = (short)(char)this->dice_results[0];
+    this->atk_points = this->dice_results[1];
+    this->def_points = this->dice_results[0];
     this->assist_flags |= AssistFlag::DICE_WERE_EXCHANGED;
   }
 

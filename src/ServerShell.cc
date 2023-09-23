@@ -166,6 +166,8 @@ Server commands:\n\
       resize: If the tournament is less than half full when it starts, reduce\n\
           the number of rounds to fit the existing entries\n\
       dice=MIN-MAX: Set minimum and maximum dice rolls\n\
+      dice=MIN-MAX:MIN-MAX: Set minimum and maximum dice rolls for ATK and DEF\n\
+          dice separately\n\
       overall-time-limit=N: Set battle time limit (in multiples of 5 minutes)\n\
       phase-time-limit=N: Set phase time limit (in seconds)\n\
       allowed-cards=ALL/N/NR/NRS: Set rarities of allowed cards\n\
@@ -479,12 +481,24 @@ Proxy session commands:\n\
         } else if (token == "resize") {
           flags |= Episode3::Tournament::Flag::RESIZE_ON_START;
         } else if (starts_with(token, "dice=")) {
-          auto subtokens = split(token.substr(5), '-');
-          if (subtokens.size() != 2) {
-            throw runtime_error("dice option must be of the form dice=X-Y");
+          auto subtokens = split(token.substr(5), ':');
+          if (subtokens.size() == 1) {
+            rules.def_dice_range = 0x00;
+          } else if (subtokens.size() == 2) {
+            auto subsubtokens = split(subtokens[1], '-');
+            if (subsubtokens.size() != 2) {
+              throw runtime_error("dice option must be of the form dice=A-B or dice=A-B:C-D");
+            }
+            rules.def_dice_range = ((stoul(subsubtokens[0]) << 4) & 0xF0) | (stoul(subsubtokens[1]) & 0x0F);
+          } else {
+            throw runtime_error("dice option must be of the form dice=A-B or dice=A-B:C-D");
           }
-          rules.min_dice = stoul(subtokens[0]);
-          rules.max_dice = stoul(subtokens[1]);
+          auto subsubtokens = split(subtokens[0], '-');
+          if (subsubtokens.size() != 2) {
+            throw runtime_error("dice option must be of the form dice=A-B or dice=A-B:C-D");
+          }
+          rules.min_dice = stoul(subsubtokens[0]);
+          rules.max_dice = stoul(subsubtokens[1]);
         } else if (starts_with(token, "overall-time-limit=")) {
           uint32_t limit = stoul(token.substr(19));
           if (limit > 600) {

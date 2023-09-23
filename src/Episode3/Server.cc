@@ -1932,7 +1932,13 @@ void Server::handle_CAx13_update_map_during_setup(const string& data) {
       (this->map_and_rules->num_players == 0) &&
       (this->registration_phase != RegistrationPhase::REGISTERED) &&
       (this->registration_phase != RegistrationPhase::BATTLE_STARTED)) {
+    // newserv's extended rules are stored in unused parts of the Rules struct,
+    // and clients will probably overwrite them with zeroes if we allow them to.
+    // So, we preserve the extended rules manually here.
+    uint8_t def_dice_range = this->map_and_rules->rules.def_dice_range;
     *this->map_and_rules = in_cmd.map_and_rules_state;
+    this->map_and_rules->rules.def_dice_range = def_dice_range;
+
     if (this->override_environment_number != 0xFF) {
       this->map_and_rules->environment_number = this->override_environment_number;
       this->override_environment_number = 0xFF;
