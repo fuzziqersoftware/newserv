@@ -136,7 +136,7 @@ std::u16string decode_sjis(const char* src, size_t src_count) {
       if (src == src_end) {
         throw runtime_error("incomplete extended character");
       }
-      src_char = (src_char << 8) | *(src++);
+      src_char = (src_char << 8) | static_cast<uint8_t>(*(src++));
       if ((src_char & 0xFF) == 0) {
         throw runtime_error("incomplete extended character");
       }
@@ -167,7 +167,7 @@ size_t decode_sjis(
       if (src == src_end) {
         throw runtime_error("incomplete extended character");
       }
-      src_char = (src_char << 8) | *(src++);
+      src_char = (src_char << 8) | static_cast<uint8_t>(*(src++));
       if ((src_char & 0xFF) == 0) {
         throw runtime_error("incomplete extended character");
       }
