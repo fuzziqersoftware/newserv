@@ -99,7 +99,6 @@ void ServerState::init() {
   this->load_quest_index();
   this->compile_functions();
   this->load_dol_files();
-  this->create_menus(config);
 
   if (this->is_replay) {
     this->allow_saving = false;
@@ -392,101 +391,6 @@ void ServerState::set_port_configuration(
   }
 }
 
-void ServerState::create_menus(const JSON& json) {
-  config_log.info("Creating menus");
-
-  shared_ptr<Menu> information_menu_v2(new Menu(MenuID::INFORMATION, u"Information"));
-  shared_ptr<Menu> information_menu_v3(new Menu(MenuID::INFORMATION, u"Information"));
-  shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
-
-  information_menu_v2->items.emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
-      u"Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
-  information_menu_v3->items.emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
-      u"Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
-  {
-    uint32_t item_id = 0;
-    for (const auto& item : json.at("InformationMenuContents").as_list()) {
-      u16string name = decode_sjis(item->get_string(0));
-      u16string short_desc = decode_sjis(item->get_string(1));
-      information_menu_v2->items.emplace_back(item_id, name, short_desc, 0);
-      information_menu_v3->items.emplace_back(item_id, name, short_desc, MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
-      information_contents->emplace_back(decode_sjis(item->get_string(2)));
-      item_id++;
-    }
-  }
-  this->information_menu_v2 = information_menu_v2;
-  this->information_menu_v3 = information_menu_v3;
-  this->information_contents = information_contents;
-
-  auto generate_proxy_destinations_menu = [&](vector<pair<string, uint16_t>>& ret_pds, const char* key) -> shared_ptr<const Menu> {
-    shared_ptr<Menu> ret(new Menu(MenuID::PROXY_DESTINATIONS, u"Proxy server"));
-    ret_pds.clear();
-
-    try {
-      map<string, const JSON&> sorted_jsons;
-      for (const auto& it : json.at(key).as_dict()) {
-        sorted_jsons.emplace(it.first, *it.second);
-      }
-
-      ret->items.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
-          u"Return to the\nmain menu", 0);
-      ret->items.emplace_back(ProxyDestinationsMenuItemID::OPTIONS, u"Options",
-          u"Set proxy session\noptions", 0);
-
-      uint32_t item_id = 0;
-      for (const auto& item : sorted_jsons) {
-        const string& netloc_str = item.second.as_string();
-        const string& description = "$C7Remote server:\n$C6" + netloc_str;
-        ret->items.emplace_back(item_id, decode_sjis(item.first), decode_sjis(description), 0);
-        ret_pds.emplace_back(parse_netloc(netloc_str));
-        item_id++;
-      }
-    } catch (const out_of_range&) {
-    }
-    return ret;
-  };
-
-  this->proxy_destinations_menu_dc = generate_proxy_destinations_menu(
-      this->proxy_destinations_dc, "ProxyDestinations-DC");
-  this->proxy_destinations_menu_pc = generate_proxy_destinations_menu(
-      this->proxy_destinations_pc, "ProxyDestinations-PC");
-  this->proxy_destinations_menu_gc = generate_proxy_destinations_menu(
-      this->proxy_destinations_gc, "ProxyDestinations-GC");
-  this->proxy_destinations_menu_xb = generate_proxy_destinations_menu(
-      this->proxy_destinations_xb, "ProxyDestinations-XB");
-
-  try {
-    const string& netloc_str = json.get_string("ProxyDestination-Patch");
-    this->proxy_destination_patch = parse_netloc(netloc_str);
-    config_log.info("Patch server proxy is enabled with destination %s", netloc_str.c_str());
-    for (auto& it : this->name_to_port_config) {
-      if (it.second->version == GameVersion::PATCH) {
-        it.second->behavior = ServerBehavior::PROXY_SERVER;
-      }
-    }
-  } catch (const out_of_range&) {
-    this->proxy_destination_patch.first = "";
-    this->proxy_destination_patch.second = 0;
-  }
-  try {
-    const string& netloc_str = json.get_string("ProxyDestination-BB");
-    this->proxy_destination_bb = parse_netloc(netloc_str);
-    config_log.info("BB proxy is enabled with destination %s", netloc_str.c_str());
-    for (auto& it : this->name_to_port_config) {
-      if (it.second->version == GameVersion::BB) {
-        it.second->behavior = ServerBehavior::PROXY_SERVER;
-      }
-    }
-  } catch (const out_of_range&) {
-    this->proxy_destination_bb.first = "";
-    this->proxy_destination_bb.second = 0;
-  }
-
-  this->welcome_message = decode_sjis(json.get_string("WelcomeMessage", ""));
-  this->pc_patch_server_message = decode_sjis(json.get_string("PCPatchServerMessage", ""));
-  this->bb_patch_server_message = decode_sjis(json.get_string("BBPatchServerMessage", ""));
-}
-
 shared_ptr<const string> ServerState::load_bb_file(
     const std::string& patch_index_filename,
     const std::string& gsl_filename,
@@ -754,6 +658,99 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
           "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
     }
   }
+
+  config_log.info("Creating menus");
+
+  shared_ptr<Menu> information_menu_v2(new Menu(MenuID::INFORMATION, u"Information"));
+  shared_ptr<Menu> information_menu_v3(new Menu(MenuID::INFORMATION, u"Information"));
+  shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
+
+  information_menu_v2->items.emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
+      u"Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
+  information_menu_v3->items.emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
+      u"Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
+  {
+    uint32_t item_id = 0;
+    for (const auto& item : json.at("InformationMenuContents").as_list()) {
+      u16string name = decode_sjis(item->get_string(0));
+      u16string short_desc = decode_sjis(item->get_string(1));
+      information_menu_v2->items.emplace_back(item_id, name, short_desc, 0);
+      information_menu_v3->items.emplace_back(item_id, name, short_desc, MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+      information_contents->emplace_back(decode_sjis(item->get_string(2)));
+      item_id++;
+    }
+  }
+  this->information_menu_v2 = information_menu_v2;
+  this->information_menu_v3 = information_menu_v3;
+  this->information_contents = information_contents;
+
+  auto generate_proxy_destinations_menu = [&](vector<pair<string, uint16_t>>& ret_pds, const char* key) -> shared_ptr<const Menu> {
+    shared_ptr<Menu> ret(new Menu(MenuID::PROXY_DESTINATIONS, u"Proxy server"));
+    ret_pds.clear();
+
+    try {
+      map<string, const JSON&> sorted_jsons;
+      for (const auto& it : json.at(key).as_dict()) {
+        sorted_jsons.emplace(it.first, *it.second);
+      }
+
+      ret->items.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
+          u"Return to the\nmain menu", 0);
+      ret->items.emplace_back(ProxyDestinationsMenuItemID::OPTIONS, u"Options",
+          u"Set proxy session\noptions", 0);
+
+      uint32_t item_id = 0;
+      for (const auto& item : sorted_jsons) {
+        const string& netloc_str = item.second.as_string();
+        const string& description = "$C7Remote server:\n$C6" + netloc_str;
+        ret->items.emplace_back(item_id, decode_sjis(item.first), decode_sjis(description), 0);
+        ret_pds.emplace_back(parse_netloc(netloc_str));
+        item_id++;
+      }
+    } catch (const out_of_range&) {
+    }
+    return ret;
+  };
+
+  this->proxy_destinations_menu_dc = generate_proxy_destinations_menu(
+      this->proxy_destinations_dc, "ProxyDestinations-DC");
+  this->proxy_destinations_menu_pc = generate_proxy_destinations_menu(
+      this->proxy_destinations_pc, "ProxyDestinations-PC");
+  this->proxy_destinations_menu_gc = generate_proxy_destinations_menu(
+      this->proxy_destinations_gc, "ProxyDestinations-GC");
+  this->proxy_destinations_menu_xb = generate_proxy_destinations_menu(
+      this->proxy_destinations_xb, "ProxyDestinations-XB");
+
+  try {
+    const string& netloc_str = json.get_string("ProxyDestination-Patch");
+    this->proxy_destination_patch = parse_netloc(netloc_str);
+    config_log.info("Patch server proxy is enabled with destination %s", netloc_str.c_str());
+    for (auto& it : this->name_to_port_config) {
+      if (it.second->version == GameVersion::PATCH) {
+        it.second->behavior = ServerBehavior::PROXY_SERVER;
+      }
+    }
+  } catch (const out_of_range&) {
+    this->proxy_destination_patch.first = "";
+    this->proxy_destination_patch.second = 0;
+  }
+  try {
+    const string& netloc_str = json.get_string("ProxyDestination-BB");
+    this->proxy_destination_bb = parse_netloc(netloc_str);
+    config_log.info("BB proxy is enabled with destination %s", netloc_str.c_str());
+    for (auto& it : this->name_to_port_config) {
+      if (it.second->version == GameVersion::BB) {
+        it.second->behavior = ServerBehavior::PROXY_SERVER;
+      }
+    }
+  } catch (const out_of_range&) {
+    this->proxy_destination_bb.first = "";
+    this->proxy_destination_bb.second = 0;
+  }
+
+  this->welcome_message = decode_sjis(json.get_string("WelcomeMessage", ""));
+  this->pc_patch_server_message = decode_sjis(json.get_string("PCPatchServerMessage", ""));
+  this->bb_patch_server_message = decode_sjis(json.get_string("BBPatchServerMessage", ""));
 }
 
 void ServerState::load_bb_private_keys() {

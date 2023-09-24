@@ -290,11 +290,9 @@ Proxy session commands:\n\
       } else if (type == "functions") {
         auto config_json = this->state->load_config();
         this->state->compile_functions();
-        this->state->create_menus(config_json);
       } else if (type == "dol-files") {
         auto config_json = this->state->load_config();
         this->state->load_dol_files();
-        this->state->create_menus(config_json);
       } else if (type == "config") {
         auto config_json = this->state->load_config();
         this->state->parse_config(config_json, true);

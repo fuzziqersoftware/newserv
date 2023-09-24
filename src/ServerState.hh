@@ -205,5 +205,4 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_quest_index();
   void compile_functions();
   void load_dol_files();
-  void create_menus(const JSON& config_json);
 };
