@@ -193,8 +193,6 @@
     // network level within the simulator. This log is fairly verbose at the
     // info level, so by default we suppress those messages.
     "IPStackSimulator": "WARNING",
-    // License manager messages describe the creation of new license files.
-    "LicenseManager": "INFO",
     // Lobby messages describe creation and deletion of lobbies and games, as
     // well as item tracking events within games. On Episode 3, debug messages
     // during battles go to this stream as well; use "DEBUG" here to see them.
@@ -285,12 +283,23 @@
   // they are at the newserv main menu. If set, this value must be an integer.
   // "Episode3MenuSong": 0,
 
-  // Episode 3 Meseta behavior. If enabled (which is the default), all players
-  // have infinite Meseta, which effectively makes jukebox songs and Pinz's Shop
-  // free. If disabled, all players have no Meseta, which makes these features
-  // inaccessible. Proper Meseta behavior will be implemented at some point in
-  // the future.
-  "Episode3InfiniteMeseta": true,
+  // If this is enabled, all players will have infinite Meseta, effectively
+  // making the jukebox and Pinz's Shop free. Otherwise, Meseta behaves as
+  // defined below. Meseta rewards are tied to a player's license (and therefore
+  // their serial number) and are stored server-side.
+  "Episode3InfiniteMeseta": false,
+  // Meseta values for winning each tournament round. If a player defeats
+  // another player in round 1, for example, they will earn 400 Meseta; if they
+  // then defeat a COM in round 2, they will earn 200 more Meseta; if they
+  // defeat another player in round 3, they will earn an additional 600.
+  "Episode3DefeatPlayerMeseta": [400, 500, 600, 700, 800],
+  "Episode3DefeatCOMMeseta": [100, 200, 300, 400, 500],
+  // Winning the final round is worth this much extra Meseta.
+  "Episode3FinalRoundMesetaBonus": 300,
+  // If this option is enabled, the jukebox in Episode 3 lobbies does not deduct
+  // any Meseta when a song is played. The player must still have at least 100
+  // Meseta to play a song, however.
+  "Episode3JukeboxIsFree": false,
 
   // Episode 3 battle behavior flags. When set to zero, battles behave as they
   // did on the original Sega servers. Combinations of behaviors can be enabled

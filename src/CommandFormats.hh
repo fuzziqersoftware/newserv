@@ -2209,8 +2209,8 @@ struct S_RankUpdate_GC_Ep3_B7 {
   // without modifying it.
   le_uint32_t rank = 0;
   ptext<char, 0x0C> rank_text; // Encrypted (with encrypt_challenge_rank_text)
-  le_uint32_t meseta = 0;
-  le_uint32_t max_meseta = 0;
+  le_uint32_t current_meseta = 0;
+  le_uint32_t total_meseta_earned = 0;
   le_uint32_t unlocked_jukebox_songs = 0xFFFFFFFF;
 } __packed__;
 
@@ -2315,15 +2315,15 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
 //      sent by client)
 // 04 = unknown (C->S; request_token must match the last token sent by client)
 
-struct C_Meseta_GC_Ep3_BA {
+struct C_MesetaTransaction_GC_Ep3_BA {
   le_uint32_t transaction_num = 0;
   le_uint32_t value = 0;
   le_uint32_t request_token = 0;
 } __packed__;
 
-struct S_Meseta_GC_Ep3_BA {
-  le_uint32_t remaining_meseta = 0;
-  le_uint32_t total_meseta_awarded = 0;
+struct S_MesetaTransaction_GC_Ep3_BA {
+  le_uint32_t current_meseta = 0;
+  le_uint32_t total_meseta_earned = 0;
   le_uint32_t request_token = 0; // Should match the token sent by the client
 } __packed__;
 

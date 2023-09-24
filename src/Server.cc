@@ -306,7 +306,7 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
       results.emplace_back(std::move(c));
       continue;
     }
-    if (c->license && c->license->username == ident) {
+    if (c->license && c->license->bb_username == ident) {
       results.emplace_back(std::move(c));
       continue;
     }

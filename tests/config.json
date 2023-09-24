@@ -18,6 +18,11 @@
   "EnableItemTracking": true,
   "Episode3BehaviorFlags": 0xFA,
 
+  "Episode3InfiniteMeseta": false,
+  "Episode3DefeatPlayerMeseta": [400, 500, 600, 700, 800],
+  "Episode3DefeatCOMMeseta": [100, 200, 300, 400, 500],
+  "Episode3FinalRoundMesetaBonus": 300,
+
   "PortConfiguration": {
     "gc-jp10":       [9000,  "gc",    "login_server"],
     "gc-jp11":       [9001,  "gc",    "login_server"],
@@ -67,7 +72,6 @@
     "DNSServer": "INFO",
     "FunctionCompiler": "INFO",
     "IPStackSimulator": "INFO",
-    "LicenseManager": "INFO",
     "Lobbies": "INFO",
     "PlayerData": "INFO",
     "ProxyServer": "INFO",

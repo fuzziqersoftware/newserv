@@ -59,9 +59,13 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool allow_saving;
   bool item_tracking_enabled;
   bool drops_enabled;
-  bool episode_3_send_function_call_enabled;
+  bool ep3_send_function_call_enabled;
   bool catch_handler_exceptions;
   bool ep3_infinite_meseta;
+  std::vector<uint32_t> ep3_defeat_player_meseta_rewards;
+  std::vector<uint32_t> ep3_defeat_com_meseta_rewards;
+  uint32_t ep3_final_round_meseta_bonus;
+  bool ep3_jukebox_is_free;
   uint32_t ep3_behavior_flags;
   RunShellBehavior run_shell_behavior;
   CheatModeBehavior cheat_mode_behavior;
@@ -110,7 +114,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   };
   std::vector<Ep3LobbyBannerEntry> ep3_lobby_banners;
 
-  std::shared_ptr<LicenseManager> license_manager;
+  std::shared_ptr<LicenseIndex> license_index;
 
   std::shared_ptr<const Menu> information_menu_v2;
   std::shared_ptr<const Menu> information_menu_v3;

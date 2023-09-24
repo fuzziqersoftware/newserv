@@ -1176,8 +1176,8 @@ static HandlerResult S_G_B7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
   if (ses->newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3) {
     if (ses->options.ep3_infinite_meseta) {
       auto& cmd = check_size_t<S_RankUpdate_GC_Ep3_B7>(data);
-      if (cmd.meseta != 1000000) {
-        cmd.meseta = 1000000;
+      if (cmd.current_meseta != 1000000) {
+        cmd.current_meseta = 1000000;
         return HandlerResult::Type::MODIFIED;
       }
     }
@@ -1272,9 +1272,9 @@ static HandlerResult S_B_EF(shared_ptr<ProxyServer::LinkedSession>, uint16_t, ui
 
 static HandlerResult S_G_BA(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   if (ses->options.ep3_infinite_meseta) {
-    auto& cmd = check_size_t<S_Meseta_GC_Ep3_BA>(data);
-    if (cmd.remaining_meseta != 1000000) {
-      cmd.remaining_meseta = 1000000;
+    auto& cmd = check_size_t<S_MesetaTransaction_GC_Ep3_BA>(data);
+    if (cmd.current_meseta != 1000000) {
+      cmd.current_meseta = 1000000;
       return HandlerResult::Type::MODIFIED;
     }
   }

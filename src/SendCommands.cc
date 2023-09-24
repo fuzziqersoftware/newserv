@@ -2227,8 +2227,9 @@ void send_ep3_media_update(
 
 void send_ep3_rank_update(shared_ptr<Client> c) {
   auto s = c->require_server_state();
-  uint32_t meseta = s->ep3_infinite_meseta ? 1000000 : 0;
-  S_RankUpdate_GC_Ep3_B7 cmd = {0, "\0\0\0\0\0\0\0\0\0\0\0", meseta, meseta, 0xFFFFFFFF};
+  uint32_t current_meseta = s->ep3_infinite_meseta ? 1000000 : c->license->ep3_current_meseta;
+  uint32_t total_meseta_earned = s->ep3_infinite_meseta ? 1000000 : c->license->ep3_total_meseta_earned;
+  S_RankUpdate_GC_Ep3_B7 cmd = {0, "\0\0\0\0\0\0\0\0\0\0\0", current_meseta, total_meseta_earned, 0xFFFFFFFF};
   send_command_t(c, 0xB7, 0x00, cmd);
 }
 
@@ -2564,7 +2565,7 @@ void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
   // TODO: Handle disconnection during the match (the other team should win)
 }
 
-void send_ep3_tournament_match_result(shared_ptr<Lobby> l) {
+void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_reward) {
   auto s = l->require_server_state();
   auto& match = l->tournament_match;
   auto tourn = match->tournament.lock();
@@ -2603,10 +2604,7 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l) {
   cmd.round_num = (match == tourn->get_final_match()) ? 6 : match->round_num;
   cmd.num_players_per_team = match->preceding_a->winner_team->max_players;
   cmd.winner_team_id = (match->preceding_b->winner_team == match->winner_team);
-  // TODO: This amount should vary depending on the match level / round number,
-  // but newserv doesn't currently implement meseta at all - we just always give
-  // the player 1000000 and never charge for anything.
-  cmd.meseta_amount = 100;
+  cmd.meseta_amount = meseta_reward;
   cmd.meseta_reward_text = "You got %s meseta!";
   if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
     uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;

@@ -258,7 +258,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   auto s = server->state;
 
   bool should_close_unlinked_session = false;
-  shared_ptr<const License> license;
+  shared_ptr<License> license;
   uint32_t sub_version = 0;
   uint8_t language = 1; // Default = English
   string character_name;
@@ -272,7 +272,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       // anything else, disconnect
       if (command == 0x93) {
         const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
-        license = s->license_manager->verify_pc(
+        license = s->license_index->verify_v1_v2(
             stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
         sub_version = cmd.sub_version;
         language = cmd.language;
@@ -281,7 +281,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         client_config.cfg.flags |= Client::Flag::IS_DC_V1;
       } else if (command == 0x9D) {
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_DC_GC_9D));
-        license = s->license_manager->verify_pc(
+        license = s->license_index->verify_v1_v2(
             stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
         sub_version = cmd.sub_version;
         language = cmd.language;
@@ -297,7 +297,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         throw runtime_error("command is not 9D");
       }
       const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_PC_9D));
-      license = s->license_manager->verify_pc(
+      license = s->license_index->verify_v1_v2(
           stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
       sub_version = cmd.sub_version;
       language = cmd.language;
@@ -311,7 +311,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         throw runtime_error("command is not 9E");
       }
       const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_GC_9E));
-      license = s->license_manager->verify_gc(
+      license = s->license_index->verify_gc(
           stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
       sub_version = cmd.sub_version;
       language = cmd.language;
@@ -329,15 +329,18 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       }
       const auto& cmd = check_size_t<C_Login_BB_93>(data);
       try {
-        license = s->license_manager->verify_bb(
+        license = s->license_index->verify_bb(
             cmd.username, cmd.password);
-      } catch (const missing_license&) {
+      } catch (const LicenseIndex::missing_license&) {
         if (!s->allow_unregistered_users) {
           throw;
         }
-        shared_ptr<License> l = LicenseManager::create_license_bb(
-            fnv1a32(cmd.username) & 0x7FFFFFFF, cmd.username, cmd.password, true);
-        s->license_manager->add(l);
+        shared_ptr<License> l(new License());
+        l->serial_number = fnv1a32(cmd.username) & 0x7FFFFFFF;
+        l->bb_username = cmd.username;
+        l->bb_password = cmd.password;
+        l->flags |= License::Flag::TEMPORARY;
+        s->license_index->add(l);
         license = l;
       }
       login_command_bb = std::move(data);
@@ -484,7 +487,7 @@ ProxyServer::LinkedSession::LinkedSession(
     shared_ptr<ProxyServer> server,
     uint16_t local_port,
     GameVersion version,
-    shared_ptr<const License> license,
+    shared_ptr<License> license,
     const ClientConfigBB& newserv_client_config)
     : LinkedSession(server, license->serial_number, local_port, version) {
   this->license = license;
@@ -500,7 +503,7 @@ ProxyServer::LinkedSession::LinkedSession(
     shared_ptr<ProxyServer> server,
     uint16_t local_port,
     GameVersion version,
-    std::shared_ptr<const License> license,
+    std::shared_ptr<License> license,
     const struct sockaddr_storage& next_destination)
     : LinkedSession(server, license->serial_number, local_port, version) {
   this->license = license;
@@ -821,7 +824,7 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(
 }
 
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
-    shared_ptr<const License> l, uint16_t local_port, GameVersion version,
+    shared_ptr<License> l, uint16_t local_port, GameVersion version,
     const ClientConfigBB& newserv_client_config) {
   shared_ptr<LinkedSession> session(new LinkedSession(
       this->shared_from_this(), local_port, version, l, newserv_client_config));

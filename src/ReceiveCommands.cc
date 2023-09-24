@@ -121,7 +121,7 @@ static bool send_enable_send_function_call_if_applicable(shared_ptr<Client> c) {
   auto s = c->require_server_state();
   if (function_compiler_available() &&
       (c->flags & Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL)) {
-    if (s->episode_3_send_function_call_enabled) {
+    if (s->ep3_send_function_call_enabled) {
       send_quest_buffer_overflow(c);
     } else {
       c->flags |= Client::Flag::NO_SEND_FUNCTION_CALL;
@@ -279,6 +279,10 @@ void on_login_complete(shared_ptr<Client> c) {
       c->game_data.should_update_play_time = true;
     }
 
+    if (c->flags & Client::Flag::IS_EPISODE_3) {
+      send_ep3_rank_update(c);
+    }
+
     send_lobby_list(c);
     send_get_player_info(c);
   }
@@ -327,30 +331,32 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
-    auto l = s->license_manager->verify_gc(serial_number, cmd.access_key,
-        cmd.password);
+    auto l = s->license_index->verify_gc(serial_number, cmd.access_key, cmd.password);
     c->set_license(l);
     send_command(c, 0x9A, 0x02);
 
-  } catch (const incorrect_access_key& e) {
+  } catch (const LicenseIndex::incorrect_access_key& e) {
     send_command(c, 0x9A, 0x03);
     c->should_disconnect = true;
     return;
 
-  } catch (const incorrect_password& e) {
+  } catch (const LicenseIndex::incorrect_password& e) {
     send_command(c, 0x9A, 0x07);
     c->should_disconnect = true;
     return;
 
-  } catch (const missing_license& e) {
+  } catch (const LicenseIndex::missing_license& e) {
     if (!s->allow_unregistered_users) {
       send_command(c, 0x9A, 0x04);
       c->should_disconnect = true;
       return;
     } else {
-      auto l = LicenseManager::create_license_gc(serial_number, cmd.access_key,
-          cmd.password, true);
-      s->license_manager->add(l);
+      shared_ptr<License> l(new License());
+      l->serial_number = serial_number;
+      l->access_key = cmd.access_key;
+      l->gc_password = cmd.password;
+      l->flags |= License::Flag::TEMPORARY;
+      s->license_index->add(l);
       c->set_license(l);
       send_command(c, 0x9A, 0x02);
     }
@@ -367,23 +373,24 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
-    shared_ptr<const License> l = s->license_manager->verify_pc(
-        serial_number, cmd.access_key);
+    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key);
     c->set_license(l);
     send_command(c, 0x88, 0x00);
 
-  } catch (const incorrect_access_key& e) {
+  } catch (const LicenseIndex::incorrect_access_key& e) {
     send_message_box(c, u"Incorrect access key");
     c->should_disconnect = true;
 
-  } catch (const missing_license& e) {
+  } catch (const LicenseIndex::missing_license& e) {
     if (!s->allow_unregistered_users) {
       send_message_box(c, u"Incorrect serial number");
       c->should_disconnect = true;
     } else {
-      auto l = LicenseManager::create_license_pc(
-          serial_number, cmd.access_key, true);
-      s->license_manager->add(l);
+      shared_ptr<License> l(new License());
+      l->serial_number = serial_number;
+      l->access_key = cmd.access_key;
+      l->flags |= License::Flag::TEMPORARY;
+      s->license_index->add(l);
       c->set_license(l);
       send_command(c, 0x88, 0x00);
     }
@@ -400,25 +407,25 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
-    shared_ptr<const License> l = s->license_manager->verify_pc(
+    shared_ptr<License> l = s->license_index->verify_v1_v2(
         serial_number, cmd.access_key);
     c->set_license(l);
-    // send_command(c, 0x8B, 0x01);
 
-  } catch (const incorrect_access_key& e) {
+  } catch (const LicenseIndex::incorrect_access_key& e) {
     send_message_box(c, u"Incorrect access key");
     c->should_disconnect = true;
 
-  } catch (const missing_license& e) {
+  } catch (const LicenseIndex::missing_license& e) {
     if (!s->allow_unregistered_users) {
       send_message_box(c, u"Incorrect serial number");
       c->should_disconnect = true;
     } else {
-      auto l = LicenseManager::create_license_pc(
-          serial_number, cmd.access_key, true);
-      s->license_manager->add(l);
+      shared_ptr<License> l(new License());
+      l->serial_number = serial_number;
+      l->access_key = cmd.access_key;
+      l->flags |= License::Flag::TEMPORARY;
+      s->license_index->add(l);
       c->set_license(l);
-      // send_command(c, 0x8B, 0x01);
     }
   }
 
@@ -445,23 +452,24 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
-    shared_ptr<const License> l = s->license_manager->verify_pc(
-        serial_number, cmd.access_key);
+    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key);
     c->set_license(l);
     send_command(c, 0x90, 0x02);
 
-  } catch (const incorrect_access_key& e) {
+  } catch (const LicenseIndex::incorrect_access_key& e) {
     send_command(c, 0x90, 0x03);
     c->should_disconnect = true;
 
-  } catch (const missing_license& e) {
+  } catch (const LicenseIndex::missing_license& e) {
     if (!s->allow_unregistered_users) {
       send_command(c, 0x90, 0x03);
       c->should_disconnect = true;
     } else {
-      auto l = LicenseManager::create_license_pc(
-          serial_number, cmd.access_key, true);
-      s->license_manager->add(l);
+      shared_ptr<License> l(new License());
+      l->serial_number = serial_number;
+      l->access_key = cmd.access_key;
+      l->flags |= License::Flag::TEMPORARY;
+      s->license_index->add(l);
       c->set_license(l);
       send_command(c, 0x90, 0x01);
     }
@@ -485,24 +493,25 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
-    shared_ptr<const License> l = s->license_manager->verify_pc(
-        serial_number, cmd.access_key);
+    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key);
     c->set_license(l);
 
-  } catch (const incorrect_access_key& e) {
+  } catch (const LicenseIndex::incorrect_access_key& e) {
     send_message_box(c, u"Incorrect access key");
     c->should_disconnect = true;
     return;
 
-  } catch (const missing_license& e) {
+  } catch (const LicenseIndex::missing_license& e) {
     if (!s->allow_unregistered_users) {
       send_message_box(c, u"Incorrect serial number");
       c->should_disconnect = true;
       return;
     } else {
-      auto l = LicenseManager::create_license_pc(
-          serial_number, cmd.access_key, true);
-      s->license_manager->add(l);
+      shared_ptr<License> l(new License());
+      l->serial_number = serial_number;
+      l->access_key = cmd.access_key;
+      l->flags |= License::Flag::TEMPORARY;
+      s->license_index->add(l);
       c->set_license(l);
     }
   }
@@ -538,14 +547,14 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
-    shared_ptr<const License> l;
+    shared_ptr<License> l;
     switch (c->version()) {
       case GameVersion::DC:
       case GameVersion::PC:
-        l = s->license_manager->verify_pc(serial_number, cmd.access_key);
+        l = s->license_index->verify_v1_v2(serial_number, cmd.access_key);
         break;
       case GameVersion::GC:
-        l = s->license_manager->verify_gc(serial_number, cmd.access_key);
+        l = s->license_index->verify_gc(serial_number, cmd.access_key);
         break;
       case GameVersion::XB:
         throw runtime_error("xbox licenses are not implemented");
@@ -556,17 +565,17 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
     c->set_license(l);
     send_command(c, 0x9A, 0x02);
 
-  } catch (const incorrect_access_key& e) {
+  } catch (const LicenseIndex::incorrect_access_key& e) {
     send_command(c, 0x9A, 0x03);
     c->should_disconnect = true;
     return;
 
-  } catch (const incorrect_password& e) {
+  } catch (const LicenseIndex::incorrect_password& e) {
     send_command(c, 0x9A, 0x07);
     c->should_disconnect = true;
     return;
 
-  } catch (const missing_license& e) {
+  } catch (const LicenseIndex::missing_license& e) {
     // On V3, the client should have sent a different command containing the
     // password already, which should have created and added a temporary
     // license. So, if no license exists at this point, disconnect the client
@@ -577,8 +586,11 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
       c->should_disconnect = true;
       return;
     } else if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
-      l = LicenseManager::create_license_pc(serial_number, cmd.access_key, true);
-      s->license_manager->add(l);
+      shared_ptr<License> l(new License());
+      l->serial_number = serial_number;
+      l->access_key = cmd.access_key;
+      l->flags |= License::Flag::TEMPORARY;
+      s->license_index->add(l);
       c->set_license(l);
       send_command(c, 0x9A, 0x02);
     } else {
@@ -595,14 +607,14 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
-    shared_ptr<const License> l;
+    shared_ptr<License> l;
     switch (c->version()) {
       case GameVersion::DC:
       case GameVersion::PC:
-        l = s->license_manager->verify_pc(serial_number, cmd.access_key);
+        l = s->license_index->verify_v1_v2(serial_number, cmd.access_key);
         break;
       case GameVersion::GC:
-        l = s->license_manager->verify_gc(serial_number, cmd.access_key,
+        l = s->license_index->verify_gc(serial_number, cmd.access_key,
             cmd.password);
         break;
       case GameVersion::XB:
@@ -614,35 +626,25 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
     c->set_license(l);
     send_command(c, 0x9C, 0x01);
 
-  } catch (const incorrect_password& e) {
+  } catch (const LicenseIndex::incorrect_password& e) {
     send_command(c, 0x9C, 0x00);
     c->should_disconnect = true;
     return;
 
-  } catch (const missing_license& e) {
+  } catch (const LicenseIndex::missing_license& e) {
     if (!s->allow_unregistered_users) {
       send_command(c, 0x9C, 0x00);
       c->should_disconnect = true;
       return;
     } else {
-      shared_ptr<License> l;
-      switch (c->version()) {
-        case GameVersion::DC:
-        case GameVersion::PC:
-          l = LicenseManager::create_license_pc(serial_number, cmd.access_key,
-              true);
-          break;
-        case GameVersion::GC:
-          l = LicenseManager::create_license_gc(serial_number, cmd.access_key,
-              cmd.password, true);
-          break;
-        case GameVersion::XB:
-          throw runtime_error("xbox licenses are not implemented");
-          break;
-        default:
-          throw logic_error("unsupported versioned command");
+      shared_ptr<License> l(new License());
+      l->serial_number = serial_number;
+      l->access_key = cmd.access_key;
+      if (c->version() == GameVersion::GC) {
+        l->gc_password = cmd.password;
       }
-      s->license_manager->add(l);
+      l->flags |= License::Flag::TEMPORARY;
+      s->license_index->add(l);
       c->set_license(l);
       send_command(c, 0x9C, 0x01);
     }
@@ -714,7 +716,7 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, const str
   // the client to crash.
   if (base_cmd->unused1 == 0x5F5CA297) {
     c->flags &= ~(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL | Client::Flag::NO_SEND_FUNCTION_CALL);
-  } else if (!s->episode_3_send_function_call_enabled &&
+  } else if (!s->ep3_send_function_call_enabled &&
       (c->flags & Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL)) {
     c->flags &= ~Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL;
     c->flags |= Client::Flag::NO_SEND_FUNCTION_CALL;
@@ -722,14 +724,14 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, const str
 
   uint32_t serial_number = stoul(base_cmd->serial_number, nullptr, 16);
   try {
-    shared_ptr<const License> l;
+    shared_ptr<License> l;
     switch (c->version()) {
       case GameVersion::DC:
       case GameVersion::PC:
-        l = s->license_manager->verify_pc(serial_number, base_cmd->access_key);
+        l = s->license_index->verify_v1_v2(serial_number, base_cmd->access_key);
         break;
       case GameVersion::GC:
-        l = s->license_manager->verify_gc(serial_number, base_cmd->access_key);
+        l = s->license_index->verify_gc(serial_number, base_cmd->access_key);
         break;
       case GameVersion::XB:
         throw runtime_error("xbox licenses are not implemented");
@@ -739,17 +741,17 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, const str
     }
     c->set_license(l);
 
-  } catch (const incorrect_access_key& e) {
+  } catch (const LicenseIndex::incorrect_access_key& e) {
     send_command(c, 0x04, 0x03);
     c->should_disconnect = true;
     return;
 
-  } catch (const incorrect_password& e) {
+  } catch (const LicenseIndex::incorrect_password& e) {
     send_command(c, 0x04, 0x06);
     c->should_disconnect = true;
     return;
 
-  } catch (const missing_license& e) {
+  } catch (const LicenseIndex::missing_license& e) {
     // On V3, the client should have sent a different command containing the
     // password already, which should have created and added a temporary
     // license. So, if no license exists at this point, disconnect the client
@@ -760,8 +762,11 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, const str
       c->should_disconnect = true;
       return;
     } else if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
-      l = LicenseManager::create_license_pc(serial_number, base_cmd->access_key, true);
-      s->license_manager->add(l);
+      shared_ptr<License> l(new License());
+      l->serial_number = serial_number;
+      l->access_key = base_cmd->access_key;
+      l->flags |= License::Flag::TEMPORARY;
+      s->license_index->add(l);
       c->set_license(l);
     } else {
       throw runtime_error("unsupported game version");
@@ -788,25 +793,28 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
   c->flags |= flags_for_version(c->version(), -1);
 
   try {
-    auto l = s->license_manager->verify_bb(cmd.username, cmd.password);
+    auto l = s->license_index->verify_bb(cmd.username, cmd.password);
     c->set_license(l);
 
-  } catch (const incorrect_password& e) {
+  } catch (const LicenseIndex::incorrect_password& e) {
     u16string message = u"Login failed: " + decode_sjis(e.what());
     send_message_box(c, message.c_str());
     c->should_disconnect = true;
     return;
 
-  } catch (const missing_license& e) {
+  } catch (const LicenseIndex::missing_license& e) {
     if (!s->allow_unregistered_users) {
       u16string message = u"Login failed: " + decode_sjis(e.what());
       send_message_box(c, message.c_str());
       c->should_disconnect = true;
       return;
     } else {
-      shared_ptr<License> l = LicenseManager::create_license_bb(
-          fnv1a32(cmd.username) & 0x7FFFFFFF, cmd.username, cmd.password, true);
-      s->license_manager->add(l);
+      shared_ptr<License> l(new License());
+      l->serial_number = fnv1a32(cmd.username) & 0x7FFFFFFF;
+      l->bb_username = cmd.username;
+      l->bb_password = cmd.password;
+      l->flags |= License::Flag::TEMPORARY;
+      s->license_index->add(l);
       c->set_license(l);
     }
   }
@@ -892,11 +900,29 @@ static void on_B1(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 }
 
 static void on_BA_Ep3(shared_ptr<Client> c, uint16_t command, uint32_t, const string& data) {
-  const auto& in_cmd = check_size_t<C_Meseta_GC_Ep3_BA>(data);
+  const auto& in_cmd = check_size_t<C_MesetaTransaction_GC_Ep3_BA>(data);
   auto s = c->require_server_state();
+  auto l = c->lobby.lock();
+  bool is_lobby = l && !l->is_game();
 
-  uint32_t meseta = s->ep3_infinite_meseta ? 1000000 : 0;
-  S_Meseta_GC_Ep3_BA out_cmd = {meseta, meseta, in_cmd.request_token};
+  uint32_t current_meseta, total_meseta_earned;
+  if (s->ep3_infinite_meseta) {
+    current_meseta = 1000000;
+    total_meseta_earned = 1000000;
+  } else if (is_lobby && s->ep3_jukebox_is_free) {
+    current_meseta = c->license->ep3_current_meseta;
+    total_meseta_earned = c->license->ep3_total_meseta_earned;
+  } else {
+    if (c->license->ep3_current_meseta < in_cmd.value) {
+      throw runtime_error("meseta overdraft not allowed");
+    }
+    c->license->ep3_current_meseta -= in_cmd.value;
+    c->license->save();
+    current_meseta = c->license->ep3_current_meseta;
+    total_meseta_earned = c->license->ep3_total_meseta_earned;
+  }
+
+  S_MesetaTransaction_GC_Ep3_BA out_cmd = {current_meseta, total_meseta_earned, in_cmd.request_token};
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
@@ -1321,14 +1347,41 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, const string& da
     auto tourn = l->tournament_match->tournament.lock();
     tourn->print_bracket(stderr);
 
+    shared_ptr<Episode3::Tournament::Team> winner_team;
+    shared_ptr<Episode3::Tournament::Team> loser_team;
     if (winner_team_id == 0) {
-      l->tournament_match->set_winner_team(l->tournament_match->preceding_a->winner_team);
+      winner_team = l->tournament_match->preceding_a->winner_team;
+      loser_team = l->tournament_match->preceding_b->winner_team;
     } else if (winner_team_id == 1) {
-      l->tournament_match->set_winner_team(l->tournament_match->preceding_b->winner_team);
+      winner_team = l->tournament_match->preceding_b->winner_team;
+      loser_team = l->tournament_match->preceding_a->winner_team;
     } else {
       throw logic_error("invalid winner team id");
     }
-    send_ep3_tournament_match_result(l);
+    l->tournament_match->set_winner_team(winner_team);
+
+    uint32_t meseta_reward = 0;
+    auto& round_rewards = loser_team->has_any_human_players()
+        ? s->ep3_defeat_player_meseta_rewards
+        : s->ep3_defeat_com_meseta_rewards;
+    meseta_reward = (l->tournament_match->round_num - 1 < round_rewards.size())
+        ? round_rewards[l->tournament_match->round_num - 1]
+        : round_rewards.back();
+    if (l->tournament_match == tourn->get_final_match()) {
+      meseta_reward += s->ep3_final_round_meseta_bonus;
+    }
+    for (const auto& player : winner_team->players) {
+      if (player.is_human()) {
+        auto winner_c = player.client.lock();
+        if (winner_c) {
+          winner_c->license->ep3_current_meseta += meseta_reward;
+          winner_c->license->ep3_total_meseta_earned += meseta_reward;
+          winner_c->license->save();
+          send_ep3_rank_update(winner_c);
+        }
+      }
+    }
+    send_ep3_tournament_match_result(l, meseta_reward);
 
     on_tournament_bracket_updated(s, tourn);
     l->ep3_server->tournament_match_result_sent = true;
@@ -1863,7 +1916,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         break;
       }
 
-      if (!(c->license->privileges & Privilege::FREE_JOIN_GAMES)) {
+      if (!(c->license->flags & License::Flag::FREE_JOIN_GAMES)) {
         if (!game->password.empty() && (password != game->password)) {
           send_lobby_message_box(c, u"$C6Incorrect password.");
           break;
@@ -2679,7 +2732,7 @@ static void on_00E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& d
 
     ClientGameData temp_gd;
     temp_gd.guild_card_number = c->license->serial_number;
-    temp_gd.bb_username = c->license->username;
+    temp_gd.bb_username = c->license->bb_username;
     temp_gd.bb_player_index = cmd.player_index;
 
     try {
@@ -3162,7 +3215,7 @@ shared_ptr<Lobby> create_game_generic(
       throw runtime_error("invalid episode");
   }
 
-  if (!(c->license->privileges & Privilege::FREE_JOIN_GAMES) &&
+  if (!(c->license->flags & License::Flag::FREE_JOIN_GAMES) &&
       (min_level > c->game_data.player()->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might
     // actually encounter while playing the game normally
@@ -3773,25 +3826,29 @@ static void on_04_P(shared_ptr<Client> c, uint16_t, uint32_t, const string& data
   auto s = c->require_server_state();
 
   try {
-    auto l = s->license_manager->verify_bb(cmd.username, cmd.password);
+    auto l = s->license_index->verify_bb(cmd.username, cmd.password);
     c->set_license(l);
 
-  } catch (const incorrect_password& e) {
+  } catch (const LicenseIndex::incorrect_password& e) {
     u16string message = u"Login failed: " + decode_sjis(e.what());
     send_message_box(c, message.c_str());
     c->should_disconnect = true;
     return;
 
-  } catch (const missing_license& e) {
+  } catch (const LicenseIndex::missing_license& e) {
     if (!s->allow_unregistered_users) {
       u16string message = u"Login failed: " + decode_sjis(e.what());
       send_message_box(c, message.c_str());
       c->should_disconnect = true;
       return;
     } else {
-      shared_ptr<License> l = LicenseManager::create_license_bb(
-          fnv1a32(cmd.username) & 0x7FFFFFFF, cmd.username, cmd.password, true);
-      s->license_manager->add(l);
+
+      shared_ptr<License> l(new License());
+      l->serial_number = fnv1a32(cmd.username) & 0x7FFFFFFF;
+      l->bb_username = cmd.username;
+      l->bb_password = cmd.password;
+      l->flags |= License::Flag::TEMPORARY;
+      s->license_index->add(l);
       c->set_license(l);
     }
   }

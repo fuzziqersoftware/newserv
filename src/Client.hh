@@ -122,7 +122,7 @@ struct Client : public std::enable_shared_from_this<Client> {
   PrefixedLogger log;
 
   // License & account
-  std::shared_ptr<const License> license;
+  std::shared_ptr<License> license;
 
   // Note: these fields are included in the client config. On GC, the client
   // config can be up to 0x20 bytes; on BB it can be 0x28 bytes. We don't use
@@ -191,7 +191,7 @@ struct Client : public std::enable_shared_from_this<Client> {
   }
   QuestScriptVersion quest_version() const;
 
-  void set_license(std::shared_ptr<const License> l);
+  void set_license(std::shared_ptr<License> l);
 
   std::shared_ptr<ServerState> require_server_state() const;
   std::shared_ptr<Lobby> require_lobby() const;

@@ -38,7 +38,7 @@ public:
 
     std::unique_ptr<struct event, void (*)(struct event*)> timeout_event;
 
-    std::shared_ptr<const License> license;
+    std::shared_ptr<License> license;
 
     Channel client_channel;
     Channel server_channel;
@@ -120,13 +120,13 @@ public:
         std::shared_ptr<ProxyServer> server,
         uint16_t local_port,
         GameVersion version,
-        std::shared_ptr<const License> license,
+        std::shared_ptr<License> license,
         const ClientConfigBB& newserv_client_config);
     LinkedSession(
         std::shared_ptr<ProxyServer> server,
         uint16_t local_port,
         GameVersion version,
-        std::shared_ptr<const License> license,
+        std::shared_ptr<License> license,
         const struct sockaddr_storage& next_destination);
     LinkedSession(
         std::shared_ptr<ProxyServer> server,
@@ -171,7 +171,7 @@ public:
   std::shared_ptr<LinkedSession> get_session();
   std::shared_ptr<LinkedSession> get_session_by_name(const std::string& name);
   std::shared_ptr<LinkedSession> create_licensed_session(
-      std::shared_ptr<const License> l,
+      std::shared_ptr<License> l,
       uint16_t local_port,
       GameVersion version,
       const ClientConfigBB& newserv_client_config);

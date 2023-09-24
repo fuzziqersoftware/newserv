@@ -37,11 +37,11 @@ private:
   std::u16string user_msg;
 };
 
-static void check_privileges(shared_ptr<Client> c, uint64_t mask) {
+static void check_license_flags(shared_ptr<Client> c, uint32_t mask) {
   if (!c->license) {
     throw precondition_failed(u"$C6You are not\nlogged in.");
   }
-  if ((c->license->privileges & mask) != mask) {
+  if ((c->license->flags & mask) != mask) {
     throw precondition_failed(u"$C6You do not have\npermission to\nrun this command.");
   }
 }
@@ -206,14 +206,14 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
 }
 
 static void server_command_ax(shared_ptr<Client> c, const std::u16string& args) {
-  check_privileges(c, Privilege::ANNOUNCE);
+  check_license_flags(c, License::Flag::ANNOUNCE);
   string message = encode_sjis(args);
   ax_messages_log.info("%s", message.c_str());
 }
 
 static void server_command_announce(shared_ptr<Client> c, const std::u16string& args) {
   auto s = c->require_server_state();
-  check_privileges(c, Privilege::ANNOUNCE);
+  check_license_flags(c, License::Flag::ANNOUNCE);
   send_text_message(s, args);
 }
 
@@ -230,14 +230,14 @@ static void proxy_command_arrow(shared_ptr<ProxyServer::LinkedSession> ses, cons
 }
 
 static void server_command_debug(shared_ptr<Client> c, const std::u16string&) {
-  check_privileges(c, Privilege::DEBUG);
+  check_license_flags(c, License::Flag::DEBUG);
   c->options.debug = !c->options.debug;
   send_text_message_printf(c, "Debug %s",
       c->options.debug ? "enabled" : "disabled");
 }
 
 static void server_command_auction(shared_ptr<Client> c, const std::u16string&) {
-  check_privileges(c, Privilege::DEBUG);
+  check_license_flags(c, License::Flag::DEBUG);
   auto l = c->require_lobby();
   if (l->is_game() && l->is_ep3()) {
     G_InitiateCardAuction_GC_Ep3_6xB5x42 cmd;
@@ -330,7 +330,7 @@ static void proxy_command_patch(shared_ptr<ProxyServer::LinkedSession> ses, cons
 }
 
 static void server_command_persist(shared_ptr<Client> c, const std::u16string&) {
-  check_privileges(c, Privilege::DEBUG);
+  check_license_flags(c, License::Flag::DEBUG);
   auto l = c->require_lobby();
   if (l->flags & Lobby::Flag::DEFAULT) {
     send_text_message(c, u"$C6Default lobbies\ncannot be marked\ntemporary");
@@ -464,7 +464,7 @@ static void server_command_cheat(shared_ptr<Client> c, const std::u16string&) {
 static void server_command_lobby_event(shared_ptr<Client> c, const std::u16string& args) {
   auto l = c->require_lobby();
   check_is_game(l, false);
-  check_privileges(c, Privilege::CHANGE_EVENT);
+  check_license_flags(c, License::Flag::CHANGE_EVENT);
 
   uint8_t new_event = event_for_name(args);
   if (new_event == 0xFF) {
@@ -496,7 +496,7 @@ static void proxy_command_lobby_event(shared_ptr<ProxyServer::LinkedSession> ses
 }
 
 static void server_command_lobby_event_all(shared_ptr<Client> c, const std::u16string& args) {
-  check_privileges(c, Privilege::CHANGE_EVENT);
+  check_license_flags(c, License::Flag::CHANGE_EVENT);
 
   uint8_t new_event = event_for_name(args);
   if (new_event == 0xFF) {
@@ -844,7 +844,7 @@ static void server_command_convert_char_to_bb(shared_ptr<Client> c, const std::u
   }
 
   try {
-    s->license_manager->verify_bb(tokens[0].c_str(), tokens[1].c_str());
+    s->license_index->verify_bb(tokens[0].c_str(), tokens[1].c_str());
   } catch (const exception& e) {
     send_text_message_printf(c, "$C6Login failed: %s", e.what());
     return;
@@ -876,7 +876,7 @@ static string name_for_client(shared_ptr<Client> c) {
 static void server_command_silence(shared_ptr<Client> c, const std::u16string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  check_privileges(c, Privilege::SILENCE_USER);
+  check_license_flags(c, License::Flag::SILENCE_USER);
 
   auto target = s->find_client(&args);
   if (!target->license) {
@@ -885,7 +885,7 @@ static void server_command_silence(shared_ptr<Client> c, const std::u16string& a
     return;
   }
 
-  if (target->license->privileges & Privilege::MODERATOR) {
+  if (target->license->flags & License::Flag::MODERATOR) {
     send_text_message(c, u"$C6You do not have\nsufficient privileges.");
     return;
   }
@@ -899,7 +899,7 @@ static void server_command_silence(shared_ptr<Client> c, const std::u16string& a
 static void server_command_kick(shared_ptr<Client> c, const std::u16string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  check_privileges(c, Privilege::KICK_USER);
+  check_license_flags(c, License::Flag::KICK_USER);
 
   auto target = s->find_client(&args);
   if (!target->license) {
@@ -908,7 +908,7 @@ static void server_command_kick(shared_ptr<Client> c, const std::u16string& args
     return;
   }
 
-  if (target->license->privileges & Privilege::MODERATOR) {
+  if (target->license->flags & License::Flag::MODERATOR) {
     send_text_message(c, u"$C6You do not have\nsufficient privileges.");
     return;
   }
@@ -922,7 +922,7 @@ static void server_command_kick(shared_ptr<Client> c, const std::u16string& args
 static void server_command_ban(shared_ptr<Client> c, const std::u16string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  check_privileges(c, Privilege::BAN_USER);
+  check_license_flags(c, License::Flag::BAN_USER);
 
   u16string args_str(args);
   size_t space_pos = args_str.find(L' ');
@@ -939,7 +939,7 @@ static void server_command_ban(shared_ptr<Client> c, const std::u16string& args)
     return;
   }
 
-  if (target->license->privileges & Privilege::BAN_USER) {
+  if (target->license->flags & License::Flag::BAN_USER) {
     send_text_message(c, u"$C6You do not have\nsufficient privileges.");
     return;
   }
@@ -963,7 +963,8 @@ static void server_command_ban(shared_ptr<Client> c, const std::u16string& args)
     usecs *= 60 * 60 * 24 * 365;
   }
 
-  s->license_manager->ban_until(target->license->serial_number, now() + usecs);
+  target->license->ban_end_time = now() + usecs;
+  target->license->save();
   send_message_box(target, u"$C6You were banned by a moderator.");
   target->should_disconnect = true;
   string target_name = name_for_client(target);

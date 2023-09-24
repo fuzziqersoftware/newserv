@@ -331,7 +331,7 @@ void send_ep3_tournament_info(
     std::shared_ptr<Client> c,
     std::shared_ptr<const Episode3::Tournament> t);
 void send_ep3_set_tournament_player_decks(std::shared_ptr<Client> c);
-void send_ep3_tournament_match_result(std::shared_ptr<Lobby> l);
+void send_ep3_tournament_match_result(std::shared_ptr<Lobby> l, uint32_t meseta_reward);
 
 void send_ep3_tournament_details(
     std::shared_ptr<Client> c,

@@ -26,9 +26,13 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       allow_saving(true),
       item_tracking_enabled(true),
       drops_enabled(true),
-      episode_3_send_function_call_enabled(false),
+      ep3_send_function_call_enabled(false),
       catch_handler_exceptions(true),
-      ep3_infinite_meseta(true),
+      ep3_infinite_meseta(false),
+      ep3_defeat_player_meseta_rewards({400, 500, 600, 700, 800}),
+      ep3_defeat_com_meseta_rewards({100, 200, 300, 400, 500}),
+      ep3_final_round_meseta_bonus(300),
+      ep3_jukebox_is_free(false),
       ep3_behavior_flags(0),
       run_shell_behavior(RunShellBehavior::DEFAULT),
       cheat_mode_behavior(CheatModeBehavior::OFF_BY_DEFAULT),
@@ -534,13 +538,26 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
   this->item_tracking_enabled = json.get_bool("EnableItemTracking", this->item_tracking_enabled);
   this->drops_enabled = json.get_bool("EnableDrops", this->drops_enabled);
-  this->episode_3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", this->episode_3_send_function_call_enabled);
+  this->ep3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", this->ep3_send_function_call_enabled);
   this->catch_handler_exceptions = json.get_bool("CatchHandlerExceptions", this->catch_handler_exceptions);
+
+  auto parse_int_list = +[](const JSON& json) -> vector<uint32_t> {
+    vector<uint32_t> ret;
+    for (const auto& item : json.as_list()) {
+      ret.emplace_back(item->as_int());
+    }
+    return ret;
+  };
+
   this->ep3_infinite_meseta = json.get_bool("Episode3InfiniteMeseta", this->ep3_infinite_meseta);
-  this->proxy_allow_save_files = json.get_bool("ProxyAllowSaveFiles", this->proxy_allow_save_files);
-  this->proxy_enable_login_options = json.get_bool("ProxyEnableLoginOptions", this->proxy_enable_login_options);
+  this->ep3_defeat_player_meseta_rewards = parse_int_list(json.get("Episode3DefeatPlayerMeseta", JSON::list()));
+  this->ep3_defeat_com_meseta_rewards = parse_int_list(json.get("Episode3DefeatCOMMeseta", JSON::list()));
+  this->ep3_final_round_meseta_bonus = json.get_int("Episode3FinalRoundMesetaBonus", this->ep3_final_round_meseta_bonus);
+  this->ep3_jukebox_is_free = json.get_bool("Episode3JukeboxIsFree", this->ep3_jukebox_is_free);
   this->ep3_behavior_flags = json.get_int("Episode3BehaviorFlags", this->ep3_behavior_flags);
   this->ep3_card_auction_points = json.get_int("CardAuctionPoints", this->ep3_card_auction_points);
+  this->proxy_allow_save_files = json.get_bool("ProxyAllowSaveFiles", this->proxy_allow_save_files);
+  this->proxy_enable_login_options = json.get_bool("ProxyEnableLoginOptions", this->proxy_enable_login_options);
 
   try {
     const auto& i = json.at("CardAuctionSize");
@@ -767,9 +784,9 @@ void ServerState::load_bb_private_keys() {
 
 void ServerState::load_licenses() {
   config_log.info("Loading license list");
-  this->license_manager.reset(new LicenseManager("system/licenses.nsi"));
+  this->license_index.reset(new LicenseIndex());
   if (this->is_replay) {
-    this->license_manager->set_autosave(false);
+    this->license_index->set_autosave(false);
   }
 }
 

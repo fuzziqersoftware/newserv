@@ -147,11 +147,11 @@ QuestScriptVersion Client::quest_version() const {
   }
 }
 
-void Client::set_license(shared_ptr<const License> l) {
+void Client::set_license(shared_ptr<License> l) {
   this->license = l;
   this->game_data.guild_card_number = this->license->serial_number;
   if (this->version() == GameVersion::BB) {
-    this->game_data.bb_username = this->license->username;
+    this->game_data.bb_username = this->license->bb_username;
   }
 }
 
