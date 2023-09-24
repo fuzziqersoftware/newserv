@@ -46,6 +46,29 @@ void ShuffleTables::shuffle(void* vdest, const void* vsrc, size_t size, bool rev
   memcpy(&dest[size & 0xFFFFFF00], &src[size & 0xFFFFFF00], size & 0xFF);
 }
 
+bool PSOVMSFileHeader::checksum_correct() const {
+  auto add_data = +[](const void* data, size_t size, uint16_t crc) -> uint16_t {
+    const uint8_t* bytes = reinterpret_cast<const uint8_t*>(data);
+    for (size_t z = 0; z < size; z++) {
+      crc ^= (static_cast<uint16_t>(bytes[z]) << 8);
+      for (uint8_t bit = 0; bit < 8; bit++) {
+        if (crc & 0x8000) {
+          crc = (crc << 1) ^ 0x1021;
+        } else {
+          crc = (crc << 1);
+        }
+      }
+    }
+    return crc;
+  };
+
+  uint16_t crc = add_data(this, offsetof(PSOVMSFileHeader, crc), 0);
+  crc = add_data("\0\0", 2, crc);
+  crc = add_data(&this->data_size,
+      sizeof(PSOVMSFileHeader) - offsetof(PSOVMSFileHeader, data_size) + this->num_icons * 0x200 + this->data_size, crc);
+  return (crc == this->crc);
+}
+
 bool PSOGCIFileHeader::checksum_correct() const {
   uint32_t cs = crc32(&this->game_name, this->game_name.bytes());
   cs = crc32(&this->embedded_seed, sizeof(this->embedded_seed), cs);

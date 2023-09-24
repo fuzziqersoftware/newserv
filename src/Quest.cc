@@ -184,45 +184,6 @@ string find_seed_and_decrypt_download_quest_data_section(
   }
 }
 
-struct PSOVMSFileHeader {
-  ptext<char, 0x10> short_desc; // "PSO/DOWNLOAD    " or "PSOV2/DOWNLOAD  "
-  ptext<char, 0x20> long_desc; // Usually quest name
-  ptext<char, 0x10> creator_id;
-  le_uint16_t num_icons;
-  le_uint16_t animation_speed;
-  le_uint16_t eyecatch_type;
-  le_uint16_t crc;
-  le_uint32_t data_size; // Not including header and icons
-  parray<uint8_t, 0x14> unused;
-  parray<le_uint16_t, 0x10> icon_palette;
-
-  // Variable-length field follows here:
-  // parray<parray<uint8_t, 0x200>, num_icons> icon;
-
-  bool checksum_correct() const {
-    auto add_data = +[](const void* data, size_t size, uint16_t crc) -> uint16_t {
-      const uint8_t* bytes = reinterpret_cast<const uint8_t*>(data);
-      for (size_t z = 0; z < size; z++) {
-        crc ^= (static_cast<uint16_t>(bytes[z]) << 8);
-        for (uint8_t bit = 0; bit < 8; bit++) {
-          if (crc & 0x8000) {
-            crc = (crc << 1) ^ 0x1021;
-          } else {
-            crc = (crc << 1);
-          }
-        }
-      }
-      return crc;
-    };
-
-    uint16_t crc = add_data(this, offsetof(PSOVMSFileHeader, crc), 0);
-    crc = add_data("\0\0", 2, crc);
-    crc = add_data(&this->data_size,
-        sizeof(PSOVMSFileHeader) - offsetof(PSOVMSFileHeader, data_size) + this->num_icons * 0x200 + this->data_size, crc);
-    return (crc == this->crc);
-  }
-} __attribute__((packed));
-
 struct PSODownloadQuestHeader {
   le_uint32_t size;
   le_uint32_t encryption_seed;

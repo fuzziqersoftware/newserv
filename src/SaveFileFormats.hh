@@ -25,6 +25,23 @@ struct ShuffleTables {
   void shuffle(void* vdest, const void* vsrc, size_t size, bool reverse) const;
 };
 
+struct PSOVMSFileHeader {
+  /* 0000 */ ptext<char, 0x10> short_desc;
+  /* 0010 */ ptext<char, 0x20> long_desc;
+  /* 0030 */ ptext<char, 0x10> creator_id;
+  /* 0040 */ le_uint16_t num_icons;
+  /* 0042 */ le_uint16_t animation_speed;
+  /* 0044 */ le_uint16_t eyecatch_type;
+  /* 0046 */ le_uint16_t crc;
+  /* 0048 */ le_uint32_t data_size; // Not including header and icons
+  /* 004C */ parray<uint8_t, 0x14> unused;
+  /* 0060 */ parray<le_uint16_t, 0x10> icon_palette;
+  // Variable-length field:
+  /* 0080 */ // parray<uint8_t, num_icons> icon;
+
+  bool checksum_correct() const;
+} __attribute__((packed));
+
 struct PSOGCIFileHeader {
   // Every PSOGC save file begins with a PSOGCIFileHeader. The first 0x40 bytes
   // of this structure are the .gci file header; the remaining bytes after that
