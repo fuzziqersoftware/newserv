@@ -40,17 +40,21 @@ template <bool IsBigEndian>
 void PSOLFGEncryption::encrypt_t(void* vdata, size_t size, bool advance) {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
-  if (size & 3) {
-    throw invalid_argument("size must be a multiple of 4");
-  }
   if (!advance && (size != 4)) {
     throw logic_error("cannot peek-encrypt/decrypt with size > 4");
   }
-  size >>= 2;
 
+  size_t uint32_count = size >> 2;
+  size_t extra_bytes = size & 3;
   U32T* data = reinterpret_cast<U32T*>(vdata);
-  for (size_t x = 0; x < size; x++) {
+  for (size_t x = 0; x < uint32_count; x++) {
     data[x] ^= this->next(advance);
+  }
+  if (extra_bytes) {
+    U32T last = 0;
+    memcpy(&last, &data[uint32_count], extra_bytes);
+    last ^= this->next(advance);
+    memcpy(&data[uint32_count], &last, extra_bytes);
   }
 }
 
@@ -58,17 +62,21 @@ template <bool IsBigEndian>
 void PSOLFGEncryption::encrypt_minus_t(void* vdata, size_t size, bool advance) {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
-  if (size & 3) {
-    throw invalid_argument("size must be a multiple of 4");
-  }
   if (!advance && (size != 4)) {
     throw logic_error("cannot peek-encrypt/decrypt with size > 4");
   }
-  size >>= 2;
 
+  size_t uint32_count = size >> 2;
+  size_t extra_bytes = size & 3;
   U32T* data = reinterpret_cast<U32T*>(vdata);
-  for (size_t x = 0; x < size; x++) {
+  for (size_t x = 0; x < uint32_count; x++) {
     data[x] = this->next(advance) - data[x];
+  }
+  if (extra_bytes) {
+    U32T last = 0;
+    memcpy(&last, &data[uint32_count], extra_bytes);
+    last = this->next(advance) - last;
+    memcpy(&data[uint32_count], &last, extra_bytes);
   }
 }
 
@@ -974,4 +982,13 @@ std::u16string decrypt_challenge_rank_text(const std::u16string& data) {
 
 std::u16string encrypt_challenge_rank_text(const std::u16string& data) {
   return encrypt_challenge_rank_text(data.data(), data.size());
+}
+
+string decrypt_v2_registry_value(const void* data, size_t size) {
+  string ret(reinterpret_cast<const char*>(data), size);
+  PSOV2Encryption crypt(0x66);
+  for (size_t z = 0; z < size; z++) {
+    ret[z] ^= (crypt.next() & 0x7F);
+  }
+  return ret;
 }

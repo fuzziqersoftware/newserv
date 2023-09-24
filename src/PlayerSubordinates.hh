@@ -174,6 +174,19 @@ struct PlayerDispDataBB {
   void apply_dressing_room(const PlayerDispDataBBPreview&);
 } __attribute__((packed));
 
+struct GuildCardPC {
+  /* 00 */ le_uint32_t player_tag = 0;
+  /* 04 */ le_uint32_t guild_card_number = 0;
+  // TODO: Is the length of the name field correct here?
+  /* 08 */ ptext<char16_t, 0x18> name;
+  /* 38 */ ptext<char16_t, 0x5A> description;
+  /* EC */ uint8_t present = 0;
+  /* ED */ uint8_t language = 0;
+  /* EE */ uint8_t section_id = 0;
+  /* EF */ uint8_t char_class = 0;
+  /* F0 */
+} __attribute__((packed));
+
 // TODO: Is this the same for XB as it is for GC? (This struct is based on the
 // GC format)
 struct GuildCardV3 {

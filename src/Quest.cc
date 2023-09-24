@@ -83,10 +83,8 @@ struct PSOGCIDLQFileEncryptedHeader : PSOMemCardDLQFileEncryptedHeader<true> {
 } __attribute__((packed));
 
 template <bool IsBigEndian>
-string decrypt_gci_or_vms_v2_download_quest_data_section(
-    const void* data_section, size_t size, uint32_t seed) {
-  string decrypted = decrypt_gci_or_vms_v2_data_section<IsBigEndian>(
-      data_section, size, seed);
+string decrypt_download_quest_data_section(const void* data_section, size_t size, uint32_t seed) {
+  string decrypted = decrypt_data_section<IsBigEndian>(data_section, size, seed);
 
   size_t orig_size = decrypted.size();
   decrypted.resize((decrypted.size() + 3) & (~3));
@@ -161,13 +159,13 @@ string decrypt_vms_v1_data_section(const void* data_section, size_t size) {
 }
 
 template <bool IsBigEndian>
-string find_seed_and_decrypt_gci_or_vms_v2_download_quest_data_section(
+string find_seed_and_decrypt_download_quest_data_section(
     const void* data_section, size_t size, size_t num_threads) {
   mutex result_lock;
   string result;
   uint64_t result_seed = parallel_range<uint64_t>([&](uint64_t seed, size_t) {
     try {
-      string ret = decrypt_gci_or_vms_v2_download_quest_data_section<IsBigEndian>(
+      string ret = decrypt_download_quest_data_section<IsBigEndian>(
           data_section, size, seed);
       lock_guard<mutex> g(result_lock);
       result = std::move(ret);
@@ -530,11 +528,11 @@ string Quest::decode_gci_file(
     // fields, so assume it's encrypted if any of them are nonzero.
     if (dlq_header.round2_seed || dlq_header.checksum || dlq_header.round3_seed) {
       if (known_seed >= 0) {
-        return decrypt_gci_or_vms_v2_download_quest_data_section<true>(
+        return decrypt_download_quest_data_section<true>(
             r.getv(header.data_size), header.data_size, known_seed);
 
       } else if (header.embedded_seed != 0) {
-        return decrypt_gci_or_vms_v2_download_quest_data_section<true>(
+        return decrypt_download_quest_data_section<true>(
             r.getv(header.data_size), header.data_size, header.embedded_seed);
 
       } else {
@@ -544,7 +542,7 @@ string Quest::decode_gci_file(
         if (find_seed_num_threads == 0) {
           find_seed_num_threads = thread::hardware_concurrency();
         }
-        return find_seed_and_decrypt_gci_or_vms_v2_download_quest_data_section<true>(
+        return find_seed_and_decrypt_download_quest_data_section<true>(
             r.getv(header.data_size), header.data_size, find_seed_num_threads);
       }
 
@@ -617,7 +615,7 @@ string Quest::decode_vms_file(
   }
 
   if (known_seed >= 0) {
-    return decrypt_gci_or_vms_v2_download_quest_data_section<false>(
+    return decrypt_download_quest_data_section<false>(
         data_section, header.data_size, known_seed);
 
   } else {
@@ -627,7 +625,7 @@ string Quest::decode_vms_file(
     if (find_seed_num_threads == 0) {
       find_seed_num_threads = thread::hardware_concurrency();
     }
-    return find_seed_and_decrypt_gci_or_vms_v2_download_quest_data_section<false>(
+    return find_seed_and_decrypt_download_quest_data_section<false>(
         data_section, header.data_size, find_seed_num_threads);
   }
 }

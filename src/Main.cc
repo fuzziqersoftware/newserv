@@ -271,10 +271,15 @@ enum class Behavior {
   DECRYPT_DATA,
   ENCRYPT_TRIVIAL_DATA,
   DECRYPT_TRIVIAL_DATA,
+  DECRYPT_REGISTRY_VALUE,
   ENCRYPT_CHALLENGE_DATA,
   DECRYPT_CHALLENGE_DATA,
   ENCRYPT_GCI_SAVE,
   DECRYPT_GCI_SAVE,
+  ENCRYPT_PC_SAVE,
+  DECRYPT_PC_SAVE,
+  ENCRYPT_SAVE_DATA,
+  DECRYPT_SAVE_DATA,
   DECODE_GCI_SNAPSHOT,
   ENCODE_GVM,
   FIND_DECRYPTION_SEED,
@@ -315,13 +320,18 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::DECRYPT_DATA) ||
       (b == Behavior::ENCRYPT_TRIVIAL_DATA) ||
       (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
+      (b == Behavior::DECRYPT_REGISTRY_VALUE) ||
       (b == Behavior::ENCRYPT_CHALLENGE_DATA) ||
       (b == Behavior::DECRYPT_CHALLENGE_DATA) ||
+      (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DECRYPT_GCI_SAVE) ||
+      (b == Behavior::ENCRYPT_PC_SAVE) ||
+      (b == Behavior::DECRYPT_PC_SAVE) ||
+      (b == Behavior::ENCRYPT_SAVE_DATA) ||
+      (b == Behavior::DECRYPT_SAVE_DATA) ||
       (b == Behavior::DECODE_GCI_SNAPSHOT) ||
       (b == Behavior::ENCODE_GVM) ||
       (b == Behavior::SALVAGE_GCI) ||
-      (b == Behavior::ENCRYPT_GCI_SAVE) ||
       (b == Behavior::DECODE_QUEST_FILE) ||
       (b == Behavior::ENCODE_QST) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
@@ -349,10 +359,15 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::DECRYPT_DATA) ||
       (b == Behavior::ENCRYPT_TRIVIAL_DATA) ||
       (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
+      (b == Behavior::DECRYPT_REGISTRY_VALUE) ||
       (b == Behavior::ENCRYPT_CHALLENGE_DATA) ||
       (b == Behavior::DECRYPT_CHALLENGE_DATA) ||
-      (b == Behavior::DECRYPT_GCI_SAVE) ||
       (b == Behavior::ENCRYPT_GCI_SAVE) ||
+      (b == Behavior::DECRYPT_GCI_SAVE) ||
+      (b == Behavior::ENCRYPT_PC_SAVE) ||
+      (b == Behavior::DECRYPT_PC_SAVE) ||
+      (b == Behavior::ENCRYPT_SAVE_DATA) ||
+      (b == Behavior::DECRYPT_SAVE_DATA) ||
       (b == Behavior::DECODE_GCI_SNAPSHOT) ||
       (b == Behavior::ENCODE_GVM) ||
       (b == Behavior::ENCODE_QST) ||
@@ -520,6 +535,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::ENCRYPT_TRIVIAL_DATA;
         } else if (!strcmp(argv[x], "decrypt-trivial-data")) {
           behavior = Behavior::DECRYPT_TRIVIAL_DATA;
+        } else if (!strcmp(argv[x], "decrypt-registry-value")) {
+          behavior = Behavior::DECRYPT_REGISTRY_VALUE;
         } else if (!strcmp(argv[x], "encrypt-challenge-data")) {
           behavior = Behavior::ENCRYPT_CHALLENGE_DATA;
         } else if (!strcmp(argv[x], "decrypt-challenge-data")) {
@@ -528,6 +545,14 @@ int main(int argc, char** argv) {
           behavior = Behavior::DECRYPT_GCI_SAVE;
         } else if (!strcmp(argv[x], "encrypt-gci-save")) {
           behavior = Behavior::ENCRYPT_GCI_SAVE;
+        } else if (!strcmp(argv[x], "decrypt-pc-save")) {
+          behavior = Behavior::DECRYPT_PC_SAVE;
+        } else if (!strcmp(argv[x], "encrypt-pc-save")) {
+          behavior = Behavior::ENCRYPT_PC_SAVE;
+        } else if (!strcmp(argv[x], "decrypt-save-data")) {
+          behavior = Behavior::DECRYPT_SAVE_DATA;
+        } else if (!strcmp(argv[x], "encrypt-save-data")) {
+          behavior = Behavior::ENCRYPT_SAVE_DATA;
         } else if (!strcmp(argv[x], "decode-gci-snapshot")) {
           behavior = Behavior::DECODE_GCI_SNAPSHOT;
         } else if (!strcmp(argv[x], "encode-gvm")) {
@@ -919,6 +944,13 @@ int main(int argc, char** argv) {
       break;
     }
 
+    case Behavior::DECRYPT_REGISTRY_VALUE: {
+      string data = read_input_data();
+      string out_data = decrypt_v2_registry_value(data.data(), data.size());
+      write_output_data(out_data.data(), out_data.size());
+      break;
+    }
+
     case Behavior::ENCRYPT_CHALLENGE_DATA:
     case Behavior::DECRYPT_CHALLENGE_DATA: {
       string data = read_input_data();
@@ -957,12 +989,12 @@ int main(int argc, char** argv) {
       auto process_file = [&]<typename StructT>() {
         if (is_decrypt) {
           const void* data_section = r.getv(header.data_size);
-          auto decrypted = decrypt_gci_fixed_size_file_data_section<StructT>(
+          auto decrypted = decrypt_fixed_size_data_section_t<StructT, true>(
               data_section, header.data_size, round1_seed, skip_checksum, override_round2_seed);
           *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
         } else {
           const auto& s = r.get<StructT>();
-          auto encrypted = encrypt_gci_fixed_size_file_data_section<StructT>(
+          auto encrypted = encrypt_fixed_size_data_section_t<StructT, true>(
               s, round1_seed);
           if (data_start_offset + encrypted.size() > data.size()) {
             throw runtime_error("encrypted result exceeds file size");
@@ -994,6 +1026,89 @@ int main(int argc, char** argv) {
 
       write_output_data(data.data(), data.size());
 
+      break;
+    }
+
+    case Behavior::ENCRYPT_PC_SAVE:
+    case Behavior::DECRYPT_PC_SAVE: {
+      if (seed.empty()) {
+        throw runtime_error("--seed must be given to specify the serial number");
+      }
+      uint32_t round1_seed = stoul(seed, nullptr, 16);
+
+      bool is_decrypt = (behavior == Behavior::DECRYPT_PC_SAVE);
+
+      auto data = read_input_data();
+      if (data.size() == sizeof(PSOPCGuildCardFile)) {
+        if (is_decrypt) {
+          data = decrypt_fixed_size_data_section_s<false>(
+              data.data(), offsetof(PSOPCGuildCardFile, end_padding), round1_seed, skip_checksum, override_round2_seed);
+        } else {
+          data = encrypt_fixed_size_data_section_s<false>(
+              data.data(), offsetof(PSOPCGuildCardFile, end_padding), round1_seed);
+        }
+        data.resize((sizeof(PSOPCGuildCardFile) + 0x1FF) & (~0x1FF), '\0');
+      } else if (data.size() == sizeof(PSOPCCharacterFile)) {
+        PSOPCCharacterFile* charfile = reinterpret_cast<PSOPCCharacterFile*>(data.data());
+        if (is_decrypt) {
+          for (size_t z = 0; z < charfile->entries.size(); z++) {
+            if (charfile->entries[z].present) {
+              try {
+                charfile->entries[z].character = decrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::Character, false>(
+                    &charfile->entries[z].character, sizeof(charfile->entries[z].character), round1_seed, skip_checksum, override_round2_seed);
+              } catch (const exception& e) {
+                fprintf(stderr, "warning: cannot decrypt character %zu: %s\n", z, e.what());
+              }
+            }
+          }
+        } else {
+          for (size_t z = 0; z < charfile->entries.size(); z++) {
+            if (charfile->entries[z].present) {
+              string encrypted = encrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::Character, false>(
+                  charfile->entries[z].character, round1_seed);
+              if (encrypted.size() != sizeof(PSOPCCharacterFile::CharacterEntry::Character)) {
+                throw logic_error("incorrect encrypted result size");
+              }
+              charfile->entries[z].character = *reinterpret_cast<const PSOPCCharacterFile::CharacterEntry::Character*>(encrypted.data());
+            }
+          }
+        }
+      } else if (data.size() == sizeof(PSOPCCreationTimeFile)) {
+        throw runtime_error("the PSO______FLS file is not encrypted; it is just random data");
+      } else if (data.size() == sizeof(PSOPCSystemFile)) {
+        throw runtime_error("the PSO______COM file is not encrypted");
+      } else {
+        throw runtime_error("unknown save file type");
+      }
+
+      write_output_data(data.data(), data.size());
+      break;
+    }
+
+    case Behavior::ENCRYPT_SAVE_DATA:
+    case Behavior::DECRYPT_SAVE_DATA: {
+      if (seed.empty()) {
+        throw runtime_error("--seed must be given to specify the round1 seed");
+      }
+      uint32_t round1_seed = stoul(seed, nullptr, 16);
+
+      bool is_decrypt = (behavior == Behavior::DECRYPT_SAVE_DATA);
+
+      auto data = read_input_data();
+      StringReader r(data);
+
+      string output_data;
+      size_t effective_size = bytes ? min<size_t>(bytes, data.size()) : data.size();
+      if (is_decrypt) {
+        output_data = big_endian
+            ? decrypt_fixed_size_data_section_s<true>(data.data(), effective_size, round1_seed, skip_checksum, override_round2_seed)
+            : decrypt_fixed_size_data_section_s<false>(data.data(), effective_size, round1_seed, skip_checksum, override_round2_seed);
+      } else {
+        output_data = big_endian
+            ? encrypt_fixed_size_data_section_s<true>(data.data(), effective_size, round1_seed)
+            : encrypt_fixed_size_data_section_s<false>(data.data(), effective_size, round1_seed);
+      }
+      write_output_data(output_data.data(), output_data.size());
       break;
     }
 
@@ -1066,14 +1181,14 @@ int main(int argc, char** argv) {
             [&](uint64_t seed, size_t thread_num) -> bool {
               size_t zero_count;
               if (round2) {
-                string decrypted = decrypt_gci_fixed_size_file_data_section_for_salvage(
+                string decrypted = decrypt_gci_fixed_size_data_section_for_salvage(
                     data_section, header.data_size, likely_round1_seed, seed, bytes);
                 zero_count = count_zeroes(
                     decrypted.data() + offset,
                     decrypted.size() - offset,
                     stride);
               } else {
-                auto decrypted = decrypt_gci_fixed_size_file_data_section<StructT>(
+                auto decrypted = decrypt_fixed_size_data_section_t<StructT, true>(
                     data_section,
                     header.data_size,
                     seed,

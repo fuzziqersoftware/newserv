@@ -272,3 +272,5 @@ template <size_t Size>
 std::u16string encrypt_challenge_rank_text(const ptext<char16_t, Size>& data) {
   return encrypt_challenge_rank_text(data.data(), data.size());
 }
+
+std::string decrypt_v2_registry_value(const void* data, size_t size);

@@ -144,11 +144,14 @@ add_test(
     NAME "decode-vms"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMAND ${CMAKE_SOURCE_DIR}/tests/test-decode-vms.sh ${CMAKE_BINARY_DIR}/newserv)
-
 add_test(
     NAME "decode-gci"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMAND ${CMAKE_SOURCE_DIR}/tests/test-decode-gci.sh ${CMAKE_BINARY_DIR}/newserv)
+add_test(
+    NAME "decode-pc"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_SOURCE_DIR}/tests/test-decode-pc.sh ${CMAKE_BINARY_DIR}/newserv)
 
 # Installation configuration
 

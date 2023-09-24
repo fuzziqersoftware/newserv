@@ -13,6 +13,8 @@
 - Implement per-game logging
 - Add default values in all command structures (like we use for Episode 3 battle commands)
 - Check for RCE potential in 6x6B-6x6E commands
+- Fix symbol chat header (including face_spec) across PC/GC boundary
+- Check size of name field in GuildCardPC
 
 ## Episode 3
 
