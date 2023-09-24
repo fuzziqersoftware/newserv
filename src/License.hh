@@ -26,13 +26,6 @@ enum Privilege {
   TEMPORARY = 0x80000000,
 };
 
-enum LicenseVerifyAction {
-  BB = 0x00,
-  GC = 0x01,
-  PC = 0x02,
-  SERIAL_NUMBER = 0x03,
-};
-
 struct License {
   ptext<char, 0x14> username; // BB username (max. 16 chars; should technically be Unicode)
   ptext<char, 0x14> bb_password; // BB password (max. 16 chars)
