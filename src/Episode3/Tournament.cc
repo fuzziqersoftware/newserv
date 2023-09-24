@@ -9,12 +9,14 @@ using namespace std;
 
 namespace Episode3 {
 
-Tournament::PlayerEntry::PlayerEntry(uint32_t serial_number)
-    : serial_number(serial_number) {}
+Tournament::PlayerEntry::PlayerEntry(uint32_t serial_number, const string& player_name)
+    : serial_number(serial_number),
+      player_name(player_name) {}
 
 Tournament::PlayerEntry::PlayerEntry(shared_ptr<Client> c)
     : serial_number(c->license->serial_number),
-      client(c) {}
+      client(c),
+      player_name(encode_sjis(c->game_data.player()->disp.name)) {}
 
 Tournament::PlayerEntry::PlayerEntry(
     shared_ptr<const COMDeckDefinition> com_deck)
@@ -53,7 +55,11 @@ string Tournament::Team::str() const {
       this->password.c_str(), this->num_rounds_cleared);
   for (const auto& player : this->players) {
     if (player.is_human()) {
-      ret += string_printf(" %08" PRIX32, player.serial_number);
+      if (player.player_name.empty()) {
+        ret += string_printf(" %08" PRIX32, player.serial_number);
+      } else {
+        ret += string_printf(" %08" PRIX32 " (%s)", player.serial_number, player.player_name.c_str());
+      }
     }
   }
   return ret + "]";
@@ -366,11 +372,18 @@ void Tournament::init() {
       team->password = team_json->get_string("password");
       team_index_to_rounds_cleared.emplace_back(team_json->get_int("num_rounds_cleared"));
       for (const auto& player_json : team_json->get_list("player_specs")) {
-        if (player_json->is_int()) {
-          team->players.emplace_back(player_json->as_int());
-          this->all_player_serial_numbers.emplace(player_json->as_int());
-        } else {
+        if (player_json->is_list()) {
+          uint32_t serial_number = player_json->at(0).as_int();
+          team->players.emplace_back(serial_number, player_json->at(1).as_string());
+          this->all_player_serial_numbers.emplace(serial_number);
+        } else if (player_json->is_int()) {
+          uint32_t serial_number = player_json->as_int();
+          team->players.emplace_back(serial_number);
+          this->all_player_serial_numbers.emplace(serial_number);
+        } else if (player_json->is_string()) {
           team->players.emplace_back(this->com_deck_index->deck_for_name(player_json->as_string()));
+        } else {
+          throw runtime_error("invalid player spec");
         }
       }
     }
@@ -499,7 +512,11 @@ JSON Tournament::json() const {
     auto players_list = JSON::list();
     for (const auto& player : team->players) {
       if (player.is_human()) {
-        players_list.emplace_back(player.serial_number);
+        if (!player.player_name.empty()) {
+          players_list.emplace_back(JSON::list({player.serial_number, player.player_name}));
+        } else {
+          players_list.emplace_back(player.serial_number);
+        }
       } else {
         players_list.emplace_back(player.com_deck->deck_name);
       }

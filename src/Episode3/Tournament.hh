@@ -42,13 +42,16 @@ public:
 
     // client is valid if serial_number is nonzero and the client is connected
     std::weak_ptr<Client> client;
+    std::string player_name; // Not used for COM decks
 
-    explicit PlayerEntry(uint32_t serial_number);
+    explicit PlayerEntry(uint32_t serial_number, const std::string& player_name = "");
     explicit PlayerEntry(std::shared_ptr<Client> c);
     explicit PlayerEntry(std::shared_ptr<const COMDeckDefinition> com_deck);
 
     bool is_com() const;
     bool is_human() const;
+
+    JSON json() const;
   };
 
   struct Team : public std::enable_shared_from_this<Team> {

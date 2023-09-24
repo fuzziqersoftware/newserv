@@ -1517,18 +1517,27 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
           if (team->name.empty()) {
             message = "(No registrant)";
           } else if (team->max_players == 1) {
-            message = string_printf("$C6%s$C7\n%zu %s",
+            message = string_printf("$C6%s$C7\n%zu %s\nPlayers:",
                 team->name.c_str(),
                 team->num_rounds_cleared,
                 team->num_rounds_cleared == 1 ? "win" : "wins");
           } else {
-            message = string_printf("$C6%s$C7\n%zuH/%zuC\n%zu %s\n%s",
+            message = string_printf("$C6%s$C7\n%zu %s%s\nPlayers:",
                 team->name.c_str(),
-                team->num_human_players(),
-                team->num_com_players(),
                 team->num_rounds_cleared,
                 team->num_rounds_cleared == 1 ? "win" : "wins",
-                team->password.empty() ? "" : "Locked");
+                team->password.empty() ? "" : "\n$C4Locked$C7");
+          }
+          for (const auto& player : team->players) {
+            if (player.is_human()) {
+              if (player.player_name.empty()) {
+                message += string_printf("\n  $C6%08" PRIX32 "$C7", player.serial_number);
+              } else {
+                message += string_printf("\n  $C6%s$C7 (%08" PRIX32 ")", player.player_name.c_str(), player.serial_number);
+              }
+            } else {
+              message += string_printf("\n  $C3%s \"%s\"$C7", player.com_deck->player_name.c_str(), player.com_deck->deck_name.c_str());
+            }
           }
           send_ship_info(c, decode_sjis(message));
         } else {
