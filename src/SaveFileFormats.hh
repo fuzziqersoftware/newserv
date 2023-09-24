@@ -502,7 +502,7 @@ struct PSOPCCreationTimeFile { // PSO______FLS
   /* 1400 */
 } __attribute__((packed));
 
-struct PSOPCSystemFile { // PSO_____COM
+struct PSOPCSystemFile { // PSO______COM
   /* 0000 */ le_uint32_t checksum;
   // Most of these fields are guesses based on the format used in GC and the
   // assumption that Sega didn't change much between versions.
