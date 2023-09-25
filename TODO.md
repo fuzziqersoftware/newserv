@@ -15,10 +15,7 @@
 - Check for RCE potential in 6x6B-6x6E commands
 - Fix symbol chat header (including face_spec) across PC/GC boundary
 - Check size of name field in GuildCardPC
-
-      TODO; // Make save files permission and use it for $saverec too
-      TODO; // Make sure JP v1.02, 1.03, 1.04 can connect and load DOL files
-
+- Build an exception-handling abstraction in ChatCommands that shows formatted error messages in all cases
 
 ## Episode 3
 

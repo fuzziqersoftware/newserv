@@ -541,18 +541,24 @@ static void proxy_command_lobby_type(shared_ptr<ProxyServer::LinkedSession> ses,
   ses->options.override_lobby_number = (new_type < max_standard_type) ? -1 : new_type;
 }
 
-static void server_command_saverec(shared_ptr<Client> c, const std::u16string& args) {
-  if (args.find(u'/') != string::npos) {
-    send_text_message(c, u"$C4Recording names\ncannot include\nthe / character");
-    return;
+static string file_path_for_recording(const std::u16string& args, uint32_t serial_number) {
+  string filename = encode_sjis(args);
+  for (char ch : filename) {
+    if (ch <= 0x20 || ch > 0x7E || ch == '/') {
+      throw runtime_error("invalid recording name");
+    }
   }
+  return string_printf("system/ep3/battle-records/%010" PRIu32 "_%s.mzrd", serial_number, filename.c_str());
+}
+
+static void server_command_saverec(shared_ptr<Client> c, const std::u16string& args) {
   if (!c->ep3_prev_battle_record) {
     send_text_message(c, u"$C4No finished\nrecording is\npresent");
     return;
   }
-  string filename = "system/ep3/battle-records/" + encode_sjis(args) + ".mzrd";
+  string file_path = file_path_for_recording(args, c->license->serial_number);
   string data = c->ep3_prev_battle_record->serialize();
-  save_file(filename, data);
+  save_file(file_path, data);
   send_text_message(c, u"$C7Recording saved");
   c->ep3_prev_battle_record.reset();
 }
@@ -562,15 +568,13 @@ static void server_command_playrec(shared_ptr<Client> c, const std::u16string& a
     send_text_message(c, u"$C4This command can\nonly be used on\nEpisode 3");
     return;
   }
-  if (args.find(u'/') != string::npos) {
-    send_text_message(c, u"$C4Recording names\ncannot include\nthe / character");
-    return;
-  }
 
   auto l = c->require_lobby();
-  if (l->battle_player) {
+  if (l->is_game() && l->battle_player) {
     l->battle_player->start();
-  } else {
+  } else if (!l->is_game()) {
+    string file_path = file_path_for_recording(args, c->license->serial_number);
+
     auto s = c->require_server_state();
     uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::IS_SPECTATOR_TEAM;
     string filename = encode_sjis(args);
@@ -578,7 +582,14 @@ static void server_command_playrec(shared_ptr<Client> c, const std::u16string& a
       flags |= Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY;
       filename = filename.substr(1);
     }
-    string data = load_file("system/ep3/battle-records/" + filename + ".mzrd");
+
+    string data;
+    try {
+      string data = load_file(file_path);
+    } catch (const cannot_open_file&) {
+      send_text_message(c, u"$C4The recording does\nnot exist");
+      return;
+    }
     shared_ptr<Episode3::BattleRecord> record(new Episode3::BattleRecord(data));
     shared_ptr<Episode3::BattleRecordPlayer> battle_player(
         new Episode3::BattleRecordPlayer(record, s->game_server->get_base()));
@@ -588,6 +599,8 @@ static void server_command_playrec(shared_ptr<Client> c, const std::u16string& a
       s->change_client_lobby(c, game);
       c->flags |= Client::Flag::LOADING;
     }
+  } else {
+    send_text_message(c, u"$C4This command cannot\nbe used in a game");
   }
 }
 
