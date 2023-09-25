@@ -216,15 +216,14 @@
     "StaticGameData": "INFO",
   },
 
-  // If this option is disabled, the server only allows users who are registered
-  // in the license file to connect. If this is enabled, all users will be
-  // allowed to connect even if they're not registered in the license file. Each
-  // time a user connects with an unregistered license (serial number / access
-  // key combination, or username/password combination on BB), a temporary
-  // license is created for them, which lasts until the server is shut down.
-  // These temporary licenses are not saved to the license file. For BB, player
-  // and account data is still saved on the server, even for users with
-  // temporary licenses.
+  // If this option is disabled, the server only allows users who have licenses
+  // on the server to connect. If this is enabled, all users will be allowed to
+  // connect even if they don't have licenses. Each time a user connects with an
+  // unregistered license (serial number and access key combination, or username
+  // and password combination on BB), a temporary  license is created for them,
+  // which lasts until the server is shut down. These temporary licenses are not
+  // saved in the licenses directory. For BB, player and account data is still
+  // saved on the server, even for users with temporary licenses.
   "AllowUnregisteredUsers": true,
 
   // User to run the server as. If present, newserv will attempt to switch to

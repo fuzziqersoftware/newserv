@@ -162,6 +162,7 @@ struct Client : public std::enable_shared_from_this<Client> {
   uint16_t card_battle_table_seat_number;
   uint16_t card_battle_table_seat_state;
   std::weak_ptr<Episode3::Tournament::Team> ep3_tournament_team;
+  std::shared_ptr<Episode3::BattleRecord> ep3_prev_battle_record;
   std::shared_ptr<const Menu> last_menu_sent;
 
   // Miscellaneous (used by chat commands)

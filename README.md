@@ -152,23 +152,28 @@ All quests, including those originally in GCI or DLQ format, are treated as onli
 
 ### Episode 3 features
 
-The following Episode 3 features work well:
+newserv supports many features unique to Episode 3:
 * CARD battles. Not every combination of abilities has been tested yet, so if you find a feature or card ability that doesn't work like it's supposed to, please make a GitHub issue and describe the situation (the attacking card(s), defending card(s), and ability or condition that didn't work).
 * Spectator teams.
-* Tournaments. (But they don't work like Sega's tournaments did - see below)
+* Tournaments. (But they work differently than Sega's tournaments did - see below)
 * Downloading quests.
 * Trading cards.
 * Participating in card auctions. (The auction contents must be configured in config.json.)
-
-The following Episode 3 features are implemented, but are only partially tested:
 * Decorations in lobbies. Currently only images are supported; the game also supports loading custom 3D models in lobbies, but newserv does not implement this (yet).
-* Battle replays also sometimes cause the client to crash during the replay. Using the $playrec command is therefore not recommended.
+
+#### Battle records
+
+After playing a battle, you can save the record of the battle with the $saverec command. You can then replay the battle later by using the $playrec command in a lobby - this will create a spectator team and play the recording of the battle as if it were happening in realtime. Note that there is a bug in older versions of Dolphin that seems to be frequently triggered when playing battle records, which causes the emulator to crash with the message `QObject::~QObject: Timers cannot be stopped from another thread`. To avoid this, use the latest version of Dolphin.
+
+#### Tournaments
 
 Tournaments work differently than they did on Sega's servers. Tournaments can be created with the `create-tournament` shell command, which enables players to register for them. (Use `help` to see all the arguments - there are many!) The `start-tournament` shell command starts the tournament (and prevents further registrations), but this doesn't schedule any matches. Instead, players who are ready to play their next match can all stand at the 4-player battle table near the lobby warp in the same CARD lobby, and the tournament match will start automatically.
 
 These tournament semantics mean that there can be multiple matches in the same tournament in play simultaneously, and not all matches in a round must be complete before the next round can begin - only the matches preceding each individual match must be complete for that match to be playable.
 
 The Meseta rewards for winning tournament matches can be configured in config.json.
+
+#### Episode 3 files
 
 Episode 3 state and game data is stored in the system/ep3 directory. The files in there are:
 * card-definitions.mnr: Compressed card definition list, sent to Episode 3 clients at connect time. Card stats and abilities can be changed by editing this file.

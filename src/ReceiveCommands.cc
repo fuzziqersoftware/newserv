@@ -1278,6 +1278,11 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, const string& da
   if (!l->is_game() || !l->is_ep3()) {
     throw runtime_error("Episode 3 server data request sent outside of Episode 3 game");
   }
+
+  if (l->battle_player) {
+    return;
+  }
+
   auto s = l->require_server_state();
 
   const auto& header = check_size_t<G_CardServerDataCommandHeader>(data, 0xFFFF);
@@ -1314,8 +1319,11 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, const string& da
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_RECORDING) {
       if (l->battle_record) {
-        l->prev_battle_record = l->battle_record;
-        l->prev_battle_record->set_battle_end_timestamp();
+        for (const auto& c : l->clients) {
+          if (c) {
+            c->ep3_prev_battle_record = l->battle_record;
+          }
+        }
       }
       l->battle_record.reset(new Episode3::BattleRecord(s->ep3_behavior_flags));
       for (auto existing_c : l->clients) {
@@ -1324,18 +1332,24 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, const string& da
           lobby_data.name = encode_sjis(existing_c->game_data.player()->disp.name);
           lobby_data.player_tag = 0x00010000;
           lobby_data.guild_card = existing_c->license->serial_number;
-          l->battle_record->add_player(lobby_data,
+          l->battle_record->add_player(
+              lobby_data,
               existing_c->game_data.player()->inventory,
-              existing_c->game_data.player()->disp.to_dcpcv3());
+              existing_c->game_data.player()->disp.to_dcpcv3(),
+              c->game_data.ep3_config ? (c->game_data.ep3_config->online_clv_exp / 100) : 0);
         }
       }
-      if (l->prev_battle_record) {
+      if (c->ep3_prev_battle_record) {
         send_text_message(l, u"$C6Recording complete");
       }
       send_text_message(l, u"$C6Recording enabled");
     }
   }
+  bool battle_finished_before = l->ep3_server->battle_finished;
   l->ep3_server->on_server_data_input(data);
+  if (!battle_finished_before && l->ep3_server->battle_finished && l->battle_record) {
+    l->battle_record->set_battle_end_timestamp();
+  }
   if (l->tournament_match &&
       l->ep3_server->setup_phase == Episode3::SetupPhase::BATTLE_ENDED &&
       !l->ep3_server->tournament_match_result_sent) {

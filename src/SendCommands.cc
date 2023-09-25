@@ -1428,8 +1428,8 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   uint8_t player_count = 0;
   auto watched_lobby = l->watched_lobby.lock();
   if (watched_lobby) {
-    cmd.leader_id = watched_lobby->leader_id;
     // Live spectating
+    cmd.leader_id = watched_lobby->leader_id;
     for (size_t z = 0; z < 4; z++) {
       auto& wc = watched_lobby->clients[z];
       if (!wc) {
@@ -1480,7 +1480,6 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
         throw runtime_error("invalid client id in battle record");
       }
       auto& p = cmd.players[client_id];
-      auto& e = cmd.entries[client_id];
       p.lobby_data = entry.lobby_data;
       remove_language_marker_inplace(p.lobby_data.name);
       p.inventory = entry.inventory;
@@ -1489,12 +1488,15 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       }
       p.disp = entry.disp;
       remove_language_marker_inplace(p.disp.visual.name);
+
+      auto& e = cmd.entries[client_id];
       e.player_tag = 0x00010000;
       e.guild_card_number = entry.lobby_data.guild_card;
       e.name = entry.disp.visual.name;
       remove_language_marker_inplace(e.name);
       e.present = 1;
       e.level = entry.disp.stats.level.load();
+
       player_count++;
     }
 

@@ -23,6 +23,7 @@ public:
     PlayerLobbyDataDCGC lobby_data;
     PlayerInventory inventory;
     PlayerDispDataDCPCV3 disp;
+    uint32_t level;
   } __attribute__((packed));
 
   struct Event {
@@ -65,7 +66,8 @@ public:
   void add_player(
       const PlayerLobbyDataDCGC& lobby_data,
       const PlayerInventory& inventory,
-      const PlayerDispDataDCPCV3& disp);
+      const PlayerDispDataDCPCV3& disp,
+      uint32_t level);
   void delete_player(uint8_t client_id);
   void add_command(Event::Type type, const void* data, size_t size);
   void add_command(Event::Type type, std::string&& data);
@@ -78,7 +80,7 @@ public:
   void set_battle_end_timestamp();
 
 private:
-  static constexpr uint64_t SIGNATURE = 0x14C946D56D1DAC5A;
+  static constexpr uint64_t SIGNATURE = 0x14C946D56D1DAC50;
 
   static bool is_map_definition_event(const Event& ev);
 

@@ -97,7 +97,6 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::weak_ptr<Lobby> watched_lobby; // Only used in watcher games
   std::unordered_set<shared_ptr<Lobby>> watcher_lobbies; // Only used in primary games
   std::shared_ptr<Episode3::BattleRecord> battle_record; // Not used in watcher games
-  std::shared_ptr<Episode3::BattleRecord> prev_battle_record; // Only used in primary games
   std::shared_ptr<Episode3::BattleRecordPlayer> battle_player; // Only used in replay games
   std::shared_ptr<Episode3::Tournament::Match> tournament_match;
   std::shared_ptr<const G_SetEXResultValues_GC_Ep3_6xB4x4B> ep3_ex_result_values;

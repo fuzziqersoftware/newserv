@@ -127,7 +127,8 @@ const BattleRecord::Event* BattleRecord::get_first_event() const {
 void BattleRecord::add_player(
     const PlayerLobbyDataDCGC& lobby_data,
     const PlayerInventory& inventory,
-    const PlayerDispDataDCPCV3& disp) {
+    const PlayerDispDataDCPCV3& disp,
+    uint32_t level) {
   if (!this->is_writable) {
     throw logic_error("cannot write to battle record");
   }
@@ -141,6 +142,7 @@ void BattleRecord::add_player(
   player.lobby_data = lobby_data;
   player.inventory = inventory;
   player.disp = disp;
+  player.level = level;
 }
 
 void BattleRecord::delete_player(uint8_t client_id) {
@@ -349,7 +351,7 @@ void BattleRecordPlayer::schedule_events() {
             send_command(l, (ev.data.size() >= 0x400) ? 0x6C : 0x60, 0x00, ev.data);
             break;
           case BattleRecord::Event::Type::EP3_GAME_COMMAND:
-            send_command(l, 0xCB, 0x00, ev.data);
+            send_command(l, 0xC9, 0x00, ev.data);
             break;
           case BattleRecord::Event::Type::CHAT_MESSAGE:
             send_chat_message(l, ev.guild_card_number, decode_sjis(ev.data));

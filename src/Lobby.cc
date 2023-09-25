@@ -144,7 +144,8 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     this->battle_record->add_player(
         lobby_data,
         c->game_data.player()->inventory,
-        c->game_data.player()->disp.to_dcpcv3());
+        c->game_data.player()->disp.to_dcpcv3(),
+        c->game_data.ep3_config ? (c->game_data.ep3_config->online_clv_exp / 100) : 0);
   }
 
   // Send spectator count notifications if needed

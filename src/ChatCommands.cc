@@ -542,20 +542,19 @@ static void proxy_command_lobby_type(shared_ptr<ProxyServer::LinkedSession> ses,
 }
 
 static void server_command_saverec(shared_ptr<Client> c, const std::u16string& args) {
-  auto l = c->require_lobby();
   if (args.find(u'/') != string::npos) {
     send_text_message(c, u"$C4Recording names\ncannot include\nthe / character");
     return;
   }
-  if (!l->prev_battle_record) {
+  if (!c->ep3_prev_battle_record) {
     send_text_message(c, u"$C4No finished\nrecording is\npresent");
     return;
   }
   string filename = "system/ep3/battle-records/" + encode_sjis(args) + ".mzrd";
-  string data = l->prev_battle_record->serialize();
+  string data = c->ep3_prev_battle_record->serialize();
   save_file(filename, data);
-  send_text_message(l, u"$C7Recording saved");
-  l->prev_battle_record.reset();
+  send_text_message(c, u"$C7Recording saved");
+  c->ep3_prev_battle_record.reset();
 }
 
 static void server_command_playrec(shared_ptr<Client> c, const std::u16string& args) {
