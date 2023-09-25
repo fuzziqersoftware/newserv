@@ -355,9 +355,10 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
       l->serial_number = serial_number;
       l->access_key = cmd.access_key;
       l->gc_password = cmd.password;
-      l->flags |= License::Flag::TEMPORARY;
       s->license_index->add(l);
       c->set_license(l);
+      string l_str = l->str();
+      c->log.info("Created license %s", l_str.c_str());
       send_command(c, 0x9A, 0x02);
     }
   }
@@ -389,9 +390,10 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
       shared_ptr<License> l(new License());
       l->serial_number = serial_number;
       l->access_key = cmd.access_key;
-      l->flags |= License::Flag::TEMPORARY;
       s->license_index->add(l);
       c->set_license(l);
+      string l_str = l->str();
+      c->log.info("Created license %s", l_str.c_str());
       send_command(c, 0x88, 0x00);
     }
   }
@@ -423,9 +425,10 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
       shared_ptr<License> l(new License());
       l->serial_number = serial_number;
       l->access_key = cmd.access_key;
-      l->flags |= License::Flag::TEMPORARY;
       s->license_index->add(l);
       c->set_license(l);
+      string l_str = l->str();
+      c->log.info("Created license %s", l_str.c_str());
     }
   }
 
@@ -468,9 +471,10 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
       shared_ptr<License> l(new License());
       l->serial_number = serial_number;
       l->access_key = cmd.access_key;
-      l->flags |= License::Flag::TEMPORARY;
       s->license_index->add(l);
       c->set_license(l);
+      string l_str = l->str();
+      c->log.info("Created license %s", l_str.c_str());
       send_command(c, 0x90, 0x01);
     }
   }
@@ -510,9 +514,10 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
       shared_ptr<License> l(new License());
       l->serial_number = serial_number;
       l->access_key = cmd.access_key;
-      l->flags |= License::Flag::TEMPORARY;
       s->license_index->add(l);
       c->set_license(l);
+      string l_str = l->str();
+      c->log.info("Created license %s", l_str.c_str());
     }
   }
 
@@ -577,9 +582,9 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 
   } catch (const LicenseIndex::missing_license& e) {
     // On V3, the client should have sent a different command containing the
-    // password already, which should have created and added a temporary
-    // license. So, if no license exists at this point, disconnect the client
-    // even if unregistered clients are allowed.
+    // password already, which should have created and added a license. So, if
+    // no license exists at this point, disconnect the client even if
+    // unregistered clients are allowed.
     shared_ptr<License> l;
     if ((c->version() == GameVersion::GC) || (c->version() == GameVersion::XB)) {
       send_command(c, 0x9A, 0x04);
@@ -589,9 +594,10 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
       shared_ptr<License> l(new License());
       l->serial_number = serial_number;
       l->access_key = cmd.access_key;
-      l->flags |= License::Flag::TEMPORARY;
       s->license_index->add(l);
       c->set_license(l);
+      string l_str = l->str();
+      c->log.info("Created license %s", l_str.c_str());
       send_command(c, 0x9A, 0x02);
     } else {
       throw runtime_error("unsupported game version");
@@ -643,9 +649,10 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
       if (c->version() == GameVersion::GC) {
         l->gc_password = cmd.password;
       }
-      l->flags |= License::Flag::TEMPORARY;
       s->license_index->add(l);
       c->set_license(l);
+      string l_str = l->str();
+      c->log.info("Created license %s", l_str.c_str());
       send_command(c, 0x9C, 0x01);
     }
   }
@@ -753,9 +760,9 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, const str
 
   } catch (const LicenseIndex::missing_license& e) {
     // On V3, the client should have sent a different command containing the
-    // password already, which should have created and added a temporary
-    // license. So, if no license exists at this point, disconnect the client
-    // even if unregistered clients are allowed.
+    // password already, which should have created and added a license. So, if
+    // no license exists at this point, disconnect the client even if
+    // unregistered clients are allowed.
     shared_ptr<License> l;
     if ((c->version() == GameVersion::GC) || (c->version() == GameVersion::XB)) {
       send_command(c, 0x04, 0x04);
@@ -765,9 +772,10 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, const str
       shared_ptr<License> l(new License());
       l->serial_number = serial_number;
       l->access_key = base_cmd->access_key;
-      l->flags |= License::Flag::TEMPORARY;
       s->license_index->add(l);
       c->set_license(l);
+      string l_str = l->str();
+      c->log.info("Created license %s", l_str.c_str());
     } else {
       throw runtime_error("unsupported game version");
     }
@@ -813,9 +821,10 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
       l->serial_number = fnv1a32(cmd.username) & 0x7FFFFFFF;
       l->bb_username = cmd.username;
       l->bb_password = cmd.password;
-      l->flags |= License::Flag::TEMPORARY;
       s->license_index->add(l);
       c->set_license(l);
+      string l_str = l->str();
+      c->log.info("Created license %s", l_str.c_str());
     }
   }
 
@@ -3861,9 +3870,10 @@ static void on_04_P(shared_ptr<Client> c, uint16_t, uint32_t, const string& data
       l->serial_number = fnv1a32(cmd.username) & 0x7FFFFFFF;
       l->bb_username = cmd.username;
       l->bb_password = cmd.password;
-      l->flags |= License::Flag::TEMPORARY;
       s->license_index->add(l);
       c->set_license(l);
+      string l_str = l->str();
+      c->log.info("Created license %s", l_str.c_str());
     }
   }
 

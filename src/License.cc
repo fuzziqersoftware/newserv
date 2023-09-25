@@ -42,12 +42,10 @@ JSON License::json() const {
 }
 
 void License::save() const {
-  if (!(this->flags & License::Flag::TEMPORARY)) {
-    auto json = this->json();
-    string json_data = json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS);
-    string filename = string_printf("system/licenses/%010" PRIu32 ".json", this->serial_number);
-    save_file(filename, json_data);
-  }
+  auto json = this->json();
+  string json_data = json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS);
+  string filename = string_printf("system/licenses/%010" PRIu32 ".json", this->serial_number);
+  save_file(filename, json_data);
 }
 
 void License::delete_file() const {
@@ -93,7 +91,7 @@ struct BinaryLicense {
   uint64_t ban_end_time; // end time of ban (zero = not banned)
 } __attribute__((packed));
 
-LicenseIndex::LicenseIndex() : autosave(true) {
+LicenseIndex::LicenseIndex() {
   if (!isdir("system/licenses")) {
     mkdir("system/licenses", 0755);
   }
@@ -113,7 +111,7 @@ LicenseIndex::LicenseIndex() : autosave(true) {
         license.gc_password = bin_license.gc_password;
         license.bb_username = bin_license.username;
         license.bb_password = bin_license.bb_password;
-        license.flags = bin_license.privileges & (~License::Flag::TEMPORARY);
+        license.flags = bin_license.privileges;
         license.ban_end_time = bin_license.ban_end_time;
         license.ep3_current_meseta = 0;
         license.ep3_total_meseta_earned = 0;
@@ -130,10 +128,6 @@ LicenseIndex::LicenseIndex() : autosave(true) {
       this->add(license);
     }
   }
-}
-
-void LicenseIndex::set_autosave(bool autosave) {
-  this->autosave = autosave;
 }
 
 size_t LicenseIndex::count() const {

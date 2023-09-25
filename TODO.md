@@ -16,6 +16,10 @@
 - Fix symbol chat header (including face_spec) across PC/GC boundary
 - Check size of name field in GuildCardPC
 
+      TODO; // Make save files permission and use it for $saverec too
+      TODO; // Make sure JP v1.02, 1.03, 1.04 can connect and load DOL files
+
+
 ## Episode 3
 
 - Make disconnecting during a tournament match cause you to forfeit the match

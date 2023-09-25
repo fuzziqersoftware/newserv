@@ -218,12 +218,11 @@
 
   // If this option is disabled, the server only allows users who have licenses
   // on the server to connect. If this is enabled, all users will be allowed to
-  // connect even if they don't have licenses. Each time a user connects with an
+  // connect even if they don't have licenses. When a user connects with an
   // unregistered license (serial number and access key combination, or username
-  // and password combination on BB), a temporary  license is created for them,
-  // which lasts until the server is shut down. These temporary licenses are not
-  // saved in the licenses directory. For BB, player and account data is still
-  // saved on the server, even for users with temporary licenses.
+  // and password combination on BB), a new license is created for them.
+  // Licenses are addressed by serial numbers; on BB, the new license's serial
+  // number is a hash of the username.
   "AllowUnregisteredUsers": true,
 
   // User to run the server as. If present, newserv will attempt to switch to

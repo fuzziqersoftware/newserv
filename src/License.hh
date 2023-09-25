@@ -25,9 +25,8 @@ struct License {
       MODERATOR         = 0x00000007,
       ADMINISTRATOR     = 0x000000FF,
       ROOT              = 0x010000FF,
-      TEMPORARY         = 0x80000000,
 
-      UNUSED_BITS       = 0x7EFFFF00,
+      UNUSED_BITS       = 0xFEFFFF00,
     // clang-format on
   };
 
@@ -73,8 +72,6 @@ public:
   LicenseIndex();
   ~LicenseIndex() = default;
 
-  void set_autosave(bool autosave);
-
   size_t count() const;
   std::shared_ptr<License> get(uint32_t serial_number) const;
   std::vector<std::shared_ptr<License>> all() const;
@@ -88,8 +85,6 @@ public:
   std::shared_ptr<License> verify_bb(const std::string& username, const std::string& password) const;
 
 protected:
-  bool autosave;
-
   std::unordered_map<std::string, std::shared_ptr<License>> bb_username_to_license;
   std::unordered_map<uint32_t, std::shared_ptr<License>> serial_number_to_license;
 };

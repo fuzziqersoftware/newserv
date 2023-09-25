@@ -785,9 +785,6 @@ void ServerState::load_bb_private_keys() {
 void ServerState::load_licenses() {
   config_log.info("Loading license list");
   this->license_index.reset(new LicenseIndex());
-  if (this->is_replay) {
-    this->license_index->set_autosave(false);
-  }
 }
 
 void ServerState::load_patch_indexes() {

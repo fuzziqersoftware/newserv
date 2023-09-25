@@ -339,9 +339,10 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         l->serial_number = fnv1a32(cmd.username) & 0x7FFFFFFF;
         l->bb_username = cmd.username;
         l->bb_password = cmd.password;
-        l->flags |= License::Flag::TEMPORARY;
         s->license_index->add(l);
         license = l;
+        string l_str = l->str();
+        ses->log.info("Created license %s", l_str.c_str());
       }
       login_command_bb = std::move(data);
 
