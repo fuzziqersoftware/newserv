@@ -383,6 +383,27 @@ static void proxy_command_exit(shared_ptr<ProxyServer::LinkedSession> ses, const
   }
 }
 
+static void server_command_call(shared_ptr<Client> c, const std::u16string& args) {
+  auto l = c->require_lobby();
+  if (l->is_game() && l->quest) {
+    S_ConfirmQuestStatistic_V3_BB_AB cmd;
+    cmd.function_id = stoul(encode_sjis(args), nullptr, 0);
+    send_command_t(c, 0xAB, 0x00, cmd);
+  } else {
+    send_text_message(c, u"$C6You must be in\nquest to use this\ncommand");
+  }
+}
+
+static void proxy_command_call(shared_ptr<ProxyServer::LinkedSession> ses, const std::u16string& args) {
+  if (ses->is_in_game && ses->is_in_quest) {
+    S_ConfirmQuestStatistic_V3_BB_AB cmd;
+    cmd.function_id = stoul(encode_sjis(args), nullptr, 0);
+    ses->client_channel.send(0xAB, 0x00, &cmd, sizeof(cmd));
+  } else {
+    send_text_message(ses->client_channel, u"$C6You must be in\nquest to use this\ncommand");
+  }
+}
+
 static void server_command_get_self_card(shared_ptr<Client> c, const std::u16string&) {
   send_guild_card(c, c);
 }
@@ -1488,6 +1509,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$ax", {server_command_ax, nullptr}},
     {u"$ban", {server_command_ban, nullptr}},
     {u"$bbchar", {server_command_convert_char_to_bb, nullptr}},
+    {u"$call", {server_command_call, proxy_command_call}},
     {u"$cheat", {server_command_cheat, nullptr}},
     {u"$debug", {server_command_debug, nullptr}},
     {u"$defrange", {server_command_ep3_set_def_dice_range, nullptr}},
