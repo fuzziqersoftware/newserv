@@ -284,7 +284,9 @@
   // If this is enabled, all players will have infinite Meseta, effectively
   // making the jukebox and Pinz's Shop free. Otherwise, Meseta behaves as
   // defined below. Meseta rewards are tied to a player's license (and therefore
-  // their serial number) and are stored server-side.
+  // their serial number) and are stored server-side. Unlike other servers,
+  // newserv forbids overdrafting Meseta; if this option is disabled and a
+  // player spends Meseta they don't have, the player is disconnected.
   "Episode3InfiniteMeseta": false,
   // Meseta values for winning each tournament round. If a player defeats
   // another player in round 1, for example, they will earn 400 Meseta; if they
@@ -394,14 +396,14 @@
   },
 
   // Episode 3 lobby banners. Currently only images are supported.
-  // Image giles are expected to be in BMP or PPM format, and should be placed
+  // Image files are expected to be in BMP or PPM format, and should be placed
   // in the system/ep3/banners directory. Image sizes must be a multiple of 4
   // pixels in both dimensions, must be no larger than 0x37000 bytes when
   // encoded as a GVM file (newserv will do this encoding internally), and must
   // compress to no larger than 0x3800 bytes. newserv will fail on startup if
   // any of these constraints aren't satisfied.
-  // Banners are specified as lists of [type, which, filename]. type should be
-  // 1 for image files. which is a bitmask specifying where in the lobby the
+  // Banners are specified as lists of [type, where, filename]. type should be
+  // 1 for image files. where is a bitmask specifying where in the lobby the
   // banner should appear; the bits are:
   // 00000001: South above-counter banner (facing away from teleporters)
   // 00000002: West above-counter banner
@@ -435,8 +437,8 @@
   // 20000000: Just north-northwest of the counter
   // 40000000: In front of the small wall in front of the 2-player battle tables
   // 80000000: Inside the lobby counter, facing southeast
-  // So, to make the image system/ep3/banners/test-image.bmp appear in the lobby
-  // above both the left and right teleporters, you would set
+  // For example, to make the image system/ep3/banners/test-image.bmp appear in
+  // the lobby above both the left and right teleporters, you would set
   // Episode3LobbyBanners like so:
   // "Episode3LobbyBanners": [
   //   [1, 0x00000030, "test-image.bmp"],
