@@ -341,8 +341,7 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
     return;
 
   } catch (const LicenseIndex::incorrect_password& e) {
-    send_command(c, 0x9A, 0x07);
-    c->should_disconnect = true;
+    send_command(c, 0x9A, 0x01);
     return;
 
   } catch (const LicenseIndex::missing_license& e) {
@@ -576,8 +575,7 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
     return;
 
   } catch (const LicenseIndex::incorrect_password& e) {
-    send_command(c, 0x9A, 0x07);
-    c->should_disconnect = true;
+    send_command(c, 0x9A, 0x01);
     return;
 
   } catch (const LicenseIndex::missing_license& e) {
@@ -4248,8 +4246,8 @@ static void check_unlicensed_command(GameVersion version, uint8_t command) {
       // log the client in, so this case should never be executed.
       throw logic_error("cannot check unlicensed command for DC client");
     case GameVersion::PC:
-      if (command != 0x9A && command != 0x9D) {
-        throw runtime_error("only commands 9A and 9D may be sent before login");
+      if (command != 0x9A && command != 0x9C && command != 0x9D) {
+        throw runtime_error("only commands 9A, 9C, and 9D may be sent before login");
       }
       break;
     case GameVersion::GC:
@@ -4260,10 +4258,11 @@ static void check_unlicensed_command(GameVersion version, uint8_t command) {
           command != 0x90 && // DC v1
           command != 0x93 && // DC v1
           command != 0x9A && // DC v2
+          command != 0x9C && // DC v2, GC
           command != 0x9D && // DC v2, GC trial edition
           command != 0x9E && // GC non-trial
           command != 0xDB) { // GC non-trial
-        throw runtime_error("only commands 88, 8B, 90, 93, 9A, 9D, 9E, and DB may be sent before login");
+        throw runtime_error("only commands 88, 8B, 90, 93, 9A, 9C, 9D, 9E, and DB may be sent before login");
       }
       break;
     case GameVersion::BB:
