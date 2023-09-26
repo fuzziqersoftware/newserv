@@ -295,8 +295,10 @@
   // Winning the final round is worth this much extra Meseta.
   "Episode3FinalRoundMesetaBonus": 300,
   // If this option is enabled, the jukebox in Episode 3 lobbies does not deduct
-  // any Meseta when a song is played. The player must still have at least 100
-  // Meseta to play a song, however.
+  // any Meseta when a song is played. The check for 100 or more meseta happens
+  // client-side, however, so even if this option is enabled, the client must
+  // either have 100 or more Meseta or use the "Jukebox is free" Action Replay
+  // code to be able to play songs.
   "Episode3JukeboxIsFree": false,
 
   // Episode 3 battle behavior flags. When set to zero, battles behave as they

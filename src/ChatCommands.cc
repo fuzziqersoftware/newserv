@@ -625,6 +625,21 @@ static void server_command_playrec(shared_ptr<Client> c, const std::u16string& a
   }
 }
 
+static void server_command_meseta(shared_ptr<Client> c, const std::u16string& args) {
+  check_is_ep3(c, true);
+  if (!c->options.debug) {
+    send_text_message(c, u"$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
+    return;
+  }
+
+  uint32_t amount = stoul(encode_sjis(args), nullptr, 0);
+  c->license->ep3_current_meseta += amount;
+  c->license->ep3_total_meseta_earned += amount;
+  c->license->save();
+  send_ep3_rank_update(c);
+  send_text_message_printf(c, "You now have\n$C6%" PRIu32 "$C7 Meseta", c->license->ep3_current_meseta);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands
 
@@ -1528,6 +1543,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$ln", {server_command_lobby_type, proxy_command_lobby_type}},
     {u"$ep3battledebug", {server_command_enable_ep3_battle_debug_menu, nullptr}},
     {u"$maxlevel", {server_command_max_level, nullptr}},
+    {u"$meseta", {server_command_meseta, nullptr}},
     {u"$minlevel", {server_command_min_level, nullptr}},
     {u"$next", {server_command_next, proxy_command_next}},
     {u"$password", {server_command_password, nullptr}},

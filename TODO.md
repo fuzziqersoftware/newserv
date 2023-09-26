@@ -24,6 +24,7 @@
 - Spectator teams
     - Spectator teams sometimes stop receiving commands during live battles?
     - It may be possible to send spectators back to the waiting room after a non-tournament battle by sending 6xB4x05 with environment 0x19, then 6xB4x3B again; try this
+- Add support for recording battles on the proxy server (both in primary and spectator teams)
 
 ## PSOBB
 
