@@ -260,7 +260,7 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
       primary_l->log.info("Unlinking watcher lobby %" PRIX32, l->lobby_id);
       primary_l->watcher_lobbies.erase(l);
     } else {
-      l->log.info("Watched lobby is missing");
+      l->log.info("No watched lobby to unlink");
     }
     l->watched_lobby.reset();
   } else {

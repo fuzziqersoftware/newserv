@@ -606,7 +606,7 @@ static void server_command_playrec(shared_ptr<Client> c, const std::u16string& a
 
     string data;
     try {
-      string data = load_file(file_path);
+      data = load_file(file_path);
     } catch (const cannot_open_file&) {
       send_text_message(c, u"$C4The recording does\nnot exist");
       return;
