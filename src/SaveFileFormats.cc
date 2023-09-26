@@ -87,7 +87,7 @@ void PSOGCIFileHeader::check() const {
   if (this->developer_id[0] != '8' || this->developer_id[1] != 'P') {
     throw runtime_error("GCI file is not for a Sega game");
   }
-  if (this->game_id[0] != 'G') {
+  if ((this->game_id[0] != 'G') && (this->game_id[0] != 'D')) {
     throw runtime_error("GCI file is not for a GameCube game");
   }
   if (this->game_id[1] != 'P') {
@@ -104,6 +104,10 @@ bool PSOGCIFileHeader::is_ep12() const {
 
 bool PSOGCIFileHeader::is_ep3() const {
   return (this->game_id[2] == 'S');
+}
+
+bool PSOGCIFileHeader::is_trial() const {
+  return (this->game_id[0] == 'D');
 }
 
 uint32_t compute_psogc_timestamp(

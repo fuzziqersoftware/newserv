@@ -165,8 +165,7 @@ string find_seed_and_decrypt_download_quest_data_section(
   string result;
   uint64_t result_seed = parallel_range<uint64_t>([&](uint64_t seed, size_t) {
     try {
-      string ret = decrypt_download_quest_data_section<IsBigEndian>(
-          data_section, size, seed);
+      string ret = decrypt_download_quest_data_section<IsBigEndian>(data_section, size, seed);
       lock_guard<mutex> g(result_lock);
       result = std::move(ret);
       return true;
@@ -522,36 +521,53 @@ string Quest::decode_gci_file(
       return compressed_data;
     }
 
-  } else if (header.game_id[2] == 'S') { // Episode 3
-    // The first 0x10 bytes in the data segment appear to be unused. In most
-    // files I've seen, the last half of it (8 bytes) are duplicates of the
-    // first 8 bytes of the unscrambled, compressed data, though this is the
-    // result of an uninitialized memory bug when the client encodes the file
-    // and not an actual constraint on what should be in these 8 bytes.
-    r.skip(16);
-    // The game treats this field as a 16-byte string (including the \0). The 8
-    // bytes after it appear to be completely unused.
-    if (r.readx(15) != "SONICTEAM,SEGA.") {
-      throw runtime_error("Episode 3 GCI file is not a quest");
+  } else if (header.is_ep3()) {
+    if (header.is_trial()) {
+      if (known_seed >= 0) {
+        return decrypt_download_quest_data_section<true>(
+            r.getv(header.data_size), header.data_size, known_seed);
+      } else {
+        if (find_seed_num_threads < 0) {
+          throw runtime_error("file is encrypted");
+        }
+        if (find_seed_num_threads == 0) {
+          find_seed_num_threads = thread::hardware_concurrency();
+        }
+        return find_seed_and_decrypt_download_quest_data_section<true>(
+            r.getv(header.data_size), header.data_size, find_seed_num_threads);
+      }
+
+    } else {
+      // The first 0x10 bytes in the data segment appear to be unused. In most
+      // files I've seen, the last half of it (8 bytes) are duplicates of the
+      // first 8 bytes of the unscrambled, compressed data, though this is the
+      // result of an uninitialized memory bug when the client encodes the file
+      // and not an actual constraint on what should be in these 8 bytes.
+      r.skip(16);
+      // The game treats this field as a 16-byte string (including the \0). The 8
+      // bytes after it appear to be completely unused.
+      if (r.readx(15) != "SONICTEAM,SEGA.") {
+        throw runtime_error("Episode 3 GCI file is not a quest");
+      }
+      r.skip(9);
+
+      data = r.readx(header.data_size - 40);
+
+      // For some reason, Sega decided not to encrypt Episode 3 quest files in the
+      // same way as Episodes 1&2 quest files (see above). Instead, they just
+      // wrote a fairly trivial XOR loop over the first 0x100 bytes, leaving the
+      // remaining bytes completely unencrypted (but still compressed).
+      size_t unscramble_size = min<size_t>(0x100, data.size());
+      decrypt_trivial_gci_data(data.data(), unscramble_size, 0);
+
+      size_t decompressed_size = prs_decompress_size(data);
+      if (decompressed_size != sizeof(Episode3::MapDefinition)) {
+        throw runtime_error(string_printf(
+            "decompressed quest is 0x%zX bytes; expected 0x%zX bytes",
+            decompressed_size, sizeof(Episode3::MapDefinition)));
+      }
+      return data;
     }
-    r.skip(9);
-
-    data = r.readx(header.data_size - 40);
-
-    // For some reason, Sega decided not to encrypt Episode 3 quest files in the
-    // same way as Episodes 1&2 quest files (see above). Instead, they just
-    // wrote a fairly trivial XOR loop over the first 0x100 bytes, leaving the
-    // remaining bytes completely unencrypted (but still compressed).
-    size_t unscramble_size = min<size_t>(0x100, data.size());
-    decrypt_trivial_gci_data(data.data(), unscramble_size, 0);
-
-    size_t decompressed_size = prs_decompress_size(data);
-    if (decompressed_size != sizeof(Episode3::MapDefinition)) {
-      throw runtime_error(string_printf(
-          "decompressed quest is 0x%zX bytes; expected 0x%zX bytes",
-          decompressed_size, sizeof(Episode3::MapDefinition)));
-    }
-    return data;
 
   } else {
     throw runtime_error("unknown game name in GCI header");
