@@ -888,9 +888,9 @@ void ServerState::load_ep3_data() {
   config_log.info("Collecting Episode 3 maps");
   this->ep3_map_index.reset(new Episode3::MapIndex("system/ep3"));
   config_log.info("Loading Episode 3 card definitions");
-  this->ep3_card_index.reset(new Episode3::CardIndex("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr"));
+  this->ep3_card_index.reset(new Episode3::CardIndex("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr", "system/ep3/card-text.mnrd"));
   config_log.info("Loading Episode 3 trial card definitions");
-  this->ep3_card_index_trial.reset(new Episode3::CardIndex("system/ep3/card-definitions-trial.mnr", "system/ep3/card-definitions-trial.mnrd", "system/ep3/card-text-trial.mnr"));
+  this->ep3_card_index_trial.reset(new Episode3::CardIndex("system/ep3/card-definitions-trial.mnr", "system/ep3/card-definitions-trial.mnrd", "system/ep3/card-text-trial.mnr", "system/ep3/card-text-trial.mnrd"));
   config_log.info("Loading Episode 3 COM decks");
   this->ep3_com_deck_index.reset(new Episode3::COMDeckIndex("system/ep3/com-decks.json"));
 

@@ -1817,13 +1817,22 @@ uint8_t Rules::max_def_dice() const {
   return this->def_dice_range & 0x0F;
 }
 
-CardIndex::CardIndex(const string& filename, const string& decompressed_filename, const string& text_filename) {
+CardIndex::CardIndex(
+    const string& filename,
+    const string& decompressed_filename,
+    const string& text_filename,
+    const string& decompressed_text_filename) {
   unordered_map<uint32_t, vector<string>> card_tags;
   unordered_map<uint32_t, string> card_text;
-  if (!text_filename.empty()) {
-    try {
-      string data = prs_decompress(load_file(text_filename));
-      StringReader r(data);
+  try {
+    string text_bin_data;
+    if (!decompressed_text_filename.empty() && isfile(decompressed_text_filename)) {
+      text_bin_data = load_file(decompressed_text_filename);
+    } else if (!text_filename.empty() && isfile(text_filename)) {
+      text_bin_data = prs_decompress(load_file(text_filename));
+    }
+    if (!text_bin_data.empty()) {
+      StringReader r(text_bin_data);
 
       while (!r.eof()) {
         string card_id_str = r.get_cstr();
@@ -1905,10 +1914,9 @@ CardIndex::CardIndex(const string& filename, const string& decompressed_filename
 
         r.go((r.where() + 0x3FF) & (~0x3FF));
       }
-
-    } catch (const exception& e) {
-      static_game_data_log.warning("Failed to load card text: %s", e.what());
     }
+  } catch (const exception& e) {
+    static_game_data_log.warning("Failed to load card text: %s", e.what());
   }
 
   try {

@@ -1642,7 +1642,7 @@ int main(int argc, char** argv) {
     }
 
     case Behavior::SHOW_EP3_CARDS: {
-      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr");
+      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr", "system/ep3/card-text.mnrd");
 
       auto card_ids = card_index.all_ids();
       log_info("%zu card definitions", card_ids.size());
@@ -1664,7 +1664,7 @@ int main(int argc, char** argv) {
     case Behavior::SHOW_EP3_MAPS: {
       config_log.info("Collecting Episode 3 data");
       Episode3::MapIndex map_index("system/ep3");
-      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr");
+      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr", "system/ep3/card-text.mnrd");
 
       auto map_ids = map_index.all_numbers();
       log_info("%zu maps", map_ids.size());
