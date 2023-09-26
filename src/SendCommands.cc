@@ -25,7 +25,9 @@ extern const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME;
 const unordered_set<uint32_t> v2_crypt_initial_client_commands({
     0x00260088, // (17) DCNTE license check
     0x00B0008B, // (02) DCNTE login
+    0x00B0018B, // (02) DCNTE login (UDP off)
     0x0114008B, // (02) DCNTE extended login
+    0x0114018B, // (02) DCNTE extended login (UDP off)
     0x00260090, // (17) DCv1 prototype and JP license check
     0x00280090, // (17) DCv1 license check
     0x00B00093, // (02) DCv1 login
