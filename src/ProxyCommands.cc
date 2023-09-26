@@ -1116,8 +1116,7 @@ static HandlerResult S_44_A6(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
 
   // Episode 3 download quests aren't DLQ-encoded
   bool decode_dlq = is_download && !(ses->newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3);
-  ProxyServer::LinkedSession::SavingFile sf(
-      cmd.filename, output_filename, cmd.file_size, decode_dlq);
+  ProxyServer::LinkedSession::SavingFile sf(cmd.filename, output_filename, cmd.file_size, decode_dlq);
   ses->saving_files.emplace(cmd.filename, std::move(sf));
   if (ses->options.save_files) {
     ses->log.info("Saving %s from server to %s", filename.c_str(), output_filename.c_str());
@@ -1159,13 +1158,19 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
   if (!sf->output_filename.empty()) {
     ses->log.info("Adding %" PRIu32 " bytes to %s => %s",
         cmd.data_size.load(), sf->basename.c_str(), sf->output_filename.c_str());
-    sf->blocks.emplace_back(reinterpret_cast<const char*>(cmd.data.data()), cmd.data_size);
+    if (ses->options.save_files) {
+      sf->blocks.emplace_back(reinterpret_cast<const char*>(cmd.data.data()), cmd.data_size);
+    }
   }
   sf->remaining_bytes -= cmd.data_size;
 
   if (sf->remaining_bytes == 0) {
-    ses->log.info("Writing file %s => %s", sf->basename.c_str(), sf->output_filename.c_str());
-    sf->write();
+    if (ses->options.save_files) {
+      ses->log.info("Writing file %s => %s", sf->basename.c_str(), sf->output_filename.c_str());
+      sf->write();
+    } else {
+      ses->log.info("Download complete for file %s", sf->basename.c_str());
+    }
     ses->saving_files.erase(cmd.filename);
   }
 
