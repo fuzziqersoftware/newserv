@@ -29,7 +29,9 @@ const unordered_set<uint32_t> v2_crypt_initial_client_commands({
     0x00260090, // (17) DCv1 prototype and JP license check
     0x00280090, // (17) DCv1 license check
     0x00B00093, // (02) DCv1 login
+    0x00B00193, // (02) DCv1 login (UDP off)
     0x01140093, // (02) DCv1 extended login
+    0x01140193, // (02) DCv1 extended login (UDP off)
     0x00E0009A, // (17) DCv2/GCNTE license check
     0x00CC009D, // (02) DCv2/GCNTE login
     0x00CC019D, // (02) DCv2/GCNTE login (UDP off)
