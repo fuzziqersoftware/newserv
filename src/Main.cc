@@ -294,6 +294,7 @@ enum class Behavior {
   CONVERT_ITEMRT_REL_TO_JSON,
   SHOW_EP3_MAPS,
   SHOW_EP3_CARDS,
+  GENERATE_EP3_CARDS_HTML,
   DESCRIBE_ITEM,
   ENCODE_ITEM,
   PARSE_OBJECT_GRAPH,
@@ -589,6 +590,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::SHOW_EP3_MAPS;
         } else if (!strcmp(argv[x], "show-ep3-cards")) {
           behavior = Behavior::SHOW_EP3_CARDS;
+        } else if (!strcmp(argv[x], "generate-ep3-cards-html")) {
+          behavior = Behavior::GENERATE_EP3_CARDS_HTML;
         } else if (!strcmp(argv[x], "describe-item")) {
           behavior = Behavior::DESCRIBE_ITEM;
         } else if (!strcmp(argv[x], "encode-item")) {
@@ -1658,6 +1661,111 @@ int main(int argc, char** argv) {
           fprintf(stdout, "%s\n  Tags: %s\n  Text:\n    %s\n\n", s.c_str(), tags.c_str(), text.c_str());
         }
       }
+      break;
+    }
+
+    case Behavior::GENERATE_EP3_CARDS_HTML: {
+      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr", "system/ep3/card-text.mnrd");
+      struct CardInfo {
+        shared_ptr<const Episode3::CardIndex::CardEntry> ce;
+        Image small_image;
+        Image medium_image;
+        Image large_image;
+
+        bool is_empty() const {
+          return (this->ce == nullptr) && (this->small_image.get_width() == 0) && (this->medium_image.get_width() == 0) && (this->large_image.get_width() == 0);
+        }
+      };
+      vector<CardInfo> infos;
+      for (uint32_t card_id : card_index.all_ids()) {
+        if (infos.size() <= card_id) {
+          infos.resize(card_id + 1);
+        }
+        infos[card_id].ce = card_index.definition_for_id(card_id);
+      }
+      for (const auto& filename : list_directory_sorted("system/ep3/cardtex")) {
+        if ((filename[0] == 'C' || filename[0] == 'M' || filename[0] == 'L') && (filename[1] == '_')) {
+          size_t card_id = stoull(filename.substr(2, 3), nullptr, 10);
+          if (infos.size() <= card_id) {
+            infos.resize(card_id + 1);
+          }
+          auto& info = infos[card_id];
+          Image img("system/ep3/cardtex/" + filename);
+          if (filename[0] == 'C') {
+            info.large_image = Image(512, 399);
+            info.large_image.blit(img, 0, 0, 512, 399, 0, 0);
+          } else if (filename[0] == 'L') {
+            info.medium_image = Image(184, 144);
+            info.medium_image.blit(img, 0, 0, 184, 144, 0, 0);
+          } else if (filename[0] == 'M') {
+            info.small_image = Image(58, 43);
+            info.small_image.blit(img, 0, 0, 58, 43, 0, 0);
+          }
+          fprintf(stderr, "... %s (%04zX)\r", filename.c_str(), card_id);
+        }
+      }
+      fprintf(stderr, "... Loaded card images\n");
+
+      deque<string> blocks;
+      blocks.emplace_back("<html><head><title>Phantasy Star Online Episode III cards</title></head><body>");
+      blocks.emplace_back("<table><tr><th style=\"text-align: left\">Legend:</th></tr><tr style=\"background-color: #FFC0C0\"><td>Card has no definition and is obviously incomplete</td></tr><tr style=\"background-color: #C0EEC0\"><td>Card is unobtainable in random draws but may be a quest or event reward</td></tr><tr style=\"background-color: #FFFFFF\"><td>Card is obtainable in random draws</td></tr></table><br /><br />");
+      blocks.emplace_back("<table><tr><th style=\"text-align: left\">ID</th><th style=\"text-align: left\">Large</th><th style=\"text-align: left\">Medium</th><th style=\"text-align: left\">Small</th><th style=\"text-align: left\">Text</th><th style=\"text-align: left\">Disassembly</th></tr>");
+      bool gray = false;
+      for (size_t card_id = 0; card_id < infos.size(); card_id++) {
+        const auto& entry = infos[card_id];
+        if (entry.is_empty()) {
+          continue;
+        }
+
+        const char* background_color;
+        if (!entry.ce) {
+          background_color = gray ? "#EEC0C0" : "#FFC0C0";
+        } else if (entry.ce->def.cannot_drop ||
+            ((entry.ce->def.rank == Episode3::CardRank::D1) || (entry.ce->def.rank == Episode3::CardRank::D2) || (entry.ce->def.rank == Episode3::CardRank::D3)) ||
+            ((entry.ce->def.card_class() == Episode3::CardClass::BOSS_ATTACK_ACTION) || (entry.ce->def.card_class() == Episode3::CardClass::BOSS_TECH)) ||
+            ((entry.ce->def.drop_rates[0] == 6) && (entry.ce->def.drop_rates[1] == 6))) {
+          background_color = gray ? "#C0EEC0" : "#C0FFC0";
+        } else {
+          background_color = gray ? "#EEEEEE" : "#FFFFFF";
+        }
+
+        gray = !gray;
+        blocks.emplace_back(string_printf("<tr style=\"background-color: %s\">", background_color));
+        blocks.emplace_back(string_printf("<td><pre>%04zX</pre></td><td>", card_id));
+        if (entry.large_image.get_width() > 0) {
+          blocks.emplace_back("<img src=\"");
+          blocks.emplace_back(entry.large_image.png_data_url());
+          blocks.emplace_back("\" />");
+        }
+        blocks.emplace_back("</td><td>");
+        if (entry.medium_image.get_width() > 0) {
+          blocks.emplace_back("<img src=\"");
+          blocks.emplace_back(entry.medium_image.png_data_url());
+          blocks.emplace_back("\" />");
+        }
+        blocks.emplace_back("</td><td>");
+        if (entry.small_image.get_width() > 0) {
+          blocks.emplace_back("<img src=\"");
+          blocks.emplace_back(entry.small_image.png_data_url());
+          blocks.emplace_back("\" />");
+        }
+        blocks.emplace_back("</td><td>");
+        if (entry.ce) {
+          blocks.emplace_back("<pre>");
+          blocks.emplace_back(entry.ce->text);
+          blocks.emplace_back("</pre></td><td><pre>");
+          blocks.emplace_back(entry.ce->def.str(false));
+          blocks.emplace_back("</pre>");
+        } else {
+          blocks.emplace_back("</td><td><pre>Definition is missing</pre>");
+        }
+        blocks.emplace_back("</td></tr>");
+        fprintf(stderr, "... %04zX/%04zX\r", card_id, infos.size());
+      }
+      blocks.emplace_back("</table></body></html>");
+      fprintf(stderr, "... Constructed HTML file\n");
+
+      save_file("cards.html", join(blocks, ""));
       break;
     }
 

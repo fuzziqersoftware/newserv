@@ -1991,7 +1991,7 @@ void Server::handle_CAx14_update_deck_during_setup(const string& data) {
         throw runtime_error(string_printf("invalid deck: -0x%" PRIX32, verify_error));
       }
       if (!(this->behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
-        this->ruler_server->replace_D1_D2_rarity_cards_with_Attack(entry.card_ids);
+        this->ruler_server->replace_D1_D2_rank_cards_with_Attack(entry.card_ids);
       }
       *this->deck_entries[in_cmd.client_id] = in_cmd.entry;
       this->presence_entries[in_cmd.client_id].player_present = true;

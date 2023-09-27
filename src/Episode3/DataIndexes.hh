@@ -102,7 +102,7 @@ enum class CriterionCode : uint8_t {
 
 const char* name_for_criterion_code(CriterionCode code);
 
-enum class CardRarity : uint8_t {
+enum class CardRank : uint8_t {
   N1 = 0x01,
   R1 = 0x02,
   S = 0x03,
@@ -114,14 +114,14 @@ enum class CardRarity : uint8_t {
   R3 = 0x09,
   R4 = 0x0A,
   SS = 0x0B,
-  // Cards with the D1 or D2 rarities are considered never usable by the player,
+  // Cards with the D1 or D2 ranks are considered never usable by the player,
   // and are automatically removed from player decks before battle and when
-  // loading the deckbuilder. Cards with the D1 rarity appear in the deckbuilder
-  // but are grayed out (and cannot be added to decks); cards with the D2 rarity
+  // loading the deckbuilder. Cards with the D1 rank appear in the deckbuilder
+  // but are grayed out (and cannot be added to decks); cards with the D2 rank
   // don't appear in the deckbuilder at all.
   D1 = 0x0C,
   D2 = 0x0D,
-  // The D3 rarity is referenced in a few places, including the function that
+  // The D3 rank is referenced in a few places, including the function that
   // determines whether or not a card can appear in post-battle draws, and the
   // function that determines whether a card should appear in the deckbuilder.
   // In these cases, it prevents the card from appearing.
@@ -497,7 +497,7 @@ struct CardDefinition {
 
     bool is_empty() const;
     static std::string str_for_arg(const std::string& arg);
-    std::string str() const;
+    std::string str(const char* separator = ", ") const;
   } __attribute__((packed));
 
   /* 0000 */ be_uint32_t card_id;
@@ -525,7 +525,7 @@ struct CardDefinition {
   // random assist.
   /* 0091 */ uint8_t cannot_drop;
   /* 0092 */ CriterionCode usable_criterion;
-  /* 0093 */ CardRarity rarity;
+  /* 0093 */ CardRank rank;
   /* 0094 */ be_uint16_t unused4;
   // The card class is used for checking attributes (e.g. item types). It's
   // stored big-endian here, so there's a helper function (card_class()) that
@@ -552,7 +552,7 @@ struct CardDefinition {
   // card can transform into this card if any of the following are true:
   // - type is SC_HUNTERS or SC_ARKZ
   // - card_class is BOSS_ATTACK_ACTION (0x23) or BOSS_TECH (0x24)
-  // - rarity is E, D1, or D2
+  // - rank is E, D1, or D2
   // - cannot_drop is 1 (specifically 1; other nonzero values here don't
   //   prevent the card from appearing in post-battle draws)
   // If none of these conditions apply, the logic below is used.
@@ -653,7 +653,7 @@ struct CardDefinition {
   // effect. Therefore, the final probability that a card will transform into a
   // VIP card is P(activate) * P(vip), and the final probability of transforming
   // into a rarer card is P(activate) * P(rare).
-  //        ====== Card rarities N4-N1 ======  ====== Card rarities R4-R1 ======
+  //        ======== Card rank N4-N1 ========  ======== Card rank R4-R1 ========
   // Count  P(activate)  P(rare)  P(vip)       P(activate)  P(rare)  P(vip)
   //  0-4   0%            0%      0%           0%            0%      0%
   //  5-10  1.923077%    55%      0.5%         2.0408163%   55%      0.5%
@@ -665,9 +665,9 @@ struct CardDefinition {
   // 53-99  5%           90%      0.33333334%  5.263158%    90%      0.4347826%
   //
   // If a transformation occurs, the card transforms to a card of a different
-  // rarity. First, the game consults the following table to determine the
-  // rarity of the resulting card (original card's rarity on the left, new
-  // card's rarity across the top):
+  // rank. First, the game consults the following table to determine the rank of
+  // the resulting card (original card's rank on the left, new card's rank
+  // across the top):
   //        N4   N3   N2   N1   R4   R3   R2   R1    S   SS
   // N4 =>            60   30   10
   // N3 =>                 60   30   10
@@ -682,16 +682,15 @@ struct CardDefinition {
   // card transforms, there is a 900/1001 chance of becoming another R1, a
   // 100/1001 chance of becoming an S, and a 1/1001 chance of becoming an SS.
   //
-  // Once a rarity is chosen, the game puts all possible cards into buckets
-  // based on how many of that card the player already has, then chooses a
-  // random card out of bucket 0, then bucket 1, etc. all the way up to bucket
-  // 49 (or 2 if the final rarity is S or SS). The first drawn card that is the
-  // final rarity is the card that the original card transforms into. Notably,
-  // this logic means that cards are more likely to transform into cards that
-  // the player doesn't already have, or only has few copies of. Also notably,
-  // it is impossible for a card to transform into another card that the player
-  // already has 50 or more copies of, or an S or SS card that the player
-  // already has 3 copies of.
+  // Once a rank is chosen, the game puts all possible cards into buckets based
+  // on how many of that card the player already has, then chooses a random card
+  // out of bucket 0, then bucket 1, etc. all the way up to bucket 49 (or 2 if
+  // the final rank is S or SS). The first drawn card that is the final rank is
+  // the card that the original card transforms into. Notably, this logic means
+  // that cards are more likely to transform into cards that the player doesn't
+  // already have, or only has few copies of. Also notably, it is impossible for
+  // a card to transform into another card that the player already has 50 or
+  // more copies of, or an S or SS card that the player already has 3 copies of.
   //
   // One curiosity about the above procedure is that the buckets can only hold
   // 400 cards each for the N ranks, 300 each for the R ranks, and 100 each for

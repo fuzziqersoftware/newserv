@@ -21,7 +21,7 @@
 ## Episode 3
 
 - Make disconnecting during a tournament match cause you to forfeit the match
-- Enforce tournament deck restrictions (e.g. rarity checks, No Assist option) when populating COMs at tournament start time
+- Enforce tournament deck restrictions (e.g. rank checks, No Assist option) when populating COMs at tournament start time
 - Spectator teams
     - Spectator teams sometimes stop receiving commands during live battles?
     - It may be possible to send spectators back to the waiting room after a non-tournament battle by sending 6xB4x05 with environment 0x19, then 6xB4x3B again; try this

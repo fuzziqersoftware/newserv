@@ -197,8 +197,7 @@ public:
       std::shared_ptr<DeckEntry> deck_entry,
       std::shared_ptr<parray<ActionChainWithConds, 9>> set_card_action_chains,
       std::shared_ptr<parray<ActionMetadata, 9>> set_card_action_metadatas);
-  void replace_D1_D2_rarity_cards_with_Attack(
-      parray<le_uint16_t, 0x1F>& card_ids) const;
+  void replace_D1_D2_rank_cards_with_Attack(parray<le_uint16_t, 0x1F>& card_ids) const;
   AttackMedium get_attack_medium(const ActionState& pa) const;
   void set_client_team_id(uint8_t client_id, uint8_t team_id);
   int32_t set_cost_for_card(uint8_t client_id, uint16_t card_ref) const;

@@ -170,7 +170,7 @@ Server commands:\n\
           dice separately\n\
       overall-time-limit=N: Set battle time limit (in multiples of 5 minutes)\n\
       phase-time-limit=N: Set phase time limit (in seconds)\n\
-      allowed-cards=ALL/N/NR/NRS: Set rarities of allowed cards\n\
+      allowed-cards=ALL/N/NR/NRS: Set ranks of allowed cards\n\
       deck-shuffle=ON/OFF: Enable/disable deck shuffle\n\
       deck-loop=ON/OFF: Enable/disable deck loop\n\
       hp=N: Set Story Character initial HP\n\

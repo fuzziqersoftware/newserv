@@ -727,29 +727,43 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
   }
 }
 
-string CardDefinition::Effect::str() const {
-  uint8_t type = static_cast<uint8_t>(this->type);
-  string cmd_str = string_printf("%02hhX", type);
-  try {
-    const char* name = description_for_condition_type.at(type).name;
-    if (name) {
-      cmd_str += ':';
-      cmd_str += name;
+string CardDefinition::Effect::str(const char* separator) const {
+  vector<string> tokens;
+  tokens.emplace_back(string_printf("%hhu:", this->effect_num));
+  {
+    uint8_t type = static_cast<uint8_t>(this->type);
+    string cmd_str = string_printf("cmd=%02hhX", type);
+    try {
+      const char* name = description_for_condition_type.at(type).name;
+      if (name) {
+        cmd_str += ':';
+        cmd_str += name;
+      }
+    } catch (const out_of_range&) {
     }
-  } catch (const out_of_range&) {
+    tokens.emplace_back(std::move(cmd_str));
   }
-
-  string expr_str = this->expr;
-  if (!expr_str.empty()) {
-    expr_str = ", expr=" + expr_str;
+  if (!this->expr.empty()) {
+    tokens.emplace_back("expr=" + string(this->expr));
   }
+  tokens.emplace_back(string_printf("when=%02hhX", this->when));
+  tokens.emplace_back(this->str_for_arg(this->arg1));
+  tokens.emplace_back(this->str_for_arg(this->arg2));
+  tokens.emplace_back(this->str_for_arg(this->arg3));
+  {
+    uint8_t type = static_cast<uint8_t>(this->apply_criterion);
+    string cond_str = string_printf("cond=%02hhX", type);
+    try {
+      const char* name = name_for_criterion_code(this->apply_criterion);
+      cond_str += ':';
+      cond_str += name;
+    } catch (const invalid_argument&) {
+    }
+    tokens.emplace_back(std::move(cond_str));
+  }
+  tokens.emplace_back(string_printf("a2=%02hhX", this->unknown_a2));
 
-  string arg1str = this->str_for_arg(this->arg1);
-  string arg2str = this->str_for_arg(this->arg2);
-  string arg3str = this->str_for_arg(this->arg3);
-  return string_printf("((%hhu) cmd=%s%s, when=%02hhX, arg1=%s, arg2=%s, arg3=%s, cond=%02hhX, a2=%02hhX)",
-      this->effect_num, cmd_str.c_str(), expr_str.c_str(), this->when, arg1str.data(),
-      arg2str.data(), arg3str.data(), static_cast<uint8_t>(this->apply_criterion), this->unknown_a2);
+  return join(tokens, separator);
 }
 
 bool CardDefinition::is_sc() const {
@@ -837,13 +851,13 @@ void CardDefinition::decode_range() {
   }
 }
 
-string name_for_rarity(CardRarity rarity) {
+string name_for_rank(CardRank rank) {
   static const vector<const char*> names(
       {"N1", "R1", "S", "E", "N2", "N3", "N4", "R2", "R3", "R4", "SS", "D1", "D2"});
   try {
-    return names.at(static_cast<uint8_t>(rarity) - 1);
+    return names.at(static_cast<uint8_t>(rank) - 1);
   } catch (const out_of_range&) {
-    return string_printf("(%02hhX)", static_cast<uint8_t>(rarity));
+    return string_printf("(%02hhX)", static_cast<uint8_t>(rank));
   }
 }
 
@@ -882,7 +896,7 @@ string string_for_colors(const parray<uint8_t, 8>& colors) {
     }
   }
   if (ret.empty()) {
-    return "none";
+    return "(none)";
   }
   return ret;
 }
@@ -1011,7 +1025,7 @@ string CardDefinition::str(bool single_line) const {
   } catch (const invalid_argument&) {
     card_class_str = string_printf("%04hX", this->be_card_class.load());
   }
-  string rarity_str = name_for_rarity(this->rarity);
+  string rank_str = name_for_rank(this->rank);
   string target_mode_str = name_for_target_mode(this->target_mode);
   string assist_turns_str = string_for_assist_turns(this->assist_turns);
   string hp_str = this->hp.str();
@@ -1031,7 +1045,7 @@ string CardDefinition::str(bool single_line) const {
     } else if (!effects_str.empty()) {
       effects_str += ", ";
     }
-    effects_str += this->effects[x].str();
+    effects_str += this->effects[x].str(single_line ? ", " : "\n      ");
   }
   if (!single_line && effects_str.empty()) {
     effects_str = " (none)";
@@ -1052,7 +1066,7 @@ string CardDefinition::str(bool single_line) const {
   if (single_line) {
     string range_str = string_for_range(this->range);
     return string_printf(
-        "[Card: %04" PRIX32 " name=%s type=%s usable_condition=%s rare=%s "
+        "[Card: %04" PRIX32 " name=%s type=%s usable_condition=%s rank=%s "
         "cost=%s target=%s range=%s assist_turns=%s cannot_move=%s "
         "cannot_attack=%s cannot_drop=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s "
         "top=%s class=%s assist_ai_params=[target=%s priority=%hhu effect=%hhu] drop_rates=[%s, %s] effects=[%s]]",
@@ -1060,7 +1074,7 @@ string CardDefinition::str(bool single_line) const {
         this->en_name.data(),
         type_str.c_str(),
         criterion_str.c_str(),
-        rarity_str.c_str(),
+        rank_str.c_str(),
         cost_str.c_str(),
         target_mode_str.c_str(),
         range_str.c_str(),
@@ -1105,23 +1119,29 @@ string CardDefinition::str(bool single_line) const {
 Card: %04" PRIX32 " \"%s\"\n\
   Type: %s, class: %s\n\
   Usability condition: %s\n\
-  Rarity: %s\n\
+  Rank: %s\n\
   Cost: %s\n\
   Target mode: %s\n\
   Range:%s\n\
   Assist turns: %s\n\
   Capabilities: %s move, %s attack\n\
   HP: %s, AP: %s, TP: %s, MV: %s\n\
-  Left colors: %s; right colors: %s; top colors: %s\n\
+  Colors:\n\
+    Left: %s\n\
+    Right: %s\n\
+    Top: %s\n\
   Assist AI parameters: [target %s, priority %hu, effect %hu]\n\
-  Drop rates: [%s, %s] (%s drop)\n\
+  Drop rates:\n\
+    %s\n\
+    %s\n\
+    %s\n\
   Effects:%s",
         this->card_id.load(),
         this->en_name.data(),
         type_str.c_str(),
         card_class_str.c_str(),
         criterion_str.c_str(),
-        rarity_str.c_str(),
+        rank_str.c_str(),
         cost_str.c_str(),
         target_mode_str.c_str(),
         range_str.c_str(),
@@ -1140,7 +1160,7 @@ Card: %04" PRIX32 " \"%s\"\n\
         static_cast<uint8_t>(this->assist_ai_params % 100),
         drop0_str.c_str(),
         drop1_str.c_str(),
-        this->cannot_drop ? "cannot" : "can",
+        this->cannot_drop ? "Forbidden" : "Permitted",
         effects_str.c_str());
   }
 }

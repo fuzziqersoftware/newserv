@@ -273,14 +273,14 @@ struct PSOGCEp3CharacterFile {
   /* 19428 */ be_uint32_t save_count;
   // This is an array of 1000 bits, represented here as 128 bytes, the last few
   // of which are unused. Each bit corresponds to a card ID with the bit's
-  // index; if the bit is set, then the card's rarity is replaced with D2 if its
-  // original rarity is S, SS, E, or D2, or with D1 if the original rarity is
-  // any other value. Upon receiving a B8 command (new card definitions), the
-  // game updates this array of bits based on which cards in the received update
-  // have D1 or D2 rarities. This could have been used by Sega to persist part
-  // of the online updates into offline play, but there's no indication that
-  // they ever used this functionality.
-  /* 1942C */ parray<uint8_t, 0x80> card_rarity_override_flags;
+  // index; if the bit is set, then the card's rank is replaced with D2 if its
+  // original rank is S, SS, E, or D2, or with D1 if the original rank is  any
+  // other value. Upon receiving a B8 command (new card definitions), the game
+  // updates this array of bits based on which cards in the received update
+  // have D1 or D2 ranks. This could have been used by Sega to persist part of
+  // the online updates into offline play, but there's no indication that they
+  // ever used this functionality.
+  /* 1942C */ parray<uint8_t, 0x80> card_rank_override_flags;
   /* 194AC */ be_uint32_t round2_seed;
   /* 194B0 */
 } __attribute__((packed));

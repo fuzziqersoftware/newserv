@@ -2507,11 +2507,11 @@ void RulerServer::register_player(
   this->set_card_action_metadatas[client_id] = set_card_action_metadatas;
 }
 
-void RulerServer::replace_D1_D2_rarity_cards_with_Attack(
+void RulerServer::replace_D1_D2_rank_cards_with_Attack(
     parray<le_uint16_t, 0x1F>& card_ids) const {
   for (size_t z = 0; z < card_ids.size(); z++) {
     auto ce = this->definition_for_card_id(card_ids[z]);
-    if (ce && ((ce->def.rarity == CardRarity::D1) || (ce->def.rarity == CardRarity::D2))) {
+    if (ce && ((ce->def.rank == CardRank::D1) || (ce->def.rank == CardRank::D2))) {
       card_ids[z] = 0x008A; // Attack action card
     }
   }
