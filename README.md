@@ -179,7 +179,7 @@ Episode 3 state and game data is stored in the system/ep3 directory. The files i
 * card-definitions.mnr: Compressed card definition list, sent to Episode 3 clients at connect time. Card stats and abilities can be changed by editing this file.
 * card-definitions.mnrd: Decompressed version of the above. If present, newserv will use this instead of the compressed version, since this is easier to edit.
 * card-text.mnr: Compressed card text archive. Generally only used for debugging.
-* card-text.mnrd: Deompressed card text archive; same format as TextCardE.bin. Generally only used for debugging.
+* card-text.mnrd: Decompressed card text archive; same format as TextCardE.bin. Generally only used for debugging.
 * com-decks.json: COM decks used in tournaments. The default decks in this file come from logs from Sega's servers, so the file doesn't include every COM deck Sega ever made - the rest are probably lost to time.
 * maps-free/ and maps-quest/: Online free battle and quest maps (.mnm/.bin/.mnmd/.bind files). Free battle and quest files have exactly the same format; the only difference between the files in these directories is which section of the menu they will appear in on the client. newserv comes with all the original online and offline maps, including Story Mode quests. If you don't want the offline maps and quests to be playable online, delete the .bind files in both maps directories.
 * tournament-state.json: State of all active tournaments. This file is automatically written when any tournament changes state for any reason (e.g. a tournament is created/started/deleted or a match is resolved).
