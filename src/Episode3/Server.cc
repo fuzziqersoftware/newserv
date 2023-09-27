@@ -2034,21 +2034,23 @@ void Server::handle_CAx1B_update_player_name(const string& data) {
   this->send_debug_command_received_message(
       in_cmd.entry.client_id, in_cmd.header.subsubcommand, "UPDATE NAME");
 
-  if (!this->is_registration_complete() && (in_cmd.entry.client_id < 4)) {
-    this->name_entries[in_cmd.entry.client_id] = in_cmd.entry;
-    this->name_entries_valid[in_cmd.entry.client_id] = false;
-  }
+  if (in_cmd.entry.client_id < 4) {
+    if (!this->is_registration_complete()) {
+      this->name_entries[in_cmd.entry.client_id] = in_cmd.entry;
+      this->name_entries_valid[in_cmd.entry.client_id] = false;
+    }
 
-  // Note: This check is not part of the original code. This replaces a
-  // disconnecting player with a CPU if the battle is in progress.
-  auto l = this->lobby.lock();
-  if (l && !l->clients[in_cmd.entry.client_id]) {
-    this->name_entries[in_cmd.entry.client_id].is_cpu_player = 1;
-    this->presence_entries[in_cmd.entry.client_id].is_cpu_player = 1;
-    auto ps = this->player_states[in_cmd.entry.client_id];
-    if (ps && ps->hand_and_equip && !ps->hand_and_equip->is_cpu_player) {
-      ps->hand_and_equip->is_cpu_player = 1;
-      this->send_6xB4x02_for_all_players_if_needed();
+    // Note: This check is not part of the original code. This replaces a
+    // disconnecting player with a CPU if the battle is in progress.
+    auto l = this->lobby.lock();
+    if (l && !l->clients[in_cmd.entry.client_id]) {
+      this->name_entries[in_cmd.entry.client_id].is_cpu_player = 1;
+      this->presence_entries[in_cmd.entry.client_id].is_cpu_player = 1;
+      auto ps = this->player_states[in_cmd.entry.client_id];
+      if (ps && ps->hand_and_equip && !ps->hand_and_equip->is_cpu_player) {
+        ps->hand_and_equip->is_cpu_player = 1;
+        this->send_6xB4x02_for_all_players_if_needed();
+      }
     }
   }
 

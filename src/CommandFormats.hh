@@ -5146,15 +5146,16 @@ struct G_CardBattleCommandHeader {
 // The 6xB3 subcommand has a longer header than 6xB4 and 6xB5. This header is
 // common to all 6xB3x (CAx) subcommands.
 struct G_CardServerDataCommandHeader {
-  uint8_t subcommand = 0xB3;
-  uint8_t size = 0x00;
-  le_uint16_t unused1 = 0x0000;
-  uint8_t subsubcommand = 0x00; // See 6xBx subcommand table (after this table)
-  uint8_t sender_client_id = 0x00;
-  uint8_t mask_key = 0x00; // Same meaning as in G_CardBattleCommandHeader
-  uint8_t unused2 = 0x00;
-  be_uint32_t sequence_num;
-  be_uint32_t context_token;
+  /* 00 */ uint8_t subcommand = 0xB3;
+  /* 01 */ uint8_t size = 0x00;
+  /* 02 */ le_uint16_t unused1 = 0x0000;
+  /* 04 */ uint8_t subsubcommand = 0x00; // See 6xBx subcommand table (after this table)
+  /* 05 */ uint8_t sender_client_id = 0x00;
+  /* 06 */ uint8_t mask_key = 0x00; // Same meaning as in G_CardBattleCommandHeader
+  /* 07 */ uint8_t unused2 = 0x00;
+  /* 08 */ be_uint32_t sequence_num;
+  /* 0C */ be_uint32_t context_token;
+  /* 10 */
 } __packed__;
 
 // 6xB4: Unknown (XBOX; voice chat)
