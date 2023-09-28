@@ -131,6 +131,7 @@ There are multiple PSO quest formats out there; newserv supports all of them. It
 | GCI (with key)   | .bin.gci and .dat.gci | Yes        | decode-gci       |
 | GCI (no key)     | .bin.gci and .dat.gci | Decode (3) | decode-gci (3)   |
 | GCI (Ep3)        | .bin.gci or .mnm.gci  | Yes        | decode-gci       |
+| GCI (Ep3 Trial)  | .bin.gci or .mnm.gci  | Decode (3) | decode-gci (3)   |
 | DLQ              | .bin.dlq and .dat.dlq | Yes        | decode-dlq       |
 | DLQ (Ep3)        | .bin.dlq or .mnm.dlq  | Yes        | decode-dlq       |
 | QST (online)     | .qst                  | Yes        | decode-qst       |
@@ -142,7 +143,7 @@ There are multiple PSO quest formats out there; newserv supports all of them. It
 3. *Use the decode action to convert these quests to .bin/.dat format before putting them into the server's quests directory. If you know the encryption seed (serial number), pass it in as a hex string with the `--seed=` option. If you don't know the encryption seed, newserv will find it for you, which will likely take a long time.*
 4. *Episode 3 online quests don't go in the system/quests directory; they instead go in the system/ep3/maps-free or system/ep3/maps-quest directories. If you want an Episode 3 quest to be available for both online play and for downloading, the file must exist in both system/quests and in one of the map directories in system/ep3.*
 
-Episode 3 download quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 download quest files may be named with the .mnm extension instead of .bin, since the format is the same as the standard map files (in system/ep3/). These files can be encoded in any of the formats described above, except .qst. There are no encrypted Episode 3 GCI formats because the game doesn't encrypt quests saved to the memory card, unlike Episodes 1&2.
+Episode 3 download quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 download quest files may be named with the .mnm extension instead of .bin, since the format is the same as the standard map files (in system/ep3/). These files can be encoded in any of the formats described above, except .qst.
 
 When newserv indexes the quests during startup, it will warn (but not fail) if any quests are corrupt or in unrecognized formats.
 

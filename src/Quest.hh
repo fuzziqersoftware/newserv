@@ -93,11 +93,13 @@ public:
   static std::string decode_gci_file(
       const std::string& filename,
       ssize_t find_seed_num_threads = -1,
-      int64_t known_seed = -1);
+      int64_t known_seed = -1,
+      bool skip_checksum = false);
   static std::string decode_vms_file(
       const std::string& filename,
       ssize_t find_seed_num_threads = -1,
-      int64_t known_seed = -1);
+      int64_t known_seed = -1,
+      bool skip_checksum = false);
   static std::string decode_dlq_file(const std::string& filename);
   static std::string decode_dlq_data(const std::string& filename);
   static std::pair<std::string, std::string> decode_qst_file(const std::string& filename);

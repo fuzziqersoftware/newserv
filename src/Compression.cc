@@ -794,7 +794,8 @@ string prs_compress_indexed(const string& data, ProgressCallback progress_fn) {
   return prs_compress_indexed(data.data(), data.size(), progress_fn);
 }
 
-PRSDecompressResult prs_decompress_with_meta(const void* data, size_t size, size_t max_output_size) {
+PRSDecompressResult prs_decompress_with_meta(
+    const void* data, size_t size, size_t max_output_size, bool allow_unterminated) {
   // PRS is an LZ77-based compression algorithm. Compressed data is split into
   // two streams: a control stream and a data stream. The control stream is read
   // one bit at a time, and the data stream is read one byte at a time. The
@@ -839,7 +840,11 @@ PRSDecompressResult prs_decompress_with_meta(const void* data, size_t size, size
     // Control 1 = literal byte
     if (cr.read()) {
       if (max_output_size && w.size() == max_output_size) {
-        throw runtime_error("maximum output size exceeded");
+        if (allow_unterminated) {
+          return {std::move(w.str()), r.where()};
+        } else {
+          throw runtime_error("maximum output size exceeded");
+        }
       }
       w.put_u8(r.get_u8());
 
@@ -882,7 +887,11 @@ PRSDecompressResult prs_decompress_with_meta(const void* data, size_t size, size
       }
       for (size_t z = 0; z < count; z++) {
         if (max_output_size && w.size() == max_output_size) {
-          throw runtime_error("maximum output size exceeded");
+          if (allow_unterminated) {
+            return {std::move(w.str()), r.where()};
+          } else {
+            throw out_of_range("maximum output size exceeded");
+          }
         }
         w.put_u8(w.str()[read_offset + z]);
       }
@@ -892,21 +901,21 @@ PRSDecompressResult prs_decompress_with_meta(const void* data, size_t size, size
   return {std::move(w.str()), r.where()};
 }
 
-PRSDecompressResult prs_decompress_with_meta(const string& data, size_t max_output_size) {
-  return prs_decompress_with_meta(data.data(), data.size(), max_output_size);
+PRSDecompressResult prs_decompress_with_meta(const string& data, size_t max_output_size, bool allow_unterminated) {
+  return prs_decompress_with_meta(data.data(), data.size(), max_output_size, allow_unterminated);
 }
 
-string prs_decompress(const void* data, size_t size, size_t max_output_size) {
-  auto ret = prs_decompress_with_meta(data, size, max_output_size);
+string prs_decompress(const void* data, size_t size, size_t max_output_size, bool allow_unterminated) {
+  auto ret = prs_decompress_with_meta(data, size, max_output_size, allow_unterminated);
   return std::move(ret.data);
 }
 
-string prs_decompress(const string& data, size_t max_output_size) {
-  auto ret = prs_decompress_with_meta(data.data(), data.size(), max_output_size);
+string prs_decompress(const string& data, size_t max_output_size, bool allow_unterminated) {
+  auto ret = prs_decompress_with_meta(data.data(), data.size(), max_output_size, allow_unterminated);
   return std::move(ret.data);
 }
 
-size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size) {
+size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size, bool allow_unterminated) {
   size_t ret = 0;
   StringReader r(data, size);
   ControlStreamReader cr(r);
@@ -943,15 +952,19 @@ size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size
     }
 
     if (max_output_size && ret > max_output_size) {
-      throw runtime_error("maximum output size exceeded");
+      if (allow_unterminated) {
+        return max_output_size;
+      } else {
+        throw out_of_range("maximum output size exceeded");
+      }
     }
   }
 
   return ret;
 }
 
-size_t prs_decompress_size(const string& data, size_t max_output_size) {
-  return prs_decompress_size(data.data(), data.size(), max_output_size);
+size_t prs_decompress_size(const string& data, size_t max_output_size, bool allow_unterminated) {
+  return prs_decompress_size(data.data(), data.size(), max_output_size, allow_unterminated);
 }
 
 void prs_disassemble(FILE* stream, const void* data, size_t size) {

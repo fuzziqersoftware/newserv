@@ -2831,7 +2831,6 @@ struct S_GameInformation_GC_Ep3_E1 {
   /* 0024 */ parray<PlayerEntry, 4> player_entries;
   /* 00E4 */ parray<uint8_t, 0x20> unknown_a3;
   /* 0104 */ Episode3::Rules rules;
-  /* 0114 */ parray<uint8_t, 4> unknown_a4;
   /* 0118 */ parray<PlayerEntry, 8> spectator_entries;
 } __packed__;
 
@@ -2926,8 +2925,6 @@ struct S_TournamentGameDetails_GC_Ep3_E3 {
   /* 0004/032C */ ptext<char, 0x20> name;
   /* 0024/034C */ ptext<char, 0x20> map_name;
   /* 0044/036C */ Episode3::Rules rules;
-
-  /* 0054/037C */ parray<uint8_t, 4> unknown_a1;
 
   // This field is used only if the bracket pane is shown
   struct BracketEntry {
@@ -6252,7 +6249,6 @@ struct G_SetPlayerSubstatus_GC_Ep3_6xB5x3C {
 struct G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D) / 4, 0, 0x3D, 0, 0, 0};
   Episode3::Rules rules;
-  parray<uint8_t, 4> unknown_a1;
   struct Entry {
     uint8_t type = 0; // 0 = no player, 1 = human, 2 = COM
     ptext<char, 0x10> player_name;

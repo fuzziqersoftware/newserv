@@ -47,7 +47,6 @@ void MapAndRulesState::clear() {
   this->map_number = 0;
   this->unused4 = 0;
   this->rules.clear();
-  this->unused5 = 0;
 }
 
 bool MapAndRulesState::loc_is_within_bounds(uint8_t x, uint8_t y) const {

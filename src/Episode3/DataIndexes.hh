@@ -879,9 +879,8 @@ struct Rules {
   // NOTE: The following fields are unused in PSO's implementation, but newserv
   // uses them to implement extended rules.
   /* 0D */ uint8_t def_dice_range = 0; // High 4 bits = min, low 4 = max
-  /* 0E */ uint8_t unused1 = 0;
-  /* 0F */ uint8_t unused2 = 0;
-  /* 10 */
+  /* 0E */ parray<uint8_t, 6> unused;
+  /* 14 */
 
   // Annoyingly, this structure is a different size in Episode 3 Trial Edition.
   // This means that many command formats, as well as the map format, are
@@ -904,6 +903,28 @@ struct Rules {
   uint8_t max_def_dice() const;
 
   std::string str() const;
+} __attribute__((packed));
+
+struct RulesTrial {
+  // The fields here have the same meaning as in the final version. The only
+  // difference is that Dice Boost does not exist in the trial version.
+  /* 00 */ uint8_t overall_time_limit = 0;
+  /* 01 */ uint8_t phase_time_limit = 0;
+  /* 02 */ AllowedCards allowed_cards = AllowedCards::ALL;
+  /* 03 */ uint8_t atk_dice_max = 1;
+  /* 04 */ uint8_t def_dice_max = 6;
+  /* 05 */ uint8_t disable_deck_shuffle = 0;
+  /* 06 */ uint8_t disable_deck_loop = 0;
+  /* 07 */ uint8_t char_hp = 15;
+  /* 08 */ HPType hp_type = HPType::DEFEAT_PLAYER;
+  /* 09 */ uint8_t no_assist_cards = 0;
+  /* 0A */ uint8_t disable_dialogue = 0;
+  /* 0B */ DiceExchangeMode dice_exchange_mode = DiceExchangeMode::HIGH_ATK;
+  /* 0C */
+
+  RulesTrial() = default;
+  explicit RulesTrial(const Rules&);
+  operator Rules() const;
 } __attribute__((packed));
 
 struct StateFlags {
@@ -1090,7 +1111,6 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
   /* 1D68 */ parray<uint8_t, 0x74> unknown_a5;
   /* 1DDC */ Rules default_rules;
-  /* 1DEC */ parray<uint8_t, 4> unknown_a6;
 
   /* 1DF0 */ ptext<char, 0x14> name;
   /* 1E04 */ ptext<char, 0x14> location_name;
@@ -1261,9 +1281,8 @@ struct MapDefinitionTrial {
   /* 1518 */ parray<parray<MapDefinition::CameraSpec, 10>, 2> camera_zone_specs;
   /* 1AB8 */ parray<parray<MapDefinition::CameraSpec, 2>, 3> overview_specs;
   /* 1C68 */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
-  /* 1D68 */ parray<uint8_t, 0x6C> unknown_a5;
-  /* 1DD4 */ Rules default_rules;
-  /* 1DE4 */ parray<uint8_t, 4> unknown_a6;
+  /* 1D68 */ parray<uint8_t, 0x74> unknown_a5;
+  /* 1DD4 */ RulesTrial default_rules;
   /* 1DE8 */ ptext<char, 0x14> name;
   /* 1DFC */ ptext<char, 0x14> location_name;
   /* 1E10 */ ptext<char, 0x3C> quest_name;
@@ -1292,6 +1311,7 @@ struct MapDefinitionTrial {
   /* 41A0 */
 
   MapDefinitionTrial(const MapDefinition& map);
+  operator MapDefinition() const;
 } __attribute__((packed));
 
 struct COMDeckDefinition {

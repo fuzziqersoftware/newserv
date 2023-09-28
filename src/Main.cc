@@ -756,7 +756,7 @@ int main(int argc, char** argv) {
           data = prs_compress(data, compression_level, progress_fn);
         }
       } else if ((behavior == Behavior::DECOMPRESS_PRS) || (behavior == Behavior::DECOMPRESS_PR2)) {
-        data = prs_decompress(data);
+        data = prs_decompress(data, bytes, (bytes != 0));
       } else if (behavior == Behavior::COMPRESS_BC0) {
         if (compress_optimal) {
           data = bc0_compress_optimal(data.data(), data.size(), optimal_progress_fn);
@@ -1323,11 +1323,11 @@ int main(int argc, char** argv) {
       string output_filename_base = input_filename;
       if (quest_file_type == Quest::FileFormat::BIN_DAT_GCI) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        auto decoded = Quest::decode_gci_file(input_filename, num_threads, dec_seed);
+        auto decoded = Quest::decode_gci_file(input_filename, num_threads, dec_seed, skip_checksum);
         save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == Quest::FileFormat::BIN_DAT_VMS) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        auto decoded = Quest::decode_vms_file(input_filename, num_threads, dec_seed);
+        auto decoded = Quest::decode_vms_file(input_filename, num_threads, dec_seed, skip_checksum);
         save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == Quest::FileFormat::BIN_DAT_DLQ) {
         auto decoded = Quest::decode_dlq_file(input_filename);

@@ -1256,8 +1256,7 @@ void Rules::clear() {
   this->dice_exchange_mode = DiceExchangeMode::HIGH_ATK;
   this->disable_dice_boost = 0;
   this->def_dice_range = 0;
-  this->unused1 = 0;
-  this->unused2 = 0;
+  this->unused.clear(0);
 }
 
 string Rules::str() const {
@@ -1396,6 +1395,40 @@ string Rules::str() const {
   return "Rules[" + join(tokens, ", ") + "]";
 }
 
+RulesTrial::RulesTrial(const Rules& r)
+    : overall_time_limit(r.overall_time_limit),
+      phase_time_limit(r.phase_time_limit),
+      allowed_cards(r.allowed_cards),
+      atk_dice_max(r.max_dice),
+      def_dice_max(r.max_dice),
+      disable_deck_shuffle(r.disable_deck_shuffle),
+      disable_deck_loop(r.disable_deck_loop),
+      char_hp(r.char_hp),
+      hp_type(r.hp_type),
+      no_assist_cards(r.no_assist_cards),
+      disable_dialogue(r.disable_dialogue),
+      dice_exchange_mode(r.dice_exchange_mode) {}
+
+RulesTrial::operator Rules() const {
+  Rules ret;
+  ret.overall_time_limit = this->overall_time_limit;
+  ret.phase_time_limit = this->phase_time_limit;
+  ret.allowed_cards = this->allowed_cards;
+  ret.min_dice = 1;
+  ret.max_dice = this->atk_dice_max;
+  ret.disable_deck_shuffle = this->disable_deck_shuffle;
+  ret.disable_deck_loop = this->disable_deck_loop;
+  ret.char_hp = this->char_hp;
+  ret.hp_type = this->hp_type;
+  ret.no_assist_cards = this->no_assist_cards;
+  ret.disable_dialogue = this->disable_dialogue;
+  ret.dice_exchange_mode = this->dice_exchange_mode;
+  ret.disable_dice_boost = 0;
+  ret.def_dice_range = 0x10 | (this->def_dice_max ? this->def_dice_max : 0x06);
+  ret.unused.clear(0);
+  return ret;
+}
+
 StateFlags::StateFlags() {
   this->clear();
 }
@@ -1518,9 +1551,6 @@ string MapDefinition::str(const CardIndex* card_index) const {
       "  a5[0x70:0x74]=%02hhX %02hhX %02hhX %02hhX",
       this->unknown_a5[0x70], this->unknown_a5[0x71], this->unknown_a5[0x72], this->unknown_a5[0x73]));
   lines.emplace_back("  default_rules: " + this->default_rules.str());
-  lines.emplace_back(string_printf(
-      "  a6=%02hhX %02hhX %02hhX %02hhX",
-      this->unknown_a6[0], this->unknown_a6[1], this->unknown_a6[2], this->unknown_a6[3]));
   lines.emplace_back("  name: " + string(this->name));
   lines.emplace_back("  location_name: " + string(this->location_name));
   lines.emplace_back("  quest_name: " + string(this->quest_name));
@@ -1715,7 +1745,6 @@ MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
       modification_tiles(map.modification_tiles),
       unknown_a5(map.unknown_a5),
       default_rules(map.default_rules),
-      unknown_a6(map.unknown_a6),
       name(map.name),
       location_name(map.location_name),
       quest_name(map.quest_name),
@@ -1742,6 +1771,98 @@ MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
   for (size_t z = 0; z < this->dialogue_sets.size(); z++) {
     this->dialogue_sets[z] = map.dialogue_sets[z].sub<8>(0);
   }
+}
+
+MapDefinitionTrial::operator MapDefinition() const {
+  MapDefinition ret;
+  ret.unknown_a1 = this->unknown_a1;
+  ret.map_number = this->map_number;
+  ret.width = this->width;
+  ret.height = this->height;
+  ret.environment_number = this->environment_number;
+  ret.num_camera_zones = this->num_camera_zones;
+  ret.map_tiles = this->map_tiles;
+  ret.start_tile_definitions = this->start_tile_definitions;
+  ret.camera_zone_maps = this->camera_zone_maps;
+  ret.camera_zone_specs = this->camera_zone_specs;
+  ret.overview_specs = this->overview_specs;
+  ret.modification_tiles = this->modification_tiles;
+  ret.unknown_a5.clear(0xFF);
+  ret.unknown_a5 = this->unknown_a5;
+  ret.default_rules = this->default_rules;
+  ret.name = this->name;
+  ret.location_name = this->location_name;
+  ret.quest_name = this->quest_name;
+  ret.description = this->description;
+  ret.map_x = this->map_x;
+  ret.map_y = this->map_y;
+  ret.npc_decks = this->npc_decks;
+  ret.npc_ai_params = this->npc_ai_params;
+  ret.unknown_a7 = this->unknown_a7;
+  ret.npc_ai_params_entry_index = this->npc_ai_params_entry_index;
+  ret.before_message = this->before_message;
+  ret.after_message = this->after_message;
+  ret.dispatch_message = this->dispatch_message;
+  for (size_t z = 0; z < ret.dialogue_sets.size(); z++) {
+    ret.dialogue_sets[z].sub<8>(0) = this->dialogue_sets[z];
+    for (size_t x = 8; x < ret.dialogue_sets[z].size(); x++) {
+      ret.dialogue_sets[z][x].unknown_a1 = 0xFFFF;
+      ret.dialogue_sets[z][x].unknown_a2 = 0xFFFF;
+      for (size_t w = 0; w < 4; w++) {
+        ret.dialogue_sets[z][x].strings[w].clear(0xFF);
+        ret.dialogue_sets[z][x].strings[w][0] = 0x00;
+      }
+    }
+  }
+  ret.reward_card_ids = this->reward_card_ids;
+  ret.win_level_override = this->win_level_override;
+  ret.loss_level_override = this->loss_level_override;
+  ret.field_offset_x = this->field_offset_x;
+  ret.field_offset_y = this->field_offset_y;
+  ret.map_category = this->map_category;
+  ret.cyber_block_type = this->cyber_block_type;
+  ret.unknown_a11 = this->unknown_a11;
+  ret.unavailable_sc_cards.clear(0xFFFF);
+  // The trial edition doesn't seem to have entry_states at all, so we have to
+  // guess and fill in the field appropriately here.
+  size_t num_npc_decks = 0;
+  for (size_t z = 0; z < ret.npc_decks.size(); z++) {
+    if (ret.npc_decks[z].name[0]) {
+      num_npc_decks++;
+    }
+  }
+  for (size_t z = 0; z < 4; z++) {
+    ret.entry_states[z].deck_type = 0xFF;
+  }
+  switch (num_npc_decks) {
+    case 0: // No NPCs; it's a free battle map
+      ret.entry_states[0].player_type = 0xFF;
+      ret.entry_states[1].player_type = 0xFF;
+      ret.entry_states[2].player_type = 0xFF;
+      ret.entry_states[3].player_type = 0xFF;
+      break;
+    case 1: // One NPC; assume it's a 1v1 quest (Player vs. COM)
+      ret.entry_states[0].player_type = 0x00;
+      ret.entry_states[1].player_type = 0x04;
+      ret.entry_states[2].player_type = 0x03;
+      ret.entry_states[3].player_type = 0x04;
+      break;
+    case 2: // Two NPCs; assume it's a 2v2 quest (Player+Player/COM vs. COM+COM)
+      ret.entry_states[0].player_type = 0x00;
+      ret.entry_states[1].player_type = 0x02;
+      ret.entry_states[2].player_type = 0x03;
+      ret.entry_states[3].player_type = 0x03;
+      break;
+    case 3: // Three NPCs; assume it's a 2v2 quest (Player+COM vs. COM+COM)
+      ret.entry_states[0].player_type = 0x00;
+      ret.entry_states[1].player_type = 0x03;
+      ret.entry_states[2].player_type = 0x03;
+      ret.entry_states[3].player_type = 0x03;
+      break;
+    default: // Should be impossible
+      throw logic_error("too many NPC decks in trial map definition");
+  }
+  return ret;
 }
 
 bool Rules::check_invalid_fields() const {

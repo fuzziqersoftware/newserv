@@ -184,15 +184,15 @@ struct PRSDecompressResult {
   std::string data;
   size_t input_bytes_used;
 };
-PRSDecompressResult prs_decompress_with_meta(const void* data, size_t size, size_t max_output_size = 0);
-PRSDecompressResult prs_decompress_with_meta(const std::string& data, size_t max_output_size = 0);
-std::string prs_decompress(const void* data, size_t size, size_t max_output_size = 0);
-std::string prs_decompress(const std::string& data, size_t max_output_size = 0);
+PRSDecompressResult prs_decompress_with_meta(const void* data, size_t size, size_t max_output_size = 0, bool allow_unterminated = false);
+PRSDecompressResult prs_decompress_with_meta(const std::string& data, size_t max_output_size = 0, bool allow_unterminated = false);
+std::string prs_decompress(const void* data, size_t size, size_t max_output_size = 0, bool allow_unterminated = false);
+std::string prs_decompress(const std::string& data, size_t max_output_size = 0, bool allow_unterminated = false);
 
 // Returns the decompressed size of PRS-compressed data, without actually
 // decompressing it.
-size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size = 0);
-size_t prs_decompress_size(const std::string& data, size_t max_output_size = 0);
+size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size = 0, bool allow_unterminated = false);
+size_t prs_decompress_size(const std::string& data, size_t max_output_size = 0, bool allow_unterminated = false);
 
 // Prints the command stream from a PRS-compressed buffer.
 void prs_disassemble(FILE* stream, const void* data, size_t size);

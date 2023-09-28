@@ -83,7 +83,8 @@ struct PSOGCIDLQFileEncryptedHeader : PSOMemCardDLQFileEncryptedHeader<true> {
 } __attribute__((packed));
 
 template <bool IsBigEndian>
-string decrypt_download_quest_data_section(const void* data_section, size_t size, uint32_t seed) {
+string decrypt_download_quest_data_section(
+    const void* data_section, size_t size, uint32_t seed, bool skip_checksum = false, bool is_ep3_trial = false) {
   string decrypted = decrypt_data_section<IsBigEndian>(data_section, size, seed);
 
   size_t orig_size = decrypted.size();
@@ -99,41 +100,67 @@ string decrypt_download_quest_data_section(const void* data_section, size_t size
   round2_crypt.encrypt_t<IsBigEndian>(
       decrypted.data() + 4, (decrypted.size() - 4));
 
-  if (header->decompressed_size & 0xFFF00000) {
-    throw runtime_error(string_printf(
-        "decompressed_size too large (%08" PRIX32 ")", header->decompressed_size.load()));
+  if (is_ep3_trial) {
+    StringReader r(decrypted);
+    r.skip(16);
+    if (r.readx(15) != "SONICTEAM,SEGA.") {
+      throw runtime_error("Episode 3 GCI file is not a quest");
+    }
+    r.skip(9);
+
+    // Some Ep3 trial download quests don't have a stop opcode in the PRS
+    // stream; it seems the client just automatically stops when the correct
+    // amount of data has been produced. To handle this, we allow the PRS stream
+    // to be unterminated here.
+    size_t decompressed_size = prs_decompress_size(
+        r.getv(r.remaining(), false), r.remaining(), sizeof(Episode3::MapDefinitionTrial), true);
+    if (decompressed_size < sizeof(Episode3::MapDefinitionTrial)) {
+      throw runtime_error(string_printf(
+          "decompressed size (%zu) does not match expected size (%zu)",
+          decompressed_size, sizeof(Episode3::MapDefinitionTrial)));
+    }
+    return decrypted.substr(0x28);
+
+  } else {
+    if (header->decompressed_size & 0xFFF00000) {
+      throw runtime_error(string_printf(
+          "decompressed_size too large (%08" PRIX32 ")", header->decompressed_size.load()));
+    }
+
+    if (!skip_checksum) {
+      uint32_t expected_crc = header->checksum;
+      header->checksum = 0;
+      uint32_t actual_crc = crc32(decrypted.data(), orig_size);
+      header->checksum = expected_crc;
+      if (expected_crc != actual_crc && expected_crc != bswap32(actual_crc)) {
+        throw runtime_error(string_printf(
+            "incorrect decrypted data section checksum: expected %08" PRIX32 "; received %08" PRIX32,
+            expected_crc, actual_crc));
+      }
+    }
+
+    // Unlike the above rounds, round 3 is always little-endian (it corresponds to
+    // the round of encryption done on the server before sending the file to the
+    // client in the first place)
+    PSOV2Encryption(header->round3_seed).decrypt(decrypted.data() + sizeof(HeaderT), decrypted.size() - sizeof(HeaderT));
+    decrypted.resize(orig_size);
+
+    // Some download quest GCI files have decompressed_size fields that are 8
+    // bytes smaller than the actual decompressed size of the data. They seem to
+    // work fine, so we accept both cases as correct.
+    size_t decompressed_size = prs_decompress_size(
+        decrypted.data() + sizeof(HeaderT),
+        decrypted.size() - sizeof(HeaderT));
+    size_t expected_decompressed_size = header->decompressed_size.load();
+    if ((decompressed_size != expected_decompressed_size) &&
+        (decompressed_size != expected_decompressed_size - 8)) {
+      throw runtime_error(string_printf(
+          "decompressed size (%zu) does not match expected size (%zu)",
+          decompressed_size, expected_decompressed_size));
+    }
+
+    return decrypted.substr(sizeof(HeaderT));
   }
-
-  uint32_t expected_crc = header->checksum;
-  header->checksum = 0;
-  uint32_t actual_crc = crc32(decrypted.data(), orig_size);
-  header->checksum = expected_crc;
-  if (expected_crc != actual_crc && expected_crc != bswap32(actual_crc)) {
-    throw runtime_error(string_printf(
-        "incorrect decrypted data section checksum: expected %08" PRIX32 "; received %08" PRIX32,
-        expected_crc, actual_crc));
-  }
-
-  // Unlike the above rounds, round 3 is always little-endian (it corresponds to
-  // the round of encryption done on the server before sending the file to the
-  // client in the first place)
-  PSOV2Encryption(header->round3_seed).decrypt(decrypted.data() + sizeof(HeaderT), decrypted.size() - sizeof(HeaderT));
-  decrypted.resize(orig_size);
-
-  // Some download quest GCI files have decompressed_size fields that are 8
-  // bytes smaller than the actual decompressed size of the data. They seem to
-  // work fine, so we accept both cases as correct.
-  size_t decompressed_size = prs_decompress_size(
-      decrypted.data() + sizeof(HeaderT),
-      decrypted.size() - sizeof(HeaderT));
-  if ((decompressed_size != header->decompressed_size) &&
-      (decompressed_size != header->decompressed_size - 8)) {
-    throw runtime_error(string_printf(
-        "decompressed size (%zu) does not match size in header (%" PRId32 ")",
-        decompressed_size, header->decompressed_size.load()));
-  }
-
-  return decrypted.substr(sizeof(HeaderT));
 }
 
 string decrypt_vms_v1_data_section(const void* data_section, size_t size) {
@@ -160,16 +187,17 @@ string decrypt_vms_v1_data_section(const void* data_section, size_t size) {
 
 template <bool IsBigEndian>
 string find_seed_and_decrypt_download_quest_data_section(
-    const void* data_section, size_t size, size_t num_threads) {
+    const void* data_section, size_t size, bool skip_checksum, bool is_ep3_trial, size_t num_threads) {
   mutex result_lock;
   string result;
   uint64_t result_seed = parallel_range<uint64_t>([&](uint64_t seed, size_t) {
     try {
-      string ret = decrypt_download_quest_data_section<IsBigEndian>(data_section, size, seed);
+      string ret = decrypt_download_quest_data_section<IsBigEndian>(
+          data_section, size, seed, skip_checksum, is_ep3_trial);
       lock_guard<mutex> g(result_lock);
       result = std::move(ret);
       return true;
-    } catch (const runtime_error&) {
+    } catch (const runtime_error& e) {
       return false;
     }
   },
@@ -474,7 +502,7 @@ shared_ptr<const string> Quest::dat_contents() const {
 }
 
 string Quest::decode_gci_file(
-    const string& filename, ssize_t find_seed_num_threads, int64_t known_seed) {
+    const string& filename, ssize_t find_seed_num_threads, int64_t known_seed, bool skip_checksum) {
   string data = load_file(filename);
 
   StringReader r(data);
@@ -489,11 +517,11 @@ string Quest::decode_gci_file(
     if (dlq_header.round2_seed || dlq_header.checksum || dlq_header.round3_seed) {
       if (known_seed >= 0) {
         return decrypt_download_quest_data_section<true>(
-            r.getv(header.data_size), header.data_size, known_seed);
+            r.getv(header.data_size), header.data_size, known_seed, skip_checksum, false);
 
       } else if (header.embedded_seed != 0) {
         return decrypt_download_quest_data_section<true>(
-            r.getv(header.data_size), header.data_size, header.embedded_seed);
+            r.getv(header.data_size), header.data_size, header.embedded_seed, skip_checksum, false);
 
       } else {
         if (find_seed_num_threads < 0) {
@@ -503,7 +531,7 @@ string Quest::decode_gci_file(
           find_seed_num_threads = thread::hardware_concurrency();
         }
         return find_seed_and_decrypt_download_quest_data_section<true>(
-            r.getv(header.data_size), header.data_size, find_seed_num_threads);
+            r.getv(header.data_size), header.data_size, skip_checksum, false, find_seed_num_threads);
       }
 
     } else { // Unencrypted GCI format
@@ -525,7 +553,7 @@ string Quest::decode_gci_file(
     if (header.is_trial()) {
       if (known_seed >= 0) {
         return decrypt_download_quest_data_section<true>(
-            r.getv(header.data_size), header.data_size, known_seed);
+            r.getv(header.data_size), header.data_size, known_seed, true, true);
       } else {
         if (find_seed_num_threads < 0) {
           throw runtime_error("file is encrypted");
@@ -534,7 +562,7 @@ string Quest::decode_gci_file(
           find_seed_num_threads = thread::hardware_concurrency();
         }
         return find_seed_and_decrypt_download_quest_data_section<true>(
-            r.getv(header.data_size), header.data_size, find_seed_num_threads);
+            r.getv(header.data_size), header.data_size, true, true, find_seed_num_threads);
       }
 
     } else {
@@ -575,7 +603,7 @@ string Quest::decode_gci_file(
 }
 
 string Quest::decode_vms_file(
-    const string& filename, ssize_t find_seed_num_threads, int64_t known_seed) {
+    const string& filename, ssize_t find_seed_num_threads, int64_t known_seed, bool skip_checksum) {
   string data = load_file(filename);
 
   StringReader r(data);
@@ -603,7 +631,7 @@ string Quest::decode_vms_file(
       find_seed_num_threads = thread::hardware_concurrency();
     }
     return find_seed_and_decrypt_download_quest_data_section<false>(
-        data_section, header.data_size, find_seed_num_threads);
+        data_section, header.data_size, skip_checksum, 0, find_seed_num_threads);
   }
 }
 

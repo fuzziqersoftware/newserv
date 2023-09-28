@@ -34,7 +34,6 @@ struct MapAndRulesState {
   le_uint32_t map_number;
   uint32_t unused4;
   Rules rules;
-  uint32_t unused5;
 
   MapAndRulesState();
   void clear();
