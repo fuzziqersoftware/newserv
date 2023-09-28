@@ -1169,13 +1169,12 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // Presumably 0A is meant to be Stella, and they forgot to change the name.
   /* 2434 */ parray<be_int32_t, 3> npc_ai_params_entry_index;
 
-  // In story mode, before_message appears before the battle if it's not blank;
-  // in free battle and online mode, before_message is ignored. after_message
-  // appears after the battle if it's not blank in all modes.
+  // before_message appears before the battle if it's not blank. after_message
+  // appears after the battle if it's not blank. dispatch_message appears right
+  // before the player chooses a deck if it's not blank; usually it says
+  // something like "You can only dispatch <character>".
   /* 2440 */ ptext<char, 0x190> before_message;
   /* 25D0 */ ptext<char, 0x190> after_message;
-  // dispatch_message appears right before the player chooses a deck if it's not
-  // blank. Usually it says something like "You can only dispatch <character>".
   /* 2760 */ ptext<char, 0x190> dispatch_message;
 
   struct DialogueSet {
