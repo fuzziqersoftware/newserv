@@ -17,6 +17,7 @@
 - Check size of name field in GuildCardPC
 - Build an exception-handling abstraction in ChatCommands that shows formatted error messages in all cases
 - Make non-BB detector encryption match more than the first 4 bytes
+- Make reloading happen on separate threads so compression doesn't block active clients
 
 ## Episode 3
 
