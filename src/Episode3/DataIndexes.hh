@@ -863,7 +863,9 @@ struct Rules {
   // When this structure is used in a map/quest definition, FF in any of these
   // fields means the user is allowed to override it. Any non-FF fields are
   // fixed for the map/quest and cannot be overridden.
-  /* 00 */ uint8_t overall_time_limit = 0; // In increments of 5 mins; 0 = unlimited
+  // The overall time limit is specified in increments of 5 minutes; that is,
+  // 1 means 5 minutes, 2 means 10 minutes, etc. 0 means no overall time limit.
+  /* 00 */ uint8_t overall_time_limit = 0;
   /* 01 */ uint8_t phase_time_limit = 0; // In seconds; 0 = unlimited
   /* 02 */ AllowedCards allowed_cards = AllowedCards::ALL;
   /* 03 */ uint8_t min_dice = 1; // 0 = default (1)
