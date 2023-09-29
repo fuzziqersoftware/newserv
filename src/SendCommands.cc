@@ -2486,9 +2486,6 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
     uint8_t flag;
     if (l != primary_lobby) {
-      // TODO: This doesn't work (nothing shows up), but it appears to be a
-      // client bug? There doesn't appear to be a count field in the command
-      // anywhere...?
       size_t num_spectators = 0;
       for (auto spec_c : l->clients) {
         if (spec_c) {
@@ -2497,6 +2494,16 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
           entry.description = ep3_description_for_client(spec_c);
         }
       }
+
+      // There is a client bug that causes the spectators list to always be
+      // empty when sent with E1, because there's no way for E1 to set the
+      // spectator count in the info window object. To account for this, we send
+      // a mostly-blank E3 to set the spectator count, followed by an E1 with
+      // the correct data.
+      S_TournamentGameDetails_GC_Ep3_E3 cmd_E3;
+      cmd_E3.num_spectators = num_spectators;
+      send_command_t(c, 0xE3, 0x04, cmd_E3);
+
       flag = 0x04;
 
     } else if (primary_lobby &&

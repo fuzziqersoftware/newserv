@@ -2829,9 +2829,10 @@ struct S_GameInformation_GC_Ep3_E1 {
     ptext<char, 0x20> description; // Usually something like "FOmarl CLv30 J"
   } __packed__;
   /* 0024 */ parray<PlayerEntry, 4> player_entries;
-  /* 00E4 */ parray<uint8_t, 0x20> unknown_a3;
+  /* 00E4 */ ptext<char, 0x20> map_name;
   /* 0104 */ Episode3::Rules rules;
   /* 0118 */ parray<PlayerEntry, 8> spectator_entries;
+  /* 0298 */
 } __packed__;
 
 // E1 (S->C): Team and key config missing? (BB)
@@ -2922,9 +2923,9 @@ struct S_TournamentEntryList_GC_Ep3_E2 {
 
 struct S_TournamentGameDetails_GC_Ep3_E3 {
   // These fields are used only if the Rules pane is shown
-  /* 0004/032C */ ptext<char, 0x20> name;
-  /* 0024/034C */ ptext<char, 0x20> map_name;
-  /* 0044/036C */ Episode3::Rules rules;
+  /* 0004 */ ptext<char, 0x20> name;
+  /* 0024 */ ptext<char, 0x20> map_name;
+  /* 0044 */ Episode3::Rules rules;
 
   // This field is used only if the bracket pane is shown
   struct BracketEntry {
@@ -2933,7 +2934,7 @@ struct S_TournamentGameDetails_GC_Ep3_E3 {
     ptext<char, 0x18> team_name;
     parray<uint8_t, 8> unused;
   } __packed__;
-  /* 0058/0380 */ parray<BracketEntry, 0x20> bracket_entries;
+  /* 0058 */ parray<BracketEntry, 0x20> bracket_entries;
 
   // This field is used only if the Opponents pane is shown. If players_per_team
   // is 2, all fields are shown; if player_per_team is 1, team_name and
@@ -2946,13 +2947,14 @@ struct S_TournamentGameDetails_GC_Ep3_E3 {
     ptext<char, 0x10> team_name;
     parray<PlayerEntry, 2> players;
   } __packed__;
-  /* 04D8/0800 */ parray<TeamEntry, 2> team_entries;
+  /* 04D8 */ parray<TeamEntry, 2> team_entries;
 
-  /* 05B8/08E0 */ le_uint16_t num_bracket_entries = 0;
-  /* 05BA/08E2 */ le_uint16_t players_per_team = 0;
-  /* 05BC/08E4 */ le_uint16_t unknown_a4 = 0;
-  /* 05BE/08E6 */ le_uint16_t num_spectators = 0;
-  /* 05C0/08E8 */ parray<PlayerEntry, 8> spectator_entries;
+  /* 05B8 */ le_uint16_t num_bracket_entries = 0;
+  /* 05BA */ le_uint16_t players_per_team = 0;
+  /* 05BC */ le_uint16_t unknown_a4 = 0;
+  /* 05BE */ le_uint16_t num_spectators = 0;
+  /* 05C0 */ parray<PlayerEntry, 8> spectator_entries;
+  /* 0740 */
 } __packed__;
 
 // E3 (C->S): Player preview request (BB)
