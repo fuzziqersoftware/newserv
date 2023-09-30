@@ -25,6 +25,8 @@
 - Enforce tournament deck restrictions (e.g. rank checks, No Assist option) when populating COMs at tournament start time
 - It may be possible to send spectators back to the waiting room after a non-tournament battle by sending 6xB4x05 with environment 0x19, then 6xB4x3B again; try this
 - Add support for recording battles on the proxy server (both in primary and spectator teams)
+- When `reload ep3` happens and the defs file is changed, send the new defs file to all connected players who aren't in a game (if this even works - when exactly does the client decompress the defs file from the server?)
+- Make `reload licenses` not vulnerable to online players' licenses overwriting licenses on disk somehow
 
 ## PSOBB
 
