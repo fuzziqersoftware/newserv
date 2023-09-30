@@ -1536,15 +1536,17 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
           if (team->name.empty()) {
             message = "(No registrant)";
           } else if (team->max_players == 1) {
-            message = string_printf("$C6%s$C7\n%zu %s\nPlayers:",
-                team->name.c_str(),
-                team->num_rounds_cleared,
-                team->num_rounds_cleared == 1 ? "win" : "wins");
-          } else {
-            message = string_printf("$C6%s$C7\n%zu %s%s\nPlayers:",
+            message = string_printf("$C6%s$C7\n%zu %s (%s)\nPlayers:",
                 team->name.c_str(),
                 team->num_rounds_cleared,
                 team->num_rounds_cleared == 1 ? "win" : "wins",
+                team->is_active ? "active" : "defeated");
+          } else {
+            message = string_printf("$C6%s$C7\n%zu %s (%s)%s\nPlayers:",
+                team->name.c_str(),
+                team->num_rounds_cleared,
+                team->num_rounds_cleared == 1 ? "win" : "wins",
+                team->is_active ? "active" : "defeated",
                 team->password.empty() ? "" : "\n$C4Locked$C7");
           }
           for (const auto& player : team->players) {
