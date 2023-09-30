@@ -28,7 +28,6 @@ using namespace std;
 
 const char* BATTLE_TABLE_DISCONNECT_HOOK_NAME = "battle_table_state";
 const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME = "quest_barrier";
-const char* ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME = "add_next_game_client";
 
 static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Client> c) {
   auto s = c->require_server_state();
@@ -933,59 +932,6 @@ static void on_BA_Ep3(shared_ptr<Client> c, uint16_t command, uint32_t, const st
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
-static bool add_next_game_client(shared_ptr<Lobby> l) {
-  auto it = l->clients_to_add.begin();
-  if (it == l->clients_to_add.end()) {
-    return false;
-  }
-  size_t target_client_id = it->first;
-  shared_ptr<Client> c = it->second.lock();
-  l->clients_to_add.erase(it);
-
-  auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : nullptr;
-
-  // If the game is a tournament match and the client has disconnected before
-  // they could join the match, disband the entire game
-  if (!c && l->tournament_match) {
-    send_command(l, 0xED, 0x00);
-    return false;
-  }
-
-  if (l->clients[target_client_id] != nullptr) {
-    throw logic_error("client id is already in use");
-  }
-
-  auto s = c->require_server_state();
-  if (tourn) {
-    G_SetStateFlags_GC_Ep3_6xB4x03 state_cmd;
-    state_cmd.state.turn_num = 1;
-    state_cmd.state.battle_phase = Episode3::BattlePhase::INVALID_00;
-    state_cmd.state.current_team_turn1 = 0xFF;
-    state_cmd.state.current_team_turn2 = 0xFF;
-    state_cmd.state.action_subphase = Episode3::ActionSubphase::ATTACK;
-    state_cmd.state.setup_phase = Episode3::SetupPhase::REGISTRATION;
-    state_cmd.state.registration_phase = Episode3::RegistrationPhase::AWAITING_NUM_PLAYERS;
-    state_cmd.state.team_exp.clear(0);
-    state_cmd.state.team_dice_boost.clear(0);
-    state_cmd.state.first_team_turn = 0xFF;
-    state_cmd.state.tournament_flag = 0x01;
-    state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
-    if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-      uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
-      set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
-    }
-    send_command_t(c, 0xC9, 0x00, state_cmd);
-  }
-
-  s->change_client_lobby(c, l, true, target_client_id);
-  c->flags |= Client::Flag::LOADING;
-  c->disconnect_hooks.emplace(ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME, [s, l]() -> void {
-    add_next_game_client(l);
-  });
-
-  return true;
-}
-
 static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t table_number) {
   if (table_number < 0) {
     // Negative numbers are supposed to mean the client is not seated at a
@@ -1117,20 +1063,14 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
   auto s = c->require_server_state();
   uint32_t flags = Lobby::Flag::NON_V1_ONLY;
   u16string name = tourn ? decode_sjis(tourn->get_name()) : u"<BattleTable>";
-  auto game = create_game_generic(
-      s, c, name, u"", Episode::EP3,
-      GameMode::NORMAL, 0, flags);
+  auto game = create_game_generic(s, c, name, u"", Episode::EP3, GameMode::NORMAL, 0, flags);
   if (!game) {
     return false;
   }
   game->tournament_match = tourn_match;
-  game->ep3_ex_result_values = (tourn_match && tourn && tourn->get_final_match() == tourn_match)
+  game->ep3_ex_result_values = (tourn_match && tourn && (tourn->get_final_match() == tourn_match))
       ? s->ep3_tournament_final_round_ex_values
       : s->ep3_tournament_ex_values;
-  game->clients_to_add.clear();
-  for (const auto& it : game_clients) {
-    game->clients_to_add.emplace(it.first, it.second);
-  }
 
   // Remove all players from the battle table (but don't tell them about this)
   for (const auto& it : game_clients) {
@@ -1140,30 +1080,35 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
     other_c->disconnect_hooks.erase(BATTLE_TABLE_DISCONNECT_HOOK_NAME);
   }
 
-  // If there's only one client in the match, skip the wait phase - they'll be
-  // added to the match immediately by add_next_game_client anyway
-  if (game_clients.empty()) {
-    throw logic_error("no clients to add to battle table match");
-
-  } else if (game_clients.size() != 1) {
+  // If this is a tournament match, send the tournament state setup.
+  if (tourn) {
+    G_SetStateFlags_GC_Ep3_6xB4x03 state_cmd;
+    state_cmd.state.turn_num = 1;
+    state_cmd.state.battle_phase = Episode3::BattlePhase::INVALID_00;
+    state_cmd.state.current_team_turn1 = 0xFF;
+    state_cmd.state.current_team_turn2 = 0xFF;
+    state_cmd.state.action_subphase = Episode3::ActionSubphase::ATTACK;
+    state_cmd.state.setup_phase = Episode3::SetupPhase::REGISTRATION;
+    state_cmd.state.registration_phase = Episode3::RegistrationPhase::AWAITING_NUM_PLAYERS;
+    state_cmd.state.team_exp.clear(0);
+    state_cmd.state.team_dice_boost.clear(0);
+    state_cmd.state.first_team_turn = 0xFF;
+    state_cmd.state.tournament_flag = 0x01;
+    state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
+    if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+      uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+      set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
+    }
     for (const auto& it : game_clients) {
-      auto other_c = it.second;
-      send_self_leave_notification(other_c);
-      u16string message;
-      if (tourn) {
-        message = decode_sjis(string_printf(
-            "$C7Waiting to begin match in tournament\n$C6%s$C7...\n\n(Hold B+X+START to abort)",
-            tourn->get_name().c_str()));
-      } else {
-        message = u"$C7Waiting to begin battle table match...\n\n(Hold B+X+START to abort)";
-      }
-      send_message_box(other_c, message);
+      send_command_t(it.second, 0xC9, 0x00, state_cmd);
     }
   }
 
-  // Add the first client to the game (the remaining clients will be added when
-  // the previous is done loading)
-  add_next_game_client(game);
+  // Add the clients to the game
+  for (const auto& it : game_clients) {
+    s->change_client_lobby(it.second, game, true, it.first);
+    c->flags |= Client::Flag::LOADING;
+  }
 
   return true;
 }
@@ -3569,10 +3514,6 @@ static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
           c->channel, c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
     }
   }
-
-  // If there are more players to bring in, try to do so
-  c->disconnect_hooks.erase(ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME);
-  add_next_game_client(l);
 }
 
 static void on_D0_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {

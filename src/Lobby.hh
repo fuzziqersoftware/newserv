@@ -109,8 +109,6 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   uint32_t flags;
   std::shared_ptr<const Quest> quest;
   std::array<std::shared_ptr<Client>, 12> clients;
-  // Keys in this map are client_id
-  std::unordered_map<size_t, std::weak_ptr<Client>> clients_to_add;
 
   Lobby(std::shared_ptr<ServerState> s, uint32_t id);
   Lobby(const Lobby&) = delete;
