@@ -26,7 +26,7 @@ static uint32_t encode_argb8888(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 
 struct GVMFileEntry {
   be_uint16_t file_num;
-  parray<char, 28> name;
+  ptext<char, 28> name;
   parray<be_uint32_t, 2> unknown_a1;
 } __attribute__((packed));
 
