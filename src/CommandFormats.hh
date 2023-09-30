@@ -106,18 +106,18 @@ enum ClientStateBB : uint8_t {
 };
 
 struct ClientConfig {
-  uint64_t magic;
-  uint32_t flags;
-  uint32_t specific_version;
-  uint32_t proxy_destination_address;
-  uint16_t proxy_destination_port;
+  uint64_t magic = 0;
+  uint32_t flags = 0;
+  uint32_t specific_version = 0;
+  uint32_t proxy_destination_address = 0;
+  uint16_t proxy_destination_port = 0;
   parray<uint8_t, 0x0A> unused;
 } __packed__;
 
 struct ClientConfigBB {
   ClientConfig cfg;
-  uint8_t bb_game_state;
-  uint8_t bb_player_index;
+  uint8_t bb_game_state = 0;
+  uint8_t bb_player_index = 0;
   parray<uint8_t, 0x06> unused;
 } __packed__;
 
