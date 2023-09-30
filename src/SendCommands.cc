@@ -2544,15 +2544,13 @@ void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
     entry.client_id = z;
   }
 
-  auto serial_number_to_client = l->clients_by_serial_number();
-
   auto add_entries_for_team = [&](shared_ptr<const Episode3::Tournament::Team> team, size_t base_index) -> void {
     for (size_t z = 0; z < team->players.size(); z++) {
       auto& entry = cmd.entries[base_index + z];
       const auto& player = team->players[z];
       if (player.is_human()) {
         entry.type = 1; // Human
-        entry.player_name = serial_number_to_client.at(player.serial_number)->game_data.player()->disp.name;
+        entry.player_name = player.player_name;
         if (player.serial_number == c->license->serial_number) {
           cmd.player_slot = base_index + z;
         }
