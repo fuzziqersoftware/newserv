@@ -1109,6 +1109,12 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   //         battle start time)
   // 50 = blocked by metal box (appears as improperly-z-buffered teal cube in
   //      preview; behaves like 10 and 20 in game)
+  // The assist cards that each trap type can contain are:
+  //   40: Dice Fever, Heavy Fog, Muscular, Immortality, Snail Pace
+  //   41: Gold Rush, Charity, Requiem
+  //   42: Powerless Rain, Trash 1, Empty Hand, Skip Draw
+  //   43: Brave Wind, Homesick, Fly
+  //   44: Dice+1, Battle Royale, Reverse Card, Giant Garden, Fix
   /* 1C68 */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
 
   /* 1D68 */ parray<uint8_t, 0x74> unknown_a5;
