@@ -23,7 +23,7 @@ public:
     PlayerLobbyDataDCGC lobby_data;
     PlayerInventory inventory;
     PlayerDispDataDCPCV3 disp;
-    uint32_t level;
+    le_uint32_t level;
   } __attribute__((packed));
 
   struct Event {

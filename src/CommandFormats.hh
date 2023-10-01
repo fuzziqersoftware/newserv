@@ -3124,14 +3124,21 @@ struct S_JoinSpectatorTeam_GC_Ep3_E8 {
   /* 1182 */ uint8_t solo_mode = 0;
   /* 1183 */ uint8_t unused3 = 0;
   struct SpectatorEntry {
+    // It seems that at some point Sega intended to show each player's rank in
+    // spectator teams. The unused1 and unused3 fields are intended for the
+    // player's encrypted rank text and rank color (according to old Sega logs),
+    // but the client ignores them. It's not clear what unused4 may have been
+    // for, but the client also completely ignores it.
     /* 00 */ le_uint32_t player_tag = 0;
     /* 04 */ le_uint32_t guild_card_number = 0;
-    /* 08 */ ptext<char, 0x20> name;
+    /* 08 */ ptext<char, 0x10> name;
+    /* 18 */ ptext<char, 0x10> unused1;
     /* 28 */ uint8_t present = 0;
-    /* 29 */ uint8_t unknown_a3 = 0;
+    /* 29 */ uint8_t unused2 = 0;
     /* 2A */ le_uint16_t level = 0;
-    /* 2C */ parray<le_uint32_t, 2> unknown_a5;
-    /* 34 */ parray<le_uint16_t, 2> unknown_a6;
+    /* 2C */ le_uint32_t unused3 = 0xFFFFFFFF;
+    /* 30 */ le_uint32_t name_color; // ARGB8888
+    /* 34 */ parray<le_uint16_t, 2> unused4;
     /* 38 */
   } __packed__;
   // Somewhat misleadingly, this array also includes the players actually in the

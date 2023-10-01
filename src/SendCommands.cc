@@ -1439,28 +1439,30 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       if (!wc) {
         continue;
       }
+      auto wc_p = wc->game_data.player();
       auto& p = cmd.players[z];
       p.lobby_data.player_tag = 0x00010000;
       p.lobby_data.guild_card = wc->license->serial_number;
       p.lobby_data.client_id = wc->lobby_client_id;
-      p.lobby_data.name = wc->game_data.player()->disp.name;
+      p.lobby_data.name = wc_p->disp.name;
       remove_language_marker_inplace(p.lobby_data.name);
-      p.inventory = wc->game_data.player()->inventory;
+      p.inventory = wc_p->inventory;
       for (size_t y = 0; y < 30; y++) {
         p.inventory.items[y].data.bswap_data2_if_mag();
       }
-      p.disp = wc->game_data.player()->disp.to_dcpcv3();
+      p.disp = wc_p->disp.to_dcpcv3();
       remove_language_marker_inplace(p.disp.visual.name);
 
       auto& e = cmd.entries[z];
       e.player_tag = 0x00010000;
       e.guild_card_number = wc->license->serial_number;
-      e.name = wc->game_data.player()->disp.name;
+      e.name = wc_p->disp.name;
       remove_language_marker_inplace(e.name);
       e.present = 1;
       e.level = wc->game_data.ep3_config
           ? (wc->game_data.ep3_config->online_clv_exp / 100)
-          : wc->game_data.player()->disp.stats.level.load();
+          : wc_p->disp.stats.level.load();
+      e.name_color = wc_p->disp.visual.name_color;
 
       player_count++;
     }
@@ -1499,7 +1501,8 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       e.name = entry.disp.visual.name;
       remove_language_marker_inplace(e.name);
       e.present = 1;
-      e.level = entry.disp.stats.level.load();
+      e.level = entry.level.load();
+      e.name_color = entry.disp.visual.name_color;
 
       player_count++;
     }
@@ -1510,22 +1513,28 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
 
   for (size_t z = 4; z < 12; z++) {
     if (l->clients[z]) {
+      auto& gd = l->clients[z]->game_data;
       auto& p = cmd.spectator_players[z - 4];
       auto& e = cmd.entries[z];
       p.lobby_data.player_tag = 0x00010000;
       p.lobby_data.guild_card = l->clients[z]->license->serial_number;
       p.lobby_data.client_id = l->clients[z]->lobby_client_id;
-      p.lobby_data.name = l->clients[z]->game_data.player()->disp.name;
+      p.lobby_data.name = gd.player()->disp.name;
       remove_language_marker_inplace(p.lobby_data.name);
-      p.inventory = l->clients[z]->game_data.player()->inventory;
-      p.disp = l->clients[z]->game_data.player()->disp.to_dcpcv3();
+      p.inventory = gd.player()->inventory;
+      p.disp = gd.player()->disp.to_dcpcv3();
       remove_language_marker_inplace(p.disp.visual.name);
+
       e.player_tag = 0x00010000;
       e.guild_card_number = l->clients[z]->license->serial_number;
-      e.name = l->clients[z]->game_data.player()->disp.name;
+      e.name = gd.player()->disp.name;
       remove_language_marker_inplace(e.name);
       e.present = 1;
-      e.level = l->clients[z]->game_data.player()->disp.stats.level.load();
+      e.level = gd.ep3_config
+          ? (gd.ep3_config->online_clv_exp / 100)
+          : gd.player()->disp.stats.level.load();
+      e.name_color = gd.player()->disp.visual.name_color;
+
       player_count++;
     }
   }
