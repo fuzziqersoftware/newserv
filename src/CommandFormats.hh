@@ -3137,7 +3137,7 @@ struct S_JoinSpectatorTeam_GC_Ep3_E8 {
     /* 29 */ uint8_t unused2 = 0;
     /* 2A */ le_uint16_t level = 0;
     /* 2C */ le_uint32_t unused3 = 0xFFFFFFFF;
-    /* 30 */ le_uint32_t name_color; // ARGB8888
+    /* 30 */ le_uint32_t name_color = 0xFFFFFFFF; // ARGB8888
     /* 34 */ parray<le_uint16_t, 2> unused4;
     /* 38 */
   } __packed__;
