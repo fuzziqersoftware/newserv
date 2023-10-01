@@ -2442,9 +2442,14 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
           auto& entry = team_entry.players[z];
           const auto& player = team->players[z];
           if (player.is_human()) {
-            auto c = serial_number_to_client.at(player.serial_number);
-            entry.name = c->game_data.player()->disp.name;
-            entry.description = ep3_description_for_client(c);
+            try {
+              auto c = serial_number_to_client.at(player.serial_number);
+              entry.name = c->game_data.player()->disp.name;
+              entry.description = ep3_description_for_client(c);
+            } catch (const out_of_range&) {
+              entry.name = player.player_name;
+              entry.description = "(Not connected)";
+            }
           } else {
             entry.name = player.com_deck->player_name;
             entry.description = "Deck: " + player.com_deck->deck_name;
@@ -2595,7 +2600,11 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
     for (size_t z = 0; z < team->players.size(); z++) {
       const auto& player = team->players[z];
       if (player.is_human()) {
-        entry.player_names[z] = serial_number_to_client.at(player.serial_number)->game_data.player()->disp.name;
+        try {
+          entry.player_names[z] = serial_number_to_client.at(player.serial_number)->game_data.player()->disp.name;
+        } catch (const out_of_range&) {
+          entry.player_names[z] = player.player_name;
+        }
       } else {
         entry.player_names[z] = player.com_deck->player_name;
       }
