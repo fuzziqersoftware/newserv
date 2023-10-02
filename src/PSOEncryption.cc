@@ -25,6 +25,30 @@ PSOLFGEncryption::PSOLFGEncryption(
       end_offset(end_offset),
       seed(seed) {}
 
+PSOLFGEncryption::PSOLFGEncryption(const std::string& serialized) {
+  StringReader r(serialized);
+  this->offset = r.get_u32l();
+  this->end_offset = r.get_u32l();
+  this->seed = r.get_u32l();
+  size_t num_entries = r.get_u32l();
+  this->stream.reserve(num_entries);
+  while (this->stream.size() < num_entries) {
+    this->stream.emplace_back(r.get_u32l());
+  }
+}
+
+std::string PSOLFGEncryption::serialize() const {
+  StringWriter w;
+  w.put_u32l(this->offset);
+  w.put_u32l(this->end_offset);
+  w.put_u32l(this->seed);
+  w.put_u32l(this->stream.size());
+  for (uint32_t x : this->stream) {
+    w.put_u32l(x);
+  }
+  return std::move(w.str());
+}
+
 uint32_t PSOLFGEncryption::next(bool advance) {
   if (this->offset == this->end_offset) {
     this->update_stream();
