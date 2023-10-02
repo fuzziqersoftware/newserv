@@ -1621,14 +1621,14 @@ void Server::on_server_data_input(const string& data) {
     throw runtime_error("command is incomplete");
   }
   if (header.subcommand != 0xB3) {
-    throw runtime_error("server data command is not B3");
+    throw runtime_error("server data command is not 6xB3");
   }
 
   handler_t handler = nullptr;
   try {
     handler = this->subcommand_handlers.at(header.subsubcommand);
   } catch (const out_of_range&) {
-    throw runtime_error("unknown CAxB3 subsubcommand");
+    throw runtime_error("unknown CAx subsubcommand");
   }
 
   string unmasked_data = data;

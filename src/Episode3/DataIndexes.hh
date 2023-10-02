@@ -18,10 +18,6 @@
 
 namespace Episode3 {
 
-// The comment in Server.hh does not apply to this file (and DataIndexes.cc).
-// Except for the Location structure, these structures and functions are not
-// based on Sega's original implementation.
-
 class CardIndex;
 class MapIndex;
 class COMDeckIndex;
@@ -638,7 +634,7 @@ struct CardDefinition {
   // The game then samples N card IDs from the appropriate buckets (where N is
   // the number chosen above), but for the first 1 or 2 cards, it applies the
   // restriction described above and re-draws if the card is the wrong type.
-  // After sampling the N card IDs, it shuffles them and presents them to the
+  // After sampling the N card IDs, it sorts them and presents them to the
   // player.
   //
   // There is one more effect to consider after cards are chosen: cards may

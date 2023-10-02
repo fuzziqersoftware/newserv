@@ -18,8 +18,6 @@ struct ServerState;
 
 namespace Episode3 {
 
-// The comment in Server.hh does not apply to this file (and Tournament.cc).
-
 class Tournament : public std::enable_shared_from_this<Tournament> {
 public:
   enum Flag : uint8_t {

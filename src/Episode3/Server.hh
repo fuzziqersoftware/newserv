@@ -19,17 +19,24 @@ struct Lobby;
 namespace Episode3 {
 
 /**
- * This implementation of Episode 3 battles (contained in all files in the
- * src/Episode3 directory, except for DataIndexes.hh/cc) is derived from Sega's
- * original server implementation, reverse-engineered from the Episode 3 client
+ * This implementation of Episode 3 battles is derived from Sega's original
+ * server implementation, reverse-engineered from the Episode 3 client
  * executable. The control flow, function breakdown, and structure definitions
  * in these files map very closely to how their server implementation was
  * written; notable differences (due to necessary environment differences or bug
  * fixes) are described in the comments therein.
  *
- * Some debugging functions have been added which are not part of the original
- * implementation. Notably, this applies to functions like debug message senders
- * and loggers and all str() functions.
+ * The following files are direct reverse-engineerings of Sega's original code,
+ * except where noted in the comments:
+ *   AssistServer.hh/cc
+ *   Card.hh/cc
+ *   CardSpecial.hh/cc
+ *   DeckState.hh/cc
+ *   MapState.hh/cc
+ *   PlayerState.hh/cc
+ *   PlayerStateSubordinates.hh/cc
+ *   RulerServer.hh/cc
+ *   Server.hh/cc
  *
  * There are likely undiscovered bugs in this code, some originally written by
  * Sega, but more written by me as I manually transcribed and updated this code.
