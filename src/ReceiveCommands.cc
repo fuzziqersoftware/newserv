@@ -1291,10 +1291,12 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, const string& da
               c->game_data.ep3_config ? (c->game_data.ep3_config->online_clv_exp / 100) : 0);
         }
       }
-      if (c->ep3_prev_battle_record) {
-        send_text_message(l, u"$C6Recording complete");
+      if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
+        if (c->ep3_prev_battle_record) {
+          send_text_message(l, u"$C6Recording complete");
+        }
+        send_text_message(l, u"$C6Recording enabled");
       }
-      send_text_message(l, u"$C6Recording enabled");
     }
   }
   bool battle_finished_before = l->ep3_server->battle_finished;
