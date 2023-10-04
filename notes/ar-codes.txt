@@ -232,3 +232,6 @@ Go online with this code on after using the dressing room to fully save changes
 0412F8D0 7CC43378
 0412F8D4 7D0803A6
 0412F8D8 4BEDEBF4
+
+(Ep3 USA) Metal tiles don't appear in Simulator map
+04296904 4E800020
