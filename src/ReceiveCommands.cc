@@ -979,7 +979,10 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
   }
 
   s->change_client_lobby(c, l, true, target_client_id);
-  c->flags |= (Client::Flag::LOADING | (tourn ? Client::Flag::LOADING_TOURNAMENT : 0));
+  c->flags |= Client::Flag::LOADING;
+  if (tourn) {
+    c->flags |= Client::Flag::LOADING_TOURNAMENT;
+  }
   c->disconnect_hooks.emplace(ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME, [s, l]() -> void {
     add_next_game_client(l);
   });
