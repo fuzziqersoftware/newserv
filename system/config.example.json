@@ -472,7 +472,7 @@
     [0x21, "q", "ext", "Extermination", "$E$C6Quests that involve\ndestroying all\nmonsters"],
     [0x21, "q", "evt", "Events", "$E$C6Quests that are part\nof an event"],
     [0x21, "q", "shp", "Shops", "$E$C6Quests that contain\nshops"],
-    [0xA1, "q", "vr", "Virtual Reality", "$E$C6Quests that are\ndone in a simulator"],
+    [0x21, "q", "vr", "Virtual Reality", "$E$C6Quests that are\ndone in a simulator"],
     [0xA1, "q", "twr", "Control Tower", "$E$C6Quests that take\nplace at the Control\nTower"],
     [0x02, "b", "", "Battle", "$E$C6Battle mode rule\nsets"],
     [0x04, "c", "", "Challenge (Episode 1)", "$E$C6Challenge mode\nquests in Episode 1"],
