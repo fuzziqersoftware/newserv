@@ -1220,7 +1220,7 @@ struct C_CharacterData_BB_61_98 {
 
 // Header flag = entry count
 template <typename LobbyDataT>
-struct S_JoinGame {
+struct S_JoinGame_DC_PC {
   // Note: It seems Sega servers sent uninitialized memory in the variations
   // field when sending this command to start an Episode 3 tournament game. This
   // can be misleading when reading old logs from those days, but the Episode 3
@@ -1239,15 +1239,6 @@ struct S_JoinGame {
   uint8_t section_id = 0;
   uint8_t challenge_mode = 0;
   le_uint32_t rare_seed = 0;
-  // Note: The 64 command for PSO DC ends here (the next 4 fields are ignored).
-  // newserv sends them anyway for code simplicity reasons.
-  uint8_t episode = 0;
-  // Similarly, PSO GC ignores the values in the following fields.
-  uint8_t unused2 = 1; // Should be 1 for PSO PC?
-  // Note: Only BB uses this field; it's unused on all other versions (since
-  // only BB has solo mode).
-  uint8_t solo_mode = 0;
-  uint8_t unused3 = 0;
 } __packed__;
 
 struct S_JoinGame_DCNTE_64 {
@@ -1259,12 +1250,17 @@ struct S_JoinGame_DCNTE_64 {
   parray<PlayerLobbyDataDCGC, 4> lobby_data;
 } __packed__;
 
-struct S_JoinGame_PC_64 : S_JoinGame<PlayerLobbyDataPC> {
+struct S_JoinGame_DC_64 : S_JoinGame_DC_PC<PlayerLobbyDataDCGC> {
 } __packed__;
-struct S_JoinGame_DC_GC_64 : S_JoinGame<PlayerLobbyDataDCGC> {
+struct S_JoinGame_PC_64 : S_JoinGame_DC_PC<PlayerLobbyDataPC> {
 } __packed__;
 
-struct S_JoinGame_GC_Ep3_64 : S_JoinGame_DC_GC_64 {
+struct S_JoinGame_GC_64 : S_JoinGame_DC_PC<PlayerLobbyDataDCGC> {
+  uint8_t episode = 0;
+  parray<uint8_t, 3> unused;
+} __packed__;
+
+struct S_JoinGame_GC_Ep3_64 : S_JoinGame_GC_64 {
   // This field is only present if the game (and client) is Episode 3. Similarly
   // to lobby_data in the base struct, all four of these are always present and
   // they are filled in in slot positions.
@@ -1274,11 +1270,17 @@ struct S_JoinGame_GC_Ep3_64 : S_JoinGame_DC_GC_64 {
   } __packed__ players_ep3[4];
 } __packed__;
 
-struct S_JoinGame_XB_64 : S_JoinGame<PlayerLobbyDataXB> {
+struct S_JoinGame_XB_64 : S_JoinGame_DC_PC<PlayerLobbyDataXB> {
+  uint8_t episode = 0;
+  parray<uint8_t, 3> unused;
   parray<le_uint32_t, 6> unknown_a1;
 } __packed__;
 
-struct S_JoinGame_BB_64 : S_JoinGame<PlayerLobbyDataBB> {
+struct S_JoinGame_BB_64 : S_JoinGame_DC_PC<PlayerLobbyDataBB> {
+  uint8_t episode = 0;
+  uint8_t unused1 = 1;
+  uint8_t solo_mode = 0;
+  uint8_t unused2 = 0;
 } __packed__;
 
 // 65 (S->C): Add player to game
@@ -3120,9 +3122,7 @@ struct S_JoinSpectatorTeam_GC_Ep3_E8 {
   /* 117B */ uint8_t challenge_mode = 0;
   /* 117C */ le_uint32_t rare_seed = 0;
   /* 1180 */ uint8_t episode = 0;
-  /* 1181 */ uint8_t unused2 = 1;
-  /* 1182 */ uint8_t solo_mode = 0;
-  /* 1183 */ uint8_t unused3 = 0;
+  /* 1181 */ parray<uint8_t, 3> unused;
   struct SpectatorEntry {
     // It seems that at some point Sega intended to show each player's rank in
     // spectator teams. The unused1 and unused3 fields are intended for the

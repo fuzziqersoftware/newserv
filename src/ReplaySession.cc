@@ -277,7 +277,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             mask.variations.clear(0);
             mask.rare_seed = 0;
           } else { // V3
-            auto& mask = check_size_t<S_JoinGame_DC_GC_64>(
+            auto& mask = check_size_t<S_JoinGame_DC_64>(
                 mask_data, mask_size, sizeof(S_JoinGame_GC_Ep3_64));
             mask.variations.clear(0);
             mask.rare_seed = 0;

@@ -1421,8 +1421,9 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
-constexpr on_command_t S_DG_64 = &S_64<S_JoinGame_DC_GC_64>;
+constexpr on_command_t S_D_64 = &S_64<S_JoinGame_DC_64>;
 constexpr on_command_t S_P_64 = &S_64<S_JoinGame_PC_64>;
+constexpr on_command_t S_G_64 = &S_64<S_JoinGame_GC_64>;
 constexpr on_command_t S_X_64 = &S_64<S_JoinGame_XB_64>;
 constexpr on_command_t S_B_64 = &S_64<S_JoinGame_BB_64>;
 
@@ -1805,7 +1806,7 @@ static on_command_t handlers[0x100][6][2] = {
 /* 61 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        C_GXB_61},     {S_invalid,     C_GXB_61},     {S_invalid,    C_GXB_61}},
 /* 62 */ {{S_invalid,     nullptr}, {S_6x,             C_D_6x},       {S_6x,          C_P_6x},       {S_6x,             C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
 /* 63 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
-/* 64 */ {{S_invalid,     nullptr}, {S_DG_64,          nullptr},      {S_P_64,        nullptr},      {S_DG_64,          nullptr},      {S_X_64,        nullptr},      {S_B_64,       nullptr}},
+/* 64 */ {{S_invalid,     nullptr}, {S_D_64,           nullptr},      {S_P_64,        nullptr},      {S_G_64,           nullptr},      {S_X_64,        nullptr},      {S_B_64,       nullptr}},
 /* 65 */ {{S_invalid,     nullptr}, {S_DG_65_67_68_EB, nullptr},      {S_P_65_67_68,  nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_X_65_67_68,  nullptr},      {S_B_65_67_68, nullptr}},
 /* 66 */ {{S_invalid,     nullptr}, {S_66_69_E9,       nullptr},      {S_66_69_E9,    nullptr},      {S_66_69_E9,       nullptr},      {S_66_69_E9,    nullptr},      {S_66_69_E9,   nullptr}},
 /* 67 */ {{S_invalid,     nullptr}, {S_DG_65_67_68_EB, nullptr},      {S_P_65_67_68,  nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_X_65_67_68,  nullptr},      {S_B_65_67_68, nullptr}},

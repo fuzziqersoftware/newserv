@@ -1427,7 +1427,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   cmd.event = l->event;
   cmd.section_id = l->section_id;
   cmd.rare_seed = l->random_seed;
-  cmd.episode = 3;
+  cmd.episode = 0xFF;
 
   uint8_t player_count = 0;
   auto watched_lobby = l->watched_lobby.lock();
@@ -1543,107 +1543,125 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   send_command_t(c, 0xE8, player_count, cmd);
 }
 
-template <typename LobbyDataT>
-void send_join_game_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
     send_join_spectator_team(c, l);
     return;
   }
 
-  bool is_ep3 = l->is_ep3();
-  string data(is_ep3 ? sizeof(S_JoinGame_GC_Ep3_64) : sizeof(S_JoinGame<LobbyDataT>), '\0');
-
-  // TODO: This is a terrible way to handle the different Ep3 format within the
-  // template. Find a way to make this cleaner.
-  auto* cmd = reinterpret_cast<S_JoinGame<LobbyDataT>*>(data.data());
-  S_JoinGame_GC_Ep3_64* cmd_ep3 = nullptr;
-  if (is_ep3) {
-    cmd_ep3 = reinterpret_cast<S_JoinGame_GC_Ep3_64*>(data.data());
-    new (cmd_ep3) S_JoinGame_GC_Ep3_64();
-  } else {
-    new (cmd) S_JoinGame<LobbyDataT>();
-  }
-
-  cmd->variations = l->variations;
-
-  size_t player_count = 0;
-  for (size_t x = 0; x < 4; x++) {
-    if (l->clients[x]) {
-      cmd->lobby_data[x].player_tag = 0x00010000;
-      cmd->lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-      cmd->lobby_data[x].client_id = l->clients[x]->lobby_client_id;
-      cmd->lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
-      if (cmd_ep3) {
-        cmd_ep3->players_ep3[x].inventory = l->clients[x]->game_data.player()->inventory;
-        for (size_t z = 0; z < 30; z++) {
-          cmd_ep3->players_ep3[x].inventory.items[z].data.bswap_data2_if_mag();
-        }
-        cmd_ep3->players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(
-            l->clients[x]->game_data.player()->disp);
+  auto populate_lobby_data = [&](auto& cmd) -> size_t {
+    size_t player_count = 0;
+    for (size_t x = 0; x < 4; x++) {
+      if (l->clients[x]) {
+        cmd.lobby_data[x].player_tag = 0x00010000;
+        cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
+        cmd.lobby_data[x].client_id = l->clients[x]->lobby_client_id;
+        cmd.lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
+        player_count++;
+      } else {
+        cmd.lobby_data[x].clear();
       }
-      player_count++;
-    } else {
-      cmd->lobby_data[x].clear();
     }
-  }
+    return player_count;
+  };
+  auto populate_base_cmd = [&](auto& cmd) -> size_t {
+    cmd.variations = l->variations;
+    cmd.client_id = c->lobby_client_id;
+    cmd.leader_id = l->leader_id;
+    cmd.disable_udp = 0x01; // Unused on PC/XB/BB
+    cmd.difficulty = l->difficulty;
+    cmd.battle_mode = (l->mode == GameMode::BATTLE) ? 1 : 0;
+    cmd.event = l->event;
+    cmd.section_id = l->section_id;
+    cmd.challenge_mode = (l->mode == GameMode::CHALLENGE) ? 1 : 0;
+    cmd.rare_seed = l->random_seed;
+    return populate_lobby_data(cmd);
+  };
+  auto populate_v3_cmd = [&](auto& cmd) -> size_t {
+    switch (l->episode) {
+      case Episode::EP1:
+        cmd.episode = 1;
+        break;
+      case Episode::EP2:
+        cmd.episode = 2;
+        break;
+      case Episode::EP3:
+        cmd.episode = 0xFF;
+        break;
+      case Episode::EP4:
+        cmd.episode = 3;
+        break;
+      default:
+        throw logic_error("invalid episode number in game");
+    }
+    return populate_base_cmd(cmd);
+  };
 
-  cmd->client_id = c->lobby_client_id;
-  cmd->leader_id = l->leader_id;
-  cmd->disable_udp = 0x01; // Unused on PC/XB/BB
-  cmd->difficulty = l->difficulty;
-  cmd->battle_mode = (l->mode == GameMode::BATTLE) ? 1 : 0;
-  cmd->event = l->event;
-  cmd->section_id = l->section_id;
-  cmd->challenge_mode = (l->mode == GameMode::CHALLENGE) ? 1 : 0;
-  cmd->rare_seed = l->random_seed;
-  switch (l->episode) {
-    case Episode::EP1:
-      cmd->episode = 1;
+  switch (c->version()) {
+    case GameVersion::DC: {
+      if (c->flags & Client::Flag::IS_DC_TRIAL_EDITION) {
+        S_JoinGame_DCNTE_64 cmd;
+        cmd.client_id = c->lobby_client_id;
+        cmd.leader_id = l->leader_id;
+        cmd.disable_udp = 0x01;
+        cmd.variations = l->variations;
+        size_t player_count = populate_lobby_data(cmd);
+        send_command_t(c, 0x64, player_count, cmd);
+      } else {
+        S_JoinGame_DC_64 cmd;
+        size_t player_count = populate_base_cmd(cmd);
+        send_command_t(c, 0x64, player_count, cmd);
+      }
       break;
-    case Episode::EP2:
-      cmd->episode = 2;
+    }
+    case GameVersion::PC: {
+      S_JoinGame_PC_64 cmd;
+      size_t player_count = populate_base_cmd(cmd);
+      send_command_t(c, 0x64, player_count, cmd);
       break;
-    case Episode::EP3:
-      cmd->episode = 0xFF;
+    }
+    case GameVersion::GC: {
+      if (c->flags & Client::Flag::IS_EPISODE_3) {
+        S_JoinGame_GC_Ep3_64 cmd;
+        size_t player_count = populate_v3_cmd(cmd);
+        for (size_t x = 0; x < 4; x++) {
+          if (l->clients[x]) {
+            cmd.players_ep3[x].inventory = l->clients[x]->game_data.player()->inventory;
+            for (size_t z = 0; z < 30; z++) {
+              cmd.players_ep3[x].inventory.items[z].data.bswap_data2_if_mag();
+            }
+            cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(
+                l->clients[x]->game_data.player()->disp);
+          }
+        }
+        send_command_t(c, 0x64, player_count, cmd);
+      } else {
+        S_JoinGame_GC_64 cmd;
+        size_t player_count = populate_v3_cmd(cmd);
+        send_command_t(c, 0x64, player_count, cmd);
+      }
       break;
-    case Episode::EP4:
-      cmd->episode = 3;
+    }
+    case GameVersion::XB: {
+      S_JoinGame_XB_64 cmd;
+      size_t player_count = populate_v3_cmd(cmd);
+      send_command_t(c, 0x64, player_count, cmd);
       break;
+    }
+    case GameVersion::BB: {
+      S_JoinGame_BB_64 cmd;
+      size_t player_count = populate_v3_cmd(cmd);
+      cmd.unused1 = 0;
+      cmd.solo_mode = (l->mode == GameMode::SOLO) ? 1 : 0;
+      cmd.unused2 = 0;
+      send_command_t(c, 0x64, player_count, cmd);
+      break;
+    }
+    case GameVersion::PATCH:
+      throw logic_error("patch server clients cannot join games");
     default:
-      throw logic_error("invalid episode number in game");
+      throw logic_error("invalid game version");
   }
-  cmd->unused2 = 0x01;
-  cmd->solo_mode = (l->mode == GameMode::SOLO) ? 1 : 0;
-  cmd->unused3 = 0x00;
-
-  send_command(c, 0x64, player_count, data);
-}
-
-void send_join_game_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  if (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
-    throw runtime_error("DC NTE players cannot join spectator teams");
-  }
-
-  S_JoinGame_DCNTE_64 cmd;
-  cmd.client_id = c->lobby_client_id;
-  cmd.leader_id = l->leader_id;
-  cmd.disable_udp = 0x01;
-  cmd.variations = l->variations;
-
-  size_t player_count = 0;
-  for (size_t x = 0; x < 4; x++) {
-    if (l->clients[x]) {
-      cmd.lobby_data[x].player_tag = 0x00010000;
-      cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-      cmd.lobby_data[x].client_id = l->clients[x]->lobby_client_id;
-      cmd.lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
-      player_count++;
-    } else {
-      cmd.lobby_data[x].clear();
-    }
-  }
-
-  send_command_t(c, 0x64, player_count, cmd);
 }
 
 template <typename LobbyDataT, typename DispDataT, typename RecordsT, bool UseLanguageMarkerInName>
@@ -1779,28 +1797,7 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
 
 void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (l->is_game()) {
-    switch (c->version()) {
-      case GameVersion::PC:
-        send_join_game_t<PlayerLobbyDataPC>(c, l);
-        break;
-      case GameVersion::DC:
-        if (c->flags & (Client::Flag::IS_DC_TRIAL_EDITION | Client::Flag::IS_DC_V1_PROTOTYPE)) {
-          send_join_game_dc_nte(c, l);
-          break;
-        }
-        [[fallthrough]];
-      case GameVersion::GC:
-        send_join_game_t<PlayerLobbyDataDCGC>(c, l);
-        break;
-      case GameVersion::XB:
-        send_join_game_t<PlayerLobbyDataXB>(c, l);
-        break;
-      case GameVersion::BB:
-        send_join_game_t<PlayerLobbyDataBB>(c, l);
-        break;
-      default:
-        throw logic_error("unimplemented versioned command");
-    }
+    send_join_game(c, l);
   } else {
     switch (c->version()) {
       case GameVersion::DC:
