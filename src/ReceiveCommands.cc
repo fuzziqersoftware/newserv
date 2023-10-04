@@ -306,7 +306,7 @@ void on_disconnect(shared_ptr<Client> c) {
 
 static void set_console_client_flags(shared_ptr<Client> c, uint32_t sub_version) {
   if (c->channel.crypt_in->type() == PSOEncryption::Type::V2) {
-    if (sub_version < 0x28) {
+    if (sub_version <= 0x28) {
       c->channel.version = GameVersion::DC;
       c->log.info("Game version changed to DC");
     } else if (c->version() == GameVersion::GC) {

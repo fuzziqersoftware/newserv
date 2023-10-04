@@ -56,26 +56,25 @@ See TODO.md for a list of known issues and future work.
 newserv supports several versions of PSO. Specifically:
 | Version        | Login        | Lobbies      | Games        | Proxy        |
 |----------------|--------------|--------------|--------------|--------------|
-| DC Trial       | Yes (4)      | Yes (4)      | Yes (4)      | No           |
-| DC Prototype   | Yes (4)      | Yes (4)      | Yes (4)      | No           |
-| DC V1          | Yes (1)      | Yes          | Yes          | Yes          |
-| DC V2          | Yes (1)      | Yes          | Yes          | Yes          |
+| DC Trial       | Yes (3)      | Yes (3)      | Yes (3)      | No           |
+| DC Prototype   | Yes (3)      | Yes (3)      | Yes (3)      | No           |
+| DC V1          | Yes          | Yes          | Yes          | Yes          |
+| DC V2          | Yes          | Yes          | Yes          | Yes          |
 | PC             | Yes          | Yes          | Yes          | Yes          |
-| GC Ep1&2 Trial | Untested (2) | Untested (2) | Untested (2) | Untested (2) |
+| GC Ep1&2 Trial | Untested (1) | Untested (1) | Untested (1) | Untested (1) |
 | GC Ep1&2       | Yes          | Yes          | Yes          | Yes          |
 | GC Ep1&2 Plus  | Yes          | Yes          | Yes          | Yes          |
-| GC Ep3 Trial   | Yes          | Yes          | Partial (5)  | Yes          |
+| GC Ep3 Trial   | Yes          | Yes          | Partial (4)  | Yes          |
 | GC Ep3         | Yes          | Yes          | Yes          | Yes          |
-| XBOX Ep1&2     | Untested (2) | Untested (2) | Untested (2) | Untested (2) |
-| BB (vanilla)   | Yes          | Yes          | Yes (3)      | Yes          |
-| BB (Tethealla) | Yes          | Yes          | Yes (3)      | Yes          |
+| XBOX Ep1&2     | Untested (1) | Untested (1) | Untested (1) | Untested (1) |
+| BB (vanilla)   | Yes          | Yes          | Yes (2)      | Yes          |
+| BB (Tethealla) | Yes          | Yes          | Yes (2)      | Yes          |
 
 *Notes:*
-1. *DC support has only been tested with the US versions of PSO DC. Other versions probably don't work, but will be easy to add support for. Please submit a GitHub issue if you have a non-US DC version, and can provide a log from a connection attempt.*
-2. *newserv's implementations of these versions are based on disassembly of the client executables and have never been tested.*
-3. *BB games are mostly playable, but there are still some unimplemented features (for example, some quests that use rare commands may not work). Please submit a GitHub issue if you find something that doesn't work.*
-4. *Support for PSO Dreamcast Trial Edition and the December 2000 prototype is somewhat incomplete and probably never will be complete. These versions are rather unstable and seem to crash often, but it's not obvious whether it's because they're prototypes or because newserv sends data they can't handle.*
-5. *Creating a game works and battle setup behaves mostly normally, but starting a battle doesn't work.*
+1. *newserv's implementations of these versions are based on disassembly of the client executables and have never been tested.*
+2. *BB games are mostly playable, but there are still some unimplemented features (for example, some quests that use rare commands may not work). Please submit a GitHub issue if you find something that doesn't work.*
+3. *Support for PSO Dreamcast Trial Edition and the December 2000 prototype is somewhat incomplete and probably never will be complete. These versions are rather unstable and seem to crash often, but it's not obvious whether it's because they're prototypes or because newserv sends data they can't handle.*
+4. *Creating a game works and battle setup behaves mostly normally, but starting a battle doesn't work.*
 
 ## Setup
 
