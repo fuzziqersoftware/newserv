@@ -115,9 +115,9 @@ activate_chosen_editor:
   #   corresponds to a specific field in the current section).
 
   # lwz    r4, [r29 + 0x10] # TFreeCamera
-  #   TODO: This doesn't appear to do anything, despite having a lot of code
-  #   that checks various buttons on the controller. Figure this out and make it
-  #   work.
+  #   This editor does nothing. Probably it was never implemented or the code
+  #   was intentionally deleted (though if it was, it's not clear why only this
+  #   editor's code was deleted).
 
   # lwz    r4, [r29 + 0x14] # TFogEditor
   #   Use L/R to pick a line, and the D-pad to modify the values. NO specifies
