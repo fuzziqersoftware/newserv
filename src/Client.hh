@@ -99,6 +99,8 @@ struct Client : public std::enable_shared_from_this<Client> {
     LOADING_QUEST = 0x00000040,
     // Client is loading a joinable quest that has already started
     LOADING_RUNNING_QUEST = 0x00100000,
+    // Client is waiting for other players to join a tournament game
+    LOADING_TOURNAMENT = 0x00010000,
     // Client is in the information menu (login server only)
     IN_INFORMATION_MENU = 0x00000080,
     // Client is at the welcome message (login server only)

@@ -366,6 +366,7 @@ void send_quest_file_chunk(
     size_t size,
     bool is_download_quest);
 bool send_quest_barrier_if_all_clients_ready(std::shared_ptr<Lobby> l);
+bool send_ep3_start_tournament_deck_select_if_all_clients_ready(std::shared_ptr<Lobby> l);
 
 void send_server_time(std::shared_ptr<Client> c);
 

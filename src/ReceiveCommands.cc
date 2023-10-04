@@ -947,6 +947,7 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
   // If the game is a tournament match and the client has disconnected before
   // they could join the match, disband the entire game
   if (!c && l->tournament_match) {
+    l->log.info("Client in slot %zu has disconnected before joining the game; disbanding it", target_client_id);
     send_command(l, 0xED, 0x00);
     return false;
   }
@@ -978,7 +979,7 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
   }
 
   s->change_client_lobby(c, l, true, target_client_id);
-  c->flags |= Client::Flag::LOADING;
+  c->flags |= (Client::Flag::LOADING | (tourn ? Client::Flag::LOADING_TOURNAMENT : 0));
   c->disconnect_hooks.emplace(ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME, [s, l]() -> void {
     add_next_game_client(l);
   });
@@ -1242,17 +1243,10 @@ static void on_DC_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, const strin
   }
 
   if (flag != 0) {
-    send_command(c, 0xDC, 0x00);
-    if (l->tournament_match) {
-      auto tourn = l->tournament_match->tournament.lock();
-      if (tourn) {
-        send_ep3_set_tournament_player_decks(c);
-        string data = Episode3::Server::prepare_6xB6x41_map_definition(
-            tourn->get_map(), l->flags & Lobby::Flag::IS_EP3_TRIAL);
-        c->channel.send(0x6C, 0x00, data);
-      }
-    }
+    c->flags &= ~(Client::Flag::LOADING_TOURNAMENT);
     l->flags |= Lobby::Flag::BATTLE_IN_PROGRESS;
+    send_command(c, 0xDC, 0x00);
+    send_ep3_start_tournament_deck_select_if_all_clients_ready(l);
   } else {
     l->flags &= ~Lobby::Flag::BATTLE_IN_PROGRESS;
   }

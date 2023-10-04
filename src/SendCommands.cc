@@ -2811,6 +2811,42 @@ bool send_quest_barrier_if_all_clients_ready(shared_ptr<Lobby> l) {
   return true;
 }
 
+bool send_ep3_start_tournament_deck_select_if_all_clients_ready(shared_ptr<Lobby> l) {
+  if (!l || !l->is_game() || (l->episode != Episode::EP3) || !l->tournament_match) {
+    return false;
+  }
+  auto tourn = l->tournament_match->tournament.lock();
+  if (!tourn) {
+    return false;
+  }
+
+  // Check if any client is still loading
+  size_t x;
+  for (x = 0; x < l->max_clients; x++) {
+    if (!l->clients[x]) {
+      continue;
+    }
+    if (l->clients[x]->flags & Client::Flag::LOADING_TOURNAMENT) {
+      break;
+    }
+  }
+
+  // If they're all done, start deck selection
+  if (x == l->max_clients) {
+    string data = Episode3::Server::prepare_6xB6x41_map_definition(
+        tourn->get_map(), l->flags & Lobby::Flag::IS_EP3_TRIAL);
+    send_command(l, 0x6C, 0x00, data);
+    for (auto c : l->clients) {
+      if (c) {
+        send_ep3_set_tournament_player_decks(c);
+      }
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void send_ep3_card_auction(shared_ptr<Lobby> l) {
   auto s = l->require_server_state();
   if ((s->ep3_card_auction_points == 0) ||
