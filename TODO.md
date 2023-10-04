@@ -18,6 +18,7 @@
 - Build an exception-handling abstraction in ChatCommands that shows formatted error messages in all cases
 - Make non-BB detector encryption match more than the first 4 bytes
 - Make reloading happen on separate threads so compression doesn't block active clients
+- Try emu.cfg change instead of patch_flycast_memory (https://github.com/fuzziqersoftware/newserv/issues/132)
 
 ## Episode 3
 
@@ -27,6 +28,7 @@
 - Add support for recording battles on the proxy server (both in primary and spectator teams)
 - When `reload ep3` happens and the defs file is changed, send the new defs file to all connected players who aren't in a game (if this even works - when exactly does the client decompress the defs file from the server?)
 - Make `reload licenses` not vulnerable to online players' licenses overwriting licenses on disk somehow
+- Implement DC command properly in tournament games
 
 ## PSOBB
 
