@@ -338,7 +338,7 @@ void send_ep3_tournament_details(
     std::shared_ptr<const Episode3::Tournament> t);
 void send_ep3_game_details(
     std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
-void send_ep3_update_spectator_count(std::shared_ptr<Lobby> l);
+void send_ep3_update_game_metadata(std::shared_ptr<Lobby> l);
 void send_ep3_card_auction(std::shared_ptr<Lobby> l);
 void send_ep3_disband_watcher_lobbies(std::shared_ptr<Lobby> primary_l);
 

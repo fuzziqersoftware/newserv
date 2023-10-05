@@ -2645,36 +2645,62 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
   }
 }
 
-void send_ep3_update_spectator_count(shared_ptr<Lobby> l) {
-  G_SetGameMetadata_GC_Ep3_6xB4x52 cmd;
+void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
+  size_t total_spectators = 0;
   for (auto watcher_l : l->watcher_lobbies) {
     for (auto c : watcher_l->clients) {
-      cmd.total_spectators += (c.get() != nullptr);
+      total_spectators += (c.get() != nullptr);
     }
   }
 
-  // TODO: Make s available here so we can apply masking if needed (perhaps by
-  // adding a weak_ptr in Lobby... it'd be dumb to require s to be passed in to
-  // this function just to check a behavior flag)
+  auto s = l->require_server_state();
 
-  // Note: We can't use send_command_t(l, ...) here because that would send the
-  // same command to l and to all watcher lobbies. The commands should have
-  // different values depending on who's in each watcher lobby, so we have to
-  // manually send to each client here.
-  for (auto c : l->clients) {
-    if (c) {
-      send_command_t(c, 0xC9, 0x00, cmd);
+  {
+    G_SetGameMetadata_GC_Ep3_6xB4x52 cmd;
+    cmd.total_spectators = total_spectators;
+    if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+      uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+      set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
     }
-  }
-  for (auto watcher_l : l->watcher_lobbies) {
-    cmd.local_spectators = 0;
-    for (auto c : watcher_l->clients) {
-      cmd.local_spectators += (c.get() != nullptr);
-    }
-    for (auto c : watcher_l->clients) {
+    // Note: We can't use send_command_t(l, ...) here because that would send
+    // the same command to l and to all watcher lobbies. The commands should
+    // have different values depending on who's in each watcher lobby, so we
+    // have to manually send to each client here.
+    for (auto c : l->clients) {
       if (c) {
         send_command_t(c, 0xC9, 0x00, cmd);
       }
+    }
+  }
+  if (!l->watcher_lobbies.empty()) {
+    string text;
+    auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : 0;
+    if (l->tournament_match && tourn) {
+      if (tourn->get_final_match() == l->tournament_match) {
+        text = string_printf("Viewing final match of tournament %s", tourn->get_name().c_str());
+      } else {
+        text = string_printf(
+            "Viewing match in round %zu of tournament %s",
+            l->tournament_match->round_num, tourn->get_name().c_str());
+      }
+    } else {
+      text = "Viewing battle in game " + encode_sjis(l->name);
+    }
+    add_color_inplace(text);
+    for (auto watcher_l : l->watcher_lobbies) {
+      G_SetGameMetadata_GC_Ep3_6xB4x52 cmd;
+      cmd.local_spectators = 0;
+      for (auto c : watcher_l->clients) {
+        cmd.local_spectators += (c.get() != nullptr);
+      }
+      cmd.total_spectators = total_spectators;
+      cmd.text_size = text.size();
+      cmd.text = text;
+      if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+        uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+        set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
+      }
+      send_command_t(watcher_l, 0xC9, 0x00, cmd);
     }
   }
 }

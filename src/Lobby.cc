@@ -153,10 +153,10 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     if (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
       auto watched_l = this->watched_lobby.lock();
       if (watched_l) {
-        send_ep3_update_spectator_count(watched_l);
+        send_ep3_update_game_metadata(watched_l);
       }
     } else {
-      send_ep3_update_spectator_count(this->shared_from_this());
+      send_ep3_update_game_metadata(this->shared_from_this());
     }
   }
 }
@@ -194,10 +194,10 @@ void Lobby::remove_client(shared_ptr<Client> c) {
     if (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
       auto watched_l = this->watched_lobby.lock();
       if (watched_l) {
-        send_ep3_update_spectator_count(watched_l);
+        send_ep3_update_game_metadata(watched_l);
       }
     } else {
-      send_ep3_update_spectator_count(this->shared_from_this());
+      send_ep3_update_game_metadata(this->shared_from_this());
     }
   }
 }

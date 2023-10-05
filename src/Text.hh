@@ -614,6 +614,12 @@ size_t add_color_inplace(T* a, size_t max_chars) {
 }
 
 template <typename T>
+void add_color_inplace(std::basic_string<T>& s) {
+  size_t new_size = add_color_inplace(s.data(), s.size());
+  s.resize(new_size);
+}
+
+template <typename T>
 void add_color(StringWriter& w, const T* src, size_t max_input_chars) {
   for (size_t x = 0; (x < max_input_chars) && *src; x++) {
     if (*src == '$') {

@@ -3568,12 +3568,32 @@ static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
       watched_lobby->ep3_server->send_commands_for_joining_spectator(
           c->channel, c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
     }
-    send_ep3_update_spectator_count(watched_lobby);
+    send_ep3_update_game_metadata(watched_lobby);
   }
 
   // If there are more players to bring in, try to do so
   c->disconnect_hooks.erase(ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME);
   add_next_game_client(l);
+}
+
+static void on_99_GC(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
+  check_size_v(data.size(), 0);
+
+  // This is an odd place to send 6xB4x52, but there's a reason for it. If the
+  // client receives 6xB4x52 while it's loading the battlefield, it won't set
+  // the spectator count or top-bar text. But the client doesn't send anything
+  // when it's done loading the battlefield, so we have to have some other way
+  // of knowing when it's ready. We do this by sending a B1 (server time)
+  // command immediately after the E8 (join spectator team) command, which
+  // allows us to delay sending the 6xB4x52 until the server responds with a 99
+  // command after loading is done.
+  auto l = c->lobby.lock();
+  if (l && l->is_game() && (l->episode == Episode::EP3) && (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM)) {
+    auto watched_l = l->watched_lobby.lock();
+    if (watched_l) {
+      send_ep3_update_game_metadata(watched_l);
+    }
+  }
 }
 
 static void on_D0_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
@@ -4129,7 +4149,7 @@ static on_command_t handlers[0x100][6] = {
   /* 96 */ {nullptr, on_96,          on_96,       on_96,          on_96,          nullptr},
   /* 97 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 98 */ {nullptr, on_61_98,       on_61_98,    on_61_98,       on_61_98,       on_61_98},
-  /* 99 */ {nullptr, on_ignored,     on_ignored,  on_ignored,     on_ignored,     on_ignored},
+  /* 99 */ {nullptr, on_ignored,     on_ignored,  on_99_GC,       on_ignored,     on_ignored},
   /* 9A */ {nullptr, on_9A,          on_9A,       on_9A,          nullptr,        nullptr},
   /* 9B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 9C */ {nullptr, on_9C,          on_9C,       on_9C,          on_9C,          nullptr},
