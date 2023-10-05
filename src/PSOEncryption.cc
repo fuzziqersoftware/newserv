@@ -23,31 +23,8 @@ PSOLFGEncryption::PSOLFGEncryption(
     : stream(stream_length, 0),
       offset(0),
       end_offset(end_offset),
-      seed(seed) {}
-
-PSOLFGEncryption::PSOLFGEncryption(const std::string& serialized) {
-  StringReader r(serialized);
-  this->offset = r.get_u32l();
-  this->end_offset = r.get_u32l();
-  this->seed = r.get_u32l();
-  size_t num_entries = r.get_u32l();
-  this->stream.reserve(num_entries);
-  while (this->stream.size() < num_entries) {
-    this->stream.emplace_back(r.get_u32l());
-  }
-}
-
-std::string PSOLFGEncryption::serialize() const {
-  StringWriter w;
-  w.put_u32l(this->offset);
-  w.put_u32l(this->end_offset);
-  w.put_u32l(this->seed);
-  w.put_u32l(this->stream.size());
-  for (uint32_t x : this->stream) {
-    w.put_u32l(x);
-  }
-  return std::move(w.str());
-}
+      initial_seed(seed),
+      cycles(0) {}
 
 uint32_t PSOLFGEncryption::next(bool advance) {
   if (this->offset == this->end_offset) {
@@ -143,7 +120,7 @@ PSOV2Encryption::PSOV2Encryption(uint32_t seed)
     : PSOLFGEncryption(seed, this->STREAM_LENGTH + 1, this->STREAM_LENGTH) {
   uint32_t esi, ebx, edi, eax, edx, var1;
   esi = 1;
-  ebx = this->seed;
+  ebx = this->initial_seed;
   edi = 0x15;
   this->stream[56] = ebx;
   this->stream[55] = ebx;
@@ -160,6 +137,7 @@ PSOV2Encryption::PSOV2Encryption(uint32_t seed)
   for (size_t x = 0; x < 5; x++) {
     this->update_stream();
   }
+  this->cycles = 0;
 }
 
 void PSOV2Encryption::update_stream() {
@@ -185,6 +163,7 @@ void PSOV2Encryption::update_stream() {
     edx--;
   }
   this->offset = 1;
+  this->cycles++;
 }
 
 PSOEncryption::Type PSOV2Encryption::type() const {
@@ -222,6 +201,7 @@ PSOV3Encryption::PSOV3Encryption(uint32_t seed)
   for (size_t x = 0; x < 4; x++) {
     this->update_stream();
   }
+  this->cycles = 0;
 }
 
 void PSOV3Encryption::update_stream() {
@@ -239,6 +219,7 @@ void PSOV3Encryption::update_stream() {
   }
 
   this->offset = 0;
+  this->cycles++;
 }
 
 PSOEncryption::Type PSOV3Encryption::type() const {

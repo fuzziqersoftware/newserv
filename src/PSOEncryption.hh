@@ -39,8 +39,6 @@ protected:
 
 class PSOLFGEncryption : public PSOEncryption {
 public:
-  explicit PSOLFGEncryption(const std::string& serialized);
-
   virtual void encrypt(void* data, size_t size, bool advance = true);
   void encrypt_big_endian(void* data, size_t size, bool advance = true);
   void encrypt_minus(void* data, size_t size, bool advance = true);
@@ -54,7 +52,12 @@ public:
 
   uint32_t next(bool advance = true);
 
-  virtual std::string serialize() const;
+  inline uint32_t seed() const {
+    return this->initial_seed;
+  }
+  uint32_t absolute_offset() const {
+    return (this->cycles * this->end_offset) + this->offset;
+  }
 
 protected:
   PSOLFGEncryption(uint32_t seed, size_t stream_length, size_t end_offset);
@@ -64,7 +67,8 @@ protected:
   std::vector<uint32_t> stream;
   size_t offset;
   size_t end_offset;
-  uint32_t seed;
+  uint32_t initial_seed;
+  size_t cycles;
 };
 
 class PSOV2Encryption : public PSOLFGEncryption {

@@ -239,7 +239,11 @@ void Server::send_6xB4x46() const {
   G_ServerVersionStrings_GC_Ep3_6xB4x46 cmd46;
   cmd46.version_signature = VERSION_SIGNATURE;
   cmd46.date_str1 = format_time(this->card_index->definitions_mtime() * 1000000);
-  cmd46.date_str2 = string_printf("Lobby/%08" PRIX32, l->lobby_id);
+  if (this->last_chosen_map) {
+    cmd46.date_str2 = string_printf("Lobby:%08" PRIX32 " Random:%08" PRIX32 "+%08" PRIX32 " Map:%08" PRIX32, l->lobby_id, this->random_crypt->seed(), this->random_crypt->absolute_offset(), this->last_chosen_map->map.map_number.load());
+  } else {
+    cmd46.date_str2 = string_printf("Lobby:%08" PRIX32 " Random:%08" PRIX32 "+%08" PRIX32, l->lobby_id, this->random_crypt->seed(), this->random_crypt->absolute_offset());
+  }
   this->send(cmd46);
 }
 
