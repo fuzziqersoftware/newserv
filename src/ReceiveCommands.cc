@@ -2436,13 +2436,18 @@ static void on_D7_GC(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
   string filename(data);
   strip_trailing_zeroes(filename);
   if (filename.find('/') != string::npos) {
-    throw runtime_error("GBA file name includes directory separator");
+    send_command(c, 0xD7, 0x00);
+  } else {
+    try {
+      static FileContentsCache gba_file_cache(300 * 1000 * 1000);
+      auto f = gba_file_cache.get_or_load("system/gba/" + filename).file;
+      send_open_quest_file(c, "", filename, f->data, QuestFileType::GBA_DEMO);
+    } catch (const out_of_range&) {
+      send_command(c, 0xD7, 0x00);
+    } catch (const cannot_open_file&) {
+      send_command(c, 0xD7, 0x00);
+    }
   }
-
-  static FileContentsCache gba_file_cache(300 * 1000 * 1000);
-  auto f = gba_file_cache.get_or_load("system/gba/" + filename).file;
-
-  send_open_quest_file(c, "", filename, f->data, QuestFileType::GBA_DEMO);
 }
 
 static void send_file_chunk(

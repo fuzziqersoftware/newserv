@@ -2613,8 +2613,11 @@ struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
 // interaction mode when closed.
 
 // D7 (C->S): Request GBA game file (V3)
-// header.flag is used, but it's not clear for what.
-// The server should send the requested file using A6/A7 commands.
+// This command is sent when the client executes the file_dl_req (F8C0) quest
+// opcode. header.flag contains the value of the opcode's first argument; the
+// second argument is a pointer to the filename.
+// The server should send the requested file using A6/A7 commands; if the file
+// does not exist, the server should reply with a D7 command.
 // This command exists on XB as well, but it presumably is never sent by the
 // client.
 
@@ -2622,15 +2625,12 @@ struct C_GBAGameRequest_V3_D7 {
   ptext<char, 0x10> filename;
 } __packed__;
 
-// D7 (S->C): Unknown (V3/BB)
+// D7 (S->C): GBA file not found (V3/BB)
 // No arguments
 // This command is not valid on PSO GC Episodes 1&2 Trial Edition.
-// On PSO V3, this command does... something. The command isn't *completely*
-// ignored: it sets a global state variable, but it's not clear what that
-// variable does. The variable is set to 0 when the client requests a GBA game
-// (by sending a D7 command), and set to 1 when the client receives a D7
-// command. The S->C D7 command may be used for declining a download or
-// signaling an error of some sort.
+// This command tells the client that the file it requested via a D7 command
+// does not exist. This causes the F8C1 (get_dl_status) quest opcode to return
+// 0 (file not found), rather than 1 (download in progress) or 2 (complete).
 // PSO BB accepts but completely ignores this command.
 
 // D8 (C->S): Info board request (V3/BB)
