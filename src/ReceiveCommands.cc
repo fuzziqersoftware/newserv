@@ -3564,11 +3564,11 @@ static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
   if (l->battle_player && (l->flags & Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY)) {
     l->battle_player->start();
   } else if (watched_lobby && watched_lobby->ep3_server) {
-    send_ep3_update_spectator_count(watched_lobby);
     if (!watched_lobby->ep3_server->battle_finished) {
       watched_lobby->ep3_server->send_commands_for_joining_spectator(
           c->channel, c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
     }
+    send_ep3_update_spectator_count(watched_lobby);
   }
 
   // If there are more players to bring in, try to do so
