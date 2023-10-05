@@ -1609,10 +1609,10 @@ const unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers({
     {0x1D, &Server::handle_CAx1D_start_battle},
     {0x21, &Server::handle_CAx21_end_battle},
     {0x28, &Server::handle_CAx28_end_defense_list},
-    {0x2B, &Server::handle_CAx2B_ignored},
+    {0x2B, &Server::handle_CAx2B_legacy_set_card},
     {0x34, &Server::handle_CAx34_subtract_ally_atk_points},
     {0x37, &Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase},
-    {0x3A, &Server::handle_CAx3A_ignored},
+    {0x3A, &Server::handle_CAx3A_time_limit_expired},
     {0x40, &Server::handle_CAx40_map_list_request},
     {0x41, &Server::handle_CAx41_map_request},
     {0x48, &Server::handle_CAx48_end_turn},
@@ -2172,7 +2172,11 @@ void Server::handle_CAx28_end_defense_list(const string& data) {
   this->send(out_cmd_fin);
 }
 
-void Server::handle_CAx2B_ignored(const string&) {}
+void Server::handle_CAx2B_legacy_set_card(const string& data) {
+  const auto& in_cmd = check_size_t<G_ExecLegacyCard_GC_Ep3_6xB3x2B_CAx2B>(data);
+  this->send_debug_command_received_message(in_cmd.header.subsubcommand, "EXEC LEGACY");
+  // Sega's original implementation does nothing here, so we do nothing as well.
+}
 
 void Server::handle_CAx34_subtract_ally_atk_points(const string& data) {
   const auto& in_cmd = check_size_t<G_PhotonBlastRequest_GC_Ep3_6xB3x34_CAx34>(data);
@@ -2281,7 +2285,12 @@ void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(const 
   }
 }
 
-void Server::handle_CAx3A_ignored(const string&) {}
+void Server::handle_CAx3A_time_limit_expired(const string& data) {
+  const auto& in_cmd = check_size_t<G_OverallTimeLimitExpired_GC_Ep3_6xB3x3A_CAx3A>(data);
+  this->send_debug_command_received_message(in_cmd.header.subsubcommand, "TIME EXPIRED");
+  // We don't need to do anything here because the overall time limit is tracked
+  // server-side instead.
+}
 
 void Server::handle_CAx40_map_list_request(const string& data) {
   const auto& in_cmd = check_size_t<G_MapListRequest_GC_Ep3_6xB3x40_CAx40>(data);

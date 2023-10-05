@@ -194,10 +194,10 @@ public:
   void handle_CAx1D_start_battle(const std::string& data);
   void handle_CAx21_end_battle(const std::string& data);
   void handle_CAx28_end_defense_list(const std::string& data);
-  void handle_CAx2B_ignored(const std::string&);
+  void handle_CAx2B_legacy_set_card(const std::string&);
   void handle_CAx34_subtract_ally_atk_points(const std::string& data);
   void handle_CAx37_client_ready_to_advance_from_starter_roll_phase(const std::string& data);
-  void handle_CAx3A_ignored(const std::string& data);
+  void handle_CAx3A_time_limit_expired(const std::string& data);
   void handle_CAx40_map_list_request(const std::string& data);
   void handle_CAx41_map_request(const std::string& data);
   void handle_CAx48_end_turn(const std::string& data);
