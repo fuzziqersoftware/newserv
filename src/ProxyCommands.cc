@@ -981,8 +981,8 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       if (data[4] == 0x1A) {
         return HandlerResult::Type::SUPPRESS;
       } else if (data[4] == 0x36) {
-        const auto& cmd = check_size_t<G_Unknown_GC_Ep3_6xB5x36>(data);
-        if (ses->is_in_game && (cmd.unknown_a1 >= 4)) {
+        const auto& cmd = check_size_t<G_RecreatePlayer_GC_Ep3_6xB5x36>(data);
+        if (ses->is_in_game && (cmd.client_id >= 4)) {
           return HandlerResult::Type::SUPPRESS;
         }
       }

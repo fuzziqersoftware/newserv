@@ -370,8 +370,8 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
     if (header.subsubcommand == 0x1A) {
       return;
     } else if (header.subsubcommand == 0x36) {
-      const auto& cmd = check_size_t<G_Unknown_GC_Ep3_6xB5x36>(data, size);
-      if (l->is_game() && (cmd.unknown_a1 >= 4)) {
+      const auto& cmd = check_size_t<G_RecreatePlayer_GC_Ep3_6xB5x36>(data, size);
+      if (l->is_game() && (cmd.client_id >= 4)) {
         return;
       }
     }

@@ -5947,9 +5947,6 @@ struct G_StartBattle_GC_Ep3_6xB3x1D_CAx1D {
 
 struct G_ActionResult_GC_Ep3_6xB4x1E {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_ActionResult_GC_Ep3_6xB4x1E) / 4, 0, 0x1E, 0, 0, 0};
-  // TODO: Is this supposed to be big-endian or little-endian? The client makes
-  // it look like it should be little-endian, but logs from the Sega servers
-  // make it look like it should be big-endian.
   be_uint32_t sequence_num = 0;
   uint8_t error_code = 0;
   uint8_t response_phase = 0;
@@ -6051,11 +6048,12 @@ struct G_Unknown_GC_Ep3_6xB4x2A {
   parray<uint8_t, 2> unused;
 } __packed__;
 
-// 6xB3x2B / CAx2B: Unknown
-// It seems Sega's servers completely ignored this command.
+// 6xB3x2B / CAx2B: Legacy set card
+// It seems Sega's servers completely ignored this command. The command name is
+// based on a debug message found nearby.
 
-struct G_Unknown_GC_Ep3_6xB3x2B_CAx2B {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_Unknown_GC_Ep3_6xB3x2B_CAx2B) / 4, 0, 0x2B, 0, 0, 0, 0, 0};
+struct G_ExecLegacyCard_GC_Ep3_6xB3x2B_CAx2B {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_ExecLegacyCard_GC_Ep3_6xB3x2B_CAx2B) / 4, 0, 0x2B, 0, 0, 0, 0, 0};
   le_uint16_t unused2 = 0;
   parray<uint8_t, 2> unused3;
 } __packed__;
@@ -6076,9 +6074,11 @@ struct G_Unknown_GC_Ep3_6xB4x2C {
 
 struct G_Unknown_GC_Ep3_6xB5x2D {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x2D) / 4, 0, 0x2D, 0, 0, 0};
-  // This array is indexed into by a global variable. I don't have any examples
-  // of this command, so I don't know how long the array should be - 4 is a
-  // probably-incorrect guess.
+  // This array is indexed by client ID. When a client receives this command, it
+  // sends a 6x70 command to itself. It's not clear what the function of this is
+  // intended to be.
+  // TODO: Figure out if tournament fast loading can be implemented using this
+  // to fix the stuck-in-wall glitch.
   parray<uint8_t, 4> unknown_a1;
 } __packed__;
 
@@ -6090,11 +6090,10 @@ struct G_BattleEndNotification_GC_Ep3_6xB5x2E {
   parray<uint8_t, 3> unused;
 } __packed__;
 
-// 6xB5x2F: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB5x2F: Set deck in battle setup menu
 
-struct G_Unknown_GC_Ep3_6xB5x2F {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x2F) / 4, 0, 0x2F, 0, 0, 0};
+struct G_SetDeckInBattleSetupMenu_GC_Ep3_6xB5x2F {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_SetDeckInBattleSetupMenu_GC_Ep3_6xB5x2F) / 4, 0, 0x2F, 0, 0, 0};
   parray<uint8_t, 4> unknown_a1;
 
   parray<uint8_t, 0x18> unknown_a2;
@@ -6109,18 +6108,18 @@ struct G_Unknown_GC_Ep3_6xB5x2F {
 } __packed__;
 
 // 6xB5x30: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// The client never sends this command, and when the client received this
+// command, it does nothing.
 
 struct G_Unknown_GC_Ep3_6xB5x30 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x30) / 4, 0, 0x30, 0, 0, 0};
   // No arguments
 } __packed__;
 
-// 6xB5x31: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB5x31: Confirm deck selection
 
-struct G_Unknown_GC_Ep3_6xB5x31 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x31) / 4, 0, 0x31, 0, 0, 0};
+struct G_ConfirmDeckSelection_GC_Ep3_6xB5x31 {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_ConfirmDeckSelection_GC_Ep3_6xB5x31) / 4, 0, 0x31, 0, 0, 0};
   // Note: This command uses header_b1 for... something.
   uint8_t unknown_a1 = 0; // Must be 0 or 1
   uint8_t unknown_a2 = 0; // Must be < 4
@@ -6130,15 +6129,18 @@ struct G_Unknown_GC_Ep3_6xB5x31 {
   parray<uint8_t, 3> unused;
 } __packed__;
 
-// 6xB5x32: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB5x32: Move shared menu cursor
 
-struct G_Unknown_GC_Ep3_6xB5x32 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x32) / 4, 0, 0x32, 0, 0, 0};
-  // Note: This command uses header_b1 for... something.
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
-  parray<uint8_t, 8> unknown_a3;
+struct G_MoveSharedMenuCursor_GC_Ep3_6xB5x32 {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_MoveSharedMenuCursor_GC_Ep3_6xB5x32) / 4, 0, 0x32, 0, 0, 0};
+  le_uint16_t selected_item_index = 0xFFFF;
+  le_uint16_t chosen_item_index = 0xFFFF;
+  uint8_t unknown_a1 = 0;
+  uint8_t unknown_a2 = 0;
+  uint8_t unknown_a3 = 0;
+  uint8_t unknown_a4 = 0;
+  uint8_t unknown_a5 = 0;
+  parray<uint8_t, 3> unused;
 } __packed__;
 
 // 6xB4x33: Subtract ally ATK points (e.g. for photon blast)
@@ -6168,17 +6170,16 @@ struct G_PhotonBlastStatus_GC_Ep3_6xB4x35 {
   le_uint16_t card_ref = 0xFFFF;
 } __packed__;
 
-// 6xB5x36: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
-// Setting unknown_a1 to a value 4 or greater while in a game causes the player
+// 6xB5x36: Recreate player
+// Setting client_id to a value 4 or greater while in a game causes the player
 // to be temporarily replaced with a default HUmar and placed inside the central
 // column in the Morgue, rendering them unable to move. The only ways out of
 // this predicament appear to be either to disconnect (e.g. select Quit Game
 // from the pause menu) or receive an ED (force leave game) command.
 
-struct G_Unknown_GC_Ep3_6xB5x36 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x36) / 4, 0, 0x36, 0, 0, 0};
-  uint8_t unknown_a1 = 0; // Must be < 12 (maybe lobby or spectator team client ID)
+struct G_RecreatePlayer_GC_Ep3_6xB5x36 {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_RecreatePlayer_GC_Ep3_6xB5x36) / 4, 0, 0x36, 0, 0, 0};
+  uint8_t client_id = 0;
   parray<uint8_t, 3> unused;
 } __packed__;
 
@@ -6210,11 +6211,12 @@ struct G_UpdateAllPlayerStatistics_GC_Ep3_6xB4x39 {
   parray<Episode3::PlayerBattleStats, 4> stats;
 } __packed__;
 
-// 6xB3x3A / CAx3A: Unknown
-// It seems Sega's servers completely ignored this command.
+// 6xB3x3A / CAx3A: Overall time limit expired
+// It seems Sega's servers completely ignored this command and used server-side
+// timing instead. newserv does the same.
 
-struct G_Unknown_GC_Ep3_6xB3x3A_CAx3A {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_Unknown_GC_Ep3_6xB3x3A_CAx3A) / 4, 0, 0x3A, 0, 0, 0, 0, 0};
+struct G_OverallTimeLimitExpired_GC_Ep3_6xB3x3A_CAx3A {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_OverallTimeLimitExpired_GC_Ep3_6xB3x3A_CAx3A) / 4, 0, 0x3A, 0, 0, 0, 0, 0};
 } __packed__;
 
 // 6xB4x3B: Load current environment
@@ -6329,7 +6331,10 @@ struct G_InitiateCardAuction_GC_Ep3_6xB5x42 {
 } __packed__;
 
 // 6xB5x43: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// This command stores the card IDs and counts in a global array on the client,
+// but this array is never read from. It's likely this is a remnant of an
+// unimplemented or removed feature, or an earlier implementation of the card
+// trade window.
 
 struct G_Unknown_GC_Ep3_6xB5x43 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x43) / 4, 0, 0x43, 0, 0, 0};
@@ -6337,7 +6342,7 @@ struct G_Unknown_GC_Ep3_6xB5x43 {
     // Both fields here are masked. To get the actual values used by the game,
     // XOR the values here with 0x39AB.
     le_uint16_t masked_card_id = 0xFFFF; // Must be < 0x2F1 (when unmasked)
-    le_uint16_t masked_unknown_a1 = 0; // Must be in [1, 99] (when unmasked)
+    le_uint16_t masked_count = 0; // Must be in [1, 99] (when unmasked)
   } __packed__;
   parray<Entry, 0x14> entries;
 } __packed__;
@@ -6395,12 +6400,11 @@ struct G_ServerVersionStrings_GC_Ep3_6xB4x46 {
   le_uint32_t unused = 0;
 } __packed__;
 
-// 6xB5x47: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB5x47: Set spectator's CARD level
+// header.sender_client_id is the spectator's client ID.
 
-struct G_Unknown_GC_Ep3_6xB5x47 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_GC_Ep3_6xB5x47) / 4, 0, 0x47, 0, 0, 0};
-  // Note: This command uses header_b1, which must be < 12.
+struct G_SetSpectatorCARDLevel_GC_Ep3_6xB5x47 {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_SetSpectatorCARDLevel_GC_Ep3_6xB5x47) / 4, 0, 0x47, 0, 0, 0};
   le_uint32_t clv = 0;
 } __packed__;
 
