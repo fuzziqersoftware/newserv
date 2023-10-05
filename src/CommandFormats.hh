@@ -634,37 +634,42 @@ struct C_MenuItemInfoRequest_09 {
 // command does not softlock, but instead does nothing because the 0E
 // second-phase handler is missing.
 
+template <typename CharT>
+struct SC_MeetUserExtension {
+  struct LobbyReference {
+    le_uint32_t menu_id = 0;
+    le_uint32_t item_id = 0;
+  } __packed__;
+  parray<LobbyReference, 8> lobby_refs;
+  le_uint32_t unknown_a2 = 0;
+  ptext<CharT, 0x20> player_name;
+} __packed__;
+
 struct S_LegacyJoinGame_PC_0E {
-  struct UnknownA1 {
+  struct LobbyData {
     le_uint32_t player_tag;
     le_uint32_t guild_card_number;
-    parray<uint8_t, 0x10> unknown_a1;
+    parray<uint8_t, 0x10> name;
   } __packed__;
-  parray<UnknownA1, 4> unknown_a1;
+  parray<LobbyData, 4> lobby_data;
   parray<uint8_t, 0x20> unknown_a3;
 } __packed__;
 
 struct S_LegacyJoinGame_GC_0E {
-  PlayerLobbyDataDCGC lobby_data[4];
-  struct UnknownA0 {
-    parray<uint8_t, 2> unknown_a1;
-    le_uint16_t unknown_a2 = 0;
-    le_uint32_t unknown_a3 = 0;
-  } __packed__;
-  parray<UnknownA0, 8> unknown_a0;
-  le_uint32_t unknown_a1 = 0;
-  parray<uint8_t, 0x20> unknown_a2;
+  parray<PlayerLobbyDataDCGC, 4> lobby_data;
+  SC_MeetUserExtension<char> meet_user_extension;
   parray<uint8_t, 4> unknown_a3;
 } __packed__;
 
 struct S_LegacyJoinGame_XB_0E {
-  struct UnknownA1 {
+  struct LobbyData {
     le_uint32_t player_tag;
     le_uint32_t guild_card_number;
-    parray<uint8_t, 0x18> unknown_a1;
+    parray<uint8_t, 0x18> name;
   } __packed__;
-  parray<UnknownA1, 4> unknown_a1;
-  parray<uint8_t, 0x68> unknown_a2;
+  parray<LobbyData, 4> lobby_data;
+  SC_MeetUserExtension<char> meet_user_extension;
+  parray<uint8_t, 4> unknown_a3;
 } __packed__;
 
 // 0F: Invalid command
@@ -944,17 +949,6 @@ struct C_GuildCardSearch_40 {
 
 // 41 (S->C): Guild card search result
 // Internal name: RcvUserAns
-
-template <typename CharT>
-struct SC_MeetUserExtension {
-  struct LobbyReference {
-    le_uint32_t menu_id = 0;
-    le_uint32_t item_id = 0;
-  } __packed__;
-  parray<LobbyReference, 8> lobby_refs;
-  le_uint32_t unknown_a2 = 0;
-  ptext<CharT, 0x20> player_name;
-} __packed__;
 
 template <typename HeaderT, typename CharT>
 struct S_GuildCardSearchResult {
@@ -2500,9 +2494,6 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> {
 // No arguments
 // Server does not respond
 
-// C9 (C->S): Unknown (XB)
-// No arguments except header.flag
-
 // C9: Broadcast command (Episode 3)
 // Same as 60, but should be forwarded only to Episode 3 clients.
 // newserv uses this command for all server-generated events (in response to CA
@@ -2769,7 +2760,7 @@ struct C_Unknown_BB_06DF {
 
 struct C_Unknown_BB_07DF {
   le_uint32_t unused1 = 0xFFFFFFFF;
-  le_uint32_t unused2 = 0; // ALways 0
+  le_uint32_t unused2 = 0; // Always 0
   parray<le_uint32_t, 5> unknown_a1;
 } __packed__;
 
@@ -3066,7 +3057,7 @@ struct C_CreateSpectatorTeam_GC_Ep3_E7 {
   le_uint32_t unused = 0;
 } __packed__;
 
-// E7 (S->C): Unknown (Episode 3)
+// E7 (S->C): Tournament entry list for spectating (Episode 3)
 // Same format as E2 command.
 
 // E7: Save or load full character data (BB)
@@ -3646,10 +3637,12 @@ struct G_ExtendedHeader {
 // 6x01: Invalid subcommand
 
 // 6x02: Unknown
-// This subcommand is completely ignored (at least, by PSO GC).
+// This subcommand is completely ignored on V3.
+// TODO: It is not ignored on V1 and V2. Figure out what it does and document it.
 
-// 6x03: Unknown (same handler as 02)
-// This subcommand is completely ignored (at least, by PSO GC).
+// 6x03: Unknown
+// This subcommand is completely ignored on V3.
+// TODO: It is not ignored on V1 and V2. Figure out what it does and document it.
 
 // 6x04: Unknown
 
@@ -3713,18 +3706,16 @@ struct G_SendGuildCard_BB_6x06 {
 // 6x07: Symbol chat
 
 struct SymbolChat {
-  // TODO: How does this format differ across PSO versions? The GC version
-  // treats some fields as unexpectedly large values (for example, face_spec
-  // through unused2 are byteswapped as an le_uint32_t), so we should verify
-  // that the order of these fields is the same on other versions.
   // Bits: ----------------------DMSSSCCCFF
   //   S = sound, C = face color, F = face shape, D = capture, M = mute sound
   /* 00 */ le_uint32_t spec;
+
   // Corner objects are specified in reading order ([0] is the top-left one).
   // Bits (each entry): ---VHCCCZZZZZZZZ
   //   V = reverse vertical, H = reverse horizontal, C = color, Z = object
   // If Z is all 1 bits (0xFF), no corner object is rendered.
   /* 04 */ parray<le_uint16_t, 4> corner_objects;
+
   struct FacePart {
     uint8_t type; // FF = no part in this slot
     uint8_t x;
