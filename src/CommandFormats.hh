@@ -6594,8 +6594,10 @@ struct G_SetGameMetadata_GC_Ep3_6xB4x52 {
   // 30+ = icon with 12 spectators (red)
   le_uint16_t total_spectators = 0; // Clamped to [0, 999] by the client
   le_uint16_t unused = 0;
-  le_uint16_t size = 0; // Number of used bytes in unknown_a2 (clamped to 0xFF)
-  parray<uint8_t, 0x100> unknown_a2;
+  // If text_size is not zero, the text is shown in the top bar instead of the
+  // usual message ("Viewing Battle", "Time left: XX:XX", and the like).
+  le_uint16_t text_size = 0;
+  ptext<char, 0x100> text;
 } __packed__;
 
 // 6xB4x53: Reject battle start request
