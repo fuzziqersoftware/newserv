@@ -152,6 +152,11 @@ The actions are:\n\
   encrypt-challenge-data [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decrypt-challenge-data [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Encrypt or decrypt data using the challenge mode trivial algorithm.\n\
+  encrypt-pc-save --seed=SEED [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  decrypt-pc-save --seed=SEED [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Encrypt or decrypt a PSO PC character file (PSO______SYS or PSO______SYD)\n\
+    or Guild Card file (PSO______GUD). SEED should be the serial number\n\
+    associated with the save file, as a 32-bit hexadecimal integer.\n\
   encrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
   decrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
     Encrypt or decrypt a character or Guild Card file in GCI format. If\n\
