@@ -1265,6 +1265,10 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 5A10 */ parray<EntryState, 4> entry_states;
   /* 5A18 */
 
+  inline bool is_quest() const {
+    return (this->map_category <= 2);
+  }
+
   std::string str(const CardIndex* card_index = nullptr) const;
 } __attribute__((packed));
 
@@ -1362,10 +1366,9 @@ public:
   class MapEntry {
   public:
     MapDefinition map;
-    bool is_quest;
 
-    MapEntry(const MapDefinition& map, bool is_quest);
-    MapEntry(const std::string& compressed_data, bool is_quest);
+    explicit MapEntry(const MapDefinition& map);
+    explicit MapEntry(const std::string& compressed_data);
 
     const std::string& compressed(bool is_trial) const;
 

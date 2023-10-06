@@ -2201,49 +2201,42 @@ string CardIndex::normalize_card_name(const string& name) {
 }
 
 MapIndex::MapIndex(const string& directory) {
-  auto add_maps_from_dir = [&](const string& dir, bool is_quest) -> void {
-    for (const auto& filename : list_directory(dir)) {
-      try {
-        shared_ptr<MapEntry> entry;
+  for (const auto& filename : list_directory(directory)) {
+    try {
+      shared_ptr<MapEntry> entry;
 
-        if (ends_with(filename, ".mnmd") || ends_with(filename, ".bind")) {
-          entry.reset(new MapEntry(load_object_file<MapDefinition>(dir + "/" + filename), is_quest));
-        } else if (ends_with(filename, ".mnm") || ends_with(filename, ".bin")) {
-          entry.reset(new MapEntry(load_file(dir + "/" + filename), is_quest));
-        } else if (ends_with(filename, ".gci")) {
-          entry.reset(new MapEntry(Quest::decode_gci_file(dir + "/" + filename), is_quest));
-        } else if (ends_with(filename, ".dlq")) {
-          entry.reset(new MapEntry(Quest::decode_dlq_file(dir + "/" + filename), is_quest));
-        }
-
-        if (entry.get()) {
-          if (!this->maps.emplace(entry->map.map_number, entry).second) {
-            throw runtime_error("duplicate map number");
-          }
-          this->maps_by_name.emplace(entry->map.name, entry);
-          string name = entry->map.name;
-          static_game_data_log.info("Indexed Episode 3 %s %s (%08" PRIX32 "; %s)",
-              is_quest ? "online quest" : "free battle map",
-              filename.c_str(), entry->map.map_number.load(), name.c_str());
-        }
-
-      } catch (const exception& e) {
-        static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
-            filename.c_str(), e.what());
+      if (ends_with(filename, ".mnmd") || ends_with(filename, ".bind")) {
+        entry.reset(new MapEntry(load_object_file<MapDefinition>(directory + "/" + filename)));
+      } else if (ends_with(filename, ".mnm") || ends_with(filename, ".bin")) {
+        entry.reset(new MapEntry(load_file(directory + "/" + filename)));
+      } else if (ends_with(filename, ".gci")) {
+        entry.reset(new MapEntry(Quest::decode_gci_file(directory + "/" + filename)));
+      } else if (ends_with(filename, ".dlq")) {
+        entry.reset(new MapEntry(Quest::decode_dlq_file(directory + "/" + filename)));
       }
+
+      if (entry.get()) {
+        if (!this->maps.emplace(entry->map.map_number, entry).second) {
+          throw runtime_error("duplicate map number");
+        }
+        this->maps_by_name.emplace(entry->map.name, entry);
+        string name = entry->map.name;
+        static_game_data_log.info("Indexed Episode 3 %s %s (%08" PRIX32 "; %s)",
+            entry->map.is_quest() ? "online quest" : "free battle map",
+            filename.c_str(), entry->map.map_number.load(), name.c_str());
+      }
+
+    } catch (const exception& e) {
+      static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
+          filename.c_str(), e.what());
     }
-  };
-  add_maps_from_dir(directory + "/maps-free", false);
-  add_maps_from_dir(directory + "/maps-quest", true);
+  }
 }
 
-MapIndex::MapEntry::MapEntry(const MapDefinition& map, bool is_quest)
-    : map(map),
-      is_quest(is_quest) {}
+MapIndex::MapEntry::MapEntry(const MapDefinition& map) : map(map) {}
 
-MapIndex::MapEntry::MapEntry(const string& compressed, bool is_quest)
-    : is_quest(is_quest),
-      compressed_data(compressed) {
+MapIndex::MapEntry::MapEntry(const string& compressed)
+    : compressed_data(compressed) {
   string decompressed = prs_decompress(this->compressed_data);
   if (decompressed.size() != sizeof(MapDefinition)) {
     throw runtime_error(string_printf(
@@ -2316,8 +2309,7 @@ const string& MapIndex::get_compressed_list(size_t num_players) const {
       e.description_offset = strings_w.size();
       strings_w.write(map.description.data(), map.description.len());
       strings_w.put_u8(0);
-
-      e.map_category = map_it.second->is_quest ? 0x00 : 0xFF;
+      e.map_category = map_it.second->map.map_category;
 
       entries_w.put(e);
       num_maps++;

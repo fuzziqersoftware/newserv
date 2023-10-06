@@ -886,7 +886,7 @@ void ServerState::load_item_tables() {
 
 void ServerState::load_ep3_data() {
   config_log.info("Collecting Episode 3 maps");
-  this->ep3_map_index.reset(new Episode3::MapIndex("system/ep3"));
+  this->ep3_map_index.reset(new Episode3::MapIndex("system/ep3/maps"));
   config_log.info("Loading Episode 3 card definitions");
   this->ep3_card_index.reset(new Episode3::CardIndex("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr", "system/ep3/card-text.mnrd"));
   config_log.info("Loading Episode 3 trial card definitions");
