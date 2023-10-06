@@ -20,6 +20,7 @@
 - Make reloading happen on separate threads so compression doesn't block active clients
 - Try emu.cfg change instead of patch_flycast_memory (https://github.com/fuzziqersoftware/newserv/issues/132)
 - Try DCv2/PC crossplay
+- Implement decrypt/encrypt actions for VMS files and PC save files
 
 ## Episode 3
 

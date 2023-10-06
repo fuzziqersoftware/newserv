@@ -48,6 +48,7 @@ add_executable(newserv
     src/Client.cc
     src/CommonItemSet.cc
     src/Compression.cc
+    src/DCSerialNumbers.cc
     src/DNSServer.cc
     src/EnemyType.cc
     src/Episode3/AssistServer.cc
@@ -83,7 +84,6 @@ add_executable(newserv
     src/PatchFileIndex.cc
     src/Player.cc
     src/PlayerSubordinates.cc
-    src/Product.cc
     src/ProxyCommands.cc
     src/ProxyServer.cc
     src/PSOEncryption.cc

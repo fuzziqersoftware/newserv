@@ -17,6 +17,7 @@
 #include "BMLArchive.hh"
 #include "CatSession.hh"
 #include "Compression.hh"
+#include "DCSerialNumbers.hh"
 #include "DNSServer.hh"
 #include "GSLArchive.hh"
 #include "GVMEncoder.hh"
@@ -24,7 +25,6 @@
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
 #include "PSOGCObjectGraph.hh"
-#include "Product.hh"
 #include "ProxyServer.hh"
 #include "Quest.hh"
 #include "QuestScript.hh"
@@ -244,6 +244,17 @@ The actions are:\n\
   convert-itemrt-rel-to-json [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Convert a REL rare table to a JSON rare item set. The resulting JSON has\n\
     the same structure as system/blueburst/rare-table.json.\n\
+  generate-dc-serial-number [--domain=DOMAIN] [--subdomain=SUBDOMAIN]\n\
+    Generate a PSO DC serial number. DOMAIN should be 0 for DCv1 or 1 for DCv2;\n\
+    SUBDOMAIN should be 0 for Japanese, 1 for USA, or 2 for Europe.\n\
+  generate-all-dc-serial-numbers\n\
+    Generate all possible PSO DC serial numbers.\n\
+  inspect-dc-serial-number SERIAL-NUMBER\n\
+    Show which domain and subdomain the serial number belongs to. (As with\n\
+    generate-dc-serial-number, described above, this will tell you which PSO\n\
+    version it is valid for.)\n\
+  dc-serial-number-speed-test\n\
+    Run a speed test of the two DC serial number validation functions.\n\
 \n\
 A few options apply to multiple modes described above:\n\
   --parse-data\n\
@@ -300,10 +311,10 @@ enum class Behavior {
   PARSE_OBJECT_GRAPH,
   REPLAY_LOG,
   CAT_CLIENT,
-  GENERATE_PRODUCT,
-  GENERATE_ALL_PRODUCTS,
-  INSPECT_PRODUCT,
-  PRODUCT_SPEED_TEST,
+  GENERATE_DC_SERIAL_NUMBER,
+  GENERATE_ALL_DC_SERIAL_NUMBERS,
+  INSPECT_DC_SERIAL_NUMBER,
+  DC_SERIAL_NUMBER_SPEED_TEST,
 };
 
 static bool behavior_takes_input_filename(Behavior b) {
@@ -346,7 +357,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::PARSE_OBJECT_GRAPH) ||
       (b == Behavior::REPLAY_LOG) ||
       (b == Behavior::CAT_CLIENT) ||
-      (b == Behavior::INSPECT_PRODUCT);
+      (b == Behavior::INSPECT_DC_SERIAL_NUMBER);
 }
 
 static bool behavior_takes_output_filename(Behavior b) {
@@ -604,14 +615,14 @@ int main(int argc, char** argv) {
           behavior = Behavior::EXTRACT_GSL;
         } else if (!strcmp(argv[x], "extract-bml")) {
           behavior = Behavior::EXTRACT_BML;
-        } else if (!strcmp(argv[x], "generate-product")) {
-          behavior = Behavior::GENERATE_PRODUCT;
-        } else if (!strcmp(argv[x], "generate-all-products")) {
-          behavior = Behavior::GENERATE_ALL_PRODUCTS;
-        } else if (!strcmp(argv[x], "inspect-product")) {
-          behavior = Behavior::INSPECT_PRODUCT;
-        } else if (!strcmp(argv[x], "product-speed-test")) {
-          behavior = Behavior::PRODUCT_SPEED_TEST;
+        } else if (!strcmp(argv[x], "generate-dc-serial-number")) {
+          behavior = Behavior::GENERATE_DC_SERIAL_NUMBER;
+        } else if (!strcmp(argv[x], "generate-all-dc-serial-numbers")) {
+          behavior = Behavior::GENERATE_ALL_DC_SERIAL_NUMBERS;
+        } else if (!strcmp(argv[x], "inspect-dc-serial-number")) {
+          behavior = Behavior::INSPECT_DC_SERIAL_NUMBER;
+        } else if (!strcmp(argv[x], "dc-serial-number-speed-test")) {
+          behavior = Behavior::DC_SERIAL_NUMBER_SPEED_TEST;
         } else {
           throw invalid_argument(string_printf("unknown command: %s (try --help)", argv[x]));
         }
@@ -1791,17 +1802,17 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::GENERATE_PRODUCT: {
-      auto product = generate_product(domain, subdomain);
-      fprintf(stdout, "%s\n", product.c_str());
+    case Behavior::GENERATE_DC_SERIAL_NUMBER: {
+      string serial_number = generate_dc_serial_number(domain, subdomain);
+      fprintf(stdout, "%s\n", serial_number.c_str());
       break;
     }
 
-    case Behavior::GENERATE_ALL_PRODUCTS: {
-      auto products = generate_all_products();
-      fprintf(stdout, "%zu (0x%zX) products found\n", products.size(), products.size());
-      for (const auto& it : products) {
-        fprintf(stdout, "Valid product: %08" PRIX32, it.first);
+    case Behavior::GENERATE_ALL_DC_SERIAL_NUMBERS: {
+      auto serial_numbers = generate_all_dc_serial_numbers();
+      fprintf(stdout, "%zu (0x%zX) serial numbers found\n", serial_numbers.size(), serial_numbers.size());
+      for (const auto& it : serial_numbers) {
+        fprintf(stdout, "Valid serial number: %08" PRIX32, it.first);
         for (uint8_t where : it.second) {
           fprintf(stdout, " (domain=%hhu, subdomain=%hhu)",
               static_cast<uint8_t>((where >> 2) & 3),
@@ -1810,22 +1821,22 @@ int main(int argc, char** argv) {
         fputc('\n', stdout);
       }
 
-      atomic<uint64_t> num_valid_products = 0;
+      atomic<uint64_t> num_valid_serial_numbers = 0;
       mutex output_lock;
-      auto thread_fn = [&](uint64_t product, size_t) -> bool {
+      auto thread_fn = [&](uint64_t serial_number, size_t) -> bool {
         for (uint8_t domain = 0; domain < 3; domain++) {
           for (uint8_t subdomain = 0; subdomain < 3; subdomain++) {
-            if (product_is_valid_fast(product, domain, subdomain)) {
-              num_valid_products++;
+            if (dc_serial_number_is_valid_fast(serial_number, domain, subdomain)) {
+              num_valid_serial_numbers++;
               lock_guard g(output_lock);
-              fprintf(stdout, "Valid product: %08" PRIX64 " (domain=%hhu, subdomain=%hhu)\n", product, domain, subdomain);
+              fprintf(stdout, "Valid serial number: %08" PRIX64 " (domain=%hhu, subdomain=%hhu)\n", serial_number, domain, subdomain);
             }
           }
         }
         return false;
       };
       auto progress_fn = [&](uint64_t, uint64_t, uint64_t current_value, uint64_t) -> void {
-        uint64_t num_found = num_valid_products.load();
+        uint64_t num_found = num_valid_serial_numbers.load();
         fprintf(stderr, "... %08" PRIX64 " %" PRId64 " (0x%" PRIX64 ") found\r",
             current_value, num_found, num_found);
       };
@@ -1833,14 +1844,14 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::INSPECT_PRODUCT: {
+    case Behavior::INSPECT_DC_SERIAL_NUMBER: {
       if (!input_filename) {
-        throw invalid_argument("no product given");
+        throw invalid_argument("no serial number given");
       }
       size_t num_valid_subdomains = 0;
       for (uint8_t domain = 0; domain < 3; domain++) {
         for (uint8_t subdomain = 0; subdomain < 3; subdomain++) {
-          if (product_is_valid_fast(input_filename, domain, subdomain)) {
+          if (dc_serial_number_is_valid_fast(input_filename, domain, subdomain)) {
             fprintf(stdout, "%s is valid in domain %hhu subdomain %hhu\n", input_filename, domain, subdomain);
             num_valid_subdomains++;
           }
@@ -1852,11 +1863,11 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::PRODUCT_SPEED_TEST:
+    case Behavior::DC_SERIAL_NUMBER_SPEED_TEST:
       if (seed.empty()) {
-        product_speed_test();
+        dc_serial_number_speed_test();
       } else {
-        product_speed_test(stoul(seed, nullptr, 16));
+        dc_serial_number_speed_test(stoul(seed, nullptr, 16));
       }
       break;
 

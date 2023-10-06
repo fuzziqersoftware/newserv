@@ -1,4 +1,4 @@
-#include "Product.hh"
+#include "DCSerialNumbers.hh"
 
 #include <stdint.h>
 
@@ -1163,23 +1163,23 @@ static char replace_char_reverse(char ch) {
 
 static constexpr uint64_t INVALID_PRODUCT = 0xFFFFFFFFFFFFFFFF;
 
-static uint64_t decode_product_str(const string& s) {
+static uint64_t decode_dc_serial_number_str(const string& s) {
   if (s.size() != 8) {
     return INVALID_PRODUCT;
   }
 
-  uint64_t product = 0;
+  uint64_t serial_number = 0;
   for (char ch : s) {
     char new_ch = replace_char_forward(ch);
     if (new_ch == '\0') {
       return INVALID_PRODUCT;
     }
-    product = (product << 4) | value_for_hex_char(new_ch);
+    serial_number = (serial_number << 4) | value_for_hex_char(new_ch);
   }
-  return product;
+  return serial_number;
 }
 
-static uint32_t decode_product_int(uint32_t v) {
+static uint32_t decode_dc_serial_number_int(uint32_t v) {
   return (replace_nybble_forward(v >> 28) << 28) |
       (replace_nybble_forward(v >> 24) << 24) |
       (replace_nybble_forward(v >> 20) << 20) |
@@ -1190,7 +1190,7 @@ static uint32_t decode_product_int(uint32_t v) {
       (replace_nybble_forward(v));
 }
 
-static uint32_t encode_product_int(uint32_t v) {
+static uint32_t encode_dc_serial_number_int(uint32_t v) {
   return (replace_nybble_reverse(v >> 28) << 28) |
       (replace_nybble_reverse(v >> 24) << 24) |
       (replace_nybble_reverse(v >> 20) << 20) |
@@ -1215,9 +1215,9 @@ static pair<size_t, size_t> compute_offset1_and_limit1(
   }
 }
 
-bool product_is_valid_slow(const string& s, uint8_t domain, uint8_t subdomain) {
-  uint64_t product = decode_product_str(s);
-  if (product == INVALID_PRODUCT) {
+bool dc_serial_number_is_valid_slow(const string& s, uint8_t domain, uint8_t subdomain) {
+  uint64_t serial_number = decode_dc_serial_number_str(s);
+  if (serial_number == INVALID_PRODUCT) {
     return false;
   }
 
@@ -1229,7 +1229,7 @@ bool product_is_valid_slow(const string& s, uint8_t domain, uint8_t subdomain) {
   for (; offset1 < limit1; offset1++) {
     for (size_t offset2 = 0; offset2 < sizeof(primes2) / sizeof(primes2[0]); offset2++) {
       for (size_t offset3 = 0; offset3 < sizeof(primes3) / sizeof(primes3[0]); offset3++) {
-        if (primes1[offset1] * primes2[offset2] * primes3[offset3] == product) {
+        if (primes1[offset1] * primes2[offset2] * primes3[offset3] == serial_number) {
           return true;
         }
       }
@@ -1238,14 +1238,14 @@ bool product_is_valid_slow(const string& s, uint8_t domain, uint8_t subdomain) {
   return false;
 }
 
-bool decoded_product_is_valid_fast(uint32_t product, uint8_t domain, uint8_t subdomain) {
+bool decoded_dc_serial_number_is_valid_fast(uint32_t serial_number, uint8_t domain, uint8_t subdomain) {
   auto [offset1_start, limit1] = compute_offset1_and_limit1(domain, subdomain);
   if (limit1 == 0) {
     return false;
   }
 
   for (uint64_t prefix = 0; prefix < 0x000000E800000000; prefix += 0x0000000100000000) {
-    uint64_t sub0 = product | prefix;
+    uint64_t sub0 = serial_number | prefix;
     for (size_t offset1 = offset1_start; offset1 < limit1; offset1++) {
       if (sub0 % primes1[offset1]) {
         continue;
@@ -1264,19 +1264,19 @@ bool decoded_product_is_valid_fast(uint32_t product, uint8_t domain, uint8_t sub
   return false;
 }
 
-bool product_is_valid_fast(const string& s, uint8_t domain, uint8_t subdomain) {
-  uint64_t product = decode_product_str(s);
-  if (product == INVALID_PRODUCT) {
+bool dc_serial_number_is_valid_fast(const string& s, uint8_t domain, uint8_t subdomain) {
+  uint64_t serial_number = decode_dc_serial_number_str(s);
+  if (serial_number == INVALID_PRODUCT) {
     return false;
   }
-  return decoded_product_is_valid_fast(product, domain, subdomain);
+  return decoded_dc_serial_number_is_valid_fast(serial_number, domain, subdomain);
 }
 
-bool product_is_valid_fast(uint32_t product, uint8_t domain, uint8_t subdomain) {
-  return decoded_product_is_valid_fast(decode_product_int(product), domain, subdomain);
+bool dc_serial_number_is_valid_fast(uint32_t serial_number, uint8_t domain, uint8_t subdomain) {
+  return decoded_dc_serial_number_is_valid_fast(decode_dc_serial_number_int(serial_number), domain, subdomain);
 }
 
-string generate_product(uint8_t domain, uint8_t subdomain) {
+string generate_dc_serial_number(uint8_t domain, uint8_t subdomain) {
   size_t offset1, limit1;
   if (domain == 0) {
     offset1 = 0x00;
@@ -1305,7 +1305,7 @@ string generate_product(uint8_t domain, uint8_t subdomain) {
   return ret;
 }
 
-unordered_map<uint32_t, string> generate_all_products(uint8_t domain, uint8_t subdomain) {
+unordered_map<uint32_t, string> generate_all_dc_serial_numbers(uint8_t domain, uint8_t subdomain) {
   vector<uint8_t> domains;
   if (domain == 0xFF) {
     domains.emplace_back(0x00);
@@ -1345,16 +1345,16 @@ unordered_map<uint32_t, string> generate_all_products(uint8_t domain, uint8_t su
       for (size_t index2 = 0; index2 < sizeof(primes2) / sizeof(primes2[0]); index2++) {
         for (size_t index3 = 0; index3 < sizeof(primes3) / sizeof(primes3[0]); index3++) {
           uint32_t value = primes1[index1] * primes2[index2] * primes3[index3];
-          ret[encode_product_int(value)].push_back(((domain << 2) & 3) | (subdomain & 3));
+          ret[encode_dc_serial_number_int(value)].push_back(((domain << 2) & 3) | (subdomain & 3));
         }
-        fprintf(stderr, "... domain=%hhu subdomain=%hhu index2=%zu products=%zu (0x%zX)\n", domain, subdomain, index2, ret.size(), ret.size());
+        fprintf(stderr, "... domain=%hhu subdomain=%hhu index2=%zu results=%zu (0x%zX)\n", domain, subdomain, index2, ret.size(), ret.size());
       }
     }
   }
   return ret;
 }
 
-void product_speed_test(uint64_t seed) {
+void dc_serial_number_speed_test(uint64_t seed) {
   uint32_t effective_seed = (seed & 0xFFFFFFFF00000000) ? random_object<uint32_t>() : seed;
   fprintf(stderr, "Product speed test with seed=%08" PRIX32 "\n", effective_seed);
   PSOV2Encryption crypt(effective_seed);
@@ -1366,11 +1366,11 @@ void product_speed_test(uint64_t seed) {
     string s = string_printf("%08X", crypt.next());
 
     uint64_t start = now();
-    bool is_valid_fast = product_is_valid_fast(s, 1, 0xFF);
+    bool is_valid_fast = dc_serial_number_is_valid_fast(s, 1, 0xFF);
     time_fast += now() - start;
 
     start = now();
-    bool is_valid_slow = product_is_valid_slow(s, 1, 0xFF);
+    bool is_valid_slow = dc_serial_number_is_valid_slow(s, 1, 0xFF);
     time_slow += now() - start;
 
     if (((z & 0xF) == 0) || is_valid_slow || is_valid_fast) {
@@ -1381,8 +1381,8 @@ void product_speed_test(uint64_t seed) {
     }
   }
 
-  fprintf(stderr, "Total time (slow): %" PRId64 " usecs (%" PRIu64 " per product)\n", time_slow, time_slow / count);
-  fprintf(stderr, "Total time (fast): %" PRId64 " usecs (%" PRIu64 " per product)\n", time_fast, time_fast / count);
+  fprintf(stderr, "Total time (slow): %" PRId64 " usecs (%" PRIu64 " per serial number)\n", time_slow, time_slow / count);
+  fprintf(stderr, "Total time (fast): %" PRId64 " usecs (%" PRIu64 " per serial number)\n", time_fast, time_fast / count);
   fprintf(stderr, "Fast vs. slow speedup: %zux\n", static_cast<size_t>(time_slow / time_fast));
   fprintf(stderr, "Disagreements: %zu\n", num_disagreements);
 }
