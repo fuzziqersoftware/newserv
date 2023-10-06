@@ -366,14 +366,12 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
   string data(reinterpret_cast<const char*>(orig_data), size);
   set_mask_for_ep3_game_command(data.data(), data.size(), 0);
 
-  if (header.subcommand == 0xB5) {
-    if (header.subsubcommand == 0x1A) {
+  if (header.subsubcommand == 0x1A) {
+    return;
+  } else if (header.subsubcommand == 0x36) {
+    const auto& cmd = check_size_t<G_RecreatePlayer_GC_Ep3_6xB5x36>(data, size);
+    if (l->is_game() && (cmd.client_id >= 4)) {
       return;
-    } else if (header.subsubcommand == 0x36) {
-      const auto& cmd = check_size_t<G_RecreatePlayer_GC_Ep3_6xB5x36>(data, size);
-      if (l->is_game() && (cmd.client_id >= 4)) {
-        return;
-      }
     }
   }
 
@@ -1900,8 +1898,8 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xB0 */ on_forward_check_size_client,
     /* 6xB1 */ nullptr,
     /* 6xB2 */ nullptr,
-    /* 6xB3 */ on_ep3_battle_subs,
-    /* 6xB4 */ on_ep3_battle_subs,
+    /* 6xB3 */ nullptr, // Should be sent via CA instead
+    /* 6xB4 */ nullptr, // Should be sent by the server only
     /* 6xB5 */ on_open_shop_bb_or_ep3_battle_subs,
     /* 6xB6 */ nullptr,
     /* 6xB7 */ on_buy_shop_item_bb,
