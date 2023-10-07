@@ -1448,11 +1448,11 @@ bool CardSpecial::evaluate_effect_arg2_condition(
 
     case 'n':
       switch (atoi(arg2_text + 1)) {
-        case 0:
+        case 0: // n00
           return true;
-        case 1:
+        case 1: // n01
           return (!card || (card->get_definition()->def.type == CardType::HUNTERS_SC));
-        case 2:
+        case 2: // n02
           for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
             auto target_card = this->server()->card_for_set_card_ref(as.target_card_refs[z]);
             if (target_card && target_card->check_card_flag(2)) {
@@ -1460,7 +1460,7 @@ bool CardSpecial::evaluate_effect_arg2_condition(
             }
           }
           return false;
-        case 3:
+        case 3: // n03
           for (size_t z = 0; z < 8; z++) {
             uint16_t action_card_ref = as.action_card_refs[z];
             if (action_card_ref != 0xFFFF) {
@@ -1471,39 +1471,39 @@ bool CardSpecial::evaluate_effect_arg2_condition(
             }
           }
           return false;
-        case 4:
+        case 4: // n04
           return card->action_chain.check_flag(0x0001E000);
-        case 5:
+        case 5: // n05
           return card->action_chain.check_flag(0x00001E00);
-        case 6:
+        case 6: // n06
           return (card->get_definition()->def.card_class() == CardClass::NATIVE_CREATURE);
-        case 7:
+        case 7: // n07
           return (card->get_definition()->def.card_class() == CardClass::A_BEAST_CREATURE);
-        case 8:
+        case 8: // n08
           return (card->get_definition()->def.card_class() == CardClass::MACHINE_CREATURE);
-        case 9:
+        case 9: // n09
           return (card->get_definition()->def.card_class() == CardClass::DARK_CREATURE);
-        case 10:
+        case 10: // n10
           return (card->get_definition()->def.card_class() == CardClass::SWORD_ITEM);
-        case 11:
+        case 11: // n11
           return (card->get_definition()->def.card_class() == CardClass::GUN_ITEM);
-        case 12:
+        case 12: // n12
           return (card->get_definition()->def.card_class() == CardClass::CANE_ITEM);
-        case 13: {
+        case 13: { // n13
           auto ce = card->get_definition();
           return ((ce->def.card_class() == CardClass::GUARD_ITEM) ||
               (ce->def.card_class() == CardClass::MAG_ITEM) ||
               this->server()->ruler_server->find_condition_on_card_ref(
                   card->get_card_ref(), ConditionType::GUARD_CREATURE, 0, 0, 0));
         }
-        case 14:
+        case 14: // n14
           return card->get_definition()->def.is_sc();
-        case 15:
+        case 15: // n15
           return ((card->action_chain.chain.attack_action_card_ref_count == 0) &&
               (card->action_metadata.defense_card_ref_count == 0));
-        case 16:
+        case 16: // n16
           return this->server()->ruler_server->card_ref_is_aerial(card->get_card_ref());
-        case 17: {
+        case 17: { // n17
           auto sc_card = this->server()->card_for_set_card_ref(sc_card_ref);
           int16_t this_ap = card->ap;
           int16_t other_ap = -1;
@@ -1517,7 +1517,7 @@ bool CardSpecial::evaluate_effect_arg2_condition(
           }
           return (other_ap == this_ap);
         }
-        case 18:
+        case 18: // n18
           for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
             auto target_card = this->server()->card_for_set_card_ref(as.target_card_refs[z]);
             if (target_card && target_card->get_definition()->def.is_sc()) {
@@ -1525,20 +1525,20 @@ bool CardSpecial::evaluate_effect_arg2_condition(
             }
           }
           return false;
-        case 19:
+        case 19: // n19
           return this->server()->ruler_server->find_condition_on_card_ref(
               card->get_card_ref(), ConditionType::PARALYZE, 0, 0, 0);
-        case 20:
+        case 20: // n20
           return this->server()->ruler_server->find_condition_on_card_ref(
               card->get_card_ref(), ConditionType::FREEZE, 0, 0, 0);
-        case 21: {
+        case 21: { // n21
           uint8_t client_id = client_id_for_card_ref(sc_card_ref);
           if (client_id != 0xFF) {
             return card->action_chain.check_flag(0x00002000 << client_id);
           }
           return false;
         }
-        case 22: {
+        case 22: { // n22
           uint8_t client_id = client_id_for_card_ref(sc_card_ref);
           if (client_id != 0xFF) {
             return card->action_chain.check_flag(0x00000200 << client_id);
@@ -1739,7 +1739,7 @@ bool CardSpecial::execute_effect(
     case ConditionType::PIERCE:
     case ConditionType::UNUSED_0F:
     case ConditionType::SET_MV_COST_TO_0:
-    case ConditionType::UNKNOWN_13:
+    case ConditionType::UNUSED_13:
     case ConditionType::ACID:
     case ConditionType::ADD_1_TO_MV_COST:
     case ConditionType::ABILITY_TRAP:
@@ -1930,7 +1930,7 @@ bool CardSpecial::execute_effect(
               (cond.type == ConditionType::CANNOT_DEFEND) ||
               (cond.type == ConditionType::GUOM) ||
               (cond.type == ConditionType::PARALYZE) ||
-              (cond.type == ConditionType::UNKNOWN_13) ||
+              (cond.type == ConditionType::UNUSED_13) ||
               (cond.type == ConditionType::ACID) ||
               (cond.type == ConditionType::ADD_1_TO_MV_COST) ||
               (cond.type == ConditionType::CURSE) ||
@@ -2653,6 +2653,16 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
           parray<uint8_t, 9 * 9> range;
           compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
           add_card_refs(ps->get_card_refs_within_range_from_all_players(range, card1_loc, CardType::ITEM));
+        }
+      }
+      if (card1) {
+        auto ce = this->server()->definition_for_card_ref(card_ref);
+        auto ps = card1->player_state();
+        if (ce && ps) {
+          uint16_t range_card_id = this->get_card_id_with_effective_range(card1, ce->def.card_id, card2);
+          parray<uint8_t, 9 * 9> range;
+          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+          add_card_refs(ps->get_all_cards_within_range(range, card1_loc, card1->get_team_id()));
         }
       }
       break;

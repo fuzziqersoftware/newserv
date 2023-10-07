@@ -196,7 +196,7 @@ enum class ConditionType : uint8_t {
   HEAL = 0x10, // Increase HP by N
   RETURN_TO_HAND = 0x11, // Return card to hand
   SET_MV_COST_TO_0 = 0x12,
-  UNKNOWN_13 = 0x13,
+  UNUSED_13 = 0x13,
   ACID = 0x14, // Give Acid condition
   ADD_1_TO_MV_COST = 0x15,
   MIGHTY_KNUCKLE = 0x16, // Temporarily increase AP by N, and set ATK dice to zero

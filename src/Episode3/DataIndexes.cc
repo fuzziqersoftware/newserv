@@ -342,11 +342,11 @@ static const unordered_map<string, const char*> description_for_expr_token({
     {"tt", "Physical damage"},
     {"lv", "Dice boost"},
     {"adm", "SC attack damage"},
-    {"ddm", "Defending damage"},
+    {"ddm", "Attack bonus"},
     {"sat", "Number of Sword-type items on SC\'s team"},
-    {"edm", "Defending damage"}, // TODO: How is this different from ddm?
-    {"ldm", "Unknown: ldm"}, // Unused
-    {"rdm", "Defending damage"}, // TODO: How is this different from ddm/edm?
+    {"edm", "Target attack bonus"},
+    {"ldm", "Last attack damage before defense"}, // Unused
+    {"rdm", "Last attack damage"},
     {"fdm", "Final damage (after defense)"},
     {"ndm", "Unknown: ndm"}, // Unused
     {"ehp", "Attacker HP"},
@@ -385,7 +385,7 @@ static const vector<const char*> description_for_n_condition({
     /* n04 */ "Attack has Pierce",
     /* n05 */ "Attack has Rampage",
     /* n06 */ "Native attribute",
-    /* n07 */ "A.Beast attribute",
+    /* n07 */ "Altered Beast attribute",
     /* n08 */ "Machine attribute",
     /* n09 */ "Dark attribute",
     /* n10 */ "Sword-type item",
@@ -399,23 +399,23 @@ static const vector<const char*> description_for_n_condition({
     /* n18 */ "Any target is an SC",
     /* n19 */ "Has Paralyzed condition",
     /* n20 */ "Has Frozen condition",
-    /* n21 */ "???", // TODO: This appears related to Pierce/Rampage
-    /* n22 */ "???", // TODO: This appears related to Pierce/Rampage
+    /* n21 */ "Target is affected by Pierce",
+    /* n22 */ "Target is affected by Rampage",
 });
 
 static const vector<const char*> description_for_p_target({
-    /* p00 */ "Unknown: p00", // Unused; probably invalid
+    /* p00 */ "(Invalid)",
     /* p01 */ "SC / FC who set the card",
     /* p02 */ "Attacking SC / FC",
-    /* p03 */ "Unknown: p03", // Unused
-    /* p04 */ "Unknown: p04", // Unused
+    /* p03 */ "All item FCs from both teams within attack range", // Unused
+    /* p04 */ "All action cards in the chain after this one", // Unused
     /* p05 */ "SC / FC who set the card", // Identical to p01
-    /* p06 */ "??? (TODO)",
-    /* p07 */ "??? (TODO; Weakness)",
+    /* p06 */ "Attacking card, or SC if attacking card is an item",
+    /* p07 */ "Attacking card",
     /* p08 */ "FC\'s owner SC",
-    /* p09 */ "Unknown: p09", // Unused
-    /* p10 */ "All ally FCs",
-    /* p11 */ "All ally FCs", // TODO: how is this different from p10?
+    /* p09 */ "All cards from both teams within attack range", // Unused
+    /* p10 */ "All ally SCs and FCs",
+    /* p11 */ "All ally FCs",
     /* p12 */ "All non-aerial FCs on both teams",
     /* p13 */ "All FCs on both teams that are Frozen",
     /* p14 */ "All FCs on both teams with <= 3 HP",
@@ -423,29 +423,29 @@ static const vector<const char*> description_for_p_target({
     /* p16 */ "All FCs on both teams with >= 8 HP",
     /* p17 */ "This card",
     /* p18 */ "SC who equipped this card",
-    /* p19 */ "Unknown: p19", // Unused
-    /* p20 */ "Unknown: p20", // Unused
-    /* p21 */ "Unknown: p21", // Unused
+    /* p19 */ "All HU-class SCs", // Unused
+    /* p20 */ "All RA-class SCs", // Unused
+    /* p21 */ "All FO-class SCs", // Unused
     /* p22 */ "All characters (SCs & FCs) including this card", // TODO: But why does Shifta apply only to allies then?
     /* p23 */ "All characters (SCs & FCs) except this card",
     /* p24 */ "All FCs on both teams that have Paralysis",
-    /* p25 */ "Unknown: p25", // Unused
-    /* p26 */ "Unknown: p26", // Unused
-    /* p27 */ "Unknown: p27", // Unused
-    /* p28 */ "Unknown: p28", // Unused
-    /* p29 */ "Unknown: p29", // Unused
-    /* p30 */ "Unknown: p30", // Unused
-    /* p31 */ "Unknown: p31", // Unused
-    /* p32 */ "Unknown: p32", // Unused
-    /* p33 */ "Unknown: p33", // Unused
-    /* p34 */ "Unknown: p34", // Unused
+    /* p25 */ "All aerial SCs and FCs", // Unused
+    /* p26 */ "All cards not at maximum HP", // Unused
+    /* p27 */ "All Native creatures", // Unused
+    /* p28 */ "All Altered Beast creatures", // Unused
+    /* p29 */ "All Machine creatures", // Unused
+    /* p30 */ "All Dark creatures", // Unused
+    /* p31 */ "All Sword-type items", // Unused
+    /* p32 */ "All Gun-type items", // Unused
+    /* p33 */ "All Cane-type items", // Unused
+    /* p34 */ "All non-SC targets", // Unused
     /* p35 */ "All characters (SCs & FCs) within range", // Used for Explosion effect
     /* p36 */ "All ally SCs within range, but not the caster", // Resta
-    /* p37 */ "All FCs or all opponent FCs (TODO)", // TODO: when to use which selector? is a3 involved here somehow?
+    /* p37 */ "All opponent FCs",
     /* p38 */ "All allies except items within range (and not this card)",
     /* p39 */ "All FCs that cost 4 or more points",
     /* p40 */ "All FCs that cost 3 or fewer points",
-    /* p41 */ "Unknown: p41", // Unused
+    /* p41 */ "All FCs next to attacker, and all of attacker\'s equipped items", // Unused
     /* p42 */ "Attacker during defense phase", // Only used by TP Defense
     /* p43 */ "Owner SC of defending FC during attack",
     /* p44 */ "SC\'s own creature FCs within range",
@@ -482,7 +482,7 @@ static const vector<ConditionDescription> description_for_condition_type({
     /* 0x10 */ {true, "HEAL", "Increase HP by N"},
     /* 0x11 */ {false, "RETURN_TO_HAND", "Return card to hand"},
     /* 0x12 */ {false, "SET_MV_COST_TO_0", "Movement costs nothing"},
-    /* 0x13 */ {false, "UNKNOWN_13", nullptr},
+    /* 0x13 */ {false, "UNUSED_13", nullptr},
     /* 0x14 */ {false, "ACID", "Give Acid condition"},
     /* 0x15 */ {false, "ADD_1_TO_MV_COST", "Add 1 to move costs"},
     /* 0x16 */ {true, "MIGHTY_KNUCKLE", "Temporarily increase AP by N, and set ATK dice to zero"},
