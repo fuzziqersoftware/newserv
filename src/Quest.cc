@@ -809,12 +809,13 @@ void add_command_header(
 }
 
 template <typename HeaderT, typename CmdT>
-void add_open_file_command(StringWriter& w, const std::u16string& name, const std::string& filename, bool is_download) {
+void add_open_file_command(StringWriter& w, const std::u16string& name, const std::string& filename, size_t file_size, bool is_download) {
   add_command_header<HeaderT>(w, is_download ? 0xA6 : 0x44, 0x00, sizeof(CmdT));
   CmdT cmd;
   cmd.name = "PSO/" + encode_sjis(name);
   cmd.filename = filename;
   cmd.type = 0;
+  cmd.file_size = file_size;
   // TODO: It'd be nice to have something like w.emplace(...) to avoid copying
   // the command structs into the StringWriter.
   w.put(cmd);
@@ -825,7 +826,8 @@ void add_write_file_commands(
     StringWriter& w,
     const string& filename,
     const string& data,
-    bool is_download) {
+    bool is_download,
+    bool bb_alignment) {
   for (size_t z = 0; z < data.size(); z += 0x400) {
     size_t chunk_size = min<size_t>(data.size() - z, 0x400);
     add_command_header<HeaderT>(w, is_download ? 0xA7 : 0x13, z >> 10, sizeof(S_WriteFile_13_A7));
@@ -834,6 +836,12 @@ void add_write_file_commands(
     memcpy(cmd.data.data(), &data[z], chunk_size);
     cmd.data_size = chunk_size;
     w.put(cmd);
+    // On BB, the write file command size is a multiple of 4 but not a multiple
+    // of 8; in QST format the implicit extra 4 bytes are apparently stored in
+    // the file.
+    if (bb_alignment) {
+      w.put_u32(0);
+    }
   }
 }
 
@@ -855,39 +863,39 @@ string Quest::encode_qst(
     case QuestScriptVersion::DC_NTE:
     case QuestScriptVersion::DC_V1:
     case QuestScriptVersion::DC_V2:
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, bin_filename, is_dlq_encoded);
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, dat_filename, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, bin_filename, bin_data.size(), is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, dat_filename, dat_data.size(), is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded, false);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded, false);
       break;
     case QuestScriptVersion::PC_V2:
-      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, is_dlq_encoded);
-      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, dat_filename, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderPC>(w, bin_filename, bin_data, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderPC>(w, dat_filename, dat_data, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, bin_data.size(), is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, dat_filename, dat_data.size(), is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderPC>(w, bin_filename, bin_data, is_dlq_encoded, false);
+      add_write_file_commands<PSOCommandHeaderPC>(w, dat_filename, dat_data, is_dlq_encoded, false);
       break;
     case QuestScriptVersion::GC_NTE:
     case QuestScriptVersion::GC_V3:
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, is_dlq_encoded);
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, dat_filename, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, bin_data.size(), is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, dat_filename, dat_data.size(), is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded, false);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded, false);
       break;
     case QuestScriptVersion::GC_EP3:
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, bin_data.size(), is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded, false);
       break;
     case QuestScriptVersion::XB_V3:
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, bin_filename, is_dlq_encoded);
-      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, dat_filename, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, bin_filename, bin_data.size(), is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, dat_filename, dat_data.size(), is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded, false);
+      add_write_file_commands<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded, false);
       break;
     case QuestScriptVersion::BB_V4:
-      add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, bin_filename, is_dlq_encoded);
-      add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, dat_filename, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderBB>(w, bin_filename, bin_data, is_dlq_encoded);
-      add_write_file_commands<PSOCommandHeaderBB>(w, dat_filename, dat_data, is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, bin_filename, bin_data.size(), is_dlq_encoded);
+      add_open_file_command<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, dat_filename, dat_data.size(), is_dlq_encoded);
+      add_write_file_commands<PSOCommandHeaderBB>(w, bin_filename, bin_data, is_dlq_encoded, true);
+      add_write_file_commands<PSOCommandHeaderBB>(w, dat_filename, dat_data, is_dlq_encoded, true);
       break;
     default:
       throw logic_error("invalid game version");
