@@ -19,6 +19,7 @@ This project includes code that was reverse-engineered by the community in ages 
 * How to connect
     * Connecting local clients
         * [PSO DC](#pso-dc)
+        * [PSO DC on Flycast](#pso-dc-on-flycast)
         * [PSO PC](#pso-pc)
         * [PSO GC on a real GameCube](#pso-gc-on-a-real-gamecube)
         * [PSO GC on Dolphin](#pso-gc-on-dolphin)
@@ -330,17 +331,13 @@ Some versions of PSO DC will connect to a private server if you just set their D
 
 If you're emulating PSO DC or have a disc image, you can patch the appropriate files within the disc image to make it connect to any address you want. Creating such a patch is also beyond the scope of this document.
 
-Finally, if you're emulating PSO DC, you can modify the loaded executable in memory to make it connect anywhere you want. There is a script included with newserv that can do this for Flycast. The script only works on macOS because it uses memwatch, which is specifically for macOS, but a similar technique could be done manually using scanmem on Linux or Cheat Engine on Windows. (The script is fairly short, and what it does should be easy to understand so you can duplicate its effects with scanmem or Cheat Engine.)
+#### PSO DC on Flycast
 
-To use the script, do this:
-1. Build and install memwatch (https://github.com/fuzziqersoftware/memwatch).
-2. Start Flycast and run PSO. (You must run the script below after PSO is loaded - it won't work if you run it before loading the game.)
-3. Run `sudo patch_flycast_memory.py <original-destination>`. Replace `<original-destination>` with the hostname that PSO wants to connect to (you can find this out by using Wireshark and looking for DNS queries). The script may take up to a minute; you can continue using Flycast while it runs, but don't start an online game until the script is done.
-4. Run newserv and start an online game in PSO.
-
-If you use this method, you'll have to run the script every time you start PSO in Flycast, but you won't have to run it again if you start another online game without restarting emulation.
-
-Finally, the script takes an optional second argument that allows you to redirect the connection elsewhere (instead of the local machine). This allows you to connect directly to remote servers if desired.
+If you're emulating PSO DC, all versions will connect to newserv by setting the following options in Flycast's `emu.cfg` file under `[network]`:
+- DNS = Your newserv's server address (newserv's DNS server must be running on port 53)
+- EmulateBBA = no (while some versions support the BBA, some do not, and all versions support the modem)
+- Enable = yes
+Once set up, the EU and US versions will work without any extra set up (other than the HL Check Disable code for USv2), while the JP versions require HL Check Disable codes to be running, and an e-mail account set up. The easiest way to set up an e-mail account is through PlanetWeb's Internet Browser for Dreamcast.
 
 #### PSO PC
 
