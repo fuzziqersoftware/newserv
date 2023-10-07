@@ -2304,8 +2304,7 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
 // This command is not valid on Episode 3 Trial Edition.
 // header.flag specifies the transaction purpose. Specific known values:
 // 00 = unknown
-// 01 = Lobby jukebox object created (C->S; always has a value of 0;
-//      response request_token must match the last token sent by client)
+// 01 = Initialize Meseta subsystem (C->S; always has a value of 0)
 // 02 = Spend meseta (at e.g. lobby jukebox or Pinz's shop) (C->S)
 // 03 = Spend meseta response (S->C; request_token must match the last token
 //      sent by client)
@@ -2495,12 +2494,14 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> {
 // Server does not respond
 
 // C9: Broadcast command (Episode 3)
+// Internal name: SndCardClientData
 // Same as 60, but should be forwarded only to Episode 3 clients.
 // newserv uses this command for all server-generated events (in response to CA
 // commands), except for map data requests. This differs from Sega's original
 // implementation, which sent CA responses via 60 commands instead.
 
 // CA (C->S): Server data request (Episode 3)
+// Internal name: SndCardServerData
 // The CA command format is the same as that of the 6xB3 commands, and the
 // subsubcommands formats are shared as well. Unlike the 6x commands, the server
 // is expected to respond to the command appropriately instead of forwarding it.
@@ -2508,12 +2509,14 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> {
 // commands in the comments and structure names.
 
 // CB: Broadcast command (Episode 3)
+// Internal name: SndKansenPsoData
 // Same as 60, but only send to Episode 3 clients.
-// This command is identical to C9, except that CB is not valid on Episode 3
-// Trial Edition (whereas C9 is valid).
+// This command's format is identical to C9, except that CB is not valid on
+// Episode 3 Trial Edition (whereas C9 is valid).
 // Unlike the 6x and C9 commands, subcommands sent with the CB command are
 // forwarded from spectator teams to the primary team. The client only uses this
-// behavior for the 6xBE command (sound chat), and newserv enforces this rule.
+// behavior for the 6xBE command (sound chat), and newserv enforces that no
+// other subcommand can be sent via CB.
 
 // CC (S->C): Confirm tournament entry (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
@@ -2529,7 +2532,7 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> {
 struct S_ConfirmTournamentEntry_GC_Ep3_CC {
   ptext<char, 0x40> tournament_name;
   le_uint16_t num_teams = 0;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t players_per_team = 0;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
   ptext<char, 0x20> server_name;
@@ -5135,10 +5138,11 @@ struct G_CardBattleCommandHeader {
 } __packed__;
 
 // Unlike all other 6x subcommands, the 6xB3 subcommand is sent to the server in
-// a CA command instead of a 6x, C9, or CB command. (For this reason, we refer
-// to 6xB3xZZ commands as CAxZZ commands as well.) The server is expected to
-// reply to CA commands instead of forwarding them. The logic for doing so is
-// primarily implemented in Episode3/Server.cc and the surrounding classes.
+// a CA command instead of a 6x, C9, or CB command. (For this reason, we
+// generally refer to 6xB3xZZ commands as CAxZZ commands instead.) The server is
+// expected to reply to CA commands with one or more 6xB4 subcommands instead of
+// forwarding them. The logic for doing so is implemented in Episode3/Server.cc
+// and the surrounding classes.
 
 // The 6xB3 subcommand has a longer header than 6xB4 and 6xB5. This header is
 // common to all 6xB3x (CAx) subcommands.
@@ -5157,8 +5161,8 @@ struct G_CardServerDataCommandHeader {
 
 // 6xB4: Unknown (XBOX; voice chat)
 
-// 6xB4: CARD battle server response (Episode 3) - see 6xB3 (above)
-// 6xB5: CARD battle client command (Episode 3) - see 6xB3 (above)
+// 6xB4: CARD battle server response (Episode 3) - see 6xB3 above
+// 6xB5: CARD battle client command (Episode 3) - see 6xB3 above
 
 // 6xB5: BB shop request (handled by the server)
 
