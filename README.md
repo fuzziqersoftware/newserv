@@ -337,7 +337,8 @@ If you're emulating PSO DC, all versions will connect to newserv by setting the 
 - DNS = Your newserv's server address (newserv's DNS server must be running on port 53)
 - EmulateBBA = no (while some versions support the BBA, some do not, and all versions support the modem)
 - Enable = yes
-  
+
+
 Once set up, the EU and US versions will work without any extra set up (other than the HL Check Disable code for USv2), while the JP versions require HL Check Disable codes to be running, and an e-mail account set up. The easiest way to set up an e-mail account is through PlanetWeb's Internet Browser for Dreamcast.
 
 #### PSO PC
