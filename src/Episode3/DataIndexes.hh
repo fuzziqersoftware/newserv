@@ -488,7 +488,10 @@ struct CardDefinition {
     /* 16 */ ptext<char, 4> arg2;
     /* 1A */ ptext<char, 4> arg3;
     /* 1E */ CriterionCode apply_criterion;
-    /* 1F */ uint8_t unknown_a2;
+    // name_index specifies which string from TextEnglish.pr2 is shown next to
+    // the card when it is attacking or defending. Zero in this field means no
+    // string is shown for this ability.
+    /* 1F */ uint8_t name_index;
     /* 20 */
 
     bool is_empty() const;

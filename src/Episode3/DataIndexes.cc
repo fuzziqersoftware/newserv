@@ -671,7 +671,7 @@ bool CardDefinition::Effect::is_empty() const {
       this->arg2.is_filled_with(0) &&
       this->arg3.is_filled_with(0) &&
       this->apply_criterion == CriterionCode::NONE &&
-      this->unknown_a2 == 0);
+      this->name_index == 0);
 }
 
 string CardDefinition::Effect::str_for_arg(const string& arg) {
@@ -761,7 +761,7 @@ string CardDefinition::Effect::str(const char* separator) const {
     }
     tokens.emplace_back(std::move(cond_str));
   }
-  tokens.emplace_back(string_printf("a2=%02hhX", this->unknown_a2));
+  tokens.emplace_back(string_printf("name_index=%02hhX", this->name_index));
 
   return join(tokens, separator);
 }
