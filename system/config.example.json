@@ -503,6 +503,16 @@
   // enable Episode 3 USA patches by default; it only does if this option is on.
   // "EnableEpisode3SendFunctionCall": true,
 
+  // Whether to allow cross-play for various game versions. DCv1 and DCv2 are
+  // always allowed to join each other's games (though DCv2 can deny permission
+  // for DCv1 players to join when creating a game); if AllowDCPCGames is
+  // enabled, then PC players are allowed in DC games and vice versa. Similarly,
+  // if AllowGCXBGames is enabled, then GameCube and Xbox players are allowed to
+  // join each other's games. Note that this behavior is experimental; you are
+  // likely to encounter bugs in cross-play games, especially in the DC/PC case.
+  "AllowDCPCGames": false,
+  "AllowGCXBGames": true,
+
   // By default, the server keeps track of items in all games, even for versions
   // other than Blue Burst. This enables use of the $what command, as well as
   // protection against item duplication cheats (the cheater is disconnected

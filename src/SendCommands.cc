@@ -1188,15 +1188,7 @@ void send_game_menu_t(
     if (!l->is_game()) {
       continue;
     }
-    if (l->version != c->version()) {
-      continue;
-    }
-    bool l_is_ep3 = l->is_ep3();
-    bool c_is_ep3 = !!(c->flags & Client::Flag::IS_EPISODE_3);
-    if (l_is_ep3 != c_is_ep3) {
-      continue;
-    }
-    if ((c->flags & Client::Flag::IS_DC_V1) && (l->flags & Lobby::Flag::NON_V1_ONLY)) {
+    if (!l->version_is_allowed(c->quest_version())) {
       continue;
     }
     bool l_is_spectator_team = !!(l->flags & Lobby::Flag::IS_SPECTATOR_TEAM);
@@ -1228,10 +1220,10 @@ void send_game_menu_t(
     auto& e = entries.emplace_back();
     e.menu_id = MenuID::GAME;
     e.game_id = l->lobby_id;
-    e.difficulty_tag = (l_is_ep3 ? 0x0A : (l->difficulty + 0x22));
+    e.difficulty_tag = (l->is_ep3() ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
     if (c->version() == GameVersion::DC) {
-      e.episode = (l->flags & Lobby::Flag::NON_V1_ONLY) ? 1 : 0;
+      e.episode = l->version_is_allowed(QuestScriptVersion::DC_V1) ? 1 : 0;
     } else {
       e.episode = ((c->version() == GameVersion::BB) ? (l->max_clients << 4) : 0) | episode_num;
     }
@@ -1367,7 +1359,7 @@ void send_lobby_list(shared_ptr<Client> c) {
     if (!(l->flags & Lobby::Flag::DEFAULT)) {
       continue;
     }
-    if ((l->flags & Lobby::Flag::NON_V1_ONLY) && (c->flags & Client::Flag::IS_DC_V1)) {
+    if ((l->flags & Lobby::Flag::V2_AND_LATER) && (c->flags & Client::Flag::IS_DC_V1)) {
       continue;
     }
     if (l->is_ep3() && !(c->flags & Client::Flag::IS_EPISODE_3)) {
@@ -2182,7 +2174,7 @@ void send_give_experience(shared_ptr<Client> c, uint32_t amount) {
 }
 
 void send_set_exp_multiplier(std::shared_ptr<Lobby> l) {
-  if (l->version != GameVersion::BB) {
+  if (l->base_version != GameVersion::BB) {
     throw logic_error("6xDD can only be sent to BB clients");
   }
   if (!l->is_game()) {

@@ -27,6 +27,9 @@ void PlayerDispDataDCPCV3::enforce_v2_limits() {
     this->visual.char_class = 5; // HUcaseal -> RAcaseal
   }
 
+  // V1/V2 has fewer costumes, so substitute them here too
+  this->visual.costume %= 9;
+
   // If the player is somehow still not a valid class, make them appear as the
   // "ninja" NPC
   if (this->visual.char_class > 8) {

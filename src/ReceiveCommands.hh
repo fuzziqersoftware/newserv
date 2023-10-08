@@ -8,11 +8,12 @@ std::shared_ptr<Lobby> create_game_generic(
     std::shared_ptr<ServerState> s,
     std::shared_ptr<Client> c,
     const std::u16string& name,
-    const std::u16string& password,
-    Episode episode,
-    GameMode mode,
-    uint8_t difficulty,
-    uint32_t flags,
+    const std::u16string& password = u"",
+    Episode episode = Episode::EP1,
+    GameMode mode = GameMode::NORMAL,
+    uint8_t difficulty = 0,
+    uint32_t flags = 0,
+    bool allow_v1 = false,
     std::shared_ptr<Lobby> watched_lobby = nullptr,
     std::shared_ptr<Episode3::BattleRecordPlayer> battle_player = nullptr);
 

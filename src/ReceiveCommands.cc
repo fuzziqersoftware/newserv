@@ -185,7 +185,7 @@ static void send_main_menu(shared_ptr<Client> c) {
           const auto& l = it.second;
           if (l->is_game()) {
             num_games++;
-            if (l->version == c->version() &&
+            if (l->version_is_allowed(c->quest_version()) &&
                 (!l->is_ep3() == !(c->flags & Client::Flag::IS_EPISODE_3))) {
               num_compatible_games++;
             }
@@ -1119,11 +1119,8 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
 
   auto c = game_clients.begin()->second;
   auto s = c->require_server_state();
-  uint32_t flags = Lobby::Flag::NON_V1_ONLY;
   u16string name = tourn ? decode_sjis(tourn->get_name()) : u"<BattleTable>";
-  auto game = create_game_generic(
-      s, c, name, u"", Episode::EP3,
-      GameMode::NORMAL, 0, flags);
+  auto game = create_game_generic(s, c, name, u"", Episode::EP3);
   if (!game) {
     return false;
   }
@@ -1914,10 +1911,9 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nfull.");
         break;
       }
-      if ((game->version != c->version()) ||
+      if (!game->version_is_allowed(c->quest_version()) ||
           (!game->is_ep3() != !(c->flags & Client::Flag::IS_EPISODE_3)) ||
-          (!(game->flags & Lobby::Flag::IS_EP3_TRIAL) != !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) ||
-          ((game->flags & Lobby::Flag::NON_V1_ONLY) && (c->flags & Client::Flag::IS_DC_V1))) {
+          (!(game->flags & Lobby::Flag::IS_EP3_TRIAL) != !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION))) {
         send_lobby_message_box(c, u"$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
         break;
       }
@@ -2375,7 +2371,7 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
 
   if (c->flags & Client::Flag::LOADING_RUNNING_QUEST) {
     c->flags &= ~Client::Flag::LOADING_RUNNING_QUEST;
-    if (l->version != GameVersion::BB) {
+    if (l->base_version != GameVersion::BB) {
       throw logic_error("joinable quest started on non-BB version");
     }
 
@@ -2395,7 +2391,7 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
     }
 
     if (send_quest_barrier_if_all_clients_ready(l) &&
-        (l->version == GameVersion::BB) &&
+        (l->base_version == GameVersion::BB) &&
         l->map &&
         l->quest) {
       auto dat_contents = prs_decompress(*l->quest->dat_contents());
@@ -3203,6 +3199,7 @@ shared_ptr<Lobby> create_game_generic(
     GameMode mode,
     uint8_t difficulty,
     uint32_t flags,
+    bool allow_v1,
     shared_ptr<Lobby> watched_lobby,
     shared_ptr<Episode3::BattleRecordPlayer> battle_player) {
 
@@ -3276,7 +3273,54 @@ shared_ptr<Lobby> create_game_generic(
       (is_ep3_trial ? Lobby::Flag::IS_EP3_TRIAL : 0) |
       ((s->cheat_mode_behavior == ServerState::CheatModeBehavior::ON_BY_DEFAULT) ? Lobby::Flag::CHEATS_ENABLED : 0);
   game->password = password;
-  game->version = c->version();
+
+  game->allowed_versions = 0;
+  switch (c->quest_version()) {
+    case QuestScriptVersion::DC_NTE:
+      game->allow_version(QuestScriptVersion::DC_NTE);
+      break;
+    case QuestScriptVersion::DC_V1:
+      game->allow_version(QuestScriptVersion::DC_V1);
+      game->allow_version(QuestScriptVersion::DC_V2);
+      if (s->allow_dc_pc_games) {
+        game->allow_version(QuestScriptVersion::PC_V2);
+      }
+      break;
+    case QuestScriptVersion::DC_V2:
+    case QuestScriptVersion::PC_V2:
+      if (allow_v1 && (difficulty <= 2)) {
+        game->allow_version(QuestScriptVersion::DC_V1);
+      }
+      game->allow_version(QuestScriptVersion::DC_V2);
+      if (s->allow_dc_pc_games) {
+        game->allow_version(QuestScriptVersion::PC_V2);
+      }
+      break;
+    case QuestScriptVersion::GC_NTE:
+      game->allow_version(QuestScriptVersion::GC_NTE);
+      break;
+    case QuestScriptVersion::GC_V3:
+      game->allow_version(QuestScriptVersion::GC_V3);
+      if (s->allow_gc_xb_games) {
+        game->allow_version(QuestScriptVersion::XB_V3);
+      }
+      break;
+    case QuestScriptVersion::XB_V3:
+      game->allow_version(QuestScriptVersion::XB_V3);
+      if (s->allow_gc_xb_games) {
+        game->allow_version(QuestScriptVersion::GC_V3);
+      }
+      break;
+    case QuestScriptVersion::GC_EP3:
+      game->allow_version(QuestScriptVersion::GC_EP3);
+      break;
+    case QuestScriptVersion::BB_V4:
+      game->allow_version(QuestScriptVersion::BB_V4);
+      break;
+    default:
+      throw logic_error("invalid quest script version");
+  }
+
   game->section_id = c->options.override_section_id >= 0
       ? c->options.override_section_id
       : c->game_data.player()->disp.visual.section_id;
@@ -3291,7 +3335,7 @@ shared_ptr<Lobby> create_game_generic(
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
   }
-  if (game->version == GameVersion::BB) {
+  if (game->base_version == GameVersion::BB) {
     // TODO: Use appropriate restrictions here if in battle mode
     game->item_creator.reset(new ItemCreator(
         s->common_item_set,
@@ -3326,7 +3370,7 @@ shared_ptr<Lobby> create_game_generic(
     generate_variations(game->variations, game->random_crypt, game->episode, is_solo);
   }
 
-  if (game->version == GameVersion::BB) {
+  if (game->base_version == GameVersion::BB) {
     for (size_t x = 0; x < 4; x++) {
       game->next_item_id[x] = (0x00200000 * x) + 0x00010000;
     }
@@ -3382,15 +3426,13 @@ static void on_C1_PC(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
   const auto& cmd = check_size_t<C_CreateGame_PC_C1>(data);
   auto s = c->require_server_state();
 
-  uint32_t flags = Lobby::Flag::NON_V1_ONLY;
   GameMode mode = GameMode::NORMAL;
   if (cmd.battle_mode) {
     mode = GameMode::BATTLE;
   } else if (cmd.challenge_mode) {
     mode = GameMode::CHALLENGE;
   }
-  auto game = create_game_generic(
-      s, c, cmd.name, cmd.password, Episode::EP1, mode, cmd.difficulty, flags);
+  auto game = create_game_generic(s, c, cmd.name, cmd.password, Episode::EP1, mode, cmd.difficulty);
   if (game) {
     s->change_client_lobby(c, game);
     c->flags |= Client::Flag::LOADING;
@@ -3405,8 +3447,7 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, con
     const auto& cmd = check_size_t<C_CreateGame_DCNTE<char>>(data);
     u16string name = decode_sjis(cmd.name);
     u16string password = decode_sjis(cmd.password);
-    game = create_game_generic(
-        s, c, name.c_str(), password.c_str(), Episode::EP1, GameMode::NORMAL, 0, 0);
+    game = create_game_generic(s, c, name, password);
 
   } else {
     const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
@@ -3419,16 +3460,13 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, con
 
     Episode episode = Episode::NONE;
     uint32_t flags = 0;
+    bool allow_v1 = false;
     if (c->version() == GameVersion::DC) {
-      if (cmd.episode) {
-        flags |= Lobby::Flag::NON_V1_ONLY;
-      }
+      allow_v1 = (cmd.episode == 0);
       episode = Episode::EP1;
     } else if (client_is_ep3) {
-      flags |= Lobby::Flag::NON_V1_ONLY;
       episode = Episode::EP3;
     } else { // XB/GC non-Ep3
-      flags |= Lobby::Flag::NON_V1_ONLY;
       episode = cmd.episode == 2 ? Episode::EP2 : Episode::EP1;
     }
 
@@ -3464,8 +3502,7 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, con
       flags |= Lobby::Flag::IS_SPECTATOR_TEAM;
     }
 
-    game = create_game_generic(
-        s, c, name.c_str(), password.c_str(), episode, mode, cmd.difficulty, flags, watched_lobby);
+    game = create_game_generic(s, c, name, password, episode, mode, cmd.difficulty, flags, allow_v1, watched_lobby);
     if (game && (game->episode == Episode::EP3)) {
       game->ep3_ex_result_values = s->ep3_default_ex_values;
     }
@@ -3481,7 +3518,6 @@ static void on_C1_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
   const auto& cmd = check_size_t<C_CreateGame_BB_C1>(data);
   auto s = c->require_server_state();
 
-  uint32_t flags = Lobby::Flag::NON_V1_ONLY;
   GameMode mode = GameMode::NORMAL;
   if (cmd.battle_mode) {
     mode = GameMode::BATTLE;
@@ -3508,8 +3544,7 @@ static void on_C1_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
       throw runtime_error("invalid episode number");
   }
 
-  auto game = create_game_generic(
-      s, c, cmd.name, cmd.password, episode, mode, cmd.difficulty, flags);
+  auto game = create_game_generic(s, c, cmd.name, cmd.password, episode, mode, cmd.difficulty);
   if (game) {
     s->change_client_lobby(c, game);
     c->flags |= Client::Flag::LOADING;
@@ -3539,7 +3574,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
   c->flags &= (~Client::Flag::LOADING);
 
   send_resume_game(l, c);
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     send_set_exp_multiplier(l);
   }
   send_server_time(c);

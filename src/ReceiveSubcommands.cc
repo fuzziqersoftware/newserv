@@ -697,7 +697,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
   if (!l->is_game()) {
     return;
   }
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     return;
   }
 
@@ -738,7 +738,7 @@ static void on_drop_partial_stack(shared_ptr<Client> c, uint8_t command, uint8_t
 
 static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     const auto& cmd = check_size_t<G_SplitStackedItem_BB_6xC3>(data, size);
 
     if (!l->is_game() || (cmd.header.client_id != c->lobby_client_id)) {
@@ -791,7 +791,7 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
   if (!l->is_game() || (cmd.header.client_id != c->lobby_client_id)) {
     return;
   }
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     return;
   }
 
@@ -828,7 +828,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
   if (!l->is_game() || (c->lobby_client_id != l->leader_id)) {
     return;
   }
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     return;
   }
 
@@ -870,7 +870,7 @@ static void on_pick_up_item(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   if (!l->is_game()) {
     return;
   }
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     // BB clients should never send this; only the server should send this
     return;
   }
@@ -900,7 +900,7 @@ static void on_pick_up_item(shared_ptr<Client> c, uint8_t command, uint8_t flag,
 static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   // This is handled by the server on BB, and by the leader on other versions
   auto l = c->require_lobby();
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     auto& cmd = check_size_t<G_PickUpItemRequest_6x5A>(data, size);
 
     if (!l->is_game() || (cmd.header.client_id != c->lobby_client_id)) {
@@ -946,7 +946,7 @@ static void on_equip_unequip_item(shared_ptr<Client> c, uint8_t command, uint8_t
     } else { // Unequip
       c->game_data.player()->inventory.items[index].flags &= 0xFFFFFFF7;
     }
-  } else if (l->version == GameVersion::BB) {
+  } else if (l->base_version == GameVersion::BB) {
     throw logic_error("item tracking not enabled in BB game");
   }
 
@@ -1021,7 +1021,7 @@ static void on_feed_mag(
     // a 6x29 immediately after to destroy the fed item. So on BB, we should
     // remove the fed item here, but on other versions, we allow the following
     // 6x29 command to do that.
-    if (l->version == GameVersion::BB) {
+    if (l->base_version == GameVersion::BB) {
       c->game_data.player()->remove_item(cmd.fed_item_id, 1, false);
     }
 
@@ -1049,7 +1049,7 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t com
 
   } else {
     const auto& cmd = check_size_t<G_ShopContentsRequest_BB_6xB5>(data, size);
-    if ((l->version == GameVersion::BB) && l->is_game()) {
+    if ((l->base_version == GameVersion::BB) && l->is_game()) {
       if (!l->item_creator) {
         throw logic_error("item creator missing from BB game");
       }
@@ -1081,16 +1081,16 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t com
 
 static void on_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if ((l->version == GameVersion::BB) && l->is_game()) {
+  if ((l->base_version == GameVersion::BB) && l->is_game()) {
     send_bank(c);
-  } else if ((l->version == GameVersion::GC) && l->is_ep3()) {
+  } else if ((l->base_version == GameVersion::GC) && l->is_ep3()) {
     forward_subcommand(c, command, flag, data, size);
   }
 }
 
 static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     const auto& cmd = check_size_t<G_BankAction_BB_6xBD>(data, size);
 
     if (!l->is_game()) {
@@ -1141,7 +1141,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
 
 static void on_sort_inventory_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     const auto& cmd = check_size_t<G_SortInventory_BB_6xC4>(data, size);
 
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
@@ -1178,7 +1178,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
 
   // If the game is not BB, forward the request to the leader (if drops are
   // enabled, or just ignore it) instead of generating the item drop command
-  if (l->version != GameVersion::BB) {
+  if (l->base_version != GameVersion::BB) {
     if (l->flags & Lobby::Flag::DROPS_ENABLED) {
       forward_subcommand(c, command, flag, data, size);
     }
@@ -1304,7 +1304,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
 
 static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     const auto& cmd = check_size_t<G_EnemyHitByPlayer_6x0A>(data, size);
 
     if (!l->is_game()) {
@@ -1333,7 +1333,7 @@ static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t flag, co
 
 static void on_charge_attack_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->version != GameVersion::BB) {
+  if (l->base_version != GameVersion::BB) {
     throw runtime_error("BB-only command sent in non-BB game");
   }
 
@@ -1375,7 +1375,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   auto s = c->require_server_state();
   auto l = c->require_lobby();
 
-  if (l->version != GameVersion::BB) {
+  if (l->base_version != GameVersion::BB) {
     throw runtime_error("BB-only command sent in non-BB game");
   }
   if (!l->map) {
@@ -1413,7 +1413,7 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t fl
   auto s = c->require_server_state();
   auto l = c->require_lobby();
 
-  if (l->version != GameVersion::BB) {
+  if (l->base_version != GameVersion::BB) {
     throw runtime_error("BB-only command sent in non-BB game");
   }
 
@@ -1574,7 +1574,7 @@ static void on_destroy_ground_item(shared_ptr<Client> c, uint8_t command, uint8_
 
 static void on_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     const auto& cmd = check_size_t<G_IdentifyItemRequest_6xB8>(data, size);
     if (!l->is_game()) {
       return;
@@ -1605,7 +1605,7 @@ static void on_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
 
 static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     const auto& cmd = check_size_t<G_AcceptItemIdentification_BB_6xBA>(data, size);
 
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
@@ -1630,7 +1630,7 @@ static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, ui
 static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     const auto& cmd = check_size_t<G_SellItemAtShop_BB_6xC0>(data, size);
 
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
@@ -1658,7 +1658,7 @@ static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8
 
 static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->version == GameVersion::BB) {
+  if (l->base_version == GameVersion::BB) {
     const auto& cmd = check_size_t<G_BuyShopItem_BB_6xB7>(data, size);
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
       throw logic_error("item tracking not enabled in BB game");
@@ -1695,7 +1695,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
 
 static void on_medical_center_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void*, size_t) {
   auto l = c->require_lobby();
-  if (l->is_game() && (l->version == GameVersion::BB)) {
+  if (l->is_game() && (l->base_version == GameVersion::BB)) {
     c->game_data.player()->remove_meseta(10, false);
   }
 }

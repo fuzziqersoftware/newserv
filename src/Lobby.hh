@@ -27,8 +27,7 @@ struct ServerState;
 struct Lobby : public std::enable_shared_from_this<Lobby> {
   enum Flag {
     GAME = 0x00000001,
-    NON_V1_ONLY = 0x00000002, // DC NTE and DCv1 not allowed
-    PERSISTENT = 0x00000004,
+    PERSISTENT = 0x00000002,
 
     // Flags used only for games
     CHEATS_ENABLED = 0x00000100,
@@ -45,6 +44,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     // Flags used only for lobbies
     PUBLIC = 0x01000000,
     DEFAULT = 0x02000000,
+    V2_AND_LATER = 0x04000000, // Lobby does not appear on v1
   };
 
   std::weak_ptr<ServerState> server_state;
@@ -69,7 +69,11 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   parray<le_uint32_t, 0x20> variations;
 
   // Game config
-  GameVersion version;
+  GameVersion base_version;
+  // Bits in allowed_versions specify who is allowed to join this game. The
+  // bits are indexed as (1 << version), where version is a value from the
+  // QuestScriptVersion enum.
+  uint16_t allowed_versions;
   uint8_t section_id;
   Episode episode;
   GameMode mode;
@@ -125,6 +129,13 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   }
   inline bool is_ep3() const {
     return this->episode == Episode::EP3;
+  }
+
+  inline bool version_is_allowed(QuestScriptVersion v) const {
+    return this->allowed_versions & (1 << static_cast<size_t>(v));
+  }
+  inline void allow_version(QuestScriptVersion v) {
+    this->allowed_versions |= (1 << static_cast<size_t>(v));
   }
 
   void reassign_leader_on_client_departure(size_t leaving_client_id);

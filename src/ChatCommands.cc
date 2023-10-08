@@ -359,11 +359,9 @@ static void server_command_exit(shared_ptr<Client> c, const std::u16string&) {
       send_message_box(c, u"");
     }
 
-    const auto& port_name = version_to_login_port_name.at(
-        static_cast<size_t>(c->version()));
+    const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(c->version()));
     auto s = c->require_server_state();
-    send_reconnect(c, s->connect_address_for_client(c),
-        s->name_to_port_config.at(port_name)->port);
+    send_reconnect(c, s->connect_address_for_client(c), s->name_to_port_config.at(port_name)->port);
   }
 }
 
@@ -597,7 +595,7 @@ static void server_command_playrec(shared_ptr<Client> c, const std::u16string& a
     string file_path = file_path_for_recording(args, c->license->serial_number);
 
     auto s = c->require_server_state();
-    uint32_t flags = Lobby::Flag::NON_V1_ONLY | Lobby::Flag::IS_SPECTATOR_TEAM;
+    uint32_t flags = Lobby::Flag::IS_SPECTATOR_TEAM;
     string filename = encode_sjis(args);
     if (filename[0] == '!') {
       flags |= Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY;
@@ -614,8 +612,8 @@ static void server_command_playrec(shared_ptr<Client> c, const std::u16string& a
     shared_ptr<Episode3::BattleRecord> record(new Episode3::BattleRecord(data));
     shared_ptr<Episode3::BattleRecordPlayer> battle_player(
         new Episode3::BattleRecordPlayer(record, s->game_server->get_base()));
-    auto game = create_game_generic(s, c, args.c_str(), u"", Episode::EP3, GameMode::NORMAL,
-        0, flags, nullptr, battle_player);
+    auto game = create_game_generic(
+        s, c, args, u"", Episode::EP3, GameMode::NORMAL, 0, flags, false, nullptr, battle_player);
     if (game) {
       s->change_client_lobby(c, game);
       c->flags |= Client::Flag::LOADING;

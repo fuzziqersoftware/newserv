@@ -1895,7 +1895,7 @@ int main(int argc, char** argv) {
 
       shared_ptr<DNSServer> dns_server;
       if (state->dns_server_port && (behavior != Behavior::REPLAY_LOG)) {
-        config_log.info("Starting DNS server");
+        config_log.info("Starting DNS server on port %hu", state->dns_server_port);
         dns_server.reset(new DNSServer(base, state->local_address,
             state->external_address));
         dns_server->listen("", state->dns_server_port);

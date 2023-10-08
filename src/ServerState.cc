@@ -24,6 +24,8 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       ip_stack_debug(false),
       allow_unregistered_users(false),
       allow_saving(true),
+      allow_dc_pc_games(false),
+      allow_gc_xb_games(true),
       item_tracking_enabled(true),
       drops_enabled(true),
       ep3_send_function_call_enabled(false),
@@ -53,7 +55,7 @@ void ServerState::init() {
 
   for (size_t x = 0; x < 20; x++) {
     auto lobby_name = decode_sjis(string_printf("LOBBY%zu", x + 1));
-    bool is_non_v1_only = (x > 9);
+    bool v2_and_later_only = (x > 9);
     bool is_ep3_only = (x > 14);
 
     shared_ptr<Lobby> l = this->create_lobby();
@@ -61,7 +63,7 @@ void ServerState::init() {
         Lobby::Flag::PUBLIC |
         Lobby::Flag::DEFAULT |
         Lobby::Flag::PERSISTENT |
-        (is_non_v1_only ? Lobby::Flag::NON_V1_ONLY : 0);
+        (v2_and_later_only ? Lobby::Flag::V2_AND_LATER : 0);
     l->block = x + 1;
     l->name = lobby_name;
     l->max_clients = 12;
@@ -69,7 +71,7 @@ void ServerState::init() {
       l->episode = Episode::EP3;
     }
 
-    if (!is_non_v1_only) {
+    if (!v2_and_later_only) {
       this->public_lobby_search_order_v1.emplace_back(l);
     }
     if (!is_ep3_only) {
@@ -654,6 +656,9 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     }
   } catch (const out_of_range&) {
   }
+
+  this->allow_dc_pc_games = json.get_bool("AllowDCPCGames", this->allow_dc_pc_games);
+  this->allow_gc_xb_games = json.get_bool("AllowGCXBGames", this->allow_gc_xb_games);
 
   try {
     auto v = json.at("LobbyEvent");
