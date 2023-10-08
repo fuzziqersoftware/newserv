@@ -45,6 +45,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     PUBLIC = 0x01000000,
     DEFAULT = 0x02000000,
     V2_AND_LATER = 0x04000000, // Lobby does not appear on v1
+    IS_OVERFLOW = 0x08000000,
   };
 
   std::weak_ptr<ServerState> server_state;

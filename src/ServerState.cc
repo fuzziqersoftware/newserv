@@ -147,8 +147,13 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   }
 
   if (!added_to_lobby) {
-    // TODO: Add the user to a dynamically-created private lobby instead
-    throw out_of_range("all lobbies full");
+    added_to_lobby = this->create_lobby();
+    added_to_lobby->flags |= Lobby::Flag::PUBLIC | Lobby::Flag::IS_OVERFLOW;
+    added_to_lobby->block = 100;
+    added_to_lobby->name = u"Overflow";
+    added_to_lobby->max_clients = 12;
+    added_to_lobby->event = this->pre_lobby_event;
+    added_to_lobby->add_client(c);
   }
 
   // Send a join message to the joining player, and notifications to all others

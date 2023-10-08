@@ -3,7 +3,6 @@
 - Test PSOX (blocked on Insignia private server support)
 - Implement server-side drops on non-BB game versions
 - Find a way to silence audio in RunDOL.s
-- Implement private and overflow lobbies
 - Encapsulate BB server-side random state and make replays deterministic
 - Implement character and inventory replacement for battle and challenge modes
 - Implement choice search

@@ -447,6 +447,10 @@ static void on_set_player_visibility(shared_ptr<Client> c, uint8_t command, uint
     if (!l->is_game() && !(c->flags & Client::Flag::IS_DC_V1)) {
       send_arrow_update(l);
     }
+    if (!l->is_game() && (l->flags & Lobby::Flag::IS_OVERFLOW)) {
+      send_message_box(c, u"$C6All lobbies are full.\n\n$C7You are in a private lobby. You can use the\nteleporter to join other lobbies if there is space\navailable.");
+      send_lobby_message_box(c, u"");
+    }
   }
 }
 
