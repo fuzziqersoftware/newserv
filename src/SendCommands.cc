@@ -1739,7 +1739,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.name = lc->game_data.player()->disp.name;
     remove_language_marker_inplace(e.lobby_data.name);
     if (UseLanguageMarkerInName) {
-      add_language_marker_inplace(e.lobby_data.name, 'E');
+      add_language_marker_inplace(e.lobby_data.name, 'J');
     }
     e.inventory = lc->game_data.player()->inventory;
     if (c->version() == GameVersion::GC) {
