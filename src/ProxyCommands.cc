@@ -1282,7 +1282,7 @@ static void update_leader_id(shared_ptr<ProxyServer::LinkedSession> ses, uint8_t
   if (ses->leader_client_id != leader_id) {
     ses->leader_client_id = leader_id;
     ses->log.info("Changed room leader to %zu", ses->leader_client_id);
-    if (ses->leader_client_id == ses->lobby_client_id) {
+    if (ses->options.enable_player_notifications && (ses->leader_client_id == ses->lobby_client_id)) {
       send_text_message(ses->client_channel, u"$C6You are now the leader");
     }
   }
