@@ -338,8 +338,15 @@ If you're emulating PSO DC, all versions will connect to newserv by setting the 
 - EmulateBBA = no (while some versions support the BBA, some do not, and all versions support the modem)
 - Enable = yes
 
-
 Once set up, the EU and US versions will work without any extra set up (other than the HL Check Disable code for USv2), while the JP versions require HL Check Disable codes to be running, and an e-mail account set up. The easiest way to set up an e-mail account is through PlanetWeb's Internet Browser for Dreamcast.
+
+If the server is running on the same machine as Flycast, this might not work, even if you point Flycast's DNS queries at your local IP address (instead of 127.0.0.1). In this case, you can modify the loaded executable in memory to make it connect anywhere you want. There is a script included with newserv that can do this on macOS; a similar technique could be done manually using scanmem on Linux or Cheat Engine on Windows. To use the script, do this:
+1. Build and install memwatch (https://github.com/fuzziqersoftware/memwatch).
+2. Start Flycast and run PSO. (You must start PSO before running the script; it won't work if you run the script before loading the game.)
+3. Run `sudo patch_flycast_memory.py <original-destination>`. Replace `<original-destination>` with the hostname that PSO wants to connect to (you can find this out by using Wireshark and looking for DNS queries). The script may take up to a minute; you can continue using Flycast while it runs, but don't start an online game until the script is done.
+4. Run newserv and start an online game in PSO.
+
+If you use this method, you'll have to run the script every time you start PSO in Flycast, but you won't have to run it again if you start another online game without restarting emulation.
 
 #### PSO PC
 
