@@ -2660,6 +2660,9 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, cons
 
 static void on_6x_C9_CB(shared_ptr<Client> c, uint16_t command, uint32_t flag, const string& data) {
   check_size_v(data.size(), 4, 0xFFFF);
+  if ((data.size() > 0x400) && (command != 0x6C) && (command != 0x6D)) {
+    throw runtime_error("non-extended game command data size is too large");
+  }
   on_subcommand_multi(c, command, flag, data);
 }
 

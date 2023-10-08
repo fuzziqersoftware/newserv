@@ -4,7 +4,6 @@
 - Implement server-side drops on non-BB game versions
 - Find a way to silence audio in RunDOL.s
 - Implement private and overflow lobbies
-- Enforce client-side size limits (e.g. for 60/62 commands) on the server side as well
 - Encapsulate BB server-side random state and make replays deterministic
 - Implement character and inventory replacement for battle and challenge modes
 - Implement choice search
