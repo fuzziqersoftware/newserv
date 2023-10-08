@@ -60,7 +60,7 @@ public:
     BIN_DAT_DLQ,
     QST,
   };
-  int64_t internal_id;
+  uint32_t quest_number;
   uint32_t menu_item_id;
   uint32_t category_id;
   Episode episode;
@@ -108,7 +108,7 @@ public:
       const std::string& bin_data,
       const std::string& dat_data,
       const std::u16string& name,
-      const std::string& file_basename,
+      uint32_t quest_number,
       QuestScriptVersion version,
       bool is_dlq_encoded);
   std::string encode_qst() const;

@@ -15,6 +15,7 @@
 - Try DCv2/PC crossplay
 - Implement decrypt/encrypt actions for VMS files
 - Fix Word Select mapping across versions
+- Add quest categories for Episode 3
 
 ## Episode 3
 

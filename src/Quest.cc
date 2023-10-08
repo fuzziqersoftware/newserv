@@ -217,7 +217,7 @@ struct PSODownloadQuestHeader {
 } __attribute__((packed));
 
 Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<const QuestCategoryIndex> category_index)
-    : internal_id(-1),
+    : quest_number(0xFFFFFFFF),
       menu_item_id(0),
       category_id(0),
       episode(Episode::NONE),
@@ -285,9 +285,6 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
       this->category_id = 0;
     }
 
-    // Parse the number out of the first token
-    this->internal_id = strtoull(tokens[0].c_str() + 1, nullptr, 10);
-
     // Get the version from the second (or previously third) token
     static const unordered_map<string, QuestScriptVersion> name_to_version({
         {"dn", QuestScriptVersion::DC_NTE},
@@ -319,6 +316,7 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
       auto* header = reinterpret_cast<const PSOQuestHeaderDC*>(bin_decompressed.data());
       this->joinable = false;
       this->episode = Episode::EP1;
+      this->quest_number = header->quest_number;
       this->name = decode_sjis(header->name);
       this->short_description = decode_sjis(header->short_description);
       this->long_description = decode_sjis(header->long_description);
@@ -332,6 +330,7 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
       auto* header = reinterpret_cast<const PSOQuestHeaderPC*>(bin_decompressed.data());
       this->joinable = false;
       this->episode = Episode::EP1;
+      this->quest_number = header->quest_number;
       this->name = header->name;
       this->short_description = header->short_description;
       this->long_description = header->long_description;
@@ -352,6 +351,7 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
       auto* header = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
       this->joinable = false;
       this->episode = Episode::EP3;
+      this->quest_number = header->map_number;
       this->name = decode_sjis(header->name);
       this->short_description = decode_sjis(header->quest_name);
       this->long_description = decode_sjis(header->description);
@@ -367,6 +367,7 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
       auto* header = reinterpret_cast<const PSOQuestHeaderGC*>(bin_decompressed.data());
       this->joinable = false;
       this->episode = (header->episode == 1) ? Episode::EP2 : Episode::EP1;
+      this->quest_number = header->quest_number;
       this->name = decode_sjis(header->name);
       this->short_description = decode_sjis(header->short_description);
       this->long_description = decode_sjis(header->long_description);
@@ -392,6 +393,7 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
         default:
           throw runtime_error("invalid episode number");
       }
+      this->quest_number = header->quest_number;
       this->name = header->name;
       this->short_description = header->short_description;
       this->long_description = header->long_description;
@@ -407,19 +409,11 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
   }
 }
 
-static string basename_for_filename(const string& filename) {
-  size_t slash_pos = filename.rfind('/');
-  if (slash_pos != string::npos) {
-    return filename.substr(slash_pos + 1);
-  }
-  return filename;
-}
-
 string Quest::bin_filename() const {
   if (this->episode == Episode::EP3) {
-    return string_printf("m%06" PRId64 "p_e.bin", this->internal_id);
+    return string_printf("m%06" PRIu32 "p_e.bin", this->quest_number);
   } else {
-    return basename_for_filename(this->file_basename + ".bin");
+    return string_printf("q%" PRIu32 ".bin", this->quest_number);
   }
 }
 
@@ -427,7 +421,7 @@ string Quest::dat_filename() const {
   if (this->episode == Episode::EP3) {
     throw logic_error("Episode 3 quests do not have .dat files");
   } else {
-    return basename_for_filename(this->file_basename + ".dat");
+    return string_printf("q%" PRIu32 ".dat", this->quest_number);
   }
 }
 
@@ -728,7 +722,10 @@ static pair<string, string> decode_qst_t(FILE* f) {
       }
 
     } else if (header.command == 0x13 || header.command == 0xA7) {
-      if (header.size != sizeof(HeaderT) + sizeof(S_WriteFile_13_A7)) {
+      // We have to allow larger commands here, because it seems some tools
+      // encoded QST files with BB's extra 4 padding bytes included in the
+      // command size.
+      if (header.size < sizeof(HeaderT) + sizeof(S_WriteFile_13_A7)) {
         throw runtime_error("qst write file command has incorrect size");
       }
       const auto& cmd = r.get<S_WriteFile_13_A7>();
@@ -849,13 +846,13 @@ string Quest::encode_qst(
     const string& bin_data,
     const string& dat_data,
     const u16string& name,
-    const string& file_basename,
+    uint32_t quest_number,
     QuestScriptVersion version,
     bool is_dlq_encoded) {
   StringWriter w;
 
-  string bin_filename = file_basename + ".bin";
-  string dat_filename = file_basename + ".dat";
+  string bin_filename = string_printf("q%" PRIu32 ".bin", quest_number);
+  string dat_filename = string_printf("q%" PRIu32 ".dat", quest_number);
 
   // Some tools expect both open file commands at the beginning, hence this
   // unfortunate abstraction-breaking.
@@ -909,7 +906,7 @@ string Quest::encode_qst() const {
       *this->bin_contents(),
       *this->dat_contents(),
       this->name,
-      basename(this->file_basename),
+      this->quest_number,
       this->version,
       this->is_dlq_encoded);
 }
@@ -948,11 +945,11 @@ QuestIndex::QuestIndex(
           throw logic_error("duplicate quest menu item id");
         }
         auto category_name = encode_sjis(this->category_index->at(q->category_id).name);
-        static_game_data_log.info("Indexed quest %s (%s => %s-%" PRId64 " (%" PRIu32 "), %s, %s (%" PRIu32 "), joinable=%s)",
+        static_game_data_log.info("Indexed quest %s (%s => %s-%" PRIu32 " (%" PRIu32 "), %s, %s (%" PRIu32 "), joinable=%s)",
             ascii_name.c_str(),
             filename.c_str(),
             name_for_enum(q->version),
-            q->internal_id,
+            q->quest_number,
             q->menu_item_id,
             name_for_episode(q->episode),
             category_name.c_str(),
