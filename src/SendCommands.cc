@@ -618,10 +618,11 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   SC_SyncCharacterSaveFile_BB_00E7 cmd;
   cmd.inventory = player->inventory;
   cmd.disp = player->disp;
+  cmd.disp.play_time = 0;
   cmd.unknown_a1 = 0;
   cmd.creation_timestamp = 0;
   cmd.signature = 0xA205B064;
-  cmd.play_time_seconds = 0; // TODO: Can we just use the same value as in disp?
+  cmd.play_time_seconds = player->disp.play_time;
   cmd.option_flags = account->option_flags;
   cmd.quest_data1 = player->quest_data1;
   cmd.bank = player->bank;
@@ -1738,7 +1739,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.name = lc->game_data.player()->disp.name;
     remove_language_marker_inplace(e.lobby_data.name);
     if (UseLanguageMarkerInName) {
-      add_language_marker_inplace(e.lobby_data.name, 'J');
+      add_language_marker_inplace(e.lobby_data.name, 'E');
     }
     e.inventory = lc->game_data.player()->inventory;
     if (c->version() == GameVersion::GC) {
@@ -1747,9 +1748,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
       }
     }
     e.disp = convert_player_disp_data<DispDataT>(lc->game_data.player()->disp);
-    if ((c->version() == GameVersion::PC) || (c->version() == GameVersion::DC)) {
-      e.disp.enforce_v2_limits();
-    }
+    e.disp.enforce_lobby_join_limits(c->version());
   }
 
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
@@ -1793,7 +1792,7 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.name = lc->game_data.player()->disp.name;
     e.inventory = lc->game_data.player()->inventory;
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lc->game_data.player()->disp);
-    e.disp.enforce_v2_limits();
+    e.disp.enforce_lobby_join_limits(c->version());
   }
 
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));

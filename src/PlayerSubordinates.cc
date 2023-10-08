@@ -17,26 +17,32 @@
 
 FileContentsCache player_files_cache(300 * 1000 * 1000);
 
-void PlayerDispDataDCPCV3::enforce_v2_limits() {
-  // V1/V2 have fewer classes, so we'll substitute some here
-  if (this->visual.char_class == 11) {
-    this->visual.char_class = 0; // FOmar -> HUmar
-  } else if (this->visual.char_class == 10) {
-    this->visual.char_class = 1; // RAmarl -> HUnewearl
-  } else if (this->visual.char_class == 9) {
-    this->visual.char_class = 5; // HUcaseal -> RAcaseal
-  }
+void PlayerDispDataDCPCV3::enforce_lobby_join_limits(GameVersion target_version) {
+  if ((target_version == GameVersion::PC) || (target_version == GameVersion::DC)) {
+    // V1/V2 have fewer classes, so we'll substitute some here
+    if (this->visual.char_class == 11) {
+      this->visual.char_class = 0; // FOmar -> HUmar
+    } else if (this->visual.char_class == 10) {
+      this->visual.char_class = 1; // RAmarl -> HUnewearl
+    } else if (this->visual.char_class == 9) {
+      this->visual.char_class = 5; // HUcaseal -> RAcaseal
+    }
 
-  // V1/V2 has fewer costumes, so substitute them here too
-  this->visual.costume %= 9;
+    // V1/V2 has fewer costumes, so substitute them here too
+    this->visual.costume %= 9;
 
-  // If the player is somehow still not a valid class, make them appear as the
-  // "ninja" NPC
-  if (this->visual.char_class > 8) {
-    this->visual.extra_model = 0;
-    this->visual.v2_flags |= 2;
+    // If the player is somehow still not a valid class, make them appear as the
+    // "ninja" NPC
+    if (this->visual.char_class > 8) {
+      this->visual.extra_model = 0;
+      this->visual.v2_flags |= 2;
+    }
+    this->visual.version = 2;
   }
-  this->visual.version = 2;
+}
+
+void PlayerDispDataBB::enforce_lobby_join_limits(GameVersion) {
+  this->play_time = 0;
 }
 
 PlayerDispDataBB PlayerDispDataDCPCV3::to_bb() const {

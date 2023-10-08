@@ -13,6 +13,7 @@
 #include "ItemData.hh"
 #include "LevelTable.hh"
 #include "Text.hh"
+#include "Version.hh"
 
 extern FileContentsCache player_files_cache;
 
@@ -135,7 +136,7 @@ struct PlayerDispDataDCPCV3 {
   /* 74 */ parray<uint8_t, 0x48> config;
   /* BC */ parray<uint8_t, 0x14> technique_levels_v1;
   /* D0 */
-  void enforce_v2_limits();
+  void enforce_lobby_join_limits(GameVersion target_version);
   PlayerDispDataBB to_bb() const;
 } __attribute__((packed));
 
@@ -161,7 +162,7 @@ struct PlayerDispDataBB {
   /* 017C */ parray<uint8_t, 0x14> technique_levels_v1;
   /* 0190 */
 
-  inline void enforce_v2_limits() {}
+  void enforce_lobby_join_limits(GameVersion target_version);
   PlayerDispDataDCPCV3 to_dcpcv3() const;
   PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);
