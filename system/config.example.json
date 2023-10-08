@@ -482,7 +482,8 @@
     [0x10, "q", "gv2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
     [0x10, "q", "gv4", "The Meteor Impact Incident", "$E$C6Quests that follow\nthe Episode 4\nstoryline"],
     [0x20, "q", "dl", "Download", "$E$C6Quests to download\nto your Memory Card"],
-    [0x40, "e", "", "Download", "$E$C6Quests to download\nto your Memory Card"],
+    [0x40, "e", "dlt", "Trial Download", "$E$C6Quests to download\nto your Memory Card\nfrom Episode 3\nTrial Edition"],
+    [0x40, "e", "dl", "Download", "$E$C6Quests to download\nto your Memory Card"],
   ],
 
   // Cheat mode behavior. There are three values:

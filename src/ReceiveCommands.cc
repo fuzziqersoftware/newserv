@@ -1719,21 +1719,30 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
             // always the download quest menu. (Episode 3 does actually have
             // online quests, but they're served via a server data request
             // instead of the file download paradigm that other versions use.)
-            vector<shared_ptr<const Quest>> quests;
+            uint32_t ep3_category_id = 0;
+            size_t num_ep3_categories = 0;
             for (const auto& category : s->quest_category_index->categories) {
               if (category.flags & QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD) {
-                quests = s->quest_index->filter(category.category_id, c->quest_version());
-                break;
+                ep3_category_id = category.category_id;
+                num_ep3_categories++;
               }
             }
-            send_quest_menu(c, MenuID::QUEST, quests, true);
-          } else {
-            uint8_t flags = QuestCategoryIndex::Category::Flag::DOWNLOAD;
-            if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
-              flags |= QuestCategoryIndex::Category::Flag::HIDE_ON_PRE_V3;
+            if (num_ep3_categories == 1) {
+              auto quests = s->quest_index->filter(ep3_category_id, c->quest_version());
+              send_quest_menu(c, MenuID::QUEST, quests, true);
+              break;
             }
-            send_quest_menu(c, MenuID::QUEST_FILTER, s->quest_category_index, flags);
           }
+
+          // Not Episode 3, or there are multiple Episode 3 download categories;
+          // send the categories menu instead
+          uint8_t flags = (c->flags & Client::Flag::IS_EPISODE_3)
+              ? QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD
+              : QuestCategoryIndex::Category::Flag::DOWNLOAD;
+          if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
+            flags |= QuestCategoryIndex::Category::Flag::HIDE_ON_PRE_V3;
+          }
+          send_quest_menu(c, MenuID::QUEST_FILTER, s->quest_category_index, flags);
           break;
         }
 
