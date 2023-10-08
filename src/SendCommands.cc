@@ -1272,13 +1272,19 @@ void send_quest_menu_t(
     uint32_t menu_id,
     const vector<shared_ptr<const Quest>>& quests,
     bool is_download_menu) {
+  auto v = c->quest_version();
   vector<EntryT> entries;
   for (const auto& quest : quests) {
+    auto vq = quest->version(v);
+    if (!vq) {
+      continue;
+    }
+
     auto& e = entries.emplace_back();
     e.menu_id = menu_id;
-    e.item_id = quest->menu_item_id;
-    e.name = quest->name;
-    e.short_description = quest->short_description;
+    e.item_id = quest->quest_number;
+    e.name = vq->name;
+    e.short_description = vq->short_description;
     add_color_inplace(e.short_description);
   }
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);

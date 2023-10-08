@@ -2210,9 +2210,9 @@ MapIndex::MapIndex(const string& directory) {
       } else if (ends_with(filename, ".mnm") || ends_with(filename, ".bin")) {
         entry.reset(new MapEntry(load_file(directory + "/" + filename)));
       } else if (ends_with(filename, ".gci")) {
-        entry.reset(new MapEntry(Quest::decode_gci_file(directory + "/" + filename)));
+        entry.reset(new MapEntry(decode_gci_file(directory + "/" + filename)));
       } else if (ends_with(filename, ".dlq")) {
-        entry.reset(new MapEntry(Quest::decode_dlq_file(directory + "/" + filename)));
+        entry.reset(new MapEntry(decode_dlq_file(directory + "/" + filename)));
       }
 
       if (entry.get()) {

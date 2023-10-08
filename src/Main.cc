@@ -399,7 +399,7 @@ int main(int argc, char** argv) {
   Behavior behavior = Behavior::RUN_SERVER;
   GameVersion cli_version = GameVersion::GC;
   QuestScriptVersion cli_quest_version = QuestScriptVersion::GC_V3;
-  Quest::FileFormat quest_file_type = Quest::FileFormat::BIN_DAT_GCI;
+  QuestFileFormat quest_file_type = QuestFileFormat::BIN_DAT_GCI;
   string seed;
   string key_file_name;
   const char* config_filename = "system/config.json";
@@ -582,16 +582,16 @@ int main(int argc, char** argv) {
           behavior = Behavior::DECODE_SJIS;
         } else if (!strcmp(argv[x], "decode-gci")) {
           behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = Quest::FileFormat::BIN_DAT_GCI;
+          quest_file_type = QuestFileFormat::BIN_DAT_GCI;
         } else if (!strcmp(argv[x], "decode-vms")) {
           behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = Quest::FileFormat::BIN_DAT_VMS;
+          quest_file_type = QuestFileFormat::BIN_DAT_VMS;
         } else if (!strcmp(argv[x], "decode-dlq")) {
           behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = Quest::FileFormat::BIN_DAT_DLQ;
+          quest_file_type = QuestFileFormat::BIN_DAT_DLQ;
         } else if (!strcmp(argv[x], "decode-qst")) {
           behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = Quest::FileFormat::QST;
+          quest_file_type = QuestFileFormat::QST;
         } else if (!strcmp(argv[x], "encode-qst")) {
           behavior = Behavior::ENCODE_QST;
         } else if (!strcmp(argv[x], "disassemble-quest-script")) {
@@ -1337,19 +1337,19 @@ int main(int argc, char** argv) {
       }
 
       string output_filename_base = input_filename;
-      if (quest_file_type == Quest::FileFormat::BIN_DAT_GCI) {
+      if (quest_file_type == QuestFileFormat::BIN_DAT_GCI) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        auto decoded = Quest::decode_gci_file(input_filename, num_threads, dec_seed, skip_checksum);
+        auto decoded = decode_gci_file(input_filename, num_threads, dec_seed, skip_checksum);
         save_file(output_filename_base + ".dec", decoded);
-      } else if (quest_file_type == Quest::FileFormat::BIN_DAT_VMS) {
+      } else if (quest_file_type == QuestFileFormat::BIN_DAT_VMS) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        auto decoded = Quest::decode_vms_file(input_filename, num_threads, dec_seed, skip_checksum);
+        auto decoded = decode_vms_file(input_filename, num_threads, dec_seed, skip_checksum);
         save_file(output_filename_base + ".dec", decoded);
-      } else if (quest_file_type == Quest::FileFormat::BIN_DAT_DLQ) {
-        auto decoded = Quest::decode_dlq_file(input_filename);
+      } else if (quest_file_type == QuestFileFormat::BIN_DAT_DLQ) {
+        auto decoded = decode_dlq_file(input_filename);
         save_file(output_filename_base + ".dec", decoded);
-      } else if (quest_file_type == Quest::FileFormat::QST) {
-        auto data = Quest::decode_qst_file(input_filename);
+      } else if (quest_file_type == QuestFileFormat::QST) {
+        auto data = decode_qst_file(input_filename);
         save_file(output_filename_base + ".bin", data.first);
         save_file(output_filename_base + ".dat", data.second);
       } else {
@@ -1363,11 +1363,11 @@ int main(int argc, char** argv) {
         throw invalid_argument("an input filename is required");
       }
 
-      shared_ptr<Quest> q(new Quest(input_filename, cli_quest_version, nullptr));
+      shared_ptr<VersionedQuest> vq(new VersionedQuest(input_filename, cli_quest_version, nullptr));
       if (download) {
-        q = q->create_download_quest();
+        vq = vq->create_download_quest();
       }
-      string qst_data = q->encode_qst();
+      string qst_data = vq->encode_qst();
 
       write_output_data(qst_data.data(), qst_data.size());
       break;

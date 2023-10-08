@@ -626,7 +626,7 @@ ProxyServer::LinkedSession::SavingFile::SavingFile(
 void ProxyServer::LinkedSession::SavingFile::write() const {
   string data = join(this->blocks);
   if (is_download && (ends_with(this->basename, ".bin") || ends_with(this->basename, ".dat"))) {
-    data = Quest::decode_dlq_data(data);
+    data = decode_dlq_data(data);
   }
   save_file(this->output_filename, data);
 }

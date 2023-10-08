@@ -216,37 +216,39 @@ struct PSODownloadQuestHeader {
   le_uint32_t encryption_seed;
 } __attribute__((packed));
 
-Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<const QuestCategoryIndex> category_index)
+VersionedQuest::VersionedQuest(
+    const string& bin_filename,
+    QuestScriptVersion version,
+    shared_ptr<const QuestCategoryIndex> category_index)
     : quest_number(0xFFFFFFFF),
-      menu_item_id(0),
-      category_id(0),
+      category_id(0xFFFFFFFF),
       episode(Episode::NONE),
       joinable(false),
       version(version),
-      file_format(FileFormat::BIN_DAT),
+      file_format(QuestFileFormat::BIN_DAT),
       has_mnm_extension(false),
       is_dlq_encoded(false) {
 
   if (ends_with(bin_filename, ".bin.gci") || ends_with(bin_filename, ".mnm.gci")) {
-    this->file_format = FileFormat::BIN_DAT_GCI;
+    this->file_format = QuestFileFormat::BIN_DAT_GCI;
     this->has_mnm_extension = ends_with(bin_filename, ".mnm.gci");
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
   } else if (ends_with(bin_filename, ".bin.vms")) {
-    this->file_format = FileFormat::BIN_DAT_VMS;
+    this->file_format = QuestFileFormat::BIN_DAT_VMS;
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
   } else if (ends_with(bin_filename, ".bin.dlq") || ends_with(bin_filename, ".mnm.dlq")) {
-    this->file_format = FileFormat::BIN_DAT_DLQ;
+    this->file_format = QuestFileFormat::BIN_DAT_DLQ;
     this->has_mnm_extension = ends_with(bin_filename, ".mnm.dlq");
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 8);
   } else if (ends_with(bin_filename, ".qst")) {
-    this->file_format = FileFormat::QST;
+    this->file_format = QuestFileFormat::QST;
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 4);
   } else if (ends_with(bin_filename, ".bin") || ends_with(bin_filename, ".mnm")) {
-    this->file_format = FileFormat::BIN_DAT;
+    this->file_format = QuestFileFormat::BIN_DAT;
     this->has_mnm_extension = ends_with(bin_filename, ".mnm");
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 4);
   } else if (ends_with(bin_filename, ".bind") || ends_with(bin_filename, ".mnmd")) {
-    this->file_format = FileFormat::BIN_DAT_UNCOMPRESSED;
+    this->file_format = QuestFileFormat::BIN_DAT_UNCOMPRESSED;
     this->has_mnm_extension = ends_with(bin_filename, ".mnmd");
     this->file_basename = bin_filename.substr(0, bin_filename.size() - 5);
   } else {
@@ -285,6 +287,9 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
       this->category_id = 0;
     }
 
+    // Parse the number out of the first token
+    this->quest_number = strtoull(tokens[0].c_str() + 1, nullptr, 10);
+
     // Get the version from the second (or previously third) token
     static const unordered_map<string, QuestScriptVersion> name_to_version({
         {"dn", QuestScriptVersion::DC_NTE},
@@ -316,7 +321,9 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
       auto* header = reinterpret_cast<const PSOQuestHeaderDC*>(bin_decompressed.data());
       this->joinable = false;
       this->episode = Episode::EP1;
-      this->quest_number = header->quest_number;
+      if (this->quest_number == 0xFFFFFFFF) {
+        this->quest_number = header->quest_number;
+      }
       this->name = decode_sjis(header->name);
       this->short_description = decode_sjis(header->short_description);
       this->long_description = decode_sjis(header->long_description);
@@ -330,7 +337,9 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
       auto* header = reinterpret_cast<const PSOQuestHeaderPC*>(bin_decompressed.data());
       this->joinable = false;
       this->episode = Episode::EP1;
-      this->quest_number = header->quest_number;
+      if (this->quest_number == 0xFFFFFFFF) {
+        this->quest_number = header->quest_number;
+      }
       this->name = header->name;
       this->short_description = header->short_description;
       this->long_description = header->long_description;
@@ -348,13 +357,15 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
       if (bin_decompressed.size() != sizeof(Episode3::MapDefinition)) {
         throw invalid_argument("file is incorrect size");
       }
-      auto* header = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
+      auto* map = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
       this->joinable = false;
       this->episode = Episode::EP3;
-      this->quest_number = header->map_number;
-      this->name = decode_sjis(header->name);
-      this->short_description = decode_sjis(header->quest_name);
-      this->long_description = decode_sjis(header->description);
+      if (this->quest_number == 0xFFFFFFFF) {
+        this->quest_number = map->map_number;
+      }
+      this->name = decode_sjis(map->name);
+      this->short_description = decode_sjis(map->quest_name);
+      this->long_description = decode_sjis(map->description);
       break;
     }
 
@@ -367,7 +378,9 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
       auto* header = reinterpret_cast<const PSOQuestHeaderGC*>(bin_decompressed.data());
       this->joinable = false;
       this->episode = (header->episode == 1) ? Episode::EP2 : Episode::EP1;
-      this->quest_number = header->quest_number;
+      if (this->quest_number == 0xFFFFFFFF) {
+        this->quest_number = header->quest_number;
+      }
       this->name = decode_sjis(header->name);
       this->short_description = decode_sjis(header->short_description);
       this->long_description = decode_sjis(header->long_description);
@@ -393,7 +406,9 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
         default:
           throw runtime_error("invalid episode number");
       }
-      this->quest_number = header->quest_number;
+      if (this->quest_number == 0xFFFFFFFF) {
+        this->quest_number = header->quest_number;
+      }
       this->name = header->name;
       this->short_description = header->short_description;
       this->long_description = header->long_description;
@@ -409,7 +424,7 @@ Quest::Quest(const string& bin_filename, QuestScriptVersion version, shared_ptr<
   }
 }
 
-string Quest::bin_filename() const {
+string VersionedQuest::bin_filename() const {
   if (this->episode == Episode::EP3) {
     return string_printf("m%06" PRIu32 "p_e.bin", this->quest_number);
   } else {
@@ -417,7 +432,7 @@ string Quest::bin_filename() const {
   }
 }
 
-string Quest::dat_filename() const {
+string VersionedQuest::dat_filename() const {
   if (this->episode == Episode::EP3) {
     throw logic_error("Episode 3 quests do not have .dat files");
   } else {
@@ -425,31 +440,31 @@ string Quest::dat_filename() const {
   }
 }
 
-shared_ptr<const string> Quest::bin_contents() const {
+shared_ptr<const string> VersionedQuest::bin_contents() const {
   if (!this->bin_contents_ptr) {
     switch (this->file_format) {
-      case FileFormat::BIN_DAT:
+      case QuestFileFormat::BIN_DAT:
         this->bin_contents_ptr.reset(new string(load_file(
             this->file_basename + (this->has_mnm_extension ? ".mnm" : ".bin"))));
         break;
-      case FileFormat::BIN_DAT_UNCOMPRESSED:
+      case QuestFileFormat::BIN_DAT_UNCOMPRESSED:
         this->bin_contents_ptr.reset(new string(prs_compress(load_file(
             this->file_basename + (this->has_mnm_extension ? ".mnmd" : ".bind")))));
         break;
-      case FileFormat::BIN_DAT_GCI:
-        this->bin_contents_ptr.reset(new string(this->decode_gci_file(
+      case QuestFileFormat::BIN_DAT_GCI:
+        this->bin_contents_ptr.reset(new string(decode_gci_file(
             this->file_basename + (this->has_mnm_extension ? ".mnm.gci" : ".bin.gci"))));
         break;
-      case FileFormat::BIN_DAT_VMS:
-        this->bin_contents_ptr.reset(new string(this->decode_vms_file(
+      case QuestFileFormat::BIN_DAT_VMS:
+        this->bin_contents_ptr.reset(new string(decode_vms_file(
             this->file_basename + (this->has_mnm_extension ? ".mnm.vms" : ".bin.vms"))));
         break;
-      case FileFormat::BIN_DAT_DLQ:
-        this->bin_contents_ptr.reset(new string(this->decode_dlq_file(
+      case QuestFileFormat::BIN_DAT_DLQ:
+        this->bin_contents_ptr.reset(new string(decode_dlq_file(
             this->file_basename + (this->has_mnm_extension ? ".mnm.dlq" : ".bin.dlq"))));
         break;
-      case FileFormat::QST: {
-        auto result = this->decode_qst_file(this->file_basename + ".qst");
+      case QuestFileFormat::QST: {
+        auto result = decode_qst_file(this->file_basename + ".qst");
         this->bin_contents_ptr.reset(new string(std::move(result.first)));
         this->dat_contents_ptr.reset(new string(std::move(result.second)));
         break;
@@ -461,29 +476,29 @@ shared_ptr<const string> Quest::bin_contents() const {
   return this->bin_contents_ptr;
 }
 
-shared_ptr<const string> Quest::dat_contents() const {
+shared_ptr<const string> VersionedQuest::dat_contents() const {
   if (this->episode == Episode::EP3) {
     throw logic_error("Episode 3 quests do not have .dat files");
   }
   if (!this->dat_contents_ptr) {
     switch (this->file_format) {
-      case FileFormat::BIN_DAT:
+      case QuestFileFormat::BIN_DAT:
         this->dat_contents_ptr.reset(new string(load_file(this->file_basename + ".dat")));
         break;
-      case FileFormat::BIN_DAT_UNCOMPRESSED:
+      case QuestFileFormat::BIN_DAT_UNCOMPRESSED:
         this->dat_contents_ptr.reset(new string(prs_compress(load_file(this->file_basename + ".datd"))));
         break;
-      case FileFormat::BIN_DAT_GCI:
-        this->dat_contents_ptr.reset(new string(this->decode_gci_file(this->file_basename + ".dat.gci")));
+      case QuestFileFormat::BIN_DAT_GCI:
+        this->dat_contents_ptr.reset(new string(decode_gci_file(this->file_basename + ".dat.gci")));
         break;
-      case FileFormat::BIN_DAT_VMS:
-        this->dat_contents_ptr.reset(new string(this->decode_vms_file(this->file_basename + ".dat.vms")));
+      case QuestFileFormat::BIN_DAT_VMS:
+        this->dat_contents_ptr.reset(new string(decode_vms_file(this->file_basename + ".dat.vms")));
         break;
-      case FileFormat::BIN_DAT_DLQ:
-        this->dat_contents_ptr.reset(new string(this->decode_dlq_file(this->file_basename + ".dat.dlq")));
+      case QuestFileFormat::BIN_DAT_DLQ:
+        this->dat_contents_ptr.reset(new string(decode_dlq_file(this->file_basename + ".dat.dlq")));
         break;
-      case FileFormat::QST: {
-        auto result = this->decode_qst_file(this->file_basename + ".qst");
+      case QuestFileFormat::QST: {
+        auto result = decode_qst_file(this->file_basename + ".qst");
         this->bin_contents_ptr.reset(new string(std::move(result.first)));
         this->dat_contents_ptr.reset(new string(std::move(result.second)));
         break;
@@ -495,8 +510,237 @@ shared_ptr<const string> Quest::dat_contents() const {
   return this->dat_contents_ptr;
 }
 
-string Quest::decode_gci_file(
-    const string& filename, ssize_t find_seed_num_threads, int64_t known_seed, bool skip_checksum) {
+string VersionedQuest::encode_qst() const {
+  return encode_qst_file(
+      *this->bin_contents(),
+      *this->dat_contents(),
+      this->name,
+      this->quest_number,
+      this->version,
+      this->is_dlq_encoded);
+}
+
+Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
+    : quest_number(initial_version->quest_number),
+      category_id(initial_version->category_id),
+      episode(initial_version->episode),
+      joinable(initial_version->joinable),
+      name(initial_version->name),
+      versions_present(1 << static_cast<size_t>(initial_version->version)) {
+  versions.emplace(initial_version->version, initial_version);
+}
+
+void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
+  if (this->quest_number != vq->quest_number) {
+    throw logic_error("incorrect versioned quest number");
+  }
+  if (this->category_id != vq->category_id) {
+    throw runtime_error("quest version is in a different category");
+  }
+  if (this->episode != vq->episode) {
+    throw runtime_error("quest version is in a different episode");
+  }
+  if (this->joinable != vq->joinable) {
+    throw runtime_error("quest version has a different joinability state");
+  }
+
+  uint16_t presence_mask = 1 << static_cast<size_t>(vq->version);
+  if (this->versions_present & presence_mask) {
+    throw runtime_error("quest version is already present");
+  }
+  this->versions_present |= presence_mask;
+  this->versions.emplace(vq->version, vq);
+}
+
+bool Quest::has_version(QuestScriptVersion v) const {
+  return !!(this->versions_present & (1 << static_cast<size_t>(v)));
+}
+
+shared_ptr<const VersionedQuest> Quest::version(QuestScriptVersion v) const {
+  try {
+    return this->versions.at(v);
+  } catch (const out_of_range&) {
+    return nullptr;
+  }
+}
+
+QuestIndex::QuestIndex(
+    const string& directory,
+    std::shared_ptr<const QuestCategoryIndex> category_index)
+    : directory(directory),
+      category_index(category_index) {
+
+  for (const auto& filename : list_directory_sorted(this->directory)) {
+    string full_path = this->directory + "/" + filename;
+
+    if (ends_with(filename, ".gba")) {
+      shared_ptr<string> contents(new string(load_file(full_path)));
+      this->gba_file_contents.emplace(make_pair(filename, contents));
+      continue;
+    }
+
+    if (ends_with(filename, ".bin") ||
+        ends_with(filename, ".bind") ||
+        ends_with(filename, ".bin.gci") ||
+        ends_with(filename, ".bin.vms") ||
+        ends_with(filename, ".bin.dlq") ||
+        ends_with(filename, ".mnm") ||
+        ends_with(filename, ".mnmd") ||
+        ends_with(filename, ".mnm.gci") ||
+        ends_with(filename, ".mnm.dlq") ||
+        ends_with(filename, ".qst")) {
+      try {
+        shared_ptr<VersionedQuest> vq(new VersionedQuest(full_path, QuestScriptVersion::UNKNOWN, this->category_index));
+
+        string ascii_name = encode_sjis(vq->name);
+        auto category_name = encode_sjis(this->category_index->at(vq->category_id).name);
+
+        auto q_it = this->quests_by_number.find(vq->quest_number);
+        if (q_it != this->quests_by_number.end()) {
+          q_it->second->add_version(vq);
+          static_game_data_log.info("(%s) Added %s version of quest %" PRIu32 " \"%s\"",
+              filename.c_str(),
+              name_for_enum(vq->version),
+              vq->quest_number,
+              ascii_name.c_str());
+        } else {
+          this->quests_by_number.emplace(vq->quest_number, new Quest(vq));
+          static_game_data_log.info("(%s) Created %s quest %" PRIu32 " \"%s\" (%s, %s (%" PRIu32 "), %s)",
+              filename.c_str(),
+              name_for_enum(vq->version),
+              vq->quest_number,
+              ascii_name.c_str(),
+              name_for_episode(vq->episode),
+              category_name.c_str(),
+              vq->category_id,
+              vq->joinable ? "joinable" : "not joinable");
+        }
+      } catch (const exception& e) {
+        static_game_data_log.warning("Failed to index quest file %s (%s)", filename.c_str(), e.what());
+      }
+    }
+  }
+}
+
+shared_ptr<const Quest> QuestIndex::get(uint32_t quest_number) const {
+  try {
+    return this->quests_by_number.at(quest_number);
+  } catch (const out_of_range&) {
+    return nullptr;
+  }
+}
+
+shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
+  try {
+    return this->gba_file_contents.at(name);
+  } catch (const out_of_range&) {
+    return nullptr;
+  }
+}
+
+vector<shared_ptr<const Quest>> QuestIndex::filter(uint32_t category_id, QuestScriptVersion version) const {
+  vector<shared_ptr<const Quest>> ret;
+  for (auto it : this->quests_by_number) {
+    if (it.second->category_id == category_id && it.second->has_version(version)) {
+      ret.emplace_back(it.second);
+    }
+  }
+  return ret;
+}
+
+string encode_download_quest_file(const string& compressed_data, size_t decompressed_size, uint32_t encryption_seed) {
+  // Download quest files are like normal (PRS-compressed) quest files, but they
+  // are encrypted with PSO V2 encryption (even on V3 / PSO GC), and a small
+  // header (PSODownloadQuestHeader) is prepended to the encrypted data.
+
+  if (encryption_seed == 0) {
+    encryption_seed = random_object<uint32_t>();
+  }
+  if (decompressed_size == 0) {
+    decompressed_size = prs_decompress_size(compressed_data);
+  }
+
+  string data(8, '\0');
+  auto* header = reinterpret_cast<PSODownloadQuestHeader*>(data.data());
+  header->size = decompressed_size;
+  header->encryption_seed = encryption_seed;
+  data += compressed_data;
+
+  // Add temporary extra bytes if necessary so encryption won't fail - the data
+  // size must be a multiple of 4 for PSO V2 encryption.
+  size_t original_size = data.size();
+  data.resize((data.size() + 3) & (~3));
+
+  PSOV2Encryption encr(encryption_seed);
+  encr.encrypt(data.data() + sizeof(PSODownloadQuestHeader),
+      data.size() - sizeof(PSODownloadQuestHeader));
+  data.resize(original_size);
+
+  return data;
+}
+
+shared_ptr<VersionedQuest> VersionedQuest::create_download_quest() const {
+  // The download flag needs to be set in the bin header, or else the client
+  // will ignore it when scanning for download quests in an offline game. To set
+  // this flag, we need to decompress the quest's .bin file, set the flag, then
+  // recompress it again.
+
+  // This function should not be used for Episode 3 quests (they should be sent
+  // to the client as-is, without any encryption or other preprocessing)
+  if (this->episode == Episode::EP3 || this->version == QuestScriptVersion::GC_EP3) {
+    throw logic_error("Episode 3 quests cannot be converted to download quests");
+  }
+
+  string decompressed_bin = prs_decompress(*this->bin_contents());
+
+  void* data_ptr = decompressed_bin.data();
+  switch (this->version) {
+    case QuestScriptVersion::DC_NTE:
+    case QuestScriptVersion::DC_V1:
+    case QuestScriptVersion::DC_V2:
+      if (decompressed_bin.size() < sizeof(PSOQuestHeaderDC)) {
+        throw runtime_error("bin file is too small for header");
+      }
+      reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
+      break;
+    case QuestScriptVersion::PC_V2:
+      if (decompressed_bin.size() < sizeof(PSOQuestHeaderPC)) {
+        throw runtime_error("bin file is too small for header");
+      }
+      reinterpret_cast<PSOQuestHeaderPC*>(data_ptr)->is_download = 0x01;
+      break;
+    case QuestScriptVersion::GC_NTE:
+    case QuestScriptVersion::GC_V3:
+    case QuestScriptVersion::XB_V3:
+      if (decompressed_bin.size() < sizeof(PSOQuestHeaderGC)) {
+        throw runtime_error("bin file is too small for header");
+      }
+      reinterpret_cast<PSOQuestHeaderGC*>(data_ptr)->is_download = 0x01;
+      break;
+    case QuestScriptVersion::BB_V4:
+      throw invalid_argument("PSOBB does not support download quests");
+    case QuestScriptVersion::GC_EP3:
+      throw logic_error("Episode 3 quests cannot be converted to download quests");
+    default:
+      throw invalid_argument("unknown game version");
+  }
+
+  string compressed_bin = prs_compress(decompressed_bin);
+
+  // Return a new VersionedQuest object with appropriately-processed .bin and
+  // .dat file contents
+  shared_ptr<VersionedQuest> dlq(new VersionedQuest(*this));
+  dlq->bin_contents_ptr.reset(new string(encode_download_quest_file(compressed_bin, decompressed_bin.size())));
+  dlq->dat_contents_ptr.reset(new string(encode_download_quest_file(*this->dat_contents())));
+  dlq->is_dlq_encoded = true;
+  return dlq;
+}
+
+string decode_gci_file(
+    const string& filename,
+    ssize_t find_seed_num_threads,
+    int64_t known_seed,
+    bool skip_checksum) {
   string data = load_file(filename);
 
   StringReader r(data);
@@ -596,8 +840,11 @@ string Quest::decode_gci_file(
   }
 }
 
-string Quest::decode_vms_file(
-    const string& filename, ssize_t find_seed_num_threads, int64_t known_seed, bool skip_checksum) {
+string decode_vms_file(
+    const string& filename,
+    ssize_t find_seed_num_threads,
+    int64_t known_seed,
+    bool skip_checksum) {
   string data = load_file(filename);
 
   StringReader r(data);
@@ -629,7 +876,7 @@ string Quest::decode_vms_file(
   }
 }
 
-string Quest::decode_dlq_data(const string& data) {
+string decode_dlq_data(const string& data) {
   StringReader r(data);
   uint32_t decompressed_size = r.get_u32l();
   uint32_t key = r.get_u32l();
@@ -652,9 +899,9 @@ string Quest::decode_dlq_data(const string& data) {
   return decrypted;
 }
 
-string Quest::decode_dlq_file(const string& filename) {
+string decode_dlq_file(const string& filename) {
   auto f = fopen_unique(filename, "rb");
-  return Quest::decode_dlq_data(read_all(f.get()));
+  return decode_dlq_data(read_all(f.get()));
 }
 
 template <typename HeaderT, typename OpenFileT>
@@ -668,7 +915,7 @@ static pair<string, string> decode_qst_t(FILE* f) {
   string internal_dat_filename;
   uint32_t bin_file_size = 0;
   uint32_t dat_file_size = 0;
-  Quest::FileFormat subformat = Quest::FileFormat::QST; // Stand-in for unknown
+  QuestFileFormat subformat = QuestFileFormat::QST; // Stand-in for unknown
   while (!r.eof()) {
     // Handle BB's implicit 8-byte command alignment
     static constexpr size_t alignment = sizeof(HeaderT);
@@ -681,15 +928,15 @@ static pair<string, string> decode_qst_t(FILE* f) {
     const auto& header = r.get<HeaderT>();
 
     if (header.command == 0x44 || header.command == 0x13) {
-      if (subformat == Quest::FileFormat::QST) {
-        subformat = Quest::FileFormat::BIN_DAT;
-      } else if (subformat != Quest::FileFormat::BIN_DAT) {
+      if (subformat == QuestFileFormat::QST) {
+        subformat = QuestFileFormat::BIN_DAT;
+      } else if (subformat != QuestFileFormat::BIN_DAT) {
         throw runtime_error("QST file contains mixed download and non-download commands");
       }
     } else if (header.command == 0xA6 || header.command == 0xA7) {
-      if (subformat == Quest::FileFormat::QST) {
-        subformat = Quest::FileFormat::BIN_DAT_DLQ;
-      } else if (subformat != Quest::FileFormat::BIN_DAT_DLQ) {
+      if (subformat == QuestFileFormat::QST) {
+        subformat = QuestFileFormat::BIN_DAT_DLQ;
+      } else if (subformat != QuestFileFormat::BIN_DAT_DLQ) {
         throw runtime_error("QST file contains mixed download and non-download commands");
       }
     }
@@ -763,15 +1010,15 @@ static pair<string, string> decode_qst_t(FILE* f) {
     throw runtime_error("dat file does not match expected size");
   }
 
-  if (subformat == Quest::FileFormat::BIN_DAT_DLQ) {
-    bin_contents = Quest::decode_dlq_file(bin_contents);
-    dat_contents = Quest::decode_dlq_file(dat_contents);
+  if (subformat == QuestFileFormat::BIN_DAT_DLQ) {
+    bin_contents = decode_dlq_file(bin_contents);
+    dat_contents = decode_dlq_file(dat_contents);
   }
 
   return make_pair(bin_contents, dat_contents);
 }
 
-pair<string, string> Quest::decode_qst_file(const string& filename) {
+pair<string, string> decode_qst_file(const string& filename) {
   auto f = fopen_unique(filename, "rb");
 
   // QST files start with an open file command, but the format differs depending
@@ -842,7 +1089,7 @@ void add_write_file_commands(
   }
 }
 
-string Quest::encode_qst(
+string encode_qst_file(
     const string& bin_data,
     const string& dat_data,
     const u16string& name,
@@ -899,179 +1146,4 @@ string Quest::encode_qst(
   }
 
   return std::move(w.str());
-}
-
-string Quest::encode_qst() const {
-  return this->encode_qst(
-      *this->bin_contents(),
-      *this->dat_contents(),
-      this->name,
-      this->quest_number,
-      this->version,
-      this->is_dlq_encoded);
-}
-
-QuestIndex::QuestIndex(
-    const string& directory,
-    std::shared_ptr<const QuestCategoryIndex> category_index)
-    : directory(directory),
-      category_index(category_index) {
-
-  uint32_t next_menu_item_id = 1;
-  for (const auto& filename : list_directory_sorted(this->directory)) {
-    string full_path = this->directory + "/" + filename;
-
-    if (ends_with(filename, ".gba")) {
-      shared_ptr<string> contents(new string(load_file(full_path)));
-      this->gba_file_contents.emplace(make_pair(filename, contents));
-      continue;
-    }
-
-    if (ends_with(filename, ".bin") ||
-        ends_with(filename, ".bind") ||
-        ends_with(filename, ".bin.gci") ||
-        ends_with(filename, ".bin.vms") ||
-        ends_with(filename, ".bin.dlq") ||
-        ends_with(filename, ".mnm") ||
-        ends_with(filename, ".mnmd") ||
-        ends_with(filename, ".mnm.gci") ||
-        ends_with(filename, ".mnm.dlq") ||
-        ends_with(filename, ".qst")) {
-      try {
-        shared_ptr<Quest> q(new Quest(full_path, QuestScriptVersion::UNKNOWN, this->category_index));
-        q->menu_item_id = next_menu_item_id++;
-        string ascii_name = encode_sjis(q->name);
-        if (!this->version_menu_item_id_to_quest.emplace(make_pair(q->version, q->menu_item_id), q).second) {
-          throw logic_error("duplicate quest menu item id");
-        }
-        auto category_name = encode_sjis(this->category_index->at(q->category_id).name);
-        static_game_data_log.info("Indexed quest %s (%s => %s-%" PRIu32 " (%" PRIu32 "), %s, %s (%" PRIu32 "), joinable=%s)",
-            ascii_name.c_str(),
-            filename.c_str(),
-            name_for_enum(q->version),
-            q->quest_number,
-            q->menu_item_id,
-            name_for_episode(q->episode),
-            category_name.c_str(),
-            q->category_id,
-            q->joinable ? "true" : "false");
-      } catch (const exception& e) {
-        static_game_data_log.warning("Failed to index quest file %s (%s)", filename.c_str(), e.what());
-      }
-    }
-  }
-}
-
-shared_ptr<const Quest> QuestIndex::get(
-    QuestScriptVersion version, uint32_t menu_item_id) const {
-  return this->version_menu_item_id_to_quest.at(make_pair(version, menu_item_id));
-}
-
-shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
-  return this->gba_file_contents.at(name);
-}
-
-vector<shared_ptr<const Quest>> QuestIndex::filter(
-    QuestScriptVersion version, uint32_t category_id) const {
-  auto it = this->version_menu_item_id_to_quest.lower_bound(make_pair(version, 0));
-  auto end_it = this->version_menu_item_id_to_quest.upper_bound(make_pair(version, 0xFFFFFFFF));
-
-  vector<shared_ptr<const Quest>> ret;
-  for (; it != end_it; it++) {
-    if (it->second->category_id == category_id) {
-      ret.emplace_back(it->second);
-    }
-  }
-
-  return ret;
-}
-
-string Quest::encode_download_quest_file(
-    const string& compressed_data, size_t decompressed_size, uint32_t encryption_seed) {
-  // Download quest files are like normal (PRS-compressed) quest files, but they
-  // are encrypted with PSO V2 encryption (even on V3 / PSO GC), and a small
-  // header (PSODownloadQuestHeader) is prepended to the encrypted data.
-
-  if (encryption_seed == 0) {
-    encryption_seed = random_object<uint32_t>();
-  }
-  if (decompressed_size == 0) {
-    decompressed_size = prs_decompress_size(compressed_data);
-  }
-
-  string data(8, '\0');
-  auto* header = reinterpret_cast<PSODownloadQuestHeader*>(data.data());
-  header->size = decompressed_size;
-  header->encryption_seed = encryption_seed;
-  data += compressed_data;
-
-  // Add temporary extra bytes if necessary so encryption won't fail - the data
-  // size must be a multiple of 4 for PSO V2 encryption.
-  size_t original_size = data.size();
-  data.resize((data.size() + 3) & (~3));
-
-  PSOV2Encryption encr(encryption_seed);
-  encr.encrypt(data.data() + sizeof(PSODownloadQuestHeader),
-      data.size() - sizeof(PSODownloadQuestHeader));
-  data.resize(original_size);
-
-  return data;
-}
-
-shared_ptr<Quest> Quest::create_download_quest() const {
-  // The download flag needs to be set in the bin header, or else the client
-  // will ignore it when scanning for download quests in an offline game. To set
-  // this flag, we need to decompress the quest's .bin file, set the flag, then
-  // recompress it again.
-
-  // This function should not be used for Episode 3 quests (they should be sent
-  // to the client as-is, without any encryption or other preprocessing)
-  if (this->episode == Episode::EP3 || this->version == QuestScriptVersion::GC_EP3) {
-    throw logic_error("Episode 3 quests cannot be converted to download quests");
-  }
-
-  string decompressed_bin = prs_decompress(*this->bin_contents());
-
-  void* data_ptr = decompressed_bin.data();
-  switch (this->version) {
-    case QuestScriptVersion::DC_NTE:
-    case QuestScriptVersion::DC_V1:
-    case QuestScriptVersion::DC_V2:
-      if (decompressed_bin.size() < sizeof(PSOQuestHeaderDC)) {
-        throw runtime_error("bin file is too small for header");
-      }
-      reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
-      break;
-    case QuestScriptVersion::PC_V2:
-      if (decompressed_bin.size() < sizeof(PSOQuestHeaderPC)) {
-        throw runtime_error("bin file is too small for header");
-      }
-      reinterpret_cast<PSOQuestHeaderPC*>(data_ptr)->is_download = 0x01;
-      break;
-    case QuestScriptVersion::GC_NTE:
-    case QuestScriptVersion::GC_V3:
-    case QuestScriptVersion::XB_V3:
-      if (decompressed_bin.size() < sizeof(PSOQuestHeaderGC)) {
-        throw runtime_error("bin file is too small for header");
-      }
-      reinterpret_cast<PSOQuestHeaderGC*>(data_ptr)->is_download = 0x01;
-      break;
-    case QuestScriptVersion::BB_V4:
-      throw invalid_argument("PSOBB does not support download quests");
-    case QuestScriptVersion::GC_EP3:
-      throw logic_error("Episode 3 quests cannot be converted to download quests");
-    default:
-      throw invalid_argument("unknown game version");
-  }
-
-  string compressed_bin = prs_compress(decompressed_bin);
-
-  // Return a new Quest object with appropriately-processed .bin and .dat file
-  // contents
-  shared_ptr<Quest> dlq(new Quest(*this));
-  dlq->bin_contents_ptr.reset(new string(this->encode_download_quest_file(
-      compressed_bin, decompressed_bin.size())));
-  dlq->dat_contents_ptr.reset(new string(this->encode_download_quest_file(*this->dat_contents())));
-  dlq->is_dlq_encoded = true;
-  return dlq;
 }

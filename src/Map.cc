@@ -488,7 +488,7 @@ void Map::add_enemies_from_quest_data(
     size_t size) {
   StringReader r(data, size);
   while (!r.eof()) {
-    const auto& header = r.get<Quest::DATSectionHeader>();
+    const auto& header = r.get<VersionedQuest::DATSectionHeader>();
     if (header.type == 0 && header.section_size == 0) {
       break;
     }

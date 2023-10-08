@@ -25,61 +25,65 @@ template <>
 const char* name_for_enum<QuestScriptVersion>(QuestScriptVersion v);
 
 struct PSOQuestHeaderDC { // Same format for DC v1 and v2
-  le_uint32_t code_offset;
-  le_uint32_t function_table_offset;
-  le_uint32_t size;
-  le_uint32_t unused;
-  uint8_t is_download;
-  uint8_t unknown1;
-  le_uint16_t quest_number; // 0xFFFF for challenge quests
-  ptext<char, 0x20> name;
-  ptext<char, 0x80> short_description;
-  ptext<char, 0x120> long_description;
+  /* 0000 */ le_uint32_t code_offset;
+  /* 0004 */ le_uint32_t function_table_offset;
+  /* 0008 */ le_uint32_t size;
+  /* 000C */ le_uint32_t unused;
+  /* 0010 */ uint8_t is_download;
+  /* 0011 */ uint8_t unknown1;
+  /* 0012 */ le_uint16_t quest_number; // 0xFFFF for challenge quests
+  /* 0014 */ ptext<char, 0x20> name;
+  /* 0034 */ ptext<char, 0x80> short_description;
+  /* 00B4 */ ptext<char, 0x120> long_description;
+  /* 01D4 */
 } __attribute__((packed));
 
 struct PSOQuestHeaderPC {
-  le_uint32_t code_offset;
-  le_uint32_t function_table_offset;
-  le_uint32_t size;
-  le_uint32_t unused;
-  uint8_t is_download;
-  uint8_t unknown1;
-  le_uint16_t quest_number; // 0xFFFF for challenge quests
-  ptext<char16_t, 0x20> name;
-  ptext<char16_t, 0x80> short_description;
-  ptext<char16_t, 0x120> long_description;
+  /* 0000 */ le_uint32_t code_offset;
+  /* 0004 */ le_uint32_t function_table_offset;
+  /* 0008 */ le_uint32_t size;
+  /* 000C */ le_uint32_t unused;
+  /* 0010 */ uint8_t is_download;
+  /* 0011 */ uint8_t unknown1;
+  /* 0012 */ le_uint16_t quest_number; // 0xFFFF for challenge quests
+  /* 0014 */ ptext<char16_t, 0x20> name;
+  /* 0054 */ ptext<char16_t, 0x80> short_description;
+  /* 0154 */ ptext<char16_t, 0x120> long_description;
+  /* 0394 */
 } __attribute__((packed));
 
 // TODO: Is the XB quest header format the same as on GC? If not, make a
 // separate struct; if so, rename this struct to V3.
 struct PSOQuestHeaderGC {
-  le_uint32_t code_offset;
-  le_uint32_t function_table_offset;
-  le_uint32_t size;
-  le_uint32_t unused;
-  uint8_t is_download;
-  uint8_t unknown1;
-  uint8_t quest_number;
-  uint8_t episode; // 1 = Ep2. Apparently some quests have 0xFF here, which means ep1 (?)
-  ptext<char, 0x20> name;
-  ptext<char, 0x80> short_description;
-  ptext<char, 0x120> long_description;
+  /* 0000 */ le_uint32_t code_offset;
+  /* 0004 */ le_uint32_t function_table_offset;
+  /* 0008 */ le_uint32_t size;
+  /* 000C */ le_uint32_t unused;
+  /* 0010 */ uint8_t is_download;
+  /* 0011 */ uint8_t unknown1;
+  /* 0012 */ uint8_t quest_number;
+  /* 0013 */ uint8_t episode; // 1 = Ep2. Apparently some quests have 0xFF here, which means ep1 (?)
+  /* 0014 */ ptext<char, 0x20> name;
+  /* 0034 */ ptext<char, 0x80> short_description;
+  /* 00B4 */ ptext<char, 0x120> long_description;
+  /* 01D4 */
 } __attribute__((packed));
 
 struct PSOQuestHeaderBB {
-  le_uint32_t code_offset;
-  le_uint32_t function_table_offset;
-  le_uint32_t size;
-  le_uint32_t unused;
-  le_uint16_t quest_number; // 0xFFFF for challenge quests
-  le_uint16_t unused2;
-  uint8_t episode; // 0 = Ep1, 1 = Ep2, 2 = Ep4
-  uint8_t max_players;
-  uint8_t joinable_in_progress;
-  uint8_t unknown;
-  ptext<char16_t, 0x20> name;
-  ptext<char16_t, 0x80> short_description;
-  ptext<char16_t, 0x120> long_description;
+  /* 0000 */ le_uint32_t code_offset;
+  /* 0004 */ le_uint32_t function_table_offset;
+  /* 0008 */ le_uint32_t size;
+  /* 000C */ le_uint32_t unused;
+  /* 0010 */ le_uint16_t quest_number; // 0xFFFF for challenge quests
+  /* 0012 */ le_uint16_t unused2;
+  /* 0014 */ uint8_t episode; // 0 = Ep1, 1 = Ep2, 2 = Ep4
+  /* 0015 */ uint8_t max_players;
+  /* 0016 */ uint8_t joinable_in_progress;
+  /* 0017 */ uint8_t unknown;
+  /* 0018 */ ptext<char16_t, 0x20> name;
+  /* 0058 */ ptext<char16_t, 0x80> short_description;
+  /* 0158 */ ptext<char16_t, 0x120> long_description;
+  /* 0398 */
 } __attribute__((packed));
 
 std::string disassemble_quest_script(const void* data, size_t size, QuestScriptVersion version);

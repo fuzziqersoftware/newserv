@@ -1477,11 +1477,16 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
       if (!s->quest_index) {
         send_quest_info(c, u"$C6Quests are not available.", is_download_quest);
       } else {
-        auto q = s->quest_index->get(c->quest_version(), cmd.item_id);
+        auto q = s->quest_index->get(cmd.item_id);
         if (!q) {
           send_quest_info(c, u"$C4Quest does not\nexist.", is_download_quest);
         } else {
-          send_quest_info(c, q->long_description.c_str(), is_download_quest);
+          auto vq = q->version(c->quest_version());
+          if (!vq) {
+            send_quest_info(c, u"$C4Quest does not\nexist for this game\nversion.", is_download_quest);
+          } else {
+            send_quest_info(c, vq->long_description, is_download_quest);
+          }
         }
       }
       break;
@@ -1537,23 +1542,22 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         }
 
         if (game->quest) {
-          if (game->flags & Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) {
-            info += "$C6Quest: " + encode_sjis(game->quest->name);
-          } else {
-            info += "$C4Quest: " + encode_sjis(game->quest->name);
-          }
+          info += (game->flags & Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) ? "$C6Quest: " : "$C4Quest: ";
+          info += encode_sjis(game->quest->name);
+          info += "\n";
         } else if (game->flags & Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) {
-          info += "$C6Quest in progress";
+          info += "$C6Quest in progress\n";
         } else if (game->flags & Lobby::Flag::QUEST_IN_PROGRESS) {
-          info += "$C4Quest in progress";
+          info += "$C4Quest in progress\n";
         } else if (game->flags & Lobby::Flag::BATTLE_IN_PROGRESS) {
-          info += "$C4Battle in progress";
+          info += "$C4Battle in progress\n";
         }
 
         if (game->flags & Lobby::Flag::SPECTATORS_FORBIDDEN) {
-          info += "$C4View Battle forbidden";
+          info += "$C4View Battle forbidden\n";
         }
 
+        strip_trailing_whitespace(info);
         send_ship_info(c, decode_sjis(info));
       }
       break;
@@ -1718,7 +1722,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
             vector<shared_ptr<const Quest>> quests;
             for (const auto& category : s->quest_category_index->categories) {
               if (category.flags & QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD) {
-                quests = s->quest_index->filter(c->quest_version(), category.category_id);
+                quests = s->quest_index->filter(category.category_id, c->quest_version());
                 break;
               }
             }
@@ -1963,7 +1967,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         break;
       }
       shared_ptr<Lobby> l = c->lobby.lock();
-      auto quests = s->quest_index->filter(c->quest_version(), item_id);
+      auto quests = s->quest_index->filter(item_id, c->quest_version());
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
@@ -1977,9 +1981,14 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         send_lobby_message_box(c, u"$C6Quests are not available.");
         break;
       }
-      auto q = s->quest_index->get(c->quest_version(), item_id);
+      auto q = s->quest_index->get(item_id);
       if (!q) {
         send_lobby_message_box(c, u"$C6Quest does not exist.");
+        break;
+      }
+      auto vq = q->version(c->quest_version());
+      if (!vq) {
+        send_lobby_message_box(c, u"$C6Quest does not exist\nfor this game version.");
         break;
       }
 
@@ -1992,13 +2001,13 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
       }
 
       bool is_ep3 = (q->episode == Episode::EP3);
-      string bin_basename = q->bin_filename();
-      shared_ptr<const string> bin_contents = q->bin_contents();
+      string bin_basename = vq->bin_filename();
+      shared_ptr<const string> bin_contents = vq->bin_contents();
       string dat_basename;
       shared_ptr<const string> dat_contents;
       if (!is_ep3) {
-        dat_basename = q->dat_filename();
-        dat_contents = q->dat_contents();
+        dat_basename = vq->dat_filename();
+        dat_contents = vq->dat_contents();
       }
 
       if (l) {
@@ -2043,13 +2052,15 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         // Episode 3 uses the download quest commands (A6/A7) but does not
         // expect the server to have already encrypted the quest files, unlike
         // other versions.
+        // TODO: This is not true for Episode 3 Trial Edition. We also would
+        // have to convert the map to MapDefinitionTrial, though.
         if (!is_ep3) {
-          q = q->create_download_quest();
+          vq = vq->create_download_quest();
         }
-        send_open_quest_file(c, quest_name, bin_basename, q->bin_contents(),
+        send_open_quest_file(c, quest_name, bin_basename, vq->bin_contents(),
             is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
         if (dat_contents) {
-          send_open_quest_file(c, quest_name, dat_basename, q->dat_contents(),
+          send_open_quest_file(c, quest_name, dat_basename, vq->dat_contents(),
               is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
         }
       }
@@ -2394,7 +2405,7 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
         (l->base_version == GameVersion::BB) &&
         l->map &&
         l->quest) {
-      auto dat_contents = prs_decompress(*l->quest->dat_contents());
+      auto dat_contents = prs_decompress(*l->quest->version(QuestScriptVersion::BB_V4)->dat_contents());
       l->map->clear();
       l->map->add_enemies_from_quest_data(l->episode, l->difficulty, l->event, dat_contents.data(), dat_contents.size());
       c->log.info("Replaced enemies list with quest layout (%zu entries)",
@@ -3587,10 +3598,14 @@ static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
       if (!l->quest) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest");
       }
-      string bin_basename = l->quest->bin_filename();
-      shared_ptr<const string> bin_contents = l->quest->bin_contents();
-      string dat_basename = l->quest->dat_filename();
-      shared_ptr<const string> dat_contents = l->quest->dat_contents();
+      auto vq = l->quest->version(c->quest_version());
+      if (!vq) {
+        throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest for client version");
+      }
+      string bin_basename = vq->bin_filename();
+      shared_ptr<const string> bin_contents = vq->bin_contents();
+      string dat_basename = vq->dat_filename();
+      shared_ptr<const string> dat_contents = vq->dat_contents();
 
       send_open_quest_file(c, bin_basename + ".bin",
           bin_basename, bin_contents, QuestFileType::ONLINE);
