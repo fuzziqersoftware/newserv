@@ -1987,17 +1987,12 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
     case MenuID::QUEST: {
       auto s = c->require_server_state();
       if (!s->quest_index) {
-        send_lobby_message_box(c, u"$C6Quests are not available.");
+        send_lobby_message_box(c, u"$C6Quests are not\navailable.");
         break;
       }
       auto q = s->quest_index->get(item_id);
       if (!q) {
         send_lobby_message_box(c, u"$C6Quest does not exist.");
-        break;
-      }
-      auto vq = q->version(c->quest_version());
-      if (!vq) {
-        send_lobby_message_box(c, u"$C6Quest does not exist\nfor this game version.");
         break;
       }
 
@@ -2009,19 +2004,14 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         break;
       }
 
-      bool is_ep3 = (q->episode == Episode::EP3);
-      string bin_basename = vq->bin_filename();
-      shared_ptr<const string> bin_contents = vq->bin_contents();
-      string dat_basename;
-      shared_ptr<const string> dat_contents;
-      if (!is_ep3) {
-        dat_basename = vq->dat_filename();
-        dat_contents = vq->dat_contents();
-      }
-
       if (l) {
-        if (is_ep3 || !dat_contents) {
-          throw runtime_error("episode 3 quests cannot be loaded during games");
+        if (q->episode == Episode::EP3) {
+          send_lobby_message_box(c, u"$C6Episode 3 quests\ncannot be loaded\nvia this interface.");
+          break;
+        }
+        if (l->quest) {
+          send_lobby_message_box(c, u"$C6A quest is already\nin progress.");
+          break;
         }
         if (q->joinable) {
           l->flags |= Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS;
@@ -2031,26 +2021,35 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         l->quest = q;
         l->episode = q->episode;
         for (size_t x = 0; x < l->max_clients; x++) {
-          if (!l->clients[x]) {
+          auto lc = l->clients[x];
+          if (!lc) {
             continue;
           }
 
-          send_open_quest_file(l->clients[x], bin_basename + ".bin",
-              bin_basename, bin_contents, QuestFileType::ONLINE);
-          send_open_quest_file(l->clients[x], dat_basename + ".dat",
-              dat_basename, dat_contents, QuestFileType::ONLINE);
+          auto vq = q->version(lc->quest_version());
+          if (!vq) {
+            send_lobby_message_box(lc, u"$C6Quest does not exist\nfor this game version.");
+            lc->should_disconnect = true;
+            break;
+          }
+          string bin_filename = vq->bin_filename();
+          string dat_filename = vq->dat_filename();
+          shared_ptr<const string> bin_contents = vq->bin_contents();
+          shared_ptr<const string> dat_contents = vq->dat_contents();
+          send_open_quest_file(lc, bin_filename, bin_filename, bin_contents, QuestFileType::ONLINE);
+          send_open_quest_file(lc, dat_filename, dat_filename, dat_contents, QuestFileType::ONLINE);
 
-          // There is no such thing as command AC on PSO V2 - quests just start
-          // immediately when they're done downloading. (This is also the case
-          // on V3 Trial Edition.) There are also no chunk acknowledgements
-          // (C->S 13 commands) like there are on GC. So, for PC/Trial clients,
-          // we can just not set the loading flag, since we never need to
+          // There is no such thing as command AC on PSO V1 and V2 - quests just
+          // start immediately when they're done downloading. (This is also the
+          // case on V3 Trial Edition.) There are also no chunk acknowledgements
+          // (C->S 13 commands) like there are on GC. So, for pre-V3 clients, we
+          // can just not set the loading flag, since we never need to
           // check/clear it later.
-          if ((l->clients[x]->version() != GameVersion::DC) &&
-              (l->clients[x]->version() != GameVersion::PC) &&
-              !(l->clients[x]->flags & Client::Flag::IS_GC_TRIAL_EDITION)) {
-            l->clients[x]->flags |= Client::Flag::LOADING_QUEST;
-            l->clients[x]->disconnect_hooks.emplace(QUEST_BARRIER_DISCONNECT_HOOK_NAME, [l]() -> void {
+          if ((lc->version() != GameVersion::DC) &&
+              (lc->version() != GameVersion::PC) &&
+              !(lc->flags & Client::Flag::IS_GC_TRIAL_EDITION)) {
+            lc->flags |= Client::Flag::LOADING_QUEST;
+            lc->disconnect_hooks.emplace(QUEST_BARRIER_DISCONNECT_HOOK_NAME, [l]() -> void {
               send_quest_barrier_if_all_clients_ready(l);
             });
           }
@@ -2058,19 +2057,22 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 
       } else {
         string quest_name = encode_sjis(q->name);
+        auto vq = q->version(c->quest_version());
+        if (!vq) {
+          send_lobby_message_box(c, u"$C6Quest does not exist\nfor this game version.");
+          break;
+        }
         // Episode 3 uses the download quest commands (A6/A7) but does not
         // expect the server to have already encrypted the quest files, unlike
         // other versions.
         // TODO: This is not true for Episode 3 Trial Edition. We also would
-        // have to convert the map to MapDefinitionTrial, though.
-        if (!is_ep3) {
+        // have to convert the map to a MapDefinitionTrial, though.
+        if (vq->version == QuestScriptVersion::GC_EP3) {
+          send_open_quest_file(c, quest_name, vq->bin_filename(), vq->bin_contents(), QuestFileType::EPISODE_3);
+        } else {
           vq = vq->create_download_quest();
-        }
-        send_open_quest_file(c, quest_name, bin_basename, vq->bin_contents(),
-            is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
-        if (dat_contents) {
-          send_open_quest_file(c, quest_name, dat_basename, vq->dat_contents(),
-              is_ep3 ? QuestFileType::EPISODE_3 : QuestFileType::DOWNLOAD);
+          send_open_quest_file(c, quest_name, vq->bin_filename(), vq->bin_contents(), QuestFileType::DOWNLOAD);
+          send_open_quest_file(c, quest_name, vq->dat_filename(), vq->dat_contents(), QuestFileType::DOWNLOAD);
         }
       }
       break;
