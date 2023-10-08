@@ -1787,7 +1787,7 @@ int main(int argc, char** argv) {
 
     case Behavior::SHOW_EP3_MAPS: {
       config_log.info("Collecting Episode 3 data");
-      Episode3::MapIndex map_index("system/ep3");
+      Episode3::MapIndex map_index("system/ep3/maps");
       Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr", "system/ep3/card-text.mnrd");
 
       auto map_ids = map_index.all_numbers();

@@ -5190,7 +5190,7 @@ struct G_MapList_GC_Ep3_6xB6x40 {
   le_uint16_t compressed_data_size;
   le_uint16_t unused;
   // PRS-compressed map list data follows here. newserv generates this from the
-  // map index at startup; see the MapList struct in Episode3/DataIndexes.hh
+  // map index when requested; see the MapList struct in Episode3/DataIndexes.hh
   // and Episode3::MapIndex::get_compressed_map_list for details on the format.
 } __packed__;
 
