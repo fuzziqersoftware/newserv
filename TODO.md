@@ -10,14 +10,11 @@
 - Implement per-game logging
 - Add default values in all command structures (like we use for Episode 3 battle commands)
 - Check for RCE potential in 6x6B-6x6E commands
-- Fix symbol chat header (including face_spec) across PC/GC boundary
-- Check size of name field in GuildCardPC
 - Build an exception-handling abstraction in ChatCommands that shows formatted error messages in all cases
-- Make non-BB detector encryption match more than the first 4 bytes
 - Make reloading happen on separate threads so compression doesn't block active clients
 - Try DCv2/PC crossplay
-- Implement decrypt/encrypt actions for VMS files and PC save files
-- Write shell server
+- Implement decrypt/encrypt actions for VMS files
+- Fix Word Select mapping across versions
 
 ## Episode 3
 
@@ -27,7 +24,6 @@
 - Add support for recording battles on the proxy server (both in primary and spectator teams)
 - When `reload ep3` happens and the defs file is changed, send the new defs file to all connected players who aren't in a game (if this even works - when exactly does the client decompress the defs file from the server?)
 - Make `reload licenses` not vulnerable to online players' licenses overwriting licenses on disk somehow
-- Implement DC command properly in tournament games
 
 ## PSOBB
 
@@ -54,4 +50,4 @@
     - 6xDF
     - 6xE0
     - 6xE1: Gallon's Plan quest
-- Team commands
+- Implement team commands
