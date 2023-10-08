@@ -48,11 +48,26 @@ struct SavedPlayerDataBB { // .nsc file format
 
   void update_to_latest_version();
 
-  void add_item(const PlayerInventoryItem& item);
-  PlayerInventoryItem remove_item(
-      uint32_t item_id, uint32_t amount, bool allow_meseta_overdraft);
+  void add_item(const ItemData& item);
+  ItemData remove_item(uint32_t item_id, uint32_t amount, bool allow_meseta_overdraft);
   void add_meseta(uint32_t amount);
   void remove_meseta(uint32_t amount, bool allow_overdraft);
+
+  uint8_t get_technique_level(uint8_t which) const; // Returns FF or 00-1D
+  void set_technique_level(uint8_t which, uint8_t level);
+
+  enum class MaterialType : int8_t {
+    HP = -2,
+    TP = -1,
+    POWER = 0,
+    MIND = 1,
+    EVADE = 2,
+    DEF = 3,
+    LUCK = 4,
+  };
+
+  uint8_t get_material_usage(MaterialType which) const;
+  void set_material_usage(MaterialType which, uint8_t usage);
 
   void print_inventory(FILE* stream) const;
 } __attribute__((packed));
@@ -95,7 +110,7 @@ public:
   // These are only used if the client is BB
   std::string bb_username;
   size_t bb_player_index;
-  PlayerInventoryItem identify_result;
+  ItemData identify_result;
   std::array<std::vector<ItemData>, 3> shop_contents;
   bool should_save;
 

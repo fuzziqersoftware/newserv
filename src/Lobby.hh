@@ -57,7 +57,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 
   // Item info
   struct FloorItem {
-    PlayerInventoryItem inv_item;
+    ItemData data;
     float x;
     float z;
     uint8_t area;
@@ -143,8 +143,8 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       const std::u16string* identifier = nullptr,
       uint64_t serial_number = 0);
 
-  void add_item(const PlayerInventoryItem& item, uint8_t area, float x, float z);
-  PlayerInventoryItem remove_item(uint32_t item_id);
+  void add_item(const ItemData& item, uint8_t area, float x, float z);
+  ItemData remove_item(uint32_t item_id);
   size_t find_item(uint32_t item_id);
   uint32_t generate_item_id(uint8_t client_id);
 

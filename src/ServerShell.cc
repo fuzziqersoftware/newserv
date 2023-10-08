@@ -819,21 +819,20 @@ Proxy session commands:\n\
       throw runtime_error("proxy session is not game leader");
     }
 
-    PlayerInventoryItem item;
-    item.data = ItemData(command_args);
-    item.data.id = random_object<uint32_t>();
+    ItemData item(command_args);
+    item.id = random_object<uint32_t>();
 
     if (command_name == "set-next-item") {
       session->next_drop_item = item;
 
-      string name = session->next_drop_item.data.name(true);
+      string name = session->next_drop_item.name(true);
       send_text_message(session->client_channel, u"$C7Next drop:\n" + decode_sjis(name));
 
     } else {
-      send_drop_stacked_item(session->client_channel, item.data, session->area, session->x, session->z);
-      send_drop_stacked_item(session->server_channel, item.data, session->area, session->x, session->z);
+      send_drop_stacked_item(session->client_channel, item, session->area, session->x, session->z);
+      send_drop_stacked_item(session->server_channel, item, session->area, session->x, session->z);
 
-      string name = item.data.name(true);
+      string name = item.name(true);
       send_text_message(session->client_channel, u"$C7Item created:\n" + decode_sjis(name));
     }
 

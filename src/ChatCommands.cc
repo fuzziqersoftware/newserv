@@ -835,7 +835,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::u16string& args
       uint8_t level = stoul(tokens.at(2)) - 1;
       if (tokens.at(1) == "all") {
         for (size_t x = 0; x < 0x14; x++) {
-          c->game_data.player()->disp.technique_levels.data()[x] = level;
+          c->game_data.player()->set_technique_level(x, level);
         }
       } else {
         uint8_t tech_id = technique_for_name(decode_sjis(tokens.at(1)));
@@ -844,7 +844,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::u16string& args
           return;
         }
         try {
-          c->game_data.player()->disp.technique_levels[tech_id] = level;
+          c->game_data.player()->set_technique_level(tech_id, level);
         } catch (const out_of_range&) {
           send_text_message(c, u"$C6Invalid technique");
           return;
@@ -1133,7 +1133,7 @@ static void server_command_what(shared_ptr<Client> c, const std::u16string&) {
       send_text_message(c, u"$C4No items are near you");
     } else {
       const auto& item = l->item_id_to_floor_item.at(nearest_item_id);
-      string name = item.inv_item.data.name(true);
+      string name = item.data.name(true);
       send_text_message(c, decode_sjis(name));
     }
   }
@@ -1226,14 +1226,13 @@ static void server_command_item(shared_ptr<Client> c, const std::u16string& args
   check_is_game(l, true);
   check_cheats_enabled(s, l);
 
-  PlayerInventoryItem item;
-  item.data = ItemData(encode_sjis(args));
-  item.data.id = l->generate_item_id(c->lobby_client_id);
+  ItemData item(encode_sjis(args));
+  item.id = l->generate_item_id(c->lobby_client_id);
 
   l->add_item(item, c->area, c->x, c->z);
-  send_drop_stacked_item(l, item.data, c->area, c->x, c->z);
+  send_drop_stacked_item(l, item, c->area, c->x, c->z);
 
-  string name = item.data.name(true);
+  string name = item.name(true);
   send_text_message(c, u"$C7Item created:\n" + decode_sjis(name));
 }
 
@@ -1258,21 +1257,20 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
 
   bool set_drop = (!args.empty() && (args[0] == u'!'));
 
-  PlayerInventoryItem item;
-  item.data = ItemData(encode_sjis(set_drop ? args.substr(1) : args));
-  item.data.id = random_object<uint32_t>();
+  ItemData item(encode_sjis(set_drop ? args.substr(1) : args));
+  item.id = random_object<uint32_t>();
 
   if (set_drop) {
     ses->next_drop_item = item;
 
-    string name = ses->next_drop_item.data.name(true);
+    string name = ses->next_drop_item.name(true);
     send_text_message(ses->client_channel, u"$C7Next drop:\n" + decode_sjis(name));
 
   } else {
-    send_drop_stacked_item(ses->client_channel, item.data, ses->area, ses->x, ses->z);
-    send_drop_stacked_item(ses->server_channel, item.data, ses->area, ses->x, ses->z);
+    send_drop_stacked_item(ses->client_channel, item, ses->area, ses->x, ses->z);
+    send_drop_stacked_item(ses->server_channel, item, ses->area, ses->x, ses->z);
 
-    string name = item.data.name(true);
+    string name = item.name(true);
     send_text_message(ses->client_channel, u"$C7Item created:\n" + decode_sjis(name));
   }
 }

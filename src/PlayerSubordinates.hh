@@ -23,10 +23,10 @@ extern FileContentsCache player_files_cache;
 // stores arrays of bytes striped across these structures. In newserv, we call
 // those fields extension_data. They contain:
 //   items[0].extension_data1 through items[19].extension_data1:
-//       Extended technique levels. The values in the v1_technique_levels array
+//       Extended technique levels. The values in the technique_levels_v1 array
 //       only go up to 14 (tech level 15); if the player has a technique above
 //       level 15, the corresponding extension_data1 field holds the remaining
-//       levels (so a level 20 tech would have 14 in v1_technique_levels and 5
+//       levels (so a level 20 tech would have 14 in technique_levels_v1 and 5
 //       in the corresponding item's extension_data1 field).
 //   items[0].extension_data2 through items[3].extension_data2:
 //       The value known as unknown_a1 in the PSOGCCharacterFile::Character
@@ -40,37 +40,30 @@ extern FileContentsCache player_files_cache;
 //   items[13].extension_data2 through items[15].extension_data2:
 //       Unknown. These are not an array, but do appear to be related.
 
-struct PlayerBankItem;
-
-struct PlayerInventoryItem { // 0x1C bytes
-  le_uint16_t present;
+struct PlayerInventoryItem {
+  /* 00 */ le_uint16_t present = 0;
   // See note above about these fields
-  uint8_t extension_data1;
-  uint8_t extension_data2;
-  le_uint32_t flags; // 8 = equipped
-  ItemData data;
-
-  PlayerInventoryItem();
-  PlayerInventoryItem(const PlayerBankItem&);
-  void clear();
+  /* 02 */ uint8_t extension_data1 = 0;
+  /* 03 */ uint8_t extension_data2 = 0;
+  /* 04 */ le_uint32_t flags = 0; // 8 = equipped
+  /* 08 */ ItemData data;
+  /* 1C */
 } __attribute__((packed));
 
-struct PlayerBankItem { // 0x18 bytes
-  ItemData data;
-  le_uint16_t amount;
-  le_uint16_t show_flags;
-
-  PlayerBankItem();
-  PlayerBankItem(const PlayerInventoryItem&);
-  void clear();
+struct PlayerBankItem {
+  /* 00 */ ItemData data;
+  /* 14 */ le_uint16_t amount = 0;
+  /* 16 */ le_uint16_t present = 0;
+  /* 18 */
 } __attribute__((packed));
 
-struct PlayerInventory { // 0x34C bytes
-  uint8_t num_items;
-  uint8_t hp_materials_used;
-  uint8_t tp_materials_used;
-  uint8_t language;
-  PlayerInventoryItem items[30];
+struct PlayerInventory {
+  /* 0000 */ uint8_t num_items = 0;
+  /* 0001 */ uint8_t hp_materials_used = 0;
+  /* 0002 */ uint8_t tp_materials_used = 0;
+  /* 0003 */ uint8_t language = 1; // English
+  /* 0004 */ parray<PlayerInventoryItem, 30> items;
+  /* 034C */
 
   PlayerInventory();
 
@@ -81,10 +74,11 @@ struct PlayerInventory { // 0x34C bytes
   size_t find_equipped_mag() const;
 } __attribute__((packed));
 
-struct PlayerBank { // 0x12C8 bytes
-  le_uint32_t num_items;
-  le_uint32_t meseta;
-  PlayerBankItem items[200];
+struct PlayerBank {
+  /* 0000 */ le_uint32_t num_items = 0;
+  /* 0004 */ le_uint32_t meseta = 0;
+  /* 0008 */ parray<PlayerBankItem, 200> items;
+  /* 12C8 */
 
   void load(const std::string& filename);
   void save(const std::string& filename, bool save_to_filesystem) const;
@@ -92,8 +86,8 @@ struct PlayerBank { // 0x12C8 bytes
   bool switch_with_file(const std::string& save_filename,
       const std::string& load_filename);
 
-  void add_item(const PlayerBankItem& item);
-  PlayerBankItem remove_item(uint32_t item_id, uint32_t amount);
+  void add_item(const ItemData& item);
+  ItemData remove_item(uint32_t item_id, uint32_t amount);
   size_t find_item(uint32_t item_id);
 } __attribute__((packed));
 
@@ -139,7 +133,7 @@ struct PlayerDispDataDCPCV3 {
   /* 00 */ PlayerStats stats;
   /* 24 */ PlayerVisualConfig visual;
   /* 74 */ parray<uint8_t, 0x48> config;
-  /* BC */ parray<uint8_t, 0x14> v1_technique_levels;
+  /* BC */ parray<uint8_t, 0x14> technique_levels_v1;
   /* D0 */
   void enforce_v2_limits();
   PlayerDispDataBB to_bb() const;
@@ -164,7 +158,7 @@ struct PlayerDispDataBB {
   /* 008C */ le_uint32_t play_time = 0;
   /* 0090 */ uint32_t unknown_a3 = 0;
   /* 0094 */ parray<uint8_t, 0xE8> config;
-  /* 017C */ parray<uint8_t, 0x14> technique_levels;
+  /* 017C */ parray<uint8_t, 0x14> technique_levels_v1;
   /* 0190 */
 
   inline void enforce_v2_limits() {}

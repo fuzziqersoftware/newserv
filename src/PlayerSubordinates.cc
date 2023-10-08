@@ -43,7 +43,7 @@ PlayerDispDataBB PlayerDispDataDCPCV3::to_bb() const {
   bb.visual.name = "         0";
   bb.name = this->visual.name;
   bb.config = this->config;
-  bb.technique_levels = this->v1_technique_levels;
+  bb.technique_levels_v1 = this->technique_levels_v1;
   return bb;
 }
 
@@ -54,7 +54,7 @@ PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3() const {
   ret.visual.name = this->name;
   remove_language_marker_inplace(ret.visual.name);
   ret.config = this->config;
-  ret.v1_technique_levels = this->technique_levels;
+  ret.technique_levels_v1 = this->technique_levels_v1;
   return ret;
 }
 
@@ -278,68 +278,34 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsV3_Challenge<false>() const {
   return ret;
 }
 
-PlayerInventoryItem::PlayerInventoryItem() {
-  this->clear();
-}
-
-PlayerInventoryItem::PlayerInventoryItem(const PlayerBankItem& src)
-    : present(1),
-      extension_data1(0),
-      extension_data2(0),
-      flags(0),
-      data(src.data) {}
-
-void PlayerInventoryItem::clear() {
-  this->present = 0x0000;
-  this->extension_data1 = 0x00;
-  this->extension_data2 = 0x00;
-  this->flags = 0x00000000;
-  this->data.clear();
-}
-
-PlayerBankItem::PlayerBankItem() {
-  this->clear();
-}
-
-PlayerBankItem::PlayerBankItem(const PlayerInventoryItem& src)
-    : data(src.data),
-      amount(this->data.stack_size()),
-      show_flags(1) {}
-
-void PlayerBankItem::clear() {
-  this->data.clear();
-  this->amount = 0;
-  this->show_flags = 0;
-}
-
 PlayerInventory::PlayerInventory()
     : num_items(0),
       hp_materials_used(0),
       tp_materials_used(0),
       language(0) {}
 
-void PlayerBank::add_item(const PlayerBankItem& item) {
-  uint32_t pid = item.data.primary_identifier();
+void PlayerBank::add_item(const ItemData& item) {
+  uint32_t pid = item.primary_identifier();
 
   if (pid == MESETA_IDENTIFIER) {
-    this->meseta += item.data.data2d;
+    this->meseta += item.data2d;
     if (this->meseta > 999999) {
       this->meseta = 999999;
     }
     return;
   }
 
-  size_t combine_max = item.data.max_stack_size();
+  size_t combine_max = item.max_stack_size();
   if (combine_max > 1) {
     size_t y;
     for (y = 0; y < this->num_items; y++) {
-      if (this->items[y].data.primary_identifier() == item.data.primary_identifier()) {
+      if (this->items[y].data.primary_identifier() == item.primary_identifier()) {
         break;
       }
     }
 
     if (y < this->num_items) {
-      this->items[y].data.data1[5] += item.data.data1[5];
+      this->items[y].data.data1[5] += item.data1[5];
       if (this->items[y].data.data1[5] > combine_max) {
         this->items[y].data.data1[5] = combine_max;
       }
@@ -351,19 +317,22 @@ void PlayerBank::add_item(const PlayerBankItem& item) {
   if (this->num_items >= 200) {
     throw runtime_error("bank is full");
   }
-  this->items[this->num_items] = item;
+  auto& last_item = this->items[this->num_items];
+  last_item.data = item;
+  last_item.amount = (item.max_stack_size() > 1) ? item.data1[5] : 1;
+  last_item.present = 1;
   this->num_items++;
 }
 
-PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
-  PlayerBankItem ret;
+ItemData PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
+  ItemData ret;
 
   if (item_id == 0xFFFFFFFF) {
     if (amount > this->meseta) {
       throw out_of_range("player does not have enough meseta");
     }
-    ret.data.data1[0] = 0x04;
-    ret.data.data2d = amount;
+    ret.data1[0] = 0x04;
+    ret.data2d = amount;
     this->meseta -= amount;
     return ret;
   }
@@ -371,22 +340,23 @@ PlayerBankItem PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
   size_t index = this->find_item(item_id);
   auto& bank_item = this->items[index];
 
-  if (amount && (bank_item.data.stack_size() > 1) &&
-      (amount < bank_item.data.data1[5])) {
-    ret = bank_item;
-    ret.data.data1[5] = amount;
-    ret.amount = amount;
+  if (amount && (bank_item.data.stack_size() > 1) && (amount < bank_item.data.data1[5])) {
+    ret = bank_item.data;
+    ret.data1[5] = amount;
     bank_item.data.data1[5] -= amount;
     bank_item.amount -= amount;
     return ret;
   }
 
-  ret = bank_item;
+  ret = bank_item.data;
   this->num_items--;
   for (size_t x = index; x < this->num_items; x++) {
     this->items[x] = this->items[x + 1];
   }
-  this->items[this->num_items] = PlayerBankItem();
+  auto& last_item = this->items[this->num_items];
+  last_item.amount = 0;
+  last_item.present = 0;
+  last_item.data.clear();
   return ret;
 }
 

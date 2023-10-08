@@ -73,7 +73,7 @@ public:
     // A null handler in here means to forward the response to the remote server
     std::deque<std::function<void(uint32_t return_value, uint32_t checksum)>> function_call_return_handler_queue;
     G_SwitchStateChanged_6x05 last_switch_enabled_command;
-    PlayerInventoryItem next_drop_item;
+    ItemData next_drop_item;
     uint32_t next_item_id;
 
     struct LobbyPlayer {

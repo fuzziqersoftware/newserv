@@ -4570,7 +4570,7 @@ struct G_SyncPlayerDispAndInventory_V3_6x70 {
   /* 00A4 */ parray<uint8_t, 0x14> unknown_a9;
   /* 00B8 */ le_uint32_t unknown_a10;
   /* 00BC */ le_uint32_t unknown_a11;
-  /* 00C0 */ parray<uint8_t, 0x14> technique_levels; // Last byte is uninitialized
+  /* 00C0 */ parray<uint8_t, 0x14> technique_levels_v1; // Last byte is uninitialized
   /* 00D4 */ PlayerVisualConfig visual;
   /* 0124 */ PlayerStats stats;
   /* 0148 */ struct {
@@ -5305,7 +5305,7 @@ struct G_CardCounts_GC_Ep3_6xBC {
 struct G_BankContentsHeader_BB_6xBC {
   G_ExtendedHeader<G_UnusedHeader> header;
   le_uint32_t checksum; // can be random; client won't notice
-  le_uint32_t numItems;
+  le_uint32_t num_items;
   le_uint32_t meseta;
   // Item data follows
 } __packed__;

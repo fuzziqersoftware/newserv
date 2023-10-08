@@ -28,45 +28,51 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
     if (item.data.data1[2] > max_level) {
       throw runtime_error("technique level too high");
     }
-    player->disp.technique_levels.data()[item.data.data1[4]] = item.data.data1[2];
+    player->set_technique_level(item.data.data1[4], item.data.data1[2]);
 
   } else if ((item_identifier & 0xFFFF00) == 0x030A00) { // Grinder
     if (item.data.data1[2] > 2) {
-      throw invalid_argument("incorrect grinder value");
+      throw runtime_error("incorrect grinder value");
     }
     auto& weapon = player->inventory.items[player->inventory.find_equipped_weapon()];
-    auto weapon_def = s->item_parameter_table->get_weapon(
-        weapon.data.data1[1], weapon.data.data1[2]);
+    auto weapon_def = s->item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
     if (weapon.data.data1[3] >= weapon_def.max_grind) {
       throw runtime_error("weapon already at maximum grind");
     }
     weapon.data.data1[3] += (item.data.data1[2] + 1);
 
   } else if ((item_identifier & 0xFFFF00) == 0x030B00) { // Material
+    auto p = c->game_data.player();
+    using Type = SavedPlayerDataBB::MaterialType;
     switch (item.data.data1[2]) {
       case 0: // Power Material
-        c->game_data.player()->disp.stats.char_stats.atp += 2;
+        p->set_material_usage(Type::POWER, p->get_material_usage(Type::POWER) + 1);
+        p->disp.stats.char_stats.atp += 2;
         break;
       case 1: // Mind Material
-        c->game_data.player()->disp.stats.char_stats.mst += 2;
+        p->set_material_usage(Type::MIND, p->get_material_usage(Type::MIND) + 1);
+        p->disp.stats.char_stats.mst += 2;
         break;
       case 2: // Evade Material
-        c->game_data.player()->disp.stats.char_stats.evp += 2;
+        p->set_material_usage(Type::EVADE, p->get_material_usage(Type::EVADE) + 1);
+        p->disp.stats.char_stats.evp += 2;
         break;
       case 3: // HP Material
-        c->game_data.player()->inventory.hp_materials_used += 2;
+        p->set_material_usage(Type::HP, p->get_material_usage(Type::HP) + 1);
         break;
       case 4: // TP Material
-        c->game_data.player()->inventory.tp_materials_used += 2;
+        p->set_material_usage(Type::TP, p->get_material_usage(Type::TP) + 1);
         break;
       case 5: // Def Material
-        c->game_data.player()->disp.stats.char_stats.dfp += 2;
+        p->set_material_usage(Type::DEF, p->get_material_usage(Type::DEF) + 1);
+        p->disp.stats.char_stats.dfp += 2;
         break;
       case 6: // Luck Material
-        c->game_data.player()->disp.stats.char_stats.lck += 2;
+        p->set_material_usage(Type::LUCK, p->get_material_usage(Type::LUCK) + 1);
+        p->disp.stats.char_stats.lck += 2;
         break;
       default:
-        throw invalid_argument("unknown material used");
+        throw runtime_error("unknown material used");
     }
 
   } else if ((item_identifier & 0xFFFF00) == 0x030F00) { // AddSlot

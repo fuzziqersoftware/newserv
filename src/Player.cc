@@ -213,31 +213,31 @@ void SavedPlayerDataBB::update_to_latest_version() {
 
 // TODO: Eliminate duplication between this function and the parallel function
 // in PlayerBank
-void SavedPlayerDataBB::add_item(const PlayerInventoryItem& item) {
-  uint32_t pid = item.data.primary_identifier();
+void SavedPlayerDataBB::add_item(const ItemData& item) {
+  uint32_t pid = item.primary_identifier();
 
   // Annoyingly, meseta is in the disp data, not in the inventory struct. If the
   // item is meseta, we have to modify disp instead.
   if (pid == MESETA_IDENTIFIER) {
-    this->add_meseta(item.data.data2d);
+    this->add_meseta(item.data2d);
     return;
   }
 
   // Handle combinable items
-  size_t combine_max = item.data.max_stack_size();
+  size_t combine_max = item.max_stack_size();
   if (combine_max > 1) {
     // Get the item index if there's already a stack of the same item in the
     // player's inventory
     size_t y;
     for (y = 0; y < this->inventory.num_items; y++) {
-      if (this->inventory.items[y].data.primary_identifier() == item.data.primary_identifier()) {
+      if (this->inventory.items[y].data.primary_identifier() == item.primary_identifier()) {
         break;
       }
     }
 
     // If we found an existing stack, add it to the total and return
     if (y < this->inventory.num_items) {
-      this->inventory.items[y].data.data1[5] += item.data.data1[5];
+      this->inventory.items[y].data.data1[5] += item.data1[5];
       if (this->inventory.items[y].data.data1[5] > combine_max) {
         this->inventory.items[y].data.data1[5] = combine_max;
       }
@@ -250,22 +250,24 @@ void SavedPlayerDataBB::add_item(const PlayerInventoryItem& item) {
   if (this->inventory.num_items >= 30) {
     throw runtime_error("inventory is full");
   }
-  this->inventory.items[this->inventory.num_items] = item;
+  auto& inv_item = this->inventory.items[this->inventory.num_items];
+  inv_item.present = 1;
+  inv_item.flags = 0;
+  inv_item.data = item;
   this->inventory.num_items++;
 }
 
 // TODO: Eliminate code duplication between this function and the parallel
 // function in PlayerBank
-PlayerInventoryItem SavedPlayerDataBB::remove_item(
-    uint32_t item_id, uint32_t amount, bool allow_meseta_overdraft) {
-  PlayerInventoryItem ret;
+ItemData SavedPlayerDataBB::remove_item(uint32_t item_id, uint32_t amount, bool allow_meseta_overdraft) {
+  ItemData ret;
 
   // If we're removing meseta (signaled by an invalid item ID), then create a
   // meseta item.
   if (item_id == 0xFFFFFFFF) {
     this->remove_meseta(amount, allow_meseta_overdraft);
-    ret.data.data1[0] = 0x04;
-    ret.data.data2d = amount;
+    ret.data1[0] = 0x04;
+    ret.data2d = amount;
     return ret;
   }
 
@@ -278,9 +280,9 @@ PlayerInventoryItem SavedPlayerDataBB::remove_item(
   // applies if amount is nonzero.
   if (amount && (inventory_item.data.stack_size() > 1) &&
       (amount < inventory_item.data.data1[5])) {
-    ret = inventory_item;
-    ret.data.data1[5] = amount;
-    ret.data.id = 0xFFFFFFFF;
+    ret = inventory_item.data;
+    ret.data1[5] = amount;
+    ret.id = 0xFFFFFFFF;
     inventory_item.data.data1[5] -= amount;
     return ret;
   }
@@ -288,12 +290,15 @@ PlayerInventoryItem SavedPlayerDataBB::remove_item(
   // If we get here, then it's not meseta, and either it's not a combine item or
   // we're removing the entire stack. Delete the item from the inventory slot
   // and return the deleted item.
-  ret = inventory_item;
+  ret = inventory_item.data;
   this->inventory.num_items--;
   for (size_t x = index; x < this->inventory.num_items; x++) {
     this->inventory.items[x] = this->inventory.items[x + 1];
   }
-  this->inventory.items[this->inventory.num_items] = PlayerInventoryItem();
+  auto& last_item = this->inventory.items[this->inventory.num_items];
+  last_item.present = 0;
+  last_item.flags = 0;
+  last_item.data.clear();
   return ret;
 }
 
@@ -308,5 +313,61 @@ void SavedPlayerDataBB::remove_meseta(uint32_t amount, bool allow_overdraft) {
     this->disp.stats.meseta = 0;
   } else {
     throw out_of_range("player does not have enough meseta");
+  }
+}
+
+uint8_t SavedPlayerDataBB::get_technique_level(uint8_t which) const {
+  return (this->disp.technique_levels_v1[which] == 0xFF)
+      ? 0xFF
+      : (this->disp.technique_levels_v1[which] + this->inventory.items[which].extension_data1);
+}
+
+void SavedPlayerDataBB::set_technique_level(uint8_t which, uint8_t level) {
+  if (level == 0xFF) {
+    this->disp.technique_levels_v1[which] = 0xFF;
+    this->inventory.items[which].extension_data1 = 0x00;
+  } else if (level <= 0x0E) {
+    this->disp.technique_levels_v1[which] = level;
+    this->inventory.items[which].extension_data1 = 0x00;
+  } else {
+    this->disp.technique_levels_v1[which] = 0x0E;
+    this->inventory.items[which].extension_data1 = level - 0x0E;
+  }
+}
+
+uint8_t SavedPlayerDataBB::get_material_usage(MaterialType which) const {
+  switch (which) {
+    case MaterialType::HP:
+      return this->inventory.hp_materials_used;
+    case MaterialType::TP:
+      return this->inventory.tp_materials_used;
+    case MaterialType::POWER:
+    case MaterialType::MIND:
+    case MaterialType::EVADE:
+    case MaterialType::DEF:
+    case MaterialType::LUCK:
+      return this->inventory.items[8 + static_cast<uint8_t>(which)].extension_data2;
+    default:
+      throw logic_error("invalid material type");
+  }
+}
+
+void SavedPlayerDataBB::set_material_usage(MaterialType which, uint8_t usage) {
+  switch (which) {
+    case MaterialType::HP:
+      this->inventory.hp_materials_used = usage;
+      break;
+    case MaterialType::TP:
+      this->inventory.tp_materials_used = usage;
+      break;
+    case MaterialType::POWER:
+    case MaterialType::MIND:
+    case MaterialType::EVADE:
+    case MaterialType::DEF:
+    case MaterialType::LUCK:
+      this->inventory.items[8 + static_cast<uint8_t>(which)].extension_data2 = usage;
+      break;
+    default:
+      throw logic_error("invalid material type");
   }
 }

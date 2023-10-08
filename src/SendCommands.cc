@@ -2100,7 +2100,7 @@ void send_item_identify_result(shared_ptr<Client> c) {
   res.header.subcommand = 0xB9;
   res.header.size = sizeof(res) / 4;
   res.header.client_id = c->lobby_client_id;
-  res.item_data = c->game_data.identify_result.data;
+  res.item_data = c->game_data.identify_result;
   send_command_t(l, 0x60, 0x00, res);
 }
 
@@ -2109,15 +2109,14 @@ void send_bank(shared_ptr<Client> c) {
     throw logic_error("6xBC can only be sent to BB clients");
   }
 
-  vector<PlayerBankItem> items(c->game_data.player()->bank.items,
-      &c->game_data.player()->bank.items[c->game_data.player()->bank.num_items]);
+  const auto* items_it = c->game_data.player()->bank.items.data();
+  vector<PlayerBankItem> items(items_it, items_it + c->game_data.player()->bank.num_items);
 
-  uint32_t checksum = random_object<uint32_t>();
   G_BankContentsHeader_BB_6xBC cmd = {
-      {{0xBC, 0, 0}, 0}, checksum, c->game_data.player()->bank.num_items, c->game_data.player()->bank.meseta};
-
-  size_t size = 8 + sizeof(cmd) + items.size() * sizeof(PlayerBankItem);
-  cmd.header.size = size;
+      {{0xBC, 0, 0}, sizeof(G_BankContentsHeader_BB_6xBC) + items.size() * sizeof(PlayerBankItem)},
+      random_object<uint32_t>(),
+      c->game_data.player()->bank.num_items,
+      c->game_data.player()->bank.meseta};
 
   send_command_t_vt(c, 0x6C, 0x00, cmd, items);
 }

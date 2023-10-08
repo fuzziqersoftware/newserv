@@ -1,6 +1,5 @@
 ## General
 
-- Extension data in inventories is not handled properly
 - Test PSOX (blocked on Insignia private server support)
 - Implement server-side drops on non-BB game versions
 - Find a way to silence audio in RunDOL.s

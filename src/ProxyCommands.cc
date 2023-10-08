@@ -946,16 +946,12 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
         return HandlerResult::Type::SUPPRESS;
       }
 
-    } else if ((data[0] == 0x60) &&
-        ses->next_drop_item.data.data1d[0] &&
-        (ses->version != GameVersion::BB)) {
+    } else if ((data[0] == 0x60) && ses->next_drop_item.data1d[0] && (ses->version != GameVersion::BB)) {
       const auto& cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(
           data, sizeof(G_StandardDropItemRequest_PC_V3_BB_6x60));
-      ses->next_drop_item.data.id = ses->next_item_id++;
-      send_drop_item(ses->server_channel, ses->next_drop_item.data,
-          true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
-      send_drop_item(ses->client_channel, ses->next_drop_item.data,
-          true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+      ses->next_drop_item.id = ses->next_item_id++;
+      send_drop_item(ses->server_channel, ses->next_drop_item, true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item(ses->client_channel, ses->next_drop_item, true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
       ses->next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 
@@ -963,15 +959,11 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       // the comparison is always false (which even happens in some environments
       // if we use -0x5E... apparently char is unsigned on some systems, or
       // std::string's char_type isn't char??)
-    } else if ((static_cast<uint8_t>(data[0]) == 0xA2) &&
-        ses->next_drop_item.data.data1d[0] &&
-        (ses->version != GameVersion::BB)) {
+    } else if ((static_cast<uint8_t>(data[0]) == 0xA2) && ses->next_drop_item.data1d[0] && (ses->version != GameVersion::BB)) {
       const auto& cmd = check_size_t<G_SpecializableItemDropRequest_6xA2>(data);
-      ses->next_drop_item.data.id = ses->next_item_id++;
-      send_drop_item(ses->server_channel, ses->next_drop_item.data,
-          false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
-      send_drop_item(ses->client_channel, ses->next_drop_item.data,
-          false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+      ses->next_drop_item.id = ses->next_item_id++;
+      send_drop_item(ses->server_channel, ses->next_drop_item, false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item(ses->client_channel, ses->next_drop_item, false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
       ses->next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 
