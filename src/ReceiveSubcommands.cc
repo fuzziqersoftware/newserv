@@ -243,9 +243,12 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
   }
 }
 
-static void on_sync_joining_player_disp_and_inventory(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_sync_joining_player_disp_and_inventory(
+    shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if (!l->is_game() || !l->any_client_loading()) {
+  // In V1/V2 games, this command sometimes is sent after the new client has
+  // finished loading, so we don't check l->any_client_loading() here.
+  if (!l->is_game()) {
     return;
   }
 
@@ -254,33 +257,34 @@ static void on_sync_joining_player_disp_and_inventory(shared_ptr<Client> c, uint
   if (!command_is_private(command)) {
     throw runtime_error("6x70 sent via public command");
   }
+  if (flag >= l->max_clients) {
+    return;
+  }
+  auto target = l->clients[flag];
+  if (!target) {
+    return;
+  }
 
-  // For non-V3 versions, just forward the data verbatim. For V3, we need to
-  // byteswap mags' data2 fields if exactly one of the sender and recipient are
-  // PSO GC
+  // This command's format is different on BB and non-BB
+  bool sender_is_bb = (c->version() == GameVersion::BB);
+  bool target_is_bb = (target->version() == GameVersion::BB);
+  if (sender_is_bb != target_is_bb) {
+    // TODO: Figure out the BB 6x70 format and implement this
+    throw runtime_error("6x70 command cannot be translated across BB boundary");
+  }
+
+  // We need to byteswap mags' data2 fields if exactly one of the sender and
+  // recipient are PSO GC
   bool sender_is_gc = (c->version() == GameVersion::GC);
-  if (!sender_is_gc && (c->version() != GameVersion::XB)) {
-    forward_subcommand(c, command, flag, data, size);
-
+  bool target_is_gc = (target->version() == GameVersion::GC);
+  if (target_is_gc == sender_is_gc) {
+    send_command(target, command, flag, data, size);
   } else {
-    if (flag >= l->max_clients) {
-      return;
+    auto out_cmd = check_size_t<G_SyncPlayerDispAndInventory_DC_PC_V3_6x70>(data, size);
+    for (size_t z = 0; z < 30; z++) {
+      out_cmd.inventory.items[z].data.bswap_data2_if_mag();
     }
-    auto target = l->clients[flag];
-    if (!target) {
-      return;
-    }
-    bool target_is_gc = (target->version() == GameVersion::GC);
-
-    if (target_is_gc == sender_is_gc) {
-      send_command(target, command, flag, data, size);
-    } else {
-      auto out_cmd = check_size_t<G_SyncPlayerDispAndInventory_V3_6x70>(data, size);
-      for (size_t z = 0; z < 30; z++) {
-        out_cmd.inventory.items[z].data.bswap_data2_if_mag();
-      }
-      send_command_t(target, command, flag, out_cmd);
-    }
+    send_command_t(target, command, flag, out_cmd);
   }
 }
 

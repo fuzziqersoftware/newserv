@@ -4547,8 +4547,11 @@ struct G_Unknown_6x6F {
 // 6x70: Sync player disp data and inventory (used while loading into game)
 // Annoyingly, they didn't use the same format as the 65/67/68 commands here,
 // and instead rearranged a bunch of things.
+// The format appears to be the same for all pre-BB PSO versions, although
+// Episode 3 does not send this command at all since the relevant data is sent
+// tothe joining player in the 64 command instead.
 
-struct G_SyncPlayerDispAndInventory_V3_6x70 {
+struct G_SyncPlayerDispAndInventory_DC_PC_V3_6x70 {
   G_ExtendedHeader<G_UnusedHeader> header;
   // Offsets in this struct are relative to the overall command header
   /* 000C */ le_uint16_t client_id;
