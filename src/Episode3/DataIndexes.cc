@@ -679,51 +679,51 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
     return arg;
   }
   if (arg.size() != 3) {
-    return arg + "/(invalid)";
+    return arg + " (invalid)";
   }
   size_t value;
   try {
     value = stoul(arg.c_str() + 1, nullptr, 10);
   } catch (const invalid_argument&) {
-    return arg + "/(invalid)";
+    return arg + " (invalid)";
   }
 
   switch (arg[0]) {
     case 'a':
-      return arg + "/(unknown)";
+      return string_printf("%s (Each activation lasts for %zu attack%s)", arg.c_str(), value, (value == 1) ? "" : "s");
     case 'C':
     case 'c':
-      return string_printf("%s/Req. linked item (%zu=>%zu)", arg.c_str(), value / 10, value % 10);
+      return string_printf("%s (Req. linked item (%zu=>%zu))", arg.c_str(), value / 10, value % 10);
     case 'd':
-      return string_printf("%s/Req. die roll in [%zu, %zu]", arg.c_str(), value / 10, value % 10);
+      return string_printf("%s (Req. die roll in [%zu, %zu])", arg.c_str(), value / 10, value % 10);
     case 'e':
-      return arg + "/While equipped";
+      return arg + " (While equipped)";
     case 'h':
-      return string_printf("%s/Req. HP >= %zu", arg.c_str(), value);
+      return string_printf("%s (Req. HP >= %zu)", arg.c_str(), value);
     case 'i':
-      return string_printf("%s/Req. HP <= %zu", arg.c_str(), value);
+      return string_printf("%s (Req. HP <= %zu)", arg.c_str(), value);
     case 'n':
       try {
-        return string_printf("%s/Req. condition: %s", arg.c_str(), description_for_n_condition.at(value));
+        return string_printf("%s (Req. condition: %s)", arg.c_str(), description_for_n_condition.at(value));
       } catch (const out_of_range&) {
-        return arg + "/(unknown)";
+        return arg + " (Req. condition: unknown)";
       }
     case 'o':
-      return arg + "/Req. prev effect conditions passed";
+      return arg + " (Req. prev effect conditions passed)";
     case 'p':
       try {
-        return string_printf("%s/Target: %s", arg.c_str(), description_for_p_target.at(value));
+        return string_printf("%s (Target: %s)", arg.c_str(), description_for_p_target.at(value));
       } catch (const out_of_range&) {
-        return arg + "/(unknown)";
+        return arg + " (Target: unknown)";
       }
     case 'r':
-      return string_printf("%s/Req. random with %zu%% chance", arg.c_str(), value == 0 ? 100 : value);
+      return string_printf("%s (Random with %zu%% chance)", arg.c_str(), value == 0 ? 100 : value);
     case 's':
-      return string_printf("%s/Req. cost in [%zu, %zu]", arg.c_str(), value / 10, value % 10);
+      return string_printf("%s (Req. cost in [%zu, %zu])", arg.c_str(), value / 10, value % 10);
     case 't':
-      return string_printf("%s/Turns: %zu", arg.c_str(), value);
+      return string_printf("%s (Turns: %zu)", arg.c_str(), value);
     default:
-      return arg + "/(unknown)";
+      return arg + " (unknown)";
   }
 }
 
@@ -747,9 +747,9 @@ string CardDefinition::Effect::str(const char* separator, const TextArchive* tex
     tokens.emplace_back("expr=" + string(this->expr));
   }
   tokens.emplace_back(string_printf("when=%02hhX", this->when));
-  tokens.emplace_back(this->str_for_arg(this->arg1));
-  tokens.emplace_back(this->str_for_arg(this->arg2));
-  tokens.emplace_back(this->str_for_arg(this->arg3));
+  tokens.emplace_back("arg1=" + this->str_for_arg(this->arg1));
+  tokens.emplace_back("arg2=" + this->str_for_arg(this->arg2));
+  tokens.emplace_back("arg3=" + this->str_for_arg(this->arg3));
   {
     uint8_t type = static_cast<uint8_t>(this->apply_criterion);
     string cond_str = string_printf("cond=%02hhX", type);
@@ -776,9 +776,9 @@ string CardDefinition::Effect::str(const char* separator, const TextArchive* tex
         ch = '$';
       }
     }
-    tokens.emplace_back(string_printf("name_index=%02hhX \"%s\"", this->name_index, formatted_name.c_str()));
+    tokens.emplace_back(string_printf("name=%02hhX \"%s\"", this->name_index, formatted_name.c_str()));
   } else {
-    tokens.emplace_back(string_printf("name_index=%02hhX", this->name_index));
+    tokens.emplace_back(string_printf("name=%02hhX", this->name_index));
   }
 
   return join(tokens, separator);
