@@ -1980,7 +1980,9 @@ CardIndex::CardIndex(
     const string& filename,
     const string& decompressed_filename,
     const string& text_filename,
-    const string& decompressed_text_filename) {
+    const string& decompressed_text_filename,
+    const string& dice_text_filename,
+    const string& decompressed_dice_text_filename) {
   unordered_map<uint32_t, vector<string>> card_tags;
   unordered_map<uint32_t, string> card_text;
   try {
@@ -2078,6 +2080,30 @@ CardIndex::CardIndex(
     static_game_data_log.warning("Failed to load card text: %s", e.what());
   }
 
+  unordered_map<uint32_t, pair<string, string>> card_dice_text;
+  try {
+    string text_bin_data;
+    if (!decompressed_dice_text_filename.empty() && isfile(decompressed_dice_text_filename)) {
+      text_bin_data = load_file(decompressed_dice_text_filename);
+    } else if (!dice_text_filename.empty() && isfile(dice_text_filename)) {
+      text_bin_data = prs_decompress(load_file(dice_text_filename));
+    }
+    if (!text_bin_data.empty()) {
+      StringReader r(text_bin_data);
+
+      while (!r.eof()) {
+        uint32_t card_id = r.get_u32l();
+        string dice_caption = r.read(0xFE);
+        string dice_text = r.read(0xFE);
+        strip_trailing_zeroes(dice_caption);
+        strip_trailing_zeroes(dice_text);
+        card_dice_text.emplace(card_id, make_pair(std::move(dice_caption), std::move(dice_text)));
+      }
+    }
+  } catch (const exception& e) {
+    static_game_data_log.warning("Failed to load card dice text: %s", e.what());
+  }
+
   try {
     string decompressed_data;
     this->mtime_for_card_definitions = stat(filename).st_mtime;
@@ -2109,7 +2135,7 @@ CardIndex::CardIndex(
         continue;
       }
 
-      shared_ptr<CardEntry> entry(new CardEntry({defs[x], {}, {}}));
+      shared_ptr<CardEntry> entry(new CardEntry({defs[x], "", "", "", {}}));
       if (!this->card_definitions.emplace(entry->def.card_id, entry).second) {
         throw runtime_error(string_printf(
             "duplicate card id: %08" PRIX32, entry->def.card_id.load()));
@@ -2127,13 +2153,21 @@ CardIndex::CardIndex(
       entry->def.mv.decode_code();
       entry->def.decode_range();
 
-      if (!text_filename.empty()) {
+      if (!text_filename.empty() || !decompressed_text_filename.empty()) {
         try {
           entry->text = std::move(card_text.at(defs[x].card_id));
         } catch (const out_of_range&) {
         }
         try {
           entry->debug_tags = std::move(card_tags.at(defs[x].card_id));
+        } catch (const out_of_range&) {
+        }
+      }
+      if (!dice_text_filename.empty() || !decompressed_dice_text_filename.empty()) {
+        try {
+          auto& dice_text_it = card_dice_text.at(defs[x].card_id);
+          entry->dice_caption = std::move(dice_text_it.first);
+          entry->dice_text = std::move(dice_text_it.second);
         } catch (const out_of_range&) {
         }
       }

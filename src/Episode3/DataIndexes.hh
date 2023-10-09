@@ -1338,11 +1338,15 @@ public:
       const std::string& filename,
       const std::string& decompressed_filename,
       const std::string& text_filename = "",
-      const std::string& deecompressed_text_filename = "");
+      const std::string& deecompressed_text_filename = "",
+      const std::string& dice_text_filename = "",
+      const std::string& deecompressed_dice_text_filename = "");
 
   struct CardEntry {
     CardDefinition def;
     std::string text;
+    std::string dice_caption;
+    std::string dice_text;
     std::vector<std::string> debug_tags; // Empty unless debug == true
   };
 

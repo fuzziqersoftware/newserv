@@ -1686,7 +1686,13 @@ int main(int argc, char** argv) {
     }
 
     case Behavior::SHOW_EP3_CARDS: {
-      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr", "system/ep3/card-text.mnrd");
+      Episode3::CardIndex card_index(
+          "system/ep3/card-definitions.mnr",
+          "system/ep3/card-definitions.mnrd",
+          "system/ep3/card-text.mnr",
+          "system/ep3/card-text.mnrd",
+          "system/ep3/card-dice-text.mnr",
+          "system/ep3/card-dice-text.mnrd");
       unique_ptr<TextArchive> text_english;
       try {
         JSON json = JSON::parse(load_file("system/ep3/text-english.json"));
@@ -1702,17 +1708,36 @@ int main(int argc, char** argv) {
         if (one_line) {
           fprintf(stdout, "%s\n", s.c_str());
         } else {
-          string tags = entry->debug_tags.empty() ? "(none)" : join(entry->debug_tags, ", ");
-          string text = entry->text.empty() ? "(No text available)" : str_replace_all(entry->text, "\n", "\n    ");
-          strip_trailing_whitespace(text);
-          fprintf(stdout, "%s\n  Tags: %s\n  Text:\n    %s\n\n", s.c_str(), tags.c_str(), text.c_str());
+          fprintf(stdout, "%s\n", s.c_str());
+          if (!entry->debug_tags.empty()) {
+            string tags = join(entry->debug_tags, ", ");
+            fprintf(stdout, "  Tags: %s\n", tags.c_str());
+          }
+          if (!entry->dice_caption.empty()) {
+            fprintf(stdout, "  Dice caption: %s\n", entry->dice_caption.c_str());
+          }
+          if (!entry->dice_caption.empty()) {
+            fprintf(stdout, "  Dice text: %s\n", entry->dice_text.c_str());
+          }
+          if (!entry->text.empty()) {
+            string text = str_replace_all(entry->text, "\n", "\n    ");
+            strip_trailing_whitespace(text);
+            fprintf(stdout, "  Text:\n    %s\n", text.c_str());
+          }
+          fputc('\n', stdout);
         }
       }
       break;
     }
 
     case Behavior::GENERATE_EP3_CARDS_HTML: {
-      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr", "system/ep3/card-text.mnrd");
+      Episode3::CardIndex card_index(
+          "system/ep3/card-definitions.mnr",
+          "system/ep3/card-definitions.mnrd",
+          "system/ep3/card-text.mnr",
+          "system/ep3/card-text.mnrd",
+          "system/ep3/card-dice-text.mnr",
+          "system/ep3/card-dice-text.mnrd");
       unique_ptr<TextArchive> text_english;
       try {
         JSON json = JSON::parse(load_file("system/ep3/text-english.json"));
@@ -1843,7 +1868,7 @@ int main(int argc, char** argv) {
     case Behavior::SHOW_EP3_MAPS: {
       config_log.info("Collecting Episode 3 data");
       Episode3::MapIndex map_index("system/ep3/maps");
-      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr", "system/ep3/card-text.mnrd");
+      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd");
 
       auto map_ids = map_index.all_numbers();
       log_info("%zu maps", map_ids.size());
