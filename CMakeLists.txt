@@ -103,6 +103,7 @@ add_executable(newserv
     src/Shell.cc
     src/StaticGameData.cc
     src/Text.cc
+    src/TextArchive.cc
     src/Version.cc
 )
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR})

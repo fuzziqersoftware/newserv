@@ -397,6 +397,7 @@ newserv has many CLI options, which can be used to access functionality other th
 * Decode Shift-JIS text to UTF-16 (`decode-sjis`)
 * Convert quests in .gci, .vms, .dlq, or .qst format to .bin/.dat format (`decode-gci`, `decode-vms`, `decode-dlq`, `decode-qst`)
 * Convert quests in .bin/.dat to .qst format (`encode-qst`)
+* Convert text archives (e.g. TextEnglish.pr2) to JSON and vice versa (`decode-text-archive`, `encode-text-archive`)
 * Disassemble quest scripts (`disassemble-quest-script`)
 * Format Episode 3 game data in a human-readable manner (`show-ep3-maps`, `show-ep3-cards`)
 * Convert item data to a human-readable description, or vice versa (`describe-item`, `encode-item`)

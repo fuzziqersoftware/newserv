@@ -36,6 +36,7 @@
 #include "ServerState.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
+#include "TextArchive.hh"
 
 using namespace std;
 
@@ -241,6 +242,10 @@ The actions are:\n\
     is treated as a prefix which is prepended to the filename of each file\n\
     contained in the archive. If --big-endian is given, the archive header is\n\
     read in GameCube format; otherwise it is read in PC/BB format.\n\
+  decode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  encode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Decode a text archive (e.g. TextEnglish.pr2) to JSON for easy editing, or\n\
+    encode a JSON file to a text archive.\n\
   format-rare-item-set [--json] [INPUT-FILENAME]\n\
     Print the contents of a rare item table in a human-readable format. If\n\
     --json is given, the input is parsed as a JSON rare item set (see\n\
@@ -306,6 +311,8 @@ enum class Behavior {
   DECODE_SJIS,
   EXTRACT_GSL,
   EXTRACT_BML,
+  DECODE_TEXT_ARCHIVE,
+  ENCODE_TEXT_ARCHIVE,
   FORMAT_RARE_ITEM_SET,
   CONVERT_ITEMRT_REL_TO_JSON,
   SHOW_EP3_MAPS,
@@ -357,6 +364,8 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
+      (b == Behavior::DECODE_TEXT_ARCHIVE) ||
+      (b == Behavior::ENCODE_TEXT_ARCHIVE) ||
       (b == Behavior::DESCRIBE_ITEM) ||
       (b == Behavior::ENCODE_ITEM) ||
       (b == Behavior::PARSE_OBJECT_GRAPH) ||
@@ -392,7 +401,9 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
       (b == Behavior::DECODE_SJIS) ||
       (b == Behavior::EXTRACT_GSL) ||
-      (b == Behavior::EXTRACT_BML);
+      (b == Behavior::EXTRACT_BML) ||
+      (b == Behavior::DECODE_TEXT_ARCHIVE) ||
+      (b == Behavior::ENCODE_TEXT_ARCHIVE);
 }
 
 int main(int argc, char** argv) {
@@ -620,6 +631,10 @@ int main(int argc, char** argv) {
           behavior = Behavior::EXTRACT_GSL;
         } else if (!strcmp(argv[x], "extract-bml")) {
           behavior = Behavior::EXTRACT_BML;
+        } else if (!strcmp(argv[x], "decode-text-archive")) {
+          behavior = Behavior::DECODE_TEXT_ARCHIVE;
+        } else if (!strcmp(argv[x], "encode-text-archive")) {
+          behavior = Behavior::ENCODE_TEXT_ARCHIVE;
         } else if (!strcmp(argv[x], "generate-dc-serial-number")) {
           behavior = Behavior::GENERATE_DC_SERIAL_NUMBER;
         } else if (!strcmp(argv[x], "generate-all-dc-serial-numbers")) {
@@ -699,6 +714,8 @@ int main(int argc, char** argv) {
         filename += ".bmp";
       } else if (behavior == Behavior::ENCODE_GVM) {
         filename += ".gvm";
+      } else if (behavior == Behavior::DECODE_TEXT_ARCHIVE) {
+        filename += ".json";
       } else if (behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) {
         filename += ".txt";
       } else if (behavior == Behavior::CONVERT_ITEMRT_REL_TO_JSON) {
@@ -734,19 +751,9 @@ int main(int argc, char** argv) {
 
       size_t pr2_expected_size = 0;
       if (behavior == Behavior::DECOMPRESS_PR2) {
-        if (data.size() < 8) {
-          throw runtime_error("not enough data for PR2 header");
-        }
-        data.resize((data.size() + 3) & (~3));
-        StringReader r(data);
-        pr2_expected_size = big_endian ? r.get_u32b() : r.get_u32l();
-        PSOV2Encryption crypt(big_endian ? r.get_u32b() : r.get_u32l());
-        if (big_endian) {
-          crypt.encrypt_big_endian(data.data() + 8, data.size() - 8);
-        } else {
-          crypt.decrypt(data.data() + 8, data.size() - 8);
-        }
-        data = data.substr(8);
+        auto decrypted = big_endian ? decrypt_pr2_data<true>(data) : decrypt_pr2_data<false>(data);
+        pr2_expected_size = decrypted.decompressed_size;
+        data = std::move(decrypted.compressed_data);
       }
 
       size_t input_bytes = data.size();
@@ -799,25 +806,9 @@ int main(int argc, char** argv) {
         log_warning("Result data size (%zu bytes) does not match expected size from PR2 header (%zu bytes)", data.size(), pr2_expected_size);
       } else if (behavior == Behavior::COMPRESS_PR2) {
         uint32_t pr2_seed = seed.empty() ? random_object<uint32_t>() : stoul(seed, nullptr, 16);
-        size_t orig_size = data.size();
-        data.resize((data.size() + 3) & (~3));
-        PSOV2Encryption crypt(pr2_seed);
-        if (big_endian) {
-          crypt.encrypt_big_endian(data.data(), data.size());
-        } else {
-          crypt.encrypt(data.data(), data.size());
-        }
-        data.resize(orig_size);
-        StringWriter w;
-        if (big_endian) {
-          w.put_u32b(input_bytes);
-          w.put_u32b(pr2_seed);
-        } else {
-          w.put_u32l(input_bytes);
-          w.put_u32l(pr2_seed);
-        }
-        w.write(data);
-        data = std::move(w.str());
+        data = big_endian
+            ? encrypt_pr2_data<true>(data, input_bytes, pr2_seed)
+            : encrypt_pr2_data<false>(data, input_bytes, pr2_seed);
       }
 
       write_output_data(data.data(), data.size());
@@ -1433,6 +1424,40 @@ int main(int argc, char** argv) {
             save_file(out_file, data);
             fprintf(stderr, "... %s\n", out_file.c_str());
           }
+        }
+      }
+      break;
+    }
+
+    case Behavior::DECODE_TEXT_ARCHIVE: {
+      string data = read_input_data();
+      TextArchive a(data, big_endian);
+      JSON j = a.json();
+      string out_data = j.serialize(JSON::SerializeOption::FORMAT);
+      write_output_data(out_data.data(), out_data.size());
+      break;
+    }
+    case Behavior::ENCODE_TEXT_ARCHIVE: {
+      auto json = JSON::parse(read_input_data());
+      TextArchive a(json);
+      auto result = a.serialize(big_endian);
+      if (!output_filename) {
+        if (!input_filename || !strcmp(input_filename, "-")) {
+          throw runtime_error("encoded text archive cannot be written to stdout");
+        }
+        save_file(string_printf("%s.pr2", input_filename), result.first);
+        save_file(string_printf("%s.pr3", input_filename), result.second);
+      } else if (!strcmp(input_filename, "-")) {
+        throw runtime_error("encoded text archive cannot be written to stdout");
+      } else {
+        string out_filename = output_filename;
+        if (ends_with(out_filename, ".pr2")) {
+          save_file(out_filename, result.first);
+          out_filename[out_filename.size() - 1] = '3';
+          save_file(out_filename, result.second);
+        } else {
+          save_file(out_filename + ".pr2", result.first);
+          save_file(out_filename + ".pr3", result.second);
         }
       }
       break;

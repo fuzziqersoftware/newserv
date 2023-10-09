@@ -280,3 +280,47 @@ std::u16string encrypt_challenge_rank_text(const ptext<char16_t, Size>& data) {
 }
 
 std::string decrypt_v2_registry_value(const void* data, size_t size);
+
+struct DecryptedPR2 {
+  std::string compressed_data;
+  size_t decompressed_size;
+};
+
+template <bool IsBigEndian>
+DecryptedPR2 decrypt_pr2_data(const std::string& data) {
+  using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
+
+  if (data.size() < 8) {
+    throw std::runtime_error("not enough data for PR2 header");
+  }
+  StringReader r(data);
+  DecryptedPR2 ret = {
+      .compressed_data = data.substr(8),
+      .decompressed_size = r.get<U32T>()};
+  PSOV2Encryption crypt(r.get<U32T>());
+  if (IsBigEndian) {
+    crypt.encrypt_big_endian(ret.compressed_data.data(), ret.compressed_data.size());
+  } else {
+    crypt.decrypt(ret.compressed_data.data(), ret.compressed_data.size());
+  }
+  return ret;
+}
+
+template <bool IsBigEndian>
+std::string encrypt_pr2_data(const std::string& data, size_t decompressed_size, uint32_t seed) {
+  using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
+
+  StringWriter w;
+  w.put<U32T>(decompressed_size);
+  w.put<U32T>(seed);
+  w.write(data);
+
+  std::string ret = std::move(w.str());
+  PSOV2Encryption crypt(seed);
+  if (IsBigEndian) {
+    crypt.encrypt_big_endian(ret.data() + 8, ret.size() - 8);
+  } else {
+    crypt.decrypt(ret.data() + 8, ret.size() - 8);
+  }
+  return ret;
+}
