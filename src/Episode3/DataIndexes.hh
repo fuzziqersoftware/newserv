@@ -15,6 +15,7 @@
 
 #include "../PlayerSubordinates.hh"
 #include "../Text.hh"
+#include "../TextArchive.hh"
 
 namespace Episode3 {
 
@@ -496,7 +497,7 @@ struct CardDefinition {
 
     bool is_empty() const;
     static std::string str_for_arg(const std::string& arg);
-    std::string str(const char* separator = ", ") const;
+    std::string str(const char* separator = ", ", const TextArchive* text_archive = nullptr) const;
   } __attribute__((packed));
 
   /* 0000 */ be_uint32_t card_id;
@@ -716,7 +717,7 @@ struct CardDefinition {
   CardClass card_class() const;
 
   void decode_range();
-  std::string str(bool single_line = true) const;
+  std::string str(bool single_line = true, const TextArchive* text_archive = nullptr) const;
 } __attribute__((packed)); // 0x128 bytes in total
 
 struct CardDefinitionsFooter {

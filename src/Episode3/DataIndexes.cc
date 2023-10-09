@@ -727,7 +727,7 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
   }
 }
 
-string CardDefinition::Effect::str(const char* separator) const {
+string CardDefinition::Effect::str(const char* separator, const TextArchive* text_archive) const {
   vector<string> tokens;
   tokens.emplace_back(string_printf("%hhu:", this->effect_num));
   {
@@ -761,7 +761,25 @@ string CardDefinition::Effect::str(const char* separator) const {
     }
     tokens.emplace_back(std::move(cond_str));
   }
-  tokens.emplace_back(string_printf("name_index=%02hhX", this->name_index));
+
+  const char* name = nullptr;
+  if (this->name_index && text_archive) {
+    try {
+      name = text_archive->get_string(45, this->name_index).c_str();
+    } catch (const exception&) {
+    }
+  }
+  if (name) {
+    string formatted_name = name;
+    for (char& ch : formatted_name) {
+      if (ch == '\t') {
+        ch = '$';
+      }
+    }
+    tokens.emplace_back(string_printf("name_index=%02hhX \"%s\"", this->name_index, formatted_name.c_str()));
+  } else {
+    tokens.emplace_back(string_printf("name_index=%02hhX", this->name_index));
+  }
 
   return join(tokens, separator);
 }
@@ -1006,7 +1024,7 @@ static const char* name_for_assist_ai_param_target(uint8_t target) {
   }
 }
 
-string CardDefinition::str(bool single_line) const {
+string CardDefinition::str(bool single_line, const TextArchive* text_archive) const {
   string type_str;
   try {
     type_str = name_for_card_type(this->type);
@@ -1045,7 +1063,7 @@ string CardDefinition::str(bool single_line) const {
     } else if (!effects_str.empty()) {
       effects_str += ", ";
     }
-    effects_str += this->effects[x].str(single_line ? ", " : "\n      ");
+    effects_str += this->effects[x].str(single_line ? ", " : "\n      ", text_archive);
   }
   if (!single_line && effects_str.empty()) {
     effects_str = " (none)";

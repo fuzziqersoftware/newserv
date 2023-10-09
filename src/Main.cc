@@ -1687,12 +1687,18 @@ int main(int argc, char** argv) {
 
     case Behavior::SHOW_EP3_CARDS: {
       Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd", "system/ep3/card-text.mnr", "system/ep3/card-text.mnrd");
+      unique_ptr<TextArchive> text_english;
+      try {
+        JSON json = JSON::parse(load_file("system/ep3/text-english.json"));
+        text_english.reset(new TextArchive(json));
+      } catch (const exception& e) {
+      }
 
       auto card_ids = card_index.all_ids();
       log_info("%zu card definitions", card_ids.size());
       for (uint32_t card_id : card_ids) {
         auto entry = card_index.definition_for_id(card_id);
-        string s = entry->def.str(one_line);
+        string s = entry->def.str(one_line, text_english.get());
         if (one_line) {
           fprintf(stdout, "%s\n", s.c_str());
         } else {
