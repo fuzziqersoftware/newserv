@@ -717,10 +717,16 @@ static void server_command_password(shared_ptr<Client> c, const std::u16string& 
 static void server_command_toggle_spectator_flag(shared_ptr<Client> c, const std::u16string&) {
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_is_leader(l, c);
   check_is_ep3(c, true);
   if (!l->is_ep3()) {
     throw logic_error("Episode 3 client in non-Episode 3 game");
+  }
+
+  // In non-tournament games, only the leader can do this; in a tournament
+  // match, the players don't have control over who the leader is, so we allow
+  // all players to use this command
+  if (!l->tournament_match) {
+    check_is_leader(l, c);
   }
 
   if (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
