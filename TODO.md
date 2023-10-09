@@ -12,7 +12,6 @@
 - Check for RCE potential in 6x6B-6x6E commands
 - Build an exception-handling abstraction in ChatCommands that shows formatted error messages in all cases
 - Make reloading happen on separate threads so compression doesn't block active clients
-- Try DCv2/PC crossplay
 - Implement decrypt/encrypt actions for VMS files
 - Fix Word Select mapping across versions
 

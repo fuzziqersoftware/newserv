@@ -4549,11 +4549,11 @@ struct G_Unknown_6x6F {
 // and instead rearranged a bunch of things.
 // The format appears to be the same for all pre-BB PSO versions, although
 // Episode 3 does not send this command at all since the relevant data is sent
-// tothe joining player in the 64 command instead.
+// to the joining player in the 64 command instead.
 
 struct G_SyncPlayerDispAndInventory_DC_PC_V3_6x70 {
-  G_ExtendedHeader<G_UnusedHeader> header;
   // Offsets in this struct are relative to the overall command header
+  /* 0004 */ G_ExtendedHeader<G_UnusedHeader> header;
   /* 000C */ le_uint16_t client_id;
   /* 000E */ le_uint16_t unknown_a1;
   // [1] and [3] in this array (and maybe [2] also) appear to be le_floats;
@@ -4583,6 +4583,7 @@ struct G_SyncPlayerDispAndInventory_DC_PC_V3_6x70 {
     parray<PlayerInventoryItem, 0x1E> items;
   } __packed__ inventory;
   /* 0494 */ le_uint32_t unknown_a15;
+  /* 0498 */
 } __packed__;
 
 // 6x71: Unknown (used while loading into game)
