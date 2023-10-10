@@ -23,6 +23,7 @@ class CardIndex;
 class MapIndex;
 class COMDeckIndex;
 
+const char* name_for_environment_number(uint8_t environment_number);
 const char* name_for_link_color(uint8_t color);
 
 enum BehaviorFlag : uint32_t {
@@ -721,6 +722,8 @@ struct CardDefinition {
 } __attribute__((packed)); // 0x128 bytes in total
 
 struct CardDefinitionsFooter {
+  // Technically the card definitions file is a REL file, so the last 0x20 bytes
+  // here should be a separate structure.
   /* 00 */ be_uint32_t num_cards1;
   /* 04 */ be_uint32_t cards_offset; // == 0
   /* 08 */ be_uint32_t num_cards2;
@@ -728,9 +731,9 @@ struct CardDefinitionsFooter {
   /* 18 */ parray<be_uint16_t, 0x10> relocations;
   /* 38 */ be_uint32_t relocations_offset;
   /* 3C */ be_uint32_t num_relocations;
-  /* 40 */ parray<be_uint32_t, 2> unknown_a4;
+  /* 40 */ parray<be_uint32_t, 2> unused1;
   /* 48 */ be_uint32_t footer_offset;
-  /* 4C */ parray<be_uint32_t, 3> unknown_a5;
+  /* 4C */ parray<be_uint32_t, 3> unused2;
   /* 58 */
 } __attribute__((packed));
 
@@ -771,6 +774,8 @@ struct PlayerConfig {
   // records structure and didn't remove the codepath that reads from this.
   /* 0138:---- */ PlayerRecords_Battle<true> unused_offline_records;
   /* 0150:---- */ parray<uint8_t, 4> unknown_a4;
+  // The PlayerDataSegment structure begins here. In newserv, we combine this
+  // structure into PlayerConfig since the two are always used together.
   /* 0154:0000 */ uint8_t is_encrypted;
   /* 0155:0001 */ uint8_t basis;
   /* 0156:0002 */ parray<uint8_t, 2> unused;
@@ -819,15 +824,18 @@ struct PlayerConfig {
     /* 00 */ be_uint32_t guild_card_number;
     /* 04 */ ptext<char, 0x18> player_name;
   } __attribute__((packed));
-  // TODO: What do these player references mean? When are entries added to or
-  // removed from this list? It appears to happen sometime during processing of
-  // the 6xB4x05 on the client, but the exact conditions aren't yet clear.
-  /* 2128:1FD4 */ parray<PlayerReference, 10> unknown_a9;
+  // This array is updated when a battle is started (via a 6xB4x05 command). The
+  // client adds the opposing players' info to ths first two entries here if the
+  // opponents are human. (The existing entries are always moved back by two
+  // slots, but if either or both opponents are not humans, one or both of the
+  // newly-vacated slots is not filled in.)
+  /* 2128:1FD4 */ parray<PlayerReference, 10> recent_human_opponents;
   /* 2240:20EC */ parray<uint8_t, 0x28> unknown_a10;
-  // TODO: These three fields are timestamps, but it's not clear what they're
-  // used for.
-  /* 2268:2114 */ be_uint32_t unknown_t1;
-  /* 226C:2118 */ be_uint32_t unknown_t2;
+  /* 2268:2114 */ be_uint32_t init_timestamp;
+  /* 226C:2118 */ be_uint32_t last_online_battle_start_timestamp;
+  // In a certain situation, unknown_t3 is set to init_timestamp plus a multiple
+  // of two weeks (1209600 seconds). unknown_t3 appears never to be used for
+  // anything, though.
   /* 2270:211C */ be_uint32_t unknown_t3;
   // This visual config is copied to the player's main visual config when the
   // player's name or proportions have changed, or when certain buttons on the
@@ -991,8 +999,15 @@ struct CompressedMapHeader { // .mnm file format
 } __attribute__((packed));
 
 struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
-  /* 0000 */ be_uint32_t unknown_a1; // Should be 0x00000100
+  // If tag is not 0x00000100, the game considers the map to be corrupt in
+  // offline mode and will delete it (if it's a download quest). The tag field
+  // doesn't seem to have any other use.
+  /* 0000 */ be_uint32_t tag;
+
   /* 0004 */ be_uint32_t map_number; // Must be unique across all maps
+
+  // The maximum map size is 16 tiles in either dimension, since the various
+  // tiles arrays below are fixed sizes.
   /* 0008 */ uint8_t width;
   /* 0009 */ uint8_t height;
 
@@ -1186,12 +1201,17 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 2760 */ ptext<char, 0x190> dispatch_message;
 
   struct DialogueSet {
-    /* 0000 */ be_uint16_t unknown_a1;
-    /* 0002 */ be_uint16_t unknown_a2; // Always 0x0064 if valid, 0xFFFF if unused?
+    /* 0000 */ be_int16_t when; // 0x00-0x0C, or FFFF if unused
+    /* 0002 */ be_uint16_t percent_chance; // 0-100, or FFFF if unused
+    // If the dialogue set activates, the game randomly chooses one of these
+    // strings, excluding any that are empty or begin with the character '^'.
     /* 0004 */ parray<ptext<char, 0x40>, 4> strings;
     /* 0104 */
   } __attribute__((packed));
-  /* 28F0 */ parray<parray<DialogueSet, 0x10>, 3> dialogue_sets; // Up to 0x10 per valid NPC
+  // There are up to 0x10 of these per valid NPC, but only the first 13 of them
+  // are used, since each one must have a unique value for .when and the values
+  // there can only be 0-12.
+  /* 28F0 */ parray<parray<DialogueSet, 0x10>, 3> dialogue_sets;
 
   // These card IDs are always given to the player when they win a battle on
   // this map. Unused entries should be set to FFFF.
@@ -1280,7 +1300,7 @@ struct MapDefinitionTrial {
   // This is the format of Episode 3 Trial Edition maps. See the comments in
   // MapDefinition for what each field means.
 
-  /* 0000 */ be_uint32_t unknown_a1;
+  /* 0000 */ be_uint32_t tag;
   /* 0004 */ be_uint32_t map_number;
   /* 0008 */ uint8_t width;
   /* 0009 */ uint8_t height;

@@ -5761,7 +5761,7 @@ struct G_UpdateShortStatuses_GC_Ep3_6xB4x04 {
 struct G_UpdateMap_GC_Ep3_6xB4x05 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_UpdateMap_GC_Ep3_6xB4x05) / 4, 0, 0x05, 0, 0, 0};
   Episode3::MapAndRulesState state;
-  uint8_t unknown_a1 = 0;
+  uint8_t start_battle = 0;
   parray<uint8_t, 3> unused;
 } __packed__;
 

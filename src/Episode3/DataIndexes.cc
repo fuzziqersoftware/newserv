@@ -18,6 +18,43 @@ using namespace std;
 
 namespace Episode3 {
 
+const char* name_for_environment_number(uint8_t environment_number) {
+  static constexpr array<const char*, 0x1C> names = {
+      "Unguis Lapis",
+      "Nebula Montana 1",
+      "Lupus Silva 1",
+      "Lupus Silva 2",
+      "Molae Venti",
+      "Nebula Montana 2",
+      "Tener Sinus",
+      "Mortis Fons",
+      "Morgue (destroyed)",
+      "Tower of Caelum",
+      "MapMan",
+      "Cyber",
+      "Morgue (not destroyed)",
+      "Castor/Pollux map",
+      "Dolor Odor",
+      "Ravum Aedes Sacra",
+      "Amplum Umbra map",
+      "Via Tubus",
+      "Morgue",
+      "TCardDemo",
+      "unknown",
+      "unknown",
+      "Battle Results",
+      "Game Over",
+      "Staff roll",
+      "View Battle waiting room",
+      "TCard00_Select",
+      "blank",
+  };
+  if (environment_number >= names.size()) {
+    return "unknown";
+  }
+  return names[environment_number];
+}
+
 const char* name_for_link_color(uint8_t color) {
   switch (color) {
     case 1:
@@ -1527,13 +1564,13 @@ string MapDefinition::str(const CardIndex* card_index) const {
 
   lines.emplace_back(string_printf("Map %08" PRIX32 ": %hhux%hhu",
       this->map_number.load(), this->width, this->height));
-  lines.emplace_back(string_printf("  a1=%08" PRIX32, this->unknown_a1.load()));
-  lines.emplace_back(string_printf("  environment_number=%02hhX", this->environment_number));
-  lines.emplace_back(string_printf("  num_camera_zones=%02hhX", this->num_camera_zones));
+  lines.emplace_back(string_printf("  tag: %08" PRIX32, this->tag.load()));
+  lines.emplace_back(string_printf("  environment_number: %02hhX (%s)", this->environment_number, name_for_environment_number(this->environment_number)));
+  lines.emplace_back(string_printf("  num_camera_zones: %02hhX", this->num_camera_zones));
   lines.emplace_back("  tiles:");
   add_map(this->map_tiles);
   lines.emplace_back(string_printf(
-      "  start_tile_definitions=[1p=%02hhX 2p=%02hhX,%02hhX 3p=%02hhX,%02hhX,%02hhX], [1p=%02hhX 2p=%02hhX,%02hhX 3p=%02hhX,%02hhX,%02hhX]",
+      "  start_tile_definitions: A:[1p: %02hhX; 2p: %02hhX,%02hhX; 3p: %02hhX,%02hhX,%02hhX], B:[1p: %02hhX; 2p: %02hhX,%02hhX; 3p: %02hhX,%02hhX,%02hhX]",
       this->start_tile_definitions[0][0], this->start_tile_definitions[0][1],
       this->start_tile_definitions[0][2], this->start_tile_definitions[0][3],
       this->start_tile_definitions[0][4], this->start_tile_definitions[0][5],
@@ -1542,7 +1579,7 @@ string MapDefinition::str(const CardIndex* card_index) const {
       this->start_tile_definitions[1][4], this->start_tile_definitions[1][5]));
   for (size_t z = 0; z < this->num_camera_zones; z++) {
     for (size_t w = 0; w < 2; w++) {
-      lines.emplace_back(string_printf("  camera zone %zu (team %zu):", z, w));
+      lines.emplace_back(string_printf("  camera zone %zu (team %c):", z, w ? 'A' : 'B'));
       add_map(this->camera_zone_maps[w][z]);
     }
     for (size_t w = 0; w < 2; w++) {
@@ -1552,39 +1589,39 @@ string MapDefinition::str(const CardIndex* card_index) const {
   for (size_t w = 0; w < 3; w++) {
     for (size_t z = 0; z < 2; z++) {
       string spec_str = this->overview_specs[w][z].str();
-      lines.emplace_back(string_printf("  overview_specs[%zu][team %zu]=%s", w, z, spec_str.c_str()));
+      lines.emplace_back(string_printf("  overview_specs[%zu][team %zu]: %s", w, z, spec_str.c_str()));
     }
   }
   lines.emplace_back("  modification tiles:");
   add_map(this->modification_tiles);
   for (size_t z = 0; z < 0x70; z += 0x10) {
     lines.emplace_back(string_printf(
-        "  a5[0x%02zX:0x%02zX]=%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX", z, z + 0x10,
+        "  a5[0x%02zX:0x%02zX]: %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX", z, z + 0x10,
         this->unknown_a5[z + 0x00], this->unknown_a5[z + 0x01], this->unknown_a5[z + 0x02], this->unknown_a5[z + 0x03],
         this->unknown_a5[z + 0x04], this->unknown_a5[z + 0x05], this->unknown_a5[z + 0x06], this->unknown_a5[z + 0x07],
         this->unknown_a5[z + 0x08], this->unknown_a5[z + 0x09], this->unknown_a5[z + 0x0A], this->unknown_a5[z + 0x0B],
         this->unknown_a5[z + 0x0C], this->unknown_a5[z + 0x0D], this->unknown_a5[z + 0x0E], this->unknown_a5[z + 0x0F]));
   }
   lines.emplace_back(string_printf(
-      "  a5[0x70:0x74]=%02hhX %02hhX %02hhX %02hhX",
+      "  a5[0x70:0x74]: %02hhX %02hhX %02hhX %02hhX",
       this->unknown_a5[0x70], this->unknown_a5[0x71], this->unknown_a5[0x72], this->unknown_a5[0x73]));
   lines.emplace_back("  default_rules: " + this->default_rules.str());
-  lines.emplace_back("  name: " + string(this->name));
-  lines.emplace_back("  location_name: " + string(this->location_name));
-  lines.emplace_back("  quest_name: " + string(this->quest_name));
-  lines.emplace_back("  description: " + string(this->description));
+  lines.emplace_back("  name: " + format_data_string(this->name));
+  lines.emplace_back("  location_name: " + format_data_string(this->location_name));
+  lines.emplace_back("  quest_name: " + format_data_string(this->quest_name));
+  lines.emplace_back("  description: " + format_data_string(this->description));
   lines.emplace_back(string_printf("  map_xy: %hu %hu", this->map_x.load(), this->map_y.load()));
   for (size_t z = 0; z < 3; z++) {
     lines.emplace_back(string_printf("  npc_chars[%zu]:", z));
-    lines.emplace_back("    name: " + string(this->npc_ai_params[z].name));
+    lines.emplace_back("    name: " + format_data_string(this->npc_ai_params[z].name));
     lines.emplace_back(string_printf(
-        "    ai_params=(a1=%04hX %04hX, is_arkz=%02hhX, a2=%02hX %02hX %02hX)",
+        "    ai_params: (a1: %04hX %04hX, is_arkz: %02hhX, a2: %02hX %02hX %02hX)",
         this->npc_ai_params[z].unknown_a1[0].load(), this->npc_ai_params[z].unknown_a1[1].load(),
         this->npc_ai_params[z].is_arkz, this->npc_ai_params[z].unknown_a2[0],
         this->npc_ai_params[z].unknown_a2[1], this->npc_ai_params[z].unknown_a2[2]));
     for (size_t w = 0; w < 0x78; w += 0x08) {
       lines.emplace_back(string_printf(
-          "    ai_params.a3[0x%02zX:0x%02zX]=%04hX %04hX %04hX %04hX %04hX %04hX %04hX %04hX",
+          "    ai_params.a3[0x%02zX:0x%02zX]: %04hX %04hX %04hX %04hX %04hX %04hX %04hX %04hX",
           w, w + 0x08,
           this->npc_ai_params[z].params[w + 0x00].load(), this->npc_ai_params[z].params[w + 0x01].load(),
           this->npc_ai_params[z].params[w + 0x02].load(), this->npc_ai_params[z].params[w + 0x03].load(),
@@ -1592,12 +1629,12 @@ string MapDefinition::str(const CardIndex* card_index) const {
           this->npc_ai_params[z].params[w + 0x06].load(), this->npc_ai_params[z].params[w + 0x07].load()));
     }
     lines.emplace_back(string_printf(
-        "    ai_params.a3[0x78:0x7E]=%04hX %04hX %04hX %04hX %04hX %04hX",
+        "    ai_params.a3[0x78:0x7E]: %04hX %04hX %04hX %04hX %04hX %04hX",
         this->npc_ai_params[z].params[0x78].load(), this->npc_ai_params[z].params[0x79].load(),
         this->npc_ai_params[z].params[0x7A].load(), this->npc_ai_params[z].params[0x7B].load(),
         this->npc_ai_params[z].params[0x7C].load(), this->npc_ai_params[z].params[0x7D].load()));
     lines.emplace_back(string_printf("  npc_decks[%zu]:", z));
-    lines.emplace_back("    name: " + string(this->npc_decks[z].name));
+    lines.emplace_back("    name: " + format_data_string(this->npc_decks[z].name));
     for (size_t w = 0; w < 0x20; w++) {
       uint16_t card_id = this->npc_decks[z].card_ids[w];
       shared_ptr<const CardIndex::CardEntry> entry;
@@ -1615,28 +1652,31 @@ string MapDefinition::str(const CardIndex* card_index) const {
       }
     }
     for (size_t x = 0; x < 0x10; x++) {
-      lines.emplace_back(string_printf("  npc_dialogue[%zu][%zu]:", z, x));
-      lines.emplace_back(string_printf("    a1=%04hX", this->dialogue_sets[z][x].unknown_a1.load()));
-      lines.emplace_back(string_printf("    a2=%04hX", this->dialogue_sets[z][x].unknown_a2.load()));
+      const auto& set = this->dialogue_sets[z][x];
+      if (set.when == -1 && set.percent_chance == 0xFFFF) {
+        continue;
+      }
+      lines.emplace_back(string_printf("  npc_dialogue[%zu][%zu] (when: %04hX, chance: %hu%%):",
+          z, x, set.when.load(), set.percent_chance.load()));
       for (size_t w = 0; w < 4; w++) {
-        if (this->dialogue_sets[z][x].strings[w][0] != 0 &&
-            static_cast<uint8_t>(this->dialogue_sets[z][x].strings[w][0]) != 0xFF) {
-          lines.emplace_back(string_printf("    strings[%zu]=", w) + string(this->dialogue_sets[z][x].strings[w]));
+        if (set.strings[w][0] != 0 && static_cast<uint8_t>(set.strings[w][0]) != 0xFF) {
+          string escaped = format_data_string(set.strings[w]);
+          lines.emplace_back(string_printf("    strings[%zu]: %s", w, escaped.c_str()));
         }
       }
     }
   }
-  lines.emplace_back("  a7=" + format_data_string(this->unknown_a7.data(), this->unknown_a7.bytes()));
-  lines.emplace_back(string_printf("  npc_ai_params_entry_index=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "]",
+  lines.emplace_back("  a7: " + format_data_string(this->unknown_a7.data(), this->unknown_a7.bytes()));
+  lines.emplace_back(string_printf("  npc_ai_params_entry_index: [%08" PRIX32 ", %08" PRIX32 ", %08" PRIX32 "]",
       this->npc_ai_params_entry_index[0].load(), this->npc_ai_params_entry_index[1].load(), this->npc_ai_params_entry_index[2].load()));
   if (this->before_message[0]) {
-    lines.emplace_back("  before_message: " + string(this->before_message));
+    lines.emplace_back("  before_message: " + format_data_string(this->before_message));
   }
   if (this->after_message[0]) {
-    lines.emplace_back("  after_message: " + string(this->after_message));
+    lines.emplace_back("  after_message: " + format_data_string(this->after_message));
   }
   if (this->dispatch_message[0]) {
-    lines.emplace_back("  dispatch_message: " + string(this->dispatch_message));
+    lines.emplace_back("  dispatch_message: " + format_data_string(this->dispatch_message));
   }
   for (size_t z = 0; z < 0x10; z++) {
     uint16_t card_id = this->reward_card_ids[z];
@@ -1654,12 +1694,12 @@ string MapDefinition::str(const CardIndex* card_index) const {
       lines.emplace_back(string_printf("  reward_cards[%02zu]: %04hX", z, card_id));
     }
   }
-  lines.emplace_back(string_printf("  level_overrides=[win=%" PRId32 ", loss=%" PRId32 "]",
+  lines.emplace_back(string_printf("  level_overrides: [win: %" PRId32 ", loss: %" PRId32 "]",
       this->win_level_override.load(), this->loss_level_override.load()));
-  lines.emplace_back(string_printf("  field_offset=(x: %hd units, y:%hd units) (x: %lg tiles, y: %lg tiles)", this->field_offset_x.load(), this->field_offset_y.load(), static_cast<double>(this->field_offset_x) / 25.0, static_cast<double>(this->field_offset_y) / 25.0));
-  lines.emplace_back(string_printf("  map_category=%02hhX", this->map_category));
-  lines.emplace_back(string_printf("  cyber_block_type=%02hhX", this->cyber_block_type));
-  lines.emplace_back(string_printf("  a11=%02hhX%02hhX", this->unknown_a11[0], this->unknown_a11[1]));
+  lines.emplace_back(string_printf("  field_offset: (x: %hd units, y:%hd units) (x: %lg tiles, y: %lg tiles)", this->field_offset_x.load(), this->field_offset_y.load(), static_cast<double>(this->field_offset_x) / 25.0, static_cast<double>(this->field_offset_y) / 25.0));
+  lines.emplace_back(string_printf("  map_category: %02hhX", this->map_category));
+  lines.emplace_back(string_printf("  cyber_block_type: %02hhX", this->cyber_block_type));
+  lines.emplace_back(string_printf("  a11: %02hhX%02hhX", this->unknown_a11[0], this->unknown_a11[1]));
   static const array<const char*, 0x18> sc_card_entry_names = {
       "00 (Guykild; 0005)",
       "01 (Kylria; 0006)",
@@ -1686,12 +1726,12 @@ string MapDefinition::str(const CardIndex* card_index) const {
       "16 (K.C.; 011E)",
       "17 (Ohgun; 011F)",
   };
-  string unavailable_sc_cards = "  unavailable_sc_cards=[";
+  string unavailable_sc_cards = "  unavailable_sc_cards: [";
   for (size_t z = 0; z < 0x18; z++) {
     if (this->unavailable_sc_cards[z] == 0xFFFF) {
       continue;
     }
-    if (unavailable_sc_cards.size() > 24) {
+    if (unavailable_sc_cards.size() > 25) {
       unavailable_sc_cards += ", ";
     }
     if (this->unavailable_sc_cards[z] >= sc_card_entry_names.size()) {
@@ -1743,13 +1783,13 @@ string MapDefinition::str(const CardIndex* card_index) const {
         break;
     }
     lines.emplace_back(string_printf(
-        "  entry_states[%zu] = %s / %s", z, player_type.c_str(), deck_type.c_str()));
+        "  entry_states[%zu]: %s / %s", z, player_type.c_str(), deck_type.c_str()));
   }
   return join(lines, "\n");
 }
 
 MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
-    : unknown_a1(map.unknown_a1),
+    : tag(map.tag),
       map_number(map.map_number),
       width(map.width),
       height(map.height),
@@ -1793,7 +1833,9 @@ MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
 
 MapDefinitionTrial::operator MapDefinition() const {
   MapDefinition ret;
-  ret.unknown_a1 = this->unknown_a1;
+  // Trial Edition maps seem to have different tag values; we just always use
+  // the value that the final version expects.
+  ret.tag = 0x00000100;
   ret.map_number = this->map_number;
   ret.width = this->width;
   ret.height = this->height;
@@ -1824,8 +1866,8 @@ MapDefinitionTrial::operator MapDefinition() const {
   for (size_t z = 0; z < ret.dialogue_sets.size(); z++) {
     ret.dialogue_sets[z].sub<8>(0) = this->dialogue_sets[z];
     for (size_t x = 8; x < ret.dialogue_sets[z].size(); x++) {
-      ret.dialogue_sets[z][x].unknown_a1 = 0xFFFF;
-      ret.dialogue_sets[z][x].unknown_a2 = 0xFFFF;
+      ret.dialogue_sets[z][x].when = -1;
+      ret.dialogue_sets[z][x].percent_chance = 0xFFFF;
       for (size_t w = 0; w < 4; w++) {
         ret.dialogue_sets[z][x].strings[w].clear(0xFF);
         ret.dialogue_sets[z][x].strings[w][0] = 0x00;

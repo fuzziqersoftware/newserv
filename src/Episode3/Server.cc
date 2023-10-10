@@ -1514,7 +1514,7 @@ void Server::setup_and_start_battle() {
 
   G_UpdateMap_GC_Ep3_6xB4x05 cmd05;
   cmd05.state = *this->map_and_rules;
-  cmd05.unknown_a1 = 1;
+  cmd05.start_battle = 1;
   this->send(cmd05);
 
   this->battle_start_usecs = now();
