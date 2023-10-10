@@ -1339,9 +1339,9 @@
       "Please select an item."
     ],
     [
-      "\f Saligun:\n\"Welcome to License School.\"\n\f\"My name is Saligun - your\ninstructor.\" ",
-      "\f\"You are a new commander\ncandidate, right?\"\n\f\"First, I am going to instruct you\non basic knowledge - the most\nimportant thing in Battles.\" ",
-      "\f\"I suppose there are lots of\nthings you don't know, \n\fso please don't hesitate to ask\nme about anything.\" \n",
+      "\f Saligun:\n\"Welcome to License School.\"\u0007\n\f\"My name is Saligun - your\ninstructor.\" \u0007",
+      "\f\"You are a new commander\ncandidate, right?\"\u0007\n\f\"First, I am going to instruct you\non basic knowledge - the most\nimportant thing in Battles.\" \u0007",
+      "\f\"I suppose there are lots of\nthings you don't know, \u0007\n\fso please don't hesitate to ask\nme about anything.\" \n",
       "\tC4Press B Button to return",
       "# Conditions to clear Stage",
       "# 5 Phases",
