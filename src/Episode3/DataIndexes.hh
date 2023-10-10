@@ -1173,23 +1173,21 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // to use for each NPC. If a value in this array is -1 (FFFFFFFF), then the
   // corresponding NPC's AI parameters are defined in the AIParams structure
   // above. The names of the AI parameter sets defined in aiprm.dat are:
-  // 00 => Sample_Hunter    10 => Endu
-  // 01 => Glustar          11 => Heiz
-  // 02 => Guykild          12 => KC
-  // 03 => Inolis           13 => Lura
-  // 04 => Kilia            14 => memoru
-  // 05 => Kranz            15 => Ohgun
-  // 06 => Orland           16 => Peko
-  // 07 => Relmitos         17 => Reiz
-  // 08 => Saligun          18 => Rio
-  // 09 => Silfer           19 => Rufina
-  // 0A => Sample_Hunter    1A => LKnight
-  // 0B => Teifu            1B => Boss_Castor
-  // 0C => Viviana          1C => Boss_Pollux
-  // 0D => Sample_Dark      1D => Sample_Dark
-  // 0E => Break
-  // 0F => Creinu
-  // Presumably 0A is meant to be Stella, and they forgot to change the name.
+  // 00 => Sample_Hunter    0D => Sample_Dark    1A => LKnight
+  // 01 => Glustar          0E => Break          1B => Boss_Castor
+  // 02 => Guykild          0F => Creinu         1C => Boss_Pollux
+  // 03 => Inolis           10 => Endu           1D => Sample_Dark
+  // 04 => Kilia            11 => Heiz
+  // 05 => Kranz            12 => KC
+  // 06 => Orland           13 => Lura
+  // 07 => Relmitos         14 => memoru
+  // 08 => Saligun          15 => Ohgun
+  // 09 => Silfer           16 => Peko
+  // 0A => Sample_Hunter    17 => Reiz
+  // 0B => Teifu            18 => Rio
+  // 0C => Viviana          19 => Rufina
+  // Presumably 0A is meant to be Stella and 1D is meant to be Amplum Umbra, but
+  // they forgot to change the names.
   /* 2434 */ parray<be_int32_t, 3> npc_ai_params_entry_index;
 
   // before_message appears before the battle if it's not blank. after_message
