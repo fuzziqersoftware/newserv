@@ -61,7 +61,7 @@
 (Ep3 USA) Disable lobby event music (but keep the visuals)
 040B705C 38000000
 
-(Ep3 USA) Enable unused fourth Pinz's Shop choice
+(Ep3 USA) Enable Pinz's Shop Super Card Capsule Machine as a fourth option
 043101C0 38800004
 04310238 2C1D0004
 04487E8C 000000C8
