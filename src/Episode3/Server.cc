@@ -1520,6 +1520,13 @@ void Server::setup_and_start_battle() {
   this->battle_start_usecs = now();
 
   this->send_6xB4x46();
+
+  // Re-send game metadata to spectator teams, since loading the battle scene
+  // seems to delete it
+  auto l = this->lobby.lock();
+  if (l) {
+    send_ep3_update_game_metadata(l);
+  }
 }
 
 G_SetStateFlags_GC_Ep3_6xB4x03 Server::prepare_6xB4x03() const {
