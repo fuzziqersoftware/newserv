@@ -1452,6 +1452,8 @@ struct S_GenerateID_DC_PC_V3_80 {
 
 template <typename CharT>
 struct SC_SimpleMail_81 {
+  // If player_tag and from_guild_card_number are zero, the message cannot be
+  // replied to.
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t from_guild_card_number = 0;
   ptext<CharT, 0x10> from_name;
