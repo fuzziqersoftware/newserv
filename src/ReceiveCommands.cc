@@ -62,6 +62,8 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       // Note: This option's text is the maximum possible length for any menu item
       add_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, c->options.ep3_infinite_meseta,
           u"Infinite Meseta", u"Fix Meseta value\nat 1,000,000");
+      add_option(ProxyOptionsMenuItemID::EP3_INFINITE_TIME, c->options.ep3_infinite_time,
+          u"Infinite time", u"Disable overall and\nper-phase time limits\nin battle");
     }
   }
   add_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->options.override_lobby_event >= 0),
@@ -1829,6 +1831,9 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::EP3_INFINITE_MESETA:
           c->options.ep3_infinite_meseta = !c->options.ep3_infinite_meseta;
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::EP3_INFINITE_TIME:
+          c->options.ep3_infinite_time = !c->options.ep3_infinite_time;
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::BLOCK_EVENTS:
           if (c->options.override_lobby_event >= 0) {

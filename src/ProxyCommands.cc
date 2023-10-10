@@ -916,6 +916,24 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
         set_mask_for_ep3_game_command(data.data(), data.size(), 0);
         modified = true;
       }
+
+      if (ses->options.ep3_infinite_time && (header.subcommand == 0xB4)) {
+        if (header.subsubcommand == 0x3D) {
+          auto& cmd = check_size_t<G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D>(data);
+          if (cmd.rules.overall_time_limit || cmd.rules.phase_time_limit) {
+            cmd.rules.overall_time_limit = 0;
+            cmd.rules.phase_time_limit = 0;
+            modified = true;
+          }
+        } else if (header.subsubcommand == 0x05) {
+          auto& cmd = check_size_t<G_UpdateMap_GC_Ep3_6xB4x05>(data);
+          if (cmd.state.rules.overall_time_limit || cmd.state.rules.phase_time_limit) {
+            cmd.state.rules.overall_time_limit = 0;
+            cmd.state.rules.phase_time_limit = 0;
+            modified = true;
+          }
+        }
+      }
     }
 
     if (data[0] == 0x46) {

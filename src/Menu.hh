@@ -58,21 +58,22 @@ constexpr uint32_t GO_BACK = 0x99FFFF99;
 
 namespace ProxyOptionsMenuItemID {
 constexpr uint32_t GO_BACK = 0xAAFFFFAA;
-constexpr uint32_t CHAT_COMMANDS = 0xAA0000AA;
-constexpr uint32_t CHAT_FILTER = 0xAA1111AA;
-constexpr uint32_t PLAYER_NOTIFICATIONS = 0xAA2222AA;
-constexpr uint32_t BLOCK_PINGS = 0xAA3333AA;
-constexpr uint32_t INFINITE_HP = 0xAA4444AA;
-constexpr uint32_t INFINITE_TP = 0xAA5555AA;
-constexpr uint32_t SWITCH_ASSIST = 0xAA6666AA;
-constexpr uint32_t BLOCK_EVENTS = 0xAA7777AA;
-constexpr uint32_t BLOCK_PATCHES = 0xAA8888AA;
-constexpr uint32_t SAVE_FILES = 0xAA9999AA;
-constexpr uint32_t RED_NAME = 0xAAAAAAAA;
-constexpr uint32_t BLANK_NAME = 0xAABBBBAA;
-constexpr uint32_t SUPPRESS_LOGIN = 0xAACCCCAA;
-constexpr uint32_t SKIP_CARD = 0xAADDDDAA;
-constexpr uint32_t EP3_INFINITE_MESETA = 0xAAEEEEAA;
+constexpr uint32_t CHAT_COMMANDS = 0xAA0101AA;
+constexpr uint32_t CHAT_FILTER = 0xAA0202AA;
+constexpr uint32_t PLAYER_NOTIFICATIONS = 0xAA0303AA;
+constexpr uint32_t BLOCK_PINGS = 0xAA0404AA;
+constexpr uint32_t INFINITE_HP = 0xAA0505AA;
+constexpr uint32_t INFINITE_TP = 0xAA0606AA;
+constexpr uint32_t SWITCH_ASSIST = 0xAA0707AA;
+constexpr uint32_t BLOCK_EVENTS = 0xAA0808AA;
+constexpr uint32_t BLOCK_PATCHES = 0xAA0909AA;
+constexpr uint32_t SAVE_FILES = 0xAA0A0AAA;
+constexpr uint32_t RED_NAME = 0xAA0B0BAA;
+constexpr uint32_t BLANK_NAME = 0xAA0C0CAA;
+constexpr uint32_t SUPPRESS_LOGIN = 0xAA0D0DAA;
+constexpr uint32_t SKIP_CARD = 0xAA0E0EAA;
+constexpr uint32_t EP3_INFINITE_MESETA = 0xAA0F0FAA;
+constexpr uint32_t EP3_INFINITE_TIME = 0xAA1010AA;
 } // namespace ProxyOptionsMenuItemID
 
 struct MenuItem {
