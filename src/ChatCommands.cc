@@ -236,6 +236,18 @@ static void server_command_debug(shared_ptr<Client> c, const std::u16string&) {
       c->options.debug ? "enabled" : "disabled");
 }
 
+static void server_command_show_material_counts(shared_ptr<Client> c, const std::u16string&) {
+  auto p = c->game_data.player();
+  send_text_message_printf(c, "%hhu HP, %hhu TP, %hhu POW\n%hhu MIND, %hhu EVADE\n%hhu DEF, %hhu LUCK",
+      p->get_material_usage(SavedPlayerDataBB::MaterialType::HP),
+      p->get_material_usage(SavedPlayerDataBB::MaterialType::TP),
+      p->get_material_usage(SavedPlayerDataBB::MaterialType::POWER),
+      p->get_material_usage(SavedPlayerDataBB::MaterialType::MIND),
+      p->get_material_usage(SavedPlayerDataBB::MaterialType::EVADE),
+      p->get_material_usage(SavedPlayerDataBB::MaterialType::DEF),
+      p->get_material_usage(SavedPlayerDataBB::MaterialType::LUCK));
+}
+
 static void server_command_auction(shared_ptr<Client> c, const std::u16string&) {
   check_license_flags(c, License::Flag::DEBUG);
   auto l = c->require_lobby();
@@ -1544,6 +1556,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$li", {server_command_lobby_info, proxy_command_lobby_info}},
     {u"$ln", {server_command_lobby_type, proxy_command_lobby_type}},
     {u"$ep3battledebug", {server_command_enable_ep3_battle_debug_menu, nullptr}},
+    {u"$matcount", {server_command_show_material_counts, nullptr}},
     {u"$maxlevel", {server_command_max_level, nullptr}},
     {u"$meseta", {server_command_meseta, nullptr}},
     {u"$minlevel", {server_command_min_level, nullptr}},

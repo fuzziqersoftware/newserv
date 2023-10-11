@@ -266,6 +266,7 @@ Some commands only work on the game server and not on the proxy server. The chat
 * Information commands
     * `$li`: Shows basic information about the lobby or game you're in. If you're on the proxy server, shows information about your connection instead (remote Guild Card number, client ID, etc.).
     * `$what` (game server only): Shows the type, name, and stats of the nearest item on the ground.
+    * `$matcount` (game server only): Shows how many of each type of material you've used.
 
 * Debugging commands
     * `$debug` (game server only): Enable or disable debug. You need the DEBUG permission in your user license to use this command. When debug is enabled, you'll see in-game messages from the server when you take certain actions. You'll also be placed into the highest available slot in lobbies and games instead of the lowest, which is useful for finding commands for which newserv doesn't handle client IDs properly. This setting also disables certain safeguards and allows you to do some things that might crash your client.
