@@ -1400,7 +1400,8 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       string name = format_data_string(visual.name);
       lines.emplace_back(string_printf("  %04zX  name         %s", l->offset + offsetof(PlayerVisualConfig, name), name.c_str()));
       lines.emplace_back(string_printf("  %04zX  name_color   %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color.load()));
-      lines.emplace_back(string_printf("  %04zX  a2           %016" PRIX64, l->offset + offsetof(PlayerVisualConfig, unknown_a2), visual.unknown_a2.load()));
+      string a2_str = format_data_string(visual.unknown_a2.data(), sizeof(visual.unknown_a2));
+      lines.emplace_back(string_printf("  %04zX  a2           %s", l->offset + offsetof(PlayerVisualConfig, unknown_a2), a2_str.c_str()));
       lines.emplace_back(string_printf("  %04zX  extra_model  %02hhX", l->offset + offsetof(PlayerVisualConfig, extra_model), visual.extra_model));
       string unused = format_data_string(visual.unused.data(), visual.unused.bytes());
       lines.emplace_back(string_printf("  %04zX  unused       %s", l->offset + offsetof(PlayerVisualConfig, unused), unused.c_str()));

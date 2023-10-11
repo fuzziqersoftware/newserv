@@ -30,8 +30,8 @@ extern FileContentsCache player_files_cache;
 //       levels (so a level 20 tech would have 14 in technique_levels_v1 and 5
 //       in the corresponding item's extension_data1 field).
 //   items[0].extension_data2 through items[3].extension_data2:
-//       The value known as unknown_a1 in the PSOGCCharacterFile::Character
-//       struct. See SaveFileFormats.hh.
+//       The flags field from the PSOGCCharacterFile::Character struct; see
+//       SaveFileFormats.hh for details.
 //   items[4].extension_data2 through items[7].extension_data2:
 //       The timestamp when the character was last saved, in seconds since
 //       January 1, 2000. Stored little-endian, so items[4] contains the LSB.
@@ -107,7 +107,7 @@ struct PlayerStats {
 
 struct PlayerVisualConfig {
   /* 00 */ ptext<char, 0x10> name;
-  /* 10 */ le_uint64_t unknown_a2 = 0; // Note: This is probably not actually a 64-bit int.
+  /* 10 */ parray<uint8_t, 8> unknown_a2;
   /* 18 */ le_uint32_t name_color = 0x00000000; // RGBA
   /* 1C */ uint8_t extra_model = 0;
   /* 1D */ parray<uint8_t, 0x0F> unused;

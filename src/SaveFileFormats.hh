@@ -170,7 +170,11 @@ struct PSOGCCharacterFile {
     // to the start of the second internal structure (second column).
     /* 0000:---- */ PlayerInventory inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-    /* 041C:0000 */ be_uint32_t unknown_a1;
+    // Known bits in the flags field:
+    //   00000001: Character was not saved after disconnecting (and the message
+    //     about items being deleted is shown in the select menu)
+    //   00000002: Used for something, but it's not known what it does
+    /* 041C:0000 */ be_uint32_t flags;
     /* 0420:0004 */ be_uint32_t creation_timestamp;
     // The signature field holds the value 0xA205B064, which is 2718281828 in
     // decimal - approximately e * 10^9. It's unknown why Sega chose this value.
