@@ -165,7 +165,7 @@ public:
       ConditionType cond_type, uint16_t card_ref) const;
   size_t count_action_cards_with_condition_for_current_attack(
       std::shared_ptr<const Card> card, ConditionType cond_type, uint16_t card_ref) const;
-  size_t count_cards_with_card_id_set_by_player_except_card_ref(
+  size_t count_cards_with_card_id_except_card_ref(
       uint16_t card_id, uint16_t card_ref) const;
   std::vector<std::shared_ptr<const Card>> get_all_set_cards_by_team_and_class(
       CardClass card_class, uint8_t team_id, bool exclude_destroyed_cards) const;

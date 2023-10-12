@@ -1246,7 +1246,7 @@ size_t CardSpecial::count_action_cards_with_condition_for_current_attack(
   return ret;
 }
 
-size_t CardSpecial::count_cards_with_card_id_set_by_player_except_card_ref(
+size_t CardSpecial::count_cards_with_card_id_except_card_ref(
     uint16_t card_id, uint16_t card_ref) const {
   size_t ret = 0;
   for (size_t client_id = 0; client_id < 4; client_id++) {
@@ -2007,7 +2007,7 @@ bool CardSpecial::execute_effect(
 
     case ConditionType::BONUS_FROM_LEADER:
       if (unknown_p7 & 1) {
-        clamped_unknown_p5 = this->count_cards_with_card_id_set_by_player_except_card_ref(expr_value, 0xFFFF) + (card->action_chain).chain.ap_effect_bonus;
+        clamped_unknown_p5 = this->count_cards_with_card_id_except_card_ref(expr_value, 0xFFFF) + (card->action_chain).chain.ap_effect_bonus;
         (card->action_chain).chain.ap_effect_bonus = clamp<int16_t>(clamped_unknown_p5, -99, 99);
       }
       return true;
@@ -2205,7 +2205,7 @@ bool CardSpecial::execute_effect(
         auto ce = card->get_definition();
         if (ce) {
           int16_t count = clamp<int16_t>(
-              this->count_cards_with_card_id_set_by_player_except_card_ref(ce->def.card_id, card->get_card_ref()), -99, 99);
+              this->count_cards_with_card_id_except_card_ref(ce->def.card_id, card->get_card_ref()), -99, 99);
           card->action_chain.chain.ap_effect_bonus = clamp<int16_t>(
               card->action_chain.chain.ap_effect_bonus + count * positive_expr_value, -99, 99);
         }
@@ -2319,7 +2319,7 @@ bool CardSpecial::execute_effect(
 
     case ConditionType::COMBO_TP:
       if (unknown_p7 & 1) {
-        ssize_t count = this->count_cards_with_card_id_set_by_player_except_card_ref(
+        ssize_t count = this->count_cards_with_card_id_except_card_ref(
             expr_value, 0xFFFF);
         card->action_chain.chain.tp_effect_bonus = clamp<int16_t>(
             count + card->action_chain.chain.tp_effect_bonus, -99, 99);
