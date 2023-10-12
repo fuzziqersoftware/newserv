@@ -765,6 +765,7 @@ struct PlayerConfig {
   /* 000C:---- */ parray<uint8_t, 0x1C> unknown_a1;
   /* 0028:---- */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
   /* 0050:---- */ parray<be_uint32_t, 10> choice_search_config;
+  // This field maps to quest_global_flags on Episodes 1 & 2
   /* 0078:---- */ parray<be_uint32_t, 0x30> scenario_progress;
   // place_counts[0] and [1] from this field are added to the player's win and
   // loss count respectively when they're shown in the status menu. However,

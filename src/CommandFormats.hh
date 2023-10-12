@@ -4539,11 +4539,11 @@ struct G_SyncFlagState_6x6E_Decompressed {
   // unknown fields above.
 } __packed__;
 
-// 6x6F: Unknown (used while loading into game)
+// 6x6F: Set quest flags (used while loading into game)
 
-struct G_Unknown_6x6F {
+struct G_SetQuestFlags_6x6F {
   G_UnusedHeader header;
-  parray<uint8_t, 0x200> unknown_a1;
+  parray<parray<uint8_t, 0x80>, 4> quest_flags_by_difficulty;
 } __packed__;
 
 // 6x70: Sync player disp data and inventory (used while loading into game)

@@ -94,7 +94,10 @@ struct PSOGCSystemFile {
   /* 0004 */ be_int16_t music_volume; // 0 = full volume; -250 = min volume
   /* 0006 */ int8_t sound_volume; // 0 = full volume; -100 = min volume
   /* 0007 */ uint8_t language;
-  /* 0008 */ be_uint32_t unknown_a3; // Default 1728000 (== 60 * 60 * 24 * 20)
+  // This field stores the effective time zone offset between the server and
+  // client, in frames. The default value is 1728000, which corresponds to 16
+  // hours. This is recomputed when the client receives a B1 command.
+  /* 0008 */ be_uint32_t server_time_delta_frames;
   /* 000C */ be_uint16_t udp_behavior; // 0 = auto, 1 = on, 2 = off
   /* 000E */ be_uint16_t surround_sound_enabled;
   /* 0010 */ parray<uint8_t, 0x100> event_flags; // Can be set by quest opcode D8 or E8
@@ -200,7 +203,11 @@ struct PSOGCCharacterFile {
     //   R = Map direction (0 = non-fixed; 1 = fixed)
     /* 042C:0010 */ be_uint32_t option_flags;
     /* 0430:0014 */ be_uint32_t save_count;
-    /* 0434:0018 */ parray<uint8_t, 0x230> unknown_a4;
+    /* 0434:0018 */ parray<uint8_t, 0x1C> unknown_a4;
+    /* 0450:0034 */ parray<uint8_t, 0x10> unknown_a5;
+    // 1024 bits (flags) per difficulty
+    /* 0460:0044 */ parray<parray<uint8_t, 0x80>, 4> quest_flags;
+    /* 0660:0244 */ be_uint32_t death_count;
     /* 0664:0248 */ PlayerBank bank;
     /* 192C:1510 */ GuildCardV3 guild_card;
     /* 19BC:15A0 */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
@@ -211,7 +218,13 @@ struct PSOGCCharacterFile {
     /* 25DC:21C0 */ parray<uint8_t, 4> unknown_a2;
     /* 25E0:21C4 */ PlayerRecordsV3_Challenge<true> challenge_records;
     /* 26E0:22C4 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
-    /* 2708:22EC */ parray<uint8_t, 0x90> unknown_a6;
+    /* 2708:22EC */ parray<uint8_t, 0x28> unknown_a6;
+    /* 2730:2314 */ parray<be_uint32_t, 0x10> quest_global_flags;
+    /* 2770:2354 */ PlayerRecords_Battle<true> offline_battle_records;
+    /* 2788:236C */ parray<uint8_t, 4> unknown_f5;
+    /* 278C:2370 */ be_uint32_t unknown_f6;
+    /* 2790:2374 */ be_uint32_t unknown_f7;
+    /* 2794:2378 */ be_uint32_t unknown_f8;
     /* 2798:237C */
   } __attribute__((packed));
   /* 00004 */ parray<Character, 7> characters;
@@ -232,7 +245,7 @@ struct PSOGCEp3CharacterFile {
     // to the start of the second internal structure (second column).
     /* 0000:---- */ PlayerInventory inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-    /* 041C:0000 */ be_uint32_t unknown_a1;
+    /* 041C:0000 */ be_uint32_t flags;
     /* 0420:0004 */ be_uint32_t creation_timestamp;
     /* 0424:0008 */ be_uint32_t signature; // Same value as for Episodes 1&2 (above)
     /* 0428:000C */ be_uint32_t play_time_seconds;
@@ -242,14 +255,17 @@ struct PSOGCEp3CharacterFile {
     /* 0430:0014 */ be_uint32_t save_count;
     /* 0434:0018 */ parray<uint8_t, 0x1C> unknown_a2;
     /* 0450:0034 */ parray<uint8_t, 0x10> unknown_a3;
-    // seq_vars is an array of 1024 bits, which contain all the Episode 3 quest
+    // seq_vars is an array of 8192 bits, which contain all the Episode 3 quest
     // progress flags. This includes things like which maps are unlocked, which
     // NPC decks are unlocked, and whether the player has a VIP card or not.
     /* 0460:0044 */ parray<uint8_t, 0x400> seq_vars;
-    /* 0860:0444 */ be_uint32_t unknown_a4;
-    /* 0864:0448 */ be_uint32_t unknown_a5;
-    /* 0868:044C */ be_uint32_t unknown_a6;
-    /* 086C:0450 */ parray<uint8_t, 0x60> unknown_a7;
+    /* 0860:0444 */ be_uint32_t death_count;
+    // The following three fields appear to actually be a PlayerBank structure
+    // with only 4 item slots instead of 200. They presumably didn't completely
+    // remove the bank in Ep3 because they would have to change too much code.
+    /* 0864:0448 */ be_uint32_t num_bank_items;
+    /* 0868:044C */ be_uint32_t bank_meseta;
+    /* 086C:0450 */ parray<PlayerBankItem, 4> bank_items;
     /* 08CC:04B0 */ GuildCardV3 guild_card;
     /* 095C:0540 */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
     /* 0D7C:0960 */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
@@ -275,15 +291,15 @@ struct PSOGCEp3CharacterFile {
   // by the B7 command sent by the server instead.
   /* 19420 */ be_uint64_t bgm_test_songs_unlocked;
   /* 19428 */ be_uint32_t save_count;
-  // This is an array of 1000 bits, represented here as 128 bytes, the last few
-  // of which are unused. Each bit corresponds to a card ID with the bit's
-  // index; if the bit is set, then the card's rank is replaced with D2 if its
-  // original rank is S, SS, E, or D2, or with D1 if the original rank is  any
-  // other value. Upon receiving a B8 command (new card definitions), the game
-  // updates this array of bits based on which cards in the received update
-  // have D1 or D2 ranks. This could have been used by Sega to persist part of
-  // the online updates into offline play, but there's no indication that they
-  // ever used this functionality.
+  // This is an array of 999 bits, represented here as 128 bytes (the last bit
+  // is never used). Each bit corresponds to a card ID with the bit's index; if
+  // the bit is set, then during offline play, the card's rank is replaced with
+  // D2 if its original rank is S, SS, E, or D2, or with D1 if the original rank
+  // is any other value. Upon receiving a B8 command (server card definitions),
+  // the game clears this array, and sets all bits whose corresponding cards
+  // from the server have the D1 or D2 ranks. This could have been used by Sega
+  // to prevent broken cards from being used offline, but there's no indication
+  // that they ever used this functionality.
   /* 1942C */ parray<uint8_t, 0x80> card_rank_override_flags;
   /* 194AC */ be_uint32_t round2_seed;
   /* 194B0 */
@@ -531,7 +547,7 @@ struct PSOPCSystemFile { // PSO______COM
   /* 0004 */ le_int16_t music_volume;
   /* 0006 */ int8_t sound_volume;
   /* 0007 */ uint8_t language;
-  /* 0008 */ le_uint32_t unknown_a3;
+  /* 0008 */ le_uint32_t server_time_delta_frames;
   /* 000C */ parray<le_uint16_t, 0x10> unknown_a4; // Last one is always 0x1234?
   /* 002C */ parray<uint8_t, 0x100> event_flags;
   /* 012C */ le_uint32_t round1_seed;
@@ -561,7 +577,7 @@ struct PSOPCCharacterFile { // PSO______SYS and PSO______SYD
       /* 0000 */ le_uint32_t checksum;
       /* 0004 */ PlayerInventory inventory;
       /* 0350 */ PlayerDispDataDCPCV3 disp;
-      /* 0420 */ be_uint32_t unknown_a1;
+      /* 0420 */ be_uint32_t flags;
       /* 0424 */ be_uint32_t creation_timestamp;
       /* 0428 */ be_uint32_t signature; // == 0x6C5D889E?
       /* 042C */ be_uint32_t play_time_seconds;
