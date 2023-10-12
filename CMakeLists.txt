@@ -123,36 +123,23 @@ endif()
 
 enable_testing()
 
-file(GLOB TestCases ${CMAKE_SOURCE_DIR}/tests/*.test.txt)
+file(GLOB LogTestCases ${CMAKE_SOURCE_DIR}/tests/*.test.txt)
 
-foreach(TestCase IN ITEMS ${TestCases})
+foreach(LogTestCase IN ITEMS ${LogTestCases})
     add_test(
-        NAME ${TestCase}
+        NAME ${LogTestCase}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMAND ${CMAKE_BINARY_DIR}/newserv replay-log ${TestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json --require-basic-credentials)
+        COMMAND ${CMAKE_BINARY_DIR}/newserv replay-log ${LogTestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json --require-basic-credentials)
 endforeach()
 
-add_test(
-    NAME "compression-prs"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_SOURCE_DIR}/tests/test-compression.sh prs ${CMAKE_BINARY_DIR}/newserv)
-add_test(
-    NAME "compression-bc0"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_SOURCE_DIR}/tests/test-compression.sh bc0 ${CMAKE_BINARY_DIR}/newserv)
+file(GLOB ScriptTestCases ${CMAKE_SOURCE_DIR}/tests/*.test.sh)
 
-add_test(
-    NAME "decode-vms"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_SOURCE_DIR}/tests/test-decode-vms.sh ${CMAKE_BINARY_DIR}/newserv)
-add_test(
-    NAME "decode-gci"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_SOURCE_DIR}/tests/test-decode-gci.sh ${CMAKE_BINARY_DIR}/newserv)
-add_test(
-    NAME "decode-pc"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_SOURCE_DIR}/tests/test-decode-pc.sh ${CMAKE_BINARY_DIR}/newserv)
+foreach(ScriptTestCase IN ITEMS ${ScriptTestCases})
+    add_test(
+        NAME ${ScriptTestCase}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMAND ${ScriptTestCase} ${CMAKE_BINARY_DIR}/newserv)
+endforeach()
 
 # Installation configuration
 

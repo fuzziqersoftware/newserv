@@ -1004,8 +1004,7 @@ int main(int argc, char** argv) {
           *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
         } else {
           const auto& s = r.get<StructT>();
-          auto encrypted = encrypt_fixed_size_data_section_t<StructT, true>(
-              s, round1_seed);
+          auto encrypted = encrypt_fixed_size_data_section_t<StructT, true>(s, round1_seed);
           if (data_start_offset + encrypted.size() > data.size()) {
             throw runtime_error("encrypted result exceeds file size");
           }

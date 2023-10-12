@@ -1,4 +1,0 @@
-./newserv decrypt-gci-save --sys=8P-GPSE-PSO3_SYSTEM.gci 8P-GPSE-PSO3_CHARACTER.gci
-./newserv decrypt-gci-save --sys=8P-GPSE-PSO3_SYSTEM.gci 8P-GPSE-PSO3_GUILDCARD.gci
-./newserv decrypt-gci-save --sys=8P-GPOE-PSO_SYSTEM.gci 8P-GPOE-PSO_CHARACTER.gci
-./newserv decrypt-gci-save --sys=8P-GPOE-PSO_SYSTEM.gci 8P-GPOE-PSO_GUILDCARD.gci
