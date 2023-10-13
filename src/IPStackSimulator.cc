@@ -401,6 +401,9 @@ void IPStackSimulator::on_client_udp_frame(
     if (dhcp.magic != 0x63825363) {
       throw runtime_error("incorrect DHCP magic cookie");
     }
+    if (dhcp.opcode != 1) { // Request
+      throw runtime_error("DHCP packet is not a request");
+    }
 
     unordered_map<uint8_t, string> option_data;
     for (;;) {
@@ -412,14 +415,17 @@ void IPStackSimulator::on_client_udp_frame(
       option_data.emplace(option, r.read(size));
     }
 
-    if (dhcp.opcode == 1) { // Request
-      uint8_t command = 0;
-      try {
-        command = option_data.at(53).at(0);
-      } catch (const out_of_range&) {
-        throw runtime_error("client did not send a DHCP command option");
-      }
+    uint8_t command = 0;
+    try {
+      command = option_data.at(53).at(0);
+    } catch (const out_of_range&) {
+      throw runtime_error("client did not send a DHCP command option");
+    }
 
+    if (command == 7) {
+      // Release IP address (we just ignore these)
+
+    } else if ((command == 1) || (command == 3)) {
       // Populate the client's addresses
       c->mac_addr = dhcp.client_hardware_address.data();
       c->ipv4_addr = 0x0A000105; // 10.0.1.5
@@ -495,7 +501,7 @@ void IPStackSimulator::on_client_udp_frame(
       r_data = std::move(w.str());
 
     } else {
-      throw runtime_error("unknown DHCP command");
+      throw runtime_error("client sent unknown DHCP command");
     }
 
   } else if (fi.udp->dest_port == 53) { // DNS
@@ -510,34 +516,36 @@ void IPStackSimulator::on_client_udp_frame(
     throw runtime_error("UDP packet is not DHCP or DNS");
   }
 
-  r_ipv4.size = sizeof(IPv4Header) + sizeof(UDPHeader) + r_data.size();
-  r_udp.size = sizeof(UDPHeader) + r_data.size();
-  r_ipv4.checksum = FrameInfo::computed_ipv4_header_checksum(r_ipv4);
-  r_udp.checksum = FrameInfo::computed_udp4_checksum(
-      r_ipv4, r_udp, r_data.data(), r_data.size());
+  if (!r_data.empty()) {
+    r_ipv4.size = sizeof(IPv4Header) + sizeof(UDPHeader) + r_data.size();
+    r_udp.size = sizeof(UDPHeader) + r_data.size();
+    r_ipv4.checksum = FrameInfo::computed_ipv4_header_checksum(r_ipv4);
+    r_udp.checksum = FrameInfo::computed_udp4_checksum(
+        r_ipv4, r_udp, r_data.data(), r_data.size());
 
-  struct evbuffer* out_buf = bufferevent_get_output(c->bev.get());
+    struct evbuffer* out_buf = bufferevent_get_output(c->bev.get());
 
-  if (ip_stack_simulator_log.should_log(LogLevel::DEBUG)) {
-    string remote_str = this->str_for_ipv4_netloc(fi.ipv4->src_addr, fi.udp->src_port);
-    ip_stack_simulator_log.debug("Sending UDP response to %s", remote_str.c_str());
-    print_data(stderr, r_data);
-  }
+    if (ip_stack_simulator_log.should_log(LogLevel::DEBUG)) {
+      string remote_str = this->str_for_ipv4_netloc(fi.ipv4->src_addr, fi.udp->src_port);
+      ip_stack_simulator_log.debug("Sending UDP response to %s", remote_str.c_str());
+      print_data(stderr, r_data);
+    }
 
-  uint16_t frame_size = sizeof(r_ether) + sizeof(r_ipv4) + sizeof(r_udp) + r_data.size();
-  evbuffer_add(out_buf, &frame_size, 2);
-  evbuffer_add(out_buf, &r_ether, sizeof(r_ether));
-  evbuffer_add(out_buf, &r_ipv4, sizeof(r_ipv4));
-  evbuffer_add(out_buf, &r_udp, sizeof(r_udp));
-  evbuffer_add(out_buf, r_data.data(), r_data.size());
+    uint16_t frame_size = sizeof(r_ether) + sizeof(r_ipv4) + sizeof(r_udp) + r_data.size();
+    evbuffer_add(out_buf, &frame_size, 2);
+    evbuffer_add(out_buf, &r_ether, sizeof(r_ether));
+    evbuffer_add(out_buf, &r_ipv4, sizeof(r_ipv4));
+    evbuffer_add(out_buf, &r_udp, sizeof(r_udp));
+    evbuffer_add(out_buf, r_data.data(), r_data.size());
 
-  if (this->pcap_text_log_file) {
-    StringWriter w;
-    w.write(&r_ether, sizeof(r_ether));
-    w.write(&r_ipv4, sizeof(r_ipv4));
-    w.write(&r_udp, sizeof(r_udp));
-    w.write(r_data.data(), r_data.size());
-    this->log_frame(w.str());
+    if (this->pcap_text_log_file) {
+      StringWriter w;
+      w.write(&r_ether, sizeof(r_ether));
+      w.write(&r_ipv4, sizeof(r_ipv4));
+      w.write(&r_udp, sizeof(r_udp));
+      w.write(r_data.data(), r_data.size());
+      this->log_frame(w.str());
+    }
   }
 }
 
