@@ -509,7 +509,11 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     this->dns_server_port = json.get_int("DNSServerPort", this->dns_server_port);
     try {
       for (const auto& item : json.at("IPStackListen").as_list()) {
-        this->ip_stack_addresses.emplace_back(item->as_string());
+        if (item->is_int()) {
+          this->ip_stack_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));
+        } else {
+          this->ip_stack_addresses.emplace_back(item->as_string());
+        }
       }
     } catch (const out_of_range&) {
     }

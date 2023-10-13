@@ -368,12 +368,7 @@ If you're using the TAP BBA type, you'll have to set PSO's network settings appr
 If you're using a version of Dolphin with tapserver support, you can make it connect to a newserv instance running on the same machine via the tapserver interface. You do not need to install or run tapserver. To do this:
 1. Set Dolphin's BBA type to tapserver (Config -> GameCube -> SP1).
 2. Enable newserv's IP stack simulator according to the comments in config.json and start newserv.
-3. In PSO, you have to configure the network settings manually (DHCP doesn't work), but the actual values don't matter as long as they're valid IP addresses. Example values:
-  - IP address: `10.0.1.5`
-  - Subnet mask: `255.255.255.0`
-  - Default gateway: `10.0.1.1`
-  - DNS server address 1: `10.0.1.1`
-  - Leave everything else blank
+3. In PSO's network settings, enable DHCP ("Automatically obtain an IP address"), set DNS server address to "Automatic", and leave DHCP Hostname as "Not set". Leave the proxy server settings blank.
 4. Start an online game.
 
 ### Connecting external clients

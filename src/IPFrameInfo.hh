@@ -4,9 +4,11 @@
 
 #include <phosg/Encoding.hh>
 
+#include "Text.hh"
+
 struct EthernetHeader {
-  uint8_t dest_mac[6];
-  uint8_t src_mac[6];
+  parray<uint8_t, 6> dest_mac;
+  parray<uint8_t, 6> src_mac;
   be_uint16_t protocol;
 } __attribute__((packed));
 
@@ -59,6 +61,24 @@ struct TCPHeader {
   be_uint16_t window;
   be_uint16_t checksum;
   be_uint16_t urgent_ptr;
+} __attribute__((packed));
+
+struct DHCPHeader {
+  uint8_t opcode = 0;
+  uint8_t hardware_type = 1; // 1 = Ethernet
+  uint8_t hardware_address_length = 6; // 6 for Ethernet
+  uint8_t hops = 0;
+  be_uint32_t transaction_id = 0;
+  be_uint16_t seconds_elapsed = 0;
+  be_uint16_t flags = 0;
+  be_uint32_t client_ip_address = 0;
+  be_uint32_t your_ip_address = 0;
+  be_uint32_t server_ip_address = 0;
+  be_uint32_t gateway_ip_address = 0;
+  parray<uint8_t, 0x10> client_hardware_address;
+  parray<uint8_t, 0xC0> unused_bootp_legacy;
+  be_uint32_t magic = 0x63825363;
+  // Options follow here, terminated with FF
 } __attribute__((packed));
 
 struct FrameInfo {

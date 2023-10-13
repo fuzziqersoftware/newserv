@@ -67,8 +67,8 @@ IPStackSimulator::IPStackSimulator(
     : base(base),
       state(state),
       pcap_text_log_file(state->ip_stack_debug ? fopen("IPStackSimulator-Log.txt", "wt") : nullptr) {
-  memset(this->host_mac_address_bytes, 0x90, 6);
-  memset(this->broadcast_mac_address_bytes, 0xFF, 6);
+  this->host_mac_address_bytes.clear(0x90);
+  this->broadcast_mac_address_bytes.clear(0xFF);
 }
 
 IPStackSimulator::~IPStackSimulator() {
@@ -115,7 +115,7 @@ uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_ad
 IPStackSimulator::IPClient::IPClient(struct bufferevent* bev)
     : bev(bev, bufferevent_free),
       ipv4_addr(0) {
-  memset(this->mac_addr, 0, 6);
+  this->mac_addr.clear(0);
 }
 
 static void flush_and_free_bufferevent(struct bufferevent* bev) {
@@ -233,16 +233,16 @@ void IPStackSimulator::on_client_error(struct bufferevent* bev,
 
 void IPStackSimulator::on_client_frame(
     shared_ptr<IPClient> c, const string& frame) {
-  if (ip_stack_simulator_log.info("Virtual network sent frame")) {
+  if (ip_stack_simulator_log.debug("Virtual network sent frame")) {
     print_data(stderr, frame);
     fputc('\n', stderr);
   }
   this->log_frame(frame);
 
   FrameInfo fi(frame);
-  if (ip_stack_simulator_log.should_log(LogLevel::INFO)) {
+  if (ip_stack_simulator_log.should_log(LogLevel::DEBUG)) {
     string fi_header = fi.header_str();
-    ip_stack_simulator_log.info("Frame header: %s", fi_header.c_str());
+    ip_stack_simulator_log.debug("Frame header: %s", fi_header.c_str());
   }
 
   if (fi.arp) {
@@ -255,10 +255,14 @@ void IPStackSimulator::on_client_frame(
           "IPv4 header checksum is incorrect (%04hX expected, %04hX received)",
           expected_ipv4_checksum, fi.ipv4->checksum.load()));
     }
-    if (memcmp(fi.ether->src_mac, c->mac_addr, 6)) {
+
+    // Populate the client's addresses if needed
+    if (c->mac_addr.is_filled_with(0)) {
+      c->mac_addr = fi.ether->src_mac;
+    } else if ((fi.ether->src_mac != c->mac_addr) && (fi.ether->src_mac != this->broadcast_mac_address_bytes)) {
       throw runtime_error("client sent IPv4 packet from different MAC address");
     }
-    if (fi.ipv4->src_addr != c->ipv4_addr) {
+    if ((fi.ipv4->src_addr != c->ipv4_addr) && (fi.ipv4->src_addr != 0)) {
       throw runtime_error("client sent IPv4 packet from different IPv4 address");
     }
 
@@ -301,18 +305,14 @@ void IPStackSimulator::on_client_arp_frame(
     throw runtime_error("ARP payload too small");
   }
 
-  // Populate the client's addresses if needed
-  if (!memcmp(c->mac_addr, "\0\0\0\0\0\0", 6)) {
-    memcpy(c->mac_addr, fi.ether->src_mac, 6);
-  }
   if (c->ipv4_addr == 0) {
     c->ipv4_addr = *reinterpret_cast<const be_uint32_t*>(
         reinterpret_cast<const uint8_t*>(fi.payload) + 6);
   }
 
   EthernetHeader r_ether;
-  memcpy(r_ether.dest_mac, fi.ether->src_mac, 6);
-  memcpy(r_ether.src_mac, this->host_mac_address_bytes, 6);
+  r_ether.dest_mac = fi.ether->src_mac;
+  r_ether.src_mac = this->host_mac_address_bytes;
   r_ether.protocol = fi.ether->protocol;
 
   ARPHeader r_arp;
@@ -336,7 +336,7 @@ void IPStackSimulator::on_client_arp_frame(
   const char* payload_bytes = reinterpret_cast<const char*>(fi.payload);
 
   uint8_t r_payload[20];
-  memcpy(&r_payload[0], this->host_mac_address_bytes, 6);
+  memcpy(&r_payload[0], this->host_mac_address_bytes.data(), 6);
   memcpy(&r_payload[6], payload_bytes + 16, 4);
   memcpy(&r_payload[10], payload_bytes, 10);
 
@@ -348,7 +348,7 @@ void IPStackSimulator::on_client_arp_frame(
   evbuffer_add(out_buf, &r_arp, sizeof(r_arp));
   evbuffer_add(out_buf, r_payload, sizeof(r_payload));
 
-  ip_stack_simulator_log.info("Sending ARP response");
+  ip_stack_simulator_log.debug("Sending ARP response");
 
   if (this->pcap_text_log_file) {
     StringWriter w;
@@ -361,17 +361,13 @@ void IPStackSimulator::on_client_arp_frame(
 
 void IPStackSimulator::on_client_udp_frame(
     shared_ptr<IPClient> c, const FrameInfo& fi) {
-  // We only implement the DNS server here
-  if (fi.udp->dest_port != 53) {
-    throw runtime_error("UDP packet is not DNS");
-  }
-  if (fi.payload_size < 0x0C) {
-    throw runtime_error("DNS payload too small");
-  }
+  // We only implement DHCP and newserv's DNS server here
 
+  // Every received UDP packet will elicit exactly one UDP response from
+  // newserv, so we prepare the response headers in advance
   EthernetHeader r_ether;
-  memcpy(r_ether.dest_mac, fi.ether->src_mac, 6);
-  memcpy(r_ether.src_mac, this->host_mac_address_bytes, 6);
+  r_ether.dest_mac = fi.ether->src_mac;
+  r_ether.src_mac = this->host_mac_address_bytes;
   r_ether.protocol = fi.ether->protocol;
 
   IPv4Header r_ipv4;
@@ -392,10 +388,126 @@ void IPStackSimulator::on_client_udp_frame(
   // r_udp.size filled in later
   // r_udp.checksum filled in later
 
-  uint32_t resolved_address = this->connect_address_for_remote_address(c->ipv4_addr);
+  string r_data;
+  if (fi.udp->dest_port == 67) { // DHCP
+    StringReader r(fi.payload, fi.payload_size);
+    const auto& dhcp = r.get<DHCPHeader>();
+    if (dhcp.hardware_type != 1) {
+      throw runtime_error("unknown DHCP hardware type");
+    }
+    if (dhcp.hardware_address_length != 6) {
+      throw runtime_error("unknown DHCP hardware address length");
+    }
+    if (dhcp.magic != 0x63825363) {
+      throw runtime_error("incorrect DHCP magic cookie");
+    }
 
-  string r_data = DNSServer::response_for_query(
-      fi.payload, fi.payload_size, resolved_address);
+    unordered_map<uint8_t, string> option_data;
+    for (;;) {
+      uint8_t option = r.get_u8();
+      if (option == 0xFF) {
+        break;
+      }
+      uint8_t size = r.get_u8();
+      option_data.emplace(option, r.read(size));
+    }
+
+    if (dhcp.opcode == 1) { // Request
+      uint8_t command = 0;
+      try {
+        command = option_data.at(53).at(0);
+      } catch (const out_of_range&) {
+        throw runtime_error("client did not send a DHCP command option");
+      }
+
+      // Populate the client's addresses
+      c->mac_addr = dhcp.client_hardware_address.data();
+      c->ipv4_addr = 0x0A000105; // 10.0.1.5
+      // In this case, the client doesn't know its IPv4 address or ours yet,
+      // so we overwrite the existing fields with the appropriate addresses.
+      r_ipv4.src_addr = 0x0A000101; // 10.0.1.1
+      r_ipv4.dest_addr = c->ipv4_addr;
+
+      if ((command != 1) && (command != 3)) {
+        throw runtime_error("client sent unknown DHCP command option");
+      }
+
+      StringWriter w;
+      w.put(DHCPHeader{
+          .opcode = 2, // Response
+          .hardware_type = 1, // Ethernet
+          .hardware_address_length = 6, // Ethernet
+          .hops = 0,
+          .transaction_id = dhcp.transaction_id,
+          .seconds_elapsed = 0,
+          .flags = 0,
+          .client_ip_address = 0,
+          .your_ip_address = r_ipv4.dest_addr,
+          .server_ip_address = r_ipv4.src_addr,
+          .gateway_ip_address = 0,
+          .client_hardware_address = c->mac_addr,
+          .magic = 0x63825363,
+      });
+      // DHCP message type option
+      w.put_u8(53);
+      w.put_u8(1);
+      w.put_u8(static_cast<uint8_t>((command == 3) ? 5 : 2)); // Offer or ack
+      // DHCP server ID option
+      w.put_u8(54);
+      w.put_u8(4);
+      w.put_u32b(0x0A000101); // 10.0.1.1
+      // Lease time option
+      w.put_u8(51);
+      w.put_u8(4);
+      w.put_u32b(60 * 60 * 24 * 7); // 1 week
+      // Renewal time option
+      w.put_u8(58);
+      w.put_u8(4);
+      w.put_u32b(60 * 60 * 24 * 7); // 1 week
+      // Rebind time option
+      w.put_u8(59);
+      w.put_u8(4);
+      w.put_u32b(60 * 60 * 24 * 7); // 1 week
+      // Subnet mask option
+      w.put_u8(1);
+      w.put_u8(4);
+      w.put_u32b(0xFFFFFF00); // 255.255.255.0
+      // Broadcast IP option
+      w.put_u8(28);
+      w.put_u8(4);
+      w.put_u32b(c->ipv4_addr | 0x000000FF);
+      // DNS server option
+      w.put_u8(6);
+      w.put_u8(4);
+      w.put_u32b(0x0A000101); // 10.0.1.1
+      // Domain name option
+      w.put_u8(15);
+      w.put_u8(7);
+      w.write("newserv");
+      // Default gateway option
+      w.put_u8(3);
+      w.put_u8(4);
+      w.put_u32b(0x0A000101); // 10.0.1.1
+      // End option list
+      w.put_u8(0xFF);
+
+      r_data = std::move(w.str());
+
+    } else {
+      throw runtime_error("unknown DHCP command");
+    }
+
+  } else if (fi.udp->dest_port == 53) { // DNS
+    if (fi.payload_size < 0x0C) {
+      throw runtime_error("DNS payload too small");
+    }
+
+    uint32_t resolved_address = this->connect_address_for_remote_address(c->ipv4_addr);
+    r_data = DNSServer::response_for_query(fi.payload, fi.payload_size, resolved_address);
+
+  } else { // Not DHCP or DNS
+    throw runtime_error("UDP packet is not DHCP or DNS");
+  }
 
   r_ipv4.size = sizeof(IPv4Header) + sizeof(UDPHeader) + r_data.size();
   r_udp.size = sizeof(UDPHeader) + r_data.size();
@@ -405,9 +517,9 @@ void IPStackSimulator::on_client_udp_frame(
 
   struct evbuffer* out_buf = bufferevent_get_output(c->bev.get());
 
-  if (ip_stack_simulator_log.should_log(LogLevel::INFO)) {
+  if (ip_stack_simulator_log.should_log(LogLevel::DEBUG)) {
     string remote_str = this->str_for_ipv4_netloc(fi.ipv4->src_addr, fi.udp->src_port);
-    ip_stack_simulator_log.info("Sending DNS response to %s", remote_str.c_str());
+    ip_stack_simulator_log.debug("Sending UDP response to %s", remote_str.c_str());
     print_data(stderr, r_data);
   }
 
@@ -451,7 +563,7 @@ uint64_t IPStackSimulator::tcp_conn_key_for_client_frame(const FrameInfo& fi) {
 
 void IPStackSimulator::on_client_tcp_frame(
     shared_ptr<IPClient> c, const FrameInfo& fi) {
-  ip_stack_simulator_log.info("Virtual network sent TCP frame (seq=%08" PRIX32 ", ack=%08" PRIX32 ")",
+  ip_stack_simulator_log.debug("Virtual network sent TCP frame (seq=%08" PRIX32 ", ack=%08" PRIX32 ")",
       fi.tcp->seq_num.load(), fi.tcp->ack_num.load());
 
   if (fi.tcp->flags & (TCPHeader::Flag::NS | TCPHeader::Flag::CWR | TCPHeader::Flag::ECE | TCPHeader::Flag::URG)) {
@@ -541,13 +653,13 @@ void IPStackSimulator::on_client_tcp_frame(
       // TODO: We should check the syn/ack numbers here instead of just assuming
       // they're correct
       conn_str = this->str_for_tcp_connection(c, conn);
-      ip_stack_simulator_log.info("Client resent SYN for TCP connection %s",
+      ip_stack_simulator_log.debug("Client resent SYN for TCP connection %s",
           conn_str.c_str());
     }
 
     // Send a SYN+ACK (send_tcp_frame always adds the ACK flag)
     this->send_tcp_frame(c, conn, TCPHeader::Flag::SYN);
-    ip_stack_simulator_log.info("Sent SYN+ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
+    ip_stack_simulator_log.debug("Sent SYN+ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ")",
         conn_str.c_str(), conn.acked_server_seq, conn.next_client_seq);
 
   } else {
@@ -562,7 +674,7 @@ void IPStackSimulator::on_client_tcp_frame(
     bool conn_valid = true;
 
     if (fi.tcp->flags & TCPHeader::Flag::ACK) {
-      ip_stack_simulator_log.info("Client sent ACK %08" PRIX32, fi.tcp->ack_num.load());
+      ip_stack_simulator_log.debug("Client sent ACK %08" PRIX32, fi.tcp->ack_num.load());
       if (conn->awaiting_first_ack) {
         if (fi.tcp->ack_num != conn->acked_server_seq + 1) {
           throw runtime_error("first ack_num was not acked_server_seq + 1");
@@ -572,7 +684,7 @@ void IPStackSimulator::on_client_tcp_frame(
 
       } else {
         if (seq_num_greater(fi.tcp->ack_num, conn->acked_server_seq)) {
-          ip_stack_simulator_log.info("Advancing acked_server_seq from %08" PRIX32, conn->acked_server_seq);
+          ip_stack_simulator_log.debug("Advancing acked_server_seq from %08" PRIX32, conn->acked_server_seq);
           uint32_t ack_delta = fi.tcp->ack_num - conn->acked_server_seq;
           size_t pending_bytes = evbuffer_get_length(conn->pending_data.get());
           if (pending_bytes < ack_delta) {
@@ -584,7 +696,7 @@ void IPStackSimulator::on_client_tcp_frame(
           conn->resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
           conn->next_push_max_frame_size = conn->max_frame_size;
 
-          ip_stack_simulator_log.info("Removed %08" PRIX32 " bytes from pending buffer and advanced acked_server_seq to %08" PRIX32,
+          ip_stack_simulator_log.debug("Removed %08" PRIX32 " bytes from pending buffer and advanced acked_server_seq to %08" PRIX32,
               ack_delta, conn->acked_server_seq);
 
         } else if (seq_num_less(fi.tcp->ack_num, conn->acked_server_seq)) {
@@ -662,10 +774,10 @@ void IPStackSimulator::on_client_tcp_frame(
 
         bool was_logged;
         if (payload_skip_bytes) {
-          was_logged = ip_stack_simulator_log.info("Client sent data on TCP connection %s, overlapping existing ack'ed data (0x%zX bytes ignored)",
+          was_logged = ip_stack_simulator_log.debug("Client sent data on TCP connection %s, overlapping existing ack'ed data (0x%zX bytes ignored)",
               conn_str.c_str(), payload_skip_bytes);
         } else {
-          was_logged = ip_stack_simulator_log.info("Client sent data on TCP connection %s",
+          was_logged = ip_stack_simulator_log.debug("Client sent data on TCP connection %s",
               conn_str.c_str());
         }
         if (was_logged) {
@@ -688,7 +800,7 @@ void IPStackSimulator::on_client_tcp_frame(
 
       // Send an ACK
       this->send_tcp_frame(c, *conn);
-      ip_stack_simulator_log.info("Sent PSH ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ", bytes_received=0x%zX)",
+      ip_stack_simulator_log.debug("Sent PSH ACK on %s (acked_server_seq=%08" PRIX32 ", next_client_seq=%08" PRIX32 ", bytes_received=0x%zX)",
           conn_str.c_str(), conn->acked_server_seq, conn->next_client_seq, conn->bytes_received);
     }
 
@@ -758,7 +870,7 @@ void IPStackSimulator::send_pending_push_frame(
 
   size_t bytes_to_send = min<size_t>(pending_bytes, conn.next_push_max_frame_size);
 
-  ip_stack_simulator_log.info("Sending PSH frame with seq_num %08" PRIX32 ", 0x%zX/0x%zX data bytes",
+  ip_stack_simulator_log.debug("Sending PSH frame with seq_num %08" PRIX32 ", 0x%zX/0x%zX data bytes",
       conn.acked_server_seq, bytes_to_send, pending_bytes);
 
   this->send_tcp_frame(c, conn, TCPHeader::Flag::PSH, conn.pending_data.get(),
@@ -790,8 +902,8 @@ void IPStackSimulator::send_tcp_frame(
   }
 
   EthernetHeader ether;
-  memcpy(ether.dest_mac, c->mac_addr, 6);
-  memcpy(ether.src_mac, this->host_mac_address_bytes, 6);
+  ether.dest_mac = c->mac_addr;
+  ether.src_mac = this->host_mac_address_bytes;
   ether.protocol = 0x0800; // IPv4
 
   IPv4Header ipv4;
@@ -870,7 +982,7 @@ void IPStackSimulator::dispatch_on_server_input(struct bufferevent*, void* ctx) 
 
 void IPStackSimulator::on_server_input(shared_ptr<IPClient> c, IPClient::TCPConnection& conn) {
   struct evbuffer* buf = bufferevent_get_input(conn.server_bev.get());
-  ip_stack_simulator_log.info("Server input event: 0x%zX bytes to read",
+  ip_stack_simulator_log.debug("Server input event: 0x%zX bytes to read",
       evbuffer_get_length(buf));
 
   evbuffer_add_buffer(conn.pending_data.get(), buf);
@@ -904,8 +1016,7 @@ void IPStackSimulator::on_server_error(
     // Delete the connection object (this also flushes and frees the server
     // virtual connection bufferevent)
     string conn_str = this->str_for_tcp_connection(c, conn);
-    ip_stack_simulator_log.info("Server closed TCP connection %s",
-        conn_str.c_str());
+    ip_stack_simulator_log.info("Server closed TCP connection %s", conn_str.c_str());
     c->tcp_connections.erase(this->tcp_conn_key_for_connection(conn));
   }
 }

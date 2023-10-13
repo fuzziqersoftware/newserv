@@ -10,6 +10,7 @@
 #include "ProxyServer.hh"
 #include "Server.hh"
 #include "ServerState.hh"
+#include "Text.hh"
 
 class IPStackSimulator {
 public:
@@ -38,7 +39,7 @@ private:
     IPStackSimulator* sim;
 
     unique_bufferevent bev;
-    uint8_t mac_addr[6];
+    parray<uint8_t, 6> mac_addr;
     uint32_t ipv4_addr;
 
     struct TCPConnection {
@@ -78,8 +79,8 @@ private:
   std::unordered_set<unique_listener> listeners;
   std::unordered_map<struct bufferevent*, std::shared_ptr<IPClient>> bev_to_client;
 
-  uint8_t host_mac_address_bytes[6];
-  uint8_t broadcast_mac_address_bytes[6];
+  parray<uint8_t, 6> host_mac_address_bytes;
+  parray<uint8_t, 6> broadcast_mac_address_bytes;
 
   FILE* pcap_text_log_file;
 
@@ -91,19 +92,19 @@ private:
 
   static std::string str_for_ipv4_netloc(uint32_t addr, uint16_t port);
   static std::string str_for_tcp_connection(std::shared_ptr<const IPClient> c,
-                                            const IPClient::TCPConnection& conn);
+      const IPClient::TCPConnection& conn);
 
   static void dispatch_on_listen_accept(struct evconnlistener* listener,
-                                        evutil_socket_t fd, struct sockaddr* address, int socklen, void* ctx);
+      evutil_socket_t fd, struct sockaddr* address, int socklen, void* ctx);
   void on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd,
-                        struct sockaddr* address, int socklen);
+      struct sockaddr* address, int socklen);
   static void dispatch_on_listen_error(struct evconnlistener* listener, void* ctx);
   void on_listen_error(struct evconnlistener* listener);
 
   static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
   void on_client_input(struct bufferevent* bev);
   static void dispatch_on_client_error(struct bufferevent* bev, short events,
-                                       void* ctx);
+      void* ctx);
   void on_client_error(struct bufferevent* bev, short events);
 
   void on_client_frame(std::shared_ptr<IPClient> c, const std::string& frame);
@@ -112,13 +113,13 @@ private:
   void on_client_tcp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
 
   static void dispatch_on_resend_push(evutil_socket_t fd, short events,
-                                      void* ctx);
+      void* ctx);
   void on_resend_push(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
 
   static void dispatch_on_server_input(struct bufferevent* bev, void* ctx);
   void on_server_input(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
   static void dispatch_on_server_error(struct bufferevent* bev, short events,
-                                       void* ctx);
+      void* ctx);
   void on_server_error(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn, short events);
 
   void send_pending_push_frame(

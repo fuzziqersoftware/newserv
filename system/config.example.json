@@ -190,9 +190,8 @@
     "FunctionCompiler": "INFO",
     // IP stack simulator messages describe clients connecting and disconnecting
     // via the IP stack interface, and errors that occur at the simulated
-    // network level within the simulator. This log is fairly verbose at the
-    // info level, so by default we suppress those messages.
-    "IPStackSimulator": "WARNING",
+    // network level within the simulator.
+    "IPStackSimulator": "INFO",
     // Lobby messages describe creation and deletion of lobbies and games, as
     // well as item tracking events within games. On Episode 3, debug messages
     // during battles go to this stream as well; use "DEBUG" here to see them.
