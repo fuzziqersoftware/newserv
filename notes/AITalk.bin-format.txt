@@ -1,0 +1,16 @@
+struct AITalkBin {
+  be_uint32_t num_scs;
+  be_uint32_t sc_offsets[num_scs];
+
+  struct SCDialogueEntry {
+    be_uint32_t num_entries;
+    be_uint32_t unknown_a1;
+    be_uint32_t size; // in bytes
+    struct WhenEntry {
+      be_uint32_t when;
+      be_uint32_t percent_chance; // 0-100
+      be_uint32_t count;
+      be_uint32_t string_ids[count];
+    } __attribute__((packed));
+  } __attribute__((packed));
+} __attribute__((packed));
