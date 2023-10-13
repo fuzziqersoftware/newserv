@@ -897,7 +897,7 @@ shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
       // the Gifoie card's ID (00D9) for compute_effective_range.
       // TODO: We should fix this so it doesn't rely on a fixed card definition.
       parray<uint8_t, 9 * 9> range;
-      compute_effective_range(range, this->server()->card_index, 0x00D9, target_card_loc, this->server()->map_and_rules);
+      compute_effective_range(range, this->server()->options.card_index, 0x00D9, target_card_loc, this->server()->map_and_rules);
       auto card_refs_in_parry_range = target_ps->get_all_cards_within_range(
           range, target_card_loc, 0xFF);
 
@@ -2651,7 +2651,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         if (ce && ps) {
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, ce->def.card_id, card2);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+          compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules);
           add_card_refs(ps->get_card_refs_within_range_from_all_players(range, card1_loc, CardType::ITEM));
         }
       }
@@ -2661,7 +2661,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         if (ce && ps) {
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, ce->def.card_id, card2);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+          compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules);
           add_card_refs(ps->get_all_cards_within_range(range, card1_loc, card1->get_team_id()));
         }
       }
@@ -2701,7 +2701,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         if (ce && ps) {
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, ce->def.card_id, card2);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+          compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules);
           add_card_refs(ps->get_all_cards_within_range(range, card1_loc, card1->get_team_id()));
         }
       }
@@ -2771,7 +2771,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
           // should fix this eventually.
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x00D9, card2);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+          compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules);
           auto result_card_refs = ps->get_all_cards_within_range(range, card1_loc, card1->get_team_id());
           for (uint16_t result_card_ref : result_card_refs) {
             auto result_card = this->server()->card_for_set_card_ref(result_card_ref);
@@ -2797,7 +2797,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x00D9, card2);
           log23.debug("effective range card ID is #%04hX", range_card_id);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules, &log23);
+          compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules, &log23);
           auto result_card_refs = ps->get_all_cards_within_range(range, card1_loc, 0xFF);
           log23.debug("%zu result card refs", result_card_refs.size());
           for (uint16_t result_card_ref : result_card_refs) {
@@ -2874,7 +2874,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
           // TODO: Again with the Gifoie hardcoding...
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x00D9, card2);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+          compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules);
           auto result_card_refs = ps->get_all_cards_within_range(range, card1_loc, 0xFF);
           for (uint16_t result_card_ref : result_card_refs) {
             auto result_card = this->server()->card_for_set_card_ref(result_card_ref);
@@ -2928,7 +2928,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
           // TODO: Yet another Gifoie hardcode location :(
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x00D9, card2);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+          compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules);
           auto result_card_refs = ps->get_all_cards_within_range(range, card1_loc, card1->get_team_id());
           for (uint16_t result_card_ref : result_card_refs) {
             auto result_card = this->server()->card_for_set_card_ref(result_card_ref);
@@ -2955,7 +2955,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         // TODO: Sigh. Gifoie again.
         uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x00D9, card2);
         parray<uint8_t, 9 * 9> range;
-        compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+        compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules);
         auto result_card_refs = ps->get_all_cards_within_range(range, card1_loc, 0xFF);
         for (uint16_t result_card_ref : result_card_refs) {
           auto result_card = this->server()->card_for_set_card_ref(result_card_ref);
@@ -3051,7 +3051,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
           // Slay instead of Gifoie
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x009C, card2);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+          compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules);
           auto result_card_refs = ps->get_all_cards_within_range(range, card1_loc, 0xFF);
           for (uint16_t result_card_ref : result_card_refs) {
             auto result_card = this->server()->card_for_set_card_ref(result_card_ref);
@@ -3080,7 +3080,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
           // TODO: Sigh. Gifoie. Sigh.
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x00D9, card2);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+          compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules);
           auto result_card_refs = ps->get_all_cards_within_range(range, card1_loc, 0xFF);
           for (uint16_t result_card_ref : result_card_refs) {
             auto result_card = this->server()->card_for_set_card_ref(result_card_ref);
@@ -3117,7 +3117,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
           // TODO: One more Gifoie here.
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x00D9, card2);
           parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, this->server()->card_index, range_card_id, card1_loc, this->server()->map_and_rules);
+          compute_effective_range(range, this->server()->options.card_index, range_card_id, card1_loc, this->server()->map_and_rules);
           auto result_card_refs = ps->get_all_cards_within_range(range, card1_loc, card1->get_team_id());
           for (uint16_t result_card_ref : result_card_refs) {
             auto result_card = this->server()->card_for_set_card_ref(result_card_ref);
@@ -3541,7 +3541,7 @@ void CardSpecial::check_for_defense_interference(
     shared_ptr<Card> target_card,
     int16_t* inout_unknown_p4) {
   // Note: This check is not part of the original implementation.
-  if (this->server()->behavior_flags & BehaviorFlag::DISABLE_INTERFERENCE) {
+  if (this->server()->options.behavior_flags & BehaviorFlag::DISABLE_INTERFERENCE) {
     return;
   }
 
@@ -3574,7 +3574,7 @@ void CardSpecial::check_for_defense_interference(
   }
 
   auto ally_hes = this->server()->ruler_server->get_hand_and_equip_state_for_client_id(target_ally_client_id);
-  if (!ally_hes || (!(this->server()->behavior_flags & BehaviorFlag::ALLOW_NON_COM_INTERFERENCE) && !ally_hes->is_cpu_player)) {
+  if (!ally_hes || (!(this->server()->options.behavior_flags & BehaviorFlag::ALLOW_NON_COM_INTERFERENCE) && !ally_hes->is_cpu_player)) {
     return;
   }
 
@@ -4317,7 +4317,7 @@ vector<shared_ptr<const Card>> CardSpecial::filter_cards_by_range(
   // TODO: Remove hardcoded card ID here (Earthquake)
   uint16_t card_id = this->get_card_id_with_effective_range(card1, 0x00ED, card2);
   parray<uint8_t, 9 * 9> range;
-  compute_effective_range(range, this->server()->card_index, card_id, card1_loc, this->server()->map_and_rules);
+  compute_effective_range(range, this->server()->options.card_index, card_id, card1_loc, this->server()->map_and_rules);
   auto card_refs_in_range = ps->get_card_refs_within_range_from_all_players(range, card1_loc, CardType::ITEM);
 
   for (auto card : cards) {
@@ -4539,7 +4539,7 @@ void CardSpecial::unknown_8024A9D8(const ActionState& pa, uint16_t action_card_r
 
 void CardSpecial::check_for_attack_interference(shared_ptr<Card> unknown_p2) {
   // Note: This check is not part of the original implementation.
-  if (this->server()->behavior_flags & BehaviorFlag::DISABLE_INTERFERENCE) {
+  if (this->server()->options.behavior_flags & BehaviorFlag::DISABLE_INTERFERENCE) {
     return;
   }
 
@@ -4568,7 +4568,7 @@ void CardSpecial::check_for_attack_interference(shared_ptr<Card> unknown_p2) {
   }
 
   auto ally_hes = this->server()->ruler_server->get_hand_and_equip_state_for_client_id(ally_client_id);
-  if (!ally_hes || (!(this->server()->behavior_flags & BehaviorFlag::ALLOW_NON_COM_INTERFERENCE) && !ally_hes->is_cpu_player)) {
+  if (!ally_hes || (!(this->server()->options.behavior_flags & BehaviorFlag::ALLOW_NON_COM_INTERFERENCE) && !ally_hes->is_cpu_player)) {
     return;
   }
 

@@ -296,7 +296,7 @@ Proxy session commands:\n\
       } else if (type == "config") {
         auto config_json = this->state->load_config();
         this->state->parse_config(config_json, true);
-        this->state->resolve_ep3_card_auction_pool();
+        this->state->resolve_ep3_card_names();
       } else {
         throw invalid_argument("incorrect data type");
       }

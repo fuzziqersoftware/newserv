@@ -51,7 +51,7 @@ void PlayerState::init() {
   this->deck_state.reset(new DeckState(
       this->client_id,
       s->deck_entries[client_id]->card_ids,
-      s->random_crypt));
+      s->options.random_crypt));
   if (s->map_and_rules->rules.disable_deck_shuffle) {
     this->deck_state->disable_shuffle();
   }

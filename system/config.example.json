@@ -322,6 +322,17 @@
   // 0x0200 => Allow interference even when neither player is a COM
   "Episode3BehaviorFlags": 0x0002,
 
+  // Trap assist cards for each trap type in Episode 3 battles. These are the
+  // default values used offline, but you can change the trap types online here.
+  // Only assist cards may be used as trap cards.
+  "Episode3TrapCards": [
+    ["Dice Fever", "Heavy Fog", "Muscular", "Immortality", "Snail Pace"], // Red
+    ["Gold Rush", "Charity", "Requiem"], // Blue
+    ["Powerless Rain", "Trash 1", "Empty Hand", "Skip Draw"], // Purple
+    ["Brave Wind", "Homesick", "Fly"], // Green
+    ["Dice+1", "Battle Royale", "Reverse Card", "Giant Garden", "Fix"], // Yellow
+  ],
+
   // Episode 3 EX result values. This allows you to set the amount of EX players
   // will get for winning or losing online matches. Each set of numbers is a
   // list of thresholds; the first number in each pair is the level difference

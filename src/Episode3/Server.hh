@@ -66,12 +66,15 @@ class Server : public std::enable_shared_from_this<Server> {
   // it appears that that command is never sent by the client, so we combine
   // the two classes into one in our implementation.
 public:
-  Server(std::shared_ptr<Lobby> lobby,
-      std::shared_ptr<const CardIndex> card_index,
-      std::shared_ptr<const MapIndex> map_index,
-      uint32_t behavior_flags,
-      std::shared_ptr<PSOLFGEncryption> random_crypt,
-      std::shared_ptr<const Tournament> tournament);
+  struct Options {
+    std::shared_ptr<const CardIndex> card_index;
+    std::shared_ptr<const MapIndex> map_index;
+    uint32_t behavior_flags;
+    std::shared_ptr<PSOLFGEncryption> random_crypt;
+    std::shared_ptr<const Tournament> tournament;
+    std::array<std::vector<uint16_t>, 5> trap_card_ids;
+  };
+  Server(std::shared_ptr<Lobby> lobby, Options&& options);
   ~Server() noexcept(false);
   void init();
 
@@ -236,12 +239,8 @@ private:
 public:
   // These fields are not part of the original implementation
   std::weak_ptr<Lobby> lobby;
-  std::shared_ptr<const CardIndex> card_index;
-  std::shared_ptr<const MapIndex> map_index;
-  uint32_t behavior_flags;
-  std::shared_ptr<PSOLFGEncryption> random_crypt;
+  Options options;
   std::shared_ptr<const MapIndex::MapEntry> last_chosen_map;
-  std::shared_ptr<const Tournament> tournament;
   bool tournament_match_result_sent;
   uint8_t override_environment_number;
   mutable std::deque<StackLogger*> logger_stack;

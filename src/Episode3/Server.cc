@@ -24,19 +24,10 @@ void Server::PresenceEntry::clear() {
   this->is_cpu_player = 0;
 }
 
-Server::Server(shared_ptr<Lobby> lobby,
-    shared_ptr<const CardIndex> card_index,
-    shared_ptr<const MapIndex> map_index,
-    uint32_t behavior_flags,
-    shared_ptr<PSOLFGEncryption> random_crypt,
-    shared_ptr<const Tournament> tournament)
+Server::Server(shared_ptr<Lobby> lobby, Options&& options)
     : lobby(lobby),
-      card_index(card_index),
-      map_index(map_index),
-      behavior_flags(behavior_flags),
-      random_crypt(random_crypt),
-      last_chosen_map(tournament ? tournament->get_map() : nullptr),
-      tournament(tournament),
+      options(std::move(options)),
+      last_chosen_map(this->options.tournament ? this->options.tournament->get_map() : nullptr),
       tournament_match_result_sent(false),
       override_environment_number(0xFF),
       battle_finished(false),
@@ -204,7 +195,7 @@ void Server::send(const void* data, size_t size) const {
   }
 
   string masked_data;
-  if (!(this->behavior_flags & BehaviorFlag::DISABLE_MASKING)) {
+  if (!(this->options.behavior_flags & BehaviorFlag::DISABLE_MASKING)) {
     if (size >= 8) {
       masked_data.assign(reinterpret_cast<const char*>(data), size);
       uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
@@ -238,12 +229,16 @@ void Server::send_6xB4x46() const {
 
   G_ServerVersionStrings_GC_Ep3_6xB4x46 cmd46;
   cmd46.version_signature = VERSION_SIGNATURE;
-  cmd46.date_str1 = format_time(this->card_index->definitions_mtime() * 1000000);
+  cmd46.date_str1 = format_time(this->options.card_index->definitions_mtime() * 1000000);
+  string date_str2 = string_printf(
+      "Lobby:%08" PRIX32 " Random:%08" PRIX32 "+%08" PRIX32,
+      l->lobby_id,
+      this->options.random_crypt->seed(),
+      this->options.random_crypt->absolute_offset());
   if (this->last_chosen_map) {
-    cmd46.date_str2 = string_printf("Lobby:%08" PRIX32 " Random:%08" PRIX32 "+%08" PRIX32 " Map:%08" PRIX32, l->lobby_id, this->random_crypt->seed(), this->random_crypt->absolute_offset(), this->last_chosen_map->map.map_number.load());
-  } else {
-    cmd46.date_str2 = string_printf("Lobby:%08" PRIX32 " Random:%08" PRIX32 "+%08" PRIX32, l->lobby_id, this->random_crypt->seed(), this->random_crypt->absolute_offset());
+    date_str2 += string_printf(" Map:%08" PRIX32, this->last_chosen_map->map.map_number.load());
   }
+  cmd46.date_str2 = date_str2;
   this->send(cmd46);
 }
 
@@ -307,7 +302,7 @@ void Server::send_commands_for_joining_spectator(Channel& c, bool is_trial) cons
 
 __attribute__((format(printf, 2, 3))) void Server::send_debug_message_printf(const char* fmt, ...) const {
   auto l = this->lobby.lock();
-  if (l && (this->behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
+  if (l && (this->options.behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
     va_list va;
     va_start(va, fmt);
     std::string buf = string_vprintf(fmt, va);
@@ -408,7 +403,7 @@ void Server::draw_phase_before() {
 
 shared_ptr<const CardIndex::CardEntry> Server::definition_for_card_ref(uint16_t card_ref) const {
   try {
-    return this->card_index->definition_for_id(this->card_id_for_card_ref(card_ref));
+    return this->options.card_index->definition_for_id(this->card_id_for_card_ref(card_ref));
   } catch (const out_of_range&) {
     return nullptr;
   }
@@ -667,7 +662,7 @@ void Server::copy_player_states_to_prev_states() {
 
 shared_ptr<const CardIndex::CardEntry> Server::definition_for_card_id(uint16_t card_id) const {
   try {
-    return this->card_index->definition_for_id(card_id);
+    return this->options.card_index->definition_for_id(card_id);
   } catch (const out_of_range&) {
     return nullptr;
   }
@@ -971,12 +966,12 @@ uint32_t Server::get_random(uint32_t max) {
   // The original implementation was essentially:
   // return (static_cast<double>(this->random_crypt->next() >> 16) / 65536.0) * max
   // This is unnecessarily complicated, so we instead just do this:
-  return this->random_crypt->next() % max;
+  return this->options.random_crypt->next() % max;
 }
 
 float Server::get_random_float_0_1() {
   // This lacks some precision, but matches the original implementation.
-  return (static_cast<double>(this->random_crypt->next() >> 16) / 65536.0);
+  return (static_cast<double>(this->options.random_crypt->next() >> 16) / 65536.0);
 }
 
 uint32_t Server::get_round_num() const {
@@ -1020,45 +1015,55 @@ void Server::move_phase_after() {
       continue;
     }
 
-    static const uint16_t TRAP_CARD_IDS[5][5] = {
-        // Dice Fever, Heavy Fog, Muscular, Immortality, Snail Pace
-        {0x00F7, 0x010F, 0x012E, 0x013B, 0x013C},
-        // Gold Rush, Charity, Requiem
-        {0x0131, 0x012B, 0x0133, 0x0000, 0x0000},
-        // Powerless Rain, Trash 1, Empty Hand, Skip Draw
-        {0x00FA, 0x0125, 0x0126, 0x0137, 0x0000},
-        // Brave Wind, Homesick, Fly
-        {0x00FB, 0x014E, 0x0107, 0x0000, 0x0000},
-        // Dice+1, Battle Royale, Reverse Card, Giant Garden, Fix
-        {0x00F6, 0x0242, 0x014B, 0x0145, 0x012D}};
-    static size_t TRAP_CARD_ID_COUNTS[5] = {5, 3, 4, 3, 5};
+    static const array<vector<uint16_t>, 5> default_trap_card_ids = {
+        // Red: Dice Fever, Heavy Fog, Muscular, Immortality, Snail Pace
+        vector<uint16_t>{0x00F7, 0x010F, 0x012E, 0x013B, 0x013C},
+        // Blue: Gold Rush, Charity, Requiem
+        vector<uint16_t>{0x0131, 0x012B, 0x0133},
+        // Purple: Powerless Rain, Trash 1, Empty Hand, Skip Draw
+        vector<uint16_t>{0x00FA, 0x0125, 0x0126, 0x0137},
+        // Green: Brave Wind, Homesick, Fly
+        vector<uint16_t>{0x00FB, 0x014E, 0x0107},
+        // Yellow: Dice+1, Battle Royale, Reverse Card, Giant Garden, Fix
+        vector<uint16_t>{0x00F6, 0x0242, 0x014B, 0x0145, 0x012D}};
+
+    const vector<uint16_t>* trap_card_ids = &this->options.trap_card_ids.at(trap_type);
+    if (trap_card_ids->empty()) {
+      trap_card_ids = &default_trap_card_ids.at(trap_type);
+    }
 
     // This is the original implementation. We do something smarter instead.
     // uint16_t trap_card_id = 0;
     // while (trap_card_id == 0) {
     //   trap_card_id = TRAP_CARD_IDS[trap_type][this->get_random(5)];
     // }
-    size_t trap_card_id_index = this->get_random(TRAP_CARD_ID_COUNTS[trap_type]);
-    uint16_t trap_card_id = TRAP_CARD_IDS[trap_type][trap_card_id_index];
+    uint16_t trap_card_id = 0xFFFF;
+    if (trap_card_ids->size() == 1) {
+      trap_card_id = trap_card_ids->at(0);
+    } else if (trap_card_ids->size() > 1) {
+      trap_card_id = trap_card_ids->at(this->get_random(trap_card_ids->size()));
+    }
 
-    for (size_t client_id = 0; client_id < 4; client_id++) {
-      auto ps = this->player_states[client_id];
-      if (ps) {
-        auto sc_card = ps->get_sc_card();
-        if (sc_card &&
-            (abs(sc_card->loc.x - trap_x) < 2) &&
-            (abs(sc_card->loc.y - trap_y) < 2) &&
-            ps->replace_assist_card_by_id(trap_card_id)) {
-          G_Unknown_GC_Ep3_6xB4x2C cmd;
-          cmd.change_type = 0x01;
-          cmd.client_id = client_id;
-          cmd.card_refs.clear(0xFFFF);
-          cmd.loc.x = trap_x;
-          cmd.loc.y = trap_y;
-          cmd.loc.direction = static_cast<Direction>(trap_type);
-          cmd.unknown_a2[0] = trap_card_id;
-          cmd.unknown_a2[1] = 0xFFFFFFFF;
-          this->send(cmd);
+    if (trap_card_id != 0xFFFF) {
+      for (size_t client_id = 0; client_id < 4; client_id++) {
+        auto ps = this->player_states[client_id];
+        if (ps) {
+          auto sc_card = ps->get_sc_card();
+          if (sc_card &&
+              (abs(sc_card->loc.x - trap_x) < 2) &&
+              (abs(sc_card->loc.y - trap_y) < 2) &&
+              ps->replace_assist_card_by_id(trap_card_id)) {
+            G_Unknown_GC_Ep3_6xB4x2C cmd;
+            cmd.change_type = 0x01;
+            cmd.client_id = client_id;
+            cmd.card_refs.clear(0xFFFF);
+            cmd.loc.x = trap_x;
+            cmd.loc.y = trap_y;
+            cmd.loc.direction = static_cast<Direction>(trap_type);
+            cmd.unknown_a2[0] = trap_card_id;
+            cmd.unknown_a2[1] = 0xFFFFFFFF;
+            this->send(cmd);
+          }
         }
       }
     }
@@ -1543,7 +1548,7 @@ G_SetStateFlags_GC_Ep3_6xB4x03 Server::prepare_6xB4x03() const {
   cmd.state.team_dice_boost[0] = this->team_dice_boost[0];
   cmd.state.team_dice_boost[1] = this->team_dice_boost[1];
   cmd.state.first_team_turn = this->first_team_turn;
-  cmd.state.tournament_flag = this->tournament ? 1 : 0;
+  cmd.state.tournament_flag = this->options.tournament ? 1 : 0;
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (!ps) {
@@ -1952,8 +1957,8 @@ void Server::handle_CAx13_update_map_during_setup(const string& data) {
 
     // If this match is part of a tournament, ignore the rules sent by the
     // client and use the tournament rules instead.
-    if (this->tournament) {
-      this->map_and_rules->rules = this->tournament->get_rules();
+    if (this->options.tournament) {
+      this->map_and_rules->rules = this->options.tournament->get_rules();
     }
 
     if (this->override_environment_number != 0xFF) {
@@ -1961,7 +1966,7 @@ void Server::handle_CAx13_update_map_during_setup(const string& data) {
       this->override_environment_number = 0xFF;
     }
     this->overlay_state = in_cmd.overlay_state;
-    if (this->behavior_flags & BehaviorFlag::DISABLE_TIME_LIMITS) {
+    if (this->options.behavior_flags & BehaviorFlag::DISABLE_TIME_LIMITS) {
       this->map_and_rules->rules.overall_time_limit = 0;
       this->map_and_rules->rules.phase_time_limit = 0;
     }
@@ -1989,9 +1994,9 @@ void Server::handle_CAx14_update_deck_during_setup(const string& data) {
       }
       DeckEntry entry = in_cmd.entry;
       int32_t verify_error = 0;
-      if (!(this->behavior_flags & BehaviorFlag::SKIP_DECK_VERIFY)) {
+      if (!(this->options.behavior_flags & BehaviorFlag::SKIP_DECK_VERIFY)) {
         // Note: Sega's original implementation doesn't use the card counts here
-        if (this->behavior_flags & BehaviorFlag::IGNORE_CARD_COUNTS) {
+        if (this->options.behavior_flags & BehaviorFlag::IGNORE_CARD_COUNTS) {
           verify_error = this->ruler_server->verify_deck(entry.card_ids);
         } else {
           verify_error = this->ruler_server->verify_deck(entry.card_ids,
@@ -2001,7 +2006,7 @@ void Server::handle_CAx14_update_deck_during_setup(const string& data) {
       if (verify_error) {
         throw runtime_error(string_printf("invalid deck: -0x%" PRIX32, verify_error));
       }
-      if (!(this->behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
+      if (!(this->options.behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rank_cards_with_Attack(entry.card_ids);
       }
       *this->deck_entries[in_cmd.client_id] = in_cmd.entry;
@@ -2309,7 +2314,7 @@ void Server::handle_CAx40_map_list_request(const string& data) {
     throw runtime_error("lobby is deleted");
   }
 
-  const auto& list_data = this->map_index->get_compressed_list(l->count_clients());
+  const auto& list_data = this->options.map_index->get_compressed_list(l->count_clients());
 
   StringWriter w;
   uint32_t subcommand_size = (list_data.size() + sizeof(G_MapList_GC_Ep3_6xB6x40) + 3) & (~3);
@@ -2337,7 +2342,7 @@ void Server::handle_CAx41_map_request(const string& data) {
     throw runtime_error("lobby is deleted");
   }
 
-  this->last_chosen_map = this->map_index->definition_for_number(cmd.map_number);
+  this->last_chosen_map = this->options.map_index->definition_for_number(cmd.map_number);
   auto out_cmd = this->prepare_6xB6x41_map_definition(this->last_chosen_map, l->flags & Lobby::Flag::IS_EP3_TRIAL);
   send_command(l, 0x6C, 0x00, out_cmd);
   for (auto watcher_l : l->watcher_lobbies) {

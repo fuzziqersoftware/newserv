@@ -101,7 +101,7 @@ void ServerState::init() {
   this->load_level_table();
   this->load_item_tables();
   this->load_ep3_data();
-  this->resolve_ep3_card_auction_pool();
+  this->resolve_ep3_card_names();
   this->load_quest_index();
   this->compile_functions();
   this->load_dol_files();
@@ -589,6 +589,20 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
             .card_name = it.first});
   }
 
+  const auto& ep3_trap_cards_json = json.get("Episode3TrapCards", JSON::list()).as_list();
+  if (!ep3_trap_cards_json.empty()) {
+    if (ep3_trap_cards_json.size() != 5) {
+      throw runtime_error("Episode3TrapCards must be a list of 5 lists");
+    }
+    this->ep3_trap_card_names.clear();
+    for (const auto& trap_type_it : ep3_trap_cards_json) {
+      auto& names = this->ep3_trap_card_names.emplace_back();
+      for (const auto& card_it : trap_type_it->as_list()) {
+        names.emplace_back(card_it->as_string());
+      }
+    }
+  }
+
   if (!this->is_replay) {
     for (const auto& it : json.get("Episode3LobbyBanners", JSON::list()).as_list()) {
       Image img("system/ep3/banners/" + it->at(2).as_string());
@@ -923,14 +937,33 @@ void ServerState::load_ep3_data() {
   config_log.info("Loaded Episode 3 tournament state");
 }
 
-void ServerState::resolve_ep3_card_auction_pool() {
-  config_log.info("Resolving Episode 3 card auction pool");
+void ServerState::resolve_ep3_card_names() {
+  config_log.info("Resolving Episode 3 card names");
   for (auto& e : this->ep3_card_auction_pool) {
     try {
       const auto& card = this->ep3_card_index->definition_for_name_normalized(e.card_name);
       e.card_id = card->def.card_id;
     } catch (const out_of_range&) {
-      throw runtime_error(string_printf("Ep3 card \"%s\" does not exist", e.card_name.c_str()));
+      throw runtime_error(string_printf("Ep3 card \"%s\" in auction pool does not exist", e.card_name.c_str()));
+    }
+  }
+
+  for (size_t z = 0; z < this->ep3_trap_card_ids.size(); z++) {
+    auto& ids = this->ep3_trap_card_ids[z];
+    ids.clear();
+    if (z < this->ep3_trap_card_names.size()) {
+      auto& names = this->ep3_trap_card_names[z];
+      for (const auto& name : names) {
+        try {
+          const auto& card = this->ep3_card_index->definition_for_name_normalized(name);
+          if (card->def.type != Episode3::CardType::ASSIST) {
+            throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list is not an assist card", name.c_str()));
+          }
+          ids.emplace_back(card->def.card_id);
+        } catch (const out_of_range&) {
+          throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list does not exist", name.c_str()));
+        }
+      }
     }
   }
 }

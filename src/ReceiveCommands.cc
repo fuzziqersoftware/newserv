@@ -1303,13 +1303,15 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, const string& da
     }
     auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : nullptr;
     bool is_trial = (l->flags & Lobby::Flag::IS_EP3_TRIAL);
-    l->ep3_server = make_shared<Episode3::Server>(
-        l,
-        is_trial ? s->ep3_card_index_trial : s->ep3_card_index,
-        s->ep3_map_index,
-        s->ep3_behavior_flags,
-        l->random_crypt,
-        tourn);
+    Episode3::Server::Options options = {
+        .card_index = is_trial ? s->ep3_card_index_trial : s->ep3_card_index,
+        .map_index = s->ep3_map_index,
+        .behavior_flags = s->ep3_behavior_flags,
+        .random_crypt = l->random_crypt,
+        .tournament = tourn,
+        .trap_card_ids = s->ep3_trap_card_ids,
+    };
+    l->ep3_server = make_shared<Episode3::Server>(l, std::move(options));
     l->ep3_server->init();
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {

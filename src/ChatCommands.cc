@@ -1338,8 +1338,8 @@ static void server_command_ep3_infinite_time(shared_ptr<Client> c, const std::u1
     return;
   }
 
-  l->ep3_server->behavior_flags ^= Episode3::BehaviorFlag::DISABLE_TIME_LIMITS;
-  bool infinite_time_enabled = (l->ep3_server->behavior_flags & Episode3::BehaviorFlag::DISABLE_TIME_LIMITS);
+  l->ep3_server->options.behavior_flags ^= Episode3::BehaviorFlag::DISABLE_TIME_LIMITS;
+  bool infinite_time_enabled = (l->ep3_server->options.behavior_flags & Episode3::BehaviorFlag::DISABLE_TIME_LIMITS);
   send_text_message(l, infinite_time_enabled ? u"$C6Infinite time enabled" : u"$C6Infinite time disabled");
 }
 

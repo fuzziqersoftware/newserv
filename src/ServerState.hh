@@ -109,6 +109,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
     std::string card_name;
   };
   std::vector<CardAuctionPoolEntry> ep3_card_auction_pool;
+  std::vector<std::vector<std::string>> ep3_trap_card_names;
+  std::array<std::vector<uint16_t>, 5> ep3_trap_card_ids;
   struct Ep3LobbyBannerEntry {
     uint32_t type = 1;
     uint32_t which; // See B9 documentation in CommandFormats.hh
@@ -207,7 +209,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_level_table();
   void load_item_tables();
   void load_ep3_data();
-  void resolve_ep3_card_auction_pool();
+  void resolve_ep3_card_names();
   void load_quest_index();
   void compile_functions();
   void load_dol_files();
