@@ -433,21 +433,22 @@ void IPStackSimulator::on_client_udp_frame(
       }
 
       StringWriter w;
-      w.put(DHCPHeader{
-          .opcode = 2, // Response
-          .hardware_type = 1, // Ethernet
-          .hardware_address_length = 6, // Ethernet
-          .hops = 0,
-          .transaction_id = dhcp.transaction_id,
-          .seconds_elapsed = 0,
-          .flags = 0,
-          .client_ip_address = 0,
-          .your_ip_address = r_ipv4.dest_addr,
-          .server_ip_address = r_ipv4.src_addr,
-          .gateway_ip_address = 0,
-          .client_hardware_address = c->mac_addr,
-          .magic = 0x63825363,
-      });
+      DHCPHeader r_dhcp;
+      r_dhcp.opcode = 2; // Response
+      r_dhcp.hardware_type = 1; // Ethernet
+      r_dhcp.hardware_address_length = 6; // Ethernet
+      r_dhcp.hops = 0;
+      r_dhcp.transaction_id = dhcp.transaction_id;
+      r_dhcp.seconds_elapsed = 0;
+      r_dhcp.flags = 0;
+      r_dhcp.client_ip_address = 0;
+      r_dhcp.your_ip_address = r_ipv4.dest_addr;
+      r_dhcp.server_ip_address = r_ipv4.src_addr;
+      r_dhcp.gateway_ip_address = 0;
+      r_dhcp.client_hardware_address = c->mac_addr;
+      r_dhcp.unused_bootp_legacy.clear(0);
+      r_dhcp.magic = 0x63825363;
+      w.put(r_dhcp);
       // DHCP message type option
       w.put_u8(53);
       w.put_u8(1);
