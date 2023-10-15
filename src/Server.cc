@@ -233,11 +233,15 @@ void Server::listen(
     int port,
     GameVersion version,
     ServerBehavior behavior) {
-  int fd = ::listen(addr, port, SOMAXCONN);
-  string netloc_str = render_netloc(addr, port);
-  server_log.info("Listening on TCP interface %s on fd %d as %s",
-      netloc_str.c_str(), fd, addr_str.c_str());
-  this->add_socket(addr_str, fd, version, behavior);
+  if (port == 0) {
+    this->listen(addr_str, addr, version, behavior);
+  } else {
+    int fd = ::listen(addr, port, SOMAXCONN);
+    string netloc_str = render_netloc(addr, port);
+    server_log.info("Listening on TCP interface %s on fd %d as %s",
+        netloc_str.c_str(), fd, addr_str.c_str());
+    this->add_socket(addr_str, fd, version, behavior);
+  }
 }
 
 void Server::listen(const std::string& addr_str, int port, GameVersion version, ServerBehavior behavior) {

@@ -62,8 +62,8 @@ string IPStackSimulator::str_for_tcp_connection(shared_ptr<const IPClient> c,
 }
 
 IPStackSimulator::IPStackSimulator(
-    std::shared_ptr<struct event_base> base,
-    std::shared_ptr<ServerState> state)
+    shared_ptr<struct event_base> base,
+    shared_ptr<ServerState> state)
     : base(base),
       state(state),
       pcap_text_log_file(state->ip_stack_debug ? fopen("IPStackSimulator-Log.txt", "wt") : nullptr) {
@@ -77,20 +77,29 @@ IPStackSimulator::~IPStackSimulator() {
   }
 }
 
-void IPStackSimulator::listen(const std::string& socket_path) {
-  this->add_socket(::listen(socket_path, 0, SOMAXCONN));
+void IPStackSimulator::listen(const string& name, const string& socket_path) {
+  int fd = ::listen(socket_path, 0, SOMAXCONN);
+  ip_stack_simulator_log.info("Listening on Unix socket %s on fd %d as %s", socket_path.c_str(), fd, name.c_str());
+  this->add_socket(name, fd);
 }
 
-void IPStackSimulator::listen(const std::string& addr, int port) {
-  this->add_socket(::listen(addr, port, SOMAXCONN));
+void IPStackSimulator::listen(const string& name, const string& addr, int port) {
+  if (port == 0) {
+    this->listen(name, addr);
+  } else {
+    int fd = ::listen(addr, port, SOMAXCONN);
+    string netloc_str = render_netloc(addr, port);
+    ip_stack_simulator_log.info("Listening on TCP interface %s on fd %d as %s", netloc_str.c_str(), fd, name.c_str());
+    this->add_socket(name, fd);
+  }
 }
 
-void IPStackSimulator::listen(int port) {
-  this->add_socket(::listen("", port, SOMAXCONN));
+void IPStackSimulator::listen(const string& name, int port) {
+  this->listen(name, "", port);
 }
 
-void IPStackSimulator::add_socket(int fd) {
-  this->listeners.emplace(
+void IPStackSimulator::add_socket(const string& name, int fd) {
+  unique_listener l(
       evconnlistener_new(
           this->base.get(),
           IPStackSimulator::dispatch_on_listen_accept,
@@ -99,6 +108,7 @@ void IPStackSimulator::add_socket(int fd) {
           0,
           fd),
       evconnlistener_free);
+  this->listening_sockets.emplace(piecewise_construct, forward_as_tuple(fd), forward_as_tuple(name, std::move(l)));
 }
 
 uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_addr) {
@@ -112,10 +122,28 @@ uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_ad
   }
 }
 
-IPStackSimulator::IPClient::IPClient(struct bufferevent* bev)
-    : bev(bev, bufferevent_free),
-      ipv4_addr(0) {
-  this->mac_addr.clear(0);
+IPStackSimulator::IPClient::IPClient(shared_ptr<IPStackSimulator> sim, struct bufferevent* bev)
+    : sim(sim),
+      bev(bev, bufferevent_free),
+      mac_addr(0),
+      ipv4_addr(0),
+      idle_timeout_event(event_new(sim->base.get(), -1, EV_TIMEOUT, &IPStackSimulator::IPClient::dispatch_on_idle_timeout, this), event_free) {
+  struct timeval tv = usecs_to_timeval(60 * 1000 * 1000);
+  event_add(this->idle_timeout_event.get(), &tv);
+}
+
+void IPStackSimulator::IPClient::dispatch_on_idle_timeout(evutil_socket_t, short, void* ctx) {
+  reinterpret_cast<IPStackSimulator::IPClient*>(ctx)->on_idle_timeout();
+}
+
+void IPStackSimulator::IPClient::on_idle_timeout() {
+  auto sim = this->sim.lock();
+  if (sim) {
+    ip_stack_simulator_log.info("Idle timeout expired on virtual network %d", bufferevent_getfd(this->bev.get()));
+    sim->disconnect_client(this->bev.get());
+  } else {
+    ip_stack_simulator_log.info("Idle timeout expired on virtual network %d, but simulator is missing", bufferevent_getfd(this->bev.get()));
+  }
 }
 
 static void flush_and_free_bufferevent(struct bufferevent* bev) {
@@ -139,6 +167,11 @@ IPStackSimulator::IPClient::TCPConnection::TCPConnection()
       bytes_received(0),
       bytes_sent(0) {}
 
+void IPStackSimulator::disconnect_client(struct bufferevent* bev) {
+  ip_stack_simulator_log.info("Virtual network %d disconnected", bufferevent_getfd(bev));
+  this->bev_to_client.erase(bev);
+}
+
 void IPStackSimulator::dispatch_on_listen_accept(
     struct evconnlistener* listener, evutil_socket_t fd,
     struct sockaddr* address, int socklen, void* ctx) {
@@ -149,12 +182,21 @@ void IPStackSimulator::dispatch_on_listen_accept(
 void IPStackSimulator::on_listen_accept(struct evconnlistener* listener,
     evutil_socket_t fd, struct sockaddr*, int) {
   int listen_fd = evconnlistener_get_fd(listener);
-  ip_stack_simulator_log.info("Virtual network fd %d connected via fd %d", fd, listen_fd);
+
+  const ListeningSocket* listening_socket;
+  try {
+    listening_socket = &this->listening_sockets.at(listen_fd);
+  } catch (const out_of_range&) {
+    ip_stack_simulator_log.info("Virtual network %d connected via unknown listener %d; disconnecting", fd, listen_fd);
+    close(fd);
+    return;
+  }
+
+  ip_stack_simulator_log.info("Virtual network %d connected via %s", fd, listening_socket->name.c_str());
 
   struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  shared_ptr<IPClient> c(new IPClient(bev));
-  c->sim = this;
+  shared_ptr<IPClient> c(new IPClient(this->shared_from_this(), bev));
   this->bev_to_client.emplace(make_pair(bev, c));
 
   bufferevent_setcb(bev, &IPStackSimulator::dispatch_on_client_input, nullptr,
@@ -218,16 +260,14 @@ void IPStackSimulator::dispatch_on_client_error(
     struct bufferevent* bev, short events, void* ctx) {
   reinterpret_cast<IPStackSimulator*>(ctx)->on_client_error(bev, events);
 }
-void IPStackSimulator::on_client_error(struct bufferevent* bev,
-    short events) {
+void IPStackSimulator::on_client_error(struct bufferevent* bev, short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
     ip_stack_simulator_log.warning("Virtual network caused error %d (%s)", err,
         evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    ip_stack_simulator_log.info("Virtual network fd %d disconnected", bufferevent_getfd(bev));
-    this->bev_to_client.erase(bev);
+    this->disconnect_client(bev);
   }
 }
 
@@ -971,7 +1011,12 @@ void IPStackSimulator::dispatch_on_resend_push(evutil_socket_t, short, void* ctx
   if (!c.get()) {
     ip_stack_simulator_log.warning("Resend push event triggered for deleted client; ignoring");
   } else {
-    c->sim->on_resend_push(c, *conn);
+    auto sim = c->sim.lock();
+    if (!sim) {
+      ip_stack_simulator_log.warning("Resend push event triggered for client on deleted simulator; ignoring");
+    } else {
+      sim->on_resend_push(c, *conn);
+    }
   }
 }
 
@@ -985,7 +1030,12 @@ void IPStackSimulator::dispatch_on_server_input(struct bufferevent*, void* ctx) 
   if (!c.get()) {
     ip_stack_simulator_log.warning("Server input event triggered for deleted client; ignoring");
   } else {
-    c->sim->on_server_input(c, *conn);
+    auto sim = c->sim.lock();
+    if (!sim) {
+      ip_stack_simulator_log.warning("Server input event triggered for client on deleted simulator; ignoring");
+    } else {
+      sim->on_server_input(c, *conn);
+    }
   }
 }
 
@@ -993,6 +1043,9 @@ void IPStackSimulator::on_server_input(shared_ptr<IPClient> c, IPClient::TCPConn
   struct evbuffer* buf = bufferevent_get_input(conn.server_bev.get());
   ip_stack_simulator_log.debug("Server input event: 0x%zX bytes to read",
       evbuffer_get_length(buf));
+
+  struct timeval tv = usecs_to_timeval(60 * 1000 * 1000);
+  event_add(c->idle_timeout_event.get(), &tv);
 
   evbuffer_add_buffer(conn.pending_data.get(), buf);
   this->send_pending_push_frame(c, conn);
@@ -1005,7 +1058,12 @@ void IPStackSimulator::dispatch_on_server_error(
   if (!c.get()) {
     ip_stack_simulator_log.warning("Server error event triggered for deleted client; ignoring");
   } else {
-    c->sim->on_server_error(c, *conn, events);
+    auto sim = c->sim.lock();
+    if (!sim) {
+      ip_stack_simulator_log.warning("Server error event triggered for client on deleted simulator; ignoring");
+    } else {
+      sim->on_server_error(c, *conn, events);
+    }
   }
 }
 

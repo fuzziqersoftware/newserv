@@ -12,17 +12,17 @@
 #include "ServerState.hh"
 #include "Text.hh"
 
-class IPStackSimulator {
+class IPStackSimulator : public std::enable_shared_from_this<IPStackSimulator> {
 public:
   IPStackSimulator(
       std::shared_ptr<struct event_base> base,
       std::shared_ptr<ServerState> state);
   ~IPStackSimulator();
 
-  void listen(const std::string& socket_path);
-  void listen(const std::string& addr, int port);
-  void listen(int port);
-  void add_socket(int fd);
+  void listen(const std::string& name, const std::string& socket_path);
+  void listen(const std::string& name, const std::string& addr, int port);
+  void listen(const std::string& name, int port);
+  void add_socket(const std::string& name, int fd);
 
   static uint32_t connect_address_for_remote_address(uint32_t remote_addr);
 
@@ -36,7 +36,7 @@ private:
   using unique_event = std::unique_ptr<struct event, void (*)(struct event*)>;
 
   struct IPClient {
-    IPStackSimulator* sim;
+    std::weak_ptr<IPStackSimulator> sim;
 
     unique_bufferevent bev;
     parray<uint8_t, 6> mac_addr;
@@ -73,10 +73,24 @@ private:
     };
     std::unordered_map<uint64_t, TCPConnection> tcp_connections;
 
-    IPClient(struct bufferevent* bev);
+    unique_event idle_timeout_event;
+
+    IPClient(std::shared_ptr<IPStackSimulator> sim, struct bufferevent* bev);
+
+    static void dispatch_on_idle_timeout(evutil_socket_t fd, short events, void* ctx);
+    void on_idle_timeout();
   };
 
-  std::unordered_set<unique_listener> listeners;
+  struct ListeningSocket {
+    std::string name;
+    unique_listener listener;
+
+    ListeningSocket(const std::string& name, unique_listener&& l)
+        : name(name),
+          listener(std::move(l)) {}
+  };
+
+  std::unordered_map<int, ListeningSocket> listening_sockets;
   std::unordered_map<struct bufferevent*, std::shared_ptr<IPClient>> bev_to_client;
 
   parray<uint8_t, 6> host_mac_address_bytes;
@@ -84,10 +98,10 @@ private:
 
   FILE* pcap_text_log_file;
 
-  static uint64_t tcp_conn_key_for_connection(
-      const IPClient::TCPConnection& conn);
-  static uint64_t tcp_conn_key_for_client_frame(
-      const IPv4Header& ipv4, const TCPHeader& tcp);
+  void disconnect_client(struct bufferevent* bev);
+
+  static uint64_t tcp_conn_key_for_connection(const IPClient::TCPConnection& conn);
+  static uint64_t tcp_conn_key_for_client_frame(const IPv4Header& ipv4, const TCPHeader& tcp);
   static uint64_t tcp_conn_key_for_client_frame(const FrameInfo& fi);
 
   static std::string str_for_ipv4_netloc(uint32_t addr, uint16_t port);
@@ -103,8 +117,7 @@ private:
 
   static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
   void on_client_input(struct bufferevent* bev);
-  static void dispatch_on_client_error(struct bufferevent* bev, short events,
-      void* ctx);
+  static void dispatch_on_client_error(struct bufferevent* bev, short events, void* ctx);
   void on_client_error(struct bufferevent* bev, short events);
 
   void on_client_frame(std::shared_ptr<IPClient> c, const std::string& frame);
@@ -112,18 +125,15 @@ private:
   void on_client_udp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
   void on_client_tcp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
 
-  static void dispatch_on_resend_push(evutil_socket_t fd, short events,
-      void* ctx);
+  static void dispatch_on_resend_push(evutil_socket_t fd, short events, void* ctx);
   void on_resend_push(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
 
   static void dispatch_on_server_input(struct bufferevent* bev, void* ctx);
   void on_server_input(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
-  static void dispatch_on_server_error(struct bufferevent* bev, short events,
-      void* ctx);
+  static void dispatch_on_server_error(struct bufferevent* bev, short events, void* ctx);
   void on_server_error(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn, short events);
 
-  void send_pending_push_frame(
-      std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
+  void send_pending_push_frame(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
   void send_tcp_frame(
       std::shared_ptr<IPClient> c,
       IPClient::TCPConnection& conn,

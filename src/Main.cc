@@ -2042,16 +2042,15 @@ int main(int argc, char** argv) {
           }
         }
 
-#ifndef PHOSG_WINDOWS
         if (!state->ip_stack_addresses.empty()) {
           config_log.info("Starting IP stack simulator");
           ip_stack_simulator.reset(new IPStackSimulator(base, state));
           for (const auto& it : state->ip_stack_addresses) {
             auto netloc = parse_netloc(it);
-            ip_stack_simulator->listen(netloc.first, netloc.second);
+            string spec = (netloc.second == 0) ? ("T-IPS-" + netloc.first) : string_printf("T-IPS-%hu", netloc.second);
+            ip_stack_simulator->listen(spec, netloc.first, netloc.second);
           }
         }
-#endif
 
       } else {
         throw logic_error("invalid behavior");
