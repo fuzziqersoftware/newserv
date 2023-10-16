@@ -18,14 +18,14 @@ struct ProbabilityTable {
 
   void push(ItemT item) {
     if (this->count == MaxCount) {
-      throw runtime_error("push to full probability table");
+      throw std::runtime_error("push to full probability table");
     }
     this->items[this->count++] = item;
   }
 
   ItemT pop() {
     if (this->count == 0) {
-      throw runtime_error("pop from empty probability table");
+      throw std::runtime_error("pop from empty probability table");
     }
     return this->items[--this->count];
   }
@@ -41,7 +41,7 @@ struct ProbabilityTable {
 
   ItemT sample(PSOLFGEncryption& random_crypt) const {
     if (this->count == 0) {
-      throw runtime_error("pop from empty probability table");
+      throw std::runtime_error("pop from empty probability table");
     } else if (this->count == 1) {
       return this->items[0];
     } else {
@@ -303,7 +303,7 @@ public:
   using WeightTableEntry32 = WeightTableEntry<be_uint32_t>;
 
 protected:
-  std::shared_ptr<const string> data;
+  std::shared_ptr<const std::string> data;
   StringReader r;
 
   struct TableSpec {
@@ -320,7 +320,7 @@ protected:
     const T* entries = &r.pget<T>(
         spec.offset + index * spec.entries_per_table * sizeof(T),
         spec.entries_per_table * sizeof(T));
-    return make_pair(entries, spec.entries_per_table);
+    return std::make_pair(entries, spec.entries_per_table);
   }
 };
 
@@ -418,7 +418,7 @@ private:
       uint8_t section_id) const;
   int8_t get_luck(uint32_t start_offset, uint8_t delta_index) const;
 
-  std::shared_ptr<const string> data;
+  std::shared_ptr<const std::string> data;
   StringReader r;
 
   struct DeltaProbabilityEntry {

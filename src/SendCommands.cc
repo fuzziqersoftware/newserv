@@ -1276,7 +1276,7 @@ void send_quest_menu_t(
   auto v = c->quest_version();
   vector<EntryT> entries;
   for (const auto& quest : quests) {
-    auto vq = quest->version(v);
+    auto vq = quest->version(v, c->language());
     if (!vq) {
       continue;
     }
@@ -2389,7 +2389,7 @@ void send_ep3_tournament_details(
     shared_ptr<const Episode3::Tournament> tourn) {
   S_TournamentGameDetails_GC_Ep3_E3 cmd;
   cmd.name = tourn->get_name();
-  cmd.map_name = tourn->get_map()->map.name;
+  cmd.map_name = tourn->get_map()->version(c->language())->map->name;
   cmd.rules = tourn->get_rules();
   const auto& teams = tourn->all_teams();
   for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
@@ -2430,7 +2430,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     S_TournamentGameDetails_GC_Ep3_E3 cmd;
     cmd.name = encode_sjis(l->name);
 
-    cmd.map_name = tourn->get_map()->map.name;
+    cmd.map_name = tourn->get_map()->version(c->language())->map->name;
     cmd.rules = tourn->get_rules();
 
     const auto& teams = tourn->all_teams();
@@ -2546,7 +2546,7 @@ void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
 
   G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D cmd;
   cmd.rules = tourn->get_rules();
-  cmd.map_number = tourn->get_map()->map.map_number.load();
+  cmd.map_number = tourn->get_map()->map_number;
   cmd.player_slot = 0xFF;
 
   for (size_t z = 0; z < 4; z++) {
@@ -2862,9 +2862,10 @@ bool send_ep3_start_tournament_deck_select_if_all_clients_ready(shared_ptr<Lobby
 
   // If they're all done, start deck selection
   if (x == l->max_clients) {
-    string data = Episode3::Server::prepare_6xB6x41_map_definition(
-        tourn->get_map(), l->flags & Lobby::Flag::IS_EP3_TRIAL);
-    send_command(l, 0x6C, 0x00, data);
+    if (!l->ep3_server) {
+      l->create_ep3_server();
+    }
+    l->ep3_server->send_6xB6x41_to_all_clients();
     for (auto c : l->clients) {
       if (c) {
         send_ep3_set_tournament_player_decks(c);

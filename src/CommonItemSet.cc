@@ -2,6 +2,8 @@
 
 #include "StaticGameData.hh"
 
+using namespace std;
+
 CommonItemSet::CommonItemSet(shared_ptr<const string> data)
     : gsl(data, true) {}
 

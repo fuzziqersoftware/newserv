@@ -471,7 +471,7 @@ Proxy session commands:\n\
   } else if (command_name == "create-tournament") {
     string name = get_quoted_string(command_args);
     string map_name = get_quoted_string(command_args);
-    auto map = this->state->ep3_map_index->definition_for_name(map_name);
+    auto map = this->state->ep3_map_index->for_name(map_name);
     uint32_t num_teams = stoul(get_quoted_string(command_args), nullptr, 0);
     Episode3::Rules rules;
     rules.set_defaults();

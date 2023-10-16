@@ -6,8 +6,6 @@
 
 #include "Text.hh"
 
-using namespace std;
-
 enum class GVRDataFormat : uint8_t {
   INTENSITY_4 = 0x00,
   INTENSITY_8 = 0x01,
@@ -21,4 +19,4 @@ enum class GVRDataFormat : uint8_t {
   DXT1 = 0x0E,
 };
 
-string encode_gvm(const Image& img, GVRDataFormat data_format);
+std::string encode_gvm(const Image& img, GVRDataFormat data_format);

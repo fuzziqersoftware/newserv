@@ -55,7 +55,7 @@ inline void send_command_excluding_client(std::shared_ptr<Lobby> l,
 void send_command_if_not_loading(std::shared_ptr<Lobby> l,
     uint16_t command, uint32_t flag, const void* data, size_t size);
 inline void send_command_if_not_loading(std::shared_ptr<Lobby> l,
-    uint16_t command, uint32_t flag, const string& data) {
+    uint16_t command, uint32_t flag, const std::string& data) {
   send_command_if_not_loading(l, command, flag, data.data(), data.size());
 }
 template <typename StructT>
@@ -208,7 +208,7 @@ void send_chat_message(
     std::shared_ptr<Client> c,
     uint32_t from_guild_card_number,
     const std::u16string& from_name,
-    const u16string& text,
+    const std::u16string& text,
     char private_flags);
 void send_simple_mail(
     std::shared_ptr<Client> c,
@@ -240,9 +240,9 @@ void send_card_search_result(
 void send_guild_card(
     Channel& ch,
     uint32_t guild_card_number,
-    const u16string& name,
-    const u16string& team_name,
-    const u16string& description,
+    const std::u16string& name,
+    const std::u16string& team_name,
+    const std::u16string& description,
     uint8_t section_id,
     uint8_t char_class);
 void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source);
@@ -359,8 +359,8 @@ void send_open_quest_file(
     std::shared_ptr<const std::string> contents,
     QuestFileType type);
 void send_quest_file_chunk(
-    shared_ptr<Client> c,
-    const string& filename,
+    std::shared_ptr<Client> c,
+    const std::string& filename,
     size_t chunk_index,
     const void* data,
     size_t size,

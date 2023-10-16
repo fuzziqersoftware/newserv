@@ -15,6 +15,8 @@
 #include "Text.hh"
 #include "Version.hh"
 
+using namespace std;
+
 FileContentsCache player_files_cache(300 * 1000 * 1000);
 
 void PlayerDispDataDCPCV3::enforce_lobby_join_limits(GameVersion target_version) {

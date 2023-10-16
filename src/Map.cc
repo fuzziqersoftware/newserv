@@ -480,6 +480,13 @@ void Map::add_enemies_from_map_data(
   }
 }
 
+struct DATSectionHeader {
+  le_uint32_t type; // 1 = objects, 2 = enemies. There are other types too
+  le_uint32_t section_size; // Includes this header
+  le_uint32_t area;
+  le_uint32_t data_size;
+} __attribute__((packed));
+
 void Map::add_enemies_from_quest_data(
     Episode episode,
     uint8_t difficulty,
@@ -488,7 +495,7 @@ void Map::add_enemies_from_quest_data(
     size_t size) {
   StringReader r(data, size);
   while (!r.eof()) {
-    const auto& header = r.get<VersionedQuest::DATSectionHeader>();
+    const auto& header = r.get<DATSectionHeader>();
     if (header.type == 0 && header.section_size == 0) {
       break;
     }

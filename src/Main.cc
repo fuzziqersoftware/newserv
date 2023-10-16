@@ -1329,17 +1329,17 @@ int main(int argc, char** argv) {
       string output_filename_base = input_filename;
       if (quest_file_type == QuestFileFormat::BIN_DAT_GCI) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        auto decoded = decode_gci_file(input_filename, num_threads, dec_seed, skip_checksum);
+        auto decoded = decode_gci_data(read_input_data(), num_threads, dec_seed, skip_checksum);
         save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == QuestFileFormat::BIN_DAT_VMS) {
         int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        auto decoded = decode_vms_file(input_filename, num_threads, dec_seed, skip_checksum);
+        auto decoded = decode_vms_data(read_input_data(), num_threads, dec_seed, skip_checksum);
         save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == QuestFileFormat::BIN_DAT_DLQ) {
-        auto decoded = decode_dlq_file(input_filename);
+        auto decoded = decode_dlq_data(read_input_data());
         save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == QuestFileFormat::QST) {
-        auto data = decode_qst_file(input_filename);
+        auto data = decode_qst_data(read_input_data());
         save_file(output_filename_base + ".bin", data.first);
         save_file(output_filename_base + ".dat", data.second);
       } else {
@@ -1353,7 +1353,13 @@ int main(int argc, char** argv) {
         throw invalid_argument("an input filename is required");
       }
 
-      shared_ptr<VersionedQuest> vq(new VersionedQuest(input_filename, cli_quest_version, nullptr));
+      string bin_filename = input_filename;
+      string dat_filename = ends_with(bin_filename, ".bin")
+          ? (bin_filename.substr(0, bin_filename.size() - 3) + "dat")
+          : (bin_filename + ".dat");
+      shared_ptr<string> bin_data(new string(load_file(bin_filename)));
+      shared_ptr<string> dat_data(new string(load_file(dat_filename)));
+      shared_ptr<VersionedQuest> vq(new VersionedQuest(0, 0, cli_quest_version, 0, bin_data, dat_data));
       if (download) {
         vq = vq->create_download_quest();
       }
@@ -1872,9 +1878,15 @@ int main(int argc, char** argv) {
       auto map_ids = map_index.all_numbers();
       log_info("%zu maps", map_ids.size());
       for (uint32_t map_id : map_ids) {
-        auto map = map_index.definition_for_number(map_id);
-        string s = map->map.str(&card_index);
-        fprintf(stdout, "%s\n", s.c_str());
+        auto map = map_index.for_number(map_id);
+        const auto& vms = map->all_versions();
+        for (size_t language = 0; language < vms.size(); language++) {
+          if (!vms[language]) {
+            continue;
+          }
+          string s = vms[language]->map->str(&card_index);
+          fprintf(stdout, "(%c) %s\n", char_for_language_code(language), s.c_str());
+        }
       }
       break;
     }

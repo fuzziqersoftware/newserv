@@ -462,8 +462,8 @@ char abbreviation_for_difficulty(uint8_t difficulty) {
   }
 }
 
-char char_for_language_code(uint8_t language) {
-  switch (language) {
+char char_for_language_code(uint8_t language_code) {
+  switch (language_code) {
     case 0:
       return 'J';
     case 1:
@@ -476,6 +476,28 @@ char char_for_language_code(uint8_t language) {
       return 'S';
     default:
       return '?';
+  }
+}
+
+uint8_t language_code_for_char(char language_char) {
+  switch (language_char) {
+    case 'J':
+    case 'j':
+      return 0;
+    case 'E':
+    case 'e':
+      return 1;
+    case 'G':
+    case 'g':
+      return 2;
+    case 'F':
+    case 'f':
+      return 3;
+    case 'S':
+    case 's':
+      return 4;
+    default:
+      throw runtime_error("unknown language");
   }
 }
 

@@ -584,27 +584,33 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     this->ep3_card_auction_max_size = 0;
   }
 
-  for (const auto& it : json.get("CardAuctionPool", JSON::dict()).as_dict()) {
-    this->ep3_card_auction_pool.emplace_back(
-        CardAuctionPoolEntry{
-            .probability = static_cast<uint64_t>(it.second->at(0).as_int()),
-            .card_id = 0,
-            .min_price = static_cast<uint16_t>(it.second->at(1).as_int()),
-            .card_name = it.first});
+  try {
+    for (const auto& it : json.get_dict("CardAuctionPool")) {
+      this->ep3_card_auction_pool.emplace_back(
+          CardAuctionPoolEntry{
+              .probability = static_cast<uint64_t>(it.second->at(0).as_int()),
+              .card_id = 0,
+              .min_price = static_cast<uint16_t>(it.second->at(1).as_int()),
+              .card_name = it.first});
+    }
+  } catch (const out_of_range&) {
   }
 
-  const auto& ep3_trap_cards_json = json.get("Episode3TrapCards", JSON::list()).as_list();
-  if (!ep3_trap_cards_json.empty()) {
-    if (ep3_trap_cards_json.size() != 5) {
-      throw runtime_error("Episode3TrapCards must be a list of 5 lists");
-    }
-    this->ep3_trap_card_names.clear();
-    for (const auto& trap_type_it : ep3_trap_cards_json) {
-      auto& names = this->ep3_trap_card_names.emplace_back();
-      for (const auto& card_it : trap_type_it->as_list()) {
-        names.emplace_back(card_it->as_string());
+  try {
+    const auto& ep3_trap_cards_json = json.get_list("Episode3TrapCards");
+    if (!ep3_trap_cards_json.empty()) {
+      if (ep3_trap_cards_json.size() != 5) {
+        throw runtime_error("Episode3TrapCards must be a list of 5 lists");
+      }
+      this->ep3_trap_card_names.clear();
+      for (const auto& trap_type_it : ep3_trap_cards_json) {
+        auto& names = this->ep3_trap_card_names.emplace_back();
+        for (const auto& card_it : trap_type_it->as_list()) {
+          names.emplace_back(card_it->as_string());
+        }
       }
     }
+  } catch (const out_of_range&) {
   }
 
   if (!this->is_replay) {

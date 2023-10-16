@@ -108,7 +108,7 @@ public:
       std::shared_ptr<const MapIndex> map_index,
       std::shared_ptr<const COMDeckIndex> com_deck_index,
       const std::string& name,
-      std::shared_ptr<const MapIndex::MapEntry> map,
+      std::shared_ptr<const MapIndex::Map> map,
       const Rules& rules,
       size_t num_teams,
       uint8_t flags);
@@ -124,7 +124,7 @@ public:
   inline const std::string& get_name() const {
     return this->name;
   }
-  inline std::shared_ptr<const MapIndex::MapEntry> get_map() const {
+  inline std::shared_ptr<const MapIndex::Map> get_map() const {
     return this->map;
   }
   inline const Rules& get_rules() const {
@@ -171,7 +171,7 @@ private:
   std::shared_ptr<const COMDeckIndex> com_deck_index;
   JSON source_json;
   std::string name;
-  std::shared_ptr<const MapIndex::MapEntry> map;
+  std::shared_ptr<const MapIndex::Map> map;
   Rules rules;
   size_t num_teams;
   uint8_t flags;
@@ -225,7 +225,7 @@ public:
 
   std::shared_ptr<Tournament> create_tournament(
       const std::string& name,
-      std::shared_ptr<const MapIndex::MapEntry> map,
+      std::shared_ptr<const MapIndex::Map> map,
       const Rules& rules,
       size_t num_teams,
       uint8_t flags);

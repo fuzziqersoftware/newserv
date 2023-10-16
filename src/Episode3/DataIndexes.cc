@@ -1536,6 +1536,91 @@ void StateFlags::clear_FF() {
   this->client_sc_card_types.clear(CardType::INVALID_FF);
 }
 
+void MapDefinition::assert_semantically_equivalent(const MapDefinition& other) const {
+  if (this->map_number != other.map_number) {
+    throw runtime_error("map number not equal");
+  }
+  if (this->width != other.width) {
+    throw runtime_error("width not equal");
+  }
+  if (this->height != other.height) {
+    throw runtime_error("width not equal");
+  }
+  if (this->environment_number != other.environment_number) {
+    throw runtime_error("environment number not equal");
+  }
+  if (this->map_tiles != other.map_tiles) {
+    throw runtime_error("tiles not equal");
+  }
+  if (this->start_tile_definitions != other.start_tile_definitions) {
+    throw runtime_error("start tile definitions not equal");
+  }
+  if (this->modification_tiles != other.modification_tiles) {
+    throw runtime_error("modification tiles not equal");
+  }
+  if (this->unknown_a5 != other.unknown_a5) {
+    throw runtime_error("unknown_a5 not equal");
+  }
+  if (this->default_rules != other.default_rules) {
+    throw runtime_error("default rules not equal");
+  }
+  for (size_t z = 0; z < this->npc_decks.size(); z++) {
+    if (this->npc_decks[z].card_ids != other.npc_decks[z].card_ids) {
+      throw runtime_error("npc deck card IDs not equal");
+    }
+    const auto& this_ai_params = this->npc_ai_params[z];
+    const auto& other_ai_params = other.npc_ai_params[z];
+    if (this_ai_params.unknown_a1 != other_ai_params.unknown_a1) {
+      throw runtime_error("npc AI params unknown_a1 not equal");
+    }
+    if (this_ai_params.is_arkz != other_ai_params.is_arkz) {
+      throw runtime_error("npc AI params is_arkz not equal");
+    }
+    if (this_ai_params.unknown_a2 != other_ai_params.unknown_a2) {
+      throw runtime_error("npc AI params unknown_a2 not equal");
+    }
+    if (this_ai_params.params != other_ai_params.params) {
+      throw runtime_error("npc AI params not equal");
+    }
+  }
+  if (this->unknown_a7 != other.unknown_a7) {
+    throw runtime_error("unknown_a7 not equal");
+  }
+  if (this->npc_ai_params_entry_index != other.npc_ai_params_entry_index) {
+    throw runtime_error("npc AI params entry indexes not equal");
+  }
+  if (this->reward_card_ids != other.reward_card_ids) {
+    throw runtime_error("reward card IDs not equal");
+  }
+  if (this->win_level_override != other.win_level_override) {
+    throw runtime_error("win level override not equal");
+  }
+  if (this->loss_level_override != other.loss_level_override) {
+    throw runtime_error("loss level override not equal");
+  }
+  if (this->field_offset_x != other.field_offset_x) {
+    throw runtime_error("field x offset not equal");
+  }
+  if (this->field_offset_y != other.field_offset_y) {
+    throw runtime_error("field y offset not equal");
+  }
+  if (this->map_category != other.map_category) {
+    throw runtime_error("map category not equal");
+  }
+  if (this->cyber_block_type != other.cyber_block_type) {
+    throw runtime_error("cyber block type not equal");
+  }
+  if (this->unknown_a11 != other.unknown_a11) {
+    throw runtime_error("unknown_a11 not equal");
+  }
+  if (this->unavailable_sc_cards != other.unavailable_sc_cards) {
+    throw runtime_error("unavailable SC cards not equal");
+  }
+  if (this->entry_states != other.entry_states) {
+    throw runtime_error("entry states not equal");
+  }
+}
+
 string MapDefinition::CameraSpec::str() const {
   return string_printf(
       "CameraSpec[a1=(%g %g %g %g %g %g %g %g %g) camera=(%g %g %g) focus=(%g %g %g) a2=(%g %g %g)]",
@@ -2294,31 +2379,157 @@ string CardIndex::normalize_card_name(const string& name) {
   return ret;
 }
 
+MapIndex::VersionedMap::VersionedMap(shared_ptr<const MapDefinition> map, uint8_t language)
+    : map(map),
+      language(language) {}
+
+MapIndex::VersionedMap::VersionedMap(std::string&& compressed_data, uint8_t language)
+    : language(language),
+      compressed_data(std::move(compressed_data)) {
+  string decompressed = prs_decompress(this->compressed_data);
+  if (decompressed.size() != sizeof(MapDefinition)) {
+    throw runtime_error(string_printf(
+        "decompressed data size is incorrect (expected %zu bytes, read %zu bytes)",
+        sizeof(MapDefinition), decompressed.size()));
+  }
+  this->map.reset(new MapDefinition(*reinterpret_cast<const MapDefinition*>(decompressed.data())));
+}
+
+shared_ptr<const MapDefinitionTrial> MapIndex::VersionedMap::trial() const {
+  if (!this->trial_map) {
+    this->trial_map.reset(new MapDefinitionTrial(*this->map));
+  }
+  return this->trial_map;
+}
+
+const std::string& MapIndex::VersionedMap::compressed(bool is_trial) const {
+  if (is_trial) {
+    if (this->compressed_trial_data.empty()) {
+      auto md = this->trial();
+      this->compressed_trial_data = prs_compress(md.get(), sizeof(*md));
+    }
+    return this->compressed_trial_data;
+  } else {
+    if (this->compressed_data.empty()) {
+      this->compressed_data = prs_compress(this->map.get(), sizeof(*this->map));
+    }
+    return this->compressed_data;
+  }
+}
+
+MapIndex::Map::Map(shared_ptr<const VersionedMap> initial_version)
+    : map_number(initial_version->map->map_number),
+      initial_version(initial_version) {
+  this->versions.resize(this->initial_version->language + 1);
+  this->versions[this->initial_version->language] = initial_version;
+}
+
+void MapIndex::Map::add_version(std::shared_ptr<const VersionedMap> vm) {
+  if (this->versions.size() <= vm->language) {
+    this->versions.resize(vm->language + 1);
+  }
+  if (this->versions[vm->language]) {
+    throw runtime_error("map version already exists");
+  }
+  this->initial_version->map->assert_semantically_equivalent(*vm->map);
+  this->versions[vm->language] = vm;
+}
+
+bool MapIndex::Map::has_version(uint8_t language) const {
+  return (this->versions.size() > language) && !!this->versions[language];
+}
+
+shared_ptr<const MapIndex::VersionedMap> MapIndex::Map::version(uint8_t language) const {
+  // If the requested language exists, return it
+  if ((language < this->versions.size()) && this->versions[language]) {
+    return this->versions[language];
+  }
+  // If English exists, return it
+  if ((1 < this->versions.size()) && this->versions[1]) {
+    return this->versions[1];
+  }
+  // Return the first version that exists
+  for (const auto& vm : this->versions) {
+    if (vm) {
+      return vm;
+    }
+  }
+  // This should never happen because Map cannot be constructed without an
+  // initial_version
+  throw logic_error("no map versions exist");
+}
+
 MapIndex::MapIndex(const string& directory) {
-  for (const auto& filename : list_directory(directory)) {
+  for (const auto& filename : list_directory_sorted(directory)) {
     try {
-      shared_ptr<MapEntry> entry;
-
+      string base_filename;
+      string compressed_data;
+      shared_ptr<MapDefinition> decompressed_data;
       if (ends_with(filename, ".mnmd") || ends_with(filename, ".bind")) {
-        entry.reset(new MapEntry(load_object_file<MapDefinition>(directory + "/" + filename)));
+        decompressed_data.reset(new MapDefinition(load_object_file<MapDefinition>(directory + "/" + filename)));
+        base_filename = filename.substr(0, filename.size() - 5);
       } else if (ends_with(filename, ".mnm") || ends_with(filename, ".bin")) {
-        entry.reset(new MapEntry(load_file(directory + "/" + filename)));
+        compressed_data = load_file(directory + "/" + filename);
+        base_filename = filename.substr(0, filename.size() - 4);
+      } else if (ends_with(filename, ".bin.gci") || ends_with(filename, ".mnm.gci")) {
+        compressed_data = decode_gci_data(load_file(directory + "/" + filename));
+        base_filename = filename.substr(0, filename.size() - 8);
       } else if (ends_with(filename, ".gci")) {
-        entry.reset(new MapEntry(decode_gci_file(directory + "/" + filename)));
+        compressed_data = decode_gci_data(load_file(directory + "/" + filename));
+        base_filename = filename.substr(0, filename.size() - 4);
+      } else if (ends_with(filename, ".bin.vms") || ends_with(filename, ".mnm.vms")) {
+        compressed_data = decode_vms_data(load_file(directory + "/" + filename));
+        base_filename = filename.substr(0, filename.size() - 8);
+      } else if (ends_with(filename, ".vms")) {
+        compressed_data = decode_vms_data(load_file(directory + "/" + filename));
+        base_filename = filename.substr(0, filename.size() - 4);
+      } else if (ends_with(filename, ".bin.dlq") || ends_with(filename, ".mnm.dlq")) {
+        compressed_data = decode_dlq_data(load_file(directory + "/" + filename));
+        base_filename = filename.substr(0, filename.size() - 8);
       } else if (ends_with(filename, ".dlq")) {
-        entry.reset(new MapEntry(decode_dlq_file(directory + "/" + filename)));
+        compressed_data = decode_dlq_data(load_file(directory + "/" + filename));
+        base_filename = filename.substr(0, filename.size() - 4);
+      } else {
+        continue; // Silently skip file
       }
 
-      if (entry.get()) {
-        if (!this->maps.emplace(entry->map.map_number, entry).second) {
-          throw runtime_error("duplicate map number");
-        }
-        this->maps_by_name.emplace(entry->map.name, entry);
-        string name = entry->map.name;
-        static_game_data_log.info("Indexed Episode 3 %s %s (%08" PRIX32 "; %s)",
-            entry->map.is_quest() ? "online quest" : "free battle map",
-            filename.c_str(), entry->map.map_number.load(), name.c_str());
+      if (base_filename.size() < 2) {
+        throw runtime_error("filename too short for language code");
       }
+      if (base_filename[base_filename.size() - 2] != '-') {
+        throw runtime_error("language code not present");
+      }
+      uint8_t language = language_code_for_char(base_filename[base_filename.size() - 1]);
+
+      shared_ptr<VersionedMap> vm;
+      if (decompressed_data) {
+        vm.reset(new VersionedMap(decompressed_data, language));
+      } else if (!compressed_data.empty()) {
+        vm.reset(new VersionedMap(std::move(compressed_data), language));
+      } else {
+        throw runtime_error("unknown map file format");
+      }
+
+      string name = format_data_string(vm->map->name);
+      auto map_it = this->maps.find(vm->map->map_number);
+      if (map_it == this->maps.end()) {
+        map_it = this->maps.emplace(vm->map->map_number, new Map(vm)).first;
+        static_game_data_log.info("(%s) Created Episode 3 map %08" PRIX32 " %c (%s; %s)",
+            filename.c_str(),
+            vm->map->map_number.load(),
+            char_for_language_code(vm->language),
+            vm->map->is_quest() ? "quest" : "free",
+            name.c_str());
+      } else {
+        map_it->second->add_version(vm);
+        static_game_data_log.info("(%s) Added Episode 3 map version %08" PRIX32 " %c (%s; %s)",
+            filename.c_str(),
+            vm->map->map_number.load(),
+            char_for_language_code(vm->language),
+            vm->map->is_quest() ? "quest" : "free",
+            name.c_str());
+      }
+      this->maps_by_name.emplace(vm->map->name, map_it->second);
 
     } catch (const exception& e) {
       static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
@@ -2327,51 +2538,28 @@ MapIndex::MapIndex(const string& directory) {
   }
 }
 
-MapIndex::MapEntry::MapEntry(const MapDefinition& map) : map(map) {}
-
-MapIndex::MapEntry::MapEntry(const string& compressed)
-    : compressed_data(compressed) {
-  string decompressed = prs_decompress(this->compressed_data);
-  if (decompressed.size() != sizeof(MapDefinition)) {
-    throw runtime_error(string_printf(
-        "decompressed data size is incorrect (expected %zu bytes, read %zu bytes)",
-        sizeof(MapDefinition), decompressed.size()));
-  }
-  this->map = *reinterpret_cast<const MapDefinition*>(decompressed.data());
-}
-
-const string& MapIndex::MapEntry::compressed(bool is_trial) const {
-  if (is_trial) {
-    if (this->compressed_trial_data.empty()) {
-      MapDefinitionTrial mdt(this->map);
-      this->compressed_trial_data = prs_compress(&mdt, sizeof(mdt));
-    }
-    return this->compressed_trial_data;
-  } else {
-    if (this->compressed_data.empty()) {
-      this->compressed_data = prs_compress(&this->map, sizeof(this->map));
-    }
-    return this->compressed_data;
-  }
-}
-
-const string& MapIndex::get_compressed_list(size_t num_players) const {
+const string& MapIndex::get_compressed_list(size_t num_players, uint8_t language) const {
   if (num_players == 0) {
     throw runtime_error("cannot generate map list for no players");
   }
   if (num_players > 4) {
     throw logic_error("player count is too high in map list generation");
   }
-  string& compressed_map_list = this->compressed_map_lists.at(num_players - 1);
+
+  if (language >= this->compressed_map_lists.size()) {
+    this->compressed_map_lists.resize(language + 1);
+  }
+  string& compressed_map_list = this->compressed_map_lists[language].at(num_players - 1);
   if (compressed_map_list.empty()) {
     StringWriter entries_w;
     StringWriter strings_w;
 
     size_t num_maps = 0;
     for (const auto& map_it : this->maps) {
+      auto vm = map_it.second->version(language);
       size_t map_num_players = 0;
       for (size_t z = 0; z < 4; z++) {
-        uint8_t player_type = map_it.second->map.entry_states[z].player_type;
+        uint8_t player_type = vm->map->entry_states[z].player_type;
         if (player_type == 0x00 || player_type == 0x01 || player_type == 0xFF) {
           map_num_players++;
         }
@@ -2381,29 +2569,28 @@ const string& MapIndex::get_compressed_list(size_t num_players) const {
       }
 
       MapList::Entry e;
-      const auto& map = map_it.second->map;
-      e.map_x = map.map_x;
-      e.map_y = map.map_y;
-      e.environment_number = map.environment_number;
-      e.map_number = map.map_number.load();
-      e.width = map.width;
-      e.height = map.height;
-      e.map_tiles = map.map_tiles;
-      e.modification_tiles = map.modification_tiles;
+      e.map_x = vm->map->map_x;
+      e.map_y = vm->map->map_y;
+      e.environment_number = vm->map->environment_number;
+      e.map_number = vm->map->map_number.load();
+      e.width = vm->map->width;
+      e.height = vm->map->height;
+      e.map_tiles = vm->map->map_tiles;
+      e.modification_tiles = vm->map->modification_tiles;
 
       e.name_offset = strings_w.size();
-      strings_w.write(map.name.data(), map.name.len());
+      strings_w.write(vm->map->name.data(), vm->map->name.len());
       strings_w.put_u8(0);
       e.location_name_offset = strings_w.size();
-      strings_w.write(map.location_name.data(), map.location_name.len());
+      strings_w.write(vm->map->location_name.data(), vm->map->location_name.len());
       strings_w.put_u8(0);
       e.quest_name_offset = strings_w.size();
-      strings_w.write(map.quest_name.data(), map.quest_name.len());
+      strings_w.write(vm->map->quest_name.data(), vm->map->quest_name.len());
       strings_w.put_u8(0);
       e.description_offset = strings_w.size();
-      strings_w.write(map.description.data(), map.description.len());
+      strings_w.write(vm->map->description.data(), vm->map->description.len());
       strings_w.put_u8(0);
-      e.map_category = map_it.second->map.map_category;
+      e.map_category = vm->map->map_category;
 
       entries_w.put(e);
       num_maps++;
@@ -2434,11 +2621,11 @@ const string& MapIndex::get_compressed_list(size_t num_players) const {
   return compressed_map_list;
 }
 
-shared_ptr<const MapIndex::MapEntry> MapIndex::definition_for_number(uint32_t id) const {
+shared_ptr<const MapIndex::Map> MapIndex::for_number(uint32_t id) const {
   return this->maps.at(id);
 }
 
-shared_ptr<const MapIndex::MapEntry> MapIndex::definition_for_name(const string& name) const {
+shared_ptr<const MapIndex::Map> MapIndex::for_name(const string& name) const {
   return this->maps_by_name.at(name);
 }
 

@@ -182,7 +182,7 @@ struct Client : public std::enable_shared_from_this<Client> {
   std::unordered_map<std::string, std::shared_ptr<const std::string>> sending_files;
 
   Client(
-      shared_ptr<Server> server,
+      std::shared_ptr<Server> server,
       struct bufferevent* bev,
       GameVersion version,
       ServerBehavior server_behavior);
@@ -190,6 +190,9 @@ struct Client : public std::enable_shared_from_this<Client> {
 
   void reschedule_ping_and_timeout_events();
 
+  inline uint8_t language() const {
+    return this->game_data.player()->inventory.language;
+  }
   inline GameVersion version() const {
     return this->channel.version;
   }

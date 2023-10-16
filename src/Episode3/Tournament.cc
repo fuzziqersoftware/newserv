@@ -314,7 +314,7 @@ Tournament::Tournament(
     shared_ptr<const MapIndex> map_index,
     shared_ptr<const COMDeckIndex> com_deck_index,
     const string& name,
-    shared_ptr<const MapIndex::MapEntry> map,
+    shared_ptr<const MapIndex::Map> map,
     const Rules& rules,
     size_t num_teams,
     uint8_t flags)
@@ -355,7 +355,7 @@ void Tournament::init() {
   bool is_registration_complete;
   if (!this->source_json.is_null()) {
     this->name = this->source_json.get_string("name");
-    this->map = this->map_index->definition_for_number(this->source_json.get_int("map_number"));
+    this->map = this->map_index->for_number(this->source_json.get_int("map_number"));
     this->rules = Rules(this->source_json.at("rules"));
     this->flags = this->source_json.get_int("flags", 0x02);
     if (this->source_json.get_bool("is_2v2", false)) {
@@ -531,7 +531,7 @@ JSON Tournament::json() const {
   }
   return JSON::dict({
       {"name", this->name},
-      {"map_number", this->map->map.map_number.load()},
+      {"map_number", this->map->map_number},
       {"rules", this->rules.json()},
       {"flags", this->flags},
       {"is_registration_complete", (this->current_state != State::REGISTRATION)},
@@ -741,8 +741,13 @@ void Tournament::print_bracket(FILE* stream) const {
     }
   };
   fprintf(stream, "Tournament \"%s\"\n", this->name.c_str());
-  string map_name = this->map->map.name;
-  fprintf(stream, "  Map: %08" PRIX32 " (%s)\n", this->map->map.map_number.load(), map_name.c_str());
+  auto en_vm = this->map->version(1);
+  if (en_vm) {
+    string map_name = en_vm->map->name;
+    fprintf(stream, "  Map: %08" PRIX32 " (%s)\n", this->map->map_number, map_name.c_str());
+  } else {
+    fprintf(stream, "  Map: %08" PRIX32 "\n", this->map->map_number);
+  }
   string rules_str = this->rules.str();
   fprintf(stream, "  Rules: %s\n", rules_str.c_str());
   fprintf(stream, "  Structure: %s, %zu entries\n", (this->flags & Flag::IS_2V2) ? "2v2" : "1v1", this->num_teams);
@@ -850,7 +855,7 @@ void TournamentIndex::save() const {
 
 shared_ptr<Tournament> TournamentIndex::create_tournament(
     const string& name,
-    shared_ptr<const MapIndex::MapEntry> map,
+    shared_ptr<const MapIndex::Map> map,
     const Rules& rules,
     size_t num_teams,
     uint8_t flags) {

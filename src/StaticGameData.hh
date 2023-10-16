@@ -2,7 +2,9 @@
 
 #include <stdint.h>
 
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "FileContentsCache.hh"
 #include "Player.hh"
@@ -32,8 +34,8 @@ const char* abbreviation_for_mode(GameMode mode);
 
 size_t max_stack_size_for_item(uint8_t data0, uint8_t data1);
 
-extern const vector<string> tech_id_to_name;
-extern const unordered_map<string, uint8_t> name_to_tech_id;
+extern const std::vector<std::string> tech_id_to_name;
+extern const std::unordered_map<std::string, uint8_t> name_to_tech_id;
 
 const std::string& name_for_technique(uint8_t tech);
 std::u16string u16name_for_technique(uint8_t tech);
@@ -74,7 +76,8 @@ const char* name_for_difficulty(uint8_t difficulty);
 const char* token_name_for_difficulty(uint8_t difficulty);
 char abbreviation_for_difficulty(uint8_t difficulty);
 
-char char_for_language_code(uint8_t language);
+char char_for_language_code(uint8_t language_code);
+uint8_t language_code_for_char(char language_char);
 
 extern const std::vector<const char*> name_for_mag_color;
 extern const std::unordered_map<std::string, uint8_t> mag_color_for_name;

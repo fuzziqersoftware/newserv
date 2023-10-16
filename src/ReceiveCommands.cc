@@ -1296,23 +1296,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, const string& da
   if (!l->ep3_server || l->ep3_server->battle_finished) {
     auto s = c->require_server_state();
 
-    if (!l->ep3_server) {
-      l->log.info("Creating Episode 3 server state");
-    } else {
-      l->log.info("Recreating Episode 3 server state");
-    }
-    auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : nullptr;
-    bool is_trial = (l->flags & Lobby::Flag::IS_EP3_TRIAL);
-    Episode3::Server::Options options = {
-        .card_index = is_trial ? s->ep3_card_index_trial : s->ep3_card_index,
-        .map_index = s->ep3_map_index,
-        .behavior_flags = s->ep3_behavior_flags,
-        .random_crypt = l->random_crypt,
-        .tournament = tourn,
-        .trap_card_ids = s->ep3_trap_card_ids,
-    };
-    l->ep3_server = make_shared<Episode3::Server>(l, std::move(options));
-    l->ep3_server->init();
+    l->create_ep3_server();
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
       for (size_t z = 0; z < l->max_clients; z++) {
@@ -1353,7 +1337,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, const string& da
     }
   }
   bool battle_finished_before = l->ep3_server->battle_finished;
-  l->ep3_server->on_server_data_input(data);
+  l->ep3_server->on_server_data_input(c, data);
   if (!battle_finished_before && l->ep3_server->battle_finished && l->battle_record) {
     l->battle_record->set_battle_end_timestamp();
   }
@@ -1485,7 +1469,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         if (!q) {
           send_quest_info(c, u"$C4Quest does not\nexist.", is_download_quest);
         } else {
-          auto vq = q->version(c->quest_version());
+          auto vq = q->version(c->quest_version(), c->language());
           if (!vq) {
             send_quest_info(c, u"$C4Quest does not\nexist for this game\nversion.", is_download_quest);
           } else {
@@ -1732,7 +1716,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
               }
             }
             if (num_ep3_categories == 1) {
-              auto quests = s->quest_index->filter(ep3_category_id, c->quest_version());
+              auto quests = s->quest_index->filter(ep3_category_id, c->quest_version(), c->language());
               send_quest_menu(c, MenuID::QUEST, quests, true);
               break;
             }
@@ -1983,7 +1967,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         break;
       }
       shared_ptr<Lobby> l = c->lobby.lock();
-      auto quests = s->quest_index->filter(item_id, c->quest_version());
+      auto quests = s->quest_index->filter(item_id, c->quest_version(), c->language());
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
@@ -2033,7 +2017,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
             continue;
           }
 
-          auto vq = q->version(lc->quest_version());
+          auto vq = q->version(lc->quest_version(), c->language());
           if (!vq) {
             send_lobby_message_box(lc, u"$C6Quest does not exist\nfor this game version.");
             lc->should_disconnect = true;
@@ -2041,10 +2025,8 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
           }
           string bin_filename = vq->bin_filename();
           string dat_filename = vq->dat_filename();
-          shared_ptr<const string> bin_contents = vq->bin_contents();
-          shared_ptr<const string> dat_contents = vq->dat_contents();
-          send_open_quest_file(lc, bin_filename, bin_filename, bin_contents, QuestFileType::ONLINE);
-          send_open_quest_file(lc, dat_filename, dat_filename, dat_contents, QuestFileType::ONLINE);
+          send_open_quest_file(lc, bin_filename, bin_filename, vq->bin_contents, QuestFileType::ONLINE);
+          send_open_quest_file(lc, dat_filename, dat_filename, vq->dat_contents, QuestFileType::ONLINE);
 
           // There is no such thing as command AC on PSO V1 and V2 - quests just
           // start immediately when they're done downloading. (This is also the
@@ -2064,7 +2046,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 
       } else {
         string quest_name = encode_sjis(q->name);
-        auto vq = q->version(c->quest_version());
+        auto vq = q->version(c->quest_version(), c->language());
         if (!vq) {
           send_lobby_message_box(c, u"$C6Quest does not exist\nfor this game version.");
           break;
@@ -2075,11 +2057,11 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         // TODO: This is not true for Episode 3 Trial Edition. We also would
         // have to convert the map to a MapDefinitionTrial, though.
         if (vq->version == QuestScriptVersion::GC_EP3) {
-          send_open_quest_file(c, quest_name, vq->bin_filename(), vq->bin_contents(), QuestFileType::EPISODE_3);
+          send_open_quest_file(c, quest_name, vq->bin_filename(), vq->bin_contents, QuestFileType::EPISODE_3);
         } else {
           vq = vq->create_download_quest();
-          send_open_quest_file(c, quest_name, vq->bin_filename(), vq->bin_contents(), QuestFileType::DOWNLOAD);
-          send_open_quest_file(c, quest_name, vq->dat_filename(), vq->dat_contents(), QuestFileType::DOWNLOAD);
+          send_open_quest_file(c, quest_name, vq->bin_filename(), vq->bin_contents, QuestFileType::DOWNLOAD);
+          send_open_quest_file(c, quest_name, vq->dat_filename(), vq->dat_contents, QuestFileType::DOWNLOAD);
         }
       }
       break;
@@ -2423,7 +2405,7 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
         (l->base_version == GameVersion::BB) &&
         l->map &&
         l->quest) {
-      auto dat_contents = prs_decompress(*l->quest->version(QuestScriptVersion::BB_V4)->dat_contents());
+      auto dat_contents = prs_decompress(*l->quest->version(QuestScriptVersion::BB_V4, c->language())->dat_contents);
       l->map->clear();
       l->map->add_enemies_from_quest_data(l->episode, l->difficulty, l->event, dat_contents.data(), dat_contents.size());
       c->log.info("Replaced enemies list with quest layout (%zu entries)",
@@ -3616,19 +3598,15 @@ static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
       if (!l->quest) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest");
       }
-      auto vq = l->quest->version(c->quest_version());
+      auto vq = l->quest->version(c->quest_version(), c->language());
       if (!vq) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest for client version");
       }
       string bin_basename = vq->bin_filename();
-      shared_ptr<const string> bin_contents = vq->bin_contents();
       string dat_basename = vq->dat_filename();
-      shared_ptr<const string> dat_contents = vq->dat_contents();
 
-      send_open_quest_file(c, bin_basename + ".bin",
-          bin_basename, bin_contents, QuestFileType::ONLINE);
-      send_open_quest_file(c, dat_basename + ".dat",
-          dat_basename, dat_contents, QuestFileType::ONLINE);
+      send_open_quest_file(c, bin_basename + ".bin", bin_basename, vq->bin_contents, QuestFileType::ONLINE);
+      send_open_quest_file(c, dat_basename + ".dat", dat_basename, vq->dat_contents, QuestFileType::ONLINE);
       c->flags |= Client::Flag::LOADING_RUNNING_QUEST;
     } else if (l->map) {
       send_rare_enemy_index_list(c, l->map->rare_enemy_indexes);
@@ -3642,7 +3620,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
   } else if (watched_lobby && watched_lobby->ep3_server) {
     if (!watched_lobby->ep3_server->battle_finished) {
       watched_lobby->ep3_server->send_commands_for_joining_spectator(
-          c->channel, c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
+          c->channel, c->language(), c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
     }
     send_ep3_update_game_metadata(watched_lobby);
   }

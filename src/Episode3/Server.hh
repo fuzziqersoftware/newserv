@@ -111,7 +111,7 @@ public:
     this->send(&cmd, cmd.header.size * 4);
   }
   void send(const void* data, size_t size) const;
-  void send_commands_for_joining_spectator(Channel& ch, bool is_trial) const;
+  void send_commands_for_joining_spectator(Channel& ch, uint8_t language, bool is_trial) const;
 
   void force_battle_result(uint8_t surrendered_client_id, bool set_winner);
   void force_destroy_field_character(uint8_t client_id, size_t set_index);
@@ -181,30 +181,30 @@ public:
   void update_battle_state_flags_and_send_6xB4x03_if_needed(
       bool always_send = false);
   bool update_registration_phase();
-  void on_server_data_input(const std::string& data);
-  void handle_CAx0B_mulligan_hand(const std::string& data);
-  void handle_CAx0C_end_mulligan_phase(const std::string& data);
-  void handle_CAx0D_end_non_action_phase(const std::string& data);
-  void handle_CAx0E_discard_card_from_hand(const std::string& data);
-  void handle_CAx0F_set_card_from_hand(const std::string& data);
-  void handle_CAx10_move_fc_to_location(const std::string& data);
-  void handle_CAx11_enqueue_attack_or_defense(const std::string& data);
-  void handle_CAx12_end_attack_list(const std::string& data);
-  void handle_CAx13_update_map_during_setup(const std::string& data);
-  void handle_CAx14_update_deck_during_setup(const std::string& data);
-  void handle_CAx15_unused_hard_reset_server_state(const std::string& data);
-  void handle_CAx1B_update_player_name(const std::string& data);
-  void handle_CAx1D_start_battle(const std::string& data);
-  void handle_CAx21_end_battle(const std::string& data);
-  void handle_CAx28_end_defense_list(const std::string& data);
-  void handle_CAx2B_legacy_set_card(const std::string&);
-  void handle_CAx34_subtract_ally_atk_points(const std::string& data);
-  void handle_CAx37_client_ready_to_advance_from_starter_roll_phase(const std::string& data);
-  void handle_CAx3A_time_limit_expired(const std::string& data);
-  void handle_CAx40_map_list_request(const std::string& data);
-  void handle_CAx41_map_request(const std::string& data);
-  void handle_CAx48_end_turn(const std::string& data);
-  void handle_CAx49_card_counts(const std::string& data);
+  void on_server_data_input(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx0B_mulligan_hand(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx0C_end_mulligan_phase(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx0D_end_non_action_phase(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx0E_discard_card_from_hand(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx0F_set_card_from_hand(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx10_move_fc_to_location(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx11_enqueue_attack_or_defense(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx12_end_attack_list(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx13_update_map_during_setup(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx14_update_deck_during_setup(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx15_unused_hard_reset_server_state(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx1B_update_player_name(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx1D_start_battle(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx21_end_battle(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx28_end_defense_list(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx2B_legacy_set_card(std::shared_ptr<Client> sender_c, const std::string&);
+  void handle_CAx34_subtract_ally_atk_points(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx37_client_ready_to_advance_from_starter_roll_phase(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx3A_time_limit_expired(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx40_map_list_request(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx41_map_request(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx48_end_turn(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx49_card_counts(std::shared_ptr<Client> sender_c, const std::string& data);
   void compute_losing_team_id_and_add_winner_flags(uint32_t flags);
   uint32_t get_team_exp(uint8_t team_id) const;
   uint32_t send_6xB4x06_if_card_ref_invalid(
@@ -226,21 +226,22 @@ public:
   G_UpdateDecks_GC_Ep3_6xB4x07 prepare_6xB4x07_decks_update() const;
   G_SetPlayerNames_GC_Ep3_6xB4x1C prepare_6xB4x1C_names_update() const;
   static std::string prepare_6xB6x41_map_definition(
-      std::shared_ptr<const MapIndex::MapEntry> map, bool is_trial);
+      std::shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_trial);
+  void send_6xB6x41_to_all_clients() const;
   G_SetTrapTileLocations_GC_Ep3_6xB4x50 prepare_6xB4x50_trap_tile_locations() const;
 
   std::vector<std::shared_ptr<Card>> const_cast_set_cards_v(
       const std::vector<std::shared_ptr<const Card>>& cards);
 
 private:
-  typedef void (Server::*handler_t)(const std::string&);
+  typedef void (Server::*handler_t)(std::shared_ptr<Client>, const std::string&);
   static const std::unordered_map<uint8_t, handler_t> subcommand_handlers;
 
 public:
   // These fields are not part of the original implementation
   std::weak_ptr<Lobby> lobby;
   Options options;
-  std::shared_ptr<const MapIndex::MapEntry> last_chosen_map;
+  std::shared_ptr<const MapIndex::Map> last_chosen_map;
   bool tournament_match_result_sent;
   uint8_t override_environment_number;
   mutable std::deque<StackLogger*> logger_stack;

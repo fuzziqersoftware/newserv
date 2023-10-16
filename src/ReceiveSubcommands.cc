@@ -1158,19 +1158,20 @@ static void on_sort_inventory_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
 
     PlayerInventory sorted;
 
+    const auto& inv = c->game_data.player()->inventory;
     for (size_t x = 0; x < 30; x++) {
       if (cmd.item_ids[x] == 0xFFFFFFFF) {
         sorted.items[x].data.id = 0xFFFFFFFF;
       } else {
-        size_t index = c->game_data.player()->inventory.find_item(cmd.item_ids[x]);
-        sorted.items[x] = c->game_data.player()->inventory.items[index];
+        size_t index = inv.find_item(cmd.item_ids[x]);
+        sorted.items[x] = inv.items[index];
       }
     }
 
-    sorted.num_items = c->game_data.player()->inventory.num_items;
-    sorted.hp_materials_used = c->game_data.player()->inventory.hp_materials_used;
-    sorted.tp_materials_used = c->game_data.player()->inventory.tp_materials_used;
-    sorted.language = c->game_data.player()->inventory.language;
+    sorted.num_items = inv.num_items;
+    sorted.hp_materials_used = inv.hp_materials_used;
+    sorted.tp_materials_used = inv.tp_materials_used;
+    sorted.language = inv.language;
     c->game_data.player()->inventory = sorted;
   }
 }

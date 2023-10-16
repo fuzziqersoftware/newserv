@@ -7,13 +7,11 @@
 
 #include <phosg/Time.hh>
 
-using namespace std;
-
 class FileContentsCache {
 public:
   struct File {
     std::string name;
-    shared_ptr<const std::string> data;
+    std::shared_ptr<const std::string> data;
     uint64_t load_time;
 
     File() = delete;
@@ -37,10 +35,8 @@ public:
     return this->name_to_file.erase(key);
   }
 
-  std::shared_ptr<const File> replace(
-      const std::string& name, std::string&& data, uint64_t t = 0);
-  std::shared_ptr<const File> replace(
-      const std::string& name, const void* data, size_t size, uint64_t t = 0);
+  std::shared_ptr<const File> replace(const std::string& name, std::string&& data, uint64_t t = 0);
+  std::shared_ptr<const File> replace(const std::string& name, const void* data, size_t size, uint64_t t = 0);
 
   struct GetResult {
     std::shared_ptr<const File> file;
@@ -52,10 +48,8 @@ public:
   std::shared_ptr<const File> get_or_throw(const std::string& name);
   std::shared_ptr<const File> get_or_throw(const char* name);
 
-  GetResult get(
-      const std::string& name, std::function<std::string(const std::string&)> generate);
-  GetResult get(
-      const char* name, std::function<std::string(const std::string&)> generate);
+  GetResult get(const std::string& name, std::function<std::string(const std::string&)> generate);
+  GetResult get(const char* name, std::function<std::string(const std::string&)> generate);
 
   template <typename T>
   struct GetObjResult {
@@ -68,7 +62,7 @@ public:
   GetObjResult<T> get_obj_or_load(NameT name) {
     auto res = this->get_or_load(name);
     if (res.file->data->size() != sizeof(T)) {
-      throw runtime_error("cached string size is incorrect");
+      throw std::runtime_error("cached string size is incorrect");
     }
     return {*reinterpret_cast<const T*>(res.file->data->data()), res.file, res.generate_called};
   }
@@ -76,7 +70,7 @@ public:
   GetObjResult<T> get_obj_or_throw(NameT name) {
     auto res = this->get_or_throw(name);
     if (res.file->data->size() != sizeof(T)) {
-      throw runtime_error("cached string size is incorrect");
+      throw std::runtime_error("cached string size is incorrect");
     }
     return {*reinterpret_cast<const T*>(res.file->data->data()), res.file, res.generate_called};
   }
@@ -86,12 +80,12 @@ public:
     try {
       auto& f = this->name_to_file.at(name);
       if (f->data->size() != sizeof(T)) {
-        throw runtime_error("cached string size is incorrect");
+        throw std::runtime_error("cached string size is incorrect");
       }
       if (this->ttl_usecs && (t - f->load_time < this->ttl_usecs)) {
         return {*reinterpret_cast<const T*>(f->data->data()), f, false};
       }
-    } catch (const out_of_range& e) {
+    } catch (const std::out_of_range& e) {
     }
     T value = generate(name);
     auto ret = this->replace_obj(name, value);

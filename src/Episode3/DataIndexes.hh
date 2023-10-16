@@ -902,8 +902,8 @@ struct Rules {
   Rules() = default;
   explicit Rules(const JSON& json);
   JSON json() const;
-  bool operator==(const Rules& other) const;
-  bool operator!=(const Rules& other) const;
+  bool operator==(const Rules& other) const = default;
+  bool operator!=(const Rules& other) const = default;
   void clear();
   void set_defaults();
 
@@ -1284,6 +1284,9 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     // 01 = DARK ONLY
     // FF = any deck allowed
     uint8_t deck_type;
+
+    bool operator==(const EntryState& other) const = default;
+    bool operator!=(const EntryState& other) const = default;
   } __attribute__((packed));
   /* 5A10 */ parray<EntryState, 4> entry_states;
   /* 5A18 */
@@ -1291,6 +1294,12 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   inline bool is_quest() const {
     return (this->map_category <= 2);
   }
+
+  // This function throws runtime_error if the passed-in map is not semantically
+  // equivalent to *this. Semantic equivalence means all fields that affect
+  // gameplay and visuals are equivalent, but dialogue, names, and description
+  // text may differ.
+  void assert_semantically_equivalent(const MapDefinition& other) const;
 
   std::string str(const CardIndex* card_index = nullptr) const;
 } __attribute__((packed));
@@ -1390,30 +1399,51 @@ class MapIndex {
 public:
   MapIndex(const std::string& directory);
 
-  class MapEntry {
+  class VersionedMap {
   public:
-    MapDefinition map;
+    std::shared_ptr<const MapDefinition> map;
+    uint8_t language;
 
-    explicit MapEntry(const MapDefinition& map);
-    explicit MapEntry(const std::string& compressed_data);
+    VersionedMap(std::shared_ptr<const MapDefinition> map, uint8_t language);
+    VersionedMap(std::string&& compressed_data, uint8_t language);
 
+    std::shared_ptr<const MapDefinitionTrial> trial() const;
     const std::string& compressed(bool is_trial) const;
 
   private:
+    mutable std::shared_ptr<const MapDefinitionTrial> trial_map;
     mutable std::string compressed_data;
     mutable std::string compressed_trial_data;
   };
 
-  const std::string& get_compressed_list(size_t num_players) const;
-  std::shared_ptr<const MapEntry> definition_for_number(uint32_t id) const;
-  std::shared_ptr<const MapEntry> definition_for_name(const std::string& name) const;
+  class Map {
+  public:
+    uint32_t map_number;
+    std::shared_ptr<const VersionedMap> initial_version;
+
+    explicit Map(std::shared_ptr<const VersionedMap> initial_version);
+
+    void add_version(std::shared_ptr<const VersionedMap> vm);
+    bool has_version(uint8_t language) const;
+    std::shared_ptr<const VersionedMap> version(uint8_t language) const;
+    inline const std::vector<std::shared_ptr<const VersionedMap>>& all_versions() const {
+      return this->versions;
+    }
+
+  private:
+    std::vector<std::shared_ptr<const VersionedMap>> versions;
+  };
+
+  const std::string& get_compressed_list(size_t num_players, uint8_t language) const;
+  std::shared_ptr<const Map> for_number(uint32_t id) const;
+  std::shared_ptr<const Map> for_name(const std::string& name) const;
   std::set<uint32_t> all_numbers() const;
 
 private:
   // The compressed map lists are generated on demand from the maps map below
-  mutable std::array<std::string, 4> compressed_map_lists;
-  std::map<uint32_t, std::shared_ptr<MapEntry>> maps;
-  std::unordered_map<std::string, std::shared_ptr<MapEntry>> maps_by_name;
+  mutable std::vector<std::array<std::string, 4>> compressed_map_lists;
+  std::map<uint32_t, std::shared_ptr<Map>> maps;
+  std::unordered_map<std::string, std::shared_ptr<Map>> maps_by_name;
 };
 
 class COMDeckIndex {

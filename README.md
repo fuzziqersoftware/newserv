@@ -107,13 +107,16 @@ To use newserv in other ways (e.g. for translating data), see the end of this do
 
 newserv automatically finds quests in the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's "save files" option, just put them in that directory and name them appropriately.
 
-Standard quest files should be named like `q###-CATEGORY-VERSION.EXT`, battle quests should be named like `b###-VERSION.EXT`, challenge quests should be named like `c###-VERSION.EXT` for Episode 1 or `d###-VERSION.EXT` for Episode 2, and Episode 3 download quests should be named like `e###-gc3.EXT`. The fields in each filename are:
+Standard quest files should be named like `q###-CATEGORY-VERSION-LANGUAGE.EXT`, battle quests should be named like `b###-VERSION-LANGUAGE.EXT`, challenge quests should be named like `c###-VERSION-LANGUAGE.EXT` for Episode 1 or `d###-VERSION-LANGUAGE.EXT` for Episode 2, and Episode 3 download quests should be named like `e###-gc3-LANGUAGE.EXT`. The fields in each filename are:
 - `###`: quest number (this doesn't really matter; it should just be unique across the PSO version)
 - `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gv1/gv2/gv4 = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
 - `VERSION`: dn = Dreamcast NTE, d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gcn = GameCube Trial Edition, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, xb = Xbox, bb = Blue Burst
+- `LANGUAGE`: j = Japanese, e = English, g = German, f = French, s = Spanish
 - `EXT`: file extension (see table below)
 
-For example, the GameCube version of Lost HEAT SWORD is in two files named `q058-ret-gc.bin` and `q058-ret-gc.dat`. newserv knows these files are quests because they're in the system/quests/ directory, it knows they're for PSO GC because the filenames contain `-gc`, and it puts them in the Retrieval category because the filenames contain `-ret`.
+On .dat files, the `LANGUAGE` token may be omitted. If it's present, then that .dat file will only be used for that version of the quest; if omitted, then that .dat file will be used for all versions of the quest.
+
+For example, the GameCube version of Lost HEAT SWORD is in two files named `q058-ret-gc-e.bin` and `q058-ret-gc.dat`. newserv knows these files are quests because they're in the system/quests/ directory, it knows they're for PSO GC because the filenames contain `-gc`, it knows this is the English version of the quest because the .bin filename ends with `-e` (even though the .dat filename does not), and it puts them in the Retrieval category because the filenames contain `-ret`.
 
 The type identifiers (`b`, `c`, `d`, `e`, or `q`) and categories are configurable. See QuestCategories in config.example.json for more information on how to make new categories or edit the existing categories.
 

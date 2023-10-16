@@ -100,7 +100,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // absent.
   std::shared_ptr<Episode3::Server> ep3_server; // Only used in primary games
   std::weak_ptr<Lobby> watched_lobby; // Only used in watcher games
-  std::unordered_set<shared_ptr<Lobby>> watcher_lobbies; // Only used in primary games
+  std::unordered_set<std::shared_ptr<Lobby>> watcher_lobbies; // Only used in primary games
   std::shared_ptr<Episode3::BattleRecord> battle_record; // Not used in watcher games
   std::shared_ptr<Episode3::BattleRecordPlayer> battle_player; // Only used in replay games
   std::shared_ptr<Episode3::Tournament::Match> tournament_match;
@@ -124,6 +124,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   Lobby& operator=(Lobby&&) = delete;
 
   std::shared_ptr<ServerState> require_server_state() const;
+  void create_ep3_server();
 
   inline bool is_game() const {
     return this->flags & Flag::GAME;

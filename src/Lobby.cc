@@ -43,6 +43,27 @@ shared_ptr<ServerState> Lobby::require_server_state() const {
   return s;
 }
 
+void Lobby::create_ep3_server() {
+  auto s = this->require_server_state();
+  if (!this->ep3_server) {
+    this->log.info("Creating Episode 3 server state");
+  } else {
+    this->log.info("Recreating Episode 3 server state");
+  }
+  auto tourn = this->tournament_match ? this->tournament_match->tournament.lock() : nullptr;
+  bool is_trial = (this->flags & Lobby::Flag::IS_EP3_TRIAL);
+  Episode3::Server::Options options = {
+      .card_index = is_trial ? s->ep3_card_index_trial : s->ep3_card_index,
+      .map_index = s->ep3_map_index,
+      .behavior_flags = s->ep3_behavior_flags,
+      .random_crypt = this->random_crypt,
+      .tournament = tourn,
+      .trap_card_ids = s->ep3_trap_card_ids,
+  };
+  this->ep3_server = make_shared<Episode3::Server>(this->shared_from_this(), std::move(options));
+  this->ep3_server->init();
+}
+
 void Lobby::reassign_leader_on_client_departure(size_t leaving_client_index) {
   for (size_t x = 0; x < this->max_clients; x++) {
     if (x == leaving_client_index) {

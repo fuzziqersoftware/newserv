@@ -405,7 +405,7 @@ std::string decrypt_fixed_size_data_section_s(
   using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
 
   if (size < 2 * sizeof(U32T)) {
-    throw runtime_error("data size is too small");
+    throw std::runtime_error("data size is too small");
   }
   std::string decrypted = decrypt_data_section<IsBigEndian>(data_section, size, round1_seed);
 
@@ -476,12 +476,12 @@ std::string encrypt_fixed_size_data_section_s(const void* data, size_t size, uin
   using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
 
   if (size < 2 * sizeof(U32T)) {
-    throw runtime_error("data size is too small");
+    throw std::runtime_error("data size is too small");
   }
 
   uint32_t round2_seed = random_object<uint32_t>();
 
-  string encrypted(reinterpret_cast<const char*>(data), size);
+  std::string encrypted(reinterpret_cast<const char*>(data), size);
   *reinterpret_cast<U32T*>(encrypted.data()) = 0;
   *reinterpret_cast<U32T*>(encrypted.data() + encrypted.size() - sizeof(U32T)) = round2_seed;
   *reinterpret_cast<U32T*>(encrypted.data()) = crc32(encrypted.data(), encrypted.size());

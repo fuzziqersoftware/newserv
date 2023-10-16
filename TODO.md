@@ -14,6 +14,7 @@
 - Make reloading happen on separate threads so compression doesn't block active clients
 - Implement decrypt/encrypt actions for VMS files
 - Fix Word Select mapping across versions
+- Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 
 ## Episode 3
 
