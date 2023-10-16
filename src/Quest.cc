@@ -554,6 +554,7 @@ QuestIndex::QuestIndex(
         string dat_basename;
         for (size_t z = 0; z < 2; z++) {
           dat_basename = z ? basename.substr(0, basename.size() - 2) : basename;
+          dat_filename = dat_basename;
           try {
             dat_contents = dat_cache.at(dat_basename);
             break;
@@ -616,7 +617,7 @@ QuestIndex::QuestIndex(
       string ascii_name = format_data_string(encode_sjis(vq->name));
       auto category_name = encode_sjis(this->category_index->at(vq->category_id).name);
 
-      string dat_str = dat_filename.empty() ? "" : (" with layout file " + dat_filename);
+      string dat_str = dat_filename.empty() ? "" : (" with layout " + dat_filename);
       auto q_it = this->quests_by_number.find(vq->quest_number);
       if (q_it != this->quests_by_number.end()) {
         q_it->second->add_version(vq);
