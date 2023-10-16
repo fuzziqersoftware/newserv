@@ -2017,7 +2017,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
             continue;
           }
 
-          auto vq = q->version(lc->quest_version(), c->language());
+          auto vq = q->version(lc->quest_version(), lc->language());
           if (!vq) {
             send_lobby_message_box(lc, u"$C6Quest does not exist\nfor this game version.");
             lc->should_disconnect = true;
