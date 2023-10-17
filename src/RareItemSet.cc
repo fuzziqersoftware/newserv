@@ -88,13 +88,53 @@ uint16_t RareItemSet::key_for_params(GameMode mode, Episode episode, uint8_t dif
   return key;
 }
 
+AFSRareItemSet::AFSRareItemSet(shared_ptr<const string> data)
+    : afs(data) {
+  const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+  for (GameMode mode : modes) {
+    for (size_t difficulty = 0; difficulty < 4; difficulty++) {
+      for (size_t section_id = 0; section_id < 10; section_id++) {
+        try {
+          size_t index = difficulty * 10 + section_id;
+          auto entry = this->afs.get(index);
+          if (entry.second < sizeof(Table)) {
+            throw runtime_error(string_printf("table %zu is too small", index));
+          }
+          this->tables.emplace(
+              this->key_for_params(mode, Episode::EP1, difficulty, section_id),
+              reinterpret_cast<const Table*>(entry.first));
+        } catch (const out_of_range&) {
+        }
+      }
+    }
+  }
+}
+
+std::vector<RareItemSet::ExpandedDrop> AFSRareItemSet::get_enemy_specs(
+    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const {
+  try {
+    return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_enemy_specs(rt_index);
+  } catch (const out_of_range&) {
+    return {};
+  }
+}
+
+std::vector<RareItemSet::ExpandedDrop> AFSRareItemSet::get_box_specs(
+    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const {
+  try {
+    return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_box_specs(area);
+  } catch (const out_of_range&) {
+    return {};
+  }
+}
+
 GSLRareItemSet::GSLRareItemSet(shared_ptr<const string> data, bool is_big_endian)
     : gsl(data, is_big_endian) {
   const array<Episode, 2> episodes = {Episode::EP1, Episode::EP2};
   const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
   for (GameMode mode : modes) {
     for (Episode episode : episodes) {
-      for (size_t difficulty = 0; difficulty < 3; difficulty++) {
+      for (size_t difficulty = 0; difficulty < 4; difficulty++) {
         for (size_t section_id = 0; section_id < 10; section_id++) {
           string filename = string_printf("ItemRT%s%s%c%1zu.rel",
               ((mode == GameMode::CHALLENGE) ? "c" : ""),

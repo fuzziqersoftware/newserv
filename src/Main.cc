@@ -317,6 +317,7 @@ enum class Behavior {
   FORMAT_RARE_ITEM_SET,
   CONVERT_ITEMRT_REL_TO_JSON,
   CONVERT_ITEMRT_GSL_TO_JSON,
+  CONVERT_ITEMRT_AFS_TO_JSON,
   SHOW_EP3_MAPS,
   SHOW_EP3_CARDS,
   GENERATE_EP3_CARDS_HTML,
@@ -365,6 +366,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::FORMAT_RARE_ITEM_SET) ||
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
       (b == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) ||
+      (b == Behavior::CONVERT_ITEMRT_AFS_TO_JSON) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
       (b == Behavior::DECODE_TEXT_ARCHIVE) ||
@@ -403,6 +405,7 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
       (b == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) ||
+      (b == Behavior::CONVERT_ITEMRT_AFS_TO_JSON) ||
       (b == Behavior::DECODE_SJIS) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
@@ -435,6 +438,7 @@ int main(int argc, char** argv) {
   bool json = false;
   bool download = false;
   bool one_line = false;
+  bool names = false;
   const char* find_decryption_seed_ciphertext = nullptr;
   vector<const char*> find_decryption_seed_plaintexts;
   const char* input_filename = nullptr;
@@ -452,6 +456,8 @@ int main(int argc, char** argv) {
       num_threads = strtoull(&argv[x][10], nullptr, 0);
     } else if (!strcmp(argv[x], "--one-line")) {
       one_line = true;
+    } else if (!strcmp(argv[x], "--names")) {
+      names = true;
     } else if (!strcmp(argv[x], "--download")) {
       download = true;
     } else if (!strcmp(argv[x], "--patch")) {
@@ -619,6 +625,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::CONVERT_ITEMRT_REL_TO_JSON;
         } else if (!strcmp(argv[x], "convert-itemrt-gsl-to-json")) {
           behavior = Behavior::CONVERT_ITEMRT_GSL_TO_JSON;
+        } else if (!strcmp(argv[x], "convert-itemrt-afs-to-json")) {
+          behavior = Behavior::CONVERT_ITEMRT_AFS_TO_JSON;
         } else if (!strcmp(argv[x], "show-ep3-maps")) {
           behavior = Behavior::SHOW_EP3_MAPS;
         } else if (!strcmp(argv[x], "show-ep3-cards")) {
@@ -724,7 +732,9 @@ int main(int argc, char** argv) {
         filename += ".json";
       } else if (behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) {
         filename += ".txt";
-      } else if ((behavior == Behavior::CONVERT_ITEMRT_REL_TO_JSON) || (behavior == Behavior::CONVERT_ITEMRT_GSL_TO_JSON)) {
+      } else if ((behavior == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
+          (behavior == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) ||
+          (behavior == Behavior::CONVERT_ITEMRT_AFS_TO_JSON)) {
         filename += ".json";
       } else {
         filename += ".dec";
@@ -734,7 +744,8 @@ int main(int argc, char** argv) {
     } else if (isatty(fileno(stdout)) &&
         (behavior != Behavior::DISASSEMBLE_QUEST_SCRIPT) &&
         (behavior != Behavior::CONVERT_ITEMRT_REL_TO_JSON) &&
-        (behavior != Behavior::CONVERT_ITEMRT_GSL_TO_JSON)) {
+        (behavior != Behavior::CONVERT_ITEMRT_GSL_TO_JSON) &&
+        (behavior != Behavior::CONVERT_ITEMRT_AFS_TO_JSON)) {
       // If stdout is a terminal and the data is not known to be text, use
       // print_data to write the result
       print_data(stdout, data, size);
@@ -1570,11 +1581,14 @@ int main(int argc, char** argv) {
     }
 
     case Behavior::CONVERT_ITEMRT_REL_TO_JSON:
-    case Behavior::CONVERT_ITEMRT_GSL_TO_JSON: {
+    case Behavior::CONVERT_ITEMRT_GSL_TO_JSON:
+    case Behavior::CONVERT_ITEMRT_AFS_TO_JSON: {
       shared_ptr<string> data(new string(read_input_data()));
       unique_ptr<RareItemSet> rs;
       if (behavior == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) {
         rs.reset(new GSLRareItemSet(data, big_endian));
+      } else if (behavior == Behavior::CONVERT_ITEMRT_AFS_TO_JSON) {
+        rs.reset(new AFSRareItemSet(data));
       } else {
         rs.reset(new RELRareItemSet(data));
       }
@@ -1625,8 +1639,19 @@ int main(int argc, char** argv) {
                   continue;
                 }
 
+                JSON id_json;
+                if (names) {
+                  ItemData data;
+                  data.data1[0] = spec.item_code[0];
+                  data.data1[1] = spec.item_code[1];
+                  data.data1[2] = spec.item_code[2];
+                  id_json = data.name(false);
+                } else {
+                  id_json = primary_identifier;
+                }
+
                 auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
-                auto specs_json = JSON::list({JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), primary_identifier})});
+                auto specs_json = JSON::list({JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), std::move(id_json)})});
                 for (const auto& enemy_type : enemy_types) {
                   if (enemy_type_valid_for_episode(episode, enemy_type)) {
                     collection_dict.emplace(name_for_enum(enemy_type), std::move(specs_json));
@@ -1643,8 +1668,20 @@ int main(int argc, char** argv) {
                 if (primary_identifier == 0) {
                   continue;
                 }
+
+                JSON id_json;
+                if (names) {
+                  ItemData data;
+                  data.data1[0] = spec.item_code[0];
+                  data.data1[1] = spec.item_code[1];
+                  data.data1[2] = spec.item_code[2];
+                  id_json = data.name(false);
+                } else {
+                  id_json = primary_identifier;
+                }
+
                 auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
-                area_list.emplace_back(JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), primary_identifier}));
+                area_list.emplace_back(JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), std::move(id_json)}));
               }
 
               if (!area_list.empty()) {

@@ -40,6 +40,7 @@ find_package(resource_file QUIET)
 # Executable definition
 
 add_executable(newserv
+    src/AFSArchive.cc
     src/BattleParamsIndex.cc
     src/BMLArchive.cc
     src/CatSession.cc

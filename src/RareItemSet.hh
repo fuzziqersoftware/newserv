@@ -6,6 +6,7 @@
 #include <random>
 #include <string>
 
+#include "AFSArchive.hh"
 #include "GSLArchive.hh"
 #include "StaticGameData.hh"
 
@@ -62,6 +63,19 @@ protected:
   RareItemSet() = default;
 
   static uint16_t key_for_params(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid);
+};
+
+class AFSRareItemSet : public RareItemSet {
+public:
+  AFSRareItemSet(std::shared_ptr<const std::string> data);
+  virtual ~AFSRareItemSet() = default;
+  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
+  virtual std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
+
+private:
+  std::unordered_map<uint16_t, const Table*> tables;
+
+  AFSArchive afs;
 };
 
 class GSLRareItemSet : public RareItemSet {
