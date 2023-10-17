@@ -1185,9 +1185,9 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     return;
   }
 
-  // If the game is not BB, forward the request to the leader (if drops are
-  // enabled, or just ignore it) instead of generating the item drop command
-  if (l->base_version != GameVersion::BB) {
+  // If there is no item creator (that is, the game is BB or has server rare
+  // tables disabled), then forward the request to the leader
+  if (!l->item_creator) {
     if (l->flags & Lobby::Flag::DROPS_ENABLED) {
       forward_subcommand(c, command, flag, data, size);
     }
@@ -1208,10 +1208,6 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     cmd.ignore_def = true;
   }
 
-  if (!l->item_creator.get()) {
-    throw runtime_error("received box drop subcommand without item creator present");
-  }
-
   ItemData item;
   if (cmd.rt_index == 0x30) {
     if (cmd.ignore_def) {
@@ -1220,16 +1216,15 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
       item = l->item_creator->on_specialized_box_item_drop(cmd.def[0], cmd.def[1], cmd.def[2]);
     }
   } else {
-    if (!l->map) {
-      throw runtime_error("game does not have a map loaded");
+    if (l->map) {
+      const auto& enemy = l->map->enemies.at(cmd.entity_id);
+      uint32_t expected_rt_index = rare_table_index_for_enemy_type(enemy.type);
+      if (cmd.rt_index != expected_rt_index) {
+        c->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
+            cmd.rt_index, expected_rt_index);
+      }
     }
-    const auto& enemy = l->map->enemies.at(cmd.entity_id);
-    uint32_t expected_rt_index = rare_table_index_for_enemy_type(enemy.type);
-    if (cmd.rt_index != expected_rt_index) {
-      c->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
-          cmd.rt_index, expected_rt_index);
-    }
-    item = l->item_creator->on_monster_item_drop(expected_rt_index, cmd.area);
+    item = l->item_creator->on_monster_item_drop(cmd.rt_index, cmd.area);
   }
   item.id = l->generate_item_id(0xFF);
 

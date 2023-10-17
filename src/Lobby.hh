@@ -18,7 +18,6 @@
 #include "Map.hh"
 #include "Player.hh"
 #include "Quest.hh"
-#include "RareItemSet.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 
@@ -40,6 +39,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     START_BATTLE_PLAYER_IMMEDIATELY = 0x00008000,
     DROPS_ENABLED = 0x00010000, // Does not affect BB
     IS_EP3_TRIAL = 0x00020000,
+    USE_SERVER_RARE_TABLE = 0x00040000, // Does not affect BB
 
     // Flags used only for lobbies
     PUBLIC = 0x01000000,
@@ -124,6 +124,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   Lobby& operator=(Lobby&&) = delete;
 
   std::shared_ptr<ServerState> require_server_state() const;
+  void create_item_creator();
   void create_ep3_server();
 
   inline bool is_game() const {

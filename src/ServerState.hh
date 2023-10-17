@@ -89,7 +89,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamsIndex> battle_params;
   std::shared_ptr<const GSLArchive> bb_data_gsl;
-  std::shared_ptr<const RareItemSet> rare_item_set;
+  std::unordered_map<std::string, std::shared_ptr<const RareItemSet>> rare_item_sets;
   std::shared_ptr<const CommonItemSet> common_item_set;
   std::shared_ptr<const ArmorRandomSet> armor_random_set;
   std::shared_ptr<const ToolRandomSet> tool_random_set;

@@ -1236,6 +1236,21 @@ static void server_command_drop(shared_ptr<Client> c, const std::u16string&) {
   send_text_message_printf(l, "Drops %s", (l->flags & Lobby::Flag::DROPS_ENABLED) ? "enabled" : "disabled");
 }
 
+static void server_command_raretable(shared_ptr<Client> c, const std::u16string&) {
+  auto l = c->require_lobby();
+  check_is_game(l, true);
+  check_is_leader(l, c);
+  if (l->base_version == GameVersion::BB) {
+    send_text_message_printf(c, "Cannot use client\nrare table on BB");
+  } else if (l->item_creator) {
+    l->item_creator.reset();
+    send_text_message_printf(l, "Game switched to\nclient rare tables");
+  } else {
+    l->create_item_creator();
+    send_text_message_printf(l, "Game switched to\nserver rare tables");
+  }
+}
+
 static void server_command_item(shared_ptr<Client> c, const std::u16string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -1566,6 +1581,7 @@ static const unordered_map<u16string, ChatCommandDefinition> chat_commands({
     {u"$persist", {server_command_persist, nullptr}},
     {u"$playrec", {server_command_playrec, nullptr}},
     {u"$rand", {server_command_rand, proxy_command_rand}},
+    {u"$raretable", {server_command_raretable, nullptr}},
     {u"$saverec", {server_command_saverec, nullptr}},
     {u"$sc", {server_command_send_client, proxy_command_send_client}},
     {u"$secid", {server_command_secid, proxy_command_secid}},

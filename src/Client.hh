@@ -172,6 +172,7 @@ struct Client : public std::enable_shared_from_this<Client> {
   uint32_t next_exp_value; // next EXP value to give
   G_SwitchStateChanged_6x05 last_switch_enabled_command;
   bool can_chat;
+  bool use_server_rare_tables;
   std::string pending_bb_save_username;
   uint8_t pending_bb_save_player_index;
   std::deque<std::function<void(uint32_t, uint32_t)>> function_call_response_queue;

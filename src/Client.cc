@@ -87,6 +87,7 @@ Client::Client(
       card_battle_table_seat_state(0),
       next_exp_value(0),
       can_chat(true),
+      use_server_rare_tables(false),
       pending_bb_save_player_index(0),
       dol_base_addr(0) {
   this->last_switch_enabled_command.header.subcommand = 0;

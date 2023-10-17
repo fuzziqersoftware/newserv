@@ -43,6 +43,33 @@ shared_ptr<ServerState> Lobby::require_server_state() const {
   return s;
 }
 
+void Lobby::create_item_creator() {
+  auto s = this->require_server_state();
+
+  shared_ptr<const RareItemSet> rare_item_set;
+  if (this->base_version == GameVersion::BB) {
+    rare_item_set = s->rare_item_sets.at("default-v4");
+  } else if (this->base_version == GameVersion::GC || this->base_version == GameVersion::XB) {
+    rare_item_set = s->rare_item_sets.at("default-v3");
+  } else {
+    // TODO: SHould there be a separate table for V1 eventually?
+    rare_item_set = s->rare_item_sets.at("default-v2");
+  }
+  this->item_creator.reset(new ItemCreator(
+      s->common_item_set,
+      rare_item_set,
+      s->armor_random_set,
+      s->tool_random_set,
+      s->weapon_random_sets.at(this->difficulty),
+      s->tekker_adjustment_set,
+      s->item_parameter_table,
+      this->episode,
+      (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
+      this->difficulty,
+      this->section_id,
+      this->random_seed));
+}
+
 void Lobby::create_ep3_server() {
   auto s = this->require_server_state();
   if (!this->ep3_server) {

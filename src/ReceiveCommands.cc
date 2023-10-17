@@ -3349,21 +3349,9 @@ shared_ptr<Lobby> create_game_generic(
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
   }
-  if (game->base_version == GameVersion::BB) {
+  if ((game->base_version == GameVersion::BB) || (c->use_server_rare_tables)) {
     // TODO: Use appropriate restrictions here if in battle mode
-    game->item_creator.reset(new ItemCreator(
-        s->common_item_set,
-        s->rare_item_set,
-        s->armor_random_set,
-        s->tool_random_set,
-        s->weapon_random_sets.at(game->difficulty),
-        s->tekker_adjustment_set,
-        s->item_parameter_table,
-        game->episode,
-        (game->mode == GameMode::SOLO) ? GameMode::NORMAL : game->mode,
-        game->difficulty,
-        game->section_id,
-        game->random_seed));
+    game->create_item_creator();
   }
   game->event = Lobby::game_event_for_lobby_event(current_lobby->event);
   game->block = 0xFF;
@@ -3461,7 +3449,7 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, con
     const auto& cmd = check_size_t<C_CreateGame_DCNTE<char>>(data);
     u16string name = decode_sjis(cmd.name);
     u16string password = decode_sjis(cmd.password);
-    game = create_game_generic(s, c, name, password);
+    game = create_game_generic(s, c, name, password, Episode::EP1, GameMode::NORMAL, 0, 0, true);
 
   } else {
     const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
