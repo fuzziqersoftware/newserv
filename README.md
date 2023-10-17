@@ -107,10 +107,10 @@ To use newserv in other ways (e.g. for translating data), see the end of this do
 
 newserv automatically finds quests in the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's "save files" option, just put them in that directory and name them appropriately.
 
-Standard quest files should be named like `q###-CATEGORY-VERSION-LANGUAGE.EXT`, battle quests should be named like `b###-VERSION-LANGUAGE.EXT`, challenge quests should be named like `c###-VERSION-LANGUAGE.EXT` for Episode 1 or `d###-VERSION-LANGUAGE.EXT` for Episode 2, and Episode 3 download quests should be named like `e###-gc3-LANGUAGE.EXT`. The fields in each filename are:
+Standard quest files should be named like `q###-CATEGORY-VERSION-LANGUAGE.EXT`, battle quests should be named like `b###-VERSION-LANGUAGE.EXT`, challenge quests should be named like `c###-VERSION-LANGUAGE.EXT` for Episode 1 or `d###-VERSION-LANGUAGE.EXT` for Episode 2. The fields in each filename are:
 - `###`: quest number (this doesn't really matter; it should just be unique across the PSO version)
 - `CATEGORY`: ret = Retrieval, ext = Extermination, evt = Events, shp = Shops, vr = VR, twr = Tower, gv1/gv2/gv4 = Government (BB only), dl = Download (these don't appear during online play), 1p = Solo (BB only)
-- `VERSION`: dn = Dreamcast NTE, d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gcn = GameCube Trial Edition, gc = GameCube Episodes 1 & 2, gc3 = Episode 3, xb = Xbox, bb = Blue Burst
+- `VERSION`: dn = Dreamcast NTE, d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gcn = GameCube Trial Edition, gc = GameCube Episodes 1 & 2, gc3 = Episode 3 (see below), xb = Xbox, bb = Blue Burst
 - `LANGUAGE`: j = Japanese, e = English, g = German, f = French, s = Spanish
 - `EXT`: file extension (see table below)
 
@@ -144,7 +144,7 @@ There are multiple PSO quest formats out there; newserv supports all of them. It
 1. *This is the default format. You can convert these to uncompressed format by running `newserv decompress-prs FILENAME.bin FILENAME.bind` (and similarly for .dat -> .datd)*
 2. *Similar to (1), to compress an uncompressed quest file: `newserv compress-prs FILENAME.bind FILENAME.bin` (and likewise for .datd -> .dat)*
 3. *Use the decode action to convert these quests to .bin/.dat format before putting them into the server's quests directory. If you know the encryption seed (serial number), pass it in as a hex string with the `--seed=` option. If you don't know the encryption seed, newserv will find it for you, which will likely take a long time.*
-4. *Episode 3 online quests don't go in the system/quests directory; they instead go in the system/ep3/maps directory. If you want an Episode 3 quest to be available for both online play and for downloading, the file must exist in both system/quests and in system/ep3/maps (symbolic links are acceptable).*
+4. *Episode 3 quests don't go in the system/quests directory. See the Episode 3 section below.*
 
 Episode 3 download quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 download quest files may be named with the .mnm extension instead of .bin, since the format is the same as the standard map files (in system/ep3/). These files can be encoded in any of the formats described above, except .qst.
 
@@ -186,6 +186,7 @@ Episode 3 state and game data is stored in the system/ep3 directory. The files i
 * card-text.mnrd: Decompressed card text archive; same format as TextCardE.bin. Generally only used for debugging.
 * com-decks.json: COM decks used in tournaments. The default decks in this file come from logs from Sega's servers, so the file doesn't include every COM deck Sega ever made - the rest are probably lost to time.
 * maps/: Online free battle and quest maps (.mnm/.bin/.mnmd/.bind files). newserv comes with all the original online and offline maps, including Story Mode quests. If you don't want the offline maps and quests to be playable online, delete the .bind files system/ep3/maps.
+* maps-download/: Download maps and quests (.mnm/.bin/.mnmd/.bind files). Files in this directory have the same format as those in the maps/ directory, but should be named like `e###-gc3-LANGUAGE.EXT` (similar to how non-Episode 3 quests are named in the system/quests/ directory). If you want a map to be available for online play and for downloading, the file must exist in both maps/ and maps-download/ (a symbolic link is acceptable).
 * tournament-state.json: State of all active tournaments. This file is automatically written when any tournament changes state for any reason (e.g. a tournament is created/started/deleted or a match is resolved).
 
 There is no public editor for Episode 3 maps and quests, but the format is described fairly thoroughly in src/Episode3/DataIndexes.hh (see the MapDefinition structure). You'll need to use `newserv decompress-prs ...` to decompress .bin or .mnm files before editing them, but you don't need to compress the files again to use them - just put the .bind or .mnmd file in the maps directory and newserv will make it available.

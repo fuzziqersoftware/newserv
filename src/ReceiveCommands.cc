@@ -1462,10 +1462,11 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
       break;
     case MenuID::QUEST: {
       bool is_download_quest = !c->lobby.lock();
-      if (!s->quest_index) {
+      auto quest_index = s->quest_index_for_client(c);
+      if (!quest_index) {
         send_quest_info(c, u"$C6Quests are not available.", is_download_quest);
       } else {
-        auto q = s->quest_index->get(cmd.item_id);
+        auto q = quest_index->get(cmd.item_id);
         if (!q) {
           send_quest_info(c, u"$C4Quest does not\nexist.", is_download_quest);
         } else {
@@ -1716,8 +1717,13 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
               }
             }
             if (num_ep3_categories == 1) {
-              auto quests = s->quest_index->filter(ep3_category_id, c->quest_version(), c->language());
-              send_quest_menu(c, MenuID::QUEST, quests, true);
+              auto quest_index = s->quest_index_for_client(c);
+              if (quest_index) {
+                auto quests = quest_index->filter(ep3_category_id, c->quest_version(), c->language());
+                send_quest_menu(c, MenuID::QUEST, quests, true);
+              } else {
+                send_lobby_message_box(c, u"$C6Quests are not available.");
+              }
               break;
             }
           }
@@ -1962,12 +1968,13 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 
     case MenuID::QUEST_FILTER: {
       auto s = c->require_server_state();
-      if (!s->quest_index) {
+      auto quest_index = s->quest_index_for_client(c);
+      if (!quest_index) {
         send_lobby_message_box(c, u"$C6Quests are not available.");
         break;
       }
       shared_ptr<Lobby> l = c->lobby.lock();
-      auto quests = s->quest_index->filter(item_id, c->quest_version(), c->language());
+      auto quests = quest_index->filter(item_id, c->quest_version(), c->language());
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
@@ -1977,11 +1984,12 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 
     case MenuID::QUEST: {
       auto s = c->require_server_state();
-      if (!s->quest_index) {
+      auto quest_index = s->quest_index_for_client(c);
+      if (!quest_index) {
         send_lobby_message_box(c, u"$C6Quests are not\navailable.");
         break;
       }
-      auto q = s->quest_index->get(item_id);
+      auto q = quest_index->get(item_id);
       if (!q) {
         send_lobby_message_box(c, u"$C6Quest does not exist.");
         break;
@@ -2327,11 +2335,6 @@ static void on_B3(shared_ptr<Client> c, uint16_t, uint32_t flag, const string& d
 static void on_A2(shared_ptr<Client> c, uint16_t, uint32_t flag, const string& data) {
   check_size_v(data.size(), 0);
   auto s = c->require_server_state();
-
-  if (!s->quest_index) {
-    send_lobby_message_box(c, u"$C6Quests are not available.");
-    return;
-  }
 
   auto l = c->lobby.lock();
   if (!l || !l->is_game()) {

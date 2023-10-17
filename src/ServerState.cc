@@ -310,7 +310,7 @@ shared_ptr<Client> ServerState::find_client(const std::u16string* identifier,
   throw out_of_range("client not found");
 }
 
-uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
+uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) const {
   if (c->channel.is_virtual_connection) {
     if (c->channel.remote_addr.ss_family != AF_INET) {
       throw logic_error("virtual connection is missing remote IPv4 address");
@@ -329,7 +329,7 @@ uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) {
   }
 }
 
-std::shared_ptr<const Menu> ServerState::information_menu_for_version(GameVersion version) {
+std::shared_ptr<const Menu> ServerState::information_menu_for_version(GameVersion version) const {
   if ((version == GameVersion::DC) || (version == GameVersion::PC)) {
     return this->information_menu_v2;
   } else if ((version == GameVersion::GC) || (version == GameVersion::XB)) {
@@ -338,7 +338,7 @@ std::shared_ptr<const Menu> ServerState::information_menu_for_version(GameVersio
   throw out_of_range("no information menu exists for this version");
 }
 
-shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(GameVersion version) {
+shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(GameVersion version) const {
   switch (version) {
     case GameVersion::DC:
       return this->proxy_destinations_menu_dc;
@@ -353,7 +353,7 @@ shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(GameVers
   }
 }
 
-const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_version(GameVersion version) {
+const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_version(GameVersion version) const {
   switch (version) {
     case GameVersion::DC:
       return this->proxy_destinations_dc;
@@ -979,8 +979,10 @@ void ServerState::resolve_ep3_card_names() {
 }
 
 void ServerState::load_quest_index() {
-  config_log.info("Collecting quest metadata");
-  this->quest_index.reset(new QuestIndex("system/quests", this->quest_category_index));
+  config_log.info("Collecting quests");
+  this->default_quest_index.reset(new QuestIndex("system/quests", this->quest_category_index));
+  config_log.info("Collecting Episode 3 download quests");
+  this->ep3_download_quest_index.reset(new QuestIndex("system/ep3/maps-download", this->quest_category_index));
 }
 
 void ServerState::compile_functions() {
@@ -991,4 +993,10 @@ void ServerState::compile_functions() {
 void ServerState::load_dol_files() {
   config_log.info("Loading DOL files");
   this->dol_file_index.reset(new DOLFileIndex("system/dol"));
+}
+
+shared_ptr<const QuestIndex> ServerState::quest_index_for_client(shared_ptr<Client> c) const {
+  return (c->flags & Client::Flag::IS_EPISODE_3)
+      ? this->ep3_download_quest_index
+      : this->default_quest_index;
 }

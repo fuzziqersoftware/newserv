@@ -116,8 +116,8 @@ Server commands:\n\
       battle-params - reload the enemy stats files\n\
       level-table - reload the level-up tables\n\
       item-tables - reload the item generation tables\n\
-      ep3 - reload the Episode 3 card definitions and maps\n\
-      quests - reindex all quests\n\
+      ep3 - reload Episode 3 card definitions and maps (not download quests)\n\
+      quests - reindex all quests (including Episode 3 download quests)\n\
       functions - recompile all client-side functions\n\
       dol-files - reindex all DOL files\n\
       config - reload most fields from config.json\n\

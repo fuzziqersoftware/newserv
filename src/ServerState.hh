@@ -84,7 +84,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const G_SetEXResultValues_GC_Ep3_6xB4x4B> ep3_tournament_ex_values;
   std::shared_ptr<const G_SetEXResultValues_GC_Ep3_6xB4x4B> ep3_tournament_final_round_ex_values;
   std::shared_ptr<const QuestCategoryIndex> quest_category_index;
-  std::shared_ptr<const QuestIndex> quest_index;
+  std::shared_ptr<const QuestIndex> default_quest_index;
+  std::shared_ptr<const QuestIndex> ep3_download_quest_index;
   std::shared_ptr<const LevelTable> level_table;
   std::shared_ptr<const BattleParamsIndex> battle_params;
   std::shared_ptr<const GSLArchive> bb_data_gsl;
@@ -185,14 +186,15 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
       uint64_t serial_number = 0,
       std::shared_ptr<Lobby> l = nullptr);
 
-  uint32_t connect_address_for_client(std::shared_ptr<Client> c);
+  uint32_t connect_address_for_client(std::shared_ptr<Client> c) const;
 
-  std::shared_ptr<const Menu> information_menu_for_version(GameVersion version);
-  std::shared_ptr<const Menu> proxy_destinations_menu_for_version(GameVersion version);
-  const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations_for_version(GameVersion version);
+  std::shared_ptr<const Menu> information_menu_for_version(GameVersion version) const;
+  std::shared_ptr<const Menu> proxy_destinations_menu_for_version(GameVersion version) const;
+  const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations_for_version(GameVersion version) const;
 
-  void set_port_configuration(
-      const std::vector<PortConfiguration>& port_configs);
+  std::shared_ptr<const QuestIndex> quest_index_for_client(std::shared_ptr<Client> c) const;
+
+  void set_port_configuration(const std::vector<PortConfiguration>& port_configs);
 
   std::shared_ptr<const std::string> load_bb_file(
       const std::string& patch_index_filename,
