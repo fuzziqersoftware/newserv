@@ -101,13 +101,16 @@ GSLRareItemSet::GSLRareItemSet(shared_ptr<const string> data, bool is_big_endian
               ((episode == Episode::EP2) ? "l" : ""),
               tolower(abbreviation_for_difficulty(difficulty)), // One of "nhvu"
               section_id);
-          auto entry = this->gsl.get(filename);
-          if (entry.second < sizeof(Table)) {
-            throw runtime_error(string_printf("table %s is too small", filename.c_str()));
+          try {
+            auto entry = this->gsl.get(filename);
+            if (entry.second < sizeof(Table)) {
+              throw runtime_error(string_printf("table %s is too small", filename.c_str()));
+            }
+            this->tables.emplace(
+                this->key_for_params(mode, episode, difficulty, section_id),
+                reinterpret_cast<const Table*>(entry.first));
+          } catch (const out_of_range&) {
           }
-          this->tables.emplace(
-              this->key_for_params(mode, episode, difficulty, section_id),
-              reinterpret_cast<const Table*>(entry.first));
         }
       }
     }
@@ -116,12 +119,20 @@ GSLRareItemSet::GSLRareItemSet(shared_ptr<const string> data, bool is_big_endian
 
 std::vector<RareItemSet::ExpandedDrop> GSLRareItemSet::get_enemy_specs(
     GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const {
-  return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_enemy_specs(rt_index);
+  try {
+    return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_enemy_specs(rt_index);
+  } catch (const out_of_range&) {
+    return {};
+  }
 }
 
 std::vector<RareItemSet::ExpandedDrop> GSLRareItemSet::get_box_specs(
     GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const {
-  return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_box_specs(area);
+  try {
+    return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_box_specs(area);
+  } catch (const out_of_range&) {
+    return {};
+  }
 }
 
 RELRareItemSet::RELRareItemSet(shared_ptr<const string> data) : data(data) {

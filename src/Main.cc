@@ -252,8 +252,9 @@ The actions are:\n\
     system/blueburst/rare-table.json for an example of this format). If --json\n\
     is not given, the input is parsed as a REL rare item set.\n\
   convert-itemrt-rel-to-json [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Convert a REL rare table to a JSON rare item set. The resulting JSON has\n\
-    the same structure as system/blueburst/rare-table.json.\n\
+  convert-itemrt-gsl-to-json [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Convert a REL or GSL rare table to a JSON rare item set. The resulting JSON\n\
+    has the same structure as system/blueburst/rare-table.json.\n\
   generate-dc-serial-number [--domain=DOMAIN] [--subdomain=SUBDOMAIN]\n\
     Generate a PSO DC serial number. DOMAIN should be 0 for DCv1 or 1 for DCv2;\n\
     SUBDOMAIN should be 0 for Japanese, 1 for USA, or 2 for Europe.\n\
@@ -315,6 +316,7 @@ enum class Behavior {
   ENCODE_TEXT_ARCHIVE,
   FORMAT_RARE_ITEM_SET,
   CONVERT_ITEMRT_REL_TO_JSON,
+  CONVERT_ITEMRT_GSL_TO_JSON,
   SHOW_EP3_MAPS,
   SHOW_EP3_CARDS,
   GENERATE_EP3_CARDS_HTML,
@@ -362,6 +364,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::DECODE_SJIS) ||
       (b == Behavior::FORMAT_RARE_ITEM_SET) ||
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
+      (b == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
       (b == Behavior::DECODE_TEXT_ARCHIVE) ||
@@ -399,6 +402,7 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::ENCODE_QST) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
+      (b == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) ||
       (b == Behavior::DECODE_SJIS) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
@@ -613,6 +617,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::FORMAT_RARE_ITEM_SET;
         } else if (!strcmp(argv[x], "convert-itemrt-rel-to-json")) {
           behavior = Behavior::CONVERT_ITEMRT_REL_TO_JSON;
+        } else if (!strcmp(argv[x], "convert-itemrt-gsl-to-json")) {
+          behavior = Behavior::CONVERT_ITEMRT_GSL_TO_JSON;
         } else if (!strcmp(argv[x], "show-ep3-maps")) {
           behavior = Behavior::SHOW_EP3_MAPS;
         } else if (!strcmp(argv[x], "show-ep3-cards")) {
@@ -718,7 +724,7 @@ int main(int argc, char** argv) {
         filename += ".json";
       } else if (behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) {
         filename += ".txt";
-      } else if (behavior == Behavior::CONVERT_ITEMRT_REL_TO_JSON) {
+      } else if ((behavior == Behavior::CONVERT_ITEMRT_REL_TO_JSON) || (behavior == Behavior::CONVERT_ITEMRT_GSL_TO_JSON)) {
         filename += ".json";
       } else {
         filename += ".dec";
@@ -727,7 +733,8 @@ int main(int argc, char** argv) {
 
     } else if (isatty(fileno(stdout)) &&
         (behavior != Behavior::DISASSEMBLE_QUEST_SCRIPT) &&
-        (behavior != Behavior::CONVERT_ITEMRT_REL_TO_JSON)) {
+        (behavior != Behavior::CONVERT_ITEMRT_REL_TO_JSON) &&
+        (behavior != Behavior::CONVERT_ITEMRT_GSL_TO_JSON)) {
       // If stdout is a terminal and the data is not known to be text, use
       // print_data to write the result
       print_data(stdout, data, size);
@@ -1562,9 +1569,15 @@ int main(int argc, char** argv) {
       break;
     }
 
-    case Behavior::CONVERT_ITEMRT_REL_TO_JSON: {
+    case Behavior::CONVERT_ITEMRT_REL_TO_JSON:
+    case Behavior::CONVERT_ITEMRT_GSL_TO_JSON: {
       shared_ptr<string> data(new string(read_input_data()));
-      RELRareItemSet rs(data);
+      unique_ptr<RareItemSet> rs;
+      if (behavior == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) {
+        rs.reset(new GSLRareItemSet(data, big_endian));
+      } else {
+        rs.reset(new RELRareItemSet(data));
+      }
 
       // Compute the mapping of {rt_index: EnemyType} for each episode
       const auto& generate_table = +[](Episode episode) -> vector<vector<EnemyType>> {
@@ -1606,7 +1619,7 @@ int main(int argc, char** argv) {
                 continue;
               }
 
-              for (const auto& spec : rs.get_enemy_specs(GameMode::NORMAL, episode, difficulty, section_id, rt_index)) {
+              for (const auto& spec : rs->get_enemy_specs(GameMode::NORMAL, episode, difficulty, section_id, rt_index)) {
                 uint32_t primary_identifier = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
                 if (primary_identifier == 0) {
                   continue;
@@ -1625,7 +1638,7 @@ int main(int argc, char** argv) {
             for (size_t area = 0; area < 0x12; area++) {
               auto area_list = JSON::list();
 
-              for (const auto& spec : rs.get_box_specs(GameMode::NORMAL, episode, difficulty, section_id, area)) {
+              for (const auto& spec : rs->get_box_specs(GameMode::NORMAL, episode, difficulty, section_id, area)) {
                 uint32_t primary_identifier = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
                 if (primary_identifier == 0) {
                   continue;
