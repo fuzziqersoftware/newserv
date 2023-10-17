@@ -859,27 +859,27 @@ void CardDefinition::decode_range() {
   if (index != 0) {
     this->range.clear(0);
     switch (index) {
-      case 1: // Single cell in front of FC
+      case 1: // Single cell in front of FC (Attack)
         this->range[3] = 0x00000100;
         break;
       case 2: // Cell in front of FC and the front-left and front-right (Slash)
         this->range[3] = 0x00001110;
         break;
-      case 3: // 3 cells in a line in front of FC
+      case 3: // 3 cells in a line in front of FC (Long Arm)
         this->range[1] = 0x00000100;
         this->range[2] = 0x00000100;
         this->range[3] = 0x00000100;
         break;
-      case 4: // All 8 cells around FC
+      case 4: // All 8 cells around FC (Gifoie)
         this->range[3] = 0x00001110;
         this->range[4] = 0x00001010;
         this->range[5] = 0x00001110;
         break;
-      case 5: // 2 cells in a line in front of FC
+      case 5: // 2 cells in a line in front of FC (Mechgun)
         this->range[2] = 0x00000100;
         this->range[3] = 0x00000100;
         break;
-      case 6: // Entire field (renders as "A")
+      case 6: // Entire field (Grants)
         for (size_t x = 0; x < 6; x++) {
           this->range[x] = 0x000FFFFF;
         }

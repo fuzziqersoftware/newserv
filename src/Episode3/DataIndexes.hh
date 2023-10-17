@@ -482,13 +482,29 @@ struct CardDefinition {
   } __attribute__((packed));
 
   struct Effect {
+    // effect_num is the 1-based index of this effect within the card definition
+    // (that is, .effects[0] should have effect_num == 1 if it is used).
     /* 00 */ uint8_t effect_num;
     /* 01 */ ConditionType type;
-    /* 02 */ ptext<char, 0x0F> expr; // May be blank if the condition type doesn't use it
+    // For ConditionTypes that need it, expr specifies "how much". (For those
+    // that don't, expr may be blank.) The value may contain tokens that refer
+    // to stats from the current battle (see description_for_expr_token) and
+    // operators to perform basic computations on them. Operators are evaluated
+    // left-to-right in the expression, and there are no operator precedence
+    // rules; for example, the expression "4+4//2" results in 4, not 6.
+    /* 02 */ ptext<char, 0x0F> expr;
+    // when specifies in which phase the effect should activate.
+    // TODO: There are many values that can be used here; document them.
     /* 11 */ uint8_t when;
+    // arg1 generally specifies how long the effect activates for.
     /* 12 */ ptext<char, 4> arg1;
+    // arg2 generally specifies a condition for when the effect activates.
     /* 16 */ ptext<char, 4> arg2;
+    // arg3 generally specifies who is targeted by the effect.
     /* 1A */ ptext<char, 4> arg3;
+    // apply_criterion can be used to apply an additional condition for when the
+    // effect should activate. For example, it can be used to make the effect
+    // only activate if the target is not a Story Character.
     /* 1E */ CriterionCode apply_criterion;
     // name_index specifies which string from TextEnglish.pr2 is shown next to
     // the card when it is attacking or defending. Zero in this field means no
@@ -503,28 +519,69 @@ struct CardDefinition {
 
   /* 0000 */ be_uint32_t card_id;
   /* 0004 */ parray<uint8_t, 0x40> jp_name;
-  /* 0044 */ CardType type; // If <0 (signed), then this is the end of the card list
+
+  // The list of card definitions ends with a "sentinel" definition that isn't a
+  // real card, but instead has a negative number in the type field here.
+  /* 0044 */ CardType type;
+
   /* 0045 */ uint8_t self_cost; // ATK dice points required
   /* 0046 */ uint8_t ally_cost; // ATK points from allies required; PBs use this
   /* 0047 */ uint8_t unused1;
+
+  // In the definitions file, only .code is populated here; .decode_code() must
+  // be called to fill in .type and .stat within each of these.
   /* 0048 */ Stat hp;
   /* 004C */ Stat ap;
   /* 0050 */ Stat tp;
   /* 0054 */ Stat mv;
+
+  // See name_for_link_color for the list of values used here.
   /* 0058 */ parray<uint8_t, 8> left_colors;
   /* 0060 */ parray<uint8_t, 8> right_colors;
   /* 0068 */ parray<uint8_t, 8> top_colors;
+
+  // The card's attack range is defined in a somewhat odd format here. Each
+  // field in this array corresponds to a single row of the range, and every
+  // fourth bit, starting with bit 15, corresponds to a tile in that row. The
+  // rest of the bits are ignored, except in two special cases described below.
+  // For example, Ohgun's range is:
+  //   [0] = 0x00000000 => -----
+  //   [1] = 0x00001110 => -***-
+  //   [2] = 0x00001110 => -***-
+  //   [3] = 0x00000000 => -----
+  //   [4] = 0x00000000 => ----- (the card itself is in the center of this row)
+  //   [5] = 0x00000000 => -----
+  //
+  // The two special cases are as follows:
+  // 1. If all six values in the range array are 0x000FFFFF, then the card's
+  //    range is the entire field.
+  // 2. If the cell corresponding to the card itself ((range[4] >> 8) & 0x0F) is
+  //    not zero, then the rest of the range array is ignored and the card's
+  //    range comes from a fixed set of ranges instead. See decode_range() for
+  //    more information.
   /* 0070 */ parray<be_uint32_t, 6> range;
+
   /* 0088 */ be_uint32_t unused2;
   /* 008C */ TargetMode target_mode;
   /* 008D */ uint8_t assist_turns; // 90 (dec) = once, 99 (dec) = forever
-  /* 008E */ uint8_t cannot_move; // 0 for SC and creature cards; 1 for everything else
-  /* 008F */ uint8_t cannot_attack; // 1 for shields, mags, defense actions, and assist cards
+  // This field is 1 if the card cannot move by itself. Item cards hare 1 here
+  // because they cannot move on their own and automatically move along with
+  // their SC instead. Generally only SCs and creatures have 0 here.
+  /* 008E */ uint8_t cannot_move;
+  // This field is 1 if the card cannot take part in an attack. Unlike
+  // cannot_move, cards that cannot attack on their own but can take part in an
+  // attack (such as action cards) have 0 here. Most shields, mags, defense
+  // actions, and assist cards have 1 here.
+  /* 008F */ uint8_t cannot_attack;
   /* 0090 */ uint8_t unused3;
   // If cannot_drop is 0, this card can't appear in post-battle rewards. A
   // value of 0 here also prevents the card from being used as a God Whim
   // random assist.
   /* 0091 */ uint8_t cannot_drop;
+  // This criterion code specifies who can use the card, and when it can be
+  // used. This specifies which Hero-side SCs can use which items, for example,
+  // and when action cards can be played (when SC or FC is attacking, on self or
+  // ally, etc.).
   /* 0092 */ CriterionCode usable_criterion;
   /* 0093 */ CardRank rank;
   /* 0094 */ be_uint16_t unused4;
@@ -534,7 +591,7 @@ struct CardDefinition {
   /* 0096 */ be_uint16_t be_card_class;
 
   // If this card is an assist card, this field controls how COM players handle
-  // playing it. (This field is ignored for other card types.) This integer
+  // playing it. This field is ignored for non-assist cards. This integer
   // encodes the following fields:
   // - assist_ai_params % 100 (that is, the two lowest decimal places) appears
   //   to specify the effect, though a few unrelated cards share values in this
@@ -542,9 +599,12 @@ struct CardDefinition {
   // - (assist_ai_params / 100) % 10 specifies the priority. It appears the COM
   //   logic always chooses the assist card with the highest value in this field
   //   if there are multiple cards to consider.
-  // - (assist_ai_params / 1000) % 10 specifies on who the assist card may be
+  // - (assist_ai_params / 1000) % 10 specifies on whom the assist card may be
   //   played (0 = any player, 1 = self, 2 = self or ally, 3 = enemy only).
   /* 0098 */ be_uint16_t assist_ai_params;
+  // Most cards in the official definitions file have the same value stored in
+  // unused5 as in assist_ai_params. Unlike assist_ai_params, unused5 does not
+  // appear to be used anywhere.
   /* 009A */ be_uint16_t unused5;
 
   // The card drop rates control how likely the card is to appear in a standard
@@ -554,8 +614,8 @@ struct CardDefinition {
   // - type is SC_HUNTERS or SC_ARKZ
   // - card_class is BOSS_ATTACK_ACTION (0x23) or BOSS_TECH (0x24)
   // - rank is E, D1, or D2
-  // - cannot_drop is 1 (specifically 1; other nonzero values here don't
-  //   prevent the card from appearing in post-battle draws)
+  // - cannot_drop is 1 (specifically 1; other nonzero values for cannot_drop
+  //   don't prevent the card from appearing in post-battle draws)
   // If none of these conditions apply, the logic below is used.
   //
   // Drop rates are integers which encode the following data:
@@ -707,6 +767,8 @@ struct CardDefinition {
   /* 00A0 */ ptext<char, 0x14> en_name;
   /* 00B4 */ ptext<char, 0x0B> jp_short_name;
   /* 00BF */ ptext<char, 0x08> en_short_name;
+  // These effects modify the card's behavior in various situations. Only
+  // effects for which effect_num is not zero are used.
   /* 00C7 */ parray<Effect, 3> effects;
   /* 0127 */ uint8_t unused6;
   /* 0128 */
@@ -1200,6 +1262,17 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 2760 */ ptext<char, 0x190> dispatch_message;
 
   struct DialogueSet {
+    // Dialogue sets specify lines that COMs can say at certain points during
+    // the battle. They only apply to COMs which are defined as NPCs in the map
+    // definition; human players and COMs chosen by humans never say lines from
+    // dialogue sets.
+
+    // when specifies the situation in which this dialogue set activates. The
+    // values 0000-000C (inclusive) can be used here, or FFFF if the entire
+    // dialogue set is unused. The known values are:
+    //   0001: Activates at battle start if player is an opponent
+    //   0006: Activates when below 50% HP
+    //   0008: Activates at battle start if player is an ally
     /* 0000 */ be_int16_t when; // 0x00-0x0C, or FFFF if unused
     /* 0002 */ be_uint16_t percent_chance; // 0-100, or FFFF if unused
     // If the dialogue set activates, the game randomly chooses one of these
@@ -1207,6 +1280,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 0004 */ parray<ptext<char, 0x40>, 4> strings;
     /* 0104 */
   } __attribute__((packed));
+
   // There are up to 0x10 of these per valid NPC, but only the first 13 of them
   // are used, since each one must have a unique value for .when and the values
   // there can only be 0-12.
