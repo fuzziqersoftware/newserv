@@ -1803,7 +1803,7 @@ string ItemData::name(bool include_color_codes) const {
       }
 
     } else { // Not S-rank (extended name bits not set)
-      uint8_t percentages[5] = {0, 0, 0, 0, 0};
+      parray<uint8_t, 5> percentages(0);
       for (size_t x = 0; x < 3; x++) {
         uint8_t which = this->data1[6 + 2 * x];
         uint8_t value = this->data1[7 + 2 * x];
@@ -1816,8 +1816,10 @@ string ItemData::name(bool include_color_codes) const {
           percentages[which - 1] = value;
         }
       }
-      ret_tokens.emplace_back(string_printf("%hhu/%hhu/%hhu/%hhu/%hhu",
-          percentages[0], percentages[1], percentages[2], percentages[3], percentages[4]));
+      if (!percentages.is_filled_with(0)) {
+        ret_tokens.emplace_back(string_printf("%hhu/%hhu/%hhu/%hhu/%hhu",
+            percentages[0], percentages[1], percentages[2], percentages[3], percentages[4]));
+      }
     }
 
     // For armors, add the slots, unit modifiers, and/or DEF/EVP bonuses
