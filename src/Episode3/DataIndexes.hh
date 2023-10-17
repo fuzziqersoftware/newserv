@@ -686,7 +686,7 @@ struct CardDefinition {
   // Once a rank is chosen, the game puts all possible cards into buckets based
   // on how many of that card the player already has, then chooses a random card
   // out of bucket 0, then bucket 1, etc. all the way up to bucket 49 (or 2 if
-  // the final rank is S or SS). The first drawn card that is the final rank is
+  // the final rank is S or SS). The first drawn card that has the final rank is
   // the card that the original card transforms into. Notably, this logic means
   // that cards are more likely to transform into cards that the player doesn't
   // already have, or only has few copies of. Also notably, it is impossible for
