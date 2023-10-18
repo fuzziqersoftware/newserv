@@ -800,58 +800,59 @@ static void server_command_edit(shared_ptr<Client> c, const std::u16string& args
   vector<string> tokens = split(encoded_args, ' ');
 
   try {
+    auto p = c->game_data.player();
     if (tokens.at(0) == "atp") {
-      c->game_data.player()->disp.stats.char_stats.atp = stoul(tokens.at(1));
+      p->disp.stats.char_stats.atp = stoul(tokens.at(1));
     } else if (tokens.at(0) == "mst") {
-      c->game_data.player()->disp.stats.char_stats.mst = stoul(tokens.at(1));
+      p->disp.stats.char_stats.mst = stoul(tokens.at(1));
     } else if (tokens.at(0) == "evp") {
-      c->game_data.player()->disp.stats.char_stats.evp = stoul(tokens.at(1));
+      p->disp.stats.char_stats.evp = stoul(tokens.at(1));
     } else if (tokens.at(0) == "hp") {
-      c->game_data.player()->disp.stats.char_stats.hp = stoul(tokens.at(1));
+      p->disp.stats.char_stats.hp = stoul(tokens.at(1));
     } else if (tokens.at(0) == "dfp") {
-      c->game_data.player()->disp.stats.char_stats.dfp = stoul(tokens.at(1));
+      p->disp.stats.char_stats.dfp = stoul(tokens.at(1));
     } else if (tokens.at(0) == "ata") {
-      c->game_data.player()->disp.stats.char_stats.ata = stoul(tokens.at(1));
+      p->disp.stats.char_stats.ata = stoul(tokens.at(1));
     } else if (tokens.at(0) == "lck") {
-      c->game_data.player()->disp.stats.char_stats.lck = stoul(tokens.at(1));
+      p->disp.stats.char_stats.lck = stoul(tokens.at(1));
     } else if (tokens.at(0) == "meseta") {
-      c->game_data.player()->disp.stats.meseta = stoul(tokens.at(1));
+      p->disp.stats.meseta = stoul(tokens.at(1));
     } else if (tokens.at(0) == "exp") {
-      c->game_data.player()->disp.stats.experience = stoul(tokens.at(1));
+      p->disp.stats.experience = stoul(tokens.at(1));
     } else if (tokens.at(0) == "level") {
-      c->game_data.player()->disp.stats.level = stoul(tokens.at(1)) - 1;
+      p->disp.stats.level = stoul(tokens.at(1)) - 1;
     } else if (tokens.at(0) == "namecolor") {
       uint32_t new_color;
       sscanf(tokens.at(1).c_str(), "%8X", &new_color);
-      c->game_data.player()->disp.visual.name_color = new_color;
+      p->disp.visual.name_color = new_color;
     } else if (tokens.at(0) == "secid") {
       uint8_t secid = section_id_for_name(decode_sjis(tokens.at(1)));
       if (secid == 0xFF) {
         send_text_message(c, u"$C6No such section ID");
         return;
       } else {
-        c->game_data.player()->disp.visual.section_id = secid;
+        p->disp.visual.section_id = secid;
       }
     } else if (tokens.at(0) == "name") {
-      c->game_data.player()->disp.name = add_language_marker(tokens.at(1), 'J');
+      p->disp.name = add_language_marker(tokens.at(1), 'J');
     } else if (tokens.at(0) == "npc") {
       if (tokens.at(1) == "none") {
-        c->game_data.player()->disp.visual.extra_model = 0;
-        c->game_data.player()->disp.visual.v2_flags &= 0xFD;
+        p->disp.visual.extra_model = 0;
+        p->disp.visual.v2_flags &= 0xFD;
       } else {
         uint8_t npc = npc_for_name(decode_sjis(tokens.at(1)));
         if (npc == 0xFF) {
           send_text_message(c, u"$C6No such NPC");
           return;
         }
-        c->game_data.player()->disp.visual.extra_model = npc;
-        c->game_data.player()->disp.visual.v2_flags |= 0x02;
+        p->disp.visual.extra_model = npc;
+        p->disp.visual.v2_flags |= 0x02;
       }
     } else if (tokens.at(0) == "tech") {
       uint8_t level = stoul(tokens.at(2)) - 1;
       if (tokens.at(1) == "all") {
         for (size_t x = 0; x < 0x14; x++) {
-          c->game_data.player()->set_technique_level(x, level);
+          p->set_technique_level(x, level);
         }
       } else {
         uint8_t tech_id = technique_for_name(decode_sjis(tokens.at(1)));
@@ -860,7 +861,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::u16string& args
           return;
         }
         try {
-          c->game_data.player()->set_technique_level(tech_id, level);
+          p->set_technique_level(tech_id, level);
         } catch (const out_of_range&) {
           send_text_message(c, u"$C6Invalid technique");
           return;

@@ -613,7 +613,7 @@ void send_approve_player_choice_bb(shared_ptr<Client> c) {
 
 void send_complete_player_bb(shared_ptr<Client> c) {
   auto account = c->game_data.account();
-  auto player = c->game_data.player();
+  auto player = c->game_data.player(true, false);
 
   SC_SyncCharacterSaveFile_BB_00E7 cmd;
   cmd.inventory = player->inventory;
@@ -922,13 +922,14 @@ template <typename CharT>
 void send_info_board_t(shared_ptr<Client> c) {
   vector<S_InfoBoardEntry_D8<CharT>> entries;
   auto l = c->require_lobby();
-  for (const auto& c : l->clients) {
-    if (!c.get()) {
+  for (const auto& other_c : l->clients) {
+    if (!other_c.get()) {
       continue;
     }
+    auto other_p = other_c->game_data.player(true, false);
     auto& e = entries.emplace_back();
-    e.name = c->game_data.player()->disp.name;
-    e.message = c->game_data.player()->info_board;
+    e.name = other_p->disp.name;
+    e.message = other_p->info_board;
     add_color_inplace(e.message);
   }
   send_command_vt(c, 0xD8, entries.size(), entries);
@@ -979,7 +980,7 @@ void send_card_search_result_t(
   cmd.location_string = location_string;
   cmd.extension.lobby_refs[0].menu_id = MenuID::LOBBY;
   cmd.extension.lobby_refs[0].item_id = result_lobby->lobby_id;
-  cmd.extension.player_name = result->game_data.player()->disp.name;
+  cmd.extension.player_name = result->game_data.player(true, false)->disp.name;
 
   send_command_t(c, 0x41, 0x00, cmd);
 }
@@ -1079,11 +1080,12 @@ void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
     throw runtime_error("source player does not have a license");
   }
 
+  auto source_p = source->game_data.player(true, false);
   uint32_t guild_card_number = source->license->serial_number;
-  u16string name = source->game_data.player()->disp.name;
-  u16string description = source->game_data.player()->guild_card_description;
-  uint8_t section_id = source->game_data.player()->disp.visual.section_id;
-  uint8_t char_class = source->game_data.player()->disp.visual.char_class;
+  u16string name = source_p->disp.name;
+  u16string description = source_p->guild_card_description;
+  uint8_t section_id = source_p->disp.visual.section_id;
+  uint8_t char_class = source_p->disp.visual.char_class;
 
   send_guild_card(
       c->channel, guild_card_number, name, u"", description, section_id, char_class);
@@ -1388,7 +1390,7 @@ template <typename EntryT>
 void send_player_records_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
   vector<EntryT> entries;
   auto add_client = [&](shared_ptr<Client> lc) -> void {
-    auto lp = lc->game_data.player();
+    auto lp = lc->game_data.player(true, false);
     auto& e = entries.emplace_back();
     e.client_id = lc->lobby_client_id;
     e.challenge = lp->challenge_records;
@@ -1512,27 +1514,28 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
 
   for (size_t z = 4; z < 12; z++) {
     if (l->clients[z]) {
-      auto& gd = l->clients[z]->game_data;
-      auto& p = cmd.spectator_players[z - 4];
-      auto& e = cmd.entries[z];
-      p.lobby_data.player_tag = 0x00010000;
-      p.lobby_data.guild_card = l->clients[z]->license->serial_number;
-      p.lobby_data.client_id = l->clients[z]->lobby_client_id;
-      p.lobby_data.name = gd.player()->disp.name;
-      remove_language_marker_inplace(p.lobby_data.name);
-      p.inventory = gd.player()->inventory;
-      p.disp = gd.player()->disp.to_dcpcv3();
-      remove_language_marker_inplace(p.disp.visual.name);
+      auto other_c = l->clients[z];
+      auto other_p = other_c->game_data.player();
+      auto& cmd_p = cmd.spectator_players[z - 4];
+      auto& cmd_e = cmd.entries[z];
+      cmd_p.lobby_data.player_tag = 0x00010000;
+      cmd_p.lobby_data.guild_card = other_c->license->serial_number;
+      cmd_p.lobby_data.client_id = other_c->lobby_client_id;
+      cmd_p.lobby_data.name = other_p->disp.name;
+      remove_language_marker_inplace(cmd_p.lobby_data.name);
+      cmd_p.inventory = other_p->inventory;
+      cmd_p.disp = other_p->disp.to_dcpcv3();
+      remove_language_marker_inplace(cmd_p.disp.visual.name);
 
-      e.player_tag = 0x00010000;
-      e.guild_card_number = l->clients[z]->license->serial_number;
-      e.name = gd.player()->disp.name;
-      remove_language_marker_inplace(e.name);
-      e.present = 1;
-      e.level = gd.ep3_config
-          ? (gd.ep3_config->online_clv_exp / 100)
-          : gd.player()->disp.stats.level.load();
-      e.name_color = gd.player()->disp.visual.name_color;
+      cmd_e.player_tag = 0x00010000;
+      cmd_e.guild_card_number = other_c->license->serial_number;
+      cmd_e.name = other_p->disp.name;
+      remove_language_marker_inplace(cmd_e.name);
+      cmd_e.present = 1;
+      cmd_e.level = other_c->game_data.ep3_config
+          ? (other_c->game_data.ep3_config->online_clv_exp / 100)
+          : other_p->disp.stats.level.load();
+      cmd_e.name_color = other_p->disp.visual.name_color;
 
       player_count++;
     }
@@ -1625,12 +1628,12 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         size_t player_count = populate_v3_cmd(cmd);
         for (size_t x = 0; x < 4; x++) {
           if (l->clients[x]) {
-            cmd.players_ep3[x].inventory = l->clients[x]->game_data.player()->inventory;
+            auto other_p = l->clients[x]->game_data.player();
+            cmd.players_ep3[x].inventory = other_p->inventory;
             for (size_t z = 0; z < 30; z++) {
               cmd.players_ep3[x].inventory.items[z].data.bswap_data2_if_mag();
             }
-            cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(
-                l->clients[x]->game_data.player()->disp);
+            cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp);
           }
         }
         send_command_t(c, 0x64, player_count, cmd);
@@ -1732,22 +1735,23 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
 
   size_t used_entries = 0;
   for (const auto& lc : lobby_clients) {
+    auto lp = lc->game_data.player();
     auto& e = cmd.entries[used_entries++];
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = lc->license->serial_number;
     e.lobby_data.client_id = lc->lobby_client_id;
-    e.lobby_data.name = lc->game_data.player()->disp.name;
+    e.lobby_data.name = lp->disp.name;
     remove_language_marker_inplace(e.lobby_data.name);
     if (UseLanguageMarkerInName) {
       add_language_marker_inplace(e.lobby_data.name, 'J');
     }
-    e.inventory = lc->game_data.player()->inventory;
+    e.inventory = lp->inventory;
     if (c->version() == GameVersion::GC) {
       for (size_t z = 0; z < 30; z++) {
         e.inventory.items[z].data.bswap_data2_if_mag();
       }
     }
-    e.disp = convert_player_disp_data<DispDataT>(lc->game_data.player()->disp);
+    e.disp = convert_player_disp_data<DispDataT>(lp->disp);
     e.disp.enforce_lobby_join_limits(c->version());
   }
 
@@ -1785,13 +1789,14 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
 
   size_t used_entries = 0;
   for (const auto& lc : lobby_clients) {
+    auto lp = lc->game_data.player();
     auto& e = cmd.entries[used_entries++];
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = lc->license->serial_number;
     e.lobby_data.client_id = lc->lobby_client_id;
-    e.lobby_data.name = lc->game_data.player()->disp.name;
-    e.inventory = lc->game_data.player()->inventory;
-    e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lc->game_data.player()->disp);
+    e.lobby_data.name = lp->disp.name;
+    e.inventory = lp->inventory;
+    e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp);
     e.disp.enforce_lobby_join_limits(c->version());
   }
 
@@ -2112,14 +2117,15 @@ void send_bank(shared_ptr<Client> c) {
     throw logic_error("6xBC can only be sent to BB clients");
   }
 
-  const auto* items_it = c->game_data.player()->bank.items.data();
-  vector<PlayerBankItem> items(items_it, items_it + c->game_data.player()->bank.num_items);
+  auto p = c->game_data.player();
+  const auto* items_it = p->bank.items.data();
+  vector<PlayerBankItem> items(items_it, items_it + p->bank.num_items);
 
   G_BankContentsHeader_BB_6xBC cmd = {
       {{0xBC, 0, 0}, sizeof(G_BankContentsHeader_BB_6xBC) + items.size() * sizeof(PlayerBankItem)},
       random_object<uint32_t>(),
-      c->game_data.player()->bank.num_items,
-      c->game_data.player()->bank.meseta};
+      p->bank.num_items,
+      p->bank.meseta};
 
   send_command_t_vt(c, 0x6C, 0x00, cmd, items);
 }
@@ -2148,15 +2154,16 @@ void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
 // notifies players about a level up
 void send_level_up(shared_ptr<Client> c) {
   auto l = c->require_lobby();
-  CharacterStats stats = c->game_data.player()->disp.stats.char_stats;
+  auto p = c->game_data.player();
+  CharacterStats stats = p->disp.stats.char_stats;
 
-  for (size_t x = 0; x < c->game_data.player()->inventory.num_items; x++) {
-    if ((c->game_data.player()->inventory.items[x].flags & 0x08) &&
-        (c->game_data.player()->inventory.items[x].data.data1[0] == 0x02)) {
-      stats.dfp += (c->game_data.player()->inventory.items[x].data.data1w[2] / 100);
-      stats.atp += (c->game_data.player()->inventory.items[x].data.data1w[3] / 50);
-      stats.ata += (c->game_data.player()->inventory.items[x].data.data1w[4] / 200);
-      stats.mst += (c->game_data.player()->inventory.items[x].data.data1w[5] / 50);
+  for (size_t x = 0; x < p->inventory.num_items; x++) {
+    if ((p->inventory.items[x].flags & 0x08) &&
+        (p->inventory.items[x].data.data1[0] == 0x02)) {
+      stats.dfp += (p->inventory.items[x].data.data1w[2] / 100);
+      stats.atp += (p->inventory.items[x].data.data1w[3] / 50);
+      stats.ata += (p->inventory.items[x].data.data1w[4] / 200);
+      stats.mst += (p->inventory.items[x].data.data1w[5] / 50);
     }
   }
 
@@ -2168,7 +2175,7 @@ void send_level_up(shared_ptr<Client> c) {
       stats.hp,
       stats.dfp,
       stats.ata,
-      c->game_data.player()->disp.stats.level.load(),
+      p->disp.stats.level.load(),
       0};
   send_command_t(l, 0x60, 0x00, cmd);
 }

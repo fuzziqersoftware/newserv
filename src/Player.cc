@@ -42,8 +42,76 @@ ClientGameData::~ClientGameData() {
   }
 }
 
-shared_ptr<SavedAccountDataBB> ClientGameData::account(bool should_load) {
-  if (!this->account_data.get() && should_load) {
+void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_ptr<const LevelTable> level_table) {
+  this->overlay_player_data.reset(new SavedPlayerDataBB(*this->player(true, false)));
+
+  if (rules->weapon_and_armor_mode != BattleRules::WeaponAndArmorMode::ALLOW) {
+    this->overlay_player_data->inventory.remove_all_items_of_type(0);
+    this->overlay_player_data->inventory.remove_all_items_of_type(1);
+  }
+  if (rules->forbid_mags) {
+    this->overlay_player_data->inventory.remove_all_items_of_type(2);
+  }
+  if (rules->tool_mode != BattleRules::ToolMode::ALLOW) {
+    this->overlay_player_data->inventory.remove_all_items_of_type(3);
+  }
+  if (rules->replace_char) {
+    this->overlay_player_data->inventory.hp_materials_used = 0;
+    this->overlay_player_data->inventory.tp_materials_used = 0;
+
+    uint32_t target_level = clamp<uint32_t>(rules->char_level, 0, 199);
+    uint8_t char_class = this->overlay_player_data->disp.visual.char_class;
+    const auto& base_stats = level_table->base_stats_for_class(char_class);
+    auto& stats = this->overlay_player_data->disp.stats;
+    stats.char_stats.atp = base_stats.atp;
+    stats.char_stats.mst = base_stats.mst;
+    stats.char_stats.evp = base_stats.evp;
+    stats.char_stats.hp = base_stats.hp;
+    stats.char_stats.dfp = base_stats.dfp;
+    stats.char_stats.ata = base_stats.ata;
+    stats.char_stats.lck = base_stats.lck;
+    for (this->overlay_player_data->disp.stats.level = 0;
+         this->overlay_player_data->disp.stats.level < target_level;
+         this->overlay_player_data->disp.stats.level++) {
+      const auto& level_stats = level_table->stats_delta_for_level(char_class, this->overlay_player_data->disp.stats.level + 1);
+      // The original code clamps the resulting stat values to [0, max_stat];
+      // we don't have max_stat handy so we just allow them to be unbounded
+      stats.char_stats.atp += level_stats.atp;
+      stats.char_stats.mst += level_stats.mst;
+      stats.char_stats.evp += level_stats.evp;
+      stats.char_stats.hp += level_stats.hp;
+      stats.char_stats.dfp += level_stats.dfp;
+      stats.char_stats.ata += level_stats.ata;
+      // Note: It is not a bug that lck is ignored here; the original code
+      // ignores it too.
+    }
+    stats.unknown_a1 = 40;
+    stats.experience = level_table->stats_delta_for_level(char_class, stats.level).experience;
+    stats.meseta = 300;
+  }
+  if (rules->tech_disk_mode == BattleRules::TechDiskMode::LIMIT_LEVEL) {
+    // TODO: Verify this is what the game actually does.
+    for (uint8_t tech_num = 0; tech_num < 0x13; tech_num++) {
+      uint8_t existing_level = this->overlay_player_data->get_technique_level(tech_num);
+      if ((existing_level != 0xFF) && (existing_level > rules->max_tech_disk_level)) {
+        this->overlay_player_data->set_technique_level(tech_num, rules->max_tech_disk_level);
+      }
+    }
+  } else if (rules->tech_disk_mode == BattleRules::TechDiskMode::FORBID_ALL) {
+    for (uint8_t tech_num = 0; tech_num < 0x13; tech_num++) {
+      this->overlay_player_data->set_technique_level(tech_num, 0xFF);
+    }
+  }
+  if (rules->meseta_drop_mode != BattleRules::MesetaDropMode::ALLOW) {
+    this->overlay_player_data->disp.stats.meseta = 0;
+  }
+  if (rules->forbid_scape_dolls) {
+    this->overlay_player_data->inventory.remove_all_items_of_type(3, 9);
+  }
+}
+
+shared_ptr<SavedAccountDataBB> ClientGameData::account(bool allow_load) {
+  if (!this->account_data.get() && allow_load) {
     if (this->bb_username.empty()) {
       this->account_data.reset(new SavedAccountDataBB());
       this->account_data->signature = ACCOUNT_FILE_SIGNATURE;
@@ -54,8 +122,11 @@ shared_ptr<SavedAccountDataBB> ClientGameData::account(bool should_load) {
   return this->account_data;
 }
 
-shared_ptr<SavedPlayerDataBB> ClientGameData::player(bool should_load) {
-  if (!this->player_data.get() && should_load) {
+shared_ptr<SavedPlayerDataBB> ClientGameData::player(bool allow_load, bool allow_overlay) {
+  if (this->overlay_player_data && allow_overlay) {
+    return this->overlay_player_data;
+  }
+  if (!this->player_data.get() && allow_load) {
     if (this->bb_username.empty()) {
       this->player_data.reset(new SavedPlayerDataBB());
     } else {
@@ -65,15 +136,18 @@ shared_ptr<SavedPlayerDataBB> ClientGameData::player(bool should_load) {
   return this->player_data;
 }
 
-shared_ptr<const SavedAccountDataBB> ClientGameData::account() const {
-  if (!this->account_data.get()) {
+shared_ptr<const SavedAccountDataBB> ClientGameData::account(bool allow_load) const {
+  if (!this->account_data.get() && allow_load) {
     throw runtime_error("account data is not loaded");
   }
   return this->account_data;
 }
 
-shared_ptr<const SavedPlayerDataBB> ClientGameData::player() const {
-  if (!this->player_data.get()) {
+shared_ptr<const SavedPlayerDataBB> ClientGameData::player(bool allow_load, bool allow_overlay) const {
+  if (allow_overlay && this->overlay_player_data) {
+    return this->overlay_player_data;
+  }
+  if (!this->player_data.get() && allow_load) {
     throw runtime_error("player data is not loaded");
   }
   return this->player_data;
@@ -369,5 +443,16 @@ void SavedPlayerDataBB::set_material_usage(MaterialType which, uint8_t usage) {
       break;
     default:
       throw logic_error("invalid material type");
+  }
+}
+
+void SavedPlayerDataBB::print_inventory(FILE* stream) const {
+  fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", this->disp.stats.meseta.load());
+  fprintf(stream, "[PlayerInventory] %hhu items\n", this->inventory.num_items);
+  for (size_t x = 0; x < this->inventory.num_items; x++) {
+    const auto& item = this->inventory.items[x];
+    auto name = item.data.name(false);
+    auto hex = item.data.hex();
+    fprintf(stream, "[PlayerInventory]   %zu: %s (%s)\n", x, hex.c_str(), name.c_str());
   }
 }

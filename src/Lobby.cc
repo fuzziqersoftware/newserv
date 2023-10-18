@@ -176,24 +176,26 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   // If the lobby is a game and item tracking is enabled, assign the inventory's
   // item IDs
   if (this->is_game() && (this->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto& inv = c->game_data.player()->inventory;
+    auto p = c->game_data.player();
+    auto& inv = p->inventory;
     size_t count = min<uint8_t>(inv.num_items, 30);
     for (size_t x = 0; x < count; x++) {
       inv.items[x].data.id = this->generate_item_id(c->lobby_client_id);
     }
-    c->game_data.player()->print_inventory(stderr);
+    p->print_inventory(stderr);
   }
 
   // If the lobby is recording a battle record, add the player join event
   if (this->battle_record) {
+    auto p = c->game_data.player();
     PlayerLobbyDataDCGC lobby_data;
     lobby_data.player_tag = 0x00010000;
     lobby_data.guild_card = c->license->serial_number;
-    lobby_data.name = encode_sjis(c->game_data.player()->disp.name);
+    lobby_data.name = encode_sjis(p->disp.name);
     this->battle_record->add_player(
         lobby_data,
-        c->game_data.player()->inventory,
-        c->game_data.player()->disp.to_dcpcv3(),
+        p->inventory,
+        p->disp.to_dcpcv3(),
         c->game_data.ep3_config ? (c->game_data.ep3_config->online_clv_exp / 100) : 0);
   }
 
@@ -218,7 +220,6 @@ void Lobby::remove_client(shared_ptr<Client> c) {
         c->lobby_client_id,
         static_cast<uint8_t>(other_c ? other_c->lobby_client_id : 0xFF)));
   }
-
   this->clients[c->lobby_client_id] = nullptr;
 
   // Unassign the client's lobby if it matches the current lobby (it may not

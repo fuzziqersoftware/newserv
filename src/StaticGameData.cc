@@ -2,6 +2,8 @@
 
 #include <array>
 
+#include "Text.hh"
+
 using namespace std;
 
 bool episode_has_arpg_semantics(Episode ep) {

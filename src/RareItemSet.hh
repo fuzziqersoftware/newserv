@@ -3,12 +3,14 @@
 #include <stdint.h>
 
 #include <memory>
+#include <phosg/JSON.hh>
 #include <random>
 #include <string>
 
 #include "AFSArchive.hh"
 #include "GSLArchive.hh"
 #include "StaticGameData.hh"
+#include "Text.hh"
 
 class RareItemSet {
 public:

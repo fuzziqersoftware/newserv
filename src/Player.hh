@@ -10,6 +10,8 @@
 #include <vector>
 
 #include "Episode3/DataIndexes.hh"
+#include "ItemCreator.hh"
+#include "LevelTable.hh"
 #include "PlayerSubordinates.hh"
 #include "Text.hh"
 #include "Version.hh"
@@ -91,6 +93,10 @@ struct SavedAccountDataBB { // .nsa file format
 class ClientGameData {
 private:
   std::shared_ptr<SavedAccountDataBB> account_data;
+  // The overlay player data is used in battle and challenge modes, when player
+  // data is temporarily replaced in-game. In other play modes and in lobbies,
+  // overlay_player_data is null.
+  std::shared_ptr<SavedPlayerDataBB> overlay_player_data;
   std::shared_ptr<SavedPlayerDataBB> player_data;
   uint64_t last_play_time_update;
 
@@ -117,10 +123,15 @@ public:
   ClientGameData();
   ~ClientGameData();
 
-  std::shared_ptr<SavedAccountDataBB> account(bool should_load = true);
-  std::shared_ptr<SavedPlayerDataBB> player(bool should_load = true);
-  std::shared_ptr<const SavedAccountDataBB> account() const;
-  std::shared_ptr<const SavedPlayerDataBB> player() const;
+  void create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table);
+  inline void delete_overlay() {
+    this->overlay_player_data.reset();
+  }
+
+  std::shared_ptr<SavedAccountDataBB> account(bool allow_load = true);
+  std::shared_ptr<SavedPlayerDataBB> player(bool allow_load = true, bool allow_overlay = true);
+  std::shared_ptr<const SavedAccountDataBB> account(bool allow_load = true) const;
+  std::shared_ptr<const SavedPlayerDataBB> player(bool allow_load = true, bool allow_overlay = true) const;
 
   std::string account_data_filename() const;
   std::string player_data_filename() const;

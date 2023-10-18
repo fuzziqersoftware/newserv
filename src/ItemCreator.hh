@@ -5,51 +5,12 @@
 #include "CommonItemSet.hh"
 #include "ItemParameterTable.hh"
 #include "PSOEncryption.hh"
+#include "PlayerSubordinates.hh"
 #include "RareItemSet.hh"
 #include "StaticGameData.hh"
 
-struct ItemDropSub {
-  uint8_t override_area;
-};
-
 class ItemCreator {
 public:
-  struct Restrictions {
-    // Note: In the original code, this is actually the battle rules structure.
-    // We omit some fields here because the item creator doesn't need them.
-    enum class TechDiskMode {
-      ON = 0,
-      OFF = 1,
-      LIMIT_LEVEL = 2,
-    };
-    enum class WeaponAndArmorMode {
-      // Note: These names match the value names in TPlyPKEditor
-      ALL_ON = 0,
-      ONLY_PICKING = 1,
-      ALL_OFF = 2,
-      NO_RARE = 3,
-    };
-    enum class ToolMode {
-      // Note: These names match the value names in TPlyPKEditor
-      ALL_ON = 0,
-      ONLY_PICKING = 1,
-      ALL_OFF = 2,
-    };
-    enum class MesetaDropMode {
-      // Note: These names match the value names in TPlyPKEditor
-      ON = 0,
-      OFF = 1,
-      ONLY_PICKING = 2,
-    };
-    TechDiskMode tech_disk_mode;
-    WeaponAndArmorMode weapon_and_armor_mode;
-    bool forbid_mags;
-    ToolMode tool_mode;
-    MesetaDropMode meseta_drop_mode;
-    bool forbid_scape_dolls;
-    uint8_t max_tech_disk_level; // 0xFF = no maximum
-  };
-
   ItemCreator(
       std::shared_ptr<const CommonItemSet> common_item_set,
       std::shared_ptr<const RareItemSet> rare_item_set,
@@ -63,7 +24,7 @@ public:
       uint8_t difficulty,
       uint8_t section_id,
       uint32_t random_seed,
-      std::shared_ptr<const Restrictions> restrictions = nullptr);
+      std::shared_ptr<const BattleRules> restrictions = nullptr);
   ~ItemCreator() = default;
 
   ItemData on_monster_item_drop(uint32_t enemy_type, uint8_t area);
@@ -77,6 +38,10 @@ public:
   // This function adjusts the item in-place, and returns the luck value.
   // See the comments in TekkerAdjustmentSet for what this value means.
   ssize_t apply_tekker_deltas(ItemData& item, uint8_t section_id);
+
+  inline void set_restrictions(std::shared_ptr<const BattleRules> restrictions) {
+    this->restrictions = restrictions;
+  }
 
 private:
   PrefixedLogger log;
@@ -92,9 +57,8 @@ private:
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::shared_ptr<const ItemParameterTable> item_parameter_table;
   const CommonItemSet::Table<true>* pt;
-  std::shared_ptr<const Restrictions> restrictions;
+  std::shared_ptr<const BattleRules> restrictions;
 
-  std::shared_ptr<ItemDropSub> item_drop_sub;
   parray<uint8_t, 0x88> unit_weights_table1;
   parray<int8_t, 0x0D> unit_weights_table2;
 

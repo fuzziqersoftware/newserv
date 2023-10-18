@@ -315,7 +315,7 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
       continue;
     }
 
-    auto p = c->game_data.player(false);
+    auto p = c->game_data.player(false, false);
     if (p && p->disp.name == u16name) {
       results.emplace_back(std::move(c));
       continue;

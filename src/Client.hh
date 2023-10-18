@@ -192,7 +192,8 @@ struct Client : public std::enable_shared_from_this<Client> {
   void reschedule_ping_and_timeout_events();
 
   inline uint8_t language() const {
-    return this->game_data.player()->inventory.language;
+    auto p = this->game_data.player(true, false);
+    return p ? p->inventory.language : 1; // English by default
   }
   inline GameVersion version() const {
     return this->channel.version;

@@ -5,6 +5,7 @@
 
 #include <array>
 #include <phosg/Encoding.hh>
+#include <phosg/JSON.hh>
 #include <string>
 #include <utility>
 #include <vector>
@@ -73,6 +74,8 @@ struct PlayerInventory {
   size_t find_equipped_weapon() const;
   size_t find_equipped_armor() const;
   size_t find_equipped_mag() const;
+
+  size_t remove_all_items_of_type(uint8_t data0, int16_t data1 = -1);
 } __attribute__((packed));
 
 struct PlayerBank {
@@ -93,17 +96,6 @@ struct PlayerBank {
 } __attribute__((packed));
 
 struct PlayerDispDataBB;
-
-struct PlayerStats {
-  /* 00 */ CharacterStats char_stats;
-  /* 0E */ le_uint16_t unknown_a1 = 0;
-  /* 10 */ le_float unknown_a2 = 0.0;
-  /* 14 */ le_float unknown_a3 = 0.0;
-  /* 18 */ le_uint32_t level = 0;
-  /* 1C */ le_uint32_t experience = 0;
-  /* 20 */ le_uint32_t meseta = 0;
-  /* 24 */
-} __attribute__((packed));
 
 struct PlayerVisualConfig {
   /* 00 */ ptext<char, 0x10> name;
@@ -448,3 +440,46 @@ inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB>(
     const PlayerDispDataBB& src) {
   return src;
 }
+
+struct BattleRules {
+  enum class TechDiskMode {
+    ALLOW = 0,
+    FORBID_ALL = 1,
+    LIMIT_LEVEL = 2,
+  };
+  enum class WeaponAndArmorMode {
+    ALLOW = 0,
+    CLEAR_AND_ALLOW = 1,
+    FORBID_ALL = 2,
+    FORBID_RARES = 3,
+  };
+  enum class ToolMode {
+    ALLOW = 0,
+    CLEAR_AND_ALLOW = 1,
+    FORBID_ALL = 2,
+  };
+  enum class MesetaDropMode {
+    ALLOW = 0,
+    FORBID_ALL = 1,
+    CLEAR_AND_ALLOW = 2,
+  };
+  TechDiskMode tech_disk_mode = TechDiskMode::ALLOW;
+  WeaponAndArmorMode weapon_and_armor_mode = WeaponAndArmorMode::ALLOW;
+  bool forbid_mags = false;
+  ToolMode tool_mode = ToolMode::ALLOW;
+  MesetaDropMode meseta_drop_mode = MesetaDropMode::ALLOW;
+  bool forbid_scape_dolls = false;
+  uint8_t max_tech_disk_level = 0xFF; // 0xFF = no maximum
+
+  bool replace_char = false; // char_type in quest opcodes
+  uint16_t char_level = 0; // Only used if replace_char is true
+
+  uint8_t box_drop_area = 0;
+
+  BattleRules() = default;
+  explicit BattleRules(const JSON& json);
+  JSON json() const;
+
+  bool operator==(const BattleRules& other) const = default;
+  bool operator!=(const BattleRules& other) const = default;
+};

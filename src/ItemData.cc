@@ -1,5 +1,7 @@
 #include "ItemData.hh"
 
+#include <map>
+
 #include "StaticGameData.hh"
 
 using namespace std;

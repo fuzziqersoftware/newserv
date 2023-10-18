@@ -21,7 +21,7 @@ ItemCreator::ItemCreator(
     uint8_t difficulty,
     uint8_t section_id,
     uint32_t random_seed,
-    shared_ptr<const Restrictions> restrictions)
+    shared_ptr<const BattleRules> restrictions)
     : log("[ItemCreator] "),
       episode(episode),
       mode(mode),
@@ -50,7 +50,7 @@ bool ItemCreator::are_rare_drops_allowed() const {
 }
 
 uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
-  if (!this->item_drop_sub || (area < 0x10) || (area > 0x11)) {
+  if (!this->restrictions || (this->restrictions->box_drop_area == 0) || (area < 0x10) || (area > 0x11)) {
     switch (this->episode) {
       case Episode::EP1:
         if (area >= 15) {
@@ -102,7 +102,7 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
     }
 
   } else {
-    return this->item_drop_sub->override_area;
+    return this->restrictions->box_drop_area;
   }
 }
 
@@ -452,16 +452,16 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
       case 0:
       case 1:
         switch (this->restrictions->weapon_and_armor_mode) {
-          case Restrictions::WeaponAndArmorMode::ALL_ON:
-          case Restrictions::WeaponAndArmorMode::ONLY_PICKING:
+          case BattleRules::WeaponAndArmorMode::ALLOW:
+          case BattleRules::WeaponAndArmorMode::CLEAR_AND_ALLOW:
             break;
-          case Restrictions::WeaponAndArmorMode::NO_RARE:
+          case BattleRules::WeaponAndArmorMode::FORBID_RARES:
             if (this->item_parameter_table->is_item_rare(item)) {
               this->log.info("Restricted: rare items not allowed");
               item.clear();
             }
             break;
-          case Restrictions::WeaponAndArmorMode::ALL_OFF:
+          case BattleRules::WeaponAndArmorMode::FORBID_ALL:
             this->log.info("Restricted: weapons and armors not allowed");
             item.clear();
             break;
@@ -476,18 +476,18 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
         }
         break;
       case 3:
-        if (this->restrictions->tool_mode == Restrictions::ToolMode::ALL_OFF) {
+        if (this->restrictions->tool_mode == BattleRules::ToolMode::FORBID_ALL) {
           this->log.info("Restricted: tools not allowed");
           item.clear();
         } else if (item.data1[1] == 2) {
           switch (this->restrictions->tech_disk_mode) {
-            case Restrictions::TechDiskMode::ON:
+            case BattleRules::TechDiskMode::ALLOW:
               break;
-            case Restrictions::TechDiskMode::OFF:
+            case BattleRules::TechDiskMode::FORBID_ALL:
               this->log.info("Restricted: tech disks not allowed");
               item.clear();
               break;
-            case Restrictions::TechDiskMode::LIMIT_LEVEL:
+            case BattleRules::TechDiskMode::LIMIT_LEVEL:
               this->log.info("Restricted: tech disk level limited to %hhu",
                   static_cast<uint8_t>(this->restrictions->max_tech_disk_level + 1));
               if (this->restrictions->max_tech_disk_level == 0) {
@@ -505,7 +505,7 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
         }
         break;
       case 4:
-        if (this->restrictions->meseta_drop_mode == Restrictions::MesetaDropMode::OFF) {
+        if (this->restrictions->meseta_drop_mode == BattleRules::MesetaDropMode::FORBID_ALL) {
           this->log.info("Restricted: meseta not allowed");
           item.clear();
         }

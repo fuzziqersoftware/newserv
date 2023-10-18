@@ -3906,7 +3906,7 @@ struct G_SetPlayerVisibility_6x22_6x23 {
 
 // 6x24: Teleport player
 
-struct G_Unknown_6x24 {
+struct G_TeleportPlayer_6x24 {
   G_ClientIDHeader header;
   le_uint32_t unknown_a1;
   le_float x;

@@ -222,7 +222,8 @@ VersionedQuest::VersionedQuest(
     QuestScriptVersion version,
     uint8_t language,
     std::shared_ptr<const std::string> bin_contents,
-    std::shared_ptr<const std::string> dat_contents)
+    std::shared_ptr<const std::string> dat_contents,
+    std::shared_ptr<const BattleRules> battle_rules)
     : quest_number(quest_number),
       category_id(category_id),
       episode(Episode::NONE),
@@ -231,7 +232,8 @@ VersionedQuest::VersionedQuest(
       language(language),
       is_dlq_encoded(false),
       bin_contents(bin_contents),
-      dat_contents(dat_contents) {
+      dat_contents(dat_contents),
+      battle_rules(battle_rules) {
 
   auto bin_decompressed = prs_decompress(*this->bin_contents);
 
@@ -375,7 +377,8 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
       category_id(initial_version->category_id),
       episode(initial_version->episode),
       joinable(initial_version->joinable),
-      name(initial_version->name) {
+      name(initial_version->name),
+      battle_rules(initial_version->battle_rules) {
   this->versions.emplace(this->versions_key(initial_version->version, initial_version->language), initial_version);
 }
 
@@ -395,6 +398,12 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   }
   if (this->joinable != vq->joinable) {
     throw runtime_error("quest version has a different joinability state");
+  }
+  if (!this->battle_rules != !vq->battle_rules) {
+    throw runtime_error("quest version has a different battle rules presence state");
+  }
+  if (this->battle_rules && (*this->battle_rules != *vq->battle_rules)) {
+    throw runtime_error("quest version has different battle rules");
   }
 
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
@@ -430,6 +439,7 @@ QuestIndex::QuestIndex(
       category_index(category_index) {
 
   unordered_map<string, shared_ptr<const string>> dat_cache;
+  unordered_map<string, shared_ptr<const JSON>> metadata_json_cache;
 
   for (const auto& bin_filename : list_directory_sorted(directory)) {
     string bin_path = this->directory + "/" + bin_filename;
@@ -466,6 +476,9 @@ QuestIndex::QuestIndex(
       }
       if (basename.empty()) {
         throw invalid_argument("empty filename");
+      }
+      if (basename.size() < 2) {
+        throw logic_error("basename too short for language trim");
       }
 
       // Quest .bin filenames are like K###-CAT-VERS-LANG.EXT, where:
@@ -549,6 +562,7 @@ QuestIndex::QuestIndex(
         if (basename.size() < 2) {
           throw logic_error("basename too short for language trim");
         }
+
         // Look for dat file with the same basename as the bin file; if not
         // found, look for a dat file without the language suffix
         string dat_basename;
@@ -611,26 +625,64 @@ QuestIndex::QuestIndex(
         }
       }
 
+      // Look for a JSON file with the same basename as the bin file; if not
+      // found, look for a JSON file without the language suffix
+      shared_ptr<const JSON> metadata_json;
+      string json_filename;
+      for (size_t z = 0; z < 3; z++) {
+        string json_basename;
+        if (z == 0) {
+          json_filename = basename + ".json";
+        } else if (z == 1) {
+          json_filename = basename.substr(0, basename.size() - 2) + ".json"; // Strip off language prefix
+        } else if (z == 2) {
+          json_filename = basename.substr(0, basename.find('-')) + ".json"; // Look only at base token (e.g. "b88001")
+        }
+
+        try {
+          metadata_json = metadata_json_cache.at(json_filename);
+          break;
+        } catch (const out_of_range&) {
+        }
+
+        string json_path = this->directory + "/" + json_filename;
+        if (isfile(json_path)) {
+          metadata_json.reset(new JSON(JSON::parse(load_file(json_path))));
+          break;
+        }
+      }
+      metadata_json_cache.emplace(json_filename, metadata_json);
+
+      shared_ptr<BattleRules> battle_rules;
+      if (metadata_json) {
+        try {
+          battle_rules.reset(new BattleRules(metadata_json->at("battle_rules")));
+        } catch (const out_of_range&) {
+        }
+      }
+
       shared_ptr<VersionedQuest> vq(new VersionedQuest(
-          quest_number, category_id, version, language, bin_contents, dat_contents));
+          quest_number, category_id, version, language, bin_contents, dat_contents, battle_rules));
 
       string ascii_name = format_data_string(encode_sjis(vq->name));
       auto category_name = encode_sjis(this->category_index->at(vq->category_id).name);
 
       string dat_str = dat_filename.empty() ? "" : (" with layout " + dat_filename);
+      string metadata_json_str = battle_rules ? (" with battle rules from " + json_filename) : "";
       auto q_it = this->quests_by_number.find(vq->quest_number);
       if (q_it != this->quests_by_number.end()) {
         q_it->second->add_version(vq);
-        static_game_data_log.info("(%s) Added %s %c version of quest %" PRIu32 " %s%s",
+        static_game_data_log.info("(%s) Added %s %c version of quest %" PRIu32 " %s%s%s",
             bin_filename.c_str(),
             name_for_enum(vq->version),
             char_for_language_code(vq->language),
             vq->quest_number,
             ascii_name.c_str(),
-            dat_str.c_str());
+            dat_str.c_str(),
+            metadata_json_str.c_str());
       } else {
         this->quests_by_number.emplace(vq->quest_number, new Quest(vq));
-        static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " %s (%s, %s (%" PRIu32 "), %s)%s",
+        static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " %s (%s, %s (%" PRIu32 "), %s)%s%s",
             bin_filename.c_str(),
             name_for_enum(vq->version),
             char_for_language_code(vq->language),
@@ -640,7 +692,8 @@ QuestIndex::QuestIndex(
             category_name.c_str(),
             vq->category_id,
             vq->joinable ? "joinable" : "not joinable",
-            dat_str.c_str());
+            dat_str.c_str(),
+            metadata_json_str.c_str());
       }
     } catch (const exception& e) {
       static_game_data_log.warning("(%s) Failed to index quest file: (%s)", bin_filename.c_str(), e.what());

@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "PlayerSubordinates.hh"
 #include "QuestScript.hh"
 #include "StaticGameData.hh"
 
@@ -65,6 +66,7 @@ struct VersionedQuest {
   std::u16string long_description;
   std::shared_ptr<const std::string> bin_contents;
   std::shared_ptr<const std::string> dat_contents;
+  std::shared_ptr<const BattleRules> battle_rules;
 
   VersionedQuest(
       uint32_t quest_number,
@@ -72,7 +74,8 @@ struct VersionedQuest {
       QuestScriptVersion version,
       uint8_t language,
       std::shared_ptr<const std::string> bin_contents,
-      std::shared_ptr<const std::string> dat_contents);
+      std::shared_ptr<const std::string> dat_contents,
+      std::shared_ptr<const BattleRules> battle_rules = nullptr);
 
   std::string bin_filename() const;
   std::string dat_filename() const;
@@ -101,6 +104,7 @@ public:
   Episode episode;
   bool joinable;
   std::u16string name;
+  std::shared_ptr<const BattleRules> battle_rules;
   std::map<uint16_t, std::shared_ptr<const VersionedQuest>> versions;
 };
 

@@ -4,6 +4,7 @@
 #include <phosg/Random.hh>
 
 #include "BattleParamsIndex.hh"
+#include "ItemData.hh"
 #include "StaticGameData.hh"
 
 using namespace std;

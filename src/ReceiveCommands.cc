@@ -1317,14 +1317,15 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, const string& da
       l->battle_record.reset(new Episode3::BattleRecord(s->ep3_behavior_flags));
       for (auto existing_c : l->clients) {
         if (existing_c) {
+          auto existing_p = existing_c->game_data.player();
           PlayerLobbyDataDCGC lobby_data;
-          lobby_data.name = encode_sjis(existing_c->game_data.player()->disp.name);
+          lobby_data.name = encode_sjis(existing_p->disp.name);
           lobby_data.player_tag = 0x00010000;
           lobby_data.guild_card = existing_c->license->serial_number;
           l->battle_record->add_player(
               lobby_data,
-              existing_c->game_data.player()->inventory,
-              existing_c->game_data.player()->disp.to_dcpcv3(),
+              existing_p->inventory,
+              existing_p->disp.to_dcpcv3(),
               c->game_data.ep3_config ? (c->game_data.ep3_config->online_clv_exp / 100) : 0);
         }
       }
@@ -1949,11 +1950,12 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
           send_lobby_message_box(c, u"$C6Incorrect password.");
           break;
         }
-        if (c->game_data.player()->disp.stats.level < game->min_level) {
+        auto p = c->game_data.player();
+        if (p->disp.stats.level < game->min_level) {
           send_lobby_message_box(c, u"$C6Your level is too\nlow to join this\ngame.");
           break;
         }
-        if (c->game_data.player()->disp.stats.level > game->max_level) {
+        if (p->disp.stats.level > game->max_level) {
           send_lobby_message_box(c, u"$C6Your level is too\nhigh to join this\ngame.");
           break;
         }
@@ -2019,6 +2021,11 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         }
         l->quest = q;
         l->episode = q->episode;
+
+        if (q->battle_rules && l->item_creator) {
+          l->item_creator->set_restrictions(q->battle_rules);
+        }
+
         for (size_t x = 0; x < l->max_clients; x++) {
           auto lc = l->clients[x];
           if (!lc) {
@@ -2031,6 +2038,13 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
             lc->should_disconnect = true;
             break;
           }
+
+          if (vq->battle_rules) {
+            lc->game_data.create_battle_overlay(vq->battle_rules, s->level_table);
+            lc->log.info("Created battle overlay");
+            lc->game_data.player()->print_inventory(stderr);
+          }
+
           string bin_filename = vq->bin_filename();
           string dat_filename = vq->dat_filename();
           send_open_quest_file(lc, bin_filename, bin_filename, vq->bin_contents, QuestFileType::ONLINE);
@@ -2494,16 +2508,18 @@ static void on_13_A7_V3_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag
 }
 
 static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, const string& data) {
+  auto s = c->require_server_state();
+  auto player = c->game_data.player();
+  auto account = c->game_data.account();
+
   switch (c->version()) {
     case GameVersion::DC: {
       if (c->flags & Client::Flag::IS_DC_V1) {
         const auto& pd = check_size_t<C_CharacterData_DCv1_61_98>(data);
-        auto player = c->game_data.player();
         player->inventory = pd.inventory;
         player->disp = pd.disp.to_bb();
       } else {
         const auto& pd = check_size_t<C_CharacterData_DCv2_61_98>(data, 0xFFFF);
-        auto player = c->game_data.player();
         player->inventory = pd.inventory;
         player->disp = pd.disp.to_bb();
         player->battle_records = pd.records.battle;
@@ -2514,8 +2530,6 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, cons
     }
     case GameVersion::PC: {
       const auto& pd = check_size_t<C_CharacterData_PC_61_98>(data, 0xFFFF);
-      auto player = c->game_data.player();
-      auto account = c->game_data.account();
       player->inventory = pd.inventory;
       player->disp = pd.disp.to_bb();
       player->battle_records = pd.records.battle;
@@ -2574,8 +2588,6 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, cons
         }
       }
 
-      auto account = c->game_data.account();
-      auto player = c->game_data.player();
       player->inventory = cmd->inventory;
       if (c->version() == GameVersion::GC) {
         for (size_t z = 0; z < 30; z++) {
@@ -2597,8 +2609,6 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, cons
     }
     case GameVersion::BB: {
       const auto& cmd = check_size_t<C_CharacterData_BB_61_98>(data, 0xFFFF);
-      auto account = c->game_data.account();
-      auto player = c->game_data.player();
       // Note: we don't copy the inventory and disp here because we already have
       // them (we sent the player data to the client in the first place)
       player->battle_records = cmd.records.battle;
@@ -2617,17 +2627,15 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, cons
       throw logic_error("player data command not implemented for version");
   }
 
-  auto s = c->require_server_state();
-  auto player = c->game_data.player(false);
-  if (player) {
-    string name_str = remove_language_marker(encode_sjis(player->disp.name));
-    c->channel.name = string_printf("C-%" PRIX64 " (%s)",
-        c->id, name_str.c_str());
-  }
+  string name_str = remove_language_marker(encode_sjis(player->disp.name));
+  c->channel.name = string_printf("C-%" PRIX64 " (%s)", c->id, name_str.c_str());
 
   // 98 should only be sent when leaving a game, and we should leave the client
   // in no lobby (they will send an 84 soon afterward to choose a lobby).
   if (command == 0x98) {
+    // If the client had an overlay (for battle/challenge modes), delete it
+    c->game_data.delete_overlay();
+
     s->remove_client_from_lobby(c);
 
   } else if (command == 0x61) {
@@ -2711,7 +2719,8 @@ static void on_chat_generic(shared_ptr<Client> c, const u16string& text) {
     return;
   }
 
-  u16string from_name = c->game_data.player()->disp.name;
+  auto p = c->game_data.player();
+  u16string from_name = p->disp.name;
   for (size_t x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
       send_chat_message(l->clients[x], c->license->serial_number,
@@ -2729,7 +2738,7 @@ static void on_chat_generic(shared_ptr<Client> c, const u16string& text) {
 
   if (l->battle_record && l->battle_record->battle_in_progress()) {
     auto prepared_message = prepare_chat_message(
-        c->version(), c->game_data.player()->disp.name.data(),
+        c->version(), p->disp.name.data(),
         processed_text.c_str(), private_flags);
     string prepared_message_sjis = encode_sjis(prepared_message);
     l->battle_record->add_chat_message(c->license->serial_number, std::move(prepared_message_sjis));
@@ -3049,9 +3058,10 @@ static void on_00E7_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& d
   // should instead verify our copy of the player against what the client sent,
   // and alert on anything that's out of sync.
   // TODO: In the future, we should save battle records here too.
-  c->game_data.player()->challenge_records = cmd.challenge_records;
-  c->game_data.player()->quest_data1 = cmd.quest_data1;
-  c->game_data.player()->quest_data2 = cmd.quest_data2;
+  auto p = c->game_data.player();
+  p->challenge_records = cmd.challenge_records;
+  p->quest_data1 = cmd.quest_data1;
+  p->quest_data2 = cmd.quest_data2;
 }
 
 static void on_00E2_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
@@ -3139,10 +3149,9 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 
     // If the target has auto-reply enabled, send the autoreply. Note that we also
     // forward the message in this case.
-    if (!target->game_data.player()->auto_reply.empty()) {
-      send_simple_mail(c, target->license->serial_number,
-          target->game_data.player()->disp.name,
-          target->game_data.player()->auto_reply);
+    auto target_p = target->game_data.player();
+    if (!target_p->auto_reply.empty()) {
+      send_simple_mail(c, target->license->serial_number, target_p->disp.name, target_p->auto_reply);
     }
 
     // Forward the message
@@ -3161,10 +3170,9 @@ static void on_D8(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 
 template <typename CharT>
 void on_D9_t(shared_ptr<Client> c, const string& data) {
-  check_size_v(data.size(), 0, c->game_data.player()->info_board.size() * sizeof(CharT));
-  c->game_data.player()->info_board.assign(
-      reinterpret_cast<const CharT*>(data.data()),
-      data.size() / sizeof(CharT));
+  auto p = c->game_data.player(true, false);
+  check_size_v(data.size(), 0, p->info_board.size() * sizeof(CharT));
+  p->info_board.assign(reinterpret_cast<const CharT*>(data.data()), data.size() / sizeof(CharT));
 }
 
 void on_D9_a(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
@@ -3176,8 +3184,9 @@ void on_D9_w(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
 
 template <typename CharT>
 void on_C7_t(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
-  check_size_v(data.size(), 0, c->game_data.player()->auto_reply.size() * sizeof(CharT));
-  c->game_data.player()->auto_reply.assign(
+  auto p = c->game_data.player(true, false);
+  check_size_v(data.size(), 0, p->auto_reply.size() * sizeof(CharT));
+  p->auto_reply.assign(
       reinterpret_cast<const CharT*>(data.data()),
       data.size() / sizeof(CharT));
 }
@@ -3191,7 +3200,7 @@ void on_C7_w(shared_ptr<Client> c, uint16_t cmd, uint32_t flag, const string& da
 
 static void on_C8(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
   check_size_v(data.size(), 0);
-  c->game_data.player()->auto_reply.clear(0);
+  c->game_data.player(true, false)->auto_reply.clear(0);
 }
 
 static void on_C6(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
@@ -3256,8 +3265,9 @@ shared_ptr<Lobby> create_game_generic(
       throw runtime_error("invalid episode");
   }
 
+  auto p = c->game_data.player();
   if (!(c->license->flags & License::Flag::FREE_JOIN_GAMES) &&
-      (min_level > c->game_data.player()->disp.stats.level)) {
+      (min_level > p->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might
     // actually encounter while playing the game normally
     send_lobby_message_box(c, u"Your level is too\nlow for this\ndifficulty");
@@ -3337,7 +3347,7 @@ shared_ptr<Lobby> create_game_generic(
 
   game->section_id = c->options.override_section_id >= 0
       ? c->options.override_section_id
-      : c->game_data.player()->disp.visual.section_id;
+      : p->disp.visual.section_id;
   game->episode = episode;
   game->mode = mode;
   game->difficulty = difficulty;
@@ -4351,12 +4361,6 @@ void on_command(
     uint16_t command,
     uint32_t flag,
     const string& data) {
-  string encoded_name;
-  auto player = c->game_data.player(false);
-  if (player) {
-    encoded_name = remove_language_marker(encode_sjis(player->disp.name));
-  }
-
   c->reschedule_ping_and_timeout_events();
 
   // Most of the command handlers assume the client is registered, logged in,
