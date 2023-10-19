@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <phosg/Encoding.hh>
 
 #include "GSLArchive.hh"
