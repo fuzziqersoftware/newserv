@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include <array>
 #include <memory>
 
 #include "../Channel.hh"
