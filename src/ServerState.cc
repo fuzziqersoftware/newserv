@@ -353,6 +353,21 @@ shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(GameVers
   }
 }
 
+shared_ptr<const Menu> ServerState::redirect_destinations_menu_for_version(GameVersion version) const {
+  switch (version) {
+    case GameVersion::DC:
+      return this->redirect_destinations_menu_dc;
+    case GameVersion::PC:
+      return this->redirect_destinations_menu_pc;
+    case GameVersion::GC:
+      return this->redirect_destinations_menu_gc;
+    case GameVersion::XB:
+      return this->redirect_destinations_menu_xb;
+    default:
+      throw out_of_range("no redirect destinations menu exists for this version");
+  }
+}
+
 const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_version(GameVersion version) const {
   switch (version) {
     case GameVersion::DC:
@@ -365,6 +380,21 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_versio
       return this->proxy_destinations_xb;
     default:
       throw out_of_range("no proxy destinations menu exists for this version");
+  }
+}
+
+const vector<pair<string, uint16_t>>& ServerState::redirect_destinations_for_version(GameVersion version) const {
+  switch (version) {
+    case GameVersion::DC:
+      return this->redirect_destinations_dc;
+    case GameVersion::PC:
+      return this->redirect_destinations_pc;
+    case GameVersion::GC:
+      return this->redirect_destinations_gc;
+    case GameVersion::XB:
+      return this->redirect_destinations_xb;
+    default:
+      throw out_of_range("no redirect destinations menu exists for this version");
   }
 }
 
@@ -735,6 +765,36 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->information_menu_v3 = information_menu_v3;
   this->information_contents = information_contents;
 
+  auto generate_redirect_destinations_menu = [&](vector<pair<string, uint16_t>>& ret_pds, const char* key) -> shared_ptr<const Menu> {
+    shared_ptr<Menu> ret(new Menu(MenuID::REDIRECT_DESTINATIONS, u"Other servers"));
+    ret_pds.clear();
+
+    try {
+      map<string, const JSON&> sorted_jsons;
+      for (const auto& it : json.at(key).as_dict()) {
+        sorted_jsons.emplace(it.first, *it.second);
+      }
+
+      ret->items.emplace_back(RedirectDestinationsMenuItemID::GO_BACK, u"Go back", u"Return to the\nmain menu", 0);
+
+      uint32_t item_id = 0;
+      for (const auto& item : sorted_jsons) {
+        const string& netloc_str = item.second.as_string();
+        const string& description = "$C7Remote server:\n$C6" + netloc_str;
+        ret->items.emplace_back(item_id, decode_sjis(item.first), decode_sjis(description), 0);
+        ret_pds.emplace_back(parse_netloc(netloc_str));
+        item_id++;
+      }
+    } catch (const out_of_range&) {
+    }
+    return ret;
+  };
+
+  this->redirect_destinations_menu_dc = generate_redirect_destinations_menu(this->redirect_destinations_dc, "RedirectDestinations-DC");
+  this->redirect_destinations_menu_pc = generate_redirect_destinations_menu(this->redirect_destinations_pc, "RedirectDestinations-PC");
+  this->redirect_destinations_menu_gc = generate_redirect_destinations_menu(this->redirect_destinations_gc, "RedirectDestinations-GC");
+  this->redirect_destinations_menu_xb = generate_redirect_destinations_menu(this->redirect_destinations_xb, "RedirectDestinations-XB");
+
   auto generate_proxy_destinations_menu = [&](vector<pair<string, uint16_t>>& ret_pds, const char* key) -> shared_ptr<const Menu> {
     shared_ptr<Menu> ret(new Menu(MenuID::PROXY_DESTINATIONS, u"Proxy server"));
     ret_pds.clear();
@@ -763,14 +823,10 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     return ret;
   };
 
-  this->proxy_destinations_menu_dc = generate_proxy_destinations_menu(
-      this->proxy_destinations_dc, "ProxyDestinations-DC");
-  this->proxy_destinations_menu_pc = generate_proxy_destinations_menu(
-      this->proxy_destinations_pc, "ProxyDestinations-PC");
-  this->proxy_destinations_menu_gc = generate_proxy_destinations_menu(
-      this->proxy_destinations_gc, "ProxyDestinations-GC");
-  this->proxy_destinations_menu_xb = generate_proxy_destinations_menu(
-      this->proxy_destinations_xb, "ProxyDestinations-XB");
+  this->proxy_destinations_menu_dc = generate_proxy_destinations_menu(this->proxy_destinations_dc, "ProxyDestinations-DC");
+  this->proxy_destinations_menu_pc = generate_proxy_destinations_menu(this->proxy_destinations_pc, "ProxyDestinations-PC");
+  this->proxy_destinations_menu_gc = generate_proxy_destinations_menu(this->proxy_destinations_gc, "ProxyDestinations-GC");
+  this->proxy_destinations_menu_xb = generate_proxy_destinations_menu(this->proxy_destinations_xb, "ProxyDestinations-XB");
 
   try {
     const string& netloc_str = json.get_string("ProxyDestination-Patch");

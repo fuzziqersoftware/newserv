@@ -55,11 +55,11 @@
   },
 
   "ProxyDestinations-GC": {
-    "Schtserv": "149.56.167.128:9103",
+    "Schtserv": "psobb.dyndns.org:9103",
     "Sylverant": "sylverant.net:9103",
   },
   "ProxyDestinations-PC": {
-    "Schtserv": "149.56.167.128:9100",
+    "Schtserv": "psobb.dyndns.org:9100",
     "Sylverant": "sylverant.net:9100",
   },
 

@@ -136,6 +136,21 @@
   // connect to 127.0.0.1:5059.
   "IPStackListen": [],
 
+  // Other servers to support redirecting to. If this is empty for any game
+  // version, the "Other servers" menu does not appear for that version. Entries
+  // in these dictionaries should be of the form "name": "address:port"; the
+  // names are used in the "Other servers" menu. Note that if you connect via
+  // the IP stack simulator on Dolphin, you cannot redirect your connection to
+  // another server and the "Other servers" menu will not appear for you (but
+  // you can still use the proxy server).
+  // Unlike ProxyDestinations (below), when a client chooses an item from the
+  // "Other servers" menu, they are redirected to connect directly to that
+  // server, and their connection no longer goes through newserv.
+  "RedirectDestinations-DC": {},
+  "RedirectDestinations-PC": {},
+  "RedirectDestinations-GC": {},
+  "RedirectDestinations-XB": {},
+
   // Other servers to support proxying to. If this is empty for any game
   // version, the proxy server is disabled for that version. Entries in these
   // dictionaries should be of the form "name": "address:port"; the names are
