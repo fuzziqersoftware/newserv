@@ -3367,6 +3367,7 @@ shared_ptr<Lobby> create_game_generic(
       ((s->cheat_mode_behavior == ServerState::CheatModeBehavior::ON_BY_DEFAULT) ? Lobby::Flag::CHEATS_ENABLED : 0);
   game->password = password;
 
+  game->base_version = c->version();
   game->allowed_versions = 0;
   switch (c->quest_version()) {
     case QuestScriptVersion::DC_NTE:
