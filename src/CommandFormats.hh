@@ -5486,8 +5486,7 @@ struct G_ExchangeItemForTeamPoints_BB_6xCC {
 
 struct G_RestartBattle_BB_6xCF {
   G_UnusedHeader header;
-  parray<le_uint32_t, 11> unknown_a1;
-  le_uint32_t unknown_a2;
+  BattleRules rules;
 } __packed__;
 
 // 6xD0: Battle mode level up (BB; handled by server)

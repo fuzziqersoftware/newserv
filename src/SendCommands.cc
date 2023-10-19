@@ -2151,30 +2151,25 @@ void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
   send_command(c, 0x60, 0x00, &cmd, sizeof(cmd) - sizeof(cmd.item_datas[0]) * (20 - contents.size()));
 }
 
-// notifies players about a level up
 void send_level_up(shared_ptr<Client> c) {
   auto l = c->require_lobby();
   auto p = c->game_data.player();
   CharacterStats stats = p->disp.stats.char_stats;
 
-  for (size_t x = 0; x < p->inventory.num_items; x++) {
-    if ((p->inventory.items[x].flags & 0x08) &&
-        (p->inventory.items[x].data.data1[0] == 0x02)) {
-      stats.dfp += (p->inventory.items[x].data.data1w[2] / 100);
-      stats.atp += (p->inventory.items[x].data.data1w[3] / 50);
-      stats.ata += (p->inventory.items[x].data.data1w[4] / 200);
-      stats.mst += (p->inventory.items[x].data.data1w[5] / 50);
-    }
+  const ItemData* mag = nullptr;
+  try {
+    mag = &p->inventory.items[p->inventory.find_equipped_mag()].data;
+  } catch (const out_of_range&) {
   }
 
   G_LevelUp_6x30 cmd = {
       {0x30, sizeof(G_LevelUp_6x30) / 4, c->lobby_client_id},
-      stats.atp,
-      stats.mst,
+      stats.atp + (mag ? (mag->data1w[3] / 50) : 0),
+      stats.mst + (mag ? (mag->data1w[5] / 50) : 0),
       stats.evp,
       stats.hp,
-      stats.dfp,
-      stats.ata,
+      stats.dfp + (mag ? (mag->data1w[2] / 100) : 0),
+      stats.ata + (mag ? (mag->data1w[4] / 20) : 0),
       p->disp.stats.level.load(),
       0};
   send_command_t(l, 0x60, 0x00, cmd);

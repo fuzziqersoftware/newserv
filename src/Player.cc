@@ -49,7 +49,7 @@ void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, 
     this->overlay_player_data->inventory.remove_all_items_of_type(0);
     this->overlay_player_data->inventory.remove_all_items_of_type(1);
   }
-  if (rules->forbid_mags) {
+  if (rules->mag_mode == BattleRules::MagMode::FORBID_ALL) {
     this->overlay_player_data->inventory.remove_all_items_of_type(2);
   }
   if (rules->tool_mode != BattleRules::ToolMode::ALLOW) {
@@ -93,8 +93,8 @@ void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, 
     // TODO: Verify this is what the game actually does.
     for (uint8_t tech_num = 0; tech_num < 0x13; tech_num++) {
       uint8_t existing_level = this->overlay_player_data->get_technique_level(tech_num);
-      if ((existing_level != 0xFF) && (existing_level > rules->max_tech_disk_level)) {
-        this->overlay_player_data->set_technique_level(tech_num, rules->max_tech_disk_level);
+      if ((existing_level != 0xFF) && (existing_level > rules->max_tech_level)) {
+        this->overlay_player_data->set_technique_level(tech_num, rules->max_tech_level);
       }
     }
   } else if (rules->tech_disk_mode == BattleRules::TechDiskMode::FORBID_ALL) {
@@ -102,7 +102,7 @@ void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, 
       this->overlay_player_data->set_technique_level(tech_num, 0xFF);
     }
   }
-  if (rules->meseta_drop_mode != BattleRules::MesetaDropMode::ALLOW) {
+  if (rules->meseta_mode != BattleRules::MesetaMode::ALLOW) {
     this->overlay_player_data->disp.stats.meseta = 0;
   }
   if (rules->forbid_scape_dolls) {

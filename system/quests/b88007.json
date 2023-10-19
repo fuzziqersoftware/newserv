@@ -1,14 +1,26 @@
 {
   "battle_rules": {
     "tech_disk_mode": "LIMIT_LEVEL",
-    "weapon_and_armor_mode": "FORBID_ALL",
-    "forbid_mags": false,
-    "tool_mode": "FORBID_ALL",
-    "meseta_drop_mode": "CLEAR_AND_ALLOW",
-    "forbid_scape_dolls": false,
-    "max_tech_disk_level": 0,
-    "replace_char": true,
+    "weapon_and_armor_mode": "CLEAR_AND_ALLOW",
+    "mag_mode": "FORBID_ALL",
+    "tool_mode": "CLEAR_AND_ALLOW",
+    "trap_mode": "ALL_PLAYERS",
+    "respawn_mode": 2,
+    "replace_char": 1,
+    "drop_weapon": 1,
+    "is_teams": 0,
+    "hide_target_reticle": 1,
+    "death_level_up": 1,
+    "meseta_mode": "CLEAR_AND_ALLOW",
+    "enable_sonar": 1,
+    "lives": 15,
+    "max_tech_level": 0,
     "char_level": 0,
+    "time_limit": 10,
+    "forbid_scape_dolls": 0,
+    "death_tech_level_up": 0,
+    "trap_counts": [0, 0, 1, 0],
+    "sonar_count": 10,
     "box_drop_area": 2
   }
 }

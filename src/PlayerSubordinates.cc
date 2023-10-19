@@ -472,15 +472,33 @@ size_t PlayerBank::find_item(uint32_t item_id) {
 }
 
 BattleRules::BattleRules(const JSON& json) {
+  static const JSON empty_list = JSON::list();
+
   this->tech_disk_mode = json.get_enum("tech_disk_mode", this->tech_disk_mode);
   this->weapon_and_armor_mode = json.get_enum("weapon_and_armor_mode", this->weapon_and_armor_mode);
-  this->forbid_mags = json.get_bool("forbid_mags", this->forbid_mags);
+  this->mag_mode = json.get_enum("mag_mode", this->mag_mode);
   this->tool_mode = json.get_enum("tool_mode", this->tool_mode);
-  this->meseta_drop_mode = json.get_enum("meseta_drop_mode", this->meseta_drop_mode);
-  this->forbid_scape_dolls = json.get_bool("forbid_scape_dolls", this->forbid_scape_dolls);
-  this->max_tech_disk_level = json.get_int("max_tech_disk_level", this->max_tech_disk_level);
-  this->replace_char = json.get_bool("replace_char", this->replace_char);
+  this->trap_mode = json.get_enum("trap_mode", this->trap_mode);
+  this->unused_F817 = json.get_int("unused_F817", this->unused_F817);
+  this->respawn_mode = json.get_int("respawn_mode", this->respawn_mode);
+  this->replace_char = json.get_int("replace_char", this->replace_char);
+  this->drop_weapon = json.get_int("drop_weapon", this->drop_weapon);
+  this->is_teams = json.get_int("is_teams", this->is_teams);
+  this->hide_target_reticle = json.get_int("hide_target_reticle", this->hide_target_reticle);
+  this->meseta_mode = json.get_enum("meseta_mode", this->meseta_mode);
+  this->death_level_up = json.get_int("death_level_up", this->death_level_up);
+  const JSON& trap_counts_json = json.get("trap_counts", empty_list);
+  for (size_t z = 0; z < trap_counts_json.size(); z++) {
+    this->trap_counts[z] = trap_counts_json.at(z).as_int();
+  }
+  this->enable_sonar = json.get_int("enable_sonar", this->enable_sonar);
+  this->sonar_count = json.get_int("sonar_count", this->sonar_count);
+  this->forbid_scape_dolls = json.get_int("forbid_scape_dolls", this->forbid_scape_dolls);
+  this->lives = json.get_int("lives", this->lives);
+  this->max_tech_level = json.get_int("max_tech_level", this->max_tech_level);
   this->char_level = json.get_int("char_level", this->char_level);
+  this->time_limit = json.get_int("time_limit", this->time_limit);
+  this->death_tech_level_up = json.get_int("death_tech_level_up", this->death_tech_level_up);
   this->box_drop_area = json.get_int("box_drop_area", this->box_drop_area);
 }
 
@@ -488,14 +506,27 @@ JSON BattleRules::json() const {
   return JSON::dict({
       {"tech_disk_mode", this->tech_disk_mode},
       {"weapon_and_armor_mode", this->weapon_and_armor_mode},
-      {"forbid_mags", this->forbid_mags},
+      {"mag_mode", this->mag_mode},
       {"tool_mode", this->tool_mode},
-      {"meseta_drop_mode", this->meseta_drop_mode},
-      {"forbid_scape_dolls", this->forbid_scape_dolls},
-      {"max_tech_disk_level", this->max_tech_disk_level},
+      {"trap_mode", this->trap_mode},
+      {"unused_F817", this->unused_F817},
+      {"respawn_mode", this->respawn_mode},
       {"replace_char", this->replace_char},
-      {"char_level", this->char_level},
-      {"box_drop_area", this->box_drop_area},
+      {"drop_weapon", this->drop_weapon},
+      {"is_teams", this->is_teams},
+      {"hide_target_reticle", this->hide_target_reticle},
+      {"meseta_mode", this->meseta_mode},
+      {"death_level_up", this->death_level_up},
+      {"trap_counts", JSON::list({this->trap_counts[0], this->trap_counts[1], this->trap_counts[2], this->trap_counts[3]})},
+      {"enable_sonar", this->enable_sonar},
+      {"sonar_count", this->sonar_count},
+      {"forbid_scape_dolls", this->forbid_scape_dolls},
+      {"lives", this->lives.load()},
+      {"max_tech_level", this->max_tech_level.load()},
+      {"char_level", this->char_level.load()},
+      {"time_limit", this->time_limit.load()},
+      {"death_tech_level_up", this->death_tech_level_up.load()},
+      {"box_drop_area", this->box_drop_area.load()},
   });
 }
 
@@ -556,6 +587,28 @@ BattleRules::WeaponAndArmorMode enum_for_name<BattleRules::WeaponAndArmorMode>(c
 }
 
 template <>
+const char* name_for_enum<BattleRules::MagMode>(BattleRules::MagMode v) {
+  switch (v) {
+    case BattleRules::MagMode::ALLOW:
+      return "ALLOW";
+    case BattleRules::MagMode::FORBID_ALL:
+      return "FORBID_ALL";
+    default:
+      throw invalid_argument("invalid BattleRules::MagMode value");
+  }
+}
+template <>
+BattleRules::MagMode enum_for_name<BattleRules::MagMode>(const char* name) {
+  if (!strcmp(name, "ALLOW")) {
+    return BattleRules::MagMode::ALLOW;
+  } else if (!strcmp(name, "FORBID_ALL")) {
+    return BattleRules::MagMode::FORBID_ALL;
+  } else {
+    throw invalid_argument("invalid BattleRules::MagMode name");
+  }
+}
+
+template <>
 const char* name_for_enum<BattleRules::ToolMode>(BattleRules::ToolMode v) {
   switch (v) {
     case BattleRules::ToolMode::ALLOW:
@@ -582,26 +635,48 @@ BattleRules::ToolMode enum_for_name<BattleRules::ToolMode>(const char* name) {
 }
 
 template <>
-const char* name_for_enum<BattleRules::MesetaDropMode>(BattleRules::MesetaDropMode v) {
+const char* name_for_enum<BattleRules::TrapMode>(BattleRules::TrapMode v) {
   switch (v) {
-    case BattleRules::MesetaDropMode::ALLOW:
+    case BattleRules::TrapMode::DEFAULT:
+      return "DEFAULT";
+    case BattleRules::TrapMode::ALL_PLAYERS:
+      return "ALL_PLAYERS";
+    default:
+      throw invalid_argument("invalid BattleRules::TrapMode value");
+  }
+}
+template <>
+BattleRules::TrapMode enum_for_name<BattleRules::TrapMode>(const char* name) {
+  if (!strcmp(name, "DEFAULT")) {
+    return BattleRules::TrapMode::DEFAULT;
+  } else if (!strcmp(name, "ALL_PLAYERS")) {
+    return BattleRules::TrapMode::ALL_PLAYERS;
+  } else {
+    throw invalid_argument("invalid BattleRules::TrapMode name");
+  }
+}
+
+template <>
+const char* name_for_enum<BattleRules::MesetaMode>(BattleRules::MesetaMode v) {
+  switch (v) {
+    case BattleRules::MesetaMode::ALLOW:
       return "ALLOW";
-    case BattleRules::MesetaDropMode::FORBID_ALL:
+    case BattleRules::MesetaMode::FORBID_ALL:
       return "FORBID_ALL";
-    case BattleRules::MesetaDropMode::CLEAR_AND_ALLOW:
+    case BattleRules::MesetaMode::CLEAR_AND_ALLOW:
       return "CLEAR_AND_ALLOW";
     default:
       throw invalid_argument("invalid BattleRules::MesetaDropMode value");
   }
 }
 template <>
-BattleRules::MesetaDropMode enum_for_name<BattleRules::MesetaDropMode>(const char* name) {
+BattleRules::MesetaMode enum_for_name<BattleRules::MesetaMode>(const char* name) {
   if (!strcmp(name, "ALLOW")) {
-    return BattleRules::MesetaDropMode::ALLOW;
+    return BattleRules::MesetaMode::ALLOW;
   } else if (!strcmp(name, "FORBID_ALL")) {
-    return BattleRules::MesetaDropMode::FORBID_ALL;
+    return BattleRules::MesetaMode::FORBID_ALL;
   } else if (!strcmp(name, "CLEAR_AND_ALLOW")) {
-    return BattleRules::MesetaDropMode::CLEAR_AND_ALLOW;
+    return BattleRules::MesetaMode::CLEAR_AND_ALLOW;
   } else {
     throw invalid_argument("invalid BattleRules::MesetaDropMode name");
   }

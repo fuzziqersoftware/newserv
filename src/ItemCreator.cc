@@ -470,7 +470,7 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
         }
         break;
       case 2:
-        if (this->restrictions->forbid_mags) {
+        if (this->restrictions->mag_mode == BattleRules::MagMode::FORBID_ALL) {
           this->log.info("Restricted: mags not allowed");
           item.clear();
         }
@@ -489,11 +489,11 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
               break;
             case BattleRules::TechDiskMode::LIMIT_LEVEL:
               this->log.info("Restricted: tech disk level limited to %hhu",
-                  static_cast<uint8_t>(this->restrictions->max_tech_disk_level + 1));
-              if (this->restrictions->max_tech_disk_level == 0) {
+                  static_cast<uint8_t>(this->restrictions->max_tech_level + 1));
+              if (this->restrictions->max_tech_level == 0) {
                 item.data1[2] = 0;
               } else {
-                item.data1[2] %= this->restrictions->max_tech_disk_level;
+                item.data1[2] %= this->restrictions->max_tech_level;
               }
               break;
             default:
@@ -505,7 +505,7 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
         }
         break;
       case 4:
-        if (this->restrictions->meseta_drop_mode == BattleRules::MesetaDropMode::FORBID_ALL) {
+        if (this->restrictions->meseta_mode == BattleRules::MesetaMode::FORBID_ALL) {
           this->log.info("Restricted: meseta not allowed");
           item.clear();
         }

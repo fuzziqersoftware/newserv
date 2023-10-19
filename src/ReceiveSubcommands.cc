@@ -1739,6 +1739,46 @@ static void on_medical_center_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
   }
 }
 
+static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto s = c->require_server_state();
+  auto l = c->require_lobby();
+  if (l->is_game() &&
+      (l->mode == GameMode::BATTLE) &&
+      (l->flags & Lobby::Flag::QUEST_IN_PROGRESS) &&
+      (l->base_version == GameVersion::BB)) {
+    const auto& cmd = check_size_t<G_RestartBattle_BB_6xCF>(data, size);
+
+    shared_ptr<BattleRules> new_rules(new BattleRules(cmd.rules));
+    if (l->item_creator) {
+      l->item_creator->set_restrictions(new_rules);
+    }
+
+    for (auto& lc : l->clients) {
+      if (lc) {
+        lc->game_data.delete_overlay();
+        lc->game_data.create_battle_overlay(new_rules, s->level_table);
+      }
+    }
+    l->map->clear();
+  }
+}
+
+static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void*, size_t) {
+  auto l = c->require_lobby();
+  if (l->is_game() &&
+      (l->mode == GameMode::BATTLE) &&
+      (l->flags & Lobby::Flag::QUEST_IN_PROGRESS) &&
+      (l->base_version == GameVersion::BB)) {
+    // Requests the client to be leveled up by num_levels levels. The server should
+    // respond with a 6x30 command.
+
+    struct G_BattleModeLevelUp_BB_6xD0 {
+      G_ClientIDHeader header;
+      le_uint32_t num_levels;
+    } __packed__;
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef void (*subcommand_handler_t)(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size);
@@ -1951,8 +1991,8 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xCC */ nullptr,
     /* 6xCD */ nullptr,
     /* 6xCE */ nullptr,
-    /* 6xCF */ on_forward_check_size_game,
-    /* 6xD0 */ nullptr,
+    /* 6xCF */ on_battle_restart_bb,
+    /* 6xD0 */ on_battle_level_up_bb,
     /* 6xD1 */ nullptr,
     /* 6xD2 */ nullptr,
     /* 6xD3 */ nullptr,
