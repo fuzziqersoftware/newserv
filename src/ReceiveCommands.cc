@@ -2520,9 +2520,7 @@ static void on_AA(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
   }
 
   // TODO: Send the right value here. (When should we send function_id2?)
-  S_ConfirmQuestStatistic_V3_BB_AB response;
-  response.function_id = cmd.function_id1;
-  send_command_t(c, 0xAB, 0x00, response);
+  send_quest_function_call(c, cmd.function_id1);
 }
 
 static void on_D7_GC(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {

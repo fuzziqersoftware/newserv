@@ -56,37 +56,19 @@ void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, 
     this->overlay_player_data->inventory.remove_all_items_of_type(3);
   }
   if (rules->replace_char) {
+    // TODO: Shouldn't we clear other material usage here? It looks like the
+    // original code doesn't, but that seems wrong.
     this->overlay_player_data->inventory.hp_materials_used = 0;
     this->overlay_player_data->inventory.tp_materials_used = 0;
 
     uint32_t target_level = clamp<uint32_t>(rules->char_level, 0, 199);
     uint8_t char_class = this->overlay_player_data->disp.visual.char_class;
-    const auto& base_stats = level_table->base_stats_for_class(char_class);
     auto& stats = this->overlay_player_data->disp.stats;
-    stats.char_stats.atp = base_stats.atp;
-    stats.char_stats.mst = base_stats.mst;
-    stats.char_stats.evp = base_stats.evp;
-    stats.char_stats.hp = base_stats.hp;
-    stats.char_stats.dfp = base_stats.dfp;
-    stats.char_stats.ata = base_stats.ata;
-    stats.char_stats.lck = base_stats.lck;
-    for (this->overlay_player_data->disp.stats.level = 0;
-         this->overlay_player_data->disp.stats.level < target_level;
-         this->overlay_player_data->disp.stats.level++) {
-      const auto& level_stats = level_table->stats_delta_for_level(char_class, this->overlay_player_data->disp.stats.level + 1);
-      // The original code clamps the resulting stat values to [0, max_stat];
-      // we don't have max_stat handy so we just allow them to be unbounded
-      stats.char_stats.atp += level_stats.atp;
-      stats.char_stats.mst += level_stats.mst;
-      stats.char_stats.evp += level_stats.evp;
-      stats.char_stats.hp += level_stats.hp;
-      stats.char_stats.dfp += level_stats.dfp;
-      stats.char_stats.ata += level_stats.ata;
-      // Note: It is not a bug that lck is ignored here; the original code
-      // ignores it too.
-    }
+
+    stats.reset_to_base(char_class, level_table);
+    stats.advance_to_level(char_class, target_level, level_table);
+
     stats.unknown_a1 = 40;
-    stats.experience = level_table->stats_delta_for_level(char_class, stats.level).experience;
     stats.meseta = 300;
   }
   if (rules->tech_disk_mode == BattleRules::TechDiskMode::LIMIT_LEVEL) {
@@ -127,23 +109,8 @@ void ClientGameData::create_challenge_overlay(size_t template_index, shared_ptr<
 
   overlay->inventory.items[13].extension_data2 = 1;
 
-  overlay->disp.stats.char_stats = level_table->base_stats_for_class(overlay->disp.visual.char_class);
-  for (overlay->disp.stats.level = 0;
-       overlay->disp.stats.level < tpl.level;
-       overlay->disp.stats.level++) {
-    const auto& level_stats = level_table->stats_delta_for_level(
-        overlay->disp.visual.char_class, overlay->disp.stats.level + 1);
-    // The original code clamps the resulting stat values to [0, max_stat]; we
-    // don't have max_stat handy so we just allow them to be unbounded
-    overlay->disp.stats.char_stats.atp += level_stats.atp;
-    overlay->disp.stats.char_stats.mst += level_stats.mst;
-    overlay->disp.stats.char_stats.evp += level_stats.evp;
-    overlay->disp.stats.char_stats.hp += level_stats.hp;
-    overlay->disp.stats.char_stats.dfp += level_stats.dfp;
-    overlay->disp.stats.char_stats.ata += level_stats.ata;
-    // Note: It is not a bug that lck is ignored here; the original code
-    // ignores it too.
-  }
+  overlay->disp.stats.reset_to_base(overlay->disp.visual.char_class, level_table);
+  overlay->disp.stats.advance_to_level(overlay->disp.visual.char_class, tpl.level, level_table);
 
   overlay->disp.stats.unknown_a1 = 40;
   overlay->disp.stats.unknown_a3 = 10.0;

@@ -380,6 +380,15 @@ size_t PlayerInventory::find_item(uint32_t item_id) const {
   throw out_of_range("item not present");
 }
 
+size_t PlayerInventory::find_item_by_primary_identifier(uint32_t primary_identifier) const {
+  for (size_t x = 0; x < this->num_items; x++) {
+    if (this->items[x].data.primary_identifier() == primary_identifier) {
+      return x;
+    }
+  }
+  throw out_of_range("item not present");
+}
+
 size_t PlayerInventory::find_equipped_weapon() const {
   ssize_t ret = -1;
   for (size_t y = 0; y < this->num_items; y++) {

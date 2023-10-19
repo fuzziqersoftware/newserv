@@ -1743,9 +1743,9 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (l->is_game() &&
+      (l->base_version == GameVersion::BB) &&
       (l->mode == GameMode::BATTLE) &&
-      (l->flags & Lobby::Flag::QUEST_IN_PROGRESS) &&
-      (l->base_version == GameVersion::BB)) {
+      (l->flags & Lobby::Flag::QUEST_IN_PROGRESS)) {
     const auto& cmd = check_size_t<G_RestartBattle_BB_6xCF>(data, size);
 
     shared_ptr<BattleRules> new_rules(new BattleRules(cmd.rules));
@@ -1763,19 +1763,190 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
   }
 }
 
-static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void*, size_t) {
+static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() &&
+      (l->base_version == GameVersion::BB) &&
       (l->mode == GameMode::BATTLE) &&
-      (l->flags & Lobby::Flag::QUEST_IN_PROGRESS) &&
-      (l->base_version == GameVersion::BB)) {
-    // Requests the client to be leveled up by num_levels levels. The server should
-    // respond with a 6x30 command.
+      (l->flags & Lobby::Flag::QUEST_IN_PROGRESS)) {
+    const auto& cmd = check_size_t<G_BattleModeLevelUp_BB_6xD0>(data, size);
+    auto lc = l->clients[cmd.header.client_id];
+    if (lc) {
+      auto s = c->require_server_state();
+      auto lp = lc->game_data.player();
+      uint32_t target_level = lp->disp.stats.level + cmd.num_levels;
+      uint32_t before_exp = lp->disp.stats.experience;
+      lp->disp.stats.advance_to_level(lp->disp.visual.char_class, target_level, s->level_table);
+      send_give_experience(lc, lp->disp.stats.experience - before_exp);
+      send_level_up(lc);
+    }
+  }
+}
 
-    struct G_BattleModeLevelUp_BB_6xD0 {
-      G_ClientIDHeader header;
-      le_uint32_t num_levels;
-    } __packed__;
+static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() &&
+      (l->base_version == GameVersion::BB) &&
+      (l->flags & Lobby::Flag::QUEST_IN_PROGRESS)) {
+    const auto& cmd = check_size_t<G_ExchangeItemInQuest_BB_6xD5>(data, size);
+
+    try {
+      auto p = c->game_data.player();
+
+      size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
+      auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, false);
+      send_destroy_item(c, found_item.id, 1);
+
+      // TODO: We probably should use an allow-list here to prevent the client
+      // from creating arbitrary items if cheat mode is disabled.
+      ItemData new_item = cmd.replace_item;
+      new_item.id = l->generate_item_id(c->lobby_client_id);
+      p->add_item(new_item);
+      send_create_inventory_item(c, new_item);
+
+      send_quest_function_call(c, cmd.success_function_id);
+
+    } catch (const exception& e) {
+      c->log.warning("Quest item exchange failed: %s", e.what());
+      send_quest_function_call(c, cmd.failure_function_id);
+    }
+  }
+}
+
+static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() && (l->base_version == GameVersion::BB)) {
+    const auto& cmd = check_size_t<G_WrapItem_BB_6xD6>(data, size);
+
+    auto p = c->game_data.player();
+    auto item = p->remove_item(cmd.item.id, 1, false);
+    send_destroy_item(c, item.id, 1);
+    item.wrap();
+    p->add_item(cmd.item);
+    send_create_inventory_item(c, item);
+  }
+}
+
+static void on_photon_drop_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() && (l->base_version == GameVersion::BB)) {
+    const auto& cmd = check_size_t<G_PaganiniPhotonDropExchange_BB_6xD7>(data, size);
+
+    try {
+      auto p = c->game_data.player();
+
+      size_t found_index = p->inventory.find_item_by_primary_identifier(0x031000);
+      auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 0, false);
+      send_destroy_item(c, found_item.id, found_item.stack_size());
+
+      // TODO: We probably should use an allow-list here to prevent the client
+      // from creating arbitrary items if cheat mode is disabled.
+      ItemData new_item = cmd.new_item;
+      new_item.id = l->generate_item_id(c->lobby_client_id);
+      p->add_item(new_item);
+      send_create_inventory_item(c, new_item);
+
+      send_quest_function_call(c, cmd.success_function_id);
+
+    } catch (const exception& e) {
+      c->log.warning("Quest Photon Drop exchange failed: %s", e.what());
+      send_quest_function_call(c, cmd.failure_function_id);
+    }
+  }
+}
+
+static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() && (l->base_version == GameVersion::BB) && (l->flags & Lobby::Flag::QUEST_IN_PROGRESS)) {
+    check_size_t<G_BlackPaperDealPhotonCrystalExchange_BB_6xDF>(data, size);
+    auto p = c->game_data.player();
+    size_t index = p->inventory.find_item_by_primary_identifier(0x031002);
+    auto item = p->remove_item(p->inventory.items[index].data.id, 1, false);
+    send_destroy_item(c, item.id, 1);
+    // TODO: Should we disable drops here?
+  }
+}
+
+static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() && (l->base_version == GameVersion::BB) && (l->flags & Lobby::Flag::QUEST_IN_PROGRESS)) {
+    const auto& cmd = check_size_t<G_MomokaItemExchange_BB_6xD9>(data, size);
+    auto p = c->game_data.player();
+    try {
+      size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
+      auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, false);
+
+      G_ExchangeItemInQuest_BB_6xDB cmd_6xDB = {{0xDB, 0x04, c->lobby_client_id}, 1, found_item.id, 1};
+      send_command_t(c, 0x60, 0x00, cmd_6xDB);
+
+      send_destroy_item(c, found_item.id, 1);
+
+      // TODO: We probably should use an allow-list here to prevent the client
+      // from creating arbitrary items if cheat mode is disabled.
+      ItemData new_item = cmd.replace_item;
+      new_item.id = l->generate_item_id(c->lobby_client_id);
+      p->add_item(new_item);
+      send_create_inventory_item(c, new_item);
+
+      send_command(c, 0x23, 0x00);
+    } catch (const exception& e) {
+      c->log.warning("Momoka item exchange failed: %s", e.what());
+      send_command(c, 0x23, 0x01);
+    }
+  }
+}
+
+static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() && (l->base_version == GameVersion::BB) && (l->flags & Lobby::Flag::QUEST_IN_PROGRESS)) {
+    const auto& cmd = check_size_t<G_UpgradeWeaponAttribute_BB_6xDA>(data, size);
+    auto p = c->game_data.player();
+    try {
+      size_t item_index = p->inventory.find_item(cmd.item_id);
+      auto& item = p->inventory.items[item_index].data;
+
+      uint32_t payment_primary_identifier = cmd.payment_type ? 0x031001 : 0x031000;
+      size_t payment_index = p->inventory.find_item_by_primary_identifier(payment_primary_identifier);
+      auto& payment_item = p->inventory.items[payment_index].data;
+      if (payment_item.stack_size() < cmd.payment_count) {
+        throw runtime_error("not enough payment items present");
+      }
+      p->remove_item(payment_item.id, cmd.payment_count, false);
+      send_destroy_item(c, payment_item.id, cmd.payment_count);
+
+      uint8_t attribute_amount = 0;
+      if (cmd.payment_type == 1 && cmd.payment_count == 1) {
+        attribute_amount = 30;
+      } else if (cmd.payment_type == 0 && cmd.payment_count == 4) {
+        attribute_amount = 1;
+      } else if (cmd.payment_type == 1 && cmd.payment_count == 20) {
+        attribute_amount = 5;
+      } else {
+        throw runtime_error("unknown PD/PS expenditure");
+      }
+
+      size_t attribute_index = 0;
+      for (size_t z = 6; z <= 10; z += 2) {
+        if (!(item.data1[z] & 0x80) && (item.data1[z] == cmd.attribute)) {
+          attribute_index = z;
+        } else if (item.data1[z] == 0) {
+          attribute_index = z;
+        }
+      }
+      if (attribute_index == 0) {
+        throw runtime_error("no available attribute slots");
+      }
+      item.data1[attribute_index] = cmd.attribute;
+      item.data1[attribute_index] += attribute_amount;
+
+      send_destroy_item(c, item.id, 1);
+      send_create_inventory_item(c, item);
+      send_quest_function_call(c, cmd.success_function_id);
+
+    } catch (const exception& e) {
+      c->log.warning("Weapon attribute upgrade failed: %s", e.what());
+      send_quest_function_call(c, cmd.failure_function_id);
+    }
   }
 }
 
@@ -1997,17 +2168,17 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xD2 */ nullptr,
     /* 6xD3 */ nullptr,
     /* 6xD4 */ nullptr,
-    /* 6xD5 */ nullptr,
-    /* 6xD6 */ nullptr,
-    /* 6xD7 */ nullptr,
+    /* 6xD5 */ on_quest_exchange_item_bb,
+    /* 6xD6 */ on_wrap_item_bb,
+    /* 6xD7 */ on_photon_drop_exchange_bb,
     /* 6xD8 */ nullptr,
-    /* 6xD9 */ nullptr,
-    /* 6xDA */ nullptr,
+    /* 6xD9 */ on_momoka_item_exchange_bb,
+    /* 6xDA */ on_upgrade_weapon_attribute_bb,
     /* 6xDB */ nullptr,
     /* 6xDC */ nullptr,
     /* 6xDD */ nullptr,
     /* 6xDE */ nullptr,
-    /* 6xDF */ nullptr,
+    /* 6xDF */ on_photon_crystal_exchange_bb,
     /* 6xE0 */ nullptr,
     /* 6xE1 */ nullptr,
     /* 6xE2 */ nullptr,

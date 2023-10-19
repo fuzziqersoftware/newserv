@@ -2063,14 +2063,14 @@ struct C_SendQuestStatistic_V3_BB_AA {
   parray<le_uint32_t, 8> params;
 } __packed__;
 
-// AB (S->C): Confirm quest statistic (V3/BB)
+// AB (S->C): Call quest function (V3/BB)
 // This command is not valid on PSO GC Episodes 1&2 Trial Edition.
 // Upon receipt, the client starts a quest thread running the given function.
 // Probably this is supposed to be one of the function IDs previously sent in
 // the AA command, but the client does not check for this. The server can
 // presumably use this command to call any function at any time during a quest.
 
-struct S_ConfirmQuestStatistic_V3_BB_AB {
+struct S_CallQuestFunction_V3_BB_AB {
   le_uint16_t function_id;
   parray<uint8_t, 2> unused;
 } __packed__;
@@ -5534,17 +5534,17 @@ struct G_Unknown_BB_6xD4 {
 
 struct G_ExchangeItemInQuest_BB_6xD5 {
   G_ClientIDHeader header;
-  ItemData unknown_a1; // Only data1[0]-[2] are used
-  ItemData unknown_a2; // Only data1[0]-[2] are used
-  le_uint16_t unknown_a3;
-  le_uint16_t unknown_a4;
+  ItemData find_item; // Only data1[0]-[2] are used
+  ItemData replace_item; // Only data1[0]-[2] are used
+  le_uint16_t success_function_id;
+  le_uint16_t failure_function_id;
 } __packed__;
 
 // 6xD6: Wrap item (BB; handled by server)
 
 struct G_WrapItem_BB_6xD6 {
   G_ClientIDHeader header;
-  ItemData item_data;
+  ItemData item;
   uint8_t unknown_a1;
   parray<uint8_t, 3> unused;
 } __packed__;
@@ -5554,9 +5554,9 @@ struct G_WrapItem_BB_6xD6 {
 
 struct G_PaganiniPhotonDropExchange_BB_6xD7 {
   G_ClientIDHeader header;
-  ItemData unknown_a1; // Only data1[0]-[2] are used
-  le_uint16_t request_id;
-  le_uint16_t unknown_a3;
+  ItemData new_item; // Only data1[0]-[2] are used
+  le_uint16_t success_function_id;
+  le_uint16_t failure_function_id;
 } __packed__;
 
 // 6xD8: Add S-rank weapon special (BB; handled by server)
@@ -5576,8 +5576,8 @@ struct G_AddSRankWeaponSpecial_BB_6xD8 {
 
 struct G_MomokaItemExchange_BB_6xD9 {
   G_ClientIDHeader header;
-  ItemData unknown_a1;
-  ItemData unknown_a2;
+  ItemData find_item; // Only data1[0]-[2] are used
+  ItemData replace_item; // Only data1[0]-[2] are used
   le_uint32_t unknown_a3;
   le_uint32_t unknown_a4;
   le_uint16_t unknown_a5;
@@ -5589,13 +5589,13 @@ struct G_MomokaItemExchange_BB_6xD9 {
 
 struct G_UpgradeWeaponAttribute_BB_6xDA {
   G_ClientIDHeader header;
-  ItemData unknown_a1; // Only data1[0]-[2] are used
-  le_uint32_t item_id;
-  le_uint32_t attribute;
-  le_uint32_t unknown_a4; // 0 or 1
-  le_uint32_t unknown_a5;
-  le_uint16_t request_id;
-  le_uint16_t unknown_a7;
+  ItemData item; // Only data1[0-2] are used (argsA[1-3])
+  le_uint32_t item_id; // argsA[0]
+  le_uint32_t attribute; // argsA[4]
+  le_uint32_t payment_count; // Number of PD or PS (argsA[5])
+  le_uint32_t payment_type; // 0 = Photon Drops, 1 = Photon Spheres
+  le_uint16_t success_function_id; // argsA[6]
+  le_uint16_t failure_function_id; // argsA[7]
 } __packed__;
 
 // 6xDB: Exchange item in quest (BB)
@@ -5633,10 +5633,10 @@ struct G_GoodLuckQuestActions_BB_6xDE {
   le_uint16_t unknown_a3;
 } __packed__;
 
-// 6xDF: Black Paper's Deal Photon Drop exchange (BB; handled by server)
+// 6xDF: Black Paper's Deal Photon Crystal exchange (BB; handled by server)
 // The client sends this when it executes an F95D quest opcode.
 
-struct G_BlackPaperDealPhotonDropExchange_BB_6xE0 {
+struct G_BlackPaperDealPhotonCrystalExchange_BB_6xDF {
   G_ClientIDHeader header;
 } __packed__;
 
@@ -5645,7 +5645,12 @@ struct G_BlackPaperDealPhotonDropExchange_BB_6xE0 {
 
 struct G_BlackPaperDealRewards_BB_6xE0 {
   G_ClientIDHeader header;
-  parray<uint8_t, 12> unknown_a1; // TODO: There might be uint16_ts and uint32_ts in here.
+  uint8_t unknown_a1;
+  uint8_t unknown_a2;
+  uint8_t unknown_a3;
+  uint8_t unknown_a4;
+  le_uint32_t unknown_a5;
+  le_uint32_t unknown_a6;
 } __packed__;
 
 // 6xE1: Gallon's Plan quest (BB; handled by server)

@@ -125,6 +125,27 @@ bool ItemData::is_wrapped() const {
   }
 }
 
+void ItemData::wrap() {
+  switch (this->data1[0]) {
+    case 0:
+    case 1:
+      this->data1[4] |= 0x40;
+      break;
+    case 2:
+      this->data2[2] |= 0x40;
+      break;
+    case 3:
+      if (!this->is_stackable()) {
+        this->data1[3] |= 0x40;
+      }
+      break;
+    case 4:
+      break;
+    default:
+      throw runtime_error("invalid item data");
+  }
+}
+
 void ItemData::unwrap() {
   switch (this->data1[0]) {
     case 0:

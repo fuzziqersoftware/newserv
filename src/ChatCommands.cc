@@ -396,9 +396,7 @@ static void proxy_command_exit(shared_ptr<ProxyServer::LinkedSession> ses, const
 static void server_command_call(shared_ptr<Client> c, const std::u16string& args) {
   auto l = c->require_lobby();
   if (l->is_game() && l->quest) {
-    S_ConfirmQuestStatistic_V3_BB_AB cmd;
-    cmd.function_id = stoul(encode_sjis(args), nullptr, 0);
-    send_command_t(c, 0xAB, 0x00, cmd);
+    send_quest_function_call(c, stoul(encode_sjis(args), nullptr, 0));
   } else {
     send_text_message(c, u"$C6You must be in\nquest to use this\ncommand");
   }
@@ -406,9 +404,7 @@ static void server_command_call(shared_ptr<Client> c, const std::u16string& args
 
 static void proxy_command_call(shared_ptr<ProxyServer::LinkedSession> ses, const std::u16string& args) {
   if (ses->is_in_game && ses->is_in_quest) {
-    S_ConfirmQuestStatistic_V3_BB_AB cmd;
-    cmd.function_id = stoul(encode_sjis(args), nullptr, 0);
-    ses->client_channel.send(0xAB, 0x00, &cmd, sizeof(cmd));
+    send_quest_function_call(ses->client_channel, stoul(encode_sjis(args), nullptr, 0));
   } else {
     send_text_message(ses->client_channel, u"$C6You must be in\nquest to use this\ncommand");
   }

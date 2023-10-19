@@ -2209,6 +2209,16 @@ void send_rare_enemy_index_list(shared_ptr<Client> c, const vector<size_t>& inde
   send_command_t(c, 0xDE, 0x00, cmd);
 }
 
+void send_quest_function_call(Channel& ch, uint16_t function_id) {
+  S_CallQuestFunction_V3_BB_AB cmd;
+  cmd.function_id = function_id;
+  ch.send(0xAB, 0x00, &cmd, sizeof(cmd));
+}
+
+void send_quest_function_call(shared_ptr<Client> c, uint16_t function_id) {
+  send_quest_function_call(c->channel, function_id);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // ep3 only commands
 

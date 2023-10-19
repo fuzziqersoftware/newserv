@@ -114,6 +114,7 @@ struct ItemData { // 0x14 bytes
   uint32_t primary_identifier() const;
 
   bool is_wrapped() const;
+  void wrap();
   void unwrap();
 
   bool is_stackable() const;

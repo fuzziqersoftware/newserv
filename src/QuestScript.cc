@@ -669,11 +669,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8B2, "read4", {REG, REG}, F_V2},
     {0xF8B2, "read4", {REG, INT32}, F_V3_V4 | F_ARGS},
     {0xF8B3, "write1", {REG, REG}, F_V2},
-    {0xF8B3, "write1", {INT32, REG}, F_V3_V4 | F_ARGS},
+    {0xF8B3, "write1", {INT32, INT32}, F_V3_V4 | F_ARGS},
     {0xF8B4, "write2", {REG, REG}, F_V2},
-    {0xF8B4, "write2", {INT32, REG}, F_V3_V4 | F_ARGS},
+    {0xF8B4, "write2", {INT32, INT32}, F_V3_V4 | F_ARGS},
     {0xF8B5, "write4", {REG, REG}, F_V2},
-    {0xF8B5, "write4", {INT32, REG}, F_V3_V4 | F_ARGS},
+    {0xF8B5, "write4", {INT32, INT32}, F_V3_V4 | F_ARGS},
     {0xF8B6, "check_for_hacking", {REG}, F_V2}, // Returns a bitmask of 5 different types of detectable hacking. But it only works on DCv2 - it crashes on all other versions.
     {0xF8B7, nullptr, {REG}, F_V2_V4}, // TODO (DX) - Challenge mode. Appears to be timing-related; regA is expected to be in [60, 3600]. Encodes the value with encrypt_challenge_time even though it's never sent over the network and is only decrypted locally.
     {0xF8B8, "disable_retry_menu", {}, F_V2_V4},
@@ -829,13 +829,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF952, "bb_get_number_in_pack", {REG}, F_V4},
     {0xF953, "bb_swap_item", {INT32, INT32, INT32, INT32, INT32, INT32, SCRIPT16, SCRIPT16}, F_V4 | F_ARGS}, // Sends 6xD5
     {0xF954, "bb_check_wrap", {INT32, REG}, F_V4 | F_ARGS},
-    {0xF955, "bb_exchange_pd_item", {INT32, INT32, INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xD7
+    {0xF955, "bb_exchange_pd_item", {INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS}, // Sends 6xD7
     {0xF956, "bb_exchange_pd_srank", {INT32, INT32, INT32, INT32, INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xD8
-    {0xF957, "bb_exchange_pd_special", {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xDA
-    {0xF958, "bb_exchange_pd_percent", {INT32, INT32, INT32, INT32, INT32, INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xDA
+    {0xF957, "bb_exchange_pd_percent", {INT32, INT32, INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS}, // Sends 6xDA
+    {0xF958, "bb_exchange_ps_percent", {INT32, INT32, INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS}, // Sends 6xDA
     {0xF959, "bb_set_ep4_boss_can_escape", {INT32}, F_V4 | F_ARGS},
     {0xF95A, "bb_is_ep4_boss_dying", {REG}, F_V4},
-    {0xF95B, "bb_send_6xD9", {INT32, INT32, INT32, INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xD9
+    {0xF95B, "bb_send_6xD9", {INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS}, // Sends 6xD9
     {0xF95C, "bb_exchange_slt", {INT32, INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xDE
     {0xF95D, "bb_exchange_pc", {}, F_V4}, // Sends 6xDF
     {0xF95E, "bb_box_create_bp", {INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xE0
@@ -1498,7 +1498,7 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       StringReader r = cmd_r.sub(l->offset, size);
       lines.emplace_back("  // As F8F2 entries");
       while (r.remaining() >= sizeof(UnknownF8F2Entry)) {
-        size_t offset = r.where() + cmd_r.where();
+        size_t offset = l->offset + cmd_r.where();
         const auto& e = r.get<UnknownF8F2Entry>();
         lines.emplace_back(string_printf("  %04zX  entry        %g, %g, %g, %g", offset, e.unknown_a1[0].load(), e.unknown_a1[1].load(), e.unknown_a1[2].load(), e.unknown_a1[3].load()));
       }

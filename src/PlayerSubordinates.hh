@@ -70,6 +70,7 @@ struct PlayerInventory {
   PlayerInventory();
 
   size_t find_item(uint32_t item_id) const;
+  size_t find_item_by_primary_identifier(uint32_t primary_identifier) const;
 
   size_t find_equipped_weapon() const;
   size_t find_equipped_armor() const;

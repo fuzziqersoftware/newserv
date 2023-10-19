@@ -6,6 +6,8 @@
 #include <phosg/Encoding.hh>
 #include <string>
 
+class LevelTable;
+
 struct CharacterStats {
   le_uint16_t atp = 0;
   le_uint16_t mst = 0;
@@ -25,6 +27,9 @@ struct PlayerStats {
   /* 1C */ le_uint32_t experience = 0;
   /* 20 */ le_uint32_t meseta = 0;
   /* 24 */
+
+  void reset_to_base(uint8_t char_class, std::shared_ptr<const LevelTable> level_table);
+  void advance_to_level(uint8_t char_class, uint32_t level, std::shared_ptr<const LevelTable> level_table);
 } __attribute__((packed));
 
 class LevelTable { // from PlyLevelTbl.prs
