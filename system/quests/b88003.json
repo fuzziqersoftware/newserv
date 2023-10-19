@@ -1,0 +1,14 @@
+{
+  "battle_rules": {
+    "tech_disk_mode": "LIMIT_LEVEL",
+    "weapon_and_armor_mode": "FORBID_ALL",
+    "forbid_mags": false,
+    "tool_mode": "FORBID_ALL",
+    "meseta_drop_mode": "FORBID_ALL",
+    "forbid_scape_dolls": true,
+    "max_tech_disk_level": 0,
+    "replace_char": true,
+    "char_level": 4,
+    "box_drop_area": 3
+  }
+}

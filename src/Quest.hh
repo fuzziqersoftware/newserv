@@ -67,6 +67,7 @@ struct VersionedQuest {
   std::shared_ptr<const std::string> bin_contents;
   std::shared_ptr<const std::string> dat_contents;
   std::shared_ptr<const BattleRules> battle_rules;
+  ssize_t challenge_template_index;
 
   VersionedQuest(
       uint32_t quest_number,
@@ -75,7 +76,8 @@ struct VersionedQuest {
       uint8_t language,
       std::shared_ptr<const std::string> bin_contents,
       std::shared_ptr<const std::string> dat_contents,
-      std::shared_ptr<const BattleRules> battle_rules = nullptr);
+      std::shared_ptr<const BattleRules> battle_rules = nullptr,
+      ssize_t challenge_template_index = -1);
 
   std::string bin_filename() const;
   std::string dat_filename() const;
@@ -105,6 +107,7 @@ public:
   bool joinable;
   std::u16string name;
   std::shared_ptr<const BattleRules> battle_rules;
+  ssize_t challenge_template_index;
   std::map<uint16_t, std::shared_ptr<const VersionedQuest>> versions;
 };
 

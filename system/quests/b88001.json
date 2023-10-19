@@ -1,0 +1,12 @@
+{
+  "battle_rules": {
+    "tech_disk_mode": "FORBID_ALL",
+    "weapon_and_armor_mode": "CLEAR_AND_ALLOW",
+    "forbid_mags": false,
+    "tool_mode": "CLEAR_AND_ALLOW",
+    "meseta_drop_mode": "ALLOW",
+    "forbid_scape_dolls": true,
+    "replace_char": false,
+    "box_drop_area": 10
+  }
+}

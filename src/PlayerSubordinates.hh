@@ -108,7 +108,12 @@ struct PlayerVisualConfig {
   /* 31 */ uint8_t char_class = 0;
   /* 32 */ uint8_t v2_flags = 0;
   /* 33 */ uint8_t version = 0;
-  /* 34 */ le_uint32_t v1_flags = 0;
+  // class_flags specifies features of the character's class. The bits are:
+  //   -------- -------- -------- FRHANMfm
+  //   F = force, R = ranger, H = hunter
+  //   A = android, N = newman, M = human
+  //   f = female, m = male
+  /* 34 */ le_uint32_t class_flags = 0;
   /* 38 */ le_uint16_t costume = 0;
   /* 3A */ le_uint16_t skin = 0;
   /* 3C */ le_uint16_t face = 0;
@@ -483,3 +488,15 @@ struct BattleRules {
   bool operator==(const BattleRules& other) const = default;
   bool operator!=(const BattleRules& other) const = default;
 };
+
+struct ChallengeTemplateDefinition {
+  uint32_t level;
+  std::vector<PlayerInventoryItem> items;
+  struct TechLevel {
+    uint8_t tech_num;
+    uint8_t level;
+  };
+  std::vector<TechLevel> tech_levels;
+};
+
+const ChallengeTemplateDefinition& get_challenge_template_definition(uint32_t class_flags, size_t index);

@@ -70,6 +70,7 @@ struct SavedPlayerDataBB { // .nsc file format
 
   uint8_t get_material_usage(MaterialType which) const;
   void set_material_usage(MaterialType which, uint8_t usage);
+  void clear_all_material_usage();
 
   void print_inventory(FILE* stream) const;
 } __attribute__((packed));
@@ -124,8 +125,12 @@ public:
   ~ClientGameData();
 
   void create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table);
+  void create_challenge_overlay(size_t template_index, std::shared_ptr<const LevelTable> level_table);
   inline void delete_overlay() {
     this->overlay_player_data.reset();
+  }
+  inline bool has_overlay() const {
+    return this->overlay_player_data.get() != nullptr;
   }
 
   std::shared_ptr<SavedAccountDataBB> account(bool allow_load = true);

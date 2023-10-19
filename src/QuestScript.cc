@@ -1411,7 +1411,7 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       lines.emplace_back(string_printf("  %04zX  char_class   %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, char_class), visual.char_class, name_for_char_class(visual.char_class)));
       lines.emplace_back(string_printf("  %04zX  v2_flags     %02hhX", l->offset + offsetof(PlayerVisualConfig, v2_flags), visual.v2_flags));
       lines.emplace_back(string_printf("  %04zX  version      %02hhX", l->offset + offsetof(PlayerVisualConfig, version), visual.version));
-      lines.emplace_back(string_printf("  %04zX  v1_flags     %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, v1_flags), visual.v1_flags.load()));
+      lines.emplace_back(string_printf("  %04zX  class_flags  %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, class_flags), visual.class_flags.load()));
       lines.emplace_back(string_printf("  %04zX  costume      %04hX", l->offset + offsetof(PlayerVisualConfig, costume), visual.costume.load()));
       lines.emplace_back(string_printf("  %04zX  skin         %04hX", l->offset + offsetof(PlayerVisualConfig, skin), visual.skin.load()));
       lines.emplace_back(string_printf("  %04zX  face         %04hX", l->offset + offsetof(PlayerVisualConfig, face), visual.face.load()));

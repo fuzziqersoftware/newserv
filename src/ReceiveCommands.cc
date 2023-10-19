@@ -2026,8 +2026,8 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
           l->item_creator->set_restrictions(q->battle_rules);
         }
 
-        for (size_t x = 0; x < l->max_clients; x++) {
-          auto lc = l->clients[x];
+        for (size_t client_id = 0; client_id < l->max_clients; client_id++) {
+          auto lc = l->clients[client_id];
           if (!lc) {
             continue;
           }
@@ -2043,6 +2043,18 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
             lc->game_data.create_battle_overlay(vq->battle_rules, s->level_table);
             lc->log.info("Created battle overlay");
             lc->game_data.player()->print_inventory(stderr);
+          } else if (vq->challenge_template_index >= 0) {
+            lc->game_data.create_challenge_overlay(vq->challenge_template_index, s->level_table);
+            lc->log.info("Created challenge overlay");
+            lc->game_data.player()->print_inventory(stderr);
+          }
+
+          // If an overlay was created, item IDs need to be assigned
+          if (lc->game_data.has_overlay()) {
+            auto overlay = lc->game_data.player();
+            for (size_t z = 0; z < overlay->inventory.num_items; z++) {
+              overlay->inventory.items[z].data.id = l->generate_item_id(client_id);
+            }
           }
 
           string bin_filename = vq->bin_filename();

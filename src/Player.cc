@@ -110,6 +110,63 @@ void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, 
   }
 }
 
+void ClientGameData::create_challenge_overlay(size_t template_index, shared_ptr<const LevelTable> level_table) {
+  const auto& tpl = get_challenge_template_definition(this->player(true, false)->disp.visual.class_flags, template_index);
+
+  this->overlay_player_data.reset(new SavedPlayerDataBB(*this->player(true, false)));
+  auto overlay = this->overlay_player_data;
+
+  for (size_t z = 0; z < overlay->inventory.items.size(); z++) {
+    auto& i = overlay->inventory.items[z];
+    i.present = 0;
+    i.extension_data1 = 0;
+    i.extension_data2 = 0;
+    i.flags = 0;
+    i.data = ItemData();
+  }
+
+  overlay->inventory.items[13].extension_data2 = 1;
+
+  overlay->disp.stats.char_stats = level_table->base_stats_for_class(overlay->disp.visual.char_class);
+  for (overlay->disp.stats.level = 0;
+       overlay->disp.stats.level < tpl.level;
+       overlay->disp.stats.level++) {
+    const auto& level_stats = level_table->stats_delta_for_level(
+        overlay->disp.visual.char_class, overlay->disp.stats.level + 1);
+    // The original code clamps the resulting stat values to [0, max_stat]; we
+    // don't have max_stat handy so we just allow them to be unbounded
+    overlay->disp.stats.char_stats.atp += level_stats.atp;
+    overlay->disp.stats.char_stats.mst += level_stats.mst;
+    overlay->disp.stats.char_stats.evp += level_stats.evp;
+    overlay->disp.stats.char_stats.hp += level_stats.hp;
+    overlay->disp.stats.char_stats.dfp += level_stats.dfp;
+    overlay->disp.stats.char_stats.ata += level_stats.ata;
+    // Note: It is not a bug that lck is ignored here; the original code
+    // ignores it too.
+  }
+
+  overlay->disp.stats.unknown_a1 = 40;
+  overlay->disp.stats.unknown_a3 = 10.0;
+  overlay->disp.stats.experience = level_table->stats_delta_for_level(overlay->disp.visual.char_class, overlay->disp.stats.level).experience;
+  overlay->disp.stats.meseta = 0;
+  overlay->clear_all_material_usage();
+  for (size_t z = 0; z < 0x13; z++) {
+    overlay->set_technique_level(z, 0xFF);
+  }
+
+  for (size_t z = 0; z < tpl.items.size(); z++) {
+    auto& inv_item = overlay->inventory.items[z];
+    inv_item.present = tpl.items[z].present;
+    inv_item.flags = tpl.items[z].flags;
+    inv_item.data = tpl.items[z].data;
+  }
+  overlay->inventory.num_items = tpl.items.size();
+
+  for (const auto& tech_level : tpl.tech_levels) {
+    overlay->set_technique_level(tech_level.tech_num, tech_level.level);
+  }
+}
+
 shared_ptr<SavedAccountDataBB> ClientGameData::account(bool allow_load) {
   if (!this->account_data.get() && allow_load) {
     if (this->bb_username.empty()) {
@@ -443,6 +500,14 @@ void SavedPlayerDataBB::set_material_usage(MaterialType which, uint8_t usage) {
       break;
     default:
       throw logic_error("invalid material type");
+  }
+}
+
+void SavedPlayerDataBB::clear_all_material_usage() {
+  this->inventory.hp_materials_used = 0;
+  this->inventory.tp_materials_used = 0;
+  for (size_t z = 0; z < 5; z++) {
+    this->inventory.items[z + 8].extension_data2 = 0;
   }
 }
 

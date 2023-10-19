@@ -4,7 +4,6 @@
 - Implement server-side drops on non-BB game versions
 - Find a way to silence audio in RunDOL.s
 - Encapsulate BB server-side random state and make replays deterministic
-- Implement character and inventory replacement for battle and challenge modes
 - Implement choice search
 - Write a simple status API
 - Implement per-game logging
@@ -15,6 +14,8 @@
 - Implement decrypt/encrypt actions for VMS files
 - Fix Word Select mapping across versions
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
+- Figure out what causes the corruption message on PC proxy sessions and fix it
+- Enable item tracking in battle/challenge games (everything should already be set up for it to work)
 
 ## Episode 3
 

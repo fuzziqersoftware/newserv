@@ -223,7 +223,8 @@ VersionedQuest::VersionedQuest(
     uint8_t language,
     std::shared_ptr<const std::string> bin_contents,
     std::shared_ptr<const std::string> dat_contents,
-    std::shared_ptr<const BattleRules> battle_rules)
+    std::shared_ptr<const BattleRules> battle_rules,
+    ssize_t challenge_template_index)
     : quest_number(quest_number),
       category_id(category_id),
       episode(Episode::NONE),
@@ -233,7 +234,8 @@ VersionedQuest::VersionedQuest(
       is_dlq_encoded(false),
       bin_contents(bin_contents),
       dat_contents(dat_contents),
-      battle_rules(battle_rules) {
+      battle_rules(battle_rules),
+      challenge_template_index(challenge_template_index) {
 
   auto bin_decompressed = prs_decompress(*this->bin_contents);
 
@@ -378,7 +380,8 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
       episode(initial_version->episode),
       joinable(initial_version->joinable),
       name(initial_version->name),
-      battle_rules(initial_version->battle_rules) {
+      battle_rules(initial_version->battle_rules),
+      challenge_template_index(initial_version->challenge_template_index) {
   this->versions.emplace(this->versions_key(initial_version->version, initial_version->language), initial_version);
 }
 
@@ -404,6 +407,9 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   }
   if (this->battle_rules && (*this->battle_rules != *vq->battle_rules)) {
     throw runtime_error("quest version has different battle rules");
+  }
+  if (this->challenge_template_index != vq->challenge_template_index) {
+    throw runtime_error("quest version has different challenge template index");
   }
 
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
@@ -654,35 +660,42 @@ QuestIndex::QuestIndex(
       metadata_json_cache.emplace(json_filename, metadata_json);
 
       shared_ptr<BattleRules> battle_rules;
+      ssize_t challenge_template_index = -1;
       if (metadata_json) {
         try {
           battle_rules.reset(new BattleRules(metadata_json->at("battle_rules")));
         } catch (const out_of_range&) {
         }
+        try {
+          challenge_template_index = metadata_json->at("challenge_template_index").as_int();
+        } catch (const out_of_range&) {
+        }
       }
 
       shared_ptr<VersionedQuest> vq(new VersionedQuest(
-          quest_number, category_id, version, language, bin_contents, dat_contents, battle_rules));
+          quest_number, category_id, version, language, bin_contents, dat_contents, battle_rules, challenge_template_index));
 
       string ascii_name = format_data_string(encode_sjis(vq->name));
       auto category_name = encode_sjis(this->category_index->at(vq->category_id).name);
 
       string dat_str = dat_filename.empty() ? "" : (" with layout " + dat_filename);
-      string metadata_json_str = battle_rules ? (" with battle rules from " + json_filename) : "";
+      string battle_rules_str = battle_rules ? (" with battle rules from " + json_filename) : "";
+      string challenge_template_str = (challenge_template_index >= 0) ? string_printf(" with challenge template index %zd", vq->challenge_template_index) : "";
       auto q_it = this->quests_by_number.find(vq->quest_number);
       if (q_it != this->quests_by_number.end()) {
         q_it->second->add_version(vq);
-        static_game_data_log.info("(%s) Added %s %c version of quest %" PRIu32 " %s%s%s",
+        static_game_data_log.info("(%s) Added %s %c version of quest %" PRIu32 " %s%s%s%s",
             bin_filename.c_str(),
             name_for_enum(vq->version),
             char_for_language_code(vq->language),
             vq->quest_number,
             ascii_name.c_str(),
             dat_str.c_str(),
-            metadata_json_str.c_str());
+            battle_rules_str.c_str(),
+            challenge_template_str.c_str());
       } else {
         this->quests_by_number.emplace(vq->quest_number, new Quest(vq));
-        static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " %s (%s, %s (%" PRIu32 "), %s)%s%s",
+        static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " %s (%s, %s (%" PRIu32 "), %s)%s%s%s",
             bin_filename.c_str(),
             name_for_enum(vq->version),
             char_for_language_code(vq->language),
@@ -693,7 +706,8 @@ QuestIndex::QuestIndex(
             vq->category_id,
             vq->joinable ? "joinable" : "not joinable",
             dat_str.c_str(),
-            metadata_json_str.c_str());
+            battle_rules_str.c_str(),
+            challenge_template_str.c_str());
       }
     } catch (const exception& e) {
       static_game_data_log.warning("(%s) Failed to index quest file: (%s)", bin_filename.c_str(), e.what());
