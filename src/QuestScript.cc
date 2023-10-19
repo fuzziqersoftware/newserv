@@ -838,7 +838,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF95B, "bb_send_6xD9", {INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS}, // Sends 6xD9
     {0xF95C, "bb_exchange_slt", {INT32, INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xDE
     {0xF95D, "bb_exchange_pc", {}, F_V4}, // Sends 6xDF
-    {0xF95E, "bb_box_create_bp", {INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xE0
+    {0xF95E, "bb_box_create_bp", {INT32, FLOAT32, FLOAT32}, F_V4 | F_ARGS}, // Sends 6xE0
     {0xF95F, "bb_exchange_pt", {INT32, INT32, INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xE1
     {0xF960, "bb_send_6xE2", {INT32}, F_V4 | F_ARGS}, // Sends 6xE2
     {0xF961, "bb_get_6xE3_status", {REG}, F_V4}, // Returns 0 if 6xE3 hasn't been received, 1 if the received item is valid, 2 if the received item is invalid

@@ -3089,7 +3089,7 @@ struct SC_SyncCharacterSaveFile_BB_00E7 {
   /* 2CB8 */ PlayerRecordsBB_Challenge challenge_records;
   /* 2DF8 */ parray<uint8_t, 0x0028> tech_menu_config; // player
   /* 2E20 */ parray<uint8_t, 0x002C> unknown_a6;
-  /* 2E4C */ parray<uint8_t, 0x0058> quest_data2; // player
+  /* 2E4C */ parray<le_uint32_t, 0x0016> quest_data2; // player
   /* 2EA4 */ KeyAndTeamConfigBB key_config; // account
   /* 3994 */
 } __attribute__((packed));
@@ -5646,11 +5646,11 @@ struct G_BlackPaperDealPhotonCrystalExchange_BB_6xDF {
 struct G_BlackPaperDealRewards_BB_6xE0 {
   G_ClientIDHeader header;
   uint8_t unknown_a1;
-  uint8_t unknown_a2;
+  uint8_t unknown_a2; // argsA[0]
   uint8_t unknown_a3;
   uint8_t unknown_a4;
-  le_uint32_t unknown_a5;
-  le_uint32_t unknown_a6;
+  le_float unknown_a5; // argsA[1]
+  le_float unknown_a6; // argsA[2]
 } __packed__;
 
 // 6xE1: Gallon's Plan quest (BB; handled by server)

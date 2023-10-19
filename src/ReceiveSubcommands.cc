@@ -1950,6 +1950,11 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
   }
 }
 
+static void on_write_quest_data2_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_SetQuestData2_BB_6xD2>(data, size);
+  c->game_data.player()->quest_data2[cmd.index] = cmd.value;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef void (*subcommand_handler_t)(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size);
@@ -2165,7 +2170,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xCF */ on_battle_restart_bb,
     /* 6xD0 */ on_battle_level_up_bb,
     /* 6xD1 */ nullptr,
-    /* 6xD2 */ nullptr,
+    /* 6xD2 */ on_write_quest_data2_bb,
     /* 6xD3 */ nullptr,
     /* 6xD4 */ nullptr,
     /* 6xD5 */ on_quest_exchange_item_bb,

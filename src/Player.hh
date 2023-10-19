@@ -44,7 +44,7 @@ struct SavedPlayerDataBB { // .nsc file format
   /* 185C */ ptext<char16_t, 0x00AC> info_board;
   /* 19B4 */ PlayerInventory inventory;
   /* 1D00 */ parray<uint8_t, 0x0208> quest_data1;
-  /* 1F08 */ parray<uint8_t, 0x0058> quest_data2;
+  /* 1F08 */ parray<le_uint32_t, 0x0016> quest_data2;
   /* 1F60 */ parray<uint8_t, 0x0028> tech_menu_config;
   /* 1F88 */
 
