@@ -201,8 +201,9 @@ public:
     /* 04CC */ parray<parray<Range<uint8_t>, 0x0A>, 0x13> technique_level_ranges;
 
     // Each byte in this table (indexed by enemy_type) represents the percent
-    // chance that the enemy drops anything at all. (This check is done after
-    // the rare drop check, so it only applies to non-rare items.)
+    // chance that the enemy drops anything at all. (This check is done before
+    // the rare drop check, so the chance of getting a rare item from an enemy
+    // is essentially this probability multiplied by the rare drop rate.)
     /* 0648 */ parray<uint8_t, 0x64> enemy_type_drop_probs;
 
     // This array (indexed by enemy_id) specifies the range of meseta values
