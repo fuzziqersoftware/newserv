@@ -37,7 +37,6 @@
 #include "StaticGameData.hh"
 #include "Text.hh"
 #include "TextArchive.hh"
-#include "WordSelectSet.hh"
 
 using namespace std;
 
