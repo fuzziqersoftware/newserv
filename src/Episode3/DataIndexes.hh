@@ -890,7 +890,7 @@ struct PlayerConfig {
   // This array is updated when a battle is started (via a 6xB4x05 command). The
   // client adds the opposing players' info to ths first two entries here if the
   // opponents are human. (The existing entries are always moved back by two
-  // slots, but if either or both opponents are not humans, one or both of the
+  // slots, but if one or both opponents are not humans, one or both of the
   // newly-vacated slots is not filled in.)
   /* 2128:1FD4 */ parray<PlayerReference, 10> recent_human_opponents;
   /* 2240:20EC */ parray<uint8_t, 0x28> unknown_a10;

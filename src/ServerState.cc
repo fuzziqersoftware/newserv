@@ -100,6 +100,7 @@ void ServerState::init() {
   this->load_battle_params();
   this->load_level_table();
   this->load_item_tables();
+  this->load_word_select_table();
   this->load_ep3_data();
   this->resolve_ep3_card_names();
   this->load_quest_index();
@@ -912,8 +913,12 @@ void ServerState::load_battle_params() {
 
 void ServerState::load_level_table() {
   config_log.info("Loading level table");
-  this->level_table.reset(new LevelTable(
-      this->load_bb_file("PlyLevelTbl.prs"), true));
+  this->level_table.reset(new LevelTable(this->load_bb_file("PlyLevelTbl.prs"), true));
+}
+
+void ServerState::load_word_select_table() {
+  config_log.info("Loading Word Select table");
+  this->word_select_table.reset(new WordSelectTable(JSON::parse(load_file("system/word-select-table.json"))));
 }
 
 void ServerState::load_item_tables() {

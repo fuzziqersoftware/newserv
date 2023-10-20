@@ -434,10 +434,75 @@ static void on_symbol_chat(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   }
 }
 
+template <bool SenderIsBigEndian>
+static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_WordSelect_6x74<SenderIsBigEndian>>(data, size);
+  if (c->can_chat && (cmd.client_id == c->lobby_client_id)) {
+    if (command_is_private(command)) {
+      return;
+    }
+
+    auto s = c->require_server_state();
+    auto l = c->require_lobby();
+    if (l->battle_record && l->battle_record->battle_in_progress()) {
+      l->battle_record->add_command(Episode3::BattleRecord::Event::Type::GAME_COMMAND, data, size);
+    }
+
+    unordered_set<shared_ptr<Client>> target_clients;
+    for (const auto& lc : l->clients) {
+      if (lc) {
+        target_clients.emplace(lc);
+      }
+    }
+    for (const auto& watcher_l : l->watcher_lobbies) {
+      for (const auto& lc : watcher_l->clients) {
+        if (lc) {
+          target_clients.emplace(lc);
+        }
+      }
+    }
+    target_clients.erase(c);
+
+    // In non-Ep3 lobbies, Ep3 uses the Ep1&2 word select table.
+    bool is_non_ep3_lobby = (l->episode != Episode::EP3);
+
+    QuestScriptVersion from_version = c->quest_version();
+    if (is_non_ep3_lobby && (from_version == QuestScriptVersion::GC_EP3)) {
+      from_version = QuestScriptVersion::GC_V3;
+    }
+    for (const auto& lc : target_clients) {
+      try {
+        QuestScriptVersion lc_version = lc->quest_version();
+        if (is_non_ep3_lobby && (lc_version == QuestScriptVersion::GC_EP3)) {
+          lc_version = QuestScriptVersion::GC_V3;
+        }
+
+        if (lc->version() == GameVersion::GC) {
+          G_WordSelect_6x74<true> out_cmd = {
+              cmd.subcommand, cmd.size, cmd.client_id.load(),
+              s->word_select_table->translate(cmd.message, from_version, lc_version)};
+          send_command_t(lc, 0x60, 0x00, out_cmd);
+        } else {
+          G_WordSelect_6x74<false> out_cmd = {
+              cmd.subcommand, cmd.size, cmd.client_id.load(),
+              s->word_select_table->translate(cmd.message, from_version, lc_version)};
+          send_command_t(lc, 0x60, 0x00, out_cmd);
+        }
+
+      } catch (const exception& e) {
+        string name = encode_sjis(c->game_data.player()->disp.name);
+        lc->log.warning("Untranslatable Word Select message: %s", e.what());
+        send_text_message_printf(lc, "$C4Untranslatable Word\nSelect message from\n%s", name.c_str());
+      }
+    }
+  }
+}
+
 static void on_word_select(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_WordSelect_6x74>(data, size);
-  if (c->can_chat && (cmd.header.client_id == c->lobby_client_id)) {
-    forward_subcommand(c, command, flag, data, size);
+  if (c->version() == GameVersion::GC) {
+    on_word_select_t<true>(c, command, flag, data, size);
+  } else {
+    on_word_select_t<false>(c, command, flag, data, size);
   }
 }
 

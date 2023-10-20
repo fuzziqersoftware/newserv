@@ -4607,14 +4607,24 @@ struct G_Unknown_6x73 {
 } __packed__;
 
 // 6x74: Word select
+// There is a bug in PSO GC with regard to this command: the client does not
+// byteswap the header, which means the client_id field is big-endian.
 
-struct G_WordSelect_6x74 {
-  G_ClientIDHeader header;
-  le_uint16_t unknown_a1;
-  le_uint16_t unknown_a2;
-  parray<le_uint16_t, 8> entries;
-  le_uint32_t unknown_a3;
+struct WordSelectMessage {
+  le_uint16_t num_tokens;
+  le_uint16_t target_type;
+  parray<le_uint16_t, 8> tokens;
+  le_uint32_t numeric_parameter;
   le_uint32_t unknown_a4;
+} __packed__;
+
+template <bool IsBigEndian>
+struct G_WordSelect_6x74 {
+  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+  uint8_t subcommand;
+  uint8_t size;
+  U16T client_id;
+  WordSelectMessage message;
 } __packed__;
 
 // 6x75: Set quest flag

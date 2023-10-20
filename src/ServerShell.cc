@@ -283,6 +283,8 @@ Proxy session commands:\n\
         this->state->load_level_table();
       } else if (type == "item-tables") {
         this->state->load_item_tables();
+      } else if (type == "word-select") {
+        this->state->load_word_select_table();
       } else if (type == "ep3") {
         this->state->load_ep3_data();
       } else if (type == "quests") {

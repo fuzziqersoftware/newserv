@@ -37,6 +37,7 @@
 #include "StaticGameData.hh"
 #include "Text.hh"
 #include "TextArchive.hh"
+#include "WordSelectSet.hh"
 
 using namespace std;
 
@@ -258,7 +259,7 @@ The actions are:\n\
     Convert a REL or GSL rare table to a JSON rare item set. The resulting JSON\n\
     has the same structure as system/blueburst/rare-table.json.\n\
   generate-dc-serial-number [--domain=DOMAIN] [--subdomain=SUBDOMAIN]\n\
-    Generate a PSO DC serial number. DOMAIN should be 0 for DCv1 or 1 for DCv2;\n\
+    Generate a PSO DC serial number. DOMAIN should be 1 for DCv1 or 2 for DCv2;\n\
     SUBDOMAIN should be 0 for Japanese, 1 for USA, or 2 for Europe.\n\
   generate-all-dc-serial-numbers\n\
     Generate all possible PSO DC serial numbers.\n\

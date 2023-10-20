@@ -106,6 +106,7 @@ add_executable(newserv
     src/Text.cc
     src/TextArchive.cc
     src/Version.cc
+    src/WordSelectTable.cc
 )
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR})
 target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} pthread)

@@ -21,6 +21,7 @@
 #include "Lobby.hh"
 #include "Menu.hh"
 #include "Quest.hh"
+#include "WordSelectTable.hh"
 
 // Forward declarations due to reference cycles
 class ProxyServer;
@@ -97,6 +98,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::shared_ptr<const ItemParameterTable> item_parameter_table;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table;
+  std::shared_ptr<const WordSelectTable> word_select_table;
 
   std::shared_ptr<Episode3::TournamentIndex> ep3_tournament_index;
 
@@ -220,6 +222,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_battle_params();
   void load_level_table();
   void load_item_tables();
+  void load_word_select_table();
   void load_ep3_data();
   void resolve_ep3_card_names();
   void load_quest_index();
