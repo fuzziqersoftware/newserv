@@ -235,13 +235,15 @@ The actions are:\n\
     specified for this option. This is used for regression testing, to make\n\
     sure client sessions are repeatable and code changes don\'t affect existing\n\
     (working) functionality.\n\
+  extract-afs [INPUT-FILENAME] [--big-endian]\n\
   extract-gsl [INPUT-FILENAME] [--big-endian]\n\
   extract-bml [INPUT-FILENAME] [--big-endian]\n\
-    Extract all files from a GSL or BML archive into the current directory.\n\
-    input-filename may be specified. If output-filename is specified, then it\n\
-    is treated as a prefix which is prepended to the filename of each file\n\
-    contained in the archive. If --big-endian is given, the archive header is\n\
-    read in GameCube format; otherwise it is read in PC/BB format.\n\
+    Extract all files from an AFS, GSL, or BML archive into the current\n\
+    directory. input-filename may be specified. If output-filename is\n\
+    specified, then it is treated as a prefix which is prepended to the\n\
+    filename of each file contained in the archive. If --big-endian is given,\n\
+    the archive header is read in GameCube format; otherwise it is read in\n\
+    PC/BB format.\n\
   decode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   encode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Decode a text archive (e.g. TextEnglish.pr2) to JSON for easy editing, or\n\
@@ -310,6 +312,7 @@ enum class Behavior {
   ENCODE_QST,
   DISASSEMBLE_QUEST_SCRIPT,
   DECODE_SJIS,
+  EXTRACT_AFS,
   EXTRACT_GSL,
   EXTRACT_BML,
   DECODE_TEXT_ARCHIVE,
@@ -367,6 +370,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
       (b == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) ||
       (b == Behavior::CONVERT_ITEMRT_AFS_TO_JSON) ||
+      (b == Behavior::EXTRACT_AFS) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
       (b == Behavior::DECODE_TEXT_ARCHIVE) ||
@@ -407,6 +411,7 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) ||
       (b == Behavior::CONVERT_ITEMRT_AFS_TO_JSON) ||
       (b == Behavior::DECODE_SJIS) ||
+      (b == Behavior::EXTRACT_AFS) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
       (b == Behavior::DECODE_TEXT_ARCHIVE) ||
@@ -641,6 +646,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::PARSE_OBJECT_GRAPH;
         } else if (!strcmp(argv[x], "replay-log")) {
           behavior = Behavior::REPLAY_LOG;
+        } else if (!strcmp(argv[x], "extract-afs")) {
+          behavior = Behavior::EXTRACT_AFS;
         } else if (!strcmp(argv[x], "extract-gsl")) {
           behavior = Behavior::EXTRACT_GSL;
         } else if (!strcmp(argv[x], "extract-bml")) {
@@ -1408,6 +1415,7 @@ int main(int argc, char** argv) {
       break;
     }
 
+    case Behavior::EXTRACT_AFS:
     case Behavior::EXTRACT_GSL:
     case Behavior::EXTRACT_BML: {
       string output_prefix;
@@ -1421,7 +1429,16 @@ int main(int argc, char** argv) {
       string data = read_input_data();
       shared_ptr<string> data_shared(new string(std::move(data)));
 
-      if (behavior == Behavior::EXTRACT_GSL) {
+      if (behavior == Behavior::EXTRACT_AFS) {
+        AFSArchive arch(data_shared);
+        const auto& all_entries = arch.all_entries();
+        for (size_t z = 0; z < all_entries.size(); z++) {
+          auto e = arch.get(z);
+          string out_file = string_printf("%s-%zu", output_prefix.c_str(), z);
+          save_file(out_file.c_str(), e.first, e.second);
+          fprintf(stderr, "... %s\n", out_file.c_str());
+        }
+      } else if (behavior == Behavior::EXTRACT_GSL) {
         GSLArchive arch(data_shared, big_endian);
         for (const auto& entry_it : arch.all_entries()) {
           auto e = arch.get(entry_it.first);
