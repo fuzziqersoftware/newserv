@@ -15,7 +15,7 @@ const CommonItemSet::Table<true>& CommonItemSet::get_table(
       ((mode == GameMode::CHALLENGE) ? "c" : ""),
       ((episode == Episode::EP2) ? "l" : ""),
       tolower(abbreviation_for_difficulty(difficulty)),
-      secid);
+      (mode == GameMode::CHALLENGE) ? 0 : secid);
   auto data = this->gsl.get(filename);
   if (data.second < sizeof(Table<true>)) {
     throw runtime_error(string_printf(

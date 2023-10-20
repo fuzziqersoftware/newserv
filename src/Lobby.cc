@@ -52,7 +52,7 @@ void Lobby::create_item_creator() {
   } else if (this->base_version == GameVersion::GC || this->base_version == GameVersion::XB) {
     rare_item_set = s->rare_item_sets.at("default-v3");
   } else {
-    // TODO: SHould there be a separate table for V1 eventually?
+    // TODO: Should there be a separate table for V1 eventually?
     rare_item_set = s->rare_item_sets.at("default-v2");
   }
   this->item_creator.reset(new ItemCreator(

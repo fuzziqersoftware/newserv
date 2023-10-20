@@ -15,7 +15,6 @@
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 - Figure out what causes the corruption message on PC proxy sessions and fix it
 - Enable item tracking in battle/challenge games (everything should already be set up for it to work)
-- Use challenge mode rare tables in challenge mode games (also, apparently it always uses Viridia? verify this)
 - Rewrite REL-based parsers so they don't assume any fixed offsets
 
 ## Episode 3
