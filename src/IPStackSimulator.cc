@@ -235,6 +235,9 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
     return;
   }
 
+  struct timeval tv = usecs_to_timeval(60 * 1000 * 1000);
+  event_add(c->idle_timeout_event.get(), &tv);
+
   while (evbuffer_get_length(buf) >= 2) {
     uint16_t frame_size;
     evbuffer_copyout(buf, &frame_size, 2);
