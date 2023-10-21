@@ -37,6 +37,7 @@
 #include "StaticGameData.hh"
 #include "Text.hh"
 #include "TextArchive.hh"
+#include "UnicodeTextSet.hh"
 
 using namespace std;
 
@@ -317,6 +318,8 @@ enum class Behavior {
   EXTRACT_BML,
   DECODE_TEXT_ARCHIVE,
   ENCODE_TEXT_ARCHIVE,
+  DECODE_UNICODE_TEXT_SET,
+  ENCODE_UNICODE_TEXT_SET,
   FORMAT_RARE_ITEM_SET,
   CONVERT_ITEMRT_REL_TO_JSON,
   CONVERT_ITEMRT_GSL_TO_JSON,
@@ -375,6 +378,8 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::EXTRACT_BML) ||
       (b == Behavior::DECODE_TEXT_ARCHIVE) ||
       (b == Behavior::ENCODE_TEXT_ARCHIVE) ||
+      (b == Behavior::DECODE_UNICODE_TEXT_SET) ||
+      (b == Behavior::ENCODE_UNICODE_TEXT_SET) ||
       (b == Behavior::DESCRIBE_ITEM) ||
       (b == Behavior::ENCODE_ITEM) ||
       (b == Behavior::PARSE_OBJECT_GRAPH) ||
@@ -415,7 +420,9 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
       (b == Behavior::DECODE_TEXT_ARCHIVE) ||
-      (b == Behavior::ENCODE_TEXT_ARCHIVE);
+      (b == Behavior::ENCODE_TEXT_ARCHIVE) ||
+      (b == Behavior::DECODE_UNICODE_TEXT_SET) ||
+      (b == Behavior::ENCODE_UNICODE_TEXT_SET);
 }
 
 int main(int argc, char** argv) {
@@ -656,6 +663,10 @@ int main(int argc, char** argv) {
           behavior = Behavior::DECODE_TEXT_ARCHIVE;
         } else if (!strcmp(argv[x], "encode-text-archive")) {
           behavior = Behavior::ENCODE_TEXT_ARCHIVE;
+        } else if (!strcmp(argv[x], "decode-unicode-text-set")) {
+          behavior = Behavior::DECODE_UNICODE_TEXT_SET;
+        } else if (!strcmp(argv[x], "encode-unicode-text-set")) {
+          behavior = Behavior::ENCODE_UNICODE_TEXT_SET;
         } else if (!strcmp(argv[x], "generate-dc-serial-number")) {
           behavior = Behavior::GENERATE_DC_SERIAL_NUMBER;
         } else if (!strcmp(argv[x], "generate-all-dc-serial-numbers")) {
@@ -735,7 +746,7 @@ int main(int argc, char** argv) {
         filename += ".bmp";
       } else if (behavior == Behavior::ENCODE_GVM) {
         filename += ".gvm";
-      } else if (behavior == Behavior::DECODE_TEXT_ARCHIVE) {
+      } else if ((behavior == Behavior::DECODE_TEXT_ARCHIVE) || (behavior == Behavior::DECODE_UNICODE_TEXT_SET)) {
         filename += ".json";
       } else if (behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) {
         filename += ".txt";
@@ -1500,6 +1511,26 @@ int main(int argc, char** argv) {
           save_file(out_filename + ".pr3", result.second);
         }
       }
+      break;
+    }
+    case Behavior::DECODE_UNICODE_TEXT_SET: {
+      auto strings = parse_unicode_text_set(read_input_data());
+      JSON j = JSON::list();
+      for (const u16string& s : strings) {
+        j.emplace_back(encode_sjis(s));
+      }
+      string out_data = j.serialize(JSON::SerializeOption::FORMAT);
+      write_output_data(out_data.data(), out_data.size());
+      break;
+    }
+    case Behavior::ENCODE_UNICODE_TEXT_SET: {
+      auto json = JSON::parse(read_input_data());
+      vector<u16string> strings;
+      for (const auto& s_json : json.as_list()) {
+        strings.emplace_back(decode_sjis(s_json->as_string()));
+      }
+      string encoded = serialize_unicode_text_set(strings);
+      write_output_data(encoded.data(), encoded.size());
       break;
     }
 

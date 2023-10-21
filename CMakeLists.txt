@@ -105,6 +105,7 @@ add_executable(newserv
     src/StaticGameData.cc
     src/Text.cc
     src/TextArchive.cc
+    src/UnicodeTextSet.cc
     src/Version.cc
     src/WordSelectTable.cc
 )
