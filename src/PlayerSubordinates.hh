@@ -77,6 +77,9 @@ struct PlayerInventory {
   size_t find_equipped_mag() const;
 
   size_t remove_all_items_of_type(uint8_t data0, int16_t data1 = -1);
+
+  void decode_mags(GameVersion version);
+  void encode_mags(GameVersion version);
 } __attribute__((packed));
 
 struct PlayerBank {

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "Text.hh"
+#include "Version.hh"
 
 constexpr uint32_t MESETA_IDENTIFIER = 0x00040000;
 
@@ -82,6 +83,10 @@ struct ItemData { // 0x14 bytes
   // makes it incompatible with little-endian versions of PSO (i.e. all other
   // versions). We manually byteswap data2 upon receipt and immediately before
   // sending where needed.
+  // Related note: PSO V2 has an annoyingly complicated format for mags that
+  // doesn't match the above table. We decode this upon receipt and encode it
+  // imemdiately before sending when interacting with V2 clients; see the
+  // implementation of decode_if_mag() for details.
 
   union {
     parray<uint8_t, 12> data1;
@@ -107,8 +112,6 @@ struct ItemData { // 0x14 bytes
 
   void clear();
 
-  void bswap_data2_if_mag();
-
   std::string hex() const;
   std::string name(bool include_color_codes) const;
   uint32_t primary_identifier() const;
@@ -131,6 +134,8 @@ struct ItemData { // 0x14 bytes
   uint8_t mag_photon_blast_for_slot(uint8_t slot) const;
   bool mag_has_photon_blast_in_any_slot(uint8_t pb_num) const;
   void add_mag_photon_blast(uint8_t pb_num);
+  void decode_if_mag(GameVersion version);
+  void encode_if_mag(GameVersion version);
 
   uint16_t get_sealed_item_kill_count() const;
   void set_sealed_item_kill_count(uint16_t v);

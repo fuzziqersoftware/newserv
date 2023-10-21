@@ -1448,9 +1448,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       p.lobby_data.name = wc_p->disp.name;
       remove_language_marker_inplace(p.lobby_data.name);
       p.inventory = wc_p->inventory;
-      for (size_t y = 0; y < 30; y++) {
-        p.inventory.items[y].data.bswap_data2_if_mag();
-      }
+      p.inventory.encode_mags(c->version());
       p.disp = wc_p->disp.to_dcpcv3();
       remove_language_marker_inplace(p.disp.visual.name);
 
@@ -1490,9 +1488,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       p.lobby_data = entry.lobby_data;
       remove_language_marker_inplace(p.lobby_data.name);
       p.inventory = entry.inventory;
-      for (size_t z = 0; z < 30; z++) {
-        p.inventory.items[z].data.bswap_data2_if_mag();
-      }
+      p.inventory.encode_mags(c->version());
       p.disp = entry.disp;
       remove_language_marker_inplace(p.disp.visual.name);
 
@@ -1630,9 +1626,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
           if (l->clients[x]) {
             auto other_p = l->clients[x]->game_data.player();
             cmd.players_ep3[x].inventory = other_p->inventory;
-            for (size_t z = 0; z < 30; z++) {
-              cmd.players_ep3[x].inventory.items[z].data.bswap_data2_if_mag();
-            }
+            cmd.players_ep3[x].inventory.encode_mags(c->version());
             cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp);
           }
         }
@@ -1746,11 +1740,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
       add_language_marker_inplace(e.lobby_data.name, 'J');
     }
     e.inventory = lp->inventory;
-    if (c->version() == GameVersion::GC) {
-      for (size_t z = 0; z < 30; z++) {
-        e.inventory.items[z].data.bswap_data2_if_mag();
-      }
-    }
+    e.inventory.encode_mags(c->version());
     e.disp = convert_player_disp_data<DispDataT>(lp->disp);
     e.disp.enforce_lobby_join_limits(c->version());
   }
@@ -1796,6 +1786,7 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.client_id = lc->lobby_client_id;
     e.lobby_data.name = lp->disp.name;
     e.inventory = lp->inventory;
+    e.inventory.encode_mags(c->version());
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp);
     e.disp.enforce_lobby_join_limits(c->version());
   }
@@ -1898,8 +1889,7 @@ void send_get_player_info(shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 // Trade window
 
-void send_execute_item_trade(shared_ptr<Client> c,
-    const vector<ItemData>& items) {
+void send_execute_item_trade(shared_ptr<Client> c, const vector<ItemData>& items) {
   SC_TradeItems_D0_D3 cmd;
   if (items.size() > cmd.item_datas.size()) {
     throw logic_error("too many items in execute trade command");
@@ -1908,9 +1898,7 @@ void send_execute_item_trade(shared_ptr<Client> c,
   cmd.item_count = items.size();
   for (size_t x = 0; x < items.size(); x++) {
     cmd.item_datas[x] = items[x];
-    if (c->version() == GameVersion::GC) {
-      cmd.item_datas[x].bswap_data2_if_mag();
-    }
+    cmd.item_datas[x].encode_if_mag(c->version());
   }
   send_command_t(c, 0xD3, 0x00, cmd);
 }
@@ -2039,9 +2027,7 @@ void send_drop_item(Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t entity_id) {
   G_DropItem_PC_V3_BB_6x5F cmd = {
       {{0x5F, 0x0B, 0x0000}, area, from_enemy, entity_id, x, z, 0, 0, item}, 0};
-  if (ch.version == GameVersion::GC) {
-    cmd.item_data.bswap_data2_if_mag();
-  }
+  cmd.item_data.encode_if_mag(ch.version);
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
@@ -2059,9 +2045,7 @@ void send_drop_stacked_item(Channel& ch, const ItemData& item,
     uint8_t area, float x, float z) {
   G_DropStackedItem_PC_V3_BB_6x5D cmd = {
       {{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
-  if (ch.version == GameVersion::GC) {
-    cmd.item_data.bswap_data2_if_mag();
-  }
+  cmd.item_data.encode_if_mag(ch.version);
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 

@@ -471,6 +471,18 @@ size_t PlayerInventory::remove_all_items_of_type(uint8_t data1_0, int16_t data1_
   return ret;
 }
 
+void PlayerInventory::decode_mags(GameVersion version) {
+  for (size_t z = 0; z < this->items.size(); z++) {
+    this->items[z].data.decode_if_mag(version);
+  }
+}
+
+void PlayerInventory::encode_mags(GameVersion version) {
+  for (size_t z = 0; z < this->items.size(); z++) {
+    this->items[z].data.encode_if_mag(version);
+  }
+}
+
 size_t PlayerBank::find_item(uint32_t item_id) {
   for (size_t x = 0; x < this->num_items; x++) {
     if (this->items[x].data.id == item_id) {

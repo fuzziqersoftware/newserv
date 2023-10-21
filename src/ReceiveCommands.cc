@@ -2656,11 +2656,6 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, cons
       }
 
       player->inventory = cmd->inventory;
-      if (c->version() == GameVersion::GC) {
-        for (size_t z = 0; z < 30; z++) {
-          player->inventory.items[z].data.bswap_data2_if_mag();
-        }
-      }
       player->disp = cmd->disp.to_bb();
       player->battle_records = cmd->records.battle;
       player->challenge_records = cmd->records.challenge;
@@ -2693,6 +2688,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, cons
     default:
       throw logic_error("player data command not implemented for version");
   }
+  player->inventory.decode_mags(c->version());
 
   string name_str = remove_language_marker(encode_sjis(player->disp.name));
   c->channel.name = string_printf("C-%" PRIX64 " (%s)", c->id, name_str.c_str());
@@ -3742,9 +3738,7 @@ static void on_D0_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
   c->game_data.pending_item_trade->other_client_id = cmd.target_client_id;
   for (size_t x = 0; x < cmd.item_count; x++) {
     auto& item = c->game_data.pending_item_trade->items.emplace_back(cmd.item_datas[x]);
-    if (c->version() == GameVersion::GC) {
-      item.bswap_data2_if_mag();
-    }
+    item.decode_if_mag(c->version());
   }
 
   // If the other player has a pending trade as well, assume this is the second

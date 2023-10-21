@@ -218,7 +218,10 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
       }
 
       for (size_t z = 0; z < num_floor_items; z++) {
-        decompressed_cmd->items[z].item_data.bswap_data2_if_mag();
+        // NOTE: If we use this codepath for non-V3 in the future, we'll need to
+        // change this hardcoded version. This only works because GC's mag
+        // encoding/decoding is symmetric (encode and decode do the same thing).
+        decompressed_cmd->items[z].item_data.decode_if_mag(GameVersion::GC);
       }
 
       string out_compressed_data = bc0_compress(decompressed);
@@ -282,7 +285,10 @@ static void on_sync_joining_player_disp_and_inventory(
   } else {
     auto out_cmd = check_size_t<G_SyncPlayerDispAndInventory_DC_PC_V3_6x70>(data, size);
     for (size_t z = 0; z < 30; z++) {
-      out_cmd.inventory.items[z].data.bswap_data2_if_mag();
+      // NOTE: If we use this codepath for non-V3 in the future, we'll need to
+      // change this hardcoded version. This only works because GC's mag
+      // encoding/decoding is symmetric (encode and decode do the same thing).
+      out_cmd.inventory.items[z].data.decode_if_mag(GameVersion::GC);
     }
     send_command_t(target, command, flag, out_cmd);
   }
@@ -696,11 +702,11 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
 }
 
 template <typename CmdT>
-void forward_subcommand_with_mag_bswap_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& cmd) {
+void forward_subcommand_with_mag_transcode_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& cmd) {
   // I'm lazy and this should never happen for item commands (since all players
   // need to stay in sync)
   if (command_is_private(command)) {
-    throw runtime_error("6x2B sent via private command");
+    throw runtime_error("item subcommand sent via private command");
   }
 
   auto l = c->require_lobby();
@@ -709,8 +715,9 @@ void forward_subcommand_with_mag_bswap_t(shared_ptr<Client> c, uint8_t command, 
       continue;
     }
     CmdT out_cmd = cmd;
-    if ((c->version() == GameVersion::GC) != (other_c->version() == GameVersion::GC)) {
-      out_cmd.item_data.bswap_data2_if_mag();
+    if (c->version() != other_c->version()) {
+      out_cmd.item_data.decode_if_mag(c->version());
+      out_cmd.item_data.encode_if_mag(other_c->version());
     }
     send_command_t(other_c, command, flag, out_cmd);
   }
@@ -734,9 +741,7 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
     auto p = c->game_data.player();
     {
       ItemData item = cmd.item_data;
-      if (c->version() == GameVersion::GC) {
-        item.bswap_data2_if_mag();
-      }
+      item.decode_if_mag(c->version());
       p->add_item(item);
     }
 
@@ -750,7 +755,7 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
     p->print_inventory(stderr);
   }
 
-  forward_subcommand_with_mag_bswap_t(c, command, flag, cmd);
+  forward_subcommand_with_mag_transcode_t(c, command, flag, cmd);
 }
 
 static void on_create_inventory_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -781,9 +786,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
     // send an appropriate 6x29 alongside this?
     {
       ItemData item = cmd.item_data;
-      if (c->version() == GameVersion::GC) {
-        item.bswap_data2_if_mag();
-      }
+      item.decode_if_mag(c->version());
       l->add_item(item, cmd.area, cmd.x, cmd.z);
     }
 
@@ -798,7 +801,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
     c->game_data.player()->print_inventory(stderr);
   }
 
-  forward_subcommand_with_mag_bswap_t(c, command, flag, cmd);
+  forward_subcommand_with_mag_transcode_t(c, command, flag, cmd);
 }
 
 static void on_drop_partial_stack(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -874,9 +877,7 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
     auto p = c->game_data.player();
     {
       ItemData item = cmd.item_data;
-      if (c->version() == GameVersion::GC) {
-        item.bswap_data2_if_mag();
-      }
+      item.decode_if_mag(c->version());
       p->add_item(item);
     }
 
@@ -892,7 +893,7 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
     p->print_inventory(stderr);
   }
 
-  forward_subcommand_with_mag_bswap_t(c, command, flag, cmd);
+  forward_subcommand_with_mag_transcode_t(c, command, flag, cmd);
 }
 
 template <typename CmdT>
@@ -910,9 +911,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     {
       ItemData item = cmd.item_data;
-      if (c->version() == GameVersion::GC) {
-        item.bswap_data2_if_mag();
-      }
+      item.decode_if_mag(c->version());
       l->add_item(item, cmd.area, cmd.x, cmd.z);
     }
 
@@ -925,7 +924,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
     }
   }
 
-  forward_subcommand_with_mag_bswap_t(c, command, flag, cmd);
+  forward_subcommand_with_mag_transcode_t(c, command, flag, cmd);
 }
 
 static void on_box_or_enemy_item_drop(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
