@@ -90,7 +90,7 @@ private:
   void generate_rare_weapon_bonuses(ItemData& item, uint32_t random_sample);
   void deduplicate_weapon_bonuses(ItemData& item) const;
   void set_item_kill_count_if_unsealable(ItemData& item) const;
-  void set_item_unidentified_flag_if_challenge(ItemData& item) const;
+  void set_item_unidentified_flag_if_not_challenge(ItemData& item) const;
   void set_tool_item_amount_to_1(ItemData& item) const;
 
   void generate_common_item_variances(uint32_t norm_area, ItemData& item);

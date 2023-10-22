@@ -315,7 +315,7 @@ ItemData ItemCreator::check_rate_and_create_rare_item(
   switch (item.data1[0]) {
     case 0:
       this->generate_rare_weapon_bonuses(item, this->rand_int(10));
-      this->set_item_unidentified_flag_if_challenge(item);
+      this->set_item_unidentified_flag_if_not_challenge(item);
       break;
     case 1:
       this->generate_common_armor_slots_and_bonuses(item);
@@ -402,8 +402,8 @@ void ItemCreator::set_item_kill_count_if_unsealable(ItemData& item) const {
   }
 }
 
-void ItemCreator::set_item_unidentified_flag_if_challenge(ItemData& item) const {
-  if ((this->mode == GameMode::CHALLENGE) &&
+void ItemCreator::set_item_unidentified_flag_if_not_challenge(ItemData& item) const {
+  if ((this->mode != GameMode::CHALLENGE) &&
       (item.data1[0] == 0x00) &&
       (this->item_parameter_table->is_item_rare(item) || (item.data1[4] != 0))) {
     item.data1[4] |= 0x80;
@@ -665,7 +665,7 @@ void ItemCreator::generate_common_weapon_variances(uint8_t area_norm, ItemData& 
     }
     this->generate_common_weapon_bonuses(item, area_norm);
     this->generate_common_weapon_special(item, area_norm);
-    this->set_item_unidentified_flag_if_challenge(item);
+    this->set_item_unidentified_flag_if_not_challenge(item);
   }
 }
 
