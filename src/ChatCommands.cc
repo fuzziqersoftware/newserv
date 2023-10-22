@@ -834,7 +834,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::u16string& args
     } else if (tokens.at(0) == "npc") {
       if (tokens.at(1) == "none") {
         p->disp.visual.extra_model = 0;
-        p->disp.visual.v2_flags &= 0xFD;
+        p->disp.visual.validation_flags &= 0xFD;
       } else {
         uint8_t npc = npc_for_name(decode_sjis(tokens.at(1)));
         if (npc == 0xFF) {
@@ -842,7 +842,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::u16string& args
           return;
         }
         p->disp.visual.extra_model = npc;
-        p->disp.visual.v2_flags |= 0x02;
+        p->disp.visual.validation_flags |= 0x02;
       }
     } else if (tokens.at(0) == "tech") {
       uint8_t level = stoul(tokens.at(2)) - 1;

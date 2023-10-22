@@ -793,3 +793,12 @@ const char* name_for_area(Episode episode, uint8_t area) {
       throw logic_error("invalid episode for drop area");
   }
 }
+
+uint32_t class_flags_for_class(uint8_t char_class) {
+  static constexpr uint8_t flags[12] = {
+      0x25, 0x2A, 0x31, 0x45, 0x51, 0x52, 0x86, 0x89, 0x8A, 0x32, 0x85, 0x46};
+  if (char_class >= 12) {
+    throw runtime_error("invalid character class");
+  }
+  return flags[char_class];
+}

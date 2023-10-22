@@ -618,6 +618,7 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   SC_SyncCharacterSaveFile_BB_00E7 cmd;
   cmd.inventory = player->inventory;
   cmd.disp = player->disp;
+  cmd.disp.visual.compute_name_color_checksum();
   cmd.disp.play_time = 0;
   cmd.unknown_a1 = 0;
   cmd.creation_timestamp = 0;
@@ -1451,6 +1452,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       p.inventory.encode_mags(c->version());
       p.disp = wc_p->disp.to_dcpcv3();
       remove_language_marker_inplace(p.disp.visual.name);
+      p.disp.enforce_lobby_join_limits(c->version());
 
       auto& e = cmd.entries[z];
       e.player_tag = 0x00010000;
@@ -1491,6 +1493,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       p.inventory.encode_mags(c->version());
       p.disp = entry.disp;
       remove_language_marker_inplace(p.disp.visual.name);
+      p.disp.enforce_lobby_join_limits(c->version());
 
       auto& e = cmd.entries[client_id];
       e.player_tag = 0x00010000;
@@ -1522,6 +1525,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       cmd_p.inventory = other_p->inventory;
       cmd_p.disp = other_p->disp.to_dcpcv3();
       remove_language_marker_inplace(cmd_p.disp.visual.name);
+      cmd_p.disp.enforce_lobby_join_limits(c->version());
 
       cmd_e.player_tag = 0x00010000;
       cmd_e.guild_card_number = other_c->license->serial_number;
@@ -1628,6 +1632,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
             cmd.players_ep3[x].inventory = other_p->inventory;
             cmd.players_ep3[x].inventory.encode_mags(c->version());
             cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp);
+            cmd.players_ep3[x].disp.enforce_lobby_join_limits(c->version());
           }
         }
         send_command_t(c, 0x64, player_count, cmd);

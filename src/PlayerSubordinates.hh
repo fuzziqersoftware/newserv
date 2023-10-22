@@ -104,13 +104,21 @@ struct PlayerDispDataBB;
 struct PlayerVisualConfig {
   /* 00 */ ptext<char, 0x10> name;
   /* 10 */ parray<uint8_t, 8> unknown_a2;
-  /* 18 */ le_uint32_t name_color = 0x00000000; // RGBA
+  /* 18 */ le_uint32_t name_color = 0x00000000; // ARGB
   /* 1C */ uint8_t extra_model = 0;
   /* 1D */ parray<uint8_t, 0x0F> unused;
-  /* 2C */ le_uint32_t unknown_a3 = 0;
+  // See compute_name_color_checksum for details on how this is computed. This
+  // field is ignored on V3 and BB.
+  /* 2C */ le_uint32_t name_color_checksum = 0;
   /* 30 */ uint8_t section_id = 0;
   /* 31 */ uint8_t char_class = 0;
-  /* 32 */ uint8_t v2_flags = 0;
+  // validation_flags specifies that some parts of this structure are not valid
+  // and should be ignored. The bits are:
+  //   -----FCS
+  //   F = class_flags is incorrect for the character's char_class value
+  //   C = char_class is out of range
+  //   S = section_id is out of range
+  /* 32 */ uint8_t validation_flags = 0;
   /* 33 */ uint8_t version = 0;
   // class_flags specifies features of the character's class. The bits are:
   //   -------- -------- -------- FRHANMfm
@@ -129,6 +137,9 @@ struct PlayerVisualConfig {
   /* 48 */ le_float proportion_x = 0.0;
   /* 4C */ le_float proportion_y = 0.0;
   /* 50 */
+
+  static uint32_t compute_name_color_checksum(uint32_t name_color);
+  void compute_name_color_checksum();
 } __attribute__((packed));
 
 struct PlayerDispDataDCPCV3 {

@@ -1258,10 +1258,11 @@ struct S_JoinGame_GC_Ep3_64 : S_JoinGame_GC_64 {
   // This field is only present if the game (and client) is Episode 3. Similarly
   // to lobby_data in the base struct, all four of these are always present and
   // they are filled in in slot positions.
-  struct {
+  struct Ep3PlayerEntry {
     PlayerInventory inventory;
     PlayerDispDataDCPCV3 disp;
-  } __packed__ players_ep3[4];
+  } __packed__;
+  parray<Ep3PlayerEntry, 4> players_ep3;
 } __packed__;
 
 struct S_JoinGame_XB_64 : S_JoinGame_DC_PC<PlayerLobbyDataXB> {

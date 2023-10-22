@@ -6,6 +6,7 @@
 
 #include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
+#include <phosg/Random.hh>
 #include <stdexcept>
 
 #include "ItemData.hh"
@@ -19,29 +20,126 @@ using namespace std;
 
 FileContentsCache player_files_cache(300 * 1000 * 1000);
 
+uint32_t PlayerVisualConfig::compute_name_color_checksum(uint32_t name_color) {
+  uint8_t x = (random_object<uint32_t>() % 0xFF) + 1;
+  uint8_t y = (random_object<uint32_t>() % 0xFF) + 1;
+  // name_color          = ABCDEFGHabcdefghIJKLMNOPijklmnop
+  // name_color_checksum = ---------ijklmabcdeIJKLM-------- ^ (xxxxxxxxyyyyyyyyxxxxxxxxyyyyyyyy)
+  uint32_t xbrgx95558 = ((name_color << 15) & 0x007C0000) | ((name_color >> 6) & 0x0003E000) | ((name_color >> 3) & 0x00001F00);
+  uint32_t mask = (x << 24) | (y << 16) | (x << 8) | y;
+  return xbrgx95558 ^ mask;
+}
+
+void PlayerVisualConfig::compute_name_color_checksum() {
+  this->name_color_checksum = this->compute_name_color_checksum(this->name_color);
+}
+
 void PlayerDispDataDCPCV3::enforce_lobby_join_limits(GameVersion target_version) {
+  struct ClassMaxes {
+    uint16_t costume;
+    uint16_t skin;
+    uint16_t face;
+    uint16_t head;
+    uint16_t hair;
+    uint16_t hair_r;
+    uint16_t hair_g;
+    uint16_t hair_b;
+  };
+  static constexpr ClassMaxes v1_v2_class_maxes[14] = {
+      {0x0009, 0x0004, 0x0005, 0x0000, 0x0007, 0x0100, 0x0100, 0x0100},
+      {0x0009, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0000, 0x0009, 0x0000, 0x0005, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0009, 0x0004, 0x0005, 0x0000, 0x0007, 0x0100, 0x0100, 0x0100},
+      {0x0000, 0x0009, 0x0000, 0x0005, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0000, 0x0009, 0x0000, 0x0005, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0009, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0009, 0x0004, 0x0005, 0x0000, 0x0007, 0x0100, 0x0100, 0x0100},
+      {0x0009, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
+  };
+  static constexpr ClassMaxes v3_v4_class_maxes[19] = {
+      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0000, 0x0019, 0x0000, 0x0005, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0000, 0x0019, 0x0000, 0x0005, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0000, 0x0019, 0x0000, 0x0005, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0000, 0x0019, 0x0000, 0x0005, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A, 0x0100, 0x0100, 0x0100},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0001, 0x0100, 0x0100, 0x0100},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0001, 0x0100, 0x0100, 0x0100},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
+      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}};
+
+  const ClassMaxes* maxes;
   if ((target_version == GameVersion::PC) || (target_version == GameVersion::DC)) {
     // V1/V2 have fewer classes, so we'll substitute some here
-    if (this->visual.char_class == 9) {
-      this->visual.char_class = 5; // HUcaseal -> RAcaseal
-    } else if (this->visual.char_class == 10) {
-      this->visual.char_class = 0; // FOmar -> HUmar
-    } else if (this->visual.char_class == 11) {
-      this->visual.char_class = 1; // RAmarl -> HUnewearl
+    switch (this->visual.char_class) {
+      case 0: // HUmar
+      case 1: // HUnewearl
+      case 2: // HUcast
+      case 3: // RAmar
+      case 4: // RAcast
+      case 5: // RAcaseal
+      case 6: // FOmarl
+      case 7: // FOnewm
+      case 8: // FOnewearl
+      case 12: // V3 custom 1
+      case 13: // V3 custom 2
+        break;
+      case 9: // HUcaseal
+        this->visual.char_class = 5; // HUcaseal -> RAcaseal
+        break;
+      case 10: // FOmar
+        this->visual.char_class = 0; // FOmar -> HUmar
+        break;
+      case 11: // RAmarl
+        this->visual.char_class = 1; // RAmarl -> HUnewearl
+        break;
+      case 14: // V2 custom 1 / V3 custom 3
+      case 15: // V2 custom 2 / V3 custom 4
+      case 16: // V2 custom 3 / V3 custom 5
+      case 17: // V2 custom 4 / V3 custom 6
+      case 18: // V2 custom 5 / V3 custom 7
+        this->visual.char_class -= 5;
+        break;
+      default:
+        this->visual.char_class = 0; // Invalid classes -> HUmar
     }
 
-    // V1/V2 has fewer costumes and android skins, so substitute them here too
-    this->visual.costume %= 9;
-    this->visual.skin %= 9;
-
-    // If the player is somehow still not a valid class, make them appear as the
-    // "ninja" NPC
-    if (this->visual.char_class > 8) {
-      this->visual.extra_model = 0;
-      this->visual.v2_flags |= 2;
-    }
+    maxes = &v1_v2_class_maxes[this->visual.char_class];
     this->visual.version = 2;
+
+  } else {
+    if (this->visual.char_class >= 19) {
+      this->visual.char_class = 0; // Invalid classes -> HUmar
+    }
+    maxes = &v3_v4_class_maxes[this->visual.char_class];
   }
+
+  // V1/V2 has fewer costumes and android skins, so substitute them here
+  this->visual.costume %= maxes->costume;
+  this->visual.skin %= maxes->skin;
+  this->visual.face %= maxes->face;
+  this->visual.head %= maxes->head;
+  this->visual.hair %= maxes->hair;
+  this->visual.hair_r %= maxes->hair_r;
+  this->visual.hair_g %= maxes->hair_g;
+  this->visual.hair_b %= maxes->hair_b;
+
+  this->visual.compute_name_color_checksum();
+  this->visual.class_flags = class_flags_for_class(this->visual.char_class);
 }
 
 void PlayerDispDataBB::enforce_lobby_join_limits(GameVersion) {
@@ -90,10 +188,10 @@ void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
 void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
   this->visual.name_color = pre.visual.name_color;
   this->visual.extra_model = pre.visual.extra_model;
-  this->visual.unknown_a3 = pre.visual.unknown_a3;
+  this->visual.name_color_checksum = pre.visual.name_color_checksum;
   this->visual.section_id = pre.visual.section_id;
   this->visual.char_class = pre.visual.char_class;
-  this->visual.v2_flags = pre.visual.v2_flags;
+  this->visual.validation_flags = pre.visual.validation_flags;
   this->visual.version = pre.visual.version;
   this->visual.class_flags = pre.visual.class_flags;
   this->visual.costume = pre.visual.costume;

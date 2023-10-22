@@ -281,12 +281,62 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
                 mask_data, mask_size, sizeof(S_JoinGame_GC_Ep3_64));
             mask.variations.clear(0);
             mask.rare_seed = 0;
+            for (size_t offset = sizeof(S_JoinGame_GC_64) +
+                     offsetof(S_JoinGame_GC_Ep3_64::Ep3PlayerEntry, disp.visual.name_color_checksum);
+                 offset + 4 <= mask_size;
+                 offset += sizeof(S_JoinGame_GC_Ep3_64::Ep3PlayerEntry)) {
+              *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(mask_data) + offset) = 0;
+            }
+          }
+          break;
+        case 0xEB:
+          if (version != GameVersion::GC) {
+            break;
+          }
+          [[fallthrough]];
+        case 0x65:
+        case 0x67:
+        case 0x68:
+          if ((version == GameVersion::DC) || (version == GameVersion::GC)) {
+            for (size_t offset = offsetof(S_JoinLobby_DC_GC_65_67_68_Ep3_EB, entries) +
+                     offsetof(S_JoinLobby_DC_GC_65_67_68_Ep3_EB::Entry, disp.visual.name_color_checksum);
+                 offset + 4 <= mask_size;
+                 offset += sizeof(S_JoinLobby_DC_GC_65_67_68_Ep3_EB::Entry)) {
+              *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(mask_data) + offset) = 0;
+            }
+          } else if (version == GameVersion::XB) {
+            for (size_t offset = offsetof(S_JoinLobby_XB_65_67_68, entries) +
+                     offsetof(S_JoinLobby_XB_65_67_68::Entry, disp.visual.name_color_checksum);
+                 offset + 4 <= mask_size;
+                 offset += sizeof(S_JoinLobby_XB_65_67_68::Entry)) {
+              *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(mask_data) + offset) = 0;
+            }
+          } else if (version == GameVersion::PC) {
+            for (size_t offset = offsetof(S_JoinLobby_PC_65_67_68, entries) +
+                     offsetof(S_JoinLobby_PC_65_67_68::Entry, disp.visual.name_color_checksum);
+                 offset + 4 <= mask_size;
+                 offset += sizeof(S_JoinLobby_PC_65_67_68::Entry)) {
+              *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(mask_data) + offset) = 0;
+            }
+          } else if (version == GameVersion::BB) {
+            for (size_t offset = offsetof(S_JoinLobby_BB_65_67_68, entries) +
+                     offsetof(S_JoinLobby_BB_65_67_68::Entry, disp.visual.name_color_checksum);
+                 offset + 4 <= mask_size;
+                 offset += sizeof(S_JoinLobby_BB_65_67_68::Entry)) {
+              *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(mask_data) + offset) = 0;
+            }
           }
           break;
         case 0xE8:
           if (version == GameVersion::GC) {
             auto& mask = check_size_t<S_JoinSpectatorTeam_GC_Ep3_E8>(mask_data, mask_size);
             mask.rare_seed = 0;
+            for (size_t z = 0; z < 4; z++) {
+              mask.players[z].disp.visual.name_color_checksum = 0;
+            }
+            for (size_t z = 0; z < 8; z++) {
+              mask.spectator_players[z].disp.visual.name_color_checksum = 0;
+            }
           }
           break;
         case 0xB1:
