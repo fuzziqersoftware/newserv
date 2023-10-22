@@ -259,8 +259,9 @@ The actions are:\n\
     Convert a REL or GSL rare table to a JSON rare item set. The resulting JSON\n\
     has the same structure as system/blueburst/rare-table.json.\n\
   generate-dc-serial-number [--domain=DOMAIN] [--subdomain=SUBDOMAIN]\n\
-    Generate a PSO DC serial number. DOMAIN should be 1 for DCv1 or 2 for DCv2;\n\
-    SUBDOMAIN should be 0 for Japanese, 1 for USA, or 2 for Europe.\n\
+    Generate a PSO DC serial number. DOMAIN should be 0 for Japanese, 1 for\n\
+    USA, or 2 for Europe. SUBDOMAIN should be 2 for European DCv1 or 1 for any\n\
+    other version.\n\
   generate-all-dc-serial-numbers\n\
     Generate all possible PSO DC serial numbers.\n\
   inspect-dc-serial-number SERIAL-NUMBER\n\
