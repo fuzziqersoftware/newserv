@@ -267,12 +267,12 @@ static void proxy_command_auction(shared_ptr<ProxyServer::LinkedSession> ses, co
 
 static void server_command_patch(shared_ptr<Client> c, const std::u16string& args) {
   string basename = encode_sjis(args);
-  try {
-    prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), basename]() {
-      auto c = wc.lock();
-      if (!c) {
-        return;
-      }
+  prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), basename]() {
+    auto c = wc.lock();
+    if (!c) {
+      return;
+    }
+    try {
       auto s = c->require_server_state();
       // Note: We can't look this up outside of the closure because
       // c->specific_version can change during prepare_client_for_patches
@@ -280,10 +280,10 @@ static void server_command_patch(shared_ptr<Client> c, const std::u16string& arg
           string_printf("%s-%08" PRIX32, basename.c_str(), c->specific_version));
       send_function_call(c, fn);
       c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
-    });
-  } catch (const out_of_range&) {
-    send_text_message(c, u"Invalid patch name");
-  }
+    } catch (const out_of_range&) {
+      send_text_message(c, u"Invalid patch name");
+    }
+  });
 }
 
 static void empty_patch_return_handler(uint32_t, uint32_t) {}
