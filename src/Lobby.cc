@@ -48,12 +48,12 @@ void Lobby::create_item_creator() {
 
   shared_ptr<const RareItemSet> rare_item_set;
   if (this->base_version == GameVersion::BB) {
-    rare_item_set = s->rare_item_sets.at("default-v4");
+    rare_item_set = s->rare_item_sets.at("rare-table-v4");
   } else if (this->base_version == GameVersion::GC || this->base_version == GameVersion::XB) {
-    rare_item_set = s->rare_item_sets.at("default-v3");
+    rare_item_set = s->rare_item_sets.at("rare-table-v3");
   } else {
     // TODO: Should there be a separate table for V1 eventually?
-    rare_item_set = s->rare_item_sets.at("default-v2");
+    rare_item_set = s->rare_item_sets.at("rare-table-v2");
   }
   this->item_creator.reset(new ItemCreator(
       s->common_item_set,

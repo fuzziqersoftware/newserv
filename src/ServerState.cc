@@ -923,8 +923,12 @@ void ServerState::load_word_select_table() {
 
 void ServerState::load_item_tables() {
   config_log.info("Loading rare item sets");
-  for (const auto& filename : list_directory_sorted("system/rare-tables")) {
-    string path = "system/rare-tables/" + filename;
+  for (const auto& filename : list_directory_sorted("system/item-tables")) {
+    if (!starts_with(filename, "rare-table-")) {
+      continue;
+    }
+
+    string path = "system/item-tables/" + filename;
     size_t ext_offset = filename.rfind('.');
     string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
 
@@ -954,9 +958,10 @@ void ServerState::load_item_tables() {
     }
   }
 
-  if (!this->rare_item_sets.count("default-v4")) {
-    config_log.info("default-v4 rare item set is not available; loading from BB data");
-    this->rare_item_sets.emplace("default-v4", new RELRareItemSet(this->load_bb_file("ItemRT.rel")));
+  if (!this->rare_item_sets.count("rare-table-v4")) {
+    config_log.info("rare-table-v4 rare item set is not available; loading from BB data");
+    shared_ptr<string> data(new string(load_file("system/blueburst/ItemRT.rel")));
+    this->rare_item_sets.emplace("rare-table-v4", new RELRareItemSet(data));
   }
 
   // Note: These files don't exist in BB, so we use the GC versions of them
@@ -964,25 +969,25 @@ void ServerState::load_item_tables() {
   // parameters for Episode 4 implicitly.
   config_log.info("Loading common item table");
   shared_ptr<string> pt_data(new string(load_file(
-      "system/blueburst/ItemPT_GC.gsl")));
+      "system/item-tables/ItemPT-gc.gsl")));
   this->common_item_set.reset(new CommonItemSet(pt_data));
 
   config_log.info("Loading armor table");
   shared_ptr<string> armor_data(new string(load_file(
-      "system/blueburst/ArmorRandom_GC.rel")));
+      "system/item-tables/ArmorRandom-gc.rel")));
   this->armor_random_set.reset(new ArmorRandomSet(armor_data));
 
   config_log.info("Loading tool table");
   shared_ptr<string> tool_data(new string(load_file(
-      "system/blueburst/ToolRandom_GC.rel")));
+      "system/item-tables/ToolRandom-gc.rel")));
   this->tool_random_set.reset(new ToolRandomSet(tool_data));
 
   config_log.info("Loading weapon tables");
   const char* filenames[4] = {
-      "system/blueburst/WeaponRandomNormal_GC.rel",
-      "system/blueburst/WeaponRandomHard_GC.rel",
-      "system/blueburst/WeaponRandomVeryHard_GC.rel",
-      "system/blueburst/WeaponRandomUltimate_GC.rel",
+      "system/item-tables/WeaponRandomNormal-gc.rel",
+      "system/item-tables/WeaponRandomHard-gc.rel",
+      "system/item-tables/WeaponRandomVeryHard-gc.rel",
+      "system/item-tables/WeaponRandomUltimate-gc.rel",
   };
   for (size_t z = 0; z < 4; z++) {
     shared_ptr<string> weapon_data(new string(load_file(filenames[z])));
@@ -991,17 +996,17 @@ void ServerState::load_item_tables() {
 
   config_log.info("Loading tekker adjustment table");
   shared_ptr<string> tekker_data(new string(load_file(
-      "system/blueburst/JudgeItem_GC.rel")));
+      "system/item-tables/JudgeItem-gc.rel")));
   this->tekker_adjustment_set.reset(new TekkerAdjustmentSet(tekker_data));
 
   config_log.info("Loading item definition table");
   shared_ptr<string> pmt_data(new string(prs_decompress(load_file(
-      "system/blueburst/ItemPMT.prs"))));
+      "system/item-tables/ItemPMT-bb.prs"))));
   this->item_parameter_table.reset(new ItemParameterTable(pmt_data));
 
   config_log.info("Loading mag evolution table");
   shared_ptr<string> mag_data(new string(prs_decompress(load_file(
-      "system/blueburst/ItemMagEdit.prs"))));
+      "system/item-tables/ItemMagEdit-bb.prs"))));
   this->mag_evolution_table.reset(new MagEvolutionTable(mag_data));
 }
 

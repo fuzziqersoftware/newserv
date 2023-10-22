@@ -296,7 +296,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$maxlevel <level>`: Sets the maximum level for players to join the current game. (This only applies when joining; if a player joins and then levels up past this level during the game, they are not kicked out, but won't be able to rejoin if they leave.)
     * `$minlevel <level>`: Sets the minimum level for players to join the current game.
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
-    * `$raretable`: Switches between using the client's or the server's drop table. No effect on BB (the server's drop table is always used). The server's rare tables are defined in JSON files in the system/rare-tables directory.
+    * `$raretable`: Switches between using the client's or the server's drop table. No effect on BB (the server's drop table is always used). The server's rare tables are defined in JSON files in the system/item-tables directory.
 
 * Episode 3 commands (game server only)
     * `$spec`: Toggles the allow spectators flag for Episode 3 games. If any players are spectating when this flag is disabled, they will be sent back to the lobby.
