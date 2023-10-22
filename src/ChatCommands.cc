@@ -662,7 +662,8 @@ static void server_command_secid(shared_ptr<Client> c, const std::u16string& arg
       send_text_message(c, u"$C6Invalid section ID");
     } else {
       c->options.override_section_id = new_secid;
-      send_text_message(c, u"$C6Override section ID\nset");
+      string name = name_for_section_id(new_secid);
+      send_text_message_printf(c, "$C6Override section ID\nset to %s", name.c_str());
     }
   }
 }
@@ -677,7 +678,8 @@ static void proxy_command_secid(shared_ptr<ProxyServer::LinkedSession> ses, cons
       send_text_message(ses->client_channel, u"$C6Invalid section ID");
     } else {
       ses->options.override_section_id = new_secid;
-      send_text_message(ses->client_channel, u"$C6Override section ID\nset");
+      string name = name_for_section_id(new_secid);
+      send_text_message_printf(ses->client_channel, "$C6Override section ID\nset to %s", name.c_str());
     }
   }
 }
