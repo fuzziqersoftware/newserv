@@ -1541,18 +1541,27 @@ void ItemData::parse(const string& orig_description, bool skip_special) {
 
   if (starts_with(desc, "disk:")) {
     auto tokens = split(desc, ' ');
-    if (tokens.size() != 2) {
-      throw runtime_error("invalid tech disk name");
+    tokens[0] = tokens[0].substr(5); // Trim off "disk:"
+    if ((tokens[0] == "reverser") || (tokens[0] == "ryuker")) {
+      uint8_t tech = technique_for_name(tokens[0]);
+      this->data1[0] = 0x03;
+      this->data1[1] = 0x02;
+      this->data1[2] = 0x00;
+      this->data1[4] = tech;
+    } else {
+      if (tokens.size() != 2) {
+        throw runtime_error("invalid tech disk format");
+      }
+      if (!starts_with(tokens[1], "lv.")) {
+        throw runtime_error("invalid tech disk level");
+      }
+      uint8_t tech = technique_for_name(tokens[0]);
+      uint8_t level = stoul(tokens[1].substr(3), nullptr, 10) - 1;
+      this->data1[0] = 0x03;
+      this->data1[1] = 0x02;
+      this->data1[2] = level;
+      this->data1[4] = tech;
     }
-    if (!starts_with(tokens[0], "disk:") || !starts_with(tokens[1], "lv.")) {
-      throw runtime_error("invalid tech disk format");
-    }
-    uint8_t tech = technique_for_name(tokens[0].substr(5));
-    uint8_t level = stoul(tokens[1].substr(3), nullptr, 10) - 1;
-    this->data1[0] = 0x03;
-    this->data1[1] = 0x02;
-    this->data1[2] = level;
-    this->data1[4] = tech;
     return;
   }
 
@@ -1831,8 +1840,12 @@ string ItemData::name(bool include_color_codes) const {
     } catch (const out_of_range&) {
       technique_name = string_printf("!TECH:%02hhX", this->data1[4]);
     }
-    ret_tokens.emplace_back(string_printf(
-        "Disk:%s Lv.%d", technique_name.c_str(), this->data1[2] + 1));
+    // Hide the level for Reverser and Ryuker, unless the level isn't 1
+    if ((this->data1[2] == 0) && ((this->data1[4] == 0x0E) || (this->data1[4] == 0x11))) {
+      ret_tokens.emplace_back(string_printf("Disk:%s", technique_name.c_str()));
+    } else {
+      ret_tokens.emplace_back(string_printf("Disk:%s Lv.%d", technique_name.c_str(), this->data1[2] + 1));
+    }
   } else {
     try {
       const auto& name_info = name_info_for_primary_identifier.at(primary_identifier);
