@@ -430,6 +430,7 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
   c->channel.version = GameVersion::DC;
   c->flags |= flags_for_version(c->version(), -1);
   c->flags |= Client::Flag::IS_DC_V1 | Client::Flag::IS_DC_TRIAL_EDITION;
+  c->language = cmd.language;
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
@@ -505,7 +506,8 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
 }
 
 static void on_92_DC(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) {
-  check_size_t<C_RegisterV1_DC_92>(data);
+  const auto& cmd = check_size_t<C_RegisterV1_DC_92>(data);
+  c->language = cmd.language;
   // It appears that in response to 90 01, the DCv1 prototype sends 93 rather
   // than 92, so we use the presence of a 92 command to determine that the
   // client is actually DCv1 and not the prototype.
@@ -518,6 +520,7 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, const string& dat
   auto s = c->require_server_state();
 
   set_console_client_flags(c, cmd.sub_version);
+  c->language = cmd.language;
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
@@ -633,6 +636,7 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
   auto s = c->require_server_state();
 
   set_console_client_flags(c, cmd.sub_version);
+  c->language = cmd.language;
 
   uint32_t serial_number = stoul(cmd.serial_number, nullptr, 16);
   try {
@@ -740,6 +744,8 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, const str
   }
 
   set_console_client_flags(c, base_cmd->sub_version);
+  c->language = base_cmd->language;
+
   // See system/ppc/Episode3USAQuestBufferOverflow.s for where this value gets
   // set. We use this to determine if the client has already run the code or
   // not; sending it again when the client has already run it will likely cause
@@ -1494,7 +1500,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         if (!q) {
           send_quest_info(c, u"$C4Quest does not\nexist.", is_download_quest);
         } else {
-          auto vq = q->version(c->quest_version(), c->language());
+          auto vq = q->version(c->quest_version(), c->language);
           if (!vq) {
             send_quest_info(c, u"$C4Quest does not\nexist for this game\nversion.", is_download_quest);
           } else {
@@ -1747,7 +1753,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
             if (num_ep3_categories == 1) {
               auto quest_index = s->quest_index_for_client(c);
               if (quest_index) {
-                auto quests = quest_index->filter(ep3_category_id, c->quest_version(), c->language());
+                auto quests = quest_index->filter(ep3_category_id, c->quest_version(), c->language);
                 send_quest_menu(c, MenuID::QUEST, quests, true);
               } else {
                 send_lobby_message_box(c, u"$C6Quests are not available.");
@@ -2033,7 +2039,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
         break;
       }
       shared_ptr<Lobby> l = c->lobby.lock();
-      auto quests = quest_index->filter(item_id, c->quest_version(), c->language());
+      auto quests = quest_index->filter(item_id, c->quest_version(), c->language);
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
@@ -2089,7 +2095,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
             continue;
           }
 
-          auto vq = q->version(lc->quest_version(), lc->language());
+          auto vq = q->version(lc->quest_version(), lc->language);
           if (!vq) {
             send_lobby_message_box(lc, u"$C6Quest does not exist\nfor this game version.");
             lc->should_disconnect = true;
@@ -2137,7 +2143,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
 
       } else {
         string quest_name = encode_sjis(q->name);
-        auto vq = q->version(c->quest_version(), c->language());
+        auto vq = q->version(c->quest_version(), c->language);
         if (!vq) {
           send_lobby_message_box(c, u"$C6Quest does not exist\nfor this game version.");
           break;
@@ -2491,7 +2497,7 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, const string& 
         (l->base_version == GameVersion::BB) &&
         l->map &&
         l->quest) {
-      auto dat_contents = prs_decompress(*l->quest->version(QuestScriptVersion::BB_V4, c->language())->dat_contents);
+      auto dat_contents = prs_decompress(*l->quest->version(QuestScriptVersion::BB_V4, c->language)->dat_contents);
       l->map->clear();
       l->map->add_enemies_from_quest_data(l->episode, l->difficulty, l->event, dat_contents.data(), dat_contents.size());
       c->log.info("Replaced enemies list with quest layout (%zu entries)",
@@ -2689,6 +2695,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, cons
       throw logic_error("player data command not implemented for version");
   }
   player->inventory.decode_mags(c->version());
+  c->language = player->inventory.language;
 
   string name_str = remove_language_marker(encode_sjis(player->disp.name));
   c->channel.name = string_printf("C-%" PRIX64 " (%s)", c->id, name_str.c_str());
@@ -3663,7 +3670,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
       if (!l->quest) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest");
       }
-      auto vq = l->quest->version(c->quest_version(), c->language());
+      auto vq = l->quest->version(c->quest_version(), c->language);
       if (!vq) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest for client version");
       }
@@ -3685,7 +3692,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, const string& data) 
   } else if (watched_lobby && watched_lobby->ep3_server) {
     if (!watched_lobby->ep3_server->battle_finished) {
       watched_lobby->ep3_server->send_commands_for_joining_spectator(
-          c->channel, c->language(), c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
+          c->channel, c->language, c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
     }
     send_ep3_update_game_metadata(watched_lobby);
   }

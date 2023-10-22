@@ -61,6 +61,7 @@ Client::Client(
       should_send_to_proxy_server(false),
       proxy_destination_address(0),
       proxy_destination_port(0),
+      language(1),
       x(0.0f),
       z(0.0f),
       area(0),

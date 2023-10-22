@@ -2318,7 +2318,7 @@ void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const st
   }
 
   const auto& list_data = this->options.map_index->get_compressed_list(
-      l->count_clients(), sender_c->language());
+      l->count_clients(), sender_c->language);
 
   StringWriter w;
   uint32_t subcommand_size = (list_data.size() + sizeof(G_MapList_GC_Ep3_6xB6x40) + 3) & (~3);
@@ -2347,16 +2347,15 @@ void Server::send_6xB6x41_to_all_clients() const {
     if (!c) {
       return;
     }
-    uint8_t language = c->language();
-    if (map_commands_by_language.size() <= language) {
-      map_commands_by_language.resize(language + 1);
+    if (map_commands_by_language.size() <= c->language) {
+      map_commands_by_language.resize(c->language + 1);
     }
-    if (map_commands_by_language[language].empty()) {
-      map_commands_by_language[language] = this->prepare_6xB6x41_map_definition(
-          this->last_chosen_map, language, l->flags & Lobby::Flag::IS_EP3_TRIAL);
+    if (map_commands_by_language[c->language].empty()) {
+      map_commands_by_language[c->language] = this->prepare_6xB6x41_map_definition(
+          this->last_chosen_map, c->language, l->flags & Lobby::Flag::IS_EP3_TRIAL);
     }
-    this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(language), this->last_chosen_map->map_number);
-    send_command(c, 0x6C, 0x00, map_commands_by_language[language]);
+    this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(c->language), this->last_chosen_map->map_number);
+    send_command(c, 0x6C, 0x00, map_commands_by_language[c->language]);
   };
   for (const auto& c : l->clients) {
     send_to_client(c);

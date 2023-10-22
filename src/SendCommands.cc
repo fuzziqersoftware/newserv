@@ -1279,7 +1279,7 @@ void send_quest_menu_t(
   auto v = c->quest_version();
   vector<EntryT> entries;
   for (const auto& quest : quests) {
-    auto vq = quest->version(v, c->language());
+    auto vq = quest->version(v, c->language);
     if (!vq) {
       continue;
     }
@@ -2390,7 +2390,7 @@ void send_ep3_tournament_details(
     shared_ptr<const Episode3::Tournament> tourn) {
   S_TournamentGameDetails_GC_Ep3_E3 cmd;
   cmd.name = tourn->get_name();
-  cmd.map_name = tourn->get_map()->version(c->language())->map->name;
+  cmd.map_name = tourn->get_map()->version(c->language)->map->name;
   cmd.rules = tourn->get_rules();
   const auto& teams = tourn->all_teams();
   for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
@@ -2431,7 +2431,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     S_TournamentGameDetails_GC_Ep3_E3 cmd;
     cmd.name = encode_sjis(l->name);
 
-    cmd.map_name = tourn->get_map()->version(c->language())->map->name;
+    cmd.map_name = tourn->get_map()->version(c->language)->map->name;
     cmd.rules = tourn->get_rules();
 
     const auto& teams = tourn->all_teams();
