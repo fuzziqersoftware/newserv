@@ -30,8 +30,9 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits(GameVersion target_version)
       this->visual.char_class = 1; // RAmarl -> HUnewearl
     }
 
-    // V1/V2 has fewer costumes, so substitute them here too
+    // V1/V2 has fewer costumes and android skins, so substitute them here too
     this->visual.costume %= 9;
+    this->visual.skin %= 9;
 
     // If the player is somehow still not a valid class, make them appear as the
     // "ninja" NPC
